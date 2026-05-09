@@ -5,7 +5,6 @@ import DbManager from '../../src/backend/DbManager/DbManager.js';
 import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager.js';
 import ClassroomApiClient from '../../src/backend/GoogleClassroom/ClassroomApiClient.js';
 import {
-  createReferenceDataControllerMock,
   setupAssignmentDefinitionMocks,
   createSamplePartialDefinitionDocs,
   cleanupAssignmentDefinitionTest,

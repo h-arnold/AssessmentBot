@@ -103,7 +103,7 @@ export function createDeferredStartupDatasets<TDatasets extends Record<string, u
 
   // datasetFactories is a typed parameter with known structure - safe to iterate
   for (const key in datasetFactories) {
-    if (Object.prototype.hasOwnProperty.call(datasetFactories, key)) {
+    if (Object.hasOwn(datasetFactories, key)) {
       const factory = datasetFactories[key as keyof TDatasets];
       const deferred = factory();
       const deferredKey = `${String(key)}Deferred`;

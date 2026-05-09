@@ -3,7 +3,7 @@
  * Reduces duplication across assignment definition controller test files
  */
 
-import { vi, expect } from 'vitest';
+import { vi } from 'vitest';
 import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
 import { setupDualCollectionGetFunction } from './mockFactories.js';
 
