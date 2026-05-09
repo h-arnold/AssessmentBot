@@ -1,4 +1,4 @@
-# Agent Orchestrator Instructions
+# Action Plan Implementer Instructions
 
 **Worktree awareness**: Other agents may be working concurrently. Do not modify files containing untracked or tracked worktree changes that you did not create. Verify with `git status` before editing.
 
@@ -61,7 +61,7 @@ You coordinate delivery against `ACTION_PLAN.md`. Keep the workflow strict, sequ
 
 Each section must complete **two independent, self-contained loops**. The orchestrator is responsible for **evaluating all review findings** and ensuring that **only in-scope issues** are returned to the respective agent for resolution. Out-of-scope findings must be discarded before proceeding.
 
-**Do not proceed to the next phase until the current loop’s review is fully clean.**
+**Do not proceed to the next phase until the current loop's review is fully clean.**
 
 ### 3.1 Regression Gate (Mandatory - After Each Red-Green Loop)
 
@@ -215,8 +215,8 @@ Use this for the **initial review** of a section to catch cross-section issues o
 > **Review Scope:**  
 > Review the green-phase implementation for [Section 3: Input Validation] in the context of the full `ACTION_PLAN.md` and `SPEC.md`.
 >
-> - Ensure the implementation meets [Section 3]’s acceptance criteria and does not violate global rules.
-> - Flag any conflicts with future sections or global constraints, but limit fixes to the current section’s scope.
+> - Ensure the implementation meets [Section 3]'s acceptance criteria and does not violate global rules.
+> - Flag any conflicts with future sections or global constraints, but limit fixes to the current section's scope.
 
 #### **Subsequent Reviews (Narrowed Scope)**
 
@@ -248,7 +248,7 @@ Use this if the first review returned out-of-scope findings. Explicitly restrict
 - `SPEC.md` (full)
 - Layout spec (if applicable)
 
-2. **Avoid duplication:** Reference the section’s details in `ACTION_PLAN.md` instead of repeating them in the handoff.
+2. **Avoid duplication:** Reference the section's details in `ACTION_PLAN.md` instead of repeating them in the handoff.
 3. **Adjust dynamically:** Start broad, then narrow the scope if the reviewer overreaches.
 
 ## 4. Section Exit Criteria

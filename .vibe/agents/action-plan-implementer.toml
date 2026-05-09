@@ -1,11 +1,11 @@
-name = "agent-orchestrator"
+name = "action-plan-implementer"
 description = "Orchestrates the other agents to implement an action plan"
 sandbox_mode = "workspace-write"
 auto_approve = true
 safety = "yolo"
 agent_type = "agent"
-nickname_candidates = ["agent-orchestrator", "Agent Orchestrator", "Orchestrator"]
-system_prompt_id = "agent-orchestrator"
+nickname_candidates = ["action-plan-implementer", "Action Plan Implementer", "Implementer"]
+system_prompt_id = "action-plan-implementer"
 
 [tools]
 allowlist = ["*"]
