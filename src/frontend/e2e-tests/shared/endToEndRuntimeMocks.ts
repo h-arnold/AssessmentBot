@@ -1,5 +1,5 @@
+import { expect, type Page } from '@playwright/test';
 import { googleScriptRunApiHandlerFactorySource } from '../../src/test/googleScriptRunHarness';
-import type { Page } from '@playwright/test';
 import {
   mockTopics,
   mockYearGroups,
@@ -597,11 +597,15 @@ export async function releaseNextDeferredSuccess(
   page: Page,
   releaseFunctionName: string = RELEASE_DEFERRED_FUNCTION
 ): Promise<void> {
-  await page.evaluate(`
-    (() => {
-      (globalThis as { ${releaseFunctionName}: () => void }).${releaseFunctionName}();
-    })();
-  `);
+  await page.evaluate((currentReleaseFunctionName) => {
+    const releaseFunction = Reflect.get(globalThis, currentReleaseFunctionName);
+
+    if (typeof releaseFunction !== 'function') {
+      throw new TypeError('No release function named ' + currentReleaseFunctionName + ' is available.');
+    }
+
+    releaseFunction();
+  }, releaseFunctionName);
 }
 
 /**
@@ -615,11 +619,11 @@ export async function getMethodCalls(
   page: Page,
   trackerName: string = METHOD_CALLS_TRACKER
 ): Promise<string[]> {
-  return await page.evaluate(`
-    (() => {
-      return (globalThis as { ${trackerName}: string[] }).${trackerName} || [];
-    })();
-  `);
+  return await page.evaluate((currentTrackerName) => {
+    const methodCalls = Reflect.get(globalThis, currentTrackerName);
+
+    return Array.isArray(methodCalls) ? methodCalls : [];
+  }, trackerName);
 }
 
 // ============================================================================

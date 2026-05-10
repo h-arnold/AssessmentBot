@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 import {
+  createAssignmentsScenario,
+  getMethodCalls,
   installRuntimeMock,
   releaseNextDeferredSuccess,
   getAssignmentsRowByTitle,
@@ -87,11 +89,13 @@ const exactMatchRowIndex = 2;
 test.describe('assignments page browser journeys', () => {
   test('delete flow removes the row after confirmation and shows success feedback', async ({ page }) => {
     await installRuntimeMock(page, {
+      ...createAssignmentsScenario({
+        initialPartials: assignmentRows,
+      }),
       getAssignmentDefinitionPartials: [
         { kind: 'success', data: assignmentRows },
         { kind: 'success', data: assignmentRows.filter((row) => row.definitionKey !== 'alg-10-safe') },
       ],
-      deleteAssignmentDefinition: [{ kind: 'success', data: undefined }],
     });
 
     await page.goto('/');
@@ -116,7 +120,9 @@ test.describe('assignments page browser journeys', () => {
 
   test('unsafe-key rows keep delete disabled', async ({ page }) => {
     await installRuntimeMock(page, {
-      getAssignmentDefinitionPartials: [{ kind: 'success', data: assignmentRows }],
+      ...createAssignmentsScenario({
+        initialPartials: assignmentRows,
+      }),
     });
 
     await page.goto('/');
@@ -136,7 +142,9 @@ test.describe('assignments page browser journeys', () => {
 
   test('placeholder create and update actions stay disabled with explicit unavailable copy', async ({ page }) => {
     await installRuntimeMock(page, {
-      getAssignmentDefinitionPartials: [{ kind: 'success', data: assignmentRows }],
+      ...createAssignmentsScenario({
+        initialPartials: assignmentRows,
+      }),
     });
 
     await page.goto('/');
@@ -156,8 +164,9 @@ test.describe('assignments page browser journeys', () => {
 
   test('delete action opens confirmation modal with permanent-delete copy', async ({ page }) => {
     await installRuntimeMock(page, {
-      getAssignmentDefinitionPartials: [{ kind: 'success', data: assignmentRows }],
-      deleteAssignmentDefinition: [{ kind: 'success', data: undefined }],
+      ...createAssignmentsScenario({
+        initialPartials: assignmentRows,
+      }),
     });
 
     await page.goto('/');
@@ -180,11 +189,11 @@ test.describe('assignments page browser journeys', () => {
 
   test('delete mutation keeps confirm loading and disables conflicting delete actions until settle', async ({ page }) => {
     await installRuntimeMock(page, {
-      getAssignmentDefinitionPartials: [
-        { kind: 'success', data: assignmentRows },
-        { kind: 'success', data: assignmentRows.filter((row) => row.definitionKey !== 'alg-10-safe') },
-      ],
-      deleteAssignmentDefinition: [{ kind: 'deferredSuccess', data: undefined }],
+      ...createAssignmentsScenario({
+        initialPartials: assignmentRows,
+        postMutationPartials: [assignmentRows.filter((row) => row.definitionKey !== 'alg-10-safe')],
+        deleteResponses: [{ kind: 'deferredSuccess', data: undefined }],
+      }),
     });
 
     await page.goto('/');
@@ -212,7 +221,7 @@ test.describe('assignments page browser journeys', () => {
       await expect(rowDeleteButtons.nth(index)).toBeDisabled();
     }
 
-    await releaseNextDeferredSuccess(page, '__releaseNextAssignmentsDeferredSuccess');
+    await releaseNextDeferredSuccess(page);
 
     await expect(page.getByText(/assignment definition deleted/i)).toBeVisible();
     await expect(page.getByRole('dialog', { name: 'Delete assignment definition' })).toHaveCount(0);
@@ -220,8 +229,10 @@ test.describe('assignments page browser journeys', () => {
 
   test('delete failure keeps row visible and shows local error feedback', async ({ page }) => {
     await installRuntimeMock(page, {
-      getAssignmentDefinitionPartials: [{ kind: 'success', data: assignmentRows }],
-      deleteAssignmentDefinition: [{ kind: 'transportFailure', message: 'delete failed' }],
+      ...createAssignmentsScenario({
+        initialPartials: assignmentRows,
+        deleteResponses: [{ kind: 'transportFailure', message: 'delete failed' }],
+      }),
     });
 
     await page.goto('/');
@@ -243,11 +254,13 @@ test.describe('assignments page browser journeys', () => {
 
   test('post-delete refresh failure returns to blocking state', async ({ page }) => {
     await installRuntimeMock(page, {
+      ...createAssignmentsScenario({
+        initialPartials: assignmentRows,
+      }),
       getAssignmentDefinitionPartials: [
         { kind: 'success', data: assignmentRows },
         { kind: 'transportFailure', message: 'refresh failed after delete' },
       ],
-      deleteAssignmentDefinition: [{ kind: 'success', data: undefined }],
     });
 
     await page.goto('/');
@@ -268,11 +281,18 @@ test.describe('assignments page browser journeys', () => {
   });
 
   test('retry action performs scoped assignment-definition refetch only', async ({ page }) => {
-    await installRuntimeMock(page, {
+    const retryScenario = {
+      ...createAssignmentsScenario({
+        initialPartials: assignmentRows,
+      }),
       getAssignmentDefinitionPartials: [
         { kind: 'transportFailure', message: 'assignment fetch failed' },
         { kind: 'success', data: assignmentRows },
       ],
+    };
+
+    await installRuntimeMock(page, retryScenario, {
+      methodCallsTrackerName: '__assignmentsMethodCalls',
     });
 
     await page.goto('/');
@@ -283,10 +303,8 @@ test.describe('assignments page browser journeys', () => {
     // Wait for retry button to be visible
     await expect(page.getByRole('button', { name: /retry|refresh assignments data/i })).toBeVisible();
 
-    const baselineCallCount = await page.evaluate(() => {
-      const methodCalls = (globalThis as { __assignmentsMethodCalls: string[] }).__assignmentsMethodCalls;
-      return methodCalls.length;
-    });
+    const baselineMethodCalls = await getMethodCalls(page, '__assignmentsMethodCalls');
+    const baselineCallCount = baselineMethodCalls.length;
 
     await page.getByRole('button', { name: /retry|refresh assignments data/i }).click();
 
@@ -294,17 +312,17 @@ test.describe('assignments page browser journeys', () => {
     // which may not trigger if query is disabled, so this test may need code fix per FE-E2E-010
     await expect
       .poll(async () => {
-        return page.evaluate((startIndex) => {
-          const methodCalls = (globalThis as { __assignmentsMethodCalls: string[] }).__assignmentsMethodCalls;
-          return methodCalls.slice(startIndex);
-        }, baselineCallCount);
+        const methodCalls = await getMethodCalls(page, '__assignmentsMethodCalls');
+        return methodCalls.slice(baselineCallCount);
       }, { timeout: 10_000 })
       .toEqual(['getAssignmentDefinitionPartials']);
   });
 
   test('filter and reset interactions cover every displayed data column', async ({ page }) => {
     await installRuntimeMock(page, {
-      getAssignmentDefinitionPartials: [{ kind: 'success', data: assignmentRows }],
+      ...createAssignmentsScenario({
+        initialPartials: assignmentRows,
+      }),
     });
 
     await page.goto('/');
