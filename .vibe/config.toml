@@ -80,9 +80,9 @@ thinking = "high"
 auto_compact_threshold = 200000
 
 [[models]]
-name = "mistral-small-latest"
+name = "mistral-small"
 provider = "mistral"
-alias = "mistral-small"
+alias = "mistral-small-latest"
 temperature = 0.2
 input_price = 0.25
 output_price = 1.0
@@ -92,7 +92,7 @@ auto_compact_threshold = 200000
 [[models]]
 name = "codestral-latest"
 provider = "codestral"
-alias = "codestral"
+alias = "codestral-latest"
 temperature = 0.2
 input_price = 0.25
 output_price = 1.0
