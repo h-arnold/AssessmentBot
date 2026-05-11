@@ -48,7 +48,7 @@ npm test
 If backend changes could affect broader integration or legacy UI singleton flows, also run:
 
 ```bash
-npm run test:all
+npm run test
 ```
 
 ### Frontend (`src/frontend/**`)
@@ -56,8 +56,8 @@ npm run test:all
 Run:
 
 ```bash
-npm run frontend:lint
-npm run frontend:test
+npm run lint:frontend
+npm run test:frontend
 ```
 
 For TypeScript changes, also run:
@@ -69,7 +69,7 @@ npm exec tsc -- -b src/frontend/tsconfig.json
 For integration-level frontend changes, also run:
 
 ```bash
-npm run frontend:test:e2e
+npm run test:frontend:e2e
 ```
 
 ### Builder (`scripts/builder/**` and builder pipeline behaviour)
@@ -77,9 +77,9 @@ npm run frontend:test:e2e
 Run:
 
 ```bash
-npm run builder:lint
-npm run builder:test
-npm run build
+npm run lint:builder
+npm run test:builder
+npm run build:production
 ```
 
 ### Cross-cutting changes

@@ -68,8 +68,8 @@ Choose test strategy by component.
 
 ### Frontend (`src/frontend`)
 
-- Unit/component tests: Vitest + Testing Library (`npm run frontend:test`) in `src/frontend/src/**/*.spec.{ts,tsx}`.
-- Browser E2E tests: Playwright (`npm run frontend:test:e2e`) in `src/frontend/e2e-tests/**/*.spec.ts`. You must run them for any new or changed user-visible interaction or browser integration flow. If Chromium or its system dependencies are missing, install them with `npm --prefix src/frontend exec -- playwright install --with-deps chromium`, then rerun `npm run frontend:test:e2e` until it passes.
+- Unit/component tests: Vitest + Testing Library (`npm run test:frontend`) in `src/frontend/src/**/*.spec.{ts,tsx}`.
+- Browser E2E tests: Playwright (`npm run test:frontend:e2e`) in `src/frontend/e2e-tests/**/*.spec.ts`. You must run them for any new or changed user-visible interaction or browser integration flow. If Chromium or its system dependencies are missing, install them with `npm --prefix src/frontend exec -- playwright install --with-deps chromium`, then rerun `npm run test:frontend:e2e` until it passes.
 - Environment: JSDOM for unit tests, real browser automation for E2E.
 - Prefer behaviour-focused assertions over implementation details.
 - When mocking `google.script.run.apiHandler`, reuse `src/frontend/src/test/googleScriptRunHarness.ts`. Use `createGoogleScriptRunApiHandlerMock(...)` in Vitest and `googleScriptRunApiHandlerFactorySource` for Playwright init scripts; do not add new shared-mutable runner mocks.
@@ -77,7 +77,7 @@ Choose test strategy by component.
 
 ### Builder (`scripts/builder`)
 
-- Framework: Vitest (`npm run builder:test`), Node environment.
+- Framework: Vitest (`npm run test:builder`), Node environment.
 - Focus: stage behaviour, deterministic output contracts, failure diagnostics.
 - Keep tests aligned with stage IDs and pipeline contracts.
 
@@ -85,13 +85,13 @@ Choose test strategy by component.
 
 Use commands relevant to the component under test:
 
-- Backend targeted: `npm test -- <path_to_test>`
-- Backend full: `npm test`
-- Frontend targeted/full: `npm run frontend:test -- <pattern>` or `npm run frontend:test`
-- Frontend E2E: `npm run frontend:test:e2e` (required for visible browser behaviour; rerun after installing Chromium dependencies if needed)
-- Frontend coverage gate (minimum 85%): `npm run frontend:test:coverage`
-- Builder tests: `npm run builder:test`
-- Builder coverage gate (minimum 85%): `npm run builder:test:coverage`
+- Backend targeted: `npm run test:backend -- <path_to_test>`
+- Backend full: `npm run test:backend`
+- Frontend targeted/full: `npm run test:frontend -- <pattern>` or `npm run test:frontend`
+- Frontend E2E: `npm run test:frontend:e2e` (required for visible browser behaviour; rerun after installing Chromium dependencies if needed)
+- Frontend coverage gate (minimum 85%): `npm run test:frontend:coverage`
+- Builder tests: `npm run test:builder`
+- Builder coverage gate (minimum 85%): `npm run test:builder:coverage`
 
 If you add or modify tests, run the smallest targeted command first, then the relevant broader suite.
 
@@ -144,7 +144,7 @@ Before declaring completion:
 
 1. Run tests you changed (targeted first).
 2. Run the linter. **YOU MUST** return code free of linter issues, errors, and warnings.
-3. Run the relevant broader suite for the touched component. For frontend user-visible changes, this includes `npm run frontend:test:e2e` and any browser dependency install step needed to make it pass.
+3. Run the relevant broader suite for the touched component. For frontend user-visible changes, this includes `npm run test:frontend:e2e` and any browser dependency install step needed to make it pass.
 4. **HARD GATE**: All checks MUST pass with **ZERO errors and ZERO warnings**
 5. **Attempt limit**: You have 5 attempts maximum. After 5 failed attempts, you MUST hand back to orchestrator with:
    - The word **VALIDATION FAILURE** at the start of your response

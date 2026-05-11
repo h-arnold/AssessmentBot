@@ -92,21 +92,21 @@ Run all mandatory lint and compile checks for every module touched:
 **Backend**:
 
 ```bash
-npm run lint
+npm run lint:backend
 ```
 
 **Frontend**:
 
 ```bash
-npm run frontend:lint
+npm run lint:frontend
 npm exec tsc -- -b src/frontend/tsconfig.json
 ```
 
 **Builder**:
 
 ```bash
-npm run builder:lint
-npm run build
+npm run lint:builder
+npm run builder:compile
 ```
 
 Use `run relevant lint and static analysis commands` to surface any IDE-detected errors. Use `run relevant lint and static analysis commands` on changed files. Do not ignore warnings; explain them.
@@ -118,32 +118,29 @@ Run tests and collect coverage for every module touched.
 **Backend** (tests at repo root under `tests/`):
 
 ```bash
-npm test
-vitest run --coverage
+npm run test:backend:coverage
 ```
 
-Use `npm run test:all` to include legacy UI tests when reviewing changes that could affect UI-related singletons.
+Use `npm run test` to run the full cross-module test suite when reviewing changes that could affect shared or cross-cutting behaviour.
 
 **Frontend**:
 
 ```bash
-npm run frontend:test
-npm run frontend:test:coverage
+npm run test:frontend:coverage
 ```
 
 Frontend E2E tests (Playwright) should be run when reviewing integration-level changes:
 
 ```bash
-npm run frontend:test:e2e
+npm run test:frontend:e2e
 ```
 
-If Chromium or its system dependencies are missing, install them first with `npm --prefix src/frontend exec -- playwright install --with-deps chromium`, then rerun `npm run frontend:test:e2e`. Do not mark the review clean until the Playwright run passes for any user-visible interaction or browser integration change.
+If Chromium or its system dependencies are missing, install them first with `npm --prefix src/frontend exec -- playwright install --with-deps chromium`, then rerun `npm run test:frontend:e2e`. Do not mark the review clean until the Playwright run passes for any user-visible interaction or browser integration change.
 
 **Builder**:
 
 ```bash
-npm run builder:test
-npm run builder:test:coverage
+npm run test:builder:coverage
 ```
 
 Review coverage output to verify that new logic is exercised. Flag any significant untested paths as at least a Improvement.
@@ -173,8 +170,7 @@ Apply only the rows relevant to the module(s) under review.
 - [ ] British English in all comments, identifiers, and user-facing text.
 - [ ] No speculative features or scope beyond the explicit request.
 - [ ] No default values introduced without explicit instruction.
-- [ ] Code is indented with 2 spaces and free of trailing whitespace.
-- [ ] JSDoc present on classes, public methods, and non-obvious logic.
+- [ ] @remarks comments added to all key classes, methods and functions where additional explanation is required
 
 ### Backend Only
 
@@ -204,6 +200,13 @@ Apply only the rows relevant to the module(s) under review.
 - [ ] Manifest merge remains deterministic and uses backend manifest as base.
 - [ ] Path resolution confined to repo root.
 - [ ] No changes that alter `build/*` artefact structure without a corresponding builder code change.
+
+### Tests
+
+- [ ] Do the test assertions accurately reflect the intended behaviour? Could they be tighter or more specific?
+- [ ] Do the tests test behaviour rather than implementation details? Will they break if the implementation changes but the behaviour remains correct?
+- [ ] Are there appropriate e2e playwright tests for any user-visible interaction or browser integration change?
+- [ ] Do the tests meet all requirements outlined in the testing documenation for the relevant module(s)?
 
 ## 6. Reporting Format
 

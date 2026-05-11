@@ -16,10 +16,10 @@ Applies when editing `scripts/builder/**` and build-pipeline behaviour.
 Primary commands:
 
 - `npm run builder:build`
-- `npm run builder:run`
-- `npm run builder:lint`
-- `npm run builder:test`
-- `npm run builder:ci`
+- `npm run build:gas-bundle`
+- `npm run lint:builder`
+- `npm run test:builder`
+- `npm run build:production`
 
 ## 3. Contractual Inputs and Outputs
 

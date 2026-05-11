@@ -174,7 +174,7 @@ Follow these patterns when delegating to each subagent type:
 
 **❌ Don't:**
 
-- "Run `npm run frontend:test` and create tests in `src/frontend/src/features/xyz/Xyz.spec.tsx` using `vi.hoisted()` for mocks"
+- "Run `npm run test:frontend` and create tests in `src/frontend/src/features/xyz/Xyz.spec.tsx` using `vi.hoisted()` for mocks"
 
 **✅ Do:**
 
@@ -186,7 +186,7 @@ Follow these patterns when delegating to each subagent type:
 
 **❌ Don't:**
 
-- "Edit `src/backend/Services/AssessmentService.js`, add `Validate.requireParams` at the start, then run `npm run lint` and `npm test`"
+- "Edit `src/backend/Services/AssessmentService.js`, add `Validate.requireParams` at the start, then run `npm run lint:backend` and `npm run test:backend`"
 
 **✅ Do:**
 

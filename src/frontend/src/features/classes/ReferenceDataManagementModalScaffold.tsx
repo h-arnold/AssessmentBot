@@ -74,12 +74,12 @@ export type ReferenceDataManagementModalScaffoldProperties<T extends { key: stri
 export function ReferenceDataManagementModalScaffold<T extends { key: string }>(
   properties: ReferenceDataManagementModalScaffoldProperties<T>
 ): ReactElement {
-  const previousIsRefreshingRef = useRef(properties.isRefreshing);
+  const previousIsRefreshingReference = useRef(properties.isRefreshing);
 
   // Track isRefreshing changes to trigger aria-busy updates
   useEffect(() => {
     const currentIsRefreshing = properties.isRefreshing;
-    const wasRefreshing = previousIsRefreshingRef.current;
+    const wasRefreshing = previousIsRefreshingReference.current;
 
     if (currentIsRefreshing !== wasRefreshing && properties.open) {
       // Use requestAnimationFrame to ensure Ant Design Modal has rendered in jsdom
@@ -93,7 +93,7 @@ export function ReferenceDataManagementModalScaffold<T extends { key: string }>(
       return () => cancelAnimationFrame(rafId);
     }
 
-    previousIsRefreshingRef.current = currentIsRefreshing;
+    previousIsRefreshingReference.current = currentIsRefreshing;
   }, [properties.isRefreshing, properties.open]);
 
   // Build the blocking body (initial load or error) using the pattern from getReferenceDataBlockingBody

@@ -26,5 +26,5 @@ if [ -n "$STAGED_FILES" ]; then
 	done
 fi
 
-# Run ESLint autofix for remaining JS files and block the commit if it fails.
-npm run lint:fix
+# Run ESLint autofix for all components and block the commit if it fails.
+npm run lint:check

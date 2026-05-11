@@ -82,9 +82,9 @@ The relevant planned decisions must be recorded in the canonical docs before imp
 
 ### Validation commands hierarchy
 
-- Frontend lint: `npm run frontend:lint`
-- Frontend unit tests: `npm run frontend:test -- src/features/classes/ReferenceDataManagementModalScaffold.spec.tsx src/features/classes/manageCohorts.spec.tsx src/features/classes/manageYearGroups.spec.tsx`
-- Frontend e2e tests: `npm run frontend:test:e2e -- e2e-tests/classes-crud-manage-cohorts.spec.ts e2e-tests/classes-crud-manage-year-groups.spec.ts`
+- Frontend lint: `npm run lint:frontend`
+- Frontend unit tests: `npm run test:frontend -- src/features/classes/ReferenceDataManagementModalScaffold.spec.tsx src/features/classes/manageCohorts.spec.tsx src/features/classes/manageYearGroups.spec.tsx`
+- Frontend e2e tests: `npm run test:frontend:e2e -- e2e-tests/classes-crud-manage-cohorts.spec.ts e2e-tests/classes-crud-manage-year-groups.spec.ts`
 
 ---
 
@@ -292,7 +292,7 @@ Frontend tests:
 
 ### Section checks
 
-- `npm run frontend:test -- src/features/classes/ReferenceDataManagementModalScaffold.spec.tsx src/features/classes/manageCohorts.spec.tsx src/features/classes/manageYearGroups.spec.tsx`
+- `npm run test:frontend -- src/features/classes/ReferenceDataManagementModalScaffold.spec.tsx src/features/classes/manageCohorts.spec.tsx src/features/classes/manageYearGroups.spec.tsx`
 - Mandatory-read evidence gate passed for all delegated handoffs in this section.
 - Shared-helper planning entry remains aligned with the extracted scaffold decision.
 
@@ -405,7 +405,7 @@ Frontend tests:
 
 ### Section checks
 
-- `npm run frontend:test:e2e -- e2e-tests/classes-crud-manage-cohorts.spec.ts e2e-tests/classes-crud-manage-year-groups.spec.ts`
+- `npm run test:frontend:e2e -- e2e-tests/classes-crud-manage-cohorts.spec.ts e2e-tests/classes-crud-manage-year-groups.spec.ts`
 - Mandatory-read evidence gate passed for all delegated handoffs in this section.
 
 ### Optional `@remarks` JSDoc follow-through
@@ -440,9 +440,9 @@ Frontend tests:
 
 ### Required test cases/checks
 
-1. Run `npm run frontend:test -- src/features/classes/ReferenceDataManagementModalScaffold.spec.tsx src/features/classes/manageCohorts.spec.tsx src/features/classes/manageYearGroups.spec.tsx`.
-2. Run `npm run frontend:test:e2e -- e2e-tests/classes-crud-manage-cohorts.spec.ts e2e-tests/classes-crud-manage-year-groups.spec.ts`.
-3. Run `npm run frontend:lint`.
+1. Run `npm run test:frontend -- src/features/classes/ReferenceDataManagementModalScaffold.spec.tsx src/features/classes/manageCohorts.spec.tsx src/features/classes/manageYearGroups.spec.tsx`.
+2. Run `npm run test:frontend:e2e -- e2e-tests/classes-crud-manage-cohorts.spec.ts e2e-tests/classes-crud-manage-year-groups.spec.ts`.
+3. Run `npm run lint:frontend`.
 4. Verify mandatory-read evidence (`Files read`) is complete for every delegated regression handoff.
 
 ### Section checks

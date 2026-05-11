@@ -178,9 +178,9 @@ State 1-2 concise assumptions and proceed with the simplest compliant implementa
 When validating lint output, use the runtime-specific commands defined in the config hierarchy:
 
 - Backend GAS JavaScript: `npm run lint`
-- Frontend TypeScript/React: `npm run frontend:lint`
-- Builder TypeScript: `npm run builder:lint`
-- All lint checks in sequence: `npm run lint && npm run frontend:lint && npm run builder:lint`
+- Frontend TypeScript/React: `npm run lint:frontend`
+- Builder TypeScript: `npm run lint:builder`
+- All lint checks in sequence: `npm run lint && npm run lint:frontend && npm run lint:builder`
 
 Do not run frontend or builder files through the root backend ESLint command directly; use their leaf configs via the commands above.
 
