@@ -3,7 +3,7 @@ name: 'Planner'
 description: 'Clarifies requirements and produces SPEC.md, optional frontend layout specs, and ACTION_PLAN.md before implementation starts'
 user-invocable: true
 model: gpt-5.4
-tools: [vscode/askQuestions, execute/getTerminalOutput, execute/runInTerminal, read/readFile, read/viewImage, read/terminalSelection, read/terminalLastCommand, agent/runSubagent, edit/createFile, edit/editFiles, search/codebase, web/githubRepo, todo]
+tools: [vscode/askQuestions, execute/getTerminalOutput, execute/runInTerminal, read/terminalSelection, read/terminalLastCommand, read/readFile, read/viewImage, agent/runSubagent, edit/createFile, edit/editFiles, search/codebase, web/githubRepo, todo]
 ---
 
 # Planner Agent Instructions
