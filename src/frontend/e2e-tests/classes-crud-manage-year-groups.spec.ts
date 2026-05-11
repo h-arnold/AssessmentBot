@@ -292,4 +292,52 @@ test.describe('Classes CRUD — Manage Year Groups', () => {
 
     await expect(modal).toHaveCount(0);
   });
+
+  // Section 3 Red Phase: Visible-layout assertions for create button positioning
+
+  test('Create year group button is start-aligned within 8px of the Table left edge', async ({ page }) => {
+    await openClassesTabWithYearGroupManagementScenario(page);
+
+    const modal = await openManageYearGroupsModal(page);
+
+    const createButton = modal.getByRole('button', { name: /create year group/i });
+    const table = modal.getByRole('table', { name: /year groups/i });
+
+    await expect(createButton).toBeVisible();
+    await expect(table).toBeVisible();
+
+    const buttonBox = await createButton.boundingBox();
+    const tableBox = await table.boundingBox();
+
+    // The left edge of Create year group button should be within 8px of the Table left edge
+    if (buttonBox === null || tableBox === null) {
+      throw new Error('Failed to get bounding boxes for Create year group button and Table');
+    }
+
+    const leftEdgeDifference = Math.abs(buttonBox.x - tableBox.x);
+    expect(leftEdgeDifference).toBeLessThanOrEqual(8);
+  });
+
+  test('Create year group button width is at least 32px narrower than the Table width', async ({ page }) => {
+    await openClassesTabWithYearGroupManagementScenario(page);
+
+    const modal = await openManageYearGroupsModal(page);
+
+    const createButton = modal.getByRole('button', { name: /create year group/i });
+    const table = modal.getByRole('table', { name: /year groups/i });
+
+    await expect(createButton).toBeVisible();
+    await expect(table).toBeVisible();
+
+    const buttonBox = await createButton.boundingBox();
+    const tableBox = await table.boundingBox();
+
+    // The Create year group button width should be at least 32px narrower than the Table
+    if (buttonBox === null || tableBox === null) {
+      throw new Error('Failed to get bounding boxes for Create year group button and Table');
+    }
+
+    const widthDifference = tableBox.width - buttonBox.width;
+    expect(widthDifference).toBeGreaterThanOrEqual(32);
+  });
 });

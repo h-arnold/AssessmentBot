@@ -412,11 +412,24 @@ Frontend tests:
 
 - None.
 
+### Section 3 Checklist
+
+- [x] regression baseline established (section-3-red-review-baseline)
+- [x] red tests added (8 new Playwright tests across both migrated caller files)
+- [x] red review clean (Code Reviewer passed with one improvement: fixed Cancel button selector to use role-based)
+- [ ] green implementation complete
+- [ ] green review clean
+- [ ] regression gate passed (ZERO regressions, ZERO new failures)
+- [ ] checks passed
+- [x] action plan updated
+- [ ] commit created
+- [ ] push completed
+
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
-- **Follow-up implications for later sections:**
+- **Implementation notes:** Section 3 Red phase: Added 8 new Playwright tests across both migrated caller files. 3 tests currently failing as expected: (1) Create cohort button start-aligned (28.59px difference, expected ≤8px), (2) Mask close dismisses modal (modal remains visible), (3) Create year group button start-aligned (64.92px difference, expected ≤8px). These failures confirm the tests are testing the correct behavior and align with the scaffold's start-aligned, content-width create-action contract.
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** Section 3 Red phase complete. Awaiting Red review.
 
 ---
 

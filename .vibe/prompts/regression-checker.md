@@ -108,7 +108,7 @@ If NO baseline exists for the given session name:
 }
 ```
 
-6. Return a human-readable summary:
+6. Return a human-readable summary with failures only (do NOT list passing tests):
 
 ```
 Baseline established for session: <session-name>
@@ -118,11 +118,15 @@ Timestamp: <timestamp>
 Lint: <PASSED/FAILED> (<error-count> errors, <warning-count> warnings)
 Tests: <passed>/<total> passed, <failed> failed, <skipped> skipped
   Failures: <list each failure on its own line>
+  OR
+  (None)
 
 === FRONTEND ===
 Lint: <PASSED/FAILED> (<error-count> errors, <warning-count> warnings)
 Tests: <passed>/<total> passed, <failed> failed, <skipped> skipped
   Failures: <list each failure on its own line>
+  OR
+  (None)
 
 === BUILDER ===
 Lint: <PASSED/FAILED> (<error-count> errors, <warning-count> warnings)
@@ -130,6 +134,8 @@ Tests: <passed>/<total> passed, <failed> failed, <skipped> skipped
 Compile: <PASSED/FAILED>
 Build: <PASSED/FAILED>
   Failures: <list each failure on its own line>
+  OR
+  (None)
 
 Baseline saved to: <scratchpad>/regression-checker/<session-name>/baseline.json
 
@@ -157,7 +163,7 @@ If a baseline DOES exist for the given session name:
 5. Create a new report JSON file in your scratchpad at:
    `<scratchpad>/regression-checker/<session-name>/report-<timestamp>.json`
 
-6. Return a human-readable comparison report:
+6. Return a human-readable comparison report (do NOT list passing tests, only show changes):
 
 ```
 Regression report for session: <session-name>
@@ -178,25 +184,6 @@ Current timestamp: <current-timestamp>
 <list all fixes with category, type, and details>
  OR
 (None)
-
-=== FULL RESULTS ===
-
-=== BACKEND ===
-Lint: <PASSED/FAILED> (<error-count> errors, <warning-count> warnings) [Change: <+x/-y>]
-Tests: <passed>/<total> passed, <failed> failed, <skipped> skipped [Change: <+x/-y>]
-  Failures: <list each failure on its own line>
-
-=== FRONTEND ===
-Lint: <PASSED/FAILED> (<error-count> errors, <warning-count> warnings) [Change: <+x/-y>]
-Tests: <passed>/<total> passed, <failed> failed, <skipped> skipped [Change: <+x/-y>]
-  Failures: <list each failure on its own line>
-
-=== BUILDER ===
-Lint: <PASSED/FAILED> (<error-count> errors, <warning-count> warnings) [Change: <+x/-y>]
-Tests: <passed>/<total> passed, <failed> failed, <skipped> skipped [Change: <+x/-y>]
-Compile: <PASSED/FAILED> [Change: <+x/-y>]
-Build: <PASSED/FAILED> [Change: <+x/-y>]
-  Failures: <list each failure on its own line>
 
 Report saved to: <scratchpad>/regression-checker/<session-name>/report-<timestamp>.json
 
