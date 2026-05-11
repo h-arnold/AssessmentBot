@@ -23,25 +23,25 @@ import {
  */
 export type ResponseItem = Readonly<
   | {
-      kind: 'success';
-      data: unknown;
-    }
+    kind: 'success';
+    data: unknown;
+  }
   | {
-      kind: 'failureEnvelope';
-      data?: unknown;
-      message?: string;
-      code?: string;
-    }
+    kind: 'failureEnvelope';
+    data?: unknown;
+    message?: string;
+    code?: string;
+  }
   | {
-      kind: 'transportFailure';
-      data?: unknown;
-      message?: string;
-      code?: string;
-    }
+    kind: 'transportFailure';
+    data?: unknown;
+    message?: string;
+    code?: string;
+  }
   | {
-      kind: 'deferredSuccess';
-      data: unknown;
-    }
+    kind: 'deferredSuccess';
+    data: unknown;
+  }
 >;
 
 /**
@@ -131,11 +131,11 @@ export const mockCreatedPartialRow = {
  */
 export interface CreateAssignmentsScenarioOptions {
   /** Initial partials data. */
-  initialPartials?: unknown[];
+  initialPartials?: ReadonlyArray<unknown>;
   /** Partial data after mutations. */
-  postMutationPartials?: unknown[];
+  postMutationPartials?: ReadonlyArray<unknown>;
   /** Delete responses. */
-  deleteResponses?: ResponseItem[];
+  deleteResponses?: ReadonlyArray<ResponseItem>;
   /** Whether to include standard auth response. */
   includeAuth?: boolean;
   /** Whether to include standard class partials response. */
@@ -304,13 +304,13 @@ export function createAssignmentsScenario(
  */
 export interface CreateWizardScenarioOptions {
   /** Initial partials data. */
-  initialPartials?: unknown[];
+  initialPartials?: ReadonlyArray<unknown>;
   /** Partial data after mutations. */
-  postMutationPartials?: unknown[][];
+  postMutationPartials?: ReadonlyArray<ReadonlyArray<unknown>>;
   /** Assignment definition responses. */
-  assignmentDefinitions?: ResponseItem[];
+  assignmentDefinitions?: ReadonlyArray<ResponseItem>;
   /** Upsert responses. */
-  upsertResponses?: ResponseItem[];
+  upsertResponses?: ReadonlyArray<ResponseItem>;
   /** Whether to include standard auth response. */
   includeAuth?: boolean;
   /** Whether to include standard class partials response. */

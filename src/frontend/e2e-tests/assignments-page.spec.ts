@@ -6,6 +6,7 @@ import {
   releaseNextDeferredSuccess,
   getAssignmentsRowByTitle,
   applyColumnFilterOption,
+  type RuntimeScenario,
 } from './shared/endToEndRuntimeMocks';
 
 const assignmentRows = [
@@ -286,7 +287,7 @@ test.describe('assignments page browser journeys', () => {
   });
 
   test('retry action performs scoped assignment-definition refetch only', async ({ page }) => {
-    const retryScenario = {
+    const retryScenario: RuntimeScenario = {
       ...createAssignmentsScenario({
         initialPartials: assignmentRows,
       }),
