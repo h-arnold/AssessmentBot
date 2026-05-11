@@ -88,6 +88,7 @@ Default decision:
 
 - `src/frontend/src/features/classes/ManageCohortsModal.tsx`
 - `src/frontend/src/features/classes/ManageYearGroupsModal.tsx`
+- Extracted scaffold: `src/frontend/src/features/classes/ReferenceDataManagementModalScaffold.tsx`
 - Shared helpers:
   - `src/frontend/src/features/classes/InlineDialog.tsx`
   - `src/frontend/src/features/classes/manageReferenceDataDialogs.tsx`
@@ -100,8 +101,8 @@ Shared traits:
 - modal-top create/add action shown in ready and empty states above the table body
 - top action is a start-aligned content-width button rather than a full-width call-to-action
 - default create/add icon is `PlusOutlined`, with a workflow-specific Ant Design icon allowed only when a later spec explicitly justifies a clearer domain meaning
-- duplicated outer shell is now justified for a narrow scaffold because a topic reference-data modal is an accepted next sibling
-- the scaffold-owned shell includes the standard `Cancel` footer and all shell-close wiring routed through one caller-owned close handler
+- extracted scaffold owns the outer modal shell, standard `Cancel` footer, and all close wiring routed through one caller-supplied `onClose`
+- scaffold-owned modal-level `aria-busy` refresh semantics via the invariant class `reference-data-modal-scaffold-wrapper` applied through `classNames.wrapper`
 - fail-closed blocking-load handling
 - explicit busy-state synchronisation and refresh semantics
 - delete-blocked handling for in-use records
@@ -116,9 +117,9 @@ Default decision:
 
 - extend the existing feature-local helpers for similar reference-data workflows
 - do not replace this family with a generic app-wide CRUD modal abstraction
-- extract one narrow feature-local scaffold for the shared outer modal shell, shared close wiring, and ready-state body composition
-- accepted boundary for the classes reference-data scaffold: reuse `InlineDialog.tsx`, `manageReferenceDataDialogs.tsx`, and `manageReferenceDataHelpers.ts` as-is, and add one scaffold for modal shell composition only
-- helper-change status for the current extraction decision: `Not implemented`; the scaffold is planned, while the existing feature-local helper family remains the accepted reused boundary
+- reuse the extracted `ReferenceDataManagementModalScaffold` for the shared outer modal shell, shared close wiring, create-action presentation, and slot placement
+- accepted boundary for the classes reference-data scaffold: reuse `InlineDialog.tsx`, `manageReferenceDataDialogs.tsx`, and `manageReferenceDataHelpers.ts` as-is, and use `ReferenceDataManagementModalScaffold.tsx` for modal shell composition
+- helper-change status for the current extraction: `Implemented`; the scaffold now ships as the feature-local shared shell for the classes reference-data modal family, with the accepted next topic caller as a future consumer
 
 ### 3.4 Assignment definition create/update wizard modal
 

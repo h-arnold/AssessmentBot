@@ -168,9 +168,22 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
-- **Follow-up implications for later sections:**
+- **Implementation notes:** Section 1 completed. Updated `frontend-modal-patterns.md` with scaffold boundary, create-action placement, and icon contract. Updated `frontend-shared-helpers-and-abstraction-standards.md` with scaffold decision status changed from `Not implemented` to `Implemented`.
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** Documentation now reflects the delivered implementation status.
+
+### Section 1 Checklist
+
+- [x] regression baseline established
+- [x] red tests added (N/A - documentation only section)
+- [x] red review clean (N/A - documentation only section)
+- [x] green implementation complete (documentation updates)
+- [x] green review clean (documentation updates)
+- [x] regression gate passed (ZERO regressions, ZERO new failures)
+- [x] checks passed
+- [ ] action plan updated
+- [ ] commit created
+- [ ] push completed
 
 ---
 

@@ -244,15 +244,15 @@ This section supersedes the earlier Section 9.7 defer decision for the specific 
 
 - Decision: new
 - Owning path: `src/frontend/src/features/classes/ReferenceDataManagementModalScaffold.tsx`
-- Status: `Not implemented`
-- Rationale: `ManageCohortsModal.tsx` and `ManageYearGroupsModal.tsx` already duplicate the same outer shell, footer-close behaviour, and modal-close wiring, and a topic reference-data modal is now an accepted next sibling, so one narrow feature-local scaffold is justified for modal shell composition, standard Cancel/close wiring, create-action presentation, and slot placement without absorbing entity-specific mutation logic
+- Status: `Implemented`
+- Rationale: `ManageCohortsModal.tsx` and `ManageYearGroupsModal.tsx` now reuse the extracted scaffold for modal shell composition, standard Cancel/close wiring, start-aligned content-width create-action presentation, and slot placement; a topic reference-data modal is an accepted next sibling caller
 
 2. Helper or contract: existing inline dialog and reference-data helper family
 
 - Decision: reuse
 - Owning path: `src/frontend/src/features/classes/manageReferenceDataDialogs.tsx`, `src/frontend/src/features/classes/manageReferenceDataHelpers.ts`, `src/frontend/src/features/classes/InlineDialog.tsx`
 - Status: `Implemented`
-- Rationale: the extracted scaffold should compose the existing dialog and workflow helper family rather than replacing it, because those modules already own the inner-dialog contract and reference-data workflow helpers coherently
+- Rationale: the extracted scaffold composes the existing dialog and workflow helper family rather than replacing it, because those modules already own the inner-dialog contract and reference-data workflow helpers coherently; the scaffold uses these helpers for inline form and delete dialog slots
 
 3. Helper or contract: `ReferenceDataTrustBoundary` type extension in `manageReferenceDataHelpers.ts`
 
