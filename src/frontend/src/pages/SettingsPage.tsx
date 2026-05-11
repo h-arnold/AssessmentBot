@@ -48,7 +48,6 @@ export function SettingsPage() {
     <>
       <SettingsPageGoogleClassroomsPrefetch />
       <PageSection
-        contentClassName="settings-page-content"
         heading={pageContent.settings.heading}
         summary={pageContent.settings.summary}
       >

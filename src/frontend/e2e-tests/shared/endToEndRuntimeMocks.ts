@@ -1,5 +1,5 @@
+import { expect, type Page } from '@playwright/test';
 import { googleScriptRunApiHandlerFactorySource } from '../../src/test/googleScriptRunHarness';
-import type { Page } from '@playwright/test';
 import {
   mockTopics,
   mockYearGroups,
@@ -23,25 +23,25 @@ import {
  */
 export type ResponseItem = Readonly<
   | {
-      kind: 'success';
-      data: unknown;
-    }
+    kind: 'success';
+    data: unknown;
+  }
   | {
-      kind: 'failureEnvelope';
-      data?: unknown;
-      message?: string;
-      code?: string;
-    }
+    kind: 'failureEnvelope';
+    data?: unknown;
+    message?: string;
+    code?: string;
+  }
   | {
-      kind: 'transportFailure';
-      data?: unknown;
-      message?: string;
-      code?: string;
-    }
+    kind: 'transportFailure';
+    data?: unknown;
+    message?: string;
+    code?: string;
+  }
   | {
-      kind: 'deferredSuccess';
-      data: unknown;
-    }
+    kind: 'deferredSuccess';
+    data: unknown;
+  }
 >;
 
 /**
@@ -131,11 +131,11 @@ export const mockCreatedPartialRow = {
  */
 export interface CreateAssignmentsScenarioOptions {
   /** Initial partials data. */
-  initialPartials?: unknown[];
+  initialPartials?: ReadonlyArray<unknown>;
   /** Partial data after mutations. */
-  postMutationPartials?: unknown[];
+  postMutationPartials?: ReadonlyArray<unknown>;
   /** Delete responses. */
-  deleteResponses?: ResponseItem[];
+  deleteResponses?: ReadonlyArray<ResponseItem>;
   /** Whether to include standard auth response. */
   includeAuth?: boolean;
   /** Whether to include standard class partials response. */
@@ -304,13 +304,13 @@ export function createAssignmentsScenario(
  */
 export interface CreateWizardScenarioOptions {
   /** Initial partials data. */
-  initialPartials?: unknown[];
+  initialPartials?: ReadonlyArray<unknown>;
   /** Partial data after mutations. */
-  postMutationPartials?: unknown[][];
+  postMutationPartials?: ReadonlyArray<ReadonlyArray<unknown>>;
   /** Assignment definition responses. */
-  assignmentDefinitions?: ResponseItem[];
+  assignmentDefinitions?: ReadonlyArray<ResponseItem>;
   /** Upsert responses. */
-  upsertResponses?: ResponseItem[];
+  upsertResponses?: ReadonlyArray<ResponseItem>;
   /** Whether to include standard auth response. */
   includeAuth?: boolean;
   /** Whether to include standard class partials response. */
@@ -597,11 +597,15 @@ export async function releaseNextDeferredSuccess(
   page: Page,
   releaseFunctionName: string = RELEASE_DEFERRED_FUNCTION
 ): Promise<void> {
-  await page.evaluate(`
-    (() => {
-      (globalThis as { ${releaseFunctionName}: () => void }).${releaseFunctionName}();
-    })();
-  `);
+  await page.evaluate((currentReleaseFunctionName) => {
+    const releaseFunction = Reflect.get(globalThis, currentReleaseFunctionName);
+
+    if (typeof releaseFunction !== 'function') {
+      throw new TypeError('No release function named ' + currentReleaseFunctionName + ' is available.');
+    }
+
+    releaseFunction();
+  }, releaseFunctionName);
 }
 
 /**
@@ -615,11 +619,11 @@ export async function getMethodCalls(
   page: Page,
   trackerName: string = METHOD_CALLS_TRACKER
 ): Promise<string[]> {
-  return await page.evaluate(`
-    (() => {
-      return (globalThis as { ${trackerName}: string[] }).${trackerName} || [];
-    })();
-  `);
+  return await page.evaluate((currentTrackerName) => {
+    const methodCalls = Reflect.get(globalThis, currentTrackerName);
+
+    return Array.isArray(methodCalls) ? methodCalls : [];
+  }, trackerName);
 }
 
 // ============================================================================

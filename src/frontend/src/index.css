@@ -84,10 +84,6 @@ body {
 }
 
 .app-page-content {
-  width: min(100%, var(--app-page-width-default));
-}
-
-.settings-page-content {
   width: min(var(--app-page-width-wide-data), calc(100% - 1rem));
 }
 

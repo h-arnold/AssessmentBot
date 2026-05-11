@@ -17,4 +17,10 @@ describe('getStartupWarmupQueryKey', () => {
       ['yearGroups', queryKeys.yearGroups()],
     ]);
   });
+
+  it('fails fast when the dataset key is not one of the shared warm-up keys', () => {
+    expect(() => getStartupWarmupQueryKey('reports' as never)).toThrow(
+      'Unknown startup warm-up dataset key: reports.'
+    );
+  });
 });

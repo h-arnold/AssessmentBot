@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { queryKeys } from '../query/queryKeys';
 import { deleteAssignmentDefinition } from '../services/assignmentDefinitionPartialsService';
+import { getCssRuleBlock } from '../test/appStylesRaw';
 import { renderWithFrontendProviders } from '../test/renderWithFrontendProviders';
 import {
   setTextboxValue,
@@ -77,6 +78,22 @@ vi.mock('../services/classPartialsService', () => ({
 
 const recommendedSummaryCopy =
   'Review assignment-definition partials and remove obsolete definitions without loading full task data.';
+
+/**
+ * Returns the shared Assignments page content wrapper.
+ *
+ * @param {HTMLElement} container The rendered test container.
+ * @returns {HTMLElement} The shared Assignments page content wrapper.
+ */
+function getAssignmentsPageContent(container: HTMLElement) {
+  const assignmentsPageContent = container.querySelector('.app-page-content');
+
+  if (!(assignmentsPageContent instanceof HTMLElement)) {
+    throw new TypeError('Expected the shared assignments page content wrapper to render.');
+  }
+
+  return assignmentsPageContent;
+}
 
 const filterAssertions = [
   {
@@ -229,6 +246,18 @@ describe('AssignmentsPage', () => {
     expect(within(table).getByRole('columnheader', { name: 'Document type' })).toBeInTheDocument();
     expect(within(table).getByRole('columnheader', { name: 'Last updated' })).toBeInTheDocument();
     expect(within(table).getByRole('columnheader', { name: 'Actions' })).toBeInTheDocument();
+  });
+
+  it('routes the assignments page through the shared wide-page token', () => {
+    const { container } = renderWithFrontendProviders(<AssignmentsPage />);
+    const assignmentsPageContent = getAssignmentsPageContent(container);
+
+    expect(assignmentsPageContent).toHaveClass('app-page-content');
+
+    const assignmentsPageRuleBlock = getCssRuleBlock('.app-page-content');
+
+    expect(assignmentsPageRuleBlock).toMatch(/width:\s*min\([^)]*var\(--app-page-width-wide-data\)/);
+    expect(assignmentsPageRuleBlock).not.toMatch(/\b1280px\b/);
   });
 
   it('renders year-group labels from the migrated list-surface contract', async () => {

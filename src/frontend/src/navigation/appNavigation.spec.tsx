@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { screen } from '@testing-library/react';
 import * as appNavigationModule from './appNavigation';
 import type { AppNavigationKey } from './appNavigation';
-import { isAppNavigationKey, navigationItems } from './appNavigation';
+import { getNavigationLabel, isAppNavigationKey, navigationItems } from './appNavigation';
 import { pageContent } from '../pages/pageContent';
 import { renderWithFrontendProviders } from '../test/renderWithFrontendProviders';
 
@@ -69,6 +69,12 @@ describe('app navigation config', () => {
 
     expect(() => renderNavigationPage('reports' as AppNavigationKey)).toThrow(
       'Unknown page key: reports'
+    );
+  });
+
+  it('fails fast when a navigation label is requested for an unknown key', () => {
+    expect(() => getNavigationLabel('reports' as AppNavigationKey)).toThrow(
+      'Unknown navigation key: reports'
     );
   });
 
