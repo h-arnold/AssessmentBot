@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import {
   createAssignmentsScenario,
   getMethodCalls,
@@ -84,6 +84,20 @@ const newestRowIndex = 0;
 const archiveRowIndex = 1;
 const exactMatchRowIndex = 2;
 
+/**
+ * Opens and confirms delete for the assignment row matching the supplied title.
+ *
+ * @param {Page} page Playwright page.
+ * @param {string} title Assignment title used to locate the row.
+ * @returns {Promise<void>} Resolves once the delete confirm action has been triggered.
+ */
+async function confirmDeleteForAssignmentTitle(page: Page, title: string): Promise<void> {
+  const matchingRow = getAssignmentsRowByTitle(page, title);
+  await expect(matchingRow).toHaveCount(1);
+  await matchingRow.getByRole('button', { name: /delete/i }).click();
+  await page.getByRole('button', { name: 'Delete definition' }).click();
+}
+
 
 
 test.describe('assignments page browser journeys', () => {
@@ -108,10 +122,7 @@ test.describe('assignments page browser journeys', () => {
     // Wait for table to be visible
     await expect(page.getByRole('table', { name: 'Assignment definitions table' })).toBeVisible();
 
-    const exactMatchRow = getAssignmentsRowByTitle(page, 'Algebra foundations');
-    await expect(exactMatchRow).toHaveCount(1);
-    await exactMatchRow.getByRole('button', { name: /delete/i }).click();
-    await page.getByRole('button', { name: 'Delete definition' }).click();
+    await confirmDeleteForAssignmentTitle(page, 'Algebra foundations');
 
     await expect(page.getByText(/assignment definition deleted/i)).toBeVisible();
     await expect(page.getByRole('dialog', { name: 'Delete assignment definition' })).toHaveCount(0);
@@ -204,10 +215,7 @@ test.describe('assignments page browser journeys', () => {
     // Wait for loading skeleton to disappear
     await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
 
-    const exactMatchRow = getAssignmentsRowByTitle(page, 'Algebra foundations');
-    await expect(exactMatchRow).toHaveCount(1);
-    await exactMatchRow.getByRole('button', { name: /delete/i }).click();
-    await page.getByRole('button', { name: 'Delete definition' }).click();
+    await confirmDeleteForAssignmentTitle(page, 'Algebra foundations');
 
     const confirmDeleteButton = page.getByRole('button', { name: 'Delete definition' });
     await expect(confirmDeleteButton).toBeDisabled();
@@ -243,10 +251,7 @@ test.describe('assignments page browser journeys', () => {
     // Wait for loading skeleton to disappear
     await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
 
-    const exactMatchRow = getAssignmentsRowByTitle(page, 'Algebra foundations');
-    await expect(exactMatchRow).toHaveCount(1);
-    await exactMatchRow.getByRole('button', { name: /delete/i }).click();
-    await page.getByRole('button', { name: 'Delete definition' }).click();
+    await confirmDeleteForAssignmentTitle(page, 'Algebra foundations');
 
     await expect(page.getByText(/could not delete assignment definition/i)).toBeVisible();
     await expect(getAssignmentsRowByTitle(page, 'Algebra foundations')).toHaveCount(1);
@@ -297,7 +302,7 @@ test.describe('assignments page browser journeys', () => {
 
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
-    
+
     // Wait for blocking state to appear (first call fails)
     await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toBeVisible({ timeout: 10_000 });
     // Wait for retry button to be visible

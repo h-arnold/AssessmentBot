@@ -19,23 +19,42 @@ function renderPrefetchComponent(queryClient = createAppQueryClient()) {
   );
 }
 
+type GoogleClassroomsQueryState = ReturnType<
+  ReturnType<typeof createAppQueryClient>['getQueryState']
+>;
+
+/**
+ * Sets up shared prefetch and logging spies for a given query state.
+ *
+ * @param {GoogleClassroomsQueryState} queryState Query state returned after prefetch resolves.
+ * @returns {{prefetchQuerySpy: ReturnType<typeof vi.spyOn>, consoleWarnSpy: ReturnType<typeof vi.spyOn>}} Shared spies.
+ */
+function setupPrefetchStateTest(queryState: GoogleClassroomsQueryState) {
+  const queryClient = createAppQueryClient();
+  const prefetchQuerySpy = vi
+    .spyOn(queryClient, 'prefetchQuery')
+    .mockImplementation(() => Promise.resolve());
+  vi.spyOn(queryClient, 'getQueryState').mockReturnValue(queryState);
+  const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+  renderPrefetchComponent(queryClient);
+
+  return {
+    prefetchQuerySpy,
+    consoleWarnSpy,
+  };
+}
+
 describe('SettingsPageGoogleClassroomsPrefetch', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
   it('logs a warning when the prefetched query resolves to an error state', async () => {
-    const queryClient = createAppQueryClient();
-    const prefetchQuerySpy = vi
-      .spyOn(queryClient, 'prefetchQuery')
-      .mockImplementation(() => Promise.resolve());
-    vi.spyOn(queryClient, 'getQueryState').mockReturnValue({
+    const { prefetchQuerySpy, consoleWarnSpy } = setupPrefetchStateTest({
       status: 'error',
       error: new Error('Prefetch failed.'),
-    } as ReturnType<typeof queryClient.getQueryState>);
-    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-    renderPrefetchComponent(queryClient);
+    } as GoogleClassroomsQueryState);
 
     await waitFor(() => {
       expect(prefetchQuerySpy).toHaveBeenCalledTimes(1);
@@ -48,16 +67,9 @@ describe('SettingsPageGoogleClassroomsPrefetch', () => {
   });
 
   it('does not log when the prefetched query resolves successfully', async () => {
-    const queryClient = createAppQueryClient();
-    const prefetchQuerySpy = vi
-      .spyOn(queryClient, 'prefetchQuery')
-      .mockImplementation(() => Promise.resolve());
-    vi.spyOn(queryClient, 'getQueryState').mockReturnValue({
+    const { prefetchQuerySpy, consoleWarnSpy } = setupPrefetchStateTest({
       status: 'success',
-    } as ReturnType<typeof queryClient.getQueryState>);
-    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-    renderPrefetchComponent(queryClient);
+    } as GoogleClassroomsQueryState);
 
     await waitFor(() => {
       expect(prefetchQuerySpy).toHaveBeenCalledTimes(1);
@@ -67,14 +79,7 @@ describe('SettingsPageGoogleClassroomsPrefetch', () => {
   });
 
   it('does not log when the prefetched query completes without a stored query state', async () => {
-    const queryClient = createAppQueryClient();
-    const prefetchQuerySpy = vi
-      .spyOn(queryClient, 'prefetchQuery')
-      .mockImplementation(() => Promise.resolve());
-    vi.spyOn(queryClient, 'getQueryState').mockImplementation(() => void 0);
-    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-    renderPrefetchComponent(queryClient);
+    const { prefetchQuerySpy, consoleWarnSpy } = setupPrefetchStateTest(void 0);
 
     await waitFor(() => {
       expect(prefetchQuerySpy).toHaveBeenCalledTimes(1);
@@ -84,10 +89,6 @@ describe('SettingsPageGoogleClassroomsPrefetch', () => {
   });
 
   it('logs transport metadata when the prefetched query resolves to an ApiTransportError', async () => {
-    const queryClient = createAppQueryClient();
-    const prefetchQuerySpy = vi
-      .spyOn(queryClient, 'prefetchQuery')
-      .mockImplementation(() => Promise.resolve());
     const transportError = new ApiTransportError({
       requestId: 'req-google-classrooms-1',
       error: {
@@ -96,22 +97,33 @@ describe('SettingsPageGoogleClassroomsPrefetch', () => {
         retriable: true,
       },
     });
-    vi.spyOn(queryClient, 'getQueryState').mockReturnValue({
+    const { prefetchQuerySpy, consoleWarnSpy } = setupPrefetchStateTest({
       status: 'error',
       error: transportError,
-    } as ReturnType<typeof queryClient.getQueryState>);
-    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-    renderPrefetchComponent(queryClient);
+    } as GoogleClassroomsQueryState);
 
     await waitFor(() => {
       expect(prefetchQuerySpy).toHaveBeenCalledTimes(1);
       expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
     });
 
-    expect(consoleWarnSpy.mock.calls[0]?.[0]).toBe(
+    const logCall = consoleWarnSpy.mock.calls[0];
+
+    expect(logCall?.[0]).toBe(
       'pages/SettingsPageGoogleClassroomsPrefetch.prefetchGoogleClassrooms'
     );
+    expect(logCall?.[1]).toMatchObject({
+      context: 'pages/SettingsPageGoogleClassroomsPrefetch.prefetchGoogleClassrooms',
+      requestId: 'req-google-classrooms-1',
+      errorCode: 'RATE_LIMITED',
+      errorMessage: 'Google Classrooms prefetch failed.',
+      metadata: {
+        dataset: 'googleClassrooms',
+        queryKey: ['googleClassrooms'],
+        page: 'settings',
+      },
+    });
+    expect(logCall?.[1]).not.toHaveProperty('retriable');
   });
 
   it('does not inspect query state after unmounting before prefetch resolves', async () => {

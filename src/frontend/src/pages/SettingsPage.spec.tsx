@@ -163,10 +163,10 @@ describe('SettingsPage', () => {
   });
 
   it('routes the shared wide Settings page selector through the shared wide-page token', () => {
-    const classesPageRuleBlock = getCssRuleBlock('.app-page-content');
+    const settingsPageRuleBlock = getCssRuleBlock('.app-page-content');
 
-    expect(classesPageRuleBlock).toMatch(/width:\s*min\([^)]*var\(--app-page-width-wide-data\)/);
-    expect(classesPageRuleBlock).not.toMatch(/\b1280px\b/);
+    expect(settingsPageRuleBlock).toMatch(/width:\s*min\([^)]*var\(--app-page-width-wide-data\)/);
+    expect(settingsPageRuleBlock).not.toMatch(/\b1280px\b/);
   });
 
   it('routes the backend settings panel through the shared default-panel token and keeps it centred', () => {
@@ -191,7 +191,9 @@ describe('SettingsPage', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Backend settings' }));
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Backend URL')).toHaveValue('https://changed-backend.example.com');
+      expect(screen.getByLabelText('Backend URL')).toHaveValue(
+        'https://changed-backend.example.com'
+      );
     });
   });
 
