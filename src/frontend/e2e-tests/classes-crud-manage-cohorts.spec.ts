@@ -50,6 +50,15 @@ const manageCohortsCohorts = [
 const cohortsBackgroundRefreshReleaseSignal = 'cohorts-background-refresh';
 
 // ---------------------------------------------------------------------------
+// Section 3 Test Constants (from REFERENCE_DATA_MODAL_LAYOUT.md)
+// ---------------------------------------------------------------------------
+
+// Alignment tolerance: button left edge must be within 8px of table left edge
+const ALIGNMENT_TOLERANCE_PX = 8;
+// Width difference: button must be at least 32px narrower than table
+const MIN_WIDTH_DIFFERENCE_PX = 32;
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -381,7 +390,7 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
     }
 
     const leftEdgeDifference = Math.abs(buttonBox.x - tableBox.x);
-    expect(leftEdgeDifference).toBeLessThanOrEqual(8);
+    expect(leftEdgeDifference).toBeLessThanOrEqual(ALIGNMENT_TOLERANCE_PX);
   });
 
   test('Create cohort button width is at least 32px narrower than the Table width', async ({ page }) => {
@@ -404,7 +413,7 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
     }
 
     const widthDifference = tableBox.width - buttonBox.width;
-    expect(widthDifference).toBeGreaterThanOrEqual(32);
+    expect(widthDifference).toBeGreaterThanOrEqual(MIN_WIDTH_DIFFERENCE_PX);
   });
 
   // Section 3: Scaffold-owned Cancel footer dismisses modal and reopening starts clean
