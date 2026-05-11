@@ -23,9 +23,11 @@ npm run ci
 
 ## Scratchpad Directory
 
-Use `/tmp/vibe-scratchpad-777f2043-n8y__q_8/regression-checker/` as your scratchpad directory. Create subdirectories by session name.
+Use your scratchpad directory. Create a subdirectory named `regression-checker` within it, then create further subdirectories by session name.
 
-Full path pattern: `/tmp/vibe-scratchpad-777f2043-n8y__q_8/regression-checker/<session-name>/`
+Full path pattern: `<scratchpad>/regression-checker/<session-name>/`
+
+**At the end of every response, return the full path of the file you created/saved.**
 
 ## Baseline Report (No Existing Baseline)
 
@@ -39,8 +41,8 @@ If NO baseline exists for the given session name:
    - **Lint failures**: Each lint rule violation with file, line, column, and message
    - **CI/build issues**: Any compilation errors, warnings, or build failures
 
-4. Create a baseline report JSON file at:
-   `/tmp/vibe-scratchpad-777f2043-n8y__q_8/regression-checker/<session-name>/baseline.json`
+4. Create a baseline report JSON file in your scratchpad at:
+   `<scratchpad>/regression-checker/<session-name>/baseline.json`
 
 5. Report format:
 
@@ -129,7 +131,10 @@ Compile: <PASSED/FAILED>
 Build: <PASSED/FAILED>
   Failures: <list each failure on its own line>
 
-Baseline saved to: /tmp/vibe-scratchpad-777f2043-n8y__q_8/regression-checker/<session-name>/baseline.json
+Baseline saved to: <scratchpad>/regression-checker/<session-name>/baseline.json
+
+---
+**Filename returned:** `<scratchpad>/regression-checker/<session-name>/baseline.json`
 ```
 
 ## Comparison Report (Existing Baseline)
@@ -137,7 +142,7 @@ Baseline saved to: /tmp/vibe-scratchpad-777f2043-n8y__q_8/regression-checker/<se
 If a baseline DOES exist for the given session name:
 
 1. Load the existing baseline from:
-   `/tmp/vibe-scratchpad-777f2043-n8y__q_8/regression-checker/<session-name>/baseline.json`
+   `<scratchpad>/regression-checker/<session-name>/baseline.json`
 
 2. Run all 8 commands listed above
 
@@ -149,8 +154,8 @@ If a baseline DOES exist for the given session name:
    **New Failures**: Tests that didn't exist in baseline (new test files/suites) but are now failing
    **Fixes**: Tests, lint checks, or CI builds that were FAILING in baseline but are now PASSING
 
-5. Create a new report JSON file at:
-   `/tmp/vibe-scratchpad-777f2043-n8y__q_8/regression-checker/<session-name>/report-<timestamp>.json`
+5. Create a new report JSON file in your scratchpad at:
+   `<scratchpad>/regression-checker/<session-name>/report-<timestamp>.json`
 
 6. Return a human-readable comparison report:
 
@@ -193,7 +198,10 @@ Compile: <PASSED/FAILED> [Change: <+x/-y>]
 Build: <PASSED/FAILED> [Change: <+x/-y>]
   Failures: <list each failure on its own line>
 
-Report saved to: /tmp/vibe-scratchpad-777f2043-n8y__q_8/regression-checker/<session-name>/report-<timestamp>.json
+Report saved to: <scratchpad>/regression-checker/<session-name>/report-<timestamp>.json
+
+---
+**Filename returned:** `<scratchpad>/regression-checker/<session-name>/report-<timestamp>.json`
 ```
 
 ## Parsing Command Output

@@ -7,7 +7,7 @@
  * presentation with test seam.
  */
 
-import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TableColumnType } from 'antd';
 import { renderWithFrontendProviders } from '../../test/renderWithFrontendProviders';
@@ -264,7 +264,7 @@ describe('ReferenceDataManagementModalScaffold', () => {
 
       const dialog = screen.getByRole('dialog', { name: 'Test Modal' });
       // The scaffold should apply aria-busy via syncReferenceDataModalBusyState
-      // This test verifies the DOM has the attribute set
+      // Using setTimeout in useEffect to defer DOM query for HappyDOM compatibility
       await waitFor(() => {
         expect(dialog).toHaveAttribute('aria-busy', 'true');
       });
@@ -297,7 +297,9 @@ describe('ReferenceDataManagementModalScaffold', () => {
       const dialog = screen.getByRole('dialog', { name: 'Test Modal' });
       // Ant Design Modal applies width inline style to the modal content wrapper
       // We verify the modal is rendered with the specified width
-      expect(dialog).toHaveStyle({ width: '1000px' });
+      // Using getAttribute instead of toHaveStyle to avoid HappyDOM limitations
+      const style = dialog.getAttribute('style');
+      expect(style?.toLowerCase()).toMatch(/width:\s*1000px/);
     });
 
     it('preserves caller-supplied modal class name', () => {
@@ -498,8 +500,10 @@ describe('ReferenceDataManagementModalScaffold', () => {
       const table = within(dialog).getByRole('table', { name: /test items/i });
 
       // Verify order in DOM
-      expect(createButton.compareDocumentPosition(alertElement)).toBe(4); // Node.DOCUMENT_POSITION_FOLLOWING
-      expect(alertElement.compareDocumentPosition(table)).toBe(4); // Node.DOCUMENT_POSITION_FOLLOWING
+      // Node.DOCUMENT_POSITION_FOLLOWING = 4 (element follows the reference element)
+      const DOCUMENT_POSITION_FOLLOWING = 4;
+      expect(createButton.compareDocumentPosition(alertElement)).toBe(DOCUMENT_POSITION_FOLLOWING);
+      expect(alertElement.compareDocumentPosition(table)).toBe(DOCUMENT_POSITION_FOLLOWING);
     });
   });
 

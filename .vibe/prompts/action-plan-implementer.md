@@ -51,9 +51,8 @@ You coordinate delivery against `ACTION_PLAN.md`. Keep the workflow strict, sequ
 
 1. **Delegate to `regression-checker`** with a session name based on the current work (e.g., the feature name, branch name, or plan identifier from `ACTION_PLAN.md`).
 2. Pass the session name explicitly. If no session name is provided, the subagent will return an error.
-3. The regression-checker will run all tests, linters, and CI routines, creating a baseline report at:
-   `/tmp/vibe-scratchpad-777f2043-n8y__q_8/regression-checker/<session-name>/baseline.json`
-4. **DO NOT PROCEED** with any implementation until the baseline is established.
+3. The regression-checker will run all tests, linters, and CI routines, creating a baseline report. It will return the filename of the saved baseline report.
+4. **DO NOT PROCEED** with any implementation until the baseline is established and the filename is returned.
 
 **This is a non-negotiable gate.** The baseline must be clean or you must document all existing failures as accepted technical debt before starting.
 

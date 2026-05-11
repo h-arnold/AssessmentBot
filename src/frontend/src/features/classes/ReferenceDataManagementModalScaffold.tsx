@@ -74,23 +74,23 @@ export type ReferenceDataManagementModalScaffoldProperties<T extends { key: stri
 export function ReferenceDataManagementModalScaffold<T extends { key: string }>(
   properties: ReferenceDataManagementModalScaffoldProperties<T>
 ): ReactElement {
-  const previousIsRefreshingReference = useRef(properties.isRefreshing);
+  const previousIsRefreshingReference = useRef<boolean | undefined>(undefined);
 
   // Track isRefreshing changes to trigger aria-busy updates
+  // Note: setTimeout is used to defer DOM query to allow Ant Design classes to be applied
+  // in test environments like HappyDOM where useEffect may run before class application is complete
   useEffect(() => {
     const currentIsRefreshing = properties.isRefreshing;
     const wasRefreshing = previousIsRefreshingReference.current;
 
     if (currentIsRefreshing !== wasRefreshing && properties.open) {
-      // Use requestAnimationFrame to ensure Ant Design Modal has rendered in jsdom
-      const rafId = requestAnimationFrame(() => {
+      // Defer to next macrotask to allow HappyDOM to apply Ant Design classes
+      setTimeout(() => {
         syncReferenceDataModalBusyState(
           '.reference-data-modal-scaffold-wrapper [role="dialog"]',
           currentIsRefreshing
         );
-      });
-
-      return () => cancelAnimationFrame(rafId);
+      }, 0);
     }
 
     previousIsRefreshingReference.current = currentIsRefreshing;
@@ -105,7 +105,7 @@ export function ReferenceDataManagementModalScaffold<T extends { key: string }>(
       return cloneElement(properties.loadingState, {
         role: 'status',
         'aria-live': 'polite',
-      });
+      } as React.HTMLAttributes<HTMLElement>);
     }
 
     if (properties.loadError !== null) {
@@ -168,7 +168,7 @@ export function ReferenceDataManagementModalScaffold<T extends { key: string }>(
         wrapper: `${properties.modalClassName} reference-data-modal-scaffold-wrapper`,
       }}
       footer={<Button onClick={properties.onClose}>Cancel</Button>}
-      style={{ width: properties.modalWidth }}
+      width={properties.modalWidth}
     >
       {blockingBody ?? readyBody}
       {properties.inlineDialog ?? null}

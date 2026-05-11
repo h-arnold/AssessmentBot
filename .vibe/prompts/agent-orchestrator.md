@@ -147,7 +147,7 @@ Search:
 - Project docs in docs/developer/ related to [domain/topic]
 - Online documentation for any third-party libraries used (e.g., Ant Design, React, Vitest)
 - All modules and files this change will touch
-Write your findings as a structured list to /tmp/vibe-scratchpad-[request-id]/task-docs.md.
+Write your findings as a structured list to the scratchpad as `task-docs.md`. Return the full path of the file you created.
 Include file paths and URLs only — no analysis or interpretation.
 ```
 

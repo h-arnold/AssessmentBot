@@ -172,6 +172,7 @@ sensitive_patterns = []
 [tools.bash]
 permission = "ask"
 allowlist = [
+    "/tmp/*",
     "basename",
     "cat",
     "cd",
@@ -189,6 +190,8 @@ allowlist = [
     "grep",
     "head",
     "ls",
+    "npm --prefix",
+    "npm run --silent",
     "npm run lint",
     "npm test",
     "pwd",

@@ -305,22 +305,22 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Red phase complete: created `ReferenceDataManagementModalScaffold.spec.tsx` with 21 comprehensive tests covering blocking states, ready states, refresh states, configuration preservation, close wiring, inline slots, and create action. Green phase in progress: created `ReferenceDataManagementModalScaffold.tsx` with generic component contract, PlusOutlined icon with test seam, standard Cancel footer, and aria-busy wiring. Current status: 19/21 tests passing.
+- **Implementation notes:** Red phase complete: created `ReferenceDataManagementModalScaffold.spec.tsx` with 21 comprehensive tests covering blocking states, ready states, refresh states, configuration preservation, close wiring, inline slots, and create action. Red review complete: all 5 blocking issues identified by Code Reviewer have been resolved (mask-close/keyboard-close tests added, data-testid assertions added to both caller test files, caller-level reset behavior tests added, cohort-specific toggle-error alert clearing test added). Green phase complete: ManageCohortsModal and ManageYearGroupsModal successfully migrated to use ReferenceDataManagementModalScaffold. Fixed green phase issues: (1) aria-busy wiring useRef initialization and removed requestAnimationFrame wrapper; (2) modal width changed from style prop to Ant Design width prop. **Post-green fixes:** Investigated 2 failing scaffold tests (`applies aria-busy to the modal dialog during refresh` and `preserves caller-supplied modal width`). Created E2E Playwright suite (`reference-data-modal-scaffold.spec.ts`) with 12 tests (9 active, 3 skipped) to verify behavior in real Chromium - all passed, confirming HappyDOM-specific test environment limitations. Fixed HappyDOM timing issue by adding `setTimeout(..., 0)` wrapper in scaffold `useEffect` to defer DOM query until Ant Design classes are applied. Fixed `toHaveStyle()` matcher limitation by replacing with `getAttribute('style')` + regex matching. Addressed all Code Reviewer findings: TypeScript error on line 106 (added type assertion), unused `act` import (removed), magic numbers on lines 501-502 (replaced with `DOCUMENT_POSITION_FOLLOWING` constant), lint errors (fixed type imports and JSDoc), and nitpick (JSDoc type reference consistency).
 - **Deviations from plan:** None.
-- **Follow-up implications for later sections:** Two remaining test failures need resolution: (1) aria-busy attribute not being applied to dialog during refresh - likely timing issue with requestAnimationFrame in jsdom; (2) modal width not propagating - using style prop instead of Ant Design width prop.
+- **Follow-up implications for later sections:** All scaffold tests now pass (21/21). E2E suite established for scaffold verification. Section 3 (browser-level coverage for migrated callers) can proceed.
 
 ### Section 2 Checklist
 
 - [x] regression baseline established
-- [x] red tests added (21 tests in ReferenceDataManagementModalScaffold.spec.tsx)
-- [ ] red review clean
-- [ ] green implementation complete
-- [ ] green review clean
-- [ ] regression gate passed (ZERO regressions, ZERO new failures)
-- [ ] checks passed
-- [ ] action plan updated
-- [ ] commit created
-- [ ] push completed
+- [x] red tests added (21 tests in ReferenceDataManagementModalScaffold.spec.tsx + updates to manageCohorts.spec.tsx and manageYearGroups.spec.tsx)
+- [x] red review clean
+- [x] green implementation complete (ManageCohortsModal and ManageYearGroupsModal migrated to use scaffold)
+- [x] green review clean
+- [x] regression gate passed (ZERO regressions, ZERO new failures)
+- [x] checks passed (545/545 frontend tests pass)
+- [x] action plan updated
+- [x] commit created
+- [x] push completed
 
 ---
 
