@@ -181,9 +181,9 @@ Frontend tests:
 - [x] green review clean (documentation updates)
 - [x] regression gate passed (ZERO regressions, ZERO new failures)
 - [x] checks passed
-- [ ] action plan updated
-- [ ] commit created
-- [ ] push completed
+- [x] action plan updated
+- [x] commit created (4bdb4e3 - "docs: update modal and helper standards for classes reference-data scaffold")
+- [x] push completed (pushed to origin/chore/standariseReferenceDataModal)
 
 ---
 
@@ -305,9 +305,22 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
-- **Follow-up implications for later sections:**
+- **Implementation notes:** Red phase complete: created `ReferenceDataManagementModalScaffold.spec.tsx` with 21 comprehensive tests covering blocking states, ready states, refresh states, configuration preservation, close wiring, inline slots, and create action. Green phase in progress: created `ReferenceDataManagementModalScaffold.tsx` with generic component contract, PlusOutlined icon with test seam, standard Cancel footer, and aria-busy wiring. Current status: 19/21 tests passing.
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** Two remaining test failures need resolution: (1) aria-busy attribute not being applied to dialog during refresh - likely timing issue with requestAnimationFrame in jsdom; (2) modal width not propagating - using style prop instead of Ant Design width prop.
+
+### Section 2 Checklist
+
+- [x] regression baseline established
+- [x] red tests added (21 tests in ReferenceDataManagementModalScaffold.spec.tsx)
+- [ ] red review clean
+- [ ] green implementation complete
+- [ ] green review clean
+- [ ] regression gate passed (ZERO regressions, ZERO new failures)
+- [ ] checks passed
+- [ ] action plan updated
+- [ ] commit created
+- [ ] push completed
 
 ---
 
