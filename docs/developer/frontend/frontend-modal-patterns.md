@@ -97,6 +97,11 @@ Shared traits:
 
 - outer Ant Design modal containing inner inline dialogs
 - feature-local create/edit/delete workflow
+- modal-top create/add action shown in ready and empty states above the table body
+- top action is a start-aligned content-width button rather than a full-width call-to-action
+- default create/add icon is `PlusOutlined`, with a workflow-specific Ant Design icon allowed only when a later spec explicitly justifies a clearer domain meaning
+- duplicated outer shell is now justified for a narrow scaffold because a topic reference-data modal is an accepted next sibling
+- the scaffold-owned shell includes the standard `Cancel` footer and all shell-close wiring routed through one caller-owned close handler
 - fail-closed blocking-load handling
 - explicit busy-state synchronisation and refresh semantics
 - delete-blocked handling for in-use records
@@ -111,8 +116,9 @@ Default decision:
 
 - extend the existing feature-local helpers for similar reference-data workflows
 - do not replace this family with a generic app-wide CRUD modal abstraction
-- accepted boundary for the classes modal-family compliance refactor: reuse `InlineDialog.tsx`, `manageReferenceDataDialogs.tsx`, and `manageReferenceDataHelpers.ts` as-is
-- helper-change status for that refactor: `Implemented`; the existing feature-local helper family remains the accepted reuse boundary
+- extract one narrow feature-local scaffold for the shared outer modal shell, shared close wiring, and ready-state body composition
+- accepted boundary for the classes reference-data scaffold: reuse `InlineDialog.tsx`, `manageReferenceDataDialogs.tsx`, and `manageReferenceDataHelpers.ts` as-is, and add one scaffold for modal shell composition only
+- helper-change status for the current extraction decision: `Not implemented`; the scaffold is planned, while the existing feature-local helper family remains the accepted reused boundary
 
 ### 3.4 Assignment definition create/update wizard modal
 
@@ -267,6 +273,8 @@ catch (error: unknown) {
 ## 8. Accessibility and testability rules
 
 - Modal abstractions must preserve clear accessible names and action labels.
+- For text-plus-icon modal action buttons, the visible text label remains the primary accessible name and decorative icons should not become competing announced labels.
+- Shared scaffold extraction must preserve slot-level testability so callers can still assert entity-specific alerts, tables, and inline dialogs without depending on implementation-private DOM structure.
 - Do not hide essential behaviour behind abstractions that make tests depend on implementation details.
 - Prefer feature-local inline dialog sections when nested portal modals would make tests brittle and the UX still remains correct.
 - If a helper changes modal structure, verify that role, name, busy, and disabled semantics remain testable.

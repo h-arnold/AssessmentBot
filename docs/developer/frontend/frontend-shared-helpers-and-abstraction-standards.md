@@ -237,3 +237,26 @@ This section supersedes the earlier Section 9.7 defer decision for the specific 
 - Owning path: `src/frontend/src/features/classes/BulkDeleteModal.tsx`, `src/frontend/src/pages/AssignmentsPage.tsx`
 - Status: `Implemented`
 - Rationale: both confirmation flows remain workflow-specific one-offs whose copy and footer semantics do not yet justify a shared abstraction
+
+### 9.9 Classes reference-data modal add-action standard
+
+1. Helper or contract: reference-data modal scaffold
+
+- Decision: new
+- Owning path: `src/frontend/src/features/classes/ReferenceDataManagementModalScaffold.tsx`
+- Status: `Not implemented`
+- Rationale: `ManageCohortsModal.tsx` and `ManageYearGroupsModal.tsx` already duplicate the same outer shell, footer-close behaviour, and modal-close wiring, and a topic reference-data modal is now an accepted next sibling, so one narrow feature-local scaffold is justified for modal shell composition, standard Cancel/close wiring, create-action presentation, and slot placement without absorbing entity-specific mutation logic
+
+2. Helper or contract: existing inline dialog and reference-data helper family
+
+- Decision: reuse
+- Owning path: `src/frontend/src/features/classes/manageReferenceDataDialogs.tsx`, `src/frontend/src/features/classes/manageReferenceDataHelpers.ts`, `src/frontend/src/features/classes/InlineDialog.tsx`
+- Status: `Implemented`
+- Rationale: the extracted scaffold should compose the existing dialog and workflow helper family rather than replacing it, because those modules already own the inner-dialog contract and reference-data workflow helpers coherently
+
+3. Helper or contract: `ReferenceDataTrustBoundary` type extension in `manageReferenceDataHelpers.ts`
+
+- Decision: extend (planned for future topic caller)
+- Owning path: `src/frontend/src/features/classes/manageReferenceDataHelpers.ts`
+- Status: `Not implemented`
+- Rationale: the `ReferenceDataTrustBoundary` union type currently covers `'cohorts' | 'yearGroups'`; when the accepted next topic reference-data modal caller is implemented, `'topics'` must be added to this union so the blocking-load trust-boundary helpers (`getPersistedBlockingLoadError`, `setPersistedBlockingLoadError`, `clearPersistedBlockingLoadError`, `syncReferenceDataModalBusyState`) work correctly for the topic entity; this is a deliberate deferred extension, not a speculative abstraction
