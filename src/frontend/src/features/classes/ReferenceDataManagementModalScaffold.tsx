@@ -127,7 +127,7 @@ export function ReferenceDataManagementModalScaffold<T extends { key: string }>(
     }
 
     return (
-      <Flex vertical gap={12}>
+      <Flex vertical align="start" gap={12}>
         {properties.isRefreshing ? (
           <div aria-live="polite" role="status">
             <Text type="secondary">{properties.refreshStatusCopy}</Text>
@@ -163,6 +163,7 @@ export function ReferenceDataManagementModalScaffold<T extends { key: string }>(
       open={properties.open}
       title={properties.modalTitle}
       onCancel={properties.onClose}
+      mask={{ closable: true }}
       className="reference-data-modal-scaffold-dialog"
       classNames={{
         wrapper: `${properties.modalClassName} reference-data-modal-scaffold-wrapper`,
