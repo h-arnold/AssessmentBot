@@ -73,21 +73,21 @@ region = ""
 name = "mistral-vibe-cli-latest"
 provider = "mistral"
 alias = "mistral-medium-3.5"
-temperature = 1.0
+temperature = 0.7
 input_price = 1.5
 output_price = 7.5
 thinking = "high"
-auto_compact_threshold = 200000
+auto_compact_threshold = 180000
 
 [[models]]
 name = "mistral-small"
 provider = "mistral"
 alias = "mistral-small-latest"
-temperature = 0.2
-input_price = 0.25
-output_price = 1.0
+temperature = 0.7
+input_price = 0.15
+output_price = 0.6
 thinking = "off"
-auto_compact_threshold = 200000
+auto_compact_threshold = 180000
 
 [[models]]
 name = "codestral-latest"
