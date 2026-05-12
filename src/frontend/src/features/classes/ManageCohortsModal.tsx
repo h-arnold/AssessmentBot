@@ -13,75 +13,42 @@
  * tests while maintaining full ARIA semantics and correct Playwright behaviour.
  */
 
-import { Alert, Button, Form, Space, Switch, type TableColumnType } from 'antd';
-import { useEffect, useState } from 'react';
-import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { Button, Space, Switch, type TableColumnType } from 'antd';
+import type { UseQueryOptions } from '@tanstack/react-query';
 import type { Cohort } from '../../services/referenceData.zod';
 import { createCohort, deleteCohort, updateCohort } from '../../services/referenceDataService';
-import { queryKeys } from '../../query/queryKeys';
 import { getCohortsQueryOptions } from '../../query/sharedQueries';
-import {
-  clearPersistedBlockingLoadError,
-  getDeleteErrorMessage,
-  getPersistedBlockingLoadError,
-  getReferenceDataBlockingLoadErrorQueryKey,
-  getReferenceDataLoadError,
-  isInUseError,
-  refetchRequiredReferenceDataQuery,
-  setPersistedBlockingLoadError,
-  type BlockingLoadErrorState,
-} from './manageReferenceDataHelpers';
 import { ReferenceDataInitialLoadingState } from './ReferenceDataInitialLoadingState';
 import { ReferenceDataManagementModalScaffold } from './ReferenceDataManagementModalScaffold';
 import {
   ReferenceDataDeleteDialog,
   ReferenceDataFormDialog,
-  type ReferenceDataFormValues,
 } from './manageReferenceDataDialogs';
+import { useReferenceDataManagement } from './hooks/useReferenceDataManagement';
+import type {
+  FormDialogProperties,
+  DeleteDialogProperties,
+} from './hooks/useReferenceDataManagement';
 
 export type ManageCohortsModalProperties = Readonly<{
   open: boolean;
   onClose: () => void;
 }>;
 
-type FormMode = 'create' | 'edit';
-
-type CohortFormValues = ReferenceDataFormValues;
-
-type DeleteDialogState = Readonly<{
-  open: boolean;
-  cohort: Cohort | null;
-  error: string | null;
-  blocked: boolean;
-  submitting: boolean;
-}>;
-
-const INITIAL_DELETE_STATE: DeleteDialogState = {
-  open: false,
-  cohort: null,
-  error: null,
-  blocked: false,
-  submitting: false,
-};
-
 const FORM_DIALOG_LABEL_ID = 'manage-cohorts-form-dialog-title';
 const DELETE_DIALOG_LABEL_ID = 'manage-cohorts-delete-dialog-title';
-const cohortsLoadFailureCopy = 'Unable to load cohorts right now.';
-const cohortsRefreshStatusCopy = 'Refreshing cohorts...';
-
-type CohortColumnsOptions = Readonly<{
-  onEdit: (cohort: Cohort) => void;
-  onDelete: (cohort: Cohort) => void;
-  onToggleActive: (cohort: Cohort, checked: boolean) => void;
-}>;
 
 /**
  * Builds the column definitions for the cohorts management table.
  *
- * @param {CohortColumnsOptions} options Column action callbacks.
+ * @param {Readonly<{ onEdit: (cohort: Cohort) => void; onDelete: (cohort: Cohort) => void; onToggleActive: (cohort: Cohort, checked: boolean) => void; }>} options Column action callbacks.
  * @returns {TableColumnType<Cohort>[]} Table column definitions.
  */
-function buildCohortColumns(options: CohortColumnsOptions): TableColumnType<Cohort>[] {
+function buildCohortColumns(options: Readonly<{
+  onEdit: (cohort: Cohort) => void;
+  onDelete: (cohort: Cohort) => void;
+  onToggleActive: (cohort: Cohort, checked: boolean) => void;
+}>): TableColumnType<Cohort>[] {
   return [
     {
       title: 'Name',
@@ -136,34 +103,24 @@ function buildCohortColumns(options: CohortColumnsOptions): TableColumnType<Coho
   ];
 }
 
-type CohortFormDialogProperties = Readonly<{
-  editingCohort: Cohort | null;
-  form: ReturnType<typeof Form.useForm<CohortFormValues>>[0];
-  formDialogTitle: string;
-  formError: string | null;
-  formMode: FormMode | null;
-  formSubmitting: boolean;
-  onClose: () => void;
-  onFinish: (values: CohortFormValues) => Promise<void>;
-  onOk: () => void;
-}>;
-
 /**
- * Returns the shared cohort form dialog when the form is open.
+ * Renders the cohort form dialog.
  *
- * @param {CohortFormDialogProperties} properties Dialog properties.
- * @returns {JSX.Element | null} Rendered cohort form dialog.
+ * @param {FormDialogProperties<Cohort>} properties Dialog properties.
+ * @returns {React.ReactElement | null} Rendered form dialog.
  */
-function renderCohortFormDialog(properties: CohortFormDialogProperties) {
+function renderCohortFormDialog(
+  properties: FormDialogProperties<Cohort>
+): React.ReactElement | null {
   if (properties.formMode === null) {
     return null;
   }
 
   return (
     <ReferenceDataFormDialog
-      formKey={properties.editingCohort?.key ?? 'create'}
+      formKey={properties.editingEntity?.key ?? 'create'}
       form={properties.form}
-      initialName={properties.editingCohort?.name ?? null}
+      initialName={properties.editingEntity?.name ?? null}
       labelId={FORM_DIALOG_LABEL_ID}
       title={properties.formDialogTitle}
       formError={properties.formError}
@@ -176,19 +133,15 @@ function renderCohortFormDialog(properties: CohortFormDialogProperties) {
   );
 }
 
-type CohortDeleteDialogProperties = Readonly<{
-  deleteState: DeleteDialogState;
-  onClose: () => void;
-  onConfirm: () => void;
-}>;
-
 /**
- * Returns the shared cohort delete dialog when delete mode is open.
+ * Renders the cohort delete dialog.
  *
- * @param {CohortDeleteDialogProperties} properties Dialog properties.
- * @returns {JSX.Element | null} Rendered cohort delete dialog.
+ * @param {DeleteDialogProperties<Cohort>} properties Dialog properties.
+ * @returns {React.ReactElement | null} Rendered delete dialog.
  */
-function renderCohortDeleteDialog(properties: CohortDeleteDialogProperties) {
+function renderCohortDeleteDialog(
+  properties: DeleteDialogProperties<Cohort>
+): React.ReactElement | null {
   if (!properties.deleteState.open) {
     return null;
   }
@@ -197,7 +150,7 @@ function renderCohortDeleteDialog(properties: CohortDeleteDialogProperties) {
     <ReferenceDataDeleteDialog
       blocked={properties.deleteState.blocked}
       entityLabel="cohort"
-      entityName={properties.deleteState.cohort?.name ?? null}
+      entityName={properties.deleteState.entity?.name ?? null}
       error={properties.deleteState.error}
       labelId={DELETE_DIALOG_LABEL_ID}
       submitting={properties.deleteState.submitting}
@@ -209,319 +162,71 @@ function renderCohortDeleteDialog(properties: CohortDeleteDialogProperties) {
 }
 
 /**
- * Returns the dialog title for the current cohort form mode.
- *
- * @param {FormMode | null} formMode Current form mode.
- * @returns {string} Form dialog title.
- */
-function getCohortFormDialogTitle(formMode: FormMode | null): string {
-  return formMode === 'create' ? 'Create cohort' : 'Edit cohort';
-}
-
-type CohortFormFinishHandlerProperties = Readonly<{
-  closeFormDialog: () => void;
-  editingCohort: Cohort | null;
-  formMode: FormMode | null;
-  onRequiredRefreshFailure: () => void;
-  queryClient: QueryClient;
-  setFormError: (message: string | null) => void;
-  setFormSubmitting: (isSubmitting: boolean) => void;
-}>;
-
-/**
- * Builds the cohort form submit handler.
- *
- * @param {CohortFormFinishHandlerProperties} properties Handler dependencies.
- * @returns {(values: CohortFormValues) => Promise<void>} Form submit handler.
- */
-function createCohortFormFinishHandler(properties: CohortFormFinishHandlerProperties) {
-  return async function handleFormFinish(values: CohortFormValues): Promise<void> {
-    properties.setFormSubmitting(true);
-    properties.setFormError(null);
-
-    try {
-      if (properties.formMode === 'create') {
-        await createCohort({ record: { name: values.name } });
-      } else {
-        if (properties.editingCohort === null) {
-          throw new Error('Unable to save the cohort.');
-        }
-
-        await updateCohort({
-          key: properties.editingCohort.key,
-          record: {
-            name: values.name,
-            active: properties.editingCohort.active,
-            startYear: properties.editingCohort.startYear,
-            startMonth: properties.editingCohort.startMonth,
-          },
-        });
-      }
-
-      const refreshSucceeded = await refetchRequiredReferenceDataQuery(
-        properties.queryClient,
-        queryKeys.cohorts()
-      );
-
-      if (!refreshSucceeded) {
-        properties.onRequiredRefreshFailure();
-        return;
-      }
-
-      properties.closeFormDialog();
-    } catch (error: unknown) {
-      properties.setFormError(
-        error instanceof Error ? error.message : 'Unable to save the cohort.'
-      );
-    } finally {
-      properties.setFormSubmitting(false);
-    }
-  };
-}
-
-type CohortToggleActiveHandlerProperties = Readonly<{
-  onRequiredRefreshFailure: () => void;
-  queryClient: QueryClient;
-  setToggleError: (message: string | null) => void;
-}>;
-
-/**
- * Builds the cohort active-state toggle handler.
- *
- * @param {CohortToggleActiveHandlerProperties} properties Handler dependencies.
- * @returns {(cohort: Cohort, checked: boolean) => Promise<void>} Toggle handler.
- */
-function createCohortToggleActiveHandler(properties: CohortToggleActiveHandlerProperties) {
-  return async function handleToggleActive(cohort: Cohort, checked: boolean): Promise<void> {
-    properties.setToggleError(null);
-
-    try {
-      await updateCohort({
-        key: cohort.key,
-        record: {
-          name: cohort.name,
-          active: checked,
-          startYear: cohort.startYear,
-          startMonth: cohort.startMonth,
-        },
-      });
-      const refreshSucceeded = await refetchRequiredReferenceDataQuery(
-        properties.queryClient,
-        queryKeys.cohorts()
-      );
-
-      if (!refreshSucceeded) {
-        properties.onRequiredRefreshFailure();
-      }
-    } catch (error: unknown) {
-      properties.setToggleError(
-        error instanceof Error ? error.message : 'Unable to update the cohort active state.'
-      );
-    }
-  };
-}
-
-type CohortDeleteConfirmHandlerProperties = Readonly<{
-  deleteState: DeleteDialogState;
-  onRequiredRefreshFailure: () => void;
-  queryClient: QueryClient;
-  setDeleteState: (updater: (previous: DeleteDialogState) => DeleteDialogState) => void;
-}>;
-
-/**
- * Builds the cohort delete confirmation handler.
- *
- * @param {CohortDeleteConfirmHandlerProperties} properties Handler dependencies.
- * @returns {() => Promise<void>} Delete confirmation handler.
- */
-function createCohortDeleteConfirmHandler(properties: CohortDeleteConfirmHandlerProperties) {
-  return async function handleDeleteConfirm(): Promise<void> {
-    if (properties.deleteState.cohort === null) {
-      return;
-    }
-
-    properties.setDeleteState((previous) => ({ ...previous, submitting: true, error: null }));
-
-    try {
-      await deleteCohort({ key: properties.deleteState.cohort.key });
-      const refreshSucceeded = await refetchRequiredReferenceDataQuery(
-        properties.queryClient,
-        queryKeys.cohorts()
-      );
-
-      if (!refreshSucceeded) {
-        properties.onRequiredRefreshFailure();
-        return;
-      }
-
-      properties.setDeleteState(() => INITIAL_DELETE_STATE);
-    } catch (error: unknown) {
-      const blocked = isInUseError(error);
-
-      properties.setDeleteState((previous) => ({
-        ...previous,
-        submitting: false,
-        error: getDeleteErrorMessage(error, blocked, 'cohort'),
-        blocked,
-      }));
-    }
-  };
-}
-
-/**
  * Renders the Manage Cohorts modal workflow.
  *
  * @param {ManageCohortsModalProperties} properties Component properties.
  * @returns {JSX.Element} The rendered modal.
  */
 export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
-  const queryClient = useQueryClient();
-  const cohortsQuery = useQuery(getCohortsQueryOptions());
-  const cohorts = cohortsQuery.data ?? [];
-  const isInitialLoading = cohortsQuery.isPending && cohortsQuery.data === undefined;
-  const blockingLoadErrorQuery = useQuery({
-    enabled: false,
-    queryFn: () => getPersistedBlockingLoadError(queryClient, 'cohorts'),
-    queryKey: getReferenceDataBlockingLoadErrorQueryKey('cohorts'),
-  });
-  const blockingLoadError = blockingLoadErrorQuery.data ?? null;
-  const isRefreshing = !isInitialLoading && cohortsQuery.isFetching;
+  // Type assertion to work around the query key type mismatch between
+  // the specific tuple type from queryOptions() and the generic unknown[] in UseQueryOptions
+  const cohortQueryOptions = getCohortsQueryOptions() as unknown as UseQueryOptions<Cohort[]>;
 
-  useEffect(() => {
-    if (
-      blockingLoadError === null ||
-      cohortsQuery.dataUpdatedAt <= blockingLoadError.dataUpdatedAt
-    ) {
-      return;
-    }
-
-    clearPersistedBlockingLoadError(queryClient, 'cohorts');
-  }, [blockingLoadError, cohortsQuery.dataUpdatedAt, queryClient]);
-
-  const [form] = Form.useForm<CohortFormValues>();
-  const [formMode, setFormMode] = useState<FormMode | null>(null);
-  const [editingCohort, setEditingCohort] = useState<Cohort | null>(null);
-  const [formSubmitting, setFormSubmitting] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [toggleError, setToggleError] = useState<string | null>(null);
-  const [deleteState, setDeleteState] = useState<DeleteDialogState>(INITIAL_DELETE_STATE);
-  const loadError = getReferenceDataLoadError(
-    cohortsQuery,
-    blockingLoadError,
-    cohortsQuery.dataUpdatedAt,
-    cohortsLoadFailureCopy
-  );
-
-  const handleFormFinish = createCohortFormFinishHandler({
-    closeFormDialog,
-    editingCohort,
-    formMode,
-    onRequiredRefreshFailure: handleRequiredRefreshFailure,
-    queryClient,
-    setFormError,
-    setFormSubmitting,
-  });
-  const handleToggleActive = createCohortToggleActiveHandler({
-    onRequiredRefreshFailure: handleRequiredRefreshFailure,
-    queryClient,
-    setToggleError,
-  });
-  const handleDeleteConfirm = createCohortDeleteConfirmHandler({
-    deleteState,
-    onRequiredRefreshFailure: handleRequiredRefreshFailure,
-    queryClient,
-    setDeleteState,
+  const hookResult = useReferenceDataManagement({
+    entityName: 'cohorts',
+    entityLabel: 'cohort',
+    entityKey: 'cohorts',
+    queryOptions: cohortQueryOptions,
+    createService: async ({ record }: { record: Omit<Cohort, 'key'> }) => {
+      await createCohort({ record });
+    },
+    updateService: async ({ key, record }: { key: string; record: Omit<Cohort, 'key'> }) => {
+      await updateCohort({ key, record });
+    },
+    deleteService: async ({ key }: { key: string }) => {
+      await deleteCohort({ key });
+    },
+    supportsToggleActive: true,
+    toggleService: async ({ entity, active }: { entity: Cohort; active: boolean }) => {
+      await updateCohort({
+        key: entity.key,
+        record: {
+          name: entity.name,
+          active,
+          startYear: entity.startYear,
+          startMonth: entity.startMonth,
+        },
+      });
+      // Return void to match the expected signature
+    },
+    formValidationMessage: 'Please enter a cohort name.',
+    loadFailureCopy: 'Unable to load cohorts right now.',
+    refreshStatusCopy: 'Refreshing cohorts...',
+    renderFormDialog: renderCohortFormDialog,
+    renderDeleteDialog: renderCohortDeleteDialog,
   });
 
-  /**
-   * Opens the create form with blank fields.
-   */
-  function openCreateForm(): void {
-    closeFormDialog();
-    setDeleteState(INITIAL_DELETE_STATE);
-    setEditingCohort(null);
-    setFormError(null);
-    setFormMode('create');
-  }
-
-  /**
-   * Opens the edit form pre-filled with the given cohort.
-   *
-   * @param {Cohort} cohort Cohort to edit.
-   */
-  function openEditForm(cohort: Cohort): void {
-    closeFormDialog();
-    setDeleteState(INITIAL_DELETE_STATE);
-    setEditingCohort(cohort);
-    setFormError(null);
-    setFormMode('edit');
-  }
-
-  /**
-   * Closes the form dialog and resets transient form state.
-   */
-  function closeFormDialog(): void {
-    const wasFormOpen = formMode !== null;
-
-    setFormMode(null);
-    setEditingCohort(null);
-    setFormError(null);
-    setFormSubmitting(false);
-
-    if (wasFormOpen) {
-      form.resetFields();
-    }
-  }
-
-  /**
-   * Closes the outer modal and clears transient child-dialog state.
-   *
-   * @returns {void} No return value.
-   */
-  function handleModalClose(): void {
-    closeFormDialog();
-    setDeleteState(INITIAL_DELETE_STATE);
-    setToggleError(null);
-    properties.onClose();
-  }
-
-  /**
-   * Handles the fail-closed state required after a successful mutation cannot be refreshed.
-   */
-  function handleRequiredRefreshFailure(): void {
-    closeFormDialog();
-    setDeleteState(INITIAL_DELETE_STATE);
-    setToggleError(null);
-
-    const nextBlockingLoadError: BlockingLoadErrorState = {
-      dataUpdatedAt: cohortsQuery.dataUpdatedAt,
-      message: cohortsLoadFailureCopy,
-    };
-
-    setPersistedBlockingLoadError(queryClient, 'cohorts', nextBlockingLoadError);
-  }
-
-  /**
-   * Opens the delete confirmation for the given cohort.
-   *
-   * @param {Cohort} cohort Cohort to delete.
-   */
-  function openDeleteDialog(cohort: Cohort): void {
-    closeFormDialog();
-    setDeleteState({
-      open: true,
-      cohort,
-      error: null,
-      blocked: false,
-      submitting: false,
-    });
-  }
+  const {
+    loadError,
+    isInitialLoading,
+    isRefreshing,
+    rows,
+    inlineDialog,
+    inlineAlert,
+    openCreateForm,
+    openEditForm,
+    openDeleteDialog,
+    handleModalClose,
+    handleToggleActive,
+  } = hookResult;
 
   const columns = buildCohortColumns({
     onEdit: openEditForm,
     onDelete: openDeleteDialog,
     onToggleActive: (cohort, checked) => {
-      void handleToggleActive(cohort, checked);
+      if (handleToggleActive) {
+        void handleToggleActive(cohort, checked);
+      }
     },
   });
 
@@ -534,39 +239,19 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
       createActionLabel="Create cohort"
       tableAriaLabel="cohorts"
       emptyTableCopy="No cohorts"
-      refreshStatusCopy={cohortsRefreshStatusCopy}
+      refreshStatusCopy="Refreshing cohorts..."
       isInitialLoading={isInitialLoading}
       isRefreshing={isRefreshing}
       loadError={loadError}
       loadingState={<ReferenceDataInitialLoadingState ariaLabel="Loading cohorts" />}
-      rows={cohorts}
+      rows={rows}
       columns={columns}
-      inlineAlert={toggleError === null ? null : <Alert description={toggleError} type="error" showIcon />}
-      inlineDialog={
-        renderCohortFormDialog({
-          editingCohort,
-          form,
-          formDialogTitle: getCohortFormDialogTitle(formMode),
-          formError,
-          formMode,
-          formSubmitting,
-          onClose: closeFormDialog,
-          onFinish: handleFormFinish,
-          onOk: () => {
-            form.submit();
-          },
-        }) ??
-        renderCohortDeleteDialog({
-          deleteState,
-          onClose: () => {
-            setDeleteState(INITIAL_DELETE_STATE);
-          },
-          onConfirm: () => {
-            void handleDeleteConfirm();
-          },
-        })
-      }
-      onClose={handleModalClose}
+      inlineAlert={inlineAlert}
+      inlineDialog={inlineDialog}
+      onClose={() => {
+        handleModalClose();
+        properties.onClose();
+      }}
       onCreate={openCreateForm}
     />
   );
