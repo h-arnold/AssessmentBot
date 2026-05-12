@@ -62,7 +62,7 @@ When delegating to subagents, specify **WHAT** needs to be accomplished and **WH
 
 Every subagent handoff **must** include:
 
-- `Files read` section with explicit file paths (mandatory)
+- `Mandatory Reading` section with explicit file paths (mandatory)
 - All mandatory documentation required by the subagent's own instructions
 - Constraints and scope boundaries
 - Exact requested outcome
@@ -100,7 +100,7 @@ Every subagent handoff **must** include:
 To Testing Specialist for a frontend component:
 
 ```
-Files read:
+Mandatory reading:
 - SPEC.md (section 3.2 covers this feature)
 - ACTION_PLAN.md (section 4)
 - src/frontend/src/features/assessment/ScoringDialog.tsx
