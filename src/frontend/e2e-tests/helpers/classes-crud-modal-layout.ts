@@ -5,25 +5,35 @@ import { expect, type Locator, type Page } from '@playwright/test';
 // ---------------------------------------------------------------------------
 
 /**
+ * Options for asserting create button positioning relative to table.
+ */
+export type AssertCreateButtonPositioningOptions =
+  | {
+      modal: Locator;
+      assertionType: 'left edge';
+      createButtonName: string | RegExp;
+      tableName: string | RegExp;
+      tolerance: number;
+      minDiff?: never;
+    }
+  | {
+      modal: Locator;
+      assertionType: 'width';
+      createButtonName: string | RegExp;
+      tableName: string | RegExp;
+      tolerance?: never;
+      minDiff: number;
+    };
+
+/**
  * Asserts create button positioning relative to table.
  *
- * @param {object} options Test options.
- * @param {Locator} options.modal The modal locator.
- * @param {'left edge' | 'width'} options.assertionType What to assert.
- * @param {string} options.createButtonName The create button name pattern.
- * @param {string} options.tableName The table name pattern.
- * @param {number} options.tolerance Tolerance in pixels (for left edge).
- * @param {number} options.minDiff Minimum difference in pixels (for width).
+ * @param {AssertCreateButtonPositioningOptions} options Test options.
  * @returns {Promise<void>}
  */
-export async function assertCreateButtonPositioning(options: {
-  modal: Locator;
-  assertionType: 'left edge' | 'width';
-  createButtonName: string;
-  tableName: string;
-  tolerance: number;
-  minDiff: number;
-}): Promise<void> {
+export async function assertCreateButtonPositioning(
+  options: AssertCreateButtonPositioningOptions
+): Promise<void> {
   const createButton = options.modal.getByRole('button', { name: options.createButtonName });
   const table = options.modal.getByRole('table', { name: options.tableName });
 

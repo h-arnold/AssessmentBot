@@ -91,7 +91,6 @@ export function ManageYearGroupsModal(properties: ManageYearGroupsModalPropertie
   const yearGroupsQueryOptions = getYearGroupsQueryOptions() as unknown as UseQueryOptions<YearGroup[]>;
 
   const hookResult = useReferenceDataManagement({
-    entityName: 'yearGroups',
     entityLabel: 'year group',
     entityKey: 'yearGroups',
     queryOptions: yearGroupsQueryOptions,

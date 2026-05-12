@@ -18,6 +18,7 @@ import {
 } from '@tanstack/react-query';
 import {
   clearPersistedBlockingLoadError,
+  getDeleteErrorMessage,
   getPersistedBlockingLoadError,
   getReferenceDataBlockingLoadErrorQueryKey,
   getReferenceDataLoadError,
@@ -49,7 +50,6 @@ export type ReferenceDataTrustBoundary = 'cohorts' | 'yearGroups';
  * Configuration for the useReferenceDataManagement hook.
  */
 export type ReferenceDataManagementConfig<T extends { key: string; name: string }> = Readonly<{
-  entityName: string;
   entityLabel: string;
   entityKey: ReferenceDataTrustBoundary;
   queryOptions: UseQueryOptions<T[]>;
@@ -164,26 +164,6 @@ export type ReferenceDataManagementResult<T extends { key: string; name: string 
   handleDeleteConfirm: () => Promise<void>;
   handleToggleActive?: (entity: T, active: boolean) => Promise<void>;
 };
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-/**
- * Returns a user-facing delete error message.
- *
- * @param {unknown} error Error caught from the delete service call.
- * @param {boolean} blocked Whether the error was an IN_USE block.
- * @param {string} entityLabel Singular lower-case label for the entity (e.g. 'cohort', 'year group').
- * @returns {string} User-facing error message.
- */
-function getDeleteErrorMessage(error: unknown, blocked: boolean, entityLabel: string): string {
-  if (blocked) {
-    return `This ${entityLabel} is in use by one or more classes and cannot be deleted.`;
-  }
-
-  return error instanceof Error ? error.message : `Unable to delete the ${entityLabel}.`;
-}
 
 // ============================================================================
 // Hook Implementation
@@ -335,13 +315,14 @@ export function useReferenceDataManagement<T extends { key: string; name: string
 
           // Update existing entity - preserve all fields from existing entity
           // and merge with form values
+          const { key, ...entityWithoutKey } = editingEntity;
           const updatedRecord: Omit<T, 'key'> = {
-            ...(editingEntity as object),
+            ...entityWithoutKey,
             ...(values as unknown as Partial<T>),
-          } as Omit<T, 'key'>;
+          };
 
           await config.updateService({
-            key: editingEntity.key,
+            key,
             record: updatedRecord,
           });
         }

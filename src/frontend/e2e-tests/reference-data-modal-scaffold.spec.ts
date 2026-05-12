@@ -207,14 +207,11 @@ test.describe('Reference Data Modal Scaffold — DOM structure', () => {
 // ---------------------------------------------------------------------------
 
 /**
- * These tests verify scaffold-specific DOM markers that will only be present
- * after the ManageCohortsModal and ManageYearGroupsModal components are migrated
+ * These tests verify scaffold-specific DOM markers that are present
+ * after the ManageCohortsModal and ManageYearGroupsModal components have been migrated
  * to use ReferenceDataManagementModalScaffold.
- *
- * Until migration is complete, these tests are skipped as they will fail.
- * Once migration is complete, remove the `.skip` modifier to enable them.
  */
-test.describe.skip('Reference Data Modal Scaffold — scaffold-specific features', () => {
+test.describe('Reference Data Modal Scaffold — scaffold-specific features', () => {
   test('scaffold wrapper class is present', async ({ page }) => {
     await openClassesTabWithReferenceDataScenario(page);
     await openManageCohortsModal(page);

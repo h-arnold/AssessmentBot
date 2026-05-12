@@ -75,6 +75,7 @@ export function ReferenceDataManagementModalScaffold<T extends { key: string }>(
   properties: ReferenceDataManagementModalScaffoldProperties<T>
 ): ReactElement {
   const previousIsRefreshingReference = useRef<boolean | undefined>(undefined);
+  const busyStateTimeoutReference = useRef<number | null>(null);
 
   // Track isRefreshing changes to trigger aria-busy updates
   // Note: setTimeout is used to defer DOM query to allow Ant Design classes to be applied
@@ -85,25 +86,45 @@ export function ReferenceDataManagementModalScaffold<T extends { key: string }>(
     const shouldSyncBusyState = currentIsRefreshing !== wasRefreshing && properties.open;
 
     if (shouldSyncBusyState) {
+      // Clear any existing timeout to prevent stale timer firing
+      if (busyStateTimeoutReference.current !== null) {
+        clearTimeout(busyStateTimeoutReference.current);
+      }
+
       // Defer to next macrotask to allow HappyDOM to apply Ant Design classes
-      setTimeout(() => {
+      busyStateTimeoutReference.current = setTimeout(() => {
         syncReferenceDataModalBusyState(
           '.reference-data-modal-scaffold-wrapper [role="dialog"]',
           currentIsRefreshing
         );
+        busyStateTimeoutReference.current = null;
       }, 0);
     }
 
     previousIsRefreshingReference.current = currentIsRefreshing;
+
+    // Cleanup: clear the timeout if it is still pending on unmount
+    return () => {
+      if (busyStateTimeoutReference.current !== null) {
+        clearTimeout(busyStateTimeoutReference.current);
+        busyStateTimeoutReference.current = null;
+      }
+    };
   }, [properties.isRefreshing, properties.open]);
 
   // Build the blocking body (initial load or error)
-  const blockingBody = properties.isInitialLoading
-    ? cloneElement(properties.loadingState, {
-        role: 'status',
-        'aria-live': 'polite',
-      })
-    : properties.loadError && <Alert description={properties.loadError} showIcon type="error" />;
+  // Note: Explicit null check ensures empty string loadError is treated as an error
+  let blockingBody: React.ReactNode;
+  if (properties.isInitialLoading) {
+    blockingBody = cloneElement(properties.loadingState, {
+      role: 'status',
+      'aria-live': 'polite',
+    });
+  } else if (properties.loadError === null) {
+    blockingBody = null;
+  } else {
+    blockingBody = <Alert description={properties.loadError} showIcon type="error" />;
+  }
 
   return (
     <Modal
@@ -120,7 +141,7 @@ export function ReferenceDataManagementModalScaffold<T extends { key: string }>(
     >
       {blockingBody ?? (
         !properties.isInitialLoading &&
-        !properties.loadError && (
+        properties.loadError === null && (
           <Flex vertical align="start" gap={12}>
             {properties.isRefreshing && (
               <div aria-live="polite" role="status">

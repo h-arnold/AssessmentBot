@@ -97,7 +97,11 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm --prefix src/frontend ci
-      - name: Run builder lint, tests and pipeline
+      - name: Run builder lint
+        run: npm run lint:builder:check
+      - name: Run builder tests
+        run: npm run test:builder:coverage
+      - name: Run builder build
         run: npm run build:production
 
       - name: Upload GAS build artefact

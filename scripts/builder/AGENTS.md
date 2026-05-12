@@ -15,7 +15,6 @@ Applies when editing `scripts/builder/**` and build-pipeline behaviour.
 
 Primary commands:
 
-- `npm run builder:build`
 - `npm run build:gas-bundle`
 - `npm run lint:builder`
 - `npm run test:builder`

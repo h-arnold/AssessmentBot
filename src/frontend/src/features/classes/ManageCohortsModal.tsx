@@ -110,7 +110,6 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
   const cohortQueryOptions = getCohortsQueryOptions() as unknown as UseQueryOptions<Cohort[]>;
 
   const hookResult = useReferenceDataManagement({
-    entityName: 'cohorts',
     entityLabel: 'cohort',
     entityKey: 'cohorts',
     queryOptions: cohortQueryOptions,
