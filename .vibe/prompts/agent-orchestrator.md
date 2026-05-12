@@ -82,7 +82,7 @@ Every subagent handoff **must** include:
 
 **Principle:** Only prompt subagents to read documentation directly related to the task at hand. Do **not** include documentation that the subagent is already required to read per its own instructions.
 
-**What to include in `Files read`:**
+**What to include in `Mandatory Reading`:**
 
 | Documentation Type                                             | Include? | Rationale                                        |
 | -------------------------------------------------------------- | -------- | ------------------------------------------------ |
@@ -151,7 +151,7 @@ Write your findings as a structured list to the scratchpad as `task-docs.md`. Re
 Include file paths and URLs only — no analysis or interpretation.
 ```
 
-Use the scratchpad file to populate the task-specific `Files read` section for the primary agent delegation.
+Use the scratchpad file to populate the task-specific `Mandatory Reading` section for the primary agent delegation.
 
 **When to use this:**
 
@@ -256,7 +256,7 @@ For changes with unclear scope or dependencies, first use Kif to discover releva
 
 ### 6.2 Task Execution Phase
 
-Delegate to the most appropriate agent with a **WHAT**-focused prompt and task-specific `Files read`:
+Delegate to the most appropriate agent with a **WHAT**-focused prompt and task-specific `Mandatory Reading`:
 
 - **For test work**: "Testing Specialist, add tests for [behaviour]. Follow idiomatic testing patterns and meet coverage thresholds."
 - **For code changes**: "Implementation, implement [feature/fix]. Follow all applicable module standards and ensure all validation passes."
