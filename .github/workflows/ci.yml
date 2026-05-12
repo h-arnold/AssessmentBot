@@ -72,11 +72,8 @@ jobs:
       - name: Install root dependencies
         run: npm ci
 
-      - name: Install frontend dependencies
-        run: npm --prefix src/frontend ci
-
       - name: Run backend tests
-        run: npm test
+        run: npm run test:backend:coverage
 
   builder-checks:
     name: Builder checks
