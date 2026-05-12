@@ -330,8 +330,6 @@ Frontend tests:
 
 - Extend the existing classes CRUD Playwright suites so the migrated scaffold callers keep the visible create-action contract in a real browser.
 
-### Status: IN PROGRESS - Section 4 started
-
 ### Constraints
 
 - Reuse the existing modal-specific Playwright files rather than creating a parallel harness.
@@ -451,7 +449,7 @@ These tests fail due to Ant Design v6 default styling causing horizontal offset 
 
 - Verify that the scaffold extraction and create-action standard land without breaking the current classes reference-data modal behaviour.
 
-### Status: IN PROGRESS
+### Status: COMPLETE
 
 ### Constraints
 
@@ -486,8 +484,8 @@ These tests fail due to Ant Design v6 default styling causing horizontal offset 
 - [x] regression gate passed (ZERO regressions, ZERO new failures)
 - [x] checks passed
 - [x] action plan updated
-- [ ] commit created
-- [ ] push completed
+- [x] commit created (f0d1674 - "chore: complete Section 4 - regression and contract hardening for reference-data modal family")
+- [x] push completed (pushed to origin/chore/standariseReferenceDataModal)
 
 ### Implementation notes / deviations / follow-up
 
