@@ -237,3 +237,42 @@ This section supersedes the earlier Section 9.7 defer decision for the specific 
 - Owning path: `src/frontend/src/features/classes/BulkDeleteModal.tsx`, `src/frontend/src/pages/AssignmentsPage.tsx`
 - Status: `Implemented`
 - Rationale: both confirmation flows remain workflow-specific one-offs whose copy and footer semantics do not yet justify a shared abstraction
+
+### 9.9 Classes reference-data modal add-action standard
+
+1. Helper or contract: reference-data modal scaffold
+
+- Decision: new
+- Owning path: `src/frontend/src/features/classes/ReferenceDataManagementModalScaffold.tsx`
+- Status: `Implemented`
+- Rationale: `ManageCohortsModal.tsx` and `ManageYearGroupsModal.tsx` now reuse the extracted scaffold for modal shell composition, standard Cancel/close wiring, start-aligned content-width create-action presentation, and slot placement; a topic reference-data modal is an accepted next sibling caller
+
+2. Helper or contract: existing inline dialog and reference-data helper family
+
+- Decision: reuse
+- Owning path: `src/frontend/src/features/classes/manageReferenceDataDialogs.tsx`, `src/frontend/src/features/classes/manageReferenceDataHelpers.ts`, `src/frontend/src/features/classes/InlineDialog.tsx`
+- Status: `Implemented`
+- Rationale: the extracted scaffold composes the existing dialog and workflow helper family rather than replacing it, because those modules already own the inner-dialog contract and reference-data workflow helpers coherently; the scaffold uses these helpers for inline form and delete dialog slots
+
+3. Helper or contract: `ReferenceDataTrustBoundary` type extension in `manageReferenceDataHelpers.ts`
+
+- Decision: extend (planned for future topic caller)
+- Owning path: `src/frontend/src/features/classes/manageReferenceDataHelpers.ts`
+- Status: `Not implemented`
+- Rationale: the `ReferenceDataTrustBoundary` union type currently covers `'cohorts' | 'yearGroups'`; when the accepted next topic reference-data modal caller is implemented, `'topics'` must be added to this union so the blocking-load trust-boundary helpers (`getPersistedBlockingLoadError`, `setPersistedBlockingLoadError`, `clearPersistedBlockingLoadError`, `syncReferenceDataModalBusyState`) work correctly for the topic entity; this is a deliberate deferred extension, not a speculative abstraction
+
+### 9.10 Section 5 de-sloppification: classes reference-data loading and test constants
+
+1. Helper or contract: ReferenceDataInitialLoadingState (shared loading skeleton component)
+
+- Decision: new
+- Owning path: `src/frontend/src/features/classes/ReferenceDataInitialLoadingState.tsx`
+- Status: `Implemented`
+- Rationale: Extracted from duplicated ManageCohortsInitialLoadingState and ManageYearGroupsInitialLoadingState functions
+
+2. Helper or contract: Classes CRUD test constants (ALIGNMENT_TOLERANCE_PX, MIN_WIDTH_DIFFERENCE_PX)
+
+- Decision: new
+- Owning path: `src/frontend/e2e-tests/classes-crud.shared.ts`
+- Status: `Implemented`
+- Rationale: Extracted from duplicated definitions in classes-crud-manage-cohorts.spec.ts and classes-crud-manage-year-groups.spec.ts

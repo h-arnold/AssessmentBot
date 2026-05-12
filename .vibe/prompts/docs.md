@@ -30,8 +30,8 @@ Before writing documentation updates, you must:
 3. **Agent guidance maintenance**:
    - Update `AGENTS.md` (or relevant component agent docs) only when new constraints are not discoverable by reading code alone, or when agent instructions are out of date.
    - Do not add bulky discoverable implementation detail to top-level agent files.
-   - Treat `.github/agents` as the source of truth for project-agent behaviour; when those files change, update the corresponding `.codex/agents/*.toml` instructions to preserve behavioural parity for Codex.
-   - When `.github/agents/*` or `.codex/agents/*` files are changed, verify behavioural parity explicitly and treat unresolved drift as incomplete work.
+   - Treat `.vibe/prompts` as the source of truth for project-agent behaviour.
+   - **Keep Code Reviewer docs list synchronised**: The `.vibe/prompts/code-reviewer.md` file maintains a "Key Documentation References" section (Section 1) listing local and external docs for each module. If this work adds, removes, or updates local docs (especially in `docs/developer/frontend/`, `docs/developer/backend/`, or `docs/developer/builder/`), update the corresponding entry in code-reviewer.md to keep the list current.
 
 4. **JSDoc correctness**:
    - Ensure changed public methods/classes have accurate JSDoc descriptions, params, return values, and behaviour notes.

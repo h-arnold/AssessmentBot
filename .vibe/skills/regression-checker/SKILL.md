@@ -85,10 +85,12 @@ task agent=regression-checker task="Session: feat/xyz. Check for regressions."
 
 ## Reports Location
 
-`/tmp/vibe-scratchpad-*/regression-checker/<session-name>/`
+Saved to the agent's scratchpad under `regression-checker/<session-name>/`
 
 - `baseline.json` — First run
 - `report-<timestamp>.json` — Comparison runs
+
+The agent returns the full path of the saved file.
 
 ## Targeted Testing Exception
 

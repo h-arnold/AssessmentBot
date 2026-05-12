@@ -1,5 +1,8 @@
-import { fireEvent, screen } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import React, { useState } from 'react';
+import { vi } from 'vitest';
+import type { TableColumnType } from 'antd';
+import type { ReferenceDataManagementModalScaffoldProperties } from '../../features/classes/ReferenceDataManagementModalScaffold';
 
 /* eslint-disable react-refresh/only-export-components */
 // Note: This file contains test helper functions, not React components.
@@ -11,6 +14,153 @@ import React, { useState } from 'react';
 /**
  * Common test helpers for modal components in the classes feature.
  */
+
+// ---------------------------------------------------------------------------
+// ReferenceDataManagementModalScaffold test helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Default test entity type for ReferenceDataManagementModalScaffold tests.
+ */
+export type TestEntity = {
+  key: string;
+  name: string;
+};
+
+/**
+ * Default test columns for ReferenceDataManagementModalScaffold tests.
+ */
+export const defaultScaffoldColumns: TableColumnType<TestEntity>[] = [
+  {
+    title: 'Name',
+    dataIndex: 'name',
+    key: 'name',
+  },
+];
+
+/**
+ * Default test rows for ReferenceDataManagementModalScaffold tests.
+ */
+export const defaultScaffoldRows: TestEntity[] = [
+  { key: 'test-1', name: 'Test Item 1' },
+  { key: 'test-2', name: 'Test Item 2' },
+];
+
+/**
+ * Default loading state element for scaffold tests.
+ */
+export const defaultLoadingStateElement = <div aria-label="Loading items">Loading...</div>;
+
+/**
+ * Default props for ReferenceDataManagementModalScaffold that are shared across tests.
+ * Excludes open, onClose, and onCreate which typically vary per test.
+ */
+export const defaultScaffoldPropertiesBase = {
+  modalTitle: 'Test Modal',
+  modalClassName: 'test-modal',
+  modalWidth: 800,
+  createActionLabel: 'Create item',
+  tableAriaLabel: 'test items',
+  emptyTableCopy: 'No items',
+  refreshStatusCopy: 'Refreshing...',
+} as const;
+
+/**
+ * Builds default scaffold props with common defaults and type safety.
+ *
+ * @template T
+ * @param {object} options Options for building the properties.
+ * @param {Partial<ReferenceDataManagementModalScaffoldProperties<T>>} options.overrides Prop overrides.
+ * @param {T[]} options.rows Row data (defaults to cast defaultScaffoldRows).
+ * @param {TableColumnType<T>[]} options.columns Column definitions (defaults to cast defaultScaffoldColumns).
+ * @param {boolean} [options.includeLoadingState=true] Whether to include default loading state.
+ * @returns {Omit<ReferenceDataManagementModalScaffoldProperties<T>, 'open' | 'onClose' | 'onCreate'>} Scaffold properties without open/onClose/onCreate.
+ */
+export function buildDefaultScaffoldProperties<T extends { key: string }>(
+  options: {
+    overrides?: Partial<ReferenceDataManagementModalScaffoldProperties<T>>;
+    rows?: T[];
+    columns?: TableColumnType<T>[];
+    includeLoadingState?: boolean;
+  } = {}
+): Omit<ReferenceDataManagementModalScaffoldProperties<T>, 'open' | 'onClose' | 'onCreate'> {
+  const { overrides, rows, columns, includeLoadingState = true } = options;
+
+  const finalRows = (rows ?? defaultScaffoldRows) as unknown as T[];
+  const finalColumns = (columns ?? defaultScaffoldColumns) as unknown as TableColumnType<T>[];
+
+  const loadingState = includeLoadingState ? defaultLoadingStateElement : undefined;
+
+  return {
+    ...defaultScaffoldPropertiesBase,
+    isInitialLoading: false,
+    isRefreshing: false,
+    loadError: null,
+    loadingState: loadingState ?? <div>Loading...</div>,
+    rows: finalRows,
+    columns: finalColumns,
+    ...overrides,
+  };
+}
+
+/**
+ * Builds complete scaffold props including open, onClose, and onCreate.
+ *
+ * @template T
+ * @param {object} options Options for building the props.
+ * @param {Partial<ReferenceDataManagementModalScaffoldProperties<T>>} options.overrides Prop overrides.
+ * @param {T[]} options.rows Row data (defaults to cast defaultScaffoldRows).
+ * @param {TableColumnType<T>[]} options.columns Column definitions (defaults to cast defaultScaffoldColumns).
+ * @param {boolean} [options.open=true] Whether the modal is open.
+ * @param {MockInstance} [options.onClose] onClose mock (will create a new mock if not provided).
+ * @param {MockInstance} [options.onCreate] onCreate mock (will create a new mock if not provided).
+ * @returns {ReferenceDataManagementModalScaffoldProperties<T>} Complete scaffold props.
+ */
+export function buildScaffoldProperties<T extends { key: string }>(
+  options: {
+    overrides?: Partial<ReferenceDataManagementModalScaffoldProperties<T>>;
+    rows?: T[];
+    columns?: TableColumnType<T>[];
+    open?: boolean;
+    onClose?: () => void;
+    onCreate?: () => void;
+  } = {}
+): ReferenceDataManagementModalScaffoldProperties<T> {
+  const { overrides, rows, columns, open = true, onClose, onCreate } = options;
+
+  return {
+    open,
+    onClose: onClose ?? (vi.fn() as () => void),
+    onCreate: onCreate ?? (vi.fn() as () => void),
+    ...buildDefaultScaffoldProperties({ overrides, rows, columns }),
+  };
+}
+
+/**
+ * Gets the dialog element from the rendered scaffold.
+ *
+ * @param {string} [title] Expected dialog title (defaults to 'Test Modal').
+ * @returns {HTMLElement} The dialog element.
+ */
+export function getScaffoldDialog(title: string = 'Test Modal'): HTMLElement {
+  return screen.getByRole('dialog', { name: title });
+}
+
+/**
+ * Gets the table element from within the scaffold dialog.
+ *
+ * @param {string} [ariaLabel] Expected table aria-label (defaults to 'test items').
+ * @returns {Promise<HTMLElement>} The table element.
+ */
+export async function getScaffoldTable(ariaLabel: string = 'test items'): Promise<HTMLElement> {
+  const dialog = getScaffoldDialog();
+  // eslint-disable-next-line security/detect-non-literal-regexp
+  return within(dialog).findByRole('table', { name: new RegExp(ariaLabel, 'i') });
+}
+
+// ---------------------------------------------------------------------------
+// Other modal test helpers
+// ---------------------------------------------------------------------------
 
 /**
  * Changes the course-length control value.
@@ -34,7 +184,7 @@ export function changeCourseLength(value: string): void {
 export async function chooseOption(fieldLabel: string, optionLabel: string): Promise<void> {
   // Open the dropdown by clicking on the combobox
   fireEvent.mouseDown(screen.getByRole('combobox', { name: fieldLabel }));
-  
+
   // Find and click the option by its visible text
   // The option might be in a dropdown menu, so we need to find it in the document
   const option = await screen.findByText(optionLabel);
@@ -50,10 +200,10 @@ export async function chooseOption(fieldLabel: string, optionLabel: string): Pro
  */
 export function CreateModalResetHarness<TProperties extends object>({ modalComponent }: Readonly<{ modalComponent: React.ReactElement<TProperties> }>): React.ReactNode {
   const [open, setOpen] = useState(true);
-  
+
   const handleReopen = () => setOpen(true);
   const handleCancel = () => setOpen(false);
-  
+
   // Create a new element with updated props, preserving type safety
   const ModalComponent = modalComponent.type;
   const updatedProperties = {
@@ -62,7 +212,7 @@ export function CreateModalResetHarness<TProperties extends object>({ modalCompo
     onCancel: handleCancel as TProperties extends { onCancel: infer TOnCancel } ? TOnCancel : (() => void),
     key: 'test-harness-modal',
   };
-  
+
   return (
     <>
       <button type="button" onClick={handleReopen} aria-label="Reopen modal">
@@ -93,4 +243,3 @@ export async function assertMessage(message: string): Promise<void> {
 export function assertControlDisabled(role: string, name: string): void {
   expect(screen.getByRole(role, { name })).toBeDisabled();
 }
-

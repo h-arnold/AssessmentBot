@@ -12,6 +12,7 @@ build
 coverage
 test-results/
 nohup.out
+playwright-report/
 
 # Vibe configs - sensitive files
 .env

@@ -3,7 +3,6 @@ description = "Implements code for the orchestrator"
 sandbox_mode = "workspace-write"
 auto_approve = true
 safety = "destructive"
-active_model = "codestral"
 agent_type = "subagent"
 nickname_candidates = ["implementation", "Implementation", "Impl"]
 system_prompt_id = "implementation"

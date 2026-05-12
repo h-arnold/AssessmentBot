@@ -16,9 +16,9 @@ Before planning or editing anything, acquire the local context you need:
 Identify the module or modules in scope and apply only the relevant rules.
 
 Validation requirements:
-- Backend: run `npm run lint` and `npm test`; if backend changes could affect broader integration or legacy UI singleton flows, also run `npm run test:all`.
-- Frontend: run `npm run frontend:lint` and `npm run frontend:test`; for TypeScript changes also run `npm exec tsc -- -b src/frontend/tsconfig.json`; for integration-level frontend changes also run `npm run frontend:test:e2e`.
-- Builder: run `npm run builder:lint`, `npm run builder:test`, and `npm run build`.
+- Backend: run `npm run lint` and `npm test`; if backend changes could affect broader integration or legacy UI singleton flows, also run `npm run test`.
+- Frontend: run `npm run lint:frontend` and `npm run test:frontend`; for TypeScript changes also run `npm exec tsc -- -b src/frontend/tsconfig.json`; for integration-level frontend changes also run `npm run test:frontend:e2e`.
+- Builder: run `npm run lint:builder`, `npm run test:builder`, and `npm run build:production`.
 - If more than one active module is touched, run the relevant validation for each touched module.
 
 Validation rules:

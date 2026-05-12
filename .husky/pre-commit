@@ -1,9 +1,10 @@
 #!/usr/bin/env sh
 
 # Format staged JavaScript and JSON files with Prettier, add them back to the commit,
-# then run ESLint --fix. This keeps formatting consistent for committed files.
+# then run ESLint and TypeScript checks on staged files only. This keeps formatting
+# consistent and validation fast by only checking what changed.
 
-STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E "\.(js|json|md)$" | grep -Ev "^src/(AdminSheet|AssessmentRecordTemplate)/" || true)
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E "\.(js|json|md|ts)$" | grep -Ev "^src/(AdminSheet|AssessmentRecordTemplate)/" || true)
 
 if [ -n "$STAGED_FILES" ]; then
 	echo "Running Prettier on staged files:"
@@ -26,5 +27,36 @@ if [ -n "$STAGED_FILES" ]; then
 	done
 fi
 
-# Run ESLint autofix for remaining JS files and block the commit if it fails.
-npm run lint:fix
+# Get staged files for linting (only .js and .ts files)
+LINT_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E "\.(js|ts)$" | grep -Ev "^src/(AdminSheet|AssessmentRecordTemplate)/" || true)
+
+if [ -n "$LINT_FILES" ]; then
+	echo "Linting staged files only..."
+	
+	# Separate files by component and run appropriate linters
+	BACKEND_FILES=$(echo "$LINT_FILES" | grep -E "^(src/backend|tests)/.*\.js$" || true)
+	FRONTEND_FILES=$(echo "$LINT_FILES" | grep -E "^src/frontend/.*\.(js|ts|tsx|jsx)$" || true)
+	BUILDER_FILES=$(echo "$LINT_FILES" | grep -E "^scripts/builder/.*\.ts$" || true)
+	
+	# ESLint backend staged files with the main config
+	if [ -n "$BACKEND_FILES" ]; then
+		echo "Checking backend staged files..."
+		npx eslint --config eslint.config.js --fix $BACKEND_FILES || exit 1
+	fi
+	
+	# ESLint frontend staged files
+	if [ -n "$FRONTEND_FILES" ]; then
+		echo "Checking frontend staged files..."
+		npx eslint --config eslint.config.js --fix $FRONTEND_FILES || exit 1
+	fi
+	
+	# ESLint builder staged files
+	if [ -n "$BUILDER_FILES" ]; then
+		echo "Checking builder staged files..."
+		npx eslint --config scripts/builder/eslint.config.js --fix $BUILDER_FILES || exit 1
+	fi
+fi
+
+# TypeScript build check for builder (catches type errors early)
+echo "Running TypeScript build check..."
+npm run builder:compile || exit 1

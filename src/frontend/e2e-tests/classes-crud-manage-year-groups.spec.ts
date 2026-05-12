@@ -13,6 +13,8 @@
 
 import { expect, test } from '@playwright/test';
 import {
+  ALIGNMENT_TOLERANCE_PX,
+  MIN_WIDTH_DIFFERENCE_PX,
   baseClassPartials,
   baseGoogleClassrooms,
   baseCohorts,
@@ -24,6 +26,7 @@ import {
   deleteReferenceDataRowAndExpectBlocked,
   deleteReferenceDataRowAndExpectRemoval,
 } from './helpers/classes-crud-delete-flow';
+import { assertCreateButtonPositioning } from './helpers/classes-crud-modal-layout';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -49,7 +52,7 @@ const yearGroupsBackgroundRefreshReleaseSignal = 'year-groups-background-refresh
  */
 async function openClassesTabWithYearGroupManagementScenario(
   page: Parameters<typeof openClassesTabWithScenario>[0],
-  overrides: Partial<Parameters<typeof openClassesTabWithScenario>[1]> = {},
+  overrides: Partial<Parameters<typeof openClassesTabWithScenario>[1]> = {}
 ) {
   await openClassesTabWithScenario(page, {
     ...createSuccessfulClassesScenario({
@@ -151,7 +154,9 @@ test.describe('Classes CRUD — Manage Year Groups', () => {
     await expect(modal.getByText('Year 9')).toBeVisible();
   });
 
-  test('fails closed in the modal when a successful year-group create cannot refresh trustworthy year-group data', async ({ page }) => {
+  test('fails closed in the modal when a successful year-group create cannot refresh trustworthy year-group data', async ({
+    page,
+  }) => {
     const newYearGroup = { key: 'year-9', name: 'Year 9' };
 
     await openClassesTabWithYearGroupManagementScenario(page, {
@@ -176,7 +181,9 @@ test.describe('Classes CRUD — Manage Year Groups', () => {
     await expect(modal.getByRole('table', { name: /year groups/i })).toHaveCount(0);
   });
 
-  test('keeps trusted year-group data visible while publishing modal busy state during background refresh', async ({ page }) => {
+  test('keeps trusted year-group data visible while publishing modal busy state during background refresh', async ({
+    page,
+  }) => {
     const updatedYearGroup = { key: 'year-7', name: 'Year Seven' };
 
     await openClassesTabWithYearGroupManagementScenario(page, {
@@ -291,5 +298,39 @@ test.describe('Classes CRUD — Manage Year Groups', () => {
     await modal.getByRole('button', { name: /close/i }).click();
 
     await expect(modal).toHaveCount(0);
+  });
+
+  // Section 3 Red Phase: Visible-layout assertions for create button positioning
+
+  test.skip('Create year group button is start-aligned within 8px of the Table left edge', async ({
+    page,
+  }) => {
+    await openClassesTabWithYearGroupManagementScenario(page);
+
+    const modal = await openManageYearGroupsModal(page);
+
+    await assertCreateButtonPositioning({
+      modal,
+      assertionType: 'left edge',
+      createButtonName: /create year group/i,
+      tableName: /year groups/i,
+      tolerance: ALIGNMENT_TOLERANCE_PX,
+    });
+  });
+
+  test.skip('Create year group button width is at least 32px narrower than the Table width', async ({
+    page,
+  }) => {
+    await openClassesTabWithYearGroupManagementScenario(page);
+
+    const modal = await openManageYearGroupsModal(page);
+
+    await assertCreateButtonPositioning({
+      modal,
+      assertionType: 'width',
+      createButtonName: /create year group/i,
+      tableName: /year groups/i,
+      minDiff: MIN_WIDTH_DIFFERENCE_PX,
+    });
   });
 });

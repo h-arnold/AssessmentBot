@@ -47,10 +47,10 @@ jobs:
         run: npm --prefix src/frontend ci
 
       - name: Run frontend tests
-        run: npm run frontend:test
+        run: npm run test:frontend
 
       - name: Run frontend coverage gate
-        run: npm run frontend:test:coverage
+        run: npm run test:frontend:coverage
 
   backend-checks:
     name: Backend checks
@@ -73,7 +73,7 @@ jobs:
         run: npm ci
 
       - name: Run backend tests
-        run: npm test
+        run: npm run test:backend:coverage
 
   builder-checks:
     name: Builder checks
@@ -97,8 +97,12 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm --prefix src/frontend ci
-      - name: Run builder lint, tests and pipeline
-        run: npm run builder:ci
+      - name: Run builder lint
+        run: npm run lint:builder:check
+      - name: Run builder tests
+        run: npm run test:builder:coverage
+      - name: Run builder build
+        run: npm run build:production
 
       - name: Upload GAS build artefact
         uses: actions/upload-artifact@v4

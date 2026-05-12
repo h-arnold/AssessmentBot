@@ -79,7 +79,7 @@ Establish a baseline for later comparison:
 task agent=loc-counter task="Baseline: src --name my-refactor"
 ```
 
-Baseline saved to `/tmp/vibe-scratchpad-*/loc-counter/<name>/baseline.json`
+Baseline saved to the agent's scratchpad under `loc-counter/<name>/baseline.json`
 
 ### 4. Check Reduction
 
@@ -141,8 +141,7 @@ All actions return JSON to stdout and save a report file.
 
 ## Report Location
 
-All reports saved to:
-`/tmp/vibe-scratchpad-*/loc-counter/<session-name>/`
+All reports saved to the agent's scratchpad under `loc-counter/<session-name>/`
 
 - `baseline.json` — Baseline counts
 - `report-<timestamp>.json` — Comparison reports

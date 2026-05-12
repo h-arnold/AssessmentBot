@@ -14,6 +14,8 @@
 
 import { expect, test } from '@playwright/test';
 import {
+  ALIGNMENT_TOLERANCE_PX,
+  MIN_WIDTH_DIFFERENCE_PX,
   baseClassPartials,
   baseGoogleClassrooms,
   baseYearGroups,
@@ -25,6 +27,10 @@ import {
   deleteReferenceDataRowAndExpectBlocked,
   deleteReferenceDataRowAndExpectRemoval,
 } from './helpers/classes-crud-delete-flow';
+import {
+  assertCreateButtonPositioning,
+  assertTransientStateResetOnClose,
+} from './helpers/classes-crud-modal-layout';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -62,7 +68,7 @@ const cohortsBackgroundRefreshReleaseSignal = 'cohorts-background-refresh';
  */
 async function openClassesTabWithCohortManagementScenario(
   page: Parameters<typeof openClassesTabWithScenario>[0],
-  overrides: Partial<Parameters<typeof openClassesTabWithScenario>[1]> = {},
+  overrides: Partial<Parameters<typeof openClassesTabWithScenario>[1]> = {}
 ) {
   await openClassesTabWithScenario(page, {
     ...createSuccessfulClassesScenario({
@@ -170,7 +176,9 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
     await expect(modal.getByText('Cohort 2026')).toBeVisible();
   });
 
-  test('fails closed in the modal when a successful cohort create cannot refresh trustworthy cohort data', async ({ page }) => {
+  test('fails closed in the modal when a successful cohort create cannot refresh trustworthy cohort data', async ({
+    page,
+  }) => {
     const newCohort = {
       key: 'cohort-2026',
       name: 'Cohort 2026',
@@ -201,8 +209,9 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
     await expect(modal.getByRole('table', { name: /cohorts/i })).toHaveCount(0);
   });
 
-
-  test('keeps trusted cohort data visible while publishing modal busy state during background refresh', async ({ page }) => {
+  test('keeps trusted cohort data visible while publishing modal busy state during background refresh', async ({
+    page,
+  }) => {
     const toggledCohort = {
       key: 'cohort-2025',
       name: 'Cohort 2025',
@@ -357,5 +366,85 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
     await modal.getByRole('button', { name: /close/i }).click();
 
     await expect(modal).toHaveCount(0);
+  });
+
+  // Section 3 Red Phase: Visible-layout assertions for create button positioning
+
+  test.skip('Create cohort button is start-aligned within 8px of the Table left edge', async ({
+    page,
+  }) => {
+    await openClassesTabWithCohortManagementScenario(page);
+
+    const modal = await openManageCohortsModal(page);
+
+    await assertCreateButtonPositioning({
+      modal,
+      assertionType: 'left edge',
+      createButtonName: /create cohort/i,
+      tableName: /cohorts/i,
+      tolerance: ALIGNMENT_TOLERANCE_PX,
+    });
+  });
+
+  test.skip('Create cohort button width is at least 32px narrower than the Table width', async ({
+    page,
+  }) => {
+    await openClassesTabWithCohortManagementScenario(page);
+
+    const modal = await openManageCohortsModal(page);
+
+    await assertCreateButtonPositioning({
+      modal,
+      assertionType: 'width',
+      createButtonName: /create cohort/i,
+      tableName: /cohorts/i,
+      minDiff: MIN_WIDTH_DIFFERENCE_PX,
+    });
+  });
+
+  // Section 3: Transient state reset tests
+
+  test('Cancel footer button dismisses the modal and reopening starts from a clean ready state', async ({
+    page,
+  }) => {
+    await assertTransientStateResetOnClose({
+      page,
+      setupScenario: () => openClassesTabWithCohortManagementScenario(page),
+      closeMethod: 'Cancel',
+    });
+  });
+
+  // Section 3: Close icon route with transient inline UI
+
+  test('Close icon dismisses modal with transient inline UI and reopening starts from a clean ready state', async ({
+    page,
+  }) => {
+    await assertTransientStateResetOnClose({
+      page,
+      setupScenario: () => openClassesTabWithCohortManagementScenario(page),
+      closeMethod: 'close icon',
+    });
+  });
+
+  // Section 3: Mask close route
+
+  test('Mask close dismisses modal when maskClosable is enabled', async ({ page }) => {
+    await assertTransientStateResetOnClose({
+      page,
+      setupScenario: () => openClassesTabWithCohortManagementScenario(page),
+      closeMethod: 'mask',
+    });
+  });
+
+  // Section 3: Keyboard close route
+
+  test('Keyboard Escape dismisses modal and reopening starts from a clean ready state', async ({
+    page,
+  }) => {
+    await assertTransientStateResetOnClose({
+      page,
+      setupScenario: () => openClassesTabWithCohortManagementScenario(page),
+      closeMethod: 'Escape',
+    });
   });
 });

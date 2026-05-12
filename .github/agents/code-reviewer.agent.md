@@ -100,14 +100,14 @@ npm run lint
 
 **Frontend**:
 ```bash
-npm run frontend:lint
+npm run lint:frontend
 npm exec tsc -- -b src/frontend/tsconfig.json
 ```
 
 **Builder**:
 ```bash
-npm run builder:lint
-npm run build
+npm run lint:builder
+npm run build:production
 ```
 
 Use `read/problems` to surface any IDE-detected errors. Use `sonarqube_analyzeFile` on changed files. Do not ignore warnings; explain them.
@@ -121,23 +121,23 @@ Run tests and collect coverage for every module touched.
 npm test
 vitest run --coverage
 ```
-Use `npm run test:all` to include legacy UI tests when reviewing changes that could affect UI-related singletons.
+Use `npm run test` to include legacy UI tests when reviewing changes that could affect UI-related singletons.
 
 **Frontend**:
 ```bash
-npm run frontend:test
-npm run frontend:test:coverage
+npm run test:frontend
+npm run test:frontend:coverage
 ```
 Frontend E2E tests (Playwright) should be run when reviewing integration-level changes:
 ```bash
-npm run frontend:test:e2e
+npm run test:frontend:e2e
 ```
-If Chromium or its system dependencies are missing, install them first with `npm --prefix src/frontend exec -- playwright install --with-deps chromium`, then rerun `npm run frontend:test:e2e`. Do not mark the review clean until the Playwright run passes for any user-visible interaction or browser integration change.
+If Chromium or its system dependencies are missing, install them first with `npm --prefix src/frontend exec -- playwright install --with-deps chromium`, then rerun `npm run test:frontend:e2e`. Do not mark the review clean until the Playwright run passes for any user-visible interaction or browser integration change.
 
 **Builder**:
 ```bash
-npm run builder:test
-npm run builder:test:coverage
+npm run test:builder
+npm run test:builder:coverage
 ```
 
 Review coverage output to verify that new logic is exercised. Flag any significant untested paths as at least a 🟡 Improvement.

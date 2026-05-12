@@ -8,10 +8,12 @@
 
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { QueryClientProvider } from '@tanstack/react-query';
 import type { Cohort } from '../../services/referenceData.zod';
 import { queryKeys } from '../../query/queryKeys';
 import { createAppQueryClient } from '../../query/queryClient';
 import { renderWithFrontendProviders } from '../../test/renderWithFrontendProviders';
+import { StartupWarmupStateProvider } from '../../features/auth/startupWarmupState';
 import { ManageCohortsModal } from './ManageCohortsModal';
 
 const createCohortMock = vi.hoisted(() => vi.fn());
@@ -103,6 +105,113 @@ function getManageCohortsModalDialog() {
  */
 async function findManageCohortsModalDialog() {
   return screen.findByRole('dialog', { name: 'Manage Cohorts' });
+}
+
+/**
+ * Closes the modal via the specified method.
+ *
+ * @param {object} options Close options.
+ * @param {'Cancel' | 'close icon' | 'mask' | 'Escape'} options.closeMethod How to close the modal.
+ * @param {HTMLElement} options.dialog The modal dialog element.
+ * @param {string} options.modalTitle Modal title for finding the dialog.
+ * @returns {Promise<void>}
+ */
+async function closeModalViaMethod(options: {
+  closeMethod: 'Cancel' | 'close icon' | 'mask' | 'Escape';
+  dialog: HTMLElement;
+  modalTitle: string;
+}): Promise<void> {
+  const { closeMethod, dialog, modalTitle } = options;
+
+  switch (closeMethod) {
+    case 'Cancel': {
+      const footerCancel = screen.getAllByRole('button', { name: /cancel/i }).find(
+        (button) => button.closest('.ant-modal-footer') !== null
+      );
+      expect(footerCancel).toBeDefined();
+      fireEvent.click(footerCancel!);
+      break;
+    }
+    case 'close icon': {
+      const closeIcon = within(dialog).getByRole('button', { name: /close/i });
+      fireEvent.click(closeIcon);
+      break;
+    }
+    case 'mask': {
+      const mask = screen.getByRole('dialog', { name: modalTitle }).closest('.ant-modal-wrap')?.querySelector('.ant-modal-mask');
+      expect(mask).toBeDefined();
+      fireEvent.click(mask!);
+      break;
+    }
+    case 'Escape': {
+      fireEvent.keyDown(screen.getByRole('dialog', { name: modalTitle }), { key: 'Escape', code: 'Escape' });
+      break;
+    }
+    default: {
+      throw new Error(`Unknown close method: ${closeMethod}`);
+    }
+  }
+}
+
+/**
+ * Tests that transient inline-dialog state is reset when modal closes and reopens.
+ *
+ * Encapsulates the common pattern for testing transient state reset:
+ * 1. Sets up queryClient with seed data
+ * 2. Renders the modal
+ * 3. Opens the create dialog
+ * 4. Closes via the specified method
+ * 5. Reopens the modal
+ * 6. Verifies clean state (table visible, create form not visible)
+ *
+ * @param {object} options Test options.
+ * @param {'Cancel' | 'close icon' | 'mask' | 'Escape'} options.closeMethod How to close the modal.
+ * @param {string} [options.modalTitle='Manage Cohorts'] Modal title for finding the dialog.
+ * @param {Cohort[]} [options.seedData=seedCohorts] Seed data for queryClient.
+ * @returns {Promise<void>}
+ */
+async function assertTransientStateReset(options: {
+  closeMethod: 'Cancel' | 'close icon' | 'mask' | 'Escape';
+  modalTitle?: string;
+  seedData?: Cohort[];
+}): Promise<void> {
+  const { closeMethod, modalTitle = 'Manage Cohorts', seedData = seedCohorts } = options;
+
+  // Setup queryClient with seed data
+  const queryClient = createAppQueryClient();
+  queryClient.setQueryData(queryKeys.cohorts(), seedData);
+  getCohortsMock.mockResolvedValue(seedData);
+
+  // Render modal
+  const { rerender } = renderWithFrontendProviders(
+    <ManageCohortsModal open={true} onClose={onCloseMock} />,
+    { queryClient }
+  );
+
+  const dialog = await screen.findByRole('dialog', { name: modalTitle });
+
+  // Open create dialog
+  fireEvent.click(within(dialog).getByRole('button', { name: /create cohort/i }));
+  await screen.findByRole('dialog', { name: /create cohort/i });
+
+  // Close via specified method
+  await closeModalViaMethod({ closeMethod, dialog, modalTitle });
+  expect(onCloseMock).toHaveBeenCalledOnce();
+
+  // Reopen modal
+  onCloseMock.mockClear();
+  rerender(
+    <QueryClientProvider client={queryClient}>
+      <StartupWarmupStateProvider warmupState="ready">
+        <ManageCohortsModal open={true} onClose={onCloseMock} />
+      </StartupWarmupStateProvider>
+    </QueryClientProvider>
+  );
+  const reopenedDialog = await screen.findByRole('dialog', { name: modalTitle });
+
+  // Verify clean state: table visible, create form not visible
+  await within(reopenedDialog).findByRole('table', { name: /cohorts/i });
+  expect(screen.queryByRole('dialog', { name: /create cohort/i })).not.toBeInTheDocument();
 }
 
 /**
@@ -205,9 +314,8 @@ describe('ManageCohortsModal', () => {
 
         await waitFor(() => {
           expect(getCohortsMock).toHaveBeenCalledTimes(1);
+          expect(dialog).toHaveAttribute('aria-busy', 'true');
         });
-
-        expect(dialog).toHaveAttribute('aria-busy', 'true');
         expect(within(dialog).getByText('Refreshing cohorts...')).toBeInTheDocument();
         expect(within(dialog).getByRole('button', { name: /create cohort/i })).toBeInTheDocument();
         expect(within(dialog).getByRole('table', { name: /cohorts/i })).toBeInTheDocument();
@@ -286,6 +394,13 @@ describe('ManageCohortsModal', () => {
       const dialog = await findManageCohortsModalDialog();
       await within(dialog).findByRole('table', { name: /cohorts/i });
       expect(within(dialog).getByRole('button', { name: /create cohort/i })).toBeInTheDocument();
+    });
+
+    it('exposes data-testid="reference-data-create-action-icon" on the create action', async () => {
+      renderManageCohortsModal();
+      const dialog = await findManageCohortsModalDialog();
+      await within(dialog).findByRole('table', { name: /cohorts/i });
+      expect(within(dialog).getByTestId('reference-data-create-action-icon')).toBeInTheDocument();
     });
 
     it('opens a blank cohort form modal when the Create cohort button is clicked', async () => {
@@ -445,6 +560,76 @@ describe('ManageCohortsModal', () => {
           expect.objectContaining({ throwOnError: true }),
         );
       });
+    });
+  });
+
+  describe('transient state reset via scaffold-owned close paths', () => {
+    it('resets transient inline-dialog state when closed via Cancel and reopened', () =>
+      assertTransientStateReset({ closeMethod: 'Cancel' }));
+
+    it('resets transient inline-dialog state when closed via close icon and reopened', () =>
+      assertTransientStateReset({ closeMethod: 'close icon' }));
+  });
+
+  describe('toggle-error alert clearing', () => {
+    it('clears toggle-error alert when modal closes through scaffold-owned close path and does not persist after reopen', async () => {
+      const queryClient = createAppQueryClient();
+      const cohortData = [
+        {
+          key: 'cohort-1',
+          name: 'Cohort 1',
+          active: true,
+          startYear: 2025,
+          startMonth: 9,
+        },
+      ];
+      queryClient.setQueryData(queryKeys.cohorts(), cohortData);
+      getCohortsMock.mockResolvedValue(cohortData);
+
+      const { rerender } = renderWithFrontendProviders(
+        <ManageCohortsModal open={true} onClose={onCloseMock} />,
+        { queryClient }
+      );
+
+      const dialog = await findManageCohortsModalDialog();
+      const table = await within(dialog).findByRole('table', { name: /cohorts/i });
+
+      // Trigger a toggle error by simulating a failed toggle
+      const activeRow = within(table).getByRole('row', { name: /cohort 1/i });
+      updateCohortMock.mockRejectedValueOnce(new Error('Toggle failed'));
+      fireEvent.click(within(activeRow).getByRole('switch'));
+
+      // Wait for the toggle error to appear
+      await waitFor(() => {
+        const alert = within(dialog).getByRole('alert');
+        expect(alert).toBeInTheDocument();
+        // The error message from the mocked rejection is 'Toggle failed'
+        expect(alert.textContent).toContain('Toggle failed');
+      });
+
+      // Close via Cancel (scaffold-owned) - use the outer modal's Cancel button in the footer
+      // We need to get the Cancel button from the footer of the outer modal, not from the inline dialog
+      const footerCancel = within(dialog).getAllByRole('button', { name: /cancel/i }).find(
+        (button) => button.closest('.ant-modal-footer') !== null
+      );
+      expect(footerCancel).toBeDefined();
+      fireEvent.click(footerCancel!);
+      expect(onCloseMock).toHaveBeenCalledOnce();
+
+      // Reopen modal
+      onCloseMock.mockClear();
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <StartupWarmupStateProvider warmupState="ready">
+            <ManageCohortsModal open={true} onClose={onCloseMock} />
+          </StartupWarmupStateProvider>
+        </QueryClientProvider>
+      );
+      const reopenedDialog = await findManageCohortsModalDialog();
+
+      // Verify toggle error is not present
+      expect(within(reopenedDialog).queryByRole('alert')).not.toBeInTheDocument();
+      await within(reopenedDialog).findByRole('table', { name: /cohorts/i });
     });
   });
 

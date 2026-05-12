@@ -62,7 +62,7 @@ When delegating to subagents, specify **WHAT** needs to be accomplished and **WH
 
 Every subagent handoff **must** include:
 
-- `Files read` section with explicit file paths (mandatory)
+- `Mandatory Reading` section with explicit file paths (mandatory)
 - All mandatory documentation required by the subagent's own instructions
 - Constraints and scope boundaries
 - Exact requested outcome
@@ -82,7 +82,7 @@ Every subagent handoff **must** include:
 
 **Principle:** Only prompt subagents to read documentation directly related to the task at hand. Do **not** include documentation that the subagent is already required to read per its own instructions.
 
-**What to include in `Files read`:**
+**What to include in `Mandatory Reading`:**
 
 | Documentation Type                                             | Include? | Rationale                                        |
 | -------------------------------------------------------------- | -------- | ------------------------------------------------ |
@@ -100,7 +100,7 @@ Every subagent handoff **must** include:
 To Testing Specialist for a frontend component:
 
 ```
-Files read:
+Mandatory reading:
 - SPEC.md (section 3.2 covers this feature)
 - ACTION_PLAN.md (section 4)
 - src/frontend/src/features/assessment/ScoringDialog.tsx
@@ -114,7 +114,7 @@ Meet minimum coverage thresholds and follow idiomatic testing patterns.
 To Implementation for a backend service:
 
 ```
-Files read:
+Mandatory reading:
 - SPEC.md (section 2.1)
 - src/backend/Services/AssessmentService.js
 - tests/backend/Services/AssessmentService.test.js
@@ -126,7 +126,7 @@ Follow all applicable module standards and ensure all validation passes.
 To Docs for a new feature:
 
 ```
-Files read:
+Mandatory reading:
 - SPEC.md (full document)
 - src/backend/Models/NewAssessmentModel.js
 - docs/developer/backend/assessment-workflow.md (existing related doc)
@@ -147,11 +147,11 @@ Search:
 - Project docs in docs/developer/ related to [domain/topic]
 - Online documentation for any third-party libraries used (e.g., Ant Design, React, Vitest)
 - All modules and files this change will touch
-Write your findings as a structured list to /tmp/vibe-scratchpad-[request-id]/task-docs.md.
+Write your findings as a structured list to the scratchpad as `task-docs.md`. Return the full path of the file you created.
 Include file paths and URLs only — no analysis or interpretation.
 ```
 
-Use the scratchpad file to populate the task-specific `Files read` section for the primary agent delegation.
+Use the scratchpad file to populate the task-specific `Mandatory Reading` section for the primary agent delegation.
 
 **When to use this:**
 
@@ -174,7 +174,7 @@ Follow these patterns when delegating to each subagent type:
 
 **❌ Don't:**
 
-- "Run `npm run frontend:test` and create tests in `src/frontend/src/features/xyz/Xyz.spec.tsx` using `vi.hoisted()` for mocks"
+- "Run `npm run test:frontend` and create tests in `src/frontend/src/features/xyz/Xyz.spec.tsx` using `vi.hoisted()` for mocks"
 
 **✅ Do:**
 
@@ -186,7 +186,7 @@ Follow these patterns when delegating to each subagent type:
 
 **❌ Don't:**
 
-- "Edit `src/backend/Services/AssessmentService.js`, add `Validate.requireParams` at the start, then run `npm run lint` and `npm test`"
+- "Edit `src/backend/Services/AssessmentService.js`, add `Validate.requireParams` at the start, then run `npm run lint:backend` and `npm run test:backend`"
 
 **✅ Do:**
 
@@ -252,11 +252,11 @@ Process changes in logical units. For each unit, select the appropriate agent(s)
 
 ### 6.1 Context Discovery (Optional)
 
-For changes with unclear scope or dependencies, first use Kif to discover relevant documentation (see Section 4). Use the scratchpad output to build the task-specific `Files read` list.
+For changes with unclear scope or dependencies, first use Kif to discover relevant documentation (see Section 4). Use the scratchpad output to build the task-specific `Mandatory reading` list.
 
 ### 6.2 Task Execution Phase
 
-Delegate to the most appropriate agent with a **WHAT**-focused prompt and task-specific `Files read`:
+Delegate to the most appropriate agent with a **WHAT**-focused prompt and task-specific `Mandatory Reading`:
 
 - **For test work**: "Testing Specialist, add tests for [behaviour]. Follow idiomatic testing patterns and meet coverage thresholds."
 - **For code changes**: "Implementation, implement [feature/fix]. Follow all applicable module standards and ensure all validation passes."
@@ -298,11 +298,9 @@ Delegate to `Code Reviewer`:
 
 For changes that are genuinely trivial:
 
-1. Select the most appropriate agent for the task
-2. Delegate with a clear, outcome-focused prompt and minimal `Files read`
-3. Verify the change is correct (self-check)
-4. Optionally run a quick `Code Reviewer` pass for non-blocking feedback
-5. Mark complete
+1. Make the change yourself.
+2. Verify all checks pass (lint, tests, type-check as applicable).
+3. Do not skip verification, even for trivial changes.
 
 **Trivial change criteria (all must apply):**
 
