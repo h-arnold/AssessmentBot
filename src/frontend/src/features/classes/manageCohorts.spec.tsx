@@ -129,7 +129,7 @@ async function closeModalViaMethod(options: {
         (button) => button.closest('.ant-modal-footer') !== null
       );
       expect(footerCancel).toBeDefined();
-      fireEvent.click(footerCancel);
+      fireEvent.click(footerCancel!);
       break;
     }
     case 'close icon': {
