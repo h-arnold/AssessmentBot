@@ -525,8 +525,8 @@ These tests fail due to Ant Design v6 default styling causing horizontal offset 
 - [x] regression gate passed (ZERO regressions, ZERO new failures)
 - [x] checks passed
 - [x] action plan updated
-- [ ] commit created
-- [ ] push completed
+- [x] commit created (03800eb - "chore: complete Section 5 - de-sloppification pass for reference-data modal family")
+- [x] push completed (pushed to origin/chore/standariseReferenceDataModal)
 
 ### Implementation notes / deviations / follow-up
 
