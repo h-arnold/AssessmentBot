@@ -573,9 +573,13 @@ describe('ManageCohortsModal', () => {
         expect(alert.textContent).toContain('Toggle failed');
       });
 
-      // Close via Cancel (scaffold-owned) - use the outer modal's Cancel button
-      const footerCancel = within(dialog).getAllByRole('button', { name: /cancel/i })[0];
-      fireEvent.click(footerCancel);
+      // Close via Cancel (scaffold-owned) - use the outer modal's Cancel button in the footer
+      // We need to get the Cancel button from the footer of the outer modal, not from the inline dialog
+      const footerCancel = within(dialog).getAllByRole('button', { name: /cancel/i }).find(
+        (button) => button.closest('.ant-modal-footer') !== null
+      );
+      expect(footerCancel).toBeDefined();
+      fireEvent.click(footerCancel!);
       expect(onCloseMock).toHaveBeenCalledOnce();
 
       // Reopen modal
