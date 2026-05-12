@@ -9,6 +9,8 @@ import { Flex, Skeleton } from 'antd';
 
 export type ReferenceDataInitialLoadingStateProperties = Readonly<{
   ariaLabel: string;
+  role?: string;
+  'aria-live'?: 'polite' | 'off' | 'assertive';
 }>;
 
 /**
@@ -21,7 +23,7 @@ export function ReferenceDataInitialLoadingState(
   properties: ReferenceDataInitialLoadingStateProperties
 ) {
   return (
-    <output aria-label={properties.ariaLabel}>
+    <output aria-label={properties.ariaLabel} aria-live={properties['aria-live']} role={properties.role}>
       <Flex vertical gap={12}>
         <Skeleton.Button active />
         <Skeleton active paragraph={{ rows: 5 }} title={{ width: '24%' }} />

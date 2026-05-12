@@ -10,9 +10,9 @@
  * entity-typed columns under TypeScript strict mode.
  */
 
+import { cloneElement, useEffect, useRef, type ReactElement } from 'react';
 import { Alert, Button, Flex, Modal, Table, Typography, type TableColumnType } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
-import { createElement, cloneElement, useEffect, useRef, type ReactElement } from 'react';
 import { syncReferenceDataModalBusyState } from './manageReferenceDataHelpers';
 
 const { Text } = Typography;
@@ -30,7 +30,7 @@ export type ReferenceDataManagementModalScaffoldProperties<T extends { key: stri
     isInitialLoading: boolean;
     isRefreshing: boolean;
     loadError: string | null;
-    loadingState: ReactElement;
+    loadingState: React.ReactElement<{ role?: string; 'aria-live'?: 'polite' | 'off' | 'assertive' }>;
     rows: T[];
     columns: TableColumnType<T>[];
     inlineAlert?: ReactElement | null;
@@ -82,8 +82,9 @@ export function ReferenceDataManagementModalScaffold<T extends { key: string }>(
   useEffect(() => {
     const currentIsRefreshing = properties.isRefreshing;
     const wasRefreshing = previousIsRefreshingReference.current;
+    const shouldSyncBusyState = currentIsRefreshing !== wasRefreshing && properties.open;
 
-    if (currentIsRefreshing !== wasRefreshing && properties.open) {
+    if (shouldSyncBusyState) {
       // Defer to next macrotask to allow HappyDOM to apply Ant Design classes
       setTimeout(() => {
         syncReferenceDataModalBusyState(
@@ -97,66 +98,12 @@ export function ReferenceDataManagementModalScaffold<T extends { key: string }>(
   }, [properties.isRefreshing, properties.open]);
 
   // Build the blocking body (initial load or error)
-  const blockingBody = (() => {
-    if (properties.isInitialLoading) {
-      // Ensure loadingState has role="status" for accessibility.
-      // Clone the loadingState element to add role="status" and aria-live="polite"
-      // if it doesn't already have them. This ensures tests can find it by role="status".
-      return cloneElement(properties.loadingState, {
+  const blockingBody = properties.isInitialLoading
+    ? cloneElement(properties.loadingState, {
         role: 'status',
         'aria-live': 'polite',
-      } as React.HTMLAttributes<HTMLElement>);
-    }
-
-    if (properties.loadError !== null) {
-      // Use Alert component for error state
-      return createElement(Alert, {
-        description: properties.loadError,
-        showIcon: true,
-        type: 'error',
-      });
-    }
-
-    return null;
-  })();
-
-  // Build the ready-state body
-  const readyBody = (() => {
-    if (properties.isInitialLoading || properties.loadError !== null) {
-      return null;
-    }
-
-    return (
-      <Flex vertical align="start" gap={12}>
-        {properties.isRefreshing ? (
-          <div aria-live="polite" role="status">
-            <Text type="secondary">{properties.refreshStatusCopy}</Text>
-          </div>
-        ) : null}
-        <Button
-          type="primary"
-          onClick={properties.onCreate}
-          icon={
-            <PlusOutlined
-              data-testid="reference-data-create-action-icon"
-              aria-hidden="true"
-            />
-          }
-        >
-          {properties.createActionLabel}
-        </Button>
-        {properties.inlineAlert ?? null}
-        <Table<T>
-          aria-label={properties.tableAriaLabel}
-          dataSource={properties.rows}
-          columns={properties.columns}
-          rowKey="key"
-          pagination={false}
-          locale={{ emptyText: properties.emptyTableCopy }}
-        />
-      </Flex>
-    );
-  })();
+      })
+    : properties.loadError && <Alert description={properties.loadError} showIcon type="error" />;
 
   return (
     <Modal
@@ -171,8 +118,40 @@ export function ReferenceDataManagementModalScaffold<T extends { key: string }>(
       footer={<Button onClick={properties.onClose}>Cancel</Button>}
       width={properties.modalWidth}
     >
-      {blockingBody ?? readyBody}
-      {properties.inlineDialog ?? null}
+      {blockingBody ?? (
+        !properties.isInitialLoading &&
+        !properties.loadError && (
+          <Flex vertical align="start" gap={12}>
+            {properties.isRefreshing && (
+              <div aria-live="polite" role="status">
+                <Text type="secondary">{properties.refreshStatusCopy}</Text>
+              </div>
+            )}
+            <Button
+              type="primary"
+              onClick={properties.onCreate}
+              icon={
+                <PlusOutlined
+                  data-testid="reference-data-create-action-icon"
+                  aria-hidden="true"
+                />
+              }
+            >
+              {properties.createActionLabel}
+            </Button>
+            {properties.inlineAlert}
+            <Table<T>
+              aria-label={properties.tableAriaLabel}
+              dataSource={properties.rows}
+              columns={properties.columns}
+              rowKey="key"
+              pagination={false}
+              locale={{ emptyText: properties.emptyTableCopy }}
+            />
+          </Flex>
+        )
+      )}
+      {properties.inlineDialog}
     </Modal>
   );
 }
