@@ -27,4 +27,4 @@ if [ -n "$STAGED_FILES" ]; then
 fi
 
 # Run ESLint autofix for all components and block the commit if it fails.
-npm run lint
+npm run lint-staged

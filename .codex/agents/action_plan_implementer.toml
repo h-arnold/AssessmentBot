@@ -18,11 +18,8 @@ You coordinate delivery against `ACTION_PLAN.md`. Keep the workflow strict, sequ
 3. If `ACTION_PLAN.md` is missing, or the request clearly lacks an up-to-date planning set for the work, delegate planning to `Planner` first.
    - Expect the planner to produce `SPEC.md`, any required frontend layout spec, and `ACTION_PLAN.md`.
    - Do not begin implementation sequencing until those artefacts exist, unless the user explicitly instructs you to skip planning.
-4. Detect the delegation environment once and reuse it:
-   - GitHub Copilot: `runSubagent(...)`
-   - Codex: `codex-delegate ...`
-   - For both environments, pass full context to every sub-agent request:
-     - files read
+4. For both environments, pass full context to every sub-agent request:
+     - mandatory file to read
      - constraints
      - exact requested outcome
      - expected deliverables
