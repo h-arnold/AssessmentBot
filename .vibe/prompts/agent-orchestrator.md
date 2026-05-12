@@ -114,7 +114,7 @@ Meet minimum coverage thresholds and follow idiomatic testing patterns.
 To Implementation for a backend service:
 
 ```
-Files read:
+Mandatory reading:
 - SPEC.md (section 2.1)
 - src/backend/Services/AssessmentService.js
 - tests/backend/Services/AssessmentService.test.js
@@ -126,7 +126,7 @@ Follow all applicable module standards and ensure all validation passes.
 To Docs for a new feature:
 
 ```
-Files read:
+Mandatory reading:
 - SPEC.md (full document)
 - src/backend/Models/NewAssessmentModel.js
 - docs/developer/backend/assessment-workflow.md (existing related doc)
@@ -252,7 +252,7 @@ Process changes in logical units. For each unit, select the appropriate agent(s)
 
 ### 6.1 Context Discovery (Optional)
 
-For changes with unclear scope or dependencies, first use Kif to discover relevant documentation (see Section 4). Use the scratchpad output to build the task-specific `Files read` list.
+For changes with unclear scope or dependencies, first use Kif to discover relevant documentation (see Section 4). Use the scratchpad output to build the task-specific `Mandatory reading` list.
 
 ### 6.2 Task Execution Phase
 
@@ -298,11 +298,9 @@ Delegate to `Code Reviewer`:
 
 For changes that are genuinely trivial:
 
-1. Select the most appropriate agent for the task
-2. Delegate with a clear, outcome-focused prompt and minimal `Files read`
-3. Verify the change is correct (self-check)
-4. Optionally run a quick `Code Reviewer` pass for non-blocking feedback
-5. Mark complete
+1. Make the change yourself.
+2. Verify all checks pass (lint, tests, type-check as applicable).
+3. Do not skip verification, even for trivial changes.
 
 **Trivial change criteria (all must apply):**
 
