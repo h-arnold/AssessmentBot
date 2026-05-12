@@ -411,11 +411,6 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
       page,
       setupScenario: () => openClassesTabWithCohortManagementScenario(page),
       closeMethod: 'Cancel',
-      managementButtonName: 'Manage Cohorts',
-      modalName: /manage cohorts/i,
-      createFormName: /create cohort/i,
-      tableName: /cohorts/i,
-      createButtonName: /create cohort/i,
     });
   });
 
@@ -428,11 +423,6 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
       page,
       setupScenario: () => openClassesTabWithCohortManagementScenario(page),
       closeMethod: 'close icon',
-      managementButtonName: 'Manage Cohorts',
-      modalName: /manage cohorts/i,
-      createFormName: /create cohort/i,
-      tableName: /cohorts/i,
-      createButtonName: /create cohort/i,
     });
   });
 
@@ -443,11 +433,6 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
       page,
       setupScenario: () => openClassesTabWithCohortManagementScenario(page),
       closeMethod: 'mask',
-      managementButtonName: 'Manage Cohorts',
-      modalName: /manage cohorts/i,
-      createFormName: /create cohort/i,
-      tableName: /cohorts/i,
-      createButtonName: /create cohort/i,
     });
   });
 
@@ -460,11 +445,6 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
       page,
       setupScenario: () => openClassesTabWithCohortManagementScenario(page),
       closeMethod: 'Escape',
-      managementButtonName: 'Manage Cohorts',
-      modalName: /manage cohorts/i,
-      createFormName: /create cohort/i,
-      tableName: /cohorts/i,
-      createButtonName: /create cohort/i,
     });
   });
 });

@@ -54,40 +54,67 @@ export async function assertCreateButtonPositioning(options: {
 // ---------------------------------------------------------------------------
 
 /**
+ * Configuration preset for cohort management modal tests.
+ */
+export const cohortModalConfig = {
+  managementButtonName: 'Manage Cohorts',
+  modalName: /manage cohorts/i,
+  createFormName: /create cohort/i,
+  tableName: /cohorts/i,
+  createButtonName: /create cohort/i,
+} as const;
+
+/**
+ * Configuration preset for year group management modal tests.
+ */
+export const yearGroupModalConfig = {
+  managementButtonName: 'Manage Year Groups',
+  modalName: /manage year groups/i,
+  createFormName: /create year group/i,
+  tableName: /year groups/i,
+  createButtonName: /create year group/i,
+} as const;
+
+/**
+ * Type for transient state reset modal configuration.
+ */
+export type TransientStateResetConfig = {
+  managementButtonName: string;
+  modalName: RegExp;
+  createFormName: RegExp;
+  tableName: RegExp;
+  createButtonName: RegExp;
+};
+
+/**
  * Tests that transient inline-dialog state is reset when modal closes and reopens.
  *
  * @param {object} options Test options.
  * @param {Page} options.page Playwright page.
  * @param {Function} options.setupScenario Function to set up the test scenario (e.g., openClassesTabWithCohortManagementScenario).
  * @param {'Cancel' | 'close icon' | 'mask' | 'Escape'} options.closeMethod How to close the modal.
- * @param {string} options.managementButtonName The name of the button to open the management modal.
- * @param {RegExp} options.modalName The modal name pattern as a RegExp.
- * @param {RegExp} options.createFormName The create form name pattern as a RegExp.
- * @param {RegExp} options.tableName The table name pattern as a RegExp.
- * @param {RegExp} options.createButtonName The create button name pattern as a RegExp.
+ * @param {TransientStateResetConfig} [options.config] Modal configuration (defaults to cohortModalConfig).
  * @returns {Promise<void>}
  */
 export async function assertTransientStateResetOnClose(options: {
   page: Page;
   setupScenario: () => Promise<void>;
   closeMethod: 'Cancel' | 'close icon' | 'mask' | 'Escape';
-  managementButtonName: string;
-  modalName: RegExp;
-  createFormName: RegExp;
-  tableName: RegExp;
-  createButtonName: RegExp;
+  config?: TransientStateResetConfig;
 }): Promise<void> {
+  const config = options.config ?? cohortModalConfig;
+
   // Set up the scenario
   await options.setupScenario();
 
   // Open the modal
-  await options.page.getByRole('button', { name: options.managementButtonName }).click();
-  const modal = options.page.getByRole('dialog', { name: options.modalName });
+  await options.page.getByRole('button', { name: config.managementButtonName }).click();
+  const modal = options.page.getByRole('dialog', { name: config.modalName });
   await expect(modal).toBeVisible();
 
   // Open the create form to establish transient state
-  await modal.getByRole('button', { name: options.createButtonName }).click();
-  const form = options.page.getByRole('dialog', { name: options.createFormName });
+  await modal.getByRole('button', { name: config.createButtonName }).click();
+  const form = options.page.getByRole('dialog', { name: config.createFormName });
   await expect(form).toBeVisible();
 
   // Close via the specified method
@@ -120,12 +147,12 @@ export async function assertTransientStateResetOnClose(options: {
   await expect(modal).toHaveCount(0);
 
   // Reopen the modal
-  await options.page.getByRole('button', { name: options.managementButtonName }).click();
-  const reopenedModal = options.page.getByRole('dialog', { name: options.modalName });
+  await options.page.getByRole('button', { name: config.managementButtonName }).click();
+  const reopenedModal = options.page.getByRole('dialog', { name: config.modalName });
   await expect(reopenedModal).toBeVisible();
 
   // Assert clean ready state: create form should not be visible, table should be visible
-  await expect(reopenedModal.getByRole('dialog', { name: options.createFormName })).toHaveCount(0);
-  await expect(reopenedModal.getByRole('table', { name: options.tableName })).toBeVisible();
-  await expect(reopenedModal.getByRole('button', { name: options.createButtonName })).toBeVisible();
+  await expect(reopenedModal.getByRole('dialog', { name: config.createFormName })).toHaveCount(0);
+  await expect(reopenedModal.getByRole('table', { name: config.tableName })).toBeVisible();
+  await expect(reopenedModal.getByRole('button', { name: config.createButtonName })).toBeVisible();
 }
