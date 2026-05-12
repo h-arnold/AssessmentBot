@@ -20,15 +20,7 @@ import { createCohort, deleteCohort, updateCohort } from '../../services/referen
 import { getCohortsQueryOptions } from '../../query/sharedQueries';
 import { ReferenceDataInitialLoadingState } from './ReferenceDataInitialLoadingState';
 import { ReferenceDataManagementModalScaffold } from './ReferenceDataManagementModalScaffold';
-import {
-  ReferenceDataDeleteDialog,
-  ReferenceDataFormDialog,
-} from './manageReferenceDataDialogs';
 import { useReferenceDataManagement } from './hooks/useReferenceDataManagement';
-import type {
-  FormDialogProperties,
-  DeleteDialogProperties,
-} from './hooks/useReferenceDataManagement';
 
 export type ManageCohortsModalProperties = Readonly<{
   open: boolean;
@@ -106,61 +98,6 @@ function buildCohortColumns(options: Readonly<{
 /**
  * Renders the cohort form dialog.
  *
- * @param {FormDialogProperties<Cohort>} properties Dialog properties.
- * @returns {React.ReactElement | null} Rendered form dialog.
- */
-function renderCohortFormDialog(
-  properties: FormDialogProperties<Cohort>
-): React.ReactElement | null {
-  if (properties.formMode === null) {
-    return null;
-  }
-
-  return (
-    <ReferenceDataFormDialog
-      formKey={properties.editingEntity?.key ?? 'create'}
-      form={properties.form}
-      initialName={properties.editingEntity?.name ?? null}
-      labelId={FORM_DIALOG_LABEL_ID}
-      title={properties.formDialogTitle}
-      formError={properties.formError}
-      formSubmitting={properties.formSubmitting}
-      validationMessage="Please enter a cohort name."
-      onClose={properties.onClose}
-      onFinish={properties.onFinish}
-      onOk={properties.onOk}
-    />
-  );
-}
-
-/**
- * Renders the cohort delete dialog.
- *
- * @param {DeleteDialogProperties<Cohort>} properties Dialog properties.
- * @returns {React.ReactElement | null} Rendered delete dialog.
- */
-function renderCohortDeleteDialog(
-  properties: DeleteDialogProperties<Cohort>
-): React.ReactElement | null {
-  if (!properties.deleteState.open) {
-    return null;
-  }
-
-  return (
-    <ReferenceDataDeleteDialog
-      blocked={properties.deleteState.blocked}
-      entityLabel="cohort"
-      entityName={properties.deleteState.entity?.name ?? null}
-      error={properties.deleteState.error}
-      labelId={DELETE_DIALOG_LABEL_ID}
-      submitting={properties.deleteState.submitting}
-      title="Delete cohort"
-      onClose={properties.onClose}
-      onConfirm={properties.onConfirm}
-    />
-  );
-}
-
 /**
  * Renders the Manage Cohorts modal workflow.
  *
@@ -202,8 +139,9 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
     formValidationMessage: 'Please enter a cohort name.',
     loadFailureCopy: 'Unable to load cohorts right now.',
     refreshStatusCopy: 'Refreshing cohorts...',
-    renderFormDialog: renderCohortFormDialog,
-    renderDeleteDialog: renderCohortDeleteDialog,
+    formDialogLabelId: FORM_DIALOG_LABEL_ID,
+    deleteDialogLabelId: DELETE_DIALOG_LABEL_ID,
+    deleteDialogTitle: 'Delete cohort',
   });
 
   const {

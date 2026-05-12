@@ -24,15 +24,7 @@ import {
 import { getYearGroupsQueryOptions } from '../../query/sharedQueries';
 import { ReferenceDataInitialLoadingState } from './ReferenceDataInitialLoadingState';
 import { ReferenceDataManagementModalScaffold } from './ReferenceDataManagementModalScaffold';
-import {
-  ReferenceDataDeleteDialog,
-  ReferenceDataFormDialog,
-} from './manageReferenceDataDialogs';
 import { useReferenceDataManagement } from './hooks/useReferenceDataManagement';
-import type {
-  FormDialogProperties,
-  DeleteDialogProperties,
-} from './hooks/useReferenceDataManagement';
 
 export type ManageYearGroupsModalProperties = Readonly<{
   open: boolean;
@@ -87,61 +79,6 @@ function buildYearGroupColumns(options: Readonly<{
 /**
  * Renders the year-group form dialog.
  *
- * @param {FormDialogProperties<YearGroup>} properties Dialog properties.
- * @returns {React.ReactElement | null} Rendered form dialog.
- */
-function renderYearGroupFormDialog(
-  properties: FormDialogProperties<YearGroup>
-): React.ReactElement | null {
-  if (properties.formMode === null) {
-    return null;
-  }
-
-  return (
-    <ReferenceDataFormDialog
-      formKey={properties.editingEntity?.key ?? 'create'}
-      form={properties.form}
-      initialName={properties.editingEntity?.name ?? null}
-      labelId={FORM_DIALOG_LABEL_ID}
-      title={properties.formDialogTitle}
-      formError={properties.formError}
-      formSubmitting={properties.formSubmitting}
-      validationMessage="Please enter a year group name."
-      onClose={properties.onClose}
-      onFinish={properties.onFinish}
-      onOk={properties.onOk}
-    />
-  );
-}
-
-/**
- * Renders the year-group delete dialog.
- *
- * @param {DeleteDialogProperties<YearGroup>} properties Dialog properties.
- * @returns {React.ReactElement | null} Rendered delete dialog.
- */
-function renderYearGroupDeleteDialog(
-  properties: DeleteDialogProperties<YearGroup>
-): React.ReactElement | null {
-  if (!properties.deleteState.open) {
-    return null;
-  }
-
-  return (
-    <ReferenceDataDeleteDialog
-      blocked={properties.deleteState.blocked}
-      entityLabel="year group"
-      entityName={properties.deleteState.entity?.name ?? null}
-      error={properties.deleteState.error}
-      labelId={DELETE_DIALOG_LABEL_ID}
-      submitting={properties.deleteState.submitting}
-      title="Delete year group"
-      onClose={properties.onClose}
-      onConfirm={properties.onConfirm}
-    />
-  );
-}
-
 /**
  * Renders the Manage Year Groups modal workflow.
  *
@@ -171,8 +108,9 @@ export function ManageYearGroupsModal(properties: ManageYearGroupsModalPropertie
     formValidationMessage: 'Please enter a year group name.',
     loadFailureCopy: 'Unable to load year groups right now.',
     refreshStatusCopy: 'Refreshing year groups...',
-    renderFormDialog: renderYearGroupFormDialog,
-    renderDeleteDialog: renderYearGroupDeleteDialog,
+    formDialogLabelId: FORM_DIALOG_LABEL_ID,
+    deleteDialogLabelId: DELETE_DIALOG_LABEL_ID,
+    deleteDialogTitle: 'Delete year group',
   });
 
   const {
