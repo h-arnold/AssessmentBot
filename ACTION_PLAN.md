@@ -536,6 +536,47 @@ These tests fail due to Ant Design v6 default styling causing horizontal offset 
 
 ---
 
+## Section 6 — Documentation and rollout notes
+
+### Objective
+
+- Keep the frontend modal and helper standards aligned with the delivered implementation.
+
+### Status: COMPLETE
+
+### Constraints
+
+- Only update documents relevant to the touched classes modal family.
+
+### Acceptance criteria
+
+- Documentation accurately reflects the scaffold boundary, create-action placement, and icon contract.
+- Planned helper entries are reconciled after implementation.
+
+### Required checks
+
+1. Confirm `docs/developer/frontend/frontend-modal-patterns.md` reflects the delivered scaffold boundary and create-action placement and icon contract.
+2. Confirm `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` records the correct scaffold decision and status.
+3. Verify mandatory-read evidence (`Files read`) is complete for delegated docs and review handoffs.
+4. Reconcile planned shared-helper entries in canonical docs: keep `Not implemented` where extraction is still pending, or update the status if implementation delivers the scaffold.
+
+### Section 6 Checklist
+
+- [x] regression baseline established (section-5-de-sloppification baseline)
+- [x] docs updated (frontend-modal-patterns.md and frontend-shared-helpers-and-abstraction-standards.md)
+- [x] docs review clean (Code Reviewer passed - all documentation accurate)
+- [x] checks passed (lint clean, docs verified)
+- [x] action plan updated
+- [x] commit created (e570468 - "docs: update Section 6 - documentation and rollout notes for reference-data modal family")
+- [x] push completed (pushed to origin/chore/standariseReferenceDataModal)
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** Section 6 documentation updates complete. Added ReferenceDataInitialLoadingState.tsx to frontend-modal-patterns.md shared helpers list. Added Section 9.10 to frontend-shared-helpers-and-abstraction-standards.md with two new helper entries: ReferenceDataInitialLoadingState component and Classes CRUD test constants. Code Reviewer passed with clean verdict - all documentation accurately reflects delivered implementation.
+- **Deviations from plan:** None.
+
+---
+
 ## Documentation and rollout notes
 
 ### Objective
