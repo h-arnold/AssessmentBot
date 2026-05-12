@@ -13,7 +13,7 @@
  * tests while maintaining full ARIA semantics and correct Playwright behaviour.
  */
 
-import { Button, Flex, Form, Skeleton, Space, type TableColumnType } from 'antd';
+import { Button, Form, Space, type TableColumnType } from 'antd';
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import type { YearGroup } from '../../services/referenceData.zod';
@@ -35,6 +35,7 @@ import {
   setPersistedBlockingLoadError,
   type BlockingLoadErrorState,
 } from './manageReferenceDataHelpers';
+import { ReferenceDataInitialLoadingState } from './ReferenceDataInitialLoadingState';
 import { ReferenceDataManagementModalScaffold } from './ReferenceDataManagementModalScaffold';
 import {
   ReferenceDataDeleteDialog,
@@ -302,22 +303,6 @@ function getYearGroupFormDialogTitle(formMode: FormMode | null): string {
 }
 
 /**
- * Renders the initial blocking-load treatment for the outer year-groups modal body.
- *
- * @returns {JSX.Element} Loading skeleton content.
- */
-function ManageYearGroupsInitialLoadingState() {
-  return (
-    <output aria-label="Loading year groups">
-      <Flex vertical gap={12}>
-        <Skeleton.Button active />
-        <Skeleton active paragraph={{ rows: 5 }} title={{ width: '24%' }} />
-      </Flex>
-    </output>
-  );
-}
-
-/**
  * Renders the Manage Year Groups modal workflow.
  *
  * @param {ManageYearGroupsModalProperties} properties Component properties.
@@ -460,7 +445,7 @@ export function ManageYearGroupsModal(properties: ManageYearGroupsModalPropertie
       isInitialLoading={isInitialLoading}
       isRefreshing={isRefreshing}
       loadError={loadError}
-      loadingState={<ManageYearGroupsInitialLoadingState />}
+      loadingState={<ReferenceDataInitialLoadingState ariaLabel="Loading year groups" />}
       rows={yearGroups}
       columns={columns}
       inlineAlert={null}

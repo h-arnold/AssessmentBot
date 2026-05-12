@@ -96,8 +96,8 @@ export function ReferenceDataManagementModalScaffold<T extends { key: string }>(
     previousIsRefreshingReference.current = currentIsRefreshing;
   }, [properties.isRefreshing, properties.open]);
 
-  // Build the blocking body (initial load or error) using the pattern from getReferenceDataBlockingBody
-  const blockingBody = (function getBlockingBody() {
+  // Build the blocking body (initial load or error)
+  const blockingBody = (() => {
     if (properties.isInitialLoading) {
       // Ensure loadingState has role="status" for accessibility.
       // Clone the loadingState element to add role="status" and aria-live="polite"
@@ -109,7 +109,7 @@ export function ReferenceDataManagementModalScaffold<T extends { key: string }>(
     }
 
     if (properties.loadError !== null) {
-      // Use Alert component matching the pattern from getReferenceDataBlockingBody helper
+      // Use Alert component for error state
       return createElement(Alert, {
         description: properties.loadError,
         showIcon: true,
@@ -121,7 +121,7 @@ export function ReferenceDataManagementModalScaffold<T extends { key: string }>(
   })();
 
   // Build the ready-state body
-  const readyBody = (function getReadyBody() {
+  const readyBody = (() => {
     if (properties.isInitialLoading || properties.loadError !== null) {
       return null;
     }

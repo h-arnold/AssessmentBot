@@ -494,6 +494,48 @@ These tests fail due to Ant Design v6 default styling causing horizontal offset 
 
 ---
 
+## Section 5 — De-Sloppification Pass
+
+### Objective
+
+- Run mandatory de-sloppification pass after all sections are complete to remove AI-slop, duplication, and unnecessary complexity.
+
+### Status: COMPLETE
+
+### Acceptance criteria
+
+- All de-sloppification findings addressed with minimal, localised changes
+- All tests still pass after cleanup
+- Lint remains clean
+- Code Reviewer approves all changes
+
+### Required cleanup items (from de-sloppification review)
+
+1. Remove unused `getReferenceDataBlockingBody` function from `manageReferenceDataHelpers.ts`
+2. Extract duplicate test constants (`ALIGNMENT_TOLERANCE_PX`, `MIN_WIDTH_DIFFERENCE_PX`) to shared file
+3. Create shared `ReferenceDataInitialLoadingState` component to replace duplicated loading skeletons
+4. Simplify IIFE patterns in `ReferenceDataManagementModalScaffold.tsx`
+5. Update outdated comments in `ReferenceDataManagementModalScaffold.tsx`
+
+### Section 5 Checklist
+
+- [x] regression baseline established (section-4-final-verification baseline)
+- [x] cleanup implemented (Implementation agent addressed all findings)
+- [x] cleanup review clean (Code Reviewer passed - all changes approved)
+- [x] regression gate passed (ZERO regressions, ZERO new failures)
+- [x] checks passed
+- [x] action plan updated
+- [ ] commit created
+- [ ] push completed
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** De-sloppification pass complete. Implementation agent addressed 3 critical and 7 improvement findings. Code Reviewer passed with clean verdict. Changes: Removed dead code (getReferenceDataBlockingBody), extracted shared test constants to classes-crud.shared.ts, created shared ReferenceDataInitialLoadingState component, simplified IIFE patterns, updated outdated comments. Net result: 27 insertions(+), 87 deletions(-).
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** Codebase is now cleaner and more maintainable. Ready for Section 6 (Documentation and rollout notes).
+
+---
+
 ## Documentation and rollout notes
 
 ### Objective

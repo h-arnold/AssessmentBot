@@ -390,3 +390,12 @@ export async function openClassesTabWithScenario(
   await page.goto('/');
   await openClassesTab(page);
 }
+
+// ---------------------------------------------------------------------------
+// Section 3 Test Constants (from REFERENCE_DATA_MODAL_LAYOUT.md)
+// ---------------------------------------------------------------------------
+
+// Alignment tolerance: button left edge must be within 8px of table left edge
+export const ALIGNMENT_TOLERANCE_PX = 8;
+// Width difference: button must be at least 32px narrower than table
+export const MIN_WIDTH_DIFFERENCE_PX = 32;

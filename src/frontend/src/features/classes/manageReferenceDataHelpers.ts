@@ -5,9 +5,7 @@
  * Keep this file local to the classes feature.
  */
 
-import { Alert } from 'antd';
 import type { QueryClient, QueryKey } from '@tanstack/react-query';
-import { createElement, type ReactElement } from 'react';
 import { ApiTransportError } from '../../errors/apiTransportError';
 import {
   getBlockingLoadErrorMessage,
@@ -194,30 +192,4 @@ export function getReferenceDataLoadError(
   return null;
 }
 
-/**
- * Resolves blocking modal-body content for shared reference-data load states.
- *
- * @param {Readonly<{ isInitialLoading: boolean; loadError: string | null; loadingState: ReactElement; }>} properties Body-state properties.
- * @returns {ReactElement | null} Shared blocking body content, or null when ready-state content should render.
- */
-export function getReferenceDataBlockingBody(
-  properties: Readonly<{
-    isInitialLoading: boolean;
-    loadError: string | null;
-    loadingState: ReactElement;
-  }>
-): ReactElement | null {
-  if (properties.isInitialLoading) {
-    return properties.loadingState;
-  }
 
-  if (properties.loadError !== null) {
-    return createElement(Alert, {
-      description: properties.loadError,
-      showIcon: true,
-      type: 'error',
-    });
-  }
-
-  return null;
-}

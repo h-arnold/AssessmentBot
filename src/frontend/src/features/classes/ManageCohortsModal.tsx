@@ -13,7 +13,7 @@
  * tests while maintaining full ARIA semantics and correct Playwright behaviour.
  */
 
-import { Alert, Button, Flex, Form, Skeleton, Space, Switch, type TableColumnType } from 'antd';
+import { Alert, Button, Form, Space, Switch, type TableColumnType } from 'antd';
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import type { Cohort } from '../../services/referenceData.zod';
@@ -31,6 +31,7 @@ import {
   setPersistedBlockingLoadError,
   type BlockingLoadErrorState,
 } from './manageReferenceDataHelpers';
+import { ReferenceDataInitialLoadingState } from './ReferenceDataInitialLoadingState';
 import { ReferenceDataManagementModalScaffold } from './ReferenceDataManagementModalScaffold';
 import {
   ReferenceDataDeleteDialog,
@@ -215,22 +216,6 @@ function renderCohortDeleteDialog(properties: CohortDeleteDialogProperties) {
  */
 function getCohortFormDialogTitle(formMode: FormMode | null): string {
   return formMode === 'create' ? 'Create cohort' : 'Edit cohort';
-}
-
-/**
- * Renders the initial blocking-load treatment for the outer cohorts modal body.
- *
- * @returns {JSX.Element} Loading skeleton content.
- */
-function ManageCohortsInitialLoadingState() {
-  return (
-    <output aria-label="Loading cohorts">
-      <Flex vertical gap={12}>
-        <Skeleton.Button active />
-        <Skeleton active paragraph={{ rows: 5 }} title={{ width: '24%' }} />
-      </Flex>
-    </output>
-  );
 }
 
 type CohortFormFinishHandlerProperties = Readonly<{
@@ -553,7 +538,7 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
       isInitialLoading={isInitialLoading}
       isRefreshing={isRefreshing}
       loadError={loadError}
-      loadingState={<ManageCohortsInitialLoadingState />}
+      loadingState={<ReferenceDataInitialLoadingState ariaLabel="Loading cohorts" />}
       rows={cohorts}
       columns={columns}
       inlineAlert={toggleError === null ? null : <Alert description={toggleError} type="error" showIcon />}
