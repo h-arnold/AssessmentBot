@@ -238,9 +238,7 @@ export function useReferenceDataManagement<T extends { key: string; name: string
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [toggleError, setToggleError] = useState<string | null>(null);
-  const [deleteState, setDeleteState] = useState<DeleteDialogState<T>>(
-    INITIAL_DELETE_STATE as DeleteDialogState<T>
-  );
+  const [deleteState, setDeleteState] = useState<DeleteDialogState<T>>(INITIAL_DELETE_STATE);
 
   // Derived load error state
   const loadError = getReferenceDataLoadError(
@@ -280,7 +278,7 @@ export function useReferenceDataManagement<T extends { key: string; name: string
 
   const openCreateForm = useCallback((): void => {
     closeFormDialog();
-    setDeleteState(INITIAL_DELETE_STATE as DeleteDialogState<T>);
+    setDeleteState(INITIAL_DELETE_STATE);
     setEditingEntity(null);
     setFormError(null);
     // Standardised behaviour: always reset form fields on openCreateForm
@@ -291,7 +289,7 @@ export function useReferenceDataManagement<T extends { key: string; name: string
   const openEditForm = useCallback(
     (entity: T): void => {
       closeFormDialog();
-      setDeleteState(INITIAL_DELETE_STATE as DeleteDialogState<T>);
+      setDeleteState(INITIAL_DELETE_STATE);
       setEditingEntity(entity);
       setFormError(null);
       setFormMode('edit');
@@ -301,13 +299,13 @@ export function useReferenceDataManagement<T extends { key: string; name: string
 
   const handleModalClose = useCallback((): void => {
     closeFormDialog();
-    setDeleteState(INITIAL_DELETE_STATE as DeleteDialogState<T>);
+    setDeleteState(INITIAL_DELETE_STATE);
     setToggleError(null);
   }, [closeFormDialog]);
 
   const handleRequiredRefreshFailure = useCallback((): void => {
     closeFormDialog();
-    setDeleteState(INITIAL_DELETE_STATE as DeleteDialogState<T>);
+    setDeleteState(INITIAL_DELETE_STATE);
     setToggleError(null);
 
     const nextBlockingLoadError: BlockingLoadErrorState = {
@@ -398,7 +396,7 @@ export function useReferenceDataManagement<T extends { key: string; name: string
         return;
       }
 
-      setDeleteState(INITIAL_DELETE_STATE as DeleteDialogState<T>);
+      setDeleteState(INITIAL_DELETE_STATE);
     } catch (error: unknown) {
       const blocked = isInUseError(error);
 
@@ -533,7 +531,7 @@ export function useReferenceDataManagement<T extends { key: string; name: string
     const deleteDialog = renderDeleteDialogFunction({
       deleteState,
       onClose: () => {
-        setDeleteState(INITIAL_DELETE_STATE as DeleteDialogState<T>);
+        setDeleteState(INITIAL_DELETE_STATE);
       },
       onConfirm: handleDeleteConfirm,
     });

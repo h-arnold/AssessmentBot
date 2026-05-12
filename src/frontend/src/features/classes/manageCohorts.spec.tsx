@@ -108,6 +108,52 @@ async function findManageCohortsModalDialog() {
 }
 
 /**
+ * Closes the modal via the specified method.
+ *
+ * @param {object} options Close options.
+ * @param {'Cancel' | 'close icon' | 'mask' | 'Escape'} options.closeMethod How to close the modal.
+ * @param {HTMLElement} options.dialog The modal dialog element.
+ * @param {string} options.modalTitle Modal title for finding the dialog.
+ * @returns {Promise<void>}
+ */
+async function closeModalViaMethod(options: {
+  closeMethod: 'Cancel' | 'close icon' | 'mask' | 'Escape';
+  dialog: HTMLElement;
+  modalTitle: string;
+}): Promise<void> {
+  const { closeMethod, dialog, modalTitle } = options;
+
+  switch (closeMethod) {
+    case 'Cancel': {
+      const footerCancel = screen.getAllByRole('button', { name: /cancel/i }).find(
+        (button) => button.closest('.ant-modal-footer') !== null
+      );
+      expect(footerCancel).toBeDefined();
+      fireEvent.click(footerCancel);
+      break;
+    }
+    case 'close icon': {
+      const closeIcon = within(dialog).getByRole('button', { name: /close/i });
+      fireEvent.click(closeIcon);
+      break;
+    }
+    case 'mask': {
+      const mask = screen.getByRole('dialog', { name: modalTitle }).closest('.ant-modal-wrap')?.querySelector('.ant-modal-mask');
+      expect(mask).toBeDefined();
+      fireEvent.click(mask!);
+      break;
+    }
+    case 'Escape': {
+      fireEvent.keyDown(screen.getByRole('dialog', { name: modalTitle }), { key: 'Escape', code: 'Escape' });
+      break;
+    }
+    default: {
+      throw new Error(`Unknown close method: ${closeMethod}`);
+    }
+  }
+}
+
+/**
  * Tests that transient inline-dialog state is reset when modal closes and reopens.
  *
  * Encapsulates the common pattern for testing transient state reset:
@@ -149,36 +195,7 @@ async function assertTransientStateReset(options: {
   await screen.findByRole('dialog', { name: /create cohort/i });
 
   // Close via specified method
-  switch (closeMethod) {
-    case 'Cancel': {
-      // Find the Cancel button in the outer modal's footer
-      const footerCancel = screen.getAllByRole('button', { name: /cancel/i }).find(
-        (button) => button.closest('.ant-modal-footer') !== null
-      );
-      expect(footerCancel).toBeDefined();
-      fireEvent.click(footerCancel!);
-      break;
-    }
-    case 'close icon': {
-      const closeIcon = within(dialog).getByRole('button', { name: /close/i });
-      fireEvent.click(closeIcon);
-      break;
-    }
-    case 'mask': {
-      const mask = screen.getByRole('dialog', { name: modalTitle }).closest('.ant-modal-wrap')!
-        .querySelector('.ant-modal-mask');
-      expect(mask).toBeDefined();
-      fireEvent.click(mask!);
-      break;
-    }
-    case 'Escape': {
-      fireEvent.keyDown(screen.getByRole('dialog', { name: modalTitle }), { key: 'Escape', code: 'Escape' });
-      break;
-    }
-    default: {
-      throw new Error(`Unknown close method: ${closeMethod}`);
-    }
-  }
+  await closeModalViaMethod({ closeMethod, dialog, modalTitle });
   expect(onCloseMock).toHaveBeenCalledOnce();
 
   // Reopen modal
