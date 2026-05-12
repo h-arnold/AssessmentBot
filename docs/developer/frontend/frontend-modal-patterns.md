@@ -93,6 +93,7 @@ Default decision:
   - `src/frontend/src/features/classes/InlineDialog.tsx`
   - `src/frontend/src/features/classes/manageReferenceDataDialogs.tsx`
   - `src/frontend/src/features/classes/manageReferenceDataHelpers.ts`
+  - `src/frontend/src/features/classes/ReferenceDataInitialLoadingState.tsx`
 
 Shared traits:
 

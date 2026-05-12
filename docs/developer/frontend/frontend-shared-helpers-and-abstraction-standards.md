@@ -260,3 +260,19 @@ This section supersedes the earlier Section 9.7 defer decision for the specific 
 - Owning path: `src/frontend/src/features/classes/manageReferenceDataHelpers.ts`
 - Status: `Not implemented`
 - Rationale: the `ReferenceDataTrustBoundary` union type currently covers `'cohorts' | 'yearGroups'`; when the accepted next topic reference-data modal caller is implemented, `'topics'` must be added to this union so the blocking-load trust-boundary helpers (`getPersistedBlockingLoadError`, `setPersistedBlockingLoadError`, `clearPersistedBlockingLoadError`, `syncReferenceDataModalBusyState`) work correctly for the topic entity; this is a deliberate deferred extension, not a speculative abstraction
+
+### 9.10 Section 5 de-sloppification: classes reference-data loading and test constants
+
+1. Helper or contract: ReferenceDataInitialLoadingState (shared loading skeleton component)
+
+- Decision: new
+- Owning path: `src/frontend/src/features/classes/ReferenceDataInitialLoadingState.tsx`
+- Status: `Implemented`
+- Rationale: Extracted from duplicated ManageCohortsInitialLoadingState and ManageYearGroupsInitialLoadingState functions
+
+2. Helper or contract: Classes CRUD test constants (ALIGNMENT_TOLERANCE_PX, MIN_WIDTH_DIFFERENCE_PX)
+
+- Decision: new
+- Owning path: `src/frontend/e2e-tests/classes-crud.shared.ts`
+- Status: `Implemented`
+- Rationale: Extracted from duplicated definitions in classes-crud-manage-cohorts.spec.ts and classes-crud-manage-year-groups.spec.ts
