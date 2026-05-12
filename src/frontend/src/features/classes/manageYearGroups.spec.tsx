@@ -10,10 +10,12 @@
 
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { QueryClientProvider } from '@tanstack/react-query';
 import type { YearGroup } from '../../services/referenceData.zod';
 import { queryKeys } from '../../query/queryKeys';
 import { createAppQueryClient } from '../../query/queryClient';
 import { renderWithFrontendProviders } from '../../test/renderWithFrontendProviders';
+import { StartupWarmupStateProvider } from '../../features/auth/startupWarmupState';
 import { ManageYearGroupsModal } from './ManageYearGroupsModal';
 
 const createYearGroupMock = vi.hoisted(() => vi.fn());
@@ -190,9 +192,8 @@ describe('ManageYearGroupsModal', () => {
 
         await waitFor(() => {
           expect(getYearGroupsMock).toHaveBeenCalledTimes(1);
+          expect(dialog).toHaveAttribute('aria-busy', 'true');
         });
-
-        expect(dialog).toHaveAttribute('aria-busy', 'true');
         expect(within(dialog).getByText('Refreshing year groups...')).toBeInTheDocument();
         expect(within(dialog).getByRole('button', { name: /create year group/i })).toBeInTheDocument();
         expect(within(dialog).getByRole('table', { name: /year groups/i })).toBeInTheDocument();
@@ -245,6 +246,13 @@ describe('ManageYearGroupsModal', () => {
       const dialog = await findManageYearGroupsModalDialog();
       await within(dialog).findByRole('table', { name: /year groups/i });
       expect(within(dialog).getByRole('button', { name: /create year group/i })).toBeInTheDocument();
+    });
+
+    it('exposes data-testid="reference-data-create-action-icon" on the create action', async () => {
+      renderManageYearGroupsModal();
+      const dialog = await findManageYearGroupsModalDialog();
+      await within(dialog).findByRole('table', { name: /year groups/i });
+      expect(within(dialog).getByTestId('reference-data-create-action-icon')).toBeInTheDocument();
     });
 
     it('opens a blank year-group form dialog when the Create year group button is clicked', async () => {
@@ -371,6 +379,87 @@ describe('ManageYearGroupsModal', () => {
       expect(within(remountedDialog).getByRole('alert')).toHaveTextContent(yearGroupsLoadFailureCopy);
       expect(within(remountedDialog).queryByRole('button', { name: /create year group/i })).not.toBeInTheDocument();
       expect(within(remountedDialog).queryByRole('table', { name: /year groups/i })).not.toBeInTheDocument();
+    });
+  });
+
+  describe('transient state reset via scaffold-owned close paths', () => {
+    it('resets transient inline-dialog state when closed via Cancel and reopened', async () => {
+      const queryClient = createAppQueryClient();
+      queryClient.setQueryData(queryKeys.yearGroups(), seedYearGroups);
+      getYearGroupsMock.mockResolvedValue(seedYearGroups);
+
+      const { rerender } = renderWithFrontendProviders(
+        <ManageYearGroupsModal open={true} onClose={onCloseMock} />,
+        { queryClient }
+      );
+
+      const dialog = await findManageYearGroupsModalDialog();
+
+      // Open create dialog
+      fireEvent.click(within(dialog).getByRole('button', { name: /create year group/i }));
+      await screen.findByRole('dialog', { name: /create year group/i });
+
+      // Close via Cancel (scaffold-owned) - use the outer modal's Cancel button in the footer
+      // The footer Cancel is in the outer modal, not in the form dialog
+      // We need to get the Cancel button from the footer of the outer modal
+      const footerCancel = screen.getAllByRole('button', { name: /cancel/i }).find(
+        (button) => button.closest('.ant-modal-footer') !== null
+      );
+      expect(footerCancel).toBeDefined();
+      fireEvent.click(footerCancel!);
+      expect(onCloseMock).toHaveBeenCalledOnce();
+
+      // Reopen modal by re-rendering with open={true}
+      onCloseMock.mockClear();
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <StartupWarmupStateProvider warmupState="ready">
+            <ManageYearGroupsModal open={true} onClose={onCloseMock} />
+          </StartupWarmupStateProvider>
+        </QueryClientProvider>
+      );
+      const reopenedDialog = await findManageYearGroupsModalDialog();
+
+      // Verify clean state: table visible, create form not visible
+      await within(reopenedDialog).findByRole('table', { name: /year groups/i });
+      expect(screen.queryByRole('dialog', { name: /create year group/i })).not.toBeInTheDocument();
+    });
+
+    it('resets transient inline-dialog state when closed via close icon and reopened', async () => {
+      const queryClient = createAppQueryClient();
+      queryClient.setQueryData(queryKeys.yearGroups(), seedYearGroups);
+      getYearGroupsMock.mockResolvedValue(seedYearGroups);
+
+      const { rerender } = renderWithFrontendProviders(
+        <ManageYearGroupsModal open={true} onClose={onCloseMock} />,
+        { queryClient }
+      );
+
+      const dialog = await findManageYearGroupsModalDialog();
+
+      // Open create dialog
+      fireEvent.click(within(dialog).getByRole('button', { name: /create year group/i }));
+      await screen.findByRole('dialog', { name: /create year group/i });
+
+      // Close via close icon (scaffold-owned)
+      const closeIcon = within(dialog).getByRole('button', { name: /close/i });
+      fireEvent.click(closeIcon);
+      expect(onCloseMock).toHaveBeenCalledOnce();
+
+      // Reopen modal
+      onCloseMock.mockClear();
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <StartupWarmupStateProvider warmupState="ready">
+            <ManageYearGroupsModal open={true} onClose={onCloseMock} />
+          </StartupWarmupStateProvider>
+        </QueryClientProvider>
+      );
+      const reopenedDialog = await findManageYearGroupsModalDialog();
+
+      // Verify clean state: table visible, create form not visible
+      await within(reopenedDialog).findByRole('table', { name: /year groups/i });
+      expect(screen.queryByRole('dialog', { name: /create year group/i })).not.toBeInTheDocument();
     });
   });
 

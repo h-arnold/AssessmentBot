@@ -13,20 +13,8 @@
  * tests while maintaining full ARIA semantics and correct Playwright behaviour.
  */
 
-import {
-  Alert,
-  Button,
-  Flex,
-  Form,
-  Modal,
-  Skeleton,
-  Space,
-  Switch,
-  Table,
-  Typography,
-  type TableColumnType,
-} from 'antd';
-import { useEffect, useState, type ReactElement } from 'react';
+import { Alert, Button, Flex, Form, Skeleton, Space, Switch, type TableColumnType } from 'antd';
+import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import type { Cohort } from '../../services/referenceData.zod';
 import { createCohort, deleteCohort, updateCohort } from '../../services/referenceDataService';
@@ -34,7 +22,6 @@ import { queryKeys } from '../../query/queryKeys';
 import { getCohortsQueryOptions } from '../../query/sharedQueries';
 import {
   clearPersistedBlockingLoadError,
-  getReferenceDataBlockingBody,
   getDeleteErrorMessage,
   getPersistedBlockingLoadError,
   getReferenceDataBlockingLoadErrorQueryKey,
@@ -42,9 +29,9 @@ import {
   isInUseError,
   refetchRequiredReferenceDataQuery,
   setPersistedBlockingLoadError,
-  syncReferenceDataModalBusyState,
   type BlockingLoadErrorState,
 } from './manageReferenceDataHelpers';
+import { ReferenceDataManagementModalScaffold } from './ReferenceDataManagementModalScaffold';
 import {
   ReferenceDataDeleteDialog,
   ReferenceDataFormDialog,
@@ -81,67 +68,11 @@ const DELETE_DIALOG_LABEL_ID = 'manage-cohorts-delete-dialog-title';
 const cohortsLoadFailureCopy = 'Unable to load cohorts right now.';
 const cohortsRefreshStatusCopy = 'Refreshing cohorts...';
 
-const { Text } = Typography;
-
 type CohortColumnsOptions = Readonly<{
   onEdit: (cohort: Cohort) => void;
   onDelete: (cohort: Cohort) => void;
   onToggleActive: (cohort: Cohort, checked: boolean) => void;
 }>;
-
-type ManageCohortsModalBodyProperties = Readonly<{
-  cohorts: Cohort[];
-  columns: TableColumnType<Cohort>[];
-  isInitialLoading: boolean;
-  isRefreshing: boolean;
-  loadError: string | null;
-  onCreate: () => void;
-  toggleError: string | null;
-}>;
-
-/**
- * Renders the cohorts modal body for the current load state.
- *
- * @param {ManageCohortsModalBodyProperties} properties Body render properties.
- * @returns {JSX.Element} The modal body.
- */
-function renderManageCohortsModalBody(properties: ManageCohortsModalBodyProperties): ReactElement {
-  const blockingBody = getReferenceDataBlockingBody({
-    isInitialLoading: properties.isInitialLoading,
-    loadError: properties.loadError,
-    loadingState: <ManageCohortsInitialLoadingState />,
-  });
-  if (blockingBody !== null) {
-    return blockingBody;
-  }
-
-  let toggleErrorAlert: ReactElement | null = null;
-  if (properties.toggleError !== null) {
-    toggleErrorAlert = <Alert description={properties.toggleError} type="error" showIcon />;
-  }
-
-  return (
-    <Flex vertical gap={12}>
-      {properties.isRefreshing ? (
-        <div aria-live="polite" role="status">
-          <Text type="secondary">{cohortsRefreshStatusCopy}</Text>
-        </div>
-      ) : null}
-      <Button type="primary" onClick={properties.onCreate}>
-        Create cohort
-      </Button>
-      {toggleErrorAlert}
-      <Table<Cohort>
-        aria-label="cohorts"
-        dataSource={properties.cohorts}
-        columns={properties.columns}
-        rowKey="key"
-        pagination={false}
-        locale={{ emptyText: 'No cohorts' }}
-      />
-    </Flex>
-  );
-}
 
 /**
  * Builds the column definitions for the cohorts management table.
@@ -472,10 +403,6 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
   const isRefreshing = !isInitialLoading && cohortsQuery.isFetching;
 
   useEffect(() => {
-    syncReferenceDataModalBusyState('.manage-cohorts-modal[role="dialog"]', isRefreshing);
-  }, [isRefreshing, properties.open]);
-
-  useEffect(() => {
     if (
       blockingLoadError === null ||
       cohortsQuery.dataUpdatedAt <= blockingLoadError.dataUpdatedAt
@@ -613,50 +540,49 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
     },
   });
 
-  const modalBody = renderManageCohortsModalBody({
-    cohorts,
-    columns,
-    isInitialLoading,
-    isRefreshing,
-    loadError,
-    onCreate: openCreateForm,
-    toggleError,
-  });
-
   return (
-    <Modal
+    <ReferenceDataManagementModalScaffold<Cohort>
       open={properties.open}
-      title="Manage Cohorts"
-      onCancel={handleModalClose}
-      className="manage-cohorts-modal"
-      footer={<Button onClick={handleModalClose}>Cancel</Button>}
-      width={800}
-    >
-      {modalBody}
-
-      {renderCohortFormDialog({
-        editingCohort,
-        form,
-        formDialogTitle: getCohortFormDialogTitle(formMode),
-        formError,
-        formMode,
-        formSubmitting,
-        onClose: closeFormDialog,
-        onFinish: handleFormFinish,
-        onOk: () => {
-          form.submit();
-        },
-      })}
-
-      {renderCohortDeleteDialog({
-        deleteState,
-        onClose: () => {
-          setDeleteState(INITIAL_DELETE_STATE);
-        },
-        onConfirm: () => {
-          void handleDeleteConfirm();
-        },
-      })}
-    </Modal>
+      modalTitle="Manage Cohorts"
+      modalClassName="manage-cohorts-modal"
+      modalWidth={800}
+      createActionLabel="Create cohort"
+      tableAriaLabel="cohorts"
+      emptyTableCopy="No cohorts"
+      refreshStatusCopy={cohortsRefreshStatusCopy}
+      isInitialLoading={isInitialLoading}
+      isRefreshing={isRefreshing}
+      loadError={loadError}
+      loadingState={<ManageCohortsInitialLoadingState />}
+      rows={cohorts}
+      columns={columns}
+      inlineAlert={toggleError === null ? null : <Alert description={toggleError} type="error" showIcon />}
+      inlineDialog={
+        renderCohortFormDialog({
+          editingCohort,
+          form,
+          formDialogTitle: getCohortFormDialogTitle(formMode),
+          formError,
+          formMode,
+          formSubmitting,
+          onClose: closeFormDialog,
+          onFinish: handleFormFinish,
+          onOk: () => {
+            form.submit();
+          },
+        }) ??
+        renderCohortDeleteDialog({
+          deleteState,
+          onClose: () => {
+            setDeleteState(INITIAL_DELETE_STATE);
+          },
+          onConfirm: () => {
+            void handleDeleteConfirm();
+          },
+        })
+      }
+      onClose={handleModalClose}
+      onCreate={openCreateForm}
+    />
   );
 }

@@ -13,18 +13,8 @@
  * tests while maintaining full ARIA semantics and correct Playwright behaviour.
  */
 
-import {
-  Button,
-  Flex,
-  Form,
-  Modal,
-  Skeleton,
-  Space,
-  Table,
-  Typography,
-  type TableColumnType,
-} from 'antd';
-import { useEffect, useState, type ReactElement } from 'react';
+import { Button, Flex, Form, Skeleton, Space, type TableColumnType } from 'antd';
+import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import type { YearGroup } from '../../services/referenceData.zod';
 import {
@@ -36,7 +26,6 @@ import { queryKeys } from '../../query/queryKeys';
 import { getYearGroupsQueryOptions } from '../../query/sharedQueries';
 import {
   clearPersistedBlockingLoadError,
-  getReferenceDataBlockingBody,
   getDeleteErrorMessage,
   getPersistedBlockingLoadError,
   getReferenceDataBlockingLoadErrorQueryKey,
@@ -44,9 +33,9 @@ import {
   isInUseError,
   refetchRequiredReferenceDataQuery,
   setPersistedBlockingLoadError,
-  syncReferenceDataModalBusyState,
   type BlockingLoadErrorState,
 } from './manageReferenceDataHelpers';
+import { ReferenceDataManagementModalScaffold } from './ReferenceDataManagementModalScaffold';
 import {
   ReferenceDataDeleteDialog,
   ReferenceDataFormDialog,
@@ -83,61 +72,10 @@ const DELETE_DIALOG_LABEL_ID = 'manage-year-groups-delete-dialog-title';
 const yearGroupsLoadFailureCopy = 'Unable to load year groups right now.';
 const yearGroupsRefreshStatusCopy = 'Refreshing year groups...';
 
-const { Text } = Typography;
-
 type YearGroupColumnsOptions = Readonly<{
   onEdit: (yearGroup: YearGroup) => void;
   onDelete: (yearGroup: YearGroup) => void;
 }>;
-
-type ManageYearGroupsModalBodyProperties = Readonly<{
-  columns: TableColumnType<YearGroup>[];
-  isInitialLoading: boolean;
-  isRefreshing: boolean;
-  loadError: string | null;
-  onCreate: () => void;
-  yearGroups: YearGroup[];
-}>;
-
-/**
- * Renders the year-groups modal body for the current load state.
- *
- * @param {ManageYearGroupsModalBodyProperties} properties Body render properties.
- * @returns {JSX.Element} The modal body.
- */
-function renderManageYearGroupsModalBody(
-  properties: ManageYearGroupsModalBodyProperties
-): ReactElement {
-  const blockingBody = getReferenceDataBlockingBody({
-    isInitialLoading: properties.isInitialLoading,
-    loadError: properties.loadError,
-    loadingState: <ManageYearGroupsInitialLoadingState />,
-  });
-  if (blockingBody !== null) {
-    return blockingBody;
-  }
-
-  return (
-    <Flex vertical gap={12}>
-      {properties.isRefreshing ? (
-        <div aria-live="polite" role="status">
-          <Text type="secondary">{yearGroupsRefreshStatusCopy}</Text>
-        </div>
-      ) : null}
-      <Button type="primary" onClick={properties.onCreate}>
-        Create year group
-      </Button>
-      <Table<YearGroup>
-        aria-label="year groups"
-        dataSource={properties.yearGroups}
-        columns={properties.columns}
-        rowKey="key"
-        pagination={false}
-        locale={{ emptyText: 'No year groups' }}
-      />
-    </Flex>
-  );
-}
 
 /**
  * Builds the column definitions for the year groups management table.
@@ -399,10 +337,6 @@ export function ManageYearGroupsModal(properties: ManageYearGroupsModalPropertie
   const isRefreshing = !isInitialLoading && yearGroupsQuery.isFetching;
 
   useEffect(() => {
-    syncReferenceDataModalBusyState('.manage-year-groups-modal[role="dialog"]', isRefreshing);
-  }, [isRefreshing, properties.open]);
-
-  useEffect(() => {
     if (
       blockingLoadError === null ||
       yearGroupsQuery.dataUpdatedAt <= blockingLoadError.dataUpdatedAt
@@ -513,49 +447,49 @@ export function ManageYearGroupsModal(properties: ManageYearGroupsModalPropertie
     },
   });
 
-  const modalBody = renderManageYearGroupsModalBody({
-    columns,
-    isInitialLoading,
-    isRefreshing,
-    loadError,
-    onCreate: openCreateForm,
-    yearGroups,
-  });
-
   return (
-    <Modal
+    <ReferenceDataManagementModalScaffold<YearGroup>
       open={properties.open}
-      title="Manage Year Groups"
-      onCancel={handleModalClose}
-      className="manage-year-groups-modal"
-      footer={<Button onClick={handleModalClose}>Cancel</Button>}
-      width={700}
-    >
-      {modalBody}
-
-      {renderYearGroupFormDialog({
-        editingYearGroup,
-        form,
-        formDialogTitle: getYearGroupFormDialogTitle(formMode),
-        formError,
-        formMode,
-        formSubmitting,
-        onClose: closeFormDialog,
-        onFinish: handleFormFinish,
-        onOk: () => {
-          form.submit();
-        },
-      })}
-
-      {renderYearGroupDeleteDialog({
-        deleteState,
-        onClose: () => {
-          setDeleteState(INITIAL_DELETE_STATE);
-        },
-        onConfirm: () => {
-          void handleDeleteConfirm();
-        },
-      })}
-    </Modal>
+      modalTitle="Manage Year Groups"
+      modalClassName="manage-year-groups-modal"
+      modalWidth={700}
+      createActionLabel="Create year group"
+      tableAriaLabel="year groups"
+      emptyTableCopy="No year groups"
+      refreshStatusCopy={yearGroupsRefreshStatusCopy}
+      isInitialLoading={isInitialLoading}
+      isRefreshing={isRefreshing}
+      loadError={loadError}
+      loadingState={<ManageYearGroupsInitialLoadingState />}
+      rows={yearGroups}
+      columns={columns}
+      inlineAlert={null}
+      inlineDialog={
+        renderYearGroupFormDialog({
+          editingYearGroup,
+          form,
+          formDialogTitle: getYearGroupFormDialogTitle(formMode),
+          formError,
+          formMode,
+          formSubmitting,
+          onClose: closeFormDialog,
+          onFinish: handleFormFinish,
+          onOk: () => {
+            form.submit();
+          },
+        }) ??
+        renderYearGroupDeleteDialog({
+          deleteState,
+          onClose: () => {
+            setDeleteState(INITIAL_DELETE_STATE);
+          },
+          onConfirm: () => {
+            void handleDeleteConfirm();
+          },
+        })
+      }
+      onClose={handleModalClose}
+      onCreate={openCreateForm}
+    />
   );
 }
