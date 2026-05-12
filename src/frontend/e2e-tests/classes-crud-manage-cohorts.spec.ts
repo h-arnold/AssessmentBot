@@ -27,6 +27,10 @@ import {
   deleteReferenceDataRowAndExpectBlocked,
   deleteReferenceDataRowAndExpectRemoval,
 } from './helpers/classes-crud-delete-flow';
+import {
+  assertCreateButtonPositioning,
+  assertTransientStateResetOnClose,
+} from './helpers/classes-crud-modal-layout';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -64,7 +68,7 @@ const cohortsBackgroundRefreshReleaseSignal = 'cohorts-background-refresh';
  */
 async function openClassesTabWithCohortManagementScenario(
   page: Parameters<typeof openClassesTabWithScenario>[0],
-  overrides: Partial<Parameters<typeof openClassesTabWithScenario>[1]> = {},
+  overrides: Partial<Parameters<typeof openClassesTabWithScenario>[1]> = {}
 ) {
   await openClassesTabWithScenario(page, {
     ...createSuccessfulClassesScenario({
@@ -172,7 +176,9 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
     await expect(modal.getByText('Cohort 2026')).toBeVisible();
   });
 
-  test('fails closed in the modal when a successful cohort create cannot refresh trustworthy cohort data', async ({ page }) => {
+  test('fails closed in the modal when a successful cohort create cannot refresh trustworthy cohort data', async ({
+    page,
+  }) => {
     const newCohort = {
       key: 'cohort-2026',
       name: 'Cohort 2026',
@@ -203,8 +209,9 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
     await expect(modal.getByRole('table', { name: /cohorts/i })).toHaveCount(0);
   });
 
-
-  test('keeps trusted cohort data visible while publishing modal busy state during background refresh', async ({ page }) => {
+  test('keeps trusted cohort data visible while publishing modal busy state during background refresh', async ({
+    page,
+  }) => {
     const toggledCohort = {
       key: 'cohort-2025',
       name: 'Cohort 2025',
@@ -363,165 +370,101 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
 
   // Section 3 Red Phase: Visible-layout assertions for create button positioning
 
-  test.skip('Create cohort button is start-aligned within 8px of the Table left edge', async ({ page }) => {
+  test.skip('Create cohort button is start-aligned within 8px of the Table left edge', async ({
+    page,
+  }) => {
     await openClassesTabWithCohortManagementScenario(page);
 
     const modal = await openManageCohortsModal(page);
 
-    const createButton = modal.getByRole('button', { name: /create cohort/i });
-    const table = modal.getByRole('table', { name: /cohorts/i });
-
-    await expect(createButton).toBeVisible();
-    await expect(table).toBeVisible();
-
-    const buttonBox = await createButton.boundingBox();
-    const tableBox = await table.boundingBox();
-
-    // The left edge of Create cohort button should be within 8px of the Table left edge
-    if (buttonBox === null || tableBox === null) {
-      throw new Error('Failed to get bounding boxes for Create cohort button and Table');
-    }
-
-    const leftEdgeDifference = Math.abs(buttonBox.x - tableBox.x);
-    expect(leftEdgeDifference).toBeLessThanOrEqual(ALIGNMENT_TOLERANCE_PX);
+    await assertCreateButtonPositioning({
+      modal,
+      assertionType: 'left edge',
+      createButtonName: /create cohort/i,
+      tableName: /cohorts/i,
+      tolerance: ALIGNMENT_TOLERANCE_PX,
+    });
   });
 
-  test.skip('Create cohort button width is at least 32px narrower than the Table width', async ({ page }) => {
+  test.skip('Create cohort button width is at least 32px narrower than the Table width', async ({
+    page,
+  }) => {
     await openClassesTabWithCohortManagementScenario(page);
 
     const modal = await openManageCohortsModal(page);
 
-    const createButton = modal.getByRole('button', { name: /create cohort/i });
-    const table = modal.getByRole('table', { name: /cohorts/i });
-
-    await expect(createButton).toBeVisible();
-    await expect(table).toBeVisible();
-
-    const buttonBox = await createButton.boundingBox();
-    const tableBox = await table.boundingBox();
-
-    // The Create cohort button width should be at least 32px narrower than the Table
-    if (buttonBox === null || tableBox === null) {
-      throw new Error('Failed to get bounding boxes for Create cohort button and Table');
-    }
-
-    const widthDifference = tableBox.width - buttonBox.width;
-    expect(widthDifference).toBeGreaterThanOrEqual(MIN_WIDTH_DIFFERENCE_PX);
+    await assertCreateButtonPositioning({
+      modal,
+      assertionType: 'width',
+      createButtonName: /create cohort/i,
+      tableName: /cohorts/i,
+      minDiff: MIN_WIDTH_DIFFERENCE_PX,
+    });
   });
 
-  // Section 3: Scaffold-owned Cancel footer dismisses modal and reopening starts clean
+  // Section 3: Transient state reset tests
 
-  test('Cancel footer button dismisses the modal and reopening starts from a clean ready state', async ({ page }) => {
-    await openClassesTabWithCohortManagementScenario(page);
-
-    // Open the modal
-    const modal = await openManageCohortsModal(page);
-
-    // Open the create form to establish transient state
-    await modal.getByRole('button', { name: /create cohort/i }).click();
-    const form = page.getByRole('dialog', { name: /create cohort/i });
-    await expect(form).toBeVisible();
-
-    // Close the create form first, then close via Cancel footer button in the management modal
-    await form.getByRole('button', { name: 'Cancel' }).click();
-    await expect(form).toHaveCount(0);
-    await modal.getByRole('button', { name: 'Cancel' }).click();
-    await expect(modal).toHaveCount(0);
-
-    // Reopen the modal
-    await page.getByRole('button', { name: 'Manage Cohorts' }).click();
-    const reopenedModal = page.getByRole('dialog', { name: /manage cohorts/i });
-    await expect(reopenedModal).toBeVisible();
-
-    // Assert clean ready state: create form should not be visible, table should be visible
-    await expect(reopenedModal.getByRole('dialog', { name: /create cohort/i })).toHaveCount(0);
-    await expect(reopenedModal.getByRole('table', { name: /cohorts/i })).toBeVisible();
-    await expect(reopenedModal.getByRole('button', { name: /create cohort/i })).toBeVisible();
+  test('Cancel footer button dismisses the modal and reopening starts from a clean ready state', async ({
+    page,
+  }) => {
+    await assertTransientStateResetOnClose({
+      page,
+      setupScenario: () => openClassesTabWithCohortManagementScenario(page),
+      closeMethod: 'Cancel',
+      managementButtonName: 'Manage Cohorts',
+      modalName: /manage cohorts/i,
+      createFormName: /create cohort/i,
+      tableName: /cohorts/i,
+      createButtonName: /create cohort/i,
+    });
   });
 
   // Section 3: Close icon route with transient inline UI
 
-  test('Close icon dismisses modal with transient inline UI and reopening starts from a clean ready state', async ({ page }) => {
-    await openClassesTabWithCohortManagementScenario(page);
-
-    // Open the modal
-    const modal = await openManageCohortsModal(page);
-
-    // Open the create form to establish transient state
-    await modal.getByRole('button', { name: /create cohort/i }).click();
-    const form = page.getByRole('dialog', { name: /create cohort/i });
-    await expect(form).toBeVisible();
-
-    // Close via close icon
-    await modal.getByRole('button', { name: /close/i }).click();
-    await expect(modal).toHaveCount(0);
-
-    // Reopen the modal
-    await page.getByRole('button', { name: 'Manage Cohorts' }).click();
-    const reopenedModal = page.getByRole('dialog', { name: /manage cohorts/i });
-    await expect(reopenedModal).toBeVisible();
-
-    // Assert clean ready state: create form should not be visible, table should be visible
-    await expect(reopenedModal.getByRole('dialog', { name: /create cohort/i })).toHaveCount(0);
-    await expect(reopenedModal.getByRole('table', { name: /cohorts/i })).toBeVisible();
-    await expect(reopenedModal.getByRole('button', { name: /create cohort/i })).toBeVisible();
+  test('Close icon dismisses modal with transient inline UI and reopening starts from a clean ready state', async ({
+    page,
+  }) => {
+    await assertTransientStateResetOnClose({
+      page,
+      setupScenario: () => openClassesTabWithCohortManagementScenario(page),
+      closeMethod: 'close icon',
+      managementButtonName: 'Manage Cohorts',
+      modalName: /manage cohorts/i,
+      createFormName: /create cohort/i,
+      tableName: /cohorts/i,
+      createButtonName: /create cohort/i,
+    });
   });
 
   // Section 3: Mask close route
 
   test('Mask close dismisses modal when maskClosable is enabled', async ({ page }) => {
-    await openClassesTabWithCohortManagementScenario(page);
-
-    // Open the modal
-    const modal = await openManageCohortsModal(page);
-
-    // Open the create form to establish transient state
-    await modal.getByRole('button', { name: /create cohort/i }).click();
-    const form = page.getByRole('dialog', { name: /create cohort/i });
-    await expect(form).toBeVisible();
-
-    // Close via mask click - Ant Design modal mask close
-    // Use the scaffold wrapper to find the mask in the same modal root, click at corner
-    const mask = page.locator('.ant-modal-root:has(.reference-data-modal-scaffold-wrapper) .ant-modal-mask');
-    await mask.click({ position: { x: 10, y: 10 }, force: true });
-    await expect(modal).toHaveCount(0);
-
-    // Reopen the modal
-    await page.getByRole('button', { name: 'Manage Cohorts' }).click();
-    const reopenedModal = page.getByRole('dialog', { name: /manage cohorts/i });
-    await expect(reopenedModal).toBeVisible();
-
-    // Assert clean ready state: create form should not be visible, table should be visible
-    await expect(reopenedModal.getByRole('dialog', { name: /create cohort/i })).toHaveCount(0);
-    await expect(reopenedModal.getByRole('table', { name: /cohorts/i })).toBeVisible();
-    await expect(reopenedModal.getByRole('button', { name: /create cohort/i })).toBeVisible();
+    await assertTransientStateResetOnClose({
+      page,
+      setupScenario: () => openClassesTabWithCohortManagementScenario(page),
+      closeMethod: 'mask',
+      managementButtonName: 'Manage Cohorts',
+      modalName: /manage cohorts/i,
+      createFormName: /create cohort/i,
+      tableName: /cohorts/i,
+      createButtonName: /create cohort/i,
+    });
   });
 
   // Section 3: Keyboard close route
 
-  test('Keyboard Escape dismisses modal and reopening starts from a clean ready state', async ({ page }) => {
-    await openClassesTabWithCohortManagementScenario(page);
-
-    // Open the modal
-    const modal = await openManageCohortsModal(page);
-
-    // Open the create form to establish transient state
-    await modal.getByRole('button', { name: /create cohort/i }).click();
-    const form = page.getByRole('dialog', { name: /create cohort/i });
-    await expect(form).toBeVisible();
-
-    // Close via Escape key
-    await page.keyboard.press('Escape');
-    await expect(modal).toHaveCount(0);
-
-    // Reopen the modal
-    await page.getByRole('button', { name: 'Manage Cohorts' }).click();
-    const reopenedModal = page.getByRole('dialog', { name: /manage cohorts/i });
-    await expect(reopenedModal).toBeVisible();
-
-    // Assert clean ready state: create form should not be visible, table should be visible
-    await expect(reopenedModal.getByRole('dialog', { name: /create cohort/i })).toHaveCount(0);
-    await expect(reopenedModal.getByRole('table', { name: /cohorts/i })).toBeVisible();
-    await expect(reopenedModal.getByRole('button', { name: /create cohort/i })).toBeVisible();
+  test('Keyboard Escape dismisses modal and reopening starts from a clean ready state', async ({
+    page,
+  }) => {
+    await assertTransientStateResetOnClose({
+      page,
+      setupScenario: () => openClassesTabWithCohortManagementScenario(page),
+      closeMethod: 'Escape',
+      managementButtonName: 'Manage Cohorts',
+      modalName: /manage cohorts/i,
+      createFormName: /create cohort/i,
+      tableName: /cohorts/i,
+      createButtonName: /create cohort/i,
+    });
   });
 });

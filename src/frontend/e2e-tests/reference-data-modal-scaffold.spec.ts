@@ -56,7 +56,9 @@ async function openClassesTabWithReferenceDataScenario(
  * @param {Parameters<typeof openClassesTabWithReferenceDataScenario>[0]} page Playwright page.
  * @returns {Promise<Locator>} The modal dialog locator.
  */
-async function openManageCohortsModal(page: Parameters<typeof openClassesTabWithReferenceDataScenario>[0]): Promise<Locator> {
+async function openManageCohortsModal(
+  page: Parameters<typeof openClassesTabWithReferenceDataScenario>[0]
+): Promise<Locator> {
   await page.getByRole('button', { name: 'Manage Cohorts' }).click();
   const dialog = page.getByRole('dialog', { name: /manage cohorts/i });
   await expect(dialog).toBeVisible();
@@ -69,11 +71,35 @@ async function openManageCohortsModal(page: Parameters<typeof openClassesTabWith
  * @param {Parameters<typeof openClassesTabWithReferenceDataScenario>[0]} page Playwright page.
  * @returns {Promise<Locator>} The modal dialog locator.
  */
-async function openManageYearGroupsModal(page: Parameters<typeof openClassesTabWithReferenceDataScenario>[0]): Promise<Locator> {
+async function openManageYearGroupsModal(
+  page: Parameters<typeof openClassesTabWithReferenceDataScenario>[0]
+): Promise<Locator> {
   await page.getByRole('button', { name: 'Manage Year Groups' }).click();
   const dialog = page.getByRole('dialog', { name: /manage year groups/i });
   await expect(dialog).toBeVisible();
   return dialog;
+}
+
+/**
+ * Asserts that a modal dialog has width applied correctly.
+ *
+ * @param {Locator} dialog The modal dialog locator.
+ * @returns {Promise<void>}
+ */
+async function assertModalWidth(dialog: Locator): Promise<void> {
+  await expect(dialog).toBeVisible();
+
+  const style = await dialog.getAttribute('style');
+  expect(style).toBeTruthy();
+  expect(style?.toLowerCase()).toContain('width:');
+
+  const computedWidth = await dialog.evaluate((element) => {
+    const style = globalThis.getComputedStyle(element);
+    return style.width;
+  });
+  expect(computedWidth).not.toBe('0px');
+  expect(computedWidth).not.toBe('');
+  expect(computedWidth).not.toBe('auto');
 }
 
 // ---------------------------------------------------------------------------
@@ -85,41 +111,14 @@ test.describe('Reference Data Modal — width preservation', () => {
     await openClassesTabWithReferenceDataScenario(page);
     const dialog = await openManageCohortsModal(page);
 
-    // Verify the dialog element exists and is visible
-    await expect(dialog).toBeVisible();
-
-    // Check that the dialog has a width style attribute
-    const style = await dialog.getAttribute('style');
-    expect(style).toBeTruthy();
-    expect(style?.toLowerCase()).toContain('width:');
-
-    // Verify the computed width is a valid non-zero value
-    const computedWidth = await dialog.evaluate((element) => {
-      const style = globalThis.getComputedStyle(element);
-      return style.width;
-    });
-    expect(computedWidth).not.toBe('0px');
-    expect(computedWidth).not.toBe('');
-    expect(computedWidth).not.toBe('auto');
+    await assertModalWidth(dialog);
   });
 
   test('Manage Year Groups modal has width applied to dialog element', async ({ page }) => {
     await openClassesTabWithReferenceDataScenario(page);
     const dialog = await openManageYearGroupsModal(page);
 
-    await expect(dialog).toBeVisible();
-
-    const style = await dialog.getAttribute('style');
-    expect(style).toBeTruthy();
-    expect(style?.toLowerCase()).toContain('width:');
-
-    const computedWidth = await dialog.evaluate((element) => {
-      const style = globalThis.getComputedStyle(element);
-      return style.width;
-    });
-    expect(computedWidth).not.toBe('0px');
-    expect(computedWidth).not.toBe('');
-    expect(computedWidth).not.toBe('auto');
+    await assertModalWidth(dialog);
   });
 
   test('dialog element width style contains pixel value', async ({ page }) => {
@@ -146,7 +145,9 @@ test.describe('Reference Data Modal — aria-busy attribute', () => {
     expect(ariaBusy).toBeNull();
   });
 
-  test('dialog element aria-busy attribute is either absent or false in ready state', async ({ page }) => {
+  test('dialog element aria-busy attribute is either absent or false in ready state', async ({
+    page,
+  }) => {
     await openClassesTabWithReferenceDataScenario(page);
     const dialog = await openManageCohortsModal(page);
 
@@ -161,7 +162,7 @@ test.describe('Reference Data Modal — aria-busy attribute', () => {
 
     // Verify we can query the dialog by role
     await expect(dialog).toHaveAttribute('role', 'dialog');
-    
+
     // Verify it has aria-modal attribute (standard for modals)
     const ariaModal = await dialog.getAttribute('aria-modal');
     expect(ariaModal).toBe('true');

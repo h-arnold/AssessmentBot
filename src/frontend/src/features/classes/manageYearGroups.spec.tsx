@@ -115,6 +115,85 @@ async function submitCreateYearGroupWhenRefreshFails(dialog: HTMLElement) {
   });
 }
 
+/**
+ * Tests that transient inline-dialog state is reset when modal closes and reopens.
+ *
+ * Encapsulates the common pattern for testing transient state reset:
+ * 1. Sets up queryClient with seed data
+ * 2. Renders the modal
+ * 3. Opens the create dialog
+ * 4. Closes via the specified method
+ * 5. Reopens the modal
+ * 6. Verifies clean state (table visible, create form not visible)
+ *
+ * @param {object} options Test options.
+ * @param {'Cancel' | 'close icon'} options.closeMethod How to close the modal.
+ * @param {string} [options.modalTitle='Manage Year Groups'] Modal title for finding the dialog.
+ * @param {YearGroup[]} [options.seedData=seedYearGroups] Seed data for queryClient.
+ * @returns {Promise<void>}
+ */
+async function assertTransientStateReset(options: {
+  closeMethod: 'Cancel' | 'close icon';
+  modalTitle?: string;
+  seedData?: YearGroup[];
+}): Promise<void> {
+  const { closeMethod, modalTitle = 'Manage Year Groups', seedData = seedYearGroups } = options;
+
+  // Setup queryClient with seed data
+  const queryClient = createAppQueryClient();
+  queryClient.setQueryData(queryKeys.yearGroups(), seedData);
+  getYearGroupsMock.mockResolvedValue(seedData);
+
+  // Render modal
+  const { rerender } = renderWithFrontendProviders(
+    <ManageYearGroupsModal open={true} onClose={onCloseMock} />,
+    { queryClient }
+  );
+
+  const dialog = await screen.findByRole('dialog', { name: modalTitle });
+
+  // Open create dialog
+  fireEvent.click(within(dialog).getByRole('button', { name: /create year group/i }));
+  await screen.findByRole('dialog', { name: /create year group/i });
+
+  // Close via specified method
+  switch (closeMethod) {
+    case 'Cancel': {
+      // Find the Cancel button in the outer modal's footer
+      const footerCancel = screen.getAllByRole('button', { name: /cancel/i }).find(
+        (button) => button.closest('.ant-modal-footer') !== null
+      );
+      expect(footerCancel).toBeDefined();
+      fireEvent.click(footerCancel!);
+      break;
+    }
+    case 'close icon': {
+      const closeIcon = within(dialog).getByRole('button', { name: /close/i });
+      fireEvent.click(closeIcon);
+      break;
+    }
+    default: {
+      throw new Error(`Unknown close method: ${closeMethod}`);
+    }
+  }
+  expect(onCloseMock).toHaveBeenCalledOnce();
+
+  // Reopen modal
+  onCloseMock.mockClear();
+  rerender(
+    <QueryClientProvider client={queryClient}>
+      <StartupWarmupStateProvider warmupState="ready">
+        <ManageYearGroupsModal open={true} onClose={onCloseMock} />
+      </StartupWarmupStateProvider>
+    </QueryClientProvider>
+  );
+  const reopenedDialog = await screen.findByRole('dialog', { name: modalTitle });
+
+  // Verify clean state: table visible, create form not visible
+  await within(reopenedDialog).findByRole('table', { name: /year groups/i });
+  expect(screen.queryByRole('dialog', { name: /create year group/i })).not.toBeInTheDocument();
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   getYearGroupsMock.mockResolvedValue(seedYearGroups);
@@ -383,84 +462,11 @@ describe('ManageYearGroupsModal', () => {
   });
 
   describe('transient state reset via scaffold-owned close paths', () => {
-    it('resets transient inline-dialog state when closed via Cancel and reopened', async () => {
-      const queryClient = createAppQueryClient();
-      queryClient.setQueryData(queryKeys.yearGroups(), seedYearGroups);
-      getYearGroupsMock.mockResolvedValue(seedYearGroups);
+    it('resets transient inline-dialog state when closed via Cancel and reopened', () =>
+      assertTransientStateReset({ closeMethod: 'Cancel' }));
 
-      const { rerender } = renderWithFrontendProviders(
-        <ManageYearGroupsModal open={true} onClose={onCloseMock} />,
-        { queryClient }
-      );
-
-      const dialog = await findManageYearGroupsModalDialog();
-
-      // Open create dialog
-      fireEvent.click(within(dialog).getByRole('button', { name: /create year group/i }));
-      await screen.findByRole('dialog', { name: /create year group/i });
-
-      // Close via Cancel (scaffold-owned) - use the outer modal's Cancel button in the footer
-      // The footer Cancel is in the outer modal, not in the form dialog
-      // We need to get the Cancel button from the footer of the outer modal
-      const footerCancel = screen.getAllByRole('button', { name: /cancel/i }).find(
-        (button) => button.closest('.ant-modal-footer') !== null
-      );
-      expect(footerCancel).toBeDefined();
-      fireEvent.click(footerCancel!);
-      expect(onCloseMock).toHaveBeenCalledOnce();
-
-      // Reopen modal by re-rendering with open={true}
-      onCloseMock.mockClear();
-      rerender(
-        <QueryClientProvider client={queryClient}>
-          <StartupWarmupStateProvider warmupState="ready">
-            <ManageYearGroupsModal open={true} onClose={onCloseMock} />
-          </StartupWarmupStateProvider>
-        </QueryClientProvider>
-      );
-      const reopenedDialog = await findManageYearGroupsModalDialog();
-
-      // Verify clean state: table visible, create form not visible
-      await within(reopenedDialog).findByRole('table', { name: /year groups/i });
-      expect(screen.queryByRole('dialog', { name: /create year group/i })).not.toBeInTheDocument();
-    });
-
-    it('resets transient inline-dialog state when closed via close icon and reopened', async () => {
-      const queryClient = createAppQueryClient();
-      queryClient.setQueryData(queryKeys.yearGroups(), seedYearGroups);
-      getYearGroupsMock.mockResolvedValue(seedYearGroups);
-
-      const { rerender } = renderWithFrontendProviders(
-        <ManageYearGroupsModal open={true} onClose={onCloseMock} />,
-        { queryClient }
-      );
-
-      const dialog = await findManageYearGroupsModalDialog();
-
-      // Open create dialog
-      fireEvent.click(within(dialog).getByRole('button', { name: /create year group/i }));
-      await screen.findByRole('dialog', { name: /create year group/i });
-
-      // Close via close icon (scaffold-owned)
-      const closeIcon = within(dialog).getByRole('button', { name: /close/i });
-      fireEvent.click(closeIcon);
-      expect(onCloseMock).toHaveBeenCalledOnce();
-
-      // Reopen modal
-      onCloseMock.mockClear();
-      rerender(
-        <QueryClientProvider client={queryClient}>
-          <StartupWarmupStateProvider warmupState="ready">
-            <ManageYearGroupsModal open={true} onClose={onCloseMock} />
-          </StartupWarmupStateProvider>
-        </QueryClientProvider>
-      );
-      const reopenedDialog = await findManageYearGroupsModalDialog();
-
-      // Verify clean state: table visible, create form not visible
-      await within(reopenedDialog).findByRole('table', { name: /year groups/i });
-      expect(screen.queryByRole('dialog', { name: /create year group/i })).not.toBeInTheDocument();
-    });
+    it('resets transient inline-dialog state when closed via close icon and reopened', () =>
+      assertTransientStateReset({ closeMethod: 'close icon' }));
   });
 
   describe('modal close', () => {
