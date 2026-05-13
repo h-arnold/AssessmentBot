@@ -20,8 +20,6 @@ const DEFAULT_PARALLEL_WORKER_LIMIT = 4;
 const MIN_WORKER_COUNT = 1;
 const CHAINED_COMMAND_PATTERN = /&&|\|\||;|\|/;
 const MUTATING_COMMAND_PATTERN = /(^|\s)(?:--(?:fix|write|update|update-snapshots)|-u)(?=\s|$)/i;
-const DIRECT_TOOL_FAMILY_PATTERN =
-  /^(?:\s*[A-Za-z_][A-Za-z0-9_]*=(?:[^\s'"]+|"[^"]*"|'[^']*')\s+)*\s*(eslint|vitest|playwright|tsc)(?=\s|$)/u;
 
 const WINDOWS_DRIVE_PATH_PATTERN = /^[A-Za-z]:\//;
 const WINDOWS_UNC_PATH_PREFIX = '//';
@@ -233,6 +231,7 @@ function isCrossPlatformAbsolutePath(value: string): boolean {
  * @param {string} configuredPath - Raw configured path.
  * @param {string} label - Path label for errors.
  * @param {{allowRepoRoot?: boolean}} options - Path safety options.
+ * @param options.allowRepoRoot
  * @returns {string} Normalised repo-relative path.
  */
 function validateRepoRelativePath(
@@ -464,12 +463,99 @@ function getPackageJsonScriptsForDirectory(
  * @returns {Set<RegressionTool>} Directly invoked tool families.
  */
 function resolveDirectToolFamilies(command: string): Set<RegressionTool> {
-  const directToolFamilyMatch = command.match(DIRECT_TOOL_FAMILY_PATTERN);
-  if (directToolFamilyMatch?.[1] === undefined) {
+  const firstCommandToken = getFirstCommandToken(command);
+  if (firstCommandToken === null) {
     return new Set<RegressionTool>();
   }
 
-  return new Set<RegressionTool>([directToolFamilyMatch[1] as RegressionTool]);
+  if (!isSupportedTool(firstCommandToken)) {
+    return new Set<RegressionTool>();
+  }
+
+  return new Set<RegressionTool>([firstCommandToken]);
+}
+
+/**
+ * Resolves the first command token after leading environment assignments.
+ *
+ * @param {string} command - Script command string.
+ * @returns {string | null} First command token or `null` when not present.
+ */
+function getFirstCommandToken(command: string): string | null {
+  const tokens = tokeniseShellWords(command);
+  for (const token of tokens) {
+    if (isEnvironmentAssignmentToken(token)) {
+      continue;
+    }
+
+    return token;
+  }
+
+  return null;
+}
+
+/**
+ * Tokenises a shell-like command while preserving quoted segments.
+ *
+ * @param {string} command - Script command string.
+ * @returns {string[]} Command tokens.
+ */
+function tokeniseShellWords(command: string): string[] {
+  const tokens: string[] = [];
+  let token = '';
+  let quote: "'" | '"' | null = null;
+
+  for (const character of command) {
+    if (quote === null && /\s/u.test(character)) {
+      if (token.length > 0) {
+        tokens.push(token);
+        token = '';
+      }
+      continue;
+    }
+
+    if (character === "'" || character === '"') {
+      if (quote === character) {
+        quote = null;
+      } else if (quote === null) {
+        quote = character;
+      }
+    }
+
+    token += character;
+  }
+
+  if (token.length > 0) {
+    tokens.push(token);
+  }
+
+  return tokens;
+}
+
+/**
+ * Detects shell-style environment assignment tokens (`KEY=value`).
+ *
+ * @param {string} token - Token to inspect.
+ * @returns {boolean} `true` when token is an environment assignment.
+ */
+function isEnvironmentAssignmentToken(token: string): boolean {
+  const separatorIndex = token.indexOf('=');
+  if (separatorIndex <= 0) {
+    return false;
+  }
+
+  const variableName = token.slice(0, separatorIndex);
+  return /^[A-Za-z_]\w*$/u.test(variableName);
+}
+
+/**
+ * Checks whether a command token is one of the supported tool families.
+ *
+ * @param {string} toolToken - Command token to inspect.
+ * @returns {toolToken is RegressionTool} `true` for supported tool families.
+ */
+function isSupportedTool(toolToken: string): toolToken is RegressionTool {
+  return SUPPORTED_TOOLS.includes(toolToken as RegressionTool);
 }
 
 /**

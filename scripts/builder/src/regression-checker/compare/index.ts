@@ -294,9 +294,9 @@ function compareTestSummaries(
     }
   }
 
-  regressions.sort();
-  newFailures.sort();
-  fixes.sort();
+  regressions.sort((left, right) => left.localeCompare(right));
+  newFailures.sort((left, right) => left.localeCompare(right));
+  fixes.sort((left, right) => left.localeCompare(right));
 
   return { regressions, newFailures, fixes };
 }
