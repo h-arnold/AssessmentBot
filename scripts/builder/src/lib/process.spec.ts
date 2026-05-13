@@ -67,6 +67,50 @@ describe('runCommand', () => {
       },
     });
   });
+
+  it('mirrors stdout and stderr live when streamOutput is enabled', async () => {
+    const stdoutSpy = vi.spyOn(process.stdout, 'write').mockReturnValue(true);
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
+
+    await runCommand(
+      process.execPath,
+      [
+        '-e',
+        "require('node:fs').writeSync(1,'live-out');require('node:fs').writeSync(2,'live-err');",
+      ],
+      {
+        cwd: process.cwd(),
+        streamOutput: true,
+      }
+    );
+
+    expect(stdoutSpy).toHaveBeenCalled();
+    expect(stderrSpy).toHaveBeenCalled();
+  });
+
+  it('terminates commands that exceed timeoutMs and reports timeout diagnostics', async () => {
+    await expect(
+      runCommand(process.execPath, ['-e', 'setTimeout(() => {}, 10_000);'], {
+        cwd: process.cwd(),
+        timeoutMs: 50,
+      })
+    ).rejects.toMatchObject({
+      message: 'Command timed out after 50ms',
+      diagnostics: {
+        timedOut: true,
+        timeoutMs: 50,
+      },
+    });
+  });
+
+  it('rejects invalid timeoutMs option values', async () => {
+    await expect(
+      runCommand(process.execPath, ['-e', "process.stdout.write('ok');"], {
+        cwd: process.cwd(),
+        timeoutMs: 0,
+      })
+    ).rejects.toThrow('timeoutMs must be an integer greater than or equal to 1 when provided.');
+  });
 });
 
 describe('logging helpers', () => {

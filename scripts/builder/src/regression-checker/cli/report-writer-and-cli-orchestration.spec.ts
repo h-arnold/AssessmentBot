@@ -38,6 +38,7 @@ type RegressionConfig = {
     id: string;
     tool: RegressionTool;
     cwd: string;
+    timeoutMs?: number;
     reporterMode?: string;
     run: { kind: 'npm-script'; script: string } | { kind: 'tsc'; project: string };
   }>;
@@ -114,7 +115,12 @@ type RegressionCliModule = {
     runCommandImpl: (
       command: string,
       args: string[],
-      options: { cwd: string; env?: NodeJS.ProcessEnv }
+      options: {
+        cwd: string;
+        env?: NodeJS.ProcessEnv;
+        timeoutMs?: number;
+        streamOutput?: boolean;
+      }
     ) => Promise<{ stdout: string; stderr: string }>;
   }) => Promise<ScheduledCheckResult[]>;
   runRegressionCheckerCli: (options: {
@@ -172,7 +178,12 @@ type RegressionCliModule = {
     runCommand?: (
       command: string,
       args: string[],
-      options: { cwd: string; env?: NodeJS.ProcessEnv }
+      options: {
+        cwd: string;
+        env?: NodeJS.ProcessEnv;
+        timeoutMs?: number;
+        streamOutput?: boolean;
+      }
     ) => Promise<{ stdout: string; stderr: string }>;
   }) => Promise<{
     exitCode: number;
@@ -189,6 +200,9 @@ const REPO_ROOT = '/repo';
 const LINT_SCRIPT_NAME = 'lint:builder:check';
 const LINT_SCRIPT_COMMAND =
   'eslint --config scripts/builder/eslint.config.js scripts/builder/src/**/*.ts';
+const COMPARE_HEADER_LINE_COUNT = 14;
+const INVALID_CONFIG_EXIT_CODE = 2;
+const TSC_FAILURE_EXIT_CODE = 2;
 const tempDirectories: string[] = [];
 
 afterEach(async () => {
@@ -505,7 +519,7 @@ describe('report writer and CLI orchestration', () => {
     const headerLines = result.outputText
       .split('\n')
       .filter((line) => line.includes(': '))
-      .slice(0, 14);
+      .slice(0, COMPARE_HEADER_LINE_COUNT);
     expect(headerLines).toEqual([
       'sessionId: feature/regression-checker',
       'sessionStorageKey: session-feature-regression-checker',
@@ -548,7 +562,7 @@ describe('report writer and CLI orchestration', () => {
       writeFile: async () => {},
     });
 
-    expect(result.exitCode).toBe(2);
+    expect(result.exitCode).toBe(INVALID_CONFIG_EXIT_CODE);
     expect(result.outputText).toContain('Regression config is invalid');
     expect(runChecksCalled).toBe(false);
   });
@@ -726,11 +740,13 @@ describe('report writer and CLI orchestration', () => {
           signal: null,
           stdout: diagnosticText,
           stderr: '',
+          timedOut: false,
+          timeoutMs: null,
         });
       },
       compareRegressionChecks: ({ checksInConfigOrder }) => {
         expect(checksInConfigOrder[0]?.current.status).toBe('failing');
-        expect(checksInConfigOrder[0]?.current.exitCode).toBe(2);
+        expect(checksInConfigOrder[0]?.current.exitCode).toBe(TSC_FAILURE_EXIT_CODE);
         expect(checksInConfigOrder[0]?.current.rawArtefact).toBe(diagnosticText);
 
         return {
@@ -881,6 +897,8 @@ describe('report writer and CLI orchestration', () => {
           signal: null,
           stdout: '',
           stderr: 'eslint failed',
+          timedOut: false,
+          timeoutMs: null,
         });
       },
     });
@@ -902,6 +920,62 @@ describe('report writer and CLI orchestration', () => {
         error: null,
       },
     ]);
+  });
+
+  it('passes timeout and stream options through to command execution', async () => {
+    const { runChecksFromConfig } = await loadCliModule();
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'regression-cli-timeout-options-'));
+    tempDirectories.push(tempRoot);
+    const runCommandCalls: Array<{ timeoutMs?: number; streamOutput?: boolean; cwd: string }> = [];
+
+    const previousStreamFlag = process.env.REGRESSION_CHECKER_STREAM_OUTPUT;
+    process.env.REGRESSION_CHECKER_STREAM_OUTPUT = 'true';
+
+    try {
+      const results = await runChecksFromConfig({
+        repoRoot: tempRoot,
+        rawArtefactDirectory: path.join(tempRoot, 'reports', 'run'),
+        config: {
+          reportDirectory: REPORT_DIRECTORY,
+          parallel: { enabled: true, maxWorkers: 1 },
+          checks: [
+            {
+              id: 'builder-lint',
+              tool: 'eslint',
+              cwd: '.',
+              timeoutMs: 1234,
+              run: { kind: 'npm-script', script: 'lint:builder:check' },
+            },
+          ],
+        },
+        runCommandImpl: async (_command, _args, commandOptions) => {
+          runCommandCalls.push({
+            timeoutMs: commandOptions.timeoutMs,
+            streamOutput: commandOptions.streamOutput,
+            cwd: commandOptions.cwd,
+          });
+          return {
+            stdout: '',
+            stderr: '',
+          };
+        },
+      });
+
+      expect(results[0]?.status).toBe('passing');
+      expect(runCommandCalls).toEqual([
+        {
+          timeoutMs: 1234,
+          streamOutput: true,
+          cwd: tempRoot,
+        },
+      ]);
+    } finally {
+      if (previousStreamFlag === undefined) {
+        delete process.env.REGRESSION_CHECKER_STREAM_OUTPUT;
+      } else {
+        process.env.REGRESSION_CHECKER_STREAM_OUTPUT = previousStreamFlag;
+      }
+    }
   });
 
   it('persists tsc diagnostics from stderr fallback and ignores non-tsc/non-playwright writes', async () => {

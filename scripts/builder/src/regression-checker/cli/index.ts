@@ -15,13 +15,14 @@ import {
   type SessionManifest,
 } from '../storage/session-storage.js';
 import { resolveSessionContext, type SessionIdSource } from './session-resolution.js';
-import { CommandExecutionError, runCommand } from '../../lib/process.js';
+import { CommandExecutionError, logError, logInfo, runCommand } from '../../lib/process.js';
 
 type RegressionTool = 'eslint' | 'vitest' | 'playwright' | 'tsc';
 type RegressionCheckConfig = {
   id: string;
   tool: RegressionTool;
   cwd: string;
+  timeoutMs?: number;
   reporterMode?: string;
   run: { kind: 'npm-script'; script: string } | { kind: 'tsc'; project: string };
 };
@@ -167,12 +168,7 @@ async function buildRunContext(
     await writeSessionManifest(storageResult.currentManifestPath, currentManifest);
   }
 
-  const runResults = await (options.runChecks ?? runChecksFromConfig)({
-    config,
-    repoRoot: options.repoRoot,
-    rawArtefactDirectory: resolveRawArtefactDirectory(storageResult),
-    runCommandImpl: options.runCommand ?? runCommand,
-  });
+  const runResults = await runChecksForContext(options, config, storageResult);
 
   return {
     sessionContext,
@@ -182,6 +178,27 @@ async function buildRunContext(
     currentManifest,
     runResults,
   };
+}
+
+/**
+ * Runs configured checks using injected or default runner implementations.
+ *
+ * @param {RunRegressionCheckerCliOptions} options - Runtime inputs and injectable helpers.
+ * @param {RegressionConfig} config - Normalised regression-checker config.
+ * @param {Awaited<ReturnType<typeof prepareSessionStorage>>} storageResult - Storage plan for the active run.
+ * @returns {Promise<ScheduledCheckResult[]>} Collected check execution results.
+ */
+async function runChecksForContext(
+  options: RunRegressionCheckerCliOptions,
+  config: RegressionConfig,
+  storageResult: Awaited<ReturnType<typeof prepareSessionStorage>>
+): Promise<ScheduledCheckResult[]> {
+  return await (options.runChecks ?? runChecksFromConfig)({
+    config,
+    repoRoot: options.repoRoot,
+    rawArtefactDirectory: resolveRawArtefactDirectory(storageResult),
+    runCommandImpl: options.runCommand ?? runCommand,
+  });
 }
 
 /**
@@ -677,12 +694,16 @@ export async function runChecksFromConfig(options: {
   rawArtefactDirectory: string;
   runCommandImpl: typeof runCommand;
 }): Promise<ScheduledCheckResult[]> {
+  const mirrorCommandOutput = shouldMirrorCommandOutput();
+
   return runChecksWithBoundedScheduler({
     checks: options.config.checks,
     maxWorkers: options.config.parallel.enabled ? options.config.parallel.maxWorkers : 1,
     getPlannedRawArtefactPath: (check) =>
       path.join(options.rawArtefactDirectory, 'checks', check.id, getRawFileName(check.tool)),
     runCheck: async (check) => {
+      const startedAt = Date.now();
+      logInfo(`regression-checker: start ${check.id} (${check.tool})`);
       const rawArtefactPath = path.join(
         options.rawArtefactDirectory,
         'checks',
@@ -699,12 +720,18 @@ export async function runChecksFromConfig(options: {
       try {
         const commandOutput = await options.runCommandImpl(invocation.executable, invocation.args, {
           cwd: invocation.cwd,
+          timeoutMs: check.timeoutMs,
+          streamOutput: mirrorCommandOutput,
         });
         await persistCapturedArtefact({
           tool: check.tool,
           rawArtefactPath,
           commandOutput,
         });
+
+        logInfo(
+          `regression-checker: pass ${check.id} (${check.tool}) in ${String(Date.now() - startedAt)}ms`
+        );
 
         return {
           id: check.id,
@@ -714,7 +741,7 @@ export async function runChecksFromConfig(options: {
           exitCode: 0,
         };
       } catch (error) {
-        if (error instanceof CommandExecutionError && error.diagnostics.exitCode !== null) {
+        if (error instanceof CommandExecutionError) {
           await persistCapturedArtefact({
             tool: check.tool,
             rawArtefactPath,
@@ -724,12 +751,30 @@ export async function runChecksFromConfig(options: {
             },
           });
 
+          if (error.diagnostics.exitCode !== null) {
+            logInfo(
+              `regression-checker: fail ${check.id} (${check.tool}) exit ${String(error.diagnostics.exitCode)} in ${String(Date.now() - startedAt)}ms`
+            );
+
+            return {
+              id: check.id,
+              tool: check.tool,
+              rawArtefactPath,
+              status: 'failing',
+              exitCode: error.diagnostics.exitCode,
+            };
+          }
+
+          logError(
+            `regression-checker: error ${check.id} (${check.tool}) in ${String(Date.now() - startedAt)}ms: ${error.message}`
+          );
+
           return {
             id: check.id,
             tool: check.tool,
             rawArtefactPath,
-            status: 'failing',
-            exitCode: error.diagnostics.exitCode,
+            status: 'execution-error',
+            exitCode: null,
           };
         }
 
@@ -737,6 +782,21 @@ export async function runChecksFromConfig(options: {
       }
     },
   });
+}
+
+/**
+ * Determines whether child command output should be mirrored live.
+ *
+ * @returns {boolean} True when output mirroring is enabled via environment flag.
+ */
+function shouldMirrorCommandOutput(): boolean {
+  const flag = process.env.REGRESSION_CHECKER_STREAM_OUTPUT;
+  if (flag === undefined) {
+    return false;
+  }
+
+  const canonicalFlag = flag.trim().toLowerCase();
+  return canonicalFlag === '1' || canonicalFlag === 'true' || canonicalFlag === 'yes';
 }
 
 /**

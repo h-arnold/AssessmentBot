@@ -6,6 +6,13 @@ import { pathToFileURL } from 'node:url';
 import { loadDefaultRegressionCheckerConfig, runRegressionCheckerCli } from './cli/index.js';
 import { runCommand } from '../lib/process.js';
 
+const NPM_COMMAND_SPLIT_TOKEN = 'npm ';
+const NPM_RUN_SEGMENT_TOKEN = ' run ';
+const PREFIX_EQUALS_TOKEN = '--prefix=';
+const PREFIX_SPACE_TOKEN = '--prefix ';
+const MIN_WRAPPED_VALUE_LENGTH = 2;
+const QUOTE_TRIM_OFFSET = 1;
+
 /**
  * Runs the regression-checker CLI using repository defaults and the current process context.
  *
@@ -63,11 +70,25 @@ export async function loadPackageJsonScriptsByDirectory(options: {
   rawConfig: unknown;
 }): Promise<Record<string, Record<string, string>>> {
   const scriptEntries: Array<[string, Record<string, string>]> = [];
+  const directoriesToProcess = [...getCandidateDirectories(options.rawConfig)];
+  const processedDirectories = new Set<string>();
 
-  for (const directory of getCandidateDirectories(options.rawConfig)) {
+  while (directoriesToProcess.length > 0) {
+    const directory = directoriesToProcess.shift();
+    if (directory === undefined || processedDirectories.has(directory)) {
+      continue;
+    }
+    processedDirectories.add(directory);
+
     const scripts = await readPackageJsonScripts(options.repoRoot, directory);
     if (scripts !== null) {
       scriptEntries.push([directory, scripts]);
+
+      for (const discoveredDirectory of discoverPrefixedPackageDirectories(scripts)) {
+        if (!processedDirectories.has(discoveredDirectory)) {
+          directoriesToProcess.push(discoveredDirectory);
+        }
+      }
     }
   }
 
@@ -124,6 +145,107 @@ function normaliseSafePackageDirectory(cwd: string): string | null {
   }
 
   return canonicalSegments.length === 0 ? '.' : canonicalSegments.join('/');
+}
+
+/**
+ * Discovers repo-relative package directories referenced through npm --prefix script calls.
+ *
+ * @param {Record<string, string>} scripts - Scripts map from a package.json file.
+ * @returns {Set<string>} Canonical repo-relative package directories.
+ */
+function discoverPrefixedPackageDirectories(scripts: Record<string, string>): Set<string> {
+  const discoveredDirectories = new Set<string>();
+
+  for (const scriptCommand of Object.values(scripts)) {
+    for (const prefixPath of extractNpmPrefixPaths(scriptCommand)) {
+      const canonicalDirectory = normaliseSafePackageDirectory(prefixPath);
+      if (canonicalDirectory !== null) {
+        discoveredDirectories.add(canonicalDirectory);
+      }
+    }
+  }
+
+  return discoveredDirectories;
+}
+
+/**
+ * Extracts npm --prefix directory values from script command text.
+ *
+ * @param {string} scriptCommand - Raw package.json script command.
+ * @returns {string[]} Prefix directory values.
+ */
+function extractNpmPrefixPaths(scriptCommand: string): string[] {
+  const prefixPaths: string[] = [];
+  const commandSegments = scriptCommand.split(NPM_COMMAND_SPLIT_TOKEN);
+
+  for (const commandSegment of commandSegments.slice(1)) {
+    const runTokenIndex = commandSegment.indexOf(NPM_RUN_SEGMENT_TOKEN);
+    if (runTokenIndex < 0) {
+      continue;
+    }
+
+    const prefixSection = commandSegment.slice(0, runTokenIndex).trim();
+    const prefixCandidate = parsePrefixSection(prefixSection);
+    if (prefixCandidate === null) {
+      continue;
+    }
+
+    const prefixPath = stripWrappingQuotes(prefixCandidate).trim();
+    if (prefixPath.length > 0) {
+      prefixPaths.push(prefixPath);
+    }
+  }
+
+  return prefixPaths;
+}
+
+/**
+ * Parses the optional npm --prefix segment that appears before `run`.
+ *
+ * @param {string} prefixSection - Segment between `npm` and `run`.
+ * @returns {string | null} Parsed prefix path or `null` when absent/invalid.
+ */
+function parsePrefixSection(prefixSection: string): string | null {
+  if (prefixSection.startsWith(PREFIX_EQUALS_TOKEN)) {
+    return prefixSection.slice(PREFIX_EQUALS_TOKEN.length);
+  }
+
+  if (!prefixSection.startsWith(PREFIX_SPACE_TOKEN)) {
+    return null;
+  }
+
+  const prefixValue = prefixSection.slice(PREFIX_SPACE_TOKEN.length).trim();
+  if (prefixValue.length === 0) {
+    return null;
+  }
+
+  const separatorIndex = prefixValue.indexOf(' ');
+  if (separatorIndex < 0) {
+    return prefixValue;
+  }
+
+  return prefixValue.slice(0, separatorIndex);
+}
+
+/**
+ * Removes a single pair of wrapping quote characters when present.
+ *
+ * @param {string} value - Candidate string value.
+ * @returns {string} Unquoted string when wrapped with matching quotes.
+ */
+function stripWrappingQuotes(value: string): string {
+  if (value.length < MIN_WRAPPED_VALUE_LENGTH) {
+    return value;
+  }
+
+  const hasDoubleQuotes = value.startsWith('"') && value.endsWith('"');
+  const hasSingleQuotes = value.startsWith("'") && value.endsWith("'");
+
+  if (hasDoubleQuotes || hasSingleQuotes) {
+    return value.slice(QUOTE_TRIM_OFFSET, value.length - QUOTE_TRIM_OFFSET);
+  }
+
+  return value;
 }
 
 /**

@@ -128,6 +128,8 @@ describe('runFrontendBuildWithMode', () => {
         signal: null,
         stdout: 'vite stdout',
         stderr: 'vite stderr',
+        timedOut: false,
+        timeoutMs: null,
       })
     );
 
@@ -160,6 +162,8 @@ describe('runFrontendBuildWithMode', () => {
       stage: FRONTEND_BUILD_STAGE,
     });
     await expect(runFrontendBuildWithMode(paths, 'production')).rejects.toThrow('chunk info');
-    await expect(runFrontendBuildWithMode(paths, 'production')).rejects.toThrow('warning: test warning');
+    await expect(runFrontendBuildWithMode(paths, 'production')).rejects.toThrow(
+      'warning: test warning'
+    );
   });
 });

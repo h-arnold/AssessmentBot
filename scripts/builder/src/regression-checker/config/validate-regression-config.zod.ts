@@ -14,6 +14,7 @@ const regressionCheckSchema = z.object({
   id: z.string().trim().min(1, 'checks[].id must be a non-empty string.'),
   tool: z.string().trim().min(1, 'checks[].tool must be a non-empty string.'),
   cwd: z.string().trim().min(1, 'checks[].cwd must be a non-empty string.'),
+  timeoutMs: z.number().int().min(1, 'checks[].timeoutMs must be >= 1.').optional(),
   reporterMode: z.string().trim().min(1).optional(),
   run: z.discriminatedUnion('kind', [npmScriptRunSchema, tscRunSchema]),
 });

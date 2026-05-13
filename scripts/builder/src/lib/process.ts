@@ -4,6 +4,8 @@ import { spawn } from 'node:child_process';
 export type CommandRunOptions = {
   cwd: string;
   env?: NodeJS.ProcessEnv;
+  timeoutMs?: number;
+  streamOutput?: boolean;
 };
 
 export type CommandRunResult = {
@@ -19,6 +21,8 @@ export type CommandFailureDiagnostics = {
   signal: NodeJS.Signals | null;
   stdout: string;
   stderr: string;
+  timedOut: boolean;
+  timeoutMs: number | null;
 };
 
 /**
@@ -102,9 +106,17 @@ export function logBuildFailure(err: unknown): void {
 export async function runCommand(
   command: string,
   args: string[],
-  options: CommandRunOptions,
+  options: CommandRunOptions
 ): Promise<CommandRunResult> {
   return new Promise((resolve, reject) => {
+    if (
+      options.timeoutMs !== undefined &&
+      (!Number.isInteger(options.timeoutMs) || options.timeoutMs < 1)
+    ) {
+      reject(new Error('timeoutMs must be an integer greater than or equal to 1 when provided.'));
+      return;
+    }
+
     const child = spawn(command, args, {
       cwd: options.cwd,
       env: options.env ?? process.env,
@@ -113,16 +125,34 @@ export async function runCommand(
 
     let stdout = '';
     let stderr = '';
+    let timedOut = false;
+    let timeoutHandle: NodeJS.Timeout | null = null;
+
+    if (options.timeoutMs !== undefined) {
+      timeoutHandle = setTimeout(() => {
+        timedOut = true;
+        child.kill('SIGTERM');
+      }, options.timeoutMs);
+    }
 
     child.stdout.on('data', (chunk) => {
       stdout += chunk.toString();
+      if (options.streamOutput) {
+        process.stdout.write(chunk);
+      }
     });
 
     child.stderr.on('data', (chunk) => {
       stderr += chunk.toString();
+      if (options.streamOutput) {
+        process.stderr.write(chunk);
+      }
     });
 
     child.on('error', (err) => {
+      if (timeoutHandle !== null) {
+        clearTimeout(timeoutHandle);
+      }
       reject(
         new CommandExecutionError(err.message || 'Command failed before process exit.', {
           command,
@@ -132,16 +162,25 @@ export async function runCommand(
           signal: null,
           stdout,
           stderr,
-        }),
+          timedOut,
+          timeoutMs: options.timeoutMs ?? null,
+        })
       );
     });
 
     child.on('close', (code, signal) => {
+      if (timeoutHandle !== null) {
+        clearTimeout(timeoutHandle);
+      }
+
       if (code === 0) {
         resolve({ stdout, stderr });
         return;
       }
-      const message = stderr.trim() || stdout.trim() || `Command failed with exit code ${code}`;
+
+      const message = timedOut
+        ? `Command timed out after ${String(options.timeoutMs)}ms`
+        : stderr.trim() || stdout.trim() || `Command failed with exit code ${code}`;
       reject(
         new CommandExecutionError(message, {
           command,
@@ -151,7 +190,9 @@ export async function runCommand(
           signal,
           stdout,
           stderr,
-        }),
+          timedOut,
+          timeoutMs: options.timeoutMs ?? null,
+        })
       );
     });
   });

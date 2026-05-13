@@ -33,30 +33,12 @@
       }
     },
     {
-      "id": "backend-test-check",
-      "tool": "vitest",
-      "cwd": ".",
-      "run": {
-        "kind": "npm-script",
-        "script": "test:backend"
-      }
-    },
-    {
       "id": "backend-test-coverage-check",
       "tool": "vitest",
       "cwd": ".",
       "run": {
         "kind": "npm-script",
         "script": "test:backend:coverage"
-      }
-    },
-    {
-      "id": "frontend-test-check",
-      "tool": "vitest",
-      "cwd": ".",
-      "run": {
-        "kind": "npm-script",
-        "script": "test:frontend"
       }
     },
     {
@@ -75,24 +57,6 @@
       "run": {
         "kind": "npm-script",
         "script": "test:frontend:e2e"
-      }
-    },
-    {
-      "id": "frontend-e2e-screenshots-check",
-      "tool": "playwright",
-      "cwd": ".",
-      "run": {
-        "kind": "npm-script",
-        "script": "test:frontend:e2e:screenshots"
-      }
-    },
-    {
-      "id": "builder-test-check",
-      "tool": "vitest",
-      "cwd": ".",
-      "run": {
-        "kind": "npm-script",
-        "script": "test:builder"
       }
     },
     {

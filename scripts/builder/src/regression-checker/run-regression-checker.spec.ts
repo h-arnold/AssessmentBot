@@ -148,6 +148,55 @@ describe('run-regression-checker helpers', () => {
     });
   });
 
+  it('discovers nested npm --prefix package directories referenced by scripts', async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'regression-checker-wrapper-nested-'));
+    tempDirectories.push(tempRoot);
+
+    await fs.writeFile(
+      path.join(tempRoot, 'package.json'),
+      JSON.stringify({
+        scripts: {
+          'lint:frontend:check': 'npm --prefix src/frontend run lint --',
+        },
+      }),
+      'utf8'
+    );
+    await fs.mkdir(path.join(tempRoot, 'src', 'frontend'), { recursive: true });
+    await fs.writeFile(
+      path.join(tempRoot, 'src', 'frontend', 'package.json'),
+      JSON.stringify({
+        scripts: {
+          lint: 'eslint .',
+        },
+      }),
+      'utf8'
+    );
+
+    await expect(
+      loadPackageJsonScriptsByDirectory({
+        repoRoot: tempRoot,
+        rawConfig: {
+          checks: [
+            {
+              cwd: '.',
+              run: {
+                kind: 'npm-script',
+                script: 'lint:frontend:check',
+              },
+            },
+          ],
+        },
+      })
+    ).resolves.toEqual({
+      '.': {
+        'lint:frontend:check': 'npm --prefix src/frontend run lint --',
+      },
+      'src/frontend': {
+        lint: 'eslint .',
+      },
+    });
+  });
+
   it('propagates invalid package.json parse errors', async () => {
     const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'regression-checker-wrapper-json-'));
     tempDirectories.push(tempRoot);
@@ -193,6 +242,8 @@ describe('run-regression-checker helpers', () => {
         signal: null,
         stdout: '',
         stderr: 'fatal',
+        timedOut: false,
+        timeoutMs: null,
       })
     );
 

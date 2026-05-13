@@ -9,6 +9,7 @@ type RegressionCheckConfig = {
   id: string;
   tool: RegressionTool;
   cwd: string;
+  timeoutMs?: number;
   reporterMode?: string;
   run: NpmScriptRunConfig | TscRunConfig;
 };

@@ -59,6 +59,8 @@ describe('runFrontendInstallDeps', () => {
           signal: null,
           stdout: '',
           stderr: 'missing: @tanstack/react-query',
+          timedOut: false,
+          timeoutMs: null,
         })
       )
       .mockResolvedValueOnce({ stdout: 'installed', stderr: '' });
@@ -94,6 +96,8 @@ describe('runFrontendInstallDeps', () => {
           signal: null,
           stdout: '',
           stderr: 'missing dependencies',
+          timedOut: false,
+          timeoutMs: null,
         })
       )
       .mockRejectedValueOnce(
@@ -105,6 +109,8 @@ describe('runFrontendInstallDeps', () => {
           signal: null,
           stdout: '',
           stderr: 'lockfile mismatch',
+          timedOut: false,
+          timeoutMs: null,
         })
       );
 
@@ -129,6 +135,8 @@ describe('runFrontendInstallDeps', () => {
           signal: null,
           stdout: '',
           stderr: 'missing dependencies',
+          timedOut: false,
+          timeoutMs: null,
         })
       )
       .mockRejectedValueOnce(new Error('unexpected install failure'));
