@@ -5,7 +5,12 @@ description: Coordinates testing, implementation, review, documentation, and cle
 
 # Agent Orchestrator
 
-Use this skill to coordinate delivery against `ACTION_PLAN.md`.
+Use this skill to coordinate delivery against `ACTION_PLAN.md` and to keep regression-checker
+state aligned with each phase of the plan.
+
+When a phase is primarily about deduplication or cleanup, use the `loc-counter` skill alongside the
+regression checker to confirm the branch is not just passing, but also getting smaller where that
+matters.
 
 Keep the workflow strict, sequential, and TDD-first.
 
@@ -19,7 +24,9 @@ Keep the workflow strict, sequential, and TDD-first.
    - each numbered section, including objective, constraints, acceptance criteria, required test cases, and section checks
 3. If `ACTION_PLAN.md` is missing, or the request clearly lacks an up-to-date planning set, delegate planning to `Planner` first.
 4. Detect the delegation environment once and reuse it.
-5. Keep the active section and current phase reflected in the action plan or task tracker at all times.
+5. Use the `regression-checker` skill to establish a stable session ID for the current branch or
+   action plan, then run it before and after each phase or materially risky change.
+6. Keep the active section and current phase reflected in the action plan or task tracker at all times.
 
 When delegating, pass full context every time:
 
@@ -39,6 +46,14 @@ Before accepting any sub-agent handoff, verify:
 - the handoff includes `Files read` with explicit file paths
 - every mandatory documentation file required by that sub-agent is listed
 - missing mandatory-read evidence is treated as a blocking failure
+
+At each checkpoint, capture the regression checker outcome in the task tracker or action plan:
+
+- `overallStatus`
+- `regressionsCount`
+- `newFailuresCount`
+- `fixesCount`
+- report path
 
 For each section, run this loop until the section is clean:
 

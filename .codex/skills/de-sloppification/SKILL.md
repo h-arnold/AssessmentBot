@@ -9,6 +9,9 @@ Use this skill to inspect a codebase, or a clearly scoped subset of it, for conc
 
 The goal is not generic clean-code feedback. The goal is to find places where the code looks like it was produced by a model that optimised for completion rather than maintainability.
 
+For refactors where code volume matters, use the `loc-counter` skill to establish a baseline before
+and after the cleanup so you can confirm the change actually reduced LOC.
+
 ## Mandatory first step
 
 Before reviewing or editing anything:
