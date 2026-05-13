@@ -983,7 +983,7 @@ describe('report writer and CLI orchestration', () => {
     }
   });
 
-  it('persists tsc diagnostics from stderr fallback and ignores non-tsc/non-playwright writes', async () => {
+  it('persists tsc diagnostics from stderr fallback and preserves eslint tool-written artefacts', async () => {
     const { persistCapturedArtefact } = await loadCliModule();
     const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'regression-cli-tsc-stderr-'));
     tempDirectories.push(tempRoot);
@@ -997,14 +997,60 @@ describe('report writer and CLI orchestration', () => {
       rawArtefactPath: tscRawArtefactPath,
       commandOutput: { stdout: '   ', stderr: stderrDiagnostics },
     });
+
+    // First, have eslint write its own file (simulating tool behavior)
+    await fs.mkdir(path.dirname(eslintRawArtefactPath), { recursive: true });
+    await fs.writeFile(eslintRawArtefactPath, '{"messages":[]}', 'utf8');
+
+    // Now call persistCapturedArtefact - it should NOT overwrite the tool-written file
     await persistCapturedArtefact({
       tool: 'eslint',
       rawArtefactPath: eslintRawArtefactPath,
-      commandOutput: { stdout: '{"messages":[]}', stderr: '' },
+      commandOutput: { stdout: 'npm header', stderr: '' },
     });
 
     await expect(fs.readFile(tscRawArtefactPath, 'utf8')).resolves.toBe(stderrDiagnostics);
-    await expect(fs.access(eslintRawArtefactPath)).rejects.toThrow();
+    // ESLint file should still have the tool-written content, not the captured stdout
+    await expect(fs.readFile(eslintRawArtefactPath, 'utf8')).resolves.toBe('{"messages":[]}');
+  });
+
+  it('falls back to captured output when eslint tool does not write file', async () => {
+    const { persistCapturedArtefact } = await loadCliModule();
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'regression-cli-eslint-fallback-'));
+    tempDirectories.push(tempRoot);
+
+    const eslintRawArtefactPath = path.join(tempRoot, 'checks', 'lint', 'raw.json');
+    const errorMessage = 'ESLint configuration error';
+
+    // Call persistCapturedArtefact without tool-written file - should write captured output
+    await persistCapturedArtefact({
+      tool: 'eslint',
+      rawArtefactPath: eslintRawArtefactPath,
+      commandOutput: { stdout: '', stderr: errorMessage },
+    });
+
+    // Should contain stderr error message
+    await expect(fs.readFile(eslintRawArtefactPath, 'utf8')).resolves.toBe(errorMessage);
+  });
+
+  it('combines stdout and stderr when both are present and tool does not write file', async () => {
+    const { persistCapturedArtefact } = await loadCliModule();
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'regression-cli-combined-'));
+    tempDirectories.push(tempRoot);
+
+    const eslintRawArtefactPath = path.join(tempRoot, 'checks', 'lint', 'raw.json');
+
+    // Call persistCapturedArtefact with both stdout and stderr
+    await persistCapturedArtefact({
+      tool: 'eslint',
+      rawArtefactPath: eslintRawArtefactPath,
+      commandOutput: { stdout: 'npm header', stderr: 'Error: ESLint failed' },
+    });
+
+    // Should contain stderr first, then stdout
+    await expect(fs.readFile(eslintRawArtefactPath, 'utf8')).resolves.toBe(
+      'Error: ESLint failed\nnpm header'
+    );
   });
 
   it('loads default config from disk and rethrows unexpected runner failures', async () => {

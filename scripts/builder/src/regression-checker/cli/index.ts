@@ -982,6 +982,9 @@ function shouldMirrorCommandOutput(): boolean {
 
 /**
  * Persists tool-specific command output to a raw artefact file.
+ * For eslint and vitest, the tool writes its own JSON output via CLI flags,
+ * but on failure the tool may not write anything, so we fallback to captured output.
+ * For tsc and playwright, we always write the captured output.
  *
  * @param {{ tool: RegressionTool; rawArtefactPath: string; commandOutput: { stdout: string; stderr: string } }} options
  * Persistence inputs.
@@ -997,18 +1000,30 @@ export async function persistCapturedArtefact(options: {
   rawArtefactPath: string;
   commandOutput: { stdout: string; stderr: string };
 }): Promise<void> {
-  if (options.tool === 'playwright') {
-    await writeFileToDisk(options.rawArtefactPath, options.commandOutput.stdout);
-    return;
+  // For eslint and vitest, check if the tool already wrote its own file
+  // (they use --output-file or --outputFile flags). If the file exists and
+  // has content, assume the tool wrote it successfully. Otherwise, fall back
+  // to writing the captured output (which includes error messages for failures).
+  if (options.tool === 'eslint' || options.tool === 'vitest') {
+    try {
+      const existingContent = await fs.readFile(options.rawArtefactPath, 'utf8');
+      if (existingContent.trim().length > 0) {
+        // Tool already wrote valid output, don't overwrite
+        return;
+      }
+    } catch {
+      // File doesn't exist or is empty, fall through to write captured output
+    }
   }
 
-  if (options.tool === 'tsc') {
-    const diagnosticText =
-      options.commandOutput.stdout.trim().length > 0
-        ? options.commandOutput.stdout
-        : options.commandOutput.stderr;
-    await writeFileToDisk(options.rawArtefactPath, diagnosticText);
-  }
+  // For all tools (or when eslint/vitest didn't write their own output),
+  // write the captured output. Combine stdout and stderr, with stderr first
+  // since error messages are typically in stderr.
+  const stdoutContent = options.commandOutput.stdout.trim();
+  const stderrContent = options.commandOutput.stderr.trim();
+  const content = [stderrContent, stdoutContent].filter((s) => s.length > 0).join('\n');
+
+  await writeFileToDisk(options.rawArtefactPath, content);
 }
 
 /**
