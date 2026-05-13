@@ -91,6 +91,12 @@ const ROOT_PACKAGE_JSON_SCRIPTS: Record<string, string> = {
   'missing-nested-value-wrapper': 'npm run missing-nested-value',
 };
 
+const ROOT_PACKAGE_JSON_SCRIPTS_WITH_QUOTED_ENV_ASSIGNMENT: Record<string, string> = {
+  ...ROOT_PACKAGE_JSON_SCRIPTS,
+  'quoted-env-eslint':
+    'NODE_ENV="test" eslint --config eslint.config.js src/backend/**/*.js tests/**/*.js',
+};
+
 const FRONTEND_PACKAGE_JSON_SCRIPTS: Record<string, string> = {
   lint: 'eslint .',
   test: 'vitest run',
@@ -523,6 +529,35 @@ describe('Section 1 regression-checker CLI contract', () => {
     ).not.toThrow();
   });
 
+  it('accepts quoted environment assignments before a supported npm-script tool', async () => {
+    const { validateRegressionConfig } = await loadConfigValidationModule();
+
+    expect(() =>
+      validateRegressionConfig({
+        rawConfig: {
+          ...createValidConfig(),
+          checks: [
+            {
+              id: 'quoted-env-eslint-check',
+              tool: 'eslint',
+              cwd: '.',
+              run: {
+                kind: 'npm-script',
+                script: 'quoted-env-eslint',
+              },
+            },
+          ],
+        },
+        repoRoot: REPO_ROOT,
+        packageJsonScriptsByDirectory: {
+          '.': ROOT_PACKAGE_JSON_SCRIPTS_WITH_QUOTED_ENV_ASSIGNMENT,
+          'src/frontend': FRONTEND_PACKAGE_JSON_SCRIPTS,
+        },
+        logicalCpuCount: 8,
+      })
+    ).not.toThrow();
+  });
+
   it('rejects npm-script commands when script is not declared in the checks[].cwd package.json map', async () => {
     const { validateRegressionConfig } = await loadConfigValidationModule();
 
@@ -601,6 +636,32 @@ describe('Section 1 regression-checker CLI contract', () => {
         logicalCpuCount: 8,
       })
     ).toThrow(/tool=tsc|run.kind=tsc|npm-script/i);
+  });
+
+  it('rejects run.kind=tsc checks when the declared tool is not tsc', async () => {
+    const { validateRegressionConfig } = await loadConfigValidationModule();
+
+    expect(() =>
+      validateRegressionConfig({
+        rawConfig: {
+          ...createValidConfig(),
+          checks: [
+            {
+              id: 'eslint-tsc-run-check',
+              tool: 'eslint',
+              cwd: '.',
+              run: {
+                kind: 'tsc',
+                project: 'scripts/builder/tsconfig.json',
+              },
+            },
+          ],
+        },
+        repoRoot: REPO_ROOT,
+        packageJsonScriptsByDirectory: PACKAGE_JSON_SCRIPTS_BY_DIRECTORY,
+        logicalCpuCount: 8,
+      })
+    ).toThrow(/run\.kind=tsc|tool=tsc/i);
   });
 
   it('rejects absolute or escaping reportDirectory, cwd, and project paths', async () => {
