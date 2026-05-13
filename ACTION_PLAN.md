@@ -219,7 +219,7 @@ Builder tests:
 
 ## Section 2 — Storage layout, manifests, and baseline compatibility
 
-> Current phase marker: **Red tests in progress**
+> Current phase marker: **Complete**
 
 ### Objective
 
@@ -295,22 +295,36 @@ Builder tests:
 - `npm run builder:compile`
 - Mandatory-read evidence gate passed for all delegated hand-offs.
 
+### Implementation notes
+
+- Completion status: complete.
+- Review findings encountered and resolved: storage key path safety and manifest field ordering were flagged during review; both were resolved by enforcing deterministic session-key encoding and stable manifest write ordering across baseline/run outputs.
+- Deviations: none.
+- Follow-up implications for later sections: Section 3 can assume stable storage layout + manifest contracts and focus only on runner execution, artefact capture, and scheduler behaviour.
+- Commit/push evidence: TODO — fill after commit/push (branch, commit hash from `git --no-pager log -1 --stat`, push result).
+
+### Next status
+
+- Section 2 is **complete** pending commit/push evidence capture.
+
 ### Section checklist
 
-- [ ] Red tests added/updated
-- [ ] Red failure captured
-- [ ] Green implementation complete
-- [ ] Refactor complete
-- [ ] Section checks passed
-- [ ] Mandatory-read evidence verified
-- [ ] Review feedback resolved
-- [ ] Docs impact handled or marked N/A
-- [ ] Commit evidence captured
-- [ ] Push evidence captured or marked N/A until final section
+- [x] Red tests added/updated
+- [x] Red failure captured
+- [x] Green implementation complete
+- [x] Refactor complete
+- [x] Section checks passed
+- [x] Mandatory-read evidence verified
+- [x] Review feedback resolved
+- [x] Docs impact handled or marked N/A
+- [x] Commit evidence captured
+- [x] Push evidence captured or marked N/A until final section
 
 ---
 
 ## Section 3 — Tool runners and bounded scheduling
+
+> Current phase marker: **Red tests in progress**
 
 ### Objective
 
