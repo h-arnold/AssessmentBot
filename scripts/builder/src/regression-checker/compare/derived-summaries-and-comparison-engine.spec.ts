@@ -77,7 +77,7 @@ const ALERT_FAILURE_COLUMN = 2;
  */
 async function loadCompareModule(): Promise<CompareModule> {
   try {
-    return (await import('./index.js')) as CompareModule;
+    return await import('./index.js');
   } catch (error) {
     throw new Error(
       'Section 4 requires ./index.js to export compareRegressionChecks for derived-summary and comparison semantics.',

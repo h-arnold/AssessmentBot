@@ -503,7 +503,7 @@ describe('tool runner command construction and bounded scheduling', () => {
       getPlannedRawArtefactPath: (check) =>
         rawArtefactPathFor(CURRENT_RUN_ARTEFACT_ROOT, check.id, '.json'),
       runCheck: async () => {
-        throw 'literal-failure';
+        throw new Error('literal-failure');
       },
     });
 

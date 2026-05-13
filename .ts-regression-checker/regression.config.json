@@ -1,0 +1,27 @@
+{
+  "reportDirectory": ".ts-regression-checker/reports",
+  "parallel": {
+    "enabled": true,
+    "maxWorkers": 2
+  },
+  "checks": [
+    {
+      "id": "builder-lint-check",
+      "tool": "eslint",
+      "cwd": ".",
+      "run": {
+        "kind": "npm-script",
+        "script": "lint:builder:check"
+      }
+    },
+    {
+      "id": "builder-compile-check",
+      "tool": "tsc",
+      "cwd": ".",
+      "run": {
+        "kind": "tsc",
+        "project": "scripts/builder/tsconfig.json"
+      }
+    }
+  ]
+}
