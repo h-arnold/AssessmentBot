@@ -105,7 +105,7 @@ function getCandidateDirectories(rawConfig: unknown): Set<string> {
  * Validates package lookup directories to avoid repo-escape resolution during pre-validation reads.
  *
  * @param {string} cwd - Raw `checks[].cwd` value from config.
- * @returns {boolean} `true` when the path is safely repo-relative for package.json lookup.
+ * @returns {string | null} Canonical repo-relative directory or `null` when invalid/unsafe.
  */
 function normaliseSafePackageDirectory(cwd: string): string | null {
   const trimmed = cwd.trim();
@@ -144,7 +144,7 @@ function hasForbiddenPathPrefix(normalisedPath: string): boolean {
  * Determines whether path segments attempt to traverse above repo root.
  *
  * @param {string[]} segments - Path segments.
- * @returns {boolean} `true` when traversal escapes root.
+ * @returns {string[] | null} Canonical segments or `null` when traversal escapes root.
  */
 function normaliseRelativeSegments(segments: string[]): string[] | null {
   const canonicalSegments: string[] = [];
