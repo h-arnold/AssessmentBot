@@ -30,6 +30,7 @@ Technical documentation for developers contributing to the AssessmentBot codebas
 - [**Frontend Testing Guidelines**](./developer/frontend/frontend-testing.md) – Lightweight guide to frontend unit and E2E testing
 - [**Frontend Logging and Error Handling**](./developer/frontend/frontend-logging-and-error-handling.md) – Canonical standards for frontend diagnostics, error mapping, and user-facing feedback
 - [**Builder Script**](./developer/builder/builder-script.md) – How to use the build pipeline and how each stage works internally
+- [**Regression Checker How-To**](./developer/builder/regression-checker-how-to.md) – Configure, run, compare, and troubleshoot deterministic lint/test/compile regression checks
 - [**Singleton Pattern**](./developer/backend/singletons.md) – How to work with singletons in the codebase
 - [**Data Shapes**](./developer/backend/DATA_SHAPES.md) – Documentation of data structures and serialisation formats
 - [**Rehydration**](./developer/backend/rehydration.md) – Guide to deserialising and reconstructing objects

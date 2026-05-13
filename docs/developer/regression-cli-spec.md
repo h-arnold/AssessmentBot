@@ -9,6 +9,8 @@
 
 This document defines the intended behaviour for a config-driven CLI that captures tool-native structured outputs, stores baseline runs by session, and compares follow-up runs to detect regressions.
 
+For current operational usage and maintenance guidance, see [Builder Regression Checker How-To](./builder/regression-checker-how-to.md).
+
 The feature will be used to:
 
 - run configured checks for supported tools without changing human-oriented npm scripts

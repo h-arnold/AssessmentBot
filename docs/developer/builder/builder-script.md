@@ -54,6 +54,8 @@ npm run regression-checker -- [sessionId]
 npm run builder:ci
 ```
 
+For full regression-checker configuration, report interpretation, compatibility rules, and troubleshooting, use [Regression Checker How-To](./regression-checker-how-to.md).
+
 ### Coverage requirement
 
 Builder unit tests must meet a minimum coverage threshold of **85%** for lines, functions, statements, and branches. The threshold is enforced in `scripts/builder/vitest.config.ts` and checked via `npm run builder:test:coverage`.
