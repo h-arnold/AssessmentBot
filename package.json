@@ -28,6 +28,7 @@
     "test:builder": "vitest run --config scripts/builder/vitest.config.ts",
     "test:builder:watch": "vitest --config scripts/builder/vitest.config.ts",
     "test:builder:coverage": "vitest run --config scripts/builder/vitest.config.ts --coverage",
+    "regression-checker": "npm run builder:compile && node scripts/builder/dist/regression-checker/run-regression-checker.js",
     "test": "npm run test:backend && npm run test:frontend && npm run test:builder",
     "test:coverage": "npm run test:backend:coverage && npm run test:frontend:coverage && npm run test:builder:coverage",
     "format:backend": "prettier --write src/backend tests",
