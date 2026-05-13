@@ -47,6 +47,9 @@ npm run builder:lint
 # Builder unit tests
 npm run builder:test
 
+# Regression checker CLI
+npm run regression-checker -- [sessionId]
+
 # Full builder CI sequence: lint -> test -> compile -> run
 npm run builder:ci
 ```
