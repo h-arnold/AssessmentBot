@@ -24,4 +24,14 @@ describe('parseCliOptions', () => {
       "Invalid --frontend-mode value. Expected 'production' or 'dev'."
     );
   });
+
+  it('ignores empty argument tokens while scanning flags', () => {
+    expect(parseCliOptions(['', '--frontend-mode=dev'])).toEqual({ frontendMode: 'dev' });
+  });
+
+  it('rejects --frontend-mode when the value token is missing', () => {
+    expect(() => parseCliOptions(['--frontend-mode'])).toThrow(
+      "Invalid --frontend-mode value. Expected 'production' or 'dev'."
+    );
+  });
 });

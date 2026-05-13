@@ -117,4 +117,31 @@ describe('runFrontendInstallDeps', () => {
     await expect(result).rejects.toThrow('Diagnostics:');
     await expect(result).rejects.toThrow('lockfile mismatch');
   });
+
+  it('throws BuildStageError without diagnostics when npm ci fails with a non-command error', async () => {
+    runCommandMock
+      .mockRejectedValueOnce(
+        new CommandExecutionError('missing dependency', {
+          command: 'npm',
+          args: ['--prefix', paths.frontendDir, 'ls', '--depth=0'],
+          cwd: paths.repoRoot,
+          exitCode: 1,
+          signal: null,
+          stdout: '',
+          stderr: 'missing dependencies',
+        })
+      )
+      .mockRejectedValueOnce(new Error('unexpected install failure'));
+
+    const result = runFrontendInstallDeps(paths);
+    await expect(result).rejects.toMatchObject({
+      name: 'BuildStageError',
+      stage: STAGE_ID,
+    });
+    await expect(result).rejects.toBeInstanceOf(BuildStageError);
+    await expect(result).rejects.toThrow(
+      'Frontend dependency install failed while running npm ci.'
+    );
+    await expect(result).rejects.not.toThrow('Diagnostics:');
+  });
 });

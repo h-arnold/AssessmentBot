@@ -16,7 +16,7 @@ describe('runCommand', () => {
       ['-e', "require('node:fs').writeSync(1,'hello');require('node:fs').writeSync(2,'warn');"],
       {
         cwd: process.cwd(),
-      },
+      }
     );
 
     expect(result.stdout).toBe('hello');
@@ -25,23 +25,15 @@ describe('runCommand', () => {
 
   it('throws CommandExecutionError with diagnostics for non-zero exit codes', async () => {
     await expect(
-      runCommand(
-        process.execPath,
-        ['-e', "process.stderr.write('boom');process.exit(2);"],
-        {
-          cwd: process.cwd(),
-        },
-      ),
+      runCommand(process.execPath, ['-e', "process.stderr.write('boom');process.exit(2);"], {
+        cwd: process.cwd(),
+      })
     ).rejects.toBeInstanceOf(CommandExecutionError);
 
     await expect(
-      runCommand(
-        process.execPath,
-        ['-e', "process.stderr.write('boom');process.exit(2);"],
-        {
-          cwd: process.cwd(),
-        },
-      ),
+      runCommand(process.execPath, ['-e', "process.stderr.write('boom');process.exit(2);"], {
+        cwd: process.cwd(),
+      })
     ).rejects.toMatchObject({
       diagnostics: {
         exitCode: 2,
@@ -50,11 +42,24 @@ describe('runCommand', () => {
     });
   });
 
+  it('uses the default exit-code message when command exits non-zero without output', async () => {
+    await expect(
+      runCommand(process.execPath, ['-e', 'process.exit(3);'], {
+        cwd: process.cwd(),
+      })
+    ).rejects.toMatchObject({
+      message: 'Command failed with exit code 3',
+      diagnostics: {
+        exitCode: 3,
+      },
+    });
+  });
+
   it('throws CommandExecutionError when command cannot be started', async () => {
     await expect(
       runCommand('definitely-not-a-real-command', [], {
         cwd: process.cwd(),
-      }),
+      })
     ).rejects.toMatchObject({
       diagnostics: {
         command: 'definitely-not-a-real-command',
@@ -85,7 +90,9 @@ describe('logging helpers', () => {
 
     logBuildFailure(new BuildStageError('frontend-build', 'Transform failed', new Error('Boom')));
 
-    expect(stderrSpy).toHaveBeenCalledWith('Build failed during frontend-build: Transform failed\n');
+    expect(stderrSpy).toHaveBeenCalledWith(
+      'Build failed during frontend-build: Transform failed\n'
+    );
     expect(stderrSpy).toHaveBeenCalledWith('Cause: Boom\n');
   });
 
@@ -95,5 +102,16 @@ describe('logging helpers', () => {
     logBuildFailure('unexpected failure');
 
     expect(stderrSpy).toHaveBeenCalledWith('Build failed: unexpected failure\n');
+  });
+
+  it('logs stage failure without cause details when no cause is provided', () => {
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
+
+    logBuildFailure(new BuildStageError('frontend-build', 'Transform failed'));
+
+    expect(stderrSpy).toHaveBeenCalledWith(
+      'Build failed during frontend-build: Transform failed\n'
+    );
+    expect(stderrSpy).toHaveBeenCalledTimes(1);
   });
 });

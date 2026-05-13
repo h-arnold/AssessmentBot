@@ -13,6 +13,7 @@ coverage
 test-results/
 nohup.out
 playwright-report/
+.ts-regression-checker/reports/
 
 # Vibe configs - sensitive files
 .env
