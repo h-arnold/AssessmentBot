@@ -1,349 +1,320 @@
-# Classes Reference-Data Modal Family Specification
+# Regression-Checker Builder CLI Specification
 
 ## Status
 
-- Draft v2.0
-- Updated to promote the classes reference-data modal family from a caller-local action standard into a narrow extracted scaffold because a topic reference-data modal is now an accepted near-term sibling.
+- Draft v1.0
+- Root planning artefact aligned to `docs/developer/regression-cli-spec.md`
 
 ## Purpose
 
-This document defines the intended behaviour for the classes reference-data modal family and its extracted scaffold contract.
+This document defines the intended behaviour for the regression-checker builder CLI.
 
 The feature will be used to:
 
-- remove the current full-width call-to-action appearance from the existing Manage Cohorts and Manage Year Groups modals
-- extract the shared outer modal shell used by the current reference-data CRUD modals
-- make the next topic reference-data modal reuse a documented family scaffold rather than copying the current outer-shell pattern again
+- run supported regression checks without changing human-oriented npm scripts
+- create and persist a baseline for a session identifier
+- compare later runs against that baseline and detect regressions deterministically
+- emit a fixed-structure summary header plus detailed artefacts for hook and LLM-first consumption
 
 This feature is **not** intended to:
 
-- redefine action-button standards for unrelated pages, tables, or non-reference-data modals across the whole frontend
-- replace the existing inline dialog helpers with a generic app-wide CRUD abstraction
-- change the existing create, edit, delete, toggle-active, loading, or fail-closed workflow contracts already owned by the current reference-data modals
+- execute arbitrary shell commands outside the supported tool families
+- replace existing human-readable developer workflows
+- add frontend surfaces or backend/API integration
 
 ## Agreed product decisions
 
-1. The scope is limited to the classes reference-data modal family currently represented by `ManageCohortsModal` and `ManageYearGroupsModal`, plus the accepted near-term topic reference-data modal that deliberately reuses the same workflow family.
-2. The family now justifies one narrow extracted scaffold from the two active callers alone, with the later topic modal treated as an intended future consumer rather than the sole reason the extraction is worthwhile.
-3. The extracted scaffold owns the outer Ant Design `Modal` shell, the standard `Cancel` footer, and all close wiring for that shell. In this phase that means the footer button, modal close icon, mask-close path, and keyboard-close path all funnel through the same caller-supplied `onClose`, alongside the ready-state body stack, top action row, modal-level refresh busy semantics, shared busy/status region placement, table region placement, and inline-dialog slot placement.
-4. The extracted scaffold does not own entity-specific columns, row actions, mutation handlers, form validation copy, or delete-copy wording.
-5. Each family caller keeps one top-level create action in the ready state, and that action renders in a start-aligned action row sized to its content rather than stretching to the modal body width.
-6. The create action remains the single primary action in the ready state. Row-level Edit and Delete actions keep their current emphasis and placement.
-7. The default leading icon for create actions in this family is `PlusOutlined`, and the scaffold owns that default internally for this phase.
-8. A different Ant Design icon may replace `PlusOutlined` only when a later explicit spec or documented product decision approves that deviation for a workflow whose domain meaning is genuinely clearer with a different icon. Ant Design application icons are an acceptable source only in that explicitly approved case.
-9. For text-plus-icon create buttons, the accessible button name must remain the visible text label, and the icon must behave as decorative content rather than a separately announced control.
-10. The decorative add icon must expose the stable family test seam `data-testid="reference-data-create-action-icon"` so tests do not depend on incidental Ant Design SVG markup.
-11. The same create-action placement and icon rule applies in both the populated-table state and the empty-table state.
-12. When inline create, edit, or delete dialog sections are open, the existing ready-state body stays visible, including the top action row and table.
-13. Blocking-load, background-refresh, inline create/edit form, inline delete confirmation, and delete-blocked behaviours remain unchanged by this standard.
-14. The caller-owned scaffold inputs for this phase are exactly: `open`, `modalTitle`, `modalClassName`, `modalWidth`, `createActionLabel`, `tableAriaLabel`, `emptyTableCopy`, `refreshStatusCopy`, `isInitialLoading`, `isRefreshing`, `loadError`, `loadingState`, `rows`, `columns`, `inlineAlert`, `inlineDialog`, `onClose`, and `onCreate`.
-15. The accepted next topic modal is treated as an intended future consumer of this scaffold, but its final owner boundary is not settled by this spec.
-16. If that later topic modal lands outside the current owner boundary, promotion to a broader shared location becomes follow-up work rather than a blocker for this phase.
-17. This family standardises on reference-data rows exposing `key` as the row identity field, and the scaffold owns `rowKey="key"` rather than widening the scaffold API with a row-key prop in this phase.
+1. The CLI contract is `regression-checker [sessionId]`.
+2. When `sessionId` is omitted, the CLI must use the current Git branch name; detached HEAD or other lookup failure is a hard error.
+3. If no baseline exists for the resolved session, the run creates one and exits `0`.
+4. If a baseline exists, the run performs a comparison against that baseline.
+5. The CLI is config-driven and reads checks from `.ts-regression-checker/regression.config.json`.
+6. Supported v1 tool families are strictly `eslint`, `vitest`, `playwright`, and `tsc`.
+7. Unsupported tool families, unsupported reporter modes, mutating scripts, multi-tool scripts, and invalid script-to-tool mappings must fail validation before execution.
+8. `run.kind` values are restricted to `npm-script` and `tsc`.
+9. `tool=tsc` is valid only with `run.kind=tsc`; `run.kind=npm-script` is invalid for `tsc` in v1.
+10. `run.kind=npm-script` supports only single-tool, non-mutating scripts that resolve to exactly one supported tool family.
+11. Raw tool-native outputs must be stored per check, and comparison must use tool-specific derived summaries rather than one universal schema.
+12. Parallel execution defaults to `min(4, logicalCpuCount)` when `parallel.maxWorkers` is omitted.
+13. Playwright checks must always execute in a dedicated single-worker lane.
+14. Report ordering must stay deterministic in config order regardless of execution order.
+15. The default storage root for config and report artefacts is `.ts-regression-checker`.
+16. Compare runs must exit non-zero when regressions are detected so the CLI is hook-friendly.
+17. Baseline compatibility validation must pass before diffing: config fingerprint, check IDs, tool families, and execution metadata must match.
+18. Baseline-mode output must explicitly state that the baseline was created in this run and that no comparison diffing occurred.
 
 ## Existing system constraints
 
 ### Backend or API constraints already in place
 
-- This change is frontend-only and must not require backend contract changes.
-- Existing reference-data service calls, query invalidation, and trust-boundary refresh rules remain authoritative.
-- Topic reference data already exists as a frontend service/query surface, so the accepted next caller justifies the outer scaffold extraction without requiring a new read-side dataset contract first.
+- No backend or API integration is required for v1.
+- All inputs and outputs are local file-system artefacts.
 
 ### Current data-shape constraints
 
-- Cohort and year-group entities keep their existing transport and rendering fields.
-- The accepted topic sibling uses the existing `{ key, name }` topic reference-data contract on the read side.
-- No new data fields are required to support the scaffold extraction itself.
+- ESLint and Vitest can emit JSON directly.
+- Playwright can emit JSON through reporter mode.
+- `tsc` does not provide a stable native JSON diagnostic format, so v1 must capture stable text output with `--pretty false` and parse diagnostics.
 
 ### Frontend or consumer architecture constraints
 
-- The affected surfaces belong to the classes reference-data workflow family documented in `docs/developer/frontend/frontend-modal-patterns.md`.
-- The current modal body uses Ant Design `Flex`, `Button`, `Table`, `Alert`, `Skeleton`, and inline dialog sections.
-- The current full-width appearance is a layout consequence of the existing vertical flex container rather than an intentional `block` button contract.
-- The existing helper family already covers inline dialogs and reference-data workflow helpers in `InlineDialog.tsx`, `manageReferenceDataDialogs.tsx`, and `manageReferenceDataHelpers.ts`.
-- Topic mutation transport, invalidation rules, and any extension of the current reference-data helper family beyond cohorts and year groups remain future work outside this spec.
-- The future topic caller will require extending the `ReferenceDataTrustBoundary` union type in `manageReferenceDataHelpers.ts` to include `'topics'`. This is a known `extend` decision on that module when the topic caller is implemented; it is recorded as upcoming work in `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` and is not a blocker for the current scaffold extraction.
-- The duplicated part worth extracting now is the outer modal shell and ready-state body composition shared by `ManageCohortsModal` and `ManageYearGroupsModal`.
+- Existing npm scripts stay human-friendly and unchanged.
+- The CLI must layer on top of existing tooling rather than replace developer-facing scripts.
+- This is builder-only work; no frontend layout spec is required.
 
 ## Domain and contract recommendations
 
 ### Why this approach is preferable
 
-- It corrects the current visual mismatch without changing the surrounding CRUD workflow.
-- It gives the current and next sibling modal one documented outer-shell contract instead of repeating the same status/action/table/dialog composition.
-- It keeps the abstraction narrow enough to remain feature-local and testable.
+- deterministic execution and parsing without model interpretation
+- strict allowlist validation and repo-root path safety
+- low adoption cost because existing scripts remain intact
+- clean extension path for future tool adapters
 
-### Recommended UI contract shape
+### Recommended data shapes
 
-#### Reference-data modal scaffold contract
+#### Regression config
 
 ```ts
 {
-  callerOwnedInputs: {
-    open: boolean;
-    modalTitle: string;
-    modalClassName: string;
-    modalWidth: number;
-    createActionLabel: string;
-    tableAriaLabel: string;
-    emptyTableCopy: string;
-    refreshStatusCopy: string;
-    isInitialLoading: boolean;
-    isRefreshing: boolean;
-    loadError: string | null;
-    loadingState: ReactElement;
-    // The scaffold component is generic: <T extends { key: string }>
-    // Each caller binds T to its own entity type (e.g. Cohort, YearGroup)
-    rows: T[];
-    columns: TableColumnType<T>[];
-    inlineAlert?: ReactElement | null; // rendered below the action row and before the table, not at the modal-body top
-    inlineDialog?: ReactElement | null; // form and delete dialogs are mutually exclusive; callers combine them into one expression, e.g. renderFormDialog(...) ?? renderDeleteDialog(...)
-    onClose: () => void; // caller-local cleanup wrapper that resets transient modal state before delegating upward
-    onCreate: () => void;
+  reportDirectory: string;
+  parallel?: {
+    enabled: boolean;
+    maxWorkers?: number;
   };
-  scaffoldOwnedInvariants: {
-    createActionIcon: 'PlusOutlined';
-    createActionIconTestId: 'reference-data-create-action-icon';
-    footer: 'single Cancel action wired to onClose';
-    closeWiring: 'footer button, close icon, mask close, and keyboard close all delegate to onClose';
-    rowKey: 'key'; // invariant because T extends { key: string }
-    buttonNameSource: 'visible text label';
-    iconTreatment: 'decorative';
-    busySemantics: 'modal-level aria-busy during refresh';
-    busySelectorClass: 'reference-data-modal-scaffold-wrapper'; // applied via classNames.wrapper to .ant-modal-wrap
-    busySelectorStrategy: 'compound selector .reference-data-modal-scaffold-wrapper [role="dialog"] — classNames.wrapper places the class on .ant-modal-wrap, not on [role="dialog"] directly, so a descendant selector navigates to the inner dialog element';
-  };
+  checks: Array<{
+    id: string;
+    tool: 'eslint' | 'vitest' | 'playwright' | 'tsc';
+    cwd: string;
+    reporterMode?: string;
+    run:
+      | { kind: 'npm-script'; script: string }
+      | { kind: 'tsc'; project: string };
+  }>;
 }
 ```
 
-### Naming recommendation
+#### Stored run manifest
 
-Prefer:
-
-- `Create cohort`
-- `Create year group`
-- `Create topic`
-- `Create <entity>` labels that name the target record explicitly
-
-Avoid:
-
-- unlabeled icon-only add buttons for this modal family
-- generic labels such as `Create` when the entity name can be stated clearly
-- drifting to `Add <entity>` in future sibling modals unless a later spec deliberately standardises a different verb
+```ts
+{
+  sessionId: string;
+  sessionStorageKey: string;
+  sessionIdSource: 'arg' | 'git-branch';
+  mode: 'baseline' | 'compare';
+  createdAt: string;
+  baselineCreatedThisRun: boolean;
+  configFingerprint: string;
+  checks: Array<{
+    id: string;
+    tool: 'eslint' | 'vitest' | 'playwright' | 'tsc';
+    cwd: string;
+    executionMetadata: Record<string, string | number | boolean | null>;
+  }>;
+}
+```
 
 ### Validation recommendation
 
-#### Frontend
+#### Builder CLI inputs
 
-- The create button must remain discoverable by its visible text label in populated and empty states.
-- The create button must not expand to the full modal-body width unless a future spec explicitly declares a call-to-action surface.
-- The create icon should be decorative so tests and assistive technology continue to resolve the control by its text label.
-- The decorative icon wrapper must expose `data-testid="reference-data-create-action-icon"` through the shared scaffold.
-- The scaffold must honour the full caller-owned input list settled above rather than silently standardising those values in this phase.
-- The scaffold owns modal-level `aria-busy` refresh semantics for the family while preserving caller class names for styling and stable targeting where required. The busy-state DOM selector must anchor to an internal scaffold-owned class set via `classNames.wrapper` on the Ant Design `Modal` component, not the caller-supplied `modalClassName`. This decouples busy-state wiring from caller configuration and makes the selector an invariant of the scaffold.
-- The scaffold owns all modal-close routes for the family shell and funnels them through the caller-supplied `onClose` rather than leaving footer or chrome-close wiring to each caller.
-- The caller-supplied `onClose` remains the caller-local cleanup boundary for transient form, delete, and inline-dialog state before any parent-level close delegation happens.
-
-#### Backend
-
-- None. This standard does not alter backend validation or transport.
-
-### Display-resolution recommendation
-
-- The create action should visually align with the main modal content start edge.
-- The leading icon should read as supplementary affordance, not as the primary source of meaning.
+- `reportDirectory`, each `checks[].cwd`, and each `run.project` path must be repo-relative and must not escape the repository root.
+- `checks[].id` values must be unique.
+- `run.kind=npm-script` must resolve to an existing script in the relevant `package.json` and to exactly one supported tool family.
+- Mutating flags such as `--fix`, `--write`, `-u`, `--update`, and `--update-snapshots` must be rejected.
+- Unsupported reporter modes must fail validation before any tool process starts.
 
 ## Feature architecture
 
 ### Placement
 
-- The current owning surfaces are `src/frontend/src/features/classes/ManageCohortsModal.tsx` and `src/frontend/src/features/classes/ManageYearGroupsModal.tsx`.
-- The accepted next sibling is a topic reference-data modal using the same outer CRUD shell pattern.
-- The extracted scaffold should remain feature-local under the current classes reference-data owner boundary for this phase.
-- This family must not move into separate routes, drawers, or nested Ant Design modal portals.
+- CLI implementation lives under `scripts/builder/src/regression-checker/`.
+- Builder quality gates apply: builder lint, builder TypeScript compile, builder Vitest suites, and production build validation where relevant.
+- No frontend or backend runtime entry point is added.
 
 ### Proposed high-level tree
 
 ```text
-Classes feature
-└── Reference-data modal family
-    ├── ReferenceDataManagementModalScaffold
-    ├── ManageCohortsModal
-    │   └── scaffold slots: status, create row, alert, table, inline dialog
-    ├── ManageYearGroupsModal
-    │   └── scaffold slots: status, create row, table, inline dialog
-
-Future consumer (owner TBD)
-└── Topic reference-data modal
-  └── scaffold slots: status, create row, table, inline dialog
+scripts/builder/src/regression-checker/
+ cli/
+ config/
+ runners/
+ compare/
+ report/
+ storage/
 ```
 
 ### Out of scope for this surface
 
-- changing row-action button icons or row-action ordering
-- introducing a cross-feature shared modal abstraction for unrelated modal families
-- redesigning the existing inline dialog helper family beyond the slots it already provides
+- auto-fixing lint or test failures
+- modifying production source code based on regression output
+- CI orchestration beyond local command execution and report generation
+- arbitrary tool execution beyond the v1 allowlist
 
 ## Data loading and orchestration
 
 ### Required datasets or dependencies
 
-- `cohorts`
-- `yearGroups`
-- `assignmentTopics` for the accepted next sibling caller on the read side
+- repository root and Git branch resolution
+- target `package.json` script maps for validation
+- local file-system write access under `.ts-regression-checker`
+- supported tool executables already present in the project toolchain
 
 ### Prefetch or initialisation policy
 
 #### Startup
 
-- No startup changes are required for this extraction.
-
-#### Feature entry
-
-- The create action remains part of the ready modal body only after trustworthy data is available.
+- Parse the positional `sessionId` argument.
+- Resolve Git branch name only when `sessionId` is omitted.
+- Load and validate config before any check execution.
+- Resolve the baseline-or-compare mode before scheduling checks.
 
 #### Manual refresh
 
-- No manual refresh control is added.
+- Not applicable; this is a one-shot CLI workflow.
 
 ### Query or transport additions
 
-- None for this extraction itself.
+- None.
 
-## Core view model or behavioural model
+## Core behavioural model
 
 ### Suggested shape
 
 ```ts
 {
-  isInitialLoading: boolean;
-  isRefreshing: boolean;
-  loadError: string | null;
-  createAction: {
-    visible: boolean;
-    label: string;
-    icon: 'PlusOutlined';
-    width: 'content-width';
-    alignment: 'start';
+  header: {
+    sessionId: string;
+    sessionStorageKey: string;
+    sessionIdSource: 'arg' | 'git-branch';
+    mode: 'baseline' | 'compare';
+    baselineCreatedThisRun: boolean;
+    baselineTimestamp: string | 'N/A';
+    currentTimestamp: string;
+    overallStatus: 'GREEN' | 'FAILING';
+    totalChecks: number;
+    checksPassing: number;
+    checksFailing: number;
+    regressionsCount: number;
+    newFailuresCount: number;
+    fixesCount: number;
   }
-  modalShell: {
-    className: string;
-    width: number;
-  }
-  emptyTableCopy: string;
-  refreshStatusCopy: string;
-  inlineDialogVisible: boolean;
-  tableVisible: boolean;
+  checks: Array<{
+    id: string;
+    tool: 'eslint' | 'vitest' | 'playwright' | 'tsc';
+    status: 'passing' | 'failing' | 'execution-error' | 'baseline-incompatible';
+    rawArtefactPath: string;
+    derivedSummaryPath: string;
+  }>;
 }
 ```
 
 ### Derivation or merge rules
 
-#### Blocking state
+#### Derived summaries by tool
 
-- When the modal is in initial-loading or blocking-failure state, suppress the ready body and therefore suppress the create action.
-- Background refresh does not hide the create action.
+- `eslint`: counts for errors and warnings; finding fingerprint `ruleId|filePath|line|column|message`.
+- `vitest` and `playwright`: counts for total, passed, failed, skipped; failure fingerprint `file|suite|testName`.
+- `tsc`: diagnostic count plus fingerprint `code|filePath|line|column|message`.
 
-#### Ready state
+#### Comparison categories
 
-- When trustworthy data is present, render the create action before the table content.
-- Empty-table and populated-table states both keep the action visible in the same position.
-- Inline dialog states keep the ready-state body visible, including the start-aligned create-action row and the table.
+- `regressions`: baseline pass or absence becomes current fail or presence.
+- `new-failures`: current failure or fingerprint absent from the baseline set.
+- `fixes`: baseline failure or fingerprint absent in the current set.
+- Runtime or execution errors always count as regressions.
+- For Vitest and Playwright, a test skipped in current but not skipped in baseline counts as a regression.
+- For ESLint, both new warnings and new errors count as regressions.
 
 ### Sort order or priority rules
 
-1. Blocking load state
-2. Ready state with persistent create action
-3. Optional inline dialog state layered inside the same modal body
-
-## Main user-facing surface specification
-
-### Recommended components or primitives
-
-- Narrow extracted scaffold component
-- Ant Design `Button` with leading icon
-- Ant Design `Flex` for the modal-body stack and action-row alignment
-- Ant Design `Table`
-- Ant Design `Alert` and `Skeleton` for existing state treatments
-
-### Fields, columns, or visible sections
-
-1. Refresh or status region when present
-2. Start-aligned create-action row
-3. Optional caller-specific alert slot
-4. Reference-data table
-5. Existing inline create/edit/delete dialog region
-
-### Sorting, filtering, or navigation rules
-
-- None added by this standard.
-
-### Rendering rules
-
-#### Ready with data
-
-- Render the create button above the table.
-- Keep the button start-aligned and content-width.
-- Show the leading `PlusOutlined` icon unless a workflow-specific icon is explicitly justified.
-
-#### Ready with no data
-
-- Preserve the same create-action row above the empty table state.
-- Do not promote the button to a full-width call-to-action solely because the table is empty.
-
-#### Background refresh
-
-- Keep the create action visible and usable unless a conflicting write is in progress under an existing rule.
-- Preserve the current modal-level busy semantics.
-
-#### Inline dialog open
-
-- Keep the create-action row and the table visible while the inline create, edit, or delete section is rendered below them.
-- Do not replace the ready-state body with a standalone secondary surface.
-
-#### Blocking failure
-
-- Suppress the ready body, including the create action, and keep the existing blocking-state treatment.
+1. Render checks in config order.
+2. Render header keys in fixed order.
+3. Keep deterministic tie-breaks inside tool-specific lists by stable fingerprint order.
 
 ## Workflow specification
 
-## Open reference-data management modal
+## Baseline creation
 
 ### Eligible inputs or preconditions
 
-- The user opens one of the family callers.
-- Trustworthy reference-data content is available or is loading.
+- Resolved `sessionId` and valid config.
+- No existing baseline for the resolved `sessionStorageKey`.
 
 ### Behaviour
 
-- The caller renders through the shared scaffold contract.
-- Entity-specific columns, alerts, and inline dialogs are injected through scaffold slots.
+- Execute all configured checks under the validated scheduling rules.
+- Persist baseline artefacts under `<reportDirectory>/<sessionStorageKey>/baseline/`.
+- Persist `manifest.json`, per-check raw output, and per-check derived summary.
+- Emit summary text that explicitly states baseline creation and the absence of comparison diffing.
+- Exit `0` when baseline creation succeeds.
 
-### Success outcome
-
-- The user sees a consistent outer modal shell across cohorts, year groups, and the next topic caller.
-
-## Trigger create flow
+## Comparison run
 
 ### Eligible inputs or preconditions
 
-- The modal is in ready state.
+- Resolved `sessionId`, valid config, and an existing baseline for the same `sessionStorageKey`.
+- Baseline compatibility validation must pass before diffing.
 
 ### Behaviour
 
-- Activating the create button opens the existing entity-specific inline create dialog.
-- The scaffold does not own the form fields or submit handler.
+- Execute all configured checks under the validated scheduling rules.
+- Persist current-run artefacts under `<reportDirectory>/<sessionStorageKey>/runs/<timestamp>/`.
+- Write `comparison.json` and `comparison.txt` for the run.
+- Exit `1` when one or more regressions are detected; otherwise exit `0`.
+- Abort comparison with a clear baseline-incompatible result when baseline metadata is incompatible.
 
-## Testing and observability expectations
+## Error, loading, and empty-state rules
 
-- Shared helper coverage should verify the scaffold contract for blocking, ready, empty, refresh, alert-slot, and inline-dialog-slot states.
-- Caller coverage should continue to verify entity-specific behaviour such as cohort toggle errors, column rendering, and create/edit/delete workflow entry.
-- Unit/component coverage should assert that the shared scaffold exposes `data-testid="reference-data-create-action-icon"` once per ready-state caller while preserving the same accessible button name.
-- Shared helper coverage should verify that caller-supplied modal width, modal class name, empty-table copy, and refresh-status copy are preserved.
-- Shared helper coverage should verify that modal-level `aria-busy` refresh semantics move into the scaffold rather than remaining duplicated in each caller.
-- Shared helper coverage should verify that the scaffold owns the standard `Cancel` footer and close wiring.
-- Playwright coverage should verify that cohort and year-group callers still render a visible, start-aligned, non-full-width create button after migrating to the scaffold.
+### Blocking failure
 
-## Open questions
+- Invalid config, unsupported tool family, unsupported reporter mode, repo-escaping paths, invalid script mappings, detached HEAD branch resolution failure, and baseline incompatibility are blocking failures.
+- These failures must stop the run with a clear non-zero exit and actionable message.
 
-- The owner boundary for the accepted next topic reference-data modal is not yet settled. If it lands outside the current classes feature boundary, the scaffold will need to be promoted to a shared location. Deferred as follow-up work per agreed decisions 15 and 16. The consumption pattern itself (same outer CRUD shell) is settled.
+### Empty states
+
+#### No configured checks
+
+- Reject config as invalid rather than running an empty session.
+
+## Accessibility and usability notes
+
+- The text report must begin with deterministic header markers so tools can parse the summary before the detailed body.
+- Human-readable scripts remain unchanged; the regression checker is an additional builder CLI.
+
+## Backend changes required to support agreed behaviour
+
+1. None.
+
+## Planning handoff notes
+
+- Sequence work so CLI/config validation lands before runners, storage, comparison, and report integration.
+- Use builder-first validation commands in the action plan and delegated implementation work.
+- Keep any `.gitignore` change limited to ignoring generated reports while allowing the tracked config file.
+
+## Testing expectations
+
+- Builder Vitest coverage for session resolution, config validation, runner adapters, storage, comparison, report header rendering, and exit codes.
+- Regression coverage for path safety, mutating-script rejection, baseline incompatibility, deterministic ordering, and runtime-error handling.
+- Final builder validation must include builder lint, builder compile, relevant builder tests, and builder coverage where new modules land.
+
+## Documentation and rollout notes
+
+- Keep `docs/developer/regression-cli-spec.md` as the source specification.
+- Update builder-facing docs if implementation changes command usage, storage conventions, or validation expectations.
+- Add a `.gitignore` rule for `.ts-regression-checker/reports` without ignoring `.ts-regression-checker/regression.config.json`.
+
+## V1 scope recommendation
+
+### Include in v1
+
+- CLI argument handling and session resolution
+- strict config validation and script-to-tool allowlist enforcement
+- bounded parallel runners with a dedicated Playwright lane
+- baseline storage, comparison, fixed-structure report output, and exit-code handling
+
+### Defer from v1
+
+- support for additional tool families
+- universal normalisation schema across all tools
+- CI orchestration beyond local execution and generated artefacts

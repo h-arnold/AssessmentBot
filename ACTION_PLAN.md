@@ -1,39 +1,42 @@
-# Classes Reference-Data Modal Family Delivery Plan (TDD-First)
+# Regression-Checker Builder CLI Delivery Plan (TDD-First)
 
 ## Read-First Context
 
 Before writing or executing this plan:
 
-1. Read `SPEC.md`.
-2. Read `REFERENCE_DATA_MODAL_LAYOUT.md`.
-3. Read `docs/developer/frontend/frontend-modal-patterns.md`.
-4. Read `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`.
-5. Read `docs/developer/frontend/frontend-testing.md`.
-6. Treat those documents as the source of truth for product behaviour, layout rules, modal-family boundaries, helper decisions, and test expectations.
+1. Read `/home/developer/AssessmentBot/SPEC.md`.
+2. Read `/home/developer/AssessmentBot/docs/developer/regression-cli-spec.md`.
+3. Read `/home/developer/AssessmentBot/AGENTS.md`.
+4. Read `/home/developer/AssessmentBot/scripts/builder/AGENTS.md`.
+5. Read `/home/developer/AssessmentBot/docs/developer/builder/builder-script.md`.
+6. Read `/home/developer/AssessmentBot/docs/developer/builder/TypeScriptAndLintConfigHierarchy.md`.
+7. Read `/home/developer/AssessmentBot/package.json`.
+8. Read `/home/developer/AssessmentBot/scripts/builder/vitest.config.ts`.
+9. Treat those documents as the source of truth for scope, safety, builder quality gates, and command hierarchy.
 
 ## Scope and assumptions
 
 ### Scope
 
-- extract a narrow classes reference-data modal scaffold that owns the duplicated outer modal shell and ready-state body composition
-- update the classes reference-data modal family so the top create action is start-aligned and content-width instead of full width
-- standardise the create-action icon contract for that modal family
-- update the focused unit and Playwright coverage for Manage Cohorts and Manage Year Groups
-- leave the family ready for the accepted next topic reference-data modal without implementing that modal in this phase
+- builder-only delivery of the `regression-checker [sessionId]` CLI under `scripts/builder/src/regression-checker/`
+- config loading and validation for supported tool families only
+- baseline storage, follow-up comparison, deterministic reporting, and hook-friendly exit codes
+- builder tests, builder lint/compile validation, and minimal supporting docs or ignore-rule updates required by the CLI contract
 
 ### Out of scope
 
-- broader app-wide action-button icon policy
-- row-action icon changes for edit or delete controls
-- backend, API, or transport changes
-- redesigning the inline form or delete dialog family
-- implementing the topic modal itself in this phase
+- frontend layout or workflow changes
+- backend or API integration
+- arbitrary command execution beyond validated supported tools
+- changes to existing human-friendly npm scripts beyond any CLI entry point required for this feature
+- post-v1 tool families or CI orchestration features
 
 ### Assumptions
 
-1. The current request applies to the classes reference-data modal family shown in the user examples, not to every modal in the application.
-2. `PlusOutlined` is the default create icon for this family, while application icons remain optional only when a future workflow-specific spec explicitly justifies a different icon.
-3. The accepted next sibling is a topic reference-data modal that follows the same outer CRUD shell, but its final owner boundary is not settled in this plan.
+1. `docs/developer/regression-cli-spec.md` remains the product source of truth when plan detail and wording differ.
+2. The implementation will stay inside builder TypeScript conventions and the existing builder Vitest/ESLint/TypeScript hierarchy.
+3. Generated reports live under `.ts-regression-checker/reports`, while `.ts-regression-checker/regression.config.json` remains trackable.
+4. Existing in-progress builder test files under `scripts/builder/src/regression-checker/` are part of the intended delivery and should be extended rather than replaced blindly.
 
 ---
 
@@ -41,578 +44,638 @@ Before writing or executing this plan:
 
 ### Engineering constraints
 
-- Keep the implementation minimal, localised, and frontend-only.
-- Preserve existing modal loading, refresh, and fail-closed behaviour.
-- Preserve visible button labels so existing role-and-name selectors remain valid.
-- Use British English in comments and documentation.
-- Follow Ant Design behaviour before introducing custom layout or icon abstractions.
-- Keep the extracted helper narrow: shell composition and slot placement only.
-- Preserve caller-owned shell inputs in this phase: modal width, modal class name, empty-table copy, and refresh-status copy.
-- Move modal-level `aria-busy` refresh wiring into the scaffold so callers stop duplicating selector-based busy-state plumbing. The scaffold must apply the class `reference-data-modal-scaffold-wrapper` via `classNames.wrapper` on the Ant Design `Modal` component and call `syncReferenceDataModalBusyState` with the compound selector `.reference-data-modal-scaffold-wrapper [role="dialog"]` — the `classNames.wrapper` class lands on `.ant-modal-wrap`, not on `[role="dialog"]` directly, so a descendant selector is required. The caller-supplied `modalClassName` must not be used as the selector anchor.
-- Move the duplicated `Cancel` footer and all shell-close wiring into the scaffold so callers stop duplicating footer-button, close-icon, mask-close, and keyboard-close behaviour too.
+- Keep scope builder-only and minimal.
+- Fail fast on invalid config, unsupported tool families, repo-escaping paths, and baseline incompatibility.
+- Do not execute arbitrary shell strings; only validated supported tool invocations are allowed.
+- Preserve deterministic ordering for manifests, derived summaries, and text reports.
+- Use Zod-first validation and infer TypeScript types from schemas for new validation modules.
+- Use British English in docs, comments, and user-facing text.
 
-### TDD workflow (mandatory per section)
+### Builder-first command hierarchy
 
-For each section below:
+Use the smallest builder command first, then expand only as needed:
 
-1. **Red**: write failing tests for the section’s acceptance criteria.
-2. **Green**: implement the smallest change needed to pass.
-3. **Refactor**: tidy implementation with all tests still green.
-4. Run section-level verification commands.
+1. Focused builder test command for the active spec file(s), for example `npm run test:builder -- scripts/builder/src/regression-checker/<target>.spec.ts`.
+2. Targeted builder test batch for the active regression-checker area.
+3. `npm run lint:builder`
+4. `npm run builder:compile`
+5. `npm run test:builder`
+6. `npm run test:builder:coverage`
+7. `npm run build:production` only after the feature is otherwise green or when builder pipeline integration must be proved.
 
-### Delegation mandatory-read gate (mandatory for sub-agent execution)
+Do not start with repo-wide `lint`, `test`, or frontend/backend commands for this feature.
 
-When a section is delegated to sub-agents, the plan must define and enforce mandatory documentation reads.
+### Strict TDD flow (mandatory per section)
 
-For each delegated phase (`Testing Specialist`, `Implementation`, `Code Reviewer`, `Docs`):
+For every implementation section:
 
-1. list required documentation file paths under that phase before delegation
-2. require the sub-agent handoff to include `Files read` with explicit file paths
-3. verify every mandatory file is listed before accepting the handoff
-4. if any mandatory file is missing, return the work to the same sub-agent and block progression to the next phase
+1. **Red** — add or extend failing builder tests that cover only that section’s acceptance criteria.
+2. **Red check** — run the smallest relevant builder test command and capture the failing evidence.
+3. **Green** — implement the smallest production change that makes the red tests pass.
+4. **Refactor** — simplify names, duplication, and helper boundaries while keeping the section green.
+5. **Section verification** — run the section checks exactly as listed before moving on.
+6. **Review gate** — do not mark the section complete until mandatory-read evidence, review evidence, and checklist items are satisfied.
 
-### Shared-helper planning gate
+### Delegation mandatory-read gate
 
-The current plan expects one new narrow feature-local scaffold extraction.
+For every delegated hand-off:
 
-The relevant planned decisions must be recorded in the canonical docs before implementation starts:
+- include a `Files read` section with absolute paths
+- verify every mandatory path for that phase before accepting the hand-off
+- if any mandatory path is missing, return the task to the same agent and block progress
 
-- reference-data modal scaffold: `new`
-- existing inline dialog/helper family: `reuse`
+### Commit and push evidence requirements
 
-### Validation commands hierarchy
+- Every completed section must capture `git --no-pager status --short` evidence before commit.
+- Every section that claims completion must record the commit hash from `git --no-pager log -1 --stat`.
+- Final completion requires branch evidence from `git --no-pager rev-parse --abbrev-ref HEAD` and push evidence from `git push` output or equivalent orchestrator record.
+- Do not tick commit or push checklist items without explicit evidence.
 
-- Frontend lint: `npm run lint:frontend`
-- Frontend unit tests: `npm run test:frontend -- src/features/classes/ReferenceDataManagementModalScaffold.spec.tsx src/features/classes/manageCohorts.spec.tsx src/features/classes/manageYearGroups.spec.tsx`
-- Frontend e2e tests: `npm run test:frontend:e2e -- e2e-tests/classes-crud-manage-cohorts.spec.ts e2e-tests/classes-crud-manage-year-groups.spec.ts`
+### Mandatory de-sloppification and docs pass
+
+- Before final completion, run a dedicated de-sloppification pass on the delivered builder diff.
+- Before final completion, run a dedicated docs pass for any touched builder-facing docs and ignore rules.
+- Both passes must honour the same mandatory-read evidence gate.
+
+### Checklist status template (use in every section)
+
+- [ ] Red tests added/updated
+- [ ] Red failure captured
+- [ ] Green implementation complete
+- [ ] Refactor complete
+- [ ] Section checks passed
+- [ ] Mandatory-read evidence verified
+- [ ] Review feedback resolved
+- [ ] Docs impact handled or marked N/A
+- [ ] Commit evidence captured
+- [ ] Push evidence captured or marked N/A until final section
 
 ---
 
-## Section 1 — Finalise canonical modal and helper standards
+## Section 1 — CLI contract and config safety rails
 
 ### Objective
 
-- Align the canonical frontend docs with the extracted reference-data modal scaffold decision before production implementation begins.
+- Finalise the CLI entry contract, session resolution, config schema, path safety, script resolution, and validation-time rejection of unsupported or mutating inputs.
 
 ### Constraints
 
-- Keep the policy update local to the classes reference-data modal family.
-- Do not expand the doc changes into a repo-wide button-style or CRUD-modal standard.
+- `sessionId` resolution must use the positional argument first, then Git branch lookup.
+- Detached HEAD branch lookup failure is a hard error.
+- `tool=tsc` must require `run.kind=tsc`.
+- `npm-script` checks must resolve to exactly one supported tool family and must be non-mutating.
+- New validation modules must follow Zod-first typing.
 
-### Delegation mandatory reads (when sub-agents are used)
+### Delegation mandatory reads
+
+Testing Specialist mandatory docs:
+
+- `/home/developer/AssessmentBot/AGENTS.md`
+- `/home/developer/AssessmentBot/scripts/builder/AGENTS.md`
+- `/home/developer/AssessmentBot/SPEC.md`
+- `/home/developer/AssessmentBot/docs/developer/regression-cli-spec.md`
+- `/home/developer/AssessmentBot/docs/developer/builder/builder-script.md`
+- `/home/developer/AssessmentBot/package.json`
+- `/home/developer/AssessmentBot/scripts/builder/vitest.config.ts`
+- `/home/developer/AssessmentBot/scripts/builder/src/regression-checker/section1-cli-contract.spec.ts`
 
 Implementation mandatory docs:
 
-- `/workspaces/AssessmentBot/AGENTS.md`
-- `/workspaces/AssessmentBot/src/frontend/AGENTS.md`
-- `/workspaces/AssessmentBot/SPEC.md`
-- `/workspaces/AssessmentBot/REFERENCE_DATA_MODAL_LAYOUT.md`
-- `/workspaces/AssessmentBot/docs/developer/frontend/frontend-modal-patterns.md`
-- `/workspaces/AssessmentBot/docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
+- all Testing Specialist docs above
+- `/home/developer/AssessmentBot/scripts/builder/src/regression-checker/cli/session-resolution.ts`
+- `/home/developer/AssessmentBot/scripts/builder/src/regression-checker/config/validate-regression-config.ts`
+- `/home/developer/AssessmentBot/scripts/builder/src/regression-checker/config/validate-regression-config.zod.ts`
+
+Code Reviewer mandatory docs:
+
+- all Implementation docs above
+
+### Shared helper plan
+
+1. Helper: config schema and validation helper set
+   - Decision: `new`
+   - Owning module/path: `scripts/builder/src/regression-checker/config/`
+   - Call-site rationale: validation must stay centralised and deterministic across CLI, runners, and storage
+   - Relevant canonical doc target: `/home/developer/AssessmentBot/docs/developer/regression-cli-spec.md`
+   - Planned doc status: `Not implemented`
+2. Helper: session resolution helper
+   - Decision: `keep local`
+   - Owning module/path: `scripts/builder/src/regression-checker/cli/`
+   - Call-site rationale: no broader builder reuse is proven in v1
+   - Relevant canonical doc target: `/home/developer/AssessmentBot/docs/developer/regression-cli-spec.md`
+   - Planned doc status: `Not implemented`
+
+### Acceptance criteria
+
+- Valid config loads with defaulted `parallel.maxWorkers=min(4, logicalCpuCount)`.
+- Unsupported tools, unsupported reporter modes, duplicate check IDs, repo-escaping paths, mutating scripts, multi-tool scripts, and unmappable scripts are rejected before execution.
+- Explicit `sessionId` uses source `arg`; omitted `sessionId` uses source `git-branch`.
+- Detached HEAD or failed branch lookup surfaces a clear error.
+
+### Required test cases (Red first)
+
+Builder tests:
+
+1. Extend `section1-cli-contract.spec.ts` for valid config loading and session-source resolution.
+2. Cover duplicate IDs, unsupported tool families, unsupported reporter modes, and `tool=tsc` plus `run.kind=npm-script` rejection.
+3. Cover mutating script flags, chained scripts, unmappable scripts, and missing nested `package.json` resolution.
+4. Cover absolute or escaping `reportDirectory`, `cwd`, and `project` paths.
+5. Cover omitted `parallel.maxWorkers` defaulting and detached HEAD failure wording.
+
+### Section checks
+
+- `npm run test:builder -- scripts/builder/src/regression-checker/section1-cli-contract.spec.ts`
+- `npm run lint:builder`
+- `npm run builder:compile`
+- Mandatory-read evidence gate passed for all delegated hand-offs.
+
+### Implementation notes
+
+- Finalised Section 1 CLI and config safety-rail fixes covering session source resolution, strict tool/run-kind validation, repo-safe path checks, mutating-script rejection, and deterministic `parallel.maxWorkers` defaulting behaviour.
+- Resolved review findings by tightening validation failure coverage and confirming detached-HEAD/branch lookup failure handling is explicit and test-backed.
+- Docs impact: N/A for Section 1 (no additional doc updates required beyond existing plan/spec alignment).
+
+### Next status
+
+- Section 1 is in **commit/push pending** state (implementation and checks complete; commit/push evidence still outstanding).
+
+### Section checklist
+
+- [x] Red tests added/updated
+- [x] Red failure captured
+- [x] Green implementation complete
+- [x] Refactor complete
+- [x] Section checks passed
+- [x] Mandatory-read evidence verified
+- [x] Review feedback resolved
+- [x] Docs impact handled or marked N/A
+- [ ] Commit evidence captured
+- [ ] Push evidence captured or marked N/A until final section
+
+---
+
+## Section 2 — Storage layout, manifests, and baseline compatibility
+
+> Current phase marker: **Not started**
+
+### Objective
+
+- Implement safe session storage keys, baseline/run directory layout, manifest writing, baseline detection, and baseline compatibility validation.
+
+### Constraints
+
+- Session manifests must persist both `sessionId` and `sessionStorageKey`.
+- Baselines live under `<reportDirectory>/<sessionStorageKey>/baseline/`.
+- Follow-up runs live under `<reportDirectory>/<sessionStorageKey>/runs/<timestamp>/`.
+- Comparison must abort cleanly when baseline metadata is incompatible.
+- File layout and written metadata must stay deterministic.
+
+### Delegation mandatory reads
+
+Testing Specialist mandatory docs:
+
+- `/home/developer/AssessmentBot/AGENTS.md`
+- `/home/developer/AssessmentBot/scripts/builder/AGENTS.md`
+- `/home/developer/AssessmentBot/SPEC.md`
+- `/home/developer/AssessmentBot/docs/developer/regression-cli-spec.md`
+- `/home/developer/AssessmentBot/docs/developer/builder/builder-script.md`
+- `/home/developer/AssessmentBot/scripts/builder/vitest.config.ts`
+- `/home/developer/AssessmentBot/scripts/builder/src/regression-checker/storage`
+- every changed file under `/home/developer/AssessmentBot/scripts/builder/src/regression-checker/storage/`, listed explicitly in `Files read`
+
+Implementation mandatory docs:
+
+- all Testing Specialist docs above
+- `/home/developer/AssessmentBot/scripts/builder/src/regression-checker/storage`
+- every changed file under `/home/developer/AssessmentBot/scripts/builder/src/regression-checker/storage/`, listed explicitly in `Files read`
+
+Code Reviewer mandatory docs:
+
+- all Implementation docs above
+
+### Shared helper plan
+
+1. Helper: storage path resolver and session key encoder
+   - Decision: `new`
+   - Owning module/path: `scripts/builder/src/regression-checker/storage/`
+   - Call-site rationale: storage paths must stay consistent across baseline creation, compare runs, and reporting
+   - Relevant canonical doc target: `/home/developer/AssessmentBot/docs/developer/regression-cli-spec.md`
+   - Planned doc status: `Not implemented`
+2. Helper: baseline compatibility evaluator
+   - Decision: `new`
+   - Owning module/path: `scripts/builder/src/regression-checker/storage/`
+   - Call-site rationale: comparison gating should stay separate from reporting and runner logic
+   - Relevant canonical doc target: `/home/developer/AssessmentBot/docs/developer/regression-cli-spec.md`
+   - Planned doc status: `Not implemented`
+
+### Acceptance criteria
+
+- Missing baseline selects baseline mode; existing baseline selects compare mode.
+- Baseline and current-run manifests write the required identity and metadata fields.
+- Session storage keys are filesystem-safe and stable.
+- Baseline incompatibility is detected before diffing and surfaced as a clear error/result.
+
+### Required test cases (Red first)
+
+Builder tests:
+
+1. Baseline-mode path and manifest creation for a new session.
+2. Compare-mode run path creation when a baseline already exists.
+3. Stable session storage key generation from branch-like session IDs.
+4. Baseline incompatibility for changed config fingerprint, check IDs, or tool families.
+5. Deterministic manifest ordering and persisted path references.
+
+### Section checks
+
+- `npm run test:builder -- scripts/builder/src/regression-checker`
+- `npm run lint:builder`
+- `npm run builder:compile`
+- Mandatory-read evidence gate passed for all delegated hand-offs.
+
+### Section checklist
+
+- [ ] Red tests added/updated
+- [ ] Red failure captured
+- [ ] Green implementation complete
+- [ ] Refactor complete
+- [ ] Section checks passed
+- [ ] Mandatory-read evidence verified
+- [ ] Review feedback resolved
+- [ ] Docs impact handled or marked N/A
+- [ ] Commit evidence captured
+- [ ] Push evidence captured or marked N/A until final section
+
+---
+
+## Section 3 — Tool runners and bounded scheduling
+
+### Objective
+
+- Deliver the runner layer for `eslint`, `vitest`, `playwright`, and `tsc`, including raw artefact capture and bounded scheduling rules.
+
+### Constraints
+
+- Only supported tools may execute.
+- Each runner must enforce tool-native structured or parseable output modes.
+- Playwright must run in a dedicated single-worker lane.
+- Completion order must not affect stored order or rendered order.
+- Execution errors must be captured as reportable check failures.
+
+### Delegation mandatory reads
+
+Testing Specialist mandatory docs:
+
+- `/home/developer/AssessmentBot/AGENTS.md`
+- `/home/developer/AssessmentBot/scripts/builder/AGENTS.md`
+- `/home/developer/AssessmentBot/SPEC.md`
+- `/home/developer/AssessmentBot/docs/developer/regression-cli-spec.md`
+- `/home/developer/AssessmentBot/docs/developer/builder/builder-script.md`
+- `/home/developer/AssessmentBot/package.json`
+- `/home/developer/AssessmentBot/scripts/builder/src/regression-checker/runners`
+- every changed file under `/home/developer/AssessmentBot/scripts/builder/src/regression-checker/runners/`, listed explicitly in `Files read`
+
+Implementation mandatory docs:
+
+- all Testing Specialist docs above
+- `/home/developer/AssessmentBot/scripts/builder/src/regression-checker/runners`
+- every changed command-execution or scheduler file, listed explicitly in `Files read`
+
+Code Reviewer mandatory docs:
+
+- all Implementation docs above
+
+### Shared helper plan
+
+1. Helper: supported-tool runner registry
+   - Decision: `new`
+   - Owning module/path: `scripts/builder/src/regression-checker/runners/`
+   - Call-site rationale: CLI orchestration should select runners by tool family without switch duplication across sections
+   - Relevant canonical doc target: `/home/developer/AssessmentBot/docs/developer/regression-cli-spec.md`
+   - Planned doc status: `Not implemented`
+2. Helper: scheduler for general lane plus Playwright lane
+   - Decision: `new`
+   - Owning module/path: `scripts/builder/src/regression-checker/runners/`
+   - Call-site rationale: concurrency rules are a core contract and should be testable separately from the CLI shell
+   - Relevant canonical doc target: `/home/developer/AssessmentBot/docs/developer/regression-cli-spec.md`
+   - Planned doc status: `Not implemented`
+
+### Acceptance criteria
+
+- ESLint, Vitest, and Playwright runners capture JSON artefacts in the required tool-native mode.
+- `tsc` runs in stable text mode and captures parseable diagnostics output.
+- Raw artefacts are written per check in the current baseline or run directory.
+- Parallel execution honours `maxWorkers`, while Playwright remains isolated to one worker.
+- Execution errors become structured failing check results rather than silent crashes.
+
+### Required test cases (Red first)
+
+Builder tests:
+
+1. Runner command construction for each supported tool family.
+2. Raw artefact capture paths and extensions per tool.
+3. Scheduler behaviour for bounded general workers plus single-worker Playwright lane.
+4. Deterministic result ordering despite out-of-order completion.
+5. Execution error capture and propagation into reportable check results.
+
+### Section checks
+
+- `npm run test:builder -- scripts/builder/src/regression-checker`
+- `npm run lint:builder`
+- `npm run builder:compile`
+- Mandatory-read evidence gate passed for all delegated hand-offs.
+
+### Section checklist
+
+- [ ] Red tests added/updated
+- [ ] Red failure captured
+- [ ] Green implementation complete
+- [ ] Refactor complete
+- [ ] Section checks passed
+- [ ] Mandatory-read evidence verified
+- [ ] Review feedback resolved
+- [ ] Docs impact handled or marked N/A
+- [ ] Commit evidence captured
+- [ ] Push evidence captured or marked N/A until final section
+
+---
+
+## Section 4 — Derived summaries and comparison engine
+
+### Objective
+
+- Convert raw artefacts into tool-specific derived summaries and implement regression, new-failure, and fix detection.
+
+### Constraints
+
+- Fingerprint rules must match the spec per tool family.
+- Runtime/execution errors count as regressions.
+- Vitest and Playwright skipped-in-current behaviour must count as regressions when baseline was not skipped.
+- Output categories must remain deterministic and testable.
+
+### Delegation mandatory reads
+
+Testing Specialist mandatory docs:
+
+- `/home/developer/AssessmentBot/AGENTS.md`
+- `/home/developer/AssessmentBot/scripts/builder/AGENTS.md`
+- `/home/developer/AssessmentBot/SPEC.md`
+- `/home/developer/AssessmentBot/docs/developer/regression-cli-spec.md`
+- `/home/developer/AssessmentBot/scripts/builder/src/regression-checker/compare`
+- every changed file under `/home/developer/AssessmentBot/scripts/builder/src/regression-checker/compare/`, listed explicitly in `Files read`
+
+Implementation mandatory docs:
+
+- all Testing Specialist docs above
+- `/home/developer/AssessmentBot/scripts/builder/src/regression-checker/compare`
+- every changed comparison, runner-result, and manifest type file, listed explicitly in `Files read`
+
+Code Reviewer mandatory docs:
+
+- all Implementation docs above
+
+### Shared helper plan
+
+1. Helper: tool-specific derive adapters
+   - Decision: `new`
+   - Owning module/path: `scripts/builder/src/regression-checker/compare/`
+   - Call-site rationale: each tool family needs an explicit parse-and-fingerprint boundary
+   - Relevant canonical doc target: `/home/developer/AssessmentBot/docs/developer/regression-cli-spec.md`
+   - Planned doc status: `Not implemented`
+2. Helper: comparison result aggregator
+   - Decision: `new`
+   - Owning module/path: `scripts/builder/src/regression-checker/compare/`
+   - Call-site rationale: report rendering should consume a stable comparison result rather than re-deriving counts
+   - Relevant canonical doc target: `/home/developer/AssessmentBot/docs/developer/regression-cli-spec.md`
+   - Planned doc status: `Not implemented`
+
+### Acceptance criteria
+
+- Derived summaries are produced for every supported tool family.
+- Regression, new-failure, and fix counts and item lists match the spec.
+- Execution errors and baseline incompatibility are represented clearly in the comparison model.
+- Result ordering stays deterministic for later report generation.
+
+### Required test cases (Red first)
+
+Builder tests:
+
+1. ESLint error and warning fingerprints and regression semantics.
+2. Vitest and Playwright failure plus skipped-state regression semantics.
+3. `tsc` diagnostic parsing and fingerprint derivation.
+4. Execution-error handling as regressions.
+5. Aggregated counts and deterministic ordering across mixed check results.
+
+### Section checks
+
+- `npm run test:builder -- scripts/builder/src/regression-checker`
+- `npm run lint:builder`
+- `npm run builder:compile`
+- Mandatory-read evidence gate passed for all delegated hand-offs.
+
+### Section checklist
+
+- [ ] Red tests added/updated
+- [ ] Red failure captured
+- [ ] Green implementation complete
+- [ ] Refactor complete
+- [ ] Section checks passed
+- [ ] Mandatory-read evidence verified
+- [ ] Review feedback resolved
+- [ ] Docs impact handled or marked N/A
+- [ ] Commit evidence captured
+- [ ] Push evidence captured or marked N/A until final section
+
+---
+
+## Section 5 — Report writer, CLI orchestration, and exit codes
+
+### Objective
+
+- Integrate config, storage, runners, comparison, and report writing into the callable CLI with the fixed-structure header contract.
+
+### Constraints
+
+- Header markers and field order must be deterministic.
+- Baseline mode must explicitly state baseline creation and lack of comparison diffing.
+- Compare mode must write both `comparison.json` and `comparison.txt`.
+- Exit codes must follow the spec: `0` for successful baseline creation, `0` for compare without regressions, `1` for compare with regressions, non-zero for invalid config or execution failure.
+
+### Delegation mandatory reads
+
+Testing Specialist mandatory docs:
+
+- `/home/developer/AssessmentBot/AGENTS.md`
+- `/home/developer/AssessmentBot/scripts/builder/AGENTS.md`
+- `/home/developer/AssessmentBot/SPEC.md`
+- `/home/developer/AssessmentBot/docs/developer/regression-cli-spec.md`
+- `/home/developer/AssessmentBot/scripts/builder/src/regression-checker/cli`
+- `/home/developer/AssessmentBot/scripts/builder/src/regression-checker/report`
+- every changed file under those directories, listed explicitly in `Files read`
+
+Implementation mandatory docs:
+
+- all Testing Specialist docs above
+- `/home/developer/AssessmentBot/scripts/builder/src/regression-checker/cli`
+- `/home/developer/AssessmentBot/scripts/builder/src/regression-checker/report`
+- every changed orchestration, storage, runner, and comparison file, listed explicitly in `Files read`
+
+Code Reviewer mandatory docs:
+
+- all Implementation docs above
+
+### Shared helper plan
+
+1. Helper: report header renderer
+   - Decision: `new`
+   - Owning module/path: `scripts/builder/src/regression-checker/report/`
+   - Call-site rationale: deterministic header formatting must stay isolated from CLI flow control
+   - Relevant canonical doc target: `/home/developer/AssessmentBot/docs/developer/regression-cli-spec.md`
+   - Planned doc status: `Not implemented`
+2. Helper: CLI orchestration entrypoint
+   - Decision: `keep local`
+   - Owning module/path: `scripts/builder/src/regression-checker/cli/`
+   - Call-site rationale: orchestration is feature-specific in v1
+   - Relevant canonical doc target: `/home/developer/AssessmentBot/docs/developer/regression-cli-spec.md`
+   - Planned doc status: `Not implemented`
+
+### Acceptance criteria
+
+- The CLI creates a baseline when none exists and a comparison run when one does.
+- Reports begin with the required header markers and fields in fixed order.
+- Detailed body includes execution metadata, per-check status/counts, diff listings, and raw artefact references.
+- Compare runs return the required exit codes for regression and no-regression outcomes.
+
+### Required test cases (Red first)
+
+Builder tests:
+
+1. Baseline-mode CLI integration and explicit baseline-created messaging.
+2. Compare-mode CLI integration with regressions and with no regressions.
+3. Header field order and marker assertions.
+4. Written `comparison.json` and `comparison.txt` artefact assertions.
+5. Exit-code assertions for invalid config, baseline mode, compare-green, and compare-failing outcomes.
+
+### Section checks
+
+- `npm run test:builder -- scripts/builder/src/regression-checker`
+- `npm run lint:builder`
+- `npm run builder:compile`
+- `npm run test:builder`
+- Mandatory-read evidence gate passed for all delegated hand-offs.
+
+### Section checklist
+
+- [ ] Red tests added/updated
+- [ ] Red failure captured
+- [ ] Green implementation complete
+- [ ] Refactor complete
+- [ ] Section checks passed
+- [ ] Mandatory-read evidence verified
+- [ ] Review feedback resolved
+- [ ] Docs impact handled or marked N/A
+- [ ] Commit evidence captured
+- [ ] Push evidence captured or marked N/A until final section
+
+---
+
+## Section 6 — Final regression hardening, docs pass, de-sloppification, and delivery evidence
+
+### Objective
+
+- Finish builder validation, tighten docs and ignore rules, run de-sloppification, and collect final commit/push evidence.
+
+### Constraints
+
+- Keep docs changes limited to builder-facing guidance affected by the delivered CLI.
+- `.gitignore` may ignore generated reports only; do not hide the tracked config file.
+- De-sloppification must simplify naming, branching, and helper boundaries without changing behaviour.
+- Final validation must still follow the builder-first hierarchy before broader builder integration commands.
+
+### Delegation mandatory reads
 
 Docs mandatory docs:
 
-- `/workspaces/AssessmentBot/AGENTS.md`
-- `/workspaces/AssessmentBot/src/frontend/AGENTS.md`
-- `/workspaces/AssessmentBot/SPEC.md`
-- `/workspaces/AssessmentBot/REFERENCE_DATA_MODAL_LAYOUT.md`
-- `/workspaces/AssessmentBot/docs/developer/frontend/frontend-modal-patterns.md`
-- `/workspaces/AssessmentBot/docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
+- `/home/developer/AssessmentBot/AGENTS.md`
+- `/home/developer/AssessmentBot/scripts/builder/AGENTS.md`
+- `/home/developer/AssessmentBot/SPEC.md`
+- `/home/developer/AssessmentBot/docs/developer/regression-cli-spec.md`
+- `/home/developer/AssessmentBot/docs/developer/builder/builder-script.md`
+- `/home/developer/AssessmentBot/docs/developer/builder/TypeScriptAndLintConfigHierarchy.md`
+- `/home/developer/AssessmentBot/.gitignore`
+- every changed builder-facing doc, listed explicitly in `Files read`
+
+De-Sloppification mandatory docs:
+
+- all Docs mandatory docs above
+- `/home/developer/AssessmentBot/scripts/builder/src/regression-checker`
+- every changed production and test file under that directory, listed explicitly in `Files read`
 
 Code Reviewer mandatory docs:
 
-- `/workspaces/AssessmentBot/AGENTS.md`
-- `/workspaces/AssessmentBot/src/frontend/AGENTS.md`
-- `/workspaces/AssessmentBot/SPEC.md`
-- `/workspaces/AssessmentBot/REFERENCE_DATA_MODAL_LAYOUT.md`
-- `/workspaces/AssessmentBot/docs/developer/frontend/frontend-modal-patterns.md`
-- `/workspaces/AssessmentBot/docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
+- `/home/developer/AssessmentBot/scripts/builder/src/regression-checker`
+- `/home/developer/AssessmentBot/.gitignore`
+- every changed production file, test file, and doc file, listed explicitly in `Files read`
 
 ### Shared helper plan
 
-Helper decision entries:
-
-1. Helper or contract: reference-data modal scaffold
-   - Decision: `new`
-   - Owning module/path: `src/frontend/src/features/classes/ReferenceDataManagementModalScaffold.tsx`
-   - Call-site rationale: two current callers plus an accepted next topic caller now justify one narrow outer-shell scaffold
-   - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
-   - Planned doc status: `Not implemented`
-2. Helper or contract: existing inline dialog and reference-data helper family
-   - Decision: `reuse`
-   - Owning module/path: `src/frontend/src/features/classes/manageReferenceDataDialogs.tsx`, `src/frontend/src/features/classes/manageReferenceDataHelpers.ts`, `src/frontend/src/features/classes/InlineDialog.tsx`
-   - Call-site rationale: the current helper split already owns the inner-dialog and workflow logic that the new scaffold should compose around rather than replace
-   - Relevant canonical doc target: `docs/developer/frontend/frontend-modal-patterns.md`
-   - Planned doc status: `Implemented`
+1. Helper decisions from Sections 1-5
+   - Decision: `reconcile`
+   - Owning module/path: all delivered regression-checker modules
+   - Call-site rationale: confirm no planned helper remained broader than necessary
+   - Relevant canonical doc target: `/home/developer/AssessmentBot/docs/developer/regression-cli-spec.md`
+   - Planned doc status: update from `Not implemented` only where the implementation and docs now match
 
 ### Acceptance criteria
 
-- Canonical modal guidance documents the extracted scaffold boundary, the left-aligned content-width create-action rule, the scaffold-owned standard Cancel and close wiring, and the accepted next topic caller.
-- Canonical helper guidance records the new scaffold decision as `Not implemented`.
-
-### Required test cases (Red first)
-
-Frontend tests:
-
-1. None. This section changes planning and canonical docs only.
-
-### Section checks
-
-- Confirm the canonical-doc updates match the feature spec and layout spec.
-- Mandatory-read evidence gate passed for all delegated handoffs in this section.
-- Shared-helper planning entries are present and marked with the correct planned status before implementation starts.
-
-### Optional `@remarks` JSDoc follow-through
-
-- None.
-
-### Implementation notes / deviations / follow-up
-
-- **Implementation notes:** Section 1 completed. Updated `frontend-modal-patterns.md` with scaffold boundary, create-action placement, and icon contract. Updated `frontend-shared-helpers-and-abstraction-standards.md` with scaffold decision status changed from `Not implemented` to `Implemented`.
-- **Deviations from plan:** None.
-- **Follow-up implications for later sections:** Documentation now reflects the delivered implementation status.
-
-### Section 1 Checklist
-
-- [x] regression baseline established
-- [x] red tests added (N/A - documentation only section)
-- [x] red review clean (N/A - documentation only section)
-- [x] green implementation complete (documentation updates)
-- [x] green review clean (documentation updates)
-- [x] regression gate passed (ZERO regressions, ZERO new failures)
-- [x] checks passed
-- [x] action plan updated
-- [x] commit created (4bdb4e3 - "docs: update modal and helper standards for classes reference-data scaffold")
-- [x] push completed (pushed to origin/chore/standariseReferenceDataModal)
-
----
-
-## Section 2 — Extract the reference-data modal scaffold
-
-### Objective
-
-- Introduce `ReferenceDataManagementModalScaffold` and migrate `ManageCohortsModal` and `ManageYearGroupsModal` to that shared outer-shell contract.
-
-### Constraints
-
-- Introduce the scaffold at `src/frontend/src/features/classes/ReferenceDataManagementModalScaffold.tsx`.
-- Preserve current button text labels.
-- Preserve existing modal-body ordering, loading rules, refresh visibility, and dialog-opening behaviour.
-- Keep the scaffold narrow: it owns shell composition, slots, and the create-action presentation, not entity-specific mutation logic.
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Testing Specialist mandatory docs:
-
-- `/workspaces/AssessmentBot/AGENTS.md`
-- `/workspaces/AssessmentBot/src/frontend/AGENTS.md`
-- `/workspaces/AssessmentBot/SPEC.md`
-- `/workspaces/AssessmentBot/REFERENCE_DATA_MODAL_LAYOUT.md`
-- `/workspaces/AssessmentBot/docs/developer/frontend/frontend-modal-patterns.md`
-- `/workspaces/AssessmentBot/docs/developer/frontend/frontend-testing.md`
-- `/workspaces/AssessmentBot/src/frontend/src/features/classes/ManageCohortsModal.tsx`
-- `/workspaces/AssessmentBot/src/frontend/src/features/classes/ManageYearGroupsModal.tsx`
-- `/workspaces/AssessmentBot/src/frontend/src/features/classes/manageReferenceDataDialogs.tsx`
-- `/workspaces/AssessmentBot/src/frontend/src/features/classes/manageReferenceDataHelpers.ts`
-- `/workspaces/AssessmentBot/src/frontend/src/features/classes/manageCohorts.spec.tsx`
-- `/workspaces/AssessmentBot/src/frontend/src/features/classes/manageYearGroups.spec.tsx`
-
-Implementation mandatory docs:
-
-- `/workspaces/AssessmentBot/AGENTS.md`
-- `/workspaces/AssessmentBot/src/frontend/AGENTS.md`
-- `/workspaces/AssessmentBot/SPEC.md`
-- `/workspaces/AssessmentBot/REFERENCE_DATA_MODAL_LAYOUT.md`
-- `/workspaces/AssessmentBot/docs/developer/frontend/frontend-modal-patterns.md`
-- `/workspaces/AssessmentBot/docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
-- `/workspaces/AssessmentBot/src/frontend/src/features/classes/ManageCohortsModal.tsx`
-- `/workspaces/AssessmentBot/src/frontend/src/features/classes/ManageYearGroupsModal.tsx`
-- `/workspaces/AssessmentBot/src/frontend/src/features/classes/manageReferenceDataDialogs.tsx`
-- `/workspaces/AssessmentBot/src/frontend/src/features/classes/manageReferenceDataHelpers.ts`
-
-Code Reviewer mandatory docs:
-
-- `/workspaces/AssessmentBot/AGENTS.md`
-- `/workspaces/AssessmentBot/src/frontend/AGENTS.md`
-- `/workspaces/AssessmentBot/SPEC.md`
-- `/workspaces/AssessmentBot/REFERENCE_DATA_MODAL_LAYOUT.md`
-- `/workspaces/AssessmentBot/docs/developer/frontend/frontend-modal-patterns.md`
-- `/workspaces/AssessmentBot/docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
-- `/workspaces/AssessmentBot/src/frontend/src/features/classes/ManageCohortsModal.tsx`
-- `/workspaces/AssessmentBot/src/frontend/src/features/classes/ManageYearGroupsModal.tsx`
-- `/workspaces/AssessmentBot/src/frontend/src/features/classes/manageReferenceDataDialogs.tsx`
-- `/workspaces/AssessmentBot/src/frontend/src/features/classes/manageReferenceDataHelpers.ts`
-
-### Shared helper plan
-
-Helper decision entries:
-
-1. Helper or contract: reference-data modal scaffold
-   - Decision: `new`
-   - Owning module/path: `src/frontend/src/features/classes/ReferenceDataManagementModalScaffold.tsx`
-   - Call-site rationale: the duplicated outer-shell contract is now justified for extraction by two active callers and one accepted next caller
-   - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
-   - Planned doc status: `Not implemented`
-2. Helper or contract: existing inline dialog and reference-data helper family
-   - Decision: `reuse`
-   - Owning module/path: `src/frontend/src/features/classes/manageReferenceDataDialogs.tsx`, `src/frontend/src/features/classes/manageReferenceDataHelpers.ts`, `src/frontend/src/features/classes/InlineDialog.tsx`
-   - Call-site rationale: the scaffold should compose the existing helper family instead of absorbing those responsibilities
-   - Relevant canonical doc target: `docs/developer/frontend/frontend-modal-patterns.md`
-   - Planned doc status: `Implemented`
-
-### Acceptance criteria
-
-- `ReferenceDataManagementModalScaffold` exists as a narrow shared shell for the family.
-- The scaffold is a generic React component `<T extends { key: string }>` so typed `rows: T[]` and `columns: TableColumnType<T>[]` props do not require callers to cast their entity-typed columns under TypeScript strict mode.
-- The Manage Cohorts modal renders through the scaffold and still exposes `Create cohort` as a start-aligned, content-width primary button with a leading `PlusOutlined` icon.
-- The Manage Year Groups modal renders through the scaffold and still exposes `Create year group` as a start-aligned, content-width primary button with a leading `PlusOutlined` icon.
-- Both callers expose `data-testid="reference-data-create-action-icon"` through the shared scaffold while preserving their visible text button names.
-- Both callers retain their visible text labels and continue to open the same inline create dialog flows.
-- The scaffold preserves each caller's supplied modal width, modal class name, empty-table copy, and refresh-status copy.
-- The scaffold owns modal-level `aria-busy` refresh wiring for both callers.
-- The scaffold owns the standard `Cancel` footer and all shell-close wiring for both callers.
-- Each caller continues to own transient modal-state cleanup by supplying an `onClose` wrapper that resets local inline-dialog and error state before delegating upward.
-- Background refresh keeps the button visible.
-- Blocking-load states still suppress the ready body, including the create action.
-- Inline create, edit, and delete sections keep the ready-state body visible above them.
-
-### Required test cases (Red first)
-
-Frontend tests:
-
-1. Add `src/frontend/src/features/classes/ReferenceDataManagementModalScaffold.spec.tsx` covering blocking, ready, empty, refresh, alert-slot, and inline-dialog-slot states.
-2. Add scaffold coverage that caller-supplied modal width, modal class name, empty-table copy, and refresh-status copy are preserved.
-3. Add scaffold coverage that modal-level `aria-busy` refresh semantics move into the shared shell.
-4. Add scaffold coverage that the standard `Cancel` footer, close icon, mask-close path, and keyboard-close path all live in the shared shell and delegate to the caller-supplied `onClose`.
-5. Update `src/frontend/src/features/classes/manageCohorts.spec.tsx` to assert that the caller still exposes `Create cohort`, contains one `data-testid="reference-data-create-action-icon"`, and still opens the create dialog through the scaffold.
-6. Update `src/frontend/src/features/classes/manageYearGroups.spec.tsx` to assert that the caller still exposes `Create year group`, contains one `data-testid="reference-data-create-action-icon"`, and still opens the create dialog through the scaffold.
-7. Add caller-level coverage that opening create or delete UI, triggering a scaffold-owned close path, and reopening the modal shows transient inline-dialog and error state has been reset.
-8. Add cohort-specific caller coverage that a toggle-error alert is cleared when the modal closes through a scaffold-owned close path and does not persist after reopen.
-9. Preserve the existing ready-state, empty-state, and background-refresh assertions so the extraction does not regress current modal behaviour.
-
-### Section checks
-
-- `npm run test:frontend -- src/features/classes/ReferenceDataManagementModalScaffold.spec.tsx src/features/classes/manageCohorts.spec.tsx src/features/classes/manageYearGroups.spec.tsx`
-- Mandatory-read evidence gate passed for all delegated handoffs in this section.
-- Shared-helper planning entry remains aligned with the extracted scaffold decision.
-
-### Optional `@remarks` JSDoc follow-through
-
-- Add a `@remarks` note to `ReferenceDataManagementModalScaffold` explaining that:
-  1. Modal-level `aria-busy` is applied via `syncReferenceDataModalBusyState` using the compound selector `.reference-data-modal-scaffold-wrapper [role="dialog"]`.
-  2. The class `reference-data-modal-scaffold-wrapper` is applied via `classNames.wrapper` on the Ant Design `Modal`, which places it on `.ant-modal-wrap` (not on `.ant-modal`/`[role="dialog"]` directly); the compound selector therefore navigates from the wrapper to the inner dialog element.
-  3. This class is a scaffold invariant, not the caller-supplied `modalClassName`. Do not remove it thinking it is only for CSS styling.
-
-### Implementation notes / deviations / follow-up
-
-- **Implementation notes:** Red phase complete: created `ReferenceDataManagementModalScaffold.spec.tsx` with 21 comprehensive tests covering blocking states, ready states, refresh states, configuration preservation, close wiring, inline slots, and create action. Red review complete: all 5 blocking issues identified by Code Reviewer have been resolved (mask-close/keyboard-close tests added, data-testid assertions added to both caller test files, caller-level reset behavior tests added, cohort-specific toggle-error alert clearing test added). Green phase complete: ManageCohortsModal and ManageYearGroupsModal successfully migrated to use ReferenceDataManagementModalScaffold. **Post-green fixes applied to scaffold:** Investigated 2 failing scaffold tests (`applies aria-busy to the modal dialog during refresh` and `preserves caller-supplied modal width`). Created E2E Playwright suite (`reference-data-modal-scaffold.spec.ts`) with 12 tests (9 active, 3 skipped) to verify behavior in real Chromium - all passed, confirming HappyDOM-specific test environment limitations. Fixed HappyDOM timing issue by adding `setTimeout(..., 0)` wrapper in scaffold `useEffect` to defer DOM query until Ant Design classes are applied. Fixed `toHaveStyle()` matcher limitation by replacing with `getAttribute('style')` + regex matching. Addressed all Code Reviewer findings: TypeScript error on line 106 (added type assertion), unused `act` import (removed), magic numbers on lines 501-502 (replaced with `DOCUMENT_POSITION_FOLLOWING` constant), lint errors (fixed type imports and JSDoc), and nitpick (JSDoc type reference consistency). **Post-Code-Reviewer fixes:** Added missing test coverage: data-testid assertions in both caller test files, transient state reset tests in both caller test files, and cohort-specific toggle-error alert clearing test. All 63 Section 2 tests now pass (21 scaffold + 23 cohorts + 19 year groups).
-- **Deviations from plan:** None.
-- **Follow-up implications for later sections:** Section 2 is complete. Section 3 E2E tests (3 intentionally failing) should now pass once code is committed and pushed, as callers now use scaffold with all required fixes (`align="start"`, `mask={{ closable: true }}`).
-
-### Section 2 Checklist
-
-- [x] regression baseline established
-- [x] red tests added (21 tests in ReferenceDataManagementModalScaffold.spec.tsx + updates to manageCohorts.spec.tsx and manageYearGroups.spec.tsx)
-- [x] red review clean
-- [x] green implementation complete (ManageCohortsModal and ManageYearGroupsModal migrated to use scaffold)
-- [x] green review clean
-- [x] regression gate passed (ZERO regressions, ZERO new failures)
-- [x] checks passed (63/63 Section 2 tests pass, lint clean)
-- [x] action plan updated
-- [x] commit created
-- [x] push completed
-
----
-
-## Section 3 — Add browser-level coverage for the migrated callers
-
-### Objective
-
-- Extend the existing classes CRUD Playwright suites so the migrated scaffold callers keep the visible create-action contract in a real browser.
-
-### Constraints
-
-- Reuse the existing modal-specific Playwright files rather than creating a parallel harness.
-- Keep selectors driven by role and visible button text where possible.
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Testing Specialist mandatory docs:
-
-- `/workspaces/AssessmentBot/AGENTS.md`
-- `/workspaces/AssessmentBot/src/frontend/AGENTS.md`
-- `/workspaces/AssessmentBot/SPEC.md`
-- `/workspaces/AssessmentBot/REFERENCE_DATA_MODAL_LAYOUT.md`
-- `/workspaces/AssessmentBot/docs/developer/frontend/frontend-testing.md`
-- `/workspaces/AssessmentBot/src/frontend/e2e-tests/classes-crud-manage-cohorts.spec.ts`
-- `/workspaces/AssessmentBot/src/frontend/e2e-tests/classes-crud-manage-year-groups.spec.ts`
-- `/workspaces/AssessmentBot/src/frontend/src/features/classes/ManageCohortsModal.tsx`
-- `/workspaces/AssessmentBot/src/frontend/src/features/classes/ManageYearGroupsModal.tsx`
-
-Implementation mandatory docs:
-
-- `/workspaces/AssessmentBot/AGENTS.md`
-- `/workspaces/AssessmentBot/src/frontend/AGENTS.md`
-- `/workspaces/AssessmentBot/SPEC.md`
-- `/workspaces/AssessmentBot/REFERENCE_DATA_MODAL_LAYOUT.md`
-- `/workspaces/AssessmentBot/docs/developer/frontend/frontend-testing.md`
-- `/workspaces/AssessmentBot/src/frontend/e2e-tests/classes-crud-manage-cohorts.spec.ts`
-- `/workspaces/AssessmentBot/src/frontend/e2e-tests/classes-crud-manage-year-groups.spec.ts`
-- `/workspaces/AssessmentBot/src/frontend/src/features/classes/ManageCohortsModal.tsx`
-- `/workspaces/AssessmentBot/src/frontend/src/features/classes/ManageYearGroupsModal.tsx`
-
-Code Reviewer mandatory docs:
-
-- `/workspaces/AssessmentBot/AGENTS.md`
-- `/workspaces/AssessmentBot/src/frontend/AGENTS.md`
-- `/workspaces/AssessmentBot/SPEC.md`
-- `/workspaces/AssessmentBot/REFERENCE_DATA_MODAL_LAYOUT.md`
-- `/workspaces/AssessmentBot/docs/developer/frontend/frontend-testing.md`
-- `/workspaces/AssessmentBot/src/frontend/e2e-tests/classes-crud-manage-cohorts.spec.ts`
-- `/workspaces/AssessmentBot/src/frontend/e2e-tests/classes-crud-manage-year-groups.spec.ts`
-- `/workspaces/AssessmentBot/src/frontend/src/features/classes/ManageCohortsModal.tsx`
-- `/workspaces/AssessmentBot/src/frontend/src/features/classes/ManageYearGroupsModal.tsx`
-
-### Shared helper plan
-
-Helper decision entries:
-
-1. Helper or contract: Playwright harness reuse for classes reference-data modal coverage
-   - Decision: `reuse`
-   - Owning module/path: `src/frontend/e2e-tests/classes-crud-manage-cohorts.spec.ts`, `src/frontend/e2e-tests/classes-crud-manage-year-groups.spec.ts`
-   - Call-site rationale: the existing browser suites already own these visible workflows and should absorb the new assertions
-   - Relevant canonical doc target: `docs/developer/frontend/frontend-testing.md`
-   - Planned doc status: `Implemented`
-
-### Acceptance criteria
-
-- Playwright coverage exists for both migrated callers and asserts the create button is visible with its current text label.
-- Playwright coverage asserts the button remains visibly start-aligned with the content region.
-- Playwright coverage asserts the button remains materially narrower than the main content region and does not read as full width.
-- Playwright coverage asserts the scaffold-owned `Cancel` footer closes the modal through the shared close path.
-- Playwright coverage covers every supported scaffold-owned shell-close route: footer Cancel, close icon, mask close, and keyboard close.
-
-### Required test cases (Red first)
-
-Frontend tests:
-
-1. Extend `src/frontend/e2e-tests/classes-crud-manage-cohorts.spec.ts` with visible-layout assertions using `.boundingBox()` that: (a) the left edge of `Create cohort` is within 8 px of the `Table` element's left edge, and (b) the `Create cohort` button width is at least 32 px narrower than the `Table` bounding box width.
-2. Extend `src/frontend/e2e-tests/classes-crud-manage-year-groups.spec.ts` with the equivalent `.boundingBox()` assertions for `Create year group` using the same tolerances.
-3. Extend one migrated-caller Playwright journey to verify that the scaffold-owned `Cancel` footer dismisses the modal and that reopening starts from a clean ready state.
-4. Add browser coverage for the close icon route by opening transient inline UI first, dismissing through the shared shell path, reopening, and asserting the modal returns to a clean ready state.
-5. Add browser coverage for mask close and verify reopening starts from a clean ready state.
-6. Add browser coverage for keyboard close and verify reopening starts from a clean ready state.
-
-### Section checks
-
-- `npm run test:frontend:e2e -- e2e-tests/classes-crud-manage-cohorts.spec.ts e2e-tests/classes-crud-manage-year-groups.spec.ts`
-- Mandatory-read evidence gate passed for all delegated handoffs in this section.
-
-### Optional `@remarks` JSDoc follow-through
-
-- None.
-
-**NOTE:** 4 Section 3 E2E tests are intentionally skipped awaiting user review of layout alignment:
-
-- `classes-crud-manage-cohorts.spec.ts:373` - Create cohort button start-aligned
-- `classes-crud-manage-cohorts.spec.ts:396` - Create cohort button width
-- `classes-crud-manage-year-groups.spec.ts:307` - Create year group button start-aligned
-- `classes-crud-manage-year-groups.spec.ts:330` - Create year group button width
-
-These tests fail due to Ant Design v6 default styling causing horizontal offset between button and table despite Flex `align="start"`. All other Section 3 tests pass (27/31).
-
-### Section 3 Checklist
-
-- [x] regression baseline established (section-3-red-review-baseline)
-- [x] red tests added (8 new Playwright tests across both migrated caller files)
-- [x] red review clean (Code Reviewer passed with one improvement: fixed Cancel button selector to use role-based)
-- [x] green implementation started (investigating maskClosable and alignment issues)
-- [ ] green implementation complete
-- [ ] green review clean
-- [ ] regression gate passed (ZERO regressions, ZERO new failures)
-- [ ] checks passed
-- [x] action plan updated
-- [x] commit created
-- [ ] push completed
-
-### Implementation notes / deviations / follow-up
-
-- **Implementation notes:** Section 3 Red phase: Added 8 new Playwright tests across both caller files (6 in cohorts, 2 in year groups). **Section 2 is now complete** - callers have been migrated to use the scaffold with all required fixes (`align="start"` on Flex, `mask={{ closable: true }}`). Mask close E2E test now passes. **4 layout tests skipped for user review:** 2 alignment tests and 2 width tests in both caller files. These tests fail due to Ant Design v6 default styling causing ~21-68px horizontal offset between button and table despite Flex `align="start"`. User to review layout alignment separately. Fixed magic number warnings by adding constants `ALIGNMENT_TOLERANCE_PX = 8` and `MIN_WIDTH_DIFFERENCE_PX = 32`. Code Reviewer passed with one improvement: fixed Cancel button selector from `.ant-modal-footer button:has-text("Cancel")` to `getByRole('button', { name: 'Cancel' })` for robustness. Section 3 Red phase tests: 27/31 pass, 4 skipped.
-- **Deviations from plan:** None.
-- **Follow-up implications for later sections:** Section 3 Red phase complete except for 4 skipped layout tests awaiting user review. Section 3 green implementation (investigation) complete for mask close. Ready to proceed once alignment tests are resolved.
-
----
-
-## Section 4 — Regression and contract hardening
-
-### Objective
-
-- Verify that the scaffold extraction and create-action standard land without breaking the current classes reference-data modal behaviour.
-
-### Status: COMPLETE
-
-### Constraints
-
-- Prefer focused classes-modal test runs before broader frontend validation.
-
-### Acceptance criteria
-
-- Updated scaffold and caller unit tests pass.
-- Updated classes Playwright tests pass.
-- Frontend lint passes.
-- The modal create buttons still open the correct inline dialogs and remain visible during background refresh.
-- The scaffold-owned Cancel footer and shared close routes still dismiss the modal through the same `onClose` pathway.
+- Final touched builder tests, lint, compile, and coverage checks are green.
+- Any required `.gitignore` and builder documentation updates are complete.
+- A de-sloppification pass has been completed and any resulting fixes are revalidated.
+- Commit and push evidence are recorded for the delivered branch.
 
 ### Required test cases/checks
 
-1. Run `npm run test:frontend -- src/features/classes/ReferenceDataManagementModalScaffold.spec.tsx src/features/classes/manageCohorts.spec.tsx src/features/classes/manageYearGroups.spec.tsx`.
-2. Run `npm run test:frontend:e2e -- e2e-tests/classes-crud-manage-cohorts.spec.ts e2e-tests/classes-crud-manage-year-groups.spec.ts`.
-3. Run `npm run lint:frontend`.
-4. Verify mandatory-read evidence (`Files read`) is complete for every delegated regression handoff.
+1. Re-run focused regression-checker builder tests for touched suites.
+2. Run `npm run lint:builder`.
+3. Run `npm run builder:compile`.
+4. Run `npm run test:builder`.
+5. Run `npm run test:builder:coverage`.
+6. Run `npm run build:production` if the CLI affects builder pipeline packaging or entry wiring.
+7. Verify docs/ignore updates against the delivered behaviour.
+8. Verify mandatory-read evidence for Docs, De-Sloppification, and Code Reviewer hand-offs.
+9. Capture commit hash, branch name, and push evidence.
 
 ### Section checks
 
-- Run the commands listed above and ensure green results.
+- `npm run lint:builder`
+- `npm run builder:compile`
+- `npm run test:builder`
+- `npm run test:builder:coverage`
+- `npm run build:production` (when integration wiring changed)
+- `git --no-pager status --short`
+- `git --no-pager log -1 --stat`
+- `git --no-pager rev-parse --abbrev-ref HEAD`
+- Mandatory-read evidence gate passed for all delegated hand-offs.
 
-### Section 4 Checklist
+### Section checklist
 
-- [x] regression baseline established (section-4-regression-check baseline)
-- [x] red tests added (verification commands defined in Section 4 plan)
-- [x] red review clean (N/A - verification section)
-- [x] green implementation complete (all verification commands executed successfully)
-- [x] green review clean (Code Reviewer passed - all acceptance criteria met, one checklist correction applied)
-- [x] regression gate passed (ZERO regressions, ZERO new failures)
-- [x] checks passed
-- [x] action plan updated
-- [x] commit created (f0d1674 - "chore: complete Section 4 - regression and contract hardening for reference-data modal family")
-- [x] push completed (pushed to origin/chore/standariseReferenceDataModal)
-
-### Implementation notes / deviations / follow-up
-
-- **Implementation notes:** Section 4 verification commands executed successfully. Results: Unit tests: 63/63 pass (scaffold: 21, manageCohorts: 23, manageYearGroups: 19). E2E tests: 27/31 pass (4 skipped for user review - alignment tests in both caller files). Lint: 0 errors, 0 warnings across all components. Regression baseline established: Backend 953/953, Frontend 552/552, Builder 123/123 all passing. All Section 4 acceptance criteria met.
-- **Deviations from plan:** None.
-
----
-
-## Section 5 — De-Sloppification Pass
-
-### Objective
-
-- Run mandatory de-sloppification pass after all sections are complete to remove AI-slop, duplication, and unnecessary complexity.
-
-### Status: COMPLETE
-
-### Acceptance criteria
-
-- All de-sloppification findings addressed with minimal, localised changes
-- All tests still pass after cleanup
-- Lint remains clean
-- Code Reviewer approves all changes
-
-### Required cleanup items (from de-sloppification review)
-
-1. Remove unused `getReferenceDataBlockingBody` function from `manageReferenceDataHelpers.ts`
-2. Extract duplicate test constants (`ALIGNMENT_TOLERANCE_PX`, `MIN_WIDTH_DIFFERENCE_PX`) to shared file
-3. Create shared `ReferenceDataInitialLoadingState` component to replace duplicated loading skeletons
-4. Simplify IIFE patterns in `ReferenceDataManagementModalScaffold.tsx`
-5. Update outdated comments in `ReferenceDataManagementModalScaffold.tsx`
-
-### Section 5 Checklist
-
-- [x] regression baseline established (section-4-final-verification baseline)
-- [x] cleanup implemented (Implementation agent addressed all findings)
-- [x] cleanup review clean (Code Reviewer passed - all changes approved)
-- [x] regression gate passed (ZERO regressions, ZERO new failures)
-- [x] checks passed
-- [x] action plan updated
-- [x] commit created (03800eb - "chore: complete Section 5 - de-sloppification pass for reference-data modal family")
-- [x] push completed (pushed to origin/chore/standariseReferenceDataModal)
-
-### Implementation notes / deviations / follow-up
-
-- **Implementation notes:** De-sloppification pass complete. Implementation agent addressed 3 critical and 7 improvement findings. Code Reviewer passed with clean verdict. Changes: Removed dead code (getReferenceDataBlockingBody), extracted shared test constants to classes-crud.shared.ts, created shared ReferenceDataInitialLoadingState component, simplified IIFE patterns, updated outdated comments. Net result: 27 insertions(+), 87 deletions(-).
-- **Deviations from plan:** None.
-- **Follow-up implications for later sections:** Codebase is now cleaner and more maintainable. Ready for Section 6 (Documentation and rollout notes).
-
----
-
-## Section 6 — Documentation and rollout notes
-
-### Objective
-
-- Keep the frontend modal and helper standards aligned with the delivered implementation.
-
-### Status: COMPLETE
-
-### Constraints
-
-- Only update documents relevant to the touched classes modal family.
-
-### Acceptance criteria
-
-- Documentation accurately reflects the scaffold boundary, create-action placement, and icon contract.
-- Planned helper entries are reconciled after implementation.
-
-### Required checks
-
-1. Confirm `docs/developer/frontend/frontend-modal-patterns.md` reflects the delivered scaffold boundary and create-action placement and icon contract.
-2. Confirm `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` records the correct scaffold decision and status.
-3. Verify mandatory-read evidence (`Files read`) is complete for delegated docs and review handoffs.
-4. Reconcile planned shared-helper entries in canonical docs: keep `Not implemented` where extraction is still pending, or update the status if implementation delivers the scaffold.
-
-### Section 6 Checklist
-
-- [x] regression baseline established (section-5-de-sloppification baseline)
-- [x] docs updated (frontend-modal-patterns.md and frontend-shared-helpers-and-abstraction-standards.md)
-- [x] docs review clean (Code Reviewer passed - all documentation accurate)
-- [x] checks passed (lint clean, docs verified)
-- [x] action plan updated
-- [x] commit created (e570468 - "docs: update Section 6 - documentation and rollout notes for reference-data modal family")
-- [x] push completed (pushed to origin/chore/standariseReferenceDataModal)
-
-### Implementation notes / deviations / follow-up
-
-- **Implementation notes:** Section 6 documentation updates complete. Added ReferenceDataInitialLoadingState.tsx to frontend-modal-patterns.md shared helpers list. Added Section 9.10 to frontend-shared-helpers-and-abstraction-standards.md with two new helper entries: ReferenceDataInitialLoadingState component and Classes CRUD test constants. Code Reviewer passed with clean verdict - all documentation accurately reflects delivered implementation.
-- **Deviations from plan:** None.
-
----
-
-## Documentation and rollout notes
-
-### Objective
-
-- Keep the frontend modal and helper standards aligned with the delivered implementation.
-
-### Constraints
-
-- Only update documents relevant to the touched classes modal family.
-
-### Acceptance criteria
-
-- Documentation accurately reflects the scaffold boundary, create-action placement, and icon contract.
-- Planned helper entries are reconciled after implementation.
-
-### Required checks
-
-1. Confirm `docs/developer/frontend/frontend-modal-patterns.md` reflects the delivered scaffold boundary and create-action placement and icon contract.
-2. Confirm `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` records the correct scaffold decision and status.
-3. Verify mandatory-read evidence (`Files read`) is complete for delegated docs and review handoffs.
-4. Reconcile planned shared-helper entries in canonical docs: keep `Not implemented` where extraction is still pending, or update the status if implementation delivers the scaffold.
-
-### Optional `@remarks` JSDoc review
-
-- None.
-
-### Implementation notes / deviations / follow-up
-
-- ...
+- [ ] Red tests added/updated
+- [ ] Red failure captured
+- [ ] Green implementation complete
+- [ ] Refactor complete
+- [ ] Section checks passed
+- [ ] Mandatory-read evidence verified
+- [ ] Review feedback resolved
+- [ ] Docs impact handled or marked N/A
+- [ ] Commit evidence captured
+- [ ] Push evidence captured or marked N/A until final section
 
 ---
 
 ## Suggested implementation order
 
-1. Section 1 — Finalise canonical modal and helper standards
-2. Section 2 — Extract the reference-data modal scaffold
-3. Section 3 — Add browser-level coverage for the migrated callers
-4. Regression and contract hardening
-5. Documentation and rollout notes
+1. Section 1 — CLI contract and config safety rails
+2. Section 2 — Storage layout, manifests, and baseline compatibility
+3. Section 3 — Tool runners and bounded scheduling
+4. Section 4 — Derived summaries and comparison engine
+5. Section 5 — Report writer, CLI orchestration, and exit codes
+6. Section 6 — Final regression hardening, docs pass, de-sloppification, and delivery evidence
