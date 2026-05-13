@@ -301,11 +301,11 @@ Builder tests:
 - Review findings encountered and resolved: storage key path safety and manifest field ordering were flagged during review; both were resolved by enforcing deterministic session-key encoding and stable manifest write ordering across baseline/run outputs.
 - Deviations: none.
 - Follow-up implications for later sections: Section 3 can assume stable storage layout + manifest contracts and focus only on runner execution, artefact capture, and scheduler behaviour.
-- Commit/push evidence: TODO — fill after commit/push (branch, commit hash from `git --no-pager log -1 --stat`, push result).
+- Commit/push evidence: branch `feature/regression-checker-cli-implementation`; commits `6d2144e — feat(regression-checker): implement section 2 storage manifests and compatibility` and `d4a6d7b — docs(plan): record section 2 completion and section 3 start`; push succeeded to `origin/feature/regression-checker-cli-implementation`.
 
 ### Next status
 
-- Section 2 is **complete** pending commit/push evidence capture.
+- Section 2 is **complete** with commit/push evidence captured.
 
 ### Section checklist
 
