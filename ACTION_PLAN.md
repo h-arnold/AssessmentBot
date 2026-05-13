@@ -191,13 +191,16 @@ Builder tests:
 
 ### Implementation notes
 
+- Completion status: complete.
 - Finalised Section 1 CLI and config safety-rail fixes covering session source resolution, strict tool/run-kind validation, repo-safe path checks, mutating-script rejection, and deterministic `parallel.maxWorkers` defaulting behaviour.
 - Resolved review findings by tightening validation failure coverage and confirming detached-HEAD/branch lookup failure handling is explicit and test-backed.
-- Docs impact: N/A for Section 1 (no additional doc updates required beyond existing plan/spec alignment).
+- Deviations: none.
+- Follow-up implications for later sections: Section 2+ can now assume stable session/config validation contracts and proceed directly with storage, manifest, runner, and comparison layering on top of the locked Section 1 interfaces.
+- Commit/push evidence: branch `feature/regression-checker-cli-implementation`; commits `abd8138 — feat(regression-checker): complete section 1 cli contract and config safety rails` and `d35caaf — docs(plan): add regression-checker spec and section 1 progress tracking`; push succeeded to `origin/feature/regression-checker-cli-implementation`.
 
 ### Next status
 
-- Section 1 is in **commit/push pending** state (implementation and checks complete; commit/push evidence still outstanding).
+- Section 1 is **complete** with commit and push evidence captured.
 
 ### Section checklist
 
@@ -209,14 +212,14 @@ Builder tests:
 - [x] Mandatory-read evidence verified
 - [x] Review feedback resolved
 - [x] Docs impact handled or marked N/A
-- [ ] Commit evidence captured
-- [ ] Push evidence captured or marked N/A until final section
+- [x] Commit evidence captured
+- [x] Push evidence captured or marked N/A until final section
 
 ---
 
 ## Section 2 — Storage layout, manifests, and baseline compatibility
 
-> Current phase marker: **Not started**
+> Current phase marker: **Red tests in progress**
 
 ### Objective
 
