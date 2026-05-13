@@ -432,4 +432,88 @@ describe('tool runner command construction and bounded scheduling', () => {
       },
     });
   });
+
+  it('rejects invalid scheduler worker limits and validates run kinds per tool', async () => {
+    const { buildRunnerInvocation, runChecksWithBoundedScheduler } = await loadRunnerModule();
+
+    await expect(
+      runChecksWithBoundedScheduler({
+        checks: [],
+        maxWorkers: 0,
+        getPlannedRawArtefactPath: () => 'unused',
+        runCheck: async () => {
+          throw new Error('runCheck should not be called for invalid maxWorkers.');
+        },
+      })
+    ).rejects.toThrow('maxWorkers must be an integer greater than or equal to 1.');
+
+    expect(() =>
+      buildRunnerInvocation({
+        repoRoot: REPO_ROOT,
+        rawArtefactPath: rawArtefactPathFor(BASELINE_ARTEFACT_ROOT, 'eslint-invalid', '.json'),
+        check: createCheckFixture({
+          id: 'eslint-invalid',
+          tool: 'eslint',
+          cwd: '.',
+          run: { kind: 'tsc', project: TSC_PROJECT_PATH },
+        }),
+      })
+    ).toThrow('must use run.kind=npm-script');
+
+    expect(() =>
+      buildRunnerInvocation({
+        repoRoot: REPO_ROOT,
+        rawArtefactPath: rawArtefactPathFor(BASELINE_ARTEFACT_ROOT, 'tsc-invalid', '.txt'),
+        check: createCheckFixture({
+          id: 'tsc-invalid',
+          tool: 'tsc',
+          cwd: '.',
+          run: { kind: 'npm-script', script: 'lint:builder' },
+        }),
+      })
+    ).toThrow('must use run.kind=tsc');
+  });
+
+  it('returns empty results for empty check sets and stringifies non-Error failures', async () => {
+    const { runChecksWithBoundedScheduler } = await loadRunnerModule();
+
+    await expect(
+      runChecksWithBoundedScheduler({
+        checks: [],
+        maxWorkers: 1,
+        getPlannedRawArtefactPath: () => 'unused',
+        runCheck: async () => {
+          throw new Error('runCheck should not be called for empty checks.');
+        },
+      })
+    ).resolves.toEqual([]);
+
+    const checks: RegressionCheckConfig[] = [
+      createCheckFixture({
+        id: 'failing-literal-error-check',
+        tool: 'eslint',
+        cwd: '.',
+        run: { kind: 'npm-script', script: 'lint:backend:check' },
+      }),
+    ];
+
+    const [result] = await runChecksWithBoundedScheduler({
+      checks,
+      maxWorkers: 1,
+      getPlannedRawArtefactPath: (check) =>
+        rawArtefactPathFor(CURRENT_RUN_ARTEFACT_ROOT, check.id, '.json'),
+      runCheck: async () => {
+        throw 'literal-failure';
+      },
+    });
+
+    expect(result).toMatchObject({
+      id: 'failing-literal-error-check',
+      status: 'execution-error',
+      error: {
+        code: 'runner-execution-failed',
+        message: expect.stringContaining('literal-failure'),
+      },
+    });
+  });
 });

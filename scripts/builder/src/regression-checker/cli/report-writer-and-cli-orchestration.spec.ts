@@ -106,6 +106,7 @@ type RegressionCliModule = {
     commandOutput: { stdout: string; stderr: string };
   }) => Promise<void>;
   resolveSessionArtefactPath: (sessionDirectory: string, relativeArtefactPath: string) => string;
+  loadDefaultRegressionCheckerConfig: (repoRoot: string) => Promise<unknown>;
   runChecksFromConfig: (options: {
     config: RegressionConfig;
     repoRoot: string;
@@ -193,7 +194,9 @@ afterEach(async () => {
 });
 
 /**
+ * Loads the regression-checker CLI module under test.
  *
+ * @returns {Promise<RegressionCliModule>} Loaded module contract.
  */
 async function loadCliModule(): Promise<RegressionCliModule> {
   try {
@@ -207,7 +210,9 @@ async function loadCliModule(): Promise<RegressionCliModule> {
 }
 
 /**
+ * Builds a minimal valid regression-checker config fixture.
  *
+ * @returns {RegressionConfig} Default config used by CLI tests.
  */
 function createConfig(): RegressionConfig {
   return {
@@ -231,8 +236,10 @@ function createConfig(): RegressionConfig {
 }
 
 /**
+ * Builds a baseline or compare manifest fixture for orchestration tests.
  *
- * @param mode
+ * @param {StorageMode} mode - Manifest mode.
+ * @returns {SessionManifest} Manifest fixture matching the selected mode.
  */
 function createManifest(mode: StorageMode): SessionManifest {
   return {
@@ -825,8 +832,8 @@ describe('report writer and CLI orchestration', () => {
 
     await expect(fs.readFile(rawArtefactPath, 'utf8')).resolves.toBe('{"status":"ok"}');
     expect(
-      resolveSessionArtefactPath('/tmp/session-root', 'baseline/checks/example/raw.json')
-    ).toBe(path.join('/tmp/session-root', 'baseline/checks/example/raw.json'));
+      resolveSessionArtefactPath('/workspace/session-root', 'baseline/checks/example/raw.json')
+    ).toBe(path.join('/workspace/session-root', 'baseline/checks/example/raw.json'));
   });
 
   it('runs checks from config with repo-root-aware invocations and captures non-tsc failure exit codes', async () => {
@@ -882,6 +889,211 @@ describe('report writer and CLI orchestration', () => {
         ),
         status: 'failing',
         exitCode: 1,
+        error: null,
+      },
+    ]);
+  });
+
+  it('persists tsc diagnostics from stderr fallback and ignores non-tsc/non-playwright writes', async () => {
+    const { persistCapturedArtefact } = await loadCliModule();
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'regression-cli-tsc-stderr-'));
+    tempDirectories.push(tempRoot);
+
+    const tscRawArtefactPath = path.join(tempRoot, 'checks', 'compile', 'raw.txt');
+    const eslintRawArtefactPath = path.join(tempRoot, 'checks', 'lint', 'raw.json');
+    const stderrDiagnostics = "src/failure.ts(4,2): error TS2304: Cannot find name 'missing'.";
+
+    await persistCapturedArtefact({
+      tool: 'tsc',
+      rawArtefactPath: tscRawArtefactPath,
+      commandOutput: { stdout: '   ', stderr: stderrDiagnostics },
+    });
+    await persistCapturedArtefact({
+      tool: 'eslint',
+      rawArtefactPath: eslintRawArtefactPath,
+      commandOutput: { stdout: '{"messages":[]}', stderr: '' },
+    });
+
+    await expect(fs.readFile(tscRawArtefactPath, 'utf8')).resolves.toBe(stderrDiagnostics);
+    await expect(fs.access(eslintRawArtefactPath)).rejects.toThrow();
+  });
+
+  it('loads default config from disk and rethrows unexpected runner failures', async () => {
+    const { loadDefaultRegressionCheckerConfig, runChecksFromConfig } = await loadCliModule();
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'regression-cli-default-config-'));
+    tempDirectories.push(tempRoot);
+
+    await fs.mkdir(path.join(tempRoot, '.ts-regression-checker'), { recursive: true });
+    await fs.writeFile(
+      path.join(tempRoot, '.ts-regression-checker', 'regression.config.json'),
+      JSON.stringify({ reportDirectory: '.ts-regression-checker/reports', checks: [] }),
+      'utf8'
+    );
+
+    await expect(loadDefaultRegressionCheckerConfig(tempRoot)).resolves.toEqual({
+      reportDirectory: '.ts-regression-checker/reports',
+      checks: [],
+    });
+
+    const results = await runChecksFromConfig({
+      repoRoot: tempRoot,
+      rawArtefactDirectory: path.join(tempRoot, 'reports', 'run'),
+      config: {
+        reportDirectory: REPORT_DIRECTORY,
+        parallel: { enabled: true, maxWorkers: 1 },
+        checks: [
+          {
+            id: 'builder-lint',
+            tool: 'eslint',
+            cwd: '.',
+            run: { kind: 'npm-script', script: 'lint:builder:check' },
+          },
+        ],
+      },
+      runCommandImpl: async () => {
+        throw new Error('unexpected spawn failure');
+      },
+    });
+
+    expect(results).toEqual([
+      {
+        id: 'builder-lint',
+        tool: 'eslint',
+        rawArtefactPath: path.join(
+          tempRoot,
+          'reports',
+          'run',
+          'checks',
+          'builder-lint',
+          'raw.json'
+        ),
+        status: 'execution-error',
+        exitCode: null,
+        error: {
+          code: 'runner-execution-failed',
+          message: 'Check builder-lint execution failed: unexpected spawn failure',
+        },
+      },
+    ]);
+  });
+
+  it('skips unmatched baseline checks during compare hydration', async () => {
+    const { runRegressionCheckerCli } = await loadCliModule();
+    const compareInputs: Array<{ checksInConfigOrderLength: number }> = [];
+
+    await runRegressionCheckerCli({
+      positionalSessionId: 'feature/regression-checker',
+      repoRoot: '/repo',
+      createdAt: CREATED_AT,
+      logicalCpuCount: 4,
+      loadRawConfig: async () => createConfig(),
+      packageJsonScriptsByDirectory: {
+        '.': {
+          'lint:builder:check':
+            'eslint --config scripts/builder/eslint.config.js scripts/builder/src/**/*.ts',
+        },
+      },
+      resolveGitBranchName: async () => 'ignored',
+      prepareSessionStorage: async () => ({
+        mode: 'compare',
+        sessionStorageKey: 'session-feature-regression-checker',
+        sessionDirectory: '/repo/.ts-regression-checker/reports/session-feature-regression-checker',
+        baselineDirectory:
+          '/repo/.ts-regression-checker/reports/session-feature-regression-checker/baseline',
+        baselineManifestPath:
+          '/repo/.ts-regression-checker/reports/session-feature-regression-checker/baseline/manifest.json',
+        currentRunDirectory:
+          '/repo/.ts-regression-checker/reports/session-feature-regression-checker/runs/2026-05-13T05-00-00.000Z',
+        currentManifestPath:
+          '/repo/.ts-regression-checker/reports/session-feature-regression-checker/runs/2026-05-13T05-00-00.000Z/manifest.json',
+        manifest: createManifest('compare'),
+      }),
+      readBaselineManifest: async () => ({
+        ...createManifest('baseline'),
+        checks: [
+          ...createManifest('baseline').checks,
+          {
+            id: 'missing-in-current',
+            tool: 'eslint',
+            cwd: '.',
+            executionMetadata: { reporterMode: 'json' },
+            rawArtefactPath: 'baseline/checks/missing-in-current/raw.json',
+            derivedSummaryPath: 'baseline/checks/missing-in-current/derived.json',
+          },
+        ],
+      }),
+      runChecks: async () => [
+        {
+          id: 'builder-lint',
+          tool: 'eslint',
+          rawArtefactPath: 'runs/2026-05-13T05-00-00.000Z/checks/builder-lint/raw.json',
+          status: 'passing',
+          exitCode: 0,
+          error: null,
+        },
+      ],
+      compareRegressionChecks: ({ checksInConfigOrder }) => {
+        compareInputs.push({ checksInConfigOrderLength: checksInConfigOrder.length });
+        return {
+          overallStatus: 'GREEN',
+          baselineCompatibility: { compatible: true },
+          checks: [],
+          totals: {
+            regressionsCount: 0,
+            newFailuresCount: 0,
+            fixesCount: 0,
+            checksPassing: 1,
+            checksFailing: 0,
+          },
+        };
+      },
+      readRawArtefact: async () => [],
+      writeFile: async () => {},
+    });
+
+    expect(compareInputs).toEqual([{ checksInConfigOrderLength: 1 }]);
+  });
+
+  it('returns passing check results when runner commands succeed', async () => {
+    const { runChecksFromConfig } = await loadCliModule();
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'regression-cli-success-runchecks-'));
+    tempDirectories.push(tempRoot);
+
+    const results = await runChecksFromConfig({
+      repoRoot: tempRoot,
+      rawArtefactDirectory: path.join(tempRoot, 'reports', 'run'),
+      config: {
+        reportDirectory: REPORT_DIRECTORY,
+        parallel: { enabled: true, maxWorkers: 1 },
+        checks: [
+          {
+            id: 'builder-lint',
+            tool: 'eslint',
+            cwd: '.',
+            run: { kind: 'npm-script', script: 'lint:builder:check' },
+          },
+        ],
+      },
+      runCommandImpl: async () => ({
+        stdout: '',
+        stderr: '',
+      }),
+    });
+
+    expect(results).toEqual([
+      {
+        id: 'builder-lint',
+        tool: 'eslint',
+        rawArtefactPath: path.join(
+          tempRoot,
+          'reports',
+          'run',
+          'checks',
+          'builder-lint',
+          'raw.json'
+        ),
+        status: 'passing',
+        exitCode: 0,
         error: null,
       },
     ]);
