@@ -324,7 +324,7 @@ Builder tests:
 
 ## Section 3 — Tool runners and bounded scheduling
 
-> Current phase marker: **Red tests in progress**
+> Current phase marker: **Complete**
 
 ### Objective
 
@@ -401,22 +401,32 @@ Builder tests:
 - `npm run builder:compile`
 - Mandatory-read evidence gate passed for all delegated hand-offs.
 
+### Implementation notes
+
+- Completion status: complete.
+- Review findings encountered and resolved: no additional blocking findings were recorded beyond Section 3 scope; runner command wiring, artefact capture, scheduler lane isolation, and deterministic ordering were implemented and validated against the section checks.
+- Deviations: none.
+- Follow-up implications for later sections: Section 4 can assume per-check raw artefacts and execution-failure capture are available for deterministic derive and comparison logic.
+- Commit/push evidence: _Pending — capture branch, commit hash(es), and push output after commit/push are completed._
+
 ### Section checklist
 
-- [ ] Red tests added/updated
-- [ ] Red failure captured
-- [ ] Green implementation complete
-- [ ] Refactor complete
-- [ ] Section checks passed
-- [ ] Mandatory-read evidence verified
-- [ ] Review feedback resolved
-- [ ] Docs impact handled or marked N/A
+- [x] Red tests added/updated
+- [x] Red failure captured
+- [x] Green implementation complete
+- [x] Refactor complete
+- [x] Section checks passed
+- [x] Mandatory-read evidence verified
+- [x] Review feedback resolved
+- [x] Docs impact handled or marked N/A
 - [ ] Commit evidence captured
 - [ ] Push evidence captured or marked N/A until final section
 
 ---
 
 ## Section 4 — Derived summaries and comparison engine
+
+> Current phase marker: **Red tests in progress**
 
 ### Objective
 
