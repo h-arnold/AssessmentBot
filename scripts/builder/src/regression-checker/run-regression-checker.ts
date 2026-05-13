@@ -88,12 +88,74 @@ function getCandidateDirectories(rawConfig: unknown): Set<string> {
   }
 
   for (const check of rawConfig.checks) {
-    if (isRecord(check) && typeof check.cwd === 'string') {
+    if (isRecord(check) && typeof check.cwd === 'string' && isSafePackageDirectory(check.cwd)) {
       candidateDirectories.add(check.cwd);
     }
   }
 
   return candidateDirectories;
+}
+
+/**
+ * Validates package lookup directories to avoid repo-escape resolution during pre-validation reads.
+ *
+ * @param {string} cwd - Raw `checks[].cwd` value from config.
+ * @returns {boolean} `true` when the path is safely repo-relative for package.json lookup.
+ */
+function isSafePackageDirectory(cwd: string): boolean {
+  const trimmed = cwd.trim();
+  if (trimmed.length === 0) {
+    return false;
+  }
+
+  const normalised = trimmed.replaceAll('\\', '/');
+  if (hasForbiddenPathPrefix(normalised)) {
+    return false;
+  }
+
+  return !traversesOutsideRepo(normalised.split('/'));
+}
+
+/**
+ * Detects absolute-path prefixes that are unsafe for repo-relative lookup.
+ *
+ * @param {string} normalisedPath - Separator-normalised path candidate.
+ * @returns {boolean} `true` when the path is absolute or UNC-style.
+ */
+function hasForbiddenPathPrefix(normalisedPath: string): boolean {
+  return (
+    normalisedPath.startsWith('/') ||
+    normalisedPath.startsWith('//') ||
+    /^[A-Za-z]:\//u.test(normalisedPath)
+  );
+}
+
+/**
+ * Determines whether path segments attempt to traverse above repo root.
+ *
+ * @param {string[]} segments - Path segments.
+ * @returns {boolean} `true` when traversal escapes root.
+ */
+function traversesOutsideRepo(segments: string[]): boolean {
+  let depth = 0;
+  for (const segment of segments) {
+    if (segment === '' || segment === '.') {
+      continue;
+    }
+
+    if (segment === '..') {
+      if (depth === 0) {
+        return true;
+      }
+
+      depth -= 1;
+      continue;
+    }
+
+    depth += 1;
+  }
+
+  return false;
 }
 
 /**

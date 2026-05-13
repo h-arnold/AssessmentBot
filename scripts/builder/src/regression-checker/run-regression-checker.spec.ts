@@ -89,6 +89,52 @@ describe('run-regression-checker helpers', () => {
     });
   });
 
+  it('ignores unsafe check cwd values during package script discovery', async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'regression-checker-wrapper-safe-'));
+    tempDirectories.push(tempRoot);
+
+    await fs.writeFile(
+      path.join(tempRoot, 'package.json'),
+      JSON.stringify({
+        scripts: { rootOnly: 'eslint .' },
+      }),
+      'utf8'
+    );
+
+    await expect(
+      loadPackageJsonScriptsByDirectory({
+        repoRoot: tempRoot,
+        rawConfig: {
+          checks: [
+            { cwd: '../outside' },
+            { cwd: '/absolute/path' },
+            { cwd: 'C:/windows/path' },
+            { cwd: '   ' },
+            { cwd: 'safe/..' },
+            { cwd: 'nested/./safe' },
+          ],
+        },
+      })
+    ).resolves.toEqual({
+      '.': { rootOnly: 'eslint .' },
+      'safe/..': { rootOnly: 'eslint .' },
+    });
+  });
+
+  it('propagates invalid package.json parse errors', async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'regression-checker-wrapper-json-'));
+    tempDirectories.push(tempRoot);
+
+    await fs.writeFile(path.join(tempRoot, 'package.json'), '{ invalid-json', 'utf8');
+
+    await expect(
+      loadPackageJsonScriptsByDirectory({
+        repoRoot: tempRoot,
+        rawConfig: {},
+      })
+    ).rejects.toThrow();
+  });
+
   it('resolves the active git branch name from git output', async () => {
     const processModule = await import('../lib/process.js');
     vi.spyOn(processModule, 'runCommand').mockResolvedValue({
