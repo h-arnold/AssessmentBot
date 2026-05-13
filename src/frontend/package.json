@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint .",
+    "lint": "eslint src e2e-tests playwright.config.ts playwright.screenshots.config.ts",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",

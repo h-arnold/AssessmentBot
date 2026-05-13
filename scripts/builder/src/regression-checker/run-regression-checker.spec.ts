@@ -197,6 +197,122 @@ describe('run-regression-checker helpers', () => {
     });
   });
 
+  it('discovers prefix directories from --prefix= and quoted --prefix forms', async () => {
+    const tempRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), 'regression-checker-wrapper-prefix-forms-')
+    );
+    tempDirectories.push(tempRoot);
+
+    await fs.writeFile(
+      path.join(tempRoot, 'package.json'),
+      JSON.stringify({
+        scripts: {
+          'lint:frontend:check': 'npm --prefix=src/frontend run lint --',
+          'test:frontend': 'npm --prefix "src/frontend" run test --',
+          'test:frontend:single': "npm --prefix 'src/frontend' run test --",
+        },
+      }),
+      'utf8'
+    );
+    await fs.mkdir(path.join(tempRoot, 'src', 'frontend'), { recursive: true });
+    await fs.writeFile(
+      path.join(tempRoot, 'src', 'frontend', 'package.json'),
+      JSON.stringify({
+        scripts: {
+          lint: 'eslint .',
+          test: 'vitest run',
+        },
+      }),
+      'utf8'
+    );
+
+    await expect(
+      loadPackageJsonScriptsByDirectory({
+        repoRoot: tempRoot,
+        rawConfig: { checks: [{ cwd: '.' }] },
+      })
+    ).resolves.toEqual({
+      '.': {
+        'lint:frontend:check': 'npm --prefix=src/frontend run lint --',
+        'test:frontend': 'npm --prefix "src/frontend" run test --',
+        'test:frontend:single': "npm --prefix 'src/frontend' run test --",
+      },
+      'src/frontend': {
+        lint: 'eslint .',
+        test: 'vitest run',
+      },
+    });
+  });
+
+  it('ignores invalid discovered prefix paths while still loading valid discovered directories', async () => {
+    const tempRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), 'regression-checker-wrapper-prefix-safety-')
+    );
+    tempDirectories.push(tempRoot);
+
+    await fs.writeFile(
+      path.join(tempRoot, 'package.json'),
+      JSON.stringify({
+        scripts: {
+          safe: 'npm --prefix src/frontend run lint --',
+          outside: 'npm --prefix ../outside run lint --',
+          absolute: 'npm --prefix /tmp/absolute run lint --',
+          driveLetter: 'npm --prefix C:/tmp/path run lint --',
+          missingRunToken: 'npm --prefix src/frontend lint --',
+          emptyPrefixValue: 'npm --prefix   run lint --',
+        },
+      }),
+      'utf8'
+    );
+    await fs.mkdir(path.join(tempRoot, 'src', 'frontend'), { recursive: true });
+    await fs.writeFile(
+      path.join(tempRoot, 'src', 'frontend', 'package.json'),
+      JSON.stringify({
+        scripts: {
+          lint: 'eslint .',
+        },
+      }),
+      'utf8'
+    );
+
+    await expect(
+      loadPackageJsonScriptsByDirectory({
+        repoRoot: tempRoot,
+        rawConfig: { checks: [{ cwd: '.' }] },
+      })
+    ).resolves.toEqual({
+      '.': {
+        safe: 'npm --prefix src/frontend run lint --',
+        outside: 'npm --prefix ../outside run lint --',
+        absolute: 'npm --prefix /tmp/absolute run lint --',
+        driveLetter: 'npm --prefix C:/tmp/path run lint --',
+        missingRunToken: 'npm --prefix src/frontend lint --',
+        emptyPrefixValue: 'npm --prefix   run lint --',
+      },
+      'src/frontend': {
+        lint: 'eslint .',
+      },
+    });
+  });
+
+  it('loads directories whose package.json has no scripts section as an empty scripts map', async () => {
+    const tempRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), 'regression-checker-wrapper-no-scripts-')
+    );
+    tempDirectories.push(tempRoot);
+
+    await fs.writeFile(path.join(tempRoot, 'package.json'), JSON.stringify({}), 'utf8');
+
+    await expect(
+      loadPackageJsonScriptsByDirectory({
+        repoRoot: tempRoot,
+        rawConfig: { checks: [{ cwd: '.' }] },
+      })
+    ).resolves.toEqual({
+      '.': {},
+    });
+  });
+
   it('propagates invalid package.json parse errors', async () => {
     const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'regression-checker-wrapper-json-'));
     tempDirectories.push(tempRoot);
