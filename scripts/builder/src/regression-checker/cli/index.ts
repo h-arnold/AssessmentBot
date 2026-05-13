@@ -1,7 +1,11 @@
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
 
-import { compareRegressionChecks, type ComparisonCheckResult, type ComparisonResult, type DerivedSummary } from '../compare/index.js';
+import {
+  compareRegressionChecks,
+  type ComparisonCheckResult,
+  type ComparisonResult,
+} from '../compare/index.js';
 import { validateRegressionConfig } from '../config/validate-regression-config.js';
 import type { RegressionConfigInput } from '../config/validate-regression-config.zod.js';
 import {
@@ -39,15 +43,13 @@ function formatFieldName(name: string): string {
     toolSummary: 'Tool Summary',
     mode: 'Mode',
   };
-  
+
   if (name in specialCases) {
     return specialCases[name as keyof typeof specialCases];
   }
-  
+
   // Default: convert camelCase to Title Case
-  return name
-    .replace(/([A-Z])/g, ' $1')
-    .replace(/^./, (str) => str.toUpperCase());
+  return name.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase());
 }
 
 // Helper to render per-command summary
@@ -62,9 +64,7 @@ function renderPerCommandSummary(
 }
 
 // Helper to render failed checks list for baseline mode
-function renderFailedChecksListBaseline(
-  checks: ScheduledCheckResult[]
-): string {
+function renderFailedChecksListBaseline(checks: ScheduledCheckResult[]): string {
   const failedChecks = checks.filter((check) => check.status !== 'passing');
   if (failedChecks.length === 0) {
     return '';
@@ -99,21 +99,21 @@ function renderFailedChecksListCompare(
     lines.push(`${index}. ${check.id} (${check.tool})`);
     lines.push(`   Status: ${check.status}`);
     lines.push(`   Exit Code: ${currentResult?.exitCode ?? 'N/A'}`);
-    
+
     if (check.regressions.length > 0) {
       lines.push(`   Regressions: ${check.regressions.length}`);
       for (const regression of check.regressions) {
         lines.push(`   - ${regression}`);
       }
     }
-    
+
     if (check.newFailures.length > 0) {
       lines.push(`   New Failures: ${check.newFailures.length}`);
       for (const newFailure of check.newFailures) {
         lines.push(`   - ${newFailure}`);
       }
     }
-    
+
     if (check.fixes.length > 0) {
       lines.push(`   Fixes: ${check.fixes.length}`);
       for (const fix of check.fixes) {
@@ -142,8 +142,6 @@ type RegressionConfig = {
   };
   checks: RegressionCheckConfig[];
 };
-
-type ComparisonResult = ReturnType<typeof compareRegressionChecks>;
 
 type ReadableCheckResult = ScheduledCheckResult & {
   rawArtefact: unknown;
@@ -193,8 +191,6 @@ const INVALID_CONFIG_EXIT_CODE = 2;
 const REGRESSION_FOUND_EXIT_CODE = 1;
 const JSON_INDENT_SPACES = 2;
 const UNEXPECTED_FAILURE_EXIT_CODE = 3;
-const BASELINE_NO_DIFF_TEXT =
-  'This run created the baseline and did not perform comparison diffing.';
 
 /**
  * Runs the regression-checker CLI flow with explicit dependency injection for tests and wrappers.
@@ -378,10 +374,7 @@ async function persistBaselineReport(
   outputText: string,
   writeFile: (targetPath: string, content: string) => Promise<void>
 ): Promise<void> {
-  await writeFile(
-    path.join(baselineDirectory, 'baseline.txt'),
-    outputText
-  );
+  await writeFile(path.join(baselineDirectory, 'baseline.txt'), outputText);
 }
 
 /**
@@ -578,10 +571,10 @@ export function renderBaselineReport(options: {
   ];
 
   const bodyParts: string[] = [];
-  
+
   // Per-command summary
   bodyParts.push(renderPerCommandSummary(options.checks));
-  
+
   // Failed checks list
   const failedChecksOutput = renderFailedChecksListBaseline(options.checks);
   if (failedChecksOutput) {
@@ -594,21 +587,23 @@ export function renderBaselineReport(options: {
 /**
  * Renders per-command summary for compare mode with regression/new failure/fix counts
  */
-function renderPerCommandSummaryCompare(
-  checks: ComparisonCheckResult[]
-): string {
+function renderPerCommandSummaryCompare(checks: ComparisonCheckResult[]): string {
   const lines: string[] = ['--- PER-COMMAND SUMMARY ---'];
   for (const check of checks) {
     const parts: string[] = [check.id];
-    
+
     // Add counts in parentheses for failing checks
     if (check.status !== 'passing') {
       const counts: string[] = [];
       if (check.regressions.length > 0) {
-        counts.push(`${check.regressions.length} regression${check.regressions.length !== 1 ? 's' : ''}`);
+        counts.push(
+          `${check.regressions.length} regression${check.regressions.length !== 1 ? 's' : ''}`
+        );
       }
       if (check.newFailures.length > 0) {
-        counts.push(`${check.newFailures.length} new failure${check.newFailures.length !== 1 ? 's' : ''}`);
+        counts.push(
+          `${check.newFailures.length} new failure${check.newFailures.length !== 1 ? 's' : ''}`
+        );
       }
       if (check.fixes.length > 0) {
         counts.push(`${check.fixes.length} fix${check.fixes.length !== 1 ? 'es' : ''}`);
@@ -617,7 +612,7 @@ function renderPerCommandSummaryCompare(
         parts.push(`(${counts.join(', ')})`);
       }
     }
-    
+
     lines.push(`${parts.join(' ')}: ${check.status}`);
   }
   return lines.join('\n');
@@ -668,10 +663,10 @@ export function renderComparisonReport(options: {
   ];
 
   const bodyParts: string[] = [];
-  
+
   // Per-command summary with regression/fix info
   bodyParts.push(renderPerCommandSummaryCompare(options.comparison.checks));
-  
+
   // Failed checks list with regression details
   const failedChecksOutput = renderFailedChecksListCompare(
     options.comparison.checks,

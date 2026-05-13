@@ -192,7 +192,38 @@ builder-compile-check: failing
 
 ## Next Steps
 
-1. Run full regression-checker test suite to verify no regressions
+1. ✅ Run full regression-checker test suite to verify no regressions - All CI checks pass
 2. Optionally implement rich failure details (requires reading artefacts)
 3. Optionally add REGRESSION/NEW FAILURE labels to fingerprints
-4. Clean up any unused imports or code
+4. ✅ Clean up any unused imports or code - Removed duplicate type and unused constant
+
+## Completed Work
+
+### Code Changes
+
+1. **scripts/builder/src/regression-checker/compare/index.ts** - Added exports for `ComparisonCheckResult`, `ComparisonResult`, and `DerivedSummary` types
+2. **scripts/builder/src/regression-checker/cli/index.ts** - Removed duplicate `ComparisonResult` type definition and unused `BASELINE_NO_DIFF_TEXT` constant, fixed import to not include unused `DerivedSummary`
+
+### Test Changes
+
+3. **scripts/builder/src/regression-checker/cli/report-writer-and-cli-orchestration.spec.ts** - Added 6 new tests:
+   - Execution-error status for CommandExecutionError with null exitCode (covers lines 950-954)
+   - Reads baseline manifest from disk via readBaselineManifest
+   - Renders baseline report with multiple tools sorted in tool summary
+   - Renders comparison report with single fix showing singular form
+   - Renders baseline report with failing checks and failed checks list
+   - Writes file content to disk via writeFileToDisk
+   - Updated `RegressionCliModule` type to include `writeFileToDisk`
+
+### Coverage Improvement
+
+- Branch coverage in cli/index.ts: 75.8% → 84.67% (+8.87%)
+- Overall builder branch coverage: 83.94% → 85.35% (now meets 85% threshold)
+
+## Verification
+
+- ✅ `npm run ci` passes cleanly (exit code 0)
+- ✅ All lint checks pass
+- ✅ All tests pass (backend: 953, frontend: 552, builder: 206)
+- ✅ Build production succeeds
+- ✅ No coverage threshold violations

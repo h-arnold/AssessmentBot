@@ -1,5 +1,7 @@
 type RegressionTool = 'eslint' | 'vitest' | 'playwright' | 'tsc';
 
+export type { ComparisonCheckResult, ComparisonResult, DerivedSummary };
+
 type StructuredExecutionFailure = {
   code: string;
   message: string;
