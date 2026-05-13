@@ -6,12 +6,102 @@
   },
   "checks": [
     {
+      "id": "backend-lint-check",
+      "tool": "eslint",
+      "cwd": ".",
+      "run": {
+        "kind": "npm-script",
+        "script": "lint:backend:check"
+      }
+    },
+    {
+      "id": "frontend-lint-check",
+      "tool": "eslint",
+      "cwd": ".",
+      "run": {
+        "kind": "npm-script",
+        "script": "lint:frontend:check"
+      }
+    },
+    {
       "id": "builder-lint-check",
       "tool": "eslint",
       "cwd": ".",
       "run": {
         "kind": "npm-script",
         "script": "lint:builder:check"
+      }
+    },
+    {
+      "id": "backend-test-check",
+      "tool": "vitest",
+      "cwd": ".",
+      "run": {
+        "kind": "npm-script",
+        "script": "test:backend"
+      }
+    },
+    {
+      "id": "backend-test-coverage-check",
+      "tool": "vitest",
+      "cwd": ".",
+      "run": {
+        "kind": "npm-script",
+        "script": "test:backend:coverage"
+      }
+    },
+    {
+      "id": "frontend-test-check",
+      "tool": "vitest",
+      "cwd": ".",
+      "run": {
+        "kind": "npm-script",
+        "script": "test:frontend"
+      }
+    },
+    {
+      "id": "frontend-test-coverage-check",
+      "tool": "vitest",
+      "cwd": ".",
+      "run": {
+        "kind": "npm-script",
+        "script": "test:frontend:coverage"
+      }
+    },
+    {
+      "id": "frontend-e2e-check",
+      "tool": "playwright",
+      "cwd": ".",
+      "run": {
+        "kind": "npm-script",
+        "script": "test:frontend:e2e"
+      }
+    },
+    {
+      "id": "frontend-e2e-screenshots-check",
+      "tool": "playwright",
+      "cwd": ".",
+      "run": {
+        "kind": "npm-script",
+        "script": "test:frontend:e2e:screenshots"
+      }
+    },
+    {
+      "id": "builder-test-check",
+      "tool": "vitest",
+      "cwd": ".",
+      "run": {
+        "kind": "npm-script",
+        "script": "test:builder"
+      }
+    },
+    {
+      "id": "builder-test-coverage-check",
+      "tool": "vitest",
+      "cwd": ".",
+      "run": {
+        "kind": "npm-script",
+        "script": "test:builder:coverage"
       }
     },
     {
