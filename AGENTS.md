@@ -32,6 +32,7 @@ If rules conflict, prefer the stricter rule and preserve runtime compatibility.
 8. Do not add production code purely to satisfy tests.
 9. Keep changes minimal, localised, and consistent with existing patterns.
 10. Never disable lint rules without express permission from the user; if a rule triggers cascading failures, stop and ask before turning it off.
+11. **Never push commits that fail pre-commit hooks (lint, type-check, tests).** If the pre-commit hook fails, fix all errors before committing. Do not use `--no-verify` or any other method to bypass hooks.
 
 ### 4. Delegation Protocol
 

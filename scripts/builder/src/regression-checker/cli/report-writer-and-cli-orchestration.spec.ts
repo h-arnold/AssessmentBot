@@ -92,7 +92,8 @@ type RegressionCliModule = {
     sessionIdSource: SessionIdSource;
     createdAt: string;
     checks: ScheduledCheckResult[];
-  }) => string;
+    readRawArtefact: (rawArtefactPath: string) => Promise<unknown>;
+  }) => Promise<string>;
   renderComparisonReport: (options: {
     sessionId: string;
     sessionStorageKey: string;
@@ -1372,7 +1373,7 @@ describe('report writer and CLI orchestration', () => {
   it('renders baseline report with multiple tools sorted in tool summary', async () => {
     const { renderBaselineReport } = await loadCliModule();
 
-    const report = renderBaselineReport({
+    const report = await renderBaselineReport({
       sessionId: SESSION_ID,
       sessionStorageKey: SESSION_STORAGE_KEY,
       sessionIdSource: 'arg',
@@ -1403,6 +1404,7 @@ describe('report writer and CLI orchestration', () => {
           error: null,
         },
       ],
+      readRawArtefact: async () => ({}),
     });
 
     // Should contain sorted tool summary (eslint, playwright, tsc, vitest)
@@ -1468,7 +1470,7 @@ describe('report writer and CLI orchestration', () => {
   it('renders baseline report with failing checks and failed checks list', async () => {
     const { renderBaselineReport } = await loadCliModule();
 
-    const report = renderBaselineReport({
+    const report = await renderBaselineReport({
       sessionId: SESSION_ID,
       sessionStorageKey: SESSION_STORAGE_KEY,
       sessionIdSource: 'arg',
@@ -1483,6 +1485,7 @@ describe('report writer and CLI orchestration', () => {
           error: null,
         },
       ],
+      readRawArtefact: async () => ({}),
     });
 
     // Should contain the FAILED CHECKS section when there are failed checks
@@ -1494,7 +1497,7 @@ describe('report writer and CLI orchestration', () => {
   it('renders baseline report with empty failed checks list when all checks pass', async () => {
     const { renderBaselineReport } = await loadCliModule();
 
-    const report = renderBaselineReport({
+    const report = await renderBaselineReport({
       sessionId: SESSION_ID,
       sessionStorageKey: SESSION_STORAGE_KEY,
       sessionIdSource: 'arg',
@@ -1509,6 +1512,7 @@ describe('report writer and CLI orchestration', () => {
           error: null,
         },
       ],
+      readRawArtefact: async () => ({}),
     });
 
     // Should not contain the FAILED CHECKS section when all checks pass

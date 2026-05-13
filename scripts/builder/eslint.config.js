@@ -46,6 +46,7 @@ export default [
       'scripts/builder/src/steps/merge-manifest.ts',
       'scripts/builder/src/steps/validate-output.ts',
       'scripts/builder/src/steps/validate-output.spec.ts',
+      'scripts/builder/src/regression-checker/cli/index.ts',
     ],
     rules: {
       'security/detect-object-injection': 'off',
