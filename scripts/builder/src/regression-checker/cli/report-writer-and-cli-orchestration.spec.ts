@@ -183,6 +183,12 @@ type RegressionCliModule = {
 
 const CREATED_AT = '2026-05-13T05:00:00.000Z';
 const REPORT_DIRECTORY = '.ts-regression-checker/reports';
+const SESSION_ID = 'feature/regression-checker';
+const SESSION_STORAGE_KEY = 'session-feature-regression-checker';
+const REPO_ROOT = '/repo';
+const LINT_SCRIPT_NAME = 'lint:builder:check';
+const LINT_SCRIPT_COMMAND =
+  'eslint --config scripts/builder/eslint.config.js scripts/builder/src/**/*.ts';
 const tempDirectories: string[] = [];
 
 afterEach(async () => {
@@ -236,6 +242,19 @@ function createConfig(): RegressionConfig {
 }
 
 /**
+ * Builds package.json scripts map used across CLI tests.
+ *
+ * @returns {Record<string, Record<string, string>>} Scripts map keyed by repo-relative directory.
+ */
+function createPackageScriptMap(): Record<string, Record<string, string>> {
+  return {
+    '.': {
+      [LINT_SCRIPT_NAME]: LINT_SCRIPT_COMMAND,
+    },
+  };
+}
+
+/**
  * Builds a baseline or compare manifest fixture for orchestration tests.
  *
  * @param {StorageMode} mode - Manifest mode.
@@ -243,8 +262,8 @@ function createConfig(): RegressionConfig {
  */
 function createManifest(mode: StorageMode): SessionManifest {
   return {
-    sessionId: 'feature/regression-checker',
-    sessionStorageKey: 'session-feature-regression-checker',
+    sessionId: SESSION_ID,
+    sessionStorageKey: SESSION_STORAGE_KEY,
     sessionIdSource: 'arg',
     mode,
     createdAt: CREATED_AT,
@@ -271,37 +290,48 @@ function createManifest(mode: StorageMode): SessionManifest {
   };
 }
 
+/**
+ * Builds a canonical storage response fixture for baseline/compare mode.
+ *
+ * @param {StorageMode} mode - Storage mode.
+ * @returns {Awaited<Parameters<RegressionCliModule['runRegressionCheckerCli']>[0]['prepareSessionStorage']>} Storage fixture payload.
+ */
+function createStorageResult(mode: StorageMode) {
+  const sessionDirectory =
+    '/repo/.ts-regression-checker/reports/session-feature-regression-checker';
+  const baselineDirectory = `${sessionDirectory}/baseline`;
+  const baselineManifestPath = `${baselineDirectory}/manifest.json`;
+  const currentRunDirectory =
+    mode === 'compare' ? `${sessionDirectory}/runs/2026-05-13T05-00-00.000Z` : null;
+  const currentManifestPath =
+    mode === 'compare' ? `${currentRunDirectory}/manifest.json` : `${baselineManifestPath}`;
+
+  return {
+    mode,
+    sessionStorageKey: SESSION_STORAGE_KEY,
+    sessionDirectory,
+    baselineDirectory,
+    baselineManifestPath,
+    currentRunDirectory,
+    currentManifestPath,
+    manifest: createManifest(mode),
+  };
+}
+
 describe('report writer and CLI orchestration', () => {
   it('returns baseline-mode output with explicit baseline-created messaging and zero exit code', async () => {
     const { runRegressionCheckerCli } = await loadCliModule();
     const writes: Array<{ targetPath: string; content: string }> = [];
 
     const result = await runRegressionCheckerCli({
-      positionalSessionId: 'feature/regression-checker',
-      repoRoot: '/repo',
+      positionalSessionId: SESSION_ID,
+      repoRoot: REPO_ROOT,
       createdAt: CREATED_AT,
       logicalCpuCount: 4,
       loadRawConfig: async () => createConfig(),
-      packageJsonScriptsByDirectory: {
-        '.': {
-          'lint:builder:check':
-            'eslint --config scripts/builder/eslint.config.js scripts/builder/src/**/*.ts',
-        },
-      },
+      packageJsonScriptsByDirectory: createPackageScriptMap(),
       resolveGitBranchName: async () => 'ignored',
-      prepareSessionStorage: async () => ({
-        mode: 'baseline',
-        sessionStorageKey: 'session-feature-regression-checker',
-        sessionDirectory: '/repo/.ts-regression-checker/reports/session-feature-regression-checker',
-        baselineDirectory:
-          '/repo/.ts-regression-checker/reports/session-feature-regression-checker/baseline',
-        baselineManifestPath:
-          '/repo/.ts-regression-checker/reports/session-feature-regression-checker/baseline/manifest.json',
-        currentRunDirectory: null,
-        currentManifestPath:
-          '/repo/.ts-regression-checker/reports/session-feature-regression-checker/baseline/manifest.json',
-        manifest: createManifest('baseline'),
-      }),
+      prepareSessionStorage: async () => createStorageResult('baseline'),
       runChecks: async () => [
         {
           id: 'builder-lint',
@@ -333,32 +363,14 @@ describe('report writer and CLI orchestration', () => {
     const writes: Array<{ targetPath: string; content: string }> = [];
 
     const result = await runRegressionCheckerCli({
-      positionalSessionId: 'feature/regression-checker',
-      repoRoot: '/repo',
+      positionalSessionId: SESSION_ID,
+      repoRoot: REPO_ROOT,
       createdAt: CREATED_AT,
       logicalCpuCount: 4,
       loadRawConfig: async () => createConfig(),
-      packageJsonScriptsByDirectory: {
-        '.': {
-          'lint:builder:check':
-            'eslint --config scripts/builder/eslint.config.js scripts/builder/src/**/*.ts',
-        },
-      },
+      packageJsonScriptsByDirectory: createPackageScriptMap(),
       resolveGitBranchName: async () => 'ignored',
-      prepareSessionStorage: async () => ({
-        mode: 'compare',
-        sessionStorageKey: 'session-feature-regression-checker',
-        sessionDirectory: '/repo/.ts-regression-checker/reports/session-feature-regression-checker',
-        baselineDirectory:
-          '/repo/.ts-regression-checker/reports/session-feature-regression-checker/baseline',
-        baselineManifestPath:
-          '/repo/.ts-regression-checker/reports/session-feature-regression-checker/baseline/manifest.json',
-        currentRunDirectory:
-          '/repo/.ts-regression-checker/reports/session-feature-regression-checker/runs/2026-05-13T05-00-00.000Z',
-        currentManifestPath:
-          '/repo/.ts-regression-checker/reports/session-feature-regression-checker/runs/2026-05-13T05-00-00.000Z/manifest.json',
-        manifest: createManifest('compare'),
-      }),
+      prepareSessionStorage: async () => createStorageResult('compare'),
       readBaselineManifest: async () => createManifest('baseline'),
       runChecks: async () => [
         {
@@ -430,32 +442,14 @@ describe('report writer and CLI orchestration', () => {
     const { runRegressionCheckerCli } = await loadCliModule();
 
     const result = await runRegressionCheckerCli({
-      positionalSessionId: 'feature/regression-checker',
-      repoRoot: '/repo',
+      positionalSessionId: SESSION_ID,
+      repoRoot: REPO_ROOT,
       createdAt: CREATED_AT,
       logicalCpuCount: 4,
       loadRawConfig: async () => createConfig(),
-      packageJsonScriptsByDirectory: {
-        '.': {
-          'lint:builder:check':
-            'eslint --config scripts/builder/eslint.config.js scripts/builder/src/**/*.ts',
-        },
-      },
+      packageJsonScriptsByDirectory: createPackageScriptMap(),
       resolveGitBranchName: async () => 'ignored',
-      prepareSessionStorage: async () => ({
-        mode: 'compare',
-        sessionStorageKey: 'session-feature-regression-checker',
-        sessionDirectory: '/repo/.ts-regression-checker/reports/session-feature-regression-checker',
-        baselineDirectory:
-          '/repo/.ts-regression-checker/reports/session-feature-regression-checker/baseline',
-        baselineManifestPath:
-          '/repo/.ts-regression-checker/reports/session-feature-regression-checker/baseline/manifest.json',
-        currentRunDirectory:
-          '/repo/.ts-regression-checker/reports/session-feature-regression-checker/runs/2026-05-13T05-00-00.000Z',
-        currentManifestPath:
-          '/repo/.ts-regression-checker/reports/session-feature-regression-checker/runs/2026-05-13T05-00-00.000Z/manifest.json',
-        manifest: createManifest('compare'),
-      }),
+      prepareSessionStorage: async () => createStorageResult('compare'),
       readBaselineManifest: async () => createManifest('baseline'),
       runChecks: async () => [
         {

@@ -136,5 +136,5 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
-  void main();
+  await main();
 }

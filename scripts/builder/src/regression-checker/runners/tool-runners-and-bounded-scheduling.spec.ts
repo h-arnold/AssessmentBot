@@ -76,6 +76,9 @@ const GENERAL_DELAY_SLOW_MS = 80;
 const PLAYWRIGHT_DELAY_MS = 60;
 const FAILING_CHECK_MESSAGE = 'spawn ENOENT';
 const TSC_PROJECT_PATH = 'scripts/builder/tsconfig.json';
+const NPM_SCRIPT_LINT = 'lint:backend:check';
+const NPM_SCRIPT_TEST = 'test:backend';
+const NPM_SCRIPT_E2E = 'test:frontend:e2e';
 
 /**
  * Loads the planned runner layer module.
@@ -104,6 +107,28 @@ function createCheckFixture(partial: RegressionCheckConfig): RegressionCheckConf
   return {
     ...partial,
   };
+}
+
+/**
+ * Builds a npm-script check fixture.
+ *
+ * @param {{ id: string; tool: Exclude<RegressionTool, 'tsc'>; script: string }} options - Fixture options.
+ * @param {string} options.id - Check identifier.
+ * @param {Exclude<RegressionTool, 'tsc'>} options.tool - Tool family.
+ * @param {string} options.script - npm script name.
+ * @returns {RegressionCheckConfig} npm-script check fixture.
+ */
+function createNpmScriptCheck(options: {
+  id: string;
+  tool: Exclude<RegressionTool, 'tsc'>;
+  script: string;
+}): RegressionCheckConfig {
+  return createCheckFixture({
+    id: options.id,
+    tool: options.tool,
+    cwd: '.',
+    run: { kind: 'npm-script', script: options.script },
+  });
 }
 
 /**
@@ -276,36 +301,11 @@ describe('tool runner command construction and bounded scheduling', () => {
     const { runChecksWithBoundedScheduler } = await loadRunnerModule();
 
     const checks: RegressionCheckConfig[] = [
-      createCheckFixture({
-        id: 'general-eslint-1',
-        tool: 'eslint',
-        cwd: '.',
-        run: { kind: 'npm-script', script: 'lint:backend:check' },
-      }),
-      createCheckFixture({
-        id: 'general-vitest-1',
-        tool: 'vitest',
-        cwd: '.',
-        run: { kind: 'npm-script', script: 'test:backend' },
-      }),
-      createCheckFixture({
-        id: 'playwright-1',
-        tool: 'playwright',
-        cwd: '.',
-        run: { kind: 'npm-script', script: 'test:frontend:e2e' },
-      }),
-      createCheckFixture({
-        id: 'general-eslint-2',
-        tool: 'eslint',
-        cwd: '.',
-        run: { kind: 'npm-script', script: 'lint:backend:check' },
-      }),
-      createCheckFixture({
-        id: 'playwright-2',
-        tool: 'playwright',
-        cwd: '.',
-        run: { kind: 'npm-script', script: 'test:frontend:e2e' },
-      }),
+      createNpmScriptCheck({ id: 'general-eslint-1', tool: 'eslint', script: NPM_SCRIPT_LINT }),
+      createNpmScriptCheck({ id: 'general-vitest-1', tool: 'vitest', script: NPM_SCRIPT_TEST }),
+      createNpmScriptCheck({ id: 'playwright-1', tool: 'playwright', script: NPM_SCRIPT_E2E }),
+      createNpmScriptCheck({ id: 'general-eslint-2', tool: 'eslint', script: NPM_SCRIPT_LINT }),
+      createNpmScriptCheck({ id: 'playwright-2', tool: 'playwright', script: NPM_SCRIPT_E2E }),
     ];
 
     let activeGeneralWorkers = 0;
@@ -377,24 +377,9 @@ describe('tool runner command construction and bounded scheduling', () => {
     const { runChecksWithBoundedScheduler } = await loadRunnerModule();
 
     const checks: RegressionCheckConfig[] = [
-      createCheckFixture({
-        id: 'first-general-check',
-        tool: 'eslint',
-        cwd: '.',
-        run: { kind: 'npm-script', script: 'lint:backend:check' },
-      }),
-      createCheckFixture({
-        id: 'failing-check',
-        tool: 'vitest',
-        cwd: '.',
-        run: { kind: 'npm-script', script: 'test:backend' },
-      }),
-      createCheckFixture({
-        id: 'playwright-check',
-        tool: 'playwright',
-        cwd: '.',
-        run: { kind: 'npm-script', script: 'test:frontend:e2e' },
-      }),
+      createNpmScriptCheck({ id: 'first-general-check', tool: 'eslint', script: NPM_SCRIPT_LINT }),
+      createNpmScriptCheck({ id: 'failing-check', tool: 'vitest', script: NPM_SCRIPT_TEST }),
+      createNpmScriptCheck({ id: 'playwright-check', tool: 'playwright', script: NPM_SCRIPT_E2E }),
     ];
 
     const results = await runChecksWithBoundedScheduler({
@@ -489,11 +474,10 @@ describe('tool runner command construction and bounded scheduling', () => {
     ).resolves.toEqual([]);
 
     const checks: RegressionCheckConfig[] = [
-      createCheckFixture({
+      createNpmScriptCheck({
         id: 'failing-literal-error-check',
         tool: 'eslint',
-        cwd: '.',
-        run: { kind: 'npm-script', script: 'lint:backend:check' },
+        script: NPM_SCRIPT_LINT,
       }),
     ];
 
