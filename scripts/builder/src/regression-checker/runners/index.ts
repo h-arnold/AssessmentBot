@@ -46,7 +46,7 @@ const PLAYWRIGHT_WORKER_LIMIT = 1;
  * @param {{ repoRoot: string; check: RegressionCheckConfig; rawArtefactPath: string }} options - Invocation inputs.
  * @param {string} options.repoRoot - Absolute repository root path.
  * @param {RegressionCheckConfig} options.check - Check configuration for runner resolution.
- * @param {string} options.rawArtefactPath - Planned raw artefact path relative to the repo root.
+ * @param {string} options.rawArtefactPath - Absolute raw artefact path used for tool output.
  * @returns {RunnerInvocation} Tool-specific invocation.
  */
 export function buildRunnerInvocation(options: {

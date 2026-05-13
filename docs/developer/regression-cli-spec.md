@@ -365,7 +365,7 @@ After header end marker:
 
 ## Implementation readiness notes
 
-- The contract is ready for MVP implementation once open product decisions are resolved.
+- The contract is ready for MVP implementation.
 - The next document should be an `ACTION_PLAN.md` section or dedicated action plan for:
   - schema + validator
   - runners and adapters

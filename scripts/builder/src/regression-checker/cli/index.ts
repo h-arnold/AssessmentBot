@@ -140,7 +140,7 @@ async function buildRunContext(
   const config = normaliseValidatedConfig(validatedConfig);
   const configFingerprint =
     options.computeConfigFingerprint?.(config) ?? createConfigFingerprint(config);
-  const sessionChecks = createSessionManifestChecks(config, options.createdAt, 'compare');
+  const baselineManifestChecks = createSessionManifestChecks(config, options.createdAt, 'baseline');
 
   const storageResult = await (options.prepareSessionStorage ?? prepareSessionStorage)({
     repoRoot: options.repoRoot,
@@ -149,14 +149,21 @@ async function buildRunContext(
     sessionIdSource: sessionContext.sessionIdSource,
     createdAt: options.createdAt,
     configFingerprint,
-    checks: sessionChecks,
+    checks: baselineManifestChecks,
   });
 
+  const currentManifestChecks = createSessionManifestChecks(
+    config,
+    options.createdAt,
+    storageResult.mode
+  );
   const currentManifest: SessionManifest = {
     ...storageResult.manifest,
-    checks: createSessionManifestChecks(config, options.createdAt, storageResult.mode),
+    mode: storageResult.mode,
+    baselineCreatedThisRun: storageResult.mode === 'baseline',
+    checks: currentManifestChecks,
   };
-  if (options.prepareSessionStorage === undefined) {
+  if (storageResult.mode === 'compare' && options.prepareSessionStorage === undefined) {
     await writeSessionManifest(storageResult.currentManifestPath, currentManifest);
   }
 
@@ -764,17 +771,26 @@ export async function persistCapturedArtefact(options: {
 }
 
 /**
- * Resolves a relative session artefact path to an absolute path.
+ * Resolves a session artefact path to an absolute path within the session directory.
  *
  * @param {string} sessionDirectory - Absolute session directory.
- * @param {string} relativeArtefactPath - Session-relative artefact path.
- * @returns {string} Absolute artefact path.
+ * @param {string} relativeArtefactPath - Manifest path stored for the artefact.
+ * @returns {string} Absolute artefact path within the session directory.
  */
 export function resolveSessionArtefactPath(
   sessionDirectory: string,
   relativeArtefactPath: string
 ): string {
-  return path.join(sessionDirectory, relativeArtefactPath);
+  const resolvedPath = path.resolve(sessionDirectory, relativeArtefactPath);
+  const relativePath = path.relative(sessionDirectory, resolvedPath);
+
+  if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+    throw new Error(
+      `Unsafe session artefact path escapes the session directory: ${relativeArtefactPath}`
+    );
+  }
+
+  return resolvedPath;
 }
 
 /**

@@ -322,6 +322,7 @@ describe('report writer and CLI orchestration', () => {
   it('returns baseline-mode output with explicit baseline-created messaging and zero exit code', async () => {
     const { runRegressionCheckerCli } = await loadCliModule();
     const writes: Array<{ targetPath: string; content: string }> = [];
+    let receivedManifestChecks: SessionManifest['checks'] = [];
 
     const result = await runRegressionCheckerCli({
       positionalSessionId: SESSION_ID,
@@ -331,7 +332,10 @@ describe('report writer and CLI orchestration', () => {
       loadRawConfig: async () => createConfig(),
       packageJsonScriptsByDirectory: createPackageScriptMap(),
       resolveGitBranchName: async () => 'ignored',
-      prepareSessionStorage: async () => createStorageResult('baseline'),
+      prepareSessionStorage: async ({ checks }) => {
+        receivedManifestChecks = checks;
+        return createStorageResult('baseline');
+      },
       runChecks: async () => [
         {
           id: 'builder-lint',
@@ -355,6 +359,12 @@ describe('report writer and CLI orchestration', () => {
     expect(result.outputText).toContain(
       'This run created the baseline and did not perform comparison diffing.'
     );
+    expect(receivedManifestChecks).toEqual([
+      expect.objectContaining({
+        rawArtefactPath: 'baseline/checks/builder-lint/raw.json',
+        derivedSummaryPath: 'baseline/checks/builder-lint/derived.json',
+      }),
+    ]);
     expect(writes).toEqual([]);
   });
 
@@ -828,6 +838,12 @@ describe('report writer and CLI orchestration', () => {
     expect(
       resolveSessionArtefactPath('/workspace/session-root', 'baseline/checks/example/raw.json')
     ).toBe(path.join('/workspace/session-root', 'baseline/checks/example/raw.json'));
+    expect(() =>
+      resolveSessionArtefactPath('/workspace/session-root', '../outside/raw.json')
+    ).toThrow('Unsafe session artefact path escapes the session directory: ../outside/raw.json');
+    expect(() =>
+      resolveSessionArtefactPath('/workspace/session-root', '/outside/raw.json')
+    ).toThrow('Unsafe session artefact path escapes the session directory: /outside/raw.json');
   });
 
   it('runs checks from config with repo-root-aware invocations and captures non-tsc failure exit codes', async () => {

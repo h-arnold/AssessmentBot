@@ -236,6 +236,7 @@ function compareEslintSummaries(
     baselineSummary.findings.map((finding) => finding.fingerprint)
   );
   const currentFingerprints = currentSummary.findings.map((finding) => finding.fingerprint);
+  const currentFingerprintSet = new Set(currentFingerprints);
 
   return {
     regressions: currentFingerprints.filter(
@@ -246,7 +247,7 @@ function compareEslintSummaries(
     ),
     fixes: baselineSummary.findings
       .map((finding) => finding.fingerprint)
-      .filter((fingerprint) => !new Set(currentFingerprints).has(fingerprint)),
+      .filter((fingerprint) => !currentFingerprintSet.has(fingerprint)),
   };
 }
 
@@ -671,10 +672,7 @@ function createExecutionErrorFingerprint(error: StructuredExecutionFailure | nul
 function calculateTotals(checks: ComparisonCheckResult[]): ComparisonResult['totals'] {
   return {
     regressionsCount: checks.reduce((total, check) => total + check.regressions.length, 0),
-    newFailuresCount: checks.reduce(
-      (total, check) => total + Math.max(check.newFailures.length, check.regressions.length),
-      0
-    ),
+    newFailuresCount: checks.reduce((total, check) => total + check.newFailures.length, 0),
     fixesCount: checks.reduce((total, check) => total + check.fixes.length, 0),
     checksPassing: checks.filter((check) => check.status === 'passing').length,
     checksFailing: checks.filter((check) => check.status !== 'passing').length,
