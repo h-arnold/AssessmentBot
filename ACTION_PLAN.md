@@ -407,7 +407,7 @@ Builder tests:
 - Review findings encountered and resolved: no additional blocking findings were recorded beyond Section 3 scope; runner command wiring, artefact capture, scheduler lane isolation, and deterministic ordering were implemented and validated against the section checks.
 - Deviations: none.
 - Follow-up implications for later sections: Section 4 can assume per-check raw artefacts and execution-failure capture are available for deterministic derive and comparison logic.
-- Commit/push evidence: _Pending — capture branch, commit hash(es), and push output after commit/push are completed._
+- Commit/push evidence: branch `feature/regression-checker-cli-implementation`; commits `eeabcd2` (`feat(regression-checker): implement section 3 runners and bounded scheduling`) and `09575d4` (`docs(plan): record section 3 completion and section 4 start`); push confirmation `origin/feature/regression-checker-cli-implementation` at `HEAD` (`git push` returned `Everything up-to-date`).
 
 ### Section checklist
 
@@ -419,8 +419,8 @@ Builder tests:
 - [x] Mandatory-read evidence verified
 - [x] Review feedback resolved
 - [x] Docs impact handled or marked N/A
-- [ ] Commit evidence captured
-- [ ] Push evidence captured or marked N/A until final section
+- [x] Commit evidence captured
+- [x] Push evidence captured or marked N/A until final section
 
 ---
 
