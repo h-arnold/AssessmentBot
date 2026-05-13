@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
 
-import { compareRegressionChecks } from '../compare/index.js';
+import { compareRegressionChecks, type ComparisonCheckResult, type ComparisonResult, type DerivedSummary } from '../compare/index.js';
 import { validateRegressionConfig } from '../config/validate-regression-config.js';
 import type { RegressionConfigInput } from '../config/validate-regression-config.zod.js';
 import {
@@ -18,6 +18,113 @@ import { resolveSessionContext, type SessionIdSource } from './session-resolutio
 import { CommandExecutionError, logError, logInfo, runCommand } from '../../lib/process.js';
 
 type RegressionTool = 'eslint' | 'vitest' | 'playwright' | 'tsc';
+
+// Helper to convert camelCase to Title Case
+function formatFieldName(name: string): string {
+  // Handle special cases for acronyms
+  const specialCases: Record<string, string> = {
+    sessionId: 'Session ID',
+    sessionStorageKey: 'Session Storage Key',
+    sessionIdSource: 'Session ID Source',
+    baselineCreatedThisRun: 'Baseline Created This Run',
+    baselineTimestamp: 'Baseline Timestamp',
+    currentTimestamp: 'Current Timestamp',
+    overallStatus: 'Overall Status',
+    totalChecks: 'Total Checks',
+    checksPassing: 'Checks Passing',
+    checksFailing: 'Checks Failing',
+    regressionsCount: 'Regressions Count',
+    newFailuresCount: 'New Failures Count',
+    fixesCount: 'Fixes Count',
+    toolSummary: 'Tool Summary',
+    mode: 'Mode',
+  };
+  
+  if (name in specialCases) {
+    return specialCases[name as keyof typeof specialCases];
+  }
+  
+  // Default: convert camelCase to Title Case
+  return name
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/^./, (str) => str.toUpperCase());
+}
+
+// Helper to render per-command summary
+function renderPerCommandSummary(
+  checks: Array<{ id: string; tool: RegressionTool; status: string }>
+): string {
+  const lines: string[] = ['--- PER-COMMAND SUMMARY ---'];
+  for (const check of checks) {
+    lines.push(`${check.id}: ${check.status}`);
+  }
+  return lines.join('\n');
+}
+
+// Helper to render failed checks list for baseline mode
+function renderFailedChecksListBaseline(
+  checks: ScheduledCheckResult[]
+): string {
+  const failedChecks = checks.filter((check) => check.status !== 'passing');
+  if (failedChecks.length === 0) {
+    return '';
+  }
+
+  const lines: string[] = ['--- FAILED CHECKS ---'];
+  let index = 1;
+  for (const check of failedChecks) {
+    lines.push(`${index}. ${check.id} (${check.tool})`);
+    lines.push(`   Status: ${check.status}`);
+    lines.push(`   Exit Code: ${check.exitCode ?? 'N/A'}`);
+    lines.push('');
+    index++;
+  }
+  return lines.join('\n');
+}
+
+// Helper to render failed checks list for compare mode
+function renderFailedChecksListCompare(
+  checks: ComparisonCheckResult[],
+  currentResultsById: Map<string, ScheduledCheckResult>
+): string {
+  const failedChecks = checks.filter((check) => check.status !== 'passing');
+  if (failedChecks.length === 0) {
+    return '';
+  }
+
+  const lines: string[] = ['--- FAILED CHECKS ---'];
+  let index = 1;
+  for (const check of failedChecks) {
+    const currentResult = currentResultsById.get(check.id);
+    lines.push(`${index}. ${check.id} (${check.tool})`);
+    lines.push(`   Status: ${check.status}`);
+    lines.push(`   Exit Code: ${currentResult?.exitCode ?? 'N/A'}`);
+    
+    if (check.regressions.length > 0) {
+      lines.push(`   Regressions: ${check.regressions.length}`);
+      for (const regression of check.regressions) {
+        lines.push(`   - ${regression}`);
+      }
+    }
+    
+    if (check.newFailures.length > 0) {
+      lines.push(`   New Failures: ${check.newFailures.length}`);
+      for (const newFailure of check.newFailures) {
+        lines.push(`   - ${newFailure}`);
+      }
+    }
+    
+    if (check.fixes.length > 0) {
+      lines.push(`   Fixes: ${check.fixes.length}`);
+      for (const fix of check.fixes) {
+        lines.push(`   - ${fix}`);
+      }
+    }
+    lines.push('');
+    index++;
+  }
+  return lines.join('\n');
+}
 type RegressionCheckConfig = {
   id: string;
   tool: RegressionTool;
@@ -102,7 +209,7 @@ export async function runRegressionCheckerCli(
     const context = await buildRunContext(options);
 
     if (context.storageResult.mode === 'baseline') {
-      return buildBaselineModeResult(context, options.createdAt);
+      return await buildBaselineModeResult(context, options.createdAt, options);
     }
 
     return await buildCompareModeResult(context, options);
@@ -259,16 +366,37 @@ function resolveRawArtefactDirectory(
 }
 
 /**
- * Builds the baseline-mode CLI result.
+ * Persists baseline report to disk.
+ *
+ * @param {string} baselineDirectory - Baseline directory path.
+ * @param {string} outputText - Human-readable baseline report.
+ * @param {(targetPath: string, content: string) => Promise<void>} writeFile - File writer callback.
+ * @returns {Promise<void>} Resolves once file is written.
+ */
+async function persistBaselineReport(
+  baselineDirectory: string,
+  outputText: string,
+  writeFile: (targetPath: string, content: string) => Promise<void>
+): Promise<void> {
+  await writeFile(
+    path.join(baselineDirectory, 'baseline.txt'),
+    outputText
+  );
+}
+
+/**
+ * Builds the baseline-mode CLI result and writes baseline artefacts.
  *
  * @param {ResolvedRunContext} context - Resolved run context.
  * @param {string} createdAt - Current run timestamp.
- * @returns {RunRegressionCheckerCliResult} Baseline-mode report output and exit code.
+ * @param {RunRegressionCheckerCliOptions} options - Runtime inputs and injectable helpers.
+ * @returns {Promise<RunRegressionCheckerCliResult>} Baseline-mode report output and exit code.
  */
-function buildBaselineModeResult(
+async function buildBaselineModeResult(
   context: ResolvedRunContext,
-  createdAt: string
-): RunRegressionCheckerCliResult {
+  createdAt: string,
+  options: RunRegressionCheckerCliOptions
+): Promise<RunRegressionCheckerCliResult> {
   const outputText = renderBaselineReport({
     sessionId: context.sessionContext.sessionId,
     sessionStorageKey: context.storageResult.sessionStorageKey,
@@ -277,8 +405,19 @@ function buildBaselineModeResult(
     checks: context.runResults,
   });
 
+  // Write baseline report to file
+  await persistBaselineReport(
+    context.storageResult.baselineDirectory,
+    outputText,
+    options.writeFile ?? writeFileToDisk
+  );
+
+  // Determine exit code based on failing checks
+  const checksFailing = context.runResults.filter((check) => check.status !== 'passing').length;
+  const exitCode = checksFailing > 0 ? REGRESSION_FOUND_EXIT_CODE : 0;
+
   return {
-    exitCode: 0,
+    exitCode,
     outputText,
     mode: 'baseline',
   };
@@ -323,6 +462,9 @@ async function buildCompareModeResult(
     baselineCompatibility,
   });
 
+  // Extract exit codes from current results for display
+  const currentResultsById = new Map(context.runResults.map((r) => [r.id, r]));
+
   const outputText = renderComparisonReport({
     sessionId: context.sessionContext.sessionId,
     sessionStorageKey: context.storageResult.sessionStorageKey,
@@ -330,6 +472,7 @@ async function buildCompareModeResult(
     baselineTimestamp: baselineManifest.createdAt,
     currentTimestamp: options.createdAt,
     comparison,
+    currentResultsById,
   });
 
   await persistComparisonReports(
@@ -414,35 +557,76 @@ export function renderBaselineReport(options: {
 }): string {
   const checksPassing = options.checks.filter((check) => check.status === 'passing').length;
   const checksFailing = options.checks.length - checksPassing;
-  const lines = [
+  const headerLines = [
     REGRESSION_HEADER_START,
-    `sessionId: ${options.sessionId}`,
-    `sessionStorageKey: ${options.sessionStorageKey}`,
-    `sessionIdSource: ${options.sessionIdSource}`,
-    'mode: baseline',
-    'baselineCreatedThisRun: true',
-    'baselineTimestamp: N/A',
-    `currentTimestamp: ${options.createdAt}`,
-    `overallStatus: ${checksFailing > 0 ? 'FAILING' : 'GREEN'}`,
-    `totalChecks: ${String(options.checks.length)}`,
-    `checksPassing: ${String(checksPassing)}`,
-    `checksFailing: ${String(checksFailing)}`,
-    'regressionsCount: 0',
-    'newFailuresCount: 0',
-    'fixesCount: 0',
-    `toolSummary: ${renderToolSummary(options.checks.map((check) => check.tool))}`,
+    `${formatFieldName('sessionId')}: ${options.sessionId}`,
+    `${formatFieldName('sessionStorageKey')}: ${options.sessionStorageKey}`,
+    `${formatFieldName('sessionIdSource')}: ${options.sessionIdSource}`,
+    `${formatFieldName('mode')}: baseline`,
+    `${formatFieldName('baselineCreatedThisRun')}: true`,
+    `${formatFieldName('baselineTimestamp')}: N/A`,
+    `${formatFieldName('currentTimestamp')}: ${options.createdAt}`,
+    `${formatFieldName('overallStatus')}: ${checksFailing > 0 ? 'FAILING' : 'GREEN'}`,
+    `${formatFieldName('totalChecks')}: ${String(options.checks.length)}`,
+    `${formatFieldName('checksPassing')}: ${String(checksPassing)}`,
+    `${formatFieldName('checksFailing')}: ${String(checksFailing)}`,
+    `${formatFieldName('regressionsCount')}: 0`,
+    `${formatFieldName('newFailuresCount')}: 0`,
+    `${formatFieldName('fixesCount')}: 0`,
+    `${formatFieldName('toolSummary')}: ${renderToolSummary(options.checks.map((check) => check.tool))}`,
     REGRESSION_HEADER_END,
-    '',
-    BASELINE_NO_DIFF_TEXT,
   ];
 
+  const bodyParts: string[] = [];
+  
+  // Per-command summary
+  bodyParts.push(renderPerCommandSummary(options.checks));
+  
+  // Failed checks list
+  const failedChecksOutput = renderFailedChecksListBaseline(options.checks);
+  if (failedChecksOutput) {
+    bodyParts.push(failedChecksOutput);
+  }
+
+  return [...headerLines, '', ...bodyParts].join('\n');
+}
+
+/**
+ * Renders per-command summary for compare mode with regression/new failure/fix counts
+ */
+function renderPerCommandSummaryCompare(
+  checks: ComparisonCheckResult[]
+): string {
+  const lines: string[] = ['--- PER-COMMAND SUMMARY ---'];
+  for (const check of checks) {
+    const parts: string[] = [check.id];
+    
+    // Add counts in parentheses for failing checks
+    if (check.status !== 'passing') {
+      const counts: string[] = [];
+      if (check.regressions.length > 0) {
+        counts.push(`${check.regressions.length} regression${check.regressions.length !== 1 ? 's' : ''}`);
+      }
+      if (check.newFailures.length > 0) {
+        counts.push(`${check.newFailures.length} new failure${check.newFailures.length !== 1 ? 's' : ''}`);
+      }
+      if (check.fixes.length > 0) {
+        counts.push(`${check.fixes.length} fix${check.fixes.length !== 1 ? 'es' : ''}`);
+      }
+      if (counts.length > 0) {
+        parts.push(`(${counts.join(', ')})`);
+      }
+    }
+    
+    lines.push(`${parts.join(' ')}: ${check.status}`);
+  }
   return lines.join('\n');
 }
 
 /**
  * Renders the compare report text with deterministic header and per-check sections.
  *
- * @param {{ sessionId: string; sessionStorageKey: string; sessionIdSource: SessionIdSource; baselineTimestamp: string; currentTimestamp: string; comparison: ComparisonResult; }} options
+ * @param {{ sessionId: string; sessionStorageKey: string; sessionIdSource: SessionIdSource; baselineTimestamp: string; currentTimestamp: string; comparison: ComparisonResult; currentResultsById?: Map<string, ScheduledCheckResult>; }} options
  * Compare report rendering options.
  * @param {string} options.sessionId - Logical session identifier.
  * @param {string} options.sessionStorageKey - Filesystem-safe session storage key.
@@ -450,6 +634,7 @@ export function renderBaselineReport(options: {
  * @param {string} options.baselineTimestamp - Baseline run timestamp.
  * @param {string} options.currentTimestamp - Current run timestamp.
  * @param {ComparisonResult} options.comparison - Structured comparison model.
+ * @param {Map<string, ScheduledCheckResult>} [options.currentResultsById] - Map of check IDs to current results for exit codes.
  * @returns {string} Human-readable compare report text.
  */
 export function renderComparisonReport(options: {
@@ -459,43 +644,44 @@ export function renderComparisonReport(options: {
   baselineTimestamp: string;
   currentTimestamp: string;
   comparison: ComparisonResult;
+  currentResultsById?: Map<string, ScheduledCheckResult>;
 }): string {
-  const lines = [
+  const currentResultsById = options.currentResultsById ?? new Map();
+  const headerLines = [
     REGRESSION_HEADER_START,
-    `sessionId: ${options.sessionId}`,
-    `sessionStorageKey: ${options.sessionStorageKey}`,
-    `sessionIdSource: ${options.sessionIdSource}`,
-    'mode: compare',
-    'baselineCreatedThisRun: false',
-    `baselineTimestamp: ${options.baselineTimestamp}`,
-    `currentTimestamp: ${options.currentTimestamp}`,
-    `overallStatus: ${options.comparison.overallStatus}`,
-    `totalChecks: ${String(options.comparison.checks.length)}`,
-    `checksPassing: ${String(options.comparison.totals.checksPassing)}`,
-    `checksFailing: ${String(options.comparison.totals.checksFailing)}`,
-    `regressionsCount: ${String(options.comparison.totals.regressionsCount)}`,
-    `newFailuresCount: ${String(options.comparison.totals.newFailuresCount)}`,
-    `fixesCount: ${String(options.comparison.totals.fixesCount)}`,
-    `toolSummary: ${renderToolSummary(options.comparison.checks.map((check) => check.tool))}`,
+    `${formatFieldName('sessionId')}: ${options.sessionId}`,
+    `${formatFieldName('sessionStorageKey')}: ${options.sessionStorageKey}`,
+    `${formatFieldName('sessionIdSource')}: ${options.sessionIdSource}`,
+    `${formatFieldName('mode')}: compare`,
+    `${formatFieldName('baselineCreatedThisRun')}: false`,
+    `${formatFieldName('baselineTimestamp')}: ${options.baselineTimestamp}`,
+    `${formatFieldName('currentTimestamp')}: ${options.currentTimestamp}`,
+    `${formatFieldName('overallStatus')}: ${options.comparison.overallStatus}`,
+    `${formatFieldName('totalChecks')}: ${String(options.comparison.checks.length)}`,
+    `${formatFieldName('checksPassing')}: ${String(options.comparison.totals.checksPassing)}`,
+    `${formatFieldName('checksFailing')}: ${String(options.comparison.totals.checksFailing)}`,
+    `${formatFieldName('regressionsCount')}: ${String(options.comparison.totals.regressionsCount)}`,
+    `${formatFieldName('newFailuresCount')}: ${String(options.comparison.totals.newFailuresCount)}`,
+    `${formatFieldName('fixesCount')}: ${String(options.comparison.totals.fixesCount)}`,
+    `${formatFieldName('toolSummary')}: ${renderToolSummary(options.comparison.checks.map((check) => check.tool))}`,
     REGRESSION_HEADER_END,
-    '',
   ];
 
-  for (const check of options.comparison.checks) {
-    lines.push(
-      ...[
-        `checkId: ${check.id}`,
-        `status: ${check.status}`,
-        `tool: ${check.tool}`,
-        `regressions: ${check.regressions.join(', ') || 'none'}`,
-        `newFailures: ${check.newFailures.join(', ') || 'none'}`,
-        `fixes: ${check.fixes.join(', ') || 'none'}`,
-        '',
-      ]
-    );
+  const bodyParts: string[] = [];
+  
+  // Per-command summary with regression/fix info
+  bodyParts.push(renderPerCommandSummaryCompare(options.comparison.checks));
+  
+  // Failed checks list with regression details
+  const failedChecksOutput = renderFailedChecksListCompare(
+    options.comparison.checks,
+    currentResultsById
+  );
+  if (failedChecksOutput) {
+    bodyParts.push(failedChecksOutput);
   }
 
-  return lines.join('\n');
+  return [...headerLines, '', ...bodyParts].join('\n');
 }
 
 /**

@@ -368,18 +368,22 @@ describe('report writer and CLI orchestration', () => {
     expect(result.mode).toBe('baseline');
     expect(result.exitCode).toBe(0);
     expect(result.outputText).toContain('=== REGRESSION HEADER START ===');
-    expect(result.outputText).toContain('baselineCreatedThisRun: true');
-    expect(result.outputText).toContain('baselineTimestamp: N/A');
-    expect(result.outputText).toContain(
-      'This run created the baseline and did not perform comparison diffing.'
-    );
+    expect(result.outputText).toContain('Baseline Created This Run: true');
+    expect(result.outputText).toContain('Baseline Timestamp: N/A');
+    expect(result.outputText).toContain('builder-lint: passing');
+    expect(result.outputText).toContain('--- PER-COMMAND SUMMARY ---');
     expect(receivedManifestChecks).toEqual([
       expect.objectContaining({
         rawArtefactPath: 'baseline/checks/builder-lint/raw.json',
         derivedSummaryPath: 'baseline/checks/builder-lint/derived.json',
       }),
     ]);
-    expect(writes).toEqual([]);
+    expect(writes).toEqual([
+      {
+        targetPath: '/repo/.ts-regression-checker/reports/session-feature-regression-checker/baseline/baseline.txt',
+        content: expect.stringContaining('=== REGRESSION HEADER START ==='),
+      },
+    ]);
   });
 
   it('writes compare artefacts and returns exit code 1 when regressions are detected', async () => {
@@ -455,7 +459,7 @@ describe('report writer and CLI orchestration', () => {
 
     expect(result.mode).toBe('compare');
     expect(result.exitCode).toBe(1);
-    expect(result.outputText).toContain('overallStatus: FAILING');
+    expect(result.outputText).toContain('Overall Status: FAILING');
     expect(writes.map((entry) => entry.targetPath)).toEqual([
       '/repo/.ts-regression-checker/reports/session-feature-regression-checker/runs/2026-05-13T05-00-00.000Z/comparison.json',
       '/repo/.ts-regression-checker/reports/session-feature-regression-checker/runs/2026-05-13T05-00-00.000Z/comparison.txt',
@@ -521,20 +525,20 @@ describe('report writer and CLI orchestration', () => {
       .filter((line) => line.includes(': '))
       .slice(0, COMPARE_HEADER_LINE_COUNT);
     expect(headerLines).toEqual([
-      'sessionId: feature/regression-checker',
-      'sessionStorageKey: session-feature-regression-checker',
-      'sessionIdSource: arg',
-      'mode: compare',
-      'baselineCreatedThisRun: false',
-      'baselineTimestamp: 2026-05-13T05:00:00.000Z',
-      'currentTimestamp: 2026-05-13T05:00:00.000Z',
-      'overallStatus: GREEN',
-      'totalChecks: 1',
-      'checksPassing: 1',
-      'checksFailing: 0',
-      'regressionsCount: 0',
-      'newFailuresCount: 0',
-      'fixesCount: 0',
+      'Session ID: feature/regression-checker',
+      'Session Storage Key: session-feature-regression-checker',
+      'Session ID Source: arg',
+      'Mode: compare',
+      'Baseline Created This Run: false',
+      'Baseline Timestamp: 2026-05-13T05:00:00.000Z',
+      'Current Timestamp: 2026-05-13T05:00:00.000Z',
+      'Overall Status: GREEN',
+      'Total Checks: 1',
+      'Checks Passing: 1',
+      'Checks Failing: 0',
+      'Regressions Count: 0',
+      'New Failures Count: 0',
+      'Fixes Count: 0',
     ]);
   });
 
@@ -830,9 +834,8 @@ describe('report writer and CLI orchestration', () => {
       },
     });
 
-    expect(report).toContain('overallStatus: BASELINE-INCOMPATIBLE');
-    expect(report).toContain('checkId: builder-lint');
-    expect(report).toContain('status: baseline-incompatible');
+    expect(report).toContain('Overall Status: BASELINE-INCOMPATIBLE');
+    expect(report).toContain('builder-lint: baseline-incompatible');
   });
 
   it('persists playwright stdout artefacts and resolves session artefact paths deterministically', async () => {
