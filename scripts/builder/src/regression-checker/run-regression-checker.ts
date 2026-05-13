@@ -88,8 +88,13 @@ function getCandidateDirectories(rawConfig: unknown): Set<string> {
   }
 
   for (const check of rawConfig.checks) {
-    if (isRecord(check) && typeof check.cwd === 'string' && isSafePackageDirectory(check.cwd)) {
-      candidateDirectories.add(check.cwd);
+    if (!isRecord(check) || typeof check.cwd !== 'string') {
+      continue;
+    }
+
+    const canonicalDirectory = normaliseSafePackageDirectory(check.cwd);
+    if (canonicalDirectory !== null) {
+      candidateDirectories.add(canonicalDirectory);
     }
   }
 
@@ -102,18 +107,23 @@ function getCandidateDirectories(rawConfig: unknown): Set<string> {
  * @param {string} cwd - Raw `checks[].cwd` value from config.
  * @returns {boolean} `true` when the path is safely repo-relative for package.json lookup.
  */
-function isSafePackageDirectory(cwd: string): boolean {
+function normaliseSafePackageDirectory(cwd: string): string | null {
   const trimmed = cwd.trim();
   if (trimmed.length === 0) {
-    return false;
+    return null;
   }
 
   const normalised = trimmed.replaceAll('\\', '/');
   if (hasForbiddenPathPrefix(normalised)) {
-    return false;
+    return null;
   }
 
-  return !traversesOutsideRepo(normalised.split('/'));
+  const canonicalSegments = normaliseRelativeSegments(normalised.split('/'));
+  if (canonicalSegments === null) {
+    return null;
+  }
+
+  return canonicalSegments.length === 0 ? '.' : canonicalSegments.join('/');
 }
 
 /**
@@ -136,26 +146,26 @@ function hasForbiddenPathPrefix(normalisedPath: string): boolean {
  * @param {string[]} segments - Path segments.
  * @returns {boolean} `true` when traversal escapes root.
  */
-function traversesOutsideRepo(segments: string[]): boolean {
-  let depth = 0;
+function normaliseRelativeSegments(segments: string[]): string[] | null {
+  const canonicalSegments: string[] = [];
   for (const segment of segments) {
     if (segment === '' || segment === '.') {
       continue;
     }
 
     if (segment === '..') {
-      if (depth === 0) {
-        return true;
+      if (canonicalSegments.length === 0) {
+        return null;
       }
 
-      depth -= 1;
+      canonicalSegments.pop();
       continue;
     }
 
-    depth += 1;
+    canonicalSegments.push(segment);
   }
 
-  return false;
+  return canonicalSegments;
 }
 
 /**

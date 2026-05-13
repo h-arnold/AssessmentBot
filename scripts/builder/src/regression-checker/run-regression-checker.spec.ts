@@ -111,13 +111,40 @@ describe('run-regression-checker helpers', () => {
             { cwd: 'C:/windows/path' },
             { cwd: '   ' },
             { cwd: 'safe/..' },
-            { cwd: 'nested/./safe' },
+            { cwd: './nested/./safe/..' },
           ],
         },
       })
     ).resolves.toEqual({
       '.': { rootOnly: 'eslint .' },
-      'safe/..': { rootOnly: 'eslint .' },
+    });
+  });
+
+  it('normalises safe cwd aliases to canonical directory keys', async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'regression-checker-wrapper-alias-'));
+    tempDirectories.push(tempRoot);
+
+    await fs.mkdir(path.join(tempRoot, 'packages', 'builder-child'), { recursive: true });
+    await fs.writeFile(
+      path.join(tempRoot, 'packages', 'builder-child', 'package.json'),
+      JSON.stringify({
+        scripts: { childScript: 'vitest run' },
+      }),
+      'utf8'
+    );
+
+    await expect(
+      loadPackageJsonScriptsByDirectory({
+        repoRoot: tempRoot,
+        rawConfig: {
+          checks: [
+            { cwd: './packages/builder-child/.' },
+            { cwd: String.raw`packages\builder-child` },
+          ],
+        },
+      })
+    ).resolves.toEqual({
+      'packages/builder-child': { childScript: 'vitest run' },
     });
   });
 
