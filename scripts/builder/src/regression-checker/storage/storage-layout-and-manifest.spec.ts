@@ -189,6 +189,34 @@ describe('regression-checker storage layout and baseline compatibility', () => {
     });
   });
 
+  it('rejects empty report directories and report directories outside the repository root', async () => {
+    const { prepareSessionStorage } = await loadStorageModule();
+
+    await expect(
+      prepareSessionStorage({
+        repoRoot: tempRoot,
+        reportDirectory: '   ',
+        sessionId: 'feature/report-directory-validation',
+        sessionIdSource: 'arg',
+        createdAt: BASELINE_CREATED_AT,
+        configFingerprint: 'config-fingerprint-v1',
+        checks: createChecksFixture(),
+      })
+    ).rejects.toThrow('reportDirectory must be a non-empty path.');
+
+    await expect(
+      prepareSessionStorage({
+        repoRoot: tempRoot,
+        reportDirectory: '../outside',
+        sessionId: 'feature/report-directory-validation',
+        sessionIdSource: 'arg',
+        createdAt: BASELINE_CREATED_AT,
+        configFingerprint: 'config-fingerprint-v1',
+        checks: createChecksFixture(),
+      })
+    ).rejects.toThrow('reportDirectory must resolve inside repo root: ../outside');
+  });
+
   it('creates compare-mode run storage when a baseline already exists', async () => {
     const { prepareSessionStorage, createSessionStorageKey } = await loadStorageModule();
 
@@ -280,6 +308,44 @@ describe('regression-checker storage layout and baseline compatibility', () => {
     expect(firstKey).not.toContain('\\');
   });
 
+  it('falls back to the default storage key when the session ID contains only invalid characters', async () => {
+    const { createSessionStorageKey } = await loadStorageModule();
+
+    expect(createSessionStorageKey('///')).toBe('session-session');
+  });
+
+  it('falls back to the default compare run directory when the timestamp sanitises to nothing', async () => {
+    const { prepareSessionStorage } = await loadStorageModule();
+
+    const sessionId = 'feature/default-compare-run-directory';
+
+    await prepareSessionStorage({
+      repoRoot: tempRoot,
+      reportDirectory: REPORT_DIRECTORY,
+      sessionId,
+      sessionIdSource: 'git-branch',
+      createdAt: BASELINE_CREATED_AT,
+      configFingerprint: 'config-fingerprint-v1',
+      checks: createChecksFixture(),
+    });
+
+    const compareResult = await prepareSessionStorage({
+      repoRoot: tempRoot,
+      reportDirectory: REPORT_DIRECTORY,
+      sessionId,
+      sessionIdSource: 'git-branch',
+      createdAt: '...   ',
+      configFingerprint: 'config-fingerprint-v1',
+      checks: createChecksFixture(),
+    });
+
+    if (compareResult.currentRunDirectory === null) {
+      throw new Error('currentRunDirectory must be present for compare mode.');
+    }
+
+    expect(path.basename(compareResult.currentRunDirectory)).toBe('run');
+  });
+
   it('flags baseline incompatibility before diffing for fingerprint, check IDs, and tool families', async () => {
     const { evaluateBaselineCompatibility } = await loadStorageModule();
 
@@ -349,6 +415,113 @@ describe('regression-checker storage layout and baseline compatibility', () => {
         message: expect.stringContaining('tool families'),
       },
     });
+  });
+
+  it('flags baseline incompatibility before diffing when the same checks are listed in a different order', async () => {
+    const { evaluateBaselineCompatibility } = await loadStorageModule();
+
+    const baselineManifest: SessionManifest = {
+      sessionId: 'feature/baseline-compatibility-metadata',
+      sessionStorageKey: 'feature-baseline-compatibility-metadata',
+      sessionIdSource: 'arg',
+      mode: 'baseline',
+      createdAt: BASELINE_CREATED_AT,
+      baselineCreatedThisRun: true,
+      configFingerprint: 'config-fingerprint-v1',
+      checks: createChecksFixture(),
+    };
+
+    expect(
+      evaluateBaselineCompatibility({
+        baselineManifest,
+        currentConfigFingerprint: baselineManifest.configFingerprint,
+        currentChecks: [
+          {
+            id: 'builder-compile',
+            tool: 'tsc',
+            executionMetadata: {
+              project: 'scripts/builder/tsconfig.json',
+            },
+          },
+          {
+            id: 'backend-lint-check',
+            tool: 'eslint',
+            executionMetadata: {
+              reporterMode: 'json',
+            },
+          },
+        ],
+      })
+    ).toMatchObject({
+      compatible: false,
+      reason: {
+        code: 'check-ids-mismatch',
+        message: expect.stringContaining('check IDs'),
+      },
+    });
+  });
+
+  it('treats matching metadata objects as compatible even when key order differs', async () => {
+    const { evaluateBaselineCompatibility } = await loadStorageModule();
+
+    const baselineManifest: SessionManifest = {
+      sessionId: 'feature/baseline-compatibility-metadata-order',
+      sessionStorageKey: 'feature-baseline-compatibility-metadata-order',
+      sessionIdSource: 'arg',
+      mode: 'baseline',
+      createdAt: BASELINE_CREATED_AT,
+      baselineCreatedThisRun: true,
+      configFingerprint: 'config-fingerprint-v1',
+      checks: [
+        {
+          id: 'backend-lint-check',
+          tool: 'eslint',
+          cwd: '.',
+          executionMetadata: {
+            reporterMode: 'json',
+            cache: 'enabled',
+          },
+          rawArtefactPath: 'checks/backend-lint-check/raw.json',
+          derivedSummaryPath: 'checks/backend-lint-check/derived.json',
+        },
+        {
+          id: 'builder-compile',
+          tool: 'tsc',
+          cwd: '.',
+          executionMetadata: {
+            project: 'scripts/builder/tsconfig.json',
+            incremental: false,
+          },
+          rawArtefactPath: 'checks/builder-compile/raw.txt',
+          derivedSummaryPath: 'checks/builder-compile/derived.json',
+        },
+      ],
+    };
+
+    expect(
+      evaluateBaselineCompatibility({
+        baselineManifest,
+        currentConfigFingerprint: baselineManifest.configFingerprint,
+        currentChecks: baselineManifest.checks.map((check) => {
+          const executionMetadata: Record<string, string | number | boolean | null> =
+            check.id === 'backend-lint-check'
+              ? {
+                  cache: 'enabled',
+                  reporterMode: 'json',
+                }
+              : {
+                  incremental: false,
+                  project: 'scripts/builder/tsconfig.json',
+                };
+
+          return {
+            id: check.id,
+            tool: check.tool,
+            executionMetadata,
+          };
+        }),
+      })
+    ).toEqual({ compatible: true });
   });
 
   it('flags baseline incompatibility before diffing when execution metadata differs', async () => {

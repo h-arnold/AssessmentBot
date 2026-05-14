@@ -1,7 +1,16 @@
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
 
-import { compareRegressionChecks } from '../compare/index.js';
+import {
+  compareRegressionChecks,
+  deriveSummaryFromArtefact,
+  type ComparisonCheckResult,
+  type ComparisonResult,
+  type DerivedSummary,
+  type EslintFinding,
+  type TestOutcome,
+  type TscDiagnostic,
+} from '../compare/index.js';
 import { validateRegressionConfig } from '../config/validate-regression-config.js';
 import type { RegressionConfigInput } from '../config/validate-regression-config.zod.js';
 import {
@@ -18,6 +27,369 @@ import { resolveSessionContext, type SessionIdSource } from './session-resolutio
 import { CommandExecutionError, logError, logInfo, runCommand } from '../../lib/process.js';
 
 type RegressionTool = 'eslint' | 'vitest' | 'playwright' | 'tsc';
+
+/**
+ * Converts camelCase field names to Title Case for display.
+ *
+ * @param {string} name - The camelCase field name to convert.
+ * @returns {string} The Title Case formatted name.
+ */
+function formatFieldName(name: string): string {
+  // Handle special cases for acronyms
+  const specialCases: Record<string, string> = {
+    sessionId: 'Session ID',
+    sessionStorageKey: 'Session Storage Key',
+    sessionIdSource: 'Session ID Source',
+    baselineCreatedThisRun: 'Baseline Created This Run',
+    baselineTimestamp: 'Baseline Timestamp',
+    currentTimestamp: 'Current Timestamp',
+    overallStatus: 'Overall Status',
+    totalChecks: 'Total Checks',
+    checksPassing: 'Checks Passing',
+    checksFailing: 'Checks Failing',
+    regressionsCount: 'Regressions Count',
+    newFailuresCount: 'New Failures Count',
+    fixesCount: 'Fixes Count',
+    toolSummary: 'Tool Summary',
+    mode: 'Mode',
+  };
+
+  if (name in specialCases) {
+    return specialCases[name];
+  }
+
+  // Default: convert camelCase to Title Case
+  return name.replaceAll(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase());
+}
+
+/**
+ * Renders a per-command summary section showing each check's status.
+ *
+ * @param {Array<{ id: string; tool: RegressionTool; status: string }>} checks - The check results to render.
+ * @returns {string} Formatted per-command summary text.
+ */
+function renderPerCommandSummary(
+  checks: Array<{ id: string; tool: RegressionTool; status: string }>
+): string {
+  const lines: string[] = ['--- PER-COMMAND SUMMARY ---'];
+  for (const check of checks) {
+    lines.push(`${check.id}: ${check.status}`);
+  }
+  return lines.join('\n');
+}
+
+/**
+ * Renders a list of failed checks for baseline mode with rich failure details.
+ *
+ * @param {ScheduledCheckResult[]} checks - The check results to filter and render.
+ * @param {(rawArtefactPath: string) => Promise<unknown>} readRawArtefact - Async function to read raw artefacts.
+ * @returns {Promise<string>} Formatted string listing failed checks with details.
+ */
+async function renderFailedChecksListBaseline(
+  checks: ScheduledCheckResult[],
+  readRawArtefact: (rawArtefactPath: string) => Promise<unknown>
+): Promise<string> {
+  const failedChecks = checks.filter((check) => check.status !== 'passing');
+  if (failedChecks.length === 0) {
+    return '';
+  }
+
+  const lines: string[] = ['--- FAILED CHECKS ---'];
+  let index = 1;
+  for (const check of failedChecks) {
+    lines.push(
+      `${index}. ${check.id} (${check.tool})`,
+      `   Status: ${check.status}`,
+      `   Exit Code: ${check.exitCode ?? 'N/A'}`
+    );
+
+    // Add rich failure details from raw artefact
+    const richDetails = await renderRichFailureDetails(check, readRawArtefact);
+    if (richDetails) {
+      lines.push(richDetails);
+    }
+
+    lines.push('');
+    index++;
+  }
+  return lines.join('\n');
+}
+
+const MAX_FAILURE_DETAILS = 5;
+// Fingerprint format: "ruleId|filePath|line|column|message"
+const FP_RULE_ID = 0;
+const FP_FILE_PATH = 1;
+const FP_LINE = 2;
+const FP_COLUMN = 3;
+const FP_MESSAGE = 4;
+
+/**
+ * Safely extracts a pipe-delimited fingerprint part by index.
+ *
+ * @param {string} fingerprint - The fingerprint string.
+ * @param {number} index - Zero-based part index.
+ * @param {string} fallback - Fallback value when missing.
+ * @returns {string} The extracted part or fallback.
+ */
+function extractPart(fingerprint: string, index: number, fallback = 'unknown'): string {
+  return fingerprint.split('|')[index] ?? fallback;
+}
+
+/**
+ * Renders rich failure details from a check's raw artefact.
+ *
+ * @param {ScheduledCheckResult} check - The failing check result.
+ * @param {(rawArtefactPath: string) => Promise<unknown>} readRawArtefact - Async function to read raw artefact.
+ * @returns {Promise<string>} Formatted details string, or empty string if no details available.
+ */
+async function renderRichFailureDetails(
+  check: ScheduledCheckResult,
+  readRawArtefact: (rawArtefactPath: string) => Promise<unknown>
+): Promise<string> {
+  try {
+    const rawArtefact = await readRawArtefact(check.rawArtefactPath);
+    const summary = deriveSummaryFromArtefact(check.tool, rawArtefact);
+
+    return renderSummaryDetails(summary);
+  } catch {
+    // If we can't read or parse the artefact, just return empty string
+    return '';
+  }
+}
+
+/**
+ * Renders failure details from a derived summary.
+ *
+ * @param {DerivedSummary} summary - The derived summary object.
+ * @returns {string} Formatted details string.
+ */
+function renderSummaryDetails(summary: DerivedSummary): string {
+  const detailsLines: string[] = [];
+
+  switch (summary.kind) {
+    case 'eslint':
+      renderEslintDetails(summary, detailsLines);
+      break;
+    case 'vitest':
+    case 'playwright':
+      renderTestDetails(summary, detailsLines);
+      break;
+    case 'tsc':
+      renderTscDetails(summary, detailsLines);
+      break;
+  }
+
+  return detailsLines.length > 0 ? detailsLines.join('\n') : '';
+}
+
+/**
+ * Renders ESLint failure details.
+ *
+ * @param {DerivedSummary} summary - The ESLint summary.
+ * @param {string[]} detailsLines - Array to append details to.
+ */
+function renderEslintDetails(summary: DerivedSummary, detailsLines: string[]): void {
+  const esSummary = summary as DerivedSummary & {
+    kind: 'eslint';
+    findings: EslintFinding[];
+    counts: { errors: number; warnings: number };
+  };
+  if (esSummary.counts.errors === 0 && esSummary.counts.warnings === 0) {
+    return;
+  }
+  detailsLines.push(
+    `   Errors: ${esSummary.counts.errors}, Warnings: ${esSummary.counts.warnings}`
+  );
+  renderEslintFindings(esSummary.findings, detailsLines);
+}
+
+/**
+ * Renders ESLint findings list.
+ *
+ * @param {Array<{ fingerprint: string; severity: 'warning' | 'error' }>} findings - The ESLint findings to render.
+ * @param {string[]} detailsLines - Array to append details to.
+ */
+function renderEslintFindings(
+  findings: Array<{ fingerprint: string; severity: 'warning' | 'error' }>,
+  detailsLines: string[]
+): void {
+  if (findings.length === 0) {
+    return;
+  }
+  detailsLines.push('   Issues:');
+  const count = Math.min(findings.length, MAX_FAILURE_DETAILS);
+  for (let i = 0; i < count; i++) {
+    const finding = findings[i];
+    const ruleId = extractPart(finding.fingerprint, 0);
+    const filePath = extractPart(finding.fingerprint, 1);
+    const line = extractPart(finding.fingerprint, FP_LINE);
+    detailsLines.push(`   - ${ruleId} at ${filePath}:${line} (${finding.severity})`);
+  }
+  if (findings.length > MAX_FAILURE_DETAILS) {
+    detailsLines.push(`   ... and ${findings.length - MAX_FAILURE_DETAILS} more issues`);
+  }
+}
+
+/**
+ * Renders test failure details.
+ *
+ * @param {DerivedSummary} summary - The test summary.
+ * @param {string[]} detailsLines - Array to append details to.
+ */
+function renderTestDetails(summary: DerivedSummary, detailsLines: string[]): void {
+  const testSummary = summary as DerivedSummary & {
+    kind: 'vitest' | 'playwright';
+    tests: TestOutcome[];
+    counts: { failed: number; passed: number; skipped: number };
+  };
+  if (testSummary.counts.failed === 0) {
+    return;
+  }
+  detailsLines.push(
+    `   Failed: ${testSummary.counts.failed}, Passed: ${testSummary.counts.passed}, Skipped: ${testSummary.counts.skipped}`
+  );
+  if (testSummary.tests.length === 0) {
+    return;
+  }
+  const failedTests = testSummary.tests.filter((t) => t.status === 'failed');
+  if (failedTests.length === 0) {
+    return;
+  }
+  detailsLines.push('   Failed Tests:');
+  const count = Math.min(failedTests.length, MAX_FAILURE_DETAILS);
+  for (let i = 0; i < count; i++) {
+    const test = failedTests[i];
+    const parts = test.fingerprint.split('|');
+    const LAST_INDEX = -1;
+    const testName = parts.at(LAST_INDEX) ?? test.fingerprint;
+    detailsLines.push(`   - ${testName}`);
+  }
+  if (failedTests.length > MAX_FAILURE_DETAILS) {
+    detailsLines.push(`   ... and ${failedTests.length - MAX_FAILURE_DETAILS} more failed tests`);
+  }
+}
+
+/**
+ * Renders TypeScript diagnostic details.
+ *
+ * @param {DerivedSummary} summary - The TSC summary.
+ * @param {string[]} detailsLines - Array to append details to.
+ */
+function renderTscDetails(summary: DerivedSummary, detailsLines: string[]): void {
+  const tscSummary = summary as DerivedSummary & {
+    kind: 'tsc';
+    diagnostics: TscDiagnostic[];
+    counts: { diagnostics: number };
+  };
+  if (tscSummary.counts.diagnostics === 0) {
+    return;
+  }
+  detailsLines.push(`   Diagnostics: ${tscSummary.counts.diagnostics}`);
+  renderTscDiagnostics(tscSummary.diagnostics, detailsLines);
+}
+
+/**
+ * Renders TypeScript diagnostics list.
+ *
+ * @param {Array<{ fingerprint: string }>} diagnostics - The TSC diagnostics to render.
+ * @param {string[]} detailsLines - Array to append details to.
+ */
+function renderTscDiagnostics(
+  diagnostics: Array<{ fingerprint: string }>,
+  detailsLines: string[]
+): void {
+  if (diagnostics.length === 0) {
+    return;
+  }
+  detailsLines.push('   Errors:');
+  const count = Math.min(diagnostics.length, MAX_FAILURE_DETAILS);
+  for (let i = 0; i < count; i++) {
+    const diagnostic = diagnostics[i];
+    detailsLines.push(
+      `   - ${extractPart(diagnostic.fingerprint, FP_RULE_ID, 'unknown')} at ${extractPart(
+        diagnostic.fingerprint,
+        FP_FILE_PATH,
+        'unknown'
+      )}:${extractPart(diagnostic.fingerprint, FP_LINE, '0')}:${extractPart(
+        diagnostic.fingerprint,
+        FP_COLUMN,
+        '0'
+      )} - ${extractPart(diagnostic.fingerprint, FP_MESSAGE, '')}`
+    );
+  }
+  if (diagnostics.length > MAX_FAILURE_DETAILS) {
+    detailsLines.push(`   ... and ${diagnostics.length - MAX_FAILURE_DETAILS} more diagnostics`);
+  }
+}
+
+/**
+ * Renders a list of failed checks for compare mode with regression and fix details.
+ *
+ * @param {ComparisonCheckResult[]} checks - The comparison check results to filter and render.
+ * @param {Map<string, ScheduledCheckResult>} currentResultsById - Map of check IDs to current results for exit code lookup.
+ * @returns {string} Formatted string listing failed checks with regression/fix details.
+ */
+function renderFailedChecksListCompare(
+  checks: ComparisonCheckResult[],
+  currentResultsById: Map<string, ScheduledCheckResult>
+): string {
+  const failedChecks = checks.filter((check) => check.status !== 'passing');
+  if (failedChecks.length === 0) {
+    return '';
+  }
+
+  const lines: string[] = ['--- FAILED CHECKS ---'];
+  let index = 1;
+  for (const check of failedChecks) {
+    renderFailedCheckCompare(check, currentResultsById, lines, index);
+    lines.push('');
+    index++;
+  }
+  return lines.join('\n');
+}
+
+/**
+ * Renders a single failed check for compare mode.
+ *
+ * @param {ComparisonCheckResult} check - The comparison check result.
+ * @param {Map<string, ScheduledCheckResult>} currentResultsById - Map of check IDs to current results.
+ * @param {string[]} lines - Array to append details to.
+ * @param {number} index - The check index number.
+ */
+function renderFailedCheckCompare(
+  check: ComparisonCheckResult,
+  currentResultsById: Map<string, ScheduledCheckResult>,
+  lines: string[],
+  index: number
+): void {
+  const currentResult = currentResultsById.get(check.id);
+  lines.push(
+    `${index}. ${check.id} (${check.tool})`,
+    `   Status: ${check.status}`,
+    `   Exit Code: ${currentResult?.exitCode ?? 'N/A'}`
+  );
+
+  renderRegressionList('Regressions', check.regressions, lines);
+  renderRegressionList('New Failures', check.newFailures, lines);
+  renderRegressionList('Fixes', check.fixes, lines);
+}
+
+/**
+ * Renders a list of regression/new failure/fix items.
+ *
+ * @param {string} label - The label for the list (Regressions, New Failures, Fixes).
+ * @param {string[]} items - The items to render.
+ * @param {string[]} lines - Array to append details to.
+ */
+function renderRegressionList(label: string, items: string[], lines: string[]): void {
+  if (items.length === 0) {
+    return;
+  }
+  lines.push(`   ${label}: ${items.length}`);
+  for (const item of items) {
+    lines.push(`   - ${item}`);
+  }
+}
 type RegressionCheckConfig = {
   id: string;
   tool: RegressionTool;
@@ -35,8 +407,6 @@ type RegressionConfig = {
   };
   checks: RegressionCheckConfig[];
 };
-
-type ComparisonResult = ReturnType<typeof compareRegressionChecks>;
 
 type ReadableCheckResult = ScheduledCheckResult & {
   rawArtefact: unknown;
@@ -86,8 +456,6 @@ const INVALID_CONFIG_EXIT_CODE = 2;
 const REGRESSION_FOUND_EXIT_CODE = 1;
 const JSON_INDENT_SPACES = 2;
 const UNEXPECTED_FAILURE_EXIT_CODE = 3;
-const BASELINE_NO_DIFF_TEXT =
-  'This run created the baseline and did not perform comparison diffing.';
 
 /**
  * Runs the regression-checker CLI flow with explicit dependency injection for tests and wrappers.
@@ -102,7 +470,7 @@ export async function runRegressionCheckerCli(
     const context = await buildRunContext(options);
 
     if (context.storageResult.mode === 'baseline') {
-      return buildBaselineModeResult(context, options.createdAt);
+      return await buildBaselineModeResult(context, options.createdAt, options);
     }
 
     return await buildCompareModeResult(context, options);
@@ -259,26 +627,56 @@ function resolveRawArtefactDirectory(
 }
 
 /**
- * Builds the baseline-mode CLI result.
+ * Persists baseline report to disk.
+ *
+ * @param {string} baselineDirectory - Baseline directory path.
+ * @param {string} outputText - Human-readable baseline report.
+ * @param {(targetPath: string, content: string) => Promise<void>} writeFile - File writer callback.
+ * @returns {Promise<void>} Resolves once file is written.
+ */
+async function persistBaselineReport(
+  baselineDirectory: string,
+  outputText: string,
+  writeFile: (targetPath: string, content: string) => Promise<void>
+): Promise<void> {
+  await writeFile(path.join(baselineDirectory, 'baseline.txt'), outputText);
+}
+
+/**
+ * Builds the baseline-mode CLI result and writes baseline artefacts.
  *
  * @param {ResolvedRunContext} context - Resolved run context.
  * @param {string} createdAt - Current run timestamp.
- * @returns {RunRegressionCheckerCliResult} Baseline-mode report output and exit code.
+ * @param {RunRegressionCheckerCliOptions} options - Runtime inputs and injectable helpers.
+ * @returns {Promise<RunRegressionCheckerCliResult>} Baseline-mode report output and exit code.
  */
-function buildBaselineModeResult(
+async function buildBaselineModeResult(
   context: ResolvedRunContext,
-  createdAt: string
-): RunRegressionCheckerCliResult {
-  const outputText = renderBaselineReport({
+  createdAt: string,
+  options: RunRegressionCheckerCliOptions
+): Promise<RunRegressionCheckerCliResult> {
+  const outputText = await renderBaselineReport({
     sessionId: context.sessionContext.sessionId,
     sessionStorageKey: context.storageResult.sessionStorageKey,
     sessionIdSource: context.sessionContext.sessionIdSource,
     createdAt,
     checks: context.runResults,
+    readRawArtefact: options.readRawArtefact ?? readRawArtefactFromDisk,
   });
 
+  // Write baseline report to file
+  await persistBaselineReport(
+    context.storageResult.baselineDirectory,
+    outputText,
+    options.writeFile ?? writeFileToDisk
+  );
+
+  // Determine exit code based on failing checks
+  const checksFailing = context.runResults.filter((check) => check.status !== 'passing').length;
+  const exitCode = checksFailing > 0 ? REGRESSION_FOUND_EXIT_CODE : 0;
+
   return {
-    exitCode: 0,
+    exitCode,
     outputText,
     mode: 'baseline',
   };
@@ -323,6 +721,9 @@ async function buildCompareModeResult(
     baselineCompatibility,
   });
 
+  // Extract exit codes from current results for display
+  const currentResultsById = new Map(context.runResults.map((r) => [r.id, r]));
+
   const outputText = renderComparisonReport({
     sessionId: context.sessionContext.sessionId,
     sessionStorageKey: context.storageResult.sessionStorageKey,
@@ -330,6 +731,7 @@ async function buildCompareModeResult(
     baselineTimestamp: baselineManifest.createdAt,
     currentTimestamp: options.createdAt,
     comparison,
+    currentResultsById,
   });
 
   await persistComparisonReports(
@@ -403,46 +805,123 @@ function mapComparisonStatusToExitCode(
  * @param {SessionIdSource} options.sessionIdSource - Session-ID source label.
  * @param {string} options.createdAt - Current run ISO timestamp.
  * @param {ScheduledCheckResult[]} options.checks - Ordered check outcomes.
- * @returns {string} Human-readable baseline report text.
+ * @param {(rawArtefactPath: string) => Promise<unknown>} options.readRawArtefact - Async function to read raw artefacts for rich failure details.
+ * @returns {Promise<string>} Human-readable baseline report text.
  */
-export function renderBaselineReport(options: {
+export async function renderBaselineReport(options: {
   sessionId: string;
   sessionStorageKey: string;
   sessionIdSource: SessionIdSource;
   createdAt: string;
   checks: ScheduledCheckResult[];
-}): string {
+  readRawArtefact: (rawArtefactPath: string) => Promise<unknown>;
+}): Promise<string> {
   const checksPassing = options.checks.filter((check) => check.status === 'passing').length;
   const checksFailing = options.checks.length - checksPassing;
-  const lines = [
+  const headerLines = [
     REGRESSION_HEADER_START,
-    `sessionId: ${options.sessionId}`,
-    `sessionStorageKey: ${options.sessionStorageKey}`,
-    `sessionIdSource: ${options.sessionIdSource}`,
-    'mode: baseline',
-    'baselineCreatedThisRun: true',
-    'baselineTimestamp: N/A',
-    `currentTimestamp: ${options.createdAt}`,
-    `overallStatus: ${checksFailing > 0 ? 'FAILING' : 'GREEN'}`,
-    `totalChecks: ${String(options.checks.length)}`,
-    `checksPassing: ${String(checksPassing)}`,
-    `checksFailing: ${String(checksFailing)}`,
-    'regressionsCount: 0',
-    'newFailuresCount: 0',
-    'fixesCount: 0',
-    `toolSummary: ${renderToolSummary(options.checks.map((check) => check.tool))}`,
+    `${formatFieldName('sessionId')}: ${options.sessionId}`,
+    `${formatFieldName('sessionStorageKey')}: ${options.sessionStorageKey}`,
+    `${formatFieldName('sessionIdSource')}: ${options.sessionIdSource}`,
+    `${formatFieldName('mode')}: baseline`,
+    `${formatFieldName('baselineCreatedThisRun')}: true`,
+    `${formatFieldName('baselineTimestamp')}: N/A`,
+    `${formatFieldName('currentTimestamp')}: ${options.createdAt}`,
+    `${formatFieldName('overallStatus')}: ${checksFailing > 0 ? 'FAILING' : 'GREEN'}`,
+    `${formatFieldName('totalChecks')}: ${String(options.checks.length)}`,
+    `${formatFieldName('checksPassing')}: ${String(checksPassing)}`,
+    `${formatFieldName('checksFailing')}: ${String(checksFailing)}`,
+    `${formatFieldName('regressionsCount')}: 0`,
+    `${formatFieldName('newFailuresCount')}: 0`,
+    `${formatFieldName('fixesCount')}: 0`,
+    `${formatFieldName('toolSummary')}: ${renderToolSummary(options.checks.map((check) => check.tool))}`,
     REGRESSION_HEADER_END,
-    '',
-    BASELINE_NO_DIFF_TEXT,
   ];
 
+  const bodyParts: string[] = [];
+
+  // Per-command summary
+  bodyParts.push(renderPerCommandSummary(options.checks));
+
+  // Failed checks list with rich details
+  const failedChecksOutput = await renderFailedChecksListBaseline(
+    options.checks,
+    options.readRawArtefact
+  );
+  if (failedChecksOutput) {
+    bodyParts.push(failedChecksOutput);
+  }
+
+  return [...headerLines, '', ...bodyParts].join('\n');
+}
+
+/**
+ * Renders per-command summary for compare mode with regression/new failure/fix counts.
+ *
+ * @param {ComparisonCheckResult[]} checks - The comparison check results to render.
+ * @returns {string} Formatted per-command summary text.
+ */
+function renderPerCommandSummaryCompare(checks: ComparisonCheckResult[]): string {
+  const lines: string[] = ['--- PER-COMMAND SUMMARY ---'];
+  for (const check of checks) {
+    lines.push(renderPerCheckSummaryCompare(check));
+  }
   return lines.join('\n');
+}
+
+/**
+ * Renders a single check summary for compare mode.
+ *
+ * @param {ComparisonCheckResult} check - The comparison check result.
+ * @returns {string} Formatted check summary line.
+ */
+function renderPerCheckSummaryCompare(check: ComparisonCheckResult): string {
+  const parts: string[] = [check.id];
+
+  // Add counts in parentheses for failing checks
+  if (check.status !== 'passing') {
+    const counts: string[] = buildCheckCounts(check);
+    if (counts.length > 0) {
+      parts.push(`(${counts.join(', ')})`);
+    }
+  }
+
+  return `${parts.join(' ')}: ${check.status}`;
+}
+
+/**
+ * Builds count strings for a check's regressions, new failures, and fixes.
+ *
+ * @param {ComparisonCheckResult} check - The comparison check result.
+ * @returns {string[]} Array of count strings.
+ */
+function buildCheckCounts(check: ComparisonCheckResult): string[] {
+  const counts: string[] = [];
+  addCount(counts, check.regressions.length, 'regression');
+  addCount(counts, check.newFailures.length, 'new failure');
+  addCount(counts, check.fixes.length, 'fix', 'es');
+  return counts;
+}
+
+/**
+ * Adds a count string to an array if the count is greater than 0.
+ *
+ * @param {string[]} counts - Array to append to.
+ * @param {number} value - The count value.
+ * @param {string} singular - The singular form of the label.
+ * @param {string} plural - Optional plural suffix (defaults to adding 's').
+ */
+function addCount(counts: string[], value: number, singular: string, plural?: string): void {
+  if (value > 0) {
+    const suffix = value === 1 ? singular : (plural ?? `${singular}s`);
+    counts.push(`${value} ${suffix}`);
+  }
 }
 
 /**
  * Renders the compare report text with deterministic header and per-check sections.
  *
- * @param {{ sessionId: string; sessionStorageKey: string; sessionIdSource: SessionIdSource; baselineTimestamp: string; currentTimestamp: string; comparison: ComparisonResult; }} options
+ * @param {{ sessionId: string; sessionStorageKey: string; sessionIdSource: SessionIdSource; baselineTimestamp: string; currentTimestamp: string; comparison: ComparisonResult; currentResultsById?: Map<string, ScheduledCheckResult>; }} options
  * Compare report rendering options.
  * @param {string} options.sessionId - Logical session identifier.
  * @param {string} options.sessionStorageKey - Filesystem-safe session storage key.
@@ -450,6 +929,7 @@ export function renderBaselineReport(options: {
  * @param {string} options.baselineTimestamp - Baseline run timestamp.
  * @param {string} options.currentTimestamp - Current run timestamp.
  * @param {ComparisonResult} options.comparison - Structured comparison model.
+ * @param {Map<string, ScheduledCheckResult>} [options.currentResultsById] - Map of check IDs to current results for exit codes.
  * @returns {string} Human-readable compare report text.
  */
 export function renderComparisonReport(options: {
@@ -459,43 +939,44 @@ export function renderComparisonReport(options: {
   baselineTimestamp: string;
   currentTimestamp: string;
   comparison: ComparisonResult;
+  currentResultsById?: Map<string, ScheduledCheckResult>;
 }): string {
-  const lines = [
+  const currentResultsById = options.currentResultsById ?? new Map();
+  const headerLines = [
     REGRESSION_HEADER_START,
-    `sessionId: ${options.sessionId}`,
-    `sessionStorageKey: ${options.sessionStorageKey}`,
-    `sessionIdSource: ${options.sessionIdSource}`,
-    'mode: compare',
-    'baselineCreatedThisRun: false',
-    `baselineTimestamp: ${options.baselineTimestamp}`,
-    `currentTimestamp: ${options.currentTimestamp}`,
-    `overallStatus: ${options.comparison.overallStatus}`,
-    `totalChecks: ${String(options.comparison.checks.length)}`,
-    `checksPassing: ${String(options.comparison.totals.checksPassing)}`,
-    `checksFailing: ${String(options.comparison.totals.checksFailing)}`,
-    `regressionsCount: ${String(options.comparison.totals.regressionsCount)}`,
-    `newFailuresCount: ${String(options.comparison.totals.newFailuresCount)}`,
-    `fixesCount: ${String(options.comparison.totals.fixesCount)}`,
-    `toolSummary: ${renderToolSummary(options.comparison.checks.map((check) => check.tool))}`,
+    `${formatFieldName('sessionId')}: ${options.sessionId}`,
+    `${formatFieldName('sessionStorageKey')}: ${options.sessionStorageKey}`,
+    `${formatFieldName('sessionIdSource')}: ${options.sessionIdSource}`,
+    `${formatFieldName('mode')}: compare`,
+    `${formatFieldName('baselineCreatedThisRun')}: false`,
+    `${formatFieldName('baselineTimestamp')}: ${options.baselineTimestamp}`,
+    `${formatFieldName('currentTimestamp')}: ${options.currentTimestamp}`,
+    `${formatFieldName('overallStatus')}: ${options.comparison.overallStatus}`,
+    `${formatFieldName('totalChecks')}: ${String(options.comparison.checks.length)}`,
+    `${formatFieldName('checksPassing')}: ${String(options.comparison.totals.checksPassing)}`,
+    `${formatFieldName('checksFailing')}: ${String(options.comparison.totals.checksFailing)}`,
+    `${formatFieldName('regressionsCount')}: ${String(options.comparison.totals.regressionsCount)}`,
+    `${formatFieldName('newFailuresCount')}: ${String(options.comparison.totals.newFailuresCount)}`,
+    `${formatFieldName('fixesCount')}: ${String(options.comparison.totals.fixesCount)}`,
+    `${formatFieldName('toolSummary')}: ${renderToolSummary(options.comparison.checks.map((check) => check.tool))}`,
     REGRESSION_HEADER_END,
-    '',
   ];
 
-  for (const check of options.comparison.checks) {
-    lines.push(
-      ...[
-        `checkId: ${check.id}`,
-        `status: ${check.status}`,
-        `tool: ${check.tool}`,
-        `regressions: ${check.regressions.join(', ') || 'none'}`,
-        `newFailures: ${check.newFailures.join(', ') || 'none'}`,
-        `fixes: ${check.fixes.join(', ') || 'none'}`,
-        '',
-      ]
-    );
+  const bodyParts: string[] = [];
+
+  // Per-command summary with regression/fix info
+  bodyParts.push(renderPerCommandSummaryCompare(options.comparison.checks));
+
+  // Failed checks list with regression details
+  const failedChecksOutput = renderFailedChecksListCompare(
+    options.comparison.checks,
+    currentResultsById
+  );
+  if (failedChecksOutput) {
+    bodyParts.push(failedChecksOutput);
   }
 
-  return lines.join('\n');
+  return [...headerLines, '', ...bodyParts].join('\n');
 }
 
 /**
@@ -592,7 +1073,11 @@ async function readBaselineManifest(baselineManifestPath: string): Promise<Sessi
  */
 async function readRawArtefactFromDisk(rawArtefactPath: string): Promise<unknown> {
   const artefactText = await fs.readFile(rawArtefactPath, 'utf8');
-  return rawArtefactPath.endsWith('.json') ? JSON.parse(artefactText) : artefactText;
+  if (!rawArtefactPath.endsWith('.json')) {
+    return artefactText;
+  }
+
+  return JSON.parse(normaliseJsonArtefactText(artefactText));
 }
 
 /**
@@ -801,6 +1286,9 @@ function shouldMirrorCommandOutput(): boolean {
 
 /**
  * Persists tool-specific command output to a raw artefact file.
+ * For eslint and vitest, the tool writes its own JSON output via CLI flags,
+ * but on failure the tool may not write anything, so we fallback to captured output.
+ * For tsc and playwright, we always write the captured output.
  *
  * @param {{ tool: RegressionTool; rawArtefactPath: string; commandOutput: { stdout: string; stderr: string } }} options
  * Persistence inputs.
@@ -816,18 +1304,84 @@ export async function persistCapturedArtefact(options: {
   rawArtefactPath: string;
   commandOutput: { stdout: string; stderr: string };
 }): Promise<void> {
-  if (options.tool === 'playwright') {
-    await writeFileToDisk(options.rawArtefactPath, options.commandOutput.stdout);
-    return;
+  // For eslint and vitest, check if the tool already wrote its own file
+  // (they use --output-file or --outputFile flags). If the file exists and
+  // has content, assume the tool wrote it successfully. Otherwise, fall back
+  // to writing the captured output (which includes error messages for failures).
+  if (options.tool === 'eslint' || options.tool === 'vitest') {
+    try {
+      const existingContent = await fs.readFile(options.rawArtefactPath, 'utf8');
+      if (existingContent.trim().length > 0) {
+        // Tool already wrote valid output, don't overwrite
+        return;
+      }
+    } catch {
+      // File doesn't exist or is empty, fall through to write captured output
+    }
   }
 
-  if (options.tool === 'tsc') {
-    const diagnosticText =
-      options.commandOutput.stdout.trim().length > 0
-        ? options.commandOutput.stdout
-        : options.commandOutput.stderr;
-    await writeFileToDisk(options.rawArtefactPath, diagnosticText);
+  // For all tools (or when eslint/vitest didn't write their own output),
+  // write the captured output. Combine stdout and stderr, with stderr first
+  // since error messages are typically in stderr.
+  const stdoutContent = options.commandOutput.stdout.trim();
+  const stderrContent = options.commandOutput.stderr.trim();
+  const content = [stderrContent, stdoutContent].filter((s) => s.length > 0).join('\n');
+  const outputContent = options.rawArtefactPath.endsWith('.json')
+    ? normaliseJsonArtefactText(content)
+    : content;
+
+  await writeFileToDisk(options.rawArtefactPath, outputContent);
+}
+
+/**
+ * Normalises npm-wrapped JSON artefact text by removing script banners when the
+ * remaining content is still a JSON document.
+ *
+ * @param {string} artefactText - Raw captured or read artefact text.
+ * @returns {string} Normalised JSON text when the payload is banner-prefixed, otherwise the original text.
+ */
+function normaliseJsonArtefactText(artefactText: string): string {
+  const bannerlessText = stripLeadingNpmScriptOutput(artefactText);
+  const trimmedText = bannerlessText.trimStart();
+
+  if (trimmedText.startsWith('{') || trimmedText.startsWith('[')) {
+    return bannerlessText;
   }
+
+  return artefactText;
+}
+
+/**
+ * Removes leading npm script banner lines and blank lines from captured output.
+ *
+ * @param {string} artefactText - Raw captured artefact text.
+ * @returns {string} Text without npm banners at the start.
+ */
+function stripLeadingNpmScriptOutput(artefactText: string): string {
+  const lines = artefactText.split(/\r?\n/u);
+  let firstContentLineIndex = 0;
+
+  while (firstContentLineIndex < lines.length) {
+    const line = lines[firstContentLineIndex];
+    const trimmedLine = line.trimStart();
+    if (trimmedLine.length === 0) {
+      firstContentLineIndex += 1;
+      continue;
+    }
+
+    if (trimmedLine.startsWith('{') || trimmedLine.startsWith('[')) {
+      break;
+    }
+
+    if (trimmedLine.startsWith('> ') || /^npm (WARN|notice|ERR!) /u.test(trimmedLine)) {
+      firstContentLineIndex += 1;
+      continue;
+    }
+
+    break;
+  }
+
+  return lines.slice(firstContentLineIndex).join('\n');
 }
 
 /**

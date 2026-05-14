@@ -46,6 +46,7 @@ type CompareModule = {
     checksInConfigOrder: CheckPair[];
     baselineCompatibility: BaselineCompatibility;
   }) => ComparisonResult | Promise<ComparisonResult>;
+  deriveSummaryFromArtefact: (tool: Tool, rawArtefact: unknown) => unknown;
 };
 
 const ESLINT_WARNING_SEVERITY = 1;
@@ -87,6 +88,53 @@ async function loadCompareModule(): Promise<CompareModule> {
 }
 
 describe('derived summaries and comparison engine', () => {
+  it('returns GREEN when every check stays passing and unchanged', async () => {
+    const { compareRegressionChecks } = await loadCompareModule();
+
+    const result = await compareRegressionChecks({
+      baselineCompatibility: { compatible: true },
+      checksInConfigOrder: [
+        {
+          baseline: {
+            id: 'eslint-clean',
+            tool: 'eslint',
+            status: 'passing',
+            rawArtefactPath: 'baseline/eslint.json',
+            error: null,
+            rawArtefact: [],
+          },
+          current: {
+            id: 'eslint-clean',
+            tool: 'eslint',
+            status: 'passing',
+            rawArtefactPath: 'run/eslint.json',
+            error: null,
+            rawArtefact: [],
+          },
+        },
+      ],
+    });
+
+    expect(result).toMatchObject({
+      overallStatus: 'GREEN',
+      totals: {
+        regressionsCount: 0,
+        newFailuresCount: 0,
+        fixesCount: 0,
+        checksPassing: 1,
+        checksFailing: 0,
+      },
+      checks: [
+        {
+          status: 'passing',
+          regressions: [],
+          newFailures: [],
+          fixes: [],
+        },
+      ],
+    });
+  });
+
   it('derives eslint warning/error fingerprints with regression semantics', async () => {
     const { compareRegressionChecks } = await loadCompareModule();
 
@@ -613,5 +661,77 @@ describe('derived summaries and comparison engine', () => {
     expect(result.checks.find((check) => check.id === 'unknown-exec-error')?.regressions).toEqual([
       'execution-error|unknown|Unknown execution failure.',
     ]);
+  });
+
+  it('marks compare results as failing when the current command exits non-zero without summary deltas', async () => {
+    const { compareRegressionChecks } = await loadCompareModule();
+
+    const result = await compareRegressionChecks({
+      baselineCompatibility: { compatible: true },
+      checksInConfigOrder: [
+        {
+          baseline: {
+            id: 'builder-test-coverage-check',
+            tool: 'vitest',
+            status: 'passing',
+            rawArtefactPath: 'baseline/vitest.json',
+            error: null,
+            rawArtefact: {
+              testResults: [
+                {
+                  name: 'src/sample.spec.ts',
+                  assertionResults: [
+                    {
+                      ancestorTitles: ['suite'],
+                      title: 'sample',
+                      status: 'passed',
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+          current: {
+            id: 'builder-test-coverage-check',
+            tool: 'vitest',
+            status: 'failing',
+            rawArtefactPath: 'run/vitest.json',
+            error: null,
+            rawArtefact: {
+              testResults: [
+                {
+                  name: 'src/sample.spec.ts',
+                  assertionResults: [
+                    {
+                      ancestorTitles: ['suite'],
+                      title: 'sample',
+                      status: 'passed',
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+        },
+      ],
+    });
+
+    expect(result.overallStatus).toBe('FAILING');
+    expect(result.totals.checksFailing).toBe(1);
+    expect(result.checks[0]).toMatchObject({
+      id: 'builder-test-coverage-check',
+      status: 'failing',
+      regressions: [],
+      newFailures: [],
+      fixes: [],
+    });
+  });
+
+  it('throws for unsupported regression tool values when deriving summaries directly', async () => {
+    const { deriveSummaryFromArtefact } = await loadCompareModule();
+
+    expect(() => deriveSummaryFromArtefact('made-up' as Tool, {})).toThrow(
+      'Unsupported regression tool: made-up'
+    );
   });
 });

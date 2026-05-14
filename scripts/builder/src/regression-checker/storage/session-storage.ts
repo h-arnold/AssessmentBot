@@ -9,6 +9,7 @@ const BASELINE_DIRECTORY_NAME = 'baseline';
 const RUNS_DIRECTORY_NAME = 'runs';
 const SESSION_KEY_PREFIX = 'session-';
 const WINDOWS_INVALID_FILENAME_CHARACTERS = /[<>:"/\\|?*\u0000-\u001F]/gu;
+const MULTIPLE_DASHES = /-{2,}/gu;
 
 type SessionIdSource = 'arg' | 'git-branch';
 type RegressionTool = 'eslint' | 'vitest' | 'playwright' | 'tsc';
@@ -80,13 +81,27 @@ type BaselineCompatibilityOptions = {
 };
 
 /**
- * Derives a stable filesystem-safe key for session storage directories.
+ * Derives a readable filesystem-safe key for session storage directories.
  *
  * @param {string} sessionId - Logical session identifier.
- * @returns {string} Safe directory key derived from the session identifier.
+ * @returns {string} Safe directory key derived from the session name.
  */
 export function createSessionStorageKey(sessionId: string): string {
-  return `${SESSION_KEY_PREFIX}${Buffer.from(sessionId, 'utf8').toString('base64url')}`;
+  const normalisedSessionId = normalisePathSeparators(sessionId.trim());
+  const withoutInvalidCharacters = normalisedSessionId.replaceAll(
+    WINDOWS_INVALID_FILENAME_CHARACTERS,
+    '-'
+  );
+  const withSingleDashGroups = withoutInvalidCharacters.replaceAll(MULTIPLE_DASHES, '-');
+  let withoutBoundaryDashes = withSingleDashGroups;
+  while (withoutBoundaryDashes.startsWith('-')) {
+    withoutBoundaryDashes = withoutBoundaryDashes.substring(1);
+  }
+  while (withoutBoundaryDashes.endsWith('-')) {
+    withoutBoundaryDashes = withoutBoundaryDashes.substring(0, withoutBoundaryDashes.length - 1);
+  }
+  const fallbackSafeName = withoutBoundaryDashes.length > 0 ? withoutBoundaryDashes : 'session';
+  return `${SESSION_KEY_PREFIX}${fallbackSafeName}`;
 }
 
 /**

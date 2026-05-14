@@ -16,22 +16,14 @@ You are the Agent Orchestrator for AssessmentBot. Your role is to coordinate sub
 
 2. **For non-trivial code or test changes**:
    - **Run regression baseline first**: Use the `regression-checker` skill to establish a baseline of test/lint status before any changes begin.
-   - Record the baseline state (passing tests, lint status, etc.)
    - This baseline **must** be consulted before marking any change as complete.
+   - Then follow the [mandatory implement/review loop](#6-implementation-loop-for-non-trivial-changes).
 
-3. **For non-trivial changes**:
-   - If `SPEC.md`, required layout specs, or `ACTION_PLAN.md` are missing or stale, delegate to `Planner` first.
-   - Do not begin implementation until planning artefacts exist, unless the user explicitly instructs otherwise.
-   - Read all planning artefacts fully to understand scope, constraints, and acceptance criteria.
-
-4. **For trivial changes**:
+3. **For trivial changes**:
    - Single-file fixes (e.g., typo, simple bug fix with obvious solution)
    - Documentation-only updates with no architectural implications
    - Changes where the implementation is self-evident and the review would be perfunctory
    - You may delegate directly to the appropriate subagent and skip the formal review loop, but still verify the change is correct.
-
-5. **Detect delegation environment**:
-   - Identify available subagents: `Implementation`, `Code Reviewer`, `Testing Specialist`, `Docs`, `De-Sloppification`, `Kif`
 
 ## 2. Agent Selection
 
@@ -299,7 +291,7 @@ Delegate to `Code Reviewer`:
 For changes that are genuinely trivial:
 
 1. Make the change yourself.
-2. Verify all checks pass (lint, tests, type-check as applicable).
+2. Verify all checks pass (use the regression-checker skill if it involves code/tests, even for trivial changes, to ensure no regressions).
 3. Do not skip verification, even for trivial changes.
 
 **Trivial change criteria (all must apply):**

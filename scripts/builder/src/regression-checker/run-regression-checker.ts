@@ -5,13 +5,18 @@ import { pathToFileURL } from 'node:url';
 
 import { loadDefaultRegressionCheckerConfig, runRegressionCheckerCli } from './cli/index.js';
 import { runCommand } from '../lib/process.js';
+import {
+  isCrossPlatformAbsolutePath,
+  isErrnoExceptionWithCode,
+  normalisePathSeparators,
+  normaliseRelativeSegments,
+} from '../lib/fs.js';
 
 const NPM_COMMAND_SPLIT_TOKEN = 'npm ';
 const NPM_RUN_SEGMENT_TOKEN = ' run ';
 const PREFIX_EQUALS_TOKEN = '--prefix=';
 const PREFIX_SPACE_TOKEN = '--prefix ';
 const MIN_WRAPPED_VALUE_LENGTH = 2;
-const QUOTE_TRIM_OFFSET = 1;
 
 /**
  * Runs the regression-checker CLI using repository defaults and the current process context.
@@ -134,8 +139,8 @@ function normaliseSafePackageDirectory(cwd: string): string | null {
     return null;
   }
 
-  const normalised = trimmed.replaceAll('\\', '/');
-  if (hasForbiddenPathPrefix(normalised)) {
+  const normalised = normalisePathSeparators(trimmed);
+  if (isCrossPlatformAbsolutePath(normalised)) {
     return null;
   }
 
@@ -238,56 +243,19 @@ function stripWrappingQuotes(value: string): string {
     return value;
   }
 
-  const hasDoubleQuotes = value.startsWith('"') && value.endsWith('"');
-  const hasSingleQuotes = value.startsWith("'") && value.endsWith("'");
+  let wrappingQuote: string | null = null;
 
-  if (hasDoubleQuotes || hasSingleQuotes) {
-    return value.slice(QUOTE_TRIM_OFFSET, value.length - QUOTE_TRIM_OFFSET);
+  if (value.startsWith('"') && value.endsWith('"')) {
+    wrappingQuote = '"';
+  } else if (value.startsWith("'") && value.endsWith("'")) {
+    wrappingQuote = "'";
+  }
+
+  if (wrappingQuote !== null) {
+    return value.slice(wrappingQuote.length, value.length - wrappingQuote.length);
   }
 
   return value;
-}
-
-/**
- * Detects absolute-path prefixes that are unsafe for repo-relative lookup.
- *
- * @param {string} normalisedPath - Separator-normalised path candidate.
- * @returns {boolean} `true` when the path is absolute or UNC-style.
- */
-function hasForbiddenPathPrefix(normalisedPath: string): boolean {
-  return (
-    normalisedPath.startsWith('/') ||
-    normalisedPath.startsWith('//') ||
-    /^[A-Za-z]:\//u.test(normalisedPath)
-  );
-}
-
-/**
- * Determines whether path segments attempt to traverse above repo root.
- *
- * @param {string[]} segments - Path segments.
- * @returns {string[] | null} Canonical segments or `null` when traversal escapes root.
- */
-function normaliseRelativeSegments(segments: string[]): string[] | null {
-  const canonicalSegments: string[] = [];
-  for (const segment of segments) {
-    if (segment === '' || segment === '.') {
-      continue;
-    }
-
-    if (segment === '..') {
-      if (canonicalSegments.length === 0) {
-        return null;
-      }
-
-      canonicalSegments.pop();
-      continue;
-    }
-
-    canonicalSegments.push(segment);
-  }
-
-  return canonicalSegments;
 }
 
 /**
@@ -311,7 +279,7 @@ async function readPackageJsonScripts(
 
     return parsedPackageJson.scripts ?? {};
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+    if (isErrnoExceptionWithCode(error, 'ENOENT')) {
       return null;
     }
 

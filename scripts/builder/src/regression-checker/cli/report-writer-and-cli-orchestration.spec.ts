@@ -92,7 +92,8 @@ type RegressionCliModule = {
     sessionIdSource: SessionIdSource;
     createdAt: string;
     checks: ScheduledCheckResult[];
-  }) => string;
+    readRawArtefact: (rawArtefactPath: string) => Promise<unknown>;
+  }) => Promise<string>;
   renderComparisonReport: (options: {
     sessionId: string;
     sessionStorageKey: string;
@@ -108,6 +109,7 @@ type RegressionCliModule = {
   }) => Promise<void>;
   resolveSessionArtefactPath: (sessionDirectory: string, relativeArtefactPath: string) => string;
   loadDefaultRegressionCheckerConfig: (repoRoot: string) => Promise<unknown>;
+  writeFileToDisk: (targetPath: string, content: string) => Promise<void>;
   runChecksFromConfig: (options: {
     config: RegressionConfig;
     repoRoot: string;
@@ -332,6 +334,28 @@ function createStorageResult(mode: StorageMode) {
   };
 }
 
+/**
+ * Runs `runChecksFromConfig` with a canonical single-check builder-lint config fixture.
+ *
+ * @param {RegressionCliModule['runChecksFromConfig']} runChecksFromConfig - CLI module runner.
+ * @param {string} tempRoot - Temporary repository root for the test.
+ * @param {Parameters<RegressionCliModule['runChecksFromConfig']>[0]['runCommandImpl']} runCommandImpl
+ * Command runner implementation for the scenario.
+ * @returns {Promise<ScheduledCheckResult[]>} Normalised scheduled check results.
+ */
+async function runSingleBuilderLintCheck(
+  runChecksFromConfig: RegressionCliModule['runChecksFromConfig'],
+  tempRoot: string,
+  runCommandImpl: Parameters<RegressionCliModule['runChecksFromConfig']>[0]['runCommandImpl']
+): Promise<ScheduledCheckResult[]> {
+  return runChecksFromConfig({
+    repoRoot: tempRoot,
+    rawArtefactDirectory: path.join(tempRoot, 'reports', 'run'),
+    config: createConfig(),
+    runCommandImpl,
+  });
+}
+
 describe('report writer and CLI orchestration', () => {
   it('returns baseline-mode output with explicit baseline-created messaging and zero exit code', async () => {
     const { runRegressionCheckerCli } = await loadCliModule();
@@ -368,18 +392,23 @@ describe('report writer and CLI orchestration', () => {
     expect(result.mode).toBe('baseline');
     expect(result.exitCode).toBe(0);
     expect(result.outputText).toContain('=== REGRESSION HEADER START ===');
-    expect(result.outputText).toContain('baselineCreatedThisRun: true');
-    expect(result.outputText).toContain('baselineTimestamp: N/A');
-    expect(result.outputText).toContain(
-      'This run created the baseline and did not perform comparison diffing.'
-    );
+    expect(result.outputText).toContain('Baseline Created This Run: true');
+    expect(result.outputText).toContain('Baseline Timestamp: N/A');
+    expect(result.outputText).toContain('builder-lint: passing');
+    expect(result.outputText).toContain('--- PER-COMMAND SUMMARY ---');
     expect(receivedManifestChecks).toEqual([
       expect.objectContaining({
         rawArtefactPath: 'baseline/checks/builder-lint/raw.json',
         derivedSummaryPath: 'baseline/checks/builder-lint/derived.json',
       }),
     ]);
-    expect(writes).toEqual([]);
+    expect(writes).toEqual([
+      {
+        targetPath:
+          '/repo/.ts-regression-checker/reports/session-feature-regression-checker/baseline/baseline.txt',
+        content: expect.stringContaining('=== REGRESSION HEADER START ==='),
+      },
+    ]);
   });
 
   it('writes compare artefacts and returns exit code 1 when regressions are detected', async () => {
@@ -455,7 +484,7 @@ describe('report writer and CLI orchestration', () => {
 
     expect(result.mode).toBe('compare');
     expect(result.exitCode).toBe(1);
-    expect(result.outputText).toContain('overallStatus: FAILING');
+    expect(result.outputText).toContain('Overall Status: FAILING');
     expect(writes.map((entry) => entry.targetPath)).toEqual([
       '/repo/.ts-regression-checker/reports/session-feature-regression-checker/runs/2026-05-13T05-00-00.000Z/comparison.json',
       '/repo/.ts-regression-checker/reports/session-feature-regression-checker/runs/2026-05-13T05-00-00.000Z/comparison.txt',
@@ -521,20 +550,20 @@ describe('report writer and CLI orchestration', () => {
       .filter((line) => line.includes(': '))
       .slice(0, COMPARE_HEADER_LINE_COUNT);
     expect(headerLines).toEqual([
-      'sessionId: feature/regression-checker',
-      'sessionStorageKey: session-feature-regression-checker',
-      'sessionIdSource: arg',
-      'mode: compare',
-      'baselineCreatedThisRun: false',
-      'baselineTimestamp: 2026-05-13T05:00:00.000Z',
-      'currentTimestamp: 2026-05-13T05:00:00.000Z',
-      'overallStatus: GREEN',
-      'totalChecks: 1',
-      'checksPassing: 1',
-      'checksFailing: 0',
-      'regressionsCount: 0',
-      'newFailuresCount: 0',
-      'fixesCount: 0',
+      'Session ID: feature/regression-checker',
+      'Session Storage Key: session-feature-regression-checker',
+      'Session ID Source: arg',
+      'Mode: compare',
+      'Baseline Created This Run: false',
+      'Baseline Timestamp: 2026-05-13T05:00:00.000Z',
+      'Current Timestamp: 2026-05-13T05:00:00.000Z',
+      'Overall Status: GREEN',
+      'Total Checks: 1',
+      'Checks Passing: 1',
+      'Checks Failing: 0',
+      'Regressions Count: 0',
+      'New Failures Count: 0',
+      'Fixes Count: 0',
     ]);
   });
 
@@ -830,12 +859,11 @@ describe('report writer and CLI orchestration', () => {
       },
     });
 
-    expect(report).toContain('overallStatus: BASELINE-INCOMPATIBLE');
-    expect(report).toContain('checkId: builder-lint');
-    expect(report).toContain('status: baseline-incompatible');
+    expect(report).toContain('Overall Status: BASELINE-INCOMPATIBLE');
+    expect(report).toContain('builder-lint: baseline-incompatible');
   });
 
-  it('persists playwright stdout artefacts and resolves session artefact paths deterministically', async () => {
+  it('strips npm script banners from Playwright JSON artefacts before persisting them', async () => {
     const { persistCapturedArtefact, resolveSessionArtefactPath } = await loadCliModule();
     const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'regression-cli-playwright-'));
     tempDirectories.push(tempRoot);
@@ -845,7 +873,15 @@ describe('report writer and CLI orchestration', () => {
       tool: 'playwright',
       rawArtefactPath,
       commandOutput: {
-        stdout: '{"status":"ok"}',
+        stdout: [
+          '> AssessmentBot@1.0.0 test:frontend:e2e',
+          '> npm --prefix src/frontend run test:e2e -- --reporter=json',
+          '',
+          '> frontend@0.0.0 test:e2e',
+          '> playwright test --reporter=json',
+          '',
+          '{"status":"ok"}',
+        ].join('\n'),
         stderr: '',
       },
     });
@@ -978,7 +1014,7 @@ describe('report writer and CLI orchestration', () => {
     }
   });
 
-  it('persists tsc diagnostics from stderr fallback and ignores non-tsc/non-playwright writes', async () => {
+  it('persists tsc diagnostics from stderr fallback and preserves eslint tool-written artefacts', async () => {
     const { persistCapturedArtefact } = await loadCliModule();
     const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'regression-cli-tsc-stderr-'));
     tempDirectories.push(tempRoot);
@@ -992,14 +1028,60 @@ describe('report writer and CLI orchestration', () => {
       rawArtefactPath: tscRawArtefactPath,
       commandOutput: { stdout: '   ', stderr: stderrDiagnostics },
     });
+
+    // First, have eslint write its own file (simulating tool behavior)
+    await fs.mkdir(path.dirname(eslintRawArtefactPath), { recursive: true });
+    await fs.writeFile(eslintRawArtefactPath, '{"messages":[]}', 'utf8');
+
+    // Now call persistCapturedArtefact - it should NOT overwrite the tool-written file
     await persistCapturedArtefact({
       tool: 'eslint',
       rawArtefactPath: eslintRawArtefactPath,
-      commandOutput: { stdout: '{"messages":[]}', stderr: '' },
+      commandOutput: { stdout: 'npm header', stderr: '' },
     });
 
     await expect(fs.readFile(tscRawArtefactPath, 'utf8')).resolves.toBe(stderrDiagnostics);
-    await expect(fs.access(eslintRawArtefactPath)).rejects.toThrow();
+    // ESLint file should still have the tool-written content, not the captured stdout
+    await expect(fs.readFile(eslintRawArtefactPath, 'utf8')).resolves.toBe('{"messages":[]}');
+  });
+
+  it('falls back to captured output when eslint tool does not write file', async () => {
+    const { persistCapturedArtefact } = await loadCliModule();
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'regression-cli-eslint-fallback-'));
+    tempDirectories.push(tempRoot);
+
+    const eslintRawArtefactPath = path.join(tempRoot, 'checks', 'lint', 'raw.json');
+    const errorMessage = 'ESLint configuration error';
+
+    // Call persistCapturedArtefact without tool-written file - should write captured output
+    await persistCapturedArtefact({
+      tool: 'eslint',
+      rawArtefactPath: eslintRawArtefactPath,
+      commandOutput: { stdout: '', stderr: errorMessage },
+    });
+
+    // Should contain stderr error message
+    await expect(fs.readFile(eslintRawArtefactPath, 'utf8')).resolves.toBe(errorMessage);
+  });
+
+  it('combines stdout and stderr when both are present and tool does not write file', async () => {
+    const { persistCapturedArtefact } = await loadCliModule();
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'regression-cli-combined-'));
+    tempDirectories.push(tempRoot);
+
+    const eslintRawArtefactPath = path.join(tempRoot, 'checks', 'lint', 'raw.json');
+
+    // Call persistCapturedArtefact with both stdout and stderr
+    await persistCapturedArtefact({
+      tool: 'eslint',
+      rawArtefactPath: eslintRawArtefactPath,
+      commandOutput: { stdout: 'npm header', stderr: 'Error: ESLint failed' },
+    });
+
+    // Should contain stderr first, then stdout
+    await expect(fs.readFile(eslintRawArtefactPath, 'utf8')).resolves.toBe(
+      'Error: ESLint failed\nnpm header'
+    );
   });
 
   it('loads default config from disk and rethrows unexpected runner failures', async () => {
@@ -1143,26 +1225,10 @@ describe('report writer and CLI orchestration', () => {
     const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'regression-cli-success-runchecks-'));
     tempDirectories.push(tempRoot);
 
-    const results = await runChecksFromConfig({
-      repoRoot: tempRoot,
-      rawArtefactDirectory: path.join(tempRoot, 'reports', 'run'),
-      config: {
-        reportDirectory: REPORT_DIRECTORY,
-        parallel: { enabled: true, maxWorkers: 1 },
-        checks: [
-          {
-            id: 'builder-lint',
-            tool: 'eslint',
-            cwd: '.',
-            run: { kind: 'npm-script', script: 'lint:builder:check' },
-          },
-        ],
-      },
-      runCommandImpl: async () => ({
-        stdout: '',
-        stderr: '',
-      }),
-    });
+    const results = await runSingleBuilderLintCheck(runChecksFromConfig, tempRoot, async () => ({
+      stdout: '',
+      stderr: '',
+    }));
 
     expect(results).toEqual([
       {
@@ -1181,5 +1247,427 @@ describe('report writer and CLI orchestration', () => {
         error: null,
       },
     ]);
+  });
+
+  it('returns execution-error status for CommandExecutionError with null exitCode', async () => {
+    const { runChecksFromConfig } = await loadCliModule();
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'regression-cli-exec-error-'));
+    tempDirectories.push(tempRoot);
+
+    const results = await runSingleBuilderLintCheck(runChecksFromConfig, tempRoot, async () => {
+      throw new CommandExecutionError('Command failed without exit code', {
+        command: 'npm',
+        args: ['run', 'lint:builder:check'],
+        cwd: tempRoot,
+        exitCode: null,
+        signal: null,
+        stdout: '',
+        stderr: 'Command failed without exit code',
+        timedOut: false,
+        timeoutMs: null,
+      });
+    });
+
+    expect(results).toEqual([
+      {
+        id: 'builder-lint',
+        tool: 'eslint',
+        rawArtefactPath: path.join(
+          tempRoot,
+          'reports',
+          'run',
+          'checks',
+          'builder-lint',
+          'raw.json'
+        ),
+        status: 'execution-error',
+        exitCode: null,
+        error: null,
+      },
+    ]);
+  });
+
+  it('reads baseline manifest from disk via readBaselineManifest', async () => {
+    const { runRegressionCheckerCli } = await loadCliModule();
+    const { createSessionStorageKey } = await import('../storage/session-storage.js');
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'regression-cli-readbaseline-'));
+    tempDirectories.push(tempRoot);
+
+    const config = createConfig();
+    const sessionId = SESSION_ID;
+    const sessionStorageKey = createSessionStorageKey(sessionId);
+
+    // Create the baseline manifest at the exact path
+    const reportRoot = path.join(tempRoot, config.reportDirectory);
+    const sessionDirectory = path.join(reportRoot, sessionStorageKey);
+    const baselineDirectory = path.join(sessionDirectory, 'baseline');
+    const baselineManifestPath = path.join(baselineDirectory, 'manifest.json');
+
+    await fs.mkdir(baselineDirectory, { recursive: true });
+    await fs.writeFile(
+      baselineManifestPath,
+      JSON.stringify({
+        sessionId,
+        sessionStorageKey,
+        sessionIdSource: 'arg',
+        mode: 'baseline',
+        createdAt: CREATED_AT,
+        baselineCreatedThisRun: true,
+        configFingerprint: 'config-fingerprint-v1',
+        checks: [],
+      }),
+      'utf8'
+    );
+
+    const result = await runRegressionCheckerCli({
+      positionalSessionId: sessionId,
+      repoRoot: tempRoot,
+      createdAt: CREATED_AT,
+      logicalCpuCount: 4,
+      loadRawConfig: async () => config,
+      packageJsonScriptsByDirectory: createPackageScriptMap(),
+      resolveGitBranchName: async () => 'ignored',
+      prepareSessionStorage: async () => ({
+        mode: 'compare' as const,
+        sessionStorageKey,
+        sessionDirectory,
+        baselineDirectory,
+        baselineManifestPath,
+        currentRunDirectory: path.join(sessionDirectory, 'runs', '2026-05-13T05-00-00.000Z'),
+        currentManifestPath: path.join(
+          sessionDirectory,
+          'runs',
+          '2026-05-13T05-00-00.000Z',
+          'manifest.json'
+        ),
+        manifest: {
+          sessionId,
+          sessionStorageKey,
+          sessionIdSource: 'arg',
+          mode: 'compare',
+          createdAt: CREATED_AT,
+          baselineCreatedThisRun: false,
+          configFingerprint: 'config-fingerprint-v1',
+          checks: [],
+        },
+      }),
+      // Do NOT inject readBaselineManifest - use default from module
+      runChecks: async () => [
+        {
+          id: 'builder-lint',
+          tool: 'eslint',
+          rawArtefactPath: 'runs/2026-05-13T05-00-00.000Z/checks/builder-lint/raw.json',
+          status: 'passing',
+          exitCode: 0,
+          error: null,
+        },
+      ],
+      writeFile: async () => {},
+    });
+
+    expect(result.mode).toBe('compare');
+  });
+
+  it('renders baseline report with multiple tools sorted in tool summary', async () => {
+    const { renderBaselineReport } = await loadCliModule();
+
+    const report = await renderBaselineReport({
+      sessionId: SESSION_ID,
+      sessionStorageKey: SESSION_STORAGE_KEY,
+      sessionIdSource: 'arg',
+      createdAt: CREATED_AT,
+      checks: [
+        {
+          id: 'builder-lint',
+          tool: 'eslint',
+          rawArtefactPath: 'baseline/checks/builder-lint/raw.json',
+          status: 'passing',
+          exitCode: 0,
+          error: null,
+        },
+        {
+          id: 'builder-test',
+          tool: 'vitest',
+          rawArtefactPath: 'baseline/checks/builder-test/raw.json',
+          status: 'passing',
+          exitCode: 0,
+          error: null,
+        },
+        {
+          id: 'builder-typecheck',
+          tool: 'tsc',
+          rawArtefactPath: 'baseline/checks/builder-typecheck/raw.txt',
+          status: 'passing',
+          exitCode: 0,
+          error: null,
+        },
+      ],
+      readRawArtefact: async () => ({}),
+    });
+
+    // Should contain sorted tool summary (eslint, playwright, tsc, vitest)
+    expect(report).toContain('Tool Summary: eslint=1, tsc=1, vitest=1');
+    expect(report).not.toContain('--- FAILED CHECKS ---');
+  });
+
+  it('renders comparison report with single fix showing singular form', async () => {
+    const { renderComparisonReport } = await loadCliModule();
+
+    const report = renderComparisonReport({
+      sessionId: SESSION_ID,
+      sessionStorageKey: SESSION_STORAGE_KEY,
+      sessionIdSource: 'arg',
+      baselineTimestamp: CREATED_AT,
+      currentTimestamp: CREATED_AT,
+      comparison: {
+        overallStatus: 'GREEN',
+        baselineCompatibility: { compatible: true },
+        checks: [
+          {
+            id: 'builder-lint',
+            tool: 'eslint',
+            status: 'failing',
+            baselineSummary: { kind: 'eslint', counts: { errors: 1, warnings: 0 } },
+            currentSummary: { kind: 'eslint', counts: { errors: 0, warnings: 0 } },
+            regressions: [],
+            newFailures: [],
+            fixes: ['no-alert|src/example.ts|1|1|Alert removed.'],
+            executionError: null,
+            baselineIncompatibility: null,
+          },
+        ],
+        totals: {
+          regressionsCount: 0,
+          newFailuresCount: 0,
+          fixesCount: 1,
+          checksPassing: 0,
+          checksFailing: 1,
+        },
+      },
+    });
+
+    // Should show singular "1 fix" in per-command summary
+    expect(report).toContain('builder-lint (1 fix): failing');
+    expect(report).toContain('Fixes: 1');
+  });
+
+  it('writes file content to disk via writeFileToDisk', async () => {
+    const { writeFileToDisk } = await loadCliModule();
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'regression-cli-writefile-'));
+    tempDirectories.push(tempRoot);
+
+    const targetPath = path.join(tempRoot, 'subdir', 'test-file.txt');
+    const content = 'test content';
+
+    await writeFileToDisk(targetPath, content);
+
+    const writtenContent = await fs.readFile(targetPath, 'utf8');
+    expect(writtenContent).toBe(content);
+  });
+
+  it('renders baseline report with failing checks and failed checks list', async () => {
+    const { renderBaselineReport } = await loadCliModule();
+
+    const report = await renderBaselineReport({
+      sessionId: SESSION_ID,
+      sessionStorageKey: SESSION_STORAGE_KEY,
+      sessionIdSource: 'arg',
+      createdAt: CREATED_AT,
+      checks: [
+        {
+          id: 'builder-lint',
+          tool: 'eslint',
+          rawArtefactPath: 'baseline/checks/builder-lint/raw.json',
+          status: 'failing',
+          exitCode: 1,
+          error: null,
+        },
+      ],
+      readRawArtefact: async () => ({}),
+    });
+
+    // Should contain the FAILED CHECKS section when there are failed checks
+    expect(report).toContain('--- FAILED CHECKS ---');
+    expect(report).toContain('builder-lint: failing');
+    expect(report).toContain('Overall Status: FAILING');
+  });
+
+  it('renders baseline report with empty failed checks list when all checks pass', async () => {
+    const { renderBaselineReport } = await loadCliModule();
+
+    const report = await renderBaselineReport({
+      sessionId: SESSION_ID,
+      sessionStorageKey: SESSION_STORAGE_KEY,
+      sessionIdSource: 'arg',
+      createdAt: CREATED_AT,
+      checks: [
+        {
+          id: 'builder-lint',
+          tool: 'eslint',
+          rawArtefactPath: 'baseline/checks/builder-lint/raw.json',
+          status: 'passing',
+          exitCode: 0,
+          error: null,
+        },
+      ],
+      readRawArtefact: async () => ({}),
+    });
+
+    // Should not contain the FAILED CHECKS section when all checks pass
+    expect(report).not.toContain('--- FAILED CHECKS ---');
+    expect(report).toContain('--- PER-COMMAND SUMMARY ---');
+    expect(report).toContain('builder-lint: passing');
+    expect(report).toContain('Overall Status: GREEN');
+  });
+
+  it('renders rich failure details across eslint, vitest/playwright, and tsc checks', async () => {
+    const { renderBaselineReport } = await loadCliModule();
+
+    const report = await renderBaselineReport({
+      sessionId: SESSION_ID,
+      sessionStorageKey: SESSION_STORAGE_KEY,
+      sessionIdSource: 'arg',
+      createdAt: CREATED_AT,
+      checks: [
+        {
+          id: 'lint-rich',
+          tool: 'eslint',
+          rawArtefactPath: 'baseline/checks/lint-rich/raw.json',
+          status: 'failing',
+          exitCode: 1,
+          error: null,
+        },
+        {
+          id: 'vitest-rich',
+          tool: 'vitest',
+          rawArtefactPath: 'baseline/checks/vitest-rich/raw.json',
+          status: 'failing',
+          exitCode: 1,
+          error: null,
+        },
+        {
+          id: 'playwright-empty',
+          tool: 'playwright',
+          rawArtefactPath: 'baseline/checks/playwright-empty/raw.json',
+          status: 'failing',
+          exitCode: 1,
+          error: null,
+        },
+        {
+          id: 'tsc-rich',
+          tool: 'tsc',
+          rawArtefactPath: 'baseline/checks/tsc-rich/raw.txt',
+          status: 'failing',
+          exitCode: 2,
+          error: null,
+        },
+      ],
+      readRawArtefact: async (rawArtefactPath) => {
+        if (rawArtefactPath.includes('lint-rich')) {
+          return [
+            {
+              filePath: 'src/rich.ts',
+              messages: [
+                { ruleId: 'a', severity: 2, message: 'a', line: 1, column: 1 },
+                { ruleId: 'b', severity: 2, message: 'b', line: 2, column: 1 },
+                { ruleId: 'c', severity: 1, message: 'c', line: 3, column: 1 },
+                { ruleId: 'd', severity: 1, message: 'd', line: 4, column: 1 },
+                { ruleId: 'e', severity: 1, message: 'e', line: 5, column: 1 },
+                { ruleId: 'f', severity: 1, message: 'f', line: 6, column: 1 },
+              ],
+            },
+          ];
+        }
+
+        if (rawArtefactPath.includes('vitest-rich')) {
+          return {
+            testResults: [
+              {
+                name: 'src/example.spec.ts',
+                assertionResults: [
+                  { ancestorTitles: ['suite'], title: 'pass', status: 'passed' },
+                  { ancestorTitles: ['suite'], title: 'skip', status: 'skipped' },
+                  { ancestorTitles: ['suite'], title: 'fail one', status: 'failed' },
+                  { ancestorTitles: ['suite'], title: 'fail two', status: 'failed' },
+                ],
+              },
+            ],
+          };
+        }
+
+        if (rawArtefactPath.includes('playwright-empty')) {
+          return {
+            suites: [
+              {
+                title: 'pw',
+                file: 'e2e/sample.spec.ts',
+                specs: [],
+              },
+            ],
+          };
+        }
+
+        if (rawArtefactPath.includes('tsc-rich')) {
+          return [
+            'src/a.ts(1,1): error TS1001: one',
+            'src/b.ts(2,1): error TS1002: two',
+            'src/c.ts(3,1): error TS1003: three',
+            'src/d.ts(4,1): error TS1004: four',
+            'src/e.ts(5,1): error TS1005: five',
+            'src/f.ts(6,1): error TS1006: six',
+          ].join('\n');
+        }
+
+        return {};
+      },
+    });
+
+    expect(report).toContain('Errors: 2, Warnings: 4');
+    expect(report).toContain('... and 1 more issues');
+    expect(report).toContain('Failed: 2, Passed: 1, Skipped: 1');
+    expect(report).toContain('Failed Tests:');
+    expect(report).toContain('Diagnostics: 6');
+    expect(report).toContain('... and 1 more diagnostics');
+  });
+
+  it('omits rich details when artefact reads fail or summaries contain no actionable failures', async () => {
+    const { renderBaselineReport } = await loadCliModule();
+
+    const report = await renderBaselineReport({
+      sessionId: SESSION_ID,
+      sessionStorageKey: SESSION_STORAGE_KEY,
+      sessionIdSource: 'arg',
+      createdAt: CREATED_AT,
+      checks: [
+        {
+          id: 'lint-read-error',
+          tool: 'eslint',
+          rawArtefactPath: 'baseline/checks/lint-read-error/raw.json',
+          status: 'failing',
+          exitCode: null,
+          error: null,
+        },
+        {
+          id: 'tsc-empty',
+          tool: 'tsc',
+          rawArtefactPath: 'baseline/checks/tsc-empty/raw.txt',
+          status: 'failing',
+          exitCode: 2,
+          error: null,
+        },
+      ],
+      readRawArtefact: async (rawArtefactPath) => {
+        if (rawArtefactPath.includes('lint-read-error')) {
+          throw new Error('disk read failed');
+        }
+
+        return '';
+      },
+    });
+
+    expect(report).toContain('lint-read-error (eslint)');
+    expect(report).toContain('Exit Code: N/A');
+    expect(report).not.toContain('Issues:');
+    expect(report).not.toContain('Diagnostics:');
   });
 });

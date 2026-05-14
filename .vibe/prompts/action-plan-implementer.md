@@ -51,10 +51,7 @@ Use `Kif` for quick file exploration when you need to locate relevant snippets b
 
 **Before any implementation work begins**, you MUST establish a regression baseline.
 
-1. **Delegate to `regression-checker`** using the current branch as the session name. **Use the branch name as the session id** so every comparison targets the same baseline.
-2. Pass the session name explicitly. If no session name is provided, the subagent will return an error.
-3. The regression-checker will run all tests, linters, and CI routines, creating a baseline report. It will return the filename of the saved baseline report.
-4. **DO NOT PROCEED** with any implementation until the baseline is established and the filename is returned.
+**Use your `regression-checker` skill** to establish a clean baseline for the current branch. This will capture the current state of all tests, linters, and CI routines.
 
 **This is a non-negotiable gate.** The baseline must be clean or you must document all existing failures as accepted technical debt before starting.
 
