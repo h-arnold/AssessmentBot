@@ -841,7 +841,7 @@ describe('report writer and CLI orchestration', () => {
     expect(report).toContain('builder-lint: baseline-incompatible');
   });
 
-  it('persists playwright stdout artefacts and resolves session artefact paths deterministically', async () => {
+  it('strips npm script banners from Playwright JSON artefacts before persisting them', async () => {
     const { persistCapturedArtefact, resolveSessionArtefactPath } = await loadCliModule();
     const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'regression-cli-playwright-'));
     tempDirectories.push(tempRoot);
@@ -851,7 +851,15 @@ describe('report writer and CLI orchestration', () => {
       tool: 'playwright',
       rawArtefactPath,
       commandOutput: {
-        stdout: '{"status":"ok"}',
+        stdout: [
+          '> AssessmentBot@1.0.0 test:frontend:e2e',
+          '> npm --prefix src/frontend run test:e2e -- --reporter=json',
+          '',
+          '> frontend@0.0.0 test:e2e',
+          '> playwright test --reporter=json',
+          '',
+          '{"status":"ok"}',
+        ].join('\n'),
         stderr: '',
       },
     });

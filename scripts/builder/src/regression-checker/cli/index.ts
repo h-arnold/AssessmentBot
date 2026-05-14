@@ -220,7 +220,7 @@ function renderEslintFindings(
     const finding = findings[i];
     const ruleId = extractPart(finding.fingerprint, 0);
     const filePath = extractPart(finding.fingerprint, 1);
-    const line = extractPart(finding.fingerprint, 2);
+    const line = extractPart(finding.fingerprint, FP_LINE);
     detailsLines.push(`   - ${ruleId} at ${filePath}:${line} (${finding.severity})`);
   }
   if (findings.length > MAX_FAILURE_DETAILS) {
@@ -1069,7 +1069,11 @@ async function readBaselineManifest(baselineManifestPath: string): Promise<Sessi
  */
 async function readRawArtefactFromDisk(rawArtefactPath: string): Promise<unknown> {
   const artefactText = await fs.readFile(rawArtefactPath, 'utf8');
-  return rawArtefactPath.endsWith('.json') ? JSON.parse(artefactText) : artefactText;
+  if (!rawArtefactPath.endsWith('.json')) {
+    return artefactText;
+  }
+
+  return JSON.parse(normaliseJsonArtefactText(artefactText));
 }
 
 /**
@@ -1318,8 +1322,52 @@ export async function persistCapturedArtefact(options: {
   const stdoutContent = options.commandOutput.stdout.trim();
   const stderrContent = options.commandOutput.stderr.trim();
   const content = [stderrContent, stdoutContent].filter((s) => s.length > 0).join('\n');
+  const outputContent = options.rawArtefactPath.endsWith('.json')
+    ? normaliseJsonArtefactText(content)
+    : content;
 
-  await writeFileToDisk(options.rawArtefactPath, content);
+  await writeFileToDisk(options.rawArtefactPath, outputContent);
+}
+
+/**
+ * Normalises npm-wrapped JSON artefact text by removing script banners when the
+ * remaining content is still a JSON document.
+ *
+ * @param {string} artefactText - Raw captured or read artefact text.
+ * @returns {string} Normalised JSON text when the payload is banner-prefixed, otherwise the original text.
+ */
+function normaliseJsonArtefactText(artefactText: string): string {
+  const bannerlessText = stripLeadingNpmScriptOutput(artefactText);
+  const trimmedText = bannerlessText.trimStart();
+
+  if (trimmedText.startsWith('{') || trimmedText.startsWith('[')) {
+    return bannerlessText;
+  }
+
+  return artefactText;
+}
+
+/**
+ * Removes leading npm script banner lines and blank lines from captured output.
+ *
+ * @param {string} artefactText - Raw captured artefact text.
+ * @returns {string} Text without npm banners at the start.
+ */
+function stripLeadingNpmScriptOutput(artefactText: string): string {
+  const lines = artefactText.split(/\r?\n/u);
+  let firstContentLineIndex = 0;
+
+  while (firstContentLineIndex < lines.length) {
+    const line = lines[firstContentLineIndex];
+    if (line.trim().length === 0 || line.startsWith('> ')) {
+      firstContentLineIndex += 1;
+      continue;
+    }
+
+    break;
+  }
+
+  return lines.slice(firstContentLineIndex).join('\n');
 }
 
 /**

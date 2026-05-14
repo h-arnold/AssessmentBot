@@ -15,8 +15,7 @@ export async function pathExists(targetPath: string): Promise<boolean> {
     await fs.access(targetPath);
     return true;
   } catch (err) {
-    const error = err as NodeJS.ErrnoException;
-    if (error.code === 'ENOENT') {
+    if (isErrnoExceptionWithCode(err, 'ENOENT')) {
       return false;
     }
     throw err;
@@ -34,7 +33,7 @@ export async function pathExists(targetPath: string): Promise<boolean> {
 export async function requireDirectory(
   targetPath: string,
   label: string,
-  stage: BuildStageId,
+  stage: BuildStageId
 ): Promise<void> {
   try {
     const stats = await fs.stat(targetPath);
@@ -60,7 +59,7 @@ export async function requireDirectory(
 export async function requireFile(
   targetPath: string,
   label: string,
-  stage: BuildStageId,
+  stage: BuildStageId
 ): Promise<void> {
   try {
     const stats = await fs.stat(targetPath);
@@ -86,6 +85,64 @@ export function normalisePathSeparators(targetPath: string): string {
 }
 
 /**
+ * Detects absolute paths across POSIX and Windows formats.
+ *
+ * @param {string} value - Separator-normalised path.
+ * @returns {boolean} `true` when the path is absolute.
+ */
+export function isCrossPlatformAbsolutePath(value: string): boolean {
+  return value.startsWith('/') || value.startsWith('//') || /^[A-Za-z]:\//u.test(value);
+}
+
+/**
+ * Determines whether path segments attempt to traverse above repo root.
+ *
+ * @param {string[]} segments - Path segments.
+ * @returns {string[] | null} Canonical segments or `null` when traversal escapes root.
+ */
+export function normaliseRelativeSegments(segments: string[]): string[] | null {
+  const canonicalSegments: string[] = [];
+
+  for (const segment of segments) {
+    if (segment === '' || segment === '.') {
+      continue;
+    }
+
+    if (segment === '..') {
+      if (canonicalSegments.length === 0) {
+        return null;
+      }
+
+      canonicalSegments.pop();
+      continue;
+    }
+
+    canonicalSegments.push(segment);
+  }
+
+  return canonicalSegments;
+}
+
+/**
+ * Narrows an error to an errno exception with a matching code.
+ *
+ * @param {unknown} error - Candidate error value.
+ * @param {string} code - Error code to match.
+ * @returns {error is NodeJS.ErrnoException} `true` when the error matches the code.
+ */
+export function isErrnoExceptionWithCode(
+  error: unknown,
+  code: string
+): error is NodeJS.ErrnoException {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: unknown }).code === code
+  );
+}
+
+/**
  * Joins a child path using the separator style implied by the root path.
  *
  * @param {string} rootDir - Root directory being traversed.
@@ -93,7 +150,9 @@ export function normalisePathSeparators(targetPath: string): string {
  * @returns {string} Joined child path preserving the root path style.
  */
 function joinChildPath(rootDir: string, childName: string): string {
-  return rootDir.includes('\\') ? path.win32.join(rootDir, childName) : path.join(rootDir, childName);
+  return rootDir.includes('\\')
+    ? path.win32.join(rootDir, childName)
+    : path.join(rootDir, childName);
 }
 
 /**

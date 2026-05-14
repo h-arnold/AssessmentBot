@@ -244,6 +244,64 @@ describe('run-regression-checker helpers', () => {
     });
   });
 
+  it('preserves single-character quoted --prefix values as literal directory names', async () => {
+    const tempRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), 'regression-checker-wrapper-prefix-literal-quotes-')
+    );
+    tempDirectories.push(tempRoot);
+
+    const readFileMock = vi.spyOn(fs, 'readFile').mockImplementation(async (filePath: unknown) => {
+      if (filePath === path.join(tempRoot, 'package.json')) {
+        return JSON.stringify({
+          scripts: {
+            singleDoubleQuote: `npm --prefix '"' run lint --`,
+            singleSingleQuote: `npm --prefix "'" run lint --`,
+          },
+        });
+      }
+
+      if (filePath === path.join(tempRoot, '"', 'package.json')) {
+        return JSON.stringify({
+          scripts: {
+            lint: 'eslint .',
+          },
+        });
+      }
+
+      if (filePath === path.join(tempRoot, "'", 'package.json')) {
+        return JSON.stringify({
+          scripts: {
+            lint: 'vitest run',
+          },
+        });
+      }
+
+      throw new Error(`Unexpected package.json path: ${String(filePath)}`);
+    });
+
+    await expect(
+      loadPackageJsonScriptsByDirectory({
+        repoRoot: tempRoot,
+        rawConfig: { checks: [{ cwd: '.' }] },
+      })
+    ).resolves.toEqual({
+      '.': {
+        singleDoubleQuote: `npm --prefix '"' run lint --`,
+        singleSingleQuote: `npm --prefix "'" run lint --`,
+      },
+      '"': {
+        lint: 'eslint .',
+      },
+      "'": {
+        lint: 'vitest run',
+      },
+    });
+
+    expect(readFileMock).toHaveBeenCalledWith(path.join(tempRoot, 'package.json'), 'utf8');
+    expect(readFileMock).toHaveBeenCalledWith(path.join(tempRoot, '"', 'package.json'), 'utf8');
+    expect(readFileMock).toHaveBeenCalledWith(path.join(tempRoot, "'", 'package.json'), 'utf8');
+  });
+
   it('ignores invalid discovered prefix paths while still loading valid discovered directories', async () => {
     const tempRoot = await fs.mkdtemp(
       path.join(os.tmpdir(), 'regression-checker-wrapper-prefix-safety-')

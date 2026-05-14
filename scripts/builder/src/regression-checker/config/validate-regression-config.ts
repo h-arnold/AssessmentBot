@@ -2,7 +2,11 @@ import path from 'node:path';
 
 import { z } from 'zod';
 
-import { normalisePathSeparators } from '../../lib/fs.js';
+import {
+  isCrossPlatformAbsolutePath,
+  normalisePathSeparators,
+  normaliseRelativeSegments,
+} from '../../lib/fs.js';
 import {
   formatRegressionConfigIssues,
   regressionConfigInputSchema,
@@ -10,21 +14,30 @@ import {
 } from './validate-regression-config.zod.js';
 
 const SUPPORTED_TOOLS = ['eslint', 'vitest', 'playwright', 'tsc'] as const;
-const TOOL_SUPPORTED_REPORTER_MODES: Record<RegressionTool, readonly string[]> = {
-  eslint: ['json'],
-  vitest: ['json'],
-  playwright: ['json'],
-  tsc: [],
-};
 const DEFAULT_PARALLEL_WORKER_LIMIT = 4;
 const MIN_WORKER_COUNT = 1;
+const SHELL_TOKEN_LENGTH = 1;
+const DOUBLE_CHARACTER_TOKEN_LENGTH = 2;
+const TRIPLE_CHARACTER_TOKEN_LENGTH = 3;
+const PREFIX_FLAG_TOKEN_LENGTH = 8;
+const CHAR_CODE_DASH = 45;
+const CHAR_CODE_SEMICOLON = 59;
+const CHAR_CODE_PIPE = 124;
+const CHAR_CODE_M = 109;
+const CHAR_CODE_N = 110;
+const CHAR_CODE_P = 112;
+const CHAR_CODE_R = 114;
+const CHAR_CODE_U = 117;
+const THIRD_CHARACTER_INDEX = 2;
 const CHAINED_COMMAND_PATTERN = /&&|\|\||;|\|/;
 const MUTATING_COMMAND_PATTERN = /(^|\s)(?:--(?:fix|write|update|update-snapshots)|-u)(?=\s|$)/i;
 
-const WINDOWS_DRIVE_PATH_PATTERN = /^[A-Za-z]:\//;
-const WINDOWS_UNC_PATH_PREFIX = '//';
-
 type RegressionTool = (typeof SUPPORTED_TOOLS)[number];
+type ShellQuoteCharacter = "'" | '"';
+type NpmRunTarget = {
+  scriptName: string;
+  prefixPath?: string;
+};
 
 type ValidateRegressionConfigOptions = {
   rawConfig: unknown;
@@ -69,70 +82,10 @@ export function validateRegressionConfig(
     parsedConfig.reportDirectory,
     'reportDirectory'
   );
-
   const logicalCpuCount = validateLogicalCpuCount(options.logicalCpuCount);
   const maxWorkers =
     parsedConfig.parallel?.maxWorkers ?? Math.min(DEFAULT_PARALLEL_WORKER_LIMIT, logicalCpuCount);
-
-  const checkIds = new Set<string>();
-  const normalisedChecks: RegressionConfigInput['checks'] = [];
-
-  for (const check of parsedConfig.checks) {
-    if (checkIds.has(check.id)) {
-      throw new Error(`Regression config contains duplicate checks[].id value: ${check.id}`);
-    }
-
-    checkIds.add(check.id);
-
-    validateTool(check.tool);
-    validateReporterMode(check.tool, check.reporterMode);
-
-    const normalisedCwd = validateRepoRelativePath(
-      options.repoRoot,
-      check.cwd,
-      `checks[].cwd (${check.id})`,
-      {
-        allowRepoRoot: true,
-      }
-    );
-
-    if (check.tool === 'tsc' && check.run.kind === 'npm-script') {
-      throw new Error(
-        'Regression config invalid: tool=tsc requires run.kind=tsc; npm-script is not allowed.'
-      );
-    }
-
-    if (check.run.kind === 'tsc') {
-      if (check.tool !== 'tsc') {
-        throw new Error('Regression config invalid: run.kind=tsc is only supported with tool=tsc.');
-      }
-
-      const normalisedProjectPath = validateRepoRelativePath(
-        options.repoRoot,
-        check.run.project,
-        `checks[].run.project (${check.id})`
-      );
-      normalisedChecks.push({
-        ...check,
-        cwd: normalisedCwd,
-        run: {
-          ...check.run,
-          project: normalisedProjectPath,
-        },
-      });
-      continue;
-    }
-
-    validateNpmScriptCheck(check.tool, normalisedCwd, check.run.script, {
-      repoRoot: options.repoRoot,
-      packageJsonScriptsByDirectory: options.packageJsonScriptsByDirectory,
-    });
-
-    normalisedChecks.push({
-      ...check,
-      cwd: normalisedCwd,
-    });
-  }
+  const normalisedChecks = normaliseRegressionChecks(parsedConfig.checks, options);
 
   return {
     reportDirectory,
@@ -141,6 +94,93 @@ export function validateRegressionConfig(
       maxWorkers,
     },
     checks: normalisedChecks,
+  };
+}
+
+/**
+ * Normalises and validates all configured regression checks.
+ *
+ * @param {RegressionConfigInput['checks']} checks - Parsed regression checks.
+ * @param {ValidateRegressionConfigOptions} options - Runtime dependencies and repo context.
+ * @returns {RegressionConfigInput['checks']} Validated and normalised checks.
+ */
+function normaliseRegressionChecks(
+  checks: RegressionConfigInput['checks'],
+  options: ValidateRegressionConfigOptions
+): RegressionConfigInput['checks'] {
+  const seenCheckIds = new Set<string>();
+  const normalisedChecks: RegressionConfigInput['checks'] = [];
+
+  for (const check of checks) {
+    if (seenCheckIds.has(check.id)) {
+      throw new Error(`Regression config contains duplicate checks[].id value: ${check.id}`);
+    }
+
+    seenCheckIds.add(check.id);
+    normalisedChecks.push(normaliseRegressionCheck(check, options));
+  }
+
+  return normalisedChecks;
+}
+
+/**
+ * Validates and normalises a single regression check entry.
+ *
+ * @param {RegressionConfigInput['checks'][number]} check - Parsed regression check.
+ * @param {ValidateRegressionConfigOptions} options - Runtime dependencies and repo context.
+ * @returns {RegressionConfigInput['checks'][number]} Validated and normalised check.
+ */
+function normaliseRegressionCheck(
+  check: RegressionConfigInput['checks'][number],
+  options: ValidateRegressionConfigOptions
+): RegressionConfigInput['checks'][number] {
+  validateTool(check.tool);
+  validateReporterMode(check.tool, check.reporterMode);
+
+  const normalisedCwd = validateRepoRelativePath(
+    options.repoRoot,
+    check.cwd,
+    `checks[].cwd (${check.id})`,
+    {
+      allowRepoRoot: true,
+    }
+  );
+
+  if (check.tool === 'tsc') {
+    if (check.run.kind !== 'tsc') {
+      throw new Error(
+        'Regression config invalid: tool=tsc requires run.kind=tsc; npm-script is not allowed.'
+      );
+    }
+
+    const normalisedProjectPath = validateRepoRelativePath(
+      options.repoRoot,
+      check.run.project,
+      `checks[].run.project (${check.id})`
+    );
+
+    return {
+      ...check,
+      cwd: normalisedCwd,
+      run: {
+        ...check.run,
+        project: normalisedProjectPath,
+      },
+    };
+  }
+
+  if (check.run.kind === 'tsc') {
+    throw new Error('Regression config invalid: run.kind=tsc is only supported with tool=tsc.');
+  }
+
+  validateNpmScriptCheck(check.tool, normalisedCwd, check.run.script, {
+    repoRoot: options.repoRoot,
+    packageJsonScriptsByDirectory: options.packageJsonScriptsByDirectory,
+  });
+
+  return {
+    ...check,
+    cwd: normalisedCwd,
   };
 }
 
@@ -202,26 +242,19 @@ function validateReporterMode(tool: RegressionTool, reporterMode: string | undef
     return;
   }
 
-  const supportedReporterModes = TOOL_SUPPORTED_REPORTER_MODES[tool];
-  if (supportedReporterModes.includes(reporterMode)) {
-    return;
+  switch (tool) {
+    case 'eslint':
+    case 'vitest':
+    case 'playwright':
+      if (reporterMode === 'json') {
+        return;
+      }
+      break;
+    case 'tsc':
+      break;
   }
 
   throw new Error(`Unsupported reporter mode configured for tool=${tool}: ${reporterMode}`);
-}
-
-/**
- * Detects absolute paths across POSIX and Windows formats.
- *
- * @param {string} value - Separator-normalised path.
- * @returns {boolean} `true` when the path is absolute.
- */
-function isCrossPlatformAbsolutePath(value: string): boolean {
-  return (
-    value.startsWith('/') ||
-    value.startsWith(WINDOWS_UNC_PATH_PREFIX) ||
-    WINDOWS_DRIVE_PATH_PATTERN.test(value)
-  );
 }
 
 /**
@@ -230,8 +263,8 @@ function isCrossPlatformAbsolutePath(value: string): boolean {
  * @param {string} repoRoot - Absolute repository root.
  * @param {string} configuredPath - Raw configured path.
  * @param {string} label - Path label for errors.
- * @param {{allowRepoRoot?: boolean}} options - Path safety options.
- * @param options.allowRepoRoot
+ * @param {{allowRepoRoot?: boolean}} [options] - Path safety options.
+ * @param {boolean} [options.allowRepoRoot] - Allow the repo root itself as a valid result.
  * @returns {string} Normalised repo-relative path.
  */
 function validateRepoRelativePath(
@@ -241,17 +274,109 @@ function validateRepoRelativePath(
   options: { allowRepoRoot?: boolean } = {}
 ): string {
   const trimmedPath = configuredPath.trim();
-  if (trimmedPath.length === 0) {
+  const separatorNormalisedPath = normalisePathSeparators(trimmedPath);
+  assertRepoRelativePathIsValid(repoRoot, configuredPath, separatorNormalisedPath, label, options);
+
+  return path.posix.normalize(separatorNormalisedPath);
+}
+
+/**
+ * Enforces repo-root containment for a validated path candidate.
+ *
+ * @param {string} repoRoot - Absolute repository root.
+ * @param {string} configuredPath - Raw configured path for error messages.
+ * @param {string} separatorNormalisedPath - Path with normalised separators.
+ * @param {string} label - Path label for errors.
+ * @param {{allowRepoRoot?: boolean}} [options] - Path safety options.
+ * @param {boolean} [options.allowRepoRoot] - Allow the repository root itself as a valid result.
+ * @returns {void}
+ */
+function assertRepoRelativePathIsValid(
+  repoRoot: string,
+  configuredPath: string,
+  separatorNormalisedPath: string,
+  label: string,
+  options: { allowRepoRoot?: boolean } = {}
+): void {
+  assertPathIsNotEmpty(separatorNormalisedPath, label);
+  assertPathIsNotAbsolute(separatorNormalisedPath, configuredPath, label);
+  assertPathDoesNotEscapeRepoRoot(separatorNormalisedPath, configuredPath, label);
+  assertPathResolvesInsideRepoRoot(
+    repoRoot,
+    separatorNormalisedPath,
+    configuredPath,
+    label,
+    options
+  );
+}
+
+/**
+ * Ensures a normalised path is not empty.
+ *
+ * @param {string} separatorNormalisedPath - Path with normalised separators.
+ * @param {string} label - Path label for errors.
+ * @returns {void}
+ */
+function assertPathIsNotEmpty(separatorNormalisedPath: string, label: string): void {
+  if (separatorNormalisedPath.length === 0) {
     throw new Error(`${label} must be a non-empty path.`);
   }
+}
 
-  const separatorNormalisedPath = normalisePathSeparators(trimmedPath);
+/**
+ * Ensures a normalised path is not absolute.
+ *
+ * @param {string} separatorNormalisedPath - Path with normalised separators.
+ * @param {string} configuredPath - Raw configured path for errors.
+ * @param {string} label - Path label for errors.
+ * @returns {void}
+ */
+function assertPathIsNotAbsolute(
+  separatorNormalisedPath: string,
+  configuredPath: string,
+  label: string
+): void {
   if (isCrossPlatformAbsolutePath(separatorNormalisedPath)) {
     throw new Error(`${label} must resolve inside repo root: ${configuredPath}`);
   }
+}
 
-  assertPathDoesNotTraverseOutsideRepo(separatorNormalisedPath, label, configuredPath);
+/**
+ * Ensures a normalised path does not traverse above the repository root.
+ *
+ * @param {string} separatorNormalisedPath - Path with normalised separators.
+ * @param {string} configuredPath - Raw configured path for errors.
+ * @param {string} label - Path label for errors.
+ * @returns {void}
+ */
+function assertPathDoesNotEscapeRepoRoot(
+  separatorNormalisedPath: string,
+  configuredPath: string,
+  label: string
+): void {
+  if (normaliseRelativeSegments(separatorNormalisedPath.split('/')) === null) {
+    throw new Error(`${label} must resolve inside repo root: ${configuredPath}`);
+  }
+}
 
+/**
+ * Ensures a path resolves within the repository root.
+ *
+ * @param {string} repoRoot - Absolute repository root.
+ * @param {string} separatorNormalisedPath - Path with normalised separators.
+ * @param {string} configuredPath - Raw configured path for errors.
+ * @param {string} label - Path label for errors.
+ * @param {{allowRepoRoot?: boolean}} options - Path safety options.
+ * @param {boolean} [options.allowRepoRoot] - Allow the repository root itself as a valid result.
+ * @returns {void}
+ */
+function assertPathResolvesInsideRepoRoot(
+  repoRoot: string,
+  separatorNormalisedPath: string,
+  configuredPath: string,
+  label: string,
+  options: { allowRepoRoot?: boolean }
+): void {
   const resolvedPath = path.resolve(repoRoot, separatorNormalisedPath);
   const relativePath = path.relative(repoRoot, resolvedPath);
 
@@ -259,45 +384,8 @@ function validateRepoRelativePath(
     throw new Error(`${label} must resolve inside repo root: ${configuredPath}`);
   }
 
-  if (relativePath === '' && options.allowRepoRoot !== true) {
+  if (!options.allowRepoRoot && relativePath.length === 0) {
     throw new Error(`${label} must resolve inside repo root: ${configuredPath}`);
-  }
-
-  return path.posix.normalize(separatorNormalisedPath);
-}
-
-/**
- * Rejects path values that traverse outside the repository, even when they later
- * resolve back under repo root.
- *
- * @param {string} configuredPath - Separator-normalised configured path.
- * @param {string} label - Path label for error context.
- * @param {string} originalValue - Raw configured path value.
- * @returns {void}
- */
-function assertPathDoesNotTraverseOutsideRepo(
-  configuredPath: string,
-  label: string,
-  originalValue: string
-): void {
-  const segments = configuredPath.split('/');
-  let relativeDepth = 0;
-
-  for (const segment of segments) {
-    if (segment === '' || segment === '.') {
-      continue;
-    }
-
-    if (segment === '..') {
-      if (relativeDepth === 0) {
-        throw new Error(`${label} must resolve inside repo root: ${originalValue}`);
-      }
-
-      relativeDepth -= 1;
-      continue;
-    }
-
-    relativeDepth += 1;
   }
 }
 
@@ -316,24 +404,16 @@ function validateNpmScriptCheck(
   scriptName: string,
   resolutionContext: NpmScriptResolutionContext
 ): void {
-  const scriptCommand = getPackageJsonScriptsForDirectory(resolutionContext, packageDirectory)[
+  const scriptCommand = getPackageJsonScriptCommand(
+    resolutionContext,
+    packageDirectory,
     scriptName
-  ];
-  if (scriptCommand === undefined) {
+  );
+  if (scriptCommand === null) {
     throw new Error(`run.kind=npm-script requires a declared package.json script: ${scriptName}`);
   }
 
-  if (MUTATING_COMMAND_PATTERN.test(scriptCommand)) {
-    throw new Error(
-      `run.kind=npm-script script ${scriptName} is mutating and not allowed (${scriptCommand}).`
-    );
-  }
-
-  if (CHAINED_COMMAND_PATTERN.test(scriptCommand)) {
-    throw new Error(
-      `run.kind=npm-script script ${scriptName} must resolve to a single tool family and cannot be chained.`
-    );
-  }
+  validateNpmScriptCommandSafety(scriptCommand, scriptName);
 
   const resolvedToolFamilies = resolveToolFamiliesFromScript({
     resolutionContext,
@@ -368,28 +448,18 @@ function resolveToolFamiliesFromScript(options: ToolFamilyResolutionOptions): Se
     throw new Error(`run.kind=npm-script script recursion detected: ${recursiveScriptToken}`);
   }
 
-  const packageJsonScripts = getPackageJsonScriptsForDirectory(
+  const scriptCommand = getPackageJsonScriptCommand(
     options.resolutionContext,
-    options.packageDirectory
+    options.packageDirectory,
+    options.scriptName
   );
-  const scriptCommand = packageJsonScripts[options.scriptName];
-  if (scriptCommand === undefined) {
+  if (scriptCommand === null) {
     throw new Error(
       `run.kind=npm-script script is not declared in package.json (${options.packageDirectory}): ${options.scriptName}`
     );
   }
 
-  if (MUTATING_COMMAND_PATTERN.test(scriptCommand)) {
-    throw new Error(
-      `run.kind=npm-script script ${options.scriptName} is mutating and not allowed (${scriptCommand}).`
-    );
-  }
-
-  if (CHAINED_COMMAND_PATTERN.test(scriptCommand)) {
-    throw new Error(
-      `run.kind=npm-script script ${options.scriptName} must resolve to a single tool family and cannot be chained.`
-    );
-  }
+  validateNpmScriptCommandSafety(scriptCommand, options.scriptName);
 
   const nextVisitedScripts = new Set(options.visitedScripts);
   nextVisitedScripts.add(recursiveScriptToken);
@@ -397,33 +467,7 @@ function resolveToolFamiliesFromScript(options: ToolFamilyResolutionOptions): Se
   const resolvedToolFamilies = resolveDirectToolFamilies(scriptCommand);
 
   for (const nestedNpmRun of extractNpmRunTargets(scriptCommand)) {
-    const nestedPackageDirectory = nestedNpmRun.prefixPath
-      ? validateRepoRelativePath(
-          options.resolutionContext.repoRoot,
-          nestedNpmRun.prefixPath,
-          `run.kind=npm-script npm --prefix (${options.scriptName})`,
-          { allowRepoRoot: true }
-        )
-      : options.packageDirectory;
-
-    const nestedPackageScripts = getPackageJsonScriptsForDirectory(
-      options.resolutionContext,
-      nestedPackageDirectory
-    );
-    if (!(nestedNpmRun.scriptName in nestedPackageScripts)) {
-      continue;
-    }
-
-    const nestedFamilies = resolveToolFamiliesFromScript({
-      resolutionContext: options.resolutionContext,
-      packageDirectory: nestedPackageDirectory,
-      scriptName: nestedNpmRun.scriptName,
-      visitedScripts: nextVisitedScripts,
-    });
-
-    for (const nestedFamily of nestedFamilies) {
-      resolvedToolFamilies.add(nestedFamily);
-    }
+    appendNestedToolFamilies(resolvedToolFamilies, options, nestedNpmRun, nextVisitedScripts);
   }
 
   if (resolvedToolFamilies.size === 0) {
@@ -433,6 +477,53 @@ function resolveToolFamiliesFromScript(options: ToolFamilyResolutionOptions): Se
   }
 
   return resolvedToolFamilies;
+}
+
+/**
+ * Resolves and appends tool families referenced by a nested `npm run` target.
+ *
+ * @param {Set<RegressionTool>} resolvedToolFamilies - Accumulator for resolved families.
+ * @param {ToolFamilyResolutionOptions} options - Script resolution parameters.
+ * @param {NpmRunTarget} nestedNpmRun - Nested npm run target to resolve.
+ * @param {Set<string>} visitedScripts - Recursion guard for nested resolution.
+ * @returns {void}
+ */
+function appendNestedToolFamilies(
+  resolvedToolFamilies: Set<RegressionTool>,
+  options: ToolFamilyResolutionOptions,
+  nestedNpmRun: NpmRunTarget,
+  visitedScripts: Set<string>
+): void {
+  const nestedPackageDirectory = nestedNpmRun.prefixPath
+    ? validateRepoRelativePath(
+        options.resolutionContext.repoRoot,
+        nestedNpmRun.prefixPath,
+        `run.kind=npm-script npm --prefix (${options.scriptName})`,
+        { allowRepoRoot: true }
+      )
+    : options.packageDirectory;
+
+  const nestedScriptCommand = getPackageJsonScriptCommand(
+    options.resolutionContext,
+    nestedPackageDirectory,
+    nestedNpmRun.scriptName
+  );
+  if (nestedScriptCommand === null) {
+    // Nested `npm run` targets may reference scripts that are not present in the
+    // preloaded package map; skip those and keep resolving the declared script.
+    return;
+  }
+
+  const nestedFamilies = resolveToolFamiliesFromScript({
+    resolutionContext: options.resolutionContext,
+    packageDirectory: nestedPackageDirectory,
+    scriptName: nestedNpmRun.scriptName,
+    visitedScripts,
+  });
+
+  for (const nestedFamily of nestedFamilies) {
+    resolvedToolFamilies.add(nestedFamily);
+  }
 }
 
 /**
@@ -446,14 +537,47 @@ function getPackageJsonScriptsForDirectory(
   resolutionContext: NpmScriptResolutionContext,
   packageDirectory: string
 ): Record<string, string> {
-  const scripts = resolutionContext.packageJsonScriptsByDirectory[packageDirectory];
-  if (scripts !== undefined) {
-    return scripts;
+  const packageDirectoryEntry = Object.entries(
+    resolutionContext.packageJsonScriptsByDirectory
+  ).find(([candidatePackageDirectory]) => candidatePackageDirectory === packageDirectory);
+  if (packageDirectoryEntry !== undefined) {
+    return packageDirectoryEntry[1];
   }
 
   throw new Error(
     `run.kind=npm-script requires script lookup for relevant package.json directory: ${packageDirectory}`
   );
+}
+
+/**
+ * Looks up a script command by directory and script name.
+ *
+ * @param {NpmScriptResolutionContext} resolutionContext - Package script lookup context.
+ * @param {string} packageDirectory - Repo-relative package directory (`.` for repo root).
+ * @param {string} scriptName - npm script name to resolve.
+ * @returns {string | null} Script command when declared, otherwise `null`.
+ */
+function getPackageJsonScriptCommand(
+  resolutionContext: NpmScriptResolutionContext,
+  packageDirectory: string,
+  scriptName: string
+): string | null {
+  const scripts = getPackageJsonScriptsForDirectory(resolutionContext, packageDirectory);
+  const scriptEntry = Object.entries(scripts).find(
+    ([candidateScriptName]) => candidateScriptName === scriptName
+  );
+  if (scriptEntry === undefined) {
+    return null;
+  }
+
+  const scriptCommand: unknown = scriptEntry[1];
+  if (typeof scriptCommand !== 'string') {
+    throw new Error(
+      `run.kind=npm-script script is not declared in package.json (${packageDirectory}): ${scriptName}`
+    );
+  }
+
+  return scriptCommand;
 }
 
 /**
@@ -503,10 +627,10 @@ function getFirstCommandToken(command: string): string | null {
 function tokeniseShellWords(command: string): string[] {
   const tokens: string[] = [];
   let token = '';
-  let quote: "'" | '"' | null = null;
+  let quote: ShellQuoteCharacter | null = null;
 
   for (const character of command) {
-    if (quote === null && /\s/u.test(character)) {
+    if (isWhitespaceCharacter(character) && quote === null) {
       if (token.length > 0) {
         tokens.push(token);
         token = '';
@@ -514,12 +638,8 @@ function tokeniseShellWords(command: string): string[] {
       continue;
     }
 
-    if (character === "'" || character === '"') {
-      if (quote === character) {
-        quote = null;
-      } else if (quote === null) {
-        quote = character;
-      }
+    if (isQuoteCharacter(character)) {
+      quote = updateQuoteState(quote, character);
     }
 
     token += character;
@@ -562,33 +682,318 @@ function isSupportedTool(toolToken: string): toolToken is RegressionTool {
  * Extracts nested `npm run <script>` targets from a command.
  *
  * @param {string} command - Script command string.
- * @returns {Array<{ scriptName: string; prefixPath?: string }>} Nested npm script targets.
+ * @returns {NpmRunTarget[]} Nested npm script targets.
  */
-function extractNpmRunTargets(command: string): Array<{ scriptName: string; prefixPath?: string }> {
-  const matches = [
-    ...command.matchAll(
-      /(?:^|\s)npm(?:\s+--prefix(?:=|\s+)([^\s]+))?(?:\s+--[^\s=]+(?:=[^\s]+|\s+[^\s]+))*\s+run\s+([^\s]+)/gu
-    ),
-  ];
+function extractNpmRunTargets(command: string): NpmRunTarget[] {
+  const targets: NpmRunTarget[] = [];
+  const tokens = tokeniseShellWords(command);
 
-  const targets: Array<{ scriptName: string; prefixPath?: string }> = [];
-  for (const match of matches) {
-    const scriptName = match[2];
-    if (scriptName === undefined) {
+  while (tokens.length > 0) {
+    const token = tokens.shift()!;
+
+    if (!isNpmToken(token)) {
       continue;
     }
 
-    const prefixPath = match[1];
-    if (prefixPath === undefined) {
-      targets.push({ scriptName });
+    const parsedTarget = readNpmRunTarget(tokens);
+    if (parsedTarget === null) {
       continue;
     }
 
-    targets.push({
-      scriptName,
-      prefixPath,
-    });
+    targets.push(parsedTarget);
   }
 
   return targets;
+}
+
+/**
+ * Parses a nested `npm run` target from tokenised command text.
+ *
+ * @param {string[]} tokens - Tokenised shell command.
+ * @returns {NpmRunTarget | null} Parsed target or `null`.
+ */
+function readNpmRunTarget(tokens: string[]): NpmRunTarget | null {
+  let prefixPath: string | undefined;
+
+  while (tokens.length > 0) {
+    const token = tokens.shift()!;
+
+    const nextAction = classifyNpmRunToken(token, tokens, prefixPath);
+    switch (nextAction.kind) {
+      case 'target':
+        return nextAction.target;
+      case 'continue':
+        prefixPath = nextAction.prefixPath;
+        continue;
+      case 'fail':
+        return null;
+    }
+  }
+
+  return null;
+}
+
+type NpmRunTokenAction =
+  | {
+      kind: 'continue';
+      prefixPath?: string;
+    }
+  | {
+      kind: 'fail';
+    }
+  | {
+      kind: 'target';
+      target: NpmRunTarget;
+    };
+
+/**
+ * Classifies a token encountered while scanning an npm run command.
+ *
+ * @param {string} token - Current token.
+ * @param {string[]} tokens - Remaining token queue.
+ * @param {string | undefined} prefixPath - Active prefix path.
+ * @returns {NpmRunTokenAction} Next parser action.
+ */
+function classifyNpmRunToken(
+  token: string,
+  tokens: string[],
+  prefixPath: string | undefined
+): NpmRunTokenAction {
+  if (isRunToken(token)) {
+    const scriptName = consumeToken(tokens);
+    if (scriptName === undefined) {
+      return { kind: 'fail' };
+    }
+
+    return {
+      kind: 'target',
+      target: prefixPath === undefined ? { scriptName } : { scriptName, prefixPath },
+    };
+  }
+
+  const prefixCandidate = consumePrefixPathToken(token, tokens);
+  if (prefixCandidate !== null) {
+    return {
+      kind: 'continue',
+      prefixPath: prefixCandidate,
+    };
+  }
+
+  if (isShellControlToken(token)) {
+    return { kind: 'fail' };
+  }
+
+  if (isNpmOptionToken(token)) {
+    skipLikelyNpmOptionValue(tokens);
+    return { kind: 'continue' };
+  }
+
+  return { kind: 'fail' };
+}
+
+/**
+ * Consumes the next token from the queue.
+ *
+ * @param {string[]} tokens - Tokenised shell command.
+ * @returns {string | undefined} The next token or `undefined` when the queue is empty.
+ */
+function consumeToken(tokens: string[]): string | undefined {
+  return tokens.shift();
+}
+
+/**
+ * Consumes a `--prefix` token and its value when present.
+ *
+ * @param {string} token - Current token.
+ * @param {string[]} tokens - Remaining token queue.
+ * @returns {string | null} Prefix path when the token is a prefix flag, otherwise `null`.
+ */
+function consumePrefixPathToken(token: string, tokens: string[]): string | null {
+  if (isPrefixToken(token)) {
+    const prefixCandidate = consumeToken(tokens);
+    if (prefixCandidate === undefined) {
+      return null;
+    }
+
+    return prefixCandidate;
+  }
+
+  if (token.startsWith('--prefix=')) {
+    return token.slice('--prefix='.length);
+  }
+
+  return null;
+}
+
+/**
+ * Skips a likely value token for an npm option.
+ *
+ * @param {string[]} tokens - Remaining token queue.
+ * @returns {void}
+ */
+function skipLikelyNpmOptionValue(tokens: string[]): void {
+  const valueToken = tokens.shift();
+  if (
+    valueToken === undefined ||
+    isRunToken(valueToken) ||
+    valueToken.startsWith('-') ||
+    isShellControlToken(valueToken)
+  ) {
+    return;
+  }
+}
+
+/**
+ * Checks whether a token splits the command into separate shell segments.
+ *
+ * @param {string} token - Shell token.
+ * @returns {boolean} `true` when the token is a shell control operator.
+ */
+function isShellControlToken(token: string): boolean {
+  return (
+    isAndAndToken(token) ||
+    isPipePipeToken(token) ||
+    isSingleCharacterShellToken(token, CHAR_CODE_SEMICOLON) ||
+    isSingleCharacterShellToken(token, CHAR_CODE_PIPE)
+  );
+}
+
+/**
+ * Checks whether a token is `&&`.
+ *
+ * @param {string} token - Shell token.
+ * @returns {boolean} `true` when the token is `&&`.
+ */
+function isAndAndToken(token: string): boolean {
+  return token.length === DOUBLE_CHARACTER_TOKEN_LENGTH && token.startsWith('&&');
+}
+
+/**
+ * Checks whether a token is `||`.
+ *
+ * @param {string} token - Shell token.
+ * @returns {boolean} `true` when the token is `||`.
+ */
+function isPipePipeToken(token: string): boolean {
+  return token.length === DOUBLE_CHARACTER_TOKEN_LENGTH && token.startsWith('||');
+}
+
+/**
+ * Checks whether a token is a single-character shell control operator.
+ *
+ * @param {string} token - Shell token.
+ * @param {number} expectedCharCode - Expected character code.
+ * @returns {boolean} `true` when the token matches the expected single-character operator.
+ */
+function isSingleCharacterShellToken(token: string, expectedCharCode: number): boolean {
+  return token.length === SHELL_TOKEN_LENGTH && token.charCodeAt(0) === expectedCharCode;
+}
+
+/**
+ * Checks whether a character is whitespace.
+ *
+ * @param {string} character - Single character to inspect.
+ * @returns {boolean} `true` when the character is whitespace.
+ */
+function isWhitespaceCharacter(character: string): boolean {
+  return character.trim().length === 0;
+}
+
+/**
+ * Checks whether a character is a shell quote marker.
+ *
+ * @param {string} character - Single character to inspect.
+ * @returns {character is \"'\" | '\"'} `true` when the character is a quote.
+ */
+function isQuoteCharacter(character: string): character is ShellQuoteCharacter {
+  return character === "'" || character === '"';
+}
+
+/**
+ * Updates the active quote state when encountering a quote character.
+ *
+ * @param {ShellQuoteCharacter | null} quote - Current quote state.
+ * @param {ShellQuoteCharacter} character - Quote character to process.
+ * @returns {ShellQuoteCharacter | null} Next quote state.
+ */
+function updateQuoteState(
+  quote: ShellQuoteCharacter | null,
+  character: ShellQuoteCharacter
+): ShellQuoteCharacter | null {
+  return quote === character ? null : character;
+}
+
+/**
+ * Checks whether a token is the `npm` command token.
+ *
+ * @param {string} token - Shell token.
+ * @returns {boolean} `true` when the token is `npm`.
+ */
+function isNpmToken(token: string): boolean {
+  return (
+    token.length === TRIPLE_CHARACTER_TOKEN_LENGTH &&
+    token.charCodeAt(0) === CHAR_CODE_N &&
+    token.charCodeAt(1) === CHAR_CODE_P &&
+    token.charCodeAt(THIRD_CHARACTER_INDEX) === CHAR_CODE_M
+  );
+}
+
+/**
+ * Checks whether a token is the `run` command token.
+ *
+ * @param {string} token - Shell token.
+ * @returns {boolean} `true` when the token is `run`.
+ */
+function isRunToken(token: string): boolean {
+  return (
+    token.length === TRIPLE_CHARACTER_TOKEN_LENGTH &&
+    token.charCodeAt(0) === CHAR_CODE_R &&
+    token.charCodeAt(1) === CHAR_CODE_U &&
+    token.charCodeAt(THIRD_CHARACTER_INDEX) === CHAR_CODE_N
+  );
+}
+
+/**
+ * Checks whether a token is the `--prefix` flag.
+ *
+ * @param {string} token - Shell token.
+ * @returns {boolean} `true` when the token is the prefix flag.
+ */
+function isPrefixToken(token: string): boolean {
+  return token.length === PREFIX_FLAG_TOKEN_LENGTH && token.startsWith('--prefix');
+}
+
+/**
+ * Checks whether a token is an npm option flag.
+ *
+ * @param {string} token - Shell token.
+ * @returns {boolean} `true` when the token begins with `--`.
+ */
+function isNpmOptionToken(token: string): boolean {
+  return (
+    token.length >= DOUBLE_CHARACTER_TOKEN_LENGTH &&
+    token.charCodeAt(0) === CHAR_CODE_DASH &&
+    token.charCodeAt(1) === CHAR_CODE_DASH
+  );
+}
+
+/**
+ * Validates npm-script command safety before resolution.
+ *
+ * @param {string} scriptCommand - Raw npm script command.
+ * @param {string} scriptName - npm script name for error messages.
+ * @returns {void}
+ */
+function validateNpmScriptCommandSafety(scriptCommand: string, scriptName: string): void {
+  if (MUTATING_COMMAND_PATTERN.test(scriptCommand)) {
+    throw new Error(
+      `run.kind=npm-script script ${scriptName} is mutating and not allowed (${scriptCommand}).`
+    );
+  }
+
+  if (CHAINED_COMMAND_PATTERN.test(scriptCommand)) {
+    throw new Error(
+      `run.kind=npm-script script ${scriptName} must resolve to a single tool family and cannot be chained.`
+    );
+  }
 }
