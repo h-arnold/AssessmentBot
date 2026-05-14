@@ -4,6 +4,7 @@ import type { RegressionConfigInput } from './validate-regression-config.zod.js'
 import { validateRegressionConfig } from './validate-regression-config.js';
 
 const REPO_ROOT = '/home/developer/AssessmentBot';
+const EXPECTED_CHECK_COUNT = 2;
 
 const PACKAGE_JSON_SCRIPTS_BY_DIRECTORY: Record<string, Record<string, string>> = {
   '.': {
@@ -142,7 +143,7 @@ describe('validateRegressionConfig', () => {
       logicalCpuCount: 8,
     });
 
-    expect(result.checks).toHaveLength(2);
+    expect(result.checks).toHaveLength(EXPECTED_CHECK_COUNT);
   });
 
   it('rejects npm-script wrappers that stop before providing a nested script target', () => {
