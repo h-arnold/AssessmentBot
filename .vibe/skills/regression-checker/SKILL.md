@@ -1,6 +1,6 @@
 ---
 name: regression-checker
-description: Runs tests, linters, and CI routines to establish baselines and detect regressions between agent runs.
+description: Use the config-driven regression checker CLI to establish a baseline, compare follow-up runs, and track repository health while progressing through `ACTION_PLAN.md`.
 license: MIT
 compatibility: Mistral Vibe CLI
 user-invocable: true
@@ -10,94 +10,60 @@ allowed-tools:
   - write_file
 ---
 
-# Regression Checker Skill
+# Regression Checker
 
-## Purpose
+Use this skill when you need a deterministic snapshot of the codebase while working through
+`ACTION_PLAN.md`, especially for builder-led changes that need a stable health signal over time.
 
-**Calling agents MUST use `regression-checker` instead of running full test/lint suites directly.**
+## What it does
 
-This subagent establishes baselines and detects regressions across backend, frontend, and builder modules. It handles the complete validation pipeline so calling agents can focus on their specific tasks.
+- runs the repository regression checker from the root npm script
+- creates or reuses a session baseline keyed by session ID
+- compares the current tree against the saved baseline
+- surfaces lint, test, compile, and build regressions with stable report artefacts
 
-## When to Call
+## Quick start
 
-- **Before implementation**: Establish baseline
-- **After changes**: Detect regressions
-- **Code review**: Verify stability
-- **Refactoring**: Ensure safety
-
-## Invocation
-
-```bash
-task agent=regression-checker task="Session: <session-name>. <action>"
-```
-
-**Session name is MANDATORY.** Without it, the subagent returns an immediate error.
-
-### Actions
-
-| Action                  | Purpose                                     |
-| ----------------------- | ------------------------------------------- |
-| `Establish baseline`    | First run — creates baseline.json           |
-| `Check for regressions` | Subsequent runs — compares against baseline |
-| Any other text          | Treated as "check for regressions"          |
-
-## Session Naming
-
-Use descriptive, unique names:
-
-- `feat/<feature-name>` — Feature implementation
-- `fix/<issue-id>` — Bug fix verification
-- `refactor/<module>` — Refactoring safety
-- `pr-<number>` — Pull request validation
-
-## What It Runs
-
-All 8 commands in order:
-
-1. `npm run lint` — Backend ESLint
-2. `npm test` — Backend Vitest
-3. `npm run frontend:lint` — Frontend ESLint
-4. `npm run frontend:test` — Frontend Vitest
-5. `npm run builder:lint` — Builder ESLint
-6. `npm run builder:test` — Builder Vitest
-7. `npm run builder:compile` — Builder TypeScript
-8. `npm run build` — Full CI build
-
-## Key Rule for Calling Agents
-
-**Do NOT run `npm test`, `npm run lint`, `npm run frontend:test`, etc. directly.**
-
-Instead, delegate to regression-checker:
+From the repository root:
 
 ```bash
-# WRONG - calling agent runs tests directly
-task agent=implementation task="... run npm test ..."
-
-# RIGHT - delegate to regression-checker
-task agent=regression-checker task="Session: feat/xyz. Check for regressions."
+npm run regression-checker -- <sessionId>
 ```
 
-## Output
+`sessionId` is optional. In normal use, omit it so the CLI uses the current Git branch name.
+That keeps the report aligned with the branch and gives a clearer view of how the codebase is
+changing there.
 
-- **Baseline (first run)**: Saved to scratchpad, returns summary
-- **Comparison (subsequent runs)**: Identifies regressions, new failures, fixes
-- **Always**: Human-readable report + JSON file
+The wrapper first runs `npm run builder:compile` and then launches
+`scripts/builder/dist/regression-checker/run-regression-checker.js`.
 
-## Reports Location
+## How to use it with `ACTION_PLAN.md`
 
-Saved to the agent's scratchpad under `regression-checker/<session-name>/`
+1. Pick one session ID for the whole plan only when you need a non-branch identity; otherwise let
+   the CLI use the branch name.
+2. Run the checker before starting a phase to establish the current baseline or compare against the saved baseline.
+3. Re-run the same session ID after each completed phase or any materially risky change.
+4. Record the status and report path in your progress notes before moving on.
 
-- `baseline.json` — First run
-- `report-<timestamp>.json` — Comparison runs
+## What to inspect
 
-The agent returns the full path of the saved file.
+- `mode`: `baseline` or compare mode
+- `sessionId` and `sessionStorageKey`
+- `overallStatus`
+- `regressionsCount`, `newFailuresCount`, `fixesCount`
+- `toolSummary`
+- whether the run created a baseline this time
+- the comparison artefacts under `.ts-regression-checker/reports/<sessionStorageKey>/`
 
-## Targeted Testing Exception
+## Validation and safety
 
-Calling agents **MAY** run targeted, module-specific tests during development:
+- The config file is `.ts-regression-checker/regression.config.json`.
+- Supported tool families are `eslint`, `vitest`, `playwright`, and `tsc`.
+- Invalid config fails fast before execution.
+- Compare runs exit non-zero when regressions are detected.
 
-- `npm test -- tests/controllers/AssignmentController.test.js`
-- `npm run frontend:test -- AssessmentForm.spec.tsx`
-- `npm run builder:test -- stages/validate.test.ts`
+## Notes
 
-Use targeted runs for iterative development. Use regression-checker for full validation before handoff or merge.
+- Treat the checker as the source of truth for whether the workspace is improving or regressing
+  while the action plan advances.
+- Keep the session ID stable so reports remain comparable across checkpoints.

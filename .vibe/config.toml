@@ -176,6 +176,7 @@ allowlist = [
     "basename",
     "cat",
     "cd",
+    "diff",
     "echo",
     "file",
     "find",
