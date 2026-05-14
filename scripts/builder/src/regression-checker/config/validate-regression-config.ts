@@ -572,7 +572,7 @@ function getPackageJsonScriptCommand(
 
   const scriptCommand: unknown = scriptEntry[1];
   if (typeof scriptCommand !== 'string') {
-    throw new Error(
+    throw new TypeError(
       `run.kind=npm-script script is not declared in package.json (${packageDirectory}): ${scriptName}`
     );
   }
@@ -886,7 +886,7 @@ function isPipePipeToken(token: string): boolean {
  * @returns {boolean} `true` when the token matches the expected single-character operator.
  */
 function isSingleCharacterShellToken(token: string, expectedCharCode: number): boolean {
-  return token.length === SHELL_TOKEN_LENGTH && token.charCodeAt(0) === expectedCharCode;
+  return token.length === SHELL_TOKEN_LENGTH && token.codePointAt(0) === expectedCharCode;
 }
 
 /**
@@ -932,9 +932,9 @@ function updateQuoteState(
 function isNpmToken(token: string): boolean {
   return (
     token.length === TRIPLE_CHARACTER_TOKEN_LENGTH &&
-    token.charCodeAt(0) === CHAR_CODE_N &&
-    token.charCodeAt(1) === CHAR_CODE_P &&
-    token.charCodeAt(THIRD_CHARACTER_INDEX) === CHAR_CODE_M
+    token.codePointAt(0) === CHAR_CODE_N &&
+    token.codePointAt(1) === CHAR_CODE_P &&
+    token.codePointAt(THIRD_CHARACTER_INDEX) === CHAR_CODE_M
   );
 }
 
@@ -947,9 +947,9 @@ function isNpmToken(token: string): boolean {
 function isRunToken(token: string): boolean {
   return (
     token.length === TRIPLE_CHARACTER_TOKEN_LENGTH &&
-    token.charCodeAt(0) === CHAR_CODE_R &&
-    token.charCodeAt(1) === CHAR_CODE_U &&
-    token.charCodeAt(THIRD_CHARACTER_INDEX) === CHAR_CODE_N
+    token.codePointAt(0) === CHAR_CODE_R &&
+    token.codePointAt(1) === CHAR_CODE_U &&
+    token.codePointAt(THIRD_CHARACTER_INDEX) === CHAR_CODE_N
   );
 }
 
@@ -972,8 +972,8 @@ function isPrefixToken(token: string): boolean {
 function isNpmOptionToken(token: string): boolean {
   return (
     token.length >= DOUBLE_CHARACTER_TOKEN_LENGTH &&
-    token.charCodeAt(0) === CHAR_CODE_DASH &&
-    token.charCodeAt(1) === CHAR_CODE_DASH
+    token.codePointAt(0) === CHAR_CODE_DASH &&
+    token.codePointAt(1) === CHAR_CODE_DASH
   );
 }
 
