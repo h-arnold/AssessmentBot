@@ -109,7 +109,7 @@ export function compareRegressionChecks(options: CompareRegressionChecksOptions)
   const totals = calculateTotals(checks);
 
   return {
-    overallStatus: totals.regressionsCount > 0 ? 'FAILING' : 'GREEN',
+    overallStatus: totals.checksFailing > 0 ? 'FAILING' : 'GREEN',
     baselineCompatibility: options.baselineCompatibility,
     checks,
     totals,
@@ -184,12 +184,11 @@ function compareCheckPair(checkPair: CheckPair): ComparisonCheckResult {
     baselineSummary,
     currentSummary
   );
-  const status =
-    comparison.regressions.length === 0 &&
-    comparison.newFailures.length === 0 &&
-    comparison.fixes.length === 0
-      ? 'passing'
-      : 'failing';
+  const hasAnyDelta =
+    comparison.regressions.length > 0 ||
+    comparison.newFailures.length > 0 ||
+    comparison.fixes.length > 0;
+  const status = checkPair.current.status === 'failing' || hasAnyDelta ? 'failing' : 'passing';
 
   return {
     id: checkPair.current.id,

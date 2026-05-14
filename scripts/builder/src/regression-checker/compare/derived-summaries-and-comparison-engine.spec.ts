@@ -614,4 +614,68 @@ describe('derived summaries and comparison engine', () => {
       'execution-error|unknown|Unknown execution failure.',
     ]);
   });
+
+  it('marks compare results as failing when the current command exits non-zero without summary deltas', async () => {
+    const { compareRegressionChecks } = await loadCompareModule();
+
+    const result = await compareRegressionChecks({
+      baselineCompatibility: { compatible: true },
+      checksInConfigOrder: [
+        {
+          baseline: {
+            id: 'builder-test-coverage-check',
+            tool: 'vitest',
+            status: 'passing',
+            rawArtefactPath: 'baseline/vitest.json',
+            error: null,
+            rawArtefact: {
+              testResults: [
+                {
+                  name: 'src/sample.spec.ts',
+                  assertionResults: [
+                    {
+                      ancestorTitles: ['suite'],
+                      title: 'sample',
+                      status: 'passed',
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+          current: {
+            id: 'builder-test-coverage-check',
+            tool: 'vitest',
+            status: 'failing',
+            rawArtefactPath: 'run/vitest.json',
+            error: null,
+            rawArtefact: {
+              testResults: [
+                {
+                  name: 'src/sample.spec.ts',
+                  assertionResults: [
+                    {
+                      ancestorTitles: ['suite'],
+                      title: 'sample',
+                      status: 'passed',
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+        },
+      ],
+    });
+
+    expect(result.overallStatus).toBe('FAILING');
+    expect(result.totals.checksFailing).toBe(1);
+    expect(result.checks[0]).toMatchObject({
+      id: 'builder-test-coverage-check',
+      status: 'failing',
+      regressions: [],
+      newFailures: [],
+      fixes: [],
+    });
+  });
 });
