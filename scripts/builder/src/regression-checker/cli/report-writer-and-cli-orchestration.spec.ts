@@ -334,6 +334,28 @@ function createStorageResult(mode: StorageMode) {
   };
 }
 
+/**
+ * Runs `runChecksFromConfig` with a canonical single-check builder-lint config fixture.
+ *
+ * @param {RegressionCliModule['runChecksFromConfig']} runChecksFromConfig - CLI module runner.
+ * @param {string} tempRoot - Temporary repository root for the test.
+ * @param {Parameters<RegressionCliModule['runChecksFromConfig']>[0]['runCommandImpl']} runCommandImpl
+ * Command runner implementation for the scenario.
+ * @returns {Promise<ScheduledCheckResult[]>} Normalised scheduled check results.
+ */
+async function runSingleBuilderLintCheck(
+  runChecksFromConfig: RegressionCliModule['runChecksFromConfig'],
+  tempRoot: string,
+  runCommandImpl: Parameters<RegressionCliModule['runChecksFromConfig']>[0]['runCommandImpl']
+): Promise<ScheduledCheckResult[]> {
+  return runChecksFromConfig({
+    repoRoot: tempRoot,
+    rawArtefactDirectory: path.join(tempRoot, 'reports', 'run'),
+    config: createConfig(),
+    runCommandImpl,
+  });
+}
+
 describe('report writer and CLI orchestration', () => {
   it('returns baseline-mode output with explicit baseline-created messaging and zero exit code', async () => {
     const { runRegressionCheckerCli } = await loadCliModule();
@@ -1203,26 +1225,10 @@ describe('report writer and CLI orchestration', () => {
     const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'regression-cli-success-runchecks-'));
     tempDirectories.push(tempRoot);
 
-    const results = await runChecksFromConfig({
-      repoRoot: tempRoot,
-      rawArtefactDirectory: path.join(tempRoot, 'reports', 'run'),
-      config: {
-        reportDirectory: REPORT_DIRECTORY,
-        parallel: { enabled: true, maxWorkers: 1 },
-        checks: [
-          {
-            id: 'builder-lint',
-            tool: 'eslint',
-            cwd: '.',
-            run: { kind: 'npm-script', script: 'lint:builder:check' },
-          },
-        ],
-      },
-      runCommandImpl: async () => ({
-        stdout: '',
-        stderr: '',
-      }),
-    });
+    const results = await runSingleBuilderLintCheck(runChecksFromConfig, tempRoot, async () => ({
+      stdout: '',
+      stderr: '',
+    }));
 
     expect(results).toEqual([
       {
@@ -1248,34 +1254,18 @@ describe('report writer and CLI orchestration', () => {
     const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'regression-cli-exec-error-'));
     tempDirectories.push(tempRoot);
 
-    const results = await runChecksFromConfig({
-      repoRoot: tempRoot,
-      rawArtefactDirectory: path.join(tempRoot, 'reports', 'run'),
-      config: {
-        reportDirectory: REPORT_DIRECTORY,
-        parallel: { enabled: true, maxWorkers: 1 },
-        checks: [
-          {
-            id: 'builder-lint',
-            tool: 'eslint',
-            cwd: '.',
-            run: { kind: 'npm-script', script: 'lint:builder:check' },
-          },
-        ],
-      },
-      runCommandImpl: async () => {
-        throw new CommandExecutionError('Command failed without exit code', {
-          command: 'npm',
-          args: ['run', 'lint:builder:check'],
-          cwd: tempRoot,
-          exitCode: null,
-          signal: null,
-          stdout: '',
-          stderr: 'Command failed without exit code',
-          timedOut: false,
-          timeoutMs: null,
-        });
-      },
+    const results = await runSingleBuilderLintCheck(runChecksFromConfig, tempRoot, async () => {
+      throw new CommandExecutionError('Command failed without exit code', {
+        command: 'npm',
+        args: ['run', 'lint:builder:check'],
+        cwd: tempRoot,
+        exitCode: null,
+        signal: null,
+        stdout: '',
+        stderr: 'Command failed without exit code',
+        timedOut: false,
+        timeoutMs: null,
+      });
     });
 
     expect(results).toEqual([

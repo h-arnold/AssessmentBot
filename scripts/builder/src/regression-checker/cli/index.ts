@@ -55,7 +55,7 @@ function formatFieldName(name: string): string {
   };
 
   if (name in specialCases) {
-    return specialCases[name as keyof typeof specialCases];
+    return specialCases[name];
   }
 
   // Default: convert camelCase to Title Case
@@ -97,9 +97,11 @@ async function renderFailedChecksListBaseline(
   const lines: string[] = ['--- FAILED CHECKS ---'];
   let index = 1;
   for (const check of failedChecks) {
-    lines.push(`${index}. ${check.id} (${check.tool})`);
-    lines.push(`   Status: ${check.status}`);
-    lines.push(`   Exit Code: ${check.exitCode ?? 'N/A'}`);
+    lines.push(
+      `${index}. ${check.id} (${check.tool})`,
+      `   Status: ${check.status}`,
+      `   Exit Code: ${check.exitCode ?? 'N/A'}`
+    );
 
     // Add rich failure details from raw artefact
     const richDetails = await renderRichFailureDetails(check, readRawArtefact);
@@ -361,9 +363,11 @@ function renderFailedCheckCompare(
   index: number
 ): void {
   const currentResult = currentResultsById.get(check.id);
-  lines.push(`${index}. ${check.id} (${check.tool})`);
-  lines.push(`   Status: ${check.status}`);
-  lines.push(`   Exit Code: ${currentResult?.exitCode ?? 'N/A'}`);
+  lines.push(
+    `${index}. ${check.id} (${check.tool})`,
+    `   Status: ${check.status}`,
+    `   Exit Code: ${currentResult?.exitCode ?? 'N/A'}`
+  );
 
   renderRegressionList('Regressions', check.regressions, lines);
   renderRegressionList('New Failures', check.newFailures, lines);
@@ -909,7 +913,7 @@ function buildCheckCounts(check: ComparisonCheckResult): string[] {
  */
 function addCount(counts: string[], value: number, singular: string, plural?: string): void {
   if (value > 0) {
-    const suffix = value !== 1 ? (plural ?? `${singular}s`) : singular;
+    const suffix = value === 1 ? singular : (plural ?? `${singular}s`);
     counts.push(`${value} ${suffix}`);
   }
 }
