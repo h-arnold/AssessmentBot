@@ -23,9 +23,7 @@ const PREFIX_FLAG_TOKEN_LENGTH = 8;
 const CHAR_CODE_DASH = 45;
 const CHAR_CODE_SEMICOLON = 59;
 const CHAR_CODE_PIPE = 124;
-const CHAR_CODE_M = 109;
 const CHAR_CODE_N = 110;
-const CHAR_CODE_P = 112;
 const CHAR_CODE_R = 114;
 const CHAR_CODE_U = 117;
 const THIRD_CHARACTER_INDEX = 2;
@@ -537,11 +535,12 @@ function getPackageJsonScriptsForDirectory(
   resolutionContext: NpmScriptResolutionContext,
   packageDirectory: string
 ): Record<string, string> {
-  const packageDirectoryEntry = Object.entries(
-    resolutionContext.packageJsonScriptsByDirectory
-  ).find(([candidatePackageDirectory]) => candidatePackageDirectory === packageDirectory);
-  if (packageDirectoryEntry !== undefined) {
-    return packageDirectoryEntry[1];
+  const scriptsByDirectoryMap = new Map(
+    Object.entries(resolutionContext.packageJsonScriptsByDirectory)
+  );
+  const scripts = scriptsByDirectoryMap.get(packageDirectory);
+  if (scripts !== undefined) {
+    return scripts;
   }
 
   throw new Error(
@@ -563,21 +562,20 @@ function getPackageJsonScriptCommand(
   scriptName: string
 ): string | null {
   const scripts = getPackageJsonScriptsForDirectory(resolutionContext, packageDirectory);
-  const scriptEntry = Object.entries(scripts).find(
-    ([candidateScriptName]) => candidateScriptName === scriptName
-  );
-  if (scriptEntry === undefined) {
+  const scriptsMap = new Map(Object.entries(scripts));
+  const scriptCommand = scriptsMap.get(scriptName);
+  if (scriptCommand === undefined) {
     return null;
   }
 
-  const scriptCommand: unknown = scriptEntry[1];
-  if (typeof scriptCommand !== 'string') {
+  const resolvedScriptCommand: unknown = scriptCommand;
+  if (typeof resolvedScriptCommand !== 'string') {
     throw new TypeError(
       `run.kind=npm-script script is not declared in package.json (${packageDirectory}): ${scriptName}`
     );
   }
 
-  return scriptCommand;
+  return resolvedScriptCommand;
 }
 
 /**
@@ -832,15 +830,15 @@ function consumePrefixPathToken(token: string, tokens: string[]): string | null 
  * @returns {void}
  */
 function skipLikelyNpmOptionValue(tokens: string[]): void {
-  const valueToken = tokens.shift();
-  if (
-    valueToken === undefined ||
-    isRunToken(valueToken) ||
-    valueToken.startsWith('-') ||
-    isShellControlToken(valueToken)
-  ) {
+  if (tokens.length === 0) {
     return;
   }
+
+  const valueToken = tokens[0];
+  if (isRunToken(valueToken) || valueToken.startsWith('-') || isShellControlToken(valueToken)) {
+    return;
+  }
+  tokens.shift();
 }
 
 /**
@@ -930,12 +928,7 @@ function updateQuoteState(
  * @returns {boolean} `true` when the token is `npm`.
  */
 function isNpmToken(token: string): boolean {
-  return (
-    token.length === TRIPLE_CHARACTER_TOKEN_LENGTH &&
-    token.codePointAt(0) === CHAR_CODE_N &&
-    token.codePointAt(1) === CHAR_CODE_P &&
-    token.codePointAt(THIRD_CHARACTER_INDEX) === CHAR_CODE_M
-  );
+  return token === 'npm';
 }
 
 /**

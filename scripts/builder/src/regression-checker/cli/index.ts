@@ -1363,7 +1363,17 @@ function stripLeadingNpmScriptOutput(artefactText: string): string {
 
   while (firstContentLineIndex < lines.length) {
     const line = lines[firstContentLineIndex];
-    if (line.trim().length === 0 || line.startsWith('> ')) {
+    const trimmedLine = line.trimStart();
+    if (trimmedLine.length === 0) {
+      firstContentLineIndex += 1;
+      continue;
+    }
+
+    if (trimmedLine.startsWith('{') || trimmedLine.startsWith('[')) {
+      break;
+    }
+
+    if (trimmedLine.startsWith('> ') || /^npm (WARN|notice|ERR!) /u.test(trimmedLine)) {
       firstContentLineIndex += 1;
       continue;
     }
