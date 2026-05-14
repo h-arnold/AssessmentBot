@@ -86,6 +86,17 @@ export const yearGroupModalConfig = {
 } as const;
 
 /**
+ * Configuration preset for topics management modal tests.
+ */
+export const topicsModalConfig = {
+  managementButtonName: 'Manage Topics',
+  modalName: /manage topics/i,
+  createFormName: /create topic/i,
+  tableName: /topics/i,
+  createButtonName: /create topic/i,
+} as const;
+
+/**
  * Type for transient state reset modal configuration.
  */
 export type TransientStateResetConfig = {
