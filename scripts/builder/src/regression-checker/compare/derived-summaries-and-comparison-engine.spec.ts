@@ -46,6 +46,7 @@ type CompareModule = {
     checksInConfigOrder: CheckPair[];
     baselineCompatibility: BaselineCompatibility;
   }) => ComparisonResult | Promise<ComparisonResult>;
+  deriveSummaryFromArtefact: (tool: Tool, rawArtefact: unknown) => unknown;
 };
 
 const ESLINT_WARNING_SEVERITY = 1;
@@ -87,6 +88,53 @@ async function loadCompareModule(): Promise<CompareModule> {
 }
 
 describe('derived summaries and comparison engine', () => {
+  it('returns GREEN when every check stays passing and unchanged', async () => {
+    const { compareRegressionChecks } = await loadCompareModule();
+
+    const result = await compareRegressionChecks({
+      baselineCompatibility: { compatible: true },
+      checksInConfigOrder: [
+        {
+          baseline: {
+            id: 'eslint-clean',
+            tool: 'eslint',
+            status: 'passing',
+            rawArtefactPath: 'baseline/eslint.json',
+            error: null,
+            rawArtefact: [],
+          },
+          current: {
+            id: 'eslint-clean',
+            tool: 'eslint',
+            status: 'passing',
+            rawArtefactPath: 'run/eslint.json',
+            error: null,
+            rawArtefact: [],
+          },
+        },
+      ],
+    });
+
+    expect(result).toMatchObject({
+      overallStatus: 'GREEN',
+      totals: {
+        regressionsCount: 0,
+        newFailuresCount: 0,
+        fixesCount: 0,
+        checksPassing: 1,
+        checksFailing: 0,
+      },
+      checks: [
+        {
+          status: 'passing',
+          regressions: [],
+          newFailures: [],
+          fixes: [],
+        },
+      ],
+    });
+  });
+
   it('derives eslint warning/error fingerprints with regression semantics', async () => {
     const { compareRegressionChecks } = await loadCompareModule();
 
@@ -677,5 +725,13 @@ describe('derived summaries and comparison engine', () => {
       newFailures: [],
       fixes: [],
     });
+  });
+
+  it('throws for unsupported regression tool values when deriving summaries directly', async () => {
+    const { deriveSummaryFromArtefact } = await loadCompareModule();
+
+    expect(() => deriveSummaryFromArtefact('made-up' as Tool, {})).toThrow(
+      'Unsupported regression tool: made-up'
+    );
   });
 });

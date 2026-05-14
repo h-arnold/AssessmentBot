@@ -13,6 +13,13 @@ const PACKAGE_JSON_SCRIPTS_BY_DIRECTORY: Record<string, Record<string, string>> 
     'missing-nested-wrapper':
       'eslint --config eslint.config.js src/backend/**/*.js tests/**/*.js npm run does-not-exist',
     'missing-nested-value-wrapper': 'npm run missing-nested-value',
+    'prefix-equals-wrapper': 'npm --prefix=packages/regression-checker run nested-eslint',
+    'prefix-without-value-wrapper': 'npm --prefix',
+    'option-value-wrapper': 'npm --foo bar run lint:backend:check',
+    'option-without-value-wrapper': 'npm --foo',
+  },
+  'packages/regression-checker': {
+    'nested-eslint': 'eslint --config eslint.config.js src/backend/**/*.js tests/**/*.js',
   },
 };
 
@@ -103,5 +110,86 @@ describe('validateRegressionConfig', () => {
         logicalCpuCount: 8,
       })
     ).not.toThrow();
+  });
+
+  it('resolves nested npm-script wrappers that use explicit prefix directories and option values', () => {
+    const result = validateRegressionConfig({
+      rawConfig: {
+        ...createValidConfig(),
+        checks: [
+          {
+            id: 'prefix-equals-check',
+            tool: 'eslint',
+            cwd: '.',
+            run: {
+              kind: 'npm-script',
+              script: 'prefix-equals-wrapper',
+            },
+          },
+          {
+            id: 'option-value-check',
+            tool: 'eslint',
+            cwd: '.',
+            run: {
+              kind: 'npm-script',
+              script: 'option-value-wrapper',
+            },
+          },
+        ],
+      },
+      repoRoot: REPO_ROOT,
+      packageJsonScriptsByDirectory: PACKAGE_JSON_SCRIPTS_BY_DIRECTORY,
+      logicalCpuCount: 8,
+    });
+
+    expect(result.checks).toHaveLength(2);
+  });
+
+  it('rejects npm-script wrappers that stop before providing a nested script target', () => {
+    expect(() =>
+      validateRegressionConfig({
+        rawConfig: {
+          ...createValidConfig(),
+          checks: [
+            {
+              id: 'prefix-without-value-check',
+              tool: 'eslint',
+              cwd: '.',
+              run: {
+                kind: 'npm-script',
+                script: 'prefix-without-value-wrapper',
+              },
+            },
+          ],
+        },
+        repoRoot: REPO_ROOT,
+        packageJsonScriptsByDirectory: PACKAGE_JSON_SCRIPTS_BY_DIRECTORY,
+        logicalCpuCount: 8,
+      })
+    ).toThrow(/does not map to a supported tool family/i);
+  });
+
+  it('rejects npm-script wrappers that declare an option without a value', () => {
+    expect(() =>
+      validateRegressionConfig({
+        rawConfig: {
+          ...createValidConfig(),
+          checks: [
+            {
+              id: 'option-without-value-check',
+              tool: 'eslint',
+              cwd: '.',
+              run: {
+                kind: 'npm-script',
+                script: 'option-without-value-wrapper',
+              },
+            },
+          ],
+        },
+        repoRoot: REPO_ROOT,
+        packageJsonScriptsByDirectory: PACKAGE_JSON_SCRIPTS_BY_DIRECTORY,
+        logicalCpuCount: 8,
+      })
+    ).toThrow(/does not map to a supported tool family/i);
   });
 });
