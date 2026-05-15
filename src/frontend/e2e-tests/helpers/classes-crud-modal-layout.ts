@@ -36,25 +36,30 @@ export async function assertCreateButtonPositioning(
 ): Promise<void> {
   const createButton = options.modal.getByRole('button', { name: options.createButtonName });
   const table = options.modal.getByRole('table', { name: options.tableName });
+  const tableWrapper = table.locator('xpath=ancestor::*[contains(@class, "ant-table-wrapper")][1]');
 
   await expect(createButton).toBeVisible();
   await expect(table).toBeVisible();
+  await expect(tableWrapper).toBeVisible();
 
   const buttonBox = await createButton.boundingBox();
+  const tableWrapperBox = await tableWrapper.boundingBox();
   const tableBox = await table.boundingBox();
 
+  const measurementBox = tableWrapperBox ?? tableBox;
+
   // Null check for bounding boxes
-  if (buttonBox === null || tableBox === null) {
+  if (buttonBox === null || measurementBox === null) {
     throw new Error(
       `Failed to get bounding boxes for Create button (${options.createButtonName}) and Table (${options.tableName})`
     );
   }
 
   if (options.assertionType === 'left edge') {
-    const leftEdgeDifference = Math.abs(buttonBox.x - tableBox.x);
+    const leftEdgeDifference = Math.abs(buttonBox.x - measurementBox.x);
     expect(leftEdgeDifference).toBeLessThanOrEqual(options.tolerance);
   } else {
-    const widthDifference = tableBox.width - buttonBox.width;
+    const widthDifference = measurementBox.width - buttonBox.width;
     expect(widthDifference).toBeGreaterThanOrEqual(options.minDiff);
   }
 }

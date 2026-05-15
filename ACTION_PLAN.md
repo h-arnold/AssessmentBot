@@ -2,7 +2,7 @@
 
 ## Current Implementation Status (Orchestrator Update)
 
-**LAST UPDATED:** 2026-05-15T00:00:00.000Z - Sections 0-4, 6, 3.5 completed with CLEAN PASS. Section 5 (ManageTopicsModal) fixes applied: complexity reduced, lint issues resolved, and explicit e2e coverage added for mask close behavior. Unit tests: 45/46 passing (97.8%), 1 skipped (JSDOM/HappyDOM limitation). E2E status includes 4 intentionally skipped layout assertions in classes CRUD modal specs (see Known Issues).
+**LAST UPDATED:** 2026-05-15T06:00:00.000Z - Sections 0-4, 6, 3.5 completed with CLEAN PASS. Section 5 (ManageTopicsModal) fixes applied: complexity reduced, lint issues resolved, and explicit e2e coverage added for mask close behavior. Unit tests: 45/46 passing (97.8%), 1 skipped (JSDOM/HappyDOM limitation). Classes CRUD E2E layout assertions are now unskipped and stabilised (see Known Issues).
 
 ### Sections Implemented and Reviewed
 
@@ -66,12 +66,10 @@
 - **Known Issues**:
   - ManageTopicsModal.tsx: 45/46 tests passing, 1 skipped (JSDOM/HappyDOM mask click limitation) - **E2E coverage added**
   - frontend-e2e-check: 1 failed test ("captures the wide settings frame and the narrow backend panel exception") - **Pre-existing, unrelated to reviewed sections**
-  - **4 skipped E2E tests not previously tracked in this plan (now tracked):**
-    - `src/frontend/e2e-tests/classes-crud-manage-cohorts.spec.ts`: "Create cohort button is start-aligned within 8px of the Table left edge"
-    - `src/frontend/e2e-tests/classes-crud-manage-cohorts.spec.ts`: "Create cohort button width is at least 32px narrower than the Table width"
-    - `src/frontend/e2e-tests/classes-crud-manage-year-groups.spec.ts`: "Create year group button is start-aligned within 8px of the Table left edge"
-    - `src/frontend/e2e-tests/classes-crud-manage-year-groups.spec.ts`: "Create year group button width is at least 32px narrower than the Table width"
-    - Follow-up: unskip and stabilise these assertions after confirming deterministic layout behaviour in CI and local Playwright runs.
+  - **Resolved on 2026-05-15:** previously skipped Classes CRUD layout E2E assertions were unskipped and stabilised.
+    - `src/frontend/e2e-tests/classes-crud-manage-cohorts.spec.ts`: both create-button layout assertions enabled.
+    - `src/frontend/e2e-tests/classes-crud-manage-year-groups.spec.ts`: both create-button layout assertions enabled.
+    - Validation: targeted Playwright repeats and frontend lint check completed clean.
 
 ### Review/Fix Loop Summary
 

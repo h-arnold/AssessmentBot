@@ -40,6 +40,7 @@ Consult these resources before and during review. Local docs contain project-spe
 **Frontend Reviews**:
 
 - Local: [frontend-testing.md](../../../docs/developer/frontend/frontend-testing.md)
+- Local: [frontend-loading-and-width-standards.md](../../../docs/developer/frontend/frontend-loading-and-width-standards.md)
 - Local: [frontend-logging-and-error-handling.md](../../../docs/developer/frontend/frontend-logging-and-error-handling.md)
 - Local: [frontend-modal-patterns.md](../../../docs/developer/frontend/frontend-modal-patterns.md)
 - Local: [frontend-shared-helpers-and-abstraction-standards.md](../../../docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md)

@@ -50,6 +50,23 @@ npm run frontend:test:e2e
 
 Use `--ui` or `--headed --debug` only for interactive diagnosis. The required completion signal is a clean `npm run frontend:test:e2e` run.
 
+### Geometry assertion stabilisation pattern (Playwright)
+
+When asserting modal layout geometry for Ant Design tables, use this stabilisation pattern to avoid flaky E2E checks.
+
+1. Measure against the stable table wrapper region (`.ant-table-wrapper`) rather than the inner `<table>` bounding box.
+2. Keep scaffold ready-state layout full-width (`style={{ width: '100%' }}`) on both the scaffold `Flex` container and the `Table`.
+3. Recalibrate tolerance constants only after repeated deterministic Playwright runs, not after a single pass.
+4. Validate with focused repeated runs (for example `--repeat-each`) and optionally serialise workers (`--workers=1`) before finalising thresholds.
+
+Example focused validation commands:
+
+```bash
+npm run test:frontend:e2e -- e2e-tests/classes-crud-manage-cohorts.spec.ts -g "Create cohort button stays near the table start edge within tolerance" --repeat-each=10 --workers=1
+npm run test:frontend:e2e -- e2e-tests/classes-crud-manage-year-groups.spec.ts -g "Create year group button stays near the table start edge within tolerance" --repeat-each=10 --workers=1
+npm run lint:frontend:check
+```
+
 Target a specific unit test pattern:
 
 ```bash

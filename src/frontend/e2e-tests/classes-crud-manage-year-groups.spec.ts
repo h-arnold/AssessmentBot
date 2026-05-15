@@ -302,7 +302,7 @@ test.describe('Classes CRUD — Manage Year Groups', () => {
 
   // Section 3 Red Phase: Visible-layout assertions for create button positioning
 
-  test.skip('Create year group button is start-aligned within 8px of the Table left edge', async ({
+  test('Create year group button stays near the table start edge within tolerance', async ({
     page,
   }) => {
     await openClassesTabWithYearGroupManagementScenario(page);
@@ -318,7 +318,7 @@ test.describe('Classes CRUD — Manage Year Groups', () => {
     });
   });
 
-  test.skip('Create year group button width is at least 32px narrower than the Table width', async ({
+  test('Create year group button width is at least 32px narrower than the Table width', async ({
     page,
   }) => {
     await openClassesTabWithYearGroupManagementScenario(page);

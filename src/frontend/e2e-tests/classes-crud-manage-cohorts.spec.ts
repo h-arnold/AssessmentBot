@@ -370,7 +370,7 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
 
   // Section 3 Red Phase: Visible-layout assertions for create button positioning
 
-  test.skip('Create cohort button is start-aligned within 8px of the Table left edge', async ({
+  test('Create cohort button stays near the table start edge within tolerance', async ({
     page,
   }) => {
     await openClassesTabWithCohortManagementScenario(page);
@@ -386,7 +386,7 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
     });
   });
 
-  test.skip('Create cohort button width is at least 32px narrower than the Table width', async ({
+  test('Create cohort button width is at least 32px narrower than the Table width', async ({
     page,
   }) => {
     await openClassesTabWithCohortManagementScenario(page);
