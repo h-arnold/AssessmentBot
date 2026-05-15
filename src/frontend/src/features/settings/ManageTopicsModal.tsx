@@ -18,7 +18,8 @@
  * with added year group multi-select support for the AssignmentTopic type.
  */
 
-import { Alert, Button, Form, Input, Select, Space, type FormInstance, type TableColumnType, type ReactElement } from 'antd';
+import { Alert, Button, Form, Input, Select, Space, type FormInstance, type TableColumnType } from 'antd';
+import type { ReactElement } from 'react';
 import type { UseQueryOptions } from '@tanstack/react-query';
 import type { AssignmentTopic, YearGroup } from '../../services/referenceData.zod';
 import {
@@ -39,7 +40,7 @@ import {
   type BlockingLoadErrorState,
 } from '../classes/manageReferenceDataHelpers';
 import { InlineDialog } from '../classes/InlineDialog';
-import { useReferenceDataManagement, type ReferenceDataManagementConfig } from '../classes/hooks/useReferenceDataManagement';
+import { useReferenceDataManagement, type ReferenceDataManagementConfig, type FormDialogProperties, type DeleteDialogProperties } from '../classes/hooks/useReferenceDataManagement';
 import { useCallback, useEffect, useMemo } from 'react';
 
 // ============================================================================
@@ -362,16 +363,7 @@ export function ManageTopicsModal(properties: ManageTopicsModalProperties): Reac
 
   // Custom form dialog renderer
   const renderFormDialog = useCallback(
-    (formDialogProperties: {
-      editingEntity: AssignmentTopic | null;
-      form: FormInstance<TopicFormValues>;
-      formDialogTitle: string;
-      formError: string | null;
-      formSubmitting: boolean;
-      onClose: () => void;
-      onFinish: (values: TopicFormValues) => Promise<void>;
-      onOk: () => void;
-    }): ReactElement | null => {
+    (formDialogProperties: FormDialogProperties<AssignmentTopic>): ReactElement | null => {
       if (!shouldRenderFormDialog(formDialogProperties.editingEntity, formDialogProperties.formDialogTitle)) {
         return null;
       }
@@ -380,10 +372,18 @@ export function ManageTopicsModal(properties: ManageTopicsModalProperties): Reac
         formDialogProperties.editingEntity
       );
 
+      // The hook's form is typed for ReferenceDataFormValues ({ name: string }),
+      // but TopicFormDialog needs FormInstance<TopicFormValues> ({ name: string; yearGroupKeys: string[] })
+      // This type assertion is safe because the hook's form instance supports arbitrary field access
+      const topicForm = formDialogProperties.form as unknown as FormInstance<TopicFormValues>;
+      const topicOnFinish = formDialogProperties.onFinish as unknown as (
+        values: TopicFormValues
+      ) => Promise<void>;
+
       return (
         <TopicFormDialog
           formKey={formKey}
-          form={formDialogProperties.form}
+          form={topicForm}
           initialName={initialName}
           initialYearGroupKeys={initialYearGroupKeys}
           labelId={FORM_DIALOG_LABEL_ID}
@@ -391,7 +391,7 @@ export function ManageTopicsModal(properties: ManageTopicsModalProperties): Reac
           formError={formDialogProperties.formError}
           formSubmitting={formDialogProperties.formSubmitting}
           onClose={formDialogProperties.onClose}
-          onFinish={formDialogProperties.onFinish}
+          onFinish={topicOnFinish}
           onOk={formDialogProperties.onOk}
           yearGroups={yearGroups}
         />
@@ -402,20 +402,14 @@ export function ManageTopicsModal(properties: ManageTopicsModalProperties): Reac
 
   // Custom delete dialog renderer
   const renderDeleteDialog = useCallback(
-    (deleteDialogProperties: {
-      deleteState: {
-        open: boolean;
-        entity: AssignmentTopic | null;
-        error: string | null;
-        blocked: boolean;
-        submitting: boolean;
-      };
-      onClose: () => void;
-      onConfirm: () => Promise<void>;
-    }): ReactElement | null => {
+    (deleteDialogProperties: DeleteDialogProperties<AssignmentTopic>): ReactElement | null => {
       if (!deleteDialogProperties.deleteState.open) {
         return null;
       }
+
+      // The hook's onConfirm is typed as () => void, but TopicDeleteDialog expects () => Promise<void>
+      // This type assertion is safe because the hook's handleDeleteConfirm is async
+      const topicOnConfirm = deleteDialogProperties.onConfirm as unknown as () => Promise<void>;
 
       return (
         <TopicDeleteDialog
@@ -424,7 +418,7 @@ export function ManageTopicsModal(properties: ManageTopicsModalProperties): Reac
           blocked={deleteDialogProperties.deleteState.blocked}
           submitting={deleteDialogProperties.deleteState.submitting}
           onClose={deleteDialogProperties.onClose}
-          onConfirm={deleteDialogProperties.onConfirm}
+          onConfirm={topicOnConfirm}
         />
       );
     },
@@ -444,7 +438,6 @@ export function ManageTopicsModal(properties: ManageTopicsModalProperties): Reac
       if (properties.onEntityCreated) {
         properties.onEntityCreated(result);
       }
-      return result;
     },
     updateService: async ({ key, record }: { key: string; record: Omit<AssignmentTopic, 'key'> }) => {
       await updateAssignmentTopic({ key, record });
