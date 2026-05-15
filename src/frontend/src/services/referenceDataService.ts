@@ -1,35 +1,49 @@
 import { callApi } from './apiService';
 import type {
-    CohortListResponse,
-    CreateCohortInput,
-    CreateCohortResponse,
-    CreateYearGroupInput,
-    CreateYearGroupResponse,
-    DeleteCohortInput,
-    DeleteCohortResponse,
-    DeleteYearGroupInput,
-    DeleteYearGroupResponse,
-    UpdateCohortInput,
-    UpdateCohortResponse,
-    UpdateYearGroupInput,
-    UpdateYearGroupResponse,
-    YearGroupListResponse,
+  AssignmentTopicListResponse,
+  CohortListResponse,
+  CreateAssignmentTopicInput,
+  CreateAssignmentTopicResponse,
+  CreateCohortInput,
+  CreateCohortResponse,
+  CreateYearGroupInput,
+  CreateYearGroupResponse,
+  DeleteAssignmentTopicInput,
+  DeleteAssignmentTopicResponse,
+  DeleteCohortInput,
+  DeleteCohortResponse,
+  DeleteYearGroupInput,
+  DeleteYearGroupResponse,
+  UpdateAssignmentTopicInput,
+  UpdateAssignmentTopicResponse,
+  UpdateCohortInput,
+  UpdateCohortResponse,
+  UpdateYearGroupInput,
+  UpdateYearGroupResponse,
+  YearGroupListResponse,
 } from './referenceData.zod';
 import {
-    CohortListResponseSchema,
-    CreateCohortInputSchema,
-    CreateCohortResponseSchema,
-    CreateYearGroupInputSchema,
-    CreateYearGroupResponseSchema,
-    DeleteCohortInputSchema,
-    DeleteCohortResponseSchema,
-    DeleteYearGroupInputSchema,
-    DeleteYearGroupResponseSchema,
-    UpdateCohortInputSchema,
-    UpdateCohortResponseSchema,
-    UpdateYearGroupInputSchema,
-    UpdateYearGroupResponseSchema,
-    YearGroupListResponseSchema,
+  AssignmentTopicListResponseSchema,
+  CohortListResponseSchema,
+  CreateAssignmentTopicInputSchema,
+  CreateAssignmentTopicResponseSchema,
+  CreateCohortInputSchema,
+  CreateCohortResponseSchema,
+  CreateYearGroupInputSchema,
+  CreateYearGroupResponseSchema,
+  DeleteAssignmentTopicInputSchema,
+  DeleteAssignmentTopicResponseSchema,
+  DeleteCohortInputSchema,
+  DeleteCohortResponseSchema,
+  DeleteYearGroupInputSchema,
+  DeleteYearGroupResponseSchema,
+  UpdateAssignmentTopicInputSchema,
+  UpdateAssignmentTopicResponseSchema,
+  UpdateCohortInputSchema,
+  UpdateCohortResponseSchema,
+  UpdateYearGroupInputSchema,
+  UpdateYearGroupResponseSchema,
+  YearGroupListResponseSchema,
 } from './referenceData.zod';
 
 /**
@@ -38,7 +52,7 @@ import {
  * @returns {Promise<CohortListResponse>} The cohort list response.
  */
 export async function getCohorts(): Promise<CohortListResponse> {
-    return CohortListResponseSchema.parse(await callApi('getCohorts'));
+  return CohortListResponseSchema.parse(await callApi('getCohorts'));
 }
 
 /**
@@ -48,8 +62,8 @@ export async function getCohorts(): Promise<CohortListResponse> {
  * @returns {Promise<CreateCohortResponse>} The cohort create response.
  */
 export async function createCohort(input: CreateCohortInput): Promise<CreateCohortResponse> {
-    const parsedInput = CreateCohortInputSchema.parse(input);
-    return CreateCohortResponseSchema.parse(await callApi('createCohort', parsedInput));
+  const parsedInput = CreateCohortInputSchema.parse(input);
+  return CreateCohortResponseSchema.parse(await callApi('createCohort', parsedInput));
 }
 
 /**
@@ -59,8 +73,8 @@ export async function createCohort(input: CreateCohortInput): Promise<CreateCoho
  * @returns {Promise<UpdateCohortResponse>} The cohort update response.
  */
 export async function updateCohort(input: UpdateCohortInput): Promise<UpdateCohortResponse> {
-    const parsedInput = UpdateCohortInputSchema.parse(input);
-    return UpdateCohortResponseSchema.parse(await callApi('updateCohort', parsedInput));
+  const parsedInput = UpdateCohortInputSchema.parse(input);
+  return UpdateCohortResponseSchema.parse(await callApi('updateCohort', parsedInput));
 }
 
 /**
@@ -70,8 +84,8 @@ export async function updateCohort(input: UpdateCohortInput): Promise<UpdateCoho
  * @returns {Promise<DeleteCohortResponse>} The cohort delete response.
  */
 export async function deleteCohort(input: DeleteCohortInput): Promise<DeleteCohortResponse> {
-    const parsedInput = DeleteCohortInputSchema.parse(input);
-    return DeleteCohortResponseSchema.parse(await callApi('deleteCohort', parsedInput));
+  const parsedInput = DeleteCohortInputSchema.parse(input);
+  return DeleteCohortResponseSchema.parse(await callApi('deleteCohort', parsedInput));
 }
 
 /**
@@ -80,7 +94,7 @@ export async function deleteCohort(input: DeleteCohortInput): Promise<DeleteCoho
  * @returns {Promise<YearGroupListResponse>} The year-group list response.
  */
 export async function getYearGroups(): Promise<YearGroupListResponse> {
-    return YearGroupListResponseSchema.parse(await callApi('getYearGroups'));
+  return YearGroupListResponseSchema.parse(await callApi('getYearGroups'));
 }
 
 /**
@@ -90,10 +104,10 @@ export async function getYearGroups(): Promise<YearGroupListResponse> {
  * @returns {Promise<CreateYearGroupResponse>} The year-group create response.
  */
 export async function createYearGroup(
-    input: CreateYearGroupInput
+  input: CreateYearGroupInput
 ): Promise<CreateYearGroupResponse> {
-    const parsedInput = CreateYearGroupInputSchema.parse(input);
-    return CreateYearGroupResponseSchema.parse(await callApi('createYearGroup', parsedInput));
+  const parsedInput = CreateYearGroupInputSchema.parse(input);
+  return CreateYearGroupResponseSchema.parse(await callApi('createYearGroup', parsedInput));
 }
 
 /**
@@ -103,10 +117,10 @@ export async function createYearGroup(
  * @returns {Promise<UpdateYearGroupResponse>} The year-group update response.
  */
 export async function updateYearGroup(
-    input: UpdateYearGroupInput
+  input: UpdateYearGroupInput
 ): Promise<UpdateYearGroupResponse> {
-    const parsedInput = UpdateYearGroupInputSchema.parse(input);
-    return UpdateYearGroupResponseSchema.parse(await callApi('updateYearGroup', parsedInput));
+  const parsedInput = UpdateYearGroupInputSchema.parse(input);
+  return UpdateYearGroupResponseSchema.parse(await callApi('updateYearGroup', parsedInput));
 }
 
 /**
@@ -116,8 +130,62 @@ export async function updateYearGroup(
  * @returns {Promise<DeleteYearGroupResponse>} The year-group delete response.
  */
 export async function deleteYearGroup(
-    input: DeleteYearGroupInput
+  input: DeleteYearGroupInput
 ): Promise<DeleteYearGroupResponse> {
-    const parsedInput = DeleteYearGroupInputSchema.parse(input);
-    return DeleteYearGroupResponseSchema.parse(await callApi('deleteYearGroup', parsedInput));
+  const parsedInput = DeleteYearGroupInputSchema.parse(input);
+  return DeleteYearGroupResponseSchema.parse(await callApi('deleteYearGroup', parsedInput));
+}
+
+/**
+ * Retrieves assignment-topic reference-data records from the backend transport.
+ *
+ * @returns {Promise<AssignmentTopicListResponse>} The assignment-topic list response.
+ */
+export async function getAssignmentTopics(): Promise<AssignmentTopicListResponse> {
+  return AssignmentTopicListResponseSchema.parse(await callApi('getAssignmentTopics'));
+}
+
+/**
+ * Sends an assignment-topic-create request to the backend transport.
+ *
+ * @param {CreateAssignmentTopicInput} input Assignment-topic create input.
+ * @returns {Promise<CreateAssignmentTopicResponse>} The assignment-topic create response.
+ */
+export async function createAssignmentTopic(
+  input: CreateAssignmentTopicInput
+): Promise<CreateAssignmentTopicResponse> {
+  const parsedInput = CreateAssignmentTopicInputSchema.parse(input);
+  return CreateAssignmentTopicResponseSchema.parse(
+    await callApi('createAssignmentTopic', parsedInput)
+  );
+}
+
+/**
+ * Sends an assignment-topic-update request to the backend transport.
+ *
+ * @param {UpdateAssignmentTopicInput} input Assignment-topic update input.
+ * @returns {Promise<UpdateAssignmentTopicResponse>} The assignment-topic update response.
+ */
+export async function updateAssignmentTopic(
+  input: UpdateAssignmentTopicInput
+): Promise<UpdateAssignmentTopicResponse> {
+  const parsedInput = UpdateAssignmentTopicInputSchema.parse(input);
+  return UpdateAssignmentTopicResponseSchema.parse(
+    await callApi('updateAssignmentTopic', parsedInput)
+  );
+}
+
+/**
+ * Sends an assignment-topic-delete request to the backend transport.
+ *
+ * @param {DeleteAssignmentTopicInput} input Assignment-topic delete input.
+ * @returns {Promise<DeleteAssignmentTopicResponse>} The assignment-topic delete response.
+ */
+export async function deleteAssignmentTopic(
+  input: DeleteAssignmentTopicInput
+): Promise<DeleteAssignmentTopicResponse> {
+  const parsedInput = DeleteAssignmentTopicInputSchema.parse(input);
+  return DeleteAssignmentTopicResponseSchema.parse(
+    await callApi('deleteAssignmentTopic', parsedInput)
+  );
 }

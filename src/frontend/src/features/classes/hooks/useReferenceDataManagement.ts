@@ -40,7 +40,7 @@ import {
 /**
  * Reference data trust boundary identifier.
  */
-export type ReferenceDataTrustBoundary = 'cohorts' | 'yearGroups';
+export type ReferenceDataTrustBoundary = 'cohorts' | 'yearGroups' | 'assignmentTopics';
 
 // ============================================================================
 // Configuration Types

@@ -1,6 +1,6 @@
 /**
  * Shared deferred promise utilities for frontend tests.
- * 
+ *
  * Provides reusable deferred promise patterns for testing async scenarios,
  * particularly useful for testing React Query startup warmup and cache behaviour.
  */
@@ -16,10 +16,10 @@
  * @example
  * ```typescript
  * const { promise, resolvePromise, rejectPromise } = createDeferredPromise<number>();
- * 
+ *
  * // In one part of the test:
  * someAsyncFunction().then(resolvePromise);
- * 
+ *
  * // In another part:
  * await promise; // Waits for the async function to complete
  * ```
@@ -89,7 +89,7 @@ export interface CreateDeferredStartupDatasetsOptions<TDatasets extends Record<s
  *     cohorts: () => createDeferredPromise<Array<{ key: string; name: string }>>(),
  *   },
  * });
- * 
+ *
  * // Use in tests:
  * deferreds.classPartialsDeferred.resolvePromise([{ classId: 'class-1' }]);
  * ```
@@ -107,7 +107,7 @@ export function createDeferredStartupDatasets<TDatasets extends Record<string, u
       const factory = datasetFactories[key as keyof TDatasets];
       const deferred = factory();
       const deferredKey = `${String(key)}Deferred`;
-      
+
       // Build result with proper typing - key comes from datasetFactories which is typed
       // eslint-disable-next-line security/detect-object-injection
       (result as Record<string, unknown>)[deferredKey] = deferred;
@@ -127,7 +127,7 @@ export interface AssignmentStartupDatasets {
   classPartials: Array<{ classId: string }>;
   assignmentDefinitionPartials: Array<{ definitionKey: string }>;
   cohorts: Array<{ key: string; name: string; active: boolean }>;
-  assignmentTopics: Array<{ key: string; name: string }>;
+  assignmentTopics: Array<{ key: string; name: string; yearGroupKeys: string[] }>;
   yearGroups: Array<{ key: string; name: string }>;
 }
 
@@ -138,7 +138,9 @@ export type AssignmentStartupDeferreds = {
   classPartialsDeferred: DeferredPromiseResult<Array<{ classId: string }>>;
   assignmentDefinitionPartialsDeferred: DeferredPromiseResult<Array<{ definitionKey: string }>>;
   cohortsDeferred: DeferredPromiseResult<Array<{ key: string; name: string; active: boolean }>>;
-  assignmentTopicsDeferred: DeferredPromiseResult<Array<{ key: string; name: string }>>;
+  assignmentTopicsDeferred: DeferredPromiseResult<
+    Array<{ key: string; name: string; yearGroupKeys: string[] }>
+  >;
   yearGroupsDeferred: DeferredPromiseResult<Array<{ key: string; name: string }>>;
 };
 
@@ -174,16 +176,21 @@ export function configureDeferredWarmupDatasets(
   } = mocks;
 
   const classPartialsDeferred = createDeferredPromise<Array<{ classId: string }>>();
-  const assignmentDefinitionPartialsDeferred = createDeferredPromise<Array<{ definitionKey: string }>>();
-  const cohortsDeferred = createDeferredPromise<Array<{ key: string; name: string; active: boolean }>>();
-  const assignmentTopicsDeferred = createDeferredPromise<Array<{ key: string; name: string }>>();
+  const assignmentDefinitionPartialsDeferred =
+    createDeferredPromise<Array<{ definitionKey: string }>>();
+  const cohortsDeferred =
+    createDeferredPromise<Array<{ key: string; name: string; active: boolean }>>();
+  const assignmentTopicsDeferred =
+    createDeferredPromise<Array<{ key: string; name: string; yearGroupKeys: string[] }>>();
   const yearGroupsDeferred = createDeferredPromise<Array<{ key: string; name: string }>>();
 
   if (getABClassPartialsMock) {
     getABClassPartialsMock.mockImplementation(() => classPartialsDeferred.promise);
   }
   if (getAssignmentDefinitionPartialsMock) {
-    getAssignmentDefinitionPartialsMock.mockImplementation(() => assignmentDefinitionPartialsDeferred.promise);
+    getAssignmentDefinitionPartialsMock.mockImplementation(
+      () => assignmentDefinitionPartialsDeferred.promise
+    );
   }
   if (getCohortsMock) {
     getCohortsMock.mockImplementation(() => cohortsDeferred.promise);

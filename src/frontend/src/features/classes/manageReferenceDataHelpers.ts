@@ -12,7 +12,7 @@ import {
   type BlockingLoadErrorState,
 } from '../../errors/blockingLoadError';
 
-type ReferenceDataTrustBoundary = 'cohorts' | 'yearGroups';
+type ReferenceDataTrustBoundary = 'cohorts' | 'yearGroups' | 'assignmentTopics';
 
 export {
   getBlockingLoadErrorMessage,
@@ -191,5 +191,3 @@ export function getReferenceDataLoadError(
 
   return null;
 }
-
-

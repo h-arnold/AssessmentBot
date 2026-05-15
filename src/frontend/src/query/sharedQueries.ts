@@ -6,17 +6,14 @@ import {
 } from '../services/assignmentDefinitionPartialsService';
 import {
   getAssignmentTopics,
-  type AssignmentTopicsResponse,
+  type AssignmentTopicListResponse,
 } from '../services/assignmentTopicsService';
 import { getAuthorisationStatus } from '../services/authService';
 import { getBackendConfig } from '../services/backendConfigurationService';
 import { getABClassPartials, type ClassPartial } from '../services/classPartialsService';
 import { getGoogleClassrooms } from '../services/googleClassroomsService';
 import { getCohorts, getYearGroups } from '../services/referenceDataService';
-import type {
-  CohortListResponse,
-  YearGroupListResponse,
-} from '../services/referenceData.zod';
+import type { CohortListResponse, YearGroupListResponse } from '../services/referenceData.zod';
 import { queryKeys } from './queryKeys';
 
 const startupWarmupPromises = new WeakMap<QueryClient, Promise<StartupWarmupQueriesResult>>();
@@ -24,7 +21,7 @@ const startupWarmupPromises = new WeakMap<QueryClient, Promise<StartupWarmupQuer
 export type StartupWarmupQueriesResult = Readonly<{
   classPartials: ClassPartial[];
   assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse;
-  assignmentTopics: AssignmentTopicsResponse;
+  assignmentTopics: AssignmentTopicListResponse;
   cohorts: CohortListResponse;
   yearGroups: YearGroupListResponse;
 }>;
@@ -204,9 +201,7 @@ export function getStartupWarmupQueryKey(datasetKey: StartupWarmupDatasetKey) {
  * @param {QueryClient} queryClient Query client to warm.
  * @returns {Promise<StartupWarmupQueriesResult>} Promise resolving when startup datasets are warm.
  */
-export function warmStartupQueries(
-  queryClient: QueryClient
-): Promise<StartupWarmupQueriesResult> {
+export function warmStartupQueries(queryClient: QueryClient): Promise<StartupWarmupQueriesResult> {
   const existingWarmupPromise = startupWarmupPromises.get(queryClient);
 
   if (existingWarmupPromise) {
@@ -215,7 +210,9 @@ export function warmStartupQueries(
 
   const warmupPromise = Promise.allSettled(
     startupWarmupQueryDefinitions.map(async (queryDefinition) => {
-      const queryOptions = queryDefinition.getQueryOptions() as Parameters<QueryClient['fetchQuery']>[0];
+      const queryOptions = queryDefinition.getQueryOptions() as Parameters<
+        QueryClient['fetchQuery']
+      >[0];
       const dataset = await queryClient.fetchQuery(queryOptions);
 
       return [queryDefinition.datasetKey, dataset] as const;
@@ -229,7 +226,9 @@ export function warmStartupQueries(
       }
 
       return Object.fromEntries(
-        (results as PromiseFulfilledResult<StartupWarmupQueryResultEntry>[]).map((result) => result.value)
+        (results as PromiseFulfilledResult<StartupWarmupQueryResultEntry>[]).map(
+          (result) => result.value
+        )
       ) as StartupWarmupQueriesResult;
     })
     .finally(() => {

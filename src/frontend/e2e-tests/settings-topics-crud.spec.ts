@@ -130,13 +130,11 @@ async function openManageTopicsModal(page: Parameters<typeof openManageTopicsMod
 // ---------------------------------------------------------------------------
 
 test.describe('Settings Topics CRUD — Manage Topics', () => {
-  test.beforeEach(async ({ page }) => {
-    await openSettingsTopicsTab(page);
-  });
-
   // Section 1: Basic modal visibility
 
   test('Manage Topics button is visible in Reference Data tab', async ({ page }) => {
+    await openSettingsTopicsTab(page);
+
     const manageTopicsButton = page.getByRole('button', {
       name: topicsModalConfig.managementButtonName,
     });
@@ -144,6 +142,8 @@ test.describe('Settings Topics CRUD — Manage Topics', () => {
   });
 
   test('opens Manage Topics modal when button is clicked', async ({ page }) => {
+    await openSettingsTopicsTab(page);
+
     const modal = await openManageTopicsModal(page);
     await expect(modal).toBeVisible();
   });
@@ -155,7 +155,7 @@ test.describe('Settings Topics CRUD — Manage Topics', () => {
   }) => {
     await assertTransientStateResetOnClose({
       page,
-      setupScenario: openSettingsTopicsTab,
+      setupScenario: () => openSettingsTopicsTab(page),
       closeMethod: 'mask',
       config: topicsModalConfig,
     });
@@ -168,7 +168,7 @@ test.describe('Settings Topics CRUD — Manage Topics', () => {
   }) => {
     await assertTransientStateResetOnClose({
       page,
-      setupScenario: openSettingsTopicsTab,
+      setupScenario: () => openSettingsTopicsTab(page),
       closeMethod: 'Escape',
       config: topicsModalConfig,
     });

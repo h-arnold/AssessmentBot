@@ -6,25 +6,25 @@ const MIN_VALID_MONTH = 1;
 const MAX_VALID_MONTH = 12;
 
 const CohortRecordInputSchema = z.object({
-    name: NonEmptyNameSchema,
-    active: z.boolean().optional(),
-    startYear: z.number().int().optional(),
-    startMonth: z.number().int().min(MIN_VALID_MONTH).max(MAX_VALID_MONTH).optional(),
+  name: NonEmptyNameSchema,
+  active: z.boolean().optional(),
+  startYear: z.number().int().optional(),
+  startMonth: z.number().int().min(MIN_VALID_MONTH).max(MAX_VALID_MONTH).optional(),
 });
 
 const UpdateCohortRecordInputSchema = z.object({
-    name: NonEmptyNameSchema,
-    active: z.boolean(),
-    startYear: z.number().int().optional(),
-    startMonth: z.number().int().min(MIN_VALID_MONTH).max(MAX_VALID_MONTH).optional(),
+  name: NonEmptyNameSchema,
+  active: z.boolean(),
+  startYear: z.number().int().optional(),
+  startMonth: z.number().int().min(MIN_VALID_MONTH).max(MAX_VALID_MONTH).optional(),
 });
 
 export const CohortSchema = z.object({
-    key: NonEmptyNameSchema,
-    name: NonEmptyNameSchema,
-    active: z.boolean(),
-    startYear: z.number().int(),
-    startMonth: z.number().int().min(MIN_VALID_MONTH).max(MAX_VALID_MONTH),
+  key: NonEmptyNameSchema,
+  name: NonEmptyNameSchema,
+  active: z.boolean(),
+  startYear: z.number().int(),
+  startMonth: z.number().int().min(MIN_VALID_MONTH).max(MAX_VALID_MONTH),
 });
 
 export type Cohort = z.infer<typeof CohortSchema>;
@@ -46,27 +46,27 @@ export const DeleteCohortResponseSchema = z.void();
 export type DeleteCohortResponse = z.infer<typeof DeleteCohortResponseSchema>;
 
 export const CreateCohortInputSchema = z.object({
-    record: CohortRecordInputSchema,
+  record: CohortRecordInputSchema,
 });
 
 export type CreateCohortInput = z.infer<typeof CreateCohortInputSchema>;
 
 export const UpdateCohortInputSchema = z.object({
-    key: NonEmptyNameSchema,
-    record: UpdateCohortRecordInputSchema,
+  key: NonEmptyNameSchema,
+  record: UpdateCohortRecordInputSchema,
 });
 
 export type UpdateCohortInput = z.infer<typeof UpdateCohortInputSchema>;
 
 export const DeleteCohortInputSchema = z.object({
-    key: NonEmptyNameSchema,
+  key: NonEmptyNameSchema,
 });
 
 export type DeleteCohortInput = z.infer<typeof DeleteCohortInputSchema>;
 
 export const YearGroupSchema = z.object({
-    key: NonEmptyNameSchema,
-    name: NonEmptyNameSchema,
+  key: NonEmptyNameSchema,
+  name: NonEmptyNameSchema,
 });
 
 export type YearGroup = z.infer<typeof YearGroupSchema>;
@@ -88,24 +88,74 @@ export const DeleteYearGroupResponseSchema = z.void();
 export type DeleteYearGroupResponse = z.infer<typeof DeleteYearGroupResponseSchema>;
 
 export const CreateYearGroupInputSchema = z.object({
-    record: z.object({
-        name: NonEmptyNameSchema,
-    }),
+  record: z.object({
+    name: NonEmptyNameSchema,
+  }),
 });
 
 export type CreateYearGroupInput = z.infer<typeof CreateYearGroupInputSchema>;
 
 export const UpdateYearGroupInputSchema = z.object({
-    key: NonEmptyNameSchema,
-    record: z.object({
-        name: NonEmptyNameSchema,
-    }),
+  key: NonEmptyNameSchema,
+  record: z.object({
+    name: NonEmptyNameSchema,
+  }),
 });
 
 export type UpdateYearGroupInput = z.infer<typeof UpdateYearGroupInputSchema>;
 
 export const DeleteYearGroupInputSchema = z.object({
-    key: NonEmptyNameSchema,
+  key: NonEmptyNameSchema,
 });
 
 export type DeleteYearGroupInput = z.infer<typeof DeleteYearGroupInputSchema>;
+
+// AssignmentTopic schemas with yearGroupKeys support
+export const AssignmentTopicSchema = z.object({
+  key: NonEmptyNameSchema,
+  name: NonEmptyNameSchema,
+  yearGroupKeys: z.array(NonEmptyNameSchema),
+});
+
+export type AssignmentTopic = z.infer<typeof AssignmentTopicSchema>;
+
+export const AssignmentTopicListResponseSchema = z.array(AssignmentTopicSchema);
+
+export type AssignmentTopicListResponse = z.infer<typeof AssignmentTopicListResponseSchema>;
+
+export const CreateAssignmentTopicResponseSchema = AssignmentTopicSchema;
+
+export type CreateAssignmentTopicResponse = z.infer<typeof CreateAssignmentTopicResponseSchema>;
+
+export const UpdateAssignmentTopicResponseSchema = AssignmentTopicSchema;
+
+export type UpdateAssignmentTopicResponse = z.infer<typeof UpdateAssignmentTopicResponseSchema>;
+
+export const DeleteAssignmentTopicResponseSchema = z.void();
+
+export type DeleteAssignmentTopicResponse = z.infer<typeof DeleteAssignmentTopicResponseSchema>;
+
+export const CreateAssignmentTopicInputSchema = z.object({
+  record: z.object({
+    name: NonEmptyNameSchema,
+    yearGroupKeys: z.array(NonEmptyNameSchema),
+  }),
+});
+
+export type CreateAssignmentTopicInput = z.infer<typeof CreateAssignmentTopicInputSchema>;
+
+export const UpdateAssignmentTopicInputSchema = z.object({
+  key: NonEmptyNameSchema,
+  record: z.object({
+    name: NonEmptyNameSchema,
+    yearGroupKeys: z.array(NonEmptyNameSchema),
+  }),
+});
+
+export type UpdateAssignmentTopicInput = z.infer<typeof UpdateAssignmentTopicInputSchema>;
+
+export const DeleteAssignmentTopicInputSchema = z.object({
+  key: NonEmptyNameSchema,
+});
+
+export type DeleteAssignmentTopicInput = z.infer<typeof DeleteAssignmentTopicInputSchema>;

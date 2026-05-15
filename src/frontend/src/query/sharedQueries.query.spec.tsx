@@ -151,13 +151,13 @@ describe('shared query definitions', () => {
     classPartialsDeferred.resolvePromise([{ classId: 'class-1' }]);
     assignmentDefinitionPartialsDeferred.resolvePromise([{ definitionKey: 'algebra-baseline' }]);
     cohortsDeferred.resolvePromise([{ key: 'cohort-2026', name: 'Cohort 2026', active: true }]);
-    assignmentTopicsDeferred.resolvePromise([{ key: 'topic-algebra', name: 'Algebra' }]);
+    assignmentTopicsDeferred.resolvePromise([{ key: 'topic-algebra', name: 'Algebra', yearGroupKeys: [] }]);
     yearGroupsDeferred.resolvePromise([{ key: 'year-10', name: 'Year 10' }]);
 
     await expect(warmupPromise).resolves.toEqual({
       classPartials: [{ classId: 'class-1' }],
       assignmentDefinitionPartials: [{ definitionKey: 'algebra-baseline' }],
-      assignmentTopics: [{ key: 'topic-algebra', name: 'Algebra' }],
+      assignmentTopics: [{ key: 'topic-algebra', name: 'Algebra', yearGroupKeys: [] }],
       cohorts: [{ key: 'cohort-2026', name: 'Cohort 2026', active: true }],
       yearGroups: [{ key: 'year-10', name: 'Year 10' }],
     });
@@ -169,7 +169,9 @@ describe('shared query definitions', () => {
     const cohortsDeferred = createDeferredPromise<
       Array<{ key: string; name: string; active: boolean }>
     >();
-    const assignmentTopicsDeferred = createDeferredPromise<Array<{ key: string; name: string }>>();
+    const assignmentTopicsDeferred = createDeferredPromise<
+      Array<{ key: string; name: string; yearGroupKeys: string[] }>
+    >();
     const yearGroupsDeferred = createDeferredPromise<Array<{ key: string; name: string }>>();
     let hasSettled = false;
     getABClassPartialsMock.mockImplementationOnce(() => classPartialsDeferred.promise);
@@ -189,7 +191,7 @@ describe('shared query definitions', () => {
 
     classPartialsDeferred.resolvePromise([{ classId: 'class-1' }]);
     cohortsDeferred.resolvePromise([{ key: 'cohort-2026', name: 'Cohort 2026', active: true }]);
-    assignmentTopicsDeferred.resolvePromise([{ key: 'topic-algebra', name: 'Algebra' }]);
+    assignmentTopicsDeferred.resolvePromise([{ key: 'topic-algebra', name: 'Algebra', yearGroupKeys: [] }]);
     yearGroupsDeferred.resolvePromise([{ key: 'year-10', name: 'Year 10' }]);
 
     await expect(warmupPromise).rejects.toBe(warmupError);
@@ -226,13 +228,13 @@ describe('shared query definitions', () => {
     classPartialsDeferred.resolvePromise([{ classId: 'class-1' }]);
     assignmentDefinitionPartialsDeferred.resolvePromise([{ definitionKey: 'algebra-baseline' }]);
     cohortsDeferred.resolvePromise([{ key: 'cohort-2026', name: 'Cohort 2026', active: true }]);
-    assignmentTopicsDeferred.resolvePromise([{ key: 'topic-algebra', name: 'Algebra' }]);
+    assignmentTopicsDeferred.resolvePromise([{ key: 'topic-algebra', name: 'Algebra', yearGroupKeys: [] }]);
     yearGroupsDeferred.resolvePromise([{ key: 'year-10', name: 'Year 10' }]);
 
     await expect(firstWarmupPromise).resolves.toEqual({
       classPartials: [{ classId: 'class-1' }],
       assignmentDefinitionPartials: [{ definitionKey: 'algebra-baseline' }],
-      assignmentTopics: [{ key: 'topic-algebra', name: 'Algebra' }],
+      assignmentTopics: [{ key: 'topic-algebra', name: 'Algebra', yearGroupKeys: [] }],
       cohorts: [{ key: 'cohort-2026', name: 'Cohort 2026', active: true }],
       yearGroups: [{ key: 'year-10', name: 'Year 10' }],
     });

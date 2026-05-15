@@ -1,20 +1,16 @@
 import type { AssignmentDefinition } from '../../services/assignmentDefinition.zod';
-import type { AssignmentTopic } from '../../services/assignmentTopics.zod';
+import type { AssignmentTopic } from '../../services/referenceData.zod';
 import type { YearGroup } from '../../services/referenceData.zod';
 
 /**
  * Assignment definition test fixtures module.
- * 
+ *
  * Provides shared mock data and factory functions for assignment definition tests.
  * Use these helpers to reduce duplication across test files.
  */
 
 // Import and re-export shared fixtures from central module
-import {
-  mockTopics,
-  mockYearGroups,
-  mockFullAssignmentDefinition,
-} from './sharedTestFixtures';
+import { mockTopics, mockYearGroups, mockFullAssignmentDefinition } from './sharedTestFixtures';
 
 // ============================================================================
 // Topic Fixtures
@@ -30,14 +26,13 @@ import {
  * @param {Partial<AssignmentTopic>[]} overrides Array of partial topic overrides.
  * @returns {AssignmentTopic[]} Array of mock topics.
  */
-export function createMockTopics(
-  overrides: Partial<AssignmentTopic>[] = []
-): AssignmentTopic[] {
+export function createMockTopics(overrides: Partial<AssignmentTopic>[] = []): AssignmentTopic[] {
   return [
     ...mockTopics,
     ...overrides.map((override, index) => ({
       key: `topic-custom-${index}`,
       name: `Custom Topic ${index}`,
+      yearGroupKeys: [],
       ...override,
     })),
   ];
@@ -57,9 +52,7 @@ export function createMockTopics(
  * @param {Partial<YearGroup>[]} overrides Array of partial year group overrides.
  * @returns {YearGroup[]} Array of mock year groups.
  */
-export function createMockYearGroups(
-  overrides: Partial<YearGroup>[] = []
-): YearGroup[] {
+export function createMockYearGroups(overrides: Partial<YearGroup>[] = []): YearGroup[] {
   return [
     ...mockYearGroups,
     ...overrides.map((override, index) => ({
@@ -242,4 +235,9 @@ export function createMockAssignmentPartialRow(
  */
 export const emptyCohorts: Array<{ key: string; name: string; active: boolean }> = [];
 
-export {mockCohorts, mockTopics, mockYearGroups, mockFullAssignmentDefinition} from './sharedTestFixtures';
+export {
+  mockCohorts,
+  mockTopics,
+  mockYearGroups,
+  mockFullAssignmentDefinition,
+} from './sharedTestFixtures';

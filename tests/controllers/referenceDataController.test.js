@@ -20,6 +20,7 @@ import {
 const originalValidate = globalThis.Validate;
 const originalCohort = globalThis.Cohort;
 const originalYearGroup = globalThis.YearGroup;
+const originalAssignmentTopic = globalThis.AssignmentTopic;
 
 function setGlobalValue(key, originalValue, replacement) {
   globalThis[key] = replacement;
@@ -31,6 +32,10 @@ function restoreGlobalValue(key, originalValue) {
     return;
   }
   globalThis[key] = originalValue;
+}
+
+function cleanupAssignmentTopicGlobals() {
+  restoreGlobalValue('AssignmentTopic', originalAssignmentTopic);
 }
 
 /**
@@ -81,6 +86,7 @@ function primeCollectionLookupByKey(collection, records) {
 beforeAll(async () => {
   const cohortModule = await import('../../src/backend/Models/Cohort.js');
   const yearGroupModule = await import('../../src/backend/Models/YearGroup.js');
+  const assignmentTopicModule = await import('../../src/backend/Models/AssignmentTopic.js');
 
   setGlobalValue('Validate', originalValidate, Validate);
   setGlobalValue('Cohort', originalCohort, cohortModule.Cohort ?? cohortModule.default?.Cohort);
@@ -89,12 +95,18 @@ beforeAll(async () => {
     originalYearGroup,
     yearGroupModule.YearGroup ?? yearGroupModule.default?.YearGroup
   );
+  setGlobalValue(
+    'AssignmentTopic',
+    originalAssignmentTopic,
+    assignmentTopicModule.AssignmentTopic ?? assignmentTopicModule.default?.AssignmentTopic
+  );
 });
 
 afterAll(() => {
   restoreGlobalValue('Validate', originalValidate);
   restoreGlobalValue('Cohort', originalCohort);
   restoreGlobalValue('YearGroup', originalYearGroup);
+  cleanupAssignmentTopicGlobals();
 });
 
 let ReferenceDataController;
@@ -504,69 +516,83 @@ describe('ReferenceDataController – year-group key-based persistence', () => {
 });
 
 describe('ReferenceDataController – assignment-topic key-based persistence', () => {
-  it('listing assignment topics returns { key, name } items sorted by name', () => {
+  it('listing assignment topics returns { key, name, yearGroupKeys } items sorted by name', () => {
     primeCollectionLookupByKey(assignmentTopicsCollection, [
-      { _id: 'topic-2', key: 'topic-z', name: 'Trigonometry' },
-      { _id: 'topic-1', key: 'topic-a', name: 'Algebra' },
-      { _id: 'topic-3', key: 'topic-l', name: 'Linear Equations' },
+      { _id: 'topic-2', key: 'topic-z', name: 'Trigonometry', yearGroupKeys: ['yg-math'] },
+      { _id: 'topic-1', key: 'topic-a', name: 'Algebra', yearGroupKeys: ['yg-math'] },
+      { _id: 'topic-3', key: 'topic-l', name: 'Linear Equations', yearGroupKeys: ['yg-math'] },
     ]);
 
     const result = new ReferenceDataController().listAssignmentTopics();
 
     expect(result).toEqual([
-      { key: 'topic-a', name: 'Algebra' },
-      { key: 'topic-l', name: 'Linear Equations' },
-      { key: 'topic-z', name: 'Trigonometry' },
+      { key: 'topic-a', name: 'Algebra', yearGroupKeys: ['yg-math'] },
+      { key: 'topic-l', name: 'Linear Equations', yearGroupKeys: ['yg-math'] },
+      { key: 'topic-z', name: 'Trigonometry', yearGroupKeys: ['yg-math'] },
     ]);
     expect(result[0]).not.toHaveProperty('_id');
   });
 
-  it('creating assignment topic generates a stable key and rejects duplicates', () => {
+  it('creating assignment topic with yearGroupKeys generates a stable key and rejects duplicates', () => {
     primeCollectionLookupByKey(assignmentTopicsCollection, []);
 
-    const created = new ReferenceDataController().createAssignmentTopic({ name: 'Algebra' });
+    const created = new ReferenceDataController().createAssignmentTopic({
+      name: 'Algebra',
+      yearGroupKeys: ['yg-math'],
+    });
 
     expect(assignmentTopicsCollection.insertOne).toHaveBeenCalledTimes(1);
     const persisted = assignmentTopicsCollection.insertOne.mock.calls[0][0];
-    expect(created).toEqual({ key: persisted.key, name: 'Algebra' });
+    expect(created).toEqual({ key: persisted.key, name: 'Algebra', yearGroupKeys: ['yg-math'] });
     expect(typeof created.key).toBe('string');
     expect(created.key.length).toBeGreaterThan(0);
 
     primeCollectionLookupByKey(assignmentTopicsCollection, [persisted]);
     expect(() =>
-      new ReferenceDataController().createAssignmentTopic({ name: ' algebra ' })
+      new ReferenceDataController().createAssignmentTopic({
+        name: ' algebra ',
+        yearGroupKeys: ['yg-math'],
+      })
     ).toThrow(/duplicate/i);
     expect(assignmentTopicsCollection.insertOne).toHaveBeenCalledTimes(1);
   });
 
-  it('updating assignment topic preserves key and rejects duplicate replacement names', () => {
+  it('updating assignment topic with yearGroupKeys preserves key and rejects duplicate replacement names', () => {
     primeCollectionLookupByKey(assignmentTopicsCollection, [
-      { key: 'topic-algebra', name: 'Algebra' },
-      { key: 'topic-geometry', name: 'Geometry' },
+      { key: 'topic-algebra', name: 'Algebra', yearGroupKeys: ['yg-math'] },
+      { key: 'topic-geometry', name: 'Geometry', yearGroupKeys: ['yg-math'] },
     ]);
 
     const updated = new ReferenceDataController().updateAssignmentTopic({
       key: 'topic-algebra',
-      record: { name: 'Advanced Algebra' },
+      record: { name: 'Advanced Algebra', yearGroupKeys: ['yg-math', 'yg-advanced'] },
     });
 
-    expect(updated).toEqual({ key: 'topic-algebra', name: 'Advanced Algebra' });
+    expect(updated).toEqual({
+      key: 'topic-algebra',
+      name: 'Advanced Algebra',
+      yearGroupKeys: ['yg-math', 'yg-advanced'],
+    });
     expect(assignmentTopicsCollection.replaceOne).toHaveBeenCalledWith(
       { key: 'topic-algebra' },
-      expect.objectContaining({ key: 'topic-algebra', name: 'Advanced Algebra' })
+      expect.objectContaining({
+        key: 'topic-algebra',
+        name: 'Advanced Algebra',
+        yearGroupKeys: ['yg-math', 'yg-advanced'],
+      })
     );
 
     expect(() =>
       new ReferenceDataController().updateAssignmentTopic({
         key: 'topic-algebra',
-        record: { name: ' geometry ' },
+        record: { name: ' geometry ', yearGroupKeys: ['yg-math'] },
       })
     ).toThrow(/duplicate/i);
   });
 
   it('deleting assignment topic removes keyed record when unused', () => {
     primeCollectionLookupByKey(assignmentTopicsCollection, [
-      { key: 'topic-algebra', name: 'Algebra' },
+      { key: 'topic-algebra', name: 'Algebra', yearGroupKeys: [] },
     ]);
     assignmentDefinitionPartialsCollection.find.mockReturnValue([]);
 
