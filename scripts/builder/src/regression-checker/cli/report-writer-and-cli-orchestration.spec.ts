@@ -882,7 +882,7 @@ describe('report writer and CLI orchestration', () => {
           '',
           '{"status":"ok"}',
         ].join('\n'),
-        stderr: '',
+        stderr: 'browser warning: cached dependencies are stale',
       },
     });
 

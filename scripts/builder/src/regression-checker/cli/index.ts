@@ -25,6 +25,7 @@ import {
 } from '../storage/session-storage.js';
 import { resolveSessionContext, type SessionIdSource } from './session-resolution.js';
 import { CommandExecutionError, logError, logInfo, runCommand } from '../../lib/process.js';
+import { isErrnoExceptionWithCode } from '../../lib/fs.js';
 
 type RegressionTool = 'eslint' | 'vitest' | 'playwright' | 'tsc';
 
@@ -1077,7 +1078,15 @@ async function readRawArtefactFromDisk(rawArtefactPath: string): Promise<unknown
     return artefactText;
   }
 
-  return JSON.parse(normaliseJsonArtefactText(artefactText));
+  try {
+    return JSON.parse(normaliseJsonArtefactText(artefactText));
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return artefactText;
+    }
+
+    throw error;
+  }
 }
 
 /**
@@ -1312,25 +1321,65 @@ export async function persistCapturedArtefact(options: {
     try {
       const existingContent = await fs.readFile(options.rawArtefactPath, 'utf8');
       if (existingContent.trim().length > 0) {
-        // Tool already wrote valid output, don't overwrite
         return;
       }
-    } catch {
-      // File doesn't exist or is empty, fall through to write captured output
+    } catch (error) {
+      if (!isErrnoExceptionWithCode(error, 'ENOENT')) {
+        throw error;
+      }
     }
   }
 
-  // For all tools (or when eslint/vitest didn't write their own output),
-  // write the captured output. Combine stdout and stderr, with stderr first
-  // since error messages are typically in stderr.
-  const stdoutContent = options.commandOutput.stdout.trim();
-  const stderrContent = options.commandOutput.stderr.trim();
-  const content = [stderrContent, stdoutContent].filter((s) => s.length > 0).join('\n');
-  const outputContent = options.rawArtefactPath.endsWith('.json')
-    ? normaliseJsonArtefactText(content)
-    : content;
+  await writeFileToDisk(options.rawArtefactPath, buildCapturedArtefactContent(options));
+}
 
-  await writeFileToDisk(options.rawArtefactPath, outputContent);
+/**
+ * Builds the raw artefact content to persist from captured command output.
+ *
+ * @param {{ tool: RegressionTool; rawArtefactPath: string; commandOutput: { stdout: string; stderr: string } }} options
+ * Captured tool output details.
+ * @param {RegressionTool} options.tool - Tool family for output handling.
+ * @param {string} options.rawArtefactPath - Target raw artefact path.
+ * @param {{ stdout: string; stderr: string }} options.commandOutput - Captured command output.
+ * @param {string} options.commandOutput.stdout - Captured stdout stream.
+ * @param {string} options.commandOutput.stderr - Captured stderr stream.
+ * @returns {string} Artefact content ready to write.
+ */
+function buildCapturedArtefactContent(options: {
+  tool: RegressionTool;
+  rawArtefactPath: string;
+  commandOutput: { stdout: string; stderr: string };
+}): string {
+  const combinedContent = buildCombinedCommandOutput(options.commandOutput);
+  if (!options.rawArtefactPath.endsWith('.json')) {
+    return combinedContent;
+  }
+
+  const stdoutContent = normaliseJsonArtefactText(options.commandOutput.stdout);
+  if (isJsonDocument(stdoutContent)) {
+    return stdoutContent;
+  }
+
+  const combinedJson = normaliseJsonArtefactText(combinedContent);
+  if (isJsonDocument(combinedJson)) {
+    return combinedJson;
+  }
+
+  return combinedContent;
+}
+
+/**
+ * Combines captured command streams for text artefacts and non-JSON fallback output.
+ *
+ * @param {{ stdout: string; stderr: string }} commandOutput - Captured stdout and stderr.
+ * @param {string} commandOutput.stdout - Captured stdout stream.
+ * @param {string} commandOutput.stderr - Captured stderr stream.
+ * @returns {string} Combined output with stderr before stdout.
+ */
+function buildCombinedCommandOutput(commandOutput: { stdout: string; stderr: string }): string {
+  const stdoutContent = commandOutput.stdout.trim();
+  const stderrContent = commandOutput.stderr.trim();
+  return [stderrContent, stdoutContent].filter((output) => output.length > 0).join('\n');
 }
 
 /**
@@ -1342,13 +1391,26 @@ export async function persistCapturedArtefact(options: {
  */
 function normaliseJsonArtefactText(artefactText: string): string {
   const bannerlessText = stripLeadingNpmScriptOutput(artefactText);
-  const trimmedText = bannerlessText.trimStart();
+  return isJsonDocument(bannerlessText) ? bannerlessText : artefactText;
+}
 
-  if (trimmedText.startsWith('{') || trimmedText.startsWith('[')) {
-    return bannerlessText;
+/**
+ * Checks whether a string is parseable JSON.
+ *
+ * @param {string} text - Candidate JSON text.
+ * @returns {boolean} `true` when the text parses as JSON.
+ */
+function isJsonDocument(text: string): boolean {
+  try {
+    JSON.parse(text);
+    return true;
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return false;
+    }
+
+    throw error;
   }
-
-  return artefactText;
 }
 
 /**
