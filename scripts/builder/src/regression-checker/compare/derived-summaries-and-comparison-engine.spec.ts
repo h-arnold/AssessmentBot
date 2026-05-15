@@ -67,7 +67,8 @@ const NEWLINE_SEPARATOR = '\n';
 const EXPECTED_REGRESSIONS_TOTAL = 2;
 const EXPECTED_NEW_FAILURES_TOTAL = 1;
 const EXPECTED_FIXES_TOTAL = 1;
-const EXPECTED_FAILING_CHECKS_TOTAL = 3;
+const EXPECTED_FAILING_CHECKS_TOTAL = 2;
+const EXPECTED_PASSING_CHECKS_TOTAL = 1;
 const ALERT_FAILURE_LINE = 3;
 const ALERT_FAILURE_COLUMN = 2;
 
@@ -547,11 +548,12 @@ describe('derived summaries and comparison engine', () => {
     });
 
     expect(result.checks.map((check) => check.id)).toEqual(['second', 'first', 'third']);
+    expect(result.checks[0]?.status).toBe('passing');
     expect(result.totals).toEqual({
       regressionsCount: EXPECTED_REGRESSIONS_TOTAL,
       newFailuresCount: EXPECTED_NEW_FAILURES_TOTAL,
       fixesCount: EXPECTED_FIXES_TOTAL,
-      checksPassing: 0,
+      checksPassing: EXPECTED_PASSING_CHECKS_TOTAL,
       checksFailing: EXPECTED_FAILING_CHECKS_TOTAL,
     });
   });

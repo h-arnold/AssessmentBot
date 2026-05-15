@@ -879,12 +879,10 @@ function renderPerCommandSummaryCompare(checks: ComparisonCheckResult[]): string
 function renderPerCheckSummaryCompare(check: ComparisonCheckResult): string {
   const parts: string[] = [check.id];
 
-  // Add counts in parentheses for failing checks
-  if (check.status !== 'passing') {
-    const counts: string[] = buildCheckCounts(check);
-    if (counts.length > 0) {
-      parts.push(`(${counts.join(', ')})`);
-    }
+  // Include delta counts for both failing checks and fix-only passing checks.
+  const counts: string[] = buildCheckCounts(check);
+  if (counts.length > 0) {
+    parts.push(`(${counts.join(', ')})`);
   }
 
   return `${parts.join(' ')}: ${check.status}`;
@@ -900,7 +898,7 @@ function buildCheckCounts(check: ComparisonCheckResult): string[] {
   const counts: string[] = [];
   addCount(counts, check.regressions.length, 'regression');
   addCount(counts, check.newFailures.length, 'new failure');
-  addCount(counts, check.fixes.length, 'fix', 'es');
+  addCount(counts, check.fixes.length, 'fix', 'fixes');
   return counts;
 }
 

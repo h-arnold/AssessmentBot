@@ -1426,7 +1426,7 @@ describe('report writer and CLI orchestration', () => {
           {
             id: 'builder-lint',
             tool: 'eslint',
-            status: 'failing',
+            status: 'passing',
             baselineSummary: { kind: 'eslint', counts: { errors: 1, warnings: 0 } },
             currentSummary: { kind: 'eslint', counts: { errors: 0, warnings: 0 } },
             regressions: [],
@@ -1440,15 +1440,61 @@ describe('report writer and CLI orchestration', () => {
           regressionsCount: 0,
           newFailuresCount: 0,
           fixesCount: 1,
-          checksPassing: 0,
-          checksFailing: 1,
+          checksPassing: 1,
+          checksFailing: 0,
         },
       },
     });
 
-    // Should show singular "1 fix" in per-command summary
-    expect(report).toContain('builder-lint (1 fix): failing');
-    expect(report).toContain('Fixes: 1');
+    // Should show singular "1 fix" in per-command summary without marking failure
+    expect(report).toContain('builder-lint (1 fix): passing');
+    expect(report).toContain('Fixes Count: 1');
+    expect(report).not.toContain('--- FAILED CHECKS ---');
+  });
+
+  it('renders comparison report with multiple fixes showing plural form', async () => {
+    const { renderComparisonReport } = await loadCliModule();
+
+    const report = renderComparisonReport({
+      sessionId: SESSION_ID,
+      sessionStorageKey: SESSION_STORAGE_KEY,
+      sessionIdSource: 'arg',
+      baselineTimestamp: CREATED_AT,
+      currentTimestamp: CREATED_AT,
+      comparison: {
+        overallStatus: 'GREEN',
+        baselineCompatibility: { compatible: true },
+        checks: [
+          {
+            id: 'frontend-e2e-check',
+            tool: 'playwright',
+            status: 'passing',
+            baselineSummary: {
+              kind: 'playwright',
+              counts: { total: 3, passed: 0, failed: 3, skipped: 0 },
+            },
+            currentSummary: {
+              kind: 'playwright',
+              counts: { total: 3, passed: 3, failed: 0, skipped: 0 },
+            },
+            regressions: [],
+            newFailures: [],
+            fixes: ['spec-a.ts|suite|test-a', 'spec-b.ts|suite|test-b', 'spec-c.ts|suite|test-c'],
+            executionError: null,
+            baselineIncompatibility: null,
+          },
+        ],
+        totals: {
+          regressionsCount: 0,
+          newFailuresCount: 0,
+          fixesCount: 3,
+          checksPassing: 1,
+          checksFailing: 0,
+        },
+      },
+    });
+
+    expect(report).toContain('frontend-e2e-check (3 fixes): passing');
   });
 
   it('writes file content to disk via writeFileToDisk', async () => {
