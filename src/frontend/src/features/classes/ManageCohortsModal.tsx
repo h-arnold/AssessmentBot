@@ -25,6 +25,7 @@ import { useReferenceDataManagement } from './hooks/useReferenceDataManagement';
 export type ManageCohortsModalProperties = Readonly<{
   open: boolean;
   onClose: () => void;
+  onEntityCreated?: (entity: { key: string; name: string }) => void;
 }>;
 
 const FORM_DIALOG_LABEL_ID = 'manage-cohorts-form-dialog-title';
@@ -114,7 +115,11 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
     entityKey: 'cohorts',
     queryOptions: cohortQueryOptions,
     createService: async ({ record }: { record: Omit<Cohort, 'key'> }) => {
-      await createCohort({ record });
+      const result = await createCohort({ record });
+      // Call onEntityCreated callback if provided
+      if (properties.onEntityCreated) {
+        properties.onEntityCreated({ key: result.key, name: result.name });
+      }
     },
     updateService: async ({ key, record }: { key: string; record: Omit<Cohort, 'key'> }) => {
       await updateCohort({ key, record });

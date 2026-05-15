@@ -1,7 +1,9 @@
 import { Modal, Space, Button, Typography } from 'antd';
-import { type JSX } from 'react';
+import { useCallback, useState, type JSX } from 'react';
 import { useAssignmentDefinitionWizard } from './useAssignmentDefinitionWizard';
 import { AssignmentDefinitionWizardModalShell } from './AssignmentDefinitionWizardModalShell';
+import { ManageTopicsModal } from '../features/settings/ManageTopicsModal';
+import { ManageYearGroupsModal } from '../features/classes/ManageYearGroupsModal';
 import { type AssignmentDefinitionWizardModalProperties } from './useAssignmentDefinitionWizard';
 
 const { Text } = Typography;
@@ -28,6 +30,8 @@ export function AssignmentDefinitionWizardModal(
   properties: AssignmentDefinitionWizardModalProperties
 ): JSX.Element {
   const { open, mode, definitionKey, onClose } = properties;
+  const [manageTopicsModalOpen, setManageTopicsModalOpen] = useState(false);
+  const [manageYearGroupsModalOpen, setManageYearGroupsModalOpen] = useState(false);
 
   const {
     form,
@@ -44,6 +48,8 @@ export function AssignmentDefinitionWizardModal(
     yearGroupOptions,
     primaryActionLabel,
     isPrimaryActionDisabled,
+    selectedTopicKey,
+    selectedYearGroupKey,
     handleFormValuesChange,
     handleReparse,
     handleReparseCancel,
@@ -52,9 +58,50 @@ export function AssignmentDefinitionWizardModal(
     handleKeepEditing,
     handleTaskWeightingChange,
     handlePrimaryAction,
+    handleTopicAddNew,
+    handleYearGroupAddNew,
+    onTopicEntityCreated,
+    onYearGroupEntityCreated,
   } = useAssignmentDefinitionWizard({ open, mode, definitionKey, onClose });
 
   const isClosable = !isSubmitting && !documentChange.hasPendingChange;
+
+  // Handlers for opening modals
+  const handleOpenTopicsModal = useCallback(() => {
+    setManageTopicsModalOpen(true);
+  }, []);
+
+  const handleOpenYearGroupsModal = useCallback(() => {
+    setManageYearGroupsModalOpen(true);
+  }, []);
+
+  // Combined handlers that call both the hook handler and open the modal
+  const combinedTopicAddNew = useCallback(() => {
+    handleTopicAddNew();
+    handleOpenTopicsModal();
+  }, [handleTopicAddNew, handleOpenTopicsModal]);
+
+  const combinedYearGroupAddNew = useCallback(() => {
+    handleYearGroupAddNew();
+    handleOpenYearGroupsModal();
+  }, [handleYearGroupAddNew, handleOpenYearGroupsModal]);
+
+  // Enhanced entity created handlers that also close the modal
+  const combinedTopicEntityCreated = useCallback(
+    (entity: { key: string; name: string; yearGroupKeys?: string[] }) => {
+      onTopicEntityCreated(entity);
+      setManageTopicsModalOpen(false);
+    },
+    [onTopicEntityCreated, setManageTopicsModalOpen]
+  );
+
+  const combinedYearGroupEntityCreated = useCallback(
+    (entity: { key: string; name: string }) => {
+      onYearGroupEntityCreated(entity);
+      setManageYearGroupsModalOpen(false);
+    },
+    [onYearGroupEntityCreated]
+  );
 
   return (
     <>
@@ -82,6 +129,22 @@ export function AssignmentDefinitionWizardModal(
         onReparse={handleReparse}
         onReparseCancel={handleReparseCancel}
         onTaskWeightingChange={handleTaskWeightingChange}
+        onTopicAddNew={combinedTopicAddNew}
+        onYearGroupAddNew={combinedYearGroupAddNew}
+        selectedTopicKey={selectedTopicKey}
+        selectedYearGroupKey={selectedYearGroupKey}
+      />
+
+      <ManageTopicsModal
+        open={manageTopicsModalOpen}
+        onClose={() => setManageTopicsModalOpen(false)}
+        onEntityCreated={combinedTopicEntityCreated}
+      />
+
+      <ManageYearGroupsModal
+        open={manageYearGroupsModalOpen}
+        onClose={() => setManageYearGroupsModalOpen(false)}
+        onEntityCreated={combinedYearGroupEntityCreated}
       />
 
       <Modal
