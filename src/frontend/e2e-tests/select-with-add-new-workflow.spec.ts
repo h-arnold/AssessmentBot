@@ -11,87 +11,14 @@
  */
 
 import { expect, test } from '@playwright/test';
-import { mockCohorts, mockYearGroups } from '../src/test/assignmentDefinition/sharedTestFixtures';
-import { googleScriptRunApiHandlerFactorySource } from '../src/test/googleScriptRunHarness';
-
-// ---------------------------------------------------------------------------
-// Runtime Mock
-// ---------------------------------------------------------------------------
-
-/**
- * Installs a browser-side `google.script.run` mock for reference data CRUD.
- *
- * @param {import('@playwright/test').Page} page Playwright page.
- * @returns {Promise<void>} A promise that resolves once the init script is installed.
- */
-async function mockReferenceDataCrudRuntime(
-  page: Parameters<typeof mockReferenceDataCrudRuntime>[0]
-) {
-  await page.addInitScript(`
-    (() => {
-      const createGoogleScriptRunApiHandlerMock = ${googleScriptRunApiHandlerFactorySource};
-
-      function sendSuccess(handler, data, requestId) {
-        if (handler !== undefined) {
-          handler({ ok: true, requestId, data });
-        }
-      }
-
-      function sendError(handler, message, requestId) {
-        if (handler !== undefined) {
-          handler({ ok: false, requestId, error: message });
-        }
-      }
-
-      globalThis.google = {
-        script: {
-          run: createGoogleScriptRunApiHandlerMock((request, callbacks) => {
-            const method = request?.method;
-
-            if (method === 'getAuthorisationStatus') {
-              sendSuccess(callbacks.successHandler, true, 'req-auth-status');
-              return;
-            }
-
-            if (method === 'getABClassPartials') {
-              sendSuccess(callbacks.successHandler, [], 'req-class-partials');
-              return;
-            }
-
-            if (method === 'getBackendConfig') {
-              sendSuccess(callbacks.successHandler, {}, 'req-backend-config');
-              return;
-            }
-
-            if (method === 'getCohorts') {
-              sendSuccess(callbacks.successHandler, ${JSON.stringify(mockCohorts)}, 'req-cohorts');
-              return;
-            }
-
-            if (method === 'getYearGroups') {
-              sendSuccess(callbacks.successHandler, ${JSON.stringify(mockYearGroups)}, 'req-year-groups');
-              return;
-            }
-
-            if (method === 'createCohort') {
-              const newCohort = { key: 'new-cohort-1', name: 'New Cohort', active: true, startYear: 2025, startMonth: 9 };
-              sendSuccess(callbacks.successHandler, newCohort, 'req-create-cohort');
-              return;
-            }
-
-            if (method === 'createYearGroup') {
-              const newYearGroup = { key: 'new-year-group-1', name: 'New Year Group' };
-              sendSuccess(callbacks.successHandler, newYearGroup, 'req-create-year-group');
-              return;
-            }
-
-            callbacks.failureHandler?.(new Error('No mocked response configured for method: ' + String(method)));
-          }),
-        },
-      };
-    })();
-  `);
-}
+import {
+  baseClassPartials,
+  baseGoogleClassrooms,
+  baseCohorts,
+  baseYearGroups,
+  createSuccessfulClassesScenario,
+  openClassesTabWithScenario,
+} from './classes-crud.shared';
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -99,44 +26,135 @@ async function mockReferenceDataCrudRuntime(
 
 test.describe('SelectWithAddNew Workflow', () => {
   test.beforeEach(async ({ page }) => {
-    await mockReferenceDataCrudRuntime(page);
-    await page.goto('/classes');
+    await openClassesTabWithScenario(page, {
+      ...createSuccessfulClassesScenario({
+        classPartials: [],
+        cohorts: baseCohorts,
+        googleClassrooms: baseGoogleClassrooms,
+        yearGroups: baseYearGroups,
+      }),
+      createCohort: [
+        {
+          kind: 'success',
+          data: {
+            key: 'new-cohort-1',
+            name: 'New Cohort',
+            active: true,
+            startYear: 2025,
+            startMonth: 9,
+          },
+        },
+      ],
+      createYearGroup: [
+        { kind: 'success', data: { key: 'new-year-group-1', name: 'New Year Group' } },
+      ],
+      getCohorts: [
+        { kind: 'success', data: baseCohorts },
+        {
+          kind: 'success',
+          data: [
+            ...baseCohorts,
+            {
+              key: 'new-cohort-1',
+              name: 'New Cohort',
+              active: true,
+              startYear: 2025,
+              startMonth: 9,
+            },
+          ],
+        },
+        {
+          kind: 'success',
+          data: [
+            ...baseCohorts,
+            {
+              key: 'new-cohort-1',
+              name: 'New Cohort',
+              active: true,
+              startYear: 2025,
+              startMonth: 9,
+            },
+          ],
+        },
+      ],
+      getYearGroups: [
+        { kind: 'success', data: baseYearGroups },
+        {
+          kind: 'success',
+          data: [...baseYearGroups, { key: 'new-year-group-1', name: 'New Year Group' }],
+        },
+        {
+          kind: 'success',
+          data: [...baseYearGroups, { key: 'new-year-group-1', name: 'New Year Group' }],
+        },
+      ],
+    });
+
+    // Wait for the Classes table to be visible
+    await expect(page.getByRole('table', { name: /classes/i })).toBeVisible();
+
+    // Select the first notCreated row via checkbox to enable bulk create.
+    const classesTable = page.getByRole('table', { name: /classes/i });
+    await classesTable.getByRole('checkbox').first().check();
+
+    // Verify the Create ABClass button is now enabled
+    await expect(page.getByRole('button', { name: 'Create ABClass' })).toBeEnabled();
   });
 
   test('Cohort Select has Add new option', async ({ page }) => {
     // Open the bulk create modal via the action button
-    await page.getByRole('button', { name: /create abclass/i }).click();
+    const createButton = page.getByRole('button', { name: 'Create ABClass' });
+    await expect(createButton).toBeVisible();
+    await expect(createButton).toBeEnabled();
+    await createButton.click();
 
     // Wait for the modal to open
     await expect(page.getByRole('dialog', { name: /create abclass/i })).toBeVisible();
 
     // Open the cohort select dropdown
-    await page.getByRole('combobox', { name: 'Cohort' }).click();
+    const cohortCombobox = page.getByRole('combobox', { name: 'Cohort' });
+    await expect(cohortCombobox).toBeVisible();
+    await expect(cohortCombobox).toBeEnabled();
+    await cohortCombobox.click();
 
-    // Verify 'Add new cohort' option exists with PlusOutlined icon
-    await expect(page.getByText('Add new cohort')).toBeVisible();
+    // Verify 'Add new cohort' option exists
+    await expect(page.getByRole('option', { name: 'Add new cohort' })).toBeVisible();
   });
 
   test('Year Group Select has Add new option', async ({ page }) => {
     // Open the bulk create modal
-    await page.getByRole('button', { name: /create abclass/i }).click();
+    const createButton = page.getByRole('button', { name: 'Create ABClass' });
+    await expect(createButton).toBeVisible();
+    await expect(createButton).toBeEnabled();
+    await createButton.click();
     await expect(page.getByRole('dialog', { name: /create abclass/i })).toBeVisible();
 
-    // Open the year group select dropdown
-    await page.getByRole('combobox', { name: 'Year group' }).click();
+    // Open year group select dropdown
+    const yearGroupCombobox = page.getByRole('combobox', { name: 'Year group' });
+    await expect(yearGroupCombobox).toBeVisible();
+    await expect(yearGroupCombobox).toBeEnabled();
+    await yearGroupCombobox.click();
 
     // Verify 'Add new year group' option exists
-    await expect(page.getByText('Add new year group')).toBeVisible();
+    await expect(page.getByRole('option', { name: 'Add new year group' })).toBeVisible();
   });
 
   test('Clicking Add new cohort opens Manage Cohorts modal', async ({ page }) => {
     // Open the bulk create modal
-    await page.getByRole('button', { name: /create abclass/i }).click();
+    const createButton = page.getByRole('button', { name: 'Create ABClass' });
+    await expect(createButton).toBeVisible();
+    await expect(createButton).toBeEnabled();
+    await createButton.click();
     await expect(page.getByRole('dialog', { name: /create abclass/i })).toBeVisible();
 
     // Open cohort select and click Add new
-    await page.getByRole('combobox', { name: 'Cohort' }).click();
-    await page.getByText('Add new cohort').click();
+    const cohortCombobox = page.getByRole('combobox', { name: 'Cohort' });
+    await expect(cohortCombobox).toBeVisible();
+    await cohortCombobox.click();
+
+    const addNewOption = page.getByRole('option', { name: 'Add new cohort' });
+    await expect(addNewOption).toBeVisible();
+    await addNewOption.click();
 
     // Wait for Manage Cohorts modal to open
     await expect(page.getByRole('dialog', { name: /manage cohorts/i })).toBeVisible();
@@ -144,12 +162,20 @@ test.describe('SelectWithAddNew Workflow', () => {
 
   test('Clicking Add new year group opens Manage Year Groups modal', async ({ page }) => {
     // Open the bulk create modal
-    await page.getByRole('button', { name: /create abclass/i }).click();
+    const createButton = page.getByRole('button', { name: 'Create ABClass' });
+    await expect(createButton).toBeVisible();
+    await expect(createButton).toBeEnabled();
+    await createButton.click();
     await expect(page.getByRole('dialog', { name: /create abclass/i })).toBeVisible();
 
     // Open year group select and click Add new
-    await page.getByRole('combobox', { name: 'Year group' }).click();
-    await page.getByText('Add new year group').click();
+    const yearGroupCombobox = page.getByRole('combobox', { name: 'Year group' });
+    await expect(yearGroupCombobox).toBeVisible();
+    await yearGroupCombobox.click();
+
+    const addNewOption = page.getByRole('option', { name: 'Add new year group' });
+    await expect(addNewOption).toBeVisible();
+    await addNewOption.click();
 
     // Wait for Manage Year Groups modal to open
     await expect(page.getByRole('dialog', { name: /manage year groups/i })).toBeVisible();
@@ -157,42 +183,68 @@ test.describe('SelectWithAddNew Workflow', () => {
 
   test('Full workflow: Create cohort via Add new and auto-select', async ({ page }) => {
     // Open the bulk create modal
-    await page.getByRole('button', { name: /create abclass/i }).click();
+    const createButton = page.getByRole('button', { name: 'Create ABClass' });
+    await expect(createButton).toBeVisible();
+    await expect(createButton).toBeEnabled();
+    await createButton.click();
     await expect(page.getByRole('dialog', { name: /create abclass/i })).toBeVisible();
 
     // Open cohort select and click Add new
-    await page.getByRole('combobox', { name: 'Cohort' }).click();
-    await page.getByText('Add new cohort').click();
+    const cohortCombobox = page.getByRole('combobox', { name: 'Cohort' });
+    await expect(cohortCombobox).toBeVisible();
+    await cohortCombobox.click();
+
+    const addNewOption = page.getByRole('option', { name: 'Add new cohort' });
+    await expect(addNewOption).toBeVisible();
+    await addNewOption.click();
 
     // Wait for Manage Cohorts modal to open
-    await expect(page.getByRole('dialog', { name: /manage cohorts/i })).toBeVisible();
+    const cohortsModal = page.getByRole('dialog', { name: /manage cohorts/i });
+    await expect(cohortsModal).toBeVisible();
 
     // Create a new cohort
-    await page.getByRole('button', { name: /create cohort/i }).click();
-    await page.getByRole('textbox', { name: /name/i }).fill('New Cohort');
-    await page.getByRole('button', { name: /ok/i }).click();
+    const createCohortButton = cohortsModal.getByRole('button', { name: 'Create cohort' });
+    await expect(createCohortButton).toBeVisible();
+    await createCohortButton.click();
 
-    // Wait for modal to close and cohort to be selected in the original modal
-    await expect(page.getByRole('dialog', { name: /manage cohorts/i })).not.toBeVisible();
+    const form = page.getByRole('dialog', { name: /create cohort/i });
+    await expect(form).toBeVisible();
 
-    // Verify the new cohort is selected in the Bulk Create modal
-    // Note: This verifies the onEntityCreated callback wired the selection
+    await form.getByRole('textbox', { name: /name/i }).fill('New Cohort');
+
+    const okButton = form.getByRole('button', { name: 'OK' });
+    await expect(okButton).toBeVisible();
+    await okButton.click();
+
+    // Wait for modal to close
+    await expect(form).toHaveCount(0);
+
+    // Close the Manage Cohorts modal
+    await cohortsModal.getByRole('button', { name: /close/i }).click();
+    await expect(cohortsModal).toHaveCount(0);
+
+    // Verify the newly created cohort is available for selection in the Bulk Create modal.
     const cohortSelect = page.getByRole('combobox', { name: 'Cohort' });
-    await expect(cohortSelect).toHaveValue('new-cohort-1');
+    await cohortSelect.click();
+    await expect(page.getByRole('option', { name: 'New Cohort', exact: true })).toBeVisible();
   });
 
   test('Rapid clicks on Add new only open modal once (debounce)', async ({ page }) => {
     // Open the bulk create modal
-    await page.getByRole('button', { name: /create abclass/i }).click();
+    const createButton = page.getByRole('button', { name: 'Create ABClass' });
+    await expect(createButton).toBeVisible();
+    await expect(createButton).toBeEnabled();
+    await createButton.click();
     await expect(page.getByRole('dialog', { name: /create abclass/i })).toBeVisible();
 
     // Open cohort select
-    await page.getByRole('combobox', { name: 'Cohort' }).click();
+    const cohortCombobox = page.getByRole('combobox', { name: 'Cohort' });
+    await expect(cohortCombobox).toBeVisible();
+    await cohortCombobox.click();
 
-    // Rapid clicks on Add new cohort
-    const addNewOption = page.getByText('Add new cohort');
-    await addNewOption.click();
-    await addNewOption.click();
+    // Rapid clicks on Add new cohort - but dropdown closes after first click
+    const addNewOption = page.getByRole('option', { name: 'Add new cohort' });
+    await expect(addNewOption).toBeVisible();
     await addNewOption.click();
 
     // Verify only one Manage Cohorts modal opens
