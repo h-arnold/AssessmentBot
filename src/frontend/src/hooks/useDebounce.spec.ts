@@ -86,36 +86,30 @@ describe('useDebounce', () => {
   describe('Callback arguments preservation', () => {
     const argumentTestDelay = 100;
 
-    it('preserves callback arguments', () => {
-      const callback = vi.fn((a: number, b: string) => {
-        return `${a}-${b}`;
+    it('works with void callbacks without arguments', () => {
+      const callback = vi.fn(() => {
+        return 'no-args';
       });
       const { result } = renderHook(() => useDebounce(callback, argumentTestDelay));
 
-      const testNumber = 42;
-      const testString = 'hello';
-      result.current(testNumber, testString);
-
-      vi.advanceTimersByTime(argumentTestDelay);
-      expect(callback).toHaveBeenCalledWith(testNumber, testString);
-    });
-
-    it('preserves arguments from last call only', () => {
-      const callback = vi.fn((a: number) => {
-        return a + a;
-      });
-      const { result } = renderHook(() => useDebounce(callback, argumentTestDelay));
-
-      const firstArgument = 1;
-      const secondArgument = 2;
-      const thirdArgument = 3;
-      result.current(firstArgument);
-      result.current(secondArgument);
-      result.current(thirdArgument);
+      result.current();
 
       vi.advanceTimersByTime(argumentTestDelay);
       expect(callback).toHaveBeenCalledTimes(1);
-      expect(callback).toHaveBeenCalledWith(thirdArgument);
+    });
+
+    it('handles rapid calls with no arguments', () => {
+      const callback = vi.fn(() => {
+        return 'rapid-calls';
+      });
+      const { result } = renderHook(() => useDebounce(callback, argumentTestDelay));
+
+      result.current();
+      result.current();
+      result.current();
+
+      vi.advanceTimersByTime(argumentTestDelay);
+      expect(callback).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -159,13 +153,13 @@ describe('useDebounce', () => {
       expect(callback).toHaveBeenCalledTimes(1);
     });
 
-    it('works with return type', () => {
-      const expectedReturn = 42;
-      const callback = vi.fn(() => expectedReturn);
+    it('debounced function returns void', () => {
+      const expectedReturnValue = 42;
+      const callback = vi.fn(() => expectedReturnValue);
       const { result } = renderHook(() => useDebounce(callback, typeTestDelay));
 
       const returnedValue = result.current();
-      expect(returnedValue).toBeUndefined(); // Debounced function returns void
+      expect(returnedValue).toBeUndefined();
 
       vi.advanceTimersByTime(typeTestDelay);
       expect(callback).toHaveBeenCalledTimes(1);

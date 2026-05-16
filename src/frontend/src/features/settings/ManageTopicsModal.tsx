@@ -21,7 +21,7 @@
 import { Alert, Button, Form, Input, Select, Space, type FormInstance, type TableColumnType } from 'antd';
 import type { ReactElement } from 'react';
 import type { UseQueryOptions } from '@tanstack/react-query';
-import type { AssignmentTopic, YearGroup } from '../../services/referenceData.zod';
+import type { AssignmentTopic, YearGroup, TopicFormValues } from '../../services/referenceData.zod';
 import {
   createAssignmentTopic,
   deleteAssignmentTopic,
@@ -40,7 +40,12 @@ import {
   type BlockingLoadErrorState,
 } from '../classes/manageReferenceDataHelpers';
 import { InlineDialog } from '../classes/InlineDialog';
-import { useReferenceDataManagement, type ReferenceDataManagementConfig, type FormDialogProperties, type DeleteDialogProperties } from '../classes/hooks/useReferenceDataManagement';
+import {
+  useReferenceDataManagement,
+  type ReferenceDataManagementConfig,
+  type FormDialogProperties,
+  type DeleteDialogProperties,
+} from '../classes/hooks/useReferenceDataManagement';
 import { useCallback, useEffect, useMemo } from 'react';
 
 // ============================================================================
@@ -117,12 +122,6 @@ export type ManageTopicsModalProperties = Readonly<{
 const FORM_DIALOG_LABEL_ID = 'manage-topics-form-dialog-title';
 const DELETE_DIALOG_LABEL_ID = 'manage-topics-delete-dialog-title';
 
-// Form values type for topics (includes yearGroupKeys)
-type TopicFormValues = Readonly<{
-  name: string;
-  yearGroupKeys: string[];
-}>;
-
 /**
  * Year Groups Form Field - a multi-select component for year group association.
  *
@@ -135,14 +134,10 @@ function YearGroupsFormField(properties: Readonly<{
   yearGroups: YearGroup[];
   disabled?: boolean;
 }>): ReactElement {
-  const yearGroupOptions = useMemo(
-    () =>
-      properties.yearGroups.map((yearGroup) => ({
-        value: yearGroup.key,
-        label: yearGroup.name,
-      })),
-    [properties.yearGroups]
-  );
+  const yearGroupOptions = properties.yearGroups.map((yearGroup) => ({
+    value: yearGroup.key,
+    label: yearGroup.name,
+  }));
 
   return (
     <Select
@@ -318,7 +313,6 @@ export function ManageTopicsModal(properties: ManageTopicsModalProperties): Reac
 
   // Year groups blocking error state (using persisted blocking error mechanism)
   const yearGroupsBlockingErrorQuery = useQuery({
-    enabled: true,
     queryFn: () => getPersistedBlockingLoadError(queryClient, 'yearGroups'),
     queryKey: getReferenceDataBlockingLoadErrorQueryKey('yearGroups'),
   });
@@ -372,13 +366,10 @@ export function ManageTopicsModal(properties: ManageTopicsModalProperties): Reac
         formDialogProperties.editingEntity
       );
 
-      // The hook's form is typed for ReferenceDataFormValues ({ name: string }),
-      // but TopicFormDialog needs FormInstance<TopicFormValues> ({ name: string; yearGroupKeys: string[] })
-      // This type assertion is safe because the hook's form instance supports arbitrary field access
-      const topicForm = formDialogProperties.form as unknown as FormInstance<TopicFormValues>;
-      const topicOnFinish = formDialogProperties.onFinish as unknown as (
-        values: TopicFormValues
-      ) => Promise<void>;
+      // The hook's form is typed for ReferenceDataFormValues which now includes optional yearGroupKeys,
+      // so we can safely cast it to TopicFormValues since TopicFormValues extends it with required yearGroupKeys
+      const topicForm = formDialogProperties.form as FormInstance<TopicFormValues>;
+      const topicOnFinish = formDialogProperties.onFinish as (values: TopicFormValues) => Promise<void>;
 
       return (
         <TopicFormDialog
@@ -407,9 +398,9 @@ export function ManageTopicsModal(properties: ManageTopicsModalProperties): Reac
         return null;
       }
 
-      // The hook's onConfirm is typed as () => void, but TopicDeleteDialog expects () => Promise<void>
-      // This type assertion is safe because the hook's handleDeleteConfirm is async
-      const topicOnConfirm = deleteDialogProperties.onConfirm as unknown as () => Promise<void>;
+      // The hook's onConfirm is typed as () => void but handleDeleteConfirm returns Promise<void>
+      // This is safe because the hook's implementation is async
+      const topicOnConfirm = deleteDialogProperties.onConfirm as () => Promise<void>;
 
       return (
         <TopicDeleteDialog

@@ -1,18 +1,13 @@
 import { useCallback, type ReactElement } from 'react';
 import { Select, type SelectProps } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
-import { useDebounce } from '../hooks/useDebounce';
+import { useDebounce, DEFAULT_DEBOUNCE_MS } from '../hooks/useDebounce';
 
 /**
  * Sentinel value used internally to identify the 'Add new' option.
  * This value will never be a valid entity key.
  */
 const ADD_NEW_SENTINEL_VALUE = '__ADD_NEW_SENTINEL__';
-
-/**
- * Default debounce delay in milliseconds.
- */
-const DEFAULT_DEBOUNCE_MS = 300;
 
 /**
  * Entity types supported by the 'Add new' option.
@@ -129,7 +124,7 @@ export function SelectWithAddNew(
     {
       value: ADD_NEW_SENTINEL_VALUE,
       label: (
-        <span>
+        <span aria-label={`Add new ${entityType || ''}`}>
           <PlusOutlined /> {computedAddNewLabel}
         </span>
       ),

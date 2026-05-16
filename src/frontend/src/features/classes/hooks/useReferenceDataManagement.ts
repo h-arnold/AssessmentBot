@@ -26,21 +26,16 @@ import {
   refetchRequiredReferenceDataQuery,
   setPersistedBlockingLoadError,
   type BlockingLoadErrorState,
+  type ReferenceDataTrustBoundary,
 } from '../manageReferenceDataHelpers';
-import {
-  ReferenceDataDeleteDialog,
-  ReferenceDataFormDialog,
-  type ReferenceDataFormValues,
-} from '../manageReferenceDataDialogs';
+import type { ReferenceDataFormValues } from '../manageReferenceDataDialogs';
+import { ReferenceDataDeleteDialog, ReferenceDataFormDialog } from '../manageReferenceDataDialogs';
 
-// ============================================================================
-// Re-exported Types
 // ============================================================================
 
 /**
- * Reference data trust boundary identifier.
+ * Form values for reference data entities.
  */
-export type ReferenceDataTrustBoundary = 'cohorts' | 'yearGroups' | 'assignmentTopics';
 
 // ============================================================================
 // Configuration Types
@@ -582,3 +577,6 @@ export function useReferenceDataManagement<T extends { key: string; name: string
     ...(config.supportsToggleActive ? { handleToggleActive } : {}),
   };
 }
+
+export { ReferenceDataFormValues } from '../manageReferenceDataDialogs';
+export { type ReferenceDataTrustBoundary } from '../manageReferenceDataHelpers';

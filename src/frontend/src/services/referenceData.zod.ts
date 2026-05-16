@@ -159,3 +159,11 @@ export const DeleteAssignmentTopicInputSchema = z.object({
 });
 
 export type DeleteAssignmentTopicInput = z.infer<typeof DeleteAssignmentTopicInputSchema>;
+
+/**
+ * Form values for topic entities with required yearGroupKeys.
+ */
+export type TopicFormValues = Readonly<{
+  name: string;
+  yearGroupKeys: string[];
+}>;

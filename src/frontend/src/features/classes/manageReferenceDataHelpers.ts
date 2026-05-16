@@ -14,6 +14,8 @@ import {
 
 type ReferenceDataTrustBoundary = 'cohorts' | 'yearGroups' | 'assignmentTopics';
 
+export { type ReferenceDataTrustBoundary };
+
 export {
   getBlockingLoadErrorMessage,
   type BlockingLoadErrorState,

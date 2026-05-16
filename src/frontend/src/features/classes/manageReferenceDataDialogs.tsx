@@ -9,8 +9,13 @@
 import { Alert, Button, Form, Input, Space } from 'antd';
 import { InlineDialog } from './InlineDialog';
 
+/**
+ * Form values for reference data entities.
+ * Base type includes name; can be extended by types like AssignmentTopic with yearGroupKeys.
+ */
 export type ReferenceDataFormValues = Readonly<{
   name: string;
+  yearGroupKeys?: string[];
 }>;
 
 type ReferenceDataFormDialogProperties = Readonly<{
