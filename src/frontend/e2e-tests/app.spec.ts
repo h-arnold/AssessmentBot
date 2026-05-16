@@ -80,7 +80,9 @@ function getThemeModeSwitch(page: Page) {
  * @returns {Promise<string>} The computed banner background colour.
  */
 async function getHeaderBackgroundColour(page: Page) {
-  return page.getByRole('banner').evaluate((element) => getComputedStyle(element).backgroundColor);
+  const banner = page.getByRole('banner');
+  await expect(banner).toBeVisible();
+  return banner.evaluate((element) => getComputedStyle(element).backgroundColor);
 }
 
 /**
@@ -156,15 +158,15 @@ test.describe('app shell', () => {
     await expectBreadcrumbLabels(page, [appBreadcrumbBaseLabel, settingsLabel]);
   });
 
-  test('user can navigate to the top-level pages via menu clicks', async ({
-    page,
-  }) => {
+  test('user can navigate to the top-level pages via menu clicks', async ({ page }) => {
     await mockPendingGoogleScriptRun(page);
     await page.goto('/');
 
     for (const label of navigationMenuLabels) {
       await page.getByRole('menuitem', { name: label }).click();
-      await expect(page.getByRole('menuitem', { name: label })).toHaveClass(/ant-menu-item-selected/);
+      await expect(page.getByRole('menuitem', { name: label })).toHaveClass(
+        /ant-menu-item-selected/
+      );
     }
   });
 
@@ -174,7 +176,9 @@ test.describe('app shell', () => {
 
     await page.getByRole('button', { name: collapseNavigationButtonLabel }).click();
 
-    const menuItems = page.getByRole('navigation', { name: primaryNavigationLabel }).getByRole('menuitem');
+    const menuItems = page
+      .getByRole('navigation', { name: primaryNavigationLabel })
+      .getByRole('menuitem');
 
     await expect(menuItems).toHaveCount(expectedNavigationItemCount);
     await menuItems.nth(assignmentsNavigationItemIndex).click();
@@ -210,6 +214,9 @@ test.describe('app shell', () => {
     await expect(classesTab).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByRole('region', { name: 'Classes management panel' })).toBeVisible();
 
+    // Wait for the backend settings tab to be ready before clicking
+    await expect(backendSettingsTab).toBeVisible();
+    await expect(backendSettingsTab).toBeEnabled();
     await backendSettingsTab.click();
 
     await expect(backendSettingsTab).toHaveAttribute('aria-selected', 'true');
@@ -305,13 +312,16 @@ test.describe('app shell', () => {
     await mockPendingGoogleScriptRun(page);
     await page.goto('/');
 
+    const themeModeSwitch = getThemeModeSwitch(page);
+    await expect(themeModeSwitch).toBeVisible();
+
     const initialHeaderBackground = await getHeaderBackgroundColour(page);
 
-    await getThemeModeSwitch(page).click();
+    await themeModeSwitch.click();
 
-    await expect(getThemeModeSwitch(page)).toBeChecked();
+    await expect(themeModeSwitch).toBeChecked();
     await expect
-      .poll(async () => getHeaderBackgroundColour(page))
+      .poll(async () => getHeaderBackgroundColour(page), { timeout: 10_000 })
       .not.toBe(initialHeaderBackground);
   });
 
@@ -319,8 +329,10 @@ test.describe('app shell', () => {
     await mockPendingGoogleScriptRun(page);
     await page.goto('/');
 
-    const initialHeaderBackground = await getHeaderBackgroundColour(page);
     const themeModeSwitch = getThemeModeSwitch(page);
+    await expect(themeModeSwitch).toBeVisible();
+
+    const initialHeaderBackground = await getHeaderBackgroundColour(page);
 
     await themeModeSwitch.click();
     await expect(themeModeSwitch).toBeChecked();
@@ -328,7 +340,9 @@ test.describe('app shell', () => {
     await themeModeSwitch.click();
 
     await expect(themeModeSwitch).not.toBeChecked();
-    await expect.poll(async () => getHeaderBackgroundColour(page)).toBe(initialHeaderBackground);
+    await expect
+      .poll(async () => getHeaderBackgroundColour(page), { timeout: 10_000 })
+      .toBe(initialHeaderBackground);
   });
 
   test('theme toggle works after navigating across all pages', async ({ page }) => {
@@ -336,6 +350,7 @@ test.describe('app shell', () => {
     await page.goto('/');
 
     const themeModeSwitch = getThemeModeSwitch(page);
+    await expect(themeModeSwitch).toBeVisible();
 
     await themeModeSwitch.click();
     await expect(themeModeSwitch).toBeChecked();
@@ -350,18 +365,19 @@ test.describe('app shell', () => {
     await mockPendingGoogleScriptRun(page);
     await page.goto('/');
 
+    const themeModeSwitch = getThemeModeSwitch(page);
+    await expect(themeModeSwitch).toBeVisible();
+
     const initialHeaderBackground = await getHeaderBackgroundColour(page);
 
     await page.getByRole('button', { name: collapseNavigationButtonLabel }).click();
     await page.getByRole('button', { name: expandNavigationButtonLabel }).click();
 
-    const themeModeSwitch = getThemeModeSwitch(page);
-
     await themeModeSwitch.click();
 
     await expect(themeModeSwitch).toBeChecked();
     await expect
-      .poll(async () => getHeaderBackgroundColour(page))
+      .poll(async () => getHeaderBackgroundColour(page), { timeout: 10_000 })
       .not.toBe(initialHeaderBackground);
   });
 

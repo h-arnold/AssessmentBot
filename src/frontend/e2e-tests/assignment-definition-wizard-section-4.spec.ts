@@ -25,12 +25,8 @@ const defaultYearGroup = 'Year 10';
  */
 async function fillForm(page: Page, options: { noYearGroup?: boolean } = {}) {
   await page.getByRole('textbox', { name: 'Assignment Title' }).fill(defaultTitle);
-  await page
-    .getByRole('textbox', { name: 'Reference Document URL' })
-    .fill(defaultReferenceUrl);
-  await page
-    .getByRole('textbox', { name: 'Template Document URL' })
-    .fill(defaultTemplateUrl);
+  await page.getByRole('textbox', { name: 'Reference Document URL' }).fill(defaultReferenceUrl);
+  await page.getByRole('textbox', { name: 'Template Document URL' }).fill(defaultTemplateUrl);
   await page.getByRole('combobox', { name: 'Assignment Topic' }).click();
   await selectVisibleOption(page, defaultTopic);
   if (!options.noYearGroup) {
@@ -45,10 +41,10 @@ async function fillForm(page: Page, options: { noYearGroup?: boolean } = {}) {
  */
 async function openCreateModal(page: Page): Promise<void> {
   await page.goto('/');
-  await page.click('text=Assignments');
-  await page.waitForSelector('text=Assignment definitions');
-  await page.click('button:has-text("Create assignment")');
-  await page.waitForSelector('role=dialog[name="Create assignment"]');
+  await page.getByRole('menuitem', { name: 'Assignments' }).click();
+  await expect(page.getByText('Assignment definitions')).toBeVisible();
+  await page.getByRole('button', { name: 'Create assignment' }).click();
+  await expect(page.getByRole('dialog', { name: 'Create assignment' })).toBeVisible();
 }
 
 /**
@@ -58,15 +54,15 @@ async function openCreateModal(page: Page): Promise<void> {
  */
 async function openUpdateModal(page: Page, title: string): Promise<void> {
   await page.goto('/');
-  await page.click('text=Assignments');
-  await page.waitForSelector('text=Assignment definitions');
+  await page.getByRole('menuitem', { name: 'Assignments' }).click();
+  await expect(page.getByText('Assignment definitions')).toBeVisible();
   const table = page.getByRole('table', { name: 'Assignment definitions table' });
   const row = table
     .locator('tbody tr td:first-child')
     .getByText(title, { exact: true })
     .locator('xpath=ancestor::tr');
-  await row.locator('button:has-text("Update")').click();
-  await page.waitForSelector('role=dialog[name="Update assignment"]');
+  await row.getByRole('button', { name: 'Update' }).click();
+  await expect(page.getByRole('dialog', { name: 'Update assignment' })).toBeVisible();
 }
 
 /**
@@ -74,8 +70,8 @@ async function openUpdateModal(page: Page, title: string): Promise<void> {
  * @param {Page} page - Playwright page instance
  */
 async function parseAndContinue(page: Page): Promise<void> {
-  await page.click('button:has-text("Parse and continue")');
-  await page.waitForSelector('role=table[name*="task" i]');
+  await page.getByRole('button', { name: 'Parse and continue' }).click();
+  await expect(page.getByRole('table', { name: /task/i })).toBeVisible();
 }
 
 /**
@@ -83,8 +79,8 @@ async function parseAndContinue(page: Page): Promise<void> {
  * @param {Page} page - Playwright page instance
  */
 async function saveAndClose(page: Page): Promise<void> {
-  await page.click('button:has-text("Save")');
-  await expect(page.locator('role=dialog[name="Create assignment"]')).not.toBeVisible();
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('dialog', { name: 'Create assignment' })).not.toBeVisible();
 }
 
 /**
@@ -92,7 +88,7 @@ async function saveAndClose(page: Page): Promise<void> {
  * @param {Page} page - Playwright page instance
  */
 async function clickReparse(page: Page): Promise<void> {
-  await page.click('button:has-text("Re-parse")');
+  await page.getByRole('button', { name: 'Re-parse' }).click();
 }
 
 /**
@@ -100,10 +96,7 @@ async function clickReparse(page: Page): Promise<void> {
  * @param {Page} page - Playwright page instance
  * @param {string} [title='Algebra Baseline'] - Assignment title to update
  */
-async function triggerUpdateDocumentChange(
-  page: Page,
-  title = 'Algebra Baseline'
-): Promise<void> {
+async function triggerUpdateDocumentChange(page: Page, title = 'Algebra Baseline'): Promise<void> {
   await openUpdateModal(page, title);
   await page
     .getByRole('textbox', { name: 'Reference Document URL' })
@@ -116,7 +109,7 @@ async function triggerUpdateDocumentChange(
  */
 async function verifyReparsePrompt(page: Page): Promise<void> {
   await expect(page.getByText('Document changed. Re-parse to continue editing.')).toBeVisible();
-  await expect(page.locator('button:has-text("Re-parse")')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Re-parse' })).toBeVisible();
   await expect(page.getByRole('button', { name: /^Cancel$/ }).last()).toBeVisible();
 }
 
@@ -156,8 +149,8 @@ async function assertEnabled(page: Page, role: string, name: string | RegExp): P
  */
 async function navigateToAssignments(page: Page): Promise<void> {
   await page.goto('/');
-  await page.click('text=Assignments');
-  await page.waitForSelector('text=Assignment definitions');
+  await page.getByRole('menuitem', { name: 'Assignments' }).click();
+  await expect(page.getByText('Assignment definitions')).toBeVisible();
 }
 
 // Test data
@@ -219,14 +212,19 @@ test.describe('Assignment Definition Wizard - Shared edit surface, re-parse gati
     );
     await verifyReparsePrompt(page);
     await assertDisabled(page, 'textbox', 'Assignment Title');
-    await page.getByRole('button', { name: /^Cancel$/ }).first().click();
+    await page
+      .getByRole('button', { name: /^Cancel$/ })
+      .first()
+      .click();
     await expect(page.getByRole('textbox', { name: 'Reference Document URL' })).toHaveValue(
       'https://docs.google.com/presentation/d/ref-doc-123/edit'
     );
     await assertEnabled(page, 'textbox', 'Assignment Title');
   });
 
-  test('update flow: document change + successful re-parse refreshes task rows', async ({ page }) => {
+  test('update flow: document change + successful re-parse refreshes task rows', async ({
+    page,
+  }) => {
     await installRuntimeMock(page, reparseScenario);
     await page.goto('/');
     await triggerUpdateDocumentChange(page);
@@ -235,7 +233,9 @@ test.describe('Assignment Definition Wizard - Shared edit surface, re-parse gati
     await expect(page.locator('text="New Task"')).toBeVisible();
   });
 
-  test('modal close with unsaved stage-two edits requires discard confirmation', async ({ page }) => {
+  test('modal close with unsaved stage-two edits requires discard confirmation', async ({
+    page,
+  }) => {
     await openCreateModal(page);
     await fillForm(page);
     await parseAndContinue(page);
@@ -250,11 +250,13 @@ test.describe('Assignment Definition Wizard - Shared edit surface, re-parse gati
     await assertDisabled(page, 'button', 'Parse and continue');
   });
 
-  test('create mode fails closed locally when required topic or year-group reference data cannot be trusted or loaded', async ({ page }) => {
+  test('create mode fails closed locally when required topic or year-group reference data cannot be trusted or loaded', async ({
+    page,
+  }) => {
     await installRuntimeMock(page, createFailedReferenceDataScenario());
     await page.goto('/');
     await navigateToAssignments(page);
-    await expect(page.locator('button:has-text("Create assignment")')).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Create assignment' })).toBeDisabled();
   });
 
   test('failed post-mutation refresh fails closed on affected surface', async ({ page }) => {

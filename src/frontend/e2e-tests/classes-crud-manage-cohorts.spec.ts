@@ -156,9 +156,13 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
 
     await openClassesTabWithCohortManagementScenario(page, {
       createCohort: [{ kind: 'success', data: newCohort }],
-      // getCohorts called again after create to refresh the list
+      // getCohorts is called 3 times:
+      // 1. When the modal opens (initial load)
+      // 2. When the onEntityCreated callback invalidates the query
+      // 3. When handleFormFinish explicitly refetches to ensure data consistency
       getCohorts: [
         { kind: 'success', data: manageCohortsCohorts },
+        { kind: 'success', data: [...manageCohortsCohorts, newCohort] },
         { kind: 'success', data: [...manageCohortsCohorts, newCohort] },
       ],
     });
@@ -173,6 +177,7 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
     await form.getByRole('button', { name: /ok|save|create/i }).click();
 
     await expect(form).toHaveCount(0);
+    // Wait for the modal list to refresh and show the new cohort
     await expect(modal.getByText('Cohort 2026')).toBeVisible();
   });
 

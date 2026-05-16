@@ -1,4 +1,4 @@
-active_model = "mistral-small-latest"
+active_model = "mistral-medium-3.5"
 vim_keybindings = false
 disable_welcome_banner_animation = false
 autocopy_to_clipboard = true
@@ -264,6 +264,7 @@ sensitive_patterns = []
 permission = "ask"
 allowlist = [
     "docs.mistral.ai",
+    "playwright.dev",
 ]
 denylist = []
 sensitive_patterns = []
