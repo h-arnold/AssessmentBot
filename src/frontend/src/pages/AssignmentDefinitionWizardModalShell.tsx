@@ -257,7 +257,6 @@ function renderBaseFormFields(
             onAddNew={properties.onTopicAddNew}
             addNewLabel="Add new topic"
             entityType="topic"
-            debounceMs={300}
           />
         </Form.Item>
         <Form.Item label="Assignment Year Group" name="yearGroup" rules={[{ required: true, message: 'Year group is required' }]} style={{ flex: 1 }}>
@@ -269,7 +268,6 @@ function renderBaseFormFields(
             onAddNew={properties.onYearGroupAddNew}
             addNewLabel="Add new year group"
             entityType="yearGroup"
-            debounceMs={300}
           />
         </Form.Item>
       </div>

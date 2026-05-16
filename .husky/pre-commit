@@ -41,19 +41,19 @@ if [ -n "$LINT_FILES" ]; then
 	# ESLint backend staged files with the main config
 	if [ -n "$BACKEND_FILES" ]; then
 		echo "Checking backend staged files..."
-		npx eslint --config eslint.config.js --fix $BACKEND_FILES || exit 1
+		echo "$BACKEND_FILES" | xargs -d '\n' npx eslint --config eslint.config.js --fix || exit 1
 	fi
 	
 	# ESLint frontend staged files
 	if [ -n "$FRONTEND_FILES" ]; then
 		echo "Checking frontend staged files..."
-		npx eslint --config eslint.config.js --fix $FRONTEND_FILES || exit 1
+		echo "$FRONTEND_FILES" | xargs -d '\n' npx eslint --config eslint.config.js --fix || exit 1
 	fi
 	
 	# ESLint builder staged files
 	if [ -n "$BUILDER_FILES" ]; then
 		echo "Checking builder staged files..."
-		npx eslint --config scripts/builder/eslint.config.js --fix $BUILDER_FILES || exit 1
+		echo "$BUILDER_FILES" | xargs -d '\n' npx eslint --config scripts/builder/eslint.config.js --fix || exit 1
 	fi
 fi
 

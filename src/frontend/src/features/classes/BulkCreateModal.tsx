@@ -117,7 +117,6 @@ export function BulkCreateModal(properties: BulkCreateModalProperties) {
               onAddNew={properties.onCohortAddNew}
               addNewLabel="Add new cohort"
               entityType="cohort"
-              debounceMs={300}
             />
           </Form.Item>
           <Form.Item
@@ -146,7 +145,6 @@ export function BulkCreateModal(properties: BulkCreateModalProperties) {
               onAddNew={properties.onYearGroupAddNew}
               addNewLabel="Add new year group"
               entityType="yearGroup"
-              debounceMs={300}
             />
           </Form.Item>
           <Form.Item

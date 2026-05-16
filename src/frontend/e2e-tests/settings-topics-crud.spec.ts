@@ -10,7 +10,7 @@
  * mask click tests due to JSDOM/HappyDOM limitations.
  */
 
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { mockTopics } from '../src/test/assignmentDefinition/sharedTestFixtures';
 import { googleScriptRunApiHandlerFactorySource } from '../src/test/googleScriptRunHarness';
 import { baseYearGroups } from './classes-crud.shared';
@@ -40,7 +40,7 @@ const baseTopics = mockTopics;
  * @param {import('@playwright/test').Page} page Playwright page.
  * @returns {Promise<void>} A promise that resolves once the init script is installed.
  */
-async function mockTopicsCrudRuntime(page: Parameters<typeof mockTopicsCrudRuntime>[0]) {
+async function mockTopicsCrudRuntime(page: Page) {
   await page.addInitScript(`
     (() => {
       const createGoogleScriptRunApiHandlerMock = ${googleScriptRunApiHandlerFactorySource};
@@ -95,7 +95,7 @@ async function mockTopicsCrudRuntime(page: Parameters<typeof mockTopicsCrudRunti
  * @param {import('@playwright/test').Page} page Playwright page.
  * @returns {Promise<void>} A promise that resolves once the Settings > Reference Data tab is active.
  */
-async function openSettingsTopicsTab(page: Parameters<typeof openSettingsTopicsTab>[0]) {
+async function openSettingsTopicsTab(page: Page) {
   await mockTopicsCrudRuntime(page);
   await page.goto('/');
 
@@ -118,7 +118,7 @@ async function openSettingsTopicsTab(page: Parameters<typeof openSettingsTopicsT
  * @param {import('@playwright/test').Page} page Playwright page.
  * @returns {Promise<void>} A promise that resolves once the modal is open.
  */
-async function openManageTopicsModal(page: Parameters<typeof openManageTopicsModal>[0]) {
+async function openManageTopicsModal(page: Page) {
   await page.getByRole('button', { name: topicsModalConfig.managementButtonName }).click();
   const modal = page.getByRole('dialog', topicsModalConfig.modalName);
   await expect(modal).toBeVisible();
