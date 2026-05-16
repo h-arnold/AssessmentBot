@@ -578,5 +578,5 @@ export function useReferenceDataManagement<T extends { key: string; name: string
   };
 }
 
-export { ReferenceDataFormValues } from '../manageReferenceDataDialogs';
-export { type ReferenceDataTrustBoundary } from '../manageReferenceDataHelpers';
+export type { ReferenceDataFormValues } from '../manageReferenceDataDialogs';
+export type { ReferenceDataTrustBoundary } from '../manageReferenceDataHelpers';
