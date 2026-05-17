@@ -124,7 +124,7 @@ export function SelectWithAddNew(
     {
       value: ADD_NEW_SENTINEL_VALUE,
       label: (
-        <span aria-label={`Add new ${entityType || ''}`}>
+        <span aria-label={computedAddNewLabel}>
           <PlusOutlined /> {computedAddNewLabel}
         </span>
       ),
