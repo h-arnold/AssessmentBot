@@ -6,6 +6,11 @@ import {
   createDeferredPromise,
   configureDeferredWarmupDatasets,
 } from '../test/shared/testDeferredPromise';
+import {
+  assertWarmupMocksCalledOnce,
+  resolveAllWarmupDeferreds,
+  standardWarmupResult,
+} from '../test/shared/sharedQueriesTestHelpers';
 
 const getAuthorisationStatusMock = vi.fn();
 const getABClassPartialsMock = vi.fn();
@@ -142,25 +147,23 @@ describe('shared query definitions', () => {
     const queryClient = createAppQueryClient();
     const warmupPromise = warmStartupQueries(queryClient);
 
-    expect(getABClassPartialsMock).toHaveBeenCalledTimes(1);
-    expect(getAssignmentDefinitionPartialsMock).toHaveBeenCalledTimes(1);
-    expect(getCohortsMock).toHaveBeenCalledTimes(1);
-    expect(getAssignmentTopicsMock).toHaveBeenCalledTimes(1);
-    expect(getYearGroupsMock).toHaveBeenCalledTimes(1);
-
-    classPartialsDeferred.resolvePromise([{ classId: 'class-1' }]);
-    assignmentDefinitionPartialsDeferred.resolvePromise([{ definitionKey: 'algebra-baseline' }]);
-    cohortsDeferred.resolvePromise([{ key: 'cohort-2026', name: 'Cohort 2026', active: true }]);
-    assignmentTopicsDeferred.resolvePromise([{ key: 'topic-algebra', name: 'Algebra', yearGroupKeys: [] }]);
-    yearGroupsDeferred.resolvePromise([{ key: 'year-10', name: 'Year 10' }]);
-
-    await expect(warmupPromise).resolves.toEqual({
-      classPartials: [{ classId: 'class-1' }],
-      assignmentDefinitionPartials: [{ definitionKey: 'algebra-baseline' }],
-      assignmentTopics: [{ key: 'topic-algebra', name: 'Algebra', yearGroupKeys: [] }],
-      cohorts: [{ key: 'cohort-2026', name: 'Cohort 2026', active: true }],
-      yearGroups: [{ key: 'year-10', name: 'Year 10' }],
+    assertWarmupMocksCalledOnce({
+      getABClassPartialsMock,
+      getAssignmentDefinitionPartialsMock,
+      getCohortsMock,
+      getAssignmentTopicsMock,
+      getYearGroupsMock,
     });
+
+    resolveAllWarmupDeferreds({
+      classPartialsDeferred,
+      assignmentDefinitionPartialsDeferred,
+      cohortsDeferred,
+      assignmentTopicsDeferred,
+      yearGroupsDeferred,
+    });
+
+    await expect(warmupPromise).resolves.toEqual(standardWarmupResult);
   });
 
   it('propagates assignment-definition startup warm-up failures only after all startup datasets settle', async () => {
@@ -219,24 +222,22 @@ describe('shared query definitions', () => {
     const secondWarmupPromise = warmStartupQueries(queryClient);
 
     expect(firstWarmupPromise).toBe(secondWarmupPromise);
-    expect(getABClassPartialsMock).toHaveBeenCalledTimes(1);
-    expect(getAssignmentDefinitionPartialsMock).toHaveBeenCalledTimes(1);
-    expect(getCohortsMock).toHaveBeenCalledTimes(1);
-    expect(getAssignmentTopicsMock).toHaveBeenCalledTimes(1);
-    expect(getYearGroupsMock).toHaveBeenCalledTimes(1);
-
-    classPartialsDeferred.resolvePromise([{ classId: 'class-1' }]);
-    assignmentDefinitionPartialsDeferred.resolvePromise([{ definitionKey: 'algebra-baseline' }]);
-    cohortsDeferred.resolvePromise([{ key: 'cohort-2026', name: 'Cohort 2026', active: true }]);
-    assignmentTopicsDeferred.resolvePromise([{ key: 'topic-algebra', name: 'Algebra', yearGroupKeys: [] }]);
-    yearGroupsDeferred.resolvePromise([{ key: 'year-10', name: 'Year 10' }]);
-
-    await expect(firstWarmupPromise).resolves.toEqual({
-      classPartials: [{ classId: 'class-1' }],
-      assignmentDefinitionPartials: [{ definitionKey: 'algebra-baseline' }],
-      assignmentTopics: [{ key: 'topic-algebra', name: 'Algebra', yearGroupKeys: [] }],
-      cohorts: [{ key: 'cohort-2026', name: 'Cohort 2026', active: true }],
-      yearGroups: [{ key: 'year-10', name: 'Year 10' }],
+    assertWarmupMocksCalledOnce({
+      getABClassPartialsMock,
+      getAssignmentDefinitionPartialsMock,
+      getCohortsMock,
+      getAssignmentTopicsMock,
+      getYearGroupsMock,
     });
+
+    resolveAllWarmupDeferreds({
+      classPartialsDeferred,
+      assignmentDefinitionPartialsDeferred,
+      cohortsDeferred,
+      assignmentTopicsDeferred,
+      yearGroupsDeferred,
+    });
+
+    await expect(firstWarmupPromise).resolves.toEqual(standardWarmupResult);
   });
 });

@@ -5,6 +5,83 @@ import { queryKeys } from '../../query/queryKeys';
 import { renderWithFrontendProviders } from '../../test/renderWithFrontendProviders';
 import { ReferenceDataSettingsPanel } from './ReferenceDataSettingsPanel';
 
+// Module-level render function for modal wiring tests
+/**
+ * Creates a render configuration for modal wiring tests with seeded query data.
+ *
+ * @returns {{ queryClient: ReturnType<typeof createAppQueryClient>; render: () => ReturnType<typeof renderWithFrontendProviders> }} Render configuration with query client and render function.
+ */
+function createModalTestRender() {
+  const queryClient = createAppQueryClient();
+  queryClient.setQueryData(queryKeys.assignmentTopics(), []);
+  queryClient.setQueryData(queryKeys.yearGroups(), []);
+  return { queryClient, render: () => renderWithFrontendProviders(<ReferenceDataSettingsPanel />, { queryClient }) };
+}
+
+// Helper functions for modal interaction tests
+/**
+ * Opens the Manage Topics modal and waits for it to be fully ready.
+ *
+ * @returns {Promise<{ manageTopicsButton: HTMLElement; cancelButton: HTMLElement }>} The Manage Topics button and Cancel button elements.
+ */
+async function openManageTopicsModalForTest() {
+  const { render: renderFunction } = createModalTestRender();
+  renderFunction();
+
+  const manageTopicsButton = screen.getByRole('button', { name: 'Manage Topics' });
+  fireEvent.click(manageTopicsButton);
+
+  await waitFor(() => {
+    expect(screen.getByRole('dialog', { name: 'Manage Topics' })).toBeInTheDocument();
+  });
+
+  await waitFor(() => {
+    const cancelButton = screen.getByRole('button', { name: 'Cancel' });
+    expect(cancelButton).toBeInTheDocument();
+  });
+
+  const cancelButton = screen.getByRole('button', { name: 'Cancel' });
+  return { manageTopicsButton, cancelButton };
+}
+
+/**
+ * Closes the Manage Topics modal using the Cancel button.
+ *
+ * @param {HTMLElement} cancelButton - The Cancel button element.
+ * @returns {Promise<void>} Resolves when the modal is closed.
+ */
+async function closeManageTopicsModalForTest(cancelButton: HTMLElement): Promise<void> {
+  await act(async () => {
+    fireEvent.click(cancelButton);
+  });
+}
+
+/**
+ * Verifies the modal can be reopened and is in a clean state.
+ *
+ * @param {HTMLElement} manageTopicsButton - The Manage Topics button element.
+ * @param {boolean} [verifyCancelButton=false] - Whether to also verify the Cancel button is present.
+ * @returns {Promise<HTMLElement>} The Cancel button from the reopened modal.
+ */
+async function verifyModalCanBeReopenedForTest(
+  manageTopicsButton: HTMLElement,
+  verifyCancelButton = false
+): Promise<HTMLElement> {
+  fireEvent.click(manageTopicsButton);
+
+  await waitFor(() => {
+    expect(screen.getByRole('dialog', { name: 'Manage Topics' })).toBeInTheDocument();
+  });
+
+  if (verifyCancelButton) {
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    });
+  }
+
+  return screen.getByRole('button', { name: 'Cancel' });
+}
+
 // Mock the services that ManageTopicsModal depends on
 const getAssignmentTopicsFromAssignmentTopicsServiceMock = vi.hoisted(() => vi.fn());
 const getYearGroupsMock = vi.hoisted(() => vi.fn());
@@ -219,90 +296,35 @@ describe('ReferenceDataSettingsPanel modal wiring', () => {
     // Verifies actual modal close behaviour: after clicking Cancel, the modal should close.
     // In test environment, we verify closure by confirming the modal can be reopened cleanly.
     // This follows the pattern that a closed modal allows subsequent interactions.
-    renderReferenceDataSettingsPanelWithData();
-
-    const manageTopicsButton = screen.getByRole('button', { name: 'Manage Topics' });
-
-    // Open the modal
-    fireEvent.click(manageTopicsButton);
-
-    await waitFor(() => {
-      expect(screen.getByRole('dialog', { name: 'Manage Topics' })).toBeInTheDocument();
-    });
-
-    // Wait for Cancel button in modal footer
-    await waitFor(() => {
-      const cancelButton = screen.getByRole('button', { name: 'Cancel' });
-      expect(cancelButton).toBeInTheDocument();
-    });
+    const { manageTopicsButton, cancelButton } = await openManageTopicsModalForTest();
 
     // Click Cancel button in the modal footer
-    const cancelButton = screen.getByRole('button', { name: 'Cancel' });
-
-    // Use act() to ensure React state updates are flushed
-    await act(async () => {
-      fireEvent.click(cancelButton);
-    });
+    await closeManageTopicsModalForTest(cancelButton);
 
     // In JSDOM with Ant Design, the modal may still be in DOM during animation.
     // We verify it's closed by attempting to reopen - if state was properly reset,
     // the modal will open again successfully
-    fireEvent.click(manageTopicsButton);
-
-    // Verify modal can be reopened, confirming it was properly closed
-    await waitFor(() => {
-      expect(screen.getByRole('dialog', { name: 'Manage Topics' })).toBeInTheDocument();
-    });
+    const newCancelButton = await verifyModalCanBeReopenedForTest(manageTopicsButton);
 
     // Clean up: close the modal again
-    const cancelButtonAgain = screen.getByRole('button', { name: 'Cancel' });
-    await act(async () => {
-      fireEvent.click(cancelButtonAgain);
-    });
+    await closeManageTopicsModalForTest(newCancelButton);
   });
 
   it('resets modal state when closed and reopened', async () => {
     // Verifies state reset by: open modal, close it, reopen, verify clean state.
     // This tests that transient state does not leak between cycles.
     // The modal should open cleanly after being closed, with all expected elements present.
-    renderReferenceDataSettingsPanelWithData();
-
-    const manageTopicsButton = screen.getByRole('button', { name: 'Manage Topics' });
-
-    // Open the modal
-    fireEvent.click(manageTopicsButton);
-
-    await waitFor(() => {
-      expect(screen.getByRole('dialog', { name: 'Manage Topics' })).toBeInTheDocument();
-    });
-
-    // Wait for Cancel button
-    await waitFor(() => {
-      const cancelButton = screen.getByRole('button', { name: 'Cancel' });
-      expect(cancelButton).toBeInTheDocument();
-    });
+    const { manageTopicsButton, cancelButton } = await openManageTopicsModalForTest();
 
     // Close the modal
-    const cancelButton = screen.getByRole('button', { name: 'Cancel' });
-
-    await act(async () => {
-      fireEvent.click(cancelButton);
-    });
+    await closeManageTopicsModalForTest(cancelButton);
 
     // Reopen the modal - should work cleanly with reset state
-    fireEvent.click(manageTopicsButton);
-
     // Verify modal opens again with clean state: dialog visible, Cancel button present
-    await waitFor(() => {
-      expect(screen.getByRole('dialog', { name: 'Manage Topics' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
-    });
+    const newCancelButton = await verifyModalCanBeReopenedForTest(manageTopicsButton, true);
 
     // Clean up: close the modal
-    const cancelButtonAgain = screen.getByRole('button', { name: 'Cancel' });
-    await act(async () => {
-      fireEvent.click(cancelButtonAgain);
-    });
+    await closeManageTopicsModalForTest(newCancelButton);
   });
 
   it('handles multiple open and close cycles correctly', async () => {
