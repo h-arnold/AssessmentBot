@@ -1,6 +1,5 @@
 import type { AssignmentDefinition } from '../../services/assignmentDefinition.zod';
-import type { AssignmentTopic } from '../../services/referenceData.zod';
-import type { YearGroup } from '../../services/referenceData.zod';
+import type { AssignmentTopic, YearGroup } from '../../services/referenceData.zod';
 
 /**
  * Assignment definition test fixtures module.
