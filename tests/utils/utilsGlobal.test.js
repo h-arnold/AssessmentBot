@@ -53,15 +53,15 @@ describe('Utils global availability regression check', () => {
 
   afterEach(() => {
     // Restore original globals
-    if (originalUtils !== undefined) {
-      globalThis.Utils = originalUtils;
-    } else {
+    if (originalUtils === undefined) {
       delete globalThis.Utils;
-    }
-    if (originalUtilities !== undefined) {
-      globalThis.Utilities = originalUtilities;
     } else {
+      globalThis.Utils = originalUtils;
+    }
+    if (originalUtilities === undefined) {
       delete globalThis.Utilities;
+    } else {
+      globalThis.Utilities = originalUtilities;
     }
   });
 
