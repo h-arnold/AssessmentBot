@@ -95,6 +95,7 @@ class AssignmentDefinitionController {
         templateDocumentId,
         referenceLastModified,
         templateLastModified,
+        assignmentWeighting: 1,
         tasks: {},
         definitionKey,
       });
