@@ -152,7 +152,13 @@ describe('Api/upsertAssignmentDefinition transport contract', () => {
     expect(response).toEqual(expectedDefinition);
     expect(AssignmentDefinitionController).toHaveBeenCalledTimes(1);
     expect(upsertDefinition).toHaveBeenCalledTimes(1);
-    expect(upsertDefinition).toHaveBeenCalledWith(payload);
+    // assignmentWeighting is defaulted to 1 by the API layer
+    expect(upsertDefinition).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ...payload,
+        assignmentWeighting: 1,
+      })
+    );
   });
 
   it('delegates valid update payloads with the supplied definitionKey', () => {
@@ -166,7 +172,13 @@ describe('Api/upsertAssignmentDefinition transport contract', () => {
 
     expect(response).toEqual(expectedDefinition);
     expect(upsertDefinition).toHaveBeenCalledTimes(1);
-    expect(upsertDefinition).toHaveBeenCalledWith(payload);
+    // assignmentWeighting is defaulted to 1 by the API layer
+    expect(upsertDefinition).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ...payload,
+        assignmentWeighting: 1,
+      })
+    );
   });
 
   it.each([

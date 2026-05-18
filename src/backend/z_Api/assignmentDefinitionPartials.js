@@ -515,6 +515,7 @@ function extractSupportedDocumentDescriptor_(urlValue, fieldName) {
 
 /**
  * Builds the controller upsert payload from transport parameters.
+ * Applies default for assignmentWeighting (1) when missing or null.
  *
  * @param {Object} parameters - Validated transport parameters.
  * @returns {Object} Controller payload.
@@ -524,30 +525,35 @@ function buildControllerUpsertPayload_(parameters) {
     Object.hasOwn(parameters, 'referenceDocumentUrl') ||
     Object.hasOwn(parameters, 'templateDocumentUrl');
 
-  if (!shouldTranslateDocumentUrls) {
-    return parameters;
+  let payload = shouldTranslateDocumentUrls ? { ...parameters } : parameters;
+
+  if (shouldTranslateDocumentUrls) {
+    const referenceDescriptor = extractSupportedDocumentDescriptor_(
+      parameters.referenceDocumentUrl,
+      'referenceDocumentUrl'
+    );
+    const templateDescriptor = extractSupportedDocumentDescriptor_(
+      parameters.templateDocumentUrl,
+      'templateDocumentUrl'
+    );
+
+    payload = {
+      ...parameters,
+      referenceDocumentId: referenceDescriptor.documentId,
+      templateDocumentId: templateDescriptor.documentId,
+      documentType: referenceDescriptor.documentType,
+    };
+
+    delete payload.referenceDocumentUrl;
+    delete payload.templateDocumentUrl;
   }
 
-  const referenceDescriptor = extractSupportedDocumentDescriptor_(
-    parameters.referenceDocumentUrl,
-    'referenceDocumentUrl'
-  );
-  const templateDescriptor = extractSupportedDocumentDescriptor_(
-    parameters.templateDocumentUrl,
-    'templateDocumentUrl'
-  );
+  // Default assignmentWeighting to 1 when missing or null
+  if (!Object.hasOwn(payload, 'assignmentWeighting') || payload.assignmentWeighting === null) {
+    payload = { ...payload, assignmentWeighting: 1 };
+  }
 
-  const translatedPayload = {
-    ...parameters,
-    referenceDocumentId: referenceDescriptor.documentId,
-    templateDocumentId: templateDescriptor.documentId,
-    documentType: referenceDescriptor.documentType,
-  };
-
-  delete translatedPayload.referenceDocumentUrl;
-  delete translatedPayload.templateDocumentUrl;
-
-  return translatedPayload;
+  return payload;
 }
 
 /**

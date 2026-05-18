@@ -266,23 +266,27 @@ class AssignmentDefinitionController {
 
   /**
    * Resolves assignment weighting for upsert operations.
+   * Defaults to 1 when missing or null.
    *
    * @param {Object} params - Resolution parameters.
    * @param {Object} params.payload - Upsert payload.
    * @param {boolean} params.isUpdate - Whether this is an update.
    * @param {Object|null} params.existingDefinition - Existing definition when updating.
-   * @returns {number|null} Assignment weighting.
+   * @returns {number} Assignment weighting (defaults to 1).
    * @private
    */
   _resolveAssignmentWeightingForUpsert({ payload, isUpdate, existingDefinition }) {
     if (Object.hasOwn(payload, 'assignmentWeighting')) {
-      return this._requireNumericOrNullWeighting(
+      const value = this._requireNumericOrNullWeighting(
         payload.assignmentWeighting,
         'assignmentWeighting'
       );
+      // Default to 1 when explicitly provided as null
+      return value === null ? 1 : value;
     }
 
-    return isUpdate ? existingDefinition.assignmentWeighting : null;
+    // Default to 1 when not provided in payload (for both creates and updates)
+    return 1;
   }
 
   /**
