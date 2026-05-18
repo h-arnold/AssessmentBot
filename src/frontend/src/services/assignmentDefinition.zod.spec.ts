@@ -123,16 +123,6 @@ describe('assignmentDefinition.zod schemas', () => {
         caseName: 'strict pattern with negative offset',
         timestamp: '2026-01-05T10:00:00.000-05:00',
       },
-      // Currently accepted by loose Date.parse but NOT valid per backend strict pattern
-      // These document the current inconsistency
-      {
-        caseName: 'missing milliseconds (accepted by Date.parse, NOT backend strict)',
-        timestamp: '2026-01-05T10:00:00Z',
-      },
-      {
-        caseName: 'missing timezone (accepted by Date.parse, NOT backend strict)',
-        timestamp: '2026-01-05T10:00:00.000',
-      },
     ])('accepts timestamp: $caseName', async ({ timestamp }) => {
       const schemas = await loadAssignmentDefinitionSchemas();
       const assignmentDefinitionSchema = asParserSchema(schemas.AssignmentDefinitionSchema);
@@ -143,8 +133,32 @@ describe('assignmentDefinition.zod schemas', () => {
         updatedAt: timestamp,
       };
 
-      // Current schema uses Date.parse which is lenient
+      // Schema now uses strict backend-aligned validation
       expect(assignmentDefinitionSchema.parse(testDefinition)).toEqual(testDefinition);
+    });
+
+    it.each([
+      // These are accepted by loose Date.parse but NOT valid per backend strict pattern
+      {
+        caseName: 'missing milliseconds (accepted by Date.parse, NOT backend strict)',
+        timestamp: '2026-01-05T10:00:00Z',
+      },
+      {
+        caseName: 'missing timezone (accepted by Date.parse, NOT backend strict)',
+        timestamp: '2026-01-05T10:00:00.000',
+      },
+    ])('rejects timestamp: $caseName', async ({ timestamp }) => {
+      const schemas = await loadAssignmentDefinitionSchemas();
+      const assignmentDefinitionSchema = asParserSchema(schemas.AssignmentDefinitionSchema);
+
+      const testDefinition = {
+        ...validFullDefinition,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      };
+
+      // Schema now uses strict backend-aligned validation which rejects these
+      expect(() => assignmentDefinitionSchema.parse(testDefinition)).toThrow();
     });
 
     it.each([
@@ -172,7 +186,7 @@ describe('assignmentDefinition.zod schemas', () => {
         caseName: 'date with space separator (accepted by Date.parse, NOT backend strict)',
         timestamp: '2026-01-05 10:00:00.000Z',
       },
-    ])('accepts timestamp with loose validation: $caseName', async ({ timestamp }) => {
+    ])('rejects timestamp with loose validation: $caseName', async ({ timestamp }) => {
       const schemas = await loadAssignmentDefinitionSchemas();
       const assignmentDefinitionSchema = asParserSchema(schemas.AssignmentDefinitionSchema);
 
@@ -181,8 +195,8 @@ describe('assignmentDefinition.zod schemas', () => {
         createdAt: timestamp,
       };
 
-      // Current schema uses Date.parse which accepts these
-      expect(assignmentDefinitionSchema.parse(testDefinition)).toEqual(testDefinition);
+      // Schema now uses strict backend-aligned validation which rejects these
+      expect(() => assignmentDefinitionSchema.parse(testDefinition)).toThrow();
     });
 
     it('accepts null timestamps for createdAt and updatedAt', async () => {
@@ -263,7 +277,7 @@ describe('assignmentDefinition.zod schemas', () => {
       expect(assignmentDefinitionSchema.parse(testDefinition)).toEqual(testDefinition);
     });
 
-    it('rejects null assignmentWeighting in AssignmentDefinitionSchema (inconsistent with backend)', async () => {
+    it('accepts null assignmentWeighting in AssignmentDefinitionSchema (aligned with backend)', async () => {
       const schemas = await loadAssignmentDefinitionSchemas();
       const assignmentDefinitionSchema = asParserSchema(schemas.AssignmentDefinitionSchema);
 
@@ -272,11 +286,11 @@ describe('assignmentDefinition.zod schemas', () => {
         assignmentWeighting: null,
       };
 
-      // Current schema has non-nullable assignmentWeighting, which is inconsistent with backend
-      expect(() => assignmentDefinitionSchema.parse(testDefinition)).toThrow();
+      // Schema now has nullable assignmentWeighting, aligned with backend
+      expect(assignmentDefinitionSchema.parse(testDefinition)).toEqual(testDefinition);
     });
 
-    it('rejects null assignmentWeighting in UpsertAssignmentDefinitionRequestSchema (inconsistent with backend)', async () => {
+    it('accepts null assignmentWeighting in UpsertAssignmentDefinitionRequestSchema (aligned with backend)', async () => {
       const schemas = await loadAssignmentDefinitionSchemas();
       const upsertRequestSchema = asParserSchema(schemas.UpsertAssignmentDefinitionRequestSchema);
 
@@ -289,9 +303,8 @@ describe('assignmentDefinition.zod schemas', () => {
         assignmentWeighting: null,
       };
 
-      // Upsert request has assignmentWeighting.optional() which accepts undefined but NOT null
-      // This is inconsistent with backend which accepts null
-      expect(() => upsertRequestSchema.parse(validInput)).toThrow();
+      // Upsert request now has assignmentWeighting.optional().nullable(), aligned with backend
+      expect(upsertRequestSchema.parse(validInput)).toEqual(validInput);
     });
 
     it('accepts undefined assignmentWeighting in UpsertAssignmentDefinitionRequestSchema', async () => {

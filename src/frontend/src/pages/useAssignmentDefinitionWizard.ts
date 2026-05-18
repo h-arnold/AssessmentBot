@@ -46,7 +46,7 @@ type ParsedCreateBaseline = Readonly<{
   referenceDocumentId: string;
   templateDocumentId: string;
   documentType: 'SLIDES' | 'SHEETS';
-  assignmentWeighting: number;
+  assignmentWeighting: number | null;
   taskWeightings: ReadonlyMap<string, number>;
 }>;
 

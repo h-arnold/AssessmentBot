@@ -113,8 +113,7 @@ function getTimezoneOffsetMinutes(components: IsoDateTimeComponents): number {
     components.timezone === 'Z' || components.sign === '+' ? 1 : NEGATIVE_TIMEZONE_MULTIPLIER;
 
   return (
-    timezoneOffsetSign *
-    (components.offsetHours * MINUTES_PER_HOUR + components.offsetMinutes)
+    timezoneOffsetSign * (components.offsetHours * MINUTES_PER_HOUR + components.offsetMinutes)
   );
 }
 
@@ -127,7 +126,9 @@ function getTimezoneOffsetMinutes(components: IsoDateTimeComponents): number {
  */
 function hasDateTimeRoundTrip(parsedDate: Date, components: IsoDateTimeComponents): boolean {
   const timezoneOffsetMinutes = getTimezoneOffsetMinutes(components);
-  const localDate = new Date(parsedDate.getTime() + timezoneOffsetMinutes * MILLISECONDS_PER_MINUTE);
+  const localDate = new Date(
+    parsedDate.getTime() + timezoneOffsetMinutes * MILLISECONDS_PER_MINUTE
+  );
 
   return (
     localDate.getUTCFullYear() === components.year &&
@@ -160,17 +161,20 @@ function isIsoDateTimeWithTimezone(value: string): boolean {
   return hasDateTimeRoundTrip(parsedDate, components);
 }
 
-const IsoDateTimeWithTimezoneSchema = z.string().refine(isIsoDateTimeWithTimezone, {
+export const IsoDateTimeWithTimezoneSchema = z.string().refine(isIsoDateTimeWithTimezone, {
   message: 'Expected an ISO datetime string with timezone info.',
 });
 
-const NullableIsoDateTimeWithTimezoneSchema = IsoDateTimeWithTimezoneSchema.nullable();
+export const NullableIsoDateTimeWithTimezoneSchema = IsoDateTimeWithTimezoneSchema.nullable();
 
-const SafeDeleteDefinitionKeySchema = TrimmedNonEmptyStringSchema.refine((value) => {
-  return !DELETE_UNSAFE_PATH_CHARACTERS_PATTERN.test(value) && !hasControlCharacters(value);
-}, {
-  message: 'Expected a safe definition key without path traversal/control characters.',
-});
+const SafeDeleteDefinitionKeySchema = TrimmedNonEmptyStringSchema.refine(
+  (value) => {
+    return !DELETE_UNSAFE_PATH_CHARACTERS_PATTERN.test(value) && !hasControlCharacters(value);
+  },
+  {
+    message: 'Expected a safe definition key without path traversal/control characters.',
+  }
+);
 
 export const AssignmentDefinitionPartialSchema = z
   .object({
@@ -194,7 +198,9 @@ export const AssignmentDefinitionPartialSchema = z
 
 export type AssignmentDefinitionPartial = z.infer<typeof AssignmentDefinitionPartialSchema>;
 
-export const AssignmentDefinitionPartialsResponseSchema = z.array(AssignmentDefinitionPartialSchema);
+export const AssignmentDefinitionPartialsResponseSchema = z.array(
+  AssignmentDefinitionPartialSchema
+);
 
 export type AssignmentDefinitionPartialsResponse = z.infer<
   typeof AssignmentDefinitionPartialsResponseSchema

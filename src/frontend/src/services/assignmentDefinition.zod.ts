@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { NullableIsoDateTimeWithTimezoneSchema } from './assignmentDefinitionPartials.zod';
 
 export const MIN_WEIGHTING_VALUE = 0;
 export const MAX_WEIGHTING_VALUE = 10;
@@ -29,22 +30,19 @@ const TaskWeightingInputSchema = z
   })
   .strict();
 
-const UrlStringSchema = TrimmedNonEmptyStringSchema.refine((value) => {
-  try {
-    const url = new URL(value);
-    return Boolean(url.protocol) && Boolean(url.hostname);
-  } catch {
-    return false;
+const UrlStringSchema = TrimmedNonEmptyStringSchema.refine(
+  (value) => {
+    try {
+      const url = new URL(value);
+      return Boolean(url.protocol) && Boolean(url.hostname);
+    } catch {
+      return false;
+    }
+  },
+  {
+    message: 'Expected a valid URL.',
   }
-}, {
-  message: 'Expected a valid URL.',
-});
-
-const NullableIsoTimestampSchema = TrimmedNonEmptyStringSchema.refine((value) => {
-  return !Number.isNaN(Date.parse(value));
-}, {
-  message: 'Expected an ISO timestamp string.',
-}).nullable();
+);
 
 export const GetAssignmentDefinitionRequestSchema = z
   .object({
@@ -67,10 +65,10 @@ export const AssignmentDefinitionSchema = z
     documentType: DocumentTypeSchema,
     referenceDocumentId: TrimmedNonEmptyStringSchema,
     templateDocumentId: TrimmedNonEmptyStringSchema,
-    assignmentWeighting: WeightingSchema,
+    assignmentWeighting: WeightingSchema.nullable(),
     tasks: z.array(AssignmentDefinitionTaskSchema),
-    createdAt: NullableIsoTimestampSchema,
-    updatedAt: NullableIsoTimestampSchema,
+    createdAt: NullableIsoDateTimeWithTimezoneSchema,
+    updatedAt: NullableIsoDateTimeWithTimezoneSchema,
   })
   .strict();
 
@@ -88,12 +86,14 @@ export const UpsertAssignmentDefinitionRequestSchema = z
     yearGroupKey: TrimmedNonEmptyStringSchema,
     referenceDocumentUrl: UrlStringSchema,
     templateDocumentUrl: UrlStringSchema,
-    assignmentWeighting: WeightingSchema.optional(),
+    assignmentWeighting: WeightingSchema.optional().nullable(),
     taskWeightings: z.array(TaskWeightingInputSchema).optional(),
   })
   .strict();
 
-export type UpsertAssignmentDefinitionRequest = z.infer<typeof UpsertAssignmentDefinitionRequestSchema>;
+export type UpsertAssignmentDefinitionRequest = z.infer<
+  typeof UpsertAssignmentDefinitionRequestSchema
+>;
 
 export const UpsertAssignmentDefinitionResponseSchema = AssignmentDefinitionSchema;
 
