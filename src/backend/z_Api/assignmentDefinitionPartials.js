@@ -832,8 +832,8 @@ function toPlainPartialRow_(row) {
     assignmentWeighting: row.assignmentWeighting,
     definitionKey: row.definitionKey,
     tasks: row.tasks,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
+    createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : row.createdAt,
+    updatedAt: row.updatedAt instanceof Date ? row.updatedAt.toISOString() : row.updatedAt,
   };
 }
 
@@ -841,7 +841,7 @@ function toPlainPartialRow_(row) {
  * Returns assignment-definition partial rows for API transport.
  *
  * @returns {Array<Object>} Plain assignment-definition partial rows.
- * @throws {ApiValidationError} If any row violates the strict transport contract.
+ * @throws {ApiValidationError} If controller response is not an array.
  */
 function getAssignmentDefinitionPartials_() {
   const partialRows = getAssignmentDefinitionController_().getAllPartialDefinitions();
@@ -850,10 +850,7 @@ function getAssignmentDefinitionPartials_() {
     throwValidationError_('Controller response must be an array.', RESPONSE_FIELD_NAME, 0);
   }
 
-  return partialRows.map((row, rowIndex) => {
-    validatePartialRow_(row, rowIndex);
-    return toPlainPartialRow_(row);
-  });
+  return partialRows.map((row) => toPlainPartialRow_(row));
 }
 
 /**

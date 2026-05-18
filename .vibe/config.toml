@@ -196,6 +196,7 @@ allowlist = [
     "npm --prefix",
     "npm run --silent",
     "npm run lint",
+    "npm run lint:backend",
     "npm test",
     "pwd",
     "python3",
@@ -227,7 +228,7 @@ denylist = [
     "screen",
     "tmux",
     "git reset",
-    "git stash"
+    "git stash",
 ]
 sensitive_patterns = [
     "sudo",
