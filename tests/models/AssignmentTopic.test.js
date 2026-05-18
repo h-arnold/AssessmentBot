@@ -17,13 +17,8 @@ afterAll(() => {
 });
 
 async function loadAssignmentTopic() {
-  try {
-    const module = await import('../../src/backend/Models/AssignmentTopic.js');
-    return module.AssignmentTopic ?? module.default?.AssignmentTopic;
-  } catch (err) {
-    // Module doesn't exist yet - this is expected in RED phase
-    return null;
-  }
+  const module = await import('../../src/backend/Models/AssignmentTopic.js');
+  return module.AssignmentTopic ?? module.default?.AssignmentTopic;
 }
 
 // ─── AssignmentTopic constructor tests ────────────────────────────────────────

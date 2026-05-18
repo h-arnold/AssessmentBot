@@ -553,7 +553,7 @@ export function ClassesManagementPanel() {
     (entity: { key: string; name: string }) => {
       setPendingCreatedCohortKey(entity.key);
       // Invalidate cohorts query so the dropdown refreshes
-      void queryClient.invalidateQueries({ queryKey: ['cohorts'] });
+      queryClient.invalidateQueries({ queryKey: ['cohorts'] });
     },
     [queryClient]
   );
@@ -562,7 +562,7 @@ export function ClassesManagementPanel() {
     (entity: { key: string; name: string }) => {
       setPendingCreatedYearGroupKey(entity.key);
       // Invalidate yearGroups query so the dropdown refreshes
-      void queryClient.invalidateQueries({ queryKey: ['yearGroups'] });
+      queryClient.invalidateQueries({ queryKey: ['yearGroups'] });
     },
     [queryClient]
   );

@@ -262,7 +262,7 @@ describe('SelectWithAddNew - Debounce Configuration', () => {
     const mockUseDebounce = vi.fn((callback: () => void) => {
       return callback;
     });
-    vi.spyOn(useDebounceModule, 'useDebounce').mockImplementationOnce(mockUseDebounce as unknown as typeof useDebounceModule.useDebounce);
+    vi.spyOn(useDebounceModule, 'useDebounce').mockImplementationOnce(mockUseDebounce);
 
     render(
       <SelectWithAddNew
@@ -279,7 +279,7 @@ describe('SelectWithAddNew - Debounce Configuration', () => {
       return callback;
     });
     const customDelay = 500;
-    vi.spyOn(useDebounceModule, 'useDebounce').mockImplementationOnce(mockUseDebounce as unknown as typeof useDebounceModule.useDebounce);
+    vi.spyOn(useDebounceModule, 'useDebounce').mockImplementationOnce(mockUseDebounce);
 
     render(
       <SelectWithAddNew
