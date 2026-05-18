@@ -1,0 +1,188 @@
+{
+  "documents": {
+    "c2ed7aa3-fc52-42a1-ac0f-dacd3450d058": {
+      "primaryTitle": "Encryption",
+      "primaryTopic": "CSI",
+      "primaryTopicKey": "34701fc3-b87b-429c-992e-c65d88ea565b",
+      "yearGroup": null,
+      "yearGroupKey": "a3891d8c-c730-4a99-8a51-e979bf0da095",
+      "yearGroupLabel": "8",
+      "alternateTitles": [],
+      "alternateTopics": [],
+      "documentType": "SLIDES",
+      "referenceDocumentId": "1UoaZyd8OXvs5OyzUS2hIuT9LJMSfgXJW6_LOE0dqmZ0",
+      "templateDocumentId": "1udlgDTkZlHB6Xh4GKlOk6I0zJI-dvAF4iFAun09yW0k",
+      "referenceLastModified": "2026-04-30T07:25:22.333Z",
+      "templateLastModified": "2025-06-09T09:37:28.508Z",
+      "assignmentWeighting": 1,
+      "definitionKey": "8c8eed5d-9179-4967-8116-46def306be5a",
+      "tasks": {
+        "t_644ab64edd0c": {
+          "id": "t_644ab64edd0c",
+          "taskTitle": "1. Caesar Cipher",
+          "pageId": "g23f2c04b345_2_0",
+          "taskNotes": null,
+          "taskMetadata": {},
+          "taskWeighting": 1,
+          "index": 0,
+          "artifacts": {
+            "reference": [
+              {
+                "taskId": "t_644ab64edd0c",
+                "role": "reference",
+                "pageId": "g23f2c04b345_2_0",
+                "documentId": "1UoaZyd8OXvs5OyzUS2hIuT9LJMSfgXJW6_LOE0dqmZ0",
+                "content": "| 1. Encrypt the message “HELLO” with a shift of 3. |\n| --- |\n| KHOOR |\n| 2. Decrypt the message “LIPPS” with a shift of 4. |\n| HELLO |\n| 3. Encrypt the message “SECRET CODE” with a shift of 2. |\n| UGETGV EQFG |\n| 4. Decrypt the message “RUDQJH MXLFH” with a shift of 3. |\n| ORGANGE JUICE |",
+                "contentHash": "04d9c2484283034c7e43feec2b50cee34df51dca78904b1a98b18546e5105536",
+                "metadata": {},
+                "uid": "t_644ab64edd0c-0-reference-g23f2c04b345_2_0-0",
+                "type": "TABLE"
+              }
+            ],
+            "template": [
+              {
+                "taskId": "t_644ab64edd0c",
+                "role": "template",
+                "pageId": "g23f2c04b345_2_0",
+                "documentId": "1udlgDTkZlHB6Xh4GKlOk6I0zJI-dvAF4iFAun09yW0k",
+                "content": "| 1. Encrypt the message “HELLO” with a shift of 3. (Hint: The H turns into a K) |\n| --- |\n|  |\n| 2. Decrypt the message “LIPPS” with a shift of 4. (Hint: The L turns into a H) |\n|  |\n| 3. Encrypt the message “SECRET CODE” with a shift of 2. |\n|  |\n| 4. Decrypt the message “RUDQJH MXLFH” with a shift of 3. |\n|  |",
+                "contentHash": "c74f2b4577363a30dc4b7c9de42181d38074a9a93951f354df0d8fdc3e41e974",
+                "metadata": {},
+                "uid": "t_644ab64edd0c-0-template-g23f2c04b345_2_0-0",
+                "type": "TABLE"
+              }
+            ]
+          }
+        },
+        "t_5738f8b66ca5": {
+          "id": "t_5738f8b66ca5",
+          "taskTitle": "2. Caesar Cipher",
+          "pageId": "g3612cea7418_0_13",
+          "taskNotes": null,
+          "taskMetadata": {},
+          "taskWeighting": 1,
+          "index": 1,
+          "artifacts": {
+            "reference": [
+              {
+                "taskId": "t_5738f8b66ca5",
+                "role": "reference",
+                "pageId": "g3612cea7418_0_13",
+                "documentId": "1UoaZyd8OXvs5OyzUS2hIuT9LJMSfgXJW6_LOE0dqmZ0",
+                "content": "| 5. Encrypt the message “TOP SECRET DATA” with a shift of 1. |\n| --- |\n| UPQ TFDSFU EBUB |\n| 6. Decrypt the message “RKBBC KU FGNKEKQWU” with a shift of 2. |\n| PIZZA IS DELICIOUS |\n| 7. Encrypt the message “ENCRYPT THIS MESSAGE” with a shift of 4. |\n| IRGVCTX XLMW QIWWEKI |\n| 8. Decrypt the message “JSHWDUYNTS NX NRUTWYFSY” with a shift of 5. |\n| ENCRYPTION IS IMPORTANT |",
+                "contentHash": "a5bed8f1a5aef750440fb19b9da468a922a8f05aff0d18fbff8725c68b46b958",
+                "metadata": {},
+                "uid": "t_5738f8b66ca5-1-reference-g3612cea7418_0_13-0",
+                "type": "TABLE"
+              }
+            ],
+            "template": [
+              {
+                "taskId": "t_5738f8b66ca5",
+                "role": "template",
+                "pageId": "g3612cea7418_0_13",
+                "documentId": "1udlgDTkZlHB6Xh4GKlOk6I0zJI-dvAF4iFAun09yW0k",
+                "content": "| 5. Encrypt the message “TOP SECRET DATA” with a shift of 1. |\n| --- |\n|  |\n| 6. Decrypt the message “RKBBC KU FGNKEKQWU” with a shift of 2. |\n|  |\n| 7. Encrypt the message “ENCRYPT THIS MESSAGE” with a shift of 4. |\n|  |\n| 8. Decrypt the message “JSHWDUYNTS NX NRUTWYFSY” with a shift of 5. |\n|  |",
+                "contentHash": "2a715918e7c302c344e2fd6c564a379ede07c359cdba07a85c7788acdf6b9c5c",
+                "metadata": {},
+                "uid": "t_5738f8b66ca5-1-template-g3612cea7418_0_13-0",
+                "type": "TABLE"
+              }
+            ]
+          }
+        },
+        "t_809a41a2fbe9": {
+          "id": "t_809a41a2fbe9",
+          "taskTitle": "Pigpen Cipher",
+          "pageId": "g3612cea7418_0_30",
+          "taskNotes": null,
+          "taskMetadata": {},
+          "taskWeighting": 1,
+          "index": 2,
+          "artifacts": {
+            "reference": [
+              {
+                "taskId": "t_809a41a2fbe9",
+                "role": "reference",
+                "pageId": "g3612cea7418_0_30",
+                "documentId": "1UoaZyd5OXvs5OyzUS2hIuT9LJMSfgXJW6_LOE0dqmZ0",
+                "content": "| 1. |\n| --- |\n| Bassaleg School |\n| 2. |\n| Cyber Security |\n| 3. |\n| That was fun |",
+                "contentHash": "3236a2f099f52cca3e8fbf784ef395d733a1fdb684af4b8303dd383764a6dddf",
+                "metadata": {},
+                "uid": "t_809a41a2fbe9-2-reference-g3612cea7418_0_30-0",
+                "type": "TABLE"
+              }
+            ],
+            "template": [
+              {
+                "taskId": "t_809a41a2fbe9",
+                "role": "template",
+                "pageId": "g3612cea7418_0_30",
+                "documentId": "1udlgDTkZlHB6Xh5GKlOk6I0zJI-dvAF4iFAun09yW0k",
+                "content": "| 1. |\n| --- |\n|  |\n| 2. |\n|  |\n| 3. |\n|  |",
+                "contentHash": "36023bf61f55422e9902d7a557127e64077407f5a249defa46526967fbf31357",
+                "metadata": {},
+                "uid": "t_809a41a2fbe9-2-template-g3612cea7418_0_30-0",
+                "type": "TABLE"
+              }
+            ]
+          }
+        },
+        "t_e7dc9373a44b": {
+          "id": "t_e7dc9373a44b",
+          "taskTitle": "Ciphers Game",
+          "pageId": "g2cf444d0a7e_0_0",
+          "taskNotes": null,
+          "taskMetadata": {},
+          "taskWeighting": 1,
+          "index": 3,
+          "artifacts": {
+            "reference": [
+              {
+                "taskId": "t_e7dc9373a44b",
+                "role": "reference",
+                "pageId": "g2cf444d0a7e_0_0",
+                "documentId": "1UoaZyd8OXvs5OyzUS2hIuT9LJMSfgXJW6_LOE0dqmZ0",
+                "content": null,
+                "contentHash": null,
+                "metadata": {
+                  "sourceUrl": "https://docs.google.com/presentation/d/1UoaZyd8OXvs5OyzUS2hIuT9LJMSfgXJW6_LOE0dqmZ0/export/png?id=1UoaZyd8OXvs5OyzUS2hIuT9LJMSfgXJW6_LOE0dqmZ0&pageid=g2cf444d0a7e_0_0"
+                },
+                "uid": "t_e7dc9373a44b-3-reference-g2cf444d0a7e_0_0-0",
+                "type": "IMAGE"
+              }
+            ],
+            "template": [
+              {
+                "taskId": "t_e7dc9373a44b",
+                "role": "template",
+                "pageId": "g2cf444d0a7e_0_0",
+                "documentId": "1udlgDTkZlHB6Xh4GKlOk6I0zJI-dvAF4iFAun09yW0k",
+                "content": null,
+                "contentHash": null,
+                "metadata": {
+                  "sourceUrl": "https://docs.google.com/presentation/d/1udlgDTkZlHB6Xh4GKlOk6I0zJI-dvAF4iFAun09yW0k/export/png?id=1udlgDTkZlHB6Xh4GKlOk6I0zJI-dvAF4iFAun09yW0k&pageid=g2cf444d0a7e_0_0"
+                },
+                "uid": "t_e7dc9373a44b-3-template-g2cf444d0a7e_0_0-0",
+                "type": "IMAGE"
+              }
+            ]
+          }
+        }
+      },
+      "createdAt": "2026-05-18T13:50:35.105Z",
+      "updatedAt": "2026-05-18T13:50:35.106Z",
+      "_id": "c2ed7aa3-fc52-42a1-ac0f-dacd3450d058"
+    }
+  },
+  "metadata": {
+    "__type": "CollectionMetadata",
+    "created": "2026-05-18T13:50:35.109Z",
+    "lastUpdated": "2026-05-18T13:50:37.693Z",
+    "documentCount": 1,
+    "name": "assdef_full_8c8eed5d-9179-4967-8116-46def306be5a",
+    "fileId": "1-8ofjNV0EtsOcCF8DsPddFMuVCjuMPCL",
+    "modificationToken": null,
+    "lockStatus": null
+  }
+}

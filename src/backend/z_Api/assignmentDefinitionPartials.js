@@ -456,19 +456,34 @@ function extractSupportedDocumentDescriptor_(urlValue, fieldName) {
     throwUpsertValidationError_(`${fieldName} must be a non-empty string URL.`, fieldName);
   }
 
-  let parsedUrl;
-  try {
-    parsedUrl = new URL(urlValue);
-  } catch {
+  // First validate URL format using Validate library
+  if (!Validate.isValidUrl(urlValue)) {
     throwUpsertValidationError_(`${fieldName} must be a valid URL.`, fieldName);
   }
 
-  if (parsedUrl.hostname !== DOCS_URL_HOST) {
+  // Parse for GAS V8 compatibility (no native URL class) - use string ops instead of regex
+  const afterProtocol = urlValue.replace(/^https:\/\//u, '');
+  const slashIndex = afterProtocol.indexOf('/');
+  const hostname = afterProtocol.slice(0, slashIndex).toLowerCase();
+  let pathname = afterProtocol.slice(slashIndex) || '/';
+  // Strip query string and hash fragment
+  const NOT_FOUND = -1;
+  const queryIndex = pathname.indexOf('?');
+  const hashIndex = pathname.indexOf('#');
+  const hasQuery = queryIndex !== NOT_FOUND;
+  const hasHash = hashIndex !== NOT_FOUND;
+  const endIndex = Math.min(
+    hasQuery ? queryIndex : pathname.length,
+    hasHash ? hashIndex : pathname.length
+  );
+  pathname = pathname.slice(0, endIndex);
+
+  if (hostname !== DOCS_URL_HOST) {
     throwUpsertValidationError_(`${fieldName} must target docs.google.com.`, fieldName);
   }
 
   const matchingPrefix = Object.keys(DOCUMENT_TYPE_BY_PATH_PREFIX).find((pathPrefix) =>
-    parsedUrl.pathname.startsWith(pathPrefix)
+    pathname.startsWith(pathPrefix)
   );
 
   if (!matchingPrefix) {
@@ -478,7 +493,7 @@ function extractSupportedDocumentDescriptor_(urlValue, fieldName) {
     );
   }
 
-  const trailingPath = parsedUrl.pathname.slice(matchingPrefix.length);
+  const trailingPath = pathname.slice(matchingPrefix.length);
   const documentId = trailingPath.split('/')[0];
 
   if (!documentId) {
@@ -894,5 +909,6 @@ if (typeof module !== 'undefined' && module.exports) {
     getAssignmentDefinition_,
     deleteAssignmentDefinition_,
     upsertAssignmentDefinition_,
+    extractSupportedDocumentDescriptor_,
   };
 }
