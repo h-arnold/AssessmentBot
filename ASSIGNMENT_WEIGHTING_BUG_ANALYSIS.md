@@ -226,14 +226,6 @@ Frontend Validation
    - OR better: Keep it as non-nullable since backend will always provide a value
    - Update `UpsertAssignmentDefinitionRequestSchema` to `assignmentWeighting: WeightingSchema.nullable().optional()`
 
-### Option B: Frontend Accepts Null (Not Recommended)
-
-Make the frontend accept `null` and handle it locally. This is not recommended because:
-
-- It pushes responsibility to the frontend
-- Doesn't align with user requirement ("backend should default to 1")
-- Creates inconsistency between frontend and backend contracts
-
 ### Selected Approach: Option A
 
 **Rationale:**
