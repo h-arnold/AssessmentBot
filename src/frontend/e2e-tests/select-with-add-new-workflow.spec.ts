@@ -10,7 +10,7 @@
  * - Entity creation and auto-selection
  */
 
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import {
   baseGoogleClassrooms,
   baseCohorts,
@@ -18,6 +18,67 @@ import {
   createSuccessfulClassesScenario,
   openClassesTabWithScenario,
 } from './classes-crud.shared';
+
+// ---------------------------------------------------------------------------
+// Helper functions
+// ---------------------------------------------------------------------------
+
+/**
+ * Opens the bulk create modal by clicking the Create ABClass button.
+ *
+ * @param {Page} page - The Playwright page object.
+ * @returns {Promise<void>}
+ */
+async function openBulkCreateModal(page: Page): Promise<void> {
+  const createButton = page.getByRole('button', { name: 'Create ABClass' });
+  await expect(createButton).toBeVisible();
+  await expect(createButton).toBeEnabled();
+  await createButton.click();
+  await expect(page.getByRole('dialog', { name: /create abclass/i })).toBeVisible();
+}
+
+/**
+ * Opens a combobox by name and clicks the 'Add new' option.
+ *
+ * @param {Page} page - The Playwright page object.
+ * @param {string} comboboxName - The name of the combobox to open.
+ * @param {string} addNewOptionName - The name of the 'Add new' option to click.
+ * @returns {Promise<void>}
+ */
+async function openComboboxAndClickAddNew(
+  page: Page,
+  comboboxName: string,
+  addNewOptionName: string
+): Promise<void> {
+  const combobox = page.getByRole('combobox', { name: comboboxName });
+  await expect(combobox).toBeVisible();
+  await combobox.click();
+
+  const addNewOption = page.getByRole('option', { name: addNewOptionName });
+  await expect(addNewOption).toBeVisible();
+  await addNewOption.click();
+}
+
+/**
+ * Opens a combobox by name and verifies the 'Add new' option exists.
+ *
+ * @param {Page} page - The Playwright page object.
+ * @param {string} comboboxName - The name of the combobox to open.
+ * @param {string} addNewOptionName - The name of the 'Add new' option to verify.
+ * @returns {Promise<void>}
+ */
+async function verifyAddNewOptionExists(
+  page: Page,
+  comboboxName: string,
+  addNewOptionName: string
+): Promise<void> {
+  const combobox = page.getByRole('combobox', { name: comboboxName });
+  await expect(combobox).toBeVisible();
+  await expect(combobox).toBeEnabled();
+  await combobox.click();
+
+  await expect(page.getByRole('option', { name: addNewOptionName })).toBeVisible();
+}
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -101,101 +162,30 @@ test.describe('SelectWithAddNew Workflow', () => {
   });
 
   test('Cohort Select has Add new option', async ({ page }) => {
-    // Open the bulk create modal via the action button
-    const createButton = page.getByRole('button', { name: 'Create ABClass' });
-    await expect(createButton).toBeVisible();
-    await expect(createButton).toBeEnabled();
-    await createButton.click();
-
-    // Wait for the modal to open
-    await expect(page.getByRole('dialog', { name: /create abclass/i })).toBeVisible();
-
-    // Open the cohort select dropdown
-    const cohortCombobox = page.getByRole('combobox', { name: 'Cohort' });
-    await expect(cohortCombobox).toBeVisible();
-    await expect(cohortCombobox).toBeEnabled();
-    await cohortCombobox.click();
-
-    // Verify 'Add new cohort' option exists
-    await expect(page.getByRole('option', { name: 'Add new cohort' })).toBeVisible();
+    await openBulkCreateModal(page);
+    await verifyAddNewOptionExists(page, 'Cohort', 'Add new cohort');
   });
 
   test('Year Group Select has Add new option', async ({ page }) => {
-    // Open the bulk create modal
-    const createButton = page.getByRole('button', { name: 'Create ABClass' });
-    await expect(createButton).toBeVisible();
-    await expect(createButton).toBeEnabled();
-    await createButton.click();
-    await expect(page.getByRole('dialog', { name: /create abclass/i })).toBeVisible();
-
-    // Open year group select dropdown
-    const yearGroupCombobox = page.getByRole('combobox', { name: 'Year group' });
-    await expect(yearGroupCombobox).toBeVisible();
-    await expect(yearGroupCombobox).toBeEnabled();
-    await yearGroupCombobox.click();
-
-    // Verify 'Add new year group' option exists
-    await expect(page.getByRole('option', { name: 'Add new year group' })).toBeVisible();
+    await openBulkCreateModal(page);
+    await verifyAddNewOptionExists(page, 'Year group', 'Add new year group');
   });
 
   test('Clicking Add new cohort opens Manage Cohorts modal', async ({ page }) => {
-    // Open the bulk create modal
-    const createButton = page.getByRole('button', { name: 'Create ABClass' });
-    await expect(createButton).toBeVisible();
-    await expect(createButton).toBeEnabled();
-    await createButton.click();
-    await expect(page.getByRole('dialog', { name: /create abclass/i })).toBeVisible();
-
-    // Open cohort select and click Add new
-    const cohortCombobox = page.getByRole('combobox', { name: 'Cohort' });
-    await expect(cohortCombobox).toBeVisible();
-    await cohortCombobox.click();
-
-    const addNewOption = page.getByRole('option', { name: 'Add new cohort' });
-    await expect(addNewOption).toBeVisible();
-    await addNewOption.click();
-
-    // Wait for Manage Cohorts modal to open
+    await openBulkCreateModal(page);
+    await openComboboxAndClickAddNew(page, 'Cohort', 'Add new cohort');
     await expect(page.getByRole('dialog', { name: /manage cohorts/i })).toBeVisible();
   });
 
   test('Clicking Add new year group opens Manage Year Groups modal', async ({ page }) => {
-    // Open the bulk create modal
-    const createButton = page.getByRole('button', { name: 'Create ABClass' });
-    await expect(createButton).toBeVisible();
-    await expect(createButton).toBeEnabled();
-    await createButton.click();
-    await expect(page.getByRole('dialog', { name: /create abclass/i })).toBeVisible();
-
-    // Open year group select and click Add new
-    const yearGroupCombobox = page.getByRole('combobox', { name: 'Year group' });
-    await expect(yearGroupCombobox).toBeVisible();
-    await yearGroupCombobox.click();
-
-    const addNewOption = page.getByRole('option', { name: 'Add new year group' });
-    await expect(addNewOption).toBeVisible();
-    await addNewOption.click();
-
-    // Wait for Manage Year Groups modal to open
+    await openBulkCreateModal(page);
+    await openComboboxAndClickAddNew(page, 'Year group', 'Add new year group');
     await expect(page.getByRole('dialog', { name: /manage year groups/i })).toBeVisible();
   });
 
   test('Full workflow: Create cohort via Add new and auto-select', async ({ page }) => {
-    // Open the bulk create modal
-    const createButton = page.getByRole('button', { name: 'Create ABClass' });
-    await expect(createButton).toBeVisible();
-    await expect(createButton).toBeEnabled();
-    await createButton.click();
-    await expect(page.getByRole('dialog', { name: /create abclass/i })).toBeVisible();
-
-    // Open cohort select and click Add new
-    const cohortCombobox = page.getByRole('combobox', { name: 'Cohort' });
-    await expect(cohortCombobox).toBeVisible();
-    await cohortCombobox.click();
-
-    const addNewOption = page.getByRole('option', { name: 'Add new cohort' });
-    await expect(addNewOption).toBeVisible();
-    await addNewOption.click();
+    await openBulkCreateModal(page);
+    await openComboboxAndClickAddNew(page, 'Cohort', 'Add new cohort');
 
     // Wait for Manage Cohorts modal to open
     const cohortsModal = page.getByRole('dialog', { name: /manage cohorts/i });
@@ -229,12 +219,7 @@ test.describe('SelectWithAddNew Workflow', () => {
   });
 
   test('Rapid clicks on Add new only open modal once (debounce)', async ({ page }) => {
-    // Open the bulk create modal
-    const createButton = page.getByRole('button', { name: 'Create ABClass' });
-    await expect(createButton).toBeVisible();
-    await expect(createButton).toBeEnabled();
-    await createButton.click();
-    await expect(page.getByRole('dialog', { name: /create abclass/i })).toBeVisible();
+    await openBulkCreateModal(page);
 
     // Open cohort select
     const cohortCombobox = page.getByRole('combobox', { name: 'Cohort' });

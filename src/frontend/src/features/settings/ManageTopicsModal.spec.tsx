@@ -309,6 +309,125 @@ async function assertTransientStateReset(closeMethod: 'Cancel' | 'close icon' | 
   expect(screen.queryByRole('dialog', { name: /create topic/i })).not.toBeInTheDocument();
 }
 
+/**
+ * Renders the ManageTopicsModal and opens the create topic form.
+ *
+ * @returns {Promise<{dialog: HTMLElement; formDialog: HTMLElement}>} The modal dialog and form dialog elements.
+ */
+async function openCreateTopicForm(): Promise<{ dialog: HTMLElement; formDialog: HTMLElement }> {
+  renderManageTopicsModal();
+
+  const dialog = await findManageTopicsModalDialog();
+  await within(dialog).findByRole('table', { name: /topics/i });
+  fireEvent.click(within(dialog).getByRole('button', { name: /create topic/i }));
+
+  const formDialog = await screen.findByRole('dialog', { name: /create topic/i });
+  return { dialog, formDialog };
+}
+
+/**
+ * Opens the edit form for Mathematics topic.
+ *
+ * @returns {Promise<{dialog: HTMLElement; table: HTMLElement; formDialog: HTMLElement; mathsRow: HTMLElement; queryClient: ReturnType<typeof createAppQueryClient>}>} The modal dialog, table, form dialog, maths row elements, and query client.
+ */
+async function openEditMathsForm(): Promise<{
+  dialog: HTMLElement;
+  table: HTMLElement;
+  formDialog: HTMLElement;
+  mathsRow: HTMLElement;
+  queryClient: ReturnType<typeof createAppQueryClient>;
+}> {
+  const { queryClient } = renderManageTopicsModal();
+
+  const dialog = await findManageTopicsModalDialog();
+  const table = await within(dialog).findByRole('table', { name: /topics/i });
+  const mathsRow = within(table).getByRole('row', { name: /mathematics/i });
+  fireEvent.click(within(mathsRow).getByRole('button', { name: /edit/i }));
+
+  const formDialog = await screen.findByRole('dialog', { name: /edit topic/i });
+  return { dialog, table, formDialog, mathsRow, queryClient };
+}
+
+/**
+ * Asserts that the ready modal body is suppressed (no create button, no table, alert visible).
+ *
+ * @param {HTMLElement} dialog - The modal dialog element.
+ * @param {string} [alertText] - Optional specific alert text to check.
+ */
+function assertReadyBodySuppressed(dialog: HTMLElement, alertText?: string): void {
+  expect(within(dialog).queryByRole('button', { name: /create topic/i })).not.toBeInTheDocument();
+  expect(within(dialog).queryByRole('table', { name: /topics/i })).not.toBeInTheDocument();
+  const alert = within(dialog).getByRole('alert');
+  expect(alert).toBeInTheDocument();
+  if (alertText) {
+    expect(alert).toHaveTextContent(alertText);
+  }
+}
+
+/**
+ * Asserts that the create form dialog has a name textbox.
+ *
+ * @param {HTMLElement} formDialog - The form dialog element.
+ */
+function assertFormHasNameTextbox(formDialog: HTMLElement): void {
+  expect(within(formDialog).getByRole('textbox', { name: /name/i })).toBeInTheDocument();
+}
+
+/**
+ * Asserts that the edit form dialog has a name textbox with a specific value.
+ *
+ * @param {HTMLElement} formDialog - The form dialog element.
+ * @param {string} expectedValue - The expected value of the name textbox.
+ */
+function assertEditFormNameValue(formDialog: HTMLElement, expectedValue: string): void {
+  expect(within(formDialog).getByRole('textbox', { name: /name/i })).toHaveValue(expectedValue);
+}
+
+/**
+ * Sets up a test scenario where a query fails before any usable data loads.
+ *
+ * @param {'topics' | 'yearGroups'} queryType - Which query to fail.
+ * @param {Error} error - The error to reject with.
+ * @returns {Promise<HTMLElement>} The modal dialog element.
+ */
+async function setupQueryFailureBeforeDataLoad(
+  queryType: 'topics' | 'yearGroups',
+  error: Error,
+): Promise<HTMLElement> {
+  if (queryType === 'topics') {
+    getAssignmentTopicsMock.mockRejectedValueOnce(error);
+  } else {
+    getYearGroupsMock.mockRejectedValueOnce(error);
+  }
+
+  const queryClient = createAppQueryClient();
+  renderWithFrontendProviders(
+    <ManageTopicsModal open={true} onClose={onCloseMock} onEntityCreated={onEntityCreatedMock} />,
+    { queryClient },
+  );
+  return findManageTopicsModalDialog();
+}
+
+/**
+ * Sets up a test scenario where yearGroups query fails but topics data is already seeded.
+ *
+ * @param {Error} error - The error to reject with.
+ * @returns {Promise<HTMLElement>} The modal dialog element.
+ */
+async function setupYearGroupsFailureWithTopicsSeeded(error: Error): Promise<HTMLElement> {
+  getYearGroupsMock.mockRejectedValueOnce(error);
+
+  const queryClient = createAppQueryClient();
+  queryClient.setQueryData(queryKeys.assignmentTopics(), seedTopics);
+  getAssignmentTopicsMock.mockResolvedValue(seedTopics);
+
+  renderWithFrontendProviders(
+    <ManageTopicsModal open={true} onClose={onCloseMock} onEntityCreated={onEntityCreatedMock} />,
+    { queryClient },
+  );
+  return findManageTopicsModalDialog();
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   getAssignmentTopicsMock.mockResolvedValue(seedTopics);
@@ -380,41 +499,25 @@ describe('ManageTopicsModal', () => {
     });
 
     it('suppresses the ready modal body when the topics query fails before any usable data loads', async () => {
-      getAssignmentTopicsMock.mockRejectedValueOnce(new Error('Topics failed to load.'));
-
-      const queryClient = createAppQueryClient();
-      renderWithFrontendProviders(
-        <ManageTopicsModal open={true} onClose={onCloseMock} onEntityCreated={onEntityCreatedMock} />,
-        { queryClient },
+      const dialog = await setupQueryFailureBeforeDataLoad(
+        'topics',
+        new Error('Topics failed to load.'),
       );
-      const dialog = await findManageTopicsModalDialog();
 
       await waitFor(() => {
-        expect(
-          within(dialog).queryByRole('button', { name: /create topic/i }),
-        ).not.toBeInTheDocument();
+        assertReadyBodySuppressed(dialog, topicsLoadFailureCopy);
       });
-      expect(within(dialog).queryByRole('table', { name: /topics/i })).not.toBeInTheDocument();
-      expect(within(dialog).getByRole('alert')).toHaveTextContent(topicsLoadFailureCopy);
     });
 
     it('suppresses the ready modal body when the yearGroups query fails before any usable data loads', async () => {
-      getYearGroupsMock.mockRejectedValueOnce(new Error('Year groups failed to load.'));
-
-      const queryClient = createAppQueryClient();
-      renderWithFrontendProviders(
-        <ManageTopicsModal open={true} onClose={onCloseMock} onEntityCreated={onEntityCreatedMock} />,
-        { queryClient },
+      const dialog = await setupQueryFailureBeforeDataLoad(
+        'yearGroups',
+        new Error('Year groups failed to load.'),
       );
-      const dialog = await findManageTopicsModalDialog();
 
       await waitFor(() => {
-        expect(
-          within(dialog).queryByRole('button', { name: /create topic/i }),
-        ).not.toBeInTheDocument();
+        assertReadyBodySuppressed(dialog);
       });
-      expect(within(dialog).queryByRole('table', { name: /topics/i })).not.toBeInTheDocument();
-      expect(within(dialog).getByRole('alert')).toBeInTheDocument();
     });
 
     it('keeps the trusted topics table visible when a later refetch fails', async () => {
@@ -598,36 +701,18 @@ describe('ManageTopicsModal', () => {
     });
 
     it('Create form includes year group multi-select field with all available year groups as options', async () => {
-      renderManageTopicsModal();
-
-      const dialog = await findManageTopicsModalDialog();
-      await within(dialog).findByRole('table', { name: /topics/i });
-      fireEvent.click(within(dialog).getByRole('button', { name: /create topic/i }));
-
-      const formDialog = await screen.findByRole('dialog', { name: /create topic/i });
-      expect(within(formDialog).getByRole('textbox', { name: /name/i })).toBeInTheDocument();
+      const { formDialog } = await openCreateTopicForm();
+      assertFormHasNameTextbox(formDialog);
     });
 
     it('Create form year group multi-select allows multiple selection', async () => {
-      renderManageTopicsModal();
-
-      const dialog = await findManageTopicsModalDialog();
-      await within(dialog).findByRole('table', { name: /topics/i });
-      fireEvent.click(within(dialog).getByRole('button', { name: /create topic/i }));
-
-      const formDialog = await screen.findByRole('dialog', { name: /create topic/i });
-      expect(within(formDialog).getByRole('textbox', { name: /name/i })).toBeInTheDocument();
+      const { formDialog } = await openCreateTopicForm();
+      assertFormHasNameTextbox(formDialog);
     });
 
     it('Create form year group multi-select allows empty selection', async () => {
-      renderManageTopicsModal();
-
-      const dialog = await findManageTopicsModalDialog();
-      await within(dialog).findByRole('table', { name: /topics/i });
-      fireEvent.click(within(dialog).getByRole('button', { name: /create topic/i }));
-
-      const formDialog = await screen.findByRole('dialog', { name: /create topic/i });
-      expect(within(formDialog).getByRole('textbox', { name: /name/i })).toBeInTheDocument();
+      const { formDialog } = await openCreateTopicForm();
+      assertFormHasNameTextbox(formDialog);
     });
 
     it('calls createAssignmentTopic with yearGroupKeys and refetches the active topics query after a successful create', async () => {
@@ -652,68 +737,35 @@ describe('ManageTopicsModal', () => {
     });
 
     it('Create form includes year group multi-select with year group options', async () => {
-      renderManageTopicsModal();
-
-      const dialog = await findManageTopicsModalDialog();
-      await within(dialog).findByRole('table', { name: /topics/i });
-      fireEvent.click(within(dialog).getByRole('button', { name: /create topic/i }));
-
-      const formDialog = await screen.findByRole('dialog', { name: /create topic/i });
-      expect(within(formDialog).getByRole('textbox', { name: /name/i })).toBeInTheDocument();
+      const { formDialog } = await openCreateTopicForm();
+      assertFormHasNameTextbox(formDialog);
     });
   });
 
   describe('edit flow', () => {
     it('opens a pre-filled topic form modal when an Edit button is clicked', async () => {
-      renderManageTopicsModal();
-
-      const dialog = await findManageTopicsModalDialog();
-      const table = await within(dialog).findByRole('table', { name: /topics/i });
-      const mathsRow = within(table).getByRole('row', { name: /mathematics/i });
-      fireEvent.click(within(mathsRow).getByRole('button', { name: /edit/i }));
-
-      const formDialog = await screen.findByRole('dialog', { name: /edit topic/i });
+      const { formDialog } = await openEditMathsForm();
       expect(formDialog).toBeInTheDocument();
       expect(within(formDialog).getByRole('textbox', { name: /name/i })).not.toHaveValue('');
     });
 
     it('Edit form includes year group multi-select field with pre-selected existing yearGroupKeys', async () => {
-      renderManageTopicsModal();
-
-      const dialog = await findManageTopicsModalDialog();
-      const table = await within(dialog).findByRole('table', { name: /topics/i });
-      const mathsRow = within(table).getByRole('row', { name: /mathematics/i });
-      fireEvent.click(within(mathsRow).getByRole('button', { name: /edit/i }));
-
-      const formDialog = await screen.findByRole('dialog', { name: /edit topic/i });
-      expect(within(formDialog).getByRole('textbox', { name: /name/i })).toHaveValue('Mathematics');
+      const { formDialog } = await openEditMathsForm();
+      assertEditFormNameValue(formDialog, 'Mathematics');
     });
 
     it('Edit form year group multi-select allows changing selected year groups', async () => {
-      renderManageTopicsModal();
-
-      const dialog = await findManageTopicsModalDialog();
-      const table = await within(dialog).findByRole('table', { name: /topics/i });
-      const mathsRow = within(table).getByRole('row', { name: /mathematics/i });
-      fireEvent.click(within(mathsRow).getByRole('button', { name: /edit/i }));
-
-      const formDialog = await screen.findByRole('dialog', { name: /edit topic/i });
-      expect(within(formDialog).getByRole('textbox', { name: /name/i })).toHaveValue('Mathematics');
+      const { formDialog } = await openEditMathsForm();
+      assertEditFormNameValue(formDialog, 'Mathematics');
     });
 
     it('calls updateAssignmentTopic and refetches the active topics query after a successful edit', async () => {
       const updatedTopic: AssignmentTopic = { ...seedTopics[0], name: 'Mathematics Updated' };
       updateAssignmentTopicMock.mockResolvedValue(updatedTopic);
 
-      const { queryClient } = renderManageTopicsModal();
+      const { queryClient, formDialog } = await openEditMathsForm();
       const refetchSpy = vi.spyOn(queryClient, 'refetchQueries');
 
-      const dialog = await findManageTopicsModalDialog();
-      const table = await within(dialog).findByRole('table', { name: /topics/i });
-      const mathsRow = within(table).getByRole('row', { name: /mathematics/i });
-      fireEvent.click(within(mathsRow).getByRole('button', { name: /edit/i }));
-
-      const formDialog = await screen.findByRole('dialog', { name: /edit topic/i });
       const nameInput = within(formDialog).getByRole('textbox', { name: /name/i });
       fireEvent.change(nameInput, { target: { value: 'Mathematics Updated' } });
       fireEvent.click(within(formDialog).getByRole('button', { name: /ok|save|update/i }));
@@ -782,25 +834,13 @@ describe('ManageTopicsModal', () => {
     });
 
     it('shows blocking alert when yearGroups query fails even if topics data is available', async () => {
-      getYearGroupsMock.mockRejectedValueOnce(new Error('Year groups failed to load.'));
-
-      const queryClient = createAppQueryClient();
-      queryClient.setQueryData(queryKeys.assignmentTopics(), seedTopics);
-      getAssignmentTopicsMock.mockResolvedValue(seedTopics);
-
-      renderWithFrontendProviders(
-        <ManageTopicsModal open={true} onClose={onCloseMock} onEntityCreated={onEntityCreatedMock} />,
-        { queryClient },
+      const dialog = await setupYearGroupsFailureWithTopicsSeeded(
+        new Error('Year groups failed to load.'),
       );
-      const dialog = await findManageTopicsModalDialog();
 
       await waitFor(() => {
-        expect(
-          within(dialog).queryByRole('button', { name: /create topic/i }),
-        ).not.toBeInTheDocument();
+        assertReadyBodySuppressed(dialog);
       });
-      expect(within(dialog).queryByRole('table', { name: /topics/i })).not.toBeInTheDocument();
-      expect(within(dialog).getByRole('alert')).toBeInTheDocument();
     });
   });
 
