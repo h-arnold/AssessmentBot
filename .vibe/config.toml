@@ -226,6 +226,8 @@ denylist = [
     "dash -i",
     "screen",
     "tmux",
+    "git reset",
+    "git stash"
 ]
 sensitive_patterns = [
     "sudo",
@@ -280,6 +282,7 @@ denylist = []
 sensitive_patterns = [
     "**/.env",
     "**/.env.*",
+    "**/**eslint.config**",
 ]
 max_write_bytes = 64000
 create_parent_dirs = true
@@ -291,6 +294,7 @@ denylist = []
 sensitive_patterns = [
     "**/.env",
     "**/.env.*",
+    "**/**eslint.config**",
 ]
 max_content_size = 100000
 create_backup = false
