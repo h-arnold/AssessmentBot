@@ -8,6 +8,8 @@ import { renderWithFrontendProviders } from '../test/renderWithFrontendProviders
 import { SettingsPage } from './SettingsPage';
 import { pageContent } from './pageContent';
 
+const referenceDataPanelLabel = 'Reference Data panel';
+
 const backendSettingsPanelLabel = 'Backend settings panel';
 
 const readyBackendSettingsFormValues = {
@@ -60,6 +62,15 @@ vi.mock('../features/classes/ClassesManagementPanel', () => ({
 
 vi.mock('../features/settings/backend/useBackendSettings', () => ({
   useBackendSettings: useBackendSettingsMock,
+}));
+
+// RED phase: ReferenceDataSettingsPanel doesn't exist yet, so we mock it
+vi.mock('../features/settings/ReferenceDataSettingsPanel', () => ({
+  ReferenceDataSettingsPanel: () => (
+    <section aria-label={referenceDataPanelLabel}>
+      <div>Reference Data Settings Placeholder</div>
+    </section>
+  ),
 }));
 
 const backendSettingsHookState = {
@@ -233,6 +244,51 @@ describe('SettingsPage', () => {
           queryFn: expect.any(Function),
         })
       );
+    });
+  });
+
+  // Section 4 - Settings Page Reference Data Tab - RED phase tests
+  // These tests are expected to fail until the implementation is complete
+
+  it('renders Reference Data tab in tab bar', () => {
+    renderSettingsPage();
+
+    expect(screen.getByRole('tab', { name: 'Reference Data' })).toBeInTheDocument();
+  });
+
+  it('Reference Data tab has key reference-data', () => {
+    renderSettingsPage();
+
+    const referenceDataTab = screen.getByRole('tab', { name: 'Reference Data' });
+    expect(referenceDataTab).toHaveAttribute('aria-controls', expect.stringContaining('reference-data'));
+  });
+
+  it('Reference Data tab has label Reference Data', () => {
+    renderSettingsPage();
+
+    const referenceDataTab = screen.getByRole('tab', { name: 'Reference Data' });
+    expect(referenceDataTab).toHaveTextContent('Reference Data');
+  });
+
+  it('Reference Data tab is last in tab order', () => {
+    renderSettingsPage();
+
+    const tabs = screen.getAllByRole('tab');
+    const tabNames = tabs.map((tab) => tab.textContent);
+    
+    // Reference Data should be the last tab
+    const lastIndex = -1;
+    expect(tabNames.at(lastIndex)).toBe('Reference Data');
+  });
+
+  it('clicking Reference Data tab shows ReferenceDataSettingsPanel', async () => {
+    renderSettingsPage();
+
+    const referenceDataTab = screen.getByRole('tab', { name: 'Reference Data' });
+    fireEvent.click(referenceDataTab);
+
+    await waitFor(() => {
+      expect(screen.getByRole('region', { name: referenceDataPanelLabel })).toBeInTheDocument();
     });
   });
 });

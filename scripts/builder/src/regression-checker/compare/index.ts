@@ -184,11 +184,8 @@ function compareCheckPair(checkPair: CheckPair): ComparisonCheckResult {
     baselineSummary,
     currentSummary
   );
-  const hasAnyDelta =
-    comparison.regressions.length > 0 ||
-    comparison.newFailures.length > 0 ||
-    comparison.fixes.length > 0;
-  const status = checkPair.current.status === 'failing' || hasAnyDelta ? 'failing' : 'passing';
+  const hasFailureDelta = comparison.regressions.length > 0 || comparison.newFailures.length > 0;
+  const status = checkPair.current.status === 'failing' || hasFailureDelta ? 'failing' : 'passing';
 
   return {
     id: checkPair.current.id,

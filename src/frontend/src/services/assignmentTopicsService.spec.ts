@@ -8,8 +8,8 @@ vi.mock('./apiService', () => ({
 }));
 
 const validAssignmentTopicsResponse = [
-  { key: 'topic-algebra', name: 'Algebra' },
-  { key: 'topic-geometry', name: 'Geometry' },
+  { key: 'topic-algebra', name: 'Algebra', yearGroupKeys: [] },
+  { key: 'topic-geometry', name: 'Geometry', yearGroupKeys: [] },
 ];
 
 /**
@@ -38,7 +38,17 @@ describe('assignmentTopicsService', () => {
   });
 
   it('rejects malformed topic responses from transport wrappers', async () => {
-    callApiMock.mockResolvedValueOnce([{ key: 'topic-algebra', name: '' }]);
+    callApiMock.mockResolvedValueOnce([{ key: 'topic-algebra', name: '', yearGroupKeys: [] }]);
+
+    const service = await loadAssignmentTopicsService();
+    const getAssignmentTopics = service.getAssignmentTopics;
+
+    await expect(getAssignmentTopics()).rejects.toBeInstanceOf(ZodError);
+    expect(callApiMock).toHaveBeenCalledWith('getAssignmentTopics');
+  });
+
+  it('rejects topic responses missing yearGroupKeys from transport wrappers', async () => {
+    callApiMock.mockResolvedValueOnce([{ key: 'topic-algebra', name: 'Algebra' }]);
 
     const service = await loadAssignmentTopicsService();
     const getAssignmentTopics = service.getAssignmentTopics;

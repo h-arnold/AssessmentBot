@@ -5,16 +5,15 @@
  */
 
 import type { AssignmentDefinition } from '../../services/assignmentDefinition.zod.ts';
-import type { AssignmentTopic } from '../../services/assignmentTopics.zod.ts';
-import type { YearGroup } from '../../services/referenceData.zod.ts';
+import type { AssignmentTopic, YearGroup } from '../../services/referenceData.zod.ts';
 
 /**
  * Standard mock topics for testing.
  * Used in both unit tests and E2E tests.
  */
 export const mockTopics: AssignmentTopic[] = [
-  { key: 'topic-algebra', name: 'Algebra' },
-  { key: 'topic-geometry', name: 'Geometry' },
+  { key: 'topic-algebra', name: 'Algebra', yearGroupKeys: [] },
+  { key: 'topic-geometry', name: 'Geometry', yearGroupKeys: [] },
 ] as const;
 
 /**

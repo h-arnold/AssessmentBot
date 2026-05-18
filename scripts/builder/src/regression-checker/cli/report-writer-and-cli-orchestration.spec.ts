@@ -2,7 +2,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, test } from 'vitest';
 
 import { CommandExecutionError } from '../../lib/process.js';
 
@@ -882,7 +882,7 @@ describe('report writer and CLI orchestration', () => {
           '',
           '{"status":"ok"}',
         ].join('\n'),
-        stderr: '',
+        stderr: 'browser warning: cached dependencies are stale',
       },
     });
 
@@ -1410,46 +1410,87 @@ describe('report writer and CLI orchestration', () => {
     expect(report).not.toContain('--- FAILED CHECKS ---');
   });
 
-  it('renders comparison report with single fix showing singular form', async () => {
-    const { renderComparisonReport } = await loadCliModule();
-
-    const report = renderComparisonReport({
-      sessionId: SESSION_ID,
-      sessionStorageKey: SESSION_STORAGE_KEY,
-      sessionIdSource: 'arg',
-      baselineTimestamp: CREATED_AT,
-      currentTimestamp: CREATED_AT,
-      comparison: {
-        overallStatus: 'GREEN',
-        baselineCompatibility: { compatible: true },
-        checks: [
-          {
-            id: 'builder-lint',
-            tool: 'eslint',
-            status: 'failing',
-            baselineSummary: { kind: 'eslint', counts: { errors: 1, warnings: 0 } },
-            currentSummary: { kind: 'eslint', counts: { errors: 0, warnings: 0 } },
-            regressions: [],
-            newFailures: [],
-            fixes: ['no-alert|src/example.ts|1|1|Alert removed.'],
-            executionError: null,
-            baselineIncompatibility: null,
-          },
-        ],
-        totals: {
-          regressionsCount: 0,
-          newFailuresCount: 0,
-          fixesCount: 1,
-          checksPassing: 0,
-          checksFailing: 1,
-        },
+  test.each([
+    {
+      name: 'single fix showing singular form',
+      checkId: 'builder-lint',
+      tool: 'eslint' as const,
+      fixesCount: 1,
+      fixes: ['no-alert|src/example.ts|1|1|Alert removed.'],
+      expectedCheckLine: 'builder-lint (1 fix): passing',
+      expectedTotalsLine: 'Fixes Count: 1',
+      baselineSummary: { kind: 'eslint' as const, counts: { errors: 1, warnings: 0 } },
+      currentSummary: { kind: 'eslint' as const, counts: { errors: 0, warnings: 0 } },
+    },
+    {
+      name: 'multiple fixes showing plural form',
+      checkId: 'frontend-e2e-check',
+      tool: 'playwright' as const,
+      fixesCount: 3,
+      fixes: ['spec-a.ts|suite|test-a', 'spec-b.ts|suite|test-b', 'spec-c.ts|suite|test-c'],
+      expectedCheckLine: 'frontend-e2e-check (3 fixes): passing',
+      expectedTotalsLine: 'Fixes Count: 3',
+      baselineSummary: {
+        kind: 'playwright' as const,
+        counts: { total: 3, passed: 0, failed: 3, skipped: 0 },
       },
-    });
+      currentSummary: {
+        kind: 'playwright' as const,
+        counts: { total: 3, passed: 3, failed: 0, skipped: 0 },
+      },
+    },
+  ])(
+    'renders comparison report with $name',
+    async ({
+      checkId,
+      tool,
+      fixesCount,
+      fixes,
+      expectedCheckLine,
+      expectedTotalsLine,
+      baselineSummary,
+      currentSummary,
+    }) => {
+      const { renderComparisonReport } = await loadCliModule();
 
-    // Should show singular "1 fix" in per-command summary
-    expect(report).toContain('builder-lint (1 fix): failing');
-    expect(report).toContain('Fixes: 1');
-  });
+      const report = renderComparisonReport({
+        sessionId: SESSION_ID,
+        sessionStorageKey: SESSION_STORAGE_KEY,
+        sessionIdSource: 'arg',
+        baselineTimestamp: CREATED_AT,
+        currentTimestamp: CREATED_AT,
+        comparison: {
+          overallStatus: 'GREEN',
+          baselineCompatibility: { compatible: true },
+          checks: [
+            {
+              id: checkId,
+              tool,
+              status: 'passing',
+              baselineSummary,
+              currentSummary,
+              regressions: [],
+              newFailures: [],
+              fixes,
+              executionError: null,
+              baselineIncompatibility: null,
+            },
+          ],
+          totals: {
+            regressionsCount: 0,
+            newFailuresCount: 0,
+            fixesCount,
+            checksPassing: 1,
+            checksFailing: 0,
+          },
+        },
+      });
+
+      expect(report).toContain(expectedCheckLine);
+      expect(report).toContain(expectedTotalsLine);
+      expect(report).not.toContain('--- FAILED CHECKS ---');
+    }
+  );
 
   it('writes file content to disk via writeFileToDisk', async () => {
     const { writeFileToDisk } = await loadCliModule();

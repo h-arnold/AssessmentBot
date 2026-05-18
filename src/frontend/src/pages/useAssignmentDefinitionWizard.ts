@@ -3,7 +3,11 @@ import { Form, type FormInstance } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStartupWarmupState } from '../features/auth/startupWarmupState';
 import { logFrontendError } from '../logging/frontendLogger';
-import { mapErrorToUserMessage, extractErrorCode, extractRequestId } from '../errors/map-error-to-ui';
+import {
+  mapErrorToUserMessage,
+  extractErrorCode,
+  extractRequestId,
+} from '../errors/map-error-to-ui';
 import { queryKeys } from '../query/queryKeys';
 import {
   getAssignmentDefinitionQueryOptions,
@@ -20,9 +24,18 @@ import {
 
 export type ModalMode = 'create' | 'update';
 
-export type TaskRow = Readonly<{ key: string; taskId: string; taskTitle: string; taskWeighting: number }>;
+export type TaskRow = Readonly<{
+  key: string;
+  taskId: string;
+  taskTitle: string;
+  taskWeighting: number;
+}>;
 
-export type DocumentChangeState = Readonly<{ hasPendingChange: boolean; previousReferenceUrl: string; previousTemplateUrl: string }>;
+export type DocumentChangeState = Readonly<{
+  hasPendingChange: boolean;
+  previousReferenceUrl: string;
+  previousTemplateUrl: string;
+}>;
 
 type ParsedCreateBaseline = Readonly<{
   title: string;
@@ -240,7 +253,11 @@ function useFormInitialization(
 
     setHasParsedTasks(false);
     setTaskRows([]);
-    setDocumentChange({ hasPendingChange: false, previousReferenceUrl: '', previousTemplateUrl: '' });
+    setDocumentChange({
+      hasPendingChange: false,
+      previousReferenceUrl: '',
+      previousTemplateUrl: '',
+    });
     setHasDirtyEdits(false);
     setBlockingError(null);
     setLocalDefinitionKey(null);
@@ -253,10 +270,29 @@ function useFormInitialization(
       parsedCreateBaselineReference.current = null;
       isHydratingDefinitionReference.current = true;
 
-      hydrateFormFromDefinition(form, definition, setTaskRows, setHasParsedTasks, setDocumentChange);
-      queueMicrotask(() => { isHydratingDefinitionReference.current = false; });
+      hydrateFormFromDefinition(
+        form,
+        definition,
+        setTaskRows,
+        setHasParsedTasks,
+        setDocumentChange
+      );
+      queueMicrotask(() => {
+        isHydratingDefinitionReference.current = false;
+      });
     }
-  }, [open, isCreateMode, definition, form, setTaskRows, setHasParsedTasks, setDocumentChange, setHasDirtyEdits, setBlockingError, setLocalDefinitionKey]);
+  }, [
+    open,
+    isCreateMode,
+    definition,
+    form,
+    setTaskRows,
+    setHasParsedTasks,
+    setDocumentChange,
+    setHasDirtyEdits,
+    setBlockingError,
+    setLocalDefinitionKey,
+  ]);
 
   // Track dirty state
   useEffect(() => {
@@ -282,29 +318,26 @@ function useFormInitialization(
   }, [formValues, definition, taskRows, isCreateMode, hasParsedTasks, setHasDirtyEdits]);
 
   // Function to store parse baseline after successful stage-one create
-  const storeParseBaseline = useCallback(
-    (response: UpsertAssignmentDefinitionResponse) => {
-      const referenceUrl = buildCanonicalUrl(response.referenceDocumentId, response.documentType);
-      const templateUrl = buildCanonicalUrl(response.templateDocumentId, response.documentType);
+  const storeParseBaseline = useCallback((response: UpsertAssignmentDefinitionResponse) => {
+    const referenceUrl = buildCanonicalUrl(response.referenceDocumentId, response.documentType);
+    const templateUrl = buildCanonicalUrl(response.templateDocumentId, response.documentType);
 
-      parsedCreateBaselineReference.current = {
-        // Use response values for metadata to capture any server-side normalisation
-        title: response.primaryTitle,
-        topic: response.primaryTopicKey,
-        yearGroup: response.yearGroupKey,
-        // Build canonical URLs from response IDs for consistent baseline
-        referenceDocumentUrl: referenceUrl,
-        templateDocumentUrl: templateUrl,
-        referenceDocumentId: response.referenceDocumentId,
-        templateDocumentId: response.templateDocumentId,
-        documentType: response.documentType,
-        // Use the actual assignmentWeighting from the response, not the default
-        assignmentWeighting: response.assignmentWeighting,
-        taskWeightings: new Map(response.tasks.map((task) => [task.taskId, task.taskWeighting])),
-      };
-    },
-    []
-  );
+    parsedCreateBaselineReference.current = {
+      // Use response values for metadata to capture any server-side normalisation
+      title: response.primaryTitle,
+      topic: response.primaryTopicKey,
+      yearGroup: response.yearGroupKey,
+      // Build canonical URLs from response IDs for consistent baseline
+      referenceDocumentUrl: referenceUrl,
+      templateDocumentUrl: templateUrl,
+      referenceDocumentId: response.referenceDocumentId,
+      templateDocumentId: response.templateDocumentId,
+      documentType: response.documentType,
+      // Use the actual assignmentWeighting from the response, not the default
+      assignmentWeighting: response.assignmentWeighting,
+      taskWeightings: new Map(response.tasks.map((task) => [task.taskId, task.taskWeighting])),
+    };
+  }, []);
 
   // Function to get parsed create baseline for document URL restoration
   const getParsedCreateBaseline = useCallback((): ParsedCreateBaseline | null => {
@@ -315,8 +348,14 @@ function useFormInitialization(
       );
       if (cached) {
         const cachedDefinition = cached;
-        const referenceUrl = buildCanonicalUrl(cachedDefinition.referenceDocumentId, cachedDefinition.documentType);
-        const templateUrl = buildCanonicalUrl(cachedDefinition.templateDocumentId, cachedDefinition.documentType);
+        const referenceUrl = buildCanonicalUrl(
+          cachedDefinition.referenceDocumentId,
+          cachedDefinition.documentType
+        );
+        const templateUrl = buildCanonicalUrl(
+          cachedDefinition.templateDocumentId,
+          cachedDefinition.documentType
+        );
 
         return {
           title: cachedDefinition.primaryTitle,
@@ -329,7 +368,9 @@ function useFormInitialization(
           documentType: cachedDefinition.documentType,
           // Use the actual assignmentWeighting from the cached definition
           assignmentWeighting: cachedDefinition.assignmentWeighting,
-          taskWeightings: new Map(cachedDefinition.tasks.map((task) => [task.taskId, task.taskWeighting])),
+          taskWeightings: new Map(
+            cachedDefinition.tasks.map((task) => [task.taskId, task.taskWeighting])
+          ),
         };
       }
     }
@@ -403,8 +444,10 @@ function hasCreateModeMetadataChanges(
   parsedCreateBaseline: ParsedCreateBaseline
 ): boolean {
   const currentAssignmentWeighting =
-    typeof values.assignmentWeighting === 'number' ? values.assignmentWeighting : DEFAULT_WEIGHTING_VALUE;
-  
+    typeof values.assignmentWeighting === 'number'
+      ? values.assignmentWeighting
+      : DEFAULT_WEIGHTING_VALUE;
+
   return (
     values.title !== parsedCreateBaseline.title ||
     values.topic !== parsedCreateBaseline.topic ||
@@ -472,7 +515,11 @@ function hydrateFormFromDefinition(
   );
 
   setHasParsedTasks(true);
-  setDocumentChange({ hasPendingChange: false, previousReferenceUrl: referenceUrl, previousTemplateUrl: templateUrl });
+  setDocumentChange({
+    hasPendingChange: false,
+    previousReferenceUrl: referenceUrl,
+    previousTemplateUrl: templateUrl,
+  });
 }
 
 /**
@@ -515,11 +562,23 @@ function detectDocumentChange(
   const templateChanged = allValues.templateDocumentUrl !== urls.templateUrl;
 
   if (referenceChanged || templateChanged) {
-    return { hasPendingChange: true, previousReferenceUrl: urls.referenceUrl, previousTemplateUrl: urls.templateUrl };
+    return {
+      hasPendingChange: true,
+      previousReferenceUrl: urls.referenceUrl,
+      previousTemplateUrl: urls.templateUrl,
+    };
   } else if (hasPendingChange) {
-    return { hasPendingChange: false, previousReferenceUrl: urls.referenceUrl, previousTemplateUrl: urls.templateUrl };
+    return {
+      hasPendingChange: false,
+      previousReferenceUrl: urls.referenceUrl,
+      previousTemplateUrl: urls.templateUrl,
+    };
   }
-  return { hasPendingChange: false, previousReferenceUrl: urls.referenceUrl, previousTemplateUrl: urls.templateUrl };
+  return {
+    hasPendingChange: false,
+    previousReferenceUrl: urls.referenceUrl,
+    previousTemplateUrl: urls.templateUrl,
+  };
 }
 
 /**
@@ -537,7 +596,11 @@ function detectDocumentChange(
  */
 function buildWizardErrorContext(
   mode: ModalMode,
-  options: { definitionKey: string | null; actionType: string; request: UpsertAssignmentDefinitionRequest },
+  options: {
+    definitionKey: string | null;
+    actionType: string;
+    request: UpsertAssignmentDefinitionRequest;
+  },
   errorCode: string | null,
   requestId: string | null
 ): {
@@ -579,7 +642,7 @@ function hasCreateModeDirtyEdits(
 ): boolean {
   const hasMetadataChanges = hasCreateModeMetadataChanges(values, parsedCreateBaseline);
   const hasTaskWeightingChanges = hasCreateModeTaskWeightingChanges(taskRows, parsedCreateBaseline);
-  
+
   return hasMetadataChanges || hasTaskWeightingChanges;
 }
 
@@ -597,14 +660,16 @@ function hasUpdateModeDirtyEdits(
   taskRows: TaskRow[]
 ): boolean {
   const currentAssignmentWeighting =
-    typeof values.assignmentWeighting === 'number' ? values.assignmentWeighting : DEFAULT_WEIGHTING_VALUE;
-  
+    typeof values.assignmentWeighting === 'number'
+      ? values.assignmentWeighting
+      : DEFAULT_WEIGHTING_VALUE;
+
   const hasMetadataChanges =
     values.title !== definition.primaryTitle ||
     values.topic !== definition.primaryTopicKey ||
     values.yearGroup !== definition.yearGroupKey ||
     currentAssignmentWeighting !== definition.assignmentWeighting;
-  
+
   const hasTaskWeightingChanges = taskRows.some((row) => {
     const tasks = definition.tasks;
     if (!Array.isArray(tasks)) return false;
@@ -620,7 +685,7 @@ function hasUpdateModeDirtyEdits(
     );
     return task === undefined ? false : task.taskWeighting !== row.taskWeighting;
   });
-  
+
   return hasMetadataChanges || hasTaskWeightingChanges;
 }
 
@@ -667,7 +732,12 @@ export type UseAssignmentDefinitionWizardReturn = Readonly<{
   yearGroupOptions: { value: string; label: string }[];
   primaryActionLabel: string;
   isPrimaryActionDisabled: boolean;
-  handleFormValuesChange: (changedValues: Record<string, unknown>, allValues: Record<string, unknown>) => void;
+  selectedTopicKey?: string;
+  selectedYearGroupKey?: string;
+  handleFormValuesChange: (
+    changedValues: Record<string, unknown>,
+    allValues: Record<string, unknown>
+  ) => void;
   handleReparse: () => Promise<void>;
   handleReparseCancel: () => void;
   handleClose: () => void;
@@ -675,6 +745,10 @@ export type UseAssignmentDefinitionWizardReturn = Readonly<{
   handleKeepEditing: () => void;
   handleTaskWeightingChange: (taskId: string, value: number | null) => void;
   handlePrimaryAction: () => void;
+  handleTopicAddNew: () => void;
+  handleYearGroupAddNew: () => void;
+  onTopicEntityCreated: (entity: { key: string; name: string; yearGroupKeys?: string[] }) => void;
+  onYearGroupEntityCreated: (entity: { key: string; name: string }) => void;
 }>;
 
 /**
@@ -723,14 +797,20 @@ export function useAssignmentDefinitionWizard(
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [blockingError, setBlockingError] = useState<string | null>(null);
+  const [selectedTopicKey, setSelectedTopicKey] = useState<string | undefined>();
+  const [selectedYearGroupKey, setSelectedYearGroupKey] = useState<string | undefined>();
 
   const upsertMutation = useMutation({
     mutationFn: upsertAssignmentDefinition,
   });
 
   // Use extracted helper for reference data state derivation
-  const { isReferenceDataLoading, isReferenceDataBlocked } =
-    deriveReferenceDataState(startupWarmupState, isTopicsLoading, isYearGroupsLoading, open);
+  const { isReferenceDataLoading, isReferenceDataBlocked } = deriveReferenceDataState(
+    startupWarmupState,
+    isTopicsLoading,
+    isYearGroupsLoading,
+    open
+  );
 
   const topicOptions = useMemo(() => buildTopicOptions(topics), [topics]);
   const yearGroupOptions = useMemo(() => buildYearGroupOptions(yearGroups), [yearGroups]);
@@ -790,10 +870,16 @@ export function useAssignmentDefinitionWizard(
         return;
       }
       if (!isCreateMode || hasParsedTasks) {
-        const urls = buildDocumentUrlsFromDefinition(effectiveDefinition as Record<string, unknown>);
+        const urls = buildDocumentUrlsFromDefinition(
+          effectiveDefinition as Record<string, unknown>
+        );
         if (!urls) return;
 
-        const newDocumentChange = detectDocumentChange(allValues, urls, documentChange.hasPendingChange);
+        const newDocumentChange = detectDocumentChange(
+          allValues,
+          urls,
+          documentChange.hasPendingChange
+        );
         setDocumentChange(newDocumentChange);
       }
     },
@@ -809,8 +895,14 @@ export function useAssignmentDefinitionWizard(
    * @returns {TaskRow[]} New task rows.
    */
   const buildTaskRowsFromResponse = useCallback(
-    (responseTasks: Array<{ taskId: string; taskTitle: string; taskWeighting: number }>, actionType: 'parse' | 'reparse') => {
-      const existingWeightings = actionType === 'reparse' ? new Map(taskRows.map((row) => [row.taskId, row.taskWeighting])) : null;
+    (
+      responseTasks: Array<{ taskId: string; taskTitle: string; taskWeighting: number }>,
+      actionType: 'parse' | 'reparse'
+    ) => {
+      const existingWeightings =
+        actionType === 'reparse'
+          ? new Map(taskRows.map((row) => [row.taskId, row.taskWeighting]))
+          : null;
 
       const newTaskRows: TaskRow[] = responseTasks.map((t) => ({
         key: t.taskId,
@@ -900,7 +992,9 @@ export function useAssignmentDefinitionWizard(
       // This handles both update mode (explicitKey) and create mode (localDefinitionKey)
       const effectiveKey = explicitKey ?? localDefinitionKey;
       if (effectiveKey) {
-        await queryClient.invalidateQueries({ queryKey: queryKeys.assignmentDefinitionByKey(effectiveKey) });
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.assignmentDefinitionByKey(effectiveKey),
+        });
       }
       // Removed fetchQuery call as per frontend-react-query-and-prefetch.md §7:
       // fetchQuery after invalidation is anti-pattern. Let React Query's background
@@ -918,7 +1012,10 @@ export function useAssignmentDefinitionWizard(
    * @returns {UpsertAssignmentDefinitionResponse | undefined} The response to return.
    */
   const handlePostMutation = useCallback(
-    (actionType: 'parse' | 'save' | 'reparse', response: UpsertAssignmentDefinitionResponse | undefined): UpsertAssignmentDefinitionResponse | undefined => {
+    (
+      actionType: 'parse' | 'save' | 'reparse',
+      response: UpsertAssignmentDefinitionResponse | undefined
+    ): UpsertAssignmentDefinitionResponse | undefined => {
       if (actionType === 'save') {
         onClose();
         return undefined;
@@ -1024,7 +1121,10 @@ export function useAssignmentDefinitionWizard(
       referenceDocumentUrl: values.referenceDocumentUrl as string,
       templateDocumentUrl: values.templateDocumentUrl as string,
       assignmentWeighting: (values.assignmentWeighting as number) ?? DEFAULT_WEIGHTING_VALUE,
-      taskWeightings: taskRows.map((row) => ({ taskId: row.taskId, taskWeighting: row.taskWeighting })),
+      taskWeightings: taskRows.map((row) => ({
+        taskId: row.taskId,
+        taskWeighting: row.taskWeighting,
+      })),
     };
     if (effectiveKey) {
       request.definitionKey = effectiveKey;
@@ -1086,16 +1186,13 @@ export function useAssignmentDefinitionWizard(
 
   const handleKeepEditing = useCallback(() => setShowDiscardConfirm(false), []);
 
-  const handleTaskWeightingChange = useCallback(
-    (taskId: string, value: number | null) => {
-      setTaskRows((previous) =>
-        previous.map((row) =>
-          row.taskId === taskId ? { ...row, taskWeighting: value ?? DEFAULT_WEIGHTING_VALUE } : row
-        )
-      );
-    },
-    []
-  );
+  const handleTaskWeightingChange = useCallback((taskId: string, value: number | null) => {
+    setTaskRows((previous) =>
+      previous.map((row) =>
+        row.taskId === taskId ? { ...row, taskWeighting: value ?? DEFAULT_WEIGHTING_VALUE } : row
+      )
+    );
+  }, []);
 
   const handlePrimaryAction = useCallback(() => {
     const action = isCreateMode && !hasParsedTasks ? handleParseAndContinue : handleSave;
@@ -1103,6 +1200,33 @@ export function useAssignmentDefinitionWizard(
       throw error;
     });
   }, [isCreateMode, hasParsedTasks, handleParseAndContinue, handleSave]);
+
+  // Handlers for 'Add new' topic/year group workflow
+  const handleTopicAddNew = useCallback(() => {
+    // Will be handled by the modal component
+  }, []);
+
+  const handleYearGroupAddNew = useCallback(() => {
+    // Will be handled by the modal component
+  }, []);
+
+  const onTopicEntityCreated = useCallback(
+    (entity: { key: string; name: string; yearGroupKeys?: string[] }) => {
+      setSelectedTopicKey(entity.key);
+      // Invalidate assignmentTopics query so the dropdown refreshes
+      queryClient.invalidateQueries({ queryKey: ['assignmentTopics'] });
+    },
+    [queryClient]
+  );
+
+  const onYearGroupEntityCreated = useCallback(
+    (entity: { key: string; name: string }) => {
+      setSelectedYearGroupKey(entity.key);
+      // Invalidate yearGroups query so the dropdown refreshes
+      queryClient.invalidateQueries({ queryKey: ['yearGroups'] });
+    },
+    [queryClient]
+  );
 
   return {
     form,
@@ -1119,6 +1243,8 @@ export function useAssignmentDefinitionWizard(
     yearGroupOptions,
     primaryActionLabel,
     isPrimaryActionDisabled,
+    selectedTopicKey,
+    selectedYearGroupKey,
     handleFormValuesChange,
     handleReparse,
     handleReparseCancel,
@@ -1127,5 +1253,9 @@ export function useAssignmentDefinitionWizard(
     handleKeepEditing,
     handleTaskWeightingChange,
     handlePrimaryAction,
+    handleTopicAddNew,
+    handleYearGroupAddNew,
+    onTopicEntityCreated,
+    onYearGroupEntityCreated,
   };
 }

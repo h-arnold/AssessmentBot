@@ -1,4 +1,4 @@
-/* global Cohort, DbManager, Validate, YearGroup */
+/* global AssignmentTopic, Cohort, DbManager, Validate, YearGroup */
 
 let fallbackKeyCounter = 0;
 
@@ -111,7 +111,7 @@ class ReferenceDataController {
 
   /**
    * Retrieves all assignment-topic records from storage.
-   * @returns {Array<{key: string, name: string}>} List of all assignment topics sorted by name.
+   * @returns {Array<{key: string, name: string, yearGroupKeys: string[]}>} List of all assignment topics sorted by name with yearGroupKeys.
    */
   listAssignmentTopics() {
     return this._listRecords(this._getConfig('assignmentTopic'));
@@ -119,8 +119,8 @@ class ReferenceDataController {
 
   /**
    * Creates a new assignment-topic record in storage.
-   * @param {{name: string}} record - The assignment-topic data to create.
-   * @returns {{key: string, name: string}} The persisted assignment-topic record.
+   * @param {{name: string, yearGroupKeys: string[]}} record - The assignment-topic data to create with yearGroupKeys.
+   * @returns {{key: string, name: string, yearGroupKeys: string[]}} The persisted assignment-topic record with yearGroupKeys.
    */
   createAssignmentTopic(record) {
     Validate.requireParams({ record }, 'ReferenceDataController.createAssignmentTopic');
@@ -129,8 +129,8 @@ class ReferenceDataController {
 
   /**
    * Updates an existing assignment-topic record in storage.
-   * @param {{key: string, record: {name: string}}} payload - Object containing key and updated record data.
-   * @returns {{key: string, name: string}} The updated assignment-topic record.
+   * @param {{key: string, record: {name: string, yearGroupKeys: string[]}}} payload - Object containing key and updated record data with yearGroupKeys.
+   * @returns {{key: string, name: string, yearGroupKeys: string[]}} The updated assignment-topic record with yearGroupKeys.
    */
   updateAssignmentTopic(payload) {
     Validate.requireParams({ payload }, 'ReferenceDataController.updateAssignmentTopic');
@@ -178,7 +178,7 @@ class ReferenceDataController {
     if (resourceType === 'assignmentTopic') {
       return {
         collectionName: 'assignment_topics',
-        modelClass: YearGroup,
+        modelClass: AssignmentTopic,
         partialsReferenceField: 'primaryTopicKey',
         inUseCollectionName: 'assignment_definitions',
         inUseErrorMessage:

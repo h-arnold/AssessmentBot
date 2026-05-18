@@ -1,5 +1,5 @@
-import { Form, InputNumber, Select } from 'antd';
-import { useMemo } from 'react';
+import { Form, InputNumber } from 'antd';
+import { useEffect, useMemo } from 'react';
 import { BulkFormModalScaffold } from './BulkFormModalScaffold';
 import type { BulkCreateOptions } from './bulkCreateFlow';
 import {
@@ -7,6 +7,7 @@ import {
   bulkReferenceKeySchema,
   courseLengthValidationMessage,
 } from './bulkEditValidation.zod';
+import { SelectWithAddNew } from '../../components/SelectWithAddNew';
 
 type SelectOption = Readonly<{
   label: string;
@@ -20,6 +21,10 @@ export type BulkCreateModalProperties = Readonly<{
   yearGroupOptions: SelectOption[];
   onCancel: () => void;
   onConfirm: (options: BulkCreateOptions) => Promise<void>;
+  onCohortAddNew?: () => void;
+  onYearGroupAddNew?: () => void;
+  pendingCreatedCohortKey?: string;
+  pendingCreatedYearGroupKey?: string;
 }>;
 
 type FormValues = Readonly<{
@@ -44,6 +49,20 @@ export function BulkCreateModal(properties: BulkCreateModalProperties) {
     () => new Set(properties.yearGroupOptions.map((option) => option.value)),
     [properties.yearGroupOptions],
   );
+
+  // When a new cohort is created, set it as the selected cohort
+  useEffect(() => {
+    if (properties.pendingCreatedCohortKey) {
+      form.setFieldValue('cohortKey', properties.pendingCreatedCohortKey);
+    }
+  }, [properties.pendingCreatedCohortKey, form]);
+
+  // When a new year group is created, set it as the selected year group
+  useEffect(() => {
+    if (properties.pendingCreatedYearGroupKey) {
+      form.setFieldValue('yearGroupKey', properties.pendingCreatedYearGroupKey);
+    }
+  }, [properties.pendingCreatedYearGroupKey, form]);
 
   /**
    * Validates and submits a bulk-create request.
@@ -89,12 +108,15 @@ export function BulkCreateModal(properties: BulkCreateModalProperties) {
               },
             ]}
           >
-            <Select
+            <SelectWithAddNew
               disabled={disabled}
               options={properties.cohortOptions}
               optionRender={(option) => option.data.label}
               placeholder="Select a cohort"
               virtual={false}
+              onAddNew={properties.onCohortAddNew}
+              addNewLabel="Add new cohort"
+              entityType="cohort"
             />
           </Form.Item>
           <Form.Item
@@ -114,12 +136,15 @@ export function BulkCreateModal(properties: BulkCreateModalProperties) {
               },
             ]}
           >
-            <Select
+            <SelectWithAddNew
               disabled={disabled}
               options={properties.yearGroupOptions}
               optionRender={(option) => option.data.label}
               placeholder="Select a year group"
               virtual={false}
+              onAddNew={properties.onYearGroupAddNew}
+              addNewLabel="Add new year group"
+              entityType="yearGroup"
             />
           </Form.Item>
           <Form.Item

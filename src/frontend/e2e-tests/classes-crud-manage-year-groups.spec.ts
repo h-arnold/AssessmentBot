@@ -134,9 +134,13 @@ test.describe('Classes CRUD — Manage Year Groups', () => {
 
     await openClassesTabWithYearGroupManagementScenario(page, {
       createYearGroup: [{ kind: 'success', data: newYearGroup }],
-      // getYearGroups called again after create to refresh the list
+      // getYearGroups is called 3 times:
+      // 1. When the modal opens (initial load)
+      // 2. When the onEntityCreated callback invalidates the query
+      // 3. When handleFormFinish explicitly refetches to ensure data consistency
       getYearGroups: [
         { kind: 'success', data: manageYearGroupsYearGroups },
+        { kind: 'success', data: [...manageYearGroupsYearGroups, newYearGroup] },
         { kind: 'success', data: [...manageYearGroupsYearGroups, newYearGroup] },
       ],
     });
@@ -151,6 +155,7 @@ test.describe('Classes CRUD — Manage Year Groups', () => {
     await form.getByRole('button', { name: /ok|save|create/i }).click();
 
     await expect(form).toHaveCount(0);
+    // Wait for the modal list to refresh and show the new year group
     await expect(modal.getByText('Year 9')).toBeVisible();
   });
 
@@ -302,7 +307,7 @@ test.describe('Classes CRUD — Manage Year Groups', () => {
 
   // Section 3 Red Phase: Visible-layout assertions for create button positioning
 
-  test.skip('Create year group button is start-aligned within 8px of the Table left edge', async ({
+  test('Create year group button stays near the table start edge within tolerance', async ({
     page,
   }) => {
     await openClassesTabWithYearGroupManagementScenario(page);
@@ -318,7 +323,7 @@ test.describe('Classes CRUD — Manage Year Groups', () => {
     });
   });
 
-  test.skip('Create year group button width is at least 32px narrower than the Table width', async ({
+  test('Create year group button width is at least 32px narrower than the Table width', async ({
     page,
   }) => {
     await openClassesTabWithYearGroupManagementScenario(page);

@@ -1,4 +1,4 @@
-import { Alert, Button, Form, Input, InputNumber, Modal, Select, Skeleton, Space, Table } from 'antd';
+import { Alert, Button, Form, Input, InputNumber, Modal, Skeleton, Space, Table } from 'antd';
 import { type FormInstance } from 'antd';
 import type { JSX, ReactNode } from 'react';
 import {
@@ -6,6 +6,7 @@ import {
   MAX_WEIGHTING_VALUE,
   MIN_WEIGHTING_VALUE,
 } from '../services/assignmentDefinition.zod';
+import { SelectWithAddNew } from '../components/SelectWithAddNew';
 import { type DocumentChangeState, type TaskRow } from './useAssignmentDefinitionWizard';
 
 const CREATE_TITLE = 'Create assignment';
@@ -39,6 +40,10 @@ export type AssignmentDefinitionWizardModalShellProperties = Readonly<{
   onReparse?: () => Promise<void>;
   onReparseCancel?: () => void;
   onTaskWeightingChange?: (taskId: string, value: number | null) => void;
+  onTopicAddNew?: () => void;
+  onYearGroupAddNew?: () => void;
+  selectedTopicKey?: string;
+  selectedYearGroupKey?: string;
 }>;
 
 /**
@@ -244,10 +249,26 @@ function renderBaseFormFields(
 
       <div style={{ display: 'flex', gap: 16 }}>
         <Form.Item label="Assignment Topic" name="topic" rules={[{ required: true, message: 'Topic is required' }]} style={{ flex: 1 }}>
-          <Select allowClear options={topicOptions} placeholder="Select topic" />
+          <SelectWithAddNew
+            allowClear
+            options={topicOptions}
+            placeholder="Select topic"
+            value={properties.selectedTopicKey}
+            onAddNew={properties.onTopicAddNew}
+            addNewLabel="Add new topic"
+            entityType="topic"
+          />
         </Form.Item>
         <Form.Item label="Assignment Year Group" name="yearGroup" rules={[{ required: true, message: 'Year group is required' }]} style={{ flex: 1 }}>
-          <Select allowClear options={yearGroupOptions} placeholder="Select year group" />
+          <SelectWithAddNew
+            allowClear
+            options={yearGroupOptions}
+            placeholder="Select year group"
+            value={properties.selectedYearGroupKey}
+            onAddNew={properties.onYearGroupAddNew}
+            addNewLabel="Add new year group"
+            entityType="yearGroup"
+          />
         </Form.Item>
       </div>
 

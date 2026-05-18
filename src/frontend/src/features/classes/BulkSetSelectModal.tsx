@@ -1,7 +1,8 @@
-import { Form, Select } from 'antd';
-import { useMemo } from 'react';
+import { Form } from 'antd';
+import { useEffect, useMemo } from 'react';
 import { BulkFormModalScaffold } from './BulkFormModalScaffold';
 import { bulkReferenceKeySchema } from './bulkEditValidation.zod';
+import { SelectWithAddNew } from '../../components/SelectWithAddNew';
 
 type SelectOption = Readonly<{
   label: string;
@@ -16,6 +17,8 @@ export type BulkSetSelectModalProperties = Readonly<{
   options: SelectOption[];
   onCancel: () => void;
   onConfirm: (value: string) => Promise<void>;
+  onAddNew?: () => void;
+  pendingCreatedKey?: string;
 }>;
 
 type FormValues = {
@@ -36,6 +39,27 @@ export function BulkSetSelectModal(properties: BulkSetSelectModalProperties) {
   );
   const requiredMessage = `Please select a ${properties.fieldLabel.toLowerCase()}.`;
   const invalidMessage = `Please select a valid ${properties.fieldLabel.toLowerCase()}.`;
+
+  // Determine entity type from fieldLabel for addNewLabel
+  const entityType = useMemo(() => {
+    const lowerLabel = properties.fieldLabel.toLowerCase();
+    if (lowerLabel.includes('cohort')) {
+      return 'cohort' as const;
+    }
+    if (lowerLabel.includes('year group')) {
+      return 'yearGroup' as const;
+    }
+    if (lowerLabel.includes('topic')) {
+      return 'topic' as const;
+    }
+  }, [properties.fieldLabel]);
+
+  // When a new entity is created, set it as the selected value
+  useEffect(() => {
+    if (properties.pendingCreatedKey) {
+      form.setFieldValue('value', properties.pendingCreatedKey);
+    }
+  }, [properties.pendingCreatedKey, form]);
 
   /**
    * Validates and submits the selected reference-data key.
@@ -75,12 +99,15 @@ export function BulkSetSelectModal(properties: BulkSetSelectModalProperties) {
             },
           ]}
         >
-          <Select
+          <SelectWithAddNew
             disabled={disabled}
             options={properties.options}
             optionRender={(option) => option.data.label}
             placeholder={`Select a ${properties.fieldLabel.toLowerCase()}`}
             virtual={false}
+            onAddNew={properties.onAddNew}
+            entityType={entityType}
+            debounceMs={300}
           />
         </Form.Item>
       )}

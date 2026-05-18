@@ -86,7 +86,7 @@ alias = "mistral-small-latest"
 temperature = 0.7
 input_price = 0.15
 output_price = 0.6
-thinking = "off"
+thinking = "high"
 auto_compact_threshold = 180000
 
 [[models]]
@@ -176,10 +176,12 @@ allowlist = [
     "basename",
     "cat",
     "cd",
-    "diff",
     "echo",
     "file",
     "find",
+    "find /home/developer/AssessmentBot -name \"*.spec.ts\" -exec grep -l \"AssignmentTopicSchema\\|CreateAssignmentTopicInputSchema\" {} \\;",
+    "find src/frontend -name \"*.spec.tsx\" -exec grep -l \"ManageCohortsModal\\|ManageYearGroupsModal\" {} \\;",
+    "find src/frontend/src -name \"*.tsx\" -type f -exec grep -l \"Select\" {} \\;",
     "git add",
     "git checkout",
     "git commit",
@@ -262,6 +264,7 @@ sensitive_patterns = []
 permission = "ask"
 allowlist = [
     "docs.mistral.ai",
+    "playwright.dev",
 ]
 denylist = []
 sensitive_patterns = []

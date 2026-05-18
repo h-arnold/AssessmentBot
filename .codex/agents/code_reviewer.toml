@@ -40,7 +40,7 @@ AssessmentBot has three distinct active modules with different runtimes and stan
 
 Test location and naming conventions are defined in the module testing docs and `.github/agents/Testing.agent.md`; do not infer or override them during review.
 
-## 1. Key Documentation References
+## 2. Key Documentation References
 
 Consult these resources before and during review. Local docs contain project-specific conventions that override generic external tools.
 

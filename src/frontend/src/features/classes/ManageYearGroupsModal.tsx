@@ -29,6 +29,7 @@ import { useReferenceDataManagement } from './hooks/useReferenceDataManagement';
 export type ManageYearGroupsModalProperties = Readonly<{
   open: boolean;
   onClose: () => void;
+  onEntityCreated?: (entity: { key: string; name: string }) => void;
 }>;
 
 const FORM_DIALOG_LABEL_ID = 'manage-year-groups-form-dialog-title';
@@ -95,7 +96,11 @@ export function ManageYearGroupsModal(properties: ManageYearGroupsModalPropertie
     entityKey: 'yearGroups',
     queryOptions: yearGroupsQueryOptions,
     createService: async ({ record }: { record: Omit<YearGroup, 'key'> }) => {
-      await createYearGroup({ record });
+      const result = await createYearGroup({ record });
+      // Call onEntityCreated callback if provided
+      if (properties.onEntityCreated) {
+        properties.onEntityCreated({ key: result.key, name: result.name });
+      }
     },
     updateService: async ({ key, record }: { key: string; record: Omit<YearGroup, 'key'> }) => {
       await updateYearGroup({ key, record });

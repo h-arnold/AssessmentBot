@@ -142,7 +142,7 @@ export function ReferenceDataManagementModalScaffold<T extends { key: string }>(
       {blockingBody ?? (
         !properties.isInitialLoading &&
         properties.loadError === null && (
-          <Flex vertical align="start" gap={12}>
+          <Flex vertical align="start" gap={12} style={{ width: '100%' }}>
             {properties.isRefreshing && (
               <div aria-live="polite" role="status">
                 <Text type="secondary">{properties.refreshStatusCopy}</Text>
@@ -168,6 +168,7 @@ export function ReferenceDataManagementModalScaffold<T extends { key: string }>(
               rowKey="key"
               pagination={false}
               locale={{ emptyText: properties.emptyTableCopy }}
+              style={{ width: '100%' }}
             />
           </Flex>
         )

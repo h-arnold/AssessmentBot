@@ -1,5 +1,5 @@
 import { Alert, Card, Flex, Skeleton, Typography } from 'antd';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { callApi } from '../../services/apiService';
 import { mapRequiredClassPartialsRefreshFailureToUserMessage, type RequiredClassPartialsRefreshOutcome } from './queryInvalidation';
@@ -499,6 +499,8 @@ export function ClassesManagementPanel() {
   const [bulkActionOutcomeAlert, setBulkActionOutcomeAlert] = useState<BulkActionOutcomeAlert | null>(null);
   const [refreshRequiredMessage, setRefreshRequiredMessage] = useState<string | null>(null);
   const [suppressStaleTableData, setSuppressStaleTableData] = useState(false);
+  const [pendingCreatedCohortKey, setPendingCreatedCohortKey] = useState<string | undefined>();
+  const [pendingCreatedYearGroupKey, setPendingCreatedYearGroupKey] = useState<string | undefined>();
 
   const selectedRows = useMemo(
     () => classesManagement.rows.filter((row) => classesManagement.selectedRowKeys.includes(row.classId)),
@@ -537,6 +539,33 @@ export function ClassesManagementPanel() {
     setBulkActionOutcomeAlert(null);
     setRefreshRequiredMessage(null);
   }
+
+  // Handlers for 'Add new' cohort/year group workflow
+  const handleCohortAddNew = useCallback(() => {
+    setManageCohortsModalOpen(true);
+  }, []);
+
+  const handleYearGroupAddNew = useCallback(() => {
+    setManageYearGroupsModalOpen(true);
+  }, []);
+
+  const handleCohortEntityCreated = useCallback(
+    (entity: { key: string; name: string }) => {
+      setPendingCreatedCohortKey(entity.key);
+      // Invalidate cohorts query so the dropdown refreshes
+      queryClient.invalidateQueries({ queryKey: ['cohorts'] });
+    },
+    [queryClient]
+  );
+
+  const handleYearGroupEntityCreated = useCallback(
+    (entity: { key: string; name: string }) => {
+      setPendingCreatedYearGroupKey(entity.key);
+      // Invalidate yearGroups query so the dropdown refreshes
+      queryClient.invalidateQueries({ queryKey: ['yearGroups'] });
+    },
+    [queryClient]
+  );
 
   /**
    * Resolves post-mutation UI state for a top-level bulk action.
@@ -878,6 +907,10 @@ export function ClassesManagementPanel() {
               confirmLoading={createSubmitting}
               onConfirm={handleBulkCreate}
               onCancel={() => setCreateModalOpen(false)}
+              onCohortAddNew={handleCohortAddNew}
+              onYearGroupAddNew={handleYearGroupAddNew}
+              pendingCreatedCohortKey={pendingCreatedCohortKey}
+              pendingCreatedYearGroupKey={pendingCreatedYearGroupKey}
             />
             <BulkDeleteModal
               open={deleteModalOpen}
@@ -894,6 +927,8 @@ export function ClassesManagementPanel() {
               confirmLoading={setCohortSubmitting}
               onConfirm={handleSetCohort}
               onCancel={() => setSetCohortModalOpen(false)}
+              onAddNew={handleCohortAddNew}
+              pendingCreatedKey={pendingCreatedCohortKey}
             />
             <BulkSetSelectModal
               open={setYearGroupModalOpen}
@@ -903,6 +938,8 @@ export function ClassesManagementPanel() {
               confirmLoading={setYearGroupSubmitting}
               onConfirm={handleSetYearGroup}
               onCancel={() => setSetYearGroupModalOpen(false)}
+              onAddNew={handleYearGroupAddNew}
+              pendingCreatedKey={pendingCreatedYearGroupKey}
             />
             <BulkSetCourseLengthModal
               open={setCourseLengthModalOpen}
@@ -913,10 +950,12 @@ export function ClassesManagementPanel() {
             <ManageCohortsModal
               open={manageCohortsModalOpen}
               onClose={() => setManageCohortsModalOpen(false)}
+              onEntityCreated={handleCohortEntityCreated}
             />
             <ManageYearGroupsModal
               open={manageYearGroupsModalOpen}
               onClose={() => setManageYearGroupsModalOpen(false)}
+              onEntityCreated={handleYearGroupEntityCreated}
             />
           </Flex>
         ) : null}
