@@ -29,9 +29,8 @@ describe('AssignmentTopic model - constructor', () => {
 
     // In RED phase, module doesn't exist yet - this test should fail
     expect(AssignmentTopic).not.toBeNull();
-    expect(() => {
-      new AssignmentTopic('topic-key-001', 'Test Topic', ['yg-001', 'yg-002']);
-    }).not.toThrow();
+    const topic = new AssignmentTopic('topic-key-001', 'Test Topic', ['yg-001', 'yg-002']);
+    expect(topic).toBeInstanceOf(AssignmentTopic);
   });
 
   it('AssignmentTopic constructor throws on missing required params (key, name)', async () => {
@@ -50,9 +49,8 @@ describe('AssignmentTopic model - constructor', () => {
     ];
 
     for (const params of invalidParams) {
-      expect(() => {
-        new AssignmentTopic(params.key, params.name, params.yearGroupKeys);
-      }).toThrow();
+      const createTopic = () => new AssignmentTopic(params.key, params.name, params.yearGroupKeys);
+      expect(createTopic).toThrow();
     }
   });
 });
@@ -215,7 +213,9 @@ describe('AssignmentTopic model - serialization', () => {
     const topic = new AssignmentTopic('t-key-001', 'Test Topic', ['yg-a', 'yg-b']);
     const json = topic.toJSON();
 
-    expect(Object.keys(json).sort()).toEqual(['key', 'name', 'yearGroupKeys'].sort());
+    expect(Object.keys(json).sort((a, b) => a.localeCompare(b))).toEqual(
+      ['key', 'name', 'yearGroupKeys'].sort((a, b) => a.localeCompare(b))
+    );
   });
 });
 
