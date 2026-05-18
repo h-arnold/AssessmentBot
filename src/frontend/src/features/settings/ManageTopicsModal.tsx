@@ -44,7 +44,6 @@ import {
   useReferenceDataManagement,
   type ReferenceDataManagementConfig,
   type FormDialogProperties,
-  type DeleteDialogProperties,
 } from '../classes/hooks/useReferenceDataManagement';
 import { useCallback, useEffect, useMemo } from 'react';
 
@@ -245,53 +244,7 @@ function TopicFormDialog(properties: Readonly<{
   );
 }
 
-/**
- * Renders the topic delete confirmation dialog.
- *
- * @param {Readonly<{ entity: AssignmentTopic | null; error: string | null; blocked: boolean; submitting: boolean; onClose: () => void; onConfirm: () => Promise<void>; }>} properties Dialog properties.
- * @returns {ReactElement | null} The rendered delete dialog.
- */
-function TopicDeleteDialog(properties: Readonly<{
-  entity: AssignmentTopic | null;
-  error: string | null;
-  blocked: boolean;
-  submitting: boolean;
-  onClose: () => void;
-  onConfirm: () => Promise<void>;
-}>): ReactElement | null {
-  if (properties.entity === null) {
-    return null;
-  }
 
-  return (
-    <InlineDialog labelId={DELETE_DIALOG_LABEL_ID} title="Delete topic">
-      {properties.error === null ? (
-        <p>
-          Are you sure you want to delete{' '}
-          <strong>{properties.entity.name}</strong>?
-        </p>
-      ) : (
-        <Alert
-          description={properties.error}
-          type="error"
-          showIcon
-          style={{ marginBottom: 16 }}
-        />
-      )}
-      <Space style={{ marginTop: 16 }}>
-        <Button onClick={properties.onClose}>Cancel</Button>
-        <Button
-          danger
-          disabled={properties.blocked || properties.submitting}
-          loading={properties.submitting}
-          onClick={properties.onConfirm}
-        >
-          Delete
-        </Button>
-      </Space>
-    </InlineDialog>
-  );
-}
 
 /**
  * Renders the Manage Topics modal workflow.
@@ -391,30 +344,7 @@ export function ManageTopicsModal(properties: ManageTopicsModalProperties): Reac
     [yearGroups]
   );
 
-  // Custom delete dialog renderer
-  const renderDeleteDialog = useCallback(
-    (deleteDialogProperties: DeleteDialogProperties<AssignmentTopic>): ReactElement | null => {
-      if (!deleteDialogProperties.deleteState.open) {
-        return null;
-      }
 
-      // The hook's onConfirm is typed as () => void but handleDeleteConfirm returns Promise<void>
-      // This is safe because the hook's implementation is async
-      const topicOnConfirm = deleteDialogProperties.onConfirm as () => Promise<void>;
-
-      return (
-        <TopicDeleteDialog
-          entity={deleteDialogProperties.deleteState.entity}
-          error={deleteDialogProperties.deleteState.error}
-          blocked={deleteDialogProperties.deleteState.blocked}
-          submitting={deleteDialogProperties.deleteState.submitting}
-          onClose={deleteDialogProperties.onClose}
-          onConfirm={topicOnConfirm}
-        />
-      );
-    },
-    []
-  );
 
   // Configure the hook for topics
   const hookConfig: ReferenceDataManagementConfig<AssignmentTopic> = {
@@ -444,7 +374,6 @@ export function ManageTopicsModal(properties: ManageTopicsModalProperties): Reac
     deleteDialogLabelId: DELETE_DIALOG_LABEL_ID,
     deleteDialogTitle: 'Delete topic',
     renderFormDialog,
-    renderDeleteDialog,
   };
 
   const hookResult = useReferenceDataManagement(hookConfig);
