@@ -68,3 +68,8 @@ Key outputs:
 - Use **Zod** as the validation framework for all new and updated builder validation logic.
 - Define the Zod schema first, then derive TypeScript types from that schema using `z.infer<typeof ...>` to avoid duplicated type declarations.
 - Store validation schemas in a dedicated adjacent schema file (for example `*.zod.ts` or `zodSchemas.ts`) near the code consuming them.
+
+## 9. Default Values Rule
+
+- Default values must be set in a module's constructor only.
+- If defaults are found elsewhere, they should be opportunistically moved to the constructor of the module.

@@ -210,7 +210,12 @@ When backend behaviour requires new scopes/services:
 - Keep scope/service additions minimal and justified.
 - Remember builder manifest merge uses backend manifest as base.
 
-## 7. Testing Delegation
+## 7. Default Values Rule
+
+- Default values must be set in a module's constructor only.
+- If defaults are found elsewhere, they should be opportunistically moved to the constructor of the module.
+
+## 8. Testing Delegation
 
 - Delegate all test implementation and test-debugging work to `Testing Specialist` when sub-agent delegation is available.
 - If delegation is unavailable, follow `.github/agents/Testing.agent.md` and `docs/developer/backend/backend-testing.md` before changing tests.

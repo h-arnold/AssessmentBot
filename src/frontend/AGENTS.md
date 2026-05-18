@@ -107,3 +107,8 @@ For shell navigation and motion conventions (menu metadata, decorative icon sema
 For modal-family discovery, reuse decisions, and extraction rules, use:
 
 - `docs/developer/frontend/frontend-modal-patterns.md`
+
+## 11. Default Values Rule
+
+- Default values must be set in a module's constructor only.
+- If defaults are found elsewhere, they should be opportunistically moved to the constructor of the module.
