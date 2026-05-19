@@ -102,7 +102,7 @@ When a section is likely to introduce helper reuse, helper extension, or new sha
 - Add all planned shared-helper entries to `docs/developer/backend/api-layer.md` 'Shared Helper Status' section **before any implementation begins**
 - This is a **mandatory pre-implementation gate** that must be completed and verified before Section 1 starts
 - Per SPEC.md Planning Handoff Notes, add/update entries for removed helpers with status `Removed`; add entry for new helper with status `Not implemented`
-- **CRITICAL:** This section is **NOT YET COMPLETE** — the required entries are currently **MISSING** from `api-layer.md`
+- **Status: COMPLETE** — All 7 required entries have been added to `docs/developer/backend/api-layer.md` 'Shared Helper Status' section with correct status values
 
 ### Constraints
 
@@ -140,6 +140,8 @@ All other sections (Section 1 through Documentation)
 ---
 
 ## Section 1 — Model-level `yearGroup` deprecation and `assignmentWeighting` defaulting
+
+**Status: COMPLETE** — All acceptance criteria implemented, all 27 tests passing, Green Review clean.
 
 ### Objective
 
@@ -935,7 +937,7 @@ Section 0, Section 1, Section 2, Section 3, Section 4, Section 5, Regression
 
 ## Suggested implementation order
 
-**IMPORTANT:** Section 0 **MUST BE COMPLETED FIRST** and is currently **NOT COMPLETE**. All subsequent sections are blocked until Section 0 verification passes.
+**Status:** Section 0 **COMPLETE** - Section 1 **COMPLETE** - Ready to proceed to Section 2. All subsequent sections are now unblocked.
 
 1. **Section 0** — Shared-helper planning gate (add/update entries in `api-layer.md` with correct status values) — **MANDATORY FIRST STEP**
 2. **Section 1** — Model-level changes (foundation for all other changes; **must complete before Section 5**)

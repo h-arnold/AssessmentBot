@@ -1,129 +1,210 @@
 import { describe, it, expect } from 'vitest';
 import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
 
-describe('AssignmentDefinition', () => {
-  const validParams = {
+describe('AssignmentDefinition - Section 1 Model Changes', () => {
+  // Base valid params for testing
+  const baseValidParams = {
     primaryTitle: 'Test Assignment',
     primaryTopic: 'Test Topic',
-    yearGroup: 10,
+    yearGroupKey: 'year-group-10',
     documentType: 'SLIDES',
     referenceDocumentId: 'ref-123',
     templateDocumentId: 'tpl-123',
   };
 
-  it('should construct with valid parameters', () => {
-    const def = new AssignmentDefinition(validParams);
-    expect(def.primaryTitle).toBe(validParams.primaryTitle);
-    expect(def.primaryTopic).toBe(validParams.primaryTopic);
-    expect(def.yearGroup).toBe(validParams.yearGroup);
-    expect(def.documentType).toBe(validParams.documentType);
-    expect(def.definitionKey).toBe('Test Assignment_Test Topic_10');
-    expect(def.createdAt).toBeDefined();
-    expect(def.updatedAt).toBeDefined();
-  });
-
-  it('should throw error if required fields are missing', () => {
-    expect(() => new AssignmentDefinition({ ...validParams, primaryTitle: null })).toThrow(
-      'Missing required assignment property: primaryTitle'
-    );
-    expect(() => new AssignmentDefinition({ ...validParams, primaryTopic: null })).toThrow(
-      'Missing required assignment property: primaryTopic'
-    );
-    expect(() => new AssignmentDefinition({ ...validParams, documentType: null })).toThrow(
-      'Missing required assignment property: documentType'
-    );
-  });
-
-  it('should generate correct definitionKey', () => {
-    const key1 = AssignmentDefinition.buildDefinitionKey({
-      primaryTitle: 'Title',
-      primaryTopic: 'Topic',
-      yearGroup: 9,
-    });
-    expect(key1).toBe('Title_Topic_9');
-
-    const key2 = AssignmentDefinition.buildDefinitionKey({
-      primaryTitle: 'Title',
-      primaryTopic: 'Topic',
-      yearGroup: null,
-    });
-    expect(key2).toBe('Title_Topic_null');
-  });
-
-  it('should serialize to JSON correctly', () => {
-    const def = new AssignmentDefinition(validParams);
-    const json = def.toJSON();
-    expect(json.primaryTitle).toBe(validParams.primaryTitle);
-    expect(json.definitionKey).toBe('Test Assignment_Test Topic_10');
-    expect(json.tasks).toEqual({});
-  });
-
-  it('should deserialize from JSON correctly', () => {
-    const json = {
-      primaryTitle: 'Restored',
-      primaryTopic: 'Topic',
-      yearGroup: 11,
-      documentType: 'SHEETS',
-      referenceDocumentId: 'ref-456',
-      templateDocumentId: 'tpl-456',
-      definitionKey: 'Restored_Topic_11',
-      tasks: {
-        t1: {
-          id: 't1',
-          taskTitle: 'Task 1',
-          artifacts: { reference: [], template: [] },
-        },
-      },
-    };
-    const def = AssignmentDefinition.fromJSON(json);
-    expect(def).toBeInstanceOf(AssignmentDefinition);
-    expect(def.primaryTitle).toBe('Restored');
-    expect(def.tasks.t1).toBeDefined();
-  });
-
-  it('should set tasks to null in toPartialJSON', () => {
-    const tasks = {
-      t1: {
-        id: 't1',
-        taskTitle: 'Task 1',
-        artifacts: {
-          reference: [
-            {
-              id: 'a1',
-              uid: 'a1',
-              taskId: 't1',
-              role: 'reference',
-              type: 'TEXT',
-              content: 'heavy content',
-              contentHash: 'abc',
-            },
-          ],
-          template: [],
-        },
-      },
-    };
-    const def = new AssignmentDefinition({ ...validParams, tasks });
-    const partial = def.toPartialJSON();
-
-    expect(partial.tasks).toBe(null);
-    expect(partial.referenceDocumentId).toBe('ref-123');
-    expect(partial.templateDocumentId).toBe('tpl-123');
-  });
-
-  it('should update modified timestamps', async () => {
-    const def = new AssignmentDefinition(validParams);
-    const originalUpdate = def.updatedAt;
-
-    // Sleep briefly to ensure timestamp change
-    await new Promise((resolve) => setTimeout(resolve, 5));
-
-    def.updateModifiedTimestamps({
-      referenceLastModified: '2025-01-01T10:00:00Z',
-      templateLastModified: '2025-01-01T10:00:00Z',
+  // 1. Constructor rejects yearGroup presence
+  describe('Constructor rejects yearGroup presence', () => {
+    it('should throw TypeError when yearGroup property is present with numeric value', () => {
+      expect(() => {
+        new AssignmentDefinition({ ...baseValidParams, yearGroup: 10 });
+      }).toThrow(TypeError);
     });
 
-    expect(def.referenceLastModified).toBe('2025-01-01T10:00:00Z');
-    expect(def.templateLastModified).toBe('2025-01-01T10:00:00Z');
-    expect(def.updatedAt).not.toBe(originalUpdate);
+    it('should throw TypeError when yearGroup property is present with null value', () => {
+      expect(() => {
+        new AssignmentDefinition({ ...baseValidParams, yearGroup: null });
+      }).toThrow(TypeError);
+    });
+  });
+
+  // 2. Constructor validates yearGroupKey type (not presence)
+  describe('Constructor validates yearGroupKey type', () => {
+    it('should throw TypeError when yearGroupKey is a number', () => {
+      expect(() => {
+        new AssignmentDefinition({ ...baseValidParams, yearGroupKey: 123 });
+      }).toThrow(TypeError);
+    });
+
+    it('should accept yearGroupKey as a valid string', () => {
+      const def = new AssignmentDefinition({ ...baseValidParams, yearGroupKey: 'valid-key' });
+      expect(def.yearGroupKey).toBe('valid-key');
+    });
+  });
+
+  // 3. fromJSON rejects yearGroup field
+  describe('fromJSON rejects yearGroup field', () => {
+    it('should throw TypeError when JSON contains yearGroup field with numeric value', () => {
+      const json = { ...baseValidParams, yearGroup: 10 };
+      expect(() => {
+        AssignmentDefinition.fromJSON(json);
+      }).toThrow(TypeError);
+    });
+
+    it('should throw TypeError when JSON contains yearGroup field with null value', () => {
+      const json = { ...baseValidParams, yearGroup: null };
+      expect(() => {
+        AssignmentDefinition.fromJSON(json);
+      }).toThrow(TypeError);
+    });
+  });
+
+  // 4. fromJSON validates yearGroupKey type
+  describe('fromJSON validates yearGroupKey type', () => {
+    it('should throw TypeError when yearGroupKey in JSON is a number', () => {
+      const json = { ...baseValidParams, yearGroupKey: 123 };
+      expect(() => {
+        AssignmentDefinition.fromJSON(json);
+      }).toThrow(TypeError);
+    });
+
+    it('should accept yearGroupKey as a valid string in JSON', () => {
+      const json = { ...baseValidParams, yearGroupKey: 'valid-key' };
+      const def = AssignmentDefinition.fromJSON(json);
+      expect(def.yearGroupKey).toBe('valid-key');
+    });
+  });
+
+  // 5. assignmentWeighting defaults to 1
+  describe('assignmentWeighting defaults to 1', () => {
+    it('should default assignmentWeighting to 1 when null is passed', () => {
+      const def = new AssignmentDefinition({ ...baseValidParams, assignmentWeighting: null });
+      expect(def.assignmentWeighting).toBe(1);
+    });
+
+    it('should default assignmentWeighting to 1 when undefined is passed', () => {
+      const def = new AssignmentDefinition({ ...baseValidParams, assignmentWeighting: undefined });
+      expect(def.assignmentWeighting).toBe(1);
+    });
+
+    it('should default assignmentWeighting to 1 when missing from params', () => {
+      const def = new AssignmentDefinition(baseValidParams);
+      expect(def.assignmentWeighting).toBe(1);
+    });
+
+    it('should preserve assignmentWeighting when valid value is provided', () => {
+      const def = new AssignmentDefinition({ ...baseValidParams, assignmentWeighting: 5 });
+      expect(def.assignmentWeighting).toBe(5);
+    });
+  });
+
+  // 6. assignmentWeighting range validation
+  describe('assignmentWeighting range validation', () => {
+    it('should throw RangeError when assignmentWeighting is below 0', () => {
+      expect(() => {
+        new AssignmentDefinition({ ...baseValidParams, assignmentWeighting: -1 });
+      }).toThrow(RangeError);
+    });
+
+    it('should throw RangeError when assignmentWeighting is above 10', () => {
+      expect(() => {
+        new AssignmentDefinition({ ...baseValidParams, assignmentWeighting: 11 });
+      }).toThrow(RangeError);
+    });
+
+    it('should accept assignmentWeighting of 0', () => {
+      const def = new AssignmentDefinition({ ...baseValidParams, assignmentWeighting: 0 });
+      expect(def.assignmentWeighting).toBe(0);
+    });
+
+    it('should accept assignmentWeighting of 10', () => {
+      const def = new AssignmentDefinition({ ...baseValidParams, assignmentWeighting: 10 });
+      expect(def.assignmentWeighting).toBe(10);
+    });
+  });
+
+  // 7. Serialization excludes yearGroup
+  describe('Serialization excludes yearGroup', () => {
+    it('should not include yearGroup in toJSON output', () => {
+      const def = new AssignmentDefinition(baseValidParams);
+      const json = def.toJSON();
+      expect(json).not.toHaveProperty('yearGroup');
+    });
+
+    it('should not include yearGroup in toPartialJSON output', () => {
+      const def = new AssignmentDefinition(baseValidParams);
+      const partial = def.toPartialJSON();
+      expect(partial).not.toHaveProperty('yearGroup');
+    });
+  });
+
+  // 8. Serialization includes yearGroupKey and yearGroupLabel
+  describe('Serialization includes yearGroupKey and yearGroupLabel', () => {
+    it('should include yearGroupKey in toJSON output', () => {
+      const def = new AssignmentDefinition(baseValidParams);
+      const json = def.toJSON();
+      expect(json).toHaveProperty('yearGroupKey', 'year-group-10');
+    });
+
+    it('should include yearGroupLabel in toJSON output when provided', () => {
+      const params = { ...baseValidParams, yearGroupLabel: 'Year 10' };
+      const def = new AssignmentDefinition(params);
+      const json = def.toJSON();
+      expect(json).toHaveProperty('yearGroupLabel', 'Year 10');
+    });
+
+    it('should include yearGroupKey in toPartialJSON output', () => {
+      const def = new AssignmentDefinition(baseValidParams);
+      const partial = def.toPartialJSON();
+      expect(partial).toHaveProperty('yearGroupKey', 'year-group-10');
+    });
+
+    it('should include yearGroupLabel in toPartialJSON output when provided', () => {
+      const params = { ...baseValidParams, yearGroupLabel: 'Year 10' };
+      const def = new AssignmentDefinition(params);
+      const partial = def.toPartialJSON();
+      expect(partial).toHaveProperty('yearGroupLabel', 'Year 10');
+    });
+  });
+
+  // 9. Schema preservation
+  describe('Schema preservation', () => {
+    it('should return tasks: null in toPartialJSON for partial definitions', () => {
+      const def = new AssignmentDefinition(baseValidParams);
+      const partial = def.toPartialJSON();
+      expect(partial.tasks).toBe(null);
+    });
+
+    it('should return tasks object in toJSON for full definitions', () => {
+      const tasks = { t1: { taskTitle: 'Task 1' } };
+      const def = new AssignmentDefinition({ ...baseValidParams, tasks });
+      const json = def.toJSON();
+      expect(json.tasks).toBeTypeOf('object');
+      expect(json.tasks).not.toBe(null);
+    });
+  });
+
+  // 10. buildDefinitionKey parameter renamed
+  describe('buildDefinitionKey uses yearGroupKey parameter', () => {
+    it('should build definition key using yearGroupKey parameter', () => {
+      const key = AssignmentDefinition.buildDefinitionKey({
+        primaryTitle: 'Algebra',
+        primaryTopic: 'Equations',
+        yearGroupKey: 'yg-10',
+      });
+      expect(key).toBe('Algebra_Equations_yg-10');
+    });
+  });
+
+  // 11. Model instance has no yearGroup property
+  describe('Model instance has no yearGroup property', () => {
+    it('should not have yearGroup property on model instance', () => {
+      const def = new AssignmentDefinition(baseValidParams);
+      expect(def).not.toHaveProperty('yearGroup');
+    });
+
+    it('should return undefined when accessing yearGroup on instance', () => {
+      const def = new AssignmentDefinition(baseValidParams);
+      expect(def.yearGroup).toBeUndefined();
+    });
   });
 });

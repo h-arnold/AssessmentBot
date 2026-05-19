@@ -23,8 +23,33 @@ This layer is deliberately REST-ish in structure:
   - Location: `validateReadParameters_()` in `src/backend/z_Api/assignmentDefinitionPartials.js`
   - Behaviour: owns safe-key validation for full-definition reads by `definitionKey`.
 - Assignment-definition full-definition response mapper
-  - Status: `Not applicable`
-  - Note: canonical full-definition response shape is produced directly by `AssignmentDefinitionController.getDefinitionByKey()` and returned unchanged through `getAssignmentDefinition_()` transport helper.
+  - Status: `Removed`
+  - Location: `toCanonicalTransportDefinition_` in `src/backend/z_Api/assignmentDefinitionPartials.js`
+  - Note: Replaced by direct use of `controller.toCanonicalFullDefinitionResponse(definition)`.
+- Assignment-definition partial row serializer
+  - Status: `Removed`
+  - Location: `toPlainPartialRow_` in `src/backend/z_Api/assignmentDefinitionPartials.js`
+  - Note: Replaced by `toTransportPartialRow_` helper.
+- Assignment-definition upsert payload builder
+  - Status: `Removed`
+  - Location: `buildControllerUpsertPayload_` in `src/backend/z_Api/assignmentDefinitionPartials.js`
+  - Note: URL-to-ID translation inlined into `upsertAssignmentDefinition_` without `assignmentWeighting` defaulting logic.
+- Assignment-definition upsert context builder
+  - Status: `Removed`
+  - Location: `_buildUpsertContext` in `src/backend/y_controllers/AssignmentDefinitionController.js`
+  - Note: Logic moved into `upsertDefinition` method body.
+- Assignment-definition creation method
+  - Status: `Removed`
+  - Location: `ensureDefinition` in `src/backend/y_controllers/AssignmentDefinitionController.js`
+  - Note: Removed per architectural decision; `upsertDefinition` is the sole creation/update method.
+- AssignmentDefinition yearGroup field
+  - Status: `Removed`
+  - Location: `yearGroup` parameter and property in `src/backend/Models/AssignmentDefinition.js`
+  - Note: Deprecated in favour of `yearGroupKey` only.
+- Assignment-definition transport partial row helper
+  - Status: `Not implemented`
+  - Location: `toTransportPartialRow_` in `src/backend/z_Api/assignmentDefinitionPartials.js`
+  - Note: New transport-boundary helper that accepts model instance, calls `definition.toPartialJSON()`, defensively strips `yearGroup`, and normalises Date fields.
 
 ## Design Rules
 
