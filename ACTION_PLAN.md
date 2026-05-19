@@ -286,6 +286,8 @@ Backend model tests (in `tests/models/assignmentDefinition.test.js`):
 
 **Status: COMPLETE** — Red Phase complete, Red Review clean, Green Phase complete, Green Review clean, all 70 tests passing
 
+**Commit:** c9dc867 - "feat: complete Section 2 of assignment definition refactoring"
+
 ### Implementation notes / deviations / follow-up
 
 - **Implementation notes:** All acceptance criteria implemented. `ensureDefinition` and `_buildUpsertContext` methods removed. `_resolveYearGroupContextForUpsert` returns only `{ yearGroupKey, yearGroupLabel }`. `_assertNoDuplicateBusinessTuple` uses only `yearGroupKey` for duplicate detection. `_resolveAssignmentWeightingForUpsert` returns raw payload value without defaulting. All validation logic from `_buildUpsertContext` preserved in `upsertDefinition`. Test data updated to remove `yearGroup` references.
@@ -945,11 +947,11 @@ Section 0, Section 1, Section 2, Section 3, Section 4, Section 5, Regression
 
 ## Suggested implementation order
 
-**Status:** Section 0 **COMPLETE** - Section 1 **COMPLETE** - Ready to proceed to Section 2. All subsequent sections are now unblocked.
+**Status:** Section 0 **COMPLETE** - Section 1 **COMPLETE** - Section 2 **COMPLETE** - Ready to proceed to Section 3. All subsequent sections are now unblocked.
 
 1. **Section 0** — Shared-helper planning gate (add/update entries in `api-layer.md` with correct status values) — **MANDATORY FIRST STEP**
 2. **Section 1** — Model-level changes (foundation for all other changes; **must complete before Section 5**)
-3. **Section 2** — AssignmentDefinitionController changes (**blocked by Section 1**)
+3. **Section 2** — AssignmentDefinitionController changes (**COMPLETE**)
 4. **Section 3** — AssignmentController changes (**blocked by Section 2**: `AssignmentController.ensureDefinitionFromInputs` must call `controller.upsertDefinition` replacing the removed `controller.ensureDefinition`)
 5. **Section 4** — AssignmentProcessor/globals.js changes (**blocked by Section 3**: `globals.js` calls `controller.createDefinitionFromWizardInputs` which must accept `yearGroupKey` parameter)
 6. **Section 5** — API layer changes (**blocked by Section 1**: model serialization changes required; defensive stripping provides additional safety)
