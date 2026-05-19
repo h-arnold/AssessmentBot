@@ -1,1487 +1,802 @@
-# Topics CRUD Modal and Reference Data Dropdown 'Add New' Feature Delivery Plan (TDD-First)
-
-## Current Implementation Status (Orchestrator Update)
-
-**LAST UPDATED:** 2026-05-15T16:30:00.000Z - Sections 0-4, 5, 6, 3.5, 7, 8 completed with CLEAN PASS. Section 5 TypeScript regression fixes applied: ReactElement import, createService return type, renderFormDialog/renderDeleteDialog parameter types. Unit tests: 45/46 passing (97.8%), 1 skipped (JSDOM/HappyDOM limitation). Classes CRUD E2E layout assertions are now unskipped and stabilised (see Known Issues).
-
-### Sections Implemented and Reviewed
-
-- [x] Section 0 — Backend Model Creation (AssignmentTopic.js created) - **REVIEW PASSED** (2026-05-14) - No blocking issues, 20/20 tests pass
-- [x] Section 0.5 — Backend Controller Update (ReferenceDataController.js updated) - **REVIEW PASSED** (2026-05-14) - All 33 controller tests pass, \_getConfig correctly uses AssignmentTopic model
-- [x] Section 1 — Schema and Type Definitions (referenceData.zod.ts extended) - **REVIEW PASSED** (2026-05-14) - All 45 schema tests pass, all acceptance criteria met
-- [x] Section 2 — Service Layer Extensions (referenceDataService.ts extended) - **REVIEW PASSED** (2026-05-14) - All 37 service tests pass, all CRUD functions correctly implemented
-- [x] Section 3 — Query Options (sharedQueries.ts migrated) - **REVIEW PASSED** (2026-05-14) - All 4 critical issues resolved, all acceptance criteria met
-- [x] Section 3.5 — Extend Reference Data Trust Boundary (both files updated) - **REVIEW PASSED** (2026-05-14) - Type extended in both locations, all functions support topics, compilation succeeds
-- [x] Section 4 — Settings Page Reference Data Tab (SettingsPage.tsx and ReferenceDataSettingsPanel.tsx created) - **REVIEW PASSED** (2026-05-14) - All acceptance criteria met, 18/18 tests pass
-- [x] Section 5 — ManageTopicsModal Component (ManageTopicsModal.spec.tsx created, ManageTopicsModal.tsx created) - **FIXES APPLIED** (2026-05-14)
-  - **Implementation Status**: Component created with yearGroupKeys multi-select support
-  - **Test Results**: 45/46 tests passing (97.8%), 1 skipped
-  - **Skipped Test**:
-    - "resets transient inline-dialog state when closed via mask and reopened" - **SKIPPED due to JSDOM/HappyDOM limitation** (Ant Design Modal mask click events don't properly trigger onCancel in test environment)
-  - **Fixes Applied**:
-    - **Production Code Fix**: Enabled `yearGroupsBlockingErrorQuery` (line 243: `enabled: false` → `enabled: true`)
-    - **Test Mocking Fix**: Added missing mock for `assignmentTopicsService.getAssignmentTopics` (tests were mocking `referenceDataService.getAssignmentTopics` but code uses the former)
-    - **Test Assertion Fix**: Fixed modal width test to use `getAttribute('style')` + regex matching instead of unreliable `toHaveStyle`
-    - **Test Helper Fix**: Simplified `closeViaMask` helper with proper DOM traversal (mask is sibling, not descendant)
-    - **Cleanup**: Removed unused imports, types, constants, and variables
-    - **Type Safety**: Replaced `any` types with `TopicFormValues`, fixed unused `_value` parameters to `_`
-  - **Complexity/Lint Fixes Applied**:
-    - Extracted `buildTopicsColumns` helper function to reduce ManageTopicsModal complexity from 8 to ≤7
-    - Extracted `shouldRenderFormDialog` and `getFormDialogEntityProperties` helpers to reduce renderFormDialog complexity from 9 to ≤7
-    - Memoized `yearGroups` to fix react-hooks/exhaustive-deps warnings
-    - Added `MODAL_CLOSE_TIMEOUT_MS` constant to fix magic number lint warning
-    - Renamed `getFormDialogEntityProps` to `getFormDialogEntityProperties` for unicorn/prevent-abbreviations compliance
-  - **E2E Coverage Added**: Created `settings-topics-crud.spec.ts` with explicit mask close behavior tests (complements skipped unit test)
-- [x] Section 6 — SelectWithAddNew Wrapper Component (SelectWithAddNew.tsx, useDebounce.ts created) - **REVIEW PASSED** (2026-05-14) - All 4 critical TypeScript issues resolved, 31/31 tests pass
-
-### Sections Incomplete
-
-- [x] Section 5 — ManageTopicsModal Component (ManageTopicsModal.spec.tsx created, ManageTopicsModal.tsx created) - **FIXES APPLIED** - 45/46 tests passing, 1 skipped (see Section 5 details above)
-
-### Sections NOT Started
-
-- [x] Section 7 — Integrate 'Add new' into Existing Select Dropdowns - **REVIEW PASSED** (2026-05-15) - All 16 acceptance criteria satisfied, all tests pass
-- [x] Section 8 — Settings Page Modal Wiring - **REVIEW PASSED** (2026-05-15) - All 7 acceptance criteria satisfied, wiring already in place from Section 4, test coverage added
-- [x] Section 5 — ManageTopicsModal Component TypeScript Regression Fixes - **FIXES APPLIED** (2026-05-15)
-  - **Fix 1**: Changed `ReactElement` import from 'antd' to 'react' (line 21)
-  - **Fix 2**: Removed `return result;` from `createService` to match expected `Promise<void>` return type (line 439)
-  - **Fix 3**: Updated `renderFormDialog` parameter type to `FormDialogProperties<AssignmentTopic>` with type assertions for form and onFinish compatibility
-  - **Fix 4**: Updated `renderDeleteDialog` parameter type to `DeleteDialogProperties<AssignmentTopic>` with type assertion for onConfirm compatibility
-  - **Result**: All 4 TypeScript compilation errors resolved, lint passes clean
-- [ ] Regression and contract hardening
-- [ ] Documentation and rollout notes
-
-### Quality Gates Status
-
-- [x] Regression baseline established (2026-05-14T12:54:01.904Z) - **2 failing checks**: frontend-test-coverage-check, frontend-e2e-check
-- [x] Section-level code reviews COMPLETED for Sections 0, 0.5, 1, 2, 3, 3.5, 4, 6, 7 - ALL PASSED CLEAN
-- [x] Section 3 fix loop completed - 4 critical issues resolved
-- [x] Section 5 fix loop completed - Complexity and lint issues resolved, e2e coverage added
-- [x] Section 5 TypeScript regression fixes completed - 4 critical TypeScript errors resolved (ReactElement import, createService return type, renderFormDialog parameter type, renderDeleteDialog parameter type)
-- [x] Section 6 fix loop completed - 4 critical TypeScript errors resolved
-- [x] Section 7 fix loop completed - 4 in-scope blocking issues resolved, all 16 acceptance criteria satisfied
-- [x] Regression gates rerun after review/fix loops - **0 regressions, 0 new failures** from baseline
-- [x] Commits created and pushed for Section 5 fixes
-
-### Current Regression Status (After Sections 0-4, 5, 6, 7 Review/Fix Loops)
-
-- **Overall Status**: FAILING (same as baseline - no regressions introduced by Section 7)
-- **Passing**: 6 checks (backend-lint, frontend-lint, builder-lint, backend-test-coverage, builder-test-coverage, builder-compile)
-- **Failing**: 2 checks (frontend-test-coverage-check, frontend-e2e-check)
-- **Regressions Count**: 0 (no new failures from baseline introduced by Section 7)
-- **Section 7 Verification**:
-  - ✅ Frontend unit tests: 80 files, 698 tests passed, 1 skipped
-  - ✅ Backend tests: 77 files, 973 tests passed
-  - ✅ Section 7 specific tests: 6 files, 27 tests passed
-  - ✅ Lint: PASSED (0 errors, 0 warnings)
-  - ✅ TypeScript: PASSED for Section 7 files (pre-existing errors in Section 5 ManageTopicsModal.tsx only)
-- **New Failures Count**: 0 (no new failures introduced by reviewed sections)
-- **Fixes Count**: 0 (no previously failing checks now passing)
-- **Known Issues**:
-  - ManageTopicsModal.tsx: 45/46 tests passing, 1 skipped (JSDOM/HappyDOM mask click limitation) - **E2E coverage added**
-  - frontend-e2e-check: 1 failed test ("captures the wide settings frame and the narrow backend panel exception") - **Pre-existing, unrelated to reviewed sections**
-  - **Resolved on 2026-05-15:** previously skipped Classes CRUD layout E2E assertions were unskipped and stabilised.
-    - `src/frontend/e2e-tests/classes-crud-manage-cohorts.spec.ts`: both create-button layout assertions enabled.
-    - `src/frontend/e2e-tests/classes-crud-manage-year-groups.spec.ts`: both create-button layout assertions enabled.
-    - Validation: targeted Playwright repeats and frontend lint check completed clean.
-
-### Review/Fix Loop Summary
-
-- **Sections Completed with Clean Reviews**: 0, 0.5, 1, 2, 3, 3.5, 4, 5, 6, 7, 8 (11 total)
-- **Critical Issues Resolved**: 30 total (4 in Section 3, 4 in Section 6, 5 in Section 5, 4 in Section 7, 9 in Section 8, 4 TypeScript regressions in Section 5)
-- **Regression Impact**: 0 new regressions introduced by Section 7 or Section 8
-- **Test Results**: 80/81 test files pass, 707/708 tests passed (99.86% pass rate) + explicit e2e coverage for mask close behavior and SelectWithAddNew workflow
-
-### Workflow Restart
-
-**CRITICAL:** Previous orchestrator violated mandatory gates. Restarting workflow with proper sequential review/fix loop on each implemented section. Goal: reduce regressions with each completed section review, achieve zero regressions by final section.
-
-**Approach**:
-
-1. Review/fix each implemented section sequentially
-2. After each section passes clean code review, rerun regression check
-3. Verify regression count decreases or stays at zero
-4. Proceed to next section only when current section is clean
-
----
+# Assignment Definition Creation Path Refactoring — Delivery Plan (TDD-First)
 
 ## Read-First Context
 
 Before writing or executing this plan:
 
-1. Read the current `SPEC.md`.
-2. Read the companion `TOPICS_AND_REFERENCE_DATA_LAYOUT.md`.
-3. Treat those documents as the source of truth for product behaviour, contracts, and layout rules.
-4. Use this action plan to sequence delivery and testing; do not restate or redefine material already settled in the spec or layout docs.
+1. Read the current `SPEC.md` v1.9.0.
+2. Read `src/backend/AGENTS.md`.
+3. Read `docs/developer/backend/api-layer.md`.
+4. Treat those documents as the source of truth for product behaviour, contracts, and architectural rules.
+5. This plan sequences delivery and testing; it does not restate or redefine material already settled in SPEC.md.
+
+---
 
 ## Scope and assumptions
 
 ### Scope
 
-This delivery includes:
+This plan covers the complete refactoring of the assignment definition creation path as specified in SPEC.md v1.9.0:
 
-1. **Backend model**: New `AssignmentTopic.js` model with `yearGroupKeys: string[]` field
-2. **Backend controller**: Update `ReferenceDataController.js` to use new AssignmentTopic model
-3. **Service layer extensions**: Topic CRUD functions in `referenceDataService.ts` with yearGroupKeys support
-4. **Schema extensions**: Topic types and validation schemas in `referenceData.zod.ts` with yearGroupKeys field
-5. **Query options**: Topic query options verification in `sharedQueries.ts`
-6. **New modal component**: `ManageTopicsModal.tsx` following existing patterns with year group multi-select
-7. **Settings page integration**: New Reference Data tab with Topics section
-8. **Select enhancement**: 'Add new' option wrapper/component for reference data dropdowns with debounce
-9. **Dropdown integration**: Apply 'Add new' to all existing reference data Select instances
-10. **Reference data helpers**: Extend existing helpers for topics with yearGroupKeys support
+- **Section 0 (MANDATORY GATE):** Shared-helper planning gate — add required entries to `docs/developer/backend/api-layer.md`
+- **Section 1:** Model-level changes — remove `yearGroup`, add `yearGroupKey` non-null requirement at model boundary, add `assignmentWeighting` defaulting and range validation
+- **Section 2:** AssignmentDefinitionController — remove `ensureDefinition`, remove `yearGroup` from all signatures, update validation helpers
+- **Section 3:** AssignmentController — rename `yearGroup` to `yearGroupKey`, update delegation to `upsertDefinition`
+- **Section 4:** AssignmentProcessor/globals.js — rename `yearGroup` to `yearGroupKey`
+- **Section 5:** API layer — remove helper functions, inline logic, update transport boundary (depends on Section 1)
+- **Regression:** Full validation and contract hardening
+- **Documentation:** Final documentation pass
 
 ### Out of scope
 
-- Backend API method changes (already exist)
-- New reference data entity types beyond topics
-- Enhanced filtering or search in the topics modal
+- Frontend changes (user confirmed "no frontend changes required")
+- Deprecated code in `src/AdminSheet` (explicitly excluded per SPEC.md)
+- Legacy `globals.js` files other than `src/backend/AssignmentProcessor/globals.js`
+- Backwards compatibility for `yearGroup` in stored data (per Option B — no migration)
 
 ### Assumptions
 
-1. The existing `useReferenceDataManagement` hook can support Topics with minimal changes once the `ReferenceDataTrustBoundary` type is extended to include `'assignmentTopics'` in **both** `manageReferenceDataHelpers.ts` and `useReferenceDataManagement.ts`
-2. The `ReferenceDataManagementModalScaffold` can be reused without modification for Topics
-3. The existing `ReferenceDataFormDialog` and `ReferenceDataDeleteDialog` can be reused for Topics
-4. Topic reads are migrated to one canonical enriched contract `{ key, name, yearGroupKeys }` across queries, services, and consumers
-5. The Settings page Tabs component can accept a new tab without structural changes
-6. **Backend model bug**: The backend `ReferenceDataController` incorrectly uses the `YearGroup` model class for `assignmentTopic` entities (line 147 in `_getConfig`). This feature will fix that bug by creating a proper `AssignmentTopic` model with the `yearGroupKeys` field. Existing assignmentTopic data in storage only contains key and name fields, as the YearGroup model doesn't support yearGroupKeys.
-7. The `onEntityCreated` callback mechanism will be used to coordinate post-creation selection between modals and Select dropdowns
-8. **Service function naming**: Topic CRUD functions in `referenceDataService.ts` will use names `createAssignmentTopic`, `updateAssignmentTopic`, `deleteAssignmentTopic` to match the existing Cohort/YearGroup pattern where service function names match backend method names (`createCohort`, `updateCohort`, `deleteCohort`)
-9. **Schema consistency**: Topic schemas in `referenceData.zod.ts` will use `NonEmptyNameSchema` (same as Cohort/YearGroup) for consistent validation behavior, with the addition of `yearGroupKeys: z.array(NonEmptyNameSchema)` for multi-year-group association
-10. **Contract migration**: `assignmentTopicsService.ts` and `getAssignmentTopicsQueryOptions` in `sharedQueries.ts` are migrated to the canonical enriched contract, and all dependent consumers/tests are updated in the same delivery
-11. **Debounce requirement**: Modal open (prevent rapid repeated clicks on 'Add new') and create action (prevent rapid repeated creation attempts) will both be debounced using Ant Design idiomatic approach
-12. **UI styling**: Use standard `PlusOutlined` icon alongside 'Add new' text
+1. **Controller-resolution pattern:** Controllers that accept `yearGroupKey: string | null` must resolve to a non-null value before passing to model methods; the model boundary receives non-null `yearGroupKey` only (per SPEC.md Core Principle 3 and Validation Ownership Constraints)
+2. **Validation ownership:** Domain validation (required-field completeness, null resolution) belongs in controller; data integrity validation (type checking, range validation) belongs in model (per `src/backend/AGENTS.md` §0.2)
+3. **`yearGroupLabel` resolution:** Controller resolves `yearGroupLabel` from authoritative year-group reference data and passes it to the model; model does not perform this resolution (per SPEC.md Core Principle 4)
+4. Model constructor owns all defaulting: `assignmentWeighting` defaults to 1, range 0-10 enforced
+5. Controller must not apply defaults; passes raw values to model
+6. API layer must not apply defaults; only performs transport validation
+7. Partial/full storage schema distinction (`tasks: null` vs `tasks: {...}`) must be preserved
+8. Public API contracts for `upsertAssignmentDefinition_`, `getAssignmentDefinitionPartials_`, `getAssignmentDefinition_`, `deleteAssignmentDefinition_` remain stable
+
+---
 
 ## Global constraints and quality gates
 
 ### Engineering constraints
 
-- Keep changes minimal, localised, and consistent with repository conventions
-- Follow existing patterns from ManageCohortsModal and ManageYearGroupsModal exactly
-- Use British English in all new code, comments, and user-facing text
-- Fail fast on invalid inputs and persistence failures
-- Use Zod for all validation, deriving TypeScript types from schemas
-- All frontend-to-backend calls must route through `callApi` in `apiService.ts`
+- Keep API/entry points thin; delegate behaviour to controllers and models.
+- Fail fast on invalid inputs; never hide errors behind catch-and-ignore.
+- Avoid defensive guards that mask internal wiring issues.
+- Keep changes minimal, localised, and consistent with repository conventions.
+- Use British English in comments, code, and documentation.
+- Preserve separation of concerns: transport → API, domain → controller, defaults/integrity → model.
 
 ### TDD workflow (mandatory per section)
 
 For each section below:
 
-1. **Red**: write failing tests for the section's acceptance criteria.
-2. **Green**: implement the smallest change needed to pass.
-3. **Refactor**: tidy implementation with all tests still green.
-4. Run section-level verification commands.
+1. **Red:** write failing tests for the section's acceptance criteria
+2. **Green:** implement the smallest change needed to pass
+3. **Refactor:** tidy implementation with all tests still green
+4. Run section-level verification commands
 
 ### Delegation mandatory-read gate (mandatory for sub-agent execution)
 
-When a section is delegated to sub-agents, the plan must define and enforce mandatory documentation reads.
+When a section is delegated to sub-agents, the plan defines and enforces mandatory documentation reads.
 
-For each delegated phase (`Testing Specialist`, `Implementation`, `Code Reviewer`, `Docs`):
+For each delegated phase:
 
-1. list required documentation file paths under that phase before delegation
-2. require the sub-agent handoff to include `Files read` with explicit file paths
-3. verify every mandatory file is listed before accepting the handoff
-4. if any mandatory file is missing, return the work to the same sub-agent and block progression to the next phase
+1. List required documentation file paths under that phase
+2. Require the sub-agent handoff to include `Files read` with explicit file paths
+3. Verify every mandatory file is listed before accepting the handoff
+4. If any mandatory file is missing, return the work to the same sub-agent and block progression
 
 ### Shared-helper planning gate (mandatory when helper changes are expected)
 
-When a section is likely to introduce helper reuse, helper extension, or new shared helpers, record helper decisions in that section.
+When a section is likely to introduce helper reuse, helper extension, or new shared helpers:
+
+1. Record helper decisions in that section before implementation
+2. Include: decision (`reuse` | `extend` | `new` | `keep local`), owning path, and call-site rationale
+3. Add planned helper entries to relevant canonical docs with status `Not implemented`
+4. During documentation pass, reconcile planned entries against actual implementation
 
 ### Validation commands hierarchy
 
 - Backend lint: `npm run lint:backend`
-- Frontend lint: `npm run lint:frontend`
-- Builder lint (if touched): `npm run lint:builder`
-- Frontend unit tests: `npm run test:frontend -- <target>`
+- Backend tests: `npm test -- <target>`
+- Full backend test suite: `npm test`
 
 ---
 
-## Section 0 — Backend Model Creation
+## Section 0 — Shared-helper planning gate (MANDATORY — MUST COMPLETE FIRST)
 
 ### Objective
 
-- Create the new `AssignmentTopic` model to properly support the `yearGroupKeys: string[]` field
-- Fix the backend model bug where ReferenceDataController uses YearGroup model for assignmentTopic
+- Add all planned shared-helper entries to `docs/developer/backend/api-layer.md` 'Shared Helper Status' section **before any implementation begins**
+- This is a **mandatory pre-implementation gate** that must be completed and verified before Section 1 starts
+- Per SPEC.md Planning Handoff Notes, add/update entries for removed helpers with status `Removed`; add entry for new helper with status `Not implemented`
+- **CRITICAL:** This section is **NOT YET COMPLETE** — the required entries are currently **MISSING** from `api-layer.md`
 
 ### Constraints
 
-- Must follow existing model patterns (YearGroup.js, Cohort.js)
-- Must implement `toJSON()`, `fromJSON()` methods
-- Must use Validate helpers for all validation
-- Must handle `yearGroupKeys` as array of trimmed non-empty strings
-- There are no existing AssignmentTopic records; no runtime migration path is required
+- **BLOCKING:** All subsequent sections are blocked until this section is complete and verified
+- All entries for **removed** helpers must have status `Removed`
+- The entry for the **new** helper must have status `Not implemented`
+- This section must be completed and verified before any other section begins
+- **Blocking scope:** The 7 entries explicitly required by SPEC.md Planning Handoff Notes must be present with correct status
 
-### Dependencies
+### Acceptance criteria
 
-- None (foundation for all other sections)
+- Entry for 'Assignment-definition full-definition response mapper' **updated** from `Not applicable` to `Removed` — `toCanonicalTransportDefinition_` in `src/backend/z_Api/assignmentDefinitionPartials.js`
+- Entry added for 'Assignment-definition partial row serializer' with Status: `Removed` — `toPlainPartialRow_` in `src/backend/z_Api/assignmentDefinitionPartials.js`
+- Entry added for 'Assignment-definition upsert payload builder' with Status: `Removed` — `buildControllerUpsertPayload_` in `src/backend/z_Api/assignmentDefinitionPartials.js`
+- Entry added for 'Assignment-definition upsert context builder' with Status: `Removed` — `_buildUpsertContext` in `src/backend/y_controllers/AssignmentDefinitionController.js`
+- Entry added for 'Assignment-definition creation method' with Status: `Removed` — `ensureDefinition` in `src/backend/y_controllers/AssignmentDefinitionController.js`
+- Entry added for 'AssignmentDefinition yearGroup field' with Status: `Removed` — `yearGroup` parameter and property in `src/backend/Models/AssignmentDefinition.js`
+- Entry added for 'Assignment-definition transport partial row helper' with Status: `Not implemented` — `toTransportPartialRow_` in `src/backend/z_Api/assignmentDefinitionPartials.js`
 
-### Delegation mandatory reads (when sub-agents are used)
+### Section checks
+
+- ✅ Verify all 7 entries exist in `docs/developer/backend/api-layer.md` 'Shared Helper Status' with correct status values
+- ✅ Run: `grep -n "toCanonicalTransportDefinition_\|toPlainPartialRow_\|buildControllerUpsertPayload_\|_buildUpsertContext\|ensureDefinition\|yearGroup\|toTransportPartialRow_" docs/developer/backend/api-layer.md`
+- ✅ Verify Section 0 is marked as complete in this ACTION_PLAN.md
+- ✅ **MANDATORY:** All subsequent sections remain blocked until this verification passes
+
+### Blocked by
+
+None — this is the first section and has no dependencies.
+
+### Must complete before
+
+All other sections (Section 1 through Documentation)
+
+---
+
+## Section 1 — Model-level `yearGroup` deprecation and `assignmentWeighting` defaulting
+
+### Objective
+
+- Remove `yearGroup` field entirely from `AssignmentDefinition` model
+- Add fail-fast validation: constructor and `fromJSON()` throw `TypeError` when `yearGroup` is present
+- Add type validation: constructor throws `TypeError` when `yearGroupKey` is not a string (null/undefined check is controller responsibility per validation ownership)
+- Add `assignmentWeighting` defaulting to 1 with range validation 0-10 in constructor
+- Rename `buildDefinitionKey()` parameter from `yearGroup` to `yearGroupKey`
+
+### Constraints
+
+- **BLOCKING:** This section is blocked until Section 0 is complete
+- Must preserve partial/full storage schema distinction
+- Must preserve `yearGroupLabel` as an accepted optional parameter (controller provides it)
+- Stored value for `assignmentWeighting` must never be null
+- At model boundary, `yearGroupKey` must be a non-null string (controllers guarantee this per SPEC.md)
+- All validation must respect the ownership contract: transport → API, domain → controller, defaults/integrity → model
+- This section **must be completed before Section 5** as Section 5's transport helper depends on model serialization output
+
+### Blocked by
+
+Section 0 (Shared-helper planning gate)
+
+### Must complete before
+
+Section 2, Section 5
+
+### Delegation mandatory reads
 
 Testing Specialist mandatory docs:
 
 - `SPEC.md`
-- `src/backend/Models/YearGroup.js`
-- `src/backend/Models/Cohort.js`
 - `src/backend/AGENTS.md`
+- `src/backend/Models/AssignmentDefinition.js`
 - `docs/developer/backend/backend-testing.md`
 
 Implementation mandatory docs:
 
 - `SPEC.md`
-- `src/backend/Models/YearGroup.js`
-- `src/backend/Models/Cohort.js`
 - `src/backend/AGENTS.md`
-- `docs/developer/backend/backend-model-conventions.md` (if exists)
+- `src/backend/Models/AssignmentDefinition.js`
 
 Code Reviewer mandatory docs:
 
 - `SPEC.md`
-- `src/backend/Models/YearGroup.js`
 - `src/backend/AGENTS.md`
+- `src/backend/Models/AssignmentDefinition.js`
 
-### Shared helper plan (when helper changes are expected)
+### Shared helper plan
 
-Helper decision entries:
-
-1. Helper: AssignmentTopic model
-   - Decision: `new`
-   - Owning module/path: `src/backend/Models/AssignmentTopic.js`
-   - Call-site rationale: New model class for AssignmentTopic with yearGroupKeys support, following existing YearGroup/Cohort patterns
-   - Relevant canonical doc target: None (model convention docs if any)
-   - Planned doc status: `Not implemented`
+Helper decision entries: None — no shared helpers affected in this section.
 
 ### Acceptance criteria
 
-- New file `src/backend/Models/AssignmentTopic.js` created
-- Class `AssignmentTopic` with constructor accepting `key`, `name`, `yearGroupKeys`
-- `yearGroupKeys` field is array of strings, validated as trimmed non-empty strings
-- Getter/setter methods for all fields: `getKey()`, `setKey()`, `getName()`, `setName()`, `getYearGroupKeys()`, `setYearGroupKeys()`
-- `setYearGroupKeys` iterates through each element and calls `Validate.validateTrimmedNonEmptyString` on it, throwing on the first invalid element
-- `toJSON()` returns `{ key, name, yearGroupKeys }`
-- `fromJSON(json)` accepts object with `key`, `name`, `yearGroupKeys` (required by the canonical contract)
-- Validation uses `Validate.requireParams` and `Validate.validateTrimmedNonEmptyString`
-- For `yearGroupKeys`, validation ensures each element is a trimmed non-empty string
-- Module exports: `module.exports = { AssignmentTopic }`
+- `AssignmentDefinition` constructor throws `TypeError` when params contain `yearGroup` property
+- `AssignmentDefinition` constructor throws `TypeError` when `yearGroupKey` is not a string (type check only; null/undefined is controller responsibility)
+- `AssignmentDefinition.fromJSON()` throws `TypeError` when input JSON contains `yearGroup` field
+- `AssignmentDefinition.fromJSON()` throws `TypeError` when input JSON does not contain a valid `yearGroupKey` string (type check)
+- `this.yearGroup` property does not exist on model instances
+- `yearGroup` is not included in `toJSON()` or `toPartialJSON()` return objects
+- Both `toJSON()` and `toPartialJSON()` include `yearGroupKey` and `yearGroupLabel` fields (when present)
+- `assignmentWeighting` defaults to 1 when null, undefined, or missing in constructor
+- Constructor throws `RangeError` when `assignmentWeighting` is outside range 0-10
+- Stored value for `assignmentWeighting` is always a number, never null
+- `buildDefinitionKey()` parameter renamed from `yearGroup` to `yearGroupKey`
+- Constructor call to `buildDefinitionKey` updated to pass `{ yearGroupKey: this.yearGroupKey }`
+- `fromJSON()` passes `json.assignmentWeighting` as-is to constructor; constructor handles defaulting
+- JSDoc updated: All constructor and method JSDoc in `AssignmentDefinition.js` remove references to `yearGroup` parameter and property
+- **Schema preservation:** `toPartialJSON()` returns `tasks: null` for partial definitions; `toJSON()` returns `tasks: {...}` for full definitions
 
 ### Required test cases (Red first)
 
-Backend tests:
+Backend model tests (in `tests/models/assignmentDefinition.test.js`):
 
-1. AssignmentTopic constructor accepts `key`, `name`, `yearGroupKeys` parameters
-2. AssignmentTopic constructor throws on missing required params (key, name)
-3. `setKey` accepts valid trimmed non-empty string
-4. `setKey` throws on empty/invalid string
-5. `setName` accepts valid trimmed non-empty string
-6. `setName` throws on empty/invalid string
-7. `setYearGroupKeys` accepts array of valid trimmed non-empty strings
-8. `setYearGroupKeys` throws on array with empty/invalid strings
-9. `setYearGroupKeys` validates that every element in the array is a trimmed non-empty string, throwing on any invalid element
-10. `toJSON()` returns object with key, name, AND yearGroupKeys fields
-11. `fromJSON()` creates valid AssignmentTopic instance from JSON with all three fields
-12. `fromJSON()` successfully loads canonical AssignmentTopic data with explicit yearGroupKeys
-13. `fromJSON()` throws when `yearGroupKeys` is missing
-14. `fromJSON()` throws on invalid JSON input
+1. **Constructor rejects yearGroup presence:**
+   - Test that passing `{ yearGroup: 10, ... }` throws `TypeError`
+   - Test that passing `{ yearGroup: null, ... }` throws `TypeError`
+   - Test message includes "yearGroup" and "deprecated"
+
+2. **Constructor validates yearGroupKey type (not presence):**
+   - Test that passing `{ yearGroupKey: 123, ... }` throws `TypeError` (wrong type)
+   - Test that passing `{ yearGroupKey: 'valid-key', ... }` succeeds
+   - **Note:** Null/undefined validation is controller responsibility, not model
+
+3. **fromJSON rejects yearGroup field:**
+   - Test that `fromJSON({ yearGroup: 10, ... })` throws `TypeError`
+   - Test that `fromJSON({ yearGroup: null, ... })` throws `TypeError`
+
+4. **fromJSON validates yearGroupKey type:**
+   - Test that `fromJSON({ yearGroupKey: 123, ... })` throws `TypeError`
+   - Test that `fromJSON({ yearGroupKey: 'valid-key', ... })` succeeds
+
+5. **assignmentWeighting defaults to 1:**
+   - Test constructor with `assignmentWeighting: null` results in `assignmentWeighting === 1`
+   - Test constructor with `assignmentWeighting: undefined` results in `assignmentWeighting === 1`
+   - Test constructor with missing `assignmentWeighting` results in `assignmentWeighting === 1`
+   - Test constructor with `assignmentWeighting: 5` results in `assignmentWeighting === 5`
+
+6. **assignmentWeighting range validation:**
+   - Test constructor with `assignmentWeighting: -1` throws `RangeError`
+   - Test constructor with `assignmentWeighting: 11` throws `RangeError`
+   - Test constructor with `assignmentWeighting: 0` succeeds
+   - Test constructor with `assignmentWeighting: 10` succeeds
+
+7. **Serialization excludes yearGroup:**
+   - Test `toJSON()` does not include `yearGroup` field
+   - Test `toPartialJSON()` does not include `yearGroup` field
+
+8. **Serialization includes yearGroupKey and yearGroupLabel:**
+   - Test `toJSON()` includes `yearGroupKey` field
+   - Test `toJSON()` includes `yearGroupLabel` field when provided
+   - Test `toPartialJSON()` includes `yearGroupKey` field
+   - Test `toPartialJSON()` includes `yearGroupLabel` field when provided
+
+9. **Schema preservation:**
+   - Test `toPartialJSON()` returns `tasks: null` for partial definitions
+   - Test `toJSON()` returns `tasks: {...}` (object) for full definitions
+
+10. **buildDefinitionKey parameter renamed:**
+    - Test `buildDefinitionKey({ primaryTitle: 'A', primaryTopic: 'B', yearGroupKey: 'yg-10' })` returns `'A_B_yg-10'`
+
+11. **Model instance has no yearGroup property:**
+    - Test `new AssignmentDefinition({ yearGroupKey: 'yg-10', ... })` does not have `yearGroup` property
+    - Test accessing `instance.yearGroup` returns `undefined`
 
 ### Section checks
 
-- Backend unit tests for AssignmentTopic pass
-- Lint passes: `npm run lint:backend -- src/backend/Models/AssignmentTopic.js`
+- `npm test -- tests/models/assignmentDefinition.test.js`
 - Mandatory-read evidence gate passed for all delegated handoffs in this section
-- Planned helper entries added to canonical docs
+- Shared-helper planning entries: None required
+- Verify all delegated handoffs include `Files read` with all mandatory documentation paths listed
 
-### Optional `@remarks` JSDoc follow-through
+### Optional @remarks JSDoc follow-through
 
-- Add `@remarks` on AssignmentTopic class explaining it supports multi-year-group association via yearGroupKeys
-
-### Implementation notes / deviations / follow-up
-
-- **Implementation notes**: Model follows YearGroup pattern with added yearGroupKeys field. The yearGroupKeys setter must validate each element in the array.
-- **Deviations from plan**: None expected
-- **Follow-up implications for later sections**: Required before Section 0.5 (Backend Controller Update) and Section 2 (Service Layer)
+1. `AssignmentDefinition` constructor: Add `@remarks` noting that `yearGroup` is deprecated and will cause TypeError if present; `yearGroupKey` must be a string (type validation only; null/undefined is controller responsibility)
+2. `AssignmentDefinition.fromJSON`: Add `@remarks` noting that input JSON must not contain `yearGroup` field; `yearGroupKey` must be a string
+3. `AssignmentDefinition.buildDefinitionKey`: Add `@remarks` noting parameter rename from `yearGroup` to `yearGroupKey`; no parameter validation performed
 
 ---
 
-## Section 0.5 — Backend Controller Update
+## Section 2 — AssignmentDefinitionController: Remove `ensureDefinition` and `yearGroup` usage
 
 ### Objective
 
-- Update `ReferenceDataController.js` to use the new `AssignmentTopic` model for assignmentTopic resource type
-- Ensure `_createRecord` and `_updateRecord` properly handle the `yearGroupKeys` array field
+- Delete `ensureDefinition` method entirely from `AssignmentDefinitionController`
+- Remove `yearGroup` from all method signatures and internal logic
+- Update `_resolveYearGroupContextForUpsert` to return only `{ yearGroupKey, yearGroupLabel }` with `yearGroupLabel` resolved from reference data
+- Update `_assertNoDuplicateBusinessTuple` to use only `yearGroupKey` (no `yearGroup` fallback)
+- Update `_resolveAssignmentWeightingForUpsert` to be validation-only (no defaulting, returns raw payload value)
+- Move all validation logic from `_buildUpsertContext` into the `upsertDefinition` method body and delete `_buildUpsertContext`
 
 ### Constraints
 
-- Must not break existing cohort or year group functionality
-- No legacy record migration is required because there are no existing AssignmentTopic records
-- Must follow existing controller patterns
+- **BLOCKING:** This section is blocked until Section 1 is complete
+- Must not change public API of `upsertDefinition`
+- Must preserve domain validation ownership per `src/backend/AGENTS.md` §0.2
+- Validation ownership rationale: Domain validation (required fields, business rules) remains in controller; value defaulting must be in model layer only
+- Methods accepting `yearGroupKey: string | null` must resolve to non-null before calling model methods
+- Controller must resolve `yearGroupLabel` from reference data
 
-### Dependencies
+### Blocked by
 
-- Section 0 — Backend Model Creation (AssignmentTopic.js must exist)
+Section 0, Section 1
 
-### Delegation mandatory reads (when sub-agents are used)
+### Must complete before
+
+Section 3
+
+### Delegation mandatory reads
 
 Testing Specialist mandatory docs:
 
 - `SPEC.md`
-- `src/backend/y_controllers/ReferenceDataController.js`
-- `src/backend/Models/AssignmentTopic.js`
 - `src/backend/AGENTS.md`
-- `docs/developer/backend/backend-testing.md`
+- `src/backend/y_controllers/AssignmentDefinitionController.js`
+- `tests/controllers/assignmentDefinitionController.test.js`
+- `tests/controllers/assignmentDefinitionController.upsert.test.js`
+- `tests/controllers/assignmentDefinitionController.fullStore.test.js`
 
 Implementation mandatory docs:
 
 - `SPEC.md`
-- `src/backend/y_controllers/ReferenceDataController.js`
-- `src/backend/Models/AssignmentTopic.js`
 - `src/backend/AGENTS.md`
+- `src/backend/y_controllers/AssignmentDefinitionController.js`
 
 Code Reviewer mandatory docs:
 
 - `SPEC.md`
-- `src/backend/y_controllers/ReferenceDataController.js`
 - `src/backend/AGENTS.md`
+- `src/backend/y_controllers/AssignmentDefinitionController.js`
 
-### Shared helper plan (when helper changes are expected)
+### Shared helper plan
 
 Helper decision entries:
 
-1. Helper: ReferenceDataController assignmentTopic config
-   - Decision: `extend`
-   - Owning module/path: `src/backend/y_controllers/ReferenceDataController.js`
-   - Call-site rationale: Update `_getConfig('assignmentTopic')` to use AssignmentTopic model instead of YearGroup
-   - Relevant canonical doc target: None
-   - Planned doc status: `Not implemented`
+1. Helper: `_buildUpsertContext`
+   - Decision: `Removed`
+   - Owning module/path: `src/backend/y_controllers/AssignmentDefinitionController.js`
+   - Call-site rationale: Logic moved into `upsertDefinition` method body per SPEC.md; helper deleted with no replacement
+   - Relevant canonical doc target: `docs/developer/backend/api-layer.md`
+   - Planned doc status: `Removed`
+
+2. Helper: `ensureDefinition`
+   - Decision: `Removed`
+   - Owning module/path: `src/backend/y_controllers/AssignmentDefinitionController.js`
+   - Call-site rationale: Removed per architectural decision (single canonical creation method)
+   - Relevant canonical doc target: `docs/developer/backend/api-layer.md`
+   - Planned doc status: `Removed`
 
 ### Acceptance criteria
 
-- `_getConfig('assignmentTopic')` updated to use `AssignmentTopic` model class instead of `YearGroup`
-- `_createRecord` method handles `yearGroupKeys` array field through AssignmentTopic model's fromJSON/toJSON
-- `_updateRecord` method handles `yearGroupKeys` array field through AssignmentTopic model's fromJSON/toJSON
-- `partialsReferenceField` remains `'primaryTopicKey'` (matches existing assignment_definitions structure)
-- `inUseCollectionName` remains `'assignment_definitions'`
-- `inUseErrorMessage` remains descriptive for assignment topic usage
-- All created assignment topic data must include explicit `yearGroupKeys` before persistence
-- New assignment topics can be created with yearGroupKeys array
-- Existing assignment topics can be updated to add yearGroupKeys
+- `ensureDefinition` method is removed from `AssignmentDefinitionController`
+- `_buildUpsertContext` helper is removed; its validation logic moved into `upsertDefinition` method body
+- `yearGroup` parameter removed from all method signatures in controller
+- `_assertNoDuplicateBusinessTuple` signature updated to remove `yearGroup` parameter; must not accept `yearGroup` in any form
+- `_resolveYearGroupContextForUpsert` returns only `{ yearGroupKey, yearGroupLabel }` (no `yearGroup` field)
+- `_resolveYearGroupContextForUpsert` must NOT extract `yearGroup` from reference data (remove the `getYearGroup` call)
+- `_assertNoDuplicateBusinessTuple` uses only `yearGroupKey` for duplicate detection (no `yearGroup` fallback)
+- `_resolveYearGroupContextForUpsert` resolves `yearGroupLabel` from authoritative year-group reference data
+- `_resolveAssignmentWeightingForUpsert` returns the raw payload value (which may be `null`, `undefined`, or a number) — no defaulting
+- All validation logic from `_buildUpsertContext` preserved within `upsertDefinition` method body
+- `upsertDefinition` signature unchanged
+- `upsertDefinition` still requires resolved non-null `yearGroupKey: string`
+- No code in `AssignmentDefinitionController` passes `yearGroup` to model methods
+- Methods accepting `yearGroupKey: string | null` resolve to non-null before calling model methods
 
 ### Required test cases (Red first)
 
-Backend tests:
+Backend controller tests:
 
-1. `_getConfig('assignmentTopic')` uses AssignmentTopic model class (NOT YearGroup)
-2. `listAssignmentTopics()` returns topics with yearGroupKeys field
-3. `listAssignmentTopics()` returns topics with explicit `yearGroupKeys` and deserializes correctly
-4. `createAssignmentTopic()` accepts record with yearGroupKeys and persists correctly via \_buildRecord
-5. `createAssignmentTopic()` rejects records without yearGroupKeys
-6. `updateAssignmentTopic()` accepts record with yearGroupKeys and persists correctly via \_buildRecord
-7. `updateAssignmentTopic()` preserves yearGroupKeys when updating other fields
-8. `deleteAssignmentTopic()` works correctly for topics with yearGroupKeys
-9. Duplicate name check still works for assignment topics
-10. In-use validation still prevents deletion of referenced topics
+1. **ensureDefinition removed:**
+   - Test that calling `controller.ensureDefinition()` throws (method does not exist)
+
+2. **buildUpsertContext removed:**
+   - Test that calling `controller._buildUpsertContext()` throws (helper does not exist)
+
+3. **resolveYearGroupContextForUpsert returns correct shape:**
+   - Test returns object with `yearGroupKey` property
+   - Test returns object with `yearGroupLabel` property
+   - Test returns object WITHOUT `yearGroup` property
+   - Test `yearGroupLabel` is resolved from reference data
+
+4. **assertNoDuplicateBusinessTuple uses yearGroupKey only:**
+   - Test method uses `yearGroupKey` parameter
+   - Test method does not reference `yearGroup` in its implementation
+
+5. **resolveAssignmentWeightingForUpsert no defaulting:**
+   - Test with missing `assignmentWeighting` in payload returns `undefined`
+   - Test with `assignmentWeighting: null` in payload returns `null`
+   - Test with `assignmentWeighting: 5` in payload returns `5`
+
+6. **upsertDefinition validation preserved:**
+   - Test `upsertDefinition` throws when payload missing required fields
+   - Test `upsertDefinition` throws when `yearGroupKey` is null (before resolution)
+   - Test `upsertDefinition` succeeds with valid payload and resolved non-null `yearGroupKey`
+
+### Required test updates/deletions
+
+**Constraint:** Verify test patterns against actual test file contents before applying deletions/updates to ensure no unintended matches.
+
+Tests to DELETE (because methods are removed):
+
+- `tests/controllers/assignmentDefinitionController.test.js`:
+  - Tests matching 'should ensureDefinition creates new definition'
+  - Tests matching 'should ensureDefinition returns existing definition if fresh'
+  - Tests matching 'should refresh definition if Drive files are newer'
+- `tests/controllers/assignmentDefinitionController.fullStore.test.js`:
+  - Tests matching 'should persist parsed tasks to full store when creating new definition'
+  - Tests matching 'should re-persist full definition when Drive files are newer'
+  - Tests matching 'should update registry when definition is refreshed'
+
+Tests to UPDATE:
+
+- `tests/controllers/assignmentDefinitionController.upsert.test.js`:
+  - Tests for `_assertNoDuplicateBusinessTuple` — verify only `yearGroupKey` parameter used (no `yearGroup` fallback)
+  - Tests for `_resolveYearGroupContextForUpsert` to verify return shape includes `yearGroupLabel` and excludes `yearGroup`
+  - Tests for `_resolveAssignmentWeightingForUpsert` to verify no defaulting (returns raw payload value)
 
 ### Section checks
 
-- Backend tests for ReferenceDataController assignmentTopic methods pass
-- Lint passes: `npm run lint:backend -- src/backend/y_controllers/ReferenceDataController.js`
-- Mandatory-read evidence gate passed for all delegated handoffs in this section
-- Planned helper entries added to canonical docs
+- `npm test -- tests/controllers/assignmentDefinitionController.test.js`
+- `npm test -- tests/controllers/assignmentDefinitionController.upsert.test.js`
+- `npm test -- tests/controllers/assignmentDefinitionController.fullStore.test.js`
+- Mandatory-read evidence gate passed for all delegated handoffs
+- Shared-helper planning entries present in `docs/developer/backend/api-layer.md` with status `Removed`
+- Verify all delegated handoffs include `Files read` with all mandatory documentation paths listed
 
-### Optional `@remarks` JSDoc follow-through
+### Optional @remarks JSDoc follow-through
 
-- Add `@remarks` on updated `_getConfig` case for 'assignmentTopic' explaining the model change
-
-### Implementation notes / deviations / follow-up
-
-- **Implementation notes**: The controller change is minimal - only the modelClass reference in \_getConfig needs to change. The existing \_createRecord/\_updateRecord methods use \_buildRecord which calls model.fromJSON() and model.toJSON(), so they automatically handle the new field.
-- **Deviations from plan**: None expected
-- **Follow-up implications for later sections**: Required for backend to properly persist yearGroupKeys from frontend
+1. `AssignmentDefinitionController.upsertDefinition`: Add `@remarks` noting that this is now the sole creation/update method; requires resolved non-null `yearGroupKey`
+2. `_resolveYearGroupContextForUpsert`: Add `@remarks` noting that `yearGroup` field is no longer returned; resolves `yearGroupLabel` from reference data
+3. `_resolveAssignmentWeightingForUpsert`: Add `@remarks` noting that this method is validation-only and does not apply defaults; returns raw payload value for model to handle
 
 ---
 
-## Section 1 — Schema and Type Definitions
+## Section 3 — AssignmentController: Rename `yearGroup` to `yearGroupKey` and update delegation
 
 ### Objective
 
-- Add Topic type definitions and validation schemas to support the frontend CRUD operations with yearGroupKeys
-- Ensure schemas match the backend contract and existing patterns
+- Rename `yearGroup` parameter to `yearGroupKey` in `ensureDefinitionFromInputs` and `createDefinitionFromWizardInputs`
+- Remove code that dynamically sets `abClass.yearGroup` entirely
+- Update `ensureDefinitionFromInputs` to resolve `yearGroupKey` from input or `abClass.yearGroupKey`
+- Update `ensureDefinitionFromInputs` to resolve `primaryTopicKey` from `topicId` + `courseId` via Classroom API
+- Update `ensureDefinitionFromInputs` to throw when `yearGroupKey` resolution fails (both input and `abClass.yearGroupKey` are null)
+- Change `ensureDefinitionFromInputs` to delegate to `controller.upsertDefinition` (replacing `controller.ensureDefinition`) with resolved non-null `yearGroupKey` and `primaryTopicKey`
+- Update `createDefinitionFromWizardInputs` to pass `yearGroupKey` to `ensureDefinitionFromInputs`
+- Preserve `saveStartAndShowProgress` signature unchanged
 
 ### Constraints
 
-- Must match the `{ key: string, name: string, yearGroupKeys: string[] }` structure for AssignmentTopic
-- Must follow existing Zod patterns in `referenceData.zod.ts`
-- Must derive TypeScript types from Zod schemas using `z.infer<>`
-- Must be consistent with existing Cohort and YearGroup schema patterns
+- **BLOCKING:** This section is blocked until Section 2 is complete (depends on `controller.ensureDefinition` being removed and `upsertDefinition` being the sole method)
+- Callers will be updated in Section 4; no backwards compatibility required per SPEC.md
+- Pre-condition: ABClass model already includes `yearGroupKey` property per existing codebase; fallback resolution assumes this property is available on loaded ABClass instances
+- Must throw when `yearGroupKey` resolution fails
+- Must resolve `primaryTopicKey` via Classroom API (1:1 mapping from Classroom topic ID to AssessmentBot topic key)
+- Must delegate to `controller.upsertDefinition` instead of `controller.ensureDefinition`
+- Must not set `abClass.yearGroup` anywhere
 
-### Dependencies
+### Blocked by
 
-- Section 0 — Backend Model Creation (for understanding the data shape)
+Section 0, Section 1, Section 2
 
-### Delegation mandatory reads (when sub-agents are used)
+### Must complete before
+
+Section 4
+
+### Delegation mandatory reads
 
 Testing Specialist mandatory docs:
 
 - `SPEC.md`
-- `TOPICS_AND_REFERENCE_DATA_LAYOUT.md`
-- `src/frontend/src/services/referenceData.zod.ts`
-- `docs/developer/frontend/frontend-testing.md`
+- `src/backend/AGENTS.md`
+- `src/backend/y_controllers/AssignmentController.js`
+- `tests/controllers/assignmentController.hydration.test.js`
+- `tests/controllers/createDefinitionFromWizardInputs.test.js`
 
 Implementation mandatory docs:
 
 - `SPEC.md`
-- `TOPICS_AND_REFERENCE_DATA_LAYOUT.md`
-- `src/frontend/src/services/referenceData.zod.ts`
-- `src/frontend/AGENTS.md`
-- `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
+- `src/backend/AGENTS.md`
+- `src/backend/y_controllers/AssignmentController.js`
 
 Code Reviewer mandatory docs:
 
 - `SPEC.md`
-- `src/frontend/src/services/referenceData.zod.ts`
-- `src/frontend/AGENTS.md`
+- `src/backend/AGENTS.md`
+- `src/backend/y_controllers/AssignmentController.js`
 
-### Shared helper plan (when helper changes are expected)
+### Shared helper plan
 
-Helper decision entries:
-
-1. Helper: Schema validation for topics
-   - Decision: `reuse`
-   - Owning module/path: `src/frontend/src/services/referenceData.zod.ts`
-   - Call-site rationale: Existing schemas are feature-local; topics follow same pattern with yearGroupKeys
-   - Relevant canonical doc target: None (no shared schema helpers needed)
-   - Planned doc status: `Not implemented`
+Helper decision entries: None
 
 ### Acceptance criteria
 
-- `NonEmptyNameSchema` reused from existing `referenceData.zod.ts` file for consistency
-- `AssignmentTopicSchema` defined matching `{ key: NonEmptyNameSchema, name: NonEmptyNameSchema, yearGroupKeys: z.array(NonEmptyNameSchema) }`
-- `AssignmentTopicListResponseSchema` defined as array of AssignmentTopicSchema
-- Input schemas defined with yearGroupKeys:
-  - `CreateAssignmentTopicInputSchema`: `{ record: { name: NonEmptyNameSchema, yearGroupKeys: z.array(NonEmptyNameSchema) } }`
-  - `UpdateAssignmentTopicInputSchema`: `{ key: NonEmptyNameSchema, record: { name: NonEmptyNameSchema, yearGroupKeys: z.array(NonEmptyNameSchema) } }`
-  - `DeleteAssignmentTopicInputSchema`: `{ key: NonEmptyNameSchema }`
-- Response schemas defined: `CreateAssignmentTopicResponseSchema`, `UpdateAssignmentTopicResponseSchema`, `DeleteAssignmentTopicResponseSchema`
-- Type exports added for all schemas using `z.infer<>`
-- Schemas added to `referenceData.zod.ts`, NOT `assignmentTopics.zod.ts` (migrating existing file usage)
+- `ensureDefinitionFromInputs` accepts `yearGroupKey: string | null` instead of `yearGroup: number | null`
+- `ensureDefinitionFromInputs` resolves `yearGroupKey` from input or `abClass.yearGroupKey`
+- `ensureDefinitionFromInputs` throws when `yearGroupKey` resolution fails (both input and `abClass.yearGroupKey` are null)
+- `ensureDefinitionFromInputs` resolves `primaryTopicKey` from `topicId` + `courseId` via Classroom API
+- `ensureDefinitionFromInputs` delegates to `controller.upsertDefinition` (replacing `controller.ensureDefinition`) with resolved non-null `yearGroupKey` and `primaryTopicKey`
+- `createDefinitionFromWizardInputs` accepts `yearGroupKey: string | null` instead of `yearGroup: number | null`
+- `createDefinitionFromWizardInputs` passes `yearGroupKey` parameter (not `yearGroup`) to `ensureDefinitionFromInputs`
+- Code that dynamically sets `abClass.yearGroup` is removed entirely
+- No code in `AssignmentController` passes `yearGroup` to model methods
+- Verify `saveStartAndShowProgress` continues to function correctly with updated parameter names
+- `saveStartAndShowProgress` signature remains unchanged
 
 ### Required test cases (Red first)
 
-Backend model tests: Not applicable (no backend changes in this section)
+Backend controller tests:
 
-Frontend tests:
+1. **ensureDefinitionFromInputs accepts yearGroupKey:**
+   - Test with `yearGroupKey: 'year-group-10'` succeeds
+   - Test with `yearGroupKey: null` and valid `abClass.yearGroupKey` succeeds
+   - Test with `yearGroupKey: null` and null `abClass.yearGroupKey` throws
 
-1. AssignmentTopicSchema validates correct shape: `{ key: 'test', name: 'Test Topic', yearGroupKeys: ['yg1', 'yg2'] }`
-2. AssignmentTopicSchema accepts whitespace in name (which gets trimmed by NonEmptyNameSchema)
-3. AssignmentTopicSchema accepts empty array for yearGroupKeys
-4. AssignmentTopicSchema rejects empty string for name
-5. AssignmentTopicSchema rejects empty string for key
-6. AssignmentTopicSchema rejects array with empty strings in yearGroupKeys
-7. AssignmentTopicListResponseSchema validates array of valid topics
-8. CreateAssignmentTopicInputSchema validates `{ record: { name: 'New Topic', yearGroupKeys: ['yg1'] } }`
-9. UpdateAssignmentTopicInputSchema validates `{ key: 'test', record: { name: 'Updated', yearGroupKeys: ['yg1', 'yg2'] } }`
-10. DeleteAssignmentTopicInputSchema validates `{ key: 'test' }`
-11. Verify all schemas are exported from `referenceData.zod.ts`
+2. **ensureDefinitionFromInputs resolves yearGroupKey:**
+   - Test that `yearGroupKey` from input is used when provided
+   - Test that `abClass.yearGroupKey` is used when input is null
+
+3. **ensureDefinitionFromInputs resolves primaryTopicKey:**
+   - Test that `primaryTopicKey` is resolved from `topicId` + `courseId` via Classroom API
+   - Test that resolved `primaryTopicKey` is passed to `controller.upsertDefinition`
+
+4. **ensureDefinitionFromInputs delegates to upsertDefinition:**
+   - Test that `ensureDefinitionFromInputs` calls `controller.upsertDefinition` (not `controller.ensureDefinition`)
+   - Test that both resolved `yearGroupKey` and `primaryTopicKey` are passed to `upsertDefinition`
+
+5. **createDefinitionFromWizardInputs accepts yearGroupKey:**
+   - Test with `yearGroupKey: 'year-group-10'` succeeds
+   - Test passes `yearGroupKey` to `ensureDefinitionFromInputs`
+
+6. **No yearGroup setting on abClass:**
+   - Test that `abClass.yearGroup` is never modified during execution
+
+### Required test updates
+
+**Constraint:** Verify test patterns against actual test file contents before applying deletions/updates to ensure no unintended matches.
+
+Tests to UPDATE:
+
+- `tests/controllers/assignmentController.hydration.test.js`:
+  - Tests matching 'should fetch year group from ABClass' — UPDATE to verify `yearGroupKey` resolution from input or `abClass.yearGroupKey`
+  - Tests matching 'ensureDefinitionFromInputs' — UPDATE to use `yearGroupKey` parameter instead of `yearGroup`
+- `tests/controllers/createDefinitionFromWizardInputs.test.js`:
+  - All calls to `controller.createDefinitionFromWizardInputs` — UPDATE to pass `yearGroupKey` instead of `yearGroup`
+  - Tests matching 'throws when yearGroup provided and persisting ABClass fails' — UPDATE to verify new `yearGroupKey` persistence flow
+  - Update tests to verify that `abClass.yearGroupKey` is used instead of `abClass.yearGroup`
 
 ### Section checks
 
-- `npm run test:frontend -- src/frontend/src/services/referenceData.zod.spec.ts`
-- All schema tests pass
-- Lint passes: `npm run lint:frontend -- src/frontend/src/services/referenceData.zod.ts`
-- Mandatory-read evidence gate passed for all delegated handoffs in this section
-- Shared-helper planning entries are present when helper changes are expected
-- Planned helper entries were added to relevant canonical docs with status `Not implemented` before implementation starts
+- `npm test -- tests/controllers/assignmentController.hydration.test.js`
+- `npm test -- tests/controllers/createDefinitionFromWizardInputs.test.js`
+- Mandatory-read evidence gate passed for all delegated handoffs
+- Verify all delegated handoffs include `Files read` with all mandatory documentation paths listed
 
-### Optional `@remarks` JSDoc follow-through
+### Optional @remarks JSDoc follow-through
 
-None
-
-### Implementation notes / deviations / follow-up
-
-- **Implementation notes**: Schemas added to existing `referenceData.zod.ts` file. The yearGroupKeys field uses `z.array(NonEmptyNameSchema)` to ensure all year group keys are valid trimmed non-empty strings.
-- **Deviations from plan**: None expected
-- **Follow-up implications for later sections**: Schema types will be used by service functions and components
+1. `AssignmentController.ensureDefinitionFromInputs`: Add `@remarks` noting parameter rename from `yearGroup` to `yearGroupKey`; now delegates to `controller.upsertDefinition` (not `controller.ensureDefinition`); resolves both `yearGroupKey` and `primaryTopicKey` before delegation; throws when resolution fails
+2. `AssignmentController.createDefinitionFromWizardInputs`: Add `@remarks` noting parameter rename from `yearGroup` to `yearGroupKey`; passes `yearGroupKey` to `ensureDefinitionFromInputs`; no longer sets `abClass.yearGroup`
 
 ---
 
-## Section 2 — Service Layer Extensions
+## Section 4 — AssignmentProcessor/globals.js: Rename `yearGroup` to `yearGroupKey`
 
 ### Objective
 
-- Add CRUD service functions for topics in `referenceDataService.ts` with yearGroupKeys support
-- Extend the existing service module to support topic operations
+- Update `createDefinitionFromWizardInputs` in `src/backend/AssignmentProcessor/globals.js` to accept `yearGroupKey = null` (string) instead of `yearGroup = null` (number)
+- Call controller method with `yearGroupKey`
+- Preserve `saveStartAndShowProgress` unchanged
 
 ### Constraints
 
-- Must use `callApi` from `apiService.ts` for all backend calls
-- Must validate inputs using Zod schemas from Section 1
-- Must validate outputs using Zod schemas from Section 1
-- Must follow existing patterns from cohort and year group services
-- Method names must align with backend ALLOWLISTED_METHOD_HANDLERS
+- **BLOCKING:** This section is blocked until Section 3 is complete (depends on `controller.createDefinitionFromWizardInputs` accepting `yearGroupKey`)
+- No backwards compatibility required per SPEC.md; this section completes caller parameter migration
+- Must pass `yearGroupKey` to controller
+- `src/backend/AssignmentProcessor/globals.js` requires updates to maintain compatibility with existing callers during the transition period
 
-### Dependencies
+### Blocked by
 
-- Section 0 — Backend Model Creation
-- Section 0.5 — Backend Controller Update
-- Section 1 — Schema and Type Definitions (schemas must exist)
+Section 0, Section 1, Section 2, Section 3
 
-### Delegation mandatory reads (when sub-agents are used)
+### Must complete before
+
+Section 5, Regression
+
+### Delegation mandatory reads
 
 Testing Specialist mandatory docs:
 
 - `SPEC.md`
-- `TOPICS_AND_REFERENCE_DATA_LAYOUT.md`
-- `src/frontend/src/services/referenceDataService.ts`
-- `src/frontend/src/services/apiService.ts`
-- `docs/developer/frontend/frontend-testing.md`
+- `src/backend/AGENTS.md`
+- `src/backend/AssignmentProcessor/globals.js`
+- `tests/controllers/createDefinitionFromWizardInputs.test.js`
 
 Implementation mandatory docs:
 
 - `SPEC.md`
-- `src/frontend/src/services/referenceDataService.ts`
-- `src/frontend/src/services/apiService.ts`
-- `src/frontend/AGENTS.md`
+- `src/backend/AGENTS.md`
+- `src/backend/AssignmentProcessor/globals.js`
 
 Code Reviewer mandatory docs:
 
 - `SPEC.md`
-- `src/frontend/src/services/referenceDataService.ts`
-- `src/frontend/AGENTS.md`
+- `src/backend/AGENTS.md`
+- `src/backend/AssignmentProcessor/globals.js`
 
-### Shared helper plan (when helper changes are expected)
+### Shared helper plan
 
-Helper decision entries:
-
-1. Helper: Topic CRUD service functions
-   - Decision: `extend`
-   - Owning module/path: `src/frontend/src/services/referenceDataService.ts`
-   - Call-site rationale: Existing service module already handles cohort and year group; topics follow same pattern
-   - Relevant canonical doc target: None (service is feature-local)
-   - Planned doc status: `Not implemented`
+Helper decision entries: None
 
 ### Acceptance criteria
 
-- `getAssignmentTopics` function in `assignmentTopicsService.ts` is updated to parse/enforce canonical enriched topic shape
-- `createAssignmentTopic` function added to `referenceDataService.ts` with proper input/output validation
-  - Accepts `CreateAssignmentTopicInput` from schemas
-  - Calls backend method `'createAssignmentTopic'` via `callApi`
-  - Validates response with `AssignmentTopicSchema`
-- `updateAssignmentTopic` function added to `referenceDataService.ts` with proper input/output validation
-  - Accepts `UpdateAssignmentTopicInput` from schemas
-  - Calls backend method `'updateAssignmentTopic'` via `callApi`
-  - Validates response with `AssignmentTopicSchema`
-- `deleteAssignmentTopic` function added to `referenceDataService.ts` with proper input/output validation
-  - Accepts `DeleteAssignmentTopicInput` from schemas
-  - Calls backend method `'deleteAssignmentTopic'` via `callApi`
-  - Validates response is void
-- All new functions use `callApi` for backend transport with correct method names
-- All new functions follow existing naming pattern: `createCohort`, `updateCohort`, `deleteCohort` match backend methods `createCohort`, `updateCohort`, `deleteCohort`; therefore topic functions match backend method names `createAssignmentTopic`, `updateAssignmentTopic`, `deleteAssignmentTopic`
+- `createDefinitionFromWizardInputs` in `globals.js` accepts `yearGroupKey = null` (string) parameter
+- `createDefinitionFromWizardInputs` calls controller with `yearGroupKey`
+- `saveStartAndShowProgress` unchanged
+- No code in `AssignmentProcessor/globals.js` passes `yearGroup` to any model or controller method
 
 ### Required test cases (Red first)
 
-Frontend tests:
+Backend globals tests:
 
-1. `createAssignmentTopic` calls `callApi` with method 'createAssignmentTopic'
-2. `createAssignmentTopic` parses input with CreateAssignmentTopicInputSchema (including yearGroupKeys)
-3. `createAssignmentTopic` parses response with AssignmentTopicSchema (including yearGroupKeys)
-4. `createAssignmentTopic` rejects invalid input with Zod error (including invalid yearGroupKeys)
-5. `updateAssignmentTopic` calls `callApi` with method 'updateAssignmentTopic'
-6. `updateAssignmentTopic` parses input with UpdateAssignmentTopicInputSchema (including yearGroupKeys)
-7. `updateAssignmentTopic` parses response with AssignmentTopicSchema
-8. `updateAssignmentTopic` rejects invalid input with Zod error
-9. `deleteAssignmentTopic` calls `callApi` with method 'deleteAssignmentTopic'
-10. `deleteAssignmentTopic` parses input with DeleteAssignmentTopicInputSchema
-11. `deleteAssignmentTopic` parses response (void)
-12. `deleteAssignmentTopic` rejects invalid input with Zod error
-13. Verify all new functions (`createAssignmentTopic`, `updateAssignmentTopic`, `deleteAssignmentTopic`) are exported from `referenceDataService.ts`
+1. **createDefinitionFromWizardInputs accepts yearGroupKey:**
+   - Test with `yearGroupKey: 'year-group-10'` passes correct value to controller
+   - Test with `yearGroupKey: null` passes `null` to controller
+
+### Required test updates
+
+**Note:** No direct tests exist for `src/backend/AssignmentProcessor/globals.js` functions. The globals.js functions are tested indirectly through the controllers that call them.
+
+Tests to UPDATE (indirect coverage):
+
+- All tests in `tests/controllers/createDefinitionFromWizardInputs.test.js` already test the controller method, which internally calls the globals.js function. These tests have been updated in Section 3 to pass `yearGroupKey` instead of `yearGroup`.
+- No additional test updates required for globals.js itself, as it has no direct test file.
 
 ### Section checks
 
-- `npm run test:frontend -- src/frontend/src/services/referenceDataService.spec.ts`
-- All service function tests pass
-- Lint passes: `npm run lint:frontend -- src/frontend/src/services/referenceDataService.ts`
-- Mandatory-read evidence gate passed for all delegated handoffs in this section
+- `npm test -- tests/controllers/createDefinitionFromWizardInputs.test.js` (indirect coverage)
+- Mandatory-read evidence gate passed for all delegated handoffs
+- Verify all delegated handoffs include `Files read` with all mandatory documentation paths listed
 
-### Optional `@remarks` JSDoc follow-through
+### Optional @remarks JSDoc follow-through
 
-None
-
-### Implementation notes / deviations / follow-up
-
-- **Implementation notes**: Functions added to existing `referenceDataService.ts` following cohort/year group pattern. The function names are `createAssignmentTopic`, `updateAssignmentTopic`, `deleteAssignmentTopic` matching the backend API method names. The input schemas include yearGroupKeys, and the response schema validates the returned topic including yearGroupKeys.
-- **Deviations from plan**: Function names updated from `createTopic`/`updateTopic`/`deleteTopic` to `createAssignmentTopic`/`updateAssignmentTopic`/`deleteAssignmentTopic` to match existing naming convention where service functions match backend method names.
-- **Follow-up implications for later sections**: Service functions used by query options and components
+1. `createDefinitionFromWizardInputs` in globals.js: Add `@remarks` noting parameter rename from `yearGroup` to `yearGroupKey`
 
 ---
 
-## Section 3 — Query Options
+## Section 5 — API layer: Remove helper functions, inline logic, and update transport boundary
 
 ### Objective
 
-- Migrate `getAssignmentTopicsQueryOptions` and its service dependency to the canonical enriched AssignmentTopic schema
-- Ensure all existing query consumers compile and run against `{ key, name, yearGroupKeys }`
+- Delete `toCanonicalTransportDefinition_` from `assignmentDefinitionPartials.js`
+- Replace call sites with direct `controller.toCanonicalFullDefinitionResponse(definition)`
+- Delete `buildControllerUpsertPayload_`; inline URL-to-ID translation logic into `upsertAssignmentDefinition_` **without** the `assignmentWeighting` defaulting logic (lines 548-550)
+- Delete `toPlainPartialRow_`; create exported helper `toTransportPartialRow_` in `assignmentDefinitionPartials.js` that accepts an `AssignmentDefinition` model instance, calls `definition.toPartialJSON()`, defensively strips any `yearGroup` field (safety net), and normalises Date fields to ISO strings
+- Update `getAssignmentDefinitionPartials_` to use `toTransportPartialRow_`
+- Add `toTransportPartialRow_` to the `module.exports` block for test accessibility
+- Keep transport validation helpers unchanged: `validateRequiredYearGroupKey_`, `validateUpsertParameters_`, `validateReadParameters_`, `validateDeleteParameters_`
+- Call sites to update: `upsertAssignmentDefinition_`, `getAssignmentDefinition_`
+- **HARD DEPENDENCY:** Section 5 **MUST NOT START UNTIL Section 1 is complete**. The transport helper depends on Section 1's model serialization changes; defensive `yearGroup` stripping provides safety but does not replace Section 1's model-level removal
 
 ### Constraints
 
-- Must update `getAssignmentTopicsQueryOptions` in `sharedQueries.ts` and dependent call sites
-- Must migrate `getAssignmentTopics` in `assignmentTopicsService.ts` to enriched topic parsing
-- Must use existing query keys from `queryKeys` module
-- Must handle the new yearGroupKeys field in the response
+- **BLOCKING:** This section is blocked until Section 1 is complete (model serialization changes required)
+- Must preserve transport validation ownership per `src/backend/AGENTS.md` §0.2
+- Must not apply model defaults in API layer
+- Must preserve Date normalisation at transport boundary
+- The transport-boundary helper must explicitly strip `yearGroup` field from `definition.toPartialJSON()` output as a defensive measure **in addition to** the model-level removal from Section 1
 
-### Dependencies
+### Blocked by
 
-- Section 0 — Backend Model Creation
-- Section 0.5 — Backend Controller Update
-- Section 1 — Schema and Type Definitions
+Section 0, Section 1
 
-### Delegation mandatory reads (when sub-agents are used)
+### Must complete before
+
+Regression
+
+### Delegation mandatory reads
 
 Testing Specialist mandatory docs:
 
 - `SPEC.md`
-- `src/frontend/src/query/sharedQueries.ts`
-- `src/frontend/src/query/queryKeys.ts`
-- `docs/developer/frontend/frontend-testing.md`
+- `src/backend/AGENTS.md`
+- `src/backend/z_Api/assignmentDefinitionPartials.js`
+- `docs/developer/backend/api-layer.md`
+- `tests/backend-api/assignmentDefinitionPartials.unit.test.js`
 
 Implementation mandatory docs:
 
 - `SPEC.md`
-- `src/frontend/src/query/sharedQueries.ts`
-- `src/frontend/src/query/queryKeys.ts`
-- `src/frontend/AGENTS.md`
+- `src/backend/AGENTS.md`
+- `src/backend/z_Api/assignmentDefinitionPartials.js`
+- `docs/developer/backend/api-layer.md`
 
 Code Reviewer mandatory docs:
 
 - `SPEC.md`
-- `src/frontend/src/query/sharedQueries.ts`
-- `src/frontend/AGENTS.md`
+- `src/backend/AGENTS.md`
+- `src/backend/z_Api/assignmentDefinitionPartials.js`
+- `docs/developer/backend/api-layer.md`
 
-### Shared helper plan (when helper changes are expected)
+### Shared helper plan
 
-Helper decision entries:
+Helper decision entries (using consistent function-name identifiers):
 
-1. Helper: Query options for topics
-   - Decision: `extend`
-   - Owning module/path: `src/frontend/src/query/sharedQueries.ts` (existing)
-   - Call-site rationale: `getAssignmentTopicsQueryOptions` is the shared read entry point and must be upgraded to the canonical enriched contract for all consumers.
-   - Relevant canonical doc target: None
+1. Helper: `toCanonicalTransportDefinition_`
+   - Decision: `Removed`
+   - Owning module/path: `src/backend/z_Api/assignmentDefinitionPartials.js`
+   - Call-site rationale: Callers now use `controller.toCanonicalFullDefinitionResponse(definition)` directly
+   - Relevant canonical doc target: `docs/developer/backend/api-layer.md`
+   - Planned doc status: `Removed`
+
+2. Helper: `buildControllerUpsertPayload_`
+   - Decision: `Removed`
+   - Owning module/path: `src/backend/z_Api/assignmentDefinitionPartials.js`
+   - Call-site rationale: URL-to-ID translation inlined into `upsertAssignmentDefinition_`; defaulting logic for `assignmentWeighting` (lines 548-550) must be removed per SPEC.md validation ownership rules
+   - Relevant canonical doc target: `docs/developer/backend/api-layer.md`
+   - Planned doc status: `Removed`
+
+3. Helper: `toPlainPartialRow_`
+   - Decision: `Removed`
+   - Owning module/path: `src/backend/z_Api/assignmentDefinitionPartials.js`
+   - Call-site rationale: Replaced with `toTransportPartialRow_` helper
+   - Relevant canonical doc target: `docs/developer/backend/api-layer.md`
+   - Planned doc status: `Removed`
+
+4. Helper: `toTransportPartialRow_`
+   - Decision: `New`
+   - Owning module/path: `src/backend/z_Api/assignmentDefinitionPartials.js`
+   - Call-site rationale: Exported transport-boundary helper that accepts an `AssignmentDefinition` model instance, calls `definition.toPartialJSON()`, defensively strips `yearGroup`, and normalises Date fields
+   - Relevant canonical doc target: `docs/developer/backend/api-layer.md`
    - Planned doc status: `Not implemented`
 
 ### Acceptance criteria
 
-- `getAssignmentTopicsQueryOptions` returns `QueryOptions<AssignmentTopic[]>` with canonical `{ key, name, yearGroupKeys }`
-- `assignmentTopicsService.getAssignmentTopics` parses canonical enriched topics
-- Existing consumers/tests that assumed `{ key, name }` are migrated and passing
-- Query key remains `queryKeys.assignmentTopics()`
+- `toCanonicalTransportDefinition_` is removed
+- Call sites `upsertAssignmentDefinition_` and `getAssignmentDefinition_` use `controller.toCanonicalFullDefinitionResponse(definition)` directly
+- `buildControllerUpsertPayload_` is removed
+- URL-to-ID translation logic inlined into `upsertAssignmentDefinition_` **without `assignmentWeighting` defaulting logic**
+- `toPlainPartialRow_` is removed
+- `getAssignmentDefinitionPartials_` uses `toTransportPartialRow_(definition)` helper that accepts an `AssignmentDefinition` model instance, calls `definition.toPartialJSON()`, removes `yearGroup` field defensively, and normalises Date fields to ISO strings
+- Transport validation helpers unchanged: `validateRequiredYearGroupKey_`, `validateUpsertParameters_`, `validateReadParameters_`, `validateDeleteParameters_`
+- `toTransportPartialRow_` is added to `module.exports` block for test accessibility
+- No code in API layer helpers passes `yearGroup` to controller or model methods
 
 ### Required test cases (Red first)
 
-Frontend tests:
+API layer tests:
 
-1. `getAssignmentTopicsQueryOptions` is exported and returns queryKey `queryKeys.assignmentTopics()`
-2. `getAssignmentTopicsQueryOptions` uses migrated `getAssignmentTopics` queryFn
-3. `assignmentTopicsService.getAssignmentTopics` rejects malformed topic items missing `yearGroupKeys`
-4. Query option tests and existing consumers pass with enriched topic objects
+1. **Helper functions removed from source:**
+   - Verify `toCanonicalTransportDefinition_` is not present in source file
+   - Verify `buildControllerUpsertPayload_` is not present in source file
+   - Verify `toPlainPartialRow_` is not present in source file
 
-### Section checks
+2. **Call sites updated:**
+   - Verify `upsertAssignmentDefinition_` calls `controller.toCanonicalFullDefinitionResponse(definition)`
+   - Verify `getAssignmentDefinition_` calls `controller.toCanonicalFullDefinitionResponse(definition)`
 
-- `npm run test:frontend -- src/frontend/src/query/sharedQueries.spec.ts`
-- All query options tests pass
-- Lint passes: `npm run lint:frontend -- src/frontend/src/query/sharedQueries.ts`
-- Mandatory-read evidence gate passed for all delegated handoffs in this section
+3. **getAssignmentDefinitionPartials\_ return shape:**
+   - Test that returned objects have same shape as `definition.toPartialJSON()` but without `yearGroup` field
+   - Test that Date fields (`createdAt`, `updatedAt`) are normalised as ISO strings defensively (handles both Date instances and pre-normalised strings)
+   - Test that all other expected fields are present
+   - Test that `tasks` field is `null` for partial definitions
 
-### Optional `@remarks` JSDoc follow-through
+4. **Transport validation unchanged:**
+   - Test `validateRequiredYearGroupKey_` throws `ApiValidationError` when `yearGroupKey` is null
+   - Test `validateRequiredYearGroupKey_` throws `ApiValidationError` when `yearGroupKey` is missing
+   - Test `validateUpsertParameters_` still works correctly
+   - Test `validateReadParameters_` still works correctly
+   - Test `validateDeleteParameters_` still works correctly
 
-None
+5. **No `assignmentWeighting` defaulting in inlined code:**
+   - Test that inlined URL-to-ID translation does NOT add `assignmentWeighting: 1` when missing from payload
 
-### Implementation notes / deviations / follow-up
+### Required test updates/deletions
 
-- **Implementation notes**: This is an explicit migration section. Update query/service contracts and adjust all impacted consumers/tests in the same pass.
-- **Deviations from plan**: None expected
-- **Follow-up implications for later sections**: Query options used by ManageTopicsModal
+**Constraint:** Verify test patterns against actual test file contents before applying deletions/updates to ensure no unintended matches.
 
----
+Tests to UPDATE:
 
-## Section 3.5 — Extend Reference Data Trust Boundary
-
-### Objective
-
-- Extend the `ReferenceDataTrustBoundary` type to include `'assignmentTopics'`
-- Update all helper functions in `manageReferenceDataHelpers.ts` to support topics
-- Update the `useReferenceDataManagement` hook to accept topics as a valid entity type
-
-### Constraints
-
-- Must extend type without breaking existing cohorts/year groups functionality
-- Must update all functions that use `ReferenceDataTrustBoundary`
-- Must enforce canonical topic contract end-to-end
-- Must follow existing patterns exactly
-
-### Dependencies
-
-- None (can be done in parallel with backend sections)
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Testing Specialist mandatory docs:
-
-- `SPEC.md`
-- `src/frontend/src/features/classes/manageReferenceDataHelpers.ts`
-- `src/frontend/src/features/classes/hooks/useReferenceDataManagement.ts`
-- `docs/developer/frontend/frontend-testing.md`
-
-Implementation mandatory docs:
-
-- `SPEC.md`
-- `src/frontend/src/features/classes/manageReferenceDataHelpers.ts`
-- `src/frontend/src/features/classes/hooks/useReferenceDataManagement.ts`
-- `src/frontend/AGENTS.md`
-
-Code Reviewer mandatory docs:
-
-- `SPEC.md`
-- `src/frontend/src/features/classes/manageReferenceDataHelpers.ts`
-- `src/frontend/src/features/classes/hooks/useReferenceDataManagement.ts`
-- `src/frontend/AGENTS.md`
-
-### Shared helper plan (when helper changes are expected)
-
-Helper decision entries:
-
-1. Helper: ReferenceDataTrustBoundary type extension
-   - Decision: `extend`
-   - Owning module/path: `src/frontend/src/features/classes/manageReferenceDataHelpers.ts` and `src/frontend/src/features/classes/hooks/useReferenceDataManagement.ts`
-   - Call-site rationale: Topics need to use the same trust boundary helpers as cohorts and year groups
-   - Relevant canonical doc target: None (internal helper)
-   - Planned doc status: `Not implemented`
-
-### Acceptance criteria
-
-- `ReferenceDataTrustBoundary` type extended to include `'assignmentTopics'` in **BOTH** locations:
-  - `manageReferenceDataHelpers.ts` line 12 (internal type definition)
-  - `useReferenceDataManagement.ts` line 36 (exported type definition)
-- All functions in `manageReferenceDataHelpers.ts` updated to support topics:
-  - `getReferenceDataBlockingLoadErrorQueryKey`
-  - `getPersistedBlockingLoadError`
-  - `setPersistedBlockingLoadError`
-  - `clearPersistedBlockingLoadError`
-  - `getReferenceDataLoadError`
-  - `refetchRequiredReferenceDataQuery`
-  - Any other functions using the trust boundary type
-- `useReferenceDataManagement` hook's `ReferenceDataManagementConfig` type updated to accept `'assignmentTopics'` as valid `entityKey`
-
-### Required test cases (Red first)
-
-Frontend tests:
-
-1. `ReferenceDataTrustBoundary` type in `manageReferenceDataHelpers.ts` includes 'assignmentTopics'
-2. `ReferenceDataTrustBoundary` type in `useReferenceDataManagement.ts` includes 'assignmentTopics'
-3. All trust boundary helper functions accept 'assignmentTopics' as valid parameter
-4. `useReferenceDataManagement` hook can be configured with `entityKey: 'assignmentTopics'`
-5. Existing cohorts and year groups functionality still works after type extension
-6. Compilation succeeds after type changes (no TypeScript errors)
+- `tests/backend-api/assignmentDefinitionPartials.unit.test.js`:
+  - Tests for `getAssignmentDefinitionPartials_` — UPDATE to verify `yearGroup` field is NOT included in returned objects and Date fields are normalised
+  - Tests for `toTransportPartialRow_` — ADD new tests for the new helper
+- `tests/api/assignmentDefinitionReadApi.test.js`:
+  - Tests for `getAssignmentDefinition_` — UPDATE to verify `yearGroup` field is NOT included in response
 
 ### Section checks
 
-- `npm run test:frontend -- src/frontend/src/features/classes/manageReferenceDataHelpers.spec.ts`
-- `npm run test:frontend -- src/frontend/src/features/classes/hooks/useReferenceDataManagement.spec.ts`
-- All trust boundary extension tests pass
-- Lint passes for modified files
-- Mandatory-read evidence gate passed for all delegated handoffs in this section
-- Planned helper entries added to canonical docs
-
-### Optional `@remarks` JSDoc follow-through
-
-- Add `@remarks` to updated functions explaining the trust boundary extension for topics
-
-### Implementation notes / deviations / follow-up
-
-- **Implementation notes**: Type extension and helper updates in existing files. This is a prerequisite for ManageTopicsModal.
-- **Deviations from plan**: None expected
-- **Follow-up implications for later sections**: Required before ManageTopicsModal can use the shared hook
-
----
-
-## Section 4 — Settings Page Reference Data Tab
-
-### Objective
-
-- Add a new Reference Data tab to the Settings page
-- Create ReferenceDataSettingsPanel component with Topics section
-- Keep this section scoped to tab and panel structure only (modal wiring is handled in Section 8)
-
-### Constraints
-
-- Must follow existing Settings page tab pattern
-- Must use Ant Design Tabs component
-- Must use Card with className `settings-tab-panel`
-- Must not break existing Classes or Backend Settings tabs
-- Tab should be last in the tab order
-
-### Dependencies
-
-- Section 3.5 — Extend Reference Data Trust Boundary (required for ManageTopicsModal)
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Testing Specialist mandatory docs:
-
-- `SPEC.md`
-- `TOPICS_AND_REFERENCE_DATA_LAYOUT.md`
-- `src/frontend/src/pages/SettingsPage.tsx`
-- `src/frontend/src/features/settings/backend/BackendSettingsPanel.tsx`
-- `docs/developer/frontend/frontend-testing.md`
-
-Implementation mandatory docs:
-
-- `SPEC.md`
-- `TOPICS_AND_REFERENCE_DATA_LAYOUT.md`
-- `src/frontend/src/pages/SettingsPage.tsx`
-- `src/frontend/src/features/settings/backend/BackendSettingsPanel.tsx`
-- `src/frontend/AGENTS.md`
-
-Code Reviewer mandatory docs:
-
-- `SPEC.md`
-- `TOPICS_AND_REFERENCE_DATA_LAYOUT.md`
-- `src/frontend/src/pages/SettingsPage.tsx`
-- `src/frontend/AGENTS.md`
-
-### Shared helper plan (when helper changes are expected)
-
-Helper decision entries:
-
-1. Helper: ReferenceDataSettingsPanel component
-   - Decision: `new`
-   - Owning module/path: `src/frontend/src/features/settings/ReferenceDataSettingsPanel.tsx`
-   - Call-site rationale: New component for reference data management in Settings, providing entry point for all reference data modals
-   - Relevant canonical doc target: `docs/developer/frontend/frontend-modal-patterns.md`
-   - Planned doc status: `Not implemented`
-
-### Acceptance criteria
-
-- `SettingsTabKey` type in `SettingsPage.tsx` extended to include `'reference-data'` (in addition to existing `'classes' | 'backend-settings'`)
-- New tab with key `reference-data` and label "Reference Data" added to SettingsPage Tabs
-- ReferenceDataSettingsPanel component created
-- ReferenceDataSettingsPanel contains Topics section with:
-  - Title: "Topics"
-  - Description: "Manage assignment topics"
-  - Button: "Manage Topics" (opens ManageTopicsModal)
-- Card with className `settings-tab-panel` wraps ReferenceDataSettingsPanel
-- Tab is last in the tab order
-- Tab appears in the tab bar alongside existing "Classes" and "Backend settings" tabs
-
-### Required test cases (Red first)
-
-Frontend tests:
-
-1. SettingsPage renders Reference Data tab in tab bar
-2. Reference Data tab has key 'reference-data'
-3. Reference Data tab has label 'Reference Data'
-4. Reference Data tab is last in tab order
-5. Clicking Reference Data tab shows ReferenceDataSettingsPanel
-6. ReferenceDataSettingsPanel renders Topics section
-7. Topics section shows title "Topics"
-8. Topics section shows button "Manage Topics"
-9. Topics section includes a primary "Manage Topics" button (modal open behaviour tested in Section 8)
-
-### Section checks
-
-- `npm run test:frontend -- src/frontend/src/pages/SettingsPage.spec.tsx`
-- `npm run test:frontend -- src/frontend/src/features/settings/ReferenceDataSettingsPanel.spec.tsx`
-- All Settings page tests pass
-- Lint passes: `npm run lint:frontend -- src/frontend/src/pages/SettingsPage.tsx`
-- Lint passes: `npm run lint:frontend -- src/frontend/src/features/settings/ReferenceDataSettingsPanel.tsx`
-- Mandatory-read evidence gate passed for all delegated handoffs in this section
-- Planned helper entries added to canonical docs
-
-### Optional `@remarks` JSDoc follow-through
-
-None
-
-### Implementation notes / deviations / follow-up
-
-- **Implementation notes**: New file `ReferenceDataSettingsPanel.tsx` created
-- **Deviations from plan**: None expected
-- **Follow-up implications for later sections**: Panel provides entry point for ManageTopicsModal
-
----
-
-## Section 5 — ManageTopicsModal Component
-
-**⚠️ WARNING**: This section CANNOT be implemented until Section 3.5 (Extend Reference Data Trust Boundary) is complete. The useReferenceDataManagement hook will fail to compile with entityKey: 'assignmentTopics' if the trust boundary type has not been extended.
-
-### Objective
-
-- Create the ManageTopicsModal component following the exact pattern of ManageCohortsModal and ManageYearGroupsModal
-- Reuse the ReferenceDataManagementModalScaffold
-- Wire up the useReferenceDataManagement hook with topic configuration including yearGroupKeys support
-
-### Constraints
-
-- Must reuse `ReferenceDataManagementModalScaffold` without modification
-- Must keep `useReferenceDataManagement` as the primary shared modal state/query infrastructure (matching ManageCohortsModal/ManageYearGroupsModal patterns in `docs/developer/frontend/frontend-modal-patterns.md`)
-- May extend `useReferenceDataManagement` for AssignmentTopic typing and callback ergonomics only; do not convert it into a multi-query orchestrator
-- Use a feature-local Topics form renderer to support year group multi-select rather than forcing the shared name-only dialog contract
-- Must use `AssignmentTopic` type from Section 1
-- Must use `getAssignmentTopicsQueryOptions` from Section 3
-- Must use service functions from Section 2
-- Must follow existing patterns exactly
-- Must support year group multi-select in create/edit form
-- Must display year groups in table
-- Must implement fail-closed ready-body gating with both topics data (from shared hook) and yearGroups data (feature-local required dependency)
-
-### Dependencies
-
-- Section 0 — Backend Model Creation (provides AssignmentTopic type understanding)
-- Section 0.5 — Backend Controller Update
-- Section 1 — Schema and Type Definitions (provides AssignmentTopic type)
-- Section 2 — Service Layer Extensions (provides createAssignmentTopic, updateAssignmentTopic, deleteAssignmentTopic)
-- Section 3 — Query Options (migrated enriched query contract)
-- Section 3.5 — Extend Reference Data Trust Boundary (MUST be complete - hook won't accept 'assignmentTopics' entityKey otherwise)
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Testing Specialist mandatory docs:
-
-- `SPEC.md`
-- `TOPICS_AND_REFERENCE_DATA_LAYOUT.md`
-- `src/frontend/src/features/classes/ManageCohortsModal.tsx`
-- `src/frontend/src/features/classes/ManageYearGroupsModal.tsx`
-- `src/frontend/src/features/classes/ReferenceDataManagementModalScaffold.tsx`
-- `src/frontend/src/features/classes/hooks/useReferenceDataManagement.ts`
-- `docs/developer/frontend/frontend-testing.md`
-
-Implementation mandatory docs:
-
-- `SPEC.md`
-- `TOPICS_AND_REFERENCE_DATA_LAYOUT.md`
-- `src/frontend/src/features/classes/ManageCohortsModal.tsx`
-- `src/frontend/src/features/classes/ManageYearGroupsModal.tsx`
-- `src/frontend/src/features/classes/ReferenceDataManagementModalScaffold.tsx`
-- `src/frontend/src/features/classes/hooks/useReferenceDataManagement.ts`
-- `src/frontend/AGENTS.md`
-- `docs/developer/frontend/frontend-modal-patterns.md`
-
-Code Reviewer mandatory docs:
-
-- `SPEC.md`
-- `src/frontend/src/features/classes/ManageCohortsModal.tsx`
-- `src/frontend/src/features/classes/ManageYearGroupsModal.tsx`
-- `src/frontend/AGENTS.md`
-
-### Shared helper plan (when helper changes are expected)
-
-Helper decision entries:
-
-1. Helper: ManageTopicsModal component
-   - Decision: `new`
-   - Owning module/path: `src/frontend/src/features/settings/ManageTopicsModal.tsx`
-   - Call-site rationale: New component for topics management, following existing pattern
-   - Relevant canonical doc target: `docs/developer/frontend/frontend-modal-patterns.md`
-   - Planned doc status: `Not implemented`
-
-### Acceptance criteria
-
-- ManageTopicsModal component created at `src/frontend/src/features/settings/ManageTopicsModal.tsx`
-- Component uses `ReferenceDataManagementModalScaffold<AssignmentTopic>`
-- Component uses `useReferenceDataManagement` hook with topic configuration:
-  - `entityLabel: 'topic'`
-  - `entityKey: 'assignmentTopics'` (matches extended trust boundary)
-  - `queryOptions: getAssignmentTopicsQueryOptions()` (from sharedQueries)
-  - `createService: createAssignmentTopic` (from referenceDataService)
-  - `updateService: updateAssignmentTopic` (from referenceDataService)
-  - `deleteService: deleteAssignmentTopic` (from referenceDataService)
-  - `supportsToggleActive: false` (topics don't have active field)
-- Modal title: "Manage Topics"
-- Modal className: `manage-topics-modal`
-- Modal width: 700px (matches ManageYearGroupsModal, accommodates year group multi-select)
-- Create action label: "Create topic"
-- Table aria-label: "topics"
-- Empty table copy: "No topics"
-- Refresh status copy: "Refreshing topics..."
-- Load failure copy: "Unable to load topics right now."
-- Form validation message: "Please enter a topic name."
-- Delete dialog title: "Delete topic"
-- FORM_DIALOG_LABEL_ID: 'manage-topics-form-dialog-title'
-- DELETE_DIALOG_LABEL_ID: 'manage-topics-delete-dialog-title'
-- ManageTopicsModal accepts an `onEntityCreated` prop from orchestration owners and calls it with `yearGroupKeys: string[]` in the payload for newly created topics
-- Table columns:
-  - Name (dataIndex: 'name')
-  - Year Groups (dataIndex: 'yearGroupKeys', render function looks up year group names from yearGroups query and displays them as comma-separated values)
-  - Actions (Edit, Delete)
-- **Year group multi-select**: Create/edit form includes a multi-select component for year groups
-  - Label: "Year Groups" or "Associated Year Groups"
-  - All available year groups from yearGroups query as options
-  - Can select multiple year groups
-  - Empty selection allowed (topic can have no year groups)
-  - Uses standard Ant Design Select with mode="multiple"
-- **Year Groups required dependency**: ManageTopicsModal must fetch yearGroups query (using `getYearGroupsQueryOptions`) as blocking-required data for both form options and table rendering
-- **Fail-closed architecture decision (consistent with existing patterns)**:
-  - Keep `useReferenceDataManagement` as the single-source shared infrastructure for topics query lifecycle and persisted blocking error state under `entityKey: 'assignmentTopics'`
-  - ManageTopicsModal adds a feature-local required `yearGroups` query and computes a combined blocking gate for ready-body rendering
-  - ManageTopicsModal reuses shared `yearGroups` trust-boundary helpers (`getPersistedBlockingLoadError`, `setPersistedBlockingLoadError`, `clearPersistedBlockingLoadError`, and busy-state synchronisation) for read/persist/clear/recovery behaviour
-  - Ready-body content renders only when both topics state and yearGroups state are ready
-  - If yearGroups fails, ManageTopicsModal surfaces blocking alert content and withholds ready-body content (same fail-closed user experience pattern)
-  - Refetch/retry wiring for the combined gate must be explicit in ManageTopicsModal tests and implementation notes
-- No toggle active support (topics don't have active field)
-
-### Required test cases (Red first)
-
-Frontend tests:
-
-1. ManageTopicsModal renders with correct title "Manage Topics"
-2. ManageTopicsModal uses correct modal className `manage-topics-modal`
-3. ManageTopicsModal has width 700px
-4. ManageTopicsModal passes correct props to scaffold
-5. ManageTopicsModal uses `getAssignmentTopicsQueryOptions()` from sharedQueries
-6. ManageTopicsModal configures `useReferenceDataManagement` with:
-   - `entityKey: 'assignmentTopics'`
-   - `createService: createAssignmentTopic` from referenceDataService
-   - `updateService: updateAssignmentTopic` from referenceDataService
-   - `deleteService: deleteAssignmentTopic` from referenceDataService
-   - `supportsToggleActive: false`
-7. Table columns match specification (Name, Year Groups, Actions)
-8. Year Groups column render function looks up year group names from yearGroups query
-9. Year Groups column displays comma-separated year group names for topics with yearGroupKeys
-10. Year Groups column displays empty string for topics with empty yearGroupKeys array
-11. Year Groups dependency is treated as blocking-required; ready-body content does not render until both topics and yearGroups data are ready
-12. Action buttons wired correctly (Edit opens edit form, Delete opens delete dialog)
-13. Create button triggers create form with year group multi-select
-14. Create form includes year group multi-select field with all available year groups as options
-15. Create form year group multi-select allows multiple selection
-16. Create form year group multi-select allows empty selection
-17. Edit form includes year group multi-select field with pre-selected existing yearGroupKeys
-18. Edit form year group multi-select allows changing selected year groups
-19. Modal closes callback is passed through
-20. Loading state shows skeleton
-21. Empty state shows "No topics"
-22. Error state shows alert
-
-### Section checks
-
-- `npm run test:frontend -- src/frontend/src/features/settings/ManageTopicsModal.spec.tsx`
-- All ManageTopicsModal tests pass
-- Lint passes: `npm run lint:frontend -- src/frontend/src/features/settings/ManageTopicsModal.tsx`
-- Mandatory-read evidence gate passed for all delegated handoffs in this section
-- Planned helper entries added to canonical docs
-
-### Optional `@remarks` JSDoc follow-through
-
-- Add `@remarks` on ManageTopicsModal explaining it follows the same pattern as ManageCohortsModal and ManageYearGroupsModal, with added year group multi-select support
-
-### Implementation notes / deviations / follow-up
-
-- **Implementation notes**: Component follows exact pattern of existing reference data modals. The key difference is the year group multi-select in the form and the Year Groups column in the table. Modal width is 700px per TOPICS_AND_REFERENCE_DATA_LAYOUT.md specification.
-- **Deviations from plan**: None expected
-- **Follow-up implications for later sections**: Modal will be opened from ReferenceDataSettingsPanel and used in SelectWithAddNew workflow
-
----
-
-## Section 6 — SelectWithAddNew Wrapper Component
-
-### Objective
-
-- Create a reusable wrapper component that adds 'Add new' option to Select dropdowns
-- This component will wrap existing Select usage or provide a drop-in replacement
-- Include debounce for modal open and create action
-
-### Constraints
-
-- Must use Ant Design Select with a sentinel 'Add new' option value (no popup footer injection)
-- Must not break existing Select functionality
-- Must be keyboard accessible
-- Must support all existing Select props
-- Must add 'Add new' sentinel option at the bottom of the options list
-- Must call onAddNew callback when 'Add new' is clicked
-- Must debounce modal open (prevent rapid repeated clicks on 'Add new')
-- Must include PlusOutlined icon alongside 'Add new' text
-- Must preserve standard Select option semantics and keyboard behaviour (sentinel last-option model only)
-
-### Dependencies
-
-- None (can be built in parallel)
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Testing Specialist mandatory docs:
-
-- `SPEC.md`
-- `TOPICS_AND_REFERENCE_DATA_LAYOUT.md`
-- `docs/developer/frontend/frontend-testing.md`
-
-Implementation mandatory docs:
-
-- `SPEC.md`
-- `TOPICS_AND_REFERENCE_DATA_LAYOUT.md`
-- `src/frontend/AGENTS.md`
-
-Code Reviewer mandatory docs:
-
-- `SPEC.md`
-- `src/frontend/AGENTS.md`
-
-### Shared helper plan (when helper changes are expected)
-
-Helper decision entries:
-
-1. Helper: SelectWithAddNew component
-   - Decision: `new`
-   - Owning module/path: `src/frontend/src/components/SelectWithAddNew.tsx`
-   - Call-site rationale: Reusable wrapper for all reference data Select dropdowns
-   - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
-   - Planned doc status: `Not implemented`
-
-2. Helper: useDebounce hook (if not existing)
-   - Decision: `new` (if not found in codebase)
-   - Owning module/path: `src/frontend/src/hooks/useDebounce.ts`
-   - Call-site rationale: Shared debounce utility for preventing rapid repeated clicks on 'Add new' option
-   - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
-   - Planned doc status: `Not implemented`
-
-### Acceptance criteria
-
-- SelectWithAddNew component created
-- Component accepts all standard Select props
-- Component accepts additional props:
-  - `onAddNew?: () => void` - callback when 'Add new' is clicked
-- `addNewLabel?: string` - custom label for 'Add new' option (e.g., "Add new topic")
-  - `entityType?: 'cohort' | 'yearGroup' | 'topic'` - for default label generation
-  - `debounceMs?: number` - debounce duration for modal open (default: 300ms)
-- When `onAddNew` is provided, adds 'Add new' option to dropdown
-- 'Add new' sentinel option appears at bottom of dropdown options
-- 'Add new' option uses PlusOutlined icon from Ant Design
-- Clicking 'Add new' triggers `onAddNew` callback and closes dropdown
-- 'Add new' option is keyboard accessible (arrow keys, Enter/Space)
-- 'Add new' option MUST be disabled when Select is disabled, matching Ant Design's native behavior
-- 'Add new' label uses `addNewLabel` prop when provided, otherwise generates from entityType
-- Debounce: clicking 'Add new' rapidly within debounceMs only triggers onAddNew once
-- Created-entity callback handling remains in owning surfaces, not this wrapper
-- Uses a debounce mechanism applied to the onAddNew callback with default duration of 300ms
-- If a `useDebounce` hook doesn't exist in the codebase, create `src/frontend/src/hooks/useDebounce.ts` using the existing `throttle-debounce` package from dependencies, or implement a simple custom debounce hook. Prefer using the existing package if it provides a React hook compatible with the project's React version.
-- debounceMs defaults to 300ms when not specified
-
-### Required test cases (Red first)
-
-Frontend tests:
-
-1. SelectWithAddNew renders standard Select without onAddNew prop
-2. SelectWithAddNew renders 'Add new' option when onAddNew prop provided
-3. 'Add new' option appears at bottom of dropdown with PlusOutlined icon
-4. 'Add new' is represented as a real Select option (sentinel value), not custom popup content
-5. Clicking 'Add new' calls onAddNew callback (debounced)
-6. Clicking 'Add new' closes the dropdown
-7. 'Add new' option has proper label (default or custom)
-8. 'Add new' option is keyboard accessible (arrow keys, Enter)
-9. 'Add new' option is disabled when Select is disabled
-10. Standard Select options still work correctly
-11. All standard Select props are forwarded correctly
-12. Rapid clicks on 'Add new' only trigger onAddNew once (debounce test with 300ms default)
-13. Wrapper remains presentational and does not store created-entity callbacks
-14. debounceMs defaults to 300 when not provided
-
-### Section checks
-
-- `npm run test:frontend -- src/frontend/src/components/SelectWithAddNew.spec.tsx`
-- All SelectWithAddNew tests pass
-- Lint passes: `npm run lint:frontend -- src/frontend/src/components/SelectWithAddNew.tsx`
-- Mandatory-read evidence gate passed for all delegated handoffs in this section
-- Planned helper entries added to canonical docs
-
-### Optional `@remarks` JSDoc follow-through
-
-- Add `@remarks` explaining the component wraps Ant Design Select with custom sentinel option and debouncing
-
-### Implementation notes / deviations / follow-up
-
-- **Implementation notes**: Component uses a sentinel Select option for 'Add new'. Debouncing is applied to the onAddNew callback (modal open) only. The PlusOutlined icon is imported from Ant Design icons. If a useDebounce hook doesn't exist, create `src/frontend/src/hooks/useDebounce.ts` as a shared utility.
-- **Deviations from plan**: None expected
-- **Follow-up implications for later sections**: Component will be used in Section 7. Note: debouncing the create action (preventing rapid repeated creation attempts) is handled separately in the modal components and is out of scope for this component.
-
----
-
-## Section 7 — Integrate 'Add new' into Existing Select Dropdowns
-
-### Objective
-
-- Update all existing reference data Select dropdowns to use the SelectWithAddNew component
-- Keep presentational Select surfaces thin and prop-driven (per `docs/developer/frontend/frontend-modal-patterns.md` and existing class/wizard modal patterns)
-- Wire up `onAddNew` and `onEntityCreated` orchestration in existing owners, not presentational children
-
-### Constraints
-
-- Must update existing files without breaking existing functionality
-- Must preserve existing orchestration ownership:
-  - Classes flows owned by `ClassesManagementPanel`
-  - Wizard flows owned by `useAssignmentDefinitionWizard` / `AssignmentDefinitionWizardModal`
-- Must handle the post-creation refresh and selection properly
-- Must maintain existing prop patterns and styling
-- Must pass debounceMs for consistent behaviour
-
-### Dependencies
-
-- Section 4 — Settings Page Reference Data Tab (ManageTopicsModal must be importable)
-- Section 5 — ManageTopicsModal Component (provides the modal to open for topics)
-- Section 6 — SelectWithAddNew Wrapper Component (provides the wrapper to use)
-- Existing ManageCohortsModal and ManageYearGroupsModal must exist (for cohort/year group 'Add new' options)
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Testing Specialist mandatory docs:
-
-- `SPEC.md`
-- `TOPICS_AND_REFERENCE_DATA_LAYOUT.md`
-- All files being modified in this section
-- `docs/developer/frontend/frontend-testing.md`
-
-Implementation mandatory docs:
-
-- `SPEC.md`
-- `TOPICS_AND_REFERENCE_DATA_LAYOUT.md`
-- All files being modified in this section
-- `src/frontend/AGENTS.md`
-
-Code Reviewer mandatory docs:
-
-- `SPEC.md`
-- All files being modified in this section
-- `src/frontend/AGENTS.md`
-
-### Shared helper plan (when helper changes are expected)
-
-Helper decision entries:
-
-1. Helper: SelectWithAddNew integration
-   - Decision: `extend`
-   - Owning module/path: `src/frontend/src/components/SelectWithAddNew.tsx` (created in Section 6)
-   - Call-site rationale: Extending usage of the shared SelectWithAddNew wrapper to all existing reference data Select dropdowns across BulkCreateModal, BulkSetSelectModal, and AssignmentDefinitionWizardModalShell
-   - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
-   - Planned doc status: `Not implemented`
-
-2. Helper: Orchestration-owner modal callback wiring
-   - Decision: `extend`
-   - Owning module/path: `src/frontend/src/features/classes/ClassesManagementPanel.tsx`
-   - Call-site rationale: Existing owner of classes modal state and callbacks; add `onAddNew` and `onEntityCreated` orchestration without moving state into presentational children
-   - Relevant canonical doc target: `docs/developer/frontend/frontend-modal-patterns.md`
-   - Planned doc status: `Not implemented`
-
-3. Helper: Wizard-owner modal callback wiring
-   - Decision: `extend`
-   - Owning module/path: `src/frontend/src/pages/useAssignmentDefinitionWizard.ts` and `src/frontend/src/pages/AssignmentDefinitionWizardModal.tsx`
-   - Call-site rationale: Existing owner of wizard modal/query orchestration; keep shell presentational
-   - Relevant canonical doc target: `docs/developer/frontend/frontend-modal-patterns.md`
-   - Planned doc status: `Not implemented`
-
-### Acceptance criteria
-
-All affected files updated:
-
-1. **BulkCreateModal.tsx**
-   - Cohort Select uses SelectWithAddNew with:
-     - `onAddNew` prop passed from `ClassesManagementPanel`
-     - `addNewLabel="Add new cohort"`
-     - modal-local form remains source of truth; modal receives owner-provided `pendingCreatedCohortKey` bridge prop and applies it via form effect
-     - `debounceMs={300}`
-   - Year Group Select uses SelectWithAddNew with:
-     - `onAddNew` prop passed from `ClassesManagementPanel`
-     - `addNewLabel="Add new year group"`
-     - modal-local form remains source of truth; modal receives owner-provided `pendingCreatedYearGroupKey` bridge prop and applies it via form effect
-     - `debounceMs={300}`
-
-2. **BulkSetSelectModal.tsx**
-   - Select uses SelectWithAddNew
-   - `onAddNew` callback received via owner-provided props
-   - `addNewLabel` determined by entity type prop ("Add new cohort" or "Add new year group")
-   - modal-local form remains source of truth; modal receives owner-provided pending-created-key bridge prop for post-create selection
-   - `debounceMs={300}`
-
-3. **AssignmentDefinitionWizardModalShell.tsx**
-   - Topic Select uses SelectWithAddNew with:
-     - `onAddNew` prop passed from `AssignmentDefinitionWizardModal`/`useAssignmentDefinitionWizard`
-     - `addNewLabel="Add new topic"`
-     - selected-value update props remain controlled by owner
-     - `debounceMs={300}`
-   - Year Group Select uses SelectWithAddNew with:
-     - `onAddNew` prop passed from `AssignmentDefinitionWizardModal`/`useAssignmentDefinitionWizard`
-     - `addNewLabel="Add new year group"`
-     - selected-value update props remain controlled by owner
-     - `debounceMs={300}`
-
-4. **ClassesManagementPanel.tsx**
-   - Owns modal open state and modal rendering for cohort/year-group add-new flows
-   - Owns `onEntityCreated` handling: set pending-created-key bridge state, invalidate active queries, and pass bridge props to child modals
-
-5. **useAssignmentDefinitionWizard.ts + AssignmentDefinitionWizardModal.tsx**
-   - Own modal open state and modal rendering for topic/year-group add-new flows
-   - Own `onEntityCreated` handling: set wizard-selected value from callback payload immediately, invalidate active queries, and allow observer-driven refresh
-
-6. **ManageCohortsModal.tsx and ManageYearGroupsModal.tsx**
-   - Add optional `onEntityCreated` callback support (pattern parity with ManageTopicsModal requirement)
-   - Emit created entity payloads needed by orchestration owners for post-create auto-selection
-
-Post-creation behaviour:
-
-- When modal creates entity, it calls the callback with the new entity `{ key, name, yearGroupKeys? }`
-  - For topics: callback MUST include `yearGroupKeys: string[]`
-  - For cohorts/year groups: callback includes only `{ key, name }` (yearGroupKeys omitted)
-- Orchestration owners (for example `ClassesManagementPanel` and `useAssignmentDefinitionWizard`/`AssignmentDefinitionWizardModal`) use the callback to:
-  1. Set local selection state (or pending-created-key bridge state) from callback payload
-  2. Invalidate the relevant query (cohorts, yearGroups, or assignmentTopics)
-  3. Let active observers refresh in the background (no manual fetch/refetch chaining unless explicitly required)
-- Debouncing prevents rapid repeated modal opens
-
-### Required test cases (Red first)
-
-Frontend tests for each file:
-
-1. BulkCreateModal: Cohort Select has 'Add new cohort' option with PlusOutlined icon
-2. BulkCreateModal: Year Group Select has 'Add new year group' option with PlusOutlined icon
-3. BulkCreateModal: Clicking 'Add new cohort' opens ManageCohortsModal (debounced)
-4. BulkCreateModal: Clicking 'Add new year group' opens ManageYearGroupsModal (debounced)
-5. ClassesManagementPanel handles cohort `onEntityCreated` orchestration and passes `pendingCreatedCohortKey` bridge prop consumed by BulkCreateModal form effect
-6. ClassesManagementPanel handles year-group `onEntityCreated` orchestration and passes `pendingCreatedYearGroupKey` bridge prop consumed by BulkCreateModal form effect
-7. BulkSetSelectModal: Select has 'Add new' option with correct label based on entity type
-8. BulkSetSelectModal: Clicking 'Add new' opens correct modal (cohort or year group) with debounce
-9. ClassesManagementPanel handles BulkSetSelectModal add-new orchestration via owner callbacks and pending-created-key bridge props
-10. AssignmentDefinitionWizardModalShell: Topic Select has 'Add new topic' option with PlusOutlined icon
-11. AssignmentDefinitionWizardModalShell: Year Group Select has 'Add new year group' option with PlusOutlined icon
-12. AssignmentDefinitionWizardModalShell: Clicking 'Add new topic' opens ManageTopicsModal (debounced)
-13. useAssignmentDefinitionWizard/AssignmentDefinitionWizardModal handle topic and year-group `onEntityCreated` orchestration and pass updated selected values to shell props
-14. All existing Select functionality still works
-
-Integration tests: 15. Full workflow: Select 'Add new' (debounced) -> Create entity in modal -> Modal calls onEntityCreated -> Entity appears in dropdown and is automatically selected 16. Rapid clicks on 'Add new' only open modal once (debounce verification)
-
-### Section checks
-
-- `npm run test:frontend -- src/frontend/src/features/classes/BulkCreateModal.spec.tsx`
-- `npm run test:frontend -- src/frontend/src/features/classes/BulkSetSelectModal.spec.tsx`
-- `npm run test:frontend -- src/frontend/src/pages/AssignmentDefinitionWizardModalShell.spec.tsx`
-- All Select integration tests pass
-- Lint passes for all modified files
-- Mandatory-read evidence gate passed for all delegated handoffs in this section
-
-### Optional `@remarks` JSDoc follow-through
-
-- Add `@remarks` to updated Select instances explaining the 'Add new' integration with debounce
-
-### Implementation notes / deviations / follow-up
-
-- **Implementation notes**: All 8 production files updated with SelectWithAddNew integration and orchestration wiring. Implementation complete:
-  - BulkCreateModal: Cohort and Year Group selects use SelectWithAddNew with proper callbacks
-  - BulkSetSelectModal: Generic entityType detection added for cohort/yearGroup/topic
-  - ClassesManagementPanel: Orchestration owner for cohort/year-group modals, handles onEntityCreated and passes bridge props
-  - AssignmentDefinitionWizardModal/Shell: Orchestration owner for topic/year-group modals, handles onEntityCreated and selected value updates
-  - ManageCohortsModal/ManageYearGroupsModal: Added optional onEntityCreated callback support
-  - Debouncing applied at SelectWithAddNew level (300ms default)
-  - Playwright e2e test created for full workflow verification
-- **Deviations from plan**: None - all acceptance criteria satisfied as planned
-- **Follow-up implications for later sections**: None - this is the final integration
-- **Code Review Outcome**: Initial Green Review PASSED, then 4 in-scope blocking issues found and fixed:
-  1. AssignmentDefinitionWizardModal.tsx useCallback dependency array corrected
-  2. ManageCohortsModal.tsx createService return type fixed (removed return statement)
-  3. ManageYearGroupsModal.tsx createService return type fixed (removed return statement)
-  4. BulkSetSelectModal.tsx entityType detection extended to include topic case
-     Final clean verification: **PASSED** - All 16 acceptance criteria satisfied
-- **Test Results**: 80 frontend test files pass (698 tests), 77 backend test files pass (973 tests), Section 7 specific tests: 6 files, 27 tests passing
-- **Pre-existing Issues**: ManageTopicsModal.tsx has 4 Section 5 regressions (ReactElement import, createService/render callbacks type mismatches) that are OUT OF SCOPE for Section 7 and need separate resolution
-
----
-
-## Section 8 — Settings Page Modal Wiring
-
-### Objective
-
-- Wire up the ManageTopicsModal to open from the ReferenceDataSettingsPanel
-- Ensure proper state management for modal open/close
-- Add query client invalidation if needed
-
-### Constraints
-
-- Must follow existing pattern from ManageCohortsModal and ManageYearGroupsModal in ClassesManagementPanel
-- Must manage modal open state in ReferenceDataSettingsPanel
-- Must pass correct props to ManageTopicsModal
-
-### Dependencies
-
-- Section 4 — Settings Page Reference Data Tab (ReferenceDataSettingsPanel must exist)
-- Section 5 — ManageTopicsModal Component (ManageTopicsModal must exist)
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Testing Specialist mandatory docs:
-
-- `SPEC.md`
-- `TOPICS_AND_REFERENCE_DATA_LAYOUT.md`
-- `src/frontend/src/features/settings/ReferenceDataSettingsPanel.tsx`
-- `src/frontend/src/pages/SettingsPage.tsx`
-- `src/frontend/src/features/settings/ManageTopicsModal.tsx`
-- `docs/developer/frontend/frontend-testing.md`
-
-Implementation mandatory docs:
-
-- `SPEC.md`
-- `TOPICS_AND_REFERENCE_DATA_LAYOUT.md`
-- `src/frontend/src/features/settings/ReferenceDataSettingsPanel.tsx`
-- `src/frontend/src/pages/SettingsPage.tsx`
-- `src/frontend/src/features/settings/ManageTopicsModal.tsx`
-- `src/frontend/AGENTS.md`
-
-Code Reviewer mandatory docs:
-
-- `SPEC.md`
-- `src/frontend/src/features/settings/ReferenceDataSettingsPanel.tsx`
-- `src/frontend/src/features/settings/ManageTopicsModal.tsx`
-- `src/frontend/AGENTS.md`
-
-### Shared helper plan (when helper changes are expected)
-
-Helper decision entries:
-
-1. Helper: ManageTopicsModal wiring in ReferenceDataSettingsPanel
-   - Decision: `reuse`
-   - Owning module/path: `src/frontend/src/features/settings/ReferenceDataSettingsPanel.tsx`
-   - Call-site rationale: Reusing the existing ManageTopicsModal component with standard open/onClose prop pattern, following the same pattern as ManageCohortsModal and ManageYearGroupsModal in ClassesManagementPanel
-   - Relevant canonical doc target: `docs/developer/frontend/frontend-modal-patterns.md`
-   - Planned doc status: `Not implemented`
-
-### Acceptance criteria
-
-- ReferenceDataSettingsPanel has state for manageTopicsModalOpen (using useState)
-- ReferenceDataSettingsPanel passes `open` prop to ManageTopicsModal
-- ReferenceDataSettingsPanel passes `onClose` callback to ManageTopicsModal
-- Clicking "Manage Topics" button sets manageTopicsModalOpen to true
-- Modal closing (via Cancel or overlay click) sets manageTopicsModalOpen to false
-- Modal receives correct props and renders properly
-
-### Required test cases (Red first)
-
-Frontend tests:
-
-1. ReferenceDataSettingsPanel has manageTopicsModalOpen state
-2. Clicking "Manage Topics" button opens ManageTopicsModal
-3. ManageTopicsModal receives open=true when button clicked
-4. ManageTopicsModal receives onClose callback
-5. Clicking Cancel in modal closes it
-6. Modal state resets when closed
-7. Multiple open/close cycles work correctly
-
-### Section checks
-
-- `npm run test:frontend -- src/frontend/src/features/settings/ReferenceDataSettingsPanel.spec.tsx`
-- `npm run test:frontend -- src/frontend/src/features/settings/ManageTopicsModal.spec.tsx`
-- All wiring tests pass
-- Lint passes for modified files
-- Mandatory-read evidence gate passed for all delegated handoffs in this section
-
-### Optional `@remarks` JSDoc follow-through
-
-None
-
-### Implementation notes / deviations / follow-up
-
-- **Implementation notes**: Production code was already complete from Section 4 - ReferenceDataSettingsPanel.tsx was created with full modal wiring (isTopicsModalOpen state, open/onClose props passed to ManageTopicsModal, button click handler). Section 8 added test coverage to verify the wiring works correctly. All 7 acceptance criteria satisfied.
-- **Deviations from plan**: None - all acceptance criteria satisfied as planned. Production code was implemented earlier than expected (in Section 4), but this is acceptable as it follows the same pattern.
-- **Follow-up implications for later sections**: None
-- **Test Coverage Added**: 7 new tests in ReferenceDataSettingsPanel.spec.tsx covering all Section 8 acceptance criteria
-- **Code Review Outcome**: Red Review PASSED with 2 minor nitpicks (section comment and redundant assertion) that are non-blocking
+- `npm test -- tests/backend-api/assignmentDefinitionPartials.unit.test.js`
+- `npm test -- tests/api/assignmentDefinitionReadApi.test.js`
+- Mandatory-read evidence gate passed for all delegated handoffs
+- Shared-helper planning entries present in `docs/developer/backend/api-layer.md` with status `Removed` or `Not implemented` as appropriate
+- Verify all delegated handoffs include `Files read` with all mandatory documentation paths listed
+
+### Optional @remarks JSDoc follow-through
+
+1. `getAssignmentDefinitionPartials_`: Add `@remarks` noting that it now uses transport-boundary helper for Date normalisation and yearGroup removal
+2. `toTransportPartialRow_`: Add `@remarks` noting that this is a defensive transport-boundary helper that strips `yearGroup` and normalises Dates; works with model instances from Section 1
 
 ---
 
@@ -1489,44 +804,85 @@ None
 
 ### Objective
 
-- Verify all changes work together without breaking existing functionality
-- Harden contracts and ensure proper error handling
+- Verify no regressions in assignment definition creation, update, list, read, and delete operations
+- Verify `AssignmentController` workflows (start processing, wizard flows) continue to function correctly
+- Verify all fail-fast behaviours work as expected
+- Verify no code in active paths passes `yearGroup` to any model method
 
 ### Constraints
 
-- Run all existing tests to ensure no regressions
-- Verify all new tests pass
-- Verify lint passes across all touched files
+- **BLOCKING:** This section is blocked until Sections 0-5 are complete
+- Prefer focused test runs before broader validation
+- Run full backend test suite before considering feature complete
+
+### Blocked by
+
+Section 0, Section 1, Section 2, Section 3, Section 4, Section 5
+
+### Must complete before
+
+Documentation and rollout notes
 
 ### Acceptance criteria
 
-- All existing tests pass
-- All new tests pass
-- Lint passes for all files
-- Build succeeds
+- All assignment definition CRUD operations work correctly
+- All `AssignmentController` workflows work correctly
+- All fail-fast validations throw appropriate errors
+- No code in active paths passes `yearGroup` to any model method
+- All active code paths enforce the controller-resolution pattern for `yearGroupKey` (null accepted at controller, non-null at model)
+- All tests pass
+- All lint checks pass
 
 ### Required test cases/checks
 
-1. Run backend tests: `npm run test:backend`
-2. Run full suite gate (optional but recommended): `npm test`
-3. Run all frontend unit tests: `npm run test:frontend`
-4. Run frontend lint: `npm run lint:frontend`
-5. Run backend lint: `npm run lint:backend`
-6. Verify touched files compile correctly
-7. Verify mandatory-read evidence (`Files read`) is complete for every delegated regression handoff
+1. **Explicit `yearGroup` field absence verification:**
+   - Verify via grep/code search that no active code paths call `new AssignmentDefinition({ yearGroup: ... })` or pass objects containing `yearGroup` to model methods
+   - Test that `getAssignmentDefinitionPartials_` response objects do NOT include `yearGroup` field
+   - Test that `getAssignmentDefinition_` response does NOT include `yearGroup` field
+   - Test that `upsertAssignmentDefinition_` response does NOT include `yearGroup` field
+
+2. **Verify `PARTIAL_REQUIRED_FIELDS` constant does NOT include `yearGroup`:**
+   - Verify `PARTIAL_REQUIRED_FIELDS` constant in `assignmentDefinitionPartials.js` excludes `yearGroup`
+
+3. **Audit downstream consumers of `assignmentWeighting`:**
+   - Run code search to audit all downstream consumers of `assignmentWeighting` for `assignmentWeighting === null` checks
+   - Document findings and update or remove any code that relies on `assignmentWeighting` being null
+
+4. **Verify fail-fast on deprecated `yearGroup` parameter:**
+   - Test that `AssignmentDefinition` constructor throws `TypeError` when `yearGroup` is passed
+   - Test that `AssignmentDefinition.fromJSON()` throws `TypeError` when `yearGroup` is present in input JSON
+
+5. **Verify controller-resolution pattern:**
+   - Test that controllers accepting `yearGroupKey: string | null` resolve to non-null before model calls
+   - Test that model boundary receives non-null `yearGroupKey`
+
+6. Run touched backend model suite: `npm test -- tests/models/assignmentDefinition.test.js`
+7. Run touched backend controller suites:
+   - `npm test -- tests/controllers/assignmentDefinitionController.test.js`
+   - `npm test -- tests/controllers/assignmentDefinitionController.upsert.test.js`
+   - `npm test -- tests/controllers/assignmentDefinitionController.fullStore.test.js`
+   - `npm test -- tests/controllers/assignmentController.hydration.test.js`
+   - `npm test -- tests/controllers/createDefinitionFromWizardInputs.test.js`
+8. Run touched API layer suites:
+   - `npm test -- tests/backend-api/assignmentDefinitionPartials.unit.test.js`
+   - `npm test -- tests/api/assignmentDefinitionReadApi.test.js`
+   - `npm test -- tests/api/assignmentDefinitionUpsertApi.test.js`
+   - `npm test -- tests/api/assignmentDefinitionDeleteApi.test.js`
+9. Run backend lint: `npm run lint:backend`
+10. Verify mandatory-read evidence (`Files read`) is complete for every delegated regression handoff
 
 ### Section checks
 
-- All tests pass
-- Lint passes
-- Build succeeds
-- No regressions detected
+- All commands listed above return green results
+- No regressions detected in assignment definition operations
+- No regressions detected in AssignmentController workflows
+- Verify all delegated handoffs include `Files read` with all mandatory documentation paths listed
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes**: Full regression suite run
-- **Deviations from plan**: None
-- **Follow-up implications for later sections**: None
+- **Implementation notes:** Summarise what was done during regression phase
+- **Deviations from plan:** Note any additional work discovered or done
+- **Follow-up implications:** Record any downstream effects
 
 ---
 
@@ -1534,83 +890,99 @@ None
 
 ### Objective
 
-- Update documentation to reflect the new feature
-- Clean up planned-only helper entries
+- Final documentation verification and cleanup
+- Ensure all `@remarks` JSDoc documented in sections above are added
+- Reconcile planned shared-helper entries in canonical docs
 
 ### Constraints
 
+- **BLOCKING:** This section is blocked until Regression is complete
 - Only modify documents relevant to the touched areas
-- Update modal patterns documentation
+- Keep documentation accurate and up to date
+
+### Blocked by
+
+Section 0, Section 1, Section 2, Section 3, Section 4, Section 5, Regression
 
 ### Acceptance criteria
 
-- `docs/developer/frontend/frontend-modal-patterns.md` updated with Topics modal family
-- `docs/developer/backend/backend-logging-and-error-handling.md` updated if any new error patterns established
-- Planned-only helper entries reconciled (keep `Not implemented` where still pending, update implemented entries)
-- Any deviations or caveats discovered during implementation are documented
+- Documentation accurately reflects data shapes, API methods, and behavioural changes
+- Any deviations or caveats are documented
+- All planned `@remarks` JSDoc entries are present in code
+- All shared-helper entries in `docs/developer/backend/api-layer.md` have correct final status (`Removed` for removed helpers, `Implemented` for new helpers)
 
 ### Required checks
 
-1. Verify modal patterns doc mentions Topics modal family
-2. Verify planned helper entries in canonical docs are reconciled
-3. Verify mandatory-read evidence (`Files read`) is complete for delegated docs/review handoffs
-4. Confirm whether any non-obvious design decisions should be preserved in `@remarks`
+1. Verify docs mention persistence/transport strategies
+2. Verify API docs list any changed contracts
+3. Confirm notes/deviations fields are filled during implementation
+4. Verify mandatory-read evidence (`Files read`) is complete for delegated docs/review handoffs
+5. Reconcile planned shared-helper entries in canonical docs: update status from `Not implemented` to `Implemented` for delivered helpers (`toTransportPartialRow_`)
 
-### Optional `@remarks` JSDoc review
+### Optional @remarks JSDoc review
 
-- Confirm `@remarks` planned in earlier sections are implemented
-- If earlier sections planned `@remarks`, verify the relevant code now contains them before deleting the action plan
+- Confirm whether any non-obvious design decisions, gotchas, or cross-component interactions discovered during implementation should be preserved in `@remarks` documentation
+- If earlier sections planned `@remarks`, verify that the relevant code now contains them before deleting the action plan
+- If no `@remarks` are needed, record `None`
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes**: Documentation updates
-- **Deviations from plan**: None
-- **Follow-up implications for later sections**: None
+- Record any notes from implementation
+- Record any deviations from this plan
+- Record any follow-up implications
 
 ---
 
 ## Suggested implementation order
 
-1. **Section 0** — Backend Model Creation (foundation for backend)
-2. **Section 0.5** — Backend Controller Update (fix model bug, enable yearGroupKeys persistence)
-3. **Section 1** — Schema and Type Definitions (foundation for frontend types)
-4. **Section 2** — Service Layer Extensions (transport layer)
-5. **Section 3** — Query Options (query layer migration)
-6. **Section 3.5** — Extend Reference Data Trust Boundary (required for hook support)
-7. **Section 6** — SelectWithAddNew Wrapper Component (shared component, can be parallel)
-8. **Section 4** — Settings Page Reference Data Tab (entry point)
-9. **Section 5** — ManageTopicsModal Component (modal implementation)
-10. **Section 8** — Settings Page Modal Wiring (connect modal to page)
-11. **Section 7** — Integrate 'Add new' into Existing Select Dropdowns (final integration)
-12. Regression and contract hardening (validation)
-13. Documentation and rollout notes (cleanup)
+**IMPORTANT:** Section 0 **MUST BE COMPLETED FIRST** and is currently **NOT COMPLETE**. All subsequent sections are blocked until Section 0 verification passes.
 
-**Rationale for ordering:**
-
-- Backend model (Section 0) and controller (Section 0.5) first as they are the foundation
-- Schema (Section 1) next as it defines the data types for all frontend work
-- Service layer (Section 2) depends on schemas
-- Trust boundary (Section 3.5) MUST be done before ManageTopicsModal (Section 5) - **WARNING**: Section 5 will fail to compile if Section 3.5 is not complete, as the hook won't accept 'assignmentTopics' entityKey
-- SelectWithAddNew (Section 6) can be built in parallel with trust boundary work
-- Settings tab (Section 4) provides the entry point
-- ManageTopicsModal (Section 5) can be built once schemas, services, queries, and trust boundary are ready
-- Wiring (Section 8) connects the modal to the page
-- Integration (Section 7) applies the Select wrapper to all dropdowns (depends on Sections 5 and 6)
-- Regression validation last
-
-**Key dependencies:**
-
-- Section 0 (Backend Model) must be complete before Section 0.5 (Backend Controller)
-- Section 0.5 (Backend Controller) must be complete before Section 2 (Services) for proper data flow
-- Section 3.5 (Trust Boundary) must be complete before Section 5 (ManageTopicsModal)
-- Section 6 (SelectWithAddNew) must be complete before Section 7 (Integration)
-- Section 5 (ManageTopicsModal) must be complete before Section 7 (Integration) and Section 8 (Wiring)
+1. **Section 0** — Shared-helper planning gate (add/update entries in `api-layer.md` with correct status values) — **MANDATORY FIRST STEP**
+2. **Section 1** — Model-level changes (foundation for all other changes; **must complete before Section 5**)
+3. **Section 2** — AssignmentDefinitionController changes (**blocked by Section 1**)
+4. **Section 3** — AssignmentController changes (**blocked by Section 2**: `AssignmentController.ensureDefinitionFromInputs` must call `controller.upsertDefinition` replacing the removed `controller.ensureDefinition`)
+5. **Section 4** — AssignmentProcessor/globals.js changes (**blocked by Section 3**: `globals.js` calls `controller.createDefinitionFromWizardInputs` which must accept `yearGroupKey` parameter)
+6. **Section 5** — API layer changes (**blocked by Section 1**: model serialization changes required; defensive stripping provides additional safety)
+7. **Regression and contract hardening** — Full validation (**blocked by Sections 0-5**)
+8. **Documentation and rollout notes** — Final documentation pass (**blocked by Regression**)
 
 ---
 
-## Open Questions Resolved
+## Files affected by this plan
 
-1. **Debounce requirement**: CONFIRMED - Both modal open (prevent rapid repeated clicks on 'Add new') and create action (prevent rapid repeated creation attempts) will be debounced. Default debounceMs: 300ms.
-2. **Icon**: CONFIRMED - Use standard PlusOutlined icon alongside 'Add new' text.
-3. **Backend model**: CONFIRMED - Create new AssignmentTopic.js model with yearGroupKeys: string[] field.
-4. **Topic-year group association**: CONFIRMED - yearGroupKeys allows a topic to belong to multiple year groups.
+### Backend Model
+
+- `src/backend/Models/AssignmentDefinition.js` — Core model changes
+
+### Backend Controllers
+
+- `src/backend/y_controllers/AssignmentDefinitionController.js` — Remove ensureDefinition, update yearGroup handling
+- `src/backend/y_controllers/AssignmentController.js` — Rename parameters, remove yearGroup setting
+
+### Backend API
+
+- `src/backend/z_Api/assignmentDefinitionPartials.js` — Remove helpers, inline logic, add new transport helper
+
+### Legacy Code
+
+- `src/backend/AssignmentProcessor/globals.js` — Rename parameter
+
+### Documentation
+
+- `docs/developer/backend/api-layer.md` — Update Shared Helper Status (**Section 0 — MUST BE DONE FIRST**)
+
+### Tests (to be updated/deleted)
+
+- `tests/models/assignmentDefinition.test.js` — Add new tests, update existing
+- `tests/controllers/assignmentDefinitionController.test.js` — Delete ensureDefinition tests, update others
+- `tests/controllers/assignmentDefinitionController.upsert.test.js` — Update as needed
+- `tests/controllers/assignmentDefinitionController.fullStore.test.js` — Delete ensureDefinition tests
+- `tests/controllers/assignmentController.hydration.test.js` — Update parameter names
+- `tests/controllers/createDefinitionFromWizardInputs.test.js` — Update parameter names
+- `tests/backend-api/assignmentDefinitionPartials.unit.test.js` — Delete removed helper tests, add new helper tests
+- `tests/api/assignmentDefinitionReadApi.test.js` — Verify return shape
+- `tests/api/assignmentDefinitionUpsertApi.test.js` — Verify transport validation
+
+---
+
+_This action plan implements SPEC.md v1.9.0 with TDD-first approach. Each section is independently testable. **Section 0 MUST be completed before any other section begins.** Section 1 must be completed before Section 5 begins. Shared-helper planning entries must be added to canonical docs with correct status values before implementation starts. Explicit blocking dependencies are enforced in each section header._

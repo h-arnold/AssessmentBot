@@ -1,488 +1,289 @@
-# Topics CRUD Modal and Reference Data Dropdown 'Add New' Feature Specification
+# Assignment Definition Creation Path Refactoring Specification
 
 ## Status
 
-- Draft v1.0
+- Draft v1.9.0 (2025-05-19)
+- **Architectural Decision:** Option B — Always require non-null `yearGroupKey` at model boundary; controllers accept `yearGroupKey: string | null` and resolve to non-null before model construction; deprecate and remove all `yearGroup` (numeric) usage in active code
+- **Note:** v1.9.0 addresses all CRITICAL reviewer findings: resolved `yearGroupKey` nullability contradiction by adopting controller-resolution pattern; clarified validation ownership boundaries; added explicit `yearGroupLabel` resolution contract; added schema preservation test requirements; removed implementation-level details from Backend Changes Required; streamlined version history.
+
+---
 
 ## Purpose
 
-This document defines the intended behaviour for extending the reference data management infrastructure to include a Topics CRUD modal and adding an 'Add new' option to reference data Select dropdowns across the application.
+This document defines the refactoring to eliminate duplication, simplify the call chain, and enforce model-level value defaults in the assignment definition creation path.
 
-The feature will be used to:
+The refactoring will:
 
-- Enable users to manage assignment topics through a dedicated CRUD modal interface
-- Support associating topics with multiple year groups (a topic can belong to more than one year group)
-- Provide a convenient way to create new reference data entities directly from selection dropdowns
-- Maintain consistency with the existing cohort and year group reference data patterns
+- Consolidate two creation methods (`ensureDefinition` and `upsertDefinition`) into a single canonical `upsertDefinition` entry point
+- Deprecate all `yearGroup` (numeric) usage in favour of `yearGroupKey` (string) as the sole year group reference
+- Move all value defaulting into the model layer per `src/backend/AGENTS.md` §0.2
+- Enforce fail-fast behaviour on deprecated parameters at the model boundary to surface any missed migration entries
 
-This feature is **not** intended to:
+This refactoring is **not** intended to:
 
-- Replace existing reference data management patterns
-- Modify ABClass, Cohort, or YearGroup models (only AssignmentTopic model is affected)
-- Change the existing modal hierarchy or navigation model beyond adding the Topics modal
-- Add multi-select support to existing year group selectors (topics only get multi-year-group association)
+- Maintain backwards compatibility for `yearGroup` in active code
+- Preserve the `ensureDefinition` method
+- Flatten the entire architecture into model getters/setters
+- Change the public API contracts for `upsertAssignmentDefinition_`, `getAssignmentDefinitionPartials_`, `getAssignmentDefinition_`, or `deleteAssignmentDefinition_`
+- Update deprecated code in `src/AdminSheet` or legacy `globals.js` files
+- Preserve all existing tests unchanged — tests for removed functionality must be deleted, tests for changed functionality must be updated
 
-## Agreed product decisions
+---
 
-1. The Topics CRUD modal will follow the same pattern as ManageCohortsModal and ManageYearGroupsModal, reusing the ReferenceDataManagementModalScaffold and useReferenceDataManagement hook.
-2. The 'Add new' option will appear in ALL Select dropdowns that select reference data entities (cohort, year group, topic).
-3. Clicking 'Add new' in a Select dropdown will open the corresponding CRUD modal directly.
-4. The canonical AssignmentTopic contract is `{ key, name, yearGroupKeys }` everywhere in the system.
-5. The Manage Topics modal is accessible from Settings and from topic-selection contexts via "Add new topic" flows (not from the Classes Management Panel).
-6. The 'Add new' dropdown option will be implemented as a real sentinel Select option so native keyboard navigation/selection behaviour is preserved.
-7. After creating a new reference data entity via the 'Add new' flow, the dropdown will refresh its options and automatically select the newly created entity via a callback mechanism (`onEntityCreated`).
-8. **Topic-year group association**: AssignmentTopic entities will support an array of year group keys (`yearGroupKeys: string[]`), allowing a topic to be associated with multiple year groups. The ManageTopicsModal will include a year group multi-selector in the create/edit form.
-9. **Schema consolidation**: Topic schemas and types will be added to `referenceData.zod.ts` using the existing `NonEmptyNameSchema` (which is `z.string().trim().min(1)`) for consistency with Cohort and YearGroup schemas, with the addition of `yearGroupKeys: z.array(NonEmptyNameSchema)` for the multi-year-group association. Existing topic read contracts must be migrated to the enriched `{ key, name, yearGroupKeys }` shape.
-10. **Trust boundary extension**: The `ReferenceDataTrustBoundary` type will be extended from `'cohorts' | 'yearGroups'` to `'cohorts' | 'yearGroups' | 'assignmentTopics'` in **both** `manageReferenceDataHelpers.ts` (internal type) and `useReferenceDataManagement.ts` (exported type) to support the topics entity in the shared reference data management helpers.
+## Core Principles
 
-## Existing system constraints
+1. **Model owns defaults:** All value defaulting is the sole responsibility of the `AssignmentDefinition` model
+2. **`yearGroupKey` is canonical:** Only `yearGroupKey` (string) is used for year group references in active code; `yearGroup` (numeric) is deprecated and removed from all active code
+3. **Controller resolves to non-null:** Controllers that accept `yearGroupKey: string | null` must resolve to a non-null value before passing to the model; the model boundary receives non-null `yearGroupKey` only
+4. **`yearGroupLabel` is controller-resolved:** `yearGroupLabel` is a display-only field resolved from authoritative year-group reference data by the controller and passed to the model; it is included in all definition serialization outputs
+5. **Single creation method:** `upsertDefinition` is the only way to create or update assignment definitions
+6. **No backwards compatibility:** Deprecated code may break and will not be updated
+7. **Fail-fast at model boundary:** Model constructor and `fromJSON()` must throw when they receive deprecated `yearGroup` parameter to surface missed migration entries
+8. **Separation of concerns:** Transport validation in API layer, domain validation in controller, data defaults and integrity in model (per `src/backend/AGENTS.md` §0.2)
 
-### Backend or API constraints already in place
+---
 
-- Backend ReferenceDataController already implements `listAssignmentTopics()`, `createAssignmentTopic()`, `updateAssignmentTopic()`, `deleteAssignmentTopic()` methods
-- Backend z_apiHandler.js already exposes `getAssignmentTopics`, `createAssignmentTopic`, `updateAssignmentTopic`, `deleteAssignmentTopic` as allowlisted methods
-- The assignment topic API entrypoints already exist, and this delivery includes the backend model/controller correction from the temporary YearGroup-backed topic shape to a dedicated AssignmentTopic shape with `yearGroupKeys`
-- In-use validation prevents deletion of topics referenced by assignment definitions
-- There are no existing assignment topic records in storage for this rollout.
+## Agreed Product Decisions
 
-### Current data-shape constraints
+1. **Option B — `yearGroupKey` only:** All year group references in active code use `yearGroupKey` (string). The numeric `yearGroup` field is deprecated and must be removed from all active code paths. `yearGroupLabel` remains for display purposes only and is resolved by the controller.
+2. **Controller-resolution pattern:** Controllers may accept `yearGroupKey: string | null` and must resolve to a non-null value before calling model methods. The model boundary (constructor, `fromJSON()`) receives non-null `yearGroupKey` only.
+3. **Single canonical creation method:** Remove `ensureDefinition` entirely; `upsertDefinition` is the sole creation/update method.
+4. **Model-level defaults:** `assignmentWeighting` defaults to 1 and enforces range 0-10 in the model constructor; API and controller layers must not apply defaults.
+5. **Fail-fast on deprecated `yearGroup`:** Model constructor and `fromJSON()` must throw `TypeError` when `yearGroup` is present in the input, to catch any code that has not been migrated.
+6. **Definition key format change:** `buildDefinitionKey()` uses `yearGroupKey` (string) instead of `yearGroup` (numeric); old definitions with numeric-based keys will not be found by new lookups and must be re-created.
+7. **No data migration:** Existing stored definitions with `yearGroup` fields will cause model operations to fail; they must be re-created through the new flow. This is acceptable as there is no legacy data to preserve.
 
-- Frontend AssignmentTopic type is defined in `src/frontend/src/services/assignmentTopics.zod.ts` as `{ key: string, name: string }`
-- Frontend already has `getAssignmentTopics()` service function in `assignmentTopicsService.ts`
-- Existing reference data entities (Cohort, YearGroup) follow the pattern `{ key: string, name: string, ...additionalFields }`
-- The `useReferenceDataManagement` hook is generic over `T extends { key: string; name: string }`
+---
 
-### Frontend or consumer architecture constraints
+## Existing System Constraints
 
-- Frontend uses React + Ant Design + React Query
-- Existing Select dropdowns for reference data:
-  - `BulkCreateModal.tsx`: Cohort and Year Group Select
-  - `BulkSetSelectModal.tsx`: Generic select modal for bulk operations
-  - `AssignmentDefinitionWizardModalShell.tsx`: Topic and Year Group Select
-- Existing modals ManageCohortsModal and ManageYearGroupsModal use the shared ReferenceDataManagementModalScaffold
-- The Settings page does not currently have a Reference Data management section
+### Backend or API Constraints Already in Place
 
-## Domain and contract recommendations
+- Frontend already resolves to `yearGroupKey` exclusively via Zod schema; backend never receives numeric `yearGroup` from frontend
+- Transport layer in `assignmentDefinitionPartials.js` already strips `yearGroup` from responses via `toPlainPartialRow_` and `toCanonicalTransportDefinition_`
+- Public API contracts for `upsertAssignmentDefinition_`, `getAssignmentDefinitionPartials_`, `getAssignmentDefinition_`, and `deleteAssignmentDefinition_` must remain stable
 
-### Why this approach is preferable
+### Current Data-Shape Constraints
 
-- **Consistency**: Reusing the existing ReferenceDataManagementModalScaffold and useReferenceDataManagement hook ensures consistent UX and reduces implementation risk
-- **Minimal changes**: Backend API entrypoints already exist, and this delivery adds the required backend model/persistence fix plus frontend wiring
-- **Testability**: Following the existing pattern means tests can mirror cohort/year group test structures
-- **Maintainability**: Adding the 'Add new' option as a shared Select wrapper component prevents duplication across each dropdown
+- Partial definitions in registry have `tasks: null`; full definitions in dedicated collections have `tasks: {...}` — this distinction must be preserved
+- Definition key format currently uses numeric year group (e.g., `Math_Algebra_10`); new format will use string key (e.g., `Math_Algebra_year-group-10`)
 
-### Recommended data shapes
+### Validation Ownership Constraints
 
-#### Topic (AssignmentTopic)
+Per `src/backend/AGENTS.md` §0.2, validation ownership is:
 
-```ts
-{
-  key: string;              // Non-empty string (after trimming)
-  name: string;             // Non-empty string (after trimming)
-  yearGroupKeys: string[];  // Array of year group keys this topic applies to
-}
-```
+- **Transport validation:** API layer (`z_Api`) — shape, safety, URL parsing
+- **Domain validation:** Controller (`y_controllers`) — business rules, required-field completeness, reference data
+- **Data defaults and integrity:** Model — defaults, range validation, data shape
 
-The `yearGroupKeys` field allows a topic to be associated with multiple year groups. This matches the user requirement that "a topic could have more than one year group". The `yearGroupKeys` array will contain keys from the YearGroup reference data collection.
+**Clarification for this refactoring:**
 
-This extends the existing pattern in `referenceData.zod.ts` where `NonEmptyNameSchema = z.string().trim().min(1)` is used for both Cohort and YearGroup. The Topic schemas will use the same `NonEmptyNameSchema` for consistency, with the addition of the `yearGroupKeys` array field.
+- Controller owns: resolving `yearGroupKey` from null to non-null, resolving `yearGroupLabel` from reference data, validating required fields before model construction
+- Model owns: rejecting deprecated `yearGroup` field, defaulting `assignmentWeighting` to 1, enforcing `assignmentWeighting` range 0-10, type validation for `yearGroupKey` (must be string)
 
-### Recommended service additions
+---
 
-To follow the existing pattern in `referenceDataService.ts` (where service function names match backend method names: `createCohort` calls `createCohort`, `createYearGroup` calls `createYearGroup`), the topic service functions will use the same naming convention. Note that these functions accept `yearGroupKeys` as part of the record:
+## Breaking Changes
 
-- `createAssignmentTopic` in `referenceDataService.ts` - accepts `{ record: { name: string, yearGroupKeys: string[] } }`
-- `updateAssignmentTopic` in `referenceDataService.ts` - accepts `{ key: string, record: { name: string, yearGroupKeys: string[] } }`
-- `deleteAssignmentTopic` in `referenceDataService.ts` - accepts `{ key: string }`
-- Backend API methods remain: `createAssignmentTopic`, `updateAssignmentTopic`, `deleteAssignmentTopic` (unchanged)
-- `getAssignmentTopicsQueryOptions` and topic service contracts in `sharedQueries.ts` and `assignmentTopicsService.ts` are migrated to return the canonical enriched shape with `yearGroupKeys`
+### 1. Model Contract Change: `assignmentWeighting` Default
 
-### Naming recommendation
+- **Before:** `AssignmentDefinition` constructor and `fromJSON()` accepted `assignmentWeighting: null` and stored it as null
+- **After:** Model constructor defaults `assignmentWeighting` to `1` when null, undefined, or not provided; stored value is **always** a number (0-10), never null; range 0-10 is enforced by model constructor with `RangeError`
+- **Impact:** Stored definitions with `assignmentWeighting: null` will automatically become `1` on next construction; all downstream consumers must be audited for `assignmentWeighting === null` checks
 
-Prefer:
+### 2. Year Group Field Deprecation: `yearGroup` → `yearGroupKey` Only
 
-- `ManageTopicsModal` for the modal component (matches ManageCohortsModal, ManageYearGroupsModal)
-- `topicOptions` for Select options array
-- `onCreateTopic` / `onEditTopic` / `onDeleteTopic` for action handlers
-- `SelectWithAddNew` or similar for a wrapper component that adds the 'Add new' option
+- **Before:** Active code used both `yearGroup` (numeric) and `yearGroupKey` (string) for year group references
+- **After:** Only `yearGroupKey` (string) is used in active code; `yearGroup` (numeric) is **completely removed** from all active models and method signatures
+- **Controller resolution:** Controllers accept `yearGroupKey: string | null` and resolve to non-null before passing to model
+- **Model boundary:** Model constructor and `fromJSON()` receive non-null `yearGroupKey` (string) only
+- **Stored data:** Any stored definition JSON containing a `yearGroup` field **will cause model operations to fail**. There is no migration path; such definitions become inaccessible and must be re-created through the new flow.
+- **Impact:**
+  - `AssignmentDefinition` model: `yearGroup` field **completely removed** from constructor signature, properties, `toJSON()`, `toPartialJSON()`, and `fromJSON()`
+  - `AssignmentDefinition.buildDefinitionKey()`: parameter renamed from `yearGroup` to `yearGroupKey`; key format uses string-based year group key
+  - `AssignmentDefinitionController._assertNoDuplicateBusinessTuple`: uses only `yearGroupKey` (no `yearGroup` fallback)
+  - `AssignmentDefinitionController._resolveYearGroupContextForUpsert`: returns only `{ yearGroupKey, yearGroupLabel }` (no `yearGroup` field); controller resolves `yearGroupLabel` from reference data
+  - `AssignmentDefinitionController.ensureDefinition`: **REMOVED entirely**
+  - `AssignmentController.ensureDefinitionFromInputs`: parameter renamed from `yearGroup: number | null` to `yearGroupKey: string | null`
+  - `AssignmentController.createDefinitionFromWizardInputs`: parameter renamed from `yearGroup: number | null` to `yearGroupKey: string | null`
+  - Dynamic `yearGroup` property on `ABClass` instances: deprecated; code that sets it will be removed entirely
 
-Avoid:
+### 3. Method Removal: `ensureDefinition`
 
-- Generic names like `ReferenceDataModal` that don't specify the entity type
-- Inconsistent casing or naming conventions
+- **Removed:** `AssignmentDefinitionController.ensureDefinition()` is deleted entirely with no replacement
+- **Impact:** All direct callers must migrate to `upsertDefinition` or be removed
 
-### Validation recommendation
+### 4. Definition Key Format Change
 
-#### Frontend
+- **Before:** `buildDefinitionKey()` used `yearGroup` (numeric) in the key: format `${primaryTitle}_${primaryTopic}_${yr}` where `yr` is the numeric year group or 'null'
+- **After:** `buildDefinitionKey({ primaryTitle, primaryTopic, yearGroupKey })` uses `yearGroupKey` (string) in the key: format `${primaryTitle}_${primaryTopic}_${yearGroupKey}` where `yearGroupKey` is the string key
+- **Requirements:** `primaryTitle` and `primaryTopic` must be non-empty strings; `yearGroupKey` must be a string (can be any string value including the literal string 'null', but not the null value)
+- **No parameter validation:** The method does not validate its parameters; validation is the caller's responsibility
+- **Impact:** Breaking change for existing stored definitions; old keys (e.g., `Math_Algebra_10`) will not be found by new lookup logic; existing definitions will be orphaned
 
-- Topic name: required, trimmed, non-empty string (matching existing cohort/year group validation)
-- Duplicate name check: prevent creating topics with names that match existing topics (case-insensitive)
+### Combined Effect: Existing Definitions Become Inaccessible
 
-#### Backend
+The combined effect of the above breaking changes is that **any stored definition containing a `yearGroup` field will fail to load after refactoring**:
 
-- Backend already validates these constraints in ReferenceDataController.\_createRecord and \_updateRecord
+- The fail-fast validation in model `fromJSON()` throws when `yearGroup` is present in the input JSON
+- The definition key format change means old keys cannot be found by new lookups
+- The removal of `yearGroup` from the model means no code path can process it
 
-### Display-resolution recommendation
+**Result:** Existing stored definitions with `yearGroup` fields **cannot be loaded** after refactoring. They must be re-created through the new `upsertDefinition` flow using `yearGroupKey`.
 
-- Topic dropdowns should display the `name` field as the label
-- Topic CRUD modal table should show `name` as the primary column
-- No additional display transformation needed
+**Important:** At the model boundary, `yearGroupKey` **must be a non-null string** for all definitions. Controllers that receive `yearGroupKey: string | null` must resolve to non-null before calling model methods. Legacy definitions with null or missing `yearGroupKey` are considered invalid and must be re-created through the new flow.
 
-## Feature architecture
+---
 
-### Placement
+## Backend Changes Required to Support Agreed Behaviour
 
-- New backend model: `src/backend/Models/AssignmentTopic.js` (new file, separate from YearGroup)
-- Backend controller updates: `src/backend/y_controllers/ReferenceDataController.js` (update to use AssignmentTopic model)
-- New frontend component: `src/frontend/src/features/settings/ManageTopicsModal.tsx`
-- Shared wrapper: `src/frontend/src/components/SelectWithAddNew.tsx`
-- Service additions: `src/frontend/src/services/referenceDataService.ts` (extend existing)
-- Schema additions: `src/frontend/src/services/referenceData.zod.ts` (extend existing with yearGroupKeys)
-- Settings page integration: `src/frontend/src/features/settings/ReferenceDataSettingsPanel.tsx` (new)
+List only the **behavioural requirements** for backend changes. Implementation details belong in ACTION_PLAN.md.
 
-Canonical entry points:
+### Model Layer — `src/backend/Models/AssignmentDefinition.js`
 
-- Manage Topics modal: opened from Settings page and from topic-selection "Add new topic" flows
-- 'Add new' in dropdowns: opened inline from any Select that uses reference data
-
-### Proposed high-level tree
-
-```text
-src/backend/
-├── Models/
-│   └── AssignmentTopic.js (NEW - with key, name, yearGroupKeys)
-└── y_controllers/
-    └── ReferenceDataController.js (UPDATE - use AssignmentTopic model)
-
-src/frontend/src/
-├── features/
-│   ├── classes/
-│   │   ├── BulkCreateModal.tsx (add 'Add new' to Select)
-│   │   ├── BulkSetSelectModal.tsx (add 'Add new' to Select)
-│   │   └── ...
-│   └── settings/
-│       ├── BackendSettingsPanel.tsx (existing)
-│       ├── ReferenceDataSettingsPanel.tsx (NEW)
-│       │   └── ManageTopicsModal.tsx (NEW - with yearGroupKeys multi-select)
-├── components/
-│   └── SelectWithAddNew.tsx (NEW)
-├── pages/
-│   └── AssignmentDefinitionWizardModalShell.tsx (add 'Add new' to Select)
-└── services/
-    ├── referenceDataService.ts (extend with createTopic, updateTopic, deleteTopic)
-    └── referenceData.zod.ts (extend with AssignmentTopicSchema including yearGroupKeys)
-```
-
-### Out of scope for this surface
-
-- Changes to ABClass, Cohort, or YearGroup models (only AssignmentTopic is affected)
-- Changes to existing cohort or year group management behaviour
-- New reference data entity types beyond topics
-- Modifications to the modal hierarchy or navigation model beyond adding the Topics modal
-- Multi-select support for existing year group selectors (only the Topics modal gets year group multi-select)
-
-## Data loading and orchestration
-
-### Required datasets or dependencies
-
-- `assignmentTopics` query for ManageTopicsModal
-- Existing `cohorts` and `yearGroups` queries remain unchanged
-- Query invalidation after create/update/delete operations
-
-### Prefetch or initialisation policy
-
-#### Startup
-
-- Assignment topics are already part of the startup warm-up queries in `sharedQueries.ts`
-- No changes needed to startup warm-up
-
-#### Feature entry
-
-- ManageTopicsModal will fetch topics on-demand when opened (lazy loading)
-- 'Add new' flow will use the existing cached query and refetch after mutation
+- Must reject any input containing a `yearGroup` field: constructor and `fromJSON()` throw `TypeError` when `yearGroup` property is present
+- Must accept non-null `yearGroupKey` (string) at model boundary: constructor and `fromJSON()` receive `yearGroupKey` as a non-null string
+- Must validate `yearGroupKey` type: constructor throws `TypeError` when `yearGroupKey` is not a string (null/undefined check is controller responsibility)
+- Must not store `yearGroup`: no `this.yearGroup` property on model instances
+- Must exclude `yearGroup` from all serialization: `toJSON()` and `toPartialJSON()` must not include `yearGroup` field
+- Must include `yearGroupKey` and `yearGroupLabel` in serialization: both `toJSON()` and `toPartialJSON()` include these fields when present
+- Must accept `yearGroupLabel` as optional parameter: model does not resolve it; controller provides it
+- Must default `assignmentWeighting` to 1: constructor defaults when null, undefined, or missing; stored value is always a number
+- Must enforce `assignmentWeighting` range: constructor throws `RangeError` for values outside 0-10
+- Must rename `buildDefinitionKey` parameter: accepts `yearGroupKey` (string) instead of `yearGroup` (numeric)
 
-#### Manual refresh
+### Controller Layer — `src/backend/y_controllers/AssignmentDefinitionController.js`
 
-- The scaffold already supports refresh with explicit status messaging
-- No additional refresh controls needed
+- Must remove `ensureDefinition` method entirely with no replacement
+- Must remove `yearGroup` from all method signatures and internal logic
+- Must resolve `yearGroupKey` to non-null: methods accepting `yearGroupKey: string | null` must resolve to non-null before calling model
+- Must resolve `yearGroupLabel`: `_resolveYearGroupContextForUpsert` returns `{ yearGroupKey, yearGroupLabel }` with label resolved from reference data
+- Must use only `yearGroupKey` for duplicate detection: `_assertNoDuplicateBusinessTuple` uses only `yearGroupKey` (no `yearGroup` fallback)
+- Must not apply defaults for `assignmentWeighting`: `_resolveAssignmentWeightingForUpsert` returns raw payload value (may be null/undefined) for model to handle
+- Must preserve validation logic: all validation from `_buildUpsertContext` must be preserved within `upsertDefinition`; `_buildUpsertContext` is removed
 
-### Query or transport additions
+### Controller Layer — `src/backend/y_controllers/AssignmentController.js`
 
-Required additions to `src/frontend/src/services/referenceDataService.ts`:
+- Must accept `yearGroupKey: string | null` instead of `yearGroup: number | null` in `ensureDefinitionFromInputs` and `createDefinitionFromWizardInputs`
+- Must resolve `yearGroupKey` to non-null: `ensureDefinitionFromInputs` resolves from input or `abClass.yearGroupKey`, throws when both are null
+- Must resolve `primaryTopicKey`: `ensureDefinitionFromInputs` resolves from `topicId` + `courseId` via Classroom API
+- Must delegate to `controller.upsertDefinition`: `ensureDefinitionFromInputs` calls `controller.upsertDefinition` (not `controller.ensureDefinition`) with resolved non-null `yearGroupKey` and `primaryTopicKey`
+- Must not set `abClass.yearGroup`: remove code that dynamically sets this property
 
-```ts
-// Topic CRUD operations
-export async function createAssignmentTopic(
-  input: CreateAssignmentTopicInput
-): Promise<CreateAssignmentTopicResponse>;
-export async function updateAssignmentTopic(
-  input: UpdateAssignmentTopicInput
-): Promise<UpdateAssignmentTopicResponse>;
-export async function deleteAssignmentTopic(
-  input: DeleteAssignmentTopicInput
-): Promise<DeleteAssignmentTopicResponse>;
-```
+### Legacy Code — `src/backend/AssignmentProcessor/globals.js`
 
-Required additions to `src/frontend/src/services/referenceData.zod.ts`:
+- Must accept `yearGroupKey: string | null` instead of `yearGroup: number | null` in `createDefinitionFromWizardInputs`
+- Must call controller with `yearGroupKey` parameter
 
-Note: We use `NonEmptyNameSchema` (which is `z.string().trim().min(1)`) for consistency with existing Cohort and YearGroup schemas in the same file. The Topic schema extends this with a `yearGroupKeys` array field for multi-year-group association.
+### API Layer — `src/backend/z_Api/assignmentDefinitionPartials.js`
 
-```ts
-// Topic schemas matching the pattern used for Cohort and YearGroup, with yearGroupKeys array (to be added to referenceData.zod.ts)
-export const AssignmentTopicSchema = z.object({
-  key: NonEmptyNameSchema,
-  name: NonEmptyNameSchema,
-  yearGroupKeys: z.array(NonEmptyNameSchema),
-});
-export type AssignmentTopic = z.infer<typeof AssignmentTopicSchema>;
-export const AssignmentTopicListResponseSchema = z.array(AssignmentTopicSchema);
-export type AssignmentTopicListResponse = z.infer<typeof AssignmentTopicListResponseSchema>;
-// Input schemas for mutations (matching Cohort/YearGroup input pattern, with yearGroupKeys for create/update)
-export const CreateAssignmentTopicInputSchema = z.object({
-  record: z.object({
-    name: NonEmptyNameSchema,
-    yearGroupKeys: z.array(NonEmptyNameSchema),
-  }),
-});
-export type CreateAssignmentTopicInput = z.infer<typeof CreateAssignmentTopicInputSchema>;
-export const UpdateAssignmentTopicInputSchema = z.object({
-  key: NonEmptyNameSchema,
-  record: z.object({
-    name: NonEmptyNameSchema,
-    yearGroupKeys: z.array(NonEmptyNameSchema),
-  }),
-});
-export type UpdateAssignmentTopicInput = z.infer<typeof UpdateAssignmentTopicInputSchema>;
-export const DeleteAssignmentTopicInputSchema = z.object({ key: NonEmptyNameSchema });
-export type DeleteAssignmentTopicInput = z.infer<typeof DeleteAssignmentTopicInputSchema>;
-```
+- Must remove `toCanonicalTransportDefinition_` helper; callers use `controller.toCanonicalFullDefinitionResponse(definition)` directly
+- Must remove `buildControllerUpsertPayload_` helper; inline URL-to-ID translation into caller **without** `assignmentWeighting` defaulting logic
+- Must remove `toPlainPartialRow_` helper; replace with transport-boundary helper
+- Must add new `toTransportPartialRow_` helper: accepts model instance, calls `definition.toPartialJSON()`, defensively strips `yearGroup` field, normalises Date fields to ISO strings
+- Must update `getAssignmentDefinitionPartials_` to use `toTransportPartialRow_`
+- Must preserve transport validation helpers unchanged: `validateRequiredYearGroupKey_`, `validateUpsertParameters_`, `validateReadParameters_`, `validateDeleteParameters_`
 
-Query options:
+---
 
-- Migrate `getAssignmentTopicsQueryOptions` to return `{ key, name, yearGroupKeys }`.
-- Update all consumers and tests that currently assume `{ key, name }`.
+## Contract Stability
 
-## Core view model or behavioural model
+### Public API Contracts
 
-### Suggested shape
+- **Unchanged:** `upsertAssignmentDefinition_`, `getAssignmentDefinition_`, `deleteAssignmentDefinition_` — signatures and return shapes unchanged
+- **Changed:** `getAssignmentDefinitionPartials_` — signature unchanged, but returned objects will **no longer include** the `yearGroup` field; Date fields will be string-normalised via transport-boundary overlay
 
-The SelectWithAddNew wrapper component will manage:
+### Internal Contracts (Breaking)
 
-```ts
-{
-  options: SelectOption[];
-  onAddNew?: () => void;
-  addNewLabel?: string;
-}
-```
+- **`AssignmentDefinition` constructor** — `yearGroup` parameter **removed**; accepts non-null `yearGroupKey` (string); `assignmentWeighting` defaults to 1 and enforces range 0-10; stored value is never null
+- **`AssignmentDefinition.fromJSON()`** — `yearGroup` field **not extracted**; throws `TypeError` if `yearGroup` is present; accepts non-null `yearGroupKey` (string); `assignmentWeighting` defaults to 1
+- **`AssignmentDefinition.toJSON()` / `toPartialJSON()`** — `yearGroup` field **removed from output**; both include `yearGroupKey` and `yearGroupLabel`
+- **`AssignmentDefinition.buildDefinitionKey()`** — parameter **renamed** from `yearGroup` to `yearGroupKey`; key format uses string-based year group key; no parameter validation
+- **`controller.ensureDefinition`** — **REMOVED**
+- **`controller._resolveYearGroupContextForUpsert`** — return type changed to `{ yearGroupKey, yearGroupLabel }` (no `yearGroup`)
+- **`controller._assertNoDuplicateBusinessTuple`** — uses only `yearGroupKey` (no `yearGroup` fallback)
+- **`controller.upsertDefinition(payload)`** — signature unchanged; still requires resolved non-null `yearGroupKey: string`
+- **`AssignmentController.ensureDefinitionFromInputs`** — signature changed: `yearGroup: number | null` → `yearGroupKey: string | null`; resolves to non-null before model call
+- **`AssignmentController.createDefinitionFromWizardInputs`** — signature changed: `yearGroup: number | null` → `yearGroupKey: string | null`
 
-### Derivation or merge rules
+---
 
-#### 'Add new' option visibility
+## Validation Ownership Violations (Must Be Fixed)
 
-- Show 'Add new' option only when `onAddNew` is provided
-- Position at the bottom of the dropdown list as a sentinel option
-- Label defaults to 'Add new {entityType}' where entityType is derived from context
-- 'Add new' option MUST be disabled when the Select component is disabled, matching Ant Design's native behavior
+Current code violates the validation ownership rules per `src/backend/AGENTS.md` §0.2. These violations **must** be corrected as part of this refactoring.
 
-#### Post-creation selection
+The rule: **Transport validation in API layer, domain invariants in controller, data defaults and integrity in model.**
 
-- After creating a new entity via 'Add new', the modal calls `onEntityCreated` on the orchestration owner
-- The orchestration owner (for example `ClassesManagementPanel` or `useAssignmentDefinitionWizard`/`AssignmentDefinitionWizardModal`) performs query invalidation/refetch and sets the selected value
-- SelectWithAddNew stays presentational: it renders the affordance and triggers `onAddNew`; it does not own created-entity callbacks, query invalidation, or field selection state
+### Violations and Required Corrections
 
-#### Entity type determination
+1. **API layer applying model defaults:** `buildControllerUpsertPayload_` (assignmentDefinitionPartials.js) applies `assignmentWeighting: 1` default for missing/null values — **Required:** Remove defaulting logic when inlining; API layer must not apply model defaults
 
-- The `addNewLabel` prop should be provided explicitly for each entity type:
-  - Cohort selects: `addNewLabel="Add new cohort"`
-  - Year group selects: `addNewLabel="Add new year group"`
-  - Topic selects: `addNewLabel="Add new topic"`
+2. **Controller applying model defaults:** `_resolveAssignmentWeightingForUpsert` (AssignmentDefinitionController.js) returns `value === null ? 1 : value` (defaulting) — **Required:** Controller must return raw payload value (undefined when missing) allowing model to apply default
 
-## Main user-facing surface specification
+3. **Model accepting deprecated field:** `AssignmentDefinition` constructor accepts `yearGroup` parameter; stores `this.yearGroup`; `fromJSON()` extracts and passes `yearGroup`; `toJSON()` and `toPartialJSON()` include `yearGroup` — **Required:** Remove `yearGroup` field entirely from model per Option B
 
-### Recommended components or primitives
+4. **Controller propagating deprecated field:** `_resolveYearGroupContextForUpsert` extracts `yearGroup` from reference data; `_assertNoDuplicateBusinessTuple` uses `row.yearGroup` fallback — **Required:** Controller must not extract or propagate `yearGroup`; must use only `yearGroupKey` from reference data
 
-- Ant Design `Select` with a sentinel 'Add new {entity}' option
-- Ant Design `Modal` via ReferenceDataManagementModalScaffold for CRUD interface
-- Ant Design `Table` for listing topics in the modal
-- Ant Design `Button`, `Form`, `Input` for create/edit/delete workflows
+---
 
-### Fields, columns, or visible sections
+## Testing Expectations
 
-#### ManageTopicsModal
+- Backend unit tests must verify `AssignmentDefinition` constructor defaults `assignmentWeighting` to 1 and enforces range 0-10
+- Backend unit tests must verify `AssignmentDefinition` constructor throws `TypeError` when `yearGroup` is present in params
+- Backend unit tests must verify `AssignmentDefinition.fromJSON()` throws `TypeError` when `yearGroup` is present in input JSON
+- Backend unit tests must verify `AssignmentDefinition.toJSON()` and `toPartialJSON()` do not include `yearGroup` field
+- Backend unit tests must verify `AssignmentDefinition.toJSON()` and `toPartialJSON()` include `yearGroupKey` and `yearGroupLabel` fields
+- Backend unit tests must verify `AssignmentDefinition.buildDefinitionKey()` uses `yearGroupKey` parameter and produces correct format
+- Backend unit tests must verify **partial/full schema preservation**: `toPartialJSON()` returns `tasks: null` for partial definitions; `toJSON()` returns `tasks: {...}` for full definitions
+- Controller tests must verify `upsertDefinition` with API-facing pattern and non-null `yearGroupKey` requirement
+- Controller tests must verify `_assertNoDuplicateBusinessTuple` uses only `yearGroupKey` (no `yearGroup` fallback)
+- Controller tests must verify `_resolveYearGroupContextForUpsert` returns only `yearGroupKey` and `yearGroupLabel` (no `yearGroup` field)
+- Controller tests must verify `_resolveYearGroupContextForUpsert` resolves `yearGroupLabel` from reference data
+- Controller tests must verify `_resolveAssignmentWeightingForUpsert` is validation-only (no defaulting, returns raw payload value)
+- Controller tests must verify that methods accepting `yearGroupKey: string | null` resolve to non-null before model calls
+- API layer tests must verify URL-to-ID translation still works correctly after inlining
+- API layer tests must verify inlined code does NOT add `assignmentWeighting: 1` default when missing from payload
 
-1. Modal title: 'Manage Topics'
-2. Create button: 'Create topic'
-3. Table columns:
-   - Name
-   - Actions (Edit, Delete)
-4. Inline form dialog for create/edit
-5. Inline delete confirmation dialog
+---
 
-#### Select dropdowns with 'Add new'
+## Documentation and Rollout Notes
 
-1. Standard Select options for existing entities
-2. 'Add new {entity}' sentinel option (e.g., 'Add new topic', 'Add new cohort')
+- Update `docs/developer/backend/api-layer.md` 'Shared Helper Status' to reflect removed helpers (see Planning Handoff Notes)
+- This is architectural cleanup with breaking changes and should be done as a focused refactoring effort
+- After refactoring, run full backend test suite and verify no regressions in assignment definition creation, update, list, read, and delete operations
+- Verify `AssignmentController` workflows (start processing, wizard flows) continue to function correctly
 
-### Sorting, filtering, or navigation rules
+---
 
-- Topics sorted alphabetically by name (matching existing cohort/year group behaviour)
-- No filtering in the modal table (matching existing behaviour)
-- No additional navigation layers
+## Planning Handoff Notes
 
-### Rendering rules
+Use this section only for constraints that the later action plan must respect.
 
-#### ManageTopicsModal states
+- **Documentation requirement:** `docs/developer/backend/api-layer.md` 'Shared Helper Status' must be updated before implementation starts. Update the existing 'Assignment-definition full-definition response mapper' entry to Status: `Removed`. Add entries for:
+  - Assignment-definition partial row serializer: `Removed` — `toPlainPartialRow_` in `src/backend/z_Api/assignmentDefinitionPartials.js`
+  - Assignment-definition upsert payload builder: `Removed` — `buildControllerUpsertPayload_` in `src/backend/z_Api/assignmentDefinitionPartials.js`
+  - Assignment-definition upsert context builder: `Removed` — `_buildUpsertContext` in `src/backend/y_controllers/AssignmentDefinitionController.js`
+  - Assignment-definition creation method: `Removed` — `ensureDefinition` in `src/backend/y_controllers/AssignmentDefinitionController.js`
+  - AssignmentDefinition yearGroup field: `Removed` — `yearGroup` parameter and property in `src/backend/Models/AssignmentDefinition.js`
+  - Assignment-definition transport partial row helper: `Not implemented` — `toTransportPartialRow_` in `src/backend/z_Api/assignmentDefinitionPartials.js`
+- **Shared-helper planning gate compliance:** Planned helper entries for removed/refactored helpers must be marked with correct status in canonical docs before implementation starts
+- **Test removal guidance:** Tests for removed methods and helpers must be removed or updated in ACTION*PLAN.md: `ensureDefinition`, `toCanonicalTransportDefinition*`, `buildControllerUpsertPayload*`, `toPlainPartialRow*`, `\_buildUpsertContext`
+- **Verification requirement:** ACTION_PLAN.md must include verification that no code in active paths passes `yearGroup` to any model method
+- **Deprecated code:** Callers in `src/AdminSheet` and legacy `globals.js` may break; this is acceptable per "no backwards compatibility"
+- **Explicit null handling for `assignmentWeighting`:** The model constructor must handle `assignmentWeighting` values of null, undefined, or missing by defaulting to 1; the controller must not apply defaults and must pass the raw payload value as-is to the model
+- **Controller-resolution pattern:** Methods that accept `yearGroupKey: string | null` must resolve to a non-null string before passing to model methods; the model boundary receives non-null `yearGroupKey` only
+- **`yearGroupLabel` resolution:** Controller must resolve `yearGroupLabel` from authoritative year-group reference data and pass it to the model; model does not perform this resolution
 
-- **Initial loading**: Show skeleton loader
-- **Ready with data**: Show table with create button
-- **Ready with no data**: Show empty state with create button
-- **Refreshing**: Show inline status message
-- **Blocking failure**: Show error alert, hide table
+---
 
-#### Select with 'Add new' states
+## Open Questions
 
-- **Normal**: Show all options including 'Add new' at bottom
-- **Disabled**: 'Add new' option also disabled
-- **Loading**: Options list may show loading state
+1. **Validation ownership for `yearGroupKey` null check:** Should the model validate that `yearGroupKey` is non-null (data integrity check), or should the controller guarantee non-null before model construction (domain validation)? Current resolution in this spec adopts the latter (controller guarantees non-null), but confirmation is needed.
 
-## Workflow specification
+2. **Scope of fail-fast beyond model boundary:** Should fail-fast validation for deprecated `yearGroup` parameter extend beyond the model constructor and `fromJSON()` to all active code paths, or is model-boundary validation sufficient? Current spec requires model-boundary only; broader application is recommended but not required.
 
-### Manage Topics workflow
+3. **`buildDefinitionKey` null handling:** Should `buildDefinitionKey` validate its parameters (particularly `yearGroupKey`), or is validation the caller's responsibility? Current spec adopts the latter (no validation in method), but confirmation is needed.
 
-#### Eligible inputs or preconditions
+---
 
-- User must be authenticated
-- Settings page must be accessible
-
-#### Inputs, fields, or confirmation copy
-
-- Create/Edit form: Name field (required) and Year groups multi-select (`yearGroupKeys`)
-- Delete confirmation: 'Are you sure you want to delete this topic?'
-
-#### Behaviour
-
-- **Execution**: Create/update/delete calls backend via referenceDataService
-- **Success**: Refetch topics query, show success state briefly
-- **Failure**: Show inline error in modal, keep modal open for retry
-
-### 'Add new' from Select workflow
-
-#### Eligible inputs or preconditions
-
-- Select must be in a ready state (not loading, not disabled)
-- `onAddNew` callback must be provided
-
-#### Inputs, fields, or confirmation copy
-
-- Dropdown shows 'Add new {entity}' option
-
-#### Behaviour
-
-- **Execution**: Clicking 'Add new' triggers the callback
-- **Success**: Modal opens, user creates entity, modal closes, dropdown refreshes and selects new entity
-- **Cancellation**: Modal closes, dropdown state unchanged
-
-## Error, loading, and empty-state rules
-
-### Blocking failure
-
-- ManageTopicsModal: Show Ant Design Alert with error message, hide table
-- Select with 'Add new': If options fail to load, show Select's built-in empty/loading state
-
-### Partial-load or partial-success failure
-
-- ManageTopicsModal: follow fail-closed behaviour; show blocking error alert and hide ready-body content
-- Select: Maintain existing options, show warning if applicable
-
-### Empty states
-
-- **ManageTopicsModal with no topics**: Show 'No topics' empty text in table, create button still visible
-- **Select with no existing options**: Show 'Add new' option only
-
-## Accessibility and usability notes
-
-- 'Add new' option must be keyboard accessible via arrow keys
-- 'Add new' option must have proper ARIA label
-- Modal must maintain proper focus trap and return focus on close
-- Screen readers must announce the 'Add new' option clearly
-
-## Backend changes required to support agreed behaviour
-
-### Backend Model Changes
-
-A new `AssignmentTopic` model must be created to properly support the `yearGroupKeys` array field:
-
-1. **New file**: `src/backend/Models/AssignmentTopic.js`
-   - Fields: `key`, `name`, `yearGroupKeys` (array of strings)
-   - Validation: `key` and `name` are required trimmed non-empty strings, `yearGroupKeys` is an array of trimmed non-empty strings
-   - Serialization methods: `toJSON()`, `fromJSON()`
-
-2. **Update**: `src/backend/y_controllers/ReferenceDataController.js`
-   - Update `_getConfig('assignmentTopic')` to use `AssignmentTopic` model class instead of `YearGroup`
-   - Keep existing shared CRUD flow (`_createRecord`, `_updateRecord`, `_buildRecord`) and rely on the AssignmentTopic model/config update so persisted records carry `yearGroupKeys`
-   - The in-use validation for topics should check against `assignment_definitions` using `primaryTopicKey` (existing)
-
-### Backend API Methods
-
-The existing API methods in `z_apiHandler.js` remain unchanged but will now use the correct model:
-
-1. `getAssignmentTopics` - retrieves all topics with their `yearGroupKeys`
-2. `createAssignmentTopic` - creates a new topic with `yearGroupKeys`
-3. `updateAssignmentTopic` - updates an existing topic including `yearGroupKeys`
-4. `deleteAssignmentTopic` - deletes a topic
-
-**Previous backend model bug**: The `ReferenceDataController` currently uses the `YearGroup` model class for `assignmentTopic` entities (line 147 in `_getConfig`). This feature will fix that bug by creating a proper `AssignmentTopic` model with the `yearGroupKeys` field.
-
-**Assumption**: The backend validation will properly handle the `yearGroupKeys` array field with the new AssignmentTopic model.
-
-## Planning handoff notes
-
-- The 'Add new' Select wrapper must be designed to work with the existing Select usage patterns
-- The ManageTopicsModal must follow the exact same pattern as ManageCohortsModal and ManageYearGroupsModal
-- Query invalidation must be wired correctly for the topics query
-- The Settings page needs a new section for Reference Data management
-- The `ReferenceDataTrustBoundary` type must be extended to include `'assignmentTopics'` before ManageTopicsModal can use the shared helpers
-- The `onEntityCreated` callback mechanism must be implemented to coordinate post-creation selection between modals and Select dropdowns
-- All reference data schema and service additions should be consolidated into `referenceData.zod.ts` and `referenceDataService.ts` respectively
-
-## Testing expectations
-
-- Backend: add model/controller tests for AssignmentTopic and ReferenceDataController topic behaviour
-- Frontend unit tests:
-  - ManageTopicsModal component tests
-  - SelectWithAddNew wrapper component tests
-  - Service function tests for topic CRUD
-  - Hook tests for useReferenceDataManagement with topics
-- Browser/e2e tests:
-  - 'Add new' workflow from Select dropdowns
-  - ManageTopicsModal CRUD operations
-
-## Documentation and rollout notes
-
-- Update `docs/developer/frontend/frontend-modal-patterns.md` to include the topics modal family
-- Update any relevant AGENTS.md files if new patterns are established
-
-## V1 scope recommendation
-
-### Include in v1
-
-- ManageTopicsModal component
-- Service functions for topic CRUD in referenceDataService.ts
-- Schema additions in referenceData.zod.ts
-- SelectWithAddNew wrapper component
-- Integration of 'Add new' option in all existing reference data Select dropdowns
-- Settings page Reference Data section with ManageTopicsModal entry
-
-### Defer from v1
-
-- Additional reference data entity types
-- Enhanced filtering or search in the topics modal
-
-## Open questions
-
-1. Should there be a rate limit or debounce on both the modal open (prevent rapid repeated clicks on 'Add new') and the create action (prevent rapid repeated creation attempts)?
-
-**Resolved questions:**
-
-- **Icon**: Use standard PlusOutlined icon alongside 'Add new' text
+_This specification implements the architectural decision to use `yearGroupKey` only (Option B) with controller-resolution pattern and a single `upsertDefinition` method. Version v1.9.0 addresses all CRITICAL reviewer findings by resolving contradictions, clarifying ownership boundaries, adding explicit contracts, and removing implementation-level details from the specification._
