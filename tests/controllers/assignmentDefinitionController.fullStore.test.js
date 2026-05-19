@@ -48,7 +48,7 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
     // Create ReferenceDataController mock class
     const MockReferenceDataController = class {
       listYearGroups() {
-        return [{ key: 'year-group-10', name: 'Year 10', yearGroup: 10 }];
+        return [{ key: 'year-group-10', name: 'Year 10' }];
       }
       listAssignmentTopics() {
         return [{ key: 'topic-english', name: 'English' }];
@@ -112,7 +112,6 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
       const definition = new AssignmentDefinition({
         primaryTitle: 'Test',
         primaryTopic: 'Topic',
-        yearGroup: 10,
         yearGroupKey: 'year-group-10',
         yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
@@ -155,7 +154,6 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
       const definition = new AssignmentDefinition({
         primaryTitle: 'Test',
         primaryTopic: 'Topic',
-        yearGroup: 10,
         yearGroupKey: 'year-group-10',
         yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
@@ -196,7 +194,6 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
       const definition = new AssignmentDefinition({
         primaryTitle: 'Test',
         primaryTopic: 'Topic',
-        yearGroup: 10,
         yearGroupKey: 'year-group-10',
         yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
@@ -240,7 +237,6 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
       const fullDef = {
         primaryTitle: 'Test',
         primaryTopic: 'Topic',
-        yearGroup: 10,
         yearGroupKey: 'year-group-10',
         yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
@@ -276,7 +272,6 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
       const fullDef = {
         primaryTitle: 'Test',
         primaryTopic: 'Topic',
-        yearGroup: 10,
         yearGroupKey: 'year-group-10',
         yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
@@ -312,7 +307,6 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
       const partialDef = {
         primaryTitle: 'Test',
         primaryTopic: 'Topic',
-        yearGroup: 10,
         yearGroupKey: 'year-group-10',
         yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
@@ -345,114 +339,13 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
     });
   });
 
-  describe('ensureDefinition - parsing and persistence', () => {
-    it('should persist parsed tasks to full store when creating new definition', () => {
-      mockFullCollection.findOne.mockReturnValue(null);
-
-      controller.ensureDefinition({
-        primaryTitle: 'New',
-        topicId: 'topic-1',
-        courseId: 'course-1',
-        yearGroup: 10,
-        documentType: 'SLIDES',
-        referenceDocumentId: 'ref',
-        templateDocumentId: 'tpl',
-      });
-
-      // Verify full collection received full payload via insertOne (new definition)
-      const fullStoreCall = mockFullCollection.insertOne.mock.calls[0];
-      const savedFullDef = fullStoreCall[0];
-      expect(savedFullDef.tasks.t1.artifacts.reference[0].content).toBe('ref-content');
-      expect(savedFullDef.tasks.t1.artifacts.reference[0].contentHash).toBe('hash1');
-    });
-
-    it('should re-persist full definition when Drive files are newer', () => {
-      const staleDef = new AssignmentDefinition({
-        primaryTitle: 'Stale',
-        primaryTopic: 'Topic',
-        yearGroup: 10,
-        documentType: 'SLIDES',
-        referenceDocumentId: 'ref',
-        templateDocumentId: 'tpl',
-        referenceLastModified: '2024-01-01T00:00:00Z',
-        templateLastModified: '2024-01-01T00:00:00Z',
-        tasks: {
-          oldTask: {
-            id: 'oldTask',
-            taskTitle: 'Old Task',
-            artifacts: { reference: [], template: [] },
-          },
-        },
-      });
-
-      mockFullCollection.findOne.mockReturnValue(staleDef.toJSON());
-      DriveManager.getFileModifiedTime.mockReturnValue('2025-06-01T00:00:00Z');
-
-      controller.ensureDefinition({
-        primaryTitle: 'Stale',
-        primaryTopic: 'Topic',
-        yearGroup: 10,
-        documentType: 'SLIDES',
-        referenceDocumentId: 'ref',
-        templateDocumentId: 'tpl',
-      });
-
-      // Should have re-parsed and updated full store
-      expect(mockFullCollection.replaceOne).toHaveBeenCalled();
-      const fullStoreCall = mockFullCollection.replaceOne.mock.calls[0];
-      const updatedFullDef = fullStoreCall[1];
-
-      // New parsed tasks
-      expect(updatedFullDef.tasks.t1).toBeDefined();
-      expect(updatedFullDef.tasks.t1.artifacts.reference[0].content).toBe('ref-content');
-      expect(updatedFullDef.referenceLastModified).toBe('2025-06-01T00:00:00Z');
-      expect(updatedFullDef.templateLastModified).toBe('2025-06-01T00:00:00Z');
-    });
-
-    it('should update registry when definition is refreshed', () => {
-      const staleDef = new AssignmentDefinition({
-        primaryTitle: 'Stale',
-        primaryTopic: 'Topic',
-        yearGroup: 10,
-        documentType: 'SLIDES',
-        referenceDocumentId: 'ref',
-        templateDocumentId: 'tpl',
-        referenceLastModified: '2024-01-01T00:00:00Z',
-        templateLastModified: '2024-01-01T00:00:00Z',
-        tasks: {},
-      });
-
-      mockFullCollection.findOne.mockReturnValue(staleDef.toJSON());
-      DriveManager.getFileModifiedTime.mockReturnValue('2025-06-01T00:00:00Z');
-
-      controller.ensureDefinition({
-        primaryTitle: 'Stale',
-        primaryTopic: 'Topic',
-        yearGroup: 10,
-        documentType: 'SLIDES',
-        referenceDocumentId: 'ref',
-        templateDocumentId: 'tpl',
-      });
-
-      // Registry should also be updated with partial (tasks: null)
-      expect(mockRegistryCollection.save).toHaveBeenCalled();
-      // Registry was updated via replaceOne or insertOne - check the appropriate method
-      const registryReplaceCall = mockRegistryCollection.replaceOne.mock.calls[0];
-      const registryInsertCall = mockRegistryCollection.insertOne.mock.calls[0];
-      const partialDef = registryReplaceCall ? registryReplaceCall[1] : registryInsertCall[0];
-
-      expect(partialDef.tasks).toBe(null);
-      expect(partialDef.referenceDocumentId).toBe('ref');
-      expect(partialDef.templateDocumentId).toBe('tpl');
-    });
-  });
-
   describe('savePartialDefinition', () => {
     it('should only update registry, not full store', () => {
       const definition = new AssignmentDefinition({
         primaryTitle: 'Test',
         primaryTopic: 'Topic',
-        yearGroup: 10,
+        yearGroupKey: 'year-group-10',
+        yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
         referenceDocumentId: 'ref',
         templateDocumentId: 'tpl',

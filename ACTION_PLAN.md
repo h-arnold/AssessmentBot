@@ -284,6 +284,14 @@ Backend model tests (in `tests/models/assignmentDefinition.test.js`):
 
 ## Section 2 — AssignmentDefinitionController: Remove `ensureDefinition` and `yearGroup` usage
 
+**Status: COMPLETE** — Red Phase complete, Red Review clean, Green Phase complete, Green Review clean, all 70 tests passing
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** All acceptance criteria implemented. `ensureDefinition` and `_buildUpsertContext` methods removed. `_resolveYearGroupContextForUpsert` returns only `{ yearGroupKey, yearGroupLabel }`. `_assertNoDuplicateBusinessTuple` uses only `yearGroupKey` for duplicate detection. `_resolveAssignmentWeightingForUpsert` returns raw payload value without defaulting. All validation logic from `_buildUpsertContext` preserved in `upsertDefinition`. Test data updated to remove `yearGroup` references.
+- **Deviations from plan:** None
+- **Follow-up implications:** Section 3 (AssignmentController changes) now unblocked. Note: `tests/assignment/assignmentDefinitionValidation.test.js` has failures caused by Section 1's model changes (not Section 2). These are pre-existing regressions from Section 1 that need to be addressed.
+
 ### Objective
 
 - Delete `ensureDefinition` method entirely from `AssignmentDefinitionController`

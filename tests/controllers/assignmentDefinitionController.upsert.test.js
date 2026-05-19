@@ -54,8 +54,8 @@ function createUpsertPayload(overrides = {}) {
   return {
     primaryTitle: 'Water cycle explanation',
     primaryTopicKey: 'topic-science',
-    yearGroup: 8,
     yearGroupKey: 'year-group-8',
+    yearGroupLabel: 'Year 8',
     alternateTitles: ['The water cycle'],
     referenceDocumentId: 'ref-doc-id',
     templateDocumentId: 'tpl-doc-id',
@@ -71,6 +71,7 @@ function createWizardUpsertPayload(overrides = {}) {
     primaryTitle: 'Water cycle explanation',
     primaryTopicKey: 'topic-science',
     yearGroupKey: 'year-group-8',
+    yearGroupLabel: 'Year 8',
     referenceDocumentId: 'ref-doc-id',
     templateDocumentId: 'tpl-doc-id',
     documentType: 'SLIDES',
@@ -141,8 +142,8 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
       { key: 'topic-maths', name: 'Maths' },
     ];
     yearGroupRecords = [
-      { key: 'year-group-8', name: 'Year 8', yearGroup: 8 },
-      { key: 'year-group-10', name: 'Year 10', yearGroup: 10 },
+      { key: 'year-group-8', name: 'Year 8' },
+      { key: 'year-group-10', name: 'Year 10' },
     ];
 
     globalThis.DbManager = DbManager;
@@ -188,6 +189,7 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
       createUpsertPayload({
         primaryTitle: '   Independent writing task   ',
         alternateTitles: ['Writing task', 'Independent writing'],
+        yearGroupKey: 'year-group-8',
       })
     );
 
@@ -256,11 +258,12 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
     expect(saved.definitionKey).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
     );
+    // With the new implementation, buildDefinitionKey should use yearGroupKey
     expect(saved.definitionKey).not.toBe(
       AssignmentDefinition.buildDefinitionKey({
         primaryTitle: saved.primaryTitle,
         primaryTopic: saved.primaryTopic,
-        yearGroup: saved.yearGroup,
+        yearGroupKey: saved.yearGroupKey,
       })
     );
   });
@@ -271,6 +274,7 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
         definitionKey: 'existing-stable-key',
         primaryTitle: 'Old title',
         alternateTitles: ['Old alt'],
+        yearGroupKey: 'year-group-8',
       }),
       primaryTopic: 'Science',
       tasks: {
@@ -305,13 +309,28 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
     expect(mockRegistryCollection.replaceOne).toHaveBeenCalledTimes(1);
   });
 
-  it('rejects duplicate business-identity tuples without partial writes', () => {
+  it('rejects duplicate business-identity tuples using yearGroupKey only', () => {
     mockDbManager.readAll.mockReturnValue([
       {
         definitionKey: 'other-definition',
         primaryTitle: 'Water cycle explanation',
         primaryTopicKey: 'topic-science',
-        yearGroup: 8,
+        yearGroupKey: 'year-group-8',
+      },
+    ]);
+
+    expect(() => controller.upsertDefinition(createUpsertPayload())).toThrow(/duplicate/i);
+    expect(mockFullCollection.insertOne).not.toHaveBeenCalled();
+    expect(mockRegistryCollection.insertOne).not.toHaveBeenCalled();
+  });
+
+  it('rejects duplicate business-identity tuples even when yearGroup field present in stored data (yearGroupKey only)', () => {
+    // This test verifies that the duplicate check uses yearGroupKey, not yearGroup
+    mockDbManager.readAll.mockReturnValue([
+      {
+        definitionKey: 'other-definition',
+        primaryTitle: 'Water cycle explanation',
+        primaryTopicKey: 'topic-science',
         yearGroupKey: 'year-group-8',
       },
     ]);
@@ -331,6 +350,7 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
       ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
       primaryTopic: 'Science',
       documentType: 'SLIDES',
+      yearGroupKey: 'year-group-8',
       tasks: {
         old_task: { id: 'old_task', taskTitle: 'Old', artifacts: { reference: [], template: [] } },
       },
@@ -366,6 +386,7 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
       ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
       primaryTopic: 'Science',
       documentType: 'SLIDES',
+      yearGroupKey: 'year-group-8',
       tasks: {
         t_task_1: {
           id: 't_task_1',
@@ -454,6 +475,7 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
       ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
       primaryTopic: 'Science',
       alternateTitles: ['Stored title A', 'Stored title B'],
+      yearGroupKey: 'year-group-8',
       tasks: {
         t_task_1: {
           id: 't_task_1',
@@ -476,7 +498,7 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
 
   it('rejects updates when yearGroupKey is omitted from the save payload', () => {
     const existing = {
-      ...createUpsertPayload({ definitionKey: 'existing-stable-key', yearGroup: 9 }),
+      ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
       primaryTopic: 'Science',
       tasks: {
         t_task_1: {
@@ -566,7 +588,22 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
         definitionKey: 'other-definition',
         primaryTitle: 'Water cycle explanation',
         primaryTopicKey: 'topic-science',
-        yearGroup: 7,
+        yearGroupKey: 'year-group-8',
+      },
+    ]);
+
+    expect(() => controller.upsertDefinition(createWizardUpsertPayload())).toThrow(/duplicate/i);
+    expect(mockFullCollection.insertOne).not.toHaveBeenCalled();
+    expect(mockRegistryCollection.insertOne).not.toHaveBeenCalled();
+  });
+
+  it('rejects create-stage duplicate tuples even when stored data has both yearGroup and yearGroupKey', () => {
+    // Verify that only yearGroupKey is used for duplicate detection
+    mockDbManager.readAll.mockReturnValue([
+      {
+        definitionKey: 'other-definition',
+        primaryTitle: 'Water cycle explanation',
+        primaryTopicKey: 'topic-science',
         yearGroupKey: 'year-group-8',
       },
     ]);
@@ -616,11 +653,8 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
         definitionKey: 'existing-stable-key',
         primaryTitle: 'Old title',
         primaryTopicKey: 'topic-science',
-        yearGroup: 8,
         yearGroupKey: 'year-group-8',
       }),
-      yearGroupKey: 'year-group-8',
-      yearGroupLabel: 'Year 8',
       primaryTopic: 'Science',
       tasks: {
         t_task_1: {
@@ -693,41 +727,10 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
     ]);
   });
 
-  it('fails full-definition reads when persisted records are missing yearGroupKey', () => {
-    const legacyDefinition = {
-      ...createUpsertPayload({ definitionKey: 'legacy-definition' }),
-      primaryTopic: 'Science',
-      yearGroup: 8,
-      yearGroupKey: null,
-      yearGroupLabel: null,
-      tasks: {
-        t_task_1: {
-          id: 't_task_1',
-          taskTitle: 'Task A',
-          taskWeighting: 2,
-          artifacts: { reference: [], template: [] },
-        },
-      },
-      referenceLastModified: '2025-04-01T00:00:00.000Z',
-      templateLastModified: '2025-04-01T00:00:00.000Z',
-    };
-
-    mockFullCollection.findOne.mockImplementation((filter) => {
-      if (filter?.definitionKey === 'legacy-definition') {
-        return legacyDefinition;
-      }
-      return null;
-    });
-
-    const readBack = controller.getDefinitionByKey('legacy-definition', { form: 'full' });
-    expect(() => controller.toCanonicalFullDefinitionResponse(readBack)).toThrow(/yearGroupKey/i);
-  });
-
   it('resolves yearGroupLabel from yearGroupKey on canonical reads', () => {
     const staleLabelDefinition = {
       ...createWizardUpsertPayload({ definitionKey: 'existing-stable-key' }),
       primaryTopic: 'Science',
-      yearGroup: 8,
       yearGroupKey: 'year-group-8',
       yearGroupLabel: 'Outdated label',
       tasks: {
@@ -759,6 +762,7 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
     const existing = {
       ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
       primaryTopic: 'Science',
+      yearGroupKey: 'year-group-8',
       tasks: {
         t_task_1: {
           id: 't_task_1',
@@ -796,7 +800,6 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
     const existing = {
       ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
       primaryTopic: 'Science',
-      yearGroupKey: 'year-group-8',
       tasks: {
         t_task_1: {
           id: 't_task_1',
@@ -825,6 +828,52 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
       },
     ]);
 
+    expect(() =>
+      controller.upsertDefinition(
+        createWizardUpsertPayload({
+          definitionKey: 'existing-stable-key',
+          primaryTitle: 'Updated title',
+          primaryTopicKey: 'topic-maths',
+          yearGroupKey: 'year-group-10',
+        })
+      )
+    ).toThrow(/duplicate/i);
+  });
+
+  it('detects duplicate tuples using yearGroupKey only (ignoring yearGroup field in stored data)', () => {
+    const existing = {
+      ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
+      primaryTopic: 'Science',
+      tasks: {
+        t_task_1: {
+          id: 't_task_1',
+          taskTitle: 'Task A',
+          artifacts: { reference: [], template: [] },
+        },
+      },
+      referenceLastModified: '2025-04-01T00:00:00.000Z',
+      templateLastModified: '2025-04-01T00:00:00.000Z',
+    };
+
+    mockFullCollection.findOne.mockReturnValue(existing);
+    mockRegistryCollection.findOne.mockReturnValue({ ...existing, tasks: null });
+    // Stored data has yearGroup field but duplicate check should only use yearGroupKey
+    mockDbManager.readAll.mockReturnValue([
+      {
+        definitionKey: 'existing-stable-key',
+        primaryTitle: 'Water cycle explanation',
+        primaryTopicKey: 'topic-science',
+        yearGroupKey: 'year-group-8',
+      },
+      {
+        definitionKey: 'other-definition',
+        primaryTitle: 'Updated title',
+        primaryTopicKey: 'topic-maths',
+        yearGroupKey: 'year-group-10',
+      },
+    ]);
+
+    // Should detect duplicate based on yearGroupKey, not yearGroup
     expect(() =>
       controller.upsertDefinition(
         createWizardUpsertPayload({

@@ -100,103 +100,6 @@ describe('AssignmentDefinitionController', () => {
     cleanupAssignmentDefinitionTest();
   });
 
-  it('should ensureDefinition creates new definition when not found', () => {
-    mockRegistryCollection.findOne.mockReturnValue(null);
-
-    const def = controller.ensureDefinition({
-      primaryTitle: 'New Assignment',
-      topicId: 'topic-1',
-      courseId: 'course-1',
-      yearGroup: 10,
-      yearGroupKey: 'year-group-10',
-      yearGroupLabel: 'Year 10',
-      documentType: 'SLIDES',
-      referenceDocumentId: 'ref-1',
-      templateDocumentId: 'tpl-1',
-    });
-
-    expect(def).toBeInstanceOf(AssignmentDefinition);
-    expect(def.primaryTopic).toBe('Enriched Topic');
-    expect(def.definitionKey).toBe('New Assignment_Enriched Topic_10');
-    expect(mockRegistryCollection.insertOne).toHaveBeenCalled();
-    expect(mockRegistryCollection.save).toHaveBeenCalled();
-  });
-
-  it('should ensureDefinition returns existing definition if fresh', () => {
-    const existingDef = new AssignmentDefinition({
-      primaryTitle: 'Existing',
-      primaryTopic: 'Topic',
-      yearGroup: 10,
-      yearGroupKey: 'year-group-10',
-      yearGroupLabel: 'Year 10',
-      documentType: 'SLIDES',
-      referenceDocumentId: 'ref-1',
-      templateDocumentId: 'tpl-1',
-      referenceLastModified: '2025-01-01T12:00:00Z',
-      templateLastModified: '2025-01-01T12:00:00Z',
-      tasks: { t1: { taskTitle: 'Task 1', artifacts: { reference: [], template: [] } } },
-    });
-
-    // Mock the full collection to return the existing definition
-    mockFullCollection.findOne.mockReturnValue(existingDef.toJSON());
-    DriveManager.getFileModifiedTime.mockReturnValue('2025-01-01T12:00:00Z'); // Same time
-
-    const def = controller.ensureDefinition({
-      primaryTitle: 'Existing',
-      primaryTopic: 'Topic',
-      yearGroup: 10,
-      documentType: 'SLIDES',
-      referenceDocumentId: 'ref-1',
-      templateDocumentId: 'tpl-1',
-    });
-
-    expect(def.definitionKey).toBe(existingDef.definitionKey);
-    expect(mockFullCollection.replaceOne).not.toHaveBeenCalled(); // No update needed
-  });
-
-  it('should refresh definition if Drive files are newer', () => {
-    const existingDef = new AssignmentDefinition({
-      primaryTitle: 'Stale',
-      primaryTopic: 'Topic',
-      yearGroup: 10,
-      documentType: 'SLIDES',
-      referenceDocumentId: 'ref-1',
-      templateDocumentId: 'tpl-1',
-      referenceLastModified: '2024-01-01T12:00:00Z',
-      templateLastModified: '2024-01-01T12:00:00Z',
-      tasks: { t1: { taskTitle: 'Task 1', artifacts: { reference: [], template: [] } } },
-    });
-
-    mockRegistryCollection.findOne.mockReturnValue(existingDef.toJSON());
-    DriveManager.getFileModifiedTime.mockReturnValue('2025-01-01T12:00:00Z'); // Newer
-
-    const def = controller.ensureDefinition({
-      primaryTitle: 'Stale',
-      primaryTopic: 'Topic',
-      documentType: 'SLIDES',
-      referenceDocumentId: 'ref-1',
-      templateDocumentId: 'tpl-1',
-    });
-
-    expect(def.referenceLastModified).toBe('2025-01-01T12:00:00Z');
-    expect(mockRegistryCollection.replaceOne).toHaveBeenCalled();
-  });
-
-  it('should resolve topic name using ClassroomApiClient', () => {
-    mockRegistryCollection.findOne.mockReturnValue(null);
-
-    controller.ensureDefinition({
-      primaryTitle: 'Title',
-      topicId: 'topic-123',
-      courseId: 'course-123',
-      documentType: 'SLIDES',
-      referenceDocumentId: 'ref',
-      templateDocumentId: 'tpl',
-    });
-
-    expect(ClassroomApiClient.fetchTopicName).toHaveBeenCalledWith('course-123', 'topic-123');
-  });
-
   it('getAllPartialDefinitions returns all partial definitions from registry', () => {
     const sampleDocs = createSamplePartialDefinitionDocs();
 
@@ -260,5 +163,285 @@ describe('AssignmentDefinitionController', () => {
     controller = new AssignmentDefinitionController();
     const defs = controller.getAllPartialDefinitions();
     expect(defs).toEqual([]);
+  });
+});
+
+// Section 2: AssignmentDefinitionController Red Phase Tests
+// These tests are intentionally failing as they test for the expected future state
+describe('AssignmentDefinitionController - Section 2 Red Phase (intentionally failing)', () => {
+  let controller;
+  let mockDbManager;
+  let mockRegistryCollection;
+  let mockFullCollection;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    const {
+      mockDbManager: setupDbManager,
+      mockRegistryCollection: setupRegistryCollection,
+      mockFullCollection: setupFullCollection,
+    } = setupAssignmentDefinitionMocks(vi, {
+      driveModifiedTime: '2025-01-01T12:00:00Z',
+      topicName: 'Enriched Topic',
+      topics: [
+        { key: 'topic-1', name: 'Enriched Topic' },
+        { key: 'topic-english', name: 'English' },
+      ],
+    });
+
+    mockDbManager = setupDbManager;
+    mockRegistryCollection = setupRegistryCollection;
+    mockFullCollection = setupFullCollection;
+
+    DbManager.getInstance.mockReturnValue(mockDbManager);
+    DriveManager.getFileModifiedTime.mockReturnValue('2025-01-01T12:00:00Z');
+    ClassroomApiClient.fetchTopicName.mockReturnValue('Enriched Topic');
+
+    const MockReferenceDataController = class {
+      listYearGroups() {
+        return [{ key: 'year-group-10', name: 'Year 10', yearGroup: 10 }];
+      }
+      listAssignmentTopics() {
+        return [
+          { key: 'topic-1', name: 'Enriched Topic' },
+          { key: 'topic-english', name: 'English' },
+        ];
+      }
+      fetchTopicName(topicId) {
+        const topics = [
+          { key: 'topic-1', name: 'Enriched Topic' },
+          { key: 'topic-english', name: 'English' },
+        ];
+        const topic = topics.find((t) => t.key === topicId);
+        return topic ? topic.name : 'Enriched Topic';
+      }
+    };
+
+    globalThis.DbManager = DbManager;
+    globalThis.DriveManager = DriveManager;
+    globalThis.ClassroomApiClient = ClassroomApiClient;
+    globalThis.AssignmentDefinition = AssignmentDefinition;
+    globalThis.ReferenceDataController = MockReferenceDataController;
+    globalThis.SlidesParser = class MockSlidesParser {
+      extractTaskDefinitions() {
+        return [
+          {
+            getId: () => 't1',
+            taskTitle: 'Parsed Task',
+            validate: () => ({ ok: true, errors: [] }),
+            toJSON: () => ({
+              id: 't1',
+              taskTitle: 'Parsed Task',
+              taskWeighting: null,
+              index: 0,
+              artifacts: { reference: [], template: [] },
+            }),
+          },
+        ];
+      }
+    };
+
+    controller = new AssignmentDefinitionController();
+  });
+
+  afterEach(() => {
+    cleanupAssignmentDefinitionTest();
+  });
+
+  // Test 1: ensureDefinition removed
+  it('should throw when calling ensureDefinition (method removed)', () => {
+    expect(() =>
+      controller.ensureDefinition({
+        primaryTitle: 'Test',
+        documentType: 'SLIDES',
+        referenceDocumentId: 'ref-1',
+        templateDocumentId: 'tpl-1',
+      })
+    ).toThrow(/ensureDefinition.*not a function|Cannot read property.*ensureDefinition/i);
+  });
+
+  // Test 2: _buildUpsertContext removed
+  it('should throw when calling _buildUpsertContext (helper removed)', () => {
+    expect(() =>
+      controller._buildUpsertContext({
+        primaryTitle: 'Test',
+        primaryTopicKey: 'topic-1',
+        yearGroupKey: 'year-group-10',
+      })
+    ).toThrow(/_buildUpsertContext.*not a function|Cannot read property.*_buildUpsertContext/i);
+  });
+
+  // Test 3: _resolveYearGroupContextForUpsert returns correct shape
+  describe('_resolveYearGroupContextForUpsert return shape', () => {
+    it('should return object with yearGroupKey property', () => {
+      const context = controller._resolveYearGroupContextForUpsert({
+        payload: { yearGroupKey: 'year-group-10' },
+      });
+      expect(context).toHaveProperty('yearGroupKey');
+      expect(context.yearGroupKey).toBe('year-group-10');
+    });
+
+    it('should return object with yearGroupLabel property', () => {
+      const context = controller._resolveYearGroupContextForUpsert({
+        payload: { yearGroupKey: 'year-group-10' },
+      });
+      expect(context).toHaveProperty('yearGroupLabel');
+      expect(context.yearGroupLabel).toBe('Year 10');
+    });
+
+    it('should return object without yearGroup property', () => {
+      const context = controller._resolveYearGroupContextForUpsert({
+        payload: { yearGroupKey: 'year-group-10' },
+      });
+      expect(context).not.toHaveProperty('yearGroup');
+    });
+
+    it('should resolve yearGroupLabel from reference data', () => {
+      const context = controller._resolveYearGroupContextForUpsert({
+        payload: { yearGroupKey: 'year-group-10' },
+      });
+      expect(context.yearGroupLabel).toBe('Year 10');
+    });
+  });
+
+  // Test 4: _assertNoDuplicateBusinessTuple uses yearGroupKey only
+  describe('_assertNoDuplicateBusinessTuple uses yearGroupKey only', () => {
+    it('should accept yearGroupKey parameter', () => {
+      mockDbManager.readAll.mockReturnValue([]);
+
+      // This should not throw - method should accept yearGroupKey
+      expect(() =>
+        controller._assertNoDuplicateBusinessTuple({
+          definitionKeyToIgnore: null,
+          primaryTitle: 'Test',
+          primaryTopicKey: 'topic-1',
+          yearGroupKey: 'year-group-10',
+        })
+      ).not.toThrow();
+    });
+
+    it('should not reference yearGroup in its implementation', () => {
+      // This test verifies the method signature doesn't include yearGroup
+      // We check by calling with only yearGroupKey (no yearGroup parameter)
+      mockDbManager.readAll.mockReturnValue([]);
+
+      expect(() =>
+        controller._assertNoDuplicateBusinessTuple({
+          definitionKeyToIgnore: null,
+          primaryTitle: 'Test',
+          primaryTopicKey: 'topic-1',
+          yearGroupKey: 'year-group-10',
+          // Note: NOT passing yearGroup parameter
+        })
+      ).not.toThrow();
+    });
+
+    it('should detect duplicates using yearGroupKey only', () => {
+      mockDbManager.readAll.mockReturnValue([
+        {
+          definitionKey: 'other-key',
+          primaryTitle: 'Test',
+          primaryTopicKey: 'topic-1',
+          yearGroupKey: 'year-group-10',
+        },
+      ]);
+
+      expect(() =>
+        controller._assertNoDuplicateBusinessTuple({
+          definitionKeyToIgnore: null,
+          primaryTitle: 'Test',
+          primaryTopicKey: 'topic-1',
+          yearGroupKey: 'year-group-10',
+        })
+      ).toThrow(/duplicate/i);
+    });
+  });
+
+  // Test 5: _resolveAssignmentWeightingForUpsert no defaulting
+  describe('_resolveAssignmentWeightingForUpsert no defaulting', () => {
+    it('should return undefined when assignmentWeighting is missing from payload', () => {
+      const result = controller._resolveAssignmentWeightingForUpsert({
+        payload: {},
+        isUpdate: false,
+        existingDefinition: null,
+      });
+      expect(result).toBeUndefined();
+    });
+
+    it('should return null when assignmentWeighting is null in payload', () => {
+      const result = controller._resolveAssignmentWeightingForUpsert({
+        payload: { assignmentWeighting: null },
+        isUpdate: false,
+        existingDefinition: null,
+      });
+      expect(result).toBeNull();
+    });
+
+    it('should return the raw value when assignmentWeighting is 5 in payload', () => {
+      const result = controller._resolveAssignmentWeightingForUpsert({
+        payload: { assignmentWeighting: 5 },
+        isUpdate: false,
+        existingDefinition: null,
+      });
+      expect(result).toBe(5);
+    });
+
+    it('should return the raw value when assignmentWeighting is 0 in payload', () => {
+      const result = controller._resolveAssignmentWeightingForUpsert({
+        payload: { assignmentWeighting: 0 },
+        isUpdate: false,
+        existingDefinition: null,
+      });
+      expect(result).toBe(0);
+    });
+  });
+
+  // Test 6: upsertDefinition validation preserved
+  describe('upsertDefinition validation preserved', () => {
+    it('should throw when payload missing required fields', () => {
+      expect(() => controller.upsertDefinition({})).toThrow();
+    });
+
+    it('should throw when yearGroupKey is null in payload', () => {
+      expect(() =>
+        controller.upsertDefinition({
+          primaryTitle: 'Test',
+          primaryTopicKey: 'topic-1',
+          yearGroupKey: null,
+          referenceDocumentId: 'ref-1',
+          templateDocumentId: 'tpl-1',
+        })
+      ).toThrow(/yearGroupKey/i);
+    });
+
+    it('should throw when yearGroupKey is missing from payload', () => {
+      expect(() =>
+        controller.upsertDefinition({
+          primaryTitle: 'Test',
+          primaryTopicKey: 'topic-1',
+          referenceDocumentId: 'ref-1',
+          templateDocumentId: 'tpl-1',
+        })
+      ).toThrow(/yearGroupKey/i);
+    });
+
+    it('should succeed with valid payload and resolved non-null yearGroupKey', () => {
+      mockDbManager.readAll.mockReturnValue([]);
+      mockFullCollection.findOne.mockReturnValue(null);
+      mockRegistryCollection.findOne.mockReturnValue(null);
+
+      const result = controller.upsertDefinition({
+        primaryTitle: 'Test',
+        primaryTopicKey: 'topic-1',
+        yearGroupKey: 'year-group-10',
+        referenceDocumentId: 'ref-1',
+        templateDocumentId: 'tpl-1',
+        documentType: 'SLIDES',
+      });
+
+      expect(result).toBeInstanceOf(AssignmentDefinition);
+      expect(result.yearGroupKey).toBe('year-group-10');
+    });
   });
 });

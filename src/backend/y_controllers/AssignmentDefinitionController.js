@@ -21,100 +21,6 @@ class AssignmentDefinitionController {
   }
 
   /**
-   * Ensure an AssignmentDefinition exists and is fresh for the provided identifiers.
-   * Parses documents when missing or stale and persists immediately.
-   * @param {Object} params - Configuration parameters.
-   * @param {string} params.primaryTitle - The primary title of the assignment.
-   * @param {string|null} [params.primaryTopic] - Topic name (optional).
-   * @param {string|null} [params.topicId] - Topic ID to look up (optional).
-   * @param {string} params.courseId - Classroom course ID.
-   * @param {number|null} [params.yearGroup] - Year group level (optional).
-   * @param {string} params.documentType - Document type ('SLIDES' or 'SHEETS').
-   * @param {string} params.referenceDocumentId - Google ID of the reference document.
-   * @param {string} params.templateDocumentId - Google ID of the template document.
-   * @returns {AssignmentDefinition} The fresh or newly created assignment definition.
-   */
-  ensureDefinition({
-    primaryTitle,
-    primaryTopic = null,
-    topicId = null,
-    courseId = '',
-    yearGroup = null,
-    documentType,
-    referenceDocumentId,
-    templateDocumentId,
-  }) {
-    if (!primaryTitle) {
-      this.progressTracker.logAndThrowError(
-        'primaryTitle is required to ensure assignment definition.'
-      );
-    }
-    if (!documentType) {
-      this.progressTracker.logAndThrowError(
-        'documentType is required to ensure assignment definition.'
-      );
-    }
-    if (!referenceDocumentId || !templateDocumentId) {
-      this.progressTracker.logAndThrowError(
-        'referenceDocumentId and templateDocumentId are required to ensure assignment definition.'
-      );
-    }
-
-    let canonicalTopic = this._resolveTopicName({ primaryTopic, topicId, courseId });
-    if (!canonicalTopic) {
-      this.progressTracker.logAndThrowError(
-        'Cannot create assignment definition: topic name is required but could not be resolved.',
-        { primaryTitle, primaryTopic, topicId, courseId }
-      );
-    }
-    const definitionKey = AssignmentDefinition.buildDefinitionKey({
-      primaryTitle,
-      primaryTopic: canonicalTopic,
-      yearGroup,
-    });
-
-    const referenceLastModified = DriveManager.getFileModifiedTime(referenceDocumentId);
-    const templateLastModified = DriveManager.getFileModifiedTime(templateDocumentId);
-
-    const storedDefinition = this._getStoredFullDocument(definitionKey);
-    let definition = storedDefinition ? AssignmentDefinition.fromJSON(storedDefinition) : null;
-
-    const needsRefresh = Utils.definitionNeedsRefresh(
-      definition,
-      referenceLastModified,
-      templateLastModified
-    );
-
-    if (!definition) {
-      definition = new AssignmentDefinition({
-        primaryTitle,
-        primaryTopic: canonicalTopic,
-        yearGroup,
-        documentType,
-        referenceDocumentId,
-        templateDocumentId,
-        referenceLastModified,
-        templateLastModified,
-        assignmentWeighting: 1,
-        tasks: {},
-        definitionKey,
-      });
-    }
-
-    if (needsRefresh) {
-      const tasks = this._parseTasks({ documentType, referenceDocumentId, templateDocumentId });
-      definition.tasks = tasks;
-      definition.updateModifiedTimestamps({
-        referenceLastModified,
-        templateLastModified,
-      });
-      this.saveDefinition(definition);
-    }
-
-    return definition;
-  }
-
-  /**
    * Creates or updates a reusable assignment definition.
    *
    * @param {Object} payload - Upsert payload.
@@ -123,67 +29,7 @@ class AssignmentDefinitionController {
   upsertDefinition(payload) {
     Validate.requireParams({ payload }, 'AssignmentDefinitionController.upsertDefinition');
 
-    const context = this._buildUpsertContext(payload);
-    const topicRecord = this._requireExistingAssignmentTopic(context.primaryTopicKey);
-
-    this._assertNoDuplicateBusinessTuple({
-      definitionKeyToIgnore: context.isUpdate ? context.existingDefinition.definitionKey : null,
-      primaryTitle: context.primaryTitle,
-      primaryTopicKey: context.primaryTopicKey,
-      yearGroup: context.yearGroup,
-      yearGroupKey: context.yearGroupKey,
-    });
-
-    const taskState = this._resolveTaskStateForUpsert({
-      isUpdate: context.isUpdate,
-      existingDefinition: context.existingDefinition,
-      documentType: context.documentType,
-      referenceDocumentId: context.referenceDocumentId,
-      templateDocumentId: context.templateDocumentId,
-    });
-
-    const finalTasks = this._applyTaskWeightingsIfProvided({
-      tasks: taskState.finalTasks,
-      payload,
-    });
-
-    const definition = new AssignmentDefinition({
-      primaryTitle: context.primaryTitle,
-      primaryTopicKey: context.primaryTopicKey,
-      primaryTopic: topicRecord.name,
-      yearGroup: context.yearGroup,
-      yearGroupKey: context.yearGroupKey,
-      yearGroupLabel: context.yearGroupLabel,
-      alternateTitles: context.alternateTitles,
-      alternateTopics: context.isUpdate ? context.existingDefinition.alternateTopics || [] : [],
-      documentType: context.documentType,
-      referenceDocumentId: context.referenceDocumentId,
-      templateDocumentId: context.templateDocumentId,
-      referenceLastModified: taskState.referenceLastModified,
-      templateLastModified: taskState.templateLastModified,
-      assignmentWeighting: context.assignmentWeighting,
-      tasks: finalTasks,
-      createdAt: context.isUpdate ? context.existingDefinition.createdAt : null,
-      updatedAt: context.isUpdate ? context.existingDefinition.updatedAt : null,
-      definitionKey: context.definitionKey,
-    });
-
-    const persistedDefinition = this._persistDefinitionWithRollback({
-      definition,
-      previousFullDefinition: context.existingDefinition,
-    });
-
-    return persistedDefinition;
-  }
-
-  /**
-   * Builds validated upsert context values.
-   *
-   * @param {Object} payload - Upsert payload.
-   * @returns {Object} Normalised context.
-   * @private
-   */
-  _buildUpsertContext(payload) {
+    // Inlined validation logic from _buildUpsertContext
     if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
       throw new TypeError('upsertDefinition payload must be an object.');
     }
@@ -212,20 +58,34 @@ class AssignmentDefinitionController {
       throw new Error('referenceDocumentId and templateDocumentId must be different.');
     }
 
-    const yearGroupContext = this._resolveYearGroupContextForUpsert({
-      payload,
-      isUpdate,
-      existingDefinition,
-    });
+    const yearGroupContext = this._resolveYearGroupContextForUpsert({ payload });
 
-    return {
-      isUpdate,
-      existingDefinition,
+    const topicRecord = this._requireExistingAssignmentTopic(primaryTopicKey);
+
+    this._assertNoDuplicateBusinessTuple({
+      definitionKeyToIgnore: isUpdate ? existingDefinition.definitionKey : null,
       primaryTitle,
       primaryTopicKey,
+      yearGroupKey: yearGroupContext.yearGroupKey,
+    });
+
+    const taskState = this._resolveTaskStateForUpsert({
+      isUpdate,
+      existingDefinition,
+      documentType: this._resolveDocumentTypeForUpsert({ payload, existingDefinition }),
       referenceDocumentId,
       templateDocumentId,
-      yearGroup: yearGroupContext.yearGroup,
+    });
+
+    const finalTasks = this._applyTaskWeightingsIfProvided({
+      tasks: taskState.finalTasks,
+      payload,
+    });
+
+    const definition = new AssignmentDefinition({
+      primaryTitle,
+      primaryTopicKey,
+      primaryTopic: topicRecord.name,
       yearGroupKey: yearGroupContext.yearGroupKey,
       yearGroupLabel: yearGroupContext.yearGroupLabel,
       alternateTitles: this._resolveAlternateTitlesForUpsert({
@@ -238,11 +98,25 @@ class AssignmentDefinitionController {
         isUpdate,
         existingDefinition,
       }),
+      documentType: this._resolveDocumentTypeForUpsert({ payload, existingDefinition }),
+      referenceDocumentId,
+      templateDocumentId,
+      referenceLastModified: taskState.referenceLastModified,
+      templateLastModified: taskState.templateLastModified,
+      tasks: finalTasks,
+      createdAt: isUpdate ? existingDefinition.createdAt : null,
+      updatedAt: isUpdate ? existingDefinition.updatedAt : null,
       definitionKey: isUpdate
         ? existingDefinition.definitionKey
         : this._generateStableDefinitionKey(),
-      documentType: this._resolveDocumentTypeForUpsert({ payload, existingDefinition }),
-    };
+    });
+
+    const persistedDefinition = this._persistDefinitionWithRollback({
+      definition,
+      previousFullDefinition: existingDefinition,
+    });
+
+    return persistedDefinition;
   }
 
   /**
@@ -267,27 +141,23 @@ class AssignmentDefinitionController {
 
   /**
    * Resolves assignment weighting for upsert operations.
-   * Defaults to 1 when missing or null.
+   * Returns the raw payload value without defaulting.
    *
    * @param {Object} params - Resolution parameters.
    * @param {Object} params.payload - Upsert payload.
    * @param {boolean} params.isUpdate - Whether this is an update.
    * @param {Object|null} params.existingDefinition - Existing definition when updating.
-   * @returns {number} Assignment weighting (defaults to 1).
+   * @returns {number|null|undefined} Assignment weighting (raw payload value).
    * @private
    */
   _resolveAssignmentWeightingForUpsert({ payload, isUpdate, existingDefinition }) {
     if (Object.hasOwn(payload, 'assignmentWeighting')) {
-      const value = this._requireNumericOrNullWeighting(
-        payload.assignmentWeighting,
-        'assignmentWeighting'
-      );
-      // Default to 1 when explicitly provided as null
-      return value === null ? 1 : value;
+      const value = payload.assignmentWeighting;
+      if (value !== null && value !== undefined) {
+        this._requireNumericOrNullWeighting(value, 'assignmentWeighting');
+      }
+      return value;
     }
-
-    // Default to 1 when not provided in payload (for both creates and updates)
-    return 1;
   }
 
   /**
@@ -295,7 +165,7 @@ class AssignmentDefinitionController {
    *
    * @param {Object} params - Resolution parameters.
    * @param {Object} params.payload - Upsert payload.
-   * @returns {{yearGroup: number|null, yearGroupKey: string, yearGroupLabel: string|null}} Year-group context.
+   * @returns {{yearGroupKey: string, yearGroupLabel: string}} Year-group context.
    * @private
    */
   _resolveYearGroupContextForUpsert({ payload }) {
@@ -305,7 +175,6 @@ class AssignmentDefinitionController {
 
     const resolvedYearGroup = this._requireExistingYearGroupRecord(payload.yearGroupKey);
     return {
-      yearGroup: resolvedYearGroup.yearGroup ?? null,
       yearGroupKey: resolvedYearGroup.key,
       yearGroupLabel: resolvedYearGroup.name,
     };
@@ -923,15 +792,13 @@ class AssignmentDefinitionController {
    * @param {string|null} params.definitionKeyToIgnore - Definition key to exclude from duplicate checks.
    * @param {string} params.primaryTitle - Candidate title.
    * @param {string} params.primaryTopicKey - Candidate topic key.
-   * @param {number|null} params.yearGroup - Candidate legacy year group.
-   * @param {string|null} params.yearGroupKey - Candidate year-group key.
+   * @param {string} params.yearGroupKey - Candidate year-group key.
    * @private
    */
   _assertNoDuplicateBusinessTuple({
     definitionKeyToIgnore,
     primaryTitle,
     primaryTopicKey,
-    yearGroup,
     yearGroupKey,
   }) {
     const rows = this.dbManager.readAll(this.registryCollectionName) || [];
@@ -949,13 +816,13 @@ class AssignmentDefinitionController {
       return (
         this._normaliseTitleForDuplicate(row.primaryTitle) === expectedTitle &&
         row.primaryTopicKey === primaryTopicKey &&
-        (row.yearGroupKey ?? row.yearGroup ?? null) === (yearGroupKey ?? yearGroup ?? null)
+        row.yearGroupKey === yearGroupKey
       );
     });
 
     if (conflict) {
       throw new Error(
-        `Duplicate assignment definition for tuple (${primaryTitle}, ${primaryTopicKey}, ${yearGroupKey ?? yearGroup ?? null})`
+        `Duplicate assignment definition for tuple (${primaryTitle}, ${primaryTopicKey}, ${yearGroupKey})`
       );
     }
   }
@@ -993,14 +860,14 @@ class AssignmentDefinitionController {
    * Resolves and validates a year-group record by key.
    *
    * @param {string} yearGroupKey - Year-group key.
-   * @returns {{key: string, name: string, yearGroup: number|null}} Year-group record.
+   * @returns {{key: string, name: string}} Year-group record.
    * @private
    */
   _requireExistingYearGroupRecord(yearGroupKey) {
     const normalisedYearGroupKey = this._requireTrimmedString(yearGroupKey, 'yearGroupKey');
-    const yearGroups = this._listYearGroups();
+    const yearGroupRecords = this._listYearGroups();
     const yearGroupRecord =
-      yearGroups.find((yearGroup) => yearGroup?.key === normalisedYearGroupKey) || null;
+      yearGroupRecords.find((record) => record?.key === normalisedYearGroupKey) || null;
 
     if (!yearGroupRecord) {
       throw new Error(`Unknown yearGroupKey: ${yearGroupKey}`);
@@ -1012,7 +879,7 @@ class AssignmentDefinitionController {
   /**
    * Lists year-group reference records.
    *
-   * @returns {Array<{key: string, name: string, yearGroup?: number}>} Year-group records.
+   * @returns {Array<{key: string, name: string}>} Year-group records.
    * @private
    */
   _listYearGroups() {
@@ -1038,7 +905,7 @@ class AssignmentDefinitionController {
 
     const canonicalYearGroupKey = source.yearGroupKey.trim();
     const resolvedYearGroup =
-      this._listYearGroups().find((yearGroup) => yearGroup?.key === canonicalYearGroupKey) || null;
+      this._listYearGroups().find((record) => record?.key === canonicalYearGroupKey) || null;
     if (
       !resolvedYearGroup ||
       typeof resolvedYearGroup.name !== 'string' ||
@@ -1180,25 +1047,6 @@ class AssignmentDefinitionController {
     return String(title || '')
       .trim()
       .toLowerCase();
-  }
-
-  /**
-   * Normalises year-group payload values.
-   *
-   * @param {*} yearGroup - Candidate year group.
-   * @returns {number|null} Normalised value.
-   * @private
-   */
-  _normaliseYearGroup(yearGroup) {
-    if (yearGroup === null || yearGroup === undefined) {
-      return null;
-    }
-
-    if (!Number.isInteger(yearGroup)) {
-      throw new TypeError('yearGroup must be an integer or null.');
-    }
-
-    return yearGroup;
   }
 
   /**

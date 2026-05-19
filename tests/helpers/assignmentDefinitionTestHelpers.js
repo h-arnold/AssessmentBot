@@ -37,7 +37,7 @@ export const DEFAULT_PARSED_TASK_DEFINITION = {
  */
 export function createReferenceDataControllerMock(options = {}) {
   const {
-    yearGroups = [{ key: 'year-group-10', name: 'Year 10', yearGroup: 10 }],
+    yearGroups = [{ key: 'year-group-10', name: 'Year 10' }],
     topics = [{ key: 'topic-english', name: 'English' }],
   } = options;
 
@@ -120,11 +120,12 @@ export function createSamplePartialDefinitionDocs() {
       primaryTitle: '1.1 Learning to Research',
       primaryTopic: 'Space',
       primaryTopicKey: 'topic-space',
-      yearGroup: null,
+      yearGroupKey: 'year-group-10',
+      yearGroupLabel: 'Year 10',
       documentType: 'SLIDES',
       referenceDocumentId: '1fuOQ8ZFoB1Kdk9_rgEErRs4jrphRkB6zJYYLjEbVoII',
       templateDocumentId: '1blHtdE5Ieyr7F_XYuAta1O4PlVhDcmJJw0OJd0BakKY',
-      definitionKey: '1.1 Learning to Research_Space_null',
+      definitionKey: '1.1 Learning to Research_Space_year-group-10',
       tasks: null,
     },
     {
@@ -132,11 +133,12 @@ export function createSamplePartialDefinitionDocs() {
       primaryTitle: '8. Secondary Storage - Cloud',
       primaryTopic: '1.1 Computer Architecture',
       primaryTopicKey: 'topic-computer-architecture',
-      yearGroup: null,
+      yearGroupKey: 'year-group-10',
+      yearGroupLabel: 'Year 10',
       documentType: 'SLIDES',
       referenceDocumentId: '1Qa3SXcZfFPtKVU0mZbbIyq3kksXOVMK12IvrLgnmwmk',
       templateDocumentId: '1kfWiX2QfzK39q98r_RxPqEvteShuUMfCdOg2wtJgCfg',
-      definitionKey: '8. Secondary Storage - Cloud_1.1 Computer Architecture_null',
+      definitionKey: '8. Secondary Storage - Cloud_1.1 Computer Architecture_year-group-10',
       tasks: null,
     },
     {
@@ -144,11 +146,12 @@ export function createSamplePartialDefinitionDocs() {
       primaryTitle: '1. DigiTech Pathways',
       primaryTopic: 'Pathways',
       primaryTopicKey: 'topic-pathways',
-      yearGroup: null,
+      yearGroupKey: 'year-group-10',
+      yearGroupLabel: 'Year 10',
       documentType: 'SLIDES',
       referenceDocumentId: '1fXe7mD6YgBixNcLpRl-6NTSTayraVCDvGTIjLQ_vh24',
       templateDocumentId: '1nguALHo-wXxxMlml49_7JoQ8sFt0-0_eF9ec4_pX6JQ',
-      definitionKey: '1. DigiTech Pathways_Pathways_null',
+      definitionKey: '1. DigiTech Pathways_Pathways_year-group-10',
       tasks: null,
     },
   ];
