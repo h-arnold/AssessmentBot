@@ -585,6 +585,16 @@ Tests to UPDATE:
 
 ## Section 4 — AssignmentProcessor/globals.js: Rename `yearGroup` to `yearGroupKey`
 
+**Status: COMPLETE** — Red Phase complete, Red Review clean, Green Phase complete, Green Review clean, regression gate passed
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** All acceptance criteria implemented. `createDefinitionFromWizardInputs` in globals.js updated to accept `yearGroupKey: string | null` parameter instead of `yearGroup: number | null`. JSDoc updated to reflect string type. Function now passes `yearGroupKey` to controller. `saveStartAndShowProgress` unchanged as required.
+- **Deviations from plan:** None
+- **Follow-up implications:** Section 5 (API layer changes) now unblocked.
+- **Note:** Test infrastructure for createDefinitionFromWizardInputs.test.js remains excluded per vitest.config.js as it has pre-existing setup issues unrelated to Section 4.
+- **Commit:** (to be added after commit)
+
 ### Objective
 
 - Update `createDefinitionFromWizardInputs` in `src/backend/AssignmentProcessor/globals.js` to accept `yearGroupKey = null` (string) instead of `yearGroup = null` (number)
