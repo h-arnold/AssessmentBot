@@ -4,6 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { withGlobalMocks } from '../helpers/globalMockManager.js';
 
 // Mock JsonDbApp library
 const mockJsonDbApp = {
@@ -31,15 +32,6 @@ function createDbManagerTestContext() {
   delete require.cache[require.resolve('../../src/backend/DbManager/DbManager.js')];
   delete require.cache[require.resolve('../../src/backend/00_BaseSingleton.js')];
 
-  // Setup global mocks
-  globalThis.JsonDbApp = mockJsonDbApp;
-  globalThis.ConfigurationManager = {
-    getInstance: () => mockConfigurationManager,
-  };
-  globalThis.ProgressTracker = {
-    getInstance: () => mockProgressTracker,
-  };
-
   // Load BaseSingleton first (dependency)
   require('../../src/backend/00_BaseSingleton.js');
   // Load DbManager
@@ -48,17 +40,21 @@ function createDbManagerTestContext() {
   return { DbManager };
 }
 
-function cleanupDbManagerTestContext() {
-  delete globalThis.JsonDbApp;
-  delete globalThis.ConfigurationManager;
-  delete globalThis.ProgressTracker;
-  vi.restoreAllMocks();
-}
+// Global mock context - will be set up in beforeEach and torn down in afterEach
+let restoreDbManagerGlobals;
 
 describe('DbManager', () => {
   let DbManager;
 
   beforeEach(() => {
+    // Setup global mocks - saves originals and installs mocks
+    const mockContext = withGlobalMocks({
+      JsonDbApp: () => mockJsonDbApp,
+      ConfigurationManager: () => ({ getInstance: () => mockConfigurationManager }),
+      ProgressTracker: () => ({ getInstance: () => mockProgressTracker }),
+    });
+    restoreDbManagerGlobals = mockContext.restore;
+
     // Reset all mocks
     vi.resetAllMocks();
 
@@ -106,7 +102,8 @@ describe('DbManager', () => {
   });
 
   afterEach(() => {
-    cleanupDbManagerTestContext();
+    restoreDbManagerGlobals();
+    vi.restoreAllMocks();
     // Reset singleton state
     BaseSingleton._instance = null;
     DbManager._instance = null;

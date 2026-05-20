@@ -1,4 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { withGlobalMocks } from '../helpers/globalMockManager.js';
+
+// Global mock context - will be set up in beforeEach and torn down in afterEach
+let restoreTriggerGlobals;
 
 describe('backend TriggerController', () => {
   let TriggerController;
@@ -13,10 +17,6 @@ describe('backend TriggerController', () => {
       }),
     };
 
-    globalThis.ProgressTracker = {
-      getInstance: vi.fn(() => progressTracker),
-    };
-
     globalThis.ScriptApp = {
       AuthMode: { FULL: 'FULL' },
       requireScopes: vi.fn(),
@@ -29,13 +29,19 @@ describe('backend TriggerController', () => {
       deleteTrigger: vi.fn(),
     };
 
+    // Setup global mocks - saves originals and installs mocks
+    const mockContext = withGlobalMocks({
+      ProgressTracker: () => ({ getInstance: vi.fn(() => progressTracker) }),
+      ScriptApp: () => globalThis.ScriptApp,
+    });
+    restoreTriggerGlobals = mockContext.restore;
+
     delete require.cache[require.resolve('../../src/backend/Utils/TriggerController.js')];
     ({ TriggerController } = require('../../src/backend/Utils/TriggerController.js'));
   });
 
   afterEach(() => {
-    delete globalThis.ScriptApp;
-    delete globalThis.ProgressTracker;
+    restoreTriggerGlobals();
   });
 
   it('does not expose removed on-open helper methods', () => {

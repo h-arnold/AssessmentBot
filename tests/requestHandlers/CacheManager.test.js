@@ -1,16 +1,22 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { withGlobalMocks } from '../helpers/globalMockManager.js';
 import { simpleHash } from '../helpers/testUtils.js';
 
 /**
  * CacheManager Tests
  * Tests caching of assessment data to prevent redundant processing
  */
+
+// Global mock context - will be set up in beforeEach and torn down in afterEach
+let restoreCacheManagerGlobals;
+
 describe('CacheManager', () => {
   let CacheManager;
   let mockCacheService;
   let mockScriptCache;
   let mockUtils;
   let mockRuntimeConstants;
+  let mockConsole;
 
   beforeEach(() => {
     // Setup mock CacheService
@@ -21,27 +27,33 @@ describe('CacheManager', () => {
     mockCacheService = {
       getScriptCache: vi.fn().mockReturnValue(mockScriptCache),
     };
-    globalThis.CacheService = mockCacheService;
 
     // Setup mock Utils
     mockUtils = {
       generateHash: vi.fn(simpleHash),
     };
-    globalThis.Utils = mockUtils;
 
     // Setup mock RuntimeConstants
     mockRuntimeConstants = {
       MINUTES_PER_HOUR: 60,
       SECONDS_PER_MINUTE: 60,
     };
-    globalThis.RuntimeConstants = mockRuntimeConstants;
 
     // Mock console to avoid noise
-    globalThis.console = {
+    mockConsole = {
       log: vi.fn(),
       warn: vi.fn(),
       error: vi.fn(),
     };
+
+    // Setup all global mocks - saves originals and installs mocks
+    const mockContext = withGlobalMocks({
+      CacheService: () => mockCacheService,
+      Utils: () => mockUtils,
+      RuntimeConstants: () => mockRuntimeConstants,
+      console: () => mockConsole,
+    });
+    restoreCacheManagerGlobals = mockContext.restore;
 
     // Load CacheManager
     delete require.cache[require.resolve('../../src/backend/RequestHandlers/CacheManager.js')];
@@ -50,10 +62,7 @@ describe('CacheManager', () => {
   });
 
   afterEach(() => {
-    delete globalThis.CacheService;
-    delete globalThis.Utils;
-    delete globalThis.RuntimeConstants;
-    delete globalThis.console;
+    restoreCacheManagerGlobals();
     vi.clearAllMocks();
   });
 

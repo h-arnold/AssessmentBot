@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { withGlobalMocks } from '../helpers/globalMockManager.js';
 
 /**
  * BaseRequestManager Error Handling Tests
@@ -17,6 +18,9 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
  * - 503: Service Unavailable - temporary (should retry with backoff)
  */
 
+// Global mock context - will be set up in beforeEach and torn down in afterEach
+let restoreRequestHandlerGlobals;
+
 describe('BaseRequestManager Error Handling', () => {
   let BaseRequestManager;
   let mockUrlFetchApp;
@@ -31,13 +35,11 @@ describe('BaseRequestManager Error Handling', () => {
       fetch: vi.fn(),
       fetchAll: vi.fn(),
     };
-    globalThis.UrlFetchApp = mockUrlFetchApp;
 
     // Setup mock Utilities
     mockUtilities = {
       sleep: vi.fn(),
     };
-    globalThis.Utilities = mockUtilities;
 
     // Setup mock CacheService
     mockCacheService = {
@@ -46,7 +48,6 @@ describe('BaseRequestManager Error Handling', () => {
         put: vi.fn(),
       }),
     };
-    globalThis.CacheService = mockCacheService;
 
     // Setup mock ConfigurationManager
     mockConfigManager = {
@@ -54,7 +55,6 @@ describe('BaseRequestManager Error Handling', () => {
         getBackendAssessorBatchSize: vi.fn().mockReturnValue(10),
       }),
     };
-    globalThis.ConfigurationManager = mockConfigManager;
 
     // Setup mock ProgressTracker
     mockProgressTracker = {
@@ -65,7 +65,6 @@ describe('BaseRequestManager Error Handling', () => {
         getCurrentProgress: vi.fn().mockReturnValue({ message: 'Processing' }),
       }),
     };
-    globalThis.ProgressTracker = mockProgressTracker;
 
     // Setup mock ABLogger
     const mockABLogger = {
@@ -78,18 +77,29 @@ describe('BaseRequestManager Error Handling', () => {
         debugUi: vi.fn(),
       }),
     };
-    globalThis.ABLogger = mockABLogger;
 
     // Load AbortRequestError
     const AbortRequestError = require('../../src/backend/Utils/ErrorTypes/AbortRequestError.js');
-    globalThis.AbortRequestError = AbortRequestError;
 
     // Mock console methods to avoid noise in test output
-    globalThis.console = {
+    const mockConsole = {
       log: vi.fn(),
       warn: vi.fn(),
       error: vi.fn(),
     };
+
+    // Setup all global mocks - saves originals and installs mocks
+    const mockContext = withGlobalMocks({
+      UrlFetchApp: () => mockUrlFetchApp,
+      Utilities: () => mockUtilities,
+      CacheService: () => mockCacheService,
+      ConfigurationManager: () => mockConfigManager,
+      ProgressTracker: () => mockProgressTracker,
+      ABLogger: () => mockABLogger,
+      AbortRequestError: () => AbortRequestError,
+      console: () => mockConsole,
+    });
+    restoreRequestHandlerGlobals = mockContext.restore;
 
     // Clear module cache and reload BaseRequestManager
     delete require.cache[
@@ -100,13 +110,7 @@ describe('BaseRequestManager Error Handling', () => {
   });
 
   afterEach(() => {
-    delete globalThis.UrlFetchApp;
-    delete globalThis.Utilities;
-    delete globalThis.CacheService;
-    delete globalThis.ConfigurationManager;
-    delete globalThis.ProgressTracker;
-    delete globalThis.ABLogger;
-    delete globalThis.AbortRequestError;
+    restoreRequestHandlerGlobals();
     vi.clearAllMocks();
   });
 

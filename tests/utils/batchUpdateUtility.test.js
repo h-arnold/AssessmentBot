@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { withGlobalMocks } from '../helpers/globalMockManager.js';
 
 // Load the module under test
 const { BatchUpdateUtility } = require('../../src/backend/Utils/BatchUpdateUtility.js');
+
+// Global mock context - will be set up in beforeEach and torn down in afterEach
+let restoreBatchUtilityGlobals;
 
 describe('BatchUpdateUtility', () => {
   const originalConsole = { ...console };
@@ -21,11 +25,6 @@ describe('BatchUpdateUtility', () => {
       }),
     };
 
-    // Mock ProgressTracker.getInstance
-    globalThis.ProgressTracker = {
-      getInstance: () => mockProgressTracker,
-    };
-
     // Create mock Sheets service
     mockSheets = {
       Spreadsheets: {
@@ -33,17 +32,20 @@ describe('BatchUpdateUtility', () => {
       },
     };
 
-    // Mock Sheets global
-    globalThis.Sheets = mockSheets;
+    // Setup global mocks - saves originals and installs mocks
+    const mockContext = withGlobalMocks({
+      ProgressTracker: () => ({ getInstance: () => mockProgressTracker }),
+      Sheets: () => mockSheets,
+    });
+    restoreBatchUtilityGlobals = mockContext.restore;
   });
 
   afterEach(() => {
     // Restore console
     Object.assign(console, originalConsole);
 
-    // Clean up mocks
-    delete globalThis.ProgressTracker;
-    delete globalThis.Sheets;
+    // Restore globals
+    restoreBatchUtilityGlobals();
 
     vi.resetAllMocks();
   });

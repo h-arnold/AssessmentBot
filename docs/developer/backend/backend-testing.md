@@ -109,6 +109,8 @@ Rules:
 
 The transport-layer refactor helper patterns are now implemented in `tests/helpers/apiHandlerTestUtils.js`.
 
+> **Note:** For general global mock management, use the `globalMockManager` helper (`tests/helpers/globalMockManager.js`) which provides a consistent pattern for saving and restoring global mocks. This prevents test pollution where cleanup from one test affects other tests.
+
 ### `installControllerMocks` / `restoreControllerMocks`
 
 > **Implemented**
@@ -138,6 +140,49 @@ Purpose:
   global handler functions
 - keep `getBackendConfig_` / `setBackendConfig_` out of this helper because `z_apiHandler.js` wires
   those through its own guarded Node bridge
+
+### Global Mock Management with `globalMockManager`
+
+> **Recommended for new tests**
+
+Location: `tests/helpers/globalMockManager.js`
+
+For tests that need to mock multiple globals (like `DbManager`, `CacheManager`, `BaseRequestManager`, `BatchUpdateUtility`, `TriggerController` tests), use the `globalMockManager` helper instead of manually saving/deleting globals. This ensures proper cleanup and prevents test pollution.
+
+See the [Global Mock Manager](#global-mock-manager-testshelpersglobalmockmanagerjs) section for complete documentation.
+
+**Migration pattern from manual cleanup:**
+
+Before (problematic):
+
+```javascript
+beforeEach(() => {
+  global.ProgressTracker = { getInstance: () => mockTracker };
+});
+
+afterEach(() => {
+  delete global.ProgressTracker; // Causes test pollution!
+});
+```
+
+After (using `globalMockManager`):
+
+```javascript
+import { withGlobalMocks } from '../helpers/globalMockManager.js';
+
+let restoreGlobals;
+
+beforeEach(() => {
+  const mockContext = withGlobalMocks({
+    ProgressTracker: () => ({ getInstance: () => mockTracker }),
+  });
+  restoreGlobals = mockContext.restore;
+});
+
+afterEach(() => {
+  restoreGlobals(); // Restores original values safely
+});
+```
 
 ## Anti-Patterns Seen In This Repository
 
@@ -199,6 +244,68 @@ Preferred:
 - when a feature migrates from `globals.js` to `apiHandler`, replace legacy-surface tests with new transport tests rather than preserving both naming schemes
 - treat existing `SECTION_*` constants or "Section N ..." describe titles in the test suite as legacy names and rename them to behaviour-focused names when you next touch those tests, rather than copying the old pattern
 - apply this rule consistently to backend configuration transport tests; do not recreate action-plan-number labels in `tests/api/backendConfigApi.test.js` or related helpers
+
+### 5. Deleting globals without saving and restoring
+
+Anti-pattern:
+
+```javascript
+beforeEach(() => {
+  global.ProgressTracker = { getInstance: () => mockTracker };
+  global.ConfigurationManager = { getInstance: () => mockConfigManager };
+});
+
+afterEach(() => {
+  delete global.ProgressTracker;
+  delete global.ConfigurationManager;
+  // Other tests may depend on these globals!
+});
+```
+
+**Problem:** When tests delete global properties directly in `afterEach`, they cause **test pollution**. If another test file (or a concurrent test run) expects those globals to exist from `setupGlobals.js`, deleting them will cause failures with messages like "X is not defined" or "Cannot read property 'getInstance' of undefined".
+
+This was the root cause of Vitest teardown errors in the codebase before `globalMockManager` was introduced.
+
+Preferred:
+
+Use the `globalMockManager` helper to save original values before replacing them and restore them after tests:
+
+```javascript
+import { withGlobalMocks } from '../helpers/globalMockManager.js';
+
+let restoreGlobals;
+
+beforeEach(() => {
+  const mockContext = withGlobalMocks({
+    ProgressTracker: () => ({ getInstance: () => mockTracker }),
+    ConfigurationManager: () => ({ getInstance: () => mockConfigManager }),
+  });
+  restoreGlobals = mockContext.restore;
+});
+
+afterEach(() => {
+  restoreGlobals(); // Restores original values safely
+});
+```
+
+Or use `mockGlobals` for automatic beforeEach/afterEach management:
+
+```javascript
+const { mockGlobals } = require('../helpers/globalMockManager.js');
+
+const { beforeEach: setupMocks, afterEach: teardownMocks } = mockGlobals({
+  ProgressTracker: () => ({ getInstance: () => mockTracker }),
+  ConfigurationManager: () => ({ getInstance: () => mockConfigManager }),
+});
+
+describe('MyTest', () => {
+  beforeEach(setupMocks);
+  afterEach(teardownMocks);
+  // tests...
+});
+```
+
+**Rule:** Never use bare `delete global.X` in test cleanup. Always save the original value first and restore it.
 
 ## Test Framework
 
@@ -602,6 +709,193 @@ const context = createSingletonTestContext();
 const singletons = loadSingletonsWithMocks(context.harness, {
   loadConfigurationManager: true,
   loadProgressTracker: true,
+});
+```
+
+### Global Mock Manager (`tests/helpers/globalMockManager.js`)
+
+The `globalMockManager` helper provides a consistent pattern for saving and restoring global mocks in tests. This prevents **test pollution** where one test's cleanup deletes globals that other tests depend on, which was causing Vitest teardown errors.
+
+**Location:** `tests/helpers/globalMockManager.js`
+
+**Purpose:**
+
+- Save original global values before replacing them with mocks
+- Restore original global values after tests complete
+- Prevent test pollution between concurrent or sequential test runs
+- Provide multiple usage patterns for different testing scenarios
+
+**Available functions:**
+
+#### `saveGlobals(globalNames)`
+
+Saves the current values of specified global properties.
+
+- **Parameters:**
+  - `globalNames` (string[]): Array of global property names to save
+- **Returns:** (Object) Map of global names to their original values
+
+```javascript
+const { saveGlobals, restoreGlobals } = require('../helpers/globalMockManager.js');
+
+const saved = saveGlobals(['ProgressTracker', 'ConfigurationManager']);
+// ... modify globals ...
+restoreGlobals(saved); // Restores original values
+```
+
+#### `restoreGlobals(savedGlobals)`
+
+Restores saved global values. If a global was `undefined` when saved, it will be deleted. If it had a value, that value will be restored.
+
+- **Parameters:**
+  - `savedGlobals` (Object): Map of global names to their saved values (from `saveGlobals`)
+
+#### `withGlobalMocks(mocks)`
+
+Creates a mock context for specified globals. Saves original values and provides a restore function.
+
+- **Parameters:**
+  - `mocks` (Object): Map of global names to mock factories or values. Factory functions are called to produce the mock value.
+- **Returns:** (Object) Context with `restore()` function and `savedGlobals`
+
+```javascript
+const { withGlobalMocks } = require('../helpers/globalMockManager.js');
+
+const mockContext = withGlobalMocks({
+  ProgressTracker: () => ({ getInstance: () => mockTracker }),
+  ConfigurationManager: () => ({ getInstance: () => mockConfigManager }),
+});
+
+// Use in afterEach
+afterEach(() => {
+  mockContext.restore();
+});
+```
+
+#### `mockGlobals(mocks)`
+
+Creates a `beforeEach`/`afterEach` pair that automatically manages global mocks. This is the **recommended pattern** for most test suites.
+
+- **Parameters:**
+  - `mocks` (Object): Map of global names to mock factories or values
+- **Returns:** (Object) Object with `beforeEach`, `afterEach`, `setup`, and `teardown` functions
+
+```javascript
+const { mockGlobals } = require('../helpers/globalMockManager.js');
+
+const { beforeEach: setupMocks, afterEach: teardownMocks } = mockGlobals({
+  ProgressTracker: () => ({ getInstance: () => mockTracker }),
+  ConfigurationManager: () => mockConfigManager,
+});
+
+describe('MyTest', () => {
+  beforeEach(setupMocks);
+  afterEach(teardownMocks);
+
+  it('should work with mocked globals', () => {
+    // globals are mocked
+  });
+});
+```
+
+#### `withTemporaryGlobals(mocks, fn)`
+
+Temporarily replaces specified globals with mocks, then restores them after the function completes. Useful for one-off mocking in a single test or test block.
+
+- **Parameters:**
+  - `mocks` (Object): Map of global names to mock factories or values
+  - `fn` (Function): Test function to run with mocked globals
+- **Returns:** The return value of `fn`
+
+```javascript
+const { withTemporaryGlobals } = require('../helpers/globalMockManager.js');
+
+it('should work with temporary mocks', () => {
+  const result = withTemporaryGlobals(
+    {
+      ProgressTracker: () => mockTracker,
+      ConfigurationManager: () => mockConfigManager,
+    },
+    () => {
+      // Code that needs the mocked globals
+      return someFunction();
+    }
+  );
+
+  expect(result).toBe('expected');
+  // Original globals are restored here
+});
+```
+
+#### `resetGlobal(globalName)`
+
+Resets a specific global to its original value from `setupGlobals`. This is a simpler alternative when you only need to reset one global. Note: this is a best-effort reset by deletion; for reliable restoration, use `saveGlobals`/`restoreGlobals` pattern.
+
+- **Parameters:**
+  - `globalName` (string): Name of the global to reset
+
+```javascript
+const { resetGlobal } = require('../helpers/globalMockManager.js');
+
+afterEach(() => {
+  resetGlobal('SomeSpecificGlobal');
+});
+```
+
+**Usage pattern comparison:**
+
+| Pattern                        | Best for                                    | Automatic cleanup                       |
+| ------------------------------ | ------------------------------------------- | --------------------------------------- |
+| `withGlobalMocks`              | Single describe block with manual afterEach | No - call `restore()` manually          |
+| `mockGlobals`                  | Recommended for most test suites            | Yes - use returned beforeEach/afterEach |
+| `withTemporaryGlobals`         | One-off mocking in a test                   | Yes - automatic in finally block        |
+| `saveGlobals`/`restoreGlobals` | Custom control over save/restore timing     | No - manual control                     |
+
+**Complete example with `withGlobalMocks`:**
+
+```javascript
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { withGlobalMocks } from '../helpers/globalMockManager.js';
+
+let restoreGlobals;
+
+const mockProgressTracker = {
+  logError: vi.fn(),
+  logAndThrowError: vi.fn(),
+};
+
+const mockConfigurationManager = {
+  getInstance: vi.fn(() => mockConfigurationManager),
+  getSomeConfig: vi.fn().mockReturnValue('config-value'),
+};
+
+describe('MyComponent', () => {
+  beforeEach(() => {
+    // Setup global mocks - saves originals and installs mocks
+    const mockContext = withGlobalMocks({
+      ProgressTracker: () => ({ getInstance: () => mockProgressTracker }),
+      ConfigurationManager: () => mockConfigurationManager,
+    });
+    restoreGlobals = mockContext.restore;
+
+    // Reset all Vitest mocks
+    vi.resetAllMocks();
+  });
+
+  afterEach(() => {
+    restoreGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('should use mocked globals', () => {
+    // Load module after mocks are in place
+    const MyComponent = require('../../src/backend/MyComponent.js');
+
+    const component = new MyComponent();
+    component.doSomething();
+
+    expect(mockProgressTracker.logError).toHaveBeenCalled();
+  });
 });
 ```
 
