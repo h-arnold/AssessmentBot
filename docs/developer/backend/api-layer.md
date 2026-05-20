@@ -47,7 +47,7 @@ This layer is deliberately REST-ish in structure:
   - Location: `yearGroup` parameter and property in `src/backend/Models/AssignmentDefinition.js`
   - Note: Deprecated in favour of `yearGroupKey` only.
 - Assignment-definition transport partial row helper
-  - Status: `Not implemented`
+  - Status: `Implemented`
   - Location: `toTransportPartialRow_` in `src/backend/z_Api/assignmentDefinitionPartials.js`
   - Note: New transport-boundary helper that accepts model instance, calls `definition.toPartialJSON()`, defensively strips `yearGroup`, and normalises Date fields.
 
@@ -149,7 +149,7 @@ Transport helper ownership:
 
 Controller ownership:
 
-- reject blank `primaryTitle`, unknown `primaryTopicKey`, invalid `yearGroup`, identical source documents, unknown update targets, duplicate business-identity tuples, and invalid task-weighting references
+- reject blank `primaryTitle`, unknown `primaryTopicKey`, invalid `yearGroupKey`, identical source documents, unknown update targets, duplicate business-identity tuples, and invalid task-weighting references
 - require `documentType` on create, reuse the stored `documentType` on update when omitted, generate a stable opaque `definitionKey` on create, and preserve the stored key on update
 - resolve `primaryTopic` from authoritative assignment-topic reference data rather than treating copied topic strings as the source of truth
 - parse or refresh tasks, apply assignment/task weighting values, and manage rollback when registry persistence fails after the full-store write
@@ -288,7 +288,7 @@ Use the allowlisted method names exactly as implemented in `ALLOWLISTED_METHOD_H
 
 - `getAssignmentDefinitionPartials` — returns assignment-definition registry rows for the Assignments page without loading task artifacts.
   Source: `src/backend/z_Api/assignmentDefinitionPartials.js`, via the `getAssignmentDefinitionPartials_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `AssignmentDefinitionController.getAllPartialDefinitions()` in `src/backend/y_controllers/AssignmentDefinitionController.js`.
-  Response data: `Array<{ primaryTitle, primaryTopic, primaryTopicKey, yearGroup, alternateTitles, alternateTopics, documentType, referenceDocumentId, templateDocumentId, assignmentWeighting, definitionKey, tasks: null, createdAt: string | null, updatedAt: string | null }>` inside the standard success envelope.
+  Response data: `Array<{ primaryTitle, primaryTopic, primaryTopicKey, yearGroupKey, yearGroupLabel, alternateTitles, alternateTopics, documentType, referenceDocumentId, templateDocumentId, assignmentWeighting, definitionKey, tasks: null, createdAt: string | null, updatedAt: string | null }>` inside the standard success envelope.
   Registry contract: rows come from the lightweight `assignment_definitions` collection and intentionally keep `tasks` fixed to `null`; `primaryTopicKey` is authoritative, `primaryTopic` is the resolved label, and `referenceLastModified` / `templateLastModified` are not part of the partial transport shape.
   Validation: the helper rejects malformed rows with `ApiValidationError` when required fields are missing, `definitionKey` or `primaryTopicKey` are blank or untrimmed, `createdAt` / `updatedAt` are not `string | null`, non-null timestamps are not strict ISO datetime strings with timezone information, or `tasks` is not `null`.
   Frontend wrapper: `src/frontend/src/services/assignmentDefinitionPartialsService.ts` (`getAssignmentDefinitionPartials()`), with payload validation in `src/frontend/src/services/assignmentDefinitionPartials.zod.ts`.
