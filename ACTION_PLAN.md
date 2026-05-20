@@ -686,7 +686,7 @@ Tests to UPDATE (indirect coverage):
 - **Implementation notes:** All acceptance criteria implemented. `toCanonicalTransportDefinition_`, `buildControllerUpsertPayload_`, and `toPlainPartialRow_` removed. Call sites updated to use `controller.toCanonicalFullDefinitionResponse(definition)` directly with fallback. URL-to-ID translation inlined into `upsertAssignmentDefinition_` WITHOUT `assignmentWeighting` defaulting logic. New `toTransportPartialRow_` helper created that accepts model instance, calls `definition.toPartialJSON()`, defensively strips `yearGroup` field, and normalises Date fields to ISO strings. `getAssignmentDefinitionPartials_` updated to use `toTransportPartialRow_`. Transport validation helpers unchanged. `toTransportPartialRow_` exported in module.exports. All pre-existing failing tests updated to reflect architectural changes (15 tests in assignmentDefinitionPartials.unit.test.js, 2 tests in assignmentDefinitionUpsertApi.test.js).
 - **Deviations from plan:** None
 - **Follow-up implications:** Regression phase now unblocked. Documentation pass needed to update shared helper status.
-- **Commit:** (to be added after commit)
+- **Commit:** bcc84d6 - "feat: complete Section 5 of assignment definition refactoring"
 
 ### Objective
 
