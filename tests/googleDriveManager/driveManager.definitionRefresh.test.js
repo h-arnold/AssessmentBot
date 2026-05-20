@@ -101,7 +101,8 @@ describe('DriveManager - Definition Refresh Integration', () => {
       const definition = new AssignmentDefinition({
         primaryTitle: 'Test',
         primaryTopic: 'Topic',
-        yearGroup: 10,
+        yearGroupKey: 'year-group-10',
+        yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
         referenceDocumentId: 'ref-123',
         templateDocumentId: 'tpl-456',
@@ -134,7 +135,8 @@ describe('DriveManager - Definition Refresh Integration', () => {
       const definition = new AssignmentDefinition({
         primaryTitle: 'Test',
         primaryTopic: 'Topic',
-        yearGroup: 10,
+        yearGroupKey: 'year-group-10',
+        yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
         referenceDocumentId: 'ref-123',
         templateDocumentId: 'tpl-456',

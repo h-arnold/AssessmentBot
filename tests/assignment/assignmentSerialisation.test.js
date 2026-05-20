@@ -118,7 +118,8 @@ describe('Assignment Serialisation', () => {
       const partialDef = new AssignmentDefinition({
         primaryTitle: 'Essay 1',
         primaryTopic: 'English',
-        yearGroup: 10,
+        yearGroupKey: 'year-group-10',
+        yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
         tasks: null,
       });
@@ -141,7 +142,8 @@ describe('Assignment Serialisation', () => {
       const fullDef = new AssignmentDefinition({
         primaryTitle: 'Slides Essay',
         primaryTopic: 'English',
-        yearGroup: 10,
+        yearGroupKey: 'year-group-10',
+        yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
         referenceDocumentId: 'ref-slides',
         templateDocumentId: 'tmpl-slides',
@@ -165,7 +167,8 @@ describe('Assignment Serialisation', () => {
       const fullDef = new AssignmentDefinition({
         primaryTitle: 'Slides assignment serialisation',
         primaryTopic: 'English',
-        yearGroup: 10,
+        yearGroupKey: 'year-group-10',
+        yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
         referenceDocumentId: 'ref-tojson',
         templateDocumentId: 'tpl-tojson',
