@@ -152,11 +152,12 @@ describe('Api/upsertAssignmentDefinition transport contract', () => {
     expect(response).toEqual(expectedDefinition);
     expect(AssignmentDefinitionController).toHaveBeenCalledTimes(1);
     expect(upsertDefinition).toHaveBeenCalledTimes(1);
-    // assignmentWeighting is defaulted to 1 by the API layer
+    // After Section 5: API layer no longer defaults assignmentWeighting; model handles defaulting
+    // assignmentWeighting is passed through as-is (null in this case from buildValidUpsertPayload)
     expect(upsertDefinition).toHaveBeenCalledWith(
       expect.objectContaining({
         ...payload,
-        assignmentWeighting: 1,
+        assignmentWeighting: null,
       })
     );
   });
@@ -172,11 +173,12 @@ describe('Api/upsertAssignmentDefinition transport contract', () => {
 
     expect(response).toEqual(expectedDefinition);
     expect(upsertDefinition).toHaveBeenCalledTimes(1);
-    // assignmentWeighting is defaulted to 1 by the API layer
+    // After Section 5: API layer no longer defaults assignmentWeighting; model handles defaulting
+    // assignmentWeighting is passed through as-is (null in this case from buildValidUpsertPayload)
     expect(upsertDefinition).toHaveBeenCalledWith(
       expect.objectContaining({
         ...payload,
-        assignmentWeighting: 1,
+        assignmentWeighting: null,
       })
     );
   });

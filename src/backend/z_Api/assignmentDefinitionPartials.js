@@ -38,21 +38,6 @@ function getAssignmentDefinitionController_() {
 }
 
 /**
- * Maps a controller definition result to canonical transport when supported.
- *
- * @param {AssignmentDefinitionController} controller - Controller instance.
- * @param {Object} definition - Definition returned from the controller.
- * @returns {Object} Canonical full-definition payload.
- */
-function toCanonicalTransportDefinition_(controller, definition) {
-  if (typeof controller.toCanonicalFullDefinitionResponse === 'function') {
-    return controller.toCanonicalFullDefinitionResponse(definition);
-  }
-
-  return definition;
-}
-
-/**
  * Throws a transport validation error for assignment-definition partials.
  *
  * @param {string} message - Validation failure message.
@@ -514,49 +499,6 @@ function extractSupportedDocumentDescriptor_(urlValue, fieldName) {
 }
 
 /**
- * Builds the controller upsert payload from transport parameters.
- * Applies default for assignmentWeighting (1) when missing or null.
- *
- * @param {Object} parameters - Validated transport parameters.
- * @returns {Object} Controller payload.
- */
-function buildControllerUpsertPayload_(parameters) {
-  const shouldTranslateDocumentUrls =
-    Object.hasOwn(parameters, 'referenceDocumentUrl') ||
-    Object.hasOwn(parameters, 'templateDocumentUrl');
-
-  let payload = shouldTranslateDocumentUrls ? { ...parameters } : parameters;
-
-  if (shouldTranslateDocumentUrls) {
-    const referenceDescriptor = extractSupportedDocumentDescriptor_(
-      parameters.referenceDocumentUrl,
-      'referenceDocumentUrl'
-    );
-    const templateDescriptor = extractSupportedDocumentDescriptor_(
-      parameters.templateDocumentUrl,
-      'templateDocumentUrl'
-    );
-
-    payload = {
-      ...parameters,
-      referenceDocumentId: referenceDescriptor.documentId,
-      templateDocumentId: templateDescriptor.documentId,
-      documentType: referenceDescriptor.documentType,
-    };
-
-    delete payload.referenceDocumentUrl;
-    delete payload.templateDocumentUrl;
-  }
-
-  // Default assignmentWeighting to 1 when missing or null
-  if (!Object.hasOwn(payload, 'assignmentWeighting') || payload.assignmentWeighting === null) {
-    payload = { ...payload, assignmentWeighting: 1 };
-  }
-
-  return payload;
-}
-
-/**
  * Throws a transport validation error for assignment-definition read operations.
  *
  * @param {string} message - Validation failure message.
@@ -812,28 +754,26 @@ function validatePartialRow_(row, rowIndex) {
 }
 
 /**
- * Builds a plain assignment-definition partial object.
+ * Transport-boundary helper that serialises an AssignmentDefinition model instance
+ * to a partial transport row, defensively stripping deprecated yearGroup field and
+ * normalising Date fields to ISO strings.
  *
- * @param {Object} row - Valid partial row.
- * @returns {Object} Plain transport row.
+ * @param {Object} definition - AssignmentDefinition model instance or plain partial object.
+ * @returns {Object} Plain transport partial row without yearGroup.
  */
-function toPlainPartialRow_(row) {
+function toTransportPartialRow_(definition) {
+  // If definition has toPartialJSON method, use it (model instance)
+  const partial =
+    typeof definition.toPartialJSON === 'function' ? definition.toPartialJSON() : definition;
+
+  // Defensive strip yearGroup field (safety net in addition to model-level removal)
+  const { yearGroup, ...rest } = partial;
+
+  // Normalise Date fields to ISO strings
   return {
-    primaryTitle: row.primaryTitle,
-    primaryTopic: row.primaryTopic,
-    primaryTopicKey: row.primaryTopicKey,
-    yearGroupKey: row.yearGroupKey,
-    yearGroupLabel: row.yearGroupLabel,
-    alternateTitles: row.alternateTitles,
-    alternateTopics: row.alternateTopics,
-    documentType: row.documentType,
-    referenceDocumentId: row.referenceDocumentId,
-    templateDocumentId: row.templateDocumentId,
-    assignmentWeighting: row.assignmentWeighting,
-    definitionKey: row.definitionKey,
-    tasks: row.tasks,
-    createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : row.createdAt,
-    updatedAt: row.updatedAt instanceof Date ? row.updatedAt.toISOString() : row.updatedAt,
+    ...rest,
+    createdAt: rest.createdAt instanceof Date ? rest.createdAt.toISOString() : rest.createdAt,
+    updatedAt: rest.updatedAt instanceof Date ? rest.updatedAt.toISOString() : rest.updatedAt,
   };
 }
 
@@ -844,13 +784,13 @@ function toPlainPartialRow_(row) {
  * @throws {ApiValidationError} If controller response is not an array.
  */
 function getAssignmentDefinitionPartials_() {
-  const partialRows = getAssignmentDefinitionController_().getAllPartialDefinitions();
+  const definitions = getAssignmentDefinitionController_().getAllPartialDefinitions();
 
-  if (!Array.isArray(partialRows)) {
+  if (!Array.isArray(definitions)) {
     throwValidationError_('Controller response must be an array.', RESPONSE_FIELD_NAME, 0);
   }
 
-  return partialRows.map((row) => toPlainPartialRow_(row));
+  return definitions.map((definition) => toTransportPartialRow_(definition));
 }
 
 /**
@@ -881,8 +821,39 @@ function deleteAssignmentDefinition_(parameters) {
 function upsertAssignmentDefinition_(parameters) {
   validateUpsertParameters_(parameters);
   const controller = getAssignmentDefinitionController_();
-  const definition = controller.upsertDefinition(buildControllerUpsertPayload_(parameters));
-  return toCanonicalTransportDefinition_(controller, definition);
+
+  // Inline URL-to-ID translation without assignmentWeighting defaulting
+  const shouldTranslateDocumentUrls =
+    Object.hasOwn(parameters, 'referenceDocumentUrl') ||
+    Object.hasOwn(parameters, 'templateDocumentUrl');
+
+  let payload = shouldTranslateDocumentUrls ? { ...parameters } : parameters;
+
+  if (shouldTranslateDocumentUrls) {
+    const referenceDescriptor = extractSupportedDocumentDescriptor_(
+      parameters.referenceDocumentUrl,
+      'referenceDocumentUrl'
+    );
+    const templateDescriptor = extractSupportedDocumentDescriptor_(
+      parameters.templateDocumentUrl,
+      'templateDocumentUrl'
+    );
+
+    payload = {
+      ...parameters,
+      referenceDocumentId: referenceDescriptor.documentId,
+      templateDocumentId: templateDescriptor.documentId,
+      documentType: referenceDescriptor.documentType,
+    };
+
+    delete payload.referenceDocumentUrl;
+    delete payload.templateDocumentUrl;
+  }
+
+  const definition = controller.upsertDefinition(payload);
+  return typeof controller.toCanonicalFullDefinitionResponse === 'function'
+    ? controller.toCanonicalFullDefinitionResponse(definition)
+    : definition;
 }
 
 /**
@@ -903,7 +874,9 @@ function getAssignmentDefinition_(parameters) {
     return null;
   }
 
-  return toCanonicalTransportDefinition_(controller, definition);
+  return typeof controller.toCanonicalFullDefinitionResponse === 'function'
+    ? controller.toCanonicalFullDefinitionResponse(definition)
+    : definition;
 }
 
 if (typeof module !== 'undefined' && module.exports) {
@@ -913,5 +886,6 @@ if (typeof module !== 'undefined' && module.exports) {
     deleteAssignmentDefinition_,
     upsertAssignmentDefinition_,
     extractSupportedDocumentDescriptor_,
+    toTransportPartialRow_,
   };
 }

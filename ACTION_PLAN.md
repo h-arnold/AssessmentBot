@@ -679,6 +679,15 @@ Tests to UPDATE (indirect coverage):
 
 ## Section 5 — API layer: Remove helper functions, inline logic, and update transport boundary
 
+**Status: COMPLETE** — Red Phase complete, Red Review clean, Green Phase complete, Green Review clean, all 1065 backend tests passing, regression gate passed
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** All acceptance criteria implemented. `toCanonicalTransportDefinition_`, `buildControllerUpsertPayload_`, and `toPlainPartialRow_` removed. Call sites updated to use `controller.toCanonicalFullDefinitionResponse(definition)` directly with fallback. URL-to-ID translation inlined into `upsertAssignmentDefinition_` WITHOUT `assignmentWeighting` defaulting logic. New `toTransportPartialRow_` helper created that accepts model instance, calls `definition.toPartialJSON()`, defensively strips `yearGroup` field, and normalises Date fields to ISO strings. `getAssignmentDefinitionPartials_` updated to use `toTransportPartialRow_`. Transport validation helpers unchanged. `toTransportPartialRow_` exported in module.exports. All pre-existing failing tests updated to reflect architectural changes (15 tests in assignmentDefinitionPartials.unit.test.js, 2 tests in assignmentDefinitionUpsertApi.test.js).
+- **Deviations from plan:** None
+- **Follow-up implications:** Regression phase now unblocked. Documentation pass needed to update shared helper status.
+- **Commit:** (to be added after commit)
+
 ### Objective
 
 - Delete `toCanonicalTransportDefinition_` from `assignmentDefinitionPartials.js`
