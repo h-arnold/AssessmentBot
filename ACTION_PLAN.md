@@ -593,7 +593,7 @@ Tests to UPDATE:
 - **Deviations from plan:** None
 - **Follow-up implications:** Section 5 (API layer changes) now unblocked.
 - **Note:** Test infrastructure for createDefinitionFromWizardInputs.test.js remains excluded per vitest.config.js as it has pre-existing setup issues unrelated to Section 4.
-- **Commit:** (to be added after commit)
+- **Commit:** 63e9b12 - "feat: complete Section 4 of assignment definition refactoring"
 
 ### Objective
 
