@@ -75,7 +75,7 @@ describe('AssignmentController.createDefinitionFromWizardInputs', () => {
       const mockDefinition = new AssignmentDefinition({
         primaryTitle: assignmentTitle,
         primaryTopic: 'Topic',
-        yearGroup: null,
+        yearGroupKey: 'year-group-10',
         documentType: 'SLIDES',
         referenceDocumentId: refFileId,
         templateDocumentId: tplFileId,
@@ -123,7 +123,7 @@ describe('AssignmentController.createDefinitionFromWizardInputs', () => {
       const mockDefinition = new AssignmentDefinition({
         primaryTitle: assignmentTitle,
         primaryTopic: 'Sheets Topic',
-        yearGroup: null,
+        yearGroupKey: 'year-group-10',
         documentType: 'SHEETS',
         referenceDocumentId,
         templateDocumentId,
@@ -161,7 +161,7 @@ describe('AssignmentController.createDefinitionFromWizardInputs', () => {
       const mockDefinition = new AssignmentDefinition({
         primaryTitle: assignmentTitle,
         primaryTopic: 'Topic',
-        yearGroup: null,
+        yearGroupKey: 'year-group-10',
         documentType: 'SHEETS',
         referenceDocumentId: refFileId,
         templateDocumentId: tplFileId,
@@ -203,7 +203,7 @@ describe('AssignmentController.createDefinitionFromWizardInputs', () => {
       const mockDefinition = new AssignmentDefinition({
         primaryTitle: 'Title',
         primaryTopic: 'Topic',
-        yearGroup: null,
+        yearGroupKey: 'year-group-10',
         documentType: 'SLIDES',
         referenceDocumentId: '1aB2cD3eF4gH5iJ6kL7mN8oP9qR0sT1uv',
         templateDocumentId: '2xY9wV8uT7sR6qP5oN4mL3kJ2iH1gF0ef',
@@ -234,7 +234,7 @@ describe('AssignmentController.createDefinitionFromWizardInputs', () => {
       const mockDefinition = new AssignmentDefinition({
         primaryTitle: 'Title',
         primaryTopic: 'Topic',
-        yearGroup: null,
+        yearGroupKey: 'year-group-10',
         documentType: 'SLIDES',
         referenceDocumentId: '1aB2cD3eF4gH5iJ6kL7mN8oP9qR0sT1uv',
         templateDocumentId: '2xY9wV8uT7sR6qP5oN4mL3kJ2iH1gF0ef',
@@ -264,7 +264,7 @@ describe('AssignmentController.createDefinitionFromWizardInputs', () => {
       const mockDefinition = new AssignmentDefinition({
         primaryTitle: 'Title',
         primaryTopic: 'Topic',
-        yearGroup: null,
+        yearGroupKey: 'year-group-10',
         documentType: 'SLIDES',
         referenceDocumentId: '1aB2cD3eF4gH5iJ6kL7mN8oP9qR0sT1uv',
         templateDocumentId: '2xY9wV8uT7sR6qP5oN4mL3kJ2iH1gF0ef',
@@ -463,12 +463,14 @@ describe('AssignmentController.createDefinitionFromWizardInputs', () => {
       }).toThrow(/Assignment must have a topic/);
     });
 
-    it('throws when yearGroup provided and persisting ABClass fails', () => {
+    it('throws when yearGroupKey resolution fails', () => {
+      // After Section 3: yearGroup persistence is removed; this test now verifies
+      // that createDefinitionFromWizardInputs throws when yearGroupKey resolution fails
       const mockTask = createTaskDefinition({ index: 0 });
       const mockDefinition = new AssignmentDefinition({
         primaryTitle: 'Title',
         primaryTopic: 'Topic',
-        yearGroup: null,
+        yearGroupKey: null,
         documentType: 'SLIDES',
         referenceDocumentId: '1aB2cD3eF4gH5iJ6kL7mN8oP9qR0sT1uv',
         templateDocumentId: '2xY9wV8uT7sR6qP5oN4mL3kJ2iH1gF0ef',
@@ -477,17 +479,17 @@ describe('AssignmentController.createDefinitionFromWizardInputs', () => {
         templateLastModified: '2024-01-01T00:00:00.000Z',
       });
 
-      const abClass = { classId: 'course-1', yearGroup: null };
+      // Mock ABClass with null yearGroupKey
+      const abClass = { classId: 'course-1', yearGroupKey: null };
 
-      vi.spyOn(AssignmentController.prototype, 'ensureDefinitionFromInputs').mockReturnValue({
-        definition: mockDefinition,
-        abClass,
-      });
-
-      const saveErr = new Error('Failed to persist class');
-      vi.spyOn(ABClassController.prototype, 'saveClass').mockImplementation(() => {
-        throw saveErr;
-      });
+      vi.spyOn(AssignmentController.prototype, 'ensureDefinitionFromInputs').mockImplementation(
+        () => {
+          // Simulate yearGroupKey resolution failure
+          throw new Error(
+            'yearGroupKey resolution failed: both input yearGroupKey and abClass.yearGroupKey are null'
+          );
+        }
+      );
 
       const controller = new AssignmentController();
 
@@ -497,11 +499,12 @@ describe('AssignmentController.createDefinitionFromWizardInputs', () => {
           assignmentTitle: 'Title',
           referenceDocumentId: '1aB2cD3eF4gH5iJ6kL7mN8oP9qR0sT1uv',
           templateDocumentId: '2xY9wV8uT7sR6qP5oN4mL3kJ2iH1gF0ef',
-          yearGroup: 9,
+          yearGroupKey: null, // Explicit null yearGroupKey
         });
-      }).toThrow(saveErr);
+      }).toThrow(/yearGroupKey.*resolution.*failed/i);
 
-      expect(ABClassController.prototype.saveClass).toHaveBeenCalled();
+      // Verify saveClass is NOT called (yearGroup persistence removed in Section 3)
+      expect(ABClassController.prototype.saveClass).not.toHaveBeenCalled();
     });
 
     it('rethrows and logs controller errors', () => {
@@ -527,6 +530,221 @@ describe('AssignmentController.createDefinitionFromWizardInputs', () => {
         'Controller internal error'
       );
     });
+
+    // ========================================================================
+    // Section 3 - Red Phase: Failing tests for yearGroupKey parameter migration
+    // ========================================================================
+
+    it('should accept yearGroupKey: string | null parameter instead of yearGroup', () => {
+      const assignmentId = 'assign-slides-456';
+      const assignmentTitle = 'Slides with yearGroupKey';
+      const refFileId = '3zX8wV7uT6sR5qP4oN3mL2kJ1iH0gF9ef';
+      const tplFileId = '4aB3cD2eF1gH0iJ9kL8mN7oP6qR5sT4uv';
+
+      const mockTask = createTaskDefinition({ index: 0 });
+      const mockDefinition = new AssignmentDefinition({
+        primaryTitle: assignmentTitle,
+        primaryTopic: 'Topic',
+        yearGroupKey: 'year-group-10',
+        documentType: 'SLIDES',
+        referenceDocumentId: refFileId,
+        templateDocumentId: tplFileId,
+        tasks: { task_0: mockTask },
+        referenceLastModified: '2024-01-01T00:00:00.000Z',
+        templateLastModified: '2024-01-01T00:00:00.000Z',
+      });
+
+      // Mock ensureDefinitionFromInputs to return definition
+      vi.spyOn(AssignmentController.prototype, 'ensureDefinitionFromInputs').mockReturnValue({
+        definition: mockDefinition,
+        abClass: { classId: 'course-1', yearGroupKey: 'year-group-10' },
+      });
+
+      const controller = new AssignmentController();
+      const result = controller.createDefinitionFromWizardInputs({
+        assignmentId,
+        assignmentTitle,
+        referenceDocumentId: refFileId,
+        templateDocumentId: tplFileId,
+        yearGroupKey: 'year-group-10', // Using yearGroupKey instead of yearGroup
+      });
+
+      expect(result).toBeDefined();
+      expect(result.documentType).toBe('SLIDES');
+      expect(result.tasks).toBeDefined();
+
+      // Verify ensureDefinitionFromInputs was called with yearGroupKey
+      expect(AssignmentController.prototype.ensureDefinitionFromInputs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          yearGroupKey: 'year-group-10',
+        })
+      );
+    });
+
+    it('should pass yearGroupKey to ensureDefinitionFromInputs', () => {
+      const assignmentId = 'assign-test-001';
+      const assignmentTitle = 'Test with yearGroupKey';
+      const refFileId = '1aB2cD3eF4gH5iJ6kL7mN8oP9qR0sT1uv';
+      const tplFileId = '2xY9wV8uT7sR6qP5oN4mL3kJ2iH1gF0ef';
+
+      const mockTask = createTaskDefinition({ index: 0 });
+      const mockDefinition = new AssignmentDefinition({
+        primaryTitle: assignmentTitle,
+        primaryTopic: 'Topic',
+        yearGroupKey: 'year-group-11',
+        documentType: 'SLIDES',
+        referenceDocumentId: refFileId,
+        templateDocumentId: tplFileId,
+        tasks: { task_0: mockTask },
+        referenceLastModified: '2024-01-01T00:00:00.000Z',
+        templateLastModified: '2024-01-01T00:00:00.000Z',
+      });
+
+      vi.spyOn(AssignmentController.prototype, 'ensureDefinitionFromInputs').mockReturnValue({
+        definition: mockDefinition,
+        abClass: { classId: 'course-1', yearGroupKey: 'year-group-10' },
+      });
+
+      const controller = new AssignmentController();
+      controller.createDefinitionFromWizardInputs({
+        assignmentId,
+        assignmentTitle,
+        referenceDocumentId: refFileId,
+        templateDocumentId: tplFileId,
+        yearGroupKey: 'year-group-11',
+      });
+
+      // Verify yearGroupKey is passed to ensureDefinitionFromInputs
+      expect(AssignmentController.prototype.ensureDefinitionFromInputs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          yearGroupKey: 'year-group-11',
+        })
+      );
+    });
+
+    it('should not set abClass.yearGroup when yearGroupKey is provided', () => {
+      const assignmentId = 'assign-test-002';
+      const assignmentTitle = 'Test without modifying yearGroup';
+      const refFileId = '1aB2cD3eF4gH5iJ6kL7mN8oP9qR0sT1uv';
+      const tplFileId = '2xY9wV8uT7sR6qP5oN4mL3kJ2iH1gF0ef';
+
+      const mockTask = createTaskDefinition({ index: 0 });
+      const mockDefinition = new AssignmentDefinition({
+        primaryTitle: assignmentTitle,
+        primaryTopic: 'Topic',
+        yearGroupKey: 'year-group-12',
+        documentType: 'SLIDES',
+        referenceDocumentId: refFileId,
+        templateDocumentId: tplFileId,
+        tasks: { task_0: mockTask },
+        referenceLastModified: '2024-01-01T00:00:00.000Z',
+        templateLastModified: '2024-01-01T00:00:00.000Z',
+      });
+
+      const mockABClass = { classId: 'course-1', yearGroupKey: 'year-group-10' };
+
+      vi.spyOn(AssignmentController.prototype, 'ensureDefinitionFromInputs').mockReturnValue({
+        definition: mockDefinition,
+        abClass: mockABClass,
+      });
+
+      const controller = new AssignmentController();
+      controller.createDefinitionFromWizardInputs({
+        assignmentId,
+        assignmentTitle,
+        referenceDocumentId: refFileId,
+        templateDocumentId: tplFileId,
+        yearGroupKey: 'year-group-12',
+      });
+
+      // Verify abClass.yearGroup was NOT modified (no saveClass call with yearGroup update)
+      expect(ABClassController.prototype.saveClass).not.toHaveBeenCalled();
+    });
+
+    it('should pass yearGroupKey: null when no yearGroupKey provided', () => {
+      const assignmentId = 'assign-test-003';
+      const assignmentTitle = 'Test with null yearGroupKey';
+      const refFileId = '1aB2cD3eF4gH5iJ6kL7mN8oP9qR0sT1uv';
+      const tplFileId = '2xY9wV8uT7sR6qP5oN4mL3kJ2iH1gF0ef';
+
+      const mockTask = createTaskDefinition({ index: 0 });
+      const mockDefinition = new AssignmentDefinition({
+        primaryTitle: assignmentTitle,
+        primaryTopic: 'Topic',
+        yearGroupKey: 'year-group-10',
+        documentType: 'SLIDES',
+        referenceDocumentId: refFileId,
+        templateDocumentId: tplFileId,
+        tasks: { task_0: mockTask },
+        referenceLastModified: '2024-01-01T00:00:00.000Z',
+        templateLastModified: '2024-01-01T00:00:00.000Z',
+      });
+
+      vi.spyOn(AssignmentController.prototype, 'ensureDefinitionFromInputs').mockReturnValue({
+        definition: mockDefinition,
+        abClass: { classId: 'course-1', yearGroupKey: 'year-group-10' },
+      });
+
+      const controller = new AssignmentController();
+      controller.createDefinitionFromWizardInputs({
+        assignmentId,
+        assignmentTitle,
+        referenceDocumentId: refFileId,
+        templateDocumentId: tplFileId,
+        yearGroupKey: null,
+      });
+
+      // Verify null yearGroupKey is passed
+      expect(AssignmentController.prototype.ensureDefinitionFromInputs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          yearGroupKey: null,
+        })
+      );
+    });
+
+    it('should log invocation with yearGroupKey parameter', () => {
+      const assignmentId = 'assign-test-004';
+      const assignmentTitle = 'Test logging with yearGroupKey';
+      const refFileId = '1aB2cD3eF4gH5iJ6kL7mN8oP9qR0sT1uv';
+      const tplFileId = '2xY9wV8uT7sR6qP5oN4mL3kJ2iH1gF0ef';
+
+      const mockTask = createTaskDefinition({ index: 0 });
+      const mockDefinition = new AssignmentDefinition({
+        primaryTitle: assignmentTitle,
+        primaryTopic: 'Topic',
+        yearGroupKey: 'year-group-10',
+        documentType: 'SLIDES',
+        referenceDocumentId: refFileId,
+        templateDocumentId: tplFileId,
+        tasks: { task_0: mockTask },
+        referenceLastModified: '2024-01-01T00:00:00.000Z',
+        templateLastModified: '2024-01-01T00:00:00.000Z',
+      });
+
+      vi.spyOn(AssignmentController.prototype, 'ensureDefinitionFromInputs').mockReturnValue({
+        definition: mockDefinition,
+      });
+
+      const controller = new AssignmentController();
+      controller.createDefinitionFromWizardInputs({
+        assignmentId,
+        assignmentTitle,
+        referenceDocumentId: refFileId,
+        templateDocumentId: tplFileId,
+        yearGroupKey: 'year-group-13',
+      });
+
+      expect(mockABLogger.info).toHaveBeenCalledWith(
+        'AssignmentController.createDefinitionFromWizardInputs invoked:',
+        expect.objectContaining({
+          assignmentId: 'assign-test-004',
+          assignmentTitle: 'Test logging with yearGroupKey',
+          referenceDocumentId: refFileId,
+          templateDocumentId: tplFileId,
+          yearGroupKey: 'year-group-13',
+        })
+      );
+    });
   });
 
   describe('Logging behaviour', () => {
@@ -535,7 +753,7 @@ describe('AssignmentController.createDefinitionFromWizardInputs', () => {
       const mockDefinition = new AssignmentDefinition({
         primaryTitle: 'Title',
         primaryTopic: 'Topic',
-        yearGroup: null,
+        yearGroupKey: 'year-group-10',
         documentType: 'SLIDES',
         referenceDocumentId: '1aB2cD3eF4gH5iJ6kL7mN8oP9qR0sT1uv',
         templateDocumentId: '2xY9wV8uT7sR6qP5oN4mL3kJ2iH1gF0ef',

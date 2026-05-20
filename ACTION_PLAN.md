@@ -449,6 +449,14 @@ Tests to UPDATE:
 
 ## Section 3 — AssignmentController: Rename `yearGroup` to `yearGroupKey` and update delegation
 
+**Status: COMPLETE** — Red Phase complete, Red Review clean, Green Phase complete, Green Review clean, all 16 tests passing, regression gate passed
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** All acceptance criteria implemented. `yearGroup` parameter renamed to `yearGroupKey` in `ensureDefinitionFromInputs` and `createDefinitionFromWizardInputs`. `yearGroupKey` resolution from input or `abClass.yearGroupKey` implemented with fail-fast when both are null. `primaryTopicKey` resolved from Classroom API topicId. Delegation changed from `controller.ensureDefinition` to `controller.upsertDefinition` with resolved non-null `yearGroupKey` and `primaryTopicKey`. Code that dynamically sets `abClass.yearGroup` removed entirely.
+- **Deviations from plan:** None
+- **Follow-up implications:** Section 4 (AssignmentProcessor/globals.js changes) now unblocked.
+
 ### Objective
 
 - Rename `yearGroup` parameter to `yearGroupKey` in `ensureDefinitionFromInputs` and `createDefinitionFromWizardInputs`
