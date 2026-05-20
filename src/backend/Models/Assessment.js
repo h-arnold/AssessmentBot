@@ -37,3 +37,7 @@ class Assessment {
     return new Assessment(score, reasoning);
   }
 }
+
+if (typeof module !== 'undefined') {
+  module.exports = { Assessment };
+}

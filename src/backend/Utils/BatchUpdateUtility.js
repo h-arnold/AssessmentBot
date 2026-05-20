@@ -77,3 +77,10 @@ const BatchUpdateUtility = {
     return responses;
   },
 };
+
+// Export for Node tests
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { BatchUpdateUtility };
+} else {
+  globalThis.BatchUpdateUtility = BatchUpdateUtility; // GAS global
+}
