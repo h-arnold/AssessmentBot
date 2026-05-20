@@ -292,7 +292,7 @@ Backend model tests (in `tests/models/assignmentDefinition.test.js`):
 
 - **Implementation notes:** All acceptance criteria implemented. `ensureDefinition` and `_buildUpsertContext` methods removed. `_resolveYearGroupContextForUpsert` returns only `{ yearGroupKey, yearGroupLabel }`. `_assertNoDuplicateBusinessTuple` uses only `yearGroupKey` for duplicate detection. `_resolveAssignmentWeightingForUpsert` returns raw payload value without defaulting. All validation logic from `_buildUpsertContext` preserved in `upsertDefinition`. Test data updated to remove `yearGroup` references.
 - **Deviations from plan:** None
-- **Follow-up implications:** Section 3 (AssignmentController changes) now unblocked. Note: `tests/assignment/assignmentDefinitionValidation.test.js` has failures caused by Section 1's model changes (not Section 2). These are pre-existing regressions from Section 1 that need to be addressed.
+- **Follow-up implications:** Section 3 (AssignmentController changes) now unblocked. All Section 1 and Section 2 related test failures have been addressed. Remaining 15 test failures in `tests/backend-api/assignmentDefinitionPartials.unit.test.js` are Section 5 scope (API layer validation) and were pre-existing before Section 2 started.
 
 ### Objective
 
