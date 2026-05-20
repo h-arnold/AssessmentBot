@@ -456,6 +456,7 @@ Tests to UPDATE:
 - **Implementation notes:** All acceptance criteria implemented. `yearGroup` parameter renamed to `yearGroupKey` in `ensureDefinitionFromInputs` and `createDefinitionFromWizardInputs`. `yearGroupKey` resolution from input or `abClass.yearGroupKey` implemented with fail-fast when both are null. `primaryTopicKey` resolved from Classroom API topicId. Delegation changed from `controller.ensureDefinition` to `controller.upsertDefinition` with resolved non-null `yearGroupKey` and `primaryTopicKey`. Code that dynamically sets `abClass.yearGroup` removed entirely.
 - **Deviations from plan:** None
 - **Follow-up implications:** Section 4 (AssignmentProcessor/globals.js changes) now unblocked.
+- **Commit:** 009f670 - "feat: complete Section 3 of assignment definition refactoring"
 
 ### Objective
 
