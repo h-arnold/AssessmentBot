@@ -930,7 +930,7 @@ Documentation and rollout notes
 
 ## Documentation and rollout notes
 
-**Status: IN PROGRESS** — api-layer.md updates completed, @remarks JSDoc entries verified as optional
+**Status: COMPLETE** — api-layer.md updates completed, @remarks JSDoc entries verified as optional
 
 ### Objective
 

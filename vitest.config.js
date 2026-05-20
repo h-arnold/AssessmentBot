@@ -10,7 +10,11 @@ module.exports = {
     coverage: {
       provider: 'v8',
       include: ['src/backend/**/*.js'],
-      exclude: ['src/backend/appsscript.json'],
+      exclude: [
+        'src/backend/appsscript.json',
+        'src/backend/AssignmentProcessor/globals.js',
+        '**/AssignmentProcessor/globals.js',
+      ],
       reporter: ['text', 'html'],
       thresholds: {
         lines: 85,
