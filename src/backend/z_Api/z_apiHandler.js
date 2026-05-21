@@ -104,6 +104,13 @@ class ApiDispatcher extends BaseSingleton {
   handle(request) {
     const requestId = this._resolveRequestId();
 
+    // Debug logging: stringify the incoming request
+    ABLogger.getInstance().debug('API request received.', {
+      requestId,
+      method: request.method,
+      params: JSON.stringify(request.params),
+    });
+
     if (!this._isValidRequest(request)) {
       return this._failure(requestId, 'INVALID_REQUEST', 'Invalid API request payload.', false);
     }
@@ -117,7 +124,13 @@ class ApiDispatcher extends BaseSingleton {
 
     const admissionResult = this._runAdmissionPhase(requestId, methodName);
     if (!admissionResult.ok) {
-      return admissionResult;
+      const response = admissionResult;
+      ABLogger.getInstance().debug('API response sent.', {
+        requestId,
+        method: methodName,
+        response: JSON.stringify(response),
+      });
+      return response;
     }
 
     let handlerError;
@@ -144,10 +157,22 @@ class ApiDispatcher extends BaseSingleton {
     this._runCompletionPhase(requestId, methodName, handlerFailed, handlerError);
 
     if (handlerFailed) {
-      return this._mapErrorToFailureEnvelope(requestId, handlerError);
+      const response = this._mapErrorToFailureEnvelope(requestId, handlerError);
+      ABLogger.getInstance().debug('API response sent.', {
+        requestId,
+        method: methodName,
+        response: JSON.stringify(response),
+      });
+      return response;
     }
 
-    return this._success(requestId, data);
+    const response = this._success(requestId, data);
+    ABLogger.getInstance().debug('API response sent.', {
+      requestId,
+      method: methodName,
+      response: JSON.stringify(response),
+    });
+    return response;
   }
 
   /**

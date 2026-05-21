@@ -609,7 +609,7 @@ function buildWizardErrorContext(
   actionType: string;
   requestId: string | undefined;
   errorCode: string | undefined;
-  requestPayload: { primaryTitle: string; primaryTopicKey: string; yearGroupKey: string };
+  requestPayload: UpsertAssignmentDefinitionRequest;
   stack: string | undefined;
 } {
   return {
@@ -618,11 +618,7 @@ function buildWizardErrorContext(
     actionType: options.actionType,
     requestId: requestId ?? undefined,
     errorCode: errorCode ?? undefined,
-    requestPayload: {
-      primaryTitle: options.request.primaryTitle,
-      primaryTopicKey: options.request.primaryTopicKey,
-      yearGroupKey: options.request.yearGroupKey,
-    },
+    requestPayload: options.request,
     stack: undefined,
   };
 }
