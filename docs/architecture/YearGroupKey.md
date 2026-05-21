@@ -1,4 +1,4 @@
-# ADR-001: Adopt yearGroupKey-only with Controller-Resolution Pattern (Option B)
+# ADR-001: Adopt yearGroupKey-only with Controller-Resolution Pattern
 
 ## Status
 
@@ -78,7 +78,7 @@ The assignment definition creation path contained significant technical debt:
 
 ## Rationale
 
-Option B was selected because it:
+This approach was selected because it:
 
 1. **Addresses Root Causes**: Directly eliminates the ambiguity between `yearGroup` and `yearGroupKey`
 2. **Enforces Standards**: Implements the validation ownership rules from `src/backend/AGENTS.md` §0.2

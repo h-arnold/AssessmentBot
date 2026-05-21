@@ -135,8 +135,7 @@ Provide a concise handoff summary including:
 │   ├── README.md                                      # Main documentation index
 │   │
 │   ├── architecture/
-│   │   └── decisions/
-│   │       └── ADR-001-YearGroupKey-Only-Option-B.md     # Architecture Decision Record: yearGroupKey-only with Controller-Resolution Pattern
+│   │   └── YearGroupKey.md                             # Architecture Decision Record: yearGroupKey-only with Controller-Resolution Pattern
 │   │
 │   ├── developer/
 │   │   ├── ACTION_PLAN_TEMPLATE.md                    # Template for TDD-first delivery plans
