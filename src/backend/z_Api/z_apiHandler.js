@@ -104,16 +104,16 @@ class ApiDispatcher extends BaseSingleton {
   handle(request) {
     const requestId = this._resolveRequestId();
 
-    // Debug logging: stringify the incoming request
+    if (!this._isValidRequest(request)) {
+      return this._failure(requestId, 'INVALID_REQUEST', 'Invalid API request payload.', false);
+    }
+
+    // Debug logging: stringify the incoming request (after validation to avoid errors on invalid requests)
     ABLogger.getInstance().debug('API request received.', {
       requestId,
       method: request.method,
       params: JSON.stringify(request.params),
     });
-
-    if (!this._isValidRequest(request)) {
-      return this._failure(requestId, 'INVALID_REQUEST', 'Invalid API request payload.', false);
-    }
 
     const methodName = request.method.trim();
     const handler = ALLOWLISTED_METHOD_HANDLERS[methodName];
@@ -344,10 +344,15 @@ class ApiDispatcher extends BaseSingleton {
    * @private
    */
   _success(requestId, data) {
+    // Defensive check: log and coerce undefined to null to prevent Zod parsing errors
+    // in the frontend where undefined values in response envelope cause validation failures
+    if (data === undefined) {
+      ABLogger.getInstance().error('Success response with undefined data', { requestId });
+    }
     return {
       ok: true,
       requestId,
-      data,
+      data: data ?? null,
     };
   }
 

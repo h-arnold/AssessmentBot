@@ -1,4 +1,5 @@
 import { callApi } from './apiService';
+import { logFrontendEvent } from '../logging/frontendLogger';
 import {
   GetAssignmentDefinitionRequestSchema,
   GetAssignmentDefinitionResponseSchema,
@@ -38,9 +39,19 @@ export async function getAssignmentDefinition(
 ): Promise<GetAssignmentDefinitionResponse> {
   const parsedRequest = GetAssignmentDefinitionRequestSchema.parse(request);
 
-  return GetAssignmentDefinitionResponseSchema.parse(
-    await callApi(GET_ASSIGNMENT_DEFINITION_METHOD, parsedRequest)
-  );
+  const responseData = await callApi(GET_ASSIGNMENT_DEFINITION_METHOD, parsedRequest);
+
+  // Debug logging: check the raw response data before parsing
+  logFrontendEvent('debug', {
+    context: 'services/assignmentDefinitionService.getAssignmentDefinition',
+    metadata: {
+      definitionKey: parsedRequest.definitionKey,
+      responseData: JSON.stringify(responseData),
+      responseDataType: typeof responseData,
+    },
+  });
+
+  return GetAssignmentDefinitionResponseSchema.parse(responseData);
 }
 
 /**
@@ -63,7 +74,17 @@ export async function upsertAssignmentDefinition(
 ): Promise<UpsertAssignmentDefinitionResponse> {
   const parsedRequest = UpsertAssignmentDefinitionRequestSchema.parse(request);
 
-  return UpsertAssignmentDefinitionResponseSchema.parse(
-    await callApi(UPSERT_ASSIGNMENT_DEFINITION_METHOD, parsedRequest)
-  );
+  const responseData = await callApi(UPSERT_ASSIGNMENT_DEFINITION_METHOD, parsedRequest);
+
+  // Debug logging: check the raw response data before parsing
+  logFrontendEvent('debug', {
+    context: 'services/assignmentDefinitionService.upsertAssignmentDefinition',
+    metadata: {
+      requestPayload: JSON.stringify(parsedRequest),
+      responseData: JSON.stringify(responseData),
+      responseDataType: typeof responseData,
+    },
+  });
+
+  return UpsertAssignmentDefinitionResponseSchema.parse(responseData);
 }

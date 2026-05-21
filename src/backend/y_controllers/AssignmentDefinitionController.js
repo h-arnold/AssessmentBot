@@ -941,7 +941,7 @@ class AssignmentDefinitionController {
         taskWeighting: task.taskWeighting,
       }));
 
-    return {
+    const result = {
       definitionKey: source.definitionKey,
       primaryTitle: source.primaryTitle,
       primaryTopicKey: source.primaryTopicKey,
@@ -958,6 +958,39 @@ class AssignmentDefinitionController {
       createdAt: source.createdAt || null,
       updatedAt: source.updatedAt || null,
     };
+
+    // Log any undefined fields to help diagnose Zod validation errors
+    const undefinedFields = Object.entries(result)
+      .filter(([k, v]) => v === undefined)
+      .map(([k]) => k);
+    if (undefinedFields.length > 0) {
+      ABLogger.getInstance().error('Canonical response has undefined fields', {
+        definitionKey: result.definitionKey,
+        undefinedFields,
+      });
+    }
+
+    // Validate required fields are present and non-undefined
+    // Using direct property access to avoid security lint warnings
+    const requiredFieldChecks = [
+      { field: 'definitionKey', value: result.definitionKey },
+      { field: 'primaryTitle', value: result.primaryTitle },
+      { field: 'primaryTopicKey', value: result.primaryTopicKey },
+      { field: 'primaryTopic', value: result.primaryTopic },
+      { field: 'yearGroupKey', value: result.yearGroupKey },
+      { field: 'yearGroupLabel', value: result.yearGroupLabel },
+      { field: 'documentType', value: result.documentType },
+      { field: 'referenceDocumentId', value: result.referenceDocumentId },
+      { field: 'templateDocumentId', value: result.templateDocumentId },
+      { field: 'tasks', value: result.tasks },
+    ];
+    for (const check of requiredFieldChecks) {
+      if (check.value === undefined) {
+        throw new Error(`Canonical response missing required field: ${check.field}`);
+      }
+    }
+
+    return result;
   }
 
   /**

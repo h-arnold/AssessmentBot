@@ -138,7 +138,8 @@ const ASSIGNMENT_DEFINITION_RESULTS = Object.freeze({
     createdAt: '2026-01-05T10:00:00.000Z',
     updatedAt: '2026-01-06T12:30:00.000Z',
   },
-  deleteAssignmentDefinition: undefined,
+  // deleteAssignmentDefinition handler returns undefined, which is coerced to null by _success()
+  deleteAssignmentDefinition: null,
 });
 
 const ASSIGNMENT_DEFINITION_PARAMS = Object.freeze({
@@ -380,7 +381,9 @@ function makeVmGlobals(overrides = {}) {
         };
       },
     },
-    ABLogger: { getInstance: () => ({ warn: () => {}, info: () => {}, error: () => {} }) },
+    ABLogger: {
+      getInstance: () => ({ warn: () => {}, info: () => {}, error: () => {}, debug: () => {} }),
+    },
     Utilities: { getUuid: () => 'uuid-vm-default' },
     Validate:
       require('../../src/backend/Utils/Validate.js').Validate ||

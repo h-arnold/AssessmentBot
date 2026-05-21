@@ -292,8 +292,12 @@ These changes mean `assignmentWeighting` can now be `null` in both request and r
 
 - ✅ Frontend error logging updated to include full request payload
 - ✅ Backend apiHandler debug logging added for requests/responses
-- ⏳ Root cause not yet identified - requires backend logging for the failing save request
-- ⏳ Need to verify if `data` field is undefined in response envelope
+- ✅ **Fix 1 implemented**: `_success()` now coerces `undefined` to `null` and logs when data is undefined
+- ✅ **Fix 2 implemented**: `_toCanonicalFullDefinitionResponse` now logs undefined fields and validates required fields
+- ✅ **Fix 3 implemented**: Frontend service logging added to capture response data before parsing
+- ✅ Backend lint passing (0 errors, 2 pre-existing warnings)
+- ✅ Frontend TypeScript compilation passing
+- ⏳ Root cause investigation ongoing - logging now in place to capture the failing request
 
 ---
 
