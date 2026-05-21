@@ -22,9 +22,14 @@ class AssignmentDefinitionController {
 
   /**
    * Creates or updates a reusable assignment definition.
+   * This is now the SOLE creation/update method per SPEC.md v1.9.0 (ensureDefinition removed).
    *
    * @param {Object} payload - Upsert payload.
    * @returns {AssignmentDefinition} Persisted full definition.
+   * @remarks Sole canonical method for creating or updating assignment definitions per SPEC.md v1.9.0.
+   * Requires resolved non-null `yearGroupKey` and `yearGroupLabel` from `_resolveYearGroupContextForUpsert`.
+   * All validation logic from the removed `_buildUpsertContext` helper has been inlined into this method.
+   * The `ensureDefinition` method has been completely removed with no replacement.
    */
   upsertDefinition(payload) {
     Validate.requireParams({ payload }, 'AssignmentDefinitionController.upsertDefinition');
@@ -149,6 +154,9 @@ class AssignmentDefinitionController {
    * @param {Object|null} params.existingDefinition - Existing definition when updating.
    * @returns {number|null|undefined} Assignment weighting (raw payload value).
    * @private
+   * @remarks Validation-only method per SPEC.md v1.9.0 §0.2: returns the raw payload value WITHOUT defaulting.
+   * Defaulting logic (null/undefined → 1) is now owned by the AssignmentDefinition model constructor.
+   * This enforces the validation ownership contract: domain validation in controller, data defaults in model.
    */
   _resolveAssignmentWeightingForUpsert({ payload, isUpdate, existingDefinition }) {
     if (Object.hasOwn(payload, 'assignmentWeighting')) {
@@ -167,6 +175,11 @@ class AssignmentDefinitionController {
    * @param {Object} params.payload - Upsert payload.
    * @returns {{yearGroupKey: string, yearGroupLabel: string}} Year-group context.
    * @private
+   * @remarks Controller-resolution pattern per SPEC.md v1.9.0: accepts `yearGroupKey` from payload,
+   * resolves to non-null by requiring it from payload, then fetches authoritative `yearGroupLabel` from
+   * reference data via `_requireExistingYearGroupRecord`. Returns ONLY `yearGroupKey` and `yearGroupLabel`
+   * (no `yearGroup` field). This enforces the architectural decision that the controller owns reference data
+   * resolution, while the model receives pre-resolved values.
    */
   _resolveYearGroupContextForUpsert({ payload }) {
     if (!Object.hasOwn(payload, 'yearGroupKey') || payload.yearGroupKey === null) {
@@ -794,6 +807,9 @@ class AssignmentDefinitionController {
    * @param {string} params.primaryTopicKey - Candidate topic key.
    * @param {string} params.yearGroupKey - Candidate year-group key.
    * @private
+   * @remarks Updated per SPEC.md v1.9.0 to use ONLY `yearGroupKey` for duplicate detection (no `yearGroup` fallback).
+   * The comparison at line 820 uses `row.yearGroupKey === yearGroupKey` exclusively. This completes the
+   * removal of all `yearGroup` references from active code paths.
    */
   _assertNoDuplicateBusinessTuple({
     definitionKeyToIgnore,

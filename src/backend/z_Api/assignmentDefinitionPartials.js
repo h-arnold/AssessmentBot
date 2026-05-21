@@ -760,6 +760,10 @@ function validatePartialRow_(row, rowIndex) {
  *
  * @param {Object} definition - AssignmentDefinition model instance or plain partial object.
  * @returns {Object} Plain transport partial row without yearGroup.
+ * @remarks NEW helper per SPEC.md v1.9.0 Section 5, replacing the removed `toPlainPartialRow_`.
+ * Provides defensive safety net by stripping `yearGroup` field (in addition to model-level removal in Section 1).
+ * Normalises Date fields to ISO strings at the transport boundary. Works with both model instances
+ * (calling `toPartialJSON()`) and plain objects. Exported for test accessibility.
  */
 function toTransportPartialRow_(definition) {
   // If definition has toPartialJSON method, use it (model instance)
@@ -782,6 +786,9 @@ function toTransportPartialRow_(definition) {
  *
  * @returns {Array<Object>} Plain assignment-definition partial rows.
  * @throws {ApiValidationError} If controller response is not an array.
+ * @remarks Updated per SPEC.md v1.9.0 Section 5: now uses `toTransportPartialRow_` helper instead of
+ * the removed `toPlainPartialRow_`. Returned objects will NO LONGER include the `yearGroup` field;
+ * Date fields are normalised as ISO strings. Partial definitions have `tasks: null`.
  */
 function getAssignmentDefinitionPartials_() {
   const definitions = getAssignmentDefinitionController_().getAllPartialDefinitions();
@@ -817,6 +824,10 @@ function deleteAssignmentDefinition_(parameters) {
  * @returns {Object} Canonical full-definition response shape including resolved
  *   primaryTopic, primaryTopicKey, yearGroupKey, yearGroupLabel, full tasks array, and all metadata.
  *   This same shape is returned for stage-one create, final save, and document-change re-parse.
+ * @remarks Updated per SPEC.md v1.9.0 Section 5: URL-to-ID translation logic inlined from the removed
+ * `buildControllerUpsertPayload_` helper. CRITICALLY, the inlined code does NOT apply `assignmentWeighting: 1`
+ * defaulting (per validation ownership rules: model owns defaults, not API layer). Uses
+ * `controller.toCanonicalFullDefinitionResponse(definition)` directly for response shaping.
  */
 function upsertAssignmentDefinition_(parameters) {
   validateUpsertParameters_(parameters);

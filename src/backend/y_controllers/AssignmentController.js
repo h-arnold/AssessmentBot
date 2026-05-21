@@ -430,6 +430,10 @@ class AssignmentController {
    * @param {string|null} [params.yearGroupKey] - Year group key (optional).
    * @returns {Object} Object containing { definition, courseId, abClass }.
    * @throws {Error} If required parameters are missing or definition creation fails.
+   * @remarks Parameter renamed from `yearGroup` to `yearGroupKey` per SPEC.md v1.9.0 Option B.
+   * Resolves `yearGroupKey` from input or `abClass.yearGroupKey` (fail-fast when both null).
+   * Resolves `primaryTopicKey` from Classroom API `topicId`. Delegates to `controller.upsertDefinition`
+   * (not the removed `controller.ensureDefinition`). No longer sets `abClass.yearGroup`.
    */
   ensureDefinitionFromInputs({
     assignmentTitle,
@@ -495,6 +499,8 @@ class AssignmentController {
    * @param {string|null} [params.yearGroupKey] - Year group key (optional).
    * @returns {Object} Full AssignmentDefinition JSON payload including tasks and metadata.
    * @throws {Error} If validation fails, documents are identical, types mismatch, or assignment lacks topic.
+   * @remarks Parameter renamed from `yearGroup` to `yearGroupKey` per SPEC.md v1.9.0 Option B.
+   * Passes `yearGroupKey` (not `yearGroup`) to `ensureDefinitionFromInputs`. No longer sets `abClass.yearGroup`.
    */
   createDefinitionFromWizardInputs({
     assignmentId,
