@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { randomUUID } from 'node:crypto';
 
 /**
  * Regression test for Utils global availability.
@@ -96,9 +95,9 @@ describe('Utils global availability regression check', () => {
 
     // We test this by evaluating the file in a fresh context and checking
     // what variables it creates
-    const vm = require('vm');
-    const fs = require('fs');
-    const path = require('path');
+    const vm = require('node:vm');
+    const fs = require('node:fs');
+    const path = require('node:path');
 
     // Resolve the file path relative to the test file
     const utilsFilePath = path.resolve(__dirname, '../../src/backend/Utils/Utils.js');

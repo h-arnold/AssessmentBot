@@ -4,7 +4,7 @@
  */
 
 import { expect, vi } from 'vitest';
-import path from 'path';
+import path from 'node:path';
 
 const modulePath = '../../src/backend/z_Api/assignmentDefinitionPartials.js';
 
@@ -40,7 +40,7 @@ export function loadAssignmentDefinitionPartialsModule() {
  * @returns {string} The source code as a string
  */
 export function readSourceFile() {
-  const fs = require('fs');
+  const fs = require('node:fs');
   const absolutePath = path.resolve(__dirname, modulePath);
   return fs.readFileSync(absolutePath, 'utf8');
 }

@@ -27,6 +27,74 @@ const AssignmentController = require('../../src/backend/y_controllers/Assignment
 
 const { AssignmentDefinition } = require('../../src/backend/Models/AssignmentDefinition.js');
 
+// Test Helpers for processSelectedAssignment - moved to module scope per S7721
+var createPropertyMock = function (overrides) {
+  return function (key) {
+    var defaults = {
+      assignmentId: 'assignment-456',
+      triggerId: 'trigger-789',
+      courseId: 'course-123',
+    };
+    return overrides[key] ?? defaults[key] ?? null;
+  };
+};
+
+var createFullDefinition = function (options) {
+  if (options === void 0) {
+    options = {};
+  }
+  var primaryTitle = options.primaryTitle;
+  var primaryTopic = options.primaryTopic;
+  var yearGroupKey = options.yearGroupKey;
+  var yearGroupLabel = options.yearGroupLabel;
+  var documentType = options.documentType;
+  var referenceDocumentId = options.referenceDocumentId;
+  var templateDocumentId = options.templateDocumentId;
+  var tasks = options.tasks;
+  if (primaryTitle === void 0) {
+    primaryTitle = 'Test';
+  }
+  if (primaryTopic === void 0) {
+    primaryTopic = 'Topic';
+  }
+  if (yearGroupKey === void 0) {
+    yearGroupKey = 'year-group-10';
+  }
+  if (yearGroupLabel === void 0) {
+    yearGroupLabel = 'Year 10';
+  }
+  if (documentType === void 0) {
+    documentType = 'SLIDES';
+  }
+  if (referenceDocumentId === void 0) {
+    referenceDocumentId = 'ref';
+  }
+  if (templateDocumentId === void 0) {
+    templateDocumentId = 'tpl';
+  }
+  if (tasks === void 0) {
+    tasks = {
+      t1: {
+        id: 't1',
+        taskTitle: 'Task 1',
+        artifacts: {
+          reference: [{ taskId: 't1', role: 'reference', content: 'content', contentHash: 'hash' }],
+        },
+      },
+    };
+  }
+  return new AssignmentDefinition({
+    primaryTitle: primaryTitle,
+    primaryTopic: primaryTopic,
+    yearGroupKey: yearGroupKey,
+    yearGroupLabel: yearGroupLabel,
+    documentType: documentType,
+    referenceDocumentId: referenceDocumentId,
+    templateDocumentId: templateDocumentId,
+    tasks: tasks,
+  });
+};
+
 describe('AssignmentController - Definition Hydration', () => {
   let mockProperties;
   let mockLock;
@@ -176,65 +244,6 @@ describe('AssignmentController - Definition Hydration', () => {
       };
     });
   });
-
-  // ========================================================================
-  // Test Helpers for processSelectedAssignment
-  // ========================================================================
-
-  /**
-   * Helper to create property mock implementation with standard keys
-   * @param {Object} overrides - Key-value pairs to return for specific property keys
-   * @returns {Function} mockImplementation function for getProperty
-   */
-  function createPropertyMock(overrides) {
-    return (key) => {
-      const defaults = {
-        assignmentId: 'assignment-456',
-        triggerId: 'trigger-789',
-        courseId: 'course-123',
-      };
-      return overrides[key] ?? defaults[key] ?? null;
-    };
-  }
-
-  /**
-   * Helper to create a full AssignmentDefinition with common structure
-   * @param {Object} options - Properties to set on the definition
-   * @returns {AssignmentDefinition} Configured assignment definition
-   */
-  function createFullDefinition(options = {}) {
-    const {
-      primaryTitle = 'Test',
-      primaryTopic = 'Topic',
-      yearGroupKey = 'year-group-10',
-      yearGroupLabel = 'Year 10',
-      documentType = 'SLIDES',
-      referenceDocumentId = 'ref',
-      templateDocumentId = 'tpl',
-      tasks = {
-        t1: {
-          id: 't1',
-          taskTitle: 'Task 1',
-          artifacts: {
-            reference: [
-              { taskId: 't1', role: 'reference', content: 'content', contentHash: 'hash' },
-            ],
-          },
-        },
-      },
-    } = options;
-
-    return new AssignmentDefinition({
-      primaryTitle,
-      primaryTopic,
-      yearGroupKey,
-      yearGroupLabel,
-      documentType,
-      referenceDocumentId,
-      templateDocumentId,
-      tasks,
-    });
-  }
 
   describe('processSelectedAssignment', () => {
     it('should fetch full definition from dedicated collection', () => {

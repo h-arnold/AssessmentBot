@@ -183,7 +183,6 @@ describe('PersistError', () => {
     });
 
     it('should serialize PersistError with cause that has no name property', () => {
-      const originalError = new Error('Cause');
       // Create an object that looks like an error but without name
       const causeObj = { message: 'Cause' };
 
@@ -197,7 +196,6 @@ describe('PersistError', () => {
     });
 
     it('should serialize PersistError with cause that has no message property', () => {
-      const originalError = new Error('Cause');
       // Create an object that looks like an error but without message
       const causeObj = { name: 'Error' };
 

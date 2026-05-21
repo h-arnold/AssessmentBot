@@ -50,8 +50,6 @@ function setupControllerTestContext() {
 
 describe('AssignmentDefinitionController', () => {
   let controller;
-  let mockRegistryCollection;
-  let mockFullCollection;
   let mockDbManager;
 
   beforeEach(() => {
@@ -59,8 +57,6 @@ describe('AssignmentDefinitionController', () => {
     const testContext = setupControllerTestContext();
     controller = testContext.controller;
     mockDbManager = testContext.mockDbManager;
-    mockRegistryCollection = testContext.mockRegistryCollection;
-    mockFullCollection = testContext.mockFullCollection;
   });
 
   afterEach(() => {

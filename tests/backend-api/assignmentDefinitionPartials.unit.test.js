@@ -3,7 +3,6 @@ import {
   createAssignmentDefinitionControllerHooks,
   installAssignmentDefinitionControllerStub,
   loadAssignmentDefinitionPartialsModule,
-  readSourceFile,
   buildValidPartial,
   createMockDefinitionForPartialRow,
   expectFunctionNotInSource,

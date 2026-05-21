@@ -26,14 +26,16 @@ const mockABLogger = {
   getInstance: () => mockLoggerInstance,
 };
 
+// Mock AssignmentController - moved to module scope per S7721
+function AssignmentController() {
+  return mockAssignmentController;
+}
+
 function createAssignmentProcessorGlobalsTestContext() {
   // Clear module cache
   delete require.cache[require.resolve('../../src/backend/AssignmentProcessor/globals.js')];
 
   // Setup global mocks
-  function AssignmentController() {
-    return mockAssignmentController;
-  }
   globalThis.AssignmentController = AssignmentController;
   globalThis.ABLogger = mockABLogger;
 
