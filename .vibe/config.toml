@@ -76,8 +76,8 @@ alias = "mistral-medium-3.5"
 temperature = 0.7
 input_price = 1.5
 output_price = 7.5
-thinking = "max"
-auto_compact_threshold = 180000
+thinking = "high"
+auto_compact_threshold = 200000
 
 [[models]]
 name = "mistral-small"
@@ -198,7 +198,6 @@ allowlist = [
     "npm run lint",
     "npm run lint:backend",
     "npm test",
-    "pwd",
     "python3",
     "sed",
     "stat",

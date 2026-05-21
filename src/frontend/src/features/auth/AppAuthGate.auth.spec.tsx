@@ -5,22 +5,21 @@ import type * as SharedQueriesModule from '../../query/sharedQueries';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiTransportError } from '../../errors/apiTransportError';
 import {
+  getStartupWarmupQueryKey,
   startupWarmupDatasetKeys,
   startupWarmupQueryKeys,
 } from '../../query/sharedQueries';
 import { createAppQueryClient } from '../../query/queryClient';
 import { AuthStatusCard } from './AuthStatusCard';
 import { AppAuthGate } from './AppAuthGate';
-import {
-  useStartupWarmupState,
-  type StartupWarmupSnapshot,
-} from './startupWarmupState';
+import { useStartupWarmupState, type StartupWarmupSnapshot } from './startupWarmupState';
 
 const {
   getAuthorisationStatusMock,
   warmStartupQueriesMock,
   getABClassPartialsMock,
   getAssignmentDefinitionPartialsMock,
+  callApiMock,
   getCohortsMock,
   getAssignmentTopicsMock,
   getYearGroupsMock,
@@ -29,6 +28,7 @@ const {
   warmStartupQueriesMock: vi.fn(),
   getABClassPartialsMock: vi.fn(),
   getAssignmentDefinitionPartialsMock: vi.fn(),
+  callApiMock: vi.fn(),
   getCohortsMock: vi.fn(),
   getAssignmentTopicsMock: vi.fn(),
   getYearGroupsMock: vi.fn(),
@@ -44,6 +44,10 @@ vi.mock('../../services/classPartialsService', () => ({
 
 vi.mock('../../services/assignmentDefinitionPartialsService', () => ({
   getAssignmentDefinitionPartials: getAssignmentDefinitionPartialsMock,
+}));
+
+vi.mock('../../services/apiService', () => ({
+  callApi: callApiMock,
 }));
 
 vi.mock('../../services/referenceDataService', () => ({
@@ -173,10 +177,13 @@ function createQueryWrapper() {
  * @returns {Promise<void>} Resolves once the shared warm-up implementation is wired.
  */
 async function configureAssignmentDefinitionWarmupFailure(): Promise<void> {
-  const { warmStartupQueries: actualWarmStartupQueries } =
-    await vi.importActual<typeof SharedQueriesModule>('../../query/sharedQueries');
+  const { warmStartupQueries: actualWarmStartupQueries } = await vi.importActual<
+    typeof SharedQueriesModule
+  >('../../query/sharedQueries');
   getAuthorisationStatusMock.mockResolvedValueOnce(true);
-  warmStartupQueriesMock.mockImplementationOnce((queryClient) => actualWarmStartupQueries(queryClient));
+  warmStartupQueriesMock.mockImplementationOnce((queryClient) =>
+    actualWarmStartupQueries(queryClient)
+  );
   getABClassPartialsMock.mockResolvedValueOnce([{ classId: 'class-1', className: 'Class 1' }]);
   getCohortsMock.mockResolvedValueOnce([{ key: 'cohort-2026', name: 'Cohort 2026', active: true }]);
   getYearGroupsMock.mockResolvedValueOnce([{ key: 'year-10', name: 'Year 10' }]);
@@ -185,6 +192,28 @@ async function configureAssignmentDefinitionWarmupFailure(): Promise<void> {
     new Error('Assignment definitions warm-up failed.')
   );
 }
+
+const backendCompatibleAssignmentDefinitionPartial = {
+  primaryTitle: 'Algebra Baseline',
+  primaryTopicKey: 'topic-algebra',
+  primaryTopic: 'Algebra',
+  yearGroupKey: 'year-group-10',
+  yearGroupLabel: 'Year 10',
+  alternateTitles: ['Algebra Starter'],
+  alternateTopics: ['Linear Equations'],
+  documentType: 'SLIDES',
+  referenceDocumentId: 'ref-doc-001',
+  templateDocumentId: 'tpl-doc-001',
+  assignmentWeighting: null,
+  definitionKey: 'algebra-baseline',
+  tasks: {
+    taskA: {
+      title: 'Solve two-step equations',
+    },
+  },
+  createdAt: '2026-01-05T10:00:00.000Z',
+  updatedAt: null,
+};
 
 describe('AppAuthGate', () => {
   afterEach(() => {
@@ -209,7 +238,9 @@ describe('AppAuthGate', () => {
       }
     );
 
-    expect(screen.getByRole('status', { name: 'Loading authorisation status' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('status', { name: 'Loading authorisation status' })
+    ).toBeInTheDocument();
     expect(screen.getByTestId('startup-warmup-probe')).toHaveTextContent(
       JSON.stringify({
         warmupState: 'loading',
@@ -263,13 +294,15 @@ describe('AppAuthGate', () => {
     );
 
     expect(await screen.findByText('Unauthorised')).toBeInTheDocument();
-    expect(screen.queryByRole('status', { name: 'Loading authorisation status' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('status', { name: 'Loading authorisation status' })
+    ).not.toBeInTheDocument();
     expect(warmStartupQueriesMock).not.toHaveBeenCalled();
     expect(getAuthorisationStatusMock).toHaveBeenCalledTimes(1);
   });
 
-  it('publishes failed startup warm-up state and logs one debug event for the failed cycle without breaking auth UI', async () => {
-    const consoleDebugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+  it('publishes failed startup warm-up state and logs one error event for the failed cycle without breaking auth UI', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { QueryWrapper, queryClient } = createQueryWrapper();
     const warmupError = new ApiTransportError({
       requestId: 'req-warmup-1',
@@ -306,13 +339,14 @@ describe('AppAuthGate', () => {
         })
       );
     });
-    expect(consoleDebugSpy).toHaveBeenCalledTimes(1);
-    expect(consoleDebugSpy).toHaveBeenCalledWith(
+    expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
       'features/auth/AppAuthGate.startupWarmup',
       expect.objectContaining({
-        requestId: 'req-warmup-1',
-        errorCode: 'INTERNAL_ERROR',
+        context: 'features/auth/AppAuthGate.startupWarmup',
         metadata: expect.objectContaining({
+          requestId: 'req-warmup-1',
+          errorCode: 'INTERNAL_ERROR',
           datasets: [...startupWarmupDatasetKeys],
           queryKeys: [...startupWarmupQueryKeys],
         }),
@@ -385,9 +419,70 @@ describe('AppAuthGate', () => {
     });
   });
 
+  it('keeps startup warm-up ready when assignment definitions arrive with backend-compatible non-null tasks', async () => {
+    const actualAssignmentDefinitionPartialsService = await vi.importActual<
+      typeof import('../../services/assignmentDefinitionPartialsService')
+    >('../../services/assignmentDefinitionPartialsService');
+    const { warmStartupQueries: actualWarmStartupQueries } = await vi.importActual<
+      typeof SharedQueriesModule
+    >('../../query/sharedQueries');
+    const { QueryWrapper, queryClient } = createQueryWrapper();
+
+    getAuthorisationStatusMock.mockResolvedValueOnce(true);
+    warmStartupQueriesMock.mockImplementationOnce((currentQueryClient) =>
+      actualWarmStartupQueries(currentQueryClient)
+    );
+    getABClassPartialsMock.mockResolvedValueOnce([{ classId: 'class-1', className: 'Class 1' }]);
+    getCohortsMock.mockResolvedValueOnce([
+      { key: 'cohort-2026', name: 'Cohort 2026', active: true },
+    ]);
+    getYearGroupsMock.mockResolvedValueOnce([{ key: 'year-10', name: 'Year 10' }]);
+    getAssignmentTopicsMock.mockResolvedValueOnce([{ key: 'topic-algebra', name: 'Algebra' }]);
+    getAssignmentDefinitionPartialsMock.mockImplementationOnce(
+      actualAssignmentDefinitionPartialsService.getAssignmentDefinitionPartials
+    );
+    callApiMock.mockResolvedValueOnce([backendCompatibleAssignmentDefinitionPartial]);
+
+    render(
+      <AppAuthGate>
+        <AuthStatusCard />
+        <StartupWarmupDatasetProbe />
+      </AppAuthGate>,
+      {
+        wrapper: QueryWrapper,
+      }
+    );
+
+    expect(await screen.findByText('Authorised')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(warmStartupQueriesMock).toHaveBeenCalledTimes(1);
+      expect(getAssignmentDefinitionPartialsMock).toHaveBeenCalledTimes(1);
+    });
+
+    expect(readStartupWarmupDatasetProbeSnapshot()).toMatchObject({
+      warmupState: 'ready',
+      snapshot: {
+        datasets: {
+          assignmentDefinitionPartials: { status: 'ready', isTrustworthy: true },
+        },
+      },
+    });
+    expect(
+      queryClient.getQueryData(getStartupWarmupQueryKey('assignmentDefinitionPartials'))
+    ).toEqual([
+      {
+        ...backendCompatibleAssignmentDefinitionPartial,
+        tasks: null,
+      },
+    ]);
+    expect(callApiMock).toHaveBeenCalledWith('getAssignmentDefinitionPartials');
+    expect(callApiMock).toHaveBeenCalledTimes(1);
+  });
+
   it('reuses an in-flight warm-up cycle across remounts and moves to failed when that shared cycle rejects', async () => {
     const deferredWarmup = createDeferredPromise<void>();
-    const consoleDebugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { QueryWrapper, queryClient } = createQueryWrapper();
     getAuthorisationStatusMock.mockResolvedValue(true);
     warmStartupQueriesMock.mockReturnValue(deferredWarmup.promise);
@@ -430,7 +525,7 @@ describe('AppAuthGate', () => {
     });
 
     expect(warmStartupQueriesMock).toHaveBeenCalledTimes(1);
-    expect(consoleDebugSpy).toHaveBeenCalledTimes(1);
+    expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
   });
 
   it('preserves the failure auth UI behaviour without starting startup warm-up', async () => {

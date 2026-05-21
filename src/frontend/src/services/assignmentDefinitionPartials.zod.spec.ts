@@ -396,17 +396,60 @@ describe('assignmentDefinitionPartials.zod schemas', () => {
     });
   });
 
-  describe('tasks field strict null requirement', () => {
+  describe('tasks field backend-shape compatibility', () => {
     it.each([
+      {
+        caseName: 'null',
+        tasks: null,
+      },
       {
         caseName: 'empty array',
         tasks: [],
       },
       {
+        caseName: 'task-map object',
+        tasks: {
+          task_1: {
+            taskTitle: 'Solve equations',
+            taskWeighting: 1,
+          },
+        },
+      },
+      {
         caseName: 'undefined',
         tasks: undefined,
       },
-    ])('rejects tasks as $caseName (must be exactly null)', async ({ tasks }) => {
+    ])('normalises tasks as $caseName to null', async ({ tasks }) => {
+      const schemas = await loadAssignmentDefinitionPartialsSchemas();
+      const assignmentDefinitionPartialSchema = asParserSchema(
+        schemas.AssignmentDefinitionPartialSchema
+      );
+
+      expect(
+        assignmentDefinitionPartialSchema.parse({
+          ...validAssignmentDefinitionPartialRow,
+          tasks,
+        })
+      ).toEqual({
+        ...validAssignmentDefinitionPartialRow,
+        tasks: null,
+      });
+    });
+
+    it.each([
+      {
+        caseName: 'string',
+        tasks: 'not-valid',
+      },
+      {
+        caseName: 'number',
+        tasks: 1,
+      },
+      {
+        caseName: 'boolean',
+        tasks: true,
+      },
+    ])('rejects unsupported tasks type: $caseName', async ({ tasks }) => {
       const schemas = await loadAssignmentDefinitionPartialsSchemas();
       const assignmentDefinitionPartialSchema = asParserSchema(
         schemas.AssignmentDefinitionPartialSchema
@@ -418,23 +461,6 @@ describe('assignmentDefinitionPartials.zod schemas', () => {
           tasks,
         })
       ).toThrow();
-    });
-
-    it('accepts tasks as null', async () => {
-      const schemas = await loadAssignmentDefinitionPartialsSchemas();
-      const assignmentDefinitionPartialSchema = asParserSchema(
-        schemas.AssignmentDefinitionPartialSchema
-      );
-
-      expect(
-        assignmentDefinitionPartialSchema.parse({
-          ...validAssignmentDefinitionPartialRow,
-          tasks: null,
-        })
-      ).toEqual({
-        ...validAssignmentDefinitionPartialRow,
-        tasks: null,
-      });
     });
   });
 

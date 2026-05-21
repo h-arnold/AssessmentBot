@@ -108,6 +108,13 @@ class ApiDispatcher extends BaseSingleton {
       return this._failure(requestId, 'INVALID_REQUEST', 'Invalid API request payload.', false);
     }
 
+    // Debug logging: stringify the incoming request (after validation to avoid errors on invalid requests)
+    ABLogger.getInstance().debug('API request received.', {
+      requestId,
+      method: request.method,
+      params: JSON.stringify(request.params),
+    });
+
     const methodName = request.method.trim();
     const handler = ALLOWLISTED_METHOD_HANDLERS[methodName];
 
@@ -117,7 +124,13 @@ class ApiDispatcher extends BaseSingleton {
 
     const admissionResult = this._runAdmissionPhase(requestId, methodName);
     if (!admissionResult.ok) {
-      return admissionResult;
+      const response = admissionResult;
+      ABLogger.getInstance().debug('API response sent.', {
+        requestId,
+        method: methodName,
+        response: JSON.stringify(response),
+      });
+      return response;
     }
 
     let handlerError;
@@ -144,10 +157,22 @@ class ApiDispatcher extends BaseSingleton {
     this._runCompletionPhase(requestId, methodName, handlerFailed, handlerError);
 
     if (handlerFailed) {
-      return this._mapErrorToFailureEnvelope(requestId, handlerError);
+      const response = this._mapErrorToFailureEnvelope(requestId, handlerError);
+      ABLogger.getInstance().debug('API response sent.', {
+        requestId,
+        method: methodName,
+        response: JSON.stringify(response),
+      });
+      return response;
     }
 
-    return this._success(requestId, data);
+    const response = this._success(requestId, data);
+    ABLogger.getInstance().debug('API response sent.', {
+      requestId,
+      method: methodName,
+      response: JSON.stringify(response),
+    });
+    return response;
   }
 
   /**
@@ -319,10 +344,15 @@ class ApiDispatcher extends BaseSingleton {
    * @private
    */
   _success(requestId, data) {
+    // Defensive check: log and coerce undefined to null to prevent Zod parsing errors
+    // in the frontend where undefined values in response envelope cause validation failures
+    if (data === undefined) {
+      ABLogger.getInstance().error('Success response with undefined data', { requestId });
+    }
     return {
       ok: true,
       requestId,
-      data,
+      data: data ?? null,
     };
   }
 

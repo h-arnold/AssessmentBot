@@ -3,7 +3,7 @@ import type { PropsWithChildren } from 'react';
 import { useEffect, useState } from 'react';
 import { ApiTransportError } from '../../errors/apiTransportError';
 import { normaliseUnknownError } from '../../errors/normaliseUnknownError';
-import { logFrontendEvent } from '../../logging/frontendLogger';
+import { logFrontendError } from '../../logging/frontendLogger';
 import {
   getStartupWarmupQueryKey,
   startupWarmupDatasetKeys,
@@ -82,7 +82,10 @@ function getDatasetWarmupState(
 function createWarmupSnapshotFromQueryClient(queryClient: QueryClient): StartupWarmupSnapshot {
   return {
     datasets: Object.fromEntries(
-      startupWarmupDatasetKeys.map((datasetKey) => [datasetKey, getDatasetWarmupState(queryClient, datasetKey)])
+      startupWarmupDatasetKeys.map((datasetKey) => [
+        datasetKey,
+        getDatasetWarmupState(queryClient, datasetKey),
+      ])
     ) as StartupWarmupSnapshot['datasets'],
   };
 }
@@ -100,7 +103,11 @@ function deriveWarmupStatus(snapshot: StartupWarmupSnapshot): StartupWarmupStatu
     return 'failed';
   }
 
-  if (datasetStates.every((datasetState) => datasetState.status === 'ready' && datasetState.isTrustworthy)) {
+  if (
+    datasetStates.every(
+      (datasetState) => datasetState.status === 'ready' && datasetState.isTrustworthy
+    )
+  ) {
     return 'ready';
   }
 
@@ -120,7 +127,9 @@ function resolveNextWarmupSnapshot(
 ): StartupWarmupSnapshot {
   const nextSnapshot = createWarmupSnapshotFromQueryClient(queryClient);
 
-  if (Object.values(nextSnapshot.datasets).every((datasetState) => datasetState.status === 'loading')) {
+  if (
+    Object.values(nextSnapshot.datasets).every((datasetState) => datasetState.status === 'loading')
+  ) {
     return createStartupWarmupSnapshotForStatus(fallbackStatus);
   }
 
@@ -137,16 +146,12 @@ function logStartupWarmupFailure(error: unknown) {
   const normalisedError = normaliseUnknownError(error);
   const apiTransportError = error instanceof ApiTransportError ? error : undefined;
 
-  logFrontendEvent('debug', {
-    context: 'features/auth/AppAuthGate.startupWarmup',
+  logFrontendError('features/auth/AppAuthGate.startupWarmup', error, {
     errorMessage: normalisedError.errorMessage,
     errorCode: apiTransportError?.code,
     requestId: apiTransportError?.requestId,
-    stack: normalisedError.stack,
-    metadata: {
-      datasets: startupWarmupDatasetKeys,
-      queryKeys: startupWarmupQueryKeys,
-    },
+    datasets: startupWarmupDatasetKeys,
+    queryKeys: startupWarmupQueryKeys,
   });
 }
 

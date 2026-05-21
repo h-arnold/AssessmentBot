@@ -1,4 +1,4 @@
-# ADR-001: Adopt yearGroupKey-only with Controller-Resolution Pattern (Option B)
+# ADR-001: Adopt yearGroupKey-only with Controller-Resolution Pattern
 
 ## Status
 
@@ -12,15 +12,6 @@ The assignment definition creation path contained significant technical debt:
 2. **Ambiguity**: Both `yearGroup` (numeric) and `yearGroupKey` (string) were used interchangeably in active code
 3. **Misplaced Responsibilities**: Value defaulting occurred in multiple layers (API, controller, model) violating separation of concerns
 4. **Hidden Failures**: Deprecated parameters were silently accepted, masking migration gaps
-
-During the refactoring planning phase, two architectural options emerged:
-
-- **Option A**: Maintain backwards compatibility by accepting both `yearGroup` and `yearGroupKey`, with runtime conversion
-- **Option B**: Enforce `yearGroupKey` only, with controller-resolution pattern and fail-fast validation
-
-## Decision
-
-**Chosen: Option B - yearGroupKey only with controller-resolution pattern**
 
 ### Selected Approach
 
@@ -87,7 +78,7 @@ During the refactoring planning phase, two architectural options emerged:
 
 ## Rationale
 
-Option B was selected because it:
+This approach was selected because it:
 
 1. **Addresses Root Causes**: Directly eliminates the ambiguity between `yearGroup` and `yearGroupKey`
 2. **Enforces Standards**: Implements the validation ownership rules from `src/backend/AGENTS.md` §0.2

@@ -25,7 +25,7 @@ let origConfigMgr;
 beforeEach(() => {
   ProgressTracker.resetForTests();
   globalThis.PropertiesService = {
-    getDocumentProperties: _vi.fn(() => ({
+    getUserProperties: _vi.fn(() => ({
       setProperty: mockSetProperty,
       getProperty: mockGetProperty,
       deleteProperty: mockDeleteProperty,
@@ -53,13 +53,13 @@ afterEach(() => {
 
 describe('ProgressTracker lazy initialization', () => {
   test('does not touch PropertiesService until first method requiring it', () => {
-    expect(globalThis.PropertiesService.getDocumentProperties).toHaveBeenCalledTimes(0);
+    expect(globalThis.PropertiesService.getUserProperties).toHaveBeenCalledTimes(0);
     const pt = ProgressTracker.getInstance();
     // Still should not have initialised
-    expect(globalThis.PropertiesService.getDocumentProperties).toHaveBeenCalledTimes(0);
+    expect(globalThis.PropertiesService.getUserProperties).toHaveBeenCalledTimes(0);
     // Trigger init
     pt.startTracking();
-    expect(globalThis.PropertiesService.getDocumentProperties).toHaveBeenCalledTimes(1);
+    expect(globalThis.PropertiesService.getUserProperties).toHaveBeenCalledTimes(1);
   });
 
   test('ensureInitialized called only once across multiple operations', () => {
@@ -68,13 +68,15 @@ describe('ProgressTracker lazy initialization', () => {
     pt.updateProgress('Step 1');
     pt.updateProgress('Step 2');
     pt.complete();
-    expect(globalThis.PropertiesService.getDocumentProperties).toHaveBeenCalledTimes(1);
+    expect(globalThis.PropertiesService.getUserProperties).toHaveBeenCalledTimes(1);
   });
 
   test('complete does not require ConfigurationManager.getInstance().getIsAdminSheet()', () => {
     const pt = ProgressTracker.getInstance();
 
     expect(() => pt.complete()).not.toThrow();
-    expect(mockSerialiseProperties).toHaveBeenCalledWith(true, false);
+    // Note: serialiseProperties is no longer called in standalone webapp mode
+    // (it was only relevant for bound scripts with DocumentProperties)
+    expect(mockSerialiseProperties).not.toHaveBeenCalled();
   });
 });

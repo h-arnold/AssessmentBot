@@ -167,6 +167,11 @@ export const IsoDateTimeWithTimezoneSchema = z.string().refine(isIsoDateTimeWith
 
 export const NullableIsoDateTimeWithTimezoneSchema = IsoDateTimeWithTimezoneSchema.nullable();
 
+const AssignmentDefinitionPartialTasksSchema = z
+  .union([z.null(), z.array(z.unknown()), z.record(z.string(), z.unknown())])
+  .optional()
+  .transform(() => null);
+
 const SafeDeleteDefinitionKeySchema = TrimmedNonEmptyStringSchema.refine(
   (value) => {
     return !DELETE_UNSAFE_PATH_CHARACTERS_PATTERN.test(value) && !hasControlCharacters(value);
@@ -190,7 +195,7 @@ export const AssignmentDefinitionPartialSchema = z
     templateDocumentId: z.string(),
     assignmentWeighting: z.number().nullable(),
     definitionKey: TrimmedNonEmptyStringSchema,
-    tasks: z.null(),
+    tasks: AssignmentDefinitionPartialTasksSchema,
     createdAt: NullableIsoDateTimeWithTimezoneSchema,
     updatedAt: NullableIsoDateTimeWithTimezoneSchema,
   })

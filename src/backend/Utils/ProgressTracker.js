@@ -39,13 +39,13 @@ class ProgressTracker extends BaseSingleton {
    *
    * @returns {ProgressTracker} The singleton instance of ProgressTracker.
    */
-  /** One-time boundary for acquiring document properties */
+  /** One-time boundary for acquiring user properties */
   ensureInitialized() {
     if (this._initialized) return;
     if (globalThis.__TRACE_SINGLETON__) {
       ABLogger.getInstance().debug('[TRACE][HeavyInit] ProgressTracker.ensureInitialized');
     }
-    this.properties = PropertiesService.getDocumentProperties();
+    this.properties = PropertiesService.getUserProperties();
     this._initialized = true;
     BaseSingleton._maybeFreeze(this);
   }
@@ -132,15 +132,6 @@ class ProgressTracker extends BaseSingleton {
     };
     this.properties.setProperty(this.propertyKey, JSON.stringify(updatedData));
     ABLogger.getInstance().info('Progress tracking completed successfully.');
-
-    // As ProgressTracker.complete() is only called at the end of a significant task,
-    // it is likely that the document properties have been updated.
-    // Therefore, we serialise the properties here to ensure the latest data is saved.
-    // This is important because there's no way of copying DocumentProperties between documents,
-    // which is crucial for the update process. Doing this ensures that the latest properties
-    // are saved and can be deserialised later.
-    const propertiesCloner = new PropertiesCloner();
-    propertiesCloner.serialiseProperties(true, false); //serialise document properties only because only the admin script uses ScriptProperties.
   }
 
   /**
