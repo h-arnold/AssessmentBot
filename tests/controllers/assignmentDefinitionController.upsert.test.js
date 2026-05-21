@@ -181,6 +181,83 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
     controller = new AssignmentDefinitionController();
   });
 
+  /**
+   * Sets up common mock state for duplicate detection tests.
+   * Both tests verify that upsert detects duplicates based on yearGroupKey.
+   * @returns {Object} The wizard upsert payload to use for the test
+   */
+  function setupDuplicateDetectionTest() {
+    const existing = {
+      ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
+      primaryTopic: 'Science',
+      tasks: {
+        t_task_1: {
+          id: 't_task_1',
+          taskTitle: 'Task A',
+          artifacts: { reference: [], template: [] },
+        },
+      },
+      referenceLastModified: '2025-04-01T00:00:00.000Z',
+      templateLastModified: '2025-04-01T00:00:00.000Z',
+    };
+
+    mockFullCollection.findOne.mockReturnValue(existing);
+    mockRegistryCollection.findOne.mockReturnValue({ ...existing, tasks: null });
+    mockDbManager.readAll.mockReturnValue([
+      {
+        definitionKey: 'existing-stable-key',
+        primaryTitle: 'Water cycle explanation',
+        primaryTopicKey: 'topic-science',
+        yearGroupKey: 'year-group-8',
+      },
+      {
+        definitionKey: 'other-definition',
+        primaryTitle: 'Updated title',
+        primaryTopicKey: 'topic-maths',
+        yearGroupKey: 'year-group-10',
+      },
+    ]);
+
+    return createWizardUpsertPayload({
+      definitionKey: 'existing-stable-key',
+      primaryTitle: 'Updated title',
+      primaryTopicKey: 'topic-maths',
+      yearGroupKey: 'year-group-10',
+    });
+  }
+
+  /**
+   * Sets up common mock state for create-stage duplicate detection tests.
+   * Uses createUpsertPayload for the test payload.
+   */
+  function setupCreateStageDuplicateDetectionTest() {
+    mockDbManager.readAll.mockReturnValue([
+      {
+        definitionKey: 'other-definition',
+        primaryTitle: 'Water cycle explanation',
+        primaryTopicKey: 'topic-science',
+        yearGroupKey: 'year-group-8',
+      },
+    ]);
+    return createUpsertPayload();
+  }
+
+  /**
+   * Sets up common mock state for create-stage wizard duplicate detection tests.
+   * Uses createWizardUpsertPayload for the test payload.
+   */
+  function setupWizardCreateStageDuplicateDetectionTest() {
+    mockDbManager.readAll.mockReturnValue([
+      {
+        definitionKey: 'other-definition',
+        primaryTitle: 'Water cycle explanation',
+        primaryTopicKey: 'topic-science',
+        yearGroupKey: 'year-group-8',
+      },
+    ]);
+    return createWizardUpsertPayload();
+  }
+
   it('creates and persists full + registry records from free-form metadata', () => {
     mockFullCollection.findOne.mockReturnValue(null);
     mockRegistryCollection.findOne.mockReturnValue(null);
@@ -310,32 +387,16 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
   });
 
   it('rejects duplicate business-identity tuples using yearGroupKey only', () => {
-    mockDbManager.readAll.mockReturnValue([
-      {
-        definitionKey: 'other-definition',
-        primaryTitle: 'Water cycle explanation',
-        primaryTopicKey: 'topic-science',
-        yearGroupKey: 'year-group-8',
-      },
-    ]);
-
-    expect(() => controller.upsertDefinition(createUpsertPayload())).toThrow(/duplicate/i);
+    const payload = setupCreateStageDuplicateDetectionTest();
+    expect(() => controller.upsertDefinition(payload)).toThrow(/duplicate/i);
     expect(mockFullCollection.insertOne).not.toHaveBeenCalled();
     expect(mockRegistryCollection.insertOne).not.toHaveBeenCalled();
   });
 
   it('rejects duplicate business-identity tuples even when yearGroup field present in stored data (yearGroupKey only)', () => {
     // This test verifies that the duplicate check uses yearGroupKey, not yearGroup
-    mockDbManager.readAll.mockReturnValue([
-      {
-        definitionKey: 'other-definition',
-        primaryTitle: 'Water cycle explanation',
-        primaryTopicKey: 'topic-science',
-        yearGroupKey: 'year-group-8',
-      },
-    ]);
-
-    expect(() => controller.upsertDefinition(createUpsertPayload())).toThrow(/duplicate/i);
+    const payload = setupCreateStageDuplicateDetectionTest();
+    expect(() => controller.upsertDefinition(payload)).toThrow(/duplicate/i);
     expect(mockFullCollection.insertOne).not.toHaveBeenCalled();
     expect(mockRegistryCollection.insertOne).not.toHaveBeenCalled();
   });
@@ -583,32 +644,16 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
   });
 
   it('rejects create-stage duplicate tuples before persistence when yearGroupKey collides', () => {
-    mockDbManager.readAll.mockReturnValue([
-      {
-        definitionKey: 'other-definition',
-        primaryTitle: 'Water cycle explanation',
-        primaryTopicKey: 'topic-science',
-        yearGroupKey: 'year-group-8',
-      },
-    ]);
-
-    expect(() => controller.upsertDefinition(createWizardUpsertPayload())).toThrow(/duplicate/i);
+    const payload = setupWizardCreateStageDuplicateDetectionTest();
+    expect(() => controller.upsertDefinition(payload)).toThrow(/duplicate/i);
     expect(mockFullCollection.insertOne).not.toHaveBeenCalled();
     expect(mockRegistryCollection.insertOne).not.toHaveBeenCalled();
   });
 
   it('rejects create-stage duplicate tuples even when stored data has both yearGroup and yearGroupKey', () => {
     // Verify that only yearGroupKey is used for duplicate detection
-    mockDbManager.readAll.mockReturnValue([
-      {
-        definitionKey: 'other-definition',
-        primaryTitle: 'Water cycle explanation',
-        primaryTopicKey: 'topic-science',
-        yearGroupKey: 'year-group-8',
-      },
-    ]);
-
-    expect(() => controller.upsertDefinition(createWizardUpsertPayload())).toThrow(/duplicate/i);
+    const payload = setupWizardCreateStageDuplicateDetectionTest();
+    expect(() => controller.upsertDefinition(payload)).toThrow(/duplicate/i);
     expect(mockFullCollection.insertOne).not.toHaveBeenCalled();
     expect(mockRegistryCollection.insertOne).not.toHaveBeenCalled();
   });
@@ -797,93 +842,15 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
   });
 
   it('detects duplicate tuples on final save when title/topic/yearGroupKey changes', () => {
-    const existing = {
-      ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
-      primaryTopic: 'Science',
-      tasks: {
-        t_task_1: {
-          id: 't_task_1',
-          taskTitle: 'Task A',
-          artifacts: { reference: [], template: [] },
-        },
-      },
-      referenceLastModified: '2025-04-01T00:00:00.000Z',
-      templateLastModified: '2025-04-01T00:00:00.000Z',
-    };
-
-    mockFullCollection.findOne.mockReturnValue(existing);
-    mockRegistryCollection.findOne.mockReturnValue({ ...existing, tasks: null });
-    mockDbManager.readAll.mockReturnValue([
-      {
-        definitionKey: 'existing-stable-key',
-        primaryTitle: 'Water cycle explanation',
-        primaryTopicKey: 'topic-science',
-        yearGroupKey: 'year-group-8',
-      },
-      {
-        definitionKey: 'other-definition',
-        primaryTitle: 'Updated title',
-        primaryTopicKey: 'topic-maths',
-        yearGroupKey: 'year-group-10',
-      },
-    ]);
-
-    expect(() =>
-      controller.upsertDefinition(
-        createWizardUpsertPayload({
-          definitionKey: 'existing-stable-key',
-          primaryTitle: 'Updated title',
-          primaryTopicKey: 'topic-maths',
-          yearGroupKey: 'year-group-10',
-        })
-      )
-    ).toThrow(/duplicate/i);
+    const payload = setupDuplicateDetectionTest();
+    expect(() => controller.upsertDefinition(payload)).toThrow(/duplicate/i);
   });
 
   it('detects duplicate tuples using yearGroupKey only (ignoring yearGroup field in stored data)', () => {
-    const existing = {
-      ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
-      primaryTopic: 'Science',
-      tasks: {
-        t_task_1: {
-          id: 't_task_1',
-          taskTitle: 'Task A',
-          artifacts: { reference: [], template: [] },
-        },
-      },
-      referenceLastModified: '2025-04-01T00:00:00.000Z',
-      templateLastModified: '2025-04-01T00:00:00.000Z',
-    };
-
-    mockFullCollection.findOne.mockReturnValue(existing);
-    mockRegistryCollection.findOne.mockReturnValue({ ...existing, tasks: null });
     // Stored data has yearGroup field but duplicate check should only use yearGroupKey
-    mockDbManager.readAll.mockReturnValue([
-      {
-        definitionKey: 'existing-stable-key',
-        primaryTitle: 'Water cycle explanation',
-        primaryTopicKey: 'topic-science',
-        yearGroupKey: 'year-group-8',
-      },
-      {
-        definitionKey: 'other-definition',
-        primaryTitle: 'Updated title',
-        primaryTopicKey: 'topic-maths',
-        yearGroupKey: 'year-group-10',
-      },
-    ]);
-
+    const payload = setupDuplicateDetectionTest();
     // Should detect duplicate based on yearGroupKey, not yearGroup
-    expect(() =>
-      controller.upsertDefinition(
-        createWizardUpsertPayload({
-          definitionKey: 'existing-stable-key',
-          primaryTitle: 'Updated title',
-          primaryTopicKey: 'topic-maths',
-          yearGroupKey: 'year-group-10',
-        })
-      )
-    ).toThrow(/duplicate/i);
+    expect(() => controller.upsertDefinition(payload)).toThrow(/duplicate/i);
   });
 
   it('rejects same-document identifier pairs for save writes', () => {
