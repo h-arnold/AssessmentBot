@@ -29,7 +29,7 @@ describe('assignmentDefinitionPartials contract guard', () => {
       })
     ).toThrow();
   });
-  2;
+
   it('accepts backend-compatible non-null tasks payloads and collapses them to null in the list-surface DTO', () => {
     const backendCompatibleRow = {
       definitionKey: 'algebra-baseline',
