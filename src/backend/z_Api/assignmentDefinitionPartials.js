@@ -851,9 +851,7 @@ function upsertAssignmentDefinition_(parameters) {
   }
 
   const definition = controller.upsertDefinition(payload);
-  return typeof controller.toCanonicalFullDefinitionResponse === 'function'
-    ? controller.toCanonicalFullDefinitionResponse(definition)
-    : definition;
+  return controller.toCanonicalFullDefinitionResponse(definition);
 }
 
 /**
@@ -874,9 +872,7 @@ function getAssignmentDefinition_(parameters) {
     return null;
   }
 
-  return typeof controller.toCanonicalFullDefinitionResponse === 'function'
-    ? controller.toCanonicalFullDefinitionResponse(definition)
-    : definition;
+  return controller.toCanonicalFullDefinitionResponse(definition);
 }
 
 if (typeof module !== 'undefined' && module.exports) {

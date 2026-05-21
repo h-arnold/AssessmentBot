@@ -105,13 +105,15 @@ function buildFullDefinition(overrides = {}) {
 
 function installAssignmentDefinitionControllerStub() {
   const upsertDefinition = vi.fn();
+  const toCanonicalFullDefinitionResponse = vi.fn((d) => d);
   const AssignmentDefinitionController = vi.fn(function StubAssignmentDefinitionController() {
     this.upsertDefinition = upsertDefinition;
+    this.toCanonicalFullDefinitionResponse = toCanonicalFullDefinitionResponse;
   });
 
   globalThis.AssignmentDefinitionController = AssignmentDefinitionController;
 
-  return { AssignmentDefinitionController, upsertDefinition };
+  return { AssignmentDefinitionController, upsertDefinition, toCanonicalFullDefinitionResponse };
 }
 
 describe('Api/upsertAssignmentDefinition transport contract', () => {
