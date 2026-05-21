@@ -198,7 +198,6 @@ allowlist = [
     "npm run lint",
     "npm run lint:backend",
     "npm test",
-    "pwd",
     "python3",
     "sed",
     "stat",
