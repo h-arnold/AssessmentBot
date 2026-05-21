@@ -41,6 +41,53 @@ const SHEETS = 'SHEETS';
 // Standard timestamps
 const TIMESTAMP = '2024-01-01T00:00:00.000Z';
 
+/**
+ * Create a complete test setup for success cases
+ */
+function setupSuccessTest({
+  documentType = SLIDES,
+  assignmentId = 'a1',
+  courseId = 'course-1',
+  assignmentTitle = 'Test Assignment',
+  refFileId = STANDARD_DOCS.refId,
+  tplFileId = STANDARD_DOCS.tplId,
+  useUrls = false,
+  yearGroupKey = 'year-group-10',
+  abClass,
+} = {}) {
+  const referenceDocumentId = useUrls ? buildDriveUrl(refFileId, documentType) : refFileId;
+  const templateDocumentId = useUrls ? buildDriveUrl(tplFileId, documentType) : tplFileId;
+
+  const mockDefinition = createMockDefinition(vi, {
+    primaryTitle: assignmentTitle,
+    primaryTopic: 'Topic',
+    yearGroupKey,
+    documentType,
+    referenceDocumentId: refFileId,
+    templateDocumentId: tplFileId,
+  });
+
+  const mockOptions = { definition: mockDefinition };
+  if (abClass) {
+    mockOptions.abClass = abClass;
+  }
+
+  const mockSpy = setupMockEnsureDefinition(vi, mockOptions);
+
+  return {
+    assignmentId,
+    courseId,
+    assignmentTitle,
+    refFileId,
+    tplFileId,
+    referenceDocumentId,
+    templateDocumentId,
+    mockDefinition,
+    mockSpy,
+    documentType,
+  };
+}
+
 describe('AssignmentController.createDefinitionFromWizardInputs', () => {
   beforeEach(async () => {
     // Setup controller test mocks
@@ -100,57 +147,6 @@ describe('AssignmentController.createDefinitionFromWizardInputs', () => {
   });
 
   // ========================================================================
-  // Helper functions for this test suite
-  // ========================================================================
-
-  /**
-   * Create a complete test setup for success cases
-   */
-  function setupSuccessTest({
-    documentType = SLIDES,
-    assignmentId = 'a1',
-    courseId = 'course-1',
-    assignmentTitle = 'Test Assignment',
-    refFileId = STANDARD_DOCS.refId,
-    tplFileId = STANDARD_DOCS.tplId,
-    useUrls = false,
-    yearGroupKey = 'year-group-10',
-    abClass,
-  } = {}) {
-    const referenceDocumentId = useUrls ? buildDriveUrl(refFileId, documentType) : refFileId;
-    const templateDocumentId = useUrls ? buildDriveUrl(tplFileId, documentType) : tplFileId;
-
-    const mockDefinition = createMockDefinition(vi, {
-      primaryTitle: assignmentTitle,
-      primaryTopic: 'Topic',
-      yearGroupKey,
-      documentType,
-      referenceDocumentId: refFileId,
-      templateDocumentId: tplFileId,
-    });
-
-    const mockOptions = { definition: mockDefinition };
-    if (abClass) {
-      mockOptions.abClass = abClass;
-    }
-
-    const mockSpy = setupMockEnsureDefinition(vi, mockOptions);
-
-    return {
-      assignmentId,
-      courseId,
-      assignmentTitle,
-      refFileId,
-      tplFileId,
-      referenceDocumentId,
-      templateDocumentId,
-      mockDefinition,
-      mockSpy,
-      documentType,
-    };
-  }
-
-  // ========================================================================
   // Success cases - Slides
   // ========================================================================
 
@@ -164,7 +160,6 @@ describe('AssignmentController.createDefinitionFromWizardInputs', () => {
         tplFileId = STANDARD_DOCS.slidesTpl,
         referenceDocumentId,
         templateDocumentId,
-        mockDefinition,
         mockSpy,
       } = setupSuccessTest({
         documentType: SLIDES,
@@ -195,15 +190,14 @@ describe('AssignmentController.createDefinitionFromWizardInputs', () => {
 
   describe('Success cases - Sheets', () => {
     it('returns full AssignmentDefinition with tasks for Sheets reference/template (raw IDs)', () => {
-      const { courseId, referenceDocumentId, templateDocumentId, mockDefinition, mockSpy } =
-        setupSuccessTest({
-          documentType: SHEETS,
-          assignmentId: 'assign-sheets-789',
-          assignmentTitle: 'Test Sheets Assignment',
-          refFileId: STANDARD_DOCS.sheetsRef,
-          tplFileId: STANDARD_DOCS.sheetsTpl,
-          useUrls: false,
-        });
+      const { courseId, referenceDocumentId, templateDocumentId } = setupSuccessTest({
+        documentType: SHEETS,
+        assignmentId: 'assign-sheets-789',
+        assignmentTitle: 'Test Sheets Assignment',
+        refFileId: STANDARD_DOCS.sheetsRef,
+        tplFileId: STANDARD_DOCS.sheetsTpl,
+        useUrls: false,
+      });
 
       const controller = createTestController();
       const result = controller.createDefinitionFromWizardInputs({
@@ -226,7 +220,6 @@ describe('AssignmentController.createDefinitionFromWizardInputs', () => {
         tplFileId = STANDARD_DOCS.sheetsTpl,
         referenceDocumentId,
         templateDocumentId,
-        mockDefinition,
         mockSpy,
       } = setupSuccessTest({
         documentType: SHEETS,
@@ -257,7 +250,7 @@ describe('AssignmentController.createDefinitionFromWizardInputs', () => {
 
   describe('Contract verification', () => {
     it('response contains tasks (not null)', () => {
-      const { mockDefinition, mockSpy, courseId } = setupSuccessTest({});
+      const { courseId } = setupSuccessTest({});
 
       const controller = createTestController();
       const result = controller.createDefinitionFromWizardInputs({
@@ -271,7 +264,7 @@ describe('AssignmentController.createDefinitionFromWizardInputs', () => {
     });
 
     it('response contains definitionKey', () => {
-      const { mockDefinition, mockSpy, courseId } = setupSuccessTest({});
+      const { courseId } = setupSuccessTest({});
 
       const controller = createTestController();
       const result = controller.createDefinitionFromWizardInputs({
@@ -284,7 +277,7 @@ describe('AssignmentController.createDefinitionFromWizardInputs', () => {
     });
 
     it('response is valid AssignmentDefinition JSON shape', () => {
-      const { mockDefinition, mockSpy, courseId } = setupSuccessTest({});
+      const { courseId } = setupSuccessTest({});
 
       const controller = createTestController();
       const result = controller.createDefinitionFromWizardInputs({
@@ -526,7 +519,7 @@ describe('AssignmentController.createDefinitionFromWizardInputs', () => {
     // ========================================================================
 
     it('should accept yearGroupKey: string | null parameter instead of yearGroup', () => {
-      const { mockDefinition, mockSpy, courseId } = setupSuccessTest({
+      const { courseId, mockSpy } = setupSuccessTest({
         assignmentId: 'assign-slides-456',
         assignmentTitle: 'Slides with yearGroupKey',
         refFileId: STANDARD_DOCS.slidesRef,
@@ -550,7 +543,7 @@ describe('AssignmentController.createDefinitionFromWizardInputs', () => {
     });
 
     it('should pass yearGroupKey to ensureDefinitionFromInputs', () => {
-      const { mockDefinition, mockSpy, courseId } = setupSuccessTest({
+      const { courseId, mockSpy } = setupSuccessTest({
         assignmentId: 'assign-test-001',
         assignmentTitle: 'Test with yearGroupKey',
         refFileId: STANDARD_DOCS.refId,
@@ -573,7 +566,7 @@ describe('AssignmentController.createDefinitionFromWizardInputs', () => {
     });
 
     it('should not set abClass.yearGroup when yearGroupKey is provided', () => {
-      const { mockDefinition, mockSpy, courseId } = setupSuccessTest({
+      const { courseId } = setupSuccessTest({
         assignmentId: 'assign-test-002',
         assignmentTitle: 'Test without modifying yearGroup',
         refFileId: STANDARD_DOCS.refId,
@@ -596,7 +589,7 @@ describe('AssignmentController.createDefinitionFromWizardInputs', () => {
     });
 
     it('should pass yearGroupKey: null when no yearGroupKey provided', () => {
-      const { mockDefinition, mockSpy, courseId } = setupSuccessTest({
+      const { courseId, mockSpy } = setupSuccessTest({
         assignmentId: 'assign-test-003',
         assignmentTitle: 'Test with null yearGroupKey',
         refFileId: STANDARD_DOCS.refId,
@@ -619,7 +612,7 @@ describe('AssignmentController.createDefinitionFromWizardInputs', () => {
     });
 
     it('should log invocation with yearGroupKey parameter', () => {
-      const { mockDefinition, mockSpy, courseId } = setupSuccessTest({
+      const { courseId } = setupSuccessTest({
         assignmentId: 'assign-test-004',
         assignmentTitle: 'Test logging with yearGroupKey',
         refFileId: STANDARD_DOCS.refId,
@@ -656,7 +649,7 @@ describe('AssignmentController.createDefinitionFromWizardInputs', () => {
 
   describe('Logging behaviour', () => {
     it('logs invocation with all parameters', () => {
-      const { mockDefinition, mockSpy, courseId } = setupSuccessTest({});
+      const { courseId } = setupSuccessTest({});
 
       const controller = createTestController();
       controller.createDefinitionFromWizardInputs({

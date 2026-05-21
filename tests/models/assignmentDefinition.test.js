@@ -16,13 +16,13 @@ describe('AssignmentDefinition - Section 1 Model Changes', () => {
   describe('Constructor rejects yearGroup presence', () => {
     it('should throw TypeError when yearGroup property is present with numeric value', () => {
       expect(() => {
-        new AssignmentDefinition({ ...baseValidParams, yearGroup: 10 });
+        const def = new AssignmentDefinition({ ...baseValidParams, yearGroup: 10 });
       }).toThrow(TypeError);
     });
 
     it('should throw TypeError when yearGroup property is present with null value', () => {
       expect(() => {
-        new AssignmentDefinition({ ...baseValidParams, yearGroup: null });
+        const def = new AssignmentDefinition({ ...baseValidParams, yearGroup: null });
       }).toThrow(TypeError);
     });
   });
@@ -31,7 +31,7 @@ describe('AssignmentDefinition - Section 1 Model Changes', () => {
   describe('Constructor validates yearGroupKey type', () => {
     it('should throw TypeError when yearGroupKey is a number', () => {
       expect(() => {
-        new AssignmentDefinition({ ...baseValidParams, yearGroupKey: 123 });
+        const def = new AssignmentDefinition({ ...baseValidParams, yearGroupKey: 123 });
       }).toThrow(TypeError);
     });
 
@@ -101,13 +101,13 @@ describe('AssignmentDefinition - Section 1 Model Changes', () => {
   describe('assignmentWeighting range validation', () => {
     it('should throw RangeError when assignmentWeighting is below 0', () => {
       expect(() => {
-        new AssignmentDefinition({ ...baseValidParams, assignmentWeighting: -1 });
+        const def = new AssignmentDefinition({ ...baseValidParams, assignmentWeighting: -1 });
       }).toThrow(RangeError);
     });
 
     it('should throw RangeError when assignmentWeighting is above 10', () => {
       expect(() => {
-        new AssignmentDefinition({ ...baseValidParams, assignmentWeighting: 11 });
+        const def = new AssignmentDefinition({ ...baseValidParams, assignmentWeighting: 11 });
       }).toThrow(RangeError);
     });
 
