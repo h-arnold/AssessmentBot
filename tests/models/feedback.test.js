@@ -92,7 +92,7 @@ describe('Feedback', () => {
       const json = feedback.toJSON();
       expect(json).toHaveProperty('type');
       expect(json).toHaveProperty('createdAt');
-      expect(Object.keys(json).sort()).toEqual(['createdAt', 'type'].sort());
+      expect(Object.keys(json).sort((a, b) => a.localeCompare(b))).toEqual(['createdAt', 'type']);
     });
   });
 
