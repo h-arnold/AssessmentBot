@@ -83,3 +83,8 @@ class CacheManager {
     }
   }
 }
+
+// Export for Node.js tests
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { CacheManager };
+}

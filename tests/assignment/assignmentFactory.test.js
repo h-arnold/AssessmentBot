@@ -25,6 +25,8 @@ function createTestData(docType, courseId) {
   const definition = new AssignmentDefinition({
     primaryTitle: 'Test Assignment',
     primaryTopic: 'Topic',
+    yearGroupKey: 'year-group-test',
+    yearGroupLabel: 'Year Test',
     documentType: docType,
     referenceDocumentId: courseId.replace('c', 'ref'),
     templateDocumentId: courseId.replace('c', 'tpl'),
@@ -91,6 +93,8 @@ describe('Assignment.create() Factory Method', () => {
       const definition = new AssignmentDefinition({
         primaryTitle: 'Test Assignment',
         primaryTopic: 'Topic',
+        yearGroupKey: 'year-group-test',
+        yearGroupLabel: 'Year Test',
         documentType: docType,
         referenceDocumentId: refId,
         templateDocumentId: tplId,
@@ -108,6 +112,8 @@ describe('Assignment.create() Factory Method', () => {
       const definition = new AssignmentDefinition({
         primaryTitle: 'Test Assignment',
         primaryTopic: 'Topic',
+        yearGroupKey: 'year-group-test',
+        yearGroupLabel: 'Year Test',
         documentType: 'INVALID',
         referenceDocumentId: 'ref1',
         templateDocumentId: 'tpl1',
@@ -159,6 +165,8 @@ describe('Assignment.fromJSON() Polymorphic Deserialization', () => {
     const invalidDefinition = new AssignmentDefinition({
       primaryTitle: 'Invalid Assignment',
       primaryTopic: 'Topic',
+      yearGroupKey: 'year-group-test',
+      yearGroupLabel: 'Year Test',
       documentType: 'INVALID',
       referenceDocumentId: 'ref-invalid',
       templateDocumentId: 'tpl-invalid',
@@ -225,6 +233,8 @@ describe('Assignment.fromJSON() Polymorphic Deserialization', () => {
     const definition = new AssignmentDefinition({
       primaryTitle: 'Transient Fields Assignment',
       primaryTopic: 'Topic',
+      yearGroupKey: 'year-group-test',
+      yearGroupLabel: 'Year Test',
       documentType: 'SLIDES',
       referenceDocumentId: 'ref7',
       templateDocumentId: 'tpl7',
@@ -251,6 +261,8 @@ describe('Assignment.fromJSON() Polymorphic Deserialization', () => {
     const definition = new AssignmentDefinition({
       primaryTitle: 'Transient JSON Assignment',
       primaryTopic: 'Topic',
+      yearGroupKey: 'year-group-test',
+      yearGroupLabel: 'Year Test',
       documentType: 'SHEETS',
       referenceDocumentId: 'ref8',
       templateDocumentId: 'tpl8',
@@ -310,6 +322,8 @@ describe('Polymorphic Round-Trip', () => {
       assignmentDefinition: new AssignmentDefinition({
         primaryTitle: 'DocType Assignment',
         primaryTopic: 'Topic',
+        yearGroupKey: 'year-group-test',
+        yearGroupLabel: 'Year Test',
         documentType: 'SLIDES',
         referenceDocumentId: 'ref_doctype',
         templateDocumentId: 'tpl_doctype',

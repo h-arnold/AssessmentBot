@@ -76,7 +76,7 @@ alias = "mistral-medium-3.5"
 temperature = 0.7
 input_price = 1.5
 output_price = 7.5
-thinking = "high"
+thinking = "max"
 auto_compact_threshold = 180000
 
 [[models]]
@@ -196,6 +196,7 @@ allowlist = [
     "npm --prefix",
     "npm run --silent",
     "npm run lint",
+    "npm run lint:backend",
     "npm test",
     "pwd",
     "python3",
@@ -226,6 +227,8 @@ denylist = [
     "dash -i",
     "screen",
     "tmux",
+    "git reset",
+    "git stash",
 ]
 sensitive_patterns = [
     "sudo",
@@ -280,6 +283,7 @@ denylist = []
 sensitive_patterns = [
     "**/.env",
     "**/.env.*",
+    "**/**eslint.config**",
 ]
 max_write_bytes = 64000
 create_parent_dirs = true
@@ -291,6 +295,7 @@ denylist = []
 sensitive_patterns = [
     "**/.env",
     "**/.env.*",
+    "**/**eslint.config**",
 ]
 max_content_size = 100000
 create_backup = false

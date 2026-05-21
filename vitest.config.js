@@ -9,9 +9,11 @@ module.exports = {
   test: {
     coverage: {
       provider: 'v8',
-      include: [
-        'src/backend/z_Api/apiConfig.js',
-        'src/backend/ConfigurationManager/98_ConfigurationManagerClass.js',
+      include: ['src/backend/**/*.js'],
+      exclude: [
+        'src/backend/appsscript.json',
+        'src/backend/AssignmentProcessor/globals.js',
+        '**/AssignmentProcessor/globals.js',
       ],
       reporter: ['text', 'html'],
       thresholds: {

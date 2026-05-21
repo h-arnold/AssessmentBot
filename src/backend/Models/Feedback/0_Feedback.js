@@ -6,6 +6,7 @@ class Feedback {
   /**
    * Constructs a new Feedback instance.
    * @param {string} type - The type identifier for this feedback.
+   * @returns {void}
    */
   constructor(type) {
     this.type = type;
@@ -14,7 +15,7 @@ class Feedback {
 
   /**
    * Gets the type of this feedback.
-   * @return {string} The feedback type.
+   * @returns {string} The feedback type.
    */
   getType() {
     return this.type;
@@ -22,7 +23,7 @@ class Feedback {
 
   /**
    * Serializes the feedback to a JSON object.
-   * @return {Object} JSON representation of the feedback.
+   * @returns {Object} JSON representation of the feedback.
    */
   toJSON() {
     return {
@@ -34,20 +35,18 @@ class Feedback {
   /**
    * Creates a feedback instance from JSON data.
    * @param {Object} json - JSON data to deserialize.
-   * @return {Feedback} A feedback instance of the appropriate subclass.
+   * @returns {Feedback} A feedback instance of the appropriate subclass.
    */
   static fromJSON(json) {
-    switch (json.type) {
-      case 'cellReference': {
-        return CellReferenceFeedback.fromJSON(json);
-      }
-      // Add cases for future feedback types
-      default: {
-        throw new Error(`Unknown feedback type: ${json.type}`);
-      }
+    if (json.type === 'cellReference') {
+      return CellReferenceFeedback.fromJSON(json);
     }
+    // Add cases for future feedback types
+    throw new Error(`Unknown feedback type: ${json.type}`);
   }
 }
 
-// Export for Apps Script
-if (typeof module !== 'undefined') module.exports = Feedback;
+// Export for Node.js tests
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = Feedback;
+}

@@ -7,7 +7,8 @@ describe('AssignmentDefinition Validation', () => {
       const partialDef = new AssignmentDefinition({
         primaryTitle: 'Essay 1',
         primaryTopic: 'English',
-        yearGroup: 10,
+        yearGroupKey: 'year-group-10',
+        yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
         tasks: null,
       });
@@ -15,6 +16,8 @@ describe('AssignmentDefinition Validation', () => {
       expect(partialDef.tasks).toBe(null);
       expect(partialDef.primaryTitle).toBe('Essay 1');
       expect(partialDef.primaryTopic).toBe('English');
+      expect(partialDef.yearGroupKey).toBe('year-group-10');
+      expect(partialDef.yearGroupLabel).toBe('Year 10');
     });
 
     it('should fail validation if trying to create full definition without doc IDs', () => {
@@ -23,7 +26,8 @@ describe('AssignmentDefinition Validation', () => {
         new AssignmentDefinition({
           primaryTitle: 'Essay 1',
           primaryTopic: 'English',
-          yearGroup: 10,
+          yearGroupKey: 'year-group-10',
+          yearGroupLabel: 'Year 10',
           documentType: 'SLIDES',
           tasks: {}, // Full definition marker
           // Missing referenceDocumentId and templateDocumentId
@@ -35,7 +39,8 @@ describe('AssignmentDefinition Validation', () => {
       expect(() => {
         new AssignmentDefinition({
           primaryTopic: 'English',
-          yearGroup: 10,
+          yearGroupKey: 'year-group-10',
+          yearGroupLabel: 'Year 10',
           tasks: null,
         });
       }).toThrow('Missing required assignment property: primaryTitle');
@@ -45,33 +50,36 @@ describe('AssignmentDefinition Validation', () => {
       expect(() => {
         new AssignmentDefinition({
           primaryTitle: 'Essay 1',
-          yearGroup: 10,
+          yearGroupKey: 'year-group-10',
+          yearGroupLabel: 'Year 10',
           tasks: null,
         });
       }).toThrow('Missing required assignment property: primaryTopic');
     });
 
-    it('should allow null yearGroup in partial definition', () => {
+    it('should allow partial definition with valid yearGroupKey', () => {
       const partialDef = new AssignmentDefinition({
         primaryTitle: 'Essay 1',
         primaryTopic: 'English',
-        yearGroup: null,
+        yearGroupKey: 'year-group-10',
+        yearGroupLabel: 'Year 10',
         documentType: 'SLIDES', // Required for partial definitions (routing)
         tasks: null,
       });
 
-      expect(partialDef.yearGroup).toBe(null);
+      expect(partialDef.yearGroupKey).toBe('year-group-10');
+      expect(partialDef.yearGroupLabel).toBe('Year 10');
     });
 
-    it('should fail validation if yearGroup is not an integer', () => {
+    it('should fail validation if yearGroupKey is not a string', () => {
       expect(() => {
         new AssignmentDefinition({
           primaryTitle: 'Essay 1',
           primaryTopic: 'English',
-          yearGroup: 10.5,
+          yearGroupKey: 10,
           tasks: null,
         });
-      }).toThrow('yearGroup must be an integer or null');
+      }).toThrow('yearGroupKey must be a string');
     });
   });
 
@@ -80,7 +88,8 @@ describe('AssignmentDefinition Validation', () => {
       const fullDef = new AssignmentDefinition({
         primaryTitle: 'Essay 1',
         primaryTopic: 'English',
-        yearGroup: 10,
+        yearGroupKey: 'year-group-10',
+        yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
         referenceDocumentId: 'ref123',
         templateDocumentId: 'tmpl123',
@@ -91,6 +100,8 @@ describe('AssignmentDefinition Validation', () => {
       expect(fullDef.documentType).toBe('SLIDES');
       expect(fullDef.referenceDocumentId).toBe('ref123');
       expect(fullDef.templateDocumentId).toBe('tmpl123');
+      expect(fullDef.yearGroupKey).toBe('year-group-10');
+      expect(fullDef.yearGroupLabel).toBe('Year 10');
     });
 
     it('should allow full definition with doc IDs and tasks: null (validates as partial)', () => {
@@ -98,7 +109,8 @@ describe('AssignmentDefinition Validation', () => {
       const def = new AssignmentDefinition({
         primaryTitle: 'Essay 1',
         primaryTopic: 'English',
-        yearGroup: 10,
+        yearGroupKey: 'year-group-10',
+        yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
         referenceDocumentId: 'ref123', // Will be preserved but not validated
         templateDocumentId: 'tmpl123', // Will be preserved but not validated
@@ -108,6 +120,8 @@ describe('AssignmentDefinition Validation', () => {
       expect(def.tasks).toBe(null);
       expect(def.referenceDocumentId).toBe('ref123');
       expect(def.templateDocumentId).toBe('tmpl123');
+      expect(def.yearGroupKey).toBe('year-group-10');
+      expect(def.yearGroupLabel).toBe('Year 10');
     });
 
     it('should fail validation if full definition is missing documentType', () => {
@@ -115,7 +129,8 @@ describe('AssignmentDefinition Validation', () => {
         new AssignmentDefinition({
           primaryTitle: 'Essay 1',
           primaryTopic: 'English',
-          yearGroup: 10,
+          yearGroupKey: 'year-group-10',
+          yearGroupLabel: 'Year 10',
           referenceDocumentId: 'ref123',
           templateDocumentId: 'tmpl123',
           tasks: {},
@@ -128,7 +143,8 @@ describe('AssignmentDefinition Validation', () => {
         new AssignmentDefinition({
           primaryTitle: 'Essay 1',
           primaryTopic: 'English',
-          yearGroup: 10,
+          yearGroupKey: 'year-group-10',
+          yearGroupLabel: 'Year 10',
           documentType: 'SLIDES',
           templateDocumentId: 'tmpl123',
           tasks: {},
@@ -141,7 +157,8 @@ describe('AssignmentDefinition Validation', () => {
         new AssignmentDefinition({
           primaryTitle: 'Essay 1',
           primaryTopic: 'English',
-          yearGroup: 10,
+          yearGroupKey: 'year-group-10',
+          yearGroupLabel: 'Year 10',
           documentType: 'SLIDES',
           referenceDocumentId: 'ref123',
           tasks: {},
@@ -155,10 +172,11 @@ describe('AssignmentDefinition Validation', () => {
       const partialJson = {
         primaryTitle: 'Essay 1',
         primaryTopic: 'English',
-        yearGroup: 10,
+        yearGroupKey: 'year-group-10',
+        yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
         assignmentWeighting: null,
-        definitionKey: 'Essay 1_English_10',
+        definitionKey: 'Essay 1_English_year-group-10',
         tasks: null,
         createdAt: '2025-01-01T00:00:00Z',
         updatedAt: '2025-01-01T00:00:00Z',
@@ -170,6 +188,8 @@ describe('AssignmentDefinition Validation', () => {
       expect(def.referenceDocumentId).toBe(null);
       expect(def.templateDocumentId).toBe(null);
       expect(def.documentType).toBe('SLIDES');
+      expect(def.yearGroupKey).toBe('year-group-10');
+      expect(def.yearGroupLabel).toBe('Year 10');
     });
 
     it('should preserve explicit null for missing fields (except documentType which is required)', () => {
@@ -177,7 +197,8 @@ describe('AssignmentDefinition Validation', () => {
         AssignmentDefinition.fromJSON({
           primaryTitle: 'Essay 1',
           primaryTopic: 'English',
-          yearGroup: 10,
+          yearGroupKey: 'year-group-10',
+          yearGroupLabel: 'Year 10',
           tasks: null,
           // Missing documentType - should fail validation
         });
@@ -190,7 +211,8 @@ describe('AssignmentDefinition Validation', () => {
       const partialDef = new AssignmentDefinition({
         primaryTitle: 'Essay 1',
         primaryTopic: 'English',
-        yearGroup: 10,
+        yearGroupKey: 'year-group-10',
+        yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
         referenceDocumentId: 'ref123',
         templateDocumentId: 'tmpl123',
@@ -203,13 +225,16 @@ describe('AssignmentDefinition Validation', () => {
       expect(json.referenceDocumentId).toBe('ref123');
       expect(json.templateDocumentId).toBe('tmpl123');
       expect(json.documentType).toBe('SLIDES');
+      expect(json.yearGroupKey).toBe('year-group-10');
+      expect(json.yearGroupLabel).toBe('Year 10');
     });
 
     it('should emit tasks: null for full definitions when serialized as partial', () => {
       const fullDef = new AssignmentDefinition({
         primaryTitle: 'Essay 1',
         primaryTopic: 'English',
-        yearGroup: 10,
+        yearGroupKey: 'year-group-10',
+        yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
         referenceDocumentId: 'ref123',
         templateDocumentId: 'tmpl123',
@@ -221,6 +246,8 @@ describe('AssignmentDefinition Validation', () => {
       expect(json.tasks).toBe(null);
       expect(json.referenceDocumentId).toBe('ref123');
       expect(json.templateDocumentId).toBe('tmpl123');
+      expect(json.yearGroupKey).toBe('year-group-10');
+      expect(json.yearGroupLabel).toBe('Year 10');
     });
   });
 
@@ -229,7 +256,8 @@ describe('AssignmentDefinition Validation', () => {
       const partialDef = new AssignmentDefinition({
         primaryTitle: 'Essay 1',
         primaryTopic: 'English',
-        yearGroup: 10,
+        yearGroupKey: 'year-group-10',
+        yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
         tasks: null,
       });
@@ -240,6 +268,8 @@ describe('AssignmentDefinition Validation', () => {
       expect(restored.tasks).toBe(null);
       expect(restored.referenceDocumentId).toBe(null);
       expect(restored.templateDocumentId).toBe(null);
+      expect(restored.yearGroupKey).toBe('year-group-10');
+      expect(restored.yearGroupLabel).toBe('Year 10');
     });
   });
 });

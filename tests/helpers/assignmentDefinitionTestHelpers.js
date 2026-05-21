@@ -37,7 +37,7 @@ export const DEFAULT_PARSED_TASK_DEFINITION = {
  */
 export function createReferenceDataControllerMock(options = {}) {
   const {
-    yearGroups = [{ key: 'year-group-10', name: 'Year 10', yearGroup: 10 }],
+    yearGroups = [{ key: 'year-group-10', name: 'Year 10' }],
     topics = [{ key: 'topic-english', name: 'English' }],
   } = options;
 
@@ -120,11 +120,12 @@ export function createSamplePartialDefinitionDocs() {
       primaryTitle: '1.1 Learning to Research',
       primaryTopic: 'Space',
       primaryTopicKey: 'topic-space',
-      yearGroup: null,
+      yearGroupKey: 'year-group-10',
+      yearGroupLabel: 'Year 10',
       documentType: 'SLIDES',
       referenceDocumentId: '1fuOQ8ZFoB1Kdk9_rgEErRs4jrphRkB6zJYYLjEbVoII',
       templateDocumentId: '1blHtdE5Ieyr7F_XYuAta1O4PlVhDcmJJw0OJd0BakKY',
-      definitionKey: '1.1 Learning to Research_Space_null',
+      definitionKey: '1.1 Learning to Research_Space_year-group-10',
       tasks: null,
     },
     {
@@ -132,11 +133,12 @@ export function createSamplePartialDefinitionDocs() {
       primaryTitle: '8. Secondary Storage - Cloud',
       primaryTopic: '1.1 Computer Architecture',
       primaryTopicKey: 'topic-computer-architecture',
-      yearGroup: null,
+      yearGroupKey: 'year-group-10',
+      yearGroupLabel: 'Year 10',
       documentType: 'SLIDES',
       referenceDocumentId: '1Qa3SXcZfFPtKVU0mZbbIyq3kksXOVMK12IvrLgnmwmk',
       templateDocumentId: '1kfWiX2QfzK39q98r_RxPqEvteShuUMfCdOg2wtJgCfg',
-      definitionKey: '8. Secondary Storage - Cloud_1.1 Computer Architecture_null',
+      definitionKey: '8. Secondary Storage - Cloud_1.1 Computer Architecture_year-group-10',
       tasks: null,
     },
     {
@@ -144,11 +146,12 @@ export function createSamplePartialDefinitionDocs() {
       primaryTitle: '1. DigiTech Pathways',
       primaryTopic: 'Pathways',
       primaryTopicKey: 'topic-pathways',
-      yearGroup: null,
+      yearGroupKey: 'year-group-10',
+      yearGroupLabel: 'Year 10',
       documentType: 'SLIDES',
       referenceDocumentId: '1fXe7mD6YgBixNcLpRl-6NTSTayraVCDvGTIjLQ_vh24',
       templateDocumentId: '1nguALHo-wXxxMlml49_7JoQ8sFt0-0_eF9ec4_pX6JQ',
-      definitionKey: '1. DigiTech Pathways_Pathways_null',
+      definitionKey: '1. DigiTech Pathways_Pathways_year-group-10',
       tasks: null,
     },
   ];
@@ -165,4 +168,99 @@ export function cleanupAssignmentDefinitionTest() {
   delete globalThis.SlidesParser;
   delete globalThis.AssignmentDefinition;
   delete globalThis.ReferenceDataController;
+}
+
+/**
+ * Default MockSlidesParser class for tests
+ * Returns a consistent parsed task definition
+ */
+export class MockSlidesParser {
+  extractTaskDefinitions() {
+    return [
+      {
+        getId: () => 't1',
+        taskTitle: 'Parsed Task',
+        validate: () => ({ ok: true, errors: [] }),
+        toJSON: () => ({
+          id: 't1',
+          taskTitle: 'Parsed Task',
+          taskWeighting: null,
+          index: 0,
+          artifacts: { reference: [], template: [] },
+        }),
+      },
+    ];
+  }
+}
+
+/**
+ * Setup and install global mocks for AssignmentDefinitionController tests
+ * This installs all required globals (DbManager, DriveManager, ClassroomApiClient,
+ * AssignmentDefinition, ReferenceDataController, SlidesParser) with proper mocking
+ * @param {Object} vi - Vitest vi object
+ * @param {Object} DbManager - Mocked DbManager module (from vi.mock)
+ * @param {Object} DriveManager - Mocked DriveManager module (from vi.mock)
+ * @param {Object} ClassroomApiClient - Mocked ClassroomApiClient module (from vi.mock)
+ * @param {Object} options - Configuration options
+ * @param {string} options.driveModifiedTime - Drive file modified time to return
+ * @param {string} options.topicName - Topic name to return from ClassroomApiClient
+ * @param {Array} options.yearGroups - Year groups for ReferenceDataController
+ * @param {Array} options.topics - Topics for ReferenceDataController
+ * @returns {Object} { mockDbManager, mockRegistryCollection, mockFullCollection, controller }
+ */
+export function setupAssignmentDefinitionTestGlobals(
+  vi,
+  DbManager,
+  DriveManager,
+  ClassroomApiClient,
+  options = {}
+) {
+  const {
+    driveModifiedTime = '2025-01-01T12:00:00Z',
+    topicName = 'English',
+    yearGroups,
+    topics,
+  } = options;
+
+  // Get mock collections
+  const { mockDbManager, mockRegistryCollection, mockFullCollection } =
+    setupAssignmentDefinitionMocks(vi, {
+      driveModifiedTime,
+      topicName,
+      yearGroups,
+      topics,
+    });
+
+  // Configure the vi.mock'd modules to return our mock objects
+  DbManager.getInstance.mockReturnValue(mockDbManager);
+  DriveManager.getFileModifiedTime.mockReturnValue(driveModifiedTime);
+  ClassroomApiClient.fetchTopicName.mockReturnValue(topicName);
+
+  // Expose to globals to match production usage
+  globalThis.DbManager = DbManager;
+  globalThis.DriveManager = DriveManager;
+  globalThis.ClassroomApiClient = ClassroomApiClient;
+  globalThis.AssignmentDefinition = AssignmentDefinition;
+
+  // Create and install ReferenceDataController mock
+  const MockReferenceDataController = createReferenceDataControllerMock({
+    yearGroups,
+    topics,
+  });
+  globalThis.ReferenceDataController = MockReferenceDataController;
+
+  // Install SlidesParser mock
+  globalThis.SlidesParser = MockSlidesParser;
+
+  // Create controller - use default export if available
+  const AssignmentDefinitionController = require('../../src/backend/y_controllers/AssignmentDefinitionController.js');
+  const ControllerClass = AssignmentDefinitionController.default || AssignmentDefinitionController;
+  const controller = new ControllerClass();
+
+  return {
+    mockDbManager,
+    mockRegistryCollection,
+    mockFullCollection,
+    controller,
+  };
 }

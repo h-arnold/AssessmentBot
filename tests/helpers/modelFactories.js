@@ -113,7 +113,8 @@ function createAssignmentWithType(documentType, props = {}) {
   const definition = new AssignmentDefinition({
     primaryTitle: assignmentName,
     primaryTopic: 'Topic',
-    yearGroup: null,
+    yearGroupKey: 'year-group-default',
+    yearGroupLabel: 'Year Default',
     documentType,
     referenceDocumentId,
     templateDocumentId,

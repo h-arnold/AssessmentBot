@@ -427,16 +427,20 @@ class AssignmentController {
    * @param {string} params.assignmentId - The assignment ID (required).
    * @param {string} params.courseId - Classroom course ID (required).
    * @param {Object} params.documentIds - Object containing document IDs (required).
-   * @param {number|null} [params.yearGroup] - Year group level (optional).
+   * @param {string|null} [params.yearGroupKey] - Year group key (optional).
    * @returns {Object} Object containing { definition, courseId, abClass }.
    * @throws {Error} If required parameters are missing or definition creation fails.
+   * @remarks Parameter renamed from `yearGroup` to `yearGroupKey` per SPEC.md v1.9.0 Option B.
+   * Resolves `yearGroupKey` from input or `abClass.yearGroupKey` (fail-fast when both null).
+   * Resolves `primaryTopicKey` from Classroom API `topicId`. Delegates to `controller.upsertDefinition`
+   * (not the removed `controller.ensureDefinition`). No longer sets `abClass.yearGroup`.
    */
   ensureDefinitionFromInputs({
     assignmentTitle,
     assignmentId,
     courseId,
     documentIds,
-    yearGroup = null,
+    yearGroupKey = null,
   }) {
     const referenceId = documentIds?.referenceDocumentId || documentIds?.referenceSlideId;
     const templateId = documentIds?.templateDocumentId || documentIds?.templateSlideId;
@@ -452,22 +456,31 @@ class AssignmentController {
     const abClassController = new ABClassController();
     const abClass = abClassController.loadClass(courseId);
 
-    // Use provided yearGroup (wizard input) if supplied, otherwise fallback to the class value
-    const finalYearGroup =
-      yearGroup !== undefined && yearGroup !== null
-        ? Number.parseInt(yearGroup, 10)
-        : (abClass?.yearGroup ?? null);
+    // Resolve yearGroupKey from input or abClass.yearGroupKey
+    const resolvedYearGroupKey =
+      yearGroupKey !== undefined && yearGroupKey !== null
+        ? yearGroupKey
+        : (abClass?.yearGroupKey ?? null);
+
+    // Fail fast if yearGroupKey cannot be resolved
+    if (resolvedYearGroupKey === null || resolvedYearGroupKey === undefined) {
+      throw new Error(
+        'yearGroupKey resolution failed: both input yearGroupKey and abClass.yearGroupKey are null'
+      );
+    }
+
+    // Resolve primaryTopicKey from topicId + courseId via Classroom API
+    // topicId from Classroom is the canonical topic key
+    const primaryTopicKey = topicId;
 
     const definitionController = new AssignmentDefinitionController();
-    const definition = definitionController.ensureDefinition({
+    const definition = definitionController.upsertDefinition({
       primaryTitle,
-      primaryTopic: null,
-      topicId,
-      courseId,
-      yearGroup: finalYearGroup,
+      primaryTopicKey,
       documentType,
       referenceDocumentId: referenceId,
       templateDocumentId: templateId,
+      yearGroupKey: resolvedYearGroupKey,
     });
 
     return { definition, courseId, abClass };
@@ -483,9 +496,11 @@ class AssignmentController {
    * @param {string} [params.assignmentTitle] - Assignment title (fallback if not fetched from Classroom).
    * @param {string} params.referenceDocumentId - Reference document URL or file ID (required).
    * @param {string} params.templateDocumentId - Template document URL or file ID (required).
-   * @param {number|null} [params.yearGroup] - Year group level (optional).
+   * @param {string|null} [params.yearGroupKey] - Year group key (optional).
    * @returns {Object} Full AssignmentDefinition JSON payload including tasks and metadata.
    * @throws {Error} If validation fails, documents are identical, types mismatch, or assignment lacks topic.
+   * @remarks Parameter renamed from `yearGroup` to `yearGroupKey` per SPEC.md v1.9.0 Option B.
+   * Passes `yearGroupKey` (not `yearGroup`) to `ensureDefinitionFromInputs`. No longer sets `abClass.yearGroup`.
    */
   createDefinitionFromWizardInputs({
     assignmentId,
@@ -493,7 +508,7 @@ class AssignmentController {
     courseId,
     referenceDocumentId,
     templateDocumentId,
-    yearGroup = null,
+    yearGroupKey = null,
   }) {
     ABLogger.getInstance().info('AssignmentController.createDefinitionFromWizardInputs invoked:', {
       assignmentId,
@@ -501,7 +516,7 @@ class AssignmentController {
       courseId,
       referenceDocumentId,
       templateDocumentId,
-      yearGroup,
+      yearGroupKey,
     });
 
     // Validate required parameters
@@ -532,28 +547,13 @@ class AssignmentController {
 
     try {
       // Call existing pipeline to get/create definition with full tasks
-      const { definition, abClass } = this.ensureDefinitionFromInputs({
+      const { definition } = this.ensureDefinitionFromInputs({
         assignmentTitle,
         assignmentId,
         courseId,
         documentIds,
-        yearGroup,
+        yearGroupKey,
       });
-
-      // If a yearGroup was supplied and it differs from the stored class value, persist it
-      if (yearGroup !== null && yearGroup !== undefined && abClass) {
-        const parsedYear = Number.isInteger(yearGroup) ? yearGroup : Number.parseInt(yearGroup, 10);
-        if (Number.isNaN(parsedYear) === false && abClass.yearGroup !== parsedYear) {
-          const abClassController = new ABClassController();
-          abClass.yearGroup = parsedYear;
-          // Persist the class yearGroup. Fail fast if persisting fails.
-          abClassController.saveClass(abClass);
-          ABLogger.getInstance().info('ABClass.yearGroup updated from wizard input', {
-            classId: abClass.classId,
-            yearGroup: parsedYear,
-          });
-        }
-      }
 
       // Return full definition payload including tasks
       return definition.toJSON();

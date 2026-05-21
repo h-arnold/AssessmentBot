@@ -27,6 +27,74 @@ const AssignmentController = require('../../src/backend/y_controllers/Assignment
 
 const { AssignmentDefinition } = require('../../src/backend/Models/AssignmentDefinition.js');
 
+// Test Helpers for processSelectedAssignment - moved to module scope per S7721
+const createPropertyMock = function (overrides) {
+  return function (key) {
+    const defaults = {
+      assignmentId: 'assignment-456',
+      triggerId: 'trigger-789',
+      courseId: 'course-123',
+    };
+    return overrides[key] ?? defaults[key] ?? null;
+  };
+};
+
+const createFullDefinition = function (options) {
+  if (options === void 0) {
+    options = {};
+  }
+  let primaryTitle = options.primaryTitle;
+  let primaryTopic = options.primaryTopic;
+  let yearGroupKey = options.yearGroupKey;
+  let yearGroupLabel = options.yearGroupLabel;
+  let documentType = options.documentType;
+  let referenceDocumentId = options.referenceDocumentId;
+  let templateDocumentId = options.templateDocumentId;
+  let tasks = options.tasks;
+  if (primaryTitle === void 0) {
+    primaryTitle = 'Test';
+  }
+  if (primaryTopic === void 0) {
+    primaryTopic = 'Topic';
+  }
+  if (yearGroupKey === void 0) {
+    yearGroupKey = 'year-group-10';
+  }
+  if (yearGroupLabel === void 0) {
+    yearGroupLabel = 'Year 10';
+  }
+  if (documentType === void 0) {
+    documentType = 'SLIDES';
+  }
+  if (referenceDocumentId === void 0) {
+    referenceDocumentId = 'ref';
+  }
+  if (templateDocumentId === void 0) {
+    templateDocumentId = 'tpl';
+  }
+  if (tasks === void 0) {
+    tasks = {
+      t1: {
+        id: 't1',
+        taskTitle: 'Task 1',
+        artifacts: {
+          reference: [{ taskId: 't1', role: 'reference', content: 'content', contentHash: 'hash' }],
+        },
+      },
+    };
+  }
+  return new AssignmentDefinition({
+    primaryTitle: primaryTitle,
+    primaryTopic: primaryTopic,
+    yearGroupKey: yearGroupKey,
+    yearGroupLabel: yearGroupLabel,
+    documentType: documentType,
+    referenceDocumentId: referenceDocumentId,
+    templateDocumentId: templateDocumentId,
+    tasks: tasks,
+  });
+};
+
 describe('AssignmentController - Definition Hydration', () => {
   let mockProperties;
   let mockLock;
@@ -102,6 +170,8 @@ describe('AssignmentController - Definition Hydration', () => {
     const mockABClass = {
       classId: 'course-123',
       yearGroup: 10,
+      yearGroupKey: 'year-group-10',
+      yearGroupLabel: 'Year 10',
       students: [{ id: 'student-1', name: 'Student 1' }],
       findAssignmentIndex: vi.fn().mockReturnValue(-1),
     };
@@ -118,6 +188,7 @@ describe('AssignmentController - Definition Hydration', () => {
     mockDefinitionController = {
       getDefinitionByKey: vi.fn(),
       ensureDefinition: vi.fn(),
+      upsertDefinition: vi.fn(),
       saveDefinition: vi.fn(),
     };
     globalThis.AssignmentDefinitionController = vi.fn().mockImplementation(function () {
@@ -177,20 +248,16 @@ describe('AssignmentController - Definition Hydration', () => {
   describe('processSelectedAssignment', () => {
     it('should fetch full definition from dedicated collection', () => {
       // Setup properties
-      mockProperties.getProperty.mockImplementation((key) => {
-        if (key === 'assignmentId') return 'assignment-456';
-        if (key === 'definitionKey') return 'Essay 1_English_10';
-        if (key === 'triggerId') return 'trigger-789';
-        if (key === 'courseId') return 'course-123';
-        return null;
-      });
+      mockProperties.getProperty.mockImplementation(
+        createPropertyMock({
+          definitionKey: 'Essay 1_English_year-group-10',
+        })
+      );
 
       // Setup full definition
-      const fullDefinition = new AssignmentDefinition({
+      const fullDefinition = createFullDefinition({
         primaryTitle: 'Essay 1',
         primaryTopic: 'English',
-        yearGroup: 10,
-        documentType: 'SLIDES',
         referenceDocumentId: 'ref-123',
         templateDocumentId: 'tpl-456',
         tasks: {
@@ -219,7 +286,7 @@ describe('AssignmentController - Definition Hydration', () => {
 
       // Verify full definition fetched with correct form parameter
       expect(mockDefinitionController.getDefinitionByKey).toHaveBeenCalledWith(
-        'Essay 1_English_10',
+        'Essay 1_English_year-group-10',
         { form: 'full' }
       );
 
@@ -230,13 +297,11 @@ describe('AssignmentController - Definition Hydration', () => {
     });
 
     it('should throw error if definition not found', () => {
-      mockProperties.getProperty.mockImplementation((key) => {
-        if (key === 'assignmentId') return 'assignment-456';
-        if (key === 'definitionKey') return 'NonExistent_Topic_10';
-        if (key === 'triggerId') return 'trigger-789';
-        if (key === 'courseId') return 'course-123';
-        return null;
-      });
+      mockProperties.getProperty.mockImplementation(
+        createPropertyMock({
+          definitionKey: 'NonExistent_Topic_year-group-10',
+        })
+      );
 
       mockDefinitionController.getDefinitionByKey.mockReturnValue(null);
 
@@ -244,37 +309,17 @@ describe('AssignmentController - Definition Hydration', () => {
 
       expect(() => {
         controller.processSelectedAssignment();
-      }).toThrow('Assignment definition not found for key NonExistent_Topic_10');
+      }).toThrow('Assignment definition not found for key NonExistent_Topic_year-group-10');
     });
 
     it('should use full definition for assignment instance creation', () => {
-      mockProperties.getProperty.mockImplementation((key) => {
-        if (key === 'assignmentId') return 'assignment-456';
-        if (key === 'definitionKey') return 'Test_Topic_10';
-        if (key === 'triggerId') return 'trigger-789';
-        if (key === 'courseId') return 'course-123';
-        return null;
-      });
+      mockProperties.getProperty.mockImplementation(
+        createPropertyMock({
+          definitionKey: 'Test_Topic_year-group-10',
+        })
+      );
 
-      const fullDefinition = new AssignmentDefinition({
-        primaryTitle: 'Test',
-        primaryTopic: 'Topic',
-        yearGroup: 10,
-        documentType: 'SLIDES',
-        referenceDocumentId: 'ref',
-        templateDocumentId: 'tpl',
-        tasks: {
-          t1: {
-            id: 't1',
-            taskTitle: 'Task 1',
-            artifacts: {
-              reference: [
-                { taskId: 't1', role: 'reference', content: 'content', contentHash: 'hash' },
-              ],
-            },
-          },
-        },
-      });
+      const fullDefinition = createFullDefinition();
 
       mockDefinitionController.getDefinitionByKey.mockReturnValue(fullDefinition);
 
@@ -291,7 +336,8 @@ describe('AssignmentController - Definition Hydration', () => {
       const definition = new AssignmentDefinition({
         primaryTitle: 'Test',
         primaryTopic: 'Topic',
-        yearGroup: 10,
+        yearGroupKey: 'year-group-10',
+        yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
         referenceDocumentId: 'ref',
         templateDocumentId: 'tpl',
@@ -315,14 +361,15 @@ describe('AssignmentController - Definition Hydration', () => {
       expect(mockAssignment.populateTasks).toHaveBeenCalled();
 
       // Should save refreshed definition
-      expect(mockDefinitionController.ensureDefinition).not.toHaveBeenCalled(); // Already handled in populateTasks path
+      expect(mockDefinitionController.upsertDefinition).not.toHaveBeenCalled(); // Already handled in populateTasks path
     });
 
     it('should skip parsing if definition is fresh', () => {
       const definition = new AssignmentDefinition({
         primaryTitle: 'Test',
         primaryTopic: 'Topic',
-        yearGroup: 10,
+        yearGroupKey: 'year-group-10',
+        yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
         referenceDocumentId: 'ref',
         templateDocumentId: 'tpl',
@@ -350,6 +397,28 @@ describe('AssignmentController - Definition Hydration', () => {
     });
   });
 
+  // ========================================================================
+  // Test Helpers for ensureDefinitionFromInputs
+  // ========================================================================
+
+  /**
+   * Standard documentIds object used in most tests
+   */
+  const STANDARD_DOC_IDS = {
+    referenceDocumentId: 'ref',
+    templateDocumentId: 'tpl',
+  };
+
+  /**
+   * Standard ensureDefinitionFromInputs parameters
+   */
+  const STANDARD_INPUTS = {
+    assignmentTitle: 'Test',
+    assignmentId: 'assignment-123',
+    courseId: 'course-123',
+    documentIds: STANDARD_DOC_IDS,
+  };
+
   describe('ensureDefinitionFromInputs', () => {
     beforeEach(() => {
       globalThis.Classroom.Courses.CourseWork.get.mockReturnValue({
@@ -357,17 +426,14 @@ describe('AssignmentController - Definition Hydration', () => {
         topicId: 'topic-123',
       });
 
-      const mockDefinition = new AssignmentDefinition({
+      const mockDefinition = createFullDefinition({
         primaryTitle: 'Assignment Title',
         primaryTopic: 'English',
-        yearGroup: 10,
-        documentType: 'SLIDES',
-        referenceDocumentId: 'ref',
-        templateDocumentId: 'tpl',
         tasks: {},
       });
 
       mockDefinitionController.ensureDefinition.mockReturnValue(mockDefinition);
+      mockDefinitionController.upsertDefinition.mockReturnValue(mockDefinition);
 
       // Mock DriveApp for document type detection
       globalThis.DriveApp = {
@@ -381,17 +447,12 @@ describe('AssignmentController - Definition Hydration', () => {
       const controller = new AssignmentController();
 
       const result = controller.ensureDefinitionFromInputs({
+        ...STANDARD_INPUTS,
         assignmentTitle: 'Assignment Title',
-        assignmentId: 'assignment-123',
-        courseId: 'course-123',
-        documentIds: {
-          referenceDocumentId: 'ref',
-          templateDocumentId: 'tpl',
-        },
       });
 
       expect(result.definition).toBeInstanceOf(AssignmentDefinition);
-      expect(result.definition.definitionKey).toBe('Assignment Title_English_10');
+      expect(result.definition.definitionKey).toBe('Assignment Title_English_year-group-10');
       expect(result.courseId).toBe('course-123');
       expect(result.abClass).toBeDefined();
     });
@@ -399,39 +460,168 @@ describe('AssignmentController - Definition Hydration', () => {
     it('should detect document type from Drive', () => {
       const controller = new AssignmentController();
 
-      controller.ensureDefinitionFromInputs({
-        assignmentTitle: 'Test',
-        assignmentId: 'assignment-123',
-        courseId: 'course-123',
-        documentIds: {
-          referenceDocumentId: 'ref',
-          templateDocumentId: 'tpl',
-        },
-      });
+      controller.ensureDefinitionFromInputs(STANDARD_INPUTS);
 
       expect(globalThis.DriveApp.getFileById).toHaveBeenCalledWith('ref');
       expect(globalThis.DriveApp.getFileById).toHaveBeenCalledWith('tpl');
     });
 
-    it('should fetch year group from ABClass', () => {
+    it('should fetch yearGroupKey from ABClass', () => {
       const controller = new AssignmentController();
 
-      controller.ensureDefinitionFromInputs({
-        assignmentTitle: 'Test',
-        assignmentId: 'assignment-123',
-        courseId: 'course-123',
-        documentIds: {
-          referenceDocumentId: 'ref',
-          templateDocumentId: 'tpl',
-        },
-      });
+      controller.ensureDefinitionFromInputs(STANDARD_INPUTS);
 
       expect(mockABClassController.loadClass).toHaveBeenCalledWith('course-123');
 
-      // Verify ensureDefinition was called with yearGroup from ABClass
-      expect(mockDefinitionController.ensureDefinition).toHaveBeenCalledWith(
+      // Verify upsertDefinition was called with yearGroupKey from ABClass
+      expect(mockDefinitionController.upsertDefinition).toHaveBeenCalledWith(
         expect.objectContaining({
-          yearGroup: 10,
+          yearGroupKey: 'year-group-10',
+          primaryTopicKey: expect.any(String),
+        })
+      );
+    });
+
+    // ========================================================================
+    // Section 3 - Red Phase: Failing tests for yearGroupKey parameter migration
+    // ========================================================================
+
+    it('should accept yearGroupKey: string | null parameter', () => {
+      const controller = new AssignmentController();
+
+      // This should work with yearGroupKey parameter (new behavior)
+      // This test will FAIL until Section 3 implementation is complete
+      controller.ensureDefinitionFromInputs({
+        ...STANDARD_INPUTS,
+        yearGroupKey: 'year-group-10',
+      });
+
+      // Verify upsertDefinition was called with yearGroupKey
+      expect(mockDefinitionController.upsertDefinition).toHaveBeenCalledWith(
+        expect.objectContaining({
+          yearGroupKey: 'year-group-10',
+          primaryTopicKey: expect.any(String),
+        })
+      );
+    });
+
+    it('should resolve yearGroupKey from input when provided', () => {
+      const controller = new AssignmentController();
+
+      // This test will FAIL until Section 3 implementation is complete
+      controller.ensureDefinitionFromInputs({
+        ...STANDARD_INPUTS,
+        yearGroupKey: 'year-group-11',
+      });
+
+      // Verify that input yearGroupKey is used (not abClass.yearGroupKey)
+      expect(mockDefinitionController.upsertDefinition).toHaveBeenCalledWith(
+        expect.objectContaining({
+          yearGroupKey: 'year-group-11',
+        })
+      );
+    });
+
+    it('should resolve yearGroupKey from abClass.yearGroupKey when input is null', () => {
+      const controller = new AssignmentController();
+
+      // This test will FAIL until Section 3 implementation is complete
+      controller.ensureDefinitionFromInputs({
+        ...STANDARD_INPUTS,
+        yearGroupKey: null,
+      });
+
+      // Verify that abClass.yearGroupKey is used as fallback
+      expect(mockDefinitionController.upsertDefinition).toHaveBeenCalledWith(
+        expect.objectContaining({
+          yearGroupKey: 'year-group-10', // from mockABClass.yearGroupKey
+        })
+      );
+    });
+
+    it('should throw when yearGroupKey resolution fails (both input and abClass.yearGroupKey are null)', () => {
+      const controller = new AssignmentController();
+
+      // Create a mock ABClass with null yearGroupKey
+      const mockABClassWithNullKey = {
+        classId: 'course-123',
+        yearGroup: 10,
+        yearGroupKey: null,
+        yearGroupLabel: 'Year 10',
+        students: [{ id: 'student-1', name: 'Student 1' }],
+        findAssignmentIndex: vi.fn().mockReturnValue(-1),
+      };
+      mockABClassController.loadClass.mockReturnValue(mockABClassWithNullKey);
+
+      // This test will FAIL until Section 3 implementation is complete
+      // It should throw when both input yearGroupKey and abClass.yearGroupKey are null
+      expect(() => {
+        controller.ensureDefinitionFromInputs({
+          ...STANDARD_INPUTS,
+          yearGroupKey: null,
+        });
+      }).toThrow(/yearGroupKey.*resolution.*failed/i);
+    });
+
+    it('should resolve primaryTopicKey from topicId + courseId via Classroom API', () => {
+      const controller = new AssignmentController();
+
+      // Mock Classroom to return a topicId
+      globalThis.Classroom.Courses.CourseWork.get.mockReturnValue({
+        title: 'Test Assignment',
+        topicId: 'topic-456',
+      });
+
+      // This test will FAIL until Section 3 implementation is complete
+      controller.ensureDefinitionFromInputs({
+        ...STANDARD_INPUTS,
+        yearGroupKey: 'year-group-10',
+      });
+
+      // Verify that primaryTopicKey is resolved from topicId
+      expect(mockDefinitionController.upsertDefinition).toHaveBeenCalledWith(
+        expect.objectContaining({
+          primaryTopicKey: 'topic-456',
+        })
+      );
+    });
+
+    it('should delegate to controller.upsertDefinition (not controller.ensureDefinition)', () => {
+      const controller = new AssignmentController();
+
+      // This test will FAIL until Section 3 implementation is complete
+      controller.ensureDefinitionFromInputs({
+        ...STANDARD_INPUTS,
+        yearGroupKey: 'year-group-10',
+      });
+
+      // Verify upsertDefinition is called
+      expect(mockDefinitionController.upsertDefinition).toHaveBeenCalled();
+
+      // Verify ensureDefinition is NOT called
+      expect(mockDefinitionController.ensureDefinition).not.toHaveBeenCalled();
+    });
+
+    it('should delegate to upsertDefinition with resolved non-null yearGroupKey and primaryTopicKey', () => {
+      const controller = new AssignmentController();
+
+      // Mock Classroom to return a topicId
+      globalThis.Classroom.Courses.CourseWork.get.mockReturnValue({
+        title: 'Test Assignment',
+        topicId: 'topic-789',
+      });
+
+      // This test will FAIL until Section 3 implementation is complete
+      controller.ensureDefinitionFromInputs({
+        ...STANDARD_INPUTS,
+        yearGroupKey: 'year-group-12',
+      });
+
+      // Verify both resolved values are passed to upsertDefinition
+      expect(mockDefinitionController.upsertDefinition).toHaveBeenCalledWith(
+        expect.objectContaining({
+          yearGroupKey: 'year-group-12',
+          primaryTopicKey: 'topic-789',
         })
       );
     });
@@ -447,12 +637,12 @@ describe('AssignmentController - Definition Hydration', () => {
       });
 
       const controller = new AssignmentController();
-      controller.startProcessing('assignment-456', 'Essay 1_English_10');
+      controller.startProcessing('assignment-456', 'Essay 1_English_year-group-10');
 
       expect(mockProperties.setProperty).toHaveBeenCalledWith('assignmentId', 'assignment-456');
       expect(mockProperties.setProperty).toHaveBeenCalledWith(
         'definitionKey',
-        'Essay 1_English_10'
+        'Essay 1_English_year-group-10'
       );
       expect(mockProperties.setProperty).toHaveBeenCalledWith('triggerId', 'trigger-123');
 

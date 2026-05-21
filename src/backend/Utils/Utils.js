@@ -12,7 +12,7 @@ const DEFAULT_TOAST_TIMEOUT_SECONDS = 3;
 /**
  * Utility methods used across the backend.
  */
-const Utilities_ = {
+const Utils = {
   /**
    * Generates a SHA-256 hash for a given input.
    *
@@ -188,5 +188,10 @@ const Utilities_ = {
 
 // Export for Node tests / CommonJS environment
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = Utilities_;
+  module.exports = Utils;
+}
+
+// Export to global scope for GAS runtime
+if (typeof globalThis !== 'undefined') {
+  globalThis.Utils = Utils;
 }

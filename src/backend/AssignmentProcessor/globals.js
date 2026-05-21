@@ -59,9 +59,12 @@ function startProcessing(assignmentId, definitionKey) {
  * @param {string} params.assignmentTitle - Assignment title (fallback if not fetched from Classroom).
  * @param {string} params.referenceDocumentId - Reference document URL or file ID.
  * @param {string} params.templateDocumentId - Template document URL or file ID.
- * @param {number} params.yearGroup - Optional year group for the assignment.
+ * @param {string|null} params.yearGroupKey - Optional year group key for the assignment.
  * @returns {Object} Full AssignmentDefinition JSON payload including tasks and artefacts.
  * @throws {Error} If validation fails, documents are identical, types mismatch, or assignment lacks topic.
+ * @remarks Parameter renamed from `yearGroup` (number) to `yearGroupKey` (string) per SPEC.md v1.9.0 Option B.
+ * Accepts `yearGroupKey: string | null` and passes it to `controller.createDefinitionFromWizardInputs`.
+ * No backwards compatibility with legacy `yearGroup` parameter.
  */
 function createDefinitionFromWizardInputs({
   assignmentId,
@@ -69,7 +72,7 @@ function createDefinitionFromWizardInputs({
   assignmentTitle,
   referenceDocumentId,
   templateDocumentId,
-  yearGroup = null,
+  yearGroupKey = null,
 }) {
   const controller = new AssignmentController();
   try {
@@ -79,7 +82,7 @@ function createDefinitionFromWizardInputs({
       assignmentTitle,
       referenceDocumentId,
       templateDocumentId,
-      yearGroup,
+      yearGroupKey,
     });
   } catch (error) {
     ABLogger.getInstance().error(

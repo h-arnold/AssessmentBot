@@ -105,13 +105,15 @@ function buildFullDefinition(overrides = {}) {
 
 function installAssignmentDefinitionControllerStub() {
   const upsertDefinition = vi.fn();
+  const toCanonicalFullDefinitionResponse = vi.fn((d) => d);
   const AssignmentDefinitionController = vi.fn(function StubAssignmentDefinitionController() {
     this.upsertDefinition = upsertDefinition;
+    this.toCanonicalFullDefinitionResponse = toCanonicalFullDefinitionResponse;
   });
 
   globalThis.AssignmentDefinitionController = AssignmentDefinitionController;
 
-  return { AssignmentDefinitionController, upsertDefinition };
+  return { AssignmentDefinitionController, upsertDefinition, toCanonicalFullDefinitionResponse };
 }
 
 describe('Api/upsertAssignmentDefinition transport contract', () => {
@@ -152,7 +154,14 @@ describe('Api/upsertAssignmentDefinition transport contract', () => {
     expect(response).toEqual(expectedDefinition);
     expect(AssignmentDefinitionController).toHaveBeenCalledTimes(1);
     expect(upsertDefinition).toHaveBeenCalledTimes(1);
-    expect(upsertDefinition).toHaveBeenCalledWith(payload);
+    // After Section 5: API layer no longer defaults assignmentWeighting; model handles defaulting
+    // assignmentWeighting is passed through as-is (null in this case from buildValidUpsertPayload)
+    expect(upsertDefinition).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ...payload,
+        assignmentWeighting: null,
+      })
+    );
   });
 
   it('delegates valid update payloads with the supplied definitionKey', () => {
@@ -166,7 +175,14 @@ describe('Api/upsertAssignmentDefinition transport contract', () => {
 
     expect(response).toEqual(expectedDefinition);
     expect(upsertDefinition).toHaveBeenCalledTimes(1);
-    expect(upsertDefinition).toHaveBeenCalledWith(payload);
+    // After Section 5: API layer no longer defaults assignmentWeighting; model handles defaulting
+    // assignmentWeighting is passed through as-is (null in this case from buildValidUpsertPayload)
+    expect(upsertDefinition).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ...payload,
+        assignmentWeighting: null,
+      })
+    );
   });
 
   it.each([

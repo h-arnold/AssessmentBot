@@ -17,6 +17,7 @@ class CellReferenceFeedback extends Feedback {
    * Adds a feedback item for a specific cell.
    * @param {Array<number>} location - Zero-based `[rowIndex, columnIndex]` cell coordinates.
    * @param {string} status - The status of the cell ("correct", "incorrect", "notAttempted").
+   * @returns {void}
    */
   addItem(location, status) {
     this.items.push({ location, status });
@@ -24,7 +25,7 @@ class CellReferenceFeedback extends Feedback {
 
   /**
    * Gets all feedback items.
-   * @return {Array} Array of feedback items.
+   * @returns {Array} Array of feedback items.
    */
   getItems() {
     return this.items;
@@ -33,7 +34,7 @@ class CellReferenceFeedback extends Feedback {
   /**
    * Gets feedback items filtered by status.
    * @param {string} status - The status to filter by.
-   * @return {Array} Array of feedback items with the specified status.
+   * @returns {Array} Array of feedback items with the specified status.
    */
   getItemsByStatus(status) {
     return this.items.filter((item) => item.status === status);
@@ -42,7 +43,7 @@ class CellReferenceFeedback extends Feedback {
   /**
    * Gets the count of items with a specific status.
    * @param {string} status - The status to count.
-   * @return {number} Number of items with the specified status.
+   * @returns {number} Number of items with the specified status.
    */
   getCountByStatus(status) {
     return this.getItemsByStatus(status).length;
@@ -50,7 +51,7 @@ class CellReferenceFeedback extends Feedback {
 
   /**
    * Serializes the feedback to a JSON object.
-   * @return {Object} JSON representation of the feedback.
+   * @returns {Object} JSON representation of the feedback.
    */
   toJSON() {
     return {
@@ -62,7 +63,7 @@ class CellReferenceFeedback extends Feedback {
   /**
    * Creates a CellReferenceFeedback instance from JSON data.
    * @param {Object} json - JSON data to deserialize.
-   * @return {CellReferenceFeedback} A new CellReferenceFeedback instance.
+   * @returns {CellReferenceFeedback} A new CellReferenceFeedback instance.
    */
   static fromJSON(json) {
     const feedback = new CellReferenceFeedback(json.items);
@@ -73,5 +74,7 @@ class CellReferenceFeedback extends Feedback {
   }
 }
 
-// Export for Apps Script
-if (typeof module !== 'undefined') module.exports = CellReferenceFeedback;
+// Export for Node.js tests
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = CellReferenceFeedback;
+}

@@ -38,21 +38,6 @@ function getAssignmentDefinitionController_() {
 }
 
 /**
- * Maps a controller definition result to canonical transport when supported.
- *
- * @param {AssignmentDefinitionController} controller - Controller instance.
- * @param {Object} definition - Definition returned from the controller.
- * @returns {Object} Canonical full-definition payload.
- */
-function toCanonicalTransportDefinition_(controller, definition) {
-  if (typeof controller.toCanonicalFullDefinitionResponse === 'function') {
-    return controller.toCanonicalFullDefinitionResponse(definition);
-  }
-
-  return definition;
-}
-
-/**
  * Throws a transport validation error for assignment-definition partials.
  *
  * @param {string} message - Validation failure message.
@@ -456,19 +441,34 @@ function extractSupportedDocumentDescriptor_(urlValue, fieldName) {
     throwUpsertValidationError_(`${fieldName} must be a non-empty string URL.`, fieldName);
   }
 
-  let parsedUrl;
-  try {
-    parsedUrl = new URL(urlValue);
-  } catch {
+  // First validate URL format using Validate library
+  if (!Validate.isValidUrl(urlValue)) {
     throwUpsertValidationError_(`${fieldName} must be a valid URL.`, fieldName);
   }
 
-  if (parsedUrl.hostname !== DOCS_URL_HOST) {
+  // Parse for GAS V8 compatibility (no native URL class) - use string ops instead of regex
+  const afterProtocol = urlValue.replace(/^https:\/\//ui, '');
+  const slashIndex = afterProtocol.indexOf('/');
+  const hostname = (slashIndex === -1 ? afterProtocol : afterProtocol.slice(0, slashIndex)).toLowerCase();
+  let pathname = slashIndex === -1 ? '/' : afterProtocol.slice(slashIndex);
+  // Strip query string and hash fragment
+  const NOT_FOUND = -1;
+  const queryIndex = pathname.indexOf('?');
+  const hashIndex = pathname.indexOf('#');
+  const hasQuery = queryIndex !== NOT_FOUND;
+  const hasHash = hashIndex !== NOT_FOUND;
+  const endIndex = Math.min(
+    hasQuery ? queryIndex : pathname.length,
+    hasHash ? hashIndex : pathname.length
+  );
+  pathname = pathname.slice(0, endIndex);
+
+  if (hostname !== DOCS_URL_HOST) {
     throwUpsertValidationError_(`${fieldName} must target docs.google.com.`, fieldName);
   }
 
   const matchingPrefix = Object.keys(DOCUMENT_TYPE_BY_PATH_PREFIX).find((pathPrefix) =>
-    parsedUrl.pathname.startsWith(pathPrefix)
+    pathname.startsWith(pathPrefix)
   );
 
   if (!matchingPrefix) {
@@ -478,7 +478,7 @@ function extractSupportedDocumentDescriptor_(urlValue, fieldName) {
     );
   }
 
-  const trailingPath = parsedUrl.pathname.slice(matchingPrefix.length);
+  const trailingPath = pathname.slice(matchingPrefix.length);
   const documentId = trailingPath.split('/')[0];
 
   if (!documentId) {
@@ -496,43 +496,6 @@ function extractSupportedDocumentDescriptor_(urlValue, fieldName) {
     documentId,
     documentType,
   };
-}
-
-/**
- * Builds the controller upsert payload from transport parameters.
- *
- * @param {Object} parameters - Validated transport parameters.
- * @returns {Object} Controller payload.
- */
-function buildControllerUpsertPayload_(parameters) {
-  const shouldTranslateDocumentUrls =
-    Object.hasOwn(parameters, 'referenceDocumentUrl') ||
-    Object.hasOwn(parameters, 'templateDocumentUrl');
-
-  if (!shouldTranslateDocumentUrls) {
-    return parameters;
-  }
-
-  const referenceDescriptor = extractSupportedDocumentDescriptor_(
-    parameters.referenceDocumentUrl,
-    'referenceDocumentUrl'
-  );
-  const templateDescriptor = extractSupportedDocumentDescriptor_(
-    parameters.templateDocumentUrl,
-    'templateDocumentUrl'
-  );
-
-  const translatedPayload = {
-    ...parameters,
-    referenceDocumentId: referenceDescriptor.documentId,
-    templateDocumentId: templateDescriptor.documentId,
-    documentType: referenceDescriptor.documentType,
-  };
-
-  delete translatedPayload.referenceDocumentUrl;
-  delete translatedPayload.templateDocumentUrl;
-
-  return translatedPayload;
 }
 
 /**
@@ -791,28 +754,30 @@ function validatePartialRow_(row, rowIndex) {
 }
 
 /**
- * Builds a plain assignment-definition partial object.
+ * Transport-boundary helper that serialises an AssignmentDefinition model instance
+ * to a partial transport row, defensively stripping deprecated yearGroup field and
+ * normalising Date fields to ISO strings.
  *
- * @param {Object} row - Valid partial row.
- * @returns {Object} Plain transport row.
+ * @param {Object} definition - AssignmentDefinition model instance or plain partial object.
+ * @returns {Object} Plain transport partial row without yearGroup.
+ * @remarks NEW helper per SPEC.md v1.9.0 Section 5, replacing the removed `toPlainPartialRow_`.
+ * Provides defensive safety net by stripping `yearGroup` field (in addition to model-level removal in Section 1).
+ * Normalises Date fields to ISO strings at the transport boundary. Works with both model instances
+ * (calling `toPartialJSON()`) and plain objects. Exported for test accessibility.
  */
-function toPlainPartialRow_(row) {
+function toTransportPartialRow_(definition) {
+  // If definition has toPartialJSON method, use it (model instance)
+  const partial =
+    typeof definition.toPartialJSON === 'function' ? definition.toPartialJSON() : definition;
+
+  // Defensive strip yearGroup field (safety net in addition to model-level removal)
+  const { yearGroup, ...rest } = partial;
+
+  // Normalise Date fields to ISO strings
   return {
-    primaryTitle: row.primaryTitle,
-    primaryTopic: row.primaryTopic,
-    primaryTopicKey: row.primaryTopicKey,
-    yearGroupKey: row.yearGroupKey,
-    yearGroupLabel: row.yearGroupLabel,
-    alternateTitles: row.alternateTitles,
-    alternateTopics: row.alternateTopics,
-    documentType: row.documentType,
-    referenceDocumentId: row.referenceDocumentId,
-    templateDocumentId: row.templateDocumentId,
-    assignmentWeighting: row.assignmentWeighting,
-    definitionKey: row.definitionKey,
-    tasks: row.tasks,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
+    ...rest,
+    createdAt: rest.createdAt instanceof Date ? rest.createdAt.toISOString() : rest.createdAt,
+    updatedAt: rest.updatedAt instanceof Date ? rest.updatedAt.toISOString() : rest.updatedAt,
   };
 }
 
@@ -820,19 +785,19 @@ function toPlainPartialRow_(row) {
  * Returns assignment-definition partial rows for API transport.
  *
  * @returns {Array<Object>} Plain assignment-definition partial rows.
- * @throws {ApiValidationError} If any row violates the strict transport contract.
+ * @throws {ApiValidationError} If controller response is not an array.
+ * @remarks Updated per SPEC.md v1.9.0 Section 5: now uses `toTransportPartialRow_` helper instead of
+ * the removed `toPlainPartialRow_`. Returned objects will NO LONGER include the `yearGroup` field;
+ * Date fields are normalised as ISO strings. Partial definitions have `tasks: null`.
  */
 function getAssignmentDefinitionPartials_() {
-  const partialRows = getAssignmentDefinitionController_().getAllPartialDefinitions();
+  const definitions = getAssignmentDefinitionController_().getAllPartialDefinitions();
 
-  if (!Array.isArray(partialRows)) {
+  if (!Array.isArray(definitions)) {
     throwValidationError_('Controller response must be an array.', RESPONSE_FIELD_NAME, 0);
   }
 
-  return partialRows.map((row, rowIndex) => {
-    validatePartialRow_(row, rowIndex);
-    return toPlainPartialRow_(row);
-  });
+  return definitions.map((definition) => toTransportPartialRow_(definition));
 }
 
 /**
@@ -859,12 +824,45 @@ function deleteAssignmentDefinition_(parameters) {
  * @returns {Object} Canonical full-definition response shape including resolved
  *   primaryTopic, primaryTopicKey, yearGroupKey, yearGroupLabel, full tasks array, and all metadata.
  *   This same shape is returned for stage-one create, final save, and document-change re-parse.
+ * @remarks Updated per SPEC.md v1.9.0 Section 5: URL-to-ID translation logic inlined from the removed
+ * `buildControllerUpsertPayload_` helper. CRITICALLY, the inlined code does NOT apply `assignmentWeighting: 1`
+ * defaulting (per validation ownership rules: model owns defaults, not API layer). Uses
+ * `controller.toCanonicalFullDefinitionResponse(definition)` directly for response shaping.
  */
 function upsertAssignmentDefinition_(parameters) {
   validateUpsertParameters_(parameters);
   const controller = getAssignmentDefinitionController_();
-  const definition = controller.upsertDefinition(buildControllerUpsertPayload_(parameters));
-  return toCanonicalTransportDefinition_(controller, definition);
+
+  // Inline URL-to-ID translation without assignmentWeighting defaulting
+  const shouldTranslateDocumentUrls =
+    Object.hasOwn(parameters, 'referenceDocumentUrl') ||
+    Object.hasOwn(parameters, 'templateDocumentUrl');
+
+  let payload = shouldTranslateDocumentUrls ? { ...parameters } : parameters;
+
+  if (shouldTranslateDocumentUrls) {
+    const referenceDescriptor = extractSupportedDocumentDescriptor_(
+      parameters.referenceDocumentUrl,
+      'referenceDocumentUrl'
+    );
+    const templateDescriptor = extractSupportedDocumentDescriptor_(
+      parameters.templateDocumentUrl,
+      'templateDocumentUrl'
+    );
+
+    payload = {
+      ...parameters,
+      referenceDocumentId: referenceDescriptor.documentId,
+      templateDocumentId: templateDescriptor.documentId,
+      documentType: referenceDescriptor.documentType,
+    };
+
+    delete payload.referenceDocumentUrl;
+    delete payload.templateDocumentUrl;
+  }
+
+  const definition = controller.upsertDefinition(payload);
+  return controller.toCanonicalFullDefinitionResponse(definition);
 }
 
 /**
@@ -885,7 +883,7 @@ function getAssignmentDefinition_(parameters) {
     return null;
   }
 
-  return toCanonicalTransportDefinition_(controller, definition);
+  return controller.toCanonicalFullDefinitionResponse(definition);
 }
 
 if (typeof module !== 'undefined' && module.exports) {
@@ -894,5 +892,7 @@ if (typeof module !== 'undefined' && module.exports) {
     getAssignmentDefinition_,
     deleteAssignmentDefinition_,
     upsertAssignmentDefinition_,
+    extractSupportedDocumentDescriptor_,
+    toTransportPartialRow_,
   };
 }

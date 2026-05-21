@@ -1,6 +1,8 @@
 // AssignmentDefinition.js
 // Represents a reusable assignment/lesson definition persisted in JsonDbApp.
 
+const MAX_ASSIGNMENT_WEIGHTING = 10;
+
 /**
  * Represents a reusable assignment definition with reference and template documents.
  * Can be instantiated in "partial" form (metadata only, tasks: null) or "full" form (with tasks).
@@ -12,8 +14,7 @@ class AssignmentDefinition {
    * @param {string} params.primaryTitle - Canonical assignment title.
    * @param {string} params.primaryTopic - Canonical topic name.
    * @param {string|null} [params.primaryTopicKey=null] - Authoritative keyed topic reference.
-   * @param {number|null} [params.yearGroup=null] - Intended year group; may be null until enriched.
-   * @param {string|null} [params.yearGroupKey=null] - Authoritative year-group key when available.
+   * @param {string} params.yearGroupKey - Authoritative year-group key. Must be a string.
    * @param {string|null} [params.yearGroupLabel=null] - Resolved year-group display label when available.
    * @param {string[]} [params.alternateTitles=[]] - Known title variants.
    * @param {string[]} [params.alternateTopics=[]] - Known topic variants.
@@ -22,18 +23,26 @@ class AssignmentDefinition {
    * @param {string} params.templateDocumentId - Template document ID.
    * @param {string|null} [params.referenceLastModified=null] - ISO timestamp snapshot for reference document.
    * @param {string|null} [params.templateLastModified=null] - ISO timestamp snapshot for template document.
-   * @param {number|null} [params.assignmentWeighting=null] - Optional weighting value.
-   * @param {Object<string, TaskDefinition>|Object} [params.tasks={}] - Task definitions keyed by taskId.
+   * @param {number} [params.assignmentWeighting=1] - Optional weighting value. Defaults to 1. Must be in range 0-10.
+   * @param {Object<string, TaskDefinition>|Object|null} [params.tasks=null] - Task definitions keyed by taskId, or null for partial definitions.
    * @param {string|null} [params.createdAt=null] - ISO created timestamp; defaults to now when null.
    * @param {string|null} [params.updatedAt=null] - ISO updated timestamp; defaults to now when null.
    * @param {string|null} [params.definitionKey=null] - Stable definition key used for persistence.
+   * @throws {TypeError} If params contain deprecated yearGroup property.
+   * @throws {TypeError} If yearGroupKey is not a string.
+   * @throws {RangeError} If assignmentWeighting is outside range 0-10.
+   * @remarks This constructor enforces the refactored year-group handling per SPEC.md v1.9.0 Option B:
+   * - The deprecated numeric `yearGroup` field is completely removed; its presence throws a TypeError.
+   * - `yearGroupKey` (string) is now the canonical year-group reference and must be provided (controller guarantees non-null).
+   * - `yearGroupLabel` is a display-only field resolved by the controller from reference data.
+   * - `assignmentWeighting` defaults to 1 when null/undefined/missing and enforces range 0-10.
+   * - Validation ownership: model owns type validation and range enforcement; controller owns null resolution.
    */
   constructor({
     primaryTitle,
     primaryTopic,
     primaryTopicKey = null,
-    yearGroup = null,
-    yearGroupKey = null,
+    yearGroupKey,
     yearGroupLabel = null,
     alternateTitles = [],
     alternateTopics = [],
@@ -42,17 +51,27 @@ class AssignmentDefinition {
     templateDocumentId,
     referenceLastModified = null,
     templateLastModified = null,
-    assignmentWeighting = null,
-    tasks = {},
+    assignmentWeighting,
+    tasks = null,
     createdAt = null,
     updatedAt = null,
     definitionKey = null,
   } = {}) {
+    // Fail-fast: reject deprecated yearGroup property
+    if (arguments[0] && 'yearGroup' in arguments[0]) {
+      throw new TypeError('yearGroup property is deprecated and no longer supported');
+    }
+
     this.primaryTitle = primaryTitle;
     this.primaryTopic = primaryTopic;
     this.primaryTopicKey = primaryTopicKey ?? null;
-    this.yearGroup = yearGroup ?? null;
-    this.yearGroupKey = yearGroupKey ?? null;
+
+    // Validate yearGroupKey type (controller guarantees non-null per SPEC.md)
+    if (typeof yearGroupKey !== 'string') {
+      throw new TypeError('yearGroupKey must be a string');
+    }
+    this.yearGroupKey = yearGroupKey;
+
     this.yearGroupLabel = yearGroupLabel ?? null;
     this.alternateTitles = alternateTitles || [];
     this.alternateTopics = alternateTopics || [];
@@ -61,7 +80,23 @@ class AssignmentDefinition {
     this.templateDocumentId = templateDocumentId;
     this.referenceLastModified = referenceLastModified;
     this.templateLastModified = templateLastModified;
-    this.assignmentWeighting = assignmentWeighting ?? null;
+
+    // Default assignmentWeighting to 1, enforce range 0-MAX, ensure stored value is always a number
+    if (assignmentWeighting === null || assignmentWeighting === undefined) {
+      this.assignmentWeighting = 1;
+    } else {
+      const number_ = Number(assignmentWeighting);
+      if (Number.isNaN(number_)) {
+        throw new TypeError('assignmentWeighting must be a number');
+      }
+      if (number_ < 0 || number_ > MAX_ASSIGNMENT_WEIGHTING) {
+        throw new RangeError(
+          `assignmentWeighting must be between 0 and ${MAX_ASSIGNMENT_WEIGHTING} inclusive`
+        );
+      }
+      this.assignmentWeighting = number_;
+    }
+
     this.definitionKey = definitionKey;
     this.createdAt = createdAt || new Date().toISOString();
     this.updatedAt = updatedAt || this.createdAt;
@@ -80,7 +115,7 @@ class AssignmentDefinition {
       this.definitionKey = AssignmentDefinition.buildDefinitionKey({
         primaryTitle: this.primaryTitle,
         primaryTopic: this.primaryTopic,
-        yearGroup: this.yearGroup,
+        yearGroupKey: this.yearGroupKey,
       });
     }
   }
@@ -116,15 +151,6 @@ class AssignmentDefinition {
       tracker.logAndThrowError('Missing required assignment property: primaryTopic', {
         devContext: { property: 'primaryTopic', value: this.primaryTopic },
       });
-    }
-
-    if (this.yearGroup !== null && !Number.isInteger(this.yearGroup)) {
-      tracker.logAndThrowError(
-        'Invalid assignment property: yearGroup must be an integer or null',
-        {
-          devContext: { property: 'yearGroup', value: this.yearGroup },
-        }
-      );
     }
   }
 
@@ -173,15 +199,6 @@ class AssignmentDefinition {
       });
     }
 
-    if (this.yearGroup !== null && !Number.isInteger(this.yearGroup)) {
-      tracker.logAndThrowError(
-        'Invalid assignment property: yearGroup must be an integer or null',
-        {
-          devContext: { property: 'yearGroup', value: this.yearGroup },
-        }
-      );
-    }
-
     // Full definition cannot have null tasks
     if (this.tasks === null) {
       tracker.logAndThrowError('Full definition cannot have tasks: null', {
@@ -222,17 +239,20 @@ class AssignmentDefinition {
   }
 
   /**
-   * Generates the legacy metadata-derived definition key for compatibility flows.
-   * Format: `${primaryTitle}_${primaryTopic}_${yearGroup || 'null'}`.
+   * Generates the metadata-derived definition key.
+   * Format: `${primaryTitle}_${primaryTopic}_${yearGroupKey}`.
    * @param {Object} params - Parameters for key generation
    * @param {string} params.primaryTitle - The primary assignment title
    * @param {string} params.primaryTopic - The primary topic name
-   * @param {number|null|undefined} params.yearGroup - The year group (or null/undefined)
-   * @returns {string} Legacy metadata-derived definition key
+   * @param {string} params.yearGroupKey - The year group key
+   * @returns {string} Metadata-derived definition key
+   * @remarks Parameter renamed from `yearGroup` to `yearGroupKey` per SPEC.md v1.9.0 Option B. This method
+   * does NOT validate its parameters; validation is the caller's responsibility per the controller-resolution
+   * pattern. Old definition keys using numeric yearGroup (e.g., `Math_Algebra_10`) will not be found by
+   * new lookups using string yearGroupKey (e.g., `Math_Algebra_year-group-10`).
    */
-  static buildDefinitionKey({ primaryTitle, primaryTopic, yearGroup }) {
-    const yr = yearGroup === undefined || yearGroup === null ? 'null' : yearGroup;
-    return `${primaryTitle}_${primaryTopic}_${yr}`;
+  static buildDefinitionKey({ primaryTitle, primaryTopic, yearGroupKey }) {
+    return `${primaryTitle}_${primaryTopic}_${yearGroupKey}`;
   }
 
   /**
@@ -261,11 +281,19 @@ class AssignmentDefinition {
    * @returns {Object} A plain object representation of the full assignment with all tasks
    */
   toJSON() {
+    const tasks =
+      this.tasks === null
+        ? null
+        : Object.fromEntries(
+            Object.entries(this.tasks).map(([taskId, task]) => [
+              taskId,
+              task.toJSON ? task.toJSON() : task,
+            ])
+          );
     return {
       primaryTitle: this.primaryTitle,
       primaryTopic: this.primaryTopic,
       primaryTopicKey: this.primaryTopicKey,
-      yearGroup: this.yearGroup,
       yearGroupKey: this.yearGroupKey,
       yearGroupLabel: this.yearGroupLabel,
       alternateTitles: this.alternateTitles,
@@ -277,12 +305,7 @@ class AssignmentDefinition {
       templateLastModified: this.templateLastModified,
       assignmentWeighting: this.assignmentWeighting,
       definitionKey: this.definitionKey,
-      tasks: Object.fromEntries(
-        Object.entries(this.tasks).map(([taskId, task]) => [
-          taskId,
-          task.toJSON ? task.toJSON() : task,
-        ])
-      ),
+      tasks,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };
@@ -299,7 +322,6 @@ class AssignmentDefinition {
       primaryTitle: this.primaryTitle,
       primaryTopic: this.primaryTopic,
       primaryTopicKey: this.primaryTopicKey,
-      yearGroup: this.yearGroup,
       yearGroupKey: this.yearGroupKey,
       yearGroupLabel: this.yearGroupLabel,
       alternateTitles: this.alternateTitles,
@@ -320,17 +342,33 @@ class AssignmentDefinition {
    * @param {Object} json - The serialised assignment definition object
    * @returns {AssignmentDefinition} A new AssignmentDefinition instance
    * @throws {Error} If json is falsy
+   * @throws {TypeError} If json contains deprecated yearGroup field
+   * @throws {TypeError} If json.yearGroupKey is not a string
+   * @remarks This method enforces fail-fast validation per SPEC.md v1.9.0: throws TypeError if the input JSON
+   * contains a `yearGroup` field (detecting missed migration entries). The `yearGroupKey` field must be a string
+   * (type validation only; null/undefined is controller responsibility). Stored definitions with `yearGroup`
+   * fields will fail to load and must be re-created through the new flow.
    */
   static fromJSON(json) {
     if (!json) {
       throw new Error('Invalid data for AssignmentDefinition.fromJSON');
     }
+
+    // Fail-fast: reject deprecated yearGroup field in JSON
+    if ('yearGroup' in json) {
+      throw new TypeError('yearGroup field is deprecated and no longer supported');
+    }
+
+    // Validate yearGroupKey type in JSON
+    if (json.yearGroupKey !== undefined && typeof json.yearGroupKey !== 'string') {
+      throw new TypeError('yearGroupKey must be a string');
+    }
+
     return new AssignmentDefinition({
       primaryTitle: json.primaryTitle,
       primaryTopic: json.primaryTopic,
       primaryTopicKey: json.primaryTopicKey ?? null,
-      yearGroup: json.yearGroup ?? null,
-      yearGroupKey: json.yearGroupKey ?? null,
+      yearGroupKey: json.yearGroupKey,
       yearGroupLabel: json.yearGroupLabel ?? null,
       alternateTitles: json.alternateTitles ?? [],
       alternateTopics: json.alternateTopics ?? [],
@@ -339,8 +377,8 @@ class AssignmentDefinition {
       templateDocumentId: json.templateDocumentId ?? null,
       referenceLastModified: json.referenceLastModified ?? null,
       templateLastModified: json.templateLastModified ?? null,
-      assignmentWeighting: json.assignmentWeighting ?? null,
-      tasks: 'tasks' in json ? json.tasks : {},
+      assignmentWeighting: json.assignmentWeighting,
+      tasks: 'tasks' in json ? json.tasks : null,
       createdAt: json.createdAt ?? null,
       updatedAt: json.updatedAt ?? null,
       definitionKey: json.definitionKey ?? null,
@@ -348,6 +386,6 @@ class AssignmentDefinition {
   }
 }
 
-if (typeof module !== 'undefined') {
+if (typeof module !== 'undefined' && module.exports) {
   module.exports = { AssignmentDefinition };
 }

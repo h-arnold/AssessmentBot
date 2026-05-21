@@ -10,13 +10,15 @@ function loadAssignmentDefinitionTransportModule() {
 
 function installAssignmentDefinitionControllerStub() {
   const getDefinitionByKey = vi.fn();
+  const toCanonicalFullDefinitionResponse = vi.fn((d) => d);
   const AssignmentDefinitionController = vi.fn(function StubAssignmentDefinitionController() {
     this.getDefinitionByKey = getDefinitionByKey;
+    this.toCanonicalFullDefinitionResponse = toCanonicalFullDefinitionResponse;
   });
 
   globalThis.AssignmentDefinitionController = AssignmentDefinitionController;
 
-  return { AssignmentDefinitionController, getDefinitionByKey };
+  return { AssignmentDefinitionController, getDefinitionByKey, toCanonicalFullDefinitionResponse };
 }
 
 function buildCanonicalFullDefinition(overrides = {}) {
