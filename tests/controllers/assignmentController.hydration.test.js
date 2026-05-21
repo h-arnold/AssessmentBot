@@ -28,9 +28,9 @@ const AssignmentController = require('../../src/backend/y_controllers/Assignment
 const { AssignmentDefinition } = require('../../src/backend/Models/AssignmentDefinition.js');
 
 // Test Helpers for processSelectedAssignment - moved to module scope per S7721
-var createPropertyMock = function (overrides) {
+const createPropertyMock = function (overrides) {
   return function (key) {
-    var defaults = {
+    const defaults = {
       assignmentId: 'assignment-456',
       triggerId: 'trigger-789',
       courseId: 'course-123',
@@ -39,18 +39,18 @@ var createPropertyMock = function (overrides) {
   };
 };
 
-var createFullDefinition = function (options) {
+const createFullDefinition = function (options) {
   if (options === void 0) {
     options = {};
   }
-  var primaryTitle = options.primaryTitle;
-  var primaryTopic = options.primaryTopic;
-  var yearGroupKey = options.yearGroupKey;
-  var yearGroupLabel = options.yearGroupLabel;
-  var documentType = options.documentType;
-  var referenceDocumentId = options.referenceDocumentId;
-  var templateDocumentId = options.templateDocumentId;
-  var tasks = options.tasks;
+  let primaryTitle = options.primaryTitle;
+  let primaryTopic = options.primaryTopic;
+  let yearGroupKey = options.yearGroupKey;
+  let yearGroupLabel = options.yearGroupLabel;
+  let documentType = options.documentType;
+  let referenceDocumentId = options.referenceDocumentId;
+  let templateDocumentId = options.templateDocumentId;
+  let tasks = options.tasks;
   if (primaryTitle === void 0) {
     primaryTitle = 'Test';
   }

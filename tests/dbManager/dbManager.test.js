@@ -132,7 +132,8 @@ describe('DbManager', () => {
       const instance1 = DbManager.getInstance();
       // The constructor still creates an object, but it doesn't set _instance
       // The singleton pattern means getInstance() still returns the original
-      new DbManager(false);
+      const instance2 = new DbManager(false);
+      expect(instance2).toBeDefined();
       expect(DbManager.getInstance()).toBe(instance1);
     });
 
@@ -156,7 +157,7 @@ describe('DbManager', () => {
       delete globalThis.JsonDbApp;
 
       expect(() => {
-        new DbManager(true);
+        const dbm = new DbManager(true);
       }).toThrow('JsonDbApp library is not available');
 
       expect(mockProgressTracker.logAndThrowError).toHaveBeenCalled();
@@ -169,7 +170,7 @@ describe('DbManager', () => {
       };
 
       expect(() => {
-        new DbManager(true);
+        const dbm = new DbManager(true);
       }).not.toThrow();
     });
 
@@ -179,7 +180,7 @@ describe('DbManager', () => {
       };
 
       expect(() => {
-        new DbManager(true);
+        const dbm = new DbManager(true);
       }).toThrow('JsonDbApp library is not available');
     });
 
@@ -189,7 +190,7 @@ describe('DbManager', () => {
       };
 
       expect(() => {
-        new DbManager(true);
+        const dbm = new DbManager(true);
       }).toThrow('JsonDbApp library is not available');
     });
   });

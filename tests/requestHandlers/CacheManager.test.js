@@ -107,8 +107,8 @@ describe('CacheManager', () => {
 
     it('should use consistent separator for raw key', () => {
       const manager = new CacheManager();
-      manager.generateCacheKey('a', 'b');
-      expect(mockUtils.generateHash).toHaveBeenCalledWith('a::b');
+      manager.generateCacheKey('key1', 'key2');
+      expect(mockUtils.generateHash).toHaveBeenCalledWith('key1::key2');
     });
   });
 
