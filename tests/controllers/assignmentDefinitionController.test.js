@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import AssignmentDefinitionController from '../../src/backend/y_controllers/AssignmentDefinitionController.js';
 import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
+import AssignmentDefinitionController from '../../src/backend/y_controllers/AssignmentDefinitionController.js';
 import DbManager from '../../src/backend/DbManager/DbManager.js';
 import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager.js';
 import ClassroomApiClient from '../../src/backend/GoogleClassroom/ClassroomApiClient.js';
@@ -8,12 +8,45 @@ import {
   setupAssignmentDefinitionMocks,
   createSamplePartialDefinitionDocs,
   cleanupAssignmentDefinitionTest,
+  setupAssignmentDefinitionTestGlobals,
 } from '../helpers/assignmentDefinitionTestHelpers.js';
 
 // Mock the modules
 vi.mock('../../src/backend/DbManager/DbManager.js');
 vi.mock('../../src/backend/GoogleDriveManager/DriveManager.js');
 vi.mock('../../src/backend/GoogleClassroom/ClassroomApiClient.js');
+
+// Shared test context configuration
+const SHARED_TEST_OPTIONS = {
+  driveModifiedTime: '2025-01-01T12:00:00Z',
+  topicName: 'Enriched Topic',
+  topics: [
+    { key: 'topic-1', name: 'Enriched Topic' },
+    { key: 'topic-english', name: 'English' },
+  ],
+};
+
+/**
+ * Shared beforeEach setup for AssignmentDefinitionController tests
+ * Extracts common mock setup to reduce duplication
+ */
+function setupControllerTestContext() {
+  const { mockDbManager, mockRegistryCollection, mockFullCollection, controller } =
+    setupAssignmentDefinitionTestGlobals(
+      vi,
+      DbManager,
+      DriveManager,
+      ClassroomApiClient,
+      SHARED_TEST_OPTIONS
+    );
+
+  return {
+    controller,
+    mockDbManager,
+    mockRegistryCollection,
+    mockFullCollection,
+  };
+}
 
 describe('AssignmentDefinitionController', () => {
   let controller;
@@ -23,77 +56,11 @@ describe('AssignmentDefinitionController', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-
-    // Setup mocks using shared helper
-    const {
-      mockDbManager: setupDbManager,
-      mockRegistryCollection: setupRegistryCollection,
-      mockFullCollection: setupFullCollection,
-    } = setupAssignmentDefinitionMocks(vi, {
-      driveModifiedTime: '2025-01-01T12:00:00Z',
-      topicName: 'Enriched Topic',
-      topics: [
-        { key: 'topic-1', name: 'Enriched Topic' },
-        { key: 'topic-english', name: 'English' },
-      ],
-    });
-
-    mockDbManager = setupDbManager;
-    mockRegistryCollection = setupRegistryCollection;
-    mockFullCollection = setupFullCollection;
-
-    // Configure the vi.mock'd modules to return our mock objects
-    DbManager.getInstance.mockReturnValue(mockDbManager);
-    DriveManager.getFileModifiedTime.mockReturnValue('2025-01-01T12:00:00Z');
-    ClassroomApiClient.fetchTopicName.mockReturnValue('Enriched Topic');
-
-    // Create ReferenceDataController mock class
-    const MockReferenceDataController = class {
-      listYearGroups() {
-        return [{ key: 'year-group-10', name: 'Year 10', yearGroup: 10 }];
-      }
-      listAssignmentTopics() {
-        return [
-          { key: 'topic-1', name: 'Enriched Topic' },
-          { key: 'topic-english', name: 'English' },
-        ];
-      }
-      fetchTopicName(topicId) {
-        const topics = [
-          { key: 'topic-1', name: 'Enriched Topic' },
-          { key: 'topic-english', name: 'English' },
-        ];
-        const topic = topics.find((t) => t.key === topicId);
-        return topic ? topic.name : 'Enriched Topic';
-      }
-    };
-
-    // Expose to globals to match production usage
-    globalThis.DbManager = DbManager;
-    globalThis.DriveManager = DriveManager;
-    globalThis.ClassroomApiClient = ClassroomApiClient;
-    globalThis.AssignmentDefinition = AssignmentDefinition;
-    globalThis.ReferenceDataController = MockReferenceDataController;
-    globalThis.SlidesParser = class MockSlidesParser {
-      extractTaskDefinitions() {
-        return [
-          {
-            getId: () => 't1',
-            taskTitle: 'Parsed Task',
-            validate: () => ({ ok: true, errors: [] }),
-            toJSON: () => ({
-              id: 't1',
-              taskTitle: 'Parsed Task',
-              taskWeighting: null,
-              index: 0,
-              artifacts: { reference: [], template: [] },
-            }),
-          },
-        ];
-      }
-    };
-
-    controller = new AssignmentDefinitionController();
+    const testContext = setupControllerTestContext();
+    controller = testContext.controller;
+    mockDbManager = testContext.mockDbManager;
+    mockRegistryCollection = testContext.mockRegistryCollection;
+    mockFullCollection = testContext.mockFullCollection;
   });
 
   afterEach(() => {
@@ -176,73 +143,11 @@ describe('AssignmentDefinitionController - Section 2 Red Phase (intentionally fa
 
   beforeEach(() => {
     vi.clearAllMocks();
-
-    const {
-      mockDbManager: setupDbManager,
-      mockRegistryCollection: setupRegistryCollection,
-      mockFullCollection: setupFullCollection,
-    } = setupAssignmentDefinitionMocks(vi, {
-      driveModifiedTime: '2025-01-01T12:00:00Z',
-      topicName: 'Enriched Topic',
-      topics: [
-        { key: 'topic-1', name: 'Enriched Topic' },
-        { key: 'topic-english', name: 'English' },
-      ],
-    });
-
-    mockDbManager = setupDbManager;
-    mockRegistryCollection = setupRegistryCollection;
-    mockFullCollection = setupFullCollection;
-
-    DbManager.getInstance.mockReturnValue(mockDbManager);
-    DriveManager.getFileModifiedTime.mockReturnValue('2025-01-01T12:00:00Z');
-    ClassroomApiClient.fetchTopicName.mockReturnValue('Enriched Topic');
-
-    const MockReferenceDataController = class {
-      listYearGroups() {
-        return [{ key: 'year-group-10', name: 'Year 10', yearGroup: 10 }];
-      }
-      listAssignmentTopics() {
-        return [
-          { key: 'topic-1', name: 'Enriched Topic' },
-          { key: 'topic-english', name: 'English' },
-        ];
-      }
-      fetchTopicName(topicId) {
-        const topics = [
-          { key: 'topic-1', name: 'Enriched Topic' },
-          { key: 'topic-english', name: 'English' },
-        ];
-        const topic = topics.find((t) => t.key === topicId);
-        return topic ? topic.name : 'Enriched Topic';
-      }
-    };
-
-    globalThis.DbManager = DbManager;
-    globalThis.DriveManager = DriveManager;
-    globalThis.ClassroomApiClient = ClassroomApiClient;
-    globalThis.AssignmentDefinition = AssignmentDefinition;
-    globalThis.ReferenceDataController = MockReferenceDataController;
-    globalThis.SlidesParser = class MockSlidesParser {
-      extractTaskDefinitions() {
-        return [
-          {
-            getId: () => 't1',
-            taskTitle: 'Parsed Task',
-            validate: () => ({ ok: true, errors: [] }),
-            toJSON: () => ({
-              id: 't1',
-              taskTitle: 'Parsed Task',
-              taskWeighting: null,
-              index: 0,
-              artifacts: { reference: [], template: [] },
-            }),
-          },
-        ];
-      }
-    };
-
-    controller = new AssignmentDefinitionController();
+    const testContext = setupControllerTestContext();
+    controller = testContext.controller;
+    mockDbManager = testContext.mockDbManager;
+    mockRegistryCollection = testContext.mockRegistryCollection;
+    mockFullCollection = testContext.mockFullCollection;
   });
 
   afterEach(() => {

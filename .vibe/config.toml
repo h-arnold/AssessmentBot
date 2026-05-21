@@ -76,7 +76,7 @@ alias = "mistral-medium-3.5"
 temperature = 0.7
 input_price = 1.5
 output_price = 7.5
-thinking = "high"
+thinking = "max"
 auto_compact_threshold = 180000
 
 [[models]]

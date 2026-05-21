@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { setupFeedbackModules } from '../helpers/feedbackTestHelpers.js';
 
 /**
  * Feedback Base Class Tests
@@ -9,26 +10,15 @@ describe('Feedback', () => {
   let CellReferenceFeedback;
 
   beforeEach(() => {
-    // Load Feedback base class and set it globally first
-    // This is needed because CellReferenceFeedback extends Feedback
-    delete require.cache[require.resolve('../../src/backend/Models/Feedback/0_Feedback.js')];
-    Feedback = require('../../src/backend/Models/Feedback/0_Feedback.js');
-    globalThis.Feedback = Feedback;
-
-    // Now load CellReferenceFeedback which extends Feedback
-    delete require.cache[
-      require.resolve('../../src/backend/Models/Feedback/1_CellReferenceFeedback.js')
-    ];
-    CellReferenceFeedback = require('../../src/backend/Models/Feedback/1_CellReferenceFeedback.js');
-
-    // Make CellReferenceFeedback available globally for Feedback.fromJSON
-    globalThis.CellReferenceFeedback = CellReferenceFeedback;
+    // Use shared helper to setup Feedback modules
+    const modules = setupFeedbackModules();
+    Feedback = modules.Feedback;
+    CellReferenceFeedback = modules.CellReferenceFeedback;
   });
 
   afterEach(() => {
     delete globalThis.Feedback;
     delete globalThis.CellReferenceFeedback;
-    vi.clearAllMocks();
   });
 
   describe('Constructor', () => {

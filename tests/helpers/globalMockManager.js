@@ -116,31 +116,8 @@ function withGlobalMocks(mocks) {
 function mockGlobals(mocks) {
   const globalNames = Object.keys(mocks);
 
-  const beforeEachFn = function () {
-    const savedGlobals = saveGlobals(globalNames);
-
-    // Store saved globals on the test context for afterEach to access
-    if (!this._savedGlobals) {
-      this._savedGlobals = {};
-    }
-    this._savedGlobals[mockGlobals] = savedGlobals;
-
-    // Apply mocks
-    for (const [name, mockFactory] of Object.entries(mocks)) {
-      globalThis[name] = typeof mockFactory === 'function' ? mockFactory() : mockFactory;
-    }
-  };
-
-  const afterEachFn = function () {
-    const savedGlobals = this._savedGlobals?.[mockGlobals];
-    if (savedGlobals) {
-      restoreGlobals(savedGlobals);
-      delete this._savedGlobals?.[mockGlobals];
-    }
-  };
-
   // For compatibility with Vitest's describe block scoping,
-  // we need a different approach. Let's use a closure instead.
+  // we need a closure-based approach.
   const savedGlobalsRef = { current: null };
 
   const setup = () => {

@@ -130,9 +130,9 @@ describe('DbManager', () => {
 
     it('constructor without isSingletonCreator flag returns new instance but singleton pattern still works', () => {
       const instance1 = DbManager.getInstance();
-      const instance2 = new DbManager(false);
       // The constructor still creates an object, but it doesn't set _instance
       // The singleton pattern means getInstance() still returns the original
+      new DbManager(false);
       expect(DbManager.getInstance()).toBe(instance1);
     });
 

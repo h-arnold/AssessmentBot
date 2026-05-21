@@ -31,11 +31,10 @@ function createAssignmentProcessorGlobalsTestContext() {
   delete require.cache[require.resolve('../../src/backend/AssignmentProcessor/globals.js')];
 
   // Setup global mocks
-  globalThis.AssignmentController = class AssignmentController {
-    constructor() {
-      return mockAssignmentController;
-    }
-  };
+  function AssignmentController() {
+    return mockAssignmentController;
+  }
+  globalThis.AssignmentController = AssignmentController;
   globalThis.ABLogger = mockABLogger;
 
   // Load the globals module
@@ -127,7 +126,7 @@ describe('AssignmentProcessor globals', () => {
     });
 
     it('handles error with no message property', () => {
-      const error = new Error();
+      const error = new Error('No message');
       error.message = undefined;
       mockAssignmentController.saveStartAndShowProgress.mockImplementation(() => {
         throw error;
@@ -150,7 +149,7 @@ describe('AssignmentProcessor globals', () => {
 
     it('handles non-Error object being thrown', () => {
       mockAssignmentController.saveStartAndShowProgress.mockImplementation(() => {
-        throw 'String error';
+        throw new Error('String error');
       });
 
       expect(() => {
@@ -272,7 +271,7 @@ describe('AssignmentProcessor globals', () => {
       };
 
       mockAssignmentController.createDefinitionFromWizardInputs.mockImplementation(() => {
-        throw { code: 'ERR_TEST' };
+        throw new Error('ERR_TEST');
       });
 
       expect(() => {
@@ -281,7 +280,7 @@ describe('AssignmentProcessor globals', () => {
 
       expect(mockLoggerInstance.error).toHaveBeenCalledWith(
         'Error in globals.createDefinitionFromWizardInputs:',
-        { code: 'ERR_TEST' }
+        'ERR_TEST'
       );
     });
   });

@@ -169,3 +169,98 @@ export function cleanupAssignmentDefinitionTest() {
   delete globalThis.AssignmentDefinition;
   delete globalThis.ReferenceDataController;
 }
+
+/**
+ * Default MockSlidesParser class for tests
+ * Returns a consistent parsed task definition
+ */
+export class MockSlidesParser {
+  extractTaskDefinitions() {
+    return [
+      {
+        getId: () => 't1',
+        taskTitle: 'Parsed Task',
+        validate: () => ({ ok: true, errors: [] }),
+        toJSON: () => ({
+          id: 't1',
+          taskTitle: 'Parsed Task',
+          taskWeighting: null,
+          index: 0,
+          artifacts: { reference: [], template: [] },
+        }),
+      },
+    ];
+  }
+}
+
+/**
+ * Setup and install global mocks for AssignmentDefinitionController tests
+ * This installs all required globals (DbManager, DriveManager, ClassroomApiClient,
+ * AssignmentDefinition, ReferenceDataController, SlidesParser) with proper mocking
+ * @param {Object} vi - Vitest vi object
+ * @param {Object} DbManager - Mocked DbManager module (from vi.mock)
+ * @param {Object} DriveManager - Mocked DriveManager module (from vi.mock)
+ * @param {Object} ClassroomApiClient - Mocked ClassroomApiClient module (from vi.mock)
+ * @param {Object} options - Configuration options
+ * @param {string} options.driveModifiedTime - Drive file modified time to return
+ * @param {string} options.topicName - Topic name to return from ClassroomApiClient
+ * @param {Array} options.yearGroups - Year groups for ReferenceDataController
+ * @param {Array} options.topics - Topics for ReferenceDataController
+ * @returns {Object} { mockDbManager, mockRegistryCollection, mockFullCollection, controller }
+ */
+export function setupAssignmentDefinitionTestGlobals(
+  vi,
+  DbManager,
+  DriveManager,
+  ClassroomApiClient,
+  options = {}
+) {
+  const {
+    driveModifiedTime = '2025-01-01T12:00:00Z',
+    topicName = 'English',
+    yearGroups,
+    topics,
+  } = options;
+
+  // Get mock collections
+  const { mockDbManager, mockRegistryCollection, mockFullCollection } =
+    setupAssignmentDefinitionMocks(vi, {
+      driveModifiedTime,
+      topicName,
+      yearGroups,
+      topics,
+    });
+
+  // Configure the vi.mock'd modules to return our mock objects
+  DbManager.getInstance.mockReturnValue(mockDbManager);
+  DriveManager.getFileModifiedTime.mockReturnValue(driveModifiedTime);
+  ClassroomApiClient.fetchTopicName.mockReturnValue(topicName);
+
+  // Expose to globals to match production usage
+  globalThis.DbManager = DbManager;
+  globalThis.DriveManager = DriveManager;
+  globalThis.ClassroomApiClient = ClassroomApiClient;
+  globalThis.AssignmentDefinition = AssignmentDefinition;
+
+  // Create and install ReferenceDataController mock
+  const MockReferenceDataController = createReferenceDataControllerMock({
+    yearGroups,
+    topics,
+  });
+  globalThis.ReferenceDataController = MockReferenceDataController;
+
+  // Install SlidesParser mock
+  globalThis.SlidesParser = MockSlidesParser;
+
+  // Create controller - use default export if available
+  const AssignmentDefinitionController = require('../../src/backend/y_controllers/AssignmentDefinitionController.js');
+  const ControllerClass = AssignmentDefinitionController.default || AssignmentDefinitionController;
+  const controller = new ControllerClass();
+
+  return {
+    mockDbManager,
+    mockRegistryCollection,
+    mockFullCollection,
+    controller,
+  };
+}
