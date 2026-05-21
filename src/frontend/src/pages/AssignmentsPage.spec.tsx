@@ -224,11 +224,17 @@ describe('AssignmentsPage', () => {
 
     renderWithFrontendProviders(<AssignmentsPage />);
 
-    expect(screen.getByRole('heading', { level: 2, name: pageContent.assignments.heading })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 2, name: pageContent.assignments.heading })
+    ).toBeInTheDocument();
     expect(screen.getByText(recommendedSummaryCopy)).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: 'Assignments management panel' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('region', { name: 'Assignments management panel' })
+    ).toBeInTheDocument();
     expect(screen.getByLabelText('Assignments table loading')).toBeInTheDocument();
-    expect(screen.queryByRole('table', { name: 'Assignment definitions table' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('table', { name: 'Assignment definitions table' })
+    ).not.toBeInTheDocument();
   });
 
   it('renders ready-state summary copy and status/actions card layout with expected table columns', async () => {
@@ -256,7 +262,9 @@ describe('AssignmentsPage', () => {
 
     const assignmentsPageRuleBlock = getCssRuleBlock('.app-page-content');
 
-    expect(assignmentsPageRuleBlock).toMatch(/width:\s*min\([^)]*var\(--app-page-width-wide-data\)/);
+    expect(assignmentsPageRuleBlock).toMatch(
+      /width:\s*min\([^)]*var\(--app-page-width-wide-data\)/
+    );
     expect(assignmentsPageRuleBlock).not.toMatch(/\b1280px\b/);
   });
 
@@ -282,11 +290,15 @@ describe('AssignmentsPage', () => {
     renderWithFrontendProviders(<AssignmentsPage />);
 
     await waitFor(() => {
-      expect(screen.getByRole('table', { name: 'Assignment definitions table' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('table', { name: 'Assignment definitions table' })
+      ).toBeInTheDocument();
     });
 
     expect(screen.getByText(/no assignment definitions found/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /retry|refresh assignments data/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /retry|refresh assignments data/i })
+    ).toBeInTheDocument();
   });
 
   it('renders blocking state with retry and suppresses table region when assignment data is failed/untrustworthy', () => {
@@ -300,9 +312,34 @@ describe('AssignmentsPage', () => {
 
     renderWithFrontendProviders(<AssignmentsPage />);
 
-    expect(screen.getByText(/assignment definitions could not be trusted or loaded/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /retry|refresh assignments data/i })).toBeInTheDocument();
-    expect(screen.queryByRole('table', { name: 'Assignment definitions table' })).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/assignment definitions could not be trusted or loaded/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /retry|refresh assignments data/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('table', { name: 'Assignment definitions table' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('recovers from startup assignment-partials failure once query data is refetched successfully', async () => {
+    useStartupWarmupStateMock.mockReturnValue(
+      createStartupWarmupState({
+        assignmentDefinitionPartialsStatus: 'failed',
+      })
+    );
+
+    renderWithFrontendProviders(<AssignmentsPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText(/assignment definitions could not be trusted or loaded/i)
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('table', { name: 'Assignment definitions table' })
+      ).toBeInTheDocument();
+    });
   });
 
   it('launches create workflow when create assignment is clicked', () => {
@@ -332,8 +369,12 @@ describe('AssignmentsPage', () => {
     const archivedRow = within(table).getByText('Algebra foundations archive', { exact: true });
     const exactRow = within(table).getByText('Algebra foundations', { exact: true });
 
-    expect(newestRow.compareDocumentPosition(archivedRow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(archivedRow.compareDocumentPosition(exactRow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      newestRow.compareDocumentPosition(archivedRow) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(
+      archivedRow.compareDocumentPosition(exactRow) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
   });
 
   it.each(filterAssertions)(
@@ -348,14 +389,20 @@ describe('AssignmentsPage', () => {
       await applyColumnFilterOption(filterAssertion.filterButtonName, filterAssertion.optionLabel);
 
       await waitFor(() => {
-        expect(within(table).getByText(filterAssertion.expectedVisibleRow, { exact: true })).toBeInTheDocument();
-        expect(within(table).queryByText(filterAssertion.expectedHiddenRow, { exact: true })).not.toBeInTheDocument();
+        expect(
+          within(table).getByText(filterAssertion.expectedVisibleRow, { exact: true })
+        ).toBeInTheDocument();
+        expect(
+          within(table).queryByText(filterAssertion.expectedHiddenRow, { exact: true })
+        ).not.toBeInTheDocument();
       });
 
       fireEvent.click(screen.getByRole('button', { name: 'Reset sort and filters' }));
 
       await waitFor(() => {
-        expect(within(table).getByText(filterAssertion.expectedHiddenRow, { exact: true })).toBeInTheDocument();
+        expect(
+          within(table).getByText(filterAssertion.expectedHiddenRow, { exact: true })
+        ).toBeInTheDocument();
       });
     }
   );
@@ -372,7 +419,11 @@ describe('AssignmentsPage', () => {
         name: expectedFilterNameByColumn.columnHeaderName,
       });
 
-      expect(within(columnHeader).getByRole('button', { name: expectedFilterNameByColumn.filterButtonName })).toBeInTheDocument();
+      expect(
+        within(columnHeader).getByRole('button', {
+          name: expectedFilterNameByColumn.filterButtonName,
+        })
+      ).toBeInTheDocument();
     }
   });
 
@@ -407,7 +458,9 @@ describe('AssignmentsPage', () => {
 
     const deleteDialog = screen.getByRole('dialog', { name: 'Delete assignment definition' });
     expect(deleteDialog).toBeInTheDocument();
-    expect(within(deleteDialog).getByText('Algebra foundations', { exact: true })).toBeInTheDocument();
+    expect(
+      within(deleteDialog).getByText('Algebra foundations', { exact: true })
+    ).toBeInTheDocument();
     expect(within(deleteDialog).getByText(/this delete is permanent/i)).toBeInTheDocument();
   });
 
@@ -432,8 +485,14 @@ describe('AssignmentsPage', () => {
 
     await waitFor(() => {
       const deleteDialog = screen.getByRole('dialog', { name: 'Delete assignment definition' });
-      expect(within(deleteDialog).getByRole('button', { name: /delete definition/i })).toBeDisabled();
-      expect(screen.getAllByRole('button', { name: /delete/i }).every((button) => button.hasAttribute('disabled'))).toBe(true);
+      expect(
+        within(deleteDialog).getByRole('button', { name: /delete definition/i })
+      ).toBeDisabled();
+      expect(
+        screen
+          .getAllByRole('button', { name: /delete/i })
+          .every((button) => button.hasAttribute('disabled'))
+      ).toBe(true);
     });
 
     await act(async () => {
@@ -469,9 +528,13 @@ describe('AssignmentsPage', () => {
     const table = await screen.findByRole('table', { name: 'Assignment definitions table' });
 
     await waitFor(() => {
-      expect(within(table).queryByRole('cell', { name: (name) => name === 'Algebra foundations' })).not.toBeInTheDocument();
+      expect(
+        within(table).queryByRole('cell', { name: (name) => name === 'Algebra foundations' })
+      ).not.toBeInTheDocument();
       expect(screen.getByText(/assignment definition deleted/i)).toBeInTheDocument();
-      expect(screen.queryByRole('dialog', { name: 'Delete assignment definition' })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('dialog', { name: 'Delete assignment definition' })
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -512,8 +575,12 @@ describe('AssignmentsPage', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/assignment definitions could not be trusted or loaded/i)).toBeInTheDocument();
-      expect(screen.queryByRole('table', { name: 'Assignment definitions table' })).not.toBeInTheDocument();
+      expect(
+        screen.getByText(/assignment definitions could not be trusted or loaded/i)
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('table', { name: 'Assignment definitions table' })
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -611,25 +678,37 @@ describe('AssignmentsPage', () => {
       });
 
       // Change document URL using userEvent for Ant Design Form compatibility
-      const referenceUrlInput = within(modal).getByRole('textbox', { name: /reference document url/i });
+      const referenceUrlInput = within(modal).getByRole('textbox', {
+        name: /reference document url/i,
+      });
       await waitFor(() => {
         expect(referenceUrlInput).toBeEnabled();
       });
-      fireEvent.change(referenceUrlInput, { target: { value: 'https://docs.google.com/presentation/d/new-ref' } });
+      fireEvent.change(referenceUrlInput, {
+        target: { value: 'https://docs.google.com/presentation/d/new-ref' },
+      });
 
       // Metadata and task weighting should be disabled
       await waitFor(() => {
         const titleInput = within(modal).getByRole('textbox', { name: /assignment title/i });
-        const weightingInput = within(modal).getByRole('spinbutton', { name: /assignment weighting/i });
+        const weightingInput = within(modal).getByRole('spinbutton', {
+          name: /assignment weighting/i,
+        });
         expect(titleInput).toBeDisabled();
         expect(weightingInput).toBeDisabled();
       });
 
       // Should show re-parse prompt
       expect(within(modal).getByText(/document changed/i)).toBeInTheDocument();
-      const reparseActionRow = within(modal).getByRole('button', { name: /re-parse/i }).closest('.ant-space') as HTMLElement;
-      expect(within(reparseActionRow).getByRole('button', { name: /re-parse/i })).toBeInTheDocument();
-      expect(within(reparseActionRow).getByRole('button', { name: /^cancel$/i })).toBeInTheDocument();
+      const reparseActionRow = within(modal)
+        .getByRole('button', { name: /re-parse/i })
+        .closest('.ant-space') as HTMLElement;
+      expect(
+        within(reparseActionRow).getByRole('button', { name: /re-parse/i })
+      ).toBeInTheDocument();
+      expect(
+        within(reparseActionRow).getByRole('button', { name: /^cancel$/i })
+      ).toBeInTheDocument();
     });
 
     it('cancel restores persisted URLs and re-enables other fields', async () => {
@@ -655,9 +734,13 @@ describe('AssignmentsPage', () => {
       });
 
       // Store original URLs
-      const referenceUrlInput = within(modal).getByRole('textbox', { name: /reference document url/i }) as HTMLInputElement;
+      const referenceUrlInput = within(modal).getByRole('textbox', {
+        name: /reference document url/i,
+      }) as HTMLInputElement;
       const originalReferenceUrl = referenceUrlInput.value;
-      const templateUrlInput = within(modal).getByRole('textbox', { name: /template document url/i }) as HTMLInputElement;
+      const templateUrlInput = within(modal).getByRole('textbox', {
+        name: /template document url/i,
+      }) as HTMLInputElement;
       const originalTemplateUrl = templateUrlInput.value;
 
       // Change document URLs using userEvent
@@ -665,11 +748,17 @@ describe('AssignmentsPage', () => {
         expect(referenceUrlInput).toBeEnabled();
         expect(templateUrlInput).toBeEnabled();
       });
-      fireEvent.change(referenceUrlInput, { target: { value: 'https://docs.google.com/presentation/d/new-ref' } });
-      fireEvent.change(templateUrlInput, { target: { value: 'https://docs.google.com/presentation/d/new-tpl' } });
+      fireEvent.change(referenceUrlInput, {
+        target: { value: 'https://docs.google.com/presentation/d/new-ref' },
+      });
+      fireEvent.change(templateUrlInput, {
+        target: { value: 'https://docs.google.com/presentation/d/new-tpl' },
+      });
 
       // Click cancel on re-parse prompt
-      const reparseActionRow = within(modal).getByRole('button', { name: /re-parse/i }).closest('.ant-space') as HTMLElement;
+      const reparseActionRow = within(modal)
+        .getByRole('button', { name: /re-parse/i })
+        .closest('.ant-space') as HTMLElement;
       const cancelButton = within(reparseActionRow).getByRole('button', { name: /^cancel$/i });
       await act(async () => {
         fireEvent.click(cancelButton);
@@ -678,15 +767,21 @@ describe('AssignmentsPage', () => {
       // URLs should be restored
       await waitFor(() => {
         const restoredModal = screen.getByRole('dialog', { name: /update assignment/i });
-        const referenceInput = within(restoredModal).getByRole('textbox', { name: /reference document url/i });
-        const templateInput = within(restoredModal).getByRole('textbox', { name: /template document url/i });
+        const referenceInput = within(restoredModal).getByRole('textbox', {
+          name: /reference document url/i,
+        });
+        const templateInput = within(restoredModal).getByRole('textbox', {
+          name: /template document url/i,
+        });
         expect(referenceInput).toHaveValue(originalReferenceUrl);
         expect(templateInput).toHaveValue(originalTemplateUrl);
       });
 
       // Other fields should be re-enabled
       const titleInput = within(modal).getByRole('textbox', { name: /assignment title/i });
-      const weightingInput = within(modal).getByRole('spinbutton', { name: /assignment weighting/i });
+      const weightingInput = within(modal).getByRole('spinbutton', {
+        name: /assignment weighting/i,
+      });
       expect(titleInput).toBeEnabled();
       expect(weightingInput).toBeEnabled();
     });
@@ -714,11 +809,15 @@ describe('AssignmentsPage', () => {
       });
 
       // Change document URL using userEvent
-      const referenceUrlInput = within(modal).getByRole('textbox', { name: /reference document url/i });
+      const referenceUrlInput = within(modal).getByRole('textbox', {
+        name: /reference document url/i,
+      });
       await waitFor(() => {
         expect(referenceUrlInput).toBeEnabled();
       });
-      fireEvent.change(referenceUrlInput, { target: { value: 'https://docs.google.com/presentation/d/new-ref' } });
+      fireEvent.change(referenceUrlInput, {
+        target: { value: 'https://docs.google.com/presentation/d/new-ref' },
+      });
 
       upsertAssignmentDefinitionMock.mockResolvedValueOnce({
         ...mockFullAssignmentDefinition,
@@ -756,8 +855,12 @@ describe('AssignmentsPage', () => {
 
       // Fill in required fields except year group using userEvent
       const titleInput = within(modal).getByRole('textbox', { name: /assignment title/i });
-      const referenceUrlInput = within(modal).getByRole('textbox', { name: /reference document url/i });
-      const templateUrlInput = within(modal).getByRole('textbox', { name: /template document url/i });
+      const referenceUrlInput = within(modal).getByRole('textbox', {
+        name: /reference document url/i,
+      });
+      const templateUrlInput = within(modal).getByRole('textbox', {
+        name: /template document url/i,
+      });
 
       setTextboxValue(titleInput, 'New Assessment');
       setTextboxValue(referenceUrlInput, 'https://docs.google.com/presentation/d/test-ref');
@@ -797,8 +900,12 @@ describe('AssignmentsPage', () => {
 
       // Document URL fields should be disabled
       await waitFor(() => {
-        const referenceUrlInput = within(modal).getByRole('textbox', { name: /reference document url/i });
-        const templateUrlInput = within(modal).getByRole('textbox', { name: /template document url/i });
+        const referenceUrlInput = within(modal).getByRole('textbox', {
+          name: /reference document url/i,
+        });
+        const templateUrlInput = within(modal).getByRole('textbox', {
+          name: /template document url/i,
+        });
         expect(referenceUrlInput).toBeDisabled();
         expect(templateUrlInput).toBeDisabled();
       });
@@ -808,8 +915,10 @@ describe('AssignmentsPage', () => {
       useStartupWarmupStateMock.mockReturnValue(
         createStartupWarmupState({
           assignmentDefinitionPartialsStatus: 'ready',
-          isDatasetReady: (datasetKey: string) => datasetKey !== 'assignmentTopics' && datasetKey !== 'yearGroups',
-          isDatasetFailed: (datasetKey: string) => datasetKey === 'assignmentTopics' || datasetKey === 'yearGroups',
+          isDatasetReady: (datasetKey: string) =>
+            datasetKey !== 'assignmentTopics' && datasetKey !== 'yearGroups',
+          isDatasetFailed: (datasetKey: string) =>
+            datasetKey === 'assignmentTopics' || datasetKey === 'yearGroups',
         })
       );
 
@@ -818,6 +927,5 @@ describe('AssignmentsPage', () => {
       // Create button should be disabled when reference data is not trustworthy
       expect(screen.getByRole('button', { name: 'Create assignment' })).toBeDisabled();
     });
-
   });
 });

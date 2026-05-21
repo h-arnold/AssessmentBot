@@ -14,12 +14,7 @@ import {
   type TableColumnsType,
 } from 'antd';
 import type { FilterDropdownProps, FilterValue } from 'antd/es/table/interface';
-import {
-  useCallback,
-  useMemo,
-  useState,
-  type ReactElement,
-} from 'react';
+import { useCallback, useMemo, useState, type ReactElement } from 'react';
 import { useStartupWarmupState } from '../features/auth/startupWarmupState';
 import { logFrontendError } from '../logging/frontendLogger';
 import { queryKeys } from '../query/queryKeys';
@@ -177,10 +172,14 @@ function getUniqueSortedFilterOptions(values: readonly string[]) {
  * @param {readonly AssignmentDefinitionPartial[]} rows Assignment rows.
  * @returns {AssignmentDefinitionPartial[]} Sorted rows.
  */
-function getDefaultSortedRows(rows: readonly AssignmentDefinitionPartial[]): AssignmentDefinitionPartial[] {
+function getDefaultSortedRows(
+  rows: readonly AssignmentDefinitionPartial[]
+): AssignmentDefinitionPartial[] {
   return [...rows].toSorted((left, right) => {
-    const leftUpdatedAt = left.updatedAt === null ? Number.NEGATIVE_INFINITY : new Date(left.updatedAt).getTime();
-    const rightUpdatedAt = right.updatedAt === null ? Number.NEGATIVE_INFINITY : new Date(right.updatedAt).getTime();
+    const leftUpdatedAt =
+      left.updatedAt === null ? Number.NEGATIVE_INFINITY : new Date(left.updatedAt).getTime();
+    const rightUpdatedAt =
+      right.updatedAt === null ? Number.NEGATIVE_INFINITY : new Date(right.updatedAt).getTime();
 
     if (leftUpdatedAt !== rightUpdatedAt) {
       return rightUpdatedAt - leftUpdatedAt;
@@ -194,7 +193,9 @@ function getDefaultSortedRows(rows: readonly AssignmentDefinitionPartial[]): Ass
       return titleComparison;
     }
 
-    return left.definitionKey.localeCompare(right.definitionKey, undefined, { sensitivity: 'base' });
+    return left.definitionKey.localeCompare(right.definitionKey, undefined, {
+      sensitivity: 'base',
+    });
   });
 }
 
@@ -242,11 +243,13 @@ function shouldRenderAssignmentsBlockingState(
     isAssignmentsDatasetReady: boolean;
     isAssignmentsDatasetTrustworthy: boolean;
     hasTrustworthyAssignmentsDataset: boolean;
+    hasAssignmentsQueryData: boolean;
     isAssignmentsQueryError: boolean;
   }>
 ): boolean {
   if (input.isAssignmentsDatasetFailed) {
-    return true;
+    // Allow recovery after startup warm-up failure once a live refetch succeeds.
+    return !input.hasAssignmentsQueryData || input.isAssignmentsQueryError;
   }
 
   if (input.isAssignmentsDatasetReady && !input.isAssignmentsDatasetTrustworthy) {
@@ -283,12 +286,19 @@ function getAssignmentsSurfaceState(
     };
   }
 
+  const hasRecoveredAssignmentsDataset =
+    input.isAssignmentsDatasetFailed &&
+    input.hasAssignmentsQueryData &&
+    !input.isAssignmentsQueryError;
+  const hasRenderableAssignmentsDataset =
+    input.hasTrustworthyAssignmentsDataset || hasRecoveredAssignmentsDataset;
+
   return {
-    shouldRenderActionLoadingState: !input.hasTrustworthyAssignmentsDataset,
+    shouldRenderActionLoadingState: !hasRenderableAssignmentsDataset,
     shouldRenderBlockingState: false,
     shouldRenderTableLoadingState:
-      !input.hasTrustworthyAssignmentsDataset
-      || (input.isAssignmentsQueryPending && !input.hasAssignmentsQueryData),
+      !hasRenderableAssignmentsDataset ||
+      (input.isAssignmentsQueryPending && !input.hasAssignmentsQueryData),
   };
 }
 
@@ -306,9 +316,9 @@ function isAssignmentsSurfaceBusyState(
   }>
 ): boolean {
   return (
-    input.surfaceState.shouldRenderTableLoadingState
-    || input.isQueryFetching
-    || input.isDeletePending
+    input.surfaceState.shouldRenderTableLoadingState ||
+    input.isQueryFetching ||
+    input.isDeletePending
   );
 }
 
@@ -450,8 +460,13 @@ function AssignmentsStatusAndActionsCard(
         ) : (
           <Flex gap={8} justify="space-between" wrap>
             <Space wrap>
-              <Button onClick={properties.onRefreshAssignmentsData}>Refresh assignments data</Button>
-              <Button disabled={!properties.hasTrustworthyData} onClick={properties.onCreateAssignment}>
+              <Button onClick={properties.onRefreshAssignmentsData}>
+                Refresh assignments data
+              </Button>
+              <Button
+                disabled={!properties.hasTrustworthyData}
+                onClick={properties.onCreateAssignment}
+              >
                 Create assignment
               </Button>
             </Space>
@@ -563,7 +578,9 @@ function AssignmentsDeleteModal(
           />
         )}
         <Text>You are deleting this assignment definition.</Text>
-        {properties.deleteTarget === null ? null : <Text strong>{properties.deleteTarget.primaryTitle}</Text>}
+        {properties.deleteTarget === null ? null : (
+          <Text strong>{properties.deleteTarget.primaryTitle}</Text>
+        )}
         <Text>This delete is permanent and cannot be undone.</Text>
       </Space>
     </Modal>
@@ -579,35 +596,43 @@ export function AssignmentsPage() {
   const startupWarmupState = useStartupWarmupState();
   const queryClient = useQueryClient();
 
-  const assignmentDatasetSnapshot = startupWarmupState.snapshot.datasets.assignmentDefinitionPartials;
-  const isAssignmentsDatasetReady = startupWarmupState.isDatasetReady('assignmentDefinitionPartials');
-  const isAssignmentsDatasetFailed = startupWarmupState.isDatasetFailed('assignmentDefinitionPartials');
+  const assignmentDatasetSnapshot =
+    startupWarmupState.snapshot.datasets.assignmentDefinitionPartials;
+  const isAssignmentsDatasetReady = startupWarmupState.isDatasetReady(
+    'assignmentDefinitionPartials'
+  );
+  const isAssignmentsDatasetFailed = startupWarmupState.isDatasetFailed(
+    'assignmentDefinitionPartials'
+  );
   const isAssignmentsDatasetTrustworthy = assignmentDatasetSnapshot.isTrustworthy;
-  const hasTrustworthyAssignmentsDataset = isAssignmentsDatasetReady && isAssignmentsDatasetTrustworthy;
-  const hasTrustworthyReferenceData = startupWarmupState.isDatasetReady('assignmentTopics') && startupWarmupState.isDatasetReady('yearGroups');
+  const hasTrustworthyAssignmentsDataset =
+    isAssignmentsDatasetReady && isAssignmentsDatasetTrustworthy;
+  const hasTrustworthyReferenceData =
+    startupWarmupState.isDatasetReady('assignmentTopics') &&
+    startupWarmupState.isDatasetReady('yearGroups');
 
   const assignmentsQuery = useQuery({
     ...getAssignmentDefinitionPartialsQueryOptions(),
     /*
      * Enable query when dataset is ready OR has failed.
-     * 
+     *
      * Rationale: The startup warmup prefetches assignmentDefinitionPartials.
      * - isAssignmentsDatasetReady = true when prefetch succeeds AND data is trustworthy
      * - isAssignmentsDatasetFailed = true when prefetch fails
-     * 
+     *
      * When the dataset fails (isAssignmentsDatasetFailed=true), isAssignmentsDatasetReady=false.
      * If we only enable when isAssignmentsDatasetReady, the query is disabled on failure.
      * This breaks retry: refetchQueries() cannot refetch disabled queries in React Query v5.
-     * 
+     *
      * By enabling when EITHER ready OR failed, we allow:
      * 1. Normal flow: query runs when dataset is ready
      * 2. Retry flow: query can be refetched via refetchQueries() after dataset failure
-     * 
+     *
      * The blocking state (shouldRenderBlockingState) still protects the UI:
      * - Shows blocking Alert when isAssignmentsDatasetFailed=true
      * - Shows blocking Alert when dataset is ready but untrustworthy
      * - Only shows table when hasTrustworthyAssignmentsDataset AND query has data
-     * 
+     *
      * This fixes FE-E2E-010: retry action now correctly triggers getAssignmentDefinitionPartials.
      */
     enabled: isAssignmentsDatasetReady || isAssignmentsDatasetFailed,
@@ -626,10 +651,16 @@ export function AssignmentsPage() {
   const [wizardMode, setWizardMode] = useState<'create' | 'update'>('create');
   const [wizardDefinitionKey, setWizardDefinitionKey] = useState<string | null>(null);
 
-  const sortedRows = useMemo(() => getDefaultSortedRows(assignmentsQuery.data ?? []), [assignmentsQuery.data]);
+  const sortedRows = useMemo(
+    () => getDefaultSortedRows(assignmentsQuery.data ?? []),
+    [assignmentsQuery.data]
+  );
 
   const filterOptions = useMemo(() => {
-    const nextFilterOptions: Record<AssignmentsFilterColumnKey, ReadonlyArray<AssignmentsFilterOption>> = {
+    const nextFilterOptions: Record<
+      AssignmentsFilterColumnKey,
+      ReadonlyArray<AssignmentsFilterOption>
+    > = {
       primaryTitle: [],
       primaryTopic: [],
       yearGroup: [],
@@ -690,7 +721,11 @@ export function AssignmentsPage() {
         render: (_, row) => (
           <Space wrap>
             <Button
-              disabled={deleteMutation.isPending || !hasTrustworthyAssignmentsDataset || !hasTrustworthyReferenceData}
+              disabled={
+                deleteMutation.isPending ||
+                !hasTrustworthyAssignmentsDataset ||
+                !hasTrustworthyReferenceData
+              }
               onClick={() => {
                 setWizardMode('update');
                 setWizardDefinitionKey(row.definitionKey);
@@ -701,7 +736,11 @@ export function AssignmentsPage() {
             </Button>
             <Button
               danger
-              disabled={deleteMutation.isPending || !hasTrustworthyAssignmentsDataset || !isSafeDefinitionKey(row.definitionKey)}
+              disabled={
+                deleteMutation.isPending ||
+                !hasTrustworthyAssignmentsDataset ||
+                !isSafeDefinitionKey(row.definitionKey)
+              }
               onClick={() => {
                 setDeleteError(null);
                 setDeleteOutcome(null);
@@ -714,7 +753,20 @@ export function AssignmentsPage() {
         ),
       },
     ],
-    [deleteMutation.isPending, filterOptions, filters, handleSelectFilter, hasTrustworthyAssignmentsDataset, hasTrustworthyReferenceData, setDeleteError, setDeleteOutcome, setDeleteTarget, setWizardDefinitionKey, setWizardMode, setWizardOpen]
+    [
+      deleteMutation.isPending,
+      filterOptions,
+      filters,
+      handleSelectFilter,
+      hasTrustworthyAssignmentsDataset,
+      hasTrustworthyReferenceData,
+      setDeleteError,
+      setDeleteOutcome,
+      setDeleteTarget,
+      setWizardDefinitionKey,
+      setWizardMode,
+      setWizardOpen,
+    ]
   );
 
   const assignmentsSurfaceState = getAssignmentsSurfaceState({
@@ -736,11 +788,11 @@ export function AssignmentsPage() {
   const refetchAssignmentDefinitions = useCallback(async () => {
     /*
      * Invalidate then refetch the assignment-definition cache.
-     * 
+     *
      * This works because the assignmentsQuery is enabled when isAssignmentsDatasetReady
      * OR isAssignmentsDatasetFailed (see enabled condition above). This ensures refetchQueries
      * can always refetch, even after a dataset failure.
-     * 
+     *
      * The invalidateQueries(refetchType: 'none') prevents background refetch,
      * then refetchQueries() explicitly triggers the fetch.
      */
@@ -761,7 +813,6 @@ export function AssignmentsPage() {
     tableColumns,
     visibleRows,
   });
-
 
   /**
    * Opens the create assignment definition modal.

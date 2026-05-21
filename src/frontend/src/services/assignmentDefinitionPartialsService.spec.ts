@@ -27,6 +27,17 @@ const validAssignmentDefinitionPartialsResponse = [
   },
 ];
 
+const backendCompatibleNonNullTasksResponse = [
+  {
+    ...validAssignmentDefinitionPartialsResponse[0],
+    tasks: {
+      taskA: {
+        title: 'Solve two-step equations',
+      },
+    },
+  },
+];
+
 const deleteRequestPayload = {
   definitionKey: 'algebra-baseline',
 };
@@ -76,6 +87,21 @@ describe('assignmentDefinitionPartialsService', () => {
     expect(callApiMock).toHaveBeenCalledTimes(1);
   });
 
+  it('getAssignmentDefinitionPartials() accepts backend-compatible non-null tasks payloads and normalises tasks to null', async () => {
+    callApiMock.mockResolvedValueOnce(backendCompatibleNonNullTasksResponse);
+
+    const { getAssignmentDefinitionPartials } = await loadAssignmentDefinitionPartialsService();
+
+    await expect(getAssignmentDefinitionPartials()).resolves.toEqual([
+      {
+        ...validAssignmentDefinitionPartialsResponse[0],
+        tasks: null,
+      },
+    ]);
+    expect(callApiMock).toHaveBeenCalledWith('getAssignmentDefinitionPartials');
+    expect(callApiMock).toHaveBeenCalledTimes(1);
+  });
+
   it('deleteAssignmentDefinition() delegates to callApi with a schema-valid definition key', async () => {
     callApiMock.mockResolvedValueOnce(omittedBackendSuccessPayload);
 
@@ -95,12 +121,17 @@ describe('assignmentDefinitionPartialsService', () => {
     { definitionKey: 'algebra..baseline' },
     { definitionKey: 'algebra\u0007baseline' },
     {},
-  ])('deleteAssignmentDefinition() rejects malformed definitionKey payloads before callApi: %j', async (input) => {
-    const { deleteAssignmentDefinition } = await loadAssignmentDefinitionPartialsService();
+  ])(
+    'deleteAssignmentDefinition() rejects malformed definitionKey payloads before callApi: %j',
+    async (input) => {
+      const { deleteAssignmentDefinition } = await loadAssignmentDefinitionPartialsService();
 
-    await expect(deleteAssignmentDefinition(input as Parameters<typeof deleteAssignmentDefinition>[0])).rejects.toBeInstanceOf(ZodError);
-    expect(callApiMock).not.toHaveBeenCalled();
-  });
+      await expect(
+        deleteAssignmentDefinition(input as Parameters<typeof deleteAssignmentDefinition>[0])
+      ).rejects.toBeInstanceOf(ZodError);
+      expect(callApiMock).not.toHaveBeenCalled();
+    }
+  );
 
   it('deleteAssignmentDefinition() rejects unexpected backend success payload data', async () => {
     callApiMock.mockResolvedValueOnce({ deleted: true });
