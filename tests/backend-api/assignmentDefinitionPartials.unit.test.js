@@ -1,4 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  createAssignmentDefinitionControllerHooks,
+  installAssignmentDefinitionControllerStub,
+  loadAssignmentDefinitionPartialsModule,
+  readSourceFile,
+  buildValidPartial,
+  createMockDefinitionForPartialRow,
+  expectFunctionNotInSource,
+  expectFunctionInSource,
+  expectPatternInSource,
+  expectPatternNotInSource,
+} from '../helpers/assignmentDefinitionPartialsTestHelpers.js';
 
 const modulePath = '../../src/backend/z_Api/assignmentDefinitionPartials.js';
 const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
@@ -24,61 +36,11 @@ const VALID_GOOGLE_URLS = {
   },
 };
 
-function loadAssignmentDefinitionPartialsModule() {
-  delete require.cache[require.resolve(modulePath)];
-  return require(modulePath);
-}
-
-function buildValidPartial(overrides = {}) {
-  return {
-    primaryTitle: 'Algebra Baseline',
-    primaryTopic: 'Algebra',
-    primaryTopicKey: 'topic-algebra',
-    yearGroupKey: 'year-group-10',
-    yearGroupLabel: 'Year 10',
-    alternateTitles: ['Algebra Starter'],
-    alternateTopics: ['Linear Equations'],
-    documentType: 'SLIDES',
-    referenceDocumentId: 'ref-doc-001',
-    templateDocumentId: 'tpl-doc-001',
-    assignmentWeighting: null,
-    definitionKey: 'algebra-baseline',
-    tasks: null,
-    createdAt: '2026-01-05T10:00:00.000Z',
-    updatedAt: '2026-01-06T12:30:00.000Z',
-    ...overrides,
-  };
-}
-
-function installAssignmentDefinitionControllerStub(partials) {
-  const getAllPartialDefinitions = vi.fn(() => partials);
-  const AssignmentDefinitionController = vi.fn(function StubAssignmentDefinitionController() {
-    this.getAllPartialDefinitions = getAllPartialDefinitions;
-  });
-
-  globalThis.AssignmentDefinitionController = AssignmentDefinitionController;
-
-  return { AssignmentDefinitionController, getAllPartialDefinitions };
-}
-
 describe('Api/assignmentDefinitionPartials transport contract', () => {
-  let originalAssignmentDefinitionController;
+  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
 
-  beforeEach(() => {
-    originalAssignmentDefinitionController = globalThis.AssignmentDefinitionController;
-  });
-
-  afterEach(() => {
-    delete require.cache[require.resolve(modulePath)];
-
-    if (originalAssignmentDefinitionController === undefined) {
-      delete globalThis.AssignmentDefinitionController;
-    } else {
-      globalThis.AssignmentDefinitionController = originalAssignmentDefinitionController;
-    }
-
-    vi.restoreAllMocks();
-  });
+  beforeEach(beforeEachHandler);
+  afterEach(afterEachHandler);
 
   it('returns plain assignment-definition partial rows when all required fields are valid', () => {
     function ControllerLikePartial(overrides = {}) {
@@ -304,23 +266,10 @@ describe('Api/assignmentDefinitionPartials transport contract', () => {
 });
 
 describe('extractSupportedDocumentDescriptor_ URL parsing regression tests', () => {
-  let originalAssignmentDefinitionController;
+  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
 
-  beforeEach(() => {
-    originalAssignmentDefinitionController = globalThis.AssignmentDefinitionController;
-  });
-
-  afterEach(() => {
-    delete require.cache[require.resolve(modulePath)];
-
-    if (originalAssignmentDefinitionController === undefined) {
-      delete globalThis.AssignmentDefinitionController;
-    } else {
-      globalThis.AssignmentDefinitionController = originalAssignmentDefinitionController;
-    }
-
-    vi.restoreAllMocks();
-  });
+  beforeEach(beforeEachHandler);
+  afterEach(afterEachHandler);
 
   it.each([
     {
@@ -515,185 +464,72 @@ describe('extractSupportedDocumentDescriptor_ URL parsing regression tests', () 
 // ============================================================================
 
 describe('Section 5: API layer refactoring - Helper functions removed from source', () => {
-  let originalAssignmentDefinitionController;
+  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
 
-  beforeEach(() => {
-    originalAssignmentDefinitionController = globalThis.AssignmentDefinitionController;
-  });
-
-  afterEach(() => {
-    delete require.cache[require.resolve(modulePath)];
-
-    if (originalAssignmentDefinitionController === undefined) {
-      delete globalThis.AssignmentDefinitionController;
-    } else {
-      globalThis.AssignmentDefinitionController = originalAssignmentDefinitionController;
-    }
-
-    vi.restoreAllMocks();
-  });
+  beforeEach(beforeEachHandler);
+  afterEach(afterEachHandler);
 
   it('should verify toCanonicalTransportDefinition_ is not present in source file', () => {
     installAssignmentDefinitionControllerStub([]);
-
-    // Read the source file to check for the function definition
-    const fs = require('fs');
-    const path = require('path');
-    const absolutePath = path.resolve(__dirname, modulePath);
-    const sourceCode = fs.readFileSync(absolutePath, 'utf8');
-
-    // After Section 5 implementation, toCanonicalTransportDefinition_ should be removed from source
-    expect(sourceCode).not.toContain('function toCanonicalTransportDefinition_');
+    expectFunctionNotInSource('toCanonicalTransportDefinition_');
   });
 
   it('should verify buildControllerUpsertPayload_ is not present in source file', () => {
     installAssignmentDefinitionControllerStub([]);
-
-    const fs = require('fs');
-    const path = require('path');
-    const absolutePath = path.resolve(__dirname, modulePath);
-    const sourceCode = fs.readFileSync(absolutePath, 'utf8');
-
-    // After Section 5 implementation, buildControllerUpsertPayload_ should be removed from source
-    expect(sourceCode).not.toContain('function buildControllerUpsertPayload_');
+    expectFunctionNotInSource('buildControllerUpsertPayload_');
   });
 
   it('should verify toPlainPartialRow_ is not present in source file', () => {
     installAssignmentDefinitionControllerStub([]);
-
-    const fs = require('fs');
-    const path = require('path');
-    const absolutePath = path.resolve(__dirname, modulePath);
-    const sourceCode = fs.readFileSync(absolutePath, 'utf8');
-
-    // After Section 5 implementation, toPlainPartialRow_ should be removed from source
-    expect(sourceCode).not.toContain('function toPlainPartialRow_');
+    expectFunctionNotInSource('toPlainPartialRow_');
   });
 });
 
 describe('Section 5: API layer refactoring - Call sites updated', () => {
-  let originalAssignmentDefinitionController;
+  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
 
-  beforeEach(() => {
-    originalAssignmentDefinitionController = globalThis.AssignmentDefinitionController;
-  });
-
-  afterEach(() => {
-    delete require.cache[require.resolve(modulePath)];
-
-    if (originalAssignmentDefinitionController === undefined) {
-      delete globalThis.AssignmentDefinitionController;
-    } else {
-      globalThis.AssignmentDefinitionController = originalAssignmentDefinitionController;
-    }
-
-    vi.restoreAllMocks();
-  });
+  beforeEach(beforeEachHandler);
+  afterEach(afterEachHandler);
 
   it('should verify upsertAssignmentDefinition_ calls controller.toCanonicalFullDefinitionResponse(definition)', () => {
     installAssignmentDefinitionControllerStub([]);
-
-    // Read source to check that upsertAssignmentDefinition_ calls controller.toCanonicalFullDefinitionResponse directly
-    const fs = require('fs');
-    const path = require('path');
-    const absolutePath = path.resolve(__dirname, modulePath);
-    const sourceCode = fs.readFileSync(absolutePath, 'utf8');
-
-    // After Section 5: upsertAssignmentDefinition_ should call controller.toCanonicalFullDefinitionResponse(definition) directly
-    // not toCanonicalTransportDefinition_(controller, definition)
-    expect(sourceCode).toContain('controller.toCanonicalFullDefinitionResponse(definition)');
-    expect(sourceCode).not.toContain('toCanonicalTransportDefinition_(controller, definition)');
+    expectPatternInSource('controller.toCanonicalFullDefinitionResponse(definition)');
+    expectPatternNotInSource('toCanonicalTransportDefinition_(controller, definition)');
   });
 
   it('should verify getAssignmentDefinition_ calls controller.toCanonicalFullDefinitionResponse(definition)', () => {
     installAssignmentDefinitionControllerStub([]);
-
-    // Read source to check that getAssignmentDefinition_ calls controller.toCanonicalFullDefinitionResponse directly
-    const fs = require('fs');
-    const path = require('path');
-    const absolutePath = path.resolve(__dirname, modulePath);
-    const sourceCode = fs.readFileSync(absolutePath, 'utf8');
-
-    // After Section 5: getAssignmentDefinition_ should call controller.toCanonicalFullDefinitionResponse(definition) directly
-    // not toCanonicalTransportDefinition_(controller, definition)
-    expect(sourceCode).toContain('controller.toCanonicalFullDefinitionResponse(definition)');
-    expect(sourceCode).not.toContain('toCanonicalTransportDefinition_(controller, definition)');
+    expectPatternInSource('controller.toCanonicalFullDefinitionResponse(definition)');
+    expectPatternNotInSource('toCanonicalTransportDefinition_(controller, definition)');
   });
 });
 
 describe('Section 5: API layer refactoring - getAssignmentDefinitionPartials_ return shape', () => {
-  let originalAssignmentDefinitionController;
+  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
 
-  beforeEach(() => {
-    originalAssignmentDefinitionController = globalThis.AssignmentDefinitionController;
-  });
-
-  afterEach(() => {
-    delete require.cache[require.resolve(modulePath)];
-
-    if (originalAssignmentDefinitionController === undefined) {
-      delete globalThis.AssignmentDefinitionController;
-    } else {
-      globalThis.AssignmentDefinitionController = originalAssignmentDefinitionController;
-    }
-
-    vi.restoreAllMocks();
-  });
+  beforeEach(beforeEachHandler);
+  afterEach(afterEachHandler);
 
   it('should export toTransportPartialRow_ helper', () => {
     installAssignmentDefinitionControllerStub([]);
 
     const moduleExports = require(modulePath);
-    // After Section 5: toTransportPartialRow_ should be exported for test accessibility
     expect(moduleExports).toHaveProperty('toTransportPartialRow_');
     expect(typeof moduleExports.toTransportPartialRow_).toBe('function');
   });
 
   it('should use toTransportPartialRow_ for partial row serialization', () => {
     installAssignmentDefinitionControllerStub([]);
-
-    // Read the source file to check that getAssignmentDefinitionPartials_ uses toTransportPartialRow_
-    const fs = require('fs');
-    const path = require('path');
-    const absolutePath = path.resolve(__dirname, modulePath);
-    const sourceCode = fs.readFileSync(absolutePath, 'utf8');
-
-    // After Section 5: getAssignmentDefinitionPartials_ should call toTransportPartialRow_(definition)
-    // not toPlainPartialRow_(row)
-    expect(sourceCode).toContain('toTransportPartialRow_');
+    expectPatternInSource('toTransportPartialRow_');
   });
 
   it('should defensively strip yearGroup field from partial JSON', () => {
     installAssignmentDefinitionControllerStub([]);
 
     const moduleExports = require(modulePath);
-
-    // After Section 5: toTransportPartialRow_ should be exported and strip yearGroup
-    // This test will fail until toTransportPartialRow_ is exported
     expect(moduleExports).toHaveProperty('toTransportPartialRow_');
 
-    // Create a mock definition with yearGroup in its output
-    const mockDefinition = {
-      toPartialJSON: () => ({
-        primaryTitle: 'Test',
-        primaryTopic: 'Test Topic',
-        primaryTopicKey: 'test-topic',
-        yearGroupKey: 'year-10',
-        yearGroupLabel: 'Year 10',
-        yearGroup: '10', // This should be stripped
-        alternateTitles: [],
-        alternateTopics: [],
-        documentType: 'SLIDES',
-        referenceDocumentId: 'ref-001',
-        templateDocumentId: 'tpl-001',
-        assignmentWeighting: 1,
-        definitionKey: 'test-key',
-        tasks: null,
-        createdAt: '2026-01-05T10:00:00.000Z',
-        updatedAt: '2026-01-06T12:30:00.000Z',
-      }),
-    };
-
+    const mockDefinition = createMockDefinitionForPartialRow({ yearGroup: '10' });
     const result = moduleExports.toTransportPartialRow_(mockDefinition);
     expect(result).not.toHaveProperty('yearGroup');
   });
@@ -702,32 +538,11 @@ describe('Section 5: API layer refactoring - getAssignmentDefinitionPartials_ re
     installAssignmentDefinitionControllerStub([]);
 
     const moduleExports = require(modulePath);
-
-    // This test will fail until toTransportPartialRow_ is exported
     expect(moduleExports).toHaveProperty('toTransportPartialRow_');
 
     const createdAt = new Date('2026-01-05T10:00:00.000Z');
     const updatedAt = new Date('2026-01-06T12:30:00.000Z');
-
-    const mockDefinition = {
-      toPartialJSON: () => ({
-        primaryTitle: 'Test',
-        primaryTopic: 'Test Topic',
-        primaryTopicKey: 'test-topic',
-        yearGroupKey: 'year-10',
-        yearGroupLabel: 'Year 10',
-        alternateTitles: [],
-        alternateTopics: [],
-        documentType: 'SLIDES',
-        referenceDocumentId: 'ref-001',
-        templateDocumentId: 'tpl-001',
-        assignmentWeighting: 1,
-        definitionKey: 'test-key',
-        tasks: null,
-        createdAt,
-        updatedAt,
-      }),
-    };
+    const mockDefinition = createMockDefinitionForPartialRow({ createdAt, updatedAt });
 
     const result = moduleExports.toTransportPartialRow_(mockDefinition);
 
@@ -739,30 +554,9 @@ describe('Section 5: API layer refactoring - getAssignmentDefinitionPartials_ re
     installAssignmentDefinitionControllerStub([]);
 
     const moduleExports = require(modulePath);
-
-    // This test will fail until toTransportPartialRow_ is exported
     expect(moduleExports).toHaveProperty('toTransportPartialRow_');
 
-    const mockDefinition = {
-      toPartialJSON: () => ({
-        primaryTitle: 'Test',
-        primaryTopic: 'Test Topic',
-        primaryTopicKey: 'test-topic',
-        yearGroupKey: 'year-10',
-        yearGroupLabel: 'Year 10',
-        alternateTitles: [],
-        alternateTopics: [],
-        documentType: 'SLIDES',
-        referenceDocumentId: 'ref-001',
-        templateDocumentId: 'tpl-001',
-        assignmentWeighting: 1,
-        definitionKey: 'test-key',
-        tasks: null,
-        createdAt: '2026-01-05T10:00:00.000Z',
-        updatedAt: '2026-01-06T12:30:00.000Z',
-      }),
-    };
-
+    const mockDefinition = createMockDefinitionForPartialRow();
     const result = moduleExports.toTransportPartialRow_(mockDefinition);
 
     expect(result.createdAt).toBe('2026-01-05T10:00:00.000Z');
@@ -773,30 +567,9 @@ describe('Section 5: API layer refactoring - getAssignmentDefinitionPartials_ re
     installAssignmentDefinitionControllerStub([]);
 
     const moduleExports = require(modulePath);
-
-    // This test will fail until toTransportPartialRow_ is exported
     expect(moduleExports).toHaveProperty('toTransportPartialRow_');
 
-    const mockDefinition = {
-      toPartialJSON: () => ({
-        primaryTitle: 'Test',
-        primaryTopic: 'Test Topic',
-        primaryTopicKey: 'test-topic',
-        yearGroupKey: 'year-10',
-        yearGroupLabel: 'Year 10',
-        alternateTitles: [],
-        alternateTopics: [],
-        documentType: 'SLIDES',
-        referenceDocumentId: 'ref-001',
-        templateDocumentId: 'tpl-001',
-        assignmentWeighting: 1,
-        definitionKey: 'test-key',
-        tasks: null,
-        createdAt: '2026-01-05T10:00:00.000Z',
-        updatedAt: '2026-01-06T12:30:00.000Z',
-      }),
-    };
-
+    const mockDefinition = createMockDefinitionForPartialRow();
     const result = moduleExports.toTransportPartialRow_(mockDefinition);
 
     expect(result.tasks).toBeNull();
@@ -804,23 +577,10 @@ describe('Section 5: API layer refactoring - getAssignmentDefinitionPartials_ re
 });
 
 describe('Section 5: API layer refactoring - Transport validation unchanged', () => {
-  let originalAssignmentDefinitionController;
+  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
 
-  beforeEach(() => {
-    originalAssignmentDefinitionController = globalThis.AssignmentDefinitionController;
-  });
-
-  afterEach(() => {
-    delete require.cache[require.resolve(modulePath)];
-
-    if (originalAssignmentDefinitionController === undefined) {
-      delete globalThis.AssignmentDefinitionController;
-    } else {
-      globalThis.AssignmentDefinitionController = originalAssignmentDefinitionController;
-    }
-
-    vi.restoreAllMocks();
-  });
+  beforeEach(beforeEachHandler);
+  afterEach(afterEachHandler);
 
   it('should throw ApiValidationError when yearGroupKey is null via upsertAssignmentDefinition_', () => {
     installAssignmentDefinitionControllerStub([]);
@@ -856,84 +616,46 @@ describe('Section 5: API layer refactoring - Transport validation unchanged', ()
 
   it('should validate upsert parameters via validation helper', () => {
     installAssignmentDefinitionControllerStub([]);
-
-    // Read source to verify validateUpsertParameters_ exists
-    const fs = require('fs');
-    const path = require('path');
-    const absolutePath = path.resolve(__dirname, modulePath);
-    const sourceCode = fs.readFileSync(absolutePath, 'utf8');
-
-    // validateUpsertParameters_ should still exist in source
-    expect(sourceCode).toContain('function validateUpsertParameters_');
+    expectFunctionInSource('validateUpsertParameters_');
   });
 
   it('should validate read parameters via validation helper', () => {
     installAssignmentDefinitionControllerStub([]);
-
-    const fs = require('fs');
-    const path = require('path');
-    const absolutePath = path.resolve(__dirname, modulePath);
-    const sourceCode = fs.readFileSync(absolutePath, 'utf8');
-
-    // validateReadParameters_ should still exist in source
-    expect(sourceCode).toContain('function validateReadParameters_');
+    expectFunctionInSource('validateReadParameters_');
   });
 
   it('should validate delete parameters via validation helper', () => {
     installAssignmentDefinitionControllerStub([]);
-
-    const fs = require('fs');
-    const path = require('path');
-    const absolutePath = path.resolve(__dirname, modulePath);
-    const sourceCode = fs.readFileSync(absolutePath, 'utf8');
-
-    // validateDeleteParameters_ should still exist in source
-    expect(sourceCode).toContain('function validateDeleteParameters_');
+    expectFunctionInSource('validateDeleteParameters_');
   });
 });
 
 describe('Section 5: API layer refactoring - No assignmentWeighting defaulting in inlined code', () => {
-  let originalAssignmentDefinitionController;
+  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
 
-  beforeEach(() => {
-    originalAssignmentDefinitionController = globalThis.AssignmentDefinitionController;
-  });
-
-  afterEach(() => {
-    delete require.cache[require.resolve(modulePath)];
-
-    if (originalAssignmentDefinitionController === undefined) {
-      delete globalThis.AssignmentDefinitionController;
-    } else {
-      globalThis.AssignmentDefinitionController = originalAssignmentDefinitionController;
-    }
-
-    vi.restoreAllMocks();
-  });
+  beforeEach(beforeEachHandler);
+  afterEach(afterEachHandler);
 
   it('should NOT add assignmentWeighting: 1 when missing from URL-based payload', () => {
-    installAssignmentDefinitionControllerStub([]);
+    const { AssignmentDefinitionController } = installAssignmentDefinitionControllerStub([]);
 
     const { upsertAssignmentDefinition_ } = loadAssignmentDefinitionPartialsModule();
 
     // Mock the controller to capture what payload it receives
     const receivedPayloads = [];
-    globalThis.AssignmentDefinitionController.prototype.upsertDefinition = vi.fn((payload) => {
+    AssignmentDefinitionController.prototype.upsertDefinition = vi.fn((payload) => {
       receivedPayloads.push(payload);
       return { definitionKey: 'test-key' };
     });
 
     // Mock toCanonicalFullDefinitionResponse
-    globalThis.AssignmentDefinitionController.prototype.toCanonicalFullDefinitionResponse = vi.fn(
-      (d) => d
-    );
+    AssignmentDefinitionController.prototype.toCanonicalFullDefinitionResponse = vi.fn((d) => d);
 
     // Need yearGroupKey for validation
     const payloadWithoutWeighting = {
       primaryTitle: 'Test Assignment',
       primaryTopicKey: 'test-topic',
-      referenceDocumentUrl:
-        'https://docs.google.com/presentation/d/1aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
+      referenceDocumentUrl: VALID_GOOGLE_URLS.SLIDES.basic,
       templateDocumentUrl:
         'https://docs.google.com/presentation/d/2aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
       yearGroupKey: 'year-10',
@@ -948,25 +670,22 @@ describe('Section 5: API layer refactoring - No assignmentWeighting defaulting i
   });
 
   it('should NOT default assignmentWeighting when null in URL-based payload', () => {
-    installAssignmentDefinitionControllerStub([]);
+    const { AssignmentDefinitionController } = installAssignmentDefinitionControllerStub([]);
 
     const { upsertAssignmentDefinition_ } = loadAssignmentDefinitionPartialsModule();
 
     const receivedPayloads = [];
-    globalThis.AssignmentDefinitionController.prototype.upsertDefinition = vi.fn((payload) => {
+    AssignmentDefinitionController.prototype.upsertDefinition = vi.fn((payload) => {
       receivedPayloads.push(payload);
       return { definitionKey: 'test-key' };
     });
 
-    globalThis.AssignmentDefinitionController.prototype.toCanonicalFullDefinitionResponse = vi.fn(
-      (d) => d
-    );
+    AssignmentDefinitionController.prototype.toCanonicalFullDefinitionResponse = vi.fn((d) => d);
 
     const payloadWithNullWeighting = {
       primaryTitle: 'Test Assignment',
       primaryTopicKey: 'test-topic',
-      referenceDocumentUrl:
-        'https://docs.google.com/presentation/d/1aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
+      referenceDocumentUrl: VALID_GOOGLE_URLS.SLIDES.basic,
       templateDocumentUrl:
         'https://docs.google.com/presentation/d/2aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
       yearGroupKey: 'year-10',
@@ -981,25 +700,22 @@ describe('Section 5: API layer refactoring - No assignmentWeighting defaulting i
   });
 
   it('should preserve provided assignmentWeighting values in URL-based payload', () => {
-    installAssignmentDefinitionControllerStub([]);
+    const { AssignmentDefinitionController } = installAssignmentDefinitionControllerStub([]);
 
     const { upsertAssignmentDefinition_ } = loadAssignmentDefinitionPartialsModule();
 
     const receivedPayloads = [];
-    globalThis.AssignmentDefinitionController.prototype.upsertDefinition = vi.fn((payload) => {
+    AssignmentDefinitionController.prototype.upsertDefinition = vi.fn((payload) => {
       receivedPayloads.push(payload);
       return { definitionKey: 'test-key' };
     });
 
-    globalThis.AssignmentDefinitionController.prototype.toCanonicalFullDefinitionResponse = vi.fn(
-      (d) => d
-    );
+    AssignmentDefinitionController.prototype.toCanonicalFullDefinitionResponse = vi.fn((d) => d);
 
     const payloadWithWeighting = {
       primaryTitle: 'Test Assignment',
       primaryTopicKey: 'test-topic',
-      referenceDocumentUrl:
-        'https://docs.google.com/presentation/d/1aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
+      referenceDocumentUrl: VALID_GOOGLE_URLS.SLIDES.basic,
       templateDocumentUrl:
         'https://docs.google.com/presentation/d/2aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
       yearGroupKey: 'year-10',
