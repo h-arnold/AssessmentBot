@@ -13,15 +13,6 @@ The assignment definition creation path contained significant technical debt:
 3. **Misplaced Responsibilities**: Value defaulting occurred in multiple layers (API, controller, model) violating separation of concerns
 4. **Hidden Failures**: Deprecated parameters were silently accepted, masking migration gaps
 
-During the refactoring planning phase, two architectural options emerged:
-
-- **Option A**: Maintain backwards compatibility by accepting both `yearGroup` and `yearGroupKey`, with runtime conversion
-- **Option B**: Enforce `yearGroupKey` only, with controller-resolution pattern and fail-fast validation
-
-## Decision
-
-**Chosen: Option B - yearGroupKey only with controller-resolution pattern**
-
 ### Selected Approach
 
 1. **Single Canonical Reference**: `yearGroupKey` (string) is the ONLY year-group reference in active code
