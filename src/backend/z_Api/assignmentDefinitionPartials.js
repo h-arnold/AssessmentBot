@@ -447,10 +447,10 @@ function extractSupportedDocumentDescriptor_(urlValue, fieldName) {
   }
 
   // Parse for GAS V8 compatibility (no native URL class) - use string ops instead of regex
-  const afterProtocol = urlValue.replace(/^https:\/\//u, '');
+  const afterProtocol = urlValue.replace(/^https:\/\//ui, '');
   const slashIndex = afterProtocol.indexOf('/');
-  const hostname = afterProtocol.slice(0, slashIndex).toLowerCase();
-  let pathname = afterProtocol.slice(slashIndex) || '/';
+  const hostname = (slashIndex === -1 ? afterProtocol : afterProtocol.slice(0, slashIndex)).toLowerCase();
+  let pathname = slashIndex === -1 ? '/' : afterProtocol.slice(slashIndex);
   // Strip query string and hash fragment
   const NOT_FOUND = -1;
   const queryIndex = pathname.indexOf('?');
