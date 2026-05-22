@@ -811,7 +811,7 @@ describe('App', () => {
     expect(transport.getCallCount(classPartialsMethodName)).toBe(1);
   });
 
-  it('logs one error event when startup warm-up fails without breaking render', async () => {
+  it('logs error events when startup warm-up fails without breaking render', async () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     installApiHandlerMock({
