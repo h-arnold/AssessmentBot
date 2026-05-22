@@ -896,5 +896,23 @@ if (typeof module !== 'undefined' && module.exports) {
     upsertAssignmentDefinition_,
     extractSupportedDocumentDescriptor_,
     toTransportPartialRow_,
+    // Export internal validation helpers for unit testability
+    hasControlCharacters_,
+    isIsoDateTimeString_,
+    validateSafeTrimmedIdentifier_,
+    validateReadParameters_,
+    validateDefinitionKey_,
+    validatePrimaryTopicKey_,
+    validateYearGroupKeyedFields_,
+    validateTimestamp_,
+    validatePartialRow_,
+    validateTaskWeightingsShape_,
+    validateRequiredYearGroupKey_,
+    validateUpsertParameters_,
+    validateWizardUpsertParameters_,
+    throwValidationError_,
+    throwReadValidationError_,
+    throwUpsertValidationError_,
+    throwDeleteValidationError_,
   };
 }
