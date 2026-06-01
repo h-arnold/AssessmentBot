@@ -4,11 +4,24 @@ import {
   installAssignmentDefinitionControllerStub,
   loadAssignmentDefinitionPartialsModule,
   buildValidPartial,
+  buildValidRow,
+  buildValidUpsertParams,
   createMockDefinitionForPartialRow,
   expectFunctionNotInSource,
   expectFunctionInSource,
   expectPatternInSource,
   expectPatternNotInSource,
+  runBinaryFunctionTest,
+  runThrowingValidationTest,
+  runSimpleValidationTest,
+  describeRowIndexValidation,
+  describeParameterValidation,
+  describeThrowValidationError,
+  describeWithAssignmentDefinitionController,
+  assertValidationError,
+  assertValidationPasses,
+  createValidationTestContext,
+  createFreshValidationTestContext,
 } from '../helpers/assignmentDefinitionPartialsTestHelpers.js';
 
 const modulePath = '../../src/backend/z_Api/assignmentDefinitionPartials.js';
@@ -878,648 +891,530 @@ describe('Section 5: API layer refactoring - No assignmentWeighting defaulting i
 // ============================================================================
 
 describe('hasControlCharacters_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
-  it.each([
-    {
-      description: 'string with ASCII control character DEL (127)',
-      value: 'test\x7fvalue',
-      expected: true,
-    },
-    {
-      description: 'string with ASCII control character NUL (0)',
-      value: 'test\x00value',
-      expected: true,
-    },
-    {
-      description: 'string with ASCII control character SOH (1)',
-      value: 'test\x01value',
-      expected: true,
-    },
-    {
-      description: 'string with ASCII control character LF (10)',
-      value: 'test\nvalue',
-      expected: true,
-    },
-    {
-      description: 'string with ASCII control character CR (13)',
-      value: 'test\rvalue',
-      expected: true,
-    },
-    {
-      description: 'string with ASCII control character TAB (9)',
-      value: 'test\tvalue',
-      expected: true,
-    },
-    {
-      description: 'string with ASCII control character BEL (7)',
-      value: 'test\x07value',
-      expected: true,
-    },
-    {
-      description: 'string with ASCII control character ESC (27)',
-      value: 'test\x1bvalue',
-      expected: true,
-    },
-    { description: 'normal alphanumeric string', value: 'testValue123', expected: false },
-    { description: 'string with spaces', value: 'test value', expected: false },
-    { description: 'string with hyphens', value: 'test-value', expected: false },
-    { description: 'string with underscores', value: 'test_value', expected: false },
-    { description: 'empty string', value: '', expected: false },
-    { description: 'string with forward slash', value: 'test/value', expected: false },
-    { description: 'string with backslash', value: 'test\\value', expected: false },
-    { description: 'string with dot-dot', value: 'test..value', expected: false },
-    { description: 'string with unicode characters', value: 'test值value', expected: false },
-    {
-      description: 'string with unicode control character U+2028',
-      value: 'test\u2028value',
-      expected: false,
-    },
-  ])('returns $expected for $description', ({ value, expected }) => {
-    installAssignmentDefinitionControllerStub([]);
-    const { hasControlCharacters_ } = loadAssignmentDefinitionPartialsModule();
-    expect(hasControlCharacters_(value)).toBe(expected);
+  runBinaryFunctionTest({
+    functionName: 'hasControlCharacters_',
+    testCases: [
+      {
+        description: 'string with ASCII control character DEL (127)',
+        value: 'test\x7fvalue',
+        expected: true,
+      },
+      {
+        description: 'string with ASCII control character NUL (0)',
+        value: 'test\x00value',
+        expected: true,
+      },
+      {
+        description: 'string with ASCII control character SOH (1)',
+        value: 'test\x01value',
+        expected: true,
+      },
+      {
+        description: 'string with ASCII control character LF (10)',
+        value: 'test\nvalue',
+        expected: true,
+      },
+      {
+        description: 'string with ASCII control character CR (13)',
+        value: 'test\rvalue',
+        expected: true,
+      },
+      {
+        description: 'string with ASCII control character TAB (9)',
+        value: 'test\tvalue',
+        expected: true,
+      },
+      {
+        description: 'string with ASCII control character BEL (7)',
+        value: 'test\x07value',
+        expected: true,
+      },
+      {
+        description: 'string with ASCII control character ESC (27)',
+        value: 'test\x1bvalue',
+        expected: true,
+      },
+      { description: 'normal alphanumeric string', value: 'testValue123', expected: false },
+      { description: 'string with spaces', value: 'test value', expected: false },
+      { description: 'string with hyphens', value: 'test-value', expected: false },
+      { description: 'string with underscores', value: 'test_value', expected: false },
+      { description: 'empty string', value: '', expected: false },
+      { description: 'string with forward slash', value: 'test/value', expected: false },
+      { description: 'string with backslash', value: 'test\\value', expected: false },
+      { description: 'string with dot-dot', value: 'test..value', expected: false },
+      { description: 'string with unicode characters', value: 'test值value', expected: false },
+      {
+        description: 'string with unicode control character U+2028',
+        value: 'test\u2028value',
+        expected: false,
+      },
+    ],
   });
 });
 
 describe('isIsoDateTimeString_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
-  it.each([
-    // Valid ISO datetime strings
-    {
-      description: 'UTC timezone with Z suffix',
-      value: '2026-01-05T10:00:00.000Z',
-      expected: true,
-    },
-    {
-      description: 'UTC timezone with +00:00 offset',
-      value: '2026-01-05T10:00:00.000+00:00',
-      expected: true,
-    },
-    {
-      description: 'UTC timezone with -00:00 offset',
-      value: '2026-01-05T10:00:00.000-00:00',
-      expected: true,
-    },
-    {
-      description: 'positive offset +01:00',
-      value: '2026-01-05T10:00:00.000+01:00',
-      expected: true,
-    },
-    {
-      description: 'negative offset -05:30',
-      value: '2026-01-05T10:00:00.000-05:30',
-      expected: true,
-    },
-    {
-      description: 'positive offset +23:59',
-      value: '2026-01-05T10:00:00.000+23:59',
-      expected: true,
-    },
-    {
-      description: 'negative offset -23:59',
-      value: '2026-01-05T10:00:00.000-23:59',
-      expected: true,
-    },
-    { description: 'midnight time', value: '2026-01-05T00:00:00.000Z', expected: true },
-    { description: 'end of day time', value: '2026-01-05T23:59:59.999Z', expected: true },
-    { description: 'leap year date', value: '2024-02-29T12:00:00.000Z', expected: true },
-    { description: 'year 1970', value: '1970-01-01T00:00:00.000Z', expected: true },
-    { description: 'year 9999', value: '9999-12-31T23:59:59.999Z', expected: true },
-    // Invalid ISO datetime strings
-    { description: 'non-string value (number)', value: 1234567890, expected: false },
-    { description: 'non-string value (null)', value: null, expected: false },
-    { description: 'non-string value (undefined)', value: undefined, expected: false },
-    { description: 'non-string value (object)', value: {}, expected: false },
-    { description: 'empty string', value: '', expected: false },
-    { description: 'date only without time', value: '2026-01-05', expected: false },
-    { description: 'time only without date', value: 'T10:00:00.000Z', expected: false },
-    { description: 'missing milliseconds', value: '2026-01-05T10:00:00Z', expected: false },
-    { description: 'missing seconds', value: '2026-01-05T10:00:00.000', expected: false },
-    { description: 'missing timezone', value: '2026-01-05T10:00:00.000', expected: false },
-    {
-      description: 'invalid timezone format (X)',
-      value: '2026-01-05T10:00:00.000X',
-      expected: false,
-    },
-    {
-      description: 'invalid timezone format (missing colon)',
-      value: '2026-01-05T10:00:00.000+0100',
-      expected: false,
-    },
-    {
-      description: 'invalid timezone format (single digit hour)',
-      value: '2026-01-05T10:00:00.000+1:00',
-      expected: false,
-    },
-    { description: 'invalid date (month 13)', value: '2026-13-05T10:00:00.000Z', expected: false },
-    { description: 'invalid date (day 32)', value: '2026-01-32T10:00:00.000Z', expected: false },
-    {
-      description: 'invalid date (February 30)',
-      value: '2026-02-30T10:00:00.000Z',
-      expected: false,
-    },
-    { description: 'invalid hour (24)', value: '2026-01-05T24:00:00.000Z', expected: false },
-    { description: 'invalid minute (60)', value: '2026-01-05T10:60:00.000Z', expected: false },
-    { description: 'invalid second (60)', value: '2026-01-05T10:00:60.000Z', expected: false },
-    {
-      description: 'invalid millisecond (1000)',
-      value: '2026-01-05T10:00:00.1000Z',
-      expected: false,
-    },
-    {
-      description: 'offset hours exceeds 23',
-      value: '2026-01-05T10:00:00.000+24:00',
-      expected: false,
-    },
-    {
-      description: 'offset minutes exceeds 59',
-      value: '2026-01-05T10:00:00.000+01:60',
-      expected: false,
-    },
-    {
-      description: 'offset hours negative exceeds 23',
-      value: '2026-01-05T10:00:00.000-24:00',
-      expected: false,
-    },
-    {
-      description: 'offset minutes negative exceeds 59',
-      value: '2026-01-05T10:00:00.000-01:60',
-      expected: false,
-    },
-    {
-      description: 'invalid date (Feb 29 in non-leap year 2026)',
-      value: '2026-02-29T12:00:00.000Z',
-      expected: false,
-    },
-  ])('returns $expected for $description', ({ value, expected }) => {
-    installAssignmentDefinitionControllerStub([]);
-    const { isIsoDateTimeString_ } = loadAssignmentDefinitionPartialsModule();
-    expect(isIsoDateTimeString_(value)).toBe(expected);
+  runBinaryFunctionTest({
+    functionName: 'isIsoDateTimeString_',
+    testCases: [
+      // Valid ISO datetime strings
+      {
+        description: 'UTC timezone with Z suffix',
+        value: '2026-01-05T10:00:00.000Z',
+        expected: true,
+      },
+      {
+        description: 'UTC timezone with +00:00 offset',
+        value: '2026-01-05T10:00:00.000+00:00',
+        expected: true,
+      },
+      {
+        description: 'UTC timezone with -00:00 offset',
+        value: '2026-01-05T10:00:00.000-00:00',
+        expected: true,
+      },
+      {
+        description: 'positive offset +01:00',
+        value: '2026-01-05T10:00:00.000+01:00',
+        expected: true,
+      },
+      {
+        description: 'negative offset -05:30',
+        value: '2026-01-05T10:00:00.000-05:30',
+        expected: true,
+      },
+      {
+        description: 'positive offset +23:59',
+        value: '2026-01-05T10:00:00.000+23:59',
+        expected: true,
+      },
+      {
+        description: 'negative offset -23:59',
+        value: '2026-01-05T10:00:00.000-23:59',
+        expected: true,
+      },
+      { description: 'midnight time', value: '2026-01-05T00:00:00.000Z', expected: true },
+      { description: 'end of day time', value: '2026-01-05T23:59:59.999Z', expected: true },
+      { description: 'leap year date', value: '2024-02-29T12:00:00.000Z', expected: true },
+      { description: 'year 1970', value: '1970-01-01T00:00:00.000Z', expected: true },
+      { description: 'year 9999', value: '9999-12-31T23:59:59.999Z', expected: true },
+      // Invalid ISO datetime strings
+      { description: 'non-string value (number)', value: 1234567890, expected: false },
+      { description: 'non-string value (null)', value: null, expected: false },
+      { description: 'non-string value (undefined)', value: undefined, expected: false },
+      { description: 'non-string value (object)', value: {}, expected: false },
+      { description: 'empty string', value: '', expected: false },
+      { description: 'date only without time', value: '2026-01-05', expected: false },
+      { description: 'time only without date', value: 'T10:00:00.000Z', expected: false },
+      { description: 'missing milliseconds', value: '2026-01-05T10:00:00Z', expected: false },
+      { description: 'missing seconds', value: '2026-01-05T10:00:00.000', expected: false },
+      { description: 'missing timezone', value: '2026-01-05T10:00:00.000', expected: false },
+      {
+        description: 'invalid timezone format (X)',
+        value: '2026-01-05T10:00:00.000X',
+        expected: false,
+      },
+      {
+        description: 'invalid timezone format (missing colon)',
+        value: '2026-01-05T10:00:00.000+0100',
+        expected: false,
+      },
+      {
+        description: 'invalid timezone format (single digit hour)',
+        value: '2026-01-05T10:00:00.000+1:00',
+        expected: false,
+      },
+      {
+        description: 'invalid date (month 13)',
+        value: '2026-13-05T10:00:00.000Z',
+        expected: false,
+      },
+      { description: 'invalid date (day 32)', value: '2026-01-32T10:00:00.000Z', expected: false },
+      {
+        description: 'invalid date (February 30)',
+        value: '2026-02-30T10:00:00.000Z',
+        expected: false,
+      },
+      { description: 'invalid hour (24)', value: '2026-01-05T24:00:00.000Z', expected: false },
+      { description: 'invalid minute (60)', value: '2026-01-05T10:60:00.000Z', expected: false },
+      { description: 'invalid second (60)', value: '2026-01-05T10:00:60.000Z', expected: false },
+      {
+        description: 'invalid millisecond (1000)',
+        value: '2026-01-05T10:00:00.1000Z',
+        expected: false,
+      },
+      {
+        description: 'offset hours exceeds 23',
+        value: '2026-01-05T10:00:00.000+24:00',
+        expected: false,
+      },
+      {
+        description: 'offset minutes exceeds 59',
+        value: '2026-01-05T10:00:00.000+01:60',
+        expected: false,
+      },
+      {
+        description: 'offset hours negative exceeds 23',
+        value: '2026-01-05T10:00:00.000-24:00',
+        expected: false,
+      },
+      {
+        description: 'offset minutes negative exceeds 59',
+        value: '2026-01-05T10:00:00.000-01:60',
+        expected: false,
+      },
+      {
+        description: 'invalid date (Feb 29 in non-leap year 2026)',
+        value: '2026-02-29T12:00:00.000Z',
+        expected: false,
+      },
+    ],
   });
 });
 
 describe('validateSafeTrimmedIdentifier_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
+  describeWithAssignmentDefinitionController('validateSafeTrimmedIdentifier_', () => {
+    const baseOptions = {
+      typeErrorMessage: 'type error',
+      nonEmptyErrorMessage: 'non-empty error',
+      trimmedErrorMessage: 'trimmed error',
+      unsafeErrorMessage: 'unsafe error',
+      fieldNames: { type: 'field', nonEmpty: 'field', trimmed: 'field', unsafe: 'field' },
+    };
 
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
+    let throwValidationError_, validateSafeTrimmedIdentifier_;
 
-  let throwValidationError_, validateSafeTrimmedIdentifier_;
+    beforeEach(() => {
+      installAssignmentDefinitionControllerStub([]);
+      const module = loadAssignmentDefinitionPartialsModule();
+      throwValidationError_ = module.throwValidationError_;
+      validateSafeTrimmedIdentifier_ = module.validateSafeTrimmedIdentifier_;
+    });
 
-  beforeEach(() => {
-    installAssignmentDefinitionControllerStub([]);
-    const module = loadAssignmentDefinitionPartialsModule();
-    throwValidationError_ = module.throwValidationError_;
-    validateSafeTrimmedIdentifier_ = module.validateSafeTrimmedIdentifier_;
-  });
+    it.each([
+      {
+        description: 'valid string identifier',
+        value: 'valid-key',
+        shouldThrow: false,
+      },
+      {
+        description: 'valid string with numbers',
+        value: 'valid-key-123',
+        shouldThrow: false,
+      },
+      {
+        description: 'non-string value (number)',
+        value: 123,
+        shouldThrow: true,
+        expectedError: 'type error',
+        expectedField: 'field',
+      },
+      {
+        description: 'non-string value (null)',
+        value: null,
+        shouldThrow: true,
+        expectedError: 'type error',
+        expectedField: 'field',
+      },
+      {
+        description: 'non-string value (undefined)',
+        value: undefined,
+        shouldThrow: true,
+        expectedError: 'type error',
+        expectedField: 'field',
+      },
+      {
+        description: 'empty string',
+        value: '',
+        shouldThrow: true,
+        expectedError: 'non-empty error',
+        expectedField: 'field',
+      },
+      {
+        description: 'whitespace only string',
+        value: '   ',
+        shouldThrow: true,
+        expectedError: 'non-empty error',
+        expectedField: 'field',
+      },
+      {
+        description: 'untrimmed string with leading spaces',
+        value: '  valid-key',
+        shouldThrow: true,
+        expectedError: 'trimmed error',
+        expectedField: 'field',
+      },
+      {
+        description: 'untrimmed string with trailing spaces',
+        value: 'valid-key  ',
+        shouldThrow: true,
+        expectedError: 'trimmed error',
+        expectedField: 'field',
+      },
+      {
+        description: 'string with forward slash',
+        value: 'valid/key',
+        shouldThrow: true,
+        expectedError: 'unsafe error',
+        expectedField: 'field',
+      },
+      {
+        description: 'string with backslash',
+        value: 'valid\\key',
+        shouldThrow: true,
+        expectedError: 'unsafe error',
+        expectedField: 'field',
+      },
+      {
+        description: 'string with dot-dot',
+        value: 'valid..key',
+        shouldThrow: true,
+        expectedError: 'unsafe error',
+        expectedField: 'field',
+      },
+      {
+        description: 'string with control character',
+        value: 'valid\x00key',
+        shouldThrow: true,
+        expectedError: 'unsafe error',
+        expectedField: 'field',
+      },
+      {
+        description: 'string with DEL character',
+        value: 'valid\x7fkey',
+        shouldThrow: true,
+        expectedError: 'unsafe error',
+        expectedField: 'field',
+      },
+    ])('handles $description correctly', ({ value, shouldThrow, expectedError, expectedField }) => {
+      const options = { ...baseOptions, throwValidationError: throwValidationError_ };
 
-  const baseOptions = {
-    typeErrorMessage: 'type error',
-    nonEmptyErrorMessage: 'non-empty error',
-    trimmedErrorMessage: 'trimmed error',
-    unsafeErrorMessage: 'unsafe error',
-    fieldNames: { type: 'field', nonEmpty: 'field', trimmed: 'field', unsafe: 'field' },
-  };
-
-  it.each([
-    {
-      description: 'valid string identifier',
-      value: 'valid-key',
-      shouldThrow: false,
-    },
-    {
-      description: 'valid string with numbers',
-      value: 'valid-key-123',
-      shouldThrow: false,
-    },
-    {
-      description: 'non-string value (number)',
-      value: 123,
-      shouldThrow: true,
-      expectedError: 'type error',
-      expectedField: 'field',
-    },
-    {
-      description: 'non-string value (null)',
-      value: null,
-      shouldThrow: true,
-      expectedError: 'type error',
-      expectedField: 'field',
-    },
-    {
-      description: 'non-string value (undefined)',
-      value: undefined,
-      shouldThrow: true,
-      expectedError: 'type error',
-      expectedField: 'field',
-    },
-    {
-      description: 'empty string',
-      value: '',
-      shouldThrow: true,
-      expectedError: 'non-empty error',
-      expectedField: 'field',
-    },
-    {
-      description: 'whitespace only string',
-      value: '   ',
-      shouldThrow: true,
-      expectedError: 'non-empty error',
-      expectedField: 'field',
-    },
-    {
-      description: 'untrimmed string with leading spaces',
-      value: '  valid-key',
-      shouldThrow: true,
-      expectedError: 'trimmed error',
-      expectedField: 'field',
-    },
-    {
-      description: 'untrimmed string with trailing spaces',
-      value: 'valid-key  ',
-      shouldThrow: true,
-      expectedError: 'trimmed error',
-      expectedField: 'field',
-    },
-    {
-      description: 'string with forward slash',
-      value: 'valid/key',
-      shouldThrow: true,
-      expectedError: 'unsafe error',
-      expectedField: 'field',
-    },
-    {
-      description: 'string with backslash',
-      value: 'valid\\key',
-      shouldThrow: true,
-      expectedError: 'unsafe error',
-      expectedField: 'field',
-    },
-    {
-      description: 'string with dot-dot',
-      value: 'valid..key',
-      shouldThrow: true,
-      expectedError: 'unsafe error',
-      expectedField: 'field',
-    },
-    {
-      description: 'string with control character',
-      value: 'valid\x00key',
-      shouldThrow: true,
-      expectedError: 'unsafe error',
-      expectedField: 'field',
-    },
-    {
-      description: 'string with DEL character',
-      value: 'valid\x7fkey',
-      shouldThrow: true,
-      expectedError: 'unsafe error',
-      expectedField: 'field',
-    },
-  ])('handles $description correctly', ({ value, shouldThrow, expectedError, expectedField }) => {
-    const options = { ...baseOptions, throwValidationError: throwValidationError_ };
-
-    if (shouldThrow) {
-      expect(() => validateSafeTrimmedIdentifier_(value, options)).toThrow(ApiValidationError);
-      expect(() => validateSafeTrimmedIdentifier_(value, options)).toThrow(expectedError);
-      try {
-        validateSafeTrimmedIdentifier_(value, options);
-      } catch (err) {
-        expect(err.fieldName).toBe(expectedField);
-        expect(err.method).toBe('getAssignmentDefinitionPartials');
+      if (shouldThrow) {
+        expect(() => validateSafeTrimmedIdentifier_(value, options)).toThrow(ApiValidationError);
+        expect(() => validateSafeTrimmedIdentifier_(value, options)).toThrow(expectedError);
+        try {
+          validateSafeTrimmedIdentifier_(value, options);
+        } catch (err) {
+          expect(err.fieldName).toBe(expectedField);
+          expect(err.method).toBe('getAssignmentDefinitionPartials');
+        }
+      } else {
+        expect(() => validateSafeTrimmedIdentifier_(value, options)).not.toThrow();
       }
-    } else {
-      expect(() => validateSafeTrimmedIdentifier_(value, options)).not.toThrow();
-    }
+    });
   });
 });
 
 describe('throwValidationError_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
-  it('throws ApiValidationError with correct properties', () => {
-    installAssignmentDefinitionControllerStub([]);
-    const { throwValidationError_ } = loadAssignmentDefinitionPartialsModule();
-
-    expect(() => throwValidationError_('test message', 'testField', 5)).toThrow(ApiValidationError);
-    try {
-      throwValidationError_('test message', 'testField', 5);
-    } catch (err) {
-      expect(err.message).toBe('test message');
-      expect(err.method).toBe('getAssignmentDefinitionPartials');
-      expect(err.fieldName).toBe('testField');
-      expect(err.details).toBe('rowIndex=5');
-    }
-  });
-
-  it('throws ApiValidationError with null fieldName', () => {
-    installAssignmentDefinitionControllerStub([]);
-    const { throwValidationError_ } = loadAssignmentDefinitionPartialsModule();
-
-    try {
-      throwValidationError_('test message', null, 10);
-    } catch (err) {
-      expect(err.message).toBe('test message');
-      expect(err.method).toBe('getAssignmentDefinitionPartials');
-      expect(err.fieldName).toBe(null);
-      expect(err.details).toBe('rowIndex=10');
-    }
-  });
-
-  it('throws ApiValidationError with zero rowIndex', () => {
-    installAssignmentDefinitionControllerStub([]);
-    const { throwValidationError_ } = loadAssignmentDefinitionPartialsModule();
-
-    try {
-      throwValidationError_('test message', 'field', 0);
-    } catch (err) {
-      expect(err.message).toBe('test message');
-      expect(err.method).toBe('getAssignmentDefinitionPartials');
-      expect(err.fieldName).toBe('field');
-      expect(err.details).toBe('rowIndex=0');
-    }
-  });
+  describeThrowValidationError('throwValidationError_', 'getAssignmentDefinitionPartials', [
+    {
+      description: 'throws ApiValidationError with correct properties',
+      args: ['test message', 'testField', 5],
+      errorMessage: 'test message',
+      fieldName: 'testField',
+      details: 'rowIndex=5',
+    },
+    {
+      description: 'throws ApiValidationError with null fieldName',
+      args: ['test message', null, 10],
+      errorMessage: 'test message',
+      fieldName: null,
+      details: 'rowIndex=10',
+    },
+    {
+      description: 'throws ApiValidationError with zero rowIndex',
+      args: ['test message', 'field', 0],
+      errorMessage: 'test message',
+      fieldName: 'field',
+      details: 'rowIndex=0',
+    },
+  ]);
 });
 
 describe('throwReadValidationError_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
-  it('throws ApiValidationError with correct properties for read operations', () => {
-    installAssignmentDefinitionControllerStub([]);
-    const { throwReadValidationError_ } = loadAssignmentDefinitionPartialsModule();
-
-    expect(() => throwReadValidationError_('test message', 'testField')).toThrow(
-      ApiValidationError
-    );
-    try {
-      throwReadValidationError_('test message', 'testField');
-    } catch (err) {
-      expect(err.message).toBe('test message');
-      expect(err.method).toBe('getAssignmentDefinition');
-      expect(err.fieldName).toBe('testField');
-    }
-  });
-
-  it('throws ApiValidationError with null fieldName', () => {
-    installAssignmentDefinitionControllerStub([]);
-    const { throwReadValidationError_ } = loadAssignmentDefinitionPartialsModule();
-
-    try {
-      throwReadValidationError_('test message', null);
-    } catch (err) {
-      expect(err.message).toBe('test message');
-      expect(err.method).toBe('getAssignmentDefinition');
-      expect(err.fieldName).toBe(null);
-    }
-  });
+  describeThrowValidationError('throwReadValidationError_', 'getAssignmentDefinition', [
+    {
+      description: 'throws ApiValidationError with correct properties for read operations',
+      args: ['test message', 'testField'],
+      errorMessage: 'test message',
+      fieldName: 'testField',
+    },
+    {
+      description: 'throws ApiValidationError with null fieldName',
+      args: ['test message', null],
+      errorMessage: 'test message',
+      fieldName: null,
+    },
+  ]);
 });
 
 describe('throwUpsertValidationError_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
-  it('throws ApiValidationError with correct properties for upsert operations', () => {
-    installAssignmentDefinitionControllerStub([]);
-    const { throwUpsertValidationError_ } = loadAssignmentDefinitionPartialsModule();
-
-    expect(() => throwUpsertValidationError_('test message', 'testField')).toThrow(
-      ApiValidationError
-    );
-    try {
-      throwUpsertValidationError_('test message', 'testField');
-    } catch (err) {
-      expect(err.message).toBe('test message');
-      expect(err.method).toBe('upsertAssignmentDefinition');
-      expect(err.fieldName).toBe('testField');
-    }
-  });
-
-  it('throws ApiValidationError with null fieldName', () => {
-    installAssignmentDefinitionControllerStub([]);
-    const { throwUpsertValidationError_ } = loadAssignmentDefinitionPartialsModule();
-
-    try {
-      throwUpsertValidationError_('test message', null);
-    } catch (err) {
-      expect(err.message).toBe('test message');
-      expect(err.method).toBe('upsertAssignmentDefinition');
-      expect(err.fieldName).toBe(null);
-    }
-  });
+  describeThrowValidationError('throwUpsertValidationError_', 'upsertAssignmentDefinition', [
+    {
+      description: 'throws ApiValidationError with correct properties for upsert operations',
+      args: ['test message', 'testField'],
+      errorMessage: 'test message',
+      fieldName: 'testField',
+    },
+    {
+      description: 'throws ApiValidationError with null fieldName',
+      args: ['test message', null],
+      errorMessage: 'test message',
+      fieldName: null,
+    },
+  ]);
 });
 
 describe('throwDeleteValidationError_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
-  it('throws ApiValidationError with correct properties for delete operations', () => {
-    installAssignmentDefinitionControllerStub([]);
-    const { throwDeleteValidationError_ } = loadAssignmentDefinitionPartialsModule();
-
-    expect(() => throwDeleteValidationError_('test message', 'testField')).toThrow(
-      ApiValidationError
-    );
-    try {
-      throwDeleteValidationError_('test message', 'testField');
-    } catch (err) {
-      expect(err.message).toBe('test message');
-      expect(err.method).toBe('deleteAssignmentDefinition');
-      expect(err.fieldName).toBe('testField');
-    }
-  });
-
-  it('throws ApiValidationError with null fieldName', () => {
-    installAssignmentDefinitionControllerStub([]);
-    const { throwDeleteValidationError_ } = loadAssignmentDefinitionPartialsModule();
-
-    try {
-      throwDeleteValidationError_('test message', null);
-    } catch (err) {
-      expect(err.message).toBe('test message');
-      expect(err.method).toBe('deleteAssignmentDefinition');
-      expect(err.fieldName).toBe(null);
-    }
-  });
+  describeThrowValidationError('throwDeleteValidationError_', 'deleteAssignmentDefinition', [
+    {
+      description: 'throws ApiValidationError with correct properties for delete operations',
+      args: ['test message', 'testField'],
+      errorMessage: 'test message',
+      fieldName: 'testField',
+    },
+    {
+      description: 'throws ApiValidationError with null fieldName',
+      args: ['test message', null],
+      errorMessage: 'test message',
+      fieldName: null,
+    },
+  ]);
 });
 
 describe('validateReadParameters_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
-  it.each([
-    {
-      description: 'valid parameters with definitionKey',
-      parameters: { definitionKey: 'valid-key' },
-      shouldThrow: false,
-    },
-    {
-      description: 'null parameters',
-      parameters: null,
-      shouldThrow: true,
-      expectedError: 'params must be an object.',
-      expectedField: 'params',
-    },
-    {
-      description: 'undefined parameters',
-      parameters: undefined,
-      shouldThrow: true,
-      expectedError: 'params must be an object.',
-      expectedField: 'params',
-    },
-    {
-      description: 'string parameters',
-      parameters: 'not-an-object',
-      shouldThrow: true,
-      expectedError: 'params must be an object.',
-      expectedField: 'params',
-    },
-    {
-      description: 'number parameters',
-      parameters: 123,
-      shouldThrow: true,
-      expectedError: 'params must be an object.',
-      expectedField: 'params',
-    },
-    {
-      description: 'array parameters',
-      parameters: ['not', 'an', 'object'],
-      shouldThrow: true,
-      expectedError: 'params must be an object.',
-      expectedField: 'params',
-    },
-    {
-      description: 'object without definitionKey',
-      parameters: { otherField: 'value' },
-      shouldThrow: true,
-      expectedError: 'Missing required field: definitionKey.',
-      expectedField: 'definitionKey',
-    },
-    {
-      description: 'object with null definitionKey',
-      parameters: { definitionKey: null },
-      shouldThrow: true,
-      expectedError: 'definitionKey must be a string.',
-      expectedField: 'definitionKey',
-    },
-    {
-      description: 'object with undefined definitionKey',
-      parameters: { definitionKey: undefined },
-      shouldThrow: true,
-      expectedError: 'definitionKey must be a string.',
-      expectedField: 'definitionKey',
-    },
-    {
-      description: 'object with empty string definitionKey',
-      parameters: { definitionKey: '' },
-      shouldThrow: true,
-      expectedError: 'definitionKey must be a non-empty string.',
-      expectedField: 'definitionKey',
-    },
-    {
-      description: 'object with whitespace-only definitionKey',
-      parameters: { definitionKey: '   ' },
-      shouldThrow: true,
-      expectedError: 'definitionKey must be a non-empty string.',
-      expectedField: 'definitionKey',
-    },
-    {
-      description: 'object with untrimmed definitionKey (leading spaces)',
-      parameters: { definitionKey: '  valid-key' },
-      shouldThrow: true,
-      expectedError: 'definitionKey must already be trimmed.',
-      expectedField: 'definitionKey',
-    },
-    {
-      description: 'object with untrimmed definitionKey (trailing spaces)',
-      parameters: { definitionKey: 'valid-key  ' },
-      shouldThrow: true,
-      expectedError: 'definitionKey must already be trimmed.',
-      expectedField: 'definitionKey',
-    },
-    {
-      description: 'object with definitionKey containing forward slash',
-      parameters: { definitionKey: 'invalid/key' },
-      shouldThrow: true,
-      expectedError: 'definitionKey contains unsafe characters.',
-      expectedField: 'definitionKey',
-    },
-    {
-      description: 'object with definitionKey containing backslash',
-      parameters: { definitionKey: 'invalid\\key' },
-      shouldThrow: true,
-      expectedError: 'definitionKey contains unsafe characters.',
-      expectedField: 'definitionKey',
-    },
-    {
-      description: 'object with definitionKey containing dot-dot',
-      parameters: { definitionKey: 'invalid..key' },
-      shouldThrow: true,
-      expectedError: 'definitionKey contains unsafe characters.',
-      expectedField: 'definitionKey',
-    },
-    {
-      description: 'object with definitionKey containing control character',
-      parameters: { definitionKey: 'invalid\x00key' },
-      shouldThrow: true,
-      expectedError: 'definitionKey contains unsafe characters.',
-      expectedField: 'definitionKey',
-    },
-    {
-      description: 'object with valid definitionKey and extra fields',
-      parameters: { definitionKey: 'valid-key', extraField: 'value' },
-      shouldThrow: false,
-    },
-  ])(
-    'handles $description correctly',
-    ({ parameters, shouldThrow, expectedError, expectedField }) => {
-      installAssignmentDefinitionControllerStub([]);
-      const { validateReadParameters_ } = loadAssignmentDefinitionPartialsModule();
-
-      if (shouldThrow) {
-        expect(() => validateReadParameters_(parameters)).toThrow(ApiValidationError);
-        expect(() => validateReadParameters_(parameters)).toThrow(expectedError);
-        try {
-          validateReadParameters_(parameters);
-        } catch (err) {
-          expect(err.fieldName).toBe(expectedField);
-          expect(err.method).toBe('getAssignmentDefinition');
-        }
-      } else {
-        const result = validateReadParameters_(parameters);
-        expect(result).toBe(parameters.definitionKey);
-        expect(() => validateReadParameters_(parameters)).not.toThrow();
-      }
-    }
+  describeParameterValidation(
+    'validateReadParameters_',
+    'getAssignmentDefinition',
+    [
+      {
+        description: 'valid parameters with definitionKey',
+        parameters: { definitionKey: 'valid-key' },
+        shouldThrow: false,
+      },
+      {
+        description: 'null parameters',
+        parameters: null,
+        shouldThrow: true,
+        expectedError: 'params must be an object.',
+        expectedField: 'params',
+      },
+      {
+        description: 'undefined parameters',
+        parameters: undefined,
+        shouldThrow: true,
+        expectedError: 'params must be an object.',
+        expectedField: 'params',
+      },
+      {
+        description: 'string parameters',
+        parameters: 'not-an-object',
+        shouldThrow: true,
+        expectedError: 'params must be an object.',
+        expectedField: 'params',
+      },
+      {
+        description: 'number parameters',
+        parameters: 123,
+        shouldThrow: true,
+        expectedError: 'params must be an object.',
+        expectedField: 'params',
+      },
+      {
+        description: 'array parameters',
+        parameters: ['not', 'an', 'object'],
+        shouldThrow: true,
+        expectedError: 'params must be an object.',
+        expectedField: 'params',
+      },
+      {
+        description: 'object without definitionKey',
+        parameters: { otherField: 'value' },
+        shouldThrow: true,
+        expectedError: 'Missing required field: definitionKey.',
+        expectedField: 'definitionKey',
+      },
+      {
+        description: 'object with null definitionKey',
+        parameters: { definitionKey: null },
+        shouldThrow: true,
+        expectedError: 'definitionKey must be a string.',
+        expectedField: 'definitionKey',
+      },
+      {
+        description: 'object with undefined definitionKey',
+        parameters: { definitionKey: undefined },
+        shouldThrow: true,
+        expectedError: 'definitionKey must be a string.',
+        expectedField: 'definitionKey',
+      },
+      {
+        description: 'object with empty string definitionKey',
+        parameters: { definitionKey: '' },
+        shouldThrow: true,
+        expectedError: 'definitionKey must be a non-empty string.',
+        expectedField: 'definitionKey',
+      },
+      {
+        description: 'object with whitespace-only definitionKey',
+        parameters: { definitionKey: '   ' },
+        shouldThrow: true,
+        expectedError: 'definitionKey must be a non-empty string.',
+        expectedField: 'definitionKey',
+      },
+      {
+        description: 'object with untrimmed definitionKey (leading spaces)',
+        parameters: { definitionKey: '  valid-key' },
+        shouldThrow: true,
+        expectedError: 'definitionKey must already be trimmed.',
+        expectedField: 'definitionKey',
+      },
+      {
+        description: 'object with untrimmed definitionKey (trailing spaces)',
+        parameters: { definitionKey: 'valid-key  ' },
+        shouldThrow: true,
+        expectedError: 'definitionKey must already be trimmed.',
+        expectedField: 'definitionKey',
+      },
+      {
+        description: 'object with definitionKey containing forward slash',
+        parameters: { definitionKey: 'invalid/key' },
+        shouldThrow: true,
+        expectedError: 'definitionKey contains unsafe characters.',
+        expectedField: 'definitionKey',
+      },
+      {
+        description: 'object with definitionKey containing backslash',
+        parameters: { definitionKey: 'invalid\\key' },
+        shouldThrow: true,
+        expectedError: 'definitionKey contains unsafe characters.',
+        expectedField: 'definitionKey',
+      },
+      {
+        description: 'object with definitionKey containing dot-dot',
+        parameters: { definitionKey: 'invalid..key' },
+        shouldThrow: true,
+        expectedError: 'definitionKey contains unsafe characters.',
+        expectedField: 'definitionKey',
+      },
+      {
+        description: 'object with definitionKey containing control character',
+        parameters: { definitionKey: 'invalid\x00key' },
+        shouldThrow: true,
+        expectedError: 'definitionKey contains unsafe characters.',
+        expectedField: 'definitionKey',
+      },
+      {
+        description: 'object with valid definitionKey and extra fields',
+        parameters: { definitionKey: 'valid-key', extraField: 'value' },
+        shouldThrow: false,
+      },
+    ],
+    false
   );
 });
 
 describe('validateDefinitionKey_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
-  it.each([
+  describeRowIndexValidation('validateDefinitionKey_', 'getAssignmentDefinitionPartials', [
     {
       description: 'valid definitionKey string',
       definitionKey: 'valid-key',
@@ -1588,36 +1483,11 @@ describe('validateDefinitionKey_', () => {
       expectedError: 'definitionKey must already be trimmed.',
       expectedField: 'definitionKey',
     },
-  ])(
-    'handles $description correctly',
-    ({ definitionKey, rowIndex, shouldThrow, expectedError, expectedField }) => {
-      installAssignmentDefinitionControllerStub([]);
-      const { validateDefinitionKey_ } = loadAssignmentDefinitionPartialsModule();
-
-      if (shouldThrow) {
-        expect(() => validateDefinitionKey_(definitionKey, rowIndex)).toThrow(ApiValidationError);
-        expect(() => validateDefinitionKey_(definitionKey, rowIndex)).toThrow(expectedError);
-        try {
-          validateDefinitionKey_(definitionKey, rowIndex);
-        } catch (err) {
-          expect(err.fieldName).toBe(expectedField);
-          expect(err.method).toBe('getAssignmentDefinitionPartials');
-          expect(err.details).toBe(`rowIndex=${rowIndex}`);
-        }
-      } else {
-        expect(() => validateDefinitionKey_(definitionKey, rowIndex)).not.toThrow();
-      }
-    }
-  );
+  ]);
 });
 
 describe('validatePrimaryTopicKey_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
-  it.each([
+  describeRowIndexValidation('validatePrimaryTopicKey_', 'getAssignmentDefinitionPartials', [
     {
       description: 'valid primaryTopicKey string',
       primaryTopicKey: 'valid-topic-key',
@@ -1672,38 +1542,11 @@ describe('validatePrimaryTopicKey_', () => {
       expectedError: 'primaryTopicKey must already be trimmed.',
       expectedField: 'primaryTopicKey',
     },
-  ])(
-    'handles $description correctly',
-    ({ primaryTopicKey, rowIndex, shouldThrow, expectedError, expectedField }) => {
-      installAssignmentDefinitionControllerStub([]);
-      const { validatePrimaryTopicKey_ } = loadAssignmentDefinitionPartialsModule();
-
-      if (shouldThrow) {
-        expect(() => validatePrimaryTopicKey_(primaryTopicKey, rowIndex)).toThrow(
-          ApiValidationError
-        );
-        expect(() => validatePrimaryTopicKey_(primaryTopicKey, rowIndex)).toThrow(expectedError);
-        try {
-          validatePrimaryTopicKey_(primaryTopicKey, rowIndex);
-        } catch (err) {
-          expect(err.fieldName).toBe(expectedField);
-          expect(err.method).toBe('getAssignmentDefinitionPartials');
-          expect(err.details).toBe(`rowIndex=${rowIndex}`);
-        }
-      } else {
-        expect(() => validatePrimaryTopicKey_(primaryTopicKey, rowIndex)).not.toThrow();
-      }
-    }
-  );
+  ]);
 });
 
 describe('validateYearGroupKeyedFields_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
-  it.each([
+  describeRowIndexValidation('validateYearGroupKeyedFields_', 'getAssignmentDefinitionPartials', [
     {
       description: 'valid yearGroupKey and yearGroupLabel',
       yearGroupKey: 'year-10',
@@ -1783,42 +1626,11 @@ describe('validateYearGroupKeyedFields_', () => {
       expectedError: 'yearGroupLabel must already be trimmed.',
       expectedField: 'yearGroupLabel',
     },
-  ])(
-    'handles $description correctly',
-    ({ yearGroupKey, yearGroupLabel, rowIndex, shouldThrow, expectedError, expectedField }) => {
-      installAssignmentDefinitionControllerStub([]);
-      const { validateYearGroupKeyedFields_ } = loadAssignmentDefinitionPartialsModule();
-
-      if (shouldThrow) {
-        expect(() => validateYearGroupKeyedFields_(yearGroupKey, yearGroupLabel, rowIndex)).toThrow(
-          ApiValidationError
-        );
-        expect(() => validateYearGroupKeyedFields_(yearGroupKey, yearGroupLabel, rowIndex)).toThrow(
-          expectedError
-        );
-        try {
-          validateYearGroupKeyedFields_(yearGroupKey, yearGroupLabel, rowIndex);
-        } catch (err) {
-          expect(err.fieldName).toBe(expectedField);
-          expect(err.method).toBe('getAssignmentDefinitionPartials');
-          expect(err.details).toBe(`rowIndex=${rowIndex}`);
-        }
-      } else {
-        expect(() =>
-          validateYearGroupKeyedFields_(yearGroupKey, yearGroupLabel, rowIndex)
-        ).not.toThrow();
-      }
-    }
-  );
+  ]);
 });
 
 describe('validateTimestamp_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
-  it.each([
+  describeRowIndexValidation('validateTimestamp_', 'getAssignmentDefinitionPartials', [
     {
       description: 'null timestamp is valid',
       value: null,
@@ -1876,55 +1688,11 @@ describe('validateTimestamp_', () => {
       expectedError: 'createdAt must be null or an ISO datetime string.',
       expectedField: 'createdAt',
     },
-  ])(
-    'handles $description correctly',
-    ({ value, fieldName, rowIndex, shouldThrow, expectedError, expectedField }) => {
-      installAssignmentDefinitionControllerStub([]);
-      const { validateTimestamp_ } = loadAssignmentDefinitionPartialsModule();
-
-      if (shouldThrow) {
-        expect(() => validateTimestamp_(value, fieldName, rowIndex)).toThrow(ApiValidationError);
-        expect(() => validateTimestamp_(value, fieldName, rowIndex)).toThrow(expectedError);
-        try {
-          validateTimestamp_(value, fieldName, rowIndex);
-        } catch (err) {
-          expect(err.fieldName).toBe(expectedField);
-          expect(err.method).toBe('getAssignmentDefinitionPartials');
-          expect(err.details).toBe(`rowIndex=${rowIndex}`);
-        }
-      } else {
-        expect(() => validateTimestamp_(value, fieldName, rowIndex)).not.toThrow();
-      }
-    }
-  );
+  ]);
 });
 
 describe('validatePartialRow_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
-  const buildValidRow = (overrides = {}) => ({
-    primaryTitle: 'Algebra Baseline',
-    primaryTopic: 'Algebra',
-    primaryTopicKey: 'topic-algebra',
-    yearGroupKey: 'year-group-10',
-    yearGroupLabel: 'Year 10',
-    alternateTitles: ['Algebra Starter'],
-    alternateTopics: ['Linear Equations'],
-    documentType: 'SLIDES',
-    referenceDocumentId: 'ref-doc-001',
-    templateDocumentId: 'tpl-doc-001',
-    assignmentWeighting: null,
-    definitionKey: 'algebra-baseline',
-    tasks: null,
-    createdAt: '2026-01-05T10:00:00.000Z',
-    updatedAt: '2026-01-06T12:30:00.000Z',
-    ...overrides,
-  });
-
-  it.each([
+  describeRowIndexValidation('validatePartialRow_', 'getAssignmentDefinitionPartials', [
     {
       description: 'valid partial row',
       row: buildValidRow(),
@@ -2073,658 +1841,572 @@ describe('validatePartialRow_', () => {
       expectedError: 'Missing required field: primaryTitle.',
       expectedField: 'primaryTitle',
     },
-  ])(
-    'handles $description correctly',
-    ({ row, rowIndex, shouldThrow, expectedError, expectedField }) => {
-      installAssignmentDefinitionControllerStub([]);
-      const { validatePartialRow_ } = loadAssignmentDefinitionPartialsModule();
-
-      if (shouldThrow) {
-        expect(() => validatePartialRow_(row, rowIndex)).toThrow(ApiValidationError);
-        expect(() => validatePartialRow_(row, rowIndex)).toThrow(expectedError);
-        try {
-          validatePartialRow_(row, rowIndex);
-        } catch (err) {
-          expect(err.fieldName).toBe(expectedField);
-          expect(err.method).toBe('getAssignmentDefinitionPartials');
-          expect(err.details).toBe(`rowIndex=${rowIndex}`);
-        }
-      } else {
-        expect(() => validatePartialRow_(row, rowIndex)).not.toThrow();
-      }
-    }
-  );
+  ]);
 });
 
 describe('validateTaskWeightingsShape_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
-  it.each([
-    {
-      description: 'undefined taskWeightings is valid',
-      taskWeightings: undefined,
-      shouldThrow: false,
-    },
-    {
-      description: 'null taskWeightings throws error (not undefined)',
-      taskWeightings: null,
-      shouldThrow: true,
-      expectedError: 'taskWeightings must be an array when provided.',
-      expectedField: 'taskWeightings',
-    },
-    {
-      description: 'empty array taskWeightings',
-      taskWeightings: [],
-      shouldThrow: false,
-    },
-    {
-      description: 'valid single task weighting',
-      taskWeightings: [{ taskId: 'task-1', taskWeighting: 1 }],
-      shouldThrow: false,
-    },
-    {
-      description: 'valid multiple task weightings',
-      taskWeightings: [
-        { taskId: 'task-1', taskWeighting: 1 },
-        { taskId: 'task-2', taskWeighting: 2 },
-      ],
-      shouldThrow: false,
-    },
-    {
-      description: 'non-array taskWeightings',
-      taskWeightings: 'not-an-array',
-      shouldThrow: true,
-      expectedError: 'taskWeightings must be an array when provided.',
-      expectedField: 'taskWeightings',
-    },
-    {
-      description: 'non-array taskWeightings (object)',
-      taskWeightings: { taskId: 'task-1', taskWeighting: 1 },
-      shouldThrow: true,
-      expectedError: 'taskWeightings must be an array when provided.',
-      expectedField: 'taskWeightings',
-    },
-    {
-      description: 'array with null entry',
-      taskWeightings: [null],
-      shouldThrow: true,
-      expectedError: 'taskWeightings entries must be objects.',
-      expectedField: 'taskWeightings',
-    },
-    {
-      description: 'array with string entry',
-      taskWeightings: ['not-an-object'],
-      shouldThrow: true,
-      expectedError: 'taskWeightings entries must be objects.',
-      expectedField: 'taskWeightings',
-    },
-    {
-      description: 'array with number entry',
-      taskWeightings: [123],
-      shouldThrow: true,
-      expectedError: 'taskWeightings entries must be objects.',
-      expectedField: 'taskWeightings',
-    },
-    {
-      description: 'array with array entry',
-      taskWeightings: [['nested', 'array']],
-      shouldThrow: true,
-      expectedError: 'taskWeightings entries must be objects.',
-      expectedField: 'taskWeightings',
-    },
-    {
-      description: 'array entry missing taskId',
-      taskWeightings: [{ taskWeighting: 1 }],
-      shouldThrow: true,
-      expectedError: 'taskWeightings entries must include taskId.',
-      expectedField: 'taskWeightings[0].taskId',
-    },
-    {
-      description: 'array entry with null taskId',
-      taskWeightings: [{ taskId: null, taskWeighting: 1 }],
-      shouldThrow: true,
-      expectedError: 'taskWeightings.taskId must be a string.',
-      expectedField: 'taskWeightings[0].taskId',
-    },
-    {
-      description: 'array entry with empty string taskId',
-      taskWeightings: [{ taskId: '', taskWeighting: 1 }],
-      shouldThrow: true,
-      expectedError: 'taskWeightings.taskId must be a non-empty string.',
-      expectedField: 'taskWeightings[0].taskId',
-    },
-    {
-      description: 'array entry with untrimmed taskId',
-      taskWeightings: [{ taskId: '  task-1', taskWeighting: 1 }],
-      shouldThrow: true,
-      expectedError: 'taskWeightings.taskId must already be trimmed.',
-      expectedField: 'taskWeightings[0].taskId',
-    },
-    {
-      description: 'array entry with taskId containing forward slash',
-      taskWeightings: [{ taskId: 'invalid/key', taskWeighting: 1 }],
-      shouldThrow: true,
-      expectedError: 'taskWeightings.taskId contains unsafe characters.',
-      expectedField: 'taskWeightings[0].taskId',
-    },
-    {
-      description: 'array entry missing taskWeighting',
-      taskWeightings: [{ taskId: 'task-1' }],
-      shouldThrow: true,
-      expectedError: 'taskWeightings entries must include taskWeighting.',
-      expectedField: 'taskWeightings[0].taskWeighting',
-    },
-    {
-      description: 'array entry with null taskWeighting (valid)',
-      taskWeightings: [{ taskId: 'task-1', taskWeighting: null }],
-      shouldThrow: false,
-    },
-    {
-      description: 'array entry with zero taskWeighting (valid)',
-      taskWeightings: [{ taskId: 'task-1', taskWeighting: 0 }],
-      shouldThrow: false,
-    },
-    {
-      description: 'array entry with negative taskWeighting (valid - no range check in transport)',
-      taskWeightings: [{ taskId: 'task-1', taskWeighting: -1 }],
-      shouldThrow: false,
-    },
-  ])(
-    'handles $description correctly',
-    ({ taskWeightings, shouldThrow, expectedError, expectedField }) => {
-      installAssignmentDefinitionControllerStub([]);
-      const { validateTaskWeightingsShape_ } = loadAssignmentDefinitionPartialsModule();
-
-      if (shouldThrow) {
-        expect(() => validateTaskWeightingsShape_(taskWeightings)).toThrow(ApiValidationError);
-        expect(() => validateTaskWeightingsShape_(taskWeightings)).toThrow(expectedError);
-        try {
-          validateTaskWeightingsShape_(taskWeightings);
-        } catch (err) {
-          expect(err.fieldName).toBe(expectedField);
-          expect(err.method).toBe('upsertAssignmentDefinition');
-        }
-      } else {
-        expect(() => validateTaskWeightingsShape_(taskWeightings)).not.toThrow();
-      }
-    }
+  describeParameterValidation(
+    'validateTaskWeightingsShape_',
+    'upsertAssignmentDefinition',
+    [
+      {
+        description: 'undefined taskWeightings is valid',
+        taskWeightings: undefined,
+        shouldThrow: false,
+      },
+      {
+        description: 'null taskWeightings throws error (not undefined)',
+        taskWeightings: null,
+        shouldThrow: true,
+        expectedError: 'taskWeightings must be an array when provided.',
+        expectedField: 'taskWeightings',
+      },
+      {
+        description: 'empty array taskWeightings',
+        taskWeightings: [],
+        shouldThrow: false,
+      },
+      {
+        description: 'valid single task weighting',
+        taskWeightings: [{ taskId: 'task-1', taskWeighting: 1 }],
+        shouldThrow: false,
+      },
+      {
+        description: 'valid multiple task weightings',
+        taskWeightings: [
+          { taskId: 'task-1', taskWeighting: 1 },
+          { taskId: 'task-2', taskWeighting: 2 },
+        ],
+        shouldThrow: false,
+      },
+      {
+        description: 'non-array taskWeightings',
+        taskWeightings: 'not-an-array',
+        shouldThrow: true,
+        expectedError: 'taskWeightings must be an array when provided.',
+        expectedField: 'taskWeightings',
+      },
+      {
+        description: 'non-array taskWeightings (object)',
+        taskWeightings: { taskId: 'task-1', taskWeighting: 1 },
+        shouldThrow: true,
+        expectedError: 'taskWeightings must be an array when provided.',
+        expectedField: 'taskWeightings',
+      },
+      {
+        description: 'array with null entry',
+        taskWeightings: [null],
+        shouldThrow: true,
+        expectedError: 'taskWeightings entries must be objects.',
+        expectedField: 'taskWeightings',
+      },
+      {
+        description: 'array with string entry',
+        taskWeightings: ['not-an-object'],
+        shouldThrow: true,
+        expectedError: 'taskWeightings entries must be objects.',
+        expectedField: 'taskWeightings',
+      },
+      {
+        description: 'array with number entry',
+        taskWeightings: [123],
+        shouldThrow: true,
+        expectedError: 'taskWeightings entries must be objects.',
+        expectedField: 'taskWeightings',
+      },
+      {
+        description: 'array with array entry',
+        taskWeightings: [['nested', 'array']],
+        shouldThrow: true,
+        expectedError: 'taskWeightings entries must be objects.',
+        expectedField: 'taskWeightings',
+      },
+      {
+        description: 'array entry missing taskId',
+        taskWeightings: [{ taskWeighting: 1 }],
+        shouldThrow: true,
+        expectedError: 'taskWeightings entries must include taskId.',
+        expectedField: 'taskWeightings[0].taskId',
+      },
+      {
+        description: 'array entry with null taskId',
+        taskWeightings: [{ taskId: null, taskWeighting: 1 }],
+        shouldThrow: true,
+        expectedError: 'taskWeightings.taskId must be a string.',
+        expectedField: 'taskWeightings[0].taskId',
+      },
+      {
+        description: 'array entry with empty string taskId',
+        taskWeightings: [{ taskId: '', taskWeighting: 1 }],
+        shouldThrow: true,
+        expectedError: 'taskWeightings.taskId must be a non-empty string.',
+        expectedField: 'taskWeightings[0].taskId',
+      },
+      {
+        description: 'array entry with untrimmed taskId',
+        taskWeightings: [{ taskId: '  task-1', taskWeighting: 1 }],
+        shouldThrow: true,
+        expectedError: 'taskWeightings.taskId must already be trimmed.',
+        expectedField: 'taskWeightings[0].taskId',
+      },
+      {
+        description: 'array entry with taskId containing forward slash',
+        taskWeightings: [{ taskId: 'invalid/key', taskWeighting: 1 }],
+        shouldThrow: true,
+        expectedError: 'taskWeightings.taskId contains unsafe characters.',
+        expectedField: 'taskWeightings[0].taskId',
+      },
+      {
+        description: 'array entry missing taskWeighting',
+        taskWeightings: [{ taskId: 'task-1' }],
+        shouldThrow: true,
+        expectedError: 'taskWeightings entries must include taskWeighting.',
+        expectedField: 'taskWeightings[0].taskWeighting',
+      },
+      {
+        description: 'array entry with null taskWeighting (valid)',
+        taskWeightings: [{ taskId: 'task-1', taskWeighting: null }],
+        shouldThrow: false,
+      },
+      {
+        description: 'array entry with zero taskWeighting (valid)',
+        taskWeightings: [{ taskId: 'task-1', taskWeighting: 0 }],
+        shouldThrow: false,
+      },
+      {
+        description:
+          'array entry with negative taskWeighting (valid - no range check in transport)',
+        taskWeightings: [{ taskId: 'task-1', taskWeighting: -1 }],
+        shouldThrow: false,
+      },
+    ],
+    false
   );
 });
 
 describe('validateRequiredYearGroupKey_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
-  it.each([
-    {
-      description: 'valid yearGroupKey',
-      parameters: { yearGroupKey: 'year-10' },
-      shouldThrow: false,
-    },
-    {
-      description: 'valid yearGroupKey with extra fields',
-      parameters: { yearGroupKey: 'year-10', primaryTitle: 'Test' },
-      shouldThrow: false,
-    },
-    {
-      description: 'missing yearGroupKey',
-      parameters: {},
-      shouldThrow: true,
-      expectedError: 'Missing required field: yearGroupKey.',
-      expectedField: 'yearGroupKey',
-    },
-    {
-      description: 'null yearGroupKey',
-      parameters: { yearGroupKey: null },
-      shouldThrow: true,
-      expectedError: 'yearGroupKey must be a non-null selected reference-data key.',
-      expectedField: 'yearGroupKey',
-    },
-    {
-      description: 'non-string yearGroupKey',
-      parameters: { yearGroupKey: 123 },
-      shouldThrow: true,
-      expectedError: 'yearGroupKey must be a string when provided.',
-      expectedField: 'yearGroupKey',
-    },
-    {
-      description: 'empty string yearGroupKey',
-      parameters: { yearGroupKey: '' },
-      shouldThrow: true,
-      expectedError: 'yearGroupKey must be a non-empty string.',
-      expectedField: 'yearGroupKey',
-    },
-    {
-      description: 'whitespace-only yearGroupKey',
-      parameters: { yearGroupKey: '   ' },
-      shouldThrow: true,
-      expectedError: 'yearGroupKey must be a non-empty string.',
-      expectedField: 'yearGroupKey',
-    },
-    {
-      description: 'untrimmed yearGroupKey',
-      parameters: { yearGroupKey: '  year-10' },
-      shouldThrow: true,
-      expectedError: 'yearGroupKey must already be trimmed.',
-      expectedField: 'yearGroupKey',
-    },
-    {
-      description: 'yearGroupKey with forward slash',
-      parameters: { yearGroupKey: 'invalid/key' },
-      shouldThrow: true,
-      expectedError: 'yearGroupKey contains unsafe characters.',
-      expectedField: 'yearGroupKey',
-    },
-    {
-      description: 'yearGroupKey with control character',
-      parameters: { yearGroupKey: 'invalid\x00key' },
-      shouldThrow: true,
-      expectedError: 'yearGroupKey contains unsafe characters.',
-      expectedField: 'yearGroupKey',
-    },
-  ])(
-    'handles $description correctly',
-    ({ parameters, shouldThrow, expectedError, expectedField }) => {
-      installAssignmentDefinitionControllerStub([]);
-      const { validateRequiredYearGroupKey_ } = loadAssignmentDefinitionPartialsModule();
-
-      if (shouldThrow) {
-        expect(() => validateRequiredYearGroupKey_(parameters)).toThrow(ApiValidationError);
-        expect(() => validateRequiredYearGroupKey_(parameters)).toThrow(expectedError);
-        try {
-          validateRequiredYearGroupKey_(parameters);
-        } catch (err) {
-          expect(err.fieldName).toBe(expectedField);
-          expect(err.method).toBe('upsertAssignmentDefinition');
-        }
-      } else {
-        expect(() => validateRequiredYearGroupKey_(parameters)).not.toThrow();
-      }
-    }
+  describeParameterValidation(
+    'validateRequiredYearGroupKey_',
+    'upsertAssignmentDefinition',
+    [
+      {
+        description: 'valid yearGroupKey',
+        parameters: { yearGroupKey: 'year-10' },
+        shouldThrow: false,
+      },
+      {
+        description: 'valid yearGroupKey with extra fields',
+        parameters: { yearGroupKey: 'year-10', primaryTitle: 'Test' },
+        shouldThrow: false,
+      },
+      {
+        description: 'missing yearGroupKey',
+        parameters: {},
+        shouldThrow: true,
+        expectedError: 'Missing required field: yearGroupKey.',
+        expectedField: 'yearGroupKey',
+      },
+      {
+        description: 'null yearGroupKey',
+        parameters: { yearGroupKey: null },
+        shouldThrow: true,
+        expectedError: 'yearGroupKey must be a non-null selected reference-data key.',
+        expectedField: 'yearGroupKey',
+      },
+      {
+        description: 'non-string yearGroupKey',
+        parameters: { yearGroupKey: 123 },
+        shouldThrow: true,
+        expectedError: 'yearGroupKey must be a string when provided.',
+        expectedField: 'yearGroupKey',
+      },
+      {
+        description: 'empty string yearGroupKey',
+        parameters: { yearGroupKey: '' },
+        shouldThrow: true,
+        expectedError: 'yearGroupKey must be a non-empty string.',
+        expectedField: 'yearGroupKey',
+      },
+      {
+        description: 'whitespace-only yearGroupKey',
+        parameters: { yearGroupKey: '   ' },
+        shouldThrow: true,
+        expectedError: 'yearGroupKey must be a non-empty string.',
+        expectedField: 'yearGroupKey',
+      },
+      {
+        description: 'untrimmed yearGroupKey',
+        parameters: { yearGroupKey: '  year-10' },
+        shouldThrow: true,
+        expectedError: 'yearGroupKey must already be trimmed.',
+        expectedField: 'yearGroupKey',
+      },
+      {
+        description: 'yearGroupKey with forward slash',
+        parameters: { yearGroupKey: 'invalid/key' },
+        shouldThrow: true,
+        expectedError: 'yearGroupKey contains unsafe characters.',
+        expectedField: 'yearGroupKey',
+      },
+      {
+        description: 'yearGroupKey with control character',
+        parameters: { yearGroupKey: 'invalid\x00key' },
+        shouldThrow: true,
+        expectedError: 'yearGroupKey contains unsafe characters.',
+        expectedField: 'yearGroupKey',
+      },
+    ],
+    false
   );
 });
 
 describe('validateUpsertParameters_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
-  const buildValidUpsertParams = (overrides = {}) => ({
-    primaryTitle: 'Test Assignment',
-    primaryTopicKey: 'test-topic',
-    referenceDocumentId: 'ref-doc-001',
-    templateDocumentId: 'tpl-doc-001',
-    yearGroupKey: 'year-10',
-    ...overrides,
-  });
-
-  it.each([
-    {
-      description: 'valid upsert parameters',
-      parameters: buildValidUpsertParams(),
-      shouldThrow: false,
-    },
-    {
-      description: 'valid upsert parameters with definitionKey',
-      parameters: buildValidUpsertParams({ definitionKey: 'test-key' }),
-      shouldThrow: false,
-    },
-    {
-      description: 'valid upsert parameters with taskWeightings',
-      parameters: buildValidUpsertParams({
-        taskWeightings: [{ taskId: 'task-1', taskWeighting: 1 }],
-      }),
-      shouldThrow: false,
-    },
-    {
-      description: 'valid upsert parameters with assignmentWeighting',
-      parameters: buildValidUpsertParams({ assignmentWeighting: 5 }),
-      shouldThrow: false,
-    },
-    {
-      description: 'null parameters',
-      parameters: null,
-      shouldThrow: true,
-      expectedError: 'params must be an object.',
-      expectedField: 'params',
-    },
-    {
-      description: 'undefined parameters',
-      parameters: undefined,
-      shouldThrow: true,
-      expectedError: 'params must be an object.',
-      expectedField: 'params',
-    },
-    {
-      description: 'string parameters',
-      parameters: 'not-an-object',
-      shouldThrow: true,
-      expectedError: 'params must be an object.',
-      expectedField: 'params',
-    },
-    {
-      description: 'array parameters',
-      parameters: ['not', 'an', 'object'],
-      shouldThrow: true,
-      expectedError: 'params must be an object.',
-      expectedField: 'params',
-    },
-    {
-      description: 'non-string primaryTitle',
-      parameters: buildValidUpsertParams({ primaryTitle: 123 }),
-      shouldThrow: true,
-      expectedError: 'primaryTitle must be a string.',
-      expectedField: 'primaryTitle',
-    },
-    {
-      description: 'primaryTopicKey with forward slash',
-      parameters: buildValidUpsertParams({ primaryTopicKey: 'invalid/key' }),
-      shouldThrow: true,
-      expectedError: 'primaryTopicKey contains unsafe characters.',
-      expectedField: 'primaryTopicKey',
-    },
-    {
-      description: 'non-string referenceDocumentId',
-      parameters: buildValidUpsertParams({ referenceDocumentId: 123 }),
-      shouldThrow: true,
-      expectedError: 'referenceDocumentId must be a string.',
-      expectedField: 'referenceDocumentId',
-    },
-    {
-      description: 'non-string templateDocumentId',
-      parameters: buildValidUpsertParams({ templateDocumentId: 123 }),
-      shouldThrow: true,
-      expectedError: 'templateDocumentId must be a string.',
-      expectedField: 'templateDocumentId',
-    },
-    {
-      description: 'non-string yearGroupKey',
-      parameters: buildValidUpsertParams({ yearGroupKey: 123 }),
-      shouldThrow: true,
-      expectedError: 'yearGroupKey must be a string when provided.',
-      expectedField: 'yearGroupKey',
-    },
-    {
-      description: 'null yearGroupKey',
-      parameters: buildValidUpsertParams({ yearGroupKey: null }),
-      shouldThrow: true,
-      expectedError: 'yearGroupKey must be a non-null selected reference-data key.',
-      expectedField: 'yearGroupKey',
-    },
-    {
-      description: 'non-string yearGroupKey',
-      parameters: buildValidUpsertParams({ yearGroupKey: 123 }),
-      shouldThrow: true,
-      expectedError: 'yearGroupKey must be a string when provided.',
-      expectedField: 'yearGroupKey',
-    },
-    {
-      description: 'invalid definitionKey (non-string)',
-      parameters: buildValidUpsertParams({ definitionKey: 123 }),
-      shouldThrow: true,
-      expectedError: 'definitionKey must be a string when provided.',
-      expectedField: 'definitionKey',
-    },
-    {
-      description: 'invalid definitionKey (empty string)',
-      parameters: buildValidUpsertParams({ definitionKey: '' }),
-      shouldThrow: true,
-      expectedError: 'definitionKey must be a non-empty string.',
-      expectedField: 'definitionKey',
-    },
-    {
-      description: 'invalid definitionKey (untrimmed)',
-      parameters: buildValidUpsertParams({ definitionKey: '  test-key' }),
-      shouldThrow: true,
-      expectedError: 'definitionKey must already be trimmed.',
-      expectedField: 'definitionKey',
-    },
-    {
-      description: 'invalid taskWeightings (non-array)',
-      parameters: buildValidUpsertParams({ taskWeightings: 'not-an-array' }),
-      shouldThrow: true,
-      expectedError: 'taskWeightings must be an array when provided.',
-      expectedField: 'taskWeightings',
-    },
-    {
-      description: 'invalid taskWeightings entry (missing taskId)',
-      parameters: buildValidUpsertParams({ taskWeightings: [{ taskWeighting: 1 }] }),
-      shouldThrow: true,
-      expectedError: 'taskWeightings entries must include taskId.',
-      expectedField: 'taskWeightings[0].taskId',
-    },
-    {
-      description: 'missing required field: primaryTitle',
-      parameters: {
-        primaryTopicKey: 'test-topic',
-        referenceDocumentId: 'ref-001',
-        templateDocumentId: 'tpl-001',
-        yearGroupKey: 'year-10',
+  describeParameterValidation(
+    'validateUpsertParameters_',
+    'upsertAssignmentDefinition',
+    [
+      {
+        description: 'valid upsert parameters',
+        parameters: buildValidUpsertParams(),
+        shouldThrow: false,
       },
-      shouldThrow: true,
-      expectedError: 'Missing required field: primaryTitle.',
-      expectedField: 'primaryTitle',
-    },
-    {
-      description: 'missing required field: referenceDocumentId',
-      parameters: {
-        primaryTitle: 'Test',
-        primaryTopicKey: 'test-topic',
-        templateDocumentId: 'tpl-001',
-        yearGroupKey: 'year-10',
+      {
+        description: 'valid upsert parameters with definitionKey',
+        parameters: buildValidUpsertParams({ definitionKey: 'test-key' }),
+        shouldThrow: false,
       },
-      shouldThrow: true,
-      expectedError: 'Missing required field: referenceDocumentId.',
-      expectedField: 'referenceDocumentId',
-    },
-  ])(
-    'handles $description correctly',
-    ({ parameters, shouldThrow, expectedError, expectedField }) => {
-      installAssignmentDefinitionControllerStub([]);
-      const { validateUpsertParameters_ } = loadAssignmentDefinitionPartialsModule();
-
-      if (shouldThrow) {
-        expect(() => validateUpsertParameters_(parameters)).toThrow(ApiValidationError);
-        expect(() => validateUpsertParameters_(parameters)).toThrow(expectedError);
-        try {
-          validateUpsertParameters_(parameters);
-        } catch (err) {
-          expect(err.fieldName).toBe(expectedField);
-          expect(err.method).toBe('upsertAssignmentDefinition');
-        }
-      } else {
-        expect(() => validateUpsertParameters_(parameters)).not.toThrow();
-      }
-    }
+      {
+        description: 'valid upsert parameters with taskWeightings',
+        parameters: buildValidUpsertParams({
+          taskWeightings: [{ taskId: 'task-1', taskWeighting: 1 }],
+        }),
+        shouldThrow: false,
+      },
+      {
+        description: 'valid upsert parameters with assignmentWeighting',
+        parameters: buildValidUpsertParams({ assignmentWeighting: 5 }),
+        shouldThrow: false,
+      },
+      {
+        description: 'null parameters',
+        parameters: null,
+        shouldThrow: true,
+        expectedError: 'params must be an object.',
+        expectedField: 'params',
+      },
+      {
+        description: 'undefined parameters',
+        parameters: undefined,
+        shouldThrow: true,
+        expectedError: 'params must be an object.',
+        expectedField: 'params',
+      },
+      {
+        description: 'string parameters',
+        parameters: 'not-an-object',
+        shouldThrow: true,
+        expectedError: 'params must be an object.',
+        expectedField: 'params',
+      },
+      {
+        description: 'array parameters',
+        parameters: ['not', 'an', 'object'],
+        shouldThrow: true,
+        expectedError: 'params must be an object.',
+        expectedField: 'params',
+      },
+      {
+        description: 'non-string primaryTitle',
+        parameters: buildValidUpsertParams({ primaryTitle: 123 }),
+        shouldThrow: true,
+        expectedError: 'primaryTitle must be a string.',
+        expectedField: 'primaryTitle',
+      },
+      {
+        description: 'primaryTopicKey with forward slash',
+        parameters: buildValidUpsertParams({ primaryTopicKey: 'invalid/key' }),
+        shouldThrow: true,
+        expectedError: 'primaryTopicKey contains unsafe characters.',
+        expectedField: 'primaryTopicKey',
+      },
+      {
+        description: 'non-string referenceDocumentId',
+        parameters: buildValidUpsertParams({ referenceDocumentId: 123 }),
+        shouldThrow: true,
+        expectedError: 'referenceDocumentId must be a string.',
+        expectedField: 'referenceDocumentId',
+      },
+      {
+        description: 'non-string templateDocumentId',
+        parameters: buildValidUpsertParams({ templateDocumentId: 123 }),
+        shouldThrow: true,
+        expectedError: 'templateDocumentId must be a string.',
+        expectedField: 'templateDocumentId',
+      },
+      {
+        description: 'non-string yearGroupKey',
+        parameters: buildValidUpsertParams({ yearGroupKey: 123 }),
+        shouldThrow: true,
+        expectedError: 'yearGroupKey must be a string when provided.',
+        expectedField: 'yearGroupKey',
+      },
+      {
+        description: 'null yearGroupKey',
+        parameters: buildValidUpsertParams({ yearGroupKey: null }),
+        shouldThrow: true,
+        expectedError: 'yearGroupKey must be a non-null selected reference-data key.',
+        expectedField: 'yearGroupKey',
+      },
+      {
+        description: 'non-string yearGroupKey',
+        parameters: buildValidUpsertParams({ yearGroupKey: 123 }),
+        shouldThrow: true,
+        expectedError: 'yearGroupKey must be a string when provided.',
+        expectedField: 'yearGroupKey',
+      },
+      {
+        description: 'invalid definitionKey (non-string)',
+        parameters: buildValidUpsertParams({ definitionKey: 123 }),
+        shouldThrow: true,
+        expectedError: 'definitionKey must be a string when provided.',
+        expectedField: 'definitionKey',
+      },
+      {
+        description: 'invalid definitionKey (empty string)',
+        parameters: buildValidUpsertParams({ definitionKey: '' }),
+        shouldThrow: true,
+        expectedError: 'definitionKey must be a non-empty string.',
+        expectedField: 'definitionKey',
+      },
+      {
+        description: 'invalid definitionKey (untrimmed)',
+        parameters: buildValidUpsertParams({ definitionKey: '  test-key' }),
+        shouldThrow: true,
+        expectedError: 'definitionKey must already be trimmed.',
+        expectedField: 'definitionKey',
+      },
+      {
+        description: 'invalid taskWeightings (non-array)',
+        parameters: buildValidUpsertParams({ taskWeightings: 'not-an-array' }),
+        shouldThrow: true,
+        expectedError: 'taskWeightings must be an array when provided.',
+        expectedField: 'taskWeightings',
+      },
+      {
+        description: 'invalid taskWeightings entry (missing taskId)',
+        parameters: buildValidUpsertParams({ taskWeightings: [{ taskWeighting: 1 }] }),
+        shouldThrow: true,
+        expectedError: 'taskWeightings entries must include taskId.',
+        expectedField: 'taskWeightings[0].taskId',
+      },
+      {
+        description: 'missing required field: primaryTitle',
+        parameters: {
+          primaryTopicKey: 'test-topic',
+          referenceDocumentId: 'ref-001',
+          templateDocumentId: 'tpl-001',
+          yearGroupKey: 'year-10',
+        },
+        shouldThrow: true,
+        expectedError: 'Missing required field: primaryTitle.',
+        expectedField: 'primaryTitle',
+      },
+      {
+        description: 'missing required field: referenceDocumentId',
+        parameters: {
+          primaryTitle: 'Test',
+          primaryTopicKey: 'test-topic',
+          templateDocumentId: 'tpl-001',
+          yearGroupKey: 'year-10',
+        },
+        shouldThrow: true,
+        expectedError: 'Missing required field: referenceDocumentId.',
+        expectedField: 'referenceDocumentId',
+      },
+    ],
+    false
   );
 
-  it('delegates to validateWizardUpsertParameters_ when document URLs are present', () => {
-    installAssignmentDefinitionControllerStub([]);
-    const { validateUpsertParameters_ } = loadAssignmentDefinitionPartialsModule();
+  describeWithAssignmentDefinitionController('validateUpsertParameters_ - delegation', () => {
+    it('delegates to validateWizardUpsertParameters_ when document URLs are present', () => {
+      const { validateUpsertParameters_ } = loadAssignmentDefinitionPartialsModule();
 
-    const urlParams = {
+      const urlParams = {
+        primaryTitle: 'Test Assignment',
+        primaryTopicKey: 'test-topic',
+        referenceDocumentUrl: VALID_GOOGLE_URLS.SLIDES.basic,
+        templateDocumentUrl:
+          'https://docs.google.com/presentation/d/2aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
+        yearGroupKey: 'year-10',
+      };
+
+      expect(() => validateUpsertParameters_(urlParams)).not.toThrow();
+    });
+  });
+});
+
+describe('validateWizardUpsertParameters_', () => {
+  describeWithAssignmentDefinitionController('validateWizardUpsertParameters_', () => {
+    const buildValidWizardParams = (overrides = {}) => ({
       primaryTitle: 'Test Assignment',
       primaryTopicKey: 'test-topic',
       referenceDocumentUrl: VALID_GOOGLE_URLS.SLIDES.basic,
       templateDocumentUrl:
         'https://docs.google.com/presentation/d/2aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
       yearGroupKey: 'year-10',
-    };
+      ...overrides,
+    });
 
-    expect(() => validateUpsertParameters_(urlParams)).not.toThrow();
-  });
-});
-
-describe('validateWizardUpsertParameters_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
-  const buildValidWizardParams = (overrides = {}) => ({
-    primaryTitle: 'Test Assignment',
-    primaryTopicKey: 'test-topic',
-    referenceDocumentUrl: VALID_GOOGLE_URLS.SLIDES.basic,
-    templateDocumentUrl: 'https://docs.google.com/presentation/d/2aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
-    yearGroupKey: 'year-10',
-    ...overrides,
-  });
-
-  it.each([
-    {
-      description: 'valid wizard upsert parameters',
-      parameters: buildValidWizardParams(),
-      shouldThrow: false,
-    },
-    {
-      description: 'valid wizard parameters with definitionKey',
-      parameters: buildValidWizardParams({ definitionKey: 'test-key' }),
-      shouldThrow: false,
-    },
-    {
-      description: 'non-string primaryTitle',
-      parameters: buildValidWizardParams({ primaryTitle: 123 }),
-      shouldThrow: true,
-      expectedError: 'primaryTitle must be a string.',
-      expectedField: 'primaryTitle',
-    },
-    {
-      description: 'primaryTopicKey with control character',
-      parameters: buildValidWizardParams({ primaryTopicKey: 'invalid\x00key' }),
-      shouldThrow: true,
-      expectedError: 'primaryTopicKey contains unsafe characters.',
-      expectedField: 'primaryTopicKey',
-    },
-    {
-      description: 'invalid referenceDocumentUrl (non-string)',
-      parameters: buildValidWizardParams({ referenceDocumentUrl: 123 }),
-      shouldThrow: true,
-      expectedError: 'referenceDocumentUrl must be a non-empty string URL.',
-      expectedField: 'referenceDocumentUrl',
-    },
-    {
-      description: 'invalid referenceDocumentUrl (empty string)',
-      parameters: buildValidWizardParams({ referenceDocumentUrl: '' }),
-      shouldThrow: true,
-      expectedError: 'referenceDocumentUrl must be a non-empty string URL.',
-      expectedField: 'referenceDocumentUrl',
-    },
-    {
-      description: 'invalid referenceDocumentUrl (not a valid URL)',
-      parameters: buildValidWizardParams({ referenceDocumentUrl: 'not-a-valid-url' }),
-      shouldThrow: true,
-      expectedError: 'referenceDocumentUrl must be a valid URL.',
-      expectedField: 'referenceDocumentUrl',
-    },
-    {
-      description: 'invalid templateDocumentUrl',
-      parameters: buildValidWizardParams({ templateDocumentUrl: 'not-a-valid-url' }),
-      shouldThrow: true,
-      expectedError: 'templateDocumentUrl must be a valid URL.',
-      expectedField: 'templateDocumentUrl',
-    },
-    {
-      description: 'non-string yearGroupKey',
-      parameters: buildValidWizardParams({ yearGroupKey: 123 }),
-      shouldThrow: true,
-      expectedError: 'yearGroupKey must be a string when provided.',
-      expectedField: 'yearGroupKey',
-    },
-    {
-      description: 'null yearGroupKey',
-      parameters: buildValidWizardParams({ yearGroupKey: null }),
-      shouldThrow: true,
-      expectedError: 'yearGroupKey must be a non-null selected reference-data key.',
-      expectedField: 'yearGroupKey',
-    },
-    {
-      description: 'same document for reference and template URLs',
-      parameters: buildValidWizardParams({
-        referenceDocumentUrl: VALID_GOOGLE_URLS.SLIDES.basic,
-        templateDocumentUrl: VALID_GOOGLE_URLS.SLIDES.basic,
-      }),
-      shouldThrow: true,
-      expectedError:
-        'referenceDocumentUrl and templateDocumentUrl must point to different documents.',
-      expectedField: 'referenceDocumentUrl',
-    },
-    {
-      description: 'different document types for reference and template URLs',
-      parameters: buildValidWizardParams({
-        referenceDocumentUrl: VALID_GOOGLE_URLS.SLIDES.basic,
-        templateDocumentUrl: VALID_GOOGLE_URLS.SHEETS.basic,
-      }),
-      shouldThrow: true,
-      expectedError:
-        'referenceDocumentUrl and templateDocumentUrl must use the same supported document type.',
-      expectedField: 'documentType',
-    },
-    {
-      description: 'valid sheets URLs',
-      parameters: buildValidWizardParams({
-        referenceDocumentUrl: VALID_GOOGLE_URLS.SHEETS.basic,
-        templateDocumentUrl:
-          'https://docs.google.com/spreadsheets/d/2xYzAbCdEfGhIjKlMnOpQrStUvWx/edit',
-      }),
-      shouldThrow: false,
-    },
-    {
-      description: 'valid with taskWeightings',
-      parameters: buildValidWizardParams({
-        taskWeightings: [{ taskId: 'task-1', taskWeighting: 1 }],
-      }),
-      shouldThrow: false,
-    },
-    {
-      description: 'missing required field: primaryTitle',
-      parameters: {
-        primaryTopicKey: 'test-topic',
-        referenceDocumentUrl: VALID_GOOGLE_URLS.SLIDES.basic,
-        templateDocumentUrl:
-          'https://docs.google.com/presentation/d/2aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
-        yearGroupKey: 'year-10',
+    it.each([
+      {
+        description: 'valid wizard upsert parameters',
+        parameters: buildValidWizardParams(),
+        shouldThrow: false,
       },
-      shouldThrow: true,
-      expectedError: 'Missing required field: primaryTitle.',
-      expectedField: 'primaryTitle',
-    },
-    {
-      description: 'missing required field: referenceDocumentUrl',
-      parameters: {
-        primaryTitle: 'Test',
-        primaryTopicKey: 'test-topic',
-        templateDocumentUrl:
-          'https://docs.google.com/presentation/d/2aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
-        yearGroupKey: 'year-10',
+      {
+        description: 'valid wizard parameters with definitionKey',
+        parameters: buildValidWizardParams({ definitionKey: 'test-key' }),
+        shouldThrow: false,
       },
-      shouldThrow: true,
-      expectedError: 'Missing required field: referenceDocumentUrl.',
-      expectedField: 'referenceDocumentUrl',
-    },
-  ])(
-    'handles $description correctly',
-    ({ parameters, shouldThrow, expectedError, expectedField }) => {
-      installAssignmentDefinitionControllerStub([]);
-      const { validateWizardUpsertParameters_ } = loadAssignmentDefinitionPartialsModule();
+      {
+        description: 'non-string primaryTitle',
+        parameters: buildValidWizardParams({ primaryTitle: 123 }),
+        shouldThrow: true,
+        expectedError: 'primaryTitle must be a string.',
+        expectedField: 'primaryTitle',
+      },
+      {
+        description: 'primaryTopicKey with control character',
+        parameters: buildValidWizardParams({ primaryTopicKey: 'invalid\x00key' }),
+        shouldThrow: true,
+        expectedError: 'primaryTopicKey contains unsafe characters.',
+        expectedField: 'primaryTopicKey',
+      },
+      {
+        description: 'invalid referenceDocumentUrl (non-string)',
+        parameters: buildValidWizardParams({ referenceDocumentUrl: 123 }),
+        shouldThrow: true,
+        expectedError: 'referenceDocumentUrl must be a non-empty string URL.',
+        expectedField: 'referenceDocumentUrl',
+      },
+      {
+        description: 'invalid referenceDocumentUrl (empty string)',
+        parameters: buildValidWizardParams({ referenceDocumentUrl: '' }),
+        shouldThrow: true,
+        expectedError: 'referenceDocumentUrl must be a non-empty string URL.',
+        expectedField: 'referenceDocumentUrl',
+      },
+      {
+        description: 'invalid referenceDocumentUrl (not a valid URL)',
+        parameters: buildValidWizardParams({ referenceDocumentUrl: 'not-a-valid-url' }),
+        shouldThrow: true,
+        expectedError: 'referenceDocumentUrl must be a valid URL.',
+        expectedField: 'referenceDocumentUrl',
+      },
+      {
+        description: 'invalid templateDocumentUrl',
+        parameters: buildValidWizardParams({ templateDocumentUrl: 'not-a-valid-url' }),
+        shouldThrow: true,
+        expectedError: 'templateDocumentUrl must be a valid URL.',
+        expectedField: 'templateDocumentUrl',
+      },
+      {
+        description: 'non-string yearGroupKey',
+        parameters: buildValidWizardParams({ yearGroupKey: 123 }),
+        shouldThrow: true,
+        expectedError: 'yearGroupKey must be a string when provided.',
+        expectedField: 'yearGroupKey',
+      },
+      {
+        description: 'null yearGroupKey',
+        parameters: buildValidWizardParams({ yearGroupKey: null }),
+        shouldThrow: true,
+        expectedError: 'yearGroupKey must be a non-null selected reference-data key.',
+        expectedField: 'yearGroupKey',
+      },
+      {
+        description: 'same document for reference and template URLs',
+        parameters: buildValidWizardParams({
+          referenceDocumentUrl: VALID_GOOGLE_URLS.SLIDES.basic,
+          templateDocumentUrl: VALID_GOOGLE_URLS.SLIDES.basic,
+        }),
+        shouldThrow: true,
+        expectedError:
+          'referenceDocumentUrl and templateDocumentUrl must point to different documents.',
+        expectedField: 'referenceDocumentUrl',
+      },
+      {
+        description: 'different document types for reference and template URLs',
+        parameters: buildValidWizardParams({
+          referenceDocumentUrl: VALID_GOOGLE_URLS.SLIDES.basic,
+          templateDocumentUrl: VALID_GOOGLE_URLS.SHEETS.basic,
+        }),
+        shouldThrow: true,
+        expectedError:
+          'referenceDocumentUrl and templateDocumentUrl must use the same supported document type.',
+        expectedField: 'documentType',
+      },
+      {
+        description: 'valid sheets URLs',
+        parameters: buildValidWizardParams({
+          referenceDocumentUrl: VALID_GOOGLE_URLS.SHEETS.basic,
+          templateDocumentUrl:
+            'https://docs.google.com/spreadsheets/d/2xYzAbCdEfGhIjKlMnOpQrStUvWx/edit',
+        }),
+        shouldThrow: false,
+      },
+      {
+        description: 'valid with taskWeightings',
+        parameters: buildValidWizardParams({
+          taskWeightings: [{ taskId: 'task-1', taskWeighting: 1 }],
+        }),
+        shouldThrow: false,
+      },
+      {
+        description: 'missing required field: primaryTitle',
+        parameters: {
+          primaryTopicKey: 'test-topic',
+          referenceDocumentUrl: VALID_GOOGLE_URLS.SLIDES.basic,
+          templateDocumentUrl:
+            'https://docs.google.com/presentation/d/2aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
+          yearGroupKey: 'year-10',
+        },
+        shouldThrow: true,
+        expectedError: 'Missing required field: primaryTitle.',
+        expectedField: 'primaryTitle',
+      },
+      {
+        description: 'missing required field: referenceDocumentUrl',
+        parameters: {
+          primaryTitle: 'Test',
+          primaryTopicKey: 'test-topic',
+          templateDocumentUrl:
+            'https://docs.google.com/presentation/d/2aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
+          yearGroupKey: 'year-10',
+        },
+        shouldThrow: true,
+        expectedError: 'Missing required field: referenceDocumentUrl.',
+        expectedField: 'referenceDocumentUrl',
+      },
+    ])(
+      'handles $description correctly',
+      ({ parameters, shouldThrow, expectedError, expectedField }) => {
+        installAssignmentDefinitionControllerStub([]);
+        const { validateWizardUpsertParameters_ } = loadAssignmentDefinitionPartialsModule();
 
-      if (shouldThrow) {
-        expect(() => validateWizardUpsertParameters_(parameters)).toThrow(ApiValidationError);
-        expect(() => validateWizardUpsertParameters_(parameters)).toThrow(expectedError);
-        try {
-          validateWizardUpsertParameters_(parameters);
-        } catch (err) {
-          expect(err.fieldName).toBe(expectedField);
-          expect(err.method).toBe('upsertAssignmentDefinition');
+        if (shouldThrow) {
+          expect(() => validateWizardUpsertParameters_(parameters)).toThrow(ApiValidationError);
+          expect(() => validateWizardUpsertParameters_(parameters)).toThrow(expectedError);
+          try {
+            validateWizardUpsertParameters_(parameters);
+          } catch (err) {
+            expect(err.fieldName).toBe(expectedField);
+            expect(err.method).toBe('upsertAssignmentDefinition');
+          }
+        } else {
+          expect(() => validateWizardUpsertParameters_(parameters)).not.toThrow();
         }
-      } else {
-        expect(() => validateWizardUpsertParameters_(parameters)).not.toThrow();
       }
-    }
-  );
+    );
+  });
 });
