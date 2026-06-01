@@ -4,10 +4,6 @@ description: Counts lines of code and compares changes to determine LOC reductio
 license: MIT
 compatibility: Mistral Vibe CLI
 user-invocable: true
-allowed-tools:
-  - bash
-  - read_file
-  - write_file
 ---
 
 # LOC Counter Skill
@@ -47,21 +43,6 @@ source ~/.bashrc
 # 4. Verify
 scc --version
 ```
-
-**Alternative architectures:**
-
-- **Linux ARM64**: Use `scc_Linux_arm64.tar.gz`
-- **Linux i386**: Use `scc_Linux_i386.tar.gz`
-- **macOS Intel**: Use `scc_Darwin_x86_64.tar.gz`
-- **macOS Apple Silicon**: Use `scc_Darwin_arm64.tar.gz`
-- **Windows**: Use the `.zip` files and extract to a directory in your PATH
-
-### Alternative: Package Managers
-
-If package manager installation is available on your system:
-
-- **macOS (brew)**: `brew install scc`
-- **Windows (scoop)**: `scoop install scc`
 
 **Note:** The apt package (`sudo apt install scc`) is **not available** on Debian/Ubuntu. Use the direct binary download above instead.
 

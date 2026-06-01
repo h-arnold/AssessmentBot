@@ -1,0 +1,21 @@
+{
+    "$schema": "https://raw.githubusercontent.com/copilot-beach/hooks/main/schemas/Hook.json",
+    "id": "read-mandatory-docs",
+    "name": "Read Mandatory Documentation",
+    "description": "Ensures agents read AGENTS.md and any mandatory documentation specified in their instructions before taking any action",
+    "enabled": true,
+    "trigger": [
+        "SessionStart",
+        "PreSubagentInvoked"
+    ],
+    "matcher": {},
+    "action": "inject-prompt",
+    "prompt": "BEFORE DOING ANYTHING ELSE, you MUST read the following mandatory documentation:\n\n1. Workspace AGENTS.md file at: /workspaces/AssessmentBot/AGENTS.md\n2. Any component-specific AGENTS.md files for the modules you'll be working with:\n   - Backend: src/backend/AGENTS.md\n   - Frontend: src/frontend/AGENTS.md\n   - Builder: scripts/builder/AGENTS.md\n3. Any mandatory reading specified in your agent instructions or passed to you in the current task\n\nREQUIRED ACTION: Use the read_file tool to read the relevant AGENTS.md files AND any other mandatory documentation mentioned in your instructions or task description.\n\nThen, in your first message, state:\n- Which AGENTS.md files you have read\n- Which mandatory documentation mentioned in your instructions you have read\n- Any other relevant documentation you will need for this task\n\nONLY AFTER you have read this mandatory documentation may you proceed with any other actions.",
+    "priority": 100,
+    "repeat": false,
+    "metadata": {
+        "author": "system",
+        "version": "1.0.0",
+        "createdAt": "2026-06-01T00:00:00Z"
+    }
+}

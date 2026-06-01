@@ -64,6 +64,6 @@
     "zod": "^4.3.6"
   },
   "dependencies": {
-    "@google/clasp": "^3.2.0"
+    "@google/clasp": "^3.3.0"
   }
 }
