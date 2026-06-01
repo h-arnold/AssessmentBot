@@ -40,7 +40,7 @@
     "build:gas-bundle": "node scripts/builder/dist/build-gas-bundle.js",
     "build:production": "npm run builder:compile && npm run build:gas-bundle -- --frontend-mode=production",
     "build:dev": "npm run builder:compile && npm run build:gas-bundle -- --frontend-mode=dev",
-    "ci": "npm run lint:check && npm run test:coverage && npm run build:production"
+    "run-all-checks": "npm run lint:check && npm run test:coverage && npm run build:production"
   },
   "keywords": [],
   "author": "",
