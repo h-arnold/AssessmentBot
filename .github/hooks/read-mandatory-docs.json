@@ -9,7 +9,9 @@
         "PreSubagentInvoked"
     ],
     "matcher": {
-        "workspaceFolders": ["/workspaces/AssessmentBot"]
+        "workspaceFolders": [
+            "/workspaces/AssessmentBot"
+        ]
     },
     "action": "inject-prompt",
     "prompt": "BEFORE DOING ANYTHING ELSE in the AssessmentBot workspace, you MUST read the following mandatory documentation:\n\n1. CORE INSTRUCTIONS: /workspaces/AssessmentBot/AGENTS.md (This contains the Core Agent Contract which is MANDATORY per section 1 Read-First Rule)\n2. COMPONENT-SPECIFIC INSTRUCTIONS for any modules you'll work with:\n   - Backend work: /workspaces/AssessmentBot/src/backend/AGENTS.md\n   - Frontend work: /workspaces/AssessmentBot/src/frontend/AGENTS.md\n   - Builder scripts: /workspaces/AssessmentBot/scripts/builder/AGENTS.md\n3. ANY MANDATORY READING specified in your agent instructions or task description\n4. ANY ADDITIONAL DOCUMENTATION mentioned as required in the current task\n\nREQUIRED ACTION: Use the read_file tool to read all relevant AGENTS.md files and any other mandatory documentation mentioned in your instructions or task.\n\nSTATE IN YOUR FIRST MESSAGE:\n- Which AGENTS.md files you have read\n- Which mandatory documentation from your instructions you have read\n- Any other relevant documentation needed for this task\n\nNEVER proceed with any actions until you have read this mandatory documentation. This is a strict requirement per AssessmentBot Core Agent Contract section 1: Failing to read these files WILL result in you failing your task.",
