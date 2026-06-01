@@ -36,6 +36,7 @@ Failing to read these files **will** result in you failing your task.
 10. Never disable lint rules without express permission from the user; if a rule triggers cascading failures, stop and ask before turning it off.
 11. **Never push commits that fail pre-commit hooks (lint, type-check, tests).** If the pre-commit hook fails, fix all errors before committing. Do not use `--no-verify` or any other method to bypass hooks.
 12. **Default values must be set in a module's constructor only.** If defaults are found elsewhere, they should be opportunistically moved to the constructor of the module.
+13. **File size limit**: Files exceeding 500 lines trigger a lint warning. Files at or above 550 lines **must** be split into smaller modules. When splitting, create a module directory at the file's current location, place the main calling module and all sub-modules within it, and ensure the refactor maintains a single public entry point that preserves the original module's external interface.
 
 ### 4. Delegation Protocol
 

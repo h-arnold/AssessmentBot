@@ -141,6 +141,7 @@ module.exports = [
       'jsdoc/require-returns': 'error',
       'jsdoc/require-returns-description': 'error',
       'jsdoc/require-returns-type': 'error',
+      'max-lines': ['warn', { max: 500, skipComments: true, skipBlankLines: true }],
       'no-magic-numbers': [
         'warn',
         {

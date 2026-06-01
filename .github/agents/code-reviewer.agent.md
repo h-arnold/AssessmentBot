@@ -201,6 +201,7 @@ Additional test quality checks:
 
 - **Readability**: Is the code clear? Are identifiers descriptive and in `camelCase`?
 - **Complexity**: Are functions too long? Could cyclomatic complexity be reduced?
+- **File Size**: Flag any file exceeding 550 lines for consideration to split into smaller modules.
 - **Coupling**: Are dependencies explicit and minimal? Is the module boundary respected?
 - **Consistency**: Does it match the existing style in that module (indentation, JSDoc, naming)?
 - **British English**: Check comments, variable names, method names, and user-facing strings.

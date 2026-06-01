@@ -41,6 +41,7 @@ const tsBaseRules = {
   ],
   '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports' }],
   '@typescript-eslint/prefer-optional-chain': 'error',
+  'max-lines': ['warn', { max: 500, skipComments: true, skipBlankLines: true }],
   'unicorn/prefer-string-raw': 'error',
   'unicorn/prefer-string-starts-ends-with': 'error',
   'unicorn/prefer-string-replace-all': 'error',
