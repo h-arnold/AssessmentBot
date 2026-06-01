@@ -39,252 +39,245 @@ const VALID_GOOGLE_URLS = {
   },
 };
 
-describe('Api/assignmentDefinitionPartials transport contract', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
+describeWithAssignmentDefinitionController(
+  'Api/assignmentDefinitionPartials transport contract',
+  () => {
+    it('returns plain assignment-definition partial rows when all required fields are valid', () => {
+      function ControllerLikePartial(overrides = {}) {
+        Object.assign(this, buildValidPartial(overrides));
+      }
 
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
+      ControllerLikePartial.prototype.getDefinitionKey = function getDefinitionKey() {
+        return this.definitionKey;
+      };
 
-  it('returns plain assignment-definition partial rows when all required fields are valid', () => {
-    function ControllerLikePartial(overrides = {}) {
-      Object.assign(this, buildValidPartial(overrides));
-    }
+      const controllerRows = [
+        new ControllerLikePartial(),
+        new ControllerLikePartial({ definitionKey: 'geometry-baseline', tasks: null }),
+      ];
 
-    ControllerLikePartial.prototype.getDefinitionKey = function getDefinitionKey() {
-      return this.definitionKey;
-    };
+      const { AssignmentDefinitionController, getAllPartialDefinitions } =
+        installAssignmentDefinitionControllerStub(controllerRows);
 
-    const controllerRows = [
-      new ControllerLikePartial(),
-      new ControllerLikePartial({ definitionKey: 'geometry-baseline', tasks: null }),
-    ];
+      const { getAssignmentDefinitionPartials_ } = loadAssignmentDefinitionPartialsModule();
+      const result = getAssignmentDefinitionPartials_();
+      const expectedRows = [
+        buildValidPartial(),
+        buildValidPartial({ definitionKey: 'geometry-baseline', tasks: null }),
+      ];
 
-    const { AssignmentDefinitionController, getAllPartialDefinitions } =
-      installAssignmentDefinitionControllerStub(controllerRows);
+      expect(result).toHaveLength(2);
+      expect(result).toEqual(expectedRows);
+      result.forEach((row) => {
+        expect(Object.getPrototypeOf(row)).toBe(Object.prototype);
+        expect(row).not.toHaveProperty('getDefinitionKey');
+      });
 
-    const { getAssignmentDefinitionPartials_ } = loadAssignmentDefinitionPartialsModule();
-    const result = getAssignmentDefinitionPartials_();
-    const expectedRows = [
-      buildValidPartial(),
-      buildValidPartial({ definitionKey: 'geometry-baseline', tasks: null }),
-    ];
-
-    expect(result).toHaveLength(2);
-    expect(result).toEqual(expectedRows);
-    result.forEach((row) => {
-      expect(Object.getPrototypeOf(row)).toBe(Object.prototype);
-      expect(row).not.toHaveProperty('getDefinitionKey');
+      expect(AssignmentDefinitionController).toHaveBeenCalledTimes(1);
+      expect(getAllPartialDefinitions).toHaveBeenCalledTimes(1);
     });
 
-    expect(AssignmentDefinitionController).toHaveBeenCalledTimes(1);
-    expect(getAllPartialDefinitions).toHaveBeenCalledTimes(1);
-  });
-
-  it('returns rows with yearGroup field stripped from objects that include it', () => {
-    const rowWithYearGroup = {
-      ...buildValidPartial(),
-      yearGroup: 10,
-    };
-    const validRow = buildValidPartial({ definitionKey: 'geometry-baseline' });
-    installAssignmentDefinitionControllerStub([validRow, rowWithYearGroup]);
-
-    const { getAssignmentDefinitionPartials_ } = loadAssignmentDefinitionPartialsModule();
-    const result = getAssignmentDefinitionPartials_();
-
-    expect(result).toHaveLength(2);
-    result.forEach((row) => {
-      expect(row).not.toHaveProperty('yearGroup');
-    });
-  });
-
-  it.each([
-    {
-      caseName: 'createdAt as Date object is normalised to ISO string',
-      mutateRow: (row) => {
-        row.createdAt = new Date('2026-01-05T10:00:00.000Z');
-      },
-      expectedCreatedAt: '2026-01-05T10:00:00.000Z',
-      expectedUpdatedAt: '2026-01-06T12:30:00.000Z',
-    },
-    {
-      caseName: 'updatedAt as Date object is normalised to ISO string',
-      mutateRow: (row) => {
-        row.updatedAt = new Date('2026-01-06T12:30:00.000Z');
-      },
-      expectedCreatedAt: '2026-01-05T10:00:00.000Z',
-      expectedUpdatedAt: '2026-01-06T12:30:00.000Z',
-    },
-    {
-      caseName: 'createdAt as ISO string remains unchanged',
-      mutateRow: (row) => {
-        row.createdAt = '2026-01-05T10:00:00.000Z';
-      },
-      expectedCreatedAt: '2026-01-05T10:00:00.000Z',
-      expectedUpdatedAt: '2026-01-06T12:30:00.000Z',
-    },
-    {
-      caseName: 'updatedAt as ISO string remains unchanged',
-      mutateRow: (row) => {
-        row.updatedAt = '2026-01-06T12:30:00.000Z';
-      },
-      expectedCreatedAt: '2026-01-05T10:00:00.000Z',
-      expectedUpdatedAt: '2026-01-06T12:30:00.000Z',
-    },
-    {
-      caseName: 'both timestamps as Date objects are normalised',
-      mutateRow: (row) => {
-        row.createdAt = new Date('2026-01-05T10:00:00.000Z');
-        row.updatedAt = new Date('2026-01-06T12:30:00.000Z');
-      },
-      expectedCreatedAt: '2026-01-05T10:00:00.000Z',
-      expectedUpdatedAt: '2026-01-06T12:30:00.000Z',
-    },
-  ])(
-    'normalises Date fields correctly: $caseName',
-    ({ mutateRow, expectedCreatedAt, expectedUpdatedAt }) => {
-      const row = buildValidPartial();
-      mutateRow(row);
-      installAssignmentDefinitionControllerStub([row]);
+    it('returns rows with yearGroup field stripped from objects that include it', () => {
+      const rowWithYearGroup = {
+        ...buildValidPartial(),
+        yearGroup: 10,
+      };
+      const validRow = buildValidPartial({ definitionKey: 'geometry-baseline' });
+      installAssignmentDefinitionControllerStub([validRow, rowWithYearGroup]);
 
       const { getAssignmentDefinitionPartials_ } = loadAssignmentDefinitionPartialsModule();
       const result = getAssignmentDefinitionPartials_();
 
-      expect(result).toHaveLength(1);
-      expect(result[0].createdAt).toBe(expectedCreatedAt);
-      expect(result[0].updatedAt).toBe(expectedUpdatedAt);
-    }
-  );
-
-  it.each([
-    {
-      caseName: 'definitionKey is present',
-      mutateRow: (row) => {
-        row.definitionKey = 'test-key';
-      },
-      assertProperty: (row) => {
-        expect(row).toHaveProperty('definitionKey', 'test-key');
-      },
-    },
-    {
-      caseName: 'primaryTitle is present',
-      mutateRow: (row) => {
-        row.primaryTitle = 'Test Title';
-      },
-      assertProperty: (row) => {
-        expect(row).toHaveProperty('primaryTitle', 'Test Title');
-      },
-    },
-    {
-      caseName: 'yearGroupKey is present',
-      mutateRow: (row) => {
-        row.yearGroupKey = 'year-group-10';
-      },
-      assertProperty: (row) => {
-        expect(row).toHaveProperty('yearGroupKey', 'year-group-10');
-      },
-    },
-  ])(
-    'preserves expected fields in returned objects: $caseName',
-    ({ mutateRow, assertProperty }) => {
-      const row = buildValidPartial({ definitionKey: 'geometry-baseline' });
-      mutateRow(row);
-      installAssignmentDefinitionControllerStub([row]);
-
-      const { getAssignmentDefinitionPartials_ } = loadAssignmentDefinitionPartialsModule();
-      const result = getAssignmentDefinitionPartials_();
-
-      expect(result).toHaveLength(1);
-      assertProperty(result[0]);
-    }
-  );
-
-  it.each([
-    {
-      caseName: 'yearGroup field is stripped even when present',
-      mutateRow: (row) => {
-        row.yearGroup = 10;
-      },
-    },
-    {
-      caseName: 'yearGroup null is stripped',
-      mutateRow: (row) => {
-        row.yearGroup = null;
-      },
-    },
-    {
-      caseName: 'yearGroup string is stripped',
-      mutateRow: (row) => {
-        row.yearGroup = '10';
-      },
-    },
-    {
-      caseName: 'yearGroupKey is preserved',
-      mutateRow: (row) => {
-        row.yearGroupKey = 'year-group-11';
-      },
-    },
-    {
-      caseName: 'yearGroupLabel is preserved',
-      mutateRow: (row) => {
-        row.yearGroupLabel = 'Year 11';
-      },
-    },
-    {
-      caseName: 'primaryTopicKey is preserved',
-      mutateRow: (row) => {
-        row.primaryTopicKey = 'topic-geometry';
-      },
-    },
-  ])(
-    'ensures correct year-group related fields in returned objects: $caseName',
-    ({ mutateRow }) => {
-      const row = buildValidPartial({ definitionKey: 'geometry-baseline' });
-      mutateRow(row);
-      installAssignmentDefinitionControllerStub([row]);
-
-      const { getAssignmentDefinitionPartials_ } = loadAssignmentDefinitionPartialsModule();
-      const result = getAssignmentDefinitionPartials_();
-
-      expect(result).toHaveLength(1);
-      expect(result[0]).not.toHaveProperty('yearGroup');
-      expect(result[0]).toHaveProperty('yearGroupKey');
-      expect(result[0]).toHaveProperty('yearGroupLabel');
-      expect(result[0]).toHaveProperty('primaryTopicKey');
-    }
-  );
-
-  it('ensures tasks field is null for all partial definition rows', () => {
-    const row1 = buildValidPartial({ definitionKey: 'algebra-baseline', tasks: null });
-    const row2 = buildValidPartial({ definitionKey: 'geometry-baseline', tasks: null });
-    installAssignmentDefinitionControllerStub([row1, row2]);
-
-    const { getAssignmentDefinitionPartials_ } = loadAssignmentDefinitionPartialsModule();
-    const result = getAssignmentDefinitionPartials_();
-
-    expect(result).toHaveLength(2);
-    result.forEach((row) => {
-      expect(row.tasks).toBeNull();
+      expect(result).toHaveLength(2);
+      result.forEach((row) => {
+        expect(row).not.toHaveProperty('yearGroup');
+      });
     });
-  });
 
-  it('throws ApiValidationError when controller returns non-array', () => {
-    installAssignmentDefinitionControllerStub('not-an-array');
+    it.each([
+      {
+        caseName: 'createdAt as Date object is normalised to ISO string',
+        mutateRow: (row) => {
+          row.createdAt = new Date('2026-01-05T10:00:00.000Z');
+        },
+        expectedCreatedAt: '2026-01-05T10:00:00.000Z',
+        expectedUpdatedAt: '2026-01-06T12:30:00.000Z',
+      },
+      {
+        caseName: 'updatedAt as Date object is normalised to ISO string',
+        mutateRow: (row) => {
+          row.updatedAt = new Date('2026-01-06T12:30:00.000Z');
+        },
+        expectedCreatedAt: '2026-01-05T10:00:00.000Z',
+        expectedUpdatedAt: '2026-01-06T12:30:00.000Z',
+      },
+      {
+        caseName: 'createdAt as ISO string remains unchanged',
+        mutateRow: (row) => {
+          row.createdAt = '2026-01-05T10:00:00.000Z';
+        },
+        expectedCreatedAt: '2026-01-05T10:00:00.000Z',
+        expectedUpdatedAt: '2026-01-06T12:30:00.000Z',
+      },
+      {
+        caseName: 'updatedAt as ISO string remains unchanged',
+        mutateRow: (row) => {
+          row.updatedAt = '2026-01-06T12:30:00.000Z';
+        },
+        expectedCreatedAt: '2026-01-05T10:00:00.000Z',
+        expectedUpdatedAt: '2026-01-06T12:30:00.000Z',
+      },
+      {
+        caseName: 'both timestamps as Date objects are normalised',
+        mutateRow: (row) => {
+          row.createdAt = new Date('2026-01-05T10:00:00.000Z');
+          row.updatedAt = new Date('2026-01-06T12:30:00.000Z');
+        },
+        expectedCreatedAt: '2026-01-05T10:00:00.000Z',
+        expectedUpdatedAt: '2026-01-06T12:30:00.000Z',
+      },
+    ])(
+      'normalises Date fields correctly: $caseName',
+      ({ mutateRow, expectedCreatedAt, expectedUpdatedAt }) => {
+        const row = buildValidPartial();
+        mutateRow(row);
+        installAssignmentDefinitionControllerStub([row]);
 
-    const { getAssignmentDefinitionPartials_ } = loadAssignmentDefinitionPartialsModule();
+        const { getAssignmentDefinitionPartials_ } = loadAssignmentDefinitionPartialsModule();
+        const result = getAssignmentDefinitionPartials_();
 
-    expect(() => getAssignmentDefinitionPartials_()).toThrow(ApiValidationError);
-    expect(() => getAssignmentDefinitionPartials_()).toThrow(
-      'Controller response must be an array.'
+        expect(result).toHaveLength(1);
+        expect(result[0].createdAt).toBe(expectedCreatedAt);
+        expect(result[0].updatedAt).toBe(expectedUpdatedAt);
+      }
     );
-  });
-});
 
-describe('deleteAssignmentDefinition_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
+    it.each([
+      {
+        caseName: 'definitionKey is present',
+        mutateRow: (row) => {
+          row.definitionKey = 'test-key';
+        },
+        assertProperty: (row) => {
+          expect(row).toHaveProperty('definitionKey', 'test-key');
+        },
+      },
+      {
+        caseName: 'primaryTitle is present',
+        mutateRow: (row) => {
+          row.primaryTitle = 'Test Title';
+        },
+        assertProperty: (row) => {
+          expect(row).toHaveProperty('primaryTitle', 'Test Title');
+        },
+      },
+      {
+        caseName: 'yearGroupKey is present',
+        mutateRow: (row) => {
+          row.yearGroupKey = 'year-group-10';
+        },
+        assertProperty: (row) => {
+          expect(row).toHaveProperty('yearGroupKey', 'year-group-10');
+        },
+      },
+    ])(
+      'preserves expected fields in returned objects: $caseName',
+      ({ mutateRow, assertProperty }) => {
+        const row = buildValidPartial({ definitionKey: 'geometry-baseline' });
+        mutateRow(row);
+        installAssignmentDefinitionControllerStub([row]);
 
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
+        const { getAssignmentDefinitionPartials_ } = loadAssignmentDefinitionPartialsModule();
+        const result = getAssignmentDefinitionPartials_();
 
+        expect(result).toHaveLength(1);
+        assertProperty(result[0]);
+      }
+    );
+
+    it.each([
+      {
+        caseName: 'yearGroup field is stripped even when present',
+        mutateRow: (row) => {
+          row.yearGroup = 10;
+        },
+      },
+      {
+        caseName: 'yearGroup null is stripped',
+        mutateRow: (row) => {
+          row.yearGroup = null;
+        },
+      },
+      {
+        caseName: 'yearGroup string is stripped',
+        mutateRow: (row) => {
+          row.yearGroup = '10';
+        },
+      },
+      {
+        caseName: 'yearGroupKey is preserved',
+        mutateRow: (row) => {
+          row.yearGroupKey = 'year-group-11';
+        },
+      },
+      {
+        caseName: 'yearGroupLabel is preserved',
+        mutateRow: (row) => {
+          row.yearGroupLabel = 'Year 11';
+        },
+      },
+      {
+        caseName: 'primaryTopicKey is preserved',
+        mutateRow: (row) => {
+          row.primaryTopicKey = 'topic-geometry';
+        },
+      },
+    ])(
+      'ensures correct year-group related fields in returned objects: $caseName',
+      ({ mutateRow }) => {
+        const row = buildValidPartial({ definitionKey: 'geometry-baseline' });
+        mutateRow(row);
+        installAssignmentDefinitionControllerStub([row]);
+
+        const { getAssignmentDefinitionPartials_ } = loadAssignmentDefinitionPartialsModule();
+        const result = getAssignmentDefinitionPartials_();
+
+        expect(result).toHaveLength(1);
+        expect(result[0]).not.toHaveProperty('yearGroup');
+        expect(result[0]).toHaveProperty('yearGroupKey');
+        expect(result[0]).toHaveProperty('yearGroupLabel');
+        expect(result[0]).toHaveProperty('primaryTopicKey');
+      }
+    );
+
+    it('ensures tasks field is null for all partial definition rows', () => {
+      const row1 = buildValidPartial({ definitionKey: 'algebra-baseline', tasks: null });
+      const row2 = buildValidPartial({ definitionKey: 'geometry-baseline', tasks: null });
+      installAssignmentDefinitionControllerStub([row1, row2]);
+
+      const { getAssignmentDefinitionPartials_ } = loadAssignmentDefinitionPartialsModule();
+      const result = getAssignmentDefinitionPartials_();
+
+      expect(result).toHaveLength(2);
+      result.forEach((row) => {
+        expect(row.tasks).toBeNull();
+      });
+    });
+
+    it('throws ApiValidationError when controller returns non-array', () => {
+      installAssignmentDefinitionControllerStub('not-an-array');
+
+      const { getAssignmentDefinitionPartials_ } = loadAssignmentDefinitionPartialsModule();
+
+      expect(() => getAssignmentDefinitionPartials_()).toThrow(ApiValidationError);
+      expect(() => getAssignmentDefinitionPartials_()).toThrow(
+        'Controller response must be an array.'
+      );
+    });
+  }
+);
+
+describeWithAssignmentDefinitionController('deleteAssignmentDefinition_', () => {
   it('should delete assignment definition with valid parameters', () => {
     const mockController = {
       deleteDefinitionByKey: vi.fn(),
@@ -333,12 +326,7 @@ describe('deleteAssignmentDefinition_', () => {
   });
 });
 
-describe('getAssignmentDefinition_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
+describeWithAssignmentDefinitionController('getAssignmentDefinition_', () => {
   it('should return canonical definition when definition is found', () => {
     const mockDefinition = {
       definitionKey: 'test-key',
@@ -413,197 +401,197 @@ describe('getAssignmentDefinition_', () => {
   });
 });
 
-describe('extractSupportedDocumentDescriptor_ URL parsing regression tests', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
+describeWithAssignmentDefinitionController(
+  'extractSupportedDocumentDescriptor_ URL parsing regression tests',
+  () => {
+    it.each([
+      {
+        description: 'basic slides URL',
+        url: VALID_GOOGLE_URLS.SLIDES.basic,
+        expected: { documentId: '1aBcDeFgHiJkLmNoPqRsTuVwXyZ', documentType: 'SLIDES' },
+      },
+      {
+        description: 'slides URL with query string',
+        url: VALID_GOOGLE_URLS.SLIDES.withQuery,
+        expected: { documentId: '2aBcDeFgHiJkLmNoPqRsTuVwXyZ', documentType: 'SLIDES' },
+      },
+      {
+        description: 'slides URL with hash fragment',
+        url: VALID_GOOGLE_URLS.SLIDES.withHash,
+        expected: { documentId: '3aBcDeFgHiJkLmNoPqRsTuVwXyZ', documentType: 'SLIDES' },
+      },
+      {
+        description: 'slides URL with query and hash',
+        url: VALID_GOOGLE_URLS.SLIDES.withQueryAndHash,
+        expected: { documentId: '4aBcDeFgHiJkLmNoPqRsTuVwXyZ', documentType: 'SLIDES' },
+      },
+      {
+        description: 'slides URL in view mode',
+        url: VALID_GOOGLE_URLS.SLIDES.viewMode,
+        expected: { documentId: '5aBcDeFgHiJkLmNoPqRsTuVwXyZ', documentType: 'SLIDES' },
+      },
+      {
+        description: 'slides URL with mixed case hostname',
+        url: VALID_GOOGLE_URLS.SLIDES.mixedCaseHost,
+        expected: { documentId: '6aBcDeFgHiJkLmNoPqRsTuVwXyZ', documentType: 'SLIDES' },
+      },
+      {
+        description: 'basic sheets URL',
+        url: VALID_GOOGLE_URLS.SHEETS.basic,
+        expected: { documentId: '1xYzAbCdEfGhIjKlMnOpQrStUvWx', documentType: 'SHEETS' },
+      },
+      {
+        description: 'sheets URL with query string',
+        url: VALID_GOOGLE_URLS.SHEETS.withQuery,
+        expected: { documentId: '2xYzAbCdEfGhIjKlMnOpQrStUvWx', documentType: 'SHEETS' },
+      },
+      {
+        description: 'sheets URL with gid hash',
+        url: VALID_GOOGLE_URLS.SHEETS.gsheetPrefix,
+        expected: { documentId: '3xYzAbCdEfGhIjKlMnOpQrStUvWx', documentType: 'SHEETS' },
+      },
+    ])('correctly parses valid Google Docs URLs: $description', ({ url, expected }) => {
+      installAssignmentDefinitionControllerStub([]);
 
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
+      const { extractSupportedDocumentDescriptor_ } = loadAssignmentDefinitionPartialsModule();
 
-  it.each([
-    {
-      description: 'basic slides URL',
-      url: VALID_GOOGLE_URLS.SLIDES.basic,
-      expected: { documentId: '1aBcDeFgHiJkLmNoPqRsTuVwXyZ', documentType: 'SLIDES' },
-    },
-    {
-      description: 'slides URL with query string',
-      url: VALID_GOOGLE_URLS.SLIDES.withQuery,
-      expected: { documentId: '2aBcDeFgHiJkLmNoPqRsTuVwXyZ', documentType: 'SLIDES' },
-    },
-    {
-      description: 'slides URL with hash fragment',
-      url: VALID_GOOGLE_URLS.SLIDES.withHash,
-      expected: { documentId: '3aBcDeFgHiJkLmNoPqRsTuVwXyZ', documentType: 'SLIDES' },
-    },
-    {
-      description: 'slides URL with query and hash',
-      url: VALID_GOOGLE_URLS.SLIDES.withQueryAndHash,
-      expected: { documentId: '4aBcDeFgHiJkLmNoPqRsTuVwXyZ', documentType: 'SLIDES' },
-    },
-    {
-      description: 'slides URL in view mode',
-      url: VALID_GOOGLE_URLS.SLIDES.viewMode,
-      expected: { documentId: '5aBcDeFgHiJkLmNoPqRsTuVwXyZ', documentType: 'SLIDES' },
-    },
-    {
-      description: 'slides URL with mixed case hostname',
-      url: VALID_GOOGLE_URLS.SLIDES.mixedCaseHost,
-      expected: { documentId: '6aBcDeFgHiJkLmNoPqRsTuVwXyZ', documentType: 'SLIDES' },
-    },
-    {
-      description: 'basic sheets URL',
-      url: VALID_GOOGLE_URLS.SHEETS.basic,
-      expected: { documentId: '1xYzAbCdEfGhIjKlMnOpQrStUvWx', documentType: 'SHEETS' },
-    },
-    {
-      description: 'sheets URL with query string',
-      url: VALID_GOOGLE_URLS.SHEETS.withQuery,
-      expected: { documentId: '2xYzAbCdEfGhIjKlMnOpQrStUvWx', documentType: 'SHEETS' },
-    },
-    {
-      description: 'sheets URL with gid hash',
-      url: VALID_GOOGLE_URLS.SHEETS.gsheetPrefix,
-      expected: { documentId: '3xYzAbCdEfGhIjKlMnOpQrStUvWx', documentType: 'SHEETS' },
-    },
-  ])('correctly parses valid Google Docs URLs: $description', ({ url, expected }) => {
-    installAssignmentDefinitionControllerStub([]);
+      const result = extractSupportedDocumentDescriptor_(url, 'testField');
 
-    const { extractSupportedDocumentDescriptor_ } = loadAssignmentDefinitionPartialsModule();
+      expect(result).toEqual(expected);
+    });
 
-    const result = extractSupportedDocumentDescriptor_(url, 'testField');
+    it.each([
+      {
+        description: 'non-HTTPS protocol (http)',
+        url: 'http://docs.google.com/presentation/d/1aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
+      },
+      {
+        description: 'non-HTTPS protocol (ftp)',
+        url: 'ftp://docs.google.com/presentation/d/1aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
+      },
+      {
+        description: 'different hostname (drive.google.com)',
+        url: 'https://drive.google.com/file/d/1aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
+      },
+      {
+        description: 'different hostname (not google.com)',
+        url: 'https://example.com/presentation/d/1aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
+      },
+      {
+        description: 'missing document ID',
+        url: 'https://docs.google.com/presentation/d/',
+      },
+      {
+        description: 'missing path prefix',
+        url: 'https://docs.google.com/document/d/1aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
+      },
+      {
+        description: 'invalid path (forms instead of presentation)',
+        url: 'https://docs.google.com/forms/d/1aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
+      },
+      {
+        description: 'empty string',
+        url: '',
+      },
+      {
+        description: 'whitespace only',
+        url: '   ',
+      },
+      {
+        description: 'non-string value (number)',
+        url: 12345,
+      },
+      {
+        description: 'non-string value (null)',
+        url: null,
+      },
+      {
+        description: 'non-string value (undefined)',
+        url: undefined,
+      },
+      {
+        description: 'URL without protocol',
+        url: 'docs.google.com/presentation/d/1aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
+      },
+    ])('rejects invalid URLs: $description', ({ url }) => {
+      installAssignmentDefinitionControllerStub([]);
 
-    expect(result).toEqual(expected);
-  });
+      const { extractSupportedDocumentDescriptor_ } = loadAssignmentDefinitionPartialsModule();
 
-  it.each([
-    {
-      description: 'non-HTTPS protocol (http)',
-      url: 'http://docs.google.com/presentation/d/1aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
-    },
-    {
-      description: 'non-HTTPS protocol (ftp)',
-      url: 'ftp://docs.google.com/presentation/d/1aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
-    },
-    {
-      description: 'different hostname (drive.google.com)',
-      url: 'https://drive.google.com/file/d/1aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
-    },
-    {
-      description: 'different hostname (not google.com)',
-      url: 'https://example.com/presentation/d/1aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
-    },
-    {
-      description: 'missing document ID',
-      url: 'https://docs.google.com/presentation/d/',
-    },
-    {
-      description: 'missing path prefix',
-      url: 'https://docs.google.com/document/d/1aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
-    },
-    {
-      description: 'invalid path (forms instead of presentation)',
-      url: 'https://docs.google.com/forms/d/1aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
-    },
-    {
-      description: 'empty string',
-      url: '',
-    },
-    {
-      description: 'whitespace only',
-      url: '   ',
-    },
-    {
-      description: 'non-string value (number)',
-      url: 12345,
-    },
-    {
-      description: 'non-string value (null)',
-      url: null,
-    },
-    {
-      description: 'non-string value (undefined)',
-      url: undefined,
-    },
-    {
-      description: 'URL without protocol',
-      url: 'docs.google.com/presentation/d/1aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
-    },
-  ])('rejects invalid URLs: $description', ({ url }) => {
-    installAssignmentDefinitionControllerStub([]);
+      expect(() => extractSupportedDocumentDescriptor_(url, 'testField')).toThrow(
+        ApiValidationError
+      );
+    });
 
-    const { extractSupportedDocumentDescriptor_ } = loadAssignmentDefinitionPartialsModule();
+    it('rejects URLs with unsupported document types', () => {
+      installAssignmentDefinitionControllerStub([]);
 
-    expect(() => extractSupportedDocumentDescriptor_(url, 'testField')).toThrow(ApiValidationError);
-  });
+      const { extractSupportedDocumentDescriptor_ } = loadAssignmentDefinitionPartialsModule();
 
-  it('rejects URLs with unsupported document types', () => {
-    installAssignmentDefinitionControllerStub([]);
+      // Google Docs (documents) are not supported - only SLIDES and SHEETS
+      const docUrl = 'https://docs.google.com/document/d/1aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit';
+      expect(() => extractSupportedDocumentDescriptor_(docUrl, 'testField')).toThrow(
+        ApiValidationError
+      );
+    });
 
-    const { extractSupportedDocumentDescriptor_ } = loadAssignmentDefinitionPartialsModule();
+    it('rejects URLs when reference and template point to same document', () => {
+      installAssignmentDefinitionControllerStub([]);
 
-    // Google Docs (documents) are not supported - only SLIDES and SHEETS
-    const docUrl = 'https://docs.google.com/document/d/1aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit';
-    expect(() => extractSupportedDocumentDescriptor_(docUrl, 'testField')).toThrow(
-      ApiValidationError
-    );
-  });
+      const { upsertAssignmentDefinition_ } = loadAssignmentDefinitionPartialsModule();
 
-  it('rejects URLs when reference and template point to same document', () => {
-    installAssignmentDefinitionControllerStub([]);
+      const sameDocUrl = 'https://docs.google.com/presentation/d/1aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit';
 
-    const { upsertAssignmentDefinition_ } = loadAssignmentDefinitionPartialsModule();
+      expect(() =>
+        upsertAssignmentDefinition_({
+          primaryTitle: 'Test Assignment',
+          primaryTopicKey: 'test-topic',
+          referenceDocumentUrl: sameDocUrl,
+          templateDocumentUrl: sameDocUrl,
+          yearGroupKey: 'year-10',
+        })
+      ).toThrow(ApiValidationError);
+    });
 
-    const sameDocUrl = 'https://docs.google.com/presentation/d/1aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit';
+    it('rejects URLs when reference and template have different document types', () => {
+      installAssignmentDefinitionControllerStub([]);
 
-    expect(() =>
-      upsertAssignmentDefinition_({
-        primaryTitle: 'Test Assignment',
-        primaryTopicKey: 'test-topic',
-        referenceDocumentUrl: sameDocUrl,
-        templateDocumentUrl: sameDocUrl,
-        yearGroupKey: 'year-10',
-      })
-    ).toThrow(ApiValidationError);
-  });
+      const { upsertAssignmentDefinition_ } = loadAssignmentDefinitionPartialsModule();
 
-  it('rejects URLs when reference and template have different document types', () => {
-    installAssignmentDefinitionControllerStub([]);
+      const slidesUrl = 'https://docs.google.com/presentation/d/1aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit';
+      const sheetsUrl = 'https://docs.google.com/spreadsheets/d/2xYzAbCdEfGhIjKlMnOpQrSt/edit';
 
-    const { upsertAssignmentDefinition_ } = loadAssignmentDefinitionPartialsModule();
+      expect(() =>
+        upsertAssignmentDefinition_({
+          primaryTitle: 'Test Assignment',
+          primaryTopicKey: 'test-topic',
+          referenceDocumentUrl: slidesUrl,
+          templateDocumentUrl: sheetsUrl,
+          yearGroupKey: 'year-10',
+        })
+      ).toThrow(ApiValidationError);
+    });
 
-    const slidesUrl = 'https://docs.google.com/presentation/d/1aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit';
-    const sheetsUrl = 'https://docs.google.com/spreadsheets/d/2xYzAbCdEfGhIjKlMnOpQrSt/edit';
+    it('correctly handles URLs with trailing slashes', () => {
+      installAssignmentDefinitionControllerStub([]);
 
-    expect(() =>
-      upsertAssignmentDefinition_({
-        primaryTitle: 'Test Assignment',
-        primaryTopicKey: 'test-topic',
-        referenceDocumentUrl: slidesUrl,
-        templateDocumentUrl: sheetsUrl,
-        yearGroupKey: 'year-10',
-      })
-    ).toThrow(ApiValidationError);
-  });
+      const { extractSupportedDocumentDescriptor_ } = loadAssignmentDefinitionPartialsModule();
 
-  it('correctly handles URLs with trailing slashes', () => {
-    installAssignmentDefinitionControllerStub([]);
+      const urlWithTrailingSlash =
+        'https://docs.google.com/presentation/d/1aBcDeFgHiJkLmNoPqRsTuVwXyZ/';
 
-    const { extractSupportedDocumentDescriptor_ } = loadAssignmentDefinitionPartialsModule();
+      // This should still work as the document ID is before any trailing slash
+      // But based on the implementation, it might fail since there's no edit/view after /d/
+      // Let's test the actual behavior
+      const result = extractSupportedDocumentDescriptor_(urlWithTrailingSlash, 'testField');
 
-    const urlWithTrailingSlash =
-      'https://docs.google.com/presentation/d/1aBcDeFgHiJkLmNoPqRsTuVwXyZ/';
-
-    // This should still work as the document ID is before any trailing slash
-    // But based on the implementation, it might fail since there's no edit/view after /d/
-    // Let's test the actual behavior
-    const result = extractSupportedDocumentDescriptor_(urlWithTrailingSlash, 'testField');
-
-    // The implementation splits by '/' and takes first segment after prefix
-    // So for /presentation/d/1aBcDeFgHiJkLmNoPqRsTuVwXyZ/, the trailing slash creates an empty segment
-    // which would cause documentId to be empty and fail validation
-    expect(result).toEqual({ documentId: '1aBcDeFgHiJkLmNoPqRsTuVwXyZ', documentType: 'SLIDES' });
-  });
-});
+      // The implementation splits by '/' and takes first segment after prefix
+      // So for /presentation/d/1aBcDeFgHiJkLmNoPqRsTuVwXyZ/, the trailing slash creates an empty segment
+      // which would cause documentId to be empty and fail validation
+      expect(result).toEqual({ documentId: '1aBcDeFgHiJkLmNoPqRsTuVwXyZ', documentType: 'SLIDES' });
+    });
+  }
+);
 
 // ============================================================================
 // Section 5 Red Phase Tests - API layer: Remove helper functions, inline logic,
@@ -611,271 +599,261 @@ describe('extractSupportedDocumentDescriptor_ URL parsing regression tests', () 
 // These tests are intentionally written to FAIL until Section 5 implementation is complete
 // ============================================================================
 
-describe('Section 5: API layer refactoring - Helper functions removed from source', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
-  it('should verify toCanonicalTransportDefinition_ is not present in source file', () => {
-    installAssignmentDefinitionControllerStub([]);
-    expectFunctionNotInSource('toCanonicalTransportDefinition_');
-  });
-
-  it('should verify buildControllerUpsertPayload_ is not present in source file', () => {
-    installAssignmentDefinitionControllerStub([]);
-    expectFunctionNotInSource('buildControllerUpsertPayload_');
-  });
-
-  it('should verify toPlainPartialRow_ is not present in source file', () => {
-    installAssignmentDefinitionControllerStub([]);
-    expectFunctionNotInSource('toPlainPartialRow_');
-  });
-});
-
-describe('Section 5: API layer refactoring - Call sites updated', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
-  it('should verify upsertAssignmentDefinition_ calls controller.toCanonicalFullDefinitionResponse(definition)', () => {
-    installAssignmentDefinitionControllerStub([]);
-    expectPatternInSource('controller.toCanonicalFullDefinitionResponse(definition)');
-    expectPatternNotInSource('toCanonicalTransportDefinition_(controller, definition)');
-  });
-
-  it('should verify getAssignmentDefinition_ calls controller.toCanonicalFullDefinitionResponse(definition)', () => {
-    installAssignmentDefinitionControllerStub([]);
-    expectPatternInSource('controller.toCanonicalFullDefinitionResponse(definition)');
-    expectPatternNotInSource('toCanonicalTransportDefinition_(controller, definition)');
-  });
-});
-
-describe('Section 5: API layer refactoring - getAssignmentDefinitionPartials_ return shape', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
-  it('should export toTransportPartialRow_ helper', () => {
-    installAssignmentDefinitionControllerStub([]);
-
-    const moduleExports = require(modulePath);
-    expect(moduleExports).toHaveProperty('toTransportPartialRow_');
-    expect(typeof moduleExports.toTransportPartialRow_).toBe('function');
-  });
-
-  it('should use toTransportPartialRow_ for partial row serialization', () => {
-    installAssignmentDefinitionControllerStub([]);
-    expectPatternInSource('toTransportPartialRow_');
-  });
-
-  it('should defensively strip yearGroup field from partial JSON', () => {
-    installAssignmentDefinitionControllerStub([]);
-
-    const moduleExports = require(modulePath);
-    expect(moduleExports).toHaveProperty('toTransportPartialRow_');
-
-    const mockDefinition = createMockDefinitionForPartialRow({ yearGroup: '10' });
-    const result = moduleExports.toTransportPartialRow_(mockDefinition);
-    expect(result).not.toHaveProperty('yearGroup');
-  });
-
-  it('should normalize Date fields as ISO strings', () => {
-    installAssignmentDefinitionControllerStub([]);
-
-    const moduleExports = require(modulePath);
-    expect(moduleExports).toHaveProperty('toTransportPartialRow_');
-
-    const createdAt = new Date('2026-01-05T10:00:00.000Z');
-    const updatedAt = new Date('2026-01-06T12:30:00.000Z');
-    const mockDefinition = createMockDefinitionForPartialRow({ createdAt, updatedAt });
-
-    const result = moduleExports.toTransportPartialRow_(mockDefinition);
-
-    expect(result.createdAt).toBe('2026-01-05T10:00:00.000Z');
-    expect(result.updatedAt).toBe('2026-01-06T12:30:00.000Z');
-  });
-
-  it('should handle pre-normalised string dates correctly', () => {
-    installAssignmentDefinitionControllerStub([]);
-
-    const moduleExports = require(modulePath);
-    expect(moduleExports).toHaveProperty('toTransportPartialRow_');
-
-    const mockDefinition = createMockDefinitionForPartialRow();
-    const result = moduleExports.toTransportPartialRow_(mockDefinition);
-
-    expect(result.createdAt).toBe('2026-01-05T10:00:00.000Z');
-    expect(result.updatedAt).toBe('2026-01-06T12:30:00.000Z');
-  });
-
-  it('should ensure tasks field is null for partial definitions', () => {
-    installAssignmentDefinitionControllerStub([]);
-
-    const moduleExports = require(modulePath);
-    expect(moduleExports).toHaveProperty('toTransportPartialRow_');
-
-    const mockDefinition = createMockDefinitionForPartialRow();
-    const result = moduleExports.toTransportPartialRow_(mockDefinition);
-
-    expect(result.tasks).toBeNull();
-  });
-});
-
-describe('Section 5: API layer refactoring - Transport validation unchanged', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
-  it('should throw ApiValidationError when yearGroupKey is null via upsertAssignmentDefinition_', () => {
-    installAssignmentDefinitionControllerStub([]);
-
-    const { upsertAssignmentDefinition_ } = loadAssignmentDefinitionPartialsModule();
-
-    const invalidPayload = {
-      primaryTitle: 'Test Assignment',
-      primaryTopicKey: 'test-topic',
-      referenceDocumentId: 'ref-doc-001',
-      templateDocumentId: 'tpl-doc-001',
-      yearGroupKey: null,
-    };
-
-    expect(() => upsertAssignmentDefinition_(invalidPayload)).toThrow(ApiValidationError);
-  });
-
-  it('should throw ApiValidationError when yearGroupKey is missing via upsertAssignmentDefinition_', () => {
-    installAssignmentDefinitionControllerStub([]);
-
-    const { upsertAssignmentDefinition_ } = loadAssignmentDefinitionPartialsModule();
-
-    const invalidPayload = {
-      primaryTitle: 'Test Assignment',
-      primaryTopicKey: 'test-topic',
-      referenceDocumentId: 'ref-doc-001',
-      templateDocumentId: 'tpl-doc-001',
-      // yearGroupKey is missing
-    };
-
-    expect(() => upsertAssignmentDefinition_(invalidPayload)).toThrow(ApiValidationError);
-  });
-
-  it('should validate upsert parameters via validation helper', () => {
-    installAssignmentDefinitionControllerStub([]);
-    expectFunctionInSource('validateUpsertParameters_');
-  });
-
-  it('should validate read parameters via validation helper', () => {
-    installAssignmentDefinitionControllerStub([]);
-    expectFunctionInSource('validateReadParameters_');
-  });
-
-  it('should validate delete parameters via validation helper', () => {
-    installAssignmentDefinitionControllerStub([]);
-    expectFunctionInSource('validateDeleteParameters_');
-  });
-});
-
-describe('Section 5: API layer refactoring - No assignmentWeighting defaulting in inlined code', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
-  it('should NOT add assignmentWeighting: 1 when missing from URL-based payload', () => {
-    const { AssignmentDefinitionController } = installAssignmentDefinitionControllerStub([]);
-
-    const { upsertAssignmentDefinition_ } = loadAssignmentDefinitionPartialsModule();
-
-    // Mock the controller to capture what payload it receives
-    const receivedPayloads = [];
-    AssignmentDefinitionController.prototype.upsertDefinition = vi.fn((payload) => {
-      receivedPayloads.push(payload);
-      return { definitionKey: 'test-key' };
+describeWithAssignmentDefinitionController(
+  'Section 5: API layer refactoring - Helper functions removed from source',
+  () => {
+    it('should verify toCanonicalTransportDefinition_ is not present in source file', () => {
+      installAssignmentDefinitionControllerStub([]);
+      expectFunctionNotInSource('toCanonicalTransportDefinition_');
     });
 
-    // Mock toCanonicalFullDefinitionResponse
-    AssignmentDefinitionController.prototype.toCanonicalFullDefinitionResponse = vi.fn((d) => d);
-
-    // Need yearGroupKey for validation
-    const payloadWithoutWeighting = {
-      primaryTitle: 'Test Assignment',
-      primaryTopicKey: 'test-topic',
-      referenceDocumentUrl: VALID_GOOGLE_URLS.SLIDES.basic,
-      templateDocumentUrl:
-        'https://docs.google.com/presentation/d/2aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
-      yearGroupKey: 'year-10',
-      // assignmentWeighting is missing
-    };
-
-    upsertAssignmentDefinition_(payloadWithoutWeighting);
-
-    // After Section 5: the inlined code should NOT add assignmentWeighting: 1
-    // The payload passed to controller.upsertDefinition should NOT have assignmentWeighting added
-    expect(receivedPayloads[0]).not.toHaveProperty('assignmentWeighting');
-  });
-
-  it('should NOT default assignmentWeighting when null in URL-based payload', () => {
-    const { AssignmentDefinitionController } = installAssignmentDefinitionControllerStub([]);
-
-    const { upsertAssignmentDefinition_ } = loadAssignmentDefinitionPartialsModule();
-
-    const receivedPayloads = [];
-    AssignmentDefinitionController.prototype.upsertDefinition = vi.fn((payload) => {
-      receivedPayloads.push(payload);
-      return { definitionKey: 'test-key' };
+    it('should verify buildControllerUpsertPayload_ is not present in source file', () => {
+      installAssignmentDefinitionControllerStub([]);
+      expectFunctionNotInSource('buildControllerUpsertPayload_');
     });
 
-    AssignmentDefinitionController.prototype.toCanonicalFullDefinitionResponse = vi.fn((d) => d);
+    it('should verify toPlainPartialRow_ is not present in source file', () => {
+      installAssignmentDefinitionControllerStub([]);
+      expectFunctionNotInSource('toPlainPartialRow_');
+    });
+  }
+);
 
-    const payloadWithNullWeighting = {
-      primaryTitle: 'Test Assignment',
-      primaryTopicKey: 'test-topic',
-      referenceDocumentUrl: VALID_GOOGLE_URLS.SLIDES.basic,
-      templateDocumentUrl:
-        'https://docs.google.com/presentation/d/2aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
-      yearGroupKey: 'year-10',
-      assignmentWeighting: null,
-    };
-
-    upsertAssignmentDefinition_(payloadWithNullWeighting);
-
-    // After Section 5: the inlined code should NOT default null assignmentWeighting to 1
-    // The payload passed to controller should preserve the null value
-    expect(receivedPayloads[0]).toHaveProperty('assignmentWeighting', null);
-  });
-
-  it('should preserve provided assignmentWeighting values in URL-based payload', () => {
-    const { AssignmentDefinitionController } = installAssignmentDefinitionControllerStub([]);
-
-    const { upsertAssignmentDefinition_ } = loadAssignmentDefinitionPartialsModule();
-
-    const receivedPayloads = [];
-    AssignmentDefinitionController.prototype.upsertDefinition = vi.fn((payload) => {
-      receivedPayloads.push(payload);
-      return { definitionKey: 'test-key' };
+describeWithAssignmentDefinitionController(
+  'Section 5: API layer refactoring - Call sites updated',
+  () => {
+    it('should verify upsertAssignmentDefinition_ calls controller.toCanonicalFullDefinitionResponse(definition)', () => {
+      installAssignmentDefinitionControllerStub([]);
+      expectPatternInSource('controller.toCanonicalFullDefinitionResponse(definition)');
+      expectPatternNotInSource('toCanonicalTransportDefinition_(controller, definition)');
     });
 
-    AssignmentDefinitionController.prototype.toCanonicalFullDefinitionResponse = vi.fn((d) => d);
+    it('should verify getAssignmentDefinition_ calls controller.toCanonicalFullDefinitionResponse(definition)', () => {
+      installAssignmentDefinitionControllerStub([]);
+      expectPatternInSource('controller.toCanonicalFullDefinitionResponse(definition)');
+      expectPatternNotInSource('toCanonicalTransportDefinition_(controller, definition)');
+    });
+  }
+);
 
-    const payloadWithWeighting = {
-      primaryTitle: 'Test Assignment',
-      primaryTopicKey: 'test-topic',
-      referenceDocumentUrl: VALID_GOOGLE_URLS.SLIDES.basic,
-      templateDocumentUrl:
-        'https://docs.google.com/presentation/d/2aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
-      yearGroupKey: 'year-10',
-      assignmentWeighting: 5,
-    };
+describeWithAssignmentDefinitionController(
+  'Section 5: API layer refactoring - getAssignmentDefinitionPartials_ return shape',
+  () => {
+    it('should export toTransportPartialRow_ helper', () => {
+      installAssignmentDefinitionControllerStub([]);
 
-    upsertAssignmentDefinition_(payloadWithWeighting);
+      const moduleExports = require(modulePath);
+      expect(moduleExports).toHaveProperty('toTransportPartialRow_');
+      expect(typeof moduleExports.toTransportPartialRow_).toBe('function');
+    });
 
-    // Provided assignmentWeighting values should be preserved
-    expect(receivedPayloads[0]).toHaveProperty('assignmentWeighting', 5);
-  });
-});
+    it('should use toTransportPartialRow_ for partial row serialization', () => {
+      installAssignmentDefinitionControllerStub([]);
+      expectPatternInSource('toTransportPartialRow_');
+    });
+
+    it('should defensively strip yearGroup field from partial JSON', () => {
+      installAssignmentDefinitionControllerStub([]);
+
+      const moduleExports = require(modulePath);
+      expect(moduleExports).toHaveProperty('toTransportPartialRow_');
+
+      const mockDefinition = createMockDefinitionForPartialRow({ yearGroup: '10' });
+      const result = moduleExports.toTransportPartialRow_(mockDefinition);
+      expect(result).not.toHaveProperty('yearGroup');
+    });
+
+    it('should normalize Date fields as ISO strings', () => {
+      installAssignmentDefinitionControllerStub([]);
+
+      const moduleExports = require(modulePath);
+      expect(moduleExports).toHaveProperty('toTransportPartialRow_');
+
+      const createdAt = new Date('2026-01-05T10:00:00.000Z');
+      const updatedAt = new Date('2026-01-06T12:30:00.000Z');
+      const mockDefinition = createMockDefinitionForPartialRow({ createdAt, updatedAt });
+
+      const result = moduleExports.toTransportPartialRow_(mockDefinition);
+
+      expect(result.createdAt).toBe('2026-01-05T10:00:00.000Z');
+      expect(result.updatedAt).toBe('2026-01-06T12:30:00.000Z');
+    });
+
+    it('should handle pre-normalised string dates correctly', () => {
+      installAssignmentDefinitionControllerStub([]);
+
+      const moduleExports = require(modulePath);
+      expect(moduleExports).toHaveProperty('toTransportPartialRow_');
+
+      const mockDefinition = createMockDefinitionForPartialRow();
+      const result = moduleExports.toTransportPartialRow_(mockDefinition);
+
+      expect(result.createdAt).toBe('2026-01-05T10:00:00.000Z');
+      expect(result.updatedAt).toBe('2026-01-06T12:30:00.000Z');
+    });
+
+    it('should ensure tasks field is null for partial definitions', () => {
+      installAssignmentDefinitionControllerStub([]);
+
+      const moduleExports = require(modulePath);
+      expect(moduleExports).toHaveProperty('toTransportPartialRow_');
+
+      const mockDefinition = createMockDefinitionForPartialRow();
+      const result = moduleExports.toTransportPartialRow_(mockDefinition);
+
+      expect(result.tasks).toBeNull();
+    });
+  }
+);
+
+describeWithAssignmentDefinitionController(
+  'Section 5: API layer refactoring - Transport validation unchanged',
+  () => {
+    it('should throw ApiValidationError when yearGroupKey is null via upsertAssignmentDefinition_', () => {
+      installAssignmentDefinitionControllerStub([]);
+
+      const { upsertAssignmentDefinition_ } = loadAssignmentDefinitionPartialsModule();
+
+      const invalidPayload = {
+        primaryTitle: 'Test Assignment',
+        primaryTopicKey: 'test-topic',
+        referenceDocumentId: 'ref-doc-001',
+        templateDocumentId: 'tpl-doc-001',
+        yearGroupKey: null,
+      };
+
+      expect(() => upsertAssignmentDefinition_(invalidPayload)).toThrow(ApiValidationError);
+    });
+
+    it('should throw ApiValidationError when yearGroupKey is missing via upsertAssignmentDefinition_', () => {
+      installAssignmentDefinitionControllerStub([]);
+
+      const { upsertAssignmentDefinition_ } = loadAssignmentDefinitionPartialsModule();
+
+      const invalidPayload = {
+        primaryTitle: 'Test Assignment',
+        primaryTopicKey: 'test-topic',
+        referenceDocumentId: 'ref-doc-001',
+        templateDocumentId: 'tpl-doc-001',
+        // yearGroupKey is missing
+      };
+
+      expect(() => upsertAssignmentDefinition_(invalidPayload)).toThrow(ApiValidationError);
+    });
+
+    it('should validate upsert parameters via validation helper', () => {
+      installAssignmentDefinitionControllerStub([]);
+      expectFunctionInSource('validateUpsertParameters_');
+    });
+
+    it('should validate read parameters via validation helper', () => {
+      installAssignmentDefinitionControllerStub([]);
+      expectFunctionInSource('validateReadParameters_');
+    });
+
+    it('should validate delete parameters via validation helper', () => {
+      installAssignmentDefinitionControllerStub([]);
+      expectFunctionInSource('validateDeleteParameters_');
+    });
+  }
+);
+
+describeWithAssignmentDefinitionController(
+  'Section 5: API layer refactoring - No assignmentWeighting defaulting in inlined code',
+  () => {
+    it('should NOT add assignmentWeighting: 1 when missing from URL-based payload', () => {
+      const { AssignmentDefinitionController } = installAssignmentDefinitionControllerStub([]);
+
+      const { upsertAssignmentDefinition_ } = loadAssignmentDefinitionPartialsModule();
+
+      // Mock the controller to capture what payload it receives
+      const receivedPayloads = [];
+      AssignmentDefinitionController.prototype.upsertDefinition = vi.fn((payload) => {
+        receivedPayloads.push(payload);
+        return { definitionKey: 'test-key' };
+      });
+
+      // Mock toCanonicalFullDefinitionResponse
+      AssignmentDefinitionController.prototype.toCanonicalFullDefinitionResponse = vi.fn((d) => d);
+
+      // Need yearGroupKey for validation
+      const payloadWithoutWeighting = {
+        primaryTitle: 'Test Assignment',
+        primaryTopicKey: 'test-topic',
+        referenceDocumentUrl: VALID_GOOGLE_URLS.SLIDES.basic,
+        templateDocumentUrl:
+          'https://docs.google.com/presentation/d/2aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
+        yearGroupKey: 'year-10',
+        // assignmentWeighting is missing
+      };
+
+      upsertAssignmentDefinition_(payloadWithoutWeighting);
+
+      // After Section 5: the inlined code should NOT add assignmentWeighting: 1
+      // The payload passed to controller.upsertDefinition should NOT have assignmentWeighting added
+      expect(receivedPayloads[0]).not.toHaveProperty('assignmentWeighting');
+    });
+
+    it('should NOT default assignmentWeighting when null in URL-based payload', () => {
+      const { AssignmentDefinitionController } = installAssignmentDefinitionControllerStub([]);
+
+      const { upsertAssignmentDefinition_ } = loadAssignmentDefinitionPartialsModule();
+
+      const receivedPayloads = [];
+      AssignmentDefinitionController.prototype.upsertDefinition = vi.fn((payload) => {
+        receivedPayloads.push(payload);
+        return { definitionKey: 'test-key' };
+      });
+
+      AssignmentDefinitionController.prototype.toCanonicalFullDefinitionResponse = vi.fn((d) => d);
+
+      const payloadWithNullWeighting = {
+        primaryTitle: 'Test Assignment',
+        primaryTopicKey: 'test-topic',
+        referenceDocumentUrl: VALID_GOOGLE_URLS.SLIDES.basic,
+        templateDocumentUrl:
+          'https://docs.google.com/presentation/d/2aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
+        yearGroupKey: 'year-10',
+        assignmentWeighting: null,
+      };
+
+      upsertAssignmentDefinition_(payloadWithNullWeighting);
+
+      // After Section 5: the inlined code should NOT default null assignmentWeighting to 1
+      // The payload passed to controller should preserve the null value
+      expect(receivedPayloads[0]).toHaveProperty('assignmentWeighting', null);
+    });
+
+    it('should preserve provided assignmentWeighting values in URL-based payload', () => {
+      const { AssignmentDefinitionController } = installAssignmentDefinitionControllerStub([]);
+
+      const { upsertAssignmentDefinition_ } = loadAssignmentDefinitionPartialsModule();
+
+      const receivedPayloads = [];
+      AssignmentDefinitionController.prototype.upsertDefinition = vi.fn((payload) => {
+        receivedPayloads.push(payload);
+        return { definitionKey: 'test-key' };
+      });
+
+      AssignmentDefinitionController.prototype.toCanonicalFullDefinitionResponse = vi.fn((d) => d);
+
+      const payloadWithWeighting = {
+        primaryTitle: 'Test Assignment',
+        primaryTopicKey: 'test-topic',
+        referenceDocumentUrl: VALID_GOOGLE_URLS.SLIDES.basic,
+        templateDocumentUrl:
+          'https://docs.google.com/presentation/d/2aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
+        yearGroupKey: 'year-10',
+        assignmentWeighting: 5,
+      };
+
+      upsertAssignmentDefinition_(payloadWithWeighting);
+
+      // Provided assignmentWeighting values should be preserved
+      expect(receivedPayloads[0]).toHaveProperty('assignmentWeighting', 5);
+    });
+  }
+);
 
 // ============================================================================
 // Comprehensive Unit Tests for All Exported Validation Functions
@@ -1064,12 +1042,7 @@ describe('isIsoDateTimeString_', () => {
   });
 });
 
-describe('validateSafeTrimmedIdentifier_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
+describeWithAssignmentDefinitionController('validateSafeTrimmedIdentifier_', () => {
   let throwValidationError_, validateSafeTrimmedIdentifier_;
 
   beforeEach(() => {
@@ -1200,12 +1173,7 @@ describe('validateSafeTrimmedIdentifier_', () => {
   });
 });
 
-describe('throwValidationError_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
+describeWithAssignmentDefinitionController('throwValidationError_', () => {
   it('throws ApiValidationError with correct properties', () => {
     installAssignmentDefinitionControllerStub([]);
     const { throwValidationError_ } = loadAssignmentDefinitionPartialsModule();
@@ -1250,12 +1218,7 @@ describe('throwValidationError_', () => {
   });
 });
 
-describe('throwReadValidationError_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
+describeWithAssignmentDefinitionController('throwReadValidationError_', () => {
   it('throws ApiValidationError with correct properties for read operations', () => {
     installAssignmentDefinitionControllerStub([]);
     const { throwReadValidationError_ } = loadAssignmentDefinitionPartialsModule();
@@ -1286,12 +1249,7 @@ describe('throwReadValidationError_', () => {
   });
 });
 
-describe('throwUpsertValidationError_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
+describeWithAssignmentDefinitionController('throwUpsertValidationError_', () => {
   it('throws ApiValidationError with correct properties for upsert operations', () => {
     installAssignmentDefinitionControllerStub([]);
     const { throwUpsertValidationError_ } = loadAssignmentDefinitionPartialsModule();
@@ -1322,12 +1280,7 @@ describe('throwUpsertValidationError_', () => {
   });
 });
 
-describe('throwDeleteValidationError_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
+describeWithAssignmentDefinitionController('throwDeleteValidationError_', () => {
   it('throws ApiValidationError with correct properties for delete operations', () => {
     installAssignmentDefinitionControllerStub([]);
     const { throwDeleteValidationError_ } = loadAssignmentDefinitionPartialsModule();
@@ -1358,12 +1311,7 @@ describe('throwDeleteValidationError_', () => {
   });
 });
 
-describe('validateReadParameters_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
+describeWithAssignmentDefinitionController('validateReadParameters_', () => {
   it.each([
     {
       description: 'valid parameters with definitionKey',
@@ -1511,12 +1459,7 @@ describe('validateReadParameters_', () => {
   );
 });
 
-describe('validateDefinitionKey_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
+describeWithAssignmentDefinitionController('validateDefinitionKey_', () => {
   it.each([
     {
       description: 'valid definitionKey string',
@@ -1609,12 +1552,7 @@ describe('validateDefinitionKey_', () => {
   );
 });
 
-describe('validatePrimaryTopicKey_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
+describeWithAssignmentDefinitionController('validatePrimaryTopicKey_', () => {
   it.each([
     {
       description: 'valid primaryTopicKey string',
@@ -1695,12 +1633,7 @@ describe('validatePrimaryTopicKey_', () => {
   );
 });
 
-describe('validateYearGroupKeyedFields_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
+describeWithAssignmentDefinitionController('validateYearGroupKeyedFields_', () => {
   it.each([
     {
       description: 'valid yearGroupKey and yearGroupLabel',
@@ -1810,12 +1743,7 @@ describe('validateYearGroupKeyedFields_', () => {
   );
 });
 
-describe('validateTimestamp_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
+describeWithAssignmentDefinitionController('validateTimestamp_', () => {
   it.each([
     {
       description: 'null timestamp is valid',
@@ -1897,12 +1825,7 @@ describe('validateTimestamp_', () => {
   );
 });
 
-describe('validatePartialRow_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
+describeWithAssignmentDefinitionController('validatePartialRow_', () => {
   const buildValidRow = (overrides = {}) => ({
     primaryTitle: 'Algebra Baseline',
     primaryTopic: 'Algebra',
@@ -2094,12 +2017,7 @@ describe('validatePartialRow_', () => {
   );
 });
 
-describe('validateTaskWeightingsShape_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
+describeWithAssignmentDefinitionController('validateTaskWeightingsShape_', () => {
   it.each([
     {
       description: 'undefined taskWeightings is valid',
@@ -2252,12 +2170,7 @@ describe('validateTaskWeightingsShape_', () => {
   );
 });
 
-describe('validateRequiredYearGroupKey_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
+describeWithAssignmentDefinitionController('validateRequiredYearGroupKey_', () => {
   it.each([
     {
       description: 'valid yearGroupKey',
@@ -2347,12 +2260,7 @@ describe('validateRequiredYearGroupKey_', () => {
   );
 });
 
-describe('validateUpsertParameters_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
+describeWithAssignmentDefinitionController('validateUpsertParameters_', () => {
   const buildValidUpsertParams = (overrides = {}) => ({
     primaryTitle: 'Test Assignment',
     primaryTopicKey: 'test-topic',
@@ -2559,12 +2467,7 @@ describe('validateUpsertParameters_', () => {
   });
 });
 
-describe('validateWizardUpsertParameters_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
+describeWithAssignmentDefinitionController('validateWizardUpsertParameters_', () => {
   const buildValidWizardParams = (overrides = {}) => ({
     primaryTitle: 'Test Assignment',
     primaryTopicKey: 'test-topic',
