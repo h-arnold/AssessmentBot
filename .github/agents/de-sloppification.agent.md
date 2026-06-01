@@ -2,8 +2,7 @@
 name: 'De-Sloppification'
 description: 'Finds and removes AI-slop, duplication, and unnecessary complexity'
 user-invocable: true
-model: gpt-5.4
-tools: [read/readFile, read/file_search, read/list_dir, read/problems, execute/runInTerminal, execute/createAndRunTask, execute/getTerminalOutput, execute/awaitTerminal, edit/createFile, edit/editFiles, edit/rename, search, web, todo]
+tools: [vscode/askQuestions, vscode/memory, execute/getTerminalOutput, execute/createAndRunTask, execute/runInTerminal, read/problems, read/readFile, read/viewImage, edit/createFile, edit/editFiles, edit/rename, search, web, todo, sonarsource.sonarlint-vscode/sonarqube_getPotentialSecurityIssues, sonarsource.sonarlint-vscode/sonarqube_excludeFiles, sonarsource.sonarlint-vscode/sonarqube_setUpConnectedMode, sonarsource.sonarlint-vscode/sonarqube_analyzeFile]
 ---
 
 # De-Sloppification Agent Instructions
