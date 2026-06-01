@@ -210,6 +210,7 @@ Apply only the rows relevant to the module(s) under review.
 - [ ] No speculative features or scope beyond the explicit request.
 - [ ] No default values introduced without explicit instruction.
 - [ ] @remarks comments added to all key classes, methods and functions where additional explanation is required
+- [ ] Files are no longer than 500 lines. If they are, consider if they can be split into smaller modules or if some logic can be moved to helper functions.
 
 ### Backend Only
 
