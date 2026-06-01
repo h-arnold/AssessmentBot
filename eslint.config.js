@@ -162,6 +162,7 @@ module.exports = [
     plugins: { security },
     rules: {
       ...unicodeSecurityRules,
+      'max-lines': ['warn', { max: 500, skipComments: true, skipBlankLines: true }],
       'prefer-object-has-own': 'warn',
       'no-negated-condition': 'warn',
       'require-unicode-regexp': 'off',
