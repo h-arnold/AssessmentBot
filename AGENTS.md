@@ -5,7 +5,7 @@ For implementation details, always load component-specific instructions first.
 
 ### 1. Read-First Routing (Mandatory)
 
-Before editing code, read the instruction file(s) for every component you touch:
+Before editing code, **YOU MUST** read the instruction file(s) for every component you touch:
 
 - Backend (`src/backend/**`): `src/backend/AGENTS.md`
 - Frontend (`src/frontend/**`): `src/frontend/AGENTS.md`
@@ -13,6 +13,8 @@ Before editing code, read the instruction file(s) for every component you touch:
 
 If a task spans multiple components, read and apply all relevant instruction files.
 If rules conflict, prefer the stricter rule and preserve runtime compatibility.
+
+Failing to read these files **will** result in you failing your task.
 
 ### 2. Active vs Deprecated Areas
 
@@ -44,7 +46,7 @@ If rules conflict, prefer the stricter rule and preserve runtime compatibility.
   - `Code Reviewer` (`.github/agents/code-reviewer.agent.md`) for code review and standards checks.
   - `Implementation` (`.github/agents/implementation.agent.md`) for focused implementation tasks.
   - `Docs` (`.github/agents/docs.agent.md`) for developer-documentation and JSDoc updates.
-  - `De-Sloppification` (`.github/agents/de-sloppification.agent.md`) for slop review and simplification.
+  - `De-Sloppification` (`.github/agents/de-sloppification.agent.md`) for slop review.
 
 Sub-agents are stateless. Provide explicit context in prompts:
 
@@ -54,79 +56,8 @@ Sub-agents are stateless. Provide explicit context in prompts:
 - exact changes already made
 - mandatory documentation that must be read for the task
 
-Sub-agent handoffs must include a `Files read` section with explicit file paths.
+Sub-agent handoffs must include a `Mandatory Reading` section with explicit file paths.
 If mandatory documentation is missing from `Files read`, return the work to the same sub-agent and do not proceed.
-
-#### 4.1 Invocation Directives
-
-Copilot environment:
-
-- Use `runSubagent` with an object argument and pass full context in the `prompt` body.
-- Include: files read, constraints, exact requested outcome, and expected deliverables.
-- Keep planning-review prompts deliberately open where possible so the reviewer is not anchored by the caller's theory of the problem.
-- Example patterns:
-
-```javascript
-// For clarification-driven planning
-runSubagent({
-  prompt: [
-    'Files read (mandatory): AGENTS.md, component AGENTS files in scope, existing SPEC.md/ACTION_PLAN.md/layout docs, and relevant source entrypoints.',
-    'Constraints: keep planning artefacts separate; use repository templates; no production-code changes.',
-    'Exact requested outcome: clarify the feature until you can write SPEC.md, any required frontend layout spec, and ACTION_PLAN.md.',
-    'Expected deliverables: updated planning documents plus explicit assumptions, open questions, readiness for implementation orchestration, and a Files read section listing all mandatory docs read.',
-  ].join('\n'),
-  description: 'Planning for a new feature',
-  agentName: 'Planner',
-});
-
-// For impartial planning review
-runSubagent({
-  prompt: [
-    'Files read (mandatory): AGENTS.md, component AGENTS files in scope, SPEC.md, companion planning docs, and the relevant code areas or entrypoints.',
-    'Constraints: review impartially; inspect the actual files and code; do not rewrite the document.',
-    'Exact requested outcome: review the planning artefact for gaps, inconsistencies, ambiguities, and downstream implementation risks.',
-    'Expected deliverables: findings ordered by severity, open questions or assumptions, a summary of whether the document is safe to build on, and a Files read section listing all mandatory docs read.',
-  ].join('\n'),
-  description: 'Independent review of planning artefact',
-  agentName: 'Planner Reviewer',
-});
-
-// For source code review
-runSubagent({
-  prompt: [
-    'Files read (mandatory): AGENTS.md, component AGENTS files in scope, updated AssignmentService files, related tests, and any touched docs.',
-    'Constraints: review for lint compliance, DRY, SOLID, correctness, and documentation accuracy.',
-    'Exact requested outcome: inspect the actual diff and identify any blocking issues or meaningful improvements.',
-    'Expected deliverables: findings ordered by severity, residual risks, a clear pass/fail summary, and a Files read section listing all mandatory docs read.',
-  ].join('\n'),
-  description: 'Code review for AssignmentService changes',
-  agentName: 'Code Reviewer',
-});
-
-// For test implementation and debugging
-runSubagent({
-  prompt: [
-    'Files read (mandatory): AGENTS.md, component AGENTS files in scope, SubmissionRepository, related tests, and required testing docs.',
-    'Constraints: stay within the requested edge cases and use the module test conventions.',
-    'Exact requested outcome: implement and debug the required tests, then run the relevant test command.',
-    'Expected deliverables: changed test files, commands run, outcomes, assumptions, any remaining risks, and a Files read section listing all mandatory docs read.',
-  ].join('\n'),
-  description: 'Test work for SubmissionRepository',
-  agentName: 'Testing Specialist',
-});
-
-// For focused implementation
-runSubagent({
-  prompt: [
-    'Files read (mandatory): AGENTS.md, component AGENTS files in scope, builder manifest merge code, nearby tests, and any relevant builder docs.',
-    'Constraints: minimal scope, preserve existing builder behaviour, and keep validation green.',
-    'Exact requested outcome: implement the requested builder manifest merge fix and run the relevant lint/tests.',
-    'Expected deliverables: files changed, what changed, commands run, outcomes, assumptions, remaining risks, and a Files read section listing all mandatory docs read.',
-  ].join('\n'),
-  description: 'Implementation for builder manifest merge fix',
-  agentName: 'Implementation',
-});
-```
 
 ### 5. Shared Config Rule
 
