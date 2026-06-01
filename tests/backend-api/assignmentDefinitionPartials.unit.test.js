@@ -1,8 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createAssignmentDefinitionControllerHooks,
+  describeWithAssignmentDefinitionController,
   installAssignmentDefinitionControllerStub,
   loadAssignmentDefinitionPartialsModule,
+  runBinaryFunctionTest,
+  runSimpleValidationTest,
+  runThrowingValidationTest,
   buildValidPartial,
   createMockDefinitionForPartialRow,
   expectFunctionNotInSource,
@@ -877,71 +881,65 @@ describe('Section 5: API layer refactoring - No assignmentWeighting defaulting i
 // Comprehensive Unit Tests for All Exported Validation Functions
 // ============================================================================
 
-describe('hasControlCharacters_', () => {
-  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-  beforeEach(beforeEachHandler);
-  afterEach(afterEachHandler);
-
-  it.each([
-    {
-      description: 'string with ASCII control character DEL (127)',
-      value: 'test\x7fvalue',
-      expected: true,
-    },
-    {
-      description: 'string with ASCII control character NUL (0)',
-      value: 'test\x00value',
-      expected: true,
-    },
-    {
-      description: 'string with ASCII control character SOH (1)',
-      value: 'test\x01value',
-      expected: true,
-    },
-    {
-      description: 'string with ASCII control character LF (10)',
-      value: 'test\nvalue',
-      expected: true,
-    },
-    {
-      description: 'string with ASCII control character CR (13)',
-      value: 'test\rvalue',
-      expected: true,
-    },
-    {
-      description: 'string with ASCII control character TAB (9)',
-      value: 'test\tvalue',
-      expected: true,
-    },
-    {
-      description: 'string with ASCII control character BEL (7)',
-      value: 'test\x07value',
-      expected: true,
-    },
-    {
-      description: 'string with ASCII control character ESC (27)',
-      value: 'test\x1bvalue',
-      expected: true,
-    },
-    { description: 'normal alphanumeric string', value: 'testValue123', expected: false },
-    { description: 'string with spaces', value: 'test value', expected: false },
-    { description: 'string with hyphens', value: 'test-value', expected: false },
-    { description: 'string with underscores', value: 'test_value', expected: false },
-    { description: 'empty string', value: '', expected: false },
-    { description: 'string with forward slash', value: 'test/value', expected: false },
-    { description: 'string with backslash', value: 'test\\value', expected: false },
-    { description: 'string with dot-dot', value: 'test..value', expected: false },
-    { description: 'string with unicode characters', value: 'test值value', expected: false },
-    {
-      description: 'string with unicode control character U+2028',
-      value: 'test\u2028value',
-      expected: false,
-    },
-  ])('returns $expected for $description', ({ value, expected }) => {
-    installAssignmentDefinitionControllerStub([]);
-    const { hasControlCharacters_ } = loadAssignmentDefinitionPartialsModule();
-    expect(hasControlCharacters_(value)).toBe(expected);
+describeWithAssignmentDefinitionController('hasControlCharacters_', () => {
+  runBinaryFunctionTest({
+    functionName: 'hasControlCharacters_',
+    testCases: [
+      {
+        description: 'string with ASCII control character DEL (127)',
+        value: 'test\x7fvalue',
+        expected: true,
+      },
+      {
+        description: 'string with ASCII control character NUL (0)',
+        value: 'test\x00value',
+        expected: true,
+      },
+      {
+        description: 'string with ASCII control character SOH (1)',
+        value: 'test\x01value',
+        expected: true,
+      },
+      {
+        description: 'string with ASCII control character LF (10)',
+        value: 'test\nvalue',
+        expected: true,
+      },
+      {
+        description: 'string with ASCII control character CR (13)',
+        value: 'test\rvalue',
+        expected: true,
+      },
+      {
+        description: 'string with ASCII control character TAB (9)',
+        value: 'test\tvalue',
+        expected: true,
+      },
+      {
+        description: 'string with ASCII control character BEL (7)',
+        value: 'test\x07value',
+        expected: true,
+      },
+      {
+        description: 'string with ASCII control character ESC (27)',
+        value: 'test\x1bvalue',
+        expected: true,
+      },
+      { description: 'normal alphanumeric string', value: 'testValue123', expected: false },
+      { description: 'string with spaces', value: 'test value', expected: false },
+      { description: 'string with hyphens', value: 'test-value', expected: false },
+      { description: 'string with underscores', value: 'test_value', expected: false },
+      { description: 'empty string', value: '', expected: false },
+      { description: 'string with forward slash', value: 'test/value', expected: false },
+      { description: 'string with backslash', value: 'test\\value', expected: false },
+      { description: 'string with dot-dot', value: 'test..value', expected: false },
+      { description: 'string with unicode characters', value: 'test值value', expected: false },
+      {
+        description: 'string with unicode control character U+2028',
+        value: 'test\u2028value',
+        expected: false,
+      },
+    ],
   });
 });
 
