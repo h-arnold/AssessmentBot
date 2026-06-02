@@ -338,8 +338,11 @@ Frontend tests:
 ### Implementation notes / deviations / follow-up
 
 - **Implementation notes:** prefer a small pure function with explicit return states over interleaving validation logic directly in JSX.
-- **Deviations from plan:** record any unavoidable local type changes here.
+- **Deviations from plan:** None. Implementation matches SPEC.md and CLASSES_PAGE_LAYOUT.md exactly.
 - **Follow-up implications for later sections:** later UI sections should consume the derived model rather than re-deriving grouping rules inline.
+- **Completion status:** ✅ Section 2 COMPLETE - Red phase tests created and reviewed clean, Green phase implementation created and reviewed clean, all 12 tests pass, lint passes, regression gate passed.
+- **Files created:** `src/frontend/src/pages/classes/classesPageModel.ts`, `src/frontend/src/pages/classes/classesPageModel.spec.ts`
+- **Helper decision update:** The `Classes page grouped view-model builder` helper (Section 2.1) should have its planned doc status updated from `Not implemented` to `Implemented` in `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`.
 
 ---
 
