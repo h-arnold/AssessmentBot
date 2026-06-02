@@ -1,20 +1,12 @@
+const ITEM_NOT_FOUND_INDEX = -1;
 /**
  * ArrayUtils - Utility methods for array operations.
  *
  * Provides generic array helper functions that can be reused across the codebase.
  * All methods are static and do not require instantiation.
  */
-
-/**
- * Utility class for array operations.
- */
+// eslint-disable-next-line unicorn/no-static-only-class
 class ArrayUtils {
-  /**
-   * Constant representing the index returned when an item is not found.
-   * @type {number}
-   */
-  static ITEM_NOT_FOUND_INDEX = -1;
-
   /**
    * Finds the index of the first item in an array matching the given predicate.
    * @param {Array} items - The array to search
