@@ -180,6 +180,7 @@ allowlist = [
     "file",
     "find",
     "find /home/developer/AssessmentBot -name \"*.spec.ts\" -exec grep -l \"AssignmentTopicSchema\\|CreateAssignmentTopicInputSchema\" {} \\;",
+    "find docs -name \"*.md\" -type f -exec grep -l \"run-all-checks\" {} \\;",
     "find src/frontend -name \"*.spec.tsx\" -exec grep -l \"ManageCohortsModal\\|ManageYearGroupsModal\" {} \\;",
     "find src/frontend/src -name \"*.tsx\" -type f -exec grep -l \"Select\" {} \\;",
     "git add",

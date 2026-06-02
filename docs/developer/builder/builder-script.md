@@ -50,8 +50,8 @@ npm run builder:test
 # Regression checker CLI
 npm run regression-checker -- [sessionId]
 
-# Full builder CI sequence: lint -> test -> compile -> run
-npm run builder:ci
+# Full production build (includes builder compile + frontend build)
+npm run build:production
 ```
 
 For full regression-checker configuration, report interpretation, compatibility rules, and troubleshooting, use [Regression Checker How-To](./regression-checker-how-to.md).

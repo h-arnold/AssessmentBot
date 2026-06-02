@@ -40,7 +40,7 @@
     "build:gas-bundle": "node scripts/builder/dist/build-gas-bundle.js",
     "build:production": "npm run builder:compile && npm run build:gas-bundle -- --frontend-mode=production",
     "build:dev": "npm run builder:compile && npm run build:gas-bundle -- --frontend-mode=dev",
-    "ci": "npm run lint:check && npm run test:coverage && npm run build:production"
+    "run-all-checks": "npm run lint:check && npm run test:coverage && npm run build:production"
   },
   "keywords": [],
   "author": "",
@@ -64,7 +64,6 @@
     "zod": "^4.3.6"
   },
   "dependencies": {
-    "@google/clasp": "^3.2.0",
-    "beercss": "^4.0.1"
+    "@google/clasp": "^3.3.0"
   }
 }

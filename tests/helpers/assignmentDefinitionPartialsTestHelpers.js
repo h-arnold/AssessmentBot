@@ -7,6 +7,7 @@ import { expect, vi } from 'vitest';
 import path from 'node:path';
 
 const modulePath = '../../src/backend/z_Api/assignmentDefinitionPartials.js';
+const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
 
 /**
  * Creates a mock AssignmentDefinitionController and installs it globally.
@@ -187,4 +188,149 @@ export function buildValidPartial(overrides = {}) {
     updatedAt: '2026-01-06T12:30:00.000Z',
     ...overrides,
   };
+}
+
+// ============================================================================
+// Generic Test Utilities for Validation Functions
+// ============================================================================
+
+/**
+ * Generic test runner for binary functions (returning true/false).
+ * Reduces duplication for functions like hasControlCharacters_, isIsoDateTimeString_.
+ *
+ * @param {Object} options - Test configuration
+ * @param {string} options.functionName - Name of function to test
+ * @param {string} options.modulePath - Path to module (default: modulePath)
+ * @param {Array} options.testCases - Array of test case objects with description, value, expected
+ * @returns {void}
+ */
+export function runBinaryFunctionTest({ functionName, testCases }) {
+  installAssignmentDefinitionControllerStub([]);
+  const module = loadAssignmentDefinitionPartialsModule();
+  const func = module[functionName];
+
+  testCases.forEach(({ description, value, expected }) => {
+    it(`returns ${expected} for ${description}`, () => {
+      expect(func(value)).toBe(expected);
+    });
+  });
+}
+
+/**
+ * Generic test runner for validation functions that throw ApiValidationError.
+ * Handles the common pattern: expect(() => func()).toThrow(ApiValidationError)
+ *
+ * @param {Object} options - Test configuration
+ * @param {Function} options.setup - Setup function called before each test
+ * @param {Function} options.func - Function under test
+ * @param {Array} options.testCases - Array of test case objects
+ * @param {string} options.method - Method name for error assertion
+ * @param {boolean} options.expectDetails - Whether to expect details field in error
+ * @returns {void}
+ */
+export function runThrowingValidationTest({
+  setup,
+  func,
+  testCases,
+  method,
+  expectDetails = false,
+}) {
+  testCases.forEach(({ description, shouldThrow, expectedError, expectedField, ...params }) => {
+    const paramValues = Object.values(params);
+    const paramNames = Object.keys(params);
+
+    it(`handles ${description} correctly`, () => {
+      setup();
+
+      if (shouldThrow) {
+        expect(() => func(...paramValues)).toThrow(ApiValidationError);
+        expect(() => func(...paramValues)).toThrow(expectedError);
+        try {
+          func(...paramValues);
+        } catch (err) {
+          expect(err.fieldName).toBe(expectedField);
+          expect(err.method).toBe(method);
+          if (expectDetails && err.details !== undefined) {
+            const rowIndex = paramNames.includes('rowIndex') ? params.rowIndex : undefined;
+            if (rowIndex !== undefined) {
+              expect(err.details).toBe(`rowIndex=${rowIndex}`);
+            }
+          }
+        }
+      } else {
+        expect(() => func(...paramValues)).not.toThrow();
+      }
+    });
+  });
+}
+
+/**
+ * Generic test runner for simple validation functions with single parameter.
+ * Common pattern for functions like validateDefinitionKey_, validatePrimaryTopicKey_.
+ *
+ * @param {Object} options - Test configuration
+ * @param {string} options.functionName - Name of function to test
+ * @param {Array} options.testCases - Array of test case objects
+ * @param {string} options.method - Method name for error assertion
+ * @param {boolean} options.hasRowIndex - Whether function takes rowIndex parameter
+ * @param {boolean} options.hasFieldName - Whether function takes fieldName parameter
+ * @returns {void}
+ */
+export function runSimpleValidationTest({
+  functionName,
+  testCases,
+  method,
+  hasRowIndex = true,
+  hasFieldName = false,
+}) {
+  installAssignmentDefinitionControllerStub([]);
+  const module = loadAssignmentDefinitionPartialsModule();
+  const func = module[functionName];
+
+  testCases.forEach(({ description, shouldThrow, expectedError, expectedField, ...params }) => {
+    const paramValues = Object.values(params);
+
+    it(`handles ${description} correctly`, () => {
+      if (shouldThrow) {
+        expect(() => func(...paramValues)).toThrow(ApiValidationError);
+        expect(() => func(...paramValues)).toThrow(expectedError);
+        try {
+          func(...paramValues);
+        } catch (err) {
+          expect(err.fieldName).toBe(expectedField);
+          expect(err.method).toBe(method);
+          if (hasRowIndex && params.rowIndex !== undefined) {
+            expect(err.details).toBe(`rowIndex=${params.rowIndex}`);
+          }
+        }
+      } else {
+        expect(() => func(...paramValues)).not.toThrow();
+      }
+    });
+  });
+}
+
+/**
+ * Helper to build a valid upsert parameters object.
+ * @param {Object} overrides - Properties to override
+ * @returns {Object} Valid upsert parameters
+ */
+export function buildValidUpsertParams(overrides = {}) {
+  return {
+    primaryTitle: 'Test Assignment',
+    primaryTopicKey: 'test-topic',
+    referenceDocumentId: 'ref-doc-001',
+    templateDocumentId: 'tpl-doc-001',
+    yearGroupKey: 'year-10',
+    ...overrides,
+  };
+}
+
+/**
+ * Helper to build a valid row for partial row validation tests.
+ * @param {Object} overrides - Properties to override
+ * @returns {Object} Valid row object
+ */
+export function buildValidRow(overrides = {}) {
+  return buildValidPartial(overrides);
 }

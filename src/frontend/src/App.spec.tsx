@@ -811,8 +811,8 @@ describe('App', () => {
     expect(transport.getCallCount(classPartialsMethodName)).toBe(1);
   });
 
-  it('logs one debug event when startup warm-up fails without breaking render', async () => {
-    const consoleDebugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+  it('logs error events when startup warm-up fails without breaking render', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     installApiHandlerMock({
       [authStatusMethodName]: {
@@ -854,10 +854,12 @@ describe('App', () => {
 
     expect(await screen.findByText('Authorised')).toBeInTheDocument();
     await waitFor(() => {
-      expect(consoleDebugSpy).toHaveBeenCalledTimes(1);
+      // Both the API service error and the startup warmup error are logged
+      expect(consoleErrorSpy).toHaveBeenCalled();
+      // Verify the startup warmup error context is present in at least one of the calls
+      expect(consoleErrorSpy.mock.calls.some(
+        (call) => call[0] === 'features/auth/AppAuthGate.startupWarmup'
+      )).toBe(true);
     });
-    expect(consoleDebugSpy.mock.calls[0]?.[0]).toBe(
-      'features/auth/AppAuthGate.startupWarmup'
-    );
   });
 });

@@ -4,10 +4,6 @@ description: Counts lines of code and compares changes to determine LOC reductio
 license: MIT
 compatibility: Mistral Vibe CLI
 user-invocable: true
-allowed-tools:
-  - bash
-  - read_file
-  - write_file
 ---
 
 # LOC Counter Skill
@@ -25,18 +21,36 @@ Counts lines of code (LOC) and provides comparison capabilities to determine if 
 
 ## Prerequisites
 
-Requires `scc` (Sloc, Cloc and Code) to be installed:
+Requires `scc` (Sloc, Cloc and Code) to be installed.
+
+### Recommended: Direct Binary Download (Linux/Unix)
+
+The most reliable installation method uses pre-built binaries from GitHub releases:
 
 ```bash
-# Install scc (Go-based, cross-platform)
-curl -sL https://raw.githubusercontent.com/boyter/scc/master/install.sh | sh
+# 1. Download the latest release for your architecture
+# Linux x86_64 (most common):
+curl -L -o /tmp/scc.tar.gz https://github.com/boyter/scc/releases/latest/download/scc_Linux_x86_64.tar.gz
+
+# 2. Extract and install to ~/.local/bin (no sudo required)
+mkdir -p ~/.local/bin
+tar -xzf /tmp/scc.tar.gz -C ~/.local/bin/
+
+# 3. Add to PATH (persistent)
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+
+# 4. Verify
+scc --version
 ```
 
-Alternatively, install via package manager:
+**Note:** The apt package (`sudo apt install scc`) is **not available** on Debian/Ubuntu. Use the direct binary download above instead.
 
-- **Linux (apt)**: `sudo apt install scc`
-- **macOS (brew)**: `brew install scc`
-- **Windows (scoop)**: `scoop install scc`
+### Troubleshooting
+
+- **Permission denied on /usr/local/bin**: Use `~/.local/bin` as shown above
+- **install.sh blocked**: Some environments block shell script execution; use direct binary download
+- **404 on GitHub URLs**: Ensure you're using the correct filename format with underscores, e.g., `scc_Linux_x86_64.tar.gz` not `scc-Linux-x86_64`
 
 ## Invocation
 
@@ -155,12 +169,16 @@ Underlying `scc` command supports these relevant flags:
 - `--exclude-dir`: Exclude specific directories
 - `--include-ext`: Only include specific extensions
 - `--no-dupe`: Exclude duplicate files from count
+- `--format json`: Output results in JSON format
+- `--ci`: Enable CI-friendly output (ASCII only)
 
 Pass options via task:
 
 ```bash
 task agent=loc-counter task="Count: src -- --exclude-dir node_modules"
 ```
+
+**Note on trace output:** If you see verbose TRACE messages, this may be caused by a configuration file. Run without the `-t` flag (which enables trace) or check for any `scc` configuration files that may have tracing enabled.
 
 ## DRYness Metrics
 

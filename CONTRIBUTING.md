@@ -83,6 +83,16 @@ npm exec tsc -- -b src/frontend/tsconfig.json
 npm run build
 ```
 
+### Full Check Suite
+
+Run the complete check suite (lint, tests with coverage, and production build):
+
+```bash
+npm run run-all-checks
+```
+
+This is useful for verifying everything before committing or pushing changes.
+
 ---
 
 ## Core Principles
