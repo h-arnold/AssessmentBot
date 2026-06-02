@@ -8,11 +8,12 @@ const defaultNavigationLabel = 'Dashboard';
 const pageExpectations = [
   pageContent.dashboard,
   pageContent.assignments,
+  pageContent.classes,
   pageContent.settings,
 ] as const;
 
 const expectedNavigationItemCount = pageExpectations.length;
-const assignmentsNavigationItemIndex = 1;
+const classesNavigationItemIndex = 2;
 const collapseExpandCycles = 2;
 const themeSwitchLabel = 'Dark mode';
 const lastPageExpectationOffset = -1;
@@ -20,6 +21,7 @@ const ariaExpandedAttribute = 'aria-expanded';
 const primaryNavigationLabel = 'Primary navigation';
 const collapseNavigationButtonLabel = 'Collapse navigation';
 const expandNavigationButtonLabel = 'Expand navigation';
+const classesLabel = 'Classes';
 const settingsLabel = 'Settings';
 const navigationMenuLabels = pageExpectations.map(({ heading }) => heading);
 const backendSettingsFixture = {
@@ -181,10 +183,8 @@ test.describe('app shell', () => {
       .getByRole('menuitem');
 
     await expect(menuItems).toHaveCount(expectedNavigationItemCount);
-    await menuItems.nth(assignmentsNavigationItemIndex).click();
-    await expect(menuItems.nth(assignmentsNavigationItemIndex)).toHaveClass(
-      /ant-menu-item-selected/
-    );
+    await menuItems.nth(classesNavigationItemIndex).click();
+    await expect(menuItems.nth(classesNavigationItemIndex)).toHaveClass(/ant-menu-item-selected/);
   });
 
   test('menu remains functional after repeated collapse and expand cycles', async ({ page }) => {
@@ -208,7 +208,7 @@ test.describe('app shell', () => {
 
     await page.getByRole('menuitem', { name: settingsLabel }).click();
 
-    const classesTab = page.getByRole('tab', { name: 'Classes' });
+    const classesTab = page.getByRole('tab', { name: classesLabel });
     const backendSettingsTab = page.getByRole('tab', { name: 'Backend settings' });
 
     await expect(classesTab).toHaveAttribute('aria-selected', 'true');
@@ -221,6 +221,19 @@ test.describe('app shell', () => {
 
     await expect(backendSettingsTab).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByRole('region', { name: 'Backend settings panel' })).toBeVisible();
+  });
+
+  test('Settings page still contains Classes tab after new top-level Classes page is added', async ({
+    page,
+  }) => {
+    await mockPendingGoogleScriptRun(page);
+    await page.goto('/');
+
+    await page.getByRole('menuitem', { name: settingsLabel }).click();
+
+    const classesTab = page.getByRole('tab', { name: classesLabel });
+    await expect(classesTab).toBeVisible();
+    await expect(classesTab).toHaveAttribute('aria-selected', 'true');
   });
 
   test('shows shell on initial load', async ({ page }) => {

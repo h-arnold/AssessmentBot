@@ -34,6 +34,7 @@ describe('app navigation config', () => {
     ).toEqual([
       { key: 'dashboard', label: 'Dashboard', children: [] },
       { key: 'assignments', label: 'Assignments', children: [] },
+      { key: 'classes', label: 'Classes', children: [] },
       { key: 'settings', label: 'Settings', children: [] },
     ]);
   });
@@ -51,6 +52,7 @@ describe('app navigation config', () => {
         heading: pageContent.assignments.heading,
         summary: pageContent.assignments.summary,
       },
+      { key: 'classes', heading: pageContent.classes.heading, summary: pageContent.classes.summary },
       { key: 'settings', heading: pageContent.settings.heading, summary: pageContent.settings.summary },
     ] satisfies Array<{ key: AppNavigationKey; heading: string; summary: string }>;
 

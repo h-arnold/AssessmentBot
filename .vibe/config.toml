@@ -36,6 +36,7 @@ installed_agents = []
 skill_paths = []
 enabled_skills = []
 disabled_skills = []
+theme = "catppuccin-macchiato"
 
 [[providers]]
 name = "mistral"
