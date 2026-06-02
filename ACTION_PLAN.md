@@ -172,6 +172,9 @@ Helper decision entries:
      - Alert: `docs/developer/frontend/ant-design-docs-cache/alert.md` - for error/blocking states
      - Skeleton: `docs/developer/frontend/ant-design-docs-cache/skeleton.md` - for loading placeholders
      - Spin: `docs/developer/frontend/ant-design-docs-cache/spin.md` - for busy indicators
+     - Empty: `https://ant.design/components/empty` - for explicit empty states
+     - Flex: `https://ant.design/components/flex` - for wrapping card layouts
+     - Space: `https://ant.design/components/space` - for button spacing
    - Relevant canonical doc target: `docs/developer/frontend/ant-design-docs-cache/`
    - Planned doc status: `Implemented`
 
@@ -209,13 +212,17 @@ Frontend e2e tests:
 
 ### Optional `@remarks` JSDoc follow-through
 
-- None.
+- Consider adding `@remarks` documentation for the new Classes page component to explain the Ant Design component usage patterns.
 
 ### Implementation notes / deviations / follow-up
 
 - **Implementation notes:** keep the new page routing thin and avoid speculative shell abstractions.
 - **Deviations from plan:** record any justified navigation-order change if reviewer feedback requires it.
 - **Follow-up implications for later sections:** later sections should treat the new page entry point as stable and avoid revisiting shell routing.
+
+### Documentation gaps addressed
+
+- Added links to `Empty`, `Flex`, and `Space` Ant Design components in the shared helper plans to ensure all referenced components have accessible documentation links.
 
 ---
 
@@ -291,6 +298,9 @@ Helper decision entries:
      - Alert: `docs/developer/frontend/ant-design-docs-cache/alert.md` - for error states with `type="error"` and `showIcon`
      - Skeleton: `docs/developer/frontend/ant-design-docs-cache/skeleton.md` - for loading placeholders with `active` animation
      - Spin: `docs/developer/frontend/ant-design-docs-cache/spin.md` - for busy indicators with `spinning` prop
+     - Empty: `https://ant.design/components/empty` - for explicit empty states
+     - Flex: `https://ant.design/components/flex` - for wrapping card layouts
+     - Space: `https://ant.design/components/space` - for button spacing
    - Relevant canonical doc target: `docs/developer/frontend/ant-design-docs-cache/`
    - Planned doc status: `Implemented`
 
@@ -687,6 +697,9 @@ Helper decision entries:
      - Spin: Use `spinning={isLoading}` with `tip="Loading..."` for busy states (see `docs/developer/frontend/ant-design-docs-cache/spin.md`)
      - Skeleton: Use `loading={isLoading}` prop to show/hide skeleton placeholders (see `docs/developer/frontend/ant-design-docs-cache/skeleton.md`)
      - Alert: Use `type="error"` for blocking states with error messages (see `docs/developer/frontend/ant-design-docs-cache/alert.md`)
+     - Empty: Use for in-panel empty states (see `https://ant.design/components/empty`)
+     - Flex: Use for wrapping card layouts (see `https://ant.design/components/flex`)
+     - Space: Use for button spacing (see `https://ant.design/components/space`)
    - Relevant canonical doc target: `docs/developer/frontend/ant-design-docs-cache/`
    - Planned doc status: `Implemented`
 

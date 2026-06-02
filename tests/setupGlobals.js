@@ -70,9 +70,7 @@ g.PropertiesService = {
   getUserProperties() {
     return {
       getProperty(key) {
-        return Object.prototype.hasOwnProperty.call(_userPropertiesData, key)
-          ? _userPropertiesData[key]
-          : null;
+        return Object.hasOwn(_userPropertiesData, key) ? _userPropertiesData[key] : null;
       },
       setProperty(key, value) {
         _userPropertiesData[key] = value;
