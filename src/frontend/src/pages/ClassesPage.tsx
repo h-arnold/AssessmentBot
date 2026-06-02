@@ -226,66 +226,19 @@ function renderClassesContent(
   );
 }
 
-/**
- * Renders the Classes page with owned-surface loading, blocking, and empty states.
- *
- * Files read (Mandatory Reading):
- * - AGENTS.md
- * - src/frontend/AGENTS.md
- * - SPEC.md
- * - CLASSES_PAGE_LAYOUT.md
- * - docs/developer/frontend/frontend-loading-and-width-standards.md
- * - docs/developer/frontend/frontend-react-query-and-prefetch.md
- * - src/frontend/src/features/auth/startupWarmupState.ts
- * - src/frontend/src/pages/AssignmentsPage.tsx
- * - src/frontend/src/query/sharedQueries.ts
- * - src/frontend/src/pages/ClassesPage.spec.tsx
- * - src/frontend/src/pages/classes/classesPageModel.ts
- *
- * @returns {JSX.Element} The Classes page.
- */
-/**
- * Builds dataset state object for a single dataset.
- *
- * @param {Readonly<{ queryData: unknown; isQueryError: boolean; isDatasetFailed: boolean; isDatasetReady: boolean; isDatasetTrustworthy: boolean; hasTrustworthyDataset: boolean; }>} input State inputs.
- * @returns {Readonly<{ hasQueryData: boolean; isQueryError: boolean; isDatasetFailed: boolean; isDatasetReady: boolean; isDatasetTrustworthy: boolean; hasTrustworthyDataset: boolean; }>} Dataset state object.
- */
-function buildDatasetState(
-  input: Readonly<{
-    queryData: unknown;
-    isQueryError: boolean;
-    isDatasetFailed: boolean;
-    isDatasetReady: boolean;
-    isDatasetTrustworthy: boolean;
-    hasTrustworthyDataset: boolean;
-  }>
-): Readonly<{
-  hasQueryData: boolean;
-  isQueryError: boolean;
-  isDatasetFailed: boolean;
-  isDatasetReady: boolean;
-  isDatasetTrustworthy: boolean;
-  hasTrustworthyDataset: boolean;
-}> {
-  return {
-    hasQueryData: input.queryData !== undefined,
-    isQueryError: input.isQueryError,
-    isDatasetFailed: input.isDatasetFailed,
-    isDatasetReady: input.isDatasetReady,
-    isDatasetTrustworthy: input.isDatasetTrustworthy,
-    hasTrustworthyDataset: input.hasTrustworthyDataset,
-  };
-}
+
 
 /**
  * Computes the final render states for the Classes page.
  *
- * @param {Readonly<{ classesSurfaceState: ReturnType<typeof getClassesSurfaceState>; modelResult: unknown; }>} input Surface state and model result.
+ * @param {Readonly<{ classesSurfaceState: ReturnType<typeof getClassesSurfaceState>; modelResult: unknown; hasTrustworthyClassPartials: boolean; hasTrustworthyYearGroups: boolean; }>} input Surface state, model result, and dataset trustworthiness.
  * @returns {Readonly<{ finalShouldRenderBlockingState: boolean; shouldRenderLoadingState: boolean; shouldRenderEmptyState: boolean; }>} Final render states.
  */
 function getFinalClassesPageStates(input: Readonly<{
   classesSurfaceState: ReturnType<typeof getClassesSurfaceState>;
   modelResult: unknown;
+  hasTrustworthyClassPartials: boolean;
+  hasTrustworthyYearGroups: boolean;
 }>): Readonly<{
   finalShouldRenderBlockingState: boolean;
   shouldRenderLoadingState: boolean;
@@ -294,9 +247,11 @@ function getFinalClassesPageStates(input: Readonly<{
   const finalShouldRenderBlockingState =
     input.classesSurfaceState.shouldRenderBlockingState || isModelInvalid(input.modelResult);
   const shouldRenderLoadingState = input.classesSurfaceState.shouldRenderLoadingState;
+  const hasTrustworthyDatasets = input.hasTrustworthyClassPartials && input.hasTrustworthyYearGroups;
   const shouldRenderEmptyState =
     !finalShouldRenderBlockingState &&
     !shouldRenderLoadingState &&
+    hasTrustworthyDatasets &&
     isModelEmpty(input.modelResult);
 
   return {
@@ -335,25 +290,25 @@ export function ClassesPage() {
   });
 
   // Build dataset states
-  const classPartialsDatasetState = buildDatasetState({
-    queryData: classPartialsQuery.data,
+  const classPartialsDatasetState = {
+    hasQueryData: classPartialsQuery.data !== undefined,
     isQueryError: classPartialsQuery.isError,
     isDatasetFailed: startupWarmupState.isDatasetFailed('classPartials'),
     isDatasetReady: startupWarmupState.isDatasetReady('classPartials'),
     isDatasetTrustworthy: classPartialsSnapshot.isTrustworthy,
     hasTrustworthyDataset:
       startupWarmupState.isDatasetReady('classPartials') && classPartialsSnapshot.isTrustworthy,
-  });
+  } as const;
 
-  const yearGroupsDatasetState = buildDatasetState({
-    queryData: yearGroupsQuery.data,
+  const yearGroupsDatasetState = {
+    hasQueryData: yearGroupsQuery.data !== undefined,
     isQueryError: yearGroupsQuery.isError,
     isDatasetFailed: startupWarmupState.isDatasetFailed('yearGroups'),
     isDatasetReady: startupWarmupState.isDatasetReady('yearGroups'),
     isDatasetTrustworthy: yearGroupsSnapshot.isTrustworthy,
     hasTrustworthyDataset:
       startupWarmupState.isDatasetReady('yearGroups') && yearGroupsSnapshot.isTrustworthy,
-  });
+  } as const;
 
   // Compute surface state
   const classesSurfaceState = getClassesSurfaceState({
@@ -379,6 +334,8 @@ export function ClassesPage() {
     getFinalClassesPageStates({
       classesSurfaceState,
       modelResult,
+      hasTrustworthyClassPartials: classPartialsDatasetState.hasTrustworthyDataset,
+      hasTrustworthyYearGroups: yearGroupsDatasetState.hasTrustworthyDataset,
     });
 
   return (

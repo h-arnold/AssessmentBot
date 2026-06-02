@@ -452,6 +452,8 @@ Frontend e2e tests:
 - **Implementation notes:** keep the state ownership local to the page-owned content region; avoid whole-shell loading or failure replacements.
 - **Deviations from plan:** record any unavoidable changes to the startup-warm-up state contract.
 - **Follow-up implications for later sections:** later sections can assume the ready-state surface only receives trustworthy or explicitly blocked state inputs.
+- **Completion status:** ✅ Section 3 COMPLETE - All issues resolved: Issue 2 (recovery bug) fixed by adding `hasTrustworthyDatasets` check to empty state logic, Issue 3 (stray JSDoc) removed, Issue 4 (redundant buildDatasetState) inlined. Red phase tests created and reviewed clean, Green phase implementation created and reviewed clean, all 8 tests pass, lint clean, regression gate passed with 0 new regressions.
+- **Files modified:** `src/frontend/src/pages/ClassesPage.tsx`
 
 ---
 
