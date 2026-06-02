@@ -71,6 +71,8 @@ Consult these resources before and during review. Local docs contain project-spe
 - [AGENTS.md](../../../AGENTS.md)
 - [CONTRIBUTING.md](../../../CONTRIBUTING.md)
 
+You will fail the task unless you read _the entirety_ of the relevant context before editing. Do not skip or shortcut this step.
+
 ## 2. Universal Principles (All Modules)
 
 - **KISS**: Simplest working solution. No speculative abstraction.

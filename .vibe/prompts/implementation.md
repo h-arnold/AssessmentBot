@@ -38,7 +38,7 @@ Before planning or editing anything, you **MUST** fetch the local context:
    - Shared TypeScript/ESLint config changes: docs/developer/builder/TypeScriptAndLintConfigHierarchy.md
 4. **Identify the module(s) in scope** and apply only the relevant rules.
 
-Do not start implementing from memory when the files or standards can be read directly.
+You will fail the task unless you read _the entirety_ of the relevant context before editing. Do not skip or shortcut this step.
 
 ## 1.5. MANDATORY: Bug Research Stage (When Fixing Bugs)
 

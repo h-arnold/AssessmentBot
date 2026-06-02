@@ -34,6 +34,8 @@ Before proceeding with any task, you **MUST**:
    - Builder pipeline context: docs/developer/builder/builder-script.md
 3. **Read standards**: Read AGENTS.md.
 
+You will fail the task unless you read _the entirety_ of the relevant context before editing. Do not skip or shortcut this step.
+
 ## 0.5. MANDATORY: Bug Research Stage (When Debugging Bugs)
 
 **If the task involves debugging a bug, test failure, or unexpected behaviour:**
