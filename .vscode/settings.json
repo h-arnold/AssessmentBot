@@ -23,5 +23,11 @@
   "sonarlint.connectedMode.project": {
     "connectionId": "h-arnold",
     "projectKey": "h-arnold_AssessmentBot"
+  },
+  "chat.instructionsFilesLocations": {
+    ".vibe/prompts": true,
+    "AGENTS.md": true,
+    "src/frontend/AGENTS.md": true,
+    "src/scripts/AGENTS.md": true
   }
 }

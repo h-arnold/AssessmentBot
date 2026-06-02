@@ -50,6 +50,7 @@ Before writing or executing this plan:
 - Do not reuse `ClassesManagementPanel`, `ClassesTable.helpers.ts`, or the Settings Classes Google-Classrooms merge logic for the new page.
 - Follow the owned-surface loading, fail-closed, busy, and width rules in `docs/developer/frontend/frontend-loading-and-width-standards.md`.
 - Use the existing shared Playwright runtime mock and deferred-success helpers instead of introducing a second browser mock harness.
+- Use idiomatic Ant Design component patterns from `docs/developer/frontend/ant-design-docs-cache/` for all UI components.
 - Use British English in docs, comments, visible copy, and test names.
 
 ### TDD workflow (mandatory per section)
@@ -161,6 +162,19 @@ Helper decision entries:
    - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
    - Planned doc status: `Not implemented`
 
+2. Helper: `Ant Design component usage patterns`
+   - Decision: `reuse documented patterns`
+   - Reference docs: `docs/developer/frontend/ant-design-docs-cache/`
+   - Call-site rationale: LLMs need idiomatic Ant Design component usage patterns for:
+     - Collapse: `docs/developer/frontend/ant-design-docs-cache/collapse.md` - for year-group panels (multi-expand behaviour)
+     - Card: `docs/developer/frontend/ant-design-docs-cache/card.md` - for individual class cards
+     - Button: `docs/developer/frontend/ant-design-docs-cache/button.md` - for disabled "View" and "Edit" actions
+     - Alert: `docs/developer/frontend/ant-design-docs-cache/alert.md` - for error/blocking states
+     - Skeleton: `docs/developer/frontend/ant-design-docs-cache/skeleton.md` - for loading placeholders
+     - Spin: `docs/developer/frontend/ant-design-docs-cache/spin.md` - for busy indicators
+   - Relevant canonical doc target: `docs/developer/frontend/ant-design-docs-cache/`
+   - Planned doc status: `Implemented`
+
 ### Acceptance criteria
 
 - `AppNavigationKey` includes `classes` and the navigation item list exposes a visible `Classes` top-level entry.
@@ -266,6 +280,19 @@ Helper decision entries:
    - Call-site rationale: the grouping, panel defaults, and fail-closed trust rules are specific to the new browse page and should not widen the Settings Classes helper surface
    - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
    - Planned doc status: `Not implemented`
+
+2. Helper: `Ant Design component usage patterns`
+   - Decision: `reuse documented patterns`
+   - Reference docs: `docs/developer/frontend/ant-design-docs-cache/`
+   - Call-site rationale: LLMs need idiomatic Ant Design component usage patterns for:
+     - Collapse: `docs/developer/frontend/ant-design-docs-cache/collapse.md` - for year-group panels with `items` prop, `defaultActiveKey`, and `onChange` callback
+     - Card: `docs/developer/frontend/ant-design-docs-cache/card.md` - for class cards with `title` and `children` props
+     - Button: `docs/developer/frontend/ant-design-docs-cache/button.md` - for disabled buttons with `disabled` prop
+     - Alert: `docs/developer/frontend/ant-design-docs-cache/alert.md` - for error states with `type="error"` and `showIcon`
+     - Skeleton: `docs/developer/frontend/ant-design-docs-cache/skeleton.md` - for loading placeholders with `active` animation
+     - Spin: `docs/developer/frontend/ant-design-docs-cache/spin.md` - for busy indicators with `spinning` prop
+   - Relevant canonical doc target: `docs/developer/frontend/ant-design-docs-cache/`
+   - Planned doc status: `Implemented`
 
 ### Acceptance criteria
 
@@ -460,11 +487,11 @@ Code Reviewer mandatory docs:
 
 ### Acceptance criteria
 
-- The ready state renders one collapse panel per year group in the derived order.
-- The first alphabetical panel is expanded on the initial ready render.
-- Expanding one panel does not collapse another panel automatically.
-- A year-group panel with no classes shows an explicit in-panel empty presentation rather than blank whitespace.
-- Class cards only appear under the panel whose `yearGroupKey` matches the card model.
+- The ready state renders one `Collapse` panel per year group in the derived order using Ant Design `Collapse` component with `items` prop.
+- The first alphabetical panel is expanded on the initial ready render using `defaultActiveKey` prop.
+- Expanding one panel does not collapse another panel automatically (multi-expand mode).
+- A year-group panel with no classes shows an explicit in-panel empty presentation using `Card` components with empty state messages.
+- Class cards only appear under the panel whose `yearGroupKey` matches the card model using proper card structure and layout.
 
 ### Required test cases (Red first)
 
@@ -652,6 +679,17 @@ Helper decision entries:
    - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
    - Planned doc status: `Not implemented`
 
+2. Helper: `Ant Design component usage patterns for refresh states`
+   - Decision: `reuse documented patterns`
+   - Reference docs: `docs/developer/frontend/ant-design-docs-cache/`
+   - Call-site rationale: LLMs need idiomatic Ant Design component usage for refresh transitions:
+     - Collapse: Use `activeKey` state management for controlled expansion (see `docs/developer/frontend/ant-design-docs-cache/collapse.md`)
+     - Spin: Use `spinning={isLoading}` with `tip="Loading..."` for busy states (see `docs/developer/frontend/ant-design-docs-cache/spin.md`)
+     - Skeleton: Use `loading={isLoading}` prop to show/hide skeleton placeholders (see `docs/developer/frontend/ant-design-docs-cache/skeleton.md`)
+     - Alert: Use `type="error"` for blocking states with error messages (see `docs/developer/frontend/ant-design-docs-cache/alert.md`)
+   - Relevant canonical doc target: `docs/developer/frontend/ant-design-docs-cache/`
+   - Planned doc status: `Implemented`
+
 ### Acceptance criteria
 
 - With cached trustworthy data and an in-flight refetch, the page keeps the grouped content visible, shows visible refresh text, and marks the owned region busy.
@@ -751,6 +789,7 @@ Frontend e2e tests:
 
 - `SPEC.md`, `CLASSES_PAGE_LAYOUT.md`, and the implementation remain aligned.
 - `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` is reconciled so any delivered helper decision no longer remains marked `Not implemented`.
+- `docs/developer/frontend/ant-design-docs-cache/` contains idiomatic Ant Design component usage patterns for LLMs
 - Any deviations from the plan or notable caveats are recorded before handoff.
 - If browser-level refresh coverage remains infeasible without production test hooks, that rationale is documented explicitly.
 
@@ -769,7 +808,13 @@ Frontend e2e tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** update with any final documentation changes once implementation is complete.
+- **Implementation notes:** update with any final documentation changes once implementation is complete. Ensure Ant Design components are used idiomatically (see cached docs):
+  - Use `Collapse` with `items` prop for year-group panels (see `docs/developer/frontend/ant-design-docs-cache/collapse.md`)
+  - Use `Card` components for class cards with proper `title` and `children` structure (see `docs/developer/frontend/ant-design-docs-cache/card.md`)
+  - Use `Button` components with `disabled` prop for placeholder actions (see `docs/developer/frontend/ant-design-docs-cache/button.md`)
+  - Use `Alert` component with `type="error"` for blocking states (see `docs/developer/frontend/ant-design-docs-cache/alert.md`)
+  - Use `Skeleton` component with `active` prop for loading placeholders (see `docs/developer/frontend/ant-design-docs-cache/skeleton.md`)
+  - Use `Spin` component with `spinning` prop for busy indicators (see `docs/developer/frontend/ant-design-docs-cache/spin.md`)
 - **Deviations from plan:** record any accepted divergence from the spec or layout spec and link the reviewer decision.
 - **Follow-up:** none beyond future `View` and `Edit` workflow planning.
 

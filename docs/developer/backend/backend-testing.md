@@ -58,6 +58,7 @@ const g = globalThis;
 
 g.RuntimeConstants = require('../src/backend/00_RuntimeConstants.js').RuntimeConstants;
 g.Validate = require('../src/backend/Utils/Validate.js').Validate;
+g.ArrayUtils = require('../src/backend/Utils/00_ArrayUtils.js');
 ```
 
 ### What should not go into production files

@@ -154,6 +154,54 @@ Rules:
 - See § 0.2 above for the transport-vs-domain validation ownership rules that apply specifically
   to `z_Api` files.
 
+## 2.1 Utility Classes (Backend Only)
+
+Use `src/backend/Utils/00_ArrayUtils.js` for generic array operations.
+
+### ArrayUtils Class
+
+`ArrayUtils` is a utility class that provides generic array helper methods as static functions. It follows the same pattern as `Validate.js` and is designed for reuse across the codebase.
+
+**Design Pattern**:
+
+- Defined in `src/backend/Utils/00_ArrayUtils.js` with `00_` prefix to ensure proper GAS concatenation load order (loads before `Models/ABClass.js`)
+- Static methods only - no instantiation required
+- Exported for Node/Vitest environment via guarded `module.exports` block
+- Accessed as global in GAS runtime via file concatenation
+
+**Available utilities**:
+
+- `ArrayUtils.ITEM_NOT_FOUND_INDEX` - Constant value (-1) for "not found" index
+- `ArrayUtils.findIndexWithPredicate(items, predicate)` - Finds index of first item matching predicate
+- `ArrayUtils.findWithPredicate(items, predicate)` - Finds first item matching predicate, returns `null` if not found
+- `ArrayUtils.serialiseArray(items)` - Serialises array by calling toJSON() on each item if available
+
+**Usage Pattern**:
+
+```javascript
+// In production files (GAS runtime)
+/* global ArrayUtils */
+const index = ArrayUtils.findIndexWithPredicate(items, (item) => item.id === targetId);
+
+// In tests (Node environment)
+// ArrayUtils is set up as global in tests/setupGlobals.js
+const item = ArrayUtils.findWithPredicate(items, (item) => item.name === targetName);
+```
+
+**Implementation Notes**:
+
+- The `serialiseOwner` method from `ABClass.js` was intentionally kept as an instance method in `ABClass` as it is specific to that class's serialization logic
+- Array utility methods are truly generic and reusable across the codebase
+
+Rules:
+
+- Use existing utility methods before adding new ones.
+- Add reusable generic array helpers to `ArrayUtils`.
+- Keep domain/business-specific array logic in the owning class.
+- Do not duplicate generic array logic across modules.
+- When adding new methods to `ArrayUtils`, maintain the static method pattern and add appropriate JSDoc.
+- The `00_` prefix must be preserved to maintain GAS load ordering.
+
 ## 3. Error and Logging Contract (Backend Only)
 
 Canonical policy source of truth:

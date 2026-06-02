@@ -56,6 +56,7 @@ Consult these resources before and during review. Local docs contain project-spe
 
 - Local: [backend-logging-and-error-handling.md](../../../docs/developer/backend/backend-logging-and-error-handling.md)
 - Local: [backend-testing.md](../../../docs/developer/backend/backend-testing.md)
+- Local: [src/backend/AGENTS.md](../../../src/backend/AGENTS.md) - Contains ArrayUtils usage patterns and utility class conventions
 - Google Apps Script Reference: <https://developers.google.com/apps-script/reference>
 
 **Builder Reviews**:
