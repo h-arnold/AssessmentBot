@@ -311,7 +311,7 @@ test.describe('Classes page navigation', () => {
       items.map((item) => item.textContent?.trim() || '')
     );
 
-    expect(menuItemTexts).toEqual(['Dashboard', 'Assignments', classesLabel, 'Settings']);
+    expect(menuItemTexts).toEqual(['Dashboard', classesLabel, 'Assignments', 'Settings']);
   });
 });
 
