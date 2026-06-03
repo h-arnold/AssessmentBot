@@ -33,6 +33,7 @@ describe('app navigation config', () => {
       }))
     ).toEqual([
       { key: 'dashboard', label: 'Dashboard', children: [] },
+      { key: 'classes', label: 'Classes', children: [] },
       { key: 'assignments', label: 'Assignments', children: [] },
       { key: 'settings', label: 'Settings', children: [] },
     ]);
@@ -46,6 +47,7 @@ describe('app navigation config', () => {
     const renderNavigationPage = getRenderNavigationPageContract();
     const pageExpectations = [
       { key: 'dashboard', heading: pageContent.dashboard.heading, summary: pageContent.dashboard.summary },
+      { key: 'classes', heading: pageContent.classes.heading, summary: pageContent.classes.summary },
       {
         key: 'assignments',
         heading: pageContent.assignments.heading,

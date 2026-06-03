@@ -1,47 +1,10 @@
-const ITEM_NOT_FOUND_INDEX = -1;
-
-/**
- * Finds the index of the first item in an array matching the given predicate.
- * @param {Array} items - The array to search
- * @param {Function} predicate - Function that receives (item, index, collection) and returns true for a match
- * @returns {number} Index of the matching item, or -1 if not found
- */
-function findIndexWithPredicate(items, predicate) {
-  return items.findIndex((item, index, collection) => predicate(item, index, collection));
-}
-
-/**
- * Finds the first item in an array matching the given predicate.
- * @param {Array} items - The array to search
- * @param {Function} predicate - Function that receives (item, index, collection) and returns true for a match
- * @returns {*|null} The matching item, or null if not found
- */
-function findWithPredicate(items, predicate) {
-  return items.find((item, index, collection) => predicate(item, index, collection)) || null;
-}
-
-/**
- * Serialises an array of objects by calling toJSON() on each item if available.
- * @param {Array} items - Array of objects to serialise
- * @returns {Array} Array of serialised objects
- */
-function serialiseArray(items) {
-  return (items || []).map((item) =>
-    item && typeof item.toJSON === 'function' ? item.toJSON() : item
-  );
-}
-
-/**
- * Serialises an owner object by calling toJSON() if available.
- * Returns null when owner is absent.
- * @param {Object|null} owner - The owner object to serialise
- * @returns {Object|null} The serialised owner object, or null if owner is falsy
- */
-function serialiseOwner(owner) {
-  if (!owner) return null;
-  if (typeof owner.toJSON === 'function') return owner.toJSON();
-  return owner;
-}
+// PERMANENT: ArrayUtils is a dependency used throughout this class (findIndexWithPredicate,
+// findWithPredicate, serialiseArray). In GAS runtime, ArrayUtils is loaded from
+// src/backend/Utils/00_ArrayUtils.js via file concatenation. In Vitest, it's set up as a
+// global in tests/setupGlobals.js. DO NOT REMOVE this global declaration or the
+// dependency will break in both environments.
+/* global ArrayUtils */
+/* gl
 
 /**
  * ABClass
@@ -201,7 +164,7 @@ class ABClass {
    * @returns {Teacher|null} The removed teacher, or null if not found
    */
   removeTeacher(predicate) {
-    const index = findIndexWithPredicate(this.teachers, predicate);
+    const index = ArrayUtils.findIndexWithPredicate(this.teachers, predicate);
     if (index === ITEM_NOT_FOUND_INDEX) return null;
     return this.teachers.splice(index, 1)[0];
   }
@@ -212,7 +175,7 @@ class ABClass {
    * @returns {Teacher|null} The matching teacher, or null if not found
    */
   findTeacher(predicate) {
-    return findWithPredicate(this.teachers, predicate);
+    return ArrayUtils.findWithPredicate(this.teachers, predicate);
   }
 
   // Student management
@@ -233,7 +196,7 @@ class ABClass {
    * @returns {Student|null} The removed student, or null if not found
    */
   removeStudent(predicate) {
-    const index = findIndexWithPredicate(this.students, predicate);
+    const index = ArrayUtils.findIndexWithPredicate(this.students, predicate);
     if (index === ITEM_NOT_FOUND_INDEX) return null;
     return this.students.splice(index, 1)[0];
   }
@@ -244,7 +207,7 @@ class ABClass {
    * @returns {Student|null} The matching student, or null if not found
    */
   findStudent(predicate) {
-    return findWithPredicate(this.students, predicate);
+    return ArrayUtils.findWithPredicate(this.students, predicate);
   }
 
   // Assignment management
@@ -265,7 +228,7 @@ class ABClass {
    * @returns {Assignment|null} The removed assignment, or null if not found
    */
   removeAssignment(predicate) {
-    const index = findIndexWithPredicate(this.assignments, predicate);
+    const index = ArrayUtils.findIndexWithPredicate(this.assignments, predicate);
     if (index === ITEM_NOT_FOUND_INDEX) return null;
     return this.assignments.splice(index, 1)[0];
   }
@@ -276,7 +239,7 @@ class ABClass {
    * @returns {Assignment|null} The matching assignment, or null if not found
    */
   findAssignment(predicate) {
-    return findWithPredicate(this.assignments, predicate);
+    return ArrayUtils.findWithPredicate(this.assignments, predicate);
   }
 
   /**
@@ -286,10 +249,23 @@ class ABClass {
    * @returns {number} Index of the matching assignment, or -1 if not found
    */
   findAssignmentIndex(predicate) {
-    return findIndexWithPredicate(this.assignments, predicate);
+    return ArrayUtils.findIndexWithPredicate(this.assignments, predicate);
   }
 
   // toJSON serializes contained objects by calling toJSON if available.
+  /**
+   * Serialises an owner object by calling toJSON() if available.
+   * Returns null when owner is absent.
+   * @param {Object|null} owner - The owner object to serialise
+   * @returns {Object|null} The serialised owner object, or null if owner is falsy
+   * @private
+   */
+  serialiseOwner(owner) {
+    if (!owner) return null;
+    if (typeof owner.toJSON === 'function') return owner.toJSON();
+    return owner;
+  }
+
   /**
    * Serialises this class to a JSON object.
    * @returns {Object} A plain object representation of the class and all its contents
@@ -301,10 +277,10 @@ class ABClass {
       cohortKey: this.cohortKey,
       courseLength: this.courseLength,
       yearGroupKey: this.yearGroupKey,
-      classOwner: serialiseOwner(this.classOwner),
-      teachers: serialiseArray(this.teachers),
-      students: serialiseArray(this.students),
-      assignments: serialiseArray(this.assignments),
+      classOwner: this.serialiseOwner(this.classOwner),
+      teachers: ArrayUtils.serialiseArray(this.teachers),
+      students: ArrayUtils.serialiseArray(this.students),
+      assignments: ArrayUtils.serialiseArray(this.assignments),
       active: this.active ?? null,
     };
   }
@@ -330,8 +306,8 @@ class ABClass {
       cohortKey: this.cohortKey,
       courseLength: this.courseLength,
       yearGroupKey: this.yearGroupKey,
-      classOwner: serialiseOwner(this.classOwner),
-      teachers: serialiseArray(this.teachers),
+      classOwner: this.serialiseOwner(this.classOwner),
+      teachers: ArrayUtils.serialiseArray(this.teachers),
       active: this.active ?? null,
     };
   }

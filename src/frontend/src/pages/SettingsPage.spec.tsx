@@ -291,4 +291,12 @@ describe('SettingsPage', () => {
       expect(screen.getByRole('region', { name: referenceDataPanelLabel })).toBeInTheDocument();
     });
   });
+
+  it('Classes tab entry still exists after new top-level classes page is added', () => {
+    renderSettingsPage();
+
+    const classesTab = screen.getByRole('tab', { name: 'Classes' });
+    expect(classesTab).toBeInTheDocument();
+    expect(classesTab).toHaveAttribute('aria-selected', 'true');
+  });
 });

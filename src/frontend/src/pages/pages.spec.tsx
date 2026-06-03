@@ -38,6 +38,7 @@ vi.mock('../services/referenceDataService', () => ({
 const navigationPageExpectations = [
   { key: 'dashboard', ...pageContent.dashboard },
   { key: 'assignments', ...pageContent.assignments },
+  { key: 'classes', ...pageContent.classes },
   { key: 'settings', ...pageContent.settings },
 ] as const satisfies ReadonlyArray<{ key: AppNavigationKey; heading: string; summary: string }>;
 

@@ -47,7 +47,9 @@ if [ -n "$LINT_FILES" ]; then
 	# ESLint frontend staged files
 	if [ -n "$FRONTEND_FILES" ]; then
 		echo "Checking frontend staged files..."
-		echo "$FRONTEND_FILES" | xargs -d '\n' npx eslint --config eslint.config.js --fix || exit 1
+		# Use frontend's local ESLint config for frontend TypeScript files
+		cd src/frontend && echo "$FRONTEND_FILES" | sed 's|^src/frontend/||' | xargs -d '\n' npx eslint --config eslint.config.js --fix || exit 1
+		cd ../..
 	fi
 	
 	# ESLint builder staged files

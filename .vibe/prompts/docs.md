@@ -18,6 +18,8 @@ Before writing documentation updates, you must:
 4. **Inspect JSDoc**: Check JSDoc in touched files for accuracy against actual function/class behaviour.
 5. **Policy Drift Check Setup**: Identify the canonical policy docs for the changed behaviour and plan to verify that docs remain aligned before completion.
 
+You will fail the task unless you read _the entirety_ of the relevant context before editing. Do not skip or shortcut this step.
+
 ## 1. Primary Responsibilities
 
 1. **Developer documentation updates**:

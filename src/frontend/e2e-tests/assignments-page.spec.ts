@@ -86,6 +86,20 @@ const archiveRowIndex = 1;
 const exactMatchRowIndex = 2;
 
 /**
+ * Waits for the Assignments page to finish loading by asserting that
+ * the blocking error state is absent and the loading skeleton has disappeared.
+ *
+ * @param {Page} page Playwright page.
+ * @returns {Promise<void>}
+ */
+async function waitForAssignmentsPageReady(page: Page): Promise<void> {
+  await expect(
+    page.getByText('Assignment definitions could not be trusted or loaded.')
+  ).toHaveCount(0, { timeout: 10_000 });
+  await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
+}
+
+/**
  * Opens and confirms delete for the assignment row matching the supplied title.
  *
  * @param {Page} page Playwright page.
@@ -99,27 +113,27 @@ async function confirmDeleteForAssignmentTitle(page: Page, title: string): Promi
   await page.getByRole('button', { name: 'Delete definition' }).click();
 }
 
-
-
 test.describe('assignments page browser journeys', () => {
-  test('delete flow removes the row after confirmation and shows success feedback', async ({ page }) => {
+  test('delete flow removes the row after confirmation and shows success feedback', async ({
+    page,
+  }) => {
     await installRuntimeMock(page, {
       ...createAssignmentsScenario({
         initialPartials: assignmentRows,
       }),
       getAssignmentDefinitionPartials: [
         { kind: 'success', data: assignmentRows },
-        { kind: 'success', data: assignmentRows.filter((row) => row.definitionKey !== 'alg-10-safe') },
+        {
+          kind: 'success',
+          data: assignmentRows.filter((row) => row.definitionKey !== 'alg-10-safe'),
+        },
       ],
     });
 
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
-    // Wait for blocking state to clear (10s timeout for startup warmup)
-    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10_000 });
-    // Wait for loading skeleton to disappear
-    await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
+    await waitForAssignmentsPageReady(page);
     // Wait for table to be visible
     await expect(page.getByRole('table', { name: 'Assignment definitions table' })).toBeVisible();
 
@@ -140,10 +154,7 @@ test.describe('assignments page browser journeys', () => {
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
-    // Wait for blocking state to clear
-    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10_000 });
-    // Wait for loading skeleton to disappear
-    await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
+    await waitForAssignmentsPageReady(page);
 
     await expect(page.getByRole('row', { name: /unsafe legacy row/i })).toBeVisible();
     const unsafeRow = page.getByRole('row', { name: /unsafe legacy row/i });
@@ -151,8 +162,9 @@ test.describe('assignments page browser journeys', () => {
     await expect(unsafeRow.getByRole('button', { name: /delete/i })).toBeDisabled();
   });
 
-
-  test('placeholder create and update actions stay disabled with explicit unavailable copy', async ({ page }) => {
+  test('placeholder create and update actions stay disabled with explicit unavailable copy', async ({
+    page,
+  }) => {
     await installRuntimeMock(page, {
       ...createAssignmentsScenario({
         initialPartials: assignmentRows,
@@ -162,17 +174,13 @@ test.describe('assignments page browser journeys', () => {
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
-    // Wait for blocking state to clear
-    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10_000 });
-    // Wait for loading skeleton to disappear
-    await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
+    await waitForAssignmentsPageReady(page);
 
     // With empty reference data, Create button should still be enabled (empty is valid)
     // per FE-E2E-004: old v1 assertions removed
     await expect(page.getByRole('button', { name: 'Create assignment' })).toBeEnabled();
     await expect(page.getByRole('button', { name: 'Refresh assignments data' })).toBeEnabled();
   });
-
 
   test('delete action opens confirmation modal with permanent-delete copy', async ({ page }) => {
     await installRuntimeMock(page, {
@@ -184,10 +192,7 @@ test.describe('assignments page browser journeys', () => {
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
-    // Wait for blocking state to clear
-    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10_000 });
-    // Wait for loading skeleton to disappear
-    await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
+    await waitForAssignmentsPageReady(page);
 
     const exactMatchRow = getAssignmentsRowByTitle(page, 'Algebra foundations');
     await expect(exactMatchRow).toHaveCount(1);
@@ -199,7 +204,9 @@ test.describe('assignments page browser journeys', () => {
     await expect(deleteDialog.getByText(/this delete is permanent/i)).toBeVisible();
   });
 
-  test('delete mutation keeps confirm loading and disables conflicting delete actions until settle', async ({ page }) => {
+  test('delete mutation keeps confirm loading and disables conflicting delete actions until settle', async ({
+    page,
+  }) => {
     await installRuntimeMock(page, {
       ...createAssignmentsScenario({
         initialPartials: assignmentRows,
@@ -211,10 +218,7 @@ test.describe('assignments page browser journeys', () => {
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
-    // Wait for blocking state to clear
-    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10_000 });
-    // Wait for loading skeleton to disappear
-    await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
+    await waitForAssignmentsPageReady(page);
 
     await confirmDeleteForAssignmentTitle(page, 'Algebra foundations');
 
@@ -247,10 +251,7 @@ test.describe('assignments page browser journeys', () => {
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
-    // Wait for blocking state to clear
-    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10_000 });
-    // Wait for loading skeleton to disappear
-    await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
+    await waitForAssignmentsPageReady(page);
 
     await confirmDeleteForAssignmentTitle(page, 'Algebra foundations');
 
@@ -272,17 +273,16 @@ test.describe('assignments page browser journeys', () => {
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
-    // Wait for initial blocking state to clear
-    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10_000 });
-    // Wait for loading skeleton to disappear
-    await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
+    await waitForAssignmentsPageReady(page);
 
     const exactMatchRow = getAssignmentsRowByTitle(page, 'Algebra foundations');
     await expect(exactMatchRow).toHaveCount(1);
     await exactMatchRow.getByRole('button', { name: /delete/i }).click();
     await page.getByRole('button', { name: 'Delete definition' }).click();
 
-    await expect(page.getByText(/assignment definitions could not be trusted or loaded/i)).toBeVisible();
+    await expect(
+      page.getByText(/assignment definitions could not be trusted or loaded/i)
+    ).toBeVisible();
     await expect(page.getByRole('table', { name: 'Assignment definitions table' })).toHaveCount(0);
   });
 
@@ -292,6 +292,7 @@ test.describe('assignments page browser journeys', () => {
         initialPartials: assignmentRows,
       }),
       getAssignmentDefinitionPartials: [
+        { kind: 'transportFailure', message: 'assignment fetch failed' },
         { kind: 'transportFailure', message: 'assignment fetch failed' },
         { kind: 'success', data: assignmentRows },
       ],
@@ -304,23 +305,45 @@ test.describe('assignments page browser journeys', () => {
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
-    // Wait for blocking state to appear (first call fails)
-    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toBeVisible({ timeout: 10_000 });
+    /*
+     * Wait for blocking state to appear.
+     *
+     * The startup warmup consumes the first transportFailure, which sets
+     * isAssignmentsDatasetFailed = true and enables the query.
+     *
+     * The query auto-fetches on the disabled→enabled transition (React Query v5
+     * behaviour) and consumes the second transportFailure, keeping the query
+     * in error state so the blocking Alert stays visible.
+     */
+    await expect(
+      page.getByText('Assignment definitions could not be trusted or loaded.')
+    ).toBeVisible({ timeout: 10_000 });
     // Wait for retry button to be visible
-    await expect(page.getByRole('button', { name: /retry|refresh assignments data/i })).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: /retry|refresh assignments data/i })
+    ).toBeVisible();
 
     const baselineMethodCalls = await getMethodCalls(page, '__assignmentsMethodCalls');
     const baselineCallCount = baselineMethodCalls.length;
 
     await page.getByRole('button', { name: /retry|refresh assignments data/i }).click();
 
-    // Wait for the refetch to complete - retry triggers refetch via refetchQueries
-    // which may not trigger if query is disabled, so this test may need code fix per FE-E2E-010
+    /*
+     * Retry triggers an invalidation (refetchType: 'none') followed by
+     * refetchQueries scoped to assignmentDefinitionPartials.
+     *
+     * The third response (success) resolves the retry, populates query data,
+     * and clears the blocking state (per shouldRenderAssignmentsBlockingState
+     * recovery semantics).
+     */
     await expect
-      .poll(async () => {
-        const methodCalls = await getMethodCalls(page, '__assignmentsMethodCalls');
-        return methodCalls.slice(baselineCallCount);
-      }, { timeout: 10_000 })
+      .poll(
+        async () => {
+          const methodCalls = await getMethodCalls(page, '__assignmentsMethodCalls');
+          return methodCalls.slice(baselineCallCount);
+        },
+        { timeout: 10_000 }
+      )
       .toEqual(['getAssignmentDefinitionPartials']);
   });
 
@@ -334,13 +357,12 @@ test.describe('assignments page browser journeys', () => {
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
-    // Wait for blocking state to clear
-    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10_000 });
-    // Wait for loading skeleton to disappear
-    await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
+    await waitForAssignmentsPageReady(page);
 
     const unsafeRow = page.getByRole('row', { name: /unsafe legacy row/i });
-    await expect(unsafeRow.getByRole('cell', { name: '—' })).toHaveCount(expectedNullTokenCellCount);
+    await expect(unsafeRow.getByRole('cell', { name: '—' })).toHaveCount(
+      expectedNullTokenCellCount
+    );
 
     const filterAssertions = [
       {
@@ -382,16 +404,32 @@ test.describe('assignments page browser journeys', () => {
     ] as const;
 
     for (const filterAssertion of filterAssertions) {
-      await applyColumnFilterOption(page, filterAssertion.columnHeaderName, filterAssertion.optionLabel);
-      await expect(getAssignmentsRowByTitle(page, filterAssertion.expectedVisibleRow)).toHaveCount(1);
-      await expect(getAssignmentsRowByTitle(page, filterAssertion.expectedHiddenRow)).toHaveCount(0);
+      await applyColumnFilterOption(
+        page,
+        filterAssertion.columnHeaderName,
+        filterAssertion.optionLabel
+      );
+      await expect(getAssignmentsRowByTitle(page, filterAssertion.expectedVisibleRow)).toHaveCount(
+        1
+      );
+      await expect(getAssignmentsRowByTitle(page, filterAssertion.expectedHiddenRow)).toHaveCount(
+        0
+      );
 
       await page.getByRole('button', { name: 'Reset sort and filters' }).click();
-      await expect(getAssignmentsRowByTitle(page, filterAssertion.expectedHiddenRow)).toHaveCount(1);
+      await expect(getAssignmentsRowByTitle(page, filterAssertion.expectedHiddenRow)).toHaveCount(
+        1
+      );
     }
 
-    await expect(page.locator('tbody tr td:first-child').nth(newestRowIndex)).toContainText('Newest algebra recap');
-    await expect(page.locator('tbody tr td:first-child').nth(archiveRowIndex)).toContainText('Algebra foundations archive');
-    await expect(page.locator('tbody tr td:first-child').nth(exactMatchRowIndex)).toContainText('Algebra foundations');
+    await expect(page.locator('tbody tr td:first-child').nth(newestRowIndex)).toContainText(
+      'Newest algebra recap'
+    );
+    await expect(page.locator('tbody tr td:first-child').nth(archiveRowIndex)).toContainText(
+      'Algebra foundations archive'
+    );
+    await expect(page.locator('tbody tr td:first-child').nth(exactMatchRowIndex)).toContainText(
+      'Algebra foundations'
+    );
   });
 });

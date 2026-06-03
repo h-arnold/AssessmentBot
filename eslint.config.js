@@ -150,6 +150,7 @@ module.exports = [
           detectObjects: false,
         },
       ],
+      'max-lines': ['warn', 500],
     },
   },
   {
@@ -164,6 +165,27 @@ module.exports = [
       'prefer-object-has-own': 'warn',
       'no-negated-condition': 'warn',
       'require-unicode-regexp': 'off',
+      'max-lines': ['warn', 500],
+    },
+  },
+  {
+    files: ['src/frontend/**/*.{ts,tsx}'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+    },
+    rules: {
+      'max-lines': ['warn', 500],
+    },
+  },
+  {
+    files: ['scripts/builder/**/*.{js,ts}'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+    },
+    rules: {
+      'max-lines': ['warn', 500],
     },
   },
   {

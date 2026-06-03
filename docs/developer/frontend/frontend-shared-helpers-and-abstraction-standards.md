@@ -63,6 +63,7 @@ Feature-scoped helpers should stay feature-scoped unless there is proven cross-f
 - Frontend provider render helper: `src/frontend/src/test/renderWithFrontendProviders.tsx`
 - `google.script.run` harness: `src/frontend/src/test/googleScriptRunHarness.ts`
 - Shared classes test fixtures/builders: `src/frontend/src/test/classes/classesTestHelpers.ts`
+- Classes Page test fixtures and rendering helpers (including `createFixtureClassPartial`, `createFixtureYearGroup`, `renderClassesPage`, `toPlainClassPartials`, and shared fixture constants): `src/frontend/src/test/classes/classesPageTestHelpers.tsx`
 
 Test helper placement rules remain governed by `docs/developer/frontend/frontend-testing.md`.
 
@@ -276,3 +277,26 @@ This section supersedes the earlier Section 9.7 defer decision for the specific 
 - Owning path: `src/frontend/e2e-tests/classes-crud.shared.ts`
 - Status: `Implemented`
 - Rationale: Extracted from duplicated definitions in classes-crud-manage-cohorts.spec.ts and classes-crud-manage-year-groups.spec.ts
+
+### 9.11 Classes page planning decisions
+
+1. Helper or contract: navigation page renderer source of truth for the top-level Classes page
+
+- Decision: reuse
+- Owning path: `src/frontend/src/navigation/appNavigation.tsx`
+- Status: `Implemented`
+- Rationale: the new top-level Classes page must extend the existing shell navigation and page-render contract rather than introducing a second source of truth for navigation keys, labels, or page routing
+
+2. Helper or contract: Classes page grouped view-model builder
+
+- Decision: keep local
+- Owning path: `src/frontend/src/pages/classes/classesPageModel.ts` or an equivalent page-adjacent local helper
+- Status: `Implemented`
+- Rationale: the grouping, deterministic ordering, and fail-closed trust rules are specific to the dedicated Classes browse page and should not widen the existing Settings Classes helper family that serves different merge and workflow needs
+
+3. Helper or contract: shared Playwright GAS runtime mock for Classes page journeys
+
+- Decision: reuse
+- Owning path: `src/frontend/e2e-tests/shared/endToEndRuntimeMocks.ts`
+- Status: `Implemented`
+- Rationale: the existing deferred-success queue, method-call tracker, and per-method response queues already provide the right browser harness for the Classes page, so implementation should extend that shared mock surface instead of creating a parallel runtime mock layer

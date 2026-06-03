@@ -203,9 +203,10 @@ Use shared helpers to keep fixtures and mocks consistent and avoid duplicate tes
 - Frontend `apiHandler` mock helper: `src/frontend/src/test/googleScriptRunHarness.ts`.
 - Classes fixture/state helper: `src/frontend/src/test/classes/classesTestHelpers.ts` (shared rows, ready-state builders, and batch-result builders for Classes table/toolbar/panel specs).
 - Classes modal test helpers: `src/frontend/src/test/classes/modalTestHelpers.tsx` (shared interaction helpers, assertion utilities, and mock creators for Classes modal components).
+- Classes Page test helpers: `src/frontend/src/test/classes/classesPageTestHelpers.tsx` (shared ClassPartial/YearGroup fixtures, rendering helpers, assertion utilities, and E2E serialisation helpers for ClassesPage component tests).
 - Builder fixture helpers: `scripts/builder/src/test/builder-fixture-test-helpers.ts` (shared by builder specs to build release archives, create path fixtures, and write release files/manifests).
 
-When adding test scenarios, prefer extending an existing helper before copying setup logic into each spec. In particular, Classes feature specs should reuse `src/frontend/src/test/classes/classesTestHelpers.ts` for row fixtures and state builders, and `src/frontend/src/test/classes/modalTestHelpers.tsx` for modal interaction patterns, rather than redefining near-identical test utilities in each file.
+When adding test scenarios, prefer extending an existing helper before copying setup logic into each spec. In particular, Classes feature specs should reuse `src/frontend/src/test/classes/classesTestHelpers.ts` for row fixtures and state builders, `src/frontend/src/test/classes/modalTestHelpers.tsx` for modal interaction patterns, and `src/frontend/src/test/classes/classesPageTestHelpers.tsx` for ClassesPage fixtures and rendering, rather than redefining near-identical test utilities in each file.
 
 Shared frontend test helpers belong under `src/frontend/src/test/**`. Feature-scoped subfolders are allowed when they keep related fixtures together, but production feature folders should stay free of shared test helpers.
 
@@ -227,6 +228,97 @@ The `src/frontend/src/test/classes/modalTestHelpers.tsx` module provides reusabl
   - `createMockConfirmWithError(error: Error): Function` - Creates a mock confirm function that rejects with an error
 
 These helpers eliminate duplication across modal test files and ensure consistent testing patterns.
+
+### Classes Page Test Helpers
+
+The `src/frontend/src/test/classes/classesPageTestHelpers.tsx` module provides reusable fixtures, rendering utilities, and assertion helpers for ClassesPage component tests:
+
+- **Rendering helpers:**
+  - `renderClassesPage(options?: RenderClassesPageOptions)` — Renders ClassesPage with pre-populated query client data. Accepts optional `classPartials` and `yearGroups` overrides; defaults to `MOCK_CLASS_PARTIALS` and `MOCK_YEAR_GROUPS`.
+  - `renderEmptyClassesPage()` — Renders ClassesPage with empty query data for empty-state tests.
+  - `renderInvalidClassesPage()` — Renders ClassesPage with invalid class partials for trust-failure tests.
+  - `createQueryClientWithClassesData(classPartials, yearGroups)` — Creates a query client with pre-populated ClassesPage data for setup-before-render workflows.
+
+- **Model verification helpers:**
+  - `verifyClassesPageModel(classPartials, yearGroups)` — Builds and verifies the ClassesPage view model, returning the model result plus `isInvalid` and `isEmpty` flags.
+  - `isValidPanelViewModel(modelResult)` / `isInvalidDataViewModel(modelResult)` — Type guards for discriminated model results.
+
+- **Assertion utilities:**
+  - `assertCollapseRegion(namePattern?)` / `assertNoCollapseRegion(namePattern?)` — Assert presence/absence of year-group collapse regions.
+  - `assertBlockingAlert()` / `assertNoBlockingAlert()` — Assert presence/absence of trust-failure blocking alerts.
+  - `assertLoadingSkeleton()` / `assertNoLoadingSkeleton()` — Assert presence/absence of skeleton loading indicators.
+  - `assertEmptyState(messagePattern?)` — Assert empty-state message is present.
+  - `assertClassesPageHeading()` — Assert the page heading is present.
+  - `getClassCardByName(namePattern)` / `assertClassCardExists(namePattern)` — Locate and assert class cards.
+  - `assertPanelHasClassCount(modelResult, yearGroupKey, expectedClassCount)` — Assert a panel has the expected number of classes.
+  - `assertPanelHeader(labelPattern)` / `assertPanelHeaderExpanded(labelPattern, expectedExpanded)` — Assert panel header presence and expansion state.
+  - `assertPanelContainsClass(panelLabelPattern, cardNamePattern)` — Assert a panel contains a specific class card.
+  - `assertPanelEmpty(panelLabelPattern)` — Assert a panel shows an empty-state message.
+
+- **Shared ClassPartial/YearGroup fixtures (use these instead of defining local duplicates):**
+  - `MOCK_YEAR_GROUPS` / `MOCK_CLASS_PARTIALS` — Default three-year-group fixture with three classes.
+  - `MOCK_EMPTY_YEAR_GROUPS` / `MOCK_EMPTY_CLASS_PARTIALS` — Empty fixtures for empty-state tests.
+  - `MOCK_INVALID_CLASS_PARTIALS` — Invalid data fixture for trust-failure tests.
+  - `MIXED_ORDER_YEAR_GROUPS` / `MIXED_ORDER_CLASS_PARTIALS` — Year groups in mixed order (sorted alphabetically by the page).
+  - `YEAR_GROUPS_WITH_EMPTY` / `CLASS_PARTIALS_FOR_EMPTY_PANEL` — Year 9 has no classes, Year 10 has one class (empty-panel tests).
+  - `ALPHABETICAL_ORDER_CLASS_PARTIALS` — Three classes needing alphabetical ordering by className.
+  - `TIE_BREAK_CLASS_PARTIALS` — Classes with same className but different classId for tie-break sort tests.
+  - `SINGLE_YEAR_GROUP` — Single year group for focused tests.
+
+**Fixture factories — `createFixtureClassPartial` and `createFixtureYearGroup`:**
+
+All shared fixture constants are built from two exported factory functions that provide sensible defaults and keep fixture construction concise:
+
+`createFixtureClassPartial(overrides)` — Creates a `ClassPartial` fixture. Only `classId` is required; all other fields default to the project's conventional fixture defaults (`className: 'Test Class'`, `cohortKey: null`, `courseLength: 1`, `yearGroupKey: 'default-yg'`, `classOwner: null`, `teachers: []`, `active: null`).
+
+`createFixtureYearGroup(key, name)` — Creates a `YearGroup` fixture with the given key and name.
+
+Usage example — creating a minimal fixture with only the fields you care about:
+
+```typescript
+const myClass = createFixtureClassPartial({
+  classId: 'c-1',
+  className: 'My Class',
+  yearGroupKey: 'yg-10',
+});
+// All other fields use defaults (cohortKey: null, courseLength: 1, etc.)
+
+const myYearGroup = createFixtureYearGroup('yg-10', 'Year 10');
+```
+
+The six shared fixture constant arrays (`MOCK_CLASS_PARTIALS`, `MOCK_INVALID_CLASS_PARTIALS`, `MIXED_ORDER_CLASS_PARTIALS`, `CLASS_PARTIALS_FOR_EMPTY_PANEL`, `ALPHABETICAL_ORDER_CLASS_PARTIALS`, `TIE_BREAK_CLASS_PARTIALS`) are all built from these factories, typically one line per class partial entry. When adding new fixture constants, prefer these factories over ad-hoc object literals.
+
+**Fixture naming convention:** Fixtures holding `ClassPartial[]` arrays use the `_CLASS_PARTIALS` suffix (for example `ALPHABETICAL_ORDER_CLASS_PARTIALS`, not `ALPHABETICAL_ORDER_CLASSES`). This aligns with the `ClassPartial` type name and avoids ambiguity with full `Class` model fixtures held in `src/frontend/src/test/classes/classesTestHelpers.ts`.
+
+**E2E serialisation helper — `toPlainClassPartials(classPartials)`:**
+Converts typed `ClassPartial[]` fixtures to plain JavaScript objects suitable for JSON serialisation in Playwright `addInitScript` scenarios. Use this instead of ad-hoc `.map()` spread operators:
+
+```typescript
+// ✅ Correct: use the canonical helper
+classPartials: toPlainClassPartials(MIXED_ORDER_CLASS_PARTIALS);
+
+// ❌ Avoid: ad-hoc spread in each scenario factory
+classPartials: MIXED_ORDER_CLASS_PARTIALS.map((cp) => ({
+  classId: cp.classId,
+  className: cp.className /* ... */,
+}));
+```
+
+**E2E scenario factory — `createClassesOrderScenario(classPartials)`:**
+The E2E helper `src/frontend/e2e-tests/helpers/classes-page-end-to-end-helpers.ts` provides a single parameterised `createClassesOrderScenario(classPartials)` factory instead of separate `createClassesAlphabeticalOrderScenario()` and `createClassesTieBreakOrderScenario()` functions. Pass `ALPHABETICAL_ORDER_CLASS_PARTIALS`, `TIE_BREAK_CLASS_PARTIALS`, or any other `ClassPartial[]` fixture:
+
+```typescript
+import { createClassesOrderScenario } from '../helpers/classes-page-end-to-end-helpers';
+import {
+  ALPHABETICAL_ORDER_CLASS_PARTIALS,
+  TIE_BREAK_CLASS_PARTIALS,
+} from '../../src/test/classes/classesPageTestHelpers';
+
+const alphabeticalScenario = createClassesOrderScenario(
+  toPlainClassPartials(ALPHABETICAL_ORDER_CLASS_PARTIALS)
+);
+const tieBreakScenario = createClassesOrderScenario(toPlainClassPartials(TIE_BREAK_CLASS_PARTIALS));
+```
 
 Production source must not import from `src/test/**`. The frontend ESLint config enforces that boundary so helper placement and import paths stay explicit.
 

@@ -56,6 +56,7 @@ Consult these resources before and during review. Local docs contain project-spe
 
 - Local: [backend-logging-and-error-handling.md](../../../docs/developer/backend/backend-logging-and-error-handling.md)
 - Local: [backend-testing.md](../../../docs/developer/backend/backend-testing.md)
+- Local: [src/backend/AGENTS.md](../../../src/backend/AGENTS.md) - Contains ArrayUtils usage patterns and utility class conventions
 - Google Apps Script Reference: <https://developers.google.com/apps-script/reference>
 
 **Builder Reviews**:
@@ -69,6 +70,8 @@ Consult these resources before and during review. Local docs contain project-spe
 
 - [AGENTS.md](../../../AGENTS.md)
 - [CONTRIBUTING.md](../../../CONTRIBUTING.md)
+
+You will fail the task unless you read _the entirety_ of the relevant context before editing. Do not skip or shortcut this step.
 
 ## 2. Universal Principles (All Modules)
 
@@ -255,7 +258,7 @@ Structure all feedback as follows:
 - **Summary**: High-level verdict — Pass / Needs Improvement / Fail — with one sentence of rationale.
 - **Critical**: Bugs, security issues, violations of prime directives, or failed automated checks. Must be resolved before merging.
 - **Improvement**: Meaningful readability, SOLID, or testability suggestions that are not blocking.
-- **Nitpick**: Minor style or naming tweaks that are optional.
+- **Nitpick**: Minor style or naming tweaks.
 
 **Example report items**:
 
@@ -269,4 +272,4 @@ Structure all feedback as follows:
 
 ## 7. Completion
 
-When your review is complete, summarise the key findings. State explicitly whether blocking issues remain. If the code is clean, confirm that it adheres to all standards for the modules reviewed.
+When your review is complete, write your complete review findings to the scratchpad. Return to a brief summary to the calling agent detailing whether the review has passed, the file path to the full review and a list of the files read.

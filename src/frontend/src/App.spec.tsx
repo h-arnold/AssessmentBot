@@ -10,14 +10,13 @@ import {
   appBreadcrumbBaseLabel,
   defaultNavigationKey,
   getNavigationLabel,
-  navigationItems,
   type AppNavigationKey,
 } from './navigation/appNavigation';
 import { createGoogleScriptRunApiHandlerMock } from './test/googleScriptRunHarness';
 
 const loadingAuthorisationStatusLabel = 'Loading authorisation status';
 const applicationTitleText = appBreadcrumbBaseLabel;
-const navigationLabels = navigationItems.map(({ label }) => label);
+const expectedNavigationLabels = ['Dashboard', 'Assignments', 'Classes', 'Settings'] as const;
 const noBreadcrumbLabelPosition = -1;
 const primaryNavigationLabel = 'Primary navigation';
 const collapseNavigationButtonLabel = 'Collapse navigation';
@@ -264,7 +263,7 @@ describe('App', () => {
 
     const navigation = screen.getByRole('navigation', { name: primaryNavigationLabel });
 
-    for (const label of navigationLabels) {
+    for (const label of expectedNavigationLabels) {
       expect(within(navigation).getByRole('menuitem', { name: label })).toBeInTheDocument();
     }
   });
@@ -281,7 +280,7 @@ describe('App', () => {
     const navigation = screen.getByRole('navigation', { name: primaryNavigationLabel });
     const menuItems = within(navigation).getAllByRole('menuitem');
 
-    expect(menuItems).toHaveLength(navigationLabels.length);
+    expect(menuItems).toHaveLength(expectedNavigationLabels.length);
 
     for (const item of menuItems) {
       expect(item.querySelector('.app-navigation-icon')).not.toBeNull();
@@ -297,7 +296,7 @@ describe('App', () => {
 
     let previousLabel: string | undefined;
 
-    for (const label of navigationLabels) {
+    for (const label of expectedNavigationLabels) {
       const menuItem = within(navigation).getByRole('menuitem', { name: label });
 
       act(() => {
@@ -347,9 +346,7 @@ describe('App', () => {
 
     const navigation = screen.getByRole('navigation', { name: primaryNavigationLabel });
 
-    for (const { key } of navigationItems) {
-      const label = getNavigationLabel(key);
-
+    for (const label of expectedNavigationLabels) {
       act(() => {
         fireEvent.click(within(navigation).getByRole('menuitem', { name: label }));
       });
@@ -437,7 +434,7 @@ describe('App', () => {
     await renderPendingApp();
 
     const navigation = screen.getByRole('navigation', { name: primaryNavigationLabel });
-    const rapidSelectionKeys: AppNavigationKey[] = ['assignments', 'settings'];
+    const rapidSelectionKeys: AppNavigationKey[] = ['assignments', 'classes', 'settings'];
 
     act(() => {
       for (const key of rapidSelectionKeys) {
@@ -453,6 +450,7 @@ describe('App', () => {
 
     expectBreadcrumbLabels([appBreadcrumbBaseLabel, getNavigationLabel('settings')]);
     expect(breadcrumb).not.toHaveTextContent(getNavigationLabel('assignments'));
+    expect(breadcrumb).not.toHaveTextContent(getNavigationLabel('classes'));
   });
 
   it('Dashboard default selection renders expected default page content', async () => {
@@ -594,7 +592,7 @@ describe('App', () => {
         within(navigation).getByRole('menuitem', { name: getNavigationLabel('assignments') })
       );
       fireEvent.click(
-        within(navigation).getByRole('menuitem', { name: getNavigationLabel('assignments') })
+        within(navigation).getByRole('menuitem', { name: getNavigationLabel('classes') })
       );
       fireEvent.click(
         within(navigation).getByRole('menuitem', { name: getNavigationLabel('settings') })

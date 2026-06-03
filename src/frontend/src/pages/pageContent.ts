@@ -12,6 +12,10 @@ export const pageContent = {
     summary:
       'Review assignment-definition partials and remove obsolete definitions without loading full task data.',
   },
+  classes: {
+    heading: 'Classes',
+    summary: 'Browse classes grouped by year group.',
+  },
   settings: {
     heading: 'Settings',
     summary: 'Configure AssessmentBot preferences and workspace options.',
