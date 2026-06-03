@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { FilterFilled } from '@ant-design/icons';
 import {
   Alert,
@@ -16,9 +16,16 @@ import {
 import type { FilterDropdownProps, FilterValue } from 'antd/es/table/interface';
 import { useCallback, useMemo, useState, type ReactElement } from 'react';
 import { useStartupWarmupState } from '../features/auth/startupWarmupState';
+import {
+  computePageSurfaceBlocking,
+  computeDatasetRenderable,
+  computePageSurfaceBusy,
+  usePageDataset,
+  type PageDatasetState,
+} from '../hooks/usePageDataset';
 import { logFrontendError } from '../logging/frontendLogger';
 import { queryKeys } from '../query/queryKeys';
-import { getAssignmentDefinitionPartialsQueryOptions } from '../query/sharedQueries';
+import { refetchAfterStaleInvalidate } from '../query/queryInvalidationHelpers';
 import {
   deleteAssignmentDefinition,
   type AssignmentDefinitionPartial,
@@ -232,51 +239,17 @@ function getNextFilters(
 }
 
 /**
- * Returns whether assignments content should be blocked.
- *
- * @param {Readonly<{ isAssignmentsDatasetFailed: boolean; isAssignmentsDatasetReady: boolean; isAssignmentsDatasetTrustworthy: boolean; hasTrustworthyAssignmentsDataset: boolean; isAssignmentsQueryError: boolean; }>} input Dataset and query state.
- * @returns {boolean} `true` when the page should fail closed.
- */
-function shouldRenderAssignmentsBlockingState(
-  input: Readonly<{
-    isAssignmentsDatasetFailed: boolean;
-    isAssignmentsDatasetReady: boolean;
-    isAssignmentsDatasetTrustworthy: boolean;
-    hasTrustworthyAssignmentsDataset: boolean;
-    hasAssignmentsQueryData: boolean;
-    isAssignmentsQueryError: boolean;
-  }>
-): boolean {
-  if (input.isAssignmentsDatasetFailed) {
-    // Allow recovery after startup warm-up failure once a live refetch succeeds.
-    return !input.hasAssignmentsQueryData || input.isAssignmentsQueryError;
-  }
-
-  if (input.isAssignmentsDatasetReady && !input.isAssignmentsDatasetTrustworthy) {
-    return true;
-  }
-
-  return input.hasTrustworthyAssignmentsDataset && input.isAssignmentsQueryError;
-}
-
-/**
  * Resolves whether assignments cards should show loading or blocking states.
  *
- * @param {Readonly<{ isAssignmentsDatasetFailed: boolean; isAssignmentsDatasetReady: boolean; isAssignmentsDatasetTrustworthy: boolean; hasTrustworthyAssignmentsDataset: boolean; isAssignmentsQueryError: boolean; isAssignmentsQueryPending: boolean; hasAssignmentsQueryData: boolean; }>} input Dataset and query state.
+ * @param {PageDatasetState} datasetState Derived per-dataset state for assignment definition partials.
+ * @param {boolean} isAssignmentsQueryPending Whether the assignments query is in a pending state.
  * @returns {AssignmentsSurfaceState} Surface-state booleans.
  */
 function getAssignmentsSurfaceState(
-  input: Readonly<{
-    isAssignmentsDatasetFailed: boolean;
-    isAssignmentsDatasetReady: boolean;
-    isAssignmentsDatasetTrustworthy: boolean;
-    hasTrustworthyAssignmentsDataset: boolean;
-    isAssignmentsQueryError: boolean;
-    isAssignmentsQueryPending: boolean;
-    hasAssignmentsQueryData: boolean;
-  }>
+  datasetState: PageDatasetState,
+  isAssignmentsQueryPending: boolean
 ): AssignmentsSurfaceState {
-  const isBlocking = shouldRenderAssignmentsBlockingState(input);
+  const isBlocking = computePageSurfaceBlocking(datasetState);
 
   if (isBlocking) {
     return {
@@ -286,19 +259,14 @@ function getAssignmentsSurfaceState(
     };
   }
 
-  const hasRecoveredAssignmentsDataset =
-    input.isAssignmentsDatasetFailed &&
-    input.hasAssignmentsQueryData &&
-    !input.isAssignmentsQueryError;
-  const hasRenderableAssignmentsDataset =
-    input.hasTrustworthyAssignmentsDataset || hasRecoveredAssignmentsDataset;
+  const hasRenderableAssignmentsDataset = computeDatasetRenderable(datasetState);
 
   return {
     shouldRenderActionLoadingState: !hasRenderableAssignmentsDataset,
     shouldRenderBlockingState: false,
     shouldRenderTableLoadingState:
       !hasRenderableAssignmentsDataset ||
-      (input.isAssignmentsQueryPending && !input.hasAssignmentsQueryData),
+      (isAssignmentsQueryPending && !datasetState.hasQueryData),
   };
 }
 
@@ -317,8 +285,7 @@ function isAssignmentsSurfaceBusyState(
 ): boolean {
   return (
     input.surfaceState.shouldRenderTableLoadingState ||
-    input.isQueryFetching ||
-    input.isDeletePending
+    computePageSurfaceBusy([input.isQueryFetching], [input.isDeletePending])
   );
 }
 
@@ -596,48 +563,13 @@ export function AssignmentsPage() {
   const startupWarmupState = useStartupWarmupState();
   const queryClient = useQueryClient();
 
-  const assignmentDatasetSnapshot =
-    startupWarmupState.snapshot.datasets.assignmentDefinitionPartials;
-  const isAssignmentsDatasetReady = startupWarmupState.isDatasetReady(
-    'assignmentDefinitionPartials'
-  );
-  const isAssignmentsDatasetFailed = startupWarmupState.isDatasetFailed(
-    'assignmentDefinitionPartials'
-  );
-  const isAssignmentsDatasetTrustworthy = assignmentDatasetSnapshot.isTrustworthy;
-  const hasTrustworthyAssignmentsDataset =
-    isAssignmentsDatasetReady && isAssignmentsDatasetTrustworthy;
+  const { query: assignmentsQuery, datasetState: assignmentsDatasetState } =
+    usePageDataset<AssignmentDefinitionPartial[]>('assignmentDefinitionPartials');
+
+  const hasTrustworthyAssignmentsDataset = assignmentsDatasetState.hasTrustworthyDataset;
   const hasTrustworthyReferenceData =
     startupWarmupState.isDatasetReady('assignmentTopics') &&
     startupWarmupState.isDatasetReady('yearGroups');
-
-  const assignmentsQuery = useQuery({
-    ...getAssignmentDefinitionPartialsQueryOptions(),
-    /*
-     * Enable query when dataset is ready OR has failed.
-     *
-     * Rationale: The startup warmup prefetches assignmentDefinitionPartials.
-     * - isAssignmentsDatasetReady = true when prefetch succeeds AND data is trustworthy
-     * - isAssignmentsDatasetFailed = true when prefetch fails
-     *
-     * When the dataset fails (isAssignmentsDatasetFailed=true), isAssignmentsDatasetReady=false.
-     * If we only enable when isAssignmentsDatasetReady, the query is disabled on failure.
-     * This breaks retry: refetchQueries() cannot refetch disabled queries in React Query v5.
-     *
-     * By enabling when EITHER ready OR failed, we allow:
-     * 1. Normal flow: query runs when dataset is ready
-     * 2. Retry flow: query can be refetched via refetchQueries() after dataset failure
-     *
-     * The blocking state (shouldRenderBlockingState) still protects the UI:
-     * - Shows blocking Alert when isAssignmentsDatasetFailed=true
-     * - Shows blocking Alert when dataset is ready but untrustworthy
-     * - Only shows table when hasTrustworthyAssignmentsDataset AND query has data
-     *
-     * This fixes FE-E2E-010: retry action now correctly triggers getAssignmentDefinitionPartials.
-     */
-    enabled: isAssignmentsDatasetReady || isAssignmentsDatasetFailed,
-    refetchOnMount: false,
-  });
 
   const deleteMutation = useMutation({
     mutationFn: async (input: { definitionKey: string }) => deleteAssignmentDefinition(input),
@@ -769,40 +701,16 @@ export function AssignmentsPage() {
     ]
   );
 
-  const assignmentsSurfaceState = getAssignmentsSurfaceState({
-    hasAssignmentsQueryData: assignmentsQuery.data !== undefined,
-    hasTrustworthyAssignmentsDataset,
-    isAssignmentsDatasetFailed,
-    isAssignmentsDatasetReady,
-    isAssignmentsDatasetTrustworthy,
-    isAssignmentsQueryError: assignmentsQuery.isError,
-    isAssignmentsQueryPending: assignmentsQuery.isPending,
-  });
+  const assignmentsSurfaceState = getAssignmentsSurfaceState(
+    assignmentsDatasetState,
+    assignmentsQuery.isPending
+  );
 
   const isAssignmentsSurfaceBusy = isAssignmentsSurfaceBusyState({
     isDeletePending: deleteMutation.isPending,
     isQueryFetching: assignmentsQuery.isFetching,
     surfaceState: assignmentsSurfaceState,
   });
-
-  const refetchAssignmentDefinitions = useCallback(async () => {
-    /*
-     * Invalidate then refetch the assignment-definition cache.
-     *
-     * This works because the assignmentsQuery is enabled when isAssignmentsDatasetReady
-     * OR isAssignmentsDatasetFailed (see enabled condition above). This ensures refetchQueries
-     * can always refetch, even after a dataset failure.
-     *
-     * The invalidateQueries(refetchType: 'none') prevents background refetch,
-     * then refetchQueries() explicitly triggers the fetch.
-     */
-    await queryClient.invalidateQueries({
-      queryKey: queryKeys.assignmentDefinitionPartials(),
-      refetchType: 'none',
-    });
-
-    return queryClient.refetchQueries({ queryKey: queryKeys.assignmentDefinitionPartials() });
-  }, [queryClient]);
 
   const assignmentsDefinitionsCard = renderAssignmentsDefinitionsCard({
     onResetSortAndFilters: () => {
@@ -842,7 +750,7 @@ export function AssignmentsPage() {
    */
   function handleRetryAssignmentsData() {
     setDeleteOutcome(null);
-    refetchAssignmentDefinitions();
+    refetchAfterStaleInvalidate(queryClient, queryKeys.assignmentDefinitionPartials());
   }
 
   /**
@@ -865,7 +773,7 @@ export function AssignmentsPage() {
       deleteCompleted = true;
       setDeleteTarget(null);
 
-      await refetchAssignmentDefinitions();
+      await refetchAfterStaleInvalidate(queryClient, queryKeys.assignmentDefinitionPartials());
       setDeleteOutcome({ type: 'success', message: DELETE_SUCCESS_MESSAGE });
     } catch (error: unknown) {
       logFrontendError('pages/AssignmentsPage.handleConfirmDelete', error, {

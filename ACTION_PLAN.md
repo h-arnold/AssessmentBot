@@ -737,9 +737,9 @@ None — the existing JSDoc for `handleRetryAssignmentsData` and `handleConfirmD
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
-- **Follow-up implications for later sections:**
+- **Implementation notes:** Completed. Replaced inline `useQuery` + dataset-state boilerplate with `usePageDataset<AssignmentDefinitionPartial[]>('assignmentDefinitionPartials')`. Removed `shouldRenderAssignmentsBlockingState` (replaced by `computePageSurfaceBlocking`). Replaced `refetchAssignmentDefinitions` useCallback with `refetchAfterStaleInvalidate(queryClient, queryKeys.assignmentDefinitionPartials())` at both call sites. Updated `isAssignmentsSurfaceBusyState` to use `computePageSurfaceBusy`. All 32 tests pass unchanged (zero assertion modifications).
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** None — this was the final page refactoring.
 
 ---
 
