@@ -508,3 +508,329 @@ test.describe('Section 4: Year-group collapse behaviour', () => {
     await expect(year9PanelContent).toContainText('No classes');
   });
 });
+
+// ==========================================================================
+// Section 5: Render class cards and placeholder action affordances
+// ==========================================================================
+
+// Classes with names that need alphabetical ordering
+const alphabeticalClasses = [
+  {
+    classId: 'class-math-10b',
+    className: 'Mathematics 10B',
+    cohortKey: null,
+    courseLength: 1,
+    yearGroupKey: 'year-group-10',
+    classOwner: null,
+    teachers: [],
+    active: null,
+  },
+  {
+    classId: 'class-english-10',
+    className: 'English 10',
+    cohortKey: null,
+    courseLength: 1,
+    yearGroupKey: 'year-group-10',
+    classOwner: null,
+    teachers: [],
+    active: null,
+  },
+  {
+    classId: 'class-math-10a',
+    className: 'Mathematics 10A',
+    cohortKey: null,
+    courseLength: 1,
+    yearGroupKey: 'year-group-10',
+    classOwner: null,
+    teachers: [],
+    active: null,
+  },
+] as const;
+
+// Classes with same name but different IDs for tie-break testing
+const tieBreakClasses = [
+  {
+    classId: 'class-b-z',
+    className: 'Z Class',
+    cohortKey: null,
+    courseLength: 1,
+    yearGroupKey: 'year-group-10',
+    classOwner: null,
+    teachers: [],
+    active: null,
+  },
+  {
+    classId: 'class-a-z',
+    className: 'Z Class',
+    cohortKey: null,
+    courseLength: 1,
+    yearGroupKey: 'year-group-10',
+    classOwner: null,
+    teachers: [],
+    active: null,
+  },
+  {
+    classId: 'class-b-a',
+    className: 'A Class',
+    cohortKey: null,
+    courseLength: 1,
+    yearGroupKey: 'year-group-10',
+    classOwner: null,
+    teachers: [],
+    active: null,
+  },
+] as const;
+
+/**
+ * Creates a runtime scenario for Section 5 alphabetical order test.
+ *
+ * @returns {RuntimeScenario} Runtime scenario.
+ */
+function createClassesAlphabeticalOrderScenario(): RuntimeScenario {
+  const plainClasses = alphabeticalClasses.map((cp) => ({
+    classId: cp.classId,
+    className: cp.className,
+    cohortKey: cp.cohortKey,
+    courseLength: cp.courseLength,
+    yearGroupKey: cp.yearGroupKey,
+    classOwner: cp.classOwner,
+    teachers: cp.teachers,
+    active: cp.active,
+  }));
+
+  return {
+    getAuthorisationStatus: [{ kind: 'success', data: true }],
+    getABClassPartials: [{ kind: 'success', data: plainClasses }],
+    getCohorts: [{ kind: 'success', data: [] }],
+    getYearGroups: [{ kind: 'success', data: [{ key: 'year-group-10', name: 'Year 10' }] }],
+    getAssignmentTopics: [{ kind: 'success', data: [] }],
+    getAssignmentDefinitionPartials: [{ kind: 'success', data: [] }],
+  };
+}
+
+/**
+ * Creates a runtime scenario for Section 5 tie-break order test.
+ *
+ * @returns {RuntimeScenario} Runtime scenario.
+ */
+function createClassesTieBreakOrderScenario(): RuntimeScenario {
+  const plainClasses = tieBreakClasses.map((cp) => ({
+    classId: cp.classId,
+    className: cp.className,
+    cohortKey: cp.cohortKey,
+    courseLength: cp.courseLength,
+    yearGroupKey: cp.yearGroupKey,
+    classOwner: cp.classOwner,
+    teachers: cp.teachers,
+    active: cp.active,
+  }));
+
+  return {
+    getAuthorisationStatus: [{ kind: 'success', data: true }],
+    getABClassPartials: [{ kind: 'success', data: plainClasses }],
+    getCohorts: [{ kind: 'success', data: [] }],
+    getYearGroups: [{ kind: 'success', data: [{ key: 'year-group-10', name: 'Year 10' }] }],
+    getAssignmentTopics: [{ kind: 'success', data: [] }],
+    getAssignmentDefinitionPartials: [{ kind: 'success', data: [] }],
+  };
+}
+
+test.describe('Section 5: Render class cards and placeholder action affordances', () => {
+  // Test constants for magic numbers
+  const EXPECTED_ALPHABETICAL_CARDS_COUNT = 3;
+  const EXPECTED_TIE_BREAK_CARDS_COUNT = 3;
+  const EXPECTED_TOTAL_CARDS_COUNT = 4; // 2 in Year 10, 1 in Year 11, 1 in Year 9
+  const EXPECTED_BUTTONS_PER_CARD = 2; // View and Edit
+  const CARD_INDEX_FIRST = 0;
+  const CARD_INDEX_SECOND = 1;
+  const CARD_INDEX_THIRD = 2;
+
+  test('opens a populated year-group panel and asserts card titles are in expected alphabetical order', async ({
+    page,
+  }) => {
+    // Use a scenario with multiple classes in Year 10 that need alphabetical ordering
+    const scenario = createClassesAlphabeticalOrderScenario();
+    await installRuntimeMock(page, scenario);
+    await page.goto('/');
+    await page.getByRole('menuitem', { name: classesLabel }).click();
+
+    // Year 10 panel should be expanded by default (first alphabetical)
+    const year10PanelContent = page.locator('#panel-content-year-group-10');
+    await expect(year10PanelContent).toBeVisible();
+
+    // Verify the card titles are in alphabetical order: English 10, Mathematics 10A, Mathematics 10B
+    const articles = year10PanelContent.locator('[role="article"]');
+    await expect(articles).toHaveCount(EXPECTED_ALPHABETICAL_CARDS_COUNT);
+
+    const firstCardTitle = await articles
+      .nth(CARD_INDEX_FIRST)
+      .locator('.ant-card-head-title')
+      .textContent();
+    const secondCardTitle = await articles
+      .nth(CARD_INDEX_SECOND)
+      .locator('.ant-card-head-title')
+      .textContent();
+    const thirdCardTitle = await articles
+      .nth(CARD_INDEX_THIRD)
+      .locator('.ant-card-head-title')
+      .textContent();
+
+    expect(firstCardTitle?.trim()).toBe('English 10');
+    expect(secondCardTitle?.trim()).toBe('Mathematics 10A');
+    expect(thirdCardTitle?.trim()).toBe('Mathematics 10B');
+  });
+
+  test('uses classId as tie-break when className is identical', async ({ page }) => {
+    // Use a scenario with classes that have the same name but different IDs
+    const scenario = createClassesTieBreakOrderScenario();
+    await installRuntimeMock(page, scenario);
+    await page.goto('/');
+    await page.getByRole('menuitem', { name: classesLabel }).click();
+
+    // Year 10 panel should be expanded by default
+    const year10PanelContent = page.locator('#panel-content-year-group-10');
+    await expect(year10PanelContent).toBeVisible();
+
+    // Expected order: A Class, Z Class (classId a-z), Z Class (classId b-z)
+    const articles = year10PanelContent.locator('[role="article"]');
+    await expect(articles).toHaveCount(EXPECTED_TIE_BREAK_CARDS_COUNT);
+
+    const firstCardTitle = await articles
+      .nth(CARD_INDEX_FIRST)
+      .locator('.ant-card-head-title')
+      .textContent();
+    expect(firstCardTitle?.trim()).toBe('A Class');
+
+    const secondCardTitle = await articles
+      .nth(CARD_INDEX_SECOND)
+      .locator('.ant-card-head-title')
+      .textContent();
+    const thirdCardTitle = await articles
+      .nth(CARD_INDEX_THIRD)
+      .locator('.ant-card-head-title')
+      .textContent();
+    expect(secondCardTitle?.trim()).toBe('Z Class');
+    expect(thirdCardTitle?.trim()).toBe('Z Class');
+  });
+
+  test('asserts every visible View and Edit button is disabled', async ({ page }) => {
+    // Use the standard Section 4 scenario which has classes
+    const scenario = createClassesScenario();
+    await installRuntimeMock(page, scenario);
+    await page.goto('/');
+    await page.getByRole('menuitem', { name: classesLabel }).click();
+
+    // Year 10 should already be expanded
+    await expect(page.locator('#panel-content-year-group-10')).toBeVisible();
+
+    // Expand Year 11 and Year 9
+    await page.getByRole('heading', { level: 3, name: 'Year 11' }).click();
+    await page.getByRole('heading', { level: 3, name: 'Year 9' }).click();
+
+    // Now all panels should be visible
+    await expect(page.locator('#panel-content-year-group-11')).toBeVisible();
+    await expect(page.locator('#panel-content-year-group-9')).toBeVisible();
+
+    // Find all View buttons and verify they are disabled
+    const viewButtons = page.getByRole('button', { name: /view/i });
+    await expect(viewButtons).toHaveCount(EXPECTED_TOTAL_CARDS_COUNT);
+
+    // Find all Edit buttons and verify they are disabled
+    const editButtons = page.getByRole('button', { name: /edit/i });
+    await expect(editButtons).toHaveCount(EXPECTED_TOTAL_CARDS_COUNT);
+
+    // Verify all View buttons are disabled
+    const allViewButtons = await viewButtons.all();
+    for (const viewButton of allViewButtons) {
+      await expect(viewButton).toBeDisabled();
+    }
+
+    // Verify all Edit buttons are disabled
+    const allEditButtons = await editButtons.all();
+    for (const editButton of allEditButtons) {
+      await expect(editButton).toBeDisabled();
+    }
+  });
+
+  test('verifies no enabled View/Edit link, dialog trigger, or workflow affordance is present', async ({
+    page,
+  }) => {
+    // Use the standard Section 4 scenario
+    const scenario = createClassesScenario();
+    await installRuntimeMock(page, scenario);
+    await page.goto('/');
+    await page.getByRole('menuitem', { name: classesLabel }).click();
+
+    // Expand all panels
+    await page.getByRole('heading', { level: 3, name: 'Year 11' }).click();
+    await page.getByRole('heading', { level: 3, name: 'Year 9' }).click();
+
+    // Verify no links for View/Edit exist
+    const viewLinks = page.getByRole('link', { name: /view/i });
+    await expect(viewLinks).toHaveCount(0);
+
+    const editLinks = page.getByRole('link', { name: /edit/i });
+    await expect(editLinks).toHaveCount(0);
+
+    // Verify all View buttons are disabled
+    const allViewButtons = await page.getByRole('button', { name: /view/i }).all();
+    for (const viewButton of allViewButtons) {
+      await expect(viewButton).toBeDisabled();
+    }
+
+    // Verify all Edit buttons are disabled
+    const allEditButtons = await page.getByRole('button', { name: /edit/i }).all();
+    for (const editButton of allEditButtons) {
+      await expect(editButton).toBeDisabled();
+    }
+  });
+
+  test('asserts no drag handle, reorder button, or ordering affordance is visible in the card surface', async ({
+    page,
+  }) => {
+    // Use the standard Section 4 scenario
+    const scenario = createClassesScenario();
+    await installRuntimeMock(page, scenario);
+    await page.goto('/');
+    await page.getByRole('menuitem', { name: classesLabel }).click();
+
+    // Expand all panels
+    await page.getByRole('heading', { level: 3, name: 'Year 11' }).click();
+    await page.getByRole('heading', { level: 3, name: 'Year 9' }).click();
+
+    // Get all card elements
+    const articles = page.locator('[role="article"]');
+    await expect(articles).toHaveCount(EXPECTED_TOTAL_CARDS_COUNT);
+
+    // Verify no drag handles or reorder affordances exist
+    const dragHandles = page.locator('[draggable="true"]');
+    await expect(dragHandles).toHaveCount(0);
+
+    // Verify no drag-related classes exist
+    const dragElements = page.locator('.drag-handle, .ant-drag-handle, .draggable');
+    await expect(dragElements).toHaveCount(0);
+
+    // Verify no reorder-related text/content exists in cards
+    const reorderText = page.locator('[role="article"]:has-text("reorder")');
+    await expect(reorderText).toHaveCount(0);
+
+    const moveText = page.locator('[role="article"]:has-text("move")');
+    await expect(moveText).toHaveCount(0);
+
+    // Verify no sort-related classes exist in cards
+    const sortHandles = page.locator(
+      '[role="article"] .sort-handle, [role="article"] .ant-sort-handle'
+    );
+    await expect(sortHandles).toHaveCount(0);
+
+    // Verify each card only has View and Edit buttons (no other action buttons)
+    const allArticles = await articles.all();
+    for (const article of allArticles) {
+      const buttons = article.locator('button');
+      await expect(buttons).toHaveCount(EXPECTED_BUTTONS_PER_CARD);
+
+      const buttonTexts = await buttons.allTextContents();
+      expect(buttonTexts).toEqual(['View', 'Edit']);
+    }
+  });
+});

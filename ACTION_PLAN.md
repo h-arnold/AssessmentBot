@@ -625,6 +625,8 @@ Frontend e2e tests:
 - **Implementation notes:** keep card rendering declarative and driven by the already-sorted model.
 - **Deviations from plan:** record any unavoidable selector changes for stable button assertions.
 - **Follow-up implications for later sections:** later work should treat the placeholder buttons as reserved affordance locations only.
+- **Completion status:** ✅ Section 5 COMPLETE - Implementation already satisfied from Section 4. Red phase: 5 component tests + 5 e2e tests created and reviewed clean, all tests pass immediately confirming implementation meets requirements. All acceptance criteria validated: card order (className then classId), View/Edit visible and disabled, no enabled workflows, no drag/reorder affordances, no extra metadata. Code review PASS with 3 non-blocking documentation improvements. Regression gate passed with 0 new regressions.
+- **Files modified:** `src/frontend/src/pages/ClassesPage.spec.tsx` (5 component tests), `src/frontend/e2e-tests/classes-page.spec.ts` (5 e2e tests)
 
 ---
 

@@ -875,5 +875,318 @@ describe('ClassesPage', () => {
         expect(year9PanelRegion).toContainElement(science9Card);
       });
     });
+
+    // ==========================================================================
+    // Section 5: Render class cards and placeholder action affordances
+    // ==========================================================================
+
+    describe('Section 5: Render class cards and placeholder action affordances', () => {
+      // Test constants for magic numbers
+      const EXPECTED_ALPHABETICAL_CLASSES_COUNT = 3;
+      const EXPECTED_TIE_BREAK_CLASSES_COUNT = 3;
+      const EXPECTED_BUTTONS_PER_CARD = 2; // Only View and Edit
+
+      // Fixture with classes that need alphabetical ordering by className then classId
+      const alphabeticalOrderClassPartials: ClassPartial[] = [
+        {
+          classId: 'class-math-10b',
+          className: 'Mathematics 10B',
+          cohortKey: null,
+          courseLength: 1,
+          yearGroupKey: 'year-group-10',
+          classOwner: null,
+          teachers: [],
+          active: null,
+        },
+        {
+          classId: 'class-math-10a',
+          className: 'Mathematics 10A',
+          cohortKey: null,
+          courseLength: 1,
+          yearGroupKey: 'year-group-10',
+          classOwner: null,
+          teachers: [],
+          active: null,
+        },
+        {
+          classId: 'class-english-10',
+          className: 'English 10',
+          cohortKey: null,
+          courseLength: 1,
+          yearGroupKey: 'year-group-10',
+          classOwner: null,
+          teachers: [],
+          active: null,
+        },
+      ] as const;
+
+      // Same classes but with a tie-break scenario: two classes with same name
+      const tieBreakClassPartials: ClassPartial[] = [
+        {
+          classId: 'class-b-z',
+          className: 'Z Class',
+          cohortKey: null,
+          courseLength: 1,
+          yearGroupKey: 'year-group-10',
+          classOwner: null,
+          teachers: [],
+          active: null,
+        },
+        {
+          classId: 'class-a-z',
+          className: 'Z Class',
+          cohortKey: null,
+          courseLength: 1,
+          yearGroupKey: 'year-group-10',
+          classOwner: null,
+          teachers: [],
+          active: null,
+        },
+        {
+          classId: 'class-b-a',
+          className: 'A Class',
+          cohortKey: null,
+          courseLength: 1,
+          yearGroupKey: 'year-group-10',
+          classOwner: null,
+          teachers: [],
+          active: null,
+        },
+      ] as const;
+
+      beforeEach(() => {
+        useStartupWarmupStateMock.mockReturnValue(createReadyWarmupState());
+      });
+
+      it('verifies card order inside a panel follows className then classId', () => {
+        // Pre-populate the query client cache BEFORE rendering
+        const queryClient = createAppQueryClient();
+        queryClient.setQueryData(queryKeys.classPartials(), [
+          ...alphabeticalOrderClassPartials,
+        ]);
+        queryClient.setQueryData(queryKeys.yearGroups(), [...mockYearGroups]);
+
+        renderWithFrontendProviders(<ClassesPage />, {
+          queryClient,
+        });
+
+        // Verify the view model sorts correctly
+        const modelResult = buildClassesPageModel(
+          alphabeticalOrderClassPartials,
+          mockYearGroups
+        );
+        expect(modelResult).not.toHaveProperty('type');
+
+        const viewModel = modelResult as {
+          panels: {
+            yearGroupKey: string;
+            classes: { classId: string; className: string }[];
+          }[];
+        };
+
+        const year10Panel = viewModel.panels.find(
+          (p) => p.yearGroupKey === 'year-group-10'
+        );
+        expect(year10Panel).toBeDefined();
+        expect(year10Panel?.classes).toHaveLength(EXPECTED_ALPHABETICAL_CLASSES_COUNT);
+
+        // Expected order: English 10, Mathematics 10A, Mathematics 10B
+        const expectedClasses = [
+          { classId: 'class-english-10', className: 'English 10', yearGroupKey: 'year-group-10', yearGroupLabel: 'Year 10' },
+          { classId: 'class-math-10a', className: 'Mathematics 10A', yearGroupKey: 'year-group-10', yearGroupLabel: 'Year 10' },
+          { classId: 'class-math-10b', className: 'Mathematics 10B', yearGroupKey: 'year-group-10', yearGroupLabel: 'Year 10' },
+        ];
+        expect(year10Panel?.classes).toEqual(expectedClasses);
+
+        // Assert rendered cards match the sorted order
+        const year10PanelRegion = screen.getByRole('region', { name: /year 10/i });
+        expect(year10PanelRegion).toBeInTheDocument();
+
+        const cards = year10PanelRegion.querySelectorAll('[role="article"]');
+        expect(cards).toHaveLength(EXPECTED_ALPHABETICAL_CLASSES_COUNT);
+
+        const cardTitles = [...cards].map((card) => card.getAttribute('aria-label'));
+        expect(cardTitles).toEqual(['English 10', 'Mathematics 10A', 'Mathematics 10B']);
+      });
+
+      it('verifies card order uses classId as tie-break when className is identical', () => {
+        // Pre-populate the query client cache BEFORE rendering
+        const queryClient = createAppQueryClient();
+        queryClient.setQueryData(queryKeys.classPartials(), [
+          ...tieBreakClassPartials,
+        ]);
+        queryClient.setQueryData(queryKeys.yearGroups(), [
+          { key: 'year-group-10', name: 'Year 10' },
+        ]);
+
+        renderWithFrontendProviders(<ClassesPage />, {
+          queryClient,
+        });
+
+        // Verify the view model sorts by className then classId
+        const modelResult = buildClassesPageModel(
+          tieBreakClassPartials,
+          [{ key: 'year-group-10', name: 'Year 10' }]
+        );
+        expect(modelResult).not.toHaveProperty('type');
+
+        const viewModel = modelResult as {
+          panels: {
+            yearGroupKey: string;
+            classes: { classId: string; className: string }[];
+          }[];
+        };
+
+        const year10Panel = viewModel.panels.find(
+          (p) => p.yearGroupKey === 'year-group-10'
+        );
+        expect(year10Panel).toBeDefined();
+        expect(year10Panel?.classes).toHaveLength(EXPECTED_TIE_BREAK_CLASSES_COUNT);
+
+        // Expected order: A Class, Z Class (with classId a-z), Z Class (with classId b-z)
+        const expectedClasses = [
+          { classId: 'class-b-a', className: 'A Class', yearGroupKey: 'year-group-10', yearGroupLabel: 'Year 10' },
+          { classId: 'class-a-z', className: 'Z Class', yearGroupKey: 'year-group-10', yearGroupLabel: 'Year 10' },
+          { classId: 'class-b-z', className: 'Z Class', yearGroupKey: 'year-group-10', yearGroupLabel: 'Year 10' },
+        ];
+        expect(year10Panel?.classes).toEqual(expectedClasses);
+
+        // Assert rendered order matches
+        const year10PanelRegion = screen.getByRole('region', { name: /year 10/i });
+        expect(year10PanelRegion).toBeInTheDocument();
+
+        const cards = year10PanelRegion.querySelectorAll('[role="article"]');
+        expect(cards).toHaveLength(EXPECTED_TIE_BREAK_CLASSES_COUNT);
+
+        const cardTitles = [...cards].map((card) => card.getAttribute('aria-label'));
+        expect(cardTitles).toEqual(['A Class', 'Z Class', 'Z Class']);
+      });
+
+      it('verifies both placeholder buttons are visible and disabled for every rendered card', () => {
+        // Pre-populate the query client cache BEFORE rendering
+        const queryClient = createAppQueryClient();
+        queryClient.setQueryData(queryKeys.classPartials(), [
+          ...mockClassPartials,
+        ]);
+        queryClient.setQueryData(queryKeys.yearGroups(), [...mockYearGroups]);
+
+        renderWithFrontendProviders(<ClassesPage />, {
+          queryClient,
+        });
+
+        // Find all View buttons - there should be one per card
+        const viewButtons = screen.getAllByRole('button', { name: /view/i });
+        expect(viewButtons.length).toBeGreaterThan(0);
+
+        // Find all Edit buttons - there should be one per card
+        const editButtons = screen.getAllByRole('button', { name: /edit/i });
+        expect(editButtons.length).toBeGreaterThan(0);
+
+        // Total cards = total View buttons = total Edit buttons
+        const expectedCardCount = viewButtons.length;
+        expect(editButtons.length).toBe(expectedCardCount);
+
+        // Verify every View button is disabled and visible
+        for (const viewButton of viewButtons) {
+          expect(viewButton).toBeInTheDocument();
+          expect(viewButton).toBeDisabled();
+          expect(viewButton).toBeVisible();
+        }
+
+        // Verify every Edit button is disabled and visible
+        for (const editButton of editButtons) {
+          expect(editButton).toBeInTheDocument();
+          expect(editButton).toBeDisabled();
+          expect(editButton).toBeVisible();
+        }
+      });
+
+      it('proves no extra metadata such as cohort, teacher list, or status chips is rendered in this iteration', () => {
+        // Pre-populate the query client cache BEFORE rendering
+        const queryClient = createAppQueryClient();
+        queryClient.setQueryData(queryKeys.classPartials(), [
+          ...mockClassPartials,
+        ]);
+        queryClient.setQueryData(queryKeys.yearGroups(), [...mockYearGroups]);
+
+        renderWithFrontendProviders(<ClassesPage />, {
+          queryClient,
+        });
+
+        // Get all rendered cards
+        const cards = screen.getAllByRole('article');
+        expect(cards.length).toBeGreaterThan(0);
+
+        // Expected: cards contain only className as title and View/Edit disabled buttons
+        // No cohort, teacher, status, Google Classroom, or document type metadata
+        const forbiddenPatterns = [
+          /cohort/i,
+          /teacher/i,
+          /instructor/i,
+          /active/i,
+          /inactive/i,
+          /google/i,
+          /classroom/i,
+          /slides/i,
+          /document/i,
+        ];
+
+        for (const card of cards) {
+          for (const pattern of forbiddenPatterns) {
+            expect(card).not.toHaveTextContent(pattern);
+          }
+
+          // Verify View and Edit buttons are present
+          const cardViewButtons = screen.getAllByRole('button', { name: /view/i });
+          const cardEditButtons = screen.getAllByRole('button', { name: /edit/i });
+          expect(cardViewButtons.length).toBeGreaterThan(0);
+          expect(cardEditButtons.length).toBeGreaterThan(0);
+        }
+      });
+
+      it('proves no drag or reorder affordance is present', () => {
+        // Pre-populate the query client cache BEFORE rendering
+        const queryClient = createAppQueryClient();
+        queryClient.setQueryData(queryKeys.classPartials(), [
+          ...mockClassPartials,
+        ]);
+        queryClient.setQueryData(queryKeys.yearGroups(), [...mockYearGroups]);
+
+        renderWithFrontendProviders(<ClassesPage />, {
+          queryClient,
+        });
+
+        // Get all rendered cards
+        const cards = screen.getAllByRole('article');
+        expect(cards.length).toBeGreaterThan(0);
+
+        // Expected: cards have only View and Edit buttons, no drag/reorder affordances
+
+        for (const card of cards) {
+          // Should NOT contain drag handle
+          expect(card).not.toHaveAttribute('draggable', 'true');
+          expect(card).not.toHaveClass(/drag/);
+          expect(card).not.toHaveClass(/draggable/);
+
+          // Should NOT contain reorder/sort buttons or text
+          expect(card).not.toHaveTextContent(/reorder/i);
+          expect(card).not.toHaveTextContent(/move/i);
+          expect(card).not.toHaveClass(/sort/);
+          expect(card).not.toHaveClass(/handle/);
+
+          // Check that the card has exactly View and Edit buttons
+          const cardButtons = card.querySelectorAll('button');
+          expect(cardButtons.length).toBe(EXPECTED_BUTTONS_PER_CARD);
+          expect(cardButtons[0]?.textContent).toMatch(/view/i);
+          expect(cardButtons[1]?.textContent).toMatch(/edit/i);
+        }
+
+        // Also verify the card region wrapper has no drag/reorder classes
+        const cardRegion = screen.getByRole('region', { name: /year.*group/i });
+        expect(cardRegion).not.toHaveClass(/drag/);
+        expect(cardRegion).not.toHaveClass(/draggable/);
+        expect(cardRegion).not.toHaveClass(/sort/);
+      });
+    });
   });
 });
