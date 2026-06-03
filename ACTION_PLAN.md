@@ -565,8 +565,8 @@ None.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
+- **Implementation notes:** Completed. Replaced 4 ad-hoc query-key array literals: `['cohorts']` → `queryKeys.cohorts()`, `['yearGroups']` → `queryKeys.yearGroups()` in `ClassesManagementPanel.tsx`; `['assignmentTopics']` → `queryKeys.assignmentTopics()`, `['yearGroups']` → `queryKeys.yearGroups()` in `useAssignmentDefinitionWizard.ts`. Added `queryKeys` import to `ClassesManagementPanel.tsx`. All 16 existing tests pass unchanged.
+- **Deviations from plan:** None.
 - **Follow-up implications for later sections:** None — these fixes are independent of the page refactoring sections.
 
 ---

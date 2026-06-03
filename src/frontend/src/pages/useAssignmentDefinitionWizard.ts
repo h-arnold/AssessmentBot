@@ -1210,7 +1210,7 @@ export function useAssignmentDefinitionWizard(
     (entity: { key: string; name: string; yearGroupKeys?: string[] }) => {
       setSelectedTopicKey(entity.key);
       // Invalidate assignmentTopics query so the dropdown refreshes
-      queryClient.invalidateQueries({ queryKey: ['assignmentTopics'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.assignmentTopics() });
     },
     [queryClient]
   );
@@ -1219,7 +1219,7 @@ export function useAssignmentDefinitionWizard(
     (entity: { key: string; name: string }) => {
       setSelectedYearGroupKey(entity.key);
       // Invalidate yearGroups query so the dropdown refreshes
-      queryClient.invalidateQueries({ queryKey: ['yearGroups'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.yearGroups() });
     },
     [queryClient]
   );
