@@ -246,20 +246,22 @@ function renderYearGroupCollapse(viewModel: ClassesPagePanelViewModel): JSX.Elem
                             role="article"
                             aria-label={card.className}
                             size="small"
-                            title={card.className}
+                            title={<div style={{ textAlign: 'center' }}>{card.className}</div>}
                             style={{
                               width: CLASSES_CARD_WIDTH_PX,
                               maxWidth: CLASSES_CARD_WIDTH_PX,
                             }}
                           >
-                            <Space wrap>
-                              <Button disabled tabIndex={-1} type="text">
-                                View
-                              </Button>
-                              <Button disabled tabIndex={-1} type="text">
-                                Edit
-                              </Button>
-                            </Space>
+                            <div style={{ display: 'flex', justifyContent: 'center' }}>
+                              <Space wrap>
+                                <Button disabled tabIndex={-1} type="text">
+                                  View
+                                </Button>
+                                <Button disabled tabIndex={-1} type="text">
+                                  Edit
+                                </Button>
+                              </Space>
+                            </div>
                           </Card>
                         </Col>
                       ))}
