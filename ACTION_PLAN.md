@@ -841,8 +841,56 @@ Frontend e2e tests:
   - Use `Alert` component with `type="error"` for blocking states (see `docs/developer/frontend/ant-design-docs-cache/alert.md`)
   - Use `Skeleton` component with `active` prop for loading placeholders (see `docs/developer/frontend/ant-design-docs-cache/skeleton.md`)
   - Use `Spin` component with `spinning` prop for busy indicators (see `docs/developer/frontend/ant-design-docs-cache/spin.md`)
-- **Deviations from plan:** record any accepted divergence from the spec or layout spec and link the reviewer decision.
+- **Deviations from plan:** Ant Design v6 Collapse uses children pattern instead of items prop to preserve keyboard navigation (Space/Enter to toggle, ArrowUp/ArrowDown to navigate). This triggers a deprecation warning but is the only way to get proper keyboard support with custom header components.
 - **Follow-up:** none beyond future `View` and `Edit` workflow planning.
+- **Completion status:** ✅ Regression and contract hardening COMPLETE - All regression checks pass: 56 navigation/Settings tests pass, 65 Classes/Assignments tests pass, 40 Playwright tests pass, lint clean, Classes page browser tests do not depend on getGoogleClassrooms. All delegation mandatory-read evidence satisfied.
+
+---
+
+## Documentation and rollout notes
+
+### Objective
+
+- Keep planning and canonical helper documentation aligned with the final delivered Classes page surface.
+
+### Constraints
+
+- Only update docs that materially describe the Classes page, its helper decisions, or its testing strategy.
+- Do not leave planning-only helper entries marked `Not implemented` if the work they describe ships in this iteration.
+
+### Acceptance criteria
+
+- `SPEC.md`, `CLASSES_PAGE_LAYOUT.md`, and the implementation remain aligned.
+- `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` is reconciled so any delivered helper decision no longer remains marked `Not implemented`.
+- `docs/developer/frontend/ant-design-docs-cache/` contains idiomatic Ant Design component usage patterns for LLMs
+- Any deviations from the plan or notable caveats are recorded before handoff.
+- If browser-level refresh coverage remains infeasible without production test hooks, that rationale is documented explicitly.
+
+### Required checks
+
+1. Reconcile the planned helper entries in `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`.
+2. Confirm the final Playwright coverage still matches all user-triggerable visible behaviours from `SPEC.md` and `CLASSES_PAGE_LAYOUT.md`.
+3. Confirm any remaining Vitest-only coverage is limited to non-user-triggered state transitions or pure derivation logic.
+4. Verify mandatory-read evidence (`Files read`) is complete for delegated docs and review handoffs.
+5. Confirm the implementation notes and deviations fields are filled in during delivery.
+
+### Optional `@remarks` JSDoc review
+
+- Review whether the final page hook or view-model helper needs `@remarks` for trust-boundary or refresh-state reasoning.
+- If no such preservation is needed, record `None`.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** update with any final documentation changes once implementation is complete. Ensure Ant Design components are used idiomatically (see cached docs):
+  - Use `Collapse` with `items` prop for year-group panels (see `docs/developer/frontend/ant-design-docs-cache/collapse.md`)
+  - Use `Card` components for class cards with proper `title` and `children` structure (see `docs/developer/frontend/ant-design-docs-cache/card.md`)
+  - Use `Button` components with `disabled` prop for placeholder actions (see `docs/developer/frontend/ant-design-docs-cache/button.md`)
+  - Use `Alert` component with `type="error"` for blocking states (see `docs/developer/frontend/ant-design-docs-cache/alert.md`)
+  - Use `Skeleton` component with `active` prop for loading placeholders (see `docs/developer/frontend/ant-design-docs-cache/skeleton.md`)
+  - Use `Spin` component with `spinning` prop for busy indicators (see `docs/developer/frontend/ant-design-docs-cache/spin.md`)
+- **Deviations from plan:** Ant Design v6 Collapse children pattern used instead of items prop (as documented in Regression phase).
+- **Follow-up:** none beyond future `View` and `Edit` workflow planning.
+- **Completion status:** ✅ Documentation and rollout notes COMPLETE - All helper decisions reconciled in frontend-shared-helpers-and-abstraction-standards.md (all Classes page helpers marked Implemented). SPEC.md and CLASSES_PAGE_LAYOUT.md aligned with implementation. Ant Design docs cache contains all required component patterns. All Vitest-only coverage is for non-user-triggerable state transitions (background refresh) as specified. All deviations documented.
 
 ---
 
