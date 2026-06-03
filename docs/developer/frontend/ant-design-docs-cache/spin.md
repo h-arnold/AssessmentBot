@@ -1,7 +1,8 @@
 ---
-**Last Updated**: June 2, 206
+**Last Updated**: June 2, 2026
 **Source**: https://ant.design/components/spin
 
+---
 ---
 
 # Spin
