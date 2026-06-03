@@ -252,32 +252,28 @@ function assertCardsSortedByNameThenId(
 }
 
 /**
- * Shared setup for panel sorting tests.
- * Creates year groups and class partials with specified configurations.
+ * Builds the model from valid data, asserts it returns a ClassesPagePanelViewModel,
+ * and passes the valid model to the provided assertions callback.
  *
- * @param {YearGroup[]} yearGroups - Year groups to use.
- * @param {ClassPartial[]} classPartials - Class partials to use.
- * @returns {ClassesPagePanelViewModel | InvalidClassesPageDataViewModel} The result from buildClassesPageModel.
- */
-function runPanelSortingTest(
-  yearGroups: YearGroup[],
-  classPartials: ClassPartial[]
-): ClassesPagePanelViewModel | InvalidClassesPageDataViewModel {
-  return buildClassesPageModel(classPartials, yearGroups);
-}
-
-/**
- * Shared setup for card sorting tests.
+ * This encapsulates the common pattern used across tests:
+ *   buildClassesPageModel → expect(result).toBeDefined() → type-guard → assertions
  *
- * @param {YearGroup[]} yearGroups - Year groups to use.
- * @param {ClassPartial[]} classPartials - Class partials to use.
- * @returns {ClassesPagePanelViewModel | InvalidClassesPageDataViewModel} The result from buildClassesPageModel.
+ * @param {ClassPartial[]} classPartials - Class partials to build model with.
+ * @param {YearGroup[]} yearGroups - Year groups to build model with.
+ * @param {(model: ClassesPagePanelViewModel) => void} assertions - Assertions to run on the valid model.
  */
-function runCardSortingTest(
+function buildAndAssertValidModel(
+  classPartials: ClassPartial[],
   yearGroups: YearGroup[],
-  classPartials: ClassPartial[]
-): ClassesPagePanelViewModel | InvalidClassesPageDataViewModel {
-  return buildClassesPageModel(classPartials, yearGroups);
+  assertions: (model: ClassesPagePanelViewModel) => void
+): void {
+  const result = buildClassesPageModel(classPartials, yearGroups);
+  expect(result).toBeDefined();
+  if (result && 'panels' in result) {
+    assertions(result);
+  } else {
+    expect(result).toHaveProperty('panels');
+  }
 }
 
 // ============================================================================
@@ -308,15 +304,11 @@ describe('Classes page grouped view model - buildClassesPageModel', () => {
         createClassPartial('c5', { className: 'Class 5', yearGroupKey: 'yg-z' }),
       ];
 
-      const result = runPanelSortingTest(yearGroups, classPartials);
-
-      expect(result).toBeDefined();
-
-      if (result && 'panels' in result) {
+      buildAndAssertValidModel(classPartials, yearGroups, (result) => {
         // Sorted by name ascending, then by key ascending for ties
         // Alice panels: yg-a (key: a), yg-y (key: y), yg-z (key: z)
         assertPanelsSortedByNameThenKey(result.panels, ['yg-a', 'yg-y', 'yg-z', 'yg-b', 'yg-c']);
-      }
+      });
     });
   });
 
@@ -337,11 +329,7 @@ describe('Classes page grouped view model - buildClassesPageModel', () => {
         createClassPartial('c-aab', { className: 'Alpha', yearGroupKey: 'yg-1' }),
       ];
 
-      const result = runCardSortingTest(yearGroups, classPartials);
-
-      expect(result).toBeDefined();
-
-      if (result && 'panels' in result) {
+      buildAndAssertValidModel(classPartials, yearGroups, (result) => {
         expect(result.panels).toHaveLength(1);
         const panel = result.panels[0];
 
@@ -354,7 +342,7 @@ describe('Classes page grouped view model - buildClassesPageModel', () => {
           'c-beta',
           'c-zebra',
         ]);
-      }
+      });
     });
   });
 
@@ -371,21 +359,15 @@ describe('Classes page grouped view model - buildClassesPageModel', () => {
         createClassPartial('c1', { className: 'Class 1', yearGroupKey: 'yg-1' }),
       ];
 
-      const result = buildClassesPageModel(classPartials, yearGroups);
-
-      expect(result).toBeDefined();
-
-      if (result && 'panels' in result) {
+      buildAndAssertValidModel(classPartials, yearGroups, (result) => {
         // eslint-disable-next-line @typescript-eslint/no-magic-numbers
         expect(result.panels).toHaveLength(2);
         // Year 1 panel has 1 class
-
         expect(result.panels[0].classes).toHaveLength(1);
         // Year 2 panel has 0 classes (empty panel)
-
         expect(result.panels[1].classes).toHaveLength(0);
         expect(result.panels[1].yearGroupKey).toBe('yg-2');
-      }
+      });
     });
   });
 
@@ -474,16 +456,12 @@ describe('Classes page grouped view model - buildClassesPageModel', () => {
         createClassPartial('c3', { className: 'Class 3', yearGroupKey: 'yg-c' }),
       ];
 
-      const result = buildClassesPageModel(classPartials, yearGroups);
-
-      expect(result).toBeDefined();
-
-      if (result && 'panels' in result) {
+      buildAndAssertValidModel(classPartials, yearGroups, (result) => {
         // Panels sorted alphabetically: Alice (yg-a), Bob (yg-b), Charlie (yg-c)
         // First alphabetical panel key should be yg-a
         expect(result.defaultExpandedPanelKeys).toHaveLength(1);
         expect(result.defaultExpandedPanelKeys[0]).toBe('yg-a');
-      }
+      });
     });
   });
 
@@ -511,11 +489,7 @@ describe('Classes page grouped view model - buildClassesPageModel', () => {
         createClassPartial('c-12a', { className: 'Further Maths', yearGroupKey: 'yg-12' }),
       ];
 
-      const result = buildClassesPageModel(classPartials, yearGroups);
-
-      expect(result).toBeDefined();
-
-      if (result && 'panels' in result) {
+      buildAndAssertValidModel(classPartials, yearGroups, (result) => {
         // Should have 3 panels (one per year group)
         // eslint-disable-next-line @typescript-eslint/no-magic-numbers
         expect(result.panels).toHaveLength(3);
@@ -547,7 +521,7 @@ describe('Classes page grouped view model - buildClassesPageModel', () => {
 
         // Default expanded should be first alphabetical panel (Year 10 / yg-10)
         expect(result.defaultExpandedPanelKeys).toEqual(['yg-10']);
-      }
+      });
     });
   });
 

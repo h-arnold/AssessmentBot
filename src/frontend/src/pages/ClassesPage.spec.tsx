@@ -65,38 +65,32 @@ import {
 // Hoisted flag to control refetch mock for Section 6 tests
 const mockRefetchEnabled = vi.hoisted(() => ({ value: false }));
 
-// Hoisted mock data for refetch scenarios - must use literal values to avoid circular reference
+/**
+ * Creates a ClassPartial-like plain object for refetch mock data.
+ *
+ * @param {string} classId - The class identifier.
+ * @param {string} className - The class name.
+ * @param {string} yearGroupKey - The year group key.
+ * @returns {object} A plain object matching the ClassPartial shape.
+ */
+function _refetchClassPartial(classId: string, className: string, yearGroupKey: string) {
+  return {
+    classId,
+    className,
+    cohortKey: null,
+    courseLength: 1,
+    yearGroupKey,
+    classOwner: null,
+    teachers: [],
+    active: null,
+  };
+}
+
+// Hoisted mock data for refetch scenarios
 const refetchClassPartials = vi.hoisted(() => [
-  {
-    classId: 'class-math-10a',
-    className: 'Mathematics 10A',
-    cohortKey: null,
-    courseLength: 1,
-    yearGroupKey: 'year-group-10',
-    classOwner: null,
-    teachers: [],
-    active: null,
-  },
-  {
-    classId: 'class-math-10b',
-    className: 'Mathematics 10B',
-    cohortKey: null,
-    courseLength: 1,
-    yearGroupKey: 'year-group-10',
-    classOwner: null,
-    teachers: [],
-    active: null,
-  },
-  {
-    classId: 'class-science-11',
-    className: 'Science 11',
-    cohortKey: null,
-    courseLength: 1,
-    yearGroupKey: 'year-group-11',
-    classOwner: null,
-    teachers: [],
-    active: null,
-  },
+  _refetchClassPartial('class-math-10a', 'Mathematics 10A', 'year-group-10'),
+  _refetchClassPartial('class-math-10b', 'Mathematics 10B', 'year-group-10'),
+  _refetchClassPartial('class-science-11', 'Science 11', 'year-group-11'),
 ] as const);
 
 const refetchYearGroups = vi.hoisted(() => [
