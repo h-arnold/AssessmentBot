@@ -68,6 +68,11 @@ const mockRefetchEnabled = vi.hoisted(() => ({ value: false }));
 /**
  * Creates a ClassPartial-like plain object for refetch mock data.
  *
+ * This is a local duplicate of `createFixtureClassPartial` from
+ * classesPageTestHelpers.tsx. It cannot be imported because
+ * `vi.hoisted()` callbacks execute before module imports are
+ * available.
+ *
  * @param {string} classId - The class identifier.
  * @param {string} className - The class name.
  * @param {string} yearGroupKey - The year group key.

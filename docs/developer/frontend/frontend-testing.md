@@ -265,6 +265,29 @@ The `src/frontend/src/test/classes/classesPageTestHelpers.tsx` module provides r
   - `TIE_BREAK_CLASS_PARTIALS` — Classes with same className but different classId for tie-break sort tests.
   - `SINGLE_YEAR_GROUP` — Single year group for focused tests.
 
+**Fixture factories — `createFixtureClassPartial` and `createFixtureYearGroup`:**
+
+All shared fixture constants are built from two exported factory functions that provide sensible defaults and keep fixture construction concise:
+
+`createFixtureClassPartial(overrides)` — Creates a `ClassPartial` fixture. Only `classId` is required; all other fields default to the project's conventional fixture defaults (`className: 'Test Class'`, `cohortKey: null`, `courseLength: 1`, `yearGroupKey: 'default-yg'`, `classOwner: null`, `teachers: []`, `active: null`).
+
+`createFixtureYearGroup(key, name)` — Creates a `YearGroup` fixture with the given key and name.
+
+Usage example — creating a minimal fixture with only the fields you care about:
+
+```typescript
+const myClass = createFixtureClassPartial({
+  classId: 'c-1',
+  className: 'My Class',
+  yearGroupKey: 'yg-10',
+});
+// All other fields use defaults (cohortKey: null, courseLength: 1, etc.)
+
+const myYearGroup = createFixtureYearGroup('yg-10', 'Year 10');
+```
+
+The six shared fixture constant arrays (`MOCK_CLASS_PARTIALS`, `MOCK_INVALID_CLASS_PARTIALS`, `MIXED_ORDER_CLASS_PARTIALS`, `CLASS_PARTIALS_FOR_EMPTY_PANEL`, `ALPHABETICAL_ORDER_CLASS_PARTIALS`, `TIE_BREAK_CLASS_PARTIALS`) are all built from these factories, typically one line per class partial entry. When adding new fixture constants, prefer these factories over ad-hoc object literals.
+
 **Fixture naming convention:** Fixtures holding `ClassPartial[]` arrays use the `_CLASS_PARTIALS` suffix (for example `ALPHABETICAL_ORDER_CLASS_PARTIALS`, not `ALPHABETICAL_ORDER_CLASSES`). This aligns with the `ClassPartial` type name and avoids ambiguity with full `Class` model fixtures held in `src/frontend/src/test/classes/classesTestHelpers.ts`.
 
 **E2E serialisation helper — `toPlainClassPartials(classPartials)`:**

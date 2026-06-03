@@ -63,7 +63,7 @@ Feature-scoped helpers should stay feature-scoped unless there is proven cross-f
 - Frontend provider render helper: `src/frontend/src/test/renderWithFrontendProviders.tsx`
 - `google.script.run` harness: `src/frontend/src/test/googleScriptRunHarness.ts`
 - Shared classes test fixtures/builders: `src/frontend/src/test/classes/classesTestHelpers.ts`
-- Classes Page test fixtures and rendering helpers: `src/frontend/src/test/classes/classesPageTestHelpers.tsx`
+- Classes Page test fixtures and rendering helpers (including `createFixtureClassPartial`, `createFixtureYearGroup`, `renderClassesPage`, `toPlainClassPartials`, and shared fixture constants): `src/frontend/src/test/classes/classesPageTestHelpers.tsx`
 
 Test helper placement rules remain governed by `docs/developer/frontend/frontend-testing.md`.
 
