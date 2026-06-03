@@ -9,7 +9,7 @@ export const APP_BREADCRUMB_BASE_LABEL = 'AssessmentBot Frontend' as const;
 export const BREADCRUMB_NAVIGATION_NAME = 'Breadcrumb' as const;
 export const PRIMARY_NAVIGATION_LABEL = 'Primary navigation' as const;
 export const CLASSES_LABEL = 'Classes' as const;
-export const EXPECTED_MENU_ITEM_COUNT = 4 as const;
+export const EXPECTED_MENU_ITEM_COUNT = 4;
 
 // ============================================================================
 // Backend Settings Fixture
@@ -37,33 +37,33 @@ export const backendSettingsFixture = {
 // Viewport Constants (Section 6)
 // ============================================================================
 
-export const MOBILE_VIEWPORT_WIDTH = 375 as const;
-export const MOBILE_VIEWPORT_HEIGHT = 667 as const;
-export const TABLET_VIEWPORT_WIDTH = 768 as const;
-export const TABLET_VIEWPORT_HEIGHT = 1024 as const;
+export const MOBILE_VIEWPORT_WIDTH = 375;
+export const MOBILE_VIEWPORT_HEIGHT = 667;
+export const TABLET_VIEWPORT_WIDTH = 768;
+export const TABLET_VIEWPORT_HEIGHT = 1024;
 
-export const MIN_CARD_WIDTH_MOBILE = 200 as const;
-export const MIN_CARD_WIDTH_TABLET = 250 as const;
+export const MIN_CARD_WIDTH_MOBILE = 200;
+export const MIN_CARD_WIDTH_TABLET = 250;
 
 // Geometry assertion constants for lint compliance
-export const NUMBER_OF_YEAR_GROUP_PANELS = 3 as const;
-export const HORIZONTAL_OVERFLOW_TOLERANCE_MULTIPLIER = 1.3 as const;
-export const MOBILE_CARD_WIDTH_TOLERANCE = 25 as const;
-export const TABLET_CARD_WIDTH_MARGIN = 50 as const;
+export const NUMBER_OF_YEAR_GROUP_PANELS = 3;
+export const HORIZONTAL_OVERFLOW_TOLERANCE_MULTIPLIER = 1.3;
+export const MOBILE_CARD_WIDTH_TOLERANCE = 25;
+export const TABLET_CARD_WIDTH_MARGIN = 50;
 
 // ============================================================================
 // Card Count Constants (Section 5 and 6)
 // ============================================================================
 
-export const EXPECTED_TOTAL_CARDS_COUNT = 4 as const; // 2 in Year 10, 1 in Year 11, 1 in Year 9
-export const EXPECTED_BUTTONS_PER_CARD = 2 as const; // View and Edit
-export const EXPECTED_ALPHABETICAL_CARDS_COUNT = 3 as const;
-export const EXPECTED_TIE_BREAK_CARDS_COUNT = 3 as const;
+export const EXPECTED_TOTAL_CARDS_COUNT = 4; // 2 in Year 10, 1 in Year 11, 1 in Year 9
+export const EXPECTED_BUTTONS_PER_CARD = 2; // View and Edit
+export const EXPECTED_ALPHABETICAL_CARDS_COUNT = 3;
+export const EXPECTED_TIE_BREAK_CARDS_COUNT = 3;
 
 // Card index constants for test readability
-export const CARD_INDEX_FIRST = 0 as const;
-export const CARD_INDEX_SECOND = 1 as const;
-export const CARD_INDEX_THIRD = 2 as const;
+export const CARD_INDEX_FIRST = 0;
+export const CARD_INDEX_SECOND = 1;
+export const CARD_INDEX_THIRD = 2;
 
 // ============================================================================
 // Year Group Fixtures

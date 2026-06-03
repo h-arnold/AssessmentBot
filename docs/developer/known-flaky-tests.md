@@ -27,26 +27,6 @@ These tests are **NOT** blocking for feature development. They should be address
 
 ---
 
-### 2. Screenshot Comparison Tests
-
-**Tests**:
-
-- `e2e-tests/layout-width-snapshots.spec.ts` - "captures the wide dashboard page shell"
-- `e2e-tests/layout-width-snapshots.spec.ts` - "captures the wide assignments page shell"
-- `e2e-tests/layout-width-snapshots.spec.ts` - "captures the wide settings frame and the narrow backend panel exception"
-
-**Root Cause**: Font rendering differences across environments (Linux Chromium with FreeType vs macOS vs Windows). These tests use `fullPage: true` screenshots without explicit font loading waits.
-
-**History**:
-
-- **Commit ad47228** (May 9, 2026): Added with initial snapshots
-- **Commit b4a12bf** (May 11, 2026): Updated all 3 snapshots
-- **Commit b537000** (May 15, 2026): Updated settings-page-backend-tab snapshot (size changed from 76875 to 78288 bytes in 6 days)
-
-**Current State**: Snapshot files are sensitive to font rendering and layout variations. Tests fail intermittently depending on system fonts and rendering engine.
-
----
-
 ## Verification
 
 ### Not Affected By Section 1
@@ -84,47 +64,6 @@ Full investigation documented at: `/tmp/vibe-scratchpad-b0dce62f-pvx7t902/flaky-
 2. Consider further increasing tolerance or implementing dynamic tolerance based on environment
 
 3. Add explicit waits for layout stability before measuring bounding boxes
-
-### For Screenshot Tests
-
-1. **Use Docker for consistent environment**: Run in official Playwright Docker image
-
-2. **Add font loading wait**:
-
-   ```typescript
-   await page.goto('/');
-   await page.waitForFunction(() => document.fonts.ready);
-   ```
-
-3. **Disable all animations via CSS**:
-
-   ```typescript
-   await page.addStyleTag({
-     content: `
-       *, *::before, *::after {
-         animation-duration: 0s !important;
-         transition-duration: 0s !important;
-       }
-     `,
-   });
-   ```
-
-4. **Use Chromium launch options**:
-
-   ```javascript
-   // In playwright.config.ts
-   launchOptions: {
-     args: [
-       '--font-render-hinting=none',
-       '--disable-font-subpixel-positioning',
-       '--disable-lcd-text',
-       '--disable-gpu',
-       '--force-color-profile=srgb',
-     ],
-   }
-   ```
-
-5. **Separate flaky tests**: Move these to a separate suite with `@flaky` tag and run independently
 
 ---
 

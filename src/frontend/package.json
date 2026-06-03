@@ -6,14 +6,13 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint src e2e-tests playwright.config.ts playwright.screenshots.config.ts vite.config.ts eslint.config.js",
+    "lint": "eslint src e2e-tests playwright.config.ts vite.config.ts eslint.config.js",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "test:e2e:interactive": "playwright test --headed",
-    "test:e2e:screenshots": "playwright test --config playwright.screenshots.config.ts"
+    "test:e2e:interactive": "playwright test --headed"
   },
   "dependencies": {
     "@ant-design/icons": "latest",

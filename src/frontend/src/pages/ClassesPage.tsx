@@ -21,7 +21,10 @@ const CLASSES_REFRESH_TEXT = 'Refreshing...';
 
 const CLASSES_CARD_WIDTH_PX = 268;
 const CLASSES_CARD_GAP_PX = 16;
-const MIN_PANEL_WIDTH_PX = CLASSES_CARD_WIDTH_PX + 2 * CLASSES_CARD_GAP_PX; // 300px
+const CLASSES_CARD_HORIZONTAL_PADDING_FACTOR = 2;
+const MIN_PANEL_WIDTH_PX =
+  CLASSES_CARD_WIDTH_PX + CLASSES_CARD_HORIZONTAL_PADDING_FACTOR * CLASSES_CARD_GAP_PX; // 300px
+const CLASSES_MOBILE_BREAKPOINT_PX = 768;
 
 /**
  * Returns whether a single dataset should block.
@@ -220,7 +223,7 @@ function isModelEmpty(
 function renderYearGroupCollapse(viewModel: ClassesPagePanelViewModel): JSX.Element {
   const { panels, defaultExpandedPanelKeys } = viewModel;
 
-  const isMobile = window.innerWidth <= 768;
+  const isMobile = window.innerWidth <= CLASSES_MOBILE_BREAKPOINT_PX;
 
   return (
     <section aria-label="year group panels" style={{ minWidth: isMobile ? `${MIN_PANEL_WIDTH_PX}px` : 'auto' }}>
