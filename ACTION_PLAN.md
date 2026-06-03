@@ -219,6 +219,8 @@ Frontend e2e tests:
 - **Implementation notes:** keep the new page routing thin and avoid speculative shell abstractions.
 - **Deviations from plan:** record any justified navigation-order change if reviewer feedback requires it.
 - **Follow-up implications for later sections:** later sections should treat the new page entry point as stable and avoid revisiting shell routing.
+- **Completion status:** ✅ Section 1 COMPLETE - Shell navigation contract wired. Red phase: Tests created and reviewed clean (appNavigation.spec.tsx, App.spec.tsx, pages.spec.tsx, SettingsPage.spec.tsx). Green phase: Navigation and page-content contracts extended with Classes page entry. All navigation tests pass, lint clean, regression gate passed.
+- **Files modified:** `src/frontend/src/navigation/appNavigation.tsx` (added classes navigation item), `src/frontend/src/pages/pageContent.ts` (added classes content), `src/frontend/src/pages/ClassesPage.tsx` (created page component)
 
 ### Documentation gaps addressed
 
