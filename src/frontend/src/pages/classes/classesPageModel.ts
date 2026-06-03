@@ -107,7 +107,9 @@ function sortYearGroups(yearGroups: YearGroup[]): YearGroup[] {
 /**
  * Sorts class partials by className ascending, then by classId ascending for deterministic tie-break.
  *
- * @param {ClassPartial[]} classPartials - Class partials to sort.
+ * @remarks Caller must ensure all class partials have non-null className and yearGroupKey.
+ *   Trust validation via validateClassTrust must be performed before calling this function.
+ * @param {ClassPartial[]} classPartials - Class partials to sort (already validated as trustworthy).
  * @returns {ClassPartial[]} Sorted class partials.
  */
 function sortClassPartials(classPartials: ClassPartial[]): ClassPartial[] {
@@ -121,9 +123,11 @@ function sortClassPartials(classPartials: ClassPartial[]): ClassPartial[] {
 }
 
 /**
- * Converts a class partial to a card model.
+ * Converts a trust-validated class partial to a card model.
  *
- * @param {ClassPartial} classPartial - The class partial.
+ * @remarks classPartial MUST have non-null className and yearGroupKey. Caller is responsible
+ *   for validating via validateClassTrust before invoking this function.
+ * @param {ClassPartial} classPartial - The class partial (already validated as trustworthy).
  * @param {string} yearGroupLabel - The year group label.
  * @returns {ClassesPageCardModel} The card model.
  */
@@ -137,9 +141,11 @@ function toCardModel(classPartial: ClassPartial, yearGroupLabel: string): Classe
 }
 
 /**
- * Groups valid class partials by their year group key.
+ * Groups trust-validated class partials by their year group key.
  *
- * @param {ClassPartial[]} classPartials - Valid class partials.
+ * @remarks All class partials MUST have non-null yearGroupKey. Caller is responsible
+ *   for validating via validateClassTrust before invoking this function.
+ * @param {ClassPartial[]} classPartials - Class partials (already validated as trustworthy).
  * @returns {Map<string, ClassPartial[]>} Map of year group key to class partials.
  */
 function groupClassesByYearGroupKey(classPartials: ClassPartial[]): Map<string, ClassPartial[]> {
