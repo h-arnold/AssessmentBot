@@ -496,8 +496,8 @@ New unit tests in `src/frontend/src/query/queryInvalidationHelpers.spec.ts`:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
+- **Implementation notes:** Completed. Created `src/frontend/src/query/queryInvalidationHelpers.ts` with `refetchAfterStaleInvalidate(queryClient, queryKey)`. Calls `invalidateQueries({ queryKey, refetchType: 'none' })` then `refetchQueries({ queryKey })`. JSDoc explains disabled-query rationale and warns against general use. 4 unit tests pass.
+- **Deviations from plan:** None.
 - **Follow-up implications for later sections:** Section 7 depends on this helper.
 
 ---
