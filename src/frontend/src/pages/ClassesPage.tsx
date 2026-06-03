@@ -3,7 +3,7 @@ import { Alert, Button, Card, Collapse, Empty, Skeleton, Space, Typography } fro
 import { type JSX, useMemo } from 'react';
 import { useStartupWarmupState } from '../features/auth/startupWarmupState';
 import { getClassPartialsQueryOptions, getYearGroupsQueryOptions } from '../query/sharedQueries';
-import { buildClassesPageModel, type InvalidClassesPageDataViewModel } from './classes/classesPageModel';
+import { buildClassesPageModel, type ClassesPagePanelViewModel, type InvalidClassesPageDataViewModel } from './classes/classesPageModel';
 import { PageSection } from './PageSection';
 import { pageContent } from './pageContent';
 
@@ -15,10 +15,13 @@ const CLASSES_BLOCKING_ERROR_MESSAGE = 'Classes data could not be trusted or loa
 const CLASSES_PAGE_EMPTY_DESCRIPTION = 'No year groups configured yet.';
 const CLASSES_REFRESH_TEXT = 'Refreshing...';
 
+const CLASSES_CARD_MIN_WIDTH_PX = 200;
+const CLASSES_CARD_GAP_PX = 16;
+
 /**
  * Returns whether a single dataset should block.
  *
- * @param {Readonly<{ isDatasetFailed: boolean; hasQueryData: boolean; isQueryError: boolean; isDatasetReady: boolean; isDatasetTrustworthy: boolean; hasTrustworthyDataset: boolean; }>} input Dataset state.
+ * @param {Readonly<{ isDatasetFailed: boolean; hasQueryData: boolean; isQueryError: boolean; isDatasetReady: boolean; isDatasetTrustworthy: boolean; }>} input Dataset state.
  * @returns {boolean} True if dataset should block.
  */
 function shouldBlockSingleDataset(
@@ -28,7 +31,6 @@ function shouldBlockSingleDataset(
     isQueryError: boolean;
     isDatasetReady: boolean;
     isDatasetTrustworthy: boolean;
-    hasTrustworthyDataset: boolean;
   }>
 ): boolean {
   if (input.isDatasetFailed) {
@@ -39,7 +41,7 @@ function shouldBlockSingleDataset(
     return true;
   }
 
-  return input.hasTrustworthyDataset && input.isQueryError;
+  return input.isDatasetReady && input.isDatasetTrustworthy && input.isQueryError;
 }
 
 /**
@@ -56,7 +58,6 @@ function shouldRenderClassesBlockingState(
       isQueryError: boolean;
       isDatasetReady: boolean;
       isDatasetTrustworthy: boolean;
-      hasTrustworthyDataset: boolean;
     }>;
     yearGroups: Readonly<{
       isDatasetFailed: boolean;
@@ -64,7 +65,6 @@ function shouldRenderClassesBlockingState(
       isQueryError: boolean;
       isDatasetReady: boolean;
       isDatasetTrustworthy: boolean;
-      hasTrustworthyDataset: boolean;
     }>;
   }>
 ): boolean {
@@ -154,13 +154,15 @@ function getClassesSurfaceState(
   };
 }
 
+type ClassesSurfaceState = Readonly<{ shouldRenderBlockingState: boolean; shouldRenderLoadingState: boolean }>;
+
 /**
  * Returns whether the classes surface is busy (fetching).
  *
  * @param {Readonly<{ isClassPartialsQueryFetching: boolean; isYearGroupsQueryFetching: boolean; }>} input Fetching state.
  * @returns {boolean} True when busy.
  */
-function isClassesSurfaceBusy(input: Readonly<{
+function computeClassesSurfaceBusy(input: Readonly<{
   isClassPartialsQueryFetching: boolean;
   isYearGroupsQueryFetching: boolean;
 }>): boolean {
@@ -168,27 +170,24 @@ function isClassesSurfaceBusy(input: Readonly<{
 }
 
 /**
- * Checks if the model result is invalid.
+ * Checks if the model result is an invalid data view model.
  *
- * @param {unknown} modelResult The model result.
- * @returns {boolean} True if invalid.
+ * @param {ClassesPagePanelViewModel | InvalidClassesPageDataViewModel} modelResult The model result.
+ * @returns {modelResult is InvalidClassesPageDataViewModel} True if invalid.
  */
-function isModelInvalid(modelResult: unknown): boolean {
-  return (modelResult as InvalidClassesPageDataViewModel).type === 'invalidClassesPageData';
+function isModelInvalid(modelResult: ClassesPagePanelViewModel | InvalidClassesPageDataViewModel): modelResult is InvalidClassesPageDataViewModel {
+  return 'type' in modelResult && modelResult.type === 'invalidClassesPageData';
 }
 
 /**
  * Checks if the model result represents an empty state.
  *
- * @param {unknown} modelResult The model result.
+ * @param {ClassesPagePanelViewModel | InvalidClassesPageDataViewModel} modelResult The model result.
  * @returns {boolean} True if empty.
  */
-function isModelEmpty(modelResult: unknown): boolean {
-  return (
-    'panels' in (modelResult as Record<string, unknown>) &&
-    (modelResult as { panels: unknown[] }).panels.length === 0 &&
-    (modelResult as { defaultExpandedPanelKeys: unknown[] }).defaultExpandedPanelKeys.length === 0
-  );
+function isModelEmpty(modelResult: ClassesPagePanelViewModel | InvalidClassesPageDataViewModel): boolean {
+  if ('type' in modelResult) return false; // InvalidClassesPageDataViewModel
+  return modelResult.panels.length === 0 && modelResult.defaultExpandedPanelKeys.length === 0;
 }
 
 /**
@@ -199,41 +198,18 @@ function isModelEmpty(modelResult: unknown): boolean {
  * This triggers a deprecation warning in Ant Design v6 but is the only way to
  * get proper keyboard support with custom header components.
  *
- * @param {Readonly<{ panels: Array<{ yearGroupKey: string; yearGroupLabel: string; classes: Array<{ classId: string; className: string; yearGroupKey: string; yearGroupLabel: string; }>; }>; defaultExpandedPanelKeys: string[]; }>} viewModel The view model with panels and default expanded keys.
+ * @param {ClassesPagePanelViewModel} viewModel The view model with panels and default expanded keys.
  * @returns {JSX.Element} The rendered collapse.
  */
-function renderYearGroupCollapse(
-  viewModel: Readonly<{
-    panels: ReadonlyArray<{
-      yearGroupKey: string;
-      yearGroupLabel: string;
-      classes: ReadonlyArray<{
-        classId: string;
-        className: string;
-        yearGroupKey: string;
-        yearGroupLabel: string;
-      }>;
-    }>;
-    defaultExpandedPanelKeys: ReadonlyArray<string>;
-  }>
-): JSX.Element {
+function renderYearGroupCollapse(viewModel: ClassesPagePanelViewModel): JSX.Element {
   const { panels, defaultExpandedPanelKeys } = viewModel;
 
   return (
     <div role="region" aria-label="year group panels">
-      {/*
-       * Ant Design v6 Collapse: type assertion required because the library expects
-       * mutable string[] for defaultActiveKey, but defaultExpandedPanelKeys is ReadonlyArray<string>.
-       * This is a safe cast as the values are only read by the component.
-       *
-       * Using Collapse.Panel children pattern instead of items prop for proper keyboard
-       * navigation support. This is the recommended approach for custom headers.
-       */}
-      <Collapse defaultActiveKey={defaultExpandedPanelKeys as string[]}>
+      <Collapse defaultActiveKey={defaultExpandedPanelKeys}>
         {panels.map((panel) => {
           const headerId = `panel-header-${panel.yearGroupKey}`;
           const contentId = `panel-content-${panel.yearGroupKey}`;
-          const isExpanded = defaultExpandedPanelKeys.includes(panel.yearGroupKey);
 
           return (
             <Collapse.Panel
@@ -250,15 +226,14 @@ function renderYearGroupCollapse(
                 role="region"
                 aria-label={panel.yearGroupLabel}
                 aria-labelledby={headerId}
-                aria-expanded={isExpanded}
               >
                 {panel.classes.length > 0 ? (
                   <div
                     style={{
                       display: 'flex',
                       flexWrap: 'wrap',
-                      gap: '16px',
-                      marginTop: '16px',
+                      gap: `${CLASSES_CARD_GAP_PX}px`,
+                      marginTop: `${CLASSES_CARD_GAP_PX}px`,
                     }}
                   >
                     {panel.classes.map((card) => (
@@ -268,7 +243,7 @@ function renderYearGroupCollapse(
                         key={card.classId}
                         size="small"
                         title={card.className}
-                        style={{ flex: '1 1 200px', minWidth: 200 }}
+                        style={{ flex: `1 1 ${CLASSES_CARD_MIN_WIDTH_PX}px`, minWidth: CLASSES_CARD_MIN_WIDTH_PX }}
                       >
                         <Space wrap>
                           <Button disabled tabIndex={-1} type="text">
@@ -282,7 +257,7 @@ function renderYearGroupCollapse(
                     ))}
                   </div>
                 ) : (
-                  <Card style={{ marginTop: '16px' }}>
+                  <Card style={{ marginTop: `${CLASSES_CARD_GAP_PX}px` }}>
                     <Empty description="No classes" />
                   </Card>
                 )}
@@ -296,22 +271,9 @@ function renderYearGroupCollapse(
 }
 
 /**
- * Renders a refresh status message for background refresh.
- *
- * @returns {JSX.Element} The refresh status element.
- */
-function renderClassesRefreshStatus(): JSX.Element {
-  return (
-    <div aria-live="polite" role="status">
-      {CLASSES_REFRESH_TEXT}
-    </div>
-  );
-}
-
-/**
  * Renders the content based on the current state.
  *
- * @param {Readonly<{ finalShouldRenderBlockingState: boolean; shouldRenderLoadingState: boolean; shouldRenderEmptyState: boolean; viewModel: unknown; isBusy: boolean; }>} properties Render properties.
+ * @param {Readonly<{ finalShouldRenderBlockingState: boolean; shouldRenderLoadingState: boolean; shouldRenderEmptyState: boolean; viewModel: ClassesPagePanelViewModel | InvalidClassesPageDataViewModel; isBusy: boolean; }>} properties Render properties.
  * @returns {JSX.Element} The rendered content.
  */
 function renderClassesContent(
@@ -319,7 +281,7 @@ function renderClassesContent(
     finalShouldRenderBlockingState: boolean;
     shouldRenderLoadingState: boolean;
     shouldRenderEmptyState: boolean;
-    viewModel: unknown;
+    viewModel: ClassesPagePanelViewModel | InvalidClassesPageDataViewModel;
     isBusy: boolean;
   }>
 ): JSX.Element {
@@ -339,40 +301,28 @@ function renderClassesContent(
     return <Empty description={CLASSES_PAGE_EMPTY_DESCRIPTION} />;
   }
 
-  // viewModel must be ClassesPagePanelViewModel at this point
-  const viewModel = properties.viewModel as {
-    panels: ReadonlyArray<{
-      yearGroupKey: string;
-      yearGroupLabel: string;
-      classes: ReadonlyArray<{
-        classId: string;
-        className: string;
-        yearGroupKey: string;
-        yearGroupLabel: string;
-      }>;
-    }>;
-    defaultExpandedPanelKeys: ReadonlyArray<string>;
-  };
-
+  // viewModel must be ClassesPagePanelViewModel at this point — all other branches return early
   return (
     <>
-      {properties.isBusy ? renderClassesRefreshStatus() : null}
-      {renderYearGroupCollapse(viewModel)}
+      {properties.isBusy ? (
+        <div aria-live="polite" role="status">
+          {CLASSES_REFRESH_TEXT}
+        </div>
+      ) : null}
+      {renderYearGroupCollapse(properties.viewModel as ClassesPagePanelViewModel)}
     </>
   );
 }
 
-
-
 /**
  * Computes the final render states for the Classes page.
  *
- * @param {Readonly<{ classesSurfaceState: ReturnType<typeof getClassesSurfaceState>; modelResult: unknown; hasTrustworthyClassPartials: boolean; hasTrustworthyYearGroups: boolean; }>} input Surface state, model result, and dataset trustworthiness.
+ * @param {Readonly<{ classesSurfaceState: ClassesSurfaceState; modelResult: ClassesPagePanelViewModel | InvalidClassesPageDataViewModel; hasTrustworthyClassPartials: boolean; hasTrustworthyYearGroups: boolean; }>} input Surface state, model result, and dataset trustworthiness.
  * @returns {Readonly<{ finalShouldRenderBlockingState: boolean; shouldRenderLoadingState: boolean; shouldRenderEmptyState: boolean; }>} Final render states.
  */
 function getFinalClassesPageStates(input: Readonly<{
-  classesSurfaceState: ReturnType<typeof getClassesSurfaceState>;
-  modelResult: unknown;
+  classesSurfaceState: ClassesSurfaceState;
+  modelResult: ClassesPagePanelViewModel | InvalidClassesPageDataViewModel;
   hasTrustworthyClassPartials: boolean;
   hasTrustworthyYearGroups: boolean;
 }>): Readonly<{
@@ -434,7 +384,7 @@ export function ClassesPage() {
     isDatasetTrustworthy: classPartialsSnapshot.isTrustworthy,
     hasTrustworthyDataset:
       startupWarmupState.isDatasetReady('classPartials') && classPartialsSnapshot.isTrustworthy,
-  } as const;
+  };
 
   const yearGroupsDatasetState = {
     hasQueryData: yearGroupsQuery.data !== undefined,
@@ -444,16 +394,16 @@ export function ClassesPage() {
     isDatasetTrustworthy: yearGroupsSnapshot.isTrustworthy,
     hasTrustworthyDataset:
       startupWarmupState.isDatasetReady('yearGroups') && yearGroupsSnapshot.isTrustworthy,
-  } as const;
+  };
 
   // Compute surface state
-  const classesSurfaceState = getClassesSurfaceState({
+  const classesSurfaceState: ClassesSurfaceState = getClassesSurfaceState({
     classPartials: classPartialsDatasetState,
     yearGroups: yearGroupsDatasetState,
   });
 
   // Compute busy state
-  const isClassesSurfaceBusyValue = isClassesSurfaceBusy({
+  const isClassesSurfaceBusy = computeClassesSurfaceBusy({
     isClassPartialsQueryFetching: classPartialsQuery.isFetching,
     isYearGroupsQueryFetching: yearGroupsQuery.isFetching,
   });
@@ -482,14 +432,14 @@ export function ClassesPage() {
       <section
         role="region"
         aria-label="Classes page content"
-        aria-busy={isClassesSurfaceBusyValue ? 'true' : undefined}
+        aria-busy={isClassesSurfaceBusy ? 'true' : undefined}
       >
         {renderClassesContent({
           finalShouldRenderBlockingState,
           shouldRenderLoadingState,
           shouldRenderEmptyState,
           viewModel: modelResult,
-          isBusy: isClassesSurfaceBusyValue,
+          isBusy: isClassesSurfaceBusy,
         })}
       </section>
     </PageSection>

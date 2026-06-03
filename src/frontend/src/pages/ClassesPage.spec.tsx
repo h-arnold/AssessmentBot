@@ -882,10 +882,11 @@ describe('ClassesPage', () => {
         expect(collapseRegion).toBeInTheDocument();
 
         // The first panel (Year 10) should have its content visible
-        // This will fail until the collapse is implemented with proper defaultActiveKey
         const year10Panel = screen.getByRole('region', { name: /year 10/i });
         expect(year10Panel).toBeInTheDocument();
-        expect(year10Panel).toHaveAttribute('aria-expanded', 'true');
+        // Ant Design's Collapse.Panel header button manages aria-expanded
+        const year10PanelHeader = screen.getByRole('button', { name: /year 10/i });
+        expect(year10PanelHeader).toHaveAttribute('aria-expanded', 'true');
       });
 
       it('verifies an empty year-group panel shows its own empty presentation', () => {

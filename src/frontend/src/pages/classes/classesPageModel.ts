@@ -22,7 +22,7 @@ import type { YearGroup } from '../../services/referenceData.zod';
 /**
  * Card model for a single class in the Classes page.
  */
-export type ClassesPageCardModel = {
+type ClassesPageCardModel = {
   classId: string;
   className: string;
   yearGroupKey: string;
@@ -32,7 +32,7 @@ export type ClassesPageCardModel = {
 /**
  * Panel model for a year group containing its classes.
  */
-export type ClassesPagePanelModel = {
+type ClassesPagePanelModel = {
   yearGroupKey: string;
   yearGroupLabel: string;
   classes: ClassesPageCardModel[];

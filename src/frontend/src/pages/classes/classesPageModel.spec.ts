@@ -14,51 +14,7 @@
 import { describe, it, expect } from 'vitest';
 import type { ClassPartial } from '../../services/classPartials.zod';
 import type { YearGroup } from '../../services/referenceData.zod';
-
-// These types represent the expected model shapes from SPEC.md
-// They will be used to type-check the return values once the implementation exists
-
-type ClassesPageCardModel = {
-  classId: string;
-  className: string;
-  yearGroupKey: string;
-  yearGroupLabel: string;
-};
-
-type ClassesPagePanelModel = {
-  yearGroupKey: string;
-  yearGroupLabel: string;
-  classes: ClassesPageCardModel[];
-};
-
-type ClassesPagePanelViewModel = {
-  panels: ClassesPagePanelModel[];
-  defaultExpandedPanelKeys: string[];
-};
-
-type InvalidClassesPageDataViewModel = {
-  type: 'invalidClassesPageData';
-  classIds: string[];
-};
-
-// This import will fail until the implementation is created in the GREEN phase
-// The tests below are written to fail with "function not defined" errors
-let buildClassesPageModel: (
-  classPartials: ClassPartial[],
-  yearGroups: YearGroup[]
-) => ClassesPagePanelViewModel | InvalidClassesPageDataViewModel;
-
-try {
-  // Attempt to import the implementation - will throw until it exists
-  // Dynamic import is acceptable here for lazy loading in tests
-  /* eslint-disable @typescript-eslint/no-explicit-any */
-  const module = (await import('./classesPageModel')) as any;
-  /* eslint-enable @typescript-eslint/no-explicit-any */
-  buildClassesPageModel = module.buildClassesPageModel;
-} catch {
-  // Expected in RED phase - function does not exist yet
-  // Tests will fail with appropriate errors
-}
+import { buildClassesPageModel } from './classesPageModel';
 
 /**
  * Helper to create a YearGroup with optional overrides.
