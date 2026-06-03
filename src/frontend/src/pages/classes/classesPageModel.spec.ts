@@ -14,7 +14,17 @@
 import { describe, it, expect } from 'vitest';
 import type { ClassPartial } from '../../services/classPartials.zod';
 import type { YearGroup } from '../../services/referenceData.zod';
+import type {
+  InvalidClassesPageDataViewModel,
+  ClassesPagePanelViewModel,
+  ClassesPagePanelModel,
+  ClassesPageCardModel,
+} from './classesPageModel';
 import { buildClassesPageModel } from './classesPageModel';
+
+// ============================================================================
+// Factory helpers
+// ============================================================================
 
 /**
  * Helper to create a YearGroup with optional overrides.
@@ -53,7 +63,232 @@ function createClassPartial(classId: string, overrides: Partial<ClassPartial> = 
   };
 }
 
+// ============================================================================
+// Test data builders
+// ============================================================================
+
+/**
+ * Builds a minimal valid dataset with one year group and specified classes.
+ *
+ * @param {ClassPartial[]} classPartials - The class partials to include.
+ * @param {YearGroup[]} [yearGroups] - Optional year groups override.
+ * @returns {{ yearGroups: YearGroup[]; classPartials: ClassPartial[] }} Test fixtures.
+ */
+function buildValidDataset(
+  classPartials: ClassPartial[],
+  yearGroups: YearGroup[] = [createYearGroup('yg-1', 'Year 1')]
+): { yearGroups: YearGroup[]; classPartials: ClassPartial[] } {
+  return { yearGroups, classPartials };
+}
+
+/**
+ * Test fixture builder for invalid data view model assertions.
+ * Returns a valid ClassPartial and an invalid ClassPartial to test fail-closed behaviour.
+ *
+ * @param {string} validClassId - The classId for the valid class partial.
+ * @param {string} invalidClassId - The classId for the invalid class partial.
+ * @param {Partial<ClassPartial>} validOverrides - Overrides for the valid class partial.
+ * @param {Partial<ClassPartial>} invalidOverrides - Overrides for the invalid class partial (must make it invalid).
+ * @returns {{ yearGroups: YearGroup[]; classPartials: ClassPartial[]; validClassId: string; invalidClassId: string }} Test fixtures.
+ */
+function buildInvalidDataTestFixtures(
+  validClassId: string,
+  invalidClassId: string,
+  validOverrides: Partial<ClassPartial> = {},
+  invalidOverrides: Partial<ClassPartial> = {}
+): {
+  yearGroups: YearGroup[];
+  classPartials: ClassPartial[];
+  validClassId: string;
+  invalidClassId: string;
+} {
+  return {
+    yearGroups: [createYearGroup('yg-1', 'Year 1')],
+    classPartials: [
+      createClassPartial(validClassId, {
+        className: 'Valid Class',
+        yearGroupKey: 'yg-1',
+        ...validOverrides,
+      }),
+      createClassPartial(invalidClassId, invalidOverrides),
+    ],
+    validClassId,
+    invalidClassId,
+  };
+}
+
+// ============================================================================
+// Assertion helpers
+// ============================================================================
+
+/**
+ * Asserts that the result is an InvalidClassesPageDataViewModel with expected classIds.
+ *
+ * @param {InvalidClassesPageDataViewModel | ClassesPagePanelViewModel} result - The result to assert.
+ * @param {string[]} expectedInvalidIds - The classIds that should be in the invalid list.
+ * @param {string[]} expectedValidIds - The classIds that should NOT be in the invalid list.
+ */
+function assertInvalidClassesPageDataViewModel(
+  result: InvalidClassesPageDataViewModel | ClassesPagePanelViewModel,
+  expectedInvalidIds: string[],
+  expectedValidIds: string[]
+): void {
+  expect(result).toBeDefined();
+
+  if (result && 'type' in result && result.type === 'invalidClassesPageData') {
+    for (const id of expectedInvalidIds) {
+      expect(result.classIds).toContain(id);
+    }
+    for (const id of expectedValidIds) {
+      expect(result.classIds).not.toContain(id);
+    }
+  } else {
+    expect(result).toHaveProperty('type', 'invalidClassesPageData');
+  }
+}
+
+/**
+ * Asserts that the result is a ClassesPagePanelViewModel with expected panel structure.
+ *
+ * @param {InvalidClassesPageDataViewModel | ClassesPagePanelViewModel} result - The result to assert.
+ * @param {number} expectedPanelCount - Expected number of panels.
+ * @param {((panel: ClassesPagePanelModel, index: number) => void) | null} [panelAssertions] - Optional per-panel assertions.
+ */
+function assertClassesPagePanelViewModel(
+  result: InvalidClassesPageDataViewModel | ClassesPagePanelViewModel,
+  expectedPanelCount: number,
+  panelAssertions?: (panel: ClassesPagePanelModel, index: number) => void
+): void {
+  expect(result).toBeDefined();
+
+  if (result && 'panels' in result) {
+    expect(result.panels).toHaveLength(expectedPanelCount);
+    if (panelAssertions) {
+      for (let index = 0; index < result.panels.length; index++) {
+        panelAssertions(result.panels[index], index);
+      }
+    }
+  } else {
+    expect(result).toHaveProperty('panels');
+  }
+}
+
+// ============================================================================
+// Invalid scenario descriptors for parameterized fail-closed tests
+// ============================================================================
+
+/**
+ * Descriptor for a fail-closed test scenario.
+ */
+interface FailClosedScenario {
+  name: string;
+  validClassId: string;
+  invalidClassId: string;
+  validOverrides: Partial<ClassPartial>;
+  invalidOverrides: Partial<ClassPartial>;
+}
+
+/**
+ * Predefined fail-closed scenarios for parameterized testing.
+ */
+const failClosedScenarios: FailClosedScenario[] = [
+  {
+    name: 'null className',
+    validClassId: 'c1',
+    invalidClassId: 'c2',
+    validOverrides: {},
+    invalidOverrides: { className: null, yearGroupKey: 'yg-1' },
+  },
+  {
+    name: 'null yearGroupKey',
+    validClassId: 'c1',
+    invalidClassId: 'c2',
+    validOverrides: {},
+    invalidOverrides: { className: 'Orphan Class', yearGroupKey: null },
+  },
+  {
+    name: 'unresolved yearGroupKey',
+    validClassId: 'c1',
+    invalidClassId: 'c2',
+    validOverrides: { className: 'Valid Class', yearGroupKey: 'yg-1' },
+    invalidOverrides: { className: 'Unresolved Class', yearGroupKey: 'yg-nonexistent' },
+  },
+];
+
+// ============================================================================
+// Sorting assertion helpers
+// ============================================================================
+
+/**
+ * Asserts that panels are sorted by YearGroup.name ascending, then by YearGroup.key ascending.
+ *
+ * @param {ClassesPagePanelModel[]} panels - The panels to verify.
+ * @param {string[]} expectedYearGroupKeys - Expected year group keys in order.
+ */
+function assertPanelsSortedByNameThenKey(
+  panels: ClassesPagePanelModel[],
+  expectedYearGroupKeys: string[]
+): void {
+  expect(panels).toHaveLength(expectedYearGroupKeys.length);
+  for (const [index, expectedYearGroupKey] of expectedYearGroupKeys.entries()) {
+    expect(panels[index].yearGroupKey).toBe(expectedYearGroupKey);
+  }
+}
+
+/**
+ * Asserts that cards within a panel are sorted by className ascending, then by classId ascending.
+ *
+ * @param {ClassesPageCardModel[]} classes - The classes to verify.
+ * @param {string[]} expectedClassIds - Expected class IDs in order.
+ */
+function assertCardsSortedByNameThenId(
+  classes: ClassesPageCardModel[],
+  expectedClassIds: string[]
+): void {
+  expect(classes).toHaveLength(expectedClassIds.length);
+  for (const [index, expectedClassId] of expectedClassIds.entries()) {
+    expect(classes[index].classId).toBe(expectedClassId);
+  }
+}
+
+/**
+ * Shared setup for panel sorting tests.
+ * Creates year groups and class partials with specified configurations.
+ *
+ * @param {YearGroup[]} yearGroups - Year groups to use.
+ * @param {ClassPartial[]} classPartials - Class partials to use.
+ * @returns {ClassesPagePanelViewModel | InvalidClassesPageDataViewModel} The result from buildClassesPageModel.
+ */
+function runPanelSortingTest(
+  yearGroups: YearGroup[],
+  classPartials: ClassPartial[]
+): ClassesPagePanelViewModel | InvalidClassesPageDataViewModel {
+  return buildClassesPageModel(classPartials, yearGroups);
+}
+
+/**
+ * Shared setup for card sorting tests.
+ *
+ * @param {YearGroup[]} yearGroups - Year groups to use.
+ * @param {ClassPartial[]} classPartials - Class partials to use.
+ * @returns {ClassesPagePanelViewModel | InvalidClassesPageDataViewModel} The result from buildClassesPageModel.
+ */
+function runCardSortingTest(
+  yearGroups: YearGroup[],
+  classPartials: ClassPartial[]
+): ClassesPagePanelViewModel | InvalidClassesPageDataViewModel {
+  return buildClassesPageModel(classPartials, yearGroups);
+}
+
+// ============================================================================
+// Test suites
+// ============================================================================
+
 describe('Classes page grouped view model - buildClassesPageModel', () => {
+  // --------------------------------------------------------------------------
+  // Panel sorting
+  // --------------------------------------------------------------------------
+
   describe('Panel sorting', () => {
     it('should sort panels by YearGroup.name ascending, using YearGroup.key as deterministic tie-break', () => {
       const yearGroups = [
@@ -73,27 +308,21 @@ describe('Classes page grouped view model - buildClassesPageModel', () => {
         createClassPartial('c5', { className: 'Class 5', yearGroupKey: 'yg-z' }),
       ];
 
-      const result = buildClassesPageModel(classPartials, yearGroups);
+      const result = runPanelSortingTest(yearGroups, classPartials);
 
-      // Expect the function to be defined and return the correct type
       expect(result).toBeDefined();
 
-      // When implementation exists, we'll check the panel order
       if (result && 'panels' in result) {
-        // eslint-disable-next-line @typescript-eslint/no-magic-numbers
-        expect(result.panels).toHaveLength(5);
         // Sorted by name ascending, then by key ascending for ties
         // Alice panels: yg-a (key: a), yg-y (key: y), yg-z (key: z)
-        expect(result.panels[0].yearGroupKey).toBe('yg-a');
-        expect(result.panels[1].yearGroupKey).toBe('yg-y');
-        expect(result.panels[2].yearGroupKey).toBe('yg-z');
-        // Then Bob
-        expect(result.panels[3].yearGroupKey).toBe('yg-b');
-        // Then Charlie
-        expect(result.panels[4].yearGroupKey).toBe('yg-c');
+        assertPanelsSortedByNameThenKey(result.panels, ['yg-a', 'yg-y', 'yg-z', 'yg-b', 'yg-c']);
       }
     });
   });
+
+  // --------------------------------------------------------------------------
+  // Card sorting
+  // --------------------------------------------------------------------------
 
   describe('Card sorting', () => {
     it('should sort cards by className ascending, using classId as deterministic tie-break', () => {
@@ -108,7 +337,7 @@ describe('Classes page grouped view model - buildClassesPageModel', () => {
         createClassPartial('c-aab', { className: 'Alpha', yearGroupKey: 'yg-1' }),
       ];
 
-      const result = buildClassesPageModel(classPartials, yearGroups);
+      const result = runCardSortingTest(yearGroups, classPartials);
 
       expect(result).toBeDefined();
 
@@ -116,23 +345,22 @@ describe('Classes page grouped view model - buildClassesPageModel', () => {
         expect(result.panels).toHaveLength(1);
         const panel = result.panels[0];
 
-        // eslint-disable-next-line @typescript-eslint/no-magic-numbers
-        expect(panel.classes).toHaveLength(5);
         // Sorted by className: Alpha, Alpha, Alpha, Beta, Zebra
         // Alpha with classId c-aaa comes before c-aab, which comes before c-alpha
-
-        expect(panel.classes[0].classId).toBe('c-aaa');
-
-        expect(panel.classes[1].classId).toBe('c-aab');
-
-        expect(panel.classes[2].classId).toBe('c-alpha');
-
-        expect(panel.classes[3].classId).toBe('c-beta');
-
-        expect(panel.classes[4].classId).toBe('c-zebra');
+        assertCardsSortedByNameThenId(panel.classes, [
+          'c-aaa',
+          'c-aab',
+          'c-alpha',
+          'c-beta',
+          'c-zebra',
+        ]);
       }
     });
   });
+
+  // --------------------------------------------------------------------------
+  // Empty panel
+  // --------------------------------------------------------------------------
 
   describe('Empty panel', () => {
     it('should return an empty panel for a year group with no matching classes', () => {
@@ -151,124 +379,86 @@ describe('Classes page grouped view model - buildClassesPageModel', () => {
         // eslint-disable-next-line @typescript-eslint/no-magic-numbers
         expect(result.panels).toHaveLength(2);
         // Year 1 panel has 1 class
+
         expect(result.panels[0].classes).toHaveLength(1);
         // Year 2 panel has 0 classes (empty panel)
-        expect(result.panels[1].classes).toHaveLength(0);
 
+        expect(result.panels[1].classes).toHaveLength(0);
         expect(result.panels[1].yearGroupKey).toBe('yg-2');
       }
     });
   });
 
-  describe('Fail-closed on null className', () => {
-    it('should reject records with className === null and return invalid data view model', () => {
-      const yearGroups = [createYearGroup('yg-1', 'Year 1')];
+  // --------------------------------------------------------------------------
+  // Fail-closed tests (parameterized)
+  // --------------------------------------------------------------------------
 
-      const classPartials: ClassPartial[] = [
-        createClassPartial('c1', { className: 'Valid Class', yearGroupKey: 'yg-1' }),
-        createClassPartial('c2', { className: null, yearGroupKey: 'yg-1' }),
-      ];
+  describe('Fail-closed behaviour', () => {
+    for (const scenario of failClosedScenarios) {
+      it(`should reject records with ${scenario.name} and return invalid data view model`, () => {
+        const yearGroupsForUnresolved =
+          scenario.name === 'unresolved yearGroupKey'
+            ? [createYearGroup('yg-1', 'Year 1'), createYearGroup('yg-2', 'Year 2')]
+            : undefined;
 
-      const result = buildClassesPageModel(classPartials, yearGroups);
+        const fixtures = yearGroupsForUnresolved
+          ? {
+              yearGroups: yearGroupsForUnresolved,
+              classPartials: [
+                createClassPartial(scenario.validClassId, scenario.validOverrides),
+                createClassPartial(scenario.invalidClassId, scenario.invalidOverrides),
+              ],
+              validClassId: scenario.validClassId,
+              invalidClassId: scenario.invalidClassId,
+            }
+          : buildInvalidDataTestFixtures(
+              scenario.validClassId,
+              scenario.invalidClassId,
+              scenario.validOverrides,
+              scenario.invalidOverrides
+            );
 
-      expect(result).toBeDefined();
+        const result = buildClassesPageModel(fixtures.classPartials, fixtures.yearGroups);
 
-      // Should return invalid data view model
-      if (result && 'type' in result && result.type === 'invalidClassesPageData') {
-        expect(result.classIds).toContain('c2');
-        expect(result.classIds).not.toContain('c1');
-      } else {
-        // If not invalid, this test should fail
-        expect(result).toHaveProperty('type', 'invalidClassesPageData');
-      }
-    });
+        assertInvalidClassesPageDataViewModel(
+          result,
+          [fixtures.invalidClassId],
+          [fixtures.validClassId]
+        );
+      });
+    }
   });
 
-  describe('Fail-closed on null yearGroupKey', () => {
-    it('should reject records with yearGroupKey === null and return invalid data view model', () => {
-      const yearGroups = [createYearGroup('yg-1', 'Year 1')];
-
-      const classPartials: ClassPartial[] = [
-        createClassPartial('c1', { className: 'Valid Class', yearGroupKey: 'yg-1' }),
-        createClassPartial('c2', { className: 'Orphan Class', yearGroupKey: null }),
-      ];
-
-      const result = buildClassesPageModel(classPartials, yearGroups);
-
-      expect(result).toBeDefined();
-
-      if (result && 'type' in result && result.type === 'invalidClassesPageData') {
-        expect(result.classIds).toContain('c2');
-        expect(result.classIds).not.toContain('c1');
-      } else {
-        expect(result).toHaveProperty('type', 'invalidClassesPageData');
-      }
-    });
-  });
-
-  describe('Fail-closed on unresolved yearGroupKey', () => {
-    it('should reject records where yearGroupKey does not resolve in yearGroups dataset and return invalid data view model', () => {
-      const yearGroups = [createYearGroup('yg-1', 'Year 1'), createYearGroup('yg-2', 'Year 2')];
-
-      const classPartials: ClassPartial[] = [
-        createClassPartial('c1', { className: 'Valid Class', yearGroupKey: 'yg-1' }),
-        createClassPartial('c2', { className: 'Unresolved Class', yearGroupKey: 'yg-nonexistent' }),
-      ];
-
-      const result = buildClassesPageModel(classPartials, yearGroups);
-
-      expect(result).toBeDefined();
-
-      if (result && 'type' in result && result.type === 'invalidClassesPageData') {
-        expect(result.classIds).toContain('c2');
-        expect(result.classIds).not.toContain('c1');
-      } else {
-        expect(result).toHaveProperty('type', 'invalidClassesPageData');
-      }
-    });
-  });
+  // --------------------------------------------------------------------------
+  // Empty states
+  // --------------------------------------------------------------------------
 
   describe('Both-empty page-level empty state', () => {
     it('should return page-level empty state when yearGroups = [] and classPartials = []', () => {
-      const yearGroups: YearGroup[] = [];
-      const classPartials: ClassPartial[] = [];
+      const result = buildClassesPageModel([], []);
 
-      const result = buildClassesPageModel(classPartials, yearGroups);
-
-      expect(result).toBeDefined();
-
-      // Should return an empty panels array representing page-level empty state
-      if (result && 'panels' in result) {
-        expect(result.panels).toHaveLength(0);
+      assertClassesPagePanelViewModel(result, 0, () => {
         expect(result.defaultExpandedPanelKeys).toHaveLength(0);
-      } else {
-        // Force failure if not the expected type
-        expect(result).toHaveProperty('panels');
-      }
+      });
     });
   });
 
   describe('YearGroups empty with existing classes', () => {
     it('should return blocking invalid-data state when yearGroups = [] but classes exist', () => {
-      const yearGroups: YearGroup[] = [];
       const classPartials: ClassPartial[] = [
         createClassPartial('c1', { className: 'Class 1', yearGroupKey: 'yg-1' }),
         createClassPartial('c2', { className: 'Class 2', yearGroupKey: 'yg-2' }),
       ];
 
-      const result = buildClassesPageModel(classPartials, yearGroups);
+      const result = buildClassesPageModel(classPartials, []);
 
-      expect(result).toBeDefined();
-
-      // Should return invalid data view model since classes cannot be grouped
-      if (result && 'type' in result && result.type === 'invalidClassesPageData') {
-        expect(result.classIds).toContain('c1');
-        expect(result.classIds).toContain('c2');
-      } else {
-        expect(result).toHaveProperty('type', 'invalidClassesPageData');
-      }
+      assertInvalidClassesPageDataViewModel(result, ['c1', 'c2'], []);
     });
   });
+
+  // --------------------------------------------------------------------------
+  // Default expanded panel
+  // --------------------------------------------------------------------------
 
   describe('Default-expanded first alphabetical panel key', () => {
     it('should return the first alphabetical panel key as default-expanded when panels exist', () => {
@@ -297,6 +487,10 @@ describe('Classes page grouped view model - buildClassesPageModel', () => {
     });
   });
 
+  // --------------------------------------------------------------------------
+  // Integration scenario
+  // --------------------------------------------------------------------------
+
   describe('Complete integration scenario', () => {
     it('should handle a complete valid scenario with multiple year groups and classes', () => {
       const yearGroups = [
@@ -315,7 +509,6 @@ describe('Classes page grouped view model - buildClassesPageModel', () => {
         createClassPartial('c-11c', { className: 'Chemistry', yearGroupKey: 'yg-11' }),
         // Year 12 classes
         createClassPartial('c-12a', { className: 'Further Maths', yearGroupKey: 'yg-12' }),
-        // Year 11 with no classes (should still produce empty panel)
       ];
 
       const result = buildClassesPageModel(classPartials, yearGroups);
@@ -335,7 +528,6 @@ describe('Classes page grouped view model - buildClassesPageModel', () => {
         expect(result.panels[0].classes).toHaveLength(2);
         // Cards sorted by className: Art, Biology
         expect(result.panels[0].classes[0].className).toBe('Art');
-
         expect(result.panels[0].classes[1].className).toBe('Biology');
 
         expect(result.panels[1].yearGroupKey).toBe('yg-11');
@@ -345,13 +537,12 @@ describe('Classes page grouped view model - buildClassesPageModel', () => {
         expect(result.panels[1].classes).toHaveLength(3);
         // Cards sorted by className: Chemistry, Maths, Physics
         expect(result.panels[1].classes[0].className).toBe('Chemistry');
-
         expect(result.panels[1].classes[1].className).toBe('Maths');
-
         expect(result.panels[1].classes[2].className).toBe('Physics');
 
         expect(result.panels[2].yearGroupKey).toBe('yg-12');
         expect(result.panels[2].yearGroupLabel).toBe('Year 12');
+
         expect(result.panels[2].classes).toHaveLength(1);
 
         // Default expanded should be first alphabetical panel (Year 10 / yg-10)
@@ -360,50 +551,41 @@ describe('Classes page grouped view model - buildClassesPageModel', () => {
     });
   });
 
-  describe('Card model fields', () => {
-    it('should produce card model with classId, className, yearGroupKey, and yearGroupLabel', () => {
-      const yearGroups = [createYearGroup('yg-1', 'First Year')];
+  // --------------------------------------------------------------------------
+  // Model field verification
+  // --------------------------------------------------------------------------
 
-      const classPartials: ClassPartial[] = [
+  describe('Model field verification', () => {
+    it('should produce card model with classId, className, yearGroupKey, and yearGroupLabel', () => {
+      const { yearGroups, classPartials } = buildValidDataset([
         createClassPartial('c1', { className: 'Test Class', yearGroupKey: 'yg-1' }),
-      ];
+      ]);
 
       const result = buildClassesPageModel(classPartials, yearGroups);
 
-      expect(result).toBeDefined();
-
-      if (result && 'panels' in result) {
-        expect(result.panels).toHaveLength(1);
-        const card = result.panels[0].classes[0];
+      assertClassesPagePanelViewModel(result, 1, (panel) => {
+        const card = panel.classes[0];
         expect(card).toHaveProperty('classId', 'c1');
         expect(card).toHaveProperty('className', 'Test Class');
         expect(card).toHaveProperty('yearGroupKey', 'yg-1');
-        expect(card).toHaveProperty('yearGroupLabel', 'First Year');
-      }
+        expect(card).toHaveProperty('yearGroupLabel', 'Year 1');
+      });
     });
-  });
 
-  describe('Panel model fields', () => {
     it('should produce panel model with yearGroupKey, yearGroupLabel, and classes array', () => {
-      const yearGroups = [createYearGroup('yg-1', 'Year One')];
-
-      const classPartials: ClassPartial[] = [
-        createClassPartial('c1', { className: 'Class A', yearGroupKey: 'yg-1' }),
-      ];
+      const { yearGroups, classPartials } = buildValidDataset(
+        [createClassPartial('c1', { className: 'Class A', yearGroupKey: 'yg-1' })],
+        [createYearGroup('yg-1', 'Year One')]
+      );
 
       const result = buildClassesPageModel(classPartials, yearGroups);
 
-      expect(result).toBeDefined();
-
-      if (result && 'panels' in result) {
-        expect(result.panels).toHaveLength(1);
-        const panel = result.panels[0];
+      assertClassesPagePanelViewModel(result, 1, (panel) => {
         expect(panel).toHaveProperty('yearGroupKey', 'yg-1');
         expect(panel).toHaveProperty('yearGroupLabel', 'Year One');
         expect(panel).toHaveProperty('classes');
-
         expect(Array.isArray(panel.classes)).toBe(true);
-      }
+      });
     });
   });
 });

@@ -19,6 +19,7 @@
  * - src/frontend/e2e-tests/shared/endToEndRuntimeMocks.ts
  * - src/frontend/src/pages/PageSection.tsx
  * - src/frontend/src/pages/classes/classesPageModel.ts
+ * - src/frontend/src/test/classes/classesPageTestHelpers.ts
  */
 
 import { screen, waitFor } from '@testing-library/react';
@@ -29,13 +30,42 @@ import { renderWithFrontendProviders } from '../test/renderWithFrontendProviders
 import { buildClassesPageModel } from './classes/classesPageModel';
 import { ClassesPage } from './ClassesPage';
 import { pageContent } from './pageContent';
-import type { ClassPartial } from '../services/classPartials.zod';
-import type { YearGroup } from '../services/referenceData.zod';
+
+// Import shared test helpers to reduce duplication
+import {
+  createQueryClientWithClassesData,
+  renderClassesPage,
+  verifyClassesPageModel,
+  isInvalidDataViewModel,
+  assertCollapseRegion,
+  assertNoCollapseRegion,
+  assertBlockingAlert,
+  assertNoBlockingAlert,
+  assertLoadingSkeleton,
+  assertNoLoadingSkeleton,
+  assertEmptyState,
+  assertClassesPageHeading,
+  assertClassCardExists,
+  assertPanelHeaderExpanded,
+  assertPanelContainsClass,
+  MOCK_CLASS_PARTIALS,
+  MOCK_EMPTY_CLASS_PARTIALS,
+  MOCK_EMPTY_YEAR_GROUPS,
+  MOCK_INVALID_CLASS_PARTIALS,
+  MOCK_YEAR_GROUPS,
+  MIXED_ORDER_CLASS_PARTIALS,
+  MIXED_ORDER_YEAR_GROUPS,
+  YEAR_GROUPS_WITH_EMPTY,
+  CLASS_PARTIALS_FOR_EMPTY_PANEL,
+  ALPHABETICAL_ORDER_CLASS_PARTIALS,
+  TIE_BREAK_CLASS_PARTIALS,
+  SINGLE_YEAR_GROUP,
+} from '../test/classes/classesPageTestHelpers';
 
 // Hoisted flag to control refetch mock for Section 6 tests
 const mockRefetchEnabled = vi.hoisted(() => ({ value: false }));
 
-// Hoisted mock data for refetch scenarios
+// Hoisted mock data for refetch scenarios - must use literal values to avoid circular reference
 const refetchClassPartials = vi.hoisted(() => [
   {
     classId: 'class-math-10a',
@@ -194,84 +224,13 @@ function getDatasetStatus(isFailed: boolean, isReady: boolean): 'failed' | 'read
   return 'loading';
 }
 
-// Test fixtures matching SPEC.md and CLASSES_PAGE_LAYOUT.md requirements
-// Note: ClassPartial requires all fields from the schema: classId, className, cohortKey,
-// courseLength, yearGroupKey, classOwner, teachers, active
-const mockYearGroups: YearGroup[] = [
-  { key: 'year-group-10', name: 'Year 10' },
-  { key: 'year-group-11', name: 'Year 11' },
-  { key: 'year-group-9', name: 'Year 9' },
-] as const;
-
-const mockClassPartials: ClassPartial[] = [
-  {
-    classId: 'class-math-10a',
-    className: 'Mathematics 10A',
-    cohortKey: null,
-    courseLength: 1,
-    yearGroupKey: 'year-group-10',
-    classOwner: null,
-    teachers: [],
-    active: null,
-  },
-  {
-    classId: 'class-math-10b',
-    className: 'Mathematics 10B',
-    cohortKey: null,
-    courseLength: 1,
-    yearGroupKey: 'year-group-10',
-    classOwner: null,
-    teachers: [],
-    active: null,
-  },
-  {
-    classId: 'class-science-11',
-    className: 'Science 11',
-    cohortKey: null,
-    courseLength: 1,
-    yearGroupKey: 'year-group-11',
-    classOwner: null,
-    teachers: [],
-    active: null,
-  },
-] as const;
-
-const mockEmptyClassPartials: ClassPartial[] = [];
-const mockEmptyYearGroups: YearGroup[] = [];
-
-// Invalid class partials for trust failure testing
-const mockInvalidClassPartials: ClassPartial[] = [
-  {
-    classId: 'class-invalid-1',
-    className: null,
-    cohortKey: null,
-    courseLength: 1,
-    yearGroupKey: 'year-group-10',
-    classOwner: null,
-    teachers: [],
-    active: null,
-  },
-  {
-    classId: 'class-invalid-2',
-    className: 'Valid Class',
-    cohortKey: null,
-    courseLength: 1,
-    yearGroupKey: null,
-    classOwner: null,
-    teachers: [],
-    active: null,
-  },
-  {
-    classId: 'class-invalid-3',
-    className: 'Another Valid',
-    cohortKey: null,
-    courseLength: 1,
-    yearGroupKey: 'year-group-invalid',
-    classOwner: null,
-    teachers: [],
-    active: null,
-  },
-] as const;
+// Use shared mock fixtures from test helpers to reduce duplication
+// These are the same as MOCK_* constants imported above
+const mockYearGroups = MOCK_YEAR_GROUPS;
+const mockClassPartials = MOCK_CLASS_PARTIALS;
+const mockEmptyClassPartials = MOCK_EMPTY_CLASS_PARTIALS;
+const mockEmptyYearGroups = MOCK_EMPTY_YEAR_GROUPS;
+const mockInvalidClassPartials = MOCK_INVALID_CLASS_PARTIALS;
 
 /**
  * Dataset state type for startup warmup mocks.
@@ -519,9 +478,7 @@ describe('ClassesPage', () => {
     it('renders the Classes page heading and summary from pageContent', () => {
       renderWithFrontendProviders(<ClassesPage />);
 
-      expect(
-        screen.getByRole('heading', { level: 2, name: pageContent.classes.heading })
-      ).toBeInTheDocument();
+      assertClassesPageHeading();
       expect(screen.getByText(pageContent.classes.summary)).toBeInTheDocument();
     });
   });
@@ -535,18 +492,14 @@ describe('ClassesPage', () => {
         renderWithFrontendProviders(<ClassesPage />);
 
         // Heading and summary should remain visible (owned by PageSection)
-        expect(
-          screen.getByRole('heading', { level: 2, name: pageContent.classes.heading })
-        ).toBeInTheDocument();
+        assertClassesPageHeading();
         expect(screen.getByText(pageContent.classes.summary)).toBeInTheDocument();
 
         // Should render a skeleton in the owned content region
-        const skeletonRegion = screen.getByRole('status');
-        expect(skeletonRegion).toBeInTheDocument();
-        expect(skeletonRegion).toHaveAttribute('aria-label', expect.stringContaining('loading'));
+        assertLoadingSkeleton();
 
         // Collapse should not be visible yet
-        expect(screen.queryByRole('region', { name: /year.*group/i })).not.toBeInTheDocument();
+        assertNoCollapseRegion();
       });
 
       it('skips skeleton when trustworthy data is already cached even if wider warm-up is not ready', () => {
@@ -561,28 +514,22 @@ describe('ClassesPage', () => {
           })
         );
 
-        // Pre-populate the query client cache BEFORE rendering
-        const queryClient = createAppQueryClient();
-        queryClient.setQueryData(queryKeys.classPartials(), [...mockClassPartials]);
-        queryClient.setQueryData(queryKeys.yearGroups(), [...mockYearGroups]);
-
-        renderWithFrontendProviders(<ClassesPage />, {
-          queryClient,
-        });
+        // Use shared helper for rendering with data
+        renderClassesPage();
 
         // Should NOT show skeleton because cache has usable data
-        expect(screen.queryByRole('status', { name: /loading/i })).not.toBeInTheDocument();
+        assertNoLoadingSkeleton();
 
         // This will fail until the view model integration is implemented
         // The ready state should render instead
-        const modelResult = buildClassesPageModel(mockClassPartials, mockYearGroups);
+        const { modelResult, isInvalid } = verifyClassesPageModel(mockClassPartials, mockYearGroups);
         expect(modelResult).toHaveProperty('panels');
-        if ('type' in modelResult && modelResult.type === 'invalidClassesPageData') {
+        if (isInvalid) {
           // Blocking state
-          expect(screen.getByRole('alert')).toBeInTheDocument();
+          assertBlockingAlert();
         } else {
           // Ready state with panels
-          expect(screen.getByRole('region', { name: /year.*group/i })).toBeInTheDocument();
+          assertCollapseRegion();
         }
       });
     });
@@ -601,23 +548,18 @@ describe('ClassesPage', () => {
           })
         );
 
-        // Pre-populate the query client cache BEFORE rendering
-        const queryClient = createAppQueryClient();
-        queryClient.setQueryData(queryKeys.classPartials(), []);
-        queryClient.setQueryData(queryKeys.yearGroups(), [...mockYearGroups]);
-
+        // Use shared helper for rendering with empty class partials
+        const queryClient = createQueryClientWithClassesData([], mockYearGroups);
         renderWithFrontendProviders(<ClassesPage />, {
           queryClient,
         });
 
         // Should show blocking alert
         // This will fail until the blocking alert is implemented
-        const alert = screen.getByRole('alert');
-        expect(alert).toBeInTheDocument();
-        expect(alert).toHaveTextContent(/could not be trusted or loaded/i);
+        assertBlockingAlert();
 
         // Collapse should be suppressed
-        expect(screen.queryByRole('region', { name: /year.*group/i })).not.toBeInTheDocument();
+        assertNoCollapseRegion();
       });
     });
 
@@ -625,30 +567,28 @@ describe('ClassesPage', () => {
       it('shows blocking alert for invalid data result from page-local view model', () => {
         useStartupWarmupStateMock.mockReturnValue(createReadyWarmupState());
 
-        // Pre-populate the query client cache BEFORE rendering
-        const queryClient = createAppQueryClient();
-        queryClient.setQueryData(queryKeys.classPartials(), [...mockInvalidClassPartials]);
-        queryClient.setQueryData(queryKeys.yearGroups(), [...mockYearGroups]);
-
+        // Use shared helper for rendering with invalid data
+        const queryClient = createQueryClientWithClassesData(mockInvalidClassPartials, mockYearGroups);
         renderWithFrontendProviders(<ClassesPage />, {
           queryClient,
         });
 
         // The view model should detect invalid data and return invalid view model
-        const modelResult = buildClassesPageModel(mockInvalidClassPartials, mockYearGroups);
+        const { modelResult } = verifyClassesPageModel(mockInvalidClassPartials, mockYearGroups);
         expect(modelResult).toHaveProperty('type', 'invalidClassesPageData');
         expect(modelResult).toHaveProperty('classIds');
-        expect((modelResult as { classIds: string[] }).classIds).toContain('class-invalid-1');
-        expect((modelResult as { classIds: string[] }).classIds).toContain('class-invalid-2');
-        expect((modelResult as { classIds: string[] }).classIds).toContain('class-invalid-3');
+        if (isInvalidDataViewModel(modelResult)) {
+          expect(modelResult.classIds).toContain('class-invalid-1');
+          expect(modelResult.classIds).toContain('class-invalid-2');
+          expect(modelResult.classIds).toContain('class-invalid-3');
+        }
 
         // Page should show blocking alert
         // This will fail until the blocking alert is implemented
-        const alert = screen.getByRole('alert');
-        expect(alert).toBeInTheDocument();
+        assertBlockingAlert();
 
         // Collapse should be suppressed
-        expect(screen.queryByRole('region', { name: /year.*group/i })).not.toBeInTheDocument();
+        assertNoCollapseRegion();
       });
     });
 
@@ -660,26 +600,26 @@ describe('ClassesPage', () => {
         const { queryClient } = renderWithFrontendProviders(<ClassesPage />);
 
         // Initially should show blocking state
-        expect(screen.getByRole('alert')).toBeInTheDocument();
+        assertBlockingAlert();
 
-        // Now simulate successful live query resolving
+        // Now simulate successful live query resolving using shared helper
         queryClient.setQueryData(queryKeys.classPartials(), [...mockClassPartials]);
         queryClient.setQueryData(queryKeys.yearGroups(), [...mockYearGroups]);
 
         // Wait for the component to re-render with the new data
         await waitFor(() => {
           // Should no longer show blocking alert
-          expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+          assertNoBlockingAlert();
         });
 
         // This will fail until the recovery logic is implemented
         // Should now show ready state
-        const modelResult = buildClassesPageModel(mockClassPartials, mockYearGroups);
+        const { modelResult, isInvalid } = verifyClassesPageModel(mockClassPartials, mockYearGroups);
         expect(modelResult).toHaveProperty('panels');
-        if ('type' in modelResult && modelResult.type === 'invalidClassesPageData') {
-          expect(screen.getByRole('alert')).toBeInTheDocument();
+        if (isInvalid) {
+          assertBlockingAlert();
         } else {
-          expect(screen.getByRole('region', { name: /year.*group/i })).toBeInTheDocument();
+          assertCollapseRegion();
         }
       });
 
@@ -690,7 +630,7 @@ describe('ClassesPage', () => {
         const { queryClient } = renderWithFrontendProviders(<ClassesPage />);
 
         // Initially should show blocking state
-        expect(screen.getByRole('alert')).toBeInTheDocument();
+        assertBlockingAlert();
 
         // Now simulate successful live query resolving
         queryClient.setQueryData(queryKeys.yearGroups(), [...mockYearGroups]);
@@ -699,17 +639,17 @@ describe('ClassesPage', () => {
         // Wait for the component to re-render with the new data
         await waitFor(() => {
           // Should no longer show blocking alert
-          expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+          assertNoBlockingAlert();
         });
 
         // This will fail until the recovery logic is implemented
         // Should now show ready state
-        const modelResult = buildClassesPageModel(mockClassPartials, mockYearGroups);
+        const { modelResult, isInvalid } = verifyClassesPageModel(mockClassPartials, mockYearGroups);
         expect(modelResult).toHaveProperty('panels');
-        if ('type' in modelResult && modelResult.type === 'invalidClassesPageData') {
-          expect(screen.getByRole('alert')).toBeInTheDocument();
+        if (isInvalid) {
+          assertBlockingAlert();
         } else {
-          expect(screen.getByRole('region', { name: /year.*group/i })).toBeInTheDocument();
+          assertCollapseRegion();
         }
       });
     });
@@ -718,25 +658,22 @@ describe('ClassesPage', () => {
       it('renders page-level Empty state when both datasets are trustworthy and empty', () => {
         useStartupWarmupStateMock.mockReturnValue(createReadyWarmupState());
 
-        // Pre-populate the query client cache BEFORE rendering
-        const queryClient = createAppQueryClient();
-        queryClient.setQueryData(queryKeys.classPartials(), mockEmptyClassPartials);
-        queryClient.setQueryData(queryKeys.yearGroups(), mockEmptyYearGroups);
-
-        renderWithFrontendProviders(<ClassesPage />, {
-          queryClient,
+        // Use shared helper for rendering with empty data
+        renderClassesPage({
+          classPartials: mockEmptyClassPartials,
+          yearGroups: mockEmptyYearGroups,
         });
 
         // The view model should return empty panels
-        const modelResult = buildClassesPageModel(mockEmptyClassPartials, mockEmptyYearGroups);
+        const { modelResult } = verifyClassesPageModel(mockEmptyClassPartials, mockEmptyYearGroups);
         expect(modelResult).toHaveProperty('panels', []);
         expect(modelResult).toHaveProperty('defaultExpandedPanelKeys', []);
 
         // Page should show empty state
-        expect(screen.getByText(/no year groups configured/i)).toBeInTheDocument();
+        assertEmptyState();
 
         // Collapse should not be visible
-        expect(screen.queryByRole('region', { name: /year.*group/i })).not.toBeInTheDocument();
+        assertNoCollapseRegion();
       });
     });
 
@@ -749,104 +686,38 @@ describe('ClassesPage', () => {
       const EXPECTED_YEAR_9_CLASSES_COUNT = 1;
       const EXPECTED_PANELS_WITH_EMPTY_COUNT = 2;
 
-      // Fixture with mixed year group ordering to verify alphabetical sort
-      const mixedOrderYearGroups: YearGroup[] = [
-        { key: 'year-group-11', name: 'Year 11' },
-        { key: 'year-group-9', name: 'Year 9' },
-        { key: 'year-group-10', name: 'Year 10' },
-      ] as const;
-
-      const mixedOrderClassPartials: ClassPartial[] = [
-        {
-          classId: 'class-math-11a',
-          className: 'Mathematics 11A',
-          cohortKey: null,
-          courseLength: 1,
-          yearGroupKey: 'year-group-11',
-          classOwner: null,
-          teachers: [],
-          active: null,
-        },
-        {
-          classId: 'class-science-9',
-          className: 'Science 9',
-          cohortKey: null,
-          courseLength: 1,
-          yearGroupKey: 'year-group-9',
-          classOwner: null,
-          teachers: [],
-          active: null,
-        },
-        {
-          classId: 'class-math-10a',
-          className: 'Mathematics 10A',
-          cohortKey: null,
-          courseLength: 1,
-          yearGroupKey: 'year-group-10',
-          classOwner: null,
-          teachers: [],
-          active: null,
-        },
-        {
-          classId: 'class-english-10',
-          className: 'English 10',
-          cohortKey: null,
-          courseLength: 1,
-          yearGroupKey: 'year-group-10',
-          classOwner: null,
-          teachers: [],
-          active: null,
-        },
-      ] as const;
-
-      // Fixture with an empty year group (Year 9 has no classes)
-      const yearGroupsWithEmpty: YearGroup[] = [
-        { key: 'year-group-9', name: 'Year 9' },
-        { key: 'year-group-10', name: 'Year 10' },
-      ] as const;
-
-      const classPartialsForEmptyPanel: ClassPartial[] = [
-        {
-          classId: 'class-math-10a',
-          className: 'Mathematics 10A',
-          cohortKey: null,
-          courseLength: 1,
-          yearGroupKey: 'year-group-10',
-          classOwner: null,
-          teachers: [],
-          active: null,
-        },
-      ] as const;
+      // Use shared fixtures from test helpers
 
       beforeEach(() => {
         useStartupWarmupStateMock.mockReturnValue(createReadyWarmupState());
       });
 
       it('verifies panel header order from a mixed year-group fixture', () => {
-        // Pre-populate the query client cache BEFORE rendering
-        const queryClient = createAppQueryClient();
-        queryClient.setQueryData(queryKeys.classPartials(), [...mixedOrderClassPartials]);
-        queryClient.setQueryData(queryKeys.yearGroups(), [...mixedOrderYearGroups]);
-
-        renderWithFrontendProviders(<ClassesPage />, {
-          queryClient,
+        // Use shared helper for rendering with mixed order data
+        renderClassesPage({
+          classPartials: MIXED_ORDER_CLASS_PARTIALS,
+          yearGroups: MIXED_ORDER_YEAR_GROUPS,
         });
 
         // The view model should sort year groups alphabetically by name
-        const modelResult = buildClassesPageModel(mixedOrderClassPartials, mixedOrderYearGroups);
+        const { modelResult, isInvalid } = verifyClassesPageModel(
+          MIXED_ORDER_CLASS_PARTIALS,
+          MIXED_ORDER_YEAR_GROUPS
+        );
         expect(modelResult).not.toHaveProperty('type');
-        expect((modelResult as { panels: unknown[] }).panels).toHaveLength(EXPECTED_PANEL_COUNT);
-
-        // Expected alphabetical order: Year 10, Year 11, Year 9
-        const panels = modelResult as { panels: { yearGroupKey: string; yearGroupLabel: string }[] };
-        expect(panels.panels[0].yearGroupLabel).toBe('Year 10');
-        expect(panels.panels[1].yearGroupLabel).toBe('Year 11');
-        expect(panels.panels[2].yearGroupLabel).toBe('Year 9');
+        if (!isInvalid && 'panels' in modelResult) {
+          expect((modelResult as { panels: unknown[] }).panels).toHaveLength(EXPECTED_PANEL_COUNT);
+          
+          // Expected alphabetical order: Year 10, Year 11, Year 9
+          const panels = modelResult as { panels: { yearGroupKey: string; yearGroupLabel: string }[] };
+          expect(panels.panels[0].yearGroupLabel).toBe('Year 10');
+          expect(panels.panels[1].yearGroupLabel).toBe('Year 11');
+          expect(panels.panels[2].yearGroupLabel).toBe('Year 9');
+        }
 
         // These tests will fail until the collapse implementation is complete
         // Assert that collapse headers render in the correct alphabetical order
-        const collapseRegion = screen.getByRole('region', { name: /year.*group/i });
-        expect(collapseRegion).toBeInTheDocument();
+        assertCollapseRegion();
 
         // Find all collapse panel headers - they should be in alphabetical order
         // This will fail until Ant Design Collapse is implemented with proper panel headers
@@ -858,63 +729,64 @@ describe('ClassesPage', () => {
       });
 
       it('verifies the first alphabetical panel is open on first ready render', () => {
-        // Pre-populate the query client cache BEFORE rendering
-        const queryClient = createAppQueryClient();
-        queryClient.setQueryData(queryKeys.classPartials(), [...mixedOrderClassPartials]);
-        queryClient.setQueryData(queryKeys.yearGroups(), [...mixedOrderYearGroups]);
-
-        renderWithFrontendProviders(<ClassesPage />, {
-          queryClient,
+        // Use shared helper for rendering with mixed order data
+        renderClassesPage({
+          classPartials: MIXED_ORDER_CLASS_PARTIALS,
+          yearGroups: MIXED_ORDER_YEAR_GROUPS,
         });
 
         // The view model should have the first alphabetical panel as default expanded
-        const modelResult = buildClassesPageModel(mixedOrderClassPartials, mixedOrderYearGroups);
+        const { modelResult, isInvalid } = verifyClassesPageModel(
+          MIXED_ORDER_CLASS_PARTIALS,
+          MIXED_ORDER_YEAR_GROUPS
+        );
         expect(modelResult).not.toHaveProperty('type');
 
-        const viewModel = modelResult as { panels: unknown[]; defaultExpandedPanelKeys: string[] };
-        expect(viewModel.defaultExpandedPanelKeys).toHaveLength(EXPECTED_DEFAULT_EXPANDED_COUNT);
-        // First alphabetical is Year 10
-        expect(viewModel.defaultExpandedPanelKeys[0]).toBe('year-group-10');
+        if (!isInvalid && 'defaultExpandedPanelKeys' in modelResult) {
+          const viewModel = modelResult as { panels: unknown[]; defaultExpandedPanelKeys: string[] };
+          expect(viewModel.defaultExpandedPanelKeys).toHaveLength(EXPECTED_DEFAULT_EXPANDED_COUNT);
+          // First alphabetical is Year 10
+          expect(viewModel.defaultExpandedPanelKeys[0]).toBe('year-group-10');
+        }
 
         // This will fail until the collapse implementation uses defaultActiveKey
         // Assert that the first panel body is visible (expanded)
-        const collapseRegion = screen.getByRole('region', { name: /year.*group/i });
-        expect(collapseRegion).toBeInTheDocument();
+        assertCollapseRegion();
 
         // The first panel (Year 10) should have its content visible
         const year10Panel = screen.getByRole('region', { name: /year 10/i });
         expect(year10Panel).toBeInTheDocument();
         // Ant Design's Collapse.Panel header button manages aria-expanded
-        const year10PanelHeader = screen.getByRole('button', { name: /year 10/i });
-        expect(year10PanelHeader).toHaveAttribute('aria-expanded', 'true');
+        assertPanelHeaderExpanded(/year 10/i, true);
       });
 
       it('verifies an empty year-group panel shows its own empty presentation', () => {
-        // Pre-populate the query client cache BEFORE rendering
-        const queryClient = createAppQueryClient();
-        queryClient.setQueryData(queryKeys.classPartials(), [...classPartialsForEmptyPanel]);
-        queryClient.setQueryData(queryKeys.yearGroups(), [...yearGroupsWithEmpty]);
-
-        renderWithFrontendProviders(<ClassesPage />, {
-          queryClient,
+        // Use shared helper for rendering with empty panel data
+        renderClassesPage({
+          classPartials: CLASS_PARTIALS_FOR_EMPTY_PANEL,
+          yearGroups: YEAR_GROUPS_WITH_EMPTY,
         });
 
         // The view model should create panels for all year groups, even empty ones
-        const modelResult = buildClassesPageModel(classPartialsForEmptyPanel, yearGroupsWithEmpty);
+        const { modelResult, isInvalid } = verifyClassesPageModel(
+          CLASS_PARTIALS_FOR_EMPTY_PANEL,
+          YEAR_GROUPS_WITH_EMPTY
+        );
         expect(modelResult).not.toHaveProperty('type');
 
-        const viewModel = modelResult as { panels: { yearGroupKey: string; classes: unknown[] }[] };
-        expect(viewModel.panels).toHaveLength(EXPECTED_PANELS_WITH_EMPTY_COUNT);
+        if (!isInvalid && 'panels' in modelResult) {
+          const viewModel = modelResult as { panels: { yearGroupKey: string; classes: unknown[] }[] };
+          expect(viewModel.panels).toHaveLength(EXPECTED_PANELS_WITH_EMPTY_COUNT);
 
-        // Year 9 panel should have no classes
-        const year9Panel = viewModel.panels.find((p) => p.yearGroupKey === 'year-group-9');
-        expect(year9Panel).toBeDefined();
-        expect(year9Panel?.classes).toHaveLength(0);
+          // Year 9 panel should have no classes
+          const year9Panel = viewModel.panels.find((p) => p.yearGroupKey === 'year-group-9');
+          expect(year9Panel).toBeDefined();
+          expect(year9Panel?.classes).toHaveLength(0);
+        }
 
         // This will fail until the in-panel empty presentation is implemented
         // Assert that the empty year group panel shows in-panel empty message
-        const collapseRegion = screen.getByRole('region', { name: /year.*group/i });
-        expect(collapseRegion).toBeInTheDocument();
+        assertCollapseRegion();
 
         // The Year 9 panel should show an empty message within its body
         // This will fail until Card-based empty state is implemented
@@ -924,59 +796,50 @@ describe('ClassesPage', () => {
       });
 
       it('verifies cards only render under their matching year-group panel', () => {
-        // Pre-populate the query client cache BEFORE rendering
-        const queryClient = createAppQueryClient();
-        queryClient.setQueryData(queryKeys.classPartials(), [...mixedOrderClassPartials]);
-        queryClient.setQueryData(queryKeys.yearGroups(), [...mixedOrderYearGroups]);
-
-        renderWithFrontendProviders(<ClassesPage />, {
-          queryClient,
+        // Use shared helper for rendering with mixed order data
+        renderClassesPage({
+          classPartials: MIXED_ORDER_CLASS_PARTIALS,
+          yearGroups: MIXED_ORDER_YEAR_GROUPS,
         });
 
         // The view model should group classes by their yearGroupKey
-        const modelResult = buildClassesPageModel(mixedOrderClassPartials, mixedOrderYearGroups);
+        const { modelResult, isInvalid } = verifyClassesPageModel(
+          MIXED_ORDER_CLASS_PARTIALS,
+          MIXED_ORDER_YEAR_GROUPS
+        );
         expect(modelResult).not.toHaveProperty('type');
 
-        const viewModel = modelResult as {
-          panels: { yearGroupKey: string; classes: { classId: string; className: string }[] }[]
-        };
+        if (!isInvalid && 'panels' in modelResult) {
+          const viewModel = modelResult as {
+            panels: { yearGroupKey: string; classes: { classId: string; className: string }[] }[]
+          };
 
-        // Verify panel structure from view model
-        const year10Panel = viewModel.panels.find((p) => p.yearGroupKey === 'year-group-10');
-        expect(year10Panel).toBeDefined();
-        expect(year10Panel?.classes).toHaveLength(EXPECTED_YEAR_10_CLASSES_COUNT);
+          // Verify panel structure from view model
+          const year10Panel = viewModel.panels.find((p) => p.yearGroupKey === 'year-group-10');
+          expect(year10Panel).toBeDefined();
+          expect(year10Panel?.classes).toHaveLength(EXPECTED_YEAR_10_CLASSES_COUNT);
 
-        const year11Panel = viewModel.panels.find((p) => p.yearGroupKey === 'year-group-11');
-        expect(year11Panel).toBeDefined();
-        expect(year11Panel?.classes).toHaveLength(EXPECTED_YEAR_11_CLASSES_COUNT);
+          const year11Panel = viewModel.panels.find((p) => p.yearGroupKey === 'year-group-11');
+          expect(year11Panel).toBeDefined();
+          expect(year11Panel?.classes).toHaveLength(EXPECTED_YEAR_11_CLASSES_COUNT);
 
-        const year9Panel = viewModel.panels.find((p) => p.yearGroupKey === 'year-group-9');
-        expect(year9Panel).toBeDefined();
-        expect(year9Panel?.classes).toHaveLength(EXPECTED_YEAR_9_CLASSES_COUNT);
+          const year9Panel = viewModel.panels.find((p) => p.yearGroupKey === 'year-group-9');
+          expect(year9Panel).toBeDefined();
+          expect(year9Panel?.classes).toHaveLength(EXPECTED_YEAR_9_CLASSES_COUNT);
+        }
 
         // This will fail until the collapse with cards is implemented
-        const collapseRegion = screen.getByRole('region', { name: /year.*group/i });
-        expect(collapseRegion).toBeInTheDocument();
+        assertCollapseRegion();
 
         // Find all class cards
-        const math10ACard = screen.getByRole('article', { name: /mathematics 10a/i });
-        expect(math10ACard).toBeInTheDocument();
-
-        const science9Card = screen.getByRole('article', { name: /science 9/i });
-        expect(science9Card).toBeInTheDocument();
-
-        const math11ACard = screen.getByRole('article', { name: /mathematics 11a/i });
-        expect(math11ACard).toBeInTheDocument();
+        assertClassCardExists(/mathematics 10a/i);
+        assertClassCardExists(/science 9/i);
+        assertClassCardExists(/mathematics 11a/i);
 
         // Verify card-to-panel association
-        const year10PanelRegion = screen.getByRole('region', { name: /year 10/i });
-        expect(year10PanelRegion).toContainElement(math10ACard);
-
-        const year11PanelRegion = screen.getByRole('region', { name: /year 11/i });
-        expect(year11PanelRegion).toContainElement(math11ACard);
-
-        const year9PanelRegion = screen.getByRole('region', { name: /year 9/i });
-        expect(year9PanelRegion).toContainElement(science9Card);
+        assertPanelContainsClass(/year 10/i, /mathematics 10a/i);
+        assertPanelContainsClass(/year 11/i, /mathematics 11a/i);
+        assertPanelContainsClass(/year 9/i, /science 9/i);
       });
     });
 
@@ -990,117 +853,48 @@ describe('ClassesPage', () => {
       const EXPECTED_TIE_BREAK_CLASSES_COUNT = 3;
       const EXPECTED_BUTTONS_PER_CARD = 2; // Only View and Edit
 
-      // Fixture with classes that need alphabetical ordering by className then classId
-      const alphabeticalOrderClassPartials: ClassPartial[] = [
-        {
-          classId: 'class-math-10b',
-          className: 'Mathematics 10B',
-          cohortKey: null,
-          courseLength: 1,
-          yearGroupKey: 'year-group-10',
-          classOwner: null,
-          teachers: [],
-          active: null,
-        },
-        {
-          classId: 'class-math-10a',
-          className: 'Mathematics 10A',
-          cohortKey: null,
-          courseLength: 1,
-          yearGroupKey: 'year-group-10',
-          classOwner: null,
-          teachers: [],
-          active: null,
-        },
-        {
-          classId: 'class-english-10',
-          className: 'English 10',
-          cohortKey: null,
-          courseLength: 1,
-          yearGroupKey: 'year-group-10',
-          classOwner: null,
-          teachers: [],
-          active: null,
-        },
-      ] as const;
-
-      // Same classes but with a tie-break scenario: two classes with same name
-      const tieBreakClassPartials: ClassPartial[] = [
-        {
-          classId: 'class-b-z',
-          className: 'Z Class',
-          cohortKey: null,
-          courseLength: 1,
-          yearGroupKey: 'year-group-10',
-          classOwner: null,
-          teachers: [],
-          active: null,
-        },
-        {
-          classId: 'class-a-z',
-          className: 'Z Class',
-          cohortKey: null,
-          courseLength: 1,
-          yearGroupKey: 'year-group-10',
-          classOwner: null,
-          teachers: [],
-          active: null,
-        },
-        {
-          classId: 'class-b-a',
-          className: 'A Class',
-          cohortKey: null,
-          courseLength: 1,
-          yearGroupKey: 'year-group-10',
-          classOwner: null,
-          teachers: [],
-          active: null,
-        },
-      ] as const;
+      // Use shared fixtures from test helpers
 
       beforeEach(() => {
         useStartupWarmupStateMock.mockReturnValue(createReadyWarmupState());
       });
 
       it('verifies card order inside a panel follows className then classId', () => {
-        // Pre-populate the query client cache BEFORE rendering
-        const queryClient = createAppQueryClient();
-        queryClient.setQueryData(queryKeys.classPartials(), [
-          ...alphabeticalOrderClassPartials,
-        ]);
-        queryClient.setQueryData(queryKeys.yearGroups(), [...mockYearGroups]);
-
-        renderWithFrontendProviders(<ClassesPage />, {
-          queryClient,
+        // Use shared helper for rendering with alphabetical order data
+        renderClassesPage({
+          classPartials: ALPHABETICAL_ORDER_CLASS_PARTIALS,
+          yearGroups: mockYearGroups,
         });
 
         // Verify the view model sorts correctly
-        const modelResult = buildClassesPageModel(
-          alphabeticalOrderClassPartials,
+        const { modelResult, isInvalid } = verifyClassesPageModel(
+          ALPHABETICAL_ORDER_CLASS_PARTIALS,
           mockYearGroups
         );
         expect(modelResult).not.toHaveProperty('type');
 
-        const viewModel = modelResult as {
-          panels: {
-            yearGroupKey: string;
-            classes: { classId: string; className: string }[];
-          }[];
-        };
+        if (!isInvalid && 'panels' in modelResult) {
+          const viewModel = modelResult as {
+            panels: {
+              yearGroupKey: string;
+              classes: { classId: string; className: string; yearGroupKey: string; yearGroupLabel: string }[];
+            }[];
+          };
 
-        const year10Panel = viewModel.panels.find(
-          (p) => p.yearGroupKey === 'year-group-10'
-        );
-        expect(year10Panel).toBeDefined();
-        expect(year10Panel?.classes).toHaveLength(EXPECTED_ALPHABETICAL_CLASSES_COUNT);
+          const year10Panel = viewModel.panels.find(
+            (p) => p.yearGroupKey === 'year-group-10'
+          );
+          expect(year10Panel).toBeDefined();
+          expect(year10Panel?.classes).toHaveLength(EXPECTED_ALPHABETICAL_CLASSES_COUNT);
 
-        // Expected order: English 10, Mathematics 10A, Mathematics 10B
-        const expectedClasses = [
-          { classId: 'class-english-10', className: 'English 10', yearGroupKey: 'year-group-10', yearGroupLabel: 'Year 10' },
-          { classId: 'class-math-10a', className: 'Mathematics 10A', yearGroupKey: 'year-group-10', yearGroupLabel: 'Year 10' },
-          { classId: 'class-math-10b', className: 'Mathematics 10B', yearGroupKey: 'year-group-10', yearGroupLabel: 'Year 10' },
-        ];
-        expect(year10Panel?.classes).toEqual(expectedClasses);
+          // Expected order: English 10, Mathematics 10A, Mathematics 10B
+          const expectedClasses = [
+            { classId: 'class-english-10', className: 'English 10', yearGroupKey: 'year-group-10', yearGroupLabel: 'Year 10' },
+            { classId: 'class-math-10a', className: 'Mathematics 10A', yearGroupKey: 'year-group-10', yearGroupLabel: 'Year 10' },
+            { classId: 'class-math-10b', className: 'Mathematics 10B', yearGroupKey: 'year-group-10', yearGroupLabel: 'Year 10' },
+          ];
+          expect(year10Panel?.classes).toEqual(expectedClasses);
+        }
 
         // Assert rendered cards match the sorted order
         const year10PanelRegion = screen.getByRole('region', { name: /year 10/i });
@@ -1114,46 +908,41 @@ describe('ClassesPage', () => {
       });
 
       it('verifies card order uses classId as tie-break when className is identical', () => {
-        // Pre-populate the query client cache BEFORE rendering
-        const queryClient = createAppQueryClient();
-        queryClient.setQueryData(queryKeys.classPartials(), [
-          ...tieBreakClassPartials,
-        ]);
-        queryClient.setQueryData(queryKeys.yearGroups(), [
-          { key: 'year-group-10', name: 'Year 10' },
-        ]);
-
-        renderWithFrontendProviders(<ClassesPage />, {
-          queryClient,
+        // Use shared helper for rendering with tie-break data
+        renderClassesPage({
+          classPartials: TIE_BREAK_CLASS_PARTIALS,
+          yearGroups: SINGLE_YEAR_GROUP,
         });
 
         // Verify the view model sorts by className then classId
-        const modelResult = buildClassesPageModel(
-          tieBreakClassPartials,
-          [{ key: 'year-group-10', name: 'Year 10' }]
+        const { modelResult, isInvalid } = verifyClassesPageModel(
+          TIE_BREAK_CLASS_PARTIALS,
+          SINGLE_YEAR_GROUP
         );
         expect(modelResult).not.toHaveProperty('type');
 
-        const viewModel = modelResult as {
-          panels: {
-            yearGroupKey: string;
-            classes: { classId: string; className: string }[];
-          }[];
-        };
+        if (!isInvalid && 'panels' in modelResult) {
+          const viewModel = modelResult as {
+            panels: {
+              yearGroupKey: string;
+              classes: { classId: string; className: string; yearGroupKey: string; yearGroupLabel: string }[];
+            }[];
+          };
 
-        const year10Panel = viewModel.panels.find(
-          (p) => p.yearGroupKey === 'year-group-10'
-        );
-        expect(year10Panel).toBeDefined();
-        expect(year10Panel?.classes).toHaveLength(EXPECTED_TIE_BREAK_CLASSES_COUNT);
+          const year10Panel = viewModel.panels.find(
+            (p) => p.yearGroupKey === 'year-group-10'
+          );
+          expect(year10Panel).toBeDefined();
+          expect(year10Panel?.classes).toHaveLength(EXPECTED_TIE_BREAK_CLASSES_COUNT);
 
-        // Expected order: A Class, Z Class (with classId a-z), Z Class (with classId b-z)
-        const expectedClasses = [
-          { classId: 'class-b-a', className: 'A Class', yearGroupKey: 'year-group-10', yearGroupLabel: 'Year 10' },
-          { classId: 'class-a-z', className: 'Z Class', yearGroupKey: 'year-group-10', yearGroupLabel: 'Year 10' },
-          { classId: 'class-b-z', className: 'Z Class', yearGroupKey: 'year-group-10', yearGroupLabel: 'Year 10' },
-        ];
-        expect(year10Panel?.classes).toEqual(expectedClasses);
+          // Expected order: A Class, Z Class (with classId a-z), Z Class (with classId b-z)
+          const expectedClasses = [
+            { classId: 'class-b-a', className: 'A Class', yearGroupKey: 'year-group-10', yearGroupLabel: 'Year 10' },
+            { classId: 'class-a-z', className: 'Z Class', yearGroupKey: 'year-group-10', yearGroupLabel: 'Year 10' },
+            { classId: 'class-b-z', className: 'Z Class', yearGroupKey: 'year-group-10', yearGroupLabel: 'Year 10' },
+          ];
+          expect(year10Panel?.classes).toEqual(expectedClasses);
+        }
 
         // Assert rendered order matches
         const year10PanelRegion = screen.getByRole('region', { name: /year 10/i });
