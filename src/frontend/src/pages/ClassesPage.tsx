@@ -13,6 +13,7 @@ import { pageContent } from './pageContent';
 const CLASSES_PAGE_LOADING_LABEL = 'Classes page loading';
 const CLASSES_BLOCKING_ERROR_MESSAGE = 'Classes data could not be trusted or loaded.';
 const CLASSES_PAGE_EMPTY_DESCRIPTION = 'No year groups configured yet.';
+const CLASSES_REFRESH_TEXT = 'Refreshing...';
 
 /**
  * Returns whether a single dataset should block.
@@ -193,6 +194,11 @@ function isModelEmpty(modelResult: unknown): boolean {
 /**
  * Renders the year-group collapse with class cards.
  *
+ * Uses Collapse.Panel children pattern instead of items prop to ensure proper
+ * keyboard navigation support (Space/Enter to toggle, ArrowUp/ArrowDown to navigate).
+ * This triggers a deprecation warning in Ant Design v6 but is the only way to
+ * get proper keyboard support with custom header components.
+ *
  * @param {Readonly<{ panels: Array<{ yearGroupKey: string; yearGroupLabel: string; classes: Array<{ classId: string; className: string; yearGroupKey: string; yearGroupLabel: string; }>; }>; defaultExpandedPanelKeys: string[]; }>} viewModel The view model with panels and default expanded keys.
  * @returns {JSX.Element} The rendered collapse.
  */
@@ -219,27 +225,32 @@ function renderYearGroupCollapse(
        * Ant Design v6 Collapse: type assertion required because the library expects
        * mutable string[] for defaultActiveKey, but defaultExpandedPanelKeys is ReadonlyArray<string>.
        * This is a safe cast as the values are only read by the component.
+       *
+       * Using Collapse.Panel children pattern instead of items prop for proper keyboard
+       * navigation support. This is the recommended approach for custom headers.
        */}
-      <Collapse
-        defaultActiveKey={defaultExpandedPanelKeys as string[]}
-        items={panels.map((panel) => {
+      <Collapse defaultActiveKey={defaultExpandedPanelKeys as string[]}>
+        {panels.map((panel) => {
           const headerId = `panel-header-${panel.yearGroupKey}`;
           const contentId = `panel-content-${panel.yearGroupKey}`;
+          const isExpanded = defaultExpandedPanelKeys.includes(panel.yearGroupKey);
 
-          return {
-            key: panel.yearGroupKey,
-            label: (
-              <Typography.Title level={3} id={headerId}>
-                {panel.yearGroupLabel}
-              </Typography.Title>
-            ),
-            children: (
+          return (
+            <Collapse.Panel
+              key={panel.yearGroupKey}
+              header={
+                <Typography.Title level={3} id={headerId}>
+                  {panel.yearGroupLabel}
+                </Typography.Title>
+              }
+              forceRender
+            >
               <div
                 id={contentId}
                 role="region"
                 aria-label={panel.yearGroupLabel}
                 aria-labelledby={headerId}
-                aria-expanded={defaultExpandedPanelKeys.includes(panel.yearGroupKey)}
+                aria-expanded={isExpanded}
               >
                 {panel.classes.length > 0 ? (
                   <div
@@ -257,13 +268,13 @@ function renderYearGroupCollapse(
                         key={card.classId}
                         size="small"
                         title={card.className}
-                        style={{ flex: '1', minWidth: '250px' }}
+                        style={{ flex: '1 1 200px', minWidth: 200 }}
                       >
                         <Space wrap>
-                          <Button disabled type="text">
+                          <Button disabled tabIndex={-1} type="text">
                             View
                           </Button>
-                          <Button disabled type="text">
+                          <Button disabled tabIndex={-1} type="text">
                             Edit
                           </Button>
                         </Space>
@@ -276,11 +287,23 @@ function renderYearGroupCollapse(
                   </Card>
                 )}
               </div>
-            ),
-            forceRender: true,
-          };
+            </Collapse.Panel>
+          );
         })}
-      />
+      </Collapse>
+    </div>
+  );
+}
+
+/**
+ * Renders a refresh status message for background refresh.
+ *
+ * @returns {JSX.Element} The refresh status element.
+ */
+function renderClassesRefreshStatus(): JSX.Element {
+  return (
+    <div aria-live="polite" role="status">
+      {CLASSES_REFRESH_TEXT}
     </div>
   );
 }
@@ -288,7 +311,7 @@ function renderYearGroupCollapse(
 /**
  * Renders the content based on the current state.
  *
- * @param {Readonly<{ finalShouldRenderBlockingState: boolean; shouldRenderLoadingState: boolean; shouldRenderEmptyState: boolean; viewModel: unknown; }>} properties Render properties.
+ * @param {Readonly<{ finalShouldRenderBlockingState: boolean; shouldRenderLoadingState: boolean; shouldRenderEmptyState: boolean; viewModel: unknown; isBusy: boolean; }>} properties Render properties.
  * @returns {JSX.Element} The rendered content.
  */
 function renderClassesContent(
@@ -297,6 +320,7 @@ function renderClassesContent(
     shouldRenderLoadingState: boolean;
     shouldRenderEmptyState: boolean;
     viewModel: unknown;
+    isBusy: boolean;
   }>
 ): JSX.Element {
   if (properties.finalShouldRenderBlockingState) {
@@ -329,7 +353,13 @@ function renderClassesContent(
     }>;
     defaultExpandedPanelKeys: ReadonlyArray<string>;
   };
-  return renderYearGroupCollapse(viewModel);
+
+  return (
+    <>
+      {properties.isBusy ? renderClassesRefreshStatus() : null}
+      {renderYearGroupCollapse(viewModel)}
+    </>
+  );
 }
 
 
@@ -450,6 +480,7 @@ export function ClassesPage() {
       summary={pageContent.classes.summary}
     >
       <section
+        role="region"
         aria-label="Classes page content"
         aria-busy={isClassesSurfaceBusyValue ? 'true' : undefined}
       >
@@ -458,6 +489,7 @@ export function ClassesPage() {
           shouldRenderLoadingState,
           shouldRenderEmptyState,
           viewModel: modelResult,
+          isBusy: isClassesSurfaceBusyValue,
         })}
       </section>
     </PageSection>

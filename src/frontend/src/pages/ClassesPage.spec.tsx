@@ -32,6 +32,109 @@ import { pageContent } from './pageContent';
 import type { ClassPartial } from '../services/classPartials.zod';
 import type { YearGroup } from '../services/referenceData.zod';
 
+// Hoisted flag to control refetch mock for Section 6 tests
+const mockRefetchEnabled = vi.hoisted(() => ({ value: false }));
+
+// Hoisted mock data for refetch scenarios
+const refetchClassPartials = vi.hoisted(() => [
+  {
+    classId: 'class-math-10a',
+    className: 'Mathematics 10A',
+    cohortKey: null,
+    courseLength: 1,
+    yearGroupKey: 'year-group-10',
+    classOwner: null,
+    teachers: [],
+    active: null,
+  },
+  {
+    classId: 'class-math-10b',
+    className: 'Mathematics 10B',
+    cohortKey: null,
+    courseLength: 1,
+    yearGroupKey: 'year-group-10',
+    classOwner: null,
+    teachers: [],
+    active: null,
+  },
+  {
+    classId: 'class-science-11',
+    className: 'Science 11',
+    cohortKey: null,
+    courseLength: 1,
+    yearGroupKey: 'year-group-11',
+    classOwner: null,
+    teachers: [],
+    active: null,
+  },
+] as const);
+
+const refetchYearGroups = vi.hoisted(() => [
+  { key: 'year-group-10', name: 'Year 10' },
+  { key: 'year-group-11', name: 'Year 11' },
+  { key: 'year-group-9', name: 'Year 9' },
+] as const);
+
+// Mock @tanstack/react-query to support Section 6 refetch tests
+// This mock is controlled by mockRefetchEnabled.value flag
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actualModule = (await importOriginal()) as Record<string, unknown>;
+
+  return {
+    ...actualModule,
+    useQuery: vi.fn((options: unknown) => {
+      const options_ = options as { queryKey: Array<unknown> };
+      const isClassPartials = options_.queryKey[0] === 'classPartials';
+      const isYearGroups = options_.queryKey[0] === 'yearGroups';
+
+      if (mockRefetchEnabled.value && isClassPartials) {
+        return {
+          data: [...refetchClassPartials],
+          isFetching: true,
+          isError: false,
+          isLoading: false,
+          isPending: false,
+          error: null,
+          dataUpdatedAt: 0,
+          refetch: vi.fn().mockResolvedValue({ data: [...refetchClassPartials] }),
+        };
+      }
+      if (mockRefetchEnabled.value && isYearGroups) {
+        return {
+          data: [...refetchYearGroups],
+          isFetching: true,
+          isError: false,
+          isLoading: false,
+          isPending: false,
+          error: null,
+          dataUpdatedAt: 0,
+          refetch: vi.fn().mockResolvedValue({ data: [...refetchYearGroups] }),
+        };
+      }
+      // For non-refetch tests, pass through to the actual implementation
+      // This allows other tests to work normally with queryClient.setQueryData()
+       
+      return (actualModule as { useQuery: (options: unknown) => unknown }).useQuery(options);
+    }),
+  };
+});
+
+// Helper to enable refetch mock for Section 6 tests
+/**
+ * Enables the refetch mock for Section 6 tests.
+ */
+function enableRefetchMock(): void {
+  mockRefetchEnabled.value = true;
+}
+
+// Helper to disable refetch mock for Section 6 tests
+/**
+ * Disables the refetch mock for Section 6 tests.
+ */
+function disableRefetchMock(): void {
+  mockRefetchEnabled.value = false;
+}
+
 const {
   getABClassPartialsMock,
   getYearGroupsMock,
@@ -1186,6 +1289,182 @@ describe('ClassesPage', () => {
         expect(cardRegion).not.toHaveClass(/drag/);
         expect(cardRegion).not.toHaveClass(/draggable/);
         expect(cardRegion).not.toHaveClass(/sort/);
+      });
+    });
+
+    // ==========================================================================
+    // Section 6: Harden refresh transitions, accessibility, and narrow-viewport behaviour
+    // ==========================================================================
+
+    describe('Section 6: Refresh transitions and accessibility', () => {
+      const REFRESH_TEXT_PATTERN = /refreshing|updating|loading/i;
+
+      beforeEach(() => {
+        useStartupWarmupStateMock.mockReturnValue(createReadyWarmupState());
+        // Ensure refetch mock is disabled by default
+        disableRefetchMock();
+      });
+
+      afterEach(() => {
+        disableRefetchMock();
+      });
+
+      it('keeps grouped content visible with aria-busy="true" and visible refresh text when trustworthy cache data exists and a deferred refetch is in flight', async () => {
+        // Enable refetch mocking for this test
+        enableRefetchMock();
+
+        const queryClient = createAppQueryClient();
+
+        renderWithFrontendProviders(<ClassesPage />, {
+          queryClient,
+        });
+
+        // Wait for the ready state to render (collapse content should be visible)
+        const collapseRegion = await screen.findByRole('region', { name: /year.*group/i });
+        expect(collapseRegion).toBeInTheDocument();
+
+        // Get the content section - this has aria-label="Classes page content"
+        const contentSection = screen.getByLabelText('Classes page content');
+        expect(contentSection).toBeInTheDocument();
+
+        // The section should have role="region"
+        expect(contentSection).toHaveAttribute('role', 'region');
+
+        // During a background refetch (when isFetching is true), the section should have aria-busy="true"
+        expect(contentSection).toHaveAttribute('aria-busy', 'true');
+
+        // There should be visible refresh text
+        expect(screen.getByText(REFRESH_TEXT_PATTERN)).toBeInTheDocument();
+
+        // Verify the grouped content (collapse) is still visible during refresh
+        expect(collapseRegion).toBeInTheDocument();
+      });
+
+      it('clears busy state without showing initial skeleton again after a successful refetch', async () => {
+        const queryClient = createAppQueryClient();
+        queryClient.setQueryData(queryKeys.classPartials(), [...mockClassPartials]);
+        queryClient.setQueryData(queryKeys.yearGroups(), [...mockYearGroups]);
+
+        renderWithFrontendProviders(<ClassesPage />, {
+          queryClient,
+        });
+
+        // Wait for the ready state to render
+        const collapseRegion = await screen.findByRole('region', { name: /year.*group/i });
+        expect(collapseRegion).toBeInTheDocument();
+
+        const contentSection = screen.getByLabelText('Classes page content');
+
+        // Verify initial state: content is visible
+        expect(contentSection).toBeInTheDocument();
+
+        // Simulate a background refetch completing successfully with new data
+        const updatedClassPartials = [
+          ...mockClassPartials,
+          {
+            classId: 'class-new-1',
+            className: 'New Class',
+            cohortKey: null,
+            courseLength: 1,
+            yearGroupKey: 'year-group-10',
+            classOwner: null,
+            teachers: [],
+            active: null,
+          },
+        ];
+
+        // Update the cache - this simulates a refetch completing
+        queryClient.setQueryData(queryKeys.classPartials(), [...updatedClassPartials]);
+
+        // Wait for re-render
+        await waitFor(() => {
+          // After refetch completes, busy state should be cleared
+          expect(contentSection).not.toHaveAttribute('aria-busy', 'true');
+        });
+
+        // Initial skeleton should NOT be visible after refetch
+        expect(screen.queryByRole('status', { name: /classes page loading/i })).not.toBeInTheDocument();
+
+        // The collapse should still be visible with updated/new content
+        expect(screen.getByRole('region', { name: /year.*group/i })).toBeInTheDocument();
+      });
+
+      it('transitions to blocking alert and suppresses collapse when refetch resolves with invalid or unresolvable grouping data', async () => {
+        const queryClient = createAppQueryClient();
+        queryClient.setQueryData(queryKeys.classPartials(), [...mockClassPartials]);
+        queryClient.setQueryData(queryKeys.yearGroups(), [...mockYearGroups]);
+
+        renderWithFrontendProviders(<ClassesPage />, {
+          queryClient,
+        });
+
+        // Wait for the ready state to render
+        const collapseRegion = await screen.findByRole('region', { name: /year.*group/i });
+        expect(collapseRegion).toBeInTheDocument();
+
+        // Simulate a refetch that returns invalid data (unresolvable yearGroupKey)
+        const invalidClassPartials = [
+          {
+            classId: 'class-invalid-refetch',
+            className: 'Invalid Class',
+            cohortKey: null,
+            courseLength: 1,
+            yearGroupKey: 'year-group-invalid', // This doesn't exist in yearGroups
+            classOwner: null,
+            teachers: [],
+            active: null,
+          },
+        ];
+
+        queryClient.setQueryData(queryKeys.classPartials(), [...invalidClassPartials]);
+
+        // Wait for re-render and model validation
+        await waitFor(() => {
+          // The view model should detect invalid data
+          const modelResult = buildClassesPageModel(invalidClassPartials, mockYearGroups);
+          expect(modelResult).toHaveProperty('type', 'invalidClassesPageData');
+        });
+
+        // The page should show blocking alert
+        const alert = screen.getByRole('alert');
+        expect(alert).toBeInTheDocument();
+        expect(alert).toHaveTextContent(/could not be trusted or loaded/i);
+
+        // Collapse should be suppressed
+        expect(screen.queryByRole('region', { name: /year.*group/i })).not.toBeInTheDocument();
+      });
+
+      it('exposes expected accessible semantics for loading region and busy region', async () => {
+        // Enable refetch mocking for this test
+        enableRefetchMock();
+
+        const queryClient = createAppQueryClient();
+
+        renderWithFrontendProviders(<ClassesPage />, {
+          queryClient,
+        });
+
+        // Wait for the ready state to render
+        const collapseRegion = await screen.findByRole('region', { name: /year.*group/i });
+        expect(collapseRegion).toBeInTheDocument();
+
+        // The content section should exist and be accessible
+        const contentSection = screen.getByLabelText('Classes page content');
+        expect(contentSection).toBeInTheDocument();
+
+        // Check that the section has the correct aria-label
+        expect(contentSection).toHaveAttribute('aria-label', 'Classes page content');
+
+        // During background refresh, the region should have aria-busy="true"
+        expect(contentSection).toHaveAttribute('aria-busy', 'true');
+
+        // There should be a visible status region for refresh feedback
+        const statusRegions = screen.getAllByRole('status');
+        expect(statusRegions.length).toBeGreaterThan(0);
+
+        // At least one status region should have refresh-related text
+        const refreshStatus = screen.getByText(REFRESH_TEXT_PATTERN);
+        expect(refreshStatus).toBeInTheDocument();
       });
     });
   });
