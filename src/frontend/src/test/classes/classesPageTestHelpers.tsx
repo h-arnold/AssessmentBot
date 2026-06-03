@@ -640,3 +640,35 @@ export {
 
 // Export the dummy component to satisfy react-refresh
 export { ClassesPageTestHelpersDummy };
+
+// ============================================================================
+// Plain-object conversion utilities (for E2E test serialisation)
+// ============================================================================
+
+/**
+ * Converts typed ClassPartial fixtures to plain JavaScript objects
+ * suitable for JSON serialisation in E2E test init scripts.
+ *
+ * @param {ClassPartial[]} classPartials - Typed class partials to convert.
+ * @returns {Array<Record<string, unknown>>} Plain objects.
+ */
+export function toPlainClassPartials(
+  classPartials: ClassPartial[]
+): Array<Record<string, unknown>> {
+  return classPartials.map((cp) => ({
+    classId: cp.classId,
+    className: cp.className,
+    cohortKey: cp.cohortKey,
+    courseLength: cp.courseLength,
+    yearGroupKey: cp.yearGroupKey,
+    classOwner: cp.classOwner,
+    teachers: cp.teachers,
+    active: cp.active,
+  }));
+}
+
+// ============================================================================
+// E2E-friendly export aliases (matching legacy naming convention)
+// ============================================================================
+
+

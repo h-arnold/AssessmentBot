@@ -1,5 +1,13 @@
-import type { Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 import type { RuntimeScenario } from '../shared/endToEndRuntimeMocks';
+import {
+  CLASS_PARTIALS_FOR_EMPTY_PANEL,
+  MIXED_ORDER_CLASS_PARTIALS,
+  MIXED_ORDER_YEAR_GROUPS,
+  SINGLE_YEAR_GROUP,
+  YEAR_GROUPS_WITH_EMPTY,
+  toPlainClassPartials,
+} from '../../src/test/classes/classesPageTestHelpers';
 
 // ============================================================================
 // Navigation and UI Constants
@@ -34,7 +42,7 @@ export const backendSettingsFixture = {
 } as const;
 
 // ============================================================================
-// Viewport Constants (Section 6)
+// Viewport Constants
 // ============================================================================
 
 export const MOBILE_VIEWPORT_WIDTH = 375;
@@ -52,7 +60,7 @@ export const MOBILE_CARD_WIDTH_TOLERANCE = 25;
 export const TABLET_CARD_WIDTH_MARGIN = 50;
 
 // ============================================================================
-// Card Count Constants (Section 5 and 6)
+// Card Count Constants
 // ============================================================================
 
 export const EXPECTED_TOTAL_CARDS_COUNT = 4; // 2 in Year 10, 1 in Year 11, 1 in Year 9
@@ -66,193 +74,8 @@ export const CARD_INDEX_SECOND = 1;
 export const CARD_INDEX_THIRD = 2;
 
 // ============================================================================
-// Year Group Fixtures
+// Scenario Factory Helpers
 // ============================================================================
-
-/**
- * Year groups in mixed order (will be sorted alphabetically: Year 10, Year 11, Year 9).
- */
-export const MIXED_ORDER_YEAR_GROUPS = [
-  { key: 'year-group-11', name: 'Year 11' },
-  { key: 'year-group-9', name: 'Year 9' },
-  { key: 'year-group-10', name: 'Year 10' },
-] as const;
-
-/**
- * Class partials belonging to each year group (matching MIXED_ORDER_YEAR_GROUPS).
- */
-export const MIXED_ORDER_CLASS_PARTIALS = [
-  {
-    classId: 'class-math-11a',
-    className: 'Mathematics 11A',
-    cohortKey: null,
-    courseLength: 1,
-    yearGroupKey: 'year-group-11',
-    classOwner: null,
-    teachers: [],
-    active: null,
-  },
-  {
-    classId: 'class-science-9',
-    className: 'Science 9',
-    cohortKey: null,
-    courseLength: 1,
-    yearGroupKey: 'year-group-9',
-    classOwner: null,
-    teachers: [],
-    active: null,
-  },
-  {
-    classId: 'class-math-10a',
-    className: 'Mathematics 10A',
-    cohortKey: null,
-    courseLength: 1,
-    yearGroupKey: 'year-group-10',
-    classOwner: null,
-    teachers: [],
-    active: null,
-  },
-  {
-    classId: 'class-english-10',
-    className: 'English 10',
-    cohortKey: null,
-    courseLength: 1,
-    yearGroupKey: 'year-group-10',
-    classOwner: null,
-    teachers: [],
-    active: null,
-  },
-] as const;
-
-/**
- * Year groups with empty one (Year 9 has no classes).
- */
-export const YEAR_GROUPS_WITH_EMPTY = [
-  { key: 'year-group-9', name: 'Year 9' },
-  { key: 'year-group-10', name: 'Year 10' },
-] as const;
-
-/**
- * Class partials for empty panel test (only classes for Year 10).
- */
-export const CLASS_PARTIALS_FOR_EMPTY_PANEL = [
-  {
-    classId: 'class-math-10a',
-    className: 'Mathematics 10A',
-    cohortKey: null,
-    courseLength: 1,
-    yearGroupKey: 'year-group-10',
-    classOwner: null,
-    teachers: [],
-    active: null,
-  },
-] as const;
-
-// ============================================================================
-// Section 5 Fixtures (Card sorting and rendering)
-// ============================================================================
-
-/**
- * Classes with names that need alphabetical ordering.
- */
-export const ALPHABETICAL_ORDER_CLASSES = [
-  {
-    classId: 'class-math-10b',
-    className: 'Mathematics 10B',
-    cohortKey: null,
-    courseLength: 1,
-    yearGroupKey: 'year-group-10',
-    classOwner: null,
-    teachers: [],
-    active: null,
-  },
-  {
-    classId: 'class-english-10',
-    className: 'English 10',
-    cohortKey: null,
-    courseLength: 1,
-    yearGroupKey: 'year-group-10',
-    classOwner: null,
-    teachers: [],
-    active: null,
-  },
-  {
-    classId: 'class-math-10a',
-    className: 'Mathematics 10A',
-    cohortKey: null,
-    courseLength: 1,
-    yearGroupKey: 'year-group-10',
-    classOwner: null,
-    teachers: [],
-    active: null,
-  },
-] as const;
-
-/**
- * Classes with same name but different IDs for tie-break testing.
- */
-export const TIE_BREAK_CLASSES = [
-  {
-    classId: 'class-b-z',
-    className: 'Z Class',
-    cohortKey: null,
-    courseLength: 1,
-    yearGroupKey: 'year-group-10',
-    classOwner: null,
-    teachers: [],
-    active: null,
-  },
-  {
-    classId: 'class-a-z',
-    className: 'Z Class',
-    cohortKey: null,
-    courseLength: 1,
-    yearGroupKey: 'year-group-10',
-    classOwner: null,
-    teachers: [],
-    active: null,
-  },
-  {
-    classId: 'class-b-a',
-    className: 'A Class',
-    cohortKey: null,
-    courseLength: 1,
-    yearGroupKey: 'year-group-10',
-    classOwner: null,
-    teachers: [],
-    active: null,
-  },
-] as const;
-
-/**
- * Single year group for focused tests.
- */
-export const SINGLE_YEAR_GROUP = [{ key: 'year-group-10', name: 'Year 10' }] as const;
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-/**
- * Returns plain JavaScript objects without TypeScript type annotations for JSON serialization.
- *
- * @param {typeof MIXED_ORDER_CLASS_PARTIALS} classPartials - Class partials to convert.
- * @returns {Array<Record<string, unknown>>} Plain objects.
- */
-export function getPlainClassPartials(
-  classPartials: typeof MIXED_ORDER_CLASS_PARTIALS
-): Array<Record<string, unknown>> {
-  return classPartials.map((cp) => ({
-    classId: cp.classId,
-    className: cp.className,
-    cohortKey: cp.cohortKey,
-    courseLength: cp.courseLength,
-    yearGroupKey: cp.yearGroupKey,
-    classOwner: cp.classOwner,
-    teachers: cp.teachers,
-    active: cp.active,
-  }));
-}
 
 /**
  * Options for creating a Classes page runtime scenario.
@@ -270,7 +93,7 @@ export interface CreateClassesScenarioOptions {
  */
 export function createClassesScenario(options: CreateClassesScenarioOptions = {}): RuntimeScenario {
   const {
-    classPartials = getPlainClassPartials(MIXED_ORDER_CLASS_PARTIALS),
+    classPartials = toPlainClassPartials(MIXED_ORDER_CLASS_PARTIALS),
     yearGroups = MIXED_ORDER_YEAR_GROUPS,
   } = options;
 
@@ -291,63 +114,22 @@ export function createClassesScenario(options: CreateClassesScenarioOptions = {}
  */
 export function createClassesEmptyPanelScenario(): RuntimeScenario {
   return createClassesScenario({
-    classPartials: getPlainClassPartials(CLASS_PARTIALS_FOR_EMPTY_PANEL),
+    classPartials: toPlainClassPartials(CLASS_PARTIALS_FOR_EMPTY_PANEL),
     yearGroups: YEAR_GROUPS_WITH_EMPTY,
   });
 }
 
 /**
- * Creates a runtime scenario for alphabetical order test.
+ * Creates a runtime scenario for class-card ordering tests
+ * (alphabetical order or tie-break order).
  *
+ * @param {Array<Record<string, unknown>>} classPartials - Plain class partials to use.
  * @returns {RuntimeScenario} Runtime scenario.
  */
-export function createClassesAlphabeticalOrderScenario(): RuntimeScenario {
-  const plainClasses = ALPHABETICAL_ORDER_CLASSES.map((cp) => ({
-    classId: cp.classId,
-    className: cp.className,
-    cohortKey: cp.cohortKey,
-    courseLength: cp.courseLength,
-    yearGroupKey: cp.yearGroupKey,
-    classOwner: cp.classOwner,
-    teachers: cp.teachers,
-    active: cp.active,
-  }));
-
-  return {
-    getAuthorisationStatus: [{ kind: 'success', data: true }],
-    getABClassPartials: [{ kind: 'success', data: plainClasses }],
-    getCohorts: [{ kind: 'success', data: [] }],
-    getYearGroups: [{ kind: 'success', data: SINGLE_YEAR_GROUP }],
-    getAssignmentTopics: [{ kind: 'success', data: [] }],
-    getAssignmentDefinitionPartials: [{ kind: 'success', data: [] }],
-  };
-}
-
-/**
- * Creates a runtime scenario for tie-break order test.
- *
- * @returns {RuntimeScenario} Runtime scenario.
- */
-export function createClassesTieBreakOrderScenario(): RuntimeScenario {
-  const plainClasses = TIE_BREAK_CLASSES.map((cp) => ({
-    classId: cp.classId,
-    className: cp.className,
-    cohortKey: cp.cohortKey,
-    courseLength: cp.courseLength,
-    yearGroupKey: cp.yearGroupKey,
-    classOwner: cp.classOwner,
-    teachers: cp.teachers,
-    active: cp.active,
-  }));
-
-  return {
-    getAuthorisationStatus: [{ kind: 'success', data: true }],
-    getABClassPartials: [{ kind: 'success', data: plainClasses }],
-    getCohorts: [{ kind: 'success', data: [] }],
-    getYearGroups: [{ kind: 'success', data: SINGLE_YEAR_GROUP }],
-    getAssignmentTopics: [{ kind: 'success', data: [] }],
-    getAssignmentDefinitionPartials: [{ kind: 'success', data: [] }],
-  };
+export function createClassesOrderScenario(
+  classPartials: Array<Record<string, unknown>>
+): RuntimeScenario {
+  return createClassesScenario({ classPartials, yearGroups: SINGLE_YEAR_GROUP });
 }
 
 // ============================================================================
@@ -425,3 +207,18 @@ export function getYearGroupCollapseHeader(
 ): ReturnType<typeof page.locator> {
   return page.locator('.ant-collapse-header').filter({ hasText: yearGroupName });
 }
+
+// ============================================================================
+// Re-exports from canonical test helpers
+// ============================================================================
+
+export {
+  ALPHABETICAL_ORDER_CLASS_PARTIALS,
+  TIE_BREAK_CLASS_PARTIALS,
+  CLASS_PARTIALS_FOR_EMPTY_PANEL,
+  MIXED_ORDER_CLASS_PARTIALS,
+  MIXED_ORDER_YEAR_GROUPS,
+  SINGLE_YEAR_GROUP,
+  YEAR_GROUPS_WITH_EMPTY,
+  toPlainClassPartials,
+} from '../../src/test/classes/classesPageTestHelpers';
