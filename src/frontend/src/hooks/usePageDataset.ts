@@ -80,12 +80,13 @@ export function computePageDatasetState(
 /**
  * Decides whether a single dataset should block the page surface.
  *
- * Decision tree (from SPEC.md, including the recovered-path carve-out):
+ * Decision tree (from SPEC.md):
  *
  * 1. **Failed and cannot display**: the dataset has failed AND there is no query
  *    data OR the query itself is errored → **block**.
- * 2. **Untrustworthy without recovery**: the dataset is not trustworthy AND it is
- *    not the recovered case (failed but has data and no query error) → **block**.
+ * 2. **Untrustworthy but marked ready**: the dataset is not trustworthy AND the
+ *    warm-up state reports it as ready → **block**.  Datasets that are loading
+ *    (neither ready nor failed) do not block here — they show a skeleton instead.
  * 3. **Ready but errored**: the dataset is ready but the query is in an error
  *    state → **block**.
  * 4. Otherwise → **do not block** (the surface can render with usable data).
@@ -98,18 +99,19 @@ export function computePageSurfaceBlocking(datasetState: PageDatasetState): bool
   const { hasQueryData, isQueryError, isDatasetFailed, isDatasetReady, isDatasetTrustworthy } =
     datasetState;
 
-  // 1. Dataset failed and (no query data OR query errored) → block
-  const failedAndCannotDisplay = isDatasetFailed && (!hasQueryData || isQueryError);
+  // 1. Dataset failed and cannot display (no data or query errored) → block
+  if (isDatasetFailed && (!hasQueryData || isQueryError)) {
+    return true;
+  }
 
-  // 2. Untrustworthy AND NOT the recovered case (failed + has data + no error) → block
-  const isRecovered = isDatasetFailed && hasQueryData && !isQueryError;
-  const untrustworthyWithoutRecovery = !isDatasetTrustworthy && !isRecovered;
+  // 2. Ready but untrustworthy (and not the recovered case) → block
+  //    (Note: recovered means failed + has data + no query error — already handled above)
+  if (!isDatasetTrustworthy && isDatasetReady) {
+    return true;
+  }
 
   // 3. Ready and the query is errored → block
-  const readyButErrored = isDatasetReady && isQueryError;
-
-  // 4. Otherwise → do not block
-  return [failedAndCannotDisplay, untrustworthyWithoutRecovery, readyButErrored].includes(true);
+  return isDatasetReady && isQueryError;
 }
 
 /**

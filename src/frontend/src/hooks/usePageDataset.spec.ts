@@ -256,12 +256,12 @@ describe('computePageSurfaceBlocking', () => {
     expect(computePageSurfaceBlocking(datasetState)).toBe(true);
   });
 
-  it('blocks when the dataset is untrustworthy', () => {
+  it('blocks when the dataset is ready but untrustworthy', () => {
     const datasetState: PageDatasetState = {
       hasQueryData: true,
       isQueryError: false,
       isDatasetFailed: false,
-      isDatasetReady: false,
+      isDatasetReady: true,
       isDatasetTrustworthy: false,
       hasTrustworthyDataset: false,
     };

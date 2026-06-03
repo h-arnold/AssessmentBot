@@ -14,8 +14,8 @@ function createMockQueryClient(): {
   invalidateQueriesMock: ReturnType<typeof vi.fn>;
   refetchQueriesMock: ReturnType<typeof vi.fn>;
 } {
-  const invalidateQueriesMock = vi.fn().mockResolvedValue(undefined);
-  const refetchQueriesMock = vi.fn().mockResolvedValue(undefined);
+  const invalidateQueriesMock = vi.fn();
+  const refetchQueriesMock = vi.fn();
 
   const queryClient = {
     invalidateQueries: invalidateQueriesMock,

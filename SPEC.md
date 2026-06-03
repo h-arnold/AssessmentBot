@@ -224,7 +224,7 @@ From `UseQueryResult<TData>`, `StartupWarmupContextValue`, and `StartupWarmupDat
 A dataset should block when:
 
 - `isDatasetFailed` AND (`!hasQueryData` OR `isQueryError`) → block
-- `!isDatasetTrustworthy` AND NOT (`isDatasetFailed` AND `hasQueryData` AND `!isQueryError`) → block
+- `!isDatasetTrustworthy` AND `isDatasetReady` → block
 - `isDatasetReady` AND `isQueryError` → block
 - otherwise → do not block
 

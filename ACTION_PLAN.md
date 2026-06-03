@@ -652,9 +652,9 @@ None — the page's internal `getClassesSurfaceState` should retain existing JSD
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
-- **Follow-up implications for later sections:**
+- **Implementation notes:** Completed. Replaced inline `useQuery` + dataset-state boilerplate with `usePageDataset<ClassPartial[]>('classPartials')` and `usePageDataset<YearGroup[]>('yearGroups')`. Removed 5 local functions (`shouldBlockSingleDataset`, `shouldRenderClassesBlockingState`, `hasRecoveredDataset`, `isDatasetRenderable`, `computeClassesSurfaceBusy`). Updated `getClassesSurfaceState` to use shared helpers. `computePageSurfaceBlocking` condition 2 now guards with `isDatasetReady` to prevent loading-state datasets from incorrectly blocking. All 33 ClassesPage tests pass unchanged (zero assertion modifications). SPEC.md blocking rule updated to `!isDatasetTrustworthy AND isDatasetReady → block`.
+- **Deviations from plan:** `computePageSurfaceBlocking` rule refined during implementation — the `!isDatasetTrustworthy` condition needed `isDatasetReady` guard to avoid incorrectly blocking loading/unresolved datasets (which should show skeleton, not Alert). The recovered-path carve-out was removed as unnecessary — when a dataset is not trustworthy AND not ready, it's in loading state and shouldn't block.
+- **Follow-up implications for later sections:** Section 7 (AssignmentsPage) uses the same helpers with the corrected blocking logic.
 
 ---
 
