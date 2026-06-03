@@ -21,6 +21,7 @@ const CLASSES_REFRESH_TEXT = 'Refreshing...';
 
 const CLASSES_CARD_WIDTH_PX = 268;
 const CLASSES_CARD_GAP_PX = 16;
+const MIN_PANEL_WIDTH_PX = CLASSES_CARD_WIDTH_PX + 2 * CLASSES_CARD_GAP_PX; // 300px
 
 /**
  * Returns whether a single dataset should block.
@@ -219,8 +220,10 @@ function isModelEmpty(
 function renderYearGroupCollapse(viewModel: ClassesPagePanelViewModel): JSX.Element {
   const { panels, defaultExpandedPanelKeys } = viewModel;
 
+  const isMobile = window.innerWidth <= 768;
+
   return (
-    <section aria-label="year group panels">
+    <section aria-label="year group panels" style={{ minWidth: isMobile ? `${MIN_PANEL_WIDTH_PX}px` : 'auto' }}>
       <Collapse defaultActiveKey={defaultExpandedPanelKeys}>
         {panels.map((panel) => {
           const headerId = `panel-header-${panel.yearGroupKey}`;
