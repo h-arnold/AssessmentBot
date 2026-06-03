@@ -76,10 +76,10 @@ function validateClassTrust(
   classPartial: ClassPartial,
   yearGroupKeySet: Set<string>
 ): string | null {
-  if (classPartial.className === null) {
+  if (classPartial.className == null) {
     return classPartial.classId;
   }
-  if (classPartial.yearGroupKey === null) {
+  if (classPartial.yearGroupKey == null) {
     return classPartial.classId;
   }
   if (!yearGroupKeySet.has(classPartial.yearGroupKey)) {
