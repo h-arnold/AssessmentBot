@@ -1328,8 +1328,8 @@ describe('ClassesPage', () => {
         const contentSection = screen.getByLabelText('Classes page content');
         expect(contentSection).toBeInTheDocument();
 
-        // The section should have role="region"
-        expect(contentSection).toHaveAttribute('role', 'region');
+        // The section element has implicit role="region"
+        expect(contentSection.tagName).toBe('SECTION');
 
         // During a background refetch (when isFetching is true), the section should have aria-busy="true"
         expect(contentSection).toHaveAttribute('aria-busy', 'true');

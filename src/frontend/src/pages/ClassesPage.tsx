@@ -205,7 +205,7 @@ function renderYearGroupCollapse(viewModel: ClassesPagePanelViewModel): JSX.Elem
   const { panels, defaultExpandedPanelKeys } = viewModel;
 
   return (
-    <div role="region" aria-label="year group panels">
+    <section aria-label="year group panels">
       <Collapse defaultActiveKey={defaultExpandedPanelKeys}>
         {panels.map((panel) => {
           const headerId = `panel-header-${panel.yearGroupKey}`;
@@ -221,9 +221,8 @@ function renderYearGroupCollapse(viewModel: ClassesPagePanelViewModel): JSX.Elem
               }
               forceRender
             >
-              <div
+              <section
                 id={contentId}
-                role="region"
                 aria-label={panel.yearGroupLabel}
                 aria-labelledby={headerId}
               >
@@ -261,12 +260,12 @@ function renderYearGroupCollapse(viewModel: ClassesPagePanelViewModel): JSX.Elem
                     <Empty description="No classes" />
                   </Card>
                 )}
-              </div>
+              </section>
             </Collapse.Panel>
           );
         })}
       </Collapse>
-    </div>
+    </section>
   );
 }
 
@@ -430,7 +429,6 @@ export function ClassesPage() {
       summary={pageContent.classes.summary}
     >
       <section
-        role="region"
         aria-label="Classes page content"
         aria-busy={isClassesSurfaceBusy ? 'true' : undefined}
       >

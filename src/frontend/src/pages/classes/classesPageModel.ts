@@ -114,7 +114,12 @@ function sortYearGroups(yearGroups: YearGroup[]): YearGroup[] {
  */
 function sortClassPartials(classPartials: ClassPartial[]): ClassPartial[] {
   return classPartials.toSorted((a, b) => {
-    const nameComparison = compareStringsLocally(a.className!, b.className!);
+    const classNameA = a.className;
+    const classNameB = b.className;
+    if (classNameA === null || classNameB === null) {
+      return 0;
+    }
+    const nameComparison = compareStringsLocally(classNameA, classNameB);
     if (nameComparison !== 0) {
       return nameComparison;
     }
