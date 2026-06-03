@@ -319,8 +319,8 @@ New unit tests in `src/frontend/src/hooks/usePageDataset.spec.ts`:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
+- **Implementation notes:** Completed. Created `src/frontend/src/hooks/usePageDataset.ts` with four pure helper functions and `PageDatasetState` type (148 lines). All 25 unit tests pass. SPEC.md blocking rule updated with recovered-path carve-out (`!isDatasetTrustworthy AND NOT (isDatasetFailed AND hasQueryData AND !isQueryError) → block`). Functions exported as function declarations, British English JSDoc.
+- **Deviations from plan:** SPEC.md `computePageSurfaceBlocking` rule refined — rule 2 (`isDatasetReady && !isDatasetTrustworthy → block`) was unreachable (warmup state's `isDatasetReady` already checks `isTrustworthy`). Updated to `!isDatasetTrustworthy → block` with recovered-path carve-out to correctly handle untrustworthy-not-ready state while preserving recovered-after-failure rendering.
 - **Follow-up implications for later sections:** Section 3 (`usePageDataset`) directly imports and uses these helpers.
 
 ---
