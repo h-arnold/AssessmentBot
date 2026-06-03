@@ -540,6 +540,8 @@ Frontend e2e tests:
 - **Implementation notes:** keep the collapse item-building logic driven by the page-local model rather than re-sorting in render.
 - **Deviations from plan:** document any Ant Design component behaviour that requires a minor wording or selector adjustment.
 - **Follow-up implications for later sections:** the card section should assume the panel contract is stable and should not change expansion ownership.
+- **Completion status:** ✅ Section 4 COMPLETE - All acceptance criteria met. Red phase: 4 component tests + 5 e2e tests created and reviewed clean. Green phase: Ant Design Collapse implementation with items prop, proper accessibility, defaultActiveKey, multi-expand mode, in-panel empty states. All 12 component tests pass, all 12 e2e tests pass, lint clean, code review PASS with 4 nitpicks fixed (deprecation warning, type assertion commented, View/Edit as disabled Buttons, unused variable removed). Regression gate passed with 0 new regressions.
+- **Files modified:** `src/frontend/src/pages/ClassesPage.tsx` (implementation), `src/frontend/src/pages/ClassesPage.spec.tsx` (component tests), `src/frontend/e2e-tests/classes-page.spec.ts` (e2e tests)
 
 ---
 

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Empty, Skeleton } from 'antd';
-import { useMemo } from 'react';
+import { Alert, Button, Card, Collapse, Empty, Skeleton, Space, Typography } from 'antd';
+import { type JSX, useMemo } from 'react';
 import { useStartupWarmupState } from '../features/auth/startupWarmupState';
 import { getClassPartialsQueryOptions, getYearGroupsQueryOptions } from '../query/sharedQueries';
 import { buildClassesPageModel, type InvalidClassesPageDataViewModel } from './classes/classesPageModel';
@@ -191,9 +191,104 @@ function isModelEmpty(modelResult: unknown): boolean {
 }
 
 /**
+ * Renders the year-group collapse with class cards.
+ *
+ * @param {Readonly<{ panels: Array<{ yearGroupKey: string; yearGroupLabel: string; classes: Array<{ classId: string; className: string; yearGroupKey: string; yearGroupLabel: string; }>; }>; defaultExpandedPanelKeys: string[]; }>} viewModel The view model with panels and default expanded keys.
+ * @returns {JSX.Element} The rendered collapse.
+ */
+function renderYearGroupCollapse(
+  viewModel: Readonly<{
+    panels: ReadonlyArray<{
+      yearGroupKey: string;
+      yearGroupLabel: string;
+      classes: ReadonlyArray<{
+        classId: string;
+        className: string;
+        yearGroupKey: string;
+        yearGroupLabel: string;
+      }>;
+    }>;
+    defaultExpandedPanelKeys: ReadonlyArray<string>;
+  }>
+): JSX.Element {
+  const { panels, defaultExpandedPanelKeys } = viewModel;
+
+  return (
+    <div role="region" aria-label="year group panels">
+      {/*
+       * Ant Design v6 Collapse: type assertion required because the library expects
+       * mutable string[] for defaultActiveKey, but defaultExpandedPanelKeys is ReadonlyArray<string>.
+       * This is a safe cast as the values are only read by the component.
+       */}
+      <Collapse
+        defaultActiveKey={defaultExpandedPanelKeys as string[]}
+        items={panels.map((panel) => {
+          const headerId = `panel-header-${panel.yearGroupKey}`;
+          const contentId = `panel-content-${panel.yearGroupKey}`;
+
+          return {
+            key: panel.yearGroupKey,
+            label: (
+              <Typography.Title level={3} id={headerId}>
+                {panel.yearGroupLabel}
+              </Typography.Title>
+            ),
+            children: (
+              <div
+                id={contentId}
+                role="region"
+                aria-label={panel.yearGroupLabel}
+                aria-labelledby={headerId}
+                aria-expanded={defaultExpandedPanelKeys.includes(panel.yearGroupKey)}
+              >
+                {panel.classes.length > 0 ? (
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '16px',
+                      marginTop: '16px',
+                    }}
+                  >
+                    {panel.classes.map((card) => (
+                      <Card
+                        role="article"
+                        aria-label={card.className}
+                        key={card.classId}
+                        size="small"
+                        title={card.className}
+                        style={{ flex: '1', minWidth: '250px' }}
+                      >
+                        <Space wrap>
+                          <Button disabled type="text">
+                            View
+                          </Button>
+                          <Button disabled type="text">
+                            Edit
+                          </Button>
+                        </Space>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <Card style={{ marginTop: '16px' }}>
+                    <Empty description="No classes" />
+                  </Card>
+                )}
+              </div>
+            ),
+            forceRender: true,
+          };
+        })}
+      />
+    </div>
+  );
+}
+
+/**
  * Renders the content based on the current state.
  *
- * @param {Readonly<{ finalShouldRenderBlockingState: boolean; shouldRenderLoadingState: boolean; shouldRenderEmptyState: boolean; }>} properties Render properties.
+ * @param {Readonly<{ finalShouldRenderBlockingState: boolean; shouldRenderLoadingState: boolean; shouldRenderEmptyState: boolean; viewModel: unknown; }>} properties Render properties.
  * @returns {JSX.Element} The rendered content.
  */
 function renderClassesContent(
@@ -201,6 +296,7 @@ function renderClassesContent(
     finalShouldRenderBlockingState: boolean;
     shouldRenderLoadingState: boolean;
     shouldRenderEmptyState: boolean;
+    viewModel: unknown;
   }>
 ): JSX.Element {
   if (properties.finalShouldRenderBlockingState) {
@@ -219,11 +315,21 @@ function renderClassesContent(
     return <Empty description={CLASSES_PAGE_EMPTY_DESCRIPTION} />;
   }
 
-  return (
-    <div role="region" aria-label="Year group panels">
-      {/* Placeholder for Section 4 implementation */}
-    </div>
-  );
+  // viewModel must be ClassesPagePanelViewModel at this point
+  const viewModel = properties.viewModel as {
+    panels: ReadonlyArray<{
+      yearGroupKey: string;
+      yearGroupLabel: string;
+      classes: ReadonlyArray<{
+        classId: string;
+        className: string;
+        yearGroupKey: string;
+        yearGroupLabel: string;
+      }>;
+    }>;
+    defaultExpandedPanelKeys: ReadonlyArray<string>;
+  };
+  return renderYearGroupCollapse(viewModel);
 }
 
 
@@ -351,6 +457,7 @@ export function ClassesPage() {
           finalShouldRenderBlockingState,
           shouldRenderLoadingState,
           shouldRenderEmptyState,
+          viewModel: modelResult,
         })}
       </section>
     </PageSection>

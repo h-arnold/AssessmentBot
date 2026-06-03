@@ -1,5 +1,6 @@
 /**
  * ClassesPage component tests - Section 3: Owned-surface loading, blocking, and page-empty states
+ * Section 4 Red: Year-group collapse behaviour tests (failing until implementation is complete)
  *
  * Mandatory Reading (Files read):
  * - AGENTS.md
@@ -16,6 +17,8 @@
  * - src/frontend/src/query/queryClient.ts
  * - src/frontend/src/test/renderWithFrontendProviders.tsx
  * - src/frontend/e2e-tests/shared/endToEndRuntimeMocks.ts
+ * - src/frontend/src/pages/PageSection.tsx
+ * - src/frontend/src/pages/classes/classesPageModel.ts
  */
 
 import { screen, waitFor } from '@testing-library/react';
@@ -631,6 +634,245 @@ describe('ClassesPage', () => {
 
         // Collapse should not be visible
         expect(screen.queryByRole('region', { name: /year.*group/i })).not.toBeInTheDocument();
+      });
+    });
+
+    describe('Section 4: Year-group collapse behaviour', () => {
+      // Constants for expected counts
+      const EXPECTED_PANEL_COUNT = 3;
+      const EXPECTED_DEFAULT_EXPANDED_COUNT = 1;
+      const EXPECTED_YEAR_10_CLASSES_COUNT = 2;
+      const EXPECTED_YEAR_11_CLASSES_COUNT = 1;
+      const EXPECTED_YEAR_9_CLASSES_COUNT = 1;
+      const EXPECTED_PANELS_WITH_EMPTY_COUNT = 2;
+
+      // Fixture with mixed year group ordering to verify alphabetical sort
+      const mixedOrderYearGroups: YearGroup[] = [
+        { key: 'year-group-11', name: 'Year 11' },
+        { key: 'year-group-9', name: 'Year 9' },
+        { key: 'year-group-10', name: 'Year 10' },
+      ] as const;
+
+      const mixedOrderClassPartials: ClassPartial[] = [
+        {
+          classId: 'class-math-11a',
+          className: 'Mathematics 11A',
+          cohortKey: null,
+          courseLength: 1,
+          yearGroupKey: 'year-group-11',
+          classOwner: null,
+          teachers: [],
+          active: null,
+        },
+        {
+          classId: 'class-science-9',
+          className: 'Science 9',
+          cohortKey: null,
+          courseLength: 1,
+          yearGroupKey: 'year-group-9',
+          classOwner: null,
+          teachers: [],
+          active: null,
+        },
+        {
+          classId: 'class-math-10a',
+          className: 'Mathematics 10A',
+          cohortKey: null,
+          courseLength: 1,
+          yearGroupKey: 'year-group-10',
+          classOwner: null,
+          teachers: [],
+          active: null,
+        },
+        {
+          classId: 'class-english-10',
+          className: 'English 10',
+          cohortKey: null,
+          courseLength: 1,
+          yearGroupKey: 'year-group-10',
+          classOwner: null,
+          teachers: [],
+          active: null,
+        },
+      ] as const;
+
+      // Fixture with an empty year group (Year 9 has no classes)
+      const yearGroupsWithEmpty: YearGroup[] = [
+        { key: 'year-group-9', name: 'Year 9' },
+        { key: 'year-group-10', name: 'Year 10' },
+      ] as const;
+
+      const classPartialsForEmptyPanel: ClassPartial[] = [
+        {
+          classId: 'class-math-10a',
+          className: 'Mathematics 10A',
+          cohortKey: null,
+          courseLength: 1,
+          yearGroupKey: 'year-group-10',
+          classOwner: null,
+          teachers: [],
+          active: null,
+        },
+      ] as const;
+
+      beforeEach(() => {
+        useStartupWarmupStateMock.mockReturnValue(createReadyWarmupState());
+      });
+
+      it('verifies panel header order from a mixed year-group fixture', () => {
+        // Pre-populate the query client cache BEFORE rendering
+        const queryClient = createAppQueryClient();
+        queryClient.setQueryData(queryKeys.classPartials(), [...mixedOrderClassPartials]);
+        queryClient.setQueryData(queryKeys.yearGroups(), [...mixedOrderYearGroups]);
+
+        renderWithFrontendProviders(<ClassesPage />, {
+          queryClient,
+        });
+
+        // The view model should sort year groups alphabetically by name
+        const modelResult = buildClassesPageModel(mixedOrderClassPartials, mixedOrderYearGroups);
+        expect(modelResult).not.toHaveProperty('type');
+        expect((modelResult as { panels: unknown[] }).panels).toHaveLength(EXPECTED_PANEL_COUNT);
+
+        // Expected alphabetical order: Year 10, Year 11, Year 9
+        const panels = modelResult as { panels: { yearGroupKey: string; yearGroupLabel: string }[] };
+        expect(panels.panels[0].yearGroupLabel).toBe('Year 10');
+        expect(panels.panels[1].yearGroupLabel).toBe('Year 11');
+        expect(panels.panels[2].yearGroupLabel).toBe('Year 9');
+
+        // These tests will fail until the collapse implementation is complete
+        // Assert that collapse headers render in the correct alphabetical order
+        const collapseRegion = screen.getByRole('region', { name: /year.*group/i });
+        expect(collapseRegion).toBeInTheDocument();
+
+        // Find all collapse panel headers - they should be in alphabetical order
+        // This will fail until Ant Design Collapse is implemented with proper panel headers
+        const panelHeaders = screen.getAllByRole('heading', { level: 3 });
+        expect(panelHeaders).toHaveLength(EXPECTED_PANEL_COUNT);
+        expect(panelHeaders[0]).toHaveTextContent('Year 10');
+        expect(panelHeaders[1]).toHaveTextContent('Year 11');
+        expect(panelHeaders[2]).toHaveTextContent('Year 9');
+      });
+
+      it('verifies the first alphabetical panel is open on first ready render', () => {
+        // Pre-populate the query client cache BEFORE rendering
+        const queryClient = createAppQueryClient();
+        queryClient.setQueryData(queryKeys.classPartials(), [...mixedOrderClassPartials]);
+        queryClient.setQueryData(queryKeys.yearGroups(), [...mixedOrderYearGroups]);
+
+        renderWithFrontendProviders(<ClassesPage />, {
+          queryClient,
+        });
+
+        // The view model should have the first alphabetical panel as default expanded
+        const modelResult = buildClassesPageModel(mixedOrderClassPartials, mixedOrderYearGroups);
+        expect(modelResult).not.toHaveProperty('type');
+
+        const viewModel = modelResult as { panels: unknown[]; defaultExpandedPanelKeys: string[] };
+        expect(viewModel.defaultExpandedPanelKeys).toHaveLength(EXPECTED_DEFAULT_EXPANDED_COUNT);
+        // First alphabetical is Year 10
+        expect(viewModel.defaultExpandedPanelKeys[0]).toBe('year-group-10');
+
+        // This will fail until the collapse implementation uses defaultActiveKey
+        // Assert that the first panel body is visible (expanded)
+        const collapseRegion = screen.getByRole('region', { name: /year.*group/i });
+        expect(collapseRegion).toBeInTheDocument();
+
+        // The first panel (Year 10) should have its content visible
+        // This will fail until the collapse is implemented with proper defaultActiveKey
+        const year10Panel = screen.getByRole('region', { name: /year 10/i });
+        expect(year10Panel).toBeInTheDocument();
+        expect(year10Panel).toHaveAttribute('aria-expanded', 'true');
+      });
+
+      it('verifies an empty year-group panel shows its own empty presentation', () => {
+        // Pre-populate the query client cache BEFORE rendering
+        const queryClient = createAppQueryClient();
+        queryClient.setQueryData(queryKeys.classPartials(), [...classPartialsForEmptyPanel]);
+        queryClient.setQueryData(queryKeys.yearGroups(), [...yearGroupsWithEmpty]);
+
+        renderWithFrontendProviders(<ClassesPage />, {
+          queryClient,
+        });
+
+        // The view model should create panels for all year groups, even empty ones
+        const modelResult = buildClassesPageModel(classPartialsForEmptyPanel, yearGroupsWithEmpty);
+        expect(modelResult).not.toHaveProperty('type');
+
+        const viewModel = modelResult as { panels: { yearGroupKey: string; classes: unknown[] }[] };
+        expect(viewModel.panels).toHaveLength(EXPECTED_PANELS_WITH_EMPTY_COUNT);
+
+        // Year 9 panel should have no classes
+        const year9Panel = viewModel.panels.find((p) => p.yearGroupKey === 'year-group-9');
+        expect(year9Panel).toBeDefined();
+        expect(year9Panel?.classes).toHaveLength(0);
+
+        // This will fail until the in-panel empty presentation is implemented
+        // Assert that the empty year group panel shows in-panel empty message
+        const collapseRegion = screen.getByRole('region', { name: /year.*group/i });
+        expect(collapseRegion).toBeInTheDocument();
+
+        // The Year 9 panel should show an empty message within its body
+        // This will fail until Card-based empty state is implemented
+        const year9PanelRegion = screen.getByRole('region', { name: /year 9/i });
+        expect(year9PanelRegion).toBeInTheDocument();
+        expect(year9PanelRegion).toHaveTextContent(/no classes/i);
+      });
+
+      it('verifies cards only render under their matching year-group panel', () => {
+        // Pre-populate the query client cache BEFORE rendering
+        const queryClient = createAppQueryClient();
+        queryClient.setQueryData(queryKeys.classPartials(), [...mixedOrderClassPartials]);
+        queryClient.setQueryData(queryKeys.yearGroups(), [...mixedOrderYearGroups]);
+
+        renderWithFrontendProviders(<ClassesPage />, {
+          queryClient,
+        });
+
+        // The view model should group classes by their yearGroupKey
+        const modelResult = buildClassesPageModel(mixedOrderClassPartials, mixedOrderYearGroups);
+        expect(modelResult).not.toHaveProperty('type');
+
+        const viewModel = modelResult as {
+          panels: { yearGroupKey: string; classes: { classId: string; className: string }[] }[]
+        };
+
+        // Verify panel structure from view model
+        const year10Panel = viewModel.panels.find((p) => p.yearGroupKey === 'year-group-10');
+        expect(year10Panel).toBeDefined();
+        expect(year10Panel?.classes).toHaveLength(EXPECTED_YEAR_10_CLASSES_COUNT);
+
+        const year11Panel = viewModel.panels.find((p) => p.yearGroupKey === 'year-group-11');
+        expect(year11Panel).toBeDefined();
+        expect(year11Panel?.classes).toHaveLength(EXPECTED_YEAR_11_CLASSES_COUNT);
+
+        const year9Panel = viewModel.panels.find((p) => p.yearGroupKey === 'year-group-9');
+        expect(year9Panel).toBeDefined();
+        expect(year9Panel?.classes).toHaveLength(EXPECTED_YEAR_9_CLASSES_COUNT);
+
+        // This will fail until the collapse with cards is implemented
+        const collapseRegion = screen.getByRole('region', { name: /year.*group/i });
+        expect(collapseRegion).toBeInTheDocument();
+
+        // Find all class cards
+        const math10ACard = screen.getByRole('article', { name: /mathematics 10a/i });
+        expect(math10ACard).toBeInTheDocument();
+
+        const science9Card = screen.getByRole('article', { name: /science 9/i });
+        expect(science9Card).toBeInTheDocument();
+
+        const math11ACard = screen.getByRole('article', { name: /mathematics 11a/i });
+        expect(math11ACard).toBeInTheDocument();
+
+        // Verify card-to-panel association
+        const year10PanelRegion = screen.getByRole('region', { name: /year 10/i });
+        expect(year10PanelRegion).toContainElement(math10ACard);
+
+        const year11PanelRegion = screen.getByRole('region', { name: /year 11/i });
+        expect(year11PanelRegion).toContainElement(math11ACard);
+
+        const year9PanelRegion = screen.getByRole('region', { name: /year 9/i });
+        expect(year9PanelRegion).toContainElement(science9Card);
       });
     });
   });
