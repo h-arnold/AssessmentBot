@@ -6,7 +6,6 @@
  */
 // eslint-disable-next-line unicorn/no-static-only-class
 class ArrayUtils {
-  static ITEM_NOT_FOUND_INDEX = -1;
   /**
    * Finds the index of the first item in an array matching the given predicate.
    * @param {Array} items - The array to search

@@ -4,6 +4,7 @@
 // global in tests/setupGlobals.js. DO NOT REMOVE this global declaration or the
 // dependency will break in both environments.
 /* global ArrayUtils */
+/* gl
 
 /**
  * ABClass
@@ -164,7 +165,7 @@ class ABClass {
    */
   removeTeacher(predicate) {
     const index = ArrayUtils.findIndexWithPredicate(this.teachers, predicate);
-    if (index === ArrayUtils.ITEM_NOT_FOUND_INDEX) return null;
+    if (index === ITEM_NOT_FOUND_INDEX) return null;
     return this.teachers.splice(index, 1)[0];
   }
 
@@ -196,7 +197,7 @@ class ABClass {
    */
   removeStudent(predicate) {
     const index = ArrayUtils.findIndexWithPredicate(this.students, predicate);
-    if (index === ArrayUtils.ITEM_NOT_FOUND_INDEX) return null;
+    if (index === ITEM_NOT_FOUND_INDEX) return null;
     return this.students.splice(index, 1)[0];
   }
 
@@ -228,7 +229,7 @@ class ABClass {
    */
   removeAssignment(predicate) {
     const index = ArrayUtils.findIndexWithPredicate(this.assignments, predicate);
-    if (index === ArrayUtils.ITEM_NOT_FOUND_INDEX) return null;
+    if (index === ITEM_NOT_FOUND_INDEX) return null;
     return this.assignments.splice(index, 1)[0];
   }
 
