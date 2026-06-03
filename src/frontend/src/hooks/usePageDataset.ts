@@ -1,4 +1,7 @@
+import { useQuery, type UseQueryOptions, type UseQueryResult } from '@tanstack/react-query';
 import type { StartupWarmupDatasetKey } from '../query/sharedQueries';
+import { useStartupWarmupState } from '../features/auth/startupWarmupState';
+import { getStartupWarmupQueryOptions } from '../query/sharedQueries';
 
 /**
  * Per-dataset derived state used by page surface-state helpers.
@@ -19,6 +22,16 @@ export type PageDatasetState = Readonly<{
   isDatasetTrustworthy: boolean;
   /** Convenience flag: the dataset is both ready and trustworthy. */
   hasTrustworthyDataset: boolean;
+}>;
+
+/**
+ * Hook return type for a single warm-up-backed page dataset.
+ *
+ * @template TData The type of the query data payload.
+ */
+type PageDatasetResult<TData> = Readonly<{
+  query: UseQueryResult<TData>;
+  datasetState: PageDatasetState;
 }>;
 
 /**
@@ -144,4 +157,34 @@ export function computePageSurfaceBusy(
   mutationFlags: readonly boolean[]
 ): boolean {
   return fetchFlags.some(Boolean) || mutationFlags.some(Boolean);
+}
+
+/**
+ * React Query hook that provides a typed query result and derived dataset state
+ * for a startup warm-up dataset.
+ *
+ * The query is enabled when the dataset is ready OR has failed. Enabling on
+ * failure is required so refetchQueries() can retry after a warmup failure —
+ * disabled queries cannot be refetched in React Query v5. The blocking state
+ * still protects the UI while the dataset is untrustworthy.
+ *
+ * @template TData Type of the query data payload.
+ * @param {StartupWarmupDatasetKey} datasetKey The startup warm-up dataset key.
+ * @returns {PageDatasetResult<TData>} Query result and derived dataset state.
+ */
+export function usePageDataset<TData>(
+  datasetKey: StartupWarmupDatasetKey
+): PageDatasetResult<TData> {
+  const startupWarmupState = useStartupWarmupState();
+  const queryOptions = getStartupWarmupQueryOptions(datasetKey);
+  const isDatasetReady = startupWarmupState.isDatasetReady(datasetKey);
+  const isDatasetFailed = startupWarmupState.isDatasetFailed(datasetKey);
+  const query = useQuery<TData>({
+    ...queryOptions,
+    enabled: isDatasetReady || isDatasetFailed,
+    refetchOnMount: false,
+  } as UseQueryOptions<TData>);
+  const datasetState = computePageDatasetState(datasetKey, query, startupWarmupState);
+
+  return { query, datasetState };
 }

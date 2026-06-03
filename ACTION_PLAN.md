@@ -416,8 +416,8 @@ New unit tests in `src/frontend/src/hooks/usePageDataset.spec.ts` (extending the
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
+- **Implementation notes:** Completed. Added `usePageDataset<TData>` hook and `PageDatasetResult<TData>` type to `usePageDataset.ts`. Hook calls `useStartupWarmupState()`, `getStartupWarmupQueryOptions(datasetKey)`, and `useQuery` with `enabled: isDatasetReady || isDatasetFailed` and `refetchOnMount: false`. JSDoc includes retry rationale. 6 hook tests pass alongside 25 Section 2 tests (31 total). Required `as UseQueryOptions<TData>` cast to bridge concrete query options to generic `useQuery`.
+- **Deviations from plan:** Needed `as UseQueryOptions<TData>` cast on `useQuery` options spread because `getStartupWarmupQueryOptions()` returns concrete (non-generic) types. Test doubles now populate all 5 `StartupWarmupDatasetKey` keys to satisfy `Record<StartupWarmupDatasetKey, ...>` type.
 - **Follow-up implications for later sections:** Sections 6 and 7 depend on this hook.
 
 ---
