@@ -15,7 +15,7 @@ const CLASSES_BLOCKING_ERROR_MESSAGE = 'Classes data could not be trusted or loa
 const CLASSES_PAGE_EMPTY_DESCRIPTION = 'No year groups configured yet.';
 const CLASSES_REFRESH_TEXT = 'Refreshing...';
 
-const CLASSES_CARD_MIN_WIDTH_PX = 200;
+const CLASSES_CARD_WIDTH_PX = 268;
 const CLASSES_CARD_GAP_PX = 16;
 
 /**
@@ -231,6 +231,7 @@ function renderYearGroupCollapse(viewModel: ClassesPagePanelViewModel): JSX.Elem
                     style={{
                       display: 'flex',
                       flexWrap: 'wrap',
+                      justifyContent: 'center',
                       gap: `${CLASSES_CARD_GAP_PX}px`,
                       marginTop: `${CLASSES_CARD_GAP_PX}px`,
                     }}
@@ -242,7 +243,11 @@ function renderYearGroupCollapse(viewModel: ClassesPagePanelViewModel): JSX.Elem
                         key={card.classId}
                         size="small"
                         title={card.className}
-                        style={{ flex: `1 1 ${CLASSES_CARD_MIN_WIDTH_PX}px`, minWidth: CLASSES_CARD_MIN_WIDTH_PX }}
+                        style={{
+                          flex: `0 0 ${CLASSES_CARD_WIDTH_PX}px`,
+                          width: CLASSES_CARD_WIDTH_PX,
+                          maxWidth: CLASSES_CARD_WIDTH_PX,
+                        }}
                       >
                         <Space wrap>
                           <Button disabled tabIndex={-1} type="text">

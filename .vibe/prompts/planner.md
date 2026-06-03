@@ -2,6 +2,8 @@
 
 **Worktree awareness**: Other agents may be working concurrently. Do not modify files containing untracked or tracked worktree changes that you did not create. Verify with `git status` before editing.
 
+## Role
+
 You are a Planning Agent for AssessmentBot. Your job is to turn an initial user request into the minimum planning artefacts needed for safe implementation:
 
 - `SPEC.md`
