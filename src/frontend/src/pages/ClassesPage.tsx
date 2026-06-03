@@ -1,9 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Button, Card, Collapse, Empty, Skeleton, Space, Typography } from 'antd';
+import { Alert, Button, Card, Col, Collapse, Empty, Row, Skeleton, Space, Typography } from 'antd';
 import { type JSX, useMemo } from 'react';
 import { useStartupWarmupState } from '../features/auth/startupWarmupState';
 import { getClassPartialsQueryOptions, getYearGroupsQueryOptions } from '../query/sharedQueries';
-import { buildClassesPageModel, type ClassesPagePanelViewModel, type InvalidClassesPageDataViewModel } from './classes/classesPageModel';
+import {
+  buildClassesPageModel,
+  type ClassesPagePanelViewModel,
+  type InvalidClassesPageDataViewModel,
+} from './classes/classesPageModel';
 import { PageSection } from './PageSection';
 import { pageContent } from './pageContent';
 
@@ -68,7 +72,9 @@ function shouldRenderClassesBlockingState(
     }>;
   }>
 ): boolean {
-  return shouldBlockSingleDataset(input.classPartials) || shouldBlockSingleDataset(input.yearGroups);
+  return (
+    shouldBlockSingleDataset(input.classPartials) || shouldBlockSingleDataset(input.yearGroups)
+  );
 }
 
 /**
@@ -154,7 +160,10 @@ function getClassesSurfaceState(
   };
 }
 
-type ClassesSurfaceState = Readonly<{ shouldRenderBlockingState: boolean; shouldRenderLoadingState: boolean }>;
+type ClassesSurfaceState = Readonly<{
+  shouldRenderBlockingState: boolean;
+  shouldRenderLoadingState: boolean;
+}>;
 
 /**
  * Returns whether the classes surface is busy (fetching).
@@ -162,10 +171,12 @@ type ClassesSurfaceState = Readonly<{ shouldRenderBlockingState: boolean; should
  * @param {Readonly<{ isClassPartialsQueryFetching: boolean; isYearGroupsQueryFetching: boolean; }>} input Fetching state.
  * @returns {boolean} True when busy.
  */
-function computeClassesSurfaceBusy(input: Readonly<{
-  isClassPartialsQueryFetching: boolean;
-  isYearGroupsQueryFetching: boolean;
-}>): boolean {
+function computeClassesSurfaceBusy(
+  input: Readonly<{
+    isClassPartialsQueryFetching: boolean;
+    isYearGroupsQueryFetching: boolean;
+  }>
+): boolean {
   return input.isClassPartialsQueryFetching || input.isYearGroupsQueryFetching;
 }
 
@@ -175,7 +186,9 @@ function computeClassesSurfaceBusy(input: Readonly<{
  * @param {ClassesPagePanelViewModel | InvalidClassesPageDataViewModel} modelResult The model result.
  * @returns {modelResult is InvalidClassesPageDataViewModel} True if invalid.
  */
-function isModelInvalid(modelResult: ClassesPagePanelViewModel | InvalidClassesPageDataViewModel): modelResult is InvalidClassesPageDataViewModel {
+function isModelInvalid(
+  modelResult: ClassesPagePanelViewModel | InvalidClassesPageDataViewModel
+): modelResult is InvalidClassesPageDataViewModel {
   return 'type' in modelResult && modelResult.type === 'invalidClassesPageData';
 }
 
@@ -185,7 +198,9 @@ function isModelInvalid(modelResult: ClassesPagePanelViewModel | InvalidClassesP
  * @param {ClassesPagePanelViewModel | InvalidClassesPageDataViewModel} modelResult The model result.
  * @returns {boolean} True if empty.
  */
-function isModelEmpty(modelResult: ClassesPagePanelViewModel | InvalidClassesPageDataViewModel): boolean {
+function isModelEmpty(
+  modelResult: ClassesPagePanelViewModel | InvalidClassesPageDataViewModel
+): boolean {
   if ('type' in modelResult) return false; // InvalidClassesPageDataViewModel
   return modelResult.panels.length === 0 && modelResult.defaultExpandedPanelKeys.length === 0;
 }
@@ -221,44 +236,34 @@ function renderYearGroupCollapse(viewModel: ClassesPagePanelViewModel): JSX.Elem
               }
               forceRender
             >
-              <section
-                id={contentId}
-                aria-label={panel.yearGroupLabel}
-                aria-labelledby={headerId}
-              >
+              <section id={contentId} aria-label={panel.yearGroupLabel} aria-labelledby={headerId}>
                 {panel.classes.length > 0 ? (
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      justifyContent: 'center',
-                      gap: `${CLASSES_CARD_GAP_PX}px`,
-                      marginTop: `${CLASSES_CARD_GAP_PX}px`,
-                    }}
-                  >
-                    {panel.classes.map((card) => (
-                      <Card
-                        role="article"
-                        aria-label={card.className}
-                        key={card.classId}
-                        size="small"
-                        title={card.className}
-                        style={{
-                          flex: `0 0 ${CLASSES_CARD_WIDTH_PX}px`,
-                          width: CLASSES_CARD_WIDTH_PX,
-                          maxWidth: CLASSES_CARD_WIDTH_PX,
-                        }}
-                      >
-                        <Space wrap>
-                          <Button disabled tabIndex={-1} type="text">
-                            View
-                          </Button>
-                          <Button disabled tabIndex={-1} type="text">
-                            Edit
-                          </Button>
-                        </Space>
-                      </Card>
-                    ))}
+                  <div style={{ display: 'flex', justifyContent: 'center' }}>
+                    <Row gutter={[CLASSES_CARD_GAP_PX, CLASSES_CARD_GAP_PX]}>
+                      {panel.classes.map((card) => (
+                        <Col key={card.classId}>
+                          <Card
+                            role="article"
+                            aria-label={card.className}
+                            size="small"
+                            title={card.className}
+                            style={{
+                              width: CLASSES_CARD_WIDTH_PX,
+                              maxWidth: CLASSES_CARD_WIDTH_PX,
+                            }}
+                          >
+                            <Space wrap>
+                              <Button disabled tabIndex={-1} type="text">
+                                View
+                              </Button>
+                              <Button disabled tabIndex={-1} type="text">
+                                Edit
+                              </Button>
+                            </Space>
+                          </Card>
+                        </Col>
+                      ))}
+                    </Row>
                   </div>
                 ) : (
                   <Card style={{ marginTop: `${CLASSES_CARD_GAP_PX}px` }}>
@@ -324,12 +329,14 @@ function renderClassesContent(
  * @param {Readonly<{ classesSurfaceState: ClassesSurfaceState; modelResult: ClassesPagePanelViewModel | InvalidClassesPageDataViewModel; hasTrustworthyClassPartials: boolean; hasTrustworthyYearGroups: boolean; }>} input Surface state, model result, and dataset trustworthiness.
  * @returns {Readonly<{ finalShouldRenderBlockingState: boolean; shouldRenderLoadingState: boolean; shouldRenderEmptyState: boolean; }>} Final render states.
  */
-function getFinalClassesPageStates(input: Readonly<{
-  classesSurfaceState: ClassesSurfaceState;
-  modelResult: ClassesPagePanelViewModel | InvalidClassesPageDataViewModel;
-  hasTrustworthyClassPartials: boolean;
-  hasTrustworthyYearGroups: boolean;
-}>): Readonly<{
+function getFinalClassesPageStates(
+  input: Readonly<{
+    classesSurfaceState: ClassesSurfaceState;
+    modelResult: ClassesPagePanelViewModel | InvalidClassesPageDataViewModel;
+    hasTrustworthyClassPartials: boolean;
+    hasTrustworthyYearGroups: boolean;
+  }>
+): Readonly<{
   finalShouldRenderBlockingState: boolean;
   shouldRenderLoadingState: boolean;
   shouldRenderEmptyState: boolean;
@@ -337,7 +344,8 @@ function getFinalClassesPageStates(input: Readonly<{
   const finalShouldRenderBlockingState =
     input.classesSurfaceState.shouldRenderBlockingState || isModelInvalid(input.modelResult);
   const shouldRenderLoadingState = input.classesSurfaceState.shouldRenderLoadingState;
-  const hasTrustworthyDatasets = input.hasTrustworthyClassPartials && input.hasTrustworthyYearGroups;
+  const hasTrustworthyDatasets =
+    input.hasTrustworthyClassPartials && input.hasTrustworthyYearGroups;
   const shouldRenderEmptyState =
     !finalShouldRenderBlockingState &&
     !shouldRenderLoadingState &&
@@ -429,10 +437,7 @@ export function ClassesPage() {
     });
 
   return (
-    <PageSection
-      heading={pageContent.classes.heading}
-      summary={pageContent.classes.summary}
-    >
+    <PageSection heading={pageContent.classes.heading} summary={pageContent.classes.summary}>
       <section
         aria-label="Classes page content"
         aria-busy={isClassesSurfaceBusy ? 'true' : undefined}
