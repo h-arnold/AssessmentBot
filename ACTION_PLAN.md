@@ -178,8 +178,8 @@ None.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
+- **Implementation notes:** Completed. `getStartupWarmupQueryOptions(datasetKey)` exported from `sharedQueries.ts` (lines ~196-207). Function reuses internal `startupWarmupQueryDefinitions` array and mirrors the existing `getStartupWarmupQueryKey` pattern. Throws for unknown dataset keys with message matching `'Unknown startup warm-up dataset key: <key>.'`. Unit tests: 7 tests in `sharedQueries.startupWarmupQueryOptions.spec.ts` — all green (plus 10 existing tests unchanged). Zero regressions in regression checker. Commits: `01de510` (feat), `255fcc2` (test).
+- **Deviations from plan:** None.
 - **Follow-up implications for later sections:** Section 3 (`usePageDataset`) depends on this export.
 
 ---
