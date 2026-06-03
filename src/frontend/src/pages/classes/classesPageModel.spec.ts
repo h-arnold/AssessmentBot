@@ -417,9 +417,8 @@ describe('Classes page grouped view model - buildClassesPageModel', () => {
 
   describe('Both-empty page-level empty state', () => {
     it('should return page-level empty state when yearGroups = [] and classPartials = []', () => {
-      const result = buildClassesPageModel([], []);
-
-      assertClassesPagePanelViewModel(result, 0, () => {
+      buildAndAssertValidModel([], [], (result) => {
+        expect(result.panels).toHaveLength(0);
         expect(result.defaultExpandedPanelKeys).toHaveLength(0);
       });
     });
