@@ -49,15 +49,15 @@ const navigationDefinitions: readonly AppNavigationDefinition[] = [
     label: pageContent.dashboard.heading,
     icon: renderNavigationIcon(HomeOutlined),
   },
+    {
+  key: 'classes',
+    label: pageContent.classes.heading,
+    icon: renderNavigationIcon(BookOutlined),
+  },
   {
     key: 'assignments',
     label: pageContent.assignments.heading,
     icon: renderNavigationIcon(AppstoreOutlined),
-  },
-  {
-    key: 'classes',
-    label: pageContent.classes.heading,
-    icon: renderNavigationIcon(BookOutlined),
   },
   {
     key: 'settings',
