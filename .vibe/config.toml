@@ -61,6 +61,16 @@ project_id = ""
 region = ""
 
 [[providers]]
+name = "deepseek"
+api_base = "https://api.deepseek.com"
+api_key_env_var = "DEEPSEEK_API_KEY"
+api_style = "openai"
+backend = "generic"
+reasoning_field_name = "reasoning_content"
+project_id = ""
+region = ""
+
+[[providers]]
 name = "llamacpp"
 api_base = "http://127.0.0.1:8080/v1"
 api_key_env_var = ""
@@ -119,6 +129,26 @@ input_price = 0.0
 output_price = 0.0
 thinking = "off"
 auto_compact_threshold = 200000
+
+[[models]]
+name = "deepseek-v4-flash"
+provider = "deepseek"
+alias = "deepseek-v4-flash"
+temperature = 0.7
+input_price = 0.0
+output_price = 0.0
+thinking = "high"
+auto_compact_threshold = 180000
+
+[[models]]
+name = "deepseek-v4-pro"
+provider = "deepseek"
+alias = "deepseek-v4-pro"
+temperature = 0.7
+input_price = 0.0
+output_price = 0.0
+thinking = "high"
+auto_compact_threshold = 180000
 
 [[transcribe_providers]]
 name = "mistral"
