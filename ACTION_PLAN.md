@@ -894,6 +894,28 @@ Frontend e2e tests:
 
 ---
 
+## De-sloppification Pass
+
+### Objective
+
+- Run the de-sloppification review against the completed ClassesWindow feature and address all in-scope findings through the standard implementation-review loop.
+
+### Acceptance criteria
+
+- `SLOP_REVIEW.md` written with all findings categorised (Critical/Improvement/Nitpick).
+- All in-scope findings addressed through batched implementation-review cycles.
+- Zero regressions from focused frontend checks.
+- All changes committed and pushed.
+
+### Implementation notes / deviations / follow-up
+
+- **Deviations from plan:** Nitpick 2 (cargo-cult JSDoc removal) could not be completed — the project's ESLint config (`config/eslint/ts-base-rules.cjs`) mandates full JSDoc with `@param` and `@returns` on all function declarations. Removing JSDoc from self-describing functions produces 12 lint errors. Per core principle #10, disabling lint rules requires explicit user permission. Original JSDoc preserved.
+- **Remaining slop findings:** Nitpick 2 (cargo-cult JSDoc) is the only unresolved finding — blocked by project ESLint policy requiring explicit user approval to adjust.
+- **Completion status:** ✅ De-Sloppification COMPLETE — SLOP_REVIEW.md written, 11 of 12 in-scope findings resolved across 3 batches. Batch 1: stale aria-expanded removed, derivable parameter eliminated, discriminated union type guards added. Batch 2: dead exports unexported, pixel constants extracted, one-caller wrapper inlined, redundant `as const` removed, variable renamed, stale param fields removed. Batch 3: duplicate JSX comment removed, TDD scaffolding replaced with static imports. All 121 focused tests pass, lint clean, 0 regressions.
+- **Files modified:** `src/frontend/src/pages/ClassesPage.tsx`, `src/frontend/src/pages/ClassesPage.spec.tsx`, `src/frontend/src/pages/classes/classesPageModel.ts`, `src/frontend/src/pages/classes/classesPageModel.spec.ts`
+
+---
+
 ## Suggested implementation order
 
 1. Section 1 — Wire the shell navigation contract.
@@ -904,3 +926,4 @@ Frontend e2e tests:
 6. Section 6 — Harden refresh transitions, accessibility, and narrow-viewport behaviour.
 7. Regression and contract hardening.
 8. Documentation and rollout notes.
+9. De-sloppification pass.
