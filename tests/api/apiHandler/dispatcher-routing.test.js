@@ -3,8 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const {
   loadApiHandlerModule,
   handleApiRequest,
-  setupApiHandlerTestContext,
-  teardownApiHandlerTestContext,
+  setupDispatcherTest,
+  teardownDispatcherTest,
   ABCLASS_TRANSPORT_API_METHOD_NAMES,
   ABCLASS_TRANSPORT_PARAMS,
   ABCLASS_TRANSPORT_RESULTS,
@@ -27,27 +27,11 @@ describe('Api/apiHandler dispatcher — method routing', () => {
   let context;
 
   beforeEach(() => {
-    context = setupApiHandlerTestContext(vi, {
-      installLogger: true,
-      googleClassroomsBehaviour: () => ABCLASS_TRANSPORT_RESULTS.getGoogleClassrooms,
-      googleClassroomAssignmentsBehaviour: () =>
-        ABCLASS_TRANSPORT_RESULTS.getGoogleClassroomAssignments,
-      abclassMutationsBehaviour: {
-        upsertABClass_: () => ABCLASS_TRANSPORT_RESULTS.upsertABClass,
-        updateABClass_: () => ABCLASS_TRANSPORT_RESULTS.updateABClass,
-        deleteABClass_: () => ABCLASS_TRANSPORT_RESULTS.deleteABClass,
-      },
-      assignmentDefinitionBehaviour: {
-        getAssignmentDefinitionPartials_: () =>
-          ASSIGNMENT_DEFINITION_RESULTS.getAssignmentDefinitionPartials,
-        getAssignmentDefinition_: () => ASSIGNMENT_DEFINITION_RESULTS.getAssignmentDefinition,
-        deleteAssignmentDefinition_: () => ASSIGNMENT_DEFINITION_RESULTS.deleteAssignmentDefinition,
-      },
-    });
+    context = setupDispatcherTest(vi);
   });
 
   afterEach(() => {
-    teardownApiHandlerTestContext(vi, context);
+    teardownDispatcherTest(vi, context);
   });
 
   describe('reference data routing', () => {

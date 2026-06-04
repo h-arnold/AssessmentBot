@@ -428,6 +428,50 @@ function makeVmGlobals(overrides = {}) {
   };
 }
 
+/**
+ * Shared behaviour configuration for dispatcher test setup.
+ * Provides default transport behaviours for all allowed handlers.
+ */
+const DEFAULT_DISPATCHER_BEHAVIOUR = Object.freeze({
+  installLogger: true,
+  googleClassroomsBehaviour: () => ABCLASS_TRANSPORT_RESULTS.getGoogleClassrooms,
+  googleClassroomAssignmentsBehaviour: () =>
+    ABCLASS_TRANSPORT_RESULTS.getGoogleClassroomAssignments,
+  abclassMutationsBehaviour: {
+    upsertABClass_: () => ABCLASS_TRANSPORT_RESULTS.upsertABClass,
+    updateABClass_: () => ABCLASS_TRANSPORT_RESULTS.updateABClass,
+    deleteABClass_: () => ABCLASS_TRANSPORT_RESULTS.deleteABClass,
+  },
+  assignmentDefinitionBehaviour: {
+    getAssignmentDefinitionPartials_: () =>
+      ASSIGNMENT_DEFINITION_RESULTS.getAssignmentDefinitionPartials,
+    getAssignmentDefinition_: () => ASSIGNMENT_DEFINITION_RESULTS.getAssignmentDefinition,
+    deleteAssignmentDefinition_: () => ASSIGNMENT_DEFINITION_RESULTS.deleteAssignmentDefinition,
+  },
+});
+
+/**
+ * Creates the shared dispatcher test context with default behaviours.
+ * Call inside beforeEach.
+ *
+ * @param {typeof import('vitest')} vi - Vitest instance
+ * @returns {object} Test context
+ */
+function setupDispatcherTest(vi) {
+  return setupApiHandlerTestContext(vi, DEFAULT_DISPATCHER_BEHAVIOUR);
+}
+
+/**
+ * Tears down the shared dispatcher test context.
+ * Call inside afterEach.
+ *
+ * @param {typeof import('vitest')} vi - Vitest instance
+ * @param {object} context - Test context from setupDispatcherTest
+ */
+function teardownDispatcherTest(vi, context) {
+  teardownApiHandlerTestContext(vi, context);
+}
+
 module.exports = {
   // Re-exports from apiHandlerTestUtils
   callAuthorisationStatus,
@@ -474,4 +518,9 @@ module.exports = {
   loadApiHandlerInVmContext,
   loadModuleGlobalsInVmContext,
   makeVmGlobals,
+
+  // Shared dispatcher test lifecycle
+  DEFAULT_DISPATCHER_BEHAVIOUR,
+  setupDispatcherTest,
+  teardownDispatcherTest,
 };
