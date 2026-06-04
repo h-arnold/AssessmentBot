@@ -32,6 +32,7 @@ const {
   getABClassPartialsMock,
   upsertAssignmentDefinitionMock,
   useStartupWarmupStateMock,
+  refetchAfterStaleInvalidateMock,
 } = vi.hoisted(() => ({
   deleteAssignmentDefinitionMock: vi.fn(),
   getAssignmentDefinitionPartialsMock: vi.fn(),
@@ -42,6 +43,7 @@ const {
   getABClassPartialsMock: vi.fn(),
   upsertAssignmentDefinitionMock: vi.fn(),
   useStartupWarmupStateMock: vi.fn(),
+  refetchAfterStaleInvalidateMock: vi.fn(),
 }));
 
 vi.mock('../features/auth/startupWarmupState', async (importOriginal) => {
@@ -75,6 +77,14 @@ vi.mock('../services/referenceDataService', () => ({
 vi.mock('../services/classPartialsService', () => ({
   getABClassPartials: getABClassPartialsMock,
 }));
+
+vi.mock('../query/queryInvalidationHelpers', async (importOriginal) => {
+  const actualModule = (await importOriginal()) as Record<string, unknown>;
+  refetchAfterStaleInvalidateMock.mockImplementation(
+    actualModule.refetchAfterStaleInvalidate as (...arguments_: unknown[]) => unknown
+  );
+  return { ...actualModule, refetchAfterStaleInvalidate: refetchAfterStaleInvalidateMock };
+});
 
 const recommendedSummaryCopy =
   'Review assignment-definition partials and remove obsolete definitions without loading full task data.';
@@ -440,6 +450,44 @@ describe('AssignmentsPage', () => {
     for (const [refetchOptions] of refetchQueriesSpy.mock.calls) {
       expect(refetchOptions).toBeDefined();
       expect(refetchOptions?.queryKey).toEqual(queryKeys.assignmentDefinitionPartials());
+    }
+  });
+  it('awaits refetchAfterStaleInvalidate in handleRetryAssignmentsData so errors cannot become unhandled rejections', async () => {
+    const originalImpl = refetchAfterStaleInvalidateMock.getMockImplementation();
+    try {
+      let refetchCompleted = false;
+      refetchAfterStaleInvalidateMock.mockImplementation(() => {
+        return Promise.resolve().then(() => {
+          refetchCompleted = true;
+        });
+      });
+
+      useStartupWarmupStateMock.mockReturnValue(
+        createStartupWarmupState({
+          assignmentDefinitionPartialsStatus: 'failed',
+          isDatasetReady: (datasetKey: string) => datasetKey !== 'assignmentDefinitionPartials',
+          isDatasetFailed: (datasetKey: string) => datasetKey === 'assignmentDefinitionPartials',
+        })
+      );
+
+      renderWithFrontendProviders(<AssignmentsPage />);
+
+      expect(
+        screen.getByText(/assignment definitions could not be trusted or loaded/i)
+      ).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: /retry|refresh assignments data/i }));
+
+      expect(refetchAfterStaleInvalidateMock).toHaveBeenCalledTimes(1);
+
+      // With the async/await fix in handleRetryAssignmentsData, the click fires
+      // the async handler which awaits the refetch promise. Flush microtasks so
+      // the promise's .then() callback sets refetchCompleted before we assert.
+      await Promise.resolve();
+
+      expect(refetchCompleted).toBe(true);
+    } finally {
+      refetchAfterStaleInvalidateMock.mockImplementation(originalImpl!);
     }
   });
 

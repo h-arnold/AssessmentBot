@@ -748,9 +748,9 @@ export function AssignmentsPage() {
    *
    * @returns {void} No return value.
    */
-  function handleRetryAssignmentsData() {
+  async function handleRetryAssignmentsData() {
     setDeleteOutcome(null);
-    refetchAfterStaleInvalidate(queryClient, queryKeys.assignmentDefinitionPartials());
+    await refetchAfterStaleInvalidate(queryClient, queryKeys.assignmentDefinitionPartials());
   }
 
   /**

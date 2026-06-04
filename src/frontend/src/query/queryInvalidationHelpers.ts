@@ -28,5 +28,5 @@ export async function refetchAfterStaleInvalidate(
   queryKey: QueryKey
 ): Promise<void> {
   await queryClient.invalidateQueries({ queryKey, refetchType: 'none' });
-  await queryClient.refetchQueries({ queryKey });
+  await queryClient.refetchQueries({ queryKey }, { throwOnError: true });
 }

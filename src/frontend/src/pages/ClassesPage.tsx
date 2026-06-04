@@ -5,6 +5,7 @@ import {
   computePageSurfaceBlocking,
   computePageSurfaceBusy,
   usePageDataset,
+  type PageDatasetState,
 } from '../hooks/usePageDataset';
 import type { ClassPartial } from '../services/classPartials.zod';
 import type { YearGroup } from '../services/referenceData.zod';
@@ -42,22 +43,8 @@ const CLASSES_MOBILE_BREAKPOINT_PX = 768;
  */
 function getClassesSurfaceState(
   input: Readonly<{
-    classPartials: Readonly<{
-      hasQueryData: boolean;
-      isQueryError: boolean;
-      isDatasetFailed: boolean;
-      isDatasetReady: boolean;
-      isDatasetTrustworthy: boolean;
-      hasTrustworthyDataset: boolean;
-    }>;
-    yearGroups: Readonly<{
-      hasQueryData: boolean;
-      isQueryError: boolean;
-      isDatasetFailed: boolean;
-      isDatasetReady: boolean;
-      isDatasetTrustworthy: boolean;
-      hasTrustworthyDataset: boolean;
-    }>;
+    classPartials: PageDatasetState;
+    yearGroups: PageDatasetState;
   }>
 ): Readonly<{ shouldRenderBlockingState: boolean; shouldRenderLoadingState: boolean }> {
   const isBlocking =
