@@ -7,6 +7,7 @@ export const queryKeys = {
   backendConfig: () => ['backendConfig'] as const,
   classPartials: () => ['classPartials'] as const,
   cohorts: () => ['cohorts'] as const,
+  googleClassroomAssignments: (classId: string) => ['googleClassroomAssignments', classId] as const,
   googleClassrooms: () => ['googleClassrooms'] as const,
   yearGroups: () => ['yearGroups'] as const,
 };
