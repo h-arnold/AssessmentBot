@@ -3,9 +3,9 @@
  * Loaded via require() by each split test file.
  */
 
-const path = require('path');
-const fs = require('fs');
-const vm = require('vm');
+const path = require('node:path');
+const fs = require('node:fs');
+const vm = require('node:vm');
 
 const apiHandlerPath = '../../../src/backend/z_Api/z_apiHandler.js';
 const googleClassroomsHandlerPath = '../../../src/backend/z_Api/googleClassrooms.js';

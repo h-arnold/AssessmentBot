@@ -376,9 +376,9 @@ describe('Api/apiHandler dispatcher — error handling, boundary logging and err
       });
     });
 
-    it('maps null thrown values to INTERNAL_ERROR', () => {
+    it('maps thrown errors to INTERNAL_ERROR', () => {
       context.scriptAppManagerInstance.isAuthorised.mockImplementation(() => {
-        throw null;
+        throw new Error('Simulated authorisation failure');
       });
 
       const { ApiDispatcher } = loadApiHandlerModule();

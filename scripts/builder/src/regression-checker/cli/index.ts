@@ -1050,8 +1050,7 @@ export function renderComparisonReport(options: {
   // Prepend regression warning when regressions are detected (before body so agents using head see it)
   const hasRegressions = options.comparison.totals.regressionsCount > 0;
   if (hasRegressions) {
-    bodyParts.push(REGRESSION_WARNING);
-    bodyParts.push('');
+    bodyParts.push(REGRESSION_WARNING, '');
   }
 
   // Per-command summary with regression/fix info
@@ -1068,8 +1067,7 @@ export function renderComparisonReport(options: {
 
   // Append regression warning at the end so agents using tail also see it
   if (hasRegressions) {
-    bodyParts.push('');
-    bodyParts.push(REGRESSION_WARNING);
+    bodyParts.push('', REGRESSION_WARNING);
   }
 
   return [...headerLines, '', ...bodyParts].join('\n');

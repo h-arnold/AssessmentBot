@@ -48,9 +48,9 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
   const bodyContent = (function renderBody(): React.ReactNode {
     if (fetchState === 'loading') {
       return (
-        <div role="status" style={{ textAlign: 'center', padding: '40px 0' }}>
+        <output style={{ textAlign: 'center', padding: '40px 0', display: 'block' }}>
           <Spin />
-        </div>
+        </output>
       );
     }
     if (fetchState === 'error') {
