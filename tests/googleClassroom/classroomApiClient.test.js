@@ -321,10 +321,13 @@ describe('ClassroomApiClient.fetchCourseWork', () => {
     });
 
     expect(() => ClassroomApiClient.fetchCourseWork(courseId)).toThrow();
-    expect(progressTrackerInstance.logAndThrowError).toHaveBeenCalledTimes(1);
-    expect(progressTrackerInstance.logAndThrowError).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to fetch coursework'),
-      apiError
+    expect(abLoggerInstance.error).toHaveBeenCalledTimes(1);
+    expect(abLoggerInstance.error).toHaveBeenCalledWith(
+      'Failed to fetch coursework for course.',
+      expect.objectContaining({
+        courseId,
+        error: apiError.message,
+      })
     );
   });
 

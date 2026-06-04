@@ -144,7 +144,6 @@ const ClassroomApiClient = {
    * @returns {Array<{id: string, title: string, updateTime: string}>} Sorted assignment summaries.
    */
   fetchCourseWork(courseId) {
-    const progressTracker = ProgressTracker.getInstance();
     try {
       const allCourseWork = [];
       let pageToken;
@@ -176,10 +175,11 @@ const ClassroomApiClient = {
 
       return allCourseWork;
     } catch (error) {
-      progressTracker.logAndThrowError(
-        `Failed to fetch coursework for course (${courseId}): ${error.message}`,
-        error
-      );
+      ABLogger.getInstance().error('Failed to fetch coursework for course.', {
+        courseId,
+        error: error.message,
+      });
+      throw error;
     }
   },
 
