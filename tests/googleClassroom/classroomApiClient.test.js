@@ -224,6 +224,147 @@ describe('ClassroomApiClient (read-only methods)', () => {
   });
 });
 
+describe('ClassroomApiClient.fetchCourseWork', () => {
+  let ClassroomApiClient;
+  let progressTrackerInstance;
+  let abLoggerInstance;
+  let originalProgressTrackerGetInstance;
+  let originalABLogger;
+  let originalClassroom;
+
+  beforeEach(() => {
+    originalProgressTrackerGetInstance = globalThis.ProgressTracker.getInstance;
+    originalABLogger = globalThis.ABLogger;
+    originalClassroom = globalThis.Classroom;
+
+    progressTrackerInstance = {
+      logAndThrowError: vi.fn((message) => {
+        throw new Error(message);
+      }),
+      logError: vi.fn(),
+    };
+    globalThis.ProgressTracker.getInstance = vi.fn(() => progressTrackerInstance);
+
+    abLoggerInstance = {
+      info: vi.fn(),
+      error: vi.fn(),
+    };
+    globalThis.ABLogger = { getInstance: vi.fn(() => abLoggerInstance) };
+
+    globalThis.Classroom = {
+      Courses: {
+        CourseWork: {
+          list: vi.fn(),
+        },
+      },
+    };
+
+    delete require.cache[require.resolve(modulePath)];
+    const exported = require(modulePath);
+    ClassroomApiClient = exported.ClassroomApiClient || exported;
+  });
+
+  afterEach(() => {
+    globalThis.ProgressTracker.getInstance = originalProgressTrackerGetInstance;
+    globalThis.ABLogger = originalABLogger;
+    globalThis.Classroom = originalClassroom;
+    vi.restoreAllMocks();
+  });
+
+  it('fetchCourseWork returns sorted assignments for a course with multiple assignments', () => {
+    const courseId = 'course-1';
+    const olderDate = '2020-09-30T10:00:00.000Z';
+    const newerDate = '2023-10-01T12:30:45.123Z';
+    const middleDate = '2022-01-15T08:00:00.000Z';
+
+    globalThis.Classroom.Courses.CourseWork.list.mockReturnValue({
+      courseWork: [
+        { id: 'cw-1', title: 'Assignment A', updateTime: olderDate },
+        { id: 'cw-2', title: 'Assignment B', updateTime: newerDate },
+        { id: 'cw-3', title: 'Assignment C', updateTime: middleDate },
+      ],
+    });
+
+    const result = ClassroomApiClient.fetchCourseWork(courseId);
+
+    expect(globalThis.Classroom.Courses.CourseWork.list).toHaveBeenCalledWith(courseId);
+    expect(result).toHaveLength(3);
+    expect(result[0]).toEqual({ id: 'cw-2', title: 'Assignment B', updateTime: newerDate });
+    expect(result[1]).toEqual({ id: 'cw-3', title: 'Assignment C', updateTime: middleDate });
+    expect(result[2]).toEqual({ id: 'cw-1', title: 'Assignment A', updateTime: olderDate });
+    expect(abLoggerInstance.info).toHaveBeenCalledWith('Fetched coursework for course.', {
+      courseId,
+      count: 3,
+    });
+  });
+
+  it('fetchCourseWork returns empty array for a course with no assignments', () => {
+    const courseId = 'course-2';
+
+    globalThis.Classroom.Courses.CourseWork.list.mockReturnValue({});
+
+    const result = ClassroomApiClient.fetchCourseWork(courseId);
+
+    expect(result).toEqual([]);
+    expect(abLoggerInstance.info).toHaveBeenCalledWith('Fetched coursework for course.', {
+      courseId,
+      count: 0,
+    });
+  });
+
+  it('fetchCourseWork throws when Classroom.Courses.CourseWork.list throws', () => {
+    const courseId = 'course-3';
+    const apiError = new Error('API failure');
+
+    globalThis.Classroom.Courses.CourseWork.list.mockImplementation(() => {
+      throw apiError;
+    });
+
+    expect(() => ClassroomApiClient.fetchCourseWork(courseId)).toThrow();
+    expect(progressTrackerInstance.logAndThrowError).toHaveBeenCalledTimes(1);
+    expect(progressTrackerInstance.logAndThrowError).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to fetch coursework'),
+      apiError
+    );
+  });
+
+  it('fetchCourseWork paginates correctly when nextPageToken is present', () => {
+    const courseId = 'course-4';
+    const page1Assignments = [
+      { id: 'cw-a', title: 'Page 1 Assignment', updateTime: '2023-01-01T00:00:00.000Z' },
+    ];
+    const page2Assignments = [
+      { id: 'cw-b', title: 'Page 2 Assignment', updateTime: '2023-06-01T00:00:00.000Z' },
+    ];
+
+    globalThis.Classroom.Courses.CourseWork.list
+      .mockReturnValueOnce({
+        courseWork: page1Assignments,
+        nextPageToken: 'next-page-token',
+      })
+      .mockReturnValueOnce({
+        courseWork: page2Assignments,
+      });
+
+    const result = ClassroomApiClient.fetchCourseWork(courseId);
+
+    expect(globalThis.Classroom.Courses.CourseWork.list).toHaveBeenCalledTimes(2);
+    expect(globalThis.Classroom.Courses.CourseWork.list).toHaveBeenNthCalledWith(1, courseId);
+    expect(globalThis.Classroom.Courses.CourseWork.list).toHaveBeenNthCalledWith(2, courseId, {
+      pageToken: 'next-page-token',
+    });
+    expect(result).toHaveLength(2);
+    expect(result).toEqual([
+      { id: 'cw-b', title: 'Page 2 Assignment', updateTime: '2023-06-01T00:00:00.000Z' },
+      { id: 'cw-a', title: 'Page 1 Assignment', updateTime: '2023-01-01T00:00:00.000Z' },
+    ]);
+    expect(abLoggerInstance.info).toHaveBeenCalledWith('Fetched coursework for course.', {
+      courseId,
+      count: 2,
+    });
+  });
+});
+
 describe('ClassroomApiClient.fetchCourseUpdateTime', () => {
   let ClassroomApiClient;
   let abLoggerErrorSpy;
