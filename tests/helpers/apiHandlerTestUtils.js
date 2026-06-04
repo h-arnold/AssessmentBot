@@ -37,12 +37,14 @@ function installTransportHelperMocks(
   vi,
   {
     googleClassroomsBehaviour = () => undefined,
+    googleClassroomAssignmentsBehaviour = () => undefined,
     abclassMutationsBehaviour = {},
     assignmentDefinitionBehaviour = {},
   } = {}
 ) {
   const originals = {
     getGoogleClassrooms_: globalThis.getGoogleClassrooms_,
+    getGoogleClassroomAssignments_: globalThis.getGoogleClassroomAssignments_,
     upsertABClass_: globalThis.upsertABClass_,
     updateABClass_: globalThis.updateABClass_,
     deleteABClass_: globalThis.deleteABClass_,
@@ -52,6 +54,9 @@ function installTransportHelperMocks(
   };
 
   const getGoogleClassrooms_ = vi.fn(googleClassroomsBehaviour);
+  const getGoogleClassroomAssignments_ = vi.fn(
+    googleClassroomAssignmentsBehaviour || (() => undefined)
+  );
   const upsertABClass_ = vi.fn(abclassMutationsBehaviour.upsertABClass_ || (() => undefined));
   const updateABClass_ = vi.fn(abclassMutationsBehaviour.updateABClass_ || (() => undefined));
   const deleteABClass_ = vi.fn(abclassMutationsBehaviour.deleteABClass_ || (() => undefined));
@@ -66,6 +71,7 @@ function installTransportHelperMocks(
   );
 
   globalThis.getGoogleClassrooms_ = getGoogleClassrooms_;
+  globalThis.getGoogleClassroomAssignments_ = getGoogleClassroomAssignments_;
   globalThis.upsertABClass_ = upsertABClass_;
   globalThis.updateABClass_ = updateABClass_;
   globalThis.deleteABClass_ = deleteABClass_;
@@ -76,6 +82,7 @@ function installTransportHelperMocks(
   return {
     originals,
     getGoogleClassrooms_,
+    getGoogleClassroomAssignments_,
     upsertABClass_,
     updateABClass_,
     deleteABClass_,
@@ -87,6 +94,7 @@ function installTransportHelperMocks(
 
 function restoreTransportHelperMocks(originals) {
   restoreGlobal('getGoogleClassrooms_', originals.getGoogleClassrooms_);
+  restoreGlobal('getGoogleClassroomAssignments_', originals.getGoogleClassroomAssignments_);
   restoreGlobal('upsertABClass_', originals.upsertABClass_);
   restoreGlobal('updateABClass_', originals.updateABClass_);
   restoreGlobal('deleteABClass_', originals.deleteABClass_);
@@ -241,6 +249,7 @@ function setupApiHandlerTestContext(
     installLock = false,
     handler = () => true,
     googleClassroomsBehaviour,
+    googleClassroomAssignmentsBehaviour,
     abclassMutationsBehaviour,
     assignmentDefinitionBehaviour,
   } = {}
@@ -250,6 +259,7 @@ function setupApiHandlerTestContext(
   const controllerMocks = installControllerMocks(vi, { handler });
   const transportHelperMocks = installTransportHelperMocks(vi, {
     googleClassroomsBehaviour,
+    googleClassroomAssignmentsBehaviour,
     abclassMutationsBehaviour,
     assignmentDefinitionBehaviour,
   });

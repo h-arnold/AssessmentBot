@@ -21,6 +21,7 @@ const {
 const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
 
 const ABCLASS_TRANSPORT_API_METHOD_NAMES = Object.freeze([
+  'getGoogleClassroomAssignments',
   'getGoogleClassrooms',
   'upsertABClass',
   'updateABClass',
@@ -46,6 +47,7 @@ const EXPECTED_ALLOWLISTED_METHOD_HANDLER_KEYS = Object.freeze([
 ]);
 
 const ABCLASS_TRANSPORT_PARAMS = Object.freeze({
+  getGoogleClassroomAssignments: { classId: 'course-001' },
   getGoogleClassrooms: {},
   upsertABClass: {
     classId: 'class-upsert-001',
@@ -66,6 +68,7 @@ const ABCLASS_TRANSPORT_PARAMS = Object.freeze({
 });
 
 const ABCLASS_TRANSPORT_RESULTS = Object.freeze({
+  getGoogleClassroomAssignments: [{ assignmentId: 'a1', title: 'Essay' }],
   getGoogleClassrooms: [{ classId: 'course-001', className: '10A Computer Science' }],
   upsertABClass: { classId: 'class-upsert-001', saved: true },
   updateABClass: { classId: 'class-update-001', updated: true },
@@ -425,7 +428,7 @@ describe('Api/apiHandler allowlisted method handler registry', () => {
     const { ALLOWLISTED_METHOD_HANDLERS } = loadApiHandlerModule();
 
     expect(ALLOWLISTED_METHOD_HANDLERS).toBeTypeOf('object');
-    expect(Object.keys(ALLOWLISTED_METHOD_HANDLERS)).toHaveLength(24);
+    expect(Object.keys(ALLOWLISTED_METHOD_HANDLERS)).toHaveLength(25);
     expect(ALLOWLISTED_METHOD_HANDLERS).toEqual(
       expect.objectContaining(
         Object.fromEntries(
@@ -483,6 +486,8 @@ describe('Api/apiHandler dispatcher', () => {
     context = setupApiHandlerTestContext(vi, {
       installLogger: true,
       googleClassroomsBehaviour: () => ABCLASS_TRANSPORT_RESULTS.getGoogleClassrooms,
+      googleClassroomAssignmentsBehaviour: () =>
+        ABCLASS_TRANSPORT_RESULTS.getGoogleClassroomAssignments,
       abclassMutationsBehaviour: {
         upsertABClass_: () => ABCLASS_TRANSPORT_RESULTS.upsertABClass,
         updateABClass_: () => ABCLASS_TRANSPORT_RESULTS.updateABClass,

@@ -2,8 +2,8 @@
 
 ## Plan Status
 
-- **Section 1** ✅ Complete — `ClassroomApiClient.fetchCourseWork()` implemented and reviewed. Commit pending.
-- **Section 2** ⬜ Pending
+- **Section 1** ✅ Complete — `ClassroomApiClient.fetchCourseWork()` implemented and reviewed. Committed as `0a88ffb`.
+- **Section 2** ✅ Complete — `getGoogleClassroomAssignments_` handler + allowlist entry implemented and reviewed. Commit pending.
 - **Section 3** ⬜ Pending
 - **Section 4** ⬜ Pending
 - **Section 5** ⬜ Pending
