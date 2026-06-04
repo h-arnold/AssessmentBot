@@ -40,6 +40,51 @@ function createPendingPromise<T>(): Promise<T> {
   return new Promise<T>(() => {});
 }
 
+/**
+ * Sets up the mocked getGoogleClassroomAssignments with the given mock value,
+ * renders the modal, and returns the dialog element.
+ *
+ * @param {unknown} mockValue - Value to pass to mockReturnValue/mockResolvedValue/mockRejectedValue.
+ * @param {'return' | 'resolve' | 'reject'} mockType - How to set up the mock.
+ * @returns {ReturnType<typeof screen.getByRole>} The dialog element.
+ */
+function renderAssessTaskModal(
+  mockValue: unknown,
+  mockType: 'return' | 'resolve' | 'reject' = 'return'
+): ReturnType<typeof screen.getByRole> {
+  const mockedGetAssignments = vi.mocked(getGoogleClassroomAssignments);
+  if (mockType === 'resolve') {
+    mockedGetAssignments.mockResolvedValue(mockValue);
+  } else if (mockType === 'reject') {
+    mockedGetAssignments.mockRejectedValue(mockValue);
+  } else {
+    mockedGetAssignments.mockReturnValue(mockValue);
+  }
+
+  render(<AssessTaskModal {...defaultProperties()} />);
+  return screen.getByRole('dialog', { name: MODAL_TITLE });
+}
+
+/**
+ * Asserts that the Start Assessment button is disabled within the given dialog.
+ *
+ * @param {ReturnType<typeof screen.getByRole>} dialog - The modal dialog element.
+ */
+function expectStartAssessmentDisabled(dialog: ReturnType<typeof screen.getByRole>): void {
+  expect(
+    within(dialog).getByRole('button', { name: 'Start Assessment' })
+  ).toBeDisabled();
+}
+
+/**
+ * Asserts that the Cancel button is present within the given dialog.
+ *
+ * @param {ReturnType<typeof screen.getByRole>} dialog - The modal dialog element.
+ */
+function expectCancelButtonPresent(dialog: ReturnType<typeof screen.getByRole>): void {
+  expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -69,25 +114,16 @@ describe('AssessTaskModal shell', () => {
 
 describe('Loading state', () => {
   it('shows Spin centred in modal body, Select not rendered, Start Assessment disabled', () => {
-    const mockedGetAssignments = vi.mocked(getGoogleClassroomAssignments);
-    mockedGetAssignments.mockReturnValue(createPendingPromise());
-
-    render(<AssessTaskModal {...defaultProperties()} />);
+    const dialog = renderAssessTaskModal(createPendingPromise());
 
     // Spin is visible in the modal body
-    const dialog = screen.getByRole('dialog', { name: MODAL_TITLE });
     expect(within(dialog).getByRole('status')).toBeInTheDocument(); // Ant Spin renders role="status"
 
     // Select (combobox) is not rendered while loading
     expect(within(dialog).queryByRole('combobox')).toBeNull();
 
-    // Start Assessment button is disabled
-    expect(
-      within(dialog).getByRole('button', { name: 'Start Assessment' })
-    ).toBeDisabled();
-
-    // Cancel button is present
-    expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    expectStartAssessmentDisabled(dialog);
+    expectCancelButtonPresent(dialog);
   });
 });
 
@@ -97,12 +133,7 @@ describe('Loading state', () => {
 
 describe('Ready state (no selection)', () => {
   it('shows Select with placeholder, Start Assessment disabled, and Select label', async () => {
-    const mockedGetAssignments = vi.mocked(getGoogleClassroomAssignments);
-    mockedGetAssignments.mockResolvedValue(MOCK_ASSIGNMENTS);
-
-    render(<AssessTaskModal {...defaultProperties()} />);
-
-    const dialog = screen.getByRole('dialog', { name: MODAL_TITLE });
+    const dialog = renderAssessTaskModal(MOCK_ASSIGNMENTS, 'resolve');
 
     // Wait for Select (combobox) to appear after fetch resolves
     const select = await within(dialog).findByRole('combobox');
@@ -116,13 +147,8 @@ describe('Ready state (no selection)', () => {
     // "Select assignment" label is visible above the Select
     expect(within(dialog).getByText('Select assignment')).toBeInTheDocument();
 
-    // Start Assessment is disabled when no selection
-    expect(
-      within(dialog).getByRole('button', { name: 'Start Assessment' })
-    ).toBeDisabled();
-
-    // Cancel button is present
-    expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    expectStartAssessmentDisabled(dialog);
+    expectCancelButtonPresent(dialog);
   });
 });
 
@@ -132,12 +158,7 @@ describe('Ready state (no selection)', () => {
 
 describe('Ready state (selection made)', () => {
   it('enables Start Assessment and shows confirmation text when an assignment is selected', async () => {
-    const mockedGetAssignments = vi.mocked(getGoogleClassroomAssignments);
-    mockedGetAssignments.mockResolvedValue(MOCK_ASSIGNMENTS);
-
-    render(<AssessTaskModal {...defaultProperties()} />);
-
-    const dialog = screen.getByRole('dialog', { name: MODAL_TITLE });
+    const dialog = renderAssessTaskModal(MOCK_ASSIGNMENTS, 'resolve');
 
     // Wait for the Select to appear
     await within(dialog).findByRole('combobox');
@@ -170,25 +191,15 @@ describe('Ready state (selection made)', () => {
 
 describe('Empty state', () => {
   it('shows Empty component with message and disabled Start Assessment', async () => {
-    const mockedGetAssignments = vi.mocked(getGoogleClassroomAssignments);
-    mockedGetAssignments.mockResolvedValue(MOCK_EMPTY_ASSIGNMENTS);
-
-    render(<AssessTaskModal {...defaultProperties()} />);
-
-    const dialog = screen.getByRole('dialog', { name: MODAL_TITLE });
+    const dialog = renderAssessTaskModal(MOCK_EMPTY_ASSIGNMENTS, 'resolve');
 
     // Empty component message
     expect(
       await within(dialog).findByText('No assignments found for this class')
     ).toBeInTheDocument();
 
-    // Start Assessment is disabled
-    expect(
-      within(dialog).getByRole('button', { name: 'Start Assessment' })
-    ).toBeDisabled();
-
-    // Cancel button is present
-    expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    expectStartAssessmentDisabled(dialog);
+    expectCancelButtonPresent(dialog);
   });
 });
 
@@ -198,12 +209,7 @@ describe('Empty state', () => {
 
 describe('Error state', () => {
   it('shows Alert with error, Select not rendered, Start Assessment disabled', async () => {
-    const mockedGetAssignments = vi.mocked(getGoogleClassroomAssignments);
-    mockedGetAssignments.mockRejectedValue(new Error('Failed to fetch assignments'));
-
-    render(<AssessTaskModal {...defaultProperties()} />);
-
-    const dialog = screen.getByRole('dialog', { name: MODAL_TITLE });
+    const dialog = renderAssessTaskModal(new Error('Failed to fetch assignments'), 'reject');
 
     // Error Alert is visible
     expect(await within(dialog).findByRole('alert')).toBeInTheDocument();
@@ -211,13 +217,8 @@ describe('Error state', () => {
     // Select (combobox) is not rendered in error state
     expect(within(dialog).queryByRole('combobox')).toBeNull();
 
-    // Start Assessment is disabled
-    expect(
-      within(dialog).getByRole('button', { name: 'Start Assessment' })
-    ).toBeDisabled();
-
-    // Cancel button is present
-    expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    expectStartAssessmentDisabled(dialog);
+    expectCancelButtonPresent(dialog);
   });
 });
 
