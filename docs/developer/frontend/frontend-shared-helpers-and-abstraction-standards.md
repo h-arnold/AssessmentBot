@@ -39,7 +39,13 @@ Do not create a new helper only to move code out of a large file.
 
 - Query keys: `src/frontend/src/query/queryKeys.ts`
 - Shared query definitions and warm-up contracts: `src/frontend/src/query/sharedQueries.ts`
+- `getStartupWarmupQueryOptions()` public export: `src/frontend/src/query/sharedQueries.ts`
+- Query invalidation helpers: `src/frontend/src/query/queryInvalidationHelpers.ts`
 - Query client foundation/provider: `src/frontend/src/query/queryClient.ts`, `src/frontend/src/query/AppQueryProvider.tsx`
+
+### 3.1a Hooks and derivation helpers
+
+- Page dataset-state hook and pure helpers: `src/frontend/src/hooks/usePageDataset.ts`
 
 ### 3.2 Error and transport helpers
 
@@ -300,3 +306,68 @@ This section supersedes the earlier Section 9.7 defer decision for the specific 
 - Owning path: `src/frontend/e2e-tests/shared/endToEndRuntimeMocks.ts`
 - Status: `Implemented`
 - Rationale: the existing deferred-success queue, method-call tracker, and per-method response queues already provide the right browser harness for the Classes page, so implementation should extend that shared mock surface instead of creating a parallel runtime mock layer
+
+### 9.12 Dataset-state deduplication helpers
+
+1. Helper or contract: `getStartupWarmupQueryOptions`
+
+- Decision: new
+- Owning path: `src/frontend/src/query/sharedQueries.ts`
+- Status: `Implemented`
+- Rationale: resolves a `StartupWarmupDatasetKey` to its shared query options without duplicating the internal `startupWarmupQueryDefinitions` mapping; consumed by `usePageDataset` and by any future page or hook that needs typed query options for a warm-up dataset
+
+2. Helper or contract: `usePageDataset` hook
+
+- Decision: new
+- Owning path: `src/frontend/src/hooks/usePageDataset.ts`
+- Status: `Implemented`
+- Rationale: centralises the per-dataset query setup — calls `useStartupWarmupState`, `getStartupWarmupQueryOptions`, and `useQuery` with `enabled: isDatasetReady || isDatasetFailed` and `refetchOnMount: false` — so pages do not repeat this boilerplate for each warm-up-backed dataset; consumed by `ClassesPage` and `AssignmentsPage`
+
+3. Helper or contract: `computePageDatasetState`
+
+- Decision: new
+- Owning path: `src/frontend/src/hooks/usePageDataset.ts`
+- Status: `Implemented`
+- Rationale: pure function that derives `PageDatasetState` (six boolean flags) from a query result, warm-up state, and dataset key; called by `usePageDataset` and available for direct composition by pages that need per-dataset state outside the hook
+
+4. Helper or contract: `computePageSurfaceBlocking`
+
+- Decision: new
+- Owning path: `src/frontend/src/hooks/usePageDataset.ts`
+- Status: `Implemented`
+- Rationale: pure function that decides whether a single dataset should block the page surface — blocks on warm-up failure without recoverable data, untrustworthy-but-ready datasets, and ready datasets with query errors; pages compose their own blocking surface from this per-dataset decision
+
+5. Helper or contract: `computeDatasetRenderable`
+
+- Decision: new
+- Owning path: `src/frontend/src/hooks/usePageDataset.ts`
+- Status: `Implemented`
+- Rationale: pure function that decides whether a dataset is renderable — true when trustworthy or recovered after warm-up failure; pages compose their own loading and content decisions from this per-dataset signal
+
+6. Helper or contract: `computePageSurfaceBusy`
+
+- Decision: new
+- Owning path: `src/frontend/src/hooks/usePageDataset.ts`
+- Status: `Implemented`
+- Rationale: pure function returning `true` when any fetch or mutation flag is truthy; provides the common busy signal for `aria-busy` and spinner affordances; pages with additional busy triggers layer those on top
+
+7. Helper or contract: `refetchAfterStaleInvalidate`
+
+- Decision: new
+- Owning path: `src/frontend/src/query/queryInvalidationHelpers.ts`
+- Status: `Implemented`
+- Rationale: wraps the invalidate-then-explicit-refetch pattern required for queries that may be disabled at invalidation time (e.g. warm-up-gated queries with `enabled: isDatasetReady || isDatasetFailed`); called from manual retry and post-mutation refresh flows; not the general invalidation pattern — plain `invalidateQueries` is preferred for actively-observed queries per `frontend-react-query-and-prefetch.md` §7
+
+8. Helper or contract: `PageDatasetState` type
+
+- Decision: new
+- Owning path: `src/frontend/src/hooks/usePageDataset.ts`
+- Status: `Implemented`
+- Rationale: typed contract for the six derived boolean flags (`hasQueryData`, `isQueryError`, `isDatasetFailed`, `isDatasetReady`, `isDatasetTrustworthy`, `hasTrustworthyDataset`) shared between the `usePageDataset` hook and the pure derivation helpers
+
+9. Helper or contract: `PageDatasetResult<TData>` type
+
+- Decision: new
+- Owning path: `src/frontend/src/hooks/usePageDataset.ts`
+- Status: `Implemented`
+- Rationale: generic typed contract for the hook return shape — bundles a typed `UseQueryResult<TData>` with a `PageDatasetState` so consuming pages can access typed `query.data` without casts
