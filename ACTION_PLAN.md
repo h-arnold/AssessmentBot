@@ -2,16 +2,32 @@
 
 ## Plan Status
 
-- **Section 1** ✅ Complete — `ClassroomApiClient.fetchCourseWork()` implemented and reviewed. Committed as `0a88ffb`.
-- **Section 2** ✅ Complete — `getGoogleClassroomAssignments_` handler + allowlist entry. Committed as `ce0799b`.
-- **Section 3** ✅ Complete — Frontend service, Zod schema, and query key. Committed as `6a55021`.
-- **Section 4** ✅ Complete — ClassesPage card button replacement + E2E mock infrastructure. Committed as `ecd5162`.
-- **Section 5** ✅ Complete — AssessTaskModal component + wiring into ClassesPage. Committed as `919998b` / `dcdaad2` (fix).
-- **Section 6** ✅ Complete — Regression and contract hardening. 1 pre-existing regression (`max-lines`); all new code regression-free. Commit pending.
-- **Section 3** ⬜ Pending
-- **Section 4** ⬜ Pending
-- **Section 5** ⬜ Pending
-- **Section 6** ⬜ Pending
+All sections complete. Branch: `feat/AssignmentSelectionModal`.
+
+| Section | Description                                                                                         | Commits              |
+| ------- | --------------------------------------------------------------------------------------------------- | -------------------- |
+| 1       | `ClassroomApiClient.fetchCourseWork()` — backend method with pagination, sort, and throw-on-failure | `0a88ffb`            |
+| 2       | `getGoogleClassroomAssignments_` handler + allowlist entry + 13 backend tests                       | `ce0799b`            |
+| 3       | Frontend service, Zod schema (`z.strictObject`), and `googleClassroomAssignments` query key         | `6a55021`            |
+| 4       | ClassesPage card button (Edit→Assess Task icon + Tooltip) + E2E mock infrastructure                 | `ecd5162`            |
+| 5       | `AssessTaskModal` component (5 states) + wiring into `ClassesPage`                                  | `919998b`, `dcdaad2` |
+| 6       | Regression hardening; `max-lines` on `apiHandler.test.js` is the sole pre-existing regression       | `2c8e2ab`            |
+| Docs    | antd v6 testing patterns documented; de-sloppification fixes applied                                | `c7df9ca`, `c9962ec` |
+
+### Key deviations from plan
+
+- **Mask click test** (§5): The `it.skip` was replaced with a working `dispatchEvent(new MouseEvent(...))` on `.ant-modal-wrap`. `@rc-component/dialog` (antd v6) requires native DOM events for portal-mounted React handlers; `fireEvent` from React Testing Library silently fails there.
+- **Playwright E2E tests for the modal** (§5 tests 13–21): Deferred — the section focused on unit tests; Playwright coverage for the full modal workflow remains as follow-up.
+
+### Outstanding follow-ups
+
+1. **Playwright E2E tests** for `AssessTaskModal` workflow — modal open, select, Start Assessment, error/empty states (ACTION_PLAN §5 tests 13–21).
+2. **Shared validation helper** — the control-character validation block exists in both `assignmentDefinitionPartials.js` and `googleClassroomAssignments.js` with a defence-in-depth comment. Consolidating into a shared helper is a future improvement.
+3. **Canonical doc entries** — `docs/developer/backend/AssessmentFlow.md` (Shared Helper Status for `fetchCourseWork`) and `docs/developer/frontend/frontend-react-query-and-prefetch.md` (query-key convention for `googleClassroomAssignments`) still show `Not implemented`; update them to `Implemented`.
+
+### Regression status
+
+**1 pre-existing regression**: `max-lines` on `tests/api/apiHandler.test.js` (was 1793 lines before any changes; now 1798). All new code is regression-free (0 net-new test failures).
 
 ---
 
