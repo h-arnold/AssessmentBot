@@ -885,8 +885,8 @@ Docs mandatory docs:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
+- **Implementation notes:** Completed. Updated `frontend-shared-helpers-and-abstraction-standards.md` with: Section 3.1 (added `getStartupWarmupQueryOptions` and `queryInvalidationHelpers.ts`), new Section 3.1a (added `hooks/usePageDataset.ts`), and new Section 9.12 (9 entries, all `Implemented`). All planned helper entries reconciled.
+- **Deviations from plan:** None.
 - **Follow-up implications for later sections:** None — this is the final section.
 
 ---
