@@ -4,16 +4,16 @@
 
 All sections complete. Branch: `feat/AssignmentSelectionModal`.
 
-| Section | Description                                                                                         | Commits              |
-| ------- | --------------------------------------------------------------------------------------------------- | -------------------- |
-| 1       | `ClassroomApiClient.fetchCourseWork()` — backend method with pagination, sort, and throw-on-failure | `0a88ffb`            |
-| 2       | `getGoogleClassroomAssignments_` handler + allowlist entry + 13 backend tests                       | `ce0799b`            |
-| 3       | Frontend service, Zod schema (`z.strictObject`), and `googleClassroomAssignments` query key         | `6a55021`            |
-| 4       | ClassesPage card button (Edit→Assess Task icon + Tooltip) + E2E mock infrastructure                 | `ecd5162`            |
-| 5       | `AssessTaskModal` component (5 states) + wiring into `ClassesPage`                                  | `919998b`, `dcdaad2` |
-| 6       | Regression hardening; `max-lines` on `apiHandler.test.js` is the sole pre-existing regression       | `2c8e2ab`            |
-| 7       | Playwright E2E tests for modal workflow (§5 tests 13–21) + scope bug fix in `ClassesPage.tsx`       | (pending commit)     |
-| Docs    | antd v6 testing patterns documented; de-sloppification fixes applied                                | `c7df9ca`, `c9962ec` |
+| Section | Description                                                                                          | Commits                         |
+| ------- | ---------------------------------------------------------------------------------------------------- | ------------------------------- |
+| 1       | `ClassroomApiClient.fetchCourseWork()` — backend method with pagination, sort, and throw-on-failure  | `0a88ffb`                       |
+| 2       | `getGoogleClassroomAssignments_` handler + allowlist entry + 13 backend tests                        | `ce0799b`                       |
+| 3       | Frontend service, Zod schema (`z.strictObject`), and `googleClassroomAssignments` query key          | `6a55021`                       |
+| 4       | ClassesPage card button (Edit→Assess Task icon + Tooltip) + E2E mock infrastructure                  | `ecd5162`                       |
+| 5       | `AssessTaskModal` component (5 states) + wiring into `ClassesPage`                                   | `919998b`, `dcdaad2`            |
+| 6       | Regression hardening (max-lines regression since resolved by test split into 8 files)                | `2c8e2ab`                       |
+| 7       | Playwright E2E tests for modal workflow (§5 tests 13–21) + scope bug fix in `ClassesPage.tsx`        | `10536a2`                       |
+| Docs    | antd v6 testing patterns documented; de-sloppification fixes applied; Playwright patterns documented | `c7df9ca`, `c9962ec`, `92802eb` |
 
 ### Key deviations from plan
 
@@ -29,9 +29,7 @@ All sections complete. Branch: `feat/AssignmentSelectionModal`.
 
 ### Regression status
 
-**1 pre-existing regression**: `max-lines` on `tests/api/apiHandler.test.js` (was 1793 lines before any changes; now 1798). All new code is regression-free (0 net-new test failures). 9 new E2E tests pass; 21 existing E2E tests pass; 858 frontend unit tests pass.
-
----
+## **0 regressions.** The pre-existing `max-lines` on `tests/api/apiHandler.test.js` has been resolved by splitting into 8 files under `tests/api/apiHandler/` (all under 500 lines). 9 new E2E tests pass; 21 existing E2E tests pass; 858 frontend unit tests pass.
 
 ## Read-First Context
 
@@ -590,4 +588,3 @@ Ensure no regressions across all touched surfaces and verify the full feature wo
 - Record helper reconciliation in canonical docs:
   - `docs/developer/backend/AssessmentFlow.md`: add `fetchCourseWork` to Shared Helper Status as `Implemented`.
   - `docs/developer/backend/api-layer.md`: add `getGoogleClassroomAssignments` to Current migrated endpoints.
-  - `docs/developer/frontend/frontend-react-query-and-prefetch.md`: add `googleClassroomAssignments` query key.

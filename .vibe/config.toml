@@ -1,4 +1,4 @@
-active_model = "deepseek-v4-pro"
+active_model = "deepseek-v4-flash"
 vim_keybindings = false
 disable_welcome_banner_animation = false
 autocopy_to_clipboard = true
@@ -20,7 +20,7 @@ enable_update_checks = true
 enable_auto_update = true
 enable_notifications = true
 api_timeout = 720.0
-auto_compact_threshold = 180000
+auto_compact_threshold = 200000
 tool_paths = []
 mcp_servers = []
 enabled_tools = []
@@ -37,6 +37,10 @@ skill_paths = []
 enabled_skills = []
 disabled_skills = []
 theme = "catppuccin-macchiato"
+connectors = [
+    { name = "github_app", disabled = true },
+    { name = "sharepoint_online", disabled = true },
+]
 
 [[providers]]
 name = "mistral"
@@ -138,7 +142,7 @@ temperature = 0.7
 input_price = 0.0
 output_price = 0.0
 thinking = "high"
-auto_compact_threshold = 180000
+auto_compact_threshold = 384000
 
 [[models]]
 name = "deepseek-v4-pro"
@@ -148,7 +152,7 @@ temperature = 0.7
 input_price = 0.0
 output_price = 0.0
 thinking = "high"
-auto_compact_threshold = 180000
+auto_compact_threshold = 384000
 
 [[transcribe_providers]]
 name = "mistral"
