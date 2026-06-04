@@ -187,7 +187,7 @@ describe('computePageDatasetState', () => {
     // but the derivation logic should handle it correctly regardless.
     const warmupState: WarmupStateDouble = {
       isDatasetReady: (key: StartupWarmupDatasetKey) => key === datasetKey,
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- _key param required by WarmupStateDouble interface; unconditionally returning false in this defensive test
       isDatasetFailed: (_key: StartupWarmupDatasetKey) => false,
       snapshot: {
         datasets: {
