@@ -6,7 +6,8 @@
 - **Section 2** ✅ Complete — `getGoogleClassroomAssignments_` handler + allowlist entry. Committed as `ce0799b`.
 - **Section 3** ✅ Complete — Frontend service, Zod schema, and query key. Committed as `6a55021`.
 - **Section 4** ✅ Complete — ClassesPage card button replacement + E2E mock infrastructure. Committed as `ecd5162`.
-- **Section 5** ✅ Complete — AssessTaskModal component + wiring into ClassesPage. Commit pending.
+- **Section 5** ✅ Complete — AssessTaskModal component + wiring into ClassesPage. Committed as `919998b` / `dcdaad2` (fix).
+- **Section 6** ✅ Complete — Regression and contract hardening. 1 pre-existing regression (`max-lines`); all new code regression-free. Commit pending.
 - **Section 3** ⬜ Pending
 - **Section 4** ⬜ Pending
 - **Section 5** ⬜ Pending
