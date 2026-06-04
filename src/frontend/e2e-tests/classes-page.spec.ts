@@ -28,6 +28,7 @@ import {
   toPlainClassPartials,
   ALPHABETICAL_ORDER_CLASS_PARTIALS,
   TIE_BREAK_CLASS_PARTIALS,
+  assertCardButtonStates,
   createClassesScenario,
   createClassesEmptyPanelScenario,
   createClassesOrderScenario,
@@ -121,29 +122,11 @@ async function setupViewportAndVerifyCards(
     expect(cardWidth).toBeLessThanOrEqual(viewportWidth - viewportWidthMargin);
 
     const viewButton = article.getByRole('button', { name: /view/i });
-    const editButton = article.getByRole('button', { name: /edit/i });
+    const assessTaskButton = article.getByRole('button', { name: 'Assess Task' });
     await expect(viewButton).toBeVisible();
-    await expect(editButton).toBeVisible();
+    await expect(assessTaskButton).toBeVisible();
     await expect(viewButton).toBeDisabled();
-    await expect(editButton).toBeDisabled();
-  }
-}
-
-/**
- * Asserts that all View and Edit buttons across all cards are disabled.
- *
- * @param {Page} page - The Playwright page under test.
- * @returns {Promise<void>}
- */
-async function assertAllViewEditButtonsDisabled(page: Page): Promise<void> {
-  const allViewButtons = await page.getByRole('button', { name: /view/i }).all();
-  for (const viewButton of allViewButtons) {
-    await expect(viewButton).toBeDisabled();
-  }
-
-  const allEditButtons = await page.getByRole('button', { name: /edit/i }).all();
-  for (const editButton of allEditButtons) {
-    await expect(editButton).toBeDisabled();
+    await expect(assessTaskButton).toBeEnabled();
   }
 }
 
@@ -509,7 +492,7 @@ test.describe('Class cards and placeholder action affordances', () => {
     expect(thirdCardTitle?.trim()).toBe('Z Class');
   });
 
-  test('asserts every visible View and Edit button is disabled', async ({ page }) => {
+  test('asserts correct button states for every card', async ({ page }) => {
     const scenario = createClassesScenario();
     await installRuntimeMock(page, scenario);
     await page.goto('/');
@@ -527,10 +510,7 @@ test.describe('Class cards and placeholder action affordances', () => {
     const viewButtons = page.getByRole('button', { name: /view/i });
     await expect(viewButtons).toHaveCount(EXPECTED_TOTAL_CARDS_COUNT);
 
-    const editButtons = page.getByRole('button', { name: /edit/i });
-    await expect(editButtons).toHaveCount(EXPECTED_TOTAL_CARDS_COUNT);
-
-    await assertAllViewEditButtonsDisabled(page);
+    await assertCardButtonStates(page);
   });
 
   test('verifies no enabled View/Edit link, dialog trigger, or workflow affordance is present', async ({
@@ -551,7 +531,7 @@ test.describe('Class cards and placeholder action affordances', () => {
     const editLinks = page.getByRole('link', { name: /edit/i });
     await expect(editLinks).toHaveCount(0);
 
-    await assertAllViewEditButtonsDisabled(page);
+    await assertCardButtonStates(page);
   });
 
   test('asserts no drag handle, reorder button, or ordering affordance is visible in the card surface', async ({
@@ -587,8 +567,11 @@ test.describe('Class cards and placeholder action affordances', () => {
       const buttons = article.locator('button');
       await expect(buttons).toHaveCount(EXPECTED_BUTTONS_PER_CARD);
 
-      const buttonTexts = await buttons.allTextContents();
-      expect(buttonTexts).toEqual(['View', 'Edit']);
+      // View button has text "View"; Assess Task button is icon-only with aria-label
+      const viewButton = buttons.nth(0);
+      const assessButton = buttons.nth(1);
+      await expect(viewButton).toHaveText(/view/i);
+      await expect(assessButton).toHaveAttribute('aria-label', 'Assess Task');
     }
   });
 });

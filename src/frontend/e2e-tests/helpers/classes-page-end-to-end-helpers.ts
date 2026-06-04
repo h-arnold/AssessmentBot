@@ -1,5 +1,5 @@
 import { expect, type Page } from '@playwright/test';
-import type { RuntimeScenario } from '../shared/endToEndRuntimeMocks';
+import type { ResponseItem, RuntimeScenario } from '../shared/endToEndRuntimeMocks';
 import {
   CLASS_PARTIALS_FOR_EMPTY_PANEL,
   MIXED_ORDER_CLASS_PARTIALS,
@@ -64,7 +64,7 @@ export const TABLET_CARD_WIDTH_MARGIN = 50;
 // ============================================================================
 
 export const EXPECTED_TOTAL_CARDS_COUNT = 4; // 2 in Year 10, 1 in Year 11, 1 in Year 9
-export const EXPECTED_BUTTONS_PER_CARD = 2; // View and Edit
+export const EXPECTED_BUTTONS_PER_CARD = 2; // View and Assess Task
 export const EXPECTED_ALPHABETICAL_CARDS_COUNT = 3;
 export const EXPECTED_TIE_BREAK_CARDS_COUNT = 3;
 
@@ -72,6 +72,34 @@ export const EXPECTED_TIE_BREAK_CARDS_COUNT = 3;
 export const CARD_INDEX_FIRST = 0;
 export const CARD_INDEX_SECOND = 1;
 export const CARD_INDEX_THIRD = 2;
+
+// ============================================================================
+// Mock Assignment Fixture Data
+// ============================================================================
+
+/**
+ * Standard mock coursework assignments for Assess Task modal E2E tests.
+ *
+ * Two entries are provided to cover React 19 StrictMode double-effect firing
+ * in development. Each entry returns the same assignment data so the modal
+ * stabilises to the ready state regardless of effect replay count.
+ */
+export const MOCK_COURSEWORK_ASSIGNMENTS: ReadonlyArray<ResponseItem> = [
+  {
+    kind: 'success',
+    data: [
+      { assignmentId: 'cw-1', title: 'Algebra Homework' },
+      { assignmentId: 'cw-2', title: 'Chapter 5 Review' },
+    ],
+  },
+  {
+    kind: 'success',
+    data: [
+      { assignmentId: 'cw-1', title: 'Algebra Homework' },
+      { assignmentId: 'cw-2', title: 'Chapter 5 Review' },
+    ],
+  },
+];
 
 // ============================================================================
 // Scenario Factory Helpers
@@ -83,6 +111,7 @@ export const CARD_INDEX_THIRD = 2;
 export interface CreateClassesScenarioOptions {
   classPartials?: Array<Record<string, unknown>>;
   yearGroups?: Array<{ key: string; name: string }>;
+  getGoogleClassroomAssignments?: ReadonlyArray<ResponseItem>;
 }
 
 /**
@@ -95,9 +124,10 @@ export function createClassesScenario(options: CreateClassesScenarioOptions = {}
   const {
     classPartials = toPlainClassPartials(MIXED_ORDER_CLASS_PARTIALS),
     yearGroups = MIXED_ORDER_YEAR_GROUPS,
+    getGoogleClassroomAssignments,
   } = options;
 
-  return {
+  const scenario: RuntimeScenario = {
     getAuthorisationStatus: [{ kind: 'success', data: true }],
     getABClassPartials: [{ kind: 'success', data: classPartials }],
     getCohorts: [{ kind: 'success', data: [] }],
@@ -105,6 +135,12 @@ export function createClassesScenario(options: CreateClassesScenarioOptions = {}
     getAssignmentTopics: [{ kind: 'success', data: [] }],
     getAssignmentDefinitionPartials: [{ kind: 'success', data: [] }],
   };
+
+  if (getGoogleClassroomAssignments) {
+    scenario.getGoogleClassroomAssignments = getGoogleClassroomAssignments;
+  }
+
+  return scenario;
 }
 
 /**
@@ -130,6 +166,26 @@ export function createClassesOrderScenario(
   classPartials: Array<Record<string, unknown>>
 ): RuntimeScenario {
   return createClassesScenario({ classPartials, yearGroups: SINGLE_YEAR_GROUP });
+}
+
+/**
+ * Creates a runtime scenario for Assess Task modal E2E tests.
+ *
+ * Extends the standard Classes page scenario with `getGoogleClassroomAssignments`
+ * mock responses. Defaults to `MOCK_COURSEWORK_ASSIGNMENTS` if no assignment
+ * responses are provided.
+ *
+ * @param {CreateClassesScenarioOptions} options - Scenario customisation options.
+ * @returns {RuntimeScenario} Runtime scenario with assignment mock data.
+ */
+export function createAssessTaskScenario(
+  options: CreateClassesScenarioOptions = {}
+): RuntimeScenario {
+  return createClassesScenario({
+    ...options,
+    getGoogleClassroomAssignments:
+      options.getGoogleClassroomAssignments ?? MOCK_COURSEWORK_ASSIGNMENTS,
+  });
 }
 
 // ============================================================================
@@ -161,6 +217,66 @@ export async function expectBreadcrumbLabels(page: Page, labels: string[]): Prom
   for (const label of labels) {
     await expect(breadcrumb).toContainText(label);
   }
+}
+
+// ============================================================================
+// Assess Task Modal Helpers
+// ============================================================================
+
+/**
+ * Navigates to the Classes page and opens the first Assess Task modal.
+ *
+ * Handles the common test preamble: goto → menu click → panel visibility
+ * check → Assess Task button click → dialog visibility check.
+ *
+ * @param {Page} page - The Playwright page under test.
+ * @returns {Promise<ReturnType<typeof page.getByRole>>} The visible dialog locator.
+ */
+export async function openAssessTaskModal(page: Page): Promise<ReturnType<typeof page.getByRole>> {
+  await page.goto('/');
+  await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
+  await expect(page.locator('#panel-content-year-group-10')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Assess Task' }).first().click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+
+  return dialog;
+}
+
+// ============================================================================
+// Button State Assertion Helpers
+// ============================================================================
+
+/**
+ * Asserts that every card has View (disabled) and Assess Task (enabled) buttons.
+ * Edit buttons must be absent.
+ *
+ * Replaces the earlier assertAllViewEditButtonsDisabled to reflect the
+ * Edit → Assess Task button replacement in Section 4.
+ *
+ * @param {Page} page - The Playwright page under test.
+ * @returns {Promise<void>}
+ */
+export async function assertCardButtonStates(page: Page): Promise<void> {
+  // View buttons: exist, are disabled
+  const allViewButtons = await page.getByRole('button', { name: /view/i }).all();
+  for (const viewButton of allViewButtons) {
+    await expect(viewButton).toBeVisible();
+    await expect(viewButton).toBeDisabled();
+  }
+
+  // Assess Task buttons: exist, are enabled, have aria-label
+  const allAssessTaskButtons = await page.getByRole('button', { name: 'Assess Task' }).all();
+  for (const assessButton of allAssessTaskButtons) {
+    await expect(assessButton).toBeVisible();
+    await expect(assessButton).toBeEnabled();
+    await expect(assessButton).toHaveAttribute('aria-label', 'Assess Task');
+  }
+
+  // Edit buttons: must be absent
+  const allEditButtons = await page.getByRole('button', { name: /edit/i }).all();
+  expect(allEditButtons).toHaveLength(0);
 }
 
 // ============================================================================

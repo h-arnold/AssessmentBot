@@ -1,4 +1,4 @@
-active_model = "deepseek-v4-pro"
+active_model = "deepseek-v4-flash"
 vim_keybindings = false
 disable_welcome_banner_animation = false
 autocopy_to_clipboard = true
@@ -12,7 +12,7 @@ active_tts_model = "voxtral-tts"
 auto_approve = false
 enable_telemetry = true
 system_prompt_id = "cli"
-include_commit_signature = true
+include_commit_signature = false
 include_model_info = true
 include_project_context = true
 include_prompt_detail = true
@@ -20,7 +20,7 @@ enable_update_checks = true
 enable_auto_update = true
 enable_notifications = true
 api_timeout = 720.0
-auto_compact_threshold = 180000
+auto_compact_threshold = 200000
 tool_paths = []
 mcp_servers = []
 enabled_tools = []
@@ -37,6 +37,10 @@ skill_paths = []
 enabled_skills = []
 disabled_skills = []
 theme = "catppuccin-macchiato"
+connectors = [
+    { name = "github_app", disabled = true },
+    { name = "sharepoint_online", disabled = true },
+]
 
 [[providers]]
 name = "mistral"
@@ -89,6 +93,7 @@ input_price = 1.5
 output_price = 7.5
 thinking = "high"
 auto_compact_threshold = 200000
+supports_images = true
 
 [[models]]
 name = "mistral-small"
@@ -138,7 +143,7 @@ temperature = 0.7
 input_price = 0.0
 output_price = 0.0
 thinking = "high"
-auto_compact_threshold = 180000
+auto_compact_threshold = 384000
 
 [[models]]
 name = "deepseek-v4-pro"
@@ -148,7 +153,7 @@ temperature = 0.7
 input_price = 0.0
 output_price = 0.0
 thinking = "high"
-auto_compact_threshold = 180000
+auto_compact_threshold = 384000
 
 [[transcribe_providers]]
 name = "mistral"
@@ -319,36 +324,11 @@ sensitive_patterns = [
 max_write_bytes = 64000
 create_parent_dirs = true
 
-[tools.search_replace]
-permission = "always"
-allowlist = []
-denylist = []
-sensitive_patterns = [
-    "**/.env",
-    "**/.env.*",
-    "**/**eslint.config**",
-]
-max_content_size = 100000
-create_backup = false
-fuzzy_threshold = 0.9
-
 [tools.skill]
 permission = "always"
 allowlist = []
 denylist = []
 sensitive_patterns = []
-
-[tools.read_file]
-permission = "always"
-allowlist = [
-    "./.vibe/agents/*",
-]
-denylist = []
-sensitive_patterns = [
-    "**/.env",
-    "**/.env.*",
-]
-max_read_bytes = 64000
 
 [tools.web_search]
 permission = "always"
@@ -366,7 +346,7 @@ sensitive_patterns = [
     "**/.env",
     "**/.env.*",
 ]
-max_output_bytes = 64000
+max_output_bytes = 96000
 default_max_matches = 100
 default_timeout = 60
 exclude_patterns = [
@@ -395,3 +375,26 @@ exclude_patterns = [
     "Thumbs.db",
 ]
 codeignore_file = ".vibeignore"
+
+[tools.read]
+permission = "always"
+allowlist = [
+    "./.vibe/agents/*",
+]
+denylist = []
+sensitive_patterns = [
+    "**/.env",
+    "**/.env.*",
+]
+max_read_bytes = 64000
+
+[tools.edit]
+permission = "always"
+allowlist = []
+denylist = []
+sensitive_patterns = [
+    "**/.env",
+    "**/.env.*",
+    "**/**eslint.config**",
+]
+fuzzy_threshold = 0.9

@@ -138,6 +138,52 @@ const ClassroomApiClient = {
   },
 
   /**
+   * Fetch all coursework (assignments) for a given course.
+   * Paginates through all pages and sorts by updateTime descending.
+   * @param {string} courseId - The ID of the course.
+   * @returns {Array<{id: string, title: string, updateTime: string}>} Sorted assignment summaries.
+   */
+  fetchCourseWork(courseId) {
+    try {
+      const allCourseWork = [];
+      let pageToken;
+
+      do {
+        const response = pageToken
+          ? Classroom.Courses.CourseWork.list(courseId, { pageToken })
+          : Classroom.Courses.CourseWork.list(courseId);
+
+        if (response.courseWork && response.courseWork.length > 0) {
+          const mapped = response.courseWork.map((cw) => ({
+            id: cw.id,
+            title: cw.title,
+            updateTime: cw.updateTime,
+          }));
+          allCourseWork.push(...mapped);
+        }
+
+        pageToken = response.nextPageToken;
+      } while (pageToken);
+
+      // Sort by updateTime descending (most recent first)
+      allCourseWork.sort((a, b) => b.updateTime.localeCompare(a.updateTime));
+
+      ABLogger.getInstance().info('Fetched coursework for course.', {
+        courseId,
+        count: allCourseWork.length,
+      });
+
+      return allCourseWork;
+    } catch (error) {
+      ABLogger.getInstance().error('Failed to fetch coursework for course.', {
+        courseId,
+        error: error.message,
+      });
+      throw error;
+    }
+  },
+
+  /**
    * Fetch teachers for a given course.
    * Maps Classroom API teacher resources to `Teacher` model instances.
    * @param {string} courseId - The ID of the course.

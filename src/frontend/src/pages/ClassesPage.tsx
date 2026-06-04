@@ -1,5 +1,6 @@
-import { Alert, Button, Card, Col, Collapse, Empty, Row, Skeleton, Space, Typography } from 'antd';
-import { type JSX, useMemo } from 'react';
+import { Alert, Button, Card, Col, Collapse, Empty, Row, Skeleton, Space, Tooltip, Typography } from 'antd';
+import { AuditOutlined } from '@ant-design/icons';
+import { type JSX, useMemo, useState } from 'react';
 import {
   computeDatasetRenderable,
   computePageSurfaceBlocking,
@@ -14,6 +15,7 @@ import {
   type ClassesPagePanelViewModel,
   type InvalidClassesPageDataViewModel,
 } from './classes/classesPageModel';
+import { AssessTaskModal } from '../features/classes/AssessTaskModal';
 import { PageSection } from './PageSection';
 import { pageContent } from './pageContent';
 
@@ -99,6 +101,11 @@ function isModelEmpty(
 }
 
 /**
+ * Callback type for the assess-task button on a class card.
+ */
+type OnAssessTask = (classId: string, className: string) => void;
+
+/**
  * Renders the year-group collapse with class cards.
  *
  * Uses Collapse.Panel children pattern instead of items prop to ensure proper
@@ -107,9 +114,13 @@ function isModelEmpty(
  * get proper keyboard support with custom header components.
  *
  * @param {ClassesPagePanelViewModel} viewModel The view model with panels and default expanded keys.
+ * @param {OnAssessTask} onAssessTask Callback when the Assess Task button is clicked.
  * @returns {JSX.Element} The rendered collapse.
  */
-function renderYearGroupCollapse(viewModel: ClassesPagePanelViewModel): JSX.Element {
+function renderYearGroupCollapse(
+  viewModel: ClassesPagePanelViewModel,
+  onAssessTask: OnAssessTask
+): JSX.Element {
   const { panels, defaultExpandedPanelKeys } = viewModel;
 
   const isMobile = window.innerWidth <= CLASSES_MOBILE_BREAKPOINT_PX;
@@ -152,9 +163,16 @@ function renderYearGroupCollapse(viewModel: ClassesPagePanelViewModel): JSX.Elem
                                 <Button disabled tabIndex={-1} type="text">
                                   View
                                 </Button>
-                                <Button disabled tabIndex={-1} type="text">
-                                  Edit
-                                </Button>
+                                <Tooltip title="Assess Task">
+                                  <Button
+                                    aria-label="Assess Task"
+                                    icon={<AuditOutlined />}
+                                    type="text"
+                                    onClick={() => {
+                                      onAssessTask(card.classId, card.className);
+                                    }}
+                                  />
+                                </Tooltip>
                               </Space>
                             </div>
                           </Card>
@@ -179,7 +197,7 @@ function renderYearGroupCollapse(viewModel: ClassesPagePanelViewModel): JSX.Elem
 /**
  * Renders the content based on the current state.
  *
- * @param {Readonly<{ finalShouldRenderBlockingState: boolean; shouldRenderLoadingState: boolean; shouldRenderEmptyState: boolean; viewModel: ClassesPagePanelViewModel | InvalidClassesPageDataViewModel; isBusy: boolean; }>} properties Render properties.
+ * @param {Readonly<{ finalShouldRenderBlockingState: boolean; shouldRenderLoadingState: boolean; shouldRenderEmptyState: boolean; viewModel: ClassesPagePanelViewModel | InvalidClassesPageDataViewModel; isBusy: boolean; onAssessTask: OnAssessTask; }>} properties Render properties.
  * @returns {JSX.Element} The rendered content.
  */
 function renderClassesContent(
@@ -189,6 +207,7 @@ function renderClassesContent(
     shouldRenderEmptyState: boolean;
     viewModel: ClassesPagePanelViewModel | InvalidClassesPageDataViewModel;
     isBusy: boolean;
+    onAssessTask: OnAssessTask;
   }>
 ): JSX.Element {
   if (properties.finalShouldRenderBlockingState) {
@@ -215,7 +234,10 @@ function renderClassesContent(
           {CLASSES_REFRESH_TEXT}
         </div>
       ) : null}
-      {renderYearGroupCollapse(properties.viewModel as ClassesPagePanelViewModel)}
+      {renderYearGroupCollapse(
+        properties.viewModel as ClassesPagePanelViewModel,
+        properties.onAssessTask
+      )}
     </>
   );
 }
@@ -273,6 +295,10 @@ export function ClassesPage() {
     yearGroups: yearGroupsDatasetState,
   });
 
+  // Modal state for Assess Task workflow
+  const [assessModalClassId, setAssessModalClassId] = useState<string | null>(null);
+  const [assessModalClassName, setAssessModalClassName] = useState<string | null>(null);
+
   // Compute busy state
   const isClassesSurfaceBusy = computePageSurfaceBusy(
     [classPartialsQuery.isFetching, yearGroupsQuery.isFetching],
@@ -307,8 +333,23 @@ export function ClassesPage() {
           shouldRenderEmptyState,
           viewModel: modelResult,
           isBusy: isClassesSurfaceBusy,
+          onAssessTask: (classId, className) => {
+            setAssessModalClassId(classId);
+            setAssessModalClassName(className);
+          },
         })}
       </section>
+      {assessModalClassId !== null && assessModalClassName !== null && (
+        <AssessTaskModal
+          open
+          classId={assessModalClassId}
+          className={assessModalClassName}
+          onClose={() => {
+            setAssessModalClassId(null);
+            setAssessModalClassName(null);
+          }}
+        />
+      )}
     </PageSection>
   );
 }

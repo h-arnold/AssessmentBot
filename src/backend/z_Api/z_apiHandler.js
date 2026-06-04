@@ -25,6 +25,7 @@ const ALLOWLISTED_METHOD_HANDLERS = Object.freeze({
   getAssignmentDefinition: (parameters) => getAssignmentDefinition_(parameters),
   deleteAssignmentDefinition: (parameters) => deleteAssignmentDefinition_(parameters),
   upsertAssignmentDefinition: (parameters) => upsertAssignmentDefinition_(parameters),
+  getGoogleClassroomAssignments: (parameters) => getGoogleClassroomAssignments_(parameters),
   getGoogleClassrooms: (parameters) => getGoogleClassrooms_(parameters),
   upsertABClass: (parameters) => upsertABClass_(parameters),
   updateABClass: (parameters) => updateABClass_(parameters),

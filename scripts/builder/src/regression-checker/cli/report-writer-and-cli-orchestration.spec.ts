@@ -110,6 +110,7 @@ type RegressionCliModule = {
   resolveSessionArtefactPath: (sessionDirectory: string, relativeArtefactPath: string) => string;
   loadDefaultRegressionCheckerConfig: (repoRoot: string) => Promise<unknown>;
   writeFileToDisk: (targetPath: string, content: string) => Promise<void>;
+  extractCurrentFailures: (summary: Record<string, unknown>) => string[];
   runChecksFromConfig: (options: {
     config: RegressionConfig;
     repoRoot: string;
@@ -444,7 +445,13 @@ describe('report writer and CLI orchestration', () => {
             tool: 'eslint',
             status: 'failing',
             baselineSummary: { kind: 'eslint', counts: { errors: 0, warnings: 0 } },
-            currentSummary: { kind: 'eslint', counts: { errors: 1, warnings: 0 } },
+            currentSummary: {
+              kind: 'eslint',
+              counts: { errors: 1, warnings: 0 },
+              findings: [
+                { fingerprint: 'no-alert|src/example.ts|1|1|Unexpected alert.', severity: 2 },
+              ],
+            },
             regressions: ['no-alert|src/example.ts|1|1|Unexpected alert.'],
             newFailures: ['no-alert|src/example.ts|1|1|Unexpected alert.'],
             fixes: [],
@@ -485,6 +492,9 @@ describe('report writer and CLI orchestration', () => {
     expect(result.mode).toBe('compare');
     expect(result.exitCode).toBe(1);
     expect(result.outputText).toContain('Overall Status: FAILING');
+    expect(result.outputText).toContain('Current Failures: 1');
+    expect(result.outputText).toContain('- no-alert|src/example.ts|1|1|Unexpected alert.');
+    expect(result.outputText).toContain('REGRESSION CREATED');
     expect(writes.map((entry) => entry.targetPath)).toEqual([
       '/repo/.ts-regression-checker/reports/session-feature-regression-checker/runs/2026-05-13T05-00-00.000Z/comparison.json',
       '/repo/.ts-regression-checker/reports/session-feature-regression-checker/runs/2026-05-13T05-00-00.000Z/comparison.txt',
@@ -1710,5 +1720,128 @@ describe('report writer and CLI orchestration', () => {
     expect(report).toContain('Exit Code: N/A');
     expect(report).not.toContain('Issues:');
     expect(report).not.toContain('Diagnostics:');
+  });
+
+  describe('extractCurrentFailures', () => {
+    it('extracts eslint findings as fingerprints', async () => {
+      const { extractCurrentFailures } = await loadCliModule();
+      const result = extractCurrentFailures({
+        kind: 'eslint',
+        findings: [
+          { fingerprint: 'rule-a|src/a.ts|1|1|msg a', severity: 2 },
+          { fingerprint: 'rule-b|src/b.ts|2|1|msg b', severity: 2 },
+        ],
+        counts: { errors: 2, warnings: 0 },
+      });
+      expect(result).toEqual(['rule-a|src/a.ts|1|1|msg a', 'rule-b|src/b.ts|2|1|msg b']);
+    });
+
+    it('returns empty array when eslint findings is empty', async () => {
+      const { extractCurrentFailures } = await loadCliModule();
+      const result = extractCurrentFailures({
+        kind: 'eslint',
+        findings: [],
+        counts: { errors: 0, warnings: 0 },
+      });
+      expect(result).toEqual([]);
+    });
+
+    it('returns empty array when eslint findings is missing', async () => {
+      const { extractCurrentFailures } = await loadCliModule();
+      const result = extractCurrentFailures({
+        kind: 'eslint',
+        counts: { errors: 0, warnings: 0 },
+      });
+      expect(result).toEqual([]);
+    });
+
+    it('extracts vitest failed test fingerprints', async () => {
+      const { extractCurrentFailures } = await loadCliModule();
+      const result = extractCurrentFailures({
+        kind: 'vitest',
+        tests: [
+          { fingerprint: 'suite-a|test-a', status: 'failed' },
+          { fingerprint: 'suite-a|test-b', status: 'passed' },
+          { fingerprint: 'suite-b|test-c', status: 'failed' },
+        ],
+        counts: { total: 3, passed: 1, failed: 2, skipped: 0 },
+      });
+      expect(result).toEqual(['suite-a|test-a', 'suite-b|test-c']);
+    });
+
+    it('returns empty array when vitest has no failed tests', async () => {
+      const { extractCurrentFailures } = await loadCliModule();
+      const result = extractCurrentFailures({
+        kind: 'vitest',
+        tests: [
+          { fingerprint: 'suite-a|test-a', status: 'passed' },
+          { fingerprint: 'suite-a|test-b', status: 'passed' },
+        ],
+        counts: { total: 2, passed: 2, failed: 0, skipped: 0 },
+      });
+      expect(result).toEqual([]);
+    });
+
+    it('extracts playwright failed test fingerprints', async () => {
+      const { extractCurrentFailures } = await loadCliModule();
+      const result = extractCurrentFailures({
+        kind: 'playwright',
+        tests: [{ fingerprint: 'spec.ts|suite|test-x', status: 'failed' }],
+        counts: { total: 1, passed: 0, failed: 1, skipped: 0 },
+      });
+      expect(result).toEqual(['spec.ts|suite|test-x']);
+    });
+
+    it('returns empty array when tests array is missing', async () => {
+      const { extractCurrentFailures } = await loadCliModule();
+      const result = extractCurrentFailures({
+        kind: 'vitest',
+        counts: { total: 0, passed: 0, failed: 0, skipped: 0 },
+      });
+      expect(result).toEqual([]);
+    });
+
+    it('extracts tsc diagnostic fingerprints', async () => {
+      const { extractCurrentFailures } = await loadCliModule();
+      const result = extractCurrentFailures({
+        kind: 'tsc',
+        diagnostics: [
+          { fingerprint: 'src/a.ts(1,1): error TS1001: msg' },
+          { fingerprint: 'src/b.ts(2,1): error TS1002: msg' },
+        ],
+        counts: { diagnostics: 2 },
+      });
+      expect(result).toEqual([
+        'src/a.ts(1,1): error TS1001: msg',
+        'src/b.ts(2,1): error TS1002: msg',
+      ]);
+    });
+
+    it('returns empty array when tsc diagnostics is empty', async () => {
+      const { extractCurrentFailures } = await loadCliModule();
+      const result = extractCurrentFailures({
+        kind: 'tsc',
+        diagnostics: [],
+        counts: { diagnostics: 0 },
+      });
+      expect(result).toEqual([]);
+    });
+
+    it('returns empty array when diagnostics is missing', async () => {
+      const { extractCurrentFailures } = await loadCliModule();
+      const result = extractCurrentFailures({
+        kind: 'tsc',
+        counts: { diagnostics: 0 },
+      });
+      expect(result).toEqual([]);
+    });
+
+    it('returns empty array for unknown summary kind', async () => {
+      const { extractCurrentFailures } = await loadCliModule();
+      const result = extractCurrentFailures({
+        kind: 'unknown-kind',
+      });
+      expect(result).toEqual([]);
+    });
   });
 });

@@ -38,6 +38,7 @@ Current shared keys:
 - `cohorts`
 - `yearGroups`
 - `googleClassrooms`
+- `googleClassroomAssignments`
 
 Keep future invalidation and warm-up work aligned to these helpers.
 

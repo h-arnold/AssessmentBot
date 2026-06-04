@@ -94,7 +94,7 @@ At the completion of **each** red-green loop (after both red and green phases ar
 ### 3.2 Red Loop: Testing
 
 1. **Test:**
-   Delegate the section's required test cases to `Testing Specialist`.  
+   Delegate the section's required test cases to `Testing Specialist` for Vitest/backend tests, or `Playwright` for E2E tests.  
     Pass:
 
 - section name

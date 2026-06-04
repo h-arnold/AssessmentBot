@@ -199,3 +199,7 @@ g.ClassroomManager = {
     return [];
   },
 };
+
+// Expose hasControlCharacters_ from assignmentDefinitionPartials for test access
+const { hasControlCharacters_ } = require('../src/backend/z_Api/assignmentDefinitionPartials.js');
+g.hasControlCharacters_ = hasControlCharacters_;

@@ -9,6 +9,10 @@
 - `AssignmentDefinitionController._rollbackFullStoreWrite()` rollback helper
   - Status: `Implemented`
   - Behaviour: restores or deletes the full-definition write when the later registry write fails; if rollback itself fails, the controller throws a repair-required error.
+- `fetchCourseWork` paginating fetch of Google Classroom coursework
+  - Status: `Implemented`
+  - Behaviour: paginating fetch of Google Classroom coursework by courseId, sorted by updateTime descending, throws on API failure
+  - Owning path: `ClassroomApiClient.fetchCourseWork()` in `src/backend/GoogleClassroom/ClassroomApiClient.js`
 - Legacy wizard / trigger metadata-derived definition-key compatibility helper
   - Status: `Pending / unchanged`
   - Current note: the AdminSheet wizard and trigger flow still use `AssignmentDefinition.buildDefinitionKey(...)`; they have not been migrated to the `apiHandler` upsert contract in this cycle.
