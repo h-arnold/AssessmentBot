@@ -12,22 +12,24 @@ All sections complete. Branch: `feat/AssignmentSelectionModal`.
 | 4       | ClassesPage card button (Edit→Assess Task icon + Tooltip) + E2E mock infrastructure                 | `ecd5162`            |
 | 5       | `AssessTaskModal` component (5 states) + wiring into `ClassesPage`                                  | `919998b`, `dcdaad2` |
 | 6       | Regression hardening; `max-lines` on `apiHandler.test.js` is the sole pre-existing regression       | `2c8e2ab`            |
+| 7       | Playwright E2E tests for modal workflow (§5 tests 13–21) + scope bug fix in `ClassesPage.tsx`       | (pending commit)     |
 | Docs    | antd v6 testing patterns documented; de-sloppification fixes applied                                | `c7df9ca`, `c9962ec` |
 
 ### Key deviations from plan
 
 - **Mask click test** (§5): The `it.skip` was replaced with a working `dispatchEvent(new MouseEvent(...))` on `.ant-modal-wrap`. `@rc-component/dialog` (antd v6) requires native DOM events for portal-mounted React handlers; `fireEvent` from React Testing Library silently fails there.
-- **Playwright E2E tests for the modal** (§5 tests 13–21): Deferred — the section focused on unit tests; Playwright coverage for the full modal workflow remains as follow-up.
+- **Playwright E2E tests for the modal** (§5 tests 13–21): Now implemented (§7). All 9 pass alongside the 21 existing classes-page E2E tests.
+- **`ClassesPage.tsx` scoping bug** (§7): The `renderYearGroupCollapse` module-level function referenced `useState` setters that only existed in the `ClassesPage` component closure. This was invisible in unit tests (which mocked the modal) but caused `setAssessModalClassId is not defined` at runtime when clicking "Assess Task". Fixed by introducing an `OnAssessTask` callback type and threading it through `renderYearGroupCollapse` and `renderClassesContent`.
+- **React 19 StrictMode double-effect**: `useEffect` fires twice in development mode, so all E2E response queues provide 2 entries per expected API call (4 for the reopen-reset test with two modal opens).
 
 ### Outstanding follow-ups
 
-1. **Playwright E2E tests** for `AssessTaskModal` workflow — modal open, select, Start Assessment, error/empty states (ACTION_PLAN §5 tests 13–21).
-2. **Shared validation helper** — the control-character validation block exists in both `assignmentDefinitionPartials.js` and `googleClassroomAssignments.js` with a defence-in-depth comment. Consolidating into a shared helper is a future improvement.
-3. **Canonical doc entries** — `docs/developer/backend/AssessmentFlow.md` (Shared Helper Status for `fetchCourseWork`) and `docs/developer/frontend/frontend-react-query-and-prefetch.md` (query-key convention for `googleClassroomAssignments`) still show `Not implemented`; update them to `Implemented`.
+1. **Shared validation helper** — the control-character validation block exists in both `assignmentDefinitionPartials.js` and `googleClassroomAssignments.js` with a defence-in-depth comment. Consolidating into a shared helper is a future improvement.
+2. **Canonical doc entries** — `docs/developer/backend/AssessmentFlow.md` (Shared Helper Status for `fetchCourseWork`), `docs/developer/backend/api-layer.md` (add `getGoogleClassroomAssignments` to migrated endpoints), and `docs/developer/frontend/frontend-react-query-and-prefetch.md` (query-key convention for `googleClassroomAssignments`) still need updating.
 
 ### Regression status
 
-**1 pre-existing regression**: `max-lines` on `tests/api/apiHandler.test.js` (was 1793 lines before any changes; now 1798). All new code is regression-free (0 net-new test failures).
+**1 pre-existing regression**: `max-lines` on `tests/api/apiHandler.test.js` (was 1793 lines before any changes; now 1798). All new code is regression-free (0 net-new test failures). 9 new E2E tests pass; 21 existing E2E tests pass; 858 frontend unit tests pass.
 
 ---
 

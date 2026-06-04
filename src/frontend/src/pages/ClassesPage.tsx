@@ -101,6 +101,11 @@ function isModelEmpty(
 }
 
 /**
+ * Callback type for the assess-task button on a class card.
+ */
+type OnAssessTask = (classId: string, className: string) => void;
+
+/**
  * Renders the year-group collapse with class cards.
  *
  * Uses Collapse.Panel children pattern instead of items prop to ensure proper
@@ -109,9 +114,13 @@ function isModelEmpty(
  * get proper keyboard support with custom header components.
  *
  * @param {ClassesPagePanelViewModel} viewModel The view model with panels and default expanded keys.
+ * @param {OnAssessTask} onAssessTask Callback when the Assess Task button is clicked.
  * @returns {JSX.Element} The rendered collapse.
  */
-function renderYearGroupCollapse(viewModel: ClassesPagePanelViewModel): JSX.Element {
+function renderYearGroupCollapse(
+  viewModel: ClassesPagePanelViewModel,
+  onAssessTask: OnAssessTask
+): JSX.Element {
   const { panels, defaultExpandedPanelKeys } = viewModel;
 
   const isMobile = window.innerWidth <= CLASSES_MOBILE_BREAKPOINT_PX;
@@ -160,8 +169,7 @@ function renderYearGroupCollapse(viewModel: ClassesPagePanelViewModel): JSX.Elem
                                     icon={<AuditOutlined />}
                                     type="text"
                                     onClick={() => {
-                                      setAssessModalClassId(card.classId);
-                                      setAssessModalClassName(card.className);
+                                      onAssessTask(card.classId, card.className);
                                     }}
                                   />
                                 </Tooltip>
@@ -189,7 +197,7 @@ function renderYearGroupCollapse(viewModel: ClassesPagePanelViewModel): JSX.Elem
 /**
  * Renders the content based on the current state.
  *
- * @param {Readonly<{ finalShouldRenderBlockingState: boolean; shouldRenderLoadingState: boolean; shouldRenderEmptyState: boolean; viewModel: ClassesPagePanelViewModel | InvalidClassesPageDataViewModel; isBusy: boolean; }>} properties Render properties.
+ * @param {Readonly<{ finalShouldRenderBlockingState: boolean; shouldRenderLoadingState: boolean; shouldRenderEmptyState: boolean; viewModel: ClassesPagePanelViewModel | InvalidClassesPageDataViewModel; isBusy: boolean; onAssessTask: OnAssessTask; }>} properties Render properties.
  * @returns {JSX.Element} The rendered content.
  */
 function renderClassesContent(
@@ -199,6 +207,7 @@ function renderClassesContent(
     shouldRenderEmptyState: boolean;
     viewModel: ClassesPagePanelViewModel | InvalidClassesPageDataViewModel;
     isBusy: boolean;
+    onAssessTask: OnAssessTask;
   }>
 ): JSX.Element {
   if (properties.finalShouldRenderBlockingState) {
@@ -225,7 +234,10 @@ function renderClassesContent(
           {CLASSES_REFRESH_TEXT}
         </div>
       ) : null}
-      {renderYearGroupCollapse(properties.viewModel as ClassesPagePanelViewModel)}
+      {renderYearGroupCollapse(
+        properties.viewModel as ClassesPagePanelViewModel,
+        properties.onAssessTask
+      )}
     </>
   );
 }
@@ -321,6 +333,10 @@ export function ClassesPage() {
           shouldRenderEmptyState,
           viewModel: modelResult,
           isBusy: isClassesSurfaceBusy,
+          onAssessTask: (classId, className) => {
+            setAssessModalClassId(classId);
+            setAssessModalClassName(className);
+          },
         })}
       </section>
       {assessModalClassId !== null && assessModalClassName !== null && (

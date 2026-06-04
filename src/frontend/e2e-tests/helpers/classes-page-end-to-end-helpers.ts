@@ -1,5 +1,5 @@
 import { expect, type Page } from '@playwright/test';
-import type { RuntimeScenario } from '../shared/endToEndRuntimeMocks';
+import type { ResponseItem, RuntimeScenario } from '../shared/endToEndRuntimeMocks';
 import {
   CLASS_PARTIALS_FOR_EMPTY_PANEL,
   MIXED_ORDER_CLASS_PARTIALS,
@@ -74,6 +74,34 @@ export const CARD_INDEX_SECOND = 1;
 export const CARD_INDEX_THIRD = 2;
 
 // ============================================================================
+// Mock Assignment Fixture Data
+// ============================================================================
+
+/**
+ * Standard mock coursework assignments for Assess Task modal E2E tests.
+ *
+ * Two entries are provided to cover React 19 StrictMode double-effect firing
+ * in development. Each entry returns the same assignment data so the modal
+ * stabilises to the ready state regardless of effect replay count.
+ */
+export const MOCK_COURSEWORK_ASSIGNMENTS: ReadonlyArray<ResponseItem> = [
+  {
+    kind: 'success',
+    data: [
+      { assignmentId: 'cw-1', title: 'Algebra Homework' },
+      { assignmentId: 'cw-2', title: 'Chapter 5 Review' },
+    ],
+  },
+  {
+    kind: 'success',
+    data: [
+      { assignmentId: 'cw-1', title: 'Algebra Homework' },
+      { assignmentId: 'cw-2', title: 'Chapter 5 Review' },
+    ],
+  },
+];
+
+// ============================================================================
 // Scenario Factory Helpers
 // ============================================================================
 
@@ -83,6 +111,7 @@ export const CARD_INDEX_THIRD = 2;
 export interface CreateClassesScenarioOptions {
   classPartials?: Array<Record<string, unknown>>;
   yearGroups?: Array<{ key: string; name: string }>;
+  getGoogleClassroomAssignments?: ReadonlyArray<ResponseItem>;
 }
 
 /**
@@ -95,9 +124,10 @@ export function createClassesScenario(options: CreateClassesScenarioOptions = {}
   const {
     classPartials = toPlainClassPartials(MIXED_ORDER_CLASS_PARTIALS),
     yearGroups = MIXED_ORDER_YEAR_GROUPS,
+    getGoogleClassroomAssignments,
   } = options;
 
-  return {
+  const scenario: RuntimeScenario = {
     getAuthorisationStatus: [{ kind: 'success', data: true }],
     getABClassPartials: [{ kind: 'success', data: classPartials }],
     getCohorts: [{ kind: 'success', data: [] }],
@@ -105,6 +135,12 @@ export function createClassesScenario(options: CreateClassesScenarioOptions = {}
     getAssignmentTopics: [{ kind: 'success', data: [] }],
     getAssignmentDefinitionPartials: [{ kind: 'success', data: [] }],
   };
+
+  if (getGoogleClassroomAssignments) {
+    scenario.getGoogleClassroomAssignments = getGoogleClassroomAssignments;
+  }
+
+  return scenario;
 }
 
 /**
@@ -130,6 +166,26 @@ export function createClassesOrderScenario(
   classPartials: Array<Record<string, unknown>>
 ): RuntimeScenario {
   return createClassesScenario({ classPartials, yearGroups: SINGLE_YEAR_GROUP });
+}
+
+/**
+ * Creates a runtime scenario for Assess Task modal E2E tests.
+ *
+ * Extends the standard Classes page scenario with `getGoogleClassroomAssignments`
+ * mock responses. Defaults to `MOCK_COURSEWORK_ASSIGNMENTS` if no assignment
+ * responses are provided.
+ *
+ * @param {CreateClassesScenarioOptions} options - Scenario customisation options.
+ * @returns {RuntimeScenario} Runtime scenario with assignment mock data.
+ */
+export function createAssessTaskScenario(
+  options: CreateClassesScenarioOptions = {}
+): RuntimeScenario {
+  return createClassesScenario({
+    ...options,
+    getGoogleClassroomAssignments:
+      options.getGoogleClassroomAssignments ?? MOCK_COURSEWORK_ASSIGNMENTS,
+  });
 }
 
 // ============================================================================
