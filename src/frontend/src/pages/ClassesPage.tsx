@@ -1,4 +1,5 @@
-import { Alert, Button, Card, Col, Collapse, Empty, Row, Skeleton, Space, Typography } from 'antd';
+import { Alert, Button, Card, Col, Collapse, Empty, Row, Skeleton, Space, Tooltip, Typography } from 'antd';
+import { AuditOutlined } from '@ant-design/icons';
 import { type JSX, useMemo } from 'react';
 import {
   computeDatasetRenderable,
@@ -152,9 +153,14 @@ function renderYearGroupCollapse(viewModel: ClassesPagePanelViewModel): JSX.Elem
                                 <Button disabled tabIndex={-1} type="text">
                                   View
                                 </Button>
-                                <Button disabled tabIndex={-1} type="text">
-                                  Edit
-                                </Button>
+                                <Tooltip title="Assess Task">
+                                  <Button
+                                    aria-label="Assess Task"
+                                    icon={<AuditOutlined />}
+                                    type="text"
+                                    onClick={() => {}}
+                                  />
+                                </Tooltip>
                               </Space>
                             </div>
                           </Card>

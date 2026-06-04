@@ -9,7 +9,7 @@ import {
 
 /**
  * Shared Playwright E2E runtime mocks for AssignmentBot.
- * 
+ *
  * This module provides reusable mock factories and helpers for Playwright E2E tests,
  * reducing duplication across test files that need to mock google.script.run API calls.
  */
@@ -23,25 +23,25 @@ import {
  */
 export type ResponseItem = Readonly<
   | {
-    kind: 'success';
-    data: unknown;
-  }
+      kind: 'success';
+      data: unknown;
+    }
   | {
-    kind: 'failureEnvelope';
-    data?: unknown;
-    message?: string;
-    code?: string;
-  }
+      kind: 'failureEnvelope';
+      data?: unknown;
+      message?: string;
+      code?: string;
+    }
   | {
-    kind: 'transportFailure';
-    data?: unknown;
-    message?: string;
-    code?: string;
-  }
+      kind: 'transportFailure';
+      data?: unknown;
+      message?: string;
+      code?: string;
+    }
   | {
-    kind: 'deferredSuccess';
-    data: unknown;
-  }
+      kind: 'deferredSuccess';
+      data: unknown;
+    }
 >;
 
 /**
@@ -53,6 +53,7 @@ export type RuntimeScenario = Readonly<{
   getCohorts?: ReadonlyArray<ResponseItem>;
   getYearGroups?: ReadonlyArray<ResponseItem>;
   getAssignmentTopics?: ReadonlyArray<ResponseItem>;
+  getGoogleClassroomAssignments?: ReadonlyArray<ResponseItem>;
   getGoogleClassrooms?: ReadonlyArray<ResponseItem>;
   getAssignmentDefinitionPartials?: ReadonlyArray<ResponseItem>;
   getAssignmentDefinition?: ReadonlyArray<ResponseItem>;
@@ -76,7 +77,6 @@ export {
   mockFullDefinition,
 };
 // eslint-enable unicorn/prefer-export-from
-
 
 /**
  * Standard mock partial rows for E2E tests.
@@ -197,10 +197,7 @@ function addCohortsToScenario(scenario: RuntimeScenario, includeCohorts: boolean
  * @param {boolean} includeYearGroups Whether to include year groups response.
  * @returns {void}
  */
-function addYearGroupsToScenario(
-  scenario: RuntimeScenario,
-  includeYearGroups: boolean
-): void {
+function addYearGroupsToScenario(scenario: RuntimeScenario, includeYearGroups: boolean): void {
   if (includeYearGroups) {
     scenario.getYearGroups = [{ kind: 'success', data: mockYearGroups }];
   }
@@ -329,9 +326,7 @@ export interface CreateWizardScenarioOptions {
  * @param {CreateWizardScenarioOptions} options Scenario customization options.
  * @returns {RuntimeScenario} Configured runtime scenario.
  */
-export function createWizardScenario(
-  options: CreateWizardScenarioOptions = {}
-): RuntimeScenario {
+export function createWizardScenario(options: CreateWizardScenarioOptions = {}): RuntimeScenario {
   const {
     initialPartials = [mockPartialRows[0]],
     postMutationPartials,
@@ -394,12 +389,8 @@ export function createFailedReferenceDataScenario(
     getAuthorisationStatus: [{ kind: 'success', data: true }],
     getABClassPartials: [{ kind: 'success', data: [] }],
     getCohorts: [{ kind: 'success', data: [] }],
-    getYearGroups: [
-      { kind: 'failureEnvelope', code: yearGroupsCode, message: yearGroupsMessage },
-    ],
-    getAssignmentTopics: [
-      { kind: 'failureEnvelope', code: topicsCode, message: topicsMessage },
-    ],
+    getYearGroups: [{ kind: 'failureEnvelope', code: yearGroupsCode, message: yearGroupsMessage }],
+    getAssignmentTopics: [{ kind: 'failureEnvelope', code: topicsCode, message: topicsMessage }],
     getAssignmentDefinitionPartials: [{ kind: 'success', data: mockPartialRows }],
   };
 }
@@ -485,6 +476,7 @@ export async function installRuntimeMock(
     'getCohorts',
     'getYearGroups',
     'getAssignmentTopics',
+    'getGoogleClassroomAssignments',
     'getGoogleClassrooms',
     'getAssignmentDefinitionPartials',
     'getAssignmentDefinition',
@@ -601,7 +593,9 @@ export async function releaseNextDeferredSuccess(
     const releaseFunction = Reflect.get(globalThis, currentReleaseFunctionName);
 
     if (typeof releaseFunction !== 'function') {
-      throw new TypeError('No release function named ' + currentReleaseFunctionName + ' is available.');
+      throw new TypeError(
+        'No release function named ' + currentReleaseFunctionName + ' is available.'
+      );
     }
 
     releaseFunction();
@@ -659,10 +653,7 @@ export async function applyColumnFilterOption(
  * @param {string} optionName The visible option label to choose.
  * @returns {Promise<void>} Resolves once the option is selected.
  */
-export async function selectVisibleOption(
-  page: Page,
-  optionName: string
-): Promise<void> {
+export async function selectVisibleOption(page: Page, optionName: string): Promise<void> {
   await page
     .locator('.ant-select-dropdown:not(.ant-select-dropdown-hidden)')
     .getByText(optionName, { exact: true })

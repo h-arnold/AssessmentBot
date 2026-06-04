@@ -954,7 +954,7 @@ describe('ClassesPage', () => {
         expect(cardTitles).toEqual(['A Class', 'Z Class', 'Z Class']);
       });
 
-      it('verifies both placeholder buttons are visible and disabled for every rendered card', () => {
+      it('verifies both placeholder buttons are visible with correct enabled/disabled states for every rendered card', () => {
         // Pre-populate the query client cache BEFORE rendering
         const queryClient = createAppQueryClient();
         queryClient.setQueryData(queryKeys.classPartials(), [
@@ -970,13 +970,13 @@ describe('ClassesPage', () => {
         const viewButtons = screen.getAllByRole('button', { name: /view/i });
         expect(viewButtons.length).toBeGreaterThan(0);
 
-        // Find all Edit buttons - there should be one per card
-        const editButtons = screen.getAllByRole('button', { name: /edit/i });
-        expect(editButtons.length).toBeGreaterThan(0);
+        // Find all Assess Task buttons - there should be one per card
+        const assessTaskButtons = screen.getAllByRole('button', { name: 'Assess Task' });
+        expect(assessTaskButtons.length).toBeGreaterThan(0);
 
-        // Total cards = total View buttons = total Edit buttons
+        // Total cards = total View buttons = total Assess Task buttons
         const expectedCardCount = viewButtons.length;
-        expect(editButtons.length).toBe(expectedCardCount);
+        expect(assessTaskButtons.length).toBe(expectedCardCount);
 
         // Verify every View button is disabled and visible
         for (const viewButton of viewButtons) {
@@ -985,11 +985,11 @@ describe('ClassesPage', () => {
           expect(viewButton).toBeVisible();
         }
 
-        // Verify every Edit button is disabled and visible
-        for (const editButton of editButtons) {
-          expect(editButton).toBeInTheDocument();
-          expect(editButton).toBeDisabled();
-          expect(editButton).toBeVisible();
+        // Verify every Assess Task button is enabled and visible
+        for (const assessButton of assessTaskButtons) {
+          expect(assessButton).toBeInTheDocument();
+          expect(assessButton).toBeEnabled();
+          expect(assessButton).toBeVisible();
         }
       });
 
@@ -1028,11 +1028,11 @@ describe('ClassesPage', () => {
             expect(card).not.toHaveTextContent(pattern);
           }
 
-          // Verify View and Edit buttons are present
+          // Verify View and Assess Task buttons are present
           const cardViewButtons = screen.getAllByRole('button', { name: /view/i });
-          const cardEditButtons = screen.getAllByRole('button', { name: /edit/i });
+          const cardAssessButtons = screen.getAllByRole('button', { name: 'Assess Task' });
           expect(cardViewButtons.length).toBeGreaterThan(0);
-          expect(cardEditButtons.length).toBeGreaterThan(0);
+          expect(cardAssessButtons.length).toBeGreaterThan(0);
         }
       });
 
@@ -1066,11 +1066,13 @@ describe('ClassesPage', () => {
           expect(card).not.toHaveClass(/sort/);
           expect(card).not.toHaveClass(/handle/);
 
-          // Check that the card has exactly View and Edit buttons
+          // Check that the card has exactly View and Assess Task buttons
           const cardButtons = card.querySelectorAll('button');
           expect(cardButtons.length).toBe(EXPECTED_BUTTONS_PER_CARD);
+          // The View button has textContent "View"
           expect(cardButtons[0]?.textContent).toMatch(/view/i);
-          expect(cardButtons[1]?.textContent).toMatch(/edit/i);
+          // The Assess Task button is icon-only; its accessible name is "Assess Task"
+          expect(cardButtons[1]?.getAttribute('aria-label')).toBe('Assess Task');
         }
 
         // Also verify the card region wrapper has no drag/reorder classes
@@ -1078,6 +1080,82 @@ describe('ClassesPage', () => {
         expect(cardRegion).not.toHaveClass(/drag/);
         expect(cardRegion).not.toHaveClass(/draggable/);
         expect(cardRegion).not.toHaveClass(/sort/);
+      });
+      // ==========================================================================
+      // Section 4 Red: Assess Task button replacement tests
+      // These verify that the Edit button is replaced by an Assess Task icon
+      // button. They SHOULD FAIL in the RED phase because the replacement has
+      // not been implemented yet. The production code still renders "Edit"
+      // buttons, so assertions that target "Assess Task" buttons will fail.
+      // ==========================================================================
+
+      it('replaces Edit button with Assess Task icon button on every card', () => {
+        renderClassesPage();
+
+        // Edit buttons should no longer exist — FAILS because production code still has Edit
+        const editButtons = screen.queryAllByRole('button', { name: /edit/i });
+        expect(editButtons).toHaveLength(0);
+
+        // Assess Task buttons should exist on every card — FAILS because not implemented yet
+        const assessTaskButtons = screen.getAllByRole('button', { name: 'Assess Task' });
+        const cards = screen.getAllByRole('article');
+        expect(assessTaskButtons.length).toBe(cards.length);
+        expect(assessTaskButtons.length).toBeGreaterThan(0);
+
+        // EXPECTED_BUTTONS_PER_CARD stays at 2 (View + Assess Task)
+        const BUTTONS_PER_CARD_CONTRACT = 2;
+        expect(EXPECTED_BUTTONS_PER_CARD).toBe(BUTTONS_PER_CARD_CONTRACT);
+      });
+
+      it('keeps View button disabled and unchanged', () => {
+        renderClassesPage();
+
+        const viewButtons = screen.getAllByRole('button', { name: /view/i });
+        expect(viewButtons.length).toBeGreaterThan(0);
+
+        for (const viewButton of viewButtons) {
+          expect(viewButton).toBeVisible();
+          expect(viewButton).toBeDisabled();
+        }
+      });
+
+      it('renders Assess Task buttons with aria-label="Assess Task"', () => {
+        renderClassesPage();
+
+        // FAILS because no "Assess Task" buttons exist yet in production code
+        const assessTaskButtons = screen.getAllByRole('button', { name: 'Assess Task' });
+        expect(assessTaskButtons.length).toBeGreaterThan(0);
+
+        for (const button of assessTaskButtons) {
+          // Icon-only button must carry aria-label as its accessible name
+          expect(button).toHaveAttribute('aria-label', 'Assess Task');
+          // The button should be enabled (not disabled like the old Edit button)
+          expect(button).toBeEnabled();
+          expect(button).toBeVisible();
+        }
+      });
+
+      it('maintains card width at 268 px max-width with the new icon button', () => {
+        const MAX_CARD_WIDTH_PX = 268;
+        renderClassesPage();
+
+        const cards = screen.getAllByRole('article');
+        expect(cards.length).toBeGreaterThan(0);
+
+        for (const card of cards) {
+          // JSDOM getComputedStyle may not resolve inline styles; check inline style as fallback
+          const { maxWidth } = globalThis.getComputedStyle(card);
+          let maxWidthPx: number;
+          if (maxWidth && maxWidth !== 'none') {
+            maxWidthPx = Number.parseInt(maxWidth, 10);
+          } else {
+            const inlineMaxWidth = (card as HTMLElement).style.maxWidth;
+            maxWidthPx = inlineMaxWidth && inlineMaxWidth !== 'none'
+              ? Number.parseInt(inlineMaxWidth, 10)
+              : Number.POSITIVE_INFINITY;
+          }
+          expect(maxWidthPx).toBeLessThanOrEqual(MAX_CARD_WIDTH_PX);
+        }
       });
     });
 

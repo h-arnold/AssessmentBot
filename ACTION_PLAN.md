@@ -4,7 +4,8 @@
 
 - **Section 1** ✅ Complete — `ClassroomApiClient.fetchCourseWork()` implemented and reviewed. Committed as `0a88ffb`.
 - **Section 2** ✅ Complete — `getGoogleClassroomAssignments_` handler + allowlist entry. Committed as `ce0799b`.
-- **Section 3** ✅ Complete — Frontend service, Zod schema, and query key. Commit pending.
+- **Section 3** ✅ Complete — Frontend service, Zod schema, and query key. Committed as `6a55021`.
+- **Section 4** ✅ Complete — ClassesPage card button replacement + E2E mock infrastructure. Commit pending.
 - **Section 3** ⬜ Pending
 - **Section 4** ⬜ Pending
 - **Section 5** ⬜ Pending

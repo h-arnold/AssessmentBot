@@ -64,7 +64,7 @@ export const TABLET_CARD_WIDTH_MARGIN = 50;
 // ============================================================================
 
 export const EXPECTED_TOTAL_CARDS_COUNT = 4; // 2 in Year 10, 1 in Year 11, 1 in Year 9
-export const EXPECTED_BUTTONS_PER_CARD = 2; // View and Edit
+export const EXPECTED_BUTTONS_PER_CARD = 2; // View and Assess Task
 export const EXPECTED_ALPHABETICAL_CARDS_COUNT = 3;
 export const EXPECTED_TIE_BREAK_CARDS_COUNT = 3;
 
@@ -161,6 +161,41 @@ export async function expectBreadcrumbLabels(page: Page, labels: string[]): Prom
   for (const label of labels) {
     await expect(breadcrumb).toContainText(label);
   }
+}
+
+// ============================================================================
+// Button State Assertion Helpers
+// ============================================================================
+
+/**
+ * Asserts that every card has View (disabled) and Assess Task (enabled) buttons.
+ * Edit buttons must be absent.
+ *
+ * Replaces the earlier assertAllViewEditButtonsDisabled to reflect the
+ * Edit → Assess Task button replacement in Section 4.
+ *
+ * @param {Page} page - The Playwright page under test.
+ * @returns {Promise<void>}
+ */
+export async function assertCardButtonStates(page: Page): Promise<void> {
+  // View buttons: exist, are disabled
+  const allViewButtons = await page.getByRole('button', { name: /view/i }).all();
+  for (const viewButton of allViewButtons) {
+    await expect(viewButton).toBeVisible();
+    await expect(viewButton).toBeDisabled();
+  }
+
+  // Assess Task buttons: exist, are enabled, have aria-label
+  const allAssessTaskButtons = await page.getByRole('button', { name: 'Assess Task' }).all();
+  for (const assessButton of allAssessTaskButtons) {
+    await expect(assessButton).toBeVisible();
+    await expect(assessButton).toBeEnabled();
+    await expect(assessButton).toHaveAttribute('aria-label', 'Assess Task');
+  }
+
+  // Edit buttons: must be absent
+  const allEditButtons = await page.getByRole('button', { name: /edit/i }).all();
+  expect(allEditButtons).toHaveLength(0);
 }
 
 // ============================================================================
