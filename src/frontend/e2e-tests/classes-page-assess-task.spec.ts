@@ -230,7 +230,7 @@ test.describe('Assess Task modal', () => {
     const dialog = await openAssessTaskModal(page);
 
     // Verify loading spinner is visible
-    await expect(dialog.locator('[role="status"]')).toBeVisible();
+    await expect(dialog.getByRole('status')).toBeVisible();
 
     // Verify Start Assessment is disabled while loading
     await expect(dialog.getByRole('button', { name: 'Start Assessment' })).toBeDisabled();
@@ -242,7 +242,7 @@ test.describe('Assess Task modal', () => {
     await releaseNextDeferredSuccess(page);
 
     // Verify spinner is replaced by Select dropdown
-    await expect(dialog.locator('[role="status"]')).toHaveCount(0);
+    await expect(dialog.getByRole('status')).toHaveCount(0);
     await expect(dialog.getByRole('combobox')).toBeVisible();
 
     // Verify Start Assessment remains disabled (no selection yet)
