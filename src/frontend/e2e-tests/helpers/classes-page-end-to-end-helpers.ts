@@ -220,6 +220,31 @@ export async function expectBreadcrumbLabels(page: Page, labels: string[]): Prom
 }
 
 // ============================================================================
+// Assess Task Modal Helpers
+// ============================================================================
+
+/**
+ * Navigates to the Classes page and opens the first Assess Task modal.
+ *
+ * Handles the common test preamble: goto → menu click → panel visibility
+ * check → Assess Task button click → dialog visibility check.
+ *
+ * @param {Page} page - The Playwright page under test.
+ * @returns {Promise<ReturnType<typeof page.getByRole>>} The visible dialog locator.
+ */
+export async function openAssessTaskModal(page: Page): Promise<ReturnType<typeof page.getByRole>> {
+  await page.goto('/');
+  await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
+  await expect(page.locator('#panel-content-year-group-10')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Assess Task' }).first().click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+
+  return dialog;
+}
+
+// ============================================================================
 // Button State Assertion Helpers
 // ============================================================================
 

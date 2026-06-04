@@ -6,9 +6,9 @@ import {
   selectVisibleOption,
 } from './shared/endToEndRuntimeMocks';
 import {
-  CLASSES_LABEL,
   MOCK_COURSEWORK_ASSIGNMENTS,
   createAssessTaskScenario,
+  openAssessTaskModal,
 } from './helpers/classes-page-end-to-end-helpers';
 
 // ============================================================================
@@ -34,16 +34,7 @@ test.describe('Assess Task modal', () => {
   }) => {
     const scenario = createAssessTaskScenario();
     await installRuntimeMock(page, scenario);
-    await page.goto('/');
-    await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
-
-    await expect(page.locator('#panel-content-year-group-10')).toBeVisible();
-
-    // Click first Assess Task button (English 10 card)
-    await page.getByRole('button', { name: 'Assess Task' }).first().click();
-
-    const dialog = page.getByRole('dialog');
-    await expect(dialog).toBeVisible();
+    const dialog = await openAssessTaskModal(page);
     await expect(dialog).toContainText('Assess Task — English 10');
 
     // Verify Select dropdown is visible with placeholder
@@ -58,13 +49,7 @@ test.describe('Assess Task modal', () => {
   }) => {
     const scenario = createAssessTaskScenario();
     await installRuntimeMock(page, scenario);
-    await page.goto('/');
-    await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
-    await expect(page.locator('#panel-content-year-group-10')).toBeVisible();
-
-    await page.getByRole('button', { name: 'Assess Task' }).first().click();
-    const dialog = page.getByRole('dialog');
-    await expect(dialog).toBeVisible();
+    const dialog = await openAssessTaskModal(page);
 
     // Open the Select dropdown and choose "Algebra Homework"
     await dialog.getByRole('combobox').click();
@@ -84,13 +69,7 @@ test.describe('Assess Task modal', () => {
   test('clicking Start Assessment makes no backend call and keeps modal open', async ({ page }) => {
     const scenario = createAssessTaskScenario();
     await installRuntimeMock(page, scenario);
-    await page.goto('/');
-    await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
-    await expect(page.locator('#panel-content-year-group-10')).toBeVisible();
-
-    await page.getByRole('button', { name: 'Assess Task' }).first().click();
-    const dialog = page.getByRole('dialog');
-    await expect(dialog).toBeVisible();
+    const dialog = await openAssessTaskModal(page);
 
     // Select an assignment
     await dialog.getByRole('combobox').click();
@@ -115,13 +94,7 @@ test.describe('Assess Task modal', () => {
   test('Cancel button closes modal and discards selection', async ({ page }) => {
     const scenario = createAssessTaskScenario();
     await installRuntimeMock(page, scenario);
-    await page.goto('/');
-    await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
-    await expect(page.locator('#panel-content-year-group-10')).toBeVisible();
-
-    await page.getByRole('button', { name: 'Assess Task' }).first().click();
-    const dialog = page.getByRole('dialog');
-    await expect(dialog).toBeVisible();
+    const dialog = await openAssessTaskModal(page);
 
     // Select an assignment first so we can verify state is discarded
     await dialog.getByRole('combobox').click();
@@ -138,13 +111,7 @@ test.describe('Assess Task modal', () => {
   test('clicking the modal mask closes the dialog', async ({ page }) => {
     const scenario = createAssessTaskScenario();
     await installRuntimeMock(page, scenario);
-    await page.goto('/');
-    await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
-    await expect(page.locator('#panel-content-year-group-10')).toBeVisible();
-
-    await page.getByRole('button', { name: 'Assess Task' }).first().click();
-    const dialog = page.getByRole('dialog');
-    await expect(dialog).toBeVisible();
+    await openAssessTaskModal(page);
 
     // Click the modal mask (backdrop) near the top-left corner
     // antd v6 uses .ant-modal-wrap for mask click handling
@@ -172,14 +139,7 @@ test.describe('Assess Task modal', () => {
       getGoogleClassroomAssignments: [algebraEntry, algebraEntry, differentEntry, differentEntry],
     });
     await installRuntimeMock(page, scenario);
-    await page.goto('/');
-    await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
-    await expect(page.locator('#panel-content-year-group-10')).toBeVisible();
-
-    // Open modal for first card (English 10)
-    await page.getByRole('button', { name: 'Assess Task' }).first().click();
-    let dialog = page.getByRole('dialog');
-    await expect(dialog).toBeVisible();
+    let dialog = await openAssessTaskModal(page);
     await expect(dialog).toContainText('Assess Task — English 10');
 
     // Verify first assignment list loads
@@ -219,13 +179,7 @@ test.describe('Assess Task modal', () => {
       getGoogleClassroomAssignments: [failureEntry, failureEntry],
     });
     await installRuntimeMock(page, scenario);
-    await page.goto('/');
-    await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
-    await expect(page.locator('#panel-content-year-group-10')).toBeVisible();
-
-    await page.getByRole('button', { name: 'Assess Task' }).first().click();
-    const dialog = page.getByRole('dialog');
-    await expect(dialog).toBeVisible();
+    const dialog = await openAssessTaskModal(page);
 
     // Verify Alert with error message is shown
     const alert = dialog.getByRole('alert');
@@ -247,13 +201,7 @@ test.describe('Assess Task modal', () => {
       getGoogleClassroomAssignments: [emptyEntry, emptyEntry],
     });
     await installRuntimeMock(page, scenario);
-    await page.goto('/');
-    await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
-    await expect(page.locator('#panel-content-year-group-10')).toBeVisible();
-
-    await page.getByRole('button', { name: 'Assess Task' }).first().click();
-    const dialog = page.getByRole('dialog');
-    await expect(dialog).toBeVisible();
+    const dialog = await openAssessTaskModal(page);
 
     // Verify Empty component with description text
     await expect(dialog.getByText('No assignments found for this class')).toBeVisible();
@@ -279,13 +227,7 @@ test.describe('Assess Task modal', () => {
       getGoogleClassroomAssignments: [deferredEntry, deferredEntry],
     });
     await installRuntimeMock(page, scenario);
-    await page.goto('/');
-    await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
-    await expect(page.locator('#panel-content-year-group-10')).toBeVisible();
-
-    await page.getByRole('button', { name: 'Assess Task' }).first().click();
-    const dialog = page.getByRole('dialog');
-    await expect(dialog).toBeVisible();
+    const dialog = await openAssessTaskModal(page);
 
     // Verify loading spinner is visible
     await expect(dialog.locator('[role="status"]')).toBeVisible();
