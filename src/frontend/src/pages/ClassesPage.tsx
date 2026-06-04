@@ -1,8 +1,14 @@
-import { useQuery } from '@tanstack/react-query';
 import { Alert, Button, Card, Col, Collapse, Empty, Row, Skeleton, Space, Typography } from 'antd';
 import { type JSX, useMemo } from 'react';
-import { useStartupWarmupState } from '../features/auth/startupWarmupState';
-import { getClassPartialsQueryOptions, getYearGroupsQueryOptions } from '../query/sharedQueries';
+import {
+  computeDatasetRenderable,
+  computePageSurfaceBlocking,
+  computePageSurfaceBusy,
+  usePageDataset,
+  type PageDatasetState,
+} from '../hooks/usePageDataset';
+import type { ClassPartial } from '../services/classPartials.zod';
+import type { YearGroup } from '../services/referenceData.zod';
 import {
   buildClassesPageModel,
   type ClassesPagePanelViewModel,
@@ -27,125 +33,23 @@ const MIN_PANEL_WIDTH_PX =
 const CLASSES_MOBILE_BREAKPOINT_PX = 768;
 
 /**
- * Returns whether a single dataset should block.
- *
- * @param {Readonly<{ isDatasetFailed: boolean; hasQueryData: boolean; isQueryError: boolean; isDatasetReady: boolean; isDatasetTrustworthy: boolean; }>} input Dataset state.
- * @returns {boolean} True if dataset should block.
- */
-function shouldBlockSingleDataset(
-  input: Readonly<{
-    isDatasetFailed: boolean;
-    hasQueryData: boolean;
-    isQueryError: boolean;
-    isDatasetReady: boolean;
-    isDatasetTrustworthy: boolean;
-  }>
-): boolean {
-  if (input.isDatasetFailed) {
-    return !input.hasQueryData || input.isQueryError;
-  }
-
-  if (input.isDatasetReady && !input.isDatasetTrustworthy) {
-    return true;
-  }
-
-  return input.isDatasetReady && input.isDatasetTrustworthy && input.isQueryError;
-}
-
-/**
- * Returns whether classes content should be blocked.
- *
- * @param {Readonly<{ classPartials: object; yearGroups: object; }>} input States for both datasets.
- * @returns {boolean} True if should block.
- */
-function shouldRenderClassesBlockingState(
-  input: Readonly<{
-    classPartials: Readonly<{
-      isDatasetFailed: boolean;
-      hasQueryData: boolean;
-      isQueryError: boolean;
-      isDatasetReady: boolean;
-      isDatasetTrustworthy: boolean;
-    }>;
-    yearGroups: Readonly<{
-      isDatasetFailed: boolean;
-      hasQueryData: boolean;
-      isQueryError: boolean;
-      isDatasetReady: boolean;
-      isDatasetTrustworthy: boolean;
-    }>;
-  }>
-): boolean {
-  return (
-    shouldBlockSingleDataset(input.classPartials) || shouldBlockSingleDataset(input.yearGroups)
-  );
-}
-
-/**
- * Returns whether a dataset has recovered from failed warmup.
- *
- * @param {Readonly<{ isDatasetFailed: boolean; hasQueryData: boolean; isQueryError: boolean; }>} input Recovery inputs.
- * @returns {boolean} True if recovered.
- */
-function hasRecoveredDataset(
-  input: Readonly<{
-    isDatasetFailed: boolean;
-    hasQueryData: boolean;
-    isQueryError: boolean;
-  }>
-): boolean {
-  return input.isDatasetFailed && input.hasQueryData && !input.isQueryError;
-}
-
-/**
- * Returns whether a dataset is renderable.
- *
- * @param {Readonly<{ hasTrustworthyDataset: boolean; isDatasetFailed: boolean; hasQueryData: boolean; isQueryError: boolean; }>} input Renderability inputs.
- * @returns {boolean} True if renderable.
- */
-function isDatasetRenderable(
-  input: Readonly<{
-    hasTrustworthyDataset: boolean;
-    isDatasetFailed: boolean;
-    hasQueryData: boolean;
-    isQueryError: boolean;
-  }>
-): boolean {
-  const hasRecovered = hasRecoveredDataset({
-    isDatasetFailed: input.isDatasetFailed,
-    hasQueryData: input.hasQueryData,
-    isQueryError: input.isQueryError,
-  });
-  return input.hasTrustworthyDataset || hasRecovered;
-}
-
-/**
  * Resolves whether classes surface should show loading or blocking states.
+ *
+ * Composes per-dataset decisions from the shared {@link computePageSurfaceBlocking}
+ * and {@link computeDatasetRenderable} helpers.
  *
  * @param {Readonly<{ classPartials: object; yearGroups: object; }>} input Dataset and query state.
  * @returns {Readonly<{ shouldRenderBlockingState: boolean; shouldRenderLoadingState: boolean; }>} Surface state.
  */
 function getClassesSurfaceState(
   input: Readonly<{
-    classPartials: Readonly<{
-      hasQueryData: boolean;
-      isQueryError: boolean;
-      isDatasetFailed: boolean;
-      isDatasetReady: boolean;
-      isDatasetTrustworthy: boolean;
-      hasTrustworthyDataset: boolean;
-    }>;
-    yearGroups: Readonly<{
-      hasQueryData: boolean;
-      isQueryError: boolean;
-      isDatasetFailed: boolean;
-      isDatasetReady: boolean;
-      isDatasetTrustworthy: boolean;
-      hasTrustworthyDataset: boolean;
-    }>;
+    classPartials: PageDatasetState;
+    yearGroups: PageDatasetState;
   }>
 ): Readonly<{ shouldRenderBlockingState: boolean; shouldRenderLoadingState: boolean }> {
-  const isBlocking = shouldRenderClassesBlockingState(input);
+  const isBlocking =
+    computePageSurfaceBlocking(input.classPartials) ||
+    computePageSurfaceBlocking(input.yearGroups);
 
   if (isBlocking) {
     return {
@@ -154,8 +58,8 @@ function getClassesSurfaceState(
     };
   }
 
-  const hasRenderableClassPartials = isDatasetRenderable(input.classPartials);
-  const hasRenderableYearGroups = isDatasetRenderable(input.yearGroups);
+  const hasRenderableClassPartials = computeDatasetRenderable(input.classPartials);
+  const hasRenderableYearGroups = computeDatasetRenderable(input.yearGroups);
   const hasRenderableDatasets = hasRenderableClassPartials && hasRenderableYearGroups;
 
   return {
@@ -168,21 +72,6 @@ type ClassesSurfaceState = Readonly<{
   shouldRenderBlockingState: boolean;
   shouldRenderLoadingState: boolean;
 }>;
-
-/**
- * Returns whether the classes surface is busy (fetching).
- *
- * @param {Readonly<{ isClassPartialsQueryFetching: boolean; isYearGroupsQueryFetching: boolean; }>} input Fetching state.
- * @returns {boolean} True when busy.
- */
-function computeClassesSurfaceBusy(
-  input: Readonly<{
-    isClassPartialsQueryFetching: boolean;
-    isYearGroupsQueryFetching: boolean;
-  }>
-): boolean {
-  return input.isClassPartialsQueryFetching || input.isYearGroupsQueryFetching;
-}
 
 /**
  * Checks if the model result is an invalid data view model.
@@ -373,48 +262,10 @@ function getFinalClassesPageStates(
  * @returns {JSX.Element} The Classes page.
  */
 export function ClassesPage() {
-  const startupWarmupState = useStartupWarmupState();
-
-  const classPartialsSnapshot = startupWarmupState.snapshot.datasets.classPartials;
-  const yearGroupsSnapshot = startupWarmupState.snapshot.datasets.yearGroups;
-
-  // Use live queries that remain enabled even if startup warmup failed
-  const classPartialsQuery = useQuery({
-    ...getClassPartialsQueryOptions(),
-    enabled:
-      startupWarmupState.isDatasetReady('classPartials') ||
-      startupWarmupState.isDatasetFailed('classPartials'),
-    refetchOnMount: false,
-  });
-
-  const yearGroupsQuery = useQuery({
-    ...getYearGroupsQueryOptions(),
-    enabled:
-      startupWarmupState.isDatasetReady('yearGroups') ||
-      startupWarmupState.isDatasetFailed('yearGroups'),
-    refetchOnMount: false,
-  });
-
-  // Build dataset states
-  const classPartialsDatasetState = {
-    hasQueryData: classPartialsQuery.data !== undefined,
-    isQueryError: classPartialsQuery.isError,
-    isDatasetFailed: startupWarmupState.isDatasetFailed('classPartials'),
-    isDatasetReady: startupWarmupState.isDatasetReady('classPartials'),
-    isDatasetTrustworthy: classPartialsSnapshot.isTrustworthy,
-    hasTrustworthyDataset:
-      startupWarmupState.isDatasetReady('classPartials') && classPartialsSnapshot.isTrustworthy,
-  };
-
-  const yearGroupsDatasetState = {
-    hasQueryData: yearGroupsQuery.data !== undefined,
-    isQueryError: yearGroupsQuery.isError,
-    isDatasetFailed: startupWarmupState.isDatasetFailed('yearGroups'),
-    isDatasetReady: startupWarmupState.isDatasetReady('yearGroups'),
-    isDatasetTrustworthy: yearGroupsSnapshot.isTrustworthy,
-    hasTrustworthyDataset:
-      startupWarmupState.isDatasetReady('yearGroups') && yearGroupsSnapshot.isTrustworthy,
-  };
+  const { query: classPartialsQuery, datasetState: classPartialsDatasetState } =
+    usePageDataset<ClassPartial[]>('classPartials');
+  const { query: yearGroupsQuery, datasetState: yearGroupsDatasetState } =
+    usePageDataset<YearGroup[]>('yearGroups');
 
   // Compute surface state
   const classesSurfaceState: ClassesSurfaceState = getClassesSurfaceState({
@@ -423,10 +274,10 @@ export function ClassesPage() {
   });
 
   // Compute busy state
-  const isClassesSurfaceBusy = computeClassesSurfaceBusy({
-    isClassPartialsQueryFetching: classPartialsQuery.isFetching,
-    isYearGroupsQueryFetching: yearGroupsQuery.isFetching,
-  });
+  const isClassesSurfaceBusy = computePageSurfaceBusy(
+    [classPartialsQuery.isFetching, yearGroupsQuery.isFetching],
+    []
+  );
 
   // Build the view model - move conditional logic inside useMemo
   const modelResult = useMemo(() => {

@@ -178,8 +178,8 @@ None.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
+- **Implementation notes:** Completed. `getStartupWarmupQueryOptions(datasetKey)` exported from `sharedQueries.ts` (lines ~196-207). Function reuses internal `startupWarmupQueryDefinitions` array and mirrors the existing `getStartupWarmupQueryKey` pattern. Throws for unknown dataset keys with message matching `'Unknown startup warm-up dataset key: <key>.'`. Unit tests: 7 tests in `sharedQueries.startupWarmupQueryOptions.spec.ts` — all green (plus 10 existing tests unchanged). Zero regressions in regression checker. Commits: `01de510` (feat), `255fcc2` (test).
+- **Deviations from plan:** None.
 - **Follow-up implications for later sections:** Section 3 (`usePageDataset`) depends on this export.
 
 ---
@@ -319,8 +319,8 @@ New unit tests in `src/frontend/src/hooks/usePageDataset.spec.ts`:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
+- **Implementation notes:** Completed. Created `src/frontend/src/hooks/usePageDataset.ts` with four pure helper functions and `PageDatasetState` type (148 lines). All 25 unit tests pass. SPEC.md blocking rule updated with recovered-path carve-out (`!isDatasetTrustworthy AND NOT (isDatasetFailed AND hasQueryData AND !isQueryError) → block`). Functions exported as function declarations, British English JSDoc.
+- **Deviations from plan:** SPEC.md `computePageSurfaceBlocking` rule refined — rule 2 (`isDatasetReady && !isDatasetTrustworthy → block`) was unreachable (warmup state's `isDatasetReady` already checks `isTrustworthy`). Updated to `!isDatasetTrustworthy → block` with recovered-path carve-out to correctly handle untrustworthy-not-ready state while preserving recovered-after-failure rendering.
 - **Follow-up implications for later sections:** Section 3 (`usePageDataset`) directly imports and uses these helpers.
 
 ---
@@ -416,8 +416,8 @@ New unit tests in `src/frontend/src/hooks/usePageDataset.spec.ts` (extending the
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
+- **Implementation notes:** Completed. Added `usePageDataset<TData>` hook and `PageDatasetResult<TData>` type to `usePageDataset.ts`. Hook calls `useStartupWarmupState()`, `getStartupWarmupQueryOptions(datasetKey)`, and `useQuery` with `enabled: isDatasetReady || isDatasetFailed` and `refetchOnMount: false`. JSDoc includes retry rationale. 6 hook tests pass alongside 25 Section 2 tests (31 total). Required `as UseQueryOptions<TData>` cast to bridge concrete query options to generic `useQuery`.
+- **Deviations from plan:** Needed `as UseQueryOptions<TData>` cast on `useQuery` options spread because `getStartupWarmupQueryOptions()` returns concrete (non-generic) types. Test doubles now populate all 5 `StartupWarmupDatasetKey` keys to satisfy `Record<StartupWarmupDatasetKey, ...>` type.
 - **Follow-up implications for later sections:** Sections 6 and 7 depend on this hook.
 
 ---
@@ -496,8 +496,8 @@ New unit tests in `src/frontend/src/query/queryInvalidationHelpers.spec.ts`:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
+- **Implementation notes:** Completed. Created `src/frontend/src/query/queryInvalidationHelpers.ts` with `refetchAfterStaleInvalidate(queryClient, queryKey)`. Calls `invalidateQueries({ queryKey, refetchType: 'none' })` then `refetchQueries({ queryKey })`. JSDoc explains disabled-query rationale and warns against general use. 4 unit tests pass.
+- **Deviations from plan:** None.
 - **Follow-up implications for later sections:** Section 7 depends on this helper.
 
 ---
@@ -565,8 +565,8 @@ None.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
+- **Implementation notes:** Completed. Replaced 4 ad-hoc query-key array literals: `['cohorts']` → `queryKeys.cohorts()`, `['yearGroups']` → `queryKeys.yearGroups()` in `ClassesManagementPanel.tsx`; `['assignmentTopics']` → `queryKeys.assignmentTopics()`, `['yearGroups']` → `queryKeys.yearGroups()` in `useAssignmentDefinitionWizard.ts`. Added `queryKeys` import to `ClassesManagementPanel.tsx`. All 16 existing tests pass unchanged.
+- **Deviations from plan:** None.
 - **Follow-up implications for later sections:** None — these fixes are independent of the page refactoring sections.
 
 ---
@@ -652,9 +652,9 @@ None — the page's internal `getClassesSurfaceState` should retain existing JSD
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
-- **Follow-up implications for later sections:**
+- **Implementation notes:** Completed. Replaced inline `useQuery` + dataset-state boilerplate with `usePageDataset<ClassPartial[]>('classPartials')` and `usePageDataset<YearGroup[]>('yearGroups')`. Removed 5 local functions (`shouldBlockSingleDataset`, `shouldRenderClassesBlockingState`, `hasRecoveredDataset`, `isDatasetRenderable`, `computeClassesSurfaceBusy`). Updated `getClassesSurfaceState` to use shared helpers. `computePageSurfaceBlocking` condition 2 now guards with `isDatasetReady` to prevent loading-state datasets from incorrectly blocking. All 33 ClassesPage tests pass unchanged (zero assertion modifications). SPEC.md blocking rule updated to `!isDatasetTrustworthy AND isDatasetReady → block`.
+- **Deviations from plan:** `computePageSurfaceBlocking` rule refined during implementation — the `!isDatasetTrustworthy` condition needed `isDatasetReady` guard to avoid incorrectly blocking loading/unresolved datasets (which should show skeleton, not Alert). The recovered-path carve-out was removed as unnecessary — when a dataset is not trustworthy AND not ready, it's in loading state and shouldn't block.
+- **Follow-up implications for later sections:** Section 7 (AssignmentsPage) uses the same helpers with the corrected blocking logic.
 
 ---
 
@@ -737,9 +737,9 @@ None — the existing JSDoc for `handleRetryAssignmentsData` and `handleConfirmD
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
-- **Follow-up implications for later sections:**
+- **Implementation notes:** Completed. Replaced inline `useQuery` + dataset-state boilerplate with `usePageDataset<AssignmentDefinitionPartial[]>('assignmentDefinitionPartials')`. Removed `shouldRenderAssignmentsBlockingState` (replaced by `computePageSurfaceBlocking`). Replaced `refetchAssignmentDefinitions` useCallback with `refetchAfterStaleInvalidate(queryClient, queryKeys.assignmentDefinitionPartials())` at both call sites. Updated `isAssignmentsSurfaceBusyState` to use `computePageSurfaceBusy`. All 32 tests pass unchanged (zero assertion modifications).
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** None — this was the final page refactoring.
 
 ---
 
@@ -834,9 +834,9 @@ scc \
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
-- **Follow-up implications for later sections:**
+- **Implementation notes:** LOC hard gate passed: 3,987 lines < 4,007 baseline (20-line reduction). All test suites pass (ClassesPage 33/33, AssignmentsPage 32/32, usePageDataset 31/31, queryInvalidationHelpers 4/4, ClassesManagementPanel 15/15, useAssignmentDefinitionWizard 1/1, sharedQueries 17/17). Frontend lint clean. Regression checker: 0 regressions, 0 new failures (3 pre-existing failures: 2 backend + 1 flaky E2E).
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** Section 9 (documentation) is the final step.
 
 ---
 
@@ -885,8 +885,8 @@ Docs mandatory docs:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
+- **Implementation notes:** Completed. Updated `frontend-shared-helpers-and-abstraction-standards.md` with: Section 3.1 (added `getStartupWarmupQueryOptions` and `queryInvalidationHelpers.ts`), new Section 3.1a (added `hooks/usePageDataset.ts`), and new Section 9.12 (9 entries, all `Implemented`). All planned helper entries reconciled.
+- **Deviations from plan:** None.
 - **Follow-up implications for later sections:** None — this is the final section.
 
 ---

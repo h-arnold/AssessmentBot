@@ -192,6 +192,24 @@ export function getStartupWarmupQueryKey(datasetKey: StartupWarmupDatasetKey) {
 }
 
 /**
+ * Returns the shared query-options object for a startup warm-up dataset key.
+ *
+ * @param {StartupWarmupDatasetKey} datasetKey Dataset key.
+ * @returns {ReturnType<typeof queryOptions>} Query-options object for the corresponding dataset.
+ */
+export function getStartupWarmupQueryOptions(datasetKey: StartupWarmupDatasetKey) {
+  const queryDefinition = startupWarmupQueryDefinitions.find(
+    (currentQueryDefinition) => currentQueryDefinition.datasetKey === datasetKey
+  );
+
+  if (!queryDefinition) {
+    throw new Error('Unknown startup warm-up dataset key: ' + datasetKey + '.');
+  }
+
+  return queryDefinition.getQueryOptions();
+}
+
+/**
  * Warms the shared startup datasets in parallel through the provided query client.
  *
  * Repeated calls reuse the same in-flight warm-up promise for a given query client.

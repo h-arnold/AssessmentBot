@@ -1,6 +1,7 @@
 import { Alert, Card, Flex, Skeleton, Typography } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '../../query/queryKeys';
 import { callApi } from '../../services/apiService';
 import { mapRequiredClassPartialsRefreshFailureToUserMessage, type RequiredClassPartialsRefreshOutcome } from './queryInvalidation';
 import { runBulkMutationOrchestration } from './bulkMutationOrchestration';
@@ -553,7 +554,7 @@ export function ClassesManagementPanel() {
     (entity: { key: string; name: string }) => {
       setPendingCreatedCohortKey(entity.key);
       // Invalidate cohorts query so the dropdown refreshes
-      queryClient.invalidateQueries({ queryKey: ['cohorts'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.cohorts() });
     },
     [queryClient]
   );
@@ -562,7 +563,7 @@ export function ClassesManagementPanel() {
     (entity: { key: string; name: string }) => {
       setPendingCreatedYearGroupKey(entity.key);
       // Invalidate yearGroups query so the dropdown refreshes
-      queryClient.invalidateQueries({ queryKey: ['yearGroups'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.yearGroups() });
     },
     [queryClient]
   );
