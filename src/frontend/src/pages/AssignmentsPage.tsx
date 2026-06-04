@@ -746,7 +746,7 @@ export function AssignmentsPage() {
   /**
    * Refetches assignment definitions using the scoped query key only.
    *
-   * @returns {void} No return value.
+   * @returns {Promise<void>} Promise resolving once invalidate-then-refetch completes.
    */
   async function handleRetryAssignmentsData() {
     setDeleteOutcome(null);
