@@ -14,6 +14,7 @@ All sections complete. Branch: `feat/AssignmentSelectionModal`.
 | 6       | Regression hardening (max-lines regression since resolved by test split into 8 files)                | `2c8e2ab`                       |
 | 7       | Playwright E2E tests for modal workflow (§5 tests 13–21) + scope bug fix in `ClassesPage.tsx`        | `10536a2`                       |
 | Docs    | antd v6 testing patterns documented; de-sloppification fixes applied; Playwright patterns documented | `c7df9ca`, `c9962ec`, `92802eb` |
+| RC      | comparison.txt now lists Current Failures; skill docs updated; 11 new unit tests                     | `589d987`                       |
 
 ### Key deviations from plan
 
@@ -21,6 +22,7 @@ All sections complete. Branch: `feat/AssignmentSelectionModal`.
 - **Playwright E2E tests for the modal** (§5 tests 13–21): Now implemented (§7). All 9 pass alongside the 21 existing classes-page E2E tests.
 - **`ClassesPage.tsx` scoping bug** (§7): The `renderYearGroupCollapse` module-level function referenced `useState` setters that only existed in the `ClassesPage` component closure. This was invisible in unit tests (which mocked the modal) but caused `setAssessModalClassId is not defined` at runtime when clicking "Assess Task". Fixed by introducing an `OnAssessTask` callback type and threading it through `renderYearGroupCollapse` and `renderClassesContent`.
 - **React 19 StrictMode double-effect**: `useEffect` fires twice in development mode, so all E2E response queues provide 2 entries per expected API call (4 for the reopen-reset test with two modal opens).
+- **Comparison report improvements**: The `comparison.txt` file now includes a `Current Failures` section listing all currently-failing items per check (not just deltas). Previously, pre-existing failures that were also in the baseline showed exit code without detail. See commit `589d987`.
 
 ### Outstanding follow-ups
 

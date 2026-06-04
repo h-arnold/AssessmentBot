@@ -93,6 +93,7 @@ input_price = 1.5
 output_price = 7.5
 thinking = "high"
 auto_compact_threshold = 200000
+supports_images = true
 
 [[models]]
 name = "mistral-small"
@@ -323,36 +324,11 @@ sensitive_patterns = [
 max_write_bytes = 64000
 create_parent_dirs = true
 
-[tools.search_replace]
-permission = "always"
-allowlist = []
-denylist = []
-sensitive_patterns = [
-    "**/.env",
-    "**/.env.*",
-    "**/**eslint.config**",
-]
-max_content_size = 100000
-create_backup = false
-fuzzy_threshold = 0.9
-
 [tools.skill]
 permission = "always"
 allowlist = []
 denylist = []
 sensitive_patterns = []
-
-[tools.read_file]
-permission = "always"
-allowlist = [
-    "./.vibe/agents/*",
-]
-denylist = []
-sensitive_patterns = [
-    "**/.env",
-    "**/.env.*",
-]
-max_read_bytes = 64000
 
 [tools.web_search]
 permission = "always"
@@ -370,7 +346,7 @@ sensitive_patterns = [
     "**/.env",
     "**/.env.*",
 ]
-max_output_bytes = 64000
+max_output_bytes = 96000
 default_max_matches = 100
 default_timeout = 60
 exclude_patterns = [
@@ -399,3 +375,26 @@ exclude_patterns = [
     "Thumbs.db",
 ]
 codeignore_file = ".vibeignore"
+
+[tools.read]
+permission = "always"
+allowlist = [
+    "./.vibe/agents/*",
+]
+denylist = []
+sensitive_patterns = [
+    "**/.env",
+    "**/.env.*",
+]
+max_read_bytes = 64000
+
+[tools.edit]
+permission = "always"
+allowlist = []
+denylist = []
+sensitive_patterns = [
+    "**/.env",
+    "**/.env.*",
+    "**/**eslint.config**",
+]
+fuzzy_threshold = 0.9

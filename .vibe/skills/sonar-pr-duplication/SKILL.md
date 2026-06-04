@@ -57,6 +57,7 @@ python3 ~/.vibe/skills/sonar-pr-duplication/scripts/sonar_pr_duplication_report.
   - `api/qualitygates/project_status`
   - `api/measures/component`
   - `api/issues/search`
+- To check whether your changes have been successful, commit them, wait 60s and then re-run the script.
 
 ## Output expectations
 
