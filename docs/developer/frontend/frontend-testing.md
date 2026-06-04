@@ -877,6 +877,165 @@ await expect(dialog.locator('.ant-typography-secondary').getByText('Algebra Home
 If the confirmation text must be tested via a visible‑only assertion, use the parent
 container element (e.g. the `Space` wrapper) rather than the `Typography.Text` span itself.
 
+### 7. E2E Runtime Mock Infrastructure
+
+The E2E test suite uses a queue-based mock system (`endToEndRuntimeMocks.ts`) to simulate
+backend responses without deploying a real server. Each mock method has a FIFO queue of
+response entries. When the app calls a backend method via `google.script.run`, the mock
+dequeues the next entry and resolves or rejects the call accordingly.
+
+#### RuntimeScenario type
+
+A `RuntimeScenario` is a plain object mapping backend method names to arrays of `ResponseItem`
+entries:
+
+```typescript
+type RuntimeScenario = {
+  getAuthorisationStatus?: ReadonlyArray<ResponseItem>;
+  getABClassPartials?: ReadonlyArray<ResponseItem>;
+  getGoogleClassroomAssignments?: ReadonlyArray<ResponseItem>;
+  // ... other backend methods
+};
+```
+
+Each `ResponseItem` has a `kind` field that controls how the mock behaves:
+
+- **`{ kind: 'success', data }`** — Resolves the deferred promise with `data` as the
+  successful response.
+- **`{ kind: 'failureEnvelope', code, message }`** — Rejects the deferred promise with a
+  structured API error envelope (e.g. `INVALID_REQUEST`, `INTERNAL_ERROR`).
+- **`{ kind: 'deferredSuccess', data }`** — Holds the promise open until
+  `releaseNextDeferredSuccess(page)` is called. Used for loading-state testing.
+
+#### Installing mock scenarios
+
+Use `installRuntimeMock(page, scenario)` before navigating. This patches
+`google.script.run.withSuccessHandler().withFailureHandler()` at the page level so all
+backend calls go through the mock queues:
+
+```typescript
+const scenario = createAssessTaskScenario();
+await installRuntimeMock(page, scenario);
+await page.goto('/');
+```
+
+The `allMethods` array inside `installRuntimeMock` must include every backend method that
+the scenario covers. Adding new backend methods requires:
+
+1. Adding the method name to the `RuntimeScenario` type
+2. Adding the method name to `allMethods` in `installRuntimeMock`
+3. Creating scenario factory helpers for the new method's response queues
+
+#### Scenario factory pattern
+
+Instead of constructing `RuntimeScenario` objects inline, use scenario factory functions
+that provide sensible defaults and allow optional overrides:
+
+```typescript
+// Factory with defaults (no optional methods)
+const scenario = createClassesScenario();
+
+// Factory with overrides for testing specific states
+const errorEntry = {
+  kind: 'failureEnvelope' as const,
+  code: 'INTERNAL_ERROR' as const,
+  message: 'API error',
+};
+const errorScenario = createAssessTaskScenario({
+  getGoogleClassroomAssignments: [errorEntry, errorEntry],
+});
+```
+
+Factories keep test files concise and centralise fixture maintenance. When adding a new
+backend method, extend the relevant factory to include a default queue for that method.
+
+#### StrictMode-safe queue sizing
+
+React 19 StrictMode double-fires `useEffect` in development. Every custom response queue
+must provide **2 entries per expected real call** (one for each StrictMode replay):
+
+```typescript
+// Single modal open needs 2 entries (StrictMode × 1 open)
+const scenario = createAssessTaskScenario({
+  getGoogleClassroomAssignments: [algebraEntry, algebraEntry],
+});
+
+// Two modal opens need 4 entries (StrictMode × 2 opens)
+const scenario = createAssessTaskScenario({
+  getGoogleClassroomAssignments: [algebraEntry, algebraEntry, differentEntry, differentEntry],
+});
+```
+
+The default queues in scenario factories already provide StrictMode-safe sizes. Only
+custom overrides need manual doubling.
+
+#### Tracking backend calls
+
+Use `getMethodCalls(page)` to verify which backend methods were invoked and in what order:
+
+```typescript
+const callsBefore = await getMethodCalls(page);
+expect(callsBefore).toContain('getGoogleClassroomAssignments');
+
+// Perform action that should NOT trigger a backend call
+await dialog.getByRole('button', { name: 'Start Assessment' }).click();
+
+const callsAfter = await getMethodCalls(page);
+expect(callsAfter).toEqual(callsBefore);
+```
+
+#### Deferred response pattern for loading states
+
+To test loading/ready transitions, use `deferredSuccess` entries and
+`releaseNextDeferredSuccess(page)`:
+
+```typescript
+const deferredEntry = {
+  kind: 'deferredSuccess' as const,
+  data: MOCK_COURSEWORK_ASSIGNMENTS[0].data,
+};
+const scenario = createAssessTaskScenario({
+  getGoogleClassroomAssignments: [deferredEntry, deferredEntry],
+});
+await installRuntimeMock(page, scenario);
+await page.goto('/');
+
+// Trigger the action that opens the modal
+await page.getByRole('button', { name: 'Assess Task' }).first().click();
+
+// Assert loading state
+await expect(dialog.locator('[role="status"]')).toBeVisible();
+await expect(dialog.getByRole('button', { name: 'Start Assessment' })).toBeDisabled();
+
+// Release the deferred response
+await releaseNextDeferredSuccess(page);
+
+// Assert ready state
+await expect(dialog.locator('[role="status"]')).toHaveCount(0);
+await expect(dialog.getByRole('combobox')).toBeVisible();
+```
+
+Two deferred entries are needed (one for each StrictMode effect replay). The first released
+entry transitions the component to ready; the second stays pending and is harmlessly
+ignored.
+
+#### antd Select interaction in Playwright
+
+For antd `Select` components in E2E tests, use `selectVisibleOption(page, label)` rather
+than Playwright's built-in `selectOption`. antd Select uses custom dropdown rendering, so
+standard `<select>` interactions do not work:
+
+```typescript
+// Open the dropdown
+await dialog.getByRole('combobox').click();
+
+// Select an option by its visible text
+await selectVisibleOption(page, 'Algebra Homework');
+
+// Verify selection effect
+await expect(dialog.getByRole('button', { name: 'Start Assessment' })).toBeEnabled();
+```
+
 ## Notes
 
 - Frontend tests run in the frontend package (`src/frontend`) through root scripts.
