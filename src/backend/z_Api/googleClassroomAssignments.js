@@ -1,7 +1,4 @@
-/* global ClassroomApiClient, ApiValidationError */
-
-const LAST_CONTROL_CHARACTER_CODE = 31;
-const DELETE_CHARACTER_CODE = 127;
+/* global ClassroomApiClient, ApiValidationError, hasControlCharacters_ */
 
 /**
  * Thin transport handler for Google Classroom assignment listing.
@@ -54,18 +51,13 @@ function getGoogleClassroomAssignments_(parameters) {
   }
 
   // Defence-in-depth: reject ASCII control characters (code points 0-31 and 127/DEL).
-  // This validation intentionally duplicates the pattern from assignmentDefinitionPartials.js
-  // rather than extracting a shared helper at this stage.  Each handler owns its own
-  // transport-boundary safety checks to keep the files self-contained and avoid coupling
-  // a single shared validation helper to every future z_Api surface.
-  for (let index = 0; index < classId.length; index += 1) {
-    const codePoint = classId.codePointAt(index);
-    if (codePoint <= LAST_CONTROL_CHARACTER_CODE || codePoint === DELETE_CHARACTER_CODE) {
-      throw new ApiValidationError('classId contains unsafe characters.', {
-        method: 'getGoogleClassroomAssignments',
-        fieldName: 'classId',
-      });
-    }
+  // Uses the shared `hasControlCharacters_()` helper from assignmentDefinitionPartials.js,
+  // which is available as a global in the GAS concatenated runtime.
+  if (hasControlCharacters_(classId)) {
+    throw new ApiValidationError('classId contains unsafe characters.', {
+      method: 'getGoogleClassroomAssignments',
+      fieldName: 'classId',
+    });
   }
 
   // Fetch coursework from the Google Classroom API.

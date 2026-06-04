@@ -293,6 +293,13 @@ Use the allowlisted method names exactly as implemented in `ALLOWLISTED_METHOD_H
   Validation: the helper rejects malformed rows with `ApiValidationError` when required fields are missing, `definitionKey` or `primaryTopicKey` are blank or untrimmed, `createdAt` / `updatedAt` are not `string | null`, non-null timestamps are not strict ISO datetime strings with timezone information, or `tasks` is not `null`.
   Frontend wrapper: `src/frontend/src/services/assignmentDefinitionPartialsService.ts` (`getAssignmentDefinitionPartials()`), with payload validation in `src/frontend/src/services/assignmentDefinitionPartials.zod.ts`.
 
+- `getGoogleClassroomAssignments` — fetches Google Classroom coursework/assignments for a given class and normalises to transport format.
+  Source: `src/backend/z_Api/googleClassroomAssignments.js`, via the `getGoogleClassroomAssignments_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ClassroomApiClient.fetchCourseWork()` in `src/backend/GoogleClassroom/ClassroomApiClient.js`.
+  Required request field: `classId`.
+  Validation: `classId` must be a non-empty, already-trimmed string without path characters (`/`, `\`, `..`) or ASCII control characters (code points 0–31 and 127). Invalid payloads are reported as `INVALID_REQUEST` by the transport. Malformed Classroom API response rows are reported as `ApiValidationError`.
+  Handler behaviour: calls `ClassroomApiClient.fetchCourseWork(classId)`, maps each course-work item to `{ assignmentId, title }`.
+  Frontend wrapper: `src/frontend/src/services/googleClassroomAssignmentsService.ts` (`getGoogleClassroomAssignments()`), with response validation in `src/frontend/src/services/googleClassroomAssignmentsService.spec.ts`.
+
 - `deleteAssignmentDefinition` — deletes one assignment definition from both the registry and its dedicated full-definition collection.
   Source: `src/backend/z_Api/assignmentDefinitionPartials.js`, via the `deleteAssignmentDefinition_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `AssignmentDefinitionController.deleteDefinitionByKey()` in `src/backend/y_controllers/AssignmentDefinitionController.js`.
   Required request field: `definitionKey`.
