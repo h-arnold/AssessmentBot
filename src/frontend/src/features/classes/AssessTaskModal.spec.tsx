@@ -13,7 +13,7 @@ const MOCK_ASSIGNMENTS = [{ assignmentId: 'a1', title: 'Essay' }];
 const MOCK_EMPTY_ASSIGNMENTS: Array<{ assignmentId: string; title: string }> = [];
 const MODAL_TITLE = `Assess Task — ${MOCK_CLASS_NAME}`;
 /** Timeout to allow antd modal close handler to complete in JSDOM (milliseconds). */
-const MODAL_CLOSE_TIMEOUT_MS = 100;
+
 
 /**
  * Standard props for the modal in most tests.
@@ -243,11 +243,11 @@ describe('Cancel and close', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  // NOTE: Mask click testing in JSDOM/HappyDOM with Ant Design Modal has known
-  // limitations where the mask click event doesn't properly trigger onCancel.
-  // This test is skipped in unit tests but should be covered by Playwright tests
-  // (see ManageTopicsModal.spec.tsx for the project-standard rationale).
-  it.skip('calls onClose when modal mask (backdrop) is clicked', async () => {
+  // Ant Design v6 renders modals in a React portal. @rc-component/dialog
+  // listens for mousedown+click on the .ant-modal-wrap. Because portal
+  // event propagation interacts differently with React's synthetic event
+  // system in JSDOM, we use native dispatchEvent to ensure the handlers fire.
+  it('calls onClose when modal backdrop is clicked', async () => {
     const mockedGetAssignments = vi.mocked(getGoogleClassroomAssignments);
     mockedGetAssignments.mockResolvedValue(MOCK_ASSIGNMENTS);
     const onClose = vi.fn();
@@ -257,15 +257,14 @@ describe('Cancel and close', () => {
     const dialog = screen.getByRole('dialog', { name: MODAL_TITLE });
     await within(dialog).findByRole('combobox');
 
-    // Project-standard mask-click pattern (mirrors ManageTopicsModal.spec.tsx)
     const wrap = dialog.closest('.ant-modal-wrap');
     expect(wrap).not.toBeNull();
-    const mask = wrap!.previousElementSibling;
-    expect(mask?.classList.contains('ant-modal-mask')).toBe(true);
+
     await act(async () => {
-      fireEvent.click(mask!);
+      wrap!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      wrap!.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+      wrap!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
-    await new Promise((resolve) => setTimeout(resolve, MODAL_CLOSE_TIMEOUT_MS));
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });
