@@ -25,10 +25,10 @@ All sections complete. Branch: `feat/AssignmentSelectionModal`.
 ### Outstanding follow-ups
 
 ~~1. **Shared validation helper** — the control-character validation block exists in both `assignmentDefinitionPartials.js` and `googleClassroomAssignments.js` with a defence-in-depth comment. Consolidating into a shared helper is a future improvement.~~
-→ **Resolved** in `585354d`. Replaced the inline duplicate in `googleClassroomAssignments.js` with a call to the existing `hasControlCharacters_()` from `assignmentDefinitionPartials.js`, exposed via `globalThis` in `tests/setupGlobals.js`. Clean review, 0 regressions.
+→ **Resolved** in `79174e9`. Replaced the inline duplicate in `googleClassroomAssignments.js` with a call to the existing `hasControlCharacters_()` from `assignmentDefinitionPartials.js`, exposed via `globalThis` in `tests/setupGlobals.js`. Clean review, 0 regressions.
 
 ~~2. **Canonical doc entries** — `docs/developer/backend/AssessmentFlow.md` (Shared Helper Status for `fetchCourseWork`), `docs/developer/backend/api-layer.md` (add `getGoogleClassroomAssignments` to migrated endpoints), and `docs/developer/frontend/frontend-react-query-and-prefetch.md` (query-key convention for `googleClassroomAssignments`) still need updating.~~
-→ **Resolved** in `585354d`. All three canonical docs updated.
+→ **Resolved** in `79174e9`. All three canonical docs updated.
 
 ### Regression status
 
