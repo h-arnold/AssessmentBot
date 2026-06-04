@@ -1,6 +1,6 @@
 import { Alert, Button, Card, Col, Collapse, Empty, Row, Skeleton, Space, Tooltip, Typography } from 'antd';
 import { AuditOutlined } from '@ant-design/icons';
-import { type JSX, useMemo } from 'react';
+import { type JSX, useMemo, useState } from 'react';
 import {
   computeDatasetRenderable,
   computePageSurfaceBlocking,
@@ -15,6 +15,7 @@ import {
   type ClassesPagePanelViewModel,
   type InvalidClassesPageDataViewModel,
 } from './classes/classesPageModel';
+import { AssessTaskModal } from '../features/classes/AssessTaskModal';
 import { PageSection } from './PageSection';
 import { pageContent } from './pageContent';
 
@@ -158,7 +159,10 @@ function renderYearGroupCollapse(viewModel: ClassesPagePanelViewModel): JSX.Elem
                                     aria-label="Assess Task"
                                     icon={<AuditOutlined />}
                                     type="text"
-                                    onClick={() => {}}
+                                    onClick={() => {
+                                      setAssessModalClassId(card.classId);
+                                      setAssessModalClassName(card.className);
+                                    }}
                                   />
                                 </Tooltip>
                               </Space>
@@ -279,6 +283,10 @@ export function ClassesPage() {
     yearGroups: yearGroupsDatasetState,
   });
 
+  // Modal state for Assess Task workflow
+  const [assessModalClassId, setAssessModalClassId] = useState<string | null>(null);
+  const [assessModalClassName, setAssessModalClassName] = useState<string | null>(null);
+
   // Compute busy state
   const isClassesSurfaceBusy = computePageSurfaceBusy(
     [classPartialsQuery.isFetching, yearGroupsQuery.isFetching],
@@ -315,6 +323,17 @@ export function ClassesPage() {
           isBusy: isClassesSurfaceBusy,
         })}
       </section>
+      {assessModalClassId !== null && assessModalClassName !== null && (
+        <AssessTaskModal
+          open
+          classId={assessModalClassId}
+          className={assessModalClassName}
+          onClose={() => {
+            setAssessModalClassId(null);
+            setAssessModalClassName(null);
+          }}
+        />
+      )}
     </PageSection>
   );
 }
