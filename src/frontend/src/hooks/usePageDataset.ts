@@ -4,52 +4,39 @@ import { useStartupWarmupState } from '../features/auth/startupWarmupState';
 import { getStartupWarmupQueryOptions } from '../query/sharedQueries';
 
 /**
- * Per-dataset derived state used by page surface-state helpers.
- *
- * All fields are boolean flags computed from a React Query result and
- * the startup warm-up state for a single dataset key.
+ * Per-dataset derived state with six boolean flags computed from a query result
+ * and the startup warm-up state.
  */
 export type PageDatasetState = Readonly<{
-  /** Whether the query has returned data (query.data is not undefined). */
   hasQueryData: boolean;
-  /** Whether the query is in an error state. */
   isQueryError: boolean;
-  /** Whether the warm-up dataset has failed (as reported by startup warm-up state). */
   isDatasetFailed: boolean;
-  /** Whether the warm-up dataset is ready (as reported by startup warm-up state). */
   isDatasetReady: boolean;
-  /** Whether the warm-up dataset snapshot is trustworthy. */
   isDatasetTrustworthy: boolean;
-  /** Convenience flag: the dataset is both ready and trustworthy. */
   hasTrustworthyDataset: boolean;
 }>;
 
-/**
- * Hook return type for a single warm-up-backed page dataset.
- *
- * @template TData The type of the query data payload.
- */
+/** Hook return type for a single warm-up-backed page dataset. */
 type PageDatasetResult<TData> = Readonly<{
   query: UseQueryResult<TData>;
   datasetState: PageDatasetState;
 }>;
 
 /**
- * Derives a {@link PageDatasetState} from a query result and the startup warm-up
- * state for a single dataset key.
+ * Derives {@link PageDatasetState} from a query result and startup warm-up state.
  *
- * This is a pure function with no side effects or hook dependencies.
+ * Pure function; no side effects or hook dependencies.
  *
  * @param {StartupWarmupDatasetKey} datasetKey - The warm-up dataset key.
- * @param {object} queryResult - The query result (data and error flag).
- * @param {unknown} queryResult.data - Query data, or `undefined` before the first successful load.
- * @param {boolean} queryResult.isError - Whether the query is in an error state.
- * @param {object} startupWarmupState - Startup warm-up state values.
- * @param {Function} startupWarmupState.isDatasetReady - Returns true when the dataset is ready.
- * @param {Function} startupWarmupState.isDatasetFailed - Returns true when the dataset has failed.
- * @param {object} startupWarmupState.snapshot - Warm-up dataset snapshot.
- * @param {Record<StartupWarmupDatasetKey, {isTrustworthy: boolean}>} startupWarmupState.snapshot.datasets - Map of dataset keys to trustworthiness snapshots.
- * @returns {PageDatasetState} The derived per-dataset state.
+ * @param {{ data: unknown; isError: boolean }} queryResult - Query state from React Query.
+ * @param {unknown} queryResult.data - Query data payload, or undefined.
+ * @param {boolean} queryResult.isError - Whether the query is errored.
+ * @param {object} startupWarmupState - Warm-up context snapshot.
+ * @param {Function} startupWarmupState.isDatasetReady - Readiness check.
+ * @param {Function} startupWarmupState.isDatasetFailed - Failure check.
+ * @param {object} startupWarmupState.snapshot - Dataset snapshots keyed by dataset key.
+ * @param {Record<StartupWarmupDatasetKey, { isTrustworthy: boolean }>} startupWarmupState.snapshot.datasets - Trustworthiness map.
+ * @returns {PageDatasetState} Derived per-dataset state.
  */
 export function computePageDatasetState(
   datasetKey: StartupWarmupDatasetKey,
@@ -80,52 +67,35 @@ export function computePageDatasetState(
 /**
  * Decides whether a single dataset should block the page surface.
  *
- * Decision tree (from SPEC.md):
+ * Blocks when: (1) dataset failed with no data or query error; (2) dataset is
+ * untrustworthy but marked ready by warm-up; (3) dataset is ready with a query
+ * error.  Loading datasets (neither ready nor failed) do not block.
  *
- * 1. **Failed and cannot display**: the dataset has failed AND there is no query
- *    data OR the query itself is errored → **block**.
- * 2. **Untrustworthy but marked ready**: the dataset is not trustworthy AND the
- *    warm-up state reports it as ready → **block**.  Datasets that are loading
- *    (neither ready nor failed) do not block here — they show a skeleton instead.
- * 3. **Ready but errored**: the dataset is ready but the query is in an error
- *    state → **block**.
- * 4. Otherwise → **do not block** (the surface can render with usable data).
- *
- * @param {PageDatasetState} datasetState - Per-dataset state from
- *   {@link computePageDatasetState}.
- * @returns {boolean} `true` if the dataset should block the page surface.
+ * @param {PageDatasetState} datasetState - Per-dataset state from {@link computePageDatasetState}.
+ * @returns {boolean} `true` if the dataset should block.
  */
 export function computePageSurfaceBlocking(datasetState: PageDatasetState): boolean {
   const { hasQueryData, isQueryError, isDatasetFailed, isDatasetReady, isDatasetTrustworthy } =
     datasetState;
 
-  // 1. Dataset failed and cannot display (no data or query errored) → block
   if (isDatasetFailed && (!hasQueryData || isQueryError)) {
     return true;
   }
 
-  // 2. Ready but untrustworthy (and not the recovered case) → block
-  //    (Note: recovered means failed + has data + no query error — already handled above)
   if (!isDatasetTrustworthy && isDatasetReady) {
     return true;
   }
 
-  // 3. Ready and the query is errored → block
   return isDatasetReady && isQueryError;
 }
 
 /**
- * Decides whether a dataset is renderable on the page.
+ * Decides whether a dataset is renderable.
  *
- * A dataset is renderable when:
+ * Renderable when: (a) `hasTrustworthyDataset` is true, OR (b) recovered after
+ * warm-up failure (`isDatasetFailed && hasQueryData && !isQueryError`).
  *
- * - It has a trustworthy dataset (`hasTrustworthyDataset` is `true`), OR
- * - It has recovered after a warm-up failure: the dataset has failed but the
- *   query successfully returned data with no error
- *   (`isDatasetFailed && hasQueryData && !isQueryError`).
- *
- * @param {PageDatasetState} datasetState - Per-dataset state from
- *   {@link computePageDatasetState}.
+ * @param {PageDatasetState} datasetState - Per-dataset state.
  * @returns {boolean} `true` if the dataset data can be rendered.
  */
 export function computeDatasetRenderable(datasetState: PageDatasetState): boolean {
@@ -143,12 +113,7 @@ export function computeDatasetRenderable(datasetState: PageDatasetState): boolea
 }
 
 /**
- * Computes whether the page surface is busy due to any query fetching or
- * mutation being in flight.
- *
- * Returns `true` when at least one flag in `fetchFlags` or `mutationFlags` is
- * truthy.  Pages that need additional busy triggers (for example, including a
- * table-loading state) layer those on top of this shared helper.
+ * Returns `true` when any flag in `fetchFlags` or `mutationFlags` is truthy.
  *
  * @param {readonly boolean[]} fetchFlags - Fetching flags from dataset queries.
  * @param {readonly boolean[]} mutationFlags - Pending flags from page mutations.
@@ -162,17 +127,17 @@ export function computePageSurfaceBusy(
 }
 
 /**
- * React Query hook that provides a typed query result and derived dataset state
- * for a startup warm-up dataset.
+ * Hook returning a typed query result and derived dataset state for a startup
+ * warm-up dataset.
  *
- * The query is enabled when the dataset is ready OR has failed. Enabling on
- * failure is required so refetchQueries() can retry after a warmup failure —
- * disabled queries cannot be refetched in React Query v5. The blocking state
+ * The query is enabled when the dataset is ready OR has failed.  Enabling on
+ * failure is required so `refetchQueries()` can retry after a warmup failure —
+ * disabled queries cannot be refetched in React Query v5.  The blocking state
  * still protects the UI while the dataset is untrustworthy.
  *
  * @template TData Type of the query data payload.
- * @param {StartupWarmupDatasetKey} datasetKey The startup warm-up dataset key.
- * @returns {PageDatasetResult<TData>} Query result and derived dataset state.
+ * @param {StartupWarmupDatasetKey} datasetKey - The startup warm-up dataset key.
+ * @returns {PageDatasetResult<TData>} Query result and derived {@link PageDatasetState}.
  */
 export function usePageDataset<TData>(
   datasetKey: StartupWarmupDatasetKey

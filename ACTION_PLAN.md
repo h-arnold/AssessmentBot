@@ -834,9 +834,9 @@ scc \
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
-- **Follow-up implications for later sections:**
+- **Implementation notes:** LOC hard gate passed: 3,987 lines < 4,007 baseline (20-line reduction). All test suites pass (ClassesPage 33/33, AssignmentsPage 32/32, usePageDataset 31/31, queryInvalidationHelpers 4/4, ClassesManagementPanel 15/15, useAssignmentDefinitionWizard 1/1, sharedQueries 17/17). Frontend lint clean. Regression checker: 0 regressions, 0 new failures (3 pre-existing failures: 2 backend + 1 flaky E2E).
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** Section 9 (documentation) is the final step.
 
 ---
 
