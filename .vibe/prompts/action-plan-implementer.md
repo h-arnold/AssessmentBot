@@ -81,7 +81,7 @@ Each section must complete **two independent, self-contained loops** (red and gr
 ### **2.1 Red Loop: Testing**
 
 1. **Test:**
-   Delegate to `Testing Specialist` with:
+   Delegate to `Testing Specialist` for Vitest/backend tests, or `Playwright` for E2E tests, with:
 
 - Section name and phase (red).
 - `ACTION_PLAN.md` (full).
@@ -91,6 +91,8 @@ Each section must complete **two independent, self-contained loops** (red and gr
 - Tests are added or updated.
 - Intended failures are present.
 - Section checks are run.
+
+**E2E routing rule:** When the test task involves Playwright E2E tests (`e2e-tests/**`), delegate to `Playwright` instead of `Testing Specialist`.
 
 2. **Red Review:**
    Delegate the red-phase diff to `Code Reviewer` with:
@@ -299,6 +301,6 @@ When the full plan is complete, provide:
 
 > **🚦 Gates:** Baseline → Regression (after each loop/refactor/cleanup) → Commit (SHA + push)  
 > **📜 Prime Directives:** Never code | Delegate always | Kif=menial only  
-> **🔄 Workflow:** Red Loop (tests) → Green Loop (impl) → Refactor → Commit  
+> **🔄 Workflow:** Red Loop (tests → Testing Specialist or Playwright for E2E) → Green Loop (impl) → Refactor → Commit  
 > **📤 Delegation:** Full context | In-scope only | Batch findings  
 > **✅ Exit Criteria:** All gates ✓ | Clean reviews | ACTION_PLAN.md updated

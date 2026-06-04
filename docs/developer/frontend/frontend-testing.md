@@ -2,12 +2,13 @@
 
 ## Overview
 
-Frontend testing currently uses two layers:
+Frontend testing uses two layers:
 
-- Unit/component tests with Vitest + Testing Library
-- Browser end-to-end tests with Playwright
+- **Unit/component tests** with Vitest + Testing Library — this document covers these.
+- **Browser end-to-end tests** with Playwright — see `docs/developer/frontend/frontend-playwright-e2e.md`.
 
-This document is intentionally minimal for now and should evolve as shared helpers, fixtures, and larger suites are added.
+This document focuses on Vitest patterns. For E2E test patterns, runtime mock infrastructure,
+antd interaction helpers, and Playwright best practices, use the Playwright E2E guide.
 
 ## Commands
 
@@ -20,51 +21,11 @@ npm run frontend:test
 # Frontend tests in watch mode
 npm run frontend:test:watch
 
-# Frontend Playwright E2E suite
+# Frontend Playwright E2E suite (see frontend-playwright-e2e.md)
 npm run frontend:test:e2e
 
 # Frontend unit/component coverage check (minimum 85%)
 npm run frontend:test:coverage
-```
-
-## Playwright execution
-
-Before the first Playwright run on a fresh machine, dev container, or CI image, install Chromium and its required system dependencies once:
-
-```bash
-npm --prefix src/frontend exec -- playwright install --with-deps chromium
-```
-
-Use the non-interactive Playwright command as the pass/fail gate:
-
-```bash
-npm run frontend:test:e2e
-```
-
-If Chromium or its system dependencies are later missing or have been removed, rerun the install command and then rerun the suite:
-
-```bash
-npm --prefix src/frontend exec -- playwright install --with-deps chromium
-npm run frontend:test:e2e
-```
-
-Use `--ui` or `--headed --debug` only for interactive diagnosis. The required completion signal is a clean `npm run frontend:test:e2e` run.
-
-### Geometry assertion stabilisation pattern (Playwright)
-
-When asserting modal layout geometry for Ant Design tables, use this stabilisation pattern to avoid flaky E2E checks.
-
-1. Measure against the stable table wrapper region (`.ant-table-wrapper`) rather than the inner `<table>` bounding box.
-2. Keep scaffold ready-state layout full-width (`style={{ width: '100%' }}`) on both the scaffold `Flex` container and the `Table`.
-3. Recalibrate tolerance constants only after repeated deterministic Playwright runs, not after a single pass.
-4. Validate with focused repeated runs (for example `--repeat-each`) and optionally serialise workers (`--workers=1`) before finalising thresholds.
-
-Example focused validation commands:
-
-```bash
-npm run test:frontend:e2e -- e2e-tests/classes-crud-manage-cohorts.spec.ts -g "Create cohort button stays near the table start edge within tolerance" --repeat-each=10 --workers=1
-npm run test:frontend:e2e -- e2e-tests/classes-crud-manage-year-groups.spec.ts -g "Create year group button stays near the table start edge within tolerance" --repeat-each=10 --workers=1
-npm run lint:frontend:check
 ```
 
 Target a specific unit test pattern:
@@ -72,42 +33,6 @@ Target a specific unit test pattern:
 ```bash
 npm run frontend:test -- src/App.spec.tsx
 ```
-
-## Previewing mocked frontend pages locally
-
-If you want to inspect page rendering and usability with the same mocked runtime states used in E2E tests, use Playwright in interactive mode.
-
-### Quick preview options
-
-From repository root:
-
-```bash
-# Open Playwright UI (good for clicking through scenarios)
-npm run frontend:test:e2e -- --ui
-
-# Run in a visible browser with Playwright Inspector
-npm run frontend:test:e2e -- --headed --debug
-```
-
-Run a single mocked scenario by test name:
-
-```bash
-npm run frontend:test:e2e -- --headed --debug e2e-tests/auth-status.spec.ts -g "shows Authorised when backend returns true"
-```
-
-`src/frontend` is already the working directory for these scripts (via `npm --prefix src/frontend`), so pass test paths relative to `src/frontend/` (for example `e2e-tests/...`), not `src/frontend/e2e-tests/...`.
-
-### How this maps to existing mocks
-
-- `src/frontend/e2e-tests/auth-status.spec.ts` already installs `google.script.run` mocks before the app loads.
-- Each test scenario then navigates to `/` and asserts user-visible state.
-- In `--ui` or `--headed --debug` mode, those same scenarios double as a manual preview harness.
-
-### Recommended VS Code workflow
-
-- Install and use the Playwright Test extension.
-- Run or debug individual tests from the Testing panel.
-- Keep a dedicated preview-style spec for key UI states (for example authorised, unauthorised, backend error, delayed loading) so you can quickly verify usability during development.
 
 ## Behaviour split: Vitest vs Playwright (authoritative)
 
@@ -494,90 +419,18 @@ function createStartupWarmupState(
 }
 ```
 
-## Playwright Best Practices
-
-### Web-First Assertions with Auto-Waiting
-
-**Preferred Pattern:** Use Playwright's web-first assertions (`toBeVisible()`, `toBeEnabled()`, `toBeDisabled()`) which automatically wait for the expected state.
-
-```typescript
-// ✅ CORRECT: Auto-waits for element to be visible
-await expect(page.getByRole('button', { name: 'Save' })).toBeVisible();
-
-// ✅ CORRECT: Auto-waits for element to be enabled
-await expect(page.getByRole('button', { name: 'Submit' })).toBeEnabled();
-
-// ✅ CORRECT: Auto-waits for element to be disabled
-await expect(page.getByRole('button', { name: 'Delete' })).toBeDisabled();
-```
-
-**Anti-Pattern:** Never use hard-coded timeouts (`page.waitForTimeout(N)`) as they are flaky and always wait the full duration regardless of actual need.
-
-```typescript
-// ❌ AVOID: Hard-coded timeout is an anti-pattern
-await page.waitForTimeout(1000);
-await expect(page.getByText('Loaded')).toBeVisible();
-
-// ✅ CORRECT: Let Playwright auto-wait
-await expect(page.getByText('Loaded')).toBeVisible();
-```
-
-**Anti-Pattern:** Avoid relying on implicit timing. Always use explicit Playwright waits for UI state changes.
-
-```typescript
-// ❌ AVOID: Implicit timing - may fail if render is slow
-const element = page.getByRole('button', { name: 'Save' });
-expect(await element.getAttribute('disabled')).toBeNull();
-
-// ✅ CORRECT: Explicit web-first assertion with auto-waiting
-await expect(page.getByRole('button', { name: 'Save' })).toBeEnabled();
-```
-
-### Network Response Waiting
-
-When testing React Query cache updates, wait for specific UI elements that only appear after the query completes:
-
-```typescript
-// ✅ CORRECT: Wait for element that appears after query completes
-await expect(page.getByText('Data loaded successfully')).toBeVisible();
-
-// ✅ CORRECT: Wait for network response when applicable
-await page.waitForResponse('**/api/assignments');
-await expect(page.getByRole('table')).toBeVisible();
-```
-
-### Assertion Order Matched to Code Execution
-
-Ensure test assertions match the actual order of code execution to avoid timing issues.
-
-**Example:** If code closes a modal before showing a message:
-
-```typescript
-// Code execution order:
-// 1. setDeleteTarget(null) → modal closes
-// 2. refetchAssignmentDefinitions() → query cache updates
-// 3. setDeleteOutcome({type: 'success', message: 'Deleted.'})
-
-// ✅ CORRECT: Match code execution order
-await expect(page.getByRole('dialog')).toHaveCount(0); // Modal closed first
-await expect(page.getByText(/deleted\./i)).toBeVisible(); // Then message appears
-
-// ❌ AVOID: Assertion order doesn't match execution
-await expect(page.getByText(/deleted\./i)).toBeVisible(); // Message not yet visible
-```
-
 ## Current Structure
 
 - Unit/component tests: `src/frontend/src/**/*.spec.{ts,tsx}`
 - Shared test helpers: `src/frontend/src/test/**`
 - Test setup: `src/frontend/src/test/setup.ts`
-- E2E tests: `src/frontend/e2e-tests/**/*.spec.ts`
+- E2E tests: `src/frontend/e2e-tests/**/*.spec.ts` (see `frontend-playwright-e2e.md`)
 - Playwright config: `src/frontend/playwright.config.ts`
 
 ## Current Approach
 
-- Use Vitest for invisible behaviour and fast deterministic checks.
-- Use Playwright for visible, user-observable behaviour in a real browser.
+- Use Vitest for invisible behaviour and fast deterministic checks (this document).
+- Use Playwright for visible, user-observable behaviour in a real browser (see `frontend-playwright-e2e.md`).
 - Keep tests decoupled from implementation details.
 - Maintain a balanced pyramid: broad Vitest coverage, targeted Playwright journeys.
 
@@ -822,221 +675,14 @@ cleanup();
 render(<Modal open={false} />);
 ```
 
-### 5. React 19 StrictMode double-effect in E2E mock queues
+### 5. Playwright-specific antd v6 patterns
 
-React 19 StrictMode intentionally double-fires `useEffect` in development builds. This means
-any component that fetches data inside `useEffect` will call the backend **twice** per mount.
-Playwright E2E tests run against the Vite dev server, so StrictMode is active.
-
-When a test provides a fixed-length response queue via `installRuntimeMock`, a single-entry
-queue is exhausted by the first effect call and the second call receives an
-`Unexpected call index` failure. This pushes the component into its error state, which
-breaks tests that expect the ready state.
-
-**Solution:** double every response queue entry so both StrictMode replays succeed:
-
-```typescript
-// ❌ Single entry — second StrictMode call fails
-getGoogleClassroomAssignments: [{ kind: 'success', data: [{ id: 'cw-1', title: 'HW' }] }],
-
-// ✅ Two identical entries — both calls succeed, component stabilises
-getGoogleClassroomAssignments: [
-  { kind: 'success', data: [{ id: 'cw-1', title: 'HW' }] },
-  { kind: 'success', data: [{ id: 'cw-1', title: 'HW' }] },
-],
-```
-
-The same rule applies to `failureEnvelope`, `deferredSuccess`, and `transportFailure` entries.
-For tests that open the modal multiple times (e.g. reopen‑reset), multiply accordingly:
-two opens × two effect replays = four queue entries.
-
-Default shared fixtures (like `MOCK_COURSEWORK_ASSIGNMENTS`) should provide at least two
-entries so that callers relying on the default get StrictMode‑safe queues without extra
-configuration.
-
-### 6. antd `Typography.Text` visibility in Playwright
-
-Ant Design's `Typography.Text` renders as a `<span>` element. When `type="secondary"` or
-other styling props are applied, Playwright may resolve the element as **hidden** even
-though it is visible to a human user. `toBeVisible()` assertions on `Typography.Text`
-elements can therefore fail while `toHaveCount(1)` or `toHaveTextContent(...)` pass on the
-same element.
-
-Prefer structural locators that do not depend on visibility checks:
-
-```typescript
-// ❌ May resolve as hidden — flaky
-await expect(dialog.getByText('Algebra Homework').first()).toBeVisible();
-
-// ✅ Structural check — reliable
-await expect(dialog.locator('.ant-typography-secondary').getByText('Algebra Homework')).toHaveCount(
-  1
-);
-```
-
-If the confirmation text must be tested via a visible‑only assertion, use the parent
-container element (e.g. the `Space` wrapper) rather than the `Typography.Text` span itself.
-
-### 7. E2E Runtime Mock Infrastructure
-
-The E2E test suite uses a queue-based mock system (`endToEndRuntimeMocks.ts`) to simulate
-backend responses without deploying a real server. Each mock method has a FIFO queue of
-response entries. When the app calls a backend method via `google.script.run`, the mock
-dequeues the next entry and resolves or rejects the call accordingly.
-
-#### RuntimeScenario type
-
-A `RuntimeScenario` is a plain object mapping backend method names to arrays of `ResponseItem`
-entries:
-
-```typescript
-type RuntimeScenario = {
-  getAuthorisationStatus?: ReadonlyArray<ResponseItem>;
-  getABClassPartials?: ReadonlyArray<ResponseItem>;
-  getGoogleClassroomAssignments?: ReadonlyArray<ResponseItem>;
-  // ... other backend methods
-};
-```
-
-Each `ResponseItem` has a `kind` field that controls how the mock behaves:
-
-- **`{ kind: 'success', data }`** — Resolves the deferred promise with `data` as the
-  successful response.
-- **`{ kind: 'failureEnvelope', code, message }`** — Rejects the deferred promise with a
-  structured API error envelope (e.g. `INVALID_REQUEST`, `INTERNAL_ERROR`).
-- **`{ kind: 'deferredSuccess', data }`** — Holds the promise open until
-  `releaseNextDeferredSuccess(page)` is called. Used for loading-state testing.
-
-#### Installing mock scenarios
-
-Use `installRuntimeMock(page, scenario)` before navigating. This patches
-`google.script.run.withSuccessHandler().withFailureHandler()` at the page level so all
-backend calls go through the mock queues:
-
-```typescript
-const scenario = createAssessTaskScenario();
-await installRuntimeMock(page, scenario);
-await page.goto('/');
-```
-
-The `allMethods` array inside `installRuntimeMock` must include every backend method that
-the scenario covers. Adding new backend methods requires:
-
-1. Adding the method name to the `RuntimeScenario` type
-2. Adding the method name to `allMethods` in `installRuntimeMock`
-3. Creating scenario factory helpers for the new method's response queues
-
-#### Scenario factory pattern
-
-Instead of constructing `RuntimeScenario` objects inline, use scenario factory functions
-that provide sensible defaults and allow optional overrides:
-
-```typescript
-// Factory with defaults (no optional methods)
-const scenario = createClassesScenario();
-
-// Factory with overrides for testing specific states
-const errorEntry = {
-  kind: 'failureEnvelope' as const,
-  code: 'INTERNAL_ERROR' as const,
-  message: 'API error',
-};
-const errorScenario = createAssessTaskScenario({
-  getGoogleClassroomAssignments: [errorEntry, errorEntry],
-});
-```
-
-Factories keep test files concise and centralise fixture maintenance. When adding a new
-backend method, extend the relevant factory to include a default queue for that method.
-
-#### StrictMode-safe queue sizing
-
-React 19 StrictMode double-fires `useEffect` in development. Every custom response queue
-must provide **2 entries per expected real call** (one for each StrictMode replay):
-
-```typescript
-// Single modal open needs 2 entries (StrictMode × 1 open)
-const scenario = createAssessTaskScenario({
-  getGoogleClassroomAssignments: [algebraEntry, algebraEntry],
-});
-
-// Two modal opens need 4 entries (StrictMode × 2 opens)
-const scenario = createAssessTaskScenario({
-  getGoogleClassroomAssignments: [algebraEntry, algebraEntry, differentEntry, differentEntry],
-});
-```
-
-The default queues in scenario factories already provide StrictMode-safe sizes. Only
-custom overrides need manual doubling.
-
-#### Tracking backend calls
-
-Use `getMethodCalls(page)` to verify which backend methods were invoked and in what order:
-
-```typescript
-const callsBefore = await getMethodCalls(page);
-expect(callsBefore).toContain('getGoogleClassroomAssignments');
-
-// Perform action that should NOT trigger a backend call
-await dialog.getByRole('button', { name: 'Start Assessment' }).click();
-
-const callsAfter = await getMethodCalls(page);
-expect(callsAfter).toEqual(callsBefore);
-```
-
-#### Deferred response pattern for loading states
-
-To test loading/ready transitions, use `deferredSuccess` entries and
-`releaseNextDeferredSuccess(page)`:
-
-```typescript
-const deferredEntry = {
-  kind: 'deferredSuccess' as const,
-  data: MOCK_COURSEWORK_ASSIGNMENTS[0].data,
-};
-const scenario = createAssessTaskScenario({
-  getGoogleClassroomAssignments: [deferredEntry, deferredEntry],
-});
-await installRuntimeMock(page, scenario);
-await page.goto('/');
-
-// Trigger the action that opens the modal
-await page.getByRole('button', { name: 'Assess Task' }).first().click();
-
-// Assert loading state
-await expect(dialog.locator('[role="status"]')).toBeVisible();
-await expect(dialog.getByRole('button', { name: 'Start Assessment' })).toBeDisabled();
-
-// Release the deferred response
-await releaseNextDeferredSuccess(page);
-
-// Assert ready state
-await expect(dialog.locator('[role="status"]')).toHaveCount(0);
-await expect(dialog.getByRole('combobox')).toBeVisible();
-```
-
-Two deferred entries are needed (one for each StrictMode effect replay). The first released
-entry transitions the component to ready; the second stays pending and is harmlessly
-ignored.
-
-#### antd Select interaction in Playwright
-
-For antd `Select` components in E2E tests, use `selectVisibleOption(page, label)` rather
-than Playwright's built-in `selectOption`. antd Select uses custom dropdown rendering, so
-standard `<select>` interactions do not work:
-
-```typescript
-// Open the dropdown
-await dialog.getByRole('combobox').click();
-
-// Select an option by its visible text
-await selectVisibleOption(page, 'Algebra Homework');
-
-// Verify selection effect
-await expect(dialog.getByRole('button', { name: 'Start Assessment' })).toBeEnabled();
-```
+For Playwright-specific antd v6 patterns (StrictMode double-effect handling, `Typography.Text`
+visibility, E2E runtime mock infrastructure, `selectVisibleOption`, and modal mask clicks in
+a real browser), see `docs/developer/frontend/frontend-playwright-e2e.md`.
 
 ## Notes
 
-- Frontend tests run in the frontend package (`src/frontend`) through root scripts.
-- If frontend architecture changes substantially, update this file and `.github/agents/Testing.agent.md` together.
+- Frontend unit/component tests run in the frontend package (`src/frontend`) through root scripts.
+- For Playwright E2E tests, see `docs/developer/frontend/frontend-playwright-e2e.md`.
+- If frontend architecture changes substantially, update this file, `frontend-playwright-e2e.md`, and `.github/agents/Testing.agent.md` together.
