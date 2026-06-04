@@ -39,10 +39,12 @@ describe('refetchAfterStaleInvalidate', () => {
       refetchType: 'none',
     });
 
-    // Verify refetchQueries was called with the expected arguments
-    expect(refetchQueriesMock).toHaveBeenCalledWith({
-      queryKey: TEST_QUERY_KEY,
-    });
+    // Verify refetchQueries was called with the expected arguments, including throwOnError: true
+    // per codebase convention (see manageReferenceDataHelpers.ts:157, queryInvalidation.ts:72).
+    expect(refetchQueriesMock).toHaveBeenCalledWith(
+      { queryKey: TEST_QUERY_KEY },
+      { throwOnError: true }
+    );
 
     // Verify call order: invalidateQueries before refetchQueries
     const invalidateCallOrder = invalidateQueriesMock.mock.invocationCallOrder[0];
@@ -60,7 +62,8 @@ describe('refetchAfterStaleInvalidate', () => {
       expect.objectContaining({ queryKey: TEST_QUERY_KEY })
     );
     expect(refetchQueriesMock).toHaveBeenCalledWith(
-      expect.objectContaining({ queryKey: TEST_QUERY_KEY })
+      expect.objectContaining({ queryKey: TEST_QUERY_KEY }),
+      { throwOnError: true }
     );
   });
 
@@ -89,6 +92,25 @@ describe('refetchAfterStaleInvalidate', () => {
     );
 
     // invalidateQueries must still have been called before refetchQueries failed
+    expect(invalidateQueriesMock).toHaveBeenCalledWith({
+      queryKey: TEST_QUERY_KEY,
+      refetchType: 'none',
+    });
+  });
+
+  it('passes throwOnError: true to refetchQueries so errors propagate to the caller', async () => {
+    const { queryClient, invalidateQueriesMock, refetchQueriesMock } = createMockQueryClient();
+
+    await refetchAfterStaleInvalidate(queryClient, TEST_QUERY_KEY);
+
+    // refetchQueries must receive throwOnError: true as its second argument
+    // per codebase convention, so that rejected promises propagate to the caller.
+    expect(refetchQueriesMock).toHaveBeenCalledWith(
+      expect.objectContaining({ queryKey: TEST_QUERY_KEY }),
+      { throwOnError: true }
+    );
+
+    // invalidateQueries must still be called with refetchType 'none'
     expect(invalidateQueriesMock).toHaveBeenCalledWith({
       queryKey: TEST_QUERY_KEY,
       refetchType: 'none',
