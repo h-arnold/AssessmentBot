@@ -12,8 +12,6 @@ const MOCK_CLASS_NAME = 'My Class';
 const MOCK_ASSIGNMENTS = [{ assignmentId: 'a1', title: 'Essay' }];
 const MOCK_EMPTY_ASSIGNMENTS: Array<{ assignmentId: string; title: string }> = [];
 const MODAL_TITLE = `Assess Task — ${MOCK_CLASS_NAME}`;
-/** Timeout to allow antd modal close handler to complete in JSDOM (milliseconds). */
-
 
 /**
  * Standard props for the modal in most tests.

@@ -53,7 +53,11 @@ function getGoogleClassroomAssignments_(parameters) {
     });
   }
 
-  // Reject ASCII control characters (code points 0-31 and 127/DEL).
+  // Defence-in-depth: reject ASCII control characters (code points 0-31 and 127/DEL).
+  // This validation intentionally duplicates the pattern from assignmentDefinitionPartials.js
+  // rather than extracting a shared helper at this stage.  Each handler owns its own
+  // transport-boundary safety checks to keep the files self-contained and avoid coupling
+  // a single shared validation helper to every future z_Api surface.
   for (let index = 0; index < classId.length; index += 1) {
     const codePoint = classId.codePointAt(index);
     if (codePoint <= LAST_CONTROL_CHARACTER_CODE || codePoint === DELETE_CHARACTER_CODE) {

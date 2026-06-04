@@ -45,25 +45,26 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
 
   const isStartDisabled = fetchState !== 'ready' || selectedAssignmentId === undefined;
 
-  let bodyContent: React.ReactNode;
-
-  if (fetchState === 'loading') {
-    bodyContent = (
-      <div role="status" style={{ textAlign: 'center', padding: '40px 0' }}>
-        <Spin />
-      </div>
-    );
-  } else if (fetchState === 'error') {
-    bodyContent = <Alert type="error" title={errorMessage} />;
-  } else if (assignments.length === 0) {
-    bodyContent = <Empty description="No assignments found for this class" />;
-  } else {
+  const bodyContent = (function renderBody(): React.ReactNode {
+    if (fetchState === 'loading') {
+      return (
+        <div role="status" style={{ textAlign: 'center', padding: '40px 0' }}>
+          <Spin />
+        </div>
+      );
+    }
+    if (fetchState === 'error') {
+      return <Alert type="error" title={errorMessage} />;
+    }
+    if (assignments.length === 0) {
+      return <Empty description="No assignments found for this class" />;
+    }
     const selectOptions = assignments.map((assignment) => ({
       value: assignment.assignmentId,
       label: assignment.title,
     }));
 
-    bodyContent = (
+    return (
       <Space vertical style={{ width: '100%' }}>
         <Typography.Text>Select assignment</Typography.Text>
         <Select
@@ -82,7 +83,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
         )}
       </Space>
     );
-  }
+  })();
 
   return (
     <Modal
