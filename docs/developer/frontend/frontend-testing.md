@@ -822,6 +822,61 @@ cleanup();
 render(<Modal open={false} />);
 ```
 
+### 5. React 19 StrictMode double-effect in E2E mock queues
+
+React 19 StrictMode intentionally double-fires `useEffect` in development builds. This means
+any component that fetches data inside `useEffect` will call the backend **twice** per mount.
+Playwright E2E tests run against the Vite dev server, so StrictMode is active.
+
+When a test provides a fixed-length response queue via `installRuntimeMock`, a single-entry
+queue is exhausted by the first effect call and the second call receives an
+`Unexpected call index` failure. This pushes the component into its error state, which
+breaks tests that expect the ready state.
+
+**Solution:** double every response queue entry so both StrictMode replays succeed:
+
+```typescript
+// ❌ Single entry — second StrictMode call fails
+getGoogleClassroomAssignments: [{ kind: 'success', data: [{ id: 'cw-1', title: 'HW' }] }],
+
+// ✅ Two identical entries — both calls succeed, component stabilises
+getGoogleClassroomAssignments: [
+  { kind: 'success', data: [{ id: 'cw-1', title: 'HW' }] },
+  { kind: 'success', data: [{ id: 'cw-1', title: 'HW' }] },
+],
+```
+
+The same rule applies to `failureEnvelope`, `deferredSuccess`, and `transportFailure` entries.
+For tests that open the modal multiple times (e.g. reopen‑reset), multiply accordingly:
+two opens × two effect replays = four queue entries.
+
+Default shared fixtures (like `MOCK_COURSEWORK_ASSIGNMENTS`) should provide at least two
+entries so that callers relying on the default get StrictMode‑safe queues without extra
+configuration.
+
+### 6. antd `Typography.Text` visibility in Playwright
+
+Ant Design's `Typography.Text` renders as a `<span>` element. When `type="secondary"` or
+other styling props are applied, Playwright may resolve the element as **hidden** even
+though it is visible to a human user. `toBeVisible()` assertions on `Typography.Text`
+elements can therefore fail while `toHaveCount(1)` or `toHaveTextContent(...)` pass on the
+same element.
+
+Prefer structural locators that do not depend on visibility checks:
+
+```typescript
+// ❌ May resolve as hidden — flaky
+await expect(dialog.getByText('Algebra Homework').first()).toBeVisible();
+
+// ✅ Structural check — reliable
+await expect(dialog.locator('.ant-typography-secondary').getByText('Algebra Homework')).toHaveCount(
+  1
+);
+```
+
+If the confirmation text must be tested via a visible‑only assertion, use the parent
+container element (e.g. the `Space` wrapper) rather than the `Typography.Text` span itself.
+
 ## Notes
 
 - Frontend tests run in the frontend package (`src/frontend`) through root scripts.
