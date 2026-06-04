@@ -49,7 +49,8 @@ class DbManager extends BaseSingleton {
       masterIndexKey: configManager.getJsonDbMasterIndexKey(),
       // Always allow JsonDbApp to auto-create collections so per-assignment persistence never fails
       autoCreateCollections: true,
-      lockTimeout: configManager.getJsonDbLockTimeoutMs(),
+      // collectionLockLeaseMs replaces the removed lockTimeout instance property in v0.2.0
+      collectionLockLeaseMs: configManager.getJsonDbLockTimeoutMs(),
       logLevel: configManager.getJsonDbLogLevel(),
       backupOnInitialise: configManager.getJsonDbBackupOnInitialise(),
       ...(rootFolderId ? { rootFolderId } : {}),

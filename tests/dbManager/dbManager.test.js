@@ -203,7 +203,7 @@ describe('DbManager', () => {
       expect(config).toEqual({
         masterIndexKey: 'master-index-key',
         autoCreateCollections: true,
-        lockTimeout: 5000,
+        collectionLockLeaseMs: 5000,
         logLevel: 'INFO',
         backupOnInitialise: true,
         rootFolderId: 'root-folder-id',
@@ -249,7 +249,7 @@ describe('DbManager', () => {
       expect(mockJsonDbApp.loadDatabase).toHaveBeenCalledWith({
         masterIndexKey: 'master-index-key',
         autoCreateCollections: true,
-        lockTimeout: 5000,
+        collectionLockLeaseMs: 5000,
         logLevel: 'INFO',
         backupOnInitialise: true,
         rootFolderId: 'root-folder-id',
@@ -265,7 +265,7 @@ describe('DbManager', () => {
       expect(mockJsonDbApp.createAndInitialiseDatabase).toHaveBeenCalledWith({
         masterIndexKey: null,
         autoCreateCollections: true,
-        lockTimeout: 5000,
+        collectionLockLeaseMs: 5000,
         logLevel: 'INFO',
         backupOnInitialise: true,
         rootFolderId: 'root-folder-id',
