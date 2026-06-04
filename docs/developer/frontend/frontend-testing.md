@@ -732,6 +732,96 @@ Ant Design components rely on `getComputedStyle` for layout calculations. When m
 
 **Common failure pattern:** A mock that returns empty strings for all properties causes Ant Design components to miscalculate dimensions, leading to hidden elements, incorrect positioning, or rendering failures.
 
+## antd v6 Testing Patterns
+
+These patterns address behavioural differences in antd v6 (and `@rc-component/dialog`)
+that cause tests written for antd v5 to fail silently. Apply them proactively when writing
+modal, select, or state-transition tests against antd v6.
+
+### 1. Modal mask (backdrop) click
+
+antd v6 delegates modal rendering to `@rc-component/dialog`, which uses a **mousedown‑then‑mouseup
+pair** on the `.ant-modal-wrap` element — not the `.ant-modal-mask` sibling. The handler checks
+`e.target === wrapperRef.current` on both events.
+
+Because the modal renders in a React portal, React Testing Library's `fireEvent` does **not**
+reliably trigger React synthetic event handlers on portal‑mounted elements. The safe pattern
+is to use native `dispatchEvent`:
+
+```typescript
+const wrap = dialog.closest('.ant-modal-wrap');
+expect(wrap).not.toBeNull();
+
+await act(async () => {
+  wrap!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+  wrap!.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+  wrap!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+});
+
+expect(onClose).toHaveBeenCalledTimes(1);
+```
+
+Do **not** use `fireEvent.click()` on the mask — it will silently fail in JSDOM.
+
+### 2. Select placeholder text
+
+antd v6 attaches `role="combobox"` to a void `<input type="search">` element. Void elements
+have no `textContent`, so `expect(select).toHaveTextContent('placeholder')` always fails.
+
+Use a more specific query instead:
+
+```typescript
+// ❌ Fails — void element has no textContent
+expect(screen.getByRole('combobox')).toHaveTextContent('Select an assignment');
+
+// ✅ Works
+expect(screen.getByText('Select an assignment')).toBeInTheDocument();
+// or
+expect(container.querySelector('.ant-select-selection-placeholder')).toHaveTextContent(
+  'Select an assignment'
+);
+```
+
+### 3. Selected value rendered in multiple DOM locations
+
+antd v6 renders the currently selected Select value in several places for accessibility
+(an `aria-live` region, the Select display area, etc.). `getByText()` will throw
+`Found multiple elements` errors.
+
+Either narrow the query or use `getAllByText`:
+
+```typescript
+// ❌ May find multiple matches
+getByText('Essay');
+
+// ✅ Narrow to the confirmation element
+const items = getAllByText('Essay');
+expect(items.length).toBeGreaterThan(0);
+
+// ✅ Query a specific container
+within(dialog).getAllByText('Essay');
+```
+
+### 4. React 19 forbids render after unmount
+
+React 19 throws `Cannot update an unmounted root` when `rerender()` is called after
+`unmount()`. Testing state transitions across modal open/close cycles must use
+separate `render()` calls with `cleanup()` between them:
+
+```typescript
+// ❌ React 19 rejects this
+const { unmount, rerender } = render(<Modal open />);
+unmount();
+rerender(<Modal open={false} />); // 💥 Cannot update an unmounted root
+
+// ✅ Use separate renders
+import { cleanup, render } from '@testing-library/react';
+
+render(<Modal open />);
+cleanup();
+render(<Modal open={false} />);
+```
+
 ## Notes
 
 - Frontend tests run in the frontend package (`src/frontend`) through root scripts.
