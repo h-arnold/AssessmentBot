@@ -370,9 +370,89 @@ function renderFailedCheckCompare(
     `   Exit Code: ${currentResult?.exitCode ?? 'N/A'}`
   );
 
+  const currentFailures = extractCurrentFailures(check.currentSummary);
+  if (currentFailures.length > 0) {
+    lines.push(`   Current Failures: ${currentFailures.length}`);
+    for (const failure of currentFailures) {
+      lines.push(`   - ${failure}`);
+    }
+  }
+
   renderRegressionList('Regressions', check.regressions, lines);
   renderRegressionList('New Failures', check.newFailures, lines);
   renderRegressionList('Fixes', check.fixes, lines);
+}
+
+/**
+ * Extracts fingerprint strings of all currently-failing items from a derived summary.
+ *
+ * @param {DerivedSummary} summary - The derived summary for the current run.
+ * @returns {string[]} Fingerprints of items that are currently failing.
+ */
+export function extractCurrentFailures(summary: DerivedSummary): string[] {
+  if (summary.kind === 'eslint') {
+    return extractEslintCurrentFailures(summary);
+  }
+  if (summary.kind === 'vitest') {
+    return extractTestCurrentFailures(summary);
+  }
+  if (summary.kind === 'playwright') {
+    return extractTestCurrentFailures(summary);
+  }
+  if (summary.kind === 'tsc') {
+    return extractTscCurrentFailures(summary);
+  }
+  return [];
+}
+
+/**
+ * Extracts eslint finding fingerprints from a derived summary.
+ *
+ * @param {DerivedSummary} summary - The eslint derived summary.
+ * @returns {string[]} Finding fingerprint strings.
+ */
+function extractEslintCurrentFailures(summary: DerivedSummary): string[] {
+  const eslintSummary = summary as unknown as {
+    findings: Array<{ fingerprint: string }>;
+  };
+  if (!Array.isArray(eslintSummary.findings)) {
+    return [];
+  }
+  return eslintSummary.findings.map((finding) => finding.fingerprint);
+}
+
+/**
+ * Extracts failed test fingerprints from a vitest or playwright derived summary.
+ *
+ * @param {DerivedSummary} summary - The test derived summary.
+ * @returns {string[]} Failed test fingerprint strings.
+ */
+function extractTestCurrentFailures(summary: DerivedSummary): string[] {
+  const testSummary = summary as unknown as {
+    tests: Array<{ status: string; fingerprint: string }>;
+  };
+  if (!Array.isArray(testSummary.tests)) {
+    return [];
+  }
+  return testSummary.tests
+    .filter((test) => test.status === 'failed')
+    .map((test) => test.fingerprint);
+}
+
+/**
+ * Extracts tsc diagnostic fingerprints from a derived summary.
+ *
+ * @param {DerivedSummary} summary - The tsc derived summary.
+ * @returns {string[]} Diagnostic fingerprint strings.
+ */
+function extractTscCurrentFailures(summary: DerivedSummary): string[] {
+  const tscSummary = summary as unknown as {
+    diagnostics: Array<{ fingerprint: string }>;
+  };
+  if (!Array.isArray(tscSummary.diagnostics)) {
+    return [];
+  }
+  return tscSummary.diagnostics.map((diagnostic) => diagnostic.fingerprint);
 }
 
 /**

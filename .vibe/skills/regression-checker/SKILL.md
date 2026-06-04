@@ -56,7 +56,36 @@ The wrapper first runs `npm run builder:compile` and then launches
 - `regressionsCount`, `newFailuresCount`, `fixesCount`
 - `toolSummary`
 - whether the run created a baseline this time
-- the comparison artefacts under `.ts-regression-checker/reports/<sessionStorageKey>/`
+
+## Report artefacts
+
+The full report text that appears on stdout is also persisted to a file in the session
+directory under the configured `reportDirectory` (default `.ts-regression-checker/reports`).
+
+| Mode     | File path (relative to session dir) | Contains                                                                                                                     |
+| -------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| baseline | `baseline/baseline.txt`             | Header metadata + per-check summary + failed checks with artefact-level details                                              |
+| compare  | `runs/<timestamp>/comparison.txt`   | Header metadata + per-check summary + current failures per check + regressions, new failures, and fixes as delta annotations |
+
+Report file tree:
+
+```
+.ts-regression-checker/reports/
+└── session-<branch-name>/
+    ├── baseline/
+    │   ├── manifest.json
+    │   ├── baseline.txt              ← full baseline report
+    │   └── raw-artefacts/
+    └── runs/
+        └── <timestamp>/
+            ├── manifest.json
+            ├── comparison.json       ← structured comparison data
+            ├── comparison.txt        ← full comparison report
+            └── raw-artefacts/
+```
+
+Use `read` on `comparison.txt` or `baseline.txt` to inspect failure details without
+re-running the checker.
 
 ## Validation and safety
 
