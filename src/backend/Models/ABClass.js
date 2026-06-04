@@ -4,7 +4,6 @@
 // global in tests/setupGlobals.js. DO NOT REMOVE this global declaration or the
 // dependency will break in both environments.
 /* global ArrayUtils */
-/* gl
 
 /**
  * ABClass
