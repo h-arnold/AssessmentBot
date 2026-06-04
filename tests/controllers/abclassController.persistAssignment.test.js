@@ -32,8 +32,8 @@ beforeEach(async () => {
   // Dynamically import modules after mocks are in place (ESM pattern)
   const [abClassModule, assignmentModule, abClassControllerModule] = await Promise.all([
     import('../../src/backend/Models/ABClass.js'),
-    import('../../src/backend/AssignmentProcessor/Assignment.js'),
-    import('../../src/backend/y_controllers/ABClassController.js'),
+    import('../../src/backend/AssignmentProcessor/Assignment'),
+    import('../../src/backend/y_controllers/ABClassController'),
   ]);
 
   ABClass = abClassModule.ABClass;

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setupGlobalGASMocks } from '../helpers/mockFactories.js';
 
-const ConfigurationManager = require('../../src/backend/ConfigurationManager/98_ConfigurationManagerClass.js');
+const ConfigurationManager = require('../../src/backend/ConfigurationManager/98_ConfigurationManagerClass');
 
 describe('ConfigurationManager class-info removal', () => {
   beforeEach(() => {

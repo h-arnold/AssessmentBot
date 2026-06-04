@@ -11,7 +11,7 @@ import {
   expectPatternNotInSource,
 } from '../helpers/assignmentDefinitionPartialsTestHelpers.js';
 
-const modulePath = '../../src/backend/z_Api/assignmentDefinitionPartials.js';
+const modulePath = '../../src/backend/z_Api/assignmentDefinitionPartials';
 const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
 
 // Test URLs similar to but not exactly the same as the example:

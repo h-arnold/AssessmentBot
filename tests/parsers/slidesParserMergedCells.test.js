@@ -40,7 +40,7 @@ describe('SlidesParser - Merged Cell Handling', () => {
     globalThis.DocumentParser = documentParser;
     globalThis.TaskDefinition = taskDefinition;
 
-    const slidesParserModule = await import('../../src/backend/DocumentParsers/SlidesParser.js');
+    const slidesParserModule = await import('../../src/backend/DocumentParsers/SlidesParser');
     SlidesParser = slidesParserModule.SlidesParser || slidesParserModule.default?.SlidesParser;
 
     if (!SlidesParser) {

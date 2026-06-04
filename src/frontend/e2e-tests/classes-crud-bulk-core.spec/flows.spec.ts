@@ -1,0 +1,383 @@
+/**
+ * Classes bulk core flows — E2E tests.
+ *
+ * Covers visible browser behaviour for:
+ * - Bulk create: Create ABClass button visible when notCreated rows selected
+ * - Bulk delete: confirmation copy explicitly names full and partial record removal
+ * - Bulk active/inactive: ineligible rows (notCreated, already at target state) are rejected
+ *   before the flow opens
+ */
+
+import { expect, test } from '@playwright/test';
+import {
+  classesTableAriaLabel,
+  bulkCreateButtonLabel,
+  bulkDeleteButtonLabel,
+  bulkActivateButtonLabel,
+  bulkDeactivateButtonLabel,
+  TWO_DATA_ROWS_PLUS_HEADER,
+  ONE_DATA_ROW_PLUS_HEADER,
+  linkedGCR,
+  activeGCR,
+  notCreatedGCR,
+  linkedClassPartial,
+  activeClassPartial,
+  secondInactiveGCR,
+  secondInactiveClassPartial,
+  secondActiveGCR,
+  secondActiveClassPartial,
+  mockBulkCoreRuntime,
+  openClassesManagementTab,
+} from './fixtures';
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+test.describe('bulk create flow', () => {
+  test('Create ABClass button is enabled when notCreated rows are selected', async ({ page }) => {
+    await mockBulkCoreRuntime(page, {
+      googleClassrooms: [notCreatedGCR],
+      classPartials: [],
+    });
+
+    await page.goto('/');
+    await openClassesManagementTab(page);
+
+    const table = page.getByRole('table', { name: classesTableAriaLabel });
+    await table.getByRole('checkbox').first().check();
+
+    await expect(page.getByRole('button', { name: bulkCreateButtonLabel })).toBeEnabled();
+  });
+
+  test('seeds the bulk create course-length input with the default value of 1', async ({ page }) => {
+    await mockBulkCoreRuntime(page, {
+      googleClassrooms: [notCreatedGCR],
+      classPartials: [],
+      cohorts: [
+        {
+          key: 'cohort-2025',
+          name: 'Cohort 2025',
+          active: true,
+          startYear: 2025,
+          startMonth: 9,
+        },
+      ],
+      yearGroups: [
+        {
+          key: 'year-11',
+          name: 'Year 11',
+        },
+      ],
+    });
+
+    await page.goto('/');
+    await openClassesManagementTab(page);
+
+    const table = page.getByRole('table', { name: classesTableAriaLabel });
+    await table.getByRole('checkbox').first().check();
+    await page.getByRole('button', { name: bulkCreateButtonLabel }).click();
+
+    const dialog = page.getByRole('dialog', { name: bulkCreateButtonLabel });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('spinbutton', { name: 'Course length' })).toHaveValue('1');
+  });
+
+  test('submitting bulk create creates selected rows and closes the modal', async ({ page }) => {
+    await mockBulkCoreRuntime(page, {
+      googleClassrooms: [notCreatedGCR],
+      classPartials: [],
+      classPartialsAfterMutation: [
+        {
+          classId: notCreatedGCR.classId,
+          className: notCreatedGCR.className,
+          cohortKey: 'cohort-2025',
+          courseLength: 2,
+          yearGroupKey: 'year-11',
+          classOwner: null,
+          teachers: [],
+          active: true,
+        },
+      ],
+      cohorts: [
+        {
+          key: 'cohort-2025',
+          name: 'Cohort 2025',
+          active: true,
+          startYear: 2025,
+          startMonth: 9,
+        },
+      ],
+      yearGroups: [
+        {
+          key: 'year-11',
+          name: 'Year 11',
+        },
+      ],
+    });
+
+    await page.goto('/');
+    await openClassesManagementTab(page);
+
+    const table = page.getByRole('table', { name: classesTableAriaLabel });
+    await table.getByRole('checkbox').first().check();
+    await page.getByRole('button', { name: bulkCreateButtonLabel }).click();
+
+    const dialog = page.getByRole('dialog', { name: bulkCreateButtonLabel });
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('combobox', { name: 'Cohort' }).click();
+    await page.getByRole('option', { name: 'Cohort 2025' }).click();
+    await dialog.getByRole('combobox', { name: 'Year group' }).click();
+    await page.getByRole('option', { name: 'Year 11' }).click();
+    await dialog.getByRole('spinbutton', { name: 'Course length' }).fill('2');
+    await dialog.getByRole('button', { name: 'OK' }).click();
+
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByRole('table', { name: classesTableAriaLabel })).toContainText('Cohort 2025');
+    await expect(page.getByRole('table', { name: classesTableAriaLabel })).toContainText('Year 11');
+    await expect(page.getByRole('button', { name: bulkCreateButtonLabel })).toBeDisabled();
+  });
+
+  test('Create ABClass button is disabled when only already-created rows are selected', async ({
+    page,
+  }) => {
+    await mockBulkCoreRuntime(page, {
+      googleClassrooms: [linkedGCR, activeGCR],
+      classPartials: [linkedClassPartial, activeClassPartial],
+    });
+
+    await page.goto('/');
+    await openClassesManagementTab(page);
+
+    const table = page.getByRole('table', { name: classesTableAriaLabel });
+    await table.getByRole('checkbox').first().check();
+
+    await expect(page.getByRole('button', { name: bulkCreateButtonLabel })).toBeDisabled();
+  });
+});
+
+test.describe('bulk delete flow', () => {
+  test('bulk delete confirmation dialog mentions removal of full records', async ({ page }) => {
+    await mockBulkCoreRuntime(page, {
+      googleClassrooms: [linkedGCR],
+      classPartials: [linkedClassPartial],
+    });
+
+    await page.goto('/');
+    await openClassesManagementTab(page);
+
+    const table = page.getByRole('table', { name: classesTableAriaLabel });
+    await table.getByRole('checkbox').first().check();
+
+    await page.getByRole('button', { name: bulkDeleteButtonLabel }).click();
+
+    await expect(page.getByRole('dialog')).toContainText(/full/i);
+  });
+
+  test('bulk delete confirmation dialog mentions removal of partial records', async ({ page }) => {
+    await mockBulkCoreRuntime(page, {
+      googleClassrooms: [linkedGCR],
+      classPartials: [linkedClassPartial],
+    });
+
+    await page.goto('/');
+    await openClassesManagementTab(page);
+
+    const table = page.getByRole('table', { name: classesTableAriaLabel });
+    await table.getByRole('checkbox').first().check();
+
+    await page.getByRole('button', { name: bulkDeleteButtonLabel }).click();
+
+    await expect(page.getByRole('dialog')).toContainText(/partial/i);
+  });
+
+  test('confirming bulk delete removes the selected rows from the table', async ({ page }) => {
+    // Use an orphaned-class scenario: the orphaned row (classPartial without GCR match)
+    // disappears from the table once its ABClass record is deleted and classPartials refetches
+    // without it. This tests the WS3 architecture correctly.
+    const orphanedPartial = {
+      ...linkedClassPartial,
+      classId: 'orphaned-class-001',
+      className: 'Orphaned Class',
+    };
+    await mockBulkCoreRuntime(page, {
+      googleClassrooms: [activeGCR],
+      classPartials: [activeClassPartial, orphanedPartial],
+      classPartialsAfterMutation: [activeClassPartial],
+    });
+
+    await page.goto('/');
+    await openClassesManagementTab(page);
+
+    const table = page.getByRole('table', { name: classesTableAriaLabel });
+    // Table starts with 2 rows (active + orphaned)
+    await expect(table.getByRole('row')).toHaveCount(TWO_DATA_ROWS_PLUS_HEADER);
+
+    // Select the last row (orphaned, sorted last by STATUS_ORDER)
+    await table.getByRole('checkbox').last().check();
+
+    await page.getByRole('button', { name: bulkDeleteButtonLabel }).click();
+    // Click the "Delete" button inside the confirmation dialog specifically
+    await page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click();
+
+    // After deletion + refetch, only one data row should remain
+    await expect(table.getByRole('row')).toHaveCount(ONE_DATA_ROW_PLUS_HEADER);
+  });
+});
+
+test.describe('bulk delete failure feedback', () => {
+  test('partial bulk delete failure closes the dialog, keeps failed rows selected, and shows a warning', async ({ page }) => {
+    const orphanedPartial = {
+      ...linkedClassPartial,
+      classId: 'orphaned-class-001',
+      className: 'Orphaned Class',
+    };
+    await mockBulkCoreRuntime(page, {
+      googleClassrooms: [activeGCR],
+      classPartials: [activeClassPartial, orphanedPartial],
+      classPartialsAfterMutation: [orphanedPartial],
+      deleteABClass: [
+        { kind: 'success' },
+        { kind: 'failureEnvelope', message: 'Delete failed.' },
+      ],
+    });
+
+    await page.goto('/');
+    await openClassesManagementTab(page);
+
+    const table = page.getByRole('table', { name: classesTableAriaLabel });
+    await table.getByRole('checkbox').first().check();
+
+    await page.getByRole('button', { name: bulkDeleteButtonLabel }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click();
+
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(page.getByText('Some selected classes were not deleted.')).toBeVisible();
+    await expect(page.getByText('1 of 2 selected classes could not be deleted. Successful rows were refreshed. Please review the remaining selection and try again.')).toBeVisible();
+    await expect(page.getByText('Selected rows: 1')).toBeVisible();
+  });
+});
+
+test.describe('bulk active-state flow', () => {
+  test('Set active button is disabled when only already-active rows are selected', async ({
+    page,
+  }) => {
+    await mockBulkCoreRuntime(page, {
+      googleClassrooms: [activeGCR],
+      classPartials: [activeClassPartial],
+    });
+
+    await page.goto('/');
+    await openClassesManagementTab(page);
+
+    const table = page.getByRole('table', { name: classesTableAriaLabel });
+    await table.getByRole('checkbox').first().check();
+
+    await expect(page.getByRole('button', { name: bulkActivateButtonLabel })).toBeDisabled();
+  });
+
+  test('Set inactive button is disabled when only already-inactive rows are selected', async ({
+    page,
+  }) => {
+    await mockBulkCoreRuntime(page, {
+      googleClassrooms: [linkedGCR],
+      classPartials: [linkedClassPartial],
+    });
+
+    await page.goto('/');
+    await openClassesManagementTab(page);
+
+    const table = page.getByRole('table', { name: classesTableAriaLabel });
+    await table.getByRole('checkbox').first().check();
+
+    await expect(page.getByRole('button', { name: bulkDeactivateButtonLabel })).toBeDisabled();
+  });
+
+  test('Set active button is disabled when only notCreated rows are selected', async ({
+    page,
+  }) => {
+    await mockBulkCoreRuntime(page, {
+      googleClassrooms: [notCreatedGCR],
+      classPartials: [],
+    });
+
+    await page.goto('/');
+    await openClassesManagementTab(page);
+
+    const table = page.getByRole('table', { name: classesTableAriaLabel });
+    await table.getByRole('checkbox').first().check();
+
+    // notCreated rows are ineligible for active-state transitions
+    await expect(page.getByRole('button', { name: bulkActivateButtonLabel })).toBeDisabled();
+  });
+
+  test('setting rows to active triggers updateABClass and refetches the table', async ({
+    page,
+  }) => {
+    const activatedPartial = { ...linkedClassPartial, active: true };
+    await mockBulkCoreRuntime(page, {
+      googleClassrooms: [linkedGCR],
+      classPartials: [linkedClassPartial],
+      classPartialsAfterMutation: [activatedPartial],
+    });
+
+    await page.goto('/');
+    await openClassesManagementTab(page);
+
+    const table = page.getByRole('table', { name: classesTableAriaLabel });
+    await table.getByRole('checkbox').first().check();
+
+    await page.getByRole('button', { name: bulkActivateButtonLabel }).click();
+
+    // After activation + refetch, the status column should reflect active state
+    await expect(table).toContainText(/active/i);
+  });
+
+  test('partial Set active failure keeps failed rows selected and shows a warning', async ({ page }) => {
+    const activatedPartial = { ...linkedClassPartial, active: true };
+    await mockBulkCoreRuntime(page, {
+      googleClassrooms: [linkedGCR, secondInactiveGCR],
+      classPartials: [linkedClassPartial, secondInactiveClassPartial],
+      classPartialsAfterMutation: [activatedPartial, secondInactiveClassPartial],
+      updateABClass: [
+        { kind: 'success' },
+        { kind: 'failureEnvelope', message: 'Activation failed.' },
+      ],
+    });
+
+    await page.goto('/');
+    await openClassesManagementTab(page);
+
+    const table = page.getByRole('table', { name: classesTableAriaLabel });
+    await table.getByRole('checkbox').first().check();
+
+    await page.getByRole('button', { name: bulkActivateButtonLabel }).click();
+
+    await expect(page.getByText('Some selected classes were not set to active.')).toBeVisible();
+    await expect(page.getByText('1 of 2 selected classes could not be set to active. Successful rows were refreshed. Please review the remaining selection and try again.')).toBeVisible();
+    await expect(page.getByText('Selected rows: 1')).toBeVisible();
+  });
+
+  test('full Set inactive failure keeps failed rows selected and shows an error', async ({ page }) => {
+    await mockBulkCoreRuntime(page, {
+      googleClassrooms: [activeGCR, secondActiveGCR],
+      classPartials: [activeClassPartial, secondActiveClassPartial],
+      updateABClass: [
+        { kind: 'failureEnvelope', message: 'Deactivation failed.' },
+        { kind: 'failureEnvelope', message: 'Deactivation failed.' },
+      ],
+    });
+
+    await page.goto('/');
+    await openClassesManagementTab(page);
+
+    const table = page.getByRole('table', { name: classesTableAriaLabel });
+    await table.getByRole('checkbox').first().check();
+
+    await page.getByRole('button', { name: bulkDeactivateButtonLabel }).click();
+
+    await expect(page.getByText('Could not set selected classes to inactive.')).toBeVisible();
+    await expect(page.getByText('Unable to set any of the 2 selected classes to inactive. Please review the remaining selection and try again.')).toBeVisible();
+    await expect(page.getByText('Selected rows: 2')).toBeVisible();
+  });
+});

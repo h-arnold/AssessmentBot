@@ -41,8 +41,8 @@ describe('ABClassController.initialise', () => {
     globalThis.ClassroomApiClient = createMockClassroomApiClient();
 
     // Require ABClassController after supplying global DbManager mock so module init uses mock
-    delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController.js')];
-    ABClassController = require('../../src/backend/y_controllers/ABClassController.js');
+    delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController')];
+    ABClassController = require('../../src/backend/y_controllers/ABClassController');
   });
 
   afterEach(() => {
@@ -55,7 +55,7 @@ describe('ABClassController.initialise', () => {
     delete globalThis.DbManager;
     delete globalThis.ABLogger;
     // Clear ABClassController module to avoid stale singleton state between tests
-    delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController.js')];
+    delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController')];
   });
 
   it('populates className, classOwner, teachers and students from Classroom API', () => {

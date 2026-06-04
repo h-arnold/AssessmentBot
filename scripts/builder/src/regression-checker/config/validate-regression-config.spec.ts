@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { RegressionConfigInput } from './validate-regression-config.zod.js';
-import { validateRegressionConfig } from './validate-regression-config.js';
+import { validateRegressionConfig } from './validate-regression-config/index.js';
 
 const REPO_ROOT = '/home/developer/AssessmentBot';
 const EXPECTED_CHECK_COUNT = 2;

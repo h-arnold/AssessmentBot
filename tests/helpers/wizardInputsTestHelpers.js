@@ -15,8 +15,8 @@ const DEFAULT_TIMESTAMP = '2024-01-01T00:00:00.000Z';
  */
 function getAssignmentController() {
   const AssignmentController =
-    require('../../src/backend/y_controllers/AssignmentController.js').default ||
-    require('../../src/backend/y_controllers/AssignmentController.js');
+    require('../../src/backend/y_controllers/AssignmentController').default ||
+    require('../../src/backend/y_controllers/AssignmentController');
   return AssignmentController;
 }
 
@@ -25,8 +25,8 @@ function getAssignmentController() {
  */
 function getABClassController() {
   const ABClassController =
-    require('../../src/backend/y_controllers/ABClassController.js').default ||
-    require('../../src/backend/y_controllers/ABClassController.js');
+    require('../../src/backend/y_controllers/ABClassController').default ||
+    require('../../src/backend/y_controllers/ABClassController');
   return ABClassController;
 }
 

@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import Assignment from '../../src/backend/AssignmentProcessor/Assignment.js';
+import Assignment from '../../src/backend/AssignmentProcessor/Assignment';
 import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
 import {
   createSlidesAssignment,

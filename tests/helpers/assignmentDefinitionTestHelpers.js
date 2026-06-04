@@ -252,8 +252,14 @@ export function setupAssignmentDefinitionTestGlobals(
   // Install SlidesParser mock
   globalThis.SlidesParser = MockSlidesParser;
 
+  // Load helper files first (standalone functions used by the controller)
+  const validationHelpers = require('../../src/backend/y_controllers/AssignmentDefinitionController/_validation');
+  const persistenceHelpers = require('../../src/backend/y_controllers/AssignmentDefinitionController/_persistence');
+  const taskParserHelpers = require('../../src/backend/y_controllers/AssignmentDefinitionController/_taskParser');
+  Object.assign(globalThis, validationHelpers, persistenceHelpers, taskParserHelpers);
+
   // Create controller - use default export if available
-  const AssignmentDefinitionController = require('../../src/backend/y_controllers/AssignmentDefinitionController.js');
+  const AssignmentDefinitionController = require('../../src/backend/y_controllers/AssignmentDefinitionController');
   const ControllerClass = AssignmentDefinitionController.default || AssignmentDefinitionController;
   const controller = new ControllerClass();
 

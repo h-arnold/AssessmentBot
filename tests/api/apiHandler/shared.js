@@ -9,8 +9,7 @@ const vm = require('node:vm');
 
 const apiHandlerPath = '../../../src/backend/z_Api/z_apiHandler.js';
 const googleClassroomsHandlerPath = '../../../src/backend/z_Api/googleClassrooms.js';
-const assignmentDefinitionPartialsPath =
-  '../../../src/backend/z_Api/assignmentDefinitionPartials.js';
+const assignmentDefinitionPartialsPath = '../../../src/backend/z_Api/assignmentDefinitionPartials';
 const apiConfigPath = '../../../src/backend/z_Api/apiConfig.js';
 const abclassMutationsPath = '../../../src/backend/z_Api/abclassMutations.js';
 

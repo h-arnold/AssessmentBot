@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import AssignmentDefinitionController from '../../src/backend/y_controllers/AssignmentDefinitionController.js';
+import AssignmentDefinitionController from '../../src/backend/y_controllers/AssignmentDefinitionController';
 import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
 import { TaskDefinition } from '../../src/backend/Models/TaskDefinition.js';
 import DbManager from '../../src/backend/DbManager/DbManager.js';
-import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager.js';
-import SlidesParser from '../../src/backend/DocumentParsers/SlidesParser.js';
+import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager';
+import SlidesParser from '../../src/backend/DocumentParsers/SlidesParser';
 import { SheetsParser } from '../../src/backend/DocumentParsers/SheetsParser.js';
 import { createMockCollection } from '../helpers/mockFactories.js';
 
@@ -12,8 +12,8 @@ const extractSlidesTaskDefinitionsMock = vi.fn();
 const extractSheetsTaskDefinitionsMock = vi.fn();
 
 vi.mock('../../src/backend/DbManager/DbManager.js');
-vi.mock('../../src/backend/GoogleDriveManager/DriveManager.js');
-vi.mock('../../src/backend/DocumentParsers/SlidesParser.js', () => {
+vi.mock('../../src/backend/GoogleDriveManager/DriveManager');
+vi.mock('../../src/backend/DocumentParsers/SlidesParser', () => {
   return {
     default: class {
       extractTaskDefinitions(referenceDocumentId, templateDocumentId) {

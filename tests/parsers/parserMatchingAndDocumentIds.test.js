@@ -52,7 +52,7 @@ describe('Parser matching and document ID propagation', () => {
       globalThis.DocumentParser = documentParserModule.DocumentParser;
       globalThis.TaskDefinition = taskDefinitionModule.TaskDefinition;
 
-      const slidesParserModule = await import('../../src/backend/DocumentParsers/SlidesParser.js');
+      const slidesParserModule = await import('../../src/backend/DocumentParsers/SlidesParser');
       SlidesParser = slidesParserModule.SlidesParser;
     });
 

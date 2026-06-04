@@ -23,7 +23,7 @@ globalThis.Classroom = {
 };
 
 // Import classes after mocks
-const AssignmentController = require('../../src/backend/y_controllers/AssignmentController.js');
+const AssignmentController = require('../../src/backend/y_controllers/AssignmentController');
 
 const { AssignmentDefinition } = require('../../src/backend/Models/AssignmentDefinition.js');
 

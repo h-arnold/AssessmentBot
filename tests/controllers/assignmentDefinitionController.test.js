@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
-import AssignmentDefinitionController from '../../src/backend/y_controllers/AssignmentDefinitionController.js';
+import AssignmentDefinitionController from '../../src/backend/y_controllers/AssignmentDefinitionController';
 import DbManager from '../../src/backend/DbManager/DbManager.js';
-import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager.js';
+import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager';
 import ClassroomApiClient from '../../src/backend/GoogleClassroom/ClassroomApiClient.js';
 import {
   setupAssignmentDefinitionMocks,
@@ -13,7 +13,7 @@ import {
 
 // Mock the modules
 vi.mock('../../src/backend/DbManager/DbManager.js');
-vi.mock('../../src/backend/GoogleDriveManager/DriveManager.js');
+vi.mock('../../src/backend/GoogleDriveManager/DriveManager');
 vi.mock('../../src/backend/GoogleClassroom/ClassroomApiClient.js');
 
 // Shared test context configuration

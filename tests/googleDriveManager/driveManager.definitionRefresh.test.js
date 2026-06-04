@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager.js';
+import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager';
 import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
 
 import DbManager from '../../src/backend/DbManager/DbManager.js';

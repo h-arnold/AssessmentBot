@@ -99,7 +99,7 @@ describe('AssignmentController.createDefinitionFromWizardInputs', () => {
 
     // Mock ABClassController.saveClass
     const ABClassControllerModule =
-      await import('../../src/backend/y_controllers/ABClassController.js');
+      await import('../../src/backend/y_controllers/ABClassController');
     ABClassController = ABClassControllerModule.default || ABClassControllerModule;
     vi.spyOn(ABClassController.prototype, 'saveClass');
 
@@ -120,11 +120,11 @@ describe('AssignmentController.createDefinitionFromWizardInputs', () => {
       validateModule,
       abClassControllerModule,
     ] = await Promise.all([
-      import('../../src/backend/y_controllers/AssignmentController.js'),
+      import('../../src/backend/y_controllers/AssignmentController'),
       import('../../src/backend/Models/AssignmentDefinition.js'),
-      import('../../src/backend/GoogleDriveManager/DriveManager.js'),
+      import('../../src/backend/GoogleDriveManager/DriveManager'),
       import('../../src/backend/Utils/Validate.js'),
-      import('../../src/backend/y_controllers/ABClassController.js'),
+      import('../../src/backend/y_controllers/ABClassController'),
     ]);
 
     AssignmentController = controllerModule.default || controllerModule;

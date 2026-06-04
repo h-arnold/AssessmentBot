@@ -6,7 +6,7 @@
 import { expect, vi } from 'vitest';
 import path from 'node:path';
 
-const modulePath = '../../src/backend/z_Api/assignmentDefinitionPartials.js';
+const modulePath = '../../src/backend/z_Api/assignmentDefinitionPartials';
 const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
 
 /**
@@ -43,6 +43,11 @@ export function loadAssignmentDefinitionPartialsModule() {
 export function readSourceFile() {
   const fs = require('node:fs');
   const absolutePath = path.resolve(__dirname, modulePath);
+  // When modulePath is a folder (without .js), read index.js inside it
+  const indexCandidate = path.join(absolutePath, 'index.js');
+  if (fs.existsSync(indexCandidate)) {
+    return fs.readFileSync(indexCandidate, 'utf8');
+  }
   return fs.readFileSync(absolutePath, 'utf8');
 }
 

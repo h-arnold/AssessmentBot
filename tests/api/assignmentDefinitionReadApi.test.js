@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const modulePath = '../../src/backend/z_Api/assignmentDefinitionPartials.js';
+const modulePath = '../../src/backend/z_Api/assignmentDefinitionPartials';
 const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
 
 function loadAssignmentDefinitionTransportModule() {

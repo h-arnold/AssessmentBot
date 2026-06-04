@@ -12,7 +12,7 @@ const {
 } = require('../../src/backend/ConfigurationManager/02_defaults.js');
 
 let mocks;
-const ConfigurationManager = require('../../src/backend/ConfigurationManager/98_ConfigurationManagerClass.js');
+const ConfigurationManager = require('../../src/backend/ConfigurationManager/98_ConfigurationManagerClass');
 
 function expectPersistedConfig(mocks_, expectedConfig) {
   expect(mocks_.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(

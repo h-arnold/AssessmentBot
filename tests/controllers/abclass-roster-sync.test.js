@@ -59,7 +59,7 @@ beforeEach(async () => {
 
   // Dynamic import after globals are set to ensure globals are in place before module evaluation
   const abClassModule = await import('../../src/backend/Models/ABClass.js');
-  const controllerModule = await import('../../src/backend/y_controllers/ABClassController.js');
+  const controllerModule = await import('../../src/backend/y_controllers/ABClassController');
 
   ABClass = abClassModule.ABClass;
   ABClassController = controllerModule.default ?? controllerModule;

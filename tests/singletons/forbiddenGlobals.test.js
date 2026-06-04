@@ -6,7 +6,7 @@ describe('Forbidden global singleton identifiers', () => {
   const allowedNewConfigurationManagerFiles = new Set([
     // Allow within the class definition file itself.
     path.normalize('src/AdminSheet/ConfigurationManager/ConfigurationManagerClass.js'),
-    path.normalize('src/backend/ConfigurationManager/98_ConfigurationManagerClass.js'),
+    path.normalize('src/backend/ConfigurationManager/98_ConfigurationManagerClass'),
     // Allow test environment instantiations via z_singletons deprecation comment (no actual instantiation now)
   ]);
   const ignoredDirectories = new Set(['node_modules']);

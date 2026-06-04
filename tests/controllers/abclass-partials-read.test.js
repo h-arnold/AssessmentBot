@@ -59,7 +59,7 @@ beforeEach(async () => {
   setupControllerTestMocks(vi);
   setupMocks(classCollection, partialsCollection);
 
-  const controllerModule = await import('../../src/backend/y_controllers/ABClassController.js');
+  const controllerModule = await import('../../src/backend/y_controllers/ABClassController');
   ABClassController = controllerModule.default ?? controllerModule;
 });
 

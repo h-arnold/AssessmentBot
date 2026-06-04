@@ -12,7 +12,7 @@ const constants = require('../src/backend/00_Constants.js');
 g.ALPHABET_LENGTH = constants.ALPHABET_LENGTH;
 g.ITEM_NOT_FOUND_INDEX = constants.ITEM_NOT_FOUND_INDEX;
 g.RuntimeConstants = require('../src/backend/00_RuntimeConstants.js').RuntimeConstants;
-g.Assignment = require('../src/backend/AssignmentProcessor/Assignment.js');
+g.Assignment = require('../src/backend/AssignmentProcessor/Assignment');
 g.SlidesAssignment = require('../src/backend/AssignmentProcessor/SlidesAssignment.js');
 g.SheetsAssignment = require('../src/backend/AssignmentProcessor/SheetsAssignment.js');
 const { StudentSubmission } = require('../src/backend/Models/StudentSubmission.js');
@@ -201,5 +201,5 @@ g.ClassroomManager = {
 };
 
 // Expose hasControlCharacters_ from assignmentDefinitionPartials for test access
-const { hasControlCharacters_ } = require('../src/backend/z_Api/assignmentDefinitionPartials.js');
+const { hasControlCharacters_ } = require('../src/backend/z_Api/assignmentDefinitionPartials');
 g.hasControlCharacters_ = hasControlCharacters_;

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { setupGlobalGASMocks } from '../helpers/mockFactories.js';
 
-const ConfigurationManager = require('../../src/backend/ConfigurationManager/98_ConfigurationManagerClass.js');
+const ConfigurationManager = require('../../src/backend/ConfigurationManager/98_ConfigurationManagerClass');
 
 describe('ConfigurationManager Section 2 red contract', () => {
   beforeEach(() => {
