@@ -532,6 +532,10 @@ type ResolvedRunContext = {
 
 const REGRESSION_HEADER_START = '=== REGRESSION HEADER START ===';
 const REGRESSION_HEADER_END = '=== REGRESSION HEADER END ===';
+const REGRESSION_WARNING =
+  '*** REGRESSION CREATED! THIS IS AN ISSUE THAT DID NOT EXIST PRIOR TO THIS RUN.\n' +
+  '*** YOU CREATED THIS ISSUE AND MUST ADDRESS IT PROPERLY FOR THIS TASK TO BE SUCCESSFUL.\n' +
+  '*** FAILURE TO ADDRESS THE REGRESSION WILL RESULT IN THE TASK FAILING.';
 const REGRESSION_CONFIG_PATH = '.ts-regression-checker/regression.config.json';
 const INVALID_CONFIG_EXIT_CODE = 2;
 const REGRESSION_FOUND_EXIT_CODE = 1;
@@ -1043,6 +1047,13 @@ export function renderComparisonReport(options: {
 
   const bodyParts: string[] = [];
 
+  // Prepend regression warning when regressions are detected (before body so agents using head see it)
+  const hasRegressions = options.comparison.totals.regressionsCount > 0;
+  if (hasRegressions) {
+    bodyParts.push(REGRESSION_WARNING);
+    bodyParts.push('');
+  }
+
   // Per-command summary with regression/fix info
   bodyParts.push(renderPerCommandSummaryCompare(options.comparison.checks));
 
@@ -1053,6 +1064,12 @@ export function renderComparisonReport(options: {
   );
   if (failedChecksOutput) {
     bodyParts.push(failedChecksOutput);
+  }
+
+  // Append regression warning at the end so agents using tail also see it
+  if (hasRegressions) {
+    bodyParts.push('');
+    bodyParts.push(REGRESSION_WARNING);
   }
 
   return [...headerLines, '', ...bodyParts].join('\n');

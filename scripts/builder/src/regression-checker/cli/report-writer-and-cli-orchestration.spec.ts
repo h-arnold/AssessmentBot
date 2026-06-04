@@ -494,6 +494,7 @@ describe('report writer and CLI orchestration', () => {
     expect(result.outputText).toContain('Overall Status: FAILING');
     expect(result.outputText).toContain('Current Failures: 1');
     expect(result.outputText).toContain('- no-alert|src/example.ts|1|1|Unexpected alert.');
+    expect(result.outputText).toContain('REGRESSION CREATED');
     expect(writes.map((entry) => entry.targetPath)).toEqual([
       '/repo/.ts-regression-checker/reports/session-feature-regression-checker/runs/2026-05-13T05-00-00.000Z/comparison.json',
       '/repo/.ts-regression-checker/reports/session-feature-regression-checker/runs/2026-05-13T05-00-00.000Z/comparison.txt',
