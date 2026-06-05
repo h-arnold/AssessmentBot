@@ -1003,5 +1003,102 @@ describe('AssignmentDefinitionWizardModal', () => {
       // onClose should still not have been called during the entire test
       expect(onCloseSpy).not.toHaveBeenCalled();
     });
+
+    // Test Case 20: Update mode shows blocking error when getAssignmentDefinition fails validation
+    it('update mode shows blocking error when getAssignmentDefinition fails validation', async () => {
+      // Make getAssignmentDefinition reject to simulate a validation failure
+      // (e.g. ZodError from malformed GAS-serialized response, as in issue #244)
+      setupUpdateModeMocks(mockFullAssignmentDefinition);
+      getAssignmentDefinitionMock.mockRejectedValue(new Error('Failed to parse assignment definition'));
+
+      const onCloseSpy = vi.fn();
+
+      // Do NOT provide assignmentDefinition in render options so query cache does not pre-load it.
+      // The useQuery for the definition (line 776-783 of useAssignmentDefinitionWizard.ts)
+      // will fire and call the mocked getAssignmentDefinition, which rejects.
+      useStartupWarmupStateMock.mockReturnValue(
+        createStartupWarmupState({
+          assignmentTopicsStatus: 'ready',
+          yearGroupsStatus: 'ready',
+        })
+      );
+
+      const renderOptions: RenderWizardModalOptions = {
+        mode: 'update',
+        definitionKey: 'algebra-baseline',
+        onClose: onCloseSpy,
+        open: true,
+        topics: [...mockTopics],
+        yearGroups: [...mockYearGroups],
+        cohorts: [...mockCohorts],
+        mockInvalidateQueries: true,
+        waitForFormFields: false,
+        // No assignmentDefinition — cache is empty, useQuery must fetch and will reject
+      };
+
+      await renderWizardModal(renderOptions);
+
+      // Should show blocking error with role="alert" containing the error message
+      // CURRENTLY FAILS: The wizard never checks useQuery.isError, so no blocking error
+      // is set. The form renders with a "Parsing is required" info prompt instead.
+      await waitFor(() => {
+        const alert = screen.getByRole('alert');
+        expect(alert).toHaveTextContent('An error occurred. Please try again.');
+      });
+
+      // Error should be dismissible via Escape key (modal has keyboard=true by default)
+      const blockingDialog = screen.getByRole('dialog', { name: /update assignment/i });
+      await act(async () => {
+        fireEvent.keyDown(blockingDialog, { key: 'Escape' });
+      });
+
+      await waitFor(() => {
+        expect(onCloseSpy).toHaveBeenCalled();
+      });
+    });
+
+    // Test Case 21: Save error shows blocking error that can be dismissed to return to assignments page
+    it('save error shows blocking error that can be dismissed to return to assignments page', async () => {
+      setupUpdateModeMocks(mockFullAssignmentDefinition);
+      const onCloseSpy = vi.fn();
+      const definition = mockFullAssignmentDefinition;
+      const renderOptions = createBaseUpdateOptions('algebra-baseline', definition, onCloseSpy);
+      const { modal } = await renderWizardModal(renderOptions);
+
+      // Make a dirty edit so the form has unsaved changes
+      const { titleInput } = getFormElements({ modal });
+      await act(async () => {
+        setTextboxValue(titleInput, 'Updated Title');
+      });
+
+      // Mock upsert to reject on save (simulates Zod validation failure from serialization issue)
+      upsertAssignmentDefinitionMock.mockRejectedValue(new Error('Failed to save assignment definition'));
+
+      // Click Save button
+      const saveButton = getSaveButton({ modal });
+      await act(async () => {
+        fireEvent.click(saveButton);
+      });
+
+      // Should show blocking error with role="alert"
+      // This part WORKS because runWizardMutation catches the error and sets blockingError
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toBeInTheDocument();
+      });
+
+      // Dismiss the error via Escape key
+      const blockingDialog = screen.getByRole('dialog', { name: /update assignment/i });
+      await act(async () => {
+        fireEvent.keyDown(blockingDialog, { key: 'Escape' });
+      });
+
+      // Should close the wizard and return to assignments page
+      // CURRENTLY FAILS: handleClose (line 1169-1176) checks hasDirtyEdits first,
+      // finds it true (user made edits before saving), and shows the discard-confirm
+      // dialog instead of calling onClose.
+      await waitFor(() => {
+        expect(onCloseSpy).toHaveBeenCalled();
+      });
+    });
   });
 });

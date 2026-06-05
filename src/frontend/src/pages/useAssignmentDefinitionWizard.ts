@@ -773,7 +773,11 @@ export function useAssignmentDefinitionWizard(
     enabled: open && startupWarmupState.isDatasetReady('yearGroups'),
   });
 
-  const { data: definition } = useQuery({
+  const {
+    data: definition,
+    isError: isDefinitionError,
+    error: definitionError,
+  } = useQuery({
     ...getAssignmentDefinitionQueryOptions(definitionKey ?? ''),
     enabled:
       open &&
@@ -795,6 +799,14 @@ export function useAssignmentDefinitionWizard(
   const [blockingError, setBlockingError] = useState<string | null>(null);
   const [selectedTopicKey, setSelectedTopicKey] = useState<string | undefined>();
   const [selectedYearGroupKey, setSelectedYearGroupKey] = useState<string | undefined>();
+
+  // Surface useQuery errors (e.g. ZodError from malformed GAS-serialized response, issue #244)
+  // through the wizard's existing blocking error mechanism
+  useEffect(() => {
+    if (isDefinitionError && definitionError) {
+      setBlockingError(mapErrorToUserMessage(definitionError));
+    }
+  }, [isDefinitionError, definitionError, open, setBlockingError]);
 
   const upsertMutation = useMutation({
     mutationFn: upsertAssignmentDefinition,
@@ -1167,13 +1179,19 @@ export function useAssignmentDefinitionWizard(
 
   // Handle close
   const handleClose = useCallback(() => {
+    // When a blocking error is displayed, allow the user to dismiss and close
+    // without going through the discard-confirm flow
+    if (blockingError) {
+      onClose();
+      return;
+    }
     if (hasDirtyEdits && !documentChange.hasPendingChange) {
       setShowDiscardConfirm(true);
       return;
     }
     if (documentChange.hasPendingChange) return;
     onClose();
-  }, [hasDirtyEdits, documentChange.hasPendingChange, onClose]);
+  }, [hasDirtyEdits, documentChange.hasPendingChange, onClose, blockingError]);
 
   const handleDiscardConfirm = useCallback(() => {
     setShowDiscardConfirm(false);
