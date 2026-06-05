@@ -56,6 +56,22 @@ Root scripts execute frontend tasks via `npm --prefix src/frontend ...`.
 - Use `src/frontend/src/services/backendConfigurationService.ts` for backend configuration reads and writes; keep request and response validation in `src/frontend/src/services/backendConfiguration.zod.ts`.
 - Treat `getBackendConfig` and `setBackendConfig` as the canonical backend configuration method names. Do not route configuration UI flows through legacy backend globals.
 
+### 4.2 Serialization boundary
+
+GAS `google.script.run` auto-JSON-stringifies backend return values before passing them to
+`withSuccessHandler`. The frontend must reverse this at a single choke point.
+
+- **Deserialization:** `dispatchAttempt` in `apiService.ts` is the sole module that consumes
+  `google.script.run` callbacks. It `JSON.parse()`-s string responses before Zod validation.
+  No other module should `JSON.parse()` API responses or need to know about this boundary.
+- **Downstream code:** feature services, hooks, and components receive parsed, typed objects
+  from `callApi`. They must never handle raw GAS transport details.
+- **`failureHandler`:** GAS passes raw error strings (not JSON) to `failureHandler`.
+  `apiService.ts` handles this without parsing.
+
+For test mock fidelity rules (do not manually stringify/parse in individual test files), see
+`docs/developer/frontend/frontend-testing.md`.
+
 ## 5. Error Handling and Quality
 
 ### 5.1 Loading and width standards
