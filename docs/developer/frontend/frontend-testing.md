@@ -256,6 +256,24 @@ When a frontend test needs to mock `google.script.run.apiHandler`, you must use 
 
 Do not introduce new ad-hoc `google.script.run` mocks that mutate one shared runner object or store handlers on shared mutable state. Each mocked call must model GAS-style per-call callback isolation so overlapping requests cannot overwrite one another's success or failure handlers.
 
+#### GAS serialization fidelity rule
+
+The shared harness factory (`src/frontend/src/test/google-script-run-harness-factory.js`)
+automatically wraps `successHandler` with `JSON.stringify()`, faithfully simulating real GAS
+behaviour where `google.script.run` auto-stringifies return values.
+
+- **Do not add `JSON.stringify()` in individual test files.** The factory handles this.
+  Adding manual `JSON.stringify()` in a spec file is redundant and risks double-encoding.
+- **Do not add `JSON.parse()` in test callbacks.** The production `apiService.ts` (`dispatchAttempt`)
+  handles deserialization before Zod validation. Tests should pass raw objects to the factory's
+  `successHandler` — the factory stringifies them, and `apiService.ts` parses them back.
+- **`failureHandler` must not be stringified.** Real GAS passes raw error strings to
+  `failureHandler`. The factory leaves `failureHandler` unwrapped.
+- **All `google.script.run` mocks must use the factory:**
+  - Vitest: `createGoogleScriptRunApiHandlerMock(invokeRequest)`
+  - E2E: inject `googleScriptRunApiHandlerFactorySource` via `page.addInitScript(...)`
+  - Direct assignment to `globalThis.google.script.run` that bypasses the factory is prohibited.
+
 ### Classes CRUD harness continuity rule
 
 For Settings-page Classes CRUD browser tests, extend the existing scenario harness in `src/frontend/e2e-tests/classes-crud.harness.spec.ts` and its shared queue/helpers.

@@ -29,7 +29,9 @@ export function createGoogleScriptRunApiHandlerMock(invokeRequest) {
       },
       apiHandler(request) {
         invokeRequest(request, {
-          successHandler,
+          successHandler: successHandler
+            ? (value) => successHandler(JSON.stringify(value))
+            : undefined,
           failureHandler,
         });
       },
