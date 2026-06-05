@@ -53,12 +53,15 @@ function renderAssessTaskModal(
   mockType: 'return' | 'resolve' | 'reject' = 'return'
 ): ReturnType<typeof screen.getByRole> {
   const mockedGetAssignments = vi.mocked(getGoogleClassroomAssignments);
+  // mockValue is deliberately polymorphic (Promise, array, Error) so
+  // each branch applies the narrowest type assertion needed by the mock.
+  type AssignmentsPayload = { assignmentId: string; title: string }[];
   if (mockType === 'resolve') {
-    mockedGetAssignments.mockResolvedValue(mockValue);
+    mockedGetAssignments.mockResolvedValue(mockValue as AssignmentsPayload);
   } else if (mockType === 'reject') {
     mockedGetAssignments.mockRejectedValue(mockValue);
   } else {
-    mockedGetAssignments.mockReturnValue(mockValue);
+    mockedGetAssignments.mockReturnValue(mockValue as Promise<AssignmentsPayload>);
   }
 
   render(<AssessTaskModal {...defaultProperties()} />);

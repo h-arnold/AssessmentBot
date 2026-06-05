@@ -75,6 +75,7 @@ const BASE_DELAY_MS = 1000;
 const JITTER_MS = 500;
 const UINT32_MAX = 4_294_967_295;
 const EXPONENTIAL_BACKOFF_BASE = 2;
+const JSON_PARSE_ERROR_PREVIEW_LENGTH = 120;
 
 /**
  * Returns a cryptographically-safe random jitter value between 0 and JITTER_MS milliseconds.
@@ -102,8 +103,25 @@ async function dispatchAttempt<TResponse>(requestPayload: unknown): Promise<TRes
         try {
           // GAS google.script.run auto-stringifies return values.
           // Parse the JSON string back to an object before Zod validation.
-          const deserialisedResponse =
-            typeof response === 'string' ? JSON.parse(response) : response;
+          // Wrap in a dedicated try-catch so non-JSON responses (e.g. HTML
+          // error pages or login redirects) produce a descriptive error that
+          // includes a preview of the raw payload for production debugging.
+          let deserialisedResponse: unknown;
+          if (typeof response === 'string') {
+            try {
+              deserialisedResponse = JSON.parse(response);
+            } catch (parseError: unknown) {
+              const preview =
+                response.length > JSON_PARSE_ERROR_PREVIEW_LENGTH
+                  ? response.slice(0, JSON_PARSE_ERROR_PREVIEW_LENGTH) + '…'
+                  : response;
+              throw new Error(`Failed to parse API response as JSON. Preview: ${preview}`, {
+                cause: parseError,
+              });
+            }
+          } else {
+            deserialisedResponse = response;
+          }
           const parsedResponse = ApiResponseSchema.parse(deserialisedResponse);
           if (parsedResponse.ok) {
             resolve(parsedResponse.data as TResponse);
