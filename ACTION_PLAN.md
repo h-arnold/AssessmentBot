@@ -737,7 +737,10 @@ API-layer tests:
 
 ---
 
-## Section 8 — `createDefinitionFromWizardInputs` API handler
+## Section 8 — `createDefinitionFromWizardInputs` API handler **(SKIPPED — user decision)**
+
+> **Status**: Skipped. The globals function already works and no frontend consumer exists yet.
+> Wiring can be done opportunistically when the frontend wizard workstream begins.
 
 ### Objective
 
