@@ -106,7 +106,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 This pattern is currently used by `getGoogleClassrooms_`, `getAssignmentDefinitionPartials_`,
 `deleteAssignmentDefinition_`, `upsertAssignmentDefinition_`, `getBackendConfig_`, `setBackendConfig_`,
-`upsertABClass_`, `updateABClass_`, and `deleteABClass_`.
+`upsertABClass_`, `updateABClass_`, `deleteABClass_`, and `startAssessmentRun_`.
 
 ## Validation ownership rules
 
@@ -194,7 +194,9 @@ If the payload is invalid, `apiHandler` returns an `INVALID_REQUEST` envelope an
 All responses are envelopes:
 
 - Success: `{ ok: true, requestId, data }`
-- Error: `{ ok: false, requestId, error: { code, message, retriable } }`
+- Error: `{ ok: false, requestId, error: { code, message, retriable, details? } }`
+
+The `details` field is optional and only present when the error carries structured metadata (for example, `DefinitionStaleError` includes `definitionKey`, `referenceStale`, `templateStale`, `referenceLastModified`, `templateLastModified`). When `details` is absent, it is omitted from the envelope entirely — callers should treat it as `undefined`.
 
 This envelope shape is stable and should be treated as the transport contract between frontend and backend.
 
@@ -230,6 +232,7 @@ Known backend error types are mapped to transport error codes:
 - `ApiRateLimitError` -> `RATE_LIMITED`
 - `ApiValidationError` -> `INVALID_REQUEST`
 - `ApiDisabledError` -> `UNKNOWN_METHOD`
+- `DefinitionStaleError` -> `DEFINITION_STALE` (non-retriable; includes `details` block with `definitionKey`, `referenceStale`, `templateStale`, `referenceLastModified`, `templateLastModified`)
 - errors thrown with `reason === 'IN_USE'` -> `IN_USE` (used by `ReferenceDataController` when a cohort, year group, or assignment topic cannot be deleted because it is still referenced by persisted records)
 
 Unmapped or malformed errors return `INTERNAL_ERROR` with a generic message.
@@ -323,6 +326,14 @@ Use the allowlisted method names exactly as implemented in `ALLOWLISTED_METHOD_H
   Required request field: `definitionKey` (non-empty, already-trimmed string with path-character safety enforced at transport boundary).
   Validation: transport enforces `params` object shape, `definitionKey` presence, and safe-key contract using `validateReadParameters_()`; controller performs lookup and returns the stored full definition.
   Response data: the canonical full-definition response shape, identical to `upsertAssignmentDefinition` response, including resolved `primaryTopic`, `primaryTopicKey`, `yearGroupKey`, `yearGroupLabel`, full `tasks` array, and all metadata. This ensures `upsertAssignmentDefinition` and `getAssignmentDefinition` share the same canonical editable entity contract.
+
+- `startAssessmentRun` — starts an assessment run for an existing assignment definition.
+  Source: `src/backend/z_Api/assignmentAssessment.js`, via the `startAssessmentRun_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `AssignmentController.startAssessmentRun()` in `src/backend/y_controllers/AssignmentController.js`.
+  Required request fields: `definitionKey`, `assignmentId`, `courseId` (all non-empty strings).
+  Validation: transport enforces `params` object shape, required field presence, and non-empty string checks using `Validate.requireParams` and `Validate.validateNonEmptyString`; controller owns per-document freshness checks via `Utils.isNewer`, definition lookup, and ABClass resolution.
+  Controller behaviour: fetches the full definition by key, checks that neither the reference nor template document has been modified since the definition was created (throwing `DefinitionStaleError` if stale), resolves the ABClass via `loadClass(courseId)` (which throws if the class does not exist), and delegates to `startProcessing()` to create the time-based trigger with context stored in `UserProperties` via `GASPropertiesUtils`.
+  Response data: `null` on success (no data payload; wrapped in standard success envelope).
+  Error codes: `DEFINITION_STALE` (non-retriable, with `details` block), `INVALID_REQUEST` (transport validation failure), `INTERNAL_ERROR` (definition not found, ABClass not found, or other domain errors).
 
 - `getGoogleClassrooms` — returns active Classroom picker rows for ABClass creation flows.
   Source: `src/backend/z_Api/googleClassrooms.js`, via the `getGoogleClassrooms_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`.

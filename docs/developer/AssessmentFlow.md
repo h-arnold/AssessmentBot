@@ -44,7 +44,7 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
 7. **Progress Tracking**: ProgressTracker updates visible to user throughout flow via Progress sheet
 8. **Lock Management**: Document lock prevents concurrent assessment runs using LockService
 9. **Trigger Pattern**: Time-based trigger decouples user action from heavy processing (5-second delay)
-10. **Document Properties**: Used for cross-execution parameter passing between trigger setup and execution
+10. **User Properties**: Used for cross-execution parameter passing between trigger setup and execution
 11. **Lazy Loading**: Task definitions only re-parsed when Drive file modification times are newer than cached timestamps
 12. **Batch Operations**: LLM requests sent in batches via `UrlFetchApp.fetchAll()` for efficiency
 
@@ -163,32 +163,33 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
 - **User Action**: User enters/confirms document IDs and clicks "Go" button
 - **On Go Click**: JavaScript function `saveAndRun()` is called
   - Shows loading overlay
-  - Calls server-side function: `google.script.run.saveStartAndShowProgress(assignmentTitle, documentIds, assignmentId)`
+  - Calls server-side function: `google.script.run.saveStartAndShowProgress(assignmentTitle, documentIds, assignmentId)` **(legacy HTML UI — deprecated; see Step 1.3 for the current `startAssessmentRun` API method)**
 
-#### Step 1.3: Save and Start Processing
+#### Step 1.3: Start Assessment Run
 
-**Global Function**: `saveStartAndShowProgress(assignmentTitle, documentIds, assignmentId)`
+**API method**: `startAssessmentRun`
 
-- **Location**: `/src/AdminSheet/AssignmentProcessor/globals.js:14-28`
-- **Parameters**:
-  - `assignmentTitle` (string): The assignment title
-  - `documentIds` (object): `{ referenceDocumentId, templateDocumentId }`
-  - `assignmentId` (string): Google Classroom assignment ID
-- **Calls**: `AssignmentController.saveStartAndShowProgress(assignmentTitle, documentIds, assignmentId)`
-
-**Method**: `AssignmentController.saveStartAndShowProgress()`
-
-- **Location**: `/src/AdminSheet/y_controllers/AssignmentController.js:28-57`
-- **Class**: `AssignmentController` (non-singleton controller)
+- **Transport**: `src/backend/z_Api/assignmentAssessment.js`, via `startAssessmentRun_()` → `ALLOWLISTED_METHOD_HANDLERS` → `AssignmentController.startAssessmentRun()`
+- **Request payload**:
+  ```javascript
+  {
+    definitionKey: string,   // stable key of the existing AssignmentDefinition
+    assignmentId: string,    // Google Classroom coursework ID
+    courseId: string         // Google Classroom course ID (matches an ABClass)
+  }
+  ```
 - **Process**:
-  1. Calls `ensureDefinitionFromInputs()` to get/create definition
-  2. Calls `startProcessing()` with assignmentId and definitionKey
-  3. Starts progress tracking via `ProgressTracker.getInstance().startTracking()`
-  4. Shows progress modal via `UIManager.getInstance().showProgressModal()`
-  - **Definition lifecycle note**: `ensureDefinitionFromInputs()` immediately delegates to `AssignmentDefinitionController.ensureDefinition()`. If no definition exists (or it is stale based on Drive timestamps) this call will parse the reference/template slides and persist a fresh `AssignmentDefinition` before the trigger is created. If a definition already exists and is up to date, it will be reused without re-parsing at this stage.
+  1. Validates all three required string fields at the transport boundary
+  2. Fetches the full definition via `AssignmentDefinitionController.getDefinitionByKey`
+  3. Checks per-document freshness using `Utils.isNewer` — throws `DefinitionStaleError` if either document has changed
+  4. Resolves the ABClass via `ABClassController.loadClass(courseId)` — throws if no stored class exists
+  5. Delegates to `startProcessing(assignmentId, definitionKey, courseId)` which creates the time-based trigger and stores context in `UserProperties` via `GASPropertiesUtils`
+  6. Returns `null` (no data payload)
 - **Error Handling**:
-  - Shows toast message on failure
-  - Logs error via `progressTracker.logAndThrowError()`
+  - Transport validation failures throw `ApiValidationError` → mapped to `INVALID_REQUEST`
+  - Stale definition throws `DefinitionStaleError` → mapped to `DEFINITION_STALE` with `details` block
+  - Missing definition or ABClass throws `Error` → mapped to `INTERNAL_ERROR`
+- **Note**: This replaces the legacy `saveStartAndShowProgress` global, which was removed. The legacy HTML UI that called `saveStartAndShowProgress` is deprecated and no compatibility shim is required.
 
 ---
 
@@ -300,15 +301,18 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
   4. Returns result of action function
 - **Used Throughout**: All pipeline stages use this pattern for consistent logging
 
-**Document Properties Stored**:
+**User Properties Stored**:
 
 ```javascript
 {
   assignmentId: "123456789",
-  definitionKey: "Essay 1_English_10",
-  triggerId: "trigger_id_string"
+  definitionKey: "stable-opaque-definition-key",
+  triggerId: "trigger_id_string",
+  courseId: "classroom_course_id"
 }
 ```
+
+Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserProperties()` and `GASPropertiesUtils.applyProperties()`. The legacy `DocumentProperties` scope has been migrated to `UserProperties`.
 
 ---
 
@@ -508,20 +512,17 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
   );
   ```
 
-##### Stage 2: Check and Parse Tasks (lines 264-289)
+##### Stage 2: Check Definition Freshness
 
-- **Purpose**: Parse tasks from reference/template documents or use cached version
+- **Purpose**: Validate that the stored assignment definition is still fresh before proceeding
 - **Process**:
   1. Gets reference and template modification times from Drive
-  2. Checks if definition needs refresh via `Utils.definitionNeedsRefresh()`
-  3. If refresh needed:
-     - Calls `assignment.populateTasks()`
-     - Updates definition modification timestamps
-     - Saves updated definition to database
-  4. If refresh not needed:
-     - Logs skip message
-     - Uses existing tasks from definition
-- **Why re-check here?**: An `AssignmentDefinition` is already created during `saveStartAndShowProgress`. The pipeline re-evaluates freshness at trigger time so any edits to the reference or template slides made after the initial UI call are picked up, while avoiding unnecessary re-parsing when the stored definition is still current.
+  2. Checks per-document staleness via `Utils.isNewer(referenceModified, definition.referenceLastModified)` and `Utils.isNewer(templateModified, definition.templateLastModified)`
+  3. If either document is stale:
+     - Throws `DefinitionStaleError` with `definitionKey`, `referenceStale`, `templateStale`, `referenceLastModified`, `templateLastModified`
+     - The error is caught by `processSelectedAssignment`'s try/catch and surfaced via `ProgressTracker.logAndThrowError`
+  4. If neither is stale: proceeds with cached tasks from the definition
+- **Why re-check here?**: The pipeline re-evaluates freshness at trigger time so any edits to the reference or template slides made after the `startAssessmentRun` API call are caught. When the definition is stale the pipeline now throws `DefinitionStaleError` instead of silently re-parsing, which surfaces the stale state via `ProgressTracker.logAndThrowError`.
 
 **Method**: `SlidesAssignment.populateTasks()`
 
@@ -1292,19 +1293,15 @@ AssignmentDefinitionController.getDefinitionByKey()
   ↓
 [User enters document IDs in modal]
   ↓
-saveStartAndShowProgress() [HTML → globals]
+startAssessmentRun() [apiHandler → startAssessmentRun_]
   ↓
-AssignmentController.saveStartAndShowProgress()
-  ↓
-AssignmentController.ensureDefinitionFromInputs()
-  ├─ AssignmentController._detectDocumentType()
-  ├─ GoogleClassroomManager.getCourseId()
+AssignmentController.startAssessmentRun()
+  ├─ AssignmentDefinitionController.getDefinitionByKey()
+  ├─ Utils.isNewer() [per-document freshness]
   ├─ ABClassController.loadClass()
-  └─ AssignmentDefinitionController.ensureDefinition()
-  ↓
-AssignmentController.startProcessing()
-  ├─ TriggerController.createTimeBasedTrigger()
-  └─ PropertiesService.setProperty() [x3]
+  └─ AssignmentController.startProcessing()
+      ├─ TriggerController.createTimeBasedTrigger()
+      └─ GASPropertiesUtils.applyProperties() [x4]
   ↓
 ProgressTracker.startTracking()
 UIManager.showProgressModal()
@@ -1315,7 +1312,7 @@ triggerProcessSelectedAssignment() [trigger → globals]
   ↓
 AssignmentController.processSelectedAssignment()
   ├─ LockService.getDocumentLock()
-  ├─ PropertiesService.getProperty() [x3]
+  ├─ GASPropertiesUtils.getUserProperties() [x4]
   ├─ TriggerController.deleteTriggerById()
   ├─ GoogleClassroomManager.getCourseId()
   ├─ ABClassController.loadClass()
@@ -1364,7 +1361,7 @@ AssignmentController.processSelectedAssignment()
   │   ├─ AnalysisSheetManager.createAnalysisSheet()
   │   └─ OverviewSheetManager.createOverviewSheet()
   ├─ ProgressTracker.complete()
-  └─ PropertiesService.deleteProperty() [x3]
+  └─ GASPropertiesUtils.clearProperties()
 ```
 
 ---
@@ -1374,7 +1371,7 @@ AssignmentController.processSelectedAssignment()
 ### UI Components
 
 - `UIManager`: Singleton managing all UI operations
-- `showAssignmentDropdown()`, `openReferenceSlideModal()`, `saveStartAndShowProgress()`: Global wrapper functions
+- `showAssignmentDropdown()`, `openReferenceSlideModal()`: Global wrapper functions
 - HTML Templates: `AssignmentDropdown.html`, `SlideIdsModal.html`, `ProgressModal.html`
 
 ### Controllers

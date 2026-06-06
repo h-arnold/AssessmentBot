@@ -81,3 +81,19 @@ When you touch existing backend code that contains direct `console.*` calls:
 1. Never log secrets, credentials, tokens, or API keys.
 2. Avoid logging full raw payloads when they may contain sensitive or unnecessary data.
 3. Prefer selective, structured metadata fields required for diagnosis.
+
+## 9. Error type inventory
+
+The following backend error types are recognised at the transport boundary by `_mapErrorToFailureEnvelope` in `z_apiHandler.js`:
+
+- **`ApiValidationError`** (`src/backend/Utils/ErrorTypes/ApiValidationError.js`) — transport-level input validation failure. Mapped to `INVALID_REQUEST`.
+- **`ApiRateLimitError`** (`src/backend/Utils/ErrorTypes/ApiRateLimitError.js`) — rate-limiting guard triggered. Mapped to `RATE_LIMITED`; retriable.
+- **`ApiDisabledError`** (`src/backend/Utils/ErrorTypes/ApiDisabledError.js`) — method or feature disabled. Mapped to `UNKNOWN_METHOD`.
+- **`DefinitionStaleError`** (`src/backend/Utils/ErrorTypes/DefinitionStaleError.js`) — an `AssignmentDefinition`'s reference or template document has been modified since the definition was created. Mapped to `DEFINITION_STALE`; non-retriable. Carries structured metadata: `definitionKey`, `referenceStale`, `templateStale`, `referenceLastModified`, `templateLastModified`. Thrown at the API boundary in `startAssessmentRun` and at trigger-execution time in `runAssignmentPipeline`.
+- **`AbortRequestError`** and **`PersistError`** — internal error types not mapped at the transport boundary; logged and surfaced as `INTERNAL_ERROR`.
+
+All new error types should follow the existing pattern: extend `Error`, set `this.name`, accept domain-specific properties in the constructor, and include a guarded `module.exports` block for Node test compatibility.
+
+## 10. Utility class reference
+
+- **`GASPropertiesUtils`** (`src/backend/Utils/00_GASPropertiesUtils.js`) — canonical entry point for all `PropertiesService` operations. Static-only utility class providing `getScriptProperties()`, `getUserProperties()`, `applyProperties(properties, propertyMap)`, and `clearProperties(properties, keys)`. Replaces direct `PropertiesService.getScriptProperties()` and `PropertiesService.getUserProperties()` calls in `ConfigurationManager`, `AssignmentController`, and future callers. Follows the `ArrayUtils` static-only pattern with guarded `module.exports`.
