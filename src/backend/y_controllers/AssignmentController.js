@@ -216,6 +216,9 @@ class AssignmentController {
    * @throws {DefinitionStaleError} If reference or template documents have changed.
    */
   startAssessmentRun({ definitionKey, assignmentId, courseId }) {
+    // Defence-in-depth: domain invariant validation (transport layer validates shape)
+    Validate.requireParams({ definitionKey, assignmentId, courseId }, 'startAssessmentRun');
+
     // Fetch full definition via definitionController
     const definitionController = new AssignmentDefinitionController();
     const definition = definitionController.getDefinitionByKey(definitionKey, { form: 'full' });
@@ -323,10 +326,14 @@ class AssignmentController {
    */
   _validateDefinitionFreshness(definition) {
     const referenceModified = DriveManager.getFileModifiedTime(definition.referenceDocumentId);
-    const templateModified = DriveManager.getFileModifiedTime(definition.templateDocumentId);
-
     const referenceStale = Utils.isNewer(referenceModified, definition.referenceLastModified);
-    const templateStale = Utils.isNewer(templateModified, definition.templateLastModified);
+
+    let templateModified = null;
+    let templateStale = false;
+    if (!referenceStale) {
+      templateModified = DriveManager.getFileModifiedTime(definition.templateDocumentId);
+      templateStale = Utils.isNewer(templateModified, definition.templateLastModified);
+    }
 
     if (referenceStale || templateStale) {
       throw new DefinitionStaleError(

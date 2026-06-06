@@ -138,7 +138,7 @@ class ConfigurationManager extends BaseSingleton {
   ensureInitialized() {
     if (this._initialized) return;
     // Acquire handles lazily
-    this.scriptProperties = this.scriptProperties || PropertiesService.getScriptProperties();
+    this.scriptProperties = this.scriptProperties || GASPropertiesUtils.getScriptProperties();
     // Perform potential deserialisation only once
     if (globalThis.__TRACE_SINGLETON__)
       ABLogger.getInstance().debug('[TRACE][HeavyInit] ConfigurationManager.ensureInitialized');

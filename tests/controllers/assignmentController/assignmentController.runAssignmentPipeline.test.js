@@ -13,48 +13,59 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // Global mocks (before loading controller)
 // =========================================================================
 
-// Mock DriveManager
-globalThis.DriveManager = {
-  getFileModifiedTime: vi.fn(),
-};
+// We define the mock container references here; actual init happens in
+// setupModuleMocks() called from beforeEach to avoid mockReturnValueOnce
+// queue leaking between tests (vi.clearAllMocks only clears call history).
 
-// Mock ABLogger
-const mockLoggerInstance = {
-  info: vi.fn(),
-  error: vi.fn(),
-};
-globalThis.ABLogger = {
-  getInstance: vi.fn().mockReturnValue(mockLoggerInstance),
-};
+let mockLoggerInstance;
+let mockProgressTracker;
+let mockConfigManager;
 
-// Mock ProgressTracker
-const mockProgressTracker = {
-  startTracking: vi.fn(),
-  updateProgress: vi.fn(),
-  complete: vi.fn(),
-  logError: vi.fn(),
-  logAndThrowError: vi.fn((msg) => {
-    throw new Error(msg);
-  }),
-};
-globalThis.ProgressTracker = {
-  getInstance: vi.fn().mockReturnValue(mockProgressTracker),
-};
+function setupModuleMocks() {
+  // Mock DriveManager
+  globalThis.DriveManager = {
+    getFileModifiedTime: vi.fn(),
+  };
 
-// Mock Utils with both old and new staleness-check methods
-globalThis.Utils = {
-  toastMessage: vi.fn(),
-  isNewer: vi.fn(),
-};
+  // Mock ABLogger
+  mockLoggerInstance = {
+    info: vi.fn(),
+    error: vi.fn(),
+  };
+  globalThis.ABLogger = {
+    getInstance: vi.fn().mockReturnValue(mockLoggerInstance),
+  };
 
-// Mock ConfigurationManager (needed by processSelectedAssignment flow)
-globalThis.ConfigurationManager = {
-  getInstance: vi.fn().mockReturnValue({
-    getAssessmentRecordCourseId: vi.fn().mockReturnValue('course-123'),
-  }),
-};
+  // Mock ProgressTracker
+  mockProgressTracker = {
+    startTracking: vi.fn(),
+    updateProgress: vi.fn(),
+    complete: vi.fn(),
+    logError: vi.fn(),
+    logAndThrowError: vi.fn((msg) => {
+      throw new Error(msg);
+    }),
+  };
+  globalThis.ProgressTracker = {
+    getInstance: vi.fn().mockReturnValue(mockProgressTracker),
+  };
+
+  // Mock Utils
+  globalThis.Utils = {
+    toastMessage: vi.fn(),
+    isNewer: vi.fn(),
+  };
+
+  // Mock ConfigurationManager
+  globalThis.ConfigurationManager = {
+    getInstance: vi.fn().mockReturnValue({
+      getAssessmentRecordCourseId: vi.fn().mockReturnValue('course-123'),
+    }),
+  };
+}
 
 // Load the controller and error type
+setupModuleMocks();
 const AssignmentController = require('../../../src/backend/y_controllers/AssignmentController.js');
 const DefinitionStaleError = require('../../../src/backend/Utils/ErrorTypes/DefinitionStaleError.js');
 
@@ -73,13 +84,9 @@ describe('AssignmentController - runAssignmentPipeline throw-on-stale', () => {
   const TEMPLATE_LAST_MODIFIED = '2025-05-01T12:00:00Z';
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    setupModuleMocks();
 
     controller = new AssignmentController();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   // =====================================================================
@@ -228,7 +235,8 @@ describe('AssignmentController - runAssignmentPipeline throw-on-stale', () => {
         expect(error.referenceStale).toBe(true);
         expect(error.templateStale).toBe(false);
         expect(error.referenceLastModified).toBe(REFERENCE_MODIFIED);
-        expect(error.templateLastModified).toBe(TEMPLATE_MODIFIED);
+        // templateLastModified is null when reference is stale (lazy eval — avoids Drive API call)
+        expect(error.templateLastModified).toBeNull();
       }
     });
 
