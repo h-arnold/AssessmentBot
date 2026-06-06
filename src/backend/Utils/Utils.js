@@ -115,15 +115,6 @@ const Utils = {
   },
 
   /**
-   * Clears all document properties.
-   * @returns {void}
-   */
-  clearDocumentProperties() {
-    const documentProperties = PropertiesService.getDocumentProperties();
-    documentProperties.deleteAllProperties();
-  },
-
-  /**
    * Gets the date in DD/MM/YYYY format for appending to various file names.
    * @returns {string} The formatted date string.
    */

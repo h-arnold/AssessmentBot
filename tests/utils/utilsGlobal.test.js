@@ -180,4 +180,17 @@ describe('Utils global availability regression check', () => {
 
     expect(result).toBe(true);
   });
+
+  describe('clearDocumentProperties (removed)', () => {
+    it('[RED] clearDocumentProperties should not exist on Utils', () => {
+      const modulePath = '../../src/backend/Utils/Utils.js';
+      delete require.cache[require.resolve(modulePath)];
+      const utilsModule = require(modulePath);
+
+      // ASSERTION: This will FAIL (RED) because clearDocumentProperties
+      // currently exists in Utils.js. After migration (GREEN phase) it
+      // will be removed and this will pass.
+      expect(utilsModule.clearDocumentProperties).toBeUndefined();
+    });
+  });
 });

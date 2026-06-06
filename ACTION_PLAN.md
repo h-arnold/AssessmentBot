@@ -402,7 +402,11 @@ Backend globals tests:
 
 ### Implementation notes / deviations / follow-up
 
-- _To be filled during implementation._
+- All `PropertiesService.getDocumentProperties()` references in `startProcessing` and `processSelectedAssignment` replaced with `GASPropertiesUtils.getUserProperties()`.
+- `applyDocumentProperties` and `clearDocumentProperties` fully removed from `AssignmentController`.
+- `Utils.clearDocumentProperties()` removed (no production callers).
+- `globals.startProcessing` signature updated to `(assignmentId, definitionKey, courseId)` — backward-compatible via `courseId = ''` default in controller.
+- 3 JSDoc references and 1 runtime log message updated from "document properties" to "user properties".
 
 ---
 

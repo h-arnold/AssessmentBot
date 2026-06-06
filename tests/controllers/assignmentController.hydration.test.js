@@ -8,6 +8,15 @@ globalThis.ABLogger = require('../../src/backend/Utils/ABLogger.js');
 const mockPropertiesService = createMockPropertiesService(vi);
 globalThis.PropertiesService = mockPropertiesService;
 
+// Mock GASPropertiesUtils to route to mockProperties so the controller
+// can use getUserProperties() and the tests can still assert on setProperty etc.
+const mockGASPropertiesUtils = {
+  getUserProperties: vi.fn(),
+  applyProperties: vi.fn(),
+  clearProperties: vi.fn(),
+};
+globalThis.GASPropertiesUtils = mockGASPropertiesUtils;
+
 // Mock LockService
 globalThis.LockService = {
   getDocumentLock: vi.fn(),
@@ -119,6 +128,16 @@ describe('AssignmentController - Definition Hydration', () => {
       deleteProperty: vi.fn(),
     };
     globalThis.PropertiesService.getDocumentProperties.mockReturnValue(mockProperties);
+
+    // Wire GASPropertiesUtils to use the same mockProperties so the controller
+    // (which now calls GASPropertiesUtils.getUserProperties()) can work correctly
+    globalThis.GASPropertiesUtils.getUserProperties.mockReturnValue(mockProperties);
+    globalThis.GASPropertiesUtils.applyProperties.mockImplementation((properties, propertyMap) => {
+      Object.keys(propertyMap).forEach((key) => properties.setProperty(key, propertyMap[key]));
+    });
+    globalThis.GASPropertiesUtils.clearProperties.mockImplementation((properties, keys) => {
+      keys.forEach((key) => properties.deleteProperty(key));
+    });
 
     // Mock LockService
     mockLock = {

@@ -64,17 +64,17 @@ class AssignmentController {
   /**
    * Initiates the Assignment Assessment Workflow by creating a time-based trigger and storing necessary properties.
    * This method sets up `triggerProcessSelectedAssignment` by creating the trigger and storing assignment details
-   * in document properties for access when the trigger executes.
+   * in UserProperties for access when the trigger executes.
    *
    * @param {string} assignmentId - The ID of the assignment to be processed
    * @param {string} definitionKey - The key of the assignment definition to use
    * @param {string} courseId - Classroom course ID used for downstream processing.
-   * @throws {Error} If trigger creation fails or if setting document properties fails
+   * @throws {Error} If trigger creation fails or if setting user properties fails
    */
   startProcessing(assignmentId, definitionKey, courseId = '') {
     // Lazily instantiate TriggerController
     const triggerController = new TriggerController();
-    const properties = PropertiesService.getDocumentProperties();
+    const properties = GASPropertiesUtils.getUserProperties();
     let triggerId;
 
     try {
@@ -98,7 +98,7 @@ class AssignmentController {
         triggerId,
         courseId,
       };
-      this.applyDocumentProperties(properties, propertyMap);
+      GASPropertiesUtils.applyProperties(properties, propertyMap);
       ABLogger.getInstance().info('Properties set for processing.');
     } catch (error) {
       this.progressTracker.logAndThrowError(`Error setting properties: ${error.message}`, error);
@@ -128,7 +128,7 @@ class AssignmentController {
    * @returns {void}
    *
    * Dependencies:
-   * - Requires document properties: assignmentId, definitionKey, triggerId
+   * - Requires UserProperties: assignmentId, definitionKey, triggerId
    * - Uses services: LockService, PropertiesService
    * - Relies on controllers: triggerController, progressTracker, classroomManager
    * - Integrates with: Assignment, Student, AnalysisSheetManager, OverviewSheetManager
@@ -147,7 +147,7 @@ class AssignmentController {
     }
 
     try {
-      const properties = PropertiesService.getDocumentProperties();
+      const properties = GASPropertiesUtils.getUserProperties();
       const assignmentId = properties.getProperty('assignmentId');
       const definitionKey = properties.getProperty('definitionKey');
       const triggerId = properties.getProperty('triggerId');
@@ -220,14 +220,14 @@ class AssignmentController {
       try {
         // Use the hydrated roster from the class record for processing. This data is transient
         // and must not be persisted with the Assignment to prevent data duplication.
-        const properties = PropertiesService.getDocumentProperties();
-        this.clearDocumentProperties(properties, [
+        const properties = GASPropertiesUtils.getUserProperties();
+        GASPropertiesUtils.clearProperties(properties, [
           'assignmentId',
           'definitionKey',
           'triggerId',
           'courseId',
         ]);
-        ABLogger.getInstance().info('Document properties cleaned up.');
+        ABLogger.getInstance().info('User properties cleaned up.');
       } catch (cleanupError) {
         this.progressTracker.logError(`Failed to clean up properties: ${cleanupError.message}`, {
           err: cleanupError,
@@ -351,28 +351,6 @@ class AssignmentController {
       this.progressTracker.updateProgress(completionMessage, false);
     }
     return result;
-  }
-
-  /**
-   * Sets document properties using the provided key/value map.
-   * @param {GoogleAppsScript.Properties.Properties} properties - Document properties service instance.
-   * @param {Object} propertyMap - Map of document property names to values.
-   * @returns {void}
-   */
-  applyDocumentProperties(properties, propertyMap) {
-    Object.keys(propertyMap).forEach((key) => {
-      properties.setProperty(key, propertyMap[key]);
-    });
-  }
-
-  /**
-   * Removes multiple document properties by key.
-   * @param {GoogleAppsScript.Properties.Properties} properties - Document properties service instance.
-   * @param {Array<string>} keys - Property keys to delete.
-   * @returns {void}
-   */
-  clearDocumentProperties(properties, keys) {
-    keys.forEach((key) => properties.deleteProperty(key));
   }
 
   /**

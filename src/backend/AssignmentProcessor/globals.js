@@ -41,11 +41,12 @@ function saveStartAndShowProgress(assignmentTitle, documentIds, assignmentId, co
  *
  * @param {string} assignmentId - The ID of the assignment.
  * @param {string} definitionKey - The key of the assignment definition.
+ * @param {string} courseId - Classroom course ID used for downstream processing.
  * @returns {string} The unique process ID.
  */
-function startProcessing(assignmentId, definitionKey) {
+function startProcessing(assignmentId, definitionKey, courseId) {
   const controller = new AssignmentController();
-  return controller.startProcessing(assignmentId, definitionKey);
+  return controller.startProcessing(assignmentId, definitionKey, courseId);
 }
 
 /**

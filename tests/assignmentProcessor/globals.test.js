@@ -179,7 +179,8 @@ describe('AssignmentProcessor globals', () => {
 
       expect(mockAssignmentController.startProcessing).toHaveBeenCalledWith(
         'assignment-123',
-        'definition-key-123'
+        'definition-key-123',
+        undefined
       );
       expect(output).toBe(result);
     });
@@ -190,6 +191,39 @@ describe('AssignmentProcessor globals', () => {
 
       const output = globals.startProcessing('assignment-123', 'definition-key-123');
 
+      expect(output).toBe(processId);
+    });
+  });
+
+  describe('startProcessing with courseId', () => {
+    it('passes courseId as third argument to controller.startProcessing', () => {
+      const result = 'trigger-id-123';
+      mockAssignmentController.startProcessing.mockReturnValue(result);
+
+      const output = globals.startProcessing('assignment-123', 'definition-key-123', 'course-456');
+
+      // ASSERTION: This will FAIL (RED) because globals.startProcessing currently
+      // only passes assignmentId and definitionKey to the controller (no courseId)
+      expect(mockAssignmentController.startProcessing).toHaveBeenCalledWith(
+        'assignment-123',
+        'definition-key-123',
+        'course-456'
+      );
+      expect(output).toBe(result);
+    });
+
+    it('returns the process ID from controller when courseId is provided', () => {
+      const processId = 'process-uuid-456';
+      mockAssignmentController.startProcessing.mockReturnValue(processId);
+
+      const output = globals.startProcessing('assignment-123', 'definition-key-123', 'course-456');
+
+      // ASSERTION: This will also be RED because the three-arg delegation is not yet in place
+      expect(mockAssignmentController.startProcessing).toHaveBeenCalledWith(
+        'assignment-123',
+        'definition-key-123',
+        'course-456'
+      );
       expect(output).toBe(processId);
     });
   });
