@@ -317,8 +317,11 @@ describe('AssignmentController - UserProperties Migration (RED phase)', () => {
       expect(typeof controller.processSelectedAssignment).toBe('function');
       expect(typeof controller.createAssignmentInstance).toBe('function');
       expect(typeof controller.runAssignmentPipeline).toBe('function');
-      expect(typeof controller.createDefinitionFromWizardInputs).toBe('function');
       expect(typeof controller.testWorkflow).toBe('function');
+    });
+
+    it('[RED] createDefinitionFromWizardInputs should not exist on AssignmentController', () => {
+      expect(typeof controller.createDefinitionFromWizardInputs).toBe('undefined');
     });
   });
 });

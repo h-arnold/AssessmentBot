@@ -456,9 +456,9 @@ Test controller logic for managing domain entities and coordinating persistence:
 - **Assignment Persistence**: Full and partial assignment storage workflows
 - **Assignment Rehydration**: Restoring full assignments from partial summaries
 
-Note: `tests/controllers/initController.test.js` and
-`tests/controllers/createDefinitionFromWizardInputs.test.js` remain excluded as
-deprecated legacy UI/init coverage.
+Note: `tests/controllers/initController.test.js` remains excluded as
+deprecated legacy UI/init coverage. `tests/controllers/createDefinitionFromWizardInputs.test.js`
+has been deleted (the `createDefinitionFromWizardInputs` method was removed).
 
 **Key patterns**:
 

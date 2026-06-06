@@ -17,51 +17,6 @@ function startProcessing(assignmentId, definitionKey, courseId) {
 }
 
 /**
- * Creates a full AssignmentDefinition from wizard Step 3 inputs without starting the assessment.
- * Normalises reference and template document URLs/IDs, validates them, and returns a complete
- * definition payload with tasks for Step 4 (weightings).
- *
- * @param {Object} params - Wizard input parameters.
- * @param {string} params.assignmentId - Google Classroom assignment ID (required).
- * @param {string} params.courseId - Classroom course ID (required).
- * @param {string} params.assignmentTitle - Assignment title (fallback if not fetched from Classroom).
- * @param {string} params.referenceDocumentId - Reference document URL or file ID.
- * @param {string} params.templateDocumentId - Template document URL or file ID.
- * @param {string|null} params.yearGroupKey - Optional year group key for the assignment.
- * @returns {Object} Full AssignmentDefinition JSON payload including tasks and artefacts.
- * @throws {Error} If validation fails, documents are identical, types mismatch, or assignment lacks topic.
- * @remarks Parameter renamed from `yearGroup` (number) to `yearGroupKey` (string) per SPEC.md v1.9.0 Option B.
- * Accepts `yearGroupKey: string | null` and passes it to `controller.createDefinitionFromWizardInputs`.
- * No backwards compatibility with legacy `yearGroup` parameter.
- */
-function createDefinitionFromWizardInputs({
-  assignmentId,
-  courseId,
-  assignmentTitle,
-  referenceDocumentId,
-  templateDocumentId,
-  yearGroupKey = null,
-}) {
-  const controller = new AssignmentController();
-  try {
-    return controller.createDefinitionFromWizardInputs({
-      assignmentId,
-      courseId,
-      assignmentTitle,
-      referenceDocumentId,
-      templateDocumentId,
-      yearGroupKey,
-    });
-  } catch (error) {
-    ABLogger.getInstance().error(
-      'Error in globals.createDefinitionFromWizardInputs:',
-      error?.message ?? error
-    );
-    throw error;
-  }
-}
-
-/**
  * Processes the selected assignment by retrieving parameters and executing the workflow.
  * @returns {*} The result from the AssignmentController.
  */
@@ -92,7 +47,6 @@ function testWorkflow() {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     startProcessing,
-    createDefinitionFromWizardInputs,
     triggerProcessSelectedAssignment,
     removeTrigger,
     testWorkflow,

@@ -16,7 +16,8 @@ Implemented in this change:
 - `tests/singletons/uiLazyProbe.test.js` has been deleted.
 - Legacy wizard/UI helper files used only by those suites have been deleted.
 - `tests/controllers/initController.test.js` is permanently excluded from all runs.
-- `tests/controllers/createDefinitionFromWizardInputs.test.js` is permanently excluded from all runs.
+- `tests/controllers/createDefinitionFromWizardInputs.test.js` has been deleted (method removed).
+- `tests/helpers/wizardInputsTestHelpers.js` has been deleted (method removed).
 - `vitest.config.js` excludes the removed legacy test paths to prevent accidental reintroduction into the default suite.
 - `package.json` keeps `npm test` and `npm run test:all` aligned on the active backend suite.
 
@@ -49,8 +50,8 @@ Status: Permanently skipped and excluded from all suites.
 
 - `tests/controllers/createDefinitionFromWizardInputs.test.js`
 
-Reason: This suite validates the legacy wizard modal definition-creation flow that is being replaced by the React frontend.
-Status: Permanently skipped and excluded from all suites.
+Reason: This suite validated the legacy wizard modal definition-creation flow. The `createDefinitionFromWizardInputs` method has been removed from both `AssignmentController` and `AssignmentProcessor/globals.js`.
+Status: **Deleted** — test file and helper (`tests/helpers/wizardInputsTestHelpers.js`) removed alongside the production code.
 
 ### 3) Legacy UI probe singleton test
 

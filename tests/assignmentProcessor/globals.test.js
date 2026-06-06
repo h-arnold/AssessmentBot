@@ -76,7 +76,6 @@ describe('AssignmentProcessor globals', () => {
     it('other globals functions are still exported', () => {
       // These should remain defined regardless of saveStartAndShowProgress removal
       expect(typeof globals.startProcessing).toBe('function');
-      expect(typeof globals.createDefinitionFromWizardInputs).toBe('function');
       expect(typeof globals.triggerProcessSelectedAssignment).toBe('function');
       expect(typeof globals.removeTrigger).toBe('function');
       expect(typeof globals.testWorkflow).toBe('function');
@@ -141,96 +140,9 @@ describe('AssignmentProcessor globals', () => {
     });
   });
 
-  describe('createDefinitionFromWizardInputs', () => {
-    it('creates new AssignmentController and delegates to createDefinitionFromWizardInputs', () => {
-      const params = {
-        assignmentId: 'assignment-123',
-        courseId: 'course-456',
-        assignmentTitle: 'Test Assignment',
-        referenceDocumentId: 'ref-doc-id',
-        templateDocumentId: 'tpl-doc-id',
-        yearGroupKey: 'year-10',
-      };
-
-      const result = { definition: { id: 'def-123' }, tasks: [] };
-      mockAssignmentController.createDefinitionFromWizardInputs.mockReturnValue(result);
-
-      const output = globals.createDefinitionFromWizardInputs(params);
-
-      expect(mockAssignmentController.createDefinitionFromWizardInputs).toHaveBeenCalledWith(
-        params
-      );
-      expect(output).toBe(result);
-    });
-
-    it('logs error and rethrows when controller throws', () => {
-      const params = {
-        assignmentId: 'assignment-123',
-        courseId: 'course-456',
-        assignmentTitle: 'Test Assignment',
-        referenceDocumentId: 'ref-doc-id',
-        templateDocumentId: 'tpl-doc-id',
-      };
-
-      const error = new Error('Validation failed');
-      mockAssignmentController.createDefinitionFromWizardInputs.mockImplementation(() => {
-        throw error;
-      });
-
-      expect(() => {
-        globals.createDefinitionFromWizardInputs(params);
-      }).toThrow(error);
-
-      expect(mockLoggerInstance.error).toHaveBeenCalledWith(
-        'Error in globals.createDefinitionFromWizardInputs:',
-        'Validation failed'
-      );
-    });
-
-    it('handles missing yearGroupKey parameter', () => {
-      const params = {
-        assignmentId: 'assignment-123',
-        courseId: 'course-456',
-        assignmentTitle: 'Test Assignment',
-        referenceDocumentId: 'ref-doc-id',
-        templateDocumentId: 'tpl-doc-id',
-      };
-
-      const result = { definition: { id: 'def-123' }, tasks: [] };
-      mockAssignmentController.createDefinitionFromWizardInputs.mockReturnValue(result);
-
-      const output = globals.createDefinitionFromWizardInputs(params);
-
-      expect(mockAssignmentController.createDefinitionFromWizardInputs).toHaveBeenCalledWith(
-        expect.objectContaining({
-          ...params,
-          yearGroupKey: null,
-        })
-      );
-      expect(output).toBe(result);
-    });
-
-    it('handles non-Error object in createDefinitionFromWizardInputs', () => {
-      const params = {
-        assignmentId: 'assignment-123',
-        courseId: 'course-456',
-        assignmentTitle: 'Test Assignment',
-        referenceDocumentId: 'ref-doc-id',
-        templateDocumentId: 'tpl-doc-id',
-      };
-
-      mockAssignmentController.createDefinitionFromWizardInputs.mockImplementation(() => {
-        throw new Error('ERR_TEST');
-      });
-
-      expect(() => {
-        globals.createDefinitionFromWizardInputs(params);
-      }).toThrow();
-
-      expect(mockLoggerInstance.error).toHaveBeenCalledWith(
-        'Error in globals.createDefinitionFromWizardInputs:',
-        'ERR_TEST'
-      );
+  describe('createDefinitionFromWizardInputs removal', () => {
+    it('[RED] globals.createDefinitionFromWizardInputs should be undefined once removed', () => {
+      expect(globals.createDefinitionFromWizardInputs).toBeUndefined();
     });
   });
 
