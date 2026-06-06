@@ -274,6 +274,29 @@ behaviour where `google.script.run` auto-stringifies return values.
   - E2E: inject `googleScriptRunApiHandlerFactorySource` via `page.addInitScript(...)`
   - Direct assignment to `globalThis.google.script.run` that bypasses the factory is prohibited.
 
+#### Void/delete response guidance: `data: null` required
+
+The factory wraps `successHandler` with `JSON.stringify(value)`. `JSON.stringify` silently strips
+`undefined` values from objects, so `{ data: undefined }` becomes `{}` after serialisation.
+
+The backend `_success()` contract converts `undefined → null` via `data: data ?? null`. Therefore,
+mock responses for void backend methods (for example deletes, start-assessment-run) **must always
+use `data: null`** in the response entry — never omit `data` or use `data: undefined`.
+
+```typescript
+// ✅ Correct — matches backend contract and survives JSON.stringify
+deleteResponses: [{ kind: 'success', data: null }],
+
+// ❌ Wrong — data: undefined is stripped by JSON.stringify, causing
+//    ApiSuccessResponseSchema.superRefine to reject the envelope
+deleteResponses: [{ kind: 'success', data: undefined }],
+
+// ❌ Wrong — omitted data is also stripped by JSON.stringify
+deleteResponses: [{ kind: 'success' }],
+```
+
+This applies equally to Vitest mock responses and E2E `RuntimeScenario` entries.
+
 ### Classes CRUD harness continuity rule
 
 For Settings-page Classes CRUD browser tests, extend the existing scenario harness in `src/frontend/e2e-tests/classes-crud.harness.spec.ts` and its shared queue/helpers.

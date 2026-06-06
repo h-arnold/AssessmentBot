@@ -41,7 +41,7 @@ export const UpdateCohortResponseSchema = CohortSchema;
 
 export type UpdateCohortResponse = z.infer<typeof UpdateCohortResponseSchema>;
 
-export const DeleteCohortResponseSchema = z.void();
+export const DeleteCohortResponseSchema = z.void().nullable();
 
 export type DeleteCohortResponse = z.infer<typeof DeleteCohortResponseSchema>;
 
@@ -83,7 +83,7 @@ export const UpdateYearGroupResponseSchema = YearGroupSchema;
 
 export type UpdateYearGroupResponse = z.infer<typeof UpdateYearGroupResponseSchema>;
 
-export const DeleteYearGroupResponseSchema = z.void();
+export const DeleteYearGroupResponseSchema = z.void().nullable();
 
 export type DeleteYearGroupResponse = z.infer<typeof DeleteYearGroupResponseSchema>;
 
@@ -131,7 +131,7 @@ export const UpdateAssignmentTopicResponseSchema = AssignmentTopicSchema;
 
 export type UpdateAssignmentTopicResponse = z.infer<typeof UpdateAssignmentTopicResponseSchema>;
 
-export const DeleteAssignmentTopicResponseSchema = z.void();
+export const DeleteAssignmentTopicResponseSchema = z.void().nullable();
 
 export type DeleteAssignmentTopicResponse = z.infer<typeof DeleteAssignmentTopicResponseSchema>;
 

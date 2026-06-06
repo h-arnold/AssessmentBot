@@ -211,7 +211,7 @@ test.describe('assignments page browser journeys', () => {
       ...createAssignmentsScenario({
         initialPartials: assignmentRows,
         postMutationPartials: [assignmentRows.filter((row) => row.definitionKey !== 'alg-10-safe')],
-        deleteResponses: [{ kind: 'deferredSuccess', data: undefined }],
+        deleteResponses: [{ kind: 'deferredSuccess', data: null }],
       }),
     });
 

@@ -198,6 +198,8 @@ All responses are envelopes:
 
 The `details` field is optional and only present when the error carries structured metadata (for example, `DefinitionStaleError` includes `definitionKey`, `referenceStale`, `templateStale`, `referenceLastModified`, `templateLastModified`). When `details` is absent, it is omitted from the envelope entirely — callers should treat it as `undefined`.
 
+**`data` coercion contract:** The `_success()` method in `z_apiHandler.js` wraps handler return data with `data: data ?? null`. This means `undefined` values (including implicit returns from void handlers) become `null` in the success envelope. The frontend transport layer (`apiService.ts`) always receives `data: null` for void backend methods, never a missing `data` key.
+
 This envelope shape is stable and should be treated as the transport contract between frontend and backend.
 
 ### Dispatch and allowlist pattern

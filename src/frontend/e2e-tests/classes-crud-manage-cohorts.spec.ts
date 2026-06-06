@@ -325,7 +325,7 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
 
   test('deletes a cohort and removes it from the list', async ({ page }) => {
     await openClassesTabWithCohortManagementScenario(page, {
-      deleteCohort: [{ kind: 'success', data: undefined }],
+      deleteCohort: [{ kind: 'success', data: null }],
       getCohorts: [
         { kind: 'success', data: manageCohortsCohorts },
         { kind: 'success', data: [manageCohortsCohorts[1]] },
