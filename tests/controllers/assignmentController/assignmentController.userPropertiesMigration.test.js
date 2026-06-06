@@ -1,25 +1,11 @@
 /**
- * RED-phase tests for UserProperties migration in AssignmentController.
+ * Tests for UserProperties migration in AssignmentController.
  *
- * These tests verify that startProcessing and processSelectedAssignment use
+ * Verifies that startProcessing and processSelectedAssignment use
  * GASPropertiesUtils (UserProperties) instead of direct PropertiesService
- * calls (DocumentProperties).
- *
- * Current behaviour (to be changed in GREEN phase):
- *   - startProcessing uses PropertiesService.getDocumentProperties() and
- *     this.applyDocumentProperties()
- *   - processSelectedAssignment uses PropertiesService.getDocumentProperties()
- *     and this.clearDocumentProperties()
- *   - applyDocumentProperties and clearDocumentProperties exist as methods
- *
- * Expected migration (GREEN phase):
- *   - startProcessing uses GASPropertiesUtils.getUserProperties() and
- *     GASPropertiesUtils.applyProperties()
- *   - processSelectedAssignment reads from GASPropertiesUtils.getUserProperties()
- *     and cleans up with GASPropertiesUtils.clearProperties()
- *   - applyDocumentProperties and clearDocumentProperties are removed
- *
- * These tests are RED (expected to fail) until the migration is implemented.
+ * calls (DocumentProperties), and that applyDocumentProperties,
+ * clearDocumentProperties, saveStartAndShowProgress, and
+ * createDefinitionFromWizardInputs have been removed.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
@@ -100,7 +86,7 @@ const AssignmentController = require('../../../src/backend/y_controllers/Assignm
 // Tests
 // =========================================================================
 
-describe('AssignmentController - UserProperties Migration (RED phase)', () => {
+describe('AssignmentController - UserProperties Migration', () => {
   let controller;
   let userPropertiesMock;
 
@@ -135,7 +121,7 @@ describe('AssignmentController - UserProperties Migration (RED phase)', () => {
   // =====================================================================
 
   describe('startProcessing', () => {
-    it('[RED] stores trigger context via GASPropertiesUtils.getUserProperties()', () => {
+    it('stores trigger context via GASPropertiesUtils.getUserProperties()', () => {
       controller.startProcessing('assignment-456', 'Essay_1_defKey', 'course-123');
 
       // ASSERTION: This will FAIL (RED) because current code calls
@@ -145,7 +131,7 @@ describe('AssignmentController - UserProperties Migration (RED phase)', () => {
       expect(PropertiesService.getDocumentProperties).not.toHaveBeenCalled();
     });
 
-    it('[RED] uses GASPropertiesUtils.applyProperties() instead of this.applyDocumentProperties()', () => {
+    it('uses GASPropertiesUtils.applyProperties() instead of this.applyDocumentProperties()', () => {
       controller.startProcessing('assignment-456', 'Essay_1_defKey', 'course-123');
 
       // ASSERTION: This will FAIL (RED) because current code calls
@@ -154,7 +140,7 @@ describe('AssignmentController - UserProperties Migration (RED phase)', () => {
       expect(PropertiesService.getDocumentProperties).not.toHaveBeenCalled();
     });
 
-    it('[RED] passes correct propertyMap to GASPropertiesUtils.applyProperties()', () => {
+    it('passes correct propertyMap to GASPropertiesUtils.applyProperties()', () => {
       controller.startProcessing('assignment-456', 'Essay_1_defKey', 'course-123');
 
       // ASSERTION: This will FAIL (RED) — same reason as above
@@ -253,7 +239,7 @@ describe('AssignmentController - UserProperties Migration (RED phase)', () => {
       };
     });
 
-    it('[RED] reads trigger context from GASPropertiesUtils.getUserProperties()', () => {
+    it('reads trigger context from GASPropertiesUtils.getUserProperties()', () => {
       controller.processSelectedAssignment();
 
       // ASSERTION: This will FAIL (RED) because current code reads from
@@ -263,7 +249,7 @@ describe('AssignmentController - UserProperties Migration (RED phase)', () => {
       expect(PropertiesService.getDocumentProperties).not.toHaveBeenCalled();
     });
 
-    it('[RED] cleans up properties with GASPropertiesUtils.clearProperties()', () => {
+    it('cleans up properties with GASPropertiesUtils.clearProperties()', () => {
       controller.processSelectedAssignment();
 
       // ASSERTION: This will FAIL (RED) because current cleanup code calls
@@ -272,7 +258,7 @@ describe('AssignmentController - UserProperties Migration (RED phase)', () => {
       expect(PropertiesService.getDocumentProperties).not.toHaveBeenCalled();
     });
 
-    it('[RED] calls clearProperties() with expected trigger-context keys', () => {
+    it('calls clearProperties() with expected trigger-context keys', () => {
       controller.processSelectedAssignment();
 
       // ASSERTION: This will FAIL (RED) — same as above
@@ -291,19 +277,19 @@ describe('AssignmentController - UserProperties Migration (RED phase)', () => {
   // =====================================================================
 
   describe('removed methods', () => {
-    it('[RED] applyDocumentProperties should not exist on AssignmentController', () => {
+    it('applyDocumentProperties should not exist on AssignmentController', () => {
       // ASSERTION: This will FAIL (RED) because applyDocumentProperties
       // currently exists on the AssignmentController prototype
       expect(typeof controller.applyDocumentProperties).toBe('undefined');
     });
 
-    it('[RED] clearDocumentProperties should not exist on AssignmentController', () => {
+    it('clearDocumentProperties should not exist on AssignmentController', () => {
       // ASSERTION: This will FAIL (RED) because clearDocumentProperties
       // currently exists on the AssignmentController prototype
       expect(typeof controller.clearDocumentProperties).toBe('undefined');
     });
 
-    it('[RED] saveStartAndShowProgress should not exist on AssignmentController', () => {
+    it('saveStartAndShowProgress should not exist on AssignmentController', () => {
       // ASSERTION: This will FAIL (RED) because saveStartAndShowProgress
       // currently exists on the AssignmentController prototype.
       // Once removed (GREEN phase), this test will pass.
@@ -320,7 +306,7 @@ describe('AssignmentController - UserProperties Migration (RED phase)', () => {
       expect(typeof controller.testWorkflow).toBe('function');
     });
 
-    it('[RED] createDefinitionFromWizardInputs should not exist on AssignmentController', () => {
+    it('createDefinitionFromWizardInputs should not exist on AssignmentController', () => {
       expect(typeof controller.createDefinitionFromWizardInputs).toBe('undefined');
     });
   });

@@ -1,22 +1,11 @@
 /**
- * RED-phase tests for runAssignmentPipeline throw-on-stale behaviour.
+ * Tests for runAssignmentPipeline throw-on-stale behaviour.
  *
- * These tests verify that runAssignmentPipeline throws DefinitionStaleError
- * when the reference or template document has been modified since the
- * definition was created, instead of silently re-parsing.
+ * runAssignmentPipeline checks per-document freshness via Utils.isNewer and
+ * throws DefinitionStaleError with structured metadata when any document is stale.
  *
- * Current behaviour (to be changed in GREEN phase):
- *   - runAssignmentPipeline uses Utils.definitionNeedsRefresh and silently
- *     re-parses when the definition is stale
- *
- * Expected behaviour (GREEN phase):
- *   - runAssignmentPipeline uses Utils.isNewer per-document and throws
- *     DefinitionStaleError with structured metadata when any document is stale
- *   - processSelectedAssignment catches the error from runAssignmentPipeline
- *     and calls ProgressTracker.logAndThrowError
- *
- * These tests are RED (expected to fail) until the throw-on-stale
- * behaviour is implemented.
+ * processSelectedAssignment catches the error from runAssignmentPipeline
+ * and calls ProgressTracker.logAndThrowError.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
@@ -55,7 +44,6 @@ globalThis.ProgressTracker = {
 // Mock Utils with both old and new staleness-check methods
 globalThis.Utils = {
   toastMessage: vi.fn(),
-  definitionNeedsRefresh: vi.fn(),
   isNewer: vi.fn(),
 };
 
@@ -74,7 +62,7 @@ const DefinitionStaleError = require('../../../src/backend/Utils/ErrorTypes/Defi
 // Tests
 // =========================================================================
 
-describe('AssignmentController - runAssignmentPipeline throw-on-stale (RED phase)', () => {
+describe('AssignmentController - runAssignmentPipeline throw-on-stale', () => {
   let controller;
 
   // Shared test data
@@ -133,9 +121,6 @@ describe('AssignmentController - runAssignmentPipeline throw-on-stale (RED phase
         .mockReturnValueOnce(REFERENCE_MODIFIED)
         .mockReturnValueOnce(TEMPLATE_MODIFIED);
 
-      // Make old code take the re-parse path (definitionNeedsRefresh returns true)
-      Utils.definitionNeedsRefresh.mockReturnValue(true);
-
       // isNewer — default to stale (both documents are newer)
       Utils.isNewer.mockReturnValue(true);
     });
@@ -145,7 +130,7 @@ describe('AssignmentController - runAssignmentPipeline throw-on-stale (RED phase
      * Asserts that when the reference document has been modified since definition creation,
      * runAssignmentPipeline throws DefinitionStaleError with referenceStale: true.
      */
-    it('[RED] throws DefinitionStaleError when reference document is stale', () => {
+    it('throws DefinitionStaleError when reference document is stale', () => {
       // Arrange: reference is stale, template is not
       Utils.isNewer
         .mockReturnValueOnce(true) // reference is newer → stale
@@ -166,7 +151,7 @@ describe('AssignmentController - runAssignmentPipeline throw-on-stale (RED phase
      * Asserts that when the template document has been modified since definition creation,
      * runAssignmentPipeline throws DefinitionStaleError with templateStale: true.
      */
-    it('[RED] throws DefinitionStaleError when template document is stale', () => {
+    it('throws DefinitionStaleError when template document is stale', () => {
       // Arrange: reference is not stale, template is stale
       Utils.isNewer
         .mockReturnValueOnce(false) // reference is not newer → fresh
@@ -185,7 +170,7 @@ describe('AssignmentController - runAssignmentPipeline throw-on-stale (RED phase
      * Asserts that when both reference and template documents have been modified,
      * runAssignmentPipeline throws DefinitionStaleError with both flags set to true.
      */
-    it('[RED] throws DefinitionStaleError when both documents are stale', () => {
+    it('throws DefinitionStaleError when both documents are stale', () => {
       // Act & Assert: both are stale (default mock returns true for both), should throw
       expect(() => {
         controller.runAssignmentPipeline(mockAssignment, [], {
@@ -202,7 +187,6 @@ describe('AssignmentController - runAssignmentPipeline throw-on-stale (RED phase
     it('does not throw when neither document is stale', () => {
       // Arrange: neither is stale
       Utils.isNewer.mockReturnValue(false);
-      Utils.definitionNeedsRefresh.mockReturnValue(false);
 
       // Act & Assert: should NOT throw
       expect(() => {
@@ -221,7 +205,7 @@ describe('AssignmentController - runAssignmentPipeline throw-on-stale (RED phase
      * Asserts that the thrown DefinitionStaleError carries the expected
      * structured metadata about which documents are stale.
      */
-    it('[RED] error includes correct definitionKey and staleness metadata when reference is stale', () => {
+    it('error includes correct definitionKey and staleness metadata when reference is stale', () => {
       // Arrange: reference is stale, template is not
       Utils.isNewer
         .mockReturnValueOnce(true) // reference is newer
@@ -251,7 +235,7 @@ describe('AssignmentController - runAssignmentPipeline throw-on-stale (RED phase
     /**
      * Test 5b: Error metadata for template-stale scenario
      */
-    it('[RED] error includes correct definitionKey and staleness metadata when template is stale', () => {
+    it('error includes correct definitionKey and staleness metadata when template is stale', () => {
       // Arrange: template is stale, reference is not
       Utils.isNewer
         .mockReturnValueOnce(false) // reference is not newer
@@ -381,8 +365,7 @@ describe('AssignmentController - runAssignmentPipeline throw-on-stale (RED phase
       // Mock DriveManager — return stale timestamps (newer than stored)
       DriveManager.getFileModifiedTime.mockReset().mockReturnValue(STALE_TIMESTAMP);
 
-      // Mock Utils — stale check returns true (needs refresh in old code, isNewer in new code)
-      Utils.definitionNeedsRefresh.mockReturnValue(true);
+      // Mock Utils — stale check via isNewer
       Utils.isNewer.mockReturnValue(true);
 
       // Override logAndThrowError to a plain mock (no throw) so that if/when
@@ -402,7 +385,7 @@ describe('AssignmentController - runAssignmentPipeline throw-on-stale (RED phase
      * behaviour is added, the error will propagate correctly through the
      * existing error boundary.
      */
-    it('[RED] processSelectedAssignment catches DefinitionStaleError and calls logAndThrowError', () => {
+    it('processSelectedAssignment catches DefinitionStaleError and calls logAndThrowError', () => {
       // Act: run processSelectedAssignment which internally calls runAssignmentPipeline
       controller.processSelectedAssignment();
 

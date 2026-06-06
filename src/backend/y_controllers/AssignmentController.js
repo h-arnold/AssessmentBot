@@ -161,7 +161,7 @@ class AssignmentController {
 
       const students = abClass.students;
       const includeImages = definition.documentType === 'SLIDES';
-      this.runAssignmentPipeline(assignment, students, { includeImages, definitionController });
+      this.runAssignmentPipeline(assignment, students, { includeImages });
 
       // Update lastUpdated value and persist assignment data
 
@@ -223,25 +223,8 @@ class AssignmentController {
       throw new Error(`Definition not found for key: ${definitionKey}`);
     }
 
-    // Check per-document freshness using Utils.isNewer
-    const referenceModified = DriveManager.getFileModifiedTime(definition.referenceDocumentId);
-    const templateModified = DriveManager.getFileModifiedTime(definition.templateDocumentId);
-
-    const referenceStale = Utils.isNewer(referenceModified, definition.referenceLastModified);
-    const templateStale = Utils.isNewer(templateModified, definition.templateLastModified);
-
-    if (referenceStale || templateStale) {
-      throw new DefinitionStaleError(
-        'Assignment definition is stale: reference or template document has changed.',
-        {
-          definitionKey,
-          referenceStale,
-          templateStale,
-          referenceLastModified: referenceModified,
-          templateLastModified: templateModified,
-        }
-      );
-    }
+    // Check per-document freshness
+    this._validateDefinitionFreshness(definition);
 
     // Resolve ABClass via loadClass
     const abClassController = new ABClassController();
@@ -277,7 +260,6 @@ class AssignmentController {
    * @param {Array<Object>} students - Students sourced from the class record.
    * @param {Object} [options] - Additional pipeline configuration.
    * @param {boolean} [options.includeImages=false] - Whether to process images.
-   * @param {AssignmentDefinitionController} [options.definitionController] - Controller to persist refreshed definitions.
    * @returns {void}
    */
   runAssignmentPipeline(assignment, students, options = {}) {
@@ -291,25 +273,7 @@ class AssignmentController {
       `${students.length} students added to the assignment from class record.`
     );
 
-    const definition = assignment.assignmentDefinition;
-    const referenceModified = DriveManager.getFileModifiedTime(definition.referenceDocumentId);
-    const templateModified = DriveManager.getFileModifiedTime(definition.templateDocumentId);
-
-    const referenceStale = Utils.isNewer(referenceModified, definition.referenceLastModified);
-    const templateStale = Utils.isNewer(templateModified, definition.templateLastModified);
-
-    if (referenceStale || templateStale) {
-      throw new DefinitionStaleError(
-        'Assignment definition is stale: reference or template document has changed.',
-        {
-          definitionKey: definition.definitionKey,
-          referenceStale,
-          templateStale,
-          referenceLastModified: referenceModified,
-          templateLastModified: templateModified,
-        }
-      );
-    }
+    this._validateDefinitionFreshness(assignment.assignmentDefinition);
 
     this.progressTracker.updateProgress('Tasks are up to date; skipping parse.', false);
 
@@ -346,6 +310,36 @@ class AssignmentController {
       },
       'Responses assessed.'
     );
+  }
+
+  /**
+   * Validates that the given definition's reference and template documents
+   * have not been modified since the definition was created.
+   *
+   * @param {Object} definition — Must have referenceDocumentId, templateDocumentId,
+   *   referenceLastModified, templateLastModified, and definitionKey.
+   * @throws {DefinitionStaleError} If any document is stale.
+   * @private
+   */
+  _validateDefinitionFreshness(definition) {
+    const referenceModified = DriveManager.getFileModifiedTime(definition.referenceDocumentId);
+    const templateModified = DriveManager.getFileModifiedTime(definition.templateDocumentId);
+
+    const referenceStale = Utils.isNewer(referenceModified, definition.referenceLastModified);
+    const templateStale = Utils.isNewer(templateModified, definition.templateLastModified);
+
+    if (referenceStale || templateStale) {
+      throw new DefinitionStaleError(
+        'Assignment definition is stale: reference or template document has changed.',
+        {
+          definitionKey: definition.definitionKey,
+          referenceStale,
+          templateStale,
+          referenceLastModified: referenceModified,
+          templateLastModified: templateModified,
+        }
+      );
+    }
   }
 
   /**

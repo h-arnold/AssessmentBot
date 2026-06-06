@@ -7,9 +7,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Mock AssignmentController
 const mockAssignmentController = {
-  saveStartAndShowProgress: vi.fn(),
   startProcessing: vi.fn(),
-  createDefinitionFromWizardInputs: vi.fn(),
   processSelectedAssignment: vi.fn(),
   triggerController: {
     removeTriggers: vi.fn(),
@@ -66,8 +64,8 @@ describe('AssignmentProcessor globals', () => {
     cleanupAssignmentProcessorGlobalsTestContext();
   });
 
-  describe('saveStartAndShowProgress removal (RED phase)', () => {
-    it('[RED] globals.saveStartAndShowProgress should be undefined once removed', () => {
+  describe('saveStartAndShowProgress removal', () => {
+    it('globals.saveStartAndShowProgress is undefined after removal', () => {
       // ASSERTION: This will FAIL (RED) because globals.js still exports
       // saveStartAndShowProgress. Once removed (GREEN phase), this will pass.
       expect(globals.saveStartAndShowProgress).toBeUndefined();
@@ -141,7 +139,7 @@ describe('AssignmentProcessor globals', () => {
   });
 
   describe('createDefinitionFromWizardInputs removal', () => {
-    it('[RED] globals.createDefinitionFromWizardInputs should be undefined once removed', () => {
+    it('globals.createDefinitionFromWizardInputs is undefined after removal', () => {
       expect(globals.createDefinitionFromWizardInputs).toBeUndefined();
     });
   });
