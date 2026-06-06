@@ -69,6 +69,7 @@ globalThis.TriggerController = vi.fn().mockImplementation(function () {
 globalThis.Utils = {
   toastMessage: vi.fn(),
   definitionNeedsRefresh: vi.fn(),
+  isNewer: vi.fn().mockReturnValue(false),
 };
 
 // Mock ProgressTracker

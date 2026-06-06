@@ -263,8 +263,7 @@ class AssignmentController {
    * @returns {void}
    */
   runAssignmentPipeline(assignment, students, options = {}) {
-    const { includeImages = false, definitionController } = options;
-    const controller = definitionController || new AssignmentDefinitionController();
+    const { includeImages = false } = options;
 
     this.runStage(
       'Adding students from class record.',
@@ -278,28 +277,23 @@ class AssignmentController {
     const referenceModified = DriveManager.getFileModifiedTime(definition.referenceDocumentId);
     const templateModified = DriveManager.getFileModifiedTime(definition.templateDocumentId);
 
-    const needsRefresh = Utils.definitionNeedsRefresh(
-      definition,
-      referenceModified,
-      templateModified
-    );
+    const referenceStale = Utils.isNewer(referenceModified, definition.referenceLastModified);
+    const templateStale = Utils.isNewer(templateModified, definition.templateLastModified);
 
-    if (needsRefresh) {
-      this.runStage(
-        'Getting the tasks from the reference document.',
-        () => {
-          assignment.populateTasks();
-          definition.updateModifiedTimestamps({
-            referenceLastModified: referenceModified,
-            templateLastModified: templateModified,
-          });
-          controller.saveDefinition(definition);
-        },
-        'Tasks populated from reference document.'
+    if (referenceStale || templateStale) {
+      throw new DefinitionStaleError(
+        'Assignment definition is stale: reference or template document has changed.',
+        {
+          definitionKey: definition.definitionKey,
+          referenceStale,
+          templateStale,
+          referenceLastModified: referenceModified,
+          templateLastModified: templateModified,
+        }
       );
-    } else {
-      this.progressTracker.updateProgress('Tasks are up to date; skipping parse.', false);
     }
+
+    this.progressTracker.updateProgress('Tasks are up to date; skipping parse.', false);
 
     this.runStage(
       'Fetching submitted documents from students.',

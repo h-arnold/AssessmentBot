@@ -3,6 +3,7 @@ import { createMockABLogger, createMockPropertiesService } from '../helpers/mock
 
 // Setup global mocks
 globalThis.ABLogger = require('../../src/backend/Utils/ABLogger.js');
+const DefinitionStaleError = require('../../src/backend/Utils/ErrorTypes/DefinitionStaleError.js');
 
 // Mock PropertiesService
 const mockPropertiesService = createMockPropertiesService(vi);
@@ -244,6 +245,7 @@ describe('AssignmentController - Definition Hydration', () => {
       toastMessage: vi.fn(),
       definitionNeedsRefresh: vi.fn().mockReturnValue(false),
       generateHash: (str) => `hash_${(str || '').length}`,
+      isNewer: vi.fn().mockReturnValue(false),
     };
 
     // Mock DriveManager
@@ -351,7 +353,7 @@ describe('AssignmentController - Definition Hydration', () => {
   });
 
   describe('runAssignmentPipeline', () => {
-    it('should check staleness and re-parse if needed', () => {
+    it('should throw DefinitionStaleError when definition is stale', () => {
       const definition = new AssignmentDefinition({
         primaryTitle: 'Test',
         primaryTopic: 'Topic',
@@ -368,19 +370,17 @@ describe('AssignmentController - Definition Hydration', () => {
       const mockAssignment = new globalThis.SlidesAssignment();
       mockAssignment.assignmentDefinition = definition;
 
-      globalThis.Utils.definitionNeedsRefresh.mockReturnValue(true);
+      globalThis.Utils.isNewer.mockReturnValue(true);
 
       const controller = new AssignmentController();
-      controller.runAssignmentPipeline(mockAssignment, [{ id: 's1', name: 'Student 1' }], {
-        includeImages: true,
-        definitionController: mockDefinitionController,
-      });
 
-      // Should call populateTasks when stale
-      expect(mockAssignment.populateTasks).toHaveBeenCalled();
-
-      // Should save refreshed definition
-      expect(mockDefinitionController.upsertDefinition).not.toHaveBeenCalled(); // Already handled in populateTasks path
+      // Should throw DefinitionStaleError when stale
+      expect(() => {
+        controller.runAssignmentPipeline(mockAssignment, [{ id: 's1', name: 'Student 1' }], {
+          includeImages: true,
+          definitionController: mockDefinitionController,
+        });
+      }).toThrow(DefinitionStaleError);
     });
 
     it('should skip parsing if definition is fresh', () => {

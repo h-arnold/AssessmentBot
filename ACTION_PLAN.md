@@ -478,7 +478,10 @@ Backend controller tests:
 
 ### Implementation notes / deviations / follow-up
 
-- _To be filled during implementation._
+- Replaced `definitionNeedsRefresh` with two individual `Utils.isNewer` calls for per-document staleness reporting.
+- Removed unused `controller` variable (was only used for `controller.saveDefinition()` in the removed re-parse branch).
+- `AssignmentDefinitionController._resolveTaskStateForUpsert`'s use of `definitionNeedsRefresh` is confirmed untouched.
+- `userPropertiesMigration.test.js` and `hydration.test.js` updated to accommodate new code path.
 
 ---
 
