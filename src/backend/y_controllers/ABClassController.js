@@ -864,10 +864,12 @@ class ABClassController {
   }
 
   /**
-   * Load an ABClass by its classId. If no stored collection or document exists, initialises a new class.
+   * Load an ABClass by its classId. Throws when no stored collection or document exists.
    * Reads the stored document when present, deserialises it, and refreshes roster data from Classroom API before returning.
    * @param {string} classId - The Classroom course identifier.
-   * @returns {ABClass} The loaded or newly initialised class instance.
+   * @returns {ABClass} The loaded class instance.
+   * @throws {Error} If no stored data exists for the given classId.
+   * @remarks loadClass no longer auto-initialises a new class; callers must ensure the class exists before calling.
    */
   loadClass(classId) {
     if (!classId) throw new TypeError('classId is required');
@@ -875,22 +877,14 @@ class ABClassController {
 
     const collection = this.dbManager.getCollection(classId);
     logger.info('loadClass: called', { classId, hasCollection: !!collection });
-    // If no collection is returned, create a new class object and save it.
     if (!collection) {
-      logger.info('loadClass: no collection found - initialising new class', { classId });
-      return this.initialise(classId);
+      throw new Error(`loadClass: no stored class found for classId=${classId}`);
     }
 
     // Collection exists - read the single stored document (if any)
     const document = collection.findOne({ classId: classId }) || null;
     if (!document) {
-      // Collection exists but has no document - initialise new class
-      logger.info('loadClass: collection exists but no document stored - creating new class', {
-        classId,
-      });
-      const newClass = this.initialise(classId);
-      this.saveClass(newClass);
-      return newClass;
+      throw new Error(`loadClass: no stored class found for classId=${classId}`);
     }
 
     const abClass = ABClass.fromJSON(document);

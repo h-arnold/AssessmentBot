@@ -308,7 +308,9 @@ Backend controller tests:
 
 ### Implementation notes / deviations / follow-up
 
-- _To be filled during implementation._
+- Both `!collection` and `!document` branches now throw `new Error(...)` with the `classId` in the message using template literals.
+- `upsertABClass` and `updateABClass` are untouched — confirmed via diff.
+- Both existing callers (`processSelectedAssignment` and `ensureDefinitionFromInputs`) already handle the throw via try/catch.
 
 ---
 
