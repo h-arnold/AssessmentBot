@@ -302,5 +302,23 @@ describe('AssignmentController - UserProperties Migration (RED phase)', () => {
       // currently exists on the AssignmentController prototype
       expect(typeof controller.clearDocumentProperties).toBe('undefined');
     });
+
+    it('[RED] saveStartAndShowProgress should not exist on AssignmentController', () => {
+      // ASSERTION: This will FAIL (RED) because saveStartAndShowProgress
+      // currently exists on the AssignmentController prototype.
+      // Once removed (GREEN phase), this test will pass.
+      expect(typeof controller.saveStartAndShowProgress).toBe('undefined');
+    });
+
+    it('other controller methods are unaffected by saveStartAndShowProgress removal', () => {
+      // These methods must remain defined regardless of removal
+      expect(typeof controller.ensureDefinitionFromInputs).toBe('function');
+      expect(typeof controller.startProcessing).toBe('function');
+      expect(typeof controller.processSelectedAssignment).toBe('function');
+      expect(typeof controller.createAssignmentInstance).toBe('function');
+      expect(typeof controller.runAssignmentPipeline).toBe('function');
+      expect(typeof controller.createDefinitionFromWizardInputs).toBe('function');
+      expect(typeof controller.testWorkflow).toBe('function');
+    });
   });
 });

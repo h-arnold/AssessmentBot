@@ -549,7 +549,9 @@ Backend controller tests:
 
 ### Implementation notes / deviations / follow-up
 
-- _To be filled during implementation._
+- Removed `saveStartAndShowProgress` method from both `AssignmentController` and `globals.js`.
+- Constants `TOAST_DURATION_SECONDS`, `PROCESS_LOCK_TIMEOUT_MS`, `ASSESSMENT_RUN_SUCCESS_MESSAGE` preserved (used by other methods).
+- All other globals exports and controller methods confirmed intact.
 
 ---
 

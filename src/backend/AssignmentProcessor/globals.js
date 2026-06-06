@@ -4,39 +4,6 @@
  */
 
 /**
- * Initiates processing of an assignment asynchronously by setting up a trigger and opens the progress modal.
- * @param {string} assignmentTitle - The title of the assignment.
- * @param {Object} documentIds - An object containing referenceDocumentId and templateDocumentId.
- * @param {string} assignmentId - The ID of the assignment.
- * @param {string} courseId - The Classroom course ID.
- * @returns {*} The result from the AssignmentController.
- */
-function saveStartAndShowProgress(assignmentTitle, documentIds, assignmentId, courseId) {
-  ABLogger.getInstance().info('saveStartAndShowProgress invoked (globals):', {
-    assignmentTitle,
-    documentIds,
-    assignmentId,
-    courseId,
-  });
-
-  const controller = new AssignmentController();
-  try {
-    return controller.saveStartAndShowProgress(
-      assignmentTitle,
-      documentIds,
-      assignmentId,
-      courseId
-    );
-  } catch (error) {
-    ABLogger.getInstance().error(
-      'Error in globals.saveStartAndShowProgress:',
-      error?.message ?? error
-    );
-    throw error;
-  }
-}
-
-/**
  * Initiates the processing of an assignment asynchronously by setting up a trigger.
  *
  * @param {string} assignmentId - The ID of the assignment.
@@ -124,7 +91,6 @@ function testWorkflow() {
 // Export for Node.js testing environment
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    saveStartAndShowProgress,
     startProcessing,
     createDefinitionFromWizardInputs,
     triggerProcessSelectedAssignment,

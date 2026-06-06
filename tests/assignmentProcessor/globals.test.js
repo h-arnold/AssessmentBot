@@ -66,107 +66,20 @@ describe('AssignmentProcessor globals', () => {
     cleanupAssignmentProcessorGlobalsTestContext();
   });
 
-  describe('saveStartAndShowProgress', () => {
-    it('creates new AssignmentController and delegates to saveStartAndShowProgress', () => {
-      const result = { success: true };
-      mockAssignmentController.saveStartAndShowProgress.mockReturnValue(result);
-
-      const output = globals.saveStartAndShowProgress(
-        'Test Assignment',
-        { referenceDocumentId: 'ref-id', templateDocumentId: 'tpl-id' },
-        'assignment-123',
-        'course-456'
-      );
-
-      expect(mockAssignmentController.saveStartAndShowProgress).toHaveBeenCalledWith(
-        'Test Assignment',
-        { referenceDocumentId: 'ref-id', templateDocumentId: 'tpl-id' },
-        'assignment-123',
-        'course-456'
-      );
-      expect(output).toBe(result);
+  describe('saveStartAndShowProgress removal (RED phase)', () => {
+    it('[RED] globals.saveStartAndShowProgress should be undefined once removed', () => {
+      // ASSERTION: This will FAIL (RED) because globals.js still exports
+      // saveStartAndShowProgress. Once removed (GREEN phase), this will pass.
+      expect(globals.saveStartAndShowProgress).toBeUndefined();
     });
 
-    it('logs info message when invoked', () => {
-      globals.saveStartAndShowProgress(
-        'Test Assignment',
-        { referenceDocumentId: 'ref-id', templateDocumentId: 'tpl-id' },
-        'assignment-123',
-        'course-456'
-      );
-
-      expect(mockLoggerInstance.info).toHaveBeenCalledWith(
-        'saveStartAndShowProgress invoked (globals):',
-        expect.objectContaining({
-          assignmentTitle: 'Test Assignment',
-          documentIds: { referenceDocumentId: 'ref-id', templateDocumentId: 'tpl-id' },
-          assignmentId: 'assignment-123',
-          courseId: 'course-456',
-        })
-      );
-    });
-
-    it('logs and rethrows errors', () => {
-      const error = new Error('Test error');
-      mockAssignmentController.saveStartAndShowProgress.mockImplementation(() => {
-        throw error;
-      });
-
-      expect(() => {
-        globals.saveStartAndShowProgress(
-          'Test Assignment',
-          { referenceDocumentId: 'ref-id', templateDocumentId: 'tpl-id' },
-          'assignment-123',
-          'course-456'
-        );
-      }).toThrow(error);
-
-      expect(mockLoggerInstance.error).toHaveBeenCalledWith(
-        'Error in globals.saveStartAndShowProgress:',
-        'Test error'
-      );
-    });
-
-    it('handles error with no message property', () => {
-      const error = new Error('No message');
-      error.message = undefined;
-      mockAssignmentController.saveStartAndShowProgress.mockImplementation(() => {
-        throw error;
-      });
-
-      expect(() => {
-        globals.saveStartAndShowProgress(
-          'Test Assignment',
-          { referenceDocumentId: 'ref-id', templateDocumentId: 'tpl-id' },
-          'assignment-123',
-          'course-456'
-        );
-      }).toThrow(error);
-
-      expect(mockLoggerInstance.error).toHaveBeenCalledWith(
-        'Error in globals.saveStartAndShowProgress:',
-        error
-      );
-    });
-
-    it('handles non-Error object being thrown', () => {
-      mockAssignmentController.saveStartAndShowProgress.mockImplementation(() => {
-        throw new Error('String error');
-      });
-
-      expect(() => {
-        globals.saveStartAndShowProgress(
-          'Test Assignment',
-          { referenceDocumentId: 'ref-id', templateDocumentId: 'tpl-id' },
-          'assignment-123',
-          'course-456'
-        );
-      }).toThrow();
-
-      expect(mockLoggerInstance.error).toHaveBeenCalledWith(
-        'Error in globals.saveStartAndShowProgress:',
-        'String error'
-      );
+    it('other globals functions are still exported', () => {
+      // These should remain defined regardless of saveStartAndShowProgress removal
+      expect(typeof globals.startProcessing).toBe('function');
+      expect(typeof globals.createDefinitionFromWizardInputs).toBe('function');
+      expect(typeof globals.triggerProcessSelectedAssignment).toBe('function');
+      expect(typeof globals.removeTrigger).toBe('function');
+      expect(typeof globals.testWorkflow).toBe('function');
     });
   });
 

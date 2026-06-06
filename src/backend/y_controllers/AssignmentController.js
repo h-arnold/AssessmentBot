@@ -26,42 +26,6 @@ class AssignmentController {
   }
 
   /**
-   * Initialises the assessment process by saving document IDs and starting progress tracking.
-   * Also attempts to warm up the LLM backend asynchronously.
-   *
-   * @param {string} assignmentTitle - The title of the assignment
-   * @param {Object} documentIds - Object containing Google document IDs to be processed (referenceDocumentId, templateDocumentId)
-   * @param {string} assignmentId - Unique identifier for the assignment
-   * @param {string} courseId - Classroom course ID for the selected assignment
-   * @throws {Error} If saving or initialisation process fails
-   */
-  saveStartAndShowProgress(assignmentTitle, documentIds, assignmentId, courseId) {
-    try {
-      const { definition } = this.ensureDefinitionFromInputs({
-        assignmentTitle,
-        assignmentId,
-        courseId,
-        documentIds,
-      });
-
-      this.startProcessing(assignmentId, definition.definitionKey, courseId);
-      this.progressTracker.startTracking();
-
-      // As the rest of the workflow is run from a time-based trigger, waiting for a response from this method shouldn't affect the startup time for the rest of the assessment.
-    } catch (error) {
-      this.utils.toastMessage(
-        'Failed to start processing: ' + error.message,
-        'Error',
-        TOAST_DURATION_SECONDS
-      );
-      this.progressTracker.logAndThrowError(
-        'Error in saveStartAndShowProgress: ' + error.message,
-        error
-      );
-    }
-  }
-
-  /**
    * Initiates the Assignment Assessment Workflow by creating a time-based trigger and storing necessary properties.
    * This method sets up `triggerProcessSelectedAssignment` by creating the trigger and storing assignment details
    * in UserProperties for access when the trigger executes.
