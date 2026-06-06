@@ -728,7 +728,12 @@ API-layer tests:
 
 ### Implementation notes / deviations / follow-up
 
-- _To be filled during implementation._
+- Created `startAssessmentRun` controller method and `startAssessmentRun_` API handler.
+- Transport validation (non-empty string) kept in API layer per §0.2; controller trusts validated input.
+- Used `Validate.requireParams` + `Validate.validateNonEmptyString` in API handler.
+- Changed definition-not-found from `TypeError` to plain `Error` (semantic correctness).
+- Registered `startAssessmentRun` in `ALLOWLISTED_METHOD_HANDLERS`; updated registry count to 26.
+- `EXPECTED_ALLOWLISTED_METHOD_HANDLER_KEYS` updated in shared.js.
 
 ---
 

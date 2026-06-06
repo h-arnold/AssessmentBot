@@ -201,6 +201,60 @@ class AssignmentController {
   }
 
   /**
+   * Starts an assessment run for the given definition, assignment, and course.
+   *
+   * Validates parameters, resolves the full definition, checks per-document freshness
+   * against current Drive timestamps, resolves the ABClass, and delegates to
+   * startProcessing for trigger creation.
+   *
+   * @param {Object} params - Parameters object.
+   * @param {string} params.definitionKey - The key of the existing AssignmentDefinition.
+   * @param {string} params.assignmentId - The Google Classroom coursework ID.
+   * @param {string} params.courseId - The Google Classroom course ID.
+   * @returns {null} Null on success (no payload).
+   * @throws {Error} If the definition is not found in the registry.
+   * @throws {DefinitionStaleError} If reference or template documents have changed.
+   */
+  startAssessmentRun({ definitionKey, assignmentId, courseId }) {
+    // Fetch full definition via definitionController
+    const definitionController = new AssignmentDefinitionController();
+    const definition = definitionController.getDefinitionByKey(definitionKey, { form: 'full' });
+    if (!definition) {
+      throw new Error(`Definition not found for key: ${definitionKey}`);
+    }
+
+    // Check per-document freshness using Utils.isNewer
+    const referenceModified = DriveManager.getFileModifiedTime(definition.referenceDocumentId);
+    const templateModified = DriveManager.getFileModifiedTime(definition.templateDocumentId);
+
+    const referenceStale = Utils.isNewer(referenceModified, definition.referenceLastModified);
+    const templateStale = Utils.isNewer(templateModified, definition.templateLastModified);
+
+    if (referenceStale || templateStale) {
+      throw new DefinitionStaleError(
+        'Assignment definition is stale: reference or template document has changed.',
+        {
+          definitionKey,
+          referenceStale,
+          templateStale,
+          referenceLastModified: referenceModified,
+          templateLastModified: templateModified,
+        }
+      );
+    }
+
+    // Resolve ABClass via loadClass
+    const abClassController = new ABClassController();
+    abClassController.loadClass(courseId);
+
+    // Delegate to startProcessing for trigger creation
+    this.startProcessing(assignmentId, definitionKey, courseId);
+
+    // Return null (no payload)
+    return null;
+  }
+
+  /**
    * Creates an assignment instance using the factory pattern with progress tracking.
    * @param {AssignmentDefinition} assignmentDefinition - Embedded definition for the assignment.
    * @param {string} courseId - The Classroom course ID.

@@ -34,6 +34,7 @@ const ALLOWLISTED_METHOD_HANDLERS = Object.freeze({
   deleteABClass: (parameters) => deleteABClass_(parameters),
   getBackendConfig: () => getBackendConfig_(),
   setBackendConfig: (parameters) => setBackendConfig_(parameters),
+  startAssessmentRun: (parameters) => startAssessmentRun_(parameters),
   getCohorts: () => new ReferenceDataController().listCohorts(),
   createCohort: (parameters) => new ReferenceDataController().createCohort(parameters.record),
   updateCohort: (parameters) => new ReferenceDataController().updateCohort(parameters),
@@ -66,6 +67,7 @@ if (typeof module !== 'undefined' && module.exports) {
   apiValidationErrorName = require('../Utils/ErrorTypes/ApiValidationError.js').name;
   apiDisabledErrorName = require('../Utils/ErrorTypes/ApiDisabledError.js').name;
   apiDefinitionStaleErrorName = require('../Utils/ErrorTypes/DefinitionStaleError.js').name;
+  globalThis.startAssessmentRun_ = require('./assignmentAssessment.js').startAssessmentRun_;
 } else {
   // In GAS, these are loaded as global constants and functions from the bundle.
   lockTimeoutMs = LOCK_TIMEOUT_MS;
