@@ -2,11 +2,10 @@
  * @class ConfigurationManager
  * @description A singleton class that manages configuration properties for the Google Slides Assessor application.
  * It provides methods to get and set various configuration properties that control the behavior of the application.
- * The class handles property validation, storage (using both script and document properties), and provides convenient
+ * The class handles property validation, storage (using script properties), and provides convenient
  * accessor methods for all configuration values.
  *
  * @property {Object} scriptProperties - Reference to PropertiesService.getScriptProperties()
- * @property {Object} documentProperties - Reference to PropertiesService.getDocumentProperties()
  * @property {Object|null} configCache - Cache of configuration properties
  *
  * @example
@@ -77,7 +76,6 @@ class ConfigurationManager extends BaseSingleton {
      */
     // Defer PropertiesService access & deserialisation
     this.scriptProperties = null;
-    this.documentProperties = null;
     this.configCache = null;
     this._initialized = false;
     if (!ConfigurationManager._instance) {
@@ -141,7 +139,6 @@ class ConfigurationManager extends BaseSingleton {
     if (this._initialized) return;
     // Acquire handles lazily
     this.scriptProperties = this.scriptProperties || PropertiesService.getScriptProperties();
-    this.documentProperties = this.documentProperties || PropertiesService.getDocumentProperties();
     // Perform potential deserialisation only once
     if (globalThis.__TRACE_SINGLETON__)
       ABLogger.getInstance().debug('[TRACE][HeavyInit] ConfigurationManager.ensureInitialized');
@@ -177,8 +174,8 @@ class ConfigurationManager extends BaseSingleton {
   }
 
   /**
-   * Attempts to deserialize properties from a propertiesStore sheet if no script or document properties are found.
-   * This method checks if there are existing script or document properties. If neither is found, it attempts to
+   * Attempts to deserialize properties from a propertiesStore sheet if no script properties are found.
+   * This method checks if there are existing script properties. If none are found, it attempts to
    * initialize properties from a 'propertiesStore' sheet using the PropertiesCloner. If the sheet exists and the
    * deserialization is successful, it logs a success message. If the 'propertiesStore' sheet is not found, it
    * logs an appropriate message. Any errors during the process are caught and logged.
@@ -186,8 +183,7 @@ class ConfigurationManager extends BaseSingleton {
   maybeDeserializeProperties() {
     try {
       const hasScript = safeGetPropertyKeys(this.scriptProperties).length > 0;
-      const hasDocument = safeGetPropertyKeys(this.documentProperties).length > 0;
-      if (hasScript || hasDocument) return; // early return – nothing to do
+      if (hasScript) return; // early return – nothing to do
 
       const propertiesCloner = new PropertiesCloner();
       if (propertiesCloner.sheet) {

@@ -238,7 +238,9 @@ ConfigurationManager tests:
 
 ### Implementation notes / deviations / follow-up
 
-- _To be filled during implementation._
+- `this.documentProperties = null;` was fully removed from the constructor (not just left as null) — the property is now absent on instances, matching the acceptance criteria.
+- `GASPropertiesUtils.applyProperties()` uses `Object.entries()` with destructuring to avoid `security/detect-object-injection` lint violations.
+- One existing test in `configurationManager.test.js` was updated: `getDocumentProperties` assertion changed from `toHaveBeenCalledTimes(1)` to `not.toHaveBeenCalled()` since `ensureInitialized()` no longer calls it.
 
 ---
 
