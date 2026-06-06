@@ -604,7 +604,7 @@ describe('ConfigurationManager internal helper branches', () => {
 
     expect(() => configManager.ensureInitialized()).not.toThrow();
     expect(mocks.PropertiesService.getScriptProperties).toHaveBeenCalledTimes(1);
-    expect(mocks.PropertiesService.getDocumentProperties).toHaveBeenCalledTimes(1);
+    expect(mocks.PropertiesService.getDocumentProperties).not.toHaveBeenCalled();
     expect(configManager._initialized).toBe(true);
   });
 

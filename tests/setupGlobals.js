@@ -122,7 +122,11 @@ g.ScriptAppManager = class ScriptAppManager {
 
 g.Validate = require('../src/backend/Utils/Validate.js').Validate;
 g.ArrayUtils = require('../src/backend/Utils/00_ArrayUtils.js');
+
+g.GASPropertiesUtils = require('../src/backend/Utils/00_GASPropertiesUtils.js');
+
 g.ApiValidationError = require('../src/backend/Utils/ErrorTypes/ApiValidationError.js');
+g.DefinitionStaleError = require('../src/backend/Utils/ErrorTypes/DefinitionStaleError.js');
 
 // Expose ArtifactFactory globally before TaskDefinition usage (TaskDefinition references global ArtifactFactory)
 const { ArtifactFactory } = require('../src/backend/Models/Artifacts/index.js');

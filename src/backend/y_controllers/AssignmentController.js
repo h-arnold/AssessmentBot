@@ -26,55 +26,19 @@ class AssignmentController {
   }
 
   /**
-   * Initialises the assessment process by saving document IDs and starting progress tracking.
-   * Also attempts to warm up the LLM backend asynchronously.
-   *
-   * @param {string} assignmentTitle - The title of the assignment
-   * @param {Object} documentIds - Object containing Google document IDs to be processed (referenceDocumentId, templateDocumentId)
-   * @param {string} assignmentId - Unique identifier for the assignment
-   * @param {string} courseId - Classroom course ID for the selected assignment
-   * @throws {Error} If saving or initialisation process fails
-   */
-  saveStartAndShowProgress(assignmentTitle, documentIds, assignmentId, courseId) {
-    try {
-      const { definition } = this.ensureDefinitionFromInputs({
-        assignmentTitle,
-        assignmentId,
-        courseId,
-        documentIds,
-      });
-
-      this.startProcessing(assignmentId, definition.definitionKey, courseId);
-      this.progressTracker.startTracking();
-
-      // As the rest of the workflow is run from a time-based trigger, waiting for a response from this method shouldn't affect the startup time for the rest of the assessment.
-    } catch (error) {
-      this.utils.toastMessage(
-        'Failed to start processing: ' + error.message,
-        'Error',
-        TOAST_DURATION_SECONDS
-      );
-      this.progressTracker.logAndThrowError(
-        'Error in saveStartAndShowProgress: ' + error.message,
-        error
-      );
-    }
-  }
-
-  /**
    * Initiates the Assignment Assessment Workflow by creating a time-based trigger and storing necessary properties.
    * This method sets up `triggerProcessSelectedAssignment` by creating the trigger and storing assignment details
-   * in document properties for access when the trigger executes.
+   * in UserProperties for access when the trigger executes.
    *
    * @param {string} assignmentId - The ID of the assignment to be processed
    * @param {string} definitionKey - The key of the assignment definition to use
    * @param {string} courseId - Classroom course ID used for downstream processing.
-   * @throws {Error} If trigger creation fails or if setting document properties fails
+   * @throws {Error} If trigger creation fails or if setting user properties fails
    */
   startProcessing(assignmentId, definitionKey, courseId = '') {
     // Lazily instantiate TriggerController
     const triggerController = new TriggerController();
-    const properties = PropertiesService.getDocumentProperties();
+    const properties = GASPropertiesUtils.getUserProperties();
     let triggerId;
 
     try {
@@ -98,7 +62,7 @@ class AssignmentController {
         triggerId,
         courseId,
       };
-      this.applyDocumentProperties(properties, propertyMap);
+      GASPropertiesUtils.applyProperties(properties, propertyMap);
       ABLogger.getInstance().info('Properties set for processing.');
     } catch (error) {
       this.progressTracker.logAndThrowError(`Error setting properties: ${error.message}`, error);
@@ -128,7 +92,7 @@ class AssignmentController {
    * @returns {void}
    *
    * Dependencies:
-   * - Requires document properties: assignmentId, definitionKey, triggerId
+   * - Requires UserProperties: assignmentId, definitionKey, triggerId
    * - Uses services: LockService, PropertiesService
    * - Relies on controllers: triggerController, progressTracker, classroomManager
    * - Integrates with: Assignment, Student, AnalysisSheetManager, OverviewSheetManager
@@ -147,7 +111,7 @@ class AssignmentController {
     }
 
     try {
-      const properties = PropertiesService.getDocumentProperties();
+      const properties = GASPropertiesUtils.getUserProperties();
       const assignmentId = properties.getProperty('assignmentId');
       const definitionKey = properties.getProperty('definitionKey');
       const triggerId = properties.getProperty('triggerId');
@@ -197,7 +161,7 @@ class AssignmentController {
 
       const students = abClass.students;
       const includeImages = definition.documentType === 'SLIDES';
-      this.runAssignmentPipeline(assignment, students, { includeImages, definitionController });
+      this.runAssignmentPipeline(assignment, students, { includeImages });
 
       // Update lastUpdated value and persist assignment data
 
@@ -220,20 +184,60 @@ class AssignmentController {
       try {
         // Use the hydrated roster from the class record for processing. This data is transient
         // and must not be persisted with the Assignment to prevent data duplication.
-        const properties = PropertiesService.getDocumentProperties();
-        this.clearDocumentProperties(properties, [
+        const properties = GASPropertiesUtils.getUserProperties();
+        GASPropertiesUtils.clearProperties(properties, [
           'assignmentId',
           'definitionKey',
           'triggerId',
           'courseId',
         ]);
-        ABLogger.getInstance().info('Document properties cleaned up.');
+        ABLogger.getInstance().info('User properties cleaned up.');
       } catch (cleanupError) {
         this.progressTracker.logError(`Failed to clean up properties: ${cleanupError.message}`, {
           err: cleanupError,
         });
       }
     }
+  }
+
+  /**
+   * Starts an assessment run for the given definition, assignment, and course.
+   *
+   * Validates parameters, resolves the full definition, checks per-document freshness
+   * against current Drive timestamps, resolves the ABClass, and delegates to
+   * startProcessing for trigger creation.
+   *
+   * @param {Object} params - Parameters object.
+   * @param {string} params.definitionKey - The key of the existing AssignmentDefinition.
+   * @param {string} params.assignmentId - The Google Classroom coursework ID.
+   * @param {string} params.courseId - The Google Classroom course ID.
+   * @returns {null} Null on success (no payload).
+   * @throws {Error} If the definition is not found in the registry.
+   * @throws {DefinitionStaleError} If reference or template documents have changed.
+   */
+  startAssessmentRun({ definitionKey, assignmentId, courseId }) {
+    // Defence-in-depth: domain invariant validation (transport layer validates shape)
+    Validate.requireParams({ definitionKey, assignmentId, courseId }, 'startAssessmentRun');
+
+    // Fetch full definition via definitionController
+    const definitionController = new AssignmentDefinitionController();
+    const definition = definitionController.getDefinitionByKey(definitionKey, { form: 'full' });
+    if (!definition) {
+      throw new Error(`Definition not found for key: ${definitionKey}`);
+    }
+
+    // Check per-document freshness
+    this._validateDefinitionFreshness(definition);
+
+    // Resolve ABClass via loadClass
+    const abClassController = new ABClassController();
+    abClassController.loadClass(courseId);
+
+    // Delegate to startProcessing for trigger creation
+    this.startProcessing(assignmentId, definitionKey, courseId);
+
+    // Return null (no payload)
+    return null;
   }
 
   /**
@@ -259,12 +263,10 @@ class AssignmentController {
    * @param {Array<Object>} students - Students sourced from the class record.
    * @param {Object} [options] - Additional pipeline configuration.
    * @param {boolean} [options.includeImages=false] - Whether to process images.
-   * @param {AssignmentDefinitionController} [options.definitionController] - Controller to persist refreshed definitions.
    * @returns {void}
    */
   runAssignmentPipeline(assignment, students, options = {}) {
-    const { includeImages = false, definitionController } = options;
-    const controller = definitionController || new AssignmentDefinitionController();
+    const { includeImages = false } = options;
 
     this.runStage(
       'Adding students from class record.',
@@ -274,32 +276,9 @@ class AssignmentController {
       `${students.length} students added to the assignment from class record.`
     );
 
-    const definition = assignment.assignmentDefinition;
-    const referenceModified = DriveManager.getFileModifiedTime(definition.referenceDocumentId);
-    const templateModified = DriveManager.getFileModifiedTime(definition.templateDocumentId);
+    this._validateDefinitionFreshness(assignment.assignmentDefinition);
 
-    const needsRefresh = Utils.definitionNeedsRefresh(
-      definition,
-      referenceModified,
-      templateModified
-    );
-
-    if (needsRefresh) {
-      this.runStage(
-        'Getting the tasks from the reference document.',
-        () => {
-          assignment.populateTasks();
-          definition.updateModifiedTimestamps({
-            referenceLastModified: referenceModified,
-            templateLastModified: templateModified,
-          });
-          controller.saveDefinition(definition);
-        },
-        'Tasks populated from reference document.'
-      );
-    } else {
-      this.progressTracker.updateProgress('Tasks are up to date; skipping parse.', false);
-    }
+    this.progressTracker.updateProgress('Tasks are up to date; skipping parse.', false);
 
     this.runStage(
       'Fetching submitted documents from students.',
@@ -337,6 +316,40 @@ class AssignmentController {
   }
 
   /**
+   * Validates that the given definition's reference and template documents
+   * have not been modified since the definition was created.
+   *
+   * @param {Object} definition — Must have referenceDocumentId, templateDocumentId,
+   *   referenceLastModified, templateLastModified, and definitionKey.
+   * @throws {DefinitionStaleError} If any document is stale.
+   * @private
+   */
+  _validateDefinitionFreshness(definition) {
+    const referenceModified = DriveManager.getFileModifiedTime(definition.referenceDocumentId);
+    const referenceStale = Utils.isNewer(referenceModified, definition.referenceLastModified);
+
+    let templateModified = null;
+    let templateStale = false;
+    if (!referenceStale) {
+      templateModified = DriveManager.getFileModifiedTime(definition.templateDocumentId);
+      templateStale = Utils.isNewer(templateModified, definition.templateLastModified);
+    }
+
+    if (referenceStale || templateStale) {
+      throw new DefinitionStaleError(
+        'Assignment definition is stale: reference or template document has changed.',
+        {
+          definitionKey: definition.definitionKey,
+          referenceStale,
+          templateStale,
+          referenceLastModified: referenceModified,
+          templateLastModified: templateModified,
+        }
+      );
+    }
+  }
+
+  /**
    * Executes a pipeline stage with consistent progress updates.
    * Handles progress reporting, action execution, and completion messaging for a single pipeline step.
    * @param {string} startMessage - Message reported before execution.
@@ -351,28 +364,6 @@ class AssignmentController {
       this.progressTracker.updateProgress(completionMessage, false);
     }
     return result;
-  }
-
-  /**
-   * Sets document properties using the provided key/value map.
-   * @param {GoogleAppsScript.Properties.Properties} properties - Document properties service instance.
-   * @param {Object} propertyMap - Map of document property names to values.
-   * @returns {void}
-   */
-  applyDocumentProperties(properties, propertyMap) {
-    Object.keys(propertyMap).forEach((key) => {
-      properties.setProperty(key, propertyMap[key]);
-    });
-  }
-
-  /**
-   * Removes multiple document properties by key.
-   * @param {GoogleAppsScript.Properties.Properties} properties - Document properties service instance.
-   * @param {Array<string>} keys - Property keys to delete.
-   * @returns {void}
-   */
-  clearDocumentProperties(properties, keys) {
-    keys.forEach((key) => properties.deleteProperty(key));
   }
 
   /**
@@ -484,86 +475,6 @@ class AssignmentController {
     });
 
     return { definition, courseId, abClass };
-  }
-
-  /**
-   * Creates a full AssignmentDefinition from wizard Step 3 inputs without starting the assessment.
-   * Normalises reference and template document URLs/IDs, validates them, and returns a complete
-   * definition payload with tasks for Step 4 (weightings).
-   * @param {Object} params - Wizard input parameters.
-   * @param {string} params.assignmentId - Google Classroom assignment ID (required).
-   * @param {string} params.courseId - Classroom course ID (required).
-   * @param {string} [params.assignmentTitle] - Assignment title (fallback if not fetched from Classroom).
-   * @param {string} params.referenceDocumentId - Reference document URL or file ID (required).
-   * @param {string} params.templateDocumentId - Template document URL or file ID (required).
-   * @param {string|null} [params.yearGroupKey] - Year group key (optional).
-   * @returns {Object} Full AssignmentDefinition JSON payload including tasks and metadata.
-   * @throws {Error} If validation fails, documents are identical, types mismatch, or assignment lacks topic.
-   * @remarks Parameter renamed from `yearGroup` to `yearGroupKey` per SPEC.md v1.9.0 Option B.
-   * Passes `yearGroupKey` (not `yearGroup`) to `ensureDefinitionFromInputs`. No longer sets `abClass.yearGroup`.
-   */
-  createDefinitionFromWizardInputs({
-    assignmentId,
-    assignmentTitle,
-    courseId,
-    referenceDocumentId,
-    templateDocumentId,
-    yearGroupKey = null,
-  }) {
-    ABLogger.getInstance().info('AssignmentController.createDefinitionFromWizardInputs invoked:', {
-      assignmentId,
-      assignmentTitle,
-      courseId,
-      referenceDocumentId,
-      templateDocumentId,
-      yearGroupKey,
-    });
-
-    // Validate required parameters
-    Validate.requireParams(
-      { assignmentId, courseId, referenceDocumentId, templateDocumentId },
-      'createDefinitionFromWizardInputs'
-    );
-
-    // Normalise URLs/IDs to Drive file IDs
-    const normalisedReferenceId = DriveManager.normaliseToFileId(referenceDocumentId);
-    const normalisedTemplateId = DriveManager.normaliseToFileId(templateDocumentId);
-
-    // Enforce that reference and template IDs are different
-    if (normalisedReferenceId === normalisedTemplateId) {
-      const errorMessage = 'Reference and template documents must be different.';
-      this.progressTracker.logError(errorMessage, {
-        referenceDocumentId: normalisedReferenceId,
-        templateDocumentId: normalisedTemplateId,
-      });
-      throw new Error(errorMessage);
-    }
-
-    // Build documentIds object for ensureDefinitionFromInputs
-    const documentIds = {
-      referenceDocumentId: normalisedReferenceId,
-      templateDocumentId: normalisedTemplateId,
-    };
-
-    try {
-      // Call existing pipeline to get/create definition with full tasks
-      const { definition } = this.ensureDefinitionFromInputs({
-        assignmentTitle,
-        assignmentId,
-        courseId,
-        documentIds,
-        yearGroupKey,
-      });
-
-      // Return full definition payload including tasks
-      return definition.toJSON();
-    } catch (error) {
-      ABLogger.getInstance().error(
-        'Error in AssignmentController.createDefinitionFromWizardInputs:',
-        error?.message ?? error
-      );
-      throw error;
-    }
   }
 
   /**

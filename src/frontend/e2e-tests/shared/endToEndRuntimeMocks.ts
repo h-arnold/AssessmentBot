@@ -268,7 +268,8 @@ export function createAssignmentsScenario(
   const {
     initialPartials = [mockPartialRows[0]],
     postMutationPartials,
-    deleteResponses = [{ kind: 'success', data: undefined }],
+    // Backend _success() converts undefined → null; must match here to survive JSON.stringify
+    deleteResponses = [{ kind: 'success', data: null }],
     includeAuth,
     includeClassPartials,
     includeCohorts,
@@ -288,7 +289,7 @@ export function createAssignmentsScenario(
 
   scenario.getAssignmentDefinitionPartials = [
     { kind: 'success', data: initialPartials },
-    ...(postMutationPartials ? [{ kind: 'success', data: postMutationPartials }] : []),
+    ...(postMutationPartials?.map((data) => ({ kind: 'success', data })) || []),
   ];
 
   scenario.deleteAssignmentDefinition = deleteResponses;

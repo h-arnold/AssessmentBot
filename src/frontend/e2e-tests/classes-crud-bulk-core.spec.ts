@@ -126,7 +126,10 @@ type BulkCoreScenario = Readonly<{
  * @returns {ReadonlyArray<BulkCoreMutationScenario>} Default success queue.
  */
 function buildDefaultMutationQueue(): ReadonlyArray<BulkCoreMutationScenario> {
-  return Array.from({ length: DEFAULT_MUTATION_QUEUE_LENGTH }, () => ({ kind: 'success', data: { ok: true } }));
+  return Array.from({ length: DEFAULT_MUTATION_QUEUE_LENGTH }, () => ({
+    kind: 'success',
+    data: { ok: true },
+  }));
 }
 
 /**
@@ -225,7 +228,9 @@ test.describe('bulk create flow', () => {
     await expect(page.getByRole('button', { name: bulkCreateButtonLabel })).toBeEnabled();
   });
 
-  test('seeds the bulk create course-length input with the default value of 1', async ({ page }) => {
+  test('seeds the bulk create course-length input with the default value of 1', async ({
+    page,
+  }) => {
     await mockBulkCoreRuntime(page, {
       googleClassrooms: [notCreatedGCR],
       classPartials: [],
@@ -308,7 +313,9 @@ test.describe('bulk create flow', () => {
     await dialog.getByRole('button', { name: 'OK' }).click();
 
     await expect(dialog).toHaveCount(0);
-    await expect(page.getByRole('table', { name: classesTableAriaLabel })).toContainText('Cohort 2025');
+    await expect(page.getByRole('table', { name: classesTableAriaLabel })).toContainText(
+      'Cohort 2025'
+    );
     await expect(page.getByRole('table', { name: classesTableAriaLabel })).toContainText('Year 11');
     await expect(page.getByRole('button', { name: bulkCreateButtonLabel })).toBeDisabled();
   });
@@ -401,7 +408,9 @@ test.describe('bulk delete flow', () => {
 });
 
 test.describe('bulk delete failure feedback', () => {
-  test('partial bulk delete failure closes the dialog, keeps failed rows selected, and shows a warning', async ({ page }) => {
+  test('partial bulk delete failure closes the dialog, keeps failed rows selected, and shows a warning', async ({
+    page,
+  }) => {
     const orphanedPartial = {
       ...linkedClassPartial,
       classId: 'orphaned-class-001',
@@ -412,7 +421,7 @@ test.describe('bulk delete failure feedback', () => {
       classPartials: [activeClassPartial, orphanedPartial],
       classPartialsAfterMutation: [orphanedPartial],
       deleteABClass: [
-        { kind: 'success' },
+        { kind: 'success', data: null },
         { kind: 'failureEnvelope', message: 'Delete failed.' },
       ],
     });
@@ -428,7 +437,11 @@ test.describe('bulk delete failure feedback', () => {
 
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page.getByText('Some selected classes were not deleted.')).toBeVisible();
-    await expect(page.getByText('1 of 2 selected classes could not be deleted. Successful rows were refreshed. Please review the remaining selection and try again.')).toBeVisible();
+    await expect(
+      page.getByText(
+        '1 of 2 selected classes could not be deleted. Successful rows were refreshed. Please review the remaining selection and try again.'
+      )
+    ).toBeVisible();
     await expect(page.getByText('Selected rows: 1')).toBeVisible();
   });
 });
@@ -468,9 +481,7 @@ test.describe('bulk active-state flow', () => {
     await expect(page.getByRole('button', { name: bulkDeactivateButtonLabel })).toBeDisabled();
   });
 
-  test('Set active button is disabled when only notCreated rows are selected', async ({
-    page,
-  }) => {
+  test('Set active button is disabled when only notCreated rows are selected', async ({ page }) => {
     await mockBulkCoreRuntime(page, {
       googleClassrooms: [notCreatedGCR],
       classPartials: [],
@@ -508,14 +519,16 @@ test.describe('bulk active-state flow', () => {
     await expect(table).toContainText(/active/i);
   });
 
-  test('partial Set active failure keeps failed rows selected and shows a warning', async ({ page }) => {
+  test('partial Set active failure keeps failed rows selected and shows a warning', async ({
+    page,
+  }) => {
     const activatedPartial = { ...linkedClassPartial, active: true };
     await mockBulkCoreRuntime(page, {
       googleClassrooms: [linkedGCR, secondInactiveGCR],
       classPartials: [linkedClassPartial, secondInactiveClassPartial],
       classPartialsAfterMutation: [activatedPartial, secondInactiveClassPartial],
       updateABClass: [
-        { kind: 'success' },
+        { kind: 'success', data: null },
         { kind: 'failureEnvelope', message: 'Activation failed.' },
       ],
     });
@@ -529,11 +542,17 @@ test.describe('bulk active-state flow', () => {
     await page.getByRole('button', { name: bulkActivateButtonLabel }).click();
 
     await expect(page.getByText('Some selected classes were not set to active.')).toBeVisible();
-    await expect(page.getByText('1 of 2 selected classes could not be set to active. Successful rows were refreshed. Please review the remaining selection and try again.')).toBeVisible();
+    await expect(
+      page.getByText(
+        '1 of 2 selected classes could not be set to active. Successful rows were refreshed. Please review the remaining selection and try again.'
+      )
+    ).toBeVisible();
     await expect(page.getByText('Selected rows: 1')).toBeVisible();
   });
 
-  test('full Set inactive failure keeps failed rows selected and shows an error', async ({ page }) => {
+  test('full Set inactive failure keeps failed rows selected and shows an error', async ({
+    page,
+  }) => {
     await mockBulkCoreRuntime(page, {
       googleClassrooms: [activeGCR, secondActiveGCR],
       classPartials: [activeClassPartial, secondActiveClassPartial],
@@ -552,7 +571,11 @@ test.describe('bulk active-state flow', () => {
     await page.getByRole('button', { name: bulkDeactivateButtonLabel }).click();
 
     await expect(page.getByText('Could not set selected classes to inactive.')).toBeVisible();
-    await expect(page.getByText('Unable to set any of the 2 selected classes to inactive. Please review the remaining selection and try again.')).toBeVisible();
+    await expect(
+      page.getByText(
+        'Unable to set any of the 2 selected classes to inactive. Please review the remaining selection and try again.'
+      )
+    ).toBeVisible();
     await expect(page.getByText('Selected rows: 2')).toBeVisible();
   });
 });

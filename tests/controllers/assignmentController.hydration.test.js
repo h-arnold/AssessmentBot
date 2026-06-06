@@ -3,10 +3,20 @@ import { createMockABLogger, createMockPropertiesService } from '../helpers/mock
 
 // Setup global mocks
 globalThis.ABLogger = require('../../src/backend/Utils/ABLogger.js');
+const DefinitionStaleError = require('../../src/backend/Utils/ErrorTypes/DefinitionStaleError.js');
 
 // Mock PropertiesService
 const mockPropertiesService = createMockPropertiesService(vi);
 globalThis.PropertiesService = mockPropertiesService;
+
+// Mock GASPropertiesUtils to route to mockProperties so the controller
+// can use getUserProperties() and the tests can still assert on setProperty etc.
+const mockGASPropertiesUtils = {
+  getUserProperties: vi.fn(),
+  applyProperties: vi.fn(),
+  clearProperties: vi.fn(),
+};
+globalThis.GASPropertiesUtils = mockGASPropertiesUtils;
 
 // Mock LockService
 globalThis.LockService = {
@@ -120,6 +130,16 @@ describe('AssignmentController - Definition Hydration', () => {
     };
     globalThis.PropertiesService.getDocumentProperties.mockReturnValue(mockProperties);
 
+    // Wire GASPropertiesUtils to use the same mockProperties so the controller
+    // (which now calls GASPropertiesUtils.getUserProperties()) can work correctly
+    globalThis.GASPropertiesUtils.getUserProperties.mockReturnValue(mockProperties);
+    globalThis.GASPropertiesUtils.applyProperties.mockImplementation((properties, propertyMap) => {
+      Object.keys(propertyMap).forEach((key) => properties.setProperty(key, propertyMap[key]));
+    });
+    globalThis.GASPropertiesUtils.clearProperties.mockImplementation((properties, keys) => {
+      keys.forEach((key) => properties.deleteProperty(key));
+    });
+
     // Mock LockService
     mockLock = {
       tryLock: vi.fn(() => true),
@@ -225,6 +245,7 @@ describe('AssignmentController - Definition Hydration', () => {
       toastMessage: vi.fn(),
       definitionNeedsRefresh: vi.fn().mockReturnValue(false),
       generateHash: (str) => `hash_${(str || '').length}`,
+      isNewer: vi.fn().mockReturnValue(false),
     };
 
     // Mock DriveManager
@@ -332,7 +353,7 @@ describe('AssignmentController - Definition Hydration', () => {
   });
 
   describe('runAssignmentPipeline', () => {
-    it('should check staleness and re-parse if needed', () => {
+    it('should throw DefinitionStaleError when definition is stale', () => {
       const definition = new AssignmentDefinition({
         primaryTitle: 'Test',
         primaryTopic: 'Topic',
@@ -349,19 +370,17 @@ describe('AssignmentController - Definition Hydration', () => {
       const mockAssignment = new globalThis.SlidesAssignment();
       mockAssignment.assignmentDefinition = definition;
 
-      globalThis.Utils.definitionNeedsRefresh.mockReturnValue(true);
+      globalThis.Utils.isNewer.mockReturnValue(true);
 
       const controller = new AssignmentController();
-      controller.runAssignmentPipeline(mockAssignment, [{ id: 's1', name: 'Student 1' }], {
-        includeImages: true,
-        definitionController: mockDefinitionController,
-      });
 
-      // Should call populateTasks when stale
-      expect(mockAssignment.populateTasks).toHaveBeenCalled();
-
-      // Should save refreshed definition
-      expect(mockDefinitionController.upsertDefinition).not.toHaveBeenCalled(); // Already handled in populateTasks path
+      // Should throw DefinitionStaleError when stale
+      expect(() => {
+        controller.runAssignmentPipeline(mockAssignment, [{ id: 's1', name: 'Student 1' }], {
+          includeImages: true,
+          definitionController: mockDefinitionController,
+        });
+      }).toThrow(DefinitionStaleError);
     });
 
     it('should skip parsing if definition is fresh', () => {

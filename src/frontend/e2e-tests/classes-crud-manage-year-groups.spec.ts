@@ -257,7 +257,7 @@ test.describe('Classes CRUD — Manage Year Groups', () => {
 
   test('deletes a year group and removes it from the list', async ({ page }) => {
     await openClassesTabWithYearGroupManagementScenario(page, {
-      deleteYearGroup: [{ kind: 'success', data: undefined }],
+      deleteYearGroup: [{ kind: 'success', data: null }],
       getYearGroups: [
         { kind: 'success', data: manageYearGroupsYearGroups },
         { kind: 'success', data: [manageYearGroupsYearGroups[1]] },

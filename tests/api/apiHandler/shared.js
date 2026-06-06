@@ -46,6 +46,7 @@ const EXPECTED_ALLOWLISTED_METHOD_HANDLER_KEYS = Object.freeze([
   'getABClassPartials',
   ...ASSIGNMENT_DEFINITION_API_METHOD_NAMES,
   'upsertAssignmentDefinition',
+  'startAssessmentRun',
   ...ABCLASS_TRANSPORT_API_METHOD_NAMES,
   ...BACKEND_CONFIG_API_METHOD_NAMES,
   ...REFERENCE_DATA_API_METHOD_NAMES,
@@ -421,6 +422,7 @@ function makeVmGlobals(overrides = {}) {
     ApiRateLimitError: function ApiRateLimitError() {},
     ApiValidationError: function ApiValidationError() {},
     ApiDisabledError: function ApiDisabledError() {},
+    DefinitionStaleError: function DefinitionStaleError() {},
     ScriptAppManager: function ScriptAppManager() {
       this.isAuthorised = () => true;
     },

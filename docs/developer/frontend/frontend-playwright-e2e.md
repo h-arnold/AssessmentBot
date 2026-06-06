@@ -106,6 +106,8 @@ Each `ResponseItem` has a `kind` field that controls how the mock behaves:
 | `transportFailure` | Calls the failure handler with an `Error`                       |
 | `deferredSuccess`  | Holds the promise open until `releaseNextDeferredSuccess(page)` |
 
+**Void/delete response rule:** For backend methods that return no data (for example deletes, start-assessment-run), all response entry kinds (`success`, `deferredSuccess`) must include `data: null`. This matches the backend `_success()` contract (`data: data ?? null`) and survives `JSON.stringify` serialisation in the mock factory. Omitting `data` or using `data: undefined` causes the frontend `ApiSuccessResponseSchema.superRefine` to reject the envelope with `"Success response envelope must include a data field."`.
+
 ### Installing Mock Scenarios
 
 Use `installRuntimeMock(page, scenario)` **before** navigating. This patches
@@ -376,16 +378,17 @@ deterministic responses. This keeps tests fast and eliminates flakiness from ext
 
 ### Summary of Anti-Patterns
 
-| Anti-Pattern                      | Why It's Bad                                 | Correct Approach                     |
-| --------------------------------- | -------------------------------------------- | ------------------------------------ |
-| `page.waitForTimeout(N)`          | Always waits full duration, causes flakiness | Use web-first assertions             |
-| CSS/XPath selectors               | Break on DOM/class changes                   | Use `getByRole`, `getByLabel`        |
-| Manual `isVisible()` assertions   | No auto-wait, fails immediately              | Use `expect(...).toBeVisible()`      |
-| Single-entry StrictMode queues    | Second effect call gets "Unexpected index"   | Double every queue entry             |
-| `selectOption` on antd Select     | antd uses custom dropdown, not `<select>`    | Use `selectVisibleOption(page, ...)` |
-| `.ant-modal-mask` click           | antd v6 uses `.ant-modal-wrap` for mask      | Click `.ant-modal-wrap` edge         |
-| `toBeVisible` on Typography.Text  | Playwright may resolve as hidden             | Use `toHaveCount(1)` or structural   |
-| Mocks installed AFTER `page.goto` | Component renders with stale defaults        | Install mocks before `page.goto`     |
+| Anti-Pattern                                                | Why It's Bad                                                                                                                             | Correct Approach                                                       |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `page.waitForTimeout(N)`                                    | Always waits full duration, causes flakiness                                                                                             | Use web-first assertions                                               |
+| CSS/XPath selectors                                         | Break on DOM/class changes                                                                                                               | Use `getByRole`, `getByLabel`                                          |
+| Manual `isVisible()` assertions                             | No auto-wait, fails immediately                                                                                                          | Use `expect(...).toBeVisible()`                                        |
+| Single-entry StrictMode queues                              | Second effect call gets "Unexpected index"                                                                                               | Double every queue entry                                               |
+| `selectOption` on antd Select                               | antd uses custom dropdown, not `<select>`                                                                                                | Use `selectVisibleOption(page, ...)`                                   |
+| `.ant-modal-mask` click                                     | antd v6 uses `.ant-modal-wrap` for mask                                                                                                  | Click `.ant-modal-wrap` edge                                           |
+| `toBeVisible` on Typography.Text                            | Playwright may resolve as hidden                                                                                                         | Use `toHaveCount(1)` or structural                                     |
+| Mocks installed AFTER `page.goto`                           | Component renders with stale defaults                                                                                                    | Install mocks before `page.goto`                                       |
+| `{ kind: 'success' }` without `data: null` for void methods | Backend `_success` sends `data: null`; `JSON.stringify` strips `undefined`, and `ApiSuccessResponseSchema` requires `data` to be present | Always use `{ kind: 'success', data: null }` for void/delete responses |
 
 ---
 

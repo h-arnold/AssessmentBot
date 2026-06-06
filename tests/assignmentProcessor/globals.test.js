@@ -7,9 +7,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Mock AssignmentController
 const mockAssignmentController = {
-  saveStartAndShowProgress: vi.fn(),
   startProcessing: vi.fn(),
-  createDefinitionFromWizardInputs: vi.fn(),
   processSelectedAssignment: vi.fn(),
   triggerController: {
     removeTriggers: vi.fn(),
@@ -66,107 +64,19 @@ describe('AssignmentProcessor globals', () => {
     cleanupAssignmentProcessorGlobalsTestContext();
   });
 
-  describe('saveStartAndShowProgress', () => {
-    it('creates new AssignmentController and delegates to saveStartAndShowProgress', () => {
-      const result = { success: true };
-      mockAssignmentController.saveStartAndShowProgress.mockReturnValue(result);
-
-      const output = globals.saveStartAndShowProgress(
-        'Test Assignment',
-        { referenceDocumentId: 'ref-id', templateDocumentId: 'tpl-id' },
-        'assignment-123',
-        'course-456'
-      );
-
-      expect(mockAssignmentController.saveStartAndShowProgress).toHaveBeenCalledWith(
-        'Test Assignment',
-        { referenceDocumentId: 'ref-id', templateDocumentId: 'tpl-id' },
-        'assignment-123',
-        'course-456'
-      );
-      expect(output).toBe(result);
+  describe('saveStartAndShowProgress removal', () => {
+    it('globals.saveStartAndShowProgress is undefined after removal', () => {
+      // ASSERTION: This will FAIL (RED) because globals.js still exports
+      // saveStartAndShowProgress. Once removed (GREEN phase), this will pass.
+      expect(globals.saveStartAndShowProgress).toBeUndefined();
     });
 
-    it('logs info message when invoked', () => {
-      globals.saveStartAndShowProgress(
-        'Test Assignment',
-        { referenceDocumentId: 'ref-id', templateDocumentId: 'tpl-id' },
-        'assignment-123',
-        'course-456'
-      );
-
-      expect(mockLoggerInstance.info).toHaveBeenCalledWith(
-        'saveStartAndShowProgress invoked (globals):',
-        expect.objectContaining({
-          assignmentTitle: 'Test Assignment',
-          documentIds: { referenceDocumentId: 'ref-id', templateDocumentId: 'tpl-id' },
-          assignmentId: 'assignment-123',
-          courseId: 'course-456',
-        })
-      );
-    });
-
-    it('logs and rethrows errors', () => {
-      const error = new Error('Test error');
-      mockAssignmentController.saveStartAndShowProgress.mockImplementation(() => {
-        throw error;
-      });
-
-      expect(() => {
-        globals.saveStartAndShowProgress(
-          'Test Assignment',
-          { referenceDocumentId: 'ref-id', templateDocumentId: 'tpl-id' },
-          'assignment-123',
-          'course-456'
-        );
-      }).toThrow(error);
-
-      expect(mockLoggerInstance.error).toHaveBeenCalledWith(
-        'Error in globals.saveStartAndShowProgress:',
-        'Test error'
-      );
-    });
-
-    it('handles error with no message property', () => {
-      const error = new Error('No message');
-      error.message = undefined;
-      mockAssignmentController.saveStartAndShowProgress.mockImplementation(() => {
-        throw error;
-      });
-
-      expect(() => {
-        globals.saveStartAndShowProgress(
-          'Test Assignment',
-          { referenceDocumentId: 'ref-id', templateDocumentId: 'tpl-id' },
-          'assignment-123',
-          'course-456'
-        );
-      }).toThrow(error);
-
-      expect(mockLoggerInstance.error).toHaveBeenCalledWith(
-        'Error in globals.saveStartAndShowProgress:',
-        error
-      );
-    });
-
-    it('handles non-Error object being thrown', () => {
-      mockAssignmentController.saveStartAndShowProgress.mockImplementation(() => {
-        throw new Error('String error');
-      });
-
-      expect(() => {
-        globals.saveStartAndShowProgress(
-          'Test Assignment',
-          { referenceDocumentId: 'ref-id', templateDocumentId: 'tpl-id' },
-          'assignment-123',
-          'course-456'
-        );
-      }).toThrow();
-
-      expect(mockLoggerInstance.error).toHaveBeenCalledWith(
-        'Error in globals.saveStartAndShowProgress:',
-        'String error'
-      );
+    it('other globals functions are still exported', () => {
+      // These should remain defined regardless of saveStartAndShowProgress removal
+      expect(typeof globals.startProcessing).toBe('function');
+      expect(typeof globals.triggerProcessSelectedAssignment).toBe('function');
+      expect(typeof globals.removeTrigger).toBe('function');
+      expect(typeof globals.testWorkflow).toBe('function');
     });
   });
 
@@ -179,7 +89,8 @@ describe('AssignmentProcessor globals', () => {
 
       expect(mockAssignmentController.startProcessing).toHaveBeenCalledWith(
         'assignment-123',
-        'definition-key-123'
+        'definition-key-123',
+        undefined
       );
       expect(output).toBe(result);
     });
@@ -194,96 +105,42 @@ describe('AssignmentProcessor globals', () => {
     });
   });
 
-  describe('createDefinitionFromWizardInputs', () => {
-    it('creates new AssignmentController and delegates to createDefinitionFromWizardInputs', () => {
-      const params = {
-        assignmentId: 'assignment-123',
-        courseId: 'course-456',
-        assignmentTitle: 'Test Assignment',
-        referenceDocumentId: 'ref-doc-id',
-        templateDocumentId: 'tpl-doc-id',
-        yearGroupKey: 'year-10',
-      };
+  describe('startProcessing with courseId', () => {
+    it('passes courseId as third argument to controller.startProcessing', () => {
+      const result = 'trigger-id-123';
+      mockAssignmentController.startProcessing.mockReturnValue(result);
 
-      const result = { definition: { id: 'def-123' }, tasks: [] };
-      mockAssignmentController.createDefinitionFromWizardInputs.mockReturnValue(result);
+      const output = globals.startProcessing('assignment-123', 'definition-key-123', 'course-456');
 
-      const output = globals.createDefinitionFromWizardInputs(params);
-
-      expect(mockAssignmentController.createDefinitionFromWizardInputs).toHaveBeenCalledWith(
-        params
+      // ASSERTION: This will FAIL (RED) because globals.startProcessing currently
+      // only passes assignmentId and definitionKey to the controller (no courseId)
+      expect(mockAssignmentController.startProcessing).toHaveBeenCalledWith(
+        'assignment-123',
+        'definition-key-123',
+        'course-456'
       );
       expect(output).toBe(result);
     });
 
-    it('logs error and rethrows when controller throws', () => {
-      const params = {
-        assignmentId: 'assignment-123',
-        courseId: 'course-456',
-        assignmentTitle: 'Test Assignment',
-        referenceDocumentId: 'ref-doc-id',
-        templateDocumentId: 'tpl-doc-id',
-      };
+    it('returns the process ID from controller when courseId is provided', () => {
+      const processId = 'process-uuid-456';
+      mockAssignmentController.startProcessing.mockReturnValue(processId);
 
-      const error = new Error('Validation failed');
-      mockAssignmentController.createDefinitionFromWizardInputs.mockImplementation(() => {
-        throw error;
-      });
+      const output = globals.startProcessing('assignment-123', 'definition-key-123', 'course-456');
 
-      expect(() => {
-        globals.createDefinitionFromWizardInputs(params);
-      }).toThrow(error);
-
-      expect(mockLoggerInstance.error).toHaveBeenCalledWith(
-        'Error in globals.createDefinitionFromWizardInputs:',
-        'Validation failed'
+      // ASSERTION: This will also be RED because the three-arg delegation is not yet in place
+      expect(mockAssignmentController.startProcessing).toHaveBeenCalledWith(
+        'assignment-123',
+        'definition-key-123',
+        'course-456'
       );
+      expect(output).toBe(processId);
     });
+  });
 
-    it('handles missing yearGroupKey parameter', () => {
-      const params = {
-        assignmentId: 'assignment-123',
-        courseId: 'course-456',
-        assignmentTitle: 'Test Assignment',
-        referenceDocumentId: 'ref-doc-id',
-        templateDocumentId: 'tpl-doc-id',
-      };
-
-      const result = { definition: { id: 'def-123' }, tasks: [] };
-      mockAssignmentController.createDefinitionFromWizardInputs.mockReturnValue(result);
-
-      const output = globals.createDefinitionFromWizardInputs(params);
-
-      expect(mockAssignmentController.createDefinitionFromWizardInputs).toHaveBeenCalledWith(
-        expect.objectContaining({
-          ...params,
-          yearGroupKey: null,
-        })
-      );
-      expect(output).toBe(result);
-    });
-
-    it('handles non-Error object in createDefinitionFromWizardInputs', () => {
-      const params = {
-        assignmentId: 'assignment-123',
-        courseId: 'course-456',
-        assignmentTitle: 'Test Assignment',
-        referenceDocumentId: 'ref-doc-id',
-        templateDocumentId: 'tpl-doc-id',
-      };
-
-      mockAssignmentController.createDefinitionFromWizardInputs.mockImplementation(() => {
-        throw new Error('ERR_TEST');
-      });
-
-      expect(() => {
-        globals.createDefinitionFromWizardInputs(params);
-      }).toThrow();
-
-      expect(mockLoggerInstance.error).toHaveBeenCalledWith(
-        'Error in globals.createDefinitionFromWizardInputs:',
-        'ERR_TEST'
-      );
+  describe('createDefinitionFromWizardInputs removal', () => {
+    it('globals.createDefinitionFromWizardInputs is undefined after removal', () => {
+      expect(globals.createDefinitionFromWizardInputs).toBeUndefined();
     });
   });
 

@@ -4,93 +4,16 @@
  */
 
 /**
- * Initiates processing of an assignment asynchronously by setting up a trigger and opens the progress modal.
- * @param {string} assignmentTitle - The title of the assignment.
- * @param {Object} documentIds - An object containing referenceDocumentId and templateDocumentId.
- * @param {string} assignmentId - The ID of the assignment.
- * @param {string} courseId - The Classroom course ID.
- * @returns {*} The result from the AssignmentController.
- */
-function saveStartAndShowProgress(assignmentTitle, documentIds, assignmentId, courseId) {
-  ABLogger.getInstance().info('saveStartAndShowProgress invoked (globals):', {
-    assignmentTitle,
-    documentIds,
-    assignmentId,
-    courseId,
-  });
-
-  const controller = new AssignmentController();
-  try {
-    return controller.saveStartAndShowProgress(
-      assignmentTitle,
-      documentIds,
-      assignmentId,
-      courseId
-    );
-  } catch (error) {
-    ABLogger.getInstance().error(
-      'Error in globals.saveStartAndShowProgress:',
-      error?.message ?? error
-    );
-    throw error;
-  }
-}
-
-/**
  * Initiates the processing of an assignment asynchronously by setting up a trigger.
  *
  * @param {string} assignmentId - The ID of the assignment.
  * @param {string} definitionKey - The key of the assignment definition.
+ * @param {string} courseId - Classroom course ID used for downstream processing.
  * @returns {string} The unique process ID.
  */
-function startProcessing(assignmentId, definitionKey) {
+function startProcessing(assignmentId, definitionKey, courseId) {
   const controller = new AssignmentController();
-  return controller.startProcessing(assignmentId, definitionKey);
-}
-
-/**
- * Creates a full AssignmentDefinition from wizard Step 3 inputs without starting the assessment.
- * Normalises reference and template document URLs/IDs, validates them, and returns a complete
- * definition payload with tasks for Step 4 (weightings).
- *
- * @param {Object} params - Wizard input parameters.
- * @param {string} params.assignmentId - Google Classroom assignment ID (required).
- * @param {string} params.courseId - Classroom course ID (required).
- * @param {string} params.assignmentTitle - Assignment title (fallback if not fetched from Classroom).
- * @param {string} params.referenceDocumentId - Reference document URL or file ID.
- * @param {string} params.templateDocumentId - Template document URL or file ID.
- * @param {string|null} params.yearGroupKey - Optional year group key for the assignment.
- * @returns {Object} Full AssignmentDefinition JSON payload including tasks and artefacts.
- * @throws {Error} If validation fails, documents are identical, types mismatch, or assignment lacks topic.
- * @remarks Parameter renamed from `yearGroup` (number) to `yearGroupKey` (string) per SPEC.md v1.9.0 Option B.
- * Accepts `yearGroupKey: string | null` and passes it to `controller.createDefinitionFromWizardInputs`.
- * No backwards compatibility with legacy `yearGroup` parameter.
- */
-function createDefinitionFromWizardInputs({
-  assignmentId,
-  courseId,
-  assignmentTitle,
-  referenceDocumentId,
-  templateDocumentId,
-  yearGroupKey = null,
-}) {
-  const controller = new AssignmentController();
-  try {
-    return controller.createDefinitionFromWizardInputs({
-      assignmentId,
-      courseId,
-      assignmentTitle,
-      referenceDocumentId,
-      templateDocumentId,
-      yearGroupKey,
-    });
-  } catch (error) {
-    ABLogger.getInstance().error(
-      'Error in globals.createDefinitionFromWizardInputs:',
-      error?.message ?? error
-    );
-    throw error;
-  }
+  return controller.startProcessing(assignmentId, definitionKey, courseId);
 }
 
 /**
@@ -123,9 +46,7 @@ function testWorkflow() {
 // Export for Node.js testing environment
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    saveStartAndShowProgress,
     startProcessing,
-    createDefinitionFromWizardInputs,
     triggerProcessSelectedAssignment,
     removeTrigger,
     testWorkflow,

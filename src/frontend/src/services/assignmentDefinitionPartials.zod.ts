@@ -221,7 +221,7 @@ export type DeleteAssignmentDefinitionRequest = z.infer<
   typeof DeleteAssignmentDefinitionRequestSchema
 >;
 
-export const DeleteAssignmentDefinitionResponseSchema = z.void();
+export const DeleteAssignmentDefinitionResponseSchema = z.void().nullable();
 
 export type DeleteAssignmentDefinitionResponse = z.infer<
   typeof DeleteAssignmentDefinitionResponseSchema
