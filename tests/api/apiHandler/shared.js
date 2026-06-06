@@ -421,6 +421,7 @@ function makeVmGlobals(overrides = {}) {
     ApiRateLimitError: function ApiRateLimitError() {},
     ApiValidationError: function ApiValidationError() {},
     ApiDisabledError: function ApiDisabledError() {},
+    DefinitionStaleError: function DefinitionStaleError() {},
     ScriptAppManager: function ScriptAppManager() {
       this.isAuthorised = () => true;
     },

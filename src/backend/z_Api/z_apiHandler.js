@@ -10,12 +10,14 @@ let requestStoreFns;
 let apiRateLimitErrorName;
 let apiValidationErrorName;
 let apiDisabledErrorName;
+let apiDefinitionStaleErrorName;
 
 const API_ERROR_CODE_MAP = {
   RATE_LIMITED: 'RATE_LIMITED',
   INVALID_REQUEST: 'INVALID_REQUEST',
   UNKNOWN_METHOD: 'UNKNOWN_METHOD',
   IN_USE: 'IN_USE',
+  DEFINITION_STALE: 'DEFINITION_STALE',
 };
 
 const ALLOWLISTED_METHOD_HANDLERS = Object.freeze({
@@ -63,6 +65,7 @@ if (typeof module !== 'undefined' && module.exports) {
   apiRateLimitErrorName = require('../Utils/ErrorTypes/ApiRateLimitError.js').name;
   apiValidationErrorName = require('../Utils/ErrorTypes/ApiValidationError.js').name;
   apiDisabledErrorName = require('../Utils/ErrorTypes/ApiDisabledError.js').name;
+  apiDefinitionStaleErrorName = require('../Utils/ErrorTypes/DefinitionStaleError.js').name;
 } else {
   // In GAS, these are loaded as global constants and functions from the bundle.
   lockTimeoutMs = LOCK_TIMEOUT_MS;
@@ -81,6 +84,7 @@ if (typeof module !== 'undefined' && module.exports) {
   apiRateLimitErrorName = ApiRateLimitError.name;
   apiValidationErrorName = ApiValidationError.name;
   apiDisabledErrorName = ApiDisabledError.name;
+  apiDefinitionStaleErrorName = DefinitionStaleError.name;
 }
 
 /**
@@ -361,28 +365,34 @@ class ApiDispatcher extends BaseSingleton {
    * Builds a failure response envelope.
    *
    * @param {string} requestId - Unique request identifier.
-   * @param {string} code - Error code (e.g. RATE_LIMITED, INVALID_REQUEST).
+   * @param {string} code - Error code (e.g. RATE_LIMITED, INVALID_REQUEST, DEFINITION_STALE).
    * @param {string} message - Human-readable error message.
    * @param {boolean} retriable - Whether the operation can be safely retried.
+   * @param {Object} [details] - Optional structured metadata to include in the error block.
    * @returns {Object} Response envelope with ok=false, error details.
    * @private
    */
-  _failure(requestId, code, message, retriable) {
+  _failure(requestId, code, message, retriable, details) {
+    const error = { code, message, retriable };
+    if (details !== undefined && details !== null) {
+      error.details = details;
+    }
     return {
       ok: false,
       requestId,
-      error: {
-        code,
-        message,
-        retriable,
-      },
+      error,
     };
   }
 
   /**
    * Maps runtime errors to API failure envelopes.
-   * Recognises specific error types (ApiRateLimitError, ApiValidationError, ApiDisabledError)
-   * and maps them to appropriate error codes. Falls back to INTERNAL_ERROR for unknown error types.
+   * Recognises specific error types (ApiRateLimitError, ApiValidationError, ApiDisabledError,
+   * DefinitionStaleError) and maps them to appropriate error codes. Falls back to INTERNAL_ERROR
+   * for unknown error types.
+   *
+   * When mapping a DefinitionStaleError, the error code is set to DEFINITION_STALE regardless of
+   * the message content, and the error envelope includes a details block with structured metadata
+   * (definitionKey, referenceStale, templateStale, referenceLastModified, templateLastModified).
    *
    * @param {string} requestId - Unique request identifier.
    * @param {*} error - The runtime error value to map.
@@ -392,6 +402,7 @@ class ApiDispatcher extends BaseSingleton {
   _mapErrorToFailureEnvelope(requestId, error) {
     const errorName = error?.name;
     let candidateCode;
+    let isDefinitionStale = false;
     switch (errorName) {
       case apiRateLimitErrorName: {
         candidateCode = API_ERROR_CODE_MAP.RATE_LIMITED;
@@ -405,6 +416,11 @@ class ApiDispatcher extends BaseSingleton {
         candidateCode = API_ERROR_CODE_MAP.UNKNOWN_METHOD;
         break;
       }
+      case apiDefinitionStaleErrorName: {
+        candidateCode = API_ERROR_CODE_MAP.DEFINITION_STALE;
+        isDefinitionStale = true;
+        break;
+      }
       default: {
         break;
       }
@@ -413,9 +429,20 @@ class ApiDispatcher extends BaseSingleton {
       candidateCode = API_ERROR_CODE_MAP.IN_USE;
     }
     const hasMessage = typeof error?.message === 'string' && error.message.trim().length > 0;
-    const mappedCode = candidateCode && hasMessage ? candidateCode : 'INTERNAL_ERROR';
+    const mappedCode =
+      candidateCode && (hasMessage || isDefinitionStale) ? candidateCode : 'INTERNAL_ERROR';
     const mappedMessage = mappedCode === 'INTERNAL_ERROR' ? 'Internal API error.' : error.message;
     const retriable = mappedCode === 'RATE_LIMITED';
+
+    if (isDefinitionStale) {
+      return this._failure(requestId, mappedCode, mappedMessage, retriable, {
+        definitionKey: error.definitionKey,
+        referenceStale: error.referenceStale,
+        templateStale: error.templateStale,
+        referenceLastModified: error.referenceLastModified,
+        templateLastModified: error.templateLastModified,
+      });
+    }
 
     return this._failure(requestId, mappedCode, mappedMessage, retriable);
   }

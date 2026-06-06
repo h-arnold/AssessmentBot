@@ -622,7 +622,10 @@ API-layer tests:
 
 ### Implementation notes / deviations / follow-up
 
-- _To be filled during implementation._
+- `_failure` extended with optional 5th `details` parameter; `details` key omitted when not provided (backward-compatible).
+- `isDefinitionStale` flag used in `_mapErrorToFailureEnvelope` to bypass the `hasMessage` guard for `DefinitionStaleError` — ensures the error code maps correctly even with empty messages.
+- `tests/api/apiHandler/shared.js` `makeVmGlobals` updated with `DefinitionStaleError` stub for VM-context tests.
+- `docs/developer/backend/api-layer.md` error mapping section should be updated to include `DefinitionStaleError → DEFINITION_STALE` (deferred to documentation section).
 
 ---
 
