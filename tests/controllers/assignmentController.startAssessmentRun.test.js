@@ -92,7 +92,7 @@ function setupStandardMocks() {
     this.createTimeBasedTrigger = vi.fn(() => 'trigger-123');
   });
 
-  // Ensure Utils.isNewer is available (provided by setupGlobals.js)
+  // DateUtils.isNewer is available via setupGlobals.js
 }
 
 /**

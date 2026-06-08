@@ -240,12 +240,13 @@ describe('AssignmentController - Definition Hydration', () => {
       this.addStudent = vi.fn();
     });
 
-    // Mock Utils
     globalThis.Utils = {
       toastMessage: vi.fn(),
-      definitionNeedsRefresh: vi.fn().mockReturnValue(false),
       generateHash: (str) => `hash_${(str || '').length}`,
+    };
+    globalThis.DateUtils = {
       isNewer: vi.fn().mockReturnValue(false),
+      definitionNeedsRefresh: vi.fn().mockReturnValue(true),
     };
 
     // Mock DriveManager
@@ -370,7 +371,7 @@ describe('AssignmentController - Definition Hydration', () => {
       const mockAssignment = new globalThis.SlidesAssignment();
       mockAssignment.assignmentDefinition = definition;
 
-      globalThis.Utils.isNewer.mockReturnValue(true);
+      globalThis.DateUtils.isNewer.mockReturnValue(true);
 
       const controller = new AssignmentController();
 
@@ -400,7 +401,7 @@ describe('AssignmentController - Definition Hydration', () => {
       const mockAssignment = new globalThis.SlidesAssignment();
       mockAssignment.assignmentDefinition = definition;
 
-      globalThis.Utils.definitionNeedsRefresh.mockReturnValue(false);
+      globalThis.DateUtils.definitionNeedsRefresh.mockReturnValue(false);
 
       const controller = new AssignmentController();
       controller.runAssignmentPipeline(mockAssignment, [{ id: 's1', name: 'Student 1' }], {

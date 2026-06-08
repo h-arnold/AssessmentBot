@@ -158,10 +158,10 @@ Move all date-related utilities out of `Utils.js` into a dedicated `src/backend/
 
 ### Section checks
 
-- [ ] Backend lint passes.
-- [ ] All existing `Utils.*` tests pass.
-- [ ] New `DateUtils` unit tests pass.
-- [ ] No other `npm test` suite regressions.
+- [x] Backend lint passes.
+- [x] All existing `Utils.*` tests pass.
+- [x] New `DateUtils` unit tests pass.
+- [x] No other `npm test` suite regressions.
 
 ---
 

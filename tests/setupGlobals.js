@@ -123,6 +123,7 @@ g.ScriptAppManager = class ScriptAppManager {
 g.Validate = require('../src/backend/Utils/Validate.js').Validate;
 g.ArrayUtils = require('../src/backend/Utils/00_ArrayUtils.js');
 
+g.DateUtils = require('../src/backend/Utils/DateUtils.js');
 g.GASPropertiesUtils = require('../src/backend/Utils/00_GASPropertiesUtils.js');
 
 g.ApiValidationError = require('../src/backend/Utils/ErrorTypes/ApiValidationError.js');

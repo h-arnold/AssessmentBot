@@ -240,7 +240,7 @@ class AssignmentDefinitionController {
 
     const latestReferenceModified = DriveManager.getFileModifiedTime(referenceDocumentId);
     const latestTemplateModified = DriveManager.getFileModifiedTime(templateDocumentId);
-    const needsRefresh = Utils.definitionNeedsRefresh(
+    const needsRefresh = DateUtils.definitionNeedsRefresh(
       existingDefinition,
       latestReferenceModified,
       latestTemplateModified
