@@ -98,3 +98,29 @@ for (const [key, value] of Object.entries(result)) {
 ```
 
 This will reveal whether any field still carries a Java-backed object reference (e.g. `constructorName: 'Date'` or `constructorName: 'Object'` in a suspicious context) when it reaches the API boundary.
+
+---
+
+## Hypothesis 9 — Date objects poisoning `google.script.run` serialisation
+
+After reading the [`google.script.run` reference docs](https://developers.google.com/apps-script/guides/html/reference/run):
+
+> "Requests fail if you attempt to pass a `Date`, `Function`, or other prohibited type, including prohibited types inside objects or arrays."
+
+This applies to **return values** too. The raw network payload shows `createdAt=Thu Jun 04 05:44:18 PDT 2026` — the Java `Date.toString()` format — confirming dates are present and likely still live `Date` objects, not ISO strings.
+
+### Attempted change (untested)
+
+In `src/backend/y_controllers/AssignmentDefinitionController.js:958-959`, changed:
+
+```javascript
+// Before
+createdAt: source.createdAt || null,
+updatedAt: source.updatedAt || null,
+
+// After
+createdAt: source.createdAt instanceof Date ? source.createdAt.toISOString() : (source.createdAt ?? null),
+updatedAt: source.updatedAt instanceof Date ? source.updatedAt.toISOString() : (source.updatedAt ?? null),
+```
+
+**Status:** Applied to source, **not yet deployed or tested.** If this resolves the `null` response, the root cause was Hypothesis 6 (live Date objects breaking GAS serialisation). If not, revert and investigate Hypothesis 5 (entire response object falling back to `toString()`).

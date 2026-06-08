@@ -955,8 +955,14 @@ class AssignmentDefinitionController {
       templateDocumentId: source.templateDocumentId,
       assignmentWeighting: source.assignmentWeighting,
       tasks: canonicalTasks,
-      createdAt: source.createdAt || null,
-      updatedAt: source.updatedAt || null,
+      createdAt:
+        source.createdAt instanceof Date
+          ? source.createdAt.toISOString()
+          : (source.createdAt ?? null),
+      updatedAt:
+        source.updatedAt instanceof Date
+          ? source.updatedAt.toISOString()
+          : (source.updatedAt ?? null),
     };
 
     // Log any undefined fields to help diagnose Zod validation errors
