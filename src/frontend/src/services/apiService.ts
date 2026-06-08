@@ -7,7 +7,7 @@ const ApiRequestSchema = z.object({
   params: z.unknown().optional(),
 });
 
-const ApiSuccessResponseSchema = z
+export const ApiSuccessResponseSchema = z
   .object({
     ok: z.literal(true),
     requestId: z.string(),
@@ -25,7 +25,7 @@ const ApiSuccessResponseSchema = z
     }
   });
 
-const ApiErrorResponseSchema = z.object({
+export const ApiErrorResponseSchema = z.object({
   ok: z.literal(false),
   requestId: z.string(),
   error: z.object({
@@ -36,10 +36,11 @@ const ApiErrorResponseSchema = z.object({
   meta: z.record(z.string(), z.unknown()).optional(),
 });
 
-const ApiResponseSchema = z.discriminatedUnion('ok', [
-  ApiSuccessResponseSchema,
-  ApiErrorResponseSchema,
-]);
+// TEMPORARY: ApiResponseSchema disabled for debug
+// const ApiResponseSchema = z.discriminatedUnion('ok', [
+//   ApiSuccessResponseSchema,
+//   ApiErrorResponseSchema,
+// ]);
 
 type GoogleScriptRunApiHandler = {
   withSuccessHandler: (handler: (response: unknown) => void) => GoogleScriptRunApiHandler;
@@ -101,6 +102,30 @@ async function dispatchAttempt<TResponse>(requestPayload: unknown): Promise<TRes
     getRunner()
       .withSuccessHandler((response: unknown) => {
         try {
+          // DEBUG: Log the raw response exactly as GAS delivers it,
+          // stringifying objects so structure is visible in console.
+          console.log('[DEBUG apiService] raw GAS response type:', typeof response);
+          if (typeof response === 'string') {
+            console.log(
+              '[DEBUG apiService] raw GAS response (first 500 chars):',
+              response.length > 500 ? response.slice(0, 500) + '…' : response
+            );
+          } else if (response === null) {
+            console.log('[DEBUG apiService] raw GAS response: null');
+          } else if (response === undefined) {
+            console.log('[DEBUG apiService] raw GAS response: undefined');
+          } else {
+            // Object of some kind — try to stringify for inspection
+            try {
+              console.log(
+                '[DEBUG apiService] raw GAS response (stringified):',
+                JSON.stringify(response)
+              );
+            } catch {
+              console.log('[DEBUG apiService] raw GAS response (non-stringifiable):', response);
+            }
+          }
+
           // GAS google.script.run auto-stringifies return values.
           // Parse the JSON string back to an object before Zod validation.
           // Wrap in a dedicated try-catch so non-JSON responses (e.g. HTML
@@ -122,12 +147,65 @@ async function dispatchAttempt<TResponse>(requestPayload: unknown): Promise<TRes
           } else {
             deserialisedResponse = response;
           }
-          const parsedResponse = ApiResponseSchema.parse(deserialisedResponse);
-          if (parsedResponse.ok) {
-            resolve(parsedResponse.data as TResponse);
-            return;
+
+          // DEBUG: Log deserialised state with stringification for objects
+          console.log(
+            '[DEBUG apiService] typeof deserialisedResponse:',
+            typeof deserialisedResponse
+          );
+          if (deserialisedResponse === null) {
+            console.log('[DEBUG apiService] deserialisedResponse: null');
+          } else if (deserialisedResponse === undefined) {
+            console.log('[DEBUG apiService] deserialisedResponse: undefined');
+          } else if (typeof deserialisedResponse === 'object') {
+            try {
+              console.log(
+                '[DEBUG apiService] deserialisedResponse (stringified):',
+                JSON.stringify(deserialisedResponse)
+              );
+            } catch {
+              console.log(
+                '[DEBUG apiService] deserialisedResponse (non-stringifiable):',
+                deserialisedResponse
+              );
+            }
+            const raw = deserialisedResponse as Record<string, unknown>;
+            console.log('[DEBUG apiService] keys:', Object.keys(raw));
+            console.log('[DEBUG apiService] ok:', raw.ok);
+            console.log('[DEBUG apiService] typeof data:', typeof raw.data);
+            if (raw.data === null) {
+              console.log('[DEBUG apiService] data: null');
+            } else if (raw.data === undefined) {
+              console.log('[DEBUG apiService] data: undefined');
+            } else if (typeof raw.data === 'object') {
+              try {
+                console.log('[DEBUG apiService] data (stringified):', JSON.stringify(raw.data));
+              } catch {
+                console.log('[DEBUG apiService] data (non-stringifiable):', raw.data);
+              }
+            } else {
+              console.log('[DEBUG apiService] data:', raw.data);
+            }
+          } else {
+            console.log('[DEBUG apiService] deserialisedResponse:', deserialisedResponse);
           }
-          reject(new ApiTransportError(parsedResponse));
+
+          // TEMPORARY: resolve with raw data, skipping all Zod validation
+          if (typeof deserialisedResponse === 'object' && deserialisedResponse !== null) {
+            const raw = deserialisedResponse as Record<string, unknown>;
+            resolve(raw.data as TResponse);
+          } else {
+            // null, undefined, string, etc. – resolve as-is to see what it is
+            resolve(deserialisedResponse as TResponse);
+          }
+          return;
+
+          // const parsedResponse = ApiResponseSchema.parse(deserialisedResponse);
+          // if (parsedResponse.ok) {
+          //   resolve(parsedResponse.data as TResponse);
+          //   return;
+          // }
+          // reject(new ApiTransportError(parsedResponse));
         } catch (error: unknown) {
           reject(error);
         }
