@@ -73,8 +73,8 @@ class AssignmentDefinition {
     this.yearGroupKey = yearGroupKey;
 
     this.yearGroupLabel = yearGroupLabel ?? null;
-    this.alternateTitles = Array.isArray(alternateTitles) ? [...alternateTitles] : [];
-    this.alternateTopics = Array.isArray(alternateTopics) ? [...alternateTopics] : [];
+    this.alternateTitles = alternateTitles || [];
+    this.alternateTopics = alternateTopics || [];
     this.documentType = documentType;
     this.referenceDocumentId = referenceDocumentId;
     this.templateDocumentId = templateDocumentId;
@@ -370,8 +370,8 @@ class AssignmentDefinition {
       primaryTopicKey: json.primaryTopicKey ?? null,
       yearGroupKey: json.yearGroupKey,
       yearGroupLabel: json.yearGroupLabel ?? null,
-      alternateTitles: Array.isArray(json.alternateTitles) ? [...json.alternateTitles] : [],
-      alternateTopics: Array.isArray(json.alternateTopics) ? [...json.alternateTopics] : [],
+      alternateTitles: json.alternateTitles ?? [],
+      alternateTopics: json.alternateTopics ?? [],
       documentType: json.documentType ?? null,
       referenceDocumentId: json.referenceDocumentId ?? null,
       templateDocumentId: json.templateDocumentId ?? null,

@@ -948,21 +948,15 @@ class AssignmentDefinitionController {
       primaryTopic: source.primaryTopic,
       yearGroupKey: canonicalYearGroupKey,
       yearGroupLabel: canonicalYearGroupLabel,
-      alternateTitles: Array.isArray(source.alternateTitles) ? [...source.alternateTitles] : [],
-      alternateTopics: Array.isArray(source.alternateTopics) ? [...source.alternateTopics] : [],
+      alternateTitles: source.alternateTitles || [],
+      alternateTopics: source.alternateTopics || [],
       documentType: source.documentType,
       referenceDocumentId: source.referenceDocumentId,
       templateDocumentId: source.templateDocumentId,
       assignmentWeighting: source.assignmentWeighting,
       tasks: canonicalTasks,
-      createdAt:
-        source.createdAt instanceof Date
-          ? source.createdAt.toISOString()
-          : (source.createdAt ?? null),
-      updatedAt:
-        source.updatedAt instanceof Date
-          ? source.updatedAt.toISOString()
-          : (source.updatedAt ?? null),
+      createdAt: source.createdAt || null,
+      updatedAt: source.updatedAt || null,
     };
 
     // Log any undefined fields to help diagnose Zod validation errors

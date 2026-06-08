@@ -2,7 +2,7 @@ import { callApi } from './apiService';
 import { logFrontendEvent } from '../logging/frontendLogger';
 import {
   GetAssignmentDefinitionRequestSchema,
-  // GetAssignmentDefinitionResponseSchema, // TEMPORARY: disabled for debug
+  GetAssignmentDefinitionResponseSchema,
   UpsertAssignmentDefinitionRequestSchema,
   UpsertAssignmentDefinitionResponseSchema,
   type GetAssignmentDefinitionRequest,
@@ -41,12 +41,17 @@ export async function getAssignmentDefinition(
 
   const responseData = await callApi(GET_ASSIGNMENT_DEFINITION_METHOD, parsedRequest);
 
-  console.log('[DEBUG assignmentDefinitionService] raw responseData:', responseData);
-  console.log('[DEBUG assignmentDefinitionService] typeof responseData:', typeof responseData);
+  // Debug logging: check the raw response data before parsing
+  logFrontendEvent('debug', {
+    context: 'services/assignmentDefinitionService.getAssignmentDefinition',
+    metadata: {
+      definitionKey: parsedRequest.definitionKey,
+      responseData: JSON.stringify(responseData),
+      responseDataType: typeof responseData,
+    },
+  });
 
-  // TEMPORARY: Bypass Zod validation to debug raw response shape
-  return responseData as unknown as GetAssignmentDefinitionResponse;
-  // return GetAssignmentDefinitionResponseSchema.parse(responseData);
+  return GetAssignmentDefinitionResponseSchema.parse(responseData);
 }
 
 /**
