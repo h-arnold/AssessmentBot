@@ -104,7 +104,7 @@ before returning data.
 
 ### Section checks
 
-- [ ] Documentation passes review.
+- [x] Documentation passes review.
 
 ---
 

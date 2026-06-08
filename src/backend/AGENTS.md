@@ -263,7 +263,21 @@ When backend behaviour requires new scopes/services:
 - Default values must be set in a module's constructor only.
 - If defaults are found elsewhere, they should be opportunistically moved to the constructor of the module.
 
-## 8. Testing Delegation
+## 8. Date handling at the transport boundary
+
+`google.script.run` prohibits `Date` objects in return values (see `src/frontend/AGENTS.md` §4.3
+for the full rules). All API handler functions must convert live `Date` objects to ISO strings
+before returning data.
+
+- Use `DateUtils.normaliseDateFields(response, ['field1', 'field2'])` in API handler functions
+  that return data carrying date fields.
+- Apply the call after the controller returns and before the handler returns to `apiHandler`.
+- This is the canonical pattern; do not inline `instanceof Date` checks or push conversion into
+  controllers or models.
+- `DateUtils` lives at `src/backend/Utils/DateUtils.js` and exports `normaliseDateFields`,
+  `isNewer`, `definitionNeedsRefresh`, `getFormattedDate`, and `getFutureDate`.
+
+## 9. Testing Delegation
 
 - Delegate all test implementation and test-debugging work to `Testing Specialist` when sub-agent delegation is available.
 - If delegation is unavailable, follow `.github/agents/Testing.agent.md` and `docs/developer/backend/backend-testing.md` before changing tests.

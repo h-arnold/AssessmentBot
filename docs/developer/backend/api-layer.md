@@ -271,8 +271,10 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
 
 **Backend rules:**
 
-1. Convert live `Date` objects to ISO 8601 strings (`date.toISOString()`) at the API boundary —
-   before the response object reaches `apiHandler` / `ALLOWLISTED_METHOD_HANDLERS`.
+1. Convert live `Date` objects to ISO 8601 strings at the API boundary using
+   `DateUtils.normaliseDateFields(response, ['field1', 'field2'])` — apply the call after the
+   controller returns and before the response reaches `apiHandler` / `ALLOWLISTED_METHOD_HANDLERS`.
+   `DateUtils` lives at `src/backend/Utils/DateUtils.js`.
 2. Never return `Function` instances or DOM element references.
 3. Ensure all array/object fields are plain JS arrays/objects, not Java-backed types that GAS
    cannot serialise (e.g. `[Ljava.lang.Object;@...` references from Drive API wrappers).
