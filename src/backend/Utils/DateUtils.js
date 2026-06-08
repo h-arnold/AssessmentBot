@@ -75,6 +75,7 @@ const DateUtils = {
    * @returns {Object} The same object reference (mutated in-place).
    */
   normaliseDateFields(target, fields) {
+    if (!target) return target;
     for (const field of fields) {
       // eslint-disable-next-line security/detect-object-injection -- field names are explicitly provided by the caller
       if (target[field] instanceof Date) {

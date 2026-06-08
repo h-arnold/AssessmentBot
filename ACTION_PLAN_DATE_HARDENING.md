@@ -217,8 +217,8 @@ return DateUtils.normaliseDateFields(response, ['createdAt', 'updatedAt']);
 
 ### Section checks
 
-- [ ] Backend lint passes.
-- [ ] Backend tests pass (`npm test -- tests/api/assignmentDefinitionPartials.test.js`).
+- [x] Backend lint passes.
+- [x] Backend tests pass (`npm test -- tests/api/assignmentDefinitionPartials.test.js`).
 
 ---
 

@@ -1,4 +1,4 @@
-/* global AssignmentDefinitionController, ApiValidationError */
+/* global AssignmentDefinitionController, ApiValidationError, DateUtils */
 
 const PARTIAL_REQUIRED_FIELDS = Object.freeze([
   'primaryTitle',
@@ -864,7 +864,8 @@ function upsertAssignmentDefinition_(parameters) {
   }
 
   const definition = controller.upsertDefinition(payload);
-  return controller.toCanonicalFullDefinitionResponse(definition);
+  const response = controller.toCanonicalFullDefinitionResponse(definition);
+  return DateUtils.normaliseDateFields(response, ['createdAt', 'updatedAt']);
 }
 
 /**
@@ -885,7 +886,8 @@ function getAssignmentDefinition_(parameters) {
     return null;
   }
 
-  return controller.toCanonicalFullDefinitionResponse(definition);
+  const response = controller.toCanonicalFullDefinitionResponse(definition);
+  return DateUtils.normaliseDateFields(response, ['createdAt', 'updatedAt']);
 }
 
 if (typeof module !== 'undefined' && module.exports) {
