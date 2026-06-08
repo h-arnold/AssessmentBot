@@ -81,27 +81,15 @@
 
 ---
 
-## Suggested Next Debugging Step
-
-Add field-level `constructor.name` logging in `_toCanonicalFullDefinitionResponse` _before_ the `result` object is returned, to identify which, if any, fields carry non-plain-JS types:
-
-```js
-// In _toCanonicalFullDefinitionResponse, just before 'return result;'
-for (const [key, value] of Object.entries(result)) {
-  ABLogger.getInstance().debug('Canonical response field inspection', {
-    field: key,
-    type: typeof value,
-    constructorName: value !== null && value !== undefined ? value.constructor.name : 'N/A',
-    isArray: Array.isArray(value),
-  });
-}
-```
-
-This will reveal whether any field still carries a Java-backed object reference (e.g. `constructorName: 'Date'` or `constructorName: 'Object'` in a suspicious context) when it reaches the API boundary.
+> **Note regarding Hypotheses 5–8:** All of these are resolved by the confirmed Hypothesis 9 below.
+> The single root cause — live `Date` objects in `createdAt`/`updatedAt` fields — poisoned the
+> entire `google.script.run` serialisation. The `[Ljava.lang.Object;@...` format for arrays was a
+> secondary symptom of the same serialisation failure (GAS gave up on the entire object graph
+> after encountering the unserialisable `Date` values).
 
 ---
 
-## Hypothesis 9 — Date objects poisoning `google.script.run` serialisation
+## ✅ Hypothesis 9 — Confirmed: Date objects poisoning `google.script.run` serialisation
 
 After reading the [`google.script.run` reference docs](https://developers.google.com/apps-script/guides/html/reference/run):
 
@@ -109,7 +97,7 @@ After reading the [`google.script.run` reference docs](https://developers.google
 
 This applies to **return values** too. The raw network payload shows `createdAt=Thu Jun 04 05:44:18 PDT 2026` — the Java `Date.toString()` format — confirming dates are present and likely still live `Date` objects, not ISO strings.
 
-### Attempted change (untested)
+### Fix applied and verified
 
 In `src/backend/y_controllers/AssignmentDefinitionController.js:958-959`, changed:
 
@@ -123,4 +111,11 @@ createdAt: source.createdAt instanceof Date ? source.createdAt.toISOString() : (
 updatedAt: source.updatedAt instanceof Date ? source.updatedAt.toISOString() : (source.updatedAt ?? null),
 ```
 
-**Status:** Applied to source, **not yet deployed or tested.** If this resolves the `null` response, the root cause was Hypothesis 6 (live Date objects breaking GAS serialisation). If not, revert and investigate Hypothesis 5 (entire response object falling back to `toString()`).
+**Status: ✅ CONFIRMED — Root cause identified.** The `getAssignmentDefinition` method returned `null` because `createdAt` and `updatedAt` were live GAS `Date` objects (not ISO strings), which `google.script.run` cannot serialise. The Java `Date.toString()` fallback poisoned the entire response envelope, producing non-JSON output that the frontend's `JSON.parse()` could not process, resulting in `null`.
+
+### Related documentation updated
+
+- `src/frontend/AGENTS.md` — Added Section 4.3 documenting prohibited types with rules for backend code.
+- `docs/developer/backend/api-layer.md` — Added "Critical: prohibited types in google.script.run return values" subsection with backend rules.
+
+All debug code changes have been reverted against `feat/ReactFrontend` for a clean slate.

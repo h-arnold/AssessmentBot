@@ -258,6 +258,27 @@ Frontend code should call `callApi` from `src/frontend/src/services/apiService.t
 Feature services should expose typed helpers per method and return parsed `data` from `callApi`.
 Use the allowlisted method names exactly as implemented in `ALLOWLISTED_METHOD_HANDLERS`, for example `callApi('getGoogleClassrooms')`.
 
+### ⚠️ Critical: prohibited types in `google.script.run` return values
+
+`google.script.run` prohibits `Date`, `Function`, and DOM elements in both **parameters and
+return values** — including inside nested objects and arrays. If any value in the response graph
+is a live `Date` object (not an ISO string), GAS falls back to `Object.toString()` serialisation,
+producing non-JSON output (Java `HashMap.toString()` format with `=` separators instead of `:`)
+that breaks `JSON.parse()` and causes the frontend to receive `null`.
+
+Reference: https://developers.google.com/apps-script/guides/html/reference/run
+(myFunction section: prohibited types in parameters; return value note confirms same restrictions.)
+
+**Backend rules:**
+
+1. Convert live `Date` objects to ISO 8601 strings (`date.toISOString()`) at the API boundary —
+   before the response object reaches `apiHandler` / `ALLOWLISTED_METHOD_HANDLERS`.
+2. Never return `Function` instances or DOM element references.
+3. Ensure all array/object fields are plain JS arrays/objects, not Java-backed types that GAS
+   cannot serialise (e.g. `[Ljava.lang.Object;@...` references from Drive API wrappers).
+4. Test return values by inspecting `typeof` and `.constructor.name` at the transport boundary
+   when diagnosing unexpected `null` responses.
+
 ### Current migrated endpoints
 
 - `getBackendConfig` and `setBackendConfig` — canonical backend configuration transport methods.
