@@ -775,12 +775,8 @@ function toTransportPartialRow_(definition) {
   // Defensive strip yearGroup field (safety net in addition to model-level removal)
   const { yearGroup, ...rest } = partial;
 
-  // Normalise Date fields to ISO strings
-  return {
-    ...rest,
-    createdAt: rest.createdAt instanceof Date ? rest.createdAt.toISOString() : rest.createdAt,
-    updatedAt: rest.updatedAt instanceof Date ? rest.updatedAt.toISOString() : rest.updatedAt,
-  };
+  // Normalise Date fields to ISO strings via DateUtils (Date objects prohibited in google.script.run return values)
+  return DateUtils.normaliseDateFields(rest, ['createdAt', 'updatedAt']);
 }
 
 /**

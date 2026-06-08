@@ -257,8 +257,8 @@ return DateUtils.normaliseDateFields(rest, ['createdAt', 'updatedAt']);
 
 ### Section checks
 
-- [ ] Backend lint passes.
-- [ ] Backend tests pass.
+- [x] Backend lint passes.
+- [x] Backend tests pass.
 
 ---
 
