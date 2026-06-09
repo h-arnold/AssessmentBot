@@ -9,12 +9,10 @@ class AssignmentDefinitionPersistence {
    * Creates the instance with injected dependencies.
    * @param {Object} deps - Dependency injection.
    * @param {Object} deps.dbManager - Database manager instance.
-   * @param {Map} deps.cache - In-memory cache for full definitions.
    * @param {Object} deps.validation - AssignmentDefinitionValidation instance.
    */
-  constructor({ dbManager, cache, validation } = {}) {
+  constructor({ dbManager, validation } = {}) {
     this.dbManager = dbManager;
-    this.cache = cache;
     this.validation = validation;
     this.registryCollectionName = 'assignment_definitions';
     this.fullCollectionPrefix = 'assdef_full_';
@@ -43,8 +41,7 @@ class AssignmentDefinitionPersistence {
     }
 
     const fullCollection = this._getFullCollection(definitionKey);
-    const fullDocument =
-      fullCollection.findOne({ definitionKey }) || this.cache.get(definitionKey) || null;
+    const fullDocument = fullCollection.findOne({ definitionKey }) || null;
     if (!fullDocument) return null;
 
     return AssignmentDefinition.fromJSON(fullDocument);
@@ -80,8 +77,6 @@ class AssignmentDefinitionPersistence {
 
     registry.deleteOne(filter);
     registry.save();
-
-    this.cache.delete(definitionKey);
 
     try {
       this.dbManager.getDb().dropCollection(fullCollectionName);
@@ -164,8 +159,6 @@ class AssignmentDefinitionPersistence {
       wrapped.cause = registryError;
       throw wrapped;
     }
-
-    this.cache.set(definitionInstance.definitionKey, fullPayload);
 
     return AssignmentDefinition.fromJSON(fullPayload);
   }

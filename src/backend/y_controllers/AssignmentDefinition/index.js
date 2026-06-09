@@ -25,7 +25,6 @@ class AssignmentDefinitionController {
   constructor() {
     const databaseManager = DbManager.getInstance();
     const progressTracker = ProgressTracker.getInstance();
-    const cache = new Map();
 
     this._validation = new AssignmentDefinitionValidation();
     this._referenceData = new AssignmentDefinitionReferenceData();
@@ -33,7 +32,6 @@ class AssignmentDefinitionController {
     this._taskWeighting = new AssignmentDefinitionTaskWeighting({ validation: this._validation });
     this._persistence = new AssignmentDefinitionPersistence({
       dbManager: databaseManager,
-      cache,
       validation: this._validation,
     });
     this._upsertOrchestrator = new AssignmentDefinitionUpsertOrchestrator({

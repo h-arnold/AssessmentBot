@@ -741,7 +741,18 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
   });
 
   it('returns the canonical full-definition transport shape for create/write/read flows', () => {
-    mockFullCollection.findOne.mockReturnValue(null);
+    // Use an in-memory store so that data inserted during upsert is
+    // available when getByKey reads it back (replaces the removed cache layer).
+    const stored = {};
+    mockFullCollection.findOne.mockImplementation(
+      (filter) => stored[filter?.definitionKey] ?? null
+    );
+    mockFullCollection.insertOne.mockImplementation((doc) => {
+      if (doc?.definitionKey) stored[doc.definitionKey] = doc;
+    });
+    mockFullCollection.replaceOne.mockImplementation((filter, doc) => {
+      if (filter?.definitionKey) stored[filter.definitionKey] = doc;
+    });
     mockRegistryCollection.findOne.mockReturnValue(null);
 
     const saved = controller.upsertDefinition(createWizardUpsertPayload());
