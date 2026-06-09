@@ -482,9 +482,9 @@ class AssignmentDefinitionController {
 
 ### Section checks
 
-- [ ] Backend lint passes.
-- [ ] Full backend test suite passes.
-- [ ] `clasp push` succeeds.
+- [x] Backend lint passes.
+- [x] Full backend test suite passes.
+- [x] `clasp push` succeeds.
 - [ ] Manual smoke test: create, read, update, and delete an assignment definition via frontend.
 
 ---

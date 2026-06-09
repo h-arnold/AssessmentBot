@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
-import AssignmentDefinitionController from '../../src/backend/y_controllers/AssignmentDefinitionController.js';
+import AssignmentDefinitionController from '../../src/backend/y_controllers/AssignmentDefinition/index.js';
 import DbManager from '../../src/backend/DbManager/DbManager.js';
 import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager.js';
 import ClassroomApiClient from '../../src/backend/GoogleClassroom/ClassroomApiClient.js';
@@ -173,10 +173,10 @@ describe('AssignmentDefinitionController - Section 2 Red Phase (intentionally fa
     ).toThrow(/_buildUpsertContext.*not a function|Cannot read property.*_buildUpsertContext/i);
   });
 
-  // Test 3: _resolveYearGroupContextForUpsert returns correct shape
-  describe('_resolveYearGroupContextForUpsert return shape', () => {
+  // Test 3: _resolveYearGroupContext returns correct shape (formerly _resolveYearGroupContextForUpsert)
+  describe('_resolveYearGroupContext return shape', () => {
     it('should return object with yearGroupKey property', () => {
-      const context = controller._resolveYearGroupContextForUpsert({
+      const context = controller._upsertOrchestrator._resolveYearGroupContext({
         payload: { yearGroupKey: 'year-group-10' },
       });
       expect(context).toHaveProperty('yearGroupKey');
@@ -184,7 +184,7 @@ describe('AssignmentDefinitionController - Section 2 Red Phase (intentionally fa
     });
 
     it('should return object with yearGroupLabel property', () => {
-      const context = controller._resolveYearGroupContextForUpsert({
+      const context = controller._upsertOrchestrator._resolveYearGroupContext({
         payload: { yearGroupKey: 'year-group-10' },
       });
       expect(context).toHaveProperty('yearGroupLabel');
@@ -192,14 +192,14 @@ describe('AssignmentDefinitionController - Section 2 Red Phase (intentionally fa
     });
 
     it('should return object without yearGroup property', () => {
-      const context = controller._resolveYearGroupContextForUpsert({
+      const context = controller._upsertOrchestrator._resolveYearGroupContext({
         payload: { yearGroupKey: 'year-group-10' },
       });
       expect(context).not.toHaveProperty('yearGroup');
     });
 
     it('should resolve yearGroupLabel from reference data', () => {
-      const context = controller._resolveYearGroupContextForUpsert({
+      const context = controller._upsertOrchestrator._resolveYearGroupContext({
         payload: { yearGroupKey: 'year-group-10' },
       });
       expect(context.yearGroupLabel).toBe('Year 10');
@@ -213,7 +213,7 @@ describe('AssignmentDefinitionController - Section 2 Red Phase (intentionally fa
 
       // This should not throw - method should accept yearGroupKey
       expect(() =>
-        controller._assertNoDuplicateBusinessTuple({
+        controller._upsertOrchestrator._assertNoDuplicateBusinessTuple({
           definitionKeyToIgnore: null,
           primaryTitle: 'Test',
           primaryTopicKey: 'topic-1',
@@ -228,7 +228,7 @@ describe('AssignmentDefinitionController - Section 2 Red Phase (intentionally fa
       mockDbManager.readAll.mockReturnValue([]);
 
       expect(() =>
-        controller._assertNoDuplicateBusinessTuple({
+        controller._upsertOrchestrator._assertNoDuplicateBusinessTuple({
           definitionKeyToIgnore: null,
           primaryTitle: 'Test',
           primaryTopicKey: 'topic-1',
@@ -249,7 +249,7 @@ describe('AssignmentDefinitionController - Section 2 Red Phase (intentionally fa
       ]);
 
       expect(() =>
-        controller._assertNoDuplicateBusinessTuple({
+        controller._upsertOrchestrator._assertNoDuplicateBusinessTuple({
           definitionKeyToIgnore: null,
           primaryTitle: 'Test',
           primaryTopicKey: 'topic-1',
@@ -259,10 +259,10 @@ describe('AssignmentDefinitionController - Section 2 Red Phase (intentionally fa
     });
   });
 
-  // Test 5: _resolveAssignmentWeightingForUpsert no defaulting
-  describe('_resolveAssignmentWeightingForUpsert no defaulting', () => {
+  // Test 5: _resolveAssignmentWeighting no defaulting (formerly _resolveAssignmentWeightingForUpsert)
+  describe('_resolveAssignmentWeighting no defaulting', () => {
     it('should return undefined when assignmentWeighting is missing from payload', () => {
-      const result = controller._resolveAssignmentWeightingForUpsert({
+      const result = controller._upsertOrchestrator._resolveAssignmentWeighting({
         payload: {},
         isUpdate: false,
         existingDefinition: null,
@@ -271,7 +271,7 @@ describe('AssignmentDefinitionController - Section 2 Red Phase (intentionally fa
     });
 
     it('should return null when assignmentWeighting is null in payload', () => {
-      const result = controller._resolveAssignmentWeightingForUpsert({
+      const result = controller._upsertOrchestrator._resolveAssignmentWeighting({
         payload: { assignmentWeighting: null },
         isUpdate: false,
         existingDefinition: null,
@@ -280,7 +280,7 @@ describe('AssignmentDefinitionController - Section 2 Red Phase (intentionally fa
     });
 
     it('should return the raw value when assignmentWeighting is 5 in payload', () => {
-      const result = controller._resolveAssignmentWeightingForUpsert({
+      const result = controller._upsertOrchestrator._resolveAssignmentWeighting({
         payload: { assignmentWeighting: 5 },
         isUpdate: false,
         existingDefinition: null,
@@ -289,7 +289,7 @@ describe('AssignmentDefinitionController - Section 2 Red Phase (intentionally fa
     });
 
     it('should return the raw value when assignmentWeighting is 0 in payload', () => {
-      const result = controller._resolveAssignmentWeightingForUpsert({
+      const result = controller._upsertOrchestrator._resolveAssignmentWeighting({
         payload: { assignmentWeighting: 0 },
         isUpdate: false,
         existingDefinition: null,

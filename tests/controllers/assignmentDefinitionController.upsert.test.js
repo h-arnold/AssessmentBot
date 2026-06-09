@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import AssignmentDefinitionController from '../../src/backend/y_controllers/AssignmentDefinitionController.js';
+import AssignmentDefinitionController from '../../src/backend/y_controllers/AssignmentDefinition/index.js';
 import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
 import { TaskDefinition } from '../../src/backend/Models/TaskDefinition.js';
 import DbManager from '../../src/backend/DbManager/DbManager.js';

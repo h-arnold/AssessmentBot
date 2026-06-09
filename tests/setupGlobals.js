@@ -209,3 +209,13 @@ g.ClassroomManager = {
 // Load validation module first (same order as GAS concatenation), then transport module
 Object.assign(g, require('../src/backend/z_Api/assignmentDefinitionValidation.js'));
 Object.assign(g, require('../src/backend/z_Api/assignmentDefinitionTransport.js'));
+
+// Load AssignmentDefinition sub-classes as globals (mirroring GAS concatenation order so
+// index.js can reference them by name when require() calls are absent in production).
+g.AssignmentDefinitionValidation = require('../src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionValidation.js');
+g.AssignmentDefinitionReferenceData = require('../src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionReferenceData.js');
+g.AssignmentDefinitionTaskParser = require('../src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionTaskParser.js');
+g.AssignmentDefinitionTaskWeighting = require('../src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionTaskWeighting.js');
+g.AssignmentDefinitionPersistence = require('../src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionPersistence.js');
+g.AssignmentDefinitionUpsertOrchestrator = require('../src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionUpsertOrchestrator.js');
+g.AssignmentDefinitionResponseMapper = require('../src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionResponseMapper.js');
