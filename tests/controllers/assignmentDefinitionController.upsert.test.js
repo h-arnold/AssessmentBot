@@ -554,6 +554,32 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
     expect(saved.alternateTitles).toEqual(['Stored title A', 'Stored title B']);
   });
 
+  it('preserves existing assignmentWeighting when updates omit assignmentWeighting', () => {
+    const existing = {
+      ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
+      primaryTopic: 'Science',
+      assignmentWeighting: 5,
+      yearGroupKey: 'year-group-8',
+      tasks: {
+        t_task_1: {
+          id: 't_task_1',
+          taskTitle: 'Task A',
+          artifacts: { reference: [], template: [] },
+        },
+      },
+      referenceLastModified: '2025-04-01T00:00:00.000Z',
+      templateLastModified: '2025-04-01T00:00:00.000Z',
+    };
+    mockFullCollection.findOne.mockReturnValue(existing);
+    mockRegistryCollection.findOne.mockReturnValue({ ...existing, tasks: null });
+
+    const payload = createUpsertPayload({ definitionKey: 'existing-stable-key' });
+    delete payload.assignmentWeighting;
+    const saved = controller.upsertDefinition(payload);
+
+    expect(saved.assignmentWeighting).toBe(5);
+  });
+
   it('rejects updates when yearGroupKey is omitted from the save payload', () => {
     const existing = {
       ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),

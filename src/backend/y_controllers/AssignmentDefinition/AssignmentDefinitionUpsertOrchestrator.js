@@ -173,6 +173,10 @@ class AssignmentDefinitionUpsertOrchestrator {
       }
       return value;
     }
+
+    if (isUpdate && existingDefinition) {
+      return existingDefinition.assignmentWeighting;
+    }
   }
 
   /**
