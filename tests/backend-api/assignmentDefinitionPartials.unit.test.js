@@ -345,12 +345,12 @@ describe('getAssignmentDefinition_', () => {
     };
     const mockController = {
       getDefinitionByKey: vi.fn(() => mockDefinition),
-      toCanonicalFullDefinitionResponse: vi.fn((d) => d),
+      getFullAssignmentDefinition: vi.fn((d) => d),
     };
     const { AssignmentDefinitionController } = installAssignmentDefinitionControllerStub([]);
     AssignmentDefinitionController.prototype.getDefinitionByKey = mockController.getDefinitionByKey;
-    AssignmentDefinitionController.prototype.toCanonicalFullDefinitionResponse =
-      mockController.toCanonicalFullDefinitionResponse;
+    AssignmentDefinitionController.prototype.getFullAssignmentDefinition =
+      mockController.getFullAssignmentDefinition;
 
     const { getAssignmentDefinition_ } = loadAssignmentDefinitionPartialsModule();
 
@@ -358,26 +358,26 @@ describe('getAssignmentDefinition_', () => {
 
     expect(AssignmentDefinitionController).toHaveBeenCalledTimes(1);
     expect(mockController.getDefinitionByKey).toHaveBeenCalledWith('test-key');
-    expect(mockController.toCanonicalFullDefinitionResponse).toHaveBeenCalledWith(mockDefinition);
+    expect(mockController.getFullAssignmentDefinition).toHaveBeenCalledWith(mockDefinition);
     expect(result).toEqual(mockDefinition);
   });
 
   it('should return null when definition is not found', () => {
     const mockController = {
       getDefinitionByKey: vi.fn(() => null),
-      toCanonicalFullDefinitionResponse: vi.fn(),
+      getFullAssignmentDefinition: vi.fn(),
     };
     const { AssignmentDefinitionController } = installAssignmentDefinitionControllerStub([]);
     AssignmentDefinitionController.prototype.getDefinitionByKey = mockController.getDefinitionByKey;
-    AssignmentDefinitionController.prototype.toCanonicalFullDefinitionResponse =
-      mockController.toCanonicalFullDefinitionResponse;
+    AssignmentDefinitionController.prototype.getFullAssignmentDefinition =
+      mockController.getFullAssignmentDefinition;
 
     const { getAssignmentDefinition_ } = loadAssignmentDefinitionPartialsModule();
 
     const result = getAssignmentDefinition_({ definitionKey: 'non-existent-key' });
 
     expect(result).toBeNull();
-    expect(mockController.toCanonicalFullDefinitionResponse).not.toHaveBeenCalled();
+    expect(mockController.getFullAssignmentDefinition).not.toHaveBeenCalled();
   });
 
   it('should throw ApiValidationError when parameters is null', () => {
@@ -638,15 +638,15 @@ describe('Section 5: API layer refactoring - Call sites updated', () => {
   beforeEach(beforeEachHandler);
   afterEach(afterEachHandler);
 
-  it('should verify upsertAssignmentDefinition_ calls controller.toCanonicalFullDefinitionResponse(definition)', () => {
+  it('should verify upsertAssignmentDefinition_ calls controller.getFullAssignmentDefinition(definition)', () => {
     installAssignmentDefinitionControllerStub([]);
-    expectPatternInSource('controller.toCanonicalFullDefinitionResponse(definition)');
+    expectPatternInSource('controller.getFullAssignmentDefinition(definition)');
     expectPatternNotInSource('toCanonicalTransportDefinition_(controller, definition)');
   });
 
-  it('should verify getAssignmentDefinition_ calls controller.toCanonicalFullDefinitionResponse(definition)', () => {
+  it('should verify getAssignmentDefinition_ calls controller.getFullAssignmentDefinition(definition)', () => {
     installAssignmentDefinitionControllerStub([]);
-    expectPatternInSource('controller.toCanonicalFullDefinitionResponse(definition)');
+    expectPatternInSource('controller.getFullAssignmentDefinition(definition)');
     expectPatternNotInSource('toCanonicalTransportDefinition_(controller, definition)');
   });
 });
@@ -795,8 +795,8 @@ describe('Section 5: API layer refactoring - No assignmentWeighting defaulting i
       return { definitionKey: 'test-key' };
     });
 
-    // Mock toCanonicalFullDefinitionResponse
-    AssignmentDefinitionController.prototype.toCanonicalFullDefinitionResponse = vi.fn((d) => d);
+    // Mock getFullAssignmentDefinition
+    AssignmentDefinitionController.prototype.getFullAssignmentDefinition = vi.fn((d) => d);
 
     // Need yearGroupKey for validation
     const payloadWithoutWeighting = {
@@ -827,7 +827,7 @@ describe('Section 5: API layer refactoring - No assignmentWeighting defaulting i
       return { definitionKey: 'test-key' };
     });
 
-    AssignmentDefinitionController.prototype.toCanonicalFullDefinitionResponse = vi.fn((d) => d);
+    AssignmentDefinitionController.prototype.getFullAssignmentDefinition = vi.fn((d) => d);
 
     const payloadWithNullWeighting = {
       primaryTitle: 'Test Assignment',
@@ -857,7 +857,7 @@ describe('Section 5: API layer refactoring - No assignmentWeighting defaulting i
       return { definitionKey: 'test-key' };
     });
 
-    AssignmentDefinitionController.prototype.toCanonicalFullDefinitionResponse = vi.fn((d) => d);
+    AssignmentDefinitionController.prototype.getFullAssignmentDefinition = vi.fn((d) => d);
 
     const payloadWithWeighting = {
       primaryTitle: 'Test Assignment',

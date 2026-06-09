@@ -92,7 +92,7 @@ class AssignmentDefinitionController {
    * @param {Object} definition - The stored full definition.
    * @returns {Object} Canonical full-definition response.
    */
-  toCanonicalFullDefinitionResponse(definition) {
+  getFullAssignmentDefinition(definition) {
     return this._responseMapper.getFull(definition);
   }
 }

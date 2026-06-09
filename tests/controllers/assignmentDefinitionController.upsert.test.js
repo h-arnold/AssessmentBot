@@ -753,8 +753,8 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
     expect(saved).toBeInstanceOf(AssignmentDefinition);
     expect(readBack).toBeInstanceOf(AssignmentDefinition);
 
-    expectCanonicalFullDefinitionShape(controller.toCanonicalFullDefinitionResponse(saved));
-    expectCanonicalFullDefinitionShape(controller.toCanonicalFullDefinitionResponse(readBack));
+    expectCanonicalFullDefinitionShape(controller.getFullAssignmentDefinition(saved));
+    expectCanonicalFullDefinitionShape(controller.getFullAssignmentDefinition(readBack));
   });
 
   it('defaults parsed task weightings to 1 for stage-one creates when taskWeightings are omitted', () => {
@@ -798,7 +798,7 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
     });
 
     const readBack = controller.getDefinitionByKey('existing-stable-key', { form: 'full' });
-    const canonicalReadBack = controller.toCanonicalFullDefinitionResponse(readBack);
+    const canonicalReadBack = controller.getFullAssignmentDefinition(readBack);
 
     expect(canonicalReadBack.yearGroupLabel).toBe('Year 8');
   });

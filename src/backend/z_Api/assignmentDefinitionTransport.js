@@ -147,7 +147,7 @@ function deleteAssignmentDefinition_(parameters) {
  * @remarks Updated per SPEC.md v1.9.0 Section 5: URL-to-ID translation logic inlined from the removed
  * `buildControllerUpsertPayload_` helper. CRITICALLY, the inlined code does NOT apply `assignmentWeighting: 1`
  * defaulting (per validation ownership rules: model owns defaults, not API layer). Uses
- * `controller.toCanonicalFullDefinitionResponse(definition)` directly for response shaping.
+ * `controller.getFullAssignmentDefinition(definition)` directly for response shaping.
  */
 function upsertAssignmentDefinition_(parameters) {
   validateUpsertParameters_(parameters);
@@ -182,7 +182,7 @@ function upsertAssignmentDefinition_(parameters) {
   }
 
   const definition = controller.upsertDefinition(payload);
-  const response = controller.toCanonicalFullDefinitionResponse(definition);
+  const response = controller.getFullAssignmentDefinition(definition);
   return DateUtils.normaliseDateFields(response, ['createdAt', 'updatedAt']);
 }
 
@@ -204,7 +204,7 @@ function getAssignmentDefinition_(parameters) {
     return null;
   }
 
-  const response = controller.toCanonicalFullDefinitionResponse(definition);
+  const response = controller.getFullAssignmentDefinition(definition);
   return DateUtils.normaliseDateFields(response, ['createdAt', 'updatedAt']);
 }
 

@@ -520,6 +520,6 @@ Replace the verbose method name `toCanonicalFullDefinitionResponse` with the cle
 
 ### Section checks
 
-- [ ] Backend lint passes.
-- [ ] Full backend test suite passes.
-- [ ] `grep -rn "toCanonicalFull" src/ tests/` returns zero results.
+- [x] Backend lint passes.
+- [x] Full backend test suite passes.
+- [x] `grep -rn "toCanonicalFull" src/ tests/` returns zero results.

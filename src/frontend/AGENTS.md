@@ -88,7 +88,7 @@ Return value note: "return types are subject to the same restrictions as paramet
 2. Never return `Function` instances or DOM element references.
 3. Validate that all array/object fields are plain JS arrays/objects, not Java-backed types
    (e.g. `[Ljava.lang.Object;@...`) that GAS cannot serialise.
-4. Apply these rules at the controller-to-transport boundary (e.g. `_toCanonicalFullDefinitionResponse`)
+4. Apply these rules at the controller-to-transport boundary (e.g. `_getFullAssignmentDefinition`)
    before the response reaches `apiHandler`.
 
 For test mock fidelity rules (do not manually stringify/parse in individual test files), see
