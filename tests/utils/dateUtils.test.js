@@ -98,6 +98,27 @@ describe('DateUtils', () => {
   // definitionNeedsRefresh
   // ---------------------------------------------------------------------------
   describe('definitionNeedsRefresh', () => {
+    /**
+     * Create a definition object with sensible defaults for testing.
+     * Pass overrides to customise fields; set a field to undefined to omit it
+     * from the returned object entirely (e.g. to test missing-key behaviour).
+     */
+    function createDefinition(overrides = {}) {
+      const def = {
+        tasks: { t1: { taskTitle: 'Task 1' } },
+        referenceLastModified: '2025-01-01T00:00:00Z',
+        templateLastModified: '2025-01-01T00:00:00Z',
+        ...overrides,
+      };
+      // Remove keys explicitly set to undefined so they behave as missing keys
+      Object.keys(def).forEach((key) => {
+        if (def[key] === undefined) {
+          delete def[key];
+        }
+      });
+      return def;
+    }
+
     it('should return true when definition has no tasks key', () => {
       const definition = {};
       const result = DateUtils.definitionNeedsRefresh(definition, null, null);
@@ -111,10 +132,7 @@ describe('DateUtils', () => {
     });
 
     it('should return true when referenceLastModified is missing', () => {
-      const definition = {
-        tasks: { t1: { taskTitle: 'Task 1' } },
-        templateLastModified: '2025-01-01T00:00:00Z',
-      };
+      const definition = createDefinition({ referenceLastModified: undefined });
       const result = DateUtils.definitionNeedsRefresh(
         definition,
         '2025-06-01T00:00:00Z',
@@ -124,10 +142,7 @@ describe('DateUtils', () => {
     });
 
     it('should return true when templateLastModified is missing', () => {
-      const definition = {
-        tasks: { t1: { taskTitle: 'Task 1' } },
-        referenceLastModified: '2025-01-01T00:00:00Z',
-      };
+      const definition = createDefinition({ templateLastModified: undefined });
       const result = DateUtils.definitionNeedsRefresh(
         definition,
         '2025-06-01T00:00:00Z',
@@ -137,11 +152,7 @@ describe('DateUtils', () => {
     });
 
     it('should return true when reference document is newer', () => {
-      const definition = {
-        tasks: { t1: { taskTitle: 'Task 1' } },
-        referenceLastModified: '2025-01-01T00:00:00Z',
-        templateLastModified: '2025-01-01T00:00:00Z',
-      };
+      const definition = createDefinition();
       const result = DateUtils.definitionNeedsRefresh(
         definition,
         '2025-06-01T00:00:00Z',
@@ -151,11 +162,7 @@ describe('DateUtils', () => {
     });
 
     it('should return true when template document is newer', () => {
-      const definition = {
-        tasks: { t1: { taskTitle: 'Task 1' } },
-        referenceLastModified: '2025-01-01T00:00:00Z',
-        templateLastModified: '2025-01-01T00:00:00Z',
-      };
+      const definition = createDefinition();
       const result = DateUtils.definitionNeedsRefresh(
         definition,
         '2025-01-01T00:00:00Z',
@@ -165,11 +172,10 @@ describe('DateUtils', () => {
     });
 
     it('should return false when both documents are not newer than stored', () => {
-      const definition = {
-        tasks: { t1: { taskTitle: 'Task 1' } },
+      const definition = createDefinition({
         referenceLastModified: '2025-06-01T00:00:00Z',
         templateLastModified: '2025-06-01T00:00:00Z',
-      };
+      });
       const result = DateUtils.definitionNeedsRefresh(
         definition,
         '2025-01-01T00:00:00Z',
@@ -179,11 +185,10 @@ describe('DateUtils', () => {
     });
 
     it('should return false when both documents have the same timestamp', () => {
-      const definition = {
-        tasks: { t1: { taskTitle: 'Task 1' } },
+      const definition = createDefinition({
         referenceLastModified: '2025-06-01T00:00:00Z',
         templateLastModified: '2025-06-01T00:00:00Z',
-      };
+      });
       const result = DateUtils.definitionNeedsRefresh(
         definition,
         '2025-06-01T00:00:00Z',
@@ -193,11 +198,10 @@ describe('DateUtils', () => {
     });
 
     it('should handle Date objects as timestamps', () => {
-      const definition = {
-        tasks: { t1: { taskTitle: 'Task 1' } },
+      const definition = createDefinition({
         referenceLastModified: new Date('2025-06-01T00:00:00Z'),
         templateLastModified: new Date('2025-06-01T00:00:00Z'),
-      };
+      });
       const result = DateUtils.definitionNeedsRefresh(
         definition,
         new Date('2025-06-15T00:00:00Z'),
