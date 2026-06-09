@@ -32,6 +32,16 @@ type CacheValidationError = {
  * Fetches assignments on open and presents a dropdown selection.
  * Start Assessment runs the matching logic and kicks off an assessment run.
  *
+ * @remarks The modal body follows a state machine:
+ * - **loading**: GC assignments are being fetched (Spin shown).
+ * - **ready**: assignments loaded, Select dropdown shown.
+ * - **matching**: user clicked Start Assessment; cache-reads, matching, and API call
+ *   happen in sequence.
+ * - **success**: API call succeeded; success Alert replaces body content; footer
+ *   shows single Close button.
+ * - **error**: no-match, ambiguous, cache-miss, null data, or API failure; error
+ *   Alert shown in body; modal stays open for re-selection or dismissal.
+ *
  * @param {Readonly<AssessTaskModalProperties>} properties Modal properties.
  * @returns {JSX.Element} The assess task modal.
  */
