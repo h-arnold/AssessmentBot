@@ -209,7 +209,6 @@ describe('AssignmentController - Definition Hydration', () => {
       getDefinitionByKey: vi.fn(),
       ensureDefinition: vi.fn(),
       upsertDefinition: vi.fn(),
-      saveDefinition: vi.fn(),
     };
     globalThis.AssignmentDefinitionController = vi.fn().mockImplementation(function () {
       return mockDefinitionController;

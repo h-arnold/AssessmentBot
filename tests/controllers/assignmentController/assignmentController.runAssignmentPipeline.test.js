@@ -118,9 +118,7 @@ describe('AssignmentController - runAssignmentPipeline throw-on-stale', () => {
         assessResponses: vi.fn(),
       };
 
-      mockDefinitionController = {
-        saveDefinition: vi.fn(),
-      };
+      mockDefinitionController = {};
 
       // Default Drive timestamps — both newer than stored definition timestamps
       DriveManager.getFileModifiedTime
@@ -328,7 +326,6 @@ describe('AssignmentController - runAssignmentPipeline throw-on-stale', () => {
       globalThis.AssignmentDefinitionController = vi.fn().mockImplementation(function () {
         return {
           getDefinitionByKey: vi.fn().mockReturnValue(mockDefinition),
-          saveDefinition: vi.fn(),
         };
       });
 

@@ -201,7 +201,6 @@ describe('AssignmentController - UserProperties Migration', () => {
       globalThis.AssignmentDefinitionController = vi.fn().mockImplementation(function () {
         return {
           getDefinitionByKey: vi.fn().mockReturnValue(mockDefinition),
-          saveDefinition: vi.fn(),
         };
       });
 

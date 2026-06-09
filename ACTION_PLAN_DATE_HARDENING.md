@@ -384,8 +384,8 @@ Remove three unused methods identified in the caller audit before refactoring th
 
 ### Section checks
 
-- [ ] Backend lint passes.
-- [ ] `npm test -- tests/controllers/assignmentDefinitionController.fullStore.test.js` passes with updated tests.
+- [x] Backend lint passes.
+- [x] `npm test -- tests/controllers/assignmentDefinitionController.fullStore.test.js` passes with updated tests.
 
 ---
 

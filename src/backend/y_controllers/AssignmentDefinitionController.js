@@ -358,52 +358,6 @@ class AssignmentDefinitionController {
   }
 
   /**
-   * Persist a definition to the JsonDb collection (upsert by definitionKey).
-   * Saves both the full definition and a partial registry entry.
-   * @param {AssignmentDefinition|Object} definition - The definition instance or JSON object to save.
-   * @returns {AssignmentDefinition} The saved definition deserialised from persisted JSON.
-   */
-  saveDefinition(definition) {
-    Validate.requireParams({ definition }, 'AssignmentDefinitionController.saveDefinition');
-    const definitionInstance =
-      definition instanceof AssignmentDefinition
-        ? definition
-        : new AssignmentDefinition(definition);
-
-    return this._persistDefinitionWithRollback({
-      definition: definitionInstance,
-      previousFullDefinition: this._getStoredFullDocument(definitionInstance.definitionKey),
-    });
-  }
-
-  /**
-   * Saves the partial representation of a definition to the registry collection.
-   * The partial contains only essential metadata whilst tasks are stored separately.
-   * @param {AssignmentDefinition|Object} definition - The definition instance or JSON object.
-   * @returns {AssignmentDefinition} The definition instance deserialised from saved JSON.
-   * @private
-   */
-  savePartialDefinition(definition) {
-    const definitionInstance =
-      definition instanceof AssignmentDefinition
-        ? definition
-        : new AssignmentDefinition(definition);
-    const payload = definitionInstance.toPartialJSON();
-    const collection = this._getRegistryCollection();
-    const filter = { definitionKey: definitionInstance.definitionKey };
-    const existing = collection.findOne(filter);
-
-    if (existing) {
-      collection.replaceOne(filter, payload);
-    } else {
-      collection.insertOne(payload);
-    }
-
-    collection.save();
-    return AssignmentDefinition.fromJSON(payload);
-  }
-
-  /**
    * Deletes both partial and full assignment-definition records for a key.
    *
    * @param {string} definitionKey - Validated definition key.
@@ -490,32 +444,6 @@ class AssignmentDefinitionController {
 
     const fullCollection = this._getFullCollection(definitionKey);
     return fullCollection.findOne({ definitionKey }) || null;
-  }
-
-  /**
-   * Resolves the canonical topic name from provided metadata or API.
-   * Returns null if no topic is available (assignment may not have one).
-   *
-   * @param {Object} params - Destructured parameters.
-   * @param {string} [params.primaryTopic] - Provided topic name.
-   * @param {string} [params.topicId] - Topic ID to look up.
-   * @param {string} [params.courseId] - Course ID for topic lookup.
-   * @returns {string|null} Topic name or null if not found.
-   * @private
-   */
-  _resolveTopicName({ primaryTopic, topicId, courseId }) {
-    if (primaryTopic) return primaryTopic;
-    if (!topicId) {
-      return null; // An assignment may not have a topic.
-    }
-    if (!courseId) {
-      this.progressTracker.logAndThrowError(
-        'courseId is required to resolve topic name from topicId.'
-      );
-    }
-
-    // fetchTopicName can return null if the topic is not found, which is a valid state.
-    return ClassroomApiClient.fetchTopicName(courseId, topicId);
   }
 
   /**
