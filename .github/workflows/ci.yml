@@ -55,6 +55,7 @@ jobs:
   frontend-e2e:
     name: Frontend E2E tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repository
@@ -76,7 +77,13 @@ jobs:
         run: npm --prefix src/frontend ci
 
       - name: Install Playwright browsers
-        run: cd src/frontend && npx playwright install --with-deps chromium
+        run: |
+          # Kill any processes holding apt/dpkg locks (common cause of hangs on GHA runners)
+          sudo killall apt-get apt aptd dpkg 2>/dev/null || true
+          sudo rm -f /var/lib/apt/lists/lock /var/cache/apt/archives/lock /var/lib/dpkg/lock-frontend 2>/dev/null || true
+          sudo dpkg --configure -a
+          # Install Playwright Chromium with system dependencies
+          cd src/frontend && npx playwright install --with-deps chromium
 
       - name: Run E2E tests
         run: npm run test:frontend:e2e
