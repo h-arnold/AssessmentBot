@@ -1,17 +1,72 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { QueryClientProvider, type QueryClient } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AssessTaskModal } from './AssessTaskModal';
 import { getGoogleClassroomAssignments } from '../../../services/googleClassroomAssignmentsService';
+import { startAssessmentRun } from '../../../services/assignmentAssessment/assignmentAssessmentService';
+import { findMatchingDefinition } from './matchDefinitionForAssignment';
+import { queryKeys } from '../../../query/queryKeys';
+import { renderWithFrontendProviders } from '../../../test/renderWithFrontendProviders';
+import { createAppQueryClient } from '../../../query/queryClient';
+import { ApiTransportError } from '../../../errors/apiTransportError';
+import { createFixtureClassPartial } from '../../../test/classes/classesPageTestHelpers';
+import type { AssignmentDefinitionPartial } from '../../../services/assignmentDefinitionPartials.zod';
 
 vi.mock('../../../services/googleClassroomAssignmentsService', () => ({
   getGoogleClassroomAssignments: vi.fn(),
 }));
 
+vi.mock('../../../services/assignmentAssessment/assignmentAssessmentService', () => ({
+  startAssessmentRun: vi.fn(),
+}));
+
+vi.mock('./matchDefinitionForAssignment', () => ({
+  findMatchingDefinition: vi.fn(),
+}));
+
 const MOCK_CLASS_ID = 'class-123';
 const MOCK_CLASS_NAME = 'My Class';
-const MOCK_ASSIGNMENTS = [{ assignmentId: 'a1', title: 'Essay' }];
-const MOCK_EMPTY_ASSIGNMENTS: Array<{ assignmentId: string; title: string }> = [];
+const MOCK_ASSIGNMENTS = [{ assignmentId: 'a1', title: 'Essay', topicName: 'Writing', topicId: null }];
+const MOCK_EMPTY_ASSIGNMENTS: Array<{ assignmentId: string; title: string; topicId: string | null; topicName: string | null }> = [];
 const MODAL_TITLE = `Assess Task — ${MOCK_CLASS_NAME}`;
+const DEFAULT_ISO_DATETIME = '2025-01-01T00:00:00.000Z';
+
+// ---------------------------------------------------------------------------
+// Fixture factories
+// ---------------------------------------------------------------------------
+
+/**
+ * Creates an AssignmentDefinitionPartial fixture for cache-hit tests.
+ *
+ * @param {Partial<AssignmentDefinitionPartial>} overrides Fields to override.
+ * @returns {AssignmentDefinitionPartial} A definition partial fixture.
+ */
+function createDefinitionPartial(
+  overrides: Partial<AssignmentDefinitionPartial> = {}
+): AssignmentDefinitionPartial {
+  return {
+    primaryTitle: 'Essay',
+    primaryTopic: 'Writing',
+    primaryTopicKey: 'topic-writing',
+    yearGroupKey: 'year-10',
+    yearGroupLabel: 'Year 10',
+    alternateTitles: [],
+    alternateTopics: [],
+    documentType: 'SLIDES',
+    referenceDocumentId: 'ref-001',
+    templateDocumentId: 'tpl-001',
+    assignmentWeighting: null,
+    definitionKey: 'essay-def-key',
+    tasks: null,
+    createdAt: DEFAULT_ISO_DATETIME,
+    updatedAt: DEFAULT_ISO_DATETIME,
+    ...overrides,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Standard props
+// ---------------------------------------------------------------------------
 
 /**
  * Standard props for the modal in most tests.
@@ -36,13 +91,17 @@ function defaultProperties(overrides: Partial<{
 
 /** Returns a promise that never resolves — used for loading-state tests. */
 function createPendingPromise<T>(): Promise<T> {
-   
   return new Promise<T>(() => {});
 }
 
+// ---------------------------------------------------------------------------
+// Render helpers
+// ---------------------------------------------------------------------------
+
 /**
- * Sets up the mocked getGoogleClassroomAssignments with the given mock value,
- * renders the modal, and returns the dialog element.
+ * Creates a default query client and renders the modal via
+ * `renderWithFrontendProviders` so `useQueryClient()` works inside
+ * the component.
  *
  * @param {unknown} mockValue - Value to pass to mockReturnValue/mockResolvedValue/mockRejectedValue.
  * @param {'return' | 'resolve' | 'reject'} mockType - How to set up the mock.
@@ -55,7 +114,7 @@ function renderAssessTaskModal(
   const mockedGetAssignments = vi.mocked(getGoogleClassroomAssignments);
   // mockValue is deliberately polymorphic (Promise, array, Error) so
   // each branch applies the narrowest type assertion needed by the mock.
-  type AssignmentsPayload = { assignmentId: string; title: string }[];
+  type AssignmentsPayload = { assignmentId: string; title: string; topicId: string | null; topicName: string | null }[];
   if (mockType === 'resolve') {
     mockedGetAssignments.mockResolvedValue(mockValue as AssignmentsPayload);
   } else if (mockType === 'reject') {
@@ -64,8 +123,105 @@ function renderAssessTaskModal(
     mockedGetAssignments.mockReturnValue(mockValue as Promise<AssignmentsPayload>);
   }
 
-  render(<AssessTaskModal {...defaultProperties()} />);
+  renderWithFrontendProviders(<AssessTaskModal {...defaultProperties()} />);
   return screen.getByRole('dialog', { name: MODAL_TITLE });
+}
+
+/**
+ * Creates a query client pre-populated with the given cache data and renders
+ * the modal inside `renderWithFrontendProviders`. Returns the dialog and
+ * query client for further interaction.
+ *
+ * @param {object} options Render options.
+ * @param {Array<{ classId: string; yearGroupKey: string | null; className: string }> | undefined} [options.classPartials] Class partials to set in cache.
+ * @param {AssignmentDefinitionPartial[] | undefined} [options.definitionPartials] Definition partials to set in cache.
+ * @param {unknown} [options.assignments] Assignments to resolve from the service mock.
+ * @param {{ kind: string; definition?: AssignmentDefinitionPartial; matches?: AssignmentDefinitionPartial[] } | undefined} [options.findMatchResult] The result from findMatchingDefinition.
+ * @param {unknown} [options.startRunResult] The resolve/reject value for startAssessmentRun.
+ * @param {'resolve' | 'reject'} [options.startRunType] Whether startAssessmentRun resolves or rejects.
+ * @returns {{ dialog: HTMLElement; queryClient: QueryClient }} Dialog element and query client.
+ */
+// eslint-disable-next-line complexity -- Test helper with many optional parameters
+function renderWithCache(
+  options: {
+    classPartials?: Array<{ classId: string; yearGroupKey: string | null; className: string | null }>;
+    definitionPartials?: AssignmentDefinitionPartial[];
+    assignments?: unknown;
+    findMatchResult?: { kind: string; definition?: AssignmentDefinitionPartial; matches?: AssignmentDefinitionPartial[] };
+    startRunResult?: unknown;
+    startRunType?: 'resolve' | 'reject';
+  } = {}
+): { dialog: HTMLElement; queryClient: QueryClient } {
+  const {
+    classPartials,
+    definitionPartials,
+    assignments = MOCK_ASSIGNMENTS,
+    findMatchResult,
+    startRunResult,
+    startRunType,
+  } = options;
+
+  vi.mocked(getGoogleClassroomAssignments).mockResolvedValue(
+    assignments as Array<{ assignmentId: string; title: string; topicId: string | null; topicName: string | null }>
+  );
+
+  if (findMatchResult !== undefined) {
+    vi.mocked(findMatchingDefinition).mockReturnValue(findMatchResult as ReturnType<typeof findMatchingDefinition>);
+  }
+
+  if (startRunType === 'reject') {
+    vi.mocked(startAssessmentRun).mockRejectedValue(startRunResult);
+  } else if (startRunResult !== undefined) {
+    vi.mocked(startAssessmentRun).mockResolvedValue(startRunResult as null);
+  }
+
+  const queryClient = createAppQueryClient();
+  if (classPartials !== undefined) {
+    queryClient.setQueryData(queryKeys.classPartials(), classPartials);
+  }
+  if (definitionPartials !== undefined) {
+    queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), definitionPartials);
+  }
+
+  const { queryClient: returnedClient } = renderWithFrontendProviders(
+    <AssessTaskModal {...defaultProperties()} />,
+    { queryClient }
+  );
+
+  return {
+    dialog: screen.getByRole('dialog', { name: MODAL_TITLE }),
+    queryClient: returnedClient,
+  };
+}
+
+/**
+ * Selects an assignment in the dropdown and waits for Start Assessment to
+ * become enabled.
+ *
+ * @param {HTMLElement} dialog The modal dialog element.
+ * @returns {Promise<void>} Resolves when the button is enabled.
+ */
+async function selectAssignment(dialog: HTMLElement): Promise<void> {
+  await within(dialog).findByRole('combobox');
+  fireEvent.mouseDown(within(dialog).getByRole('combobox'));
+  const option = await screen.findByText('Essay');
+  fireEvent.click(option);
+  await waitFor(() => {
+    expect(
+      within(dialog).getByRole('button', { name: 'Start Assessment' })
+    ).toBeEnabled();
+  });
+}
+
+/**
+ * Clicks the Start Assessment button.
+ *
+ * @param {HTMLElement} dialog The modal dialog element.
+ */
+function clickStartAssessment(dialog: HTMLElement): void {
+  fireEvent.click(
+    within(dialog).getByRole('button', { name: 'Start Assessment' })
+  );
 }
 
 /**
@@ -105,7 +261,7 @@ describe('AssessTaskModal shell', () => {
     const mockedGetAssignments = vi.mocked(getGoogleClassroomAssignments);
     mockedGetAssignments.mockReturnValue(createPendingPromise());
 
-    render(<AssessTaskModal {...defaultProperties()} />);
+    renderWithFrontendProviders(<AssessTaskModal {...defaultProperties()} />);
 
     expect(screen.getByRole('dialog', { name: MODAL_TITLE })).toBeInTheDocument();
   });
@@ -235,7 +391,7 @@ describe('Cancel and close', () => {
     mockedGetAssignments.mockResolvedValue(MOCK_ASSIGNMENTS);
     const onClose = vi.fn();
 
-    render(<AssessTaskModal {...defaultProperties({ onClose })} />);
+    renderWithFrontendProviders(<AssessTaskModal {...defaultProperties({ onClose })} />);
 
     const dialog = screen.getByRole('dialog', { name: MODAL_TITLE });
     await within(dialog).findByRole('combobox'); // wait for ready state
@@ -254,7 +410,7 @@ describe('Cancel and close', () => {
     mockedGetAssignments.mockResolvedValue(MOCK_ASSIGNMENTS);
     const onClose = vi.fn();
 
-    render(<AssessTaskModal {...defaultProperties({ onClose })} />);
+    renderWithFrontendProviders(<AssessTaskModal {...defaultProperties({ onClose })} />);
 
     const dialog = screen.getByRole('dialog', { name: MODAL_TITLE });
     await within(dialog).findByRole('combobox');
@@ -281,7 +437,7 @@ describe('Fetch on open', () => {
     const mockedGetAssignments = vi.mocked(getGoogleClassroomAssignments);
     mockedGetAssignments.mockReturnValue(createPendingPromise());
 
-    render(<AssessTaskModal {...defaultProperties()} />);
+    renderWithFrontendProviders(<AssessTaskModal {...defaultProperties()} />);
 
     expect(mockedGetAssignments).toHaveBeenCalledWith(MOCK_CLASS_ID);
     expect(mockedGetAssignments).toHaveBeenCalledTimes(1);
@@ -297,21 +453,32 @@ describe('Reopen resets state', () => {
     const mockedGetAssignments = vi.mocked(getGoogleClassroomAssignments);
     mockedGetAssignments.mockResolvedValue(MOCK_ASSIGNMENTS);
 
-    const { rerender } = render(<AssessTaskModal {...defaultProperties()} />);
+    const queryClient = createAppQueryClient();
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <AssessTaskModal {...defaultProperties()} />
+      </QueryClientProvider>
+    );
 
     // Verify initial fetch
     expect(mockedGetAssignments).toHaveBeenCalledWith(MOCK_CLASS_ID);
     expect(mockedGetAssignments).toHaveBeenCalledTimes(1);
 
     // Close the modal
-    rerender(<AssessTaskModal {...defaultProperties({ open: false })} />);
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <AssessTaskModal {...defaultProperties({ open: false })} />
+      </QueryClientProvider>
+    );
 
     // Reopen with a different classId
     const newClassId = 'class-456';
     rerender(
-      <AssessTaskModal
-        {...defaultProperties({ open: true, classId: newClassId })}
-      />
+      <QueryClientProvider client={queryClient}>
+        <AssessTaskModal
+          {...defaultProperties({ open: true, classId: newClassId })}
+        />
+      </QueryClientProvider>
     );
 
     // Should trigger a fresh fetch with the new classId
@@ -322,66 +489,296 @@ describe('Reopen resets state', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Interaction: Start Assessment No-Op
+// Assessment Run Interaction
 // ---------------------------------------------------------------------------
 
-describe('Start Assessment click', () => {
-  it('is a no-op: no backend call, modal stays open, no visual state change', async () => {
-    const mockedGetAssignments = vi.mocked(getGoogleClassroomAssignments);
-    mockedGetAssignments.mockResolvedValue(MOCK_ASSIGNMENTS);
-    const onClose = vi.fn();
+describe('Assessment run interaction', () => {
+  // -----------------------------------------------------------------------
+  // Cache miss cases
+  // -----------------------------------------------------------------------
 
-    render(<AssessTaskModal {...defaultProperties({ onClose })} />);
-
-    const dialog = screen.getByRole('dialog', { name: MODAL_TITLE });
-    await within(dialog).findByRole('combobox');
-
-    // Select an assignment to enable Start Assessment
-    fireEvent.mouseDown(within(dialog).getByRole('combobox'));
-    const option = await screen.findByText('Essay');
-    fireEvent.click(option);
-
-    // Wait for Start Assessment to be enabled
-    await waitFor(() => {
-      expect(
-        within(dialog).getByRole('button', { name: 'Start Assessment' })
-      ).toBeEnabled();
+  it('shows error Alert when classPartials cache is empty', async () => {
+    const { dialog } = renderWithCache({
+      classPartials: undefined,
+      definitionPartials: [createDefinitionPartial()],
+      findMatchResult: { kind: 'matched', definition: createDefinitionPartial() },
     });
 
-    // Click Start Assessment
-    fireEvent.click(
-      within(dialog).getByRole('button', { name: 'Start Assessment' })
-    );
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
 
-    // Verify no additional calls to getGoogleClassroomAssignments (still 1 from open)
-    expect(mockedGetAssignments).toHaveBeenCalledTimes(1);
+    expect(await within(dialog).findByRole('alert')).toBeInTheDocument();
+  });
 
-    // Verify onClose was not called (modal stays open)
-    expect(onClose).not.toHaveBeenCalled();
+  it('shows error Alert with specific message when classId is not found in cached classPartials', async () => {
+    const { dialog } = renderWithCache({
+      classPartials: [createFixtureClassPartial({ classId: 'other-class', yearGroupKey: 'year-10' })],
+      definitionPartials: [createDefinitionPartial()],
+      findMatchResult: { kind: 'matched', definition: createDefinitionPartial() },
+    });
 
-    // Verify modal is still present
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert).toHaveTextContent('Class not found in cached data');
+  });
+
+  it('shows error Alert when assignmentDefinitionPartials cache is empty', async () => {
+    const { dialog } = renderWithCache({
+      classPartials: [createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' })],
+      definitionPartials: undefined,
+      findMatchResult: { kind: 'matched', definition: createDefinitionPartial() },
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    expect(await within(dialog).findByRole('alert')).toBeInTheDocument();
+  });
+
+  // -----------------------------------------------------------------------
+  // Null topic / null year group
+  // -----------------------------------------------------------------------
+
+  it('shows no-match error Alert when assignment has null topicName', async () => {
+    const { dialog } = renderWithCache({
+      classPartials: [createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' })],
+      definitionPartials: [createDefinitionPartial()],
+      // findMatchResult is intentionally omitted: the component returns early
+      // before findMatchingDefinition is called because topicName is null.
+      assignments: [{ assignmentId: 'a1', title: 'Essay', topicName: null, topicId: null }],
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert).toBeInTheDocument();
+    // The alert should indicate this assignment cannot be assessed because
+    // it has no topic set in Google Classroom.
+    expect(alert).toHaveTextContent(/no.*topic|topic.*null|no.*match/i);
+  });
+
+  it('shows error Alert with specific message when class has null yearGroupKey', async () => {
+    const { dialog } = renderWithCache({
+      classPartials: [createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: null })],
+      definitionPartials: [createDefinitionPartial()],
+      findMatchResult: { kind: 'no-match' },
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert).toHaveTextContent('Cannot determine year group for this class');
+  });
+
+  // -----------------------------------------------------------------------
+  // Match results
+  // -----------------------------------------------------------------------
+
+  it('shows error Alert when findMatchingDefinition returns no-match', async () => {
+    const { dialog } = renderWithCache({
+      classPartials: [createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' })],
+      definitionPartials: [createDefinitionPartial()],
+      findMatchResult: { kind: 'no-match' },
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    await expect(within(dialog).findByRole('alert')).resolves.toBeInTheDocument();
+  });
+
+  it('shows error Alert when findMatchingDefinition returns ambiguous match', async () => {
+    const definitionOne = createDefinitionPartial({ definitionKey: 'def-1' });
+    const definitionTwo = createDefinitionPartial({ definitionKey: 'def-2' });
+
+    const { dialog } = renderWithCache({
+      classPartials: [createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' })],
+      definitionPartials: [definitionOne, definitionTwo],
+      findMatchResult: { kind: 'ambiguous', matches: [definitionOne, definitionTwo] },
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert).toBeInTheDocument();
+  });
+
+  // -----------------------------------------------------------------------
+  // API call results
+  // -----------------------------------------------------------------------
+
+  it('shows success Alert and single Close button when match + API succeeds', async () => {
+    const matchedDefinition = createDefinitionPartial();
+    const { dialog } = renderWithCache({
+      classPartials: [createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' })],
+      definitionPartials: [matchedDefinition],
+      findMatchResult: { kind: 'matched', definition: matchedDefinition },
+      startRunResult: null,
+      startRunType: 'resolve',
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    // Success alert should appear
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert).toBeInTheDocument();
+
+    // Footer should have only Close button (no Cancel or Start Assessment)
+    await waitFor(() => {
+      expect(
+        within(dialog).queryByRole('button', { name: 'Cancel' })
+      ).toBeNull();
+      expect(
+        within(dialog).queryByRole('button', { name: 'Start Assessment' })
+      ).toBeNull();
+    });
+
+    // Scope Close button query to footer to avoid clashing with the modal's
+    // built-in X close button which also has accessible name "Close".
+    const footer = dialog.querySelector('.ant-modal-footer');
+    expect(footer).not.toBeNull();
     expect(
-      screen.getByRole('dialog', { name: MODAL_TITLE })
+      within(footer as HTMLElement).getByRole('button', { name: 'Close' })
     ).toBeInTheDocument();
+  });
 
-    // Start Assessment should still be enabled after click (no state change)
-    expect(
-      within(dialog).getByRole('button', { name: 'Start Assessment' })
-    ).toBeEnabled();
+  it('shows warning Alert when startAssessmentRun rejects with DefinitionStaleError', async () => {
+    const matchedDefinition = createDefinitionPartial();
+    const staleError = new ApiTransportError({
+      requestId: 'test-id',
+      error: { code: 'DEFINITION_STALE', message: 'Definition is stale' },
+    });
+
+    const { dialog } = renderWithCache({
+      classPartials: [createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' })],
+      definitionPartials: [matchedDefinition],
+      findMatchResult: { kind: 'matched', definition: matchedDefinition },
+      startRunResult: staleError,
+      startRunType: 'reject',
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    await expect(within(dialog).findByRole('alert')).resolves.toBeInTheDocument();
+  });
+
+  it('shows error Alert when startAssessmentRun rejects with generic API error', async () => {
+    const matchedDefinition = createDefinitionPartial();
+    const genericError = new Error('Something went wrong');
+
+    const { dialog } = renderWithCache({
+      classPartials: [createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' })],
+      definitionPartials: [matchedDefinition],
+      findMatchResult: { kind: 'matched', definition: matchedDefinition },
+      startRunResult: genericError,
+      startRunType: 'reject',
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    await expect(within(dialog).findByRole('alert')).resolves.toBeInTheDocument();
+  });
+
+  // -----------------------------------------------------------------------
+  // Loading state during API call
+  // -----------------------------------------------------------------------
+
+  it('shows loading on Start Assessment button during API call, reverts on completion', async () => {
+    const matchedDefinition = createDefinitionPartial();
+    let resolveRun!: (value: null) => void;
+    const pendingRun = new Promise<null>((resolve) => {
+      resolveRun = resolve;
+    });
+    vi.mocked(startAssessmentRun).mockReturnValue(pendingRun);
+
+    const { dialog } = renderWithCache({
+      classPartials: [createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' })],
+      definitionPartials: [matchedDefinition],
+      findMatchResult: { kind: 'matched', definition: matchedDefinition },
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    // During API call, button should show loading state.
+    // Ant Design appends "loading" to the accessible name when loading.
+    const button = within(dialog).getByRole('button', { name: 'loading Start Assessment' });
+    expect(button).toBeDisabled();
+
+    // Resolve the API call
+    await act(async () => {
+      resolveRun(null);
+    });
+
+    // After completion, loading should be gone (success state shown)
+    const footer = dialog.querySelector('.ant-modal-footer');
+    expect(footer).not.toBeNull();
+    await waitFor(() => {
+      expect(
+        within(footer as HTMLElement).getByRole('button', { name: 'Close' })
+      ).toBeInTheDocument();
+    });
   });
 });
 
 // ---------------------------------------------------------------------------
-// Footer: Both Buttons in All States
+// Success state: Close button behaviour
 // ---------------------------------------------------------------------------
 
-describe('Footer buttons across all states', () => {
-  it('always renders both Cancel and Start Assessment in the modal footer', async () => {
+describe('Success state close', () => {
+  it('calls onClose when Close button is clicked in success state', async () => {
+    const matchedDefinition = createDefinitionPartial();
+    const onClose = vi.fn();
+
+    vi.mocked(getGoogleClassroomAssignments).mockResolvedValue(MOCK_ASSIGNMENTS);
+
+    vi.mocked(findMatchingDefinition).mockReturnValue({ kind: 'matched', definition: matchedDefinition });
+    vi.mocked(startAssessmentRun).mockResolvedValue(null);
+
+    const queryClient = createAppQueryClient();
+    queryClient.setQueryData(queryKeys.classPartials(), [
+      createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+    ]);
+    queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [matchedDefinition]);
+
+    renderWithFrontendProviders(
+      <AssessTaskModal {...defaultProperties({ onClose })} />,
+      { queryClient }
+    );
+
+    const dialog = screen.getByRole('dialog', { name: MODAL_TITLE });
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    // Wait for success state — find the Close button in the footer
+    const footer = dialog.querySelector('.ant-modal-footer');
+    expect(footer).not.toBeNull();
+    const closeButton = await within(footer as HTMLElement).findByRole('button', { name: 'Close' });
+
+    fireEvent.click(closeButton);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Footer: Buttons in Non-Success States
+// ---------------------------------------------------------------------------
+
+describe('Footer buttons across states', () => {
+  it('renders Cancel and Start Assessment in loading, error, empty, and ready states', async () => {
     const mockedGetAssignments = vi.mocked(getGoogleClassroomAssignments);
 
     // Test loading state — use a fresh render
     mockedGetAssignments.mockReturnValue(createPendingPromise());
-    render(<AssessTaskModal {...defaultProperties()} />);
+    renderWithFrontendProviders(<AssessTaskModal {...defaultProperties()} />);
     let dialog = screen.getByRole('dialog', { name: MODAL_TITLE });
     expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
     expect(
@@ -392,7 +789,7 @@ describe('Footer buttons across all states', () => {
 
     // Test error state — separate render
     mockedGetAssignments.mockRejectedValue(new Error('Failed'));
-    render(<AssessTaskModal {...defaultProperties()} key="error" />);
+    renderWithFrontendProviders(<AssessTaskModal {...defaultProperties()} key="error" />);
     dialog = await screen.findByRole('dialog', { name: MODAL_TITLE });
     await within(dialog).findByRole('alert');
     expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
@@ -404,7 +801,7 @@ describe('Footer buttons across all states', () => {
 
     // Test empty state — separate render
     mockedGetAssignments.mockResolvedValue(MOCK_EMPTY_ASSIGNMENTS);
-    render(<AssessTaskModal {...defaultProperties()} key="empty" />);
+    renderWithFrontendProviders(<AssessTaskModal {...defaultProperties()} key="empty" />);
     dialog = await screen.findByRole('dialog', { name: MODAL_TITLE });
     await within(dialog).findByText('No assignments found for this class');
     expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
@@ -416,7 +813,7 @@ describe('Footer buttons across all states', () => {
 
     // Test ready state (no selection) — separate render
     mockedGetAssignments.mockResolvedValue(MOCK_ASSIGNMENTS);
-    render(<AssessTaskModal {...defaultProperties()} key="ready-no-sel" />);
+    renderWithFrontendProviders(<AssessTaskModal {...defaultProperties()} key="ready-no-sel" />);
     dialog = await screen.findByRole('dialog', { name: MODAL_TITLE });
     await within(dialog).findByRole('combobox');
     expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
