@@ -33,7 +33,7 @@ describe('googleClassroomAssignmentsService.getGoogleClassroomAssignments', () =
     const { getGoogleClassroomAssignments } = await import('./googleClassroomAssignmentsService');
 
     await expect(getGoogleClassroomAssignments('123')).resolves.toEqual([
-      { assignmentId: 'a1', title: 'Essay' },
+      { assignmentId: 'a1', title: 'Essay', topicId: null, topicName: null },
     ]);
   });
 
