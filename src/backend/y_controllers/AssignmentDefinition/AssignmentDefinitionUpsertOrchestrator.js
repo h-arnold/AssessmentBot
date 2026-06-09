@@ -33,7 +33,6 @@ class AssignmentDefinitionUpsertOrchestrator {
   }
 
   /**
-   * Creates the instance with injected dependencies.
    * Creates or updates a reusable assignment definition.
    * This is now the SOLE creation/update method per SPEC.md v1.9.0 (ensureDefinition removed).
    *
@@ -136,7 +135,6 @@ class AssignmentDefinitionUpsertOrchestrator {
   }
 
   /**
-   * Creates the instance with injected dependencies.
    * Resolves alternate titles for upsert operations.
    *
    * @param {Object} params - Resolution parameters.
@@ -157,7 +155,6 @@ class AssignmentDefinitionUpsertOrchestrator {
   }
 
   /**
-   * Creates the instance with injected dependencies.
    * Resolves assignment weighting for upsert operations.
    * Returns the raw payload value without defaulting.
    *
@@ -179,7 +176,6 @@ class AssignmentDefinitionUpsertOrchestrator {
   }
 
   /**
-   * Creates the instance with injected dependencies.
    * Resolves year-group context for upsert operations.
    *
    * @param {Object} params - Resolution parameters.
@@ -202,7 +198,6 @@ class AssignmentDefinitionUpsertOrchestrator {
   }
 
   /**
-   * Creates the instance with injected dependencies.
    * Resolves task state and timestamp updates for upsert operations.
    *
    * @param {Object} params - Resolution parameters.
@@ -232,7 +227,7 @@ class AssignmentDefinitionUpsertOrchestrator {
     ) {
       referenceLastModified = DriveManager.getFileModifiedTime(referenceDocumentId);
       templateLastModified = DriveManager.getFileModifiedTime(templateDocumentId);
-      const reparsedTasks = this.taskWeighting.applyStoredWeightings(
+      const freshTasks = this.taskWeighting.applyStoredWeightings(
         existingTasks,
         this.taskParser.parseTasks({
           documentType,
@@ -242,7 +237,7 @@ class AssignmentDefinitionUpsertOrchestrator {
       );
 
       return {
-        finalTasks: this.taskWeighting.defaultTaskWeightings(reparsedTasks),
+        finalTasks: this.taskWeighting.defaultTaskWeightings(freshTasks),
         referenceLastModified,
         templateLastModified,
       };
@@ -281,7 +276,6 @@ class AssignmentDefinitionUpsertOrchestrator {
   }
 
   /**
-   * Creates the instance with injected dependencies.
    * Applies task-weighting patches when present in payload.
    *
    * @param {Object} params - Parameters.
@@ -299,7 +293,6 @@ class AssignmentDefinitionUpsertOrchestrator {
   }
 
   /**
-   * Creates the instance with injected dependencies.
    * Returns whether reference/template IDs changed during update.
    *
    * @param {Object|null} existingDefinition - Existing definition.
@@ -320,7 +313,6 @@ class AssignmentDefinitionUpsertOrchestrator {
   }
 
   /**
-   * Creates the instance with injected dependencies.
    * Resolves document type for upsert operations.
    *
    * @param {Object} params - Resolution params.
@@ -342,7 +334,6 @@ class AssignmentDefinitionUpsertOrchestrator {
   }
 
   /**
-   * Creates the instance with injected dependencies.
    * Generates a stable opaque definition key.
    *
    * @returns {string} Stable identifier.
@@ -350,21 +341,10 @@ class AssignmentDefinitionUpsertOrchestrator {
    */
   _generateStableKey() {
     /* global Utilities */
-    if (typeof Utilities === 'undefined' || typeof Utilities.getUuid !== 'function') {
-      throw new TypeError('Utilities.getUuid must be available to generate definitionKey.');
-    }
-
-    const generatedDefinitionKey = Utilities.getUuid();
-
-    if (!this.validation.isNonEmptyString(generatedDefinitionKey)) {
-      throw new TypeError('Utilities.getUuid must return a non-empty string definitionKey.');
-    }
-
-    return generatedDefinitionKey.trim();
+    return Utilities.getUuid();
   }
 
   /**
-   * Creates the instance with injected dependencies.
    * Validates that no duplicate business tuple exists in registry rows.
    *
    * @param {Object} params - Duplicate-check params.

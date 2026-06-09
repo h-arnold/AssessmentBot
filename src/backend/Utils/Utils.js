@@ -117,7 +117,9 @@ const Utils = {
 
 // Export for Node tests / CommonJS environment
 if (typeof module !== 'undefined' && module.exports) {
-  // Load DateUtils for backward-compatible re-exports
+  // Temporary backward-compatibility bridge: re-export DateUtils methods
+  // via Utils so existing consumers don't break during migration.
+  // Remove this block once all consumers are updated to use DateUtils directly.
   const dateUtils = require('./DateUtils.js');
   Utils.getDate = dateUtils.getFormattedDate;
   Utils.getFutureDate = dateUtils.getFutureDate;

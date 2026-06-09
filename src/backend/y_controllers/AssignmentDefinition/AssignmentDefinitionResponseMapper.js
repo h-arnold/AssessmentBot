@@ -17,7 +17,6 @@ class AssignmentDefinitionResponseMapper {
   }
 
   /**
-   * Creates the instance with injected dependencies.
    * Maps a full assignment definition to the canonical editable transport shape.
    *
    * @param {AssignmentDefinition|Object} definition - Definition source.
@@ -28,7 +27,6 @@ class AssignmentDefinitionResponseMapper {
   }
 
   /**
-   * Creates the instance with injected dependencies.
    * Maps a full assignment definition to the canonical editable transport shape.
    *
    * @param {AssignmentDefinition|Object} definition - Definition source.
@@ -85,17 +83,6 @@ class AssignmentDefinitionResponseMapper {
       createdAt: source.createdAt || null,
       updatedAt: source.updatedAt || null,
     };
-
-    // Log any undefined fields to help diagnose Zod validation errors
-    const undefinedFields = Object.entries(result)
-      .filter(([k, v]) => v === undefined)
-      .map(([k]) => k);
-    if (undefinedFields.length > 0) {
-      ABLogger.getInstance().error('Canonical response has undefined fields', {
-        definitionKey: result.definitionKey,
-        undefinedFields,
-      });
-    }
 
     // Validate required fields are present and non-undefined
     // Using direct property access to avoid security lint warnings

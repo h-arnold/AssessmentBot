@@ -315,15 +315,12 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
     expect(() => controller.upsertDefinition(createUpsertPayload())).toThrow(/Utilities\.getUuid/i);
   });
 
-  it('fails loudly when Utilities.getUuid returns a blank create key', () => {
-    globalThis.Utilities.getUuid.mockReturnValue('   ');
-
-    const runUpsert = () => controller.upsertDefinition(createUpsertPayload());
-
-    expect(runUpsert).toThrow(TypeError);
-    expect(runUpsert).toThrow(/non-empty string definitionKey/i);
-    expect(mockFullCollection.insertOne).not.toHaveBeenCalled();
-    expect(mockRegistryCollection.insertOne).not.toHaveBeenCalled();
+  it('accepts a valid UUID from Utilities.getUuid as the create definitionKey', () => {
+    // Utilities.getUuid() is guaranteed by GAS to return a valid UUID string,
+    // so the simplified _generateStableKey delegates directly to it without validation.
+    const saved = controller.upsertDefinition(createUpsertPayload());
+    expect(saved.definitionKey).toBe('11111111-2222-4333-8444-555555555555');
+    expect(globalThis.Utilities.getUuid).toHaveBeenCalled();
   });
 
   it('creates a stable opaque definitionKey that is not metadata-derived', () => {

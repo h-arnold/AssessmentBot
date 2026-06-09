@@ -21,7 +21,6 @@ class AssignmentDefinitionPersistence {
   }
 
   /**
-   * Creates the instance with injected dependencies.
    * Retrieve a definition by its stable definition key.
    * Returns the full definition if available, or a partial metadata entry from the registry.
    *
@@ -52,7 +51,6 @@ class AssignmentDefinitionPersistence {
   }
 
   /**
-   * Creates the instance with injected dependencies.
    * Return all partial assignment definitions from the registry as model instances.
    * Partial definitions contain essential metadata only; tasks are stored separately in full definitions.
    *
@@ -65,7 +63,6 @@ class AssignmentDefinitionPersistence {
   }
 
   /**
-   * Creates the instance with injected dependencies.
    * Deletes both partial and full assignment-definition records for a key.
    *
    * @param {string} definitionKey - Validated definition key.
@@ -96,7 +93,6 @@ class AssignmentDefinitionPersistence {
   }
 
   /**
-   * Creates the instance with injected dependencies.
    * Writes full-store first and registry second, then attempts rollback on registry failure.
    *
    * @param {Object} params - Persistence options.
@@ -175,7 +171,6 @@ class AssignmentDefinitionPersistence {
   }
 
   /**
-   * Creates the instance with injected dependencies.
    * Attempts to restore full-store state after a later write failure.
    *
    * @param {Object} params - Rollback parameters.
@@ -200,7 +195,6 @@ class AssignmentDefinitionPersistence {
   }
 
   /**
-   * Creates the instance with injected dependencies.
    * Checks if an error indicates a missing collection in JsonDb.
    *
    * @param {Error} error - Error to classify.
@@ -212,7 +206,6 @@ class AssignmentDefinitionPersistence {
   }
 
   /**
-   * Creates the instance with injected dependencies.
    * Retrieves the registry collection for all definition metadata.
    *
    * @returns {Object} The JsonDb collection instance.
@@ -223,7 +216,6 @@ class AssignmentDefinitionPersistence {
   }
 
   /**
-   * Creates the instance with injected dependencies.
    * Generates the collection name for storing a full definition.
    *
    * @param {string} definitionKey - The stable definition key.
@@ -235,7 +227,6 @@ class AssignmentDefinitionPersistence {
   }
 
   /**
-   * Creates the instance with injected dependencies.
    * Retrieves the JsonDb collection for storing a full definition.
    *
    * @param {string} definitionKey - The stable definition key.
@@ -248,7 +239,6 @@ class AssignmentDefinitionPersistence {
   }
 
   /**
-   * Creates the instance with injected dependencies.
    * Retrieves a raw full-definition document without model hydration.
    *
    * @param {string} definitionKey - Definition key.

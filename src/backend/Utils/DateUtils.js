@@ -91,8 +91,3 @@ const DateUtils = {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = DateUtils;
 }
-
-// Export to global scope for GAS runtime
-if (typeof globalThis !== 'undefined') {
-  globalThis.DateUtils = DateUtils;
-}

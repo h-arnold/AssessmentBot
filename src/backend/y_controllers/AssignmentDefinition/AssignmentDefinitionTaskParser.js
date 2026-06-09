@@ -15,7 +15,6 @@ class AssignmentDefinitionTaskParser {
   }
 
   /**
-   * Creates the instance with injected dependencies.
    * Parses task definitions from reference and template documents.
    * Dispatches to type-specific parsers based on document type.
    *
@@ -41,7 +40,6 @@ class AssignmentDefinitionTaskParser {
   }
 
   /**
-   * Creates the instance with injected dependencies.
    * Parses task definitions from Google Slides documents.
    * Validates each task definition and logs errors for invalid tasks.
    *
@@ -79,7 +77,6 @@ class AssignmentDefinitionTaskParser {
   }
 
   /**
-   * Creates the instance with injected dependencies.
    * Parses task definitions from Google Sheets documents.
    * Validates each task definition and logs errors for invalid tasks.
    *

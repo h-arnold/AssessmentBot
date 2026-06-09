@@ -15,7 +15,6 @@ class AssignmentDefinitionTaskWeighting {
   }
 
   /**
-   * Creates the instance with injected dependencies.
    * Applies existing task weightings to parsed task sets.
    *
    * @param {Object} existingTasks - Existing task map.
@@ -42,8 +41,10 @@ class AssignmentDefinitionTaskWeighting {
   }
 
   /**
-   * Creates the instance with injected dependencies.
-   * Applies default task weightings to parsed tasks when missing.
+   * Ensures all parsed tasks have a taskWeighting value.
+   * The TaskDefinition constructor now defaults taskWeighting to 1,
+   * so this method is retained for defence-in-depth when tasks
+   * arrive from non-constructor paths.
    *
    * @param {Object} parsedTasks - Parsed task map.
    * @returns {Object} Parsed tasks with defaults applied.
@@ -65,7 +66,6 @@ class AssignmentDefinitionTaskWeighting {
   }
 
   /**
-   * Creates the instance with injected dependencies.
    * Applies payload task-weighting patches to known tasks.
    *
    * @param {Object} tasks - Task map.
@@ -102,18 +102,16 @@ class AssignmentDefinitionTaskWeighting {
   }
 
   /**
-   * Creates the instance with injected dependencies.
-   * Finds a task object by ID from a task map.
+   * Finds a task object by ID from a task map using direct property access.
    *
-   * @param {Object} tasks - Task map.
+   * @param {Object} tasks - Task map keyed by task ID.
    * @param {string} taskId - Task ID.
    * @returns {Object|null} Task object or null.
    * @private
    */
   _findTaskById(tasks, taskId) {
-    const entries = Object.entries(tasks || {});
-    const matched = entries.find(([candidateTaskId]) => candidateTaskId === taskId);
-    return matched ? matched[1] : null;
+    /* eslint-disable-next-line security/detect-object-injection -- taskId is a validated string from the task map keys */
+    return tasks ? tasks[taskId] || null : null;
   }
 }
 
