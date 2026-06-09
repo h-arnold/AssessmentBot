@@ -4,7 +4,7 @@ const {
   loadModuleGlobalsInVmContext,
   googleClassroomsHandlerPath,
   abclassMutationsPath,
-  assignmentDefinitionPartialsPath,
+  assignmentDefinitionTransportPath,
   apiConfigPath,
 } = require('./shared.js');
 
@@ -26,7 +26,7 @@ describe('Api/non-trivial transport helper global exposure', () => {
     expect(abclassContext.deleteABClass_).toEqual(expect.any(Function));
 
     const assignmentDefinitionContext = loadModuleGlobalsInVmContext(
-      assignmentDefinitionPartialsPath
+      assignmentDefinitionTransportPath
     );
     expect(assignmentDefinitionContext.getAssignmentDefinitionPartials).toBeUndefined();
     expect(assignmentDefinitionContext.getAssignmentDefinition).toBeUndefined();

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const UPSERT_TRANSPORT_MODULE_PATH_CANDIDATES = Object.freeze([
-  '../../src/backend/z_Api/assignmentDefinitionPartials.js',
+  '../../src/backend/z_Api/assignmentDefinitionTransport.js',
   '../../src/backend/z_Api/assignmentDefinitionMutations.js',
 ]);
 const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
@@ -105,15 +105,15 @@ function buildFullDefinition(overrides = {}) {
 
 function installAssignmentDefinitionControllerStub() {
   const upsertDefinition = vi.fn();
-  const toCanonicalFullDefinitionResponse = vi.fn((d) => d);
+  const getFullAssignmentDefinition = vi.fn((d) => d);
   const AssignmentDefinitionController = vi.fn(function StubAssignmentDefinitionController() {
     this.upsertDefinition = upsertDefinition;
-    this.toCanonicalFullDefinitionResponse = toCanonicalFullDefinitionResponse;
+    this.getFullAssignmentDefinition = getFullAssignmentDefinition;
   });
 
   globalThis.AssignmentDefinitionController = AssignmentDefinitionController;
 
-  return { AssignmentDefinitionController, upsertDefinition, toCanonicalFullDefinitionResponse };
+  return { AssignmentDefinitionController, upsertDefinition, getFullAssignmentDefinition };
 }
 
 describe('Api/upsertAssignmentDefinition transport contract', () => {

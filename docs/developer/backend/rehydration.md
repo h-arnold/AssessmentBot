@@ -103,7 +103,7 @@ Classes and primary methods (in call order):
 
 - Validates inputs, resolves topic, and checks staleness.
 - Parses tasks via `_parseSlidesTasks`/`_parseSheetsTasks`, which now always rehydrate into `TaskDefinition` instances (`TaskDefinition.fromJSON(td.toJSON())`).
-- Persists both forms: `saveDefinition` → full collection (`toJSON()`), `savePartialDefinition` → registry (`toPartialJSON()`).
+- Persists both forms: `_persistDefinitionWithRollback` → full collection (`toJSON()`), partial registry (`toPartialJSON()`).
 
 2. **ABClassController.persistAssignmentRun()**
 

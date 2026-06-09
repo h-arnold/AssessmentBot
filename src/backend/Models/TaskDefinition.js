@@ -24,7 +24,7 @@ class TaskDefinition {
    */
   constructor(
     { taskTitle, pageId = null, taskNotes = null, taskMetadata = {}, id = null, index = null } = {},
-    taskWeighting = null
+    taskWeighting = 1
   ) {
     if (!taskTitle) throw new Error('TaskDefinition requires taskTitle');
     this.taskTitle = taskTitle;

@@ -6,6 +6,7 @@ safety = "neutral"
 agent_type = "subagent"
 nickname_candidates = ["docs", "Docs", "Documentation"]
 system_prompt_id = "docs"
+active_model = "deepseek-v4-flash"
 
 [tools]
 allowlist = ["ask_user_question", "bash", "grep", "read_file", "search_replace", "todo", "web_search", "write_file"]

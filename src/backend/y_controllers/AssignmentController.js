@@ -326,13 +326,13 @@ class AssignmentController {
    */
   _validateDefinitionFreshness(definition) {
     const referenceModified = DriveManager.getFileModifiedTime(definition.referenceDocumentId);
-    const referenceStale = Utils.isNewer(referenceModified, definition.referenceLastModified);
+    const referenceStale = DateUtils.isNewer(referenceModified, definition.referenceLastModified);
 
     let templateModified = null;
     let templateStale = false;
     if (!referenceStale) {
       templateModified = DriveManager.getFileModifiedTime(definition.templateDocumentId);
-      templateStale = Utils.isNewer(templateModified, definition.templateLastModified);
+      templateStale = DateUtils.isNewer(templateModified, definition.templateLastModified);
     }
 
     if (referenceStale || templateStale) {

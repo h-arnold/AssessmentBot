@@ -26,24 +26,6 @@ g.Utils = {
     }
     return Math.abs(h).toString(16);
   },
-  definitionNeedsRefresh(definition, referenceModified, templateModified) {
-    if (!definition?.tasks || Object.keys(definition.tasks).length === 0) {
-      return true;
-    }
-    if (!definition.referenceLastModified || !definition.templateLastModified) {
-      return true;
-    }
-    const refFresh = this.isNewer(referenceModified, definition.referenceLastModified);
-    const tplFresh = this.isNewer(templateModified, definition.templateLastModified);
-    return refFresh || tplFresh;
-  },
-  isNewer(candidate, baseline) {
-    if (!candidate || !baseline) return false;
-    const c = new Date(candidate);
-    const b = new Date(baseline);
-    if (Number.isNaN(c.getTime()) || Number.isNaN(b.getTime())) return false;
-    return c.getTime() > b.getTime();
-  },
 };
 
 g.Utilities = {
@@ -123,6 +105,7 @@ g.ScriptAppManager = class ScriptAppManager {
 g.Validate = require('../src/backend/Utils/Validate.js').Validate;
 g.ArrayUtils = require('../src/backend/Utils/00_ArrayUtils.js');
 
+g.DateUtils = require('../src/backend/Utils/DateUtils.js');
 g.GASPropertiesUtils = require('../src/backend/Utils/00_GASPropertiesUtils.js');
 
 g.ApiValidationError = require('../src/backend/Utils/ErrorTypes/ApiValidationError.js');
@@ -204,6 +187,17 @@ g.ClassroomManager = {
   },
 };
 
-// Expose hasControlCharacters_ from assignmentDefinitionPartials for test access
-const { hasControlCharacters_ } = require('../src/backend/z_Api/assignmentDefinitionPartials.js');
-g.hasControlCharacters_ = hasControlCharacters_;
+// Expose assignment-definition modules for test access
+// Load validation module first (same order as GAS concatenation), then transport module
+Object.assign(g, require('../src/backend/z_Api/assignmentDefinitionValidation.js'));
+Object.assign(g, require('../src/backend/z_Api/assignmentDefinitionTransport.js'));
+
+// Load AssignmentDefinition sub-classes as globals (mirroring GAS concatenation order so
+// index.js can reference them by name when require() calls are absent in production).
+g.AssignmentDefinitionValidation = require('../src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionValidation.js');
+g.AssignmentDefinitionReferenceData = require('../src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionReferenceData.js');
+g.AssignmentDefinitionTaskParser = require('../src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionTaskParser.js');
+g.AssignmentDefinitionTaskWeighting = require('../src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionTaskWeighting.js');
+g.AssignmentDefinitionPersistence = require('../src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionPersistence.js');
+g.AssignmentDefinitionUpsertOrchestrator = require('../src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionUpsertOrchestrator.js');
+g.AssignmentDefinitionResponseMapper = require('../src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionResponseMapper.js');

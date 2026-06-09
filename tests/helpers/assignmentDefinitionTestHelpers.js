@@ -253,7 +253,7 @@ export function setupAssignmentDefinitionTestGlobals(
   globalThis.SlidesParser = MockSlidesParser;
 
   // Create controller - use default export if available
-  const AssignmentDefinitionController = require('../../src/backend/y_controllers/AssignmentDefinitionController.js');
+  const AssignmentDefinitionController = require('../../src/backend/y_controllers/AssignmentDefinition/index.js');
   const ControllerClass = AssignmentDefinitionController.default || AssignmentDefinitionController;
   const controller = new ControllerClass();
 

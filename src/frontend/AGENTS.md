@@ -69,6 +69,28 @@ GAS `google.script.run` auto-JSON-stringifies backend return values before passi
 - **`failureHandler`:** GAS passes raw error strings (not JSON) to `failureHandler`.
   `apiService.ts` handles this without parsing.
 
+### 4.3 Prohibited types in `google.script.run` (critical)
+
+`google.script.run` **prohibits** `Date`, `Function`, and DOM elements in both **parameters and
+return values** — including inside nested objects and arrays. If any value in the response graph
+is a `Date` object (not an ISO string), GAS falls back to `Object.toString()` serialisation,
+producing non-JSON output that breaks `JSON.parse()` and causes the frontend to receive `null`.
+
+Reference: https://developers.google.com/apps-script/guides/html/reference/run
+(myFunction section: "Requests fail if you attempt to pass a Date, Function, DOM element
+besides a form, or other prohibited type, including prohibited types inside objects or arrays."
+Return value note: "return types are subject to the same restrictions as parameter types".)
+
+**Rules for backend code:**
+
+1. Never return live `Date` objects from any method callable via `google.script.run`. Convert to
+   ISO 8601 strings (`date.toISOString()`) at the API boundary.
+2. Never return `Function` instances or DOM element references.
+3. Validate that all array/object fields are plain JS arrays/objects, not Java-backed types
+   (e.g. `[Ljava.lang.Object;@...`) that GAS cannot serialise.
+4. Apply these rules at the controller-to-transport boundary (e.g. `_getFullAssignmentDefinition`)
+   before the response reaches `apiHandler`.
+
 For test mock fidelity rules (do not manually stringify/parse in individual test files), see
 `docs/developer/frontend/frontend-testing.md`.
 

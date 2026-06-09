@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const modulePath = '../../src/backend/z_Api/assignmentDefinitionPartials.js';
+const modulePath = '../../src/backend/z_Api/assignmentDefinitionTransport.js';
 const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
 
 function loadAssignmentDefinitionTransportModule() {
@@ -10,15 +10,15 @@ function loadAssignmentDefinitionTransportModule() {
 
 function installAssignmentDefinitionControllerStub() {
   const getDefinitionByKey = vi.fn();
-  const toCanonicalFullDefinitionResponse = vi.fn((d) => d);
+  const getFullAssignmentDefinition = vi.fn((d) => d);
   const AssignmentDefinitionController = vi.fn(function StubAssignmentDefinitionController() {
     this.getDefinitionByKey = getDefinitionByKey;
-    this.toCanonicalFullDefinitionResponse = toCanonicalFullDefinitionResponse;
+    this.getFullAssignmentDefinition = getFullAssignmentDefinition;
   });
 
   globalThis.AssignmentDefinitionController = AssignmentDefinitionController;
 
-  return { AssignmentDefinitionController, getDefinitionByKey, toCanonicalFullDefinitionResponse };
+  return { AssignmentDefinitionController, getDefinitionByKey, getFullAssignmentDefinition };
 }
 
 function buildCanonicalFullDefinition(overrides = {}) {

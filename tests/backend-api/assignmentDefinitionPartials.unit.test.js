@@ -3,15 +3,18 @@ import {
   createAssignmentDefinitionControllerHooks,
   installAssignmentDefinitionControllerStub,
   loadAssignmentDefinitionPartialsModule,
+  loadAssignmentDefinitionValidationModule,
   buildValidPartial,
   createMockDefinitionForPartialRow,
   expectFunctionNotInSource,
   expectFunctionInSource,
   expectPatternInSource,
   expectPatternNotInSource,
+  expectValidationFunctionInSource,
 } from '../helpers/assignmentDefinitionPartialsTestHelpers.js';
 
-const modulePath = '../../src/backend/z_Api/assignmentDefinitionPartials.js';
+const transportModulePath = '../../src/backend/z_Api/assignmentDefinitionTransport.js';
+const validationModulePath = '../../src/backend/z_Api/assignmentDefinitionValidation.js';
 const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
 
 // Test URLs similar to but not exactly the same as the example:
@@ -342,12 +345,12 @@ describe('getAssignmentDefinition_', () => {
     };
     const mockController = {
       getDefinitionByKey: vi.fn(() => mockDefinition),
-      toCanonicalFullDefinitionResponse: vi.fn((d) => d),
+      getFullAssignmentDefinition: vi.fn((d) => d),
     };
     const { AssignmentDefinitionController } = installAssignmentDefinitionControllerStub([]);
     AssignmentDefinitionController.prototype.getDefinitionByKey = mockController.getDefinitionByKey;
-    AssignmentDefinitionController.prototype.toCanonicalFullDefinitionResponse =
-      mockController.toCanonicalFullDefinitionResponse;
+    AssignmentDefinitionController.prototype.getFullAssignmentDefinition =
+      mockController.getFullAssignmentDefinition;
 
     const { getAssignmentDefinition_ } = loadAssignmentDefinitionPartialsModule();
 
@@ -355,26 +358,26 @@ describe('getAssignmentDefinition_', () => {
 
     expect(AssignmentDefinitionController).toHaveBeenCalledTimes(1);
     expect(mockController.getDefinitionByKey).toHaveBeenCalledWith('test-key');
-    expect(mockController.toCanonicalFullDefinitionResponse).toHaveBeenCalledWith(mockDefinition);
+    expect(mockController.getFullAssignmentDefinition).toHaveBeenCalledWith(mockDefinition);
     expect(result).toEqual(mockDefinition);
   });
 
   it('should return null when definition is not found', () => {
     const mockController = {
       getDefinitionByKey: vi.fn(() => null),
-      toCanonicalFullDefinitionResponse: vi.fn(),
+      getFullAssignmentDefinition: vi.fn(),
     };
     const { AssignmentDefinitionController } = installAssignmentDefinitionControllerStub([]);
     AssignmentDefinitionController.prototype.getDefinitionByKey = mockController.getDefinitionByKey;
-    AssignmentDefinitionController.prototype.toCanonicalFullDefinitionResponse =
-      mockController.toCanonicalFullDefinitionResponse;
+    AssignmentDefinitionController.prototype.getFullAssignmentDefinition =
+      mockController.getFullAssignmentDefinition;
 
     const { getAssignmentDefinition_ } = loadAssignmentDefinitionPartialsModule();
 
     const result = getAssignmentDefinition_({ definitionKey: 'non-existent-key' });
 
     expect(result).toBeNull();
-    expect(mockController.toCanonicalFullDefinitionResponse).not.toHaveBeenCalled();
+    expect(mockController.getFullAssignmentDefinition).not.toHaveBeenCalled();
   });
 
   it('should throw ApiValidationError when parameters is null', () => {
@@ -635,15 +638,15 @@ describe('Section 5: API layer refactoring - Call sites updated', () => {
   beforeEach(beforeEachHandler);
   afterEach(afterEachHandler);
 
-  it('should verify upsertAssignmentDefinition_ calls controller.toCanonicalFullDefinitionResponse(definition)', () => {
+  it('should verify upsertAssignmentDefinition_ calls controller.getFullAssignmentDefinition(definition)', () => {
     installAssignmentDefinitionControllerStub([]);
-    expectPatternInSource('controller.toCanonicalFullDefinitionResponse(definition)');
+    expectPatternInSource('controller.getFullAssignmentDefinition(definition)');
     expectPatternNotInSource('toCanonicalTransportDefinition_(controller, definition)');
   });
 
-  it('should verify getAssignmentDefinition_ calls controller.toCanonicalFullDefinitionResponse(definition)', () => {
+  it('should verify getAssignmentDefinition_ calls controller.getFullAssignmentDefinition(definition)', () => {
     installAssignmentDefinitionControllerStub([]);
-    expectPatternInSource('controller.toCanonicalFullDefinitionResponse(definition)');
+    expectPatternInSource('controller.getFullAssignmentDefinition(definition)');
     expectPatternNotInSource('toCanonicalTransportDefinition_(controller, definition)');
   });
 });
@@ -657,7 +660,7 @@ describe('Section 5: API layer refactoring - getAssignmentDefinitionPartials_ re
   it('should export toTransportPartialRow_ helper', () => {
     installAssignmentDefinitionControllerStub([]);
 
-    const moduleExports = require(modulePath);
+    const moduleExports = require(transportModulePath);
     expect(moduleExports).toHaveProperty('toTransportPartialRow_');
     expect(typeof moduleExports.toTransportPartialRow_).toBe('function');
   });
@@ -670,7 +673,7 @@ describe('Section 5: API layer refactoring - getAssignmentDefinitionPartials_ re
   it('should defensively strip yearGroup field from partial JSON', () => {
     installAssignmentDefinitionControllerStub([]);
 
-    const moduleExports = require(modulePath);
+    const moduleExports = require(transportModulePath);
     expect(moduleExports).toHaveProperty('toTransportPartialRow_');
 
     const mockDefinition = createMockDefinitionForPartialRow({ yearGroup: '10' });
@@ -681,7 +684,7 @@ describe('Section 5: API layer refactoring - getAssignmentDefinitionPartials_ re
   it('should normalize Date fields as ISO strings', () => {
     installAssignmentDefinitionControllerStub([]);
 
-    const moduleExports = require(modulePath);
+    const moduleExports = require(transportModulePath);
     expect(moduleExports).toHaveProperty('toTransportPartialRow_');
 
     const createdAt = new Date('2026-01-05T10:00:00.000Z');
@@ -697,7 +700,7 @@ describe('Section 5: API layer refactoring - getAssignmentDefinitionPartials_ re
   it('should handle pre-normalised string dates correctly', () => {
     installAssignmentDefinitionControllerStub([]);
 
-    const moduleExports = require(modulePath);
+    const moduleExports = require(transportModulePath);
     expect(moduleExports).toHaveProperty('toTransportPartialRow_');
 
     const mockDefinition = createMockDefinitionForPartialRow();
@@ -710,7 +713,7 @@ describe('Section 5: API layer refactoring - getAssignmentDefinitionPartials_ re
   it('should ensure tasks field is null for partial definitions', () => {
     installAssignmentDefinitionControllerStub([]);
 
-    const moduleExports = require(modulePath);
+    const moduleExports = require(transportModulePath);
     expect(moduleExports).toHaveProperty('toTransportPartialRow_');
 
     const mockDefinition = createMockDefinitionForPartialRow();
@@ -760,17 +763,17 @@ describe('Section 5: API layer refactoring - Transport validation unchanged', ()
 
   it('should validate upsert parameters via validation helper', () => {
     installAssignmentDefinitionControllerStub([]);
-    expectFunctionInSource('validateUpsertParameters_');
+    expectValidationFunctionInSource('validateUpsertParameters_');
   });
 
   it('should validate read parameters via validation helper', () => {
     installAssignmentDefinitionControllerStub([]);
-    expectFunctionInSource('validateReadParameters_');
+    expectValidationFunctionInSource('validateReadParameters_');
   });
 
   it('should validate delete parameters via validation helper', () => {
     installAssignmentDefinitionControllerStub([]);
-    expectFunctionInSource('validateDeleteParameters_');
+    expectValidationFunctionInSource('validateDeleteParameters_');
   });
 });
 
@@ -792,8 +795,8 @@ describe('Section 5: API layer refactoring - No assignmentWeighting defaulting i
       return { definitionKey: 'test-key' };
     });
 
-    // Mock toCanonicalFullDefinitionResponse
-    AssignmentDefinitionController.prototype.toCanonicalFullDefinitionResponse = vi.fn((d) => d);
+    // Mock getFullAssignmentDefinition
+    AssignmentDefinitionController.prototype.getFullAssignmentDefinition = vi.fn((d) => d);
 
     // Need yearGroupKey for validation
     const payloadWithoutWeighting = {
@@ -824,7 +827,7 @@ describe('Section 5: API layer refactoring - No assignmentWeighting defaulting i
       return { definitionKey: 'test-key' };
     });
 
-    AssignmentDefinitionController.prototype.toCanonicalFullDefinitionResponse = vi.fn((d) => d);
+    AssignmentDefinitionController.prototype.getFullAssignmentDefinition = vi.fn((d) => d);
 
     const payloadWithNullWeighting = {
       primaryTitle: 'Test Assignment',
@@ -854,7 +857,7 @@ describe('Section 5: API layer refactoring - No assignmentWeighting defaulting i
       return { definitionKey: 'test-key' };
     });
 
-    AssignmentDefinitionController.prototype.toCanonicalFullDefinitionResponse = vi.fn((d) => d);
+    AssignmentDefinitionController.prototype.getFullAssignmentDefinition = vi.fn((d) => d);
 
     const payloadWithWeighting = {
       primaryTitle: 'Test Assignment',
@@ -940,7 +943,7 @@ describe('hasControlCharacters_', () => {
     },
   ])('returns $expected for $description', ({ value, expected }) => {
     installAssignmentDefinitionControllerStub([]);
-    const { hasControlCharacters_ } = loadAssignmentDefinitionPartialsModule();
+    const { hasControlCharacters_ } = loadAssignmentDefinitionValidationModule();
     expect(hasControlCharacters_(value)).toBe(expected);
   });
 });
@@ -1061,7 +1064,7 @@ describe('isIsoDateTimeString_', () => {
     },
   ])('returns $expected for $description', ({ value, expected }) => {
     installAssignmentDefinitionControllerStub([]);
-    const { isIsoDateTimeString_ } = loadAssignmentDefinitionPartialsModule();
+    const { isIsoDateTimeString_ } = loadAssignmentDefinitionValidationModule();
     expect(isIsoDateTimeString_(value)).toBe(expected);
   });
 });
@@ -1076,7 +1079,7 @@ describe('validateSafeTrimmedIdentifier_', () => {
 
   beforeEach(() => {
     installAssignmentDefinitionControllerStub([]);
-    const module = loadAssignmentDefinitionPartialsModule();
+    const module = loadAssignmentDefinitionValidationModule();
     throwValidationError_ = module.throwValidationError_;
     validateSafeTrimmedIdentifier_ = module.validateSafeTrimmedIdentifier_;
   });
@@ -1210,7 +1213,7 @@ describe('throwValidationError_', () => {
 
   it('throws ApiValidationError with correct properties', () => {
     installAssignmentDefinitionControllerStub([]);
-    const { throwValidationError_ } = loadAssignmentDefinitionPartialsModule();
+    const { throwValidationError_ } = loadAssignmentDefinitionValidationModule();
 
     expect(() => throwValidationError_('test message', 'testField', 5)).toThrow(ApiValidationError);
     try {
@@ -1225,7 +1228,7 @@ describe('throwValidationError_', () => {
 
   it('throws ApiValidationError with null fieldName', () => {
     installAssignmentDefinitionControllerStub([]);
-    const { throwValidationError_ } = loadAssignmentDefinitionPartialsModule();
+    const { throwValidationError_ } = loadAssignmentDefinitionValidationModule();
 
     try {
       throwValidationError_('test message', null, 10);
@@ -1239,7 +1242,7 @@ describe('throwValidationError_', () => {
 
   it('throws ApiValidationError with zero rowIndex', () => {
     installAssignmentDefinitionControllerStub([]);
-    const { throwValidationError_ } = loadAssignmentDefinitionPartialsModule();
+    const { throwValidationError_ } = loadAssignmentDefinitionValidationModule();
 
     try {
       throwValidationError_('test message', 'field', 0);
@@ -1260,7 +1263,7 @@ describe('throwReadValidationError_', () => {
 
   it('throws ApiValidationError with correct properties for read operations', () => {
     installAssignmentDefinitionControllerStub([]);
-    const { throwReadValidationError_ } = loadAssignmentDefinitionPartialsModule();
+    const { throwReadValidationError_ } = loadAssignmentDefinitionValidationModule();
 
     expect(() => throwReadValidationError_('test message', 'testField')).toThrow(
       ApiValidationError
@@ -1276,7 +1279,7 @@ describe('throwReadValidationError_', () => {
 
   it('throws ApiValidationError with null fieldName', () => {
     installAssignmentDefinitionControllerStub([]);
-    const { throwReadValidationError_ } = loadAssignmentDefinitionPartialsModule();
+    const { throwReadValidationError_ } = loadAssignmentDefinitionValidationModule();
 
     try {
       throwReadValidationError_('test message', null);
@@ -1296,7 +1299,7 @@ describe('throwUpsertValidationError_', () => {
 
   it('throws ApiValidationError with correct properties for upsert operations', () => {
     installAssignmentDefinitionControllerStub([]);
-    const { throwUpsertValidationError_ } = loadAssignmentDefinitionPartialsModule();
+    const { throwUpsertValidationError_ } = loadAssignmentDefinitionValidationModule();
 
     expect(() => throwUpsertValidationError_('test message', 'testField')).toThrow(
       ApiValidationError
@@ -1312,7 +1315,7 @@ describe('throwUpsertValidationError_', () => {
 
   it('throws ApiValidationError with null fieldName', () => {
     installAssignmentDefinitionControllerStub([]);
-    const { throwUpsertValidationError_ } = loadAssignmentDefinitionPartialsModule();
+    const { throwUpsertValidationError_ } = loadAssignmentDefinitionValidationModule();
 
     try {
       throwUpsertValidationError_('test message', null);
@@ -1332,7 +1335,7 @@ describe('throwDeleteValidationError_', () => {
 
   it('throws ApiValidationError with correct properties for delete operations', () => {
     installAssignmentDefinitionControllerStub([]);
-    const { throwDeleteValidationError_ } = loadAssignmentDefinitionPartialsModule();
+    const { throwDeleteValidationError_ } = loadAssignmentDefinitionValidationModule();
 
     expect(() => throwDeleteValidationError_('test message', 'testField')).toThrow(
       ApiValidationError
@@ -1348,7 +1351,7 @@ describe('throwDeleteValidationError_', () => {
 
   it('throws ApiValidationError with null fieldName', () => {
     installAssignmentDefinitionControllerStub([]);
-    const { throwDeleteValidationError_ } = loadAssignmentDefinitionPartialsModule();
+    const { throwDeleteValidationError_ } = loadAssignmentDefinitionValidationModule();
 
     try {
       throwDeleteValidationError_('test message', null);
@@ -1493,7 +1496,7 @@ describe('validateReadParameters_', () => {
     'handles $description correctly',
     ({ parameters, shouldThrow, expectedError, expectedField }) => {
       installAssignmentDefinitionControllerStub([]);
-      const { validateReadParameters_ } = loadAssignmentDefinitionPartialsModule();
+      const { validateReadParameters_ } = loadAssignmentDefinitionValidationModule();
 
       if (shouldThrow) {
         expect(() => validateReadParameters_(parameters)).toThrow(ApiValidationError);
@@ -1592,7 +1595,7 @@ describe('validateDefinitionKey_', () => {
     'handles $description correctly',
     ({ definitionKey, rowIndex, shouldThrow, expectedError, expectedField }) => {
       installAssignmentDefinitionControllerStub([]);
-      const { validateDefinitionKey_ } = loadAssignmentDefinitionPartialsModule();
+      const { validateDefinitionKey_ } = loadAssignmentDefinitionValidationModule();
 
       if (shouldThrow) {
         expect(() => validateDefinitionKey_(definitionKey, rowIndex)).toThrow(ApiValidationError);
@@ -1676,7 +1679,7 @@ describe('validatePrimaryTopicKey_', () => {
     'handles $description correctly',
     ({ primaryTopicKey, rowIndex, shouldThrow, expectedError, expectedField }) => {
       installAssignmentDefinitionControllerStub([]);
-      const { validatePrimaryTopicKey_ } = loadAssignmentDefinitionPartialsModule();
+      const { validatePrimaryTopicKey_ } = loadAssignmentDefinitionValidationModule();
 
       if (shouldThrow) {
         expect(() => validatePrimaryTopicKey_(primaryTopicKey, rowIndex)).toThrow(
@@ -1787,7 +1790,7 @@ describe('validateYearGroupKeyedFields_', () => {
     'handles $description correctly',
     ({ yearGroupKey, yearGroupLabel, rowIndex, shouldThrow, expectedError, expectedField }) => {
       installAssignmentDefinitionControllerStub([]);
-      const { validateYearGroupKeyedFields_ } = loadAssignmentDefinitionPartialsModule();
+      const { validateYearGroupKeyedFields_ } = loadAssignmentDefinitionValidationModule();
 
       if (shouldThrow) {
         expect(() => validateYearGroupKeyedFields_(yearGroupKey, yearGroupLabel, rowIndex)).toThrow(
@@ -1880,7 +1883,7 @@ describe('validateTimestamp_', () => {
     'handles $description correctly',
     ({ value, fieldName, rowIndex, shouldThrow, expectedError, expectedField }) => {
       installAssignmentDefinitionControllerStub([]);
-      const { validateTimestamp_ } = loadAssignmentDefinitionPartialsModule();
+      const { validateTimestamp_ } = loadAssignmentDefinitionValidationModule();
 
       if (shouldThrow) {
         expect(() => validateTimestamp_(value, fieldName, rowIndex)).toThrow(ApiValidationError);
@@ -2077,7 +2080,7 @@ describe('validatePartialRow_', () => {
     'handles $description correctly',
     ({ row, rowIndex, shouldThrow, expectedError, expectedField }) => {
       installAssignmentDefinitionControllerStub([]);
-      const { validatePartialRow_ } = loadAssignmentDefinitionPartialsModule();
+      const { validatePartialRow_ } = loadAssignmentDefinitionValidationModule();
 
       if (shouldThrow) {
         expect(() => validatePartialRow_(row, rowIndex)).toThrow(ApiValidationError);
@@ -2236,7 +2239,7 @@ describe('validateTaskWeightingsShape_', () => {
     'handles $description correctly',
     ({ taskWeightings, shouldThrow, expectedError, expectedField }) => {
       installAssignmentDefinitionControllerStub([]);
-      const { validateTaskWeightingsShape_ } = loadAssignmentDefinitionPartialsModule();
+      const { validateTaskWeightingsShape_ } = loadAssignmentDefinitionValidationModule();
 
       if (shouldThrow) {
         expect(() => validateTaskWeightingsShape_(taskWeightings)).toThrow(ApiValidationError);
@@ -2331,7 +2334,7 @@ describe('validateRequiredYearGroupKey_', () => {
     'handles $description correctly',
     ({ parameters, shouldThrow, expectedError, expectedField }) => {
       installAssignmentDefinitionControllerStub([]);
-      const { validateRequiredYearGroupKey_ } = loadAssignmentDefinitionPartialsModule();
+      const { validateRequiredYearGroupKey_ } = loadAssignmentDefinitionValidationModule();
 
       if (shouldThrow) {
         expect(() => validateRequiredYearGroupKey_(parameters)).toThrow(ApiValidationError);
@@ -2527,7 +2530,7 @@ describe('validateUpsertParameters_', () => {
     'handles $description correctly',
     ({ parameters, shouldThrow, expectedError, expectedField }) => {
       installAssignmentDefinitionControllerStub([]);
-      const { validateUpsertParameters_ } = loadAssignmentDefinitionPartialsModule();
+      const { validateUpsertParameters_ } = loadAssignmentDefinitionValidationModule();
 
       if (shouldThrow) {
         expect(() => validateUpsertParameters_(parameters)).toThrow(ApiValidationError);
@@ -2546,7 +2549,7 @@ describe('validateUpsertParameters_', () => {
 
   it('delegates to validateWizardUpsertParameters_ when document URLs are present', () => {
     installAssignmentDefinitionControllerStub([]);
-    const { validateUpsertParameters_ } = loadAssignmentDefinitionPartialsModule();
+    const { validateUpsertParameters_ } = loadAssignmentDefinitionValidationModule();
 
     const urlParams = {
       primaryTitle: 'Test Assignment',
@@ -2711,7 +2714,7 @@ describe('validateWizardUpsertParameters_', () => {
     'handles $description correctly',
     ({ parameters, shouldThrow, expectedError, expectedField }) => {
       installAssignmentDefinitionControllerStub([]);
-      const { validateWizardUpsertParameters_ } = loadAssignmentDefinitionPartialsModule();
+      const { validateWizardUpsertParameters_ } = loadAssignmentDefinitionValidationModule();
 
       if (shouldThrow) {
         expect(() => validateWizardUpsertParameters_(parameters)).toThrow(ApiValidationError);

@@ -113,76 +113,28 @@ const Utils = {
       progressTracker.captureError(error, 'Error displaying toast message');
     }
   },
-
-  /**
-   * Gets the date in DD/MM/YYYY format for appending to various file names.
-   * @returns {string} The formatted date string.
-   */
-  getDate() {
-    const dateObject = new Date();
-    const timeZone = Session.getScriptTimeZone();
-
-    // "dd/MM/yyyy" produces strings like "29/01/2025"
-    return Utilities.formatDate(dateObject, timeZone, 'dd/MM/yyyy');
-  },
-
-  /**
-   * Converts a number of days into a future date.
-   *
-   * @param {number} days - The number of days into the future.
-   * @returns {Date} - A Date object representing the future date.
-   */
-  getFutureDate(days) {
-    if (typeof days !== 'number' || days < 0) {
-      const progressTracker = ProgressTracker.getInstance();
-      progressTracker.logAndThrowError('Days must be a non-negative number.');
-    }
-
-    const futureDate = new Date();
-    futureDate.setDate(futureDate.getDate() + days);
-    return futureDate;
-  },
-
-  /**
-   * Determines if an assignment definition needs to be refreshed based on tasks and modification timestamps.
-   * @param {Object} definition - The assignment definition to check.
-   * @param {string|Date} referenceModified - Last modified timestamp of reference document.
-   * @param {string|Date} templateModified - Last modified timestamp of template document.
-   * @returns {boolean} True if refresh is needed.
-   */
-  definitionNeedsRefresh(definition, referenceModified, templateModified) {
-    if (!definition?.tasks || Object.keys(definition.tasks).length === 0) {
-      return true;
-    }
-    if (!definition.referenceLastModified || !definition.templateLastModified) {
-      return true;
-    }
-    const referenceFresh = this.isNewer(referenceModified, definition.referenceLastModified);
-    const tplFresh = this.isNewer(templateModified, definition.templateLastModified);
-    return referenceFresh || tplFresh;
-  },
-
-  /**
-   * Checks if a candidate timestamp is newer than a baseline timestamp.
-   * @param {string|Date} candidate - The candidate timestamp.
-   * @param {string|Date} baseline - The baseline timestamp.
-   * @returns {boolean} True if candidate is newer than baseline.
-   */
-  isNewer(candidate, baseline) {
-    if (!candidate || !baseline) return false;
-    const c = new Date(candidate);
-    const b = new Date(baseline);
-    if (Number.isNaN(c.getTime()) || Number.isNaN(b.getTime())) return false;
-    return c.getTime() > b.getTime();
-  },
 };
 
 // Export for Node tests / CommonJS environment
 if (typeof module !== 'undefined' && module.exports) {
+  // Temporary backward-compatibility bridge: re-export DateUtils methods
+  // via Utils so existing consumers don't break during migration.
+  // Remove this block once all consumers are updated to use DateUtils directly.
+  const dateUtils = require('./DateUtils.js');
+  Utils.getDate = dateUtils.getFormattedDate;
+  Utils.getFutureDate = dateUtils.getFutureDate;
+  Utils.definitionNeedsRefresh = dateUtils.definitionNeedsRefresh;
+  Utils.isNewer = dateUtils.isNewer;
   module.exports = Utils;
 }
 
 // Export to global scope for GAS runtime
 if (typeof globalThis !== 'undefined') {
+  // DateUtils is loaded first in GAS (alphabetical ordering of files in same directory)
+  /* global DateUtils */
+  Utils.getDate = DateUtils.getFormattedDate;
+  Utils.getFutureDate = DateUtils.getFutureDate;
+  Utils.definitionNeedsRefresh = DateUtils.definitionNeedsRefresh;
+  Utils.isNewer = DateUtils.isNewer;
   globalThis.Utils = Utils;
 }

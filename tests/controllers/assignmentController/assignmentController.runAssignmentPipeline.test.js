@@ -1,7 +1,7 @@
 /**
  * Tests for runAssignmentPipeline throw-on-stale behaviour.
  *
- * runAssignmentPipeline checks per-document freshness via Utils.isNewer and
+ * runAssignmentPipeline checks per-document freshness via DateUtils.isNewer and
  * throws DefinitionStaleError with structured metadata when any document is stale.
  *
  * processSelectedAssignment catches the error from runAssignmentPipeline
@@ -50,9 +50,8 @@ function setupModuleMocks() {
     getInstance: vi.fn().mockReturnValue(mockProgressTracker),
   };
 
-  // Mock Utils
-  globalThis.Utils = {
-    toastMessage: vi.fn(),
+  // Mock DateUtils
+  globalThis.DateUtils = {
     isNewer: vi.fn(),
   };
 
@@ -119,9 +118,7 @@ describe('AssignmentController - runAssignmentPipeline throw-on-stale', () => {
         assessResponses: vi.fn(),
       };
 
-      mockDefinitionController = {
-        saveDefinition: vi.fn(),
-      };
+      mockDefinitionController = {};
 
       // Default Drive timestamps — both newer than stored definition timestamps
       DriveManager.getFileModifiedTime
@@ -129,7 +126,7 @@ describe('AssignmentController - runAssignmentPipeline throw-on-stale', () => {
         .mockReturnValueOnce(TEMPLATE_MODIFIED);
 
       // isNewer — default to stale (both documents are newer)
-      Utils.isNewer.mockReturnValue(true);
+      DateUtils.isNewer.mockReturnValue(true);
     });
 
     /**
@@ -139,7 +136,7 @@ describe('AssignmentController - runAssignmentPipeline throw-on-stale', () => {
      */
     it('throws DefinitionStaleError when reference document is stale', () => {
       // Arrange: reference is stale, template is not
-      Utils.isNewer
+      DateUtils.isNewer
         .mockReturnValueOnce(true) // reference is newer → stale
         .mockReturnValueOnce(false); // template is not newer → fresh
 
@@ -160,7 +157,7 @@ describe('AssignmentController - runAssignmentPipeline throw-on-stale', () => {
      */
     it('throws DefinitionStaleError when template document is stale', () => {
       // Arrange: reference is not stale, template is stale
-      Utils.isNewer
+      DateUtils.isNewer
         .mockReturnValueOnce(false) // reference is not newer → fresh
         .mockReturnValueOnce(true); // template is newer → stale
 
@@ -193,7 +190,7 @@ describe('AssignmentController - runAssignmentPipeline throw-on-stale', () => {
      */
     it('does not throw when neither document is stale', () => {
       // Arrange: neither is stale
-      Utils.isNewer.mockReturnValue(false);
+      DateUtils.isNewer.mockReturnValue(false);
 
       // Act & Assert: should NOT throw
       expect(() => {
@@ -214,7 +211,7 @@ describe('AssignmentController - runAssignmentPipeline throw-on-stale', () => {
      */
     it('error includes correct definitionKey and staleness metadata when reference is stale', () => {
       // Arrange: reference is stale, template is not
-      Utils.isNewer
+      DateUtils.isNewer
         .mockReturnValueOnce(true) // reference is newer
         .mockReturnValueOnce(false); // template is not newer
 
@@ -245,7 +242,7 @@ describe('AssignmentController - runAssignmentPipeline throw-on-stale', () => {
      */
     it('error includes correct definitionKey and staleness metadata when template is stale', () => {
       // Arrange: template is stale, reference is not
-      Utils.isNewer
+      DateUtils.isNewer
         .mockReturnValueOnce(false) // reference is not newer
         .mockReturnValueOnce(true); // template is newer
 
@@ -329,7 +326,6 @@ describe('AssignmentController - runAssignmentPipeline throw-on-stale', () => {
       globalThis.AssignmentDefinitionController = vi.fn().mockImplementation(function () {
         return {
           getDefinitionByKey: vi.fn().mockReturnValue(mockDefinition),
-          saveDefinition: vi.fn(),
         };
       });
 
@@ -373,8 +369,8 @@ describe('AssignmentController - runAssignmentPipeline throw-on-stale', () => {
       // Mock DriveManager — return stale timestamps (newer than stored)
       DriveManager.getFileModifiedTime.mockReset().mockReturnValue(STALE_TIMESTAMP);
 
-      // Mock Utils — stale check via isNewer
-      Utils.isNewer.mockReturnValue(true);
+      // Mock DateUtils — stale check via isNewer
+      DateUtils.isNewer.mockReturnValue(true);
 
       // Override logAndThrowError to a plain mock (no throw) so that if/when
       // processSelectedAssignment's catch block calls it, the test assertion

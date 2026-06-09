@@ -6,6 +6,7 @@ safety = "destructive"
 agent_type = "subagent"
 nickname_candidates = ["implementation", "Implementation", "Impl"]
 system_prompt_id = "implementation"
+active_model = "deepseek-v4-flash"
 
 [tools]
 allowlist = ["bash", "grep", "read_file", "search_replace", "todo", "write_file"]

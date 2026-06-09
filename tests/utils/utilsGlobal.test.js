@@ -105,6 +105,7 @@ describe('Utils global availability regression check', () => {
 
     const context = {
       globalThis: {},
+      DateUtils: require('../../src/backend/Utils/DateUtils.js'),
       Validate: require('../../src/backend/Utils/Validate.js').Validate,
       ProgressTracker: { getInstance: () => ({ logAndThrowError: () => {} }) },
       Utilities: globalThis.Utilities, // Use our mock from beforeEach

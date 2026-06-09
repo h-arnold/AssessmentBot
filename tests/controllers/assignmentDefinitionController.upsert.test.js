@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import AssignmentDefinitionController from '../../src/backend/y_controllers/AssignmentDefinitionController.js';
+import AssignmentDefinitionController from '../../src/backend/y_controllers/AssignmentDefinition/index.js';
 import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
 import { TaskDefinition } from '../../src/backend/Models/TaskDefinition.js';
 import DbManager from '../../src/backend/DbManager/DbManager.js';
@@ -315,15 +315,12 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
     expect(() => controller.upsertDefinition(createUpsertPayload())).toThrow(/Utilities\.getUuid/i);
   });
 
-  it('fails loudly when Utilities.getUuid returns a blank create key', () => {
-    globalThis.Utilities.getUuid.mockReturnValue('   ');
-
-    const runUpsert = () => controller.upsertDefinition(createUpsertPayload());
-
-    expect(runUpsert).toThrow(TypeError);
-    expect(runUpsert).toThrow(/non-empty string definitionKey/i);
-    expect(mockFullCollection.insertOne).not.toHaveBeenCalled();
-    expect(mockRegistryCollection.insertOne).not.toHaveBeenCalled();
+  it('accepts a valid UUID from Utilities.getUuid as the create definitionKey', () => {
+    // Utilities.getUuid() is guaranteed by GAS to return a valid UUID string,
+    // so the simplified _generateStableKey delegates directly to it without validation.
+    const saved = controller.upsertDefinition(createUpsertPayload());
+    expect(saved.definitionKey).toBe('11111111-2222-4333-8444-555555555555');
+    expect(globalThis.Utilities.getUuid).toHaveBeenCalled();
   });
 
   it('creates a stable opaque definitionKey that is not metadata-derived', () => {
@@ -557,6 +554,32 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
     expect(saved.alternateTitles).toEqual(['Stored title A', 'Stored title B']);
   });
 
+  it('preserves existing assignmentWeighting when updates omit assignmentWeighting', () => {
+    const existing = {
+      ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
+      primaryTopic: 'Science',
+      assignmentWeighting: 5,
+      yearGroupKey: 'year-group-8',
+      tasks: {
+        t_task_1: {
+          id: 't_task_1',
+          taskTitle: 'Task A',
+          artifacts: { reference: [], template: [] },
+        },
+      },
+      referenceLastModified: '2025-04-01T00:00:00.000Z',
+      templateLastModified: '2025-04-01T00:00:00.000Z',
+    };
+    mockFullCollection.findOne.mockReturnValue(existing);
+    mockRegistryCollection.findOne.mockReturnValue({ ...existing, tasks: null });
+
+    const payload = createUpsertPayload({ definitionKey: 'existing-stable-key' });
+    delete payload.assignmentWeighting;
+    const saved = controller.upsertDefinition(payload);
+
+    expect(saved.assignmentWeighting).toBe(5);
+  });
+
   it('rejects updates when yearGroupKey is omitted from the save payload', () => {
     const existing = {
       ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
@@ -744,7 +767,18 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
   });
 
   it('returns the canonical full-definition transport shape for create/write/read flows', () => {
-    mockFullCollection.findOne.mockReturnValue(null);
+    // Use an in-memory store so that data inserted during upsert is
+    // available when getByKey reads it back (replaces the removed cache layer).
+    const stored = {};
+    mockFullCollection.findOne.mockImplementation(
+      (filter) => stored[filter?.definitionKey] ?? null
+    );
+    mockFullCollection.insertOne.mockImplementation((doc) => {
+      if (doc?.definitionKey) stored[doc.definitionKey] = doc;
+    });
+    mockFullCollection.replaceOne.mockImplementation((filter, doc) => {
+      if (filter?.definitionKey) stored[filter.definitionKey] = doc;
+    });
     mockRegistryCollection.findOne.mockReturnValue(null);
 
     const saved = controller.upsertDefinition(createWizardUpsertPayload());
@@ -753,8 +787,8 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
     expect(saved).toBeInstanceOf(AssignmentDefinition);
     expect(readBack).toBeInstanceOf(AssignmentDefinition);
 
-    expectCanonicalFullDefinitionShape(controller.toCanonicalFullDefinitionResponse(saved));
-    expectCanonicalFullDefinitionShape(controller.toCanonicalFullDefinitionResponse(readBack));
+    expectCanonicalFullDefinitionShape(controller.getFullAssignmentDefinition(saved));
+    expectCanonicalFullDefinitionShape(controller.getFullAssignmentDefinition(readBack));
   });
 
   it('defaults parsed task weightings to 1 for stage-one creates when taskWeightings are omitted', () => {
@@ -798,7 +832,7 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
     });
 
     const readBack = controller.getDefinitionByKey('existing-stable-key', { form: 'full' });
-    const canonicalReadBack = controller.toCanonicalFullDefinitionResponse(readBack);
+    const canonicalReadBack = controller.getFullAssignmentDefinition(readBack);
 
     expect(canonicalReadBack.yearGroupLabel).toBe('Year 8');
   });

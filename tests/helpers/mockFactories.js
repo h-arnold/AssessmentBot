@@ -367,7 +367,6 @@ function setupControllerTestMocks(vi) {
   class AssignmentDefinitionControllerClass {
     ensureDefinition = vi.fn();
     getDefinitionByKey = vi.fn();
-    saveDefinition = vi.fn();
   }
   globalThis.AssignmentDefinitionController = AssignmentDefinitionControllerClass;
 
