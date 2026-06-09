@@ -205,6 +205,7 @@ g.ClassroomManager = {
   },
 };
 
-// Expose hasControlCharacters_ from assignmentDefinitionPartials for test access
-const { hasControlCharacters_ } = require('../src/backend/z_Api/assignmentDefinitionPartials.js');
-g.hasControlCharacters_ = hasControlCharacters_;
+// Expose assignment-definition modules for test access
+// Load validation module first (same order as GAS concatenation), then transport module
+Object.assign(g, require('../src/backend/z_Api/assignmentDefinitionValidation.js'));
+Object.assign(g, require('../src/backend/z_Api/assignmentDefinitionTransport.js'));

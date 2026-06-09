@@ -320,9 +320,9 @@ Additionally, `z_apiHandler.js` needs its `require` block updated to pull from b
 
 ### Section checks
 
-- [ ] Backend lint passes.
-- [ ] All backend tests pass.
-- [ ] `clasp push` produces working GAS deployment.
+- [x] Backend lint passes.
+- [x] All backend tests pass.
+- [x] `clasp push` produces working GAS deployment.
 
 ---
 

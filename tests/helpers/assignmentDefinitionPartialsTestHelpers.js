@@ -6,7 +6,8 @@
 import { expect, vi } from 'vitest';
 import path from 'node:path';
 
-const modulePath = '../../src/backend/z_Api/assignmentDefinitionPartials.js';
+const transportModulePath = '../../src/backend/z_Api/assignmentDefinitionTransport.js';
+const validationModulePath = '../../src/backend/z_Api/assignmentDefinitionValidation.js';
 const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
 
 /**
@@ -32,17 +33,28 @@ export function installAssignmentDefinitionControllerStub(partials) {
  * @returns {Object} The module exports
  */
 export function loadAssignmentDefinitionPartialsModule() {
-  delete require.cache[require.resolve(modulePath)];
-  return require(modulePath);
+  delete require.cache[require.resolve(transportModulePath)];
+  return require(transportModulePath);
+}
+
+/**
+ * Loads the assignmentDefinitionValidation module.
+ * Clears require cache first to ensure fresh load.
+ * @returns {Object} The module exports
+ */
+export function loadAssignmentDefinitionValidationModule() {
+  delete require.cache[require.resolve(validationModulePath)];
+  return require(validationModulePath);
 }
 
 /**
  * Reads the source file content.
+ * @param {string} [filePath] - Optional file path (defaults to transport module path)
  * @returns {string} The source code as a string
  */
-export function readSourceFile() {
+export function readSourceFile(filePath) {
   const fs = require('node:fs');
-  const absolutePath = path.resolve(__dirname, modulePath);
+  const absolutePath = path.resolve(__dirname, filePath || transportModulePath);
   return fs.readFileSync(absolutePath, 'utf8');
 }
 
@@ -90,7 +102,8 @@ export function createAssignmentDefinitionControllerHooks() {
   };
 
   const afterEachHandler = () => {
-    delete require.cache[require.resolve(modulePath)];
+    delete require.cache[require.resolve(transportModulePath)];
+    delete require.cache[require.resolve(validationModulePath)];
 
     if (originalAssignmentDefinitionController === undefined) {
       delete globalThis.AssignmentDefinitionController;
@@ -162,6 +175,36 @@ export function expectPatternInSource(pattern) {
 export function expectPatternNotInSource(pattern) {
   const sourceCode = readSourceFile();
   expect(sourceCode).not.toContain(pattern);
+}
+
+/**
+ * Helper to verify a function name DOES exist in the validation source file.
+ * @param {string} functionName - The function name to check for
+ * @returns {void}
+ */
+export function expectValidationFunctionInSource(functionName) {
+  const sourceCode = readSourceFile(validationModulePath);
+  expect(sourceCode).toContain(`function ${functionName}`);
+}
+
+/**
+ * Helper to verify a function name does NOT exist in the validation source file.
+ * @param {string} functionName - The function name to check for
+ * @returns {void}
+ */
+export function expectValidationFunctionNotInSource(functionName) {
+  const sourceCode = readSourceFile(validationModulePath);
+  expect(sourceCode).not.toContain(`function ${functionName}`);
+}
+
+/**
+ * Helper to verify a string pattern exists in the validation source file.
+ * @param {string} pattern - The pattern to search for
+ * @returns {void}
+ */
+export function expectValidationPatternInSource(pattern) {
+  const sourceCode = readSourceFile(validationModulePath);
+  expect(sourceCode).toContain(pattern);
 }
 
 /**

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const UPSERT_TRANSPORT_MODULE_PATH_CANDIDATES = Object.freeze([
-  '../../src/backend/z_Api/assignmentDefinitionPartials.js',
+  '../../src/backend/z_Api/assignmentDefinitionTransport.js',
   '../../src/backend/z_Api/assignmentDefinitionMutations.js',
 ]);
 const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
