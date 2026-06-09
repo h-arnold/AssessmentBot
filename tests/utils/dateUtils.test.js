@@ -52,6 +52,27 @@ describe('DateUtils', () => {
     vi.useRealTimers();
   });
 
+  /**
+   * Create a definition object with sensible defaults for testing.
+   * Pass overrides to customise fields; set a field to undefined to omit it
+   * from the returned object entirely (e.g. to test missing-key behaviour).
+   */
+  function createDefinition(overrides = {}) {
+    const def = {
+      tasks: { t1: { taskTitle: 'Task 1' } },
+      referenceLastModified: '2025-01-01T00:00:00Z',
+      templateLastModified: '2025-01-01T00:00:00Z',
+      ...overrides,
+    };
+    // Remove keys explicitly set to undefined so they behave as missing keys
+    Object.keys(def).forEach((key) => {
+      if (def[key] === undefined) {
+        delete def[key];
+      }
+    });
+    return def;
+  }
+
   // ---------------------------------------------------------------------------
   // getFormattedDate
   // ---------------------------------------------------------------------------
@@ -98,27 +119,6 @@ describe('DateUtils', () => {
   // definitionNeedsRefresh
   // ---------------------------------------------------------------------------
   describe('definitionNeedsRefresh', () => {
-    /**
-     * Create a definition object with sensible defaults for testing.
-     * Pass overrides to customise fields; set a field to undefined to omit it
-     * from the returned object entirely (e.g. to test missing-key behaviour).
-     */
-    function createDefinition(overrides = {}) {
-      const def = {
-        tasks: { t1: { taskTitle: 'Task 1' } },
-        referenceLastModified: '2025-01-01T00:00:00Z',
-        templateLastModified: '2025-01-01T00:00:00Z',
-        ...overrides,
-      };
-      // Remove keys explicitly set to undefined so they behave as missing keys
-      Object.keys(def).forEach((key) => {
-        if (def[key] === undefined) {
-          delete def[key];
-        }
-      });
-      return def;
-    }
-
     it('should return true when definition has no tasks key', () => {
       const definition = {};
       const result = DateUtils.definitionNeedsRefresh(definition, null, null);
