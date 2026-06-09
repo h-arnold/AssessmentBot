@@ -342,9 +342,9 @@ Sections 7–9 carry their own section-level checks; re-run the full suite after
 
 ### Section checks
 
-- [ ] All backend tests green.
-- [ ] All lint commands green.
-- [ ] `clasp push` succeeds.
+- [x] All backend tests green.
+- [x] All lint commands green.
+- [x] `clasp push` succeeds.
 - [ ] Manual smoke test: call `getAssignmentDefinition` via frontend and verify `createdAt`/`updatedAt` are ISO strings (not `null`).
 
 ---
