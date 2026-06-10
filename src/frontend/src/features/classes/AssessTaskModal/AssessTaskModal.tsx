@@ -184,6 +184,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
     });
 
     setAssessmentAlertType('success');
+    setAssessmentError(`Assessment started for '${selectedAssignment.title}'.`);
     setAssessmentState('success');
   }
 

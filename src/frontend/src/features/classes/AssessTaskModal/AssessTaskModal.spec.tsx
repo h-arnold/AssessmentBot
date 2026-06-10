@@ -114,13 +114,12 @@ function renderAssessTaskModal(
   const mockedGetAssignments = vi.mocked(getGoogleClassroomAssignments);
   // mockValue is deliberately polymorphic (Promise, array, Error) so
   // each branch applies the narrowest type assertion needed by the mock.
-  type AssignmentsPayload = { assignmentId: string; title: string; topicId: string | null; topicName: string | null }[];
   if (mockType === 'resolve') {
-    mockedGetAssignments.mockResolvedValue(mockValue as AssignmentsPayload);
+    mockedGetAssignments.mockResolvedValue(mockValue);
   } else if (mockType === 'reject') {
     mockedGetAssignments.mockRejectedValue(mockValue);
   } else {
-    mockedGetAssignments.mockReturnValue(mockValue as Promise<AssignmentsPayload>);
+    mockedGetAssignments.mockReturnValue(mockValue);
   }
 
   renderWithFrontendProviders(<AssessTaskModal {...defaultProperties()} />);
@@ -161,18 +160,16 @@ function renderWithCache(
     startRunType,
   } = options;
 
-  vi.mocked(getGoogleClassroomAssignments).mockResolvedValue(
-    assignments as Array<{ assignmentId: string; title: string; topicId: string | null; topicName: string | null }>
-  );
+  vi.mocked(getGoogleClassroomAssignments).mockResolvedValue(assignments);
 
   if (findMatchResult !== undefined) {
-    vi.mocked(findMatchingDefinition).mockReturnValue(findMatchResult as ReturnType<typeof findMatchingDefinition>);
+    vi.mocked(findMatchingDefinition).mockReturnValue(findMatchResult);
   }
 
   if (startRunType === 'reject') {
     vi.mocked(startAssessmentRun).mockRejectedValue(startRunResult);
   } else if (startRunResult !== undefined) {
-    vi.mocked(startAssessmentRun).mockResolvedValue(startRunResult as null);
+    vi.mocked(startAssessmentRun).mockResolvedValue(startRunResult);
   }
 
   const queryClient = createAppQueryClient();
@@ -644,7 +641,7 @@ describe('Assessment run interaction', () => {
     const footer = dialog.querySelector('.ant-modal-footer');
     expect(footer).not.toBeNull();
     expect(
-      within(footer as HTMLElement).getByRole('button', { name: 'Close' })
+      within(footer).getByRole('button', { name: 'Close' })
     ).toBeInTheDocument();
   });
 
@@ -723,7 +720,7 @@ describe('Assessment run interaction', () => {
     expect(footer).not.toBeNull();
     await waitFor(() => {
       expect(
-        within(footer as HTMLElement).getByRole('button', { name: 'Close' })
+        within(footer).getByRole('button', { name: 'Close' })
       ).toBeInTheDocument();
     });
   });
@@ -761,7 +758,7 @@ describe('Success state close', () => {
     // Wait for success state — find the Close button in the footer
     const footer = dialog.querySelector('.ant-modal-footer');
     expect(footer).not.toBeNull();
-    const closeButton = await within(footer as HTMLElement).findByRole('button', { name: 'Close' });
+    const closeButton = await within(footer).findByRole('button', { name: 'Close' });
 
     fireEvent.click(closeButton);
     expect(onClose).toHaveBeenCalledTimes(1);

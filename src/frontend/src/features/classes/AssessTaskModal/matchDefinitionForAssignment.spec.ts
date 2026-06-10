@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { AssignmentDefinitionPartial } from '../../../services/assignmentDefinitionPartials.zod';
 import { findMatchingDefinition } from './matchDefinitionForAssignment';
-import type { MatchResult } from './matchDefinitionForAssignment';
 
 const DEFAULT_ISO_DATETIME = '2025-01-01T00:00:00.000Z';
 
@@ -37,16 +36,35 @@ function createFixture(
   };
 }
 
+const DEFAULT_SELECTED_ASSIGNMENT = {
+  assignmentId: 'a-1',
+  title: 'Essay',
+  topicName: 'Writing',
+};
+
+const DEFAULT_CLASS_PARTIAL = { yearGroupKey: 'year-10' };
+
+/**
+ *
+ * @param overrides
+ */
+/**
+ * Creates a selected assignment fixture with sensible defaults.
+ *
+ * Only fields that differ from the default `Essay` / `Writing` assignment
+ * need to be provided, reducing noise in each test case.
+ *
+ * @param {Partial<{ assignmentId: string; title: string; topicName: string | null }>} [overrides={}] Fields to override on the default fixture.
+ * @returns {{ assignmentId: string; title: string; topicName: string | null }} A selected assignment fixture.
+ */
+function createSelectedAssignment(
+  overrides: Partial<{ assignmentId: string; title: string; topicName: string | null }> = {}
+): { assignmentId: string; title: string; topicName: string | null } {
+  return { ...DEFAULT_SELECTED_ASSIGNMENT, ...overrides };
+}
+
 describe('findMatchingDefinition', () => {
   it('returns matched when primaryTitle, topicName, and yearGroupKey all align', () => {
-    const selectedAssignment = {
-      assignmentId: 'a-1',
-      title: 'Essay',
-      topicName: 'Writing',
-    };
-
-    const classPartial = { yearGroupKey: 'year-10' };
-
     const definitionPartials: AssignmentDefinitionPartial[] = [
       createFixture({
         primaryTitle: 'Essay',
@@ -55,9 +73,9 @@ describe('findMatchingDefinition', () => {
       }),
     ];
 
-    const result: MatchResult = findMatchingDefinition(
-      selectedAssignment,
-      classPartial,
+    const result = findMatchingDefinition(
+      createSelectedAssignment(),
+      DEFAULT_CLASS_PARTIAL,
       definitionPartials
     );
 
@@ -68,14 +86,6 @@ describe('findMatchingDefinition', () => {
   });
 
   it('returns matched when an alternateTitle, topicName, and yearGroupKey align', () => {
-    const selectedAssignment = {
-      assignmentId: 'a-2',
-      title: 'Short Story',
-      topicName: 'Writing',
-    };
-
-    const classPartial = { yearGroupKey: 'year-10' };
-
     const definitionPartials: AssignmentDefinitionPartial[] = [
       createFixture({
         primaryTitle: 'Essay',
@@ -85,9 +95,9 @@ describe('findMatchingDefinition', () => {
       }),
     ];
 
-    const result: MatchResult = findMatchingDefinition(
-      selectedAssignment,
-      classPartial,
+    const result = findMatchingDefinition(
+      createSelectedAssignment({ assignmentId: 'a-2', title: 'Short Story' }),
+      DEFAULT_CLASS_PARTIAL,
       definitionPartials
     );
 
@@ -98,14 +108,6 @@ describe('findMatchingDefinition', () => {
   });
 
   it('returns no-match when no definition has a matching title', () => {
-    const selectedAssignment = {
-      assignmentId: 'a-3',
-      title: 'Book Report',
-      topicName: 'Reading',
-    };
-
-    const classPartial = { yearGroupKey: 'year-10' };
-
     const definitionPartials: AssignmentDefinitionPartial[] = [
       createFixture({
         primaryTitle: 'Essay',
@@ -114,9 +116,9 @@ describe('findMatchingDefinition', () => {
       }),
     ];
 
-    const result: MatchResult = findMatchingDefinition(
-      selectedAssignment,
-      classPartial,
+    const result = findMatchingDefinition(
+      createSelectedAssignment({ assignmentId: 'a-3', title: 'Book Report', topicName: 'Reading' }),
+      DEFAULT_CLASS_PARTIAL,
       definitionPartials
     );
 
@@ -124,14 +126,6 @@ describe('findMatchingDefinition', () => {
   });
 
   it('returns no-match when no definition has a matching topic', () => {
-    const selectedAssignment = {
-      assignmentId: 'a-4',
-      title: 'Essay',
-      topicName: 'Science',
-    };
-
-    const classPartial = { yearGroupKey: 'year-10' };
-
     const definitionPartials: AssignmentDefinitionPartial[] = [
       createFixture({
         primaryTitle: 'Essay',
@@ -140,9 +134,9 @@ describe('findMatchingDefinition', () => {
       }),
     ];
 
-    const result: MatchResult = findMatchingDefinition(
-      selectedAssignment,
-      classPartial,
+    const result = findMatchingDefinition(
+      createSelectedAssignment({ assignmentId: 'a-4', topicName: 'Science' }),
+      DEFAULT_CLASS_PARTIAL,
       definitionPartials
     );
 
@@ -150,14 +144,6 @@ describe('findMatchingDefinition', () => {
   });
 
   it('returns no-match when no definition has a matching year group', () => {
-    const selectedAssignment = {
-      assignmentId: 'a-5',
-      title: 'Essay',
-      topicName: 'Writing',
-    };
-
-    const classPartial = { yearGroupKey: 'year-11' };
-
     const definitionPartials: AssignmentDefinitionPartial[] = [
       createFixture({
         primaryTitle: 'Essay',
@@ -166,9 +152,9 @@ describe('findMatchingDefinition', () => {
       }),
     ];
 
-    const result: MatchResult = findMatchingDefinition(
-      selectedAssignment,
-      classPartial,
+    const result = findMatchingDefinition(
+      createSelectedAssignment({ assignmentId: 'a-5' }),
+      { yearGroupKey: 'year-11' },
       definitionPartials
     );
 
@@ -176,14 +162,6 @@ describe('findMatchingDefinition', () => {
   });
 
   it('returns no-match when selectedAssignment.topicName is null', () => {
-    const selectedAssignment = {
-      assignmentId: 'a-6',
-      title: 'Essay',
-      topicName: null,
-    };
-
-    const classPartial = { yearGroupKey: 'year-10' };
-
     const definitionPartials: AssignmentDefinitionPartial[] = [
       createFixture({
         primaryTitle: 'Essay',
@@ -192,9 +170,9 @@ describe('findMatchingDefinition', () => {
       }),
     ];
 
-    const result: MatchResult = findMatchingDefinition(
-      selectedAssignment,
-      classPartial,
+    const result = findMatchingDefinition(
+      createSelectedAssignment({ assignmentId: 'a-6', topicName: null }),
+      DEFAULT_CLASS_PARTIAL,
       definitionPartials
     );
 
@@ -202,14 +180,6 @@ describe('findMatchingDefinition', () => {
   });
 
   it('returns no-match when classPartial.yearGroupKey is null', () => {
-    const selectedAssignment = {
-      assignmentId: 'a-7',
-      title: 'Essay',
-      topicName: 'Writing',
-    };
-
-    const classPartial = { yearGroupKey: null };
-
     const definitionPartials: AssignmentDefinitionPartial[] = [
       createFixture({
         primaryTitle: 'Essay',
@@ -218,9 +188,9 @@ describe('findMatchingDefinition', () => {
       }),
     ];
 
-    const result: MatchResult = findMatchingDefinition(
-      selectedAssignment,
-      classPartial,
+    const result = findMatchingDefinition(
+      createSelectedAssignment({ assignmentId: 'a-7' }),
+      { yearGroupKey: null },
       definitionPartials
     );
 
@@ -228,14 +198,6 @@ describe('findMatchingDefinition', () => {
   });
 
   it('returns ambiguous when multiple partials match all three criteria', () => {
-    const selectedAssignment = {
-      assignmentId: 'a-8',
-      title: 'Essay',
-      topicName: 'Writing',
-    };
-
-    const classPartial = { yearGroupKey: 'year-10' };
-
     const definitionPartials: AssignmentDefinitionPartial[] = [
       createFixture({
         definitionKey: 'def-1',
@@ -251,9 +213,9 @@ describe('findMatchingDefinition', () => {
       }),
     ];
 
-    const result: MatchResult = findMatchingDefinition(
-      selectedAssignment,
-      classPartial,
+    const result = findMatchingDefinition(
+      createSelectedAssignment({ assignmentId: 'a-8' }),
+      DEFAULT_CLASS_PARTIAL,
       definitionPartials
     );
 
@@ -266,34 +228,16 @@ describe('findMatchingDefinition', () => {
   });
 
   it('returns no-match when definitionPartials is an empty array', () => {
-    const selectedAssignment = {
-      assignmentId: 'a-9',
-      title: 'Essay',
-      topicName: 'Writing',
-    };
-
-    const classPartial = { yearGroupKey: 'year-10' };
-
-    const definitionPartials: AssignmentDefinitionPartial[] = [];
-
-    const result: MatchResult = findMatchingDefinition(
-      selectedAssignment,
-      classPartial,
-      definitionPartials
+    const result = findMatchingDefinition(
+      createSelectedAssignment({ assignmentId: 'a-9' }),
+      DEFAULT_CLASS_PARTIAL,
+      []
     );
 
     expect(result.kind).toBe('no-match');
   });
 
   it('only checks primaryTitle when alternateTitles is empty', () => {
-    const selectedAssignment = {
-      assignmentId: 'a-10',
-      title: 'Non Matching Title',
-      topicName: 'Writing',
-    };
-
-    const classPartial = { yearGroupKey: 'year-10' };
-
     const definitionPartials: AssignmentDefinitionPartial[] = [
       createFixture({
         primaryTitle: 'Essay',
@@ -303,9 +247,9 @@ describe('findMatchingDefinition', () => {
       }),
     ];
 
-    const result: MatchResult = findMatchingDefinition(
-      selectedAssignment,
-      classPartial,
+    const result = findMatchingDefinition(
+      createSelectedAssignment({ assignmentId: 'a-10', title: 'Non Matching Title' }),
+      DEFAULT_CLASS_PARTIAL,
       definitionPartials
     );
 

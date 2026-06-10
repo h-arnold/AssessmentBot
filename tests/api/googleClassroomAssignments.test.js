@@ -336,8 +336,8 @@ describe('Api/getGoogleClassroomAssignments direct handler', () => {
       const result = getGoogleClassroomAssignments_({ classId: 'course-001' });
 
       expect(result).toHaveLength(1);
-      expect(Object.keys(result[0]).sort()).toEqual(
-        ['assignmentId', 'title', 'topicId', 'topicName'].sort()
+      expect(Object.keys(result[0]).sort((a, b) => a.localeCompare(b))).toEqual(
+        ['assignmentId', 'title', 'topicId', 'topicName'].sort((a, b) => a.localeCompare(b))
       );
     });
   });
