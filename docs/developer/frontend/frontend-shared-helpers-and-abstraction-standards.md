@@ -371,3 +371,12 @@ This section supersedes the earlier Section 9.7 defer decision for the specific 
 - Owning path: `src/frontend/src/hooks/usePageDataset.ts`
 - Status: `Implemented`
 - Rationale: generic typed contract for the hook return shape — bundles a typed `UseQueryResult<TData>` with a `PageDatasetState` so consuming pages can access typed `query.data` without casts
+
+### 9.13 Assess Task Happy Path
+
+1. Helper or contract: `findMatchingDefinition`
+
+- Decision: new
+- Owning path: `src/frontend/src/features/classes/AssessTaskModal/matchDefinitionForAssignment.ts`
+- Status: `Implemented`
+- Rationale: pure matching logic extracted for independent unit testing; no existing helper covers this combination of title, topic, and year-group lookups

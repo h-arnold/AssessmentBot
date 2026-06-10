@@ -6,7 +6,7 @@
  *
  * @param {Object} parameters - Request parameters with classId.
  * @param {string} parameters.classId - Google Classroom course ID.
- * @returns {Array<{assignmentId: string, title: string}>} List of assignments.
+ * @returns {Array<{assignmentId: string, title: string, topicId: string|null, topicName: string|null}>} List of assignments.
  * @throws {ApiValidationError} If parameters are invalid or Classroom rows are malformed.
  */
 function getGoogleClassroomAssignments_(parameters) {
@@ -72,9 +72,17 @@ function getGoogleClassroomAssignments_(parameters) {
       });
     }
 
+    const topicId = cw.topicId || null;
+    let topicName = null;
+    if (topicId !== null) {
+      topicName = ClassroomApiClient.fetchTopicName(classId, topicId);
+    }
+
     return {
       assignmentId: cw.id,
       title: cw.title,
+      topicId,
+      topicName,
     };
   });
 }

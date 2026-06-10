@@ -281,3 +281,72 @@ before returning data.
 
 - Delegate all test implementation and test-debugging work to `Testing Specialist` when sub-agent delegation is available.
 - If delegation is unavailable, follow `.github/agents/Testing.agent.md` and `docs/developer/backend/backend-testing.md` before changing tests.
+
+## 10. Large File Decomposition (Non-API Files)
+
+When a non-API backend file (`y_controllers/`, `Models/`, `DocumentParsers/`, `Assessors/`,
+`RequestHandlers/`, `GoogleDriveManager/`, etc.) exceeds **550 lines** and can be meaningfully
+split into distinct responsibilities, decompose it using the **facade-pattern** established by
+`AssignmentDefinitionController`:
+
+1. **Create a folder** named after the original file/class (e.g. `ABClassController/`).
+2. **Create `index.js`** as the facade — it exports the original public class, which delegates
+   to sub-classes injected in the constructor.
+3. **Create sub-classes** at natural responsibility boundaries. Each sub-class file should own
+   one coherent concern (e.g. persistence, validation, response mapping, reference data).
+   Name them after their concern (e.g. `ABClassPersistence.js`, `ABClassValidation.js`).
+
+Canonical example — `AssignmentDefinition` controller:
+
+```
+y_controllers/AssignmentDefinition/
+├── index.js                               # Facade — AssignmentDefinitionController class
+├── AssignmentDefinitionValidation.js       # Domain validation
+├── AssignmentDefinitionReferenceData.js    # Reference data resolution
+├── AssignmentDefinitionTaskParser.js       # Task document parsing
+├── AssignmentDefinitionTaskWeighting.js    # Task weighting logic
+├── AssignmentDefinitionPersistence.js      # Database read/write
+├── AssignmentDefinitionUpsertOrchestrator.js  # Upsert orchestration
+└── AssignmentDefinitionResponseMapper.js   # Response shape mapping
+```
+
+Rules:
+
+- Do not split files under 550 lines unless there is a clear maintainability reason.
+- Keep the public API surface (method names and signatures) identical after decomposition;
+  the facade must preserve backward compatibility.
+- Do not pre-emptively split files that are approaching 550 lines; wait until the threshold
+  is crossed or a concrete maintenance need arises.
+- When splitting, keep GAS concatenation order in mind — the facade file (`index.js`) must
+  load after all sub-class files. Use numeric prefixes on sub-class files if dependency
+  ordering requires it.
+- Sub-class constructors should accept their dependencies via a single options object
+  parameter for consistency with the existing pattern.
+
+## 11. API Domain Folder Organisation (`z_Api`)
+
+When two or more `z_Api` files share a common domain prefix, group them into a domain folder
+named after that prefix, following the pattern established by the `AssignmentDefinition` API
+methods.
+
+Domain prefix is the leading part of the filename before the first capital letter or second
+conceptual segment (e.g. `assignmentDefinition` in `assignmentDefinitionTransport.js` and
+`assignmentDefinitionValidation.js`).
+
+Example — current `z_Api` files for this domain:
+
+```
+z_Api/AssignmentDefinition/
+├── assignmentDefinitionTransport.js       # Upsert/read/delete/partials transport handlers
+└── assignmentDefinitionValidation.js      # Transport-boundary validation
+```
+
+Rules:
+
+- Create a domain folder when **at least 2 files** share a common domain prefix.
+- Keep trailing-underscore private function and `module.exports` patterns intact inside
+  the moved files (see §0.1).
+- Keep single-file domains flat in `z_Api/`. Do not create folders for them.
+- Update `ALLOWLISTED_METHOD_HANDLERS` import paths in `z_apiHandler.js` if relative paths
+  change due to folder nesting.
+- Ensure `module.exports` exports are updated to reflect the new path for test imports.

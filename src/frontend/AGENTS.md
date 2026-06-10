@@ -153,3 +153,76 @@ For modal-family discovery, reuse decisions, and extraction rules, use:
 
 - Default values must be set in a module's constructor only.
 - If defaults are found elsewhere, they should be opportunistically moved to the constructor of the module.
+
+## 12. Service Domain Folder Organisation
+
+When two or more service files in `src/frontend/src/services/` share a common domain prefix,
+group them into a subfolder named after that domain prefix.
+
+Domain prefix is the leading camelCase segment before the first capital letter or separator
+(e.g. `assignmentDefinition` groups `assignmentDefinitionService.ts`,
+`assignmentDefinition.zod.ts`, `assignmentDefinitionPartialsService.ts`,
+`assignmentDefinitionPartials.zod.ts`, and all their `.spec.ts` companions).
+
+Example — current services directory grouped by domain:
+
+```
+services/assignmentDefinition/
+├── assignmentDefinitionService.ts
+├── assignmentDefinitionService.spec.ts
+├── assignmentDefinition.zod.ts
+├── assignmentDefinition.zod.spec.ts
+├── assignmentDefinitionPartialsService.ts
+├── assignmentDefinitionPartialsService.spec.ts
+├── assignmentDefinitionPartials.zod.ts
+├── assignmentDefinitionPartials.zod.spec.ts
+└── assignmentDefinitionPartialsContract.guard.spec.ts
+
+services/apiService/
+├── apiService.ts
+└── apiService.spec.ts
+
+services/googleClassrooms/
+├── googleClassroomsService.ts
+├── googleClassroomsService.spec.ts
+├── googleClassrooms.zod.ts
+├── googleClassrooms.zod.spec.ts
+├── googleClassroomAssignmentsService.ts
+├── googleClassroomAssignmentsService.spec.ts
+├── googleClassroomAssignments.zod.ts
+├── classPartialsService.ts
+├── classPartialsService.spec.ts
+└── classPartials.zod.ts
+
+services/referenceData/
+├── referenceDataService.ts
+├── referenceDataService.spec.ts
+├── referenceData.zod.ts
+├── referenceData.zod.spec.ts
+├── assignmentTopicsService.ts
+├── assignmentTopicsService.spec.ts
+├── assignmentTopics.zod.ts
+└── assignmentTopics.zod.spec.ts
+
+services/authService/
+├── authService.ts
+├── authService.spec.ts
+└── authService.zod.ts
+
+services/backendConfiguration/
+├── backendConfigurationService.ts
+├── backendConfigurationService.spec.ts
+├── backendConfiguration.zod.ts
+└── backendConfigurationValidation.ts
+```
+
+Rules:
+
+- Create a subfolder when **at least 2 files** share a common domain prefix.
+- Keep single-file services flat in `services/`. Do not create folders for them.
+- Preserve existing import patterns: update all cross-file imports within `src/frontend/src/`
+  to reflect the new subfolder paths when moving files.
+- Keep `.spec.ts` files co-located with their source file inside the subfolder.
+- Do not move files outside `services/` — only reorganise within it.
+- Barrel (`index.ts`) exports are optional; prefer direct imports for clarity unless a
+  service domain exports many unrelated symbols.

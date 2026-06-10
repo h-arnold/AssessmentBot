@@ -6,7 +6,8 @@ safety = "safe"
 agent_type = "subagent"
 nickname_candidates = ["code-reviewer", "Code Reviewer", "Reviewer"]
 system_prompt_id = "code-reviewer"
-thinking = "max"
+thinking = "high"
+active_model=deepseek-v4-pro
 
 [tools]
 allowlist = ["ask_user_question", "bash", "grep", "read_file", "task", "todo", "web_search"]

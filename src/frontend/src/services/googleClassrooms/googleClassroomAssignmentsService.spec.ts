@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const callApiMock = vi.fn();
 
-vi.mock('./apiService', () => ({
+vi.mock('../apiService', () => ({
   callApi: callApiMock,
 }));
 
@@ -33,7 +33,7 @@ describe('googleClassroomAssignmentsService.getGoogleClassroomAssignments', () =
     const { getGoogleClassroomAssignments } = await import('./googleClassroomAssignmentsService');
 
     await expect(getGoogleClassroomAssignments('123')).resolves.toEqual([
-      { assignmentId: 'a1', title: 'Essay' },
+      { assignmentId: 'a1', title: 'Essay', topicId: null, topicName: null },
     ]);
   });
 
