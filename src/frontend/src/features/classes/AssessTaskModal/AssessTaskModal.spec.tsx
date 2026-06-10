@@ -2,7 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AssessTaskModal } from './AssessTaskModal';
-import { getGoogleClassroomAssignments } from '../../../services/googleClassroomAssignmentsService';
+import { getGoogleClassroomAssignments } from '../../../services/googleClassrooms/googleClassroomAssignmentsService';
 import { startAssessmentRun } from '../../../services/assignmentAssessment/assignmentAssessmentService';
 import { findMatchingDefinition } from './matchDefinitionForAssignment';
 import { queryKeys } from '../../../query/queryKeys';
@@ -12,7 +12,7 @@ import { ApiTransportError } from '../../../errors/apiTransportError';
 import { createFixtureClassPartial } from '../../../test/classes/classesPageTestHelpers';
 import type { AssignmentDefinitionPartial } from '../../../services/assignmentDefinitionPartials.zod';
 
-vi.mock('../../../services/googleClassroomAssignmentsService', () => ({
+vi.mock('../../../services/googleClassrooms/googleClassroomAssignmentsService', () => ({
   getGoogleClassroomAssignments: vi.fn(),
 }));
 

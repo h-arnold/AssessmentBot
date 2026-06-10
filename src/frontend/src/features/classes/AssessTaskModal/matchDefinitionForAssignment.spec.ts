@@ -4,7 +4,6 @@ import { findMatchingDefinition } from './matchDefinitionForAssignment';
 import type { MatchResult } from './matchDefinitionForAssignment';
 
 const DEFAULT_ISO_DATETIME = '2025-01-01T00:00:00.000Z';
-const AMBIGUOUS_MATCH_COUNT = 2;
 
 /**
  * Creates an AssignmentDefinitionPartial fixture with sensible defaults.
@@ -260,7 +259,8 @@ describe('findMatchingDefinition', () => {
 
     expect(result.kind).toBe('ambiguous');
     if (result.kind === 'ambiguous') {
-      expect(result.matches).toHaveLength(AMBIGUOUS_MATCH_COUNT);
+      // eslint-disable-next-line @typescript-eslint/no-magic-numbers
+      expect(result.matches).toHaveLength(2);
       expect(result.matches).toEqual(definitionPartials);
     }
   });

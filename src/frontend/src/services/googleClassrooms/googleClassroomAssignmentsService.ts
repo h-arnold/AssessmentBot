@@ -1,4 +1,4 @@
-import { callApi } from './apiService';
+import { callApi } from '../apiService';
 import type { GoogleClassroomAssignmentsResponse } from './googleClassroomAssignments.zod';
 import { GoogleClassroomAssignmentsResponseSchema } from './googleClassroomAssignments.zod';
 

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const callApiMock = vi.fn();
 
-vi.mock('./apiService', () => ({
+vi.mock('../apiService', () => ({
   callApi: callApiMock,
 }));
 

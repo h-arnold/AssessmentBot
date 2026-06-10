@@ -1,7 +1,7 @@
 import { Alert, Button, Empty, Modal, Select, Space, Spin, Typography } from 'antd';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { getGoogleClassroomAssignments } from '../../../services/googleClassroomAssignmentsService';
+import { getGoogleClassroomAssignments } from '../../../services/googleClassrooms/googleClassroomAssignmentsService';
 import { findMatchingDefinition } from './matchDefinitionForAssignment';
 import { startAssessmentRun } from '../../../services/assignmentAssessment/assignmentAssessmentService';
 import { ApiTransportError } from '../../../errors/apiTransportError';
@@ -22,6 +22,7 @@ type AssessmentAlertType = 'success' | 'error' | 'warning';
 
 /** Describes a cache-data validation failure during assessment run. */
 type CacheValidationError = {
+  kind: 'cache-error';
   alertType: AssessmentAlertType;
   message: string;
 };
@@ -91,7 +92,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
    * @returns {object} The class partial or a validation error descriptor.
    */
   function getValidatedCachedData():
-  | { classPartial: ClassPartial; definitionPartials: AssignmentDefinitionPartial[] }
+  | { kind: 'valid'; classPartial: ClassPartial; definitionPartials: AssignmentDefinitionPartial[] }
   | CacheValidationError {
     const classPartials = queryClient.getQueryData<ClassPartial[]>(queryKeys.classPartials());
     const definitionPartials = queryClient.getQueryData<AssignmentDefinitionPartial[]>(
@@ -99,21 +100,21 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
     );
 
     if (!classPartials) {
-      return { alertType: 'error', message: 'Failed to load class data. Please refresh and try again.' };
+      return { kind: 'cache-error', alertType: 'error', message: 'Failed to load class data. Please refresh and try again.' };
     }
     if (!definitionPartials) {
-      return { alertType: 'error', message: 'Failed to load definition data. Please refresh and try again.' };
+      return { kind: 'cache-error', alertType: 'error', message: 'Failed to load definition data. Please refresh and try again.' };
     }
 
     const classPartial = classPartials.find((cp) => cp.classId === classId);
     if (!classPartial) {
-      return { alertType: 'error', message: 'Class not found in cached data. Please refresh and try again.' };
+      return { kind: 'cache-error', alertType: 'error', message: 'Class not found in cached data. Please refresh and try again.' };
     }
     if (classPartial.yearGroupKey === null) {
-      return { alertType: 'error', message: 'Cannot determine year group for this class.' };
+      return { kind: 'cache-error', alertType: 'error', message: 'Cannot determine year group for this class.' };
     }
 
-    return { classPartial, definitionPartials };
+    return { kind: 'valid', classPartial, definitionPartials };
   }
 
   /**
@@ -138,7 +139,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
 
     try {
       const cached = getValidatedCachedData();
-      if (!('classPartial' in cached)) {
+      if (cached.kind === 'cache-error') {
         setAssessmentAsError(cached.alertType, cached.message);
         return;
       }
