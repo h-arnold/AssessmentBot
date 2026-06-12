@@ -7,13 +7,13 @@
  * - SPEC.md
  * - CLASSES_PAGE_LAYOUT.md
  * - docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md
- * - src/frontend/src/services/classPartialsService.ts
- * - src/frontend/src/services/referenceDataService.ts
+ * - src/frontend/src/services/googleClassrooms/classPartialsService.ts
+ * - src/frontend/src/services/referenceData/referenceDataService.ts
  * - src/frontend/src/query/sharedQueries.ts
- * - src/frontend/src/features/classes/ClassesTable.helpers.ts
- * - src/frontend/src/pages/classes/classesPageModel.spec.ts
- * - src/frontend/src/services/classPartials.zod.ts
- * - src/frontend/src/services/referenceData.zod.ts
+ * - src/frontend/src/features/classes/table/ClassesTable.helpers.ts
+ * - src/frontend/src/pages/classesPageModel.spec.ts
+ * - src/frontend/src/services/googleClassrooms/classPartials.zod.ts
+ * - src/frontend/src/services/referenceData/referenceData.zod.ts
  */
 
 import type { ClassPartial } from '../services/googleClassrooms/classPartials.zod';

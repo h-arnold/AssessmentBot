@@ -31,6 +31,20 @@ Root scripts execute frontend tasks via `npm --prefix src/frontend ...`.
 - Utility functions, custom hooks, validators, and common components must check `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` before creating new abstractions. Flag code that duplicates logic already in shared helpers as a Critical issue during code review.
 - For React Query baseline, startup warm-up, and prefetch policy guidance, use `docs/developer/frontend/frontend-react-query-and-prefetch.md`.
 
+### 2.3 Feature Directory Layout
+
+Feature state machines, hooks, modal components, and feature-scoped helpers live under
+`src/frontend/src/features/`. Current feature directories:
+
+- `assignmentWizard/` — Assignment definition wizard (extracted from `pages/`)
+- `auth/` — Authorisation gate and status
+- `classes/` — Class management, assessment, bulk operations, and table
+- `referenceData/` — Cross-cutting reference data management (cohorts, year groups, topics; extracted from `features/classes/management/` and `features/settings/`)
+- `settings/` — Backend settings configuration
+
+Pages under `src/frontend/src/pages/` remain thin composition roots that compose feature
+components. No feature logic, state machines, or hooks should live in `pages/`.
+
 ## 3. Framework and UI Baseline
 
 - Current scaffold uses React + Ant Design.
@@ -167,6 +181,15 @@ Domain prefix is the leading camelCase segment before the first capital letter o
 Example — current services directory grouped by domain:
 
 ```
+services/apiService.ts
+services/apiService.spec.ts
+
+services/assignmentAssessment/
+├── assignmentAssessmentService.ts
+├── assignmentAssessmentService.spec.ts
+├── assignmentAssessment.zod.ts
+└── assignmentAssessment.zod.spec.ts
+
 services/assignmentDefinition/
 ├── assignmentDefinitionService.ts
 ├── assignmentDefinitionService.spec.ts
@@ -176,29 +199,7 @@ services/assignmentDefinition/
 ├── assignmentDefinitionPartialsService.spec.ts
 ├── assignmentDefinitionPartials.zod.ts
 ├── assignmentDefinitionPartials.zod.spec.ts
-└── assignmentDefinitionPartialsContract.guard.spec.ts
-
-services/apiService/
-├── apiService.ts
-└── apiService.spec.ts
-
-services/googleClassrooms/
-├── googleClassroomsService.ts
-├── googleClassroomsService.spec.ts
-├── googleClassrooms.zod.ts
-├── googleClassrooms.zod.spec.ts
-├── googleClassroomAssignmentsService.ts
-├── googleClassroomAssignmentsService.spec.ts
-├── googleClassroomAssignments.zod.ts
-├── classPartialsService.ts
-├── classPartialsService.spec.ts
-└── classPartials.zod.ts
-
-services/referenceData/
-├── referenceDataService.ts
-├── referenceDataService.spec.ts
-├── referenceData.zod.ts
-├── referenceData.zod.spec.ts
+├── assignmentDefinitionPartialsContract.guard.spec.ts
 ├── assignmentTopicsService.ts
 ├── assignmentTopicsService.spec.ts
 ├── assignmentTopics.zod.ts
@@ -214,6 +215,26 @@ services/backendConfiguration/
 ├── backendConfigurationService.spec.ts
 ├── backendConfiguration.zod.ts
 └── backendConfigurationValidation.ts
+
+services/googleClassrooms/
+├── googleClassroomsService.ts
+├── googleClassroomsService.spec.ts
+├── googleClassrooms.zod.ts
+├── googleClassrooms.zod.spec.ts
+├── googleClassroomAssignmentsService.ts
+├── googleClassroomAssignmentsService.spec.ts
+├── googleClassroomAssignments.zod.ts
+├── googleClassroomAssignments.zod.spec.ts
+├── classPartialsService.ts
+├── classPartialsService.spec.ts
+├── classPartials.zod.ts
+└── classPartials.zod.spec.ts
+
+services/referenceData/
+├── referenceDataService.ts
+├── referenceDataService.spec.ts
+├── referenceData.zod.ts
+└── referenceData.zod.spec.ts
 ```
 
 Rules:

@@ -60,7 +60,7 @@ Do not create a new helper only to move code out of a large file.
 - Classes bulk-mutation orchestration helper: `src/frontend/src/features/classes/bulkMutationOrchestration.ts`
 - Classes metadata bulk-update helper: `src/frontend/src/features/classes/bulkMetadataUpdateFlow.ts`
 - Classes query refresh and invalidation contract helpers: `src/frontend/src/features/classes/queryInvalidation.ts`
-- Classes reference-data workflow helpers: `src/frontend/src/features/classes/manageReferenceDataHelpers.ts`
+- Classes reference-data workflow helpers: `src/frontend/src/features/referenceData/manageReferenceDataHelpers.ts`
 
 Feature-scoped helpers should stay feature-scoped unless there is proven cross-feature reuse.
 
@@ -227,21 +227,21 @@ This section supersedes the earlier Section 9.7 defer decision for the specific 
 1. Helper or contract: classes bulk form modal scaffold
 
 - Decision: new
-- Owning path: `src/frontend/src/features/classes/BulkFormModalScaffold.tsx`
+- Owning path: `src/frontend/src/features/classes/bulk/BulkFormModalScaffold.tsx`
 - Status: `Implemented`
 - Rationale: `BulkCreateModal.tsx`, `BulkSetSelectModal.tsx`, and `BulkSetCourseLengthModal.tsx` now present a justified three-caller family for a narrow feature-local shell that owns reset-on-cancel, submit-on-OK, inline submission error rendering, and modal busy semantics without becoming a generic wrapper
 
 2. Helper or contract: classes reference-data modal helper family
 
 - Decision: reuse
-- Owning path: `src/frontend/src/features/classes/manageReferenceDataDialogs.tsx`, `src/frontend/src/features/classes/manageReferenceDataHelpers.ts`, `src/frontend/src/features/classes/InlineDialog.tsx`
+- Owning path: `src/frontend/src/features/referenceData/manageReferenceDataDialogs.tsx`, `src/frontend/src/features/referenceData/manageReferenceDataHelpers.ts`, `src/frontend/src/features/classes/components/InlineDialog.tsx`
 - Status: `Implemented`
 - Rationale: the current helper split already covers the shared reference-data workflow and should not be replaced or widened during this refactor
 
 3. Helper or contract: one-off destructive confirmation modals
 
 - Decision: keep local
-- Owning path: `src/frontend/src/features/classes/BulkDeleteModal.tsx`, `src/frontend/src/pages/AssignmentsPage.tsx`
+- Owning path: `src/frontend/src/features/classes/bulk/BulkDeleteModal.tsx`, `src/frontend/src/pages/AssignmentsPage.tsx`
 - Status: `Implemented`
 - Rationale: both confirmation flows remain workflow-specific one-offs whose copy and footer semantics do not yet justify a shared abstraction
 
@@ -250,21 +250,21 @@ This section supersedes the earlier Section 9.7 defer decision for the specific 
 1. Helper or contract: reference-data modal scaffold
 
 - Decision: new
-- Owning path: `src/frontend/src/features/classes/ReferenceDataManagementModalScaffold.tsx`
+- Owning path: `src/frontend/src/features/referenceData/ReferenceDataManagementModalScaffold.tsx`
 - Status: `Implemented`
 - Rationale: `ManageCohortsModal.tsx` and `ManageYearGroupsModal.tsx` now reuse the extracted scaffold for modal shell composition, standard Cancel/close wiring, start-aligned content-width create-action presentation, and slot placement; a topic reference-data modal is an accepted next sibling caller
 
 2. Helper or contract: existing inline dialog and reference-data helper family
 
 - Decision: reuse
-- Owning path: `src/frontend/src/features/classes/manageReferenceDataDialogs.tsx`, `src/frontend/src/features/classes/manageReferenceDataHelpers.ts`, `src/frontend/src/features/classes/InlineDialog.tsx`
+- Owning path: `src/frontend/src/features/referenceData/manageReferenceDataDialogs.tsx`, `src/frontend/src/features/referenceData/manageReferenceDataHelpers.ts`, `src/frontend/src/features/classes/components/InlineDialog.tsx`
 - Status: `Implemented`
 - Rationale: the extracted scaffold composes the existing dialog and workflow helper family rather than replacing it, because those modules already own the inner-dialog contract and reference-data workflow helpers coherently; the scaffold uses these helpers for inline form and delete dialog slots
 
 3. Helper or contract: `ReferenceDataTrustBoundary` type extension in `manageReferenceDataHelpers.ts`
 
 - Decision: extend (planned for future topic caller)
-- Owning path: `src/frontend/src/features/classes/manageReferenceDataHelpers.ts`
+- Owning path: `src/frontend/src/features/referenceData/manageReferenceDataHelpers.ts`
 - Status: `Not implemented`
 - Rationale: the `ReferenceDataTrustBoundary` union type currently covers `'cohorts' | 'yearGroups'`; when the accepted next topic reference-data modal caller is implemented, `'assignmentTopics'` must be added to this union so the blocking-load trust-boundary helpers (`getPersistedBlockingLoadError`, `setPersistedBlockingLoadError`, `clearPersistedBlockingLoadError`, `syncReferenceDataModalBusyState`) work correctly for the topic entity; this is a deliberate deferred extension, not a speculative abstraction
 
@@ -273,7 +273,7 @@ This section supersedes the earlier Section 9.7 defer decision for the specific 
 1. Helper or contract: ReferenceDataInitialLoadingState (shared loading skeleton component)
 
 - Decision: new
-- Owning path: `src/frontend/src/features/classes/ReferenceDataInitialLoadingState.tsx`
+- Owning path: `src/frontend/src/features/classes/components/ReferenceDataInitialLoadingState.tsx`
 - Status: `Implemented`
 - Rationale: Extracted from duplicated ManageCohortsInitialLoadingState and ManageYearGroupsInitialLoadingState functions
 
@@ -296,7 +296,7 @@ This section supersedes the earlier Section 9.7 defer decision for the specific 
 2. Helper or contract: Classes page grouped view-model builder
 
 - Decision: keep local
-- Owning path: `src/frontend/src/pages/classes/classesPageModel.ts` or an equivalent page-adjacent local helper
+- Owning path: `src/frontend/src/pages/classesPageModel.ts` or an equivalent page-adjacent local helper
 - Status: `Implemented`
 - Rationale: the grouping, deterministic ordering, and fail-closed trust rules are specific to the dedicated Classes browse page and should not widen the existing Settings Classes helper family that serves different merge and workflow needs
 

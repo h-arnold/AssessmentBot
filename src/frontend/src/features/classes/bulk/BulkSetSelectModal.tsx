@@ -1,7 +1,7 @@
 import { Form } from 'antd';
 import { useEffect, useMemo } from 'react';
 import { BulkFormModalScaffold } from './BulkFormModalScaffold';
-import { bulkReferenceKeySchema } from '../bulk/bulkEditValidation.zod';
+import { bulkReferenceKeySchema } from './bulkEditValidation.zod';
 import { SelectWithAddNew } from '../../../components/SelectWithAddNew';
 
 type SelectOption = Readonly<{

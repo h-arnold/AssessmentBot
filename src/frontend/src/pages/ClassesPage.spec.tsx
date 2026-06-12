@@ -18,7 +18,7 @@
  * - src/frontend/src/test/renderWithFrontendProviders.tsx
  * - src/frontend/e2e-tests/shared/endToEndRuntimeMocks.ts
  * - src/frontend/src/pages/PageSection.tsx
- * - src/frontend/src/pages/classes/classesPageModel.ts
+ * - src/frontend/src/pages/classesPageModel.ts
  * - src/frontend/src/test/classes/classesPageTestHelpers.ts
  */
 

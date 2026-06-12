@@ -1,12 +1,12 @@
 import { Form, InputNumber } from 'antd';
 import { useEffect, useMemo } from 'react';
 import { BulkFormModalScaffold } from './BulkFormModalScaffold';
-import type { BulkCreateOptions } from '../bulk/bulkCreateFlow';
+import type { BulkCreateOptions } from './bulkCreateFlow';
 import {
   bulkCourseLengthSchema,
   bulkReferenceKeySchema,
   courseLengthValidationMessage,
-} from '../bulk/bulkEditValidation.zod';
+} from './bulkEditValidation.zod';
 import { SelectWithAddNew } from '../../../components/SelectWithAddNew';
 
 type SelectOption = Readonly<{

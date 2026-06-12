@@ -3,7 +3,7 @@ import { BulkFormModalScaffold } from './BulkFormModalScaffold';
 import {
   bulkCourseLengthSchema,
   courseLengthValidationMessage,
-} from '../bulk/bulkEditValidation.zod';
+} from './bulkEditValidation.zod';
 
 export type BulkSetCourseLengthModalProperties = Readonly<{
   confirmLoading?: boolean;
