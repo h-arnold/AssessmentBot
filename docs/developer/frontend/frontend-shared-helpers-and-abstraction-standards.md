@@ -234,7 +234,7 @@ This section supersedes the earlier Section 9.7 defer decision for the specific 
 2. Helper or contract: classes reference-data modal helper family
 
 - Decision: reuse
-- Owning path: `src/frontend/src/features/referenceData/manageReferenceDataDialogs.tsx`, `src/frontend/src/features/referenceData/manageReferenceDataHelpers.ts`, `src/frontend/src/features/classes/components/InlineDialog.tsx`
+- Owning path: `src/frontend/src/features/referenceData/manageReferenceDataDialogs.tsx`, `src/frontend/src/features/referenceData/manageReferenceDataHelpers.ts`, `src/frontend/src/features/referenceData/InlineDialog.tsx`
 - Status: `Implemented`
 - Rationale: the current helper split already covers the shared reference-data workflow and should not be replaced or widened during this refactor
 
@@ -257,7 +257,7 @@ This section supersedes the earlier Section 9.7 defer decision for the specific 
 2. Helper or contract: existing inline dialog and reference-data helper family
 
 - Decision: reuse
-- Owning path: `src/frontend/src/features/referenceData/manageReferenceDataDialogs.tsx`, `src/frontend/src/features/referenceData/manageReferenceDataHelpers.ts`, `src/frontend/src/features/classes/components/InlineDialog.tsx`
+- Owning path: `src/frontend/src/features/referenceData/manageReferenceDataDialogs.tsx`, `src/frontend/src/features/referenceData/manageReferenceDataHelpers.ts`, `src/frontend/src/features/referenceData/InlineDialog.tsx`
 - Status: `Implemented`
 - Rationale: the extracted scaffold composes the existing dialog and workflow helper family rather than replacing it, because those modules already own the inner-dialog contract and reference-data workflow helpers coherently; the scaffold uses these helpers for inline form and delete dialog slots
 
@@ -273,7 +273,7 @@ This section supersedes the earlier Section 9.7 defer decision for the specific 
 1. Helper or contract: ReferenceDataInitialLoadingState (shared loading skeleton component)
 
 - Decision: new
-- Owning path: `src/frontend/src/features/classes/components/ReferenceDataInitialLoadingState.tsx`
+- Owning path: `src/frontend/src/features/referenceData/ReferenceDataInitialLoadingState.tsx`
 - Status: `Implemented`
 - Rationale: Extracted from duplicated ManageCohortsInitialLoadingState and ManageYearGroupsInitialLoadingState functions
 

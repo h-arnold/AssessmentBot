@@ -67,7 +67,7 @@ components. No feature logic, state machines, or hooks should live in `pages/`.
 - Keep method names aligned with backend `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`.
 - Treat backend responses as envelopes handled by `callApi`; feature services should consume typed `data` results only.
 - Keep retry behaviour centralised in `callApi`; do not add per-feature retry loops for rate-limit handling.
-- Use `src/frontend/src/services/backendConfigurationService.ts` for backend configuration reads and writes; keep request and response validation in `src/frontend/src/services/backendConfiguration.zod.ts`.
+- Use `src/frontend/src/services/backendConfiguration/backendConfigurationService.ts` for backend configuration reads and writes; keep request and response validation in `src/frontend/src/services/backendConfiguration/backendConfiguration.zod.ts`.
 - Treat `getBackendConfig` and `setBackendConfig` as the canonical backend configuration method names. Do not route configuration UI flows through legacy backend globals.
 
 ### 4.2 Serialization boundary
@@ -141,7 +141,7 @@ Frontend build output is consumed by the GAS builder pipeline.
 - Delegate all Playwright E2E test implementation and test-debugging work to `Playwright` when sub-agent delegation is available.
 - If delegation is unavailable, follow `.github/agents/Testing.agent.md` and `docs/developer/frontend/frontend-testing.md` for Vitest tests, or `.github/agents/playwright.agent.md` and `docs/developer/frontend/frontend-playwright-e2e.md` for E2E tests.
 - Shared frontend test helpers live under `src/frontend/src/test/**`; keep specs co-located in `src/frontend/src/**` and do not import `src/test/**` from production source.
-- When a frontend change depends on backend configuration transport behaviour, treat `tests/api/backendConfigApi.test.js` as the dedicated backend transport suite and keep frontend service assertions in `src/frontend/src/services/backendConfigurationService.spec.ts`.
+- When a frontend change depends on backend configuration transport behaviour, treat `tests/api/backendConfigApi.test.js` as the dedicated backend transport suite and keep frontend service assertions in `src/frontend/src/services/backendConfiguration/backendConfigurationService.spec.ts`.
 
 ## 8. Validation and Type Definition Standard
 

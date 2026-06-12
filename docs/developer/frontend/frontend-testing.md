@@ -94,14 +94,14 @@ Prefer names such as `getBackendConfig rejects malformed payloads` or `Configura
 
 When frontend work depends on backend configuration transport behaviour, keep the layers separate:
 
-- frontend service validation and `callApi` usage belong in `src/frontend/src/services/backendConfigurationService.spec.ts`
+- frontend service validation and `callApi` usage belong in `src/frontend/src/services/backendConfiguration/backendConfigurationService.spec.ts`
 - dedicated backend configuration transport coverage belongs in `tests/api/backendConfigApi.test.js`
 - broader backend dispatcher coverage remains in `tests/api/apiHandler.test.js`
 
 For assignment-definition transport work, keep the same split:
 
-- frontend service validation and `callApi` usage belong in `src/frontend/src/services/assignmentDefinitionPartialsService.spec.ts`
-- frontend schema-contract coverage belongs in `src/frontend/src/services/assignmentDefinitionPartials.zod.spec.ts`
+- frontend service validation and `callApi` usage belong in `src/frontend/src/services/assignmentDefinition/assignmentDefinitionPartialsService.spec.ts`
+- frontend schema-contract coverage belongs in `src/frontend/src/services/assignmentDefinition/assignmentDefinitionPartials.zod.spec.ts`
 - dedicated backend transport coverage belongs in `tests/backend-api/assignmentDefinitionPartials.unit.test.js` and `tests/api/assignmentDefinitionDeleteApi.test.js`
 
 ## Related standards
