@@ -8,7 +8,7 @@ import {
   type BlockingLoadErrorState,
 } from '../../../errors/blockingLoadError';
 import { getBackendConfigQueryOptions } from '../../../query/sharedQueries';
-import { setBackendConfig } from '../../../services/backendConfigurationService';
+import { setBackendConfig } from '../../../services/backendConfiguration/backendConfigurationService';
 import {
   mapBackendConfigToBackendSettingsFormValues,
   mapBackendSettingsFormValuesToBackendConfigWriteInput,

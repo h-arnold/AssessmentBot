@@ -29,8 +29,8 @@ import { refetchAfterStaleInvalidate } from '../query/queryInvalidationHelpers';
 import {
   deleteAssignmentDefinition,
   type AssignmentDefinitionPartial,
-} from '../services/assignmentDefinitionPartialsService';
-import { DeleteAssignmentDefinitionRequestSchema } from '../services/assignmentDefinitionPartials.zod';
+} from '../services/assignmentDefinition/assignmentDefinitionPartialsService';
+import { DeleteAssignmentDefinitionRequestSchema } from '../services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import { AssignmentDefinitionWizardModal } from './AssignmentDefinitionWizardModal';
 import { PageSection } from './PageSection';
 import { pageContent } from './pageContent';
@@ -265,8 +265,7 @@ function getAssignmentsSurfaceState(
     shouldRenderActionLoadingState: !hasRenderableAssignmentsDataset,
     shouldRenderBlockingState: false,
     shouldRenderTableLoadingState:
-      !hasRenderableAssignmentsDataset ||
-      (isAssignmentsQueryPending && !datasetState.hasQueryData),
+      !hasRenderableAssignmentsDataset || (isAssignmentsQueryPending && !datasetState.hasQueryData),
   };
 }
 
@@ -563,8 +562,9 @@ export function AssignmentsPage() {
   const startupWarmupState = useStartupWarmupState();
   const queryClient = useQueryClient();
 
-  const { query: assignmentsQuery, datasetState: assignmentsDatasetState } =
-    usePageDataset<AssignmentDefinitionPartial[]>('assignmentDefinitionPartials');
+  const { query: assignmentsQuery, datasetState: assignmentsDatasetState } = usePageDataset<
+    AssignmentDefinitionPartial[]
+  >('assignmentDefinitionPartials');
 
   const hasTrustworthyAssignmentsDataset = assignmentsDatasetState.hasTrustworthyDataset;
   const hasTrustworthyReferenceData =

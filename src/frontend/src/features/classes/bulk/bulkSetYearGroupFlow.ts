@@ -1,4 +1,4 @@
-import type { YearGroup } from '../../../services/referenceData.zod';
+import type { YearGroup } from '../../../services/referenceData/referenceData.zod';
 import type { RowMutationResult } from './batchMutationEngine';
 import { bulkMetadataUpdate } from './bulkMetadataUpdateFlow';
 import type { ClassesManagementRow } from '../classesManagementViewModel';
@@ -9,7 +9,9 @@ import type { ClassesManagementRow } from '../classesManagementViewModel';
  * @param {YearGroup[]} yearGroups Available year-group records.
  * @returns {Array<{ label: string; value: string }>} Year-group options.
  */
-export function getYearGroupOptions(yearGroups: YearGroup[]): Array<{ label: string; value: string }> {
+export function getYearGroupOptions(
+  yearGroups: YearGroup[]
+): Array<{ label: string; value: string }> {
   return yearGroups.map((yearGroup) => ({
     label: yearGroup.name,
     value: yearGroup.key,
@@ -25,7 +27,7 @@ export function getYearGroupOptions(yearGroups: YearGroup[]): Array<{ label: str
  */
 export async function bulkSetYearGroup(
   rows: ClassesManagementRow[],
-  yearGroupKey: string,
+  yearGroupKey: string
 ): Promise<RowMutationResult<ClassesManagementRow, unknown>[]> {
   return bulkMetadataUpdate(rows, { key: 'yearGroupKey', value: yearGroupKey });
 }

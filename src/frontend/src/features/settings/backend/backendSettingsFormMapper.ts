@@ -1,7 +1,7 @@
 import type {
-    BackendConfig,
-    BackendConfigWriteInput,
-} from '../../../services/backendConfiguration.zod';
+  BackendConfig,
+  BackendConfigWriteInput,
+} from '../../../services/backendConfiguration/backendConfiguration.zod';
 import type { BackendSettingsForm } from './backendSettingsForm.zod';
 
 /**
@@ -16,21 +16,22 @@ import type { BackendSettingsForm } from './backendSettingsForm.zod';
  * @returns {BackendSettingsForm} The backend settings form values.
  */
 export function mapBackendConfigToBackendSettingsFormValues(
-    backendConfig: BackendConfig
+  backendConfig: BackendConfig
 ): BackendSettingsForm {
-    return {
-        hasApiKey: backendConfig.hasApiKey,
-        apiKey: '',
-        backendUrl: backendConfig.backendUrl,
-        backendAssessorBatchSize: backendConfig.backendAssessorBatchSize,
-        slidesFetchBatchSize: backendConfig.slidesFetchBatchSize,
-        daysUntilAuthRevoke: backendConfig.daysUntilAuthRevoke,
-        jsonDbMasterIndexKey: backendConfig.jsonDbMasterIndexKey,
-        jsonDbLockTimeoutMs: backendConfig.jsonDbLockTimeoutMs,
-        jsonDbLogLevel: backendConfig.jsonDbLogLevel.toUpperCase() as BackendSettingsForm['jsonDbLogLevel'],
-        jsonDbBackupOnInitialise: backendConfig.jsonDbBackupOnInitialise,
-        jsonDbRootFolderId: backendConfig.jsonDbRootFolderId,
-    };
+  return {
+    hasApiKey: backendConfig.hasApiKey,
+    apiKey: '',
+    backendUrl: backendConfig.backendUrl,
+    backendAssessorBatchSize: backendConfig.backendAssessorBatchSize,
+    slidesFetchBatchSize: backendConfig.slidesFetchBatchSize,
+    daysUntilAuthRevoke: backendConfig.daysUntilAuthRevoke,
+    jsonDbMasterIndexKey: backendConfig.jsonDbMasterIndexKey,
+    jsonDbLockTimeoutMs: backendConfig.jsonDbLockTimeoutMs,
+    jsonDbLogLevel:
+      backendConfig.jsonDbLogLevel.toUpperCase() as BackendSettingsForm['jsonDbLogLevel'],
+    jsonDbBackupOnInitialise: backendConfig.jsonDbBackupOnInitialise,
+    jsonDbRootFolderId: backendConfig.jsonDbRootFolderId,
+  };
 }
 
 /**
@@ -47,23 +48,23 @@ export function mapBackendConfigToBackendSettingsFormValues(
  * @returns {BackendConfigWriteInput} The backend configuration write payload.
  */
 export function mapBackendSettingsFormValuesToBackendConfigWriteInput(
-    formValues: BackendSettingsForm
+  formValues: BackendSettingsForm
 ): BackendConfigWriteInput {
-    const writeInput = {
-        backendAssessorBatchSize: formValues.backendAssessorBatchSize,
-        backendUrl: formValues.backendUrl,
-        daysUntilAuthRevoke: formValues.daysUntilAuthRevoke,
-        slidesFetchBatchSize: formValues.slidesFetchBatchSize,
-        jsonDbMasterIndexKey: formValues.jsonDbMasterIndexKey,
-        jsonDbLockTimeoutMs: formValues.jsonDbLockTimeoutMs,
-        jsonDbLogLevel: formValues.jsonDbLogLevel as BackendConfigWriteInput['jsonDbLogLevel'],
-        jsonDbBackupOnInitialise: formValues.jsonDbBackupOnInitialise,
-        jsonDbRootFolderId: formValues.jsonDbRootFolderId,
-    } as BackendConfigWriteInput;
+  const writeInput = {
+    backendAssessorBatchSize: formValues.backendAssessorBatchSize,
+    backendUrl: formValues.backendUrl,
+    daysUntilAuthRevoke: formValues.daysUntilAuthRevoke,
+    slidesFetchBatchSize: formValues.slidesFetchBatchSize,
+    jsonDbMasterIndexKey: formValues.jsonDbMasterIndexKey,
+    jsonDbLockTimeoutMs: formValues.jsonDbLockTimeoutMs,
+    jsonDbLogLevel: formValues.jsonDbLogLevel as BackendConfigWriteInput['jsonDbLogLevel'],
+    jsonDbBackupOnInitialise: formValues.jsonDbBackupOnInitialise,
+    jsonDbRootFolderId: formValues.jsonDbRootFolderId,
+  } as BackendConfigWriteInput;
 
-    if (formValues.apiKey !== '') {
-        writeInput.apiKey = formValues.apiKey;
-    }
+  if (formValues.apiKey !== '') {
+    writeInput.apiKey = formValues.apiKey;
+  }
 
-    return writeInput;
+  return writeInput;
 }

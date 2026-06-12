@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { YearGroup } from '../../../services/referenceData.zod';
+import type { YearGroup } from '../../../services/referenceData/referenceData.zod';
 import type { ClassesManagementRow } from '../classesManagementViewModel';
 import type * as BulkSetYearGroupFlowModule from './bulkSetYearGroupFlow';
 

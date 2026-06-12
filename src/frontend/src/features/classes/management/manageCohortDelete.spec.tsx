@@ -9,7 +9,7 @@
 
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Cohort } from '../../../services/referenceData.zod';
+import type { Cohort } from '../../../services/referenceData/referenceData.zod';
 import { ApiTransportError } from '../../../errors/apiTransportError';
 import { queryKeys } from '../../../query/queryKeys';
 import { createAppQueryClient } from '../../../query/queryClient';
@@ -19,7 +19,7 @@ import { ManageCohortsModal } from './ManageCohortsModal';
 const deleteCohortMock = vi.hoisted(() => vi.fn());
 const getCohortsMock = vi.hoisted(() => vi.fn());
 
-vi.mock('../../../services/referenceDataService', () => ({
+vi.mock('../../../services/referenceData/referenceDataService', () => ({
   getCohorts: getCohortsMock,
   createCohort: vi.fn(),
   updateCohort: vi.fn(),
@@ -128,7 +128,7 @@ describe('ManageCohortsModal — delete flow', () => {
 
       await waitFor(() => {
         expect(deleteCohortMock).toHaveBeenCalledWith(
-          expect.objectContaining({ key: seedCohorts[0].key }),
+          expect.objectContaining({ key: seedCohorts[0].key })
         );
       });
     });
@@ -162,7 +162,7 @@ describe('ManageCohortsModal — delete flow', () => {
             queryKey: queryKeys.cohorts(),
             type: 'active',
           }),
-          expect.objectContaining({ throwOnError: true }),
+          expect.objectContaining({ throwOnError: true })
         );
       });
     });
@@ -184,7 +184,9 @@ describe('ManageCohortsModal — delete flow', () => {
       });
       expect(screen.queryByRole('dialog', { name: /delete cohort/i })).not.toBeInTheDocument();
       expect(within(dialog).queryByRole('table', { name: /cohorts/i })).not.toBeInTheDocument();
-      expect(within(dialog).queryByRole('button', { name: /create cohort/i })).not.toBeInTheDocument();
+      expect(
+        within(dialog).queryByRole('button', { name: /create cohort/i })
+      ).not.toBeInTheDocument();
     });
   });
 

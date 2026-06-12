@@ -13,7 +13,7 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { QueryClientProvider } from '@tanstack/react-query';
-import type { AssignmentTopic, YearGroup } from '../../services/referenceData.zod';
+import type { AssignmentTopic, YearGroup } from '../../services/referenceData/referenceData.zod';
 import { queryKeys } from '../../query/queryKeys';
 import { createAppQueryClient } from '../../query/queryClient';
 import { renderWithFrontendProviders } from '../../test/renderWithFrontendProviders';
@@ -27,11 +27,11 @@ const deleteAssignmentTopicMock = vi.hoisted(() => vi.fn());
 const getAssignmentTopicsMock = vi.hoisted(() => vi.fn());
 const getYearGroupsMock = vi.hoisted(() => vi.fn());
 
-vi.mock('../../services/assignmentTopicsService', () => ({
+vi.mock('../../services/assignmentDefinition/assignmentTopicsService', () => ({
   getAssignmentTopics: getAssignmentTopicsMock,
 }));
 
-vi.mock('../../services/referenceDataService', () => ({
+vi.mock('../../services/referenceData/referenceDataService', () => ({
   getCohorts: vi.fn(),
   createCohort: vi.fn(),
   updateCohort: vi.fn(),
@@ -109,7 +109,7 @@ type RenderOptions = {
 function setupTestQueryClient(
   topics: AssignmentTopic[],
   yearGroups: YearGroup[],
-  seedQueryData: boolean,
+  seedQueryData: boolean
 ): ReturnType<typeof createAppQueryClient> {
   const queryClient = createAppQueryClient();
   if (seedQueryData) {
@@ -125,7 +125,9 @@ function setupTestQueryClient(
  * @param {RenderOptions} [options] Render options.
  * @returns {ReturnType<typeof renderWithFrontendProviders>} Render result and query client.
  */
-function renderManageTopicsModal(options: RenderOptions = {}): ReturnType<typeof renderWithFrontendProviders> {
+function renderManageTopicsModal(
+  options: RenderOptions = {}
+): ReturnType<typeof renderWithFrontendProviders> {
   const open = options.open ?? true;
   const topics = options.topics ?? seedTopics;
   const yearGroups = options.yearGroups ?? seedYearGroups;
@@ -138,7 +140,7 @@ function renderManageTopicsModal(options: RenderOptions = {}): ReturnType<typeof
 
   return renderWithFrontendProviders(
     <ManageTopicsModal open={open} onClose={onCloseMock} onEntityCreated={onEntityCreated} />,
-    { queryClient },
+    { queryClient }
   );
 }
 
@@ -174,13 +176,15 @@ async function submitCreateTopicWhenRefreshFails(dialog: HTMLElement) {
   fireEvent.change(within(formDialog).getByRole('textbox', { name: createTopicInputNameRegex }), {
     target: { value: topicCreateName },
   });
-  fireEvent.click(within(formDialog).getByRole('button', { name: topicCreateSubmitButtonNameRegex }));
+  fireEvent.click(
+    within(formDialog).getByRole('button', { name: topicCreateSubmitButtonNameRegex })
+  );
 
   await waitFor(() => {
     expect(createAssignmentTopicMock).toHaveBeenCalledWith(
       expect.objectContaining({
         record: expect.objectContaining({ name: topicCreateName }),
-      }),
+      })
     );
   });
 }
@@ -189,9 +193,9 @@ async function submitCreateTopicWhenRefreshFails(dialog: HTMLElement) {
  * Closes the modal via the Cancel button in the footer.
  */
 function closeViaCancel() {
-  const footerCancel = screen.getAllByRole('button', { name: /cancel/i }).find(
-    (button) => button.closest('.ant-modal-footer') !== null,
-  );
+  const footerCancel = screen
+    .getAllByRole('button', { name: /cancel/i })
+    .find((button) => button.closest('.ant-modal-footer') !== null);
   if (!footerCancel) throw new Error('Cancel button not found in footer');
   fireEvent.click(footerCancel);
 }
@@ -216,7 +220,7 @@ async function closeViaMask(dialog: HTMLElement) {
   if (!wrap) {
     throw new Error('Modal wrap not found');
   }
-  
+
   // In Ant Design, the mask is a sibling before the wrap
   const mask = wrap?.previousElementSibling;
   if (mask?.classList.contains('ant-modal-mask')) {
@@ -227,7 +231,7 @@ async function closeViaMask(dialog: HTMLElement) {
     await new Promise((resolve) => setTimeout(resolve, MODAL_CLOSE_TIMEOUT_MS));
     return;
   }
-  
+
   throw new Error('Mask not found');
 }
 
@@ -246,7 +250,10 @@ function closeViaEscape(dialog: HTMLElement) {
  * @param {HTMLElement} dialog Modal dialog element.
  * @param {'Cancel' | 'close icon' | 'mask' | 'Escape'} closeMethod Close action to perform.
  */
-async function closeModal(dialog: HTMLElement, closeMethod: 'Cancel' | 'close icon' | 'mask' | 'Escape') {
+async function closeModal(
+  dialog: HTMLElement,
+  closeMethod: 'Cancel' | 'close icon' | 'mask' | 'Escape'
+) {
   switch (closeMethod) {
     case 'Cancel': {
       closeViaCancel();
@@ -276,7 +283,9 @@ async function closeModal(dialog: HTMLElement, closeMethod: 'Cancel' | 'close ic
  * @param {'Cancel' | 'close icon' | 'mask' | 'Escape'} closeMethod How to close the modal.
  * @returns {Promise<void>}
  */
-async function assertTransientStateReset(closeMethod: 'Cancel' | 'close icon' | 'mask' | 'Escape'): Promise<void> {
+async function assertTransientStateReset(
+  closeMethod: 'Cancel' | 'close icon' | 'mask' | 'Escape'
+): Promise<void> {
   const queryClient = createAppQueryClient();
   queryClient.setQueryData(queryKeys.assignmentTopics(), seedTopics);
   queryClient.setQueryData(queryKeys.yearGroups(), seedYearGroups);
@@ -285,7 +294,7 @@ async function assertTransientStateReset(closeMethod: 'Cancel' | 'close icon' | 
 
   const { rerender } = renderWithFrontendProviders(
     <ManageTopicsModal open={true} onClose={onCloseMock} onEntityCreated={onEntityCreatedMock} />,
-    { queryClient },
+    { queryClient }
   );
 
   const dialog = await screen.findByRole('dialog', { name: /manage topics/i });
@@ -299,9 +308,13 @@ async function assertTransientStateReset(closeMethod: 'Cancel' | 'close icon' | 
   rerender(
     <QueryClientProvider client={queryClient}>
       <StartupWarmupStateProvider warmupState="ready">
-        <ManageTopicsModal open={true} onClose={onCloseMock} onEntityCreated={onEntityCreatedMock} />
+        <ManageTopicsModal
+          open={true}
+          onClose={onCloseMock}
+          onEntityCreated={onEntityCreatedMock}
+        />
       </StartupWarmupStateProvider>
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
   const reopenedDialog = await screen.findByRole('dialog', { name: /manage topics/i });
 
@@ -392,7 +405,7 @@ function assertEditFormNameValue(formDialog: HTMLElement, expectedValue: string)
  */
 async function setupQueryFailureBeforeDataLoad(
   queryType: 'topics' | 'yearGroups',
-  error: Error,
+  error: Error
 ): Promise<HTMLElement> {
   if (queryType === 'topics') {
     getAssignmentTopicsMock.mockRejectedValueOnce(error);
@@ -403,7 +416,7 @@ async function setupQueryFailureBeforeDataLoad(
   const queryClient = createAppQueryClient();
   renderWithFrontendProviders(
     <ManageTopicsModal open={true} onClose={onCloseMock} onEntityCreated={onEntityCreatedMock} />,
-    { queryClient },
+    { queryClient }
   );
   return findManageTopicsModalDialog();
 }
@@ -423,7 +436,7 @@ async function setupYearGroupsFailureWithTopicsSeeded(error: Error): Promise<HTM
 
   renderWithFrontendProviders(
     <ManageTopicsModal open={true} onClose={onCloseMock} onEntityCreated={onEntityCreatedMock} />,
-    { queryClient },
+    { queryClient }
   );
   return findManageTopicsModalDialog();
 }
@@ -493,7 +506,9 @@ describe('ManageTopicsModal', () => {
 
       expect(within(dialog).getByRole('status', { name: 'Loading topics' })).toBeInTheDocument();
       expect(dialog.querySelector('.ant-skeleton')).not.toBeNull();
-      expect(within(dialog).queryByRole('button', { name: /create topic/i })).not.toBeInTheDocument();
+      expect(
+        within(dialog).queryByRole('button', { name: /create topic/i })
+      ).not.toBeInTheDocument();
       expect(within(dialog).queryByRole('table', { name: /topics/i })).not.toBeInTheDocument();
       expect(within(dialog).queryByText('Mathematics')).not.toBeInTheDocument();
     });
@@ -501,7 +516,7 @@ describe('ManageTopicsModal', () => {
     it('suppresses the ready modal body when the topics query fails before any usable data loads', async () => {
       const dialog = await setupQueryFailureBeforeDataLoad(
         'topics',
-        new Error('Topics failed to load.'),
+        new Error('Topics failed to load.')
       );
 
       await waitFor(() => {
@@ -512,7 +527,7 @@ describe('ManageTopicsModal', () => {
     it('suppresses the ready modal body when the yearGroups query fails before any usable data loads', async () => {
       const dialog = await setupQueryFailureBeforeDataLoad(
         'yearGroups',
-        new Error('Year groups failed to load.'),
+        new Error('Year groups failed to load.')
       );
 
       await waitFor(() => {
@@ -559,7 +574,7 @@ describe('ManageTopicsModal', () => {
         () =>
           new Promise<AssignmentTopic[]>((resolve) => {
             releaseRefresh = () => resolve(seedTopics);
-          }),
+          })
       );
 
       try {
@@ -731,7 +746,7 @@ describe('ManageTopicsModal', () => {
             queryKey: queryKeys.assignmentTopics(),
             type: 'active',
           }),
-          expect.objectContaining({ throwOnError: true }),
+          expect.objectContaining({ throwOnError: true })
         );
       });
     });
@@ -783,7 +798,7 @@ describe('ManageTopicsModal', () => {
             queryKey: queryKeys.assignmentTopics(),
             type: 'active',
           }),
-          expect.objectContaining({ throwOnError: true }),
+          expect.objectContaining({ throwOnError: true })
         );
       });
     });
@@ -816,7 +831,7 @@ describe('ManageTopicsModal', () => {
             queryKey: queryKeys.assignmentTopics(),
             type: 'active',
           }),
-          expect.objectContaining({ throwOnError: true }),
+          expect.objectContaining({ throwOnError: true })
         );
       });
     });
@@ -829,13 +844,15 @@ describe('ManageTopicsModal', () => {
       renderManageTopicsModal({ seedQueryData: false });
       const dialog = getManageTopicsModalDialog();
 
-      expect(within(dialog).queryByRole('button', { name: /create topic/i })).not.toBeInTheDocument();
+      expect(
+        within(dialog).queryByRole('button', { name: /create topic/i })
+      ).not.toBeInTheDocument();
       expect(within(dialog).queryByRole('table', { name: /topics/i })).not.toBeInTheDocument();
     });
 
     it('shows blocking alert when yearGroups query fails even if topics data is available', async () => {
       const dialog = await setupYearGroupsFailureWithTopicsSeeded(
-        new Error('Year groups failed to load.'),
+        new Error('Year groups failed to load.')
       );
 
       await waitFor(() => {
@@ -859,7 +876,9 @@ describe('ManageTopicsModal', () => {
       fireEvent.change(within(formDialog).getByRole('textbox', { name: /name/i }), {
         target: { value: topicCreateName },
       });
-      fireEvent.click(within(formDialog).getByRole('button', { name: topicCreateSubmitButtonNameRegex }));
+      fireEvent.click(
+        within(formDialog).getByRole('button', { name: topicCreateSubmitButtonNameRegex })
+      );
 
       await waitFor(() => {
         expect(onEntityCreatedMock).toHaveBeenCalledWith(
@@ -867,7 +886,7 @@ describe('ManageTopicsModal', () => {
             key: createdTopicFixture.key,
             name: createdTopicFixture.name,
             yearGroupKeys: createdTopicFixture.yearGroupKeys,
-          }),
+          })
         );
       });
     });
@@ -886,7 +905,9 @@ describe('ManageTopicsModal', () => {
         expect(within(dialog).getByRole('alert')).toHaveTextContent(topicsLoadFailureCopy);
       });
       expect(screen.queryByRole('dialog', { name: /create topic/i })).not.toBeInTheDocument();
-      expect(within(dialog).queryByRole('button', { name: /create topic/i })).not.toBeInTheDocument();
+      expect(
+        within(dialog).queryByRole('button', { name: /create topic/i })
+      ).not.toBeInTheDocument();
       expect(within(dialog).queryByRole('table', { name: /topics/i })).not.toBeInTheDocument();
     });
 
@@ -905,16 +926,22 @@ describe('ManageTopicsModal', () => {
 
       unmount();
       renderWithFrontendProviders(
-        <ManageTopicsModal open={true} onClose={onCloseMock} onEntityCreated={onEntityCreatedMock} />,
-        { queryClient },
+        <ManageTopicsModal
+          open={true}
+          onClose={onCloseMock}
+          onEntityCreated={onEntityCreatedMock}
+        />,
+        { queryClient }
       );
 
       const remountedDialog = await findManageTopicsModalDialog();
       expect(within(remountedDialog).getByRole('alert')).toHaveTextContent(topicsLoadFailureCopy);
       expect(
-        within(remountedDialog).queryByRole('button', { name: /create topic/i }),
+        within(remountedDialog).queryByRole('button', { name: /create topic/i })
       ).not.toBeInTheDocument();
-      expect(within(remountedDialog).queryByRole('table', { name: /topics/i })).not.toBeInTheDocument();
+      expect(
+        within(remountedDialog).queryByRole('table', { name: /topics/i })
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -992,8 +1019,12 @@ describe('ManageTopicsModal', () => {
 
       const queryClient = createAppQueryClient();
       renderWithFrontendProviders(
-        <ManageTopicsModal open={true} onClose={onCloseMock} onEntityCreated={onEntityCreatedMock} />,
-        { queryClient },
+        <ManageTopicsModal
+          open={true}
+          onClose={onCloseMock}
+          onEntityCreated={onEntityCreatedMock}
+        />,
+        { queryClient }
       );
       const dialog = await findManageTopicsModalDialog();
 

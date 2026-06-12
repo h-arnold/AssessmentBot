@@ -5,7 +5,7 @@ import {
   DEFAULT_WEIGHTING_VALUE,
   MAX_WEIGHTING_VALUE,
   MIN_WEIGHTING_VALUE,
-} from '../services/assignmentDefinition.zod';
+} from '../services/assignmentDefinition/assignmentDefinition.zod';
 import { SelectWithAddNew } from '../components/SelectWithAddNew';
 import { type DocumentChangeState, type TaskRow } from './useAssignmentDefinitionWizard';
 
@@ -36,7 +36,10 @@ export type AssignmentDefinitionWizardModalShellProperties = Readonly<{
   onCancel: () => void;
   onPrimaryAction?: () => void;
   onSubmit?: () => void;
-  onFormValuesChange?: (changedValues: Record<string, unknown>, allValues: Record<string, unknown>) => void;
+  onFormValuesChange?: (
+    changedValues: Record<string, unknown>,
+    allValues: Record<string, unknown>
+  ) => void;
   onReparse?: () => Promise<void>;
   onReparseCancel?: () => void;
   onTaskWeightingChange?: (taskId: string, value: number | null) => void;
@@ -62,7 +65,14 @@ export function AssignmentDefinitionWizardModalShell(
 
   if (properties.isReferenceDataBlocked) {
     return (
-      <Modal destroyOnHidden keyboard={false} onCancel={properties.onCancel} open={properties.open} title={modalTitle} width="var(--app-modal-width-wide-data)">
+      <Modal
+        destroyOnHidden
+        keyboard={false}
+        onCancel={properties.onCancel}
+        open={properties.open}
+        title={modalTitle}
+        width="var(--app-modal-width-wide-data)"
+      >
         <Alert showIcon title={BLOCKING_ERROR_MESSAGE} type="error" />
       </Modal>
     );
@@ -70,7 +80,14 @@ export function AssignmentDefinitionWizardModalShell(
 
   if (properties.isHydrating) {
     return (
-      <Modal destroyOnHidden keyboard onCancel={properties.onCancel} open={properties.open} title={modalTitle} width="var(--app-modal-width-wide-data)">
+      <Modal
+        destroyOnHidden
+        keyboard
+        onCancel={properties.onCancel}
+        open={properties.open}
+        title={modalTitle}
+        width="var(--app-modal-width-wide-data)"
+      >
         <div aria-label="Assignment wizard loading" aria-live="polite" role="status">
           <Skeleton active paragraph={{ rows: 6 }} title={{ width: '40%' }} />
         </div>
@@ -80,7 +97,14 @@ export function AssignmentDefinitionWizardModalShell(
 
   if (properties.blockingError) {
     return (
-      <Modal destroyOnHidden keyboard onCancel={properties.onCancel} open={properties.open} title={modalTitle} width="var(--app-modal-width-wide-data)">
+      <Modal
+        destroyOnHidden
+        keyboard
+        onCancel={properties.onCancel}
+        open={properties.open}
+        title={modalTitle}
+        width="var(--app-modal-width-wide-data)"
+      >
         <Alert showIcon title={properties.blockingError} type="error" />
       </Modal>
     );
@@ -103,7 +127,11 @@ function renderReadyState(
 ): JSX.Element {
   // For backward compatibility: if isClosable not provided, compute from isMutationBusy (old shell behaviour)
   const isClosable = properties.isClosable ?? !properties.isMutationBusy;
-  const documentChange = properties.documentChange ?? { hasPendingChange: false, previousReferenceUrl: '', previousTemplateUrl: '' };
+  const documentChange = properties.documentChange ?? {
+    hasPendingChange: false,
+    previousReferenceUrl: '',
+    previousTemplateUrl: '',
+  };
   const hasParsedTasks = properties.hasParsedTasks ?? false;
 
   return (
@@ -117,7 +145,8 @@ function renderReadyState(
       width="var(--app-modal-width-wide-data)"
       footer={renderModalFooter(properties)}
     >
-      {properties.hasParsedTasks !== undefined && renderAlerts(properties, documentChange, hasParsedTasks)}
+      {properties.hasParsedTasks !== undefined &&
+        renderAlerts(properties, documentChange, hasParsedTasks)}
       {renderForm(properties, documentChange)}
     </Modal>
   );
@@ -131,14 +160,23 @@ function renderReadyState(
  * @param {boolean} hasParsedTasks Whether tasks have been parsed.
  * @returns {JSX.Element} The alert elements.
  */
-function renderAlerts(_properties: AssignmentDefinitionWizardModalShellProperties, documentChange: DocumentChangeState, hasParsedTasks: boolean): JSX.Element {
+function renderAlerts(
+  _properties: AssignmentDefinitionWizardModalShellProperties,
+  documentChange: DocumentChangeState,
+  hasParsedTasks: boolean
+): JSX.Element {
   const showDocumentChangeAlert = documentChange.hasPendingChange;
   const showParseRequiredAlert = !hasParsedTasks;
 
   return (
     <>
       {showDocumentChangeAlert && (
-        <Alert title={DOCUMENT_CHANGED_MESSAGE} type="warning" showIcon style={{ marginBottom: 16 }} />
+        <Alert
+          title={DOCUMENT_CHANGED_MESSAGE}
+          type="warning"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
       )}
       {showParseRequiredAlert && (
         <Alert title={PARSE_REQUIRED_MESSAGE} type="info" showIcon style={{ marginBottom: 16 }} />
@@ -153,7 +191,9 @@ function renderAlerts(_properties: AssignmentDefinitionWizardModalShellPropertie
  * @param {AssignmentDefinitionWizardModalShellProperties} properties Shell properties.
  * @returns {JSX.Element} The footer element.
  */
-function renderModalFooter(properties: AssignmentDefinitionWizardModalShellProperties): JSX.Element {
+function renderModalFooter(
+  properties: AssignmentDefinitionWizardModalShellProperties
+): JSX.Element {
   const onPrimaryClick = properties.onPrimaryAction ?? properties.onSubmit;
   if (!onPrimaryClick) {
     return (
@@ -165,7 +205,9 @@ function renderModalFooter(properties: AssignmentDefinitionWizardModalShellPrope
     );
   }
 
-  const primaryActionLabel = properties.primaryActionLabel ?? (properties.mode === 'create' ? 'Parse and continue' : 'Save changes');
+  const primaryActionLabel =
+    properties.primaryActionLabel ??
+    (properties.mode === 'create' ? 'Parse and continue' : 'Save changes');
   const isPrimaryActionDisabled = properties.isPrimaryActionDisabled ?? false;
 
   return (
@@ -173,7 +215,12 @@ function renderModalFooter(properties: AssignmentDefinitionWizardModalShellPrope
       <Button disabled={properties.isMutationBusy} onClick={properties.onCancel}>
         Cancel
       </Button>
-      <Button disabled={isPrimaryActionDisabled || properties.isMutationBusy} loading={properties.isMutationBusy} onClick={onPrimaryClick} type="primary">
+      <Button
+        disabled={isPrimaryActionDisabled || properties.isMutationBusy}
+        loading={properties.isMutationBusy}
+        onClick={onPrimaryClick}
+        type="primary"
+      >
         {primaryActionLabel}
       </Button>
     </Space>
@@ -187,7 +234,10 @@ function renderModalFooter(properties: AssignmentDefinitionWizardModalShellPrope
  * @param {DocumentChangeState} documentChange Resolved document change state.
  * @returns {JSX.Element} The form element.
  */
-function renderForm(properties: AssignmentDefinitionWizardModalShellProperties, documentChange: DocumentChangeState): JSX.Element {
+function renderForm(
+  properties: AssignmentDefinitionWizardModalShellProperties,
+  documentChange: DocumentChangeState
+): JSX.Element {
   if (!properties.form || !properties.onFormValuesChange) {
     // Fallback for tests that don't provide form props - render old shell contract
     return (
@@ -217,7 +267,13 @@ function renderForm(properties: AssignmentDefinitionWizardModalShellProperties, 
       onValuesChange={properties.onFormValuesChange}
     >
       <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
-        {renderBaseFormFields(properties, hasDirtyEdits, documentChange, topicOptions, yearGroupOptions)}
+        {renderBaseFormFields(
+          properties,
+          hasDirtyEdits,
+          documentChange,
+          topicOptions,
+          yearGroupOptions
+        )}
         {renderConditionalFormSections(properties, documentChange)}
       </Space>
     </Form>
@@ -243,12 +299,21 @@ function renderBaseFormFields(
 ): JSX.Element {
   return (
     <>
-      <Form.Item label="Assignment Title" name="title" rules={[{ required: true, message: 'Title is required' }]}>
+      <Form.Item
+        label="Assignment Title"
+        name="title"
+        rules={[{ required: true, message: 'Title is required' }]}
+      >
         <Input placeholder="Enter assignment title" />
       </Form.Item>
 
       <div style={{ display: 'flex', gap: 16 }}>
-        <Form.Item label="Assignment Topic" name="topic" rules={[{ required: true, message: 'Topic is required' }]} style={{ flex: 1 }}>
+        <Form.Item
+          label="Assignment Topic"
+          name="topic"
+          rules={[{ required: true, message: 'Topic is required' }]}
+          style={{ flex: 1 }}
+        >
           <SelectWithAddNew
             allowClear
             options={topicOptions}
@@ -259,7 +324,12 @@ function renderBaseFormFields(
             entityType="topic"
           />
         </Form.Item>
-        <Form.Item label="Assignment Year Group" name="yearGroup" rules={[{ required: true, message: 'Year group is required' }]} style={{ flex: 1 }}>
+        <Form.Item
+          label="Assignment Year Group"
+          name="yearGroup"
+          rules={[{ required: true, message: 'Year group is required' }]}
+          style={{ flex: 1 }}
+        >
           <SelectWithAddNew
             allowClear
             options={yearGroupOptions}
@@ -272,12 +342,26 @@ function renderBaseFormFields(
         </Form.Item>
       </div>
 
-      <Form.Item label="Reference Document URL" name="referenceDocumentUrl" rules={[{ required: true, message: 'Reference document URL is required' }]}>
-        <Input disabled={hasDirtyEdits || documentChange.hasPendingChange || properties.isMutationBusy} placeholder="https://docs.google.com/..." />
+      <Form.Item
+        label="Reference Document URL"
+        name="referenceDocumentUrl"
+        rules={[{ required: true, message: 'Reference document URL is required' }]}
+      >
+        <Input
+          disabled={hasDirtyEdits || documentChange.hasPendingChange || properties.isMutationBusy}
+          placeholder="https://docs.google.com/..."
+        />
       </Form.Item>
 
-      <Form.Item label="Template Document URL" name="templateDocumentUrl" rules={[{ required: true, message: 'Template document URL is required' }]}>
-        <Input disabled={hasDirtyEdits || documentChange.hasPendingChange || properties.isMutationBusy} placeholder="https://docs.google.com/..." />
+      <Form.Item
+        label="Template Document URL"
+        name="templateDocumentUrl"
+        rules={[{ required: true, message: 'Template document URL is required' }]}
+      >
+        <Input
+          disabled={hasDirtyEdits || documentChange.hasPendingChange || properties.isMutationBusy}
+          placeholder="https://docs.google.com/..."
+        />
       </Form.Item>
     </>
   );
@@ -291,14 +375,18 @@ function renderBaseFormFields(
  * @param {DocumentChangeState} documentChange Document change state.
  * @returns {JSX.Element} The conditional form sections.
  */
-function renderConditionalFormSections(properties: AssignmentDefinitionWizardModalShellProperties, documentChange: DocumentChangeState): JSX.Element {
+function renderConditionalFormSections(
+  properties: AssignmentDefinitionWizardModalShellProperties,
+  documentChange: DocumentChangeState
+): JSX.Element {
   const hasParsedTasks = properties.hasParsedTasks ?? false;
 
   return (
     <>
-      {documentChange.hasPendingChange && properties.onReparse && properties.onReparseCancel && (
-        renderDocumentChangeActions(properties)
-      )}
+      {documentChange.hasPendingChange &&
+        properties.onReparse &&
+        properties.onReparseCancel &&
+        renderDocumentChangeActions(properties)}
       {hasParsedTasks && renderPostParseSections(properties, documentChange)}
     </>
   );
@@ -311,7 +399,10 @@ function renderConditionalFormSections(properties: AssignmentDefinitionWizardMod
  * @param {DocumentChangeState} documentChange Document change state.
  * @returns {JSX.Element} The post-parse form sections.
  */
-function renderPostParseSections(properties: AssignmentDefinitionWizardModalShellProperties, documentChange: DocumentChangeState): JSX.Element {
+function renderPostParseSections(
+  properties: AssignmentDefinitionWizardModalShellProperties,
+  documentChange: DocumentChangeState
+): JSX.Element {
   if (properties.onTaskWeightingChange && properties.taskRows) {
     return (
       <>
@@ -329,10 +420,17 @@ function renderPostParseSections(properties: AssignmentDefinitionWizardModalShel
  * @param {AssignmentDefinitionWizardModalShellProperties} properties Shell properties.
  * @returns {JSX.Element} The action buttons.
  */
-function renderDocumentChangeActions(properties: AssignmentDefinitionWizardModalShellProperties): JSX.Element {
+function renderDocumentChangeActions(
+  properties: AssignmentDefinitionWizardModalShellProperties
+): JSX.Element {
   return (
     <Space style={{ marginTop: 8 }}>
-      <Button disabled={properties.isMutationBusy} loading={properties.isMutationBusy} onClick={properties.onReparse} type="primary">
+      <Button
+        disabled={properties.isMutationBusy}
+        loading={properties.isMutationBusy}
+        onClick={properties.onReparse}
+        type="primary"
+      >
         Re-parse
       </Button>
       <Button disabled={properties.isMutationBusy} onClick={properties.onReparseCancel}>
@@ -349,7 +447,20 @@ function renderDocumentChangeActions(properties: AssignmentDefinitionWizardModal
  */
 function renderAssignmentWeightingInput(): JSX.Element {
   return (
-    <Form.Item label="Assignment Weighting" name="assignmentWeighting" initialValue={DEFAULT_WEIGHTING_VALUE} rules={[{ required: true, message: 'Assignment weighting is required' }, { type: 'number', min: MIN_WEIGHTING_VALUE, max: MAX_WEIGHTING_VALUE, message: `Weighting must be between ${MIN_WEIGHTING_VALUE} and ${MAX_WEIGHTING_VALUE}` }]}>
+    <Form.Item
+      label="Assignment Weighting"
+      name="assignmentWeighting"
+      initialValue={DEFAULT_WEIGHTING_VALUE}
+      rules={[
+        { required: true, message: 'Assignment weighting is required' },
+        {
+          type: 'number',
+          min: MIN_WEIGHTING_VALUE,
+          max: MAX_WEIGHTING_VALUE,
+          message: `Weighting must be between ${MIN_WEIGHTING_VALUE} and ${MAX_WEIGHTING_VALUE}`,
+        },
+      ]}
+    >
       <InputNumber min={MIN_WEIGHTING_VALUE} max={MAX_WEIGHTING_VALUE} style={{ width: '100%' }} />
     </Form.Item>
   );
@@ -363,7 +474,11 @@ function renderAssignmentWeightingInput(): JSX.Element {
  * @param {TaskRow[]} taskRows Task rows.
  * @returns {JSX.Element} The task weightings table form item.
  */
-function renderTaskWeightingsTable(properties: AssignmentDefinitionWizardModalShellProperties, documentChange: DocumentChangeState, taskRows: TaskRow[]): JSX.Element | null {
+function renderTaskWeightingsTable(
+  properties: AssignmentDefinitionWizardModalShellProperties,
+  documentChange: DocumentChangeState,
+  taskRows: TaskRow[]
+): JSX.Element | null {
   if (properties.onTaskWeightingChange === undefined) {
     return null;
   }
@@ -398,7 +513,10 @@ function renderTaskWeightingsTable(properties: AssignmentDefinitionWizardModalSh
  * @param {AssignmentDefinitionWizardModalShellProperties} properties Shell properties.
  * @returns {function} Render function for table cell.
  */
-function renderTaskWeightingInputCell(documentChange: DocumentChangeState, properties: AssignmentDefinitionWizardModalShellProperties): (value: unknown, record: TaskRow, index: number) => ReactNode {
+function renderTaskWeightingInputCell(
+  documentChange: DocumentChangeState,
+  properties: AssignmentDefinitionWizardModalShellProperties
+): (value: unknown, record: TaskRow, index: number) => ReactNode {
   if (properties.onTaskWeightingChange === undefined) {
     return () => null;
   }

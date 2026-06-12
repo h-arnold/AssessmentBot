@@ -15,8 +15,12 @@
 
 import { Button, Space, Switch, type TableColumnType } from 'antd';
 import type { UseQueryOptions } from '@tanstack/react-query';
-import type { Cohort } from '../../../services/referenceData.zod';
-import { createCohort, deleteCohort, updateCohort } from '../../../services/referenceDataService';
+import type { Cohort } from '../../../services/referenceData/referenceData.zod';
+import {
+  createCohort,
+  deleteCohort,
+  updateCohort,
+} from '../../../services/referenceData/referenceDataService';
 import { getCohortsQueryOptions } from '../../../query/sharedQueries';
 import { ReferenceDataInitialLoadingState } from '../components/ReferenceDataInitialLoadingState';
 import { ReferenceDataManagementModalScaffold } from './ReferenceDataManagementModalScaffold';
@@ -37,11 +41,13 @@ const DELETE_DIALOG_LABEL_ID = 'manage-cohorts-delete-dialog-title';
  * @param {Readonly<{ onEdit: (cohort: Cohort) => void; onDelete: (cohort: Cohort) => void; onToggleActive: (cohort: Cohort, checked: boolean) => void; }>} options Column action callbacks.
  * @returns {TableColumnType<Cohort>[]} Table column definitions.
  */
-function buildCohortColumns(options: Readonly<{
-  onEdit: (cohort: Cohort) => void;
-  onDelete: (cohort: Cohort) => void;
-  onToggleActive: (cohort: Cohort, checked: boolean) => void;
-}>): TableColumnType<Cohort>[] {
+function buildCohortColumns(
+  options: Readonly<{
+    onEdit: (cohort: Cohort) => void;
+    onDelete: (cohort: Cohort) => void;
+    onToggleActive: (cohort: Cohort, checked: boolean) => void;
+  }>
+): TableColumnType<Cohort>[] {
   return [
     {
       title: 'Name',

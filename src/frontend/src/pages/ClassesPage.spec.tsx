@@ -92,17 +92,23 @@ function _refetchClassPartial(classId: string, className: string, yearGroupKey: 
 }
 
 // Hoisted mock data for refetch scenarios
-const refetchClassPartials = vi.hoisted(() => [
-  _refetchClassPartial('class-math-10a', 'Mathematics 10A', 'year-group-10'),
-  _refetchClassPartial('class-math-10b', 'Mathematics 10B', 'year-group-10'),
-  _refetchClassPartial('class-science-11', 'Science 11', 'year-group-11'),
-] as const);
+const refetchClassPartials = vi.hoisted(
+  () =>
+    [
+      _refetchClassPartial('class-math-10a', 'Mathematics 10A', 'year-group-10'),
+      _refetchClassPartial('class-math-10b', 'Mathematics 10B', 'year-group-10'),
+      _refetchClassPartial('class-science-11', 'Science 11', 'year-group-11'),
+    ] as const
+);
 
-const refetchYearGroups = vi.hoisted(() => [
-  { key: 'year-group-10', name: 'Year 10' },
-  { key: 'year-group-11', name: 'Year 11' },
-  { key: 'year-group-9', name: 'Year 9' },
-] as const);
+const refetchYearGroups = vi.hoisted(
+  () =>
+    [
+      { key: 'year-group-10', name: 'Year 10' },
+      { key: 'year-group-11', name: 'Year 11' },
+      { key: 'year-group-9', name: 'Year 9' },
+    ] as const
+);
 
 // Mock @tanstack/react-query to support Section 6 refetch tests
 // This mock is controlled by mockRefetchEnabled.value flag
@@ -142,7 +148,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
       }
       // For non-refetch tests, pass through to the actual implementation
       // This allows other tests to work normally with queryClient.setQueryData()
-       
+
       return (actualModule as { useQuery: (options: unknown) => unknown }).useQuery(options);
     }),
   };
@@ -189,20 +195,20 @@ vi.mock('../features/auth/startupWarmupState', async (importOriginal) => {
   };
 });
 
-vi.mock('../services/classPartialsService', () => ({
+vi.mock('../services/googleClassrooms/classPartialsService', () => ({
   getABClassPartials: getABClassPartialsMock,
 }));
 
-vi.mock('../services/referenceDataService', () => ({
+vi.mock('../services/referenceData/referenceDataService', () => ({
   getYearGroups: getYearGroupsMock,
   getCohorts: getCohortsMock,
 }));
 
-vi.mock('../services/assignmentDefinitionPartialsService', () => ({
+vi.mock('../services/assignmentDefinition/assignmentDefinitionPartialsService', () => ({
   getAssignmentDefinitionPartials: getAssignmentDefinitionPartialsMock,
 }));
 
-vi.mock('../services/assignmentTopicsService', () => ({
+vi.mock('../services/assignmentDefinition/assignmentTopicsService', () => ({
   getAssignmentTopics: getAssignmentTopicsMock,
 }));
 
@@ -521,7 +527,10 @@ describe('ClassesPage', () => {
 
         // This will fail until the view model integration is implemented
         // The ready state should render instead
-        const { modelResult, isInvalid } = verifyClassesPageModel(mockClassPartials, mockYearGroups);
+        const { modelResult, isInvalid } = verifyClassesPageModel(
+          mockClassPartials,
+          mockYearGroups
+        );
         expect(modelResult).toHaveProperty('panels');
         if (isInvalid) {
           // Blocking state
@@ -567,7 +576,10 @@ describe('ClassesPage', () => {
         useStartupWarmupStateMock.mockReturnValue(createReadyWarmupState());
 
         // Use shared helper for rendering with invalid data
-        const queryClient = createQueryClientWithClassesData(mockInvalidClassPartials, mockYearGroups);
+        const queryClient = createQueryClientWithClassesData(
+          mockInvalidClassPartials,
+          mockYearGroups
+        );
         renderWithFrontendProviders(<ClassesPage />, {
           queryClient,
         });
@@ -613,7 +625,10 @@ describe('ClassesPage', () => {
 
         // This will fail until the recovery logic is implemented
         // Should now show ready state
-        const { modelResult, isInvalid } = verifyClassesPageModel(mockClassPartials, mockYearGroups);
+        const { modelResult, isInvalid } = verifyClassesPageModel(
+          mockClassPartials,
+          mockYearGroups
+        );
         expect(modelResult).toHaveProperty('panels');
         if (isInvalid) {
           assertBlockingAlert();
@@ -643,7 +658,10 @@ describe('ClassesPage', () => {
 
         // This will fail until the recovery logic is implemented
         // Should now show ready state
-        const { modelResult, isInvalid } = verifyClassesPageModel(mockClassPartials, mockYearGroups);
+        const { modelResult, isInvalid } = verifyClassesPageModel(
+          mockClassPartials,
+          mockYearGroups
+        );
         expect(modelResult).toHaveProperty('panels');
         if (isInvalid) {
           assertBlockingAlert();
@@ -706,9 +724,11 @@ describe('ClassesPage', () => {
         expect(modelResult).not.toHaveProperty('type');
         if (!isInvalid && 'panels' in modelResult) {
           expect((modelResult as { panels: unknown[] }).panels).toHaveLength(EXPECTED_PANEL_COUNT);
-          
+
           // Expected alphabetical order: Year 10, Year 11, Year 9
-          const panels = modelResult as { panels: { yearGroupKey: string; yearGroupLabel: string }[] };
+          const panels = modelResult as {
+            panels: { yearGroupKey: string; yearGroupLabel: string }[];
+          };
           expect(panels.panels[0].yearGroupLabel).toBe('Year 10');
           expect(panels.panels[1].yearGroupLabel).toBe('Year 11');
           expect(panels.panels[2].yearGroupLabel).toBe('Year 9');
@@ -742,7 +762,10 @@ describe('ClassesPage', () => {
         expect(modelResult).not.toHaveProperty('type');
 
         if (!isInvalid && 'defaultExpandedPanelKeys' in modelResult) {
-          const viewModel = modelResult as { panels: unknown[]; defaultExpandedPanelKeys: string[] };
+          const viewModel = modelResult as {
+            panels: unknown[];
+            defaultExpandedPanelKeys: string[];
+          };
           expect(viewModel.defaultExpandedPanelKeys).toHaveLength(EXPECTED_DEFAULT_EXPANDED_COUNT);
           // First alphabetical is Year 10
           expect(viewModel.defaultExpandedPanelKeys[0]).toBe('year-group-10');
@@ -774,7 +797,9 @@ describe('ClassesPage', () => {
         expect(modelResult).not.toHaveProperty('type');
 
         if (!isInvalid && 'panels' in modelResult) {
-          const viewModel = modelResult as { panels: { yearGroupKey: string; classes: unknown[] }[] };
+          const viewModel = modelResult as {
+            panels: { yearGroupKey: string; classes: unknown[] }[];
+          };
           expect(viewModel.panels).toHaveLength(EXPECTED_PANELS_WITH_EMPTY_COUNT);
 
           // Year 9 panel should have no classes
@@ -810,7 +835,7 @@ describe('ClassesPage', () => {
 
         if (!isInvalid && 'panels' in modelResult) {
           const viewModel = modelResult as {
-            panels: { yearGroupKey: string; classes: { classId: string; className: string }[] }[]
+            panels: { yearGroupKey: string; classes: { classId: string; className: string }[] }[];
           };
 
           // Verify panel structure from view model
@@ -876,21 +901,39 @@ describe('ClassesPage', () => {
           const viewModel = modelResult as {
             panels: {
               yearGroupKey: string;
-              classes: { classId: string; className: string; yearGroupKey: string; yearGroupLabel: string }[];
+              classes: {
+                classId: string;
+                className: string;
+                yearGroupKey: string;
+                yearGroupLabel: string;
+              }[];
             }[];
           };
 
-          const year10Panel = viewModel.panels.find(
-            (p) => p.yearGroupKey === 'year-group-10'
-          );
+          const year10Panel = viewModel.panels.find((p) => p.yearGroupKey === 'year-group-10');
           expect(year10Panel).toBeDefined();
           expect(year10Panel?.classes).toHaveLength(EXPECTED_ALPHABETICAL_CLASSES_COUNT);
 
           // Expected order: English 10, Mathematics 10A, Mathematics 10B
           const expectedClasses = [
-            { classId: 'class-english-10', className: 'English 10', yearGroupKey: 'year-group-10', yearGroupLabel: 'Year 10' },
-            { classId: 'class-math-10a', className: 'Mathematics 10A', yearGroupKey: 'year-group-10', yearGroupLabel: 'Year 10' },
-            { classId: 'class-math-10b', className: 'Mathematics 10B', yearGroupKey: 'year-group-10', yearGroupLabel: 'Year 10' },
+            {
+              classId: 'class-english-10',
+              className: 'English 10',
+              yearGroupKey: 'year-group-10',
+              yearGroupLabel: 'Year 10',
+            },
+            {
+              classId: 'class-math-10a',
+              className: 'Mathematics 10A',
+              yearGroupKey: 'year-group-10',
+              yearGroupLabel: 'Year 10',
+            },
+            {
+              classId: 'class-math-10b',
+              className: 'Mathematics 10B',
+              yearGroupKey: 'year-group-10',
+              yearGroupLabel: 'Year 10',
+            },
           ];
           expect(year10Panel?.classes).toEqual(expectedClasses);
         }
@@ -924,21 +967,39 @@ describe('ClassesPage', () => {
           const viewModel = modelResult as {
             panels: {
               yearGroupKey: string;
-              classes: { classId: string; className: string; yearGroupKey: string; yearGroupLabel: string }[];
+              classes: {
+                classId: string;
+                className: string;
+                yearGroupKey: string;
+                yearGroupLabel: string;
+              }[];
             }[];
           };
 
-          const year10Panel = viewModel.panels.find(
-            (p) => p.yearGroupKey === 'year-group-10'
-          );
+          const year10Panel = viewModel.panels.find((p) => p.yearGroupKey === 'year-group-10');
           expect(year10Panel).toBeDefined();
           expect(year10Panel?.classes).toHaveLength(EXPECTED_TIE_BREAK_CLASSES_COUNT);
 
           // Expected order: A Class, Z Class (with classId a-z), Z Class (with classId b-z)
           const expectedClasses = [
-            { classId: 'class-b-a', className: 'A Class', yearGroupKey: 'year-group-10', yearGroupLabel: 'Year 10' },
-            { classId: 'class-a-z', className: 'Z Class', yearGroupKey: 'year-group-10', yearGroupLabel: 'Year 10' },
-            { classId: 'class-b-z', className: 'Z Class', yearGroupKey: 'year-group-10', yearGroupLabel: 'Year 10' },
+            {
+              classId: 'class-b-a',
+              className: 'A Class',
+              yearGroupKey: 'year-group-10',
+              yearGroupLabel: 'Year 10',
+            },
+            {
+              classId: 'class-a-z',
+              className: 'Z Class',
+              yearGroupKey: 'year-group-10',
+              yearGroupLabel: 'Year 10',
+            },
+            {
+              classId: 'class-b-z',
+              className: 'Z Class',
+              yearGroupKey: 'year-group-10',
+              yearGroupLabel: 'Year 10',
+            },
           ];
           expect(year10Panel?.classes).toEqual(expectedClasses);
         }
@@ -957,9 +1018,7 @@ describe('ClassesPage', () => {
       it('verifies both placeholder buttons are visible with correct enabled/disabled states for every rendered card', () => {
         // Pre-populate the query client cache BEFORE rendering
         const queryClient = createAppQueryClient();
-        queryClient.setQueryData(queryKeys.classPartials(), [
-          ...mockClassPartials,
-        ]);
+        queryClient.setQueryData(queryKeys.classPartials(), [...mockClassPartials]);
         queryClient.setQueryData(queryKeys.yearGroups(), [...mockYearGroups]);
 
         renderWithFrontendProviders(<ClassesPage />, {
@@ -996,9 +1055,7 @@ describe('ClassesPage', () => {
       it('proves no extra metadata such as cohort, teacher list, or status chips is rendered in this iteration', () => {
         // Pre-populate the query client cache BEFORE rendering
         const queryClient = createAppQueryClient();
-        queryClient.setQueryData(queryKeys.classPartials(), [
-          ...mockClassPartials,
-        ]);
+        queryClient.setQueryData(queryKeys.classPartials(), [...mockClassPartials]);
         queryClient.setQueryData(queryKeys.yearGroups(), [...mockYearGroups]);
 
         renderWithFrontendProviders(<ClassesPage />, {
@@ -1039,9 +1096,7 @@ describe('ClassesPage', () => {
       it('proves no drag or reorder affordance is present', () => {
         // Pre-populate the query client cache BEFORE rendering
         const queryClient = createAppQueryClient();
-        queryClient.setQueryData(queryKeys.classPartials(), [
-          ...mockClassPartials,
-        ]);
+        queryClient.setQueryData(queryKeys.classPartials(), [...mockClassPartials]);
         queryClient.setQueryData(queryKeys.yearGroups(), [...mockYearGroups]);
 
         renderWithFrontendProviders(<ClassesPage />, {
@@ -1150,9 +1205,10 @@ describe('ClassesPage', () => {
             maxWidthPx = Number.parseInt(maxWidth, 10);
           } else {
             const inlineMaxWidth = (card as HTMLElement).style.maxWidth;
-            maxWidthPx = inlineMaxWidth && inlineMaxWidth !== 'none'
-              ? Number.parseInt(inlineMaxWidth, 10)
-              : Number.POSITIVE_INFINITY;
+            maxWidthPx =
+              inlineMaxWidth && inlineMaxWidth !== 'none'
+                ? Number.parseInt(inlineMaxWidth, 10)
+                : Number.POSITIVE_INFINITY;
           }
           expect(maxWidthPx).toBeLessThanOrEqual(MAX_CARD_WIDTH_PX);
         }
@@ -1250,7 +1306,9 @@ describe('ClassesPage', () => {
         });
 
         // Initial skeleton should NOT be visible after refetch
-        expect(screen.queryByRole('status', { name: /classes page loading/i })).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole('status', { name: /classes page loading/i })
+        ).not.toBeInTheDocument();
 
         // The collapse should still be visible with updated/new content
         expect(screen.getByRole('region', { name: /year.*group/i })).toBeInTheDocument();

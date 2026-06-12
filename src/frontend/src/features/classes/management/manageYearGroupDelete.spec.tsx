@@ -9,7 +9,7 @@
 
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { YearGroup } from '../../../services/referenceData.zod';
+import type { YearGroup } from '../../../services/referenceData/referenceData.zod';
 import { ApiTransportError } from '../../../errors/apiTransportError';
 import { queryKeys } from '../../../query/queryKeys';
 import { createAppQueryClient } from '../../../query/queryClient';
@@ -18,7 +18,7 @@ import { ManageYearGroupsModal } from './ManageYearGroupsModal';
 
 const deleteYearGroupMock = vi.hoisted(() => vi.fn());
 
-vi.mock('../../../services/referenceDataService', () => ({
+vi.mock('../../../services/referenceData/referenceDataService', () => ({
   getCohorts: vi.fn(),
   createCohort: vi.fn(),
   updateCohort: vi.fn(),
@@ -62,10 +62,9 @@ function renderManageYearGroupsModal() {
   const queryClient = createAppQueryClient();
   queryClient.setQueryData(queryKeys.yearGroups(), seedYearGroups);
 
-  return renderWithFrontendProviders(
-    <ManageYearGroupsModal open={true} onClose={onCloseMock} />,
-    { queryClient },
-  );
+  return renderWithFrontendProviders(<ManageYearGroupsModal open={true} onClose={onCloseMock} />, {
+    queryClient,
+  });
 }
 
 /**
@@ -114,7 +113,7 @@ describe('ManageYearGroupsModal — delete flow', () => {
 
       await waitFor(() => {
         expect(deleteYearGroupMock).toHaveBeenCalledWith(
-          expect.objectContaining({ key: seedYearGroups[0].key }),
+          expect.objectContaining({ key: seedYearGroups[0].key })
         );
       });
     });
@@ -128,7 +127,9 @@ describe('ManageYearGroupsModal — delete flow', () => {
       fireEvent.click(within(dialog).getByRole('button', { name: /delete|confirm|ok/i }));
 
       await waitFor(() => {
-        expect(screen.queryByRole('dialog', { name: /delete year group/i })).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole('dialog', { name: /delete year group/i })
+        ).not.toBeInTheDocument();
       });
     });
 
@@ -148,7 +149,7 @@ describe('ManageYearGroupsModal — delete flow', () => {
             queryKey: queryKeys.yearGroups(),
             type: 'active',
           }),
-          expect.objectContaining({ throwOnError: true }),
+          expect.objectContaining({ throwOnError: true })
         );
       });
     });

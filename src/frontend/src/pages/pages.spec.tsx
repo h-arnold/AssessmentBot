@@ -1,20 +1,16 @@
 import { screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  type AppNavigationKey,
-  renderNavigationPage,
-} from '../navigation/appNavigation';
+import { type AppNavigationKey, renderNavigationPage } from '../navigation/appNavigation';
 import { pageContent } from './pageContent';
 import { renderWithFrontendProviders } from '../test/renderWithFrontendProviders';
 
-const { getABClassPartialsMock, getCohortsMock, getGoogleClassroomsMock, getYearGroupsMock } = vi.hoisted(
-  () => ({
+const { getABClassPartialsMock, getCohortsMock, getGoogleClassroomsMock, getYearGroupsMock } =
+  vi.hoisted(() => ({
     getABClassPartialsMock: vi.fn(),
     getCohortsMock: vi.fn(),
     getGoogleClassroomsMock: vi.fn(),
     getYearGroupsMock: vi.fn(),
-  })
-);
+  }));
 
 vi.mock('../features/settings/backend/BackendSettingsPanel', () => ({
   BackendSettingsPanel() {
@@ -22,15 +18,15 @@ vi.mock('../features/settings/backend/BackendSettingsPanel', () => ({
   },
 }));
 
-vi.mock('../services/classPartialsService', () => ({
+vi.mock('../services/googleClassrooms/classPartialsService', () => ({
   getABClassPartials: getABClassPartialsMock,
 }));
 
-vi.mock('../services/googleClassroomsService', () => ({
+vi.mock('../services/googleClassrooms/googleClassroomsService', () => ({
   getGoogleClassrooms: getGoogleClassroomsMock,
 }));
 
-vi.mock('../services/referenceDataService', () => ({
+vi.mock('../services/referenceData/referenceDataService', () => ({
   getCohorts: getCohortsMock,
   getYearGroups: getYearGroupsMock,
 }));

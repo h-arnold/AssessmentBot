@@ -15,12 +15,12 @@
 
 import { Button, Space, type TableColumnType } from 'antd';
 import type { UseQueryOptions } from '@tanstack/react-query';
-import type { YearGroup } from '../../../services/referenceData.zod';
+import type { YearGroup } from '../../../services/referenceData/referenceData.zod';
 import {
   createYearGroup,
   deleteYearGroup,
   updateYearGroup,
-} from '../../../services/referenceDataService';
+} from '../../../services/referenceData/referenceDataService';
 import { getYearGroupsQueryOptions } from '../../../query/sharedQueries';
 import { ReferenceDataInitialLoadingState } from '../components/ReferenceDataInitialLoadingState';
 import { ReferenceDataManagementModalScaffold } from './ReferenceDataManagementModalScaffold';
@@ -41,10 +41,12 @@ const DELETE_DIALOG_LABEL_ID = 'manage-year-groups-delete-dialog-title';
  * @param {Readonly<{ onEdit: (yearGroup: YearGroup) => void; onDelete: (yearGroup: YearGroup) => void; }>} options Column action callbacks.
  * @returns {TableColumnType<YearGroup>[]} Table column definitions.
  */
-function buildYearGroupColumns(options: Readonly<{
-  onEdit: (yearGroup: YearGroup) => void;
-  onDelete: (yearGroup: YearGroup) => void;
-}>): TableColumnType<YearGroup>[] {
+function buildYearGroupColumns(
+  options: Readonly<{
+    onEdit: (yearGroup: YearGroup) => void;
+    onDelete: (yearGroup: YearGroup) => void;
+  }>
+): TableColumnType<YearGroup>[] {
   return [
     {
       title: 'Name',
@@ -89,7 +91,9 @@ function buildYearGroupColumns(options: Readonly<{
 export function ManageYearGroupsModal(properties: ManageYearGroupsModalProperties) {
   // Type assertion to work around the query key type mismatch between
   // the specific tuple type from queryOptions() and the generic unknown[] in UseQueryOptions
-  const yearGroupsQueryOptions = getYearGroupsQueryOptions() as unknown as UseQueryOptions<YearGroup[]>;
+  const yearGroupsQueryOptions = getYearGroupsQueryOptions() as unknown as UseQueryOptions<
+    YearGroup[]
+  >;
 
   const hookResult = useReferenceDataManagement({
     entityLabel: 'year group',

@@ -9,7 +9,7 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { QueryClientProvider } from '@tanstack/react-query';
-import type { Cohort } from '../../../services/referenceData.zod';
+import type { Cohort } from '../../../services/referenceData/referenceData.zod';
 import { queryKeys } from '../../../query/queryKeys';
 import { createAppQueryClient } from '../../../query/queryClient';
 import { renderWithFrontendProviders } from '../../../test/renderWithFrontendProviders';
@@ -20,7 +20,7 @@ const createCohortMock = vi.hoisted(() => vi.fn());
 const updateCohortMock = vi.hoisted(() => vi.fn());
 const getCohortsMock = vi.hoisted(() => vi.fn());
 
-vi.mock('../../../services/referenceDataService', () => ({
+vi.mock('../../../services/referenceData/referenceDataService', () => ({
   getCohorts: getCohortsMock,
   createCohort: createCohortMock,
   updateCohort: updateCohortMock,
@@ -73,7 +73,7 @@ const createdCohortFixture: Cohort = {
  * @returns {ReturnType<typeof renderWithFrontendProviders>} Render result and query client.
  */
 function renderManageCohortsModal(
-  options: { open?: boolean; cohorts?: Cohort[]; seedQueryData?: boolean } = {},
+  options: { open?: boolean; cohorts?: Cohort[]; seedQueryData?: boolean } = {}
 ) {
   const { open = true, cohorts = seedCohorts, seedQueryData = true } = options;
   const queryClient = createAppQueryClient();
@@ -87,7 +87,6 @@ function renderManageCohortsModal(
     queryClient,
   });
 }
-
 
 /**
  * Returns the owned Manage Cohorts modal dialog region.
@@ -125,9 +124,9 @@ async function closeModalViaMethod(options: {
 
   switch (closeMethod) {
     case 'Cancel': {
-      const footerCancel = screen.getAllByRole('button', { name: /cancel/i }).find(
-        (button) => button.closest('.ant-modal-footer') !== null
-      );
+      const footerCancel = screen
+        .getAllByRole('button', { name: /cancel/i })
+        .find((button) => button.closest('.ant-modal-footer') !== null);
       expect(footerCancel).toBeDefined();
       fireEvent.click(footerCancel!);
       break;
@@ -138,13 +137,19 @@ async function closeModalViaMethod(options: {
       break;
     }
     case 'mask': {
-      const mask = screen.getByRole('dialog', { name: modalTitle }).closest('.ant-modal-wrap')?.querySelector('.ant-modal-mask');
+      const mask = screen
+        .getByRole('dialog', { name: modalTitle })
+        .closest('.ant-modal-wrap')
+        ?.querySelector('.ant-modal-mask');
       expect(mask).toBeDefined();
       fireEvent.click(mask!);
       break;
     }
     case 'Escape': {
-      fireEvent.keyDown(screen.getByRole('dialog', { name: modalTitle }), { key: 'Escape', code: 'Escape' });
+      fireEvent.keyDown(screen.getByRole('dialog', { name: modalTitle }), {
+        key: 'Escape',
+        code: 'Escape',
+      });
       break;
     }
     default: {
@@ -228,7 +233,9 @@ async function submitCreateCohortWhenRefreshFails(dialog: HTMLElement) {
   fireEvent.change(within(formDialog).getByRole('textbox', { name: createCohortInputNameRegex }), {
     target: { value: cohortCreateName },
   });
-  fireEvent.click(within(formDialog).getByRole('button', { name: cohortCreateSubmitButtonNameRegex }));
+  fireEvent.click(
+    within(formDialog).getByRole('button', { name: cohortCreateSubmitButtonNameRegex })
+  );
 
   await waitFor(() => {
     expect(createCohortMock).toHaveBeenCalledWith({
@@ -252,7 +259,9 @@ describe('ManageCohortsModal', () => {
 
       expect(within(dialog).getByRole('status', { name: 'Loading cohorts' })).toBeInTheDocument();
       expect(dialog.querySelector('.ant-skeleton')).not.toBeNull();
-      expect(within(dialog).queryByRole('button', { name: /create cohort/i })).not.toBeInTheDocument();
+      expect(
+        within(dialog).queryByRole('button', { name: /create cohort/i })
+      ).not.toBeInTheDocument();
       expect(within(dialog).queryByRole('table', { name: /cohorts/i })).not.toBeInTheDocument();
       expect(within(dialog).queryByText('Cohort 2025')).not.toBeInTheDocument();
     });
@@ -267,7 +276,9 @@ describe('ManageCohortsModal', () => {
       const dialog = await findManageCohortsModalDialog();
 
       await waitFor(() => {
-        expect(within(dialog).queryByRole('button', { name: /create cohort/i })).not.toBeInTheDocument();
+        expect(
+          within(dialog).queryByRole('button', { name: /create cohort/i })
+        ).not.toBeInTheDocument();
       });
       expect(within(dialog).queryByRole('table', { name: /cohorts/i })).not.toBeInTheDocument();
       expect(within(dialog).getByRole('alert')).toHaveTextContent(cohortsLoadFailureCopy);
@@ -303,9 +314,12 @@ describe('ManageCohortsModal', () => {
       await within(dialog).findByRole('table', { name: /cohorts/i });
 
       let releaseRefresh: (() => void) | undefined;
-      getCohortsMock.mockImplementationOnce(() => new Promise<Cohort[]>((resolve) => {
-        releaseRefresh = () => resolve(seedCohorts);
-      }));
+      getCohortsMock.mockImplementationOnce(
+        () =>
+          new Promise<Cohort[]>((resolve) => {
+            releaseRefresh = () => resolve(seedCohorts);
+          })
+      );
 
       try {
         await act(async () => {
@@ -460,7 +474,7 @@ describe('ManageCohortsModal', () => {
             queryKey: queryKeys.cohorts(),
             type: 'active',
           }),
-          expect.objectContaining({ throwOnError: true }),
+          expect.objectContaining({ throwOnError: true })
         );
       });
     });
@@ -483,7 +497,7 @@ describe('ManageCohortsModal', () => {
             queryKey: queryKeys.cohorts(),
             type: 'active',
           }),
-          expect.objectContaining({ throwOnError: true }),
+          expect.objectContaining({ throwOnError: true })
         );
       });
     });
@@ -502,7 +516,9 @@ describe('ManageCohortsModal', () => {
         expect(within(dialog).getByRole('alert')).toHaveTextContent(cohortsLoadFailureCopy);
       });
       expect(screen.queryByRole('dialog', { name: /create cohort/i })).not.toBeInTheDocument();
-      expect(within(dialog).queryByRole('button', { name: /create cohort/i })).not.toBeInTheDocument();
+      expect(
+        within(dialog).queryByRole('button', { name: /create cohort/i })
+      ).not.toBeInTheDocument();
       expect(within(dialog).queryByRole('table', { name: /cohorts/i })).not.toBeInTheDocument();
     });
 
@@ -526,8 +542,12 @@ describe('ManageCohortsModal', () => {
 
       const remountedDialog = await findManageCohortsModalDialog();
       expect(within(remountedDialog).getByRole('alert')).toHaveTextContent(cohortsLoadFailureCopy);
-      expect(within(remountedDialog).queryByRole('button', { name: /create cohort/i })).not.toBeInTheDocument();
-      expect(within(remountedDialog).queryByRole('table', { name: /cohorts/i })).not.toBeInTheDocument();
+      expect(
+        within(remountedDialog).queryByRole('button', { name: /create cohort/i })
+      ).not.toBeInTheDocument();
+      expect(
+        within(remountedDialog).queryByRole('table', { name: /cohorts/i })
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -557,7 +577,7 @@ describe('ManageCohortsModal', () => {
             queryKey: queryKeys.cohorts(),
             type: 'active',
           }),
-          expect.objectContaining({ throwOnError: true }),
+          expect.objectContaining({ throwOnError: true })
         );
       });
     });
@@ -609,9 +629,9 @@ describe('ManageCohortsModal', () => {
 
       // Close via Cancel (scaffold-owned) - use the outer modal's Cancel button in the footer
       // We need to get the Cancel button from the footer of the outer modal, not from the inline dialog
-      const footerCancel = within(dialog).getAllByRole('button', { name: /cancel/i }).find(
-        (button) => button.closest('.ant-modal-footer') !== null
-      );
+      const footerCancel = within(dialog)
+        .getAllByRole('button', { name: /cancel/i })
+        .find((button) => button.closest('.ant-modal-footer') !== null);
       expect(footerCancel).toBeDefined();
       fireEvent.click(footerCancel!);
       expect(onCloseMock).toHaveBeenCalledOnce();
