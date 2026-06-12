@@ -1,7 +1,6 @@
 // AssignmentController.js
 
 const TOAST_DURATION_SECONDS = 5;
-const PROCESS_LOCK_TIMEOUT_MS = 5000;
 const ASSESSMENT_RUN_SUCCESS_MESSAGE = 'Assessment run completed successfully.';
 
 /**
@@ -77,7 +76,6 @@ class AssignmentController {
   /**
    * Processes and assesses a selected Google Classroom assignment.
    * This is the main orchestration method that handles the complete assessment workflow:
-   * - Manages document locks to prevent concurrent processing
    * - Retrieves and validates required parameters
    * - Creates an Assignment instance with student data
    * - Extracts and processes student submissions
@@ -93,23 +91,11 @@ class AssignmentController {
    *
    * Dependencies:
    * - Requires UserProperties: assignmentId, definitionKey, triggerId
-   * - Uses services: LockService, PropertiesService
+   * - Uses services: PropertiesService
    * - Relies on controllers: triggerController, progressTracker, classroomManager
    * - Integrates with: Assignment, Student, AnalysisSheetManager, OverviewSheetManager
    */
   processSelectedAssignment() {
-    const lock = LockService.getDocumentLock();
-
-    if (!lock.tryLock(PROCESS_LOCK_TIMEOUT_MS)) {
-      this.progressTracker.logError(`Script is already running. Please try again later.`);
-      this.utils.toastMessage(
-        'Another process is currently running. Please wait.',
-        'Error',
-        TOAST_DURATION_SECONDS
-      );
-      return;
-    }
-
     try {
       const properties = GASPropertiesUtils.getUserProperties();
       const assignmentId = properties.getProperty('assignmentId');
@@ -179,8 +165,6 @@ class AssignmentController {
     } catch (error) {
       this.progressTracker.logAndThrowError(error.message, error);
     } finally {
-      lock.releaseLock();
-      ABLogger.getInstance().info('Lock released.');
       try {
         // Use the hydrated roster from the class record for processing. This data is transient
         // and must not be persisted with the Assignment to prevent data duplication.
