@@ -3,7 +3,7 @@ import { useCallback, useState, type JSX } from 'react';
 import { useAssignmentDefinitionWizard } from './useAssignmentDefinitionWizard';
 import { AssignmentDefinitionWizardModalShell } from './AssignmentDefinitionWizardModalShell';
 import { ManageTopicsModal } from '../features/settings/ManageTopicsModal';
-import { ManageYearGroupsModal } from '../features/classes/ManageYearGroupsModal';
+import { ManageYearGroupsModal } from '../features/classes/management/ManageYearGroupsModal';
 import { type AssignmentDefinitionWizardModalProperties } from './useAssignmentDefinitionWizard';
 
 const { Text } = Typography;

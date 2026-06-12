@@ -27,9 +27,12 @@ import {
   setPersistedBlockingLoadError,
   type BlockingLoadErrorState,
   type ReferenceDataTrustBoundary,
-} from '../manageReferenceDataHelpers';
-import type { ReferenceDataFormValues } from '../manageReferenceDataDialogs';
-import { ReferenceDataDeleteDialog, ReferenceDataFormDialog } from '../manageReferenceDataDialogs';
+} from '../management/manageReferenceDataHelpers';
+import type { ReferenceDataFormValues } from '../management/manageReferenceDataDialogs';
+import {
+  ReferenceDataDeleteDialog,
+  ReferenceDataFormDialog,
+} from '../management/manageReferenceDataDialogs';
 
 // ============================================================================
 
@@ -578,5 +581,5 @@ export function useReferenceDataManagement<T extends { key: string; name: string
   };
 }
 
-export type { ReferenceDataFormValues } from '../manageReferenceDataDialogs';
-export type { ReferenceDataTrustBoundary } from '../manageReferenceDataHelpers';
+export type { ReferenceDataFormValues } from '../management/manageReferenceDataDialogs';
+export type { ReferenceDataTrustBoundary } from '../management/manageReferenceDataHelpers';

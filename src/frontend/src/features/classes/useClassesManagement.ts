@@ -7,15 +7,15 @@ import {
   getYearGroupsQueryOptions,
   type StartupWarmupDatasetKey,
 } from '../../query/sharedQueries';
-import {
-  useStartupWarmupState,
-  type StartupWarmupContextValue,
-} from '../auth/startupWarmupState';
+import { useStartupWarmupState, type StartupWarmupContextValue } from '../auth/startupWarmupState';
 import type { ClassPartial } from '../../services/classPartialsService';
 import type { GoogleClassroom } from '../../services/googleClassroomsService';
 import type { Cohort, YearGroup } from '../../services/referenceData.zod';
-import { buildClassesManagementRows, type ClassesManagementRow } from './classesManagementViewModel';
-import { pruneSelectedRowKeys } from './selectionState';
+import {
+  buildClassesManagementRows,
+  type ClassesManagementRow,
+} from './classesManagementViewModel';
+import { pruneSelectedRowKeys } from './bulk/selectionState';
 
 export type ClassesManagementViewState = 'loading' | 'ready' | 'error';
 
@@ -81,12 +81,14 @@ function toLabelsByKey(
  * }>} queryState Query state inputs.
  * @returns {ReadyClassesQueryState | null} Typed ready datasets when all are available.
  */
-function getReadyClassesQueryState(queryState: Readonly<{
-  googleClassroomsQuery: ReturnType<typeof useQuery>;
-  classPartialsQuery: ReturnType<typeof useQuery>;
-  cohortsQuery: ReturnType<typeof useQuery>;
-  yearGroupsQuery: ReturnType<typeof useQuery>;
-}>): ReadyClassesQueryState | null {
+function getReadyClassesQueryState(
+  queryState: Readonly<{
+    googleClassroomsQuery: ReturnType<typeof useQuery>;
+    classPartialsQuery: ReturnType<typeof useQuery>;
+    cohortsQuery: ReturnType<typeof useQuery>;
+    yearGroupsQuery: ReturnType<typeof useQuery>;
+  }>
+): ReadyClassesQueryState | null {
   if (
     queryState.googleClassroomsQuery.data === undefined ||
     queryState.classPartialsQuery.data === undefined ||
@@ -110,7 +112,9 @@ function getReadyClassesQueryState(queryState: Readonly<{
  * @param {ReadyClassesQueryState | null} readyQueryState Typed ready-state query data.
  * @returns {ClassesManagementRow[]} Merged rows when ready, otherwise empty rows.
  */
-function buildRowsForReadyState(readyQueryState: ReadyClassesQueryState | null): ClassesManagementRow[] {
+function buildRowsForReadyState(
+  readyQueryState: ReadyClassesQueryState | null
+): ClassesManagementRow[] {
   if (readyQueryState === null) {
     return [];
   }
@@ -154,8 +158,8 @@ type ClassesRefreshStateOptions = Readonly<{
  */
 function isClassesDataWorkflowRefreshing(queryState: ClassesRefreshStateOptions): boolean {
   return (
-    (queryState.googleClassroomsQuery.isFetching && !queryState.googleClassroomsQuery.isPending)
-    || (queryState.classPartialsQuery.isFetching && !queryState.classPartialsQuery.isPending)
+    (queryState.googleClassroomsQuery.isFetching && !queryState.googleClassroomsQuery.isPending) ||
+    (queryState.classPartialsQuery.isFetching && !queryState.classPartialsQuery.isPending)
   );
 }
 
@@ -170,12 +174,14 @@ function isClassesDataWorkflowRefreshing(queryState: ClassesRefreshStateOptions)
  * }>} options Derived readiness inputs.
  * @returns {ClassesManagementState | null} Non-ready state, or null when ready.
  */
-function getNonReadyClassesManagementState(options: Readonly<{
-  queryState: ClassesQueriesState;
-  selectedRowKeys: string[];
-  setSelectedRowKeys: (selectedRowKeys: string[]) => void;
-  hasFailedClassesStartupDataset: boolean;
-}>): ClassesManagementState | null {
+function getNonReadyClassesManagementState(
+  options: Readonly<{
+    queryState: ClassesQueriesState;
+    selectedRowKeys: string[];
+    setSelectedRowKeys: (selectedRowKeys: string[]) => void;
+    hasFailedClassesStartupDataset: boolean;
+  }>
+): ClassesManagementState | null {
   if (options.queryState.hasPendingStartupDataset) {
     return {
       blockingErrorMessage: null,
@@ -230,7 +236,6 @@ function getNonReadyClassesManagementState(options: Readonly<{
   return null;
 }
 
-
 /**
  * Returns whether any classes-owned startup datasets are currently failed.
  *
@@ -244,7 +249,9 @@ function hasFailedClassesStartupDataset(startupWarmupState: StartupWarmupContext
     'yearGroups',
   ];
 
-  return classesStartupDatasetKeys.some((datasetKey) => startupWarmupState.isDatasetFailed(datasetKey));
+  return classesStartupDatasetKeys.some((datasetKey) =>
+    startupWarmupState.isDatasetFailed(datasetKey)
+  );
 }
 
 /**
@@ -298,7 +305,9 @@ export function useClassesManagement(): ClassesManagementState {
     cohorts: queryState.readyQueryState?.cohorts ?? [],
     errorMessage: null,
     isRefreshing,
-    nonBlockingWarningMessage: isRefreshing ? 'Classes data is refreshing in the background.' : null,
+    nonBlockingWarningMessage: isRefreshing
+      ? 'Classes data is refreshing in the background.'
+      : null,
     refreshRequiredMessage: null,
     rows,
     selectedRowKeys: visibleSelectedRowKeys,

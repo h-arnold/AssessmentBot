@@ -3,29 +3,29 @@ import { useCallback, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../../query/queryKeys';
 import { callApi } from '../../services/apiService';
-import { mapRequiredClassPartialsRefreshFailureToUserMessage, type RequiredClassPartialsRefreshOutcome } from './queryInvalidation';
-import { runBulkMutationOrchestration } from './bulkMutationOrchestration';
-import { ClassesAlertStack } from './ClassesAlertStack';
-import { ClassesSummaryCard } from './ClassesSummaryCard';
-import { ClassesTable } from './ClassesTable';
-import { ClassesToolbar } from './ClassesToolbar';
-import { BulkCreateModal } from './BulkCreateModal';
-import { BulkDeleteModal } from './BulkDeleteModal';
-import { BulkSetCourseLengthModal } from './BulkSetCourseLengthModal';
-import { BulkSetSelectModal } from './BulkSetSelectModal';
-import { ManageCohortsModal } from './ManageCohortsModal';
-import { ManageYearGroupsModal } from './ManageYearGroupsModal';
-import { bulkSetCohort, getActiveCohortOptions } from './bulkSetCohortFlow';
-import { bulkSetCourseLength } from './bulkSetCourseLengthFlow';
-import { bulkSetYearGroup, getYearGroupOptions } from './bulkSetYearGroupFlow';
-import { bulkCreate, filterBulkCreateRows, type BulkCreateOptions } from './bulkCreateFlow';
-import { filterEligibleForBulkMetadataUpdate } from './bulkMetadataUpdateFlow';
-import { filterEligibleForActiveState } from './bulkActiveStateFlow';
+import { mapRequiredClassPartialsRefreshFailureToUserMessage, type RequiredClassPartialsRefreshOutcome } from './bulk/queryInvalidation';
+import { runBulkMutationOrchestration } from './bulk/bulkMutationOrchestration';
+import { ClassesAlertStack } from './components/ClassesAlertStack';
+import { ClassesSummaryCard } from './components/ClassesSummaryCard';
+import { ClassesTable } from './table/ClassesTable';
+import { ClassesToolbar } from './table/ClassesToolbar';
+import { BulkCreateModal } from './components/BulkCreateModal';
+import { BulkDeleteModal } from './components/BulkDeleteModal';
+import { BulkSetCourseLengthModal } from './components/BulkSetCourseLengthModal';
+import { BulkSetSelectModal } from './components/BulkSetSelectModal';
+import { ManageCohortsModal } from './management/ManageCohortsModal';
+import { ManageYearGroupsModal } from './management/ManageYearGroupsModal';
+import { bulkSetCohort, getActiveCohortOptions } from './bulk/bulkSetCohortFlow';
+import { bulkSetCourseLength } from './bulk/bulkSetCourseLengthFlow';
+import { bulkSetYearGroup, getYearGroupOptions } from './bulk/bulkSetYearGroupFlow';
+import { bulkCreate, filterBulkCreateRows, type BulkCreateOptions } from './bulk/bulkCreateFlow';
+import { filterEligibleForBulkMetadataUpdate } from './bulk/bulkMetadataUpdateFlow';
+import { filterEligibleForActiveState } from './bulk/bulkActiveStateFlow';
 import {
   runBatchMutation,
   type RejectedRowResult,
   type RowMutationResult,
-} from './batchMutationEngine';
+} from './bulk/batchMutationEngine';
 import { useClassesManagement } from './useClassesManagement';
 import type { ClassesManagementRow } from './classesManagementViewModel';
 
