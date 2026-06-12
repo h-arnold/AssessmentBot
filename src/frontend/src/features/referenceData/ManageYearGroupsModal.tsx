@@ -22,9 +22,9 @@ import {
   updateYearGroup,
 } from '../../services/referenceData/referenceDataService';
 import { getYearGroupsQueryOptions } from '../../query/sharedQueries';
-import { ReferenceDataInitialLoadingState } from '../classes/components/ReferenceDataInitialLoadingState';
+import { ReferenceDataInitialLoadingState } from './ReferenceDataInitialLoadingState';
 import { ReferenceDataManagementModalScaffold } from './ReferenceDataManagementModalScaffold';
-import { useReferenceDataManagement } from '../classes/hooks/useReferenceDataManagement';
+import { useReferenceDataManagement } from './useReferenceDataManagement';
 
 export type ManageYearGroupsModalProperties = Readonly<{
   open: boolean;

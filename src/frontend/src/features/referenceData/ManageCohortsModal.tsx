@@ -18,9 +18,9 @@ import type { UseQueryOptions } from '@tanstack/react-query';
 import type { Cohort } from '../../services/referenceData/referenceData.zod';
 import { createCohort, deleteCohort, updateCohort } from '../../services/referenceData/referenceDataService';
 import { getCohortsQueryOptions } from '../../query/sharedQueries';
-import { ReferenceDataInitialLoadingState } from '../classes/components/ReferenceDataInitialLoadingState';
+import { ReferenceDataInitialLoadingState } from './ReferenceDataInitialLoadingState';
 import { ReferenceDataManagementModalScaffold } from './ReferenceDataManagementModalScaffold';
-import { useReferenceDataManagement } from '../classes/hooks/useReferenceDataManagement';
+import { useReferenceDataManagement } from './useReferenceDataManagement';
 
 export type ManageCohortsModalProperties = Readonly<{
   open: boolean;

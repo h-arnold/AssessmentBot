@@ -29,7 +29,7 @@ import {
 } from '../../services/referenceData/referenceDataService';
 import { getAssignmentTopicsQueryOptions, getYearGroupsQueryOptions } from '../../query/sharedQueries';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ReferenceDataInitialLoadingState } from '../classes/components/ReferenceDataInitialLoadingState';
+import { ReferenceDataInitialLoadingState } from './ReferenceDataInitialLoadingState';
 import { ReferenceDataManagementModalScaffold } from './ReferenceDataManagementModalScaffold';
 import {
   getPersistedBlockingLoadError,
@@ -39,12 +39,12 @@ import {
   clearPersistedBlockingLoadError,
   type BlockingLoadErrorState,
 } from './manageReferenceDataHelpers';
-import { InlineDialog } from '../classes/components/InlineDialog';
+import { InlineDialog } from './InlineDialog';
 import {
   useReferenceDataManagement,
   type ReferenceDataManagementConfig,
   type FormDialogProperties,
-} from '../classes/hooks/useReferenceDataManagement';
+} from './useReferenceDataManagement';
 import { useCallback, useEffect, useMemo } from 'react';
 
 // ============================================================================
