@@ -533,7 +533,7 @@ src/
 
 ---
 
-## 5. Implementation Order
+## 5. Implementation Order (Reference)
 
 | Step | Task                                                                       | Risk   | Effort |
 | ---- | -------------------------------------------------------------------------- | ------ | ------ |
@@ -545,12 +545,225 @@ src/
 | 6    | Move `SelectWithAddNew.integration.spec.tsx` to `components/`              | Low    | Tiny   |
 | 7    | Extract `features/referenceData/` from `classes/management/` + `settings/` | Medium | Medium |
 
-Steps 1–4 are the highest leverage and should be done first. Steps 5–7 are quality-of-life
-improvements that can follow.
+---
+
+## 6. Batched Work Plan for Parallel Subagent Execution
+
+This section defines discrete work batches designed so that subagents can operate
+in parallel without editing the same files. Batches are strictly sequential; within
+a batch, all agents run in parallel against disjoint file sets.
+
+### Conflict Analysis
+
+The primary constraint is file-level isolation: no two agents may edit the same file
+in the same batch. The analysis below traces every edit.
+
+**Step 1** edits `query/sharedQueries.ts`, the universal import hub that fans out
+to every feature. It also edits every file that imports from the moved services
+(pages, features, hooks, specs). No other step can share a batch with Step 1.
+
+**Steps 2, 3, and 4** each edit a different page file (`AssignmentsPage.tsx`,
+`ClassesPage.tsx`, `SettingsPage.tsx`) and move files between disjoint directories.
+They can run in parallel.
+
+**Steps 5+6** edit `features/classes/ClassesManagementPanel.tsx` (bulk modal
+import paths) and touch `features/classes/components/`. They do not touch any
+page file or the `features/settings/` directory. They can run in parallel with
+Steps 2, 3, and 4.
+
+**Step 7** edits `features/classes/ClassesManagementPanel.tsx` (reference-data
+modal import paths), `features/assignmentWizard/AssignmentDefinitionWizardModal.tsx`
+(created by Step 2), and `pages/SettingsPage.tsx` (also edited by Step 4).
+It **cannot** run in parallel with Steps 4, 5, or 6.
+
+**Conclusion:** Steps 5+6 can be promoted into Batch 2 (with Steps 2, 3, 4).
+Step 7 must be its own sequential batch after Batch 2 completes.
 
 ---
 
-## 6. Principles Reaffirmed
+### Batch 1 — Services Domain Grouping (1 agent, sequential)
+
+**Agent 1A: Group all flat service files into domain subfolders.**
+
+| Domain                 | Files to move                                                                                                                                                                                          | Target                           |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------- |
+| `assignmentDefinition` | `assignmentDefinition.zod.ts`, `assignmentDefinitionService.ts`, `assignmentDefinitionPartials.zod.ts`, `assignmentDefinitionPartialsService.ts`, `assignmentDefinitionPartialsContract.guard.spec.ts` | `services/assignmentDefinition/` |
+| `assignmentTopics`     | `assignmentTopics.zod.ts`, `assignmentTopicsService.ts`                                                                                                                                                | `services/assignmentDefinition/` |
+| `authService`          | `authService.ts`, `authService.zod.ts`                                                                                                                                                                 | `services/authService/`          |
+| `backendConfiguration` | `backendConfiguration.zod.ts`, `backendConfigurationService.ts`, `backendConfigurationValidation.ts`                                                                                                   | `services/backendConfiguration/` |
+| `googleClassrooms`     | `googleClassrooms.zod.ts`, `googleClassroomsService.ts`                                                                                                                                                | `services/googleClassrooms/`     |
+| `classPartials`        | `classPartials.zod.ts`, `classPartialsService.ts`                                                                                                                                                      | `services/googleClassrooms/`     |
+| `referenceData`        | `referenceData.zod.ts`, `referenceDataService.ts`                                                                                                                                                      | `services/referenceData/`        |
+
+Move all `.spec.ts` companions alongside their source files.
+
+**Import updates required (production files, non-exhaustive):**
+
+| File                                     | Old import                                        | New import                                                             |
+| ---------------------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------- |
+| `query/sharedQueries.ts`                 | `../services/assignmentDefinitionService`         | `../services/assignmentDefinition/assignmentDefinitionService`         |
+| `query/sharedQueries.ts`                 | `../services/assignmentDefinitionPartialsService` | `../services/assignmentDefinition/assignmentDefinitionPartialsService` |
+| `query/sharedQueries.ts`                 | `../services/assignmentTopicsService`             | `../services/assignmentDefinition/assignmentTopicsService`             |
+| `query/sharedQueries.ts`                 | `../services/authService`                         | `../services/authService/authService`                                  |
+| `query/sharedQueries.ts`                 | `../services/backendConfigurationService`         | `../services/backendConfiguration/backendConfigurationService`         |
+| `query/sharedQueries.ts`                 | `../services/classPartialsService`                | `../services/googleClassrooms/classPartialsService`                    |
+| `query/sharedQueries.ts`                 | `../services/googleClassroomsService`             | `../services/googleClassrooms/googleClassroomsService`                 |
+| `query/sharedQueries.ts`                 | `../services/referenceDataService`                | `../services/referenceData/referenceDataService`                       |
+| `query/sharedQueries.ts`                 | `../services/referenceData.zod`                   | `../services/referenceData/referenceData.zod`                          |
+| `pages/useAssignmentDefinitionWizard.ts` | `../services/assignmentDefinitionService`         | `../services/assignmentDefinition/assignmentDefinitionService`         |
+| `pages/AssignmentsPage.tsx`              | `../services/assignmentDefinitionPartialsService` | `../services/assignmentDefinition/assignmentDefinitionPartialsService` |
+| `pages/ClassesPage.tsx`                  | `../services/classPartials.zod`                   | `../services/googleClassrooms/classPartials.zod`                       |
+| `pages/ClassesPage.tsx`                  | `../services/referenceData.zod`                   | `../services/referenceData/referenceData.zod`                          |
+| `pages/classes/classesPageModel.ts`      | `../../services/classPartials.zod`                | `../../services/googleClassrooms/classPartials.zod`                    |
+| `pages/classes/classesPageModel.ts`      | `../../services/referenceData.zod`                | `../../services/referenceData/referenceData.zod`                       |
+
+Also update every `vi.mock('…services/…')` path in all `.spec.ts` and `.spec.tsx` files
+that reference the moved service modules. Use project-wide find-and-replace for
+consistency, then verify with `npm run lint:frontend && npm run test:frontend`.
+
+**Files touched by this agent (no other agent touches these):**
+`services/*` (all moved files), `query/sharedQueries.ts`, `pages/useAssignmentDefinitionWizard.ts`,
+`pages/AssignmentsPage.tsx`, `pages/ClassesPage.tsx`, `pages/classes/classesPageModel.ts`,
+and all `.spec.*` files with `vi.mock` paths to the moved services.
+
+---
+
+### Batch 2 — Pages Cleanup + Classes Internals (4 agents, parallel)
+
+All four agents operate on **disjoint file sets** and can run simultaneously after
+Batch 1 completes.
+
+#### Agent 2A: Extract `features/assignmentWizard/` (Step 2)
+
+**Move these files:**
+
+- `pages/AssignmentDefinitionWizardModal.tsx` → `features/assignmentWizard/AssignmentDefinitionWizardModal.tsx`
+- `pages/AssignmentDefinitionWizardModal.spec.tsx` → `features/assignmentWizard/AssignmentDefinitionWizardModal.spec.tsx`
+- `pages/AssignmentDefinitionWizardModalShell.tsx` → `features/assignmentWizard/AssignmentDefinitionWizardModalShell.tsx`
+- `pages/AssignmentDefinitionWizardModalShell.spec.tsx` → `features/assignmentWizard/AssignmentDefinitionWizardModalShell.spec.tsx`
+- `pages/useAssignmentDefinitionWizard.ts` → `features/assignmentWizard/useAssignmentDefinitionWizard.ts`
+- `pages/useAssignmentDefinitionWizard.spec.ts` → `features/assignmentWizard/useAssignmentDefinitionWizard.spec.ts`
+
+**Update imports in:**
+
+- `pages/AssignmentsPage.tsx` — change `./AssignmentDefinitionWizardModal` → `../features/assignmentWizard/AssignmentDefinitionWizardModal`
+- `test/assignmentDefinition/wizardModalTestHelpers.tsx` — change `../../pages/AssignmentDefinitionWizardModal` → `../../features/assignmentWizard/AssignmentDefinitionWizardModal`
+
+**Update internal imports within the moved files** (they go from `./` siblings to `./` siblings, so most stay the same; verify).
+
+#### Agent 2B: Flatten `pages/classes/` (Step 3)
+
+**Move these files:**
+
+- `pages/classes/classesPageModel.ts` → `pages/classesPageModel.ts`
+- `pages/classes/classesPageModel.spec.ts` → `pages/classesPageModel.spec.ts`
+
+**Update imports in:**
+
+- `pages/ClassesPage.tsx` — change `./classes/classesPageModel` → `./classesPageModel`
+- `pages/ClassesPage.spec.tsx` — change `./classes/classesPageModel` → `./classesPageModel`
+
+**Update internal imports in the moved file:**
+
+- `classesPageModel.ts` — change `../../services/…` → `../services/…` (one directory level shallower)
+
+Remove the now-empty `pages/classes/` directory.
+
+#### Agent 2C: Move `SettingsPageGoogleClassroomsPrefetch` into `features/settings/` (Step 4)
+
+**Move these files:**
+
+- `pages/SettingsPageGoogleClassroomsPrefetch.tsx` → `features/settings/SettingsPageGoogleClassroomsPrefetch.tsx`
+- `pages/SettingsPageGoogleClassroomsPrefetch.spec.tsx` → `features/settings/SettingsPageGoogleClassroomsPrefetch.spec.tsx`
+
+**Update imports in:**
+
+- `pages/SettingsPage.tsx` — change `./SettingsPageGoogleClassroomsPrefetch` → `../features/settings/SettingsPageGoogleClassroomsPrefetch`
+
+**Update internal logging context strings** in the moved file:
+
+- Change `'pages/SettingsPageGoogleClassroomsPrefetch…'` → `'features/settings/SettingsPageGoogleClassroomsPrefetch…'`
+
+#### Agent 2D: Move bulk modals into `features/classes/bulk/` + move integration spec (Steps 5+6)
+
+**Move bulk modal files from `features/classes/components/` to `features/classes/bulk/`:**
+
+- `BulkCreateModal.tsx`, `BulkCreateModal.spec.tsx`
+- `BulkDeleteModal.tsx`, `bulkDelete.spec.tsx`
+- `BulkFormModalScaffold.tsx`
+- `BulkSetSelectModal.tsx`, `BulkSetSelectModal.spec.tsx`
+- `BulkSetCourseLengthModal.tsx`, `BulkSetCourseLengthModal.spec.tsx`
+
+**Move integration spec:**
+
+- `features/classes/components/SelectWithAddNew.integration.spec.tsx` → `components/SelectWithAddNew.integration.spec.tsx`
+
+**Update imports in:**
+
+- `features/classes/ClassesManagementPanel.tsx` — change `./components/BulkCreateModal` → `./bulk/BulkCreateModal`, etc.
+- `features/classes/components/SelectWithAddNew.integration.spec.tsx` — update `./BulkCreateModal` → `../features/classes/bulk/BulkCreateModal` (after move to `components/`)
+- Any other files within `features/classes/` that import the moved bulk modals
+
+**Files touched by Agent 2D:** `features/classes/components/` (bulk files only), `features/classes/bulk/`, `components/`, `features/classes/ClassesManagementPanel.tsx`.
+
+**Files touched by the other agents (for cross-check):**
+
+- 2A: `pages/AssignmentDefinitionWizard*`, `pages/useAssignmentDefinitionWizard*`, `pages/AssignmentsPage.tsx`, `test/assignmentDefinition/wizardModalTestHelpers.tsx`
+- 2B: `pages/classes/*`, `pages/ClassesPage.tsx`, `pages/ClassesPage.spec.tsx`
+- 2C: `pages/SettingsPageGoogleClassroomsPrefetch*`, `pages/SettingsPage.tsx`
+
+✅ **No file overlaps between any pair of agents in Batch 2.**
+
+---
+
+### Batch 3 — Reference Data Extraction (1 agent, sequential after Batch 2)
+
+**Agent 3A: Extract `features/referenceData/` (Step 7)**
+
+This agent must run **after Batch 2** because it edits `pages/SettingsPage.tsx`
+(also edited by Agent 2C) and `features/classes/ClassesManagementPanel.tsx`
+(also edited by Agent 2D), and because it edits `features/assignmentWizard/…`
+(created by Agent 2A).
+
+**Create `features/referenceData/` and move these files into it:**
+
+From `features/settings/`:
+
+- `ManageTopicsModal.tsx`, `ManageTopicsModal.spec.tsx`
+- `ReferenceDataSettingsPanel.tsx`, `ReferenceDataSettingsPanel.spec.tsx`
+
+From `features/classes/management/`:
+
+- `ManageCohortsModal.tsx`
+- `ManageYearGroupsModal.tsx`
+- `ReferenceDataManagementModalScaffold.tsx`, `ReferenceDataManagementModalScaffold.spec.tsx`
+- `manageReferenceDataDialogs.tsx`, `manageReferenceDataDialogs.spec.tsx`
+- `manageReferenceDataHelpers.ts`
+- `manageCohortDelete.spec.tsx`, `manageCohorts.spec.tsx`
+- `manageYearGroupDelete.spec.tsx`, `manageYearGroups.spec.tsx`
+- `refetchFailureState.spec.tsx`
+
+**Update imports in consumers:**
+
+| File                                                            | Change                                                                                                     |
+| --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `features/classes/ClassesManagementPanel.tsx`                   | `./management/ManageCohortsModal` → `../referenceData/ManageCohortsModal`                                  |
+| `features/classes/ClassesManagementPanel.tsx`                   | `./management/ManageYearGroupsModal` → `../referenceData/ManageYearGroupsModal`                            |
+| `features/classes/hooks/useReferenceDataManagement.ts`          | `../management/manageReferenceDataDialogs` → `../../referenceData/manageReferenceDataDialogs`              |
+| `features/classes/hooks/useReferenceDataManagement.ts`          | `../management/manageReferenceDataHelpers` → `../../referenceData/manageReferenceDataHelpers`              |
+| `features/settings/ManageTopicsModal.tsx`                       | `../classes/management/manageReferenceDataHelpers` → `../referenceData/manageReferenceDataHelpers`         |
+| `features/assignmentWizard/AssignmentDefinitionWizardModal.tsx` | `../features/settings/ManageTopicsModal` → `../referenceData/ManageTopicsModal`                            |
+| `features/assignmentWizard/AssignmentDefinitionWizardModal.tsx` | `../features/classes/management/ManageYearGroupsModal` → `../referenceData/ManageYearGroupsModal`          |
+| `pages/SettingsPage.tsx`                                        | `../features/settings/ReferenceDataSettingsPanel` → `../features/referenceData/ReferenceDataSettingsPanel` |
+
+Also update all corresponding `vi.mock()` paths in spec files.
+
+Remove the now-redundant files from `features/classes/management/` (the directory
+may still contain other files — verify before deleting the directory itself).
+
+---
+
+## 7. Principles Reaffirmed
 
 This reorganisation aligns with the following AGENTS.md mandates:
 
@@ -558,4 +771,5 @@ This reorganisation aligns with the following AGENTS.md mandates:
 - **Section 12** — Service files with a common domain prefix are grouped into subfolders.
 - **Section 2.2** — Async orchestration and side effects belong in feature hooks, not page components.
 - **Core Principle 6** — Reuse existing modules before creating new abstractions.
+- **Core Principle 11** — Keep changes minimal, localised, and consistent with existing patterns.
 - **Core Principle 11** — Keep changes minimal, localised, and consistent with existing patterns.
