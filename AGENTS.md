@@ -39,15 +39,15 @@ Failing to read these files **will** result in you failing your task.
 
 ### 4. Delegation Protocol
 
-- Available project agents (source of truth: `.github/agents`; keep matching `.codex/agents/*.toml` files behaviourally aligned for the Codex runtime):
-  - `Planner` (`.github/agents/planner.agent.md`) for clarification-driven planning that produces `SPEC.md`, optional frontend layout specs, and `ACTION_PLAN.md`.
-  - `Planner Reviewer` (`.github/agents/planner-reviewer.agent.md`) for impartial second-pass review of planning artefacts against the codebase before later documents or implementation depend on them.
-  - `Testing Specialist` (`.github/agents/Testing.agent.md`) for Vitest unit/component test and backend test implementation and debugging.
-  - `Playwright` (`.github/agents/playwright.agent.md`) for Playwright E2E test implementation and debugging.
-  - `Code Reviewer` (`.github/agents/code-reviewer.agent.md`) for code review and standards checks.
-  - `Implementation` (`.github/agents/implementation.agent.md`) for focused implementation tasks.
-  - `Docs` (`.github/agents/docs.agent.md`) for developer-documentation and JSDoc updates.
-  - `De-Sloppification` (`.github/agents/de-sloppification.agent.md`) for slop review.
+- Available project agents (source of truth: `.opencode/agents`; keep matching `.codex/agents/*.toml` files behaviourally aligned for the Codex runtime):
+  - `Planner` (`.opencode/agents/planner.md`) for clarification-driven planning that produces `SPEC.md`, optional frontend layout specs, and `ACTION_PLAN.md`.
+  - `Planner Reviewer` (`.opencode/agents/planner-reviewer.md`) for impartial second-pass review of planning artefacts against the codebase before later documents or implementation depend on them.
+  - `Testing Specialist` (`.opencode/agents/testing-specialist.md`) for Vitest unit/component test and backend test implementation and debugging.
+  - `Playwright` (`.opencode/agents/playwright.md`) for Playwright E2E test implementation and debugging.
+  - `Code Reviewer` (`.opencode/agents/code-reviewer.md`) for code review and standards checks.
+  - `Implementation` (`.opencode/agents/implementation.md`) for focused implementation tasks.
+  - `Docs` (`.opencode/agents/docs.md`) for developer-documentation and JSDoc updates.
+  - `De-Sloppification` (`.opencode/agents/de-sloppification.md`) for slop review.
 
 Sub-agents are stateless. Provide explicit context in prompts:
 
@@ -125,7 +125,7 @@ Do not run frontend or builder files through the root backend ESLint command dir
 - Do not define or duplicate module-specific test file naming/location conventions in `AGENTS.md` files.
 - For Vitest unit/component tests and backend tests, always delegate test implementation/debugging tasks to `Testing Specialist` when your environment supports sub-agent delegation.
 - For Playwright E2E tests, always delegate to `Playwright` when your environment supports sub-agent delegation.
-- If delegation is unavailable, read `.github/agents/Testing.agent.md` (for Vitest/backend) or `.github/agents/playwright.agent.md` (for E2E) plus the relevant module testing docs before changing tests:
+- If delegation is unavailable, read `.opencode/agents/testing-specialist.md` (for Vitest/backend) or `.opencode/agents/playwright.md` (for E2E) plus the relevant module testing docs before changing tests:
   - `docs/developer/backend/backend-testing.md`
   - `docs/developer/frontend/frontend-testing.md`
   - `docs/developer/frontend/frontend-playwright-e2e.md`
