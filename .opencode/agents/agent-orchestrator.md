@@ -1,6 +1,8 @@
 ---
 description: Coordinates subagents to implement changes following a structured implement/review loop
 mode: all
+model: opencode-go/deepseek-v4-pro
+steps: 100
 ---
 
 # Agent Orchestrator Instructions

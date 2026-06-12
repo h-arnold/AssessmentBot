@@ -1,6 +1,8 @@
 ---
 description: Implements code changes in an idiomatic and type-safe manner with validated results
 mode: all
+model: opencode-go/deepseek-v4-flash
+steps: 100
 ---
 
 # Implementation Agent Instructions

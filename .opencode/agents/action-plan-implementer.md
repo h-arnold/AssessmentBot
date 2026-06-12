@@ -1,6 +1,8 @@
 ---
 description: Orchestrates delivery against ACTION_PLAN.md in a strict TDD-first workflow
 mode: all
+model: opencode-go/deepseek-v4-pro
+steps: 100
 ---
 
 # Agent Orchestrator Instructions
