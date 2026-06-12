@@ -11,7 +11,7 @@ import { queryKeys } from '../../query/queryKeys';
 import { renderWithFrontendProviders } from '../renderWithFrontendProviders';
 import { createAppQueryClient } from '../../query/queryClient';
 import type { GoogleClassroomAssignmentsResponse } from '../../services/googleClassrooms/googleClassroomAssignments.zod';
-import type { AssignmentDefinitionPartial } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import type { AssignmentDefinitionPartial } from '../../services/assignmentDefinitionPartials.zod';
 import type { QueryClient } from '@tanstack/react-query';
 
 // ---------------------------------------------------------------------------

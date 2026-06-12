@@ -1,5 +1,5 @@
-import type { ClassPartial } from '../../services/googleClassrooms/classPartialsService';
-import type { GoogleClassroom } from '../../services/googleClassrooms/googleClassroomsService';
+import type { ClassPartial } from '../../services/classPartialsService';
+import type { GoogleClassroom } from '../../services/googleClassroomsService';
 
 export type ClassesManagementStatus = 'active' | 'inactive' | 'notCreated' | 'orphaned';
 
@@ -39,7 +39,10 @@ export const STATUS_ORDER: Readonly<Record<ClassesManagementStatus, number>> = {
  * @param {ReadonlyMap<string, string>} labelsByKey Labels indexed by key.
  * @returns {string | null} Display label.
  */
-function resolveLabel(key: string | null, labelsByKey: ReadonlyMap<string, string>): string | null {
+function resolveLabel(
+  key: string | null,
+  labelsByKey: ReadonlyMap<string, string>,
+): string | null {
   if (key === null) {
     return null;
   }
@@ -54,18 +57,13 @@ function resolveLabel(key: string | null, labelsByKey: ReadonlyMap<string, strin
  * @param {ClassesManagementRow} right Right row.
  * @returns {number} Comparison result for sorting.
  */
-export function compareRowsByDefaultPriority(
-  left: ClassesManagementRow,
-  right: ClassesManagementRow
-): number {
+export function compareRowsByDefaultPriority(left: ClassesManagementRow, right: ClassesManagementRow): number {
   const statusComparison = STATUS_ORDER[left.status] - STATUS_ORDER[right.status];
   if (statusComparison !== 0) {
     return statusComparison;
   }
 
-  const classNameComparison = left.className.localeCompare(right.className, undefined, {
-    sensitivity: 'base',
-  });
+  const classNameComparison = left.className.localeCompare(right.className, undefined, { sensitivity: 'base' });
   if (classNameComparison !== 0) {
     return classNameComparison;
   }
@@ -87,16 +85,12 @@ export function compareRowsByDefaultPriority(
  * @returns {ClassesManagementRow[]} Merged and sorted rows.
  */
 export function buildClassesManagementRows(
-  input: BuildClassesManagementRowsInput
+  input: BuildClassesManagementRowsInput,
 ): ClassesManagementRow[] {
   const cohortLabelsByKey = new Map(Object.entries(input.cohortLabelsByKey));
   const yearGroupLabelsByKey = new Map(Object.entries(input.yearGroupLabelsByKey));
-  const partialsByClassId = new Map(
-    input.classPartials.map((classPartial) => [classPartial.classId, classPartial])
-  );
-  const googleByClassId = new Map(
-    input.googleClassrooms.map((googleClassroom) => [googleClassroom.classId, googleClassroom])
-  );
+  const partialsByClassId = new Map(input.classPartials.map((classPartial) => [classPartial.classId, classPartial]));
+  const googleByClassId = new Map(input.googleClassrooms.map((googleClassroom) => [googleClassroom.classId, googleClassroom]));
 
   const rows: ClassesManagementRow[] = [];
 

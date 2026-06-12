@@ -11,11 +11,11 @@ import {
   type TestRenderResult,
 } from './wizardTestHelpers';
 import { mockTopics, mockYearGroups } from './sharedTestFixtures';
-import type { AssignmentDefinition } from '../../services/assignmentDefinition/assignmentDefinition.zod';
+import type { AssignmentDefinition } from '../../services/assignmentDefinition.zod';
 
 /**
  * Assignment Definition Wizard Modal test helpers module.
- *
+ * 
  * Provides shared utilities specifically for testing AssignmentDefinitionWizardModal.
  * Use these helpers to reduce duplication in wizard modal test files.
  */
@@ -92,8 +92,7 @@ async function renderModalComponent(
   open: boolean,
   warmupState: FrontendProvidersOptions['warmupState']
 ): Promise<ReturnType<typeof renderWithFrontendProviders>> {
-  const { AssignmentDefinitionWizardModal } =
-    await import('../../pages/AssignmentDefinitionWizardModal');
+  const { AssignmentDefinitionWizardModal } = await import('../../pages/AssignmentDefinitionWizardModal');
 
   return renderWithFrontendProviders(
     <AssignmentDefinitionWizardModal
@@ -176,15 +175,9 @@ async function waitForFormFields(modal: HTMLElement): Promise<void> {
     // Wait for all main form fields to be present
     expect(within(modal).getByRole('textbox', { name: /assignment title/i })).toBeInTheDocument();
     expect(within(modal).getByRole('combobox', { name: /assignment topic/i })).toBeInTheDocument();
-    expect(
-      within(modal).getByRole('combobox', { name: /assignment year group/i })
-    ).toBeInTheDocument();
-    expect(
-      within(modal).getByRole('textbox', { name: /reference document url/i })
-    ).toBeInTheDocument();
-    expect(
-      within(modal).getByRole('textbox', { name: /template document url/i })
-    ).toBeInTheDocument();
+    expect(within(modal).getByRole('combobox', { name: /assignment year group/i })).toBeInTheDocument();
+    expect(within(modal).getByRole('textbox', { name: /reference document url/i })).toBeInTheDocument();
+    expect(within(modal).getByRole('textbox', { name: /template document url/i })).toBeInTheDocument();
   });
 }
 
@@ -247,14 +240,7 @@ export async function renderWizardModal(
   await waitForInteractiveFieldsIfNeeded(modal, shouldWaitForFormFields);
 
   // Set query data after modal appears (matches original test pattern)
-  setupQueryClientData(
-    queryClient,
-    topics,
-    yearGroups,
-    cohorts,
-    assignmentDefinition,
-    definitionKey
-  );
+  setupQueryClientData(queryClient, topics, yearGroups, cohorts, assignmentDefinition, definitionKey);
 
   return {
     ...renderResult,
@@ -406,11 +392,11 @@ export function getReparseButton(container: HTMLElement | ModalElementQueries): 
  * @param {HTMLElement | ModalElementQueries} container The modal or container object.
  * @returns {HTMLElement} The re-parse action row element.
  */
-export function getReparseActionRow(container: HTMLElement | ModalElementQueries): HTMLElement {
+export function getReparseActionRow(
+  container: HTMLElement | ModalElementQueries
+): HTMLElement {
   const modal = 'modal' in container ? container.modal : container;
-  return within(modal)
-    .getByRole('button', { name: /re-parse/i })
-    .closest('.ant-space') as HTMLElement;
+  return within(modal).getByRole('button', { name: /re-parse/i }).closest('.ant-space') as HTMLElement;
 }
 
 /**
@@ -419,7 +405,9 @@ export function getReparseActionRow(container: HTMLElement | ModalElementQueries
  * @param {HTMLElement | ModalElementQueries} container The modal or container object.
  * @returns {HTMLElement} The cancel button element.
  */
-export function getReparseCancelButton(container: HTMLElement | ModalElementQueries): HTMLElement {
+export function getReparseCancelButton(
+  container: HTMLElement | ModalElementQueries
+): HTMLElement {
   const reparseActionRow = getReparseActionRow(container);
   return within(reparseActionRow).getByRole('button', { name: /^cancel$/i });
 }
@@ -569,9 +557,7 @@ export function assertTaskEditingHidden(container: HTMLElement | ModalElementQue
   const modal = 'modal' in container ? container.modal : container;
   expect(within(modal).getByText(/parsing is required/i)).toBeInTheDocument();
   expect(within(modal).queryByRole('table', { name: /task weightings/i })).not.toBeInTheDocument();
-  expect(
-    within(modal).queryByRole('spinbutton', { name: /assignment weighting/i })
-  ).not.toBeInTheDocument();
+  expect(within(modal).queryByRole('spinbutton', { name: /assignment weighting/i })).not.toBeInTheDocument();
 }
 
 /**
@@ -596,9 +582,7 @@ export function assertSharedEditSurfaceHydrated(
 ): void {
   const modal = 'modal' in container ? container.modal : container;
   expect(within(modal).getByRole('table', { name: /task weightings/i })).toBeInTheDocument();
-  expect(
-    within(modal).getByRole('spinbutton', { name: /assignment weighting/i })
-  ).toBeInTheDocument();
+  expect(within(modal).getByRole('spinbutton', { name: /assignment weighting/i })).toBeInTheDocument();
 }
 
 /**
@@ -683,9 +667,7 @@ export async function assertDocumentUrlFieldsDisabled(
   const modal = 'modal' in container ? container.modal : container;
 
   await waitFor(() => {
-    const referenceUrlInput = within(modal).getByRole('textbox', {
-      name: /reference document url/i,
-    });
+    const referenceUrlInput = within(modal).getByRole('textbox', { name: /reference document url/i });
     const templateUrlInput = within(modal).getByRole('textbox', { name: /template document url/i });
     expect(referenceUrlInput).toBeDisabled();
     expect(templateUrlInput).toBeDisabled();
@@ -698,19 +680,15 @@ export async function assertDocumentUrlFieldsDisabled(
  * @param {HTMLElement | ModalElementQueries} container The modal or container object.
  * @returns {void}
  */
-export function assertAllRequiredFieldsPresent(container: HTMLElement | ModalElementQueries): void {
+export function assertAllRequiredFieldsPresent(
+  container: HTMLElement | ModalElementQueries
+): void {
   const modal = 'modal' in container ? container.modal : container;
   expect(within(modal).getByRole('textbox', { name: /assignment title/i })).toBeInTheDocument();
   expect(within(modal).getByRole('combobox', { name: /assignment topic/i })).toBeInTheDocument();
-  expect(
-    within(modal).getByRole('combobox', { name: /assignment year group/i })
-  ).toBeInTheDocument();
-  expect(
-    within(modal).getByRole('textbox', { name: /reference document url/i })
-  ).toBeInTheDocument();
-  expect(
-    within(modal).getByRole('textbox', { name: /template document url/i })
-  ).toBeInTheDocument();
+  expect(within(modal).getByRole('combobox', { name: /assignment year group/i })).toBeInTheDocument();
+  expect(within(modal).getByRole('textbox', { name: /reference document url/i })).toBeInTheDocument();
+  expect(within(modal).getByRole('textbox', { name: /template document url/i })).toBeInTheDocument();
 }
 
 /**
@@ -777,7 +755,9 @@ export function assertTaskNotVisible(
  * @param {HTMLElement | ModalElementQueries} container The modal or container object.
  * @returns {string} The current value.
  */
-export function getReferenceUrlValue(container: HTMLElement | ModalElementQueries): string {
+export function getReferenceUrlValue(
+  container: HTMLElement | ModalElementQueries
+): string {
   const modal = 'modal' in container ? container.modal : container;
   const referenceUrlInput = within(modal).getByRole('textbox', {
     name: /reference document url/i,

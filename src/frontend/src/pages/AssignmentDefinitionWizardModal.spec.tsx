@@ -1,7 +1,7 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { queryKeys } from '../query/queryKeys';
-import type { AssignmentDefinition } from '../services/assignmentDefinition/assignmentDefinition.zod';
+import type { AssignmentDefinition } from '../services/assignmentDefinition.zod';
 import {
   createStartupWarmupState,
   setTextboxValue,
@@ -70,16 +70,16 @@ vi.mock('../features/auth/startupWarmupState', async (importOriginal) => {
   };
 });
 
-vi.mock('../services/assignmentDefinition/assignmentDefinitionService', () => ({
+vi.mock('../services/assignmentDefinitionService', () => ({
   getAssignmentDefinition: getAssignmentDefinitionMock,
   upsertAssignmentDefinition: upsertAssignmentDefinitionMock,
 }));
 
-vi.mock('../services/assignmentDefinition/assignmentTopicsService', () => ({
+vi.mock('../services/assignmentTopicsService', () => ({
   getAssignmentTopics: getAssignmentTopicsMock,
 }));
 
-vi.mock('../services/referenceData/referenceDataService', () => ({
+vi.mock('../services/referenceDataService', () => ({
   getCohorts: getCohortsMock,
   getYearGroups: getYearGroupsMock,
 }));
@@ -334,12 +334,7 @@ describe('AssignmentDefinitionWizardModal', () => {
       // Fill in required fields except year group
       await fillRequiredFields(
         { modal },
-        {
-          title: 'New Assessment',
-          referenceUrl: 'https://docs.google.com/presentation/d/test-ref',
-          templateUrl: 'https://docs.google.com/presentation/d/test-tpl',
-          yearGroup: undefined,
-        }
+        { title: 'New Assessment', referenceUrl: 'https://docs.google.com/presentation/d/test-ref', templateUrl: 'https://docs.google.com/presentation/d/test-tpl', yearGroup: undefined }
       );
 
       // Parse button should be blocked without year group
@@ -529,9 +524,7 @@ describe('AssignmentDefinitionWizardModal', () => {
 
       // Verify stage-one parse and final save were both called
       await waitFor(() => {
-        expect(upsertAssignmentDefinitionMock).toHaveBeenCalledTimes(
-          EXPECTED_STAGE_ONE_AND_FINAL_SAVE_CALL_COUNT
-        );
+        expect(upsertAssignmentDefinitionMock).toHaveBeenCalledTimes(EXPECTED_STAGE_ONE_AND_FINAL_SAVE_CALL_COUNT);
       });
 
       // Verify the stage-one parse call created the definition
@@ -679,10 +672,7 @@ describe('AssignmentDefinitionWizardModal', () => {
       // Verify upsert was called for re-parse with updated document URL
       await waitFor(() => {
         expect(upsertAssignmentDefinitionMock).toHaveBeenCalled();
-        const reparseCall = upsertAssignmentDefinitionMock.mock.calls[0][0] as Record<
-          string,
-          unknown
-        >;
+        const reparseCall = upsertAssignmentDefinitionMock.mock.calls[0][0] as Record<string, unknown>;
         expect(reparseCall.definitionKey).toBe('test-update-key');
         expect(String(reparseCall.referenceDocumentUrl)).toContain('new-ref-doc');
       });
@@ -942,7 +932,9 @@ describe('AssignmentDefinitionWizardModal', () => {
         referenceDocumentUrl: 'https://docs.google.com/presentation/d/sub-ref',
         templateDocumentUrl: 'https://docs.google.com/presentation/d/sub-tpl',
         assignmentWeighting: 1,
-        tasks: [{ taskId: 'task-1', taskTitle: 'Task 1', taskWeighting: 1 }],
+        tasks: [
+          { taskId: 'task-1', taskTitle: 'Task 1', taskWeighting: 1 },
+        ],
         createdAt: '2025-01-01T00:00:00.000Z',
         updatedAt: '2025-01-01T00:00:00.000Z',
       };
@@ -1017,9 +1009,7 @@ describe('AssignmentDefinitionWizardModal', () => {
       // Make getAssignmentDefinition reject to simulate a validation failure
       // (e.g. ZodError from malformed GAS-serialized response, as in issue #244)
       setupUpdateModeMocks(mockFullAssignmentDefinition);
-      getAssignmentDefinitionMock.mockRejectedValue(
-        new Error('Failed to parse assignment definition')
-      );
+      getAssignmentDefinitionMock.mockRejectedValue(new Error('Failed to parse assignment definition'));
 
       const onCloseSpy = vi.fn();
 
@@ -1082,9 +1072,7 @@ describe('AssignmentDefinitionWizardModal', () => {
       });
 
       // Mock upsert to reject on save (simulates Zod validation failure from serialization issue)
-      upsertAssignmentDefinitionMock.mockRejectedValue(
-        new Error('Failed to save assignment definition')
-      );
+      upsertAssignmentDefinitionMock.mockRejectedValue(new Error('Failed to save assignment definition'));
 
       // Click Save button
       const saveButton = getSaveButton({ modal });

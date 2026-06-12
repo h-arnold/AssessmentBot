@@ -6,15 +6,10 @@ import { findMatchingDefinition } from './matchDefinitionForAssignment';
 import { startAssessmentRun } from '../../../services/assignmentAssessment/assignmentAssessmentService';
 import { ApiTransportError } from '../../../errors/apiTransportError';
 import { queryKeys } from '../../../query/queryKeys';
-import type { ClassPartial } from '../../../services/googleClassrooms/classPartials.zod';
-import type { AssignmentDefinitionPartial } from '../../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import type { ClassPartial } from '../../../services/classPartials.zod';
+import type { AssignmentDefinitionPartial } from '../../../services/assignmentDefinitionPartials.zod';
 
-type Assignment = {
-  assignmentId: string;
-  title: string;
-  topicId: string | null;
-  topicName: string | null;
-};
+type Assignment = { assignmentId: string; title: string; topicId: string | null; topicName: string | null };
 
 export type AssessTaskModalProperties = Readonly<{
   open: boolean;
@@ -59,9 +54,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | undefined>();
   const [fetchState, setFetchState] = useState<'loading' | 'error' | 'ready'>('loading');
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const [assessmentState, setAssessmentState] = useState<'idle' | 'loading' | 'success' | 'error'>(
-    'idle'
-  );
+  const [assessmentState, setAssessmentState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [assessmentError, setAssessmentError] = useState<string | undefined>();
   const [assessmentAlertType, setAssessmentAlertType] = useState<AssessmentAlertType>('error');
 
@@ -99,46 +92,26 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
    * @returns {object} The class partial or a validation error descriptor.
    */
   function getValidatedCachedData():
-    | {
-        kind: 'valid';
-        classPartial: ClassPartial;
-        definitionPartials: AssignmentDefinitionPartial[];
-      }
-    | CacheValidationError {
+  | { kind: 'valid'; classPartial: ClassPartial; definitionPartials: AssignmentDefinitionPartial[] }
+  | CacheValidationError {
     const classPartials = queryClient.getQueryData<ClassPartial[]>(queryKeys.classPartials());
     const definitionPartials = queryClient.getQueryData<AssignmentDefinitionPartial[]>(
       queryKeys.assignmentDefinitionPartials()
     );
 
     if (!classPartials) {
-      return {
-        kind: 'cache-error',
-        alertType: 'error',
-        message: 'Failed to load class data. Please refresh and try again.',
-      };
+      return { kind: 'cache-error', alertType: 'error', message: 'Failed to load class data. Please refresh and try again.' };
     }
     if (!definitionPartials) {
-      return {
-        kind: 'cache-error',
-        alertType: 'error',
-        message: 'Failed to load definition data. Please refresh and try again.',
-      };
+      return { kind: 'cache-error', alertType: 'error', message: 'Failed to load definition data. Please refresh and try again.' };
     }
 
     const classPartial = classPartials.find((cp) => cp.classId === classId);
     if (!classPartial) {
-      return {
-        kind: 'cache-error',
-        alertType: 'error',
-        message: 'Class not found in cached data. Please refresh and try again.',
-      };
+      return { kind: 'cache-error', alertType: 'error', message: 'Class not found in cached data. Please refresh and try again.' };
     }
     if (classPartial.yearGroupKey === null) {
-      return {
-        kind: 'cache-error',
-        alertType: 'error',
-        message: 'Cannot determine year group for this class.',
-      };
+      return { kind: 'cache-error', alertType: 'error', message: 'Cannot determine year group for this class.' };
     }
 
     return { kind: 'valid', classPartial, definitionPartials };
@@ -151,14 +124,13 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
   async function handleStartAssessment(): Promise<void> {
     if (!selectedAssignmentId || fetchState !== 'ready') return;
 
-    const selectedAssignment = assignments.find((a) => a.assignmentId === selectedAssignmentId);
+    const selectedAssignment = assignments.find(
+      (a) => a.assignmentId === selectedAssignmentId
+    );
     if (!selectedAssignment) return;
 
     if (selectedAssignment.topicName === null) {
-      setAssessmentAsError(
-        'error',
-        'The selected assignment has no topic. Cannot match to a definition.'
-      );
+      setAssessmentAsError('error', 'The selected assignment has no topic. Cannot match to a definition.');
       return;
     }
 
@@ -174,11 +146,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
 
       const { classPartial, definitionPartials } = cached;
 
-      const matchResult = findMatchingDefinition(
-        selectedAssignment,
-        classPartial,
-        definitionPartials
-      );
+      const matchResult = findMatchingDefinition(selectedAssignment, classPartial, definitionPartials);
       await handleMatchOutcome(matchResult, selectedAssignment);
     } catch (error: unknown) {
       handleApiError(error);
@@ -196,10 +164,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
     selectedAssignment: Assignment
   ): Promise<void> {
     if (matchResult.kind === 'no-match') {
-      setAssessmentAsError(
-        'error',
-        `No matching assignment definition found for '${selectedAssignment.title}'.`
-      );
+      setAssessmentAsError('error', `No matching assignment definition found for '${selectedAssignment.title}'.`);
       return;
     }
 
@@ -239,7 +204,9 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
   }
 
   const isStartDisabled =
-    fetchState !== 'ready' || selectedAssignmentId === undefined || assessmentState === 'loading';
+    fetchState !== 'ready' ||
+    selectedAssignmentId === undefined ||
+    assessmentState === 'loading';
 
   /**
    * Renders the dropdown and assignment-selection body content.
@@ -254,12 +221,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
 
     const assessmentAlert =
       assessmentState === 'success' || (assessmentState === 'error' && assessmentError) ? (
-        <Alert
-          type={assessmentAlertType}
-          showIcon
-          title={assessmentError}
-          style={{ marginBottom: 16 }}
-        />
+        <Alert type={assessmentAlertType} showIcon title={assessmentError} style={{ marginBottom: 16 }} />
       ) : null;
 
     return (

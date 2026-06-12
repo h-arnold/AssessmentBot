@@ -18,32 +18,16 @@
  * with added year group multi-select support for the AssignmentTopic type.
  */
 
-import {
-  Alert,
-  Button,
-  Form,
-  Input,
-  Select,
-  Space,
-  type FormInstance,
-  type TableColumnType,
-} from 'antd';
+import { Alert, Button, Form, Input, Select, Space, type FormInstance, type TableColumnType } from 'antd';
 import type { ReactElement } from 'react';
 import type { UseQueryOptions } from '@tanstack/react-query';
-import type {
-  AssignmentTopic,
-  YearGroup,
-  TopicFormValues,
-} from '../../services/referenceData/referenceData.zod';
+import type { AssignmentTopic, YearGroup, TopicFormValues } from '../../services/referenceData.zod';
 import {
   createAssignmentTopic,
   deleteAssignmentTopic,
   updateAssignmentTopic,
-} from '../../services/referenceData/referenceDataService';
-import {
-  getAssignmentTopicsQueryOptions,
-  getYearGroupsQueryOptions,
-} from '../../query/sharedQueries';
+} from '../../services/referenceDataService';
+import { getAssignmentTopicsQueryOptions, getYearGroupsQueryOptions } from '../../query/sharedQueries';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ReferenceDataInitialLoadingState } from '../classes/components/ReferenceDataInitialLoadingState';
 import { ReferenceDataManagementModalScaffold } from '../classes/management/ReferenceDataManagementModalScaffold';
@@ -73,13 +57,11 @@ import { useCallback, useEffect, useMemo } from 'react';
  * @param {Readonly<{ onEdit: (topic: AssignmentTopic) => void; onDelete: (topic: AssignmentTopic) => void; yearGroupMap: Map<string, string>; }>} options Column action callbacks and data.
  * @returns {TableColumnType<AssignmentTopic>[]} Table column definitions.
  */
-function buildTopicsColumns(
-  options: Readonly<{
-    onEdit: (topic: AssignmentTopic) => void;
-    onDelete: (topic: AssignmentTopic) => void;
-    yearGroupMap: Map<string, string>;
-  }>
-): TableColumnType<AssignmentTopic>[] {
+function buildTopicsColumns(options: Readonly<{
+  onEdit: (topic: AssignmentTopic) => void;
+  onDelete: (topic: AssignmentTopic) => void;
+  yearGroupMap: Map<string, string>;
+}>): TableColumnType<AssignmentTopic>[] {
   return [
     {
       title: 'Name',
@@ -145,14 +127,12 @@ const DELETE_DIALOG_LABEL_ID = 'manage-topics-delete-dialog-title';
  * @param {Readonly<{ value?: string[]; onChange?: (value: string[]) => void; yearGroups: YearGroup[]; disabled?: boolean; }>} properties Component properties.
  * @returns {ReactElement} The year groups multi-select form field.
  */
-function YearGroupsFormField(
-  properties: Readonly<{
-    value?: string[];
-    onChange?: (value: string[]) => void;
-    yearGroups: YearGroup[];
-    disabled?: boolean;
-  }>
-): ReactElement {
+function YearGroupsFormField(properties: Readonly<{
+  value?: string[];
+  onChange?: (value: string[]) => void;
+  yearGroups: YearGroup[];
+  disabled?: boolean;
+}>): ReactElement {
   const yearGroupOptions = properties.yearGroups.map((yearGroup) => ({
     value: yearGroup.key,
     label: yearGroup.name,
@@ -178,10 +158,7 @@ function YearGroupsFormField(
  * @param {string} formDialogTitle The title of the form dialog.
  * @returns {boolean} True if the dialog should be rendered.
  */
-function shouldRenderFormDialog(
-  editingEntity: AssignmentTopic | null,
-  formDialogTitle: string
-): boolean {
+function shouldRenderFormDialog(editingEntity: AssignmentTopic | null, formDialogTitle: string): boolean {
   return !(editingEntity === null && formDialogTitle !== 'Create topic');
 }
 
@@ -209,22 +186,20 @@ function getFormDialogEntityProperties(editingEntity: AssignmentTopic | null): R
  * @param {Readonly<{ formKey: string; form: FormInstance<TopicFormValues>; initialName: string | null; initialYearGroupKeys: string[]; labelId: string; title: string; formError: string | null; formSubmitting: boolean; onClose: () => void; onFinish: (values: TopicFormValues) => Promise<void>; onOk: () => void; yearGroups: YearGroup[]; }>} properties Dialog properties.
  * @returns {ReactElement | null} The rendered form dialog.
  */
-function TopicFormDialog(
-  properties: Readonly<{
-    formKey: string;
-    form: FormInstance<TopicFormValues>;
-    initialName: string | null;
-    initialYearGroupKeys: string[];
-    labelId: string;
-    title: string;
-    formError: string | null;
-    formSubmitting: boolean;
-    onClose: () => void;
-    onFinish: (values: TopicFormValues) => Promise<void>;
-    onOk: () => void;
-    yearGroups: YearGroup[];
-  }>
-): ReactElement | null {
+function TopicFormDialog(properties: Readonly<{
+  formKey: string;
+  form: FormInstance<TopicFormValues>;
+  initialName: string | null;
+  initialYearGroupKeys: string[];
+  labelId: string;
+  title: string;
+  formError: string | null;
+  formSubmitting: boolean;
+  onClose: () => void;
+  onFinish: (values: TopicFormValues) => Promise<void>;
+  onOk: () => void;
+  yearGroups: YearGroup[];
+}>): ReactElement | null {
   return (
     <InlineDialog labelId={properties.labelId} title={properties.title}>
       {properties.formError === null ? null : (
@@ -269,6 +244,8 @@ function TopicFormDialog(
   );
 }
 
+
+
 /**
  * Renders the Manage Topics modal workflow.
  *
@@ -279,9 +256,7 @@ export function ManageTopicsModal(properties: ManageTopicsModalProperties): Reac
   const queryClient = useQueryClient();
 
   // Fetch yearGroups as blocking-required data for form options and table rendering
-  const yearGroupsQueryOptions = getYearGroupsQueryOptions() as unknown as UseQueryOptions<
-    YearGroup[]
-  >;
+  const yearGroupsQueryOptions = getYearGroupsQueryOptions() as unknown as UseQueryOptions<YearGroup[]>;
   const yearGroupsQuery = useQuery({ ...yearGroupsQueryOptions });
   const yearGroupsLoadError = yearGroupsQuery.error;
   const yearGroupsIsLoading = yearGroupsQuery.isPending && yearGroupsQuery.data === undefined;
@@ -298,10 +273,7 @@ export function ManageTopicsModal(properties: ManageTopicsModalProperties): Reac
 
   // Cleanup year groups blocking error when fresh data is available
   useEffect(() => {
-    if (
-      yearGroupsPersistedBlockingError === null ||
-      yearGroupsDataUpdatedAt <= yearGroupsPersistedBlockingError.dataUpdatedAt
-    ) {
+    if (yearGroupsPersistedBlockingError === null || yearGroupsDataUpdatedAt <= yearGroupsPersistedBlockingError.dataUpdatedAt) {
       return;
     }
 
@@ -328,9 +300,7 @@ export function ManageTopicsModal(properties: ManageTopicsModalProperties): Reac
   );
 
   // Topics query options
-  const topicsQueryOptions = getAssignmentTopicsQueryOptions() as unknown as UseQueryOptions<
-    AssignmentTopic[]
-  >;
+  const topicsQueryOptions = getAssignmentTopicsQueryOptions() as unknown as UseQueryOptions<AssignmentTopic[]>;
 
   // Build year group map for column rendering
   const yearGroupMap = useMemo(
@@ -341,12 +311,7 @@ export function ManageTopicsModal(properties: ManageTopicsModalProperties): Reac
   // Custom form dialog renderer
   const renderFormDialog = useCallback(
     (formDialogProperties: FormDialogProperties<AssignmentTopic>): ReactElement | null => {
-      if (
-        !shouldRenderFormDialog(
-          formDialogProperties.editingEntity,
-          formDialogProperties.formDialogTitle
-        )
-      ) {
+      if (!shouldRenderFormDialog(formDialogProperties.editingEntity, formDialogProperties.formDialogTitle)) {
         return null;
       }
 
@@ -357,9 +322,7 @@ export function ManageTopicsModal(properties: ManageTopicsModalProperties): Reac
       // The hook's form is typed for ReferenceDataFormValues which now includes optional yearGroupKeys,
       // so we can safely cast it to TopicFormValues since TopicFormValues extends it with required yearGroupKeys
       const topicForm = formDialogProperties.form as FormInstance<TopicFormValues>;
-      const topicOnFinish = formDialogProperties.onFinish as (
-        values: TopicFormValues
-      ) => Promise<void>;
+      const topicOnFinish = formDialogProperties.onFinish as (values: TopicFormValues) => Promise<void>;
 
       return (
         <TopicFormDialog
@@ -381,6 +344,8 @@ export function ManageTopicsModal(properties: ManageTopicsModalProperties): Reac
     [yearGroups]
   );
 
+
+
   // Configure the hook for topics
   const hookConfig: ReferenceDataManagementConfig<AssignmentTopic> = {
     entityLabel: 'topic',
@@ -395,13 +360,7 @@ export function ManageTopicsModal(properties: ManageTopicsModalProperties): Reac
         properties.onEntityCreated(result);
       }
     },
-    updateService: async ({
-      key,
-      record,
-    }: {
-      key: string;
-      record: Omit<AssignmentTopic, 'key'>;
-    }) => {
+    updateService: async ({ key, record }: { key: string; record: Omit<AssignmentTopic, 'key'> }) => {
       await updateAssignmentTopic({ key, record });
     },
     deleteService: async ({ key }: { key: string }) => {
@@ -458,7 +417,9 @@ export function ManageTopicsModal(properties: ManageTopicsModalProperties): Reac
       isInitialLoading={isInitialLoading}
       isRefreshing={isRefreshing}
       loadError={loadError}
-      loadingState={<ReferenceDataInitialLoadingState ariaLabel="Loading topics" />}
+      loadingState={
+        <ReferenceDataInitialLoadingState ariaLabel="Loading topics" />
+      }
       rows={topics}
       columns={finalColumns}
       inlineAlert={inlineAlert}

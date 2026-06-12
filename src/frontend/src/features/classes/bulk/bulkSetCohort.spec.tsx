@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { Cohort } from '../../../services/referenceData/referenceData.zod';
+import type { Cohort } from '../../../services/referenceData.zod';
 import type { ClassesManagementRow } from '../classesManagementViewModel';
 import type * as BulkSetCohortFlowModule from './bulkSetCohortFlow';
 

@@ -1,6 +1,6 @@
 /**
  * Shared test helpers for ClassesPage component tests.
- *
+ * 
  * This module provides fixtures, rendering helpers, and assertion utilities
  * to reduce duplication in ClassesPage.spec.tsx.
  */
@@ -9,20 +9,14 @@
 
 import { screen } from '@testing-library/react';
 import { type QueryClient } from '@tanstack/react-query';
-import {
-  renderWithFrontendProviders,
-  type FrontendProvidersOptions,
-} from '../renderWithFrontendProviders';
+import { renderWithFrontendProviders, type FrontendProvidersOptions } from '../renderWithFrontendProviders';
 import { createAppQueryClient } from '../../query/queryClient';
 import { queryKeys } from '../../query/queryKeys';
 import { buildClassesPageModel } from '../../pages/classes/classesPageModel';
 import { ClassesPage } from '../../pages/ClassesPage';
-import type { ClassPartial } from '../../services/googleClassrooms/classPartials.zod';
-import type { YearGroup } from '../../services/referenceData/referenceData.zod';
-import type {
-  ClassesPagePanelModel,
-  InvalidClassesPageDataViewModel,
-} from '../../pages/classes/classesPageModel';
+import type { ClassPartial } from '../../services/classPartials.zod';
+import type { YearGroup } from '../../services/referenceData.zod';
+import type { ClassesPagePanelModel, InvalidClassesPageDataViewModel } from '../../pages/classes/classesPageModel';
 
 // ============================================================================
 // Fixture Factories
@@ -85,21 +79,9 @@ export const MOCK_YEAR_GROUPS: YearGroup[] = [
  * Default mock class partials for ClassesPage tests.
  */
 export const MOCK_CLASS_PARTIALS: ClassPartial[] = [
-  createFixtureClassPartial({
-    classId: 'class-math-10a',
-    className: 'Mathematics 10A',
-    yearGroupKey: 'year-group-10',
-  }),
-  createFixtureClassPartial({
-    classId: 'class-math-10b',
-    className: 'Mathematics 10B',
-    yearGroupKey: 'year-group-10',
-  }),
-  createFixtureClassPartial({
-    classId: 'class-science-11',
-    className: 'Science 11',
-    yearGroupKey: 'year-group-11',
-  }),
+  createFixtureClassPartial({ classId: 'class-math-10a', className: 'Mathematics 10A', yearGroupKey: 'year-group-10' }),
+  createFixtureClassPartial({ classId: 'class-math-10b', className: 'Mathematics 10B', yearGroupKey: 'year-group-10' }),
+  createFixtureClassPartial({ classId: 'class-science-11', className: 'Science 11', yearGroupKey: 'year-group-11' }),
 ];
 
 /**
@@ -116,21 +98,9 @@ export const MOCK_EMPTY_YEAR_GROUPS: YearGroup[] = [];
  * Invalid class partials for trust failure testing.
  */
 export const MOCK_INVALID_CLASS_PARTIALS: ClassPartial[] = [
-  createFixtureClassPartial({
-    classId: 'class-invalid-1',
-    className: null,
-    yearGroupKey: 'year-group-10',
-  }),
-  createFixtureClassPartial({
-    classId: 'class-invalid-2',
-    className: 'Valid Class',
-    yearGroupKey: null,
-  }),
-  createFixtureClassPartial({
-    classId: 'class-invalid-3',
-    className: 'Another Valid',
-    yearGroupKey: 'year-group-invalid',
-  }),
+  createFixtureClassPartial({ classId: 'class-invalid-1', className: null, yearGroupKey: 'year-group-10' }),
+  createFixtureClassPartial({ classId: 'class-invalid-2', className: 'Valid Class', yearGroupKey: null }),
+  createFixtureClassPartial({ classId: 'class-invalid-3', className: 'Another Valid', yearGroupKey: 'year-group-invalid' }),
 ];
 
 // ============================================================================
@@ -148,11 +118,11 @@ export interface RenderClassesPageOptions {
 
 /**
  * Renders ClassesPage with pre-populated query client data.
- *
+ * 
  * This is the primary rendering helper for ClassesPage tests.
  * It creates a query client, sets the query data, and renders the component
  * with frontend providers.
- *
+ * 
  * @param {RenderClassesPageOptions} options - Options for rendering.
  * @returns {ReturnType<typeof renderWithFrontendProviders>} Render result with query client.
  */
@@ -177,7 +147,7 @@ export function renderClassesPage(
 
 /**
  * Renders ClassesPage with empty query data.
- *
+ * 
  * @returns {ReturnType<typeof renderWithFrontendProviders>} Render result with query client.
  */
 export function renderEmptyClassesPage(): ReturnType<typeof renderWithFrontendProviders> {
@@ -189,7 +159,7 @@ export function renderEmptyClassesPage(): ReturnType<typeof renderWithFrontendPr
 
 /**
  * Renders ClassesPage with invalid class partials (trust failure).
- *
+ * 
  * @returns {ReturnType<typeof renderWithFrontendProviders>} Render result with query client.
  */
 export function renderInvalidClassesPage(): ReturnType<typeof renderWithFrontendProviders> {
@@ -201,10 +171,10 @@ export function renderInvalidClassesPage(): ReturnType<typeof renderWithFrontend
 
 /**
  * Creates a query client with pre-populated ClassesPage data.
- *
+ * 
  * Use this when you need to set up query data before rendering but need
  * to perform additional setup on the query client.
- *
+ * 
  * @param {ClassPartial[]} classPartials - Class partials to set.
  * @param {YearGroup[]} yearGroups - Year groups to set.
  * @returns {QueryClient} Configured query client.
@@ -225,9 +195,9 @@ export function createQueryClientWithClassesData(
 
 /**
  * Builds and verifies the ClassesPage model result.
- *
+ * 
  * This helper builds the view model and provides type-safe access to the result.
- *
+ * 
  * @param {ClassPartial[]} classPartials - Class partials to build model with.
  * @param {YearGroup[]} yearGroups - Year groups to build model with.
  * @returns {{ modelResult: ClassesPagePanelViewModel | InvalidClassesPageDataViewModel; isInvalid: boolean; isEmpty: boolean }} Model result with validation flags.
@@ -243,17 +213,19 @@ export function verifyClassesPageModel(
   const modelResult = buildClassesPageModel(classPartials, yearGroups);
   const isInvalid = 'type' in modelResult && modelResult.type === 'invalidClassesPageData';
   const isEmpty = !isInvalid && 'panels' in modelResult && modelResult.panels.length === 0;
-
+  
   return { modelResult, isInvalid, isEmpty };
 }
 
 /**
  * Type guard for ClassesPagePanelViewModel.
- *
+ * 
  * @param {unknown} modelResult - The model result to check.
  * @returns {boolean} True if valid panel view model.
  */
-export function isValidPanelViewModel(modelResult: unknown): modelResult is ClassesPagePanelModel {
+export function isValidPanelViewModel(
+  modelResult: unknown
+): modelResult is ClassesPagePanelModel {
   return (
     typeof modelResult === 'object' &&
     modelResult !== null &&
@@ -265,7 +237,7 @@ export function isValidPanelViewModel(modelResult: unknown): modelResult is Clas
 
 /**
  * Type guard for InvalidClassesPageDataViewModel.
- *
+ * 
  * @param {unknown} modelResult - The model result to check.
  * @returns {boolean} True if invalid data view model.
  */
@@ -286,7 +258,7 @@ export function isInvalidDataViewModel(
 
 /**
  * Asserts that a collapse region is present in the document.
- *
+ * 
  * @param {string} [namePattern] - Optional name pattern for the collapse region.
  * @returns {HTMLElement} The collapse region element.
  */
@@ -298,7 +270,7 @@ export function assertCollapseRegion(namePattern = /year.*group/i): HTMLElement 
 
 /**
  * Asserts that a collapse region is NOT present in the document.
- *
+ * 
  * @param {string} [namePattern] - Optional name pattern for the collapse region.
  */
 export function assertNoCollapseRegion(namePattern = /year.*group/i): void {
@@ -307,7 +279,7 @@ export function assertNoCollapseRegion(namePattern = /year.*group/i): void {
 
 /**
  * Asserts that a blocking alert is present.
- *
+ * 
  * @returns {HTMLElement} The alert element.
  */
 export function assertBlockingAlert(): HTMLElement {
@@ -326,7 +298,7 @@ export function assertNoBlockingAlert(): void {
 
 /**
  * Asserts that a skeleton loading indicator is present.
- *
+ * 
  * @returns {HTMLElement} The skeleton element.
  */
 export function assertLoadingSkeleton(): HTMLElement {
@@ -345,7 +317,7 @@ export function assertNoLoadingSkeleton(): void {
 
 /**
  * Asserts that the empty state message is present.
- *
+ * 
  * @param {string} [messagePattern] - Pattern to match in the empty message.
  * @returns {HTMLElement} The empty state element.
  */
@@ -357,7 +329,7 @@ export function assertEmptyState(messagePattern = /no year groups configured/i):
 
 /**
  * Asserts that the Classes page heading is present.
- *
+ * 
  * @returns {HTMLElement} The heading element.
  */
 export function assertClassesPageHeading(): HTMLElement {
@@ -368,7 +340,7 @@ export function assertClassesPageHeading(): HTMLElement {
 
 /**
  * Gets a class card by its name pattern.
- *
+ * 
  * @param {string | RegExp} namePattern - Name pattern to match.
  * @returns {HTMLElement} The class card element.
  */
@@ -378,7 +350,7 @@ export function getClassCardByName(namePattern: string | RegExp): HTMLElement {
 
 /**
  * Asserts that a class card exists with the given name.
- *
+ * 
  * @param {string | RegExp} namePattern - Name pattern to match.
  * @returns {HTMLElement} The class card element.
  */
@@ -390,7 +362,7 @@ export function assertClassCardExists(namePattern: string | RegExp): HTMLElement
 
 /**
  * Asserts that a panel with the given year group key exists and has the expected number of classes.
- *
+ * 
  * @param {ReturnType<typeof buildClassesPageModel>} modelResult - The model result.
  * @param {string} yearGroupKey - The year group key to find.
  * @param {number} expectedClassCount - Expected number of classes in the panel.
@@ -404,10 +376,8 @@ export function assertPanelHasClassCount(
   if (isInvalidDataViewModel(modelResult)) {
     throw new Error('Cannot check panel class count: model result is invalid');
   }
-
-  const panel = modelResult.panels.find(
-    (p) => (p as { yearGroupKey: string }).yearGroupKey === yearGroupKey
-  );
+  
+  const panel = modelResult.panels.find((p) => (p as { yearGroupKey: string }).yearGroupKey === yearGroupKey);
   expect(panel).toBeDefined();
   expect((panel as { classes: unknown[] }).classes).toHaveLength(expectedClassCount);
   // Cast to the expected type - we've already validated the model is not invalid
@@ -416,7 +386,7 @@ export function assertPanelHasClassCount(
 
 /**
  * Asserts that a panel header exists with the given year group label.
- *
+ * 
  * @param {string | RegExp} labelPattern - Label pattern to match.
  * @returns {HTMLElement} The panel header element.
  */
@@ -428,7 +398,7 @@ export function assertPanelHeader(labelPattern: string | RegExp): HTMLElement {
 
 /**
  * Asserts that a panel header has the expected aria-expanded state.
- *
+ * 
  * @param {string | RegExp} labelPattern - Label pattern to match.
  * @param {boolean} expectedExpanded - Expected expanded state.
  */
@@ -442,7 +412,7 @@ export function assertPanelHeaderExpanded(
 
 /**
  * Asserts that a year group panel contains a specific class card.
- *
+ * 
  * @param {string | RegExp} panelLabelPattern - Pattern to match the panel label.
  * @param {string | RegExp} cardNamePattern - Pattern to match the card name.
  */
@@ -452,14 +422,14 @@ export function assertPanelContainsClass(
 ): void {
   const panelRegion = screen.getByRole('region', { name: panelLabelPattern });
   expect(panelRegion).toBeInTheDocument();
-
+  
   const card = getClassCardByName(cardNamePattern);
   expect(panelRegion).toContainElement(card);
 }
 
 /**
  * Asserts that a panel shows an empty state message.
- *
+ * 
  * @param {string | RegExp} panelLabelPattern - Pattern to match the panel label.
  */
 export function assertPanelEmpty(panelLabelPattern: string | RegExp): void {
@@ -485,26 +455,10 @@ export const MIXED_ORDER_YEAR_GROUPS: YearGroup[] = [
  * Mixed order class partials matching the mixed year groups.
  */
 export const MIXED_ORDER_CLASS_PARTIALS: ClassPartial[] = [
-  createFixtureClassPartial({
-    classId: 'class-math-11a',
-    className: 'Mathematics 11A',
-    yearGroupKey: 'year-group-11',
-  }),
-  createFixtureClassPartial({
-    classId: 'class-science-9',
-    className: 'Science 9',
-    yearGroupKey: 'year-group-9',
-  }),
-  createFixtureClassPartial({
-    classId: 'class-math-10a',
-    className: 'Mathematics 10A',
-    yearGroupKey: 'year-group-10',
-  }),
-  createFixtureClassPartial({
-    classId: 'class-english-10',
-    className: 'English 10',
-    yearGroupKey: 'year-group-10',
-  }),
+  createFixtureClassPartial({ classId: 'class-math-11a', className: 'Mathematics 11A', yearGroupKey: 'year-group-11' }),
+  createFixtureClassPartial({ classId: 'class-science-9', className: 'Science 9', yearGroupKey: 'year-group-9' }),
+  createFixtureClassPartial({ classId: 'class-math-10a', className: 'Mathematics 10A', yearGroupKey: 'year-group-10' }),
+  createFixtureClassPartial({ classId: 'class-english-10', className: 'English 10', yearGroupKey: 'year-group-10' }),
 ];
 
 /**
@@ -519,11 +473,7 @@ export const YEAR_GROUPS_WITH_EMPTY: YearGroup[] = [
  * Class partials for empty panel test (only Year 10 has classes).
  */
 export const CLASS_PARTIALS_FOR_EMPTY_PANEL: ClassPartial[] = [
-  createFixtureClassPartial({
-    classId: 'class-math-10a',
-    className: 'Mathematics 10A',
-    yearGroupKey: 'year-group-10',
-  }),
+  createFixtureClassPartial({ classId: 'class-math-10a', className: 'Mathematics 10A', yearGroupKey: 'year-group-10' }),
 ];
 
 // ============================================================================
@@ -534,48 +484,26 @@ export const CLASS_PARTIALS_FOR_EMPTY_PANEL: ClassPartial[] = [
  * Class partials for alphabetical ordering tests.
  */
 export const ALPHABETICAL_ORDER_CLASS_PARTIALS: ClassPartial[] = [
-  createFixtureClassPartial({
-    classId: 'class-math-10b',
-    className: 'Mathematics 10B',
-    yearGroupKey: 'year-group-10',
-  }),
-  createFixtureClassPartial({
-    classId: 'class-math-10a',
-    className: 'Mathematics 10A',
-    yearGroupKey: 'year-group-10',
-  }),
-  createFixtureClassPartial({
-    classId: 'class-english-10',
-    className: 'English 10',
-    yearGroupKey: 'year-group-10',
-  }),
+  createFixtureClassPartial({ classId: 'class-math-10b', className: 'Mathematics 10B', yearGroupKey: 'year-group-10' }),
+  createFixtureClassPartial({ classId: 'class-math-10a', className: 'Mathematics 10A', yearGroupKey: 'year-group-10' }),
+  createFixtureClassPartial({ classId: 'class-english-10', className: 'English 10', yearGroupKey: 'year-group-10' }),
 ];
 
 /**
  * Class partials for tie-break sorting tests (same className, different classId).
  */
 export const TIE_BREAK_CLASS_PARTIALS: ClassPartial[] = [
-  createFixtureClassPartial({
-    classId: 'class-b-z',
-    className: 'Z Class',
-    yearGroupKey: 'year-group-10',
-  }),
-  createFixtureClassPartial({
-    classId: 'class-a-z',
-    className: 'Z Class',
-    yearGroupKey: 'year-group-10',
-  }),
-  createFixtureClassPartial({
-    classId: 'class-b-a',
-    className: 'A Class',
-    yearGroupKey: 'year-group-10',
-  }),
+  createFixtureClassPartial({ classId: 'class-b-z', className: 'Z Class', yearGroupKey: 'year-group-10' }),
+  createFixtureClassPartial({ classId: 'class-a-z', className: 'Z Class', yearGroupKey: 'year-group-10' }),
+  createFixtureClassPartial({ classId: 'class-b-a', className: 'A Class', yearGroupKey: 'year-group-10' }),
 ];
 
 /**
  * Single year group for focused tests.
  */
-export const SINGLE_YEAR_GROUP: YearGroup[] = [createFixtureYearGroup('year-group-10', 'Year 10')];
+export const SINGLE_YEAR_GROUP: YearGroup[] = [
+  createFixtureYearGroup('year-group-10', 'Year 10'),
+];
 
 // ============================================================================
 // Dummy component export to satisfy react-refresh plugin
@@ -585,7 +513,7 @@ export const SINGLE_YEAR_GROUP: YearGroup[] = [createFixtureYearGroup('year-grou
 /**
  * Dummy component to satisfy react-refresh plugin requirement for .tsx files.
  * This component is never actually used in tests.
- *
+ * 
  * @returns {null} Always returns null.
  */
 function ClassesPageTestHelpersDummy(): null {
@@ -596,7 +524,10 @@ function ClassesPageTestHelpersDummy(): null {
 // Re-export commonly used items for convenience
 // ============================================================================
 
-export { MOCK_YEAR_GROUPS as DEFAULT_YEAR_GROUPS, MOCK_CLASS_PARTIALS as DEFAULT_CLASS_PARTIALS };
+export {
+  MOCK_YEAR_GROUPS as DEFAULT_YEAR_GROUPS,
+  MOCK_CLASS_PARTIALS as DEFAULT_CLASS_PARTIALS,
+};
 
 // Export the dummy component to satisfy react-refresh
 export { ClassesPageTestHelpersDummy };

@@ -14,13 +14,13 @@ import {
   getAssignmentTopicsQueryOptions,
   getYearGroupsQueryOptions,
 } from '../query/sharedQueries';
-import { DEFAULT_WEIGHTING_VALUE } from '../services/assignmentDefinition/assignmentDefinition.zod';
+import { DEFAULT_WEIGHTING_VALUE } from '../services/assignmentDefinition.zod';
 import {
   type AssignmentDefinition,
   type UpsertAssignmentDefinitionResponse,
   type UpsertAssignmentDefinitionRequest,
   upsertAssignmentDefinition,
-} from '../services/assignmentDefinition/assignmentDefinitionService';
+} from '../services/assignmentDefinitionService';
 
 export type ModalMode = 'create' | 'update';
 

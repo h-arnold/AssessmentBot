@@ -11,7 +11,7 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { QueryClientProvider } from '@tanstack/react-query';
-import type { YearGroup } from '../../../services/referenceData/referenceData.zod';
+import type { YearGroup } from '../../../services/referenceData.zod';
 import { queryKeys } from '../../../query/queryKeys';
 import { createAppQueryClient } from '../../../query/queryClient';
 import { renderWithFrontendProviders } from '../../../test/renderWithFrontendProviders';
@@ -22,7 +22,7 @@ const createYearGroupMock = vi.hoisted(() => vi.fn());
 const updateYearGroupMock = vi.hoisted(() => vi.fn());
 const getYearGroupsMock = vi.hoisted(() => vi.fn());
 
-vi.mock('../../../services/referenceData/referenceDataService', () => ({
+vi.mock('../../../services/referenceDataService', () => ({
   getCohorts: vi.fn(),
   createCohort: vi.fn(),
   updateCohort: vi.fn(),
@@ -57,7 +57,7 @@ const createdYearGroupFixture: YearGroup = { key: 'year-9', name: yearGroupCreat
  * @returns {ReturnType<typeof renderWithFrontendProviders>} Render result and query client.
  */
 function renderManageYearGroupsModal(
-  options: { open?: boolean; seedQueryData?: boolean; yearGroups?: YearGroup[] } = {}
+  options: { open?: boolean; seedQueryData?: boolean; yearGroups?: YearGroup[] } = {},
 ) {
   const { open = true, seedQueryData = true, yearGroups = seedYearGroups } = options;
   const queryClient = createAppQueryClient();
@@ -67,10 +67,12 @@ function renderManageYearGroupsModal(
   }
   getYearGroupsMock.mockResolvedValue(yearGroups);
 
-  return renderWithFrontendProviders(<ManageYearGroupsModal open={open} onClose={onCloseMock} />, {
-    queryClient,
-  });
+  return renderWithFrontendProviders(
+    <ManageYearGroupsModal open={open} onClose={onCloseMock} />,
+    { queryClient },
+  );
 }
+
 
 /**
  * Returns the owned Manage Year Groups modal dialog region.
@@ -101,15 +103,10 @@ async function submitCreateYearGroupWhenRefreshFails(dialog: HTMLElement) {
   fireEvent.click(within(dialog).getByRole('button', { name: /create year group/i }));
 
   const formDialog = await screen.findByRole('dialog', { name: yearGroupCreateDialogNameRegex });
-  fireEvent.change(
-    within(formDialog).getByRole('textbox', { name: createYearGroupInputNameRegex }),
-    {
-      target: { value: yearGroupCreateName },
-    }
-  );
-  fireEvent.click(
-    within(formDialog).getByRole('button', { name: yearGroupCreateSubmitButtonNameRegex })
-  );
+  fireEvent.change(within(formDialog).getByRole('textbox', { name: createYearGroupInputNameRegex }), {
+    target: { value: yearGroupCreateName },
+  });
+  fireEvent.click(within(formDialog).getByRole('button', { name: yearGroupCreateSubmitButtonNameRegex }));
 
   await waitFor(() => {
     expect(createYearGroupMock).toHaveBeenCalledWith({
@@ -163,9 +160,9 @@ async function assertTransientStateReset(options: {
   switch (closeMethod) {
     case 'Cancel': {
       // Find the Cancel button in the outer modal's footer
-      const footerCancel = screen
-        .getAllByRole('button', { name: /cancel/i })
-        .find((button) => button.closest('.ant-modal-footer') !== null);
+      const footerCancel = screen.getAllByRole('button', { name: /cancel/i }).find(
+        (button) => button.closest('.ant-modal-footer') !== null
+      );
       expect(footerCancel).toBeDefined();
       fireEvent.click(footerCancel!);
       break;
@@ -210,13 +207,9 @@ describe('ManageYearGroupsModal', () => {
       renderManageYearGroupsModal({ seedQueryData: false });
       const dialog = getManageYearGroupsModalDialog();
 
-      expect(
-        within(dialog).getByRole('status', { name: 'Loading year groups' })
-      ).toBeInTheDocument();
+      expect(within(dialog).getByRole('status', { name: 'Loading year groups' })).toBeInTheDocument();
       expect(dialog.querySelector('.ant-skeleton')).not.toBeNull();
-      expect(
-        within(dialog).queryByRole('button', { name: /create year group/i })
-      ).not.toBeInTheDocument();
+      expect(within(dialog).queryByRole('button', { name: /create year group/i })).not.toBeInTheDocument();
       expect(within(dialog).queryByRole('table', { name: /year groups/i })).not.toBeInTheDocument();
       expect(within(dialog).queryByText('Year 7')).not.toBeInTheDocument();
     });
@@ -231,9 +224,7 @@ describe('ManageYearGroupsModal', () => {
       const dialog = await findManageYearGroupsModalDialog();
 
       await waitFor(() => {
-        expect(
-          within(dialog).queryByRole('button', { name: /create year group/i })
-        ).not.toBeInTheDocument();
+        expect(within(dialog).queryByRole('button', { name: /create year group/i })).not.toBeInTheDocument();
       });
       expect(within(dialog).queryByRole('table', { name: /year groups/i })).not.toBeInTheDocument();
       expect(within(dialog).getByRole('alert')).toHaveTextContent(yearGroupsLoadFailureCopy);
@@ -256,9 +247,7 @@ describe('ManageYearGroupsModal', () => {
         expect(getYearGroupsMock).toHaveBeenCalledTimes(1);
       });
       expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument();
-      expect(
-        within(dialog).getByRole('button', { name: /create year group/i })
-      ).toBeInTheDocument();
+      expect(within(dialog).getByRole('button', { name: /create year group/i })).toBeInTheDocument();
       expect(within(dialog).getByRole('table', { name: /year groups/i })).toBeInTheDocument();
       expect(within(dialog).getByText('Year 7')).toBeInTheDocument();
       expect(within(dialog).getByText('Year 8')).toBeInTheDocument();
@@ -271,12 +260,9 @@ describe('ManageYearGroupsModal', () => {
       await within(dialog).findByRole('table', { name: /year groups/i });
 
       let releaseRefresh: (() => void) | undefined;
-      getYearGroupsMock.mockImplementationOnce(
-        () =>
-          new Promise<YearGroup[]>((resolve) => {
-            releaseRefresh = () => resolve(seedYearGroups);
-          })
-      );
+      getYearGroupsMock.mockImplementationOnce(() => new Promise<YearGroup[]>((resolve) => {
+        releaseRefresh = () => resolve(seedYearGroups);
+      }));
 
       try {
         await act(async () => {
@@ -288,9 +274,7 @@ describe('ManageYearGroupsModal', () => {
           expect(dialog).toHaveAttribute('aria-busy', 'true');
         });
         expect(within(dialog).getByText('Refreshing year groups...')).toBeInTheDocument();
-        expect(
-          within(dialog).getByRole('button', { name: /create year group/i })
-        ).toBeInTheDocument();
+        expect(within(dialog).getByRole('button', { name: /create year group/i })).toBeInTheDocument();
         expect(within(dialog).getByRole('table', { name: /year groups/i })).toBeInTheDocument();
         expect(within(dialog).getByText('Year 7')).toBeInTheDocument();
       } finally {
@@ -330,9 +314,7 @@ describe('ManageYearGroupsModal', () => {
 
       const dialog = await findManageYearGroupsModalDialog();
       await within(dialog).findByText(/no year groups/i);
-      expect(
-        within(dialog).getByRole('button', { name: /create year group/i })
-      ).toBeInTheDocument();
+      expect(within(dialog).getByRole('button', { name: /create year group/i })).toBeInTheDocument();
     });
   });
 
@@ -342,9 +324,7 @@ describe('ManageYearGroupsModal', () => {
 
       const dialog = await findManageYearGroupsModalDialog();
       await within(dialog).findByRole('table', { name: /year groups/i });
-      expect(
-        within(dialog).getByRole('button', { name: /create year group/i })
-      ).toBeInTheDocument();
+      expect(within(dialog).getByRole('button', { name: /create year group/i })).toBeInTheDocument();
     });
 
     it('exposes data-testid="reference-data-create-action-icon" on the create action', async () => {
@@ -410,7 +390,7 @@ describe('ManageYearGroupsModal', () => {
             queryKey: queryKeys.yearGroups(),
             type: 'active',
           }),
-          expect.objectContaining({ throwOnError: true })
+          expect.objectContaining({ throwOnError: true }),
         );
       });
     });
@@ -433,7 +413,7 @@ describe('ManageYearGroupsModal', () => {
             queryKey: queryKeys.yearGroups(),
             type: 'active',
           }),
-          expect.objectContaining({ throwOnError: true })
+          expect.objectContaining({ throwOnError: true }),
         );
       });
     });
@@ -452,9 +432,7 @@ describe('ManageYearGroupsModal', () => {
         expect(within(dialog).getByRole('alert')).toHaveTextContent(yearGroupsLoadFailureCopy);
       });
       expect(screen.queryByRole('dialog', { name: /create year group/i })).not.toBeInTheDocument();
-      expect(
-        within(dialog).queryByRole('button', { name: /create year group/i })
-      ).not.toBeInTheDocument();
+      expect(within(dialog).queryByRole('button', { name: /create year group/i })).not.toBeInTheDocument();
       expect(within(dialog).queryByRole('table', { name: /year groups/i })).not.toBeInTheDocument();
     });
 
@@ -477,15 +455,9 @@ describe('ManageYearGroupsModal', () => {
       });
 
       const remountedDialog = await findManageYearGroupsModalDialog();
-      expect(within(remountedDialog).getByRole('alert')).toHaveTextContent(
-        yearGroupsLoadFailureCopy
-      );
-      expect(
-        within(remountedDialog).queryByRole('button', { name: /create year group/i })
-      ).not.toBeInTheDocument();
-      expect(
-        within(remountedDialog).queryByRole('table', { name: /year groups/i })
-      ).not.toBeInTheDocument();
+      expect(within(remountedDialog).getByRole('alert')).toHaveTextContent(yearGroupsLoadFailureCopy);
+      expect(within(remountedDialog).queryByRole('button', { name: /create year group/i })).not.toBeInTheDocument();
+      expect(within(remountedDialog).queryByRole('table', { name: /year groups/i })).not.toBeInTheDocument();
     });
   });
 

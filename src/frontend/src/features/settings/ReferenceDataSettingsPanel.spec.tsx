@@ -15,10 +15,7 @@ function createModalTestRender() {
   const queryClient = createAppQueryClient();
   queryClient.setQueryData(queryKeys.assignmentTopics(), []);
   queryClient.setQueryData(queryKeys.yearGroups(), []);
-  return {
-    queryClient,
-    render: () => renderWithFrontendProviders(<ReferenceDataSettingsPanel />, { queryClient }),
-  };
+  return { queryClient, render: () => renderWithFrontendProviders(<ReferenceDataSettingsPanel />, { queryClient }) };
 }
 
 // Helper functions for modal interaction tests
@@ -94,12 +91,12 @@ const updateAssignmentTopicMock = vi.hoisted(() => vi.fn());
 const deleteAssignmentTopicMock = vi.hoisted(() => vi.fn());
 
 // Mock assignmentTopicsService
-vi.mock('../../services/assignmentDefinition/assignmentTopicsService', () => ({
+vi.mock('../../services/assignmentTopicsService', () => ({
   getAssignmentTopics: getAssignmentTopicsFromAssignmentTopicsServiceMock,
 }));
 
 // Mock referenceDataService
-vi.mock('../../services/referenceData/referenceDataService', () => ({
+vi.mock('../../services/referenceDataService', () => ({
   getCohorts: vi.fn(),
   createCohort: vi.fn(),
   updateCohort: vi.fn(),

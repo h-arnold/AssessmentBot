@@ -2,7 +2,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { queryKeys } from '../query/queryKeys';
-import { deleteAssignmentDefinition } from '../services/assignmentDefinition/assignmentDefinitionPartialsService';
+import { deleteAssignmentDefinition } from '../services/assignmentDefinitionPartialsService';
 import { getCssRuleBlock } from '../test/appStylesRaw';
 import { renderWithFrontendProviders } from '../test/renderWithFrontendProviders';
 import {
@@ -55,26 +55,26 @@ vi.mock('../features/auth/startupWarmupState', async (importOriginal) => {
   };
 });
 
-vi.mock('../services/assignmentDefinition/assignmentDefinitionPartialsService', () => ({
+vi.mock('../services/assignmentDefinitionPartialsService', () => ({
   deleteAssignmentDefinition: deleteAssignmentDefinitionMock,
   getAssignmentDefinitionPartials: getAssignmentDefinitionPartialsMock,
 }));
 
-vi.mock('../services/assignmentDefinition/assignmentDefinitionService', () => ({
+vi.mock('../services/assignmentDefinitionService', () => ({
   getAssignmentDefinition: getAssignmentDefinitionMock,
   upsertAssignmentDefinition: upsertAssignmentDefinitionMock,
 }));
 
-vi.mock('../services/assignmentDefinition/assignmentTopicsService', () => ({
+vi.mock('../services/assignmentTopicsService', () => ({
   getAssignmentTopics: getAssignmentTopicsMock,
 }));
 
-vi.mock('../services/referenceData/referenceDataService', () => ({
+vi.mock('../services/referenceDataService', () => ({
   getCohorts: getCohortsMock,
   getYearGroups: getYearGroupsMock,
 }));
 
-vi.mock('../services/googleClassrooms/classPartialsService', () => ({
+vi.mock('../services/classPartialsService', () => ({
   getABClassPartials: getABClassPartialsMock,
 }));
 

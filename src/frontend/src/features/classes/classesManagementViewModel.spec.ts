@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { ClassPartial } from '../../services/googleClassrooms/classPartialsService';
-import type { GoogleClassroom } from '../../services/googleClassrooms/googleClassroomsService';
+import type { ClassPartial } from '../../services/classPartialsService';
+import type { GoogleClassroom } from '../../services/googleClassroomsService';
 
 type LabelsByKey = Readonly<Record<string, string>>;
 
@@ -211,9 +211,7 @@ describe('classesManagementViewModel.buildClassesManagementRows', () => {
       yearGroupLabelsByKey: {},
     });
 
-    expect(
-      rows.map((row: { classId: string; status: string }) => `${row.status}:${row.classId}`)
-    ).toEqual([
+    expect(rows.map((row: { classId: string; status: string }) => `${row.status}:${row.classId}`)).toEqual([
       'active:active-a',
       'active:active-z',
       'inactive:inactive-a',
@@ -259,9 +257,6 @@ describe('classesManagementViewModel.buildClassesManagementRows', () => {
       yearGroupLabelsByKey: {},
     });
 
-    expect(rows.map((row: { classId: string }) => row.classId)).toEqual([
-      'active-lower',
-      'active-upper',
-    ]);
+    expect(rows.map((row: { classId: string }) => row.classId)).toEqual(['active-lower', 'active-upper']);
   });
 });

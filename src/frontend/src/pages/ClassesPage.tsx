@@ -1,16 +1,4 @@
-import {
-  Alert,
-  Button,
-  Card,
-  Col,
-  Collapse,
-  Empty,
-  Row,
-  Skeleton,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Alert, Button, Card, Col, Collapse, Empty, Row, Skeleton, Space, Tooltip, Typography } from 'antd';
 import { AuditOutlined } from '@ant-design/icons';
 import { type JSX, useMemo, useState } from 'react';
 import {
@@ -20,8 +8,8 @@ import {
   usePageDataset,
   type PageDatasetState,
 } from '../hooks/usePageDataset';
-import type { ClassPartial } from '../services/googleClassrooms/classPartials.zod';
-import type { YearGroup } from '../services/referenceData/referenceData.zod';
+import type { ClassPartial } from '../services/classPartials.zod';
+import type { YearGroup } from '../services/referenceData.zod';
 import {
   buildClassesPageModel,
   type ClassesPagePanelViewModel,
@@ -62,7 +50,8 @@ function getClassesSurfaceState(
   }>
 ): Readonly<{ shouldRenderBlockingState: boolean; shouldRenderLoadingState: boolean }> {
   const isBlocking =
-    computePageSurfaceBlocking(input.classPartials) || computePageSurfaceBlocking(input.yearGroups);
+    computePageSurfaceBlocking(input.classPartials) ||
+    computePageSurfaceBlocking(input.yearGroups);
 
   if (isBlocking) {
     return {
@@ -137,10 +126,7 @@ function renderYearGroupCollapse(
   const isMobile = window.innerWidth <= CLASSES_MOBILE_BREAKPOINT_PX;
 
   return (
-    <section
-      aria-label="year group panels"
-      style={{ minWidth: isMobile ? `${MIN_PANEL_WIDTH_PX}px` : 'auto' }}
-    >
+    <section aria-label="year group panels" style={{ minWidth: isMobile ? `${MIN_PANEL_WIDTH_PX}px` : 'auto' }}>
       <Collapse defaultActiveKey={defaultExpandedPanelKeys}>
         {panels.map((panel) => {
           const headerId = `panel-header-${panel.yearGroupKey}`;

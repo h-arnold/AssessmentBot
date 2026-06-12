@@ -1,31 +1,8 @@
 # Frontend Structure Audit Report
 
 **Date:** 2026-06-12
-**Branch:** `refactor/GroupDomainsBetter`
+**Branch:** `feat/AssignmentWizardHappyPath`
 **Scope:** `src/frontend/src/`
-
----
-
-## Implementation Status
-
-| Batch | Step | Task                                                                  | Status          |
-| ----- | ---- | --------------------------------------------------------------------- | --------------- |
-| **1** | 1    | Group flat services into domain subfolders                            | ✅ **Complete** |
-| 2     | 2    | Extract `features/assignmentWizard/` from `pages/`                    | ⬜ Pending      |
-| 2     | 3    | Flatten `pages/classes/` to `pages/classesPageModel.ts`               | ⬜ Pending      |
-| 2     | 4    | Move `SettingsPageGoogleClassroomsPrefetch` into `features/settings/` | ⬜ Pending      |
-| 2     | 5-6  | Move bulk modals into `features/classes/bulk/` + integration spec     | ⬜ Pending      |
-| 3     | 7    | Extract `features/referenceData/`                                     | ⬜ Pending      |
-
-**Batch 1 complete.** All flat service files moved to domain subfolders:
-
-- `services/assignmentDefinition/` — assignmentDefinition*, assignmentTopics* files
-- `services/authService/` — authService\* files
-- `services/backendConfiguration/` — backendConfiguration\* files
-- `services/googleClassrooms/` — googleClassrooms*, classPartials*, googleClassroomAssignments\* files
-- `services/referenceData/` — referenceData\* files
-
-All import paths across `src/frontend/src/` updated. Lint passes clean. 89/91 test files pass (2 pre-existing failures unrelated to reorganisation).
 
 ---
 

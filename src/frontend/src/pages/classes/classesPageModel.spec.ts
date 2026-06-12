@@ -6,14 +6,14 @@
  * - CLASSES_PAGE_LAYOUT.md
  * - docs/developer/frontend/frontend-testing.md
  * - docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md
- * - src/frontend/src/services/googleClassrooms/classPartialsService.ts
- * - src/frontend/src/services/referenceData/referenceDataService.ts
+ * - src/frontend/src/services/classPartialsService.ts
+ * - src/frontend/src/services/referenceDataService.ts
  * - src/frontend/src/query/sharedQueries.ts
  * - src/frontend/src/features/classes/ClassesTable.helpers.ts
  */
 import { describe, it, expect } from 'vitest';
-import type { ClassPartial } from '../../services/googleClassrooms/classPartials.zod';
-import type { YearGroup } from '../../services/referenceData/referenceData.zod';
+import type { ClassPartial } from '../../services/classPartials.zod';
+import type { YearGroup } from '../../services/referenceData.zod';
 import type {
   InvalidClassesPageDataViewModel,
   ClassesPagePanelViewModel,

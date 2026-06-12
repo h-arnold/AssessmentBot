@@ -1,7 +1,7 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import type { PropsWithChildren } from 'react';
-import type * as AssignmentDefinitionPartialsServiceModule from '../../services/assignmentDefinition/assignmentDefinitionPartialsService';
+import type * as AssignmentDefinitionPartialsServiceModule from '../../services/assignmentDefinitionPartialsService';
 import type * as SharedQueriesModule from '../../query/sharedQueries';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiTransportError } from '../../errors/apiTransportError';
@@ -35,15 +35,15 @@ const {
   getYearGroupsMock: vi.fn(),
 }));
 
-vi.mock('../../services/authService/authService', () => ({
+vi.mock('../../services/authService', () => ({
   getAuthorisationStatus: getAuthorisationStatusMock,
 }));
 
-vi.mock('../../services/googleClassrooms/classPartialsService', () => ({
+vi.mock('../../services/classPartialsService', () => ({
   getABClassPartials: getABClassPartialsMock,
 }));
 
-vi.mock('../../services/assignmentDefinition/assignmentDefinitionPartialsService', () => ({
+vi.mock('../../services/assignmentDefinitionPartialsService', () => ({
   getAssignmentDefinitionPartials: getAssignmentDefinitionPartialsMock,
 }));
 
@@ -51,12 +51,12 @@ vi.mock('../../services/apiService', () => ({
   callApi: callApiMock,
 }));
 
-vi.mock('../../services/referenceData/referenceDataService', () => ({
+vi.mock('../../services/referenceDataService', () => ({
   getCohorts: getCohortsMock,
   getYearGroups: getYearGroupsMock,
 }));
 
-vi.mock('../../services/assignmentDefinition/assignmentTopicsService', () => ({
+vi.mock('../../services/assignmentTopicsService', () => ({
   getAssignmentTopics: getAssignmentTopicsMock,
 }));
 
@@ -423,7 +423,7 @@ describe('AppAuthGate', () => {
   it('keeps startup warm-up ready when assignment definitions arrive with backend-compatible non-null tasks', async () => {
     const actualAssignmentDefinitionPartialsService = await vi.importActual<
       typeof AssignmentDefinitionPartialsServiceModule
-    >('../../services/assignmentDefinition/assignmentDefinitionPartialsService');
+    >('../../services/assignmentDefinitionPartialsService');
     const { warmStartupQueries: actualWarmStartupQueries } = await vi.importActual<
       typeof SharedQueriesModule
     >('../../query/sharedQueries');

@@ -7,26 +7,22 @@ const { getABClassPartialsMock } = vi.hoisted(() => ({
   getABClassPartialsMock: vi.fn(),
 }));
 
-vi.mock('../../../services/googleClassrooms/classPartialsService', () => ({
+vi.mock('../../../services/classPartialsService', () => ({
   getABClassPartials: getABClassPartialsMock,
 }));
 
 const initialAndRefreshCallCount = 2;
 
 type QueryInvalidationModule = Readonly<{
-  mapRequiredClassPartialsRefreshFailureToUserMessage: (
-    refreshError: Readonly<{
-      code?: string;
-      requestId?: string;
-      retriable?: boolean;
-    }>
-  ) => string;
-  runMutationWithRequiredClassPartialsRefresh: <TResult>(
-    options: Readonly<{
-      mutate: () => Promise<TResult>;
-      queryClient: ReturnType<typeof createAppQueryClient>;
-    }>
-  ) => Promise<
+  mapRequiredClassPartialsRefreshFailureToUserMessage: (refreshError: Readonly<{
+    code?: string;
+    requestId?: string;
+    retriable?: boolean;
+  }>) => string;
+  runMutationWithRequiredClassPartialsRefresh: <TResult>(options: Readonly<{
+    mutate: () => Promise<TResult>;
+    queryClient: ReturnType<typeof createAppQueryClient>;
+  }>) => Promise<
     | Readonly<{
         mutationResult: TResult;
         mutationStatus: 'success';
@@ -111,18 +107,16 @@ describe('query invalidation orchestration', () => {
   });
 
   it('returns refresh-failure metadata when a required class-partials refetch fails after mutation success', async () => {
-    getABClassPartialsMock
-      .mockResolvedValueOnce([{ classId: 'existing-class' }])
-      .mockRejectedValueOnce(
-        new ApiTransportError({
-          requestId: 'request-123',
-          error: {
-            code: 'RATE_LIMITED',
-            message: 'Too many requests.',
-            retriable: true,
-          },
-        })
-      );
+    getABClassPartialsMock.mockResolvedValueOnce([{ classId: 'existing-class' }]).mockRejectedValueOnce(
+      new ApiTransportError({
+        requestId: 'request-123',
+        error: {
+          code: 'RATE_LIMITED',
+          message: 'Too many requests.',
+          retriable: true,
+        },
+      })
+    );
 
     const mutationResult = { classId: 'class-99' };
     const mutate = vi.fn().mockResolvedValue(mutationResult);
@@ -151,8 +145,7 @@ describe('query invalidation orchestration', () => {
   });
 
   it('maps rate-limited refresh failures to user-safe guidance', async () => {
-    const { mapRequiredClassPartialsRefreshFailureToUserMessage } =
-      await loadQueryInvalidationModule();
+    const { mapRequiredClassPartialsRefreshFailureToUserMessage } = await loadQueryInvalidationModule();
 
     expect(
       mapRequiredClassPartialsRefreshFailureToUserMessage({
@@ -164,8 +157,7 @@ describe('query invalidation orchestration', () => {
   });
 
   it('maps invalid-request refresh failures to user-safe guidance', async () => {
-    const { mapRequiredClassPartialsRefreshFailureToUserMessage } =
-      await loadQueryInvalidationModule();
+    const { mapRequiredClassPartialsRefreshFailureToUserMessage } = await loadQueryInvalidationModule();
 
     expect(
       mapRequiredClassPartialsRefreshFailureToUserMessage({
@@ -177,8 +169,7 @@ describe('query invalidation orchestration', () => {
   });
 
   it('falls back to generic refresh guidance for unknown refresh failures', async () => {
-    const { mapRequiredClassPartialsRefreshFailureToUserMessage } =
-      await loadQueryInvalidationModule();
+    const { mapRequiredClassPartialsRefreshFailureToUserMessage } = await loadQueryInvalidationModule();
 
     expect(
       mapRequiredClassPartialsRefreshFailureToUserMessage({

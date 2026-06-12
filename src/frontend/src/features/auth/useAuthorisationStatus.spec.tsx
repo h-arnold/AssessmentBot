@@ -10,7 +10,7 @@ const { getAuthorisationStatusMock } = vi.hoisted(() => ({
   getAuthorisationStatusMock: vi.fn(),
 }));
 
-vi.mock('../../services/authService/authService', () => ({
+vi.mock('../../services/authService', () => ({
   getAuthorisationStatus: getAuthorisationStatusMock,
 }));
 
@@ -133,9 +133,7 @@ describe('useAuthorisationStatus', () => {
       }
     );
 
-    expect(
-      screen.getByRole('status', { name: 'Loading authorisation status' })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: 'Loading authorisation status' })).toBeInTheDocument();
     expect(await screen.findByText('Authorised')).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByTestId('auth-hook-probe')).toHaveTextContent(

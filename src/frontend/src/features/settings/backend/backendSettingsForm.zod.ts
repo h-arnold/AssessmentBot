@@ -3,7 +3,7 @@ import {
   backendApiKeyValidationMessage,
   isBackendApiKeyToken,
   isDriveFolderId,
-} from '../../../services/backendConfiguration/backendConfigurationValidation';
+} from '../../../services/backendConfigurationValidation';
 
 const backendAssessorBatchSizeMinimum = 1;
 const backendAssessorBatchSizeMaximum = 500;
@@ -67,7 +67,8 @@ export const BackendSettingsFormSchema = z
       .optional()
       .transform((value) => value ?? '')
       .refine((value) => value === '' || isDriveFolderId(value), {
-        message: 'JSON DB Root Folder ID must match the backend Drive folder identifier contract.',
+        message:
+          'JSON DB Root Folder ID must match the backend Drive folder identifier contract.',
       }),
   })
   .superRefine((value, context) => {

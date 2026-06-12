@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import type { Cohort, YearGroup } from '../../services/referenceData/referenceData.zod';
+import type { Cohort, YearGroup } from '../../services/referenceData.zod';
 import type { RowMutationResult } from '../../features/classes/bulk/batchMutationEngine';
 import type { ClassesManagementRow } from '../../features/classes/classesManagementViewModel';
 import type { ClassesManagementState } from '../../features/classes/useClassesManagement';

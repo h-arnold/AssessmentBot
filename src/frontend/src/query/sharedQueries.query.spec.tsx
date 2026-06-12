@@ -20,27 +20,27 @@ const getGoogleClassroomsMock = vi.fn();
 const getAssignmentTopicsMock = vi.fn();
 const getYearGroupsMock = vi.fn();
 
-vi.mock('../services/authService/authService', () => ({
+vi.mock('../services/authService', () => ({
   getAuthorisationStatus: getAuthorisationStatusMock,
 }));
 
-vi.mock('../services/googleClassrooms/classPartialsService', () => ({
+vi.mock('../services/classPartialsService', () => ({
   getABClassPartials: getABClassPartialsMock,
 }));
 
-vi.mock('../services/assignmentDefinition/assignmentDefinitionPartialsService', () => ({
+vi.mock('../services/assignmentDefinitionPartialsService', () => ({
   getAssignmentDefinitionPartials: getAssignmentDefinitionPartialsMock,
 }));
 
-vi.mock('../services/googleClassrooms/googleClassroomsService', () => ({
+vi.mock('../services/googleClassroomsService', () => ({
   getGoogleClassrooms: getGoogleClassroomsMock,
 }));
 
-vi.mock('../services/assignmentDefinition/assignmentTopicsService', () => ({
+vi.mock('../services/assignmentTopicsService', () => ({
   getAssignmentTopics: getAssignmentTopicsMock,
 }));
 
-vi.mock('../services/referenceData/referenceDataService', () => ({
+vi.mock('../services/referenceDataService', () => ({
   getCohorts: getCohortsMock,
   getYearGroups: getYearGroupsMock,
 }));
@@ -72,9 +72,7 @@ describe('shared query definitions', () => {
     const queryOptions = getAssignmentDefinitionPartialsQueryOptions();
 
     expect(queryOptions.queryKey).toEqual(queryKeys.assignmentDefinitionPartials());
-    await expect(queryClient.fetchQuery(queryOptions)).resolves.toEqual(
-      assignmentDefinitionPartials
-    );
+    await expect(queryClient.fetchQuery(queryOptions)).resolves.toEqual(assignmentDefinitionPartials);
     expect(getAssignmentDefinitionPartialsMock).toHaveBeenCalledTimes(1);
   });
 
@@ -86,13 +84,14 @@ describe('shared query definitions', () => {
     getCohortsMock.mockResolvedValueOnce(cohorts);
     getYearGroupsMock.mockResolvedValueOnce(yearGroups);
 
-    const { getClassPartialsQueryOptions, getCohortsQueryOptions, getYearGroupsQueryOptions } =
-      await import('./sharedQueries');
+    const {
+      getClassPartialsQueryOptions,
+      getCohortsQueryOptions,
+      getYearGroupsQueryOptions,
+    } = await import('./sharedQueries');
     const queryClient = createAppQueryClient();
 
-    await expect(queryClient.fetchQuery(getClassPartialsQueryOptions())).resolves.toEqual(
-      classPartials
-    );
+    await expect(queryClient.fetchQuery(getClassPartialsQueryOptions())).resolves.toEqual(classPartials);
     await expect(queryClient.fetchQuery(getCohortsQueryOptions())).resolves.toEqual(cohorts);
     await expect(queryClient.fetchQuery(getYearGroupsQueryOptions())).resolves.toEqual(yearGroups);
     expect(getABClassPartialsMock).toHaveBeenCalledTimes(1);
@@ -170,10 +169,12 @@ describe('shared query definitions', () => {
   it('propagates assignment-definition startup warm-up failures only after all startup datasets settle', async () => {
     const warmupError = new Error('Assignment definition warm-up failed');
     const classPartialsDeferred = createDeferredPromise<Array<{ classId: string }>>();
-    const cohortsDeferred =
-      createDeferredPromise<Array<{ key: string; name: string; active: boolean }>>();
-    const assignmentTopicsDeferred =
-      createDeferredPromise<Array<{ key: string; name: string; yearGroupKeys: string[] }>>();
+    const cohortsDeferred = createDeferredPromise<
+      Array<{ key: string; name: string; active: boolean }>
+    >();
+    const assignmentTopicsDeferred = createDeferredPromise<
+      Array<{ key: string; name: string; yearGroupKeys: string[] }>
+    >();
     const yearGroupsDeferred = createDeferredPromise<Array<{ key: string; name: string }>>();
     let hasSettled = false;
     getABClassPartialsMock.mockImplementationOnce(() => classPartialsDeferred.promise);
@@ -193,9 +194,7 @@ describe('shared query definitions', () => {
 
     classPartialsDeferred.resolvePromise([{ classId: 'class-1' }]);
     cohortsDeferred.resolvePromise([{ key: 'cohort-2026', name: 'Cohort 2026', active: true }]);
-    assignmentTopicsDeferred.resolvePromise([
-      { key: 'topic-algebra', name: 'Algebra', yearGroupKeys: [] },
-    ]);
+    assignmentTopicsDeferred.resolvePromise([{ key: 'topic-algebra', name: 'Algebra', yearGroupKeys: [] }]);
     yearGroupsDeferred.resolvePromise([{ key: 'year-10', name: 'Year 10' }]);
 
     await expect(warmupPromise).rejects.toBe(warmupError);

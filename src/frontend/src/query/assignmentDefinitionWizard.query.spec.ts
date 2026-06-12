@@ -7,11 +7,11 @@ const { getAssignmentTopicsMock, getAssignmentDefinitionMock } = vi.hoisted(() =
   getAssignmentDefinitionMock: vi.fn(),
 }));
 
-vi.mock('../services/assignmentDefinition/assignmentTopicsService', () => ({
+vi.mock('../services/assignmentTopicsService', () => ({
   getAssignmentTopics: getAssignmentTopicsMock,
 }));
 
-vi.mock('../services/assignmentDefinition/assignmentDefinitionService', () => ({
+vi.mock('../services/assignmentDefinitionService', () => ({
   getAssignmentDefinition: getAssignmentDefinitionMock,
 }));
 
@@ -60,17 +60,14 @@ describe('assignment definition query wiring', () => {
       | undefined;
     const getAssignmentDefinitionQueryOptions =
       sharedQueriesRecord.getAssignmentDefinitionQueryOptions as
-        | ((
-            definitionKey: string
-          ) => Parameters<ReturnType<typeof createAppQueryClient>['fetchQuery']>[0])
+        | ((definitionKey: string) => Parameters<ReturnType<typeof createAppQueryClient>['fetchQuery']>[0])
         | undefined;
 
     expect(getAssignmentTopicsQueryOptions).toBeTypeOf('function');
     expect(getAssignmentDefinitionQueryOptions).toBeTypeOf('function');
 
     const assignmentTopicsQueryOptions = getAssignmentTopicsQueryOptions!();
-    const assignmentDefinitionQueryOptions =
-      getAssignmentDefinitionQueryOptions!('algebra-baseline');
+    const assignmentDefinitionQueryOptions = getAssignmentDefinitionQueryOptions!('algebra-baseline');
 
     expect(assignmentTopicsQueryOptions.queryKey).toEqual(assignmentTopicsKeyFactory());
     expect(assignmentDefinitionQueryOptions.queryKey).toEqual(
@@ -82,7 +79,9 @@ describe('assignment definition query wiring', () => {
     await expect(queryClient.fetchQuery(assignmentTopicsQueryOptions)).resolves.toEqual([
       { key: 'topic-algebra', name: 'Algebra' },
     ]);
-    await expect(queryClient.fetchQuery(assignmentDefinitionQueryOptions)).resolves.toEqual({
+    await expect(
+      queryClient.fetchQuery(assignmentDefinitionQueryOptions)
+    ).resolves.toEqual({
       definitionKey: 'algebra-baseline',
       primaryTitle: 'Algebra Baseline',
     });
