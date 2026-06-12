@@ -2,6 +2,7 @@
 name: 'Testing'
 description: 'Creates, runs and debugs tests'
 user-invocable: true
+model: DeepSeek V4 Flash (deepseek)
 
 tools: [vscode/memory, vscode/resolveMemoryFileUri, vscode/runCommand, execute, read/terminalSelection, read/terminalLastCommand, read/problems, read/readFile, edit/createDirectory, edit/createFile, edit/createJupyterNotebook, edit/editFiles, edit/rename, search, web, todo, sonarsource.sonarlint-vscode/sonarqube_getPotentialSecurityIssues, sonarsource.sonarlint-vscode/sonarqube_excludeFiles, sonarsource.sonarlint-vscode/sonarqube_setUpConnectedMode, sonarsource.sonarlint-vscode/sonarqube_analyzeFile]
 ---
