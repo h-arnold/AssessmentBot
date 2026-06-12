@@ -1,27 +1,30 @@
 import { expect, test, type Page } from '@playwright/test';
-import type { BackendConfig, BackendConfigWriteResult } from '../src/services/backendConfiguration.zod';
+import type {
+  BackendConfig,
+  BackendConfigWriteResult,
+} from '../src/services/backendConfiguration/backendConfiguration.zod';
 import { googleScriptRunApiHandlerFactorySource } from '../src/test/googleScriptRunHarness';
 
 type BackendApiResponseScenario = Readonly<
   | {
-    kind: 'success';
-    data: unknown;
-    delayMs?: number;
-    releaseSignal?: string;
-  }
+      kind: 'success';
+      data: unknown;
+      delayMs?: number;
+      releaseSignal?: string;
+    }
   | {
-    kind: 'transportFailure';
-    message: string;
-    delayMs?: number;
-    releaseSignal?: string;
-  }
+      kind: 'transportFailure';
+      message: string;
+      delayMs?: number;
+      releaseSignal?: string;
+    }
   | {
-    kind: 'failureEnvelope';
-    code?: string;
-    message: string;
-    delayMs?: number;
-    releaseSignal?: string;
-  }
+      kind: 'failureEnvelope';
+      code?: string;
+      message: string;
+      delayMs?: number;
+      releaseSignal?: string;
+    }
 >;
 
 type BackendSettingsRuntimeScenario = Readonly<{
@@ -275,12 +278,13 @@ function getField(page: Page, label: string) {
  */
 async function releaseBackendSettingsSignal(page: Page, signal: string) {
   await page.evaluate((queuedSignal) => {
-    (globalThis as {
-      __releaseBackendSettingsSignal: (signalName: string) => void;
-    }).__releaseBackendSettingsSignal(queuedSignal);
+    (
+      globalThis as {
+        __releaseBackendSettingsSignal: (signalName: string) => void;
+      }
+    ).__releaseBackendSettingsSignal(queuedSignal);
   }, signal);
 }
-
 
 test.describe('backend settings journey', () => {
   test('navigates to the backend settings tab after showing the loading skeleton', async ({
@@ -369,7 +373,9 @@ test.describe('backend settings journey', () => {
     await expect(page.getByText(apiKeyValidationMessage)).toBeVisible();
   });
 
-  test('suppresses the backend settings form when the loaded configuration payload is incomplete', async ({ page }) => {
+  test('suppresses the backend settings form when the loaded configuration payload is incomplete', async ({
+    page,
+  }) => {
     await mockBackendSettingsRuntime(page, {
       getBackendConfig: [
         {
@@ -424,7 +430,9 @@ test.describe('backend settings journey', () => {
 
     await page.getByRole('button', { name: saveButtonLabel }).click();
 
-    await expect(page.getByRole('button', { name: saveButtonLabel })).toHaveClass(/ant-btn-loading/);
+    await expect(page.getByRole('button', { name: saveButtonLabel })).toHaveClass(
+      /ant-btn-loading/
+    );
     await expect(page.getByRole('button', { name: saveButtonLabel })).toBeDisabled();
     await expect(page.getByText(backendSettingsSavedCopy)).toBeVisible();
 
@@ -434,7 +442,9 @@ test.describe('backend settings journey', () => {
     await expect(page.getByText(storedApiKeyHelperCopy)).toBeVisible();
   });
 
-  test('keeps populated settings visible while publishing panel busy state during a post-save refresh', async ({ page }) => {
+  test('keeps populated settings visible while publishing panel busy state during a post-save refresh', async ({
+    page,
+  }) => {
     await mockBackendSettingsRuntime(page, {
       getBackendConfig: [
         {
