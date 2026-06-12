@@ -14,7 +14,7 @@ import {
   buildClassesPageModel,
   type ClassesPagePanelViewModel,
   type InvalidClassesPageDataViewModel,
-} from './classes/classesPageModel';
+} from './classesPageModel';
 import { AssessTaskModal } from '../features/classes/AssessTaskModal/AssessTaskModal';
 import { PageSection } from './PageSection';
 import { pageContent } from './pageContent';

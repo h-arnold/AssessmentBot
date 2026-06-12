@@ -1,8 +1,8 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { render, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiTransportError } from '../errors/apiTransportError';
-import { createAppQueryClient } from '../query/queryClient';
+import { ApiTransportError } from '../../errors/apiTransportError';
+import { createAppQueryClient } from '../../query/queryClient';
 import { SettingsPageGoogleClassroomsPrefetch } from './SettingsPageGoogleClassroomsPrefetch';
 
 /**
@@ -62,7 +62,7 @@ describe('SettingsPageGoogleClassroomsPrefetch', () => {
     });
 
     expect(consoleWarnSpy.mock.calls[0]?.[0]).toBe(
-      'pages/SettingsPageGoogleClassroomsPrefetch.prefetchGoogleClassrooms'
+      'features/settings/SettingsPageGoogleClassroomsPrefetch.prefetchGoogleClassrooms'
     );
   });
 
@@ -110,10 +110,10 @@ describe('SettingsPageGoogleClassroomsPrefetch', () => {
     const logCall = consoleWarnSpy.mock.calls[0];
 
     expect(logCall?.[0]).toBe(
-      'pages/SettingsPageGoogleClassroomsPrefetch.prefetchGoogleClassrooms'
+      'features/settings/SettingsPageGoogleClassroomsPrefetch.prefetchGoogleClassrooms'
     );
     expect(logCall?.[1]).toMatchObject({
-      context: 'pages/SettingsPageGoogleClassroomsPrefetch.prefetchGoogleClassrooms',
+      context: 'features/settings/SettingsPageGoogleClassroomsPrefetch.prefetchGoogleClassrooms',
       requestId: 'req-google-classrooms-1',
       errorCode: 'RATE_LIMITED',
       errorMessage: 'Google Classrooms prefetch failed.',

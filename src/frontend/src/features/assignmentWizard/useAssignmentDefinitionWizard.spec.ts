@@ -3,24 +3,24 @@ import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { QueryClientProvider } from '@tanstack/react-query';
 import type { PropsWithChildren } from 'react';
-import { createAppQueryClient } from '../query/queryClient';
+import { createAppQueryClient } from '../../query/queryClient';
 
 // Mock dependencies
-vi.mock('../services/apiService', () => ({
+vi.mock('../../services/apiService', () => ({
   callApi: vi.fn(),
 }));
 
-vi.mock('../logging/frontendLogger', () => ({
+vi.mock('../../logging/frontendLogger', () => ({
   logFrontendError: vi.fn(),
 }));
 
-vi.mock('../errors/map-error-to-ui', () => ({
+vi.mock('../../errors/map-error-to-ui', () => ({
   mapErrorToUserMessage: vi.fn(() => 'Error message'),
   extractErrorCode: vi.fn(() => null),
   extractRequestId: vi.fn(() => null),
 }));
 
-vi.mock('../features/auth/startupWarmupState', () => ({
+vi.mock('../../features/auth/startupWarmupState', () => ({
   useStartupWarmupState: () => ({
     isDatasetReady: vi.fn(
       (datasetKey: string) =>
@@ -36,7 +36,7 @@ vi.mock('../features/auth/startupWarmupState', () => ({
   }),
 }));
 
-vi.mock('../query/sharedQueries', () => ({
+vi.mock('../../query/sharedQueries', () => ({
   getAssignmentDefinitionQueryOptions: vi.fn(() => ({
     queryKey: ['assignmentDefinition'],
     queryFn: vi.fn(),
@@ -48,7 +48,7 @@ vi.mock('../query/sharedQueries', () => ({
   getYearGroupsQueryOptions: vi.fn(() => ({ queryKey: ['yearGroups'], queryFn: vi.fn() })),
 }));
 
-vi.mock('../services/assignmentDefinition/assignmentDefinitionService', () => ({
+vi.mock('../../services/assignmentDefinition/assignmentDefinitionService', () => ({
   upsertAssignmentDefinition: vi.fn(),
 }));
 

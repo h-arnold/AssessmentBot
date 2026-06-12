@@ -16,8 +16,8 @@
  * - src/frontend/src/services/referenceData.zod.ts
  */
 
-import type { ClassPartial } from '../../services/googleClassrooms/classPartials.zod';
-import type { YearGroup } from '../../services/referenceData/referenceData.zod';
+import type { ClassPartial } from '../services/googleClassrooms/classPartials.zod';
+import type { YearGroup } from '../services/referenceData/referenceData.zod';
 
 /**
  * Card model for a single class in the Classes page.

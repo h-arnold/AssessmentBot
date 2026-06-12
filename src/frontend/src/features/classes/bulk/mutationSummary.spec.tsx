@@ -75,25 +75,25 @@ vi.mock('../table/ClassesTable', () => ({
   },
 }));
 
-vi.mock('../components/BulkCreateModal', () => ({
+vi.mock('./BulkCreateModal', () => ({
   BulkCreateModal() {
     return null;
   },
 }));
 
-vi.mock('../components/BulkDeleteModal', () => ({
+vi.mock('./BulkDeleteModal', () => ({
   BulkDeleteModal() {
     return null;
   },
 }));
 
-vi.mock('../components/BulkSetCourseLengthModal', () => ({
+vi.mock('./BulkSetCourseLengthModal', () => ({
   BulkSetCourseLengthModal() {
     return null;
   },
 }));
 
-vi.mock('../components/BulkSetSelectModal', () => ({
+vi.mock('./BulkSetSelectModal', () => ({
   BulkSetSelectModal: bulkSetSelectModalMock,
 }));
 

@@ -5,7 +5,7 @@ import { ClassesManagementPanel } from '../features/classes/ClassesManagementPan
 import { BackendSettingsPanel } from '../features/settings/backend/BackendSettingsPanel';
 import { ReferenceDataSettingsPanel } from '../features/settings/ReferenceDataSettingsPanel';
 import { PageSection } from './PageSection';
-import { SettingsPageGoogleClassroomsPrefetch } from './SettingsPageGoogleClassroomsPrefetch';
+import { SettingsPageGoogleClassroomsPrefetch } from '../features/settings/SettingsPageGoogleClassroomsPrefetch';
 import { pageContent } from './pageContent';
 
 type SettingsTabKey = 'classes' | 'backend-settings' | 'reference-data';

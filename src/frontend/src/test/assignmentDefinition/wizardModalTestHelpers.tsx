@@ -92,7 +92,7 @@ async function renderModalComponent(
   open: boolean,
   warmupState: FrontendProvidersOptions['warmupState']
 ): Promise<ReturnType<typeof renderWithFrontendProviders>> {
-  const { AssignmentDefinitionWizardModal } = await import('../../pages/AssignmentDefinitionWizardModal');
+  const { AssignmentDefinitionWizardModal } = await import('../../features/assignmentWizard/AssignmentDefinitionWizardModal');
 
   return renderWithFrontendProviders(
     <AssignmentDefinitionWizardModal

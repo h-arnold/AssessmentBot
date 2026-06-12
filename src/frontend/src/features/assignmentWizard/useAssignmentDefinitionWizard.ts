@@ -1,26 +1,26 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { Form, type FormInstance } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useStartupWarmupState } from '../features/auth/startupWarmupState';
-import { logFrontendError } from '../logging/frontendLogger';
+import { useStartupWarmupState } from '../../features/auth/startupWarmupState';
+import { logFrontendError } from '../../logging/frontendLogger';
 import {
   mapErrorToUserMessage,
   extractErrorCode,
   extractRequestId,
-} from '../errors/map-error-to-ui';
-import { queryKeys } from '../query/queryKeys';
+} from '../../errors/map-error-to-ui';
+import { queryKeys } from '../../query/queryKeys';
 import {
   getAssignmentDefinitionQueryOptions,
   getAssignmentTopicsQueryOptions,
   getYearGroupsQueryOptions,
-} from '../query/sharedQueries';
-import { DEFAULT_WEIGHTING_VALUE } from '../services/assignmentDefinition/assignmentDefinition.zod';
+} from '../../query/sharedQueries';
+import { DEFAULT_WEIGHTING_VALUE } from '../../services/assignmentDefinition/assignmentDefinition.zod';
 import {
   type AssignmentDefinition,
   type UpsertAssignmentDefinitionResponse,
   type UpsertAssignmentDefinitionRequest,
   upsertAssignmentDefinition,
-} from '../services/assignmentDefinition/assignmentDefinitionService';
+} from '../../services/assignmentDefinition/assignmentDefinitionService';
 
 export type ModalMode = 'create' | 'update';
 

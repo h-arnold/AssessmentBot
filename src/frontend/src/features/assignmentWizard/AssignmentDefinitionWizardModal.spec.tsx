@@ -1,20 +1,20 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { queryKeys } from '../query/queryKeys';
-import type { AssignmentDefinition } from '../services/assignmentDefinition/assignmentDefinition.zod';
+import { queryKeys } from '../../query/queryKeys';
+import type { AssignmentDefinition } from '../../services/assignmentDefinition/assignmentDefinition.zod';
 import {
   createStartupWarmupState,
   setTextboxValue,
-} from '../test/assignmentDefinition/wizardTestHelpers';
+} from '../../test/assignmentDefinition/wizardTestHelpers';
 import {
   mockTopics,
   mockYearGroups,
   mockCohorts,
-} from '../test/assignmentDefinition/sharedTestFixtures';
+} from '../../test/assignmentDefinition/sharedTestFixtures';
 import {
   mockFullAssignmentDefinition,
   mockUpsertResponse,
-} from '../test/assignmentDefinition/assignmentDefinitionTestFixtures';
+} from '../../test/assignmentDefinition/assignmentDefinitionTestFixtures';
 import {
   renderWizardModal,
   getFormElements,
@@ -42,8 +42,8 @@ import {
   assertTaskVisible,
   getReferenceUrlValue,
   getTemplateUrlValue,
-} from '../test/assignmentDefinition/wizardModalTestHelpers';
-import type { RenderWizardModalOptions } from '../test/assignmentDefinition/wizardModalTestHelpers';
+} from '../../test/assignmentDefinition/wizardModalTestHelpers';
+import type { RenderWizardModalOptions } from '../../test/assignmentDefinition/wizardModalTestHelpers';
 
 const {
   getAssignmentDefinitionMock,
@@ -61,7 +61,7 @@ const {
   useStartupWarmupStateMock: vi.fn(),
 }));
 
-vi.mock('../features/auth/startupWarmupState', async (importOriginal) => {
+vi.mock('../../features/auth/startupWarmupState', async (importOriginal) => {
   const actualModule = (await importOriginal()) as Record<string, unknown>;
 
   return {
@@ -70,16 +70,16 @@ vi.mock('../features/auth/startupWarmupState', async (importOriginal) => {
   };
 });
 
-vi.mock('../services/assignmentDefinition/assignmentDefinitionService', () => ({
+vi.mock('../../services/assignmentDefinition/assignmentDefinitionService', () => ({
   getAssignmentDefinition: getAssignmentDefinitionMock,
   upsertAssignmentDefinition: upsertAssignmentDefinitionMock,
 }));
 
-vi.mock('../services/assignmentDefinition/assignmentTopicsService', () => ({
+vi.mock('../../services/assignmentDefinition/assignmentTopicsService', () => ({
   getAssignmentTopics: getAssignmentTopicsMock,
 }));
 
-vi.mock('../services/referenceData/referenceDataService', () => ({
+vi.mock('../../services/referenceData/referenceDataService', () => ({
   getCohorts: getCohortsMock,
   getYearGroups: getYearGroupsMock,
 }));

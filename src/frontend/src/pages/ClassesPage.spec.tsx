@@ -27,7 +27,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAppQueryClient } from '../query/queryClient';
 import { queryKeys } from '../query/queryKeys';
 import { renderWithFrontendProviders } from '../test/renderWithFrontendProviders';
-import { buildClassesPageModel } from './classes/classesPageModel';
+import { buildClassesPageModel } from './classesPageModel';
 import { ClassesPage } from './ClassesPage';
 import { pageContent } from './pageContent';
 

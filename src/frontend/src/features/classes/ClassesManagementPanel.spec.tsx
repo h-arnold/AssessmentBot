@@ -51,7 +51,7 @@ const bulkCreateModalMock = vi.hoisted(() =>
   }),
 );
 
-vi.mock('./components/BulkCreateModal', () => ({
+vi.mock('./bulk/BulkCreateModal', () => ({
   BulkCreateModal: bulkCreateModalMock,
 }));
 

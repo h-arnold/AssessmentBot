@@ -31,7 +31,7 @@ import {
   type AssignmentDefinitionPartial,
 } from '../services/assignmentDefinition/assignmentDefinitionPartialsService';
 import { DeleteAssignmentDefinitionRequestSchema } from '../services/assignmentDefinition/assignmentDefinitionPartials.zod';
-import { AssignmentDefinitionWizardModal } from './AssignmentDefinitionWizardModal';
+import { AssignmentDefinitionWizardModal } from '../features/assignmentWizard/AssignmentDefinitionWizardModal';
 import { PageSection } from './PageSection';
 import { pageContent } from './pageContent';
 
