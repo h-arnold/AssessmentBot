@@ -11,7 +11,7 @@ import {
   type TestRenderResult,
 } from './wizardTestHelpers';
 import { mockTopics, mockYearGroups } from './sharedTestFixtures';
-import type { AssignmentDefinition } from '../../services/assignmentDefinition.zod';
+import type { AssignmentDefinition } from '../../services/assignmentDefinition/assignmentDefinition.zod';
 
 /**
  * Assignment Definition Wizard Modal test helpers module.

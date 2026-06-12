@@ -1,4 +1,4 @@
-import { callApi } from './apiService';
+import { callApi } from '../apiService';
 import {
   AssignmentDefinitionPartialsResponseSchema,
   DeleteAssignmentDefinitionRequestSchema,

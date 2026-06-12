@@ -91,12 +91,12 @@ const updateAssignmentTopicMock = vi.hoisted(() => vi.fn());
 const deleteAssignmentTopicMock = vi.hoisted(() => vi.fn());
 
 // Mock assignmentTopicsService
-vi.mock('../../services/assignmentTopicsService', () => ({
+vi.mock('../../services/assignmentDefinition/assignmentTopicsService', () => ({
   getAssignmentTopics: getAssignmentTopicsFromAssignmentTopicsServiceMock,
 }));
 
 // Mock referenceDataService
-vi.mock('../../services/referenceDataService', () => ({
+vi.mock('../../services/referenceData/referenceDataService', () => ({
   getCohorts: vi.fn(),
   createCohort: vi.fn(),
   updateCohort: vi.fn(),

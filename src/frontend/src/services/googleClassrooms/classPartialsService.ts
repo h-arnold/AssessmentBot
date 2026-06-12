@@ -1,4 +1,4 @@
-import { callApi } from './apiService';
+import { callApi } from '../apiService';
 import { ClassPartialsResponseSchema, type ClassPartial } from './classPartials.zod';
 
 export type { ClassPartial, TeacherSummary } from './classPartials.zod';

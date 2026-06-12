@@ -11,7 +11,7 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { QueryClientProvider } from '@tanstack/react-query';
-import type { YearGroup } from '../../../services/referenceData.zod';
+import type { YearGroup } from '../../../services/referenceData/referenceData.zod';
 import { queryKeys } from '../../../query/queryKeys';
 import { createAppQueryClient } from '../../../query/queryClient';
 import { renderWithFrontendProviders } from '../../../test/renderWithFrontendProviders';
@@ -22,7 +22,7 @@ const createYearGroupMock = vi.hoisted(() => vi.fn());
 const updateYearGroupMock = vi.hoisted(() => vi.fn());
 const getYearGroupsMock = vi.hoisted(() => vi.fn());
 
-vi.mock('../../../services/referenceDataService', () => ({
+vi.mock('../../../services/referenceData/referenceDataService', () => ({
   getCohorts: vi.fn(),
   createCohort: vi.fn(),
   updateCohort: vi.fn(),

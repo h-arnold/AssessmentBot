@@ -48,7 +48,7 @@ vi.mock('../query/sharedQueries', () => ({
   getYearGroupsQueryOptions: vi.fn(() => ({ queryKey: ['yearGroups'], queryFn: vi.fn() })),
 }));
 
-vi.mock('../services/assignmentDefinitionService', () => ({
+vi.mock('../services/assignmentDefinition/assignmentDefinitionService', () => ({
   upsertAssignmentDefinition: vi.fn(),
 }));
 

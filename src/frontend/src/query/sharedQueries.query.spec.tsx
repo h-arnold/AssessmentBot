@@ -20,27 +20,27 @@ const getGoogleClassroomsMock = vi.fn();
 const getAssignmentTopicsMock = vi.fn();
 const getYearGroupsMock = vi.fn();
 
-vi.mock('../services/authService', () => ({
+vi.mock('../services/authService/authService', () => ({
   getAuthorisationStatus: getAuthorisationStatusMock,
 }));
 
-vi.mock('../services/classPartialsService', () => ({
+vi.mock('../services/googleClassrooms/classPartialsService', () => ({
   getABClassPartials: getABClassPartialsMock,
 }));
 
-vi.mock('../services/assignmentDefinitionPartialsService', () => ({
+vi.mock('../services/assignmentDefinition/assignmentDefinitionPartialsService', () => ({
   getAssignmentDefinitionPartials: getAssignmentDefinitionPartialsMock,
 }));
 
-vi.mock('../services/googleClassroomsService', () => ({
+vi.mock('../services/googleClassrooms/googleClassroomsService', () => ({
   getGoogleClassrooms: getGoogleClassroomsMock,
 }));
 
-vi.mock('../services/assignmentTopicsService', () => ({
+vi.mock('../services/assignmentDefinition/assignmentTopicsService', () => ({
   getAssignmentTopics: getAssignmentTopicsMock,
 }));
 
-vi.mock('../services/referenceDataService', () => ({
+vi.mock('../services/referenceData/referenceDataService', () => ({
   getCohorts: getCohortsMock,
   getYearGroups: getYearGroupsMock,
 }));

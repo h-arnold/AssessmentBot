@@ -1,5 +1,5 @@
-import { callApi } from './apiService';
-import { logFrontendEvent } from '../logging/frontendLogger';
+import { callApi } from '../apiService';
+import { logFrontendEvent } from '../../logging/frontendLogger';
 import {
   GetAssignmentDefinitionRequestSchema,
   GetAssignmentDefinitionResponseSchema,

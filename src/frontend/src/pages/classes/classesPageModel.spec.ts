@@ -12,8 +12,8 @@
  * - src/frontend/src/features/classes/ClassesTable.helpers.ts
  */
 import { describe, it, expect } from 'vitest';
-import type { ClassPartial } from '../../services/classPartials.zod';
-import type { YearGroup } from '../../services/referenceData.zod';
+import type { ClassPartial } from '../../services/googleClassrooms/classPartials.zod';
+import type { YearGroup } from '../../services/referenceData/referenceData.zod';
 import type {
   InvalidClassesPageDataViewModel,
   ClassesPagePanelViewModel,

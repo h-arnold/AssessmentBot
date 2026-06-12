@@ -1,4 +1,4 @@
-import type { Cohort } from '../../../services/referenceData.zod';
+import type { Cohort } from '../../../services/referenceData/referenceData.zod';
 import type { RowMutationResult } from './batchMutationEngine';
 import { bulkMetadataUpdate } from './bulkMetadataUpdateFlow';
 import type { ClassesManagementRow } from '../classesManagementViewModel';
@@ -27,7 +27,7 @@ export function getActiveCohortOptions(cohorts: Cohort[]): Array<{ label: string
  */
 export async function bulkSetCohort(
   rows: ClassesManagementRow[],
-  cohortKey: string,
+  cohortKey: string
 ): Promise<RowMutationResult<ClassesManagementRow, unknown>[]> {
   return bulkMetadataUpdate(rows, { key: 'cohortKey', value: cohortKey });
 }

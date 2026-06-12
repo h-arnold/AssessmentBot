@@ -8,8 +8,8 @@ import {
   usePageDataset,
   type PageDatasetState,
 } from '../hooks/usePageDataset';
-import type { ClassPartial } from '../services/classPartials.zod';
-import type { YearGroup } from '../services/referenceData.zod';
+import type { ClassPartial } from '../services/googleClassrooms/classPartials.zod';
+import type { YearGroup } from '../services/referenceData/referenceData.zod';
 import {
   buildClassesPageModel,
   type ClassesPagePanelViewModel,

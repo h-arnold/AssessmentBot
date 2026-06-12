@@ -1,4 +1,4 @@
-import { callApi } from './apiService';
+import { callApi } from '../apiService';
 import { AuthorisationStatusSchema } from './authService.zod';
 
 const GET_AUTHORISATION_STATUS_METHOD = 'getAuthorisationStatus';

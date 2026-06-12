@@ -6,8 +6,8 @@ import { findMatchingDefinition } from './matchDefinitionForAssignment';
 import { startAssessmentRun } from '../../../services/assignmentAssessment/assignmentAssessmentService';
 import { ApiTransportError } from '../../../errors/apiTransportError';
 import { queryKeys } from '../../../query/queryKeys';
-import type { ClassPartial } from '../../../services/classPartials.zod';
-import type { AssignmentDefinitionPartial } from '../../../services/assignmentDefinitionPartials.zod';
+import type { ClassPartial } from '../../../services/googleClassrooms/classPartials.zod';
+import type { AssignmentDefinitionPartial } from '../../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
 
 type Assignment = { assignmentId: string; title: string; topicId: string | null; topicName: string | null };
 

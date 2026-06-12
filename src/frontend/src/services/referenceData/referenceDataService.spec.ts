@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ZodError } from 'zod';
-import { ApiTransportError } from '../errors/apiTransportError';
+import { ApiTransportError } from '../../errors/apiTransportError';
 
 const callApiMock = vi.fn();
 
-vi.mock('./apiService', () => ({
+vi.mock('../apiService', () => ({
   callApi: callApiMock,
 }));
 

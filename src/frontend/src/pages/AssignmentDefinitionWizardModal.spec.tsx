@@ -1,7 +1,7 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { queryKeys } from '../query/queryKeys';
-import type { AssignmentDefinition } from '../services/assignmentDefinition.zod';
+import type { AssignmentDefinition } from '../services/assignmentDefinition/assignmentDefinition.zod';
 import {
   createStartupWarmupState,
   setTextboxValue,
@@ -70,16 +70,16 @@ vi.mock('../features/auth/startupWarmupState', async (importOriginal) => {
   };
 });
 
-vi.mock('../services/assignmentDefinitionService', () => ({
+vi.mock('../services/assignmentDefinition/assignmentDefinitionService', () => ({
   getAssignmentDefinition: getAssignmentDefinitionMock,
   upsertAssignmentDefinition: upsertAssignmentDefinitionMock,
 }));
 
-vi.mock('../services/assignmentTopicsService', () => ({
+vi.mock('../services/assignmentDefinition/assignmentTopicsService', () => ({
   getAssignmentTopics: getAssignmentTopicsMock,
 }));
 
-vi.mock('../services/referenceDataService', () => ({
+vi.mock('../services/referenceData/referenceDataService', () => ({
   getCohorts: getCohortsMock,
   getYearGroups: getYearGroupsMock,
 }));

@@ -5,7 +5,7 @@ import {
   DEFAULT_WEIGHTING_VALUE,
   MAX_WEIGHTING_VALUE,
   MIN_WEIGHTING_VALUE,
-} from '../services/assignmentDefinition.zod';
+} from '../services/assignmentDefinition/assignmentDefinition.zod';
 import { SelectWithAddNew } from '../components/SelectWithAddNew';
 import { type DocumentChangeState, type TaskRow } from './useAssignmentDefinitionWizard';
 

@@ -189,20 +189,20 @@ vi.mock('../features/auth/startupWarmupState', async (importOriginal) => {
   };
 });
 
-vi.mock('../services/classPartialsService', () => ({
+vi.mock('../services/googleClassrooms/classPartialsService', () => ({
   getABClassPartials: getABClassPartialsMock,
 }));
 
-vi.mock('../services/referenceDataService', () => ({
+vi.mock('../services/referenceData/referenceDataService', () => ({
   getYearGroups: getYearGroupsMock,
   getCohorts: getCohortsMock,
 }));
 
-vi.mock('../services/assignmentDefinitionPartialsService', () => ({
+vi.mock('../services/assignmentDefinition/assignmentDefinitionPartialsService', () => ({
   getAssignmentDefinitionPartials: getAssignmentDefinitionPartialsMock,
 }));
 
-vi.mock('../services/assignmentTopicsService', () => ({
+vi.mock('../services/assignmentDefinition/assignmentTopicsService', () => ({
   getAssignmentTopics: getAssignmentTopicsMock,
 }));
 

@@ -10,7 +10,7 @@ const { getAuthorisationStatusMock } = vi.hoisted(() => ({
   getAuthorisationStatusMock: vi.fn(),
 }));
 
-vi.mock('../../services/authService', () => ({
+vi.mock('../../services/authService/authService', () => ({
   getAuthorisationStatus: getAuthorisationStatusMock,
 }));
 

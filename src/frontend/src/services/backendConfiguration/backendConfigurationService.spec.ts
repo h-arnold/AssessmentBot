@@ -3,7 +3,7 @@ import { ZodError } from 'zod';
 
 const callApiMock = vi.fn();
 
-vi.mock('./apiService', () => ({
+vi.mock('../apiService', () => ({
   callApi: callApiMock,
 }));
 

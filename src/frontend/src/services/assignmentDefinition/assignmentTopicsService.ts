@@ -1,12 +1,12 @@
-import { callApi } from './apiService';
+import { callApi } from '../apiService';
 import {
   AssignmentTopicListResponseSchema,
   type AssignmentTopicListResponse,
-} from './referenceData.zod';
+} from '../referenceData/referenceData.zod';
 
 const GET_ASSIGNMENT_TOPICS_METHOD = 'getAssignmentTopics';
 
-export type { AssignmentTopic, AssignmentTopicListResponse } from './referenceData.zod';
+export type { AssignmentTopic, AssignmentTopicListResponse } from '../referenceData/referenceData.zod';
 
 /**
  * Retrieves assignment-topic reference data from backend transport.
