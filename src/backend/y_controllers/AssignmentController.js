@@ -213,10 +213,6 @@ class AssignmentController {
     // Check per-document freshness
     this._validateDefinitionFreshness(definition);
 
-    // Resolve ABClass via loadClass
-    const abClassController = new ABClassController();
-    abClassController.loadClass(courseId);
-
     // Delegate to startProcessing for trigger creation
     this.startProcessing(assignmentId, definitionKey, courseId);
 
