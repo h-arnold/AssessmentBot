@@ -3,6 +3,8 @@
 **Source:** `FRONTEND_STRUCTURE_AUDIT.md`
 **Branch:** `refactor/GroupDomainsBetter`
 **Created:** 2026-06-12
+**Completed:** 2026-06-12
+**Status:** ✅ All sections complete
 
 ---
 
@@ -198,7 +200,29 @@ From `features/classes/management/`:
 
 ---
 
+## Completion Summary
+
+| Batch   | Commit    | Description                                                       | Status |
+| ------- | --------- | ----------------------------------------------------------------- | ------ |
+| 1       | `205150c` | Services domain grouping — 36 files into 5 subfolders             | ✅     |
+| 2       | `d1a75ee` | Pages cleanup + classes internals (4 parallel agents)             | ✅     |
+| 3       | `6d8f16d` | Reference data extraction — 16 files into features/referenceData/ | ✅     |
+| Cleanup | `74ae3f1` | De-sloppification fixes + docs updates                            | ✅     |
+
+**Final state:**
+
+- `npm run lint:frontend` — clean (0 errors, 0 warnings)
+- `npm run test:frontend` — 91/91 test files pass, 894 tests
+- No behavioural changes — only file paths and import paths updated
+- All AGENTS.md Section 12 and 2.1 mandates satisfied
+
+**Known deferred items (de-sloppification findings, not in original scope):**
+
+- C1: 3 files (`InlineDialog.tsx`, `ReferenceDataInitialLoadingState.tsx`, `useReferenceDataManagement.ts`) remain in `features/classes/` but are exclusively consumed from `features/referenceData/`. Moving them would complete the extraction but was not in the audit scope.
+
+---
+
 ## Relevant Documentation
 
 - `FRONTEND_STRUCTURE_AUDIT.md` — full audit and target hierarchy
-- `src/frontend/AGENTS.md` — Section 12 (service domain grouping), Section 2.1 (pages as thin composition roots)
+- `src/frontend/AGENTS.md` — Section 12 (service domain grouping), Section 2.1 (pages as thin composition roots), Section 2.3 (feature directory layout)
