@@ -9,16 +9,16 @@
 
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { YearGroup } from '../../../services/referenceData/referenceData.zod';
-import { ApiTransportError } from '../../../errors/apiTransportError';
-import { queryKeys } from '../../../query/queryKeys';
-import { createAppQueryClient } from '../../../query/queryClient';
-import { renderWithFrontendProviders } from '../../../test/renderWithFrontendProviders';
+import type { YearGroup } from '../../services/referenceData/referenceData.zod';
+import { ApiTransportError } from '../../errors/apiTransportError';
+import { queryKeys } from '../../query/queryKeys';
+import { createAppQueryClient } from '../../query/queryClient';
+import { renderWithFrontendProviders } from '../../test/renderWithFrontendProviders';
 import { ManageYearGroupsModal } from './ManageYearGroupsModal';
 
 const deleteYearGroupMock = vi.hoisted(() => vi.fn());
 
-vi.mock('../../../services/referenceData/referenceDataService', () => ({
+vi.mock('../../services/referenceData/referenceDataService', () => ({
   getCohorts: vi.fn(),
   createCohort: vi.fn(),
   updateCohort: vi.fn(),

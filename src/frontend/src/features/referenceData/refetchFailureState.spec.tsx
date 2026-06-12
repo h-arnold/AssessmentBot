@@ -1,11 +1,11 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ClassesManagementState } from '../useClassesManagement';
+import type { ClassesManagementState } from '../classes/useClassesManagement';
 
 const classesManagementStateMock = vi.fn();
 
-vi.mock('../useClassesManagement', () => ({
+vi.mock('../classes/useClassesManagement', () => ({
   useClassesManagement: classesManagementStateMock,
 }));
 
@@ -76,7 +76,7 @@ describe('refetchFailureState', () => {
   it('suppresses stale table rows while the refresh-required summary is shown', async () => {
     classesManagementStateMock.mockReturnValue(buildRefreshFailureState());
 
-    const { ClassesManagementPanel } = await import('../ClassesManagementPanel');
+    const { ClassesManagementPanel } = await import('../classes/ClassesManagementPanel');
     renderWithQueryClient(<ClassesManagementPanel />);
 
     expect(screen.getByText('Update succeeded but refresh is required.')).toBeInTheDocument();

@@ -9,17 +9,17 @@
 
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Cohort } from '../../../services/referenceData/referenceData.zod';
-import { ApiTransportError } from '../../../errors/apiTransportError';
-import { queryKeys } from '../../../query/queryKeys';
-import { createAppQueryClient } from '../../../query/queryClient';
-import { renderWithFrontendProviders } from '../../../test/renderWithFrontendProviders';
+import type { Cohort } from '../../services/referenceData/referenceData.zod';
+import { ApiTransportError } from '../../errors/apiTransportError';
+import { queryKeys } from '../../query/queryKeys';
+import { createAppQueryClient } from '../../query/queryClient';
+import { renderWithFrontendProviders } from '../../test/renderWithFrontendProviders';
 import { ManageCohortsModal } from './ManageCohortsModal';
 
 const deleteCohortMock = vi.hoisted(() => vi.fn());
 const getCohortsMock = vi.hoisted(() => vi.fn());
 
-vi.mock('../../../services/referenceData/referenceDataService', () => ({
+vi.mock('../../services/referenceData/referenceDataService', () => ({
   getCohorts: getCohortsMock,
   createCohort: vi.fn(),
   updateCohort: vi.fn(),

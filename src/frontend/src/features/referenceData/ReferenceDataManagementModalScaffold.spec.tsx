@@ -9,12 +9,12 @@
 
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderWithFrontendProviders } from '../../../test/renderWithFrontendProviders';
+import { renderWithFrontendProviders } from '../../test/renderWithFrontendProviders';
 import { ReferenceDataManagementModalScaffold } from './ReferenceDataManagementModalScaffold';
 import {
   buildScaffoldProperties,
   getScaffoldDialog,
-} from '../../../test/classes/modalTestHelpers';
+} from '../../test/classes/modalTestHelpers';
 
 // Test entity type matching T extends { key: string }
 type TestEntity = {

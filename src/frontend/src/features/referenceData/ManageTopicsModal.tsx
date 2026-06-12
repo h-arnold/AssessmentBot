@@ -30,7 +30,7 @@ import {
 import { getAssignmentTopicsQueryOptions, getYearGroupsQueryOptions } from '../../query/sharedQueries';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ReferenceDataInitialLoadingState } from '../classes/components/ReferenceDataInitialLoadingState';
-import { ReferenceDataManagementModalScaffold } from '../classes/management/ReferenceDataManagementModalScaffold';
+import { ReferenceDataManagementModalScaffold } from './ReferenceDataManagementModalScaffold';
 import {
   getPersistedBlockingLoadError,
   getReferenceDataBlockingLoadErrorQueryKey,
@@ -38,7 +38,7 @@ import {
   setPersistedBlockingLoadError,
   clearPersistedBlockingLoadError,
   type BlockingLoadErrorState,
-} from '../classes/management/manageReferenceDataHelpers';
+} from './manageReferenceDataHelpers';
 import { InlineDialog } from '../classes/components/InlineDialog';
 import {
   useReferenceDataManagement,

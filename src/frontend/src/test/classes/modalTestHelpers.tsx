@@ -2,7 +2,7 @@ import { fireEvent, screen, within } from '@testing-library/react';
 import React, { useState } from 'react';
 import { vi } from 'vitest';
 import type { TableColumnType } from 'antd';
-import type { ReferenceDataManagementModalScaffoldProperties } from '../../features/classes/management/ReferenceDataManagementModalScaffold';
+import type { ReferenceDataManagementModalScaffoldProperties } from '../../features/referenceData/ReferenceDataManagementModalScaffold';
 
 /* eslint-disable react-refresh/only-export-components */
 // Note: This file contains test helper functions, not React components.

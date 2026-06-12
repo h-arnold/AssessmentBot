@@ -7,7 +7,7 @@
  */
 
 import { Alert, Button, Form, Input, Space } from 'antd';
-import { InlineDialog } from '../components/InlineDialog';
+import { InlineDialog } from '../classes/components/InlineDialog';
 
 /**
  * Form values for reference data entities.

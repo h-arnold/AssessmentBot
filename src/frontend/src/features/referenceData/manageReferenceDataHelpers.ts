@@ -6,11 +6,11 @@
  */
 
 import type { QueryClient, QueryKey } from '@tanstack/react-query';
-import { ApiTransportError } from '../../../errors/apiTransportError';
+import { ApiTransportError } from '../../errors/apiTransportError';
 import {
   getBlockingLoadErrorMessage,
   type BlockingLoadErrorState,
-} from '../../../errors/blockingLoadError';
+} from '../../errors/blockingLoadError';
 
 type ReferenceDataTrustBoundary = 'cohorts' | 'yearGroups' | 'assignmentTopics';
 
@@ -19,7 +19,7 @@ export { type ReferenceDataTrustBoundary };
 export {
   getBlockingLoadErrorMessage,
   type BlockingLoadErrorState,
-} from '../../../errors/blockingLoadError';
+} from '../../errors/blockingLoadError';
 
 /**
  * Synchronises the outer reference-data modal busy attribute with the current refresh state.

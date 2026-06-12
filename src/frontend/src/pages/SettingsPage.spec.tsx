@@ -65,7 +65,7 @@ vi.mock('../features/settings/backend/useBackendSettings', () => ({
 }));
 
 // RED phase: ReferenceDataSettingsPanel doesn't exist yet, so we mock it
-vi.mock('../features/settings/ReferenceDataSettingsPanel', () => ({
+vi.mock('../features/referenceData/ReferenceDataSettingsPanel', () => ({
   ReferenceDataSettingsPanel: () => (
     <section aria-label={referenceDataPanelLabel}>
       <div>Reference Data Settings Placeholder</div>
