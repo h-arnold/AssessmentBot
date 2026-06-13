@@ -390,8 +390,8 @@ Note: tests 1 and 2 require a mock that can delay resolution so `getQueueState` 
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (to be filled after implementation)
-- **Deviations from plan:** (to be filled if any)
+- **Implementation notes:** Section 4 complete. Fixed `processQueue` to shift before dispatch (was peek-then-shift-after-settle) so `pending` correctly excludes the in-flight request. `getQueueState` now returns live snapshots reflecting `{ pending: queue.pending.length, active: queue.active }` with the in-flight item already shifted out of `pending`. All 29 tests pass. Also addressed outstanding review nits from Sections 1-4: renamed `_parameters` → `parameters`, reduced `queue!` non-null assertions via `targetQueue` const capture, removed stale RED-phase comments, and hoisted `CallApiQueued` type to module scope.
+- **Deviations from plan:** None.
 - **Follow-up implications for later sections:** Section 5 adds retry-interaction edge cases.
 
 ---

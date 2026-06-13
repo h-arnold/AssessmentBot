@@ -229,7 +229,7 @@ export interface QueueState {
  *
  * @template TResponse - The expected response data type.
  * @param {string} method - Backend method name (must be non-empty).
- * @param {unknown} _parameters - Request parameters.
+ * @param {unknown} parameters - Request parameters.
  * @param {string} jobName - Queue job name (must be non-empty).
  * @returns {Promise<TResponse>} A Promise that resolves when the queued request completes.
  *
@@ -240,7 +240,7 @@ export interface QueueState {
  */
 export function callApiQueued<TResponse>(
   method: string,
-  _parameters: unknown,
+  parameters: unknown,
   jobName: string
 ): Promise<TResponse> {
   ApiRequestSchema.shape.method.parse(method);
@@ -252,22 +252,23 @@ export function callApiQueued<TResponse>(
     queue = { pending: [], active: false };
     queues.set(jobName, queue);
   }
+  const targetQueue = queue;
 
-  const wasIdle = !queue.active;
+  const wasIdle = !targetQueue.active;
 
   // Enqueue — store method, parameters, resolve, and reject in the pending array
   return new Promise<TResponse>((resolve, reject) => {
-    queue!.pending.push({
+    targetQueue.pending.push({
       method,
-      parameters: _parameters,
+      parameters,
       resolve: resolve as (value: unknown) => void,
       reject,
     });
 
     // Synchronously mark active before any await, preventing duplicate loops
     if (wasIdle) {
-      queue!.active = true;
-      void processQueue(queue!);
+      targetQueue.active = true;
+      void processQueue(targetQueue);
     }
   });
 }
@@ -287,14 +288,13 @@ export function callApiQueued<TResponse>(
  */
 async function processQueue(queue: QueueStateInternal): Promise<void> {
   while (queue.pending.length > 0) {
-    const entry = queue.pending[0]; // peek — don't shift until processed
+    const entry = queue.pending.shift()!; // REMOVE immediately
     try {
       const data = await callApi<unknown>(entry.method, entry.parameters);
       entry.resolve(data);
     } catch (error: unknown) {
       entry.reject(error);
     }
-    queue.pending.shift(); // remove the processed entry
   }
   queue.active = false;
 }
