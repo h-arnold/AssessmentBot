@@ -388,18 +388,18 @@ This section supersedes the earlier Section 9.7 defer decision for the specific 
 - Decision: `new`
 - Owning module/path: `src/frontend/src/services/apiService.ts`
 - Call-site rationale: exported type consumed by `getQueueState` callers (ABClass creation progress bar in v1; future consumers)
-- Status: `Not implemented`
+- Status: `Implemented`
 
 2. Helper: `callApiQueued` function
 
 - Decision: `new`
 - Owning module/path: `src/frontend/src/services/apiService.ts`
 - Call-site rationale: ABClass creation (sequentially enqueue class creation calls to avoid race condition); Google Classroom pre-fetch (sequentially enqueue background fetch calls to stay under concurrent ceiling)
-- Status: `Not implemented`
+- Status: `Implemented`
 
 3. Helper: `getQueueState` function
 
 - Decision: `new`
 - Owning module/path: `src/frontend/src/services/apiService.ts`
 - Call-site rationale: ABClass creation progress bar polls this for `{ pending, active }` to derive completion metrics
-- Status: `Not implemented`
+- Status: `Implemented`

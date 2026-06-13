@@ -318,13 +318,3 @@ export function getQueueState(jobName: string): QueueState {
   }
   return { pending: queue.pending.length, active: queue.active };
 }
-
-/**
- * Test-only accessor for inspecting internal queue state.
- * Export prefixed with `__` to discourage production use.
- *
- * @returns {Map<string, { pending: unknown[]; active: boolean }>} The internal queue map.
- */
-export function __getQueueInternalsForTest(): Map<string, { pending: unknown[]; active: boolean }> {
-  return queues as Map<string, { pending: unknown[]; active: boolean }>;
-}

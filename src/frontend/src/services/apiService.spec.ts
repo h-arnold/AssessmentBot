@@ -606,27 +606,8 @@ describe('callApiQueued enqueue', () => {
     clearGoogle();
   });
 
-  const ENQUEUE_REMAINING_AFTER_FIRST_SHIFT = 1;
-
-  /**
-   * Test-only accessor for inspecting internal queue state.
-   * Exported by the implementation module with a `__` prefix guard.
-   * Returns undefined when queue internals are not yet implemented.
-   */
-  type QueueInternals = Map<string, { pending: unknown[]; active: boolean }>;
-
-  /**
-   * Safely reads queue internals if the test-only accessor is available.
-   *
-   * @param {Record<string, unknown>} moduleExports - The dynamically imported module.
-   * @returns {QueueInternals | undefined} The queue map or undefined.
-   */
-  function tryGetQueueInternals(
-    moduleExports: Record<string, unknown>
-  ): QueueInternals | undefined {
-    const accessor = moduleExports.__getQueueInternalsForTest as (() => QueueInternals) | undefined;
-    return accessor?.();
-  }
+  type QueueState = { pending: number; active: boolean };
+  type GetQueueState = (jobName: string) => QueueState;
 
   it('enqueue returns a pending Promise when given valid inputs', async () => {
     const { callApiQueued } = (await import(apiServiceModulePath)) as {
@@ -635,8 +616,6 @@ describe('callApiQueued enqueue', () => {
 
     expect(callApiQueued).toBeDefined();
 
-    // RED: this throws until callApiQueued creates a pending Promise and
-    // stores it in an internal queue instead of throwing.
     const promise = callApiQueued!('myMethod', { x: 1 }, 'job-a');
 
     // Assert it's a Promise — unreachable until GREEN implements enqueue
@@ -652,12 +631,13 @@ describe('callApiQueued enqueue', () => {
   });
 
   it('two enqueues with same jobName produce distinct pending Promises', async () => {
-    const moduleExports = (await import(apiServiceModulePath)) as Record<string, unknown>;
-
-    const callApiQueued = moduleExports.callApiQueued as CallApiQueued | undefined;
+    const { callApiQueued, getQueueState } = (await import(apiServiceModulePath)) as {
+      callApiQueued?: CallApiQueued;
+      getQueueState?: GetQueueState;
+    };
     expect(callApiQueued).toBeDefined();
+    expect(getQueueState).toBeDefined();
 
-    // RED: both calls throw until queue internals exist
     const promiseA = callApiQueued!('myMethod', { id: 1 }, 'job-a');
     const promiseB = callApiQueued!('myMethod', { id: 2 }, 'job-a');
 
@@ -666,24 +646,23 @@ describe('callApiQueued enqueue', () => {
     expect(promiseB).toBeInstanceOf(Promise);
     expect(promiseA).not.toBe(promiseB);
 
-    // If the test-only accessor is available, verify internal queue state
-    const internals = tryGetQueueInternals(moduleExports);
-    if (internals !== undefined) {
-      const queueForA = internals.get('job-a');
-      expect(queueForA).toBeDefined();
-      expect(queueForA!.pending).toHaveLength(ENQUEUE_REMAINING_AFTER_FIRST_SHIFT);
-      // Queue is now active because the processing loop started synchronously
-      expect(queueForA!.active).toBe(true);
-    }
+    // getQueueState('job-a') returns { pending: 1, active: true } — one item
+    // remaining after processQueue shifted the first entry.
+    expect(getQueueState!('job-a')).toEqual({ pending: 1, active: true });
   });
 
   it('different jobNames create separate queues', async () => {
-    const moduleExports = (await import(apiServiceModulePath)) as Record<string, unknown>;
-
-    const callApiQueued = moduleExports.callApiQueued as CallApiQueued | undefined;
+    const { callApiQueued, getQueueState } = (await import(apiServiceModulePath)) as {
+      callApiQueued?: CallApiQueued;
+      getQueueState?: GetQueueState;
+    };
     expect(callApiQueued).toBeDefined();
+    expect(getQueueState).toBeDefined();
 
-    // RED: both calls throw until queue internals exist
+    // Before enqueue: both queues should have zero-state (not yet created)
+    expect(getQueueState!('job-a')).toEqual({ pending: 0, active: false });
+    expect(getQueueState!('job-b')).toEqual({ pending: 0, active: false });
+
     const promiseA = callApiQueued!('methodA', { x: 1 }, 'job-a');
     const promiseB = callApiQueued!('methodB', { y: 2 }, 'job-b');
 
@@ -691,22 +670,17 @@ describe('callApiQueued enqueue', () => {
     expect(promiseB).toBeInstanceOf(Promise);
     expect(promiseA).not.toBe(promiseB);
 
-    // If the test-only accessor is available, verify two separate queues
-    const internals = tryGetQueueInternals(moduleExports);
-    if (internals !== undefined) {
-      expect(internals.has('job-a')).toBe(true);
-      expect(internals.has('job-b')).toBe(true);
-      expect(internals.get('job-a')).not.toBe(internals.get('job-b'));
-    }
+    // After enqueue: each queue is active, confirming separate queues were created
+    expect(getQueueState!('job-a').active).toBe(true);
+    expect(getQueueState!('job-b').active).toBe(true);
   });
 
   it('enqueued Promises are independent of each other', async () => {
-    const moduleExports = (await import(apiServiceModulePath)) as Record<string, unknown>;
-
-    const callApiQueued = moduleExports.callApiQueued as CallApiQueued | undefined;
+    const { callApiQueued } = (await import(apiServiceModulePath)) as {
+      callApiQueued?: CallApiQueued;
+    };
     expect(callApiQueued).toBeDefined();
 
-    // RED: both calls throw until queue internals exist
     const promiseA = callApiQueued!('methodA', { id: 1 }, 'job-a');
     const promiseB = callApiQueued!('methodB', { id: 2 }, 'job-a');
 

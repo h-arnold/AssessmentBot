@@ -1,9 +1,5 @@
 /**
- * Topics management modal — unit tests (RED phase).
- *
- * These tests are intentionally written to fail because ManageTopicsModal.tsx does not exist yet.
- * They define the expected behaviour for the topics CRUD modal following the same patterns
- * as ManageCohortsModal and ManageYearGroupsModal.
+ * Manage Topics modal — unit tests.
  *
  * Covers: list rendering, empty state, create/edit form launch, year group multi-select,
  * required refresh after successful mutations, degraded-data fail-closed handling, modal

@@ -500,8 +500,8 @@ Run the full test suite and lint checks for the touched module. Verify no regres
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (to be filled after implementation)
-- **Deviations from plan:** (to be filled if any)
+- **Implementation notes:** Regression hardening complete. Removed `__getQueueInternalsForTest` test-only export from production code. Updated two enqueue tests to use public `getQueueState` API instead. All 34 tests pass, lint clean, zero test-only exports remain. Regression baseline: 5 checks passing, 3 pre-existing failures (backend-lint, backend-test-coverage, frontend-e2e).
+- **Deviations from plan:** None.
 
 ---
 
@@ -538,7 +538,7 @@ Update `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standard
 
 ### Implementation notes / deviations / follow-up
 
-- (to be filled after implementation)
+- Documentation complete. Updated `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9.14: all three entries (`QueueState`, `callApiQueued`, `getQueueState`) now marked `Implemented`. All `@remarks` JSDoc notes present in delivered code: `callApiQueued` defence-in-depth note, `getQueueState` snapshot note, and `processQueue` active-flag note.
 
 ---
 
