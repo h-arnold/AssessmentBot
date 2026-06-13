@@ -29,6 +29,7 @@ export function InlineDialog(properties: Readonly<{
 }>) {
   return (
     <dialog
+      open
       aria-labelledby={properties.labelId}
       style={{
         border: '1px solid #d9d9d9',

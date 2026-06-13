@@ -25,7 +25,7 @@ const bulkSetSelectModalMock = vi.hoisted(() =>
       const selectedValue = properties.options.at(-LAST_OPTION_OFFSET)?.value ?? '';
 
       return (
-        <dialog aria-label={properties.title}>
+        <dialog open aria-label={properties.title}>
           <button
             onClick={() => {
               void properties.onConfirm(selectedValue);
