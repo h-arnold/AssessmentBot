@@ -234,9 +234,10 @@ export interface QueueState {
  * @returns {Promise<TResponse>} A Promise that resolves when the queued request completes.
  *
  * @remarks
- * Input validation for `method` intentionally duplicates `callApi`'s `ApiRequestSchema`
- * as defence-in-depth — early rejection at the call site prevents malformed requests
- * from entering the queue.
+ * Input validation for `method` intentionally mirrors `callApi`'s `ApiRequestSchema`
+ * (via {@link ApiRequestSchema.shape.method}) as defence-in-depth — early rejection at
+ * the call site prevents malformed requests from entering the queue. The `parameters`
+ * field is validated later by `callApi` during dispatch.
  */
 export function callApiQueued<TResponse>(
   method: string,

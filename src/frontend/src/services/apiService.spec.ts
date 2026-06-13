@@ -39,6 +39,9 @@ type CallApiQueued = <TResponse>(
   jobName: string
 ) => Promise<TResponse>;
 
+type QueueState = { pending: number; active: boolean };
+type GetQueueState = (jobName: string) => QueueState;
+
 /**
  * Sets a mock `google` runtime object for tests.
  *
@@ -256,6 +259,41 @@ describe('apiService.callApi', () => {
     });
 
     await expect(callApi('getAuthorisationStatus')).rejects.toThrow();
+  });
+
+  it('rejects with descriptive error when GAS returns non-JSON in successHandler', async () => {
+    const callApi = await loadCallApi();
+
+    // Simulate GAS returning an HTML error page (non-JSON string) to successHandler.
+    // The standard harness always JSON.stringify()s the successHandler value, which
+    // makes the JSON-parse failure path unreachable through it. A focused custom mock
+    // exercises the edge case where GAS returns e.g. an HTML login page.
+    let capturedSuccessHandler: ((response: unknown) => void) | undefined;
+
+    const customMock = {
+      withSuccessHandler(handler: (response: unknown) => void) {
+        capturedSuccessHandler = handler;
+        return customMock;
+      },
+
+      withFailureHandler() {
+        return customMock;
+      },
+
+      apiHandler() {
+        queueMicrotask(() => {
+          capturedSuccessHandler?.('<html><body>Login Required</body></html>');
+        });
+      },
+    };
+
+    setGoogle({
+      script: { run: customMock as unknown as GoogleScriptRunApiHandler },
+    });
+
+    await expect(callApi('getAuthorisationStatus')).rejects.toThrow(
+      'Failed to parse API response as JSON.'
+    );
   });
 
   it('preserves requestId and error metadata in thrown transport errors', async () => {
@@ -544,9 +582,6 @@ describe('callApiQueued and getQueueState validation', () => {
     clearGoogle();
   });
 
-  type QueueState = { pending: number; active: boolean };
-  type GetQueueState = (jobName: string) => QueueState;
-
   it('callApiQueued throws when method is empty string', async () => {
     const { callApiQueued } = (await import(apiServiceModulePath)) as {
       callApiQueued?: CallApiQueued;
@@ -605,9 +640,6 @@ describe('callApiQueued enqueue', () => {
     vi.resetModules();
     clearGoogle();
   });
-
-  type QueueState = { pending: number; active: boolean };
-  type GetQueueState = (jobName: string) => QueueState;
 
   it('enqueue returns a pending Promise when given valid inputs', async () => {
     const { callApiQueued } = (await import(apiServiceModulePath)) as {
@@ -968,9 +1000,6 @@ describe('getQueueState live snapshots', () => {
     clearGoogle();
   });
 
-  type QueueState = { pending: number; active: boolean };
-  type GetQueueState = (jobName: string) => QueueState;
-
   it('returns correct pending count excluding in-flight request during active processing', async () => {
     const { callApiQueued, getQueueState } = (await import(apiServiceModulePath)) as {
       callApiQueued?: CallApiQueued;
@@ -1093,8 +1122,6 @@ describe('callApiQueued retry interaction and failure continuation', () => {
     vi.useRealTimers();
     clearGoogle();
   });
-
-  type GetQueueState = (jobName: string) => { pending: number; active: boolean };
 
   const RETRY_BLOCK_TOTAL_CALL_COUNT = 3; // A attempt 0, A retry, B dispatch
   const NON_RETRY_TOTAL_CALL_COUNT = 2; // A (single attempt) + B (single dispatch)

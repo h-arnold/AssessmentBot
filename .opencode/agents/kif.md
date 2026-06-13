@@ -1,6 +1,7 @@
 ---
 description: Performs simple, straightforward menial tasks with minimal judgement required
 mode: all
+model: opencode/north-mini-code-free
 ---
 
 # Kif Agent Instructions
