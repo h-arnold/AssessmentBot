@@ -1,36 +1,41 @@
-# API Queueing System Delivery Plan (TDD-First)
+# Assess Task Modal — No-Match Definition Resolution Delivery Plan (TDD-First)
 
 ## Read-First Context
 
 Before writing or executing this plan:
 
 1. Read the current `SPEC.md`.
-2. Read `src/frontend/AGENTS.md`.
-3. Treat `SPEC.md` as the source of truth for product behaviour, contracts, and scope boundaries.
-4. Use this action plan to sequence delivery and testing; do not restate or redefine material already settled in the spec.
+2. Read `src/frontend/AGENTS.md` for frontend conventions.
+3. Read `docs/developer/frontend/frontend-modal-patterns.md` for modal composition rules.
+4. Read `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` for helper extraction policy and the canonical location for recording helper decisions.
+5. Treat `SPEC.md` as the source of truth for product behaviour, contracts, and state-machine rules.
+6. No layout spec exists — the choice prompt is simple inline content in the existing modal body, and the wizard is reused with no visual changes. Rendering rules live in `SPEC.md` §Main user-facing surface specification.
+7. Record the Section 3 keep-local helper decision in `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` with status `Not implemented` before implementation starts.
 
 ## Scope and assumptions
 
 ### Scope
 
-- `src/frontend/src/services/apiService.ts` — add `callApiQueued`, `getQueueState`, `QueueState`, and internal queue infrastructure.
-- `src/frontend/src/services/apiService.spec.ts` — add queue-specific test coverage.
-- `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` — add planned helper entries.
+- Extend `AssignmentDefinitionWizardModal` and `useAssignmentDefinitionWizard` with `initialValues` and `onCreateSuccess` props
+- Add `noMatchResolution` state machine to `AssessTaskModal` and reconcile it with the existing `assessmentState` machine
+- Implement the no-match choice prompt (Alert + two buttons) in the Assess Task modal
+- Implement pre-population of wizard fields from Google Classroom assignment and ABClass data
+- Implement automatic assessment after successful definition creation
+- Wire the wizard's `selectedTopicKey`/`selectedYearGroupKey` synchronisation with `initialValues`
 
 ### Out of scope
 
-- React hook wrapping `getQueueState`
-- Queue cancellation, removal, or persistence
-- Priority-based queueing
-- Queue-level logging events
-- Backend changes
+- The "link to existing definition" workflow (placeholder button only)
+- Any backend changes
+- Any changes to `matchDefinitionForAssignment.ts`
+- Any topic auto-creation logic
 
 ### Assumptions
 
-1. The existing `callApi` function is not modified — only new exports are added.
-2. The existing `dispatchAttempt`, `shouldRetry`, and retry-loop functions remain unchanged and are reused by the queue.
-3. The existing test harness (`src/frontend/src/test/googleScriptRunHarness.ts` and `src/frontend/src/test/google-script-run-harness-factory.js`) is sufficient for queue tests. Any necessary extensions (e.g. controllable delayed responses) are added as test-local helpers in `apiService.spec.ts`.
-4. Queue state is module-private (a `Map<string, Queue>` in module scope). It is not persisted and resets on page reload.
+1. The wizard's `initialValues` will be applied in create mode only and are optional — when absent, existing behaviour is preserved.
+2. `onCreateSuccess` replaces the normal `onClose` for the save path in create mode — the caller is responsible for unmounting the wizard by transitioning its own state.
+3. The `assignmentTopics` cache is populated by the startup warmup flow — a cache miss simply means the topic field is left blank.
+4. The wizard's `SelectWithAddNew` component reads from `selectedTopicKey`/`selectedYearGroupKey` state, not from the form — both must be set when applying initial values.
 
 ---
 
@@ -38,11 +43,11 @@ Before writing or executing this plan:
 
 ### Engineering constraints
 
-- Keep `apiService.ts` changes additive — do not restructure existing exports.
-- Fail fast on invalid inputs (Zod validation at the call boundary).
-- Keep the queue loop simple: a single async function per queue, no external scheduling library.
+- Keep API/entry points thin and delegate behaviour to services or controllers.
+- Fail fast on invalid inputs and persistence failures.
+- Avoid defensive guards that hide wiring issues.
+- Keep changes minimal, localised, and consistent with repository conventions.
 - Use British English in comments and documentation.
-- Export functions as functions, not constants assigned to arrow functions.
 
 ### TDD workflow (mandatory per section)
 
@@ -55,417 +60,446 @@ For each section below:
 
 ### Delegation mandatory-read gate (mandatory for sub-agent execution)
 
-When a section is delegated to sub-agents:
+When a section is delegated to sub-agents, the plan must define and enforce mandatory documentation reads.
 
-- `Testing Specialist`: must read `docs/developer/frontend/frontend-testing.md`, `src/frontend/src/services/apiService.spec.ts` (existing patterns), `src/frontend/src/test/googleScriptRunHarness.ts`, `SPEC.md`.
-- `Implementation`: must read `src/frontend/AGENTS.md`, `src/frontend/src/services/apiService.ts`, `SPEC.md`, `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`.
-- `Code Reviewer`: must read `src/frontend/AGENTS.md`, `SPEC.md`, `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`.
-- `Docs`: must read `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`, `SPEC.md`.
+For each delegated phase (`Testing Specialist`, `Implementation`, `Code Reviewer`, `Docs`, `De-Sloppification`, or planning agents when used):
+
+1. list required documentation file paths under that phase before delegation
+2. require the sub-agent handoff to include `Files read` with explicit file paths
+3. verify every mandatory file is listed before accepting the handoff
+4. if any mandatory file is missing, return the work to the same sub-agent and block progression to the next phase
 
 ### Shared-helper planning gate (mandatory when helper changes are expected)
 
-All sections that introduce new exports must record helper decisions before implementation. See Section 1's shared-helper plan below.
+When a section is likely to introduce helper reuse, helper extension, or new shared helpers:
+
+1. record helper decisions in that section before implementation
+2. include: decision (`reuse` | `extend` | `new` | `keep local`), owning path, and call-site rationale
+3. add planned helper entries to the relevant canonical docs with status `Not implemented`
+4. during documentation pass, reconcile planned entries against actual implementation and update status/details accordingly
 
 ### Validation commands hierarchy
 
 - Frontend lint: `npm run lint:frontend`
-- Frontend unit tests: `npm run test:frontend -- src/services/apiService.spec.ts`
+- Frontend unit tests: `npm run test:frontend -- <target>` (paths relative to `src/frontend/`)
 
 ---
 
-## Section 1 — Types, validation schemas, and input contracts
+## Section 1 — Extend AssignmentDefinitionWizardModal contract
 
 ### Objective
 
-Define the `QueueState` interface, `callApiQueued` function signature, `getQueueState` function signature, and Zod validation schemas. Implement input validation and stub the queue-state query. No queue internals yet.
+Add `initialValues` and `onCreateSuccess` props to the `AssignmentDefinitionWizardModal` and `useAssignmentDefinitionWizard` hook. Apply initial form values in create mode and call `onCreateSuccess` on successful save instead of `onClose`.
 
 ### Constraints
 
-- Do not touch existing `callApi` or `dispatchAttempt`.
-- Define a `JobNameSchema = z.string().min(1)` for `jobName` validation. Reuse `ApiRequestSchema.shape.method` (which is `z.string().min(1)`) for `method` validation in `callApiQueued`. `getQueueState` uses `JobNameSchema` only.
-- `callApiQueued` validates `method` and `jobName` via Zod; invalid inputs throw synchronously before any queue interaction.
-- `getQueueState` validates `jobName` via Zod; invalid input throws synchronously.
-- `getQueueState` for an unknown but valid `jobName` returns `{ pending: 0, active: false }`.
-- All three new exports (`QueueState`, `callApiQueued`, `getQueueState`) are exported.
+- Must not break existing create/update behaviour when the new props are not provided
+- `initialValues` are optional and only applied in create mode
+- `selectedTopicKey` and `selectedYearGroupKey` must be synchronised with `initialValues`
+- Apply initial values in `useAssignmentDefinitionWizard` after `useFormInitialization` runs, setting `selectedTopicKey`/`selectedYearGroupKey` state directly from `initialValues.topic`/`initialValues.yearGroup`, converting empty strings to `undefined`. This is the chosen approach; `FormInitializationOptions` does not need new callbacks.
+- `onCreateSuccess` called after successful final save in create mode, replacing the normal `onClose()` call
+- In `handlePostMutation` (inside `runWizardMutation`), save actions in create mode must call `onCreateSuccess(definitionKey)` instead of `onClose()` when `onCreateSuccess` is provided
+- The key passed to the callback is the non-null `definitionKey` from the save response, falling back to the request's `effectiveKey` (`localDefinitionKey ?? definitionKey`) only if the response omits it
+- Thread `onCreateSuccess` through the options object passed to `runWizardMutation` (add it as an optional property), then pass it to `handlePostMutation`. This is cleaner than adding a new parameter to `runWizardMutation`.
 
 ### Delegation mandatory reads (when sub-agents are used)
 
 Testing Specialist mandatory docs:
 
-- `docs/developer/frontend/frontend-testing.md`
-- `src/frontend/src/services/apiService.spec.ts`
-- `src/frontend/src/test/googleScriptRunHarness.ts`
 - `SPEC.md`
+- `src/frontend/AGENTS.md`
+- `docs/developer/frontend/frontend-testing.md`
+- `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
 
 Implementation mandatory docs:
 
-- `src/frontend/AGENTS.md`
-- `src/frontend/src/services/apiService.ts`
 - `SPEC.md`
+- `src/frontend/AGENTS.md`
+- `docs/developer/frontend/frontend-modal-patterns.md`
 - `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
 
 Code Reviewer mandatory docs:
 
-- `src/frontend/AGENTS.md`
 - `SPEC.md`
+- `src/frontend/AGENTS.md`
 - `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
 
 ### Shared helper plan (when helper changes are expected)
 
-Helper decision entries:
-
-1. Helper: `QueueState` interface
-   - Decision: `new`
-   - Owning module/path: `src/frontend/src/services/apiService.ts`
-   - Call-site rationale: exported type consumed by `getQueueState` callers (ABClass creation progress bar in v1; future consumers)
-   - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
-   - Planned doc status: `Not implemented`
-
-2. Helper: `callApiQueued` function
-   - Decision: `new`
-   - Owning module/path: `src/frontend/src/services/apiService.ts`
-   - Call-site rationale: ABClass creation (sequentially enqueue class creation calls to avoid race condition); Google Classroom pre-fetch (sequentially enqueue background fetch calls to stay under concurrent ceiling)
-   - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
-   - Planned doc status: `Not implemented`
-
-3. Helper: `getQueueState` function
-   - Decision: `new`
-   - Owning module/path: `src/frontend/src/services/apiService.ts`
-   - Call-site rationale: ABClass creation progress bar polls this for `{ pending, active }` to derive completion metrics
-   - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
-   - Planned doc status: `Not implemented`
+No new shared helpers. All changes are local to the wizard feature.
 
 ### Acceptance criteria
 
-- `QueueState` is exported and has `pending: number` and `active: boolean` fields.
-- `callApiQueued` is exported, accepts `(method, parameters?, jobName)`, and returns `Promise<TResponse>`.
-- `getQueueState` is exported, accepts `(jobName)`, and returns `QueueState`.
-- Empty `method` or `jobName` throws synchronously for both `callApiQueued` and `getQueueState`.
-- `getQueueState('nonexistent')` returns `{ pending: 0, active: false }`.
-- Existing `callApi` exports and tests are unchanged.
+1. `AssignmentDefinitionWizardModalProperties` includes optional `initialValues` and `onCreateSuccess`
+2. In create mode with `initialValues`, form fields are pre-populated for the provided keys (title, topic, yearGroup) and blank for unprovided keys
+3. `selectedTopicKey` and `selectedYearGroupKey` state is set to match `initialValues.topic` and `initialValues.yearGroup` respectively
+4. In create mode without `initialValues`, behaviour is unchanged (form starts empty)
+5. In update mode, `initialValues` is ignored (existing definition hydration takes precedence)
+6. On successful final save in create mode with `onCreateSuccess` provided: `onCreateSuccess(definitionKey)` is called with the non-null key from the save response (falling back to the request's `effectiveKey` only if the response omits it), and `onClose()` is NOT called
+7. On successful final save in create mode without `onCreateSuccess`: existing `onClose()` behaviour is preserved
+8. On save failure: `onCreateSuccess` is NOT called; the existing `blockingError` flow runs
+9. The implementation guards against invoking `onCreateSuccess` with a null or undefined key
+10. Props flow through `AssignmentDefinitionWizardModal` → `useAssignmentDefinitionWizard` → `useFormInitialization` and `runWizardMutation`
 
 ### Required test cases (Red first)
 
-Frontend tests:
+Frontend tests (AssignmentDefinitionWizardModal.spec.tsx — integration):
 
-1. `callApiQueued` throws when `method` is empty string.
-2. `callApiQueued` throws when `jobName` is empty string.
-3. `getQueueState` throws when `jobName` is empty string.
-4. `getQueueState('unknown-job')` returns `{ pending: 0, active: false }`.
-5. `QueueState` type is exported and structurally correct (compile-time check; no runtime test needed beyond type usage in `getQueueState` return).
+1. `initialValues` are applied in create mode: title, topic, yearGroup appear in form fields
+2. `initialValues` with partial fields: only provided fields are pre-populated
+3. `initialValues` absent: form starts empty in create mode (existing behaviour)
+4. `initialValues` absent: update mode still hydrates from definition (existing behaviour)
+5. `onCreateSuccess` is called on save in create mode with the correct definition key
+6. `onCreateSuccess` is NOT called when save fails
+7. `onClose` is NOT called when `onCreateSuccess` is provided and save succeeds
+8. `onClose` IS called when `onCreateSuccess` is not provided and save succeeds (existing behaviour)
 
-Note: tests 1–3 are pure validation tests and do not require the `google.script.run` mock. Test 4 requires only the `getQueueState` function stub, not the full queue infrastructure.
+Frontend tests (useAssignmentDefinitionWizard.spec.ts — hook):
+
+1. Initial values set `selectedTopicKey` and `selectedYearGroupKey` state
+2. `definitionKey` passed to `onCreateSuccess` matches the save response key (falling back to the request's `effectiveKey` only if the response omits it)
+3. `onCreateSuccess` is NOT called when save fails with both `initialValues` and `onCreateSuccess` provided
+
+### Pre-test cleanup
+
+- Remove or replace the stale "Section 7 - Red Loop" placeholder test in `src/frontend/src/features/assignmentWizard/useAssignmentDefinitionWizard.spec.ts` before adding the new acceptance-criteria tests.
 
 ### Section checks
 
-- `npm run test:frontend -- src/services/apiService.spec.ts`
+- `npm run test:frontend -- src/features/classes/AssessTaskModal/`
 - `npm run lint:frontend`
-- All existing `callApi` tests still pass.
-- Planned helper entries have been added to `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` with status `Not implemented`.
+- Mandatory-read evidence gate passed for all delegated handoffs in this section.
+- **Pre-implementation gate:** Verify that `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` contains the topic-existence check keep-local entry with status `Not implemented` before any Section 3 code changes begin.
 
 ### Optional `@remarks` JSDoc follow-through
 
-- `callApiQueued`: note that input validation is intentionally duplicated with `callApi`'s `ApiRequestSchema` as defence-in-depth — early rejection at the call site prevents malformed requests from entering the queue.
-- `getQueueState`: note that it returns a snapshot; callers polling for progress should not assume monotonicity between calls.
+- Add `@remarks` to `useAssignmentDefinitionWizard` return type documenting the `initialValues` application semantics: applied in create mode only, ignored in update mode, `selectedTopicKey`/`selectedYearGroupKey` synchronised.
+- Add `@remarks` to `AssignmentDefinitionWizardModalProperties` documenting `onCreateSuccess`: replaces `onClose` for the save path in create mode; the caller is responsible for unmounting.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Section 1 complete. Added `JobNameSchema` (line 10), `QueueState` interface (line 206), `callApiQueued` function (line 225), and `getQueueState` function (line 246). `callApiQueued` validates inputs and throws a stub error for valid inputs (queue internals arrive in Section 2). `getQueueState` returns `{ pending: 0, active: false }` for any valid `jobName`. Planned helper entries added to `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9.14 with status `Not implemented`. Tests in `apiService.spec.ts` (4 new tests in `describe('callApiQueued and getQueueState validation')` block, lines 530–579).
-- **Deviations from plan:** `callApiQueued` uses `_parameters: unknown` (required) rather than `parameters?: unknown` (optional) due to TypeScript 5.9 TS1016 restriction (required parameter after optional). The underscore prefix suppresses `noUnusedParameters` for the stub. This will be revisited in Section 2.
-- **Follow-up implications for later sections:** Section 2 builds on these exports by adding queue internals.
+- **Implementation notes:** describe actual changes made when done.
+- **Deviations from plan:** note any departures from the original section design.
+- **Follow-up implications for later sections:** Section 2 depends on the extended wizard contract.
 
 ---
 
-## Section 2 — Queue data structure and enqueue
+## Section 2 — Add noMatchResolution state machine to AssessTaskModal
 
 ### Objective
 
-Add the internal queue infrastructure (module-scoped `Map<string, Queue>`) and implement `callApiQueued`'s enqueue path: locate or create a queue, push the request, and return a pending Promise. No dequeue processing yet — enqueued requests remain pending until Section 3 wires up the processing loop.
+Introduce the `noMatchResolution` state (`'idle' | 'choice' | 'creating'`) into `AssessTaskModal`, reconcile it with the existing `assessmentState` machine per the SPEC.md reconciliation table, and implement the choice prompt UI.
 
 ### Constraints
 
-- Queue state is stored in a module-scoped `Map` keyed by `jobName`. Each value is a `Queue` object with `pending`, `active`, and a processing loop reference.
-- `callApiQueued` validates inputs (per Section 1) before touching the queue map.
-- Enqueue must be synchronous after validation — the returned Promise is created and stored before `callApiQueued` returns.
-- The `active` flag defaults to `false` on queue creation.
-- Multiple `callApiQueued` calls for the same `jobName` must not race on queue creation (single-threaded JS makes this safe, but the implementation must still be correct).
+- Must not break any existing test cases except the no-match error-alert test (`'shows error Alert when findMatchingDefinition returns no-match'` in AssessTaskModal.spec.tsx), which is deliberately replaced by the new choice-state tests in this section. All other existing test paths (cache-miss, null-topic, null-yearGroup, ambiguous, matched-success, matched-failure, fetching, empty, cancel, reopen) must pass unchanged.
+- The no-match path (`kind: 'no-match'` in `handleMatchOutcome`) sets `noMatchResolution = 'choice'` instead of `assessmentState = 'error'`
+- All other error paths (cache miss, API failure, null topic, null yearGroup, ambiguous) continue to set `assessmentState = 'error'` as before
+- During `choice` state, the body shows the choice prompt; the assignment Select is hidden
+- During `choice` state, the footer shows only Cancel
+- The "Link to Existing" button is disabled and wrapped in an Ant Design `Tooltip` with `title="Coming soon"`
+- The wizard is rendered only when `noMatchResolution === 'creating' && assessmentState === 'idle'`
 
 ### Delegation mandatory reads (when sub-agents are used)
 
 Testing Specialist mandatory docs:
 
-- `docs/developer/frontend/frontend-testing.md`
-- `src/frontend/src/services/apiService.spec.ts`
-- `src/frontend/src/test/googleScriptRunHarness.ts`
 - `SPEC.md`
+- `src/frontend/AGENTS.md`
+- `docs/developer/frontend/frontend-testing.md`
 
 Implementation mandatory docs:
 
-- `src/frontend/AGENTS.md`
-- `src/frontend/src/services/apiService.ts`
 - `SPEC.md`
+- `src/frontend/AGENTS.md`
+- `docs/developer/frontend/frontend-modal-patterns.md`
 
 Code Reviewer mandatory docs:
 
-- `src/frontend/AGENTS.md`
 - `SPEC.md`
+- `src/frontend/AGENTS.md`
+- `docs/developer/frontend/frontend-modal-patterns.md`
 
 ### Shared helper plan (when helper changes are expected)
 
-No new helper decisions beyond Section 1. The internal `Queue` data structure is module-private.
+No new shared helpers in this section. All changes are local to the AssessTaskModal state machine. The topic existence check used for pre-population is handled in Section 3.
 
 ### Acceptance criteria
 
-- Calling `callApiQueued('myMethod', { x: 1 }, 'job-a')` returns a Promise that does not resolve or reject until a dequeue loop processes it (verified by test: promise remains pending when no processing loop runs).
-- A second call with the same `jobName` also returns a pending Promise, and the internal queue contains two pending items.
-- A call with a different `jobName` creates a separate queue.
-- The returned Promises are distinct — resolving one does not affect the other.
+1. `noMatchResolution` state exists on the component with initial value `'idle'`
+2. When `findMatchingDefinition` returns `'no-match'`, `noMatchResolution` is set to `'choice'` and `assessmentState` is reset from `'loading'` to `'idle'` (not set to `'error'`)
+3. During `noMatchResolution === 'choice'`:
+   - Body renders an info Alert: "No matching assignment definition found for '{title}'."
+   - Body renders two buttons: "Create New Definition" (primary) and "Link to Existing Definition" (disabled, with Tooltip "Coming soon")
+   - Footer shows only Cancel button
+   - Assignment Select is not visible
+4. "Create New Definition" click sets `noMatchResolution = 'creating'`
+5. Existing error paths unchanged: cache miss → `assessmentState = 'error'`
+6. Existing error paths unchanged: null topic → `assessmentState = 'error'`
+7. Existing error paths unchanged: null yearGroup → `assessmentState = 'error'`
+8. Existing error paths unchanged: ambiguous → `assessmentState = 'error'`
+9. Modal reopen resets `noMatchResolution` to `'idle'`
+10. Modal reopen resets `assessmentState` to `'idle'`
+11. `handleMatchOutcome` no-match branch calls `setNoMatchResolution('choice')` not `setAssessmentAsError`
 
 ### Required test cases (Red first)
 
-Frontend tests:
+Frontend tests (AssessTaskModal.spec.tsx):
 
-1. Enqueue a single request: Promise is returned and remains pending (not resolved, not rejected) when no dequeue loop is active.
-2. Enqueue two requests with same jobName: queue internal state shows two pending items (verify via a future `getQueueState` or a test-only introspection helper).
-3. Enqueue requests with different jobNames: two separate queues exist.
-4. Enqueued Promises are independent: resolving one should not affect the other.
-
-Note: tests that need to inspect internal queue state before `getQueueState` is fully wired may use a test-only accessor exported from the module (e.g. a `__getQueueInternalsForTest` guard). This is acceptable per the frontend testing policy (`src/frontend/src/test/**` for test helpers). Remove or gate the accessor before finalising the section.
+1. No-match → choice state: Alert visible, "Create New Definition" button visible, "Link to Existing" disabled
+2. Choice state: Cancel button in footer, no assignment Select visible
+3. "Create New Definition" click → `noMatchResolution` transitions to `'creating'`
+4. Cache miss → still shows `assessmentState = 'error'` (unchanged)
+5. Null topic → still shows `assessmentState = 'error'` (unchanged)
+6. Null yearGroup → still shows `assessmentState = 'error'` (unchanged)
+7. Ambiguous → still shows `assessmentState = 'error'` (unchanged)
+8. Reopen modal resets `noMatchResolution` to `'idle'`
+9. Reopen modal resets `assessmentState` to `'idle'` (clears stale success/error from previous open)
+10. "Link to Existing" button is disabled with Tooltip "Coming soon"
 
 ### Section checks
 
-- `npm run test:frontend -- src/services/apiService.spec.ts`
+- `npm run test:frontend -- src/features/classes/AssessTaskModal/`
 - `npm run lint:frontend`
-- All tests from Section 1 still pass.
+- Mandatory-read evidence gate passed for all delegated handoffs in this section.
 
 ### Optional `@remarks` JSDoc follow-through
 
-- Internal `Queue` type: note that `active` is set synchronously before any `await` to prevent duplicate processing loops.
+- Update `@remarks` on `AssessTaskModal` to document the orthogonal `assessmentState` × `noMatchResolution` state machine, replacing the current single-axis description.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Section 2 complete. Added module-private `QueueEntry` and `QueueStateInternal` types, module-scoped `queues` Map, and test-only `__getQueueInternalsForTest` export. `callApiQueued` now creates/retrieves a queue, stores `resolve`/`reject` in `pending`, and returns a pending Promise. `getQueueState` now reads from the actual queue map. All 21 tests pass (13 original + 4 Section 1 + 4 Section 2).
-- **Deviations from plan:** `_parameters` remains non-optional (required) — same TS1016 workaround from Section 1. `QueueEntry` stores only `resolve`/`reject` (not `method`/`parameters` yet) — those will be added in Section 3 when the dequeue loop needs them for dispatch.
-- **Follow-up implications for later sections:** Section 3 wires up the dequeue processing loop that resolves/rejects these pending Promises. `__getQueueInternalsForTest` must be removed in Section 6 (Regression).
+- **Implementation notes:** describe actual changes made when done.
+- **Deviations from plan:** note any departures from the original section design.
+- **Follow-up implications for later sections:** Section 3 depends on the `creating` state being wired and the wizard being rendered within this state.
 
 ---
 
-## Section 3 — Sequential processing loop
+## Section 3 — Wire wizard integration, pre-population, and auto-assessment
 
 ### Objective
 
-Implement the dequeue processing loop: when a request is enqueued and the queue is idle, synchronously mark active, then process requests one at a time via `callApi`. On settle (resolve or reject), clear active and process the next. Wire this into `callApiQueued` so enqueued Promises resolve/reject with the dispatched result.
+Wire the `AssignmentDefinitionWizardModal` into the AssessTaskModal's `creating` state with pre-populated initial values. Implement the auto-assessment flow after successful definition creation.
 
 ### Constraints
 
-- The active flag must be set synchronously before the first `await callApi(...)`. See SPEC.md agreed decision #8.
-- Processing order is strict FIFO within a job name.
-- `callApi` is reused for dispatch — no duplicate transport logic.
-- After a request settles (resolve or reject), the loop checks for the next pending request. If none, the queue becomes idle.
-- Different job names' queues must be independent — a blocked queue does not block other queues or direct `callApi` calls.
-- The loop must not swallow errors from `callApi` — rejected promises propagate to the individual enqueued request's Promise.
+- The wizard must only render when `noMatchResolution === 'creating' && assessmentState === 'idle'`
+- Initial values are derived from: `selectedAssignment.title`, cached `assignmentTopics`, and `classPartial.yearGroupKey`
+- Topic pre-population: look up `selectedAssignment.topicId` in `assignmentTopics` cache; if found, set topic; if not, leave blank
+- `assignmentTopics` is read from `queryClient.getQueryData(queryKeys.assignmentTopics())`
+- The selected assignment and class ID must be preserved for the auto-assessment API call
+- During auto-assessment (`assessmentState = 'loading'` while `noMatchResolution = 'creating'`), the body remains hidden
+- After auto-assessment completes, `noMatchResolution` is reset to `'idle'`
+- When the wizard is cancelled (closes without `onCreateSuccess`), `noMatchResolution` returns to `'choice'`
+- When the AssessTaskModal footer Cancel is clicked during `'creating'`, the entire modal closes
+- The `assignmentTopics` import is added to the AssessTaskModal's existing imports
 
 ### Delegation mandatory reads (when sub-agents are used)
 
 Testing Specialist mandatory docs:
 
-- `docs/developer/frontend/frontend-testing.md`
-- `src/frontend/src/services/apiService.spec.ts`
-- `src/frontend/src/test/googleScriptRunHarness.ts`
 - `SPEC.md`
+- `src/frontend/AGENTS.md`
+- `docs/developer/frontend/frontend-testing.md`
 
 Implementation mandatory docs:
 
-- `src/frontend/AGENTS.md`
-- `src/frontend/src/services/apiService.ts`
 - `SPEC.md`
+- `src/frontend/AGENTS.md`
+- `docs/developer/frontend/frontend-modal-patterns.md`
 
 Code Reviewer mandatory docs:
 
-- `src/frontend/AGENTS.md`
 - `SPEC.md`
+- `src/frontend/AGENTS.md`
+- `docs/developer/frontend/frontend-modal-patterns.md`
 
 ### Shared helper plan (when helper changes are expected)
 
-No new helper decisions. The processing loop is internal to `callApiQueued`'s module.
+1. Helper: topic existence check (`topics.some(t => t.key === selectedAssignment.topicId)`)
+   - Decision: `keep local`
+   - Owning module/path: `src/frontend/src/features/classes/AssessTaskModal/AssessTaskModal.tsx`
+   - Call-site rationale: single-caller, one-liner lookup; no existing helper matches this contract
+   - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
+   - Planned doc status: `Not implemented` (must be recorded in the canonical doc before implementation starts; updated to `Implemented` in the documentation pass)
 
 ### Acceptance criteria
 
-- Two requests enqueued for the same jobName execute sequentially: the second does not dispatch until the first settles.
-- Requests enqueued for different jobNames can execute concurrently.
-- A queued request that resolves passes its data through to the caller's Promise.
-- A queued request that rejects passes its error through to the caller's Promise.
-- After the last queued request settles, the queue is idle and the next enqueue starts a fresh processing loop.
-- Direct `callApi` calls are unaffected and execute immediately alongside any queue processing.
+1. During `noMatchResolution === 'creating' && assessmentState === 'idle'`, the wizard is rendered with:
+   - `mode="create"`
+   - `initialValues` containing title, topic (if found), and yearGroup
+   - `onCreateSuccess` callback wired
+   - `definitionKey={null}` (create mode)
+   - `open={true}`
+2. Topic pre-population: when `selectedAssignment.topicId` matches an `AssignmentTopic.key` in the cache, the topic field is pre-populated
+3. Topic pre-population: when `selectedAssignment.topicId` is null or no match found, topic field is blank
+4. Year group pre-population: `classPartial.yearGroupKey` is always pre-populated (guaranteed non-null upstream)
+5. Title pre-population: `selectedAssignment.title` is always pre-populated
+6. On `onCreateSuccess(definitionKey)`: `startAssessmentRun` is called with the received non-null key
+7. During auto-assessment API call: `noMatchResolution` stays `'creating'`, `assessmentState` becomes `'loading'`, the wizard is **unmounted** (not rendered), body stays hidden, footer shows Cancel + disabled Start Assessment
+8. On auto-assessment success: `noMatchResolution = 'idle'`, `assessmentState = 'success'`
+9. On auto-assessment API failure: `noMatchResolution = 'idle'`, `assessmentState = 'error'`
+10. When the wizard's `onClose` fires without `onCreateSuccess` having fired: `noMatchResolution` returns to `'choice'`
+11. When Cancel is clicked in the AssessTaskModal footer during `'creating'`: `onClose()` is called, closing everything (unsaved wizard edits are silently lost — this is the intentional escape hatch behaviour)
+12. The `body` render function hides the assignment content during `noMatchResolution !== 'idle'`
 
 ### Required test cases (Red first)
 
-Frontend tests:
+Frontend tests (AssessTaskModal.spec.tsx):
 
-1. Sequential execution: enqueue A then B for jobName 'x'. Verify A's `apiHandler` is called before B's. Verify both resolve with their respective data.
-2. Parallel independence: enqueue A for 'job-x' and B for 'job-y'. Verify both dispatch without waiting for each other.
-3. Resolved data passthrough: enqueue a request; verify the resolved Promise receives the same data that `callApi` would return.
-4. Rejected error passthrough: configure the mock to return a failure envelope; verify the queued Promise rejects with the correct `ApiTransportError`.
-5. Idle-after-drain: after all queued requests settle, enqueue a new one — verify it dispatches immediately (the `apiHandler` spy is called without advancing any fake timers).
-6. Direct `callApi` unaffected: while a queue is processing, a direct `callApi` call dispatches immediately.
-
-### Section checks
-
-- `npm run test:frontend -- src/services/apiService.spec.ts`
-- `npm run lint:frontend`
-- All tests from Sections 1–2 still pass.
-
-### Optional `@remarks` JSDoc follow-through
-
-- Processing loop: note that the loop runs asynchronously (not awaited by the enqueuer), using `await` internally for each dispatch. The synchronous active-flag set before the first `await` prevents race conditions from near-simultaneous enqueues.
-
-### Implementation notes / deviations / follow-up
-
-- **Implementation notes:** Section 3 complete. Extended `QueueEntry` with `method` and `parameters` fields. Added `processQueue` async function implementing FIFO dequeue loop — calls `callApi`, resolves/rejects individual promises, sets `active = false` on drain. `callApiQueued` modified to capture `wasIdle` synchronously, set `active = true` inside the Promise constructor (before any `await`), and fire `void processQueue()`. All 27 tests pass (13 original + 4 Section 1 + 4 Section 2 + 6 Section 3).
-- **Deviations from plan:** `_parameters` underscore prefix retained — the parameter IS used now, but renaming from `_parameters` to `parameters` is deferred to avoid TS1016 conflict. The prefix is cosmetic and will be cleaned up in Section 6.
-- **Follow-up implications for later sections:** Section 4 wires `getQueueState` to return live snapshots from the internal queue map. Section 4 — `getQueueState` implementation
-
-### Objective
-
-Wire `getQueueState` to the internal queue map so it returns live `{ pending, active }` snapshots. Replace the Section 1 stub.
-
-### Constraints
-
-- Retain the input validation from Section 1 (non-empty `jobName`).
-- Unknown but valid `jobName` returns `{ pending: 0, active: false }`.
-- `pending` counts queued requests not yet dispatched (excluding the currently active one).
-- `active` is `true` when a request is currently in flight for that job name.
-- Values are a snapshot at call time — no subscription or reactivity.
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Testing Specialist mandatory docs:
-
-- `docs/developer/frontend/frontend-testing.md`
-- `src/frontend/src/services/apiService.spec.ts`
-- `src/frontend/src/test/googleScriptRunHarness.ts`
-- `SPEC.md`
-
-Implementation mandatory docs:
-
-- `src/frontend/AGENTS.md`
-- `src/frontend/src/services/apiService.ts`
-- `SPEC.md`
-
-Code Reviewer mandatory docs:
-
-- `src/frontend/AGENTS.md`
-- `SPEC.md`
-
-### Shared helper plan (when helper changes are expected)
-
-No new helper decisions. `getQueueState` was planned in Section 1.
-
-### Acceptance criteria
-
-- `getQueueState` for a job name with one active request and two pending returns `{ pending: 2, active: true }`.
-- `getQueueState` for a job name whose queue has fully drained returns `{ pending: 0, active: false }`.
-- Calling `getQueueState` while processing is in-flight returns a consistent snapshot (not a torn read).
-
-### Required test cases (Red first)
-
-Frontend tests:
-
-1. State during active processing: enqueue 3 requests, let processing begin. After the first dispatches but before it settles, call `getQueueState` → `{ pending: 2, active: true }`.
-2. State with queued requests during active processing: enqueue 2 requests to the same job name while the mock defers the first request's resolution. After enqueuing both, call `getQueueState` → `{ pending: 1, active: true }` (one active in-flight, one queued).
-3. State after drain: enqueue 1 request, let it settle. Call `getQueueState` → `{ pending: 0, active: false }`.
-4. State for unknown jobName (existing test from Section 1, verify still passes).
-
-Note: tests 1 and 2 require a mock that can delay resolution so `getQueueState` can be called mid-flight. The existing test harness supports this via a deferred callback pattern — see the concurrent-response test in `apiService.spec.ts` (lines 291–348) for the pattern. Per SPEC decision #8, the active flag transitions synchronously on first enqueue to an idle queue; test 2 captures the state where the first request is in-flight (`active: true`) and the second is queued (`pending: 1`).
+1. Creating state: wizard is rendered with `mode="create"` and correct `initialValues` (title, topic found, yearGroup)
+2. Creating state: topic field empty when `topicId` not in cache
+3. Creating state: topic field empty when `topicId` is null
+4. `onCreateSuccess` → `startAssessmentRun` called → success state shown
+5. `onCreateSuccess` → `startAssessmentRun` fails → error state shown
+6. Wizard cancel → returns to choice state (Alert + buttons visible again)
+7. AssessTaskModal Cancel during creating → `onClose` called
+8. Auto-assessment loading: after `onCreateSuccess` fires and before `startAssessmentRun` resolves, the wizard is NOT rendered, the assignment Select is NOT visible, footer shows Cancel + disabled Start Assessment; then after resolution, final success/error state is shown
 
 ### Section checks
 
-- `npm run test:frontend -- src/services/apiService.spec.ts`
+- `npm run test:frontend -- src/features/classes/AssessTaskModal/`
 - `npm run lint:frontend`
-- All tests from Sections 1–3 still pass.
+- Mandatory-read evidence gate passed for all delegated handoffs in this section.
 
 ### Optional `@remarks` JSDoc follow-through
 
-- `getQueueState`: document that the return value is a snapshot — between the call and the caller's next statement, the queue may have advanced. Polling consumers should treat values as point-in-time observations.
+- Document in `AssessTaskModal` `@remarks` that the `creating` state persists during auto-assessment to keep the body hidden, preventing a flash of the assignment Select.
+
+### Accessibility/focus follow-through
+
+- Verify that focus moves to the wizard modal when it opens and returns to the choice prompt (or success/error Alert) when the wizard closes. Automated coverage is limited per `SPEC.md`; rely on Ant Design's default focus behaviour and manual verification.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Section 4 complete. Fixed `processQueue` to shift before dispatch (was peek-then-shift-after-settle) so `pending` correctly excludes the in-flight request. `getQueueState` now returns live snapshots reflecting `{ pending: queue.pending.length, active: queue.active }` with the in-flight item already shifted out of `pending`. All 29 tests pass. Also addressed outstanding review nits from Sections 1-4: renamed `_parameters` → `parameters`, reduced `queue!` non-null assertions via `targetQueue` const capture, removed stale RED-phase comments, and hoisted `CallApiQueued` type to module scope.
-- **Deviations from plan:** None.
-- **Follow-up implications for later sections:** Section 5 adds retry-interaction edge cases.
+- **Implementation notes:** describe actual changes made when done.
+- **Deviations from plan:** note any departures from the original section design.
+- **Follow-up implications for later sections:** none — this is the final feature section.
 
 ---
 
-## Section 5 — Retry interaction and failure continuation
+## Section 4 — E2E integration tests
 
 ### Objective
 
-Verify that the existing retry/backoff logic in `callApi` works correctly inside the queue and that the queue continues processing after individual request failures. This section is primarily test-driven — the implementation should already handle these cases from Sections 2–3; this section hardens the behaviour with targeted edge-case tests.
+Add Playwright E2E tests covering the cross-component integration of the no-match resolution workflow: choice-prompt rendering, wizard pre-population, modal-stacking behaviour, and the full auto-assessment journey.
 
 ### Constraints
 
-- Retriable `RATE_LIMITED` failures trigger exponential-backoff retries before the next queued request can start (the queue loop awaits the full `callApi` call including retries).
-- After all retries are exhausted and the request ultimately rejects, the queue continues with the next pending request.
-- Non-retriable failures immediately reject and the queue continues.
-- Tests must use `vi.useFakeTimers()` and coordinate timer advancement with queue processing per the existing retry-policy test pattern in `apiService.spec.ts` (lines 389–457).
+- Tests must use the existing E2E mock infrastructure (`endToEndRuntimeMocks.ts`, `classes-page-end-to-end-helpers.ts`)
+- `startAssessmentRun` must be added to the `RuntimeScenario` type and the `createAssessTaskScenario()` factory
+- All void-method responses (including `startAssessmentRun`) must use `{ kind: 'success', data: null }`; never omit `data` or use `data: undefined`
+- All custom response queues for `useEffect`-triggered backend methods must provide **two entries per expected real call** to account for React 19 StrictMode double-effect firing in development builds. This includes not only `startAssessmentRun` and `upsertAssignmentDefinition`, but also any overridden reference-data queues such as `getAssignmentTopics` and `getYearGroups` used by Tests 3 and 5.
+- The `AssessTaskModal` and `ClassesPage` unit tests remain the primary regression safety net — E2E tests cover the multi-modal integration that unit tests cannot reach
+- All E2E tests must pass `npm run test:frontend:e2e` before this section is considered complete
 
 ### Delegation mandatory reads (when sub-agents are used)
 
-Testing Specialist mandatory docs:
+Playwright mandatory docs:
 
-- `docs/developer/frontend/frontend-testing.md`
-- `src/frontend/src/services/apiService.spec.ts` (especially the retry-policy `describe` block, lines 389–457)
-- `src/frontend/src/test/googleScriptRunHarness.ts`
 - `SPEC.md`
-
-Implementation mandatory docs:
-
-- `src/frontend/AGENTS.md` (if implementation changes are needed)
-- `src/frontend/src/services/apiService.ts`
-- `SPEC.md`
-
-Code Reviewer mandatory docs:
-
+- `ACTION_PLAN.md`
 - `src/frontend/AGENTS.md`
-- `SPEC.md`
+- `docs/developer/frontend/frontend-playwright-e2e.md`
+- `docs/developer/frontend/frontend-modal-patterns.md`
 
 ### Shared helper plan (when helper changes are expected)
 
-None.
+No new shared helpers. E2E tests reuse the existing mock infrastructure.
+
+### Infrastructure change required
+
+1. **`RuntimeScenario` type and `allMethods` array** (`src/frontend/e2e-tests/shared/endToEndRuntimeMocks.ts`):
+   - **Line 50–62 (`RuntimeScenario` type):** Add `startAssessmentRun?: ReadonlyArray<ResponseItem>`.
+   - **Line ~485 (`allMethods` array inside `installRuntimeMock`):** Add `'startAssessmentRun'` to the `const allMethods = [...]` array. This array gates which backend methods the browser-side mock accepts — without it, every `startAssessmentRun` call triggers `"Unexpected call to method: startAssessmentRun"` and fails.
+   - **Note:** These are two separate edits in the same file.
+
+2. **`CreateAssessTaskScenarioOptions` type and `createAssessTaskScenario()`** (`src/frontend/e2e-tests/helpers/classes-page-end-to-end-helpers.ts` interface at lines 111–115, factory at lines 181–189): Introduce a dedicated `CreateAssessTaskScenarioOptions` type that extends `CreateClassesScenarioOptions` with optional `startAssessmentRun?: ReadonlyArray<ResponseItem>` and `upsertAssignmentDefinition?: ReadonlyArray<ResponseItem>` fields. Update `createAssessTaskScenario()` to:
+   - Destructure `startAssessmentRun` and `upsertAssignmentDefinition` from its options.
+   - Spread the remaining options into `createClassesScenario()`.
+   - Explicitly merge the two new fields onto the returned `RuntimeScenario` object, e.g.:
+     ```ts
+     const { startAssessmentRun, upsertAssignmentDefinition, ...classesOptions } = options;
+     const scenario = createClassesScenario({
+       ...classesOptions,
+       getGoogleClassroomAssignments:
+         options.getGoogleClassroomAssignments ?? MOCK_COURSEWORK_ASSIGNMENTS,
+     });
+     return {
+       ...scenario,
+       ...(startAssessmentRun !== undefined && { startAssessmentRun }),
+       ...(upsertAssignmentDefinition !== undefined && { upsertAssignmentDefinition }),
+     };
+     ```
+   - This ensures the new fields are not silently dropped when `createClassesScenario()` destructures only its own options.
+
+### Test data patterns
+
+- **Wizard mock data:** Tests 3 and 5 need `getAssignmentTopics` with actual topic data (not the default empty array) so the topic pre-population assertion works. These tests should construct a `RuntimeScenario` by spreading `createAssessTaskScenario()` and overriding `getAssignmentTopics` and `upsertAssignmentDefinition` with appropriate mock responses. The `createAssessTaskScenario()` factory does not need to expose `getAssignmentTopics` directly — callers can spread-override the returned scenario object.
 
 ### Acceptance criteria
 
-- A queued request that receives `RATE_LIMITED` with `retriable: true` undergoes retries before the next queued request starts.
-- The queue's `active` flag remains `true` for the entire retry duration.
-- After a retriable request exhausts all attempts and rejects, the next queued request begins processing.
-- A non-retriable failure immediately rejects, and the next queued request begins processing.
-- The queue does not stall or deadlock after any failure pattern.
+1. `startAssessmentRun` is in the `RuntimeScenario` type and the `allMethods` array, producing correctly queued mock responses
+2. A dedicated `CreateAssessTaskScenarioOptions` type exists; `createAssessTaskScenario()` accepts `startAssessmentRun` and `upsertAssignmentDefinition` through that type
+3. Six E2E test cases pass (see below)
+4. All existing E2E tests (`classes-page-assess-task.spec.ts`, `classes-page.spec.ts`) continue to pass
 
-### Required test cases (Red first)
+### Required test cases
 
-Frontend tests:
+E2E tests added to `src/frontend/e2e-tests/classes-page-assess-task.spec.ts`:
 
-1. Retry delays block the next request: enqueue A then B for 'job-x'. Configure mock to return `RATE_LIMITED` (retriable) for A's first attempt, then success on the second attempt. Verify B does not dispatch until A's retry completes. Use `vi.useFakeTimers()` and verify `apiHandler` call counts.
-2. Retry exhaustion and queue continuation: enqueue A then B. Configure mock to return `RATE_LIMITED` (retriable) for all 4 of A's attempts. Verify A rejects, then B dispatches and resolves.
-3. Non-retriable failure and continuation: enqueue A then B. Configure mock to return `INVALID_REQUEST` (non-retriable) for A. Verify A rejects immediately, then B dispatches and resolves.
-4. Active flag during retry: enqueue A. While A is in retry (between attempts, before timers advance), call `getQueueState('job-x')` → `{ pending: 0, active: true }`.
-5. Synchronous `callApi` failure and queue continuation: enqueue A then B for the same job name. Remove `google.script.run` from the global scope before A's processing begins so `callApi` throws synchronously for A, then restore it before the queue proceeds to B. Verify A's promise rejects; verify B is still processed and resolves.
+1. **No-match → choice prompt renders correctly**
+   - Mock a single assignment whose title/topic/yearGroup has no matching definition partial
+   - Open the AssessTaskModal, select the assignment, click Start Assessment
+   - Assert: the body contains an info/warning Alert with text about no matching definition
+   - Assert: a "Create New Definition" button is visible and enabled
+   - Assert: a "Link to Existing Definition" button is visible and disabled
+   - Assert: the disabled button has a tooltip with text "Coming soon"
+   - Assert: the footer shows only Cancel (no Start Assessment button)
+
+2. **Choice prompt → Cancel closes the modal**
+   - From the choice-prompt state, click Cancel
+   - Assert: the AssessTaskModal dialog is no longer visible
+
+3. **"Create New Definition" → wizard opens in create mode with pre-populated fields**
+   - Click "Create New Definition"
+   - Assert: the AssignmentDefinitionWizardModal appears (title "Create assignment")
+   - Assert: the title input contains the GC assignment's title
+   - Assert: the year-group dropdown shows the class's year group selected
+
+4. **Wizard cancel/discard → returns to choice prompt**
+   - Click "Create New Definition", then cancel the wizard (click Cancel → confirm discard in the wizard's discard-confirm dialog)
+   - Assert: the wizard modal closes
+   - Assert: the AssessTaskModal body returns to the choice prompt (Alert + buttons visible)
+
+5. **Full wizard flow → auto-assessment success**
+   - Precondition: mock `upsertAssignmentDefinition` with a success response and `startAssessmentRun` with a success response
+   - Click "Create New Definition", fill in document URLs, click "Parse and continue", wait for parse, click "Save"
+   - Assert: the wizard closes
+   - Assert: `startAssessmentRun` was called (verify via `getMethodCalls(page)`)
+   - Assert: the AssessTaskModal shows a success Alert ("Assessment started for...")
+   - Assert: the footer shows only a Close button
+
+6. **AssessTaskModal outer Cancel during wizard → both modals close**
+   - Click "Create New Definition" to open the wizard
+   - Click the AssessTaskModal's footer Cancel button (the outer modal's Cancel, not the wizard's)
+   - Assert: both modals close and the ClassesPage returns to its normal interactive state
 
 ### Section checks
 
-- `npm run test:frontend -- src/services/apiService.spec.ts`
-- `npm run lint:frontend`
-- All tests from Sections 1–4 still pass.
+- Create the new test file `src/frontend/e2e-tests/classes-page-assess-task.spec.ts` (it does not exist yet).
+- `npm run test:frontend:e2e -- src/frontend/e2e-tests/classes-page-assess-task.spec.ts`
+- Mandatory-read evidence gate passed for all delegated handoffs in this section.
 
 ### Optional `@remarks` JSDoc follow-through
 
-None — retry behaviour is already documented in `callApi`.
+None — E2E tests are self-documenting.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Section 5 complete. All 5 retry/failure tests pass — the Sections 2-3 implementation already handled these edge cases correctly. Tests added: retry delays block next request, retry exhaustion and continuation, non-retriable failure and continuation, active flag during retry, synchronous callApi failure and continuation. All 34 tests pass.
-- **Deviations from plan:** None.
-- **Follow-up implications for later sections:** Section 6 is regression and documentation.
+- **Implementation notes:** describe actual changes made when done.
+- **Deviations from plan:** note any departures from the original section design.
+- **Follow-up implications for later sections:** Regression must include the E2E suite.
 
 ---
 
@@ -473,35 +507,41 @@ None — retry behaviour is already documented in `callApi`.
 
 ### Objective
 
-Run the full test suite and lint checks for the touched module. Verify no regressions in existing `callApi` behaviour.
+Verify that all existing tests pass and that the new feature does not regress any existing behaviour in the Assess Task modal, wizard, or Classes page.
 
 ### Constraints
 
 - Prefer focused test runs before broader validation.
-- Do not run unrelated suites unless a broader regression surface is suspected.
+- Existing `matchDefinitionForAssignment.spec.ts` must pass unchanged.
+- Existing `AssignmentDefinitionWizardModal.spec.tsx` must pass unchanged when new props are omitted.
+- Existing `AssessTaskModal.spec.tsx` must pass unchanged (no behavioural regressions on existing test cases).
 
 ### Acceptance criteria
 
-- All existing `callApi` tests pass unchanged.
-- All new queue tests pass.
-- `npm run lint:frontend` passes with no new warnings or errors.
-- No test-only exports or debug accessors remain in production code.
+1. All existing AssessTaskModal tests pass
+2. All existing wizard tests pass
+3. All existing `matchDefinitionForAssignment` tests pass
+4. All existing `ClassesPage` tests pass
+5. All existing AssessTaskModal E2E tests pass
+6. Frontend lint passes
 
 ### Required test cases/checks
 
-1. Run touched frontend service suite: `npm run test:frontend -- src/services/apiService.spec.ts`
-2. Run frontend lint: `npm run lint:frontend`
-3. Verify no test-only exports remain (grep for `__` prefixed exports or `export function __`).
-4. Verify mandatory-read evidence (`Files read`) is complete for every delegated regression handoff.
+1. Run `npm run test:frontend -- src/features/classes/AssessTaskModal/`
+2. Run `npm run test:frontend -- src/features/assignmentWizard/`
+3. Run `npm run test:frontend -- src/pages/ClassesPage`
+4. Run `npm run lint:frontend`
+5. Run `npm run test:frontend:e2e -- src/frontend/e2e-tests/classes-page-assess-task.spec.ts`
+6. Run `npm run test:frontend:e2e -- src/frontend/e2e-tests/classes-page.spec.ts`
 
 ### Section checks
 
-- All commands above return green.
+- Run the commands listed above and ensure green results.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Regression hardening complete. Removed `__getQueueInternalsForTest` test-only export from production code. Updated two enqueue tests to use public `getQueueState` API instead. All 34 tests pass, lint clean, zero test-only exports remain. Regression baseline: 5 checks passing, 3 pre-existing failures (backend-lint, backend-test-coverage, frontend-e2e).
-- **Deviations from plan:** None.
+- **Implementation notes:** summarise what was done during regression phase.
+- **Deviations from plan:** note any additional work discovered or done.
 
 ---
 
@@ -509,45 +549,45 @@ Run the full test suite and lint checks for the touched module. Verify no regres
 
 ### Objective
 
-Update `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` to reflect the delivered helpers. Reconcile planned `Not implemented` entries with actual implementation.
+Update docs to match the implemented feature and record shared-helper decisions.
 
 ### Constraints
 
-- Only modify `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` — no other documentation changes are required.
-- Update the three planned entries (`QueueState`, `callApiQueued`, `getQueueState`) from `Not implemented` to `Implemented`.
-- Do not add speculative docs or change unrelated sections.
+- Only modify documents relevant to the touched areas.
+- Record the topic existence check as a keep-local decision in the shared helpers doc.
 
 ### Acceptance criteria
 
-- `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` contains three `Implemented` entries under a new subsection (e.g. `9.14 API queueing system`) with:
-  - owning path: `src/frontend/src/services/apiService.ts`
-  - status: `Implemented`
-  - rationale summarising the call sites and contract
-- No stale `Not implemented` entries remain for these helpers.
+1. `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` updated with keep-local decision for the topic existence check, with status `Not implemented` recorded before implementation starts and updated to `Implemented` during this pass
+2. `@remarks` JSDoc on `AssessTaskModal`, `useAssignmentDefinitionWizard`, and `AssignmentDefinitionWizardModalProperties` updated
+3. Notes/deviations fields in each section above are filled during implementation
 
 ### Required checks
 
-1. Verify doc accurately references the exported names and file path.
-2. Verify no other canonical docs require updates for this change.
-3. Verify mandatory-read evidence (`Files read`) is complete for delegated docs handoffs.
-4. Reconcile planned shared-helper entries: confirm all three are now `Implemented`.
+1. Verify shared-helpers doc has the topic-check keep-local entry
+2. Verify `@remarks` JSDoc matches implementation
+3. Confirm all section notes/deviations fields are populated
 
 ### Optional `@remarks` JSDoc review
 
-- Confirm `@remarks` planned in earlier sections (`callApiQueued` defence-in-depth note, `getQueueState` snapshot note, internal `Queue` active-flag note) are present in the delivered code.
+- Confirm that `AssessTaskModal` `@remarks` describes the orthogonal `assessmentState` × `noMatchResolution` machine (merge Section 2 and Section 3 `@remarks` entries into one coherent block)
+- Confirm that `useAssignmentDefinitionWizard` `@remarks` describes `initialValues` application semantics
+- Confirm that `AssignmentDefinitionWizardModalProperties` `@remarks` describes `onCreateSuccess` contract
 
 ### Implementation notes / deviations / follow-up
 
-- Documentation complete. Updated `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9.14: all three entries (`QueueState`, `callApiQueued`, `getQueueState`) now marked `Implemented`. All `@remarks` JSDoc notes present in delivered code: `callApiQueued` defence-in-depth note, `getQueueState` snapshot note, and `processQueue` active-flag note.
+- Record any deviations discovered during documentation pass.
 
 ---
 
 ## Suggested implementation order
 
-1. **Section 1** — Types, validation, and input contracts (enabling contracts land first)
-2. **Section 2** — Queue data structure and enqueue (infrastructure before processing)
-3. **Section 3** — Sequential processing loop (core behaviour)
-4. **Section 4** — `getQueueState` implementation (depends on Sections 2–3 internals)
-5. **Section 5** — Retry interaction and failure continuation (hardening)
-6. **Regression and contract hardening** — Full suite run
-7. **Documentation and rollout notes** — Canonical doc update
+0. **Prerequisites (before any implementation starts):**
+   - Record the Section 3 topic-existence keep-local decision in `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` with status `Not implemented`. This entry must be created in Section 9 of that document before any code changes begin.
+   - Remove or replace the stale "Section 7 - Red Loop" placeholder test in `src/frontend/src/features/assignmentWizard/useAssignmentDefinitionWizard.spec.ts`.
+1. **Section 1** — Wizard contract extension (enabling infrastructure, no AssessTaskModal changes)
+2. **Section 2** — AssessTaskModal no-match state machine (choice prompt, state transitions)
+3. **Section 3** — Wizard integration, pre-population, and auto-assessment (composes Sections 1 + 2)
+4. **Section 4** — E2E integration tests (cross-modal user journeys)
+5. **Regression and contract hardening** — verify no regressions across unit and E2E suites
+6. **Documentation and rollout notes** — finalise docs and JSDoc

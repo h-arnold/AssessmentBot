@@ -1,266 +1,392 @@
-# API Queueing System Specification
+# Assess Task Modal — No-Match Definition Resolution Specification
 
 ## Status
 
-- Draft v1.1 — revised after planner review
+- Draft v1.3 — revised after Planner Reviewer second pass
 
 ## Purpose
 
-This document defines the intended behaviour for a frontend-side API request queueing system built into `apiService.ts`.
+This document defines the intended behaviour for the unhappy path in the Assess Task modal: when a user selects a Google Classroom assignment that has no matching `AssignmentDefinition`, the modal must offer a resolution workflow instead of a dead-end error.
 
 The feature will be used to:
 
-- serialise grouped API calls so callers can avoid race conditions that arise when multiple concurrent requests contend for shared backend state (e.g. ABClass partial updates)
-- serialise low-priority background pre-fetch calls to stay under the Google Apps Script 25-concurrent-request ceiling without slowing higher-priority requests
-- expose queue-position state per job name so progress-UI consumers can derive completion metrics (concrete v1 consumer: the ABClass creation progress bar)
+- allow a user to create a new `AssignmentDefinition` directly from the Assess Task modal when no match exists, with title, topic, and year group pre-populated from the Google Classroom assignment and ABClass data
+- provide a placeholder for a future "link to existing definition" workflow
 
 This feature is **not** intended to:
 
-- provide general-purpose task scheduling or prioritisation across different job names
-- replace or alter the existing direct `callApi` transport — non-queued calls continue unchanged
-- add backend-side queueing or rate-limiting
+- implement the "link to existing definition" workflow (that is explicitly deferred)
+- change the matching logic itself (`findMatchingDefinition`)
+- change the `startAssessmentRun` API or backend behaviour
+- handle the case where `classPartial.yearGroupKey` is `null` (this remains a hard blocking error)
 
 ## Agreed product decisions
 
-1. A new exported function `callApiQueued<TResponse>(method, parameters, jobName)` is the sole queued entry point. It returns `Promise<TResponse>` — identical contract to `callApi` — and the caller awaits their specific request's result as normal. The `parameters` argument is optional, matching the `callApi` signature exactly.
-2. A new exported function `getQueueState(jobName)` returns `{ pending: number; active: boolean }`. `pending` counts queued requests not yet dispatched; `active` is `true` when a request is currently in flight for that job name. The queue does not track historical totals. The `QueueState` interface is exported alongside the function.
-3. Each distinct `jobName` value creates an independent queue. Requests within the same job name execute strictly one-at-a-time in FIFO order.
-4. Queues for different job names execute independently — a blocked queue does not stall other queues or direct `callApi` calls.
-5. Retry/backoff logic already in `callApi` applies per-request inside the queue — a retriable `RATE_LIMITED` response triggers the existing exponential-backoff retry before the next queued request can start.
-6. When a queued request exhausts all retries and ultimately rejects, that individual promise rejects with the final error. The queue continues processing the next pending request (does not stall).
-7. `callApiQueued` reuses the existing `callApi` internally — it does not duplicate transport, retry, or validation logic.
-8. The idle-to-active transition when starting queue processing is synchronous: the queue is marked active before the first `await callApi(...)` dispatch, preventing duplicate processing loops from near-simultaneous enqueues.
+1. When `findMatchingDefinition` returns `kind: 'no-match'`, the modal must present a choice between "Create New Definition" and "Link to Existing Definition" instead of showing a dead-end error.
+2. "Create New Definition" opens the existing `AssignmentDefinitionWizardModal` in create mode with the following fields pre-populated from data already gathered:
+   - **title**: `selectedAssignment.title`
+   - **topic**: `selectedAssignment.topicId`, but only when an `AssignmentTopic` with that key exists in the reference data cache; otherwise left blank (the user must select a topic in the wizard before saving — this is a normal workflow, not an error)
+   - **yearGroup**: `classPartial.yearGroupKey`
+3. After the user successfully creates the definition via the wizard, the assessment must run automatically using the newly created definition.
+4. "Link to Existing Definition" is rendered as a visible but disabled button wrapped in an Ant Design `Tooltip` indicating it is planned for future work. It performs no action.
+5. If the ABClass has no year group (`yearGroupKey === null`), the existing blocking error must be preserved — this case must not reach the no-match resolution choice.
+6. The existing `findMatchingDefinition` function, its early-return for `null` topic/yearGroup, and all other matching logic must remain unchanged.
+7. The `AssignmentDefinitionWizardModal` must accept optional initial form values and an optional success callback without breaking its existing create/update usage from the Assignments page.
+8. The AssessTaskModal must remain closable at all times during the no-match resolution workflow. During the `creating` state, the AssessTaskModal footer shows a Cancel button that dismisses both the wizard and the AssessTaskModal.
 
 ## Existing system constraints
 
 ### Backend or API constraints already in place
 
-- `google.script.run` imposes a hard concurrent-request ceiling (approximately 25). Queueing low-priority calls is the intended mitigation.
-- ABClass partial sheet updates are not atomic across concurrent writes — serialising via a queue avoids the observed race condition.
-- Backend `ALLOWLISTED_METHOD_HANDLERS` and all existing API contracts are unchanged by this feature.
+- `startAssessmentRun` API: accepts `{ definitionKey, assignmentId, courseId }` and returns `void | null`. No changes needed.
+- `upsertAssignmentDefinition` API: creates/updates definitions, no changes needed.
+- `getGoogleClassroomAssignments` API: returns `{ assignmentId, title, topicId, topicName }` per assignment, no changes needed.
+- `ALLOWLISTED_METHOD_HANDLERS` in `z_apiHandler.js`: no new entries required.
 
 ### Current data-shape constraints
 
-- The `callApi` signature is `callApi<TResponse>(method: string, parameters?: unknown): Promise<TResponse>`. `callApiQueued` mirrors this exactly with the addition of a final `jobName: string` parameter.
-- The `getQueueState` return type must be stable and minimal to avoid coupling future UI to internal queue internals.
+- `GoogleClassroomAssignment`: `{ assignmentId: string, title: string, topicId: string | null, topicName: string | null }`
+- `ClassPartial`: includes `yearGroupKey: string | null` — must be non-null for assessment to proceed
+- `AssignmentDefinitionPartial`: includes `primaryTopicKey`, `primaryTopic`, `yearGroupKey`, `primaryTitle`, `alternateTitles`
+- `AssignmentTopic` (reference data): `{ key: string, name: string, yearGroupKeys: string[] }`
+- `AssignmentDefinitionWizardModalProperties`: currently `{ open, mode, definitionKey, onClose }` — must be extended with optional `initialValues` and `onCreateSuccess`
 
 ### Frontend or consumer architecture constraints
 
-- All frontend-to-backend calls must route through `callApi` per `src/frontend/AGENTS.md §4.1`. `callApiQueued` preserves this by delegating to `callApi`.
-- No React, hook, or component dependency exists in the service layer today and none should be introduced — queue state is queryable imperatively.
-- Per the shared-helper standards (`docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`), any new queue-state query function must be justified by active call sites, not speculative. The ABClass creation flow (v1) is a concrete consumer of `getQueueState` for its progress bar; the Google Classroom pre-fetch flow is a concrete consumer of `callApiQueued` that does not need `getQueueState`. These two callers satisfy the two-caller threshold.
+- All API calls must route through `callApi` in `apiService.ts`
+- The Assess Task modal currently reads `classPartials` and `assignmentDefinitionPartials` from the React Query cache via `queryClient.getQueryData()`
+- The Assignment Definition wizard uses `useAssignmentDefinitionWizard` hook with its own internal state machine (parse → save lifecycle, dirty tracking, discard confirm)
+- `ClassesPage` currently renders `AssessTaskModal` conditionally; `AssignmentsPage` renders `AssignmentDefinitionWizardModal`
+- Modal-nesting must follow `docs/developer/frontend/frontend-modal-patterns.md`
+
+### Modal nesting constraint
+
+This feature introduces up to three concurrent Ant Design `Modal` layers when the wizard's discard-confirm dialog appears:
+
+1. AssessTaskModal (outer)
+2. AssignmentDefinitionWizardModal (launched from AssessTaskModal during `creating` state)
+3. Wizard's discard-confirm `Modal` (triggered by the wizard's `handleClose` when dirty edits exist)
+
+This triple nesting is accepted for this feature because:
+
+- The wizard owns its own lifecycle and discard-confirm pattern, which is an established convention (see `frontend-modal-patterns.md` §3.4).
+- The AssessTaskModal is non-interactive during the `creating` state except for its Cancel button (escape hatch).
+- Ant Design `Modal` stacking is handled automatically via z-index layering.
+
+Focus-management rules for the triple-nesting scenario:
+
+- When the wizard opens, focus moves to the wizard modal.
+- When the discard-confirm opens, focus moves to the confirm dialog. On close (either "Keep editing" or "Discard changes"), focus returns to the wizard modal — not to the AssessTaskModal.
+- When the wizard closes (success or cancel), focus returns to the AssessTaskModal's choice buttons.
+- The AssessTaskModal's Cancel button is always reachable via keyboard during the `creating` state.
 
 ## Domain and contract recommendations
 
 ### Why this approach is preferable
 
-- Keeps the existing `callApi` contract untouched — zero risk to current callers.
-- Exposes minimal queue state (`pending` + `active`) that is sufficient for progress derivation without coupling consumers to internal data structures.
-- Reuses `callApi` internally so retry, validation, logging, and serialisation behaviour stay centralised.
-- The separate-function pattern (`callApiQueued`) makes the queuing choice explicit at every call site, improving auditability.
+- Reuses the existing wizard modal rather than building a parallel definition-creation surface, keeping the definition-creation contract in one place.
+- Pre-population reduces user error and manual re-entry of data already available from Google Classroom.
+- The placeholder "link to existing" button prevents scope creep while keeping the intended expansion visible.
+- Automatic assessment after definition creation closes the loop without requiring the user to re-select the assignment and click Start Assessment again.
 
 ### Recommended data shapes
 
-#### `callApiQueued` signature
+#### Wizard initial values (new)
 
 ```ts
-function callApiQueued<TResponse>(
-  method: string,
-  parameters?: unknown,
-  jobName: string
-): Promise<TResponse>;
-```
-
-The `parameters` argument is optional, matching the existing `callApi` signature.
-
-#### `QueueState` and `getQueueState`
-
-```ts
-export interface QueueState {
-  pending: number;
-  active: boolean;
+{
+  title?: string;
+  topic?: string;
+  yearGroup?: string;
 }
-
-export function getQueueState(jobName: string): QueueState;
 ```
 
-Both the interface and function are exported.
+All fields optional — the wizard applies only the provided fields, leaving others blank.
 
-### Naming recommendation
+#### Wizard `onCreateSuccess` callback (new)
 
-Prefer:
+```ts
+(definitionKey: string) => void
+```
 
-- `callApiQueued` — explicit, matches existing `callApi` naming
-- `getQueueState` — reads as a snapshot query
-- `jobName` — matches the user's original wording and avoids ambiguity with "queue name"
-- `parameters` in the function signature — matches the existing `callApi` parameter name
-
-Avoid:
-
-- `enqueueApiCall` — overly verbose, breaks symmetry with `callApi`
-- `queueLength` / `queuePosition` — implies individual-position tracking that the agreed contract does not expose
-- `queueId` / `queueKey` — less descriptive than `jobName`
+Called by the wizard hook after a successful final save in create mode. Receives the non-null `definitionKey` from the successful save response (falling back to the request's `effectiveKey` only if the response omits it). The caller (AssessTaskModal) is responsible for transitioning away from the `creating` state, which unmounts the wizard. The wizard must NOT call `onClose()` when `onCreateSuccess` is provided — the callback replaces the normal close for the save path. The implementation must guard against calling the callback with a null or undefined key.
 
 ### Validation recommendation
 
 #### Frontend
 
-- `method` and `jobName` must be non-empty strings (Zod-validated at the call boundary by `callApiQueued`).
-- `getQueueState` also validates `jobName` as non-empty and throws synchronously on violation, matching `callApiQueued`'s validation style.
-- `callApiQueued` validates `method` before enqueueing. When the request is later dispatched, `callApi` independently validates `method` again through `ApiRequestSchema`. This is intentional defence-in-depth: the early validation catches bad inputs at the call site (before entering the queue), and the dispatch-time validation ensures the payload reaching the transport layer is always well-formed regardless of how it was enqueued.
-- `jobName` values are caller-defined; no central registry or enum is enforced in v1.
-- `parameters` is passed through to `callApi` unchanged — any validation occurs inside `callApi` per existing behaviour.
+- Before pre-populating the topic field, verify the topic exists in the cached `assignmentTopics` reference data by checking `topics.some(t => t.key === selectedAssignment.topicId)`.
+- When `topicId` is `null` or no matching topic is found, leave the topic field blank. The user must select a topic in the wizard before saving — this is enforced by the wizard's existing required-field validation and is a normal workflow, not an error.
+- The year group field is pre-populated unconditionally from `classPartial.yearGroupKey` (already validated as non-null upstream).
+- **Important implementation detail:** Applying initial values must also set the `selectedTopicKey` and `selectedYearGroupKey` state variables in the wizard hook so that the `SelectWithAddNew` component displays the correct selected value. Setting only the form field values is insufficient because `SelectWithAddNew` reads from these state variables. When the topic/yearGroup initial value is not provided or is an empty string, `selectedTopicKey`/`selectedYearGroupKey` must remain `undefined` (not set to empty string), because the wizard's validation treats empty string as unselected.
 
 #### Backend
 
-- No backend changes are required.
+- No new validation required. The existing wizard validation (`requireExistingAssignmentTopic`, `requireExistingYearGroupRecord`) handles the create path.
+- If the pre-populated topic's `yearGroupKeys` does not include the class's year group, the backend's `requireExistingAssignmentTopic` validation will reject the save. The wizard will display the resulting error, and the user must select a compatible topic.
 
 ## Feature architecture
 
 ### Placement
 
-- `src/frontend/src/services/apiService.ts` — the queue logic, `callApiQueued`, and `getQueueState` live in the existing transport service module.
-- No new files or directories are required unless the queue logic grows beyond a handful of functions, at which point extraction into `src/frontend/src/services/apiService/queue.ts` (alongside `apiService.ts` moved into an `apiService/` subfolder) should be considered per the service-domain grouping rules in `src/frontend/AGENTS.md §12`.
+- Primary change: `src/frontend/src/features/classes/AssessTaskModal/AssessTaskModal.tsx`
+- Wizard contract extension: `src/frontend/src/features/assignmentWizard/AssignmentDefinitionWizardModal.tsx`, `useAssignmentDefinitionWizard.ts`
+- Page composition: `src/frontend/src/pages/ClassesPage.tsx` — minimal; may need no changes if the wizard is rendered inside the AssessTaskModal
 
 ### Proposed high-level tree
 
 ```text
-src/frontend/src/services/
-└── apiService.ts (or apiService/ subfolder if extracted)
-    ├── callApi (existing, unchanged)
-    ├── callApiQueued (new, exported)
-    ├── QueueState (new, exported interface)
-    ├── getQueueState (new, exported)
-    └── internal queue map and dequeue loop
+ClassesPage
+└── AssessTaskModal (open when class selected)
+    ├── [loading body]:      Spin
+    ├── [ready body]:        Select + Start Assessment
+    ├── [choice body]:       choice prompt (info Alert + two buttons)
+    ├── [creating body]:     (hidden — wizard takes over)
+    │   └── AssignmentDefinitionWizardModal (create mode, initialValues, onCreateSuccess)
+    │       └── [discard confirm Modal] (existing pattern, on top of wizard)
+    ├── [success body]:      success Alert + Close footer
+    └── [error body]:        error Alert + Cancel footer
 ```
 
 ### Out of scope for this surface
 
-- Priority-based queueing or inter-queue ordering
-- Queue persistence across page reloads
-- Cancellation or removal of queued requests
-- Per-request progress callbacks — consumers derive progress from `getQueueState`
-- A React hook wrapping `getQueueState` — the ABClass creation flow can call `getQueueState` directly from its feature hook without a dedicated abstraction
+- The "link to existing" workflow (placeholder button only)
+- Any change to the matching algorithm
+- Any new backend API endpoints
+- Any change to the wizard's update-mode behaviour
 
 ## Core view model or behavioural model
 
-### Queue lifecycle
+### State machine reconciliation
 
-1. On first `callApiQueued(method, parameters, 'myJob')`, a new queue is created keyed by `'myJob'`.
-2. The request payload (`{ method, parameters }`) is pushed onto the queue's pending array.
-3. If no request is currently active for this queue, processing starts by **synchronously** marking the queue as active, then dispatching the first pending request.
-4. The dequeue loop pops the next pending request, dispatches it via `callApi`, and awaits resolution or final rejection.
-5. On completion (resolve or reject), the active flag is cleared. If pending requests remain, the loop repeats (step 3–4). Otherwise the queue becomes idle.
-6. The queue object remains allocated so future enqueues reuse it.
+The AssessTaskModal currently has an `assessmentState` machine with four variants: `'idle' | 'loading' | 'success' | 'error'`. This spec introduces a companion `noMatchResolution` machine with three variants: `'idle' | 'choice' | 'creating'`. The two machines are orthogonal — `noMatchResolution` governs which body content to render when no match is found, while `assessmentState` governs the assessment lifecycle.
 
-### Queue state derivation
+The following table defines the valid state combinations and the resulting UI:
 
-```
-active  = Boolean(queue is currently processing a request — set synchronously before dispatch, cleared after settle)
-pending = queue.pending.length (requests waiting, excluding the active one)
-```
+| `assessmentState` | `noMatchResolution` | Body content                                             | Footer                    | Notes                                                   |
+| ----------------- | ------------------- | -------------------------------------------------------- | ------------------------- | ------------------------------------------------------- |
+| `'idle'`          | `'idle'`            | Select + Start Assessment                                | Cancel + Start Assessment | Normal ready state                                      |
+| `'loading'`       | `'idle'`            | Select (Start Assessment button shows spinner)           | Cancel + disabled Start   | Assessment in progress                                  |
+| `'idle'`          | `'choice'`          | Choice prompt (Alert + buttons)                          | Cancel                    | No-match found; user must choose                        |
+| `'idle'`          | `'creating'`        | (hidden — wizard open)                                   | Cancel                    | Wizard is creating definition                           |
+| `'loading'`       | `'creating'`        | (hidden — wizard unmounted, auto-assessment in progress) | Cancel + disabled Start   | Auto-assessment after wizard success; body stays hidden |
+| `'success'`       | `'idle'`            | Success Alert                                            | Close                     | Assessment completed                                    |
+| `'error'`         | `'idle'`            | Error Alert                                              | Cancel                    | Cache miss, API failure, ambiguous, or null-topic error |
 
-`getQueueState` returns a snapshot at call time. It does not subscribe to changes.
+**Key transition rules:**
+
+0. On modal open (including reopen without unmount): reset both machines to their defaults — `assessmentState = 'idle'` and `noMatchResolution = 'idle'`. This clears any stale success/error/choice/creating state from a previous open.
+
+1. When `findMatchingDefinition` returns `'no-match'`: set `noMatchResolution = 'choice'`. Do NOT set `assessmentState = 'error'` — no-match is not an error, it is a resolvable state. `assessmentState` stays `'idle'` (or is reset from `'loading'` to `'idle'`).
+
+2. When `getValidatedCachedData` returns a cache error, or `handleApiError` catches a failure: set `assessmentState = 'error'` as before. `noMatchResolution` stays `'idle'`.
+
+3. When the user clicks "Create New Definition": set `noMatchResolution = 'creating'`. `assessmentState` stays `'idle'`.
+
+4. When `onCreateSuccess(definitionKey)` fires: call `startAssessmentRun` immediately. `noMatchResolution` stays `'creating'` during the API call so the body remains hidden (the user should not see the assignment Select flash during auto-assessment). The wizard must only render when `noMatchResolution === 'creating' && assessmentState === 'idle'` — once assessment starts (`assessmentState = 'loading'`), the wizard is already unmounted and must not re-render. After the API call settles, transition to the final state: set `noMatchResolution = 'idle'` and `assessmentState` to `'success'` or `'error'`.
+
+5. When the wizard is cancelled/dismissed: set `noMatchResolution = 'choice'`. User returns to the choice prompt. `assessmentState` stays `'idle'`.
+   **Detection mechanism:** The AssessTaskModal must track whether `onCreateSuccess` has fired (e.g., via a `hasCreateSucceeded` ref or state flag) to distinguish wizard cancel (no `onCreateSuccess`) from wizard success (`onCreateSuccess` fires, then wizard unmounts). When the wizard's `onClose` fires without `onCreateSuccess` having fired, return to `'choice'`. **Sequencing (required implementation change):** The wizard's `handlePostMutation` must be modified so that when `onCreateSuccess` is provided and the save succeeds, it calls `onCreateSuccess(definitionKey)` and does **not** call `onClose()`. The AssessTaskModal can then track a `hasCreateSucceeded` flag set inside `onCreateSuccess`; when the wizard's `onClose` subsequently fires (which it will for the cancel/discard path), the flag distinguishes the two cases.
+
+6. When the AssessTaskModal footer Cancel is clicked during `'creating'`: calls `onClose()`, closing the entire AssessTaskModal (and thereby the wizard). This is the escape hatch.
+
+### No-match resolution state (new)
+
+The AssessTaskModal introduces a `noMatchResolution` state with three variants:
+
+#### `idle`
+
+- Default state. Normal Start Assessment flow. No choice prompt shown.
+
+#### `choice`
+
+- Set when `findMatchingDefinition` returns `'no-match'`.
+- Body renders the choice prompt. Footer shows Cancel.
+- "Create New Definition" → transitions to `creating`.
+- Cancel → calls `onClose()` (modal closes).
+- Modal backdrop click, Escape key, and built-in close (X) all call `onClose()` (same as Cancel button), closing the modal entirely.
+
+#### `creating`
+
+- Body hides the assignment selection content. The `AssignmentDefinitionWizardModal` is rendered in create mode.
+- Footer shows Cancel (escape hatch to close the entire AssessTaskModal).
+- **Footer transition:** While `assessmentState === 'idle'` and the wizard is open, the footer shows **only Cancel**. Once `onCreateSuccess` fires and `assessmentState` moves to `'loading'` for auto-assessment (wizard unmounted), the footer transitions to **Cancel + disabled Start Assessment**, matching the normal assessment-loading state. After auto-assessment settles, the footer follows the resulting success or error state.
+- On wizard success (`onCreateSuccess`): `noMatchResolution` stays `'creating'`, `assessmentState` moves to `'loading'`, and `startAssessmentRun` is called.
+- On wizard cancel/close: transitions back to `choice`.
+
+### Choice prompt content
+
+- An info `Alert` explaining no matching definition was found for the selected assignment title.
+- Two buttons in a horizontal `Space`:
+  1. "Create New Definition" (Ant Design `Button type="primary"`) — opens the wizard with pre-populated fields
+  2. "Link to Existing Definition" (Ant Design `Button` with `disabled`, wrapped in an Ant Design `Tooltip` with `title="Coming soon"`) — no-op
+
+## Main user-facing surface specification
+
+### Recommended components or primitives
+
+- Ant Design `Alert` for the no-match explanation
+- Ant Design `Space` for button layout
+- Ant Design `Button` for both choice buttons
+- Ant Design `Tooltip` wrapping the disabled "Link to Existing" button
+- The existing `AssignmentDefinitionWizardModal` component for definition creation
+
+### Rendering rules
+
+#### No-match choice state
+
+- The assignment selection `Select` and the "Select assignment" label must be hidden.
+- The choice prompt replaces the body content.
+- Footer shows only the Cancel button.
+
+#### Creating state (wizard visible)
+
+- The AssessTaskModal's own body content is hidden (no assignment Select, no choice buttons).
+- The `AssignmentDefinitionWizardModal` is rendered as a separate modal surface within the AssessTaskModal component's render output. It must only render when `noMatchResolution === 'creating' && assessmentState === 'idle'` — during auto-assessment (`assessmentState = 'loading'`), the wizard is unmounted and must not re-render.
+- The AssessTaskModal footer shows only a Cancel button — this closes the entire AssessTaskModal (and thereby the wizard). It is the user's escape hatch from the entire workflow. **Important:** clicking this Cancel button during the `creating` state closes everything without the wizard's discard-confirm prompt. Unsaved wizard edits are silently lost. This is intentional — the outer Cancel is the unconditional escape hatch.
+- The wizard operates with its own normal lifecycle (parse, save, discard confirm, reference-data blocked/loading, etc.).
+- If the wizard's reference data is blocked, the wizard's own blocking-error modal takes over. The AssessTaskModal's Cancel remains available.
+
+#### Auto-assessment after wizard success
+
+- When the wizard calls `onCreateSuccess(definitionKey)`:
+  1. The AssessTaskModal calls `startAssessmentRun({ definitionKey, assignmentId: selectedAssignment.assignmentId, courseId: classId })`, keeping `noMatchResolution = 'creating'` so the body stays hidden during the API call.
+  2. On success: set `noMatchResolution = 'idle'` and `assessmentState = 'success'`.
+  3. On API failure: set `noMatchResolution = 'idle'` and `assessmentState = 'error'`.
 
 ## Workflow specification
 
-### Direct call (existing, unchanged)
+### No-match resolution — Create New Definition
 
-Trigger: any existing `callApi(method, parameters)` call site.
+#### Preconditions
 
-- Request is dispatched immediately.
-- Retry/backoff applies as configured.
-- Resolves or rejects independently of any queue.
+- `findMatchingDefinition` returned `kind: 'no-match'`
+- `selectedAssignment` is non-null (guaranteed by the Start Assessment guard)
+- `classPartial.yearGroupKey` is non-null (guaranteed by the upstream cache validation in `getValidatedCachedData`)
+- `selectedAssignment.topicId` may be null or may not exist in reference data — handled gracefully
 
-### Queued call
+#### Inputs
 
-Trigger: `callApiQueued(method, parameters, jobName)`.
+| Wizard field           | Pre-population source                                                                                                       | Fallback                           |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| `title`                | `selectedAssignment.title`                                                                                                  | n/a                                |
+| `topic`                | `selectedAssignment.topicId`, if a matching `AssignmentTopic` with `key === topicId` exists in the `assignmentTopics` cache | blank (user must select in wizard) |
+| `yearGroup`            | `classPartial.yearGroupKey`                                                                                                 | n/a                                |
+| `referenceDocumentUrl` | (none)                                                                                                                      | blank                              |
+| `templateDocumentUrl`  | (none)                                                                                                                      | blank                              |
 
-Preconditions: `method` and `jobName` are non-empty strings.
+#### Behaviour
 
-Behaviour:
+1. User sees the choice prompt and clicks "Create New Definition".
+2. The Assess Task modal sets `noMatchResolution = 'creating'`, hides its body, and renders the `AssignmentDefinitionWizardModal` in create mode with `initialValues` containing the pre-populated fields. **The `selectedAssignmentId` (and thus `selectedAssignment`) is retained in component state during the `creating` state; the assignment Select is hidden but its value is preserved in state for the subsequent auto-assessment call.**
+3. The user completes the wizard's normal create flow (fill document URLs → parse → adjust weightings → save).
+4. On successful final save, the wizard hook calls `onCreateSuccess(definitionKey)` instead of its normal `onClose()`. The key is taken from the save response's `definitionKey` (falling back to the request's `effectiveKey = localDefinitionKey ?? definitionKey` only if the response omits it), and must be non-null when the callback is invoked.
+5. The Assess Task modal receives `onCreateSuccess(definitionKey)`, calls `startAssessmentRun({ definitionKey, assignmentId: selectedAssignment.assignmentId, courseId: classId })` while keeping `noMatchResolution = 'creating'` (body stays hidden during the API call).
+6. On API success: set `noMatchResolution = 'idle'` and `assessmentState = 'success'`. Modal shows the existing success state with "Assessment started for '{title}'."
+7. On API failure: set `noMatchResolution = 'idle'` and `assessmentState = 'error'`. Modal shows the existing error/warning state.
 
-1. Validate inputs via Zod (non-empty `method`, non-empty `jobName`).
-2. Locate or create the queue for `jobName`.
-3. Push `{ method, parameters, resolve, reject }` onto the queue's pending array.
-4. If the queue is idle, synchronously mark it active and begin processing via `callApi`.
-5. When this request's turn arrives, dispatch via `callApi`.
-6. Resolve or reject the returned promise with the outcome.
+#### Cancel or dismiss
 
-Success: the individual promise resolves with typed `TResponse` data (identical to `callApi`).
-
-Failure: the individual promise rejects with the final error after all retries are exhausted (identical to `callApi` rejection behaviour).
-
-Post-failure: the queue automatically processes the next pending request.
-
-### Query queue state
-
-Trigger: `getQueueState(jobName)`.
-
-Preconditions: `jobName` is a non-empty string.
-
-Behaviour:
-
-1. Validate `jobName` is a non-empty string — throw synchronously on violation.
-2. If no queue exists for `jobName`, return `{ pending: 0, active: false }`.
-3. Otherwise, return a snapshot of the queue's current `pending` length and `active` flag.
+- If the user cancels the wizard (clicks Cancel → discard confirm → Discard changes), the wizard's `onClose` fires. The Assess Task modal detects the wizard closed without `onCreateSuccess` firing and returns `noMatchResolution` to `'choice'` (user can try again or close entirely).
+- If the user clicks Cancel on the AssessTaskModal footer during the `creating` state, the entire AssessTaskModal closes (via `onClose()`), dismissing both modals.
 
 ## Error, loading, and empty-state rules
 
-- **Method/jobName validation failure**: `callApiQueued` throws synchronously before enqueueing (Zod validation). This matches existing `callApi` behaviour where schema violations throw before transport.
-- **`getQueueState` validation failure**: invalid or empty `jobName` throws synchronously (Zod validation), matching `callApiQueued`'s validation style.
-- **Queue processing error**: if `callApi` itself throws synchronously (e.g. `google.script.run` unavailable), that error propagates to the dequeued request's promise. The queue continues with the next request.
-- **No active queue**: `getQueueState` for an unknown but valid `jobName` returns a zero-state, not an error. This allows consumers to poll before any calls have been enqueued.
-- **Logging**: the queue itself does not add new log events. `callApi`'s existing `logFrontendEvent` (retry warnings) and `logFrontendError` (terminal failures) logging is sufficient for diagnosing queued-request failures. Adding queue-level logging is deferred until a demonstrated need arises.
+### Blocking failure
+
+- `classPartial.yearGroupKey === null`: unchanged — "Cannot determine year group for this class." error (`assessmentState = 'error'`). No choice prompt shown.
+- `selectedAssignment.topicName === null`: unchanged — "The selected assignment has no topic. Cannot match to a definition." error (`assessmentState = 'error'`). No choice prompt shown.
+- `assignmentTopics` cache miss: the topic existence check returns `false`, so the topic field is left blank. This is not an error — the user must select or create a topic in the wizard. The wizard's own required-field validation enforces completion before save.
+
+### Empty states
+
+- If `assignmentTopics` cache is empty (no topics configured), the topic field remains blank. The wizard's own reference-data blocking/loading handling applies.
+- If the wizard's reference data is blocked during the `creating` state, the wizard's own blocking-error modal is shown. The AssessTaskModal's Cancel button remains available for the user to abort the workflow.
+
+## Accessibility and usability notes
+
+- The "Link to Existing Definition" disabled button must be wrapped in an Ant Design `Tooltip` with `title="Coming soon"`. **Implementation note:** a disabled `<Button>` does not emit pointer events, so the `Tooltip` must wrap a `<span>` containing the button: `<Tooltip title="Coming soon"><span><Button disabled>Link to Existing Definition</Button></span></Tooltip>`.
+- Focus management:
+  - When transitioning from `choice` to `creating`, focus moves to the wizard modal.
+  - When the wizard opens its discard-confirm, focus moves to the confirm dialog. On close, focus returns to the wizard.
+  - When the wizard closes (success or cancel), focus returns to the AssessTaskModal's choice buttons (if returning to choice) or to the success/error Alert.
+  - **Testing caveat:** Focus transitions across stacked Ant Design modals are not covered by Vitest unit tests and are only partially verifiable in Playwright E2E tests. Focus behaviour is specified here as intended behaviour; implement it but accept that automated verification is limited.
+- The AssessTaskModal's Cancel button is always rendered and clickable with the pointer during the `creating` state, providing an escape hatch. While the wizard modal is the topmost surface, Ant Design's focus trap keeps keyboard focus inside the wizard; keyboard reachability of the outer Cancel is therefore limited to moments when focus returns to the AssessTaskModal (e.g. after the wizard closes). Automated verification of this behaviour is limited.
 
 ## Backend changes required to support agreed behaviour
 
-None. This is a frontend-only transport-layer change.
+None. All changes are frontend-only.
 
 ## Planning handoff notes
 
-- The action plan must sequence contract definition (`callApiQueued`, `getQueueState`, and `QueueState` signatures) before implementation of the queue loop.
-- The existing `callApi` must not be modified — only extended with new exports.
-- The test file `apiService.spec.ts` must gain queue-specific test coverage while preserving all existing tests.
-- Queue retry tests must account for the interaction between `vi.useFakeTimers()` and the sequential queue loop — timer advancement must be coordinated with queue processing to avoid race conditions between retry delays and the dequeue loop. The existing retry-policy test pattern in `apiService.spec.ts` (lines 389–457) demonstrates the required coordination.
+- The wizard's `AssignmentDefinitionWizardModalProperties` type must be extended with two new optional fields:
+  - `initialValues?: Readonly<{ title?: string; topic?: string; yearGroup?: string }>` — pre-populates form fields in create mode
+  - `onCreateSuccess?: (definitionKey: string) => void` — called after successful final save in create mode, replacing the normal `onClose()` for that path
+- The `useAssignmentDefinitionWizard` hook must:
+  - Apply `initialValues` via `form.setFieldsValue()` after `form.resetFields()` in create mode, only for the provided fields. The `useFormInitialization` effect must include `initialValues` in its dependency array (or use a separate effect) so that initial values are applied whenever the modal opens with a new `initialValues` object.
+  - Set `selectedTopicKey` and `selectedYearGroupKey` state variables to match the initial values (critical: `SelectWithAddNew` reads these, not the form; see Validation recommendation §Frontend for details)
+  - In `handlePostMutation` for save actions in create mode: call `onCreateSuccess(definitionKey)` instead of `onClose()` when `onCreateSuccess` is provided. The key is the non-null `definitionKey` from the save response (falling back to the request's `effectiveKey = localDefinitionKey ?? definitionKey` only if the response omits it).
+  - Pass `onCreateSuccess` through to `handlePostMutation` (or thread it as a new parameter on `runWizardMutation`)
+- The AssessTaskModal must:
+  - Read `assignmentTopics` from the React Query cache via `queryClient.getQueryData(queryKeys.assignmentTopics())`. Requires importing the type: `import type { AssignmentTopic } from '../../../services/referenceData/referenceData.zod';` for the `getQueryData<AssignmentTopic[]>(...)` call.
+  - Add `noMatchResolution` state (`'idle' | 'choice' | 'creating'`)
+  - Replace the `kind: 'no-match'` branch in the existing `handleMatchOutcome` function with `setNoMatchResolution('choice')` instead of `setAssessmentAsError(...)` (and must not call `setAssessmentAsError`, which would set `assessmentAlertType`/`assessmentError`)
+  - Derive body and footer rendering from the combination of `assessmentState` and `noMatchResolution` per the reconciliation table
+  - Gate the wizard render: only render the wizard when `noMatchResolution === 'creating' && assessmentState === 'idle'`
+  - Derive the `creating` state detection for wizard close: when the wizard's `onClose` fires but `onCreateSuccess` has not fired, return to `'choice'`. The AssessTaskModal can track this by setting a flag when `onCreateSuccess` fires, or by checking that `onCreateSuccess` (which fires before the wizard unmounts) was not called before `onClose`.
+  - Update the component's `@remarks` JSDoc to describe the orthogonal `assessmentState` × `noMatchResolution` state machine (replacing the current single-axis description)
+- No layout spec is required — the choice prompt is simple inline content in the existing modal body, and the wizard is reused with no visual changes.
+- The `ClassesPage` composition requires no changes if the wizard is rendered inside the AssessTaskModal component.
+- Shared-helper decision: the topic existence check (`topics?.some(t => t.key === selectedAssignment.topicId)`) is a simple one-liner and should remain local to the AssessTaskModal rather than being extracted into a separate helper. This decision must be recorded in `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` with status `Not implemented` before implementation starts, and updated to `Implemented` in the documentation pass.
 
 ## Testing expectations
 
-- Frontend unit tests (Vitest): new `describe` blocks for `callApiQueued` and `getQueueState`, covering:
-  - successful sequential execution within a job name
-  - parallel independence of different job names
-  - queue state snapshot correctness during and after processing
-  - retriable failure and queue continuation
-  - non-retriable failure and queue continuation
-  - input validation — empty method, empty jobName (both for `callApiQueued` and `getQueueState`)
-  - `getQueueState` for unknown job names returns zero-state
-  - concurrent enqueues across multiple callers do not race
-- No backend or E2E tests required for this layer.
+- AssessTaskModal unit tests:
+  - No-match → choice state renders correctly (Alert + two buttons, "Link to Existing" disabled)
+  - "Create New Definition" click → wizard opens with correct `initialValues` (title, topic when exists, yearGroup)
+  - Topic pre-population: topic exists in cache, topicId is null, topic missing from cache
+  - Wizard success → auto-assessment triggered, success state shown
+  - Wizard failure → error state shown
+  - Wizard cancel → returns to choice state
+  - AssessTaskModal Cancel during `creating` → both modals close
+  - Existing error paths (cache miss, null yearGroup, null topicName) unchanged
+- `matchDefinitionForAssignment` unit tests: no changes needed (matching logic unchanged)
+- AssignmentDefinitionWizardModal tests:
+  - `initialValues` are applied in create mode (form fields populated, `selectedTopicKey`/`selectedYearGroupKey` set)
+  - `onCreateSuccess` is called on save with the correct key
+  - `onClose` is NOT called when `onCreateSuccess` is provided and save succeeds
+  - Existing create/update behaviour unchanged when `initialValues` and `onCreateSuccess` are not provided
+- `useAssignmentDefinitionWizard` hook tests (or integration tests via wizard modal):
+  - Initial values apply correctly alongside normal create-mode reset
+  - `selectedTopicKey`/`selectedYearGroupKey` are synchronised with initial values
+- Playwright E2E tests (6 new cases in `classes-page-assess-task.spec.ts`):
+  - Choice prompt rendering (Alert, buttons, tooltip)
+  - Cancel from choice prompt closes modal
+  - Wizard opens in create mode with pre-populated fields
+  - Wizard cancel → returns to choice prompt
+  - Full wizard flow → auto-assessment success
+  - Outer Cancel during wizard → both modals close
+- E2E mock infrastructure: `RuntimeScenario` extended with `startAssessmentRun`; introduce a dedicated `CreateAssessTaskScenarioOptions` type (extending the general Classes scenario options) for `createAssessTaskScenario()`; all void-method responses including `startAssessmentRun` must use `{ kind: 'success', data: null }`
 
 ## Documentation and rollout notes
 
-- `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`: add planned entry for `callApiQueued`, `getQueueState`, and `QueueState` as new shared-service exports (status `Not implemented` until delivered).
-- No migration required — existing `callApi` callers are unaffected.
+- No canonical docs changes required beyond this spec.
+- No migration or rollout dependencies.
+- The "link to existing" button is explicitly deferred.
 
 ## V1 scope recommendation
 
 ### Include in v1
 
-- `callApiQueued` with per-jobName FIFO sequential execution
-- `getQueueState` returning `{ pending, active }` (consumed by ABClass creation progress bar)
-- `QueueState` exported interface
-- Input validation for `method` and `jobName` (both functions)
-- Unit test coverage for queueing behaviour
-- Planned helper entries in canonical docs
+- No-match choice prompt with "Create New Definition" and placeholder "Link to Existing"
+- Pre-population of title, topic (conditional), and year group into the wizard
+- Automatic assessment after successful definition creation
+- Updated wizard contract (`initialValues`, `onCreateSuccess`) with `selectedTopicKey`/`selectedYearGroupKey` synchronisation
+- AssessTaskModal state machine changes (`noMatchResolution` + reconciliation with `assessmentState`)
+- Triple-modal-nesting acknowledgement and focus-management rules
 
 ### Defer from v1
 
-- React hook wrapping `getQueueState` for reactive progress UI (not needed — the ABClass creation flow calls `getQueueState` imperatively)
-- Queue cancellation or request removal
-- Queue persistence across navigation
-- Priority or dependency-based ordering
-- Queue-level logging events
-
-## Open questions
-
-None remaining — all material design decisions are settled.
+- The "link to existing definition" workflow implementation
+- Any topic auto-creation when the GC assignment topic does not exist in reference data
+- Queue-based or priority-based assessment runs
