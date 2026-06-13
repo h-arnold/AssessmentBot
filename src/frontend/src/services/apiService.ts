@@ -203,6 +203,20 @@ export async function callApi<TResponse>(method: string, parameters?: unknown): 
   throw lastError!;
 }
 
+// ── Queue infrastructure ─────────────────────────────────────────────────
+
+interface QueueEntry {
+  resolve: (value: unknown) => void;
+  reject: (reason: unknown) => void;
+}
+
+interface QueueStateInternal {
+  pending: QueueEntry[];
+  active: boolean;
+}
+
+const queues = new Map<string, QueueStateInternal>();
+
 export interface QueueState {
   pending: number;
   active: boolean;
@@ -229,7 +243,21 @@ export function callApiQueued<TResponse>(
 ): Promise<TResponse> {
   ApiRequestSchema.shape.method.parse(method);
   JobNameSchema.parse(jobName);
-  throw new Error('Queue processing not yet implemented');
+
+  // Locate or create queue for this jobName
+  let queue = queues.get(jobName);
+  if (!queue) {
+    queue = { pending: [], active: false };
+    queues.set(jobName, queue);
+  }
+
+  // Enqueue — store resolve/reject in the pending array and return the Promise
+  return new Promise<TResponse>((resolve, reject) => {
+    queue!.pending.push({
+      resolve: resolve as (value: unknown) => void,
+      reject,
+    });
+  });
 }
 
 /**
@@ -245,5 +273,19 @@ export function callApiQueued<TResponse>(
  */
 export function getQueueState(jobName: string): QueueState {
   JobNameSchema.parse(jobName);
-  return { pending: 0, active: false };
+  const queue = queues.get(jobName);
+  if (!queue) {
+    return { pending: 0, active: false };
+  }
+  return { pending: queue.pending.length, active: queue.active };
+}
+
+/**
+ * Test-only accessor for inspecting internal queue state.
+ * Export prefixed with `__` to discourage production use.
+ *
+ * @returns {Map<string, { pending: unknown[]; active: boolean }>} The internal queue map.
+ */
+export function __getQueueInternalsForTest(): Map<string, { pending: unknown[]; active: boolean }> {
+  return queues as Map<string, { pending: unknown[]; active: boolean }>;
 }

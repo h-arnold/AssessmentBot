@@ -244,9 +244,9 @@ Note: tests that need to inspect internal queue state before `getQueueState` is 
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (to be filled after implementation)
-- **Deviations from plan:** (to be filled if any)
-- **Follow-up implications for later sections:** Section 3 wires up the dequeue processing loop that resolves/rejects these pending Promises.
+- **Implementation notes:** Section 2 complete. Added module-private `QueueEntry` and `QueueStateInternal` types, module-scoped `queues` Map, and test-only `__getQueueInternalsForTest` export. `callApiQueued` now creates/retrieves a queue, stores `resolve`/`reject` in `pending`, and returns a pending Promise. `getQueueState` now reads from the actual queue map. All 21 tests pass (13 original + 4 Section 1 + 4 Section 2).
+- **Deviations from plan:** `_parameters` remains non-optional (required) — same TS1016 workaround from Section 1. `QueueEntry` stores only `resolve`/`reject` (not `method`/`parameters` yet) — those will be added in Section 3 when the dequeue loop needs them for dispatch.
+- **Follow-up implications for later sections:** Section 3 wires up the dequeue processing loop that resolves/rejects these pending Promises. `__getQueueInternalsForTest` must be removed in Section 6 (Regression).
 
 ---
 
