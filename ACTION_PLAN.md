@@ -170,8 +170,8 @@ Note: tests 1–3 are pure validation tests and do not require the `google.scrip
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (to be filled after implementation)
-- **Deviations from plan:** (to be filled if any)
+- **Implementation notes:** Section 1 complete. Added `JobNameSchema` (line 10), `QueueState` interface (line 206), `callApiQueued` function (line 225), and `getQueueState` function (line 246). `callApiQueued` validates inputs and throws a stub error for valid inputs (queue internals arrive in Section 2). `getQueueState` returns `{ pending: 0, active: false }` for any valid `jobName`. Planned helper entries added to `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9.14 with status `Not implemented`. Tests in `apiService.spec.ts` (4 new tests in `describe('callApiQueued and getQueueState validation')` block, lines 530–579).
+- **Deviations from plan:** `callApiQueued` uses `_parameters: unknown` (required) rather than `parameters?: unknown` (optional) due to TypeScript 5.9 TS1016 restriction (required parameter after optional). The underscore prefix suppresses `noUnusedParameters` for the stub. This will be revisited in Section 2.
 - **Follow-up implications for later sections:** Section 2 builds on these exports by adding queue internals.
 
 ---

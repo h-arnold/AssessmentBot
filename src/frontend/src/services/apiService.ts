@@ -7,6 +7,8 @@ const ApiRequestSchema = z.object({
   params: z.unknown().optional(),
 });
 
+const JobNameSchema = z.string().min(1);
+
 const ApiSuccessResponseSchema = z
   .object({
     ok: z.literal(true),
@@ -199,4 +201,49 @@ export async function callApi<TResponse>(method: string, parameters?: unknown): 
   }
 
   throw lastError!;
+}
+
+export interface QueueState {
+  pending: number;
+  active: boolean;
+}
+
+/**
+ * Enqueues an API call for sequential execution within a job-name queue.
+ *
+ * @template TResponse - The expected response data type.
+ * @param {string} method - Backend method name (must be non-empty).
+ * @param {unknown} _parameters - Request parameters.
+ * @param {string} jobName - Queue job name (must be non-empty).
+ * @returns {Promise<TResponse>} A Promise that resolves when the queued request completes.
+ *
+ * @remarks
+ * Input validation for `method` intentionally duplicates `callApi`'s `ApiRequestSchema`
+ * as defence-in-depth — early rejection at the call site prevents malformed requests
+ * from entering the queue.
+ */
+export function callApiQueued<TResponse>(
+  method: string,
+  _parameters: unknown,
+  jobName: string
+): Promise<TResponse> {
+  ApiRequestSchema.shape.method.parse(method);
+  JobNameSchema.parse(jobName);
+  throw new Error('Queue processing not yet implemented');
+}
+
+/**
+ * Returns a snapshot of the current queue state for a given job name.
+ *
+ * @param {string} jobName - Queue job name (must be non-empty).
+ * @returns {QueueState} The current queue state.
+ *
+ * @remarks
+ * This returns a point-in-time snapshot. Callers polling for progress should not
+ * assume monotonicity between calls — the queue may advance between a read and
+ * the caller's next statement.
+ */
+export function getQueueState(jobName: string): QueueState {
+  JobNameSchema.parse(jobName);
+  return { pending: 0, active: false };
 }
