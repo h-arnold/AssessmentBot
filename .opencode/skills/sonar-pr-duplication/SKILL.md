@@ -1,6 +1,6 @@
 ---
 name: sonar-pr-duplication
-description: Inspect the latest SonarQube or SonarCloud pull request comment, extract the linked Sonar project and PR context, and retrieve duplication details, quality gate status, coverage metrics, and open issue summaries. Use when a user asks about SonarQube duplication comments, quality gate failures, coverage on a PR, or the latest Sonar report for the current branch.
+description: Inspect the latest SonarQube or SonarCloud pull request report, retrieve duplication details with line numbers, quality gate status, coverage metrics, and open issue summaries using direct SonarCloud Web API calls via gh. Use when a user asks about SonarQube duplication comments, quality gate failures, coverage on a PR, or the latest Sonar report for the current branch.
 ---
 
 # Sonar PR Duplication
@@ -8,67 +8,139 @@ description: Inspect the latest SonarQube or SonarCloud pull request comment, ex
 Use this skill when the task is about the SonarQube or SonarCloud pull request report, especially
 duplication, quality gate status, coverage, or open Sonar issues on the PR.
 
-Prefer the bundled script instead of manually clicking through GitHub and SonarCloud. The script:
+Call SonarCloud's public Web API directly with `gh api` — no separate script required.
 
-1. resolves the current GitHub repo and PR when not provided
-2. fetches the latest Sonar bot PR comment
-3. extracts the `component_measures` duplication link from the comment
-4. calls SonarCloud's public Web API for:
-   - per-file duplication metrics
-   - quality gate status and failed conditions
-   - coverage metrics
-   - open issue summaries
-5. calls the Sonar duplication endpoint for flagged files to show matching files and line ranges
+---
 
-## Quick start
+## 1. Project and PR Identification
 
-Current repo and current branch PR:
+Extract the Sonar project key and PR number from one of:
+
+- The Sonar bot comment on the PR (look for `id=h-arnold_AssessmentBot&pullRequest=252` in the URL)
+- A known pattern: `h-arnold/AssessmentBot` → Sonar project key `h-arnold_AssessmentBot`
+- The PR number from `gh pr view --json number`
 
 ```bash
-python3 ~/.vibe/skills/sonar-pr-duplication/scripts/sonar_pr_duplication_report.py
+# Get current PR number
+gh pr view --json number
+
+# Sonar project key is typically: owner/repo with '/' replaced by '_'
+# e.g. h-arnold/AssessmentBot -> h-arnold_AssessmentBot
 ```
 
-Specific PR:
+---
+
+## 2. Overall Quality Gate & Metrics
 
 ```bash
-python3 ~/.vibe/skills/sonar-pr-duplication/scripts/sonar_pr_duplication_report.py --repo h-arnold/AssessmentBot --pr 213
+COMPONENT="h-arnold_AssessmentBot"
+PR=252
+
+gh api "https://sonarcloud.io/api/measures/component?component=$COMPONENT&metricKeys=bugs,vulnerabilities,code_smells,coverage,duplicated_lines_density&pullRequest=$PR"
 ```
 
-Show everything including files under the default gate threshold:
+Returns overall project-level values. For new-code metrics, use the Sonar bot PR comment or the `sinceLeakPeriod=true` filter on issues.
+
+---
+
+## 3. Per-File Duplication & Coverage
 
 ```bash
-python3 ~/.vibe/skills/sonar-pr-duplication/scripts/sonar_pr_duplication_report.py --threshold 0
+gh api "https://sonarcloud.io/api/measures/component_tree?component=$COMPONENT&pullRequest=$PR&metricKeys=duplicated_lines_density,coverage&ps=100"
 ```
 
-Machine-readable output:
+Filters files with `duplicated_lines_density > 0` to identify duplication hotspots.
+
+---
+
+## 4. Duplicated Block Line Ranges
+
+For a specific file, call the duplication endpoint with the full Sonar file key (project key + `:` + file path from repo root):
 
 ```bash
-python3 ~/.vibe/skills/sonar-pr-duplication/scripts/sonar_pr_duplication_report.py --json
+FILE_KEY="h-arnold_AssessmentBot:src/frontend/src/test/classes/classesTestHelpers.ts"
+
+gh api "https://sonarcloud.io/api/duplications/show?key=$FILE_KEY&pullRequest=$PR"
 ```
 
-## Notes
+Returns block pairings with `from` (start line) and `size` (number of lines). A block pair means the lines `[from, from+size)` are duplicated between the two references.
 
-- Default threshold is `3.0`, matching the common Sonar "Duplication on New Code" gate.
-- The script expects `gh` authentication to be available for GitHub PR comment lookup.
-- SonarCloud data is fetched from the public Web API exposed by the duplication link in the bot
-  comment. The key endpoints are:
-  - `api/measures/component_tree`
-  - `api/duplications/show`
-  - `api/qualitygates/project_status`
-  - `api/measures/component`
-  - `api/issues/search`
-- To check whether your changes have been successful, commit them, wait 60s and then re-run the script.
+---
 
-## Output expectations
+## 5. Open Issues (Code Smells, Bugs, Vulnerabilities)
+
+```bash
+gh api "https://sonarcloud.io/api/issues/search?component=$COMPONENT&pullRequest=$PR&statuses=OPEN,CONFIRMED&ps=100"
+```
+
+Each issue includes `type` (BUG, VULNERABILITY, CODE_SMELL), `severity`, `message`, `component` (file path), and `line`.
+
+---
+
+## 6. Quality Gate Status
+
+```bash
+gh api "https://sonarcloud.io/api/qualitygates/project_status?projectKey=$COMPONENT&pullRequest=$PR"
+```
+
+Returns the gate status (`OK`, `ERROR`) and any failed conditions.
+
+---
+
+## Worked Pipeline (Single PR)
+
+```bash
+COMPONENT="h-arnold_AssessmentBot"
+PR=252
+
+# 1. Overall metrics
+gh api "https://sonarcloud.io/api/measures/component?component=$COMPONENT&metricKeys=bugs,vulnerabilities,code_smells,coverage,duplicated_lines_density&pullRequest=$PR"
+
+# 2. Files with duplication, sorted by density
+gh api "https://sonarcloud.io/api/measures/component_tree?component=$COMPONENT&pullRequest=$PR&metricKeys=duplicated_lines_density,coverage&ps=100" \
+  | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+for comp in d.get('components', []):
+    measures = {m['metric']: m['value'] for m in comp.get('measures', [])}
+    dup = measures.get('duplicated_lines_density')
+    if dup and float(dup) > 0:
+        cov = measures.get('coverage', '?')
+        print(f'  {comp[\"path\"]}: dup={dup}% cov={cov}%')"
+
+# 3. Open issues
+gh api "https://sonarcloud.io/api/issues/search?component=$COMPONENT&pullRequest=$PR&statuses=OPEN,CONFIRMED&ps=100" \
+  | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+print(f'Total: {d[\"total\"]}')
+for issue in d.get('issues', []):
+    print(f'  [{issue[\"severity\"]}] {issue[\"type\"]}: {issue[\"message\"]} ({issue[\"component\"]}:{issue.get(\"line\",\"?\")})')"
+
+# 4. Duplicated blocks for a specific file (run per hotspot file)
+FILE_KEY="h-arnold_AssessmentBot:src/frontend/src/test/classes/classesTestHelpers.ts"
+gh api "https://sonarcloud.io/api/duplications/show?key=$FILE_KEY&pullRequest=$PR" \
+  | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+for dup in d.get('duplications', []):
+    blocks = dup['blocks']
+    for b in blocks:
+        ref = d['files'][b['_ref']]['name']
+        print(f'  {ref}: lines {b[\"from\"]}-{b[\"from\"]+b[\"size\"]-1} ({b[\"size\"]} lines)')"
+```
+
+---
+
+## Output Expectations
 
 Summarise:
 
-- the latest Sonar comment URL
-- the Sonar duplication link
+- the PR number and Sonar project key used
 - the quality gate status and any failing conditions
-- coverage metrics when present
-- the current open Sonar issues on the PR
-- the files above threshold sorted by duplication density
-- the duplicated block pairings and line ranges for those files
+- coverage metrics (overall + per-file when available)
+- total open issues by type/severity
+- the files sorted by duplication density
+- the duplicated block pairings and line ranges for each flagged file
 
-If no Sonar duplication comment is found, say that clearly and stop rather than guessing.
+If the Sonar API returns empty data, say that clearly and stop rather than guessing.
