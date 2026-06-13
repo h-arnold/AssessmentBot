@@ -430,6 +430,34 @@ function createSequentialHarness(responses: RunnerHarnessResponse[]): {
   return { runner, apiHandlerSpy };
 }
 
+/**
+ * Creates a RATE_LIMITED error envelope with "Rate limited." message.
+ *
+ * @param {string} requestId - The request identifier to include in the envelope.
+ * @returns {ApiErrorEnvelope} The constructed error envelope.
+ */
+function makeRateLimitedResponseEnvelope(requestId: string): ApiErrorEnvelope {
+  return {
+    ok: false,
+    requestId,
+    error: { code: 'RATE_LIMITED', message: 'Rate limited.', retriable: true },
+  };
+}
+
+/**
+ * Creates a success envelope with `{ done: true }` data.
+ *
+ * @param {string} requestId - The request identifier to include in the envelope.
+ * @returns {ApiSuccessEnvelope<{ done: boolean }>} The constructed success envelope.
+ */
+function makeDoneSuccessEnvelope(requestId: string): ApiSuccessEnvelope<{ done: boolean }> {
+  return {
+    ok: true,
+    requestId,
+    data: { done: true },
+  };
+}
+
 // ── Retry policy ──────────────────────────────────────────────────────────────
 
 describe('retry policy', () => {
@@ -447,16 +475,8 @@ describe('retry policy', () => {
   it('retries on RATE_LIMITED with retriable: true and resolves on second attempt', async () => {
     const callApi = await loadCallApi();
 
-    const rateLimitedEnvelope: ApiErrorEnvelope = {
-      ok: false,
-      requestId: 'req-retry-rl-1',
-      error: { code: 'RATE_LIMITED', message: 'Rate limited.', retriable: true },
-    };
-    const successEnvelope: ApiSuccessEnvelope<{ done: boolean }> = {
-      ok: true,
-      requestId: 'req-retry-ok-1',
-      data: { done: true },
-    };
+    const rateLimitedEnvelope = makeRateLimitedResponseEnvelope('req-retry-rl-1');
+    const successEnvelope = makeDoneSuccessEnvelope('req-retry-ok-1');
 
     const { runner, apiHandlerSpy } = createSequentialHarness([
       { kind: 'success', payload: rateLimitedEnvelope },
@@ -1134,16 +1154,8 @@ describe('callApiQueued retry interaction and failure continuation', () => {
     };
     expect(callApiQueued).toBeDefined();
 
-    const rateLimitedEnvelope: ApiErrorEnvelope = {
-      ok: false,
-      requestId: 'req-rl-block-1',
-      error: { code: 'RATE_LIMITED', message: 'Rate limited.', retriable: true },
-    };
-    const successEnvelope: ApiSuccessEnvelope<{ done: boolean }> = {
-      ok: true,
-      requestId: 'req-ok-block-1',
-      data: { done: true },
-    };
+    const rateLimitedEnvelope = makeRateLimitedResponseEnvelope('req-rl-block-1');
+    const successEnvelope = makeDoneSuccessEnvelope('req-ok-block-1');
 
     const { runner, apiHandlerSpy } = createSequentialHarness([
       { kind: 'success', payload: rateLimitedEnvelope },
@@ -1181,16 +1193,8 @@ describe('callApiQueued retry interaction and failure continuation', () => {
     };
     expect(callApiQueued).toBeDefined();
 
-    const rateLimitedEnvelope: ApiErrorEnvelope = {
-      ok: false,
-      requestId: 'req-exhaust-1',
-      error: { code: 'RATE_LIMITED', message: 'Rate limited.', retriable: true },
-    };
-    const successEnvelope: ApiSuccessEnvelope<{ done: boolean }> = {
-      ok: true,
-      requestId: 'req-exhaust-ok-1',
-      data: { done: true },
-    };
+    const rateLimitedEnvelope = makeRateLimitedResponseEnvelope('req-exhaust-1');
+    const successEnvelope = makeDoneSuccessEnvelope('req-exhaust-ok-1');
 
     // 4 RATE_LIMITED responses (one per attempt, exhausting retries) + 1 success for B
     const responses: RunnerHarnessResponse[] = [
@@ -1272,16 +1276,8 @@ describe('callApiQueued retry interaction and failure continuation', () => {
     expect(callApiQueued).toBeDefined();
     expect(getQueueState).toBeDefined();
 
-    const rateLimitedEnvelope: ApiErrorEnvelope = {
-      ok: false,
-      requestId: 'req-active-rl-1',
-      error: { code: 'RATE_LIMITED', message: 'Rate limited.', retriable: true },
-    };
-    const successEnvelope: ApiSuccessEnvelope<{ done: boolean }> = {
-      ok: true,
-      requestId: 'req-active-ok-1',
-      data: { done: true },
-    };
+    const rateLimitedEnvelope = makeRateLimitedResponseEnvelope('req-active-rl-1');
+    const successEnvelope = makeDoneSuccessEnvelope('req-active-ok-1');
 
     const { runner } = createSequentialHarness([
       { kind: 'success', payload: rateLimitedEnvelope },
