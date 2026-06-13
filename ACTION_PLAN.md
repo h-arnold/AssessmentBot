@@ -1,36 +1,59 @@
-# API Queueing System Delivery Plan (TDD-First)
+# Classes Settings Queued Bulk Actions Delivery Plan (TDD-First)
 
 ## Read-First Context
 
 Before writing or executing this plan:
 
 1. Read the current `SPEC.md`.
-2. Read `src/frontend/AGENTS.md`.
-3. Treat `SPEC.md` as the source of truth for product behaviour, contracts, and scope boundaries.
-4. Use this action plan to sequence delivery and testing; do not restate or redefine material already settled in the spec.
+2. Read `CLASSES_BULK_PROGRESS_MODAL_LAYOUT.md`.
+3. Read `src/frontend/AGENTS.md` and `src/backend/AGENTS.md` for component rules.
+4. Treat the spec and layout documents as the source of truth for product behaviour, contracts, and layout rules.
 
 ## Scope and assumptions
 
 ### Scope
 
-- `src/frontend/src/services/apiService.ts` — add `callApiQueued`, `getQueueState`, `QueueState`, and internal queue infrastructure.
-- `src/frontend/src/services/apiService.spec.ts` — add queue-specific test coverage.
-- `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` — add planned helper entries.
+(Section 0 — Panel decomposition)
+
+- `src/frontend/src/features/classes/bulk/bulkMutationResolution.ts` — extract resolution helpers and types from the panel.
+- `src/frontend/src/features/classes/components/ClassesManagementPanelOutcomeAlert.tsx` — extract alert sub-component.
+- `src/frontend/src/features/classes/components/ClassesManagementPanelLoadingState.tsx` — extract loading skeleton.
+- `src/frontend/src/features/classes/components/classesManagementWorkflowBoundary.ts` — extract workflow-boundary helpers.
+- `src/frontend/src/features/classes/bulk/bulkMutationResolution.spec.ts` — unit tests for extracted resolution logic.
+- `src/frontend/src/features/classes/components/classesManagementWorkflowBoundary.spec.ts` — unit tests for boundary helpers.
+- `src/frontend/src/features/classes/ClassesManagementPanel.tsx` — refactored to import from extracted modules (~520 lines remaining).
+
+(Sections 1–7 — Queued bulk actions feature)
+
+- `src/frontend/src/services/apiService.ts` — add `cancelApiQueued`.
+- `src/frontend/src/services/apiService.spec.ts` — add cancellation tests.
+- `src/frontend/src/features/classes/bulk/runQueuedBatchMutation.ts` — new queued batch engine.
+- `src/frontend/src/features/classes/bulk/runQueuedBatchMutation.spec.ts` — engine tests.
+- `src/frontend/src/features/classes/bulk/ClassesBulkProgressModal.tsx` — new progress modal component.
+- `src/frontend/src/features/classes/bulk/ClassesBulkProgressModal.spec.tsx` — modal tests.
+- `src/frontend/src/features/classes/useClassesBulkMutationQueue.ts` — new feature hook.
+- `src/frontend/src/features/classes/useClassesBulkMutationQueue.spec.ts` — hook tests.
+- `src/frontend/src/features/classes/bulk/bulkCreateFlow.ts`, `bulkMetadataUpdateFlow.ts` — update to use queued engine.
+- `src/frontend/src/features/classes/ClassesManagementPanel.tsx` — wire hook, modal, and updated flows.
+- `src/frontend/src/features/classes/bulk/bulkMutationResolution.ts` — extend for cancellation markers (Section 6).
+- Existing `ClassesManagementPanel.spec.tsx` and related bulk-flow tests — update assertions.
+- `src/frontend/e2e-tests/` — add progress-modal coverage.
+- `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` — update §9.14 with planned helper entries.
 
 ### Out of scope
 
-- React hook wrapping `getQueueState`
-- Queue cancellation, removal, or persistence
-- Priority-based queueing
-- Queue-level logging events
-- Backend changes
+- Backend changes.
+- Reusable app-wide progress modal abstraction.
+- Per-action job names or priority queueing.
+- Cancelling the active in-flight request.
+- Removing the legacy `runBatchMutation` engine (retained for now).
 
 ### Assumptions
 
-1. The existing `callApi` function is not modified — only new exports are added.
-2. The existing `dispatchAttempt`, `shouldRetry`, and retry-loop functions remain unchanged and are reused by the queue.
-3. The existing test harness (`src/frontend/src/test/googleScriptRunHarness.ts` and `src/frontend/src/test/google-script-run-harness-factory.js`) is sufficient for queue tests. Any necessary extensions (e.g. controllable delayed responses) are added as test-local helpers in `apiService.spec.ts`.
-4. Queue state is module-private (a `Map<string, Queue>` in module scope). It is not persisted and resets on page reload.
+1. `callApiQueued` already exists and is implemented as defined in the existing `SPEC.md` / `apiService.ts`.
+2. The shared E2E runtime mock's `releaseSignal` mechanism can be reused to pause/resume individual queued calls.
+3. The existing `RowMutationResult` contract remains stable; cancelled rows are represented as `status: 'rejected'` with `error.reason === 'CANCELLED'`.
+4. Feature-local helpers are not added to the shared helper doc unless they cross the two-caller threshold.
 
 ---
 
@@ -38,11 +61,12 @@ Before writing or executing this plan:
 
 ### Engineering constraints
 
-- Keep `apiService.ts` changes additive — do not restructure existing exports.
-- Fail fast on invalid inputs (Zod validation at the call boundary).
-- Keep the queue loop simple: a single async function per queue, no external scheduling library.
+- Keep API/entry points thin and delegate behaviour to services, engines, hooks, and components.
+- Fail fast on invalid inputs and persistence failures.
+- Avoid defensive guards that hide wiring issues.
+- Keep changes minimal, localised, and consistent with repository conventions.
 - Use British English in comments and documentation.
-- Export functions as functions, not constants assigned to arrow functions.
+- Do not modify `callApi` or existing queue internals beyond the additive `cancelApiQueued` function.
 
 ### TDD workflow (mandatory per section)
 
@@ -57,44 +81,167 @@ For each section below:
 
 When a section is delegated to sub-agents:
 
-- `Testing Specialist`: must read `docs/developer/frontend/frontend-testing.md`, `src/frontend/src/services/apiService.spec.ts` (existing patterns), `src/frontend/src/test/googleScriptRunHarness.ts`, `SPEC.md`.
-- `Implementation`: must read `src/frontend/AGENTS.md`, `src/frontend/src/services/apiService.ts`, `SPEC.md`, `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`.
-- `Code Reviewer`: must read `src/frontend/AGENTS.md`, `SPEC.md`, `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`.
-- `Docs`: must read `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`, `SPEC.md`.
+- `Testing Specialist`: must read `docs/developer/frontend/frontend-testing.md`, `SPEC.md`, `CLASSES_BULK_PROGRESS_MODAL_LAYOUT.md`, and the relevant source/test files for that section.
+- `Implementation`: must read `src/frontend/AGENTS.md`, `SPEC.md`, `CLASSES_BULK_PROGRESS_MODAL_LAYOUT.md`, and the relevant source files for that section.
+- `Code Reviewer`: must read `src/frontend/AGENTS.md`, `SPEC.md`, `CLASSES_BULK_PROGRESS_MODAL_LAYOUT.md`, and `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`.
+- `Playwright`: must read `docs/developer/frontend/frontend-playwright-e2e.md`, `SPEC.md`, `CLASSES_BULK_PROGRESS_MODAL_LAYOUT.md`, and the relevant E2E harness files.
+- `Docs`: must read `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`, `SPEC.md`, and `CLASSES_BULK_PROGRESS_MODAL_LAYOUT.md`.
 
 ### Shared-helper planning gate (mandatory when helper changes are expected)
 
-All sections that introduce new exports must record helper decisions before implementation. See Section 1's shared-helper plan below.
+Before implementation starts in Section 1:
+
+1. Add the `cancelApiQueued` entry to `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9.14 with status `Not implemented`.
+2. Record feature-local helpers (`runQueuedBatchMutation`, `ClassesBulkProgressModal`, `useClassesBulkMutationQueue`) in Section 2's shared-helper planning block.
+3. During the documentation pass, reconcile planned entries against actual implementation and update status/details accordingly.
 
 ### Validation commands hierarchy
 
 - Frontend lint: `npm run lint:frontend`
-- Frontend unit tests: `npm run test:frontend -- src/services/apiService.spec.ts`
+- Frontend unit tests: `npm run test:frontend -- <target>`
+- Frontend E2E tests: `npm run test:frontend:e2e -- <target>` (paths are relative to `src/frontend`)
 
 ---
 
-## Section 1 — Types, validation schemas, and input contracts
+## Section 0 — Pre-requisite decomposition of `ClassesManagementPanel.tsx`
 
 ### Objective
 
-Define the `QueueState` interface, `callApiQueued` function signature, `getQueueState` function signature, and Zod validation schemas. Implement input validation and stub the queue-state query. No queue internals yet.
+Decompose the 967-line `ClassesManagementPanel.tsx` into dedicated modules before adding any new logic. The panel stays as the orchestrator component (following the frontend service domain-folder grouping convention — `src/frontend/AGENTS.md` §12 — and the feature directory layout — `src/frontend/AGENTS.md` §2.3 — keeping sub-components in `components/` and business logic in feature-scoped module directories, with the original component file at the same path exporting the same public API). All four extractions are pure moves: zero behavioural change.
+
+### LOC assessment (planner.agent.md §11)
+
+**Current:**
+
+- `ClassesManagementPanel.tsx` — 967 lines
+
+**Extraction targets:**
+
+| New module                                          | Approx. LOC | Contents                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| --------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bulk/bulkMutationResolution.ts`                    | ~350        | `getRejectedRowResults`, `hasAnyFulfilledRowResult`, `getBulkOutcomeTitle`, `createBulkFailureMessage`, `createBulkMetadataFailureMessage`, five `createBulk*FailureMessage` functions, `buildTopLevelBulkMutationResolution`, `buildMetadataBulkMutationResolution`, all supporting types (`BulkActionOutcomeAlert`, `BulkFailureMessageCopy`, `TopLevelBulkMutationCopy`, `TopLevelBulkActionDescriptor`, `TopLevelBulkMutationResolution`, `MetadataBulkMutationResolution`) |
+| `components/ClassesManagementPanelOutcomeAlert.tsx` | ~20         | `ClassesManagementPanelOutcomeAlert` sub-component                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `components/ClassesManagementPanelLoadingState.tsx` | ~20         | `ClassesManagementPanelLoadingState` sub-component                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `components/classesManagementWorkflowBoundary.ts`   | ~55         | `ClassesWorkflowMutationBoundaryState`, `isClassesWorkflowMutationBoundaryActive`, `shouldSuppressClassesTableData`, `getClassesWorkflowBusyState`                                                                                                                                                                                                                                                                                                                              |
+
+**After split:**
+
+- `ClassesManagementPanel.tsx` — ~520 lines (60 lines for imports/state/derived, 210 for handlers/orchestration, 130 for JSX, ~120 for descriptors/export)
+- Projected after queued-bulk-actions integration (Sections 4–5): ~600 lines
+
+The panel at ~520–600 lines is the acceptable orchestrator — all domain logic and sub-components are extracted.
 
 ### Constraints
 
-- Do not touch existing `callApi` or `dispatchAttempt`.
-- Define a `JobNameSchema = z.string().min(1)` for `jobName` validation. Reuse `ApiRequestSchema.shape.method` (which is `z.string().min(1)`) for `method` validation in `callApiQueued`. `getQueueState` uses `JobNameSchema` only.
-- `callApiQueued` validates `method` and `jobName` via Zod; invalid inputs throw synchronously before any queue interaction.
-- `getQueueState` validates `jobName` via Zod; invalid input throws synchronously.
-- `getQueueState` for an unknown but valid `jobName` returns `{ pending: 0, active: false }`.
-- All three new exports (`QueueState`, `callApiQueued`, `getQueueState`) are exported.
+- Pure extraction: no behavioural change, no refactoring beyond decomposition.
+- All public exports (`classesManagementPanelRegionLabel`, `ClassesManagementPanel`) stay in `ClassesManagementPanel.tsx`.
+- No new abstractions beyond the extraction targets listed above.
+- Update all cross-file imports in `src/frontend/src/` to reflect new paths for any symbols that become re-exported from the panel (none should — extracted types are internal, not imported externally).
+- Existing test files that use dynamic `import('./ClassesManagementPanel')` do not change their import path.
 
-### Delegation mandatory reads (when sub-agents are used)
+### Acceptance criteria
+
+- `ClassesManagementPanel.tsx` no longer contains inline definitions of any resolution helper, copy builder, sub-component, or workflow-boundary helper listed in the extraction targets.
+- `ClassesManagementPanel.tsx` imports from the four new modules and delegates to them.
+- `ClassesManagementPanel.tsx` still exports `classesManagementPanelRegionLabel` and `ClassesManagementPanel`.
+- `bulkMutationResolution.ts` exports all resolution helpers with the same signatures.
+- `classesManagementWorkflowBoundary.ts` exports `isClassesWorkflowMutationBoundaryActive`, `shouldSuppressClassesTableData`, `getClassesWorkflowBusyState`, and the `ClassesWorkflowMutationBoundaryState` type.
+- All existing `ClassesManagementPanel.spec.tsx` and `ClassesManagementPanel.bulkMetadataFailure.spec.tsx` tests pass without modification.
+- Lint is clean.
+
+### Required test cases (Red first)
+
+Frontend tests in new `bulkMutationResolution.spec.ts`:
+
+1. `getRejectedRowResults` returns only rejected results from a mixed array.
+2. `hasAnyFulfilledRowResult` returns true when at least one fulfilled result exists.
+3. `getBulkOutcomeTitle` returns the full-failure title when failed count equals total.
+4. `getBulkOutcomeTitle` returns the partial-failure title when failed count is less than total.
+5. `createBulkFailureMessage` returns correct copy for all-failure, single-failure, partial-failure, and partial-refresh-failure cases.
+6. `createBulkMetadataFailureMessage` delegates to `createBulkFailureMessage` with metadata-specific copy.
+7. `buildTopLevelBulkMutationResolution` returns alert with correct type, title, and description for: full failure, partial failure, no failure, and refresh-failure cases.
+8. `buildTopLevelBulkMutationResolution` preserves `selectedRowKeys` from rejected rows.
+9. `buildMetadataBulkMutationResolution` returns all-failure outcome with `errorMessage` set and `shouldCloseModal: false`.
+10. `buildMetadataBulkMutationResolution` returns partial-failure outcome with `alert` set and `shouldCloseModal: true`.
+
+Frontend tests in new `classesManagementWorkflowBoundary.spec.ts`:
+
+1. `isClassesWorkflowMutationBoundaryActive` returns false when all submitting flags are false.
+2. `isClassesWorkflowMutationBoundaryActive` returns true when any submitting flag is true.
+3. `shouldSuppressClassesTableData` returns true when `suppressStaleTableData` is true.
+4. `shouldSuppressClassesTableData` returns true when `refreshRequiredMessage` is non-null.
+5. `getClassesWorkflowBusyState` returns `'true'` when `isRefreshing` is true.
+
+Existing integration tests (no new tests needed — the extraction is verified by existing test suite):
+
+- `npm run test:frontend -- src/features/classes/ClassesManagementPanel.spec.tsx` — green.
+- `npm run test:frontend -- src/features/classes/ClassesManagementPanel.bulkMetadataFailure.spec.tsx` — green.
+
+### Section steps
+
+These steps are sequential but should be executed as one TDD cycle (Red → Green → Refactor):
+
+1. **Red**: Write the unit tests listed above for the four new modules. All pass zero tests initially.
+2. **Green — Extract A**: Create `bulk/bulkMutationResolution.ts` with the extracted copy builders and resolution functions. Import from `./queryInvalidation`, `../classesManagementViewModel`, and `./batchMutationEngine` as needed.
+3. **Green — Extract B**: Create `components/ClassesManagementPanelOutcomeAlert.tsx` (single sub-component).
+4. **Green — Extract C**: Create `components/ClassesManagementPanelLoadingState.tsx` (single sub-component).
+5. **Green — Extract D**: Create `components/classesManagementWorkflowBoundary.ts` (boundary helpers).
+6. **Green — Update orchestrator**: In `ClassesManagementPanel.tsx`, replace the extracted inline definitions with imports from the new modules. Remove ~440 lines, add ~10 import lines.
+7. **Refactor**: Run the full suite to confirm zero regressions.
+
+### Delegation mandatory reads
+
+Testing Specialist mandatory docs:
+
+- `docs/developer/frontend/frontend-testing.md`
+- `src/frontend/src/features/classes/ClassesManagementPanel.spec.tsx`
+- `src/frontend/src/features/classes/ClassesManagementPanel.bulkMetadataFailure.spec.tsx`
+- `SPEC.md`
+
+Implementation mandatory docs:
+
+- `src/frontend/AGENTS.md` (especially §2.2 on hooks/services and §2.3 on feature layout)
+- `src/frontend/src/features/classes/ClassesManagementPanel.tsx` (the file being split)
+- `SPEC.md`
+
+### Section checks
+
+1. `npm run test:frontend -- src/features/classes/bulk/bulkMutationResolution.spec.ts`
+2. `npm run test:frontend -- src/features/classes/components/classesManagementWorkflowBoundary.spec.ts`
+3. `npm run test:frontend -- src/features/classes/ClassesManagementPanel.spec.tsx`
+4. `npm run test:frontend -- src/features/classes/ClassesManagementPanel.bulkMetadataFailure.spec.tsx`
+5. `npm run lint:frontend`
+6. Verify `ClassesManagementPanel.tsx` no longer contains inline copies of the extracted functions (grep for `function createBulk` should find zero hits in the panel file).
+7. Verify all public exports are preserved at the same module path.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** to be filled during implementation.
+- **Deviations from plan:** to be filled during implementation.
+- **Follow-up implications for later sections:** Sections 5 and 6 modify `buildTopLevelBulkMutationResolution` and `buildMetadataBulkMutationResolution` to detect cancellation markers and emit cancellation-specific copy and metadata all-failure alert migration. After this section, those functions live in `bulk/bulkMutationResolution.ts`.
+
+---
+
+## Section 1 — `cancelApiQueued` enabling contract
+
+### Objective
+
+Add the `cancelApiQueued` function to `apiService.ts` and validate it with unit tests. This is the enabling contract for the rest of the feature.
+
+### Constraints
+
+- Keep the change additive: do not alter `callApi`, `callApiQueued`, or the existing queue processing loop.
+- `cancelApiQueued` must validate `jobName` as a non-empty string and throw synchronously on violation.
+- For an unknown or idle job name, return `0`.
+- For an active queue with pending items, remove all pending entries, reject each with `{ reason: 'CANCELLED' }`, and return the count removed.
+- The active in-flight request, if any, must continue unaffected.
+
+### Delegation mandatory reads
 
 Testing Specialist mandatory docs:
 
 - `docs/developer/frontend/frontend-testing.md`
 - `src/frontend/src/services/apiService.spec.ts`
-- `src/frontend/src/test/googleScriptRunHarness.ts`
 - `SPEC.md`
 
 Implementation mandatory docs:
@@ -104,368 +251,512 @@ Implementation mandatory docs:
 - `SPEC.md`
 - `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
 
-Code Reviewer mandatory docs:
-
-- `src/frontend/AGENTS.md`
-- `SPEC.md`
-- `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
-
-### Shared helper plan (when helper changes are expected)
+### Shared helper plan
 
 Helper decision entries:
 
-1. Helper: `QueueState` interface
-   - Decision: `new`
+1. Helper: `cancelApiQueued`
+   - Decision: `extend`
    - Owning module/path: `src/frontend/src/services/apiService.ts`
-   - Call-site rationale: exported type consumed by `getQueueState` callers (ABClass creation progress bar in v1; future consumers)
-   - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
-   - Planned doc status: `Not implemented`
-
-2. Helper: `callApiQueued` function
-   - Decision: `new`
-   - Owning module/path: `src/frontend/src/services/apiService.ts`
-   - Call-site rationale: ABClass creation (sequentially enqueue class creation calls to avoid race condition); Google Classroom pre-fetch (sequentially enqueue background fetch calls to stay under concurrent ceiling)
-   - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
-   - Planned doc status: `Not implemented`
-
-3. Helper: `getQueueState` function
-   - Decision: `new`
-   - Owning module/path: `src/frontend/src/services/apiService.ts`
-   - Call-site rationale: ABClass creation progress bar polls this for `{ pending, active }` to derive completion metrics
-   - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
+   - Call-site rationale: small additive function consumed by the classes bulk queue in v1.
+   - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9.14
    - Planned doc status: `Not implemented`
 
 ### Acceptance criteria
 
-- `QueueState` is exported and has `pending: number` and `active: boolean` fields.
-- `callApiQueued` is exported, accepts `(method, parameters?, jobName)`, and returns `Promise<TResponse>`.
-- `getQueueState` is exported, accepts `(jobName)`, and returns `QueueState`.
-- Empty `method` or `jobName` throws synchronously for both `callApiQueued` and `getQueueState`.
-- `getQueueState('nonexistent')` returns `{ pending: 0, active: false }`.
-- Existing `callApi` exports and tests are unchanged.
+- `cancelApiQueued` is exported from `apiService.ts`.
+- Empty `jobName` throws synchronously.
+- Unknown/idle job returns `0`.
+- Pending entries are removed and rejected with `{ reason: 'CANCELLED' }`.
+- Active in-flight request continues.
+- The number of cancelled pending items is returned.
 
 ### Required test cases (Red first)
 
-Frontend tests:
+Frontend tests in `apiService.spec.ts`:
 
-1. `callApiQueued` throws when `method` is empty string.
-2. `callApiQueued` throws when `jobName` is empty string.
-3. `getQueueState` throws when `jobName` is empty string.
-4. `getQueueState('unknown-job')` returns `{ pending: 0, active: false }`.
-5. `QueueState` type is exported and structurally correct (compile-time check; no runtime test needed beyond type usage in `getQueueState` return).
-
-Note: tests 1–3 are pure validation tests and do not require the `google.script.run` mock. Test 4 requires only the `getQueueState` function stub, not the full queue infrastructure.
+1. `cancelApiQueued('')` throws.
+2. `cancelApiQueued('unknown-idle-job')` returns `0`.
+3. Cancelling a queue with pending items rejects each pending promise with `{ reason: 'CANCELLED' }` and returns the correct count.
+4. Cancelling while a request is active leaves the active request running and only removes pending items.
+5. After cancellation, `getQueueState(jobName)` reflects the removed pending items.
 
 ### Section checks
 
 - `npm run test:frontend -- src/services/apiService.spec.ts`
 - `npm run lint:frontend`
-- All existing `callApi` tests still pass.
-- Planned helper entries have been added to `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` with status `Not implemented`.
+- Shared-helper entry added to `frontend-shared-helpers-and-abstraction-standards.md` §9.14 with status `Not implemented`.
 
 ### Optional `@remarks` JSDoc follow-through
 
-- `callApiQueued`: note that input validation is intentionally duplicated with `callApi`'s `ApiRequestSchema` as defence-in-depth — early rejection at the call site prevents malformed requests from entering the queue.
-- `getQueueState`: note that it returns a snapshot; callers polling for progress should not assume monotonicity between calls.
+- `cancelApiQueued`: note that it only removes pending entries and cannot abort the active in-flight request.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Section 1 complete. Added `JobNameSchema` (line 10), `QueueState` interface (line 206), `callApiQueued` function (line 225), and `getQueueState` function (line 246). `callApiQueued` validates inputs and throws a stub error for valid inputs (queue internals arrive in Section 2). `getQueueState` returns `{ pending: 0, active: false }` for any valid `jobName`. Planned helper entries added to `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9.14 with status `Not implemented`. Tests in `apiService.spec.ts` (4 new tests in `describe('callApiQueued and getQueueState validation')` block, lines 530–579).
-- **Deviations from plan:** `callApiQueued` uses `_parameters: unknown` (required) rather than `parameters?: unknown` (optional) due to TypeScript 5.9 TS1016 restriction (required parameter after optional). The underscore prefix suppresses `noUnusedParameters` for the stub. This will be revisited in Section 2.
-- **Follow-up implications for later sections:** Section 2 builds on these exports by adding queue internals.
+- **Implementation notes:** to be filled during implementation.
+- **Deviations from plan:** to be filled during implementation.
+- **Follow-up implications for later sections:** Section 2 builds the engine that consumes `cancelApiQueued`.
 
 ---
 
-## Section 2 — Queue data structure and enqueue
+## Section 2 — `runQueuedBatchMutation` engine
 
 ### Objective
 
-Add the internal queue infrastructure (module-scoped `Map<string, Queue>`) and implement `callApiQueued`'s enqueue path: locate or create a queue, push the request, and return a pending Promise. No dequeue processing yet — enqueued requests remain pending until Section 3 wires up the processing loop.
+Implement the feature-local batch engine that enqueues items through `callApiQueued`, tracks per-item progress, supports cancellation, and returns aggregated `RowMutationResult` entries.
 
 ### Constraints
 
-- Queue state is stored in a module-scoped `Map` keyed by `jobName`. Each value is a `Queue` object with `pending`, `active`, and a processing loop reference.
-- `callApiQueued` validates inputs (per Section 1) before touching the queue map.
-- Enqueue must be synchronous after validation — the returned Promise is created and stored before `callApiQueued` returns.
-- The `active` flag defaults to `false` on queue creation.
-- Multiple `callApiQueued` calls for the same `jobName` must not race on queue creation (single-threaded JS makes this safe, but the implementation must still be correct).
+- Live in `src/frontend/src/features/classes/bulk/runQueuedBatchMutation.ts`.
+- Accept an array of `QueuedBatchItem` specs and an options object with `jobName` and optional `onProgress` callback.
+- Use the shared `classesBulkMutation` job name.
+- Return `Promise<RowMutationResult<ClassesManagementRow, TData>[]>`.
+- Call `onProgress` after each item starts and after each item settles.
+- Cancellation is achieved by calling `cancelApiQueued(jobName)` from the consumer (the hook); the engine simply awaits the resulting rejected promises like any other failure.
 
-### Delegation mandatory reads (when sub-agents are used)
+### Delegation mandatory reads
 
 Testing Specialist mandatory docs:
 
 - `docs/developer/frontend/frontend-testing.md`
+- `src/frontend/src/features/classes/bulk/batchMutationEngine.spec.ts`
 - `src/frontend/src/services/apiService.spec.ts`
-- `src/frontend/src/test/googleScriptRunHarness.ts`
 - `SPEC.md`
 
 Implementation mandatory docs:
 
 - `src/frontend/AGENTS.md`
+- `src/frontend/src/features/classes/bulk/batchMutationEngine.ts`
 - `src/frontend/src/services/apiService.ts`
 - `SPEC.md`
 
-Code Reviewer mandatory docs:
+### Shared helper plan
 
-- `src/frontend/AGENTS.md`
-- `SPEC.md`
+Helper decision entries:
 
-### Shared helper plan (when helper changes are expected)
-
-No new helper decisions beyond Section 1. The internal `Queue` data structure is module-private.
+1. Helper: `runQueuedBatchMutation`
+   - Decision: `new`
+   - Owning module/path: `src/frontend/src/features/classes/bulk/runQueuedBatchMutation.ts`
+   - Call-site rationale: feature-local batch engine for the seven classes bulk actions.
+   - Relevant canonical doc target: feature-local; no shared doc update required.
+   - Planned doc status: `Not implemented`
 
 ### Acceptance criteria
 
-- Calling `callApiQueued('myMethod', { x: 1 }, 'job-a')` returns a Promise that does not resolve or reject until a dequeue loop processes it (verified by test: promise remains pending when no processing loop runs).
-- A second call with the same `jobName` also returns a pending Promise, and the internal queue contains two pending items.
-- A call with a different `jobName` creates a separate queue.
-- The returned Promises are distinct — resolving one does not affect the other.
+- Engine enqueues each item through `callApiQueued` with the supplied method/parameters.
+- Progress callback receives correct snapshots (current item, completed, pendingCount, total, isInProgress).
+- Engine returns one `RowMutationResult` per input row.
+- Backend failures are captured as `status: 'rejected'` with the backend error.
+- Cancelled rows are captured as `status: 'rejected'` with `error.reason === 'CANCELLED'`.
+- Empty input array resolves to an empty array immediately.
 
 ### Required test cases (Red first)
 
-Frontend tests:
+Frontend tests in `runQueuedBatchMutation.spec.ts`:
 
-1. Enqueue a single request: Promise is returned and remains pending (not resolved, not rejected) when no dequeue loop is active.
-2. Enqueue two requests with same jobName: queue internal state shows two pending items (verify via a future `getQueueState` or a test-only introspection helper).
-3. Enqueue requests with different jobNames: two separate queues exist.
-4. Enqueued Promises are independent: resolving one should not affect the other.
-
-Note: tests that need to inspect internal queue state before `getQueueState` is fully wired may use a test-only accessor exported from the module (e.g. a `__getQueueInternalsForTest` guard). This is acceptable per the frontend testing policy (`src/frontend/src/test/**` for test helpers). Remove or gate the accessor before finalising the section.
+1. Empty items array resolves to empty results.
+2. Single item resolves to fulfilled result.
+3. Multiple items are processed sequentially (second dispatch only after first settles).
+4. Progress callback fires with correct snapshots at start and after each settle.
+5. Backend failure is captured as a rejected row result and the engine continues.
+6. Cancellation via `cancelApiQueued` rejects pending items with `{ reason: 'CANCELLED' }` and the engine aggregates them correctly. (Use the deferred-release mock pattern from `apiService.spec.ts` to hold the active request pending while asserting cancellation.)
+7. Results preserve submitted-row order.
 
 ### Section checks
 
-- `npm run test:frontend -- src/services/apiService.spec.ts`
+- `npm run test:frontend -- src/features/classes/bulk/runQueuedBatchMutation.spec.ts`
 - `npm run lint:frontend`
-- All tests from Section 1 still pass.
 
 ### Optional `@remarks` JSDoc follow-through
 
-- Internal `Queue` type: note that `active` is set synchronously before any `await` to prevent duplicate processing loops.
+- `runQueuedBatchMutation`: note that progress snapshots are derived from the submitted-row promise order, which matches `callApiQueued` FIFO order for the same job name.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Section 2 complete. Added module-private `QueueEntry` and `QueueStateInternal` types, module-scoped `queues` Map, and test-only `__getQueueInternalsForTest` export. `callApiQueued` now creates/retrieves a queue, stores `resolve`/`reject` in `pending`, and returns a pending Promise. `getQueueState` now reads from the actual queue map. All 21 tests pass (13 original + 4 Section 1 + 4 Section 2).
-- **Deviations from plan:** `_parameters` remains non-optional (required) — same TS1016 workaround from Section 1. `QueueEntry` stores only `resolve`/`reject` (not `method`/`parameters` yet) — those will be added in Section 3 when the dequeue loop needs them for dispatch.
-- **Follow-up implications for later sections:** Section 3 wires up the dequeue processing loop that resolves/rejects these pending Promises. `__getQueueInternalsForTest` must be removed in Section 6 (Regression).
+- **Implementation notes:** to be filled during implementation.
+- **Deviations from plan:** to be filled during implementation.
+- **Follow-up implications for later sections:** Section 3 renders the progress snapshots; Section 4 owns the hook that drives the engine.
 
 ---
 
-## Section 3 — Sequential processing loop
+## Section 3 — `ClassesBulkProgressModal` component
 
 ### Objective
 
-Implement the dequeue processing loop: when a request is enqueued and the queue is idle, synchronously mark active, then process requests one at a time via `callApi`. On settle (resolve or reject), clear active and process the next. Wire this into `callApiQueued` so enqueued Promises resolve/reject with the dispatched result.
+Implement the progress modal presentational component according to the layout spec.
 
 ### Constraints
 
-- The active flag must be set synchronously before the first `await callApi(...)`. See SPEC.md agreed decision #8.
-- Processing order is strict FIFO within a job name.
-- `callApi` is reused for dispatch — no duplicate transport logic.
-- After a request settles (resolve or reject), the loop checks for the next pending request. If none, the queue becomes idle.
-- Different job names' queues must be independent — a blocked queue does not block other queues or direct `callApi` calls.
-- The loop must not swallow errors from `callApi` — rejected promises propagate to the individual enqueued request's Promise.
+- Live in `src/frontend/src/features/classes/bulk/ClassesBulkProgressModal.tsx`.
+- Use Ant Design `Modal`, `Progress`, `Flex`, `Typography.Text`, and `Button`.
+- Custom footer with only a Cancel button; default OK button removed.
+- Header X / mask click / Escape call the dismiss handler; footer Cancel calls the cancel handler.
+- Progress bar uses `status="active"`; no terminal status.
+- Count is right-aligned; current item text is left-aligned.
+- Accessible status region with `aria-live="polite"`.
 
-### Delegation mandatory reads (when sub-agents are used)
+### Delegation mandatory reads
 
 Testing Specialist mandatory docs:
 
 - `docs/developer/frontend/frontend-testing.md`
-- `src/frontend/src/services/apiService.spec.ts`
-- `src/frontend/src/test/googleScriptRunHarness.ts`
+- `CLASSES_BULK_PROGRESS_MODAL_LAYOUT.md`
 - `SPEC.md`
 
 Implementation mandatory docs:
 
 - `src/frontend/AGENTS.md`
-- `src/frontend/src/services/apiService.ts`
+- `CLASSES_BULK_PROGRESS_MODAL_LAYOUT.md`
+- `docs/developer/frontend/frontend-modal-patterns.md`
 - `SPEC.md`
 
-Code Reviewer mandatory docs:
+### Shared helper plan
 
-- `src/frontend/AGENTS.md`
-- `SPEC.md`
+Helper decision entries:
 
-### Shared helper plan (when helper changes are expected)
-
-No new helper decisions. The processing loop is internal to `callApiQueued`'s module.
+1. Helper: `ClassesBulkProgressModal`
+   - Decision: `new`
+   - Owning module/path: `src/frontend/src/features/classes/bulk/ClassesBulkProgressModal.tsx`
+   - Call-site rationale: one-off feature-local progress modal.
+   - Relevant canonical doc target: `docs/developer/frontend/frontend-modal-patterns.md` §3 registry (feature-local)
+   - Planned doc status: `Not implemented`
 
 ### Acceptance criteria
 
-- Two requests enqueued for the same jobName execute sequentially: the second does not dispatch until the first settles.
-- Requests enqueued for different jobNames can execute concurrently.
-- A queued request that resolves passes its data through to the caller's Promise.
-- A queued request that rejects passes its error through to the caller's Promise.
-- After the last queued request settles, the queue is idle and the next enqueue starts a fresh processing loop.
-- Direct `callApi` calls are unaffected and execute immediately alongside any queue processing.
+- Modal renders title "Bulk class update in progress".
+- Current item text displays `{verb} class {className}`.
+- Progress bar percent equals `(completed / total) * 100`.
+- Count displays `{completed} / {total}` in the bottom-right.
+- Cancel button is disabled when `pendingCount === 0`.
+- Footer Cancel is distinct from header/mask dismissal.
+- Modal body content outside the live region is marked `aria-busy="true"` while `isInProgress`.
 
 ### Required test cases (Red first)
 
-Frontend tests:
+Frontend tests in `ClassesBulkProgressModal.spec.tsx`:
 
-1. Sequential execution: enqueue A then B for jobName 'x'. Verify A's `apiHandler` is called before B's. Verify both resolve with their respective data.
-2. Parallel independence: enqueue A for 'job-x' and B for 'job-y'. Verify both dispatch without waiting for each other.
-3. Resolved data passthrough: enqueue a request; verify the resolved Promise receives the same data that `callApi` would return.
-4. Rejected error passthrough: configure the mock to return a failure envelope; verify the queued Promise rejects with the correct `ApiTransportError`.
-5. Idle-after-drain: after all queued requests settle, enqueue a new one — verify it dispatches immediately (the `apiHandler` spy is called without advancing any fake timers).
-6. Direct `callApi` unaffected: while a queue is processing, a direct `callApi` call dispatches immediately.
-
-### Section checks
-
-- `npm run test:frontend -- src/services/apiService.spec.ts`
-- `npm run lint:frontend`
-- All tests from Sections 1–2 still pass.
-
-### Optional `@remarks` JSDoc follow-through
-
-- Processing loop: note that the loop runs asynchronously (not awaited by the enqueuer), using `await` internally for each dispatch. The synchronous active-flag set before the first `await` prevents race conditions from near-simultaneous enqueues.
-
-### Implementation notes / deviations / follow-up
-
-- **Implementation notes:** Section 3 complete. Extended `QueueEntry` with `method` and `parameters` fields. Added `processQueue` async function implementing FIFO dequeue loop — calls `callApi`, resolves/rejects individual promises, sets `active = false` on drain. `callApiQueued` modified to capture `wasIdle` synchronously, set `active = true` inside the Promise constructor (before any `await`), and fire `void processQueue()`. All 27 tests pass (13 original + 4 Section 1 + 4 Section 2 + 6 Section 3).
-- **Deviations from plan:** `_parameters` underscore prefix retained — the parameter IS used now, but renaming from `_parameters` to `parameters` is deferred to avoid TS1016 conflict. The prefix is cosmetic and will be cleaned up in Section 6.
-- **Follow-up implications for later sections:** Section 4 wires `getQueueState` to return live snapshots from the internal queue map. Section 4 — `getQueueState` implementation
-
-### Objective
-
-Wire `getQueueState` to the internal queue map so it returns live `{ pending, active }` snapshots. Replace the Section 1 stub.
-
-### Constraints
-
-- Retain the input validation from Section 1 (non-empty `jobName`).
-- Unknown but valid `jobName` returns `{ pending: 0, active: false }`.
-- `pending` counts queued requests not yet dispatched (excluding the currently active one).
-- `active` is `true` when a request is currently in flight for that job name.
-- Values are a snapshot at call time — no subscription or reactivity.
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Testing Specialist mandatory docs:
-
-- `docs/developer/frontend/frontend-testing.md`
-- `src/frontend/src/services/apiService.spec.ts`
-- `src/frontend/src/test/googleScriptRunHarness.ts`
-- `SPEC.md`
-
-Implementation mandatory docs:
-
-- `src/frontend/AGENTS.md`
-- `src/frontend/src/services/apiService.ts`
-- `SPEC.md`
-
-Code Reviewer mandatory docs:
-
-- `src/frontend/AGENTS.md`
-- `SPEC.md`
-
-### Shared helper plan (when helper changes are expected)
-
-No new helper decisions. `getQueueState` was planned in Section 1.
-
-### Acceptance criteria
-
-- `getQueueState` for a job name with one active request and two pending returns `{ pending: 2, active: true }`.
-- `getQueueState` for a job name whose queue has fully drained returns `{ pending: 0, active: false }`.
-- Calling `getQueueState` while processing is in-flight returns a consistent snapshot (not a torn read).
-
-### Required test cases (Red first)
-
-Frontend tests:
-
-1. State during active processing: enqueue 3 requests, let processing begin. After the first dispatches but before it settles, call `getQueueState` → `{ pending: 2, active: true }`.
-2. State with queued requests during active processing: enqueue 2 requests to the same job name while the mock defers the first request's resolution. After enqueuing both, call `getQueueState` → `{ pending: 1, active: true }` (one active in-flight, one queued).
-3. State after drain: enqueue 1 request, let it settle. Call `getQueueState` → `{ pending: 0, active: false }`.
-4. State for unknown jobName (existing test from Section 1, verify still passes).
-
-Note: tests 1 and 2 require a mock that can delay resolution so `getQueueState` can be called mid-flight. The existing test harness supports this via a deferred callback pattern — see the concurrent-response test in `apiService.spec.ts` (lines 291–348) for the pattern. Per SPEC decision #8, the active flag transitions synchronously on first enqueue to an idle queue; test 2 captures the state where the first request is in-flight (`active: true`) and the second is queued (`pending: 1`).
+1. Renders current item text, progress bar, and count for a sample progress snapshot.
+2. Cancel button is disabled when `pendingCount` is zero.
+3. Cancel button is enabled when `pendingCount` is greater than zero.
+4. Clicking the footer Cancel button calls the cancel callback.
+5. Clicking the header X / mask calls the dismiss callback, not the cancel callback.
+6. Modal body content outside the live region has `aria-busy="true"` while `isInProgress` is true.
+7. On close, focus moves to the toolbar region (best-effort assertion).
 
 ### Section checks
 
-- `npm run test:frontend -- src/services/apiService.spec.ts`
+- `npm run test:frontend -- src/features/classes/bulk/ClassesBulkProgressModal.spec.tsx`
 - `npm run lint:frontend`
-- All tests from Sections 1–3 still pass.
 
 ### Optional `@remarks` JSDoc follow-through
 
-- `getQueueState`: document that the return value is a snapshot — between the call and the caller's next statement, the queue may have advanced. Polling consumers should treat values as point-in-time observations.
+- None.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Section 4 complete. Fixed `processQueue` to shift before dispatch (was peek-then-shift-after-settle) so `pending` correctly excludes the in-flight request. `getQueueState` now returns live snapshots reflecting `{ pending: queue.pending.length, active: queue.active }` with the in-flight item already shifted out of `pending`. All 29 tests pass. Also addressed outstanding review nits from Sections 1-4: renamed `_parameters` → `parameters`, reduced `queue!` non-null assertions via `targetQueue` const capture, removed stale RED-phase comments, and hoisted `CallApiQueued` type to module scope.
-- **Deviations from plan:** None.
-- **Follow-up implications for later sections:** Section 5 adds retry-interaction edge cases.
+- **Implementation notes:** to be filled during implementation.
+- **Deviations from plan:** to be filled during implementation.
+- **Follow-up implications for later sections:** Section 4 wires the modal into the feature hook.
 
 ---
 
-## Section 5 — Retry interaction and failure continuation
+## Section 4 — `useClassesBulkMutationQueue` hook
 
 ### Objective
 
-Verify that the existing retry/backoff logic in `callApi` works correctly inside the queue and that the queue continues processing after individual request failures. This section is primarily test-driven — the implementation should already handle these cases from Sections 2–3; this section hardens the behaviour with targeted edge-case tests.
+Implement the feature hook that owns queue progress state, modal visibility, cancellation, and the workflow-active boundary.
 
 ### Constraints
 
-- Retriable `RATE_LIMITED` failures trigger exponential-backoff retries before the next queued request can start (the queue loop awaits the full `callApi` call including retries).
-- After all retries are exhausted and the request ultimately rejects, the queue continues with the next pending request.
-- Non-retriable failures immediately reject and the queue continues.
-- Tests must use `vi.useFakeTimers()` and coordinate timer advancement with queue processing per the existing retry-policy test pattern in `apiService.spec.ts` (lines 389–457).
+- Live in `src/frontend/src/features/classes/useClassesBulkMutationQueue.ts`.
+- Return `isQueueActive`, `progress`, `isProgressModalOpen`, `onDismissProgressModal`, `onCancelQueue`, and `runQueuedBulkAction`.
+- `runQueuedBulkAction` takes a `mutate` function and an `onComplete` callback. It opens the modal, calls `mutate` with a progress callback, and calls `onComplete` with the settled results.
+- `mutate` is provided by the panel and is typically a flow module (e.g. `bulkCreate`) updated to call `runQueuedBatchMutation` with the supplied `onProgress`.
+- `onDismissProgressModal` hides the modal but does not cancel the queue.
+- `onCancelQueue` calls `cancelApiQueued('classesBulkMutation')`.
+- Reset the dismissed flag when the queue drains so the next bulk action re-opens the modal.
 
-### Delegation mandatory reads (when sub-agents are used)
+### Delegation mandatory reads
 
 Testing Specialist mandatory docs:
 
 - `docs/developer/frontend/frontend-testing.md`
-- `src/frontend/src/services/apiService.spec.ts` (especially the retry-policy `describe` block, lines 389–457)
-- `src/frontend/src/test/googleScriptRunHarness.ts`
+- `src/frontend/src/features/classes/useClassesManagement.spec.ts`
 - `SPEC.md`
+- `CLASSES_BULK_PROGRESS_MODAL_LAYOUT.md`
 
 Implementation mandatory docs:
 
-- `src/frontend/AGENTS.md` (if implementation changes are needed)
-- `src/frontend/src/services/apiService.ts`
-- `SPEC.md`
-
-Code Reviewer mandatory docs:
-
 - `src/frontend/AGENTS.md`
 - `SPEC.md`
+- `CLASSES_BULK_PROGRESS_MODAL_LAYOUT.md`
+- `src/frontend/src/services/apiService.ts`
 
-### Shared helper plan (when helper changes are expected)
+### Shared helper plan
 
-None.
+Helper decision entries:
+
+1. Helper: `useClassesBulkMutationQueue`
+   - Decision: `new`
+   - Owning module/path: `src/frontend/src/features/classes/useClassesBulkMutationQueue.ts`
+   - Call-site rationale: feature hook that keeps `ClassesManagementPanel` declarative.
+   - Relevant canonical doc target: feature-local hook; no shared doc update required.
+   - Planned doc status: `Not implemented`
 
 ### Acceptance criteria
 
-- A queued request that receives `RATE_LIMITED` with `retriable: true` undergoes retries before the next queued request starts.
-- The queue's `active` flag remains `true` for the entire retry duration.
-- After a retriable request exhausts all attempts and rejects, the next queued request begins processing.
-- A non-retriable failure immediately rejects, and the next queued request begins processing.
-- The queue does not stall or deadlock after any failure pattern.
+- Hook returns the documented interface.
+- `runQueuedBulkAction` opens the modal and updates progress snapshots.
+- Modal closes automatically when the queue drains.
+- Dismissal hides the modal but does not stop processing.
+- `isQueueActive` is true for the full duration of the queued action.
+- `onComplete` receives the aggregated row results.
+
+### Required test cases (Red first)
+
+Frontend tests in `useClassesBulkMutationQueue.spec.ts`:
+
+1. Initial state: modal closed, queue inactive, zeroed progress.
+2. Running an action with a `mutate` function opens the modal and publishes progress updates.
+3. On drain, modal closes and `isQueueActive` becomes false.
+4. Dismissing the modal hides it but keeps `isQueueActive` true until drain.
+5. After drain, a new action re-opens the modal.
+6. `onCancelQueue` calls `cancelApiQueued('classesBulkMutation')`.
+7. The `mutate` function receives a progress callback that updates the hook's `progress` state.
+
+### Section checks
+
+- `npm run test:frontend -- src/features/classes/useClassesBulkMutationQueue.spec.ts`
+- `npm run lint:frontend`
+
+### Optional `@remarks` JSDoc follow-through
+
+- `useClassesBulkMutationQueue`: note that `isQueueActive` is derived from the engine's `isInProgress` flag and is fed into the panel's existing workflow mutation boundary.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** to be filled during implementation.
+- **Deviations from plan:** to be filled during implementation.
+- **Follow-up implications for later sections:** Section 5 wires the hook into the panel.
+
+---
+
+## Section 5 — Bulk flow updates and panel integration
+
+### Objective
+
+Update the existing bulk flow modules to use `runQueuedBatchMutation`, wire the hook into `ClassesManagementPanel`, close input modals on enqueue, and feed `isQueueActive` into the workflow mutation boundary.
+
+### Constraints
+
+- Update `bulkCreateFlow.ts` and `bulkMetadataUpdateFlow.ts` to call `runQueuedBatchMutation` and accept an `onProgress` callback that is forwarded to the engine.
+- Keep `bulkSetCohortFlow.ts`, `bulkSetYearGroupFlow.ts`, and `bulkSetCourseLengthFlow.ts` as thin wrappers that delegate to the updated `bulkMetadataUpdate`, forwarding `onProgress`.
+- Update the inline set-active, set-inactive, and delete handlers in `ClassesManagementPanel.tsx` to call `runQueuedBatchMutation` directly and accept `onProgress`.
+- Update the panel descriptors so each action's `mutateRows` accepts `onProgress` and passes it to the flow module or inline handler.
+- `runQueuedBulkAction` is called with a `mutate` function that invokes the relevant flow module / inline handler with the hook's progress callback, and an `onComplete` that runs the existing outcome-resolution and refresh orchestration.
+- Close input modals (`createModalOpen`, `deleteModalOpen`, `setCohortModalOpen`, `setYearGroupModalOpen`, `setCourseLengthModalOpen`) synchronously before invoking `runBulkMutationOrchestration`.
+- Reset form state for form modals after enqueue.
+- Feed `queueActive` from the hook into the existing workflow mutation boundary by OR-ing it with the existing `setSubmitting` flags in `isClassesWorkflowMutationBoundaryActive` and `selectionFrozen`.
+
+### Delegation mandatory reads
+
+Testing Specialist mandatory docs:
+
+- `docs/developer/frontend/frontend-testing.md`
+- `src/frontend/src/features/classes/ClassesManagementPanel.spec.tsx`
+- `src/frontend/src/features/classes/bulk/bulkCreate.spec.tsx`
+- `src/frontend/src/features/classes/bulk/bulkSetCohort.spec.tsx`
+- `src/frontend/src/features/classes/bulk/bulkSetYearGroup.spec.tsx`
+- `src/frontend/src/features/classes/bulk/bulkSetCourseLength.spec.tsx`
+- `src/frontend/src/features/classes/bulk/bulkActiveState.spec.tsx`
+- `src/frontend/src/features/classes/bulk/bulkDelete.spec.tsx`
+- `SPEC.md`
+- `CLASSES_BULK_PROGRESS_MODAL_LAYOUT.md`
+
+Implementation mandatory docs:
+
+- `src/frontend/AGENTS.md`
+- `SPEC.md`
+- `CLASSES_BULK_PROGRESS_MODAL_LAYOUT.md`
+- `src/frontend/src/features/classes/ClassesManagementPanel.tsx`
+- `src/frontend/src/features/classes/useClassesBulkMutationQueue.ts`
+- `src/frontend/src/features/classes/bulk/bulkCreateFlow.ts`
+- `src/frontend/src/features/classes/bulk/bulkMetadataUpdateFlow.ts`
+- `src/frontend/src/features/classes/bulk/bulkSetCohortFlow.ts`
+- `src/frontend/src/features/classes/bulk/bulkSetYearGroupFlow.ts`
+- `src/frontend/src/features/classes/bulk/bulkSetCourseLengthFlow.ts`
+
+### Shared helper plan
+
+No new helper decisions in this section. Reuse/extend decisions from Sections 1–4 are exercised here.
+
+### Acceptance criteria
+
+- All seven bulk actions call `runQueuedBatchMutation` with the hook's `onProgress` callback.
+- Input modals close on enqueue.
+- Progress modal opens on enqueue and closes on drain.
+- Toolbar buttons and table selection are disabled for the full queue lifetime (`queueActive` OR-ed with existing submitting flags).
+- Existing outcome alerts still render.
+- Form modals reset after enqueue.
 
 ### Required test cases (Red first)
 
 Frontend tests:
 
-1. Retry delays block the next request: enqueue A then B for 'job-x'. Configure mock to return `RATE_LIMITED` (retriable) for A's first attempt, then success on the second attempt. Verify B does not dispatch until A's retry completes. Use `vi.useFakeTimers()` and verify `apiHandler` call counts.
-2. Retry exhaustion and queue continuation: enqueue A then B. Configure mock to return `RATE_LIMITED` (retriable) for all 4 of A's attempts. Verify A rejects, then B dispatches and resolves.
-3. Non-retriable failure and continuation: enqueue A then B. Configure mock to return `INVALID_REQUEST` (non-retriable) for A. Verify A rejects immediately, then B dispatches and resolves.
-4. Active flag during retry: enqueue A. While A is in retry (between attempts, before timers advance), call `getQueueState('job-x')` → `{ pending: 0, active: true }`.
-5. Synchronous `callApi` failure and queue continuation: enqueue A then B for the same job name. Remove `google.script.run` from the global scope before A's processing begins so `callApi` throws synchronously for A, then restore it before the queue proceeds to B. Verify A's promise rejects; verify B is still processed and resolves.
+1. `ClassesManagementPanel.spec.tsx`: a queued bulk action opens the progress modal and disables the toolbar.
+2. `ClassesManagementPanel.spec.tsx`: input modals close when the queued action starts.
+3. `bulkCreate.spec.tsx`: create flow calls `runQueuedBatchMutation` with the correct items and returns its results; mock `runQueuedBatchMutation` to verify inputs and outputs.
+4. `bulkSetCohort.spec.tsx`, `bulkSetYearGroup.spec.tsx`, `bulkSetCourseLength.spec.tsx`: metadata flows call `bulkMetadataUpdate` with `onProgress`, and `bulkMetadataUpdate` forwards it to `runQueuedBatchMutation`.
+5. `bulkActiveState.spec.tsx`: active/inactive handlers call `runQueuedBatchMutation` with the correct items.
+6. `bulkDelete.spec.tsx`: delete handler calls `runQueuedBatchMutation` with the correct items.
 
 ### Section checks
 
-- `npm run test:frontend -- src/services/apiService.spec.ts`
+- `npm run test:frontend -- src/features/classes/ClassesManagementPanel.spec.tsx`
+- `npm run test:frontend -- src/features/classes/bulk/bulkCreate.spec.tsx`
+- `npm run test:frontend -- src/features/classes/bulk/bulkSetCohort.spec.tsx`
+- `npm run test:frontend -- src/features/classes/bulk/bulkSetYearGroup.spec.tsx`
+- `npm run test:frontend -- src/features/classes/bulk/bulkSetCourseLength.spec.tsx`
+- `npm run test:frontend -- src/features/classes/bulk/bulkActiveState.spec.tsx`
+- `npm run test:frontend -- src/features/classes/bulk/bulkDelete.spec.tsx`
 - `npm run lint:frontend`
-- All tests from Sections 1–4 still pass.
 
 ### Optional `@remarks` JSDoc follow-through
 
-None — retry behaviour is already documented in `callApi`.
+- `ClassesManagementPanel`: note that input modals close synchronously before `runBulkMutationOrchestration` to avoid two modals stacking.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Section 5 complete. All 5 retry/failure tests pass — the Sections 2-3 implementation already handled these edge cases correctly. Tests added: retry delays block next request, retry exhaustion and continuation, non-retriable failure and continuation, active flag during retry, synchronous callApi failure and continuation. All 34 tests pass.
-- **Deviations from plan:** None.
-- **Follow-up implications for later sections:** Section 6 is regression and documentation.
+- **Implementation notes:** to be filled during implementation.
+- **Deviations from plan:** to be filled during implementation.
+- **Follow-up implications for later sections:** Section 6 adds cancellation-specific outcome messaging.
+
+---
+
+## Section 6 — Cancellation outcome messaging
+
+### Objective
+
+Extend the existing outcome-resolution helpers to detect cancelled rows and emit a distinct cancellation message, while preserving existing backend-failure copy.
+
+### Constraints
+
+- Detect cancelled rows via `result.status === 'rejected' && result.error?.reason === 'CANCELLED'`.
+- Keep existing `buildTopLevelBulkMutationResolution` and `buildMetadataBulkMutationResolution` behaviour for non-cancelled failures.
+- Surface cancellation copy separately from backend-failure copy when any cancelled rows exist.
+- Because metadata modals close on enqueue, update `buildMetadataBulkMutationResolution` so all-failure metadata outcomes produce a panel-level alert (matching top-level actions) instead of an inline `errorMessage`.
+- Ensure `runQueuedBatchMutation` preserves the raw `{ reason: 'CANCELLED' }` rejection from `cancelApiQueued` in the `error` field of rejected results (cross-reference Sections 1 and 2).
+
+### Delegation mandatory reads
+
+Testing Specialist mandatory docs:
+
+- `docs/developer/frontend/frontend-testing.md`
+- `src/frontend/src/features/classes/ClassesManagementPanel.spec.tsx`
+- `src/frontend/src/features/classes/ClassesManagementPanel.bulkMetadataFailure.spec.tsx`
+- `SPEC.md`
+
+Implementation mandatory docs:
+
+- `src/frontend/AGENTS.md`
+- `src/frontend/src/features/classes/ClassesManagementPanel.tsx`
+- `SPEC.md`
+
+### Shared helper plan
+
+No new helper decisions.
+
+### Acceptance criteria
+
+- Cancelled rows are retained in selection.
+- A distinct cancellation message appears in the alert banner when any rows are cancelled.
+- Backend failures continue to use existing action-specific failure copy.
+- Metadata full failure now surfaces as a panel-level alert, not an inline modal error.
+
+### Required test cases (Red first)
+
+Frontend tests:
+
+1. `ClassesManagementPanel.spec.tsx`: cancelling some rows shows a cancellation message and retains cancelled rows in selection.
+2. `ClassesManagementPanel.spec.tsx`: backend failures still show existing failure copy.
+3. `ClassesManagementPanel.bulkMetadataFailure.spec.tsx`: all-failure metadata outcome shows a panel-level alert and closes the modal.
+
+### Section checks
+
+- `npm run test:frontend -- src/features/classes/ClassesManagementPanel.spec.tsx`
+- `npm run test:frontend -- src/features/classes/ClassesManagementPanel.bulkMetadataFailure.spec.tsx`
+- `npm run lint:frontend`
+
+### Optional `@remarks` JSDoc follow-through
+
+- `buildTopLevelBulkMutationResolution` / `buildMetadataBulkMutationResolution`: note the cancellation marker and the new metadata all-failure alert behaviour.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** to be filled during implementation.
+- **Deviations from plan:** to be filled during implementation.
+- **Follow-up implications for later sections:** Section 7 verifies the cancellation and failure UX end-to-end.
+
+---
+
+## Section 7 — E2E test coverage
+
+### Objective
+
+Add Playwright E2E tests for the progress modal appearance, count updates, cancellation, and disabled toolbar state.
+
+### Constraints
+
+- Reuse the shared runtime mock in `src/frontend/e2e-tests/shared/endToEndRuntimeMocks.ts` and the classes CRUD helpers in `src/frontend/e2e-tests/classes-crud.shared.ts`.
+- Use the existing `releaseSignal` mechanism to pause and resume individual queued calls.
+- Cover bulk create and bulk delete at minimum; add coverage for one metadata action if the harness supports it without significant extra work.
+
+### Delegation mandatory reads
+
+Playwright mandatory docs:
+
+- `docs/developer/frontend/frontend-playwright-e2e.md`
+- `src/frontend/e2e-tests/classes-crud.shared.ts`
+- `src/frontend/e2e-tests/shared/endToEndRuntimeMocks.ts`
+- `SPEC.md`
+- `CLASSES_BULK_PROGRESS_MODAL_LAYOUT.md`
+
+### Shared helper plan
+
+No new helper decisions.
+
+### Acceptance criteria
+
+- E2E tests verify the progress modal opens during a bulk action.
+- Count updates are observable as queued calls complete.
+- The Cancel button removes pending items and surfaces a cancellation message.
+- Dismissing the modal does not stop the active queue.
+- Toolbar buttons are disabled while the queue is active.
+
+### Required test cases (Red first)
+
+E2E tests in a new or existing classes CRUD spec:
+
+1. Bulk create shows the progress modal with correct initial count.
+2. Progress count updates as queued create calls complete.
+3. Cancelling a multi-row create removes pending rows and shows a cancellation message.
+4. Dismissing the progress modal allows the queue to continue; toolbar remains disabled.
+5. Bulk delete disables toolbar buttons while the queue is active.
+
+### Section checks
+
+- `npm run test:frontend:e2e -- e2e-tests/classes-crud-bulk-progress.spec.ts` (or equivalent target; paths are relative to `src/frontend`)
+- E2E tests pass locally and in CI.
+
+### Optional `@remarks` JSDoc follow-through
+
+- None.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** to be filled during implementation.
+- **Deviations from plan:** to be filled during implementation.
+- **Follow-up implications for later sections:** Section 8 runs broader regression checks.
 
 ---
 
@@ -473,7 +764,7 @@ None — retry behaviour is already documented in `callApi`.
 
 ### Objective
 
-Run the full test suite and lint checks for the touched module. Verify no regressions in existing `callApi` behaviour.
+Run the full touched frontend test suites and lint checks to verify no regressions in existing `callApi`, bulk action, or panel behaviour.
 
 ### Constraints
 
@@ -482,17 +773,28 @@ Run the full test suite and lint checks for the touched module. Verify no regres
 
 ### Acceptance criteria
 
-- All existing `callApi` tests pass unchanged.
-- All new queue tests pass.
-- `npm run lint:frontend` passes with no new warnings or errors.
+- All new unit tests pass.
+- All updated existing tests pass.
+- Frontend lint is clean.
 - No test-only exports or debug accessors remain in production code.
 
 ### Required test cases/checks
 
-1. Run touched frontend service suite: `npm run test:frontend -- src/services/apiService.spec.ts`
-2. Run frontend lint: `npm run lint:frontend`
-3. Verify no test-only exports remain (grep for `__` prefixed exports or `export function __`).
-4. Verify mandatory-read evidence (`Files read`) is complete for every delegated regression handoff.
+1. `npm run test:frontend -- src/services/apiService.spec.ts`
+2. `npm run test:frontend -- src/features/classes/bulk/runQueuedBatchMutation.spec.ts`
+3. `npm run test:frontend -- src/features/classes/bulk/ClassesBulkProgressModal.spec.tsx`
+4. `npm run test:frontend -- src/features/classes/useClassesBulkMutationQueue.spec.ts`
+5. `npm run test:frontend -- src/features/classes/ClassesManagementPanel.spec.tsx`
+6. `npm run test:frontend -- src/features/classes/bulk/bulkCreate.spec.tsx`
+7. `npm run test:frontend -- src/features/classes/bulk/bulkSetCohort.spec.tsx`
+8. `npm run test:frontend -- src/features/classes/bulk/bulkSetYearGroup.spec.tsx`
+9. `npm run test:frontend -- src/features/classes/bulk/bulkSetCourseLength.spec.tsx`
+10. `npm run test:frontend -- src/features/classes/bulk/bulkActiveState.spec.tsx`
+11. `npm run test:frontend -- src/features/classes/bulk/bulkDelete.spec.tsx`
+12. `npm run test:frontend -- src/features/classes/ClassesManagementPanel.bulkMetadataFailure.spec.tsx`
+13. `npm run test:frontend:e2e -- e2e-tests/classes-crud-bulk-progress.spec.ts` (or equivalent target; paths are relative to `src/frontend`)
+14. `npm run lint:frontend`
+15. Verify no `__` prefixed production exports.
 
 ### Section checks
 
@@ -500,8 +802,8 @@ Run the full test suite and lint checks for the touched module. Verify no regres
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Regression hardening complete. Removed `__getQueueInternalsForTest` test-only export from production code. Updated two enqueue tests to use public `getQueueState` API instead. All 34 tests pass, lint clean, zero test-only exports remain. Regression baseline: 5 checks passing, 3 pre-existing failures (backend-lint, backend-test-coverage, frontend-e2e).
-- **Deviations from plan:** None.
+- **Implementation notes:** to be filled during regression.
+- **Deviations from plan:** to be filled during regression.
 
 ---
 
@@ -509,45 +811,46 @@ Run the full test suite and lint checks for the touched module. Verify no regres
 
 ### Objective
 
-Update `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` to reflect the delivered helpers. Reconcile planned `Not implemented` entries with actual implementation.
+Update docs to match the implemented feature and reconcile planned helper entries.
 
 ### Constraints
 
-- Only modify `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` — no other documentation changes are required.
-- Update the three planned entries (`QueueState`, `callApiQueued`, `getQueueState`) from `Not implemented` to `Implemented`.
-- Do not add speculative docs or change unrelated sections.
+- Only modify documents relevant to the touched areas.
+- Do not add speculative docs.
 
 ### Acceptance criteria
 
-- `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` contains three `Implemented` entries under a new subsection (e.g. `9.14 API queueing system`) with:
-  - owning path: `src/frontend/src/services/apiService.ts`
-  - status: `Implemented`
-  - rationale summarising the call sites and contract
-- No stale `Not implemented` entries remain for these helpers.
+- `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9.14 reflects the delivered `cancelApiQueued` extension with status `Implemented`.
+- Feature-local helper entries are removed from the shared doc or left out if they never crossed the two-caller threshold.
+- Any deviations or caveats are documented in the implementation notes.
 
 ### Required checks
 
-1. Verify doc accurately references the exported names and file path.
-2. Verify no other canonical docs require updates for this change.
+1. Verify `frontend-shared-helpers-and-abstraction-standards.md` accurately references `cancelApiQueued`, its owning path, and call-site rationale.
+2. Confirm no stale `Not implemented` entries remain for delivered helpers.
 3. Verify mandatory-read evidence (`Files read`) is complete for delegated docs handoffs.
-4. Reconcile planned shared-helper entries: confirm all three are now `Implemented`.
+4. Reconcile planned shared-helper entries against actual implementation.
 
 ### Optional `@remarks` JSDoc review
 
-- Confirm `@remarks` planned in earlier sections (`callApiQueued` defence-in-depth note, `getQueueState` snapshot note, internal `Queue` active-flag note) are present in the delivered code.
+- Confirm whether any non-obvious design decisions (modal stacking, cancellation-only-pending, metadata all-failure alert migration) discovered during implementation should be preserved in `@remarks` documentation.
 
 ### Implementation notes / deviations / follow-up
 
-- Documentation complete. Updated `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9.14: all three entries (`QueueState`, `callApiQueued`, `getQueueState`) now marked `Implemented`. All `@remarks` JSDoc notes present in delivered code: `callApiQueued` defence-in-depth note, `getQueueState` snapshot note, and `processQueue` active-flag note.
+- **Implementation notes:** to be filled during documentation pass.
+- **Deviations from plan:** to be filled during documentation pass.
 
 ---
 
 ## Suggested implementation order
 
-1. **Section 1** — Types, validation, and input contracts (enabling contracts land first)
-2. **Section 2** — Queue data structure and enqueue (infrastructure before processing)
-3. **Section 3** — Sequential processing loop (core behaviour)
-4. **Section 4** — `getQueueState` implementation (depends on Sections 2–3 internals)
-5. **Section 5** — Retry interaction and failure continuation (hardening)
-6. **Regression and contract hardening** — Full suite run
-7. **Documentation and rollout notes** — Canonical doc update
+1. **Section 0** — Pre-requisite decomposition of `ClassesManagementPanel.tsx` (extract resolution helpers, sub-components, workflow-boundary helpers into dedicated modules)
+2. **Section 1** — `cancelApiQueued` enabling contract
+3. **Section 2** — `runQueuedBatchMutation` engine
+4. **Section 3** — `ClassesBulkProgressModal` component
+5. **Section 4** — `useClassesBulkMutationQueue` hook
+6. **Section 5** — Bulk flow updates and panel integration
+7. **Section 6** — Cancellation outcome messaging (edits `bulk/bulkMutationResolution.ts` after Section 0 established it)
+8. **Section 7** — E2E test coverage
+9. **Regression and contract hardening**
+10. **Documentation and rollout notes**
