@@ -28,8 +28,7 @@ export function InlineDialog(properties: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <div
-      role="dialog"
+    <dialog
       aria-labelledby={properties.labelId}
       style={{
         border: '1px solid #d9d9d9',
@@ -43,6 +42,6 @@ export function InlineDialog(properties: Readonly<{
         {properties.title}
       </Typography.Title>
       {properties.children}
-    </div>
+    </dialog>
   );
 }

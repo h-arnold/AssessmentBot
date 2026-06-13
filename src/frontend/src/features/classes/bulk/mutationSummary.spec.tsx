@@ -25,7 +25,7 @@ const bulkSetSelectModalMock = vi.hoisted(() =>
       const selectedValue = properties.options.at(-LAST_OPTION_OFFSET)?.value ?? '';
 
       return (
-        <div aria-label={properties.title} role="dialog">
+        <dialog aria-label={properties.title}>
           <button
             onClick={() => {
               void properties.onConfirm(selectedValue);
@@ -34,7 +34,7 @@ const bulkSetSelectModalMock = vi.hoisted(() =>
           >
             OK
           </button>
-        </div>
+        </dialog>
       );
     },
   ),
@@ -71,7 +71,7 @@ vi.mock('../table/ClassesToolbar', () => ({
 
 vi.mock('../table/ClassesTable', () => ({
   ClassesTable() {
-    return <div aria-label="Classes table" role="table" />;
+    return <table aria-label="Classes table"><thead><tr><th /></tr></thead></table>;
   },
 }));
 

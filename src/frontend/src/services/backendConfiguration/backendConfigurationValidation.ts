@@ -17,7 +17,7 @@ export const backendApiKeyValidationMessage =
 export function isBackendApiKeyToken(value: string): boolean {
   return (
     value !== '' &&
-    value[0] !== '-' &&
+    !value.startsWith('-') &&
     value.at(finalCharacterOffset) !== '-' &&
     !value.includes('--') &&
     backendApiKeyTokenCharacterRegex.test(value)

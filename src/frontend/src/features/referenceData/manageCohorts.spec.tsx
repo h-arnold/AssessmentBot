@@ -128,7 +128,6 @@ async function closeModalViaMethod(options: {
       const footerCancel = screen.getAllByRole('button', { name: /cancel/i }).find(
         (button) => button.closest('.ant-modal-footer') !== null
       );
-      expect(footerCancel).toBeDefined();
       fireEvent.click(footerCancel!);
       break;
     }
@@ -139,7 +138,6 @@ async function closeModalViaMethod(options: {
     }
     case 'mask': {
       const mask = screen.getByRole('dialog', { name: modalTitle }).closest('.ant-modal-wrap')?.querySelector('.ant-modal-mask');
-      expect(mask).toBeDefined();
       fireEvent.click(mask!);
       break;
     }
@@ -612,7 +610,6 @@ describe('ManageCohortsModal', () => {
       const footerCancel = within(dialog).getAllByRole('button', { name: /cancel/i }).find(
         (button) => button.closest('.ant-modal-footer') !== null
       );
-      expect(footerCancel).toBeDefined();
       fireEvent.click(footerCancel!);
       expect(onCloseMock).toHaveBeenCalledOnce();
 

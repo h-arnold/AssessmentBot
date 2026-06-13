@@ -324,10 +324,10 @@ describe('ReferenceDataManagementModalScaffold', () => {
   describe('inline dialog slot', () => {
     it('renders caller-supplied inline dialog as sibling of modal body', async () => {
       const inlineDialog = (
-        <div role="dialog" aria-labelledby="test-dialog-title">
+        <dialog aria-labelledby="test-dialog-title">
           <h5 id="test-dialog-title">Test Dialog</h5>
           <p>Dialog content</p>
-        </div>
+        </dialog>
       );
 
       const properties = buildScaffoldProperties<TestEntity>({
@@ -350,9 +350,9 @@ describe('ReferenceDataManagementModalScaffold', () => {
 
     it('keeps ready-state body visible when inline dialog is open', async () => {
       const inlineDialog = (
-        <div role="dialog" aria-labelledby="test-dialog-title">
+        <dialog aria-labelledby="test-dialog-title">
           <h5 id="test-dialog-title">Test Dialog</h5>
-        </div>
+        </dialog>
       );
 
       const properties = buildScaffoldProperties<TestEntity>({

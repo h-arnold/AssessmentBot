@@ -29,10 +29,7 @@ import {
   type ReferenceDataTrustBoundary,
 } from './manageReferenceDataHelpers';
 import type { ReferenceDataFormValues } from './manageReferenceDataDialogs';
-import {
-  ReferenceDataDeleteDialog,
-  ReferenceDataFormDialog,
-} from './manageReferenceDataDialogs';
+import { ReferenceDataDeleteDialog, ReferenceDataFormDialog } from './manageReferenceDataDialogs';
 
 // ============================================================================
 
@@ -398,7 +395,7 @@ export function useReferenceDataManagement<T extends { key: string; name: string
         error: null,
         blocked: false,
         submitting: false,
-      } as DeleteDialogState<T>);
+      });
     },
     [closeFormDialog]
   );

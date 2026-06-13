@@ -6,7 +6,7 @@ import type * as QueryInvalidationModule from './queryInvalidation';
 const runMutationWithRequiredClassPartialsRefreshMock = vi.hoisted(() => vi.fn());
 
 vi.mock('./queryInvalidation', async () => {
-  const actual = await vi.importActual('./queryInvalidation') as typeof QueryInvalidationModule;
+  const actual = (await vi.importActual('./queryInvalidation')) as typeof QueryInvalidationModule;
 
   return {
     ...actual,
@@ -15,13 +15,17 @@ vi.mock('./queryInvalidation', async () => {
 });
 
 type BulkMutationOrchestrationModule = Readonly<{
-  runBulkMutationOrchestration: (options: Readonly<{
-    clearFeedback: () => void;
-    handleOutcome: (outcome: QueryInvalidationModule.RequiredClassPartialsRefreshOutcome<unknown>) => Promise<void>;
-    mutate: () => Promise<unknown>;
-    queryClient: Pick<QueryClient, 'invalidateQueries'>;
-    setSubmitting: (value: boolean) => void;
-  }>) => Promise<void>;
+  runBulkMutationOrchestration: (
+    options: Readonly<{
+      clearFeedback: () => void;
+      handleOutcome: (
+        outcome: QueryInvalidationModule.RequiredClassPartialsRefreshOutcome<unknown>
+      ) => Promise<void>;
+      mutate: () => Promise<unknown>;
+      queryClient: Pick<QueryClient, 'invalidateQueries'>;
+      setSubmitting: (value: boolean) => void;
+    }>
+  ) => Promise<void>;
 }>;
 
 /**
@@ -50,7 +54,7 @@ function createDeferredPromise<T>() {
 async function loadBulkMutationOrchestrationModule(): Promise<BulkMutationOrchestrationModule> {
   const modulePath = './bulkMutationOrchestration';
 
-  return import(modulePath as string) as Promise<BulkMutationOrchestrationModule>;
+  return import(modulePath);
 }
 
 afterEach(() => {
@@ -76,7 +80,7 @@ describe('bulkMutationOrchestration', () => {
     const invalidationCompleted = createDeferredPromise<void>();
     const invalidateQueries = vi.fn(async () => {
       trace.push('invalidate-class-partials:start');
-      invalidationStarted.resolvePromise(undefined as void);
+      invalidationStarted.resolvePromise();
       await invalidationCompleted.promise;
       trace.push('invalidate-class-partials:end');
     });
@@ -85,18 +89,22 @@ describe('bulkMutationOrchestration', () => {
       mutationStatus: 'success',
       refreshStatus: 'success',
     } satisfies QueryInvalidationModule.RequiredClassPartialsRefreshOutcome<unknown>;
-    const handleOutcome = vi.fn(async (outcome: QueryInvalidationModule.RequiredClassPartialsRefreshOutcome<unknown>) => {
-      trace.push('handle-outcome');
-      expect(outcome).toBe(expectedOutcome);
-    });
+    const handleOutcome = vi.fn(
+      async (outcome: QueryInvalidationModule.RequiredClassPartialsRefreshOutcome<unknown>) => {
+        trace.push('handle-outcome');
+        expect(outcome).toBe(expectedOutcome);
+      }
+    );
 
-    runMutationWithRequiredClassPartialsRefreshMock.mockImplementation(async ({ mutate: executeMutation }) => {
-      trace.push('refresh-wrapper:start');
-      await executeMutation();
-      trace.push('refresh-wrapper:end');
+    runMutationWithRequiredClassPartialsRefreshMock.mockImplementation(
+      async ({ mutate: executeMutation }) => {
+        trace.push('refresh-wrapper:start');
+        await executeMutation();
+        trace.push('refresh-wrapper:end');
 
-      return expectedOutcome;
-    });
+        return expectedOutcome;
+      }
+    );
 
     const orchestrationPromise = runBulkMutationOrchestration({
       clearFeedback,
@@ -109,7 +117,7 @@ describe('bulkMutationOrchestration', () => {
     await invalidationStarted.promise;
     expect(handleOutcome).not.toHaveBeenCalled();
 
-    invalidationCompleted.resolvePromise(undefined as void);
+    invalidationCompleted.resolvePromise();
     await orchestrationPromise;
 
     expect(trace).toEqual([
@@ -129,7 +137,7 @@ describe('bulkMutationOrchestration', () => {
       expect.objectContaining({
         queryKey: queryKeys.classPartials(),
         refetchType: 'none',
-      }),
+      })
     );
     expect(handleOutcome).toHaveBeenCalledTimes(1);
     expect(handleOutcome.mock.calls[0]?.[0]).toBe(expectedOutcome);
@@ -157,12 +165,11 @@ describe('bulkMutationOrchestration', () => {
         mutate,
         queryClient: { invalidateQueries } as Pick<QueryClient, 'invalidateQueries'>,
         setSubmitting,
-      }),
+      })
     ).rejects.toBe(outcomeError);
 
     expect(setSubmitting).toHaveBeenNthCalledWith(1, true);
     expect(setSubmitting).toHaveBeenLastCalledWith(false);
     expect(invalidateQueries).toHaveBeenCalledTimes(1);
   });
-
 });

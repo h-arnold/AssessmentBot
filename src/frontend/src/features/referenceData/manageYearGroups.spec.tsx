@@ -163,7 +163,6 @@ async function assertTransientStateReset(options: {
       const footerCancel = screen.getAllByRole('button', { name: /cancel/i }).find(
         (button) => button.closest('.ant-modal-footer') !== null
       );
-      expect(footerCancel).toBeDefined();
       fireEvent.click(footerCancel!);
       break;
     }

@@ -56,7 +56,7 @@ type ActiveClassPartialsQuerySubscription = Readonly<{
  * @returns {Promise<QueryInvalidationModule>} The imported query invalidation module.
  */
 async function loadQueryInvalidationModule(): Promise<QueryInvalidationModule> {
-  return import('./queryInvalidation') as Promise<QueryInvalidationModule>;
+  return import('./queryInvalidation');
 }
 
 /**
