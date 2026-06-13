@@ -321,13 +321,9 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (to be filled after implementation)
-- **Deviations from plan:** (to be filled if any)
-- **Follow-up implications for later sections:** Section 4 wires `getQueueState` to return live snapshots from the internal queue map.
-
----
-
-## Section 4 — `getQueueState` implementation
+- **Implementation notes:** Section 3 complete. Extended `QueueEntry` with `method` and `parameters` fields. Added `processQueue` async function implementing FIFO dequeue loop — calls `callApi`, resolves/rejects individual promises, sets `active = false` on drain. `callApiQueued` modified to capture `wasIdle` synchronously, set `active = true` inside the Promise constructor (before any `await`), and fire `void processQueue()`. All 27 tests pass (13 original + 4 Section 1 + 4 Section 2 + 6 Section 3).
+- **Deviations from plan:** `_parameters` underscore prefix retained — the parameter IS used now, but renaming from `_parameters` to `parameters` is deferred to avoid TS1016 conflict. The prefix is cosmetic and will be cleaned up in Section 6.
+- **Follow-up implications for later sections:** Section 4 wires `getQueueState` to return live snapshots from the internal queue map. Section 4 — `getQueueState` implementation
 
 ### Objective
 

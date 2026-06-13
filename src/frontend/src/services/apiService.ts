@@ -206,6 +206,8 @@ export async function callApi<TResponse>(method: string, parameters?: unknown): 
 // ── Queue infrastructure ─────────────────────────────────────────────────
 
 interface QueueEntry {
+  method: string;
+  parameters: unknown;
   resolve: (value: unknown) => void;
   reject: (reason: unknown) => void;
 }
@@ -251,13 +253,50 @@ export function callApiQueued<TResponse>(
     queues.set(jobName, queue);
   }
 
-  // Enqueue — store resolve/reject in the pending array and return the Promise
+  const wasIdle = !queue.active;
+
+  // Enqueue — store method, parameters, resolve, and reject in the pending array
   return new Promise<TResponse>((resolve, reject) => {
     queue!.pending.push({
+      method,
+      parameters: _parameters,
       resolve: resolve as (value: unknown) => void,
       reject,
     });
+
+    // Synchronously mark active before any await, preventing duplicate loops
+    if (wasIdle) {
+      queue!.active = true;
+      void processQueue(queue!);
+    }
   });
+}
+
+// ── Processing loop ────────────────────────────────────────────────────────────
+
+/**
+ * Processes queued requests for a given job name in FIFO order.
+ *
+ * Runs asynchronously (fire-and-forget from the enqueuer). Pops the first
+ * pending item, dispatches it via `callApi`, and resolves or rejects the
+ * stored promise. Repeats until the queue is empty, then marks the queue
+ * as inactive.
+ *
+ * @param {QueueStateInternal} queue - The queue to process.
+ * @returns {Promise<void>} A promise that resolves when the queue is drained.
+ */
+async function processQueue(queue: QueueStateInternal): Promise<void> {
+  while (queue.pending.length > 0) {
+    const entry = queue.pending[0]; // peek — don't shift until processed
+    try {
+      const data = await callApi<unknown>(entry.method, entry.parameters);
+      entry.resolve(data);
+    } catch (error: unknown) {
+      entry.reject(error);
+    }
+    queue.pending.shift(); // remove the processed entry
+  }
+  queue.active = false;
 }
 
 /**
