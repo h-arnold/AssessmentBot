@@ -215,11 +215,11 @@ Provide a concise handoff summary including:
 └── src/frontend/AGENTS.md                            # Frontend-specific: React patterns, TypeScript conventions, Ant Design usage
 ```
 
-## Vibe Configuration (.vibe/)
+## Vibe Configuration (.opencode/)
 
 ```
-.vibe/
-├── prompts/
+.opencode/
+├── agents/
 │   ├── action-plan-implementer.md                      # Implement action plans with TDD-first workflow
 │   ├── agent-orchestrator.md                           # Orchestrate delivery against ACTION_PLAN.md
 │   ├── code-reviewer.md                                 # Code Reviewer. Contains Key Documentation References (Section 1) - keep synchronised.
@@ -229,7 +229,7 @@ Provide a concise handoff summary including:
 │   ├── kif.md                                           # Kif subagent for menial exploration tasks
 │   ├── planner.md                                       # Create SPEC.md, LAYOUT_SPEC.md, ACTION_PLAN.md
 │   ├── planner-reviewer.md                              # Impartial review of planning artefacts
-│   └── Testing.md                                       # Test implementation and debugging
+│   └── testing-specialist.md                            # Test implementation and debugging
 │
 └── skills/
     ├── agent-orchestrator/SKILL.md                     # Orchestrator workflow instructions

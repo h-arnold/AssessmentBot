@@ -175,27 +175,27 @@ system_prompt_id = "planner"  # Must be BEFORE [tools] section
    ```
 
 2. **Create agent TOML:**
+
    ```bash
    # .vibe/agents/my-agent.toml
    cat > .vibe/agents/my-agent.toml << 'EOF'
    name = "my-agent"
    agent_type = "subagent"
    system_prompt_id = "my-agent"
+
+   [tools]
+   EOF
    ```
 
-[tools]
-EOF
-
-````
-
 3. **Update config (if not using globs):**
+
 ```toml
 [agent]
 enabled_agents = ["*"]
 
 [tools.task]
 allowlist = ["*"]
-````
+```
 
 4. **Restart Mistral Vibe**
 
