@@ -463,8 +463,8 @@ None — retry behaviour is already documented in `callApi`.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (to be filled after implementation)
-- **Deviations from plan:** (to be filled if any)
+- **Implementation notes:** Section 5 complete. All 5 retry/failure tests pass — the Sections 2-3 implementation already handled these edge cases correctly. Tests added: retry delays block next request, retry exhaustion and continuation, non-retriable failure and continuation, active flag during retry, synchronous callApi failure and continuation. All 34 tests pass.
+- **Deviations from plan:** None.
 - **Follow-up implications for later sections:** Section 6 is regression and documentation.
 
 ---
