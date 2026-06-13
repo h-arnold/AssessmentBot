@@ -212,7 +212,7 @@ Each section must complete **two independent, self-contained loops** (red and gr
 - For **general issues** (e.g., _'Add tests for edge cases'_), allow the sub-agent to determine the implementation.
 - For **specific, actionable feedback** (e.g., _'Replace this nested `if` with a guard clause'_), direct the sub-agent to address it as specified.
 - If the reviewer suggests multiple valid approaches, **select the simplest/most idiomatic** and pass it as a directive.
-- Provide an additional 'Expected Deliverables' section to your prompt defining the acceptance criteria expected once the issue or issues identifed have been addressed.
+- Provide an additional 'Expected Deliverables' section to your prompt defining the acceptance criteria expected once the issue or issues identified have been addressed.
 
 ---
 
