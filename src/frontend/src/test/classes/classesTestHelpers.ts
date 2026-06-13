@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
-import type { Cohort, YearGroup } from '../../services/referenceData.zod';
-import type { RowMutationResult } from '../../features/classes/batchMutationEngine';
+import type { Cohort, YearGroup } from '../../services/referenceData/referenceData.zod';
+import type { RowMutationResult } from '../../features/classes/bulk/batchMutationEngine';
 import type { ClassesManagementRow } from '../../features/classes/classesManagementViewModel';
 import type { ClassesManagementState } from '../../features/classes/useClassesManagement';
 
@@ -11,7 +11,7 @@ import type { ClassesManagementState } from '../../features/classes/useClassesMa
  * @returns {ClassesManagementRow} Composed row fixture.
  */
 export function buildClassesManagementRow(
-  overrides: Partial<ClassesManagementRow> = {},
+  overrides: Partial<ClassesManagementRow> = {}
 ): ClassesManagementRow {
   return {
     classId: 'active-1',
@@ -146,7 +146,7 @@ export const yearGroupOptions: YearGroup[] = [
  * @returns {ClassesManagementState} Complete mocked hook state.
  */
 export function buildClassesManagementState(
-  overrides: Partial<ClassesManagementState> = {},
+  overrides: Partial<ClassesManagementState> = {}
 ): ClassesManagementState {
   const rows = overrides.rows ?? readyClassesRows;
   const cohorts = overrides.cohorts ?? [];
@@ -178,7 +178,7 @@ export function buildClassesManagementState(
  */
 function getRowByClassId(
   classId: string,
-  rows: readonly ClassesManagementRow[] = readyClassesRows,
+  rows: readonly ClassesManagementRow[] = readyClassesRows
 ): ClassesManagementRow {
   const row = rows.find((candidate) => candidate.classId === classId);
 
@@ -198,7 +198,7 @@ function getRowByClassId(
  */
 export function createFulfilledClassResult(
   classId: string,
-  rows: readonly ClassesManagementRow[] = readyClassesRows,
+  rows: readonly ClassesManagementRow[] = readyClassesRows
 ): RowMutationResult<ClassesManagementRow, unknown> {
   return {
     status: 'fulfilled',
@@ -216,7 +216,7 @@ export function createFulfilledClassResult(
  */
 export function createRejectedClassResult(
   classId: string,
-  rows: readonly ClassesManagementRow[] = readyClassesRows,
+  rows: readonly ClassesManagementRow[] = readyClassesRows
 ): RowMutationResult<ClassesManagementRow, unknown> {
   return {
     status: 'rejected',

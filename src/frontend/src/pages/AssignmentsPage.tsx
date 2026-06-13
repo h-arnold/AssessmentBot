@@ -29,9 +29,9 @@ import { refetchAfterStaleInvalidate } from '../query/queryInvalidationHelpers';
 import {
   deleteAssignmentDefinition,
   type AssignmentDefinitionPartial,
-} from '../services/assignmentDefinitionPartialsService';
-import { DeleteAssignmentDefinitionRequestSchema } from '../services/assignmentDefinitionPartials.zod';
-import { AssignmentDefinitionWizardModal } from './AssignmentDefinitionWizardModal';
+} from '../services/assignmentDefinition/assignmentDefinitionPartialsService';
+import { DeleteAssignmentDefinitionRequestSchema } from '../services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import { AssignmentDefinitionWizardModal } from '../features/assignmentWizard/AssignmentDefinitionWizardModal';
 import { PageSection } from './PageSection';
 import { pageContent } from './pageContent';
 

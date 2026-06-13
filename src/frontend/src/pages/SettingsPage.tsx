@@ -3,9 +3,9 @@ import type { TabsProps } from 'antd';
 import { useMemo, useState } from 'react';
 import { ClassesManagementPanel } from '../features/classes/ClassesManagementPanel';
 import { BackendSettingsPanel } from '../features/settings/backend/BackendSettingsPanel';
-import { ReferenceDataSettingsPanel } from '../features/settings/ReferenceDataSettingsPanel';
+import { ReferenceDataSettingsPanel } from '../features/referenceData/ReferenceDataSettingsPanel';
 import { PageSection } from './PageSection';
-import { SettingsPageGoogleClassroomsPrefetch } from './SettingsPageGoogleClassroomsPrefetch';
+import { SettingsPageGoogleClassroomsPrefetch } from '../features/settings/SettingsPageGoogleClassroomsPrefetch';
 import { pageContent } from './pageContent';
 
 type SettingsTabKey = 'classes' | 'backend-settings' | 'reference-data';

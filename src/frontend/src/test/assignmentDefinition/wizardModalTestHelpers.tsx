@@ -11,7 +11,7 @@ import {
   type TestRenderResult,
 } from './wizardTestHelpers';
 import { mockTopics, mockYearGroups } from './sharedTestFixtures';
-import type { AssignmentDefinition } from '../../services/assignmentDefinition.zod';
+import type { AssignmentDefinition } from '../../services/assignmentDefinition/assignmentDefinition.zod';
 
 /**
  * Assignment Definition Wizard Modal test helpers module.
@@ -92,7 +92,7 @@ async function renderModalComponent(
   open: boolean,
   warmupState: FrontendProvidersOptions['warmupState']
 ): Promise<ReturnType<typeof renderWithFrontendProviders>> {
-  const { AssignmentDefinitionWizardModal } = await import('../../pages/AssignmentDefinitionWizardModal');
+  const { AssignmentDefinitionWizardModal } = await import('../../features/assignmentWizard/AssignmentDefinitionWizardModal');
 
   return renderWithFrontendProviders(
     <AssignmentDefinitionWizardModal

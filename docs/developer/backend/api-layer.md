@@ -285,7 +285,7 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
 
 - `getBackendConfig` and `setBackendConfig` — canonical backend configuration transport methods.
   Source: inline closures in `src/backend/z_Api/z_apiHandler.js` delegating to `getBackendConfig_()` and `setBackendConfig_()` in `src/backend/z_Api/apiConfig.js`.
-  Frontend wrapper: `src/frontend/src/services/backendConfigurationService.ts`, with request and response validation in `src/frontend/src/services/backendConfiguration.zod.ts`.
+  Frontend wrapper: `src/frontend/src/services/backendConfiguration/backendConfigurationService.ts`, with request and response validation in `src/frontend/src/services/backendConfiguration/backendConfiguration.zod.ts`.
   Legacy note: configuration transport no longer uses `src/backend/ConfigurationManager/99_globals.js`.
   Ownership note: first-time default seeding now belongs to `ConfigurationManager.ensureDefaultConfiguration()`. `getBackendConfig()` remains a thin transport read that delegates bootstrap to the manager before shaping the public payload.
 
@@ -308,7 +308,7 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
 
 - `getABClassPartials` — returns all class partial documents from the `abclass_partials` registry.
   Source: inline closure in `src/backend/z_Api/z_apiHandler.js` delegating to `new ABClassController().getAllClassPartials()`.
-  Frontend wrapper: `src/frontend/src/services/classPartialsService.ts` (`getABClassPartials()`).
+  Frontend wrapper: `src/frontend/src/services/googleClassrooms/classPartialsService.ts` (`getABClassPartials()`).
   Handler behaviour: instantiates `ABClassController` inside the inline closure at call time.
   The controller normalises stored records before returning them, so transport consumers receive only the documented class-partial fields and not storage metadata such as `_id`.
   The frontend service models `classOwner` and `teachers` as explicit `TeacherSummary` objects (`userId`, `email`, `teacherName`).
@@ -319,14 +319,14 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Response data: `Array<{ primaryTitle, primaryTopic, primaryTopicKey, yearGroupKey, yearGroupLabel, alternateTitles, alternateTopics, documentType, referenceDocumentId, templateDocumentId, assignmentWeighting, definitionKey, tasks: null, createdAt: string | null, updatedAt: string | null }>` inside the standard success envelope.
   Registry contract: rows come from the lightweight `assignment_definitions` collection and intentionally keep `tasks` fixed to `null`; `primaryTopicKey` is authoritative, `primaryTopic` is the resolved label, and `referenceLastModified` / `templateLastModified` are not part of the partial transport shape.
   Validation: the helper rejects malformed rows with `ApiValidationError` when required fields are missing, `definitionKey` or `primaryTopicKey` are blank or untrimmed, `createdAt` / `updatedAt` are not `string | null`, non-null timestamps are not strict ISO datetime strings with timezone information, or `tasks` is not `null`.
-  Frontend wrapper: `src/frontend/src/services/assignmentDefinitionPartialsService.ts` (`getAssignmentDefinitionPartials()`), with payload validation in `src/frontend/src/services/assignmentDefinitionPartials.zod.ts`.
+  Frontend wrapper: `src/frontend/src/services/assignmentDefinition/assignmentDefinitionPartialsService.ts` (`getAssignmentDefinitionPartials()`), with payload validation in `src/frontend/src/services/assignmentDefinition/assignmentDefinitionPartials.zod.ts`.
 
 - `getGoogleClassroomAssignments` — fetches Google Classroom coursework/assignments for a given class and normalises to transport format.
   Source: `src/backend/z_Api/googleClassroomAssignments.js`, via the `getGoogleClassroomAssignments_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ClassroomApiClient.fetchCourseWork()` in `src/backend/GoogleClassroom/ClassroomApiClient.js`.
   Required request field: `classId`.
   Validation: `classId` must be a non-empty, already-trimmed string without path characters (`/`, `\`, `..`) or ASCII control characters (code points 0–31 and 127). Invalid payloads are reported as `INVALID_REQUEST` by the transport. Malformed Classroom API response rows are reported as `ApiValidationError`.
   Handler behaviour: calls `ClassroomApiClient.fetchCourseWork(classId)`, maps each course-work item to `{ assignmentId, title }`.
-  Frontend wrapper: `src/frontend/src/services/googleClassroomAssignmentsService.ts` (`getGoogleClassroomAssignments()`), with response validation in `src/frontend/src/services/googleClassroomAssignmentsService.spec.ts`.
+  Frontend wrapper: `src/frontend/src/services/googleClassrooms/googleClassroomAssignmentsService.ts` (`getGoogleClassroomAssignments()`), with response validation in `src/frontend/src/services/googleClassrooms/googleClassroomAssignmentsService.spec.ts`.
 
 - `deleteAssignmentDefinition` — deletes one assignment definition from both the registry and its dedicated full-definition collection.
   Source: `src/backend/z_Api/assignmentDefinitionPartials.js`, via the `deleteAssignmentDefinition_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `AssignmentDefinitionController.deleteDefinitionByKey()` in `src/backend/y_controllers/AssignmentDefinitionController.js`.
@@ -334,7 +334,7 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Validation: `definitionKey` must be a non-empty, already-trimmed string and must not contain `/`, `\`, `..`, or ASCII control characters. Invalid payloads are reported as `INVALID_REQUEST` by the transport.
   Delete behaviour: removes the partial row from `assignment_definitions` and drops the corresponding `assdef_full_<definitionKey>` collection when present. Missing full collections are treated as already deleted, so repeated safe-key deletes remain idempotent.
   Response data: no data payload (`void`) on success.
-  Frontend wrapper: `src/frontend/src/services/assignmentDefinitionPartialsService.ts` (`deleteAssignmentDefinition()`).
+  Frontend wrapper: `src/frontend/src/services/assignmentDefinition/assignmentDefinitionPartialsService.ts` (`deleteAssignmentDefinition()`).
 
 - `upsertAssignmentDefinition` — creates or updates a full assignment definition and synchronised registry partial.
   Source: `src/backend/z_Api/assignmentDefinitionPartials.js`, via the `upsertAssignmentDefinition_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `AssignmentDefinitionController.upsertDefinition()` in `src/backend/y_controllers/AssignmentDefinitionController.js`.
@@ -395,13 +395,13 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
 
 - Cohort reference data — exposes `getCohorts`, `createCohort`, `updateCohort`, and `deleteCohort`.
   Source: inline closures in `src/backend/z_Api/z_apiHandler.js` delegating to `ReferenceDataController` CRUD helpers backed by the `cohorts` JsonDbApp collection.
-  Frontend wrapper: `src/frontend/src/services/referenceDataService.ts` (`getCohorts()`, `createCohort()`, `updateCohort()`, `deleteCohort()`).
+  Frontend wrapper: `src/frontend/src/services/referenceData/referenceDataService.ts` (`getCohorts()`, `createCohort()`, `updateCohort()`, `deleteCohort()`).
   List, create, and update responses return plain `{ key, name, active, startYear, startMonth }` objects with storage metadata such as `_id` stripped at the controller boundary. Updates use `{ key, record }`, and duplicate detection is based on `record.name.trim().toLowerCase()` while preserving submitted display casing.
   Delete requests are key-based and succeed with no `data` payload.
 
 - Year-group reference data — exposes `getYearGroups`, `createYearGroup`, `updateYearGroup`, and `deleteYearGroup`.
   Source: inline closures in `src/backend/z_Api/z_apiHandler.js` delegating to `ReferenceDataController` CRUD helpers backed by the `year_groups` JsonDbApp collection.
-  Frontend wrapper: `src/frontend/src/services/referenceDataService.ts` (`getYearGroups()`, `createYearGroup()`, `updateYearGroup()`, `deleteYearGroup()`).
+  Frontend wrapper: `src/frontend/src/services/referenceData/referenceDataService.ts` (`getYearGroups()`, `createYearGroup()`, `updateYearGroup()`, `deleteYearGroup()`).
   List, create, and update responses return plain `{ key, name }` objects with storage metadata removed. Updates use `{ key, record }`, and duplicate detection is based on `record.name.trim().toLowerCase()` while preserving submitted display casing.
   Delete requests are key-based and succeed with no `data` payload.
 

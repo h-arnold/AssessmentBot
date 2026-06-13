@@ -22,15 +22,15 @@ vi.mock('../features/settings/backend/BackendSettingsPanel', () => ({
   },
 }));
 
-vi.mock('../services/classPartialsService', () => ({
+vi.mock('../services/googleClassrooms/classPartialsService', () => ({
   getABClassPartials: getABClassPartialsMock,
 }));
 
-vi.mock('../services/googleClassroomsService', () => ({
+vi.mock('../services/googleClassrooms/googleClassroomsService', () => ({
   getGoogleClassrooms: getGoogleClassroomsMock,
 }));
 
-vi.mock('../services/referenceDataService', () => ({
+vi.mock('../services/referenceData/referenceDataService', () => ({
   getCohorts: getCohortsMock,
   getYearGroups: getYearGroupsMock,
 }));

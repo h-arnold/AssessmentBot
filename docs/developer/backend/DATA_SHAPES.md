@@ -230,7 +230,7 @@ These shapes describe the `data` payload inside the stable `apiHandler` transpor
 - Success: `{ ok: true, requestId, data }`
 - Error: `{ ok: false, requestId, error: { code, message, retriable } }`
 
-Frontend callers should use `src/frontend/src/services/backendConfigurationService.ts`, which validates payloads with the Zod schemas in `src/frontend/src/services/backendConfiguration.zod.ts`.
+Frontend callers should use `src/frontend/src/services/backendConfiguration/backendConfigurationService.ts`, which validates payloads with the Zod schemas in `src/frontend/src/services/backendConfiguration/backendConfiguration.zod.ts`.
 
 ### `getBackendConfig` response data
 

@@ -18,8 +18,8 @@ vi.mock('./useClassesManagement', () => ({
   useClassesManagement: classesManagementStateMock,
 }));
 
-vi.mock('./batchMutationEngine', async () => {
-  const actual = await vi.importActual('./batchMutationEngine');
+vi.mock('./bulk/batchMutationEngine', async () => {
+  const actual = await vi.importActual('./bulk/batchMutationEngine');
 
   return {
     ...actual,
@@ -51,7 +51,7 @@ const bulkCreateModalMock = vi.hoisted(() =>
   }),
 );
 
-vi.mock('./BulkCreateModal', () => ({
+vi.mock('./bulk/BulkCreateModal', () => ({
   BulkCreateModal: bulkCreateModalMock,
 }));
 

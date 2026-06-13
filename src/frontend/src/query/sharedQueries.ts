@@ -1,19 +1,25 @@
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
-import { getAssignmentDefinition } from '../services/assignmentDefinitionService';
+import { getAssignmentDefinition } from '../services/assignmentDefinition/assignmentDefinitionService';
 import {
   getAssignmentDefinitionPartials,
   type AssignmentDefinitionPartialsResponse,
-} from '../services/assignmentDefinitionPartialsService';
+} from '../services/assignmentDefinition/assignmentDefinitionPartialsService';
 import {
   getAssignmentTopics,
   type AssignmentTopicListResponse,
-} from '../services/assignmentTopicsService';
-import { getAuthorisationStatus } from '../services/authService';
-import { getBackendConfig } from '../services/backendConfigurationService';
-import { getABClassPartials, type ClassPartial } from '../services/classPartialsService';
-import { getGoogleClassrooms } from '../services/googleClassroomsService';
-import { getCohorts, getYearGroups } from '../services/referenceDataService';
-import type { CohortListResponse, YearGroupListResponse } from '../services/referenceData.zod';
+} from '../services/assignmentDefinition/assignmentTopicsService';
+import { getAuthorisationStatus } from '../services/authService/authService';
+import { getBackendConfig } from '../services/backendConfiguration/backendConfigurationService';
+import {
+  getABClassPartials,
+  type ClassPartial,
+} from '../services/googleClassrooms/classPartialsService';
+import { getGoogleClassrooms } from '../services/googleClassrooms/googleClassroomsService';
+import { getCohorts, getYearGroups } from '../services/referenceData/referenceDataService';
+import type {
+  CohortListResponse,
+  YearGroupListResponse,
+} from '../services/referenceData/referenceData.zod';
 import { queryKeys } from './queryKeys';
 
 const startupWarmupPromises = new WeakMap<QueryClient, Promise<StartupWarmupQueriesResult>>();

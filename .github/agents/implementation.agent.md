@@ -3,6 +3,7 @@ name: 'Implementation'
 description: 'Implements code for the orchestrator'
 user-invocable: true
 tools: [vscode/runCommand, execute/testFailure, execute/getTerminalOutput, execute/runTests, execute/runInTerminal, read/problems, read/readFile, read/terminalLastCommand, edit/createFile, edit/editFiles, edit/rename, search, web, sonarsource.sonarlint-vscode/sonarqube_getPotentialSecurityIssues, sonarsource.sonarlint-vscode/sonarqube_excludeFiles, sonarsource.sonarlint-vscode/sonarqube_setUpConnectedMode, sonarsource.sonarlint-vscode/sonarqube_analyzeFile, todo]
+model: DeepSeek V4 Flash (deepseek)
 ---
 
 ## Implementation Agent Instructions

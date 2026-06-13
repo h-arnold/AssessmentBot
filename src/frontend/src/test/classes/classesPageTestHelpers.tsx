@@ -12,11 +12,11 @@ import { type QueryClient } from '@tanstack/react-query';
 import { renderWithFrontendProviders, type FrontendProvidersOptions } from '../renderWithFrontendProviders';
 import { createAppQueryClient } from '../../query/queryClient';
 import { queryKeys } from '../../query/queryKeys';
-import { buildClassesPageModel } from '../../pages/classes/classesPageModel';
+import { buildClassesPageModel } from '../../pages/classesPageModel';
 import { ClassesPage } from '../../pages/ClassesPage';
-import type { ClassPartial } from '../../services/classPartials.zod';
-import type { YearGroup } from '../../services/referenceData.zod';
-import type { ClassesPagePanelModel, InvalidClassesPageDataViewModel } from '../../pages/classes/classesPageModel';
+import type { ClassPartial } from '../../services/googleClassrooms/classPartials.zod';
+import type { YearGroup } from '../../services/referenceData/referenceData.zod';
+import type { ClassesPagePanelModel, InvalidClassesPageDataViewModel } from '../../pages/classesPageModel';
 
 // ============================================================================
 // Fixture Factories

@@ -4,9 +4,9 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { queryKeys } from '../../query/queryKeys';
 import { renderWithFrontendProviders } from '../../test/renderWithFrontendProviders';
-import type * as BulkSetCohortFlowModule from './bulkSetCohortFlow';
-import type * as BulkSetYearGroupFlowModule from './bulkSetYearGroupFlow';
-import type * as BulkSetCourseLengthFlowModule from './bulkSetCourseLengthFlow';
+import type * as BulkSetCohortFlowModule from './bulk/bulkSetCohortFlow';
+import type * as BulkSetYearGroupFlowModule from './bulk/bulkSetYearGroupFlow';
+import type * as BulkSetCourseLengthFlowModule from './bulk/bulkSetCourseLengthFlow';
 import {
   activeCohortOptions,
   buildClassesManagementRow,
@@ -24,37 +24,37 @@ vi.mock('./useClassesManagement', () => ({
   useClassesManagement: classesManagementStateMock,
 }));
 
-vi.mock('./bulkSetCohortFlow', async () => {
-  const actual = (await vi.importActual('./bulkSetCohortFlow')) as typeof BulkSetCohortFlowModule;
+vi.mock('./bulk/bulkSetCohortFlow', async () => {
+  const actual = (await vi.importActual('./bulk/bulkSetCohortFlow')) as typeof BulkSetCohortFlowModule;
   return {
     ...actual,
     bulkSetCohort: bulkSetCohortMock,
   };
 });
 
-vi.mock('./bulkSetYearGroupFlow', async () => {
-  const actual = (await vi.importActual('./bulkSetYearGroupFlow')) as typeof BulkSetYearGroupFlowModule;
+vi.mock('./bulk/bulkSetYearGroupFlow', async () => {
+  const actual = (await vi.importActual('./bulk/bulkSetYearGroupFlow')) as typeof BulkSetYearGroupFlowModule;
   return {
     ...actual,
     bulkSetYearGroup: bulkSetYearGroupMock,
   };
 });
 
-vi.mock('./bulkSetCourseLengthFlow', async () => {
-  const actual = (await vi.importActual('./bulkSetCourseLengthFlow')) as typeof BulkSetCourseLengthFlowModule;
+vi.mock('./bulk/bulkSetCourseLengthFlow', async () => {
+  const actual = (await vi.importActual('./bulk/bulkSetCourseLengthFlow')) as typeof BulkSetCourseLengthFlowModule;
   return {
     ...actual,
     bulkSetCourseLength: bulkSetCourseLengthMock,
   };
 });
 
-vi.mock('./ClassesSummaryCard', () => ({
+vi.mock('./components/ClassesSummaryCard', () => ({
   ClassesSummaryCard() {
     return <div>Summary</div>;
   },
 }));
 
-vi.mock('./ClassesToolbar', () => ({
+vi.mock('./table/ClassesToolbar', () => ({
   ClassesToolbar(properties: Readonly<{
     onSetCohort?: () => void;
     onSetCourseLength?: () => void;
@@ -76,19 +76,19 @@ vi.mock('./ClassesToolbar', () => ({
   },
 }));
 
-vi.mock('./ClassesTable', () => ({
+vi.mock('./table/ClassesTable', () => ({
   ClassesTable() {
     return <div aria-label="Classes table" role="table" />;
   },
 }));
 
-vi.mock('./BulkCreateModal', () => ({
+vi.mock('./bulk/BulkCreateModal', () => ({
   BulkCreateModal() {
     return null;
   },
 }));
 
-vi.mock('./BulkDeleteModal', () => ({
+vi.mock('./bulk/BulkDeleteModal', () => ({
   BulkDeleteModal() {
     return null;
   },
@@ -198,11 +198,11 @@ function BulkSetCourseLengthModalStub(
 const bulkSetSelectModalMock = vi.hoisted(() => vi.fn(BulkSetSelectModalStub));
 const bulkSetCourseLengthModalMock = vi.hoisted(() => vi.fn(BulkSetCourseLengthModalStub));
 
-vi.mock('./BulkSetSelectModal', () => ({
+vi.mock('./bulk/BulkSetSelectModal', () => ({
   BulkSetSelectModal: bulkSetSelectModalMock,
 }));
 
-vi.mock('./BulkSetCourseLengthModal', () => ({
+vi.mock('./bulk/BulkSetCourseLengthModal', () => ({
   BulkSetCourseLengthModal: bulkSetCourseLengthModalMock,
 }));
 

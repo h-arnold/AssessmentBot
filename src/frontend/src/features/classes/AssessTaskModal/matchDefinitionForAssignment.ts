@@ -1,4 +1,4 @@
-import type { AssignmentDefinitionPartial } from '../../../services/assignmentDefinitionPartials.zod';
+import type { AssignmentDefinitionPartial } from '../../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
 
 /**
  * Discriminated union representing the result of matching a Google Classroom

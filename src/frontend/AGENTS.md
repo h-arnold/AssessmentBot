@@ -31,6 +31,20 @@ Root scripts execute frontend tasks via `npm --prefix src/frontend ...`.
 - Utility functions, custom hooks, validators, and common components must check `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` before creating new abstractions. Flag code that duplicates logic already in shared helpers as a Critical issue during code review.
 - For React Query baseline, startup warm-up, and prefetch policy guidance, use `docs/developer/frontend/frontend-react-query-and-prefetch.md`.
 
+### 2.3 Feature Directory Layout
+
+Feature state machines, hooks, modal components, and feature-scoped helpers live under
+`src/frontend/src/features/`. Current feature directories:
+
+- `assignmentWizard/` — Assignment definition wizard (extracted from `pages/`)
+- `auth/` — Authorisation gate and status
+- `classes/` — Class management, assessment, bulk operations, and table
+- `referenceData/` — Cross-cutting reference data management (cohorts, year groups, topics; extracted from `features/classes/management/` and `features/settings/`)
+- `settings/` — Backend settings configuration
+
+Pages under `src/frontend/src/pages/` remain thin composition roots that compose feature
+components. No feature logic, state machines, or hooks should live in `pages/`.
+
 ## 3. Framework and UI Baseline
 
 - Current scaffold uses React + Ant Design.
@@ -53,7 +67,7 @@ Root scripts execute frontend tasks via `npm --prefix src/frontend ...`.
 - Keep method names aligned with backend `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`.
 - Treat backend responses as envelopes handled by `callApi`; feature services should consume typed `data` results only.
 - Keep retry behaviour centralised in `callApi`; do not add per-feature retry loops for rate-limit handling.
-- Use `src/frontend/src/services/backendConfigurationService.ts` for backend configuration reads and writes; keep request and response validation in `src/frontend/src/services/backendConfiguration.zod.ts`.
+- Use `src/frontend/src/services/backendConfiguration/backendConfigurationService.ts` for backend configuration reads and writes; keep request and response validation in `src/frontend/src/services/backendConfiguration/backendConfiguration.zod.ts`.
 - Treat `getBackendConfig` and `setBackendConfig` as the canonical backend configuration method names. Do not route configuration UI flows through legacy backend globals.
 
 ### 4.2 Serialization boundary
@@ -127,7 +141,7 @@ Frontend build output is consumed by the GAS builder pipeline.
 - Delegate all Playwright E2E test implementation and test-debugging work to `Playwright` when sub-agent delegation is available.
 - If delegation is unavailable, follow `.github/agents/Testing.agent.md` and `docs/developer/frontend/frontend-testing.md` for Vitest tests, or `.github/agents/playwright.agent.md` and `docs/developer/frontend/frontend-playwright-e2e.md` for E2E tests.
 - Shared frontend test helpers live under `src/frontend/src/test/**`; keep specs co-located in `src/frontend/src/**` and do not import `src/test/**` from production source.
-- When a frontend change depends on backend configuration transport behaviour, treat `tests/api/backendConfigApi.test.js` as the dedicated backend transport suite and keep frontend service assertions in `src/frontend/src/services/backendConfigurationService.spec.ts`.
+- When a frontend change depends on backend configuration transport behaviour, treat `tests/api/backendConfigApi.test.js` as the dedicated backend transport suite and keep frontend service assertions in `src/frontend/src/services/backendConfiguration/backendConfigurationService.spec.ts`.
 
 ## 8. Validation and Type Definition Standard
 
@@ -167,6 +181,15 @@ Domain prefix is the leading camelCase segment before the first capital letter o
 Example — current services directory grouped by domain:
 
 ```
+services/apiService.ts
+services/apiService.spec.ts
+
+services/assignmentAssessment/
+├── assignmentAssessmentService.ts
+├── assignmentAssessmentService.spec.ts
+├── assignmentAssessment.zod.ts
+└── assignmentAssessment.zod.spec.ts
+
 services/assignmentDefinition/
 ├── assignmentDefinitionService.ts
 ├── assignmentDefinitionService.spec.ts
@@ -176,29 +199,7 @@ services/assignmentDefinition/
 ├── assignmentDefinitionPartialsService.spec.ts
 ├── assignmentDefinitionPartials.zod.ts
 ├── assignmentDefinitionPartials.zod.spec.ts
-└── assignmentDefinitionPartialsContract.guard.spec.ts
-
-services/apiService/
-├── apiService.ts
-└── apiService.spec.ts
-
-services/googleClassrooms/
-├── googleClassroomsService.ts
-├── googleClassroomsService.spec.ts
-├── googleClassrooms.zod.ts
-├── googleClassrooms.zod.spec.ts
-├── googleClassroomAssignmentsService.ts
-├── googleClassroomAssignmentsService.spec.ts
-├── googleClassroomAssignments.zod.ts
-├── classPartialsService.ts
-├── classPartialsService.spec.ts
-└── classPartials.zod.ts
-
-services/referenceData/
-├── referenceDataService.ts
-├── referenceDataService.spec.ts
-├── referenceData.zod.ts
-├── referenceData.zod.spec.ts
+├── assignmentDefinitionPartialsContract.guard.spec.ts
 ├── assignmentTopicsService.ts
 ├── assignmentTopicsService.spec.ts
 ├── assignmentTopics.zod.ts
@@ -214,6 +215,26 @@ services/backendConfiguration/
 ├── backendConfigurationService.spec.ts
 ├── backendConfiguration.zod.ts
 └── backendConfigurationValidation.ts
+
+services/googleClassrooms/
+├── googleClassroomsService.ts
+├── googleClassroomsService.spec.ts
+├── googleClassrooms.zod.ts
+├── googleClassrooms.zod.spec.ts
+├── googleClassroomAssignmentsService.ts
+├── googleClassroomAssignmentsService.spec.ts
+├── googleClassroomAssignments.zod.ts
+├── googleClassroomAssignments.zod.spec.ts
+├── classPartialsService.ts
+├── classPartialsService.spec.ts
+├── classPartials.zod.ts
+└── classPartials.zod.spec.ts
+
+services/referenceData/
+├── referenceDataService.ts
+├── referenceDataService.spec.ts
+├── referenceData.zod.ts
+└── referenceData.zod.spec.ts
 ```
 
 Rules:

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { AssignmentDefinitionPartial } from '../../../services/assignmentDefinitionPartials.zod';
+import type { AssignmentDefinitionPartial } from '../../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import { findMatchingDefinition } from './matchDefinitionForAssignment';
 
 const DEFAULT_ISO_DATETIME = '2025-01-01T00:00:00.000Z';

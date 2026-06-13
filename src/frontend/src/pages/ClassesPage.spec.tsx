@@ -18,7 +18,7 @@
  * - src/frontend/src/test/renderWithFrontendProviders.tsx
  * - src/frontend/e2e-tests/shared/endToEndRuntimeMocks.ts
  * - src/frontend/src/pages/PageSection.tsx
- * - src/frontend/src/pages/classes/classesPageModel.ts
+ * - src/frontend/src/pages/classesPageModel.ts
  * - src/frontend/src/test/classes/classesPageTestHelpers.ts
  */
 
@@ -27,7 +27,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAppQueryClient } from '../query/queryClient';
 import { queryKeys } from '../query/queryKeys';
 import { renderWithFrontendProviders } from '../test/renderWithFrontendProviders';
-import { buildClassesPageModel } from './classes/classesPageModel';
+import { buildClassesPageModel } from './classesPageModel';
 import { ClassesPage } from './ClassesPage';
 import { pageContent } from './pageContent';
 
@@ -189,20 +189,20 @@ vi.mock('../features/auth/startupWarmupState', async (importOriginal) => {
   };
 });
 
-vi.mock('../services/classPartialsService', () => ({
+vi.mock('../services/googleClassrooms/classPartialsService', () => ({
   getABClassPartials: getABClassPartialsMock,
 }));
 
-vi.mock('../services/referenceDataService', () => ({
+vi.mock('../services/referenceData/referenceDataService', () => ({
   getYearGroups: getYearGroupsMock,
   getCohorts: getCohortsMock,
 }));
 
-vi.mock('../services/assignmentDefinitionPartialsService', () => ({
+vi.mock('../services/assignmentDefinition/assignmentDefinitionPartialsService', () => ({
   getAssignmentDefinitionPartials: getAssignmentDefinitionPartialsMock,
 }));
 
-vi.mock('../services/assignmentTopicsService', () => ({
+vi.mock('../services/assignmentDefinition/assignmentTopicsService', () => ({
   getAssignmentTopics: getAssignmentTopicsMock,
 }));
 

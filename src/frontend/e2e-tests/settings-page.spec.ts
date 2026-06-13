@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import type { BackendConfig } from '../src/services/backendConfiguration.zod';
+import type { BackendConfig } from '../src/services/backendConfiguration/backendConfiguration.zod';
 import { googleScriptRunApiHandlerFactorySource } from '../src/test/googleScriptRunHarness';
 
 const settingsMenuLabel = 'Settings';
@@ -105,7 +105,9 @@ test.describe('settings page width contracts', () => {
     await page.getByRole('menuitem', { name: settingsMenuLabel }).click();
     await expect(page.getByRole('heading', { level: 2, name: settingsPageHeading })).toBeVisible();
 
-    const settingsPageContent = page.locator('section[aria-label="Settings page"] .app-page-content').first();
+    const settingsPageContent = page
+      .locator('section[aria-label="Settings page"] .app-page-content')
+      .first();
     const classesFrameBox = await getRoundedBox(settingsPageContent);
 
     await page.getByRole('tab', { name: backendSettingsTabLabel }).click();
