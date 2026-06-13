@@ -1,6 +1,7 @@
 ---
 description: Creates, maintains, and debugs Playwright browser end-to-end tests
 mode: all
+steps: 100
 ---
 
 # Playwright Specialist Agent Instructions

@@ -1,6 +1,7 @@
 ---
 description: Inspects code for AI-slop, duplication, unnecessary complexity, and stale code
 mode: all
+steps: 100
 ---
 
 # De-Sloppification Agent Instructions
