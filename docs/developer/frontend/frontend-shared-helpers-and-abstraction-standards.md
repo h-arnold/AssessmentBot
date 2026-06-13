@@ -380,3 +380,26 @@ This section supersedes the earlier Section 9.7 defer decision for the specific 
 - Owning path: `src/frontend/src/features/classes/AssessTaskModal/matchDefinitionForAssignment.ts`
 - Status: `Implemented`
 - Rationale: pure matching logic extracted for independent unit testing; no existing helper covers this combination of title, topic, and year-group lookups
+
+### 9.14 API queueing system
+
+1. Helper: `QueueState` interface
+
+- Decision: `new`
+- Owning module/path: `src/frontend/src/services/apiService.ts`
+- Call-site rationale: exported type consumed by `getQueueState` callers (ABClass creation progress bar in v1; future consumers)
+- Status: `Implemented`
+
+2. Helper: `callApiQueued` function
+
+- Decision: `new`
+- Owning module/path: `src/frontend/src/services/apiService.ts`
+- Call-site rationale: ABClass creation (sequentially enqueue class creation calls to avoid race condition); Google Classroom pre-fetch (sequentially enqueue background fetch calls to stay under concurrent ceiling)
+- Status: `Implemented`
+
+3. Helper: `getQueueState` function
+
+- Decision: `new`
+- Owning module/path: `src/frontend/src/services/apiService.ts`
+- Call-site rationale: ABClass creation progress bar polls this for `{ pending, active }` to derive completion metrics
+- Status: `Implemented`

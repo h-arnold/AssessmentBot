@@ -7,6 +7,8 @@ const ApiRequestSchema = z.object({
   params: z.unknown().optional(),
 });
 
+const JobNameSchema = z.string().min(1);
+
 const ApiSuccessResponseSchema = z
   .object({
     ok: z.literal(true),
@@ -199,4 +201,121 @@ export async function callApi<TResponse>(method: string, parameters?: unknown): 
   }
 
   throw lastError!;
+}
+
+// ── Queue infrastructure ─────────────────────────────────────────────────
+
+interface QueueEntry {
+  method: string;
+  parameters: unknown;
+  resolve: (value: unknown) => void;
+  reject: (reason: unknown) => void;
+}
+
+interface QueueStateInternal {
+  pending: QueueEntry[];
+  active: boolean;
+}
+
+const queues = new Map<string, QueueStateInternal>();
+
+export interface QueueState {
+  pending: number;
+  active: boolean;
+}
+
+/**
+ * Enqueues an API call for sequential execution within a job-name queue.
+ *
+ * @template TResponse - The expected response data type.
+ * @param {string} method - Backend method name (must be non-empty).
+ * @param {unknown} parameters - Request parameters.
+ * @param {string} jobName - Queue job name (must be non-empty).
+ * @returns {Promise<TResponse>} A Promise that resolves when the queued request completes.
+ *
+ * @remarks
+ * Input validation for `method` intentionally mirrors `callApi`'s `ApiRequestSchema`
+ * (via {@link ApiRequestSchema.shape.method}) as defence-in-depth — early rejection at
+ * the call site prevents malformed requests from entering the queue. The `parameters`
+ * field is validated later by `callApi` during dispatch.
+ */
+export function callApiQueued<TResponse>(
+  method: string,
+  parameters: unknown,
+  jobName: string
+): Promise<TResponse> {
+  ApiRequestSchema.shape.method.parse(method);
+  JobNameSchema.parse(jobName);
+
+  // Locate or create queue for this jobName
+  let queue = queues.get(jobName);
+  if (!queue) {
+    queue = { pending: [], active: false };
+    queues.set(jobName, queue);
+  }
+  const targetQueue = queue;
+
+  const wasIdle = !targetQueue.active;
+
+  // Enqueue — store method, parameters, resolve, and reject in the pending array
+  return new Promise<TResponse>((resolve, reject) => {
+    targetQueue.pending.push({
+      method,
+      parameters,
+      resolve: resolve as (value: unknown) => void,
+      reject,
+    });
+
+    // Synchronously mark active before any await, preventing duplicate loops
+    if (wasIdle) {
+      targetQueue.active = true;
+      void processQueue(targetQueue);
+    }
+  });
+}
+
+// ── Processing loop ────────────────────────────────────────────────────────────
+
+/**
+ * Processes queued requests for a given job name in FIFO order.
+ *
+ * Runs asynchronously (fire-and-forget from the enqueuer). Pops the first
+ * pending item, dispatches it via `callApi`, and resolves or rejects the
+ * stored promise. Repeats until the queue is empty, then marks the queue
+ * as inactive.
+ *
+ * @param {QueueStateInternal} queue - The queue to process.
+ * @returns {Promise<void>} A promise that resolves when the queue is drained.
+ */
+async function processQueue(queue: QueueStateInternal): Promise<void> {
+  while (queue.pending.length > 0) {
+    const entry = queue.pending.shift()!; // REMOVE immediately
+    try {
+      const data = await callApi<unknown>(entry.method, entry.parameters);
+      entry.resolve(data);
+    } catch (error: unknown) {
+      entry.reject(error);
+    }
+  }
+  queue.active = false;
+}
+
+/**
+ * Returns a snapshot of the current queue state for a given job name.
+ *
+ * @param {string} jobName - Queue job name (must be non-empty).
+ * @returns {QueueState} The current queue state.
+ *
+ * @remarks
+ * This returns a point-in-time snapshot. Callers polling for progress should not
+ * assume monotonicity between calls — the queue may advance between a read and
+ * the caller's next statement.
+ */
+export function getQueueState(jobName: string): QueueState {
+  JobNameSchema.parse(jobName);
+  const queue = queues.get(jobName);
+  if (!queue) {
+    return { pending: 0, active: false };
+  }
+  return { pending: queue.pending.length, active: queue.active };
 }

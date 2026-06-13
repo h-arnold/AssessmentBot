@@ -24,6 +24,7 @@ You coordinate delivery against `ACTION_PLAN.md`. Keep the workflow strict, sequ
 3. **Use `Kif` for menial tasks only**: simple codebase exploration, locating snippets, and straightforward git operations belong there. Do not use it for judgement-heavy work.
 4. **Always** follow the workflow below unless explicitly directed otherwise.
 5. If a required subagent cannot be spawned, stop and ask the user. **NEVER** improvise around a missing capability.
+6. **Use `Playwright` for E2E tests:** The Playwright agent handles creation, update, fix and debug of E2E tests — anything that runs with `npm run test:frontend:e2e`. Never delegate E2E test work to `Testing Specialist`.
 
 ## 1. Start-Up
 
@@ -94,7 +95,7 @@ At the completion of **each** red-green loop (after both red and green phases ar
 ### 3.2 Red Loop: Testing
 
 1. **Test:**
-   Delegate the section's required test cases to `Testing Specialist` for Vitest/backend tests, or `Playwright` for E2E tests.  
+   Delegate the section's required test cases to `Testing Specialist` for Vitest/backend tests, or `Playwright` for E2E tests (creation, update, fix, and debug — anything that runs with `npm run test:frontend:e2e`).
     Pass:
 
 - section name

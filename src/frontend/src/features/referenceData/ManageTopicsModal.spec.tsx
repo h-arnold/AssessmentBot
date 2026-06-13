@@ -1,9 +1,5 @@
 /**
- * Topics management modal — unit tests (RED phase).
- *
- * These tests are intentionally written to fail because ManageTopicsModal.tsx does not exist yet.
- * They define the expected behaviour for the topics CRUD modal following the same patterns
- * as ManageCohortsModal and ManageYearGroupsModal.
+ * Manage Topics modal — unit tests.
  *
  * Covers: list rendering, empty state, create/edit form launch, year group multi-select,
  * required refresh after successful mutations, degraded-data fail-closed handling, modal
@@ -206,29 +202,30 @@ function closeViaIcon(dialog: HTMLElement) {
 }
 
 /**
- * Closes the modal via mask click.
+ * Closes the modal via mask (backdrop) click.
+ *
+ * antd v6 delegates modal mask handling to @rc-component/dialog, which uses a
+ * mousedown-then-mouseup pair on the .ant-modal-wrap element — not the
+ * .ant-modal-mask sibling. Because the modal renders in a React portal, React
+ * Testing Library's fireEvent does not reliably trigger React synthetic event
+ * handlers on portal-mounted elements. The safe pattern is native dispatchEvent.
  *
  * @param {HTMLElement} dialog Modal dialog element.
  */
 async function closeViaMask(dialog: HTMLElement) {
-  // Find the wrap for this modal
   const wrap = dialog.closest('.ant-modal-wrap');
   if (!wrap) {
     throw new Error('Modal wrap not found');
   }
-  
-  // In Ant Design, the mask is a sibling before the wrap
-  const mask = wrap?.previousElementSibling;
-  if (mask?.classList.contains('ant-modal-mask')) {
-    await act(async () => {
-      fireEvent.click(mask);
-    });
-    // Wait for modal close to complete - Ant Design modal close can be async in test environments
-    await new Promise((resolve) => setTimeout(resolve, MODAL_CLOSE_TIMEOUT_MS));
-    return;
-  }
-  
-  throw new Error('Mask not found');
+
+  await act(async () => {
+    wrap.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    wrap.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    wrap.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  });
+
+  // Wait for modal close to complete - Ant Design modal close can be async in test environments
+  await new Promise((resolve) => setTimeout(resolve, MODAL_CLOSE_TIMEOUT_MS));
 }
 
 /**
@@ -935,10 +932,7 @@ describe('ManageTopicsModal', () => {
     it('resets transient inline-dialog state when closed via close icon and reopened', () =>
       assertTransientStateReset('close icon'));
 
-    // NOTE: Mask click testing in JSDOM/HappyDOM with Ant Design Modal has known limitations
-    // where the mask click event doesn't properly trigger onCancel. This test is skipped in
-    // unit tests but should be covered by integration/Playwright tests.
-    it.skip('resets transient inline-dialog state when closed via mask and reopened', () =>
+    it('resets transient inline-dialog state when closed via mask and reopened', () =>
       assertTransientStateReset('mask'));
 
     it('resets transient inline-dialog state when closed via Escape and reopened', () =>

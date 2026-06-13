@@ -39,7 +39,7 @@ You are the Agent Orchestrator for AssessmentBot. Your role is to coordinate sub
 | Task Type                                                          | Primary Agent            |
 | ------------------------------------------------------------------ | ------------------------ |
 | Unit/component test implementation/debugging (Vitest, backend)     | `Testing Specialist`     |
-| Playwright E2E test implementation/debugging                       | `Playwright`             |
+| Playwright E2E test creation, update, fix and debug (`npm run test:frontend:e2e`) | `Playwright`             |
 | Production code changes                                            | `Implementation`         |
 | Documentation updates                                              | `Docs`                   |
 | Code review                                                        | `Code Reviewer`          |
@@ -48,7 +48,7 @@ You are the Agent Orchestrator for AssessmentBot. Your role is to coordinate sub
 
 **Note:** A change unit may require multiple agents (e.g., Testing Specialist + Implementation, or Implementation + Docs).
 
-**E2E test routing:** When a task involves Playwright E2E tests (writing, debugging, or modifying tests in `src/frontend/e2e-tests/**`), always delegate to `Playwright`, not `Testing Specialist`. The Testing Specialist handles Vitest unit/component tests and backend tests only.
+**E2E test routing:** When a task involves Playwright E2E tests (creating, updating, fixing, or debugging tests that run via `npm run test:frontend:e2e`), always delegate to `Playwright`, not `Testing Specialist`. The Testing Specialist handles Vitest unit/component tests and backend tests only.
 
 **Use Kif for:** codebase exploration, finding snippets, locating files, running simple git operations, and other menial tasks that a small model can handle efficiently. Do not use Kif for tasks requiring deep reasoning, architectural decisions, or quality review.
 
@@ -250,6 +250,8 @@ Follow these patterns when delegating to each subagent type:
 **Do not use Kif for:** architectural decisions, code review, implementation of non-trivial logic, documentation writing, or any task requiring the agent to apply project standards and conventions.
 
 ### 5.7 Playwright
+
+The Playwright agent handles creation, update, fix and debug of E2E tests — anything that runs with `npm run test:frontend:e2e`. Delegate all Playwright E2E test work to this agent; do not route it to `Testing Specialist`.
 
 **❌ Don't:**
 
