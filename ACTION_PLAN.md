@@ -568,8 +568,13 @@ Frontend tests in `useClassesBulkMutationQueue.spec.ts`:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** to be filled during implementation.
-- **Deviations from plan:** to be filled during implementation.
+- **Implementation notes:**
+  - `useClassesBulkMutationQueue` hook implemented with full state machine: modal lifecycle, dismiss tracking, cancellation, and progress state.
+  - Uses `useRef` for `dismissed` and `activeRef` flags to avoid stale closures. `onProgress` callback is stable via `useCallback`.
+  - `isQueueActive` tracks the engine's `isInProgress` flag; `finally` block ensures cleanup even on errors.
+  - 8 tests pass, full regression green. Lint and TSC clean.
+  - Regression Gate: zero regressions, zero new failures.
+- **Deviations from plan:** None.
 - **Follow-up implications for later sections:** Section 5 wires the hook into the panel.
 
 ---
