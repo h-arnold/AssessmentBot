@@ -374,21 +374,6 @@ describe('Assessment run interaction', () => {
   // Match results
   // -----------------------------------------------------------------------
 
-  it('shows error Alert when findMatchingDefinition returns no-match', async () => {
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [createDefinitionPartial()],
-      findMatchResult: { kind: 'no-match' },
-    });
-
-    await selectAssignment(dialog);
-    clickStartAssessment(dialog);
-
-    await expect(within(dialog).findByRole('alert')).resolves.toBeInTheDocument();
-  });
-
   it('shows error Alert when findMatchingDefinition returns ambiguous match', async () => {
     const definitionOne = createDefinitionPartial({ definitionKey: 'def-1' });
     const definitionTwo = createDefinitionPartial({ definitionKey: 'def-2' });
@@ -526,6 +511,225 @@ describe('Assessment run interaction', () => {
     await waitFor(() => {
       expect(within(footer!).getByRole('button', { name: 'Close' })).toBeInTheDocument();
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// No-match resolution — choice state
+// ---------------------------------------------------------------------------
+
+describe('No-match resolution — choice state', () => {
+  it('shows choice prompt with Alert, Create New Definition button, and disabled Link to Existing button when findMatchingDefinition returns no-match', async () => {
+    const { dialog } = renderWithCache({
+      classPartials: [
+        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+      ],
+      definitionPartials: [createDefinitionPartial()],
+      findMatchResult: { kind: 'no-match' },
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    // An info Alert should explain the no-match situation
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert).toHaveTextContent(/no matching assignment definition found/i);
+    expect(alert).toHaveTextContent(/Essay/);
+
+    // Two choice buttons should be visible
+    expect(within(dialog).getByRole('button', { name: 'Create New Definition' })).toBeInTheDocument();
+
+    const linkButton = within(dialog).getByRole('button', { name: 'Link to Existing Definition' });
+    expect(linkButton).toBeInTheDocument();
+    expect(linkButton).toBeDisabled();
+  });
+
+  it('hides assignment Select and shows only Cancel in footer during choice state', async () => {
+    const { dialog } = renderWithCache({
+      classPartials: [
+        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+      ],
+      definitionPartials: [createDefinitionPartial()],
+      findMatchResult: { kind: 'no-match' },
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    // Assignment Select should NOT be visible
+    expect(within(dialog).queryByRole('combobox')).toBeNull();
+
+    // Footer should only have Cancel (no Start Assessment)
+    expectCancelButtonPresent(dialog);
+    expect(within(dialog).queryByRole('button', { name: /start assessment/i })).toBeNull();
+  });
+
+  it('transitions to creating state when Create New Definition is clicked', async () => {
+    const { dialog } = renderWithCache({
+      classPartials: [
+        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+      ],
+      definitionPartials: [createDefinitionPartial()],
+      findMatchResult: { kind: 'no-match' },
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    // Click "Create New Definition" — this should transition to 'creating'
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Create New Definition' }));
+
+    // Once in creating state, the choice buttons should be gone
+    await waitFor(() => {
+      expect(within(dialog).queryByRole('button', { name: 'Create New Definition' })).toBeNull();
+    });
+
+    // The choice prompt Alert should also be gone — body content changed from choice to creating
+    expect(within(dialog).queryByText(/no matching assignment definition found/i)).toBeNull();
+
+    // The assignment Select remains hidden (was hidden in choice, stays hidden in creating)
+    expect(within(dialog).queryByRole('combobox')).toBeNull();
+  });
+
+  it('shows Link to Existing button disabled with Tooltip Coming soon', async () => {
+    const { dialog } = renderWithCache({
+      classPartials: [
+        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+      ],
+      definitionPartials: [createDefinitionPartial()],
+      findMatchResult: { kind: 'no-match' },
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    const linkButton = within(dialog).getByRole('button', { name: 'Link to Existing Definition' });
+    expect(linkButton).toBeDisabled();
+
+    // Hover over the button wrapper to trigger the Tooltip
+    const buttonParent = linkButton.parentElement;
+    if (buttonParent) {
+      fireEvent.pointerEnter(buttonParent);
+    }
+
+    // Tooltip should show "Coming soon" text
+    await screen.findByText('Coming soon');
+  });
+
+  it('reopens modal and resets noMatchResolution to idle', async () => {
+    const onClose = vi.fn();
+    vi.mocked(getGoogleClassroomAssignments).mockResolvedValue(MOCK_ASSIGNMENTS);
+    vi.mocked(findMatchingDefinition).mockReturnValue({ kind: 'no-match' });
+
+    const queryClient = createAppQueryClient();
+    queryClient.setQueryData(queryKeys.classPartials(), [
+      createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+    ]);
+    queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [createDefinitionPartial()]);
+
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <AssessTaskModal {...defaultProperties({ onClose })} />
+      </QueryClientProvider>
+    );
+
+    const dialog = screen.getByRole('dialog', { name: MODAL_TITLE });
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    // Verify the choice prompt is shown (this fails because noMatchResolution is not implemented)
+    expect(within(dialog).getByRole('button', { name: 'Create New Definition' })).toBeInTheDocument();
+
+    // Close the modal
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <AssessTaskModal {...defaultProperties({ open: false, onClose })} />
+      </QueryClientProvider>
+    );
+
+    // Reopen with the same classId
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <AssessTaskModal {...defaultProperties({ onClose })} />
+      </QueryClientProvider>
+    );
+
+    const reopenedDialog = await screen.findByRole('dialog', { name: MODAL_TITLE });
+    await within(reopenedDialog).findByRole('combobox');
+
+    // noMatchResolution should be reset to 'idle', so choice prompt is NOT shown
+    expect(within(reopenedDialog).queryByRole('button', { name: 'Create New Definition' })).toBeNull();
+  });
+
+  it('reopens modal and resets assessmentState to idle', async () => {
+    const onClose = vi.fn();
+    vi.mocked(getGoogleClassroomAssignments).mockResolvedValue(MOCK_ASSIGNMENTS);
+    vi.mocked(findMatchingDefinition).mockReturnValue({ kind: 'no-match' });
+
+    const queryClient = createAppQueryClient();
+    queryClient.setQueryData(queryKeys.classPartials(), [
+      createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+    ]);
+    queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [createDefinitionPartial()]);
+
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <AssessTaskModal {...defaultProperties({ onClose })} />
+      </QueryClientProvider>
+    );
+
+    const dialog = screen.getByRole('dialog', { name: MODAL_TITLE });
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    // Close the modal
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <AssessTaskModal {...defaultProperties({ open: false, onClose })} />
+      </QueryClientProvider>
+    );
+
+    // Reopen with the same classId
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <AssessTaskModal {...defaultProperties({ onClose })} />
+      </QueryClientProvider>
+    );
+
+    const reopenedDialog = await screen.findByRole('dialog', { name: MODAL_TITLE });
+
+    // assessmentState should be 'idle', so Select is visible and no Alert
+    await within(reopenedDialog).findByRole('combobox');
+    expect(within(reopenedDialog).queryByRole('alert')).toBeNull();
+  });
+
+  it('initial noMatchResolution is idle — matched flow succeeds without choice prompt', async () => {
+    const matchedDefinition = createDefinitionPartial();
+    const { dialog } = renderWithCache({
+      classPartials: [
+        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+      ],
+      definitionPartials: [matchedDefinition],
+      findMatchResult: { kind: 'matched', definition: matchedDefinition },
+      startRunResult: null,
+      startRunType: 'resolve',
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    // The choice prompt must NOT appear — confirming noMatchResolution starts as 'idle'.
+    // If noMatchResolution were 'choice', the choice prompt would render instead of
+    // the normal success flow after a matched definition is found.
+    await waitFor(() => {
+      expect(within(dialog).queryByRole('button', { name: 'Create New Definition' })).toBeNull();
+      expect(within(dialog).queryByRole('button', { name: 'Link to Existing Definition' })).toBeNull();
+      expect(within(dialog).queryByText(/no matching assignment definition found/i)).toBeNull();
+    });
+
+    // Success state should appear (standard matched flow)
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert).toBeInTheDocument();
   });
 });
 

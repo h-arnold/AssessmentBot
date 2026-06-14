@@ -278,9 +278,19 @@ Frontend tests (AssessTaskModal.spec.tsx):
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** describe actual changes made when done.
-- **Deviations from plan:** note any departures from the original section design.
-- **Follow-up implications for later sections:** Section 3 depends on the `creating` state being wired and the wizard being rendered within this state.
+- **Implementation notes:**
+  1. Added `noMatchResolution` state (`'idle' | 'choice' | 'creating'`, initial `'idle'`) alongside `assessmentState`
+  2. Added `selectedAssignmentForChoice` state to preserve assignment for choice prompt Alert
+  3. Modified `handleMatchOutcome`: no-match branch sets `noMatchResolution('choice')` + resets `assessmentState` to `'idle'` instead of calling `setAssessmentAsError`
+  4. Added `handleCreateNewDefinition` handler → `noMatchResolution = 'creating'`
+  5. Modified `renderBody()`: renders choice prompt (info Alert + two buttons) during `choice`; returns null during `creating` (body hidden)
+  6. Extracted `getFooterContent()` with reconciliation table logic: Cancel-only during choice/creating; Cancel + disabled Start Assessment during creating+loading; normal buttons otherwise
+  7. Added `Tooltip` wrapping pattern for disabled "Link to Existing Definition" button with `<span>` wrapper per SPEC.md
+  8. Added reset of both state machines (`noMatchResolution`, `assessmentState`, `selectedAssignmentId`, `assessmentError`) on modal open
+  9. Updated `@remarks` JSDoc to document orthogonal `assessmentState × noMatchResolution` state machine
+  10. Replaced old no-match error-alert test with 7 new choice-state tests
+- **Deviations from plan:** State resets were placed inside `.then()`/`.catch()` callbacks (rather than synchronously in the effect body) to satisfy React 19 `react-hooks/set-state-in-effect` lint rule. This has no observable behavioural difference.
+- **Follow-up implications for later sections:** Section 3 wires the `AssignmentDefinitionWizardModal` into the `creating` state slot (currently returns `null` body).
 
 ---
 
