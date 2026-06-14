@@ -306,8 +306,14 @@ Frontend tests in `apiService.spec.ts`:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** to be filled during implementation.
-- **Deviations from plan:** to be filled during implementation.
+- **Implementation notes:**
+  - `cancelApiQueued` implemented as a synchronous function using `JobNameSchema.parse` for validation (consistent with `getQueueState` and `callApiQueued`).
+  - Uses `queue.pending.splice(0)` to atomically drain pending entries, then synchronously rejects each with `{ reason: 'CANCELLED' }`.
+  - Returns count of removed pending items. Active in-flight request unaffected.
+  - 5 new tests added to `apiService.spec.ts`. All 40 tests pass (35 existing + 5 new).
+  - Shared-helper entry added to `frontend-shared-helpers-and-abstraction-standards.md` §9.14 with status `Not implemented` (will be updated to `Implemented` during documentation pass).
+  - Regression Gate: zero regressions, zero new failures.
+- **Deviations from plan:** None.
 - **Follow-up implications for later sections:** Section 2 builds the engine that consumes `cancelApiQueued`.
 
 ---
