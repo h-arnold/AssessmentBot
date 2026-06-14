@@ -158,11 +158,18 @@ Frontend tests in new `bulkMutationResolution.spec.ts`:
 3. `getBulkOutcomeTitle` returns the full-failure title when failed count equals total.
 4. `getBulkOutcomeTitle` returns the partial-failure title when failed count is less than total.
 5. `createBulkFailureMessage` returns correct copy for all-failure, single-failure, partial-failure, and partial-refresh-failure cases.
-6. `createBulkMetadataFailureMessage` delegates to `createBulkFailureMessage` with metadata-specific copy.
-7. `buildTopLevelBulkMutationResolution` returns alert with correct type, title, and description for: full failure, partial failure, no failure, and refresh-failure cases.
-8. `buildTopLevelBulkMutationResolution` preserves `selectedRowKeys` from rejected rows.
-9. `buildMetadataBulkMutationResolution` returns all-failure outcome with `errorMessage` set and `shouldCloseModal: false`.
-10. `buildMetadataBulkMutationResolution` returns partial-failure outcome with `alert` set and `shouldCloseModal: true`.
+6. `createBulkCreateFailureMessage` returns action-specific copy for create failures.
+7. `createBulkDeleteFailureMessage` returns action-specific copy for delete failures.
+8. `createBulkSetActiveFailureMessage` returns action-specific copy for set-active failures.
+9. `createBulkSetInactiveFailureMessage` returns action-specific copy for set-inactive failures.
+10. `createBulkSetCohortFailureMessage` returns action-specific copy for set-cohort failures.
+11. `createBulkSetYearGroupFailureMessage` returns action-specific copy for set-year-group failures.
+12. `createBulkSetCourseLengthFailureMessage` returns action-specific copy for set-course-length failures.
+13. `createBulkMetadataFailureMessage` delegates to `createBulkFailureMessage` with metadata-specific copy.
+14. `buildTopLevelBulkMutationResolution` returns alert with correct type, title, and description for: full failure, partial failure, no failure, and refresh-failure cases.
+15. `buildTopLevelBulkMutationResolution` preserves `selectedRowKeys` from rejected rows.
+16. `buildMetadataBulkMutationResolution` returns all-failure outcome with `errorMessage` set and `shouldCloseModal: false`.
+17. `buildMetadataBulkMutationResolution` returns partial-failure outcome with `alert` set and `shouldCloseModal: true`.
 
 Frontend tests in new `classesManagementWorkflowBoundary.spec.ts`:
 
@@ -182,7 +189,7 @@ Existing integration tests (no new tests needed — the extraction is verified b
 These steps are sequential but should be executed as one TDD cycle (Red → Green → Refactor):
 
 1. **Red**: Write the unit tests listed above for the four new modules. All pass zero tests initially.
-2. **Green — Extract A**: Create `bulk/bulkMutationResolution.ts` with the extracted copy builders and resolution functions. Import from `./queryInvalidation`, `../classesManagementViewModel`, and `./batchMutationEngine` as needed.
+2. **Green — Extract A**: Create `bulk/bulkMutationResolution.ts` with the extracted copy builders and resolution functions. Import from `./queryInvalidation`, `../classesManagementViewModel`, and `./runQueuedBatchMutation` as needed.
 3. **Green — Extract B**: Create `components/ClassesManagementPanelOutcomeAlert.tsx` (single sub-component).
 4. **Green — Extract C**: Create `components/ClassesManagementPanelLoadingState.tsx` (single sub-component).
 5. **Green — Extract D**: Create `components/classesManagementWorkflowBoundary.ts` (boundary helpers).
@@ -216,8 +223,14 @@ Implementation mandatory docs:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** to be filled during implementation.
-- **Deviations from plan:** to be filled during implementation.
+- **Implementation notes:**
+  - Four modules successfully extracted from `ClassesManagementPanel.tsx`: `bulkMutationResolution.ts` (~350 lines), `ClassesManagementPanelOutcomeAlert.tsx`, `ClassesManagementPanelLoadingState.tsx`, and `classesManagementWorkflowBoundary.ts`.
+  - Panel reduced from 967 to ~546 lines. All 47 existing tests pass without modification.
+  - 32 new unit tests added (23 in `bulkMutationResolution.spec.ts`, 9 in `classesManagementWorkflowBoundary.spec.ts`).
+  - Regression Gate: zero regressions, zero new failures. Frontend lint and tests pass clean.
+- **Deviations from plan:**
+  - ACTION_PLAN test cases 10-12 (`createBulkSetCohortFailureMessage`, `createBulkSetYearGroupFailureMessage`, `createBulkSetCourseLengthFailureMessage`) were **not implemented** — these functions do not exist in the source codebase. All metadata actions use the generic `createBulkMetadataFailureMessage`. Creating new action-specific functions would violate the "pure extraction" constraint. Tests for these three functions were removed from the spec file during Red review.
+  - The five `createBulk*FailureMessage` functions extracted are: `createBulkCreateFailureMessage`, `createBulkDeleteFailureMessage`, `createBulkSetActiveFailureMessage`, `createBulkSetInactiveFailureMessage`, and `createBulkMetadataFailureMessage`.
 - **Follow-up implications for later sections:** Sections 5 and 6 modify `buildTopLevelBulkMutationResolution` and `buildMetadataBulkMutationResolution` to detect cancellation markers and emit cancellation-specific copy and metadata all-failure alert migration. After this section, those functions live in `bulk/bulkMutationResolution.ts`.
 
 ---
@@ -285,7 +298,7 @@ Frontend tests in `apiService.spec.ts`:
 
 - `npm run test:frontend -- src/services/apiService.spec.ts`
 - `npm run lint:frontend`
-- Shared-helper entry added to `frontend-shared-helpers-and-abstraction-standards.md` §9.14 with status `Not implemented`.
+- Shared-helper entry for `cancelApiQueued` added to `frontend-shared-helpers-and-abstraction-standards.md` §9.14 with status `Not implemented` **before implementation starts**.
 
 ### Optional `@remarks` JSDoc follow-through
 
@@ -357,7 +370,7 @@ Frontend tests in `runQueuedBatchMutation.spec.ts`:
 1. Empty items array resolves to empty results.
 2. Single item resolves to fulfilled result.
 3. Multiple items are processed sequentially (second dispatch only after first settles).
-4. Progress callback fires with correct snapshots at start and after each settle.
+4. Progress callback fires with correct snapshots **after each item is dispatched** (showing current item) **and after each item settles** (incrementing completed).
 5. Backend failure is captured as a rejected row result and the engine continues.
 6. Cancellation via `cancelApiQueued` rejects pending items with `{ reason: 'CANCELLED' }` and the engine aggregates them correctly. (Use the deferred-release mock pattern from `apiService.spec.ts` to hold the active request pending while asserting cancellation.)
 7. Results preserve submitted-row order.
@@ -441,7 +454,8 @@ Frontend tests in `ClassesBulkProgressModal.spec.tsx`:
 4. Clicking the footer Cancel button calls the cancel callback.
 5. Clicking the header X / mask calls the dismiss callback, not the cancel callback.
 6. Modal body content outside the live region has `aria-busy="true"` while `isInProgress` is true.
-7. On close, focus moves to the toolbar region (best-effort assertion).
+7. Current item text and count are wrapped in an `aria-live="polite"` region that announces updates.
+8. On close, focus moves to the toolbar region (best-effort assertion).
 
 ### Section checks
 
@@ -523,6 +537,7 @@ Frontend tests in `useClassesBulkMutationQueue.spec.ts`:
 5. After drain, a new action re-opens the modal.
 6. `onCancelQueue` calls `cancelApiQueued('classesBulkMutation')`.
 7. The `mutate` function receives a progress callback that updates the hook's `progress` state.
+8. After queue drains, dismissed flag resets; a subsequent action re-opens the progress modal.
 
 ### Section checks
 
@@ -555,7 +570,7 @@ Update the existing bulk flow modules to use `runQueuedBatchMutation`, wire the 
 - Update the panel descriptors so each action's `mutateRows` accepts `onProgress` and passes it to the flow module or inline handler.
 - `runQueuedBulkAction` is called with a `mutate` function that invokes the relevant flow module / inline handler with the hook's progress callback, and an `onComplete` that runs the existing outcome-resolution and refresh orchestration.
 - Close input modals (`createModalOpen`, `deleteModalOpen`, `setCohortModalOpen`, `setYearGroupModalOpen`, `setCourseLengthModalOpen`) synchronously before invoking `runBulkMutationOrchestration`.
-- Reset form state for form modals after enqueue.
+- Reset form state for form modals after enqueue — explicitly reset `BulkSetSelectModal` and `BulkSetCourseLengthModal` form state.
 - Feed `queueActive` from the hook into the existing workflow mutation boundary by OR-ing it with the existing `setSubmitting` flags in `isClassesWorkflowMutationBoundaryActive` and `selectionFrozen`.
 
 ### Delegation mandatory reads
@@ -605,10 +620,11 @@ Frontend tests:
 
 1. `ClassesManagementPanel.spec.tsx`: a queued bulk action opens the progress modal and disables the toolbar.
 2. `ClassesManagementPanel.spec.tsx`: input modals close when the queued action starts.
-3. `bulkCreate.spec.tsx`: create flow calls `runQueuedBatchMutation` with the correct items and returns its results; mock `runQueuedBatchMutation` to verify inputs and outputs.
-4. `bulkSetCohort.spec.tsx`, `bulkSetYearGroup.spec.tsx`, `bulkSetCourseLength.spec.tsx`: metadata flows call `bulkMetadataUpdate` with `onProgress`, and `bulkMetadataUpdate` forwards it to `runQueuedBatchMutation`.
-5. `bulkActiveState.spec.tsx`: active/inactive handlers call `runQueuedBatchMutation` with the correct items.
-6. `bulkDelete.spec.tsx`: delete handler calls `runQueuedBatchMutation` with the correct items.
+3. `ClassesManagementPanel.spec.tsx`: input/confirmation modal closes **before** progress modal opens (no modal stacking).
+4. `bulkCreate.spec.tsx`: create flow calls `runQueuedBatchMutation` with the correct items and returns its results; mock `runQueuedBatchMutation` to verify inputs and outputs.
+5. `bulkSetCohort.spec.tsx`, `bulkSetYearGroup.spec.tsx`, `bulkSetCourseLength.spec.tsx`: metadata flows call `bulkMetadataUpdate` with `onProgress`, and `bulkMetadataUpdate` forwards it to `runQueuedBatchMutation`.
+6. `bulkActiveState.spec.tsx`: active/inactive handlers call `runQueuedBatchMutation` with the correct items.
+7. `bulkDelete.spec.tsx`: delete handler calls `runQueuedBatchMutation` with the correct items.
 
 ### Section checks
 
@@ -679,7 +695,7 @@ Frontend tests:
 
 1. `ClassesManagementPanel.spec.tsx`: cancelling some rows shows a cancellation message and retains cancelled rows in selection.
 2. `ClassesManagementPanel.spec.tsx`: backend failures still show existing failure copy.
-3. `ClassesManagementPanel.bulkMetadataFailure.spec.tsx`: all-failure metadata outcome shows a panel-level alert and closes the modal.
+3. `ClassesManagementPanel.bulkMetadataFailure.spec.tsx`: **rewrite assertions** — all-failure metadata outcome now shows a panel-level alert (`alert` field) with `shouldCloseModal: true`, instead of inline `errorMessage` with `shouldCloseModal: false`. Verify panel alert appears and modal closes.
 
 ### Section checks
 
@@ -709,7 +725,9 @@ Add Playwright E2E tests for the progress modal appearance, count updates, cance
 
 - Reuse the shared runtime mock in `src/frontend/e2e-tests/shared/endToEndRuntimeMocks.ts` and the classes CRUD helpers in `src/frontend/e2e-tests/classes-crud.shared.ts`.
 - Use the existing `releaseSignal` mechanism to pause and resume individual queued calls.
-- Cover bulk create and bulk delete at minimum; add coverage for one metadata action if the harness supports it without significant extra work.
+- **StrictMode queue doubling is mandatory**: every queued mutation method (`upsertABClass`, `updateABClass`, `deleteABClass`) must provide **2 response entries per row** in the mock scenario (one per React 19 StrictMode effect replay). See `docs/developer/frontend/frontend-playwright-e2e.md` §"React 19 StrictMode Double-Effect Rule".
+- **Extend `classes-crud.shared.ts` harness** to include `upsertABClass`, `updateABClass`, `deleteABClass` in its `callCounts`, `responseQueues`, and `releaseSignal` support so the deferred-release pattern works for queued bulk calls.
+- Cover bulk create, bulk delete, **and at least one metadata bulk action (e.g., Set cohort)** at minimum.
 
 ### Delegation mandatory reads
 
@@ -730,22 +748,24 @@ No new helper decisions.
 - E2E tests verify the progress modal opens during a bulk action.
 - Count updates are observable as queued calls complete.
 - The Cancel button removes pending items and surfaces a cancellation message.
-- Dismissing the modal does not stop the active queue.
+- Dismissing the modal does not stop the active queue; toolbar remains disabled; alert banner appears on drain.
 - Toolbar buttons are disabled while the queue is active.
+- At least one metadata bulk action (e.g., Set cohort) shows correct progress verb and count updates.
 
 ### Required test cases (Red first)
 
-E2E tests in a new or existing classes CRUD spec:
+E2E tests in **`src/frontend/e2e-tests/classes-crud-bulk-progress.spec.ts`** (new file):
 
 1. Bulk create shows the progress modal with correct initial count.
 2. Progress count updates as queued create calls complete.
 3. Cancelling a multi-row create removes pending rows and shows a cancellation message.
-4. Dismissing the progress modal allows the queue to continue; toolbar remains disabled.
+4. Dismissing the progress modal hides it but queue continues; toolbar remains disabled; alert banner appears on drain.
 5. Bulk delete disables toolbar buttons while the queue is active.
+6. Set cohort (metadata action) shows progress modal with verb "Setting cohort for class {className}" and count updates.
 
 ### Section checks
 
-- `npm run test:frontend:e2e -- e2e-tests/classes-crud-bulk-progress.spec.ts` (or equivalent target; paths are relative to `src/frontend`)
+- `npm run test:frontend:e2e -- src/frontend/e2e-tests/classes-crud-bulk-progress.spec.ts`
 - E2E tests pass locally and in CI.
 
 ### Optional `@remarks` JSDoc follow-through
@@ -792,7 +812,7 @@ Run the full touched frontend test suites and lint checks to verify no regressio
 10. `npm run test:frontend -- src/features/classes/bulk/bulkActiveState.spec.tsx`
 11. `npm run test:frontend -- src/features/classes/bulk/bulkDelete.spec.tsx`
 12. `npm run test:frontend -- src/features/classes/ClassesManagementPanel.bulkMetadataFailure.spec.tsx`
-13. `npm run test:frontend:e2e -- e2e-tests/classes-crud-bulk-progress.spec.ts` (or equivalent target; paths are relative to `src/frontend`)
+13. `npm run test:frontend:e2e -- src/frontend/e2e-tests/classes-crud-bulk-progress.spec.ts`
 14. `npm run lint:frontend`
 15. Verify no `__` prefixed production exports.
 
