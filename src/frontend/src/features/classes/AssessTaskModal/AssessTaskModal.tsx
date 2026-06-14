@@ -301,7 +301,11 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
       const selectedAssignment = assignments.find(
         (a) => a.assignmentId === selectedAssignmentId
       );
-      if (!selectedAssignment) return;
+      if (!selectedAssignment) {
+        setNoMatchResolution('idle');
+        setAssessmentAsError('error', 'Selected assignment not found. Please try again.');
+        return;
+      }
 
       await startAssessmentRun({
         definitionKey,
