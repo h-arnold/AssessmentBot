@@ -116,17 +116,14 @@ describe('runQueuedBatchMutation', () => {
     ];
     const batchPromise = runQueuedBatchMutation(items, { jobName: 'test-job' });
 
-    // Only the first item should have been dispatched so far
-    expect(callApiQueuedMock).toHaveBeenCalledTimes(SINGLE_ITEM);
+    // All items are enqueued upfront
+    expect(callApiQueuedMock).toHaveBeenCalledTimes(TWO_ITEMS);
 
     // Release the first deferred promise
     resolvers[0]('data-A');
 
-    // Flush microtasks so the engine processes the resolution and dispatches the next item
+    // Flush microtasks so the engine processes the first resolution
     await Promise.resolve();
-
-    // Now the second item should have been dispatched
-    expect(callApiQueuedMock).toHaveBeenCalledTimes(TWO_ITEMS);
 
     // Release the second deferred promise
     resolvers[1]('data-B');
@@ -247,10 +244,10 @@ describe('runQueuedBatchMutation', () => {
 
     const batchPromise = runQueuedBatchMutation(items, { jobName: 'test-job' });
 
-    // Only item 1 should have been dispatched
-    expect(callApiQueuedMock).toHaveBeenCalledTimes(SINGLE_ITEM);
+    // All items are enqueued upfront
+    expect(callApiQueuedMock).toHaveBeenCalledTimes(THREE_ITEMS);
 
-    // Release item 1 — the engine then enqueues items 2 and 3 (both reject)
+    // Release item 1 — the engine then awaits items 2 and 3 (both reject)
     cancellers[0]('data-A');
 
     const results = await batchPromise;

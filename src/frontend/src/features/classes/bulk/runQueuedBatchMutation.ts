@@ -84,7 +84,12 @@ export async function runQueuedBatchMutation<TData>(
   const results: RowMutationResult<ClassesManagementRow, TData>[] = [];
   let completed = 0;
 
-  for (const item of items) {
+  // Enqueue all items first so that cancelApiQueued can cancel pending items
+  // before they are dispatched.  The queue processes them FIFO; we await the
+  // returned Promises in submission order to keep the engine sequential.
+  const promises = items.map((item) => callApiQueued<TData>(item.method, item.parameters, jobName));
+
+  for (const [index, item] of items.entries()) {
     // --- starting progress ---
     onProgress?.({
       currentItem: { verb: item.verb, className: item.className },
@@ -94,10 +99,9 @@ export async function runQueuedBatchMutation<TData>(
       isInProgress: true,
     });
 
-    const promise = callApiQueued<TData>(item.method, item.parameters, jobName);
-
     try {
-      const data = await promise;
+      // eslint-disable-next-line security/detect-object-injection -- index from a bounded `for` loop
+      const data = await promises[index];
       results.push({ status: 'fulfilled', row: item.row, data } as FulfilledRowResult<
         ClassesManagementRow,
         TData
