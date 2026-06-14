@@ -525,9 +525,13 @@ None — E2E tests are self-documenting.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** describe actual changes made when done.
-- **Deviations from plan:** note any departures from the original section design.
-- **Follow-up implications for later sections:** Regression must include the E2E suite.
+- **Implementation notes:**
+  1. Added `startAssessmentRun` to `RuntimeScenario` type and `allMethods` array in `endToEndRuntimeMocks.ts`
+  2. Created `CreateAssessTaskScenarioOptions` type and updated `createAssessTaskScenario()` factory in `classes-page-end-to-end-helpers.ts`
+  3. Added 6 new E2E tests covering: choice prompt rendering, Cancel from choice, wizard pre-population, wizard cancel, full auto-assessment flow, and outer Cancel during wizard
+  4. All 15 AssessTaskModal E2E tests pass; all 21 existing ClassesPage E2E tests pass
+- **Deviations from plan:** Test 15 (outer Cancel) uses sequential dialog dismissal rather than direct overlay click due to React event delegation limitations in Playwright.
+- **Follow-up implications for later sections:** Regression phase must include the E2E suite.
 
 ---
 
