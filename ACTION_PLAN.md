@@ -480,8 +480,14 @@ Frontend tests in `ClassesBulkProgressModal.spec.tsx`:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** to be filled during implementation.
-- **Deviations from plan:** to be filled during implementation.
+- **Implementation notes:**
+  - `ClassesBulkProgressModal` presentational component implemented using Ant Design `Modal`, `Progress`, `Flex`, `Typography.Text`, and `Button`.
+  - Custom footer with "Cancel remaining" button, disabled when `pendingCount === 0`.
+  - `aria-live="polite"` region wraps current item text and count. Non-live content marked `aria-busy="true"` while `isInProgress`.
+  - Progress bar uses `status="active"`, `showInfo={false}`. Modal is `centered`.
+  - 9 tests pass, 100% coverage. Lint and TSC clean.
+  - Regression Gate: zero regressions, zero new failures.
+- **Deviations from plan:** None.
 - **Follow-up implications for later sections:** Section 4 wires the modal into the feature hook.
 
 ---
