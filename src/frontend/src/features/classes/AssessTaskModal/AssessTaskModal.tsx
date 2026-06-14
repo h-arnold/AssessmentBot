@@ -1,6 +1,7 @@
 import { Alert, Button, Empty, Modal, Select, Space, Spin, Tooltip, Typography } from 'antd';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { getGoogleClassroomAssignments } from '../../../services/googleClassrooms/googleClassroomAssignmentsService';
 import { findMatchingDefinition } from './matchDefinitionForAssignment';
 import { startAssessmentRun } from '../../../services/assignmentAssessment/assignmentAssessmentService';
@@ -8,6 +9,8 @@ import { ApiTransportError } from '../../../errors/apiTransportError';
 import { queryKeys } from '../../../query/queryKeys';
 import type { ClassPartial } from '../../../services/googleClassrooms/classPartials.zod';
 import type { AssignmentDefinitionPartial } from '../../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import { AssignmentDefinitionWizardModal } from '../../assignmentWizard/AssignmentDefinitionWizardModal';
+import type { AssignmentTopic } from '../../../services/referenceData/referenceData.zod';
 
 type Assignment = { assignmentId: string; title: string; topicId: string | null; topicName: string | null };
 
@@ -68,6 +71,31 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
   const [assessmentAlertType, setAssessmentAlertType] = useState<AssessmentAlertType>('error');
   const [noMatchResolution, setNoMatchResolution] = useState<'idle' | 'choice' | 'creating'>('idle');
   const [selectedAssignmentForChoice, setSelectedAssignmentForChoice] = useState<Assignment | null>(null);
+  const [hasCreateSucceeded, setHasCreateSucceeded] = useState(false);
+
+  // Read cached data for wizard pre-population
+  const assignmentTopics = queryClient.getQueryData<AssignmentTopic[]>(queryKeys.assignmentTopics());
+  const classPartialsFromCache = queryClient.getQueryData<ClassPartial[]>(queryKeys.classPartials());
+  const classPartialForWizard = classPartialsFromCache?.find((cp) => cp.classId === classId);
+  const yearGroupKey = classPartialForWizard?.yearGroupKey;
+
+  /**
+   * Derives initial values for the AssignmentDefinitionWizardModal when
+   * the user is creating a new definition from a no-match resolution.
+   */
+  const wizardInitialValues = useMemo((): Readonly<{ title?: string; topic?: string; yearGroup?: string }> | undefined => {
+    if (noMatchResolution !== 'creating') return undefined;
+    const selectedAssignment = assignments.find((a) => a.assignmentId === selectedAssignmentId);
+    if (!selectedAssignment) return undefined;
+    const values: { title?: string; topic?: string; yearGroup?: string } = { title: selectedAssignment.title,};
+    if (selectedAssignment.topicId && assignmentTopics?.some((t) => t.key === selectedAssignment.topicId)) {
+      values.topic = selectedAssignment.topicId;
+    }
+    if (yearGroupKey) {
+      values.yearGroup = yearGroupKey;
+    }
+    return values;
+  }, [noMatchResolution, selectedAssignmentId, assignments, assignmentTopics, yearGroupKey]);
 
   useEffect(() => {
     if (!open) return;
@@ -77,6 +105,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
         // Reset both state machines on modal open (SPEC.md transition rule 0)
         setNoMatchResolution('idle');
         setSelectedAssignmentForChoice(null);
+        setHasCreateSucceeded(false);
         setAssessmentState('idle');
         setAssessmentError(undefined);
         setSelectedAssignmentId(undefined);
@@ -87,6 +116,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
         // Reset state machines even on fetch failure
         setNoMatchResolution('idle');
         setSelectedAssignmentForChoice(null);
+        setHasCreateSucceeded(false);
         setAssessmentState('idle');
         setAssessmentError(undefined);
         setSelectedAssignmentId(undefined);
@@ -237,6 +267,82 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
     setNoMatchResolution('creating');
   }
 
+  /**
+   * Handles the wizard's onCreateSuccess callback — kicks off the
+   * assessment run using the newly created definition key.
+   *
+   * @remarks
+   * Uses `flushSync` to synchronously unmount the wizard before the
+   * auto-assessment API call begins. React 18's automatic batching would
+   * defer the `assessmentState` update to the next microtask, causing the
+   * wizard to remain mounted during the API call. `flushSync` forces
+   * the state update to flush synchronously so the wizard unmounts
+   * immediately and the body remains hidden per SPEC.md §250.
+   *
+   * The state transition sequence:
+   * 1. `hasCreateSucceeded = true`, `assessmentState = 'loading'` (sync flush)
+   * 2. `startAssessmentRun` API call
+   * 3a. Success: `noMatchResolution = 'idle'`, `assessmentState = 'success'`
+   * 3b. Failure: `noMatchResolution = 'idle'`, `assessmentState = 'error'`
+   *
+   * @param {string} definitionKey The key of the newly created definition.
+   */
+  async function handleWizardCreateSuccess(definitionKey: string): Promise<void> {
+    // Use flushSync so the wizard is unmounted synchronously before the
+    // auto-assessment API call begins (React 18 batching would otherwise
+    // defer the unmount to the next microtask).
+    flushSync(() => {
+      setHasCreateSucceeded(true);
+      setAssessmentState('loading');
+      setAssessmentError(undefined);
+    });
+
+    try {
+      const selectedAssignment = assignments.find(
+        (a) => a.assignmentId === selectedAssignmentId
+      );
+      if (!selectedAssignment) return;
+
+      await startAssessmentRun({
+        definitionKey,
+        assignmentId: selectedAssignment.assignmentId,
+        courseId: classId,
+      });
+
+      setNoMatchResolution('idle');
+      setAssessmentAlertType('success');
+      setAssessmentError(`Assessment started for '${selectedAssignment.title}'.`);
+      setAssessmentState('success');
+    } catch (error: unknown) {
+      setNoMatchResolution('idle');
+      handleApiError(error);
+    }
+  }
+
+  /**
+   * Handles wizard close — if the wizard closed without onCreateSuccess
+   * having fired (i.e., user cancelled), return to the choice state.
+   *
+   * @remarks
+   * Uses the `hasCreateSucceeded` flag to distinguish the two close paths
+   * from the wizard per SPEC.md §189:
+   * - **Wizard success**: `onCreateSuccess` fires first, setting
+   *   `hasCreateSucceeded = true`; when the wizard subsequently unmounts
+   *   and `onClose` fires, this handler returns early — the assessment
+   *   state machine handles the transition.
+   * - **Wizard cancel**: `onClose` fires without `onCreateSuccess` having
+   *   been called; `hasCreateSucceeded` is still `false`, so the handler
+   *   transitions `noMatchResolution` back to `'choice'`.
+   */
+  function handleWizardClose(): void {
+    if (hasCreateSucceeded) {
+      // Wizard closed after success — assessment state handles the transition
+      return;
+    }
+    // Wizard cancelled — return to choice state
+    setNoMatchResolution('choice');
+  }
+
   const isStartDisabled =
     fetchState !== 'ready' ||
     selectedAssignmentId === undefined ||
@@ -331,9 +437,6 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
   }
 
   /**
-   *
-   */
-  /**
    * Determines the modal footer content based on assessment state and
    * no-match resolution state.
    *
@@ -388,6 +491,16 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
       footer={footerContent}
     >
       {renderBody()}
+      {noMatchResolution === 'creating' && assessmentState === 'idle' && (
+        <AssignmentDefinitionWizardModal
+          open={true}
+          mode="create"
+          definitionKey={null}
+          initialValues={wizardInitialValues}
+          onCreateSuccess={handleWizardCreateSuccess}
+          onClose={handleWizardClose}
+        />
+      )}
     </Modal>
   );
 }

@@ -1075,8 +1075,8 @@ export function useAssignmentDefinitionWizard(
     (
       actionType: 'parse' | 'save' | 'reparse',
       response: UpsertAssignmentDefinitionResponse | undefined,
-      onCreateSuccess?: (definitionKey: string) => void,
-      effectiveKey?: string | null
+      effectiveKey: string | null,
+      onCreateSuccess?: (definitionKey: string) => void
     ): UpsertAssignmentDefinitionResponse | undefined => {
       if (actionType === 'save') {
         if (onCreateSuccess) {
@@ -1134,8 +1134,8 @@ export function useAssignmentDefinitionWizard(
         return handlePostMutation(
           options.actionType,
           response,
-          options.onCreateSuccess,
-          options.definitionKey
+          options.definitionKey,
+          options.onCreateSuccess
         );
       } catch (caughtError) {
         // Extract error details for structured logging per frontend-logging-and-error-handling.md

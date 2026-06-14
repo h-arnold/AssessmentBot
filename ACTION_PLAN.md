@@ -391,9 +391,18 @@ Frontend tests (AssessTaskModal.spec.tsx):
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** describe actual changes made when done.
-- **Deviations from plan:** note any departures from the original section design.
-- **Follow-up implications for later sections:** none — this is the final feature section.
+- **Implementation notes:**
+  1. Added imports: `AssignmentDefinitionWizardModal`, `AssignmentTopic` type, `useMemo`, `flushSync`
+  2. Added `hasCreateSucceeded` state flag to distinguish wizard cancel from success per SPEC.md §189
+  3. Added cache reads for `assignmentTopics`, `classPartialsFromCache`, `yearGroupKey`
+  4. Added `wizardInitialValues` derived via `useMemo` with topic existence check kept local (per Section 9.14 shared-helpers policy)
+  5. Added `handleWizardCreateSuccess` — uses `flushSync` to synchronously unmount the wizard before auto-assessment, preventing a flash of the assignment Select
+  6. Added `handleWizardClose` — checks `hasCreateSucceeded` to distinguish cancel (→ choice) from success (→ no-op, assessment handles transition)
+  7. Rendered `AssignmentDefinitionWizardModal` gated on `noMatchResolution === 'creating' && assessmentState === 'idle'` with all required props
+  8. Reset `hasCreateSucceeded` on modal open
+  9. Coverage: 48 AssessTaskModal tests + 33 wizard tests pass; no regressions
+- **Deviations from plan:** Used `flushSync` from `react-dom` for synchronous wizard unmount (React 18 batching would otherwise keep wizard mounted during auto-assessment). Cleaned up empty JSDoc block on `getFooterContent`. Added `@remarks` to `handleWizardCreateSuccess` and `handleWizardClose` documenting the flushSync usage and cancel-detection mechanism per Code Reviewer feedback.
+- **Follow-up implications for later sections:** Section 4 (E2E tests) validates the full cross-modal integration.
 
 ---
 
