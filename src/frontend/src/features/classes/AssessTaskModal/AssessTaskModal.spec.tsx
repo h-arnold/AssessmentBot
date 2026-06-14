@@ -11,8 +11,8 @@ import { createAppQueryClient } from '../../../query/queryClient';
 import { ApiTransportError } from '../../../errors/apiTransportError';
 import { createFixtureClassPartial } from '../../../test/classes/classesPageTestHelpers';
 import type { AssignmentTopic } from '../../../services/referenceData/referenceData.zod';
-import type { GoogleClassroomAssignmentsResponse } from '../../../services/googleClassrooms/googleClassroomAssignments.zod';
 import {
+  type RenderWithCacheOptions,
   MOCK_CLASS_ID,
   MOCK_ASSIGNMENTS,
   MOCK_EMPTY_ASSIGNMENTS,
@@ -24,6 +24,8 @@ import {
   renderWithCache,
   selectAssignment,
   clickStartAssessment,
+  clickCreateNewDefinition,
+  getWizardProperties,
   expectStartAssessmentDisabled,
   expectCancelButtonPresent,
 } from '../../../test/classes/AssessTaskModal.test-utilities';
@@ -554,6 +556,50 @@ describe('Assessment run interaction', () => {
   });
 });
 
+/**
+ * Renders a no-match choice state, closes the modal, and reopens it with the
+ * same classId.  Used by the reopen/reset tests to verify state is cleared.
+ *
+ * @returns {Promise<{ dialog: HTMLElement }>} The reopened dialog element.
+ */
+async function setupReopenInPlace() {
+  const onClose = vi.fn();
+  vi.mocked(getGoogleClassroomAssignments).mockResolvedValue(MOCK_ASSIGNMENTS);
+  vi.mocked(findMatchingDefinition).mockReturnValue({ kind: 'no-match' });
+
+  const queryClient = createAppQueryClient();
+  queryClient.setQueryData(queryKeys.classPartials(), [
+    createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+  ]);
+  queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [createDefinitionPartial()]);
+
+  const { rerender } = render(
+    <QueryClientProvider client={queryClient}>
+      <AssessTaskModal {...defaultProperties({ onClose })} />
+    </QueryClientProvider>
+  );
+
+  const dialog = screen.getByRole('dialog', { name: MODAL_TITLE });
+  await selectAssignment(dialog);
+  clickStartAssessment(dialog);
+
+  // Close the modal
+  rerender(
+    <QueryClientProvider client={queryClient}>
+      <AssessTaskModal {...defaultProperties({ open: false, onClose })} />
+    </QueryClientProvider>
+  );
+
+  // Reopen with the same classId
+  rerender(
+    <QueryClientProvider client={queryClient}>
+      <AssessTaskModal {...defaultProperties({ onClose })} />
+    </QueryClientProvider>
+  );
+
+  return { dialog: await screen.findByRole('dialog', { name: MODAL_TITLE }) };
+}
+
 // ---------------------------------------------------------------------------
 // No-match resolution — choice state
 // ---------------------------------------------------------------------------
@@ -657,44 +703,7 @@ describe('No-match resolution — choice state', () => {
   });
 
   it('reopens modal and resets noMatchResolution to idle', async () => {
-    const onClose = vi.fn();
-    vi.mocked(getGoogleClassroomAssignments).mockResolvedValue(MOCK_ASSIGNMENTS);
-    vi.mocked(findMatchingDefinition).mockReturnValue({ kind: 'no-match' });
-
-    const queryClient = createAppQueryClient();
-    queryClient.setQueryData(queryKeys.classPartials(), [
-      createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-    ]);
-    queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [createDefinitionPartial()]);
-
-    const { rerender } = render(
-      <QueryClientProvider client={queryClient}>
-        <AssessTaskModal {...defaultProperties({ onClose })} />
-      </QueryClientProvider>
-    );
-
-    const dialog = screen.getByRole('dialog', { name: MODAL_TITLE });
-    await selectAssignment(dialog);
-    clickStartAssessment(dialog);
-
-    // Verify the choice prompt is shown
-    expect(within(dialog).getByRole('button', { name: 'Create New Definition' })).toBeInTheDocument();
-
-    // Close the modal
-    rerender(
-      <QueryClientProvider client={queryClient}>
-        <AssessTaskModal {...defaultProperties({ open: false, onClose })} />
-      </QueryClientProvider>
-    );
-
-    // Reopen with the same classId
-    rerender(
-      <QueryClientProvider client={queryClient}>
-        <AssessTaskModal {...defaultProperties({ onClose })} />
-      </QueryClientProvider>
-    );
-
-    const reopenedDialog = await screen.findByRole('dialog', { name: MODAL_TITLE });
+    const { dialog: reopenedDialog } = await setupReopenInPlace();
     await within(reopenedDialog).findByRole('combobox');
 
     // noMatchResolution should be reset to 'idle', so choice prompt is NOT shown
@@ -702,41 +711,7 @@ describe('No-match resolution — choice state', () => {
   });
 
   it('reopens modal and resets assessmentState to idle', async () => {
-    const onClose = vi.fn();
-    vi.mocked(getGoogleClassroomAssignments).mockResolvedValue(MOCK_ASSIGNMENTS);
-    vi.mocked(findMatchingDefinition).mockReturnValue({ kind: 'no-match' });
-
-    const queryClient = createAppQueryClient();
-    queryClient.setQueryData(queryKeys.classPartials(), [
-      createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-    ]);
-    queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [createDefinitionPartial()]);
-
-    const { rerender } = render(
-      <QueryClientProvider client={queryClient}>
-        <AssessTaskModal {...defaultProperties({ onClose })} />
-      </QueryClientProvider>
-    );
-
-    const dialog = screen.getByRole('dialog', { name: MODAL_TITLE });
-    await selectAssignment(dialog);
-    clickStartAssessment(dialog);
-
-    // Close the modal
-    rerender(
-      <QueryClientProvider client={queryClient}>
-        <AssessTaskModal {...defaultProperties({ open: false, onClose })} />
-      </QueryClientProvider>
-    );
-
-    // Reopen with the same classId
-    rerender(
-      <QueryClientProvider client={queryClient}>
-        <AssessTaskModal {...defaultProperties({ onClose })} />
-      </QueryClientProvider>
-    );
-
-    const reopenedDialog = await screen.findByRole('dialog', { name: MODAL_TITLE });
+    const { dialog: reopenedDialog } = await setupReopenInPlace();
 
     // assessmentState should be 'idle', so Select is visible and no Alert
     await within(reopenedDialog).findByRole('combobox');
@@ -871,23 +846,40 @@ describe('Footer buttons across states', () => {
   });
 });
 
+/**
+ * Renders AssessTaskModal with standard no-match cache data and navigates to
+ * the choice state (assignment selected + Start Assessment clicked).
+ *
+ * @param {Partial<RenderWithCacheOptions>} [options] Additional render options forwarded to `renderWithCache`.
+ * @returns {Promise<{ dialog: HTMLElement; queryClient: import('@tanstack/react-query').QueryClient }>}
+ *   The dialog and query client.
+ */
+async function setupWizardTest(options: Partial<RenderWithCacheOptions> = {}) {
+  const { dialog, queryClient } = renderWithCache({
+    classPartials: [
+      createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+    ],
+    definitionPartials: [createDefinitionPartial()],
+    findMatchResult: { kind: 'no-match' },
+    ...options,
+  });
+
+  await selectAssignment(dialog);
+  clickStartAssessment(dialog);
+
+  return { dialog, queryClient };
+}
+
 // ---------------------------------------------------------------------------
 // No-match resolution — creating state and wizard integration
 // ---------------------------------------------------------------------------
 
 describe('No-match resolution — creating state and wizard integration', () => {
   it('renders wizard with mode="create" and correct initialValues when topicId matches cache', async () => {
-    const assignments: GoogleClassroomAssignmentsResponse = [
-      { assignmentId: 'a1', title: 'Essay', topicName: 'Writing', topicId: 'topic-writing' },
-    ];
-
-    const { dialog, queryClient } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+    const { dialog, queryClient } = await setupWizardTest({
+      assignments: [
+        { assignmentId: 'a1', title: 'Essay', topicName: 'Writing', topicId: 'topic-writing' },
       ],
-      definitionPartials: [createDefinitionPartial()],
-      assignments,
-      findMatchResult: { kind: 'no-match' },
     });
 
     // Populate topics cache with a matching topic
@@ -895,17 +887,8 @@ describe('No-match resolution — creating state and wizard integration', () => 
       { key: 'topic-writing', name: 'Writing', yearGroupKeys: ['year-10'] },
     ]);
 
-    await selectAssignment(dialog);
-    clickStartAssessment(dialog);
-
-    // Wait for choice state, then click "Create New Definition"
-    await within(dialog).findByRole('button', { name: 'Create New Definition' });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Create New Definition' }));
-
-    // The wizard mock should now be rendered inside the dialog
-    const wizard = await screen.findByTestId('wizard-mock');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const properties: any = (wizard as any).__wizardProps || {};
+    await clickCreateNewDefinition(dialog);
+    const properties = await getWizardProperties();
 
     expect(properties.mode).toBe('create');
     expect(properties.open).toBe(true);
@@ -920,17 +903,10 @@ describe('No-match resolution — creating state and wizard integration', () => 
   });
 
   it('leaves topic field empty when topicId is not in the assignmentTopics cache', async () => {
-    const assignments: GoogleClassroomAssignmentsResponse = [
-      { assignmentId: 'a1', title: 'Essay', topicName: 'Writing', topicId: 'unknown-topic' },
-    ];
-
-    const { dialog, queryClient } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+    const { dialog, queryClient } = await setupWizardTest({
+      assignments: [
+        { assignmentId: 'a1', title: 'Essay', topicName: 'Writing', topicId: 'unknown-topic' },
       ],
-      definitionPartials: [createDefinitionPartial()],
-      assignments,
-      findMatchResult: { kind: 'no-match' },
     });
 
     // Populate topics cache but with NO matching topic
@@ -939,15 +915,8 @@ describe('No-match resolution — creating state and wizard integration', () => 
       { key: 'topic-science', name: 'Science', yearGroupKeys: ['year-10'] },
     ]);
 
-    await selectAssignment(dialog);
-    clickStartAssessment(dialog);
-
-    await within(dialog).findByRole('button', { name: 'Create New Definition' });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Create New Definition' }));
-
-    const wizard = await screen.findByTestId('wizard-mock');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const properties: any = (wizard as any).__wizardProps || {};
+    await clickCreateNewDefinition(dialog);
+    const properties = await getWizardProperties();
 
     // Topic should NOT be present in initialValues when not found in cache
     expect(properties.initialValues).toEqual({
@@ -958,12 +927,7 @@ describe('No-match resolution — creating state and wizard integration', () => 
   });
 
   it('leaves topic field empty when topicId is null', async () => {
-    const { dialog, queryClient } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [createDefinitionPartial()],
-      findMatchResult: { kind: 'no-match' },
+    const { dialog, queryClient } = await setupWizardTest({
       assignments: [{ assignmentId: 'a1', title: 'Essay', topicName: 'Writing', topicId: null }],
     });
 
@@ -973,15 +937,8 @@ describe('No-match resolution — creating state and wizard integration', () => 
       { key: 'topic-writing', name: 'Writing', yearGroupKeys: ['year-10'] },
     ]);
 
-    await selectAssignment(dialog);
-    clickStartAssessment(dialog);
-
-    await within(dialog).findByRole('button', { name: 'Create New Definition' });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Create New Definition' }));
-
-    const wizard = await screen.findByTestId('wizard-mock');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const properties: any = (wizard as any).__wizardProps || {};
+    await clickCreateNewDefinition(dialog);
+    const properties = await getWizardProperties();
 
     // Topic should NOT be in initialValues when topicId is null
     expect(properties.initialValues).toEqual({
@@ -992,26 +949,13 @@ describe('No-match resolution — creating state and wizard integration', () => 
   });
 
   it('calls startAssessmentRun and shows success state when wizard saves successfully', async () => {
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [createDefinitionPartial()],
-      findMatchResult: { kind: 'no-match' },
+    const { dialog } = await setupWizardTest({
       startRunResult: null,
       startRunType: 'resolve',
     });
 
-    await selectAssignment(dialog);
-    clickStartAssessment(dialog);
-
-    await within(dialog).findByRole('button', { name: 'Create New Definition' });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Create New Definition' }));
-
-    // Get the wizard mock and invoke onCreateSuccess to trigger auto-assessment
-    const wizard = await screen.findByTestId('wizard-mock');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const properties: any = (wizard as any).__wizardProps || {};
+    await clickCreateNewDefinition(dialog);
+    const properties = await getWizardProperties();
     properties.onCreateSuccess('new-def-key');
 
     // startAssessmentRun should have been called with the new definition key
@@ -1036,26 +980,13 @@ describe('No-match resolution — creating state and wizard integration', () => 
 
   it('shows error state when startAssessmentRun fails after wizard creates definition', async () => {
     const apiError = new Error('API failure');
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [createDefinitionPartial()],
-      findMatchResult: { kind: 'no-match' },
+    const { dialog } = await setupWizardTest({
       startRunResult: apiError,
       startRunType: 'reject',
     });
 
-    await selectAssignment(dialog);
-    clickStartAssessment(dialog);
-
-    await within(dialog).findByRole('button', { name: 'Create New Definition' });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Create New Definition' }));
-
-    // Get the wizard mock and invoke onCreateSuccess
-    const wizard = await screen.findByTestId('wizard-mock');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const properties: any = (wizard as any).__wizardProps || {};
+    await clickCreateNewDefinition(dialog);
+    const properties = await getWizardProperties();
     properties.onCreateSuccess('new-def-key');
 
     // Error alert should appear
@@ -1065,24 +996,10 @@ describe('No-match resolution — creating state and wizard integration', () => 
   });
 
   it('returns to choice state when wizard is cancelled', async () => {
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [createDefinitionPartial()],
-      findMatchResult: { kind: 'no-match' },
-    });
+    const { dialog } = await setupWizardTest();
 
-    await selectAssignment(dialog);
-    clickStartAssessment(dialog);
-
-    await within(dialog).findByRole('button', { name: 'Create New Definition' });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Create New Definition' }));
-
-    // Get the wizard mock and call onClose to simulate wizard cancel
-    const wizard = await screen.findByTestId('wizard-mock');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const properties: any = (wizard as any).__wizardProps || {};
+    await clickCreateNewDefinition(dialog);
+    const properties = await getWizardProperties();
 
     // Simulate wizard cancel (onClose fires without onCreateSuccess having been called)
     properties.onClose();
@@ -1100,26 +1017,9 @@ describe('No-match resolution — creating state and wizard integration', () => 
 
   it('calls modal onClose when Cancel is clicked during creating state', async () => {
     const onClose = vi.fn();
-    vi.mocked(getGoogleClassroomAssignments).mockResolvedValue(MOCK_ASSIGNMENTS);
-    vi.mocked(findMatchingDefinition).mockReturnValue({ kind: 'no-match' });
+    const { dialog } = await setupWizardTest({ onClose });
 
-    const queryClient = createAppQueryClient();
-    queryClient.setQueryData(queryKeys.classPartials(), [
-      createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-    ]);
-    queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [createDefinitionPartial()]);
-
-    renderWithFrontendProviders(
-      <AssessTaskModal {...defaultProperties({ onClose })} />,
-      { queryClient }
-    );
-
-    const dialog = screen.getByRole('dialog', { name: MODAL_TITLE });
-    await selectAssignment(dialog);
-    clickStartAssessment(dialog);
-
-    await within(dialog).findByRole('button', { name: 'Create New Definition' });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Create New Definition' }));
+    await clickCreateNewDefinition(dialog);
 
     // Now in creating state — click Cancel in the AssessTaskModal footer
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
@@ -1134,24 +1034,10 @@ describe('No-match resolution — creating state and wizard integration', () => 
     });
     vi.mocked(startAssessmentRun).mockReturnValue(pendingRun);
 
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [createDefinitionPartial()],
-      findMatchResult: { kind: 'no-match' },
-    });
+    const { dialog } = await setupWizardTest();
 
-    await selectAssignment(dialog);
-    clickStartAssessment(dialog);
-
-    await within(dialog).findByRole('button', { name: 'Create New Definition' });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Create New Definition' }));
-
-    // Get the wizard mock and invoke onCreateSuccess to trigger auto-assessment
-    const wizard = await screen.findByTestId('wizard-mock');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const properties: any = (wizard as any).__wizardProps || {};
+    await clickCreateNewDefinition(dialog);
+    const properties = await getWizardProperties();
     properties.onCreateSuccess('new-def-key');
 
     // During loading: the wizard mock should be unmounted
@@ -1189,31 +1075,10 @@ describe('No-match resolution — creating state and wizard integration', () => 
     const pendingRun = new Promise<null>(() => {});
     vi.mocked(startAssessmentRun).mockReturnValue(pendingRun);
 
-    vi.mocked(getGoogleClassroomAssignments).mockResolvedValue(MOCK_ASSIGNMENTS);
-    vi.mocked(findMatchingDefinition).mockReturnValue({ kind: 'no-match' });
+    const { dialog } = await setupWizardTest({ onClose });
 
-    const queryClient = createAppQueryClient();
-    queryClient.setQueryData(queryKeys.classPartials(), [
-      createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-    ]);
-    queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [createDefinitionPartial()]);
-
-    renderWithFrontendProviders(
-      <AssessTaskModal {...defaultProperties({ onClose })} />,
-      { queryClient }
-    );
-
-    const dialog = screen.getByRole('dialog', { name: MODAL_TITLE });
-    await selectAssignment(dialog);
-    clickStartAssessment(dialog);
-
-    await within(dialog).findByRole('button', { name: 'Create New Definition' });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Create New Definition' }));
-
-    // Get the wizard mock and invoke onCreateSuccess to trigger auto-assessment
-    const wizard = await screen.findByTestId('wizard-mock');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const properties: any = (wizard as any).__wizardProps || {};
+    await clickCreateNewDefinition(dialog);
+    const properties = await getWizardProperties();
     properties.onCreateSuccess('test-key');
 
     // During auto-assessment loading, Cancel should be in the footer

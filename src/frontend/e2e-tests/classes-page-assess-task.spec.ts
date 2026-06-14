@@ -11,6 +11,7 @@ import {
   createAssessTaskScenario,
   openAssessTaskModal,
 } from './helpers/classes-page-end-to-end-helpers';
+import type { Locator, Page } from '@playwright/test';
 
 // ============================================================================
 // Assess Task Modal — Playwright E2E Tests
@@ -28,6 +29,46 @@ import {
 // Card layout (Year 10 panel, expanded by default):
 //   Card 0: English 10       (class-english-10)
 //   Card 1: Mathematics 10A  (class-math-10a)
+
+// ---------------------------------------------------------------------------
+// Shared constants and helpers
+// ---------------------------------------------------------------------------
+
+/** Reusable assignment data for an "Algebra Homework" coursework assignment with topic. */
+const ALGEBRA_HOMEWORK_DATA = {
+  assignmentId: 'cw-1',
+  title: 'Algebra Homework',
+  topicId: 'topic-algebra',
+  topicName: 'Algebra',
+} as const;
+
+/**
+ * Creates a success entry containing a single Algebra Homework assignment.
+ * Suitable for scenario queues — call twice for StrictMode double-effect coverage.
+ *
+ * @returns {object} A success entry with one Algebra Homework assignment.
+ */
+function algebraHomeworkEntry() {
+  return { kind: 'success' as const, data: [ALGEBRA_HOMEWORK_DATA] };
+}
+
+/**
+ * Selects an assignment from the combobox and clicks Start Assessment.
+ *
+ * @param {Locator} dialog - The modal dialog locator.
+ * @param {Page} page - The Playwright page.
+ * @param {string} [title] - The visible text of the assignment option to select.
+ * @returns {Promise<void>}
+ */
+async function selectAssignmentAndStart(
+  dialog: Locator,
+  page: Page,
+  title: string = 'Algebra Homework'
+) {
+  await dialog.getByRole('combobox').click();
+  await selectVisibleOption(page, title);
+  await dialog.getByRole('button', { name: 'Start Assessment' }).click();
+}
 
 test.describe('Assess Task modal', () => {
   test('opens with correct title, Select dropdown, and disabled Start Assessment', async ({
@@ -261,12 +302,7 @@ test.describe('Assess Task modal', () => {
     const assignmentEntry = {
       kind: 'success' as const,
       data: [
-        {
-          assignmentId: 'cw-1',
-          title: 'Algebra Homework',
-          topicId: 'topic-algebra',
-          topicName: 'Algebra',
-        },
+        ALGEBRA_HOMEWORK_DATA,
         {
           assignmentId: 'cw-2',
           title: 'Chapter 5 Review',
@@ -302,28 +338,13 @@ test.describe('Assess Task modal', () => {
   });
 
   test('choice prompt Cancel button closes the modal', async ({ page }) => {
-    // Assignment must have topicId set for choice prompt to appear
-    const assignmentEntry = {
-      kind: 'success' as const,
-      data: [
-        {
-          assignmentId: 'cw-1',
-          title: 'Algebra Homework',
-          topicId: 'topic-algebra',
-          topicName: 'Algebra',
-        },
-      ],
-    };
-
     const scenario = createAssessTaskScenario({
-      getGoogleClassroomAssignments: [assignmentEntry, assignmentEntry],
+      getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
     });
     await installRuntimeMock(page, scenario);
     const dialog = await openAssessTaskModal(page);
 
-    await dialog.getByRole('combobox').click();
-    await selectVisibleOption(page, 'Algebra Homework');
-    await dialog.getByRole('button', { name: 'Start Assessment' }).click();
+    await selectAssignmentAndStart(dialog, page);
 
     // Verify choice prompt appeared
     await expect(dialog.getByRole('button', { name: 'Create New Definition' })).toBeVisible();
@@ -343,22 +364,9 @@ test.describe('Assess Task modal', () => {
       { key: 'topic-algebra', name: 'Algebra', yearGroupKeys: ['year-group-10'] },
     ];
 
-    // Build custom scenario with topics data and assignments with matching topicId
-    const customAssignmentEntry = {
-      kind: 'success' as const,
-      data: [
-        {
-          assignmentId: 'cw-1',
-          title: 'Algebra Homework',
-          topicId: 'topic-algebra',
-          topicName: 'Algebra',
-        },
-      ],
-    };
-
     const scenario: RuntimeScenario = {
       ...createAssessTaskScenario({
-        getGoogleClassroomAssignments: [customAssignmentEntry, customAssignmentEntry],
+        getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
       }),
       getAssignmentTopics: [
         { kind: 'success', data: topicsData },
@@ -369,9 +377,7 @@ test.describe('Assess Task modal', () => {
     await installRuntimeMock(page, scenario);
     const dialog = await openAssessTaskModal(page);
 
-    await dialog.getByRole('combobox').click();
-    await selectVisibleOption(page, 'Algebra Homework');
-    await dialog.getByRole('button', { name: 'Start Assessment' }).click();
+    await selectAssignmentAndStart(dialog, page);
 
     // Click Create New Definition
     await dialog.getByRole('button', { name: 'Create New Definition' }).click();
@@ -387,28 +393,13 @@ test.describe('Assess Task modal', () => {
   });
 
   test('cancelling wizard returns to choice prompt', async ({ page }) => {
-    // Assignment must have topicId set for choice prompt to appear
-    const assignmentEntry = {
-      kind: 'success' as const,
-      data: [
-        {
-          assignmentId: 'cw-1',
-          title: 'Algebra Homework',
-          topicId: 'topic-algebra',
-          topicName: 'Algebra',
-        },
-      ],
-    };
-
     const scenario = createAssessTaskScenario({
-      getGoogleClassroomAssignments: [assignmentEntry, assignmentEntry],
+      getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
     });
     await installRuntimeMock(page, scenario);
     const dialog = await openAssessTaskModal(page);
 
-    await dialog.getByRole('combobox').click();
-    await selectVisibleOption(page, 'Algebra Homework');
-    await dialog.getByRole('button', { name: 'Start Assessment' }).click();
+    await selectAssignmentAndStart(dialog, page);
     await dialog.getByRole('button', { name: 'Create New Definition' }).click();
 
     // Wizard should be visible
@@ -448,30 +439,7 @@ test.describe('Assess Task modal', () => {
 
     const scenario: RuntimeScenario = {
       ...createAssessTaskScenario({
-        getGoogleClassroomAssignments: [
-          {
-            kind: 'success' as const,
-            data: [
-              {
-                assignmentId: 'cw-1',
-                title: 'Algebra Homework',
-                topicId: 'topic-algebra',
-                topicName: 'Algebra',
-              },
-            ],
-          },
-          {
-            kind: 'success' as const,
-            data: [
-              {
-                assignmentId: 'cw-1',
-                title: 'Algebra Homework',
-                topicId: 'topic-algebra',
-                topicName: 'Algebra',
-              },
-            ],
-          },
-        ],
+        getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
       }),
       getAssignmentTopics: [
         { kind: 'success', data: topicsData },
@@ -494,9 +462,7 @@ test.describe('Assess Task modal', () => {
     await installRuntimeMock(page, scenario);
     const dialog = await openAssessTaskModal(page);
 
-    await dialog.getByRole('combobox').click();
-    await selectVisibleOption(page, 'Algebra Homework');
-    await dialog.getByRole('button', { name: 'Start Assessment' }).click();
+    await selectAssignmentAndStart(dialog, page);
     await dialog.getByRole('button', { name: 'Create New Definition' }).click();
 
     // Wizard appears
@@ -533,37 +499,12 @@ test.describe('Assess Task modal', () => {
 
   test('outer Cancel during wizard creation closes both modals', async ({ page }) => {
     const scenario = createAssessTaskScenario({
-      getGoogleClassroomAssignments: [
-        {
-          kind: 'success',
-          data: [
-            {
-              assignmentId: 'cw-1',
-              title: 'Algebra Homework',
-              topicId: 'topic-algebra',
-              topicName: 'Algebra',
-            },
-          ],
-        },
-        {
-          kind: 'success',
-          data: [
-            {
-              assignmentId: 'cw-1',
-              title: 'Algebra Homework',
-              topicId: 'topic-algebra',
-              topicName: 'Algebra',
-            },
-          ],
-        },
-      ],
+      getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
     });
     await installRuntimeMock(page, scenario);
     const dialog = await openAssessTaskModal(page);
 
-    await dialog.getByRole('combobox').click();
-    await selectVisibleOption(page, 'Algebra Homework');
-    await dialog.getByRole('button', { name: 'Start Assessment' }).click();
+    await selectAssignmentAndStart(dialog, page);
     await dialog.getByRole('button', { name: 'Create New Definition' }).click();
 
     // Wizard should be visible
