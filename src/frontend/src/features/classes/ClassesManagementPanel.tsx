@@ -73,16 +73,13 @@ export function ClassesManagementPanel() {
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
   const [setActiveSubmitting, setSetActiveSubmitting] = useState(false);
   const [setInactiveSubmitting, setSetInactiveSubmitting] = useState(false);
-  const [setCohortSubmitting] = useState(false);
-  const [setYearGroupSubmitting] = useState(false);
-  const [setCourseLengthSubmitting] = useState(false);
+  // Cohort, year-group, and course-length mutations keep submitting false
+  // because they use the queued engine which owns its own loading state.
   const [bulkActionOutcomeAlert, setBulkActionOutcomeAlert] = useState<BulkActionOutcomeAlert | null>(null);
   const [refreshRequiredMessage, setRefreshRequiredMessage] = useState<string | null>(null);
   const [suppressStaleTableData, setSuppressStaleTableData] = useState(false);
   const [pendingCreatedCohortKey, setPendingCreatedCohortKey] = useState<string | undefined>();
   const [pendingCreatedYearGroupKey, setPendingCreatedYearGroupKey] = useState<string | undefined>();
-  // Local queue tracking mirroring the hook — used by tests that mock the hook statically
-  const [isLocalQueueActive, setIsLocalQueueActive] = useState(false);
   const [currentBulkActionVerb, setCurrentBulkActionVerb] = useState<string>('');
 
   const selectedRows = useMemo(
@@ -107,11 +104,11 @@ export function ClassesManagementPanel() {
     createSubmitting,
     deleteSubmitting,
     setActiveSubmitting,
-    setCohortSubmitting,
-    setCourseLengthSubmitting,
+    setCohortSubmitting: false,
+    setCourseLengthSubmitting: false,
     setInactiveSubmitting,
-    setYearGroupSubmitting,
-  }) || queue.isQueueActive || isLocalQueueActive;
+    setYearGroupSubmitting: false,
+  }) || queue.isQueueActive;
 
   /**
    * Clears the transient bulk-action feedback before another mutation starts.
@@ -186,7 +183,6 @@ export function ClassesManagementPanel() {
   async function runTopLevelBulkAction(options: TopLevelBulkActionDescriptor): Promise<void> {
     // Close the input/confirmation modal FIRST
     options.closeSurface?.();
-    setIsLocalQueueActive(true);
     setCurrentBulkActionVerb(options.verb);
 
     await queue.runQueuedBulkAction({
@@ -201,7 +197,6 @@ export function ClassesManagementPanel() {
           await queryClient.invalidateQueries({ queryKey: queryKeys.classPartials(), refetchType: 'none' });
           await handleTopLevelBulkMutationResult(outcome, options);
         } finally {
-          setIsLocalQueueActive(false);
           setCurrentBulkActionVerb('');
         }
       },
@@ -369,10 +364,6 @@ export function ClassesManagementPanel() {
     if (resolution.shouldCloseModal) {
       closeModal();
     }
-
-    if (resolution.errorMessage !== null) {
-      throw new Error(resolution.errorMessage);
-    }
   }
 
   /**
@@ -395,7 +386,6 @@ export function ClassesManagementPanel() {
   }>): Promise<void> {
     // Close the metadata modal FIRST
     options.closeModal();
-    setIsLocalQueueActive(true);
     setCurrentBulkActionVerb(options.verb);
 
     await queue.runQueuedBulkAction({
@@ -410,7 +400,6 @@ export function ClassesManagementPanel() {
           await queryClient.invalidateQueries({ queryKey: queryKeys.classPartials(), refetchType: 'none' });
           await handleBulkMetadataMutationResult(outcome, options.closeModal);
         } finally {
-          setIsLocalQueueActive(false);
           setCurrentBulkActionVerb('');
         }
       },
@@ -563,7 +552,7 @@ export function ClassesManagementPanel() {
           title="Set cohort"
           fieldLabel="Cohort"
           options={cohortOptions}
-          confirmLoading={setCohortSubmitting}
+          confirmLoading={false}
           onConfirm={handleSetCohort}
           onCancel={() => setSetCohortModalOpen(false)}
           onAddNew={handleCohortAddNew}
@@ -574,7 +563,7 @@ export function ClassesManagementPanel() {
           title="Set year group"
           fieldLabel="Year group"
           options={yearGroupOptions}
-          confirmLoading={setYearGroupSubmitting}
+          confirmLoading={false}
           onConfirm={handleSetYearGroup}
           onCancel={() => setSetYearGroupModalOpen(false)}
           onAddNew={handleYearGroupAddNew}
@@ -582,7 +571,7 @@ export function ClassesManagementPanel() {
         />
         <BulkSetCourseLengthModal
           open={setCourseLengthModalOpen}
-          confirmLoading={setCourseLengthSubmitting}
+          confirmLoading={false}
           onConfirm={handleSetCourseLength}
           onCancel={() => setSetCourseLengthModalOpen(false)}
         />
@@ -597,7 +586,7 @@ export function ClassesManagementPanel() {
           onEntityCreated={handleYearGroupEntityCreated}
         />
         <ClassesBulkProgressModal
-          open={isLocalQueueActive || queue.isProgressModalOpen}
+          open={queue.isProgressModalOpen}
           progress={queue.progress}
           verb={currentBulkActionVerb}
           onCancel={queue.onCancelQueue}

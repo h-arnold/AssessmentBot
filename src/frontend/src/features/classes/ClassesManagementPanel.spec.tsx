@@ -17,6 +17,16 @@ const classesManagementStateMock = vi.fn();
 const runQueuedBatchMutationMock = vi.fn();
 const runQueuedBulkActionMock = vi.fn();
 
+/**
+ * Tracked queue state matching the real useClassesBulkMutationQueue hook.
+ * runQueuedBulkAction sets isQueueActive/isProgressModalOpen to true before
+ * the mutation runs and false afterwards.
+ */
+const queueStateMock = vi.hoisted(() => ({
+  isQueueActive: false,
+  isProgressModalOpen: false,
+}));
+
 vi.mock('./useClassesManagement', () => ({
   useClassesManagement: classesManagementStateMock,
 }));
@@ -27,9 +37,9 @@ vi.mock('./bulk/runQueuedBatchMutation', () => ({
 
 vi.mock('./useClassesBulkMutationQueue', () => ({
   useClassesBulkMutationQueue: () => ({
-    isQueueActive: false,
+    isQueueActive: queueStateMock.isQueueActive,
     progress: { currentItem: null, completed: 0, pendingCount: 0, total: 0, isInProgress: false },
-    isProgressModalOpen: false,
+    isProgressModalOpen: queueStateMock.isProgressModalOpen,
     onDismissProgressModal: vi.fn(),
     onCancelQueue: vi.fn(),
     runQueuedBulkAction: runQueuedBulkActionMock,
@@ -155,13 +165,19 @@ function expectClassPartialsInvalidated(invalidateQueriesSpy: MockInstance) {
 }
 
 beforeEach(() => {
+  queueStateMock.isQueueActive = false;
+  queueStateMock.isProgressModalOpen = false;
   classesManagementStateMock.mockReset();
   runQueuedBatchMutationMock.mockReset();
   runQueuedBulkActionMock.mockReset();
   runQueuedBulkActionMock.mockImplementation(
     async ({ mutate, onComplete }: { mutate: (onProgress: (snapshot: BatchProgressSnapshot) => void) => Promise<unknown[]>; onComplete: (results: unknown[]) => Promise<void> }) => {
+      queueStateMock.isQueueActive = true;
+      queueStateMock.isProgressModalOpen = true;
       const results = await mutate(vi.fn());
       await onComplete(results);
+      queueStateMock.isQueueActive = false;
+      queueStateMock.isProgressModalOpen = false;
     },
   );
 });
