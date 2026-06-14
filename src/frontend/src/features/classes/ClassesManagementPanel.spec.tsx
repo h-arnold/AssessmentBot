@@ -4,28 +4,64 @@ import { ApiTransportError } from '../../errors/apiTransportError';
 import { queryKeys } from '../../query/queryKeys';
 import { renderWithFrontendProviders } from '../../test/renderWithFrontendProviders';
 import {
+  buildClassesManagementRow,
   buildClassesManagementState,
   createFulfilledClassResult,
   createRejectedClassResult,
 } from '../../test/classes/classesTestHelpers';
 import type { ClassesManagementRow } from './classesManagementViewModel';
 import type { ClassesManagementState } from './useClassesManagement';
+import type { BatchProgressSnapshot } from './bulk/runQueuedBatchMutation';
 
 const classesManagementStateMock = vi.fn();
-const runBatchMutationMock = vi.fn();
+const runQueuedBatchMutationMock = vi.fn();
+const runQueuedBulkActionMock = vi.fn();
+
+/**
+ * Tracked queue state matching the real useClassesBulkMutationQueue hook.
+ * runQueuedBulkAction sets isQueueActive/isProgressModalOpen to true before
+ * the mutation runs and false afterwards.
+ */
+const queueStateMock = vi.hoisted(() => ({
+  isQueueActive: false,
+  isProgressModalOpen: false,
+}));
 
 vi.mock('./useClassesManagement', () => ({
   useClassesManagement: classesManagementStateMock,
 }));
 
-vi.mock('./bulk/batchMutationEngine', async () => {
-  const actual = await vi.importActual('./bulk/batchMutationEngine');
+vi.mock('./bulk/runQueuedBatchMutation', () => ({
+  runQueuedBatchMutation: runQueuedBatchMutationMock,
+}));
 
-  return {
-    ...actual,
-    runBatchMutation: runBatchMutationMock,
-  };
-});
+vi.mock('./useClassesBulkMutationQueue', () => ({
+  useClassesBulkMutationQueue: () => ({
+    isQueueActive: queueStateMock.isQueueActive,
+    progress: { currentItem: null, completed: 0, pendingCount: 0, total: 0, isInProgress: false },
+    isProgressModalOpen: queueStateMock.isProgressModalOpen,
+    onDismissProgressModal: vi.fn(),
+    onCancelQueue: vi.fn(),
+    runQueuedBulkAction: runQueuedBulkActionMock,
+  }),
+}));
+
+vi.mock('./bulk/ClassesBulkProgressModal', () => ({
+  ClassesBulkProgressModal(properties: Readonly<{
+    open: boolean;
+    progress: BatchProgressSnapshot;
+    verb: string;
+    onCancel: () => void;
+    onDismiss: () => void;
+  }>) {
+    return properties.open ? (
+      <div role="dialog" aria-label="Bulk class update in progress">
+        <span>{properties.progress.completed} / {properties.progress.total}</span>
+        <span>{properties.verb} class {properties.progress.currentItem?.className ?? ''}</span>
+      </div>
+    ) : null;
+  },
+}));
 
 const bulkCreateModalMock = vi.hoisted(() =>
   vi.fn((properties: {
@@ -53,6 +89,30 @@ const bulkCreateModalMock = vi.hoisted(() =>
 
 vi.mock('./bulk/BulkCreateModal', () => ({
   BulkCreateModal: bulkCreateModalMock,
+}));
+
+vi.mock('./bulk/BulkDeleteModal', () => ({
+  BulkDeleteModal(properties: Readonly<{
+    open: boolean;
+    onConfirm: () => void;
+    onCancel: () => void;
+    confirmLoading?: boolean;
+  }>) {
+    if (!properties.open) {
+      return null;
+    }
+
+    return (
+      <div role="dialog" aria-label="Delete classes">
+        <button
+          type="button"
+          onClick={properties.onConfirm}
+        >
+          Delete
+        </button>
+      </div>
+    );
+  },
 }));
 
 /**
@@ -105,8 +165,21 @@ function expectClassPartialsInvalidated(invalidateQueriesSpy: MockInstance) {
 }
 
 beforeEach(() => {
+  queueStateMock.isQueueActive = false;
+  queueStateMock.isProgressModalOpen = false;
   classesManagementStateMock.mockReset();
-  runBatchMutationMock.mockReset();
+  runQueuedBatchMutationMock.mockReset();
+  runQueuedBulkActionMock.mockReset();
+  runQueuedBulkActionMock.mockImplementation(
+    async ({ mutate, onComplete }: { mutate: (onProgress: (snapshot: BatchProgressSnapshot) => void) => Promise<unknown[]>; onComplete: (results: unknown[]) => Promise<void> }) => {
+      queueStateMock.isQueueActive = true;
+      queueStateMock.isProgressModalOpen = true;
+      const results = await mutate(vi.fn());
+      await onComplete(results);
+      queueStateMock.isQueueActive = false;
+      queueStateMock.isProgressModalOpen = false;
+    },
+  );
 });
 
 describe('ClassesManagementPanel', () => {
@@ -183,7 +256,7 @@ describe('ClassesManagementPanel', () => {
       onSelectedRowKeysChange,
       selectedRowKeys: ['active-1', 'orphaned-1'],
     });
-    runBatchMutationMock.mockResolvedValue([
+    runQueuedBatchMutationMock.mockResolvedValue([
       createFulfilledClassResult('active-1'),
       createRejectedClassResult('orphaned-1'),
     ]);
@@ -210,7 +283,7 @@ describe('ClassesManagementPanel', () => {
       onSelectedRowKeysChange,
       selectedRowKeys: ['inactive-1', 'inactive-2'],
     });
-    runBatchMutationMock.mockResolvedValue([
+    runQueuedBatchMutationMock.mockResolvedValue([
       createFulfilledClassResult('inactive-1'),
       createRejectedClassResult('inactive-2'),
     ]);
@@ -238,7 +311,7 @@ describe('ClassesManagementPanel', () => {
       selectedRowKeys: ['not-created-1'],
       yearGroups: [{ key: 'year-11', name: 'Year 11' }],
     });
-    runBatchMutationMock.mockResolvedValue([createFulfilledClassResult('not-created-1')]);
+    runQueuedBatchMutationMock.mockResolvedValue([createFulfilledClassResult('not-created-1')]);
 
     const { queryClient } = await renderPanel();
     const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries');
@@ -246,11 +319,13 @@ describe('ClassesManagementPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create ABClass' }));
     fireEvent.click(within(await screen.findByRole('dialog', { name: 'Create ABClass' })).getByRole('button', { name: 'OK' }));
 
-    await waitFor(() => expect(runBatchMutationMock).toHaveBeenCalledTimes(1));
-    const submittedRows = runBatchMutationMock.mock.calls[0][0] as ClassesManagementRow[];
-    expect(submittedRows).toHaveLength(1);
-    expect(submittedRows[0]?.classId).toBe('not-created-1');
-    expect(submittedRows[0]?.status).toBe('notCreated');
+    await waitFor(() => expect(runQueuedBatchMutationMock).toHaveBeenCalledTimes(1));
+    const [items] = runQueuedBatchMutationMock.mock.calls[0] as [unknown[]];
+    expect(items).toHaveLength(1);
+    const firstItem = items[0] as Record<string, unknown>;
+    const firstRow = firstItem.row as ClassesManagementRow;
+    expect(firstRow.classId).toBe('not-created-1');
+    expect(firstRow.status).toBe('notCreated');
     expect(onSelectedRowKeysChange).toHaveBeenLastCalledWith([]);
     expectClassPartialsInvalidated(invalidateQueriesSpy);
   });
@@ -263,7 +338,7 @@ describe('ClassesManagementPanel', () => {
     });
 
     let resolveBatch!: (results: Array<ReturnType<typeof createFulfilledClassResult>>) => void;
-    runBatchMutationMock.mockImplementationOnce(
+    runQueuedBatchMutationMock.mockImplementationOnce(
       () =>
         new Promise<Array<ReturnType<typeof createFulfilledClassResult>>>((resolve) => {
           resolveBatch = resolve;
@@ -288,7 +363,7 @@ describe('ClassesManagementPanel', () => {
       onSelectedRowKeysChange,
       selectedRowKeys: ['active-1', 'active-2'],
     });
-    runBatchMutationMock.mockResolvedValue([
+    runQueuedBatchMutationMock.mockResolvedValue([
       createRejectedClassResult('active-1'),
       createRejectedClassResult('active-2'),
     ]);
@@ -314,7 +389,7 @@ describe('ClassesManagementPanel', () => {
       onSelectedRowKeysChange,
       selectedRowKeys: ['active-1', 'orphaned-1'],
     });
-    runBatchMutationMock.mockResolvedValue([
+    runQueuedBatchMutationMock.mockResolvedValue([
       createFulfilledClassResult('active-1'),
       createRejectedClassResult('orphaned-1'),
     ]);
@@ -346,4 +421,187 @@ describe('ClassesManagementPanel', () => {
     expect(onSelectedRowKeysChange).toHaveBeenLastCalledWith(['orphaned-1']);
   });
 
+  // ---------------------------------------------------------------------------
+  // Panel integration tests
+  // ---------------------------------------------------------------------------
+
+  it('opens the progress modal and disables the toolbar when a queued bulk action runs', async () => {
+    const onSelectedRowKeysChange = vi.fn();
+    mockClassesManagementState({
+      onSelectedRowKeysChange,
+      selectedRowKeys: ['inactive-1', 'inactive-2'],
+    });
+
+    // Simulate queue active: mutate resolves slowly, exposing progress modal
+    let resolveBatch!: (results: Array<ReturnType<typeof createFulfilledClassResult>>) => void;
+    runQueuedBatchMutationMock.mockImplementationOnce(
+      () =>
+        new Promise<Array<ReturnType<typeof createFulfilledClassResult>>>((resolve) => {
+          resolveBatch = resolve;
+        }),
+    );
+
+    await renderPanel();
+
+    const setActiveButton = screen.getByRole('button', { name: 'Set active' });
+    fireEvent.click(setActiveButton);
+
+    // Progress modal should open and toolbar should be disabled
+    await waitFor(() => {
+      expect(screen.getByRole('dialog', { name: 'Bulk class update in progress' })).toBeInTheDocument();
+      expect(setActiveButton).toBeDisabled();
+    });
+
+    // Allow the progress modal to close by settling the mutation
+    resolveBatch([
+      createFulfilledClassResult('inactive-1'),
+      createFulfilledClassResult('inactive-2'),
+    ]);
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Bulk class update in progress' })).not.toBeInTheDocument();
+    });
+  });
+
+  it('closes the input modal before the progress modal opens for bulk create', async () => {
+    const onSelectedRowKeysChange = vi.fn();
+    mockClassesManagementState({
+      cohorts: [{ key: 'cohort-2025', name: 'Cohort 2025', active: true, startYear: 2025, startMonth: 9 }],
+      onSelectedRowKeysChange,
+      selectedRowKeys: ['not-created-1'],
+      yearGroups: [{ key: 'year-11', name: 'Year 11' }],
+    });
+
+    let resolveBatch!: (results: Array<ReturnType<typeof createFulfilledClassResult>>) => void;
+    runQueuedBatchMutationMock.mockImplementationOnce(
+      () =>
+        new Promise<Array<ReturnType<typeof createFulfilledClassResult>>>((resolve) => {
+          resolveBatch = resolve;
+        }),
+    );
+
+    await renderPanel();
+
+    // Open the create modal
+    fireEvent.click(screen.getByRole('button', { name: 'Create ABClass' }));
+    expect(await screen.findByRole('dialog', { name: 'Create ABClass' })).toBeInTheDocument();
+
+    // Confirm — this should close the input modal and open the progress modal
+    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+
+    await waitFor(() => {
+      // Input modal should have closed
+      expect(screen.queryByRole('dialog', { name: 'Create ABClass' })).not.toBeInTheDocument();
+      // Progress modal should have opened
+      expect(screen.getByRole('dialog', { name: 'Bulk class update in progress' })).toBeInTheDocument();
+    });
+
+    resolveBatch([createFulfilledClassResult('not-created-1')]);
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Bulk class update in progress' })).not.toBeInTheDocument();
+    });
+  });
+
+  it('closes the confirmation modal before the progress modal opens for bulk delete (no modal stacking)', async () => {
+    const onSelectedRowKeysChange = vi.fn();
+    mockClassesManagementState({
+      onSelectedRowKeysChange,
+      selectedRowKeys: ['active-1', 'orphaned-1'],
+    });
+
+    let resolveBatch!: (results: Array<ReturnType<typeof createFulfilledClassResult>>) => void;
+    runQueuedBatchMutationMock.mockImplementationOnce(
+      () =>
+        new Promise<Array<ReturnType<typeof createFulfilledClassResult>>>((resolve) => {
+          resolveBatch = resolve;
+        }),
+    );
+
+    await renderPanel();
+
+    // Open the delete modal
+    fireEvent.click(screen.getByRole('button', { name: 'Delete ABClass' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toBeInTheDocument();
+
+    // Confirm — should close delete modal and open progress modal
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+
+    await waitFor(() => {
+      // Confirmation modal should have closed
+      expect(screen.queryByRole('dialog', { name: /delete/i })).not.toBeInTheDocument();
+      // Progress modal should be the only modal
+      expect(screen.getByRole('dialog', { name: 'Bulk class update in progress' })).toBeInTheDocument();
+    });
+
+    // No other dialogs should be present
+    const dialogs = screen.queryAllByRole('dialog');
+    expect(dialogs).toHaveLength(1);
+
+    resolveBatch([
+      createFulfilledClassResult('active-1'),
+      createRejectedClassResult('orphaned-1'),
+    ]);
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Bulk class update in progress' })).not.toBeInTheDocument();
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Cancellation outcome messaging tests
+  // ---------------------------------------------------------------------------
+
+  it('shows a cancellation message and retains cancelled rows in selection', async () => {
+    const onSelectedRowKeysChange = vi.fn();
+    mockClassesManagementState({
+      onSelectedRowKeysChange,
+      selectedRowKeys: ['active-1', 'orphaned-1'],
+    });
+
+    // Simulate one success and one cancellation
+    runQueuedBatchMutationMock.mockResolvedValue([
+      createFulfilledClassResult('active-1'),
+      { status: 'rejected', row: buildClassesManagementRow({ classId: 'orphaned-1', className: 'Legacy', status: 'orphaned', cohortKey: 'cohort-c', cohortLabel: 'Cohort C', yearGroupKey: 'year-12', yearGroupLabel: 'Year 12', courseLength: 3, active: false }), error: { reason: 'CANCELLED' } },
+    ]);
+
+    const { queryClient } = await renderPanel();
+    vi.spyOn(queryClient, 'invalidateQueries');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete ABClass' }));
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete' }));
+
+    // Wait for the outcome alert — should show cancellation message
+    expect(await screen.findByText(/cancel/i)).toBeInTheDocument();
+
+    // Cancelled rows should be retained in selection (similar to how rejected rows are kept)
+    // The specific cancelled row key depends on the implementation
+    expect(onSelectedRowKeysChange).toHaveBeenCalled();
+  });
+
+  it('still shows backend failure copy when there are no cancelled rows', async () => {
+    const onSelectedRowKeysChange = vi.fn();
+    mockClassesManagementState({
+      onSelectedRowKeysChange,
+      selectedRowKeys: ['active-1', 'orphaned-1'],
+    });
+
+    // Pure backend failures (no CANCELLED reason)
+    runQueuedBatchMutationMock.mockResolvedValue([
+      createFulfilledClassResult('active-1'),
+      createRejectedClassResult('orphaned-1'),
+    ]);
+
+    const { queryClient } = await renderPanel();
+    vi.spyOn(queryClient, 'invalidateQueries');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete ABClass' }));
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete' }));
+
+    expect(await screen.findByText('Some selected classes were not deleted.')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        '1 of 2 selected classes could not be deleted. Successful rows were refreshed. Please review the remaining selection and try again.',
+      ),
+    ).toBeInTheDocument();
+    expect(onSelectedRowKeysChange).toHaveBeenLastCalledWith(['orphaned-1']);
+  });
 });

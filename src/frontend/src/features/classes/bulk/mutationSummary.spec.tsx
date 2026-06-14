@@ -7,9 +7,16 @@ import {
   buildClassesManagementRow,
   buildClassesManagementState,
 } from '../../../test/classes/classesTestHelpers';
+import type { BatchProgressSnapshot } from './runQueuedBatchMutation';
 
 const classesManagementStateMock = vi.fn();
 const bulkSetCohortMock = vi.fn();
+const runQueuedBulkActionMock = vi.fn(
+  async ({ mutate, onComplete }: { mutate: (onProgress: (snapshot: BatchProgressSnapshot) => void) => Promise<unknown[]>; onComplete: (results: unknown[]) => Promise<void> }) => {
+    const results = await mutate(vi.fn());
+    await onComplete(results);
+  },
+);
 const LAST_OPTION_OFFSET = 1;
 const bulkSetSelectModalMock = vi.hoisted(() =>
   vi.fn(
@@ -53,6 +60,17 @@ vi.mock('./bulkSetCohortFlow', async () => {
   };
 });
 
+vi.mock('../useClassesBulkMutationQueue', () => ({
+  useClassesBulkMutationQueue: () => ({
+    isQueueActive: false,
+    progress: { currentItem: null, completed: 0, pendingCount: 0, total: 0, isInProgress: false },
+    isProgressModalOpen: false,
+    onDismissProgressModal: vi.fn(),
+    onCancelQueue: vi.fn(),
+    runQueuedBulkAction: runQueuedBulkActionMock,
+  }),
+}));
+
 vi.mock('../components/ClassesSummaryCard', () => ({
   ClassesSummaryCard() {
     return <div>Summary</div>;
@@ -95,6 +113,12 @@ vi.mock('./BulkSetCourseLengthModal', () => ({
 
 vi.mock('./BulkSetSelectModal', () => ({
   BulkSetSelectModal: bulkSetSelectModalMock,
+}));
+
+vi.mock('../bulk/ClassesBulkProgressModal', () => ({
+  ClassesBulkProgressModal() {
+    return null;
+  },
 }));
 
 const metadataRows = [
@@ -168,7 +192,7 @@ describe('mutationSummary', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'OK' }));
 
     await waitFor(() => {
-      expect(bulkSetCohortMock).toHaveBeenCalledWith(metadataRows, 'cohort-c');
+      expect(bulkSetCohortMock).toHaveBeenCalledWith(metadataRows, 'cohort-c', expect.any(Function));
     });
     await screen.findByText('Some selected classes were not updated.');
     await screen.findByText(
@@ -203,7 +227,7 @@ describe('mutationSummary', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'OK' }));
 
     await waitFor(() => {
-      expect(bulkSetCohortMock).toHaveBeenCalledWith(metadataRows, 'cohort-c');
+      expect(bulkSetCohortMock).toHaveBeenCalledWith(metadataRows, 'cohort-c', expect.any(Function));
     });
     await screen.findByText('Some selected classes were not updated.');
     await screen.findByText(

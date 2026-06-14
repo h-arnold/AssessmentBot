@@ -1,6 +1,8 @@
 ---
 description: Creates, maintains, and debugs Playwright browser end-to-end tests
 mode: all
+steps: 100
+model: deepseek-v4-flash-free
 ---
 
 # Playwright Specialist Agent Instructions

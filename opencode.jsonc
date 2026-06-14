@@ -1,5 +1,22 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "lsp": true,
-  "small_model": "opencode/north-mini-code-free"
+  "small_model": "opencode/north-mini-code-free",
+  "experimental": {
+    "bashDefaultTimeoutMs": 450000
+  },
+  "agent": {
+    "planner-reviewer": {
+      "description": "Reviews planning artefacts for gaps and contradictions",
+      "mode": "subagent",
+      "model": "opencode/nemotron-3-ultra-free",
+      "reasoningEffort": "high"
+    },
+    "code-reviewer": {
+      "description": "Reviews code for quality, standards adherence, and defects",
+      "mode": "subagent",
+      "model": "opencode/nemotron-3-ultra-free",
+      "reasoningEffort": "high"
+    }
+  }
 }

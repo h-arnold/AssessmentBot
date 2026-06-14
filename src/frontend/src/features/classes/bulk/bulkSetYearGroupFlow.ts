@@ -1,5 +1,6 @@
 import type { YearGroup } from '../../../services/referenceData/referenceData.zod';
 import type { RowMutationResult } from './batchMutationEngine';
+import type { BatchProgressSnapshot } from './runQueuedBatchMutation';
 import { bulkMetadataUpdate } from './bulkMetadataUpdateFlow';
 import type { ClassesManagementRow } from '../classesManagementViewModel';
 
@@ -19,15 +20,17 @@ export function getYearGroupOptions(
 }
 
 /**
- * Applies a year-group key to each supplied class row via the shared batch mutation engine.
+ * Applies a year-group key to each supplied class row via the queued batch mutation engine.
  *
  * @param {ClassesManagementRow[]} rows Rows to update.
  * @param {string} yearGroupKey Selected year-group key.
+ * @param {(snapshot: BatchProgressSnapshot) => void} [onProgress] Optional progress callback.
  * @returns {Promise<RowMutationResult<ClassesManagementRow, unknown>[]>} Settled row results.
  */
 export async function bulkSetYearGroup(
   rows: ClassesManagementRow[],
-  yearGroupKey: string
+  yearGroupKey: string,
+  onProgress?: (snapshot: BatchProgressSnapshot) => void
 ): Promise<RowMutationResult<ClassesManagementRow, unknown>[]> {
-  return bulkMetadataUpdate(rows, { key: 'yearGroupKey', value: yearGroupKey });
+  return bulkMetadataUpdate(rows, { key: 'yearGroupKey', value: yearGroupKey }, onProgress);
 }

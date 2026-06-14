@@ -1,14 +1,22 @@
+/**
+ * Bulk set-cohort flow — unit tests.
+ *
+ * Covers: cohort selector option building, QueuedBatchItem construction via
+ * bulkMetadataUpdate, onProgress forwarding, and empty-list short-circuit.
+ */
+
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Cohort } from '../../../services/referenceData/referenceData.zod';
 import type { ClassesManagementRow } from '../classesManagementViewModel';
-import type * as BulkSetCohortFlowModule from './bulkSetCohortFlow';
+import type { BatchProgressSnapshot } from './runQueuedBatchMutation';
 
-const callApiMock = vi.hoisted(() => vi.fn());
-const TWO_CALLS = 2;
+const runQueuedBatchMutationMock = vi.hoisted(() => vi.fn());
 
-vi.mock('../../../services/apiService', () => ({
-  callApi: callApiMock,
+vi.mock('./runQueuedBatchMutation', () => ({
+  runQueuedBatchMutation: runQueuedBatchMutationMock,
 }));
+
+import type * as BulkSetCohortFlowModule from './bulkSetCohortFlow';
 
 /**
  * Loads the bulk cohort flow lazily so the test can import the current implementation shape.
@@ -69,9 +77,13 @@ describe('bulkSetCohortFlow', () => {
     ]);
   });
 
-  it('updates each selected class with the chosen cohort key through updateABClass', async () => {
+  it('calls bulkMetadataUpdate which calls runQueuedBatchMutation with correct items', async () => {
+    runQueuedBatchMutationMock.mockResolvedValue([
+      { status: 'fulfilled', row: makeRow({ classId: 'class-001', status: 'active' }), data: { ok: true } },
+      { status: 'fulfilled', row: makeRow({ classId: 'class-002', status: 'inactive', active: false }), data: { ok: true } },
+    ]);
+
     const { bulkSetCohort } = await loadBulkSetCohortFlow();
-    callApiMock.mockResolvedValue({ ok: true });
     const rows: ClassesManagementRow[] = [
       makeRow({ classId: 'class-001', status: 'active' }),
       makeRow({ classId: 'class-002', status: 'inactive', active: false }),
@@ -79,31 +91,42 @@ describe('bulkSetCohortFlow', () => {
 
     const results = await bulkSetCohort(rows, 'cohort-2025');
 
-    expect(callApiMock).toHaveBeenCalledTimes(TWO_CALLS);
-    expect(callApiMock).toHaveBeenNthCalledWith(1, 'updateABClass', {
-      classId: 'class-001',
-      cohortKey: 'cohort-2025',
-    });
-    expect(callApiMock).toHaveBeenNthCalledWith(TWO_CALLS, 'updateABClass', {
-      classId: 'class-002',
-      cohortKey: 'cohort-2025',
-    });
+    expect(runQueuedBatchMutationMock).toHaveBeenCalledTimes(1);
+    const [items] = runQueuedBatchMutationMock.mock.calls[0] as [unknown[]];
+    const firstItem = items[0] as Record<string, unknown>;
+    expect(firstItem.method).toBe('updateABClass');
+    expect(firstItem.verb).toBe('Setting cohort for');
     expect(results.map((result) => result.row.classId)).toEqual(['class-001', 'class-002']);
   });
 
   it('uses the same batch path for a single selected row edit', async () => {
+    runQueuedBatchMutationMock.mockResolvedValue([
+      { status: 'fulfilled', row: makeRow({ classId: 'class-single', status: 'inactive', active: false }), data: { ok: true } },
+    ]);
+
     const { bulkSetCohort } = await loadBulkSetCohortFlow();
-    callApiMock.mockResolvedValue({ ok: true });
     const row = makeRow({ classId: 'class-single', status: 'inactive', active: false });
 
     const results = await bulkSetCohort([row], 'cohort-2026');
 
-    expect(callApiMock).toHaveBeenCalledTimes(1);
-    expect(callApiMock).toHaveBeenCalledWith('updateABClass', {
-      classId: 'class-single',
-      cohortKey: 'cohort-2026',
-    });
+    expect(runQueuedBatchMutationMock).toHaveBeenCalledTimes(1);
     expect(results).toHaveLength(1);
     expect(results[0]).toMatchObject({ status: 'fulfilled', row });
+  });
+
+  it('forwards onProgress to runQueuedBatchMutation via bulkMetadataUpdate', async () => {
+    runQueuedBatchMutationMock.mockResolvedValue([
+      { status: 'fulfilled', row: makeRow({ classId: 'class-001' }), data: { ok: true } },
+    ]);
+
+    const { bulkSetCohort } = await loadBulkSetCohortFlow();
+    const row = makeRow({ classId: 'class-001' });
+    const onProgress: (snapshot: BatchProgressSnapshot) => void = vi.fn();
+
+    await bulkSetCohort([row], 'cohort-2025', onProgress);
+
+    expect(runQueuedBatchMutationMock).toHaveBeenCalledTimes(1);
+    const [, options] = runQueuedBatchMutationMock.mock.calls[0] as [unknown[], { onProgress?: unknown }];
+    expect(options.onProgress).toBe(onProgress);
   });
 });

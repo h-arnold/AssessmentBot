@@ -319,3 +319,54 @@ export function getQueueState(jobName: string): QueueState {
   }
   return { pending: queue.pending.length, active: queue.active };
 }
+
+/**
+ * Cancels all pending queued entries for a given job name.
+ *
+ * Removes every pending {@link QueueEntry} from the internal queue and rejects
+ * each removed entry's Promise with `{ reason: 'CANCELLED' }`. The currently
+ * active in-flight request, if any, is **not** affected — `google.script.run`
+ * does not support transport-level abort.
+ *
+ * @param {string} jobName - Queue job name (must be non-empty). Validated by
+ *   {@link JobNameSchema}.
+ * @returns {number} The number of pending items removed (excludes the active
+ *   in-flight request).
+ *
+ * @remarks
+ * - For an unknown or idle job name, the function is a no-op and returns `0`.
+ * - After cancellation the queue structure remains in the map so subsequent
+ *   `getQueueState` calls return `{ pending: 0, active: <previous> }`.
+ * - Repeat calls on the same job name after the first cancellation return `0`
+ *   because there are no pending items left to cancel.
+ *
+ * @example
+ * ```ts
+ * const cancelled = cancelApiQueued('classesBulkMutation');
+ * console.log(cancelled); // e.g. 5
+ * ```
+ */
+export function cancelApiQueued(jobName: string): number {
+  // 1. Validate jobName (throws synchronously on empty/invalid)
+  JobNameSchema.parse(jobName);
+
+  // 2. Look up the queue
+  const queue = queues.get(jobName);
+
+  // 3. Unknown/idle job → no-op
+  if (!queue) {
+    return 0;
+  }
+
+  // 4. Snapshot pending entries (processQueue may also be mutating via shift(),
+  //    but we own the pending array and can drain it atomically)
+  const pendingEntries = queue.pending.splice(0);
+
+  // 5. Reject each pending entry
+  for (const entry of pendingEntries) {
+    entry.reject({ reason: 'CANCELLED' });
+  }
+
+  // 6. Return count of removed items
+  return pendingEntries.length;
+}

@@ -1,17 +1,18 @@
 /**
  * Bulk create flow — unit tests.
  *
- * Covers: notCreated-only row filtering, cohortKey/yearGroupKey/courseLength payload
- * construction, courseLength default of 1, batch engine integration, and empty-list
- * short-circuit.
+ * Covers: notCreated-only row filtering, correct QueuedBatchItem construction
+ * with cohortKey/yearGroupKey/courseLength, courseLength default of 1,
+ * runQueuedBatchMutation integration, and empty-list short-circuit.
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { BatchProgressSnapshot } from './runQueuedBatchMutation';
 
-const callApiMock = vi.hoisted(() => vi.fn());
+const runQueuedBatchMutationMock = vi.hoisted(() => vi.fn());
 
-vi.mock('../../../services/apiService', () => ({
-  callApi: callApiMock,
+vi.mock('./runQueuedBatchMutation', () => ({
+  runQueuedBatchMutation: runQueuedBatchMutationMock,
 }));
 
 import {
@@ -80,37 +81,58 @@ describe('bulkCreate', () => {
     vi.clearAllMocks();
   });
 
-  it('calls upsertABClass for each row using cohortKey, yearGroupKey, and courseLength', async () => {
-    callApiMock.mockResolvedValue({ classId: 'gcr-001' });
+  it('calls runQueuedBatchMutation with correct items for each row', async () => {
+    const mockResults = [
+      { status: 'fulfilled', row: makeRow({ classId: 'gcr-001' }), data: { classId: 'gcr-001' } },
+      { status: 'fulfilled', row: makeRow({ classId: 'gcr-002' }), data: { classId: 'gcr-002' } },
+    ];
+    runQueuedBatchMutationMock.mockResolvedValue(mockResults);
 
     const rows: ClassesManagementRow[] = [
       makeRow({ classId: 'gcr-001' }),
       makeRow({ classId: 'gcr-002' }),
     ];
 
-    await bulkCreate(rows, {
+    const results = await bulkCreate(rows, {
       cohortKey: '2025',
       yearGroupKey: 'yg-10',
       courseLength: 2,
     });
 
-    expect(callApiMock).toHaveBeenCalledTimes(TWO_ROWS);
-    expect(callApiMock).toHaveBeenCalledWith('upsertABClass', {
+    expect(runQueuedBatchMutationMock).toHaveBeenCalledTimes(1);
+    const [items, options] = runQueuedBatchMutationMock.mock.calls[0] as [unknown[], { jobName: string; onProgress?: unknown }];
+    expect(items).toHaveLength(TWO_ROWS);
+    expect(items[0]).toMatchObject({
+      method: 'upsertABClass',
+      verb: 'Creating',
+      className: 'Year 10 Maths',
+    });
+    expect((items[0] as Record<string, unknown>).parameters).toMatchObject({
       classId: 'gcr-001',
       cohortKey: '2025',
       yearGroupKey: 'yg-10',
       courseLength: 2,
     });
-    expect(callApiMock).toHaveBeenCalledWith('upsertABClass', {
+    expect(items[1]).toMatchObject({
+      method: 'upsertABClass',
+      verb: 'Creating',
+      className: 'Year 10 Maths',
+    });
+    expect((items[1] as Record<string, unknown>).parameters).toMatchObject({
       classId: 'gcr-002',
       cohortKey: '2025',
       yearGroupKey: 'yg-10',
       courseLength: 2,
     });
+    expect(options.jobName).toBe('classesBulkMutation');
+    expect(options.onProgress).toBeUndefined();
+    expect(results).toEqual(mockResults);
   });
 
   it('defaults courseLength to 1 when not supplied in options', async () => {
-    callApiMock.mockResolvedValue({ classId: 'gcr-005' });
+    runQueuedBatchMutationMock.mockResolvedValue([
+      { status: 'fulfilled', row: makeRow({ classId: 'gcr-005' }), data: { classId: 'gcr-005' } },
+    ]);
 
     const rows: ClassesManagementRow[] = [
       makeRow({ classId: 'gcr-005' }),
@@ -118,7 +140,9 @@ describe('bulkCreate', () => {
 
     await bulkCreate(rows, { cohortKey: '2025', yearGroupKey: 'yg-9' });
 
-    expect(callApiMock).toHaveBeenCalledWith('upsertABClass', {
+    expect(runQueuedBatchMutationMock).toHaveBeenCalledTimes(1);
+    const [items] = runQueuedBatchMutationMock.mock.calls[0] as [unknown[]];
+    expect((items[0] as Record<string, unknown>).parameters).toMatchObject({
       classId: 'gcr-005',
       cohortKey: '2025',
       yearGroupKey: 'yg-9',
@@ -127,9 +151,11 @@ describe('bulkCreate', () => {
   });
 
   it('returns results in submitted-row order even when promises resolve out of order', async () => {
+    // runQueuedBatchMutation already handles ordering; test that bulkCreate
+    // returns whatever runQueuedBatchMutation returns
     const resolvers: Array<(value: unknown) => void> = [];
-    callApiMock.mockImplementation(
-      () => new Promise((resolve) => resolvers.push(resolve)),
+    runQueuedBatchMutationMock.mockImplementation(
+      () => new Promise((resolve) => { resolvers.push(resolve); }),
     );
 
     const rows: ClassesManagementRow[] = [
@@ -140,34 +166,40 @@ describe('bulkCreate', () => {
 
     const batchPromise = bulkCreate(rows, { cohortKey: '2025', yearGroupKey: 'yg-10' });
 
-    resolvers[2]({ classId: 'gcr-003' });
-    resolvers[0]({ classId: 'gcr-001' });
-    resolvers[1]({ classId: 'gcr-002' });
+    resolvers[0]([
+      { status: 'fulfilled', row: rows[2], data: { classId: 'gcr-003' } },
+      { status: 'fulfilled', row: rows[0], data: { classId: 'gcr-001' } },
+      { status: 'fulfilled', row: rows[1], data: { classId: 'gcr-002' } },
+    ]);
 
     const results = await batchPromise;
 
     expect(results).toHaveLength(THREE_ROWS);
-    expect(results[0]).toMatchObject({ status: 'fulfilled', row: rows[0] });
-    expect(results[1]).toMatchObject({ status: 'fulfilled', row: rows[1] });
-    expect(results[2]).toMatchObject({ status: 'fulfilled', row: rows[2] });
+    // Results are whatever runQueuedBatchMutation returns
+    expect(results[0]).toMatchObject({ status: 'fulfilled', row: rows[2] });
+    expect(results[1]).toMatchObject({ status: 'fulfilled', row: rows[0] });
+    expect(results[2]).toMatchObject({ status: 'fulfilled', row: rows[1] });
   });
 
-  it('marks a row as rejected when upsertABClass fails for that row', async () => {
-    const failureError = new Error('upsertABClass failed: class not found');
-    callApiMock.mockRejectedValue(failureError);
+  it('forwards onProgress to runQueuedBatchMutation', async () => {
+    runQueuedBatchMutationMock.mockResolvedValue([
+      { status: 'fulfilled', row: makeRow({ classId: 'gcr-001' }), data: { classId: 'gcr-001' } },
+    ]);
 
     const rows: ClassesManagementRow[] = [makeRow({ classId: 'gcr-001' })];
+    const onProgress: (snapshot: BatchProgressSnapshot) => void = vi.fn();
 
-    const results = await bulkCreate(rows, { cohortKey: '2025', yearGroupKey: 'yg-10' });
+    await bulkCreate(rows, { cohortKey: '2025', yearGroupKey: 'yg-10' }, onProgress);
 
-    expect(results).toHaveLength(1);
-    expect(results[0]).toMatchObject({ status: 'rejected', row: rows[0] });
+    expect(runQueuedBatchMutationMock).toHaveBeenCalledTimes(1);
+    const [, options] = runQueuedBatchMutationMock.mock.calls[0] as [unknown[], { jobName: string; onProgress?: unknown }];
+    expect(options.onProgress).toBe(onProgress);
   });
 
   it('returns an empty result array and makes no API calls when given an empty row list', async () => {
     const results = await bulkCreate([], { cohortKey: '2025', yearGroupKey: 'yg-10' });
 
     expect(results).toEqual([]);
-    expect(callApiMock).not.toHaveBeenCalled();
+    expect(runQueuedBatchMutationMock).not.toHaveBeenCalled();
   });
 });

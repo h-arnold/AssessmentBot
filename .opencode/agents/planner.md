@@ -1,6 +1,7 @@
 ---
 description: Creates SPEC.md, optional frontend layout specs, and ACTION_PLAN.md through clarification-driven planning
 mode: all
+steps: 100
 ---
 
 # Planner Agent Instructions

@@ -1,6 +1,8 @@
 ---
 description: Inspects code for AI-slop, duplication, unnecessary complexity, and stale code
 mode: all
+model: opencode-go/deepseek-v4-pro
+steps: 100
 ---
 
 # De-Sloppification Agent Instructions

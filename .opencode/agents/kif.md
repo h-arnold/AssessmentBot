@@ -2,6 +2,7 @@
 description: Performs simple, straightforward menial tasks with minimal judgement required
 mode: all
 model: opencode/north-mini-code-free
+steps: 50
 ---
 
 # Kif Agent Instructions
