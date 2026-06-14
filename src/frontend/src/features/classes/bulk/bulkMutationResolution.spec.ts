@@ -396,7 +396,7 @@ describe('buildMetadataBulkMutationResolution', () => {
     expect(result.alert!.type).toBe('error');
     expect(result.alert!.title).toBe('Could not update selected classes.');
     expect(result.alert!.description).toContain('Unable to update any of the 2 selected classes');
-    expect(result.errorMessage).toBeNull();
+    expect(result).not.toHaveProperty('errorMessage');
     expect(result.shouldCloseModal).toBe(true);
     expect(result.selectedRowKeys).toEqual(['class-a', 'class-b']);
   });
@@ -407,7 +407,7 @@ describe('buildMetadataBulkMutationResolution', () => {
     expect(result.alert).not.toBeNull();
     expect(result.alert!.type).toBe('warning');
     expect(result.alert!.title).toBe('Some selected classes were not updated.');
-    expect(result.errorMessage).toBeNull();
+    expect(result).not.toHaveProperty('errorMessage');
     expect(result.shouldCloseModal).toBe(true);
     expect(result.selectedRowKeys).toEqual(['class-a']);
   });

@@ -33,7 +33,6 @@ export type TopLevelBulkMutationResolution = Readonly<{
 
 export type MetadataBulkMutationResolution = Readonly<{
   alert: BulkActionOutcomeAlert | null;
-  errorMessage: string | null;
   refreshRequiredMessage: string | null;
   selectedRowKeys: string[];
   shouldCloseModal: boolean;
@@ -233,7 +232,6 @@ export function buildMetadataBulkMutationResolution(
   if (rejectedResults.length === 0) {
     return {
       alert: null,
-      errorMessage: null,
       refreshRequiredMessage,
       selectedRowKeys: [],
       shouldCloseModal: true,
@@ -251,7 +249,7 @@ export function buildMetadataBulkMutationResolution(
   const descriptionWithCancellation =
     cancelledCount > 0 ? description + createCancellationSuffix(cancelledCount) : description;
 
-  // All-failure → panel-level alert, close modal (migrated from inline errorMessage)
+  // All-failure → panel-level alert, close modal
   if (failedCount === outcome.mutationResult.length) {
     return {
       alert: {
@@ -259,7 +257,6 @@ export function buildMetadataBulkMutationResolution(
         title: 'Could not update selected classes.',
         type: 'error',
       },
-      errorMessage: null,
       refreshRequiredMessage,
       selectedRowKeys,
       shouldCloseModal: true,
@@ -273,7 +270,6 @@ export function buildMetadataBulkMutationResolution(
       title: 'Some selected classes were not updated.',
       type: 'warning',
     },
-    errorMessage: null,
     refreshRequiredMessage,
     selectedRowKeys,
     shouldCloseModal: true,

@@ -4,9 +4,9 @@
  * settings page.
  *
  * @remarks
- * - `isQueueActive` is true from the start of `runQueuedBulkAction` until
- *   `onComplete` finishes, and is fed into the panel's existing workflow
- *   mutation boundary.
+ * - `isQueueActive` tracks the engine's `isInProgress` flag and becomes false
+ *   when all queued requests settle, before `onComplete` runs. The panel's
+ *   workflow boundary layers `setSubmitting` on top to cover the refresh phase.
  * - Dismissing the modal only hides it; the queue continues processing.
  * - The dismissed flag resets when the queue drains so the next bulk action
  *   re-opens the modal automatically.
