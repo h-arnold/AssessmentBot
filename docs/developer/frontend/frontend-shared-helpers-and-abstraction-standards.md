@@ -387,8 +387,8 @@ This section supersedes the earlier Section 9.7 defer decision for the specific 
 
 - Decision: `keep local`
 - Owning path: `src/frontend/src/features/classes/AssessTaskModal/AssessTaskModal.tsx`
-- Status: `Not implemented`
-- Rationale: single-caller, one-liner lookup; no existing helper matches this contract
+- Status: `Implemented`
+- Rationale: single-caller, one-liner lookup; no existing helper matches this contract. Implementation at line 91 of AssessTaskModal.tsx: `assignmentTopics?.some((t) => t.key === selectedAssignment.topicId)`
 
 ### 9.15 API queueing system
 

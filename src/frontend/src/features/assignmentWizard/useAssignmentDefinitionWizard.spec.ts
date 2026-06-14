@@ -100,7 +100,7 @@ describe('useAssignmentDefinitionWizard', () => {
     );
 
     // After initial render, selectedTopicKey and selectedYearGroupKey should be set
-    // from initialValues. This will fail until the implementation exists.
+    // from initialValues.
     expect(result.current.selectedTopicKey).toBe('topic-algebra');
     expect(result.current.selectedYearGroupKey).toBe('year-group-10');
   });
@@ -193,7 +193,6 @@ describe('useAssignmentDefinitionWizard', () => {
     });
 
     // Verify onCreateSuccess was called with the definitionKey from the save response
-    // This will fail until the implementation threads onCreateSuccess through the save path.
     await waitFor(() => {
       expect(onCreateSuccess).toHaveBeenCalledWith('test-create-key');
     });

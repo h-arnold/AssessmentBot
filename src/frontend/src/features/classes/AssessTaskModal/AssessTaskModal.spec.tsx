@@ -677,7 +677,7 @@ describe('No-match resolution — choice state', () => {
     await selectAssignment(dialog);
     clickStartAssessment(dialog);
 
-    // Verify the choice prompt is shown (this fails because noMatchResolution is not implemented)
+    // Verify the choice prompt is shown
     expect(within(dialog).getByRole('button', { name: 'Create New Definition' })).toBeInTheDocument();
 
     // Close the modal

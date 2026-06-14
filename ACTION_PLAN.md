@@ -608,7 +608,11 @@ Update docs to match the implemented feature and record shared-helper decisions.
 
 ### Implementation notes / deviations / follow-up
 
-- Record any deviations discovered during documentation pass.
+- **Implementation notes:**
+  1. Updated shared-helpers doc: Section 9.14 topic-existence check status changed from `Not implemented` to `Implemented`
+  2. Verified all `@remarks` JSDoc: `AssessTaskModal` documents orthogonal state machines; `useAssignmentDefinitionWizard` return type documents `initialValues` semantics; `AssignmentDefinitionWizardModalProperties` documents `onCreateSuccess` contract; `handleWizardCreateSuccess` and `handleWizardClose` document flushSync and cancel-detection
+  3. All section notes/deviations fields populated above
+- **Deviations from plan:** None.
 
 ---
 

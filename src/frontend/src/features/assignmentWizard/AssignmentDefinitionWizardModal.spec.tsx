@@ -1039,8 +1039,6 @@ describe('AssignmentDefinitionWizardModal', () => {
       await renderWizardModal(renderOptions);
 
       // Should show blocking error with role="alert" containing the error message
-      // CURRENTLY FAILS: The wizard never checks useQuery.isError, so no blocking error
-      // is set. The form renders with a "Parsing is required" info prompt instead.
       await waitFor(() => {
         const alert = screen.getByRole('alert');
         expect(alert).toHaveTextContent('An error occurred. Please try again.');
@@ -1516,9 +1514,6 @@ describe('AssignmentDefinitionWizardModal', () => {
       });
 
       // Should close the wizard and return to assignments page
-      // CURRENTLY FAILS: handleClose (line 1169-1176) checks hasDirtyEdits first,
-      // finds it true (user made edits before saving), and shows the discard-confirm
-      // dialog instead of calling onClose.
       await waitFor(() => {
         expect(onCloseSpy).toHaveBeenCalled();
       });
