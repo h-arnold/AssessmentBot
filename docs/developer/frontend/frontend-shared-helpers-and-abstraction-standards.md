@@ -409,4 +409,4 @@ This section supersedes the earlier Section 9.7 defer decision for the specific 
 - Decision: `extend`
 - Owning module/path: `src/frontend/src/services/apiService.ts`
 - Call-site rationale: small additive function that clears pending entries for a job name; consumed only by the classes bulk queue in v1
-- Status: `Not implemented`
+- Status: `Implemented`
