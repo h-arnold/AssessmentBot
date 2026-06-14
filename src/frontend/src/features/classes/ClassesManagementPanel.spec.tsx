@@ -422,7 +422,7 @@ describe('ClassesManagementPanel', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // Section 5 — Panel integration tests
+  // Panel integration tests
   // ---------------------------------------------------------------------------
 
   it('opens the progress modal and disables the toolbar when a queued bulk action runs', async () => {
@@ -547,7 +547,7 @@ describe('ClassesManagementPanel', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // Section 6 — Cancellation outcome messaging tests
+  // Cancellation outcome messaging tests
   // ---------------------------------------------------------------------------
 
   it('shows a cancellation message and retains cancelled rows in selection', async () => {

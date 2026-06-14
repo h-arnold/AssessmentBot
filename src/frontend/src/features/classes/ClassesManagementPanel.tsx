@@ -74,7 +74,7 @@ export function ClassesManagementPanel() {
   const [setActiveSubmitting, setSetActiveSubmitting] = useState(false);
   const [setInactiveSubmitting, setSetInactiveSubmitting] = useState(false);
   // Cohort, year-group, and course-length mutations keep submitting false
-  // because they use the queued engine which owns its own loading state.
+  // because they use the queued engine, which owns its own loading state.
   const [bulkActionOutcomeAlert, setBulkActionOutcomeAlert] = useState<BulkActionOutcomeAlert | null>(null);
   const [refreshRequiredMessage, setRefreshRequiredMessage] = useState<string | null>(null);
   const [suppressStaleTableData, setSuppressStaleTableData] = useState(false);
@@ -448,48 +448,6 @@ export function ClassesManagementPanel() {
     });
   }
 
-  if (classesManagement.classesManagementViewState === 'loading') {
-    return (
-      <section aria-label={classesManagementPanelRegionLabel}>
-        <Card className="settings-tab-panel">
-          <ClassesManagementPanelLoadingState />
-        </Card>
-      </section>
-    );
-  }
-
-  if (classesManagement.classesManagementViewState === 'error') {
-    return (
-      <section aria-label={classesManagementPanelRegionLabel}>
-        <Card className="settings-tab-panel">
-          <ClassesManagementPanelOutcomeAlert alert={bulkActionOutcomeAlert} />
-          <ClassesAlertStack
-            blockingErrorMessage={classesManagement.blockingErrorMessage}
-            nonBlockingWarningMessage={classesManagement.nonBlockingWarningMessage}
-            refreshRequiredMessage={effectiveRefreshRequiredMessage}
-          />
-          {classesManagement.blockingErrorMessage === null ? (
-            <Typography.Text>{classesManagement.errorMessage}</Typography.Text>
-          ) : null}
-        </Card>
-      </section>
-    );
-  }
-
-  return (
-    <section aria-label={classesManagementPanelRegionLabel}>
-      <Card className="settings-tab-panel">
-        <ClassesManagementPanelOutcomeAlert alert={bulkActionOutcomeAlert} />
-        <ClassesAlertStack
-          blockingErrorMessage={classesManagement.blockingErrorMessage}
-          nonBlockingWarningMessage={classesManagement.nonBlockingWarningMessage}
-          refreshRequiredMessage={effectiveRefreshRequiredMessage}
-        />
-        {renderClassesWorkflowContent()}
-      </Card>
-    </section>
-  );
-
   /**
    * Renders the classes workflow content (summary, toolbar, table, modals, progress).
    *
@@ -595,4 +553,46 @@ export function ClassesManagementPanel() {
       </Flex>
     );
   }
+
+  if (classesManagement.classesManagementViewState === 'loading') {
+    return (
+      <section aria-label={classesManagementPanelRegionLabel}>
+        <Card className="settings-tab-panel">
+          <ClassesManagementPanelLoadingState />
+        </Card>
+      </section>
+    );
+  }
+
+  if (classesManagement.classesManagementViewState === 'error') {
+    return (
+      <section aria-label={classesManagementPanelRegionLabel}>
+        <Card className="settings-tab-panel">
+          <ClassesManagementPanelOutcomeAlert alert={bulkActionOutcomeAlert} />
+          <ClassesAlertStack
+            blockingErrorMessage={classesManagement.blockingErrorMessage}
+            nonBlockingWarningMessage={classesManagement.nonBlockingWarningMessage}
+            refreshRequiredMessage={effectiveRefreshRequiredMessage}
+          />
+          {classesManagement.blockingErrorMessage === null ? (
+            <Typography.Text>{classesManagement.errorMessage}</Typography.Text>
+          ) : null}
+        </Card>
+      </section>
+    );
+  }
+
+  return (
+    <section aria-label={classesManagementPanelRegionLabel}>
+      <Card className="settings-tab-panel">
+        <ClassesManagementPanelOutcomeAlert alert={bulkActionOutcomeAlert} />
+        <ClassesAlertStack
+          blockingErrorMessage={classesManagement.blockingErrorMessage}
+          nonBlockingWarningMessage={classesManagement.nonBlockingWarningMessage}
+          refreshRequiredMessage={effectiveRefreshRequiredMessage}
+        />
+        {renderClassesWorkflowContent()}
+      </Card>
+    </section>
+  );
 }

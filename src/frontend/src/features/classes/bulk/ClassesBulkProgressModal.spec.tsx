@@ -112,7 +112,7 @@ describe('ClassesBulkProgressModal', () => {
   // Note: antd Modal's onCancel prop fires for both header X click and mask
   // (backdrop) click natively. This test verifies the dismiss pathway for both
   // triggers with a single X-click interaction. Dedicated mask-click coverage
-  // in a real browser is deferred to Playwright E2E (Section 7 of ACTION_PLAN).
+  // in a real browser is deferred to Playwright E2E.
   it('calls onDismiss and not onCancel when the Modal close X or mask is clicked', async () => {
     const user = userEvent.setup();
     const onCancel = vi.fn();

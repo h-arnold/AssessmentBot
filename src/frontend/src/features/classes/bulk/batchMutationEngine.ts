@@ -1,9 +1,9 @@
 /**
- * Shared batch mutation engine.
+ * Shared batch mutation type definitions.
  *
- * Dispatches one mutation call per row in parallel and aggregates the settled
- * results in submitted-row order, regardless of the order in which individual
- * promises resolve.
+ * This module contains only type declarations for batch mutation results.
+ * The actual runtime dispatch that performs one mutation call per row and
+ * aggregates settled results lives in {@link runQueuedBatchMutation}.
  *
  * Design notes:
  * - Each row promise is normalised with `.then`/`.catch` in the same `map`
