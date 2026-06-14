@@ -1,5 +1,9 @@
-import { callApi } from '../../../services/apiService';
-import { runBatchMutation, type RowMutationResult } from './batchMutationEngine';
+import {
+  runQueuedBatchMutation,
+  type QueuedBatchItem,
+  type BatchProgressSnapshot,
+} from './runQueuedBatchMutation';
+import type { RowMutationResult } from './batchMutationEngine';
 import {
   bulkCourseLengthSchema,
   bulkReferenceKeySchema,
@@ -28,29 +32,58 @@ type BulkMetadataUpdatePayload = Readonly<
  * @param {ClassesManagementRow[]} rows Candidate rows.
  * @returns {ClassesManagementRow[]} Eligible rows.
  */
-export function filterEligibleForBulkMetadataUpdate(rows: ClassesManagementRow[]): ClassesManagementRow[] {
+export function filterEligibleForBulkMetadataUpdate(
+  rows: ClassesManagementRow[]
+): ClassesManagementRow[] {
   return rows.filter((row) => row.status === 'active' || row.status === 'inactive');
 }
 
 /**
- * Applies one metadata field update to each supplied class row.
+ * Returns the user-facing progress verb for a metadata payload key.
+ *
+ * @param {BulkMetadataUpdatePayload['key']} payloadKey The metadata field key.
+ * @returns {string} The progress verb.
+ */
+function getVerbForKey(payloadKey: BulkMetadataUpdatePayload['key']): string {
+  switch (payloadKey) {
+    case 'cohortKey': {
+      return 'Setting cohort for';
+    }
+    case 'yearGroupKey': {
+      return 'Setting year group for';
+    }
+    case 'courseLength': {
+      return 'Setting course length for';
+    }
+  }
+}
+
+/**
+ * Applies one metadata field update to each supplied class row via the
+ * queued batch mutation engine.
  *
  * @param {ClassesManagementRow[]} rows Rows to update.
  * @param {BulkMetadataUpdatePayload} payload Metadata update payload.
+ * @param {(snapshot: BatchProgressSnapshot) => void} [onProgress] Optional progress callback.
  * @returns {Promise<RowMutationResult<ClassesManagementRow, unknown>[]>} Settled row results.
  */
 export async function bulkMetadataUpdate(
   rows: ClassesManagementRow[],
   payload: BulkMetadataUpdatePayload,
+  onProgress?: (snapshot: BatchProgressSnapshot) => void
 ): Promise<RowMutationResult<ClassesManagementRow, unknown>[]> {
+  const verb = getVerbForKey(payload.key);
   const updatePayload = getUpdatePayload(payload);
 
-  return runBatchMutation(rows, (row) =>
-    callApi('updateABClass', {
-      classId: row.classId,
-      ...updatePayload,
-    }),
-  );
+  const items: QueuedBatchItem[] = rows.map((row) => ({
+    row,
+    method: 'updateABClass' as const,
+    parameters: { classId: row.classId, ...updatePayload },
+    verb,
+    className: row.className,
+  }));
+
+  return runQueuedBatchMutation(items, { jobName: 'classesBulkMutation', onProgress });
 }
 
 /**

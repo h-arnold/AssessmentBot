@@ -389,13 +389,15 @@ describe('buildTopLevelBulkMutationResolution', () => {
 });
 
 describe('buildMetadataBulkMutationResolution', () => {
-  it('returns all-failure outcome with errorMessage set and shouldCloseModal false', () => {
+  it('returns all-failure outcome with panel-level alert and shouldCloseModal true', () => {
     const result = buildMetadataBulkMutationResolution(successOutcome([rejectedA, rejectedB]));
 
-    expect(result.alert).toBeNull();
-    expect(result.errorMessage).not.toBeNull();
-    expect(result.errorMessage).toContain('Unable to update any of the 2 selected classes');
-    expect(result.shouldCloseModal).toBe(false);
+    expect(result.alert).not.toBeNull();
+    expect(result.alert!.type).toBe('error');
+    expect(result.alert!.title).toBe('Could not update selected classes.');
+    expect(result.alert!.description).toContain('Unable to update any of the 2 selected classes');
+    expect(result.errorMessage).toBeNull();
+    expect(result.shouldCloseModal).toBe(true);
     expect(result.selectedRowKeys).toEqual(['class-a', 'class-b']);
   });
 

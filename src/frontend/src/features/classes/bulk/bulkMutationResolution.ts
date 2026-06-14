@@ -3,6 +3,7 @@ import {
   type RequiredClassPartialsRefreshOutcome,
 } from './queryInvalidation';
 import type { RejectedRowResult, RowMutationResult } from './batchMutationEngine';
+import type { BatchProgressSnapshot } from './runQueuedBatchMutation';
 import type { ClassesManagementRow } from '../classesManagementViewModel';
 
 // ---------------------------------------------------------------------------
@@ -53,9 +54,11 @@ export type TopLevelBulkActionDescriptor = TopLevelBulkMutationCopy &
   Readonly<{
     closeSurface?: () => void;
     mutateRows: (
-      rows: ClassesManagementRow[]
+      rows: ClassesManagementRow[],
+      onProgress?: (snapshot: BatchProgressSnapshot) => void
     ) => Promise<RowMutationResult<ClassesManagementRow, unknown>[]>;
     setSubmitting: (value: boolean) => void;
+    verb: string;
   }>;
 
 // ---------------------------------------------------------------------------
@@ -113,6 +116,40 @@ export function getBulkOutcomeTitle(
 }
 
 // ---------------------------------------------------------------------------
+// Cancellation helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the rejected row results whose error carries a CANCELLED reason.
+ *
+ * @param {RejectedRowResult<ClassesManagementRow>[]} rejectedResults
+ *   Rejected row results from a batch.
+ * @returns {RejectedRowResult<ClassesManagementRow>[]} Cancelled row results only.
+ */
+function getCancelledRowResults(
+  rejectedResults: RejectedRowResult<ClassesManagementRow>[]
+): RejectedRowResult<ClassesManagementRow>[] {
+  return rejectedResults.filter(
+    (result) =>
+      result.error &&
+      typeof result.error === 'object' &&
+      (result.error as { reason?: string }).reason === 'CANCELLED'
+  );
+}
+
+/**
+ * Builds a cancellation suffix for alert descriptions.
+ *
+ * @param {number} cancelledCount Number of cancelled rows.
+ * @returns {string} Cancellation message suffix.
+ */
+function createCancellationSuffix(cancelledCount: number): string {
+  return cancelledCount === 1
+    ? ' 1 class was cancelled before processing.'
+    : ` ${cancelledCount} classes were cancelled before processing.`;
+}
+
+// ---------------------------------------------------------------------------
 // Resolution builders
 // ---------------------------------------------------------------------------
 
@@ -134,6 +171,8 @@ export function buildTopLevelBulkMutationResolution(
   const refreshRequiredMessage = hasRefreshFailure
     ? mapRequiredClassPartialsRefreshFailureToUserMessage(outcome.refreshError)
     : null;
+  const cancelledResults = getCancelledRowResults(rejectedResults);
+  const cancelledCount = cancelledResults.length;
 
   if (rejectedResults.length === 0) {
     return {
@@ -146,14 +185,17 @@ export function buildTopLevelBulkMutationResolution(
   }
 
   const failedCount = rejectedResults.length;
+  const description = options.createFailureMessage(
+    failedCount,
+    outcome.mutationResult.length,
+    hasRefreshFailure
+  );
+  const descriptionWithCancellation =
+    cancelledCount > 0 ? description + createCancellationSuffix(cancelledCount) : description;
 
   return {
     alert: {
-      description: options.createFailureMessage(
-        failedCount,
-        outcome.mutationResult.length,
-        hasRefreshFailure
-      ),
+      description: descriptionWithCancellation,
       title: getBulkOutcomeTitle(
         failedCount,
         outcome.mutationResult.length,
@@ -185,6 +227,8 @@ export function buildMetadataBulkMutationResolution(
   const refreshRequiredMessage = hasRefreshFailure
     ? mapRequiredClassPartialsRefreshFailureToUserMessage(outcome.refreshError)
     : null;
+  const cancelledResults = getCancelledRowResults(rejectedResults);
+  const cancelledCount = cancelledResults.length;
 
   if (rejectedResults.length === 0) {
     return {
@@ -199,29 +243,33 @@ export function buildMetadataBulkMutationResolution(
 
   const failedCount = rejectedResults.length;
   const selectedRowKeys = rejectedResults.map((result) => result.row.classId);
+  const description = createBulkMetadataFailureMessage(
+    failedCount,
+    outcome.mutationResult.length,
+    hasRefreshFailure
+  );
+  const descriptionWithCancellation =
+    cancelledCount > 0 ? description + createCancellationSuffix(cancelledCount) : description;
 
+  // All-failure → panel-level alert, close modal (migrated from inline errorMessage)
   if (failedCount === outcome.mutationResult.length) {
     return {
-      alert: null,
-      errorMessage: createBulkMetadataFailureMessage(
-        failedCount,
-        outcome.mutationResult.length,
-        hasRefreshFailure
-      ),
+      alert: {
+        description: descriptionWithCancellation,
+        title: 'Could not update selected classes.',
+        type: 'error',
+      },
+      errorMessage: null,
       refreshRequiredMessage,
       selectedRowKeys,
-      shouldCloseModal: false,
+      shouldCloseModal: true,
       suppressStaleTableData: hasRefreshFailure,
     };
   }
 
   return {
     alert: {
-      description: createBulkMetadataFailureMessage(
-        failedCount,
-        outcome.mutationResult.length,
-        hasRefreshFailure
-      ),
+      description: descriptionWithCancellation,
       title: 'Some selected classes were not updated.',
       type: 'warning',
     },

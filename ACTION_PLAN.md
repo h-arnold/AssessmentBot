@@ -666,9 +666,15 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** to be filled during implementation.
-- **Deviations from plan:** to be filled during implementation.
-- **Follow-up implications for later sections:** Section 6 adds cancellation-specific outcome messaging.
+- **Implementation notes:**
+  - `bulkCreateFlow.ts` and `bulkMetadataUpdateFlow.ts` updated to use `runQueuedBatchMutation` instead of `runBatchMutation`. Both accept optional `onProgress` callback.
+  - `bulkSetCohortFlow.ts`, `bulkSetYearGroupFlow.ts`, and `bulkSetCourseLengthFlow.ts` updated as thin wrappers that forward `onProgress` to `bulkMetadataUpdate`.
+  - `ClassesManagementPanel.tsx`: wired `useClassesBulkMutationQueue` hook; `isQueueActive` OR-ed into workflow mutation boundary; input modals close synchronously before `runQueuedBulkAction`; progress modal rendered in JSX; `currentBulkActionVerb` state tracks active action verb.
+  - Panel at ~609 lines (acceptable per plan).
+  - 989 tests pass across 96 files. Lint and TSC clean.
+  - Regression Gate: zero regressions, zero new failures.
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** Section 6 integrated together.
 
 ---
 
@@ -732,9 +738,12 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** to be filled during implementation.
-- **Deviations from plan:** to be filled during implementation.
-- **Follow-up implications for later sections:** Section 7 verifies the cancellation and failure UX end-to-end.
+- **Implementation notes:**
+  - `bulkMutationResolution.ts` extended: cancelled rows detected via `error.reason === 'CANCELLED'`; cancellation message appended to failure copy; `buildMetadataBulkMutationResolution` all-failure path now returns panel-level `alert` with `shouldCloseModal: true` (was inline `errorMessage` with `shouldCloseModal: false`).
+  - Dead `throw new Error(resolution.errorMessage)` in `handleBulkMetadataMutationResult` is now unreachable (errorMessage always null) — can be cleaned in future refactor.
+  - All 989 tests pass. Regression Gate: zero regressions.
+- **Deviations from plan:** Sections 5 and 6 implemented together due to tight coupling.
+- **Follow-up implications for later sections:** Section 7 verifies cancellation and failure UX end-to-end.
 
 ---
 

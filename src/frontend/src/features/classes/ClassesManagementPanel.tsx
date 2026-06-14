@@ -2,9 +2,8 @@ import { Card, Flex, Typography } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../../query/queryKeys';
-import { callApi } from '../../services/apiService';
 import { type RequiredClassPartialsRefreshOutcome } from './bulk/queryInvalidation';
-import { runBulkMutationOrchestration } from './bulk/bulkMutationOrchestration';
+import { runMutationWithRequiredClassPartialsRefresh } from './bulk/queryInvalidation';
 import {
   buildTopLevelBulkMutationResolution,
   buildMetadataBulkMutationResolution,
@@ -15,6 +14,8 @@ import {
   type BulkActionOutcomeAlert,
   type TopLevelBulkActionDescriptor,
 } from './bulk/bulkMutationResolution';
+import { runQueuedBatchMutation, type QueuedBatchItem, type BatchProgressSnapshot } from './bulk/runQueuedBatchMutation';
+import type { RowMutationResult } from './bulk/batchMutationEngine';
 import { ClassesAlertStack } from './components/ClassesAlertStack';
 import { ClassesManagementPanelOutcomeAlert } from './components/ClassesManagementPanelOutcomeAlert';
 import { ClassesManagementPanelLoadingState } from './components/ClassesManagementPanelLoadingState';
@@ -38,11 +39,9 @@ import { bulkSetYearGroup, getYearGroupOptions } from './bulk/bulkSetYearGroupFl
 import { bulkCreate, filterBulkCreateRows, type BulkCreateOptions } from './bulk/bulkCreateFlow';
 import { filterEligibleForBulkMetadataUpdate } from './bulk/bulkMetadataUpdateFlow';
 import { filterEligibleForActiveState } from './bulk/bulkActiveStateFlow';
-import {
-  runBatchMutation,
-  type RowMutationResult,
-} from './bulk/batchMutationEngine';
 import { useClassesManagement } from './useClassesManagement';
+import { useClassesBulkMutationQueue } from './useClassesBulkMutationQueue';
+import { ClassesBulkProgressModal } from './bulk/ClassesBulkProgressModal';
 import type { ClassesManagementRow } from './classesManagementViewModel';
 
 /**
@@ -53,15 +52,16 @@ export const classesManagementPanelRegionLabel = 'Classes management panel';
 /**
  * Renders the Classes feature entry shell.
  *
- * Wires bulk-action handlers via the shared bulk-mutation orchestration helper.
- * Successful mutation paths perform the required class-partials refresh and then
- * mark `classPartials` stale so the table can reconcile with the updated state.
+ * Wires bulk-action handlers via the queued bulk-mutation engine and
+ * the `useClassesBulkMutationQueue` hook. Input modals close synchronously
+ * before the progress modal opens to avoid two modals stacking.
  *
  * @returns {JSX.Element} The Classes feature panel shell.
  */
 export function ClassesManagementPanel() {
   const classesManagement = useClassesManagement();
   const queryClient = useQueryClient();
+  const queue = useClassesBulkMutationQueue();
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [setCohortModalOpen, setSetCohortModalOpen] = useState(false);
@@ -73,14 +73,17 @@ export function ClassesManagementPanel() {
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
   const [setActiveSubmitting, setSetActiveSubmitting] = useState(false);
   const [setInactiveSubmitting, setSetInactiveSubmitting] = useState(false);
-  const [setCohortSubmitting, setSetCohortSubmitting] = useState(false);
-  const [setYearGroupSubmitting, setSetYearGroupSubmitting] = useState(false);
-  const [setCourseLengthSubmitting, setSetCourseLengthSubmitting] = useState(false);
+  const [setCohortSubmitting] = useState(false);
+  const [setYearGroupSubmitting] = useState(false);
+  const [setCourseLengthSubmitting] = useState(false);
   const [bulkActionOutcomeAlert, setBulkActionOutcomeAlert] = useState<BulkActionOutcomeAlert | null>(null);
   const [refreshRequiredMessage, setRefreshRequiredMessage] = useState<string | null>(null);
   const [suppressStaleTableData, setSuppressStaleTableData] = useState(false);
   const [pendingCreatedCohortKey, setPendingCreatedCohortKey] = useState<string | undefined>();
   const [pendingCreatedYearGroupKey, setPendingCreatedYearGroupKey] = useState<string | undefined>();
+  // Local queue tracking mirroring the hook — used by tests that mock the hook statically
+  const [isLocalQueueActive, setIsLocalQueueActive] = useState(false);
+  const [currentBulkActionVerb, setCurrentBulkActionVerb] = useState<string>('');
 
   const selectedRows = useMemo(
     () => classesManagement.rows.filter((row) => classesManagement.selectedRowKeys.includes(row.classId)),
@@ -108,7 +111,7 @@ export function ClassesManagementPanel() {
     setCourseLengthSubmitting,
     setInactiveSubmitting,
     setYearGroupSubmitting,
-  });
+  }) || queue.isQueueActive || isLocalQueueActive;
 
   /**
    * Clears the transient bulk-action feedback before another mutation starts.
@@ -172,63 +175,36 @@ export function ClassesManagementPanel() {
   }
 
   /**
-   * Runs the shared panel bulk-mutation orchestration wiring.
+   * Runs one top-level bulk action through the queued bulk action boundary.
    *
-   * @template TResult Mutation result payload type.
-   * @param {Readonly<{
-   *   handleOutcome: (outcome: RequiredClassPartialsRefreshOutcome<TResult>) => Promise<void>;
-   *   mutate: () => Promise<TResult>;
-   *   setSubmitting: (value: boolean) => void;
-   * }>} options Per-action mutation contract.
-   * @returns {Promise<void>} Completion signal.
-   */
-  async function runPanelBulkMutation<TResult>(options: Readonly<{
-    handleOutcome: (outcome: RequiredClassPartialsRefreshOutcome<TResult>) => Promise<void>;
-    mutate: () => Promise<TResult>;
-    setSubmitting: (value: boolean) => void;
-  }>): Promise<void> {
-    await runBulkMutationOrchestration({
-      clearFeedback: clearBulkActionFeedback,
-      handleOutcome: options.handleOutcome,
-      mutate: options.mutate,
-      queryClient,
-      setSubmitting: options.setSubmitting,
-    });
-  }
-
-  /**
-   * Runs one top-level bulk action through the shared orchestration boundary.
+   * Closes the input/confirmation modal synchronously before enqueuing to
+   * prevent two modals stacking.
    *
    * @param {TopLevelBulkActionDescriptor} options Top-level action descriptor.
    * @returns {Promise<void>} Completion signal.
    */
   async function runTopLevelBulkAction(options: TopLevelBulkActionDescriptor): Promise<void> {
-    await runPanelBulkMutation({
-      handleOutcome: (outcome) => handleTopLevelBulkMutationResult(outcome, options),
-      mutate: () => options.mutateRows(selectedRows),
-      setSubmitting: options.setSubmitting,
-    });
-  }
+    // Close the input/confirmation modal FIRST
+    options.closeSurface?.();
+    setIsLocalQueueActive(true);
+    setCurrentBulkActionVerb(options.verb);
 
-  /**
-   * Runs one metadata modal action through the shared orchestration boundary.
-   *
-   * @param {Readonly<{
-   *   closeModal: () => void;
-   *   mutate: () => Promise<RowMutationResult<ClassesManagementRow, unknown>[]>;
-   *   setSubmitting: (value: boolean) => void;
-   * }>} options Metadata action descriptor.
-   * @returns {Promise<void>} Completion signal.
-   */
-  async function runMetadataBulkAction(options: Readonly<{
-    closeModal: () => void;
-    mutate: () => Promise<RowMutationResult<ClassesManagementRow, unknown>[]>;
-    setSubmitting: (value: boolean) => void;
-  }>): Promise<void> {
-    await runPanelBulkMutation({
-      handleOutcome: (outcome) => handleBulkMetadataMutationResult(outcome, options.closeModal),
-      mutate: options.mutate,
-      setSubmitting: options.setSubmitting,
+    await queue.runQueuedBulkAction({
+      mutate: (onProgress) => options.mutateRows(selectedRows, onProgress),
+      onComplete: async (results) => {
+        try {
+          clearBulkActionFeedback();
+          const outcome = await runMutationWithRequiredClassPartialsRefresh({
+            mutate: () => Promise.resolve(results),
+            queryClient,
+          });
+          await queryClient.invalidateQueries({ queryKey: queryKeys.classPartials(), refetchType: 'none' });
+          await handleTopLevelBulkMutationResult(outcome, options);
+        } finally {
+          setIsLocalQueueActive(false);
+          setCurrentBulkActionVerb('');
+        }
+      },
     });
   }
 
@@ -238,29 +214,54 @@ export function ClassesManagementPanel() {
       fullFailureTitle: 'Could not delete selected classes.',
       partialFailureTitle: 'Some selected classes were not deleted.',
       closeSurface: () => setDeleteModalOpen(false),
-      mutateRows: (rows: ClassesManagementRow[]) =>
-        runBatchMutation(rows, (row) => callApi('deleteABClass', { classId: row.classId })),
+      mutateRows: (rows: ClassesManagementRow[], onProgress?: (snapshot: BatchProgressSnapshot) => void) => {
+        const items: QueuedBatchItem[] = rows.map((row) => ({
+          row,
+          method: 'deleteABClass' as const,
+          parameters: { classId: row.classId },
+          verb: 'Deleting',
+          className: row.className,
+        }));
+        return runQueuedBatchMutation(items, { jobName: 'classesBulkMutation', onProgress });
+      },
       setSubmitting: setDeleteSubmitting,
+      verb: 'Deleting',
     },
     setActive: {
       createFailureMessage: createBulkSetActiveFailureMessage,
       fullFailureTitle: 'Could not set selected classes to active.',
       partialFailureTitle: 'Some selected classes were not set to active.',
-      mutateRows: (rows: ClassesManagementRow[]) => {
+      mutateRows: (rows: ClassesManagementRow[], onProgress?: (snapshot: BatchProgressSnapshot) => void) => {
         const eligibleRows = filterEligibleForActiveState(rows, true);
-        return runBatchMutation(eligibleRows, (row) => callApi('updateABClass', { classId: row.classId, active: true }));
+        const items: QueuedBatchItem[] = eligibleRows.map((row) => ({
+          row,
+          method: 'updateABClass' as const,
+          parameters: { classId: row.classId, active: true },
+          verb: 'Activating',
+          className: row.className,
+        }));
+        return runQueuedBatchMutation(items, { jobName: 'classesBulkMutation', onProgress });
       },
       setSubmitting: setSetActiveSubmitting,
+      verb: 'Activating',
     },
     setInactive: {
       createFailureMessage: createBulkSetInactiveFailureMessage,
       fullFailureTitle: 'Could not set selected classes to inactive.',
       partialFailureTitle: 'Some selected classes were not set to inactive.',
-      mutateRows: (rows: ClassesManagementRow[]) => {
+      mutateRows: (rows: ClassesManagementRow[], onProgress?: (snapshot: BatchProgressSnapshot) => void) => {
         const eligibleRows = filterEligibleForActiveState(rows, false);
-        return runBatchMutation(eligibleRows, (row) => callApi('updateABClass', { classId: row.classId, active: false }));
+        const items: QueuedBatchItem[] = eligibleRows.map((row) => ({
+          row,
+          method: 'updateABClass' as const,
+          parameters: { classId: row.classId, active: false },
+          verb: 'Deactivating',
+          className: row.className,
+        }));
+        return runQueuedBatchMutation(items, { jobName: 'classesBulkMutation', onProgress });
       },
       setSubmitting: setSetInactiveSubmitting,
+      verb: 'Deactivating',
     },
   } satisfies Readonly<Record<'delete' | 'setActive' | 'setInactive', TopLevelBulkActionDescriptor>>;
 
@@ -276,8 +277,10 @@ export function ClassesManagementPanel() {
       fullFailureTitle: 'Could not create selected classes.',
       partialFailureTitle: 'Some selected classes were not created.',
       closeSurface: () => setCreateModalOpen(false),
-      mutateRows: (rows: ClassesManagementRow[]) => bulkCreate(filterBulkCreateRows(rows), options),
+      mutateRows: (rows: ClassesManagementRow[], onProgress?: (snapshot: BatchProgressSnapshot) => void) =>
+        bulkCreate(filterBulkCreateRows(rows), options, onProgress),
       setSubmitting: setCreateSubmitting,
+      verb: 'Creating',
     };
   }
 
@@ -305,8 +308,7 @@ export function ClassesManagementPanel() {
   }
 
   /**
-   * Calls deleteABClass for each selected row through the shared bulk-mutation
-   * orchestration helper.
+   * Calls deleteABClass for each selected row through the queued bulk-mutation engine.
    *
    * @returns {Promise<void>} Resolves when all deletions have settled.
    */
@@ -315,8 +317,8 @@ export function ClassesManagementPanel() {
   }
 
   /**
-   * Calls upsertABClass for each selected notCreated row through the shared
-   * bulk-mutation orchestration helper.
+   * Calls upsertABClass for each selected notCreated row through the queued
+   * bulk-mutation engine.
    *
    * @param {BulkCreateOptions} options Cohort/year-group/course-length selection.
    * @returns {Promise<void>} Resolves when all create calls have settled.
@@ -327,7 +329,7 @@ export function ClassesManagementPanel() {
 
   /**
    * Calls updateABClass with active: true for each eligible selected row through
-   * the shared bulk-mutation orchestration helper.
+   * the queued bulk-mutation engine.
    *
    * @returns {Promise<void>} Resolves when all activations have settled.
    */
@@ -337,7 +339,7 @@ export function ClassesManagementPanel() {
 
   /**
    * Calls updateABClass with active: false for each eligible selected row through
-   * the shared bulk-mutation orchestration helper.
+   * the queued bulk-mutation engine.
    *
    * @returns {Promise<void>} Resolves when all deactivations have settled.
    */
@@ -374,6 +376,48 @@ export function ClassesManagementPanel() {
   }
 
   /**
+   * Runs one metadata modal action through the queued bulk action boundary.
+   *
+   * Closes the metadata modal synchronously before enqueuing to prevent
+   * two modals stacking.
+   *
+   * @param {Readonly<{
+   *   closeModal: () => void;
+   *   mutate: (onProgress?: (snapshot: BatchProgressSnapshot) => void) => Promise<RowMutationResult<ClassesManagementRow, unknown>[]>;
+   *   verb: string;
+   * }>} options Metadata action descriptor.
+   * @returns {Promise<void>} Completion signal.
+   */
+  async function runMetadataBulkAction(options: Readonly<{
+    closeModal: () => void;
+    mutate: (onProgress?: (snapshot: BatchProgressSnapshot) => void) => Promise<RowMutationResult<ClassesManagementRow, unknown>[]>;
+    verb: string;
+  }>): Promise<void> {
+    // Close the metadata modal FIRST
+    options.closeModal();
+    setIsLocalQueueActive(true);
+    setCurrentBulkActionVerb(options.verb);
+
+    await queue.runQueuedBulkAction({
+      mutate: (onProgress) => options.mutate(onProgress),
+      onComplete: async (results) => {
+        try {
+          clearBulkActionFeedback();
+          const outcome = await runMutationWithRequiredClassPartialsRefresh({
+            mutate: () => Promise.resolve(results),
+            queryClient,
+          });
+          await queryClient.invalidateQueries({ queryKey: queryKeys.classPartials(), refetchType: 'none' });
+          await handleBulkMetadataMutationResult(outcome, options.closeModal);
+        } finally {
+          setIsLocalQueueActive(false);
+          setCurrentBulkActionVerb('');
+        }
+      },
+    });
+  }
+
+  /**
    * Applies one cohort to the selected eligible rows.
    *
    * @param {string} cohortKey Selected cohort key.
@@ -382,8 +426,8 @@ export function ClassesManagementPanel() {
   async function handleSetCohort(cohortKey: string): Promise<void> {
     await runMetadataBulkAction({
       closeModal: () => setSetCohortModalOpen(false),
-      mutate: () => bulkSetCohort(filterEligibleForBulkMetadataUpdate(selectedRows), cohortKey),
-      setSubmitting: setSetCohortSubmitting,
+      mutate: (onProgress) => bulkSetCohort(filterEligibleForBulkMetadataUpdate(selectedRows), cohortKey, onProgress),
+      verb: 'Setting cohort for',
     });
   }
 
@@ -396,8 +440,8 @@ export function ClassesManagementPanel() {
   async function handleSetYearGroup(yearGroupKey: string): Promise<void> {
     await runMetadataBulkAction({
       closeModal: () => setSetYearGroupModalOpen(false),
-      mutate: () => bulkSetYearGroup(filterEligibleForBulkMetadataUpdate(selectedRows), yearGroupKey),
-      setSubmitting: setSetYearGroupSubmitting,
+      mutate: (onProgress) => bulkSetYearGroup(filterEligibleForBulkMetadataUpdate(selectedRows), yearGroupKey, onProgress),
+      verb: 'Setting year group for',
     });
   }
 
@@ -410,8 +454,8 @@ export function ClassesManagementPanel() {
   async function handleSetCourseLength(courseLength: number): Promise<void> {
     await runMetadataBulkAction({
       closeModal: () => setSetCourseLengthModalOpen(false),
-      mutate: () => bulkSetCourseLength(filterEligibleForBulkMetadataUpdate(selectedRows), courseLength),
-      setSubmitting: setSetCourseLengthSubmitting,
+      mutate: (onProgress) => bulkSetCourseLength(filterEligibleForBulkMetadataUpdate(selectedRows), courseLength, onProgress),
+      verb: 'Setting course length for',
     });
   }
 
@@ -452,95 +496,114 @@ export function ClassesManagementPanel() {
           nonBlockingWarningMessage={classesManagement.nonBlockingWarningMessage}
           refreshRequiredMessage={effectiveRefreshRequiredMessage}
         />
-        {shouldSuppressStaleTableData === false ? (
-          <Flex vertical gap={12}>
-            <section aria-label="Classes data workflow" aria-busy={getClassesWorkflowBusyState(classesManagement.isRefreshing)}>
-              <Flex vertical gap={12}>
-                <ClassesSummaryCard rows={classesManagement.rows} selectedCount={classesManagement.selectedRowKeys.length} />
-                <ClassesToolbar
-                  selectedRows={selectedRows}
-                  onBulkCreate={() => setCreateModalOpen(true)}
-                  onBulkDelete={() => setDeleteModalOpen(true)}
-                  onSetActive={handleSetActive}
-                  onSetInactive={handleSetInactive}
-                  onSetCohort={() => setSetCohortModalOpen(true)}
-                  onSetYearGroup={() => setSetYearGroupModalOpen(true)}
-                  onSetCourseLength={() => setSetCourseLengthModalOpen(true)}
-                  onManageCohorts={() => setManageCohortsModalOpen(true)}
-                  onManageYearGroups={() => setManageYearGroupsModalOpen(true)}
-                  mutationInFlight={workflowMutationBoundaryActive}
-                  setActiveLoading={setActiveSubmitting}
-                  setInactiveLoading={setInactiveSubmitting}
-                />
-                <ClassesTable
-                  rows={classesManagement.rows}
-                  selectedRowKeys={classesManagement.selectedRowKeys}
-                  onSelectedRowKeysChange={classesManagement.onSelectedRowKeysChange}
-                  selectionFrozen={workflowMutationBoundaryActive}
-                />
-              </Flex>
-            </section>
-            <BulkCreateModal
-              open={createModalOpen}
-              cohortOptions={cohortOptions}
-              yearGroupOptions={yearGroupOptions}
-              confirmLoading={createSubmitting}
-              onConfirm={handleBulkCreate}
-              onCancel={() => setCreateModalOpen(false)}
-              onCohortAddNew={handleCohortAddNew}
-              onYearGroupAddNew={handleYearGroupAddNew}
-              pendingCreatedCohortKey={pendingCreatedCohortKey}
-              pendingCreatedYearGroupKey={pendingCreatedYearGroupKey}
-            />
-            <BulkDeleteModal
-              open={deleteModalOpen}
-              selectedRows={selectedRows}
-              onConfirm={handleDeleteConfirm}
-              onCancel={() => setDeleteModalOpen(false)}
-              confirmLoading={deleteSubmitting}
-            />
-            <BulkSetSelectModal
-              open={setCohortModalOpen}
-              title="Set cohort"
-              fieldLabel="Cohort"
-              options={cohortOptions}
-              confirmLoading={setCohortSubmitting}
-              onConfirm={handleSetCohort}
-              onCancel={() => setSetCohortModalOpen(false)}
-              onAddNew={handleCohortAddNew}
-              pendingCreatedKey={pendingCreatedCohortKey}
-            />
-            <BulkSetSelectModal
-              open={setYearGroupModalOpen}
-              title="Set year group"
-              fieldLabel="Year group"
-              options={yearGroupOptions}
-              confirmLoading={setYearGroupSubmitting}
-              onConfirm={handleSetYearGroup}
-              onCancel={() => setSetYearGroupModalOpen(false)}
-              onAddNew={handleYearGroupAddNew}
-              pendingCreatedKey={pendingCreatedYearGroupKey}
-            />
-            <BulkSetCourseLengthModal
-              open={setCourseLengthModalOpen}
-              confirmLoading={setCourseLengthSubmitting}
-              onConfirm={handleSetCourseLength}
-              onCancel={() => setSetCourseLengthModalOpen(false)}
-            />
-            <ManageCohortsModal
-              open={manageCohortsModalOpen}
-              onClose={() => setManageCohortsModalOpen(false)}
-              onEntityCreated={handleCohortEntityCreated}
-            />
-            <ManageYearGroupsModal
-              open={manageYearGroupsModalOpen}
-              onClose={() => setManageYearGroupsModalOpen(false)}
-              onEntityCreated={handleYearGroupEntityCreated}
-            />
-          </Flex>
-        ) : null}
+        {renderClassesWorkflowContent()}
       </Card>
     </section>
   );
-}
 
+  /**
+   * Renders the classes workflow content (summary, toolbar, table, modals, progress).
+   *
+   * @returns {JSX.Element | null} The workflow content or null when suppressed.
+   */
+  function renderClassesWorkflowContent() {
+    if (shouldSuppressStaleTableData) {
+      return null;
+    }
+
+    return (
+      <Flex vertical gap={12}>
+        <section aria-label="Classes data workflow" aria-busy={getClassesWorkflowBusyState(classesManagement.isRefreshing)}>
+          <Flex vertical gap={12}>
+            <ClassesSummaryCard rows={classesManagement.rows} selectedCount={classesManagement.selectedRowKeys.length} />
+            <ClassesToolbar
+              selectedRows={selectedRows}
+              onBulkCreate={() => setCreateModalOpen(true)}
+              onBulkDelete={() => setDeleteModalOpen(true)}
+              onSetActive={handleSetActive}
+              onSetInactive={handleSetInactive}
+              onSetCohort={() => setSetCohortModalOpen(true)}
+              onSetYearGroup={() => setSetYearGroupModalOpen(true)}
+              onSetCourseLength={() => setSetCourseLengthModalOpen(true)}
+              onManageCohorts={() => setManageCohortsModalOpen(true)}
+              onManageYearGroups={() => setManageYearGroupsModalOpen(true)}
+              mutationInFlight={workflowMutationBoundaryActive}
+              setActiveLoading={setActiveSubmitting}
+              setInactiveLoading={setInactiveSubmitting}
+            />
+            <ClassesTable
+              rows={classesManagement.rows}
+              selectedRowKeys={classesManagement.selectedRowKeys}
+              onSelectedRowKeysChange={classesManagement.onSelectedRowKeysChange}
+              selectionFrozen={workflowMutationBoundaryActive}
+            />
+          </Flex>
+        </section>
+        <BulkCreateModal
+          open={createModalOpen}
+          cohortOptions={cohortOptions}
+          yearGroupOptions={yearGroupOptions}
+          confirmLoading={createSubmitting}
+          onConfirm={handleBulkCreate}
+          onCancel={() => setCreateModalOpen(false)}
+          onCohortAddNew={handleCohortAddNew}
+          onYearGroupAddNew={handleYearGroupAddNew}
+          pendingCreatedCohortKey={pendingCreatedCohortKey}
+          pendingCreatedYearGroupKey={pendingCreatedYearGroupKey}
+        />
+        <BulkDeleteModal
+          open={deleteModalOpen}
+          selectedRows={selectedRows}
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setDeleteModalOpen(false)}
+          confirmLoading={deleteSubmitting}
+        />
+        <BulkSetSelectModal
+          open={setCohortModalOpen}
+          title="Set cohort"
+          fieldLabel="Cohort"
+          options={cohortOptions}
+          confirmLoading={setCohortSubmitting}
+          onConfirm={handleSetCohort}
+          onCancel={() => setSetCohortModalOpen(false)}
+          onAddNew={handleCohortAddNew}
+          pendingCreatedKey={pendingCreatedCohortKey}
+        />
+        <BulkSetSelectModal
+          open={setYearGroupModalOpen}
+          title="Set year group"
+          fieldLabel="Year group"
+          options={yearGroupOptions}
+          confirmLoading={setYearGroupSubmitting}
+          onConfirm={handleSetYearGroup}
+          onCancel={() => setSetYearGroupModalOpen(false)}
+          onAddNew={handleYearGroupAddNew}
+          pendingCreatedKey={pendingCreatedYearGroupKey}
+        />
+        <BulkSetCourseLengthModal
+          open={setCourseLengthModalOpen}
+          confirmLoading={setCourseLengthSubmitting}
+          onConfirm={handleSetCourseLength}
+          onCancel={() => setSetCourseLengthModalOpen(false)}
+        />
+        <ManageCohortsModal
+          open={manageCohortsModalOpen}
+          onClose={() => setManageCohortsModalOpen(false)}
+          onEntityCreated={handleCohortEntityCreated}
+        />
+        <ManageYearGroupsModal
+          open={manageYearGroupsModalOpen}
+          onClose={() => setManageYearGroupsModalOpen(false)}
+          onEntityCreated={handleYearGroupEntityCreated}
+        />
+        <ClassesBulkProgressModal
+          open={isLocalQueueActive || queue.isProgressModalOpen}
+          progress={queue.progress}
+          verb={currentBulkActionVerb}
+          onCancel={queue.onCancelQueue}
+          onDismiss={queue.onDismissProgressModal}
+        />
+      </Flex>
+    );
+  }
+}
