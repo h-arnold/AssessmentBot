@@ -178,9 +178,18 @@ Frontend tests (useAssignmentDefinitionWizard.spec.ts — hook):
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** describe actual changes made when done.
-- **Deviations from plan:** note any departures from the original section design.
-- **Follow-up implications for later sections:** Section 2 depends on the extended wizard contract.
+- **Implementation notes:**
+  1. Extended `AssignmentDefinitionWizardModalProperties` with optional `initialValues?: Readonly<{ title?: string; topic?: string; yearGroup?: string }>` and `onCreateSuccess?: (definitionKey: string) => void`
+  2. Added `applyFormInitialValues` pure helper function that sets form fields via `form.setFieldsValue()` and synchronises `selectedTopicKey`/`selectedYearGroupKey` state, converting empty strings to `undefined`
+  3. Added `useEffect` in `useAssignmentDefinitionWizard` gated to create mode with `initialValues` present, running after `useFormInitialization`
+  4. Modified `handlePostMutation` to accept optional `onCreateSuccess` and `effectiveKey` params; on save with `onCreateSuccess` provided, calls `onCreateSuccess(key)` (with null guard) instead of `onClose()`
+  5. Threaded `onCreateSuccess` through `runWizardMutation` options, passed by `handleSave`
+  6. Updated `AssignmentDefinitionWizardModal` to destructure and pass both new props to hook
+  7. Added `@remarks` JSDoc on `AssignmentDefinitionWizardModalProperties` and `UseAssignmentDefinitionWizardReturn`
+  8. Test helpers (`wizardModalTestHelpers.tsx`): extended `RenderWizardModalOptions` with `initialValues` and `onCreateSuccess`
+  9. Added 8 new modal integration tests and 3 hook tests (11 total; all pass)
+- **Deviations from plan:** None. All implementation follows the plan exactly.
+- **Follow-up implications for later sections:** The extended wizard contract (`initialValues`, `onCreateSuccess`) is now available for Section 3 (AssessTaskModal wizard integration).
 
 ---
 

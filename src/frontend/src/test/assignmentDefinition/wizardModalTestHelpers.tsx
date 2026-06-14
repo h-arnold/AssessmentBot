@@ -4,6 +4,7 @@ import { queryKeys } from '../../query/queryKeys';
 import { renderWithFrontendProviders } from '../renderWithFrontendProviders';
 import type { FrontendProvidersOptions } from '../renderWithFrontendProviders';
 import type { QueryClient } from '@tanstack/react-query';
+import React from 'react';
 import {
   chooseSelectOption,
   setTextboxValue,
@@ -55,6 +56,10 @@ export interface RenderWizardModalOptions {
   warmupState?: FrontendProvidersOptions['warmupState'];
   /** Whether to wait for the interactive form fields (default: true). */
   waitForFormFields?: boolean;
+  /** Optional initial values to pre-populate form fields in create mode. */
+  initialValues?: Readonly<{ title?: string; topic?: string; yearGroup?: string }>;
+  /** Optional callback called after successful final save in create mode. */
+  onCreateSuccess?: (definitionKey: string) => void;
 }
 
 /**
@@ -83,6 +88,7 @@ function getModalNamePattern(mode: WizardModalMode): RegExp {
  * @param {() => void} onClose The onClose handler.
  * @param {boolean} open Whether the modal is open.
  * @param {FrontendProvidersOptions['warmupState']} warmupState Warmup state.
+ * @param {Record<string, unknown>} [extraProperties] Optional extra props to pass to the component.
  * @returns {Promise<ReturnType<typeof renderWithFrontendProviders>>} Render result.
  */
 async function renderModalComponent(
@@ -90,17 +96,21 @@ async function renderModalComponent(
   definitionKey: string | null,
   onClose: () => void,
   open: boolean,
-  warmupState: FrontendProvidersOptions['warmupState']
+  warmupState: FrontendProvidersOptions['warmupState'],
+  extraProperties?: Record<string, unknown>
 ): Promise<ReturnType<typeof renderWithFrontendProviders>> {
   const { AssignmentDefinitionWizardModal } = await import('../../features/assignmentWizard/AssignmentDefinitionWizardModal');
 
+  const componentProperties: Record<string, unknown> = {
+    mode,
+    definitionKey,
+    onClose,
+    open,
+    ...extraProperties,
+  };
+
   return renderWithFrontendProviders(
-    <AssignmentDefinitionWizardModal
-      mode={mode}
-      definitionKey={definitionKey}
-      onClose={onClose}
-      open={open}
-    />,
+    React.createElement(AssignmentDefinitionWizardModal, componentProperties as React.ComponentPropsWithoutRef<typeof AssignmentDefinitionWizardModal> & Record<string, unknown>),
     { warmupState }
   );
 }
@@ -220,6 +230,8 @@ export async function renderWizardModal(
     mockInvalidateQueries = true,
     warmupState,
     waitForFormFields: shouldWaitForFormFields = true,
+    initialValues,
+    onCreateSuccess,
   } = options;
 
   const renderResult = await renderModalComponent(
@@ -227,7 +239,8 @@ export async function renderWizardModal(
     definitionKey,
     getOnCloseHandler(onClose),
     open,
-    warmupState
+    warmupState,
+    { initialValues, onCreateSuccess } as Record<string, unknown>
   );
 
   const { queryClient } = renderResult;

@@ -1,9 +1,10 @@
-import { renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { QueryClientProvider } from '@tanstack/react-query';
 import type { PropsWithChildren } from 'react';
 import { createAppQueryClient } from '../../query/queryClient';
+import type { UseAssignmentDefinitionWizardReturn } from './useAssignmentDefinitionWizard';
 
 // Mock dependencies
 vi.mock('../../services/apiService', () => ({
@@ -76,34 +77,215 @@ async function loadUseAssignmentDefinitionWizard() {
 }
 
 describe('useAssignmentDefinitionWizard', () => {
-  // Section 7 - Red Loop: Failing tests for orchestration
-  describe('Section 7 - SelectWithAddNew orchestration', () => {
-    it('useAssignmentDefinitionWizard/AssignmentDefinitionWizardModal handle topic and year-group onEntityCreated orchestration and pass updated selected values to shell props', async () => {
-      // This test should fail because the onEntityCreated orchestration isn't implemented yet
-      const { useAssignmentDefinitionWizard } = await loadUseAssignmentDefinitionWizard();
+  it('initialValues set selectedTopicKey and selectedYearGroupKey state', async () => {
+    const module = await loadUseAssignmentDefinitionWizard();
+    const useAssignmentDefinitionWizard = module.useAssignmentDefinitionWizard as (
+      properties: Record<string, unknown>
+    ) => UseAssignmentDefinitionWizardReturn;
 
-      // This should fail because useAssignmentDefinitionWizard doesn't expose onEntityCreated handlers yet
-      // and doesn't pass updated selected values to shell
-      const { result } = renderHook(
-        () =>
-          useAssignmentDefinitionWizard({
-            open: true,
-            mode: 'create',
-            definitionKey: null,
-            onClose: vi.fn(),
-          }),
-        {
-          wrapper: createQueryWrapper(),
-        }
-      );
+    const { result } = renderHook(
+      () =>
+        useAssignmentDefinitionWizard({
+          open: true,
+          mode: 'create',
+          definitionKey: null,
+          onClose: vi.fn(),
+          initialValues: {
+            title: 'Test',
+            topic: 'topic-algebra',
+            yearGroup: 'year-group-10',
+          },
+        }),
+      { wrapper: createQueryWrapper() }
+    );
 
-      // This should fail - the hook doesn't expose onEntityCreated handlers
-      expect(result.current).toHaveProperty('onTopicEntityCreated');
-      expect(result.current).toHaveProperty('onYearGroupEntityCreated');
+    // After initial render, selectedTopicKey and selectedYearGroupKey should be set
+    // from initialValues. This will fail until the implementation exists.
+    expect(result.current.selectedTopicKey).toBe('topic-algebra');
+    expect(result.current.selectedYearGroupKey).toBe('year-group-10');
+  });
 
-      // This should fail - the hook doesn't pass updated selected values
-      expect(result.current).toHaveProperty('selectedTopicKey');
-      expect(result.current).toHaveProperty('selectedYearGroupKey');
+  it('definitionKey passed to onCreateSuccess matches the save response key', async () => {
+    // Access the mocked upsertAssignmentDefinition service
+    const serviceModule =
+      await import('../../services/assignmentDefinition/assignmentDefinitionService');
+    const upsertAssignmentDefinitionMock = serviceModule.upsertAssignmentDefinition as ReturnType<
+      typeof vi.fn
+    >;
+
+    const onCreateSuccess = vi.fn();
+    const onClose = vi.fn();
+
+    // Mock parse response with definitionKey
+    const parseResponse = {
+      definitionKey: 'test-create-key',
+      primaryTitle: 'Test',
+      primaryTopicKey: 'topic-algebra',
+      primaryTopic: 'Algebra',
+      yearGroupKey: 'year-group-10',
+      yearGroupLabel: 'Year 10',
+      alternateTitles: [],
+      alternateTopics: [],
+      documentType: 'SLIDES',
+      referenceDocumentId: 'ref-doc',
+      templateDocumentId: 'tpl-doc',
+      referenceDocumentUrl: 'https://docs.google.com/presentation/d/ref-doc/edit',
+      templateDocumentUrl: 'https://docs.google.com/presentation/d/tpl-doc/edit',
+      assignmentWeighting: 1,
+      tasks: [{ taskId: 't1', taskTitle: 'Task 1', taskWeighting: 1 }],
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+    };
+
+    // Mock save response with definitionKey (the key passed to onCreateSuccess)
+    const saveResponse = {
+      ...parseResponse,
+      assignmentWeighting: 3,
+      tasks: [{ taskId: 't1', taskTitle: 'Task 1', taskWeighting: 3 }],
+    };
+
+    upsertAssignmentDefinitionMock
+      .mockResolvedValueOnce(parseResponse)
+      .mockResolvedValueOnce(saveResponse);
+
+    const module = await loadUseAssignmentDefinitionWizard();
+    const useAssignmentDefinitionWizard = module.useAssignmentDefinitionWizard as (
+      properties: Record<string, unknown>
+    ) => UseAssignmentDefinitionWizardReturn;
+
+    const { result } = renderHook(
+      () =>
+        useAssignmentDefinitionWizard({
+          open: true,
+          mode: 'create',
+          definitionKey: null,
+          onClose,
+          initialValues: { title: 'Test', topic: 'topic-algebra', yearGroup: 'year-group-10' },
+          onCreateSuccess,
+        }),
+      { wrapper: createQueryWrapper() }
+    );
+
+    // Set form values for the parse step
+    await act(async () => {
+      result.current.form.setFieldsValue({
+        title: 'Test',
+        topic: 'topic-algebra',
+        yearGroup: 'year-group-10',
+        referenceDocumentUrl: 'https://docs.google.com/presentation/d/ref-doc/edit',
+        templateDocumentUrl: 'https://docs.google.com/presentation/d/tpl-doc/edit',
+      });
     });
+
+    // Trigger parse (first call to handlePrimaryAction)
+    await act(async () => {
+      (result.current.handlePrimaryAction as () => void)();
+    });
+
+    // Wait for parse to complete
+    await waitFor(() => {
+      expect(result.current.hasParsedTasks).toBe(true);
+    });
+
+    // Trigger save (second call to handlePrimaryAction)
+    await act(async () => {
+      (result.current.handlePrimaryAction as () => void)();
+    });
+
+    // Verify onCreateSuccess was called with the definitionKey from the save response
+    // This will fail until the implementation threads onCreateSuccess through the save path.
+    await waitFor(() => {
+      expect(onCreateSuccess).toHaveBeenCalledWith('test-create-key');
+    });
+  });
+
+  it('onCreateSuccess is NOT called when save fails', async () => {
+    // Access the mocked upsertAssignmentDefinition service
+    const serviceModule =
+      await import('../../services/assignmentDefinition/assignmentDefinitionService');
+    const upsertAssignmentDefinitionMock = serviceModule.upsertAssignmentDefinition as ReturnType<
+      typeof vi.fn
+    >;
+
+    const onCreateSuccess = vi.fn();
+    const onClose = vi.fn();
+
+    // Mock parse response with definitionKey
+    const parseResponse = {
+      definitionKey: 'test-fail-key',
+      primaryTitle: 'Test',
+      primaryTopicKey: 'topic-algebra',
+      primaryTopic: 'Algebra',
+      yearGroupKey: 'year-group-10',
+      yearGroupLabel: 'Year 10',
+      alternateTitles: [],
+      alternateTopics: [],
+      documentType: 'SLIDES',
+      referenceDocumentId: 'ref-doc',
+      templateDocumentId: 'tpl-doc',
+      referenceDocumentUrl: 'https://docs.google.com/presentation/d/ref-doc/edit',
+      templateDocumentUrl: 'https://docs.google.com/presentation/d/tpl-doc/edit',
+      assignmentWeighting: 1,
+      tasks: [{ taskId: 't1', taskTitle: 'Task 1', taskWeighting: 1 }],
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+    };
+
+    // Parse succeeds, save fails
+    upsertAssignmentDefinitionMock
+      .mockResolvedValueOnce(parseResponse)
+      .mockRejectedValueOnce(new Error('Save failed'));
+
+    const module = await loadUseAssignmentDefinitionWizard();
+    const useAssignmentDefinitionWizard = module.useAssignmentDefinitionWizard as (
+      properties: Record<string, unknown>
+    ) => UseAssignmentDefinitionWizardReturn;
+
+    const { result } = renderHook(
+      () =>
+        useAssignmentDefinitionWizard({
+          open: true,
+          mode: 'create',
+          definitionKey: null,
+          onClose,
+          initialValues: { title: 'Test', topic: 'topic-algebra', yearGroup: 'year-group-10' },
+          onCreateSuccess,
+        }),
+      { wrapper: createQueryWrapper() }
+    );
+
+    // Set form values for the parse step
+    await act(async () => {
+      result.current.form.setFieldsValue({
+        title: 'Test',
+        topic: 'topic-algebra',
+        yearGroup: 'year-group-10',
+        referenceDocumentUrl: 'https://docs.google.com/presentation/d/ref-doc/edit',
+        templateDocumentUrl: 'https://docs.google.com/presentation/d/tpl-doc/edit',
+      });
+    });
+
+    // Trigger parse
+    await act(async () => {
+      (result.current.handlePrimaryAction as () => void)();
+    });
+
+    // Wait for parse to complete
+    await waitFor(() => {
+      expect(result.current.hasParsedTasks).toBe(true);
+    });
+
+    // Trigger save (will fail)
+    await act(async () => {
+      (result.current.handlePrimaryAction as () => void)();
+    });
+
+    // Wait for the save error to be processed (blockingError set)
+    await waitFor(() => {
+      expect(result.current.blockingError).toBe('Error message');
+    });
+
+    // onCreateSuccess should NOT have been called
+    expect(onCreateSuccess).not.toHaveBeenCalled();
   });
 });

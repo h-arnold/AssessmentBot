@@ -1057,6 +1057,429 @@ describe('AssignmentDefinitionWizardModal', () => {
       });
     });
 
+    // ============================================================================
+    // Section 1 — initialValues and onCreateSuccess
+    // ============================================================================
+
+    describe('initialValues and onCreateSuccess', () => {
+      it('applies initialValues to form fields in create mode', async () => {
+        const renderOptions = createBaseCreateOptions();
+        renderOptions.initialValues = {
+          title: 'Pre-filled Title',
+          topic: 'topic-algebra',
+          yearGroup: 'year-group-10',
+        };
+        const { modal } = await renderWizardModal(renderOptions);
+
+        const { titleInput, topicSelect, yearGroupSelect } = getFormElements({ modal });
+
+        // Title input should be pre-populated
+        expect((titleInput as HTMLInputElement).value).toBe('Pre-filled Title');
+
+        // Topic and year group should be pre-populated from initialValues
+        expect(topicSelect.parentElement?.textContent).toContain('Algebra');
+        expect(yearGroupSelect.parentElement?.textContent).toContain('Year 10');
+      });
+
+      it('applies partial initialValues — only provided fields are pre-populated', async () => {
+        const renderOptions = createBaseCreateOptions();
+        renderOptions.initialValues = {
+          title: 'Only Title',
+          // No topic, no yearGroup — they should remain blank
+        };
+        const { modal } = await renderWizardModal(renderOptions);
+
+        const { titleInput, topicSelect, yearGroupSelect } = getFormElements({ modal });
+
+        // Title should be pre-populated
+        expect((titleInput as HTMLInputElement).value).toBe('Only Title');
+
+        // Topic and year group should be empty since initialValues doesn't include them
+        expect(topicSelect.parentElement?.textContent).not.toContain('Algebra');
+        expect(topicSelect.parentElement?.textContent).not.toContain('Geometry');
+        expect(yearGroupSelect.parentElement?.textContent).not.toContain('Year 10');
+        expect(yearGroupSelect.parentElement?.textContent).not.toContain('Year 11');
+      });
+
+      it('starts empty in create mode when initialValues are absent', async () => {
+        const renderOptions = createBaseCreateOptions();
+        const { modal } = await renderWizardModal(renderOptions);
+
+        const { titleInput } = getFormElements({ modal });
+
+        // Title should be empty (existing behaviour)
+        expect((titleInput as HTMLInputElement).value).toBe('');
+      });
+
+      it('ignores initialValues in update mode — hydrates from definition', async () => {
+        setupUpdateModeMocks(mockFullAssignmentDefinition);
+        const renderOptions = createBaseUpdateOptions(
+          'algebra-baseline',
+          mockFullAssignmentDefinition
+        );
+        renderOptions.initialValues = {
+          title: 'Should Be Ignored',
+          topic: 'topic-geometry',
+        };
+        const { modal } = await renderWizardModal(renderOptions);
+
+        const { titleInput, topicSelect, yearGroupSelect } = getFormElements({ modal });
+
+        // Title should be from definition, not from initialValues
+        expect((titleInput as HTMLInputElement).value).toBe('Algebra Baseline');
+
+        // Topic should be from definition ('Algebra'), not initialValues ('topic-geometry')
+        expect(topicSelect.parentElement?.textContent).toContain('Algebra');
+        expect(topicSelect.parentElement?.textContent).not.toContain('Geometry');
+
+        // Year group should be from definition ('Year 10'), not from initialValues
+        expect(yearGroupSelect.parentElement?.textContent).toContain('Year 10');
+      });
+
+      it('calls onCreateSuccess on final save in create mode with the correct definition key', async () => {
+        const onCreateSuccess = vi.fn();
+        const renderOptions = createBaseCreateOptions();
+        renderOptions.onCreateSuccess = onCreateSuccess;
+        const { modal } = await renderWizardModal(renderOptions);
+
+        // Fill in all required fields
+        await fillRequiredFields({ modal }, { title: 'New Assessment', yearGroup: 'Year 10' });
+
+        await waitFor(() => {
+          assertParseButtonEnabled({ modal });
+        });
+
+        // Mock the stage-one parse response
+        const parseResponse = {
+          definitionKey: 'test-create-key',
+          primaryTitle: 'New Assessment',
+          primaryTopicKey: 'topic-algebra',
+          primaryTopic: 'Algebra',
+          yearGroupKey: 'year-group-10',
+          yearGroupLabel: 'Year 10',
+          alternateTitles: [],
+          alternateTopics: [],
+          documentType: 'SLIDES',
+          referenceDocumentId: 'new-ref',
+          templateDocumentId: 'new-tpl',
+          referenceDocumentUrl: 'https://docs.google.com/presentation/d/new-ref',
+          templateDocumentUrl: 'https://docs.google.com/presentation/d/new-tpl',
+          assignmentWeighting: 1,
+          tasks: [
+            { taskId: 'task-1', taskTitle: 'Task 1', taskWeighting: 1 },
+            { taskId: 'task-2', taskTitle: 'Task 2', taskWeighting: 1 },
+          ],
+          createdAt: '2025-01-01T00:00:00.000Z',
+          updatedAt: '2025-01-01T00:00:00.000Z',
+        };
+        upsertAssignmentDefinitionMock.mockResolvedValueOnce(parseResponse);
+
+        // Click Parse and continue
+        const parseButton = getParseButton({ modal });
+        await act(async () => {
+          fireEvent.click(parseButton);
+        });
+
+        // Wait for parse to complete
+        await waitFor(() => {
+          assertSharedEditSurfaceHydrated({ modal });
+          expect(getSaveButton({ modal })).toBeInTheDocument();
+        });
+
+        // Mock the final save response
+        const finalSaveResponse = {
+          definitionKey: 'test-create-key',
+          primaryTitle: 'New Assessment',
+          primaryTopicKey: 'topic-algebra',
+          primaryTopic: 'Algebra',
+          yearGroupKey: 'year-group-10',
+          yearGroupLabel: 'Year 10',
+          alternateTitles: [],
+          alternateTopics: [],
+          documentType: 'SLIDES',
+          referenceDocumentId: 'new-ref',
+          templateDocumentId: 'new-tpl',
+          referenceDocumentUrl: 'https://docs.google.com/presentation/d/new-ref',
+          templateDocumentUrl: 'https://docs.google.com/presentation/d/new-tpl',
+          assignmentWeighting: 5,
+          tasks: [
+            { taskId: 'task-1', taskTitle: 'Task 1', taskWeighting: 2 },
+            { taskId: 'task-2', taskTitle: 'Task 2', taskWeighting: 3 },
+          ],
+          createdAt: '2025-01-01T00:00:00.000Z',
+          updatedAt: '2025-01-02T00:00:00.000Z',
+        };
+        upsertAssignmentDefinitionMock.mockResolvedValueOnce(finalSaveResponse);
+
+        // Click Save
+        const saveButton = getSaveButton({ modal });
+        await act(async () => {
+          fireEvent.click(saveButton);
+        });
+
+        // Wait for the save to complete
+        await waitFor(() => {
+          expect(upsertAssignmentDefinitionMock).toHaveBeenCalledTimes(
+            EXPECTED_STAGE_ONE_AND_FINAL_SAVE_CALL_COUNT
+          );
+        });
+
+        // onCreateSuccess should have been called with the definitionKey from the save response
+        await waitFor(() => {
+          expect(onCreateSuccess).toHaveBeenCalledWith('test-create-key');
+        });
+      });
+
+      it('does NOT call onCreateSuccess when save fails', async () => {
+        const onCreateSuccess = vi.fn();
+        const renderOptions = createBaseCreateOptions();
+        renderOptions.onCreateSuccess = onCreateSuccess;
+        const { modal } = await renderWizardModal(renderOptions);
+
+        // Fill in all required fields
+        await fillRequiredFields({ modal }, { title: 'New Assessment', yearGroup: 'Year 10' });
+
+        await waitFor(() => {
+          assertParseButtonEnabled({ modal });
+        });
+
+        // Mock the stage-one parse response
+        const parseResponse = {
+          definitionKey: 'test-fail-key',
+          primaryTitle: 'New Assessment',
+          primaryTopicKey: 'topic-algebra',
+          primaryTopic: 'Algebra',
+          yearGroupKey: 'year-group-10',
+          yearGroupLabel: 'Year 10',
+          alternateTitles: [],
+          alternateTopics: [],
+          documentType: 'SLIDES',
+          referenceDocumentId: 'new-ref',
+          templateDocumentId: 'new-tpl',
+          referenceDocumentUrl: 'https://docs.google.com/presentation/d/new-ref',
+          templateDocumentUrl: 'https://docs.google.com/presentation/d/new-tpl',
+          assignmentWeighting: 1,
+          tasks: [
+            { taskId: 'task-1', taskTitle: 'Task 1', taskWeighting: 1 },
+          ],
+          createdAt: '2025-01-01T00:00:00.000Z',
+          updatedAt: '2025-01-01T00:00:00.000Z',
+        };
+        upsertAssignmentDefinitionMock.mockResolvedValueOnce(parseResponse);
+
+        // Click Parse and continue
+        const parseButton = getParseButton({ modal });
+        await act(async () => {
+          fireEvent.click(parseButton);
+        });
+
+        // Wait for parse to complete
+        await waitFor(() => {
+          assertSharedEditSurfaceHydrated({ modal });
+          expect(getSaveButton({ modal })).toBeInTheDocument();
+        });
+
+        // Mock the final save to fail
+        upsertAssignmentDefinitionMock.mockRejectedValueOnce(new Error('Save failed'));
+
+        // Click Save
+        const saveButton = getSaveButton({ modal });
+        await act(async () => {
+          fireEvent.click(saveButton);
+        });
+
+        // Wait for blocking error to appear
+        await waitFor(() => {
+          expect(screen.getByRole('alert')).toBeInTheDocument();
+        });
+
+        // onCreateSuccess should NOT have been called
+        expect(onCreateSuccess).not.toHaveBeenCalled();
+      });
+
+      it('does NOT call onClose when onCreateSuccess is provided and save succeeds', async () => {
+        const onCloseSpy = vi.fn();
+        const onCreateSuccess = vi.fn();
+        const renderOptions = createBaseCreateOptions(onCloseSpy);
+        renderOptions.onCreateSuccess = onCreateSuccess;
+        const { modal } = await renderWizardModal(renderOptions);
+
+        // Fill in all required fields
+        await fillRequiredFields({ modal }, { title: 'New Assessment', yearGroup: 'Year 10' });
+
+        await waitFor(() => {
+          assertParseButtonEnabled({ modal });
+        });
+
+        // Mock the stage-one parse response
+        const parseResponse = {
+          definitionKey: 'test-no-close-key',
+          primaryTitle: 'New Assessment',
+          primaryTopicKey: 'topic-algebra',
+          primaryTopic: 'Algebra',
+          yearGroupKey: 'year-group-10',
+          yearGroupLabel: 'Year 10',
+          alternateTitles: [],
+          alternateTopics: [],
+          documentType: 'SLIDES',
+          referenceDocumentId: 'new-ref',
+          templateDocumentId: 'new-tpl',
+          referenceDocumentUrl: 'https://docs.google.com/presentation/d/new-ref',
+          templateDocumentUrl: 'https://docs.google.com/presentation/d/new-tpl',
+          assignmentWeighting: 1,
+          tasks: [
+            { taskId: 'task-1', taskTitle: 'Task 1', taskWeighting: 1 },
+          ],
+          createdAt: '2025-01-01T00:00:00.000Z',
+          updatedAt: '2025-01-01T00:00:00.000Z',
+        };
+        upsertAssignmentDefinitionMock.mockResolvedValueOnce(parseResponse);
+
+        // Click Parse and continue
+        const parseButton = getParseButton({ modal });
+        await act(async () => {
+          fireEvent.click(parseButton);
+        });
+
+        // Wait for parse to complete
+        await waitFor(() => {
+          assertSharedEditSurfaceHydrated({ modal });
+          expect(getSaveButton({ modal })).toBeInTheDocument();
+        });
+
+        // Mock the final save response
+        const finalSaveResponse = {
+          definitionKey: 'test-no-close-key',
+          primaryTitle: 'New Assessment',
+          primaryTopicKey: 'topic-algebra',
+          primaryTopic: 'Algebra',
+          yearGroupKey: 'year-group-10',
+          yearGroupLabel: 'Year 10',
+          alternateTitles: [],
+          alternateTopics: [],
+          documentType: 'SLIDES',
+          referenceDocumentId: 'new-ref',
+          templateDocumentId: 'new-tpl',
+          referenceDocumentUrl: 'https://docs.google.com/presentation/d/new-ref',
+          templateDocumentUrl: 'https://docs.google.com/presentation/d/new-tpl',
+          assignmentWeighting: 5,
+          tasks: [
+            { taskId: 'task-1', taskTitle: 'Task 1', taskWeighting: 2 },
+          ],
+          createdAt: '2025-01-01T00:00:00.000Z',
+          updatedAt: '2025-01-02T00:00:00.000Z',
+        };
+        upsertAssignmentDefinitionMock.mockResolvedValueOnce(finalSaveResponse);
+
+        // Click Save
+        const saveButton = getSaveButton({ modal });
+        await act(async () => {
+          fireEvent.click(saveButton);
+        });
+
+        // Wait for save to complete
+        await waitFor(() => {
+          expect(upsertAssignmentDefinitionMock).toHaveBeenCalledTimes(
+            EXPECTED_STAGE_ONE_AND_FINAL_SAVE_CALL_COUNT
+          );
+        });
+
+        // onClose should NOT have been called (onCreateSuccess replaces it)
+        expect(onCloseSpy).not.toHaveBeenCalled();
+      });
+
+      it('calls onClose when onCreateSuccess is NOT provided and save succeeds', async () => {
+        const onCloseSpy = vi.fn();
+        const renderOptions = createBaseCreateOptions(onCloseSpy);
+        const { modal } = await renderWizardModal(renderOptions);
+
+        // Fill in all required fields
+        await fillRequiredFields({ modal }, { title: 'New Assessment', yearGroup: 'Year 10' });
+
+        await waitFor(() => {
+          assertParseButtonEnabled({ modal });
+        });
+
+        // Mock the stage-one parse response
+        const parseResponse = {
+          definitionKey: 'test-close-key',
+          primaryTitle: 'New Assessment',
+          primaryTopicKey: 'topic-algebra',
+          primaryTopic: 'Algebra',
+          yearGroupKey: 'year-group-10',
+          yearGroupLabel: 'Year 10',
+          alternateTitles: [],
+          alternateTopics: [],
+          documentType: 'SLIDES',
+          referenceDocumentId: 'new-ref',
+          templateDocumentId: 'new-tpl',
+          referenceDocumentUrl: 'https://docs.google.com/presentation/d/new-ref',
+          templateDocumentUrl: 'https://docs.google.com/presentation/d/new-tpl',
+          assignmentWeighting: 1,
+          tasks: [
+            { taskId: 'task-1', taskTitle: 'Task 1', taskWeighting: 1 },
+          ],
+          createdAt: '2025-01-01T00:00:00.000Z',
+          updatedAt: '2025-01-01T00:00:00.000Z',
+        };
+        upsertAssignmentDefinitionMock.mockResolvedValueOnce(parseResponse);
+
+        // Click Parse and continue
+        const parseButton = getParseButton({ modal });
+        await act(async () => {
+          fireEvent.click(parseButton);
+        });
+
+        // Wait for parse to complete
+        await waitFor(() => {
+          assertSharedEditSurfaceHydrated({ modal });
+          expect(getSaveButton({ modal })).toBeInTheDocument();
+        });
+
+        // Mock the final save response
+        const finalSaveResponse = {
+          definitionKey: 'test-close-key',
+          primaryTitle: 'New Assessment',
+          primaryTopicKey: 'topic-algebra',
+          primaryTopic: 'Algebra',
+          yearGroupKey: 'year-group-10',
+          yearGroupLabel: 'Year 10',
+          alternateTitles: [],
+          alternateTopics: [],
+          documentType: 'SLIDES',
+          referenceDocumentId: 'new-ref',
+          templateDocumentId: 'new-tpl',
+          referenceDocumentUrl: 'https://docs.google.com/presentation/d/new-ref',
+          templateDocumentUrl: 'https://docs.google.com/presentation/d/new-tpl',
+          assignmentWeighting: 5,
+          tasks: [
+            { taskId: 'task-1', taskTitle: 'Task 1', taskWeighting: 2 },
+          ],
+          createdAt: '2025-01-01T00:00:00.000Z',
+          updatedAt: '2025-01-02T00:00:00.000Z',
+        };
+        upsertAssignmentDefinitionMock.mockResolvedValueOnce(finalSaveResponse);
+
+        // Click Save
+        const saveButton = getSaveButton({ modal });
+        await act(async () => {
+          fireEvent.click(saveButton);
+        });
+
+        // Wait for save to complete
+        await waitFor(() => {
+          expect(upsertAssignmentDefinitionMock).toHaveBeenCalledTimes(
+            EXPECTED_STAGE_ONE_AND_FINAL_SAVE_CALL_COUNT
+          );
+        });
+
+        // onClose SHOULD have been called (existing behaviour)
+        await waitFor(() => {
+          expect(onCloseSpy).toHaveBeenCalled();
+        });
+      });
+    });
+
     // Test Case 21: Save error shows blocking error that can be dismissed to return to assignments page
     it('save error shows blocking error that can be dismissed to return to assignments page', async () => {
       setupUpdateModeMocks(mockFullAssignmentDefinition);
