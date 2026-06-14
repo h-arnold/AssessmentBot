@@ -392,8 +392,14 @@ Frontend tests in `runQueuedBatchMutation.spec.ts`:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** to be filled during implementation.
-- **Deviations from plan:** to be filled during implementation.
+- **Implementation notes:**
+  - `runQueuedBatchMutation` engine implemented as a sequential batch processor that enqueues items through `callApiQueued` and tracks per-item progress.
+  - Uses `for...of` loop to avoid `security/detect-object-injection` lint. Each item awaited sequentially, preserving FIFO order.
+  - Progress callback fires twice per item: "starting" (currentItem set, completed unchanged) and "settled" (currentItem null, completed incremented).
+  - Cancelled items with `{ reason: 'CANCELLED' }` are naturally captured as rejected results — no special cancellation handling needed in the engine.
+  - 7 tests, 100% coverage. Lint and TSC clean.
+  - Regression Gate: zero regressions, zero new failures.
+- **Deviations from plan:** None.
 - **Follow-up implications for later sections:** Section 3 renders the progress snapshots; Section 4 owns the hook that drives the engine.
 
 ---
