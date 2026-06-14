@@ -312,6 +312,7 @@ Modal
 - Do not add bespoke layout abstractions when existing Ant Design primitives are sufficient.
 - Do not hide important cancellation outcomes inside transient surfaces only — cancellation results are surfaced through the panel alert banner.
 - Keep layout decisions aligned with existing frontend shell and navigation guidance.
+- This modal is intentionally feature-local per SPEC v1 scope (deferred: reusable app-wide progress modal abstraction); do not abstract for reuse.
 
 ## Open questions
 

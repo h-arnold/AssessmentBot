@@ -87,6 +87,20 @@ This feature is **not** intended to:
 
 Pending requests removed by cancellation reject with an object whose `reason` is `'CANCELLED'`. The resulting `RowMutationResult` entries have `status: 'rejected'` and `error.reason === 'CANCELLED'`. The existing outcome-resolution helpers in `ClassesManagementPanel.tsx` are extended to detect this marker and emit cancellation-specific copy, while continuing to treat backend failures with the existing action-specific failure messages.
 
+#### Verb-to-backend-method mapping for progress display
+
+The following table maps each progress verb to the backend method used by the queued batch engine. This mapping is explicit so the verb shown in the progress modal always matches the actual transport call.
+
+| User-facing verb            | Backend method  | Bulk action       |
+| --------------------------- | --------------- | ----------------- |
+| `Creating`                  | `upsertABClass` | Create ABClass    |
+| `Deleting`                  | `deleteABClass` | Delete ABClass    |
+| `Activating`                | `updateABClass` | Set active        |
+| `Deactivating`              | `updateABClass` | Set inactive      |
+| `Setting cohort for`        | `updateABClass` | Set cohort        |
+| `Setting year group for`    | `updateABClass` | Set year group    |
+| `Setting course length for` | `updateABClass` | Set course length |
+
 #### Queued batch item spec
 
 ```ts
@@ -203,6 +217,10 @@ ClassesManagementPanel
     └── Count + Cancel button
 ```
 
+Component placement:
+
+- `ClassesBulkProgressModal.tsx` lives at `src/frontend/src/features/classes/bulk/ClassesBulkProgressModal.tsx` (feature-local under `bulk/`).
+
 ### Out of scope for this surface
 
 - Inline single-row class edits elsewhere in the app.
@@ -244,8 +262,9 @@ Because `callApiQueued` is FIFO, the first unsettled Promise is also the one cur
 
 - `cancelApiQueued('classesBulkMutation')` removes every pending `QueueEntry` from the internal queue map entry.
 - Each removed entry's Promise rejects with `{ reason: 'CANCELLED' }`.
+- The currently active in-flight request (if any) continues unaffected and is **not** counted as cancelled.
 - If the queue is not active and has no pending items, cancellation is a no-op and returns `0`.
-- The function returns the number of cancelled pending items.
+- The function returns the number of **pending** items cancelled (excludes the active in-flight request).
 
 ## Main user-facing surface specification
 
@@ -395,7 +414,7 @@ Because `callApiQueued` is FIFO, the first unsettled Promise is also the one cur
 - The modal body content (excluding the live region) should be marked `aria-busy="true"` while the queue is active.
 - Toolbar buttons and table-row selection checkboxes remain disabled while the queue is active. The progress modal itself communicates the busy reason; the toolbar does not need a separate tooltip because the modal is the primary status surface.
 - When the modal closes automatically on drain, focus moves to the first enabled button in the Classes toolbar region, or to the toolbar region container if no button is enabled.
-- The Cancel button must clearly indicate it cancels _remaining_ items, not the active one.
+- The Cancel button must clearly indicate it cancels _remaining_ items, not the active one. The button label must be "Cancel remaining".
 
 ## Backend changes required to support agreed behaviour
 
@@ -454,7 +473,8 @@ Feature-local helpers (record in the action plan only; no shared-doc update requ
   - Bulk create shows progress modal and count updates.
   - Bulk delete shows progress modal and disables toolbar buttons.
   - Cancel button clears pending items and surfaces partial-failure alert.
-  - Modal dismisses without stopping the active queue.
+  - Modal dismisses without stopping the active queue; toolbar remains disabled; alert banner appears on drain.
+  - At least one metadata bulk action (e.g., Set cohort) shows correct progress verb and count updates.
 - **Backend tests**: none required.
 
 ## Documentation and rollout notes
