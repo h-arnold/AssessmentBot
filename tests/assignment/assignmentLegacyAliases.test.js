@@ -1,8 +1,24 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import Assignment from '../../src/backend/AssignmentProcessor/Assignment.js';
 import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
 
 describe('Assignment (legacy alias removal)', () => {
+  beforeEach(() => {
+    globalThis.Classroom = {
+      Courses: {
+        CourseWork: {
+          get: vi.fn(() => ({
+            creationTime: '2026-01-01T00:00:00.000Z',
+            title: 'Test Assignment',
+          })),
+        },
+      },
+    };
+  });
+
+  afterEach(() => {
+    delete globalThis.Classroom;
+  });
   describe('tasks getter', () => {
     it('should return null for partial definition', () => {
       const partialDef = new AssignmentDefinition({

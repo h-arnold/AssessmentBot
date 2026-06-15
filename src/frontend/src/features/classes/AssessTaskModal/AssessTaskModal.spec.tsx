@@ -385,7 +385,7 @@ describe('Assessment run interaction', () => {
       definitionPartials: [createDefinitionPartial()],
       // findMatchResult is intentionally omitted: the component returns early
       // before findMatchingDefinition is called because topicName is null.
-      assignments: [{ assignmentId: 'a1', title: 'Essay', topicName: null, topicId: null }],
+      assignments: [{ assignmentId: 'a1', title: 'Essay', creationTime: '2024-09-02T08:30:00.000Z', topicName: null, topicId: null }],
     });
 
     await selectAssignment(dialog);
@@ -878,7 +878,7 @@ describe('No-match resolution — creating state and wizard integration', () => 
   it('renders wizard with mode="create" and correct initialValues when topicId matches cache', async () => {
     const { dialog, queryClient } = await setupWizardTest({
       assignments: [
-        { assignmentId: 'a1', title: 'Essay', topicName: 'Writing', topicId: 'topic-writing' },
+        { assignmentId: 'a1', title: 'Essay', creationTime: '2024-09-02T08:30:00.000Z', topicName: 'Writing', topicId: 'topic-writing' },
       ],
     });
 
@@ -905,7 +905,7 @@ describe('No-match resolution — creating state and wizard integration', () => 
   it('leaves topic field empty when topicId is not in the assignmentTopics cache', async () => {
     const { dialog, queryClient } = await setupWizardTest({
       assignments: [
-        { assignmentId: 'a1', title: 'Essay', topicName: 'Writing', topicId: 'unknown-topic' },
+        { assignmentId: 'a1', title: 'Essay', creationTime: '2024-09-02T08:30:00.000Z', topicName: 'Writing', topicId: 'unknown-topic' },
       ],
     });
 
@@ -928,7 +928,7 @@ describe('No-match resolution — creating state and wizard integration', () => 
 
   it('leaves topic field empty when topicId is null', async () => {
     const { dialog, queryClient } = await setupWizardTest({
-      assignments: [{ assignmentId: 'a1', title: 'Essay', topicName: 'Writing', topicId: null }],
+      assignments: [{ assignmentId: 'a1', title: 'Essay', creationTime: '2024-09-02T08:30:00.000Z', topicName: 'Writing', topicId: null }],
     });
 
     // Populate assignmentTopics cache so the test validates the correct code path

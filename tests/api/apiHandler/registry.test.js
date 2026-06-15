@@ -7,7 +7,7 @@ describe('Api/apiHandler allowlisted method handler registry', () => {
     const { ALLOWLISTED_METHOD_HANDLERS } = loadApiHandlerModule();
 
     expect(ALLOWLISTED_METHOD_HANDLERS).toBeTypeOf('object');
-    expect(Object.keys(ALLOWLISTED_METHOD_HANDLERS)).toHaveLength(26);
+    expect(Object.keys(ALLOWLISTED_METHOD_HANDLERS)).toHaveLength(27);
     expect(ALLOWLISTED_METHOD_HANDLERS).toEqual(
       expect.objectContaining(
         Object.fromEntries(

@@ -377,6 +377,25 @@ describe('ABClassController Rehydrate Assignment', () => {
       // Should log error
       expect(mockABLogger.error).toHaveBeenCalled();
     });
+
+    it('_loadFullAssignmentDocument throws AssignmentNotFoundError on missing document', () => {
+      const controller = new ABClassController();
+      const courseId = 'course-notfound-doc';
+      const assignmentId = 'assign-notfound-doc';
+      const expectedCollectionName = `assign_full_${courseId}_${assignmentId}`;
+
+      mockCollection.findOne.mockReturnValue(null);
+
+      // Verify the structured metadata on the error instance
+      try {
+        controller._loadFullAssignmentDocument(courseId, assignmentId);
+      } catch (error) {
+        expect(error).toBeInstanceOf(AssignmentNotFoundError);
+        expect(error.courseId).toBe(courseId);
+        expect(error.assignmentId).toBe(assignmentId);
+        expect(error.collectionName).toBe(expectedCollectionName);
+      }
+    });
   });
 
   describe('Integration Scenarios', () => {

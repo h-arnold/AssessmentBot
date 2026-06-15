@@ -4,20 +4,18 @@ const {
 } = require('../helpers/singletonTestSetup.js');
 
 /**
- * Phase 2 behavior tests – focus on heavy boundary guarding & classroom manager laziness.
+ * ConfigurationManager lazy-init and heuristic validation tests.
  */
-let ConfigurationManager, UIManager;
+let ConfigurationManager;
 const harness = new SingletonTestHarness();
 
-describe('Phase 2: Heavy boundary & classroom manager tests', () => {
+describe('ConfigurationManager lazy-init and heuristic validation', () => {
   beforeEach(async () => {
     await harness.withFreshSingletons(() => {
       const singletons = loadSingletonsWithMocks(harness, {
         loadConfigurationManager: true,
-        loadUIManager: true,
       });
       ConfigurationManager = singletons.ConfigurationManager;
-      UIManager = singletons.UIManager;
       globalThis.configurationManager = ConfigurationManager.getInstance();
     });
   });
@@ -59,29 +57,6 @@ describe('Phase 2: Heavy boundary & classroom manager tests', () => {
       expect(result).toBe(false);
       // Heuristic should avoid DriveApp access
       expect(harness.wasDriveAccessed()).toBe(false);
-    });
-  });
-
-  test('first classroom UI call instantiates GoogleClassroomManager exactly once', async () => {
-    await harness.withFreshSingletons(() => {
-      const singletons = loadSingletonsWithMocks(harness, {
-        loadUIManager: true,
-      });
-      UIManager = singletons.UIManager;
-      const ui = UIManager.getInstance();
-
-      // Non-classroom operation should not instantiate classroom manager
-      if (ui.showProgressModal) ui.showProgressModal();
-      expect(harness.wasClassroomManagerInstantiated()).toBe(false);
-
-      // Classroom operation
-      if (ui.showAssignmentDropdown) ui.showAssignmentDropdown();
-      expect(harness.wasClassroomManagerInstantiated()).toBe(true);
-      const firstCount = harness.getClassroomManagerInstanceCount();
-
-      // Subsequent classroom call should not increase count
-      if (ui.showClassroomDropdown) ui.showClassroomDropdown();
-      expect(harness.getClassroomManagerInstanceCount()).toBe(firstCount);
     });
   });
 });

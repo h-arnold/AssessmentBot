@@ -15,7 +15,9 @@ describe('googleClassroomAssignmentsService.getGoogleClassroomAssignments', () =
   });
 
   it('calls callApi with getGoogleClassroomAssignments and { classId }', async () => {
-    callApiMock.mockResolvedValueOnce([{ assignmentId: 'a1', title: 'Essay' }]);
+    callApiMock.mockResolvedValueOnce([
+      { assignmentId: 'a1', title: 'Essay', creationTime: '2026-06-15T10:00:00.000Z' },
+    ]);
 
     const { getGoogleClassroomAssignments } = await import('./googleClassroomAssignmentsService');
 
@@ -28,12 +30,20 @@ describe('googleClassroomAssignmentsService.getGoogleClassroomAssignments', () =
   });
 
   it('parses and returns a valid response', async () => {
-    callApiMock.mockResolvedValueOnce([{ assignmentId: 'a1', title: 'Essay' }]);
+    callApiMock.mockResolvedValueOnce([
+      { assignmentId: 'a1', title: 'Essay', creationTime: '2026-06-15T10:00:00.000Z' },
+    ]);
 
     const { getGoogleClassroomAssignments } = await import('./googleClassroomAssignmentsService');
 
     await expect(getGoogleClassroomAssignments('123')).resolves.toEqual([
-      { assignmentId: 'a1', title: 'Essay', topicId: null, topicName: null },
+      {
+        assignmentId: 'a1',
+        title: 'Essay',
+        creationTime: '2026-06-15T10:00:00.000Z',
+        topicId: null,
+        topicName: null,
+      },
     ]);
   });
 

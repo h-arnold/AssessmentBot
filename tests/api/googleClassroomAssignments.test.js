@@ -46,6 +46,7 @@ describe('Api/getGoogleClassroomAssignments direct handler', () => {
             id: 'a1',
             title: 'Essay',
             updateTime: '2024-01-01T00:00:00.000Z',
+            creationTime: '2024-01-01T00:00:00.000Z',
           },
         ]),
         fetchTopicName: vi.fn(),
@@ -55,7 +56,13 @@ describe('Api/getGoogleClassroomAssignments direct handler', () => {
     const result = getGoogleClassroomAssignments_({ classId: 'course-001' });
 
     expect(result).toEqual([
-      { assignmentId: 'a1', title: 'Essay', topicId: null, topicName: null },
+      {
+        assignmentId: 'a1',
+        title: 'Essay',
+        creationTime: '2024-01-01T00:00:00.000Z',
+        topicId: null,
+        topicName: null,
+      },
     ]);
   });
 
@@ -138,7 +145,13 @@ describe('Api/getGoogleClassroomAssignments direct handler', () => {
   it('throws ApiValidationError when a Classroom row is missing id', () => {
     const { getGoogleClassroomAssignments_ } = loadGoogleClassroomAssignmentsModuleWithGlobals({
       classroomApiClient: {
-        fetchCourseWork: vi.fn(() => [{ title: 'Essay', updateTime: '2024-01-01T00:00:00.000Z' }]),
+        fetchCourseWork: vi.fn(() => [
+          {
+            title: 'Essay',
+            updateTime: '2024-01-01T00:00:00.000Z',
+            creationTime: '2024-01-01T00:00:00.000Z',
+          },
+        ]),
         fetchTopicName: vi.fn(),
       },
     });
@@ -151,7 +164,13 @@ describe('Api/getGoogleClassroomAssignments direct handler', () => {
   it('throws ApiValidationError when a Classroom row is missing title', () => {
     const { getGoogleClassroomAssignments_ } = loadGoogleClassroomAssignmentsModuleWithGlobals({
       classroomApiClient: {
-        fetchCourseWork: vi.fn(() => [{ id: 'a1', updateTime: '2024-01-01T00:00:00.000Z' }]),
+        fetchCourseWork: vi.fn(() => [
+          {
+            id: 'a1',
+            updateTime: '2024-01-01T00:00:00.000Z',
+            creationTime: '2024-01-01T00:00:00.000Z',
+          },
+        ]),
         fetchTopicName: vi.fn(),
       },
     });
@@ -185,6 +204,7 @@ describe('Api/getGoogleClassroomAssignments direct handler', () => {
               title: 'Essay',
               topicId: 'topic-1',
               updateTime: '2024-01-01T00:00:00.000Z',
+              creationTime: '2024-01-01T00:00:00.000Z',
             },
           ]),
           fetchTopicName: vi.fn(() => 'Algebra'),
@@ -194,7 +214,13 @@ describe('Api/getGoogleClassroomAssignments direct handler', () => {
       const result = getGoogleClassroomAssignments_({ classId: 'course-001' });
 
       expect(result).toEqual([
-        { assignmentId: 'a1', title: 'Essay', topicId: 'topic-1', topicName: 'Algebra' },
+        {
+          assignmentId: 'a1',
+          title: 'Essay',
+          creationTime: '2024-01-01T00:00:00.000Z',
+          topicId: 'topic-1',
+          topicName: 'Algebra',
+        },
       ]);
     });
 
@@ -207,6 +233,7 @@ describe('Api/getGoogleClassroomAssignments direct handler', () => {
               title: 'Essay',
               topicId: null,
               updateTime: '2024-01-01T00:00:00.000Z',
+              creationTime: '2024-01-01T00:00:00.000Z',
             },
           ]),
           fetchTopicName: vi.fn(),
@@ -216,7 +243,13 @@ describe('Api/getGoogleClassroomAssignments direct handler', () => {
       const result = getGoogleClassroomAssignments_({ classId: 'course-001' });
 
       expect(result).toEqual([
-        { assignmentId: 'a1', title: 'Essay', topicId: null, topicName: null },
+        {
+          assignmentId: 'a1',
+          title: 'Essay',
+          creationTime: '2024-01-01T00:00:00.000Z',
+          topicId: null,
+          topicName: null,
+        },
       ]);
     });
 
@@ -230,13 +263,21 @@ describe('Api/getGoogleClassroomAssignments direct handler', () => {
               title: 'Has Topic',
               topicId: 'topic-1',
               updateTime: '2024-01-01T00:00:00.000Z',
+              creationTime: '2024-01-01T00:00:00.000Z',
             },
-            { id: 'a2', title: 'No Topic', topicId: null, updateTime: '2024-01-01T00:00:00.000Z' },
+            {
+              id: 'a2',
+              title: 'No Topic',
+              topicId: null,
+              updateTime: '2024-01-01T00:00:00.000Z',
+              creationTime: '2024-01-01T00:00:00.000Z',
+            },
             {
               id: 'a3',
               title: 'Also Has Topic',
               topicId: 'topic-2',
               updateTime: '2024-01-01T00:00:00.000Z',
+              creationTime: '2024-01-01T00:00:00.000Z',
             },
           ]),
           fetchTopicName,
@@ -263,6 +304,7 @@ describe('Api/getGoogleClassroomAssignments direct handler', () => {
               title: 'Essay',
               topicId: 'topic-1',
               updateTime: '2024-01-01T00:00:00.000Z',
+              creationTime: '2024-01-01T00:00:00.000Z',
             },
           ]),
           fetchTopicName: vi.fn(() => null),
@@ -272,7 +314,13 @@ describe('Api/getGoogleClassroomAssignments direct handler', () => {
       const result = getGoogleClassroomAssignments_({ classId: 'course-001' });
 
       expect(result).toEqual([
-        { assignmentId: 'a1', title: 'Essay', topicId: 'topic-1', topicName: null },
+        {
+          assignmentId: 'a1',
+          title: 'Essay',
+          creationTime: '2024-01-01T00:00:00.000Z',
+          topicId: 'topic-1',
+          topicName: null,
+        },
       ]);
     });
 
@@ -286,6 +334,7 @@ describe('Api/getGoogleClassroomAssignments direct handler', () => {
               title: 'Essay',
               topicId: 'topic-1',
               updateTime: '2024-01-01T00:00:00.000Z',
+              creationTime: '2024-01-01T00:00:00.000Z',
             },
           ]),
           fetchTopicName: vi.fn(() => {
@@ -307,6 +356,7 @@ describe('Api/getGoogleClassroomAssignments direct handler', () => {
               title: 'Missing Id',
               topicId: 'topic-1',
               updateTime: '2024-01-01T00:00:00.000Z',
+              creationTime: '2024-01-01T00:00:00.000Z',
             },
           ]),
           fetchTopicName: vi.fn(),
@@ -318,7 +368,7 @@ describe('Api/getGoogleClassroomAssignments direct handler', () => {
       );
     });
 
-    it('response shape includes all four fields (assignmentId, title, topicId, topicName)', () => {
+    it('response shape includes all five fields (assignmentId, title, creationTime, topicId, topicName)', () => {
       const { getGoogleClassroomAssignments_ } = loadGoogleClassroomAssignmentsModuleWithGlobals({
         classroomApiClient: {
           fetchCourseWork: vi.fn(() => [
@@ -327,6 +377,7 @@ describe('Api/getGoogleClassroomAssignments direct handler', () => {
               title: 'Essay',
               topicId: 'topic-1',
               updateTime: '2024-01-01T00:00:00.000Z',
+              creationTime: '2024-01-01T00:00:00.000Z',
             },
           ]),
           fetchTopicName: vi.fn(() => 'Algebra'),
@@ -337,7 +388,9 @@ describe('Api/getGoogleClassroomAssignments direct handler', () => {
 
       expect(result).toHaveLength(1);
       expect(Object.keys(result[0]).sort((a, b) => a.localeCompare(b))).toEqual(
-        ['assignmentId', 'title', 'topicId', 'topicName'].sort((a, b) => a.localeCompare(b))
+        ['assignmentId', 'title', 'creationTime', 'topicId', 'topicName'].sort((a, b) =>
+          a.localeCompare(b)
+        )
       );
     });
   });

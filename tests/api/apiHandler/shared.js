@@ -46,9 +46,10 @@ const EXPECTED_ALLOWLISTED_METHOD_HANDLER_KEYS = Object.freeze([
   'getABClassPartials',
   ...ASSIGNMENT_DEFINITION_API_METHOD_NAMES,
   'upsertAssignmentDefinition',
-  'startAssessmentRun',
+  'getAssignment',
   ...ABCLASS_TRANSPORT_API_METHOD_NAMES,
   ...BACKEND_CONFIG_API_METHOD_NAMES,
+  'startAssessmentRun',
   ...REFERENCE_DATA_API_METHOD_NAMES,
 ]);
 

@@ -276,12 +276,15 @@ describe('ClassroomApiClient.fetchCourseWork', () => {
     const olderDate = '2020-09-30T10:00:00.000Z';
     const newerDate = '2023-10-01T12:30:45.123Z';
     const middleDate = '2022-01-15T08:00:00.000Z';
+    const olderCreated = '2020-09-29T10:00:00.000Z';
+    const newerCreated = '2023-09-30T12:30:45.123Z';
+    const middleCreated = '2022-01-14T08:00:00.000Z';
 
     globalThis.Classroom.Courses.CourseWork.list.mockReturnValue({
       courseWork: [
-        { id: 'cw-1', title: 'Assignment A', updateTime: olderDate },
-        { id: 'cw-2', title: 'Assignment B', updateTime: newerDate },
-        { id: 'cw-3', title: 'Assignment C', updateTime: middleDate },
+        { id: 'cw-1', title: 'Assignment A', updateTime: olderDate, creationTime: olderCreated },
+        { id: 'cw-2', title: 'Assignment B', updateTime: newerDate, creationTime: newerCreated },
+        { id: 'cw-3', title: 'Assignment C', updateTime: middleDate, creationTime: middleCreated },
       ],
     });
 
@@ -293,18 +296,21 @@ describe('ClassroomApiClient.fetchCourseWork', () => {
       id: 'cw-2',
       title: 'Assignment B',
       updateTime: newerDate,
+      creationTime: newerCreated,
       topicId: null,
     });
     expect(result[1]).toEqual({
       id: 'cw-3',
       title: 'Assignment C',
       updateTime: middleDate,
+      creationTime: middleCreated,
       topicId: null,
     });
     expect(result[2]).toEqual({
       id: 'cw-1',
       title: 'Assignment A',
       updateTime: olderDate,
+      creationTime: olderCreated,
       topicId: null,
     });
     expect(abLoggerInstance.info).toHaveBeenCalledWith('Fetched coursework for course.', {
@@ -349,10 +355,20 @@ describe('ClassroomApiClient.fetchCourseWork', () => {
   it('fetchCourseWork paginates correctly when nextPageToken is present', () => {
     const courseId = 'course-4';
     const page1Assignments = [
-      { id: 'cw-a', title: 'Page 1 Assignment', updateTime: '2023-01-01T00:00:00.000Z' },
+      {
+        id: 'cw-a',
+        title: 'Page 1 Assignment',
+        updateTime: '2023-01-01T00:00:00.000Z',
+        creationTime: '2023-01-01T00:00:00.000Z',
+      },
     ];
     const page2Assignments = [
-      { id: 'cw-b', title: 'Page 2 Assignment', updateTime: '2023-06-01T00:00:00.000Z' },
+      {
+        id: 'cw-b',
+        title: 'Page 2 Assignment',
+        updateTime: '2023-06-01T00:00:00.000Z',
+        creationTime: '2023-06-01T00:00:00.000Z',
+      },
     ];
 
     globalThis.Classroom.Courses.CourseWork.list
@@ -377,12 +393,14 @@ describe('ClassroomApiClient.fetchCourseWork', () => {
         id: 'cw-b',
         title: 'Page 2 Assignment',
         updateTime: '2023-06-01T00:00:00.000Z',
+        creationTime: '2023-06-01T00:00:00.000Z',
         topicId: null,
       },
       {
         id: 'cw-a',
         title: 'Page 1 Assignment',
         updateTime: '2023-01-01T00:00:00.000Z',
+        creationTime: '2023-01-01T00:00:00.000Z',
         topicId: null,
       },
     ]);
@@ -398,7 +416,13 @@ describe('ClassroomApiClient.fetchCourseWork', () => {
 
     globalThis.Classroom.Courses.CourseWork.list.mockReturnValue({
       courseWork: [
-        { id: 'cw-1', title: 'Assignment A', updateTime: updateDate, topicId: 'topic-1' },
+        {
+          id: 'cw-1',
+          title: 'Assignment A',
+          updateTime: updateDate,
+          creationTime: updateDate,
+          topicId: 'topic-1',
+        },
       ],
     });
 
@@ -408,6 +432,7 @@ describe('ClassroomApiClient.fetchCourseWork', () => {
       id: 'cw-1',
       title: 'Assignment A',
       updateTime: updateDate,
+      creationTime: updateDate,
       topicId: 'topic-1',
     });
   });
@@ -418,8 +443,14 @@ describe('ClassroomApiClient.fetchCourseWork', () => {
 
     globalThis.Classroom.Courses.CourseWork.list.mockReturnValue({
       courseWork: [
-        { id: 'cw-1', title: 'Undefined Topic', updateTime: updateDate },
-        { id: 'cw-2', title: 'Null Topic', updateTime: updateDate, topicId: null },
+        { id: 'cw-1', title: 'Undefined Topic', updateTime: updateDate, creationTime: updateDate },
+        {
+          id: 'cw-2',
+          title: 'Null Topic',
+          updateTime: updateDate,
+          creationTime: updateDate,
+          topicId: null,
+        },
       ],
     });
 

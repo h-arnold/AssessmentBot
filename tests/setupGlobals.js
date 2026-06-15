@@ -59,6 +59,9 @@ g.PropertiesService = {
       setProperty(key, value) {
         _userPropertiesData[key] = value;
       },
+      deleteProperty(key) {
+        delete _userPropertiesData[key];
+      },
     };
   },
 };
@@ -110,6 +113,8 @@ g.GASPropertiesUtils = require('../src/backend/Utils/00_GASPropertiesUtils.js');
 
 g.ApiValidationError = require('../src/backend/Utils/ErrorTypes/ApiValidationError.js');
 g.DefinitionStaleError = require('../src/backend/Utils/ErrorTypes/DefinitionStaleError.js');
+g.AssignmentNotFoundError = require('../src/backend/Utils/ErrorTypes/AssignmentNotFoundError.js');
+g.ClassNotFoundError = require('../src/backend/Utils/ErrorTypes/ClassNotFoundError.js');
 
 // Expose ArtifactFactory globally before TaskDefinition usage (TaskDefinition references global ArtifactFactory)
 const { ArtifactFactory } = require('../src/backend/Models/Artifacts/index.js');

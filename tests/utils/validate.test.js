@@ -166,4 +166,106 @@ describe('Validate utility', () => {
       );
     });
   });
+
+  describe('validateTrimmedNonEmptyString', () => {
+    it('returns trimmed value for non-empty string', () => {
+      expect(Validate.validateTrimmedNonEmptyString('Field', '  hello  ')).toBe('hello');
+      expect(Validate.validateTrimmedNonEmptyString('Field', 'hello')).toBe('hello');
+    });
+
+    it('throws TypeError for empty or whitespace strings', () => {
+      expect(() => Validate.validateTrimmedNonEmptyString('Field', '')).toThrow(TypeError);
+      expect(() => Validate.validateTrimmedNonEmptyString('Field', '   ')).toThrow(TypeError);
+    });
+
+    it('throws TypeError for non-string values', () => {
+      expect(() => Validate.validateTrimmedNonEmptyString('Field', null)).toThrow(TypeError);
+      expect(() => Validate.validateTrimmedNonEmptyString('Field', 123)).toThrow(TypeError);
+      expect(() => Validate.validateTrimmedNonEmptyString('Field', undefined)).toThrow(TypeError);
+    });
+
+    it('uses the label in the error message', () => {
+      expect(() => Validate.validateTrimmedNonEmptyString('Name', '')).toThrow(
+        /Name must be a non-empty string/
+      );
+    });
+  });
+
+  describe('validatePlainObject', () => {
+    it('accepts plain objects', () => {
+      const obj = { key: 'value' };
+      expect(Validate.validatePlainObject('Param', obj)).toBe(obj);
+      expect(Validate.validatePlainObject('Param', {})).toEqual({});
+    });
+
+    it('throws TypeError for null', () => {
+      expect(() => Validate.validatePlainObject('Param', null)).toThrow(TypeError);
+    });
+
+    it('throws TypeError for arrays', () => {
+      expect(() => Validate.validatePlainObject('Param', [1, 2, 3])).toThrow(TypeError);
+    });
+
+    it('throws TypeError for primitive values', () => {
+      expect(() => Validate.validatePlainObject('Param', 'string')).toThrow(TypeError);
+      expect(() => Validate.validatePlainObject('Param', 42)).toThrow(TypeError);
+      expect(() => Validate.validatePlainObject('Param', true)).toThrow(TypeError);
+    });
+
+    it('uses the label in the error message', () => {
+      expect(() => Validate.validatePlainObject('MyParam', null)).toThrow(
+        /MyParam must be an object/
+      );
+    });
+  });
+
+  describe('_coerceBooleanString', () => {
+    it('returns true for lowercase "true"', () => {
+      expect(Validate._coerceBooleanString('true')).toBe(true);
+    });
+
+    it('returns false for lowercase "false"', () => {
+      expect(Validate._coerceBooleanString('false')).toBe(false);
+    });
+
+    it('returns undefined for non-matching strings', () => {
+      expect(Validate._coerceBooleanString('yes')).toBeUndefined();
+      expect(Validate._coerceBooleanString('1')).toBeUndefined();
+      expect(Validate._coerceBooleanString('')).toBeUndefined();
+    });
+
+    it('returns undefined for undefined', () => {
+      expect(Validate._coerceBooleanString(undefined)).toBeUndefined();
+    });
+  });
+
+  describe('requireParams', () => {
+    it('throws when params is not an object', () => {
+      expect(() => Validate.requireParams(null)).toThrow('params must be an object');
+      expect(() => Validate.requireParams('string')).toThrow('params must be an object');
+      expect(() => Validate.requireParams(123)).toThrow('params must be an object');
+      expect(() => Validate.requireParams([1, 2])).toThrow('params must be an object');
+    });
+
+    it('throws when a required parameter is null or undefined', () => {
+      expect(() => Validate.requireParams({ name: null })).toThrow('name is required');
+      expect(() => Validate.requireParams({ name: undefined })).toThrow('name is required');
+    });
+
+    it('passes valid parameters without context', () => {
+      expect(() => Validate.requireParams({ name: 'John', age: 30 })).not.toThrow();
+    });
+
+    it('includes context string in error message', () => {
+      expect(() => Validate.requireParams({ name: null }, 'setName')).toThrow(
+        'name is required for setName'
+      );
+    });
+
+    it('accepts falsy but valid values (0, false, empty string)', () => {
+      expect(() => Validate.requireParams({ count: 0 })).not.toThrow();
+      expect(() => Validate.requireParams({ flag: false })).not.toThrow();
+      expect(() => Validate.requireParams({ text: '' })).not.toThrow();
+    });
+  });
 });

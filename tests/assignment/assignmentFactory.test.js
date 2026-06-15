@@ -40,6 +40,7 @@ function createTestData(docType, courseId) {
     assignmentId: courseId.replace('c', 'a'),
     assignmentName: 'Test Assignment',
     assignmentDefinition: definition.toJSON(),
+    createdAt: '2026-01-01T00:00:00.000Z',
     submissions: [],
   };
 }
@@ -83,6 +84,23 @@ afterEach(() => {
 });
 
 describe('Assignment.create() Factory Method', () => {
+  beforeEach(() => {
+    globalThis.Classroom = {
+      Courses: {
+        CourseWork: {
+          get: vi.fn(() => ({
+            creationTime: '2026-01-01T00:00:00.000Z',
+            title: 'Test Assignment',
+          })),
+        },
+      },
+    };
+  });
+
+  afterEach(() => {
+    delete globalThis.Classroom;
+  });
+
   const testCases = [
     { docType: 'SLIDES', courseId: 'c1', assignmentId: 'a1', refId: 'ref1', tplId: 'tpl1' },
     { docType: 'SHEETS', courseId: 'c2', assignmentId: 'a2', refId: 'ref2', tplId: 'tpl2' },
@@ -245,6 +263,7 @@ describe('Assignment.fromJSON() Polymorphic Deserialization', () => {
       assignmentId: 'a7',
       assignmentName: 'Transient Fields Assignment',
       assignmentDefinition: definition.toJSON(),
+      createdAt: '2026-01-01T00:00:00.000Z',
       submissions: [],
       students: [{ id: 'student-1' }],
       progressTracker: sentinelTracker,
@@ -274,6 +293,7 @@ describe('Assignment.fromJSON() Polymorphic Deserialization', () => {
       assignmentId: 'a8',
       assignmentName: 'Transient JSON Assignment',
       assignmentDefinition: definition.toJSON(),
+      createdAt: '2026-01-01T00:00:00.000Z',
       submissions: [],
       students: [{ id: 'student-1' }],
       progressTracker: { sentinel: true },
@@ -329,6 +349,7 @@ describe('Polymorphic Round-Trip', () => {
         templateDocumentId: 'tpl_doctype',
         tasks: {},
       }).toJSON(),
+      createdAt: '2026-01-01T00:00:00.000Z',
       submissions: [],
     };
 
