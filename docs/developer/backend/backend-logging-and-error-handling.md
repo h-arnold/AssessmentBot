@@ -91,6 +91,7 @@ The following backend error types are recognised at the transport boundary by `_
 - **`ApiDisabledError`** (`src/backend/Utils/ErrorTypes/ApiDisabledError.js`) — method or feature disabled. Mapped to `UNKNOWN_METHOD`.
 - **`DefinitionStaleError`** (`src/backend/Utils/ErrorTypes/DefinitionStaleError.js`) — an `AssignmentDefinition`'s reference or template document has been modified since the definition was created. Mapped to `DEFINITION_STALE`; non-retriable. Carries structured metadata: `definitionKey`, `referenceStale`, `templateStale`, `referenceLastModified`, `templateLastModified`. Thrown at the API boundary in `startAssessmentRun` and at trigger-execution time in `runAssignmentPipeline`.
 - **`AbortRequestError`** and **`PersistError`** — internal error types not mapped at the transport boundary; logged and surfaced as `INTERNAL_ERROR`.
+- **`AssignmentNotFoundError`** (`src/backend/Utils/ErrorTypes/AssignmentNotFoundError.js`) — **Planned: `Not implemented`**. Will be thrown by `ABClassController._loadFullAssignmentDocument` when the full assignment document is not found in its dedicated collection. Internal transport signal: not mapped at the transport boundary (the API handler catches it and returns `null`). Carries structured metadata: `courseId`, `assignmentId`, `collectionName`.
 
 All new error types should follow the existing pattern: extend `Error`, set `this.name`, accept domain-specific properties in the constructor, and include a guarded `module.exports` block for Node test compatibility.
 
