@@ -22,7 +22,7 @@ export const MOCK_CLASS_ID = 'class-123';
 export const MOCK_CLASS_NAME = 'My Class';
 
 export const MOCK_ASSIGNMENTS: GoogleClassroomAssignmentsResponse = [
-  { assignmentId: 'a1', title: 'Essay', topicName: 'Writing', topicId: null },
+  { assignmentId: 'a1', title: 'Essay', creationTime: '2024-09-02T08:30:00.000Z', topicName: 'Writing', topicId: null },
 ];
 
 export const MOCK_EMPTY_ASSIGNMENTS: GoogleClassroomAssignmentsResponse = [];
