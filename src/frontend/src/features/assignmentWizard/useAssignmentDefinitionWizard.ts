@@ -802,7 +802,6 @@ export function useAssignmentDefinitionWizard(
 ): UseAssignmentDefinitionWizardReturn {
   const { open, mode, definitionKey, onClose, initialValues, onCreateSuccess } = properties;
   const isCreateMode = mode === 'create';
-  const hasAppliedInitialValues = useRef(false);
 
   const queryClient = useQueryClient();
   const startupWarmupState = useStartupWarmupState();
@@ -902,20 +901,12 @@ export function useAssignmentDefinitionWizard(
     queryClient
   );
 
-  // Reset the initial-values guard when the modal closes so values are re-applied on next open
-  useEffect(() => {
-    if (!open) {
-      hasAppliedInitialValues.current = false;
-    }
-  }, [open]);
-
-  // Apply initialValues in create mode after form initialization (form.resetFields in create mode)
-  // Guarded by a ref to prevent re-application when the initialValues object reference changes
-  // due to background query refetches
+  // Apply initialValues in create mode after form initialization (form.resetFields in create mode).
+  // Re-applies whenever the deps change, including after the init effect's resetFields on
+  // React 19 StrictMode double-mount.  initialValues is a stable memoised reference from the
+  // parent so re-application only occurs on meaningful changes, not on every render.
   useEffect(() => {
     if (!open || !isCreateMode || !initialValues) return;
-    if (hasAppliedInitialValues.current) return;
-    hasAppliedInitialValues.current = true;
     applyFormInitialValues(form, initialValues, setSelectedTopicKey, setSelectedYearGroupKey);
   }, [open, isCreateMode, form, initialValues, setSelectedTopicKey, setSelectedYearGroupKey]);
 

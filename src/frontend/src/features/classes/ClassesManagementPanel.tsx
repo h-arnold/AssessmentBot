@@ -108,7 +108,7 @@ export function ClassesManagementPanel() {
     setCourseLengthSubmitting: false,
     setInactiveSubmitting,
     setYearGroupSubmitting: false,
-  }) || queue.isQueueActive;
+  }) || queue.isQueueActive || classesManagement.isRefreshing;
 
   /**
    * Clears the transient bulk-action feedback before another mutation starts.
