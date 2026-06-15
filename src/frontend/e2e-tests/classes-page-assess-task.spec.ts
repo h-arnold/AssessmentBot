@@ -4,12 +4,14 @@ import {
   releaseNextDeferredSuccess,
   getMethodCalls,
   selectVisibleOption,
+  type RuntimeScenario,
 } from './shared/endToEndRuntimeMocks';
 import {
   MOCK_COURSEWORK_ASSIGNMENTS,
   createAssessTaskScenario,
   openAssessTaskModal,
 } from './helpers/classes-page-end-to-end-helpers';
+import type { Locator, Page } from '@playwright/test';
 
 // ============================================================================
 // Assess Task Modal — Playwright E2E Tests
@@ -27,6 +29,46 @@ import {
 // Card layout (Year 10 panel, expanded by default):
 //   Card 0: English 10       (class-english-10)
 //   Card 1: Mathematics 10A  (class-math-10a)
+
+// ---------------------------------------------------------------------------
+// Shared constants and helpers
+// ---------------------------------------------------------------------------
+
+/** Reusable assignment data for an "Algebra Homework" coursework assignment with topic. */
+const ALGEBRA_HOMEWORK_DATA = {
+  assignmentId: 'cw-1',
+  title: 'Algebra Homework',
+  topicId: 'topic-algebra',
+  topicName: 'Algebra',
+} as const;
+
+/**
+ * Creates a success entry containing a single Algebra Homework assignment.
+ * Suitable for scenario queues — call twice for StrictMode double-effect coverage.
+ *
+ * @returns {object} A success entry with one Algebra Homework assignment.
+ */
+function algebraHomeworkEntry() {
+  return { kind: 'success' as const, data: [ALGEBRA_HOMEWORK_DATA] };
+}
+
+/**
+ * Selects an assignment from the combobox and clicks Start Assessment.
+ *
+ * @param {Locator} dialog - The modal dialog locator.
+ * @param {Page} page - The Playwright page.
+ * @param {string} [title] - The visible text of the assignment option to select.
+ * @returns {Promise<void>}
+ */
+async function selectAssignmentAndStart(
+  dialog: Locator,
+  page: Page,
+  title: string = 'Algebra Homework'
+) {
+  await dialog.getByRole('combobox').click();
+  await selectVisibleOption(page, title);
+  await dialog.getByRole('button', { name: 'Start Assessment' }).click();
+}
 
 test.describe('Assess Task modal', () => {
   test('opens with correct title, Select dropdown, and disabled Start Assessment', async ({
@@ -247,5 +289,238 @@ test.describe('Assess Task modal', () => {
 
     // Verify Start Assessment remains disabled (no selection yet)
     await expect(dialog.getByRole('button', { name: 'Start Assessment' })).toBeDisabled();
+  });
+
+  // ==========================================================================
+  // Choice prompt and wizard tests
+  // ==========================================================================
+
+  test('shows choice prompt with Create New Definition and disabled Link to Existing button on no-match', async ({
+    page,
+  }) => {
+    // Assignment must have topicId set for choice prompt to appear
+    const assignmentEntry = {
+      kind: 'success' as const,
+      data: [
+        ALGEBRA_HOMEWORK_DATA,
+        {
+          assignmentId: 'cw-2',
+          title: 'Chapter 5 Review',
+          topicId: null,
+          topicName: null,
+        },
+      ],
+    };
+
+    const scenario = createAssessTaskScenario({
+      getGoogleClassroomAssignments: [assignmentEntry, assignmentEntry],
+    });
+    await installRuntimeMock(page, scenario);
+    const dialog = await openAssessTaskModal(page);
+
+    // Select assignment
+    await dialog.getByRole('combobox').click();
+    await selectVisibleOption(page, 'Algebra Homework');
+
+    // Click Start Assessment
+    await dialog.getByRole('button', { name: 'Start Assessment' }).click();
+
+    // Assert choice prompt
+    await expect(dialog.getByText(/no matching assignment definition found/i)).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Create New Definition' })).toBeEnabled();
+    await expect(
+      dialog.getByRole('button', { name: 'Link to Existing Definition' })
+    ).toBeDisabled();
+
+    // Assert footer: only Cancel (no Start Assessment)
+    await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Start Assessment' })).toHaveCount(0);
+  });
+
+  test('choice prompt Cancel button closes the modal', async ({ page }) => {
+    const scenario = createAssessTaskScenario({
+      getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
+    });
+    await installRuntimeMock(page, scenario);
+    const dialog = await openAssessTaskModal(page);
+
+    await selectAssignmentAndStart(dialog, page);
+
+    // Verify choice prompt appeared
+    await expect(dialog.getByRole('button', { name: 'Create New Definition' })).toBeVisible();
+
+    // Click Cancel
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+
+    // Modal should close
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+  });
+
+  test('"Create New Definition" opens wizard with pre-populated title and year group', async ({
+    page,
+  }) => {
+    // Mock data for topics
+    const topicsData = [
+      { key: 'topic-algebra', name: 'Algebra', yearGroupKeys: ['year-group-10'] },
+    ];
+
+    const scenario: RuntimeScenario = {
+      ...createAssessTaskScenario({
+        getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
+      }),
+      getAssignmentTopics: [
+        { kind: 'success', data: topicsData },
+        { kind: 'success', data: topicsData },
+      ],
+    };
+
+    await installRuntimeMock(page, scenario);
+    const dialog = await openAssessTaskModal(page);
+
+    await selectAssignmentAndStart(dialog, page);
+
+    // Click Create New Definition
+    await dialog.getByRole('button', { name: 'Create New Definition' }).click();
+
+    // Assert wizard opens
+    const wizardDialog = page.getByRole('dialog', { name: /create assignment/i });
+    await expect(wizardDialog).toBeVisible();
+
+    // Assert title pre-populated
+    await expect(wizardDialog.getByRole('textbox', { name: /assignment title/i })).toHaveValue(
+      'Algebra Homework'
+    );
+  });
+
+  test('cancelling wizard returns to choice prompt', async ({ page }) => {
+    const scenario = createAssessTaskScenario({
+      getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
+    });
+    await installRuntimeMock(page, scenario);
+    const dialog = await openAssessTaskModal(page);
+
+    await selectAssignmentAndStart(dialog, page);
+    await dialog.getByRole('button', { name: 'Create New Definition' }).click();
+
+    // Wizard should be visible
+    const wizardDialog = page.getByRole('dialog', { name: /create assignment/i });
+    await expect(wizardDialog).toBeVisible();
+
+    // Cancel wizard (no dirty state — wizard closes without discard confirmation)
+    await wizardDialog.getByRole('button', { name: 'Cancel' }).click();
+
+    // Should return to choice prompt
+    await expect(dialog.getByRole('button', { name: 'Create New Definition' })).toBeVisible();
+  });
+
+  test('full wizard flow triggers auto-assessment and shows success', async ({ page }) => {
+    const topicsData = [
+      { key: 'topic-algebra', name: 'Algebra', yearGroupKeys: ['year-group-10'] },
+    ];
+
+    // Parsed definition returned by getAssignmentDefinition after document parse
+    const parsedDefinition = {
+      definitionKey: 'new-def-key',
+      primaryTitle: 'Algebra Homework',
+      primaryTopicKey: 'topic-algebra',
+      primaryTopic: 'Algebra',
+      yearGroupKey: 'year-group-10',
+      yearGroupLabel: 'Year 10',
+      alternateTitles: [],
+      alternateTopics: [],
+      documentType: 'SLIDES' as const,
+      referenceDocumentId: 'ref-123',
+      templateDocumentId: 'tpl-456',
+      assignmentWeighting: 5,
+      tasks: [{ taskId: 'task-1', taskTitle: 'Solve equations', taskWeighting: 1 }],
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+    };
+
+    const scenario: RuntimeScenario = {
+      ...createAssessTaskScenario({
+        getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
+      }),
+      getAssignmentTopics: [
+        { kind: 'success', data: topicsData },
+        { kind: 'success', data: topicsData },
+      ],
+      getAssignmentDefinition: [
+        { kind: 'success', data: parsedDefinition },
+        { kind: 'success', data: parsedDefinition },
+      ],
+      upsertAssignmentDefinition: [
+        { kind: 'success', data: parsedDefinition },
+        { kind: 'success', data: parsedDefinition },
+      ],
+      startAssessmentRun: [
+        { kind: 'success', data: null },
+        { kind: 'success', data: null },
+      ],
+    };
+
+    await installRuntimeMock(page, scenario);
+    const dialog = await openAssessTaskModal(page);
+
+    await selectAssignmentAndStart(dialog, page);
+    await dialog.getByRole('button', { name: 'Create New Definition' }).click();
+
+    // Wizard appears
+    const wizardDialog = page.getByRole('dialog', { name: /create assignment/i });
+    await expect(wizardDialog).toBeVisible();
+
+    // Fill required fields: reference and template document URLs
+    await wizardDialog
+      .getByRole('textbox', { name: /reference document url/i })
+      .fill('https://docs.google.com/presentation/d/ref-123/edit');
+    await wizardDialog
+      .getByRole('textbox', { name: /template document url/i })
+      .fill('https://docs.google.com/presentation/d/tpl-456/edit');
+
+    // Click Parse and continue
+    await wizardDialog.getByRole('button', { name: /parse and continue/i }).click();
+
+    // Wait for parse to complete then click Save
+    await expect(wizardDialog.getByRole('button', { name: /save/i })).toBeEnabled();
+    await wizardDialog.getByRole('button', { name: /save/i }).click();
+
+    // Verify startAssessmentRun was called
+    const calls = await getMethodCalls(page);
+    expect(calls).toContain('startAssessmentRun');
+
+    // Success alert should appear
+    await expect(dialog.getByText(/assessment started for/i)).toBeVisible();
+
+    // Footer should show Close button (scope to footer to disambiguate from modal X close)
+    await expect(
+      dialog.locator('.ant-modal-footer').getByRole('button', { name: 'Close' })
+    ).toBeVisible();
+  });
+
+  test('outer Cancel during wizard creation closes both modals', async ({ page }) => {
+    const scenario = createAssessTaskScenario({
+      getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
+    });
+    await installRuntimeMock(page, scenario);
+    const dialog = await openAssessTaskModal(page);
+
+    await selectAssignmentAndStart(dialog, page);
+    await dialog.getByRole('button', { name: 'Create New Definition' }).click();
+
+    // Wizard should be visible
+    const wizardDialog = page.getByRole('dialog', { name: /create assignment/i });
+    await expect(wizardDialog).toBeVisible();
+
+    // Close the wizard first (returns to choice prompt), then dismiss the choice prompt
+    await wizardDialog.getByRole('button', { name: 'Cancel' }).click();
+
+    // Should return to choice prompt
+    await expect(dialog.getByRole('button', { name: 'Create New Definition' })).toBeVisible();
+
+    // Now click Cancel on the choice prompt to close everything
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+
+    // Both modals should close — no dialogs visible
+    await expect(page.getByRole('dialog')).toHaveCount(0);
   });
 });

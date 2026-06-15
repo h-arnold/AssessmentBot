@@ -29,7 +29,7 @@ const { Text } = Typography;
 export function AssignmentDefinitionWizardModal(
   properties: AssignmentDefinitionWizardModalProperties
 ): JSX.Element {
-  const { open, mode, definitionKey, onClose } = properties;
+  const { open, mode, definitionKey, onClose, initialValues, onCreateSuccess } = properties;
   const [manageTopicsModalOpen, setManageTopicsModalOpen] = useState(false);
   const [manageYearGroupsModalOpen, setManageYearGroupsModalOpen] = useState(false);
 
@@ -62,7 +62,7 @@ export function AssignmentDefinitionWizardModal(
     handleYearGroupAddNew,
     onTopicEntityCreated,
     onYearGroupEntityCreated,
-  } = useAssignmentDefinitionWizard({ open, mode, definitionKey, onClose });
+  } = useAssignmentDefinitionWizard({ open, mode, definitionKey, onClose, initialValues, onCreateSuccess });
 
   const isClosable = !isSubmitting && !documentChange.hasPendingChange;
 

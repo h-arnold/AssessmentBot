@@ -169,23 +169,40 @@ export function createClassesOrderScenario(
 }
 
 /**
+ * Options for creating an Assess Task modal runtime scenario.
+ *
+ * Extends {@link CreateClassesScenarioOptions} with fields specific to
+ * the Assess Task workflow: `startAssessmentRun` and `upsertAssignmentDefinition`.
+ */
+export interface CreateAssessTaskScenarioOptions extends CreateClassesScenarioOptions {
+  startAssessmentRun?: ReadonlyArray<ResponseItem>;
+  upsertAssignmentDefinition?: ReadonlyArray<ResponseItem>;
+}
+
+/**
  * Creates a runtime scenario for Assess Task modal E2E tests.
  *
  * Extends the standard Classes page scenario with `getGoogleClassroomAssignments`
  * mock responses. Defaults to `MOCK_COURSEWORK_ASSIGNMENTS` if no assignment
  * responses are provided.
  *
- * @param {CreateClassesScenarioOptions} options - Scenario customisation options.
+ * @param {CreateAssessTaskScenarioOptions} options - Scenario customisation options.
  * @returns {RuntimeScenario} Runtime scenario with assignment mock data.
  */
 export function createAssessTaskScenario(
-  options: CreateClassesScenarioOptions = {}
+  options: CreateAssessTaskScenarioOptions = {}
 ): RuntimeScenario {
-  return createClassesScenario({
-    ...options,
+  const { startAssessmentRun, upsertAssignmentDefinition, ...classesOptions } = options;
+  const scenario = createClassesScenario({
+    ...classesOptions,
     getGoogleClassroomAssignments:
       options.getGoogleClassroomAssignments ?? MOCK_COURSEWORK_ASSIGNMENTS,
   });
+  return {
+    ...scenario,
+    ...(startAssessmentRun !== undefined && { startAssessmentRun }),
+    ...(upsertAssignmentDefinition !== undefined && { upsertAssignmentDefinition }),
+  };
 }
 
 // ============================================================================

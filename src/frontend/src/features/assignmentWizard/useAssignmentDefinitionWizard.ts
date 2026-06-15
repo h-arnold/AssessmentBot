@@ -50,11 +50,21 @@ type ParsedCreateBaseline = Readonly<{
   taskWeightings: ReadonlyMap<string, number>;
 }>;
 
+/**
+ * Properties for the AssignmentDefinitionWizardModal component.
+ *
+ * @remarks
+ * When `onCreateSuccess` is provided, it replaces `onClose` for the save path in create mode.
+ * The caller is responsible for unmounting the wizard (e.g., by transitioning its own state).
+ * When `onCreateSuccess` is not provided, the normal `onClose()` behaviour is preserved.
+ */
 export type AssignmentDefinitionWizardModalProperties = Readonly<{
   open: boolean;
   mode: ModalMode;
   definitionKey: string | null;
   onClose: () => void;
+  initialValues?: Readonly<{ title?: string; topic?: string; yearGroup?: string }>;
+  onCreateSuccess?: (definitionKey: string) => void;
 }>;
 
 /**
@@ -94,6 +104,32 @@ function buildDocumentUrlsFromDefinition(
     referenceUrl: buildCanonicalUrl(resolvedReferenceDocumentId, resolvedDocumentType),
     templateUrl: buildCanonicalUrl(resolvedTemplateDocumentId, resolvedDocumentType),
   };
+}
+
+/**
+ * Applies initial form values from initialValues to the form and synchronises
+ * selectedTopicKey/selectedYearGroupKey state in create mode.
+ * Converts empty strings to undefined for SelectWithAddNew compatibility.
+ *
+ * @param {FormInstance} form - The Ant Design form instance.
+ * @param {Readonly<{ title?: string; topic?: string; yearGroup?: string }>} initialValues - Values to apply.
+ * @param {(key: string | undefined) => void} setSelectedTopicKey - State setter for selected topic.
+ * @param {(key: string | undefined) => void} setSelectedYearGroupKey - State setter for selected year group.
+ * @returns {void}
+ */
+function applyFormInitialValues(
+  form: FormInstance,
+  initialValues: Readonly<{ title?: string; topic?: string; yearGroup?: string }>,
+  setSelectedTopicKey: (key: string | undefined) => void,
+  setSelectedYearGroupKey: (key: string | undefined) => void
+): void {
+  const fieldsToSet: Record<string, unknown> = {};
+  if (initialValues.title !== undefined) fieldsToSet.title = initialValues.title;
+  if (initialValues.topic !== undefined) fieldsToSet.topic = initialValues.topic;
+  if (initialValues.yearGroup !== undefined) fieldsToSet.yearGroup = initialValues.yearGroup;
+  form.setFieldsValue(fieldsToSet);
+  setSelectedTopicKey(initialValues.topic || undefined);
+  setSelectedYearGroupKey(initialValues.yearGroup || undefined);
 }
 
 const REQUIRED_PARSE_FIELDS = [
@@ -713,6 +749,14 @@ function calculateDirtyState(
   return definition ? hasUpdateModeDirtyEdits(values, definition, taskRows) : false;
 }
 
+/**
+ * Return type for the useAssignmentDefinitionWizard hook.
+ *
+ * @remarks
+ * When `initialValues` are provided in create mode, they are applied to the form fields
+ * and the `selectedTopicKey`/`selectedYearGroupKey` state is synchronised accordingly.
+ * `initialValues` are only applied in create mode and are ignored in update mode.
+ */
 export type UseAssignmentDefinitionWizardReturn = Readonly<{
   form: FormInstance<Record<string, unknown>>;
   hasParsedTasks: boolean;
@@ -756,7 +800,7 @@ export type UseAssignmentDefinitionWizardReturn = Readonly<{
 export function useAssignmentDefinitionWizard(
   properties: AssignmentDefinitionWizardModalProperties
 ): UseAssignmentDefinitionWizardReturn {
-  const { open, mode, definitionKey, onClose } = properties;
+  const { open, mode, definitionKey, onClose, initialValues, onCreateSuccess } = properties;
   const isCreateMode = mode === 'create';
 
   const queryClient = useQueryClient();
@@ -856,6 +900,15 @@ export function useAssignmentDefinitionWizard(
     },
     queryClient
   );
+
+  // Apply initialValues in create mode after form initialization (form.resetFields in create mode).
+  // Re-applies whenever the deps change, including after the init effect's resetFields on
+  // React 19 StrictMode double-mount.  initialValues is a stable memoised reference from the
+  // parent so re-application only occurs on meaningful changes, not on every render.
+  useEffect(() => {
+    if (!open || !isCreateMode || !initialValues) return;
+    applyFormInitialValues(form, initialValues, setSelectedTopicKey, setSelectedYearGroupKey);
+  }, [open, isCreateMode, form, initialValues, setSelectedTopicKey, setSelectedYearGroupKey]);
 
   // Get the effective definition for document URL restoration (handles both update and post-parse create modes)
   const getEffectiveDefinition = useCallback(() => {
@@ -1017,14 +1070,25 @@ export function useAssignmentDefinitionWizard(
    *
    * @param {'parse' | 'save' | 'reparse'} actionType - The action type.
    * @param {UpsertAssignmentDefinitionResponse | undefined} response - The mutation response for parse/reparse.
+   * @param {(definitionKey: string) => void} [onCreateSuccess] - Optional callback for save success in create mode.
+   * @param {string | null} [effectiveKey] - The effective key from the request, used as fallback.
    * @returns {UpsertAssignmentDefinitionResponse | undefined} The response to return.
    */
   const handlePostMutation = useCallback(
     (
       actionType: 'parse' | 'save' | 'reparse',
-      response: UpsertAssignmentDefinitionResponse | undefined
+      response: UpsertAssignmentDefinitionResponse | undefined,
+      effectiveKey: string | null,
+      onCreateSuccess?: (definitionKey: string) => void
     ): UpsertAssignmentDefinitionResponse | undefined => {
       if (actionType === 'save') {
+        if (onCreateSuccess) {
+          const key = response?.definitionKey ?? effectiveKey;
+          if (key) {
+            onCreateSuccess(key);
+          }
+          return undefined;
+        }
         onClose();
         return undefined;
       }
@@ -1046,6 +1110,7 @@ export function useAssignmentDefinitionWizard(
    * @param {'parse' | 'save' | 'reparse'} options.actionType - Type of mutation action.
    * @param {UpsertAssignmentDefinitionRequest} options.request - Pre-built request object.
    * @param {string | null} options.definitionKey - Definition key for update/reparse, or null for create parse.
+   * @param {(definitionKey: string) => void} [options.onCreateSuccess] - Optional callback for save success in create mode.
    * @returns {Promise<UpsertAssignmentDefinitionResponse | undefined>} Resolves with response for parse/reparse, undefined otherwise.
    */
   const runWizardMutation = useCallback(
@@ -1053,6 +1118,7 @@ export function useAssignmentDefinitionWizard(
       actionType: 'parse' | 'save' | 'reparse';
       request: UpsertAssignmentDefinitionRequest;
       definitionKey: string | null;
+      onCreateSuccess?: (definitionKey: string) => void;
     }): Promise<UpsertAssignmentDefinitionResponse | undefined> => {
       if (isSubmitting) {
         return undefined;
@@ -1068,7 +1134,12 @@ export function useAssignmentDefinitionWizard(
         const definitionKeyForInvalidation =
           options.actionType === 'parse' ? response.definitionKey : options.definitionKey;
         await invalidateMutationQueries(definitionKeyForInvalidation);
-        return handlePostMutation(options.actionType, response);
+        return handlePostMutation(
+          options.actionType,
+          response,
+          options.definitionKey,
+          options.onCreateSuccess
+        );
       } catch (caughtError) {
         // Extract error details for structured logging per frontend-logging-and-error-handling.md
         const errorCode = extractErrorCode(caughtError);
@@ -1137,8 +1208,13 @@ export function useAssignmentDefinitionWizard(
     if (effectiveKey) {
       request.definitionKey = effectiveKey;
     }
-    await runWizardMutation({ actionType: 'save', request, definitionKey: effectiveKey });
-  }, [form, taskRows, definitionKey, localDefinitionKey, runWizardMutation]);
+    await runWizardMutation({
+      actionType: 'save',
+      request,
+      definitionKey: effectiveKey,
+      onCreateSuccess,
+    });
+  }, [form, taskRows, definitionKey, localDefinitionKey, runWizardMutation, onCreateSuccess]);
 
   // Handle re-parse
   const handleReparse = useCallback(async () => {

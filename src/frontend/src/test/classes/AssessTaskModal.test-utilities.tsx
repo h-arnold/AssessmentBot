@@ -139,6 +139,7 @@ export type RenderWithCacheOptions = {
   findMatchResult?: MatchResult;
   startRunResult?: unknown;
   startRunType?: 'resolve' | 'reject';
+  onClose?: () => void;
 };
 
 /**
@@ -161,6 +162,7 @@ export function renderWithCache(options: RenderWithCacheOptions = {}): {
     findMatchResult,
     startRunResult,
     startRunType,
+    onClose: onCloseOption,
   } = options;
 
   vi.mocked(getGoogleClassroomAssignments).mockResolvedValue(
@@ -185,8 +187,12 @@ export function renderWithCache(options: RenderWithCacheOptions = {}): {
     queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), definitionPartials);
   }
 
+  const modalProperties = onCloseOption === undefined
+    ? defaultProperties()
+    : defaultProperties({ onClose: onCloseOption });
+
   const { queryClient: returnedClient } = renderWithFrontendProviders(
-    <AssessTaskModal {...defaultProperties()} />,
+    <AssessTaskModal {...modalProperties} />,
     { queryClient }
   );
 
@@ -224,6 +230,30 @@ export async function selectAssignment(dialog: HTMLElement): Promise<void> {
  */
 export function clickStartAssessment(dialog: HTMLElement): void {
   fireEvent.click(within(dialog).getByRole('button', { name: 'Start Assessment' }));
+}
+
+/**
+ * Clicks the "Create New Definition" button during the choice/no-match state.
+ *
+ * @param {HTMLElement} dialog The modal dialog element.
+ */
+export async function clickCreateNewDefinition(dialog: HTMLElement): Promise<void> {
+  await within(dialog).findByRole('button', { name: 'Create New Definition' });
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Create New Definition' }));
+}
+
+/**
+ * Returns the props object stored on the wizard mock element by the
+ * `__wizardProps` ref.  Must be called after `clickCreateNewDefinition`
+ * has rendered the wizard mock.
+ *
+ * @returns {Promise<any>} The wizard mock properties.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getWizardProperties(): Promise<any> {
+  const wizard = await screen.findByTestId('wizard-mock');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (wizard as any).__wizardProps || {};
 }
 
 /**
