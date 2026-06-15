@@ -62,6 +62,7 @@ function buildRepresentativePayload(overrides = {}) {
     assignmentName: 'Test Assignment',
     dueDate: '2026-06-15T00:00:00.000Z',
     lastUpdated: '2026-06-14T00:00:00.000Z',
+    createdAt: '2026-06-15T10:00:00.000Z',
     documentType: 'SLIDES',
     referenceDocumentId: 'ref-001',
     templateDocumentId: 'tpl-001',
@@ -257,6 +258,7 @@ describe('Api/getAssignment transport contract', () => {
 
     const dueDate = new Date('2026-06-15T00:00:00.000Z');
     const lastUpdated = new Date('2026-06-14T00:00:00.000Z');
+    const createdAt = new Date('2026-06-15T10:00:00.000Z');
 
     const mockAssignment = {
       toJSON: vi.fn(() => ({
@@ -265,6 +267,7 @@ describe('Api/getAssignment transport contract', () => {
         assignmentName: 'Test Assignment',
         dueDate,
         lastUpdated,
+        createdAt,
         documentType: 'SLIDES',
         referenceDocumentId: 'ref-001',
         templateDocumentId: 'tpl-001',
@@ -285,6 +288,8 @@ describe('Api/getAssignment transport contract', () => {
     expect(result.dueDate).toBe('2026-06-15T00:00:00.000Z');
     expect(typeof result.lastUpdated).toBe('string');
     expect(result.lastUpdated).toBe('2026-06-14T00:00:00.000Z');
+    expect(typeof result.createdAt).toBe('string');
+    expect(result.createdAt).toBe('2026-06-15T10:00:00.000Z');
   });
 
   // ── Test 9: progressTracker strip defence-in-depth ────────────────────────
@@ -300,6 +305,7 @@ describe('Api/getAssignment transport contract', () => {
         assignmentName: 'Test Assignment',
         dueDate: '2026-06-15T00:00:00.000Z',
         lastUpdated: '2026-06-14T00:00:00.000Z',
+        createdAt: '2026-06-15T10:00:00.000Z',
         documentType: 'SLIDES',
         referenceDocumentId: 'ref-001',
         templateDocumentId: 'tpl-001',

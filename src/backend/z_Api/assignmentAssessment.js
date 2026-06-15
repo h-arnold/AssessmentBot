@@ -138,7 +138,7 @@ function getAssignment_(parameters) {
     // return values. Nested date conversion on submissions and
     // assignmentDefinition still relies on the corresponding toJSON()
     // implementations being correct.
-    DateUtils.normaliseDateFields(response, ['dueDate', 'lastUpdated']);
+    DateUtils.normaliseDateFields(response, ['dueDate', 'lastUpdated', 'createdAt']);
 
     logger.info('getAssignment: rehydrated assignment', { courseId, assignmentId });
     return response;

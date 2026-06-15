@@ -9,8 +9,6 @@ const { SingletonTestHarness } = require('../singletons/SingletonTestHarness.js'
  * Create a test context with harness and loaded singletons
  * @param {Object} options - Configuration options
  * @param {boolean} options.loadConfigurationManager - Load ConfigurationManager
- * @param {boolean} options.loadInitController - Load InitController
- * @param {boolean} options.loadUIManager - Load UIManager
  * @param {boolean} options.loadProgressTracker - Load ProgressTracker
  * @returns {Object} Context with harness and loaded singletons
  */
@@ -29,12 +27,7 @@ function createSingletonTestContext() {
  * @returns {Object} Loaded singleton classes
  */
 function loadSingletonsWithMocks(harness, options = {}) {
-  const {
-    loadConfigurationManager = false,
-    loadInitController = false,
-    loadUIManager = false,
-    loadProgressTracker = false,
-  } = options;
+  const { loadConfigurationManager = false, loadProgressTracker = false } = options;
 
   harness.setupGASMocks();
 
@@ -49,29 +42,6 @@ function loadSingletonsWithMocks(harness, options = {}) {
     } catch (e) {
       console.warn('Could not load ConfigurationManager:', e.message);
       singletons.ConfigurationManager = null;
-    }
-  }
-
-  if (loadInitController) {
-    try {
-      let InitController = require('../../src/AdminSheet/y_controllers/InitController.js');
-      if (InitController.default) InitController = InitController.default;
-      singletons.InitController = InitController;
-    } catch (e) {
-      console.warn('Could not load InitController:', e.message);
-      singletons.InitController = null;
-    }
-  }
-
-  if (loadUIManager) {
-    try {
-      let UIManager = require('../../src/AdminSheet/UI/98_UIManager.js');
-      if (UIManager.default) UIManager = UIManager.default;
-      globalThis.UIManager = UIManager;
-      singletons.UIManager = UIManager;
-    } catch (e) {
-      console.warn('Could not load UIManager:', e.message);
-      singletons.UIManager = null;
     }
   }
 
