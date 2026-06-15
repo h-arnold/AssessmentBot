@@ -4,12 +4,12 @@ const {
 } = require('../helpers/singletonTestSetup.js');
 
 /**
- * Phase 2 behavior tests – focus on heavy boundary guarding & classroom manager laziness.
+ * ConfigurationManager lazy-init and heuristic validation tests.
  */
 let ConfigurationManager;
 const harness = new SingletonTestHarness();
 
-describe('Phase 2: Heavy boundary & classroom manager tests', () => {
+describe('ConfigurationManager lazy-init and heuristic validation', () => {
   beforeEach(async () => {
     await harness.withFreshSingletons(() => {
       const singletons = loadSingletonsWithMocks(harness, {

@@ -393,7 +393,7 @@ Verify singleton pattern implementation, lifecycle, and (optionally) performance
 - **idempotency**: `getInstance()` repeatability (same object each call)
 - **forbiddenGlobals**: Ensures no accidental global pollution
 - **progressTrackerLazyInit**: ProgressTracker lazy behaviour
-- **phase2Behavior**: Broader integration scenario
+- **configurationManagerLazyInit**: ConfigurationManager lazy-init and heuristic validation
 - **performanceMeasurement**: Uses `PerformanceMeasurement.js` helper to compare timings (test-only utility)
 
 **Key patterns**:

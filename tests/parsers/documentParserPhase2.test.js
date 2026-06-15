@@ -5,7 +5,7 @@ if (!globalThis.Utils || !globalThis.Utilities) {
   throw new Error('Global Utils/Utilities expected from setupGlobals.js');
 }
 
-describe('Phase 2 – Parser Interface Updates (Interface-Level / Stubs)', () => {
+describe('Document Parser Interface and Stub Tests', () => {
   const basePath = '../../src/backend/DocumentParsers/DocumentParser.js';
   let ParserExport;
   let ParserClass;
