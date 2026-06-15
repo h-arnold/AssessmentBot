@@ -27,6 +27,7 @@ const ALLOWLISTED_METHOD_HANDLERS = Object.freeze({
   getAssignmentDefinition: (parameters) => getAssignmentDefinition_(parameters),
   deleteAssignmentDefinition: (parameters) => deleteAssignmentDefinition_(parameters),
   upsertAssignmentDefinition: (parameters) => upsertAssignmentDefinition_(parameters),
+  getAssignment: (parameters) => getAssignment_(parameters),
   getGoogleClassroomAssignments: (parameters) => getGoogleClassroomAssignments_(parameters),
   getGoogleClassrooms: (parameters) => getGoogleClassrooms_(parameters),
   upsertABClass: (parameters) => upsertABClass_(parameters),
@@ -68,6 +69,7 @@ if (typeof module !== 'undefined' && module.exports) {
   apiDisabledErrorName = require('../Utils/ErrorTypes/ApiDisabledError.js').name;
   apiDefinitionStaleErrorName = require('../Utils/ErrorTypes/DefinitionStaleError.js').name;
   globalThis.startAssessmentRun_ = require('./assignmentAssessment.js').startAssessmentRun_;
+  globalThis.getAssignment_ = require('./assignmentAssessment.js').getAssignment_;
 } else {
   // In GAS, these are loaded as global constants and functions from the bundle.
   lockTimeoutMs = LOCK_TIMEOUT_MS;

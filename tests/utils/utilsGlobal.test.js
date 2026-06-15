@@ -182,6 +182,120 @@ describe('Utils global availability regression check', () => {
     expect(result).toBe(true);
   });
 
+  describe('getColumnLetter', () => {
+    it('returns correct letters for various indices', () => {
+      const modulePath = '../../src/backend/Utils/Utils.js';
+      delete require.cache[require.resolve(modulePath)];
+      const utilsModule = require(modulePath);
+
+      // Single letters
+      expect(utilsModule.getColumnLetter(0)).toBe('A');
+      expect(utilsModule.getColumnLetter(1)).toBe('B');
+      expect(utilsModule.getColumnLetter(25)).toBe('Z');
+      // Double letters
+      expect(utilsModule.getColumnLetter(26)).toBe('AA');
+      expect(utilsModule.getColumnLetter(27)).toBe('AB');
+      expect(utilsModule.getColumnLetter(51)).toBe('AZ');
+      // Triple letters
+      expect(utilsModule.getColumnLetter(52)).toBe('BA');
+      expect(utilsModule.getColumnLetter(701)).toBe('ZZ');
+      expect(utilsModule.getColumnLetter(702)).toBe('AAA');
+      // Last column in a typical sheet
+      expect(utilsModule.getColumnLetter(25)).toBe('Z');
+    });
+  });
+
+  describe('arraysEqual', () => {
+    let utilsModule;
+
+    beforeEach(() => {
+      const modulePath = '../../src/backend/Utils/Utils.js';
+      delete require.cache[require.resolve(modulePath)];
+      utilsModule = require(modulePath);
+    });
+
+    it('returns true for identical arrays', () => {
+      expect(utilsModule.arraysEqual([1, 2, 3], [1, 2, 3])).toBe(true);
+      expect(utilsModule.arraysEqual(['a', 'b'], ['a', 'b'])).toBe(true);
+      expect(utilsModule.arraysEqual([], [])).toBe(true);
+    });
+
+    it('returns false for arrays with different lengths', () => {
+      expect(utilsModule.arraysEqual([1, 2], [1])).toBe(false);
+      expect(utilsModule.arraysEqual([1], [1, 2])).toBe(false);
+      expect(utilsModule.arraysEqual([], [1])).toBe(false);
+    });
+
+    it('returns false for arrays with same length but different values', () => {
+      expect(utilsModule.arraysEqual([1, 2], [1, 3])).toBe(false);
+      expect(utilsModule.arraysEqual(['a', 'b'], ['a', 'c'])).toBe(false);
+    });
+
+    it('uses strict equality for comparison', () => {
+      expect(utilsModule.arraysEqual([1, '1'], [1, '1'])).toBe(true);
+      expect(utilsModule.arraysEqual([1, '1'], [1, 1])).toBe(false);
+    });
+  });
+
+  describe('normaliseKeysToLowerCase', () => {
+    let utilsModule;
+
+    beforeEach(() => {
+      const modulePath = '../../src/backend/Utils/Utils.js';
+      delete require.cache[require.resolve(modulePath)];
+      utilsModule = require(modulePath);
+    });
+
+    it('converts mixed-case keys to lowercase', () => {
+      const result = utilsModule.normaliseKeysToLowerCase({ Foo: 'bar', BAZ: 'qux' });
+      expect(result.foo).toBe('bar');
+      expect(result.baz).toBe('qux');
+    });
+
+    it('handles empty objects', () => {
+      const result = utilsModule.normaliseKeysToLowerCase({});
+      expect(result).toEqual({});
+    });
+
+    it('does not modify nested objects', () => {
+      const result = utilsModule.normaliseKeysToLowerCase({ Outer: { InnerKey: 'value' } });
+      expect(result.outer).toEqual({ InnerKey: 'value' });
+    });
+
+    it('handles single key objects', () => {
+      const result = utilsModule.normaliseKeysToLowerCase({ ALREADY_LOWER: 'val' });
+      expect(result.already_lower).toBe('val');
+    });
+
+    it('overwrites duplicate keys after lowercasing', () => {
+      const result = utilsModule.normaliseKeysToLowerCase({ Key: 'first', key: 'second' });
+      expect(result.key).toBe('second');
+    });
+  });
+
+  describe('generateHash edge cases', () => {
+    let utilsModule;
+
+    beforeEach(() => {
+      const modulePath = '../../src/backend/Utils/Utils.js';
+      delete require.cache[require.resolve(modulePath)];
+      utilsModule = require(modulePath);
+    });
+
+    it('generates consistent hashes for same string input', () => {
+      const hash1 = utilsModule.generateHash('test string');
+      const hash2 = utilsModule.generateHash('test string');
+      expect(hash1).toBe(hash2);
+      expect(hash1).toHaveLength(64);
+    });
+
+    it('generates different hashes for different inputs', () => {
+      const hash1 = utilsModule.generateHash('hello');
+      const hash2 = utilsModule.generateHash('world');
+      expect(hash1).not.toBe(hash2);
+    });
+  });
+
   describe('clearDocumentProperties (removed)', () => {
     it('[RED] clearDocumentProperties should not exist on Utils', () => {
       const modulePath = '../../src/backend/Utils/Utils.js';

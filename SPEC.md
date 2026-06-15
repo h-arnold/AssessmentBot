@@ -2,7 +2,8 @@
 
 ## Status
 
-- Draft v1.0
+- Implemented v1.0
+  Implemented 2026-06-15. See ACTION_PLAN.md for delivery history.
 
 ## Purpose
 

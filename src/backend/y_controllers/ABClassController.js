@@ -1,11 +1,4 @@
-/**
- * ABClassController
- *
- * Loads, persists, and mutates ABClass records stored in JsonDbApp-backed
- * collections managed by DbManager. Each class is stored in a collection named
- * after its classId, with plain serialized ABClass objects written via
- * ABClass.toJSON().
- */
+/* global AssignmentNotFoundError, ClassNotFoundError */
 
 /**
  * ABClassController
@@ -454,7 +447,8 @@ class ABClassController {
    * @param {string} courseId - The Classroom course ID.
    * @param {string} assignmentId - The assignment ID.
    * @returns {Object} The assignment document.
-   * @throws {Error} If the document is not found or an error occurs during loading.
+   * @throws {AssignmentNotFoundError} If the document is not found in its dedicated collection.
+   * @throws {Error} If an error occurs during loading.
    * @private
    */
   _loadFullAssignmentDocument(courseId, assignmentId) {
@@ -464,8 +458,9 @@ class ABClassController {
     const document = fullCollection.findOne({ courseId, assignmentId });
 
     if (!document) {
-      throw new Error(
-        `No document found in collection ${collectionName} for courseId=${courseId}, assignmentId=${assignmentId}. Assignment does not exist or has not been persisted.`
+      throw new AssignmentNotFoundError(
+        `No document found in collection ${collectionName} for courseId=${courseId}, assignmentId=${assignmentId}. Assignment does not exist or has not been persisted.`,
+        { courseId, assignmentId, collectionName }
       );
     }
 
@@ -878,13 +873,17 @@ class ABClassController {
     const collection = this.dbManager.getCollection(classId);
     logger.info('loadClass: called', { classId, hasCollection: !!collection });
     if (!collection) {
-      throw new Error(`loadClass: no stored class found for classId=${classId}`);
+      throw new ClassNotFoundError(`loadClass: no stored class found for classId=${classId}`, {
+        courseId: classId,
+      });
     }
 
     // Collection exists - read the single stored document (if any)
     const document = collection.findOne({ classId: classId }) || null;
     if (!document) {
-      throw new Error(`loadClass: no stored class found for classId=${classId}`);
+      throw new ClassNotFoundError(`loadClass: no stored class found for classId=${classId}`, {
+        courseId: classId,
+      });
     }
 
     const abClass = ABClass.fromJSON(document);
