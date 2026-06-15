@@ -170,7 +170,7 @@ describe('Api/getAssignment transport contract', () => {
     expect(() => getAssignment_({ courseId: 'foo/bar', assignmentId: 'a1' })).toThrow(
       ApiValidationError
     );
-    expect(() => getAssignment_({ courseId: 'foo\\bar', assignmentId: 'a1' })).toThrow(
+    expect(() => getAssignment_({ courseId: String.raw`foo\bar`, assignmentId: 'a1' })).toThrow(
       ApiValidationError
     );
 
@@ -194,7 +194,7 @@ describe('Api/getAssignment transport contract', () => {
     expect(() => getAssignment_({ courseId: 'c1', assignmentId: 'foo/bar' })).toThrow(
       ApiValidationError
     );
-    expect(() => getAssignment_({ courseId: 'c1', assignmentId: 'foo\\bar' })).toThrow(
+    expect(() => getAssignment_({ courseId: 'c1', assignmentId: String.raw`foo\bar` })).toThrow(
       ApiValidationError
     );
 

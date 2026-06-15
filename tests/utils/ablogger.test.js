@@ -228,9 +228,12 @@ describe('ABLogger', () => {
       // _instance is already set from the beforeEach logger setup
       const existing = ABLogger._instance;
       // Call constructor directly (not through getInstance)
-      new ABLogger(false);
+      const orphan = new ABLogger(false);
       // _instance should still point to the original
       expect(ABLogger._instance).toBe(existing);
+      // The orphan instance is not the singleton
+      expect(orphan).not.toBe(existing);
+      expect(orphan).toBeInstanceOf(ABLogger);
     });
   });
 });
