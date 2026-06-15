@@ -141,7 +141,7 @@ const ClassroomApiClient = {
    * Fetch all coursework (assignments) for a given course.
    * Paginates through all pages and sorts by updateTime descending.
    * @param {string} courseId - The ID of the course.
-   * @returns {Array<{id: string, title: string, updateTime: string, topicId: string|null}>} Sorted assignment summaries.
+   * @returns {Array<{id: string, title: string, updateTime: string, creationTime: string, topicId: string|null}>} Sorted assignment summaries.
    */
   fetchCourseWork(courseId) {
     try {
@@ -158,6 +158,7 @@ const ClassroomApiClient = {
             id: cw.id,
             title: cw.title,
             updateTime: cw.updateTime,
+            creationTime: cw.creationTime,
             topicId: cw.topicId || null,
           }));
           allCourseWork.push(...mapped);

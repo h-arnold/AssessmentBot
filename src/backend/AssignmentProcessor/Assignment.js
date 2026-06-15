@@ -22,6 +22,8 @@ class Assignment {
     this.dueDate = null; //to be implemented later with the homework tracker.
     // Timestamp for when this assignment was last updated. Use Date or null.
     this.lastUpdated = null;
+    // Timestamp from Google Classroom indicating when the assignment was created. Use Date or null.
+    this.createdAt = null;
     // Embedded definition copy (source of truth for tasks, doc IDs, weighting, documentType)
     this.assignmentDefinition = assignmentDefinition;
 
@@ -72,6 +74,7 @@ class Assignment {
       assignmentName: this.assignmentName,
       dueDate: this.dueDate ? this.dueDate.toISOString() : null,
       lastUpdated: this.lastUpdated ? this.lastUpdated.toISOString() : null,
+      createdAt: this.createdAt ? this.createdAt.toISOString() : null,
       ...this._extractFullDefinitionFields(definitionJson),
       submissions,
       assignmentDefinition: definitionJson || this.assignmentDefinition,
@@ -122,6 +125,7 @@ class Assignment {
       assignmentName: this.assignmentName,
       dueDate: this.dueDate ? this.dueDate.toISOString() : null,
       lastUpdated: this.lastUpdated ? this.lastUpdated.toISOString() : null,
+      createdAt: this.createdAt ? this.createdAt.toISOString() : null,
       ...this._extractPartialRootFields(definitionJson),
       submissions: partialSubmissions,
       assignmentDefinition: definitionJson,
@@ -178,6 +182,7 @@ class Assignment {
     inst.assignmentName = data.assignmentName || `Assignment ${data.assignmentId}`;
     inst.dueDate = data.dueDate ? new Date(data.dueDate) : null;
     inst.lastUpdated = data.lastUpdated ? new Date(data.lastUpdated) : null;
+    inst.createdAt = data.createdAt ? new Date(data.createdAt) : null;
     inst.assignmentDefinition = data.assignmentDefinition
       ? AssignmentDefinition.fromJSON(data.assignmentDefinition)
       : null;
@@ -199,6 +204,7 @@ class Assignment {
       'assignmentName',
       'dueDate',
       'lastUpdated',
+      'createdAt',
       'assignmentDefinition',
       'submissions',
       'students', // Transient, don't restore
@@ -344,6 +350,9 @@ class Assignment {
   fetchAssignmentName(courseId, assignmentId) {
     try {
       const courseWork = Classroom.Courses.CourseWork.get(courseId, assignmentId);
+      if (courseWork.creationTime) {
+        this.createdAt = new Date(courseWork.creationTime);
+      }
       return courseWork.title || `Assignment ${assignmentId}`;
     } catch (error) {
       ABLogger.getInstance().error(`Error fetching assignment name for ID ${assignmentId}:`, error);
@@ -387,6 +396,33 @@ class Assignment {
     // store a copy to avoid outside mutation
     this.lastUpdated = new Date(date);
     return this.lastUpdated;
+  }
+
+  /**
+   * Returns the createdAt Date or null if not set.
+   * @returns {Date|null} The createdAt Date or null.
+   */
+  getCreatedAt() {
+    return this.createdAt || null;
+  }
+
+  /**
+   * Sets the createdAt timestamp from a JavaScript Date object (or null to clear).
+   * The method copies the provided Date to avoid external mutation.
+   * @param {Date|null} date - The Date to set, or null to clear the timestamp.
+   * @returns {Date|null} The stored Date instance or null.
+   * @throws {TypeError} If the provided value is not a Date or null.
+   */
+  setCreatedAt(date) {
+    if (date === null) {
+      this.createdAt = null;
+      return null;
+    }
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+      throw new TypeError('setCreatedAt expects a valid Date or null');
+    }
+    this.createdAt = new Date(date);
+    return this.createdAt;
   }
 
   /**
