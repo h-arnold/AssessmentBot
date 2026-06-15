@@ -55,6 +55,7 @@ export type RuntimeScenario = Readonly<{
   getAssignmentTopics?: ReadonlyArray<ResponseItem>;
   getGoogleClassroomAssignments?: ReadonlyArray<ResponseItem>;
   getGoogleClassrooms?: ReadonlyArray<ResponseItem>;
+  startAssessmentRun?: ReadonlyArray<ResponseItem>;
   getAssignmentDefinitionPartials?: ReadonlyArray<ResponseItem>;
   getAssignmentDefinition?: ReadonlyArray<ResponseItem>;
   upsertAssignmentDefinition?: ReadonlyArray<ResponseItem>;
@@ -479,6 +480,7 @@ export async function installRuntimeMock(
     'getAssignmentTopics',
     'getGoogleClassroomAssignments',
     'getGoogleClassrooms',
+    'startAssessmentRun',
     'getAssignmentDefinitionPartials',
     'getAssignmentDefinition',
     'upsertAssignmentDefinition',

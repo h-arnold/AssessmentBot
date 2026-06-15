@@ -10,7 +10,9 @@ import { renderWithFrontendProviders } from '../../../test/renderWithFrontendPro
 import { createAppQueryClient } from '../../../query/queryClient';
 import { ApiTransportError } from '../../../errors/apiTransportError';
 import { createFixtureClassPartial } from '../../../test/classes/classesPageTestHelpers';
+import type { AssignmentTopic } from '../../../services/referenceData/referenceData.zod';
 import {
+  type RenderWithCacheOptions,
   MOCK_CLASS_ID,
   MOCK_ASSIGNMENTS,
   MOCK_EMPTY_ASSIGNMENTS,
@@ -22,6 +24,8 @@ import {
   renderWithCache,
   selectAssignment,
   clickStartAssessment,
+  clickCreateNewDefinition,
+  getWizardProperties,
   expectStartAssessmentDisabled,
   expectCancelButtonPresent,
 } from '../../../test/classes/AssessTaskModal.test-utilities';
@@ -36,6 +40,44 @@ vi.mock('../../../services/assignmentAssessment/assignmentAssessmentService', ()
 
 vi.mock('./matchDefinitionForAssignment', () => ({
   findMatchingDefinition: vi.fn(),
+}));
+
+/**
+ * Removes function values from an object, replacing them with a marker,
+ * so the remaining object can be safely JSON-serialized.
+ *
+ * @param {Record<string, unknown>} object The object to clean.
+ * @returns {Record<string, unknown>} A new object with functions removed.
+ */
+function stripFunctions(object: Record<string, unknown>): Record<string, unknown> {
+  const cleaned: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(object)) {
+    if (typeof value !== 'function') {
+      cleaned[key] = value;
+    }
+  }
+  return cleaned;
+}
+
+vi.mock('../../assignmentWizard/AssignmentDefinitionWizardModal', () => ({
+  AssignmentDefinitionWizardModal: vi.fn((properties: Record<string, unknown>) => {
+    // Store ALL props (including functions) on the element via ref
+    // so tests can access function references directly.
+    const elementReference = (element: HTMLDivElement | null) => {
+      if (element) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (element as any).__wizardProps = properties;
+      }
+    };
+
+    return (
+      <div
+        ref={elementReference}
+        data-testid="wizard-mock"
+        data-props={JSON.stringify(stripFunctions(properties))}
+      />
+    );
+  }),
 }));
 
 beforeEach(() => {
@@ -374,21 +416,6 @@ describe('Assessment run interaction', () => {
   // Match results
   // -----------------------------------------------------------------------
 
-  it('shows error Alert when findMatchingDefinition returns no-match', async () => {
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [createDefinitionPartial()],
-      findMatchResult: { kind: 'no-match' },
-    });
-
-    await selectAssignment(dialog);
-    clickStartAssessment(dialog);
-
-    await expect(within(dialog).findByRole('alert')).resolves.toBeInTheDocument();
-  });
-
   it('shows error Alert when findMatchingDefinition returns ambiguous match', async () => {
     const definitionOne = createDefinitionPartial({ definitionKey: 'def-1' });
     const definitionTwo = createDefinitionPartial({ definitionKey: 'def-2' });
@@ -529,6 +556,198 @@ describe('Assessment run interaction', () => {
   });
 });
 
+/**
+ * Renders a no-match choice state, closes the modal, and reopens it with the
+ * same classId.  Used by the reopen/reset tests to verify state is cleared.
+ *
+ * @returns {Promise<{ dialog: HTMLElement }>} The reopened dialog element.
+ */
+async function setupReopenInPlace() {
+  const onClose = vi.fn();
+  vi.mocked(getGoogleClassroomAssignments).mockResolvedValue(MOCK_ASSIGNMENTS);
+  vi.mocked(findMatchingDefinition).mockReturnValue({ kind: 'no-match' });
+
+  const queryClient = createAppQueryClient();
+  queryClient.setQueryData(queryKeys.classPartials(), [
+    createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+  ]);
+  queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [createDefinitionPartial()]);
+
+  const { rerender } = render(
+    <QueryClientProvider client={queryClient}>
+      <AssessTaskModal {...defaultProperties({ onClose })} />
+    </QueryClientProvider>
+  );
+
+  const dialog = screen.getByRole('dialog', { name: MODAL_TITLE });
+  await selectAssignment(dialog);
+  clickStartAssessment(dialog);
+
+  // Close the modal
+  rerender(
+    <QueryClientProvider client={queryClient}>
+      <AssessTaskModal {...defaultProperties({ open: false, onClose })} />
+    </QueryClientProvider>
+  );
+
+  // Reopen with the same classId
+  rerender(
+    <QueryClientProvider client={queryClient}>
+      <AssessTaskModal {...defaultProperties({ onClose })} />
+    </QueryClientProvider>
+  );
+
+  return { dialog: await screen.findByRole('dialog', { name: MODAL_TITLE }) };
+}
+
+// ---------------------------------------------------------------------------
+// No-match resolution — choice state
+// ---------------------------------------------------------------------------
+
+describe('No-match resolution — choice state', () => {
+  it('shows choice prompt with Alert, Create New Definition button, and disabled Link to Existing button when findMatchingDefinition returns no-match', async () => {
+    const { dialog } = renderWithCache({
+      classPartials: [
+        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+      ],
+      definitionPartials: [createDefinitionPartial()],
+      findMatchResult: { kind: 'no-match' },
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    // An info Alert should explain the no-match situation
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert).toHaveTextContent(/no matching assignment definition found/i);
+    expect(alert).toHaveTextContent(/Essay/);
+
+    // Two choice buttons should be visible
+    expect(within(dialog).getByRole('button', { name: 'Create New Definition' })).toBeInTheDocument();
+
+    const linkButton = within(dialog).getByRole('button', { name: 'Link to Existing Definition' });
+    expect(linkButton).toBeInTheDocument();
+    expect(linkButton).toBeDisabled();
+  });
+
+  it('hides assignment Select and shows only Cancel in footer during choice state', async () => {
+    const { dialog } = renderWithCache({
+      classPartials: [
+        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+      ],
+      definitionPartials: [createDefinitionPartial()],
+      findMatchResult: { kind: 'no-match' },
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    // Assignment Select should NOT be visible
+    expect(within(dialog).queryByRole('combobox')).toBeNull();
+
+    // Footer should only have Cancel (no Start Assessment)
+    expectCancelButtonPresent(dialog);
+    expect(within(dialog).queryByRole('button', { name: /start assessment/i })).toBeNull();
+  });
+
+  it('transitions to creating state when Create New Definition is clicked', async () => {
+    const { dialog } = renderWithCache({
+      classPartials: [
+        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+      ],
+      definitionPartials: [createDefinitionPartial()],
+      findMatchResult: { kind: 'no-match' },
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    // Click "Create New Definition" — this should transition to 'creating'
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Create New Definition' }));
+
+    // Once in creating state, the choice buttons should be gone
+    await waitFor(() => {
+      expect(within(dialog).queryByRole('button', { name: 'Create New Definition' })).toBeNull();
+    });
+
+    // The choice prompt Alert should also be gone — body content changed from choice to creating
+    expect(within(dialog).queryByText(/no matching assignment definition found/i)).toBeNull();
+
+    // The assignment Select remains hidden (was hidden in choice, stays hidden in creating)
+    expect(within(dialog).queryByRole('combobox')).toBeNull();
+  });
+
+  it('shows Link to Existing button disabled with Tooltip Coming soon', async () => {
+    const { dialog } = renderWithCache({
+      classPartials: [
+        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+      ],
+      definitionPartials: [createDefinitionPartial()],
+      findMatchResult: { kind: 'no-match' },
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    const linkButton = within(dialog).getByRole('button', { name: 'Link to Existing Definition' });
+    expect(linkButton).toBeDisabled();
+
+    // Hover over the button wrapper to trigger the Tooltip
+    const buttonParent = linkButton.parentElement;
+    if (buttonParent) {
+      fireEvent.pointerEnter(buttonParent);
+    }
+
+    // Tooltip should show "Coming soon" text
+    await screen.findByText('Coming soon');
+  });
+
+  it('reopens modal and resets noMatchResolution to idle', async () => {
+    const { dialog: reopenedDialog } = await setupReopenInPlace();
+    await within(reopenedDialog).findByRole('combobox');
+
+    // noMatchResolution should be reset to 'idle', so choice prompt is NOT shown
+    expect(within(reopenedDialog).queryByRole('button', { name: 'Create New Definition' })).toBeNull();
+  });
+
+  it('reopens modal and resets assessmentState to idle', async () => {
+    const { dialog: reopenedDialog } = await setupReopenInPlace();
+
+    // assessmentState should be 'idle', so Select is visible and no Alert
+    await within(reopenedDialog).findByRole('combobox');
+    expect(within(reopenedDialog).queryByRole('alert')).toBeNull();
+  });
+
+  it('initial noMatchResolution is idle — matched flow succeeds without choice prompt', async () => {
+    const matchedDefinition = createDefinitionPartial();
+    const { dialog } = renderWithCache({
+      classPartials: [
+        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+      ],
+      definitionPartials: [matchedDefinition],
+      findMatchResult: { kind: 'matched', definition: matchedDefinition },
+      startRunResult: null,
+      startRunType: 'resolve',
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    // The choice prompt must NOT appear — confirming noMatchResolution starts as 'idle'.
+    // If noMatchResolution were 'choice', the choice prompt would render instead of
+    // the normal success flow after a matched definition is found.
+    await waitFor(() => {
+      expect(within(dialog).queryByRole('button', { name: 'Create New Definition' })).toBeNull();
+      expect(within(dialog).queryByRole('button', { name: 'Link to Existing Definition' })).toBeNull();
+      expect(within(dialog).queryByText(/no matching assignment definition found/i)).toBeNull();
+    });
+
+    // Success state should appear (standard matched flow)
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert).toBeInTheDocument();
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Success state: Close button behaviour
 // ---------------------------------------------------------------------------
@@ -624,5 +843,249 @@ describe('Footer buttons across states', () => {
     });
     expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: 'Start Assessment' })).toBeInTheDocument();
+  });
+});
+
+/**
+ * Renders AssessTaskModal with standard no-match cache data and navigates to
+ * the choice state (assignment selected + Start Assessment clicked).
+ *
+ * @param {Partial<RenderWithCacheOptions>} [options] Additional render options forwarded to `renderWithCache`.
+ * @returns {Promise<{ dialog: HTMLElement; queryClient: import('@tanstack/react-query').QueryClient }>}
+ *   The dialog and query client.
+ */
+async function setupWizardTest(options: Partial<RenderWithCacheOptions> = {}) {
+  const { dialog, queryClient } = renderWithCache({
+    classPartials: [
+      createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+    ],
+    definitionPartials: [createDefinitionPartial()],
+    findMatchResult: { kind: 'no-match' },
+    ...options,
+  });
+
+  await selectAssignment(dialog);
+  clickStartAssessment(dialog);
+
+  return { dialog, queryClient };
+}
+
+// ---------------------------------------------------------------------------
+// No-match resolution — creating state and wizard integration
+// ---------------------------------------------------------------------------
+
+describe('No-match resolution — creating state and wizard integration', () => {
+  it('renders wizard with mode="create" and correct initialValues when topicId matches cache', async () => {
+    const { dialog, queryClient } = await setupWizardTest({
+      assignments: [
+        { assignmentId: 'a1', title: 'Essay', topicName: 'Writing', topicId: 'topic-writing' },
+      ],
+    });
+
+    // Populate topics cache with a matching topic
+    queryClient.setQueryData<AssignmentTopic[]>(queryKeys.assignmentTopics(), [
+      { key: 'topic-writing', name: 'Writing', yearGroupKeys: ['year-10'] },
+    ]);
+
+    await clickCreateNewDefinition(dialog);
+    const properties = await getWizardProperties();
+
+    expect(properties.mode).toBe('create');
+    expect(properties.open).toBe(true);
+    expect(properties.definitionKey).toBeNull();
+    expect(properties.initialValues).toEqual({
+      title: 'Essay',
+      topic: 'topic-writing',
+      yearGroup: 'year-10',
+    });
+    expect(typeof properties.onCreateSuccess).toBe('function');
+    expect(typeof properties.onClose).toBe('function');
+  });
+
+  it('leaves topic field empty when topicId is not in the assignmentTopics cache', async () => {
+    const { dialog, queryClient } = await setupWizardTest({
+      assignments: [
+        { assignmentId: 'a1', title: 'Essay', topicName: 'Writing', topicId: 'unknown-topic' },
+      ],
+    });
+
+    // Populate topics cache but with NO matching topic
+    queryClient.setQueryData<AssignmentTopic[]>(queryKeys.assignmentTopics(), [
+      { key: 'topic-maths', name: 'Maths', yearGroupKeys: ['year-10'] },
+      { key: 'topic-science', name: 'Science', yearGroupKeys: ['year-10'] },
+    ]);
+
+    await clickCreateNewDefinition(dialog);
+    const properties = await getWizardProperties();
+
+    // Topic should NOT be present in initialValues when not found in cache
+    expect(properties.initialValues).toEqual({
+      title: 'Essay',
+      yearGroup: 'year-10',
+    });
+    expect(properties.initialValues.topic).toBeUndefined();
+  });
+
+  it('leaves topic field empty when topicId is null', async () => {
+    const { dialog, queryClient } = await setupWizardTest({
+      assignments: [{ assignmentId: 'a1', title: 'Essay', topicName: 'Writing', topicId: null }],
+    });
+
+    // Populate assignmentTopics cache so the test validates the correct code path
+    // — topicId is null, so topic should remain blank even when topics are cached.
+    queryClient.setQueryData<AssignmentTopic[]>(queryKeys.assignmentTopics(), [
+      { key: 'topic-writing', name: 'Writing', yearGroupKeys: ['year-10'] },
+    ]);
+
+    await clickCreateNewDefinition(dialog);
+    const properties = await getWizardProperties();
+
+    // Topic should NOT be in initialValues when topicId is null
+    expect(properties.initialValues).toEqual({
+      title: 'Essay',
+      yearGroup: 'year-10',
+    });
+    expect(properties.initialValues.topic).toBeUndefined();
+  });
+
+  it('calls startAssessmentRun and shows success state when wizard saves successfully', async () => {
+    const { dialog } = await setupWizardTest({
+      startRunResult: null,
+      startRunType: 'resolve',
+    });
+
+    await clickCreateNewDefinition(dialog);
+    const properties = await getWizardProperties();
+    properties.onCreateSuccess('new-def-key');
+
+    // startAssessmentRun should have been called with the new definition key
+    await waitFor(() => {
+      expect(vi.mocked(startAssessmentRun)).toHaveBeenCalledWith({
+        definitionKey: 'new-def-key',
+        assignmentId: 'a1',
+        courseId: MOCK_CLASS_ID,
+      });
+    });
+
+    // Success state should be shown
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert).toHaveTextContent(/assessment started for/i);
+    expect(alert).toHaveTextContent(/Essay/);
+
+    // Footer should show Close button only
+    const footer = dialog.querySelector('.ant-modal-footer') as HTMLElement | null;
+    expect(footer).not.toBeNull();
+    expect(within(footer!).getByRole('button', { name: 'Close' })).toBeInTheDocument();
+  });
+
+  it('shows error state when startAssessmentRun fails after wizard creates definition', async () => {
+    const apiError = new Error('API failure');
+    const { dialog } = await setupWizardTest({
+      startRunResult: apiError,
+      startRunType: 'reject',
+    });
+
+    await clickCreateNewDefinition(dialog);
+    const properties = await getWizardProperties();
+    properties.onCreateSuccess('new-def-key');
+
+    // Error alert should appear
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert).toBeInTheDocument();
+    expect(alert).toHaveTextContent('API failure');
+  });
+
+  it('returns to choice state when wizard is cancelled', async () => {
+    const { dialog } = await setupWizardTest();
+
+    await clickCreateNewDefinition(dialog);
+    const properties = await getWizardProperties();
+
+    // Simulate wizard cancel (onClose fires without onCreateSuccess having been called)
+    properties.onClose();
+
+    // Should return to choice state — choice buttons appear again
+    await waitFor(() => {
+      expect(
+        within(dialog).getByRole('button', { name: 'Create New Definition' })
+      ).toBeInTheDocument();
+    });
+
+    // The wizard mock should be unmounted
+    expect(screen.queryByTestId('wizard-mock')).toBeNull();
+  });
+
+  it('calls modal onClose when Cancel is clicked during creating state', async () => {
+    const onClose = vi.fn();
+    const { dialog } = await setupWizardTest({ onClose });
+
+    await clickCreateNewDefinition(dialog);
+
+    // Now in creating state — click Cancel in the AssessTaskModal footer
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows correct UI during auto-assessment loading and final state after resolution', async () => {
+    let resolveRun!: (value: null) => void;
+    const pendingRun = new Promise<null>((resolve) => {
+      resolveRun = resolve;
+    });
+    vi.mocked(startAssessmentRun).mockReturnValue(pendingRun);
+
+    const { dialog } = await setupWizardTest();
+
+    await clickCreateNewDefinition(dialog);
+    const properties = await getWizardProperties();
+    properties.onCreateSuccess('new-def-key');
+
+    // During loading: the wizard mock should be unmounted
+    expect(screen.queryByTestId('wizard-mock')).toBeNull();
+
+    // During loading: assignment Select NOT visible
+    expect(within(dialog).queryByRole('combobox')).toBeNull();
+
+    // During loading: footer shows Cancel + disabled Start Assessment
+    expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    const startButton = within(dialog).getByRole('button', { name: /start assessment/i });
+    expect(startButton).toBeDisabled();
+
+    // Resolve the API call
+    await act(async () => {
+      resolveRun(null);
+    });
+
+    // After resolution: success state shown
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert).toHaveTextContent(/assessment started for/i);
+
+    // Footer should show Close button only
+    const footer = dialog.querySelector('.ant-modal-footer') as HTMLElement | null;
+    expect(footer).not.toBeNull();
+    await waitFor(() => {
+      expect(within(footer!).getByRole('button', { name: 'Close' })).toBeInTheDocument();
+    });
+  });
+
+  it('calls modal onClose when outer Cancel is clicked during auto-assessment loading', async () => {
+    const onClose = vi.fn();
+
+    // Mock startAssessmentRun with a pending promise so auto-assessment stays loading
+    const pendingRun = new Promise<null>(() => {});
+    vi.mocked(startAssessmentRun).mockReturnValue(pendingRun);
+
+    const { dialog } = await setupWizardTest({ onClose });
+
+    await clickCreateNewDefinition(dialog);
+    const properties = await getWizardProperties();
+    properties.onCreateSuccess('test-key');
+
+    // During auto-assessment loading, Cancel should be in the footer
+    expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+
+    // Click Cancel — the outer modal's Cancel during creating+loading calls onClose
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
