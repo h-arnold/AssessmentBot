@@ -192,6 +192,10 @@ g.ClassroomManager = {
   },
 };
 
+// Expose abclass validation shared helpers for test access
+// Load validation module first (same order as GAS concatenation)
+Object.assign(g, require('../src/backend/z_Api/abclass/abclassValidation.js'));
+
 // Expose assignment-definition modules for test access
 // Load validation module first (same order as GAS concatenation), then transport module
 Object.assign(g, require('../src/backend/z_Api/assignmentDefinitionValidation.js'));

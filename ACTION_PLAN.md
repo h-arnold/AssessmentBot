@@ -2,7 +2,9 @@
 
 > **Plan status**: v1.3 (this delivery bundles the `getABClass` endpoint work from `SPEC.md` v1.3 with the `ABClassController` decomposition from `ABClassControllerRefactor_SPEC.md` v1.0. Sections 1-7 cover the new endpoint; Sections 8-13 cover the refactor. Both share the same TDD-first discipline and the same regression test suite, but the refactor's only externally visible change is the file path of the controller module. Awaiting `Planner Reviewer` sign-off.)
 >
-> **Section 1 — Status**: ✅ COMPLETE (committed `7f924f6`) — `abclassMutations.js` moved to `z_Api/abclass/`, paths updated, all tests pass, regression gate passed.
+> **Section 1 — Status**: ✅ COMPLETE (committed `243fbf0`) — `abclassMutations.js` moved to `z_Api/abclass/`, paths updated, all tests pass, regression gate passed.
+>
+> **Section 2 — Status**: ✅ COMPLETE (committed `██████`) — `validateParametersObject_` extracted to `abclassValidation.js`, global reference added, eslint config updated, regression gate passed.
 
 ## Read-First Context
 
