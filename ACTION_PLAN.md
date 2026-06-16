@@ -1,47 +1,98 @@
-# `getAssignment` API Endpoint — Delivery Plan (TDD-First)
+# AssessTask "Link to Existing Definition" — Delivery Plan (TDD-First)
 
 ## Read-First Context
 
 Before writing or executing this plan:
 
 1. Read the current `SPEC.md`.
-2. Read `src/backend/AGENTS.md` (backend conventions, §0.1 trailing-underscore handler pattern, §8 date handling, §3 logging).
-3. Read `src/frontend/AGENTS.md` §4.3 (prohibited types in `google.script.run`).
-4. Treat those documents as the source of truth for product behaviour, contracts, and rules.
-5. Use this action plan to sequence delivery and testing; do not restate or redefine material already settled in the spec.
+2. Read the new layout spec `ASSESS_TASK_MODAL_LINK_PICKER_LAYOUT.md`.
+3. Read `src/frontend/AGENTS.md` (frontend conventions, §2.1 composition boundary, §4 API transport, §8 Zod standard, §10 modal patterns).
+4. Read `src/backend/AGENTS.md` (backend conventions, §0.1 trailing-underscore handler pattern, §0.2 validation ownership, §3 logging, §10 facade pattern).
+5. Read `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9.13, §9.14 (the existing AssessTask helper entries that this work extends).
+6. Read `docs/developer/frontend/frontend-testing.md` and `docs/developer/backend/backend-testing.md` for testing policy.
+7. Treat `SPEC.md` and `ASSESS_TASK_MODAL_LINK_PICKER_LAYOUT.md` as the source of truth for product behaviour, contracts, and layout rules. Use this action plan to sequence delivery and testing; do not restate or redefine material already settled in those documents.
 
 ## Scope and assumptions
 
 ### Scope
 
-- New typed error class `AssignmentNotFoundError` at
-  `src/backend/Utils/ErrorTypes/AssignmentNotFoundError.js`.
-- Controller change in `ABClassController._loadFullAssignmentDocument` to throw the new typed
-  error in place of the current generic `Error` on the not-found path.
-- New `getAssignment_` trailing-underscore handler in `src/backend/z_Api/assignmentAssessment.js`.
-- New `getAssignment` entry in `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`.
-- Backend API tests for the new handler, plus a controller-level test for the new typed error.
-- Canonical-doc update for the new error type in
-  `docs/developer/backend/backend-logging-and-error-handling.md` (reconcile planned-only entry).
+- A new `'linking'` sub-state in the existing `AssessTaskModal`
+  `noMatchResolution` state machine.
+- A new `LinkableDefinitionList` presentational component (Ant Design
+  `Radio.Group` with JSX children; not `List`).
+- A new `getLinkableDefinitionsForModal` pure helper that filters, sorts,
+  and annotates the cached `AssignmentDefinitionPartial` rows.
+- A new `caseInsensitiveTrimmedEquals` feature-local helper in a new
+  `stringComparison.ts` file (used by both the matcher and the picker
+  derivation helper).
+- A new direct dependency `fuse.js` in `src/frontend/package.json` (and
+  the corresponding lockfile update). The dependency is used only by
+  the picker derivation helper for fuzzy title ranking.
+- A relaxation of the existing `findMatchingDefinition` matcher to use
+  case-insensitive trimmed equality for both title and topic, plus a new
+  `alternateTopics` lookup branch.
+- A new `AssignmentDefinitionUpsertOrchestrator._resolveAlternateTopics`
+  private method that mirrors the existing `_resolveAlternateTitles`.
+- A one-line orchestrator constructor call to pass the resolved
+  `alternateTopics` to the `AssignmentDefinition` model.
+- A frontend Zod `UpsertAssignmentDefinitionRequestSchema` extension to
+  accept `alternateTitles`, `alternateTopics`, `referenceDocumentId`,
+  `templateDocumentId`, and `documentType` as optional fields, with a
+  `superRefine` mutual-exclusion rule between the URL-shape and
+  ID-shape payloads.
+- The full test surface (backend controller unit tests, frontend matcher
+  unit tests, picker helper unit tests, Zod schema unit tests, modal
+  Vitest component tests, shared test utility extensions, Playwright
+  e2e tests).
+- Documentation updates to the shared-helpers doc, the DATA_SHAPES doc,
+  the api-layer doc, and the front-end testing notes.
 
 ### Out of scope
 
-- Frontend service module, Zod schema, or React hooks for consuming this endpoint.
-- Any UI/page changes.
-- Any mutation, creation, or deletion of assignments.
-- Changes to `AssignmentController`, `Assignment` model, or persistence layer.
-- Differentiating `loadClass` failure paths from other `INTERNAL_ERROR` cases.
-- Stripping transient fields other than `progressTracker` at the API boundary.
-- Differentiating the controller's logging severity between `AssignmentNotFoundError` and
-  other `rehydrateAssignment` failures.
+- Creating a new endpoint (`addAlternateTitle` or similar). The link
+  flow reuses the existing `upsertAssignmentDefinition`.
+- Any UI changes outside the AssessTask modal.
+- Any mutation, creation, or deletion of assignments (not definitions).
+- Changes to the existing `AssignmentController`,
+  `AssignmentDefinitionController`, or `Assignment` model (the model's
+  `alternateTopics` field is already wired in the constructor; only the
+  orchestrator's constructor call needs the new argument).
+- Renaming `normaliseAlternateTitles` to `normaliseTrimmedStringArray`
+  (deferred per the spec).
+- In-picker search/filter input, virtualisation, pagination.
+- Unlinking a previously-linked assignment.
 
 ### Assumptions
 
-1. `ABClassController.loadClass` returns an object with a `classId` property that `rehydrateAssignment` can consume.
-2. `_loadFullAssignmentDocument` will throw the new `AssignmentNotFoundError` (not a generic `Error`) on the not-found path. The API handler detects not-found via an `instanceof` check.
-3. `Assignment.toJSON()` already converts `dueDate` and `lastUpdated` to ISO strings; `DateUtils.normaliseDateFields` provides defence-in-depth — but the handler must still be tested with a mock that returns live `Date` objects to prove the wiring is intact.
-4. `Assignment.toJSON()` already excludes `progressTracker` per its JSDoc; the handler's `delete response.progressTracker` is defence-in-depth and must still be tested with a mock that includes the field.
-5. `hasControlCharacters_` is available as a global in the GAS concatenated runtime (from `assignmentDefinitionValidation.js`).
+1. The cached `AssignmentDefinitionPartial` rows already include
+   `yearGroupLabel` (per `assignmentDefinitionPartials.zod.ts` line 190);
+   the picker reads the label directly from the partial without an extra
+   yearGroups reference-data lookup.
+2. The frontend Zod `superRefine` for the URL-shape vs ID-shape mutual
+   exclusion can be implemented with Zod v4's `.superRefine` API; the
+   wizard's existing payload (which always sends the URL fields) will
+   continue to pass the new rule without modification.
+3. The `Radio.Group` JSX-children pattern is fully supported in Ant
+   Design v6 and the `disabled` prop on `Radio` correctly suppresses both
+   click activation and keyboard selection (Decision 2 in the layout
+   spec, §2 picker row interaction details).
+4. The `name` prop on `Radio.Group` enables arrow-key navigation between
+   rows in the same way a native HTML radio group does, including for
+   disabled rows (which remain reachable for the screen reader via
+   the `aria-live` summary).
+5. The `flushSync` pattern in `handleWizardCreateSuccess` is **not**
+   needed for the link flow (per SPEC.md Decision 11).
+6. The existing `progressTracker` strip at the API boundary applies
+   only to `getAssignment_`, not to `upsertAssignmentDefinition_`; the
+   link flow is unaffected by that constraint.
+7. `queryClient.invalidateQueries({ queryKey:
+queryKeys.assignmentDefinitionPartials() })` is the correct React
+   Query API for cache invalidation in the existing app (per
+   `frontend-react-query-and-prefetch.md`).
+8. The lock-manager and `progressTracker` logging in the backend
+   transport are unchanged; the link flow is a single upsert call
+   followed by a single `startAssessmentRun` call, both of which
+   already exercise the existing logging and locking.
 
 ---
 
@@ -49,12 +100,23 @@ Before writing or executing this plan:
 
 ### Engineering constraints
 
-- Keep API handler thin and delegate to existing controller methods.
+- Keep the API handler thin and delegate to existing controller methods.
 - Fail fast on invalid inputs with `ApiValidationError`.
 - Do not add defensive guards that hide wiring issues.
-- Keep changes minimal, localised, and consistent with repository conventions.
+- Keep changes minimal, localised, and consistent with repository
+  conventions.
 - Use British English in comments and documentation.
-- `ABLogger` is mandatory for all new backend code.
+- `ABLogger` is mandatory for all new backend code (the new
+  `_resolveAlternateTopics` method is a pure function and does not
+  introduce new logging; existing logging in the orchestrator's
+  surrounding code path is preserved).
+- Match the existing `flushSync`-or-no-`flushSync` decision per
+  `SPEC.md` Decision 11 (no `flushSync` for the link flow).
+- Follow the shared-helpers extraction rule: feature-local helpers stay
+  local; `caseInsensitiveTrimmedEquals` lives in a feature-local
+  `stringComparison.ts` file (shared between the matcher and the
+  picker derivation helper but not exported from the modal feature
+  directory).
 
 ### TDD workflow (mandatory per section)
 
@@ -67,529 +129,1539 @@ For each section below:
 
 ### Delegation mandatory-read gate (mandatory for sub-agent execution)
 
-When a section is delegated to sub-agents, the plan must define and enforce mandatory documentation reads. For each delegated phase (`Testing Specialist`, `Implementation`, `Code Reviewer`, `Docs`):
+When a section is delegated to sub-agents, the plan must define and
+enforce mandatory documentation reads. For each delegated phase
+(`Testing Specialist`, `Implementation`, `Code Reviewer`, `Docs`,
+`De-Sloppification`):
 
-1. list required documentation file paths under that phase before delegation
-2. require the sub-agent handoff to include `Files read` with explicit file paths
+1. list required documentation file paths under that phase before
+   delegation
+2. require the sub-agent handoff to include `Files read` with explicit
+   file paths
 3. verify every mandatory file is listed before accepting the handoff
-4. if any mandatory file is missing, return the work to the same sub-agent and block progression to the next phase
+4. if any mandatory file is missing, return the work to the same
+   sub-agent and block progression to the next phase
 
 ### Shared-helper planning gate (mandatory when helper changes are expected)
 
-This work introduces one new shared helper and reuses several existing ones.
+This work introduces four new feature-local helpers and reuses several
+existing ones.
 
 Helper decision entries:
 
-1. Helper: `AssignmentNotFoundError` typed error class
+1. Helper: `caseInsensitiveTrimmedEquals` feature-local pure helper
    - Decision: `new`
-   - Owning module/path: `src/backend/Utils/ErrorTypes/AssignmentNotFoundError.js`
-   - Call-site rationale: replaces substring-based not-found detection (see
-     `SPEC.md` §"Agreed product decisions" #6) with a structurally testable
-     `instanceof` check at the API boundary. Follows the existing
-     `DefinitionStaleError.js` pattern: `(message, options)` constructor with
-     `{ courseId, assignmentId, collectionName }` assigned to instance properties
-     of the same names. **No `cause` parameter** — `DefinitionStaleError` does
-     not have one, and the only throw site has no wrapped error to pass.
+   - Owning module/path:
+     `src/frontend/src/features/classes/AssessTaskModal/stringComparison.ts`
+     (a new third file colocated with the matcher; **not** private to
+     the matcher file because it is shared with the picker helper
+     `getLinkableDefinitionsForModal`).
+   - Call-site rationale: replaces the strict `===` and
+     `Array.includes` equality in the matcher with case-insensitive
+     trimmed equality for both title (`primaryTitle` +
+     `alternateTitles`) and topic (`primaryTopic` +
+     `alternateTopics`). The helper is colocated with the matcher
+     feature (single file in the modal feature directory) because
+     it has two in-scope callers (the matcher and the picker
+     derivation helper) per
+     `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
+     §3.4 ("extract a new helper only when repeated behaviour exists
+     now, or a second in-scope caller is already accepted"). The
+     helper is **not** exported from the modal feature directory —
+     it stays feature-local.
+   - Relevant canonical doc target: `frontend-shared-helpers-and-abstraction-standards.md`
+     §9.13 (extend the existing entry to note the new feature-local
+     helper).
+   - Planned doc status: `Not implemented`
+2. Helper: `getLinkableDefinitionsForModal` pure helper
+   - Decision: `new`
+   - Owning module/path:
+     `src/frontend/src/features/classes/AssessTaskModal/getLinkableDefinitionsForModal.ts`
+   - Call-site rationale: derives the `LinkableDefinition[]` for the
+     picker by filtering the cached partials to the class's
+     `yearGroupKey`, deriving the `isAlreadyLinked` flag, and sorting
+     by `updatedAt` desc. The helper is colocated with the matcher
+     (separate file) following the same pattern as
+     `findMatchingDefinition`; the function is exported for unit
+     testing.
    - Relevant canonical doc target:
-     `docs/developer/backend/backend-logging-and-error-handling.md` §9
-   - Planned doc status: `Not implemented` (entry already recorded)
+     `frontend-shared-helpers-and-abstraction-standards.md` §9.13
+     (extend the existing entry to add a new `getLinkableDefinitionsForModal`
+     row).
+   - Planned doc status: `Not implemented`
+3. Helper: `LinkableDefinitionList` presentational component
+   - Decision: `new`
+   - Owning module/path:
+     `src/frontend/src/features/classes/AssessTaskModal/LinkableDefinitionList.tsx`
+   - Call-site rationale: renders the picker as an Ant Design
+     `Radio.Group` with vertical orientation, block width, and JSX
+     children. The component is presentational (no state, no side
+     effects); it receives the derived `LinkableDefinition[]` and the
+     current selection, and emits `onSelect(definitionKey)`. The
+     component has exactly one caller (`AssessTaskModal`) and is not
+     promoted to a shared component.
+   - Relevant canonical doc target:
+     `frontend-shared-helpers-and-abstraction-standards.md` §9.13
+     (extend the existing entry to add a new `LinkableDefinitionList`
+     row).
+   - Planned doc status: `Not implemented`
+4. Direct dependency: `fuse.js` (fuzzy search library)
+   - Decision: `new`
+   - Owning module/path: `src/frontend/package.json` (and the
+     corresponding lockfile entry).
+   - Call-site rationale: imported by
+     `getLinkableDefinitionsForModal.ts` for fuzzy title ranking
+     (per `SPEC.md` Decisions 3 and 9). The library is well-maintained
+     (https://fusejs.io), has built-in TypeScript types (v7+), no
+     runtime dependencies, and ~12 kB gzipped bundle weight. The
+     user's original request explicitly allowed adding a fuzzy-search
+     library if it was maintained and not too much effort; `fuse.js`
+     satisfies both conditions.
+   - Relevant canonical doc target: no canonical doc entry required
+     (the dependency declaration is self-explanatory; the integration
+     is documented in `SPEC.md` Decision 9).
+   - Planned doc status: N/A (the dependency is declared in
+     `package.json`; the lockfile entry is generated by `npm install`)
 
-2. Helper: `ABClassController._loadFullAssignmentDocument` `throw` site
-   - Decision: `extend` (one-line change to throw the new typed error)
-   - Owning module/path: `src/backend/y_controllers/ABClassController.js`
-   - Call-site rationale: the controller is the only place where the not-found
-     error originates; the new typed error must be thrown from the source.
-   - Relevant canonical doc target: none (no canonical doc change required for
-     the throw site itself; the error type is documented per entry 1)
+5. Helper: `_resolveAlternateTopics` private orchestrator method
+   - Decision: `new`
+   - Owning module/path:
+     `src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionUpsertOrchestrator.js`
+   - Call-site rationale: mirrors the existing
+     `_resolveAlternateTitles` method to handle the
+     `alternateTopics` field on the upsert payload. Preserves
+     existing `alternateTopics` on update when the payload omits the
+     field; normalises via `validation.normaliseAlternateTitles` (the
+     existing method) when the field is provided. The method is
+     private (trailing underscore convention) and is called only from
+     the orchestrator's `upsert` method.
+   - Relevant canonical doc target: none (the orchestrator's existing
+     docstring is the authority; no new canonical doc entry is
+     required because the helper mirrors an existing pattern).
    - Planned doc status: N/A
 
 Reused helpers (no decision needed):
 
-- `ABClassController.loadClass` / `.rehydrateAssignment` — existing controller
-- `Assignment.toJSON()` — existing model method
-- `DateUtils.normaliseDateFields` — existing utility
-- `Validate.requireParams` / `.validateNonEmptyString` — existing validator
-- `hasControlCharacters_` — existing global helper from `assignmentDefinitionValidation.js`
+- `validation.normaliseAlternateTitles` (backend) — reused for both
+  `alternateTitles` and `alternateTopics` because the validation
+  semantics are identical (non-empty trimmed strings). A code comment
+  in `_resolveAlternateTopics` records the reuse.
+- `upsertAssignmentDefinition` (frontend service) — reused; the new
+  fields ride along via the extended Zod schema.
+- `queryClient.invalidateQueries` and the
+  `queryKeys.assignmentDefinitionPartials` query key (frontend) —
+  reused; no new query keys.
+- `AssignmentDefinition.alternateTopics` field (backend model) —
+  reused; the orchestrator's constructor call now passes the
+  resolved array.
 
 ### Validation commands hierarchy
 
 - Backend lint: `npm run lint:backend`
-- Backend tests: `npm test -- tests/api/assignmentAssessment.test.js`
-- Backend tests (new): `npm test -- tests/api/assignmentReadApi.test.js`
-- Backend controller tests: `npm test -- tests/controllers/abclassController.rehydrateAssignment.test.js`
+- Frontend lint: `npm run lint:frontend`
+- Backend tests:
+  - `npm test -- tests/controllers/assignmentDefinitionController.upsert.test.js`
+  - `npm test -- tests/api/assignmentDefinitionUpsertApi.test.js` (no
+    change expected; the existing test covers the ID-shape path)
+- Frontend tests:
+  - `npm run frontend:test -- src/frontend/src/features/classes/AssessTaskModal/matchDefinitionForAssignment.spec.ts`
+  - `npm run frontend:test -- src/frontend/src/features/classes/AssessTaskModal/getLinkableDefinitionsForModal.spec.ts` (new file)
+  - `npm run frontend:test -- src/frontend/src/services/assignmentDefinition/assignmentDefinition.zod.spec.ts`
+  - `npm run frontend:test -- src/frontend/src/features/classes/AssessTaskModal/AssessTaskModal.spec.tsx`
+- Frontend dependency install (Section 4): `npm install --prefix src/frontend`
+  (after adding `fuse.js` to `src/frontend/package.json` dependencies)
+- Playwright e2e tests (if executed locally):
+  - `npm run frontend:test:e2e -- classes-page-assess-task`
 
 ---
 
-## Section 1 — Add `AssignmentNotFoundError` and write failing backend API tests (Red)
+## Section 1 — Backend orchestrator `_resolveAlternateTopics` (Red, Green, Refactor)
 
 ### Objective
 
-1. Create the new typed error class `AssignmentNotFoundError` at
-   `src/backend/Utils/ErrorTypes/AssignmentNotFoundError.js` (small, focused — the
-   tests in step 2 must import it, so the symbol must exist for the import to
-   resolve). This is a precondition for the Red-phase tests, not part of the
-   feature under test.
-2. Create a new test file `tests/api/assignmentReadApi.test.js` with failing tests
-   for the `getAssignment_` handler. Tests define the transport contract before
-   the handler implementation exists.
-3. Update `ABClassController._loadFullAssignmentDocument` to throw the new typed
-   error in place of the current generic `Error` on the not-found path. This is
-   the single line that the production code needs to change for the typed-error
-   approach; doing it now keeps the controller in sync with the handler tests
-   in step 2.
+Add the private `_resolveAlternateTopics` method to
+`AssignmentDefinitionUpsertOrchestrator` and wire it into the
+`upsert` method's constructor call so that `alternateTopics` round-trips
+on update.
 
 ### Constraints
 
-- `AssignmentNotFoundError` follows the existing pattern from
-  `src/backend/Utils/ErrorTypes/DefinitionStaleError.js`: `(message, options)`
-  constructor with options `{ courseId, assignmentId, collectionName }` assigned
-  to `this.courseId`, `this.assignmentId`, `this.collectionName`. Extend `Error`,
-  set `this.name = 'AssignmentNotFoundError'`, guarded `module.exports` block
-  at the end of the file. **No `cause` parameter.**
-- The new error file does **not** need a dedicated unit test (no behaviour
-  beyond holding metadata). It is exercised end-to-end by the handler tests.
-- Tests must use Vitest (`import { describe, expect, it, vi } from 'vitest'`).
-- Follow existing patterns from `tests/api/assignmentAssessment.test.js` (controller
-  stubs, `ApiValidationError` imports, `module.exports` loading).
-- The test file must load `getAssignment_` from
-  `../../src/backend/z_Api/assignmentAssessment.js`.
-- Do not modify tests in the Green phase — only write the handler.
-- The controller change in `_loadFullAssignmentDocument` is a one-line `throw`
-  replacement. The existing diagnostic message is preserved; only the error
-  class is swapped. Do not modify the surrounding `try { ... } catch` block in
-  `rehydrateAssignment`.
+- The new method is private to the orchestrator file (trailing underscore
+  convention).
+- The new method delegates to `validation.normaliseAlternateTitles` for
+  normalisation. A code comment records the reuse.
+- The orchestrator's `upsert` method's constructor call gains one new
+  line: `alternateTopics: this._resolveAlternateTopics({ payload,
+isUpdate, existingDefinition })`.
+- The `_resolveAlternateTopics` method preserves the existing
+  `alternateTopics` on update when the payload omits the field (mirror
+  of `_resolveAlternateTitles`).
+- The new method is a pure function; no new logging, no new error
+  types, no new transport validation. The transport validator in
+  `z_Api/assignmentDefinitionValidation.js` requires no change because
+  extra fields are tolerated.
+- The model `AssignmentDefinition` already accepts `alternateTopics` in
+  its constructor (per `src/backend/Models/AssignmentDefinition.js`
+  line 48) and serialises it via `toJSON()` and `toPartialJSON()`.
+- The response mapper already includes `alternateTopics` in the
+  canonical response (per
+  `src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionResponseMapper.js`
+  line 77).
 
 ### Delegation mandatory reads (when sub-agents are used)
 
 Testing Specialist mandatory docs:
 
-- `tests/api/assignmentAssessment.test.js` — existing test pattern for the same module
-- `tests/api/assignmentDefinitionReadApi.test.js` — pattern for a read handler that returns data
-- `tests/setupGlobals.js` — Node test harness global wiring (in particular how
-  `Assignment`, `ABClassController` and friends are loaded)
-- `SPEC.md` — feature spec
-- `src/backend/AGENTS.md` — backend conventions
-- `src/backend/z_Api/assignmentAssessment.js` — target file
-- `src/backend/y_controllers/ABClassController.js` — `rehydrateAssignment` and
-  `_loadFullAssignmentDocument` signatures
-- `src/backend/AssignmentProcessor/Assignment.js` — `Assignment.toJSON()` shape
-- `src/backend/Utils/ErrorTypes/DefinitionStaleError.js` — pattern for the new
-  `AssignmentNotFoundError` class
-- `src/backend/Utils/DateUtils.js` — `normaliseDateFields` signature
-- `docs/developer/backend/backend-testing.md` — backend testing policy
-
-Implementation mandatory docs (for the controller one-line change and the new
-error file):
-
-- `SPEC.md`
-- `src/backend/AGENTS.md` §1.1, §3, §8
-- `src/backend/y_controllers/ABClassController.js` (focus on lines 460-479:
-  `_loadFullAssignmentDocument`)
-- `src/backend/Utils/ErrorTypes/DefinitionStaleError.js` — pattern reference
-- `docs/developer/backend/backend-logging-and-error-handling.md` §9 — to see the
-  planned-only `AssignmentNotFoundError` entry that this work reconciles
-
-### Shared helper plan (when helper changes are expected)
-
-Recorded in the global Shared-helper planning gate above. The new error class
-and the `_loadFullAssignmentDocument` throw-site change are the two planned
-helper changes. The planned-only entry in
-`docs/developer/backend/backend-logging-and-error-handling.md` §9 must remain
-marked `Not implemented` until Section 5 (Documentation) reconciles it.
-
-### Acceptance criteria
-
-- `src/backend/Utils/ErrorTypes/AssignmentNotFoundError.js` exists and follows the
-  `DefinitionStaleError.js` pattern.
-- `ABClassController._loadFullAssignmentDocument` throws `AssignmentNotFoundError`
-  (not generic `Error`) on the not-found path. Existing behaviour on all other
-  paths is unchanged.
-- Test file exists at `tests/api/assignmentReadApi.test.js`.
-- All handler tests fail (Red phase) because `getAssignment_` is not yet exported
-  from `assignmentAssessment.js`.
-- Test coverage includes the following transport-contract cases:
-
-### Required test cases (Red first)
-
-Backend API handler tests:
-
-1. **Module exports `getAssignment_`**: verifies the handler is exported via `module.exports`.
-2. **Throws `ApiValidationError` when parameters is not a plain object**: covers `string`, `null`, `undefined`, `[]`.
-3. **Throws for missing `courseId`**: `{ assignmentId: 'a1' }` → error.
-4. **Throws for missing `assignmentId`**: `{ courseId: 'c1' }` → error.
-5. **Throws `ApiValidationError` for unsafe characters in `courseId`**: path-traversal strings (`../`, `/`, `\\`) and control characters (e.g. `\x00` null byte, `\x1F` unit separator). Verify both validation paths are exercised.
-6. **Throws `ApiValidationError` for unsafe characters in `assignmentId`**: same checks (path traversal and control characters).
-7. **Delegates to `ABClassController.rehydrateAssignment` on valid input and returns Assignment shape**: stub `loadClass` to return a mock ABClass with a `classId` (capture the reference), stub `rehydrateAssignment` to return a mock Assignment (with `toJSON` returning a representative payload). Verify: (a) `loadClass` is called with the correct `courseId`, (b) `rehydrateAssignment` is called with the captured ABClass reference (identity, not structural equality) and the correct `assignmentId`, (c) returned data matches the `toJSON()` output, (d) `ABLogger.getInstance().info` is called for both the "loading" and "rehydrated" log points.
-8. **Defence-in-depth: `DateUtils.normaliseDateFields` converts live `Date` objects**: stub the Assignment's `toJSON` to return `{ dueDate: new Date(...), lastUpdated: new Date(...) }` (with everything else in the representative payload). Verify the handler response contains ISO strings for both fields. This is the regression test for the `normaliseDateFields` boundary call — without it, removing the call would not be caught by test 7.
-9. **Defence-in-depth: `progressTracker` is stripped at the boundary**: stub the Assignment's `toJSON` to return a payload that includes `progressTracker: { /* some singleton instance */ }`. Verify the handler response does not contain a `progressTracker` field. This is the regression test for the boundary strip.
-10. **Returns `null` when `rehydrateAssignment` throws `AssignmentNotFoundError`**: stub `rehydrateAssignment` to throw a real `AssignmentNotFoundError` instance (imported from the new error file), verify the handler returns `null` (not throws), and verify `ABLogger.getInstance().warn` is called with the not-found message. **Not** implemented via substring matching.
-11. **Propagates non-not-found errors from `rehydrateAssignment`**: stub `rehydrateAssignment` to throw a generic `Error` (e.g. `'Corrupt assignment data'`). Verify the handler re-throws and `ABLogger.getInstance().error` is called with the "getAssignment failed" message.
-12. **Propagates errors from `loadClass`**: stub `loadClass` to throw. Verify the handler re-throws (class-not-found must not be caught as assignment-not-found) and `ABLogger.getInstance().error` is called.
-
-Backend controller tests (one new test, added to the existing
-`tests/controllers/abclassController.rehydrateAssignment.test.js`):
-
-13. **`_loadFullAssignmentDocument` throws `AssignmentNotFoundError` on missing document**: with the `dbManager.getCollection` stubbed to return a collection whose `findOne` returns `undefined` (or `null`), verify the throw is `instanceof AssignmentNotFoundError` and carries the expected `this.courseId`, `this.assignmentId`, `this.collectionName` instance properties.
-
-**Test harness note (applies to tests 7(d), 10, 11, 12):** `tests/setupGlobals.js` lines 68-78
-install a no-op `ABLogger` stub. Tests that verify `ABLogger` calls must install their own
-mock in `beforeEach`, e.g.:
-
-```js
-const abLoggerSpies = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
-globalThis.ABLogger = { getInstance: () => abLoggerSpies };
-```
-
-…and restore the original `globalThis.ABLogger` in `afterEach`. See
-`docs/developer/backend/backend-testing.md` lines 15-26 for logging-fidelity expectations.
-
-### Section checks
-
-- `npm test -- tests/api/assignmentReadApi.test.js` — all tests should **fail** (Red phase) because `getAssignment_` is not yet exported from `assignmentAssessment.js`. Tests that depend on the new error class (10, 13) should also pass once the class file exists.
-- Test file follows existing patterns (controller stubs, module-loading helper, `beforeEach`/`afterEach` cleanup, including restore of `globalThis.ABLogger` for the spy-requiring tests).
-- Shared-helper planning entries for `AssignmentNotFoundError` and the controller throw-site are recorded.
-
-### Optional `@remarks` JSDoc follow-through
-
-None in this section (the `@remarks` follow-through for the handler lands in
-Section 2; the new error class does not need `@remarks`).
-
-### Implementation notes / deviations / follow-up
-
-- **Implementation notes:** (to be filled during Red phase)
-- **Deviations from plan:** (to be filled if any)
-- **Follow-up implications for later sections:** Section 2 must implement `getAssignment_` to make these tests green. Section 5 (Documentation) must reconcile the planned-only entry in `backend-logging-and-error-handling.md` §9 to `Implemented`.
-
----
-
-## Section 2 — Implement `getAssignment_` handler (Green)
-
-### Objective
-
-Add the `getAssignment_` trailing-underscore handler function to
-`src/backend/z_Api/assignmentAssessment.js` and export it via `module.exports`.
-All tests from Section 1 must go green.
-
-### Constraints
-
-- Add the handler to the existing `assignmentAssessment.js` file (do not create a
-  new file).
-- Insert `getAssignment_` **immediately after `startAssessmentRun_`** and before
-  the `if (typeof module !== 'undefined' && module.exports)` block at the end of
-  the file. Update that block to export `{ startAssessmentRun_, getAssignment_ }`.
-- Follow the trailing-underscore pattern per `src/backend/AGENTS.md` §0.1.
-- Update the `/* global */` comment at the top of the file to include:
-  `ApiValidationError, Validate, ABClassController, DateUtils, ABLogger,
-AssignmentNotFoundError, hasControlCharacters_`.
-  **`Assignment` is intentionally omitted** — the handler never constructs one
-  directly; it only calls `.toJSON()` on the instance returned by
-  `rehydrateAssignment`. `hasControlCharacters_` is included because the handler
-  uses it for unsafe-character validation, matching the pattern in
-  `googleClassroomAssignments.js` which already uses this global.
-- Validate parameters shape inline (matching the existing `startAssessmentRun_`
-  pattern in the same file).
-- Reject unsafe characters in identifiers inline (matching the
-  `getGoogleClassroomAssignments_` pattern in `googleClassroomAssignments.js`).
-- Catch not-found errors via `instanceof AssignmentNotFoundError`; re-throw all
-  other errors. The catch wraps both `loadClass` and `rehydrateAssignment`
-  calls; only the typed-error branch returns `null`.
-- After `assignment.toJSON()`, defensively `delete response.progressTracker`
-  before `normaliseDateFields`. Document the rationale in `@remarks`.
-- Apply `DateUtils.normaliseDateFields(response, ['dueDate', 'lastUpdated'])` as
-  the final boundary step before returning. This is **shallow defence-in-depth
-  for root-level fields only**; nested date conversion (`createdAt`, `updatedAt`
-  on `submissions`, dates on `assignmentDefinition`) relies on the corresponding
-  `toJSON()` implementations being correct. The regression test in
-  `tests/api/assignmentReadApi.test.js` (test 8) proves the root-level call is
-  wired by mocking `toJSON()` to return live `Date` objects in
-  `dueDate`/`lastUpdated`.
-- Logging:
-  - `info` before loading ABClass: `"getAssignment: loading full assignment"` with `{ courseId, assignmentId }`.
-  - `info` after successful rehydration: `"getAssignment: rehydrated assignment"` with `{ courseId, assignmentId }`.
-  - `warn` for not-found: `"getAssignment: assignment not found"` with `{ courseId, assignmentId }`.
-    (`warn`, not `error` — the API returns `null` gracefully, so this is a
-    notable but not failure-level event.)
-  - `error` for other failures: `"getAssignment failed"` with `{ courseId, assignmentId, err }`.
-- The same `abClass` instance returned by `loadClass` is passed to
-  `rehydrateAssignment` (identity, not structural equality) — the controller
-  mutates it via `_replaceAssignmentInClass`.
-
-### Delegation mandatory reads (when sub-agents are used)
+- `src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionUpsertOrchestrator.js`
+  (target file)
+- `src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionValidation.js`
+  (validation class — the `normaliseAlternateTitles` method is reused)
+- `src/backend/Models/AssignmentDefinition.js` (model constructor
+  signature, `alternateTopics` parameter)
+- `tests/controllers/assignmentDefinitionController.upsert.test.js`
+  (existing test patterns and the
+  `preserves existing alternateTitles when updates omit alternateTitles`
+  test that the new method mirrors)
+- `SPEC.md` (feature spec)
+- `src/backend/AGENTS.md` §1.1, §1.2, §3 (concatenation load order,
+  logging, no-`console` policy)
+- `docs/developer/backend/backend-testing.md` (testing policy)
 
 Implementation mandatory docs:
 
-- `SPEC.md` — feature spec (particularly the handler call-tree, logging
-  requirements, and the "Backend changes required" section)
-- `src/backend/AGENTS.md` — backend conventions (§0.1, §0.2, §3, §8)
-- `src/backend/z_Api/assignmentAssessment.js` — target file for the handler
-- `src/backend/z_Api/googleClassroomAssignments.js` — unsafe-character validation pattern
-- `src/backend/y_controllers/ABClassController.js` — `rehydrateAssignment`
-  method (lines 413–449) and `_loadFullAssignmentDocument` (lines 460–479)
-- `src/backend/Utils/ErrorTypes/AssignmentNotFoundError.js` — new error class
-  (Section 1 created it)
-- `src/backend/Utils/DateUtils.js` — `normaliseDateFields` signature
-- `docs/developer/backend/backend-logging-and-error-handling.md` — logging and
-  error policy; also confirms the new `AssignmentNotFoundError` is not mapped
-  to a transport error code
+- `SPEC.md`
+- `src/backend/AGENTS.md` §1.1, §3
+- `src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionUpsertOrchestrator.js`
+  (focus on lines 147-155: `_resolveAlternateTitles` pattern)
+- `src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionValidation.js`
+  (lines 56-71: `normaliseAlternateTitles`)
+- `src/backend/Models/AssignmentDefinition.js` (lines 41-122: constructor
+  signature for `alternateTopics`)
+- `docs/developer/backend/api-layer.md` (lines around 342: optional
+  request fields)
 
 Code Reviewer mandatory docs:
 
 - `SPEC.md`
 - `src/backend/AGENTS.md`
-- `src/backend/z_Api/assignmentAssessment.js` (final state)
-- `src/backend/Utils/ErrorTypes/AssignmentNotFoundError.js` (final state)
-- `src/backend/y_controllers/ABClassController.js` (final state)
-- `tests/api/assignmentReadApi.test.js` (for context on tested contract)
-- `docs/developer/backend/backend-logging-and-error-handling.md` (to verify the
-  planned-only entry remains marked `Not implemented` until Section 5)
+- `src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionUpsertOrchestrator.js`
+  (final state)
+- `tests/controllers/assignmentDefinitionController.upsert.test.js`
+  (final state)
 
 ### Shared helper plan (when helper changes are expected)
 
-No additional shared-helper changes in this section. The two planned helper
-changes (new error class and controller throw-site) are implemented in
-Section 1.
+Recorded in the global Shared-helper planning gate above. The new
+`_resolveAlternateTopics` helper is the only new orchestrator helper.
+The planned-only doc status for `_resolveAlternateTopics` is `N/A`
+(no new canonical doc entry is required because the helper mirrors
+an existing pattern).
 
 ### Acceptance criteria
 
-- `getAssignment_` function exists in `assignmentAssessment.js`, placed
-  immediately after `startAssessmentRun_`.
-- `module.exports` exports `{ startAssessmentRun_, getAssignment_ }`.
-- The `/* global */` comment lists `AssignmentNotFoundError` and **does not**
-  list `Assignment`.
-- All tests from Section 1 pass: `npm test -- tests/api/assignmentReadApi.test.js`.
-- Existing tests still pass: `npm test -- tests/api/assignmentAssessment.test.js`.
+- `_resolveAlternateTopics` exists on the orchestrator.
+- The orchestrator's `upsert` method passes
+  `alternateTopics: this._resolveAlternateTopics({ payload, isUpdate,
+existingDefinition })` to the `new AssignmentDefinition({ ... })`
+  constructor call.
+- The new method preserves the existing `alternateTopics` on update when
+  the payload omits the field.
+- The new method normalises the provided `alternateTopics` via
+  `validation.normaliseAlternateTitles`.
+- The new method is private (trailing underscore).
+- Existing tests in
+  `tests/controllers/assignmentDefinitionController.upsert.test.js`
+  pass without modification.
 - Backend lint passes: `npm run lint:backend`.
 
 ### Required test cases (Red first)
 
-N/A — tests were written in Section 1. This section makes them green.
+Backend controller tests (added to the existing
+`tests/controllers/assignmentDefinitionController.upsert.test.js`):
+
+1. **`_resolveAlternateTopics` preserves existing on update when
+   payload omits the field** — set up a `validation` mock that
+   returns the existing definition's `alternateTopics` when
+   `normaliseAlternateTitles` is called, verify the orchestrator's
+   `upsert` constructs a new `AssignmentDefinition` with
+   `alternateTopics: existingAlternateTopics` (mirroring the existing
+   `_resolveAlternateTitles` test at lines 531-555 of
+   `tests/backend-api/assignmentDefinitionPartials.unit.test.js`).
+2. **`_resolveAlternateTopics` normalises provided `alternateTopics`**
+   — payload includes `alternateTopics: ['  Linear Equations  ', '']`;
+   verify the second entry throws (delegated to
+   `normaliseAlternateTitles`).
+3. **`_resolveAlternateTopics` rejects non-array `alternateTopics`** —
+   payload includes `alternateTopics: 'not an array'`; verify the
+   thrown `TypeError` from `normaliseAlternateTitles` propagates
+   unchanged.
+4. **`_resolveAlternateTopics` rejects non-string entries** — payload
+   includes `alternateTopics: [123]`; verify the thrown `Error` from
+   `normaliseAlternateTitles` propagates unchanged.
+5. **`_resolveAlternateTopics` rejects empty-string entries** — payload
+   includes `alternateTopics: ['']`; verify the thrown `Error` from
+   `normaliseAlternateTitles` propagates unchanged.
+6. **End-to-end: `upsert` constructs an `AssignmentDefinition` with the
+   new alternates** — payload includes both `alternateTitles` and
+   `alternateTopics`; verify the constructed model receives both arrays
+   (this is the integration case that proves the constructor call was
+   wired correctly).
 
 ### Section checks
 
-- `npm test -- tests/api/assignmentReadApi.test.js` — **all tests green**.
-- `npm test -- tests/api/assignmentAssessment.test.js` — **still green** (no regression).
-- `npm test -- tests/api/assignmentDefinitionReadApi.test.js` — **still green** (no regression in the read-pattern family).
-- `npm run lint:backend` — **clean**.
-- `ABLogger` is called at the documented points (`info` for success, `warn` for
-  not-found, `error` for other failures).
-- `DateUtils.normaliseDateFields` is called on the response.
-- The `progressTracker` strip happens before `normaliseDateFields`.
-- Not-found catch is scoped to `instanceof AssignmentNotFoundError` only.
+- `npm test -- tests/controllers/assignmentDefinitionController.upsert.test.js`
+  — all tests green.
+- `npm test -- tests/api/assignmentDefinitionUpsertApi.test.js` — all
+  tests still green (no change).
+- `npm run lint:backend` — clean.
+- Mandatory-read evidence gate passed for all delegated handoffs in
+  this section.
+- Shared-helper planning entries are present.
 
 ### Optional `@remarks` JSDoc follow-through
 
-Add `@remarks` to `getAssignment_` documenting:
+Add a `@remarks` JSDoc tag on `_resolveAlternateTopics` documenting:
 
-- Why not-found is detected via `instanceof AssignmentNotFoundError` (typed
-  error, robust to message changes; structurally testable).
-- Why `DateUtils.normaliseDateFields` is applied even though `toJSON()`
-  already converts dates (defence-in-depth; Date objects are strictly
-  prohibited in `google.script.run` transport; regression test in
-  `assignmentReadApi.test.js` proves the wiring is intact for root-level fields).
-  Note: this is shallow defence-in-depth — nested date conversion on
-  `submissions` and `assignmentDefinition` still depends on the
-  corresponding `toJSON()` implementations.
-- Why `progressTracker` is stripped at the boundary (defence-in-depth;
-  `Assignment.toJSON()` already omits it per its JSDoc but a future model
-  change could regress; the explicit strip is the canonical boundary
-  defence pattern).
-- Why the same `abClass` instance is threaded through to `rehydrateAssignment`
-  (the controller mutates it via `_replaceAssignmentInClass`; a fresh instance
-  would silently break assignment cache state).
+- Why the method delegates to `normaliseAlternateTitles` (the validation
+  semantics are identical to `alternateTitles`; a parallel method
+  would duplicate logic).
+- The `preserve-when-omitted` semantics (the model retains its existing
+  `alternateTopics` if the payload omits the field; sending the full
+  array always overwrites).
+- The new `alternateTopics: ...` constructor call line in `upsert`
+  (one-line addition) needs no `@remarks`.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (to be filled during Green phase)
+- **Implementation notes:** (to be filled during Red phase)
 - **Deviations from plan:** (to be filled if any)
-- **Follow-up implications for later sections:** Section 3 must register the
-  allowlist entry. Section 5 (Documentation) must reconcile the planned-only
-  entry in `backend-logging-and-error-handling.md` §9 to `Implemented`.
+- **Follow-up implications for later sections:** Section 3 (Zod
+  schema extension) and Section 6 (modal integration) depend on the
+  orchestrator's ability to round-trip `alternateTopics`. Once Section
+  1 lands, those sections can be implemented independently.
 
 ---
 
-## Section 3 — Register `getAssignment` in ALLOWLISTED_METHOD_HANDLERS (Green)
+## Section 2 — Frontend matcher relaxation (Red, Green, Refactor)
 
 ### Objective
 
-Add the `getAssignment` entry to `ALLOWLISTED_METHOD_HANDLERS` in
-`src/backend/z_Api/z_apiHandler.js` and update the Node `require` block.
+Relax the existing `findMatchingDefinition` matcher to use
+case-insensitive trimmed equality for both title (`primaryTitle` +
+`alternateTitles`) and topic (`primaryTopic` + `alternateTopics`).
+Introduce the `alternateTopics` lookup branch in the topic match.
 
 ### Constraints
 
-- Add the entry immediately after `upsertAssignmentDefinition` (the last
-  assignment-related write entry) and before `getGoogleClassroomAssignments` (the
-  first Google Classroom read entry) for logical grouping. The grouping rationale
-  is "assignment-related methods, then classroom methods, then class methods,
-  then reference-data methods"; `getAssignment` belongs to the assignment cluster.
-- Thin closure: `getAssignment: (parameters) => getAssignment_(parameters)`,
-  structurally identical to the surrounding one-line closures.
-- Update the Node-side `globalThis` assignment in the
-  `if (typeof module !== 'undefined' && module.exports)` block to set
-  `globalThis.getAssignment_` alongside `globalThis.startAssessmentRun_` via
-  `require('./assignmentAssessment.js').getAssignment_`.
-- Do not modify any other allowlist entries.
-- Do not add the new error type to `_mapErrorToFailureEnvelope` — the handler
-  catches `AssignmentNotFoundError` before it can reach the dispatcher's error
-  envelope.
+- Add a small pure helper `caseInsensitiveTrimmedEquals(a, b)` in a
+  new file `stringComparison.ts` colocated with the matcher in the
+  modal feature directory. The helper is **not** exported from the
+  modal feature directory (it stays feature-local) and follows the
+  same case-insensitive trimmed comparison as the backend
+  `normaliseTitleForDuplicate` (per the display-resolution
+  recommendation in `SPEC.md`).
+- The matcher's `MatchResult` discriminated union shape does not
+  change.
+- The matcher's existing tests (with matching-case inputs) continue to
+  pass without modification; new cases for case-different,
+  whitespace-different, and the new `alternateTopics` lookup are added.
+- The matcher remains a pure function; no React, no I/O, no service
+  imports.
+- The matcher imports `caseInsensitiveTrimmedEquals` from the new
+  `stringComparison.ts` file.
 
 ### Delegation mandatory reads (when sub-agents are used)
 
+Testing Specialist mandatory docs:
+
+- `src/frontend/src/features/classes/AssessTaskModal/matchDefinitionForAssignment.ts`
+  (target file)
+- `src/frontend/src/features/classes/AssessTaskModal/matchDefinitionForAssignment.spec.ts`
+  (existing test patterns)
+- `src/frontend/AGENTS.md` §2.2 (hooks/services/side effects
+  boundaries)
+- `docs/developer/frontend/frontend-testing.md`
+- `SPEC.md` (matcher relaxation section)
+
 Implementation mandatory docs:
 
-- `src/backend/z_Api/z_apiHandler.js` — full file (particularly
-  `ALLOWLISTED_METHOD_HANDLERS` and the Node `require` block)
-- `src/backend/AGENTS.md` — §0.1 (allowlist pattern)
-- `SPEC.md` — for the method name
+- `SPEC.md`
+- `src/frontend/AGENTS.md` §2.2, §8
+- `src/frontend/src/features/classes/AssessTaskModal/matchDefinitionForAssignment.ts`
+- `src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionValidation.js`
+  (lines 43-47: `normaliseTitleForDuplicate` — the backend normaliser
+  whose semantics the new helper mirrors)
 
 Code Reviewer mandatory docs:
 
-- `src/backend/z_Api/z_apiHandler.js` (final state)
-- `src/backend/AGENTS.md` §0.1
+- `SPEC.md`
+- `src/frontend/AGENTS.md` §2.2
+- `src/frontend/src/features/classes/AssessTaskModal/matchDefinitionForAssignment.ts`
+  (final state)
+- `src/frontend/src/features/classes/AssessTaskModal/matchDefinitionForAssignment.spec.ts`
+  (final state)
 
 ### Shared helper plan (when helper changes are expected)
 
-None.
+Recorded in the global Shared-helper planning gate above. The new
+`caseInsensitiveTrimmedEquals` helper lives in the new
+`stringComparison.ts` file (shared between the matcher and the
+picker derivation helper). The planned-only doc status for
+`caseInsensitiveTrimmedEquals` is `Not implemented`; the doc entry
+will be added to §9.13 of
+`frontend-shared-helpers-and-abstraction-standards.md` in Section 9
+(Documentation).
 
 ### Acceptance criteria
 
-- `getAssignment` entry exists in `ALLOWLISTED_METHOD_HANDLERS`, in the
-  documented insertion position.
-- Thin closure delegates to `getAssignment_(parameters)` — structurally
-  identical to the surrounding one-line closures (reviewer can verify by
-  grep-comparing the entry to neighbours).
-- `globalThis.getAssignment_` is set via `require` in the Node test
-  compatibility block, alongside `globalThis.startAssessmentRun_`.
-- Backend lint passes: `npm run lint:backend`.
+- The matcher compares titles case-insensitive trimmed (both
+  `primaryTitle` and `alternateTitles`).
+- The matcher compares topics case-insensitive trimmed (both
+  `primaryTopic` and `alternateTopics`).
+- The matcher's `MatchResult` discriminated union shape is unchanged.
+- Existing matcher tests pass without modification (matching-case
+  inputs).
+- New test cases verify the case-insensitive trimmed equality for both
+  title and topic, and the new `alternateTopics` lookup branch.
+- The helper `caseInsensitiveTrimmedEquals` lives in
+  `stringComparison.ts` and is feature-local (not exported from the
+  modal feature directory).
+- Frontend lint passes: `npm run lint:frontend`.
 
 ### Required test cases (Red first)
 
-N/A — the handler was tested in Section 1, and the allowlist entry is a wiring
-concern. The existing tests exercise the handler directly via `module.exports`;
-the allowlist entry will be exercised by future E2E/integration tests.
+Matcher unit tests (added to the existing
+`matchDefinitionForAssignment.spec.ts`):
+
+1. **Case-insensitive title match against `primaryTitle`** — partial
+   `primaryTitle: 'Essay'`, `selectedAssignment.title: 'essay'`,
+   topic and year group match → `'matched'`.
+2. **Whitespace-tolerant title match** — partial
+   `primaryTitle: 'Essay'`, `selectedAssignment.title: '  Essay  '`,
+   topic and year group match → `'matched'`.
+3. **Case-insensitive title match against `alternateTitles`** — partial
+   `alternateTitles: ['Narrative']`, `selectedAssignment.title:
+'NARRATIVE'`, topic and year group match → `'matched'`.
+4. **Case-insensitive topic match against `primaryTopic`** — partial
+   `primaryTopic: 'Algebra'`, `selectedAssignment.topicName: 'algebra'`,
+   title and year group match → `'matched'`.
+5. **Case-insensitive topic match against `alternateTopics`** —
+   partial `alternateTopics: ['Linear Equations']`,
+   `selectedAssignment.topicName: 'linear equations'`, title and year
+   group match → `'matched'`.
+6. **Whitespace-tolerant topic match** — partial
+   `primaryTopic: 'Algebra'`,
+   `selectedAssignment.topicName: '  Algebra  '`, title and year group
+   match → `'matched'`.
+7. **Case-different title does not cause a false match when topic
+   or year group differ** — ensures case-insensitive equality is
+   scoped to the title comparison only and the matcher doesn't
+   become trivially permissive.
+8. **`topicName === null` still returns `'no-match'`** — preserves the
+   existing early-return behaviour.
+9. **The helper `caseInsensitiveTrimmedEquals` lives in
+   `stringComparison.ts`** — verify the helper is imported by the
+   matcher from the new file and is not exported from the modal
+   feature directory.
 
 ### Section checks
 
-- `npm run lint:backend` — **clean**.
-- `npm test -- tests/api/assignmentReadApi.test.js` — **still green**.
-- `npm test -- tests/api/assignmentAssessment.test.js` — **still green**.
-- Structural check: the new entry matches the shape
-  `(parameters) => getAssignment_(parameters)` exactly (no extra validation,
-  no transformation, no error mapping).
+- `npm run frontend:test -- src/frontend/src/features/classes/AssessTaskModal/matchDefinitionForAssignment.spec.ts`
+  — all tests green.
+- `npm run lint:frontend` — clean.
+- Mandatory-read evidence gate passed.
 
 ### Optional `@remarks` JSDoc follow-through
 
-None.
+Add a `@remarks` JSDoc tag on `caseInsensitiveTrimmedEquals`
+documenting:
+
+- Why the helper is private (one caller; the backend
+  `normaliseTitleForDuplicate` is the only cross-system reference and
+  is not exported to the frontend).
+- The normalisation is `a.trim().toLowerCase() === b.trim().toLowerCase()`
+  and is consistent with the backend
+  `AssignmentDefinitionValidation.normaliseTitleForDuplicate`.
+- Why the matcher relaxation is a strict superset of the previous
+  behaviour (case-matching inputs still match; new cases match
+  case-insensitively).
+
+Add a `@remarks` JSDoc tag on `findMatchingDefinition` documenting:
+
+- The new case-insensitive trimmed equality semantics.
+- The new `alternateTopics` lookup branch.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** (to be filled during Red phase)
+- **Deviations from plan:** (to be filled if any)
+- **Follow-up implications for later sections:** Section 4
+  (`getLinkableDefinitionsForModal`) imports
+  `caseInsensitiveTrimmedEquals` from the new
+  `stringComparison.ts` file (not from the matcher file). The
+  matcher also imports from `stringComparison.ts`. The two files
+  are siblings inside the modal feature directory; both are
+  feature-local.
+
+---
+
+## Section 3 — Frontend Zod schema extension (Red, Green, Refactor)
+
+### Objective
+
+Extend the frontend Zod `UpsertAssignmentDefinitionRequestSchema` to
+accept `alternateTitles`, `alternateTopics`, `referenceDocumentId`,
+`templateDocumentId`, and `documentType` as optional fields, with a
+`superRefine` mutual-exclusion rule between the URL-shape and ID-shape
+payloads.
+
+### Constraints
+
+- `yearGroupKey`, `primaryTitle`, and `primaryTopicKey` remain required
+  fields (they are already in the existing schema and remain required
+  for both shapes).
+- `referenceDocumentUrl` and `templateDocumentUrl` are made optional
+  (they are currently required for the wizard's URL-shape contract).
+- The new optional fields use `TrimmedNonEmptyStringSchema` (or the
+  existing `WeightingSchema` for `assignmentWeighting`, the existing
+  `TaskWeightingInputSchema` for `taskWeightings`) to match the
+  existing field types.
+- The `superRefine` enforces the URL-shape vs ID-shape mutual
+  exclusion: the payload must include either both `referenceDocumentUrl`
+  and `templateDocumentUrl`, or `referenceDocumentId`,
+  `templateDocumentId`, and `documentType` (all three of the ID
+  fields).
+- The wizard's existing payload (which always provides the URL fields)
+  continues to pass the new `superRefine` without modification.
+- The schema is `strict()` (no extra fields) per the existing pattern.
+- The Zod spec file
+  `src/frontend/src/services/assignmentDefinition/assignmentDefinition.zod.spec.ts`
+  is extended with cases for the new fields and the `superRefine`
+  rule.
+
+### Delegation mandatory reads (when sub-agents are used)
+
+Testing Specialist mandatory docs:
+
+- `src/frontend/src/services/assignmentDefinition/assignmentDefinition.zod.ts`
+  (target file, lines 81-92: the existing
+  `UpsertAssignmentDefinitionRequestSchema`)
+- `src/frontend/src/services/assignmentDefinition/assignmentDefinition.zod.spec.ts`
+  (existing test patterns)
+- `src/frontend/AGENTS.md` §8 (Zod as the validation framework; void
+  responses use `.nullable()`)
+- `docs/developer/frontend/frontend-testing.md`
+
+Implementation mandatory docs:
+
+- `SPEC.md`
+- `src/frontend/AGENTS.md` §8
+- `src/frontend/src/services/assignmentDefinition/assignmentDefinition.zod.ts`
+- `src/backend/z_Api/assignmentDefinitionValidation.js` (lines 206-270:
+  the existing ID-shape path requires
+  `referenceDocumentId`, `templateDocumentId`, and `documentType` as
+  strings; the new schema's `superRefine` mirrors this contract)
+- `src/backend/z_Api/assignmentDefinitionTransport.js` (lines 152-187:
+  the upsert transport handler's URL-to-ID translation)
+
+Code Reviewer mandatory docs:
+
+- `SPEC.md`
+- `src/frontend/AGENTS.md` §8
+- `src/frontend/src/services/assignmentDefinition/assignmentDefinition.zod.ts`
+  (final state)
+- `src/frontend/src/services/assignmentDefinition/assignmentDefinition.zod.spec.ts`
+  (final state)
+
+### Shared helper plan (when helper changes are expected)
+
+No new shared helpers in this section. The Zod schema is a local
+declaration.
+
+### Acceptance criteria
+
+- The schema accepts the ID-shape payload (with `referenceDocumentId`,
+  `templateDocumentId`, `documentType`, `alternateTitles`,
+  `alternateTopics`, and no URL fields).
+- The schema accepts the URL-shape payload (the wizard's existing
+  payload).
+- The schema rejects a payload that includes neither shape or
+  includes only one of the two URL fields or only some of the three
+  ID fields.
+- The schema rejects payloads that violate the underlying field types
+  (e.g. `alternateTitles: 'not an array'`).
+- The schema is `strict()` (no extra fields).
+- Existing tests in `assignmentDefinition.zod.spec.ts` pass without
+  modification.
+- New test cases cover the new fields and the `superRefine` rule.
+- Frontend lint passes: `npm run lint:frontend`.
+
+### Required test cases (Red first)
+
+Frontend Zod tests (added to
+`assignmentDefinition.zod.spec.ts`):
+
+1. **ID-shape payload is accepted** — a full ID-shape payload with
+   `definitionKey`, `primaryTitle`, `primaryTopicKey`, `yearGroupKey`,
+   `referenceDocumentId`, `templateDocumentId`, `documentType`,
+   `alternateTitles: ['Linear Equations']`,
+   `alternateTopics: ['Algebra']` parses successfully.
+2. **URL-shape payload is accepted** — the wizard's existing URL-shape
+   payload parses successfully. The payload includes
+   `referenceDocumentUrl` and `templateDocumentUrl` and **does not**
+   include `documentType` (the document type is derived from the URL
+   on the backend, not passed by the wizard). The `superRefine`
+   correctly allows the URL-shape without `documentType`.
+3. **Payload with neither shape is rejected** — a payload with
+   `primaryTitle`, `primaryTopicKey`, `yearGroupKey` only (no doc
+   fields) is rejected with a clear error path.
+4. **Payload with only `referenceDocumentId` (no `templateDocumentId`
+   or `documentType`) is rejected** — the `superRefine` enforces the
+   all-three-of-ID-fields rule.
+5. **Payload with only `referenceDocumentUrl` (no
+   `templateDocumentUrl`) is rejected** — the `superRefine` enforces
+   the both-URL-fields rule.
+6. **Payload with both URL fields and ID fields is rejected** — the
+   `superRefine` enforces the mutual exclusion (the wizard must
+   not accidentally send both).
+7. **`alternateTitles: 'not an array'` is rejected** — type check.
+8. **`alternateTopics: [123]` is rejected** — array-of-strings check.
+9. **Extra field is rejected** — `strict()` rule preserved.
+10. **Empty `alternateTitles: []` is accepted** — the orchestrator
+    treats empty arrays as "clear the alternates"; the Zod schema
+    accepts them (the upsert contract allows empty arrays).
+
+### Section checks
+
+- `npm run frontend:test -- src/frontend/src/services/assignmentDefinition/assignmentDefinition.zod.spec.ts`
+  — all tests green.
+- `npm run lint:frontend` — clean.
+- Mandatory-read evidence gate passed.
+
+### Optional `@remarks` JSDoc follow-through
+
+Add a `@remarks` JSDoc tag on
+`UpsertAssignmentDefinitionRequestSchema` documenting:
+
+- The URL-shape vs ID-shape mutual-exclusion rule.
+- The wizard's payload continues to pass the new rule (URL-shape is
+  the wizard's contract).
+- The ID-shape is the link flow's contract (no URL fields, ID fields
+  instead).
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** (to be filled during Red phase)
+- **Deviations from plan:** (to be filled if any)
+- **Follow-up implications for later sections:** Section 6 (modal
+  integration) depends on the extended schema to send the link flow's
+  payload. Once Section 3 lands, Section 6 can be implemented
+  independently.
+
+---
+
+## Section 4 — Frontend `getLinkableDefinitionsForModal` helper with `fuse.js` integration (Red, Green, Refactor)
+
+### Objective
+
+Add the new pure helper `getLinkableDefinitionsForModal` that derives
+the picker list from the cached `AssignmentDefinitionPartial` rows
+using `fuse.js` for fuzzy title ranking (with `updatedAt` desc as the
+tie-breaker), and add `fuse.js` as a direct dependency in
+`src/frontend/package.json`.
+
+### Constraints
+
+- The helper is colocated with the matcher (separate file, peer to
+  `matchDefinitionForAssignment.ts`) and is exported for unit testing.
+- The helper signature is:
+  `getLinkableDefinitionsForModal(definitionPartials: AssignmentDefinitionPartial[], classYearGroupKey: string, selectedAssignment: { title: string; topicName: string | null }): LinkableDefinition[]`.
+- The helper is a pure function; no React, no I/O, no service
+  imports.
+- The `LinkableDefinition` derived type is colocated with the helper
+  (or with the modal; the implementation will choose; the spec
+  records the shape).
+- The helper filters by `yearGroupKey` equality, derives
+  `isAlreadyLinked` per `SPEC.md` Decision 5 (title + topic
+  case-insensitive trimmed), then sorts by `fuse.js` fuzzy title rank
+  with `updatedAt` desc as the tie-breaker, and maps to the
+  `LinkableDefinition` shape.
+- The case-insensitive trimmed equality uses the
+  `caseInsensitiveTrimmedEquals` helper from the new
+  `stringComparison.ts` file (created in Section 2).
+- The `fuse.js` instance is configured with:
+  - `keys: ['primaryTitle']` (score against `primaryTitle` only);
+  - `threshold: 1.0` (include all year-group-matching definitions in
+    the ranking, regardless of how distant);
+  - `includeScore: true` (so the per-item score is available for
+    tie-breaking and for debugging);
+  - `ignoreLocation: true` (match anywhere in the title; position
+    does not affect the score).
+- The new direct dependency `fuse.js` is declared in
+  `src/frontend/package.json` (as a regular dependency, not a
+  devDependency — the picker runs in production). The lockfile is
+  regenerated via `npm install` after the `package.json` change.
+
+### Delegation mandatory reads (when sub-agents are used)
+
+Testing Specialist mandatory docs:
+
+- `src/frontend/src/services/assignmentDefinition/assignmentDefinitionPartials.zod.ts`
+  (the `AssignmentDefinitionPartial` Zod schema, lines 184-202)
+- `src/frontend/src/features/classes/AssessTaskModal/stringComparison.ts`
+  (the new helper from Section 2; imported by Section 4)
+- `src/frontend/AGENTS.md` §2.2, §8
+- `docs/developer/frontend/frontend-testing.md`
+- `SPEC.md` (Decisions 3, 5, and 9: picker sort, already-linked
+  derivation, and the `fuse.js` integration)
+- The official `fuse.js` docs (https://fusejs.io) for the `Fuse`
+  constructor and `search` method signatures
+
+Implementation mandatory docs:
+
+- `SPEC.md`
+- `src/frontend/AGENTS.md` §2.2, §8
+- `src/frontend/src/services/assignmentDefinition/assignmentDefinitionPartials.zod.ts`
+- `src/frontend/src/features/classes/AssessTaskModal/stringComparison.ts`
+  (the new helper from Section 2)
+
+Code Reviewer mandatory docs:
+
+- `SPEC.md`
+- `src/frontend/AGENTS.md` §2.2
+- `src/frontend/src/features/classes/AssessTaskModal/getLinkableDefinitionsForModal.ts`
+  (new file, final state)
+- `src/frontend/src/features/classes/AssessTaskModal/getLinkableDefinitionsForModal.spec.ts`
+  (new file, final state)
+
+### Shared helper plan (when helper changes are expected)
+
+Recorded in the global Shared-helper planning gate above. The new
+`getLinkableDefinitionsForModal` helper is feature-local and is
+documented in §9.13 of
+`frontend-shared-helpers-and-abstraction-standards.md` in Section 9
+(Documentation).
+
+### Acceptance criteria
+
+- The helper exists and is exported.
+- The helper signature matches the spec.
+- The helper filters by `yearGroupKey` equality (drops partials with a
+  non-matching year group, including `null` year groups on corrupt
+  cache entries — although the Zod schema enforces
+  `TrimmedNonEmptyStringSchema` so `null` should not appear in
+  practice).
+- The helper derives `isAlreadyLinked` per the four-check
+  case-insensitive trimmed derivation in `SPEC.md` Decision 5.
+- The helper sorts by `fuse.js` title rank (ascending score) with
+  `updatedAt` desc as the tie-breaker for equal scores.
+- The helper returns an empty array when `definitionPartials` is
+  empty.
+- The helper does not throw on any input.
+- The helper is a pure function (no React, no I/O).
+- The `fuse.js` dependency is declared in
+  `src/frontend/package.json` and the lockfile is regenerated.
+- Frontend lint passes: `npm run lint:frontend`.
+
+### Required test cases (Red first)
+
+Picker helper unit tests (new file
+`getLinkableDefinitionsForModal.spec.ts`):
+
+1. **Empty input** — `definitionPartials: []` returns `[]`.
+2. **No matches (year-group filter excludes everything)** — partials
+   with non-matching `yearGroupKey` are dropped.
+3. **Single match** — one partial with matching `yearGroupKey` and
+   non-matching title/topic returns one `LinkableDefinition` with
+   `isAlreadyLinked: false`.
+4. **Fuzzy ranking: closest primaryTitle ranks first** — given three
+   partials with `primaryTitle` values of `"Poetry Analysis"`,
+   `"Algebra HW"`, and `"Algebra Homework"`, and a
+   `selectedAssignment.title` of `"Algebra HW"`, the picker returns
+   `"Algebra HW"` first, `"Algebra Homework"` second (close
+   rephrasing), and `"Poetry Analysis"` last (unrelated).
+5. **`updatedAt` desc is the tie-breaker for equal scores** — two
+   partials with `primaryTitle` values of `"Algebra"` (perfect
+   match, score 0) and `updatedAt` of 2025-01-01 vs 2025-01-03:
+   the picker returns the 2025-01-03 row first, then the 2025-01-01
+   row. This proves the `updatedAt` desc tie-breaker works.
+6. **Completely unrelated title still appears in the picker** — a
+   partial with `primaryTitle: "Poetry Analysis"` is still returned
+   (with a worse score) when the `selectedAssignment.title` is
+   `"Algebra HW"`. The threshold of 1.0 ensures no item is filtered
+   out by score.
+7. **"Already linked" via `primaryTitle` (case-insensitive trimmed)**
+   — partial with `primaryTitle: 'Essay'`,
+   `selectedAssignment.title: 'ESSAY'`, topic non-null and not
+   matching, year group matches → `isAlreadyLinked: true` via title.
+8. **"Already linked" via `alternateTitles`** — partial with
+   `alternateTitles: ['Narrative']`,
+   `selectedAssignment.title: 'narrative'` → `isAlreadyLinked: true`
+   via title.
+9. **"Already linked" via `primaryTopic` (case-insensitive trimmed)**
+   — partial with `primaryTopic: 'Algebra'`, title not matching,
+   `selectedAssignment.topicName: 'algebra'` →
+   `isAlreadyLinked: true` via topic.
+10. **"Already linked" via `alternateTopics`** — partial with
+    `alternateTopics: ['Linear Equations']`, title not matching,
+    `selectedAssignment.topicName: 'linear equations'` →
+    `isAlreadyLinked: true` via topic.
+11. **`topicName: null` skips the topic check** — partial with title
+    and topic not matching, `selectedAssignment.topicName: null` →
+    `isAlreadyLinked: false`.
+12. **Whitespace tolerance** — partial with `primaryTitle: 'Essay'`,
+    `selectedAssignment.title: '  Essay  '` → `isAlreadyLinked: true`.
+
+### Section checks
+
+- `npm run frontend:test -- src/frontend/src/features/classes/AssessTaskModal/getLinkableDefinitionsForModal.spec.ts`
+  — all tests green.
+- `npm run lint:frontend` — clean.
+- Mandatory-read evidence gate passed.
+
+### Optional `@remarks` JSDoc follow-through
+
+Add a `@remarks` JSDoc tag on `getLinkableDefinitionsForModal`
+documenting:
+
+- Why the helper is a separate file (pure function with one caller,
+  independent testability, follows the matcher pattern).
+- The `caseInsensitiveTrimmedEquals` reuse.
+- The `updatedAt` lexicographic sort order is intentional
+  (ISO 8601 with timezone sorts chronologically when compared as
+  strings).
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** (to be filled during Red phase)
+- **Deviations from plan:** (to be filled if any)
+- **Follow-up implications for later sections:** Section 5
+  (`LinkableDefinitionList` component) consumes the helper's output
+  (the fuzzy-ranked list). Section 6 (modal integration) wires the
+  helper into the modal's `useMemo`. Section 8 (Playwright e2e)
+  adds a new test case verifying the picker order matches the
+  fuzzy-ranked order. Once Section 4 lands, those sections can be
+  implemented independently.
+
+---
+
+## Section 5 — Frontend `LinkableDefinitionList` presentational component (Red, Green, Refactor)
+
+### Objective
+
+Add the new `LinkableDefinitionList` presentational component that
+renders the picker as an Ant Design `Radio.Group` with vertical
+orientation, block width, and JSX children.
+
+### Constraints
+
+- The component is colocated with the modal feature
+  (`src/frontend/src/features/classes/AssessTaskModal/LinkableDefinitionList.tsx`).
+- The component is presentational: no state, no side effects, no
+  React Query, no service calls.
+- The component signature is:
+  `LinkableDefinitionList({ linkableDefinitions, selectedDefinitionKey, onSelect, alreadyLinkedSummary }): JSX.Element`.
+- The component renders the no-match Alert (with extended copy from
+  the layout spec — the Alert is owned by the component, not by the
+  modal), the `aria-live` summary, the `Radio.Group` with JSX
+  children, the per-row `Radio` (with `disabled` for
+  `isAlreadyLinked`), the per-row `Flex` with `Typography.Text` title
+  and subtitle (with `ellipsis={{ rows: 1 }}`), and the per-row
+  optional `Tag` ("Already linked").
+- The component does not render a footer (the modal owns the footer).
+- The component does not render an `Empty` (the modal owns the
+  empty-state Alert and the modal's overall empty state).
+- The component does not handle the "all already linked" dead end at
+  the choice-prompt level (the modal owns that decision per the
+  layout spec).
+- The component is keyboard-navigable via the `Radio.Group`'s
+  built-in arrow-key navigation (set the `name` prop).
+- Disabled `Radio` rows are non-focusable (Ant Design v6 default) and
+  are summarised by the `aria-live="polite"` `alreadyLinkedSummary`
+  prop.
+
+### Delegation mandatory reads (when sub-agents are used)
+
+Testing Specialist mandatory docs:
+
+- `src/frontend/src/features/classes/AssessTaskModal/LinkableDefinitionList.tsx`
+  (new file, target)
+- `src/frontend/src/features/classes/AssessTaskModal/AssessTaskModal.tsx`
+  (for the surrounding `Modal`, `Space`, `Alert`, `Button` patterns)
+- `src/frontend/AGENTS.md` §2.2, §8, §10
+- `ASSESS_TASK_MODAL_LINK_PICKER_LAYOUT.md` (the layout spec this
+  component implements)
+- `docs/developer/frontend/frontend-testing.md`
+
+Implementation mandatory docs:
+
+- `ASSESS_TASK_MODAL_LINK_PICKER_LAYOUT.md` (the layout spec; this
+  section is its primary input)
+- `src/frontend/AGENTS.md` §1, §2, §3, §10
+- `src/frontend/src/features/classes/AssessTaskModal/AssessTaskModal.tsx`
+  (existing component patterns)
+- The official Ant Design v6 Radio docs (the component uses
+  `Radio.Group` with `orientation="vertical"`, `block`, `name`)
+
+Code Reviewer mandatory docs:
+
+- `ASSESS_TASK_MODAL_LINK_PICKER_LAYOUT.md`
+- `src/frontend/AGENTS.md` §2.2, §10
+- `src/frontend/src/features/classes/AssessTaskModal/LinkableDefinitionList.tsx`
+  (new file, final state)
+- `src/frontend/src/features/classes/AssessTaskModal/LinkableDefinitionList.spec.tsx`
+  (new file, final state)
+
+### Shared helper plan (when helper changes are expected)
+
+Recorded in the global Shared-helper planning gate above. The new
+`LinkableDefinitionList` component is feature-local and is documented
+in §9.13 of `frontend-shared-helpers-and-abstraction-standards.md`
+in Section 9 (Documentation).
+
+### Acceptance criteria
+
+- The component exists and is exported.
+- The component signature matches the spec.
+- The component renders a `Radio.Group` with `orientation="vertical"`,
+  `block`, and `name` set.
+- Each `LinkableDefinition` renders as a `Radio` with `disabled` set
+  when `isAlreadyLinked`.
+- Each `Radio`'s `label` slot renders the title (strong), subtitle
+  (secondary, `<topic> · <yearGroupLabel>`), and optional `Tag` for
+  already-linked rows.
+- The component renders the `aria-live="polite"` summary when
+  `alreadyLinkedSummary` is non-null.
+- The component does not manage its own selection state (it is
+  controlled via the `selectedDefinitionKey` prop and the `onSelect`
+  callback).
+- The component does not throw on empty input.
+- Frontend lint passes: `npm run lint:frontend`.
+
+### Required test cases (Red first)
+
+Component tests (new file `LinkableDefinitionList.spec.tsx`):
+
+1. **Renders the no-match Alert with the extended copy** — the
+   `linkableDefinitions` prop is non-empty; the component renders the
+   Alert with the title interpolation.
+2. **Renders the `aria-live` summary** — `alreadyLinkedSummary` is
+   `'2 of 3 matching definitions are already linked to this Google
+Classroom assignment.'`; the component renders the summary inside
+   an `aria-live="polite"` region.
+3. **Renders one `Radio` per `LinkableDefinition`** — three
+   `linkableDefinitions` produce three `Radio` elements.
+4. **Sets `disabled` on already-linked `Radio`s** — a partial with
+   `isAlreadyLinked: true` produces a `Radio` with `disabled`.
+5. **Does not set `disabled` on linkable `Radio`s** — a partial with
+   `isAlreadyLinked: false` produces a `Radio` without `disabled`.
+6. **Renders the "Already linked" `Tag` for disabled rows** — a
+   disabled `Radio` includes a `Tag` with the text "Already linked".
+7. **Renders the title (strong) and subtitle (secondary) for each
+   row** — a row with `primaryTitle: 'Essay'`, `primaryTopic:
+'Writing'`, `yearGroupLabel: 'Year 10'` renders both texts.
+8. **Renders the `aria-live` summary as visible text** — the summary
+   is rendered as `Typography.Paragraph` with `type="secondary"`
+   (visible, not just aria-live).
+9. **Renders `Radio.Group` with `name="linkable-definition"`** — the
+   `name` prop is set for keyboard navigation.
+10. **Renders `Radio.Group` with `orientation="vertical"` and `block`**
+    — the orientation and block props are set.
+11. **Calls `onSelect(definitionKey)` when a linkable row is clicked**
+    — the `Radio.Group`'s `onChange` emits the `definitionKey`.
+12. **Does not call `onSelect` when an already-linked row is clicked**
+    — disabled `Radio`s do not fire `onChange`.
+13. **Renders the component with empty `linkableDefinitions`** — the
+    `Radio.Group` is empty (no rows); the `aria-live` summary is
+    rendered when supplied.
+
+### Section checks
+
+- `npm run frontend:test -- src/frontend/src/features/classes/AssessTaskModal/LinkableDefinitionList.spec.tsx`
+  — all tests green.
+- `npm run lint:frontend` — clean.
+- Mandatory-read evidence gate passed.
+
+### Optional `@remarks` JSDoc follow-through
+
+Add a `@remarks` JSDoc tag on `LinkableDefinitionList` documenting:
+
+- The component is presentational; the modal owns the selection
+  state and the side effects.
+- The `aria-live` summary compensates for the Ant Design v6
+  limitation that disabled `Radio` rows are not focusable via
+  keyboard.
+- The `name` prop enables native radio-group keyboard navigation.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** (to be filled during Red phase)
+- **Deviations from plan:** (to be filled if any)
+- **Follow-up implications for later sections:** Section 6 (modal
+  integration) wires the component into the modal's `'linking'`
+  body branch. Once Section 5 lands, Section 6 can be implemented
+  independently.
+
+---
+
+## Section 6 — Frontend modal integration (Red, Green, Refactor)
+
+### Objective
+
+Update the `AssessTaskModal` to:
+
+- extend the `noMatchResolution` union to include `'linking'`;
+- add the `selectedDefinitionForLink` state slot;
+- add the `handleLinkExistingDefinition`, `handleLinkConfirm`,
+  `handleLinkCancel` functions;
+- extend `renderBody` to render the `LinkableDefinitionList` in the
+  `'linking'` branch;
+- extend `getFooterContent` to render the Link + Cancel footer in
+  the `'linking'` + `'idle'` branch (mirrors the wizard footer);
+- reset the new state on modal reopen, on Cancel from picker, and on
+  assessment-state transitions;
+- invalidate `queryKeys.assignmentDefinitionPartials()` after a
+  successful upsert and on any upsert failure.
+
+### Constraints
+
+- The `noMatchResolution` union extension is the only state-machine
+  change.
+- The `assessmentState` machine is reused without changes (per
+  `SPEC.md` Decision 11).
+- The `flushSync` pattern is **not** used (per `SPEC.md` Decision
+  11).
+- The choice-prompt "Link to Existing Definition" button is enabled
+  when at least one `LinkableDefinition` exists and not every
+  `LinkableDefinition` is `isAlreadyLinked`; otherwise it is disabled
+  with a `Tooltip` whose title is "Every matching definition is
+  already linked to this Google Classroom assignment." (layout
+  spec, "All-already-linked disabled state") or "No assignment
+  definitions exist for this class's year group." (layout spec,
+  "Link button disabled with Tooltip").
+- The disabled "Link to Existing Definition" button is wrapped in a
+  `<span tabIndex={0}>` so the `Tooltip` is keyboard-accessible.
+- The choice-prompt Alert copy is unchanged; the picker Alert copy
+  is extended (per the layout spec) to "Link to an existing
+  definition to associate the Google Classroom assignment with
+  it.".
+- The post-link flow (loading, success, error) mirrors the wizard
+  flow exactly (same body and footer patterns), **except** that the
+  loading-state footer button label is **"Link"** (not "Start
+  Assessment" — the user clicked "Link", not "Start Assessment",
+  and the button label should match the action the user initiated;
+  "Start Assessment" is the matched-path label and would be
+  misleading here, per the layout spec).
+- The `useEffect` reset hook (lines 100-127) is extended to reset
+  the new state on modal open and on fetch error.
+- The cache invalidation uses the existing
+  `queryClient.invalidateQueries` API with the existing
+  `queryKeys.assignmentDefinitionPartials()` key.
+- The post-success reset of `noMatchResolution` to `'idle'` mirrors
+  the wizard-success flow.
+- The `selectedDefinitionForLink` slot is `null` when the modal is
+  in any state other than `'linking'` + `'idle'`.
+
+### Delegation mandatory reads (when sub-agents are used)
+
+Testing Specialist mandatory docs:
+
+- `src/frontend/src/features/classes/AssessTaskModal/AssessTaskModal.tsx`
+  (target file)
+- `src/frontend/src/features/classes/AssessTaskModal/AssessTaskModal.spec.tsx`
+  (existing test patterns, the
+  `src/frontend/src/test/classes/AssessTaskModal.test-utilities.tsx`
+  helpers)
+- `src/frontend/src/services/assignmentDefinition/assignmentDefinitionService.ts`
+  (the `upsertAssignmentDefinition` service)
+- `src/frontend/src/services/assignmentAssessment/assignmentAssessmentService.ts`
+  (the `startAssessmentRun` service)
+- `src/frontend/AGENTS.md` §2.2, §5.1, §10
+- `ASSESS_TASK_MODAL_LINK_PICKER_LAYOUT.md` (the layout spec)
+- `docs/developer/frontend/frontend-testing.md`
+- `docs/developer/frontend/frontend-loading-and-width-standards.md`
+- `docs/developer/frontend/frontend-react-query-and-prefetch.md`
+
+Implementation mandatory docs:
+
+- `SPEC.md`
+- `ASSESS_TASK_MODAL_LINK_PICKER_LAYOUT.md` (the layout spec; this
+  section is its primary input)
+- `src/frontend/AGENTS.md` §1, §2, §5.1, §10
+- `src/frontend/src/features/classes/classes/AssessTaskModal/AssessTaskModal.tsx`
+- `src/frontend/src/features/classes/AssessTaskModal/LinkableDefinitionList.tsx`
+  (from Section 5)
+- `src/frontend/src/features/classes/AssessTaskModal/getLinkableDefinitionsForModal.ts`
+  (from Section 4)
+- `src/frontend/src/services/assignmentDefinition/assignmentDefinitionService.ts`
+- `src/frontend/src/services/assignmentAssessment/assignmentAssessmentService.ts`
+- `src/frontend/src/query/queryKeys.ts`
+
+Code Reviewer mandatory docs:
+
+- `SPEC.md`
+- `ASSESS_TASK_MODAL_LINK_PICKER_LAYOUT.md`
+- `src/frontend/AGENTS.md` §2.2, §10
+- `src/frontend/src/features/classes/AssessTaskModal/AssessTaskModal.tsx`
+  (final state)
+- `src/frontend/src/features/classes/AssessTaskModal/AssessTaskModal.spec.tsx`
+  (final state)
+- `src/frontend/src/test/classes/AssessTaskModal.test-utilities.tsx`
+  (final state)
+
+### Shared helper plan (when helper changes are expected)
+
+No new shared helpers in this section. The new modal state slots and
+handler functions are local to the modal file.
+
+### Acceptance criteria
+
+- The `noMatchResolution` union includes `'linking'`.
+- The `selectedDefinitionForLink` state slot is added.
+- The `handleLinkExistingDefinition`, `handleLinkConfirm`,
+  `handleLinkCancel` functions are added.
+- `renderBody` renders the `LinkableDefinitionList` in the
+  `'linking'` branch.
+- `getFooterContent` renders the Link + Cancel footer in the
+  `'linking'` + `'idle'` branch.
+- The choice-prompt "Link to Existing Definition" button is enabled
+  when at least one `LinkableDefinition` exists and not every row
+  is `isAlreadyLinked`; otherwise disabled with the correct
+  `Tooltip`.
+- The disabled button is keyboard-accessible (wrapped in
+  `<span tabIndex={0}>`).
+- The modal calls `upsertAssignmentDefinition` with the ID-shape
+  payload on Link confirm, then `startAssessmentRun` on upsert
+  success.
+- The modal invalidates
+  `queryKeys.assignmentDefinitionPartials()` after the upsert
+  resolves (success and failure paths).
+- The modal resets all new state on modal reopen, on Cancel from
+  picker, and on success close.
+- The post-link flow (loading, success, error) mirrors the wizard
+  flow exactly.
+- All existing modal tests pass without modification.
+- New modal tests cover the link flow.
+- Frontend lint passes: `npm run lint:frontend`.
+
+### Required test cases (Red first)
+
+Modal Vitest component tests (added to the existing
+`AssessTaskModal.spec.tsx`):
+
+1. **Choice prompt: "Link to Existing Definition" button is enabled
+   when at least one linkable, non-already-linked definition exists**
+   — `definitionPartials` includes one non-already-linked row; the
+   button is enabled.
+2. **Choice prompt: "Link to Existing Definition" button is disabled
+   with Tooltip when every row is already linked** — all
+   `linkableDefinitions` have `isAlreadyLinked: true`; the button
+   is disabled with the correct Tooltip title.
+3. **Choice prompt: "Link to Existing Definition" button is disabled
+   with Tooltip when the picker would be empty** — no
+   `linkableDefinitions` match the class's year group; the button
+   is disabled with the correct Tooltip title.
+4. **Choice prompt: clicking "Link to Existing Definition"
+   transitions to `'linking'`** — the choice buttons are replaced
+   by the `LinkableDefinitionList`.
+5. **Picker: clicking Cancel returns to the choice prompt** — the
+   choice buttons reappear.
+6. **Picker: clicking a linkable row and clicking Link calls
+   `upsertAssignmentDefinition` and then `startAssessmentRun`** —
+   the ID-shape payload is sent (verified by spying on the service).
+7. **Picker: clicking Link with the same Google Classroom title in
+   the existing alternate titles is impossible because the row is
+   disabled** — already-linked rows are not selectable.
+8. **Picker: clicking Link with a Google Classroom title that
+   matches the partial's `primaryTitle` is impossible because the
+   row is disabled** — `primaryTitle` match is included in the
+   already-linked derivation.
+9. **Picker: empty Google Classroom topic name sends the existing
+   `alternateTopics` array unchanged (not `[]`)** — when
+   `selectedAssignment.topicName === null`, the payload spy verifies:
+   - `alternateTitles` is the **deduplicated union** (case-insensitive
+     trimmed) of the existing `alternateTitles` and the new Google
+     Classroom title (the deduplication is applied even when the
+     topic is null);
+   - `alternateTopics` is the **unchanged existing array** (not `[]`,
+     not omitted) — the modal never sends an empty array because
+     that would clear the existing alternates.
+10. **Post-link: success Alert replaces the body, Close button
+    replaces the footer** — mirrors the wizard-success flow.
+11. **Post-link: error Alert replaces the body, Cancel button
+    closes the modal** — mirrors the wizard-error flow.
+12. **Post-link: cache invalidation on upsert failure** — the
+    `queryClient.invalidateQueries` spy is called on
+    `queryKeys.assignmentDefinitionPartials()`.
+13. **State reset on modal reopen** — the new state slots are
+    reset to idle values on modal reopen.
+14. **State reset on Cancel from picker** — `noMatchResolution`
+    returns to `'choice'`, `selectedDefinitionForLink` returns to
+    `null`, `selectedAssignmentForChoice` is **retained** (so the
+    choice prompt Alert still shows the Google Classroom assignment
+    title; the user is back in the choice prompt ready to pick
+    Create New Definition or close the modal).
+15. **Keyboard accessibility of the disabled "Link to Existing
+    Definition" Tooltip** — verify the disabled button is wrapped in
+    a `<span tabIndex={0}>` (the wrapper is the focusable element
+    that triggers the Tooltip on keyboard focus).
+
+### Section checks
+
+- `npm run frontend:test -- src/frontend/src/features/classes/AssessTaskModal/AssessTaskModal.spec.tsx`
+  — all tests green.
+- `npm run lint:frontend` — clean.
+- Mandatory-read evidence gate passed.
+
+### Optional `@remarks` JSDoc follow-through
+
+Add a `@remarks` JSDoc tag on `handleLinkConfirm` documenting:
+
+- The deduplication strategy for the new `alternateTitles` and
+  `alternateTopics` (case-insensitive trimmed equality).
+- The full-array send rule (never send `[]`; always send the full
+  array, even when the topic name is null).
+- The cache invalidation strategy (fire-and-forget after the
+  upsert resolves).
+
+Add a `@remarks` JSDoc tag on the `selectedDefinitionForLink` state
+slot documenting:
+
+- The slot is `null` when the modal is in any state other than
+  `'linking'` + `'idle'`.
+- The slot is reset on modal reopen, on Cancel from picker, and on
+  success close.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** (to be filled during Red phase)
+- **Deviations from plan:** (to be filled if any)
+- **Follow-up implications for later sections:** Section 7 (test
+  utilities) extends the shared test fixtures to support the new
+  state. Section 8 (Playwright e2e) exercises the full e2e flow.
+
+---
+
+## Section 7 — Frontend test utilities extension (Red, Green, Refactor)
+
+### Objective
+
+Extend
+`src/frontend/src/test/classes/AssessTaskModal.test-utilities.tsx`
+with the new fixtures and interaction helpers needed by the modal
+spec.
+
+### Constraints
+
+- Add a `linkableDefinition` fixture factory (mirrors
+  `createDefinitionPartial`).
+- Add a `clickLinkToExisting` interaction helper (clicks the new
+  "Link to Existing Definition" button in the choice prompt).
+- Add a `clickLink` interaction helper (clicks the new "Link"
+  button in the picker footer).
+- Add a `pickLinkableDefinition` interaction helper (clicks a row
+  in the picker).
+- Extend `renderWithCache` options to include
+  `linkableDefinitions: LinkableDefinition[]` and
+  `selectedAssignmentForLink: Assignment | null` for the
+  picker-rendered branch.
+
+### Delegation mandatory reads (when sub-agents are used)
+
+Testing Specialist mandatory docs:
+
+- `src/frontend/src/test/classes/AssessTaskModal.test-utilities.tsx`
+  (target file)
+- `src/frontend/src/features/classes/AssessTaskModal/AssessTaskModal.spec.tsx`
+  (existing usage patterns)
+- `src/frontend/AGENTS.md` §7
+
+Implementation mandatory docs:
+
+- `SPEC.md`
+- `src/frontend/AGENTS.md` §7
+- `src/frontend/src/test/classes/AssessTaskModal.test-utilities.tsx`
+- `src/frontend/src/features/classes/AssessTaskModal/AssessTaskModal.spec.tsx`
+
+### Shared helper plan (when helper changes are expected)
+
+No new shared helpers in this section. The test utilities are
+local to the modal test feature.
+
+### Acceptance criteria
+
+- The new fixture factory and interaction helpers exist and are
+  exported.
+- The existing `renderWithCache` and `createDefinitionPartial`
+  continue to work without modification.
+- The new helpers are used in the Section 6 modal tests (verified by
+  Section 6's `npm test` run).
+- Frontend lint passes: `npm run lint:frontend`.
+
+### Required test cases (Red first)
+
+The test utilities themselves are exercised through the Section 6
+modal tests; no dedicated test file is required for the test
+utilities. The Section 6 test cases cover the helpers' usage.
+
+### Section checks
+
+- `npm run frontend:test -- src/frontend/src/features/classes/AssessTaskModal/AssessTaskModal.spec.tsx`
+  — all tests green.
+- `npm run lint:frontend` — clean.
+- Mandatory-read evidence gate passed.
+
+### Optional `@remarks` JSDoc follow-through
+
+None — test utilities do not need `@remarks`.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** (to be filled during Red phase)
+- **Deviations from plan:** (to be filled if any)
+- **Follow-up implications for later sections:** Section 8 (Playwright
+  e2e) does not depend on the test utilities; the e2e tests use the
+  `RuntimeScenario` pattern from
+  `src/frontend/e2e-tests/shared/endToEndRuntimeMocks.ts`.
+
+---
+
+## Section 8 — Playwright e2e tests (Red, Green, Refactor)
+
+### Objective
+
+Extend `src/frontend/e2e-tests/classes-page-assess-task.spec.ts` with
+the picker flow cases.
+
+### Constraints
+
+- The `RuntimeScenario` type already includes `upsertAssignmentDefinition`
+  and `getAssignmentDefinition`; no new method entries are required.
+- The e2e tests use the existing
+  `installRuntimeMock`, `getMethodCalls`, `releaseNextDeferredSuccess`,
+  and `selectVisibleOption` helpers.
+- The e2e tests follow the existing pattern: `createAssessTaskScenario`
+  for the standard scenario, then customise with the new method
+  entries.
+- The new e2e tests are added after the existing tests; the existing
+  tests are not modified.
+
+### Delegation mandatory reads (when sub-agents are used)
+
+Testing Specialist mandatory docs:
+
+- `src/frontend/e2e-tests/classes-page-assess-task.spec.ts` (target
+  file)
+- `src/frontend/e2e-tests/helpers/classes-page-end-to-end-helpers.ts`
+  (scenario factory and helpers)
+- `src/frontend/e2e-tests/shared/endToEndRuntimeMocks.ts`
+  (runtime mock type and helpers)
+- `ASSESS_TASK_MODAL_LINK_PICKER_LAYOUT.md` (the layout spec)
+- `docs/developer/frontend/frontend-playwright-e2e.md` (e2e
+  patterns)
+
+Implementation mandatory docs:
+
+- `SPEC.md`
+- `ASSESS_TASK_MODAL_LINK_PICKER_LAYOUT.md`
+- `src/frontend/e2e-tests/classes-page-assess-task.spec.ts`
+- `src/frontend/e2e-tests/helpers/classes-page-end-to-end-helpers.ts`
+- `src/frontend/e2e-tests/shared/endToEndRuntimeMocks.ts`
+
+Code Reviewer mandatory docs:
+
+- `SPEC.md`
+- `ASSESS_TASK_MODAL_LINK_PICKER_LAYOUT.md`
+- `src/frontend/e2e-tests/classes-page-assess-task.spec.ts` (final
+  state)
+
+### Shared helper plan (when helper changes are expected)
+
+No new shared helpers in this section. The e2e tests use the
+existing `RuntimeScenario` and helpers.
+
+### Acceptance criteria
+
+- The new e2e tests cover the picker flow.
+- Existing e2e tests pass without modification.
+- The `RuntimeScenario` type is unchanged.
+- Playwright lint passes.
+
+### Required test cases (Red first)
+
+Playwright e2e tests (added to
+`classes-page-assess-task.spec.ts`):
+
+1. **"Link to Existing Definition" button is enabled when a
+   linkable definition exists** — the choice prompt shows the
+   button enabled.
+2. **"Link to Existing Definition" button is disabled when the
+   picker would be empty** — the choice prompt shows the button
+   disabled.
+3. **"Link to Existing Definition" button is disabled when every
+   linkable definition is already linked** — the choice prompt
+   shows the button disabled.
+4. **Clicking the link button transitions to the picker** — the
+   `LinkableDefinitionList` is rendered.
+5. **Picker rows show the title and the subtitle** — the row
+   content includes both the title and the `<topic> · <year>` subtitle.
+6. **Picker rows are sorted by fuzzy title rank with `updatedAt`
+   desc tie-breaker** — given three definitions with primaryTitles of
+   "Poetry Analysis" (most recently changed), "Algebra HW" (older),
+   and "Algebra Homework" (oldest), and a Google Classroom
+   assignment titled "Algebra HW", the picker shows "Algebra HW"
+   first, "Algebra Homework" second, "Poetry Analysis" last.
+   This proves the fuzzy ranking (not the most-recent-first sort)
+   drives the display order.
+7. **Already-linked rows are rendered with the "Already linked"
+   `Tag` and are not selectable** — clicking the row does not
+   select it.
+8. **Selecting a linkable row and clicking Link calls
+   `upsertAssignmentDefinition` and then `startAssessmentRun`** —
+   the method call list contains both.
+9. **Upsert failure shows an error Alert and the Cancel button
+   closes the modal** — the error path is exercised.
+10. **Cancel from picker returns to the choice prompt** — the
+    choice buttons reappear.
+11. **Modal state resets on reopen** — the new state slots are
+    reset to idle values on modal reopen.
+
+### Section checks
+
+- `npm run frontend:test:e2e -- classes-page-assess-task` (local
+  only; not run in CI by default per the e2e docs).
+- Playwright lint passes.
+- Mandatory-read evidence gate passed.
+
+### Optional `@remarks` JSDoc follow-through
+
+None — e2e tests do not need `@remarks`.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** (to be filled during Red phase)
+- **Deviations from plan:** (to be filled if any)
+- **Follow-up implications for later sections:** Section 9
+  (Documentation) and Section 10 (Regression) are independent.
+
+---
+
+## Section 9 — Documentation and rollout notes (Green)
+
+### Objective
+
+Update relevant documentation to reflect the new feature and
+reconcile planned-only entries in canonical docs.
+
+### Constraints
+
+- Use British English.
+- Only modify documents relevant to the touched areas.
+
+### Acceptance criteria
+
+- `SPEC.md` status updated to `Implemented v1.0` with a one-line
+  note: `Implemented 2026-06-16. See ACTION_PLAN.md for delivery
+history.` (Adjust the date to the actual implementation date.)
+- `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
+  §9.13 is extended with the new `getLinkableDefinitionsForModal`
+  and `LinkableDefinitionList` entries. A new `caseInsensitiveTrimmedEquals`
+  entry is added as a feature-local private helper. The
+  `getLinkableDefinitionsForModal` entry includes a note that the
+  helper uses `fuse.js` (declared in `src/frontend/package.json`
+  as a direct dependency) for fuzzy title ranking with `updatedAt`
+  desc as the tie-breaker.
+- `docs/developer/backend/DATA_SHAPES.md` is updated per `SPEC.md`:
+  - The `AssignmentDefinitionPartial` response shape section's
+    `alternateTopics` entry is updated to reflect that the field
+    is now a documented optional field in the upsert request
+    contract and is written by the orchestrator on update when
+    provided.
+  - The `upsertAssignmentDefinition` request shape section is
+    extended to document the new optional `alternateTopics` field
+    alongside the existing optional `alternateTitles` field, with
+    the same contract (non-empty trimmed strings, deduplicated
+    on merge).
+  - The transport validation entry for the ID-shape path is
+    updated to document the new `superRefine` mutual-exclusion
+    rule (URL-shape vs ID-shape).
+- `docs/developer/backend/api-layer.md` is updated per `SPEC.md`:
+  - The "Optional request fields" entry for `upsertAssignmentDefinition`
+    is updated to include `alternateTopics`.
+  - The "Validation split" paragraph is updated to document the
+    mutual-exclusion rule between URL-shape and ID-shape.
+- No new canonical doc file is required.
+- No new tests or code changes.
+
+### Required checks
+
+1. Verify the `SPEC.md` status is updated correctly.
+2. Verify the `frontend-shared-helpers-and-abstraction-standards.md`
+   §9.13 entry is updated.
+3. Verify the `DATA_SHAPES.md` updates are correct and in scope.
+4. Verify the `api-layer.md` updates are correct and in scope.
+5. Confirm no documentation regressions in canonical docs.
 
 ### Implementation notes / deviations / follow-up
 
 - **Implementation notes:** (to be filled)
 - **Deviations from plan:** (to be filled if any)
-- **Follow-up implications for later sections:** None — this section completes
-  the backend wiring. Section 4 (Regression) and Section 5 (Documentation)
-  remain.
 
 ---
 
-## Regression and contract hardening
+## Section 10 — Regression and contract hardening
 
 ### Objective
 
-Verify that the new endpoint does not break existing functionality and that the
-transport contract is sound.
+Verify that the new feature does not break existing functionality and
+that the transport contract is sound.
 
 ### Constraints
 
-- Run all backend API tests to ensure no regressions.
-- Run backend lint.
-- Confirm that the controller's behaviour change (typed-error throw) does not
-  regress any existing controller tests that exercise the not-found path
-  through `rehydrateAssignment`.
+- Run all touched backend and frontend test suites.
+- Run backend and frontend lint.
+- Confirm the orchestrator's behaviour change (typed-error throw
+  mirrored for `alternateTopics`) does not regress any existing
+  controller tests.
 
 ### Acceptance criteria
 
 - All existing backend API tests pass.
+- All existing frontend modal tests pass.
+- All new tests pass.
 - Backend lint passes.
-- No regressions in `startAssessmentRun_` or any other handler in
-  `assignmentAssessment.js`.
-- No regressions in `ABClassController` tests that exercise
-  `rehydrateAssignment` (e.g. tests that previously matched on the generic
-  `Error` from `_loadFullAssignmentDocument` must now match on
-  `instanceof AssignmentNotFoundError`).
+- Frontend lint passes.
+- No regressions in `upsertAssignmentDefinition_` or any other
+  handler in `assignmentDefinitionTransport.js`.
+- No regressions in `AssignmentDefinitionUpsertOrchestrator` tests
+  that exercise the upsert path.
 
 ### Required test cases/checks
 
-1. `npm test -- tests/api/assignmentReadApi.test.js` — green.
-2. `npm test -- tests/api/assignmentAssessment.test.js` — green.
-3. `npm test -- tests/api/assignmentDefinitionReadApi.test.js` — green.
-4. `npm test -- tests/api/assignmentDefinitionUpsertApi.test.js` — green.
-5. `npm test -- tests/api/assignmentDefinitionDeleteApi.test.js` — green.
-6. `npm test -- tests/controllers/abclassController.rehydrateAssignment.test.js`
-   — green. If any existing test in this file was relying on the not-found path
-   throwing a generic `Error`, update it to expect `AssignmentNotFoundError`
-   instead.
-7. `npm run lint:backend` — clean.
+1. `npm test -- tests/controllers/assignmentDefinitionController.upsert.test.js`
+   — green.
+2. `npm test -- tests/api/assignmentDefinitionUpsertApi.test.js` —
+   green.
+3. `npm test -- tests/backend-api/assignmentDefinitionPartials.unit.test.js`
+   — green.
+4. `npm run frontend:test -- src/frontend/src/features/classes/AssessTaskModal/matchDefinitionForAssignment.spec.ts`
+   — green.
+5. `npm run frontend:test -- src/frontend/src/features/classes/AssessTaskModal/getLinkableDefinitionsForModal.spec.ts`
+   — green.
+6. `npm run frontend:test -- src/frontend/src/features/classes/AssessTaskModal/LinkableDefinitionList.spec.tsx`
+   — green.
+7. `npm run frontend:test -- src/frontend/src/features/classes/AssessTaskModal/AssessTaskModal.spec.tsx`
+   — green.
+8. `npm run frontend:test -- src/frontend/src/services/assignmentDefinition/assignmentDefinition.zod.spec.ts`
+   — green.
+9. `npm run lint:backend` — clean.
+10. `npm run lint:frontend` — clean.
 
 ### Section checks
 
 - Run the commands listed above and ensure green results.
-
-### Implementation notes / deviations / follow-up
-
-- **Implementation notes:** (to be filled)
-- **Deviations from plan:** (to be filled if any)
-
----
-
-## Documentation and rollout notes
-
-### Objective
-
-Update relevant documentation to reflect the new endpoint, the new typed error,
-and the controller change. Reconcile planned-only entries in canonical docs.
-
-### Constraints
-
-- Only modify documents relevant to the touched areas.
-- Use British English.
-
-### Acceptance criteria
-
-- `SPEC.md` status updated to `Implemented v1.0` (replacing `Draft v1.0`) with
-  a one-line note: `Implemented 2026-06-15. See ACTION_PLAN.md for delivery
-history.` (Adjust the date to the actual implementation date; the format
-  string is the only required change.)
-- The new `AssignmentNotFoundError` entry in
-  `docs/developer/backend/backend-logging-and-error-handling.md` §9 is updated
-  from `Planned: Not implemented` to a plain entry that matches the style of
-  `AbortRequestError` / `PersistError` (i.e. remove the `Planned:` prefix and
-  the `Not implemented` marker; the entry should describe the actual
-  behaviour, throw site, and metadata).
-- If `docs/developer/DATA_SHAPES.md` exists and documents Assignment data
-  shapes, verify it remains accurate (no changes expected — the endpoint
-  returns the existing `Assignment.toJSON()` shape).
-- No new API method documentation file is required at this stage
-  (frontend-facing docs will be created when the frontend pages are built).
-
-### Required checks
-
-1. Verify `SPEC.md` accurately reflects the implemented behaviour.
-2. Verify the planned-only entry in `backend-logging-and-error-handling.md` §9
-   has been reconciled: marker removed, description updated to match the
-   actual class.
-3. Confirm no documentation regressions in canonical docs.
-4. Confirm that the canonical doc still lists `AssignmentNotFoundError` under
-   the "internal error types not mapped at the transport boundary" category
-   (not under the `_mapErrorToFailureEnvelope` list).
-
-### Optional `@remarks` JSDoc review
-
-- Confirm the `@remarks` added to `getAssignment_` in Section 2 are present and
-  accurate.
-- Verify that the not-found typed-error rationale, the date-normalisation
-  rationale, the `progressTracker`-strip rationale, and the abClass-identity
-  rationale are all documented.
-- The new `AssignmentNotFoundError` class does not need `@remarks` (it is a
-  metadata-only value class with no behaviour).
+- Verify mandatory-read evidence is complete for every delegated
+  regression handoff.
 
 ### Implementation notes / deviations / follow-up
 
@@ -600,8 +1672,26 @@ history.` (Adjust the date to the actual implementation date; the format
 
 ## Suggested implementation order
 
-1. **Section 1** — Add `AssignmentNotFoundError` and write failing tests (Red)
-2. **Section 2** — Implement `getAssignment_` handler (Green + Refactor)
-3. **Section 3** — Register allowlist entry (Green)
-4. **Section 4** — Run regression suite
-5. **Section 5** — Update canonical docs and SPEC.md status
+1. **Section 1** — Backend orchestrator `_resolveAlternateTopics`
+   (enables the write path; backend-only change; lowest coupling).
+2. **Section 2** — Frontend matcher relaxation (enables the
+   "future match" guarantee; pure helper; no React state).
+3. **Section 3** — Frontend Zod schema extension (enables the
+   ID-shape payload; pure schema change; no React state).
+4. **Section 4** — Frontend `getLinkableDefinitionsForModal` pure
+   helper (enables the picker derivation; depends on Section 2's
+   helper).
+5. **Section 5** — Frontend `LinkableDefinitionList` presentational
+   component (enables the picker UI; depends on the layout spec;
+   no state).
+6. **Section 6** — Frontend modal integration (depends on Sections
+   3, 4, and 5; orchestrates the new state and side effects).
+7. **Section 7** — Frontend test utilities extension (depends on
+   Section 6's tests; small fixture addition).
+8. **Section 8** — Playwright e2e tests (depends on Section 6;
+   exercises the full e2e flow).
+9. **Section 9** — Documentation (independent; can be done at any
+   point after the implementation lands; reconcile planned-only
+   entries to `Implemented`).
+10. **Section 10** — Regression and contract hardening (independent;
+    run after Sections 1-8 land).
