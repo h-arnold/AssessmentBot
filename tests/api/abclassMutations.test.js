@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const abclassMutationsModulePath = '../../src/backend/z_Api/abclassMutations.js';
+const abclassMutationsModulePath = '../../src/backend/z_Api/abclass/abclassMutations.js';
 const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
 const originalABClassController = globalThis.ABClassController;
 
@@ -88,7 +88,7 @@ afterEach(() => {
 
 describe('Api/abclassMutations exports', () => {
   it('exports upsertABClass_, updateABClass_, and deleteABClass_ in Node test runtime', () => {
-    const abclassMutationsModule = require('../../src/backend/z_Api/abclassMutations.js');
+    const abclassMutationsModule = require('../../src/backend/z_Api/abclass/abclassMutations.js');
 
     expect(abclassMutationsModule).toEqual(
       expect.objectContaining({

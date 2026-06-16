@@ -12,7 +12,7 @@ const googleClassroomsHandlerPath = '../../../src/backend/z_Api/googleClassrooms
 const assignmentDefinitionTransportPath =
   '../../../src/backend/z_Api/assignmentDefinitionTransport.js';
 const apiConfigPath = '../../../src/backend/z_Api/apiConfig.js';
-const abclassMutationsPath = '../../../src/backend/z_Api/abclassMutations.js';
+const abclassMutationsPath = '../../../src/backend/z_Api/abclass/abclassMutations.js';
 
 const {
   callAuthorisationStatus,

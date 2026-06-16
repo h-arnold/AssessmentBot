@@ -70,6 +70,13 @@ if (typeof module !== 'undefined' && module.exports) {
   apiDefinitionStaleErrorName = require('../Utils/ErrorTypes/DefinitionStaleError.js').name;
   globalThis.startAssessmentRun_ = require('./assignmentAssessment.js').startAssessmentRun_;
   globalThis.getAssignment_ = require('./assignmentAssessment.js').getAssignment_;
+  // Wire only if not already set (allows test harness to install mocks before this module loads).
+  if (globalThis.upsertABClass_ === undefined) {
+    const abclassMutationsFns = require('./abclass/abclassMutations.js');
+    globalThis.upsertABClass_ = abclassMutationsFns.upsertABClass_;
+    globalThis.updateABClass_ = abclassMutationsFns.updateABClass_;
+    globalThis.deleteABClass_ = abclassMutationsFns.deleteABClass_;
+  }
 } else {
   // In GAS, these are loaded as global constants and functions from the bundle.
   lockTimeoutMs = LOCK_TIMEOUT_MS;

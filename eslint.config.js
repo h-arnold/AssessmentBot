@@ -206,7 +206,7 @@ module.exports = [
       'src/backend/y_controllers/ABClassController.js',
       'src/backend/y_controllers/AssignmentController.js',
       'src/backend/y_controllers/ReferenceDataController.js',
-      'src/backend/z_Api/abclassMutations.js',
+      'src/backend/z_Api/abclass/abclassMutations.js',
       'src/backend/z_Api/z_apiHandler.js',
       'src/backend/z_Api/requestStore.js',
     ],

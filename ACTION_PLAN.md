@@ -1,18 +1,21 @@
-# `getABClass` API Endpoint — Delivery Plan (TDD-First)
+# `getABClass` API Endpoint + `ABClassController` Refactor — Delivery Plan (TDD-First)
 
-> **Plan status**: v1.2 (rewritten after first review pass found the file described the wrong feature; updated after second review pass to add ESLint relaxed-rule entries and clarify wording; updated after third review pass to (a) add `abclassValidation.js` to Section 4's ESLint relaxed-rule acceptance criteria, (b) clarify JSDoc global hint placement in Section 2, (c) sharpen Section 4 test case 1 language, (d) explicitly require removal of the old `ClassNotFoundError` JSDoc sentence in Section 7, (e) clarify `TeacherSummary` redefinition vs import in Section 5, and (f) add `invalidateAbClass` helper to Section 6). Awaiting final sign-off.
+> **Plan status**: v1.3 (this delivery bundles the `getABClass` endpoint work from `SPEC.md` v1.3 with the `ABClassController` decomposition from `ABClassControllerRefactor_SPEC.md` v1.0. Sections 1-7 cover the new endpoint; Sections 8-13 cover the refactor. Both share the same TDD-first discipline and the same regression test suite, but the refactor's only externally visible change is the file path of the controller module. Awaiting `Planner Reviewer` sign-off.)
+>
+> **Section 1 — Status**: ✅ COMPLETE (committed `7f924f6`) — `abclassMutations.js` moved to `z_Api/abclass/`, paths updated, all tests pass, regression gate passed.
 
 ## Read-First Context
 
 Before writing or executing this plan:
 
 1. Read the current `SPEC.md` (v1.3, signed off by `Planner Reviewer`).
-2. Read `src/backend/AGENTS.md` (backend conventions, §0.1 trailing-underscore handler pattern, §0.2 validation ownership, §1.1 Node test compatibility, §8 date handling, §3 logging, §11 API domain folder organisation).
-3. Read `src/frontend/AGENTS.md` (frontend conventions, §4.1 required API transport pattern, §4.3 prohibited types in `google.script.run`, §8 Zod validation, §12 service domain folder organisation).
-4. Read `docs/developer/backend/api-layer.md` for canonical API-layer rules.
-5. Read `docs/developer/DATA_SHAPES.md` (and its `backend/DATA_SHAPES.md` mirror) for the canonical partial shape contracts.
-6. Treat those documents as the source of truth for product behaviour, contracts, and rules.
-7. Use this action plan to sequence delivery and testing; do not restate or redefine material already settled in the spec.
+2. Read `ABClassControllerRefactor_SPEC.md` (v1.0, signed off by `Planner Reviewer`).
+3. Read `src/backend/AGENTS.md` (backend conventions, §0.1 trailing-underscore handler pattern, §0.2 validation ownership, §1.1 Node test compatibility, §8 date handling, §3 logging, §10 large file decomposition, §11 API domain folder organisation).
+4. Read `src/frontend/AGENTS.md` (frontend conventions, §4.1 required API transport pattern, §4.3 prohibited types in `google.script.run`, §8 Zod validation, §12 service domain folder organisation).
+5. Read `docs/developer/backend/api-layer.md` for canonical API-layer rules.
+6. Read `docs/developer/DATA_SHAPES.md` (and its `backend/DATA_SHAPES.md` mirror) for the canonical partial shape contracts.
+7. Treat those documents as the source of truth for product behaviour, contracts, and rules.
+8. Use this action plan to sequence delivery and testing; do not restate or redefine material already settled in the spec.
 
 ## Scope and assumptions
 
@@ -34,11 +37,13 @@ Before writing or executing this plan:
 
 - Per-assignment full rehydration — the existing `getAssignment` endpoint is the canonical path.
 - Roster refresh on read — the assessment-run path (`startAssessmentRun`) and `upsertABClass` are the existing entry points.
-- `ABClassController` decomposition (over 1000 lines; planned in `LARGE_CODE_FILES.md` but not yet implemented).
 - Reorganising the pre-existing `classPartials*` files into a subfolder (pre-existing rule deviation; out of scope for this round).
 - Any visible class-detail page (out of scope; will get its own layout spec when built).
 - New shared helper extraction beyond the `abclassValidation.js` already specified (no other new shared helpers are introduced).
 - Updating the `z_Api` builder concatenation order to use numeric prefixes (the existing `localeCompare` order is sufficient because all function calls in the new `abclass/` folder are lazy).
+- The `ABClassController` decomposition is **NOT out of scope** — it is
+  covered by Sections 8-13 of this plan and governed by
+  `ABClassControllerRefactor_SPEC.md` v1.0.
 
 ### Assumptions
 
@@ -201,7 +206,7 @@ Backend controller tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes**: pure location move; the require-path change in `z_apiHandler.js`'s `module.exports` branch is one line; the `eslint.config.js` change is one line; the three test-file require changes are mechanical.
+- **Implementation notes**: pure location move; the require-path change in `z_apiHandler.js`'s `module.exports` branch is one line; the `eslint.config.js` change is one line; the three test-file require changes are mechanical. The file's content is byte-for-byte identical at the end of this section; the `validateParametersObject_` extraction happens in Section 2. This creates a brief intermediate state where the moved file still contains its local helper — this is intentional and the file is not broken because the helper is still defined locally. `SPEC.md` step 1 describes the combined end state of Sections 1–2, not the intermediate state after Section 1 alone.
 - **Deviations from plan**: none expected.
 - **Follow-up implications for later sections**: section 2 will remove the file-local `validateParametersObject_` from `abclassMutations.js` and add the `abclassValidation.js` shared file. Section 2 must be done in lockstep with this section or the file will temporarily have a broken import if a future refactor moves the function out.
 
@@ -289,7 +294,20 @@ Backend API tests (existing — verify no regression):
 
 ### Objective
 
-Add `readClass(classId)` (public) and `_toReadView(abClass)` (private, leading underscore) methods to `ABClassController`. The new methods form the pure-read counterpart to the existing `loadClass`: they read a stored class document, deserialise it, and return a transport-ready plain object with partial assignments and defence-in-depth strip. No Classroom API calls, no storage mutation.
+Add `readClass(classId)` (public) and `_toReadView(abClass)` (private, leading underscore) methods to the **current** monolithic `ABClassController.js`. The new methods form the pure-read counterpart to the existing `loadClass`: they read a stored class document, deserialise it, and return a transport-ready plain object with partial assignments and defence-in-depth strip. No Classroom API calls, no storage mutation.
+
+> **Refactor note**: this section adds the methods to the
+> monolithic `ABClassController.js` because the file is still in its
+> pre-refactor state at this point in the plan. Section 8+
+> decomposes the file (now ~1100 lines) into a folder of
+> sub-classes per `ABClassControllerRefactor_SPEC.md` v1.0.
+> `readClass` lands on the new facade `index.js` and
+> `_toReadView` lands on the new `ABClassResponseMapper`
+> sub-class. The unit tests in this section remain valid
+> after the refactor because the facade re-exposes
+> `_toReadView` via delegation (per
+> `ABClassControllerRefactor_SPEC.md` Decision 3) and
+> `readClass` is a public method on the facade.
 
 ### Constraints
 
@@ -590,10 +608,9 @@ No new shared helpers. The factory follows the existing pattern.
 ### Acceptance criteria
 
 - `queryKeys.ts` exports an `abClass: (classId: string) => ['abClass', classId]` factory.
-- `queryKeys.ts` also exports an `invalidateAbClass: (classId: string) => queryKeys.abClass(classId)` invalidation key factory (per SPEC.md §"Manual refresh" — React Query standard `invalidateQueries({ queryKey: queryKeys.invalidateAbClass(classId) })` works).
 - `sharedQueries.ts` exports a `getABClassQueryOptions(classId: string)` function that returns `queryOptions({ ... })`.
 - The new query is **not** added to `startupWarmupQueryDefinitions`.
-- Existing `queryOptions` / `queryKeys` invalidation patterns work with the new query (`invalidateQueries({ queryKey: queryKeys.invalidateAbClass(classId) })`).
+- Existing `queryOptions` / `queryKeys` invalidation patterns work with the new query (`invalidateQueries({ queryKey: queryKeys.abClass(classId) })`).
 
 ### Required test cases (Red first)
 
@@ -601,10 +618,9 @@ Frontend query tests (extended — `src/frontend/src/query/sharedQueries.query.s
 
 1. **RED**: `queryKeys.abClass` is not defined. Test fails.
 2. **GREEN**: `queryKeys.abClass('class-001')` returns `['abClass', 'class-001']`. Test passes.
-3. `queryKeys.invalidateAbClass('class-001')` returns `['abClass', 'class-001']` (same as `queryKeys.abClass('class-001')` — the invalidation key factory re-uses the query key). Test passes.
-4. **RED**: `getABClassQueryOptions` is not defined. Test fails.
-5. **GREEN**: `getABClassQueryOptions('class-001')` returns an object with `queryKey: ['abClass', 'class-001']` and a `queryFn` that calls `getABClass({ classId: 'class-001' })`. Test passes.
-6. The `queryFn` is awaitable and propagates errors from `getABClass` (e.g. Zod parse errors). Test passes.
+3. **RED**: `getABClassQueryOptions` is not defined. Test fails.
+4. **GREEN**: `getABClassQueryOptions('class-001')` returns an object with `queryKey: ['abClass', 'class-001']` and a `queryFn` that calls `getABClass({ classId: 'class-001' })`. Test passes.
+5. The `queryFn` is awaitable and propagates errors from `getABClass` (e.g. Zod parse errors). Test passes.
 
 ### Section checks
 
@@ -696,41 +712,932 @@ Documentation review (verification by `Docs` agent):
 
 ---
 
-## Regression and contract hardening
+# Part 2 — `ABClassController` Decomposition (governed by `ABClassControllerRefactor_SPEC.md` v1.0)
+
+The remaining sections implement the `ABClassController` decomposition
+into a folder of 5 sub-classes per `ABClassControllerRefactor_SPEC.md`
+v1.0. The sections preserve every existing public method on the
+controller, every existing private method (re-exposed on the facade
+via one-line delegation), and every existing test (no test rewrites
+are required — the public API is preserved and the test files use the
+same `require` paths).
+
+Section ordering is TDD-first: red sub-class tests, green sub-class
+implementations, then facade creation, then `tests/setupGlobals.js`
+wiring, then monolithic file removal, then documentation, then full
+regression.
+
+---
+
+## Section 8 — Sub-class unit tests (RED) + sub-class file creation (GREEN)
 
 ### Objective
 
-Verify that no existing functionality is broken by the changes, and that the new endpoint behaves correctly under the documented contract (envelope shape, error mapping, response shape).
+Add 5 new unit-test files (one per sub-class) that test the new
+sub-classes in isolation. Create the 5 new sub-class files in the new
+folder, with each method body moved verbatim from the existing
+monolithic `ABClassController.js` to its target sub-class. The
+monolithic file is **not** modified in this section — it stays in
+place and continues to work; the new sub-classes exist alongside it.
+This section is a "lift-and-shift" of method bodies to new files; no
+behaviour changes are made yet.
 
 ### Constraints
 
-- All existing tests in the touched areas (backend API tests, controller tests, frontend service tests, frontend query tests) still pass.
-- The full backend lint (`npm run lint:backend`) and frontend lint (`npm run lint:frontend`) pass.
+- Method bodies are moved verbatim — no refactoring, no behaviour
+  changes, no signature changes. The JSDoc is preserved.
+- Sub-class constructors accept their dependencies via a single
+  options object parameter (per `ABClassControllerRefactor_SPEC.md`
+  Decision 4 and the `AssignmentDefinitionController/` precedent).
+- Sub-class files end with the guarded
+  `if (typeof module !== 'undefined' && module.exports)` block so
+  they can be imported individually in tests.
+- The new folder
+  `src/backend/y_controllers/ABClassController/` is created with
+  the 5 sub-class files (no `index.js` facade yet — that's Section
+  9).
+- The monolithic `src/backend/y_controllers/ABClassController.js`
+  is **not** modified and **not** removed in this section.
+
+### Method-to-sub-class assignment (per `ABClassControllerRefactor_SPEC.md` Decision 2)
+
+| Sub-class                  | Methods                                                                                                                                                                                                                 |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ABClassValidation.js`     | `_validateClassId`, `_validateDeleteClassId`, `_isMissingCollectionError`, `_validateCourseLength`, `_buildUpdatePatch`, `_applyPatchToClass`                                                                           |
+| `ABClassRoster.js`         | `_applyCourseMetadata`, `_applyTeachers`, `_applyStudents`, `_buildClassroomRosterUpdatePayload`, `_refreshRoster`, `_persistRoster`, `initialise` (public)                                                             |
+| `ABClassAssignmentOps.js`  | `_loadFullAssignmentDocument`, `_validateAssignmentDocument`, `_ensureFullDefinition`, `_replaceAssignmentInClass`, `_getFullAssignmentCollectionName`, `persistAssignmentRun` (public), `rehydrateAssignment` (public) |
+| `ABClassPersistence.js`    | `_persistClassAndPartial`, `_upsertClassPartial` (note: the existing dead-code `_getCollectionMetadata` is **not ported** per `ABClassControllerRefactor_SPEC.md` Decision 2 dead-code note)                            |
+| `ABClassResponseMapper.js` | `_normaliseClassPartial`, `_buildClassSummary`, `_toReadView` (the last is the new private method added by Section 3)                                                                                                   |
+
+### Delegation mandatory reads (when sub-agents are used)
+
+Implementation mandatory docs:
+
+- `src/backend/AGENTS.md` (§10 large file decomposition, §1.1 Node test compatibility boundary, §1.2 concatenation and load-order model, §3 logging, §7 default values rule)
+- `src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionValidation.js` (the canonical sub-class pattern)
+- `src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionPersistence.js` (the canonical persistence sub-class pattern, with `dbManager` and `validation` options)
+- `src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionResponseMapper.js` (the canonical response-mapper sub-class pattern)
+- `src/backend/y_controllers/ABClassController.js` (the source file for the moved method bodies)
+- `ABClassControllerRefactor_SPEC.md` (the full Decision 2 method-to-sub-class table)
+
+Testing Specialist mandatory docs:
+
+- `tests/controllers/assignmentDefinitionController.upsert.test.js` (the existing sub-class-in-isolation test pattern from the `AssignmentDefinition/` precedent)
+- `src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionValidation.js` (the constructor options-object pattern that the new tests should target)
+
+Code Reviewer mandatory docs:
+
+- Same as Implementation, plus `src/backend/y_controllers/AssignmentDefinition/index.js` (the canonical facade wiring pattern for context)
+
+Other delegated agents (if used) mandatory docs:
+
+- None for this section (no Docs, no Playwright)
+
+### Shared helper plan
+
+No new shared helpers. The sub-classes are pure collaborators with
+no cross-sub-class logic beyond what `ABClassControllerRefactor_SPEC.md`
+Decision 4 documents (roster calls persistence.\_upsertClassPartial;
+assignmentOps calls persistence.persistClassAndPartial).
+
+### Acceptance criteria
+
+- 5 new files exist in
+  `src/backend/y_controllers/ABClassController/`:
+  - `ABClassValidation.js`
+  - `ABClassRoster.js`
+  - `ABClassAssignmentOps.js`
+  - `ABClassPersistence.js`
+  - `ABClassResponseMapper.js`
+- Each sub-class file defines its class as a global
+  (e.g. `class ABClassValidation { ... }`) — the class name
+  matches the filename minus the extension, matching the
+  `AssignmentDefinition*` precedent.
+- Each sub-class file ends with the guarded
+  `if (typeof module !== 'undefined' && module.exports) {
+module.exports = <ClassName>; }` block.
+- Each sub-class constructor accepts a single options object
+  parameter and destructures the required dependencies
+  (e.g. `constructor({ dbManager, validation } = {})`).
+- The 5 sub-class files contain the moved method bodies from
+  the monolithic `ABClassController.js` (verbatim — no
+  refactoring, no signature changes).
+- The `_getCollectionMetadata` dead code is **not** ported
+  (per `ABClassControllerRefactor_SPEC.md` Decision 2).
+- The monolithic `src/backend/y_controllers/ABClassController.js`
+  is **unchanged** (still in place, still working).
+- 5 new unit-test files exist in
+  `tests/controllers/ABClassController/`:
+  - `ABClassValidation.unit.test.js`
+  - `ABClassRoster.unit.test.js`
+  - `ABClassAssignmentOps.unit.test.js`
+  - `ABClassPersistence.unit.test.js`
+  - `ABClassResponseMapper.unit.test.js`
+- The new unit tests test each sub-class in isolation against
+  the constructor options-object pattern.
+- All 5 new unit-test files pass.
+- The pre-existing `ABClassController` test suite (all 14
+  tests referenced in `ABClassControllerRefactor_SPEC.md`
+  §"Testing expectations") still passes unchanged (the
+  monolithic file is untouched, so this is automatic).
+
+### Required test cases (Red first)
+
+For each of the 5 sub-classes, the new unit-test file follows
+this pattern:
+
+Backend sub-class unit tests (new — 5 files):
+
+1. `tests/controllers/ABClassController/ABClassValidation.unit.test.js`
+   (new file) covers:
+   - Constructor accepts `{ dbManager, validation } = {}` (or
+     `{}` only — no required deps for the validation sub-class).
+   - `requireNonEmptyString(value, fieldName)` returns trimmed
+     value when valid, throws `TypeError` when invalid.
+   - `requireTrimmedString(value, fieldName)` returns trimmed
+     value when valid, throws `TypeError` when invalid.
+   - `requireIntegerGte(value, minValue, fieldName)` returns
+     the integer when valid, throws `TypeError` when invalid.
+   - `isMissingCollectionError(error)` returns `true` for
+     `error.code === 'COLLECTION_NOT_FOUND'`, `false`
+     otherwise.
+   - `buildUpdatePatch(parameters)` builds a patch with only
+     provided fields (preserves the `Object.hasOwn` semantics
+     of the monolithic implementation).
+   - `applyPatchToClass(abClass, patch)` applies the patch
+     fields to the `ABClass` instance.
+
+2. `tests/controllers/ABClassController/ABClassRoster.unit.test.js`
+   (new file) covers:
+   - Constructor accepts `{ dbManager, validation, persistence }`.
+   - `applyCourseMetadata(abClass, courseId)` calls
+     `ClassroomApiClient.fetchCourse` and applies the result to
+     the `ABClass` instance.
+   - `applyTeachers(abClass, courseId)` calls
+     `ClassroomApiClient.fetchTeachers` and populates teachers
+     and classOwner.
+   - `applyStudents(abClass, classId)` calls
+     `ClassroomApiClient.fetchAllStudents` and populates
+     students.
+   - `refreshRoster(abClass, classId)` clears owner/teachers/students
+     and calls the three `apply*` methods.
+   - `persistRoster(collection, existingDocument, abClass)`
+     calls `this._persistence._upsertClassPartial(abClass)`
+     after the write succeeds (verify the cross-sub-class
+     call site is wired correctly).
+   - `initialise(classId, options)` returns a new
+     `ABClass` instance with the cohortKey, yearGroupKey,
+     courseLength, and assignments applied, then populates
+     the roster.
+
+3. `tests/controllers/ABClassController/ABClassAssignmentOps.unit.test.js`
+   (new file) covers:
+   - Constructor accepts `{ dbManager, validation, persistence }`.
+   - `getFullAssignmentCollectionName(courseId, assignmentId)`
+     returns `assign_full_<courseId>_<assignmentId>`.
+   - `persistAssignmentRun(abClass, assignment)` writes the full
+     assignment to the dedicated collection, generates a partial
+     summary, and replaces the assignment in the `ABClass`
+     instance; calls `this._persistence.persistClassAndPartial(abClass)`
+     at the end (verify the cross-sub-class call site).
+   - `rehydrateAssignment(abClass, assignmentId)` loads the
+     full document, validates it, ensures the definition is
+     full, replaces the assignment in the class, and returns
+     the hydrated instance.
+   - `loadFullAssignmentDocument(courseId, assignmentId)` throws
+     `AssignmentNotFoundError` when the document is not found.
+   - `validateAssignmentDocument(document)` throws on missing
+     required fields.
+   - `ensureFullDefinition(assignment)` throws when the
+     authoritative definition is partial.
+   - `replaceAssignmentInClass(abClass, assignmentId, hydratedAssignment)`
+     throws when the assignment is not in the class.
+
+4. `tests/controllers/ABClassController/ABClassPersistence.unit.test.js`
+   (new file) covers:
+   - Constructor accepts `{ dbManager, validation }`.
+   - `persistClassAndPartial(abClass)` writes the full class
+     document to its collection (insertOne or replaceOne)
+     and then calls `upsertClassPartial`.
+   - `upsertClassPartial(abClass)` writes the partial
+     document to the `abclass_partials` collection
+     (insertOne or replaceOne) and calls `partialsCollection.save()`.
+
+5. `tests/controllers/ABClassController/ABClassResponseMapper.unit.test.js`
+   (new file) covers:
+   - Constructor accepts `{}` (no required deps for the response
+     mapper).
+   - `normaliseClassPartial(partialDocument)` returns the
+     normalised class partial payload (preserves the
+     `Object.hasOwn` semantics of the monolithic implementation).
+   - `buildClassSummary(abClass)` returns
+     `normaliseClassPartial(abClass.toPartialJSON())`.
+   - **Note**: `toReadView` is **not** covered by isolated
+     sub-class unit tests per `ABClassControllerRefactor_SPEC.md`
+     §"Testing expectations" — the existing
+     `tests/controllers/abclassController.readClass.test.js`
+     from Section 3 covers the transformation through the
+     public `readClass` method on the facade. The
+     `ABClassResponseMapper._toReadView` method is still
+     implemented (as part of the method-body lift from the
+     monolithic file) but not directly tested in this
+     section.
+
+### Section checks
+
+- `npm run lint:backend` passes.
+- `npm test -- tests/controllers/ABClassController/ABClassValidation.unit.test.js` passes.
+- `npm test -- tests/controllers/ABClassController/ABClassRoster.unit.test.js` passes.
+- `npm test -- tests/controllers/ABClassController/ABClassAssignmentOps.unit.test.js` passes.
+- `npm test -- tests/controllers/ABClassController/ABClassPersistence.unit.test.js` passes.
+- `npm test -- tests/controllers/ABClassController/ABClassResponseMapper.unit.test.js` passes.
+- `npm test -- tests/controllers/abclass-loadClass.test.js` passes (regression — the monolithic file is unchanged).
+- `npm test -- tests/controllers/abclass-upsert-update.test.js` passes (regression).
+- `npm test -- tests/controllers/abclassController.persistAssignment.test.js` passes (regression).
+- `npm test -- tests/controllers/abclassController.rehydrateAssignment.test.js` passes (regression).
+- `npm test -- tests/api/abclassMutations.test.js` passes (regression).
+- `npm test -- tests/api/apiHandler/` passes (regression).
+- Mandatory-read evidence gate passed for all delegated handoffs in this section.
+
+### Optional `@remarks` JSDoc follow-through
+
+- Each new sub-class file gets a top-of-file JSDoc that mirrors
+  the `AssignmentDefinition*` precedent (one-line class
+  description + ownership statement).
+- Each moved method preserves its existing JSDoc verbatim —
+  no `@remarks` updates in this section.
+- The `_toReadView` JSDoc is preserved verbatim from Section 3
+  (it was added in the monolithic file in Section 3 and is
+  lifted to `ABClassResponseMapper` in this section).
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes**: this is a "lift-and-shift" — method
+  bodies are moved from the monolithic file to the new sub-class
+  files, but the monolithic file is **not** modified in this
+  section. The new sub-class files are not yet wired into
+  `tests/setupGlobals.js` (that's Section 10) and the new
+  facade is not yet created (that's Section 9). The new
+  sub-class unit tests are isolated (they directly `require`
+  the new sub-class files).
+- **Deviations from plan**: none expected.
+- **Follow-up implications for later sections**: Section 9
+  creates the facade and wires the sub-classes; Section 10
+  adds the new sub-classes to `tests/setupGlobals.js`;
+  Section 11 removes the monolithic file. The unit tests
+  in this section are the contract for the new sub-classes
+  — they must continue to pass after Section 11 removes
+  the monolithic file.
+
+---
+
+## Section 9 — Create the facade `index.js` with full delegation
+
+### Objective
+
+Create the new `src/backend/y_controllers/ABClassController/index.js`
+facade file. The facade wires the 5 sub-class instances in its
+constructor (per `ABClassControllerRefactor_SPEC.md` Decision 4) and
+exposes the full public + private API of the existing monolithic
+`ABClassController` via one-line delegation. The facade ends with
+`module.exports = ABClassController;` (the same `module.exports`
+shape the monolithic file uses) so every existing
+`require('../../src/backend/y_controllers/ABClassController.js')`
+and every `new ABClassController()` call continues to work.
+
+In this section, the facade is created **alongside** the existing
+monolithic file. The monolithic file is **not** removed in this
+section (that's Section 11). To prevent Node module-resolution
+conflicts (two files both exporting `ABClassController`), the
+monolithic file is renamed or its `module.exports` line is
+temporarily commented out — see implementation notes below for
+the chosen approach.
+
+### Constraints
+
+- The facade exposes every public method on the existing
+  `ABClassController` class with the same name, signature, and
+  semantics. See `ABClassControllerRefactor_SPEC.md` Decision 3
+  for the complete delegation table.
+- The facade exposes every private leading-underscore method as
+  a one-line delegator to the appropriate sub-class instance.
+  See `ABClassControllerRefactor_SPEC.md` Decision 3 for the
+  complete delegation table.
+- The new `readClass` and `_toReadView` methods land in the
+  facade as a public method and a private delegator,
+  respectively (the method bodies were added to the monolithic
+  file in Section 3 and are lifted to the sub-classes in
+  Section 8).
+- The facade constructor wires the sub-class instances in the
+  order specified by `ABClassControllerRefactor_SPEC.md`
+  Decision 4: `validation` → `persistence` → `roster` →
+  `assignmentOps` → `responseMapper`. `persistence` is
+  constructed before `roster` and `assignmentOps` so the
+  facade can pass `this._persistence` to both.
+- The facade ends with
+  `if (typeof module !== 'undefined' && module.exports) {
+module.exports = ABClassController; }` — the same
+  `module.exports` shape the monolithic file uses. This is
+  the safety net that keeps every existing test passing
+  without modification.
+
+### Delegation mandatory reads (when sub-agents are used)
+
+Implementation mandatory docs:
+
+- `src/backend/AGENTS.md` (§10, §1.1, §1.2)
+- `src/backend/y_controllers/AssignmentDefinition/index.js` (the canonical facade)
+- `ABClassControllerRefactor_SPEC.md` (the full Decision 3 delegation table; the Decision 4 constructor wiring)
+- `src/backend/y_controllers/ABClassController.js` (the source of the public-method bodies that are moved to the facade)
+- `src/backend/y_controllers/ABClassController/ABClassValidation.js` and the other 4 sub-class files (created in Section 8; the facade delegates to them)
+
+Testing Specialist mandatory docs:
+
+- `tests/controllers/abclassController.persistAssignment.test.js` (tests that exercise private methods on the controller — the facade must re-expose every private method)
+- `tests/controllers/abclassController.rehydrateAssignment.test.js` (same)
+
+Code Reviewer mandatory docs:
+
+- Same as Implementation, plus `docs/developer/backend/api-layer.md` (the documentation references to `ABClassController.js` — the facade preserves the class name so these references stay accurate)
+
+Other delegated agents (if used) mandatory docs:
+
+- None for this section
+
+### Shared helper plan
+
+No new shared helpers. The facade is a pure delegation layer.
+
+### Acceptance criteria
+
+- `src/backend/y_controllers/ABClassController/index.js` exists.
+- The facade defines the `ABClassController` class as a global
+  (`class ABClassController { ... }`).
+- The facade constructor wires the 5 sub-class instances in the
+  order specified by `ABClassControllerRefactor_SPEC.md`
+  Decision 4.
+- The facade exposes all 8 public methods (`upsertABClass`,
+  `updateABClass`, `deleteABClass`, `loadClass`, `readClass`,
+  `saveClass`, `getAllClassPartials`, `initialise`) and all
+  23+ private methods (the complete list is in
+  `ABClassControllerRefactor_SPEC.md` Decision 3) as one-line
+  delegators.
+- The facade ends with the
+  `if (typeof module !== 'undefined' && module.exports) {
+module.exports = ABClassController; }` block.
+- **Node module-resolution conflict resolution**: the monolithic
+  `src/backend/y_controllers/ABClassController.js` and the new
+  `src/backend/y_controllers/ABClassController/index.js` would
+  both resolve to the same `require(...)` path. To avoid this
+  conflict, the implementation in this section:
+  1. **Option A (recommended)**: rename the monolithic file
+     to `src/backend/y_controllers/ABClassController.legacy.js`
+     and add a temporary re-export shim at the old path
+     (`module.exports = require('./ABClassController/index.js').ABClassController;`)
+     so the existing tests continue to work.
+  2. **Option B**: temporarily move the monolithic file to
+     `src/backend/y_controllers/ABClassController.monolith.js.bak`
+     and create a temporary re-export shim at the old path.
+  3. **Option C**: skip the shim and update all test files
+     to use the new path. **This is rejected** because it
+     would force a test-file edit in Section 9, violating the
+     refactor's "no test rewrites" promise.
+     The implementation must use Option A or B (Section 11
+     removes the shim and the monolithic file together).
+- The existing test suite continues to pass with the shim in
+  place. The shim makes `require('../../src/backend/y_controllers/ABClassController.js')`
+  resolve to the new facade.
+
+### Required test cases (Red first)
+
+No new tests in this section. The facade creation is a
+"GREEN" step for the existing test suite — the existing
+tests are the regression net. The test cases that verify
+the facade are the existing tests (they continue to pass
+unchanged).
+
+Backend controller tests (regression — must pass unchanged):
+
+1. `tests/controllers/abclass-loadClass.test.js` passes
+   (the `ABClassController` class still resolves and the
+   `loadClass` method is exposed via facade delegation).
+2. `tests/controllers/abclass-upsert-update.test.js`
+   passes (`upsertABClass`, `updateABClass`,
+   `_validateClassId`, `_buildUpdatePatch`,
+   `_applyPatchToClass`, etc., all accessible via the
+   facade).
+3. `tests/controllers/abclass-delete.test.js` passes
+   (`deleteABClass`, `_validateDeleteClassId`).
+4. `tests/controllers/abclassController.persistAssignment.test.js`
+   passes (`persistAssignmentRun`,
+   `_getFullAssignmentCollectionName`).
+5. `tests/controllers/abclassController.rehydrateAssignment.test.js`
+   passes (`rehydrateAssignment`).
+6. `tests/controllers/abclass-roster-sync.test.js` passes.
+7. `tests/controllers/abclass-partials-read.test.js` passes.
+8. `tests/controllers/abclass-controller-partials.test.js` passes
+   (`saveClass`).
+9. `tests/models/abclassManager.initialise.test.js` passes
+   (`initialise`).
+10. `tests/models/abclassManager.loadClass.test.js` passes.
+11. `tests/models/abclassManager.saveClass.test.js` passes.
+12. `tests/api/abclassMutations.test.js` passes.
+13. `tests/backend-api/abclassMutations.unit.test.js` passes.
+14. `tests/api/apiHandler/` tests pass
+    (`z_apiHandler.js` still uses `new ABClassController()`).
+15. `tests/controllers/assignmentController.startAssessmentRun.test.js`
+    and `tests/controllers/assignmentController.hydration.test.js`
+    pass (`AssignmentController` still uses
+    `new ABClassController()`).
+
+### Section checks
+
+- `npm run lint:backend` passes.
+- All 15+ regression test suites listed above pass unchanged
+  (the facade preserves the public API).
+- Mandatory-read evidence gate passed for all delegated
+  handoffs in this section.
+
+### Optional `@remarks` JSDoc follow-through
+
+- The facade gets a top-of-file JSDoc that mirrors the
+  `AssignmentDefinition/index.js` precedent.
+- The public methods on the facade preserve their JSDoc
+  verbatim (the JSDoc is on the facade, not the sub-class,
+  because the facade is the public API).
+- The private delegator methods on the facade do not need
+  JSDoc (they are one-line delegators; the JSDoc lives on
+  the sub-class method).
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes**: this section uses Option A
+  (rename the monolithic file to `.legacy.js` and add a
+  re-export shim at the old path). The shim is a
+  one-liner. The shim and the legacy file are removed in
+  Section 11.
+- **Deviations from plan**: none expected.
+- **Follow-up implications for later sections**: Section 10
+  wires the new sub-classes into `tests/setupGlobals.js`
+  (required for the sub-class unit tests to work in the
+  full test suite, though they pass in isolation in this
+  section); Section 11 removes the legacy file and the
+  shim.
+
+---
+
+## Section 10 — Wire `tests/setupGlobals.js` to load the new sub-classes
+
+### Objective
+
+Update `tests/setupGlobals.js` to load the 5 new sub-classes as
+globals in the right order (per `ABClassControllerRefactor_SPEC.md`
+Decision 6): `ABClassValidation` → `ABClassPersistence` →
+`ABClassRoster` → `ABClassAssignmentOps` → `ABClassResponseMapper`.
+The facade itself is not loaded as a global (it is loaded by callers
+via `require(...)` which resolves to the new `index.js` via Node's
+folder-based resolution).
+
+### Constraints
+
+- The new `g.ABClassValidation = require(...)`, etc., lines
+  must follow the `AssignmentDefinition*` pattern at lines
+  202-208 of the current `tests/setupGlobals.js`.
+- The load order must be: `ABClassValidation` →
+  `ABClassPersistence` → `ABClassRoster` →
+  `ABClassAssignmentOps` → `ABClassResponseMapper`. The
+  `Persistence` sub-class must load before `Roster` and
+  `AssignmentOps` so the facade can pass `this._persistence`
+  to both.
+- No new global is required for the facade itself.
+
+### Delegation mandatory reads (when sub-agents are used)
+
+Implementation mandatory docs:
+
+- `tests/setupGlobals.js` lines 202-208 (the canonical `g.AssignmentDefinition* = require(...)` pattern)
+- `src/backend/AGENTS.md` §1.2 (concatenation and load-order model)
+
+Testing Specialist mandatory docs:
+
+- Same as Implementation, plus the 5 new sub-class unit-test
+  files from Section 8 (they will be exercised by the full
+  test suite after this section adds the wiring).
+
+Code Reviewer mandatory docs:
+
+- Same as Implementation
+
+Other delegated agents (if used) mandatory docs:
+
+- None for this section
+
+### Shared helper plan
+
+No new shared helpers.
+
+### Acceptance criteria
+
+- `tests/setupGlobals.js` contains 5 new lines (in this order):
+  ```js
+  g.ABClassValidation = require('../src/backend/y_controllers/ABClassController/ABClassValidation.js');
+  g.ABClassPersistence = require('../src/backend/y_controllers/ABClassController/ABClassPersistence.js');
+  g.ABClassRoster = require('../src/backend/y_controllers/ABClassController/ABClassRoster.js');
+  g.ABClassAssignmentOps = require('../src/backend/y_controllers/ABClassController/ABClassAssignmentOps.js');
+  g.ABClassResponseMapper = require('../src/backend/y_controllers/ABClassController/ABClassResponseMapper.js');
+  ```
+- The lines are placed after the existing `g.AssignmentDefinition*`
+  lines (lines 202-208) to keep the global load order
+  consistent (sub-classes from the same decomposition-style
+  folder are grouped together).
+- The full backend test suite passes (the new sub-class
+  unit tests from Section 8 now run in the full test
+  suite, and the existing tests still pass).
+- The full backend lint passes.
+
+### Required test cases (Red first)
+
+No new tests in this section. The wiring is a configuration
+change; the existing tests (both the new sub-class tests
+from Section 8 and the existing controller tests) are the
+regression net.
+
+Backend tests (regression — must pass):
+
+1. The 5 new sub-class unit-test files from Section 8 pass
+   in the full test suite (`npm test`).
+2. The 15+ existing controller test suites from Section 9
+   pass in the full test suite.
+3. The full backend lint passes.
+
+### Section checks
+
+- `npm run lint:backend` passes.
+- `npm test` passes (full backend test suite, including the
+  new sub-class unit tests and the existing controller
+  tests).
+- Mandatory-read evidence gate passed for all delegated
+  handoffs in this section.
+
+### Optional `@remarks` JSDoc follow-through
+
+None for this section (configuration change only).
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes**: this is a 5-line addition to
+  `tests/setupGlobals.js`. The order is critical — putting
+  `ABClassPersistence` after `ABClassRoster` or
+  `ABClassAssignmentOps` would not cause an immediate
+  failure (the load order is only relevant when the facade
+  is constructed, which happens lazily on first
+  `new ABClassController()` call) but would be a latent
+  bug that surfaces when the facade is constructed.
+- **Deviations from plan**: none expected.
+- **Follow-up implications for later sections**: Section 11
+  removes the legacy file and the shim; the regression
+  check in Section 13 verifies the full test suite still
+  passes after that removal.
+
+---
+
+## Section 11 — Remove the monolithic file and re-export shim
+
+### Objective
+
+Remove the renamed legacy file
+(`src/backend/y_controllers/ABClassController.legacy.js` from
+Section 9 Option A, or `src/backend/y_controllers/ABClassController.monolith.js.bak`
+from Option B) and the re-export shim at
+`src/backend/y_controllers/ABClassController.js` (Option A) or
+the shim-only file (Option B). After this section, the only
+remaining file with the name `ABClassController` is the new
+folder. The existing test suite must continue to pass unchanged
+because the new facade preserves the public API and the
+`module.exports` shape.
+
+### Constraints
+
+- The legacy file is removed in its entirety.
+- The re-export shim is removed in its entirety.
+- The new folder
+  `src/backend/y_controllers/ABClassController/` is the only
+  file or folder with the name `ABClassController` in
+  `src/backend/y_controllers/`.
+- No test file is modified.
+- The full backend test suite passes.
+- The full backend lint passes.
+
+### Delegation mandatory reads (when sub-agents are used)
+
+Implementation mandatory docs:
+
+- `src/backend/AGENTS.md` (§10, §1.1)
+- `src/backend/y_controllers/AssignmentDefinition/` (the precedent for the final folder-only state)
+- The state of `src/backend/y_controllers/ABClassController.*` after Sections 8-10 (legacy file, shim, and new folder all present)
+
+Testing Specialist mandatory docs:
+
+- Same as Implementation, plus the existing `ABClassController`
+  test files (they must continue to pass against the new
+  structure)
+
+Code Reviewer mandatory docs:
+
+- Same as Implementation, plus the `assignmentController*` test
+  files (they use `new ABClassController()` and must continue
+  to work)
+
+Other delegated agents (if used) mandatory docs:
+
+- None for this section
+
+### Shared helper plan
+
+No new shared helpers. This section is a deletion.
+
+### Acceptance criteria
+
+- `src/backend/y_controllers/ABClassController.legacy.js`
+  (or `.monolith.js.bak`, depending on the Section 9 option
+  chosen) does **not** exist.
+- `src/backend/y_controllers/ABClassController.js` does
+  **not** exist (the shim is removed; the new folder is
+  the only path that resolves to the `ABClassController`
+  class via Node's folder-based resolution).
+- `src/backend/y_controllers/ABClassController/` folder
+  contains exactly: `index.js` (facade),
+  `ABClassValidation.js`, `ABClassRoster.js`,
+  `ABClassAssignmentOps.js`, `ABClassPersistence.js`,
+  `ABClassResponseMapper.js`.
+- `eslint.config.js` relaxed-rule file list (the array at
+  lines 192–212) is updated: the entry
+  `'src/backend/y_controllers/ABClassController.js'` is
+  replaced with `'src/backend/y_controllers/ABClassController/index.js'`.
+  Without this update, the new facade file's test fixtures
+  using indexed property access would fail lint.
+- The full backend test suite passes.
+- The full backend lint passes.
+
+### Required test cases (Red first)
+
+No new tests in this section. The deletion is verified by
+the existing test suite continuing to pass.
+
+Backend tests (regression — must pass):
+
+1. All 15+ existing controller test suites from Section 9
+   pass (the facade now stands alone; the legacy file and
+   shim are gone).
+2. The 5 new sub-class unit-test files from Section 8 pass.
+3. The full backend lint passes.
+
+### Section checks
+
+- `npm run lint:backend` passes.
+- `npm test` passes (full backend test suite).
+- Mandatory-read evidence gate passed for all delegated
+  handoffs in this section.
+
+### Optional `@remarks` JSDoc follow-through
+
+None for this section (deletion only).
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes**: this is a 2-file deletion plus a
+  1-line `eslint.config.js` path update. The removal is a
+  clean cut — the legacy file is no longer referenced by any
+  code path, and the shim is no longer needed because the
+  new folder resolves to the same
+  `require(...)` path.
+- **Deviations from plan**: none expected.
+- **Follow-up implications for later sections**: Section 12
+  is the documentation touch-up; Section 13 is the full
+  regression check.
+
+---
+
+## Section 12 — Documentation touch-up
+
+### Objective
+
+Add the exact sentence documented in
+`ABClassControllerRefactor_SPEC.md` Backend Changes step 5 to
+`LARGE_CODE_FILES.md`, immediately after the existing
+`y_controllers/ABClassController.js` table row (line 80). The
+sentence notes that the 4-sub-file plan in that document is
+superseded by the new folder-based decomposition.
+
+No other documentation changes are required. The existing
+`api-layer.md` references to
+`src/backend/y_controllers/ABClassController.js` (lines 310, 364,
+367, 381, 388, 398) still resolve to the same class via the new
+folder (Node's folder-based resolution finds the `index.js`).
+
+### Constraints
+
+- The sentence is added verbatim per
+  `ABClassControllerRefactor_SPEC.md` §"Documentation and rollout notes".
+- No other lines in `LARGE_CODE_FILES.md` are modified.
+- No other documentation files are modified.
+
+### Delegation mandatory docs
+
+Docs agent mandatory docs:
+
+- `LARGE_CODE_FILES.md` (the file being updated)
+- `ABClassControllerRefactor_SPEC.md` (the exact sentence to add)
+
+Code Reviewer mandatory docs:
+
+- Same as Docs
+
+### Shared helper plan
+
+None for this section.
+
+### Acceptance criteria
+
+- The exact sentence from
+  `ABClassControllerRefactor_SPEC.md` §"Documentation and rollout notes"
+  is added to `LARGE_CODE_FILES.md` immediately after line 80.
+- No other changes to `LARGE_CODE_FILES.md`.
+- The full backend lint passes (no code changes; this is a
+  documentation-only section).
+
+### Required test cases / checks
+
+No new tests. The acceptance is verified by reading the
+updated `LARGE_CODE_FILES.md`.
+
+Documentation review (verification by `Docs` agent):
+
+1. The new sentence matches the spec verbatim.
+2. The new sentence is placed immediately after the
+   `y_controllers/ABClassController.js` row.
+3. No other changes to `LARGE_CODE_FILES.md`.
+
+### Section checks
+
+- `npm run lint:backend` passes (no code changes).
+- Mandatory-read evidence gate passed for all delegated
+  handoffs in this section.
+
+### Optional `@remarks` JSDoc follow-through
+
+None for this section.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes**: this is a 1-sentence addition.
+- **Deviations from plan**: none expected.
+- **Follow-up implications for later sections**: Section 13
+  is the final regression check for the refactor.
+
+---
+
+## Section 13 — Refactor regression checks
+
+### Objective
+
+Run the full regression suite for the refactor: the full backend
+test suite (including the 5 new sub-class unit tests, the 15+
+existing controller tests, and the 6+ existing cross-controller
+tests), the full backend lint, and the regression checker. Verify
+that no regressions are introduced by the refactor and that all
+the new sub-class unit tests pass in the full test suite.
+
+### Constraints
+
+- All test commands run against the final state of the
+  refactor (legacy file removed, shim removed, new folder
+  in place, `tests/setupGlobals.js` updated).
+- The regression checker baseline is updated to reflect the
+  refactor (per the `.opencode/skills/regression-checker`
+  workflow).
+
+### Acceptance criteria
+
+- `npm test` passes (full backend test suite).
+- `npm run lint:backend` passes.
+- Regression checker baseline established, current run
+  compared to baseline, no regressions introduced.
+- The 5 new sub-class unit tests pass in the full test
+  suite.
+- The 15+ existing controller test suites pass in the full
+  test suite.
+- The 6+ existing cross-controller test suites pass in the
+  full test suite.
+- The 4 callers of `ABClassController` (in
+  `z_apiHandler.js` line 25,
+  `assignmentAssessment.js` line 125,
+  `abclassMutations.js` line 7,
+  `AssignmentController.js` lines 138 and 427) continue to
+  work without any caller-side changes.
+
+### Required checks
+
+1. Run `npm test` — all tests pass.
+2. Run `npm run lint:backend` — passes.
+3. Run the regression checker baseline + comparison — no
+   regressions introduced.
+4. Verify the 5 new sub-class unit-test files are exercised
+   by the full test suite.
+5. Verify the 4 callers of `ABClassController` continue to
+   work (grep for `new ABClassController()` in
+   `src/backend` — there should be no changes from the
+   pre-refactor state).
+6. Verify the `Files read` evidence is complete for every
+   delegated handoff in Sections 8-12.
+
+### Section checks
+
+- `npm test` passes (full backend test suite).
+- `npm run lint:backend` passes.
+- Regression checker shows no new failures.
+- `Files read` evidence gate passed for every delegated
+  handoff in Sections 8-12.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes**: this is a verification pass; no
+  code changes unless issues are found.
+- **Deviations from plan**: none expected.
+- **Follow-up implications for later sections**: this is the
+  final refactor-only regression check. The next round
+  (e.g. the class-detail page) will re-run the regression
+  checker with a new baseline.
+
+---
+
+## Regression and contract hardening (refactor + endpoint combined)
+
+### Objective
+
+Verify that no existing functionality is broken by either the
+`getABClass` endpoint work (Sections 1-7) or the
+`ABClassController` refactor (Sections 8-13), and that the new
+endpoint behaves correctly under the documented contract
+(envelope shape, error mapping, response shape).
+
+### Constraints
+
+- All existing tests in the touched areas (backend API tests,
+  controller tests, frontend service tests, frontend query
+  tests) still pass.
+- The full backend lint (`npm run lint:backend`) and
+  frontend lint (`npm run lint:frontend`) pass.
 - No new lint warnings introduced.
-- The new endpoint is correctly registered in `ALLOWLISTED_METHOD_HANDLERS` and reachable from the frontend.
-- The shared `validateParametersObject_` is correctly referenced as a global from `abclassMutations.js` and `abclassRead.js`.
+- The new endpoint is correctly registered in
+  `ALLOWLISTED_METHOD_HANDLERS` and reachable from the
+  frontend.
+- The shared `validateParametersObject_` is correctly
+  referenced as a global from `abclassMutations.js` and
+  `abclassRead.js`.
+- The `ABClassController` class is accessible via
+  `require('../../src/backend/y_controllers/ABClassController.js')`
+  (which resolves to the new `index.js` via Node's
+  folder-based resolution) and the public API is preserved.
 
 ### Acceptance criteria
 
 - All tests across the touched areas pass.
 - The lint commands pass.
-- A manual smoke test of the new endpoint (in a sandbox or test environment) confirms:
-  - `getABClass({ classId: 'class-001' })` returns the full class envelope with partial assignments.
-  - `getABClass({ classId: 'nonexistent' })` returns `null`.
-  - `getABClass({ classId: '../unsafe' })` returns an `INVALID_REQUEST` envelope.
+- A manual smoke test of the new endpoint (in a sandbox or
+  test environment) confirms:
+  - `getABClass({ classId: 'class-001' })` returns the full
+    class envelope with partial assignments.
+  - `getABClass({ classId: 'nonexistent' })` returns
+    `null`.
+  - `getABClass({ classId: '../unsafe' })` returns an
+    `INVALID_REQUEST` envelope.
+- The 4 callers of `ABClassController` (in
+  `z_apiHandler.js` line 25,
+  `assignmentAssessment.js` line 125,
+  `abclassMutations.js` line 7,
+  `AssignmentController.js` lines 138 and 427) continue to
+  work without any caller-side changes.
 
 ### Required test cases/checks
 
 1. Run `npm test` — all tests pass.
 2. Run `npm run lint:backend` — passes.
 3. Run `npm run lint:frontend` — passes.
-4. Run the regression checker (per the `.opencode/skills/regression-checker` workflow):
+4. Run the regression checker (per the
+   `.opencode/skills/regression-checker` workflow):
    - Establish a baseline (if not already done).
    - Run the current state.
-   - Compare the baseline to the current state; verify no regressions are introduced.
-5. Verify `ALLOWLISTED_METHOD_HANDLERS` in `z_apiHandler.js` contains the new `getABClass` entry.
-6. Verify `queryKeys.ts` and `sharedQueries.ts` contain the new entries.
-7. Verify the `Files read` evidence is complete for every delegated handoff across sections 1–7.
+   - Compare the baseline to the current state; verify no
+     regressions are introduced.
+5. Verify `ALLOWLISTED_METHOD_HANDLERS` in
+   `z_apiHandler.js` contains the new `getABClass` entry.
+6. Verify `queryKeys.ts` and `sharedQueries.ts` contain the
+   new entries.
+7. Verify the new `ABClassController/` folder exists and the
+   legacy `ABClassController.js` file is removed.
+8. Verify the `Files read` evidence is complete for every
+   delegated handoff across Sections 1-13.
 
 ### Section checks
 
@@ -738,13 +1645,19 @@ Verify that no existing functionality is broken by the changes, and that the new
 - `npm run lint:backend` passes.
 - `npm run lint:frontend` passes.
 - Regression checker shows no new failures.
-- `Files read` evidence gate passed for every delegated handoff in this round.
+- `Files read` evidence gate passed for every delegated
+  handoff in this round.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes**: the regression check is a verification pass; no code changes unless issues are found.
+- **Implementation notes**: the regression check is a
+  verification pass; no code changes unless issues are found.
 - **Deviations from plan**: none expected.
-- **Follow-up implications for later sections**: this is the final regression check for this round. A future class-detail page round will re-run the regression checker with a new baseline that includes the class-detail page code.
+- **Follow-up implications for later sections**: this is the
+  final regression check for this round. A future
+  class-detail page round will re-run the regression checker
+  with a new baseline that includes the class-detail page
+  code.
 
 ---
 
@@ -791,12 +1704,26 @@ Reconcile the planned-only helper entries in canonical docs to their actual impl
 
 ## Suggested implementation order
 
+### Part 1 — `getABClass` API endpoint (governed by `SPEC.md` v1.3)
+
 1. **Section 1** — Move `abclassMutations.js` into the new folder. (Foundational; no behaviour change.)
 2. **Section 2** — Create `abclassValidation.js` and update `abclassMutations.js` to reference the global. (Foundational; unlocks the shared-validation pattern.)
-3. **Section 3** — Add `ABClassController.readClass` and `_toReadView`. (Controller layer; required by section 4.)
+3. **Section 3** — Add `ABClassController.readClass` and `_toReadView` to the monolithic `ABClassController.js`. (Controller layer; required by section 4.)
 4. **Section 4** — Add `getABClass_` transport handler and `ALLOWLISTED_METHOD_HANDLERS` entry. (Transport layer; depends on section 3.)
 5. **Section 5** — Frontend service module and Zod schema. (Frontend; independent of sections 1–4 in terms of compile-time dependencies, but logically the frontend consumes the backend contract from section 4.)
 6. **Section 6** — Frontend query factory. (Depends on section 5.)
 7. **Section 7** — `ClassNotFoundError` JSDoc + `api-layer.md` + `DATA_SHAPES.md` documentation. (Documentation; can be done at any point but is grouped here for clarity.)
-8. **Regression and contract hardening** — Final verification.
-9. **Documentation and rollout notes** — Helper-entry reconciliation + docs reviewer sign-off.
+
+### Part 2 — `ABClassController` decomposition (governed by `ABClassControllerRefactor_SPEC.md` v1.0)
+
+8. **Section 8** — Sub-class unit tests (RED) + sub-class file creation (GREEN). Lift method bodies from the monolithic file to the 5 new sub-class files; the monolithic file remains untouched. Sub-class unit tests in isolation.
+9. **Section 9** — Create the facade `index.js` with full delegation. Rename the monolithic file to `.legacy.js` (or `.monolith.js.bak`) and add a re-export shim so existing tests continue to resolve. The new facade stands alongside the legacy file.
+10. **Section 10** — Wire `tests/setupGlobals.js` to load the 5 new sub-classes in the right order (Validation → Persistence → Roster → AssignmentOps → ResponseMapper).
+11. **Section 11** — Remove the legacy file and the re-export shim. The new folder is the only path that resolves to the `ABClassController` class.
+12. **Section 12** — Documentation touch-up: add the exact sentence to `LARGE_CODE_FILES.md` noting the 4-sub-file plan is superseded.
+13. **Section 13** — Refactor regression checks. Full backend test suite, full backend lint, regression checker.
+
+### Combined
+
+14. **Regression and contract hardening** — Final verification across Parts 1 and 2.
+15. **Documentation and rollout notes** — Helper-entry reconciliation + docs reviewer sign-off.
