@@ -1,428 +1,941 @@
-# `getAssignment` API Endpoint Specification
+# `getABClass` API Endpoint Specification
 
 ## Status
 
-- Implemented v1.0
-  Implemented 2026-06-15. See ACTION_PLAN.md for delivery history.
+- Draft v1.3
+- Updated after third `Planner Reviewer` pass: controller method renamed to leading
+  underscore (`_toReadView`) per `ABClassController` convention; "imports" language
+  replaced with "references as a global" for shared validation (GAS concatenation
+  model); `module.exports` of private controller method removed (test through
+  `readClass` instead); `abclassValidation.js` added to ESLint relaxed-rule list;
+  `abclassRead.js` exports aligned with `assignmentAssessment.js` precedent (export
+  only `{ getABClass_ }`, not the file-local `validateIdentifier_` wrapper);
+  `api-layer.md` placement clarified to "immediately after `getABClassPartials`";
+  corrupt-document test case added to the controller test expectations; GAS
+  load-order note added (function calls are lazy, no numeric prefixes needed).
+  Awaiting fourth review (or sign-off).
 
 ## Purpose
 
 This document defines the intended behaviour for a new backend API endpoint that returns a single
-fully-hydrated Assignment object by course and assignment identifiers.
+fully-populated `ABClass` instance by class identifier, for class-detail views in the React
+frontend.
 
 The endpoint will be used to:
 
-- fetch complete assignment data (tasks, student submissions, artifacts, assessments, feedback)
-  for frontend visualisation pages
-- enable parallel fetching of multiple assignments from the frontend by calling this endpoint once
-  per assignment
+- load the complete class envelope (metadata, owner, teachers, students, and assignment summaries)
+  for a class-detail page in a single call
+- enable the frontend to decide per-assignment hydration (full payload via the existing
+  `getAssignment` endpoint, partial via the embedded data) without an N+1 round trip for the
+  common fields
+- provide enough information for the frontend to display per-assignment definition staleness
+  using the embedded `definitionKey`, `primaryTopicKey`, and the partial metadata, without
+  requiring a separate call to `getAssignmentDefinitionPartials`
 
 This endpoint is **not** intended to:
 
-- return a collection of assignments in a single call — the frontend will make parallel calls
-- trigger, modify, or delete assignments — this is read-only
-- return partial/lightweight assignment summaries — use the existing ABClass partials for that
-- replace or alter the existing `startAssessmentRun` or `getGoogleClassroomAssignments` endpoints
+- return a collection of classes — the existing `getABClassPartials` endpoint already covers the
+  list view
+- refresh the teacher/student roster from Google Classroom — `ABClassController.loadClass` keeps
+  that write-effect behaviour for the assessment-run path; this endpoint is a pure read of
+  stored data
+- rehydrate any single assignment to its full payload — the existing `getAssignment` endpoint
+  is the canonical path for that
+- modify any stored data — this is a read endpoint with no storage side effects
+- replace the existing `getABClassPartials`, `upsertABClass`, `updateABClass`, or `deleteABClass`
+  endpoints
 
 ## Agreed product decisions
 
-1. **Method name**: `getAssignment` (singular). Takes `{ courseId, assignmentId }` and returns one
-   full Assignment.
-2. **Internal delegation**: Uses `ABClassController.rehydrateAssignment(abClass, assignmentId)` to
-   load the full assignment from its dedicated collection (`assign_full_<courseId>_<assignmentId>`).
-3. **Response shape**: Returns the complete `Assignment.toJSON()` shape with all nested data
-   (tasks, submissions, artifacts, assessments, feedback). All `Date` objects are
-   converted to ISO 8601 strings before transport.
-4. **Not-found behaviour**: Returns `null` when no persisted assignment exists for the given
-   course/assignment pair, consistent with the `null` return of the existing
-   `getAssignmentDefinition_` handler on definition-not-found. Note that `getAssignment_` has
-   an additional failure mode that `getAssignmentDefinition_` does not: if the ABClass itself
-   cannot be loaded via `loadClass(courseId)`, the resulting error propagates as
-   `INTERNAL_ERROR` (not as `null`), because the class must exist for the endpoint to be
-   meaningful.
-5. **Parallel frontend fetching**: The frontend will call this endpoint once per assignment in
-   parallel rather than relying on a backend-collection endpoint.
-6. **Typed not-found error**: The not-found case is signalled by a dedicated
-   `AssignmentNotFoundError` thrown from `ABClassController._loadFullAssignmentDocument` (in place
-   of the current generic `Error`). The API handler catches this typed error and returns `null`.
-   This replaces the previous substring-on-error-message approach: the typed error is robust to
-   future changes in the controller's error message and is structurally testable via `instanceof`.
-   The new error type is an internal transport signal (not mapped to a user-visible error code in
-   `_mapErrorToFailureEnvelope`) — it is caught and null-converted at the API boundary.
-7. **`progressTracker` strip at the API boundary**: The handler defensively deletes the
-   `progressTracker` field from the serialised response (and any other transient, non-`toJSON`
-   field) before returning. `Assignment.toJSON()` already omits `progressTracker` per its JSDoc;
-   the explicit strip at the boundary is defence-in-depth against a future change to
-   `Assignment.toJSON()` that might inadvertently re-introduce `progressTracker` into the
-   serialised output. The new `AssignmentNotFoundError` follows the existing pattern
-   (`src/backend/Utils/ErrorTypes/DefinitionStaleError.js`): extends `Error`, sets `this.name`,
-   accepts domain-specific options in the constructor, and includes a guarded `module.exports`
-   block for Node test compatibility. The new error class does **not** accept a `cause`
-   parameter — `DefinitionStaleError` does not, and the only throw site
-   (`_loadFullAssignmentDocument`) has no wrapped error to pass.
+1. **Method name**: `getABClass` (singular). Takes `{ classId }` and returns one full
+   `ABClass` document.
+2. **Internal delegation**: a new controller method `ABClassController.readClass(classId)` —
+   a pure-read counterpart to the existing `loadClass(classId)`. The new method reads the
+   stored document, deserialises it via `ABClass.fromJSON`, applies the private
+   `_toReadView` transformation, and returns a transport-ready plain object (not a model
+   instance). It does **not** call `_refreshRoster` and does **not** call `_persistRoster`. It
+   does **not** perform any Google Classroom API calls.
+3. **Response shape**: returns the full class envelope as a plain object: `classId, className,
+cohortKey, courseLength, yearGroupKey, classOwner, teachers, students, active` (these come
+   from `ABClass.toJSON()`), plus `assignments[]` (which does **not** come straight from
+   `ABClass.toJSON()` — see decision 4). Date fields in the embedded `assignments[]` and
+   `submissions[]` are ISO 8601 strings (the model layer already serialises them this way;
+   no boundary date normalisation is needed at the response root because the root shape
+   carries no `Date` fields).
+4. **Assignment shape and controller-owned transformation**: `ABClass.toJSON()` serialises each
+   assignment via `Assignment.toJSON()` (the **full** shape — `referenceDocumentId`,
+   `templateDocumentId`, full `tasks`, full `submissions`). The new endpoint must instead
+   return the partial shape (`Assignment.toPartialJSON()` — `documentType` at root, embedded
+   `assignmentDefinition` with `tasks: null` and `referenceLastModified` /
+   `templateLastModified` omitted, `submissions[]` as `StudentSubmissionItem` partials with
+   `artifact.content` and `artifact.contentHash` set to `null` and `assessments[].reasoning`
+   stripped). The transformation lives in the **controller** as a private
+   `ABClassController._toReadView(abClass)` method, following the
+   `getAllClassPartials` controller-level normalisation precedent. The controller's
+   `readClass` method returns the transport-ready plain object directly. The transport
+   handler is then a thin pass-through: validation, controller call, error catch. The
+   controller also performs the defence-in-depth `delete _hydrationLevel` and
+   `delete progressTracker` strip on each embedded assignment (currently a no-op because
+   neither field is in `Assignment.toPartialJSON()` output, but kept as defence-in-depth
+   against a future model change). Full per-assignment payload (artifact content,
+   assessment reasoning) is fetched on demand via the existing `getAssignment` endpoint,
+   parallelising per-assignment calls in the frontend following the precedent set by
+   `SPEC.md` agreed decision 5.
+5. **No roster refresh / no storage mutation**: the new endpoint is a pure read. It does not
+   re-fetch teacher/student lists from the Classroom API and does not write back to the
+   `abclass_partials` registry or the per-class collection. Roster data is whatever was last
+   persisted by `loadClass` (called by `AssignmentController.processSelectedAssignment` and
+   `startAssessmentRun`) or by `upsertABClass`.
+6. **Not-found behaviour**: returns `null` when no persisted class document exists for the
+   given `classId`. The handler catches the typed `ClassNotFoundError` thrown by the new
+   `ABClassController.readClass` and returns `null`, mirroring the existing `getAssignment`
+   and `getAssignmentDefinition` handlers. No new error code is introduced. The handler must
+   catch the typed error explicitly because the `apiHandler` dispatcher has no special
+   mapping for `ClassNotFoundError` — unmapped errors fall through to `INTERNAL_ERROR`
+   (see `src/backend/z_Api/z_apiHandler.js` lines 15–21 and 406–451). Any future endpoint
+   that wants the same `null` contract must catch the typed error explicitly too.
+7. **Transient field strip**: defence-in-depth `delete` calls remove `_hydrationLevel` and
+   `progressTracker` from each embedded assignment in the response. Both fields are
+   currently absent from `Assignment.toJSON()` and `Assignment.toPartialJSON()` output (the
+   `Assignment.toJSON()` JSDoc says "progressTracker is intentionally not serialised",
+   and `_hydrationLevel` is set on the instance by `ABClass.fromJSON` reconstruction but
+   not included in the returned object). The strip is therefore a documented no-op today
+   and is kept only as defence-in-depth against a future model change that might
+   re-introduce these fields — mirroring the `getAssignment` precedent at
+   `assignmentAssessment.js` lines 130–134. The strip lives in the controller's
+   `_toReadView` method (which owns the wire shape); the transport handler is a thin
+   pass-through. Stripping `_hydrationLevel` goes beyond the `getAssignment_` precedent
+   (which only strips `progressTracker`), but is added here because
+   `ABClass.fromJSON` sets `_hydrationLevel: 'partial'` on each reconstructed
+   assignment — so a future change to `Assignment.toPartialJSON()` that included this
+   field would otherwise leak into the response.
+8. **Method placement**: the new files live in a new `abclass/` domain folder:
+   - `src/backend/z_Api/abclass/abclassMutations.js` (moved from `z_Api/abclassMutations.js`,
+     existing file unchanged in content, only its location moves)
+   - `src/backend/z_Api/abclass/abclassRead.js` (new)
+   - `src/backend/z_Api/abclass/abclassValidation.js` (new — shared validation
+     primitives for the `abclass/` domain folder, following the
+     `assignmentDefinitionValidation.js` precedent)
+     The folder structure follows the `AssignmentDefinition/` precedent and is required by
+     backend AGENTS §11 ("Create a domain folder when at least 2 files share a common domain
+     prefix"). The two `abclass*` files now share the `abclass` prefix, so the rule triggers.
+     The new handler is `getABClass_` with thin file-local validation helpers. The existing
+     `abclassMutations.js` keeps its current trailing-underscore pattern.
 
 ## Existing system constraints
 
 ### Backend or API constraints already in place
 
-- `apiHandler` in `z_Api/z_apiHandler.js` is the sole transport entry point. The new method must
-  be registered in `ALLOWLISTED_METHOD_HANDLERS`.
-- All functions callable via `google.script.run` must use the trailing-underscore pattern to prevent
-  GAS global exposure.
-- `Date` objects are prohibited in `google.script.run` return values. All must be converted to ISO
-  8601 strings at the transport boundary via `DateUtils.normaliseDateFields`.
-- Transport-boundary validation belongs in the API-layer trailing-underscore helper; domain
-  invariants belong in the controller.
-- `ABClassController.rehydrateAssignment` requires a loaded ABClass instance. The API handler
-  must load the ABClass for the given `courseId` before delegating.
+- `apiHandler` in `z_Api/z_apiHandler.js` is the sole transport entry point. The new method
+  must be registered in `ALLOWLISTED_METHOD_HANDLERS` and must follow the
+  trailing-underscore private helper pattern.
+- All functions callable via `google.script.run` must use the trailing-underscore pattern to
+  prevent GAS global exposure. The handler `getABClass_` and the file-local helpers
+  (`validateParametersObject_`, `validateIdentifier_`) all use the trailing-underscore
+  convention. The `validateParametersObject_` primitive is shared with
+  `abclassMutations.js` via the new `abclass/abclassValidation.js` file (see
+  §Validation recommendation).
+- `Date` objects are prohibited in `google.script.run` return values. The new endpoint's
+  response root has no `Date` fields (it emits `classId, className, cohortKey,
+courseLength, yearGroupKey, classOwner, teachers, students, active`), so a
+  `DateUtils.normaliseDateFields` call at the root would be a vacuous no-op and is
+  therefore not used. Nested date fields inside `assignments[]` and `submissions[]`
+  rely on the corresponding `toJSON()` implementations (which already emit ISO
+  strings). This is a deliberate difference from the `getAssignment_` precedent
+  (whose root shape **does** include `Date` fields from `Assignment.toJSON()` and
+  therefore does need the normalisation call).
+- Transport-boundary validation belongs in the API-layer trailing-underscore helper. Domain
+  invariants (non-empty `classId`, integer range checks) belong in the controller.
+- `ClassNotFoundError` (`src/backend/Utils/ErrorTypes/ClassNotFoundError.js`) is the typed
+  not-found error already in use. The `apiHandler` dispatcher has **no** special mapping
+  for it — unmapped errors fall through to `INTERNAL_ERROR` per
+  `_mapErrorToFailureEnvelope` (`src/backend/z_Api/z_apiHandler.js` lines 406–451). The
+  new `getABClass` handler catches the typed error explicitly and returns `null`. The
+  JSDoc on `ClassNotFoundError` should be updated to clarify this contract (see
+  §Documentation and rollout notes).
+- `ABClassController.loadClass(classId)` already calls `_refreshRoster` (Google Classroom
+  fetch) and `_persistRoster` (storage write). The new `readClass` method must not inherit
+  either behaviour; it is a pure read.
 
 ### Current data-shape constraints
 
-- Full assignments are persisted in dedicated collections named `assign_full_<courseId>_<assignmentId>`.
-- The `Assignment.toJSON()` method produces the canonical serialisation shape. It already converts
-  `dueDate` and `lastUpdated` to ISO strings, and submission-level dates (`createdAt`, `updatedAt`)
-  are stored as strings.
-- `ABClassController._loadFullAssignmentDocument` throws a dedicated `AssignmentNotFoundError`
-  (defined in `src/backend/Utils/ErrorTypes/AssignmentNotFoundError.js`) when the full assignment
-  document is not found in its dedicated collection. The error message retains the existing
-  diagnostic format (`No document found in collection ${collectionName} for courseId=${courseId},
-assignmentId=${assignmentId}.`) and the error carries structured metadata as instance
-  properties `this.courseId`, `this.assignmentId`, and `this.collectionName` for downstream
-  diagnostics. Other errors from `rehydrateAssignment` (e.g. corrupt document from
-  `_validateAssignmentDocument`, partial-definition rejection from `_ensureFullDefinition`,
-  assignment-not-in-class from `_replaceAssignmentInClass`) are unaffected and must still
-  propagate as internal errors — the handler's catch is scoped to
-  `instanceof AssignmentNotFoundError` only.
+- `ABClass.toJSON()` (lines 272–285 of `src/backend/Models/ABClass.js`) emits the canonical
+  full class shape — but the new endpoint does **not** return this directly. The
+  `assignments` field of `ABClass.toJSON()` is serialised via `ArrayUtils.serialiseArray`
+  which calls `Assignment.toJSON()` (the full shape with `referenceDocumentId`,
+  `templateDocumentId`, full `tasks`, and full `submissions`). The new endpoint
+  transforms the response in the controller's private `_toReadView` method to replace
+  each assignment with its `Assignment.toPartialJSON()` output. See decision 4 for the
+  full rationale.
+- `Assignment.toPartialJSON()` (lines 116–134 of `src/backend/AssignmentProcessor/Assignment.js`)
+  is what the new endpoint will return for each assignment. The redactions
+  (`tasks: null`, omitted `referenceLastModified` / `templateLastModified`, redacted
+  artifact content and assessment reasoning) are documented in
+  `docs/developer/backend/DATA_SHAPES.md` and the `rehydration.md` how-to. They are
+  load-bearing and not an oversight.
+- `ABClass.fromJSON` (lines 320–364) reconstructs the class from a stored document and rebuilds
+  each `assignments[]` entry as a typed `Assignment` instance with `_hydrationLevel: 'partial'`.
+  The new `readClass` method should reuse `ABClass.fromJSON` for deserialisation, not roll
+  its own.
 
 ### Frontend or consumer architecture constraints
 
-- The frontend service will later call this endpoint via `callApi` in `apiService.ts`.
-- The frontend will need a Zod schema for the response shape. This is deferred to the frontend
-  work that uses this endpoint — it is out of scope for this backend-only change.
-- There is no existing Zod schema for a full Assignment response; one will be created when the
-  frontend pages are built.
+- All frontend-to-backend calls must route through `src/frontend/src/services/apiService.ts`
+  (`callApi`). The new endpoint is wrapped in a frontend service module
+  (`src/frontend/src/services/googleClassrooms/classDetail/classDetailService.ts` and
+  the matching Zod schema in `classDetailService.zod.ts`).
+- Zod is the validation framework for all new frontend validation logic. The Zod schema is
+  defined first, and the TypeScript type is derived from it via `z.infer<typeof ...>`.
+- The frontend service follows the existing pattern in
+  `src/frontend/src/services/googleClassrooms/classPartialsService.ts`:
+  - export a typed async function that calls `callApi(methodName)`
+  - validate the parsed envelope `data` through a Zod response schema
+  - re-export types via `export type { ... } from './<schema-file>'`
+- The class detail query (when added) integrates with the existing
+  `src/frontend/src/query/sharedQueries.ts` factory pattern via `queryOptions` and the shared
+  `queryKeys` factory.
+- The frontend service is added to a new `classDetail/` subfolder:
+  - `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.ts` (new)
+  - `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts` (new)
+  - `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.spec.ts`
+    (new — Zod schema tests, following the `classPartials.zod.spec.ts` precedent)
+  - `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.spec.ts`
+    (new — service tests)
+    The folder structure follows the `assignmentDefinition/` precedent and is required by
+    frontend AGENTS §12 ("Create a subfolder when at least 2 files share a common domain
+    prefix"). The new `classDetail*` files share the `classDetail` prefix, so the rule
+    triggers. The pre-existing `classPartials*` files in `services/googleClassrooms/` also
+    qualify for the rule (3 files sharing the `classPartials` prefix) and should be
+    reorganised into a `services/googleClassrooms/classPartials/` subfolder in a follow-up
+    delivery — out of scope for this round.
 
 ## Domain and contract recommendations
 
 ### Why this approach is preferable
 
-- **Reuse over duplication**: Delegates to the existing `rehydrateAssignment` method rather than
-  duplicating collection-access logic.
-- **Consistency**: Matches the `getAssignmentDefinition_` handler / `getAssignmentDefinition`
-  allowlist entry pattern (single-entity read, returns `null` on not-found, uses
-  `DateUtils.normaliseDateFields` at the boundary).
-- **Simplicity**: A single-assignment endpoint is simpler to implement, test, and reason about
-  than a collection endpoint that must handle partial failures across multiple assignment loads.
-- **Parallelism**: The frontend can fetch multiple assignments concurrently via parallel
-  `google.script.run` calls, avoiding synchronous backend iteration.
+- **Pure-read separation of concerns.** A read endpoint should not mutate storage. The
+  existing `loadClass` is a write-effect read by design (it keeps the assessment-run path
+  self-healing against classroom roster drift), but a frontend class-detail page that opens
+  once per navigation should not trigger a Classroom API round trip or a partial-registry
+  rewrite on every render. Splitting the read into a new controller method lets each caller
+  pick the right behaviour.
+- **Consistency with `getAssignment` and `getAssignmentDefinition`.** The new endpoint
+  returns `null` on not-found via the same `instanceof` typed-error catch pattern, and uses
+  the same `delete transient field` boundary defence pattern (currently a no-op for both
+  fields, but kept for consistency with the precedent). A frontend developer reading one
+  handler can read the others without context-switching. The `DateUtils.normaliseDateFields`
+  call from the precedent is **not** used here because the new endpoint's response root
+  has no `Date` fields (unlike `getAssignment` whose root does).
+- **Partial assignment shape keeps payload bounded.** `assignments[]` in the response uses
+  the partial shape (`Assignment.toPartialJSON()`), so the class envelope stays bounded
+  regardless of how many assignments the class has. The controller's private
+  `_toReadView` method produces this shape; the transport layer is a thin pass-through
+  that does not own the wire shape (it only validates params, calls the controller,
+  and catches `ClassNotFoundError`).
 
 ### Recommended data shapes
 
-#### Request (`getAssignment`)
+#### `ClassFull` (new frontend type, derived from new Zod schema)
 
 ```ts
 {
-  courseId: string; // non-empty, already-trimmed, no path/control characters
-  assignmentId: string; // non-empty, already-trimmed, no path/control characters
+  classId: string,
+  className: string | null,
+  cohortKey: string | null,
+  courseLength: number,
+  yearGroupKey: string | null,
+  classOwner: TeacherSummary | null,
+  teachers: TeacherSummary[],
+  students: StudentSummary[],
+  assignments: AssignmentPartial[],   // each entry is Assignment.toPartialJSON() shape
+  active: boolean | null
 }
 ```
 
-#### Response (success — full Assignment)
-
-Returns the output of `Assignment.toJSON()` — see `src/backend/AssignmentProcessor/Assignment.js`
-for the canonical serialisation shape. The key structure is:
+Where `TeacherSummary`, `StudentSummary`, and `AssignmentPartial` are derived from Zod
+schemas co-located in
+`src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts`.
+`TeacherSummary` matches the existing `classPartials.zod.ts` `TeacherSummarySchema`
+(`userId`, `email`, `teacherName`, all nullable). `AssignmentPartial` mirrors
+`Assignment.toPartialJSON()` output exactly (lines 116–134 of
+`src/backend/AssignmentProcessor/Assignment.js`):
 
 ```ts
 {
-  courseId: string;
-  assignmentId: string;
-  assignmentName: string;
-  dueDate: string | null; // ISO 8601 or null
-  lastUpdated: string | null; // ISO 8601 or null
-  documentType: 'SLIDES' | 'SHEETS' | null;
-  referenceDocumentId: string | null;
-  templateDocumentId: string | null;
-  tasks: Record<string, TaskDefinition> | null;
-  submissions: Array<StudentSubmission>; // full artifacts, assessments, feedback
-  assignmentDefinition: object; // full AssignmentDefinition.toJSON() shape
+  courseId: string,
+  assignmentId: string,
+  assignmentName: string,
+  dueDate: string | null,             // ISO 8601
+  lastUpdated: string | null,          // ISO 8601
+  createdAt: string,                   // ISO 8601 (required)
+  documentType: 'SLIDES' | 'SHEETS' | null,
+  submissions: StudentSubmissionPartial[],   // redacted artifact + stripped assessment reasoning
+  assignmentDefinition: AssignmentDefinitionPartial  // partial: tasks: null, no *LastModified
 }
 ```
 
-#### Response (not found)
-
-```ts
-null;
-```
+The Zod schema must match this shape exactly. The canonical reference for the partial
+shape is `Assignment.toPartialJSON()` (not `ClassFull` wishful thinking); any drift
+between the spec's TypeScript example and the actual backend response is a bug in either
+the spec or the implementation and must be reconciled before merge.
 
 ### Naming recommendation
 
 Prefer:
 
-- `getAssignment` — consistent with `getAssignmentDefinition` (singular reads)
-- `courseId` + `assignmentId` — matches existing field names in ABClassController persistence
+- Backend method: `getABClass`
+- Backend transport handler: `getABClass_` (trailing underscore)
+- Backend controller method: `readClass` (decided — read-only counterpart to `loadClass`)
+- Frontend service file: `classDetailService.ts` (in `services/googleClassrooms/classDetail/`)
+- Frontend service function: `getABClass({ classId })`
+- Frontend Zod schema: `ClassFullSchema`, `ClassFullResponseSchema = ClassFullSchema.nullable()`
+  (per frontend AGENTS §8: void-response / null-result schemas must use `.nullable()` because
+  the backend `_success()` coerces `undefined → null`)
+- Frontend Zod spec test: `classDetailService.zod.spec.ts` co-located with the schema file
+  in the new subfolder, following the `classPartials.zod.spec.ts` precedent
+- Frontend query key: `['abClass', classId]` (added via `queryKeys.abClass(classId)`)
 
 Avoid:
 
-- `getFullAssignment` — all API responses should be "full" unless explicitly named "partials"
+- `getFullABClass` — verbose, and the existing `getAssignment` precedent is "method name
+  describes the entity, not the hydration level"
+- `loadClass` for the new controller method — collides with the existing write-effect read
+  and would invite callers to assume the same side effects
+- `classService.ts` as the new file name — would be too generic and ambiguous within
+  `services/googleClassrooms/` (where `classPartialsService.ts` already exists). The chosen
+  name `classDetailService.ts` in the new `classDetail/` subfolder makes the domain
+  (class-detail) explicit.
 
 ### Validation recommendation
 
+#### Frontend
+
+- The frontend service passes `classId` to `callApi` as a non-empty string. The backend
+  transport layer is the authoritative validator for transport-level safety (non-empty,
+  trimmed, no path characters). The frontend does not duplicate the backend validation; it
+  relies on the transport envelope to surface `INVALID_REQUEST` for malformed input.
+
 #### Backend
 
-- Validate `parameters` is a plain non-array object (transport shape).
-- Validate `courseId` and `assignmentId` are present, non-empty, already-trimmed strings using
-  `Validate.requireParams` and `Validate.validateNonEmptyString` — inline pattern consistent with
-  the existing `startAssessmentRun_` handler in the same file.
-- Reject path-traversal characters (`/`, `\`, `..`) using direct `includes()` checks, and reject
-  control characters using the shared `hasControlCharacters_()` helper (available as a global from
-  `assignmentDefinitionValidation.js` in the GAS concatenated runtime) — pattern matching
-  `getGoogleClassroomAssignments_` in `googleClassroomAssignments.js`.
-- Domain validation (class existence, assignment existence) is delegated to the controller.
+- The transport helper `getABClass_` enforces:
+  - `params` is a plain object (not array, not null/undefined) — shared
+    `validateParametersObject_` primitive from the new
+    `src/backend/z_Api/abclass/abclassValidation.js` file (the same primitive used by
+    `abclassMutations.js` after the file move, so the logic is no longer duplicated
+    within the `abclass/` domain folder)
+  - `params.classId` is a non-empty, already-trimmed string with no path-traversal
+    characters (`..`, `/`, `\`) and no ASCII control characters (code points 0–31 and 127) — reuses `validateSafeTrimmedIdentifier_` from `assignmentDefinitionValidation.js`
+    (line 118), exactly the same primitive used by `getAssignment_` via
+    `validateIdentifier_` in `assignmentAssessment.js` line 52. A file-local
+    `validateIdentifier_(value, fieldName)` wrapper in `abclassRead.js` calls
+    `validateSafeTrimmedIdentifier_` with the same `throwValidationError` and error
+    message template used in `getAssignment_` (so the wire-level error contract is
+    identical). The file-local wrapper exists for GAS-hiding and Node-test access; the
+    underlying logic is shared, not duplicated.
+- The new `ABClassController.readClass` enforces:
+  - `classId` is a non-empty string
+  - existence of the stored class collection and the single document within
+  - throws `ClassNotFoundError` on miss with the **same message format** as `loadClass`
+    (`"loadClass: no stored class found for classId=<classId>"` with structured
+    `courseId: <classId>` metadata), matching `loadClass` lines 875–886 exactly. The
+    no-distinction contract between missing-collection and missing-document is
+    intentional and matches the existing behaviour.
+- Corrupt document handling matches `loadClass` precedent — `ABClass.fromJSON` is
+  permissive (returns a partial instance for partial input); `readClass` does not add
+  additional validation. A class document that exists but is corrupt (e.g. missing
+  `classId`) will surface as an `INTERNAL_ERROR` from `ABClass.fromJSON` /
+  `_toReadView` rather than as `null` — this is consistent with how `loadClass` behaves
+  today.
+
+### Display-resolution recommendation
+
+- `cohortLabel` and `yearGroupLabel` are intentionally **not** in the response, consistent
+  with the existing class-partial contract (`docs/developer/backend/DATA_SHAPES.md`). Labels
+  are resolved in the frontend view-model from the reference-data queries
+  (`getCohortsQueryOptions`, `getYearGroupsQueryOptions`).
+- `primaryTopicLabel` (the resolved display label for the assignment's `primaryTopicKey`)
+  is also not in the response; the frontend resolves it from the
+  `getAssignmentTopicsQueryOptions` data.
 
 ## Feature architecture
 
 ### Placement
 
-- **Backend handler**: New trailing-underscore function `getAssignment_` in
-  `src/backend/z_Api/assignmentAssessment.js` (co-located with the existing `startAssessmentRun_`).
-- **Allowlist entry**: New entry in `ALLOWLISTED_METHOD_HANDLERS` in
-  `src/backend/z_Api/z_apiHandler.js`.
-- **Controller delegation**: `ABClassController.loadClass(courseId)` → `ABClassController.rehydrateAssignment(abClass, assignmentId)`.
-- **No new controller methods or persistence methods are required.**
+- Backend handler: `src/backend/z_Api/abclass/abclassRead.js` (new file inside the new
+  `abclass/` domain folder; thin pass-through — validation, controller call, error catch)
+- Backend shared validation file: `src/backend/z_Api/abclass/abclassValidation.js` (new;
+  contains the shared `validateParametersObject_` primitive used by both
+  `abclassMutations.js` and `abclassRead.js`, following the
+  `assignmentDefinitionValidation.js` precedent)
+- Backend controller method: `src/backend/y_controllers/ABClassController.js`, new method
+  `readClass(classId)` added alongside the existing `loadClass`. `readClass` returns the
+  transport-ready plain object via a private `_toReadView(abClass)` method that owns the
+  response shape (transformation to partial assignments + defence-in-depth strip).
+- Backend allowlist entry: `src/backend/z_Api/z_apiHandler.js`, new entry in
+  `ALLOWLISTED_METHOD_HANDLERS`:
+  ```js
+  getABClass: (parameters) => getABClass_(parameters),
+  ```
+  with the matching
+  `globalThis.getABClass_ = require('./abclass/abclassRead.js').getABClass_;` line in
+  the `module.exports` branch (and the existing `abclassMutations_` require path updated
+  to `'./abclass/abclassMutations.js'`).
+- Frontend service: `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.ts`
+  (new, inside the new `classDetail/` subfolder)
+- Frontend Zod schema: `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts`
+  (new)
+- Frontend query integration: new factory function `getABClassQueryOptions(classId)` in
+  `src/frontend/src/query/sharedQueries.ts` and a new `queryKeys.abClass(classId)` entry in
+  `src/frontend/src/query/queryKeys.ts`
+- Out of scope for this surface: `ABClassController` decomposition (over 1000 lines, has a
+  planned split in `LARGE_CODE_FILES.md` but not yet implemented; deferred to a separate
+  workstream)
 
-### Proposed high-level call tree
+### Proposed high-level tree
 
 ```text
-apiHandler(request)
-└── ALLOWLISTED_METHOD_HANDLERS.getAssignment
-    └── getAssignment_(parameters)                     // in assignmentAssessment.js
-        ├── Validate parameters shape and fields
-        ├── new ABClassController().loadClass(courseId)
-        ├── abClassController.rehydrateAssignment(abClass, assignmentId)
-        │   └── _loadFullAssignmentDocument → _validateAssignmentDocument → Assignment.fromJSON
-        ├── assignment.toJSON()                        // serialises with string dates
-        ├── DateUtils.normaliseDateFields(response, ['dueDate', 'lastUpdated'])
-        └── return response (or null if not found)
+src/backend/
+├── z_Api/
+│   ├── abclass/                         (new domain folder per backend AGENTS §11)
+│   │   ├── abclassMutations.js          (moved from z_Api/, content unchanged)
+│   │   ├── abclassRead.js               (new — getABClass_ handler, thin pass-through)
+│   │   └── abclassValidation.js         (new — shared validateParametersObject_)
+│   └── z_apiHandler.js                  (modified — new ALLOWLISTED_METHOD_HANDLERS entry
+│                                          and updated require path for abclassMutations_)
+└── y_controllers/
+    └── ABClassController.js             (modified — new readClass + private _toReadView)
+
+src/frontend/src/
+├── services/googleClassrooms/
+│   ├── classDetail/                     (new domain subfolder per frontend AGENTS §12)
+│   │   ├── classDetailService.ts        (new — getABClass({ classId }))
+│   │   ├── classDetailService.zod.ts    (new — ClassFullSchema, response schema)
+│   │   ├── classDetailService.zod.spec.ts (new — Zod schema tests)
+│   │   └── classDetailService.spec.ts   (new — service tests)
+│   ├── classPartialsService.ts          (unchanged — pre-existing rule deviation noted
+│                                          in §Planning handoff notes)
+│   ├── classPartials.zod.ts             (unchanged)
+│   ├── classPartials.zod.spec.ts        (unchanged)
+│   └── ... (other googleClassrooms files unchanged)
+└── query/
+    ├── queryKeys.ts                     (modified — add abClass(classId))
+    └── sharedQueries.ts                 (modified — add getABClassQueryOptions)
 ```
 
 ### Out of scope for this surface
 
-- Frontend service module, Zod schema, or hook for consuming this endpoint
-- Any mutation, creation, or deletion of assignments
-- A collection/bulk endpoint returning multiple assignments in one call
-- Any UI or page changes
+- Per-assignment full rehydration — use the existing `getAssignment` endpoint
+- Roster refresh from Google Classroom — use the assessment-run path (`startAssessmentRun`)
+  or the existing `upsertABClass` flow, not this endpoint
+- Re-fetching assignment definitions to check staleness — the embedded partial already
+  carries `definitionKey`; the frontend can use the existing `getAssignmentDefinition` on
+  demand
+- Any visible layout / page changes — the new endpoint is infrastructure for a future
+  class-detail page that will get its own layout spec
 
 ## Data loading and orchestration
 
 ### Required datasets or dependencies
 
-- `ABClass` — loaded via `ABClassController.loadClass(courseId)` to satisfy `rehydrateAssignment`'s
-  requirement
-- `Assignment` — rehydrated from the dedicated `assign_full_<courseId>_<assignmentId>` collection
+- The single ABClass document stored in the JsonDbApp collection named after the classId
+  (i.e. `dbManager.getCollection(classId).findOne({ classId })`)
+- No Classroom API calls
+- No other collection reads or writes
+
+### Prefetch or initialisation policy
+
+#### Startup
+
+- The new endpoint is not part of the startup warm-up. Class detail is per-route, and the
+  frontend's existing `getClassPartialsQueryOptions` already covers the lightweight list
+  view at startup.
+
+#### Feature entry
+
+- The class-detail page (when built) calls `getABClassQueryOptions(classId)` lazily on
+  navigation. The query factory follows the existing pattern in `sharedQueries.ts` and uses
+  the shared `queryKeys.abClass(classId)` factory so per-class cache invalidation works
+  consistently with the rest of the app.
+
+#### Manual refresh
+
+- React Query's standard invalidation handles manual refresh. The `getABClassQueryOptions`
+  factory is paired with an `invalidateAbClass(classId)` helper (added to `queryKeys.ts`)
+  that follows the existing `queryOptions` / `queryKeys` invalidation pattern.
 
 ### Query or transport additions
 
-- `getAssignment` method name registered in `ALLOWLISTED_METHOD_HANDLERS`
-- `getAssignment_` trailing-underscore handler in `z_Api/assignmentAssessment.js`
-- No new query keys, stores, or collections
+- New backend transport method: `getABClass` (registered in `ALLOWLISTED_METHOD_HANDLERS`).
+- New frontend service function: `getABClass({ classId })` in
+  `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.ts`.
+- New frontend query options factory: `getABClassQueryOptions(classId)` in
+  `src/frontend/src/query/sharedQueries.ts`.
+- New query key factory: `queryKeys.abClass(classId)` in
+  `src/frontend/src/query/queryKeys.ts`.
+- No new query invalidation infrastructure is needed; React Query's standard
+  `invalidateQueries({ queryKey: queryKeys.abClass(classId) })` pattern works.
+
+## Core view model or behavioural model
+
+Not strictly applicable — the response is a single shape derived from the controller's
+`ABClass` instance via the controller's private `_toReadView` method. There is no
+derived or merged view-model on the frontend in this round (the future class-detail page
+will have its own view-model layer).
+
+## Main user-facing surface specification
+
+This is a backend-primary surface. The frontend consumer is a service module + Zod schema +
+query factory, with no visible layout changes in this round (the future class-detail page
+will get its own layout spec).
+
+### Recommended frontend service interface
+
+```ts
+// src/frontend/src/services/googleClassrooms/classDetail/classDetailService.ts
+export async function getABClass(params: { classId: string }): Promise<ClassFull | null> {
+  return ClassFullResponseSchema.parse(await callApi('getABClass', params));
+}
+```
+
+### Fields, columns, or visible sections
+
+Not applicable for this round — no visible sections are added.
+
+## Workflow specification
+
+Not applicable — this is a single read flow. No multi-step user workflows.
 
 ## Error, loading, and empty-state rules
 
 ### Blocking failure
 
-- Invalid parameters (non-object, missing fields, non-string courseId/assignmentId, unsafe
-  characters) → `ApiValidationError` with code `INVALID_REQUEST`.
-- ABClass not found for `courseId` → error from `loadClass` propagates as `INTERNAL_ERROR`.
-  This is distinct from assignment-not-found (which returns `null`): the class itself must exist
-  for the endpoint to be meaningful.
-- Corrupt assignment document (missing required fields) → error from `rehydrateAssignment`
-  propagates as `INTERNAL_ERROR` (distinct from not-found).
+- Transport validation failure (non-object `params`, missing `classId`, unsafe characters):
+  `INVALID_REQUEST` envelope from `apiHandler`. Frontend surfaces this via the standard
+  `apiService` error mapping.
+- `ClassNotFoundError` (no stored class for the given `classId`): handler catches the typed
+  error and returns `null`; `apiHandler` wraps it in a success envelope with `data: null`.
+  Frontend branches on `data === null` (and on `error.code === 'INTERNAL_ERROR'` for
+  genuinely unexpected errors). Mirrors `getAssignment` and `getAssignmentDefinition`.
+- Other unexpected errors (e.g. corrupt stored document, JsonDbApp collection missing):
+  `INTERNAL_ERROR` envelope from `apiHandler`.
 
-### Not-found state
+### Partial-load or partial-success failure
 
-- No full assignment document exists for the given course/assignment pair → return `null`.
-  The API handler catches the `AssignmentNotFoundError` (thrown by
-  `_loadFullAssignmentDocument`) using an `instanceof` check and returns `null`. All other
-  errors from `rehydrateAssignment` (validation failures, corrupt documents,
-  partial-definition rejection, assignment-not-in-class) still propagate as internal errors.
-- `loadClass` errors (class not found) also propagate as internal errors — distinct from
-  assignment-not-found, because the class itself must exist for the endpoint to be meaningful.
+Not applicable — single read.
 
-## Backend changes required to support agreed behaviour
+### Empty states
 
-1. **New typed error class** (`src/backend/Utils/ErrorTypes/AssignmentNotFoundError.js`)
-   - Follow the existing pattern from `DefinitionStaleError.js`: extends `Error`, sets
-     `this.name = 'AssignmentNotFoundError'`, accepts `{ courseId, assignmentId, collectionName }`
-     in the constructor and assigns them to `this.courseId`, `this.assignmentId`,
-     `this.collectionName` respectively. Includes a guarded `module.exports` block for Node
-     test compatibility. **No `cause` parameter** — the only throw site has no wrapped error
-     to pass, and `DefinitionStaleError` does not accept `cause` either.
-   - Internal transport signal — not mapped to a user-visible error code in
-     `_mapErrorToFailureEnvelope`. Same category as `AbortRequestError` and `PersistError`.
+- `data: null` from the new endpoint means "class not found". The frontend (in the future
+  class-detail page) renders a not-found state and offers a "create class" action.
 
-2. **Controller change** (`src/backend/y_controllers/ABClassController.js`,
-   `_loadFullAssignmentDocument`)
-   - Throw `AssignmentNotFoundError` (in place of the current generic `Error`) when the document
-     is not found in the dedicated collection. Preserve the existing diagnostic message format
-     and pass the structured metadata `{ courseId, assignmentId, collectionName }`.
-   - All other error paths in `_loadFullAssignmentDocument` and downstream in `rehydrateAssignment`
-     are unchanged.
-   - Add `AssignmentNotFoundError` to the file's `/* global */` comment so the symbol is
-     available in the GAS concatenated runtime.
+## Accessibility and usability notes
 
-3. **New API handler function** (`getAssignment_` in `src/backend/z_Api/assignmentAssessment.js`)
-   - Update the top-of-file `/* global */` comment to include
-     `ApiValidationError, Validate, ABClassController, DateUtils, ABLogger,
-AssignmentNotFoundError, hasControlCharacters_`.
-     (`Assignment` is intentionally **not** included — the handler never constructs one directly;
-     it only calls `.toJSON()` on the instance returned by `rehydrateAssignment`. `hasControlCharacters_`
-     is included because the handler uses it for unsafe-character validation, matching the
-     pattern in `googleClassroomAssignments.js` which already uses this global.)
-   - Insert `getAssignment_` immediately after `startAssessmentRun_` and before the
-     `if (typeof module !== 'undefined' && module.exports)` block.
-   - Validate parameters shape and required string fields (inline pattern matching `startAssessmentRun_`).
-   - Reject unsafe characters in identifiers (inline pattern matching `getGoogleClassroomAssignments_`).
-   - Log at `info` level before loading ABClass and after successful rehydration, with
-     `{ courseId, assignmentId }` context.
-   - Load ABClass via `new ABClassController().loadClass(courseId)` and delegate to
-     `abClassController.rehydrateAssignment(abClass, assignmentId)`. The same `abClass` instance
-     returned by `loadClass` is passed to `rehydrateAssignment` (identity, not structural
-     equality) — the controller mutates it via `_replaceAssignmentInClass`.
-   - Serialise via `assignment.toJSON()`.
-   - Defensively strip transient, non-`toJSON` fields at the boundary (currently `progressTracker`).
-     Use a deletion step such as `delete response.progressTracker` immediately after `toJSON()`
-     and before `normaliseDateFields()`. Document the rationale in `@remarks` and add a
-     regression test that proves a payload containing `progressTracker` is normalised away.
-   - Apply `DateUtils.normaliseDateFields(response, ['dueDate', 'lastUpdated'])` at the transport
-     boundary. This is **shallow defence-in-depth for root-level fields only**; nested date
-     conversion (e.g. `createdAt`/`updatedAt` on `submissions`, `assignmentDefinition`) relies
-     on the corresponding `toJSON()` implementations being correct. A regression test in
-     `tests/api/assignmentReadApi.test.js` proves the root-level call is wired (mock
-     `toJSON()` returns live `Date` objects in `dueDate`/`lastUpdated`).
-   - Catch `AssignmentNotFoundError` via `instanceof` check; log at `warn` level (this is an
-     expected outcome from the API's perspective — the API returns `null` gracefully, but the
-     not-found case is still notable for diagnostics) and return `null`.
-   - Catch all other errors; log at `error` level with `{ courseId, assignmentId, err }` and
-     re-throw.
-   - Export via the guarded `module.exports` block alongside `startAssessmentRun_`:
-     `{ startAssessmentRun_, getAssignment_ }`.
+Not applicable for this round — no visible UI changes.
 
-4. **Allowlist registration** (`src/backend/z_Api/z_apiHandler.js`)
-   - Add `getAssignment: (parameters) => getAssignment_(parameters)` to `ALLOWLISTED_METHOD_HANDLERS`,
-     placed between the existing assignment-definition entries and `getGoogleClassroomAssignments`
-     for logical grouping.
-   - Add the corresponding Node-test compatibility `globalThis.getAssignment_ = ...` line in the
-     `if (typeof module !== 'undefined' && module.exports)` block (alongside
-     `globalThis.startAssessmentRun_`).
+## Backend changes required
 
-5. **No further changes to** models, persistence, or validation files are required.
+List only the backend changes required by the agreed product contract.
+
+1. **Move existing transport file** (`src/backend/z_Api/abclassMutations.js` →
+   `src/backend/z_Api/abclass/abclassMutations.js`):
+   - File content is **not fully unchanged**: the file-local `validateParametersObject_`
+     helper is removed (replaced with a global reference to the shared primitive in
+     the new `abclassValidation.js`, per step 4). The remaining content (handler
+     functions, mutation-specific validators, `module.exports` block) is unchanged.
+   - The require path in `z_apiHandler.js`'s `module.exports` branch is updated to
+     `'./abclass/abclassMutations.js'`.
+   - The allowlist entry `upsertABClass: (parameters) => upsertABClass_(parameters),`
+     is unchanged (the closure is registered in `ALLOWLISTED_METHOD_HANDLERS` and does
+     not require any path change).
+   - The path entry in `eslint.config.js` line 209 (the relaxed-rule file list) is
+     updated from `'src/backend/z_Api/abclassMutations.js'` to
+     `'src/backend/z_Api/abclass/abclassMutations.js'`. Without this update, the moved
+     file would lose the relaxed `security/detect-object-injection` rule, and existing
+     test fixtures using indexed property access would start failing lint.
+2. **New controller method** (`src/backend/y_controllers/ABClassController.js`):
+   - Add `readClass(classId)` — pure-read counterpart to `loadClass`. Returns the
+     transport-ready plain object (not a model instance).
+   - Reads the stored document via `dbManager.getCollection(classId).findOne({ classId })`.
+   - Throws `ClassNotFoundError` on missing collection or missing document, mirroring
+     `loadClass` lines 875–886 exactly (same message format, same `courseId` metadata).
+   - Deserialises via `ABClass.fromJSON(document)` and applies the private
+     `_toReadView(abClass)` method.
+   - Does **not** call `_refreshRoster`. Does **not** call `_persistRoster`. Does **not**
+     make any Google Classroom API calls.
+   - Mandatory JSDoc on the new method includes an `@remarks` block stating: _"Pure read
+     — does not call `_refreshRoster`, `_persistRoster`, or any Classroom API. Use
+     `loadClass` when roster freshness is required. Returns a plain object with
+     `assignments[]` as `Assignment.toPartialJSON()` output; the partial shape is
+     produced by the private `_toReadView` method."_ This explicit boundary makes the
+     semantic difference from `loadClass` discoverable from the type / IDE / docstring
+     rather than from reading the method body.
+3. **New private controller method `_toReadView(abClass)`** (same file as step 2):
+   - Calls `abClass.toJSON()` to get the root shape.
+   - Replaces `response.assignments` with each assignment's
+     `Assignment.toPartialJSON()` output.
+   - Strips `_hydrationLevel` and `progressTracker` from each embedded assignment
+     (defence-in-depth; currently a no-op because neither field is in
+     `Assignment.toPartialJSON()` output, but kept as defence-in-depth against a
+     future model regression).
+   - Returns the plain object.
+   - Marked as private by **leading underscore** (per the `ABClassController`
+     convention — controller private methods all use leading underscore:
+     `_applyCourseMetadata`, `_applyTeachers`, `_applyStudents`,
+     `_normaliseClassPartial`, `_buildClassSummary`, etc.). The trailing-underscore
+     convention is reserved for top-level `z_Api` functions to prevent
+     `google.script.run` exposure; it is not appropriate for controller class members.
+   - **Not** exported via `module.exports`. Existing controllers (`ABClassController`,
+     `AssignmentController`, `AssignmentDefinitionController`,
+     `AssignmentDefinitionResponseMapper`) all export only the class itself (e.g.
+     `module.exports = ABClassController;`), not individual private methods. The
+     transformation is tested through the public `readClass` method: tests construct
+     an `ABClass` instance (or set up the collection mock to return a document
+     that `ABClass.fromJSON` produces), call `readClass`, and verify the result
+     against the expected `Assignment.toPartialJSON()` shape. Direct unit testing
+     of the transformation is achieved through the public method, not via separate
+     export of the private method.
+4. **New shared validation file** (`src/backend/z_Api/abclass/abclassValidation.js`):
+   - Defines `validateParametersObject_(parameters, methodName)` (moved from
+     `abclassMutations.js` line 18; the moved file references this as a global
+     instead of defining its own). Trailing-underscore pattern (it's a top-level
+     `z_Api` function). `module.exports` block at the end (for Node test access).
+   - In the GAS concatenation model, `abclassValidation.js` is loaded as part of
+     the global scope; `abclassMutations.js` and `abclassRead.js` reference
+     `validateParametersObject_` via a `/* global validateParametersObject_ */`
+     JSDoc hint at the top of the file. The function calls are all inside function
+     bodies (lazy), so the concatenation order doesn't affect runtime correctness
+     — same pattern as the existing `assignmentDefinitionValidation.js` /
+     `assignmentDefinitionTransport.js` pair.
+   - Follows the `assignmentDefinitionValidation.js` precedent — shared validation
+     primitives for a domain folder.
+5. **New transport file** (`src/backend/z_Api/abclass/abclassRead.js`):
+   - Add `getABClass_(parameters)` handler as a thin pass-through.
+   - References `validateParametersObject_` from `abclassValidation.js` as a global
+     (via `/* global validateParametersObject_ */`). Does **not** use `require` or
+     `import` — backend AGENTS §1.1 forbids Node wiring in production backend files.
+   - Has a file-local `validateIdentifier_(value, fieldName)` wrapper that calls
+     `validateSafeTrimmedIdentifier_` from `assignmentDefinitionValidation.js`
+     (line 118) with the same `throwValidationError` and error message template used
+     in `getAssignment_` (`assignmentAssessment.js` line 52), so the wire-level error
+     contract is identical.
+   - Calls `new ABClassController().readClass(parameters.classId)` and returns the
+     result. The controller owns the response shape (per step 2 + step 3).
+   - Catches `ClassNotFoundError` via `instanceof` and returns `null`.
+   - Does **not** call `DateUtils.normaliseDateFields` at the response root — the root
+     shape has no `Date` fields by inspection (`classId, className, cohortKey,
+courseLength, yearGroupKey, classOwner, teachers, students, active` are all strings,
+     numbers, arrays, or null), so a normalisation call would be a vacuous no-op. Nested
+     date fields inside `assignments[]` and `submissions[]` are already ISO strings from
+     the corresponding `toJSON()` / `toPartialJSON()` implementations.
+   - Logs `info` on successful read, `warn` on not-found, `error` on other failures —
+     mirroring the `getAssignment_` log levels at `assignmentAssessment.js` lines 122,
+     147, 150.
+   - Exports the handler via a guarded `if (typeof module !== 'undefined' &&
+module.exports)` block. Exports: `{ getABClass_ }` only. This aligns with the
+     `assignmentAssessment.js` precedent (which exports only
+     `{ startAssessmentRun_, getAssignment_ }` — not the file-local `validateIdentifier_`
+     wrapper). The file-local `validateIdentifier_` is a thin wrapper around
+     `validateSafeTrimmedIdentifier_` (which is already exported and tested via
+     `assignmentDefinitionValidation.js`); it doesn't need a separate export. Tests
+     exercise the validation through `getABClass_` (the integration is the test
+     target).
+6. **Allowlist entry** (`src/backend/z_Api/z_apiHandler.js`):
+   - Add `getABClass: (parameters) => getABClass_(parameters),` to
+     `ALLOWLISTED_METHOD_HANDLERS`.
+   - Add `globalThis.getABClass_ = require('./abclass/abclassRead.js').getABClass_;` to
+     the `module.exports` branch (the test-harness wiring block).
+   - Update the existing `abclassMutations_` require path in the same `module.exports`
+     branch from `'./abclassMutations.js'` to `'./abclass/abclassMutations.js'`. This
+     path change is part of the file move in step 1.
+7. **ESLint config update** (`eslint.config.js`):
+   - The relaxed-rule file list at lines 192–212 (the array currently containing
+     `'src/backend/z_Api/abclassMutations.js'`, `'src/backend/z_Api/z_apiHandler.js'`,
+     and others) is updated:
+     - Change the existing entry `'src/backend/z_Api/abclassMutations.js'` to
+       `'src/backend/z_Api/abclass/abclassMutations.js'` (per step 1's file move).
+     - Add the new entry `'src/backend/z_Api/abclass/abclassRead.js'` to the same
+       array. The new transport file uses the same mock-fixture pattern (mock
+       controller instances, indexed property access in test assertions) and needs
+       the same relaxed `security/detect-object-injection` rule.
+     - Add the new entry `'src/backend/z_Api/abclass/abclassValidation.js'` to the
+       same array. The new shared validation file uses the same mock-fixture pattern
+       (mock error params, indexed property access on the test fixtures) and needs
+       the same relaxed rule.
+   - Without these updates, the moved file and the new files would lose the
+     relaxed rule and existing test fixtures using indexed property access would
+     start failing lint.
+8. **Documentation update** (`src/backend/Utils/ErrorTypes/ClassNotFoundError.js`):
+   - Update the JSDoc to clarify that the `apiHandler` dispatcher has **no** special
+     mapping for `ClassNotFoundError` — unmapped errors fall through to
+     `INTERNAL_ERROR` per `_mapErrorToFailureEnvelope` (see
+     `src/backend/z_Api/z_apiHandler.js` lines 406–451). The new `getABClass` handler
+     catches the typed error explicitly and returns `null`; any future endpoint that
+     wants the same `null` contract must do the same. Replace the existing "maps to
+     `INTERNAL_ERROR` at the transport boundary (via the dispatcher's fallback path)
+     since `loadClass` is not directly callable from the frontend" sentence with this
+     clearer wording.
 
 ## Planning handoff notes
 
-- The handler must be added to the existing `assignmentAssessment.js` file (currently 32 lines
-  with only `startAssessmentRun_`), not a new file. This follows the rule from
-  `src/backend/AGENTS.md` §11: keep single-file domains flat in `z_Api/` and do not create
-  domain folders for them.
-- The new `AssignmentNotFoundError` must live at
-  `src/backend/Utils/ErrorTypes/AssignmentNotFoundError.js`, following the pattern from
-  `DefinitionStaleError.js`. It is an internal transport signal — not added to
-  `_mapErrorToFailureEnvelope` because the handler catches it and returns `null` before the
-  envelope is built.
-- The not-found catch in the handler is an `instanceof AssignmentNotFoundError` check, scoped
-  to the typed error only. Other errors from `rehydrateAssignment` (corrupt documents,
-  partial-definition rejection, assignment-not-in-class) must still propagate.
-- The `progressTracker` strip is a deliberate, focused defence-in-depth step. Other transient
-  fields on `Assignment` (`_hydrationLevel`, etc.) are intentionally out of scope for v1.
-- Date normalisation is defence-in-depth: `Assignment.toJSON()` already converts known Date fields
-  to ISO strings, but `DateUtils.normaliseDateFields` must still be applied per the canonical
-  pattern for root-level fields (`dueDate`, `lastUpdated`).
-- `module.exports` must export `getAssignment_` alongside the existing `startAssessmentRun_`.
-- The `/* global */` comment at the top of the file must be updated to include
-  `ApiValidationError, Validate, ABClassController, DateUtils, ABLogger, AssignmentNotFoundError`.
-  Do **not** include `Assignment` (the handler does not construct one directly).
-- The controller change in `_loadFullAssignmentDocument` is intentionally minimal: only the
-  `throw` is changed from `new Error(...)` to `new AssignmentNotFoundError(...)`. The existing
-  diagnostic message and the surrounding `try { ... } catch` block in `rehydrateAssignment`
-  are unchanged.
+Use this section only for constraints that the later action plan must respect.
+
+- The new `z_Api/abclass/` domain folder is created as part of this delivery. The
+  `abclassMutations.js` file is moved into the folder; its content is unchanged (except
+  the `validateParametersObject_` helper is removed and replaced with an import from
+  the new `abclassValidation.js`). The `abclassRead.js` and `abclassValidation.js`
+  files are new. Per backend AGENTS §11 the domain folder is required because two
+  files now share the `abclass` prefix.
+- The new `ABClassController.readClass` method sits alongside `loadClass` in the same
+  file. The `ABClassController` decomposition planned in `LARGE_CODE_FILES.md` is **out of
+  scope** for this delivery and must not be bundled.
+- The response shape is owned by the controller. `readClass` returns a transport-ready
+  plain object via the private `_toReadView(abClass)` method. The transport handler is
+  a thin pass-through (validation, controller call, `ClassNotFoundError` catch). This
+  follows the `getAllClassPartials` controller-level normalisation precedent and the
+  `getAssignmentDefinition_` pattern of calling a controller method that returns the
+  shaped response.
+- The frontend Zod schema is the source of truth for the response shape; the schema is
+  written first and the TypeScript type is derived via `z.infer<typeof ...>` per frontend
+  AGENTS §8. The Zod schema must match `Assignment.toPartialJSON()` output exactly
+  (lines 116–134 of `src/backend/AssignmentProcessor/Assignment.js`); any drift between
+  the spec's TypeScript example and the actual backend response is a bug in either the
+  spec or the implementation and must be reconciled before merge.
+- The response schema uses `.nullable()` on the outer schema (per frontend AGENTS §8: void
+  / null-result response schemas must use `.nullable()` to accept `null` from the backend
+  envelope).
+- The query factory pattern uses `queryOptions` and the shared `queryKeys` factory per
+  frontend AGENTS §2.2. The new entry follows the existing
+  `queryKeys.assignmentDefinitionByKey(definitionKey) → ['assignmentDefinition',
+definitionKey]` shape:
+  ```ts
+  queryKeys.abClass: (classId: string) => ['abClass', classId]
+  ```
+  And the new query options factory follows the existing
+  `getAssignmentDefinitionQueryOptions(definitionKey)` pattern:
+  ```ts
+  export function getABClassQueryOptions(classId: string) {
+    return queryOptions({
+      queryKey: queryKeys.abClass(classId),
+      queryFn: () => getABClass({ classId }),
+    });
+  }
+  ```
+- The new frontend service is added to a new
+  `src/frontend/src/services/googleClassrooms/classDetail/` subfolder. The pre-existing
+  `classPartials*` files in `services/googleClassrooms/` also qualify for the
+  subfolder rule (3 files sharing the `classPartials` prefix) and should be reorganised
+  into a `services/googleClassrooms/classPartials/` subfolder in a follow-up delivery —
+  out of scope for this round. This is a pre-existing rule deviation that this delivery
+  does not fix.
+- The shared `validateSafeTrimmedIdentifier_` helper is reused. The file-local
+  `validateIdentifier_` wrapper in `abclassRead.js` exists for GAS-hiding
+  (trailing-underscore pattern); the underlying identifier validation logic is
+  shared, not duplicated. The wrapper is **not** exported (per step 5); it is
+  exercised through `getABClass_` in tests.
+- The `validateParametersObject_` primitive is shared between `abclassMutations.js` and
+  `abclassRead.js` via the new `abclassValidation.js` file (following the
+  `assignmentDefinitionValidation.js` precedent). Both files reference the
+  shared function as a global (via `/* global validateParametersObject_ */`
+  JSDoc hint at the top of each file), not via `require` / `import` — backend
+  AGENTS §1.1 forbids Node wiring in production backend files. Neither file
+  defines its own copy. This avoids per-domain duplication per backend AGENTS
+  §0.2 rule 3.
+- **GAS load-order note**: the GAS concatenation model merges all backend files
+  into a single global scope. The function calls across the new `abclass/`
+  folder files (`abclassValidation.js`, `abclassMutations.js`, `abclassRead.js`)
+  are all inside function bodies (lazy), so concatenation order does not affect
+  runtime correctness — same pattern as the existing
+  `assignmentDefinitionValidation.js` / `assignmentDefinitionTransport.js`
+  pair (alphabetically the transport file loads before the validation file, yet
+  the transport file's `upsertAssignmentDefinition_` calls
+  `validateUpsertParameters_` from the validation file at runtime without
+  issue). No numeric prefixes are required for the new `abclass/` folder; the
+  builder's `localeCompare`-based alphabetical ordering is sufficient. Numeric
+  prefixes are a defensive measure documented in backend AGENTS §1.2 for cases
+  where the dependency is eager (top-level call), which is not our case.
+- The new `readClass` method's corrupt-document behaviour follows `loadClass` precedent:
+  `ABClass.fromJSON` is permissive; corrupt documents surface as `INTERNAL_ERROR`, not
+  as `null`. The implementation should not add extra validation that would change this.
 
 ## Testing expectations
 
-- Backend API handler tests (`tests/api/assignmentReadApi.test.js`)
-  - Module exports `getAssignment_`
-  - `getAssignment_` throws `ApiValidationError` for non-plain-object parameters
-  - `getAssignment_` throws `ApiValidationError` for missing `courseId` and missing `assignmentId`
-  - `getAssignment_` throws `ApiValidationError` for unsafe characters in `courseId` and
-    `assignmentId` (path traversal and control characters via `hasControlCharacters_`)
-  - On valid input, `getAssignment_` returns the `toJSON()` output with `dueDate` and
-    `lastUpdated` normalised to ISO strings
-  - Defence-in-depth regression test: when the mock's `toJSON()` returns live `Date` objects
-    in `dueDate` and `lastUpdated`, the handler still returns ISO strings (proves
-    `normaliseDateFields` is wired at the boundary)
-  - Defence-in-depth regression test: when the mock's `toJSON()` returns a payload containing
-    `progressTracker`, the handler strips it from the response (proves the boundary strip is
-    wired)
-  - On valid input, `loadClass` is called with the correct `courseId` and the same
-    `abClass` instance returned by `loadClass` is passed to `rehydrateAssignment` (identity,
-    not structural equality)
-  - When `rehydrateAssignment` throws an `AssignmentNotFoundError`, the handler returns `null`
-    and logs at `warn` level
-  - When `rehydrateAssignment` throws a non-`AssignmentNotFoundError` error (e.g. corrupt
-    document), the handler re-throws and logs at `error` level
-  - When `loadClass` throws, the handler re-throws (class-not-found must not be caught as
-    assignment-not-found)
-- Backend controller integration: verify `_loadFullAssignmentDocument` throws
-  `AssignmentNotFoundError` (not generic `Error`) on the not-found path
-- Logging: success path logs at `info` (load + rehydrate), not-found logs at `warn`, other
-  failures log at `error` — verified via `ABLogger` spies per
-  `docs/developer/backend/backend-testing.md`
+- Backend model tests (controller layer):
+  - `tests/controllers/abclassController.readClass.test.js` — new test file covering:
+    - RED: `readClass` does not exist yet (exported as `undefined`)
+    - GREEN: `readClass` returns the transport-shaped plain object (not a model
+      instance) for a stored class document
+    - `readClass` throws `ClassNotFoundError` when the collection is missing
+    - `readClass` throws `ClassNotFoundError` when the document is missing
+    - `readClass` does **not** call `ClassroomApiClient.fetchCourse`, `fetchTeachers`, or
+      `fetchAllStudents` (no Classroom API round trip)
+    - `readClass` does **not** call `dbManager.getCollection(...).insertOne`, `replaceOne`,
+      `updateOne`, or `save` (no storage mutation)
+    - `readClass` throws `ClassNotFoundError` with the same message format and
+      `courseId` metadata as `loadClass` for both missing-collection and
+      missing-document cases (no distinction between the two)
+    - `readClass`'s returned plain object has `assignments[]` as `Assignment.toPartialJSON()`
+      output (not full `toJSON()` output) — this verifies the `_toReadView` transformation
+      is wired correctly
+    - The returned plain object has `_hydrationLevel` and `progressTracker` stripped from
+      each embedded assignment (defence-in-depth; documents that the strip is a no-op
+      today because neither field is in the serialised output of
+      `Assignment.toPartialJSON()`)
+    - `readClass` surfaces corrupt documents as `INTERNAL_ERROR` rather than as
+      `null`. Test case: stored document exists but is corrupt (e.g. missing
+      `classId`, malformed `assignments` array that causes `Assignment.fromJSON` →
+      `toPartialJSON()` to throw). The error surfaces inside `_toReadView` (not
+      `ABClass.fromJSON`, which is permissive and returns a partial instance for
+      partial input). The behaviour matches `loadClass` — corrupt documents are
+      not converted to `null`; they surface as errors. This test case locks the
+      contract so a future change to `_toReadView` or `toPartialJSON` cannot
+      silently alter the error surface.
+  - `tests/controllers/abclassController.toReadView.test.js` (or merged into the
+    `readClass` test file) — covers the `_toReadView` transformation in isolation
+    against a representative `ABClass` instance, verifying that the partial assignment
+    shape, the defence-in-depth strip, and the root fields are all correct.
+- Backend shared validation tests:
+  - `tests/backend-api/abclassValidation.unit.test.js` (or extended into the existing
+    `abclassMutations.unit.test.js`) — covers the shared `validateParametersObject_`
+    primitive, including the cases the existing per-file tests already cover.
+- Backend API tests (transport layer):
+  - `tests/api/abclassRead.test.js` — new test file covering:
+    - `getABClass_` is exported in Node test runtime (only `getABClass_` is
+      exported, matching the `assignmentAssessment.js` precedent)
+    - `getABClass_` rejects non-object, `null`, and `undefined` `params` with
+      `ApiValidationError`
+    - `getABClass_` rejects missing `classId` with `ApiValidationError`
+    - `getABClass_` rejects untrimmed `classId` with `ApiValidationError`
+    - `getABClass_` rejects `classId` with path-traversal characters (`..`, `/`, `\`) with
+      `ApiValidationError`
+    - `getABClass_` rejects `classId` with ASCII control characters (code points 0–31 and 127) with `ApiValidationError`
+    - `getABClass_` returns the controller's shaped response on success (the transport
+      is a pass-through, so the test verifies identity / deep equality, not
+      transformation)
+    - `getABClass_` returns `null` when the controller throws `ClassNotFoundError`
+    - `getABClass_` re-throws other controller errors loudly (no defensive catch-and-ignore)
+    - The handler does **not** call `DateUtils.normaliseDateFields` at the response root
+      (the response root has no `Date` fields; documenting this is part of the contract)
+- Backend API test for the moved `abclassMutations.js` and shared validation refactor:
+  - The existing `tests/api/abclassMutations.test.js` is updated to require from the
+    new path `'../../src/backend/z_Api/abclass/abclassMutations.js'`. No assertion
+    changes; only the require path moves.
+  - The same path move is applied to `tests/api/apiHandler/shared.js` (line 15) and
+    `tests/backend-api/abclassMutations.unit.test.js` (lines 2 and 8). Confirmed by
+    `grep -rn "z_Api/abclassMutations.js" tests/`; these are the only three matches.
+- Frontend service tests:
+  - `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.spec.ts` —
+    new test file covering:
+    - `getABClass` delegates to `callApi` with the `getABClass` method name and the
+      supplied `{ classId }`
+    - `getABClass` parses the response through `ClassFullResponseSchema` and returns a
+      typed `ClassFull`
+    - `getABClass` returns `null` when the backend returns `data: null`
+    - `getABClass` propagates Zod parse errors loudly
+- Frontend Zod schema tests:
+  - `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.spec.ts` —
+    new test file covering the schema validation in isolation (happy path, missing
+    required field, wrong type, null-result shape accepts `null`).
+- Frontend query tests:
+  - The new `getABClassQueryOptions` factory is covered by the existing
+    `src/frontend/src/query/sharedQueries.query.spec.tsx` patterns, following the
+    precedent set for `getAssignmentDefinitionQueryOptions`.
+- No Playwright E2E tests are added in this round (no visible UI changes).
 
 ## Documentation and rollout notes
 
-- Update `docs/developer/DATA_SHAPES.md` if Assignment response shape is documented there
-- Update `docs/developer/backend/backend-logging-and-error-handling.md` to add the new
-  `AssignmentNotFoundError` to the list of recognised backend error types (under the
-  "internal error types not mapped at the transport boundary" category, alongside
-  `AbortRequestError` and `PersistError`). Mark the entry as `Implemented` once the file
-  exists; the action plan records a `Not implemented` planned-only entry before that.
-- Frontend Zod schema and service module are deferred to the frontend page work
+- `docs/developer/backend/api-layer.md` — add a new bullet to the "Current migrated
+  endpoints" section, **immediately after** the existing `getABClassPartials` entry.
+  (Avoid "after X and before Y" wording when X and Y are not adjacent in the
+  current file — other entries sit between them today, and the spec instruction
+  should not depend on those intermediate entries. The new entry goes in the
+  `getABClass*` cluster.) Mirror the `getABClassPartials` format: source file path,
+  controller delegation, validation rules, response shape, not-found behaviour, and
+  frontend wrapper reference. Include the explicit note that the response shape is
+  produced by the controller's private `_toReadView` method, which calls
+  `ABClass.toJSON()` and replaces each assignment with `Assignment.toPartialJSON()`
+  output (so the doc explains why the response shape differs from a raw
+  `ABClass.toJSON()`). Do **not** include hardcoded line numbers in the new entry;
+  reference the existing entries by name so the placement instruction remains valid
+  as the file evolves.
+- `docs/developer/backend/DATA_SHAPES.md` — add a new section after the existing
+  "ABClassPartials" section titled "ABClass full-read (`getABClass` response)".
+  Document the response shape with the same depth as the existing class-partial section.
+  Include the explicit note that `assignments[]` uses `Assignment.toPartialJSON()`
+  output (same as the embedded definition in `abclass_partials`), and that the
+  redactions documented in `docs/howTos/rehydration.md` apply. The canonical reference
+  for the partial assignment shape is `Assignment.toPartialJSON()` (lines 116–134 of
+  `src/backend/AssignmentProcessor/Assignment.js`).
+- `src/backend/Utils/ErrorTypes/ClassNotFoundError.js` — replace the JSDoc paragraph that
+  currently says _"This error maps to INTERNAL_ERROR at the transport boundary (via the
+  dispatcher's fallback path) since loadClass is not directly callable from the frontend"_
+  with a clearer paragraph that:
+  - notes the `apiHandler` dispatcher has **no** special mapping for `ClassNotFoundError`
+    (see `_mapErrorToFailureEnvelope` in `src/backend/z_Api/z_apiHandler.js` lines
+    406–451) — unmapped errors fall through to `INTERNAL_ERROR`
+  - states that the new `getABClass` handler in
+    `src/backend/z_Api/abclass/abclassRead.js` catches the typed error explicitly and
+    returns `null` (so the structured `courseId` metadata is available in execution logs
+    for developer diagnostics but is not exposed to the frontend as an error code)
+  - notes that any future endpoint wanting the same `null`-on-not-found contract must
+    catch the typed error explicitly
+- No migration is required. The new endpoint is additive; existing endpoints are
+  unchanged. The `abclassMutations.js` file move is a location-only change; its content
+  and the wire-level error contract for `upsertABClass`/`updateABClass`/`deleteABClass`
+  are unchanged (the `validateParametersObject_` helper moves from
+  `abclassMutations.js` to `abclassValidation.js` but the validation contract is
+  identical).
+- The ABClassController planned decomposition in `LARGE_CODE_FILES.md` is **out of scope**
+  for this delivery and is not affected.
 
 ## V1 scope recommendation
 
 ### Include in v1
 
-- New `AssignmentNotFoundError` typed error class
-- Controller change in `_loadFullAssignmentDocument` to throw the typed error
-- `getAssignment_` handler with parameter validation
-- Not-found → `null` handling via `instanceof` check
-- Date normalisation via `DateUtils.normaliseDateFields`
-- `progressTracker` strip at the API boundary
-- Allowlist registration in `z_apiHandler.js`
+- Backend: new `ABClassController.readClass` method (with mandatory `@remarks` block
+  making the pure-read intent explicit) plus a private `_toReadView` helper that
+  owns the response shape (assignments as `toPartialJSON()` + defence-in-depth strip)
+- Backend: move `abclassMutations.js` into a new `z_Api/abclass/` domain folder
+  (removing the file-local `validateParametersObject_` and referencing it as a global
+  defined in the new shared `abclassValidation.js`)
+- Backend: new `src/backend/z_Api/abclass/abclassRead.js` (thin pass-through — references
+  the shared `validateParametersObject_` global from `abclassValidation.js`; has a
+  file-local `validateIdentifier_` wrapper that reuses `validateSafeTrimmedIdentifier_`
+  from `assignmentDefinitionValidation.js`)
+- Backend: new `src/backend/z_Api/abclass/abclassValidation.js` (shared validation
+  primitive for the `abclass/` domain folder)
+- Backend: `ALLOWLISTED_METHOD_HANDLERS` entry + test-harness wiring (with updated
+  require path for `abclassMutations_`)
+- Backend: `eslint.config.js` path update for the moved and new files
+- Backend: tests for the new controller method, the `_toReadView` transformation,
+  the shared `validateParametersObject_`, and the transport handler
+- Frontend: new
+  `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.ts` and
+  matching Zod schema and spec file
+- Frontend: new `getABClassQueryOptions` factory in `sharedQueries.ts` + `queryKeys.abClass`
+- Frontend: tests for the new service module and Zod schema
+- Documentation: api-layer.md entry, DATA_SHAPES.md section, ClassNotFoundError JSDoc
+  update
 
 ### Defer from v1
 
-- Frontend Zod schema for the full Assignment response shape
-- Frontend service function wrapping `callApi('getAssignment', ...)`
-- Any UI or page work consuming this endpoint
-- Differentiating `loadClass` failure paths from other `INTERNAL_ERROR` cases (auth/permissions
-  vs data integrity)
-- Differentiating the controller's logging severity between `AssignmentNotFoundError` and
-  other `rehydrateAssignment` failures (out of scope per user direction; the existing controller
-  catch block continues to log at `error` level for all errors and the handler logs at `warn`
-  for not-found, which provides sufficient signal)
-- Stripping other transient fields on `Assignment` (e.g. `_hydrationLevel`) at the boundary
+- Per-assignment full rehydration — use existing `getAssignment` endpoint
+- Roster refresh on read — use the assessment-run path or `upsertABClass`
+- `ABClassController` decomposition (over 1000 lines, planned in `LARGE_CODE_FILES.md`)
+- Reorganising the pre-existing `classPartials*` files into a subfolder (out of scope;
+  follow-up delivery)
+- Any visible class-detail page (out of scope for this round; will get its own layout spec)
 
-## Resolved decisions
+## Open questions
 
-1. **Not-found detection**: typed `AssignmentNotFoundError` (instanceof check), not
-   substring match. Rationale: robust to message changes; structurally testable.
-2. **`loadClass` failure handling**: out of scope to differentiate from other `INTERNAL_ERROR`
-   paths for v1. All `loadClass` errors propagate as `INTERNAL_ERROR`.
-3. **`progressTracker` boundary strip**: included in v1 as defence-in-depth.
-4. **`_replaceAssignmentInClass` failure logging**: no separate logging path. The existing
-   controller catch block already logs at `error` level for all `rehydrateAssignment` failures;
-   the handler's "getAssignment failed" log at `error` is the second tier. This rare
-   data-integrity case is not a hot path, so the existing error log is sufficient.
-5. **Per-request info log volume**: accepted as part of the design. The combined controller
-   and handler info-level logs per successful `getAssignment` call are within acceptable
-   operational log volume; if they become a problem in production, the `ABLogger` log level
-   can be raised for that namespace.
+1. **Decided**: controller method name is `readClass` (rationale: pure-read counterpart to
+   `loadClass`; mandatory `@remarks` block makes the semantic difference explicit). No
+   blocker.
+2. **Decided**: Zod spec test file is `classDetailService.zod.spec.ts`, co-located with
+   the schema file in the new subfolder. No blocker.
+3. **Decided**: the new query key is **not** part of the `startupWarmup` set; the new
+   query is per-class, not a global list. No blocker.
+4. **Decided**: the response uses `Assignment.toPartialJSON()` for each assignment via a
+   private `ABClassController._toReadView(abClass)` helper. The controller owns the
+   response shape (following the `getAllClassPartials` controller-level normalisation
+   precedent); the transport handler is a thin pass-through. Recorded as decision 4
+   in the agreed product decisions above.

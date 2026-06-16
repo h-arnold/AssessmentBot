@@ -1,47 +1,53 @@
-# `getAssignment` API Endpoint — Delivery Plan (TDD-First)
+# `getABClass` API Endpoint — Delivery Plan (TDD-First)
+
+> **Plan status**: v1.2 (rewritten after first review pass found the file described the wrong feature; updated after second review pass to add ESLint relaxed-rule entries and clarify wording; updated after third review pass to (a) add `abclassValidation.js` to Section 4's ESLint relaxed-rule acceptance criteria, (b) clarify JSDoc global hint placement in Section 2, (c) sharpen Section 4 test case 1 language, (d) explicitly require removal of the old `ClassNotFoundError` JSDoc sentence in Section 7, (e) clarify `TeacherSummary` redefinition vs import in Section 5, and (f) add `invalidateAbClass` helper to Section 6). Awaiting final sign-off.
 
 ## Read-First Context
 
 Before writing or executing this plan:
 
-1. Read the current `SPEC.md`.
-2. Read `src/backend/AGENTS.md` (backend conventions, §0.1 trailing-underscore handler pattern, §8 date handling, §3 logging).
-3. Read `src/frontend/AGENTS.md` §4.3 (prohibited types in `google.script.run`).
-4. Treat those documents as the source of truth for product behaviour, contracts, and rules.
-5. Use this action plan to sequence delivery and testing; do not restate or redefine material already settled in the spec.
+1. Read the current `SPEC.md` (v1.3, signed off by `Planner Reviewer`).
+2. Read `src/backend/AGENTS.md` (backend conventions, §0.1 trailing-underscore handler pattern, §0.2 validation ownership, §1.1 Node test compatibility, §8 date handling, §3 logging, §11 API domain folder organisation).
+3. Read `src/frontend/AGENTS.md` (frontend conventions, §4.1 required API transport pattern, §4.3 prohibited types in `google.script.run`, §8 Zod validation, §12 service domain folder organisation).
+4. Read `docs/developer/backend/api-layer.md` for canonical API-layer rules.
+5. Read `docs/developer/DATA_SHAPES.md` (and its `backend/DATA_SHAPES.md` mirror) for the canonical partial shape contracts.
+6. Treat those documents as the source of truth for product behaviour, contracts, and rules.
+7. Use this action plan to sequence delivery and testing; do not restate or redefine material already settled in the spec.
 
 ## Scope and assumptions
 
 ### Scope
 
-- New typed error class `AssignmentNotFoundError` at
-  `src/backend/Utils/ErrorTypes/AssignmentNotFoundError.js`.
-- Controller change in `ABClassController._loadFullAssignmentDocument` to throw the new typed
-  error in place of the current generic `Error` on the not-found path.
-- New `getAssignment_` trailing-underscore handler in `src/backend/z_Api/assignmentAssessment.js`.
-- New `getAssignment` entry in `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`.
-- Backend API tests for the new handler, plus a controller-level test for the new typed error.
-- Canonical-doc update for the new error type in
-  `docs/developer/backend/backend-logging-and-error-handling.md` (reconcile planned-only entry).
+- Move `src/backend/z_Api/abclassMutations.js` into a new `src/backend/z_Api/abclass/` domain folder (per backend AGENTS §11). Update require paths in `z_apiHandler.js`, the relaxed-rule path in `eslint.config.js`, and three test file require paths.
+- Create a new shared validation file `src/backend/z_Api/abclass/abclassValidation.js` containing `validateParametersObject_` (extracted from the moved `abclassMutations.js`).
+- Add `ABClassController.readClass(classId)` and private `ABClassController._toReadView(abClass)` methods to `src/backend/y_controllers/ABClassController.js`.
+- Create `src/backend/z_Api/abclass/abclassRead.js` with the thin-pass-through `getABClass_` transport handler.
+- Add the `getABClass` entry in `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js` and wire `globalThis.getABClass_` in the `module.exports` branch (with updated `abclassMutations_` require path).
+- Update `src/backend/Utils/ErrorTypes/ClassNotFoundError.js` JSDoc per the spec.
+- Create `src/frontend/src/services/googleClassrooms/classDetail/` subfolder (per frontend AGENTS §12) containing `classDetailService.ts`, `classDetailService.zod.ts`, `classDetailService.zod.spec.ts`, `classDetailService.spec.ts`.
+- Add `queryKeys.abClass(classId)` in `src/frontend/src/query/queryKeys.ts` and `getABClassQueryOptions(classId)` in `src/frontend/src/query/sharedQueries.ts`.
+- Backend tests: new `tests/controllers/abclassController.readClass.test.js`; new `tests/api/abclassRead.test.js`; new or extended `tests/backend-api/abclassValidation.unit.test.js`; update three existing test file require paths.
+- Frontend tests: new `classDetailService.spec.ts` and `classDetailService.zod.spec.ts` (in the new subfolder).
+- Documentation updates: `docs/developer/backend/api-layer.md` (new endpoint entry); `docs/developer/backend/DATA_SHAPES.md` (new response shape section).
 
 ### Out of scope
 
-- Frontend service module, Zod schema, or React hooks for consuming this endpoint.
-- Any UI/page changes.
-- Any mutation, creation, or deletion of assignments.
-- Changes to `AssignmentController`, `Assignment` model, or persistence layer.
-- Differentiating `loadClass` failure paths from other `INTERNAL_ERROR` cases.
-- Stripping transient fields other than `progressTracker` at the API boundary.
-- Differentiating the controller's logging severity between `AssignmentNotFoundError` and
-  other `rehydrateAssignment` failures.
+- Per-assignment full rehydration — the existing `getAssignment` endpoint is the canonical path.
+- Roster refresh on read — the assessment-run path (`startAssessmentRun`) and `upsertABClass` are the existing entry points.
+- `ABClassController` decomposition (over 1000 lines; planned in `LARGE_CODE_FILES.md` but not yet implemented).
+- Reorganising the pre-existing `classPartials*` files into a subfolder (pre-existing rule deviation; out of scope for this round).
+- Any visible class-detail page (out of scope; will get its own layout spec when built).
+- New shared helper extraction beyond the `abclassValidation.js` already specified (no other new shared helpers are introduced).
+- Updating the `z_Api` builder concatenation order to use numeric prefixes (the existing `localeCompare` order is sufficient because all function calls in the new `abclass/` folder are lazy).
 
 ### Assumptions
 
-1. `ABClassController.loadClass` returns an object with a `classId` property that `rehydrateAssignment` can consume.
-2. `_loadFullAssignmentDocument` will throw the new `AssignmentNotFoundError` (not a generic `Error`) on the not-found path. The API handler detects not-found via an `instanceof` check.
-3. `Assignment.toJSON()` already converts `dueDate` and `lastUpdated` to ISO strings; `DateUtils.normaliseDateFields` provides defence-in-depth — but the handler must still be tested with a mock that returns live `Date` objects to prove the wiring is intact.
-4. `Assignment.toJSON()` already excludes `progressTracker` per its JSDoc; the handler's `delete response.progressTracker` is defence-in-depth and must still be tested with a mock that includes the field.
-5. `hasControlCharacters_` is available as a global in the GAS concatenated runtime (from `assignmentDefinitionValidation.js`).
+1. The `eslint.config.js` relaxed-rule file list (lines 192–212) is the only ESLint configuration entry that needs updating; the root-level `.eslintrc.js` and `config/eslint/*.cjs` files do not reference any of the moved or new files.
+2. The existing `assignmentDefinitionValidation.js` / `assignmentDefinitionTransport.js` pair demonstrates the lazy-call load-order pattern: `assignmentDefinitionTransport.js` loads alphabetically before `assignmentDefinitionValidation.js`, yet `upsertAssignmentDefinition_` calls `validateUpsertParameters_` at runtime without issue. The new `abclass/` folder follows the same pattern (no numeric prefixes needed).
+3. `ABClassController.loadClass` is preserved unchanged (it still has its write-effect semantics for the assessment-run path). The new `readClass` is purely additive and does not call `_refreshRoster` or `_persistRoster`.
+4. The existing `tests/api/abclassMutations.test.js` will require the new path but its assertions are unchanged. The new transport test (`tests/api/abclassRead.test.js`) follows the pattern of `tests/api/assignmentReadApi.test.js`.
+5. `classDetailService.zod.ts` schema matches `Assignment.toPartialJSON()` output exactly (lines 116–134 of `src/backend/AssignmentProcessor/Assignment.js`); the Zod schema is the source of truth for the response shape and the TypeScript type is derived via `z.infer<typeof ...>`.
+6. The frontend Zod schema for `ClassFull` uses `z.nullable()` on the outer response (per frontend AGENTS §8, because the backend `_success()` coerces `undefined → null`).
 
 ---
 
@@ -49,12 +55,14 @@ Before writing or executing this plan:
 
 ### Engineering constraints
 
-- Keep API handler thin and delegate to existing controller methods.
-- Fail fast on invalid inputs with `ApiValidationError`.
-- Do not add defensive guards that hide wiring issues.
+- Keep API handler thin and delegate to controller methods (per backend AGENTS §0.1).
+- Fail fast on invalid inputs with `ApiValidationError`; do not add defensive guards.
 - Keep changes minimal, localised, and consistent with repository conventions.
 - Use British English in comments and documentation.
-- `ABLogger` is mandatory for all new backend code.
+- `ABLogger` is mandatory for all new backend code in active areas (per backend AGENTS §3).
+- The new `_toReadView` controller method uses **leading underscore** (controller private method convention); the new `getABClass_` transport handler uses **trailing underscore** (GAS-hiding convention). These two conventions are not interchangeable.
+- Production backend files must not use `require`/`import`/`module.exports` for internal dependencies (per backend AGENTS §1.1). Shared functions are referenced as globals via `/* global ... */` JSDoc.
+- The `validateParametersObject_` global is defined in `abclassValidation.js` and referenced from `abclassMutations.js` and `abclassRead.js` via `/* global validateParametersObject_ */`.
 
 ### TDD workflow (mandatory per section)
 
@@ -76,417 +84,615 @@ When a section is delegated to sub-agents, the plan must define and enforce mand
 
 ### Shared-helper planning gate (mandatory when helper changes are expected)
 
-This work introduces one new shared helper and reuses several existing ones.
+This work introduces one new shared validation file and reuses several existing primitives. No new types or shared helper extraction beyond what is specified.
 
 Helper decision entries:
 
-1. Helper: `AssignmentNotFoundError` typed error class
-   - Decision: `new`
-   - Owning module/path: `src/backend/Utils/ErrorTypes/AssignmentNotFoundError.js`
-   - Call-site rationale: replaces substring-based not-found detection (see
-     `SPEC.md` §"Agreed product decisions" #6) with a structurally testable
-     `instanceof` check at the API boundary. Follows the existing
-     `DefinitionStaleError.js` pattern: `(message, options)` constructor with
-     `{ courseId, assignmentId, collectionName }` assigned to instance properties
-     of the same names. **No `cause` parameter** — `DefinitionStaleError` does
-     not have one, and the only throw site has no wrapped error to pass.
-   - Relevant canonical doc target:
-     `docs/developer/backend/backend-logging-and-error-handling.md` §9
-   - Planned doc status: `Not implemented` (entry already recorded)
-
-2. Helper: `ABClassController._loadFullAssignmentDocument` `throw` site
-   - Decision: `extend` (one-line change to throw the new typed error)
-   - Owning module/path: `src/backend/y_controllers/ABClassController.js`
-   - Call-site rationale: the controller is the only place where the not-found
-     error originates; the new typed error must be thrown from the source.
-   - Relevant canonical doc target: none (no canonical doc change required for
-     the throw site itself; the error type is documented per entry 1)
-   - Planned doc status: N/A
-
-Reused helpers (no decision needed):
-
-- `ABClassController.loadClass` / `.rehydrateAssignment` — existing controller
-- `Assignment.toJSON()` — existing model method
-- `DateUtils.normaliseDateFields` — existing utility
-- `Validate.requireParams` / `.validateNonEmptyString` — existing validator
-- `hasControlCharacters_` — existing global helper from `assignmentDefinitionValidation.js`
+1. Helper: `validateParametersObject_` (extracted to `abclassValidation.js`, not new)
+   - Decision: `extend` (move from `abclassMutations.js` to new shared file; the function body is unchanged)
+   - Owning module/path: `src/backend/z_Api/abclass/abclassValidation.js` (new file)
+   - Call-site rationale: backend AGENTS §0.2 rule 3 forbids same-layer duplication without
+     explicit defence-in-depth. The primitive was duplicated in `abclassMutations.js`
+     and `abclassRead.js`; extracting to the new shared file follows the
+     `assignmentDefinitionValidation.js` precedent.
+   - Relevant canonical doc target: `docs/developer/backend/api-layer.md` §"Shared
+     Helper Status" (existing list; add new entry)
+   - Planned doc status: `Not implemented` (entry to be added when implementation lands)
+2. Helper: `validateSafeTrimmedIdentifier_` (existing, reused)
+   - Decision: `reuse`
+   - Owning module/path: `src/backend/z_Api/assignmentDefinitionValidation.js` (existing)
+   - Call-site rationale: the new `validateIdentifier_` file-local wrapper in
+     `abclassRead.js` calls `validateSafeTrimmedIdentifier_` with the same
+     `throwValidationError` and error message template used by `getAssignment_`
+     (`assignmentAssessment.js` line 52). No new primitive needed.
+   - Relevant canonical doc target: `docs/developer/backend/api-layer.md`
+     §"Validation ownership rules" (existing reference; no update)
+3. Helper: `getAssignmentDefinitionQueryOptions` precedent (existing, reused as pattern)
+   - Decision: `reuse as pattern`
+   - Owning module/path: `src/frontend/src/query/sharedQueries.ts` (existing)
+   - Call-site rationale: the new `getABClassQueryOptions(classId)` factory follows the
+     same `queryOptions` + `queryKeys` factory pattern. The exact signature mirrors
+     `getAssignmentDefinitionQueryOptions`.
+   - Relevant canonical doc target: frontend AGENTS §2.2 (existing reference; no
+     update)
 
 ### Validation commands hierarchy
 
-- Backend lint: `npm run lint:backend`
-- Backend tests: `npm test -- tests/api/assignmentAssessment.test.js`
-- Backend tests (new): `npm test -- tests/api/assignmentReadApi.test.js`
-- Backend controller tests: `npm test -- tests/controllers/abclassController.rehydrateAssignment.test.js`
+- Backend lint: `npm run lint:backend` (per backend AGENTS §8 and root AGENTS §8)
+- Frontend lint: `npm run lint:frontend` (per root AGENTS §8)
+- Backend tests: `npm test -- <target>` (e.g. `npm test -- tests/controllers/abclassController.readClass.test.js`)
+- Frontend unit tests: `npm run frontend:test -- <target>` (e.g. `npm run frontend:test -- src/frontend/src/services/googleClassrooms/classDetail/`)
+- Frontend e2e tests: not added in this round (no visible UI changes)
 
 ---
 
-## Section 1 — Add `AssignmentNotFoundError` and write failing backend API tests (Red)
+## Section 1 — Move `abclassMutations.js` into new `z_Api/abclass/` folder, update paths
 
 ### Objective
 
-1. Create the new typed error class `AssignmentNotFoundError` at
-   `src/backend/Utils/ErrorTypes/AssignmentNotFoundError.js` (small, focused — the
-   tests in step 2 must import it, so the symbol must exist for the import to
-   resolve). This is a precondition for the Red-phase tests, not part of the
-   feature under test.
-2. Create a new test file `tests/api/assignmentReadApi.test.js` with failing tests
-   for the `getAssignment_` handler. Tests define the transport contract before
-   the handler implementation exists.
-3. Update `ABClassController._loadFullAssignmentDocument` to throw the new typed
-   error in place of the current generic `Error` on the not-found path. This is
-   the single line that the production code needs to change for the typed-error
-   approach; doing it now keeps the controller in sync with the handler tests
-   in step 2.
+Create the new `z_Api/abclass/` domain folder (per backend AGENTS §11) and move `abclassMutations.js` into it. Update all references: the `z_apiHandler.js` require path, the `eslint.config.js` relaxed-rule path, and the three test file require paths. This is a pure location move with no behaviour change (the `validateParametersObject_` extraction is handled in section 2).
 
 ### Constraints
 
-- `AssignmentNotFoundError` follows the existing pattern from
-  `src/backend/Utils/ErrorTypes/DefinitionStaleError.js`: `(message, options)`
-  constructor with options `{ courseId, assignmentId, collectionName }` assigned
-  to `this.courseId`, `this.assignmentId`, `this.collectionName`. Extend `Error`,
-  set `this.name = 'AssignmentNotFoundError'`, guarded `module.exports` block
-  at the end of the file. **No `cause` parameter.**
-- The new error file does **not** need a dedicated unit test (no behaviour
-  beyond holding metadata). It is exercised end-to-end by the handler tests.
-- Tests must use Vitest (`import { describe, expect, it, vi } from 'vitest'`).
-- Follow existing patterns from `tests/api/assignmentAssessment.test.js` (controller
-  stubs, `ApiValidationError` imports, `module.exports` loading).
-- The test file must load `getAssignment_` from
-  `../../src/backend/z_Api/assignmentAssessment.js`.
-- Do not modify tests in the Green phase — only write the handler.
-- The controller change in `_loadFullAssignmentDocument` is a one-line `throw`
-  replacement. The existing diagnostic message is preserved; only the error
-  class is swapped. Do not modify the surrounding `try { ... } catch` block in
-  `rehydrateAssignment`.
+- The moved file's content is unchanged except the `validateParametersObject_` extraction (handled in section 2; in this section, the file is moved as-is).
+- The `ALLOWLISTED_METHOD_HANDLERS` closure entry `upsertABClass: (parameters) => upsertABClass_(parameters),` is unchanged.
+- The new folder is a single-file domain at this point; the `abclass/` domain is completed in later sections.
 
 ### Delegation mandatory reads (when sub-agents are used)
+
+Implementation mandatory docs:
+
+- `src/backend/AGENTS.md` (§11 API domain folder organisation, §0.1 trailing-underscore pattern, §1.1 Node test compatibility)
+- `src/backend/z_Api/z_apiHandler.js` (the require block in the `module.exports` branch)
+- `eslint.config.js` (the relaxed-rule file list at lines 192–212)
+- `tests/api/abclassMutations.test.js` (require path at line 3, line 91)
+- `tests/api/apiHandler/shared.js` (require path at line 15)
+- `tests/backend-api/abclassMutations.unit.test.js` (require path at lines 2 and 8)
 
 Testing Specialist mandatory docs:
 
-- `tests/api/assignmentAssessment.test.js` — existing test pattern for the same module
-- `tests/api/assignmentDefinitionReadApi.test.js` — pattern for a read handler that returns data
-- `tests/setupGlobals.js` — Node test harness global wiring (in particular how
-  `Assignment`, `ABClassController` and friends are loaded)
-- `SPEC.md` — feature spec
-- `src/backend/AGENTS.md` — backend conventions
-- `src/backend/z_Api/assignmentAssessment.js` — target file
-- `src/backend/y_controllers/ABClassController.js` — `rehydrateAssignment` and
-  `_loadFullAssignmentDocument` signatures
-- `src/backend/AssignmentProcessor/Assignment.js` — `Assignment.toJSON()` shape
-- `src/backend/Utils/ErrorTypes/DefinitionStaleError.js` — pattern for the new
-  `AssignmentNotFoundError` class
-- `src/backend/Utils/DateUtils.js` — `normaliseDateFields` signature
-- `docs/developer/backend/backend-testing.md` — backend testing policy
+- Same as Implementation, plus the existing test file bodies (no assertion changes; the path move is mechanical)
 
-Implementation mandatory docs (for the controller one-line change and the new
-error file):
+Code Reviewer mandatory docs:
 
-- `SPEC.md`
-- `src/backend/AGENTS.md` §1.1, §3, §8
-- `src/backend/y_controllers/ABClassController.js` (focus on lines 460-479:
-  `_loadFullAssignmentDocument`)
-- `src/backend/Utils/ErrorTypes/DefinitionStaleError.js` — pattern reference
-- `docs/developer/backend/backend-logging-and-error-handling.md` §9 — to see the
-  planned-only `AssignmentNotFoundError` entry that this work reconciles
+- Same as Implementation, plus `docs/developer/backend/api-layer.md` (the existing `abclassMutations` entries at lines 381, 388, 398 — these references use the file path and will need updating in the documentation section later, but the code review of this section is about the path move only)
+
+Other delegated agents (if used) mandatory docs:
+
+- None for this section (no Documentation or Playwright involvement yet)
 
 ### Shared helper plan (when helper changes are expected)
 
-Recorded in the global Shared-helper planning gate above. The new error class
-and the `_loadFullAssignmentDocument` throw-site change are the two planned
-helper changes. The planned-only entry in
-`docs/developer/backend/backend-logging-and-error-handling.md` §9 must remain
-marked `Not implemented` until Section 5 (Documentation) reconciles it.
+No helper changes in this section. The `validateParametersObject_` extraction is in section 2.
 
 ### Acceptance criteria
 
-- `src/backend/Utils/ErrorTypes/AssignmentNotFoundError.js` exists and follows the
-  `DefinitionStaleError.js` pattern.
-- `ABClassController._loadFullAssignmentDocument` throws `AssignmentNotFoundError`
-  (not generic `Error`) on the not-found path. Existing behaviour on all other
-  paths is unchanged.
-- Test file exists at `tests/api/assignmentReadApi.test.js`.
-- All handler tests fail (Red phase) because `getAssignment_` is not yet exported
-  from `assignmentAssessment.js`.
-- Test coverage includes the following transport-contract cases:
+- `src/backend/z_Api/abclass/abclassMutations.js` exists with byte-for-byte identical content to the original `src/backend/z_Api/abclassMutations.js` **at the end of this section** (the `validateParametersObject_` extraction is performed in Section 2; at the end of this section the file is still a pure location move).
+- `src/backend/z_Api/abclassMutations.js` no longer exists.
+- `src/backend/z_Api/z_apiHandler.js` requires `'./abclass/abclassMutations.js'` (and `globalThis.abclassMutations_ = require('./abclass/abclassMutations.js').abclassMutations_` or equivalent).
+- `eslint.config.js` relaxed-rule file list contains `'src/backend/z_Api/abclass/abclassMutations.js'` (replacing the old path).
+- The three test files (`tests/api/abclassMutations.test.js`, `tests/api/apiHandler/shared.js`, `tests/backend-api/abclassMutations.unit.test.js`) require from the new path.
+- All existing tests still pass (no behavioural change).
 
 ### Required test cases (Red first)
 
-Backend API handler tests:
+Backend tests (existing — verify no regression):
 
-1. **Module exports `getAssignment_`**: verifies the handler is exported via `module.exports`.
-2. **Throws `ApiValidationError` when parameters is not a plain object**: covers `string`, `null`, `undefined`, `[]`.
-3. **Throws for missing `courseId`**: `{ assignmentId: 'a1' }` → error.
-4. **Throws for missing `assignmentId`**: `{ courseId: 'c1' }` → error.
-5. **Throws `ApiValidationError` for unsafe characters in `courseId`**: path-traversal strings (`../`, `/`, `\\`) and control characters (e.g. `\x00` null byte, `\x1F` unit separator). Verify both validation paths are exercised.
-6. **Throws `ApiValidationError` for unsafe characters in `assignmentId`**: same checks (path traversal and control characters).
-7. **Delegates to `ABClassController.rehydrateAssignment` on valid input and returns Assignment shape**: stub `loadClass` to return a mock ABClass with a `classId` (capture the reference), stub `rehydrateAssignment` to return a mock Assignment (with `toJSON` returning a representative payload). Verify: (a) `loadClass` is called with the correct `courseId`, (b) `rehydrateAssignment` is called with the captured ABClass reference (identity, not structural equality) and the correct `assignmentId`, (c) returned data matches the `toJSON()` output, (d) `ABLogger.getInstance().info` is called for both the "loading" and "rehydrated" log points.
-8. **Defence-in-depth: `DateUtils.normaliseDateFields` converts live `Date` objects**: stub the Assignment's `toJSON` to return `{ dueDate: new Date(...), lastUpdated: new Date(...) }` (with everything else in the representative payload). Verify the handler response contains ISO strings for both fields. This is the regression test for the `normaliseDateFields` boundary call — without it, removing the call would not be caught by test 7.
-9. **Defence-in-depth: `progressTracker` is stripped at the boundary**: stub the Assignment's `toJSON` to return a payload that includes `progressTracker: { /* some singleton instance */ }`. Verify the handler response does not contain a `progressTracker` field. This is the regression test for the boundary strip.
-10. **Returns `null` when `rehydrateAssignment` throws `AssignmentNotFoundError`**: stub `rehydrateAssignment` to throw a real `AssignmentNotFoundError` instance (imported from the new error file), verify the handler returns `null` (not throws), and verify `ABLogger.getInstance().warn` is called with the not-found message. **Not** implemented via substring matching.
-11. **Propagates non-not-found errors from `rehydrateAssignment`**: stub `rehydrateAssignment` to throw a generic `Error` (e.g. `'Corrupt assignment data'`). Verify the handler re-throws and `ABLogger.getInstance().error` is called with the "getAssignment failed" message.
-12. **Propagates errors from `loadClass`**: stub `loadClass` to throw. Verify the handler re-throws (class-not-found must not be caught as assignment-not-found) and `ABLogger.getInstance().error` is called.
+1. `tests/api/abclassMutations.test.js` runs against the new path and all assertions pass.
+2. `tests/api/apiHandler/shared.js` (if it has any path-dependent test cases) still passes.
+3. `tests/backend-api/abclassMutations.unit.test.js` runs against the new path and all assertions pass.
 
-Backend controller tests (one new test, added to the existing
-`tests/controllers/abclassController.rehydrateAssignment.test.js`):
+Backend controller tests:
 
-13. **`_loadFullAssignmentDocument` throws `AssignmentNotFoundError` on missing document**: with the `dbManager.getCollection` stubbed to return a collection whose `findOne` returns `undefined` (or `null`), verify the throw is `instanceof AssignmentNotFoundError` and carries the expected `this.courseId`, `this.assignmentId`, `this.collectionName` instance properties.
-
-**Test harness note (applies to tests 7(d), 10, 11, 12):** `tests/setupGlobals.js` lines 68-78
-install a no-op `ABLogger` stub. Tests that verify `ABLogger` calls must install their own
-mock in `beforeEach`, e.g.:
-
-```js
-const abLoggerSpies = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
-globalThis.ABLogger = { getInstance: () => abLoggerSpies };
-```
-
-…and restore the original `globalThis.ABLogger` in `afterEach`. See
-`docs/developer/backend/backend-testing.md` lines 15-26 for logging-fidelity expectations.
+4. No new tests in this section (this is a pure path move).
 
 ### Section checks
 
-- `npm test -- tests/api/assignmentReadApi.test.js` — all tests should **fail** (Red phase) because `getAssignment_` is not yet exported from `assignmentAssessment.js`. Tests that depend on the new error class (10, 13) should also pass once the class file exists.
-- Test file follows existing patterns (controller stubs, module-loading helper, `beforeEach`/`afterEach` cleanup, including restore of `globalThis.ABLogger` for the spy-requiring tests).
-- Shared-helper planning entries for `AssignmentNotFoundError` and the controller throw-site are recorded.
+- `npm run lint:backend` passes (no new lint errors from the path move).
+- `npm test -- tests/api/abclassMutations.test.js` passes.
+- `npm test -- tests/api/apiHandler/` passes.
+- `npm test -- tests/backend-api/abclassMutations.unit.test.js` passes.
+- `npm test -- tests/controllers/abclass-loadClass.test.js` and other ABClass-related test files still pass (regression check).
+- Mandatory-read evidence gate passed for all delegated handoffs in this section.
 
 ### Optional `@remarks` JSDoc follow-through
 
-None in this section (the `@remarks` follow-through for the handler lands in
-Section 2; the new error class does not need `@remarks`).
+- None for this section.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (to be filled during Red phase)
-- **Deviations from plan:** (to be filled if any)
-- **Follow-up implications for later sections:** Section 2 must implement `getAssignment_` to make these tests green. Section 5 (Documentation) must reconcile the planned-only entry in `backend-logging-and-error-handling.md` §9 to `Implemented`.
+- **Implementation notes**: pure location move; the require-path change in `z_apiHandler.js`'s `module.exports` branch is one line; the `eslint.config.js` change is one line; the three test-file require changes are mechanical.
+- **Deviations from plan**: none expected.
+- **Follow-up implications for later sections**: section 2 will remove the file-local `validateParametersObject_` from `abclassMutations.js` and add the `abclassValidation.js` shared file. Section 2 must be done in lockstep with this section or the file will temporarily have a broken import if a future refactor moves the function out.
 
 ---
 
-## Section 2 — Implement `getAssignment_` handler (Green)
+## Section 2 — Create `abclassValidation.js` shared validation file
 
 ### Objective
 
-Add the `getAssignment_` trailing-underscore handler function to
-`src/backend/z_Api/assignmentAssessment.js` and export it via `module.exports`.
-All tests from Section 1 must go green.
+Create `src/backend/z_Api/abclass/abclassValidation.js` containing `validateParametersObject_` (moved from `abclassMutations.js`). Update `abclassMutations.js` to reference the global instead of defining its own copy. This avoids same-layer duplication (per backend AGENTS §0.2 rule 3) and follows the `assignmentDefinitionValidation.js` precedent.
 
 ### Constraints
 
-- Add the handler to the existing `assignmentAssessment.js` file (do not create a
-  new file).
-- Insert `getAssignment_` **immediately after `startAssessmentRun_`** and before
-  the `if (typeof module !== 'undefined' && module.exports)` block at the end of
-  the file. Update that block to export `{ startAssessmentRun_, getAssignment_ }`.
-- Follow the trailing-underscore pattern per `src/backend/AGENTS.md` §0.1.
-- Update the `/* global */` comment at the top of the file to include:
-  `ApiValidationError, Validate, ABClassController, DateUtils, ABLogger,
-AssignmentNotFoundError, hasControlCharacters_`.
-  **`Assignment` is intentionally omitted** — the handler never constructs one
-  directly; it only calls `.toJSON()` on the instance returned by
-  `rehydrateAssignment`. `hasControlCharacters_` is included because the handler
-  uses it for unsafe-character validation, matching the pattern in
-  `googleClassroomAssignments.js` which already uses this global.
-- Validate parameters shape inline (matching the existing `startAssessmentRun_`
-  pattern in the same file).
-- Reject unsafe characters in identifiers inline (matching the
-  `getGoogleClassroomAssignments_` pattern in `googleClassroomAssignments.js`).
-- Catch not-found errors via `instanceof AssignmentNotFoundError`; re-throw all
-  other errors. The catch wraps both `loadClass` and `rehydrateAssignment`
-  calls; only the typed-error branch returns `null`.
-- After `assignment.toJSON()`, defensively `delete response.progressTracker`
-  before `normaliseDateFields`. Document the rationale in `@remarks`.
-- Apply `DateUtils.normaliseDateFields(response, ['dueDate', 'lastUpdated'])` as
-  the final boundary step before returning. This is **shallow defence-in-depth
-  for root-level fields only**; nested date conversion (`createdAt`, `updatedAt`
-  on `submissions`, dates on `assignmentDefinition`) relies on the corresponding
-  `toJSON()` implementations being correct. The regression test in
-  `tests/api/assignmentReadApi.test.js` (test 8) proves the root-level call is
-  wired by mocking `toJSON()` to return live `Date` objects in
-  `dueDate`/`lastUpdated`.
-- Logging:
-  - `info` before loading ABClass: `"getAssignment: loading full assignment"` with `{ courseId, assignmentId }`.
-  - `info` after successful rehydration: `"getAssignment: rehydrated assignment"` with `{ courseId, assignmentId }`.
-  - `warn` for not-found: `"getAssignment: assignment not found"` with `{ courseId, assignmentId }`.
-    (`warn`, not `error` — the API returns `null` gracefully, so this is a
-    notable but not failure-level event.)
-  - `error` for other failures: `"getAssignment failed"` with `{ courseId, assignmentId, err }`.
-- The same `abClass` instance returned by `loadClass` is passed to
-  `rehydrateAssignment` (identity, not structural equality) — the controller
-  mutates it via `_replaceAssignmentInClass`.
+- `validateParametersObject_` is a top-level `z_Api` function; trailing-underscore pattern applies.
+- The function body is unchanged (it remains the same primitive that was in `abclassMutations.js` line 18).
+- `abclassMutations.js` references the function as a global via `/* global validateParametersObject_ */` (no `require` / `import`).
+- The `module.exports` block in `abclassValidation.js` exports `validateParametersObject_` for Node test access.
 
 ### Delegation mandatory reads (when sub-agents are used)
 
 Implementation mandatory docs:
 
-- `SPEC.md` — feature spec (particularly the handler call-tree, logging
-  requirements, and the "Backend changes required" section)
-- `src/backend/AGENTS.md` — backend conventions (§0.1, §0.2, §3, §8)
-- `src/backend/z_Api/assignmentAssessment.js` — target file for the handler
-- `src/backend/z_Api/googleClassroomAssignments.js` — unsafe-character validation pattern
-- `src/backend/y_controllers/ABClassController.js` — `rehydrateAssignment`
-  method (lines 413–449) and `_loadFullAssignmentDocument` (lines 460–479)
-- `src/backend/Utils/ErrorTypes/AssignmentNotFoundError.js` — new error class
-  (Section 1 created it)
-- `src/backend/Utils/DateUtils.js` — `normaliseDateFields` signature
-- `docs/developer/backend/backend-logging-and-error-handling.md` — logging and
-  error policy; also confirms the new `AssignmentNotFoundError` is not mapped
-  to a transport error code
+- `src/backend/AGENTS.md` (§0.1 trailing-underscore pattern, §1.1 Node test compatibility)
+- `src/backend/z_Api/assignmentDefinitionValidation.js` (the existing shared-validation-file pattern; line 690 has the `module.exports` block)
+- `src/backend/z_Api/abclassMutations.js` (the source of the moved function — line 18, lines 55, 70, 103 for callers)
+
+Testing Specialist mandatory docs:
+
+- Same as Implementation, plus the existing test patterns in `tests/api/abclassMutations.test.js` (which exercises `validateParametersObject_` indirectly)
 
 Code Reviewer mandatory docs:
 
-- `SPEC.md`
-- `src/backend/AGENTS.md`
-- `src/backend/z_Api/assignmentAssessment.js` (final state)
-- `src/backend/Utils/ErrorTypes/AssignmentNotFoundError.js` (final state)
-- `src/backend/y_controllers/ABClassController.js` (final state)
-- `tests/api/assignmentReadApi.test.js` (for context on tested contract)
-- `docs/developer/backend/backend-logging-and-error-handling.md` (to verify the
-  planned-only entry remains marked `Not implemented` until Section 5)
+- Same as Implementation, plus `docs/developer/backend/api-layer.md` (no new doc entry needed for this section; the new shared primitive is internal)
 
-### Shared helper plan (when helper changes are expected)
+### Shared helper plan
 
-No additional shared-helper changes in this section. The two planned helper
-changes (new error class and controller throw-site) are implemented in
-Section 1.
+This section is the `extend` decision for `validateParametersObject_` recorded in §"Shared-helper planning gate" entry 1. The `Not implemented` status moves to `Implemented` once the file is created and the helper is exported.
 
 ### Acceptance criteria
 
-- `getAssignment_` function exists in `assignmentAssessment.js`, placed
-  immediately after `startAssessmentRun_`.
-- `module.exports` exports `{ startAssessmentRun_, getAssignment_ }`.
-- The `/* global */` comment lists `AssignmentNotFoundError` and **does not**
-  list `Assignment`.
-- All tests from Section 1 pass: `npm test -- tests/api/assignmentReadApi.test.js`.
-- Existing tests still pass: `npm test -- tests/api/assignmentAssessment.test.js`.
-- Backend lint passes: `npm run lint:backend`.
+- `src/backend/z_Api/abclass/abclassValidation.js` exists.
+- The file defines `validateParametersObject_(parameters, methodName)` with the same body as the original (moved from `abclassMutations.js` line 18).
+- The file ends with the guarded `if (typeof module !== 'undefined' && module.exports) { module.exports = { validateParametersObject_ }; }` block.
+- `src/backend/z_Api/abclass/abclassMutations.js` no longer defines `validateParametersObject_` locally; instead, it has a `/* global validateParametersObject_ */` JSDoc hint at the very top of the file (before any function definitions), matching the existing pattern in `assignmentAssessment.js` line 1.
+- `eslint.config.js` relaxed-rule file list (the array at lines 192–212) contains `'src/backend/z_Api/abclass/abclassValidation.js'`. Without this, the new file's test fixtures using indexed property access will fail lint.
+- All existing tests still pass (the function is used by `validateUpsertABClassParameters_`, `validateUpdateABClassParameters_`, `validateDeleteABClassParameters_` — these callers reference the global now).
 
 ### Required test cases (Red first)
 
-N/A — tests were written in Section 1. This section makes them green.
+Backend API tests (new):
+
+1. `tests/backend-api/abclassValidation.unit.test.js` (new file) covers:
+   - `validateParametersObject_` is exported in Node test runtime
+   - `validateParametersObject_` accepts a plain object without throwing
+   - `validateParametersObject_` rejects `null` with `ApiValidationError` (`'params must be an object.'`)
+   - `validateParametersObject_` rejects `undefined` with `ApiValidationError`
+   - `validateParametersObject_` rejects an array with `ApiValidationError` (arrays are objects in JS but not plain objects for our purposes)
+   - `validateParametersObject_` rejects a string with `ApiValidationError`
+   - `validateParametersObject_` includes the `method` and `fieldName: 'params'` in the thrown error's options
+
+Backend API tests (existing — verify no regression):
+
+2. `tests/api/abclassMutations.test.js` still passes (the function is now a global, but the behaviour is identical).
 
 ### Section checks
 
-- `npm test -- tests/api/assignmentReadApi.test.js` — **all tests green**.
-- `npm test -- tests/api/assignmentAssessment.test.js` — **still green** (no regression).
-- `npm test -- tests/api/assignmentDefinitionReadApi.test.js` — **still green** (no regression in the read-pattern family).
-- `npm run lint:backend` — **clean**.
-- `ABLogger` is called at the documented points (`info` for success, `warn` for
-  not-found, `error` for other failures).
-- `DateUtils.normaliseDateFields` is called on the response.
-- The `progressTracker` strip happens before `normaliseDateFields`.
-- Not-found catch is scoped to `instanceof AssignmentNotFoundError` only.
+- `npm run lint:backend` passes.
+- `npm test -- tests/backend-api/abclassValidation.unit.test.js` passes.
+- `npm test -- tests/api/abclassMutations.test.js` passes (regression check).
+- Mandatory-read evidence gate passed for all delegated handoffs in this section.
 
 ### Optional `@remarks` JSDoc follow-through
 
-Add `@remarks` to `getAssignment_` documenting:
-
-- Why not-found is detected via `instanceof AssignmentNotFoundError` (typed
-  error, robust to message changes; structurally testable).
-- Why `DateUtils.normaliseDateFields` is applied even though `toJSON()`
-  already converts dates (defence-in-depth; Date objects are strictly
-  prohibited in `google.script.run` transport; regression test in
-  `assignmentReadApi.test.js` proves the wiring is intact for root-level fields).
-  Note: this is shallow defence-in-depth — nested date conversion on
-  `submissions` and `assignmentDefinition` still depends on the
-  corresponding `toJSON()` implementations.
-- Why `progressTracker` is stripped at the boundary (defence-in-depth;
-  `Assignment.toJSON()` already omits it per its JSDoc but a future model
-  change could regress; the explicit strip is the canonical boundary
-  defence pattern).
-- Why the same `abClass` instance is threaded through to `rehydrateAssignment`
-  (the controller mutates it via `_replaceAssignmentInClass`; a fresh instance
-  would silently break assignment cache state).
+- The exported `validateParametersObject_` gets a brief JSDoc noting it is the shared primitive for the `abclass/` domain (referenced via `/* global ... */` from `abclassMutations.js` and `abclassRead.js`).
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (to be filled during Green phase)
-- **Deviations from plan:** (to be filled if any)
-- **Follow-up implications for later sections:** Section 3 must register the
-  allowlist entry. Section 5 (Documentation) must reconcile the planned-only
-  entry in `backend-logging-and-error-handling.md` §9 to `Implemented`.
+- **Implementation notes**: pure extraction; the function body is unchanged. The JSDoc on the moved function can be lightly extended to document the new sharing pattern.
+- **Deviations from plan**: none expected.
+- **Follow-up implications for later sections**: section 5 (`abclassRead.js`) will reference this global. If section 2 and section 5 are done in the same delivery, the test for `abclassRead.js` will verify the global reference works at runtime.
 
 ---
 
-## Section 3 — Register `getAssignment` in ALLOWLISTED_METHOD_HANDLERS (Green)
+## Section 3 — Add `ABClassController.readClass` and private `_toReadView`
 
 ### Objective
 
-Add the `getAssignment` entry to `ALLOWLISTED_METHOD_HANDLERS` in
-`src/backend/z_Api/z_apiHandler.js` and update the Node `require` block.
+Add `readClass(classId)` (public) and `_toReadView(abClass)` (private, leading underscore) methods to `ABClassController`. The new methods form the pure-read counterpart to the existing `loadClass`: they read a stored class document, deserialise it, and return a transport-ready plain object with partial assignments and defence-in-depth strip. No Classroom API calls, no storage mutation.
 
 ### Constraints
 
-- Add the entry immediately after `upsertAssignmentDefinition` (the last
-  assignment-related write entry) and before `getGoogleClassroomAssignments` (the
-  first Google Classroom read entry) for logical grouping. The grouping rationale
-  is "assignment-related methods, then classroom methods, then class methods,
-  then reference-data methods"; `getAssignment` belongs to the assignment cluster.
-- Thin closure: `getAssignment: (parameters) => getAssignment_(parameters)`,
-  structurally identical to the surrounding one-line closures.
-- Update the Node-side `globalThis` assignment in the
-  `if (typeof module !== 'undefined' && module.exports)` block to set
-  `globalThis.getAssignment_` alongside `globalThis.startAssessmentRun_` via
-  `require('./assignmentAssessment.js').getAssignment_`.
-- Do not modify any other allowlist entries.
-- Do not add the new error type to `_mapErrorToFailureEnvelope` — the handler
-  catches `AssignmentNotFoundError` before it can reach the dispatcher's error
-  envelope.
+- `readClass` throws `ClassNotFoundError` with the same message format and `courseId` metadata as `loadClass` lines 875–886 (no distinction between missing-collection and missing-document).
+- `readClass` does not call `_refreshRoster`, `_persistRoster`, or any Classroom API method.
+- `_toReadView` uses **leading underscore** (controller private method convention).
+- `_toReadView` is **not** exported via `module.exports` (existing controllers export only the class itself).
+- The defence-in-depth `delete _hydrationLevel` and `delete progressTracker` calls on each embedded assignment are kept even though they are currently a no-op (mirrors `getAssignment_` precedent for `progressTracker`).
+- Mandatory `@remarks` JSDoc on `readClass` documents the pure-read intent and references `_toReadView` for the partial shape.
 
 ### Delegation mandatory reads (when sub-agents are used)
 
 Implementation mandatory docs:
 
-- `src/backend/z_Api/z_apiHandler.js` — full file (particularly
-  `ALLOWLISTED_METHOD_HANDLERS` and the Node `require` block)
-- `src/backend/AGENTS.md` — §0.1 (allowlist pattern)
-- `SPEC.md` — for the method name
+- `src/backend/AGENTS.md` (§0.1 trailing-underscore vs leading-underscore conventions, §3 logging, §4 defensive-guard policy, §7 default values rule)
+- `src/backend/y_controllers/ABClassController.js` (the existing `loadClass` and `_normaliseClassPartial` patterns; lines 869–895, lines 153–172)
+- `src/backend/Models/ABClass.js` (`toJSON()` shape, `fromJSON` reconstruction, line 356's `_hydrationLevel: 'partial'`)
+- `src/backend/AssignmentProcessor/Assignment.js` (`toPartialJSON()` shape, lines 116–134; `_baseFromJSON` `_hydrationLevel` behaviour at lines 172–227)
+- `src/backend/Utils/ErrorTypes/ClassNotFoundError.js` (the typed error class; constructor signature)
+- `docs/howTos/rehydration.md` (the redaction contract for `Assignment.toPartialJSON()`)
+
+Testing Specialist mandatory docs:
+
+- Same as Implementation, plus the existing `tests/controllers/abclass-loadClass.test.js` pattern
 
 Code Reviewer mandatory docs:
 
-- `src/backend/z_Api/z_apiHandler.js` (final state)
-- `src/backend/AGENTS.md` §0.1
+- Same as Implementation, plus `src/backend/z_Api/assignmentAssessment.js` (the `getAssignment_` precedent for defence-in-depth strip and `ClassNotFoundError` catch)
 
-### Shared helper plan (when helper changes are expected)
+### Shared helper plan
 
-None.
+No new shared helpers. The new methods are private to `ABClassController`.
 
 ### Acceptance criteria
 
-- `getAssignment` entry exists in `ALLOWLISTED_METHOD_HANDLERS`, in the
-  documented insertion position.
-- Thin closure delegates to `getAssignment_(parameters)` — structurally
-  identical to the surrounding one-line closures (reviewer can verify by
-  grep-comparing the entry to neighbours).
-- `globalThis.getAssignment_` is set via `require` in the Node test
-  compatibility block, alongside `globalThis.startAssessmentRun_`.
-- Backend lint passes: `npm run lint:backend`.
+- `ABClassController` has a new `readClass(classId)` method.
+- `ABClassController` has a new `_toReadView(abClass)` method (leading underscore; not exported).
+- `readClass` returns a plain object (not a model instance).
+- `readClass` throws `ClassNotFoundError` when the collection is missing (with structured `courseId` metadata).
+- `readClass` throws `ClassNotFoundError` when the document is missing (same message and metadata).
+- `readClass` does **not** call `ClassroomApiClient.fetchCourse`, `fetchTeachers`, or `fetchAllStudents`.
+- `readClass` does **not** call any `dbManager.getCollection(...).insertOne`, `replaceOne`, `updateOne`, or `save` (no storage mutation).
+- `readClass`'s returned plain object has `assignments[]` entries as `Assignment.toPartialJSON()` output (not `Assignment.toJSON()` output).
+- The returned plain object has `_hydrationLevel` and `progressTracker` stripped from each embedded assignment.
+- `readClass` surfaces corrupt documents as `INTERNAL_ERROR` rather than as `null` (matching `loadClass` precedent; the error surfaces inside `_toReadView` / `toPartialJSON()`).
+- The `readClass` JSDoc includes the mandatory `@remarks` block: _"Pure read — does not call `_refreshRoster`, `_persistRoster`, or any Classroom API. Use `loadClass` when roster freshness is required. Returns a plain object with `assignments[]` as `Assignment.toPartialJSON()` output; the partial shape is produced by the private `_toReadView` method."_
 
 ### Required test cases (Red first)
 
-N/A — the handler was tested in Section 1, and the allowlist entry is a wiring
-concern. The existing tests exercise the handler directly via `module.exports`;
-the allowlist entry will be exercised by future E2E/integration tests.
+Backend controller tests (new — `tests/controllers/abclassController.readClass.test.js`):
+
+1. **RED**: `readClass` does not exist yet — `ABClassController.prototype.readClass` is `undefined` (the method is not on the prototype). The test creates a new `ABClassController` instance, calls `instance.readClass('class-001')`, and asserts the method exists (e.g. `expect(typeof instance.readClass).toBe('function')`). Test fails because the method is not yet defined.
+2. **GREEN**: `readClass` returns the transport-shaped plain object (not a model instance) for a stored class document with all fields populated. Test passes.
+3. `readClass` throws `ClassNotFoundError` with the same message format and `courseId: <classId>` metadata as `loadClass` when the collection is missing. Test passes.
+4. `readClass` throws `ClassNotFoundError` with the same message format and `courseId: <classId>` metadata as `loadClass` when the document is missing. Test passes.
+5. `readClass` does **not** call `ClassroomApiClient.fetchCourse`, `fetchTeachers`, or `fetchAllStudents` (verified by spy assertion). Test passes.
+6. `readClass` does **not** call `dbManager.getCollection(...).insertOne`, `replaceOne`, `updateOne`, or `save` (verified by spy assertion). Test passes.
+7. `readClass`'s returned plain object has `assignments[]` as `Assignment.toPartialJSON()` output (verified by `expect(assignments[0]).toEqual(expectedPartialShape)`). Test passes.
+8. The returned plain object has `_hydrationLevel` and `progressTracker` stripped from each embedded assignment (verified by `expect(assignments[0]).not.toHaveProperty('_hydrationLevel')`). Test passes.
+9. `readClass` surfaces corrupt documents as `INTERNAL_ERROR` (test sets up a document that causes `Assignment.fromJSON` → `toPartialJSON()` to throw; test asserts the error propagates). Test passes.
+10. `readClass` JSDoc has the mandatory `@remarks` block (test verifies the string is present in the function's JSDoc comment). Test passes.
 
 ### Section checks
 
-- `npm run lint:backend` — **clean**.
-- `npm test -- tests/api/assignmentReadApi.test.js` — **still green**.
-- `npm test -- tests/api/assignmentAssessment.test.js` — **still green**.
-- Structural check: the new entry matches the shape
-  `(parameters) => getAssignment_(parameters)` exactly (no extra validation,
-  no transformation, no error mapping).
+- `npm run lint:backend` passes.
+- `npm test -- tests/controllers/abclassController.readClass.test.js` passes.
+- `npm test -- tests/controllers/abclass-loadClass.test.js` passes (regression check — `loadClass` is unchanged).
+- Mandatory-read evidence gate passed for all delegated handoffs in this section.
 
 ### Optional `@remarks` JSDoc follow-through
 
-None.
+- `readClass`: the mandatory `@remarks` block per the acceptance criteria.
+- `_toReadView`: a brief JSDoc noting it produces the transport-shaped response from a model instance; called only by `readClass`.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (to be filled)
-- **Deviations from plan:** (to be filled if any)
-- **Follow-up implications for later sections:** None — this section completes
-  the backend wiring. Section 4 (Regression) and Section 5 (Documentation)
-  remain.
+- **Implementation notes**: the controller file is over 1000 lines and has a planned decomposition in `LARGE_CODE_FILES.md`. This delivery does **not** decompose the file (out of scope per the spec). The new methods are added alongside the existing `loadClass`.
+- **Deviations from plan**: none expected.
+- **Follow-up implications for later sections**: section 4 (transport handler) will call `readClass`. Section 7 (`ClassNotFoundError` JSDoc update) clarifies the typed-error contract that `readClass` already throws.
+
+---
+
+## Section 4 — Add `getABClass_` transport handler and `ALLOWLISTED_METHOD_HANDLERS` entry
+
+### Objective
+
+Create `src/backend/z_Api/abclass/abclassRead.js` with the thin-pass-through `getABClass_` transport handler. Add the `getABClass` entry in `ALLOWLISTED_METHOD_HANDLERS` and wire `globalThis.getABClass_` in the test-harness branch.
+
+### Constraints
+
+- `abclassRead.js` is a thin pass-through: validate params, call `new ABClassController().readClass(parameters.classId)`, catch `ClassNotFoundError` and return `null`, log via `ABLogger` at the `getAssignment_` precedent levels (`info` on success, `warn` on not-found, `error` on other failures).
+- The file-local `validateIdentifier_(value, fieldName)` wrapper calls `validateSafeTrimmedIdentifier_` from `assignmentDefinitionValidation.js` (line 118) with the same `throwValidationError` and error message template used by `getAssignment_`.
+- The handler does **not** call `DateUtils.normaliseDateFields` (the response root has no `Date` fields).
+- The handler does **not** export `validateIdentifier_` (matches the `assignmentAssessment.js` precedent of exporting only the handler).
+- The `module.exports` block exports `{ getABClass_ }` only.
+
+### Delegation mandatory reads (when sub-agents are used)
+
+Implementation mandatory docs:
+
+- `src/backend/AGENTS.md` (§0.1 trailing-underscore pattern, §0.2 validation ownership, §3 logging, §11 API domain folder)
+- `src/backend/z_Api/z_apiHandler.js` (the `ALLOWLISTED_METHOD_HANDLERS` registry, the `module.exports` test-harness wiring block, the error envelope)
+- `src/backend/z_Api/assignmentAssessment.js` (the `getAssignment_` precedent — lines 52–66 for `validateIdentifier_` wrapper, lines 122–153 for log levels and `ClassNotFoundError` catch, lines 155–156 for the `module.exports` block)
+- `src/backend/z_Api/assignmentDefinitionValidation.js` (the source of `validateSafeTrimmedIdentifier_`; line 118)
+- `src/backend/z_Api/abclass/abclassValidation.js` (the source of `validateParametersObject_`, from section 2)
+- `src/backend/y_controllers/ABClassController.js` (the `readClass` method, from section 3)
+- `src/backend/Utils/ErrorTypes/ClassNotFoundError.js` (the typed error class)
+
+Testing Specialist mandatory docs:
+
+- Same as Implementation, plus `tests/api/assignmentReadApi.test.js` (the closest precedent — defines the test pattern for a thin transport handler with `ClassNotFoundError` catch)
+
+Code Reviewer mandatory docs:
+
+- Same as Implementation, plus `docs/developer/backend/api-layer.md` (for consistency with the documented transport patterns)
+
+### Shared helper plan
+
+No new shared helpers in this section. The `validateIdentifier_` wrapper is a thin file-local wrapper that reuses the existing `validateSafeTrimmedIdentifier_`.
+
+### Acceptance criteria
+
+- `src/backend/z_Api/abclass/abclassRead.js` exists with the thin-pass-through `getABClass_` handler.
+- `z_apiHandler.js` `ALLOWLISTED_METHOD_HANDLERS` contains `getABClass: (parameters) => getABClass_(parameters),`.
+- `z_apiHandler.js` `module.exports` branch contains `globalThis.getABClass_ = require('./abclass/abclassRead.js').getABClass_;` (and the updated `abclassMutations_` require path from section 1).
+- `eslint.config.js` relaxed-rule file list (the array at lines 192–212) contains `'src/backend/z_Api/abclass/abclassRead.js'` (the new transport file) and `'src/backend/z_Api/abclass/abclassValidation.js'` (the shared validation file added in Section 2; verified here because `abclassRead.js` references the shared global and its test fixtures also exercise the shared validation). Without these entries, the new files' test fixtures using indexed property access will fail lint.
+- The handler validates `params` (plain object) and `classId` (non-empty, trimmed, no path-traversal, no control characters).
+- The handler returns the controller's shaped response on success (pass-through).
+- The handler returns `null` when the controller throws `ClassNotFoundError`.
+- The handler re-throws other controller errors loudly (no defensive catch-and-ignore).
+- The handler logs at the `getAssignment_` precedent levels.
+- The `module.exports` block exports `{ getABClass_ }` only.
+
+### Required test cases (Red first)
+
+Backend API tests (new — `tests/api/abclassRead.test.js`):
+
+1. **RED**: `getABClass_` is not exported in Node test runtime — `require('../../src/backend/z_Api/abclass/abclassRead.js').getABClass_` is `undefined`. Test fails.
+2. **GREEN**: `getABClass_` is exported in Node test runtime. Test passes.
+3. `getABClass_` rejects non-object, `null`, and `undefined` `params` with `ApiValidationError` (`'params must be an object.'`). Test passes.
+4. `getABClass_` rejects missing `classId` with `ApiValidationError` (`'classId must be a non-empty string.'`). Test passes.
+5. `getABClass_` rejects untrimmed `classId` with `ApiValidationError`. Test passes.
+6. `getABClass_` rejects `classId` with path-traversal characters (`..`, `/`, `\`) with `ApiValidationError`. Test passes.
+7. `getABClass_` rejects `classId` with ASCII control characters (code points 0–31 and 127) with `ApiValidationError`. Test passes.
+8. `getABClass_` returns the controller's shaped response on success (verified by `expect(result).toEqual(controllerResult)` deep equality). Test passes.
+9. `getABClass_` returns `null` when the controller throws `ClassNotFoundError` (verified by stubbing the controller to throw, then asserting `null` is returned). Test passes.
+10. `getABClass_` re-throws other controller errors loudly (verified by stubbing the controller to throw a non-`ClassNotFoundError` and asserting the error propagates). Test passes.
+11. The handler does **not** call `DateUtils.normaliseDateFields` at the response root (verified by spying on `DateUtils.normaliseDateFields` and asserting it is not called). Test passes.
+12. `ABLogger.getInstance().info` is called on successful read (verified by spy). Test passes.
+13. `ABLogger.getInstance().warn` is called on not-found (verified by spy). Test passes.
+14. `ABLogger.getInstance().error` is called on other failures (verified by spy). Test passes.
+
+### Section checks
+
+- `npm run lint:backend` passes.
+- `npm test -- tests/api/abclassRead.test.js` passes.
+- `npm test -- tests/api/abclassMutations.test.js` passes (regression check — the existing mutations still work).
+- `npm test -- tests/api/apiHandler/` passes (regression check — the dispatcher still works for all methods).
+- Mandatory-read evidence gate passed for all delegated handoffs in this section.
+
+### Optional `@remarks` JSDoc follow-through
+
+- `getABClass_`: the JSDoc describes the wire contract, the `ClassNotFoundError` → `null` mapping, the log levels, and the lack of date normalisation (matching the `getAssignment_` precedent at `assignmentAssessment.js` lines 69–108).
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes**: the handler is small (~40 lines including the validation helpers). The `module.exports` block is one line.
+- **Deviations from plan**: none expected.
+- **Follow-up implications for later sections**: section 5 (frontend service) will call this handler via `callApi('getABClass', { classId })`. The handler is fully self-contained.
+
+---
+
+## Section 5 — Frontend service module and Zod schema (`classDetail/` subfolder)
+
+### Objective
+
+Create `src/frontend/src/services/googleClassrooms/classDetail/` subfolder (per frontend AGENTS §12) with `classDetailService.ts`, `classDetailService.zod.ts`, `classDetailService.zod.spec.ts`, and `classDetailService.spec.ts`. The service exposes `getABClass({ classId })` that calls `callApi('getABClass', params)` and validates the response through the Zod schema. The Zod schema is the source of truth for the response shape and the TypeScript type is derived via `z.infer<typeof ...>`.
+
+### Constraints
+
+- Zod is the validation framework (per frontend AGENTS §8). Schema first, type derived.
+- The response schema uses `.nullable()` on the outer schema (per frontend AGENTS §8: void / null-result schemas must accept `null` because the backend `_success()` coerces `undefined → null`).
+- The `AssignmentPartial` schema matches `Assignment.toPartialJSON()` output exactly (lines 116–134 of `src/backend/AssignmentProcessor/Assignment.js`).
+- The `TeacherSummary` schema is **redefined inline** in `classDetailService.zod.ts` with the same shape as the existing `classPartials.zod.ts` `TeacherSummarySchema` (`userId`, `email`, `teacherName`, all nullable) — not imported from the pre-existing `classPartials*` files (which violate frontend AGENTS §12 and are flagged as a follow-up reorganisation; importing from them would couple the new service to a file that will move).
+- All service exports follow the existing `classPartialsService.ts` pattern (typed async function returning `Promise<ClassFull | null>`).
+
+### Delegation mandatory reads (when sub-agents are used)
+
+Implementation mandatory docs:
+
+- `src/frontend/AGENTS.md` (§4.1 required API transport pattern, §4.3 prohibited types, §8 Zod validation, §12 service domain folder organisation)
+- `src/frontend/src/services/googleClassrooms/classPartialsService.ts` (the closest service analog — typed async function, `callApi(methodName, params)`, Zod response parsing)
+- `src/frontend/src/services/googleClassrooms/classPartials.zod.ts` (the closest Zod schema analog — `TeacherSummarySchema` shape, `ClassPartialsResponseSchema = z.array(ClassPartialSchema)` pattern, tri-state `active` handling)
+- `src/frontend/src/services/apiService.ts` (the `callApi` choke point — date normalisation, envelope parsing)
+- `src/backend/AssignmentProcessor/Assignment.js` lines 116–134 (the canonical `Assignment.toPartialJSON()` shape that `AssignmentPartial` must mirror)
+- `src/backend/Models/StudentSubmission.js` lines 121–126 (the canonical `StudentSubmissionItem.toPartialJSON()` shape with redactions)
+- `src/backend/Models/Artifacts/0_BaseTaskArtifact.js` lines 142–147 (the canonical `BaseTaskArtifact.toPartialJSON()` redaction of `content` and `contentHash`)
+- `src/backend/Models/AssignmentDefinition.js` lines 320–338 (the canonical `AssignmentDefinition.toPartialJSON()` shape with `tasks: null`)
+- `SPEC.md` §"Recommended data shapes" (the documented `ClassFull` and `AssignmentPartial` shapes)
+
+Testing Specialist mandatory docs:
+
+- Same as Implementation, plus `src/frontend/src/services/googleClassrooms/classPartialsService.spec.ts` (the closest service-spec analog)
+- `src/frontend/src/services/googleClassrooms/classPartials.zod.spec.ts` (the closest Zod-spec analog)
+
+Code Reviewer mandatory docs:
+
+- Same as Implementation, plus `src/frontend/src/test/testDeferredPromise.ts` (for the deferred-promise pattern if used) and any relevant shared test helpers
+
+Other delegated agents (if used) mandatory docs:
+
+- None for this section (no Docs, no Playwright)
+
+### Shared helper plan
+
+No new shared helpers. The Zod schema is co-located with the service (frontend AGENTS §8: "store validation schemas in a dedicated adjacent schema file"). The `TeacherSummary` primitive is reused (already in `classPartials.zod.ts`) — but the new schema can redefine the shape inline to avoid cross-folder coupling (the existing `classPartials*` files violate frontend AGENTS §12 and are flagged as a follow-up).
+
+### Acceptance criteria
+
+- `src/frontend/src/services/googleClassrooms/classDetail/` directory exists.
+- `classDetailService.ts` exports a `getABClass({ classId }: { classId: string }): Promise<ClassFull | null>` function that calls `callApi('getABClass', { classId })` and parses the response through `ClassFullResponseSchema`.
+- `classDetailService.zod.ts` defines `TeacherSummarySchema`, `AssignmentPartialSchema`, `StudentSummarySchema`, `ClassFullSchema`, and `ClassFullResponseSchema = ClassFullSchema.nullable()`.
+- The Zod schema's `AssignmentPartial` shape matches `Assignment.toPartialJSON()` exactly (verified by comparing to the documented shape in `SPEC.md`).
+- `classDetailService.zod.spec.ts` tests the Zod schema in isolation (happy path, missing required field, wrong type, null-result shape accepts `null`).
+- `classDetailService.spec.ts` tests the service (delegates to `callApi` with the correct method name and params; parses through `ClassFullResponseSchema`; returns `null` on null response; propagates Zod parse errors).
+
+### Required test cases (Red first)
+
+Frontend Zod schema tests (new — `classDetailService.zod.spec.ts`):
+
+1. **RED**: `ClassFullSchema.parse(...)` is not defined. Test fails.
+2. **GREEN**: `ClassFullSchema` parses a representative full response. Test passes.
+3. `ClassFullSchema` rejects a response missing `classId` (required field). Test passes.
+4. `ClassFullSchema` rejects a response where `classOwner` has a wrong type (e.g. string instead of object). Test passes.
+5. `ClassFullResponseSchema` accepts `null` (the null-result contract). Test passes.
+6. `ClassFullResponseSchema` rejects undefined. Test passes.
+7. `AssignmentPartialSchema` parses a representative partial assignment shape with `createdAt` (ISO string), `documentType`, `submissions[]` (with redacted artifacts and stripped assessment reasoning), and `assignmentDefinition` (with `tasks: null`). Test passes.
+
+Frontend service tests (new — `classDetailService.spec.ts`):
+
+8. `getABClass` delegates to `callApi` with the `getABClass` method name and the supplied `{ classId }`. Test passes.
+9. `getABClass` parses the response through `ClassFullResponseSchema` and returns a typed `ClassFull`. Test passes.
+10. `getABClass` returns `null` when the backend returns `data: null`. Test passes.
+11. `getABClass` propagates Zod parse errors loudly (does not catch and rethrow as a silent error). Test passes.
+
+### Section checks
+
+- `npm run lint:frontend` passes.
+- `npm run frontend:test -- src/frontend/src/services/googleClassrooms/classDetail/` passes.
+- Mandatory-read evidence gate passed for all delegated handoffs in this section.
+
+### Optional `@remarks` JSDoc follow-through
+
+- `getABClass` JSDoc describes the return contract (`Promise<ClassFull | null>`), the `null` meaning (class not found), and the Zod schema validation.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes**: the Zod schema is the largest piece of this section. The service file is small (~10 lines).
+- **Deviations from plan**: none expected.
+- **Follow-up implications for later sections**: section 6 (query factory) imports `getABClass` from this file. The frontend app is now ready to call the new endpoint; a future class-detail page will use `getABClassQueryOptions(classId)` to fetch the data.
+
+---
+
+## Section 6 — Frontend query factory (`queryKeys.abClass` + `getABClassQueryOptions`)
+
+### Objective
+
+Add `queryKeys.abClass(classId)` in `src/frontend/src/query/queryKeys.ts` and `getABClassQueryOptions(classId)` in `src/frontend/src/query/sharedQueries.ts`. The factory follows the existing `queryOptions` + `queryKeys` pattern (frontend AGENTS §2.2). The new query is **not** added to the `startupWarmup` set (the new query is per-class, not a global list).
+
+### Constraints
+
+- `queryKeys.abClass: (classId: string) => ['abClass', classId]` — same shape as `queryKeys.assignmentDefinitionByKey(definitionKey) → ['assignmentDefinition', definitionKey]`.
+- `getABClassQueryOptions(classId)` returns `queryOptions({ queryKey: queryKeys.abClass(classId), queryFn: () => getABClass({ classId }) })`.
+- The new query is **not** added to `startupWarmupQueryDefinitions` (per `SPEC.md` Open question #3, decided).
+- Tests follow the existing `src/frontend/src/query/sharedQueries.query.spec.tsx` patterns.
+
+### Delegation mandatory reads (when sub-agents are used)
+
+Implementation mandatory docs:
+
+- `src/frontend/AGENTS.md` (§2.2 hook/query factory pattern)
+- `src/frontend/src/query/queryKeys.ts` (the existing factory pattern)
+- `src/frontend/src/query/sharedQueries.ts` (the existing factory pattern, lines 96–101 for `getAssignmentDefinitionQueryOptions`)
+- `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.ts` (the `getABClass` import, from section 5)
+
+Testing Specialist mandatory docs:
+
+- Same as Implementation, plus `src/frontend/src/query/sharedQueries.query.spec.tsx` (the existing test pattern for query factories)
+
+Code Reviewer mandatory docs:
+
+- Same as Implementation
+
+### Shared helper plan
+
+No new shared helpers. The factory follows the existing pattern.
+
+### Acceptance criteria
+
+- `queryKeys.ts` exports an `abClass: (classId: string) => ['abClass', classId]` factory.
+- `queryKeys.ts` also exports an `invalidateAbClass: (classId: string) => queryKeys.abClass(classId)` invalidation key factory (per SPEC.md §"Manual refresh" — React Query standard `invalidateQueries({ queryKey: queryKeys.invalidateAbClass(classId) })` works).
+- `sharedQueries.ts` exports a `getABClassQueryOptions(classId: string)` function that returns `queryOptions({ ... })`.
+- The new query is **not** added to `startupWarmupQueryDefinitions`.
+- Existing `queryOptions` / `queryKeys` invalidation patterns work with the new query (`invalidateQueries({ queryKey: queryKeys.invalidateAbClass(classId) })`).
+
+### Required test cases (Red first)
+
+Frontend query tests (extended — `src/frontend/src/query/sharedQueries.query.spec.tsx`):
+
+1. **RED**: `queryKeys.abClass` is not defined. Test fails.
+2. **GREEN**: `queryKeys.abClass('class-001')` returns `['abClass', 'class-001']`. Test passes.
+3. `queryKeys.invalidateAbClass('class-001')` returns `['abClass', 'class-001']` (same as `queryKeys.abClass('class-001')` — the invalidation key factory re-uses the query key). Test passes.
+4. **RED**: `getABClassQueryOptions` is not defined. Test fails.
+5. **GREEN**: `getABClassQueryOptions('class-001')` returns an object with `queryKey: ['abClass', 'class-001']` and a `queryFn` that calls `getABClass({ classId: 'class-001' })`. Test passes.
+6. The `queryFn` is awaitable and propagates errors from `getABClass` (e.g. Zod parse errors). Test passes.
+
+### Section checks
+
+- `npm run lint:frontend` passes.
+- `npm run frontend:test -- src/frontend/src/query/sharedQueries.query.spec.tsx` passes.
+- Mandatory-read evidence gate passed for all delegated handoffs in this section.
+
+### Optional `@remarks` JSDoc follow-through
+
+- `getABClassQueryOptions` JSDoc describes the query key, the per-class lazy-load policy, and the invalidation pattern.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes**: the factory is small (~5 lines). The test file extension is ~10 lines.
+- **Deviations from plan**: none expected.
+- **Follow-up implications for later sections**: none — the query factory is the final frontend deliverable for this round.
+
+---
+
+## Section 7 — `ClassNotFoundError` JSDoc + `api-layer.md` + `DATA_SHAPES.md` documentation
+
+### Objective
+
+Update `src/backend/Utils/ErrorTypes/ClassNotFoundError.js` JSDoc to clarify the dispatcher-mapping contract. Add the new `getABClass` entry to `docs/developer/backend/api-layer.md` "Current migrated endpoints" section. Add the new "ABClass full-read (`getABClass` response)" section to `docs/developer/backend/DATA_SHAPES.md`.
+
+### Constraints
+
+- The `ClassNotFoundError` JSDoc must explain that the `apiHandler` dispatcher has **no** special mapping for this error — unmapped errors fall through to `INTERNAL_ERROR` — and that endpoints wanting the `null`-on-not-found contract must catch the typed error explicitly.
+- The `api-layer.md` entry for `getABClass` must be placed **immediately after** the existing `getABClassPartials` entry (avoiding the ambiguous "after X and before Y" wording).
+- The `DATA_SHAPES.md` section must document the response shape with the same depth as the existing class-partial section, and must reference `Assignment.toPartialJSON()` as the canonical source for the partial shape.
+- No hardcoded line numbers in any documentation entry (entries should reference each other by name).
+
+### Delegation mandatory reads (when sub-agents are used)
+
+Docs agent mandatory docs:
+
+- `docs/developer/backend/api-layer.md` (the existing endpoint entries — for format reference; the `getABClassPartials` entry at line 309–315, the `getAssignment` entry at line 363–370 for the closest analog)
+- `docs/developer/backend/DATA_SHAPES.md` (the existing "ABClassPartials" section near line 173; the "AssignmentDefinition full-read" section for the closest analog)
+- `docs/howTos/rehydration.md` (for the redaction contract)
+- `src/backend/Utils/ErrorTypes/ClassNotFoundError.js` (the current JSDoc to be replaced)
+- `SPEC.md` §"Documentation and rollout notes" (the precise update guidance)
+
+Code Reviewer mandatory docs:
+
+- Same as Docs, plus `src/backend/Utils/ErrorTypes/AssignmentNotFoundError.js` (for the typed-error pattern to mirror in the `ClassNotFoundError` JSDoc)
+
+Other delegated agents (if used) mandatory docs:
+
+- None for this section
+
+### Shared helper plan
+
+No new shared helpers. This is a documentation update.
+
+### Acceptance criteria
+
+- `ClassNotFoundError.js` JSDoc is updated per the spec's `§Documentation and rollout notes`. The existing sentence _"This error maps to `INTERNAL_ERROR` at the transport boundary (via the dispatcher's fallback path) since `loadClass` is not directly callable from the frontend"_ is **removed** (not just left in place) and replaced with the clearer wording: the `apiHandler` dispatcher has **no** special mapping for `ClassNotFoundError` — unmapped errors fall through to `INTERNAL_ERROR` — and the new `getABClass` handler catches the typed error explicitly and returns `null`; any future endpoint wanting the same `null` contract must do the same.
+- `api-layer.md` has a new bullet for `getABClass` immediately after the `getABClassPartials` entry. The entry mirrors the `getABClassPartials` format and includes the explicit note that the response shape is produced by the controller's private `_toReadView` method.
+- `DATA_SHAPES.md` has a new "ABClass full-read (`getABClass` response)" section after the "ABClassPartials" section. The section documents the response shape and references `Assignment.toPartialJSON()` as the canonical source.
+- No hardcoded line numbers in any of the new doc entries.
+
+### Required test cases (Red first)
+
+Backend tests (verification):
+
+1. `tests/utils/ClassNotFoundError.test.js` (if not already present, may be added) verifies the JSDoc presence and the constructor signature. (If the test file is not in scope, skip — the JSDoc update is documentation-only and doesn't have functional tests.)
+
+Documentation review (verification by `Docs` agent):
+
+2. The new `api-layer.md` entry matches the format of `getABClassPartials` entry (same bullet structure, same level of detail).
+3. The new `DATA_SHAPES.md` section matches the depth of the existing class-partial section.
+
+### Section checks
+
+- `npm run lint:backend` passes (no code changes in this section; documentation only).
+- `npm run lint:frontend` passes (no frontend changes in this section).
+- `npm run docs:build` (or equivalent mkdocs build) passes if configured (verify the new content renders).
+- Mandatory-read evidence gate passed for all delegated handoffs in this section.
+
+### Optional `@remarks` JSDoc follow-through
+
+- `ClassNotFoundError.js` JSDoc is the primary deliverable; no other JSDoc updates in this section.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes**: this section is documentation-only. No code changes.
+- **Deviations from plan**: none expected.
+- **Follow-up implications for later sections**: the documentation is the final deliverable for this round. The next round (e.g. the class-detail page) will consume the new endpoint, the new query factory, and the new shared validation file.
 
 ---
 
@@ -494,49 +700,51 @@ None.
 
 ### Objective
 
-Verify that the new endpoint does not break existing functionality and that the
-transport contract is sound.
+Verify that no existing functionality is broken by the changes, and that the new endpoint behaves correctly under the documented contract (envelope shape, error mapping, response shape).
 
 ### Constraints
 
-- Run all backend API tests to ensure no regressions.
-- Run backend lint.
-- Confirm that the controller's behaviour change (typed-error throw) does not
-  regress any existing controller tests that exercise the not-found path
-  through `rehydrateAssignment`.
+- All existing tests in the touched areas (backend API tests, controller tests, frontend service tests, frontend query tests) still pass.
+- The full backend lint (`npm run lint:backend`) and frontend lint (`npm run lint:frontend`) pass.
+- No new lint warnings introduced.
+- The new endpoint is correctly registered in `ALLOWLISTED_METHOD_HANDLERS` and reachable from the frontend.
+- The shared `validateParametersObject_` is correctly referenced as a global from `abclassMutations.js` and `abclassRead.js`.
 
 ### Acceptance criteria
 
-- All existing backend API tests pass.
-- Backend lint passes.
-- No regressions in `startAssessmentRun_` or any other handler in
-  `assignmentAssessment.js`.
-- No regressions in `ABClassController` tests that exercise
-  `rehydrateAssignment` (e.g. tests that previously matched on the generic
-  `Error` from `_loadFullAssignmentDocument` must now match on
-  `instanceof AssignmentNotFoundError`).
+- All tests across the touched areas pass.
+- The lint commands pass.
+- A manual smoke test of the new endpoint (in a sandbox or test environment) confirms:
+  - `getABClass({ classId: 'class-001' })` returns the full class envelope with partial assignments.
+  - `getABClass({ classId: 'nonexistent' })` returns `null`.
+  - `getABClass({ classId: '../unsafe' })` returns an `INVALID_REQUEST` envelope.
 
 ### Required test cases/checks
 
-1. `npm test -- tests/api/assignmentReadApi.test.js` — green.
-2. `npm test -- tests/api/assignmentAssessment.test.js` — green.
-3. `npm test -- tests/api/assignmentDefinitionReadApi.test.js` — green.
-4. `npm test -- tests/api/assignmentDefinitionUpsertApi.test.js` — green.
-5. `npm test -- tests/api/assignmentDefinitionDeleteApi.test.js` — green.
-6. `npm test -- tests/controllers/abclassController.rehydrateAssignment.test.js`
-   — green. If any existing test in this file was relying on the not-found path
-   throwing a generic `Error`, update it to expect `AssignmentNotFoundError`
-   instead.
-7. `npm run lint:backend` — clean.
+1. Run `npm test` — all tests pass.
+2. Run `npm run lint:backend` — passes.
+3. Run `npm run lint:frontend` — passes.
+4. Run the regression checker (per the `.opencode/skills/regression-checker` workflow):
+   - Establish a baseline (if not already done).
+   - Run the current state.
+   - Compare the baseline to the current state; verify no regressions are introduced.
+5. Verify `ALLOWLISTED_METHOD_HANDLERS` in `z_apiHandler.js` contains the new `getABClass` entry.
+6. Verify `queryKeys.ts` and `sharedQueries.ts` contain the new entries.
+7. Verify the `Files read` evidence is complete for every delegated handoff across sections 1–7.
 
 ### Section checks
 
-- Run the commands listed above and ensure green results.
+- `npm test` passes (full test suite).
+- `npm run lint:backend` passes.
+- `npm run lint:frontend` passes.
+- Regression checker shows no new failures.
+- `Files read` evidence gate passed for every delegated handoff in this round.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (to be filled)
-- **Deviations from plan:** (to be filled if any)
+- **Implementation notes**: the regression check is a verification pass; no code changes unless issues are found.
+- **Deviations from plan**: none expected.
+- **Follow-up implications for later sections**: this is the final regression check for this round. A future class-detail page round will re-run the regression checker with a new baseline that includes the class-detail page code.
 
 ---
 
@@ -544,64 +752,51 @@ transport contract is sound.
 
 ### Objective
 
-Update relevant documentation to reflect the new endpoint, the new typed error,
-and the controller change. Reconcile planned-only entries in canonical docs.
+Reconcile the planned-only helper entries in canonical docs to their actual implementation status, and verify all documentation is up to date.
 
 ### Constraints
 
-- Only modify documents relevant to the touched areas.
-- Use British English.
+- The `validateParametersObject_` shared-helper entry in `docs/developer/backend/api-layer.md` §"Shared Helper Status" is updated from `Not implemented` to `Implemented` (with the new location noted).
+- Any other planned-only entries that landed are reconciled.
 
 ### Acceptance criteria
 
-- `SPEC.md` status updated to `Implemented v1.0` (replacing `Draft v1.0`) with
-  a one-line note: `Implemented 2026-06-15. See ACTION_PLAN.md for delivery
-history.` (Adjust the date to the actual implementation date; the format
-  string is the only required change.)
-- The new `AssignmentNotFoundError` entry in
-  `docs/developer/backend/backend-logging-and-error-handling.md` §9 is updated
-  from `Planned: Not implemented` to a plain entry that matches the style of
-  `AbortRequestError` / `PersistError` (i.e. remove the `Planned:` prefix and
-  the `Not implemented` marker; the entry should describe the actual
-  behaviour, throw site, and metadata).
-- If `docs/developer/DATA_SHAPES.md` exists and documents Assignment data
-  shapes, verify it remains accurate (no changes expected — the endpoint
-  returns the existing `Assignment.toJSON()` shape).
-- No new API method documentation file is required at this stage
-  (frontend-facing docs will be created when the frontend pages are built).
+- `docs/developer/backend/api-layer.md` §"Shared Helper Status" reflects the actual state of the codebase (no stale `Not implemented` markers).
+- All new doc entries (`api-layer.md`, `DATA_SHAPES.md`, `ClassNotFoundError.js` JSDoc) are merged.
 
 ### Required checks
 
-1. Verify `SPEC.md` accurately reflects the implemented behaviour.
-2. Verify the planned-only entry in `backend-logging-and-error-handling.md` §9
-   has been reconciled: marker removed, description updated to match the
-   actual class.
-3. Confirm no documentation regressions in canonical docs.
-4. Confirm that the canonical doc still lists `AssignmentNotFoundError` under
-   the "internal error types not mapped at the transport boundary" category
-   (not under the `_mapErrorToFailureEnvelope` list).
+1. Verify `api-layer.md` §"Shared Helper Status" lists the `validateParametersObject_` entry as `Implemented` with the correct file path (`src/backend/z_Api/abclass/abclassValidation.js`).
+2. Confirm no other planned-only entries need reconciling.
+3. Run the docs reviewer (per `.github/agents/docs.agent.md`) for a final check.
+
+### Section checks
+
+- `npm run docs:build` (if configured) passes.
+- Docs reviewer signs off.
 
 ### Optional `@remarks` JSDoc review
 
-- Confirm the `@remarks` added to `getAssignment_` in Section 2 are present and
-  accurate.
-- Verify that the not-found typed-error rationale, the date-normalisation
-  rationale, the `progressTracker`-strip rationale, and the abClass-identity
-  rationale are all documented.
-- The new `AssignmentNotFoundError` class does not need `@remarks` (it is a
-  metadata-only value class with no behaviour).
+- Confirm whether any non-obvious design decisions, gotchas, or cross-component interactions discovered during implementation should be preserved in `@remarks` documentation. The current spec has `@remarks` blocks on `readClass` and on `getABClass_`; verify they are present in the implementation.
+- If earlier sections planned `@remarks`, verify that the relevant code now contains them before deleting the action plan.
+- If no further `@remarks` are needed, record `None`.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (to be filled)
-- **Deviations from plan:** (to be filled if any)
+- **Implementation notes**: documentation reconciliation is the final pass. No code changes unless issues are found.
+- **Deviations from plan**: none expected.
+- **Follow-up implications for later sections**: this is the final section of the action plan. The plan can be deleted after the next round (the future class-detail page round) per the workflow convention.
 
 ---
 
 ## Suggested implementation order
 
-1. **Section 1** — Add `AssignmentNotFoundError` and write failing tests (Red)
-2. **Section 2** — Implement `getAssignment_` handler (Green + Refactor)
-3. **Section 3** — Register allowlist entry (Green)
-4. **Section 4** — Run regression suite
-5. **Section 5** — Update canonical docs and SPEC.md status
+1. **Section 1** — Move `abclassMutations.js` into the new folder. (Foundational; no behaviour change.)
+2. **Section 2** — Create `abclassValidation.js` and update `abclassMutations.js` to reference the global. (Foundational; unlocks the shared-validation pattern.)
+3. **Section 3** — Add `ABClassController.readClass` and `_toReadView`. (Controller layer; required by section 4.)
+4. **Section 4** — Add `getABClass_` transport handler and `ALLOWLISTED_METHOD_HANDLERS` entry. (Transport layer; depends on section 3.)
+5. **Section 5** — Frontend service module and Zod schema. (Frontend; independent of sections 1–4 in terms of compile-time dependencies, but logically the frontend consumes the backend contract from section 4.)
+6. **Section 6** — Frontend query factory. (Depends on section 5.)
+7. **Section 7** — `ClassNotFoundError` JSDoc + `api-layer.md` + `DATA_SHAPES.md` documentation. (Documentation; can be done at any point but is grouped here for clarity.)
+8. **Regression and contract hardening** — Final verification.
+9. **Documentation and rollout notes** — Helper-entry reconciliation + docs reviewer sign-off.
