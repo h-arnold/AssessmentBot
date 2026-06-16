@@ -895,6 +895,69 @@ class ABClassController {
   }
 
   /**
+   * Reads a stored ABClass by its classId and returns a read-view representation.
+   * Does NOT refresh roster data or persist changes (pure read operation).
+   *
+   * @param {string} classId - The Classroom course identifier.
+   * @returns {Object} A read-view plain object representation of the class.
+   * @throws {TypeError} If classId is falsy.
+   * @throws {ClassNotFoundError} If no stored class document exists for the given classId.
+   * @remarks Pure read — does not call `_refreshRoster`, `_persistRoster`, or any Classroom API.
+   * Use `loadClass` when roster freshness is required. Returns a plain object with `assignments[]`
+   * as `Assignment.toPartialJSON()` output; the partial shape is produced by the private
+   * `_toReadView` method.
+   */
+  readClass(classId) {
+    if (!classId) throw new TypeError('classId is required');
+    const logger = ABLogger.getInstance();
+
+    const collection = this.dbManager.getCollection(classId);
+    logger.info('readClass: called', { classId, hasCollection: !!collection });
+    if (!collection) {
+      throw new ClassNotFoundError(`loadClass: no stored class found for classId=${classId}`, {
+        courseId: classId,
+      });
+    }
+
+    // Collection exists — read the single stored document (if any)
+    const document = collection.findOne({ classId }) || null;
+    if (!document) {
+      throw new ClassNotFoundError(`loadClass: no stored class found for classId=${classId}`, {
+        courseId: classId,
+      });
+    }
+
+    const abClass = ABClass.fromJSON(document);
+    logger.info('readClass: returning read view', { classId });
+    return this._toReadView(abClass);
+  }
+
+  /**
+   * Converts an ABClass instance to a read-view plain object for API transport.
+   * Assignments are included as Assignment.toPartialJSON() output.
+   * Defence-in-depth: strips _hydrationLevel and progressTracker from each assignment.
+   *
+   * @param {ABClass} abClass - The class instance to convert.
+   * @returns {Object} A plain read-view object.
+   * @private
+   */
+  _toReadView(abClass) {
+    const json = abClass.toJSON();
+
+    if (Array.isArray(json.assignments)) {
+      json.assignments = json.assignments.map((assignment) => {
+        const partial =
+          typeof assignment.toPartialJSON === 'function' ? assignment.toPartialJSON() : assignment;
+        // Defence-in-depth: strip _hydrationLevel and progressTracker
+        const { _hydrationLevel, progressTracker, ...safe } = partial;
+        return safe;
+      });
+    }
+
+    return json;
+  }
+
+  /**
    * Write-through persistence: saves the full class document to its own collection
    * and upserts a partial summary document to the partials registry.
    * @param {ABClass|Object} abClass - The class instance or plain object to persist.

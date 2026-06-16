@@ -4,7 +4,9 @@
 >
 > **Section 1 — Status**: ✅ COMPLETE (committed `243fbf0`) — `abclassMutations.js` moved to `z_Api/abclass/`, paths updated, all tests pass, regression gate passed.
 >
-> **Section 2 — Status**: ✅ COMPLETE (committed `██████`) — `validateParametersObject_` extracted to `abclassValidation.js`, global reference added, eslint config updated, regression gate passed.
+> **Section 2 — Status**: ✅ COMPLETE (committed `c790aa6`) — `validateParametersObject_` extracted to `abclassValidation.js`, global reference added, eslint config updated, regression gate passed.
+>
+> **Section 3 — Status**: ✅ COMPLETE (committed `██████`) — `readClass` and `_toReadView` added to ABClassController, all 9 tests pass, regression gate passed. Technical debt: ABClassController.js is 1061 lines (was 996 pre-Section-3) — exceeds 500-line limit; resolved by decomposition in Sections 8-13.
 
 ## Read-First Context
 
