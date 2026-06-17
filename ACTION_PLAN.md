@@ -793,12 +793,32 @@ Add a `@remarks` JSDoc tag on
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (to be filled during Red phase)
-- **Deviations from plan:** (to be filled if any)
+- **Implementation notes:**
+  - Added `validateUpsertShape` exported helper (complexity 5) extracted
+    from the `superRefine` to fix lint cyclomatic complexity (was 13,
+    max 7).
+  - Added `hasAnyIdField` and `hasAllIdFields` internal helpers to reduce
+    `validateUpsertShape` complexity.
+  - `superRefine` now calls `validateUpsertShape(value)` and uses
+    `['__root__']` as the error path for "neither shape" case.
+  - Added `@remarks` JSDoc on `UpsertAssignmentDefinitionRequestSchema`.
+  - 4 new test cases added (34 total): helper export, only
+    `templateDocumentId` rejected, only `documentType` rejected, and
+    `INVALID_TOPIC_ENTRY` constant for magic number fix.
+  - Lint: clean for Section 3 files. Code review passed with critical
+    (complexity) and major (missing tests) items addressed.
+- **Deviations from plan:** None.
 - **Follow-up implications for later sections:** Section 6 (modal
   integration) depends on the extended schema to send the link flow's
   payload. Once Section 3 lands, Section 6 can be implemented
   independently.
+
+### Commit record
+
+- **Commit SHA:** `ed5e2b0`
+- **Commit message:** `feat(frontend): extend UpsertAssignmentDefinitionRequestSchema with ID-shape fields and superRefine mutual exclusion`
+- **Branch:** `opencode/tidy-meadow`
+- **Push:** Confirmed — pushed to origin.
 
 ---
 
