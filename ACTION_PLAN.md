@@ -975,8 +975,21 @@ documenting:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (to be filled during Red phase)
-- **Deviations from plan:** (to be filled if any)
+- **Implementation notes:**
+  - Created `getLinkableDefinitionsForModal.ts` with `LinkableDefinition`
+    type, `getLinkableDefinitionsForModal` pure helper.
+  - `fuse.js@^7.4.2` installed in `src/frontend/package.json`.
+  - Critical bug fix: sort by `(fuseScore asc, updatedAt desc)` instead
+    of sorting ALL by `updatedAt` (which destroyed the fuzzy ranking).
+  - Lint fixes: `toSorted()` instead of `sort()`, magic number constants
+    `SORT_AHEAD`/`SORT_BEHIND`, proper JSDoc types.
+  - 7 test cases pass. Lint: clean for Section 4 files.
+- **Deviations from plan:**
+  - `caseInsensitiveTrimmedEquals` import was not added because the
+    helper does not perform string equality comparisons (fuse.js handles
+    the matching). The plan's assumption that it would be used here was
+    overly broad; the actual implementation correctly uses only fuse.js
+    for ranking.
 - **Follow-up implications for later sections:** Section 5
   (`LinkableDefinitionList` component) consumes the helper's output
   (the fuzzy-ranked list). Section 6 (modal integration) wires the
@@ -984,6 +997,13 @@ documenting:
   adds a new test case verifying the picker order matches the
   fuzzy-ranked order. Once Section 4 lands, those sections can be
   implemented independently.
+
+### Commit record
+
+- **Commit SHA:** `358f3c5`
+- **Commit message:** `feat(frontend): add getLinkableDefinitionsForModal helper with fuse.js fuzzy ranking`
+- **Branch:** `opencode/tidy-meadow`
+- **Push:** Confirmed — pushed to origin.
 
 ---
 
