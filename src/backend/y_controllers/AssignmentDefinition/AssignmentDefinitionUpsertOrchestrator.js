@@ -110,6 +110,11 @@ class AssignmentDefinitionUpsertOrchestrator {
         isUpdate,
         existingDefinition,
       }),
+      alternateTopics: this._resolveAlternateTopics({
+        payload,
+        isUpdate,
+        existingDefinition,
+      }),
       assignmentWeighting: this._resolveAssignmentWeighting({
         payload,
         isUpdate,
@@ -152,6 +157,37 @@ class AssignmentDefinitionUpsertOrchestrator {
     }
 
     return this.validation.normaliseAlternateTitles(payload.alternateTitles);
+  }
+
+  /**
+   * Resolves alternate topics for upsert operations.
+   *
+   * Delegates to `validation.normaliseAlternateTitles` because the method's
+   * semantics are generic — non-empty trimmed strings — and match the contract
+   * for both `alternateTitles` and `alternateTopics`.
+   *
+   * @param {Object} params - Resolution parameters.
+   * @param {Object} params.payload - Upsert payload.
+   * @param {boolean} params.isUpdate - Whether this is an update.
+   * @param {Object|null} params.existingDefinition - Existing definition when updating.
+   * @returns {Array<string>} Resolved alternate topics.
+   * @private
+   * @remarks Delegates to `normaliseAlternateTitles` because the validation
+   * semantics are identical (non-empty trimmed strings). When the payload omits
+   * `alternateTopics` on update, the existing array is preserved — the field is
+   * optional and should not be cleared by absence.
+   */
+  _resolveAlternateTopics({ payload, isUpdate, existingDefinition }) {
+    // Reuse normaliseAlternateTitles for alternateTopics — the validation
+    // semantics are identical (non-empty trimmed strings).
+    const shouldPreserveAlternateTopics = isUpdate && !Object.hasOwn(payload, 'alternateTopics');
+
+    if (shouldPreserveAlternateTopics) {
+      return existingDefinition.alternateTopics || [];
+    }
+
+    // Reuses normaliseAlternateTitles — semantics are generic (non-empty trimmed strings)
+    return this.validation.normaliseAlternateTitles(payload.alternateTopics);
   }
 
   /**

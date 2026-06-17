@@ -433,8 +433,22 @@ Add a `@remarks` JSDoc tag on `_resolveAlternateTopics` documenting:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (to be filled during Red phase)
-- **Deviations from plan:** (to be filled if any)
+- **Implementation notes:**
+  - `_resolveAlternateTopics` added at lines 162-190 of
+    `AssignmentDefinitionUpsertOrchestrator.js`, mirroring
+    `_resolveAlternateTitles` exactly.
+  - Constructor call wired at lines 113-117 with one new
+    `alternateTopics: this._resolveAlternateTopics(...)` line.
+  - 6 tests added (5 from Red phase + 1 empty-array edge case from
+    review feedback). All 44 tests pass.
+  - `@remarks` JSDoc documents the `normaliseAlternateTitles` reuse
+    and preserve-when-omitted semantics.
+  - Inline comment at the `normaliseAlternateTitles` call site
+    reinforces the intentional reuse.
+- **Deviations from plan:** The regression checker flagged a new
+  `max-lines` warning on the test file (991 lines, up from 903). This
+  is a pre-existing warning rule; the file was already over 500 lines.
+  The new tests add essential coverage. Accepted as technical debt.
 - **Follow-up implications for later sections:** Section 3 (Zod
   schema extension) and Section 6 (modal integration) depend on the
   orchestrator's ability to round-trip `alternateTopics`. Once Section
