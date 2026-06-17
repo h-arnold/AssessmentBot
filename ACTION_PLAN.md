@@ -22,7 +22,9 @@
 >
 > **Section 10 — Status**: ✅ COMPLETE (done proactively with Section 9) — `tests/setupGlobals.js` updated to load 5 ABClass\* sub-classes in GAS order (Validation → Persistence → Roster → AssignmentOps → ResponseMapper).
 >
-> **Section 11 — Status**: ✅ COMPLETE — `ABClassController.legacy.js` and the re-export shim removed. `eslint.config.js` line 206 updated to point to `ABClassController/index.js`. 11 test files updated to remove `.js` extension from `require()` paths so Node's folder-based resolution finds `ABClassController/index.js`. All 174 ABClassController regression tests pass. All 40 sub-class structural tests pass. Backend lint: 0 errors, 16 pre-existing warnings.
+> **Section 11 — Status**: ✅ COMPLETE — `ABClassController.legacy.js` and the re-export shim removed. `eslint.config.js` line 206 updated to point to `ABClassController/index.js`. 11 test files updated to remove `.js` extension from `require()` paths so Node's folder-based resolution finds `ABClassController/index.js`. All 174 ABClassController regression tests pass. All 40 sub-class structural tests pass. Backend lint: 0 errors, 16 pre-existing warnings. Committed `467bc52`.
+>
+> **Section 12 — Status**: ✅ COMPLETE — `LARGE_CODE_FILES.md` line 82 updated with the verbatim superseded-plan note from `ABClassControllerRefactor_SPEC.md` §"Documentation and rollout notes" (placed immediately after the `y_controllers/ABClassController.js` row).
 
 ## Read-First Context
 
