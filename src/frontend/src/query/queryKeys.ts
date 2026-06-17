@@ -1,4 +1,5 @@
 export const queryKeys = {
+  abClass: (classId: string) => ['abClass', classId] as const,
   assignmentDefinitionByKey: (definitionKey: string) =>
     ['assignmentDefinitionByKey', definitionKey] as const,
   assignmentDefinitionPartials: () => ['assignmentDefinitionPartials'] as const,

@@ -11,6 +11,8 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  buildTestTeacher,
+  buildTestStudent,
   cleanupControllerTestMocks,
   createMockCollection,
   setupControllerTestMocks,
@@ -28,16 +30,12 @@ const ABClass = ABClassModule.ABClass || ABClassModule;
 const Teacher = TeacherModule.Teacher || TeacherModule;
 const Student = StudentModule.Student || StudentModule;
 
-function buildTeacher({ email, userId, teacherName } = {}) {
-  return new Teacher(
-    email || 'teacher@school.edu',
-    userId || 't-001',
-    teacherName || 'Test Teacher'
-  );
+function buildTeacher(overrides = {}) {
+  return buildTestTeacher(Teacher, overrides);
 }
 
-function buildStudent({ name, email, id } = {}) {
-  return new Student(name || 'Test Student', email || 'student@school.edu', id || 's-001');
+function buildStudent(overrides = {}) {
+  return buildTestStudent(Student, overrides);
 }
 
 /**
@@ -115,8 +113,8 @@ let partialsCollection;
 let classroomApiClient;
 
 function loadControllerModule() {
-  delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController.js')];
-  ABClassController = require('../../src/backend/y_controllers/ABClassController.js');
+  delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController')];
+  ABClassController = require('../../src/backend/y_controllers/ABClassController');
 }
 
 /* ------------------------------------------------------------------ */
@@ -173,7 +171,7 @@ afterEach(() => {
   delete globalThis.ABClassController;
   delete globalThis.Classroom;
   delete globalThis.DriveApp;
-  delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController.js')];
+  delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController')];
   delete require.cache[require.resolve('../../src/backend/y_controllers/AssignmentController.js')];
   vi.restoreAllMocks();
 });

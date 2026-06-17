@@ -54,8 +54,8 @@ describe('ABClassController.loadClass', () => {
       fetchAllStudents: vi.fn(),
     };
 
-    delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController.js')];
-    ABClassController = require('../../src/backend/y_controllers/ABClassController.js');
+    delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController')];
+    ABClassController = require('../../src/backend/y_controllers/ABClassController');
     controller = new ABClassController();
   });
 
@@ -66,7 +66,7 @@ describe('ABClassController.loadClass', () => {
     delete globalThis.ABLogger;
     delete globalThis.DbManager;
     delete globalThis.ClassroomApiClient;
-    delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController.js')];
+    delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController')];
   });
 
   it('refreshes roster when course update time is newer than collection metadata', () => {

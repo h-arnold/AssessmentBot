@@ -1,3 +1,5 @@
+/* global ABClassController, ApiValidationError, Validate, validateParametersObject_ */
+
 /**
  * Factory function that returns a new ABClassController instance.
  *
@@ -5,23 +7,6 @@
  */
 function getAbClassController_() {
   return new ABClassController();
-}
-
-/**
- * Validates that parameters is a plain object (not an array).
- * Throws ApiValidationError if validation fails.
- *
- * @param {*} parameters - The parameters object to validate.
- * @param {string} methodName - Name of the calling method (for error messages).
- * @throws {ApiValidationError} If parameters is not a plain object.
- */
-function validateParametersObject_(parameters, methodName) {
-  if (!parameters || typeof parameters !== 'object' || Array.isArray(parameters)) {
-    throw new ApiValidationError('params must be an object.', {
-      method: methodName,
-      fieldName: 'params',
-    });
-  }
 }
 
 /**

@@ -48,6 +48,7 @@ function installTransportHelperMocks(
     upsertABClass_: globalThis.upsertABClass_,
     updateABClass_: globalThis.updateABClass_,
     deleteABClass_: globalThis.deleteABClass_,
+    getABClass_: globalThis.getABClass_,
     getAssignmentDefinitionPartials_: globalThis.getAssignmentDefinitionPartials_,
     getAssignmentDefinition_: globalThis.getAssignmentDefinition_,
     deleteAssignmentDefinition_: globalThis.deleteAssignmentDefinition_,
@@ -60,6 +61,7 @@ function installTransportHelperMocks(
   const upsertABClass_ = vi.fn(abclassMutationsBehaviour.upsertABClass_ || (() => undefined));
   const updateABClass_ = vi.fn(abclassMutationsBehaviour.updateABClass_ || (() => undefined));
   const deleteABClass_ = vi.fn(abclassMutationsBehaviour.deleteABClass_ || (() => undefined));
+  const getABClass_ = vi.fn(abclassMutationsBehaviour.getABClass_ || (() => undefined));
   const getAssignmentDefinitionPartials_ = vi.fn(
     assignmentDefinitionBehaviour.getAssignmentDefinitionPartials_ || (() => undefined)
   );
@@ -75,6 +77,7 @@ function installTransportHelperMocks(
   globalThis.upsertABClass_ = upsertABClass_;
   globalThis.updateABClass_ = updateABClass_;
   globalThis.deleteABClass_ = deleteABClass_;
+  globalThis.getABClass_ = getABClass_;
   globalThis.getAssignmentDefinitionPartials_ = getAssignmentDefinitionPartials_;
   globalThis.getAssignmentDefinition_ = getAssignmentDefinition_;
   globalThis.deleteAssignmentDefinition_ = deleteAssignmentDefinition_;
@@ -86,6 +89,7 @@ function installTransportHelperMocks(
     upsertABClass_,
     updateABClass_,
     deleteABClass_,
+    getABClass_,
     getAssignmentDefinitionPartials_,
     getAssignmentDefinition_,
     deleteAssignmentDefinition_,
@@ -98,6 +102,7 @@ function restoreTransportHelperMocks(originals) {
   restoreGlobal('upsertABClass_', originals.upsertABClass_);
   restoreGlobal('updateABClass_', originals.updateABClass_);
   restoreGlobal('deleteABClass_', originals.deleteABClass_);
+  restoreGlobal('getABClass_', originals.getABClass_);
   restoreGlobal('getAssignmentDefinitionPartials_', originals.getAssignmentDefinitionPartials_);
   restoreGlobal('getAssignmentDefinition_', originals.getAssignmentDefinition_);
   restoreGlobal('deleteAssignmentDefinition_', originals.deleteAssignmentDefinition_);
