@@ -47,6 +47,11 @@ function asParserSchema(schemaExport: unknown): { parse: (input: unknown) => unk
 }
 
 describe('assignmentDefinition.zod schemas', () => {
+  it('extracts the shape validation to a standalone helper', async () => {
+    const schemas = await loadAssignmentDefinitionSchemas();
+    expect(schemas).toHaveProperty('validateUpsertShape');
+  });
+
   it('defines request and response schemas for upsertAssignmentDefinition and getAssignmentDefinition', async () => {
     const schemas = await loadAssignmentDefinitionSchemas();
 
@@ -322,6 +327,173 @@ describe('assignmentDefinition.zod schemas', () => {
 
       // Upsert request allows optional assignmentWeighting (can be undefined)
       expect(upsertRequestSchema.parse(validInput)).toEqual(validInput);
+    });
+  });
+
+  describe('UpsertAssignmentDefinitionRequestSchema ID-shape and URL-shape mutual exclusion', () => {
+    const baseRequired = {
+      primaryTitle: 'Algebra Baseline',
+      primaryTopicKey: 'topic-algebra',
+      yearGroupKey: 'year-10',
+    } as const;
+
+    const INVALID_TOPIC_ENTRY = 123;
+
+    it('accepts a complete ID-shape payload (link flow contract)', async () => {
+      const schemas = await loadAssignmentDefinitionSchemas();
+      const upsertRequestSchema = asParserSchema(schemas.UpsertAssignmentDefinitionRequestSchema);
+
+      const idShapeInput = {
+        ...baseRequired,
+        definitionKey: 'algebra-baseline',
+        referenceDocumentId: 'reference-doc-id',
+        templateDocumentId: 'template-doc-id',
+        documentType: 'SLIDES',
+        alternateTitles: ['Linear Equations'],
+        alternateTopics: ['Algebra'],
+      };
+
+      expect(upsertRequestSchema.parse(idShapeInput)).toEqual(idShapeInput);
+    });
+
+    it('accepts the wizard URL-shape payload (URL fields only, no documentType)', async () => {
+      const schemas = await loadAssignmentDefinitionSchemas();
+      const upsertRequestSchema = asParserSchema(schemas.UpsertAssignmentDefinitionRequestSchema);
+
+      const urlShapeInput = {
+        ...baseRequired,
+        referenceDocumentUrl: 'https://docs.google.com/presentation/d/ref-doc-id/edit',
+        templateDocumentUrl: 'https://docs.google.com/presentation/d/tpl-doc-id/edit',
+      };
+
+      expect(upsertRequestSchema.parse(urlShapeInput)).toEqual(urlShapeInput);
+    });
+
+    it('rejects a payload with neither URL-shape nor ID-shape fields', async () => {
+      const schemas = await loadAssignmentDefinitionSchemas();
+      const upsertRequestSchema = asParserSchema(schemas.UpsertAssignmentDefinitionRequestSchema);
+
+      expect(() => upsertRequestSchema.parse({ ...baseRequired })).toThrow();
+    });
+
+    it('rejects a payload with only referenceDocumentId (missing templateDocumentId and documentType)', async () => {
+      const schemas = await loadAssignmentDefinitionSchemas();
+      const upsertRequestSchema = asParserSchema(schemas.UpsertAssignmentDefinitionRequestSchema);
+
+      expect(() =>
+        upsertRequestSchema.parse({
+          ...baseRequired,
+          referenceDocumentId: 'reference-doc-id',
+        })
+      ).toThrow();
+    });
+
+    it('rejects a payload with only templateDocumentId (missing referenceDocumentId and documentType)', async () => {
+      const schemas = await loadAssignmentDefinitionSchemas();
+      const upsertRequestSchema = asParserSchema(schemas.UpsertAssignmentDefinitionRequestSchema);
+
+      expect(() =>
+        upsertRequestSchema.parse({
+          ...baseRequired,
+          templateDocumentId: 'template-doc-id',
+        })
+      ).toThrow();
+    });
+
+    it('rejects a payload with only documentType (missing referenceDocumentId and templateDocumentId)', async () => {
+      const schemas = await loadAssignmentDefinitionSchemas();
+      const upsertRequestSchema = asParserSchema(schemas.UpsertAssignmentDefinitionRequestSchema);
+
+      expect(() =>
+        upsertRequestSchema.parse({
+          ...baseRequired,
+          documentType: 'SLIDES',
+        })
+      ).toThrow();
+    });
+
+    it('rejects a payload with only referenceDocumentUrl (missing templateDocumentUrl)', async () => {
+      const schemas = await loadAssignmentDefinitionSchemas();
+      const upsertRequestSchema = asParserSchema(schemas.UpsertAssignmentDefinitionRequestSchema);
+
+      expect(() =>
+        upsertRequestSchema.parse({
+          ...baseRequired,
+          referenceDocumentUrl: 'https://docs.google.com/presentation/d/ref-doc-id/edit',
+        })
+      ).toThrow();
+    });
+
+    it('rejects a payload that mixes URL-shape and ID-shape fields', async () => {
+      const schemas = await loadAssignmentDefinitionSchemas();
+      const upsertRequestSchema = asParserSchema(schemas.UpsertAssignmentDefinitionRequestSchema);
+
+      expect(() =>
+        upsertRequestSchema.parse({
+          ...baseRequired,
+          referenceDocumentUrl: 'https://docs.google.com/presentation/d/ref-doc-id/edit',
+          templateDocumentUrl: 'https://docs.google.com/presentation/d/tpl-doc-id/edit',
+          referenceDocumentId: 'reference-doc-id',
+          templateDocumentId: 'template-doc-id',
+          documentType: 'SLIDES',
+        })
+      ).toThrow();
+    });
+
+    it('rejects alternateTitles that are not an array of trimmed non-empty strings', async () => {
+      const schemas = await loadAssignmentDefinitionSchemas();
+      const upsertRequestSchema = asParserSchema(schemas.UpsertAssignmentDefinitionRequestSchema);
+
+      expect(() =>
+        upsertRequestSchema.parse({
+          ...baseRequired,
+          referenceDocumentUrl: 'https://docs.google.com/presentation/d/ref-doc-id/edit',
+          templateDocumentUrl: 'https://docs.google.com/presentation/d/tpl-doc-id/edit',
+          alternateTitles: 'not an array',
+        })
+      ).toThrow();
+    });
+
+    it('rejects alternateTopics containing non-string entries', async () => {
+      const schemas = await loadAssignmentDefinitionSchemas();
+      const upsertRequestSchema = asParserSchema(schemas.UpsertAssignmentDefinitionRequestSchema);
+
+      expect(() =>
+        upsertRequestSchema.parse({
+          ...baseRequired,
+          referenceDocumentUrl: 'https://docs.google.com/presentation/d/ref-doc-id/edit',
+          templateDocumentUrl: 'https://docs.google.com/presentation/d/tpl-doc-id/edit',
+          alternateTopics: [INVALID_TOPIC_ENTRY],
+        })
+      ).toThrow();
+    });
+
+    it('rejects unknown extra fields (strict())', async () => {
+      const schemas = await loadAssignmentDefinitionSchemas();
+      const upsertRequestSchema = asParserSchema(schemas.UpsertAssignmentDefinitionRequestSchema);
+
+      expect(() =>
+        upsertRequestSchema.parse({
+          ...baseRequired,
+          referenceDocumentUrl: 'https://docs.google.com/presentation/d/ref-doc-id/edit',
+          templateDocumentUrl: 'https://docs.google.com/presentation/d/tpl-doc-id/edit',
+          unexpectedField: 'should be rejected',
+        })
+      ).toThrow();
+    });
+
+    it('accepts an empty alternateTitles array (full array may be empty)', async () => {
+      const schemas = await loadAssignmentDefinitionSchemas();
+      const upsertRequestSchema = asParserSchema(schemas.UpsertAssignmentDefinitionRequestSchema);
+
+      const input = {
+        ...baseRequired,
+        referenceDocumentUrl: 'https://docs.google.com/presentation/d/ref-doc-id/edit',
+        templateDocumentUrl: 'https://docs.google.com/presentation/d/tpl-doc-id/edit',
+        alternateTitles: [],
+      };
+
+      expect(upsertRequestSchema.parse(input)).toEqual(input);
     });
   });
 });
