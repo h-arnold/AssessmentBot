@@ -14,9 +14,9 @@
 >
 > **Section 6 — Status**: ✅ COMPLETE (committed `488c5c8`) — `queryKeys.abClass(classId)` added to `queryKeys.ts`, `getABClassQueryOptions(classId)` added to `sharedQueries.ts`. Not added to `startupWarmup`. All 11 tests pass, regression gate passed (0 new regressions from Section 6).
 >
-> **Section 7 — Status**: ✅ COMPLETE (committed `██████`) — `ClassNotFoundError.js` JSDoc updated to document `getABClass_` handler pattern; `api-layer.md` entry for `getABClass` added after `getABClassPartials`; `DATA_SHAPES.md` "ABClass full-read" section added after ABClassPartials.
+> **Section 7 — Status**: ✅ COMPLETE (committed `354e79f`) — `ClassNotFoundError.js` JSDoc updated to document `getABClass_` handler pattern; `api-layer.md` entry for `getABClass` added after `getABClassPartials`; `DATA_SHAPES.md` "ABClass full-read" section added after ABClassPartials.
 >
-> **Section 8 — Status**: 🔄 IN PROGRESS
+> **Section 8 — Status**: ✅ COMPLETE — 5 sub-class files created (`ABClassValidation.js`, `ABClassPersistence.js`, `ABClassRoster.js`, `ABClassAssignmentOps.js`, `ABClassResponseMapper.js`); 5 test files created and renamed to `.unit.test.js` convention; `ABClassPersistence` method name corrected to `persistClassAndPartial` (public on sub-class). All 40 sub-class structural tests pass. All 15+ existing controller/model/cross-controller test suites pass unchanged (174 tests total). No new lint issues. Regression gate: PASS (0 new regressions from Section 8; ABClassController.js max-lines pre-existing from Section 3; frontend-e2e-check flaky test unrelated).
 
 ## Read-First Context
 
