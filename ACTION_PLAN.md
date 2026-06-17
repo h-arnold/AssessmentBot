@@ -10,7 +10,11 @@
 >
 > **Section 4 — Status**: ✅ COMPLETE (committed `b644800`) — `abclassRead.js` with `getABClass_` transport handler created, `ALLOWLISTED_METHOD_HANDLERS` entry added, `globalThis.getABClass_` wired in `z_apiHandler.js`, `eslint.config.js` updated. All 12 tests pass, regression gate passed (0 new regressions from Section 4).
 >
-> **Section 5 — Status**: ✅ COMPLETE (committed `██████`) — `classDetailService.zod.ts` (all Zod schemas) and `classDetailService.ts` (`getABClass` service function) created in `googleClassrooms/classDetail/` subfolder. All 38 tests pass, regression gate passed (0 new regressions from Section 5; ABClassController.js max-lines is pre-existing from Section 3; frontend-e2e-check failure is a flaky layout positioning test unrelated to Section 5).
+> **Section 5 — Status**: ✅ COMPLETE (committed `5161275`) — `classDetailService.zod.ts` (all Zod schemas) and `classDetailService.ts` (`getABClass` service function) created in `googleClassrooms/classDetail/` subfolder. All 38 tests pass, regression gate passed (0 new regressions from Section 5; ABClassController.js max-lines is pre-existing from Section 3; frontend-e2e-check failure is a flaky layout positioning test unrelated to Section 5).
+>
+> **Section 6 — Status**: ✅ COMPLETE (committed `██████`) — `queryKeys.abClass(classId)` added to `queryKeys.ts`, `getABClassQueryOptions(classId)` added to `sharedQueries.ts`. Not added to `startupWarmup`. All 11 tests pass, regression gate passed (0 new regressions from Section 6).
+>
+> **Section 7 — Status**: 🔄 IN PROGRESS
 
 ## Read-First Context
 
