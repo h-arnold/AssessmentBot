@@ -625,9 +625,12 @@ Add a `@remarks` JSDoc tag on `findMatchingDefinition` documenting:
   - 9 new test cases added (19 total). All pass.
   - `@remarks` JSDoc added to both `caseInsensitiveTrimmedEquals` and
     `findMatchingDefinition`.
-  - Lint: clean for Section 2 files. Code review passed with minor
-    JSDoc fix (missing `@param`/`@returns` types) — fixed.
+  - Lint: clean for Section 2 files.
 - **Deviations from plan:** None.
+- **Retrospective code review (2026-06-17):** Full Code Reviewer pass.
+  One nitpick identified and fixed: removed stray empty JSDoc block in
+  `matchDefinitionForAssignment.spec.ts` (F1). `caseInsensitiveTrimmedEquals`
+  JSDoc `@param`/`@returns` tags were already present — false finding.
 - **Follow-up implications for later sections:** Section 4
   (`getLinkableDefinitionsForModal`) imports
   `caseInsensitiveTrimmedEquals` from the new
@@ -805,9 +808,18 @@ Add a `@remarks` JSDoc tag on
   - 4 new test cases added (34 total): helper export, only
     `templateDocumentId` rejected, only `documentType` rejected, and
     `INVALID_TOPIC_ENTRY` constant for magic number fix.
-  - Lint: clean for Section 3 files. Code review passed with critical
-    (complexity) and major (missing tests) items addressed.
+  - Lint: clean for Section 3 files.
 - **Deviations from plan:** None.
+- **Retrospective code review (2026-06-17):** Full Code Reviewer pass.
+  Seven improvements applied (F2-F11): simplified `hasAnyIdField`/
+  `hasAllIdFields` to single-expression returns; fixed JSDoc `@link`
+  references; improved `validateUpsertShape` parameter type to
+  `Pick<UpsertAssignmentDefinitionRequest, …>`; standardised error
+  messages to "URL-shape"/"ID-shape" with hyphens; added `@remarks`
+  JSDoc to `validateUpsertShape`; added 6 new test cases (partial
+  2-of-3 ID-shape, invalid `documentType`, empty/whitespace ID fields);
+  renamed `INVALID_TOPIC_ENTRY` to `NON_STRING_TOPIC_ENTRY`.
+  Test count: 34 → 40. All pass, lint clean.
 - **Follow-up implications for later sections:** Section 6 (modal
   integration) depends on the extended schema to send the link flow's
   payload. Once Section 3 lands, Section 6 can be implemented
@@ -990,6 +1002,14 @@ documenting:
     the matching). The plan's assumption that it would be used here was
     overly broad; the actual implementation correctly uses only fuse.js
     for ranking.
+- **Retrospective code review (2026-06-17):** Full Code Reviewer pass.
+  Five improvements applied (F12-F16): extracted shared
+  `compareUpdatedAtDesc` helper to reduce tie-breaker duplication;
+  renamed `SORT_AHEAD`/`SORT_BEHIND` to `SORT_NEWER_FIRST`/
+  `SORT_OLDER_FIRST`; added `@param` note for unused `topicName`
+  parameter; normalised empty-string `updatedAt` same as `null`
+  (both sort last); added coercion value assertions to
+  defensive-null test. All 7 tests pass, lint clean.
 - **Follow-up implications for later sections:** Section 5
   (`LinkableDefinitionList` component) consumes the helper's output
   (the fuzzy-ranked list). Section 6 (modal integration) wires the
@@ -1145,17 +1165,17 @@ Add a `@remarks` JSDoc tag on `LinkableDefinitionList` documenting:
   - Lint: clean for Section 5 files.
 - **Deviations from plan:**
   - Alert description omits the `"No matching assignment definition found for '<title>'."` prefix from the layout spec. The component would need an additional `assignmentTitle` prop to include it. Deferred to stakeholder review.
+- **Retrospective code review (2026-06-17):** Full Code Reviewer pass.
+  Four improvements applied (F17-F20): removed unnecessary
+  `style={{ width: '100%' }}` from outer `Flex` (the `Radio.Group` `block`
+  prop handles width); enhanced `@remarks` JSDoc on the component function;
+  added CSS class assertions for `ant-radio-group-vertical`/`-block` in test;
+  added `selectedDefinitionKey` visual selection state test using
+  `toBeChecked`/`not.toBeChecked`. Test count: 8 → 9. All pass, lint clean.
 - **Follow-up implications for later sections:** Section 6 (modal
   integration) wires the component into the modal's `'linking'`
   body branch. Once Section 5 lands, Section 6 can be implemented
   independently.
-
-### Commit record
-
-- **Commit SHA:** `746106b`
-- **Commit message:** `feat(frontend): add LinkableDefinitionList presentational component for link picker`
-- **Branch:** `opencode/tidy-meadow`
-- **Push:** Confirmed — pushed to origin.
 
 ### Commit record
 
@@ -1454,16 +1474,22 @@ documenting:
     variable synchronously, avoiding the `flushSync` workaround needed in the wizard flow.
   - `handleLinkConfirm` does not use `flushSync` (per SPEC Decision 11), so no React state
     round-trip is needed for the `hasLinkSucceeded` flag.
+- **Retrospective code review (2026-06-17):** Full Code Reviewer pass.
+  Two improvements applied (F21-F22): added `@remarks` JSDoc on
+  `renderLinkingBody` and `renderLinkingFooter` helpers; removed
+  `queryClient` from `linkableDefinitions` useMemo dependency array
+  (stable reference per React Query contract). All 55 tests pass,
+  lint clean.
 - **Follow-up implications for later sections:** Section 7 (test
   utilities) extends the shared test fixtures to support the new
   state. Section 8 (Playwright e2e) exercises the full e2e flow.
 
 ### Commit record
 
-- **Commit SHA:** (to be filled after commit)
+- **Commit SHA:** `f92f06e`
 - **Commit message:** `feat(frontend): implement linking state in AssessTaskModal with upsert, cache invalidation, and DEFINITION_STALE recovery`
 - **Branch:** `opencode/tidy-meadow`
-- **Push:** (to be filled)
+- **Push:** confirmed (upstream `opencode/tidy-meadow` updated)
 
 ---
 
@@ -1544,6 +1570,14 @@ None — test utilities do not need `@remarks`.
   - Helmock mock for `upsertAssignmentDefinition` added to spec via `vi.mock`.
   - Verified by the 14 new Section 6 linking tests (all pass).
 - **Deviations from plan:** None.
+- **Retrospective code review (2026-06-17):** Full Code Reviewer pass.
+  Four improvements applied (F23-F26): added `@returns {void}` JSDoc to
+  `expectLinkButtonDisabled`; fixed JSDoc typo in `expectLinkButtonDisabled`;
+  added bounds check to `pickLinkableDefinition` index parameter with
+  descriptive error message; added `@remarks` JSDoc to all four link-flow
+  interaction helpers (`clickLinkToExisting`, `clickLink`,
+  `pickLinkableDefinition`, `expectLinkButtonDisabled`). All tests pass,
+  lint clean.
 - **Follow-up implications for later sections:** Section 8 (Playwright
   e2e) does not depend on the test utilities; the e2e tests use the
   `RuntimeScenario` pattern from
@@ -1551,7 +1585,7 @@ None — test utilities do not need `@remarks`.
 
 ### Commit record
 
-- **Commit SHA:** (same commit as Section 6 — test utilities are committed together)
+- **Commit SHA:** `f92f06e` (same commit as Section 6)
 - **Commit message:** (same as Section 6)
 - **Branch:** `opencode/tidy-meadow`
 - **Push:** (same as Section 6)
@@ -1687,7 +1721,36 @@ None — e2e tests do not need `@remarks`.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (to be filled during Red phase)
+- **Implementation notes:**
+  - 12 new e2e test cases added to `classes-page-assess-task.spec.ts`
+    covering the full picker flow: button enable/disable with Tooltip,
+    picker transition, row content, fuzzy ranking, Link+assessment flow,
+    loading state, success/error flows, Cancel, DEFINITION_STALE recovery,
+    and modal state reset.
+  - Uses existing `RuntimeScenario` pattern, `installRuntimeMock`,
+    `getMethodCalls`, `releaseNextDeferredSuccess`, and
+    `selectAssignmentAndStart` helpers.
+  - 3 partial fixtures defined: `ALGEBRA_HW_PARTIAL`,
+    `POETRY_ANALYSIS_PARTIAL`, `ALGEBRA_HOMEWORK_PARTIAL`.
+- **Deviations from plan:** None.
+- **Retrospective code review (2026-06-17):** Full Code Reviewer pass by
+  `Code Reviewer`; fixes delegated to `Implementation` (note: future e2e
+  changes should use `Playwright` agent per routing rules). Eight fixes
+  applied:
+  - **FIX-1 (CRITICAL):** Swapped inverted fuzzy ranking expectations —
+    `Algebra Homework` (exact match, score 0) now before `Algebra HW`
+    (fuzzy, score > 0), matching SPEC Decision 8.
+  - **FIX-2:** Verified syntax clean (no actual syntax error).
+  - **FIX-3:** Added Alert copy and footer button assertions to picker
+    transition test.
+  - **FIX-4:** Scoped `getByText` selectors to `.ant-radio-wrapper-content`.
+  - **FIX-5:** Reordered loading-state assertions (disabled button first,
+    then spinner); changed to `getByRole('status')`.
+  - **FIX-6:** Added Tooltip text verification to disabled button test.
+  - **FIX-7:** Changed wizard dialog locator to resilient
+    `filter({ has: ... })` pattern.
+  - **FIX-8:** British English verified clean (no American spellings).
+  - Lint: clean. All fixes verified by re-review.
 - **Deviations from plan:** (to be filled if any)
 - **Follow-up implications for later sections:** Section 9
   (Documentation) and Section 10 (Regression) are independent.

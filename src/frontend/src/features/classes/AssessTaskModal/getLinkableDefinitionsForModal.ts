@@ -28,8 +28,23 @@ export type LinkableDefinition = {
   templateDocumentId: string;
 };
 
-const SORT_AHEAD = -1;
-const SORT_BEHIND = 1;
+const SORT_NEWER_FIRST = -1;
+const SORT_OLDER_FIRST = 1;
+
+/**
+ * Compares two `updatedAt` values in descending order (newest first).
+ * Null and empty-string values sort after all non-null, non-empty values.
+ *
+ * @param {string | null} a - First updatedAt value.
+ * @param {string | null} b - Second updatedAt value.
+ * @returns {number} Negative if a is newer, positive if b is newer, 0 if equal.
+ */
+function compareUpdatedAtDesc(a: string | null, b: string | null): number {
+  if (a === b) return 0;
+  if (a === null || a === '') return SORT_OLDER_FIRST;
+  if (b === null || b === '') return SORT_NEWER_FIRST;
+  return a < b ? SORT_OLDER_FIRST : SORT_NEWER_FIRST;
+}
 
 /**
  * Derives the picker list from the cached `AssignmentDefinitionPartial`
@@ -40,7 +55,7 @@ const SORT_BEHIND = 1;
  * @param {string} classYearGroupKey The class's year group key; only partials with a matching `yearGroupKey` are returned.
  * @param {{ title: string; topicName: string | null }} selectedAssignment The selected Google Classroom assignment; used for fuzzy title ranking.
  * @param {string} selectedAssignment.title The assignment title used for fuzzy ranking.
- * @param {string | null} selectedAssignment.topicName The assignment topic name; used by the matcher.
+ * @param {string | null} selectedAssignment.topicName Unused by this helper; present for API consistency with the caller.
  * @returns {LinkableDefinition[]} The filtered, sorted picker rows.
  * @remarks
  * Filtering: by `yearGroupKey` equality. The matcher's relaxation (case-insensitive
@@ -82,12 +97,7 @@ export function getLinkableDefinitionsForModal(
   const sortedResults = fuseResults.toSorted((a, b) => {
     const scoreDiff = a.score! - b.score!;
     if (scoreDiff !== 0) return scoreDiff;
-    // Tie-breaker: updatedAt desc
-    if (a.item.updatedAt === b.item.updatedAt) return 0;
-    if (a.item.updatedAt === null) return SORT_BEHIND;
-    if (b.item.updatedAt === null) return SORT_AHEAD;
-    if (a.item.updatedAt < b.item.updatedAt) return SORT_BEHIND;
-    return SORT_AHEAD;
+    return compareUpdatedAtDesc(a.item.updatedAt, b.item.updatedAt);
   });
 
   const ranked = sortedResults.map((result) => result.item);
@@ -98,19 +108,10 @@ export function getLinkableDefinitionsForModal(
 
   const unranked = matchingPartials.filter((partial) => !rankedKeys.has(partial.definitionKey));
 
-  // Tie-break by `updatedAt` desc — ISO 8601 with timezone sorts
-  // chronologically when compared lexicographically.
-  const sortByUpdatedAtDesc = (
-    a: AssignmentDefinitionPartial,
-    b: AssignmentDefinitionPartial
-  ): number => {
-    if (a.updatedAt === b.updatedAt) return 0;
-    if (a.updatedAt === null) return SORT_BEHIND;
-    if (b.updatedAt === null) return SORT_AHEAD;
-    return a.updatedAt < b.updatedAt ? SORT_BEHIND : SORT_AHEAD;
-  };
-
-  const ordered = [...ranked, ...unranked.toSorted(sortByUpdatedAtDesc)];
+  const ordered = [
+    ...ranked,
+    ...unranked.toSorted((a, b) => compareUpdatedAtDesc(a.updatedAt, b.updatedAt)),
+  ];
 
   return ordered.map((partial) => ({
     definitionKey: partial.definitionKey,

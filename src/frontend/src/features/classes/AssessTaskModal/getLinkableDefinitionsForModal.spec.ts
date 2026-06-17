@@ -181,12 +181,16 @@ describe('getLinkableDefinitionsForModal', () => {
       },
     ];
 
-    expect(() =>
-      getLinkableDefinitionsForModal(
-        definitionPartials as unknown as AssignmentDefinitionPartial[],
-        DEFAULT_CLASS_YEAR_GROUP_KEY,
-        DEFAULT_SELECTED_ASSIGNMENT
-      )
-    ).not.toThrow();
+    const result = getLinkableDefinitionsForModal(
+      definitionPartials as unknown as AssignmentDefinitionPartial[],
+      DEFAULT_CLASS_YEAR_GROUP_KEY,
+      DEFAULT_SELECTED_ASSIGNMENT
+    );
+
+    expect(result[0].primaryTitle).toBe('');
+    expect(result[0].primaryTopic).toBe('');
+    expect(result[0].updatedAt).toBe('');
+    expect(result[0].alternateTitles).toEqual([]);
+    expect(result[0].alternateTopics).toEqual([]);
   });
 });

@@ -45,10 +45,6 @@ const DEFAULT_SELECTED_ASSIGNMENT = {
 const DEFAULT_CLASS_PARTIAL = { yearGroupKey: 'year-10' };
 
 /**
- *
- * @param overrides
- */
-/**
  * Creates a selected assignment fixture with sensible defaults.
  *
  * Only fields that differ from the default `Essay` / `Writing` assignment

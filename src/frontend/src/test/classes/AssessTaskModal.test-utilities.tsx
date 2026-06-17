@@ -314,7 +314,14 @@ export function expectCancelButtonPresent(dialog: HTMLElement): void {
 
 /**
  * Clicks the "Link to Existing Definition" button in the choice prompt.
+ * Must be called after the no-match choice prompt is visible.
  * Waits for the button to be present first.
+ *
+ * @remarks
+ * Use this helper after the matcher has returned `no-match` and the choice
+ * prompt (Create New Definition / Link to Existing Definition) is visible.
+ * After calling this, `noMatchResolution` transitions to `'linking'` and
+ * the picker becomes visible.
  *
  * @param {HTMLElement} dialog The modal dialog element.
  * @returns {Promise<void>} Resolves when the button has been clicked.
@@ -326,7 +333,14 @@ export async function clickLinkToExisting(dialog: HTMLElement): Promise<void> {
 
 /**
  * Clicks the "Link" button in the picker footer.
+ * Must be called after the picker is visible and a row has been selected.
  * The button's accessible name is "Link" (not "Start Assessment").
+ *
+ * @remarks
+ * Use this helper after `pickLinkableDefinition` has selected a row. The
+ * Link button becomes enabled when a row is selected. Clicking it triggers
+ * the upsert + start-assessment-run flow. Use in conjunction with
+ * `renderWithCache` to set up the upsert and start-run mocks.
  *
  * @param {HTMLElement} dialog The modal dialog element.
  * @returns {Promise<void>} Resolves when the button has been clicked.
@@ -338,6 +352,13 @@ export async function clickLink(dialog: HTMLElement): Promise<void> {
 
 /**
  * Clicks a Radio row in the linkable-definition picker at the given index.
+ * Must be called after the picker is visible (after `clickLinkToExisting`).
+ *
+ * @remarks
+ * Use this helper after `clickLinkToExisting` has opened the picker. Selects
+ * the row at the given index (defaults to 0) to set `selectedDefinitionForLink`
+ * and enable the Link button. Throws with a helpful message if the index is
+ * out of bounds.
  *
  * @param {HTMLElement} dialog The modal dialog element.
  * @param {number} [index=0] The index of the radio to click.
@@ -348,15 +369,27 @@ export async function pickLinkableDefinition(
   index: number = 0
 ): Promise<void> {
   const radios = await within(dialog).findAllByRole('radio');
+  if (index >= radios.length || index < 0) {
+    throw new Error(
+      `pickLinkableDefinition: index ${index} out of bounds (found ${radios.length} radio buttons)`
+    );
+  }
   // eslint-disable-next-line security/detect-object-injection -- Array index access, not object property
   fireEvent.click(radios[index]);
 }
 
 /**
- * Asserts the Link button in the picker footer is disabled
- * (when no row is selected).
+ * Asserts that the Link button in the picker footer is disabled
+ * (when no row is selected). Must be called after the picker is visible
+ * and before a row has been picked.
+ *
+ * @remarks
+ * Use this helper to verify the initial picker state where no row is
+ * selected and the Link button is therefore disabled. The button becomes
+ * enabled after `pickLinkableDefinition` selects a row.
  *
  * @param {HTMLElement} dialog The modal dialog element.
+ * @returns {void}
  */
 export function expectLinkButtonDisabled(dialog: HTMLElement): void {
   expect(within(dialog).getByRole('button', { name: 'Link' })).toBeDisabled();

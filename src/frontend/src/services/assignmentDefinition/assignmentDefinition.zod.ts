@@ -82,9 +82,9 @@ export type GetAssignmentDefinitionResponse = z.infer<typeof GetAssignmentDefini
  * Checks whether any of the three ID-shape fields is present.
  *
  * @internal Extracted to reduce cyclomatic complexity of the public helper.
- * @param {boolean} hasReferenceId - Whether {@link UpsertAssignmentDefinitionRequestSchema.referenceDocumentId} is set.
- * @param {boolean} hasTemplateId - Whether {@link UpsertAssignmentDefinitionRequestSchema.templateDocumentId} is set.
- * @param {boolean} hasDocumentType - Whether {@link UpsertAssignmentDefinitionRequestSchema.documentType} is set.
+ * @param {boolean} hasReferenceId - Whether the `referenceDocumentId` field is present in the payload.
+ * @param {boolean} hasTemplateId - Whether the `templateDocumentId` field is present in the payload.
+ * @param {boolean} hasDocumentType - Whether the `documentType` field is present in the payload.
  * @returns {boolean} `true` when at least one ID-shape field is present.
  */
 function hasAnyIdField(
@@ -92,25 +92,16 @@ function hasAnyIdField(
   hasTemplateId: boolean,
   hasDocumentType: boolean
 ): boolean {
-  if (hasReferenceId) {
-    return true;
-  }
-  if (hasTemplateId) {
-    return true;
-  }
-  if (hasDocumentType) {
-    return true;
-  }
-  return false;
+  return hasReferenceId || hasTemplateId || hasDocumentType;
 }
 
 /**
  * Checks whether all three ID-shape fields are present.
  *
  * @internal Extracted to reduce cyclomatic complexity of the public helper.
- * @param {boolean} hasReferenceId - Whether {@link UpsertAssignmentDefinitionRequestSchema.referenceDocumentId} is set.
- * @param {boolean} hasTemplateId - Whether {@link UpsertAssignmentDefinitionRequestSchema.templateDocumentId} is set.
- * @param {boolean} hasDocumentType - Whether {@link UpsertAssignmentDefinitionRequestSchema.documentType} is set.
+ * @param {boolean} hasReferenceId - Whether the `referenceDocumentId` field is present in the payload.
+ * @param {boolean} hasTemplateId - Whether the `templateDocumentId` field is present in the payload.
+ * @param {boolean} hasDocumentType - Whether the `documentType` field is present in the payload.
  * @returns {boolean} `true` when every ID-shape field is present.
  */
 function hasAllIdFields(
@@ -118,58 +109,7 @@ function hasAllIdFields(
   hasTemplateId: boolean,
   hasDocumentType: boolean
 ): boolean {
-  if (!hasReferenceId) {
-    return false;
-  }
-  if (!hasTemplateId) {
-    return false;
-  }
-  if (!hasDocumentType) {
-    return false;
-  }
-  return true;
-}
-
-/**
- * Validates that the upsert payload conforms to either the URL-shape or the
- * ID-shape contract, enforcing mutual exclusion.
- *
- * @param {Object} value - The raw upsert payload fields.
- * @param {string} [value.referenceDocumentUrl] - URL of the reference document (URL-shape).
- * @param {string} [value.templateDocumentUrl] - URL of the template document (URL-shape).
- * @param {string} [value.referenceDocumentId] - ID of the reference document (ID-shape).
- * @param {string} [value.templateDocumentId] - ID of the template document (ID-shape).
- * @param {string} [value.documentType] - Document type discriminator (ID-shape).
- * @returns {string|null} An error message string, or `null` when the payload is valid.
- */
-export function validateUpsertShape(value: {
-  referenceDocumentUrl?: string;
-  templateDocumentUrl?: string;
-  referenceDocumentId?: string;
-  templateDocumentId?: string;
-  documentType?: string;
-}): string | null {
-  const hasReferenceUrl = value.referenceDocumentUrl !== undefined;
-  const hasTemplateUrl = value.templateDocumentUrl !== undefined;
-  const hasReferenceId = value.referenceDocumentId !== undefined;
-  const hasTemplateId = value.templateDocumentId !== undefined;
-  const hasDocumentType = value.documentType !== undefined;
-
-  if (hasReferenceUrl !== hasTemplateUrl) {
-    return 'referenceDocumentUrl and templateDocumentUrl must be provided together.';
-  }
-
-  if (hasReferenceUrl) {
-    if (hasAnyIdField(hasReferenceId, hasTemplateId, hasDocumentType)) {
-      return 'URL-shape and ID-shape fields are mutually exclusive. Provide either referenceDocumentUrl + templateDocumentUrl, or referenceDocumentId + templateDocumentId + documentType.';
-    }
-    return null;
-  }
-
-  if (hasAllIdFields(hasReferenceId, hasTemplateId, hasDocumentType)) {
-    return null;
-  }
-  return 'Provide either referenceDocumentUrl + templateDocumentUrl (wizard shape), or referenceDocumentId + templateDocumentId + documentType (ID shape).';
+  return hasReferenceId && hasTemplateId && hasDocumentType;
 }
 
 /**
@@ -209,6 +149,56 @@ export const UpsertAssignmentDefinitionRequestSchema = z
 export type UpsertAssignmentDefinitionRequest = z.infer<
   typeof UpsertAssignmentDefinitionRequestSchema
 >;
+
+/**
+ * Fields from the upsert request used to discriminate between URL-shape and
+ * ID-shape payloads.
+ */
+type ShapeDiscriminatorFields = Pick<
+  UpsertAssignmentDefinitionRequest,
+  | 'referenceDocumentUrl'
+  | 'templateDocumentUrl'
+  | 'referenceDocumentId'
+  | 'templateDocumentId'
+  | 'documentType'
+>;
+
+/**
+ * Validates that the upsert payload conforms to either the URL-shape or the
+ * ID-shape contract, enforcing mutual exclusion.
+ *
+ * @remarks
+ * This function enforces the URL-shape vs ID-shape mutual exclusion rule,
+ * mirroring the backend transport validation split described in
+ * `docs/developer/backend/api-layer.md`. The wizard's existing payload (URL-shape)
+ * continues to pass without modification; the link flow uses the ID-shape contract.
+ *
+ * @param {ShapeDiscriminatorFields} value - The raw upsert payload fields.
+ * @returns {string|null} An error message string, or `null` when the payload is valid.
+ */
+export function validateUpsertShape(value: ShapeDiscriminatorFields): string | null {
+  const hasReferenceUrl = value.referenceDocumentUrl !== undefined;
+  const hasTemplateUrl = value.templateDocumentUrl !== undefined;
+  const hasReferenceId = value.referenceDocumentId !== undefined;
+  const hasTemplateId = value.templateDocumentId !== undefined;
+  const hasDocumentType = value.documentType !== undefined;
+
+  if (hasReferenceUrl !== hasTemplateUrl) {
+    return 'referenceDocumentUrl and templateDocumentUrl must be provided together.';
+  }
+
+  if (hasReferenceUrl) {
+    if (hasAnyIdField(hasReferenceId, hasTemplateId, hasDocumentType)) {
+      return 'URL-shape and ID-shape fields are mutually exclusive. Provide either referenceDocumentUrl + templateDocumentUrl, or referenceDocumentId + templateDocumentId + documentType.';
+    }
+    return null;
+  }
+
+  if (hasAllIdFields(hasReferenceId, hasTemplateId, hasDocumentType)) {
+    return null;
+  }
+  return 'Provide either referenceDocumentUrl + templateDocumentUrl (URL-shape), or referenceDocumentId + templateDocumentId + documentType (ID-shape).';
+}
 
 export const UpsertAssignmentDefinitionResponseSchema = AssignmentDefinitionSchema;
 

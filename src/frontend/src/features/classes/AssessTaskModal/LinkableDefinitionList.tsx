@@ -17,6 +17,8 @@ export type LinkableDefinitionListProperties = Readonly<{
  * selection, and emits `onSelect(definitionKey)` when the user picks a row.
  * Every row is always selectable — no `disabled` prop is used. The
  * `Radio.Group` `name` prop enables native arrow-key navigation between rows.
+ * The `Radio.Group` with `block` already applies width: 100%, so the outer
+ * `Flex` does not need an explicit width style.
  *
  * @param {Readonly<LinkableDefinitionListProperties>} properties Component properties.
  * @returns {JSX.Element} The picker body.
@@ -27,7 +29,7 @@ export function LinkableDefinitionList(
   const { linkableDefinitions, selectedDefinitionKey, onSelect } = properties;
 
   return (
-    <Flex vertical gap="middle" style={{ width: '100%' }}>
+    <Flex vertical gap="middle">
       <Alert
         type="info"
         showIcon

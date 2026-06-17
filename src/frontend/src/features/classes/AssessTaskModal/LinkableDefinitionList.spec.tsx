@@ -121,8 +121,9 @@ describe('LinkableDefinitionList', () => {
       />
     );
 
-    // orientation="vertical" and block are antd layout props that affect
-    // rendered CSS classes. At minimum verify the group renders radios.
+    const radioGroup = screen.getByRole('radiogroup');
+    expect(radioGroup).toHaveClass('ant-radio-group-vertical');
+    expect(radioGroup).toHaveClass('ant-radio-group-block');
     expect(screen.getAllByRole('radio')).toHaveLength(1);
   });
 
@@ -147,6 +148,22 @@ describe('LinkableDefinitionList', () => {
 
     await user.click(radios[1]);
     expect(onSelect).toHaveBeenCalledWith('def-002');
+  });
+
+  it('visually reflects the selectedDefinitionKey prop', () => {
+    render(
+      <LinkableDefinitionList
+        linkableDefinitions={[
+          createLinkable({ definitionKey: 'def-001' }),
+          createLinkable({ definitionKey: 'def-002' }),
+        ]}
+        selectedDefinitionKey="def-002"
+        onSelect={() => {}}
+      />
+    );
+    const radios = screen.getAllByRole('radio');
+    expect(radios[0]).not.toBeChecked();
+    expect(radios[1]).toBeChecked();
   });
 
   it('renders without error and produces no radios when linkableDefinitions is empty', () => {

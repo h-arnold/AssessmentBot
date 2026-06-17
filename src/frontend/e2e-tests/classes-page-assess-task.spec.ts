@@ -523,4 +523,454 @@ test.describe('Assess Task modal', () => {
     // Both modals should close — no dialogs visible
     await expect(page.getByRole('dialog')).toHaveCount(0);
   });
+
+  // ==========================================================================
+  // Link to Existing Definition — picker flow tests
+  // ==========================================================================
+
+  test.describe('Link to Existing Definition — picker flow', () => {
+    const ALGEBRA_HW_PARTIAL = {
+      definitionKey: 'algebra-hw-key',
+      primaryTitle: 'Algebra HW',
+      primaryTopicKey: 'topic-algebra',
+      primaryTopic: 'Algebra',
+      yearGroupKey: 'year-group-10',
+      yearGroupLabel: 'Year 10',
+      alternateTitles: [],
+      alternateTopics: [],
+      documentType: 'SLIDES',
+      referenceDocumentId: 'ref-123',
+      templateDocumentId: 'tpl-456',
+      assignmentWeighting: 5,
+      tasks: null,
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-03-01T00:00:00.000Z',
+    };
+
+    const POETRY_ANALYSIS_PARTIAL = {
+      ...ALGEBRA_HW_PARTIAL,
+      definitionKey: 'poetry-key',
+      primaryTitle: 'Poetry Analysis',
+      primaryTopicKey: 'topic-poetry',
+      primaryTopic: 'Poetry',
+      updatedAt: '2025-04-01T00:00:00.000Z',
+    };
+
+    const ALGEBRA_HOMEWORK_PARTIAL = {
+      ...ALGEBRA_HW_PARTIAL,
+      definitionKey: 'algebra-homework-key',
+      primaryTitle: 'Algebra Homework',
+      updatedAt: '2025-02-15T00:00:00.000Z',
+    };
+
+    /**
+     * Standard partials queue for linking tests where at least one linkable
+     * definition in the same year group is needed.
+     */
+    const LINKABLE_PARTIALS_ENTRY = {
+      kind: 'success' as const,
+      data: [ALGEBRA_HW_PARTIAL],
+    };
+
+    const UPSERT_SUCCESS_ENTRY = {
+      kind: 'success' as const,
+      data: ALGEBRA_HW_PARTIAL,
+    };
+
+    const START_RUN_SUCCESS_ENTRY = { kind: 'success' as const, data: null };
+
+    test('"Link to Existing Definition" button is enabled when a linkable definition exists', async ({
+      page,
+    }) => {
+      const scenario: RuntimeScenario = {
+        ...createAssessTaskScenario({
+          getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
+        }),
+        getAssignmentDefinitionPartials: [LINKABLE_PARTIALS_ENTRY, LINKABLE_PARTIALS_ENTRY],
+      };
+
+      await installRuntimeMock(page, scenario);
+      const dialog = await openAssessTaskModal(page);
+
+      await selectAssignmentAndStart(dialog, page);
+
+      // Assert choice prompt with enabled Link button
+      await expect(dialog.getByText(/no matching assignment definition found/i)).toBeVisible();
+      await expect(
+        dialog.getByRole('button', { name: 'Link to Existing Definition' })
+      ).toBeEnabled();
+    });
+
+    test('"Link to Existing Definition" button is disabled when the picker would be empty', async ({
+      page,
+    }) => {
+      // Partials with a different year group — no match for English 10 (year-group-10)
+      const DIFFERENT_YEAR_GROUP_PARTIAL = {
+        ...ALGEBRA_HW_PARTIAL,
+        definitionKey: 'year-9-key',
+        yearGroupKey: 'year-group-9',
+        yearGroupLabel: 'Year 9',
+      };
+
+      const scenario: RuntimeScenario = {
+        ...createAssessTaskScenario({
+          getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
+        }),
+        getAssignmentDefinitionPartials: [
+          { kind: 'success', data: [DIFFERENT_YEAR_GROUP_PARTIAL] },
+          { kind: 'success', data: [DIFFERENT_YEAR_GROUP_PARTIAL] },
+        ],
+      };
+
+      await installRuntimeMock(page, scenario);
+      const dialog = await openAssessTaskModal(page);
+
+      await selectAssignmentAndStart(dialog, page);
+
+      // Assert choice prompt with disabled Link button
+      await expect(dialog.getByText(/no matching assignment definition found/i)).toBeVisible();
+      const linkButton = dialog.getByRole('button', { name: 'Link to Existing Definition' });
+      await expect(linkButton).toBeDisabled();
+      // Verify Tooltip
+      await linkButton.focus();
+      await expect(page.getByRole('tooltip')).toContainText(
+        /no assignment definitions exist for this class's year group/i
+      );
+    });
+
+    test('clicking the link button transitions to the picker', async ({ page }) => {
+      const scenario: RuntimeScenario = {
+        ...createAssessTaskScenario({
+          getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
+          upsertAssignmentDefinition: [UPSERT_SUCCESS_ENTRY, UPSERT_SUCCESS_ENTRY],
+          startAssessmentRun: [START_RUN_SUCCESS_ENTRY, START_RUN_SUCCESS_ENTRY],
+        }),
+        getAssignmentDefinitionPartials: [LINKABLE_PARTIALS_ENTRY, LINKABLE_PARTIALS_ENTRY],
+      };
+
+      await installRuntimeMock(page, scenario);
+      const dialog = await openAssessTaskModal(page);
+
+      await selectAssignmentAndStart(dialog, page);
+
+      // Click link button
+      await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
+
+      // Assert picker is rendered — look for the Radio.Group rows
+      await expect(dialog.getByRole('radio')).toHaveCount(1);
+
+      // Assert the Alert copy and footer buttons
+      await expect(dialog.getByText(/link to an existing definition to associate/i)).toBeVisible();
+      await expect(dialog.getByRole('button', { name: 'Link' })).toBeDisabled();
+      await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeVisible();
+    });
+
+    test('picker rows show the title and the subtitle', async ({ page }) => {
+      const scenario: RuntimeScenario = {
+        ...createAssessTaskScenario({
+          getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
+          upsertAssignmentDefinition: [UPSERT_SUCCESS_ENTRY, UPSERT_SUCCESS_ENTRY],
+          startAssessmentRun: [START_RUN_SUCCESS_ENTRY, START_RUN_SUCCESS_ENTRY],
+        }),
+        getAssignmentDefinitionPartials: [LINKABLE_PARTIALS_ENTRY, LINKABLE_PARTIALS_ENTRY],
+      };
+
+      await installRuntimeMock(page, scenario);
+      const dialog = await openAssessTaskModal(page);
+
+      await selectAssignmentAndStart(dialog, page);
+      await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
+
+      // The radio row shows the title and the subtitle
+      const radioRow = dialog.locator('.ant-radio-wrapper-content').first();
+      await expect(radioRow.getByText('Algebra HW')).toBeVisible();
+      await expect(radioRow.getByText('Algebra · Year 10')).toBeVisible();
+    });
+
+    test('picker rows sorted by fuzzy title rank with updatedAt desc tie-breaker', async ({
+      page,
+    }) => {
+      // Three partials: "Poetry Analysis" (most recent), "Algebra HW" (older),
+      // "Algebra Homework" (oldest). Google Classroom assignment title is
+      // "Algebra Homework" — fuzzy ranking should list "Algebra Homework" first
+      // (exact match → score 0), then "Algebra HW" (fuzzy match → score > 0),
+      // then "Poetry Analysis" (no match).
+      const THREE_PARTIALS_ENTRY = {
+        kind: 'success' as const,
+        data: [POETRY_ANALYSIS_PARTIAL, ALGEBRA_HW_PARTIAL, ALGEBRA_HOMEWORK_PARTIAL],
+      };
+
+      const scenario: RuntimeScenario = {
+        ...createAssessTaskScenario({
+          getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
+          upsertAssignmentDefinition: [UPSERT_SUCCESS_ENTRY, UPSERT_SUCCESS_ENTRY],
+          startAssessmentRun: [START_RUN_SUCCESS_ENTRY, START_RUN_SUCCESS_ENTRY],
+        }),
+        getAssignmentDefinitionPartials: [THREE_PARTIALS_ENTRY, THREE_PARTIALS_ENTRY],
+      };
+
+      await installRuntimeMock(page, scenario);
+      const dialog = await openAssessTaskModal(page);
+
+      await selectAssignmentAndStart(dialog, page);
+      await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
+
+      // Collect all visible text from the radio group rows to verify order
+      const visibleTexts = await dialog.locator('.ant-radio-wrapper-content').allTextContents();
+
+      const titles = visibleTexts.map((t) => t.trim().split('\n')[0].trim());
+
+      expect(titles[0]).toBe('Algebra Homework'); // exact match → score 0
+      expect(titles[1]).toBe('Algebra HW'); // fuzzy match → score > 0
+      expect(titles[2]).toBe('Poetry Analysis');
+    });
+
+    test('selecting a row and clicking Link calls upsertAssignmentDefinition then startAssessmentRun', async ({
+      page,
+    }) => {
+      const scenario: RuntimeScenario = {
+        ...createAssessTaskScenario({
+          getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
+          upsertAssignmentDefinition: [UPSERT_SUCCESS_ENTRY, UPSERT_SUCCESS_ENTRY],
+          startAssessmentRun: [START_RUN_SUCCESS_ENTRY, START_RUN_SUCCESS_ENTRY],
+        }),
+        getAssignmentDefinitionPartials: [LINKABLE_PARTIALS_ENTRY, LINKABLE_PARTIALS_ENTRY],
+      };
+
+      await installRuntimeMock(page, scenario);
+      const dialog = await openAssessTaskModal(page);
+
+      await selectAssignmentAndStart(dialog, page);
+      await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
+
+      // Select the first (and only) row
+      await dialog.getByRole('radio').click();
+
+      // Click Link
+      await dialog.getByRole('button', { name: 'Link' }).click();
+
+      // Wait for the success state
+      await expect(dialog.getByText(/assessment started for/i)).toBeVisible();
+
+      // Verify both backend methods were called
+      const calls = await getMethodCalls(page);
+      expect(calls).toContain('upsertAssignmentDefinition');
+      expect(calls).toContain('startAssessmentRun');
+    });
+
+    test('loading state during link shows spinner and disabled Link button', async ({ page }) => {
+      const UPSERT_DEFERRED = { kind: 'deferredSuccess' as const, data: ALGEBRA_HW_PARTIAL };
+      const RUN_DEFERRED = { kind: 'deferredSuccess' as const, data: null };
+
+      const scenario: RuntimeScenario = {
+        ...createAssessTaskScenario({
+          getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
+          upsertAssignmentDefinition: [UPSERT_DEFERRED, UPSERT_DEFERRED],
+          startAssessmentRun: [RUN_DEFERRED, RUN_DEFERRED],
+        }),
+        getAssignmentDefinitionPartials: [LINKABLE_PARTIALS_ENTRY, LINKABLE_PARTIALS_ENTRY],
+      };
+
+      await installRuntimeMock(page, scenario);
+      const dialog = await openAssessTaskModal(page);
+
+      await selectAssignmentAndStart(dialog, page);
+      await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
+      await dialog.getByRole('radio').click();
+
+      // Click Link — this triggers the deferred upsert
+      await dialog.getByRole('button', { name: 'Link' }).click();
+
+      // Assert loading state: Link button disabled first (synchronous), then spinner
+      await expect(dialog.getByRole('button', { name: 'Link' })).toBeDisabled();
+      await expect(dialog.getByRole('status')).toBeVisible();
+
+      // Release the deferred upsert response
+      await releaseNextDeferredSuccess(page);
+
+      // After upsert resolves, startAssessmentRun fires (also deferred)
+      // Release that too
+      await releaseNextDeferredSuccess(page);
+
+      // Assert success state — spinner gone, success text visible
+      await expect(dialog.getByRole('status')).toHaveCount(0);
+      await expect(dialog.getByText(/assessment started for/i)).toBeVisible();
+    });
+
+    test('link success flow shows success Alert and Close button', async ({ page }) => {
+      const scenario: RuntimeScenario = {
+        ...createAssessTaskScenario({
+          getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
+          upsertAssignmentDefinition: [UPSERT_SUCCESS_ENTRY, UPSERT_SUCCESS_ENTRY],
+          startAssessmentRun: [START_RUN_SUCCESS_ENTRY, START_RUN_SUCCESS_ENTRY],
+        }),
+        getAssignmentDefinitionPartials: [LINKABLE_PARTIALS_ENTRY, LINKABLE_PARTIALS_ENTRY],
+      };
+
+      await installRuntimeMock(page, scenario);
+      const dialog = await openAssessTaskModal(page);
+
+      await selectAssignmentAndStart(dialog, page);
+      await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
+      await dialog.getByRole('radio').click();
+      await dialog.getByRole('button', { name: 'Link' }).click();
+
+      // Verify success Alert
+      await expect(dialog.getByText(/assessment started for/i)).toBeVisible();
+
+      // Verify Close button in footer
+      await expect(
+        dialog.locator('.ant-modal-footer').getByRole('button', { name: 'Close' })
+      ).toBeVisible();
+
+      // Verify startAssessmentRun was called
+      const calls = await getMethodCalls(page);
+      expect(calls).toContain('startAssessmentRun');
+    });
+
+    test('upsert failure shows error Alert and Cancel closes the modal', async ({ page }) => {
+      const UPSERT_FAILURE = {
+        kind: 'failureEnvelope' as const,
+        code: 'INTERNAL_ERROR' as const,
+        message: 'Failed to upsert definition',
+      };
+
+      const scenario: RuntimeScenario = {
+        ...createAssessTaskScenario({
+          getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
+          upsertAssignmentDefinition: [UPSERT_FAILURE, UPSERT_FAILURE],
+        }),
+        getAssignmentDefinitionPartials: [LINKABLE_PARTIALS_ENTRY, LINKABLE_PARTIALS_ENTRY],
+      };
+
+      await installRuntimeMock(page, scenario);
+      const dialog = await openAssessTaskModal(page);
+
+      await selectAssignmentAndStart(dialog, page);
+      await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
+      await dialog.getByRole('radio').click();
+      await dialog.getByRole('button', { name: 'Link' }).click();
+
+      // Verify error Alert
+      await expect(dialog.getByRole('alert')).toBeVisible();
+      await expect(dialog.getByRole('alert')).toContainText('Failed to upsert definition');
+
+      // Cancel closes the modal
+      await dialog.getByRole('button', { name: 'Cancel' }).click();
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+    });
+
+    test('Cancel from picker returns to the choice prompt', async ({ page }) => {
+      const scenario: RuntimeScenario = {
+        ...createAssessTaskScenario({
+          getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
+          upsertAssignmentDefinition: [UPSERT_SUCCESS_ENTRY, UPSERT_SUCCESS_ENTRY],
+          startAssessmentRun: [START_RUN_SUCCESS_ENTRY, START_RUN_SUCCESS_ENTRY],
+        }),
+        getAssignmentDefinitionPartials: [LINKABLE_PARTIALS_ENTRY, LINKABLE_PARTIALS_ENTRY],
+      };
+
+      await installRuntimeMock(page, scenario);
+      const dialog = await openAssessTaskModal(page);
+
+      await selectAssignmentAndStart(dialog, page);
+      await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
+
+      // Picker visible — click Cancel
+      await expect(dialog.getByRole('radio')).toBeVisible();
+      await dialog.getByRole('button', { name: 'Cancel' }).click();
+
+      // Choice buttons should reappear
+      await expect(dialog.getByRole('button', { name: 'Create New Definition' })).toBeVisible();
+      await expect(
+        dialog.getByRole('button', { name: 'Link to Existing Definition' })
+      ).toBeVisible();
+    });
+
+    test('DEFINITION_STALE after link opens wizard at task-weightings panel (panel 2)', async ({
+      page,
+    }) => {
+      const topicsData = [
+        { key: 'topic-algebra', name: 'Algebra', yearGroupKeys: ['year-group-10'] },
+      ];
+
+      const STALE_ERROR = {
+        kind: 'failureEnvelope' as const,
+        code: 'DEFINITION_STALE' as const,
+        message: 'Definition is stale',
+      };
+
+      const scenario: RuntimeScenario = {
+        ...createAssessTaskScenario({
+          getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
+        }),
+        getAssignmentDefinitionPartials: [LINKABLE_PARTIALS_ENTRY, LINKABLE_PARTIALS_ENTRY],
+        upsertAssignmentDefinition: [UPSERT_SUCCESS_ENTRY, UPSERT_SUCCESS_ENTRY],
+        startAssessmentRun: [STALE_ERROR, STALE_ERROR],
+        getAssignmentTopics: [
+          { kind: 'success', data: topicsData },
+          { kind: 'success', data: topicsData },
+        ],
+        getAssignmentDefinition: [
+          { kind: 'success', data: ALGEBRA_HW_PARTIAL },
+          { kind: 'success', data: ALGEBRA_HW_PARTIAL },
+        ],
+      };
+
+      await installRuntimeMock(page, scenario);
+      const dialog = await openAssessTaskModal(page);
+
+      await selectAssignmentAndStart(dialog, page);
+      await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
+      await dialog.getByRole('radio').click();
+      await dialog.getByRole('button', { name: 'Link' }).click();
+
+      // The wizard dialog should appear (DEFINITION_STALE recovery)
+      const wizardDialog = page
+        .getByRole('dialog')
+        .filter({ has: page.getByRole('button', { name: /save/i }) });
+      await expect(wizardDialog).toBeVisible({ timeout: 8000 });
+
+      // Assert we are on panel 2 (task weightings), not panel 1 (title/topic):
+      // - No title textbox should be visible
+      await expect(wizardDialog.getByRole('textbox', { name: /assignment title/i })).toHaveCount(0);
+
+      // - The weightings UI should be present (the "Save" button indicates panel 2)
+      await expect(wizardDialog.getByRole('button', { name: /save/i })).toBeVisible();
+    });
+
+    test('modal state resets on reopen after linking', async ({ page }) => {
+      const scenario: RuntimeScenario = {
+        ...createAssessTaskScenario({
+          getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
+          upsertAssignmentDefinition: [UPSERT_SUCCESS_ENTRY, UPSERT_SUCCESS_ENTRY],
+          startAssessmentRun: [START_RUN_SUCCESS_ENTRY, START_RUN_SUCCESS_ENTRY],
+        }),
+        getAssignmentDefinitionPartials: [LINKABLE_PARTIALS_ENTRY, LINKABLE_PARTIALS_ENTRY],
+      };
+
+      await installRuntimeMock(page, scenario);
+      let dialog = await openAssessTaskModal(page);
+
+      // First use — go through a full link flow
+      await selectAssignmentAndStart(dialog, page);
+      await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
+      await dialog.getByRole('radio').click();
+      await dialog.getByRole('button', { name: 'Link' }).click();
+
+      // Wait for success and close
+      await expect(dialog.getByText(/assessment started for/i)).toBeVisible();
+      await dialog.locator('.ant-modal-footer').getByRole('button', { name: 'Close' }).click();
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+
+      // Reopen the modal (first card — English 10)
+      await page.getByRole('button', { name: 'Assess Task' }).first().click();
+      dialog = page.getByRole('dialog');
+      await expect(dialog).toBeVisible();
+
+      // Verify state reset: Start Assessment is disabled, Select dropdown is shown
+      await expect(dialog.getByRole('combobox')).toBeVisible();
+      await expect(dialog.getByRole('button', { name: 'Start Assessment' })).toBeDisabled();
+    });
+  });
 });

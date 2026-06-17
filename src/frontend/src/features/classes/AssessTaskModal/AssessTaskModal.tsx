@@ -175,11 +175,11 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
       classPartialForWizard.yearGroupKey,
       selectedAssignmentForChoice
     );
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- queryClient from useQueryClient() is stable per React Query contract
   }, [
     noMatchResolution,
     classPartialForWizard,
     selectedAssignmentForChoice,
-    queryClient,
   ]);
 
   useEffect(() => {
@@ -668,6 +668,12 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
   /**
    * Renders the body content for the noMatchResolution 'linking' branch.
    *
+   * @remarks
+   * Only renders when `noMatchResolution === 'linking'`. Handles all four
+   * `assessmentState` sub-states: 'loading' (Spin), 'success' (Alert),
+   * 'error' (Alert), and 'idle' (LinkableDefinitionList picker). The loading
+   * and error states mirror the patterns used by the main assessment flow.
+   *
    * @returns {React.ReactNode} The linking body content.
    */
   function renderLinkingBody(): React.ReactNode {
@@ -769,7 +775,12 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
 
   /**
    * Renders the footer content for the linking + idle state.
-   * The Link button is wrapped in a Tooltip when disabled.
+   *
+   * @remarks
+   * Only renders when `noMatchResolution === 'linking'` and
+   * `assessmentState === 'idle'`. The Link button is wrapped in a Tooltip
+   * when disabled (no row selected). The Cancel button returns the modal to
+   * the choice prompt. Both buttons are always visible in this sub-state.
    *
    * @returns {React.ReactNode} The rendered footer buttons.
    */
