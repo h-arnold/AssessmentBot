@@ -1,4 +1,4 @@
-/* global validateParametersObject_ */
+/* global ABClassController, ApiValidationError, Validate, validateParametersObject_ */
 
 /**
  * Factory function that returns a new ABClassController instance.

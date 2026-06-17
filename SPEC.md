@@ -387,9 +387,10 @@ Avoid:
 - Frontend query integration: new factory function `getABClassQueryOptions(classId)` in
   `src/frontend/src/query/sharedQueries.ts` and a new `queryKeys.abClass(classId)` entry in
   `src/frontend/src/query/queryKeys.ts`
-- Out of scope for this surface: `ABClassController` decomposition (over 1000 lines, has a
-  planned split in `LARGE_CODE_FILES.md` but not yet implemented; deferred to a separate
-  workstream)
+- The `ABClassController` decomposition (over 1000 lines, per
+  `ABClassControllerRefactor_SPEC.md` v1.0) is a separate concern from the
+  endpoint surface but is bundled in this delivery; see the refactor spec
+  for details.
 
 ### Proposed high-level tree
 
@@ -403,7 +404,13 @@ src/backend/
 │   └── z_apiHandler.js                  (modified — new ALLOWLISTED_METHOD_HANDLERS entry
 │                                          and updated require path for abclassMutations_)
 └── y_controllers/
-    └── ABClassController.js             (modified — new readClass + private _toReadView)
+    └── ABClassController/                 (new folder — decomposed per ABClassControllerRefactor_SPEC.md)
+        ├── index.js                       (facade — re-exports ABClassController class)
+        ├── ABClassValidation.js           (validation helpers)
+        ├── ABClassRoster.js               (Classroom API + refresh/persist roster)
+        ├── ABClassAssignmentOps.js        (assignment run persistence + rehydration)
+        ├── ABClassPersistence.js          (persistClassAndPartial, upsertClassPartial)
+        └── ABClassResponseMapper.js       (normaliseClassPartial, buildClassSummary, _toReadView)
 
 src/frontend/src/
 ├── services/googleClassrooms/
@@ -459,9 +466,9 @@ src/frontend/src/
 
 #### Manual refresh
 
-- React Query's standard invalidation handles manual refresh. The `getABClassQueryOptions`
-  factory is paired with an `invalidateAbClass(classId)` helper (added to `queryKeys.ts`)
-  that follows the existing `queryOptions` / `queryKeys` invalidation pattern.
+- React Query's standard invalidation handles manual refresh. The standard
+  `invalidateQueries({ queryKey: queryKeys.abClass(classId) })` pattern works
+  without any additional helper.
 
 ### Query or transport additions
 
@@ -686,8 +693,10 @@ Use this section only for constraints that the later action plan must respect.
   files are new. Per backend AGENTS §11 the domain folder is required because two
   files now share the `abclass` prefix.
 - The new `ABClassController.readClass` method sits alongside `loadClass` in the same
-  file. The `ABClassController` decomposition planned in `LARGE_CODE_FILES.md` is **out of
-  scope** for this delivery and must not be bundled.
+  file initially. The `ABClassController` decomposition (per
+  `ABClassControllerRefactor_SPEC.md` v1.0) is bundled in this delivery;
+  `readClass` and `_toReadView` land in the new structure from day one
+  (`readClass` on the facade, `_toReadView` on `ABClassResponseMapper`).
 - The response shape is owned by the controller. `readClass` returns a transport-ready
   plain object via the private `_toReadView(abClass)` method. The transport handler is
   a thin pass-through (validation, controller call, `ClassNotFoundError` catch). This
@@ -839,6 +848,15 @@ definitionKey]` shape:
   - The new `getABClassQueryOptions` factory is covered by the existing
     `src/frontend/src/query/sharedQueries.query.spec.tsx` patterns, following the
     precedent set for `getAssignmentDefinitionQueryOptions`.
+- Backend sub-class unit tests (refactor, per `ABClassControllerRefactor_SPEC.md`):
+  - `tests/controllers/ABClassController/ABClassValidation.unit.test.js`
+  - `tests/controllers/ABClassController/ABClassRoster.unit.test.js`
+  - `tests/controllers/ABClassController/ABClassAssignmentOps.unit.test.js`
+  - `tests/controllers/ABClassController/ABClassPersistence.unit.test.js`
+  - `tests/controllers/ABClassController/ABClassResponseMapper.unit.test.js`
+    These 5 new test files cover each sub-class in isolation, following the
+    `AssignmentDefinition/` precedent. The existing controller test suite (14+ files)
+    serves as the regression net — no assertion changes are required.
 - No Playwright E2E tests are added in this round (no visible UI changes).
 
 ## Documentation and rollout notes
@@ -884,8 +902,13 @@ definitionKey]` shape:
   are unchanged (the `validateParametersObject_` helper moves from
   `abclassMutations.js` to `abclassValidation.js` but the validation contract is
   identical).
-- The ABClassController planned decomposition in `LARGE_CODE_FILES.md` is **out of scope**
-  for this delivery and is not affected.
+- The `ABClassController` decomposition (from ~996 lines to a facade + 5
+  sub-classes per `ABClassControllerRefactor_SPEC.md` v1.0) is bundled in
+  this delivery. The `readClass` and `_toReadView` methods added by this
+  spec land in the new structure from day one (`readClass` on the facade,
+  `_toReadView` on `ABClassResponseMapper`). The decomposition's only
+  externally visible change is the file path of the controller module;
+  the public API is preserved.
 
 ## V1 scope recommendation
 
@@ -915,12 +938,14 @@ definitionKey]` shape:
 - Frontend: tests for the new service module and Zod schema
 - Documentation: api-layer.md entry, DATA_SHAPES.md section, ClassNotFoundError JSDoc
   update
+- Backend: `ABClassController` decomposition into a facade + 5 sub-classes
+  (per `ABClassControllerRefactor_SPEC.md` v1.0; the `readClass` and
+  `_toReadView` methods land in the new structure from day one)
 
 ### Defer from v1
 
 - Per-assignment full rehydration — use existing `getAssignment` endpoint
 - Roster refresh on read — use the assessment-run path or `upsertABClass`
-- `ABClassController` decomposition (over 1000 lines, planned in `LARGE_CODE_FILES.md`)
 - Reorganising the pre-existing `classPartials*` files into a subfolder (out of scope;
   follow-up delivery)
 - Any visible class-detail page (out of scope for this round; will get its own layout spec)

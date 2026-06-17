@@ -1,3 +1,5 @@
+/* global ApiValidationError */
+
 /**
  * Validates that parameters is a plain object (not an array).
  * Throws ApiValidationError if validation fails.
