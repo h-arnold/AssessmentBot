@@ -449,6 +449,8 @@ Add a `@remarks` JSDoc tag on `_resolveAlternateTopics` documenting:
   `max-lines` warning on the test file (991 lines, up from 903). This
   is a pre-existing warning rule; the file was already over 500 lines.
   The new tests add essential coverage. Accepted as technical debt.
+  **Resolution target:** Section 10 (regression hardening) includes
+  a task to split the test file so it stays under the 500-line limit.
 - **Follow-up implications for later sections:** Section 3 (Zod
   schema extension) and Section 6 (modal integration) depend on the
   orchestrator's ability to round-trip `alternateTopics`. Once Section
@@ -1751,9 +1753,43 @@ None — e2e tests do not need `@remarks`.
     `filter({ has: ... })` pattern.
   - **FIX-8:** British English verified clean (no American spellings).
   - Lint: clean. All fixes verified by re-review.
-- **Deviations from plan:** (to be filled if any)
+- **Formal TDD Red Loop (2026-06-17):** After the retro review, Section 8
+  was re-run through the formal TDD workflow. The 7 failing picker-flow
+  tests (flagged as regressions) were fixed by the `Playwright` agent
+  with 7 changes:
+  1. `tasks: null` → `tasks: []` in `ALGEBRA_HW_PARTIAL` fixture (the Zod
+     `AssignmentDefinitionSchema` has `tasks: z.array(...)` which is
+     non-nullable — the upsert response Zod validation silently failed,
+     blocking the success/loading/stale-recovery flows).
+  2. `primaryTitle: 'Algebra Homework'` → `'Algebra Homework Original'`
+     in `ALGEBRA_HOMEWORK_PARTIAL` (avoids exact match with GC assignment
+     title; an exact match would skip the picker entirely, nullifying the
+     fuzzy ranking test).
+  3. `linkButton.focus()` → `linkButton.hover()` (antd v6 Tooltip default
+     trigger is hover, not focus).
+  4. `.ant-radio-wrapper-content` → `.ant-radio-label` (the correct antd
+     v6 CSS class for radio row label content).
+  5. `.toBeVisible()` → `.toHaveCount(1)` for Typography elements
+     (Playwright may resolve antd Typography.Text as hidden).
+  6. `fourAlgebraEntries` = 4 queue entries for the modal-reopen test
+     (2 opens × 2 StrictMode effect replays).
+  7. `DEFINITION_STALE` test: updated expectations to panel 1 (title/topic)
+     — panel-2 stale-recovery is not yet implemented per SPEC.md lines
+     163-170. Documented with inline comment.
+     Red Review by `Code Reviewer`: **Clean — no issues found.** Regression
+     Gate: `frontend-e2e-check` now **passing** (7 regressions resolved → 0).
+     The only remaining regression is the Section 1 `max-lines` accepted
+     technical debt (resolution targeted for Section 10).
+     All 27 e2e tests pass (15 existing + 12 picker-flow). Lint: clean.
 - **Follow-up implications for later sections:** Section 9
   (Documentation) and Section 10 (Regression) are independent.
+
+### Commit record
+
+- **Commit SHA:** (pending — see below)
+- **Commit message:** `fix(e2e): resolve 7 failing picker-flow Playwright tests with antd v6 compatibility fixes`
+- **Branch:** `opencode/tidy-meadow`
+- **Push:** (pending)
 
 ---
 
@@ -1833,12 +1869,20 @@ that the transport contract is sound.
 - All existing backend API tests pass.
 - All existing frontend modal tests pass.
 - All new tests pass.
-- Backend lint passes.
+- Backend lint passes **without exceptions**: the `max-lines` warning on
+  `assignmentDefinitionController.upsert.test.js` accepted in Section 1
+  must be resolved in this section.
 - Frontend lint passes.
 - No regressions in `upsertAssignmentDefinition_` or any other
   handler in `assignmentDefinitionTransport.js`.
 - No regressions in `AssignmentDefinitionUpsertOrchestrator` tests
   that exercise the upsert path.
+- The `tests/controllers/assignmentDefinitionController.upsert.test.js`
+  file is split to stay under the 500-line `max-lines` limit (accepted
+  technical debt from Section 1). At least one subset of tests
+  (existing `_resolveAlternateTitles` tests or new
+  `_resolveAlternateTopics` tests) must be extracted into a
+  dedicated spec file co-located with the parent test file.
 
 ### Required test cases/checks
 
@@ -1858,8 +1902,12 @@ that the transport contract is sound.
    — green.
 8. `npm run frontend:test -- src/frontend/src/services/assignmentDefinition/assignmentDefinition.zod.spec.ts`
    — green.
-9. `npm run lint:backend` — clean.
+9. `npm run lint:backend` — **clean** (no `max-lines` violations on the
+   upsert test file; the extracted spec file must pass independently).
 10. `npm run lint:frontend` — clean.
+11. `npm run regression-checker -- opencode/tidy-meadow` — zero new
+    regressions, zero new failures; the Section 1 `max-lines`
+    regression is resolved.
 
 ### Section checks
 
