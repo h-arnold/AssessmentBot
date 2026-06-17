@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AssessTaskModal } from './AssessTaskModal';
 import { getGoogleClassroomAssignments } from '../../../services/googleClassrooms/googleClassroomAssignmentsService';
 import { startAssessmentRun } from '../../../services/assignmentAssessment/assignmentAssessmentService';
+import { upsertAssignmentDefinition } from '../../../services/assignmentDefinition/assignmentDefinitionService';
 import { findMatchingDefinition } from './matchDefinitionForAssignment';
 import { queryKeys } from '../../../query/queryKeys';
 import { renderWithFrontendProviders } from '../../../test/renderWithFrontendProviders';
@@ -17,6 +18,7 @@ import {
   MOCK_ASSIGNMENTS,
   MOCK_EMPTY_ASSIGNMENTS,
   MODAL_TITLE,
+  DEFAULT_UPSERT_RESULT,
   createDefinitionPartial,
   defaultProperties,
   createPendingPromise,
@@ -25,6 +27,10 @@ import {
   selectAssignment,
   clickStartAssessment,
   clickCreateNewDefinition,
+  clickLinkToExisting,
+  clickLink,
+  pickLinkableDefinition,
+  expectLinkButtonDisabled,
   getWizardProperties,
   expectStartAssessmentDisabled,
   expectCancelButtonPresent,
@@ -36,6 +42,10 @@ vi.mock('../../../services/googleClassrooms/googleClassroomAssignmentsService', 
 
 vi.mock('../../../services/assignmentAssessment/assignmentAssessmentService', () => ({
   startAssessmentRun: vi.fn(),
+}));
+
+vi.mock('../../../services/assignmentDefinition/assignmentDefinitionService', () => ({
+  upsertAssignmentDefinition: vi.fn(),
 }));
 
 vi.mock('./matchDefinitionForAssignment', () => ({
@@ -605,7 +615,7 @@ async function setupReopenInPlace() {
 // ---------------------------------------------------------------------------
 
 describe('No-match resolution — choice state', () => {
-  it('shows choice prompt with Alert, Create New Definition button, and disabled Link to Existing button when findMatchingDefinition returns no-match', async () => {
+  it('shows choice prompt with Alert, Create New Definition button, and enabled Link to Existing button when findMatchingDefinition returns no-match', async () => {
     const { dialog } = renderWithCache({
       classPartials: [
         createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
@@ -627,7 +637,7 @@ describe('No-match resolution — choice state', () => {
 
     const linkButton = within(dialog).getByRole('button', { name: 'Link to Existing Definition' });
     expect(linkButton).toBeInTheDocument();
-    expect(linkButton).toBeDisabled();
+    expect(linkButton).toBeEnabled();
   });
 
   it('hides assignment Select and shows only Cancel in footer during choice state', async () => {
@@ -677,12 +687,12 @@ describe('No-match resolution — choice state', () => {
     expect(within(dialog).queryByRole('combobox')).toBeNull();
   });
 
-  it('shows Link to Existing button disabled with Tooltip Coming soon', async () => {
+  it('shows Link to Existing button disabled with Tooltip when no linkable definitions exist', async () => {
     const { dialog } = renderWithCache({
       classPartials: [
         createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
       ],
-      definitionPartials: [createDefinitionPartial()],
+      definitionPartials: [],
       findMatchResult: { kind: 'no-match' },
     });
 
@@ -698,8 +708,8 @@ describe('No-match resolution — choice state', () => {
       fireEvent.pointerEnter(buttonParent);
     }
 
-    // Tooltip should show "Coming soon" text
-    await screen.findByText('Coming soon');
+    // Tooltip should explain why the button is disabled
+    await screen.findByText("No assignment definitions exist for this class's year group.");
   });
 
   it('reopens modal and resets noMatchResolution to idle', async () => {
@@ -1087,5 +1097,524 @@ describe('No-match resolution — creating state and wizard integration', () => 
     // Click Cancel — the outer modal's Cancel during creating+loading calls onClose
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// No-match resolution — linking state and link flow
+// ---------------------------------------------------------------------------
+
+describe('No-match resolution — linking state and link flow', () => {
+  it('choice prompt: Link to Existing Definition button is enabled when at least one linkable definition exists', async () => {
+    const { dialog } = renderWithCache({
+      classPartials: [
+        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+      ],
+      definitionPartials: [createDefinitionPartial()],
+      findMatchResult: { kind: 'no-match' },
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    const linkButton = await within(dialog).findByRole('button', { name: 'Link to Existing Definition' });
+    expect(linkButton).toBeEnabled();
+  });
+
+  it('choice prompt: Link to Existing Definition button is disabled with Tooltip when the picker would be empty', async () => {
+    const { dialog } = renderWithCache({
+      classPartials: [
+        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+      ],
+      definitionPartials: [createDefinitionPartial({ yearGroupKey: 'year-11' })],
+      findMatchResult: { kind: 'no-match' },
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    const linkButton = await within(dialog).findByRole('button', { name: 'Link to Existing Definition' });
+    expect(linkButton).toBeDisabled();
+
+    // Trigger the tooltip by hovering over the button wrapper
+    const buttonParent = linkButton.parentElement;
+    if (buttonParent) {
+      fireEvent.pointerEnter(buttonParent);
+    }
+
+    await screen.findByText("No assignment definitions exist for this class's year group.");
+  });
+
+  it('choice prompt: clicking Link to Existing Definition transitions to linking state', async () => {
+    const { dialog } = renderWithCache({
+      classPartials: [
+        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+      ],
+      definitionPartials: [createDefinitionPartial()],
+      findMatchResult: { kind: 'no-match' },
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    await clickLinkToExisting(dialog);
+
+    // The LinkableDefinitionList radio group should appear
+    const radio = await within(dialog).findByRole('radio');
+    expect(radio).toBeInTheDocument();
+
+    // Choice buttons should be gone
+    expect(within(dialog).queryByRole('button', { name: 'Create New Definition' })).toBeNull();
+    expect(within(dialog).queryByRole('button', { name: 'Link to Existing Definition' })).toBeNull();
+  });
+
+  it('picker: clicking Cancel returns to the choice prompt', async () => {
+    const { dialog } = renderWithCache({
+      classPartials: [
+        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+      ],
+      definitionPartials: [createDefinitionPartial()],
+      findMatchResult: { kind: 'no-match' },
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+    await clickLinkToExisting(dialog);
+
+    // Click Cancel in the picker footer
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    // Choice buttons should reappear
+    await waitFor(() => {
+      expect(within(dialog).getByRole('button', { name: 'Create New Definition' })).toBeInTheDocument();
+      expect(within(dialog).getByRole('button', { name: 'Link to Existing Definition' })).toBeInTheDocument();
+    });
+
+    // Picker should be gone (no radio buttons)
+    expect(within(dialog).queryByRole('radio')).toBeNull();
+  });
+
+  it('picker: Link button is disabled when no row is selected', async () => {
+    const { dialog } = renderWithCache({
+      classPartials: [
+        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+      ],
+      definitionPartials: [createDefinitionPartial()],
+      findMatchResult: { kind: 'no-match' },
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+    await clickLinkToExisting(dialog);
+
+    expectLinkButtonDisabled(dialog);
+
+    // Verify the Tooltip explains why the button is disabled
+    const linkButton = within(dialog).getByRole('button', { name: 'Link' });
+    const buttonParent = linkButton.parentElement;
+    if (buttonParent) {
+      fireEvent.pointerEnter(buttonParent);
+    }
+    await screen.findByText('Select a definition to link.');
+  });
+
+  it('picker: clicking a row and clicking Link calls upsertAssignmentDefinition and then startAssessmentRun', async () => {
+    const { dialog } = renderWithCache({
+      classPartials: [
+        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+      ],
+      definitionPartials: [createDefinitionPartial()],
+      findMatchResult: { kind: 'no-match' },
+      upsertResult: DEFAULT_UPSERT_RESULT,
+      upsertType: 'resolve',
+      startRunResult: null,
+      startRunType: 'resolve',
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+    await clickLinkToExisting(dialog);
+
+    // Select the first row
+    await pickLinkableDefinition(dialog);
+
+    // Click the Link button
+    await clickLink(dialog);
+
+    // upsertAssignmentDefinition should have been called with the ID-shape payload
+    await waitFor(() => {
+      expect(vi.mocked(upsertAssignmentDefinition)).toHaveBeenCalledTimes(1);
+    });
+
+    const upsertPayload = vi.mocked(upsertAssignmentDefinition).mock.calls[0][0];
+    expect(upsertPayload).toMatchObject({
+      definitionKey: 'essay-def-key',
+      primaryTitle: 'Essay',
+      primaryTopicKey: 'topic-writing',
+      yearGroupKey: 'year-10',
+      referenceDocumentId: 'ref-001',
+      templateDocumentId: 'tpl-001',
+      documentType: 'SLIDES',
+      alternateTitles: expect.any(Array),
+      alternateTopics: expect.any(Array),
+    });
+
+    // startAssessmentRun should have been called after the upsert resolved
+    await waitFor(() => {
+      expect(vi.mocked(startAssessmentRun)).toHaveBeenCalledWith({
+        definitionKey: 'essay-def-key',
+        assignmentId: 'a1',
+        courseId: MOCK_CLASS_ID,
+      });
+    });
+  });
+
+  it('picker: empty Google Classroom topic name sends alternateTopics unchanged (not [])', async () => {
+    const { dialog } = renderWithCache({
+      classPartials: [
+        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+      ],
+      definitionPartials: [
+        createDefinitionPartial({
+          alternateTitles: ['Narrative'],
+          alternateTopics: ['Writing', 'Algebra'],
+        }),
+      ],
+      findMatchResult: { kind: 'no-match' },
+      assignments: [
+        { assignmentId: 'a1', title: 'Essay', creationTime: '2024-09-02T08:30:00.000Z', topicName: null, topicId: null },
+      ],
+      upsertResult: DEFAULT_UPSERT_RESULT,
+      upsertType: 'resolve',
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+    await clickLinkToExisting(dialog);
+    await pickLinkableDefinition(dialog);
+    await clickLink(dialog);
+
+    await waitFor(() => {
+      expect(vi.mocked(upsertAssignmentDefinition)).toHaveBeenCalledTimes(1);
+    });
+
+    const upsertPayload = vi.mocked(upsertAssignmentDefinition).mock.calls[0][0];
+    // alternateTitles should contain the deduplicated union
+    expect(upsertPayload.alternateTitles).toEqual(
+      expect.arrayContaining(['Essay'])
+    );
+    // alternateTopics should be the unchanged existing array (NOT [])
+    expect(upsertPayload.alternateTopics).toEqual(['Writing', 'Algebra']);
+  });
+
+  it('post-link: success Alert replaces the body, Close button replaces the footer', async () => {
+    const { dialog } = renderWithCache({
+      classPartials: [
+        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+      ],
+      definitionPartials: [createDefinitionPartial()],
+      findMatchResult: { kind: 'no-match' },
+      upsertResult: DEFAULT_UPSERT_RESULT,
+      upsertType: 'resolve',
+      startRunResult: null,
+      startRunType: 'resolve',
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+    await clickLinkToExisting(dialog);
+    await pickLinkableDefinition(dialog);
+    await clickLink(dialog);
+
+    // Success alert should appear
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert).toBeInTheDocument();
+    expect(alert).toHaveTextContent(/assessment started for/i);
+    expect(alert).toHaveTextContent(/Essay/);
+
+    // Footer should show Close only
+    const footer = dialog.querySelector('.ant-modal-footer') as HTMLElement | null;
+    expect(footer).not.toBeNull();
+    await waitFor(() => {
+      expect(within(footer!).getByRole('button', { name: 'Close' })).toBeInTheDocument();
+      expect(within(footer!).queryByRole('button', { name: 'Cancel' })).toBeNull();
+    });
+  });
+
+  it('post-link: cache invalidation on upsert failure', async () => {
+    const { dialog, queryClient } = renderWithCache({
+      classPartials: [
+        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+      ],
+      definitionPartials: [createDefinitionPartial()],
+      findMatchResult: { kind: 'no-match' },
+      upsertResult: new Error('Upsert failed'),
+      upsertType: 'reject',
+    });
+
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+    await clickLinkToExisting(dialog);
+    await pickLinkableDefinition(dialog);
+    await clickLink(dialog);
+
+    await waitFor(() => {
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: queryKeys.assignmentDefinitionPartials(),
+      });
+    });
+  });
+
+  it('post-link: error Alert replaces the body, Cancel button closes the modal', async () => {
+    const { dialog } = renderWithCache({
+      classPartials: [
+        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+      ],
+      definitionPartials: [createDefinitionPartial()],
+      findMatchResult: { kind: 'no-match' },
+      upsertResult: new Error('Upsert failed'),
+      upsertType: 'reject',
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+    await clickLinkToExisting(dialog);
+    await pickLinkableDefinition(dialog);
+    await clickLink(dialog);
+
+    // Error Alert should appear
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert).toBeInTheDocument();
+    expect(alert).toHaveTextContent(/Upsert failed/);
+
+    // Footer should have Cancel only (modal stays open)
+    expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+  });
+
+  it('post-link: startAssessmentRun failure after a successful upsert (non-DEFINITION_STALE error)', async () => {
+    const { dialog } = renderWithCache({
+      classPartials: [
+        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+      ],
+      definitionPartials: [createDefinitionPartial()],
+      findMatchResult: { kind: 'no-match' },
+      upsertResult: DEFAULT_UPSERT_RESULT,
+      upsertType: 'resolve',
+      startRunResult: new Error('Assessment run failed'),
+      startRunType: 'reject',
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+    await clickLinkToExisting(dialog);
+    await pickLinkableDefinition(dialog);
+    await clickLink(dialog);
+
+    // Error Alert should appear
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert).toBeInTheDocument();
+    expect(alert).toHaveTextContent(/assessment run failed/i);
+
+    // Modal does not close — Cancel button still present
+    expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+  });
+
+  it('DEFINITION_STALE recovery: startAssessmentRun fails with DEFINITION_STALE after a successful upsert', async () => {
+    const staleError = new ApiTransportError({
+      requestId: 'test-id',
+      error: { code: 'DEFINITION_STALE', message: 'Definition is stale' },
+    });
+
+    const { dialog } = renderWithCache({
+      classPartials: [
+        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+      ],
+      definitionPartials: [createDefinitionPartial()],
+      findMatchResult: { kind: 'no-match' },
+      upsertResult: DEFAULT_UPSERT_RESULT,
+      upsertType: 'resolve',
+      startRunResult: staleError,
+      startRunType: 'reject',
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+    await clickLinkToExisting(dialog);
+    await pickLinkableDefinition(dialog);
+    await clickLink(dialog);
+
+    // Should transition to stale recovery — wizard should appear with stale definition data pre-populated
+    const wizard = await screen.findByTestId('wizard-mock');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const wizardProperties = (wizard as any).__wizardProps || {};
+    expect(wizardProperties.open).toBe(true);
+    // In stale recovery, the wizard pre-populates from the stale definition
+    expect(wizardProperties.initialValues).toBeDefined();
+    // The initialValues should contain data from the stale definition
+    expect(wizardProperties.initialValues).toEqual(
+      expect.objectContaining({
+        title: expect.any(String),
+        yearGroup: expect.any(String),
+      })
+    );
+  });
+
+  it('hasLinkSucceeded flag management', async () => {
+    const { dialog } = renderWithCache({
+      classPartials: [
+        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+      ],
+      definitionPartials: [createDefinitionPartial()],
+      findMatchResult: { kind: 'no-match' },
+      upsertResult: DEFAULT_UPSERT_RESULT,
+      upsertType: 'resolve',
+      startRunResult: new Error('Assessment run failed'),
+      startRunType: 'reject',
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+    await clickLinkToExisting(dialog);
+    await pickLinkableDefinition(dialog);
+    await clickLink(dialog);
+
+    // After upsert resolves but startAssessmentRun fails,
+    // hasLinkSucceeded should be true, so the error Alert should
+    // mention that the link was committed.
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert).toHaveTextContent(/link was committed/i);
+  });
+
+  it('state reset on modal reopen', async () => {
+    const onClose = vi.fn();
+    vi.mocked(getGoogleClassroomAssignments).mockResolvedValue(MOCK_ASSIGNMENTS);
+    vi.mocked(findMatchingDefinition).mockReturnValue({ kind: 'no-match' });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(upsertAssignmentDefinition).mockResolvedValue(DEFAULT_UPSERT_RESULT as any);
+
+    const queryClient = createAppQueryClient();
+    queryClient.setQueryData(queryKeys.classPartials(), [
+      createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+    ]);
+    queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [createDefinitionPartial()]);
+
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <AssessTaskModal {...defaultProperties({ onClose })} />
+      </QueryClientProvider>
+    );
+
+    const dialog = screen.getByRole('dialog', { name: MODAL_TITLE });
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    // Try to reach linking state
+    await clickLinkToExisting(dialog);
+
+    // Close the modal
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <AssessTaskModal {...defaultProperties({ open: false, onClose })} />
+      </QueryClientProvider>
+    );
+
+    // Reopen with the same classId
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <AssessTaskModal {...defaultProperties({ onClose })} />
+      </QueryClientProvider>
+    );
+
+    const reopenedDialog = await screen.findByRole('dialog', { name: MODAL_TITLE });
+
+    // noMatchResolution should be 'idle', so choice prompt is NOT shown
+    // and the assignment Select IS shown
+    await within(reopenedDialog).findByRole('combobox');
+    expect(within(reopenedDialog).queryByRole('button', { name: 'Create New Definition' })).toBeNull();
+  });
+
+  it('state reset on Cancel from picker', async () => {
+    const onClose = vi.fn();
+    const { dialog } = renderWithCache({
+      classPartials: [
+        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+      ],
+      definitionPartials: [createDefinitionPartial()],
+      findMatchResult: { kind: 'no-match' },
+      onClose,
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+    await clickLinkToExisting(dialog);
+
+    // Click Cancel in the picker footer — should return to choice, not close modal
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    // noMatchResolution returns to 'choice' — choice buttons reappear
+    await waitFor(() => {
+      expect(within(dialog).getByRole('button', { name: 'Create New Definition' })).toBeInTheDocument();
+    });
+
+    // The picker is no longer visible — no radio buttons
+    expect(within(dialog).queryByRole('radio')).toBeNull();
+  });
+
+  it('link flow: clicking Cancel during upsert loading closes the modal', async () => {
+    const onClose = vi.fn();
+
+    // Use a pending promise so upsert stays in loading state.
+    // Must be set before renderWithCache so the mock is not overwritten.
+    const pendingUpsert = new Promise<typeof DEFAULT_UPSERT_RESULT>(() => {});
+    vi.mocked(upsertAssignmentDefinition).mockReturnValue(pendingUpsert);
+
+    const { dialog } = renderWithCache({
+      classPartials: [
+        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+      ],
+      definitionPartials: [createDefinitionPartial()],
+      findMatchResult: { kind: 'no-match' },
+      onClose,
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+    await clickLinkToExisting(dialog);
+    await pickLinkableDefinition(dialog);
+    await clickLink(dialog);
+
+    // During loading, click Cancel — should close the modal
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('hasLinkSucceeded === false: error Alert shown without "link was committed" text, Cancel button present', async () => {
+    const { dialog } = renderWithCache({
+      classPartials: [
+        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+      ],
+      definitionPartials: [createDefinitionPartial()],
+      findMatchResult: { kind: 'no-match' },
+      upsertResult: new Error('Upsert failed'),
+      upsertType: 'reject',
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+    await clickLinkToExisting(dialog);
+    await pickLinkableDefinition(dialog);
+    await clickLink(dialog);
+
+    // Error Alert should appear
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert).toBeInTheDocument();
+    // The alert should NOT mention the link was committed (hasLinkSucceeded === false)
+    expect(alert).not.toHaveTextContent(/link was committed/i);
+
+    // Footer should have Cancel button (modal stays open, teacher can retry)
+    expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
   });
 });

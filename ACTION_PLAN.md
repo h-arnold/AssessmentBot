@@ -1425,11 +1425,45 @@ documenting:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (to be filled during Red phase)
-- **Deviations from plan:** (to be filled if any)
+- **Implementation notes:**
+  - `noMatchResolution` union extended to `'idle' | 'choice' | 'creating' | 'linking'`.
+  - `selectedDefinitionForLink` state slot added.
+  - `hasLinkSucceeded` flag implemented as local variable `linkWasCommitted` (not React state)
+    per SPEC Decision 11 (no `flushSync` needed for link flow). Equivalent behaviour.
+  - `handleLinkExistingDefinition`, `handleLinkConfirm`, `handleLinkCancel` handlers added.
+  - `linkableDefinitions` useMemo derives picker list from cache for both choice and linking states.
+  - `renderBody` extended with `renderLinkingBody` and `renderFetchBody` helpers to keep
+    complexity ≤ 7 (lint rule).
+  - `getFooterContent` extended with `renderLinkingFooter` helper (complexity extraction)
+    for the Link + Cancel footer with Tooltip on disabled Link button.
+  - Null `topicName` now transitions to choice state instead of showing error (allows
+    linking even without a topic; the link handler correctly passes existing array unchanged).
+  - Cache invalidation (`queryKeys.assignmentDefinitionPartials()`) fires on both success
+    and failure paths per SPEC Decision 10.
+  - `DEFINITION_STALE` recovery: transitions to `noMatchResolution === 'creating'` (wizard
+    appears with stale-definition data pre-populated via existing `wizardInitialValues` memo).
+  - 14 new test cases + 2 added during review (Cancel during loading, hasLinkSucceeded=false).
+    55 total tests pass.
+  - 4 new test interaction helpers: `clickLinkToExisting`, `clickLink`, `pickLinkableDefinition`,
+    `expectLinkButtonDisabled`.
+  - Both existing "Coming soon" tests updated to new behaviour.
+- **Deviations from plan:**
+  - `hasLinkSucceeded` state slot replaced with local variable `linkWasCommitted`. The
+    SPEC's Decision 11 explicitly states no `flushSync` is needed for the link flow, so
+    the local variable approach is both simpler and equivalent. The catch block reads the
+    variable synchronously, avoiding the `flushSync` workaround needed in the wizard flow.
+  - `handleLinkConfirm` does not use `flushSync` (per SPEC Decision 11), so no React state
+    round-trip is needed for the `hasLinkSucceeded` flag.
 - **Follow-up implications for later sections:** Section 7 (test
   utilities) extends the shared test fixtures to support the new
   state. Section 8 (Playwright e2e) exercises the full e2e flow.
+
+### Commit record
+
+- **Commit SHA:** (to be filled after commit)
+- **Commit message:** `feat(frontend): implement linking state in AssessTaskModal with upsert, cache invalidation, and DEFINITION_STALE recovery`
+- **Branch:** `opencode/tidy-meadow`
+- **Push:** (to be filled)
 
 ---
 
@@ -1500,12 +1534,27 @@ None — test utilities do not need `@remarks`.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (to be filled during Red phase)
-- **Deviations from plan:** (to be filled if any)
+- **Implementation notes:**
+  - Added `upsertResult`/`upsertType` to `RenderWithCacheOptions` with proper
+    `UpsertAssignmentDefinitionResponse` type.
+  - Added `DEFAULT_UPSERT_RESULT` fixture constant.
+  - Added 4 interaction helpers: `clickLinkToExisting`, `clickLink`,
+    `pickLinkableDefinition` (with optional index), `expectLinkButtonDisabled`.
+  - Mock wiring for `upsertAssignmentDefinition` in `renderWithCache`.
+  - Helmock mock for `upsertAssignmentDefinition` added to spec via `vi.mock`.
+  - Verified by the 14 new Section 6 linking tests (all pass).
+- **Deviations from plan:** None.
 - **Follow-up implications for later sections:** Section 8 (Playwright
   e2e) does not depend on the test utilities; the e2e tests use the
   `RuntimeScenario` pattern from
   `src/frontend/e2e-tests/shared/endToEndRuntimeMocks.ts`.
+
+### Commit record
+
+- **Commit SHA:** (same commit as Section 6 — test utilities are committed together)
+- **Commit message:** (same as Section 6)
+- **Branch:** `opencode/tidy-meadow`
+- **Push:** (same as Section 6)
 
 ---
 
