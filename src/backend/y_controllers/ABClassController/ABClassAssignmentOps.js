@@ -129,9 +129,6 @@ class ABClassAssignmentOps {
         });
       }
 
-      // 4. Save updated ABClass with partial assignment
-      this._persistence.persistClassAndPartial(abClass);
-
       logger.info('persistAssignmentRun: completed successfully', {
         courseId: assignment.courseId,
         assignmentId: assignment.assignmentId,

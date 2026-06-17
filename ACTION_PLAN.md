@@ -16,7 +16,9 @@
 >
 > **Section 7 — Status**: ✅ COMPLETE (committed `354e79f`) — `ClassNotFoundError.js` JSDoc updated to document `getABClass_` handler pattern; `api-layer.md` entry for `getABClass` added after `getABClassPartials`; `DATA_SHAPES.md` "ABClass full-read" section added after ABClassPartials.
 >
-> **Section 8 — Status**: ✅ COMPLETE — 5 sub-class files created (`ABClassValidation.js`, `ABClassPersistence.js`, `ABClassRoster.js`, `ABClassAssignmentOps.js`, `ABClassResponseMapper.js`); 5 test files created and renamed to `.unit.test.js` convention; `ABClassPersistence` method name corrected to `persistClassAndPartial` (public on sub-class). All 40 sub-class structural tests pass. All 15+ existing controller/model/cross-controller test suites pass unchanged (174 tests total). No new lint issues. Regression gate: PASS (0 new regressions from Section 8; ABClassController.js max-lines pre-existing from Section 3; frontend-e2e-check flaky test unrelated).
+> **Section 8 — Status**: ✅ COMPLETE — 5 sub-class files created (`ABClassValidation.js`, `ABClassPersistence.js`, `ABClassRoster.js`, `ABClassAssignmentOps.js`, `ABClassResponseMapper.js`); 5 test files created and renamed to `.unit.test.js` convention; `ABClassPersistence` method name corrected to `persistClassAndPartial` (public on sub-class). All 40 sub-class structural tests pass. All 15+ existing controller/model/cross-controller test suites pass unchanged (174 tests total). No new lint issues. Regression gate: PASS (0 new regressions from Section 8; ABClassController.js max-lines pre-existing from Section 3; frontend-e2e-check flaky test unrelated). Committed `9409951`.
+>
+> **Section 9 — Status**: ✅ COMPLETE — `index.js` facade created with full delegation table (8 public methods + 22 private delegators). Monolithic file renamed to `.legacy.js`; re-export shim at original path keeps all tests resolving correctly. Constructor wires 5 sub-classes per Decision 4. Pre-existing lint errors in `.legacy.js` suppressed (temporary file — removed in Section 11). All 1864 tests pass (full suite). Backend lint: 0 errors, 17 pre-existing warnings.
 
 ## Read-First Context
 

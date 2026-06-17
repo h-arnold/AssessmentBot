@@ -210,3 +210,11 @@ g.AssignmentDefinitionTaskWeighting = require('../src/backend/y_controllers/Assi
 g.AssignmentDefinitionPersistence = require('../src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionPersistence.js');
 g.AssignmentDefinitionUpsertOrchestrator = require('../src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionUpsertOrchestrator.js');
 g.AssignmentDefinitionResponseMapper = require('../src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionResponseMapper.js');
+
+// Load ABClassController sub-classes as globals (mirroring GAS concatenation order so
+// index.js can reference them by name when require() calls are absent in production).
+g.ABClassValidation = require('../src/backend/y_controllers/ABClassController/ABClassValidation.js');
+g.ABClassPersistence = require('../src/backend/y_controllers/ABClassController/ABClassPersistence.js');
+g.ABClassRoster = require('../src/backend/y_controllers/ABClassController/ABClassRoster.js');
+g.ABClassAssignmentOps = require('../src/backend/y_controllers/ABClassController/ABClassAssignmentOps.js');
+g.ABClassResponseMapper = require('../src/backend/y_controllers/ABClassController/ABClassResponseMapper.js');
