@@ -1501,13 +1501,33 @@ Playwright e2e tests (added to
 6. **Selecting a row and clicking Link calls
    `upsertAssignmentDefinition` and then `startAssessmentRun`** —
    the method call list contains both.
-7. **Upsert failure shows an error Alert and the Cancel button
+7. **Loading state during link: spinner visible, Link button
+   disabled** — use `deferredSuccess` entries for
+   `upsertAssignmentDefinition` (or `startAssessmentRun`) to hold
+   the call open. After clicking Link, assert the body shows a
+   spinner (`[role="status"]`) and the Link button is disabled.
+   Release the deferred and assert the spinner disappears and the
+   success Alert appears. This covers the user-visible loading
+   transition described in SPEC §"Post-link loading".
+8. **Link success flow: success Alert and Close button** — the full
+   happy path (select row → Link → upsert resolves →
+   `startAssessmentRun` resolves) ends with a success Alert in the
+   body and a Close button in the footer. Verify both are visible
+   and that `getMethodCalls` contains `startAssessmentRun`.
+9. **Upsert failure shows an error Alert and the Cancel button
    closes the modal** — the error path is exercised.
-8. **Cancel from picker returns to the choice prompt** — the
-   choice buttons reappear.
-9. **`DEFINITION_STALE` triggers wizard 2nd panel** — the link
-   is preserved and the wizard re-parsing panel appears.
-10. **Modal state resets on reopen** — the new state slots are
+10. **Cancel from picker returns to the choice prompt** — the
+    choice buttons reappear.
+11. **`DEFINITION_STALE` after link: wizard opens at task-weightings
+    panel (panel 2), not the title/topic panel (panel 1)** —
+    `startAssessmentRun` rejects with `DEFINITION_STALE` after a
+    successful upsert. Assert the wizard dialog is visible and
+    contains the task-weightings UI (e.g. the weighting inputs or
+    the "Save" button) rather than the title/topic inputs
+    (`getByRole('textbox', { name: /assignment title/i })` must
+    have count 0). This proves the wizard skipped to panel 2 per
+    SPEC Decision 10.
+12. **Modal state resets on reopen** — the new state slots are
     reset to idle values on modal reopen.
 
 ### Section checks
