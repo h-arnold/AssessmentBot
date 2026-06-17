@@ -1,7 +1,7 @@
 ---
 description: Creates, maintains, and debugs Vitest unit/component tests and backend tests
 mode: all
-model: opencode/deepseek-v4-flash-free
+model: opencode/deepseek-v4-flash
 steps: 100
 ---
 
