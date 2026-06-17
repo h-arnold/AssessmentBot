@@ -617,8 +617,17 @@ Add a `@remarks` JSDoc tag on `findMatchingDefinition` documenting:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (to be filled during Red phase)
-- **Deviations from plan:** (to be filled if any)
+- **Implementation notes:**
+  - New `stringComparison.ts` created with `caseInsensitiveTrimmedEquals`.
+  - `findMatchingDefinition` updated: `primaryTitle`/`alternateTitles`
+    and `primaryTopic`/`alternateTopics` all use
+    `caseInsensitiveTrimmedEquals` instead of strict `===` / `includes`.
+  - 9 new test cases added (19 total). All pass.
+  - `@remarks` JSDoc added to both `caseInsensitiveTrimmedEquals` and
+    `findMatchingDefinition`.
+  - Lint: clean for Section 2 files. Code review passed with minor
+    JSDoc fix (missing `@param`/`@returns` types) — fixed.
+- **Deviations from plan:** None.
 - **Follow-up implications for later sections:** Section 4
   (`getLinkableDefinitionsForModal`) imports
   `caseInsensitiveTrimmedEquals` from the new
@@ -626,6 +635,13 @@ Add a `@remarks` JSDoc tag on `findMatchingDefinition` documenting:
   matcher also imports from `stringComparison.ts`. The two files
   are siblings inside the modal feature directory; both are
   feature-local.
+
+### Commit record
+
+- **Commit SHA:** `6f295b9`
+- **Commit message:** `feat(frontend): relax matcher to case-insensitive trimmed equality with alternateTopics branch`
+- **Branch:** `opencode/tidy-meadow`
+- **Push:** Confirmed — pushed to origin.
 
 ---
 
