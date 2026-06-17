@@ -115,8 +115,8 @@ let partialsCollection;
 let classroomApiClient;
 
 function loadControllerModule() {
-  delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController.js')];
-  ABClassController = require('../../src/backend/y_controllers/ABClassController.js');
+  delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController')];
+  ABClassController = require('../../src/backend/y_controllers/ABClassController');
 }
 
 /* ------------------------------------------------------------------ */
@@ -173,7 +173,7 @@ afterEach(() => {
   delete globalThis.ABClassController;
   delete globalThis.Classroom;
   delete globalThis.DriveApp;
-  delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController.js')];
+  delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController')];
   delete require.cache[require.resolve('../../src/backend/y_controllers/AssignmentController.js')];
   vi.restoreAllMocks();
 });

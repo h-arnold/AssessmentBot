@@ -177,8 +177,8 @@ let ABClassController;
 let classCollection;
 
 function loadControllerModule() {
-  delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController.js')];
-  ABClassController = require('../../src/backend/y_controllers/ABClassController.js');
+  delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController')];
+  ABClassController = require('../../src/backend/y_controllers/ABClassController');
 }
 
 /* ------------------------------------------------------------------ */
@@ -222,7 +222,7 @@ afterEach(() => {
   delete globalThis.Teacher;
   delete globalThis.Student;
   delete globalThis.Assignment;
-  delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController.js')];
+  delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController')];
   vi.restoreAllMocks();
 });
 

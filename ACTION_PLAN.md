@@ -18,7 +18,11 @@
 >
 > **Section 8 — Status**: ✅ COMPLETE — 5 sub-class files created (`ABClassValidation.js`, `ABClassPersistence.js`, `ABClassRoster.js`, `ABClassAssignmentOps.js`, `ABClassResponseMapper.js`); 5 test files created and renamed to `.unit.test.js` convention; `ABClassPersistence` method name corrected to `persistClassAndPartial` (public on sub-class). All 40 sub-class structural tests pass. All 15+ existing controller/model/cross-controller test suites pass unchanged (174 tests total). No new lint issues. Regression gate: PASS (0 new regressions from Section 8; ABClassController.js max-lines pre-existing from Section 3; frontend-e2e-check flaky test unrelated). Committed `9409951`.
 >
-> **Section 9 — Status**: ✅ COMPLETE — `index.js` facade created with full delegation table (8 public methods + 22 private delegators). Monolithic file renamed to `.legacy.js`; re-export shim at original path keeps all tests resolving correctly. Constructor wires 5 sub-classes per Decision 4. Pre-existing lint errors in `.legacy.js` suppressed (temporary file — removed in Section 11). All 1864 tests pass (full suite). Backend lint: 0 errors, 17 pre-existing warnings.
+> **Section 9 — Status**: ✅ COMPLETE — `index.js` facade created with full delegation table (8 public methods + 22 private delegators). Monolithic file renamed to `.legacy.js`; re-export shim at original path keeps all tests resolving correctly. Constructor wires 5 sub-classes per Decision 4. Pre-existing lint errors in `.legacy.js` suppressed (temporary file — removed in Section 11). All 1864 tests pass (full suite). Backend lint: 0 errors, 17 pre-existing warnings. Committed `2a4dc75`.
+>
+> **Section 10 — Status**: ✅ COMPLETE (done proactively with Section 9) — `tests/setupGlobals.js` updated to load 5 ABClass\* sub-classes in GAS order (Validation → Persistence → Roster → AssignmentOps → ResponseMapper).
+>
+> **Section 11 — Status**: ✅ COMPLETE — `ABClassController.legacy.js` and the re-export shim removed. `eslint.config.js` line 206 updated to point to `ABClassController/index.js`. 11 test files updated to remove `.js` extension from `require()` paths so Node's folder-based resolution finds `ABClassController/index.js`. All 174 ABClassController regression tests pass. All 40 sub-class structural tests pass. Backend lint: 0 errors, 16 pre-existing warnings.
 
 ## Read-First Context
 

@@ -203,7 +203,7 @@ module.exports = [
       'src/backend/RequestHandlers/ImageManager.js',
       'src/backend/RequestHandlers/LLMRequestManager.js',
       'src/backend/Utils/ABLogger.js',
-      'src/backend/y_controllers/ABClassController.js',
+      'src/backend/y_controllers/ABClassController/index.js',
       'src/backend/y_controllers/AssignmentController.js',
       'src/backend/y_controllers/ReferenceDataController.js',
       'src/backend/z_Api/abclass/abclassMutations.js',
