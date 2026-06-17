@@ -39,6 +39,8 @@ beforeEach(() => {
   try {
     abclassValidationModule = loadValidationModule();
   } catch (err) {
+    // RED phase — module file may not exist yet; that is expected.
+    if (err.code !== 'MODULE_NOT_FOUND') throw err;
     abclassValidationModule = null;
   }
 });

@@ -18,6 +18,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   cleanupControllerTestMocks,
   createMockCollection,
+  createDualCollectionDbManager,
   setupControllerTestMocks,
 } from '../helpers/mockFactories.js';
 
@@ -35,15 +36,8 @@ import {
  * @returns {{ mockDbManager }}
  */
 function setupMocks(classCollection, partialsCollection) {
-  const mockDbManager = {
-    getCollection: vi.fn((name) => {
-      if (name === 'abclass_partials') return partialsCollection;
-      return classCollection;
-    }),
-  };
-
+  const mockDbManager = createDualCollectionDbManager(vi, classCollection, partialsCollection);
   globalThis.DbManager = { getInstance: () => mockDbManager };
-
   return { mockDbManager };
 }
 

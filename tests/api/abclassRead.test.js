@@ -95,8 +95,9 @@ describe('Api/getABClass transport contract', () => {
   afterEach(() => {
     try {
       delete require.cache[require.resolve(MODULE_PATH)];
-    } catch (_) {
+    } catch (e) {
       // Module may not exist yet in RED phase; safe to ignore.
+      if (e.code !== 'MODULE_NOT_FOUND') throw e;
     }
 
     if (originalABClassController === undefined) {

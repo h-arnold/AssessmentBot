@@ -13,35 +13,27 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-import { setupControllerTestMocks, cleanupControllerTestMocks } from '../helpers/mockFactories.js';
+import { cleanupControllerTestMocks } from '../helpers/mockFactories.js';
 import {
   createTestFixture,
   setupRehydrationScenario,
   assertMethodExists,
   createMultipleAssignments,
   setupErrorScenario,
+  setupAssignmentControllerTest,
 } from '../helpers/controllerTestHelpers.js';
 
 let ABClassController, ABClass, Assignment;
 let mockDbManager, mockCollection, mockABLogger;
 
 beforeEach(async () => {
-  // Setup controller test mocks
-  const mocks = setupControllerTestMocks(vi);
-  mockDbManager = mocks.mockDbManager;
-  mockCollection = mocks.mockCollection;
-  mockABLogger = mocks.mockABLogger;
-
-  // Dynamically import modules after mocks are in place (ESM pattern)
-  const [abClassModule, assignmentModule, abClassControllerModule] = await Promise.all([
-    import('../../src/backend/Models/ABClass.js'),
-    import('../../src/backend/AssignmentProcessor/Assignment.js'),
-    import('../../src/backend/y_controllers/ABClassController'),
-  ]);
-
-  ABClass = abClassModule.ABClass;
-  Assignment = assignmentModule.default || assignmentModule;
-  ABClassController = abClassControllerModule.default || abClassControllerModule;
+  const ctx = await setupAssignmentControllerTest(vi);
+  ABClass = ctx.ABClass;
+  Assignment = ctx.Assignment;
+  ABClassController = ctx.ABClassController;
+  mockDbManager = ctx.mockDbManager;
+  mockCollection = ctx.mockCollection;
+  mockABLogger = ctx.mockABLogger;
 });
 
 afterEach(() => {

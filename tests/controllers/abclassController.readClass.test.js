@@ -9,6 +9,8 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  buildTestTeacher,
+  buildTestStudent,
   cleanupControllerTestMocks,
   createMockCollection,
   setupControllerTestMocks,
@@ -36,6 +38,7 @@ try {
   ClassNotFoundError = require('../../src/backend/Utils/ErrorTypes/ClassNotFoundError.js');
 } catch (e) {
   // RED phase — may not be resolvable yet in all environments
+  if (e.code !== 'MODULE_NOT_FOUND') throw e;
   ClassNotFoundError = class ClassNotFoundError extends Error {
     constructor(message, options) {
       super(message);
@@ -45,16 +48,12 @@ try {
   };
 }
 
-function buildTeacher({ email, userId, teacherName } = {}) {
-  return new Teacher(
-    email || 'teacher@school.edu',
-    userId || 't-001',
-    teacherName || 'Test Teacher'
-  );
+function buildTeacher(overrides = {}) {
+  return buildTestTeacher(Teacher, overrides);
 }
 
-function buildStudent({ name, email, id } = {}) {
-  return new Student(name || 'Test Student', email || 'student@school.edu', id || 's-001');
+function buildStudent(overrides = {}) {
+  return buildTestStudent(Student, overrides);
 }
 
 /**
