@@ -12,9 +12,11 @@
 >
 > **Section 5 — Status**: ✅ COMPLETE (committed `5161275`) — `classDetailService.zod.ts` (all Zod schemas) and `classDetailService.ts` (`getABClass` service function) created in `googleClassrooms/classDetail/` subfolder. All 38 tests pass, regression gate passed (0 new regressions from Section 5; ABClassController.js max-lines is pre-existing from Section 3; frontend-e2e-check failure is a flaky layout positioning test unrelated to Section 5).
 >
-> **Section 6 — Status**: ✅ COMPLETE (committed `██████`) — `queryKeys.abClass(classId)` added to `queryKeys.ts`, `getABClassQueryOptions(classId)` added to `sharedQueries.ts`. Not added to `startupWarmup`. All 11 tests pass, regression gate passed (0 new regressions from Section 6).
+> **Section 6 — Status**: ✅ COMPLETE (committed `488c5c8`) — `queryKeys.abClass(classId)` added to `queryKeys.ts`, `getABClassQueryOptions(classId)` added to `sharedQueries.ts`. Not added to `startupWarmup`. All 11 tests pass, regression gate passed (0 new regressions from Section 6).
 >
-> **Section 7 — Status**: 🔄 IN PROGRESS
+> **Section 7 — Status**: ✅ COMPLETE (committed `██████`) — `ClassNotFoundError.js` JSDoc updated to document `getABClass_` handler pattern; `api-layer.md` entry for `getABClass` added after `getABClassPartials`; `DATA_SHAPES.md` "ABClass full-read" section added after ABClassPartials.
+>
+> **Section 8 — Status**: 🔄 IN PROGRESS
 
 ## Read-First Context
 
