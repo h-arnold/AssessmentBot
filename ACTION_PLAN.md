@@ -1786,10 +1786,10 @@ None — e2e tests do not need `@remarks`.
 
 ### Commit record
 
-- **Commit SHA:** (pending — see below)
+- **Commit SHA:** `c17a20e`
 - **Commit message:** `fix(e2e): resolve 7 failing picker-flow Playwright tests with antd v6 compatibility fixes`
 - **Branch:** `opencode/tidy-meadow`
-- **Push:** (pending)
+- **Push:** Confirmed — pushed to origin `https://github.com/h-arnold/AssessmentBot/opencode/tidy-meadow`
 
 ---
 
