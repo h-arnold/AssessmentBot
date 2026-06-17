@@ -1132,12 +1132,37 @@ Add a `@remarks` JSDoc tag on `LinkableDefinitionList` documenting:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (to be filled during Red phase)
-- **Deviations from plan:** (to be filled if any)
+- **Implementation notes:**
+  - Created `LinkableDefinitionList.tsx` with `Radio.Group`, `Alert`,
+    `Typography.Paragraph` with `ellipsis={{ rows: 1 }}`.
+  - Critical fix: `Typography.Text` does not support `ellipsis={{ rows: 1 }}`
+    in Ant Design v6 → replaced with `Typography.Paragraph` +
+    `style={{ marginBottom: 0 }}` to prevent extra spacing.
+  - Layout spec references `Typography.Text` but this is a spec draft
+    inconsistency; the implementation aligns with actual Ant Design v6
+    type constraints.
+  - 8 tests cover all acceptance criteria.
+  - Lint: clean for Section 5 files.
+- **Deviations from plan:**
+  - Alert description omits the `"No matching assignment definition found for '<title>'."` prefix from the layout spec. The component would need an additional `assignmentTitle` prop to include it. Deferred to stakeholder review.
 - **Follow-up implications for later sections:** Section 6 (modal
   integration) wires the component into the modal's `'linking'`
   body branch. Once Section 5 lands, Section 6 can be implemented
   independently.
+
+### Commit record
+
+- **Commit SHA:** `746106b`
+- **Commit message:** `feat(frontend): add LinkableDefinitionList presentational component for link picker`
+- **Branch:** `opencode/tidy-meadow`
+- **Push:** Confirmed — pushed to origin.
+
+### Commit record
+
+- **Commit SHA:** `746106b`
+- **Commit message:** `feat(frontend): add LinkableDefinitionList presentational component for link picker`
+- **Branch:** `opencode/tidy-meadow`
+- **Push:** Confirmed — pushed to origin.
 
 ---
 
