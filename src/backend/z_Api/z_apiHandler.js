@@ -33,6 +33,7 @@ const ALLOWLISTED_METHOD_HANDLERS = Object.freeze({
   upsertABClass: (parameters) => upsertABClass_(parameters),
   updateABClass: (parameters) => updateABClass_(parameters),
   deleteABClass: (parameters) => deleteABClass_(parameters),
+  getABClass: (parameters) => getABClass_(parameters),
   getBackendConfig: () => getBackendConfig_(),
   setBackendConfig: (parameters) => setBackendConfig_(parameters),
   startAssessmentRun: (parameters) => startAssessmentRun_(parameters),
@@ -76,6 +77,10 @@ if (typeof module !== 'undefined' && module.exports) {
     globalThis.upsertABClass_ = abclassMutationsFns.upsertABClass_;
     globalThis.updateABClass_ = abclassMutationsFns.updateABClass_;
     globalThis.deleteABClass_ = abclassMutationsFns.deleteABClass_;
+  }
+  if (globalThis.getABClass_ === undefined) {
+    const abclassReadFns = require('./abclass/abclassRead.js');
+    globalThis.getABClass_ = abclassReadFns.getABClass_;
   }
 } else {
   // In GAS, these are loaded as global constants and functions from the bundle.
