@@ -19,7 +19,7 @@ Use it alongside:
 - [`ACTION_PLAN.md`](./ACTION_PLAN.md) — implementation sequencing
 - [`docs/developer/frontend/frontend-modal-patterns.md`](./frontend/frontend-modal-patterns.md) — modal family registry
 - [`docs/developer/frontend/frontend-loading-and-width-standards.md`](./frontend/frontend-loading-and-width-standards.md) — modal loading and width rules
-- [`docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`](./frontend/frontend-shared-helpers-and-abstraction-standards.md) §9.13, §9.14 — AssessTask helpers
+- [`docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`](./frontend/frontend-shared-helpers-and-abstraction-standards.md) — shared-helpers conventions
 
 ## Scope of this document
 
@@ -29,8 +29,8 @@ This document covers:
    the existing `AssessTaskModal`.
 2. The Ant Design primitive choices for the picker and the choice-prompt
    buttons.
-3. The user-visible states of the picker (initial, ready, all-already-linked,
-   error, loading, success).
+3. The user-visible states of the picker (initial, ready, error, loading,
+   success).
 4. The accessibility and keyboard-navigation behaviour of the picker.
 5. The relationship between the new sub-flow and the existing choice-prompt
    layout (Create New Definition button + Link to Existing Definition button).
@@ -52,7 +52,7 @@ This document does **not** redefine:
    machine (`'idle' | 'loading' | 'success' | 'error'`) already model this
    flow's lifecycle.
 2. Reuse Ant Design primitives for built-in accessibility, single-selection,
-   disabled, and keyboard-navigation behaviour. Do not reimplement these.
+   and keyboard-navigation behaviour. Do not reimplement these.
 3. Keep the choice-prompt layout consistent with the existing
    "Create New Definition" + (now) "Link to Existing Definition" two-button
    `Space` pattern.
@@ -62,6 +62,12 @@ This document does **not** redefine:
    rows) — no loading affordance is needed for the picker itself; the
    loading affordance applies to the post-selection upsert + start-assessment
    run.
+6. **Every row in the picker is always selectable.** The "already linked"
+   concept was considered and removed per stakeholder decision. If the
+   matcher found a match (`'matched'` or `'ambiguous'`), the link flow would
+   not be triggered; if the matcher returned `'no-match'`, then no definition
+   currently covers the assignment's title+topic combination, so every
+   definition in the picker is a valid link target.
 
 ## Ant Design references consulted
 
@@ -78,25 +84,16 @@ List of official Ant Design v6 components materially informing this layout:
   existing "Close" button in the success footer.
 - [`Tooltip`](https://ant.design/components/tooltip) — the tooltip on the
   disabled "Link to Existing Definition" button when the picker would be
-  empty; the tooltip on the disabled "Link" button when no row is selected
-  or every row is already linked.
+  empty; the tooltip on the disabled "Link" button when no row is selected.
 - [`Spin`](https://ant.design/components/spin) — the post-selection loading
   affordance when `assessmentState === 'loading'` (same pattern as the
   wizard-creation loading state).
-- [`Empty`](https://ant.design/components/empty) — the empty state for the
-  picker when the partials cache is empty (after the modal's existing
-  "No assignments" empty state has been navigated past). Unlikely to render
-  in practice because the choice prompt is only reached when there is at
-  least one partial, but included for completeness.
 - [`Radio`](https://ant.design/components/radio) / [`Radio.Group`](https://ant.design/components/radio) — the
-  picker primitive. Supports single selection, per-option `disabled`,
-  `orientation="vertical"` for a list-of-rows feel, and built-in keyboard
-  navigation (arrow keys via the `name` prop group).
-- [`Tag`](https://ant.design/components/tag) — the "Already linked"
-  annotation on disabled rows. The `Tag` is rendered with
-  `color="default"`.
+  picker primitive. Supports single selection, `orientation="vertical"` for a
+  list-of-rows feel, and built-in keyboard navigation (arrow keys via the
+  `name` prop group).
 - [`Flex`](https://ant.design/components/flex) — the inner layout of each
-  `Radio` row (vertical stack of title, subtitle, and optional Tag).
+  `Radio` row (vertical stack of title and subtitle).
 
 The Ant Design v6 [`List`](https://ant.design/components/list) component is
 **avoided** for this picker. The official `List` docs note that the component
@@ -104,9 +101,9 @@ is "deprecated" as of v6 and "will be removed in the next major version"
 in favour of the forthcoming `Listy` component. The picker must not depend
 on `List` because: (a) it is slated for removal; (b) `Radio.Group` is a
 strictly better fit for the use case regardless of deprecation status
-(built-in single selection, per-option `disabled`, vertical orientation,
-and keyboard navigation are all first-class on `Radio.Group` and would
-each require custom code on `List`).
+(built-in single selection, vertical orientation, and keyboard navigation
+are all first-class on `Radio.Group` and would each require custom code on
+`List`).
 
 ## Surface hierarchy
 
@@ -165,10 +162,11 @@ AssessTaskModal
         ├── <no-match Alert>          (existing, in 'choice' state; also in 'linking' state)
         ├── <LinkableDefinitionList>  (NEW, in 'linking' state only)
         │   └── <Radio.Group orientation="vertical" block>
-        │       ├── <Radio value={definitionKey} disabled={isAlreadyLinked}>
-        │       │   ├── <Typography.Text strong>primaryTitle</Typography.Text>
-        │       │   └── <Typography.Text type="secondary">primaryTopic · yearGroupLabel</Typography.Text>
-        │       │   └── (optional) <Tag>Already linked</Tag>
+        │       ├── <Radio value={definitionKey}>
+        │       │   └── <Flex vertical gap={2}>
+        │       │       ├── <Typography.Text strong ellipsis={{ rows: 1 }}>primaryTitle</Typography.Text>
+        │       │       └── <Typography.Text type="secondary" ellipsis={{ rows: 1 }}>primaryTopic · yearGroupLabel</Typography.Text>
+        │       │   </Flex>
         │       └── <Radio ...> ... </Radio>
         └── <Wizard or empty>          (existing, in 'creating' state)
     └── <Modal footer>
@@ -226,8 +224,7 @@ Use `Tooltip` for:
 
 - The disabled "Link to Existing Definition" button in the choice prompt when
   the picker would be empty (no definitions match the class's year group).
-- The disabled "Link" button in the picker footer when no row is selected or
-  every row is already linked.
+- The disabled "Link" button in the picker footer when no row is selected.
 
 Reason:
 
@@ -243,20 +240,20 @@ Use `Radio.Group` for:
   rows. Use **JSX children** (one `<Radio>` per `LinkableDefinition`) rather
   than the `options` prop. The `options` prop is restricted to plain-string
   labels and does not support the rich per-row content (title +
-  `Typography.Text` subtitle + optional `<Tag>`) the picker requires;
-  mixing `options` with rich JSX children is not supported. The
-  `Radio.Group` JSX-children pattern is:
+  `Typography.Text` subtitle) the picker requires; mixing `options` with
+  rich JSX children is not supported. The `Radio.Group` JSX-children
+  pattern is:
 
   ```tsx
   <Radio.Group
     value={selectedDefinitionKey}
-    onChange={(event) => onSelect(event.target.value)}
+    onChange={onSelect}
     orientation="vertical"
     block
     name="linkable-definition"
   >
     {linkableDefinitions.map((def) => (
-      <Radio key={def.definitionKey} value={def.definitionKey} disabled={def.isAlreadyLinked}>
+      <Radio key={def.definitionKey} value={def.definitionKey}>
         <Flex vertical gap={2}>
           <Typography.Text strong ellipsis={{ rows: 1 }}>
             {def.primaryTitle}
@@ -264,7 +261,6 @@ Use `Radio.Group` for:
           <Typography.Text type="secondary" ellipsis={{ rows: 1 }}>
             {def.primaryTopic} · {def.yearGroupLabel}
           </Typography.Text>
-          {def.isAlreadyLinked && <Tag color="default">Already linked</Tag>}
         </Flex>
       </Radio>
     ))}
@@ -273,10 +269,11 @@ Use `Radio.Group` for:
 
 Reason:
 
-- Built-in single-selection, per-option `disabled`, vertical orientation,
-  and keyboard navigation (arrow keys via the `name` prop group). Avoids
-  reimplementing well-trodden interaction patterns. The `List` component
-  is explicitly avoided (see "Ant Design references consulted" above).
+- Built-in single-selection, vertical orientation, and keyboard navigation
+  (arrow keys via the `name` prop group). Avoids reimplementing well-trodden
+  interaction patterns. The `List` component is explicitly avoided (see
+  "Ant Design references consulted" above).
+- Every row is always selectable — no `disabled` prop is used.
 
 #### 6. `Spin` (existing)
 
@@ -321,16 +318,10 @@ including the Google Classroom assignment title.
      Definition" (default, disabled). The disabled button is wrapped in a
      `Tooltip` whose title is "No assignment definitions exist for this
      class's year group.".
-3. **All-already-linked disabled state** (the picker is non-empty but every
-   row is `isAlreadyLinked`).
-   - The "Link to Existing Definition" button in the choice prompt is
-     **disabled** with a `Tooltip` whose title is "Every matching
-     definition is already linked to this Google Classroom assignment.".
-     This prevents the user from entering a dead-end picker where no
-     row is selectable. The "Create New Definition" button stays
-     enabled. This is a deliberate guard: the choice prompt is the
-     surface that decides whether entry to the picker is useful, and
-     when every row would be already linked, entry is not useful.
+3. **Every row already linked is not a guard condition** — the `isAlreadyLinked`
+   concept was removed per stakeholder decision. Every definition that passes
+   the year-group filter is a valid link target. Therefore the "all already
+   linked" disabled button state is **not implemented**.
 
 ### Notes
 
@@ -349,11 +340,8 @@ including the Google Classroom assignment title.
 - `Alert` (existing no-match explanation, kept for context)
 - `Radio.Group` (`orientation="vertical"`, `block`, `name` set for keyboard
   navigation)
-- `Radio` (one per `LinkableDefinition`; `disabled` when `isAlreadyLinked`)
+- `Radio` (one per `LinkableDefinition`; all rows are always selectable)
 - `Typography.Text` × 2 (title, subtitle)
-- `Tag` (NEW, "Already linked" annotation on disabled rows)
-- `Empty` (NEW, only when the partials cache is empty after reaching the
-  picker)
 
 ### Recommended structure
 
@@ -361,16 +349,15 @@ including the Google Classroom assignment title.
 <LinkableDefinitionList>
 ├── <Alert type="info" description="No matching assignment definition found for '<title>'. Link to an existing definition to associate the Google Classroom assignment with it." />
 ├── <Radio.Group
-│     value={selectedDefinitionKey}
-│     onChange={(event) => onSelect(event.target.value)}
-│     orientation="vertical"
-│     block
-│     name="linkable-definition">
-│   ├── <Radio value={def.definitionKey} disabled={def.isAlreadyLinked}>
+    │     value={selectedDefinitionKey}
+    │     onChange={onSelect}
+    │     orientation="vertical"
+    │     block
+    │     name="linkable-definition">
+│   ├── <Radio value={def.definitionKey}>
 │   │   <Flex vertical gap={2}>
 │   │     <Typography.Text strong ellipsis={{ rows: 1 }}>{def.primaryTitle}</Typography.Text>
 │   │     <Typography.Text type="secondary" ellipsis={{ rows: 1 }}>{def.primaryTopic} · {def.yearGroupLabel}</Typography.Text>
-│   │     {def.isAlreadyLinked && <Tag color="default">Already linked</Tag>}
 │   │   </Flex>
 │   │ </Radio>
 │   ├── <Radio value={def.definitionKey} ...> ... </Radio>
@@ -384,22 +371,9 @@ including the Google Classroom assignment title.
    - The picker is visible with the Radio.Group and the no-match Alert.
    - No row is selected.
    - The Link button in the footer is disabled.
-2. **Row selected, linkable**
+2. **Row selected**
    - One row is visually highlighted (the Radio.Group's selected state).
    - The Link button in the footer is enabled.
-3. **Row selected, already-linked (clicking an already-linked row does
-   nothing)**
-   - Already-linked rows are non-selectable (the `Radio`'s `disabled` is
-     set to `true`). The user cannot change the selection by clicking an
-     already-linked row.
-4. **Empty (partials cache is empty)**
-   - The picker renders the `Empty` component with the description "No
-     assignment definitions found in this class's year group.".
-   - The Link button in the footer is disabled with a Tooltip whose title
-     is "No linkable definitions found.".
-   - This state is unlikely in practice because the choice prompt is only
-     reached when at least one definition exists in the cache, but
-     included for completeness.
 
 ### Notes
 
@@ -407,10 +381,12 @@ including the Google Classroom assignment title.
   "Link to an existing definition to associate the Google Classroom
   assignment with it." This sets the user's expectation that the picker
   is the link action.
-- The "Already linked" `Tag` is rendered as visible text, not tooltip-only
-  information, per the accessibility rule of thumb. Disabled `Radio` rows
-  remain focusable so screen readers can announce the disabled state and
-  the annotation.
+- There is **no** "Already linked" Tag, **no** disabled `Radio` rows,
+  **no** `aria-live` summary, and **no** already-linked logic. Every row
+  is always selectable. This simplification was confirmed by the
+  stakeholder: if the matcher found a match, the link flow would not
+  trigger; if `'no-match'` was returned, every definition in the picker
+  is a valid link target.
 
 ## 3. Post-link loading (existing body pattern)
 
@@ -468,18 +444,30 @@ wizard-success and matched-success flows). The picker is hidden.
 
 ### Content
 
-The body shows an error `Alert` with the backend's `error.message` text
-(or, for `DEFINITION_STALE`, a warning `Alert` with the same text). The
-picker is hidden.
+The body shows an error `Alert` with the backend's `error.message` text.
+The picker is hidden.
 
 ### States
 
 1. **Visible**
-   - The body renders the error / warning Alert.
-   - The footer renders a single Cancel button (mirrors the wizard-error
-     footer).
-2. **Closed by the user**
-   - Clicking Cancel closes the modal. The partials cache has been
+   - The body renders the error Alert.
+   - The footer renders a Cancel button.
+   - When `hasLinkSucceeded === true` (upsert committed, assessment run
+     failed with a non-recoverable error), the error Alert explains that
+     the link was committed but the assessment could not be started.
+     The footer shows a single Close button.
+   - When `hasLinkSucceeded === false` (upsert failed), the error Alert
+     describes the failure and the footer shows a single Cancel button
+     that closes the modal.
+2. **`DEFINITION_STALE` recovery** — when `startAssessmentRun` rejects
+   with `DEFINITION_STALE`, the link (the alternateTitle write) is
+   **preserved** and the modal transitions to the **wizard's 2nd panel**
+   (task weightings), with the document re-parsed and pre-populated from
+   the stale definition. This is the same recovery path used by the
+   existing wizard flow and applies to both the link flow and the
+   standard wizard-create-stale flow.
+3. **Closed by the user**
+   - Clicking Cancel or Close closes the modal. The partials cache has been
      invalidated on the failure path (Decision 10 in `SPEC.md`), so the
      next modal open shows a freshly-refetched picker.
 
@@ -487,23 +475,24 @@ picker is hidden.
 
 ### Click behaviour
 
-- Clicking a linkable row selects it (the `Radio.Group`'s `value` updates)
+- Clicking a row selects it (the `Radio.Group`'s `value` updates)
   and enables the Link button.
-- Clicking an already-linked row does nothing (the `Radio` is `disabled`).
 - Clicking outside the picker (e.g. on the modal mask) closes the modal —
   the existing modal mask-click behaviour. This is the same as the
   choice-prompt mask-click behaviour.
+- **Every row is always selectable** — there is no disabled row state.
 
 ### Keyboard behaviour
 
 - `Tab` moves focus into the picker; subsequent `Tab` presses move focus
   through the rows and then to the Link and Cancel buttons in the footer.
 - `Arrow Up` / `Arrow Down` move focus between rows within the
-  `Radio.Group` (the `name` prop on the group makes this work like a
-  native HTML radio group).
-- `Space` or `Enter` on a focused linkable row selects it.
-- `Space` or `Enter` on a focused already-linked row does nothing (the
-  row is `disabled`).
+  `Radio.Group`. This works because Ant Design's `Radio` component renders
+  native `<input type="radio">` elements with the same `name` attribute;
+  browser-level radio-group keyboard navigation is a fundamental HTML
+  behaviour that all browsers support. The `name` prop on the `Radio.Group`
+  is propagated to each underlying `<input>`, enabling this.
+- `Space` or `Enter` on a focused row selects it.
 - `Enter` on the focused Link button triggers the upsert + start-assessment
   run (the same path as clicking the button).
 
@@ -532,11 +521,10 @@ choice-prompt body is the workflow-switching surface.
 
 - `Alert` (no-match explanation, extended copy)
 - `Radio.Group` (vertical, block, single-selection)
-- `Radio` (one per `LinkableDefinition`, with `disabled` for
-  `isAlreadyLinked`)
-- `Typography.Text` × 2 (title, subtitle) and `Tag` ("Already linked")
-- `Button` (Link, primary, disabled until a non-already-linked row is
-  selected) + `Button` (Cancel, default)
+- `Radio` (one per `LinkableDefinition`; all rows selectable)
+- `Typography.Text` × 2 (title, subtitle)
+- `Button` (Link, primary, disabled until a row is selected) + `Button`
+  (Cancel, default)
 
 ### Layout structure
 
@@ -544,10 +532,9 @@ choice-prompt body is the workflow-switching surface.
 Workflow surface (body of the AssessTaskModal in 'linking' state)
 ├── Alert (no-match explanation, extended copy)
 ├── Radio.Group
-│   └── Radio rows (title, subtitle, optional 'Already linked' tag)
-├── <Empty> (only when the partials cache is empty)
+│   └── Radio rows (title, subtitle; all rows selectable)
 └── (footer)
-    ├── Button (Link, primary, disabled until a non-already-linked row is selected)
+    ├── Button (Link, primary, disabled until a row is selected)
     └── Button (Cancel, default)
 ```
 
@@ -559,11 +546,14 @@ Workflow surface (body of the AssessTaskModal in 'linking' state)
    rendered with the filtered and sorted `LinkableDefinition[]`).
 3. **Submitting** (the user clicked Link; `assessmentState === 'loading'`;
    the body shows a `Spin`; the footer shows Cancel + a disabled, loading
-   "Start Assessment" button).
+   "Link" button).
 4. **Validation failure** (N/A — the picker has no free-form input; all
    "validation" is server-side and is rendered as a post-link error Alert).
 5. **Completed** (success or error; the body shows the success or error
    Alert; the footer shows Close or Cancel).
+6. **Stale recovery** (`startAssessmentRun` rejects with `DEFINITION_STALE`;
+   the link is preserved and the modal transitions to the wizard's 2nd
+   panel for task-weighting re-entry).
 
 ### Notes
 
@@ -571,7 +561,7 @@ Workflow surface (body of the AssessTaskModal in 'linking' state)
   `Modal` owns the entire workflow.
 - **Destructive-action copy rule** — no destructive actions in the picker.
   The "Cancel" button in the picker footer returns to the choice prompt
-  (per Decision 12 in `SPEC.md`); it does not destroy any data.
+  (per Decision 13 in `SPEC.md`); it does not destroy any data.
 - **Focus-return rule** — when the picker is closed (Cancel returns to
   choice), focus returns to the "Link to Existing Definition" button in
   the choice prompt. When the modal is closed entirely (Cancel in the
@@ -583,8 +573,8 @@ Workflow surface (body of the AssessTaskModal in 'linking' state)
 ### Blocking error state
 
 - The post-link error `Alert` replaces the body. The picker is hidden.
-  The footer shows a single Cancel button. The Cancel button calls
-  `onClose`. This is the same pattern as the wizard-error flow.
+  The footer shows a single Cancel or Close button depending on
+  `hasLinkSucceeded`.
 
 ### Partial-load state
 
@@ -597,10 +587,12 @@ Workflow surface (body of the AssessTaskModal in 'linking' state)
 
 ### Empty state
 
-- The picker renders the `Empty` component when the filtered list is
-  empty. In practice this is unlikely (the choice prompt is only reached
-  when the partials cache has at least one row that didn't match), but
-  the empty state is included for completeness.
+- The choice-prompt guard handles the empty-picker case: if no definition
+  matches the class's year group, the "Link to Existing Definition" button
+  is disabled with a Tooltip. The picker is only reachable when at least
+  one linkable definition exists, so the picker-level empty state is not
+  rendered by `LinkableDefinitionList`. The modal body renders the empty
+  state (or the choice-prompt handles it) at the modal's discretion.
 
 ### Success and mutation feedback
 
@@ -615,14 +607,15 @@ Workflow surface (body of the AssessTaskModal in 'linking' state)
   near-full-width on mobile).
 - The `Radio.Group`'s `block` prop ensures the rows span the full width
   of the modal body, which is the desired behaviour on all screen sizes.
-- The "Already linked" `Tag` wraps below the title on narrow screens via
-  the `Flex vertical` wrapper inside the `Radio`'s `label` slot.
 - Title and subtitle use `Typography.Text` with
   `ellipsis={{ rows: 1 }}` to prevent horizontal overflow on narrow
   viewports. Long titles are visually truncated with an ellipsis; the
-  full title is preserved in the `title` HTML attribute (via the
-  `Typography.Text` `ellipsis` prop) so screen readers and tooltip
-  hover reveal the full text. No horizontal scrolling is expected.
+  full title is preserved in the `title` HTML attribute on the
+  `Typography.Text` element via Ant Design's `ellipsis` behaviour.
+  The `Radio` label slot receives accessible content from its children,
+  so screen readers will read the full (non-truncated) text even when
+  it is visually elided. The `title` attribute on the inner
+  `Typography.Text` provides a hover tooltip for the full title.
 
 ## Accessibility and motion
 
@@ -634,42 +627,22 @@ Workflow surface (body of the AssessTaskModal in 'linking' state)
   the accessibility tree. Arrow keys move between rows, `Space` or
   `Enter` activates a row, `Tab` moves out of the group to the Link
   button in the footer.
-- **Disabled rows and the `aria-live` summary** — already-linked rows
-  are rendered with `disabled` on the underlying `Radio`. In Ant Design
-  v6, a disabled `Radio` inside a `Radio.Group` is **not** focusable via
-  keyboard and screen readers will skip it during group navigation. The
-  layout spec compensates for this by rendering an `aria-live="polite"`
-  summary region above the `Radio.Group` whose text is
-  `"<N> of <M> matching definitions are already linked to this Google
-Classroom assignment."` (or `"All matching definitions are already
-linked."` when `N === M > 0`). The summary is updated when the cached
-  partials change. The summary is **not** a tooltip — it is a visible
-  text region (rendered as a `Typography.Paragraph` with `type="secondary"`)
-  so sighted and screen-reader users have the same information. The
-  "Already linked" `Tag` on the row remains as visual reinforcement for
-  sighted users.
-- **Tooltip accessibility on the disabled Link button in the picker
-  footer** — the disabled "Link" button is wrapped in a `<span
-tabIndex={0}>` so the surrounding `Tooltip` can be triggered by
-  keyboard focus. This is a small deviation from the existing pattern
-  in `AssessTaskModal.tsx` lines 426-430 (which wraps the disabled
-  Button in a plain `<span>`); the deviation is deliberate and is
-  applied to the new Tooltips only. The existing "Coming soon" Tooltip
-  on the placeholder button is **out of scope** for this feature; a
-  follow-up may want to apply the same `tabIndex={0}` wrapper there.
-- **No tooltip-only information** — the "Already linked" annotation is
-  rendered as visible text (a `Tag`) on the disabled row, the
-  already-linked count is rendered as visible text above the picker,
-  and the picker footer Tooltips are reinforced by the visible
-  picker-state Alert.
+- **No disabled rows** — every row is always selectable, so no `aria-live`
+  summary or disabled-row compensation is needed.
+- **Tooltip accessibility on disabled Link buttons** — both disabled Link
+  buttons (the choice-prompt "Link to Existing Definition" button and the
+  picker footer "Link" button) are wrapped in a `<span tabIndex={0}>` so
+  the surrounding `Tooltip` can be triggered by keyboard focus. This
+  follows the existing pattern in `AssessTaskModal.tsx` (lines 426-430).
+- **No tooltip-only information** — the picker state is visible through
+  the Alert, the Radio.Group, and the disabled button states. No
+  critical information is hidden behind a tooltip-only surface.
 - **Reduced motion** — the picker uses the default Ant Design motion
   duration, which is honoured by `prefers-reduced-motion` per the
   Ant Design v6 defaults.
 - **Screen reader labelling** — each `Radio` has a `value` (the
   `definitionKey`); the `label` slot provides the accessible name
-  (the title). The subtitle and "Already linked" tag are read as
-  associated text. The `aria-live` summary announces the
-  already-linked count on render and on change.
+  (the title). The subtitle is read as associated text.
 
 ## Implementation guardrails
 
@@ -677,20 +650,20 @@ tabIndex={0}>` so the surrounding `Tooltip` can be triggered by
   trigger is the "Link to Existing Definition" button in the choice
   prompt inside `AssessTaskModal`.
 - Do not duplicate domain rules from `SPEC.md` (e.g. the year-group
-  filter, the case-insensitive trimmed equality, the "already linked"
-  derivation). The picker consumes the derived `LinkableDefinition[]`
-  produced by `getLinkableDefinitionsForModal`.
+  filter, the `DEFINITION_STALE` recovery path). The picker consumes the
+  derived `LinkableDefinition[]` produced by `getLinkableDefinitionsForModal`.
 - Do not add bespoke layout abstractions when existing Ant Design
   primitives are sufficient. The `Radio.Group` is the canonical primitive
   for this picker.
-- Do not hide important error, warning, or destructive-operation outcomes
-  inside transient surfaces only. The error Alert is rendered in the
-  modal body and stays until the user dismisses the modal.
+- Do not add `disabled` prop on `Radio` rows — every row is always
+  selectable.
+- Do not add an `aria-live` summary or "Already linked" Tag — these are
+  no longer part of the feature.
 - Keep layout decisions aligned with existing frontend shell and
   navigation guidance.
 
 ## Open questions
 
-None. The Ant Design v6 `Radio.Group` decision is finalised in this
-document; the user has confirmed the picker content and sort order; and
-the spec has settled the contracts.
+None. The `Radio.Group` decision is finalised in this document; the
+stakeholder has confirmed the simplification (every row always selectable);
+and the spec has settled the contracts.

@@ -8,7 +8,7 @@ Before writing or executing this plan:
 2. Read the new layout spec `ASSESS_TASK_MODAL_LINK_PICKER_LAYOUT.md`.
 3. Read `src/frontend/AGENTS.md` (frontend conventions, §2.1 composition boundary, §4 API transport, §8 Zod standard, §10 modal patterns).
 4. Read `src/backend/AGENTS.md` (backend conventions, §0.1 trailing-underscore handler pattern, §0.2 validation ownership, §3 logging, §10 facade pattern).
-5. Read `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9.13, §9.14 (the existing AssessTask helper entries that this work extends).
+5. Read `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` (the existing AssessTask helper entries that this work extends).
 6. Read `docs/developer/frontend/frontend-testing.md` and `docs/developer/backend/backend-testing.md` for testing policy.
 7. Treat `SPEC.md` and `ASSESS_TASK_MODAL_LINK_PICKER_LAYOUT.md` as the source of truth for product behaviour, contracts, and layout rules. Use this action plan to sequence delivery and testing; do not restate or redefine material already settled in those documents.
 
@@ -18,10 +18,15 @@ Before writing or executing this plan:
 
 - A new `'linking'` sub-state in the existing `AssessTaskModal`
   `noMatchResolution` state machine.
+- A new `hasLinkSucceeded` boolean state slot (analogous to
+  `hasCreateSucceeded`) to distinguish "cancel before upsert" from
+  "upsert committed, assessment running".
 - A new `LinkableDefinitionList` presentational component (Ant Design
-  `Radio.Group` with JSX children; not `List`).
+  `Radio.Group` with JSX children; not `List`). All rows are always
+  selectable — no disabled-row, no Tag, no `aria-live` summary.
 - A new `getLinkableDefinitionsForModal` pure helper that filters, sorts,
-  and annotates the cached `AssignmentDefinitionPartial` rows.
+  and maps the cached `AssignmentDefinitionPartial` rows to
+  `LinkableDefinition[]`. No `isAlreadyLinked` derivation is performed.
 - A new `caseInsensitiveTrimmedEquals` feature-local helper in a new
   `stringComparison.ts` file (used by both the matcher and the picker
   derivation helper).
@@ -46,6 +51,11 @@ Before writing or executing this plan:
   e2e tests).
 - Documentation updates to the shared-helpers doc, the DATA_SHAPES doc,
   the api-layer doc, and the front-end testing notes.
+- `DEFINITION_STALE` recovery: when `startAssessmentRun` rejects with
+  `DEFINITION_STALE`, the link (the alternateTitle write) is preserved
+  and the modal transitions to the wizard's 2nd panel (task weightings)
+  with the document re-parsed. This applies to both the link flow and
+  the existing wizard flow.
 
 ### Out of scope
 
@@ -61,6 +71,8 @@ Before writing or executing this plan:
   (deferred per the spec).
 - In-picker search/filter input, virtualisation, pagination.
 - Unlinking a previously-linked assignment.
+- The `isAlreadyLinked` concept (removed per stakeholder decision —
+  every row in the picker is always selectable).
 
 ### Assumptions
 
@@ -73,13 +85,10 @@ Before writing or executing this plan:
    wizard's existing payload (which always sends the URL fields) will
    continue to pass the new rule without modification.
 3. The `Radio.Group` JSX-children pattern is fully supported in Ant
-   Design v6 and the `disabled` prop on `Radio` correctly suppresses both
-   click activation and keyboard selection (Decision 2 in the layout
-   spec, §2 picker row interaction details).
+   Design v6.
 4. The `name` prop on `Radio.Group` enables arrow-key navigation between
-   rows in the same way a native HTML radio group does, including for
-   disabled rows (which remain reachable for the screen reader via
-   the `aria-live` summary).
+   rows in the same way a native HTML radio group does. No `disabled`
+   rows exist in this component (all rows are always selectable).
 5. The `flushSync` pattern in `handleWizardCreateSuccess` is **not**
    needed for the link flow (per SPEC.md Decision 11).
 6. The existing `progressTracker` strip at the API boundary applies
@@ -169,9 +178,9 @@ Helper decision entries:
      now, or a second in-scope caller is already accepted"). The
      helper is **not** exported from the modal feature directory —
      it stays feature-local.
-   - Relevant canonical doc target: `frontend-shared-helpers-and-abstraction-standards.md`
-     §9.13 (extend the existing entry to note the new feature-local
-     helper).
+   - Relevant canonical doc target:
+     `frontend-shared-helpers-and-abstraction-standards.md`
+     shared-helpers document (extend the existing AssessTask entries).
    - Planned doc status: `Not implemented`
 2. Helper: `getLinkableDefinitionsForModal` pure helper
    - Decision: `new`
@@ -179,15 +188,15 @@ Helper decision entries:
      `src/frontend/src/features/classes/AssessTaskModal/getLinkableDefinitionsForModal.ts`
    - Call-site rationale: derives the `LinkableDefinition[]` for the
      picker by filtering the cached partials to the class's
-     `yearGroupKey`, deriving the `isAlreadyLinked` flag, and sorting
-     by `updatedAt` desc. The helper is colocated with the matcher
-     (separate file) following the same pattern as
+     `yearGroupKey` and sorting by `fuse.js` title rank with
+     `updatedAt` desc as the tie-breaker. The helper is colocated
+     with the matcher (separate file) following the same pattern as
      `findMatchingDefinition`; the function is exported for unit
-     testing.
+     testing. No `isAlreadyLinked` derivation (removed per
+     stakeholder decision).
    - Relevant canonical doc target:
-     `frontend-shared-helpers-and-abstraction-standards.md` §9.13
-     (extend the existing entry to add a new `getLinkableDefinitionsForModal`
-     row).
+     `frontend-shared-helpers-and-abstraction-standards.md`
+     (extend existing AssessTask entries).
    - Planned doc status: `Not implemented`
 3. Helper: `LinkableDefinitionList` presentational component
    - Decision: `new`
@@ -199,11 +208,10 @@ Helper decision entries:
      effects); it receives the derived `LinkableDefinition[]` and the
      current selection, and emits `onSelect(definitionKey)`. The
      component has exactly one caller (`AssessTaskModal`) and is not
-     promoted to a shared component.
+     promoted to a shared component. All rows are always selectable.
    - Relevant canonical doc target:
-     `frontend-shared-helpers-and-abstraction-standards.md` §9.13
-     (extend the existing entry to add a new `LinkableDefinitionList`
-     row).
+     `frontend-shared-helpers-and-abstraction-standards.md`
+     (extend existing AssessTask entries).
    - Planned doc status: `Not implemented`
 4. Direct dependency: `fuse.js` (fuzzy search library)
    - Decision: `new`
@@ -211,15 +219,12 @@ Helper decision entries:
      corresponding lockfile entry).
    - Call-site rationale: imported by
      `getLinkableDefinitionsForModal.ts` for fuzzy title ranking
-     (per `SPEC.md` Decisions 3 and 9). The library is well-maintained
+     (per `SPEC.md` Decisions 3 and 8). The library is well-maintained
      (https://fusejs.io), has built-in TypeScript types (v7+), no
-     runtime dependencies, and ~12 kB gzipped bundle weight. The
-     user's original request explicitly allowed adding a fuzzy-search
-     library if it was maintained and not too much effort; `fuse.js`
-     satisfies both conditions.
+     runtime dependencies, and ~12 kB gzipped bundle weight.
    - Relevant canonical doc target: no canonical doc entry required
      (the dependency declaration is self-explanatory; the integration
-     is documented in `SPEC.md` Decision 9).
+     is documented in `SPEC.md` Decision 8).
    - Planned doc status: N/A (the dependency is declared in
      `package.json`; the lockfile entry is generated by `npm install`)
 
@@ -233,8 +238,8 @@ Helper decision entries:
      existing `alternateTopics` on update when the payload omits the
      field; normalises via `validation.normaliseAlternateTitles` (the
      existing method) when the field is provided. The method is
-     private (trailing underscore convention) and is called only from
-     the orchestrator's `upsert` method.
+     private (leading underscore convention for class methods) and is
+     called only from the orchestrator's `upsert` method.
    - Relevant canonical doc target: none (the orchestrator's existing
      docstring is the authority; no new canonical doc entry is
      required because the helper mirrors an existing pattern).
@@ -268,8 +273,9 @@ Reused helpers (no decision needed):
   - `npm run frontend:test -- src/frontend/src/features/classes/AssessTaskModal/getLinkableDefinitionsForModal.spec.ts` (new file)
   - `npm run frontend:test -- src/frontend/src/services/assignmentDefinition/assignmentDefinition.zod.spec.ts`
   - `npm run frontend:test -- src/frontend/src/features/classes/AssessTaskModal/AssessTaskModal.spec.tsx`
-- Frontend dependency install (Section 4): `npm install --prefix src/frontend`
-  (after adding `fuse.js` to `src/frontend/package.json` dependencies)
+- Frontend dependency install (pre-Section 4, step 0):
+  add `fuse.js` to `src/frontend/package.json` dependencies and run
+  `npm install --prefix src/frontend` before writing Section 4 tests.
 - Playwright e2e tests (if executed locally):
   - `npm run frontend:test:e2e -- classes-page-assess-task`
 
@@ -286,8 +292,8 @@ on update.
 
 ### Constraints
 
-- The new method is private to the orchestrator file (trailing underscore
-  convention).
+- The new method is private to the orchestrator file (leading underscore
+  convention for class methods).
 - The new method delegates to `validation.normaliseAlternateTitles` for
   normalisation. A code comment records the reuse.
 - The orchestrator's `upsert` method's constructor call gains one new
@@ -353,9 +359,6 @@ Code Reviewer mandatory docs:
 
 Recorded in the global Shared-helper planning gate above. The new
 `_resolveAlternateTopics` helper is the only new orchestrator helper.
-The planned-only doc status for `_resolveAlternateTopics` is `N/A`
-(no new canonical doc entry is required because the helper mirrors
-an existing pattern).
 
 ### Acceptance criteria
 
@@ -368,7 +371,7 @@ existingDefinition })` to the `new AssignmentDefinition({ ... })`
   the payload omits the field.
 - The new method normalises the provided `alternateTopics` via
   `validation.normaliseAlternateTitles`.
-- The new method is private (trailing underscore).
+- The new method is private (leading underscore).
 - Existing tests in
   `tests/controllers/assignmentDefinitionController.upsert.test.js`
   pass without modification.
@@ -385,12 +388,12 @@ Backend controller tests (added to the existing
    `normaliseAlternateTitles` is called, verify the orchestrator's
    `upsert` constructs a new `AssignmentDefinition` with
    `alternateTopics: existingAlternateTopics` (mirroring the existing
-   `_resolveAlternateTitles` test at lines 531-555 of
-   `tests/backend-api/assignmentDefinitionPartials.unit.test.js`).
-2. **`_resolveAlternateTopics` normalises provided `alternateTopics`**
-   — payload includes `alternateTopics: ['  Linear Equations  ', '']`;
-   verify the second entry throws (delegated to
-   `normaliseAlternateTitles`).
+   `_resolveAlternateTitles` test section, specifically the test named
+   `'"preserves existing alternateTitles when constructing new model"'`).
+2. **`_resolveAlternateTopics` normalises provided `alternateTopics`** —
+   payload includes `alternateTopics: ['  Linear Equations  ', '']`;
+   verify the valid entry is trimmed and the empty-string entry throws
+   (delegated to `normaliseAlternateTitles`).
 3. **`_resolveAlternateTopics` rejects non-array `alternateTopics`** —
    payload includes `alternateTopics: 'not an array'`; verify the
    thrown `TypeError` from `normaliseAlternateTitles` propagates
@@ -398,10 +401,7 @@ Backend controller tests (added to the existing
 4. **`_resolveAlternateTopics` rejects non-string entries** — payload
    includes `alternateTopics: [123]`; verify the thrown `Error` from
    `normaliseAlternateTitles` propagates unchanged.
-5. **`_resolveAlternateTopics` rejects empty-string entries** — payload
-   includes `alternateTopics: ['']`; verify the thrown `Error` from
-   `normaliseAlternateTitles` propagates unchanged.
-6. **End-to-end: `upsert` constructs an `AssignmentDefinition` with the
+5. **End-to-end: `upsert` constructs an `AssignmentDefinition` with the
    new alternates** — payload includes both `alternateTitles` and
    `alternateTopics`; verify the constructed model receives both arrays
    (this is the integration case that proves the constructor call was
@@ -458,8 +458,7 @@ Introduce the `alternateTopics` lookup branch in the topic match.
   modal feature directory. The helper is **not** exported from the
   modal feature directory (it stays feature-local) and follows the
   same case-insensitive trimmed comparison as the backend
-  `normaliseTitleForDuplicate` (per the display-resolution
-  recommendation in `SPEC.md`).
+  `normaliseTitleForDuplicate`.
 - The matcher's `MatchResult` discriminated union shape does not
   change.
 - The matcher's existing tests (with matching-case inputs) continue to
@@ -469,6 +468,9 @@ Introduce the `alternateTopics` lookup branch in the topic match.
   imports.
 - The matcher imports `caseInsensitiveTrimmedEquals` from the new
   `stringComparison.ts` file.
+- The supplementary `alternateTopics` topic check only runs when
+  `topicName !== null`; the early return for `topicName === null` is
+  unchanged.
 
 ### Delegation mandatory reads (when sub-agents are used)
 
@@ -478,6 +480,8 @@ Testing Specialist mandatory docs:
   (target file)
 - `src/frontend/src/features/classes/AssessTaskModal/matchDefinitionForAssignment.spec.ts`
   (existing test patterns)
+- `src/frontend/src/features/classes/AssessTaskModal/stringComparison.ts`
+  (new helper file — must exist before tests run)
 - `src/frontend/AGENTS.md` §2.2 (hooks/services/side effects
   boundaries)
 - `docs/developer/frontend/frontend-testing.md`
@@ -488,6 +492,8 @@ Implementation mandatory docs:
 - `SPEC.md`
 - `src/frontend/AGENTS.md` §2.2, §8
 - `src/frontend/src/features/classes/AssessTaskModal/matchDefinitionForAssignment.ts`
+- `src/frontend/src/features/classes/AssessTaskModal/stringComparison.ts`
+  (the new helper file to create)
 - `src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionValidation.js`
   (lines 43-47: `normaliseTitleForDuplicate` — the backend normaliser
   whose semantics the new helper mirrors)
@@ -508,8 +514,7 @@ Recorded in the global Shared-helper planning gate above. The new
 `stringComparison.ts` file (shared between the matcher and the
 picker derivation helper). The planned-only doc status for
 `caseInsensitiveTrimmedEquals` is `Not implemented`; the doc entry
-will be added to §9.13 of
-`frontend-shared-helpers-and-abstraction-standards.md` in Section 9
+will be added to the shared-helpers document in Section 9
 (Documentation).
 
 ### Acceptance criteria
@@ -517,7 +522,8 @@ will be added to §9.13 of
 - The matcher compares titles case-insensitive trimmed (both
   `primaryTitle` and `alternateTitles`).
 - The matcher compares topics case-insensitive trimmed (both
-  `primaryTopic` and `alternateTopics`).
+  `primaryTopic` and `alternateTopics`). The `alternateTopics` check
+  only runs when `topicName !== null`.
 - The matcher's `MatchResult` discriminated union shape is unchanged.
 - Existing matcher tests pass without modification (matching-case
   inputs).
@@ -558,7 +564,11 @@ Matcher unit tests (added to the existing
    scoped to the title comparison only and the matcher doesn't
    become trivially permissive.
 8. **`topicName === null` still returns `'no-match'`** — preserves the
-   existing early-return behaviour.
+   existing early-return behaviour: an assignment without a topic can
+   never match a definition because the matcher requires both title and
+   topic to match. (In the picker helper, `topicName: null` has a
+   different effect: it skips the topic leg of payload construction,
+   so the `alternateTopics` array is sent unchanged — see Section 6.)
 9. **The helper `caseInsensitiveTrimmedEquals` lives in
    `stringComparison.ts`** — verify the helper is imported by the
    matcher from the new file and is not exported from the modal
@@ -576,7 +586,7 @@ Matcher unit tests (added to the existing
 Add a `@remarks` JSDoc tag on `caseInsensitiveTrimmedEquals`
 documenting:
 
-- Why the helper is private (one caller; the backend
+- Why the helper is feature-local (two in-scope callers; the backend
   `normaliseTitleForDuplicate` is the only cross-system reference and
   is not exported to the frontend).
 - The normalisation is `a.trim().toLowerCase() === b.trim().toLowerCase()`
@@ -727,9 +737,11 @@ Frontend Zod tests (added to
 7. **`alternateTitles: 'not an array'` is rejected** — type check.
 8. **`alternateTopics: [123]` is rejected** — array-of-strings check.
 9. **Extra field is rejected** — `strict()` rule preserved.
-10. **Empty `alternateTitles: []` is accepted** — the orchestrator
-    treats empty arrays as "clear the alternates"; the Zod schema
-    accepts them (the upsert contract allows empty arrays).
+10. **Empty `alternateTitles: []` is accepted by the Zod schema**
+    (valid shape — the orchestrator treats empty arrays as "clear the
+    alternates"). Note: the modal's payload construction must never
+    produce empty arrays (the full existing array + new entry is always
+    sent); this test confirms the schema allows it.
 
 ### Section checks
 
@@ -760,6 +772,20 @@ Add a `@remarks` JSDoc tag on
 
 ---
 
+## Pre-Section 4 Step — Install `fuse.js` dependency
+
+Before writing Section 4 tests, install the `fuse.js` dependency:
+
+1. Add `fuse.js` to `dependencies` in `src/frontend/package.json`.
+2. Run `npm install --prefix src/frontend` to regenerate the lockfile
+   and make `import Fuse from 'fuse.js'` available in tests.
+
+This step must complete before the Section 4 Red phase (the new test
+file imports `getLinkableDefinitionsForModal`, which imports
+`fuse.js`).
+
+---
+
 ## Section 4 — Frontend `getLinkableDefinitionsForModal` helper with `fuse.js` integration (Red, Green, Refactor)
 
 ### Objective
@@ -767,8 +793,7 @@ Add a `@remarks` JSDoc tag on
 Add the new pure helper `getLinkableDefinitionsForModal` that derives
 the picker list from the cached `AssignmentDefinitionPartial` rows
 using `fuse.js` for fuzzy title ranking (with `updatedAt` desc as the
-tie-breaker), and add `fuse.js` as a direct dependency in
-`src/frontend/package.json`.
+tie-breaker).
 
 ### Constraints
 
@@ -778,17 +803,12 @@ tie-breaker), and add `fuse.js` as a direct dependency in
   `getLinkableDefinitionsForModal(definitionPartials: AssignmentDefinitionPartial[], classYearGroupKey: string, selectedAssignment: { title: string; topicName: string | null }): LinkableDefinition[]`.
 - The helper is a pure function; no React, no I/O, no service
   imports.
-- The `LinkableDefinition` derived type is colocated with the helper
-  (or with the modal; the implementation will choose; the spec
-  records the shape).
-- The helper filters by `yearGroupKey` equality, derives
-  `isAlreadyLinked` per `SPEC.md` Decision 5 (title + topic
-  case-insensitive trimmed), then sorts by `fuse.js` fuzzy title rank
-  with `updatedAt` desc as the tie-breaker, and maps to the
-  `LinkableDefinition` shape.
-- The case-insensitive trimmed equality uses the
-  `caseInsensitiveTrimmedEquals` helper from the new
-  `stringComparison.ts` file (created in Section 2).
+- The `LinkableDefinition` derived type is colocated with the helper.
+- The helper filters by `yearGroupKey` equality, then sorts by
+  `fuse.js` fuzzy title rank with `updatedAt` desc as the tie-breaker,
+  and maps to the `LinkableDefinition` shape.
+- No `isAlreadyLinked` derivation is performed. Every
+  year-group-matching definition is returned as a selectable row.
 - The `fuse.js` instance is configured with:
   - `keys: ['primaryTitle']` (score against `primaryTitle` only);
   - `threshold: 1.0` (include all year-group-matching definitions in
@@ -797,10 +817,6 @@ tie-breaker), and add `fuse.js` as a direct dependency in
     tie-breaking and for debugging);
   - `ignoreLocation: true` (match anywhere in the title; position
     does not affect the score).
-- The new direct dependency `fuse.js` is declared in
-  `src/frontend/package.json` (as a regular dependency, not a
-  devDependency — the picker runs in production). The lockfile is
-  regenerated via `npm install` after the `package.json` change.
 
 ### Delegation mandatory reads (when sub-agents are used)
 
@@ -809,11 +825,10 @@ Testing Specialist mandatory docs:
 - `src/frontend/src/services/assignmentDefinition/assignmentDefinitionPartials.zod.ts`
   (the `AssignmentDefinitionPartial` Zod schema, lines 184-202)
 - `src/frontend/src/features/classes/AssessTaskModal/stringComparison.ts`
-  (the new helper from Section 2; imported by Section 4)
+  (the new helper from Section 2)
 - `src/frontend/AGENTS.md` §2.2, §8
 - `docs/developer/frontend/frontend-testing.md`
-- `SPEC.md` (Decisions 3, 5, and 9: picker sort, already-linked
-  derivation, and the `fuse.js` integration)
+- `SPEC.md` (Decisions 3 and 8: picker sort and `fuse.js` integration)
 - The official `fuse.js` docs (https://fusejs.io) for the `Fuse`
   constructor and `search` method signatures
 
@@ -838,21 +853,14 @@ Code Reviewer mandatory docs:
 
 Recorded in the global Shared-helper planning gate above. The new
 `getLinkableDefinitionsForModal` helper is feature-local and is
-documented in §9.13 of
-`frontend-shared-helpers-and-abstraction-standards.md` in Section 9
-(Documentation).
+documented in the shared-helpers document in Section 9 (Documentation).
 
 ### Acceptance criteria
 
 - The helper exists and is exported.
 - The helper signature matches the spec.
 - The helper filters by `yearGroupKey` equality (drops partials with a
-  non-matching year group, including `null` year groups on corrupt
-  cache entries — although the Zod schema enforces
-  `TrimmedNonEmptyStringSchema` so `null` should not appear in
-  practice).
-- The helper derives `isAlreadyLinked` per the four-check
-  case-insensitive trimmed derivation in `SPEC.md` Decision 5.
+  non-matching year group).
 - The helper sorts by `fuse.js` title rank (ascending score) with
   `updatedAt` desc as the tie-breaker for equal scores.
 - The helper returns an empty array when `definitionPartials` is
@@ -871,15 +879,15 @@ Picker helper unit tests (new file
 1. **Empty input** — `definitionPartials: []` returns `[]`.
 2. **No matches (year-group filter excludes everything)** — partials
    with non-matching `yearGroupKey` are dropped.
-3. **Single match** — one partial with matching `yearGroupKey` and
-   non-matching title/topic returns one `LinkableDefinition` with
-   `isAlreadyLinked: false`.
+3. **Single match** — one partial with matching `yearGroupKey` returns
+   one `LinkableDefinition`.
 4. **Fuzzy ranking: closest primaryTitle ranks first** — given three
    partials with `primaryTitle` values of `"Poetry Analysis"`,
    `"Algebra HW"`, and `"Algebra Homework"`, and a
    `selectedAssignment.title` of `"Algebra HW"`, the picker returns
    `"Algebra HW"` first, `"Algebra Homework"` second (close
-   rephrasing), and `"Poetry Analysis"` last (unrelated).
+   rephrasing), and `"Poetry Analysis"` last (unrelated). Verify the
+   observable ranking order (first by position, then by score).
 5. **`updatedAt` desc is the tie-breaker for equal scores** — two
    partials with `primaryTitle` values of `"Algebra"` (perfect
    match, score 0) and `updatedAt` of 2025-01-01 vs 2025-01-03:
@@ -890,27 +898,10 @@ Picker helper unit tests (new file
    (with a worse score) when the `selectedAssignment.title` is
    `"Algebra HW"`. The threshold of 1.0 ensures no item is filtered
    out by score.
-7. **"Already linked" via `primaryTitle` (case-insensitive trimmed)**
-   — partial with `primaryTitle: 'Essay'`,
-   `selectedAssignment.title: 'ESSAY'`, topic non-null and not
-   matching, year group matches → `isAlreadyLinked: true` via title.
-8. **"Already linked" via `alternateTitles`** — partial with
-   `alternateTitles: ['Narrative']`,
-   `selectedAssignment.title: 'narrative'` → `isAlreadyLinked: true`
-   via title.
-9. **"Already linked" via `primaryTopic` (case-insensitive trimmed)**
-   — partial with `primaryTopic: 'Algebra'`, title not matching,
-   `selectedAssignment.topicName: 'algebra'` →
-   `isAlreadyLinked: true` via topic.
-10. **"Already linked" via `alternateTopics`** — partial with
-    `alternateTopics: ['Linear Equations']`, title not matching,
-    `selectedAssignment.topicName: 'linear equations'` →
-    `isAlreadyLinked: true` via topic.
-11. **`topicName: null` skips the topic check** — partial with title
-    and topic not matching, `selectedAssignment.topicName: null` →
-    `isAlreadyLinked: false`.
-12. **Whitespace tolerance** — partial with `primaryTitle: 'Essay'`,
-    `selectedAssignment.title: '  Essay  '` → `isAlreadyLinked: true`.
+7. **Defensive handling of null fields** — partials with `null`
+   `primaryTitle`, `primaryTopic`, or missing arrays do not cause
+   the helper to throw. They are handled defensively (coerced to
+   empty strings/arrays).
 
 ### Section checks
 
@@ -918,6 +909,7 @@ Picker helper unit tests (new file
   — all tests green.
 - `npm run lint:frontend` — clean.
 - Mandatory-read evidence gate passed.
+- Pre-Section 4 dependency install step completed.
 
 ### Optional `@remarks` JSDoc follow-through
 
@@ -926,7 +918,7 @@ documenting:
 
 - Why the helper is a separate file (pure function with one caller,
   independent testability, follows the matcher pattern).
-- The `caseInsensitiveTrimmedEquals` reuse.
+- The `fuse.js` configuration details (threshold 1.0, score-only).
 - The `updatedAt` lexicographic sort order is intentional
   (ISO 8601 with timezone sorts chronologically when compared as
   strings).
@@ -951,7 +943,9 @@ documenting:
 
 Add the new `LinkableDefinitionList` presentational component that
 renders the picker as an Ant Design `Radio.Group` with vertical
-orientation, block width, and JSX children.
+orientation, block width, and JSX children. All rows are always
+selectable — no disabled state, no "Already linked" Tag, no
+`aria-live` summary.
 
 ### Constraints
 
@@ -960,25 +954,18 @@ orientation, block width, and JSX children.
 - The component is presentational: no state, no side effects, no
   React Query, no service calls.
 - The component signature is:
-  `LinkableDefinitionList({ linkableDefinitions, selectedDefinitionKey, onSelect, alreadyLinkedSummary }): JSX.Element`.
-- The component renders the no-match Alert (with extended copy from
-  the layout spec — the Alert is owned by the component, not by the
-  modal), the `aria-live` summary, the `Radio.Group` with JSX
-  children, the per-row `Radio` (with `disabled` for
-  `isAlreadyLinked`), the per-row `Flex` with `Typography.Text` title
-  and subtitle (with `ellipsis={{ rows: 1 }}`), and the per-row
-  optional `Tag` ("Already linked").
+  `LinkableDefinitionList({ linkableDefinitions, selectedDefinitionKey, onSelect }): JSX.Element`.
+- The component renders an Alert with the extended copy ("Link to an
+  existing definition..."), the `Radio.Group` with JSX children, and
+  the per-row `Flex` with `Typography.Text` title and subtitle (with
+  `ellipsis={{ rows: 1 }}`).
 - The component does not render a footer (the modal owns the footer).
 - The component does not render an `Empty` (the modal owns the
   empty-state Alert and the modal's overall empty state).
-- The component does not handle the "all already linked" dead end at
-  the choice-prompt level (the modal owns that decision per the
-  layout spec).
 - The component is keyboard-navigable via the `Radio.Group`'s
   built-in arrow-key navigation (set the `name` prop).
-- Disabled `Radio` rows are non-focusable (Ant Design v6 default) and
-  are summarised by the `aria-live="polite"` `alreadyLinkedSummary`
-  prop.
+- **Every row is always selectable** — no `disabled` prop is used
+  on any `Radio`.
 
 ### Delegation mandatory reads (when sub-agents are used)
 
@@ -1016,22 +1003,18 @@ Code Reviewer mandatory docs:
 
 Recorded in the global Shared-helper planning gate above. The new
 `LinkableDefinitionList` component is feature-local and is documented
-in §9.13 of `frontend-shared-helpers-and-abstraction-standards.md`
-in Section 9 (Documentation).
+in the shared-helpers document in Section 9 (Documentation).
 
 ### Acceptance criteria
 
 - The component exists and is exported.
 - The component signature matches the spec.
+- The component renders an Alert with the extended copy.
 - The component renders a `Radio.Group` with `orientation="vertical"`,
   `block`, and `name` set.
-- Each `LinkableDefinition` renders as a `Radio` with `disabled` set
-  when `isAlreadyLinked`.
-- Each `Radio`'s `label` slot renders the title (strong), subtitle
-  (secondary, `<topic> · <yearGroupLabel>`), and optional `Tag` for
-  already-linked rows.
-- The component renders the `aria-live="polite"` summary when
-  `alreadyLinkedSummary` is non-null.
+- Each `LinkableDefinition` renders as a `Radio` with title (strong)
+  and subtitle (secondary, `<topic> · <yearGroupLabel>`).
+- All rows are always selectable — no `disabled` prop on any `Radio`.
 - The component does not manage its own selection state (it is
   controlled via the `selectedDefinitionKey` prop and the `onSelect`
   callback).
@@ -1042,38 +1025,23 @@ in Section 9 (Documentation).
 
 Component tests (new file `LinkableDefinitionList.spec.tsx`):
 
-1. **Renders the no-match Alert with the extended copy** — the
+1. **Renders the Alert with the extended copy** — the
    `linkableDefinitions` prop is non-empty; the component renders the
    Alert with the title interpolation.
-2. **Renders the `aria-live` summary** — `alreadyLinkedSummary` is
-   `'2 of 3 matching definitions are already linked to this Google
-Classroom assignment.'`; the component renders the summary inside
-   an `aria-live="polite"` region.
-3. **Renders one `Radio` per `LinkableDefinition`** — three
+2. **Renders one `Radio` per `LinkableDefinition`** — three
    `linkableDefinitions` produce three `Radio` elements.
-4. **Sets `disabled` on already-linked `Radio`s** — a partial with
-   `isAlreadyLinked: true` produces a `Radio` with `disabled`.
-5. **Does not set `disabled` on linkable `Radio`s** — a partial with
-   `isAlreadyLinked: false` produces a `Radio` without `disabled`.
-6. **Renders the "Already linked" `Tag` for disabled rows** — a
-   disabled `Radio` includes a `Tag` with the text "Already linked".
-7. **Renders the title (strong) and subtitle (secondary) for each
+3. **No `Radio` has `disabled` prop** — every row is always selectable.
+4. **Renders the title (strong) and subtitle (secondary) for each
    row** — a row with `primaryTitle: 'Essay'`, `primaryTopic:
 'Writing'`, `yearGroupLabel: 'Year 10'` renders both texts.
-8. **Renders the `aria-live` summary as visible text** — the summary
-   is rendered as `Typography.Paragraph` with `type="secondary"`
-   (visible, not just aria-live).
-9. **Renders `Radio.Group` with `name="linkable-definition"`** — the
+5. **Renders `Radio.Group` with `name="linkable-definition"`** — the
    `name` prop is set for keyboard navigation.
-10. **Renders `Radio.Group` with `orientation="vertical"` and `block`**
-    — the orientation and block props are set.
-11. **Calls `onSelect(definitionKey)` when a linkable row is clicked**
-    — the `Radio.Group`'s `onChange` emits the `definitionKey`.
-12. **Does not call `onSelect` when an already-linked row is clicked**
-    — disabled `Radio`s do not fire `onChange`.
-13. **Renders the component with empty `linkableDefinitions`** — the
-    `Radio.Group` is empty (no rows); the `aria-live` summary is
-    rendered when supplied.
+6. **Renders `Radio.Group` with `orientation="vertical"` and `block`**
+   — the orientation and block props are set.
+7. **Calls `onSelect(definitionKey)` when a row is selected** — the
+   `Radio.Group`'s `onChange` emits the `definitionKey`.
+8. **Renders the component with empty `linkableDefinitions`** — the
+   `Radio.Group` is empty (no rows); no error is thrown.
 
 ### Section checks
 
@@ -1088,9 +1056,8 @@ Add a `@remarks` JSDoc tag on `LinkableDefinitionList` documenting:
 
 - The component is presentational; the modal owns the selection
   state and the side effects.
-- The `aria-live` summary compensates for the Ant Design v6
-  limitation that disabled `Radio` rows are not focusable via
-  keyboard.
+- All rows are always selectable (no `disabled`, no `isAlreadyLinked`
+  logic).
 - The `name` prop enables native radio-group keyboard navigation.
 
 ### Implementation notes / deviations / follow-up
@@ -1112,6 +1079,8 @@ Update the `AssessTaskModal` to:
 
 - extend the `noMatchResolution` union to include `'linking'`;
 - add the `selectedDefinitionForLink` state slot;
+- add the `hasLinkSucceeded` state slot (analogous to
+  `hasCreateSucceeded`);
 - add the `handleLinkExistingDefinition`, `handleLinkConfirm`,
   `handleLinkCancel` functions;
 - extend `renderBody` to render the `LinkableDefinitionList` in the
@@ -1121,7 +1090,9 @@ Update the `AssessTaskModal` to:
 - reset the new state on modal reopen, on Cancel from picker, and on
   assessment-state transitions;
 - invalidate `queryKeys.assignmentDefinitionPartials()` after a
-  successful upsert and on any upsert failure.
+  successful upsert and on any upsert failure;
+- handle `DEFINITION_STALE` recovery by transitioning to the wizard's
+  2nd panel instead of showing an error Alert.
 
 ### Constraints
 
@@ -1132,28 +1103,26 @@ Update the `AssessTaskModal` to:
 - The `flushSync` pattern is **not** used (per `SPEC.md` Decision
   11).
 - The choice-prompt "Link to Existing Definition" button is enabled
-  when at least one `LinkableDefinition` exists and not every
-  `LinkableDefinition` is `isAlreadyLinked`; otherwise it is disabled
-  with a `Tooltip` whose title is "Every matching definition is
-  already linked to this Google Classroom assignment." (layout
-  spec, "All-already-linked disabled state") or "No assignment
-  definitions exist for this class's year group." (layout spec,
-  "Link button disabled with Tooltip").
-- The disabled "Link to Existing Definition" button is wrapped in a
-  `<span tabIndex={0}>` so the `Tooltip` is keyboard-accessible.
+  when at least one `LinkableDefinition` exists; otherwise it is
+  disabled with a `Tooltip` whose title is "No assignment definitions
+  exist for this class's year group." (layout spec, "Link button
+  disabled with Tooltip"). There is **no** "all already linked" guard —
+  every row is always selectable.
+- The `alreadyLinkedSummary` concept is **not implemented** (removed
+  per stakeholder decision). No `aria-live` region, no "Already linked"
+  Tag, no disabled rows.
 - The choice-prompt Alert copy is unchanged; the picker Alert copy
   is extended (per the layout spec) to "Link to an existing
   definition to associate the Google Classroom assignment with
   it.".
 - The post-link flow (loading, success, error) mirrors the wizard
-  flow exactly (same body and footer patterns), **except** that the
-  loading-state footer button label is **"Link"** (not "Start
-  Assessment" — the user clicked "Link", not "Start Assessment",
-  and the button label should match the action the user initiated;
-  "Start Assessment" is the matched-path label and would be
-  misleading here, per the layout spec).
-- The `useEffect` reset hook (lines 100-127) is extended to reset
-  the new state on modal open and on fetch error.
+  flow exactly, **except** that the loading-state footer button label
+  is **"Link"** (not "Start Assessment" — the user clicked "Link", not
+  "Start Assessment", and the button label should match the action the
+  user initiated; "Start Assessment" is the matched-path label and
+  would be misleading here, per the layout spec).
+- The `useEffect` reset hook is extended to reset the new state on
+  modal open and on fetch error.
 - The cache invalidation uses the existing
   `queryClient.invalidateQueries` API with the existing
   `queryKeys.assignmentDefinitionPartials()` key.
@@ -1161,6 +1130,14 @@ Update the `AssessTaskModal` to:
   the wizard-success flow.
 - The `selectedDefinitionForLink` slot is `null` when the modal is
   in any state other than `'linking'` + `'idle'`.
+- The `hasLinkSucceeded` slot is `false` when the modal is in any
+  state where the upsert has not yet completed.
+- **`DEFINITION_STALE` recovery**: when `startAssessmentRun` rejects
+  with `DEFINITION_STALE`, the link (the alternateTitle write) is
+  preserved and the modal transitions to `noMatchResolution === 'creating'`
+  (wizard 2nd panel, task weightings) with the document re-parsed and
+  pre-populated from the stale definition's data. This applies to both
+  the link flow and the existing wizard flow.
 
 ### Delegation mandatory reads (when sub-agents are used)
 
@@ -1188,7 +1165,7 @@ Implementation mandatory docs:
 - `ASSESS_TASK_MODAL_LINK_PICKER_LAYOUT.md` (the layout spec; this
   section is its primary input)
 - `src/frontend/AGENTS.md` §1, §2, §5.1, §10
-- `src/frontend/src/features/classes/classes/AssessTaskModal/AssessTaskModal.tsx`
+- `src/frontend/src/features/classes/AssessTaskModal/AssessTaskModal.tsx`
 - `src/frontend/src/features/classes/AssessTaskModal/LinkableDefinitionList.tsx`
   (from Section 5)
 - `src/frontend/src/features/classes/AssessTaskModal/getLinkableDefinitionsForModal.ts`
@@ -1218,6 +1195,7 @@ handler functions are local to the modal file.
 
 - The `noMatchResolution` union includes `'linking'`.
 - The `selectedDefinitionForLink` state slot is added.
+- The `hasLinkSucceeded` state slot is added.
 - The `handleLinkExistingDefinition`, `handleLinkConfirm`,
   `handleLinkCancel` functions are added.
 - `renderBody` renders the `LinkableDefinitionList` in the
@@ -1225,11 +1203,9 @@ handler functions are local to the modal file.
 - `getFooterContent` renders the Link + Cancel footer in the
   `'linking'` + `'idle'` branch.
 - The choice-prompt "Link to Existing Definition" button is enabled
-  when at least one `LinkableDefinition` exists and not every row
-  is `isAlreadyLinked`; otherwise disabled with the correct
-  `Tooltip`.
-- The disabled button is keyboard-accessible (wrapped in
-  `<span tabIndex={0}>`).
+  when at least one `LinkableDefinition` exists; otherwise disabled
+  with the correct `Tooltip`. There is **no** "all already linked"
+  guard.
 - The modal calls `upsertAssignmentDefinition` with the ID-shape
   payload on Link confirm, then `startAssessmentRun` on upsert
   success.
@@ -1239,9 +1215,21 @@ handler functions are local to the modal file.
 - The modal resets all new state on modal reopen, on Cancel from
   picker, and on success close.
 - The post-link flow (loading, success, error) mirrors the wizard
-  flow exactly.
+  flow exactly, with the button label "Link" (not "Start Assessment").
+- `hasLinkSucceeded` is set to `true` after the upsert resolves
+  successfully and reset to `false` on modal reopen, on Cancel, and
+  when `noMatchResolution` leaves `'linking'`.
+- **`DEFINITION_STALE` recovery**: on `startAssessmentRun` failure
+  with `DEFINITION_STALE`, the modal transitions to
+  `noMatchResolution === 'creating'` (wizard 2nd panel) with the
+  link preserved.
 - All existing modal tests pass without modification.
 - New modal tests cover the link flow.
+- **Focus management**: when the picker opens (`'linking'` + `'idle'`),
+  focus moves to the `Radio.Group` (the first linkable row). When the
+  picker closes via Cancel, focus returns to the "Link to Existing
+  Definition" button in the choice prompt. When the modal closes entirely,
+  focus returns to the "Assess Task" trigger button on the class card.
 - Frontend lint passes: `npm run lint:frontend`.
 
 ### Required test cases (Red first)
@@ -1250,61 +1238,67 @@ Modal Vitest component tests (added to the existing
 `AssessTaskModal.spec.tsx`):
 
 1. **Choice prompt: "Link to Existing Definition" button is enabled
-   when at least one linkable, non-already-linked definition exists**
-   — `definitionPartials` includes one non-already-linked row; the
-   button is enabled.
+   when at least one linkable definition exists** — `definitionPartials`
+   includes one row matching the class's year group; the button is
+   enabled.
 2. **Choice prompt: "Link to Existing Definition" button is disabled
-   with Tooltip when every row is already linked** — all
-   `linkableDefinitions` have `isAlreadyLinked: true`; the button
-   is disabled with the correct Tooltip title.
-3. **Choice prompt: "Link to Existing Definition" button is disabled
    with Tooltip when the picker would be empty** — no
    `linkableDefinitions` match the class's year group; the button
    is disabled with the correct Tooltip title.
-4. **Choice prompt: clicking "Link to Existing Definition"
+3. **Choice prompt: clicking "Link to Existing Definition"
    transitions to `'linking'`** — the choice buttons are replaced
    by the `LinkableDefinitionList`.
-5. **Picker: clicking Cancel returns to the choice prompt** — the
+4. **Picker: clicking Cancel returns to the choice prompt** — the
    choice buttons reappear.
-6. **Picker: clicking a linkable row and clicking Link calls
+5. **Picker: clicking a row and clicking Link calls
    `upsertAssignmentDefinition` and then `startAssessmentRun`** —
    the ID-shape payload is sent (verified by spying on the service).
-7. **Picker: clicking Link with the same Google Classroom title in
-   the existing alternate titles is impossible because the row is
-   disabled** — already-linked rows are not selectable.
-8. **Picker: clicking Link with a Google Classroom title that
-   matches the partial's `primaryTitle` is impossible because the
-   row is disabled** — `primaryTitle` match is included in the
-   already-linked derivation.
-9. **Picker: empty Google Classroom topic name sends the existing
-   `alternateTopics` array unchanged (not `[]`)** — when
-   `selectedAssignment.topicName === null`, the payload spy verifies:
+6. **Picker: Link button is disabled when no row is selected** —
+   no selection → disabled Link button.
+7. **Picker: empty Google Classroom topic name sends `alternateTopics`
+   unchanged (not `[]`)** — when `selectedAssignment.topicName === null`,
+   the payload spy verifies:
    - `alternateTitles` is the **deduplicated union** (case-insensitive
      trimmed) of the existing `alternateTitles` and the new Google
-     Classroom title (the deduplication is applied even when the
-     topic is null);
+     Classroom title;
    - `alternateTopics` is the **unchanged existing array** (not `[]`,
-     not omitted) — the modal never sends an empty array because
-     that would clear the existing alternates.
-10. **Post-link: success Alert replaces the body, Close button
-    replaces the footer** — mirrors the wizard-success flow.
-11. **Post-link: error Alert replaces the body, Cancel button
-    closes the modal** — mirrors the wizard-error flow.
-12. **Post-link: cache invalidation on upsert failure** — the
+     not omitted).
+8. **Post-link: success Alert replaces the body, Close button
+   replaces the footer** — mirrors the wizard-success flow.
+9. **Post-link: error Alert replaces the body, Cancel button
+   closes the modal** — mirrors the wizard-error flow.
+10. **Post-link: cache invalidation on upsert failure** — the
     `queryClient.invalidateQueries` spy is called on
     `queryKeys.assignmentDefinitionPartials()`.
-13. **State reset on modal reopen** — the new state slots are
-    reset to idle values on modal reopen.
-14. **State reset on Cancel from picker** — `noMatchResolution`
+11. **Post-link: `startAssessmentRun` failure after a successful
+    upsert (non-DEFINITION_STALE error)** — the upsert resolves but
+    `startAssessmentRun` rejects with a non-recoverable error; the
+    error Alert is shown and the modal does not close
+    (mirrors the wizard-error flow). `hasLinkSucceeded` is `true`.
+12. **`DEFINITION_STALE` recovery: `startAssessmentRun` fails with
+    `DEFINITION_STALE` after a successful upsert** — the link is
+    preserved and the modal transitions to
+    `noMatchResolution === 'creating'` (wizard 2nd panel — task
+    weightings). `hasLinkSucceeded` is `true`.
+13. **`hasLinkSucceeded` flag management** — verify `hasLinkSucceeded`
+    is `false` on modal open, `true` after upsert resolves, and
+    `false` again on modal reopen.
+14. **State reset on modal reopen** — the new state slots (`linking`,
+    `selectedDefinitionForLink`, `hasLinkSucceeded`) are reset to idle
+    values on modal reopen.
+15. **State reset on Cancel from picker** — `noMatchResolution`
     returns to `'choice'`, `selectedDefinitionForLink` returns to
-    `null`, `selectedAssignmentForChoice` is **retained** (so the
-    choice prompt Alert still shows the Google Classroom assignment
-    title; the user is back in the choice prompt ready to pick
-    Create New Definition or close the modal).
-15. **Keyboard accessibility of the disabled "Link to Existing
-    Definition" Tooltip** — verify the disabled button is wrapped in
-    a `<span tabIndex={0}>` (the wrapper is the focusable element
-    that triggers the Tooltip on keyboard focus).
+    `null`, `hasLinkSucceeded` returns to `false`.
+    `selectedAssignmentForChoice` is **retained** (so the choice prompt
+    Alert still shows the Google Classroom assignment title; the user
+    is back in the choice prompt ready to pick Create New Definition
+    or close the modal).
+16. **Focus management: picker open moves focus to first Radio row** —
+    after transitioning to `'linking'`, the first linkable `Radio` in
+    the picker receives focus.
+17. **Focus management: Cancel from picker returns focus to the link
+    button** — after Cancel returns to `'choice'`, the "Link to Existing
+    Definition" button receives focus.
 
 ### Section checks
 
@@ -1323,14 +1317,16 @@ Add a `@remarks` JSDoc tag on `handleLinkConfirm` documenting:
   array, even when the topic name is null).
 - The cache invalidation strategy (fire-and-forget after the
   upsert resolves).
+- The `DEFINITION_STALE` recovery path (preserves link, transitions
+  to wizard 2nd panel).
 
-Add a `@remarks` JSDoc tag on the `selectedDefinitionForLink` state
-slot documenting:
+Add a `@remarks` JSDoc tag on the `hasLinkSucceeded` state slot
+documenting:
 
-- The slot is `null` when the modal is in any state other than
-  `'linking'` + `'idle'`.
-- The slot is reset on modal reopen, on Cancel from picker, and on
-  success close.
+- The slot is `true` only after the upsert resolves successfully
+  and before `startAssessmentRun` completes.
+- The slot is reset to `false` on modal reopen, on Cancel from
+  picker, and on success close.
 
 ### Implementation notes / deviations / follow-up
 
@@ -1362,8 +1358,7 @@ spec.
 - Add a `pickLinkableDefinition` interaction helper (clicks a row
   in the picker).
 - Extend `renderWithCache` options to include
-  `linkableDefinitions: LinkableDefinition[]` and
-  `selectedAssignmentForLink: Assignment | null` for the
+  `linkableDefinitions: LinkableDefinition[]` for the
   picker-rendered branch.
 
 ### Delegation mandatory reads (when sub-agents are used)
@@ -1375,13 +1370,6 @@ Testing Specialist mandatory docs:
 - `src/frontend/src/features/classes/AssessTaskModal/AssessTaskModal.spec.tsx`
   (existing usage patterns)
 - `src/frontend/AGENTS.md` §7
-
-Implementation mandatory docs:
-
-- `SPEC.md`
-- `src/frontend/AGENTS.md` §7
-- `src/frontend/src/test/classes/AssessTaskModal.test-utilities.tsx`
-- `src/frontend/src/features/classes/AssessTaskModal/AssessTaskModal.spec.tsx`
 
 ### Shared helper plan (when helper changes are expected)
 
@@ -1498,14 +1486,11 @@ Playwright e2e tests (added to
 2. **"Link to Existing Definition" button is disabled when the
    picker would be empty** — the choice prompt shows the button
    disabled.
-3. **"Link to Existing Definition" button is disabled when every
-   linkable definition is already linked** — the choice prompt
-   shows the button disabled.
-4. **Clicking the link button transitions to the picker** — the
+3. **Clicking the link button transitions to the picker** — the
    `LinkableDefinitionList` is rendered.
-5. **Picker rows show the title and the subtitle** — the row
+4. **Picker rows show the title and the subtitle** — the row
    content includes both the title and the `<topic> · <year>` subtitle.
-6. **Picker rows are sorted by fuzzy title rank with `updatedAt`
+5. **Picker rows are sorted by fuzzy title rank with `updatedAt`
    desc tie-breaker** — given three definitions with primaryTitles of
    "Poetry Analysis" (most recently changed), "Algebra HW" (older),
    and "Algebra Homework" (oldest), and a Google Classroom
@@ -1513,17 +1498,16 @@ Playwright e2e tests (added to
    first, "Algebra Homework" second, "Poetry Analysis" last.
    This proves the fuzzy ranking (not the most-recent-first sort)
    drives the display order.
-7. **Already-linked rows are rendered with the "Already linked"
-   `Tag` and are not selectable** — clicking the row does not
-   select it.
-8. **Selecting a linkable row and clicking Link calls
+6. **Selecting a row and clicking Link calls
    `upsertAssignmentDefinition` and then `startAssessmentRun`** —
    the method call list contains both.
-9. **Upsert failure shows an error Alert and the Cancel button
+7. **Upsert failure shows an error Alert and the Cancel button
    closes the modal** — the error path is exercised.
-10. **Cancel from picker returns to the choice prompt** — the
-    choice buttons reappear.
-11. **Modal state resets on reopen** — the new state slots are
+8. **Cancel from picker returns to the choice prompt** — the
+   choice buttons reappear.
+9. **`DEFINITION_STALE` triggers wizard 2nd panel** — the link
+   is preserved and the wizard re-parsing panel appears.
+10. **Modal state resets on reopen** — the new state slots are
     reset to idle values on modal reopen.
 
 ### Section checks
@@ -1561,16 +1545,11 @@ reconcile planned-only entries in canonical docs.
 ### Acceptance criteria
 
 - `SPEC.md` status updated to `Implemented v1.0` with a one-line
-  note: `Implemented 2026-06-16. See ACTION_PLAN.md for delivery
-history.` (Adjust the date to the actual implementation date.)
+  note including the implementation date.
 - `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
-  §9.13 is extended with the new `getLinkableDefinitionsForModal`
-  and `LinkableDefinitionList` entries. A new `caseInsensitiveTrimmedEquals`
-  entry is added as a feature-local private helper. The
-  `getLinkableDefinitionsForModal` entry includes a note that the
-  helper uses `fuse.js` (declared in `src/frontend/package.json`
-  as a direct dependency) for fuzzy title ranking with `updatedAt`
-  desc as the tie-breaker.
+  is extended with entries for `getLinkableDefinitionsForModal` and
+  `LinkableDefinitionList`. A new entry for `caseInsensitiveTrimmedEquals`
+  is added as a feature-local private helper.
 - `docs/developer/backend/DATA_SHAPES.md` is updated per `SPEC.md`:
   - The `AssignmentDefinitionPartial` response shape section's
     `alternateTopics` entry is updated to reflect that the field
@@ -1579,9 +1558,7 @@ history.` (Adjust the date to the actual implementation date.)
     provided.
   - The `upsertAssignmentDefinition` request shape section is
     extended to document the new optional `alternateTopics` field
-    alongside the existing optional `alternateTitles` field, with
-    the same contract (non-empty trimmed strings, deduplicated
-    on merge).
+    alongside the existing optional `alternateTitles` field.
   - The transport validation entry for the ID-shape path is
     updated to document the new `superRefine` mutual-exclusion
     rule (URL-shape vs ID-shape).
@@ -1597,7 +1574,7 @@ history.` (Adjust the date to the actual implementation date.)
 
 1. Verify the `SPEC.md` status is updated correctly.
 2. Verify the `frontend-shared-helpers-and-abstraction-standards.md`
-   §9.13 entry is updated.
+   entries are updated.
 3. Verify the `DATA_SHAPES.md` updates are correct and in scope.
 4. Verify the `api-layer.md` updates are correct and in scope.
 5. Confirm no documentation regressions in canonical docs.
@@ -1672,26 +1649,28 @@ that the transport contract is sound.
 
 ## Suggested implementation order
 
-1. **Section 1** — Backend orchestrator `_resolveAlternateTopics`
+1. **Pre-Section 4 Step** — Install `fuse.js` dependency in
+   `src/frontend/package.json`.
+2. **Section 1** — Backend orchestrator `_resolveAlternateTopics`
    (enables the write path; backend-only change; lowest coupling).
-2. **Section 2** — Frontend matcher relaxation (enables the
+3. **Section 2** — Frontend matcher relaxation (enables the
    "future match" guarantee; pure helper; no React state).
-3. **Section 3** — Frontend Zod schema extension (enables the
+4. **Section 3** — Frontend Zod schema extension (enables the
    ID-shape payload; pure schema change; no React state).
-4. **Section 4** — Frontend `getLinkableDefinitionsForModal` pure
+5. **Section 4** — Frontend `getLinkableDefinitionsForModal` pure
    helper (enables the picker derivation; depends on Section 2's
-   helper).
-5. **Section 5** — Frontend `LinkableDefinitionList` presentational
+   helper; `fuse.js` already installed).
+6. **Section 5** — Frontend `LinkableDefinitionList` presentational
    component (enables the picker UI; depends on the layout spec;
    no state).
-6. **Section 6** — Frontend modal integration (depends on Sections
+7. **Section 6** — Frontend modal integration (depends on Sections
    3, 4, and 5; orchestrates the new state and side effects).
-7. **Section 7** — Frontend test utilities extension (depends on
+8. **Section 7** — Frontend test utilities extension (depends on
    Section 6's tests; small fixture addition).
-8. **Section 8** — Playwright e2e tests (depends on Section 6;
+9. **Section 8** — Playwright e2e tests (depends on Section 6;
    exercises the full e2e flow).
-9. **Section 9** — Documentation (independent; can be done at any
-   point after the implementation lands; reconcile planned-only
-   entries to `Implemented`).
-10. **Section 10** — Regression and contract hardening (independent;
+10. **Section 9** — Documentation (independent; can be done at any
+    point after the implementation lands; reconcile planned-only
+    entries to `Implemented`).
+11. **Section 10** — Regression and contract hardening (independent;
     run after Sections 1-8 land).
