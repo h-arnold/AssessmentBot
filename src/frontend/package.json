@@ -18,6 +18,7 @@
     "@ant-design/icons": "latest",
     "@tanstack/react-query": "5.90.21",
     "antd": "latest",
+    "fuse.js": "^7.4.2",
     "react": "latest",
     "react-dom": "latest",
     "zod": "^4.3.6"
