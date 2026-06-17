@@ -14,6 +14,10 @@ This layer is deliberately REST-ish in structure:
 
 ## Shared Helper Status
 
+- ABClass parameters-object validator
+  - Status: `Implemented`
+  - Location: `validateParametersObject_()` in `src/backend/z_Api/abclass/abclassValidation.js`
+  - Behaviour: shared primitive for the `abclass/` domain folder; validates that the parameters argument is a plain object (not an array). Referenced via `/* global validateParametersObject_ */` from `abclassMutations.js` and `abclassRead.js`.
 - Assignment-definition upsert request validator
   - Status: `Implemented`
   - Location: `validateUpsertParameters_()` in `src/backend/z_Api/assignmentDefinitionPartials.js`
@@ -106,7 +110,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 This pattern is currently used by `getGoogleClassrooms_`, `getAssignmentDefinitionPartials_`,
 `deleteAssignmentDefinition_`, `upsertAssignmentDefinition_`, `getBackendConfig_`, `setBackendConfig_`,
-`upsertABClass_`, `updateABClass_`, `deleteABClass_`, and `startAssessmentRun_`.
+`upsertABClass_`, `updateABClass_`, `deleteABClass_`, `getABClass_`, and `startAssessmentRun_`.
 
 ## Validation ownership rules
 

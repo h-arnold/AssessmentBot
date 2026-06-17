@@ -232,7 +232,7 @@ class ABClassController {
     const collection = this._dbManager.getCollection(classId);
     logger.info('readClass: called', { classId, hasCollection: !!collection });
     if (!collection) {
-      throw new ClassNotFoundError(`loadClass: no stored class found for classId=${classId}`, {
+      throw new ClassNotFoundError(`readClass: no stored class found for classId=${classId}`, {
         courseId: classId,
       });
     }
@@ -240,7 +240,7 @@ class ABClassController {
     // Collection exists — read the single stored document (if any)
     const document = collection.findOne({ classId }) || null;
     if (!document) {
-      throw new ClassNotFoundError(`loadClass: no stored class found for classId=${classId}`, {
+      throw new ClassNotFoundError(`readClass: no stored class found for classId=${classId}`, {
         courseId: classId,
       });
     }
@@ -335,27 +335,61 @@ class ABClassController {
   // ──────────────────────────────────────────────
   //  Private method delegators — ABClassRoster
   // ──────────────────────────────────────────────
-  // eslint-disable-next-line jsdoc/require-jsdoc
+  /**
+   * Delegates to ABClassRoster._applyCourseMetadata.
+   * @param {ABClass} abClass - The class instance to update.
+   * @param {string} courseId - The Classroom course ID.
+   * @returns {void}
+   * @throws {Error} Rethrows any errors from ClassroomApiClient.
+   */
   _applyCourseMetadata(abClass, courseId) {
     return this._roster._applyCourseMetadata(abClass, courseId);
   }
-  // eslint-disable-next-line jsdoc/require-jsdoc
+  /**
+   * Delegates to ABClassRoster._applyTeachers.
+   * @param {ABClass} abClass - The class instance to populate.
+   * @param {string} courseId - The Classroom course ID.
+   * @returns {void}
+   * @throws {Error} Rethrows any errors from ClassroomApiClient or deserialisation.
+   */
   _applyTeachers(abClass, courseId) {
     return this._roster._applyTeachers(abClass, courseId);
   }
-  // eslint-disable-next-line jsdoc/require-jsdoc
+  /**
+   * Delegates to ABClassRoster._applyStudents.
+   * @param {ABClass} abClass - The class instance to populate.
+   * @param {string} classId - The Classroom course ID.
+   * @returns {void}
+   * @throws {Error} Rethrows any errors from ClassroomApiClient.
+   */
   _applyStudents(abClass, classId) {
     return this._roster._applyStudents(abClass, classId);
   }
-  // eslint-disable-next-line jsdoc/require-jsdoc
+  /**
+   * Delegates to ABClassRoster._buildClassroomRosterUpdatePayload.
+   * @param {ABClass} abClass - The class instance to serialise.
+   * @returns {Object} Payload with className, classOwner, teachers, and students.
+   */
   _buildClassroomRosterUpdatePayload(abClass) {
     return this._roster._buildClassroomRosterUpdatePayload(abClass);
   }
-  // eslint-disable-next-line jsdoc/require-jsdoc
+  /**
+   * Delegates to ABClassRoster._refreshRoster.
+   * @param {ABClass} abClass - The class instance to refresh.
+   * @param {string} classId - The Classroom course ID.
+   * @returns {void}
+   */
   _refreshRoster(abClass, classId) {
     return this._roster._refreshRoster(abClass, classId);
   }
-  // eslint-disable-next-line jsdoc/require-jsdoc
+  /**
+   * Delegates to ABClassRoster._persistRoster.
+   * @param {Object} collection - The JsonDb collection to persist to.
+   * @param {Object} existingDocument - The existing document (if any) to identify for update.
+   * @param {ABClass} abClass - The class instance to persist.
+   * @returns {void}
+   * @throws {Error} Rethrows any persistence errors.
+   */
   _persistRoster(collection, existingDocument, abClass) {
     return this._roster._persistRoster(collection, existingDocument, abClass);
   }
@@ -363,23 +397,51 @@ class ABClassController {
   // ──────────────────────────────────────────────
   //  Private method delegators — ABClassAssignmentOps
   // ──────────────────────────────────────────────
-  // eslint-disable-next-line jsdoc/require-jsdoc
+  /**
+   * Delegates to ABClassAssignmentOps._loadFullAssignmentDocument.
+   * @param {string} courseId - The Classroom course ID.
+   * @param {string} assignmentId - The assignment ID.
+   * @returns {Object} The assignment document.
+   * @throws {AssignmentNotFoundError} If the document is not found.
+   */
   _loadFullAssignmentDocument(courseId, assignmentId) {
     return this._assignmentOps._loadFullAssignmentDocument(courseId, assignmentId);
   }
-  // eslint-disable-next-line jsdoc/require-jsdoc
+  /**
+   * Delegates to ABClassAssignmentOps._validateAssignmentDocument.
+   * @param {Object} document - The assignment document to validate.
+   * @returns {void}
+   * @throws {Error} If required fields are missing.
+   */
   _validateAssignmentDocument(document) {
     return this._assignmentOps._validateAssignmentDocument(document);
   }
-  // eslint-disable-next-line jsdoc/require-jsdoc
+  /**
+   * Delegates to ABClassAssignmentOps._ensureFullDefinition.
+   * @param {Assignment} assignment - The assignment to ensure has a full definition.
+   * @returns {void}
+   * @throws {Error} If the authoritative definition is partial.
+   */
   _ensureFullDefinition(assignment) {
     return this._assignmentOps._ensureFullDefinition(assignment);
   }
-  // eslint-disable-next-line jsdoc/require-jsdoc
+  /**
+   * Delegates to ABClassAssignmentOps._replaceAssignmentInClass.
+   * @param {ABClass} abClass - The class containing the assignments.
+   * @param {string} assignmentId - The assignment ID to replace.
+   * @param {Assignment} hydratedAssignment - The new fully hydrated assignment instance.
+   * @returns {void}
+   * @throws {Error} If the assignment ID is not found in the class.
+   */
   _replaceAssignmentInClass(abClass, assignmentId, hydratedAssignment) {
     return this._assignmentOps._replaceAssignmentInClass(abClass, assignmentId, hydratedAssignment);
   }
-  // eslint-disable-next-line jsdoc/require-jsdoc
+  /**
+   * Delegates to ABClassAssignmentOps._getFullAssignmentCollectionName.
+   * @param {string} courseId - The Classroom course ID.
+   * @param {string} assignmentId - The assignment ID.
+   * @returns {string} Collection name following pattern: assign_full_<courseId>_<assignmentId>.
+   */
   _getFullAssignmentCollectionName(courseId, assignmentId) {
     return this._assignmentOps._getFullAssignmentCollectionName(courseId, assignmentId);
   }
@@ -421,7 +483,12 @@ class ABClassController {
   _persistClassAndPartial(abClass) {
     return this._persistence.persistClassAndPartial(abClass);
   }
-  // eslint-disable-next-line jsdoc/require-jsdoc
+  /**
+   * Delegates to ABClassPersistence._upsertClassPartial.
+   * @param {Object} abClass - The ABClass instance to persist as a partial.
+   * @returns {void}
+   * @throws {Error} Rethrows any persistence error.
+   */
   _upsertClassPartial(abClass) {
     return this._persistence._upsertClassPartial(abClass);
   }
@@ -429,27 +496,58 @@ class ABClassController {
   // ──────────────────────────────────────────────
   //  Private method delegators — ABClassValidation
   // ──────────────────────────────────────────────
-  // eslint-disable-next-line jsdoc/require-jsdoc
+  /**
+   * Delegates to ABClassValidation._validateClassId.
+   * @param {*} classId - The class ID to validate.
+   * @param {string} methodName - The calling method name for error reporting.
+   * @returns {string} The validated classId.
+   * @throws {TypeError} If classId is not a non-empty string.
+   */
   _validateClassId(classId, methodName) {
     return this._validation._validateClassId(classId, methodName);
   }
-  // eslint-disable-next-line jsdoc/require-jsdoc
+  /**
+   * Delegates to ABClassValidation._validateDeleteClassId.
+   * @param {*} classId - The class ID to validate.
+   * @param {string} methodName - The calling method name for error reporting.
+   * @returns {string} The validated classId.
+   * @throws {TypeError} If classId is invalid or contains path traversal characters.
+   */
   _validateDeleteClassId(classId, methodName) {
     return this._validation._validateDeleteClassId(classId, methodName);
   }
-  // eslint-disable-next-line jsdoc/require-jsdoc
+  /**
+   * Delegates to ABClassValidation._isMissingCollectionError.
+   * @param {Error} error - The error to check.
+   * @returns {boolean} True if the error is a COLLECTION_NOT_FOUND error.
+   */
   _isMissingCollectionError(error) {
     return this._validation._isMissingCollectionError(error);
   }
-  // eslint-disable-next-line jsdoc/require-jsdoc
+  /**
+   * Delegates to ABClassValidation._validateCourseLength.
+   * @param {*} courseLength - The course length to validate.
+   * @param {string} methodName - The calling method name for error reporting.
+   * @returns {number} The validated courseLength.
+   * @throws {TypeError} If courseLength is not an integer >= 1.
+   */
   _validateCourseLength(courseLength, methodName) {
     return this._validation._validateCourseLength(courseLength, methodName);
   }
-  // eslint-disable-next-line jsdoc/require-jsdoc
+  /**
+   * Delegates to ABClassValidation._buildUpdatePatch.
+   * @param {Object} parameters - The update parameters object.
+   * @returns {Object} Patch object containing only provided fields.
+   */
   _buildUpdatePatch(parameters) {
     return this._validation._buildUpdatePatch(parameters);
   }
-  // eslint-disable-next-line jsdoc/require-jsdoc
+  /**
+   * Delegates to ABClassValidation._applyPatchToClass.
+   * @param {ABClass} abClass - The class instance to update.
+   * @param {Object} patch - The patch object containing fields to update.
+   * @returns {ABClass} The updated class instance.
+   */
   _applyPatchToClass(abClass, patch) {
     return this._validation._applyPatchToClass(abClass, patch);
   }
@@ -457,15 +555,28 @@ class ABClassController {
   // ──────────────────────────────────────────────
   //  Private method delegators — ABClassResponseMapper
   // ──────────────────────────────────────────────
-  // eslint-disable-next-line jsdoc/require-jsdoc
+  /**
+   * Delegates to ABClassResponseMapper._normaliseClassPartial.
+   * @param {Object} partialDocument - Raw partial document read from storage.
+   * @returns {Object} Normalised class partial payload.
+   * @throws {TypeError} If the document is not a plain object or lacks required fields.
+   */
   _normaliseClassPartial(partialDocument) {
     return this._responseMapper._normaliseClassPartial(partialDocument);
   }
-  // eslint-disable-next-line jsdoc/require-jsdoc
+  /**
+   * Delegates to ABClassResponseMapper._buildClassSummary.
+   * @param {ABClass} abClass - The class instance to summarise.
+   * @returns {Object} Partial JSON summary of the class.
+   */
   _buildClassSummary(abClass) {
     return this._responseMapper._buildClassSummary(abClass);
   }
-  // eslint-disable-next-line jsdoc/require-jsdoc
+  /**
+   * Delegates to ABClassResponseMapper._toReadView.
+   * @param {ABClass} abClass - The class instance to convert.
+   * @returns {Object} A plain read-view object.
+   */
   _toReadView(abClass) {
     return this._responseMapper._toReadView(abClass);
   }
