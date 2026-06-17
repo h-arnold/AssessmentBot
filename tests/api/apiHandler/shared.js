@@ -12,7 +12,7 @@ const googleClassroomsHandlerPath = '../../../src/backend/z_Api/googleClassrooms
 const assignmentDefinitionTransportPath =
   '../../../src/backend/z_Api/assignmentDefinitionTransport.js';
 const apiConfigPath = '../../../src/backend/z_Api/apiConfig.js';
-const abclassMutationsPath = '../../../src/backend/z_Api/abclassMutations.js';
+const abclassMutationsPath = '../../../src/backend/z_Api/abclass/abclassMutations.js';
 
 const {
   callAuthorisationStatus,
@@ -31,6 +31,7 @@ const ABCLASS_TRANSPORT_API_METHOD_NAMES = Object.freeze([
   'upsertABClass',
   'updateABClass',
   'deleteABClass',
+  'getABClass',
 ]);
 
 const BACKEND_CONFIG_API_METHOD_NAMES = Object.freeze(['getBackendConfig', 'setBackendConfig']);
@@ -72,6 +73,9 @@ const ABCLASS_TRANSPORT_PARAMS = Object.freeze({
   deleteABClass: {
     classId: 'class-delete-001',
   },
+  getABClass: {
+    classId: 'class-read-001',
+  },
 });
 
 const ABCLASS_TRANSPORT_RESULTS = Object.freeze({
@@ -80,6 +84,7 @@ const ABCLASS_TRANSPORT_RESULTS = Object.freeze({
   upsertABClass: { classId: 'class-upsert-001', saved: true },
   updateABClass: { classId: 'class-update-001', updated: true },
   deleteABClass: { classId: 'class-delete-001', deleted: true },
+  getABClass: { classId: 'class-read-001', className: '10A Computer Science' },
 });
 
 const REFERENCE_DATA_RESULTS = Object.freeze({
@@ -444,6 +449,7 @@ const DEFAULT_DISPATCHER_BEHAVIOUR = Object.freeze({
     upsertABClass_: () => ABCLASS_TRANSPORT_RESULTS.upsertABClass,
     updateABClass_: () => ABCLASS_TRANSPORT_RESULTS.updateABClass,
     deleteABClass_: () => ABCLASS_TRANSPORT_RESULTS.deleteABClass,
+    getABClass_: () => ABCLASS_TRANSPORT_RESULTS.getABClass,
   },
   assignmentDefinitionBehaviour: {
     getAssignmentDefinitionPartials_: () =>

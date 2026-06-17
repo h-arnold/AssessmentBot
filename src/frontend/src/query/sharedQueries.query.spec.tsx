@@ -19,6 +19,7 @@ const getCohortsMock = vi.fn();
 const getGoogleClassroomsMock = vi.fn();
 const getAssignmentTopicsMock = vi.fn();
 const getYearGroupsMock = vi.fn();
+const getABClassMock = vi.fn();
 
 vi.mock('../services/authService/authService', () => ({
   getAuthorisationStatus: getAuthorisationStatusMock,
@@ -43,6 +44,10 @@ vi.mock('../services/assignmentDefinition/assignmentTopicsService', () => ({
 vi.mock('../services/referenceData/referenceDataService', () => ({
   getCohorts: getCohortsMock,
   getYearGroups: getYearGroupsMock,
+}));
+
+vi.mock('../services/googleClassrooms/classDetail/classDetailService', () => ({
+  getABClass: getABClassMock,
 }));
 
 // The configureDeferredWarmupDatasets function is imported from the shared module
@@ -239,5 +244,34 @@ describe('shared query definitions', () => {
     });
 
     await expect(firstWarmupPromise).resolves.toEqual(standardWarmupResult);
+  });
+
+  it('creates the abClass query key factory', () => {
+    expect(queryKeys.abClass('class-001')).toEqual(['abClass', 'class-001']);
+  });
+
+  it('delegates the abClass query to its service loader', async () => {
+    const expectedResult = { classId: 'class-001' };
+    getABClassMock.mockResolvedValueOnce(expectedResult);
+
+    const { getABClassQueryOptions } = await import('./sharedQueries');
+    const queryClient = createAppQueryClient();
+    const queryOptions = getABClassQueryOptions('class-001');
+
+    expect(queryOptions.queryKey).toEqual(['abClass', 'class-001']);
+    await expect(queryClient.fetchQuery(queryOptions)).resolves.toEqual(expectedResult);
+    expect(getABClassMock).toHaveBeenCalledWith({ classId: 'class-001' });
+    expect(getABClassMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('propagates errors from getABClass through the query fn', async () => {
+    const testError = new ZodError([]);
+    getABClassMock.mockRejectedValueOnce(testError);
+
+    const { getABClassQueryOptions } = await import('./sharedQueries');
+
+    await expect(
+      createAppQueryClient().fetchQuery(getABClassQueryOptions('class-001')),
+    ).rejects.toThrow();
   });
 });
