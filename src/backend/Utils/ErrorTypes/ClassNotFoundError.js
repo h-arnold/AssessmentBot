@@ -30,7 +30,6 @@ class ClassNotFoundError extends Error {
 
     // Maintain proper stack trace (V8)
     if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, ClassNotFoundError);
     }
   }
 }
