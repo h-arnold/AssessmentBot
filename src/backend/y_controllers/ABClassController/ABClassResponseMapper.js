@@ -53,16 +53,25 @@ class ABClassResponseMapper {
    * Assignments are included as Assignment.toPartialJSON() output.
    * Defence-in-depth: strips _hydrationLevel and progressTracker from each assignment.
    *
+   * @remarks Iterates `abClass.assignments` (model instances) rather than
+   * `json.assignments` (already-serialised plain objects) so that
+   * `Assignment.toPartialJSON()` is actually invoked. Once `ABClass.toJSON()` has
+   * been called, each element of `json.assignments` is a plain object produced by
+   * `Assignment.toJSON()` and has no `toPartialJSON` method, which would cause
+   * the partial-shape transformation to be silently skipped and the full
+   * assignment payload (including `tasks` and document IDs) to leak into the
+   * response.
+   *
    * @param {ABClass} abClass - The class instance to convert.
    * @returns {Object} A plain read-view object.
    */
   _toReadView(abClass) {
     const json = abClass.toJSON();
 
-    if (Array.isArray(json.assignments)) {
-      json.assignments = json.assignments.map((assignment) => {
+    if (Array.isArray(abClass.assignments)) {
+      json.assignments = abClass.assignments.map((assignment) => {
         const partial =
-          typeof assignment.toPartialJSON === 'function' ? assignment.toPartialJSON() : assignment;
+          typeof assignment.toPartialJSON === 'function' ? assignment.toPartialJSON() : assignment.toJSON();
         // Defence-in-depth: strip _hydrationLevel and progressTracker
         const { _hydrationLevel, progressTracker, ...safe } = partial;
         return safe;

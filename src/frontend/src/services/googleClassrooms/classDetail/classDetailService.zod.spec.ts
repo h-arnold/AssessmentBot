@@ -326,4 +326,54 @@ describe('AssignmentDefinitionPartialSchema', () => {
       AssignmentDefinitionPartialSchema.parse({ ...validAssignmentDefinitionPartial, tasks: [] })
     ).toThrow();
   });
+
+  // REGRESSION: getABClass can return null for referenceDocumentId,
+  // templateDocumentId, and assignmentWeighting (AssignmentDefinition.toPartialJSON
+  // passes them through from the instance, where they can be null). Previously the
+  // schema declared these as non-nullable, which caused Zod validation crashes on
+  // legitimate backend responses. The convention in assignmentDefinition.zod.ts
+  // (WeightingSchema.nullable()) and assignmentDefinitionPartials.zod.ts
+  // (z.number().nullable()) already marks assignmentWeighting as nullable.
+  it('accepts null for referenceDocumentId, templateDocumentId, and assignmentWeighting', () => {
+    expect(() =>
+      AssignmentDefinitionPartialSchema.parse({
+        ...validAssignmentDefinitionPartial,
+        referenceDocumentId: null,
+        templateDocumentId: null,
+        assignmentWeighting: null,
+      })
+    ).not.toThrow();
+  });
+
+  it('rejects undefined for referenceDocumentId, templateDocumentId, and assignmentWeighting', () => {
+    const missing = { ...validAssignmentDefinitionPartial };
+    delete (missing as Record<string, unknown>).referenceDocumentId;
+    delete (missing as Record<string, unknown>).templateDocumentId;
+    delete (missing as Record<string, unknown>).assignmentWeighting;
+    expect(() => AssignmentDefinitionPartialSchema.parse(missing)).toThrow();
+  });
+
+  it('still rejects non-null, non-string values for referenceDocumentId and templateDocumentId', () => {
+    expect(() =>
+      AssignmentDefinitionPartialSchema.parse({
+        ...validAssignmentDefinitionPartial,
+        referenceDocumentId: 42,
+      })
+    ).toThrow();
+    expect(() =>
+      AssignmentDefinitionPartialSchema.parse({
+        ...validAssignmentDefinitionPartial,
+        templateDocumentId: { id: 'oops' },
+      })
+    ).toThrow();
+  });
+
+  it('still rejects non-null, non-number values for assignmentWeighting', () => {
+    expect(() =>
+      AssignmentDefinitionPartialSchema.parse({
+        ...validAssignmentDefinitionPartial,
+        assignmentWeighting: 'not-a-number',
+      })
+    ).toThrow();
+  });
 });

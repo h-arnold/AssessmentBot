@@ -21,10 +21,15 @@ import {
 const ABClassModule = require('../../src/backend/Models/ABClass.js');
 const TeacherModule = require('../../src/backend/Models/Teacher.js');
 const StudentModule = require('../../src/backend/Models/Student.js');
+const AssignmentModule = require('../../src/backend/AssignmentProcessor/Assignment.js');
+const AssignmentDefinitionModule = require('../../src/backend/Models/AssignmentDefinition.js');
 
 const ABClass = ABClassModule.ABClass || ABClassModule;
 const Teacher = TeacherModule.Teacher || TeacherModule;
 const Student = StudentModule.Student || StudentModule;
+const Assignment = AssignmentModule.default || AssignmentModule;
+const AssignmentDefinition =
+  AssignmentDefinitionModule.AssignmentDefinition || AssignmentDefinitionModule;
 
 let ClassNotFoundError;
 try {
@@ -444,6 +449,89 @@ describe('ABClassController._toReadView', () => {
     const result = controller._toReadView(abClass);
 
     expect(result.assignments).toHaveLength(1);
+    expect(result.assignments[0]).not.toHaveProperty('_hydrationLevel');
+    expect(result.assignments[0]).not.toHaveProperty('progressTracker');
+  });
+
+  /* 10. REGRESSION — _toReadView must call Assignment.toPartialJSON() (not Assignment.toJSON())
+   *     on real Assignment instances. Previously the method iterated `json.assignments`
+   *     (the result of `abClass.toJSON()`), which is a list of plain objects produced by
+   *     `Assignment.toJSON()` with no `toPartialJSON` method. This caused the full
+   *     assignment payload — including `tasks`, `referenceDocumentId`, and
+   *     `templateDocumentId` at the root — to leak into the API response, violating
+   *     SPEC.md decision 4 and `docs/developer/backend/DATA_SHAPES.md` "ABClass full-read".
+   *
+   *     The mock used by tests 7–9 lacks `toJSON`, so the bug was masked; this test
+   *     uses a real Assignment instance (constructed via `Object.create(Assignment.prototype)`
+   *     to avoid the `Classroom.Courses.CourseWork.get` side-effect in the constructor)
+   *     to exercise the production code path.
+   */
+  it('uses Assignment.toPartialJSON() output (not the full toJSON shape) on a real Assignment instance', () => {
+    // Full AssignmentDefinition with a populated tasks tree. The toJSON() path would
+    // expose this tree at `assignmentDefinition.tasks`; the toPartialJSON() path forces
+    // it to null.
+    const fullDef = new AssignmentDefinition({
+      primaryTitle: 'Essay Draft',
+      primaryTopic: 'English',
+      yearGroupKey: 'year-10',
+      yearGroupLabel: 'Year 10',
+      documentType: 'SLIDES',
+      referenceDocumentId: 'ref-doc-001',
+      templateDocumentId: 'tpl-doc-001',
+      tasks: { t1: { taskTitle: 'Task 1' } },
+    });
+
+    // Construct a real Assignment instance without invoking the constructor
+    // (which calls `fetchAssignmentName` and would require a Classroom global mock).
+    const realAssignment = Object.create(Assignment.prototype);
+    realAssignment.courseId = 'class-001';
+    realAssignment.assignmentId = 'assignment-001';
+    realAssignment.assignmentName = 'Essay Draft';
+    realAssignment.dueDate = new Date('2026-01-15T23:59:59.000Z');
+    realAssignment.lastUpdated = new Date('2026-01-10T12:00:00.000Z');
+    realAssignment.createdAt = new Date('2026-01-01T09:00:00.000Z');
+    realAssignment.assignmentDefinition = fullDef;
+    realAssignment.submissions = [];
+    realAssignment.progressTracker = ProgressTracker.getInstance();
+    realAssignment._hydrationLevel = 'partial';
+
+    const teacherObj = buildTeacher();
+
+    const abClass = new ABClass({
+      classId: 'class-001',
+      className: 'Test Class',
+      cohortKey: 'coh-2025',
+      courseLength: 2,
+      yearGroupKey: 'yg-10',
+      classOwner: teacherObj,
+      teachers: [teacherObj],
+      students: [],
+      assignments: [realAssignment],
+      active: true,
+    });
+
+    const controller = new ABClassController();
+    const result = controller._toReadView(abClass);
+
+    // The fix: each assignment must be Assignment.toPartialJSON() output, not the
+    // full Assignment.toJSON() output. Distinguishing signals:
+    //   - Partial shape has NO `tasks` field at the root (toJSON exposes it via
+    //     _extractFullDefinitionFields).
+    //   - Partial shape has NO `referenceDocumentId` / `templateDocumentId` at the root
+    //     (toJSON exposes them via _extractFullDefinitionFields; partial embeds them
+    //     only inside `assignmentDefinition`).
+    //   - Partial shape's `assignmentDefinition.tasks` is `null` (forced by
+    //     AssignmentDefinition.toPartialJSON()).
+    expect(result.assignments).toHaveLength(1);
+    expect(result.assignments[0].documentType).toBe('SLIDES');
+    expect(result.assignments[0]).not.toHaveProperty('tasks');
+    expect(result.assignments[0]).not.toHaveProperty('referenceDocumentId');
+    expect(result.assignments[0]).not.toHaveProperty('templateDocumentId');
+    expect(result.assignments[0].assignmentDefinition.tasks).toBeNull();
+    // Document IDs survive, but only inside the embedded partial definition.
+    expect(result.assignments[0].assignmentDefinition.referenceDocumentId).toBe('ref-doc-001');
+    expect(result.assignments[0].assignmentDefinition.templateDocumentId).toBe('tpl-doc-001');
+    // Defence-in-depth strip still applies.
     expect(result.assignments[0]).not.toHaveProperty('_hydrationLevel');
     expect(result.assignments[0]).not.toHaveProperty('progressTracker');
   });

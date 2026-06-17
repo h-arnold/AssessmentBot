@@ -53,9 +53,15 @@ export const AssignmentDefinitionPartialSchema = z.object({
   alternateTitles: z.array(z.string()),
   alternateTopics: z.array(z.string()),
   documentType: z.string(),
-  referenceDocumentId: z.string(),
-  templateDocumentId: z.string(),
-  assignmentWeighting: z.number(),
+  // These three fields are nullable on the wire: AssignmentDefinition.toPartialJSON()
+  // passes them through from the instance, and AssignmentDefinition.fromJSON() coerces
+  // missing referenceDocumentId / templateDocumentId to null. assignmentWeighting is
+  // marked nullable to match the existing convention in
+  // assignmentDefinition.zod.ts (WeightingSchema.nullable()) and
+  // assignmentDefinitionPartials.zod.ts (z.number().nullable()).
+  referenceDocumentId: z.string().nullable(),
+  templateDocumentId: z.string().nullable(),
+  assignmentWeighting: z.number().nullable(),
   definitionKey: z.string(),
   tasks: z.null(),
   createdAt: z.string(),
