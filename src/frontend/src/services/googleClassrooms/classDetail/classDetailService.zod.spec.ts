@@ -1,0 +1,329 @@
+import { describe, expect, it } from 'vitest';
+import {
+  AssignmentDefinitionPartialSchema,
+  AssignmentPartialSchema,
+  BaseTaskArtifactPartialSchema,
+  ClassFullResponseSchema,
+  ClassFullSchema,
+  StudentSubmissionPartialSchema,
+  StudentSummarySchema,
+  TeacherSummarySchema,
+} from './classDetailService.zod';
+
+const validStudentSummary = {
+  name: 'Alice Johnson',
+  email: 'alice@example.com',
+  id: 'student-1',
+};
+
+const validBaseTaskArtifactPartial = {
+  taskId: 'task-1',
+  role: 'student',
+  pageId: 'slide-5',
+  documentId: 'doc-abc',
+  content: null,
+  contentHash: null,
+  metadata: { slideOrder: 3 },
+  uid: 'uid-artifact-1',
+  type: 'slides',
+};
+
+const validStudentSubmissionPartial = {
+  id: 'sub-1',
+  taskId: 'task-1',
+  artifact: validBaseTaskArtifactPartial,
+  assessments: {
+    accuracy: { score: 4, feedback: 'Good work' },
+    completeness: { score: 5 },
+  },
+  feedback: { comment: 'Great effort' },
+};
+
+const validAssignmentDefinitionPartial = {
+  primaryTitle: 'Algebra Baseline',
+  primaryTopic: 'Algebra',
+  primaryTopicKey: 'algebra',
+  yearGroupKey: 'year-10',
+  yearGroupLabel: 'Year 10',
+  alternateTitles: ['Algebra Basics v2'],
+  alternateTopics: ['Linear Equations'],
+  documentType: 'SLIDES',
+  referenceDocumentId: 'ref-doc-123',
+  templateDocumentId: 'template-doc-456',
+  assignmentWeighting: 1,
+  definitionKey: 'algebra-baseline',
+  tasks: null,
+  createdAt: '2025-01-01T00:00:00.000Z',
+  updatedAt: '2025-05-01T00:00:00.000Z',
+};
+
+const validAssignmentPartial = {
+  courseId: 'course-1',
+  assignmentId: 'assign-1',
+  assignmentName: 'Algebra Basics',
+  dueDate: '2025-06-01T23:59:59.000Z',
+  lastUpdated: '2025-05-15T12:00:00.000Z',
+  createdAt: '2025-05-01T08:00:00.000Z',
+  documentType: 'SLIDES',
+  submissions: [validStudentSubmissionPartial],
+  assignmentDefinition: validAssignmentDefinitionPartial,
+};
+
+const validClassFull = {
+  classId: 'class-1',
+  className: 'Mathematics 10A',
+  cohortKey: 'cohort-2025',
+  courseLength: 2,
+  yearGroupKey: 'year-10',
+  classOwner: {
+    userId: 'owner-1',
+    email: 'owner-1@example.com',
+    teacherName: 'Dr Smith',
+  },
+  teachers: [
+    {
+      userId: 'teacher-1',
+      email: 'teacher-1@example.com',
+      teacherName: 'Ms Example',
+    },
+  ],
+  students: [validStudentSummary],
+  assignments: [validAssignmentPartial],
+  active: true,
+};
+
+describe('ClassFullSchema', () => {
+  it('is exported from the zod module', () => {
+    expect(ClassFullSchema).toBeDefined();
+  });
+
+  it('parses a representative full response with all fields populated', () => {
+    const result = ClassFullSchema.parse(validClassFull);
+    expect(result).toEqual(validClassFull);
+  });
+
+  it('rejects a response missing classId', () => {
+    const missingClassId = { ...validClassFull };
+    delete (missingClassId as Record<string, unknown>).classId;
+    expect(() => ClassFullSchema.parse(missingClassId)).toThrow();
+  });
+
+  it('rejects a response where classOwner has wrong type (string instead of object)', () => {
+    expect(() =>
+      ClassFullSchema.parse({ ...validClassFull, classOwner: 'not-an-object' })
+    ).toThrow();
+  });
+});
+
+describe('ClassFullResponseSchema', () => {
+  it('accepts null (the null-result contract)', () => {
+    expect(ClassFullResponseSchema.parse(null)).toBeNull();
+  });
+
+  it('rejects undefined', () => {
+    // eslint-disable-next-line unicorn/no-useless-undefined -- value matters for parse() test
+    expect(() => ClassFullResponseSchema.parse(undefined)).toThrow();
+  });
+});
+
+describe('AssignmentPartialSchema', () => {
+  it('parses a representative partial assignment with all expected fields', () => {
+    const result = AssignmentPartialSchema.parse(validAssignmentPartial);
+    expect(result).toEqual(validAssignmentPartial);
+  });
+
+  it('accepts createdAt as ISO string and documentType as string', () => {
+    const result = AssignmentPartialSchema.parse(validAssignmentPartial);
+    expect(result.createdAt).toBe('2025-05-01T08:00:00.000Z');
+    expect(result.documentType).toBe('SLIDES');
+  });
+
+  it('accepts submissions with redacted artifacts (content/contentHash set to null)', () => {
+    const result = AssignmentPartialSchema.parse(validAssignmentPartial);
+    expect(result.submissions).toHaveLength(1);
+    expect(result.submissions[0].artifact.content).toBeNull();
+    expect(result.submissions[0].artifact.contentHash).toBeNull();
+    expect(result.submissions[0].artifact.taskId).toBe('task-1');
+  });
+
+  it('accepts assignmentDefinition with tasks set to null', () => {
+    const result = AssignmentPartialSchema.parse(validAssignmentPartial);
+    expect(result.assignmentDefinition.tasks).toBeNull();
+    expect(result.assignmentDefinition.primaryTitle).toBe('Algebra Baseline');
+  });
+
+  it('rejects a partial assignment missing courseId', () => {
+    const missing = { ...validAssignmentPartial };
+    delete (missing as Record<string, unknown>).courseId;
+    expect(() => AssignmentPartialSchema.parse(missing)).toThrow();
+  });
+
+  it('rejects a partial assignment missing assignmentId', () => {
+    const missing = { ...validAssignmentPartial };
+    delete (missing as Record<string, unknown>).assignmentId;
+    expect(() => AssignmentPartialSchema.parse(missing)).toThrow();
+  });
+
+  it('rejects a partial assignment missing createdAt', () => {
+    const missing = { ...validAssignmentPartial };
+    delete (missing as Record<string, unknown>).createdAt;
+    expect(() => AssignmentPartialSchema.parse(missing)).toThrow();
+  });
+
+  it('rejects a partial assignment with non-array submissions', () => {
+    expect(() =>
+      AssignmentPartialSchema.parse({ ...validAssignmentPartial, submissions: 'not-array' })
+    ).toThrow();
+  });
+
+  it('rejects a partial assignment missing assignmentDefinition', () => {
+    const missing = { ...validAssignmentPartial };
+    delete (missing as Record<string, unknown>).assignmentDefinition;
+    expect(() => AssignmentPartialSchema.parse(missing)).toThrow();
+  });
+});
+
+describe('TeacherSummarySchema', () => {
+  it('parses a valid teacher summary', () => {
+    const result = TeacherSummarySchema.parse({
+      userId: 'owner-1',
+      email: 'owner-1@example.com',
+      teacherName: 'Dr Smith',
+    });
+    expect(result).toEqual({
+      userId: 'owner-1',
+      email: 'owner-1@example.com',
+      teacherName: 'Dr Smith',
+    });
+  });
+
+  it('normalises omitted teacherName to null', () => {
+    const result = TeacherSummarySchema.parse({
+      userId: 'owner-1',
+      email: 'owner-1@example.com',
+    });
+    expect(result.teacherName).toBeNull();
+  });
+
+  it('accepts all-null teacher summary', () => {
+    const result = TeacherSummarySchema.parse({
+      userId: null,
+      email: null,
+      teacherName: null,
+    });
+    expect(result).toEqual({
+      userId: null,
+      email: null,
+      teacherName: null,
+    });
+  });
+});
+
+describe('StudentSummarySchema', () => {
+  it('parses a valid student summary', () => {
+    const result = StudentSummarySchema.parse(validStudentSummary);
+    expect(result).toEqual(validStudentSummary);
+  });
+
+  it('rejects a student summary missing email', () => {
+    const missingEmail = { ...validStudentSummary };
+    delete (missingEmail as Record<string, unknown>).email;
+    expect(() => StudentSummarySchema.parse(missingEmail)).toThrow();
+  });
+
+  it('rejects a student summary missing name', () => {
+    const missingName = { email: 'alice@example.com', id: 'student-1' };
+    expect(() => StudentSummarySchema.parse(missingName)).toThrow();
+  });
+
+  it('rejects a student summary missing id', () => {
+    const missingId = { name: 'Alice', email: 'alice@example.com' };
+    expect(() => StudentSummarySchema.parse(missingId)).toThrow();
+  });
+});
+
+describe('StudentSubmissionPartialSchema', () => {
+  it('parses a valid submission partial with redacted artifact', () => {
+    const result = StudentSubmissionPartialSchema.parse(validStudentSubmissionPartial);
+    expect(result.artifact.content).toBeNull();
+    expect(result.artifact.contentHash).toBeNull();
+    expect(result.id).toBe('sub-1');
+    expect(result.taskId).toBe('task-1');
+  });
+
+  it('rejects a submission missing id', () => {
+    const missing = { ...validStudentSubmissionPartial };
+    delete (missing as Record<string, unknown>).id;
+    expect(() => StudentSubmissionPartialSchema.parse(missing)).toThrow();
+  });
+
+  it('rejects a submission missing artifact', () => {
+    const missing = { ...validStudentSubmissionPartial };
+    delete (missing as Record<string, unknown>).artifact;
+    expect(() => StudentSubmissionPartialSchema.parse(missing)).toThrow();
+  });
+});
+
+describe('BaseTaskArtifactPartialSchema', () => {
+  it('parses a valid base task artifact partial with content and contentHash set to null', () => {
+    const result = BaseTaskArtifactPartialSchema.parse(validBaseTaskArtifactPartial);
+    expect(result.content).toBeNull();
+    expect(result.contentHash).toBeNull();
+    expect(result.type).toBe('slides');
+    expect(result.taskId).toBe('task-1');
+    expect(result.role).toBe('student');
+    expect(result.uid).toBe('uid-artifact-1');
+  });
+
+  it('rejects an artifact missing taskId', () => {
+    const missing = { ...validBaseTaskArtifactPartial };
+    delete (missing as Record<string, unknown>).taskId;
+    expect(() => BaseTaskArtifactPartialSchema.parse(missing)).toThrow();
+  });
+
+  it('rejects an artifact missing type', () => {
+    const missing = { ...validBaseTaskArtifactPartial };
+    delete (missing as Record<string, unknown>).type;
+    expect(() => BaseTaskArtifactPartialSchema.parse(missing)).toThrow();
+  });
+
+  it('rejects an artifact with non-null content', () => {
+    expect(() =>
+      BaseTaskArtifactPartialSchema.parse({ ...validBaseTaskArtifactPartial, content: 'data' })
+    ).toThrow();
+  });
+});
+
+describe('AssignmentDefinitionPartialSchema', () => {
+  it('parses a valid assignment definition partial with tasks set to null', () => {
+    const result = AssignmentDefinitionPartialSchema.parse(validAssignmentDefinitionPartial);
+    expect(result.tasks).toBeNull();
+    expect(result.definitionKey).toBe('algebra-baseline');
+    expect(result.documentType).toBe('SLIDES');
+    expect(result.primaryTitle).toBe('Algebra Baseline');
+    expect(result.yearGroupLabel).toBe('Year 10');
+    expect(result.referenceDocumentId).toBe('ref-doc-123');
+    expect(result.templateDocumentId).toBe('template-doc-456');
+    expect(result.assignmentWeighting).toBe(1);
+    expect(result.createdAt).toBe('2025-01-01T00:00:00.000Z');
+    expect(result.updatedAt).toBe('2025-05-01T00:00:00.000Z');
+  });
+
+  it('rejects a definition missing primaryTitle', () => {
+    const missing = { ...validAssignmentDefinitionPartial };
+    delete (missing as Record<string, unknown>).primaryTitle;
+    expect(() => AssignmentDefinitionPartialSchema.parse(missing)).toThrow();
+  });
+
+  it('rejects a definition missing definitionKey', () => {
+    const missing = { ...validAssignmentDefinitionPartial };
+    delete (missing as Record<string, unknown>).definitionKey;
+    expect(() => AssignmentDefinitionPartialSchema.parse(missing)).toThrow();
+  });
+
+  it('rejects a definition with tasks not null', () => {
+    expect(() =>
+      AssignmentDefinitionPartialSchema.parse({ ...validAssignmentDefinitionPartial, tasks: [] })
+    ).toThrow();
+  });
+});

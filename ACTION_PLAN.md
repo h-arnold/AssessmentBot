@@ -8,7 +8,9 @@
 >
 > **Section 3 — Status**: ✅ COMPLETE (committed `305e8fa`) — `readClass` and `_toReadView` added to ABClassController, all 9 tests pass, regression gate passed. Technical debt: ABClassController.js is 1061 lines (was 996 pre-Section-3) — exceeds 500-line limit; resolved by decomposition in Sections 8-13.
 >
-> **Section 4 — Status**: ✅ COMPLETE (committed `██████`) — `abclassRead.js` with `getABClass_` transport handler created, `ALLOWLISTED_METHOD_HANDLERS` entry added, `globalThis.getABClass_` wired in `z_apiHandler.js`, `eslint.config.js` updated. All 12 tests pass, regression gate passed (0 new regressions from Section 4).
+> **Section 4 — Status**: ✅ COMPLETE (committed `b644800`) — `abclassRead.js` with `getABClass_` transport handler created, `ALLOWLISTED_METHOD_HANDLERS` entry added, `globalThis.getABClass_` wired in `z_apiHandler.js`, `eslint.config.js` updated. All 12 tests pass, regression gate passed (0 new regressions from Section 4).
+>
+> **Section 5 — Status**: ✅ COMPLETE (committed `██████`) — `classDetailService.zod.ts` (all Zod schemas) and `classDetailService.ts` (`getABClass` service function) created in `googleClassrooms/classDetail/` subfolder. All 38 tests pass, regression gate passed (0 new regressions from Section 5; ABClassController.js max-lines is pre-existing from Section 3; frontend-e2e-check failure is a flaky layout positioning test unrelated to Section 5).
 
 ## Read-First Context
 
