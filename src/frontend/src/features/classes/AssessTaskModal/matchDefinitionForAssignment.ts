@@ -1,4 +1,5 @@
 import type { AssignmentDefinitionPartial } from '../../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import { caseInsensitiveTrimmedEquals } from './stringComparison';
 
 /**
  * Discriminated union representing the result of matching a Google Classroom
@@ -22,6 +23,13 @@ export type MatchResult =
  * Returns `{ kind: 'ambiguous' }` when more than one partial matches.
  * Returns `{ kind: 'matched' }` when exactly one partial matches.
  *
+ * @remarks
+ * Title and topic comparisons use case-insensitive trimmed equality (via
+ * `caseInsensitiveTrimmedEquals`) against `primaryTitle`/`alternateTitles`
+ * and `primaryTopic`/`alternateTopics` respectively. The `alternateTopics`
+ * topic check only runs when `selectedAssignment.topicName !== null`;
+ * the early return for `topicName === null` is preserved.
+ *
  * @param {{ assignmentId: string; title: string; topicName: string | null }} selectedAssignment The selected Google Classroom assignment with title and topic name.
  * @param {{ assignmentId: string }} selectedAssignment.assignmentId The assignment identifier.
  * @param {{ title: string }} selectedAssignment.title The assignment title.
@@ -40,16 +48,22 @@ export function findMatchingDefinition(
     return { kind: 'no-match' };
   }
 
+  const topicName = selectedAssignment.topicName;
+
   const matches = definitionPartials.filter((partial) => {
     const titleMatch =
-      partial.primaryTitle === selectedAssignment.title ||
-      partial.alternateTitles.includes(selectedAssignment.title);
+      caseInsensitiveTrimmedEquals(partial.primaryTitle, selectedAssignment.title) ||
+      partial.alternateTitles.some((alternate) =>
+        caseInsensitiveTrimmedEquals(alternate, selectedAssignment.title)
+      );
 
-    return (
-      titleMatch &&
-      selectedAssignment.topicName === partial.primaryTopic &&
-      classPartial.yearGroupKey === partial.yearGroupKey
-    );
+    const topicMatch =
+      caseInsensitiveTrimmedEquals(partial.primaryTopic, topicName) ||
+      partial.alternateTopics.some((alternate) =>
+        caseInsensitiveTrimmedEquals(alternate, topicName)
+      );
+
+    return titleMatch && topicMatch && classPartial.yearGroupKey === partial.yearGroupKey;
   });
 
   if (matches.length === 0) {
