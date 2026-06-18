@@ -10,6 +10,7 @@ export type MatchResult =
   | { kind: 'no-match' }
   | { kind: 'ambiguous'; matches: AssignmentDefinitionPartial[] };
 
+// eslint-disable-next-line jsdoc/require-param
 /**
  * Matches a selected Google Classroom assignment against
  * `AssignmentDefinitionPartial` records by title, topic name, and year
@@ -30,10 +31,7 @@ export type MatchResult =
  * topic check only runs when `selectedAssignment.topicName !== null`;
  * the early return for `topicName === null` is preserved.
  *
- * @param {{ assignmentId: string; title: string; topicName: string | null }} selectedAssignment The selected Google Classroom assignment with title and topic name.
- * @param {{ assignmentId: string }} selectedAssignment.assignmentId The assignment identifier.
- * @param {{ title: string }} selectedAssignment.title The assignment title.
- * @param {{ topicName: string | null }} selectedAssignment.topicName The resolved topic name, or `null` when the assignment has no topic.
+ * @param {object} selectedAssignment The selected Google Classroom assignment with title, assignment ID, and topic name.
  * @param {{ yearGroupKey: string | null }} classPartial The class partial containing the year group key.
  * @param {{ yearGroupKey: string | null }} classPartial.yearGroupKey The year group key, or `null` when the class has no year group.
  * @param {AssignmentDefinitionPartial[]} definitionPartials The list of assignment definition partials to match against.

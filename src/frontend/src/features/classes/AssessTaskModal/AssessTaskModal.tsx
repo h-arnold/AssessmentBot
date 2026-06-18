@@ -16,6 +16,9 @@ import { LinkableDefinitionList } from './LinkableDefinitionList';
 import { getLinkableDefinitionsForModal, type LinkableDefinition } from './getLinkableDefinitionsForModal';
 import { caseInsensitiveTrimmedEquals } from './stringComparison';
 
+/** Loading spinner CSS properties used in both fetch and link body phases. */
+const LOADING_SPINNER_STYLE: React.CSSProperties = { textAlign: 'center', padding: '40px 0', display: 'block' };
+
 /**
  * Deduplicates and adds a new title to the alternateTitles array using
  * case-insensitive trimmed comparison. Accepts optional input arrays.
@@ -368,25 +371,6 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
   }
 
   /**
-   * Handles the Link button click in the picker: upserts the definition
-   * with the alternate title and topic, then starts the assessment run.
-   *
-   * @remarks
-   * The deduplication strategy for the new `alternateTitles` and
-   * `alternateTopics` uses case-insensitive trimmed equality via
-   * `caseInsensitiveTrimmedEquals`. The full array is always sent (never `[]`,
-   * even when the topic name is null — the existing array is sent unchanged).
-   *
-   * Cache invalidation (`queryKeys.assignmentDefinitionPartials()`) is
-   * fire-and-forget after the upsert resolves, and also on any failure path
-   * to defend against stale cache entries.
-   *
-   * `DEFINITION_STALE` recovery: when `startAssessmentRun` rejects with
-   * `DEFINITION_STALE`, the link (the alternateTitle write) is preserved
-   * and the modal transitions to the wizard's 2nd panel via
-   * `noMatchResolution === 'creating'`.
-   */
-  /**
    * Handles errors from the link upsert + assessment run flow.
    *
    * For `DEFINITION_STALE`, transitions to the wizard's 2nd panel preserving
@@ -417,6 +401,21 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
   /**
    * Handles the Link button click in the picker: upserts the definition
    * with the alternate title and topic, then starts the assessment run.
+   *
+   * @remarks
+   * The deduplication strategy for the new `alternateTitles` and
+   * `alternateTopics` uses case-insensitive trimmed equality via
+   * `caseInsensitiveTrimmedEquals`. The full array is always sent (never `[]`,
+   * even when the topic name is null — the existing array is sent unchanged).
+   *
+   * Cache invalidation (`queryKeys.assignmentDefinitionPartials()`) is
+   * fire-and-forget after the upsert resolves, and also on any failure path
+   * to defend against stale cache entries.
+   *
+   * `DEFINITION_STALE` recovery: when `startAssessmentRun` rejects with
+   * `DEFINITION_STALE`, the link (the alternateTitle write) is preserved
+   * and the modal transitions to the wizard's 2nd panel via
+   * `noMatchResolution === 'creating'`.
    */
   async function handleLinkConfirm(): Promise<void> {
     if (!selectedDefinitionForLink || !selectedAssignmentForChoice) return;
@@ -467,7 +466,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
         yearGroupKey: selectedDefinitionForLink.yearGroupKey,
         referenceDocumentId: selectedDefinitionForLink.referenceDocumentId,
         templateDocumentId: selectedDefinitionForLink.templateDocumentId,
-        documentType: selectedDefinitionForLink.documentType as 'SLIDES' | 'SHEETS',
+        documentType: selectedDefinitionForLink.documentType,
         alternateTitles,
         alternateTopics,
       };
@@ -679,7 +678,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
   function renderLinkingBody(): React.ReactNode {
     if (assessmentState === 'loading') {
       return (
-        <output style={{ textAlign: 'center', padding: '40px 0', display: 'block' }}>
+        <output style={LOADING_SPINNER_STYLE}>
           <Spin />
         </output>
       );
@@ -718,7 +717,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
   function renderFetchBody(): React.ReactNode {
     if (fetchState === 'loading') {
       return (
-        <output style={{ textAlign: 'center', padding: '40px 0', display: 'block' }}>
+        <output style={LOADING_SPINNER_STYLE}>
           <Spin />
         </output>
       );

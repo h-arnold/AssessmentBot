@@ -23,7 +23,7 @@ export type LinkableDefinition = {
   updatedAt: string;
   alternateTitles: string[];
   alternateTopics: string[];
-  documentType: string;
+  documentType: 'SLIDES' | 'SHEETS';
   referenceDocumentId: string;
   templateDocumentId: string;
 };
@@ -95,7 +95,7 @@ export function getLinkableDefinitionsForModal(
   // Sort by fuse score asc, then updatedAt desc as tie-breaker.
   // score is always present when includeScore: true.
   const sortedResults = fuseResults.toSorted((a, b) => {
-    const scoreDiff = a.score! - b.score!;
+    const scoreDiff = (a.score ?? 0) - (b.score ?? 0);
     if (scoreDiff !== 0) return scoreDiff;
     return compareUpdatedAtDesc(a.item.updatedAt, b.item.updatedAt);
   });
@@ -122,7 +122,7 @@ export function getLinkableDefinitionsForModal(
     updatedAt: partial.updatedAt ?? '',
     alternateTitles: partial.alternateTitles ?? [],
     alternateTopics: partial.alternateTopics ?? [],
-    documentType: partial.documentType,
+    documentType: partial.documentType as 'SLIDES' | 'SHEETS',
     referenceDocumentId: partial.referenceDocumentId,
     templateDocumentId: partial.templateDocumentId,
   }));

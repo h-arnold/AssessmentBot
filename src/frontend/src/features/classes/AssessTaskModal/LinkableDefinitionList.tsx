@@ -45,12 +45,12 @@ export function LinkableDefinitionList(
         {linkableDefinitions.map((definition) => (
           <Radio key={definition.definitionKey} value={definition.definitionKey}>
             <Flex vertical gap={2}>
-              <Typography.Paragraph strong ellipsis={{ rows: 1 }} style={{ marginBottom: 0 }}>
+              <Typography.Text strong ellipsis>
                 {definition.primaryTitle}
-              </Typography.Paragraph>
-              <Typography.Paragraph type="secondary" ellipsis={{ rows: 1 }} style={{ marginBottom: 0 }}>
+              </Typography.Text>
+              <Typography.Text type="secondary" ellipsis>
                 {definition.primaryTopic} · {definition.yearGroupLabel}
-              </Typography.Paragraph>
+              </Typography.Text>
             </Flex>
           </Radio>
         ))}

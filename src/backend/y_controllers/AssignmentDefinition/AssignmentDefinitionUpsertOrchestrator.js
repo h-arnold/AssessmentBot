@@ -186,7 +186,6 @@ class AssignmentDefinitionUpsertOrchestrator {
       return existingDefinition.alternateTopics || [];
     }
 
-    // Reuses normaliseAlternateTitles — semantics are generic (non-empty trimmed strings)
     return this.validation.normaliseAlternateTitles(payload.alternateTopics);
   }
 

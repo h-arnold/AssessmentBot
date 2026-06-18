@@ -1951,6 +1951,25 @@ that the transport contract is sound.
     (`assignmentDefinitionUpsertApi`, `assignmentDefinitionPartials`)
     also pass.
 - **Deviations from plan:** None.
+- **De-sloppification outcome (2026-06-18):** Post-implementation
+  de-sloppification pass across all touched files. 8 fixes applied:
+  - **C1** — Moved misplaced JSDoc from above `handleLinkConfirmError`
+    to above `handleLinkConfirm` in `AssessTaskModal.tsx`.
+  - **I1** — Extracted `LOADING_SPINNER_STYLE` shared constant for two
+    identical inline loading-spinner styles.
+  - **I2** — Removed duplicate inline comment in orchestrator's
+    `_resolveAlternateTopics`.
+  - **N1** — Replaced `Typography.Paragraph` with `Typography.Text` in
+    `LinkableDefinitionList.tsx`.
+  - **N2** — Replaced `a.score! - b.score!` with `(a.score ?? 0) - (b.score ?? 0)`
+    in `getLinkableDefinitionsForModal.ts`.
+  - **N3** — Removed verbose nested `@param` JSDoc tags in
+    `matchDefinitionForAssignment.ts`.
+  - **N4** — Narrowed `LinkableDefinition.documentType` from `string` to
+    `'SLIDES' | 'SHEETS'` union.
+  - **N5 (deferred):** Shared `DEFAULT_ISO_DATETIME` — optional.
+    Regression Gate: 0 regressions, 0 new failures. All tests pass.
+    Lint: clean (frontend + backend).
 
 ---
 
