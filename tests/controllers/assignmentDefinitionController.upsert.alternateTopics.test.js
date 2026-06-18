@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   createUpsertPayload,
+  seedExistingDefinition,
   setupUpsertControllerTestBed,
 } from './assignmentDefinitionUpsertTestHelpers.js';
 
@@ -47,23 +48,11 @@ describe('AssignmentDefinitionController upsert behaviour — alternate topics',
   });
 
   it('preserves existing alternateTitles when updates omit alternateTitles', () => {
-    const existing = {
-      ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
-      primaryTopic: 'Science',
-      alternateTitles: ['Stored title A', 'Stored title B'],
-      yearGroupKey: 'year-group-8',
-      tasks: {
-        t_task_1: {
-          id: 't_task_1',
-          taskTitle: 'Task A',
-          artifacts: { reference: [], template: [] },
-        },
-      },
-      referenceLastModified: '2025-04-01T00:00:00.000Z',
-      templateLastModified: '2025-04-01T00:00:00.000Z',
-    };
-    mockFullCollection.findOne.mockReturnValue(existing);
-    mockRegistryCollection.findOne.mockReturnValue({ ...existing, tasks: null });
+    const existing = seedExistingDefinition({
+      mockFullCollection,
+      mockRegistryCollection,
+      overrides: { alternateTitles: ['Stored title A', 'Stored title B'] },
+    });
 
     const payload = createUpsertPayload({ definitionKey: 'existing-stable-key' });
     delete payload.alternateTitles;
@@ -73,24 +62,14 @@ describe('AssignmentDefinitionController upsert behaviour — alternate topics',
   });
 
   it('preserves existing alternateTopics on update when payload omits alternateTopics', () => {
-    const existing = {
-      ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
-      primaryTopic: 'Science',
-      alternateTitles: ['Stored alt title'],
-      alternateTopics: ['Stored topic A', 'Stored topic B'],
-      yearGroupKey: 'year-group-8',
-      tasks: {
-        t_task_1: {
-          id: 't_task_1',
-          taskTitle: 'Task A',
-          artifacts: { reference: [], template: [] },
-        },
+    const existing = seedExistingDefinition({
+      mockFullCollection,
+      mockRegistryCollection,
+      overrides: {
+        alternateTitles: ['Stored alt title'],
+        alternateTopics: ['Stored topic A', 'Stored topic B'],
       },
-      referenceLastModified: '2025-04-01T00:00:00.000Z',
-      templateLastModified: '2025-04-01T00:00:00.000Z',
-    };
-    mockFullCollection.findOne.mockReturnValue(existing);
-    mockRegistryCollection.findOne.mockReturnValue({ ...existing, tasks: null });
+    });
 
     const payload = createUpsertPayload({ definitionKey: 'existing-stable-key' });
     delete payload.alternateTopics;
@@ -100,24 +79,14 @@ describe('AssignmentDefinitionController upsert behaviour — alternate topics',
   });
 
   it('clears existing alternateTopics when update payload provides empty array', () => {
-    const existing = {
-      ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
-      primaryTopic: 'Science',
-      alternateTitles: ['Stored alt title'],
-      alternateTopics: ['Stored topic A', 'Stored topic B'],
-      yearGroupKey: 'year-group-8',
-      tasks: {
-        t_task_1: {
-          id: 't_task_1',
-          taskTitle: 'Task A',
-          artifacts: { reference: [], template: [] },
-        },
+    const existing = seedExistingDefinition({
+      mockFullCollection,
+      mockRegistryCollection,
+      overrides: {
+        alternateTitles: ['Stored alt title'],
+        alternateTopics: ['Stored topic A', 'Stored topic B'],
       },
-      referenceLastModified: '2025-04-01T00:00:00.000Z',
-      templateLastModified: '2025-04-01T00:00:00.000Z',
-    };
-    mockFullCollection.findOne.mockReturnValue(existing);
-    mockRegistryCollection.findOne.mockReturnValue({ ...existing, tasks: null });
+    });
 
     const payload = createUpsertPayload({
       definitionKey: 'existing-stable-key',

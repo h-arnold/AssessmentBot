@@ -3,6 +3,7 @@ import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinit
 import {
   createUpsertPayload,
   createWizardUpsertPayload,
+  seedExistingDefinition,
   setupUpsertControllerTestBed,
   setupDuplicateDetectionTest,
 } from './assignmentDefinitionUpsertTestHelpers.js';
@@ -133,30 +134,17 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
   });
 
   it('updates metadata while preserving the stored definitionKey', () => {
-    const existing = {
-      ...createUpsertPayload({
-        definitionKey: 'existing-stable-key',
-        primaryTitle: 'Old title',
-        alternateTitles: ['Old alt'],
-        yearGroupKey: 'year-group-8',
-      }),
-      primaryTopic: 'Science',
-      tasks: {
-        t_task_1: {
-          id: 't_task_1',
-          taskTitle: 'Task A',
-          taskWeighting: 15,
-          artifacts: { reference: [], template: [] },
-        },
-      },
-      referenceLastModified: '2025-04-01T00:00:00.000Z',
-      templateLastModified: '2025-04-01T00:00:00.000Z',
-    };
+    const existing = seedExistingDefinition({
+      mockFullCollection,
+      mockRegistryCollection,
+      overrides: { primaryTitle: 'Old title', alternateTitles: ['Old alt'] },
+      taskOverrides: { taskWeighting: 15 },
+    });
+    // Override with targeted implementation for uniqueness check
     mockFullCollection.findOne.mockImplementation((filter) => {
       if (filter?.definitionKey === 'existing-stable-key') return existing;
       return null;
     });
-    mockRegistryCollection.findOne.mockReturnValue({ ...existing, tasks: null });
 
     const saved = controller.upsertDefinition(
       createUpsertPayload({
@@ -176,23 +164,11 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
   /* ---- Weighting / preserve / rollback / error tests ---- */
 
   it('preserves existing assignmentWeighting when updates omit assignmentWeighting', () => {
-    const existing = {
-      ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
-      primaryTopic: 'Science',
-      assignmentWeighting: 5,
-      yearGroupKey: 'year-group-8',
-      tasks: {
-        t_task_1: {
-          id: 't_task_1',
-          taskTitle: 'Task A',
-          artifacts: { reference: [], template: [] },
-        },
-      },
-      referenceLastModified: '2025-04-01T00:00:00.000Z',
-      templateLastModified: '2025-04-01T00:00:00.000Z',
-    };
-    mockFullCollection.findOne.mockReturnValue(existing);
-    mockRegistryCollection.findOne.mockReturnValue({ ...existing, tasks: null });
+    const existing = seedExistingDefinition({
+      mockFullCollection,
+      mockRegistryCollection,
+      overrides: { assignmentWeighting: 5 },
+    });
 
     const payload = createUpsertPayload({ definitionKey: 'existing-stable-key' });
     delete payload.assignmentWeighting;
@@ -202,21 +178,10 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
   });
 
   it('rejects updates when yearGroupKey is omitted from the save payload', () => {
-    const existing = {
-      ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
-      primaryTopic: 'Science',
-      tasks: {
-        t_task_1: {
-          id: 't_task_1',
-          taskTitle: 'Task A',
-          artifacts: { reference: [], template: [] },
-        },
-      },
-      referenceLastModified: '2025-04-01T00:00:00.000Z',
-      templateLastModified: '2025-04-01T00:00:00.000Z',
-    };
-    mockFullCollection.findOne.mockReturnValue(existing);
-    mockRegistryCollection.findOne.mockReturnValue({ ...existing, tasks: null });
+    const existing = seedExistingDefinition({
+      mockFullCollection,
+      mockRegistryCollection,
+    });
 
     const payload = createUpsertPayload({ definitionKey: 'existing-stable-key' });
     delete payload.yearGroupKey;
@@ -253,22 +218,11 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
   });
 
   it('surfaces a distinct repair-required failure when rollback also fails', () => {
-    const existing = {
-      ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
-      primaryTopic: 'Science',
-      documentType: 'SLIDES',
-      tasks: {
-        t_task_1: {
-          id: 't_task_1',
-          taskTitle: 'Task A',
-          artifacts: { reference: [], template: [] },
-        },
-      },
-      referenceLastModified: '2025-04-01T00:00:00.000Z',
-      templateLastModified: '2025-04-01T00:00:00.000Z',
-    };
-    mockFullCollection.findOne.mockReturnValue(existing);
-    mockRegistryCollection.findOne.mockReturnValue({ ...existing, tasks: null });
+    const existing = seedExistingDefinition({
+      mockFullCollection,
+      mockRegistryCollection,
+      overrides: { documentType: 'SLIDES' },
+    });
     mockRegistryCollection.save.mockImplementation(() => {
       throw new Error('registry save failed');
     });
@@ -338,28 +292,12 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
   });
 
   it('keeps definitionKey stable when tuple edits change title/topic/yearGroupKey', () => {
-    const existing = {
-      ...createUpsertPayload({
-        definitionKey: 'existing-stable-key',
-        primaryTitle: 'Old title',
-        primaryTopicKey: 'topic-science',
-        yearGroupKey: 'year-group-8',
-      }),
-      primaryTopic: 'Science',
-      tasks: {
-        t_task_1: {
-          id: 't_task_1',
-          taskTitle: 'Task A',
-          taskWeighting: 2,
-          artifacts: { reference: [], template: [] },
-        },
-      },
-      referenceLastModified: '2025-04-01T00:00:00.000Z',
-      templateLastModified: '2025-04-01T00:00:00.000Z',
-    };
-
-    mockFullCollection.findOne.mockReturnValue(existing);
-    mockRegistryCollection.findOne.mockReturnValue({ ...existing, tasks: null });
+    const existing = seedExistingDefinition({
+      mockFullCollection,
+      mockRegistryCollection,
+      overrides: { primaryTitle: 'Old title', primaryTopicKey: 'topic-science' },
+      taskOverrides: { taskWeighting: 2 },
+    });
 
     const saved = controller.upsertDefinition(
       createWizardUpsertPayload({

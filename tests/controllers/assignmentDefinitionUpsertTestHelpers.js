@@ -248,3 +248,51 @@ export function setupDuplicateDetectionTest(
 
   return createPayload();
 }
+
+/**
+ * Seeds both collection mocks with an "existing" definition built from
+ * createUpsertPayload defaults.  Sets findOne on both mockFullCollection
+ * and mockRegistryCollection to return the seeded record, then returns
+ * the record for use in test assertions.
+ *
+ * @param {Object} args
+ * @param {Object} args.mockFullCollection
+ * @param {Object} args.mockRegistryCollection
+ * @param {Object} [args.overrides={}] — spread into the definition after defaults
+ * @param {Object} [args.taskOverrides={}] — override the default task fields
+ * @param {boolean} [args.withTimestamps=true] — include referenceLastModified / templateLastModified
+ * @returns {Object} the seeded `existing` record
+ */
+export function seedExistingDefinition({
+  mockFullCollection,
+  mockRegistryCollection,
+  overrides = {},
+  taskOverrides = {},
+  withTimestamps = true,
+} = {}) {
+  const defaultTask = {
+    id: 't_task_1',
+    taskTitle: 'Task A',
+    artifacts: { reference: [], template: [] },
+    ...taskOverrides,
+  };
+
+  const existing = {
+    ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
+    primaryTopic: 'Science',
+    yearGroupKey: 'year-group-8',
+    tasks: { t_task_1: defaultTask },
+    ...(withTimestamps
+      ? {
+          referenceLastModified: '2025-04-01T00:00:00.000Z',
+          templateLastModified: '2025-04-01T00:00:00.000Z',
+        }
+      : {}),
+    ...overrides,
+  };
+
+  mockFullCollection.findOne.mockReturnValue(existing);
+  mockRegistryCollection.findOne.mockReturnValue({ ...existing, tasks: null });
+
+  return existing;
+}

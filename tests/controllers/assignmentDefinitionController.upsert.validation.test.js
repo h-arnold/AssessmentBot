@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   createUpsertPayload,
   expectTaskWeightingMapEntries,
+  seedExistingDefinition,
   setupUpsertControllerTestBed,
   setupDuplicateDetectionTest,
 } from './assignmentDefinitionUpsertTestHelpers.js';
@@ -74,19 +75,22 @@ describe('AssignmentDefinitionController upsert behaviour — validation', () =>
   });
 
   it('reparses and refreshes timestamps when document IDs change for a slides definition', () => {
-    const existing = {
-      ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
-      primaryTopic: 'Science',
-      documentType: 'SLIDES',
-      yearGroupKey: 'year-group-8',
-      tasks: {
-        old_task: { id: 'old_task', taskTitle: 'Old', artifacts: { reference: [], template: [] } },
+    const existing = seedExistingDefinition({
+      mockFullCollection,
+      mockRegistryCollection,
+      overrides: {
+        documentType: 'SLIDES',
+        referenceLastModified: '2025-01-01T00:00:00.000Z',
+        templateLastModified: '2025-01-01T00:00:00.000Z',
+        tasks: {
+          old_task: {
+            id: 'old_task',
+            taskTitle: 'Old',
+            artifacts: { reference: [], template: [] },
+          },
+        },
       },
-      referenceLastModified: '2025-01-01T00:00:00.000Z',
-      templateLastModified: '2025-01-01T00:00:00.000Z',
-    };
-    mockFullCollection.findOne.mockReturnValue(existing);
-    mockRegistryCollection.findOne.mockReturnValue({ ...existing, tasks: null });
+    });
 
     controller.upsertDefinition(
       createUpsertPayload({
@@ -110,23 +114,11 @@ describe('AssignmentDefinitionController upsert behaviour — validation', () =>
   });
 
   it('keeps fresh-definition refresh behaviour when documents are unchanged', () => {
-    const existing = {
-      ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
-      primaryTopic: 'Science',
-      documentType: 'SLIDES',
-      yearGroupKey: 'year-group-8',
-      tasks: {
-        t_task_1: {
-          id: 't_task_1',
-          taskTitle: 'Task A',
-          artifacts: { reference: [], template: [] },
-        },
-      },
-      referenceLastModified: '2025-04-01T00:00:00.000Z',
-      templateLastModified: '2025-04-01T00:00:00.000Z',
-    };
-    mockFullCollection.findOne.mockReturnValue(existing);
-    mockRegistryCollection.findOne.mockReturnValue({ ...existing, tasks: null });
+    const existing = seedExistingDefinition({
+      mockFullCollection,
+      mockRegistryCollection,
+      overrides: { documentType: 'SLIDES' },
+    });
 
     controller.upsertDefinition(createUpsertPayload({ definitionKey: 'existing-stable-key' }));
 

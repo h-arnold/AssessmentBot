@@ -6,6 +6,7 @@ import {
   createWizardUpsertPayload,
   expectCanonicalFullDefinitionShape,
   expectTaskWeightingMapEntries,
+  seedExistingDefinition,
   setupUpsertControllerTestBed,
   setupDuplicateDetectionTest,
 } from './assignmentDefinitionUpsertTestHelpers.js';
@@ -122,23 +123,11 @@ describe('AssignmentDefinitionController upsert behaviour — transport shape', 
   });
 
   it('re-parse keeps matching task weightings and defaults new tasks to 1', () => {
-    const existing = {
-      ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
-      primaryTopic: 'Science',
-      yearGroupKey: 'year-group-8',
-      tasks: {
-        t_task_1: {
-          id: 't_task_1',
-          taskTitle: 'Task A',
-          taskWeighting: 8,
-          artifacts: { reference: [], template: [] },
-        },
-      },
-      referenceLastModified: '2025-04-01T00:00:00.000Z',
-      templateLastModified: '2025-04-01T00:00:00.000Z',
-    };
-    mockFullCollection.findOne.mockReturnValue(existing);
-    mockRegistryCollection.findOne.mockReturnValue({ ...existing, tasks: null });
+    const existing = seedExistingDefinition({
+      mockFullCollection,
+      mockRegistryCollection,
+      taskOverrides: { taskWeighting: 8 },
+    });
 
     extractSlidesTaskDefinitionsMock.mockReturnValueOnce([
       createParsedTaskDefinition({ id: 't_task_1', taskTitle: 'Task A', index: 0 }),
