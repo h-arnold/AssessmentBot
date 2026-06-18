@@ -2,7 +2,7 @@
 
 ## Status
 
-- Approved v1.0
+- Implemented v1.0 (2026-06-17)
 
 ## Purpose
 

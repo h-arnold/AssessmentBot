@@ -582,7 +582,7 @@ Key notes:
 - `primaryTopicKey` is authoritative and mandatory in partial transport; `primaryTopic` is the resolved display label only.
 - `tasks` is always `null` in this transport shape.
 - `referenceLastModified` and `templateLastModified` are omitted from partial transport.
-- `alternateTopics` remains present in partial responses for registry compatibility, even though it is not part of the greenfield upsert request contract.
+- `alternateTopics` is present in partial responses for registry compatibility and is now a documented optional field in the upsert request contract. When the field is provided in an upsert request, the orchestrator's `_resolveAlternateTopics` method normalises and writes it to the `AssignmentDefinition` model via the same validation pipeline as `alternateTitles`. When the field is omitted on update, the orchestrator preserves the stored value.
 - The transport helper rejects rows where `definitionKey` or `primaryTopicKey` are missing, blank, or untrimmed, and where `createdAt` / `updatedAt` are neither `null` nor strict ISO datetime strings with timezone information.
 
 ### `upsertAssignmentDefinition` request and response data
@@ -628,8 +628,11 @@ Request notes:
 - Transport-required fields: `primaryTitle`, `primaryTopicKey`, `referenceDocumentId`, and `templateDocumentId`.
 - `definitionKey` is absent or `null` on create and must be an already-trimmed transport-safe string on update.
 - `documentType` is required by the controller for create upserts; updates may omit it and reuse the stored `documentType`.
+- `alternateTitles` is optional; when supplied it is an array of trimmed non-empty strings. On update the orchestrator preserves existing `alternateTitles` when the field is omitted; supplying the array overwrites.
+- `alternateTopics` is optional; when supplied it follows the same validation and preservation semantics as `alternateTitles` (delegates to `normaliseAlternateTitles` for array normalisation). This field is the new write path for the link-to-existing-definition flow.
 - `taskWeightings` is optional and, when supplied, must be an array of `{ taskId, taskWeighting }` objects. Transport validation checks only structural shape and safe-key rules; numeric weighting semantics remain controller-owned.
 - `primaryTopicKey` membership in `assignment_topics`, duplicate business-tuple detection, document-ID mismatch rules, and unknown task IDs are controller-owned domain checks.
+- The frontend Zod `UpsertAssignmentDefinitionRequestSchema` enforces a `superRefine` mutual-exclusion rule between the URL-shape (URL-shape: `referenceDocumentUrl` + `templateDocumentUrl`) and the ID-shape (ID-shape: `referenceDocumentId` + `templateDocumentId` + `documentType`). Payloads that include neither shape, only partial URL fields, or only partial ID fields are rejected before the request reaches the backend transport. The wizard's existing URL-shape payload continues to pass without modification; the link-to-existing-definition flow uses the ID-shape payload.
 
 Response notes:
 

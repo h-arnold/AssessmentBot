@@ -1844,8 +1844,21 @@ reconcile planned-only entries in canonical docs.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (to be filled)
-- **Deviations from plan:** (to be filled if any)
+- **Implementation notes:**
+  - `SPEC.md` status updated to `Implemented v1.0 (2026-06-17)`.
+  - `frontend-shared-helpers-and-abstraction-standards.md`: new §9.16 added with
+    `Implemented` entries for `caseInsensitiveTrimmedEquals`,
+    `getLinkableDefinitionsForModal`, and `LinkableDefinitionList` (all three
+    `Not implemented` → `Implemented`).
+  - `DATA_SHAPES.md`: updated `alternateTopics` note to reflect documented
+    optional field in upsert request contract; added `alternateTitles`
+    optional-field note, `alternateTopics` optional-field note, and `superRefine`
+    mutual-exclusion rule documentation.
+  - `api-layer.md`: added `alternateTopics` to optional request fields list;
+    added new `Frontend validation split` paragraph documenting the
+    `superRefine` mutual-exclusion rule between URL-shape and ID-shape.
+- **Deviations from plan:** None.
+- **No new canonical doc files created** — per constraints.
 
 ---
 

@@ -419,3 +419,26 @@ This section supersedes the earlier Section 9.7 defer decision for the specific 
 - Owning module/path: `src/frontend/src/services/apiService.ts`
 - Call-site rationale: small additive function that clears pending entries for a job name; consumed only by the classes bulk queue in v1
 - Status: `Implemented`
+
+### 9.16 AssessTask "Link to Existing Definition" helpers
+
+1. Helper: `caseInsensitiveTrimmedEquals` feature-local pure helper
+
+- Decision: `new`
+- Owning module/path: `src/frontend/src/features/classes/AssessTaskModal/stringComparison.ts`
+- Call-site rationale: provides case-insensitive trimmed string equality (`a.trim().toLowerCase() === b.trim().toLowerCase()`) shared by the matcher (`findMatchingDefinition`) and the picker derivation helper (`getLinkableDefinitionsForModal`). The helper is feature-local (not exported from the modal feature directory) per §3.4 because it has exactly two in-scope callers now. Not `private` to a single file because both callers are in separate sibling files.
+- Status: `Implemented`
+
+2. Helper: `getLinkableDefinitionsForModal` pure helper
+
+- Decision: `new`
+- Owning module/path: `src/frontend/src/features/classes/AssessTaskModal/getLinkableDefinitionsForModal.ts`
+- Call-site rationale: derives the `LinkableDefinition[]` for the picker by filtering cached `AssignmentDefinitionPartial[]` to the class's `yearGroupKey` and sorting by `fuse.js` fuzzy title rank with `updatedAt` desc as the tie-breaker. The helper is colocated with the matcher (separate file), exported for unit testing, and has exactly one caller (`AssessTaskModal`).
+- Status: `Implemented`
+
+3. Helper: `LinkableDefinitionList` presentational component
+
+- Decision: `new`
+- Owning module/path: `src/frontend/src/features/classes/AssessTaskModal/LinkableDefinitionList.tsx`
+- Call-site rationale: renders the picker as an Ant Design `Radio.Group` with vertical orientation, block width, and JSX children (rich per-row content with title and subtitle). The component is presentational (no state, no side effects); it receives the derived `LinkableDefinition[]` and the current selection, and emits `onSelect(definitionKey)`. All rows are always selectable. The component has exactly one caller (`AssessTaskModal`) and is not promoted to a shared component.
+- Status: `Implemented`
