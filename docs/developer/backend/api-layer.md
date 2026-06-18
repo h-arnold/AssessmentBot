@@ -14,6 +14,10 @@ This layer is deliberately REST-ish in structure:
 
 ## Shared Helper Status
 
+- ABClass parameters-object validator
+  - Status: `Implemented`
+  - Location: `validateParametersObject_()` in `src/backend/z_Api/abclass/abclassValidation.js`
+  - Behaviour: shared primitive for the `abclass/` domain folder; validates that the parameters argument is a plain object (not an array). Referenced via `/* global validateParametersObject_ */` from `abclassMutations.js` and `abclassRead.js`.
 - Assignment-definition upsert request validator
   - Status: `Implemented`
   - Location: `validateUpsertParameters_()` in `src/backend/z_Api/assignmentDefinitionPartials.js`
@@ -106,7 +110,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 This pattern is currently used by `getGoogleClassrooms_`, `getAssignmentDefinitionPartials_`,
 `deleteAssignmentDefinition_`, `upsertAssignmentDefinition_`, `getBackendConfig_`, `setBackendConfig_`,
-`upsertABClass_`, `updateABClass_`, `deleteABClass_`, and `startAssessmentRun_`.
+`upsertABClass_`, `updateABClass_`, `deleteABClass_`, `getABClass_`, and `startAssessmentRun_`.
 
 ## Validation ownership rules
 
@@ -313,6 +317,15 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   The controller normalises stored records before returning them, so transport consumers receive only the documented class-partial fields and not storage metadata such as `_id`.
   The frontend service models `classOwner` and `teachers` as explicit `TeacherSummary` objects (`userId`, `email`, `teacherName`).
   See `docs/developer/backend/DATA_SHAPES.md` for the class partial shape and persistence strategy.
+
+- `getABClass` — reads a stored class document and returns a transport-ready plain object with partial assignments (no Classroom API calls, no storage mutation).
+  Source: `src/backend/z_Api/abclass/abclassRead.js`, via the `getABClass_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.readClass()` in `src/backend/y_controllers/ABClassController.js`.
+  Required request field: `classId`.
+  Validation: the helper validates `parameters` is a plain object via the shared `validateParametersObject_` primitive. `classId` must be a non-empty, already-trimmed string without path characters (`/`, `\`, `..`) or ASCII control characters (code points 0–31 and 127). Invalid payloads are reported as `INVALID_REQUEST` by the transport.
+  Handler behaviour: calls `new ABClassController().readClass(classId)`. Returns the controller's shaped response (produced by the private `_toReadView` method) on success. Catches `ClassNotFoundError` explicitly and returns `null`. Re-throws all other errors.
+  Response shape is produced by `ABClassController._toReadView()` — see `docs/developer/backend/DATA_SHAPES.md` for the full shape.
+  Frontend wrapper: `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.ts` (`getABClass()`), with response validation in `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts`.
+  Query factory: `getABClassQueryOptions(classId)` in `src/frontend/src/query/sharedQueries.ts` (not included in startup warmup — per-class query).
 
 - `getAssignmentDefinitionPartials` — returns assignment-definition registry rows for the Assignments page without loading task artifacts.
   Source: `src/backend/z_Api/assignmentDefinitionPartials.js`, via the `getAssignmentDefinitionPartials_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `AssignmentDefinitionController.getAllPartialDefinitions()` in `src/backend/y_controllers/AssignmentDefinitionController.js`.

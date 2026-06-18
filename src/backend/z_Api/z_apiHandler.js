@@ -33,6 +33,7 @@ const ALLOWLISTED_METHOD_HANDLERS = Object.freeze({
   upsertABClass: (parameters) => upsertABClass_(parameters),
   updateABClass: (parameters) => updateABClass_(parameters),
   deleteABClass: (parameters) => deleteABClass_(parameters),
+  getABClass: (parameters) => getABClass_(parameters),
   getBackendConfig: () => getBackendConfig_(),
   setBackendConfig: (parameters) => setBackendConfig_(parameters),
   startAssessmentRun: (parameters) => startAssessmentRun_(parameters),
@@ -70,6 +71,17 @@ if (typeof module !== 'undefined' && module.exports) {
   apiDefinitionStaleErrorName = require('../Utils/ErrorTypes/DefinitionStaleError.js').name;
   globalThis.startAssessmentRun_ = require('./assignmentAssessment.js').startAssessmentRun_;
   globalThis.getAssignment_ = require('./assignmentAssessment.js').getAssignment_;
+  // Wire only if not already set (allows test harness to install mocks before this module loads).
+  if (globalThis.upsertABClass_ === undefined) {
+    const abclassMutationsFns = require('./abclass/abclassMutations.js');
+    globalThis.upsertABClass_ = abclassMutationsFns.upsertABClass_;
+    globalThis.updateABClass_ = abclassMutationsFns.updateABClass_;
+    globalThis.deleteABClass_ = abclassMutationsFns.deleteABClass_;
+  }
+  if (globalThis.getABClass_ === undefined) {
+    const abclassReadFns = require('./abclass/abclassRead.js');
+    globalThis.getABClass_ = abclassReadFns.getABClass_;
+  }
 } else {
   // In GAS, these are loaded as global constants and functions from the bundle.
   lockTimeoutMs = LOCK_TIMEOUT_MS;

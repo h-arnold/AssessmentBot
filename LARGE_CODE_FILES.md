@@ -74,16 +74,19 @@ Generated 2026-06-03 by `find | xargs wc -l` excluding `node_modules/`, `dist/`,
 
 ## `src/backend/` — Backend (Google Apps Script / Node.js)
 
-| File                                                   | Lines | Suggested Split                                                                                                                                                                                    |
-| ------------------------------------------------------ | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `y_controllers/AssignmentDefinitionController.js`      | 1,129 | → `AssignmentDefinitionController.js` (orchestration ~300), `_assignmentDefinitionValidation.js` (~300), `_assignmentDefinitionPersistence.js` (~250), `_assignmentDefinitionTaskParser.js` (~280) |
-| `y_controllers/ABClassController.js`                   | 1,003 | → `ABClassController.js` (CRUD API ~250), `_abClassRoster.js` (~250), `_abClassAssignmentOps.js` (~280), `_abClassUtils.js` (~200)                                                                 |
-| `z_Api/assignmentDefinitionPartials.js`                | 918   | → `assignmentDefinitionPartials.js` (handlers ~150), `_assignmentDefinitionPartialsValidation.js` (~250), `_assignmentDefinitionPartialsUtils.js` (~200)                                           |
-| `GoogleDriveManager/DriveManager.js`                   | 661   | → `DriveManager.js` (public API ~200), `_driveFolderOps.js` (~200), `_driveFileIdUtils.js` (~200)                                                                                                  |
-| `ConfigurationManager/98_ConfigurationManagerClass.js` | 654   | → `98_ConfigurationManagerClass.js` (class + core ~300), `_assessorConfigGetters.js` (~180), `_dbConfigGetters.js` (~180)                                                                          |
-| `AssignmentProcessor/Assignment.js`                    | 624   | → `Assignment.js` (public API ~200), `_assignmentSerialization.js` (~200), `_assignmentFactory.js` (~220), `_assignmentSubmissionOps.js` (~100)                                                    |
-| `y_controllers/AssignmentController.js`                | 580   | → `AssignmentController.js` (public API ~200), `_assignmentPipeline.js` (~200), `_assignmentDefinitionHelpers.js` (~200)                                                                           |
-| `DocumentParsers/SlidesParser.js`                      | 580   | → `SlidesParser.js` (main class ~180), `_slidesTaskExtractor.js` (~200), `_slidesSubmissionExtractor.js` (~200)                                                                                    |
+| File                                              | Lines | Suggested Split                                                                                                                                                                                    |
+| ------------------------------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `y_controllers/AssignmentDefinitionController.js` | 1,129 | → `AssignmentDefinitionController.js` (orchestration ~300), `_assignmentDefinitionValidation.js` (~300), `_assignmentDefinitionPersistence.js` (~250), `_assignmentDefinitionTaskParser.js` (~280) |
+| `y_controllers/ABClassController.js`              | 1,003 | → `ABClassController.js` (CRUD API ~250), `_abClassRoster.js` (~250), `_abClassAssignmentOps.js` (~280), `_abClassUtils.js` (~200)                                                                 |
+
+> **Note**: the 4-sub-file plan for `y_controllers/ABClassController.js` (CRUD API ~250, `_abClassRoster.js` ~250, `_abClassAssignmentOps.js` ~280, `_abClassUtils.js` ~200) is **superseded** by the folder-based facade decomposition documented in `ABClassControllerRefactor_SPEC.md` (5 sub-classes: `ABClassValidation`, `ABClassPersistence`, `ABClassRoster`, `ABClassAssignmentOps`, `ABClassResponseMapper`). The new plan follows the `AssignmentDefinitionController/` precedent that `src/backend/AGENTS.md` §10 directly references.
+
+| `z_Api/assignmentDefinitionPartials.js` | 918 | → `assignmentDefinitionPartials.js` (handlers ~150), `_assignmentDefinitionPartialsValidation.js` (~250), `_assignmentDefinitionPartialsUtils.js` (~200) |
+| `GoogleDriveManager/DriveManager.js` | 661 | → `DriveManager.js` (public API ~200), `_driveFolderOps.js` (~200), `_driveFileIdUtils.js` (~200) |
+| `ConfigurationManager/98_ConfigurationManagerClass.js` | 654 | → `98_ConfigurationManagerClass.js` (class + core ~300), `_assessorConfigGetters.js` (~180), `_dbConfigGetters.js` (~180) |
+| `AssignmentProcessor/Assignment.js` | 624 | → `Assignment.js` (public API ~200), `_assignmentSerialization.js` (~200), `_assignmentFactory.js` (~220), `_assignmentSubmissionOps.js` (~100) |
+| `y_controllers/AssignmentController.js` | 580 | → `AssignmentController.js` (public API ~200), `_assignmentPipeline.js` (~200), `_assignmentDefinitionHelpers.js` (~200) |
+| `DocumentParsers/SlidesParser.js` | 580 | → `SlidesParser.js` (main class ~180), `_slidesTaskExtractor.js` (~200), `_slidesSubmissionExtractor.js` (~200) |
 
 **8 files → ~31 files, none exceeding ~300 lines. Wiring: files prepended with `_` concatenate first; controllers instantiate helpers in constructor; `module.exports` re-exports for Node tests.**
 

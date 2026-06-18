@@ -212,6 +212,96 @@ Key notes:
 - Derived display fields such as `cohortLabel` and `yearGroupLabel` are intentionally excluded from backend transport; frontend view-models derive them from reference-data maps.
 - `getABClassPartials` returns the documented shape above, not the raw stored document. Storage-only fields such as `_id` and any accidental extras in the collection are stripped during normalisation.
 
+## ABClass full-read (`getABClass` response)
+
+The `getABClass` endpoint returns the full class document including students,
+teachers, and partial assignment summaries. Unlike the partial registry
+(`getABClassPartials`), this endpoint retrieves the complete stored record.
+
+### Purpose
+
+- Supports per-class detail operations (viewing class metadata, roster, and
+  assignment summaries for a single class).
+- Retrieved via the `getABClass` API method, which calls
+  `ABClassController.readClass()`.
+- Read responses are shaped by the controller's private `_toReadView()` method
+  before leaving the backend transport boundary.
+- Returns `null` when no persisted class record exists for the given classId
+  (ClassNotFoundError caught and mapped at the transport layer).
+
+### Shape
+
+```json
+{
+  "classId": "C123",
+  "className": "Year 10 English",
+  "cohortKey": "2025",
+  "courseLength": 1,
+  "yearGroupKey": "10",
+  "classOwner": { "userId": "T0", "email": "owner@school.com", "teacherName": "Ms Owner" },
+  "teachers": [{ "email": "teacher@school.com", "userId": "T1", "teacherName": "Ms Smith" }],
+  "students": [{ "name": "Alice Johnson", "email": "alice@example.com", "id": "S1" }],
+  "assignments": [
+    {
+      "courseId": "C123",
+      "assignmentId": "A1",
+      "assignmentName": "Algebra Baseline",
+      "dueDate": "2025-06-01T23:59:59.000Z",
+      "lastUpdated": "2025-05-15T12:00:00.000Z",
+      "createdAt": "2025-05-01T08:00:00.000Z",
+      "documentType": "SLIDES",
+      "submissions": [
+        {
+          "id": "sub-1",
+          "taskId": "task-1",
+          "artifact": {
+            "taskId": "task-1",
+            "role": "student",
+            "content": null,
+            "contentHash": null,
+            "uid": "uid-1",
+            "type": "slides"
+          },
+          "assessments": {},
+          "feedback": {}
+        }
+      ],
+      "assignmentDefinition": {
+        "primaryTitle": "Algebra Baseline",
+        "primaryTopic": "Algebra",
+        "primaryTopicKey": "algebra",
+        "yearGroupKey": "year-10",
+        "yearGroupLabel": "Year 10",
+        "alternateTitles": [],
+        "alternateTopics": [],
+        "documentType": "SLIDES",
+        "referenceDocumentId": "ref-doc-123",
+        "templateDocumentId": "template-doc-456",
+        "assignmentWeighting": 1,
+        "definitionKey": "algebra-baseline",
+        "tasks": null,
+        "createdAt": "2025-01-01T00:00:00.000Z",
+        "updatedAt": "2025-05-01T00:00:00.000Z"
+      }
+    }
+  ],
+  "active": true
+}
+```
+
+Key notes:
+
+- `assignments[]` uses the `Assignment.toPartialJSON()` shape (partial — no full artifact content, no assessment reasoning, no hydration metadata).
+- `assignments[].assignmentDefinition.tasks` is always `null` (partial shape).
+- `assignments[].submissions[].artifact.content` and `contentHash` are always `null` (redacted in partial).
+- `students` are plain objects with `name`, `email`, `id` (not model instances).
+- `classOwner` and every entry in `teachers` are teacher summary objects with `userId`, `email`, and `teacherName` fields only (same shape as the partial registry).
+- `active` is an explicit boolean (or `null` when unknown).
+- Derived display fields (e.g. `cohortLabel`, `yearGroupLabel`) are intentionally excluded from backend transport; frontend view-models derive them from reference-data maps.
+- The response omits `_hydrationLevel` and `progressTracker` fields (stripped as defence-in-depth by `_toReadView()`).
+- The response uses the same envelope contract as all other `z_Api` methods — see "Google Classroom Picker and ABClass Mutation Transport Shapes" section below.
+- Frontend Zod schema mirroring this shape lives in `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts`.
+
 ## Google Classroom Picker and ABClass Mutation Transport Shapes
 
 These shapes describe the `data` payload inside the stable `apiHandler` transport envelope:

@@ -18,6 +18,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   cleanupControllerTestMocks,
   createMockCollection,
+  createDualCollectionDbManager,
   setupControllerTestMocks,
 } from '../helpers/mockFactories.js';
 
@@ -35,15 +36,8 @@ import {
  * @returns {{ mockDbManager }}
  */
 function setupMocks(classCollection, partialsCollection) {
-  const mockDbManager = {
-    getCollection: vi.fn((name) => {
-      if (name === 'abclass_partials') return partialsCollection;
-      return classCollection;
-    }),
-  };
-
+  const mockDbManager = createDualCollectionDbManager(vi, classCollection, partialsCollection);
   globalThis.DbManager = { getInstance: () => mockDbManager };
-
   return { mockDbManager };
 }
 
@@ -65,7 +59,7 @@ beforeEach(async () => {
 
   // Dynamic require after globals are set (CommonJS modules read globals at call time)
   const abClassModule = await import('../../src/backend/Models/ABClass.js');
-  const controllerModule = await import('../../src/backend/y_controllers/ABClassController.js');
+  const controllerModule = await import('../../src/backend/y_controllers/ABClassController');
 
   ABClass = abClassModule.ABClass;
   ABClassController = controllerModule.default ?? controllerModule;
