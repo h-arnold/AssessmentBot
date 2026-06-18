@@ -28,13 +28,15 @@ import {
   clickStartAssessment,
   clickCreateNewDefinition,
   clickLinkToExisting,
-  clickLink,
-  pickLinkableDefinition,
   expectLinkButtonDisabled,
   getWizardProperties,
   expectStartAssessmentDisabled,
   expectCancelButtonPresent,
 } from '../../../test/classes/AssessTaskModal.test-utilities';
+import {
+  renderWithNoMatchCache,
+  performLinkFlow,
+} from '../../../test/classes/AssessTaskModal.link-flow-helpers';
 
 vi.mock('../../../services/googleClassrooms/googleClassroomAssignmentsService', () => ({
   getGoogleClassroomAssignments: vi.fn(),
@@ -409,10 +411,8 @@ describe('Assessment run interaction', () => {
   });
 
   it('shows error Alert with specific message when class has null yearGroupKey', async () => {
-    const { dialog } = renderWithCache({
+    const { dialog } = renderWithNoMatchCache({
       classPartials: [createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: null })],
-      definitionPartials: [createDefinitionPartial()],
-      findMatchResult: { kind: 'no-match' },
     });
 
     await selectAssignment(dialog);
@@ -574,14 +574,10 @@ describe('Assessment run interaction', () => {
  */
 async function setupReopenInPlace() {
   const onClose = vi.fn();
-  vi.mocked(getGoogleClassroomAssignments).mockResolvedValue(MOCK_ASSIGNMENTS);
-  vi.mocked(findMatchingDefinition).mockReturnValue({ kind: 'no-match' });
 
-  const queryClient = createAppQueryClient();
-  queryClient.setQueryData(queryKeys.classPartials(), [
-    createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-  ]);
-  queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [createDefinitionPartial()]);
+  // Use renderWithNoMatchCache to set up mocks and create a populated query client
+  const { queryClient } = renderWithNoMatchCache({ onClose });
+  cleanup();
 
   const { rerender } = render(
     <QueryClientProvider client={queryClient}>
@@ -616,13 +612,7 @@ async function setupReopenInPlace() {
 
 describe('No-match resolution — choice state', () => {
   it('shows choice prompt with Alert, Create New Definition button, and enabled Link to Existing button when findMatchingDefinition returns no-match', async () => {
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [createDefinitionPartial()],
-      findMatchResult: { kind: 'no-match' },
-    });
+    const { dialog } = renderWithNoMatchCache();
 
     await selectAssignment(dialog);
     clickStartAssessment(dialog);
@@ -641,13 +631,7 @@ describe('No-match resolution — choice state', () => {
   });
 
   it('hides assignment Select and shows only Cancel in footer during choice state', async () => {
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [createDefinitionPartial()],
-      findMatchResult: { kind: 'no-match' },
-    });
+    const { dialog } = renderWithNoMatchCache();
 
     await selectAssignment(dialog);
     clickStartAssessment(dialog);
@@ -661,13 +645,7 @@ describe('No-match resolution — choice state', () => {
   });
 
   it('transitions to creating state when Create New Definition is clicked', async () => {
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [createDefinitionPartial()],
-      findMatchResult: { kind: 'no-match' },
-    });
+    const { dialog } = renderWithNoMatchCache();
 
     await selectAssignment(dialog);
     clickStartAssessment(dialog);
@@ -688,13 +666,7 @@ describe('No-match resolution — choice state', () => {
   });
 
   it('shows Link to Existing button disabled with Tooltip when no linkable definitions exist', async () => {
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [],
-      findMatchResult: { kind: 'no-match' },
-    });
+    const { dialog } = renderWithNoMatchCache({ definitionPartials: [] });
 
     await selectAssignment(dialog);
     clickStartAssessment(dialog);
@@ -865,14 +837,7 @@ describe('Footer buttons across states', () => {
  *   The dialog and query client.
  */
 async function setupWizardTest(options: Partial<RenderWithCacheOptions> = {}) {
-  const { dialog, queryClient } = renderWithCache({
-    classPartials: [
-      createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-    ],
-    definitionPartials: [createDefinitionPartial()],
-    findMatchResult: { kind: 'no-match' },
-    ...options,
-  });
+  const { dialog, queryClient } = renderWithNoMatchCache(options);
 
   await selectAssignment(dialog);
   clickStartAssessment(dialog);
@@ -1106,13 +1071,7 @@ describe('No-match resolution — creating state and wizard integration', () => 
 
 describe('No-match resolution — linking state and link flow', () => {
   it('choice prompt: Link to Existing Definition button is enabled when at least one linkable definition exists', async () => {
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [createDefinitionPartial()],
-      findMatchResult: { kind: 'no-match' },
-    });
+    const { dialog } = renderWithNoMatchCache();
 
     await selectAssignment(dialog);
     clickStartAssessment(dialog);
@@ -1122,12 +1081,8 @@ describe('No-match resolution — linking state and link flow', () => {
   });
 
   it('choice prompt: Link to Existing Definition button is disabled with Tooltip when the picker would be empty', async () => {
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
+    const { dialog } = renderWithNoMatchCache({
       definitionPartials: [createDefinitionPartial({ yearGroupKey: 'year-11' })],
-      findMatchResult: { kind: 'no-match' },
     });
 
     await selectAssignment(dialog);
@@ -1146,13 +1101,7 @@ describe('No-match resolution — linking state and link flow', () => {
   });
 
   it('choice prompt: clicking Link to Existing Definition transitions to linking state', async () => {
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [createDefinitionPartial()],
-      findMatchResult: { kind: 'no-match' },
-    });
+    const { dialog } = renderWithNoMatchCache();
 
     await selectAssignment(dialog);
     clickStartAssessment(dialog);
@@ -1169,13 +1118,7 @@ describe('No-match resolution — linking state and link flow', () => {
   });
 
   it('picker: clicking Cancel returns to the choice prompt', async () => {
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [createDefinitionPartial()],
-      findMatchResult: { kind: 'no-match' },
-    });
+    const { dialog } = renderWithNoMatchCache();
 
     await selectAssignment(dialog);
     clickStartAssessment(dialog);
@@ -1195,13 +1138,7 @@ describe('No-match resolution — linking state and link flow', () => {
   });
 
   it('picker: Link button is disabled when no row is selected', async () => {
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [createDefinitionPartial()],
-      findMatchResult: { kind: 'no-match' },
-    });
+    const { dialog } = renderWithNoMatchCache();
 
     await selectAssignment(dialog);
     clickStartAssessment(dialog);
@@ -1219,27 +1156,14 @@ describe('No-match resolution — linking state and link flow', () => {
   });
 
   it('picker: clicking a row and clicking Link calls upsertAssignmentDefinition and then startAssessmentRun', async () => {
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [createDefinitionPartial()],
-      findMatchResult: { kind: 'no-match' },
+    const { dialog } = renderWithNoMatchCache({
       upsertResult: DEFAULT_UPSERT_RESULT,
       upsertType: 'resolve',
       startRunResult: null,
       startRunType: 'resolve',
     });
 
-    await selectAssignment(dialog);
-    clickStartAssessment(dialog);
-    await clickLinkToExisting(dialog);
-
-    // Select the first row
-    await pickLinkableDefinition(dialog);
-
-    // Click the Link button
-    await clickLink(dialog);
+    await performLinkFlow(dialog);
 
     // upsertAssignmentDefinition should have been called with the ID-shape payload
     await waitFor(() => {
@@ -1270,17 +1194,13 @@ describe('No-match resolution — linking state and link flow', () => {
   });
 
   it('picker: empty Google Classroom topic name sends alternateTopics unchanged (not [])', async () => {
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
+    const { dialog } = renderWithNoMatchCache({
       definitionPartials: [
         createDefinitionPartial({
           alternateTitles: ['Narrative'],
           alternateTopics: ['Writing', 'Algebra'],
         }),
       ],
-      findMatchResult: { kind: 'no-match' },
       assignments: [
         { assignmentId: 'a1', title: 'Essay', creationTime: '2024-09-02T08:30:00.000Z', topicName: null, topicId: null },
       ],
@@ -1288,11 +1208,7 @@ describe('No-match resolution — linking state and link flow', () => {
       upsertType: 'resolve',
     });
 
-    await selectAssignment(dialog);
-    clickStartAssessment(dialog);
-    await clickLinkToExisting(dialog);
-    await pickLinkableDefinition(dialog);
-    await clickLink(dialog);
+    await performLinkFlow(dialog);
 
     await waitFor(() => {
       expect(vi.mocked(upsertAssignmentDefinition)).toHaveBeenCalledTimes(1);
@@ -1308,23 +1224,14 @@ describe('No-match resolution — linking state and link flow', () => {
   });
 
   it('post-link: success Alert replaces the body, Close button replaces the footer', async () => {
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [createDefinitionPartial()],
-      findMatchResult: { kind: 'no-match' },
+    const { dialog } = renderWithNoMatchCache({
       upsertResult: DEFAULT_UPSERT_RESULT,
       upsertType: 'resolve',
       startRunResult: null,
       startRunType: 'resolve',
     });
 
-    await selectAssignment(dialog);
-    clickStartAssessment(dialog);
-    await clickLinkToExisting(dialog);
-    await pickLinkableDefinition(dialog);
-    await clickLink(dialog);
+    await performLinkFlow(dialog);
 
     // Success alert should appear
     const alert = await within(dialog).findByRole('alert');
@@ -1342,23 +1249,14 @@ describe('No-match resolution — linking state and link flow', () => {
   });
 
   it('post-link: cache invalidation on upsert failure', async () => {
-    const { dialog, queryClient } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [createDefinitionPartial()],
-      findMatchResult: { kind: 'no-match' },
+    const { dialog, queryClient } = renderWithNoMatchCache({
       upsertResult: new Error('Upsert failed'),
       upsertType: 'reject',
     });
 
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
 
-    await selectAssignment(dialog);
-    clickStartAssessment(dialog);
-    await clickLinkToExisting(dialog);
-    await pickLinkableDefinition(dialog);
-    await clickLink(dialog);
+    await performLinkFlow(dialog);
 
     await waitFor(() => {
       expect(invalidateSpy).toHaveBeenCalledWith({
@@ -1368,21 +1266,12 @@ describe('No-match resolution — linking state and link flow', () => {
   });
 
   it('post-link: error Alert replaces the body, Cancel button closes the modal', async () => {
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [createDefinitionPartial()],
-      findMatchResult: { kind: 'no-match' },
+    const { dialog } = renderWithNoMatchCache({
       upsertResult: new Error('Upsert failed'),
       upsertType: 'reject',
     });
 
-    await selectAssignment(dialog);
-    clickStartAssessment(dialog);
-    await clickLinkToExisting(dialog);
-    await pickLinkableDefinition(dialog);
-    await clickLink(dialog);
+    await performLinkFlow(dialog);
 
     // Error Alert should appear
     const alert = await within(dialog).findByRole('alert');
@@ -1394,23 +1283,14 @@ describe('No-match resolution — linking state and link flow', () => {
   });
 
   it('post-link: startAssessmentRun failure after a successful upsert (non-DEFINITION_STALE error)', async () => {
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [createDefinitionPartial()],
-      findMatchResult: { kind: 'no-match' },
+    const { dialog } = renderWithNoMatchCache({
       upsertResult: DEFAULT_UPSERT_RESULT,
       upsertType: 'resolve',
       startRunResult: new Error('Assessment run failed'),
       startRunType: 'reject',
     });
 
-    await selectAssignment(dialog);
-    clickStartAssessment(dialog);
-    await clickLinkToExisting(dialog);
-    await pickLinkableDefinition(dialog);
-    await clickLink(dialog);
+    await performLinkFlow(dialog);
 
     // Error Alert should appear
     const alert = await within(dialog).findByRole('alert');
@@ -1427,23 +1307,14 @@ describe('No-match resolution — linking state and link flow', () => {
       error: { code: 'DEFINITION_STALE', message: 'Definition is stale' },
     });
 
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [createDefinitionPartial()],
-      findMatchResult: { kind: 'no-match' },
+    const { dialog } = renderWithNoMatchCache({
       upsertResult: DEFAULT_UPSERT_RESULT,
       upsertType: 'resolve',
       startRunResult: staleError,
       startRunType: 'reject',
     });
 
-    await selectAssignment(dialog);
-    clickStartAssessment(dialog);
-    await clickLinkToExisting(dialog);
-    await pickLinkableDefinition(dialog);
-    await clickLink(dialog);
+    await performLinkFlow(dialog);
 
     // Should transition to stale recovery — wizard should appear with stale definition data pre-populated
     const wizard = await screen.findByTestId('wizard-mock');
@@ -1462,23 +1333,14 @@ describe('No-match resolution — linking state and link flow', () => {
   });
 
   it('hasLinkSucceeded flag management', async () => {
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [createDefinitionPartial()],
-      findMatchResult: { kind: 'no-match' },
+    const { dialog } = renderWithNoMatchCache({
       upsertResult: DEFAULT_UPSERT_RESULT,
       upsertType: 'resolve',
       startRunResult: new Error('Assessment run failed'),
       startRunType: 'reject',
     });
 
-    await selectAssignment(dialog);
-    clickStartAssessment(dialog);
-    await clickLinkToExisting(dialog);
-    await pickLinkableDefinition(dialog);
-    await clickLink(dialog);
+    await performLinkFlow(dialog);
 
     // After upsert resolves but startAssessmentRun fails,
     // hasLinkSucceeded should be true, so the error Alert should
@@ -1489,16 +1351,11 @@ describe('No-match resolution — linking state and link flow', () => {
 
   it('state reset on modal reopen', async () => {
     const onClose = vi.fn();
-    vi.mocked(getGoogleClassroomAssignments).mockResolvedValue(MOCK_ASSIGNMENTS);
-    vi.mocked(findMatchingDefinition).mockReturnValue({ kind: 'no-match' });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(upsertAssignmentDefinition).mockResolvedValue(DEFAULT_UPSERT_RESULT as any);
 
-    const queryClient = createAppQueryClient();
-    queryClient.setQueryData(queryKeys.classPartials(), [
-      createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-    ]);
-    queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [createDefinitionPartial()]);
+    const { queryClient } = renderWithNoMatchCache({ onClose });
+    cleanup();
 
     const { rerender } = render(
       <QueryClientProvider client={queryClient}>
@@ -1537,14 +1394,7 @@ describe('No-match resolution — linking state and link flow', () => {
 
   it('state reset on Cancel from picker', async () => {
     const onClose = vi.fn();
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [createDefinitionPartial()],
-      findMatchResult: { kind: 'no-match' },
-      onClose,
-    });
+    const { dialog } = renderWithNoMatchCache({ onClose });
 
     await selectAssignment(dialog);
     clickStartAssessment(dialog);
@@ -1566,24 +1416,13 @@ describe('No-match resolution — linking state and link flow', () => {
     const onClose = vi.fn();
 
     // Use a pending promise so upsert stays in loading state.
-    // Must be set before renderWithCache so the mock is not overwritten.
+    // Must be set before renderWithNoMatchCache so the mock is not overwritten.
     const pendingUpsert = new Promise<typeof DEFAULT_UPSERT_RESULT>(() => {});
     vi.mocked(upsertAssignmentDefinition).mockReturnValue(pendingUpsert);
 
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [createDefinitionPartial()],
-      findMatchResult: { kind: 'no-match' },
-      onClose,
-    });
+    const { dialog } = renderWithNoMatchCache({ onClose });
 
-    await selectAssignment(dialog);
-    clickStartAssessment(dialog);
-    await clickLinkToExisting(dialog);
-    await pickLinkableDefinition(dialog);
-    await clickLink(dialog);
+    await performLinkFlow(dialog);
 
     // During loading, click Cancel — should close the modal
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
@@ -1592,21 +1431,12 @@ describe('No-match resolution — linking state and link flow', () => {
   });
 
   it('hasLinkSucceeded === false: error Alert shown without "link was committed" text, Cancel button present', async () => {
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [createDefinitionPartial()],
-      findMatchResult: { kind: 'no-match' },
+    const { dialog } = renderWithNoMatchCache({
       upsertResult: new Error('Upsert failed'),
       upsertType: 'reject',
     });
 
-    await selectAssignment(dialog);
-    clickStartAssessment(dialog);
-    await clickLinkToExisting(dialog);
-    await pickLinkableDefinition(dialog);
-    await clickLink(dialog);
+    await performLinkFlow(dialog);
 
     // Error Alert should appear
     const alert = await within(dialog).findByRole('alert');

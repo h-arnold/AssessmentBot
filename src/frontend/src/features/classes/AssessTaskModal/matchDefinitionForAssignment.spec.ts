@@ -1,106 +1,32 @@
 import { describe, expect, it } from 'vitest';
 import type { AssignmentDefinitionPartial } from '../../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import { findMatchingDefinition } from './matchDefinitionForAssignment';
-
-const DEFAULT_ISO_DATETIME = '2025-01-01T00:00:00.000Z';
-
-/**
- * Creates an AssignmentDefinitionPartial fixture with sensible defaults.
- *
- * Only `primaryTitle`, `primaryTopic`, and `yearGroupKey` are varied per test;
- * all other fields are fixed to reduce noise.
- *
- * @param {Partial<AssignmentDefinitionPartial>} overrides Fields to override on the default fixture.
- * @returns {AssignmentDefinitionPartial} An AssignmentDefinitionPartial fixture.
- */
-function createFixture(
-  overrides: Partial<AssignmentDefinitionPartial> = {}
-): AssignmentDefinitionPartial {
-  return {
-    primaryTitle: 'Default Title',
-    primaryTopic: 'Default Topic',
-    primaryTopicKey: 'default-topic-key',
-    yearGroupKey: 'year-10',
-    yearGroupLabel: 'Year 10',
-    alternateTitles: [],
-    alternateTopics: [],
-    documentType: 'test-document',
-    referenceDocumentId: 'ref-001',
-    templateDocumentId: 'tpl-001',
-    assignmentWeighting: null,
-    definitionKey: 'default-def-key',
-    tasks: null,
-    createdAt: DEFAULT_ISO_DATETIME,
-    updatedAt: DEFAULT_ISO_DATETIME,
-    ...overrides,
-  };
-}
-
-const DEFAULT_SELECTED_ASSIGNMENT = {
-  assignmentId: 'a-1',
-  title: 'Essay',
-  topicName: 'Writing',
-};
-
-const DEFAULT_CLASS_PARTIAL = { yearGroupKey: 'year-10' };
-
-/**
- * Creates a selected assignment fixture with sensible defaults.
- *
- * Only fields that differ from the default `Essay` / `Writing` assignment
- * need to be provided, reducing noise in each test case.
- *
- * @param {Partial<{ assignmentId: string; title: string; topicName: string | null }>} [overrides={}] Fields to override on the default fixture.
- * @returns {{ assignmentId: string; title: string; topicName: string | null }} A selected assignment fixture.
- */
-function createSelectedAssignment(
-  overrides: Partial<{ assignmentId: string; title: string; topicName: string | null }> = {}
-): { assignmentId: string; title: string; topicName: string | null } {
-  return { ...DEFAULT_SELECTED_ASSIGNMENT, ...overrides };
-}
+import {
+  createFixture,
+  createSelectedAssignment,
+  DEFAULT_CLASS_PARTIAL,
+  expectMatchedWithFixture,
+} from '../../../test/classes/AssessTaskModal.test-utilities';
 
 describe('findMatchingDefinition', () => {
   it('returns matched when primaryTitle, topicName, and yearGroupKey all align', () => {
-    const definitionPartials: AssignmentDefinitionPartial[] = [
-      createFixture({
-        primaryTitle: 'Essay',
-        primaryTopic: 'Writing',
-        yearGroupKey: 'year-10',
-      }),
-    ];
-
-    const result = findMatchingDefinition(
-      createSelectedAssignment(),
-      DEFAULT_CLASS_PARTIAL,
-      definitionPartials
-    );
-
-    expect(result.kind).toBe('matched');
-    if (result.kind === 'matched') {
-      expect(result.definition).toBe(definitionPartials[0]);
-    }
+    expectMatchedWithFixture({
+      primaryTitle: 'Essay',
+      primaryTopic: 'Writing',
+      yearGroupKey: 'year-10',
+    });
   });
 
   it('returns matched when an alternateTitle, topicName, and yearGroupKey align', () => {
-    const definitionPartials: AssignmentDefinitionPartial[] = [
-      createFixture({
+    expectMatchedWithFixture(
+      {
         primaryTitle: 'Essay',
         alternateTitles: ['Short Story', 'Narrative'],
         primaryTopic: 'Writing',
         yearGroupKey: 'year-10',
-      }),
-    ];
-
-    const result = findMatchingDefinition(
-      createSelectedAssignment({ assignmentId: 'a-2', title: 'Short Story' }),
-      DEFAULT_CLASS_PARTIAL,
-      definitionPartials
+      },
+      { assignmentId: 'a-2', title: 'Short Story' }
     );
-
-    expect(result.kind).toBe('matched');
-    if (result.kind === 'matched') {
-      expect(result.definition).toBe(definitionPartials[0]);
-    }
   });
 
   it('returns no-match when no definition has a matching title', () => {
@@ -253,131 +179,55 @@ describe('findMatchingDefinition', () => {
   });
 
   it('returns matched when primaryTitle differs only by case', () => {
-    const definitionPartials: AssignmentDefinitionPartial[] = [
-      createFixture({
-        primaryTitle: 'Essay',
-        primaryTopic: 'Writing',
-        yearGroupKey: 'year-10',
-      }),
-    ];
-
-    const result = findMatchingDefinition(
-      createSelectedAssignment({ assignmentId: 'a-11', title: 'essay' }),
-      DEFAULT_CLASS_PARTIAL,
-      definitionPartials
+    expectMatchedWithFixture(
+      { primaryTitle: 'Essay', primaryTopic: 'Writing', yearGroupKey: 'year-10' },
+      { assignmentId: 'a-11', title: 'essay' }
     );
-
-    expect(result.kind).toBe('matched');
-    if (result.kind === 'matched') {
-      expect(result.definition).toBe(definitionPartials[0]);
-    }
   });
 
   it('returns matched when primaryTitle differs only by surrounding whitespace', () => {
-    const definitionPartials: AssignmentDefinitionPartial[] = [
-      createFixture({
-        primaryTitle: 'Essay',
-        primaryTopic: 'Writing',
-        yearGroupKey: 'year-10',
-      }),
-    ];
-
-    const result = findMatchingDefinition(
-      createSelectedAssignment({ assignmentId: 'a-12', title: '  Essay  ' }),
-      DEFAULT_CLASS_PARTIAL,
-      definitionPartials
+    expectMatchedWithFixture(
+      { primaryTitle: 'Essay', primaryTopic: 'Writing', yearGroupKey: 'year-10' },
+      { assignmentId: 'a-12', title: '  Essay  ' }
     );
-
-    expect(result.kind).toBe('matched');
-    if (result.kind === 'matched') {
-      expect(result.definition).toBe(definitionPartials[0]);
-    }
   });
 
   it('returns matched when an alternateTitle differs only by case', () => {
-    const definitionPartials: AssignmentDefinitionPartial[] = [
-      createFixture({
+    expectMatchedWithFixture(
+      {
         primaryTitle: 'Essay',
         alternateTitles: ['Narrative'],
         primaryTopic: 'Writing',
         yearGroupKey: 'year-10',
-      }),
-    ];
-
-    const result = findMatchingDefinition(
-      createSelectedAssignment({ assignmentId: 'a-13', title: 'NARRATIVE' }),
-      DEFAULT_CLASS_PARTIAL,
-      definitionPartials
+      },
+      { assignmentId: 'a-13', title: 'NARRATIVE' }
     );
-
-    expect(result.kind).toBe('matched');
-    if (result.kind === 'matched') {
-      expect(result.definition).toBe(definitionPartials[0]);
-    }
   });
 
   it('returns matched when primaryTopic differs only by case', () => {
-    const definitionPartials: AssignmentDefinitionPartial[] = [
-      createFixture({
-        primaryTitle: 'Essay',
-        primaryTopic: 'Algebra',
-        yearGroupKey: 'year-10',
-      }),
-    ];
-
-    const result = findMatchingDefinition(
-      createSelectedAssignment({ assignmentId: 'a-14', topicName: 'algebra' }),
-      DEFAULT_CLASS_PARTIAL,
-      definitionPartials
+    expectMatchedWithFixture(
+      { primaryTitle: 'Essay', primaryTopic: 'Algebra', yearGroupKey: 'year-10' },
+      { assignmentId: 'a-14', topicName: 'algebra' }
     );
-
-    expect(result.kind).toBe('matched');
-    if (result.kind === 'matched') {
-      expect(result.definition).toBe(definitionPartials[0]);
-    }
   });
 
   it('returns matched when an alternateTopic matches the assignment topic case-insensitively', () => {
-    const definitionPartials: AssignmentDefinitionPartial[] = [
-      createFixture({
+    expectMatchedWithFixture(
+      {
         primaryTitle: 'Essay',
         primaryTopic: 'Writing',
         alternateTopics: ['Linear Equations'],
         yearGroupKey: 'year-10',
-      }),
-    ];
-
-    const result = findMatchingDefinition(
-      createSelectedAssignment({ assignmentId: 'a-15', topicName: 'linear equations' }),
-      DEFAULT_CLASS_PARTIAL,
-      definitionPartials
+      },
+      { assignmentId: 'a-15', topicName: 'linear equations' }
     );
-
-    expect(result.kind).toBe('matched');
-    if (result.kind === 'matched') {
-      expect(result.definition).toBe(definitionPartials[0]);
-    }
   });
 
   it('returns matched when primaryTopic differs only by surrounding whitespace', () => {
-    const definitionPartials: AssignmentDefinitionPartial[] = [
-      createFixture({
-        primaryTitle: 'Essay',
-        primaryTopic: 'Algebra',
-        yearGroupKey: 'year-10',
-      }),
-    ];
-
-    const result = findMatchingDefinition(
-      createSelectedAssignment({ assignmentId: 'a-16', topicName: '  Algebra  ' }),
-      DEFAULT_CLASS_PARTIAL,
-      definitionPartials
+    expectMatchedWithFixture(
+      { primaryTitle: 'Essay', primaryTopic: 'Algebra', yearGroupKey: 'year-10' },
+      { assignmentId: 'a-16', topicName: '  Algebra  ' }
     );
-
-    expect(result.kind).toBe('matched');
-    if (result.kind === 'matched') {
-      expect(result.definition).toBe(definitionPartials[0]);
-    }
   });
 
   it('does not match when the case-insensitive title aligns but the topic differs', () => {

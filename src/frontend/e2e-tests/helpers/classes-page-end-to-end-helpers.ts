@@ -1,5 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 import type { ResponseItem, RuntimeScenario } from '../shared/endToEndRuntimeMocks';
+import { installRuntimeMock } from '../shared/endToEndRuntimeMocks';
 import {
   CLASS_PARTIALS_FOR_EMPTY_PANEL,
   MIXED_ORDER_CLASS_PARTIALS,
@@ -127,20 +128,15 @@ export function createClassesScenario(options: CreateClassesScenarioOptions = {}
     getGoogleClassroomAssignments,
   } = options;
 
-  const scenario: RuntimeScenario = {
+  return {
     getAuthorisationStatus: [{ kind: 'success', data: true }],
     getABClassPartials: [{ kind: 'success', data: classPartials }],
     getCohorts: [{ kind: 'success', data: [] }],
     getYearGroups: [{ kind: 'success', data: yearGroups }],
     getAssignmentTopics: [{ kind: 'success', data: [] }],
     getAssignmentDefinitionPartials: [{ kind: 'success', data: [] }],
+    ...(getGoogleClassroomAssignments === undefined ? {} : { getGoogleClassroomAssignments }),
   };
-
-  if (getGoogleClassroomAssignments) {
-    scenario.getGoogleClassroomAssignments = getGoogleClassroomAssignments;
-  }
-
-  return scenario;
 }
 
 /**
@@ -203,6 +199,128 @@ export function createAssessTaskScenario(
     ...(startAssessmentRun !== undefined && { startAssessmentRun }),
     ...(upsertAssignmentDefinition !== undefined && { upsertAssignmentDefinition }),
   };
+}
+
+// ============================================================================
+// Linkable Scenario Helpers
+// ============================================================================
+
+/**
+ * Default linkable partial fixture for link-picker E2E tests.
+ *
+ * Represents an assignment definition partial that can be linked to
+ * when the user clicks "Link to Existing Definition" in the choice prompt.
+ */
+const DEFAULT_LINKABLE_PARTIAL = {
+  definitionKey: 'default-linkable-key',
+  primaryTitle: 'Algebra HW',
+  primaryTopicKey: 'topic-algebra',
+  primaryTopic: 'Algebra',
+  yearGroupKey: 'year-group-10',
+  yearGroupLabel: 'Year 10',
+  alternateTitles: [],
+  alternateTopics: [],
+  documentType: 'SLIDES',
+  referenceDocumentId: 'ref-123',
+  templateDocumentId: 'tpl-456',
+  assignmentWeighting: 5,
+  tasks: [],
+  createdAt: '2025-01-01T00:00:00.000Z',
+  updatedAt: '2025-03-01T00:00:00.000Z',
+};
+
+const DEFAULT_LINKABLE_PARTIALS_ENTRY: ResponseItem = {
+  kind: 'success',
+  data: [DEFAULT_LINKABLE_PARTIAL],
+};
+
+const DEFAULT_UPSERT_SUCCESS_ENTRY: ResponseItem = {
+  kind: 'success',
+  data: DEFAULT_LINKABLE_PARTIAL,
+};
+
+const DEFAULT_START_RUN_SUCCESS_ENTRY: ResponseItem = {
+  kind: 'success',
+  data: null,
+};
+
+/**
+ * Creates a runtime scenario configured for link-to-existing-definition flow tests.
+ *
+ * Builds on {@link createAssessTaskScenario} and adds a `getAssignmentDefinitionPartials`
+ * queue for the link picker. When `useDefaults` is true (default), standard
+ * `upsertAssignmentDefinition` and `startAssessmentRun` success entries are included.
+ *
+ * @param {Partial<CreateAssessTaskScenarioOptions> & {linkablePartialsEntry?: ResponseItem; useDefaults?: boolean}} overrides - Scenario customisation options.
+ * @param {ResponseItem} [overrides.linkablePartialsEntry] - Override the default partials entry for the link picker.
+ * @param {boolean} [overrides.useDefaults] - When true (default), include default upsert and startRun entries.
+ *   When false, only include those explicitly provided via `CreateAssessTaskScenarioOptions`.
+ * @returns {RuntimeScenario} RuntimeScenario with linkable partials.
+ */
+// eslint-disable-next-line complexity -- Test helper with many optional parameters
+export function createLinkableScenario(
+  overrides: Partial<CreateAssessTaskScenarioOptions> & {
+    linkablePartialsEntry?: ResponseItem;
+    useDefaults?: boolean;
+  } = {}
+): RuntimeScenario {
+  const {
+    classPartials,
+    yearGroups,
+    getGoogleClassroomAssignments,
+    upsertAssignmentDefinition,
+    startAssessmentRun,
+    linkablePartialsEntry,
+    useDefaults = true,
+  } = overrides;
+
+  const scenarioOptions: Partial<CreateAssessTaskScenarioOptions> = {
+    classPartials,
+    yearGroups,
+    getGoogleClassroomAssignments,
+    upsertAssignmentDefinition,
+    startAssessmentRun,
+  };
+
+  const scenario = createAssessTaskScenario(scenarioOptions);
+  const entry = linkablePartialsEntry ?? DEFAULT_LINKABLE_PARTIALS_ENTRY;
+
+  const upsertEntry =
+    useDefaults && !scenarioOptions.upsertAssignmentDefinition
+      ? [DEFAULT_UPSERT_SUCCESS_ENTRY, DEFAULT_UPSERT_SUCCESS_ENTRY]
+      : undefined;
+
+  const runEntry =
+    useDefaults && !scenarioOptions.startAssessmentRun
+      ? [DEFAULT_START_RUN_SUCCESS_ENTRY, DEFAULT_START_RUN_SUCCESS_ENTRY]
+      : undefined;
+
+  return {
+    ...scenario,
+    getAssignmentDefinitionPartials: [entry, entry],
+    ...(upsertEntry === undefined ? {} : { upsertAssignmentDefinition: upsertEntry }),
+    ...(runEntry === undefined ? {} : { startAssessmentRun: runEntry }),
+  };
+}
+
+/**
+ * Installs a linkable runtime scenario and opens the Assess Task modal.
+ *
+ * Convenience helper that combines {@link installRuntimeMock} and
+ * {@link openAssessTaskModal} for the link-picker flow preamble.
+ * The caller is responsible for calling `selectAssignmentAndStart`
+ * after this function returns.
+ *
+ * @param {Page} page - The Playwright page under test.
+ * @param {RuntimeScenario} [scenario] - Optional scenario. Defaults to `createLinkableScenario()`.
+ * @returns {Promise<ReturnType<typeof page.getByRole>>} The visible dialog locator.
+ */
+export async function setupLinkableDialog(
+  page: Page,
+  scenario?: RuntimeScenario
+): Promise<ReturnType<typeof page.getByRole>> {
+  await installRuntimeMock(page, scenario ?? createLinkableScenario());
+  return openAssessTaskModal(page);
 }
 
 // ============================================================================

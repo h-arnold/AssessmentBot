@@ -1,15 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import AssignmentDefinitionController from '../../src/backend/y_controllers/AssignmentDefinition/index.js';
-import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
-import { TaskDefinition } from '../../src/backend/Models/TaskDefinition.js';
-import DbManager from '../../src/backend/DbManager/DbManager.js';
-import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager.js';
-import SlidesParser from '../../src/backend/DocumentParsers/SlidesParser.js';
-import { SheetsParser } from '../../src/backend/DocumentParsers/SheetsParser.js';
-import { createMockCollection } from '../helpers/mockFactories.js';
 import {
-  createParsedTaskDefinition,
   createUpsertPayload,
+  setupUpsertControllerTestBed,
 } from './assignmentDefinitionUpsertTestHelpers.js';
 
 const extractSlidesTaskDefinitionsMock = vi.fn();
@@ -42,68 +34,16 @@ describe('AssignmentDefinitionController upsert behaviour — alternate topics',
   let mockRegistryCollection;
   let mockFullCollection;
   let mockDbManager;
-  let assignmentTopicRecords;
-  let yearGroupRecords;
 
   beforeEach(() => {
-    vi.clearAllMocks();
-
-    mockRegistryCollection = createMockCollection(vi);
-    mockFullCollection = createMockCollection(vi);
-
-    mockDbManager = {
-      getCollection: vi.fn((name) => {
-        if (name === 'assignment_definitions') return mockRegistryCollection;
-        if (name.startsWith('assdef_full_')) return mockFullCollection;
-        throw new Error('Unexpected collection requested: ' + name);
-      }),
-      readAll: vi.fn().mockReturnValue([]),
-    };
-
-    DbManager.getInstance.mockReturnValue(mockDbManager);
-
-    assignmentTopicRecords = [
-      { key: 'topic-science', name: 'Science' },
-      { key: 'topic-maths', name: 'Maths' },
-    ];
-    yearGroupRecords = [
-      { key: 'year-group-8', name: 'Year 8' },
-      { key: 'year-group-10', name: 'Year 10' },
-    ];
-
-    globalThis.DbManager = DbManager;
-    globalThis.DriveManager = DriveManager;
-    globalThis.SlidesParser = SlidesParser;
-    globalThis.SheetsParser = SheetsParser;
-    globalThis.AssignmentDefinition = AssignmentDefinition;
-    globalThis.TaskDefinition = TaskDefinition;
-    globalThis.Utilities = {
-      getUuid: vi.fn().mockReturnValue('11111111-2222-4333-8444-555555555555'),
-    };
-    globalThis.ReferenceDataController = class {
-      listAssignmentTopics() {
-        return assignmentTopicRecords.map((topic) => ({ ...topic }));
-      }
-
-      listYearGroups() {
-        return yearGroupRecords.map((yearGroup) => ({ ...yearGroup }));
-      }
-    };
-
-    DriveManager.getFileModifiedTime.mockImplementation((documentId) => {
-      if (documentId.startsWith('new-')) return '2025-05-01T00:00:00.000Z';
-      return '2025-04-01T00:00:00.000Z';
-    });
-
-    extractSlidesTaskDefinitionsMock.mockReturnValue([
-      createParsedTaskDefinition({ id: 't_task_1', taskTitle: 'Task A', index: 0 }),
-      createParsedTaskDefinition({ id: 't_task_2', taskTitle: 'Task B', index: 1 }),
-    ]);
-    extractSheetsTaskDefinitionsMock.mockReturnValue([
-      createParsedTaskDefinition({ id: 't_sheet_task_1', taskTitle: 'Sheet Task A', index: 0 }),
-    ]);
-
-    controller = new AssignmentDefinitionController();
+    const ctx = setupUpsertControllerTestBed(
+      extractSlidesTaskDefinitionsMock,
+      extractSheetsTaskDefinitionsMock
+    );
+    controller = ctx.controller;
+    mockDbManager = ctx.mockDbManager;
+    mockRegistryCollection = ctx.mockRegistryCollection;
+    mockFullCollection = ctx.mockFullCollection;
   });
 
   it('preserves existing alternateTitles when updates omit alternateTitles', () => {

@@ -9,7 +9,9 @@ import {
 import {
   MOCK_COURSEWORK_ASSIGNMENTS,
   createAssessTaskScenario,
+  createLinkableScenario,
   openAssessTaskModal,
+  setupLinkableDialog,
 } from './helpers/classes-page-end-to-end-helpers';
 import type { Locator, Page } from '@playwright/test';
 
@@ -563,34 +565,15 @@ test.describe('Assess Task modal', () => {
       updatedAt: '2025-02-15T00:00:00.000Z',
     };
 
-    /**
-     * Standard partials queue for linking tests where at least one linkable
-     * definition in the same year group is needed.
-     */
-    const LINKABLE_PARTIALS_ENTRY = {
-      kind: 'success' as const,
-      data: [ALGEBRA_HW_PARTIAL],
-    };
-
-    const UPSERT_SUCCESS_ENTRY = {
-      kind: 'success' as const,
-      data: ALGEBRA_HW_PARTIAL,
-    };
-
-    const START_RUN_SUCCESS_ENTRY = { kind: 'success' as const, data: null };
-
     test('"Link to Existing Definition" button is enabled when a linkable definition exists', async ({
       page,
     }) => {
-      const scenario: RuntimeScenario = {
-        ...createAssessTaskScenario({
+      const dialog = await setupLinkableDialog(
+        page,
+        createLinkableScenario({
           getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
-        }),
-        getAssignmentDefinitionPartials: [LINKABLE_PARTIALS_ENTRY, LINKABLE_PARTIALS_ENTRY],
-      };
-
-      await installRuntimeMock(page, scenario);
-      const dialog = await openAssessTaskModal(page);
+        })
+      );
 
       await selectAssignmentAndStart(dialog, page);
 
@@ -612,18 +595,13 @@ test.describe('Assess Task modal', () => {
         yearGroupLabel: 'Year 9',
       };
 
-      const scenario: RuntimeScenario = {
-        ...createAssessTaskScenario({
+      const dialog = await setupLinkableDialog(
+        page,
+        createLinkableScenario({
           getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
-        }),
-        getAssignmentDefinitionPartials: [
-          { kind: 'success', data: [DIFFERENT_YEAR_GROUP_PARTIAL] },
-          { kind: 'success', data: [DIFFERENT_YEAR_GROUP_PARTIAL] },
-        ],
-      };
-
-      await installRuntimeMock(page, scenario);
-      const dialog = await openAssessTaskModal(page);
+          linkablePartialsEntry: { kind: 'success', data: [DIFFERENT_YEAR_GROUP_PARTIAL] },
+        })
+      );
 
       await selectAssignmentAndStart(dialog, page);
 
@@ -639,17 +617,12 @@ test.describe('Assess Task modal', () => {
     });
 
     test('clicking the link button transitions to the picker', async ({ page }) => {
-      const scenario: RuntimeScenario = {
-        ...createAssessTaskScenario({
+      const dialog = await setupLinkableDialog(
+        page,
+        createLinkableScenario({
           getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
-          upsertAssignmentDefinition: [UPSERT_SUCCESS_ENTRY, UPSERT_SUCCESS_ENTRY],
-          startAssessmentRun: [START_RUN_SUCCESS_ENTRY, START_RUN_SUCCESS_ENTRY],
-        }),
-        getAssignmentDefinitionPartials: [LINKABLE_PARTIALS_ENTRY, LINKABLE_PARTIALS_ENTRY],
-      };
-
-      await installRuntimeMock(page, scenario);
-      const dialog = await openAssessTaskModal(page);
+        })
+      );
 
       await selectAssignmentAndStart(dialog, page);
 
@@ -666,17 +639,12 @@ test.describe('Assess Task modal', () => {
     });
 
     test('picker rows show the title and the subtitle', async ({ page }) => {
-      const scenario: RuntimeScenario = {
-        ...createAssessTaskScenario({
+      const dialog = await setupLinkableDialog(
+        page,
+        createLinkableScenario({
           getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
-          upsertAssignmentDefinition: [UPSERT_SUCCESS_ENTRY, UPSERT_SUCCESS_ENTRY],
-          startAssessmentRun: [START_RUN_SUCCESS_ENTRY, START_RUN_SUCCESS_ENTRY],
-        }),
-        getAssignmentDefinitionPartials: [LINKABLE_PARTIALS_ENTRY, LINKABLE_PARTIALS_ENTRY],
-      };
-
-      await installRuntimeMock(page, scenario);
-      const dialog = await openAssessTaskModal(page);
+        })
+      );
 
       await selectAssignmentAndStart(dialog, page);
       await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
@@ -700,17 +668,13 @@ test.describe('Assess Task modal', () => {
         data: [POETRY_ANALYSIS_PARTIAL, ALGEBRA_HW_PARTIAL, ALGEBRA_HOMEWORK_PARTIAL],
       };
 
-      const scenario: RuntimeScenario = {
-        ...createAssessTaskScenario({
+      const dialog = await setupLinkableDialog(
+        page,
+        createLinkableScenario({
           getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
-          upsertAssignmentDefinition: [UPSERT_SUCCESS_ENTRY, UPSERT_SUCCESS_ENTRY],
-          startAssessmentRun: [START_RUN_SUCCESS_ENTRY, START_RUN_SUCCESS_ENTRY],
-        }),
-        getAssignmentDefinitionPartials: [THREE_PARTIALS_ENTRY, THREE_PARTIALS_ENTRY],
-      };
-
-      await installRuntimeMock(page, scenario);
-      const dialog = await openAssessTaskModal(page);
+          linkablePartialsEntry: THREE_PARTIALS_ENTRY,
+        })
+      );
 
       await selectAssignmentAndStart(dialog, page);
       await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
@@ -736,17 +700,12 @@ test.describe('Assess Task modal', () => {
     test('selecting a row and clicking Link calls upsertAssignmentDefinition then startAssessmentRun', async ({
       page,
     }) => {
-      const scenario: RuntimeScenario = {
-        ...createAssessTaskScenario({
+      const dialog = await setupLinkableDialog(
+        page,
+        createLinkableScenario({
           getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
-          upsertAssignmentDefinition: [UPSERT_SUCCESS_ENTRY, UPSERT_SUCCESS_ENTRY],
-          startAssessmentRun: [START_RUN_SUCCESS_ENTRY, START_RUN_SUCCESS_ENTRY],
-        }),
-        getAssignmentDefinitionPartials: [LINKABLE_PARTIALS_ENTRY, LINKABLE_PARTIALS_ENTRY],
-      };
-
-      await installRuntimeMock(page, scenario);
-      const dialog = await openAssessTaskModal(page);
+        })
+      );
 
       await selectAssignmentAndStart(dialog, page);
       await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
@@ -770,17 +729,14 @@ test.describe('Assess Task modal', () => {
       const UPSERT_DEFERRED = { kind: 'deferredSuccess' as const, data: ALGEBRA_HW_PARTIAL };
       const RUN_DEFERRED = { kind: 'deferredSuccess' as const, data: null };
 
-      const scenario: RuntimeScenario = {
-        ...createAssessTaskScenario({
+      const dialog = await setupLinkableDialog(
+        page,
+        createLinkableScenario({
           getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
           upsertAssignmentDefinition: [UPSERT_DEFERRED, UPSERT_DEFERRED],
           startAssessmentRun: [RUN_DEFERRED, RUN_DEFERRED],
-        }),
-        getAssignmentDefinitionPartials: [LINKABLE_PARTIALS_ENTRY, LINKABLE_PARTIALS_ENTRY],
-      };
-
-      await installRuntimeMock(page, scenario);
-      const dialog = await openAssessTaskModal(page);
+        })
+      );
 
       await selectAssignmentAndStart(dialog, page);
       await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
@@ -806,17 +762,12 @@ test.describe('Assess Task modal', () => {
     });
 
     test('link success flow shows success Alert and Close button', async ({ page }) => {
-      const scenario: RuntimeScenario = {
-        ...createAssessTaskScenario({
+      const dialog = await setupLinkableDialog(
+        page,
+        createLinkableScenario({
           getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
-          upsertAssignmentDefinition: [UPSERT_SUCCESS_ENTRY, UPSERT_SUCCESS_ENTRY],
-          startAssessmentRun: [START_RUN_SUCCESS_ENTRY, START_RUN_SUCCESS_ENTRY],
-        }),
-        getAssignmentDefinitionPartials: [LINKABLE_PARTIALS_ENTRY, LINKABLE_PARTIALS_ENTRY],
-      };
-
-      await installRuntimeMock(page, scenario);
-      const dialog = await openAssessTaskModal(page);
+        })
+      );
 
       await selectAssignmentAndStart(dialog, page);
       await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
@@ -843,16 +794,13 @@ test.describe('Assess Task modal', () => {
         message: 'Failed to upsert definition',
       };
 
-      const scenario: RuntimeScenario = {
-        ...createAssessTaskScenario({
+      const dialog = await setupLinkableDialog(
+        page,
+        createLinkableScenario({
           getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
           upsertAssignmentDefinition: [UPSERT_FAILURE, UPSERT_FAILURE],
-        }),
-        getAssignmentDefinitionPartials: [LINKABLE_PARTIALS_ENTRY, LINKABLE_PARTIALS_ENTRY],
-      };
-
-      await installRuntimeMock(page, scenario);
-      const dialog = await openAssessTaskModal(page);
+        })
+      );
 
       await selectAssignmentAndStart(dialog, page);
       await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
@@ -869,17 +817,12 @@ test.describe('Assess Task modal', () => {
     });
 
     test('Cancel from picker returns to the choice prompt', async ({ page }) => {
-      const scenario: RuntimeScenario = {
-        ...createAssessTaskScenario({
+      const dialog = await setupLinkableDialog(
+        page,
+        createLinkableScenario({
           getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
-          upsertAssignmentDefinition: [UPSERT_SUCCESS_ENTRY, UPSERT_SUCCESS_ENTRY],
-          startAssessmentRun: [START_RUN_SUCCESS_ENTRY, START_RUN_SUCCESS_ENTRY],
-        }),
-        getAssignmentDefinitionPartials: [LINKABLE_PARTIALS_ENTRY, LINKABLE_PARTIALS_ENTRY],
-      };
-
-      await installRuntimeMock(page, scenario);
-      const dialog = await openAssessTaskModal(page);
+        })
+      );
 
       await selectAssignmentAndStart(dialog, page);
       await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
@@ -909,12 +852,15 @@ test.describe('Assess Task modal', () => {
       };
 
       const scenario: RuntimeScenario = {
-        ...createAssessTaskScenario({
+        ...createLinkableScenario({
           getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
+          linkablePartialsEntry: { kind: 'success', data: [ALGEBRA_HW_PARTIAL] },
+          upsertAssignmentDefinition: [
+            { kind: 'success', data: ALGEBRA_HW_PARTIAL },
+            { kind: 'success', data: ALGEBRA_HW_PARTIAL },
+          ],
+          startAssessmentRun: [STALE_ERROR, STALE_ERROR],
         }),
-        getAssignmentDefinitionPartials: [LINKABLE_PARTIALS_ENTRY, LINKABLE_PARTIALS_ENTRY],
-        upsertAssignmentDefinition: [UPSERT_SUCCESS_ENTRY, UPSERT_SUCCESS_ENTRY],
-        startAssessmentRun: [STALE_ERROR, STALE_ERROR],
         getAssignmentTopics: [
           { kind: 'success', data: topicsData },
           { kind: 'success', data: topicsData },
@@ -956,17 +902,12 @@ test.describe('Assess Task modal', () => {
         algebraHomeworkEntry(),
       ];
 
-      const scenario: RuntimeScenario = {
-        ...createAssessTaskScenario({
+      let dialog = await setupLinkableDialog(
+        page,
+        createLinkableScenario({
           getGoogleClassroomAssignments: fourAlgebraEntries,
-          upsertAssignmentDefinition: [UPSERT_SUCCESS_ENTRY, UPSERT_SUCCESS_ENTRY],
-          startAssessmentRun: [START_RUN_SUCCESS_ENTRY, START_RUN_SUCCESS_ENTRY],
-        }),
-        getAssignmentDefinitionPartials: [LINKABLE_PARTIALS_ENTRY, LINKABLE_PARTIALS_ENTRY],
-      };
-
-      await installRuntimeMock(page, scenario);
-      let dialog = await openAssessTaskModal(page);
+        })
+      );
 
       // First use — go through a full link flow
       await selectAssignmentAndStart(dialog, page);

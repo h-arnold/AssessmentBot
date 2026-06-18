@@ -337,6 +337,24 @@ describe('assignmentDefinition.zod schemas', () => {
       yearGroupKey: 'year-10',
     } as const;
 
+    /**
+     * Helper that loads the upsert schema and asserts a payload built from
+     * `baseRequired` plus the given `overrides` is rejected.
+     *
+     * @param {Record<string, unknown>} overrides - Extra fields to merge into the payload.
+     * @returns {Promise<void>}
+     */
+    async function expectRejectsIdShapeOverride(overrides: Record<string, unknown>): Promise<void> {
+      const schemas = await loadAssignmentDefinitionSchemas();
+      const upsertRequestSchema = asParserSchema(schemas.UpsertAssignmentDefinitionRequestSchema);
+      expect(() =>
+        upsertRequestSchema.parse({
+          ...baseRequired,
+          ...overrides,
+        })
+      ).toThrow();
+    }
+
     const NON_STRING_TOPIC_ENTRY = 123;
 
     it('accepts a complete ID-shape payload (link flow contract)', async () => {
@@ -468,79 +486,41 @@ describe('assignmentDefinition.zod schemas', () => {
       ).toThrow();
     });
 
-    it('rejects a payload with referenceDocumentId + templateDocumentId but missing documentType', async () => {
-      const schemas = await loadAssignmentDefinitionSchemas();
-      const upsertRequestSchema = asParserSchema(schemas.UpsertAssignmentDefinitionRequestSchema);
-      expect(() =>
-        upsertRequestSchema.parse({
-          ...baseRequired,
-          referenceDocumentId: 'reference-doc-id',
-          templateDocumentId: 'template-doc-id',
-        })
-      ).toThrow();
-    });
-
-    it('rejects a payload with referenceDocumentId + documentType but missing templateDocumentId', async () => {
-      const schemas = await loadAssignmentDefinitionSchemas();
-      const upsertRequestSchema = asParserSchema(schemas.UpsertAssignmentDefinitionRequestSchema);
-      expect(() =>
-        upsertRequestSchema.parse({
-          ...baseRequired,
-          referenceDocumentId: 'reference-doc-id',
-          documentType: 'SLIDES',
-        })
-      ).toThrow();
-    });
-
-    it('rejects a payload with templateDocumentId + documentType but missing referenceDocumentId', async () => {
-      const schemas = await loadAssignmentDefinitionSchemas();
-      const upsertRequestSchema = asParserSchema(schemas.UpsertAssignmentDefinitionRequestSchema);
-      expect(() =>
-        upsertRequestSchema.parse({
-          ...baseRequired,
-          templateDocumentId: 'template-doc-id',
-          documentType: 'SLIDES',
-        })
-      ).toThrow();
-    });
-
-    it('rejects invalid documentType value in ID-shape', async () => {
-      const schemas = await loadAssignmentDefinitionSchemas();
-      const upsertRequestSchema = asParserSchema(schemas.UpsertAssignmentDefinitionRequestSchema);
-      expect(() =>
-        upsertRequestSchema.parse({
-          ...baseRequired,
+    it.each([
+      [
+        'rejects a payload with referenceDocumentId + templateDocumentId but missing documentType',
+        { referenceDocumentId: 'reference-doc-id', templateDocumentId: 'template-doc-id' },
+      ],
+      [
+        'rejects a payload with referenceDocumentId + documentType but missing templateDocumentId',
+        { referenceDocumentId: 'reference-doc-id', documentType: 'SLIDES' },
+      ],
+      [
+        'rejects a payload with templateDocumentId + documentType but missing referenceDocumentId',
+        { templateDocumentId: 'template-doc-id', documentType: 'SLIDES' },
+      ],
+      [
+        'rejects invalid documentType value in ID-shape',
+        {
           referenceDocumentId: 'reference-doc-id',
           templateDocumentId: 'template-doc-id',
           documentType: 'PDF',
-        })
-      ).toThrow();
-    });
-
-    it('rejects empty string referenceDocumentId in ID-shape', async () => {
-      const schemas = await loadAssignmentDefinitionSchemas();
-      const upsertRequestSchema = asParserSchema(schemas.UpsertAssignmentDefinitionRequestSchema);
-      expect(() =>
-        upsertRequestSchema.parse({
-          ...baseRequired,
-          referenceDocumentId: '',
-          templateDocumentId: 'template-doc-id',
-          documentType: 'SLIDES',
-        })
-      ).toThrow();
-    });
-
-    it('rejects whitespace-only referenceDocumentId in ID-shape', async () => {
-      const schemas = await loadAssignmentDefinitionSchemas();
-      const upsertRequestSchema = asParserSchema(schemas.UpsertAssignmentDefinitionRequestSchema);
-      expect(() =>
-        upsertRequestSchema.parse({
-          ...baseRequired,
+        },
+      ],
+      [
+        'rejects empty string referenceDocumentId in ID-shape',
+        { referenceDocumentId: '', templateDocumentId: 'template-doc-id', documentType: 'SLIDES' },
+      ],
+      [
+        'rejects whitespace-only referenceDocumentId in ID-shape',
+        {
           referenceDocumentId: '  ',
           templateDocumentId: 'template-doc-id',
           documentType: 'SLIDES',
-        })
-      ).toThrow();
+        },
+      ],
+    ])('%s', async (_desc, overrides) => {
+      await expectRejectsIdShapeOverride(overrides as Record<string, unknown>);
     });
 
     it('rejects unknown extra fields (strict())', async () => {
