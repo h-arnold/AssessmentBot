@@ -6,7 +6,8 @@ import {
   createSelectedAssignment,
   DEFAULT_CLASS_PARTIAL,
   expectMatchedWithFixture,
-} from '../../../test/classes/AssessTaskModal.test-utilities';
+  expectNoMatchWithFixture,
+} from '../../../test/classes/matchDefinitionForAssignment.test-utilities';
 
 describe('findMatchingDefinition', () => {
   it('returns matched when primaryTitle, topicName, and yearGroupKey all align', () => {
@@ -30,93 +31,40 @@ describe('findMatchingDefinition', () => {
   });
 
   it('returns no-match when no definition has a matching title', () => {
-    const definitionPartials: AssignmentDefinitionPartial[] = [
-      createFixture({
-        primaryTitle: 'Essay',
-        primaryTopic: 'Reading',
-        yearGroupKey: 'year-10',
-      }),
-    ];
-
-    const result = findMatchingDefinition(
-      createSelectedAssignment({ assignmentId: 'a-3', title: 'Book Report', topicName: 'Reading' }),
-      DEFAULT_CLASS_PARTIAL,
-      definitionPartials
+    expectNoMatchWithFixture(
+      { primaryTitle: 'Essay', primaryTopic: 'Reading', yearGroupKey: 'year-10' },
+      { assignmentId: 'a-3', title: 'Book Report', topicName: 'Reading' }
     );
-
-    expect(result.kind).toBe('no-match');
   });
 
   it('returns no-match when no definition has a matching topic', () => {
-    const definitionPartials: AssignmentDefinitionPartial[] = [
-      createFixture({
-        primaryTitle: 'Essay',
-        primaryTopic: 'Writing',
-        yearGroupKey: 'year-10',
-      }),
-    ];
-
-    const result = findMatchingDefinition(
-      createSelectedAssignment({ assignmentId: 'a-4', topicName: 'Science' }),
-      DEFAULT_CLASS_PARTIAL,
-      definitionPartials
+    expectNoMatchWithFixture(
+      { primaryTitle: 'Essay', primaryTopic: 'Writing', yearGroupKey: 'year-10' },
+      { assignmentId: 'a-4', topicName: 'Science' }
     );
-
-    expect(result.kind).toBe('no-match');
   });
 
   it('returns no-match when no definition has a matching year group', () => {
-    const definitionPartials: AssignmentDefinitionPartial[] = [
-      createFixture({
-        primaryTitle: 'Essay',
-        primaryTopic: 'Writing',
-        yearGroupKey: 'year-10',
-      }),
-    ];
-
-    const result = findMatchingDefinition(
-      createSelectedAssignment({ assignmentId: 'a-5' }),
-      { yearGroupKey: 'year-11' },
-      definitionPartials
+    expectNoMatchWithFixture(
+      { primaryTitle: 'Essay', primaryTopic: 'Writing', yearGroupKey: 'year-10' },
+      { assignmentId: 'a-5' },
+      { yearGroupKey: 'year-11' }
     );
-
-    expect(result.kind).toBe('no-match');
   });
 
   it('returns no-match when selectedAssignment.topicName is null', () => {
-    const definitionPartials: AssignmentDefinitionPartial[] = [
-      createFixture({
-        primaryTitle: 'Essay',
-        primaryTopic: 'Writing',
-        yearGroupKey: 'year-10',
-      }),
-    ];
-
-    const result = findMatchingDefinition(
-      createSelectedAssignment({ assignmentId: 'a-6', topicName: null }),
-      DEFAULT_CLASS_PARTIAL,
-      definitionPartials
+    expectNoMatchWithFixture(
+      { primaryTitle: 'Essay', primaryTopic: 'Writing', yearGroupKey: 'year-10' },
+      { assignmentId: 'a-6', topicName: null }
     );
-
-    expect(result.kind).toBe('no-match');
   });
 
   it('returns no-match when classPartial.yearGroupKey is null', () => {
-    const definitionPartials: AssignmentDefinitionPartial[] = [
-      createFixture({
-        primaryTitle: 'Essay',
-        primaryTopic: 'Writing',
-        yearGroupKey: 'year-10',
-      }),
-    ];
-
-    const result = findMatchingDefinition(
-      createSelectedAssignment({ assignmentId: 'a-7' }),
-      { yearGroupKey: null },
-      definitionPartials
+    expectNoMatchWithFixture(
+      { primaryTitle: 'Essay', primaryTopic: 'Writing', yearGroupKey: 'year-10' },
+      { assignmentId: 'a-7' },
+      { yearGroupKey: null }
     );
-
-    expect(result.kind).toBe('no-match');
   });
 
   it('returns ambiguous when multiple partials match all three criteria', () => {

@@ -10,7 +10,6 @@ import type { QueryClient } from '@tanstack/react-query';
 import {
   renderWithCache,
   type RenderWithCacheOptions,
-  createDefinitionPartial,
   MOCK_CLASS_ID,
   selectAssignment,
   clickStartAssessment,
@@ -18,6 +17,7 @@ import {
   pickLinkableDefinition,
   clickLink,
 } from './AssessTaskModal.test-utilities';
+import { createDefinitionPartial } from './matchDefinitionForAssignment.test-utilities';
 import { createFixtureClassPartial } from './classesPageTestHelpers';
 
 /**

@@ -19,7 +19,6 @@ import {
   MOCK_EMPTY_ASSIGNMENTS,
   MODAL_TITLE,
   DEFAULT_UPSERT_RESULT,
-  createDefinitionPartial,
   defaultProperties,
   createPendingPromise,
   renderAssessTaskModal,
@@ -37,6 +36,7 @@ import {
   renderWithNoMatchCache,
   performLinkFlow,
 } from '../../../test/classes/AssessTaskModal.link-flow-helpers';
+import { createDefinitionPartial } from '../../../test/classes/matchDefinitionForAssignment.test-utilities';
 
 vi.mock('../../../services/googleClassrooms/googleClassroomAssignmentsService', () => ({
   getGoogleClassroomAssignments: vi.fn(),
