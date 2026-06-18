@@ -1,6 +1,6 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 import type { ResponseItem, RuntimeScenario } from '../shared/endToEndRuntimeMocks';
-import { installRuntimeMock } from '../shared/endToEndRuntimeMocks';
+import { installRuntimeMock, selectVisibleOption } from '../shared/endToEndRuntimeMocks';
 import {
   CLASS_PARTIALS_FOR_EMPTY_PANEL,
   MIXED_ORDER_CLASS_PARTIALS,
@@ -377,6 +377,49 @@ export async function openAssessTaskModal(page: Page): Promise<ReturnType<typeof
   await expect(dialog).toBeVisible();
 
   return dialog;
+}
+
+/**
+ * Selects an assignment from the combobox and clicks Start Assessment.
+ *
+ * @param {Locator} dialog - The modal dialog locator.
+ * @param {Page} page - The Playwright page.
+ * @param {string} [title] - The visible text of the assignment option to select.
+ * @returns {Promise<void>}
+ */
+export async function selectAssignmentAndStart(
+  dialog: Locator,
+  page: Page,
+  title: string = 'Algebra Homework'
+): Promise<void> {
+  await dialog.getByRole('combobox').click();
+  await selectVisibleOption(page, title);
+  await dialog.getByRole('button', { name: 'Start Assessment' }).click();
+}
+
+/**
+ * Selects the default assignment, starts the assessment, clicks
+ * "Create New Definition" in the choice prompt, then asserts the
+ * wizard dialog is visible.  Returns the wizard dialog locator.
+ *
+ * Callers must already have installed a runtime mock and opened the
+ * Assess Task modal before calling this helper.
+ *
+ * @param {Locator} dialog - The Assess Task modal dialog locator.
+ * @param {Page} page - The Playwright page under test.
+ * @returns {Promise<ReturnType<typeof page.getByRole>>} The visible wizard dialog locator.
+ */
+export async function openWizardFromChoicePrompt(
+  dialog: Locator,
+  page: Page
+): Promise<ReturnType<typeof page.getByRole>> {
+  await selectAssignmentAndStart(dialog, page);
+  await dialog.getByRole('button', { name: 'Create New Definition' }).click();
+
+  const wizardDialog = page.getByRole('dialog', { name: /create assignment/i });
+  await expect(wizardDialog).toBeVisible();
+
+  return wizardDialog;
 }
 
 // ============================================================================

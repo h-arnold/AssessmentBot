@@ -11,9 +11,10 @@ import {
   createAssessTaskScenario,
   createLinkableScenario,
   openAssessTaskModal,
+  openWizardFromChoicePrompt,
+  selectAssignmentAndStart,
   setupLinkableDialog,
 } from './helpers/classes-page-end-to-end-helpers';
-import type { Locator, Page } from '@playwright/test';
 
 // ============================================================================
 // Assess Task Modal — Playwright E2E Tests
@@ -52,24 +53,6 @@ const ALGEBRA_HOMEWORK_DATA = {
  */
 function algebraHomeworkEntry() {
   return { kind: 'success' as const, data: [ALGEBRA_HOMEWORK_DATA] };
-}
-
-/**
- * Selects an assignment from the combobox and clicks Start Assessment.
- *
- * @param {Locator} dialog - The modal dialog locator.
- * @param {Page} page - The Playwright page.
- * @param {string} [title] - The visible text of the assignment option to select.
- * @returns {Promise<void>}
- */
-async function selectAssignmentAndStart(
-  dialog: Locator,
-  page: Page,
-  title: string = 'Algebra Homework'
-) {
-  await dialog.getByRole('combobox').click();
-  await selectVisibleOption(page, title);
-  await dialog.getByRole('button', { name: 'Start Assessment' }).click();
 }
 
 test.describe('Assess Task modal', () => {
@@ -401,12 +384,7 @@ test.describe('Assess Task modal', () => {
     await installRuntimeMock(page, scenario);
     const dialog = await openAssessTaskModal(page);
 
-    await selectAssignmentAndStart(dialog, page);
-    await dialog.getByRole('button', { name: 'Create New Definition' }).click();
-
-    // Wizard should be visible
-    const wizardDialog = page.getByRole('dialog', { name: /create assignment/i });
-    await expect(wizardDialog).toBeVisible();
+    const wizardDialog = await openWizardFromChoicePrompt(dialog, page);
 
     // Cancel wizard (no dirty state — wizard closes without discard confirmation)
     await wizardDialog.getByRole('button', { name: 'Cancel' }).click();
@@ -506,12 +484,7 @@ test.describe('Assess Task modal', () => {
     await installRuntimeMock(page, scenario);
     const dialog = await openAssessTaskModal(page);
 
-    await selectAssignmentAndStart(dialog, page);
-    await dialog.getByRole('button', { name: 'Create New Definition' }).click();
-
-    // Wizard should be visible
-    const wizardDialog = page.getByRole('dialog', { name: /create assignment/i });
-    await expect(wizardDialog).toBeVisible();
+    const wizardDialog = await openWizardFromChoicePrompt(dialog, page);
 
     // Close the wizard first (returns to choice prompt), then dismiss the choice prompt
     await wizardDialog.getByRole('button', { name: 'Cancel' }).click();
