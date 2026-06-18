@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { AssignmentDefinitionPartial } from '../../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
-import {
-  getLinkableDefinitionsForModal,
-  type LinkableDefinition,
-} from './getLinkableDefinitionsForModal';
+import { getLinkableDefinitionsForModal } from './getLinkableDefinitionsForModal';
 
 const DEFAULT_ISO_DATETIME = '2025-01-01T00:00:00.000Z';
 
@@ -84,7 +81,7 @@ describe('getLinkableDefinitionsForModal', () => {
     );
 
     expect(result).toHaveLength(1);
-    const first = result[0] as LinkableDefinition;
+    const first = result[0];
     expect(first.definitionKey).toBe('def-1');
     expect(first.primaryTitle).toBe('Algebra HW');
     expect(first.primaryTopic).toBe('Algebra');
@@ -182,7 +179,7 @@ describe('getLinkableDefinitionsForModal', () => {
     ];
 
     const result = getLinkableDefinitionsForModal(
-      definitionPartials as unknown as AssignmentDefinitionPartial[],
+      definitionPartials,
       DEFAULT_CLASS_YEAR_GROUP_KEY,
       DEFAULT_SELECTED_ASSIGNMENT
     );

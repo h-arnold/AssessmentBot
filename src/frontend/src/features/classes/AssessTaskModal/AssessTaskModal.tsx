@@ -657,7 +657,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
     }
     return (
       <Tooltip title="No assignment definitions exist for this class's year group.">
-        <span tabIndex={0}>
+        <span>
           <Button disabled>Link to Existing Definition</Button>
         </span>
       </Tooltip>
@@ -799,7 +799,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
         <Button onClick={handleLinkCancel}>Cancel</Button>
         {selectedDefinitionForLink === null ? (
           <Tooltip title="Select a definition to link.">
-            <span tabIndex={0}>
+            <span>
               {linkButton}
             </span>
           </Tooltip>

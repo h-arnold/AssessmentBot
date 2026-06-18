@@ -11,8 +11,6 @@ import {
   createParsedTaskDefinition,
   createUpsertPayload,
   createWizardUpsertPayload,
-  expectCanonicalFullDefinitionShape,
-  expectTaskWeightingMapEntries,
 } from './assignmentDefinitionUpsertTestHelpers.js';
 
 const extractSlidesTaskDefinitionsMock = vi.fn();
