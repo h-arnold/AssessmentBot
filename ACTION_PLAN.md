@@ -449,8 +449,8 @@ Add a `@remarks` JSDoc tag on `_resolveAlternateTopics` documenting:
   `max-lines` warning on the test file (991 lines, up from 903). This
   is a pre-existing warning rule; the file was already over 500 lines.
   The new tests add essential coverage. Accepted as technical debt.
-  **Resolution target:** Section 10 (regression hardening) includes
-  a task to split the test file so it stays under the 500-line limit.
+  **Resolution:** Section 10 split the file into 4 smaller files
+  (max 466 lines each), resolving the regression.
 - **Follow-up implications for later sections:** Section 3 (Zod
   schema extension) and Section 6 (modal integration) depend on the
   orchestrator's ability to round-trip `alternateTopics`. Once Section
@@ -1930,8 +1930,27 @@ that the transport contract is sound.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (to be filled)
-- **Deviations from plan:** (to be filled if any)
+- **Implementation notes:**
+  - The `assignmentDefinitionController.upsert.test.js` file was split from
+    994 lines into 4 files + 1 shared helpers module to resolve the
+    `max-lines` technical debt:
+    1. `assignmentDefinitionUpsertTestHelpers.js` (NEW — 117 lines, shared
+       pure helper functions exported)
+    2. `assignmentDefinitionController.upsert.test.js` (MODIFIED — 466 lines,
+       20 tests: core create/update, weighting, duplicate/save-validation)
+    3. `assignmentDefinitionController.upsert.validation.test.js` (NEW —
+       271 lines, 10 tests: duplicate identity, reparse, task weightings)
+    4. `assignmentDefinitionController.upsert.alternateTopics.test.js`
+       (NEW — 228 lines, 7 tests: alternateTitles/alternateTopics flows)
+    5. `assignmentDefinitionController.upsert.shape.test.js` (NEW —
+       286 lines, 7 tests: canonical shape, yearGroupLabel, re-parse)
+  - Total: 44 tests across 4 files — no tests removed, no logic changed.
+  - `npm run lint:backend`: 0 errors, 16 pre-existing warnings (none on
+    any upsert file). The `max-lines` regression is resolved.
+  - All 44 upsert tests pass. The remaining backend test suites
+    (`assignmentDefinitionUpsertApi`, `assignmentDefinitionPartials`)
+    also pass.
+- **Deviations from plan:** None.
 
 ---
 

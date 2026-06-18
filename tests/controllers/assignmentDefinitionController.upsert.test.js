@@ -7,6 +7,13 @@ import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager.js';
 import SlidesParser from '../../src/backend/DocumentParsers/SlidesParser.js';
 import { SheetsParser } from '../../src/backend/DocumentParsers/SheetsParser.js';
 import { createMockCollection } from '../helpers/mockFactories.js';
+import {
+  createParsedTaskDefinition,
+  createUpsertPayload,
+  createWizardUpsertPayload,
+  expectCanonicalFullDefinitionShape,
+  expectTaskWeightingMapEntries,
+} from './assignmentDefinitionUpsertTestHelpers.js';
 
 const extractSlidesTaskDefinitionsMock = vi.fn();
 const extractSheetsTaskDefinitionsMock = vi.fn();
@@ -32,85 +39,6 @@ vi.mock('../../src/backend/DocumentParsers/SheetsParser.js', () => {
     },
   };
 });
-
-function createParsedTaskDefinition({ id, taskTitle, index = 0 }) {
-  return {
-    getId: () => id,
-    validate: () => ({ ok: true, errors: [] }),
-    toJSON: () => ({
-      id,
-      taskTitle: taskTitle || 'Task ' + id,
-      taskWeighting: null,
-      index,
-      artifacts: {
-        reference: [],
-        template: [],
-      },
-    }),
-  };
-}
-
-function createUpsertPayload(overrides = {}) {
-  return {
-    primaryTitle: 'Water cycle explanation',
-    primaryTopicKey: 'topic-science',
-    yearGroupKey: 'year-group-8',
-    yearGroupLabel: 'Year 8',
-    alternateTitles: ['The water cycle'],
-    referenceDocumentId: 'ref-doc-id',
-    templateDocumentId: 'tpl-doc-id',
-    documentType: 'SLIDES',
-    assignmentWeighting: 1,
-    taskWeightings: [],
-    ...overrides,
-  };
-}
-
-function createWizardUpsertPayload(overrides = {}) {
-  return {
-    primaryTitle: 'Water cycle explanation',
-    primaryTopicKey: 'topic-science',
-    yearGroupKey: 'year-group-8',
-    yearGroupLabel: 'Year 8',
-    referenceDocumentId: 'ref-doc-id',
-    templateDocumentId: 'tpl-doc-id',
-    documentType: 'SLIDES',
-    assignmentWeighting: 1,
-    taskWeightings: [{ taskId: 't_task_1', taskWeighting: 1 }],
-    ...overrides,
-  };
-}
-
-function expectCanonicalFullDefinitionShape(definition) {
-  expect(definition).toMatchObject({
-    definitionKey: expect.any(String),
-    primaryTitle: expect.any(String),
-    primaryTopicKey: expect.any(String),
-    primaryTopic: expect.any(String),
-    yearGroupKey: expect.any(String),
-    yearGroupLabel: expect.any(String),
-    referenceDocumentId: expect.any(String),
-    templateDocumentId: expect.any(String),
-    assignmentWeighting: expect.any(Number),
-    tasks: expect.arrayContaining([
-      expect.objectContaining({
-        taskId: expect.any(String),
-        taskTitle: expect.any(String),
-        taskWeighting: expect.any(Number),
-      }),
-    ]),
-  });
-
-  expect(definition).not.toHaveProperty('referenceDocumentUrl');
-  expect(definition).not.toHaveProperty('templateDocumentUrl');
-}
-
-function expectTaskWeightingMapEntries(taskMap, expectedEntries) {
-  for (const [taskId, expectedWeighting] of expectedEntries) {
-    expect(taskMap[taskId]).toBeDefined();
-    expect(taskMap[taskId].taskWeighting).toBe(expectedWeighting);
-  }
-}
 
 describe('AssignmentDefinitionController upsert behaviour', () => {
   let controller;
@@ -182,67 +110,6 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
   });
 
   /**
-   * Sets up common mock state for duplicate detection tests.
-   * Both tests verify that upsert detects duplicates based on yearGroupKey.
-   * @returns {Object} The wizard upsert payload to use for the test
-   */
-  function setupDuplicateDetectionTest() {
-    const existing = {
-      ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
-      primaryTopic: 'Science',
-      tasks: {
-        t_task_1: {
-          id: 't_task_1',
-          taskTitle: 'Task A',
-          artifacts: { reference: [], template: [] },
-        },
-      },
-      referenceLastModified: '2025-04-01T00:00:00.000Z',
-      templateLastModified: '2025-04-01T00:00:00.000Z',
-    };
-
-    mockFullCollection.findOne.mockReturnValue(existing);
-    mockRegistryCollection.findOne.mockReturnValue({ ...existing, tasks: null });
-    mockDbManager.readAll.mockReturnValue([
-      {
-        definitionKey: 'existing-stable-key',
-        primaryTitle: 'Water cycle explanation',
-        primaryTopicKey: 'topic-science',
-        yearGroupKey: 'year-group-8',
-      },
-      {
-        definitionKey: 'other-definition',
-        primaryTitle: 'Updated title',
-        primaryTopicKey: 'topic-maths',
-        yearGroupKey: 'year-group-10',
-      },
-    ]);
-
-    return createWizardUpsertPayload({
-      definitionKey: 'existing-stable-key',
-      primaryTitle: 'Updated title',
-      primaryTopicKey: 'topic-maths',
-      yearGroupKey: 'year-group-10',
-    });
-  }
-
-  /**
-   * Sets up common mock state for create-stage duplicate detection tests.
-   * Uses createUpsertPayload for the test payload.
-   */
-  function setupCreateStageDuplicateDetectionTest() {
-    mockDbManager.readAll.mockReturnValue([
-      {
-        definitionKey: 'other-definition',
-        primaryTitle: 'Water cycle explanation',
-        primaryTopicKey: 'topic-science',
-        yearGroupKey: 'year-group-8',
-      },
-    ]);
-    return createUpsertPayload();
-  }
-
-  /**
    * Sets up common mock state for create-stage wizard duplicate detection tests.
    * Uses createWizardUpsertPayload for the test payload.
    */
@@ -257,6 +124,8 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
     ]);
     return createWizardUpsertPayload();
   }
+
+  /* ---- Core create / update tests ---- */
 
   it('creates and persists full + registry records from free-form metadata', () => {
     mockFullCollection.findOne.mockReturnValue(null);
@@ -316,8 +185,6 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
   });
 
   it('accepts a valid UUID from Utilities.getUuid as the create definitionKey', () => {
-    // Utilities.getUuid() is guaranteed by GAS to return a valid UUID string,
-    // so the simplified _generateStableKey delegates directly to it without validation.
     const saved = controller.upsertDefinition(createUpsertPayload());
     expect(saved.definitionKey).toBe('11111111-2222-4333-8444-555555555555');
     expect(globalThis.Utilities.getUuid).toHaveBeenCalled();
@@ -332,7 +199,6 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
     expect(saved.definitionKey).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
     );
-    // With the new implementation, buildDefinitionKey should use yearGroupKey
     expect(saved.definitionKey).not.toBe(
       AssignmentDefinition.buildDefinitionKey({
         primaryTitle: saved.primaryTitle,
@@ -383,267 +249,7 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
     expect(mockRegistryCollection.replaceOne).toHaveBeenCalledTimes(1);
   });
 
-  it('rejects duplicate business-identity tuples using yearGroupKey only', () => {
-    const payload = setupCreateStageDuplicateDetectionTest();
-    expect(() => controller.upsertDefinition(payload)).toThrow(/duplicate/i);
-    expect(mockFullCollection.insertOne).not.toHaveBeenCalled();
-    expect(mockRegistryCollection.insertOne).not.toHaveBeenCalled();
-  });
-
-  it('rejects duplicate business-identity tuples even when yearGroup field present in stored data (yearGroupKey only)', () => {
-    // This test verifies that the duplicate check uses yearGroupKey, not yearGroup
-    const payload = setupCreateStageDuplicateDetectionTest();
-    expect(() => controller.upsertDefinition(payload)).toThrow(/duplicate/i);
-    expect(mockFullCollection.insertOne).not.toHaveBeenCalled();
-    expect(mockRegistryCollection.insertOne).not.toHaveBeenCalled();
-  });
-
-  it('rejects an unknown primaryTopicKey', () => {
-    assignmentTopicRecords = [];
-    expect(() => controller.upsertDefinition(createUpsertPayload())).toThrow(/primaryTopicKey/i);
-  });
-
-  it('reparses and refreshes timestamps when document IDs change for a slides definition', () => {
-    const existing = {
-      ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
-      primaryTopic: 'Science',
-      documentType: 'SLIDES',
-      yearGroupKey: 'year-group-8',
-      tasks: {
-        old_task: { id: 'old_task', taskTitle: 'Old', artifacts: { reference: [], template: [] } },
-      },
-      referenceLastModified: '2025-01-01T00:00:00.000Z',
-      templateLastModified: '2025-01-01T00:00:00.000Z',
-    };
-    mockFullCollection.findOne.mockReturnValue(existing);
-    mockRegistryCollection.findOne.mockReturnValue({ ...existing, tasks: null });
-
-    controller.upsertDefinition(
-      createUpsertPayload({
-        definitionKey: 'existing-stable-key',
-        referenceDocumentId: 'new-ref-doc-id',
-        templateDocumentId: 'new-tpl-doc-id',
-      })
-    );
-
-    expect(extractSlidesTaskDefinitionsMock).toHaveBeenCalledWith(
-      'new-ref-doc-id',
-      'new-tpl-doc-id'
-    );
-    expect(mockFullCollection.replaceOne).toHaveBeenCalledWith(
-      { definitionKey: 'existing-stable-key' },
-      expect.objectContaining({
-        referenceLastModified: '2025-05-01T00:00:00.000Z',
-        templateLastModified: '2025-05-01T00:00:00.000Z',
-      })
-    );
-  });
-
-  it('keeps fresh-definition refresh behaviour when documents are unchanged', () => {
-    const existing = {
-      ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
-      primaryTopic: 'Science',
-      documentType: 'SLIDES',
-      yearGroupKey: 'year-group-8',
-      tasks: {
-        t_task_1: {
-          id: 't_task_1',
-          taskTitle: 'Task A',
-          artifacts: { reference: [], template: [] },
-        },
-      },
-      referenceLastModified: '2025-04-01T00:00:00.000Z',
-      templateLastModified: '2025-04-01T00:00:00.000Z',
-    };
-    mockFullCollection.findOne.mockReturnValue(existing);
-    mockRegistryCollection.findOne.mockReturnValue({ ...existing, tasks: null });
-
-    controller.upsertDefinition(createUpsertPayload({ definitionKey: 'existing-stable-key' }));
-
-    expect(extractSlidesTaskDefinitionsMock).not.toHaveBeenCalled();
-    expect(extractSheetsTaskDefinitionsMock).not.toHaveBeenCalled();
-  });
-
-  it('persists assignmentWeighting', () => {
-    mockFullCollection.findOne.mockReturnValue(null);
-    mockRegistryCollection.findOne.mockReturnValue(null);
-
-    const saved = controller.upsertDefinition(createUpsertPayload({ assignmentWeighting: 10 }));
-
-    expect(saved.assignmentWeighting).toBe(10);
-    expect(mockFullCollection.insertOne).toHaveBeenCalledWith(
-      expect.objectContaining({ assignmentWeighting: 10 })
-    );
-    expect(mockRegistryCollection.insertOne).toHaveBeenCalledWith(
-      expect.objectContaining({ assignmentWeighting: 10 })
-    );
-  });
-
-  it('persists valid taskWeightings patches', () => {
-    mockFullCollection.findOne.mockReturnValue(null);
-    mockRegistryCollection.findOne.mockReturnValue(null);
-
-    const saved = controller.upsertDefinition(
-      createUpsertPayload({
-        taskWeightings: [
-          { taskId: 't_task_1', taskWeighting: 5 },
-          { taskId: 't_task_2', taskWeighting: 4 },
-        ],
-      })
-    );
-
-    expectTaskWeightingMapEntries(saved.tasks, [
-      ['t_task_1', 5],
-      ['t_task_2', 4],
-    ]);
-  });
-
-  it('rejects unknown task IDs in taskWeightings', () => {
-    mockFullCollection.findOne.mockReturnValue(null);
-    mockRegistryCollection.findOne.mockReturnValue(null);
-
-    expect(() =>
-      controller.upsertDefinition(
-        createUpsertPayload({ taskWeightings: [{ taskId: 'unknown-task-id', taskWeighting: 25 }] })
-      )
-    ).toThrow(/taskWeightings/i);
-    expect(mockFullCollection.insertOne).not.toHaveBeenCalled();
-  });
-
-  it('rejects payloads that omit primaryTopicKey', () => {
-    const payload = createUpsertPayload();
-    delete payload.primaryTopicKey;
-
-    expect(() => controller.upsertDefinition(payload)).toThrow(/primaryTopicKey/i);
-  });
-
-  it('rejects identical reference/template documents', () => {
-    expect(() =>
-      controller.upsertDefinition(
-        createUpsertPayload({
-          referenceDocumentId: 'same-doc',
-          templateDocumentId: 'same-doc',
-        })
-      )
-    ).toThrow(/reference.*template/i);
-  });
-
-  it('preserves existing alternateTitles when updates omit alternateTitles', () => {
-    const existing = {
-      ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
-      primaryTopic: 'Science',
-      alternateTitles: ['Stored title A', 'Stored title B'],
-      yearGroupKey: 'year-group-8',
-      tasks: {
-        t_task_1: {
-          id: 't_task_1',
-          taskTitle: 'Task A',
-          artifacts: { reference: [], template: [] },
-        },
-      },
-      referenceLastModified: '2025-04-01T00:00:00.000Z',
-      templateLastModified: '2025-04-01T00:00:00.000Z',
-    };
-    mockFullCollection.findOne.mockReturnValue(existing);
-    mockRegistryCollection.findOne.mockReturnValue({ ...existing, tasks: null });
-
-    const payload = createUpsertPayload({ definitionKey: 'existing-stable-key' });
-    delete payload.alternateTitles;
-    const saved = controller.upsertDefinition(payload);
-
-    expect(saved.alternateTitles).toEqual(['Stored title A', 'Stored title B']);
-  });
-
-  it('preserves existing alternateTopics on update when payload omits alternateTopics', () => {
-    const existing = {
-      ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
-      primaryTopic: 'Science',
-      alternateTitles: ['Stored alt title'],
-      alternateTopics: ['Stored topic A', 'Stored topic B'],
-      yearGroupKey: 'year-group-8',
-      tasks: {
-        t_task_1: {
-          id: 't_task_1',
-          taskTitle: 'Task A',
-          artifacts: { reference: [], template: [] },
-        },
-      },
-      referenceLastModified: '2025-04-01T00:00:00.000Z',
-      templateLastModified: '2025-04-01T00:00:00.000Z',
-    };
-    mockFullCollection.findOne.mockReturnValue(existing);
-    mockRegistryCollection.findOne.mockReturnValue({ ...existing, tasks: null });
-
-    const payload = createUpsertPayload({ definitionKey: 'existing-stable-key' });
-    delete payload.alternateTopics;
-    const saved = controller.upsertDefinition(payload);
-
-    expect(saved.alternateTopics).toEqual(['Stored topic A', 'Stored topic B']);
-  });
-
-  it('clears existing alternateTopics when update payload provides empty array', () => {
-    const existing = {
-      ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
-      primaryTopic: 'Science',
-      alternateTitles: ['Stored alt title'],
-      alternateTopics: ['Stored topic A', 'Stored topic B'],
-      yearGroupKey: 'year-group-8',
-      tasks: {
-        t_task_1: {
-          id: 't_task_1',
-          taskTitle: 'Task A',
-          artifacts: { reference: [], template: [] },
-        },
-      },
-      referenceLastModified: '2025-04-01T00:00:00.000Z',
-      templateLastModified: '2025-04-01T00:00:00.000Z',
-    };
-    mockFullCollection.findOne.mockReturnValue(existing);
-    mockRegistryCollection.findOne.mockReturnValue({ ...existing, tasks: null });
-
-    const payload = createUpsertPayload({
-      definitionKey: 'existing-stable-key',
-      alternateTopics: [],
-    });
-    const saved = controller.upsertDefinition(payload);
-
-    expect(saved.alternateTopics).toEqual([]);
-  });
-
-  it('rejects alternateTopics with invalid entries (empty string after trim)', () => {
-    expect(() =>
-      controller.upsertDefinition(
-        createUpsertPayload({ alternateTopics: ['  Linear Equations  ', ''] })
-      )
-    ).toThrow();
-  });
-
-  it('rejects non-array alternateTopics', () => {
-    expect(() =>
-      controller.upsertDefinition(createUpsertPayload({ alternateTopics: 'not an array' }))
-    ).toThrow(TypeError);
-  });
-
-  it('rejects non-string entries in alternateTopics', () => {
-    expect(() =>
-      controller.upsertDefinition(createUpsertPayload({ alternateTopics: [123] }))
-    ).toThrow();
-  });
-
-  it('constructs AssignmentDefinition with both alternateTitles and alternateTopics from payload', () => {
-    mockFullCollection.findOne.mockReturnValue(null);
-    mockRegistryCollection.findOne.mockReturnValue(null);
-
-    const saved = controller.upsertDefinition(
-      createUpsertPayload({
-        alternateTitles: ['Alt title 1', 'Alt title 2'],
-        alternateTopics: ['Alt topic 1', 'Alt topic 2'],
-      })
-    );
-
-    expect(saved.alternateTitles).toEqual(['Alt title 1', 'Alt title 2']);
-    expect(saved.alternateTopics).toEqual(['Alt topic 1', 'Alt topic 2']);
-  });
+  /* ---- Weighting / preserve / rollback / error tests ---- */
 
   it('preserves existing assignmentWeighting when updates omit assignmentWeighting', () => {
     const existing = {
@@ -757,6 +363,8 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
     ).toThrow(/repair|rollback/i);
   });
 
+  /* ---- Create-stage duplicate / save validation tests ---- */
+
   it('rejects create-stage duplicate tuples before persistence when yearGroupKey collides', () => {
     const payload = setupWizardCreateStageDuplicateDetectionTest();
     expect(() => controller.upsertDefinition(payload)).toThrow(/duplicate/i);
@@ -765,7 +373,6 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
   });
 
   it('rejects create-stage duplicate tuples even when stored data has both yearGroup and yearGroupKey', () => {
-    // Verify that only yearGroupKey is used for duplicate detection
     const payload = setupWizardCreateStageDuplicateDetectionTest();
     expect(() => controller.upsertDefinition(payload)).toThrow(/duplicate/i);
     expect(mockFullCollection.insertOne).not.toHaveBeenCalled();
@@ -855,140 +462,5 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
     expect(mockRegistryCollection.insertOne).toHaveBeenCalledWith(
       expect.objectContaining({ yearGroupKey: 'year-group-10' })
     );
-  });
-
-  it('returns the canonical full-definition transport shape for create/write/read flows', () => {
-    // Use an in-memory store so that data inserted during upsert is
-    // available when getByKey reads it back (replaces the removed cache layer).
-    const stored = {};
-    mockFullCollection.findOne.mockImplementation(
-      (filter) => stored[filter?.definitionKey] ?? null
-    );
-    mockFullCollection.insertOne.mockImplementation((doc) => {
-      if (doc?.definitionKey) stored[doc.definitionKey] = doc;
-    });
-    mockFullCollection.replaceOne.mockImplementation((filter, doc) => {
-      if (filter?.definitionKey) stored[filter.definitionKey] = doc;
-    });
-    mockRegistryCollection.findOne.mockReturnValue(null);
-
-    const saved = controller.upsertDefinition(createWizardUpsertPayload());
-    const readBack = controller.getDefinitionByKey(saved.definitionKey, { form: 'full' });
-
-    expect(saved).toBeInstanceOf(AssignmentDefinition);
-    expect(readBack).toBeInstanceOf(AssignmentDefinition);
-
-    expectCanonicalFullDefinitionShape(controller.getFullAssignmentDefinition(saved));
-    expectCanonicalFullDefinitionShape(controller.getFullAssignmentDefinition(readBack));
-  });
-
-  it('defaults parsed task weightings to 1 for stage-one creates when taskWeightings are omitted', () => {
-    mockFullCollection.findOne.mockReturnValue(null);
-    mockRegistryCollection.findOne.mockReturnValue(null);
-
-    const payload = createWizardUpsertPayload();
-    delete payload.taskWeightings;
-
-    const saved = controller.upsertDefinition(payload);
-
-    expectTaskWeightingMapEntries(saved.tasks, [
-      ['t_task_1', 1],
-      ['t_task_2', 1],
-    ]);
-  });
-
-  it('resolves yearGroupLabel from yearGroupKey on canonical reads', () => {
-    const staleLabelDefinition = {
-      ...createWizardUpsertPayload({ definitionKey: 'existing-stable-key' }),
-      primaryTopic: 'Science',
-      yearGroupKey: 'year-group-8',
-      yearGroupLabel: 'Outdated label',
-      tasks: {
-        t_task_1: {
-          id: 't_task_1',
-          taskTitle: 'Task A',
-          taskWeighting: 2,
-          artifacts: { reference: [], template: [] },
-        },
-      },
-      referenceLastModified: '2025-04-01T00:00:00.000Z',
-      templateLastModified: '2025-04-01T00:00:00.000Z',
-    };
-
-    mockFullCollection.findOne.mockImplementation((filter) => {
-      if (filter?.definitionKey === 'existing-stable-key') {
-        return staleLabelDefinition;
-      }
-      return null;
-    });
-
-    const readBack = controller.getDefinitionByKey('existing-stable-key', { form: 'full' });
-    const canonicalReadBack = controller.getFullAssignmentDefinition(readBack);
-
-    expect(canonicalReadBack.yearGroupLabel).toBe('Year 8');
-  });
-
-  it('re-parse keeps matching task weightings and defaults new tasks to 1', () => {
-    const existing = {
-      ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
-      primaryTopic: 'Science',
-      yearGroupKey: 'year-group-8',
-      tasks: {
-        t_task_1: {
-          id: 't_task_1',
-          taskTitle: 'Task A',
-          taskWeighting: 8,
-          artifacts: { reference: [], template: [] },
-        },
-      },
-      referenceLastModified: '2025-04-01T00:00:00.000Z',
-      templateLastModified: '2025-04-01T00:00:00.000Z',
-    };
-    mockFullCollection.findOne.mockReturnValue(existing);
-    mockRegistryCollection.findOne.mockReturnValue({ ...existing, tasks: null });
-
-    extractSlidesTaskDefinitionsMock.mockReturnValueOnce([
-      createParsedTaskDefinition({ id: 't_task_1', taskTitle: 'Task A', index: 0 }),
-      createParsedTaskDefinition({ id: 't_task_3', taskTitle: 'Task C', index: 2 }),
-    ]);
-
-    const saved = controller.upsertDefinition(
-      createUpsertPayload({
-        definitionKey: 'existing-stable-key',
-        referenceDocumentId: 'new-ref-doc-id',
-        templateDocumentId: 'new-tpl-doc-id',
-      })
-    );
-
-    expectTaskWeightingMapEntries(saved.tasks, [
-      ['t_task_1', 8],
-      ['t_task_3', 1],
-    ]);
-  });
-
-  it('detects duplicate tuples on final save when title/topic/yearGroupKey changes', () => {
-    const payload = setupDuplicateDetectionTest();
-    expect(() => controller.upsertDefinition(payload)).toThrow(/duplicate/i);
-  });
-
-  it('detects duplicate tuples using yearGroupKey only (ignoring yearGroup field in stored data)', () => {
-    // Stored data has yearGroup field but duplicate check should only use yearGroupKey
-    const payload = setupDuplicateDetectionTest();
-    // Should detect duplicate based on yearGroupKey, not yearGroup
-    expect(() => controller.upsertDefinition(payload)).toThrow(/duplicate/i);
-  });
-
-  it('rejects same-document identifier pairs for save writes', () => {
-    const runUpsert = () =>
-      controller.upsertDefinition(
-        createWizardUpsertPayload({
-          referenceDocumentId: 'same-doc',
-          templateDocumentId: 'same-doc',
-        })
-      );
-
-    expect(runUpsert).toThrow();
-    expect(mockFullCollection.insertOne).not.toHaveBeenCalled();
-    expect(mockRegistryCollection.insertOne).not.toHaveBeenCalled();
   });
 });
