@@ -3,15 +3,18 @@ import { vi } from 'vitest';
 import { AssessTaskModal } from '../../features/classes/AssessTaskModal/AssessTaskModal';
 import { getGoogleClassroomAssignments } from '../../services/googleClassrooms/googleClassroomAssignmentsService';
 import { startAssessmentRun } from '../../services/assignmentAssessment/assignmentAssessmentService';
+import { upsertAssignmentDefinition } from '../../services/assignmentDefinition/assignmentDefinitionService';
 import {
   findMatchingDefinition,
   type MatchResult,
 } from '../../features/classes/AssessTaskModal/matchDefinitionForAssignment';
 import { queryKeys } from '../../query/queryKeys';
 import { renderWithFrontendProviders } from '../renderWithFrontendProviders';
+import { DEFAULT_ISO_DATETIME } from './matchDefinitionForAssignment.test-utilities';
 import { createAppQueryClient } from '../../query/queryClient';
 import type { GoogleClassroomAssignmentsResponse } from '../../services/googleClassrooms/googleClassroomAssignments.zod';
 import type { AssignmentDefinitionPartial } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import type { UpsertAssignmentDefinitionResponse } from '../../services/assignmentDefinition/assignmentDefinition.zod';
 import type { QueryClient } from '@tanstack/react-query';
 
 // ---------------------------------------------------------------------------
@@ -29,40 +32,27 @@ export const MOCK_EMPTY_ASSIGNMENTS: GoogleClassroomAssignmentsResponse = [];
 
 export const MODAL_TITLE = `Assess Task — ${MOCK_CLASS_NAME}`;
 
-export const DEFAULT_ISO_DATETIME = '2025-01-01T00:00:00.000Z';
-
-// ---------------------------------------------------------------------------
-// Fixture factories
-// ---------------------------------------------------------------------------
-
 /**
- * Creates an AssignmentDefinitionPartial fixture for cache-hit tests.
- *
- * @param {Partial<AssignmentDefinitionPartial>} overrides Fields to override.
- * @returns {AssignmentDefinitionPartial} A definition partial fixture.
+ * Default resolved value for the upsertAssignmentDefinition mock.
+ * Satisfies the UpsertAssignmentDefinitionResponse shape.
  */
-export function createDefinitionPartial(
-  overrides: Partial<AssignmentDefinitionPartial> = {}
-): AssignmentDefinitionPartial {
-  return {
-    primaryTitle: 'Essay',
-    primaryTopic: 'Writing',
-    primaryTopicKey: 'topic-writing',
-    yearGroupKey: 'year-10',
-    yearGroupLabel: 'Year 10',
-    alternateTitles: [],
-    alternateTopics: [],
-    documentType: 'SLIDES',
-    referenceDocumentId: 'ref-001',
-    templateDocumentId: 'tpl-001',
-    assignmentWeighting: null,
-    definitionKey: 'essay-def-key',
-    tasks: null,
-    createdAt: DEFAULT_ISO_DATETIME,
-    updatedAt: DEFAULT_ISO_DATETIME,
-    ...overrides,
-  };
-}
+export const DEFAULT_UPSERT_RESULT: UpsertAssignmentDefinitionResponse = {
+  definitionKey: 'essay-def-key',
+  primaryTitle: 'Essay',
+  primaryTopicKey: 'topic-writing',
+  primaryTopic: 'Writing',
+  yearGroupKey: 'year-10',
+  yearGroupLabel: 'Year 10',
+  alternateTitles: [],
+  alternateTopics: [],
+  documentType: 'SLIDES',
+  referenceDocumentId: 'ref-001',
+  templateDocumentId: 'tpl-001',
+  assignmentWeighting: null,
+  tasks: [] as Array<{ taskId: string; taskTitle: string; taskWeighting: number }>,
+  createdAt: DEFAULT_ISO_DATETIME,
+  updatedAt: DEFAULT_ISO_DATETIME,
+};
 
 // ---------------------------------------------------------------------------
 // Standard props
@@ -139,6 +129,8 @@ export type RenderWithCacheOptions = {
   findMatchResult?: MatchResult;
   startRunResult?: unknown;
   startRunType?: 'resolve' | 'reject';
+  upsertResult?: UpsertAssignmentDefinitionResponse | Error;
+  upsertType?: 'resolve' | 'reject';
   onClose?: () => void;
 };
 
@@ -162,6 +154,8 @@ export function renderWithCache(options: RenderWithCacheOptions = {}): {
     findMatchResult,
     startRunResult,
     startRunType,
+    upsertResult,
+    upsertType,
     onClose: onCloseOption,
   } = options;
 
@@ -177,6 +171,12 @@ export function renderWithCache(options: RenderWithCacheOptions = {}): {
     vi.mocked(startAssessmentRun).mockRejectedValue(startRunResult);
   } else if (startRunResult !== undefined) {
     vi.mocked(startAssessmentRun).mockResolvedValue(startRunResult as null);
+  }
+
+  if (upsertType === 'reject') {
+    vi.mocked(upsertAssignmentDefinition).mockRejectedValue(upsertResult);
+  } else if (upsertResult !== undefined) {
+    vi.mocked(upsertAssignmentDefinition).mockResolvedValue(upsertResult as UpsertAssignmentDefinitionResponse);
   }
 
   const queryClient = createAppQueryClient();
@@ -272,4 +272,91 @@ export function expectStartAssessmentDisabled(dialog: HTMLElement): void {
  */
 export function expectCancelButtonPresent(dialog: HTMLElement): void {
   expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+}
+
+// ---------------------------------------------------------------------------
+// Link-flow interaction helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Clicks the "Link to Existing Definition" button in the choice prompt.
+ * Must be called after the no-match choice prompt is visible.
+ * Waits for the button to be present first.
+ *
+ * @remarks
+ * Use this helper after the matcher has returned `no-match` and the choice
+ * prompt (Create New Definition / Link to Existing Definition) is visible.
+ * After calling this, `noMatchResolution` transitions to `'linking'` and
+ * the picker becomes visible.
+ *
+ * @param {HTMLElement} dialog The modal dialog element.
+ * @returns {Promise<void>} Resolves when the button has been clicked.
+ */
+export async function clickLinkToExisting(dialog: HTMLElement): Promise<void> {
+  const button = await within(dialog).findByRole('button', { name: 'Link to Existing Definition' });
+  fireEvent.click(button);
+}
+
+/**
+ * Clicks the "Link" button in the picker footer.
+ * Must be called after the picker is visible and a row has been selected.
+ * The button's accessible name is "Link" (not "Start Assessment").
+ *
+ * @remarks
+ * Use this helper after `pickLinkableDefinition` has selected a row. The
+ * Link button becomes enabled when a row is selected. Clicking it triggers
+ * the upsert + start-assessment-run flow. Use in conjunction with
+ * `renderWithCache` to set up the upsert and start-run mocks.
+ *
+ * @param {HTMLElement} dialog The modal dialog element.
+ * @returns {Promise<void>} Resolves when the button has been clicked.
+ */
+export async function clickLink(dialog: HTMLElement): Promise<void> {
+  const button = await within(dialog).findByRole('button', { name: 'Link' });
+  fireEvent.click(button);
+}
+
+/**
+ * Clicks a Radio row in the linkable-definition picker at the given index.
+ * Must be called after the picker is visible (after `clickLinkToExisting`).
+ *
+ * @remarks
+ * Use this helper after `clickLinkToExisting` has opened the picker. Selects
+ * the row at the given index (defaults to 0) to set `selectedDefinitionForLink`
+ * and enable the Link button. Throws with a helpful message if the index is
+ * out of bounds.
+ *
+ * @param {HTMLElement} dialog The modal dialog element.
+ * @param {number} [index=0] The index of the radio to click.
+ * @returns {Promise<void>} Resolves when the radio has been clicked.
+ */
+export async function pickLinkableDefinition(
+  dialog: HTMLElement,
+  index: number = 0
+): Promise<void> {
+  const radios = await within(dialog).findAllByRole('radio');
+  if (index >= radios.length || index < 0) {
+    throw new Error(
+      `pickLinkableDefinition: index ${index} out of bounds (found ${radios.length} radio buttons)`
+    );
+  }
+  // eslint-disable-next-line security/detect-object-injection -- Array index access, not object property
+  fireEvent.click(radios[index]);
+}
+
+/**
+ * Asserts that the Link button in the picker footer is disabled
+ * (when no row is selected). Must be called after the picker is visible
+ * and before a row has been picked.
+ *
+ * @remarks
+ * Use this helper to verify the initial picker state where no row is
+ * selected and the Link button is therefore disabled. The button becomes
+ * enabled after `pickLinkableDefinition` selects a row.
+ *
+ * @param {HTMLElement} dialog The modal dialog element.
+ * @returns {void}
+ */
+export function expectLinkButtonDisabled(dialog: HTMLElement): void {
+  expect(within(dialog).getByRole('button', { name: 'Link' })).toBeDisabled();
 }

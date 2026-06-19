@@ -393,10 +393,14 @@ export async function openClassesTabWithScenario(page: Page, scenario: ClassesCr
 }
 
 // ---------------------------------------------------------------------------
-// Section 3 Test Constants (from REFERENCE_DATA_MODAL_LAYOUT.md)
+// Layout assertion constants for reference-data modal geometry tests
 // ---------------------------------------------------------------------------
 
-// Alignment tolerance: button left edge must remain near table region start across Chromium layout variance
+// Alignment tolerance: button left edge must remain near the flex container
+// start edge across Chromium layout variance. The flex container is the
+// project-controlled scaffold Flex (width: 100%, align: start), so the button
+// and flex should be near-exactly aligned; 72px absorbs any residual variance.
 export const ALIGNMENT_TOLERANCE_PX = 72;
-// Width difference: button must be at least 32px narrower than table
+// Width difference: button must be at least 32px narrower than the flex
+// container (which equals the table width since the table is width: 100%).
 export const MIN_WIDTH_DIFFERENCE_PX = 32;

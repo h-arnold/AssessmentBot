@@ -396,10 +396,11 @@ deterministic responses. This keeps tests fast and eliminates flakiness from ext
 
 When asserting modal layout geometry for Ant Design tables, use this stabilisation pattern:
 
-1. Measure against the stable table wrapper region (`.ant-table-wrapper`) rather than the inner `<table>` bounding box.
-2. Keep scaffold ready-state layout full-width (`style={{ width: '100%' }}`) on both the scaffold `Flex` container and the `Table`.
-3. Recalibrate tolerance constants only after repeated deterministic Playwright runs, not after a single pass.
-4. Validate with focused repeated runs (`--repeat-each`) and optionally serialise workers (`--workers=1`) before finalising thresholds.
+1. Measure against the stable project-controlled scaffold `Flex` container (located via `.ant-modal-body > .ant-flex`, the direct parent of both the create button and the table) rather than antd's internal `ant-table-wrapper` or the inner `<table>` bounding box. The `ant-table-wrapper` bounding box can vary between headless CI Chromium and local headed Chromium due to font substitution and antd internal CSS changes across versions.
+2. Use `offsetLeft` and `offsetWidth` (layout properties obtained via `locator.evaluate()`) instead of `boundingBox()` (visual properties). This is critical because antd Modal's entrance zoom animation applies a CSS `transform: scale(...)` that makes `boundingBox()` return intermediate visual sizes during the animation. `offsetLeft` and `offsetWidth` are layout properties unaffected by CSS transforms, so they return the final layout dimensions immediately without waiting for the animation to settle.
+3. Keep scaffold ready-state layout full-width (`style={{ width: '100%' }}`) on both the scaffold `Flex` container and the `Table`.
+4. Recalibrate tolerance constants only after repeated deterministic Playwright runs, not after a single pass. Playwright assertion error messages include expected and received values for calibration.
+5. Validate with focused repeated runs (`--repeat-each`) and optionally serialise workers (`--workers=1`) before finalising thresholds.
 
 ```bash
 npm run frontend:test:e2e -- e2e-tests/classes-crud-manage-cohorts.spec.ts -g "Create cohort button" --repeat-each=10 --workers=1
