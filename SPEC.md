@@ -568,7 +568,24 @@ No new datasets, no new query keys, no new service functions.
   refetch is for the next time the user opens the modal (or any other
   consumer reads the cache). The invalidation is the standard React Query
   post-mutation pattern; the wizard-success flow in
-  `handleWizardCreateSuccess` follows the same pattern.
+  `handleWizardCreateSuccess` does **not** follow the same pattern — see
+  the wizard-success refresh below.
+- **Wizard-success refresh (issue #262):** the wizard-success flow in
+  `handleWizardCreateSuccess` runs while the user is on the ClassesPage
+  (not the AssignmentsPage), so the `usePageDataset` hook used by the
+  AssignmentsPage is **not mounted** and there is no active observer for
+  `assignmentDefinitionPartials`. Plain `invalidateQueries` would mark
+  the cache as stale but would not trigger a refetch (no active observer),
+  and the `usePageDataset` hook uses `refetchOnMount: false`, so stale
+  data would persist when the user later navigates to the AssignmentsPage.
+  To prevent this, `handleWizardCreateSuccess` calls
+  `refetchAfterStaleInvalidate(queryClient, queryKeys.assignmentDefinitionPartials())`
+  in a `finally` block (so the refetch happens regardless of whether
+  `startAssessmentRun` succeeds or fails), and logs refetch failures via
+  `logFrontendError`. The refetch is fire-and-forget; the modal does not
+  block on it. This is the documented exception for queries gated on
+  warmup-dataset readiness with `refetchOnMount: false` per
+  `docs/developer/frontend/frontend-react-query-and-prefetch.md` §6-7.
 
 ### Query or transport additions
 

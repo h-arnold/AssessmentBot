@@ -1063,6 +1063,54 @@ describe('No-match resolution — creating state and wizard integration', () => 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  // Regression coverage for issue #262: when a definition is created via the
+  // AssessTask wizard (rather than directly via the AssignmentsPage), the
+  // assignmentDefinitionPartials dataset must be force-refetched so that
+  // navigating to the AssignmentsPage later shows fresh data. Without an
+  // active observer on ClassesPage, plain invalidateQueries is not enough —
+  // refetchQueries must be called explicitly.
+
+  it('post-create: triggers refetch of assignmentDefinitionPartials when wizard creates definition', async () => {
+    const { dialog, queryClient } = await setupWizardTest({
+      startRunResult: null,
+      startRunType: 'resolve',
+    });
+
+    await clickCreateNewDefinition(dialog);
+    const properties = await getWizardProperties();
+
+    const refetchSpy = vi.spyOn(queryClient, 'refetchQueries');
+    properties.onCreateSuccess('new-def-key');
+
+    await waitFor(() => {
+      expect(refetchSpy).toHaveBeenCalledWith(
+        { queryKey: queryKeys.assignmentDefinitionPartials() },
+        expect.objectContaining({ throwOnError: true })
+      );
+    });
+  });
+
+  it('post-create: triggers refetch of assignmentDefinitionPartials even when startAssessmentRun fails', async () => {
+    const apiError = new Error('API failure');
+    const { dialog, queryClient } = await setupWizardTest({
+      startRunResult: apiError,
+      startRunType: 'reject',
+    });
+
+    await clickCreateNewDefinition(dialog);
+    const properties = await getWizardProperties();
+
+    const refetchSpy = vi.spyOn(queryClient, 'refetchQueries');
+    properties.onCreateSuccess('new-def-key');
+
+    await waitFor(() => {
+      expect(refetchSpy).toHaveBeenCalledWith(
+        { queryKey: queryKeys.assignmentDefinitionPartials() },
+        expect.objectContaining({ throwOnError: true })
+      );
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------
