@@ -811,7 +811,7 @@ test.describe('Assess Task modal', () => {
       ).toBeVisible();
     });
 
-    test('DEFINITION_STALE after link opens wizard at task-weightings panel (panel 2)', async ({
+    test('DEFINITION_STALE after link opens wizard at title/topic panel (panel 1)', async ({
       page,
     }) => {
       const topicsData = [
