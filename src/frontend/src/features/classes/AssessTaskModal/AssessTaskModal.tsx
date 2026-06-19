@@ -596,15 +596,23 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
    * @returns {React.ReactNode} The rendered assignments selection content.
    */
   function renderAssignmentsContent(): React.ReactNode {
-    const selectOptions = assignments.map((assignment) => ({
-      value: assignment.assignmentId,
-      label: assignment.title,
-    }));
-
     const assessmentAlert =
       assessmentState === 'success' || (assessmentState === 'error' && assessmentError) ? (
         <Alert type={assessmentAlertType} showIcon title={assessmentError} style={{ marginBottom: 16 }} />
       ) : null;
+
+    if (assessmentState === 'success') {
+      return (
+        <Space vertical style={{ width: '100%' }}>
+          {assessmentAlert}
+        </Space>
+      );
+    }
+
+    const selectOptions = assignments.map((assignment) => ({
+      value: assignment.assignmentId,
+      label: assignment.title,
+    }));
 
     return (
       <Space vertical style={{ width: '100%' }}>
@@ -684,6 +692,8 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
       );
     }
 
+    // On success, only show the Alert — no picker. Mirrors the renderAssignmentsContent()
+    // early-return for the matched/wizard success paths (see Issue #260).
     if (assessmentState === 'success') {
       return <Alert type="success" showIcon title={assessmentError} style={{ marginBottom: 16 }} />;
     }

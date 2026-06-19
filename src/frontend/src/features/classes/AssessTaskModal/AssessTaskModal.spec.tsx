@@ -1448,3 +1448,74 @@ describe('No-match resolution — linking state and link flow', () => {
     expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Regression: Issue #260 – dropdown should not appear after successful assessment
+// ---------------------------------------------------------------------------
+
+describe('Issue #260 regression — dropdown hidden on success', () => {
+  it('wizard create success: assignment dropdown is not visible after successful trigger', async () => {
+    const { dialog } = await setupWizardTest({
+      startRunResult: null,
+      startRunType: 'resolve',
+    });
+
+    await clickCreateNewDefinition(dialog);
+    const properties = await getWizardProperties();
+    properties.onCreateSuccess('new-def-key');
+
+    // Wait for success state
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert).toHaveTextContent(/assessment started for/i);
+
+    // Dropdown should NOT be visible
+    expect(within(dialog).queryByRole('combobox')).toBeNull();
+    // "Select assignment" label should NOT be visible
+    expect(within(dialog).queryByText('Select assignment')).toBeNull();
+  });
+
+  it('matched flow success: assignment dropdown is not visible after successful trigger', async () => {
+    const matchedDefinition = createDefinitionPartial();
+    const { dialog } = renderWithCache({
+      classPartials: [
+        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+      ],
+      definitionPartials: [matchedDefinition],
+      findMatchResult: { kind: 'matched', definition: matchedDefinition },
+      startRunResult: null,
+      startRunType: 'resolve',
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    // Wait for success state
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert).toHaveTextContent(/assessment started for/i);
+
+    // Dropdown should NOT be visible
+    expect(within(dialog).queryByRole('combobox')).toBeNull();
+    // "Select assignment" label should NOT be visible
+    expect(within(dialog).queryByText('Select assignment')).toBeNull();
+  });
+
+  it('link flow success: assignment dropdown is not visible after successful trigger', async () => {
+    const { dialog } = renderWithNoMatchCache({
+      upsertResult: DEFAULT_UPSERT_RESULT,
+      upsertType: 'resolve',
+      startRunResult: null,
+      startRunType: 'resolve',
+    });
+
+    await performLinkFlow(dialog);
+
+    // Wait for success state
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert).toHaveTextContent(/assessment started for/i);
+
+    // Dropdown should NOT be visible
+    expect(within(dialog).queryByRole('combobox')).toBeNull();
+    // "Select assignment" label should NOT be visible
+    expect(within(dialog).queryByText('Select assignment')).toBeNull();
+  });
+});
