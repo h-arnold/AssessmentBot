@@ -12,6 +12,8 @@ import {
   createLinkableScenario,
   openAssessTaskModal,
   openWizardFromChoicePrompt,
+  pickAssignmentE2E,
+  pickLinkableDefinitionE2E,
   selectAssignmentAndStart,
   setupLinkableDialog,
 } from './helpers/classes-page-end-to-end-helpers';
@@ -65,7 +67,7 @@ test.describe('Assess Task modal', () => {
     await expect(dialog).toContainText('Assess Task — English 10');
 
     // Verify Select dropdown is visible with placeholder
-    await expect(dialog.getByRole('combobox')).toBeVisible();
+    await expect(dialog.getByTestId('assignment-select')).toBeVisible();
 
     // Verify Start Assessment is disabled initially
     await expect(dialog.getByRole('button', { name: 'Start Assessment' })).toBeDisabled();
@@ -79,8 +81,7 @@ test.describe('Assess Task modal', () => {
     const dialog = await openAssessTaskModal(page);
 
     // Open the Select dropdown and choose "Algebra Homework"
-    await dialog.getByRole('combobox').click();
-    await selectVisibleOption(page, 'Algebra Homework');
+    await pickAssignmentE2E(dialog, page);
 
     // Verify Start Assessment becomes enabled
     await expect(dialog.getByRole('button', { name: 'Start Assessment' })).toBeEnabled();
@@ -99,8 +100,7 @@ test.describe('Assess Task modal', () => {
     const dialog = await openAssessTaskModal(page);
 
     // Select an assignment
-    await dialog.getByRole('combobox').click();
-    await selectVisibleOption(page, 'Algebra Homework');
+    await pickAssignmentE2E(dialog, page);
     await expect(dialog.getByRole('button', { name: 'Start Assessment' })).toBeEnabled();
 
     // Record method calls before clicking Start Assessment
@@ -124,8 +124,7 @@ test.describe('Assess Task modal', () => {
     const dialog = await openAssessTaskModal(page);
 
     // Select an assignment first so we can verify state is discarded
-    await dialog.getByRole('combobox').click();
-    await selectVisibleOption(page, 'Algebra Homework');
+    await pickAssignmentE2E(dialog, page);
     await expect(dialog.getByRole('button', { name: 'Start Assessment' })).toBeEnabled();
 
     // Click Cancel
@@ -170,11 +169,10 @@ test.describe('Assess Task modal', () => {
     await expect(dialog).toContainText('Assess Task — English 10');
 
     // Verify first assignment list loads
-    await expect(dialog.getByRole('combobox')).toBeVisible();
+    await expect(dialog.getByTestId('assignment-select')).toBeVisible();
 
     // Select an assignment to create "stale" state
-    await dialog.getByRole('combobox').click();
-    await selectVisibleOption(page, 'Algebra Homework');
+    await pickAssignmentE2E(dialog, page);
     await expect(dialog.getByRole('button', { name: 'Start Assessment' })).toBeEnabled();
 
     // Close modal
@@ -188,7 +186,7 @@ test.describe('Assess Task modal', () => {
     await expect(dialog).toContainText('Assess Task — Mathematics 10A');
 
     // Verify fresh fetch — second pair of entries loads
-    await expect(dialog.getByRole('combobox')).toBeVisible();
+    await expect(dialog.getByTestId('assignment-select')).toBeVisible();
 
     // Verify no stale selection from previous open
     await expect(dialog.getByRole('button', { name: 'Start Assessment' })).toBeDisabled();
@@ -217,7 +215,7 @@ test.describe('Assess Task modal', () => {
     await expect(dialog.getByRole('button', { name: 'Start Assessment' })).toBeDisabled();
 
     // Verify Select dropdown is not rendered in error state
-    await expect(dialog.getByRole('combobox')).toHaveCount(0);
+    await expect(dialog.getByTestId('assignment-select')).toHaveCount(0);
   });
 
   test('shows Empty component when course has no assignments', async ({ page }) => {
@@ -237,7 +235,7 @@ test.describe('Assess Task modal', () => {
     await expect(dialog.getByRole('button', { name: 'Start Assessment' })).toBeDisabled();
 
     // Verify Select dropdown is not rendered in empty state
-    await expect(dialog.getByRole('combobox')).toHaveCount(0);
+    await expect(dialog.getByTestId('assignment-select')).toHaveCount(0);
   });
 
   test('shows spinner during fetch and transitions to Select on response', async ({ page }) => {
@@ -263,14 +261,14 @@ test.describe('Assess Task modal', () => {
     await expect(dialog.getByRole('button', { name: 'Start Assessment' })).toBeDisabled();
 
     // Verify Select is not rendered during loading
-    await expect(dialog.getByRole('combobox')).toHaveCount(0);
+    await expect(dialog.getByTestId('assignment-select')).toHaveCount(0);
 
     // Release the first deferred success response
     await releaseNextDeferredSuccess(page);
 
     // Verify spinner is replaced by Select dropdown
     await expect(dialog.getByRole('status')).toHaveCount(0);
-    await expect(dialog.getByRole('combobox')).toBeVisible();
+    await expect(dialog.getByTestId('assignment-select')).toBeVisible();
 
     // Verify Start Assessment remains disabled (no selection yet)
     await expect(dialog.getByRole('button', { name: 'Start Assessment' })).toBeDisabled();
@@ -304,7 +302,7 @@ test.describe('Assess Task modal', () => {
     const dialog = await openAssessTaskModal(page);
 
     // Select assignment
-    await dialog.getByRole('combobox').click();
+    await dialog.getByTestId('assignment-select').click();
     await selectVisibleOption(page, 'Algebra Homework');
 
     // Click Start Assessment
@@ -504,6 +502,8 @@ test.describe('Assess Task modal', () => {
   // ==========================================================================
 
   test.describe('Link to Existing Definition — picker flow', () => {
+    const LINK_PICKER_INFO_TEXT = 'Choose the Assignment you want to link this one to:' as const;
+
     const ALGEBRA_HW_PARTIAL = {
       definitionKey: 'algebra-hw-key',
       primaryTitle: 'Algebra HW',
@@ -602,11 +602,11 @@ test.describe('Assess Task modal', () => {
       // Click link button
       await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
 
-      // Assert picker is rendered — look for the Radio.Group rows
-      await expect(dialog.getByRole('radio')).toHaveCount(1);
+      // Assert picker is rendered — look for the combobox
+      await expect(dialog.getByTestId('linkable-definition-select')).toBeVisible();
 
       // Assert the Alert copy and footer buttons
-      await expect(dialog.getByText(/link to an existing definition to associate/i)).toBeVisible();
+      await expect(dialog.getByText(LINK_PICKER_INFO_TEXT)).toBeVisible();
       await expect(dialog.getByRole('button', { name: 'Link' })).toBeDisabled();
       await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeVisible();
     });
@@ -622,10 +622,13 @@ test.describe('Assess Task modal', () => {
       await selectAssignmentAndStart(dialog, page);
       await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
 
-      // The radio row shows the title and the subtitle
-      const radioRow = dialog.locator('.ant-radio-label').first();
-      await expect(radioRow.getByText('Algebra HW')).toHaveCount(1);
-      await expect(radioRow.getByText('Algebra · Year 10')).toHaveCount(1);
+      // Open the picker dropdown — the option shows the title and the subtitle
+      await dialog.getByTestId('linkable-definition-select').click();
+      const option = page
+        .locator('.ant-select-dropdown:not(.ant-select-dropdown-hidden) .ant-select-item-option')
+        .first();
+      await expect(option).toContainText('Algebra HW');
+      await expect(option).toContainText('Algebra · Year 10');
     });
 
     test('picker rows sorted by fuzzy title rank with updatedAt desc tie-breaker', async ({
@@ -652,16 +655,17 @@ test.describe('Assess Task modal', () => {
       await selectAssignmentAndStart(dialog, page);
       await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
 
-      // Collect titles from each radio row (the first .ant-typography child of .ant-radio-label)
-      const radioLabels = dialog.locator('.ant-radio-label');
-      const labelCount = await radioLabels.count();
+      // Open the picker dropdown and collect titles from each option.
+      // antd v6 renders options with role="option" inside a portal;
+      // collect the primaryTitle text from each.
+      await dialog.getByTestId('linkable-definition-select').click();
+      const options = page.getByRole('listbox').getByRole('option');
+      const optionCount = await options.count();
       const titles: string[] = [];
-      for (let index = 0; index < labelCount; index++) {
-        const titleText = await radioLabels
-          .nth(index)
-          .locator('.ant-typography')
-          .first()
-          .textContent();
+      for (let index = 0; index < optionCount; index++) {
+        // Each option renders a Flex with two children: primaryTitle (first <span>)
+        // and "Topic · Year" subtitle (second <span>).
+        const titleText = await options.nth(index).locator('span').first().textContent();
         titles.push(titleText?.trim() ?? '');
       }
 
@@ -683,8 +687,8 @@ test.describe('Assess Task modal', () => {
       await selectAssignmentAndStart(dialog, page);
       await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
 
-      // Select the first (and only) row
-      await dialog.getByRole('radio').click();
+      // Select the first (and only) option
+      await pickLinkableDefinitionE2E(dialog, page, 'Algebra HW');
 
       // Click Link
       await dialog.getByRole('button', { name: 'Link' }).click();
@@ -713,7 +717,7 @@ test.describe('Assess Task modal', () => {
 
       await selectAssignmentAndStart(dialog, page);
       await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
-      await dialog.getByRole('radio').click();
+      await pickLinkableDefinitionE2E(dialog, page, 'Algebra HW');
 
       // Click Link — this triggers the deferred upsert
       await dialog.getByRole('button', { name: 'Link' }).click();
@@ -744,7 +748,7 @@ test.describe('Assess Task modal', () => {
 
       await selectAssignmentAndStart(dialog, page);
       await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
-      await dialog.getByRole('radio').click();
+      await pickLinkableDefinitionE2E(dialog, page, 'Algebra HW');
       await dialog.getByRole('button', { name: 'Link' }).click();
 
       // Verify success Alert
@@ -777,7 +781,7 @@ test.describe('Assess Task modal', () => {
 
       await selectAssignmentAndStart(dialog, page);
       await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
-      await dialog.getByRole('radio').click();
+      await pickLinkableDefinitionE2E(dialog, page, 'Algebra HW');
       await dialog.getByRole('button', { name: 'Link' }).click();
 
       // Verify error Alert
@@ -801,7 +805,7 @@ test.describe('Assess Task modal', () => {
       await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
 
       // Picker visible — click Cancel
-      await expect(dialog.getByRole('radio')).toBeVisible();
+      await expect(dialog.getByTestId('linkable-definition-select')).toBeVisible();
       await dialog.getByRole('button', { name: 'Cancel' }).click();
 
       // Choice buttons should reappear
@@ -849,7 +853,7 @@ test.describe('Assess Task modal', () => {
 
       await selectAssignmentAndStart(dialog, page);
       await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
-      await dialog.getByRole('radio').click();
+      await pickLinkableDefinitionE2E(dialog, page, 'Algebra HW');
       await dialog.getByRole('button', { name: 'Link' }).click();
 
       // The wizard dialog should appear (DEFINITION_STALE recovery)
@@ -885,7 +889,7 @@ test.describe('Assess Task modal', () => {
       // First use — go through a full link flow
       await selectAssignmentAndStart(dialog, page);
       await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
-      await dialog.getByRole('radio').click();
+      await pickLinkableDefinitionE2E(dialog, page, 'Algebra HW');
       await dialog.getByRole('button', { name: 'Link' }).click();
 
       // Wait for success and close
@@ -899,8 +903,198 @@ test.describe('Assess Task modal', () => {
       await expect(dialog).toBeVisible();
 
       // Verify state reset: Start Assessment is disabled, Select dropdown is shown
-      await expect(dialog.getByRole('combobox')).toBeVisible();
+      await expect(dialog.getByTestId('assignment-select')).toBeVisible();
       await expect(dialog.getByRole('button', { name: 'Start Assessment' })).toBeDisabled();
+    });
+
+    test('link picker shows updated info text', async ({ page }) => {
+      const dialog = await setupLinkableDialog(
+        page,
+        createLinkableScenario({
+          getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
+        })
+      );
+
+      await selectAssignmentAndStart(dialog, page);
+      await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
+
+      // Assert the Alert description copy
+      await expect(dialog.getByText(LINK_PICKER_INFO_TEXT)).toBeVisible();
+    });
+
+    test('link picker combobox spans full width', async ({ page }) => {
+      const dialog = await setupLinkableDialog(
+        page,
+        createLinkableScenario({
+          getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
+        })
+      );
+
+      await selectAssignmentAndStart(dialog, page);
+      await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
+
+      // Assert the picker Select fills the modal body's content width
+      const FULL_WIDTH_TOLERANCE_PX = 5;
+      const comboboxWidth = await dialog
+        .getByTestId('linkable-definition-select')
+        .evaluate((element: HTMLElement) => element.offsetWidth);
+      const bodyWidth = await dialog
+        .locator('.ant-modal-body')
+        .evaluate((element: HTMLElement) => element.offsetWidth);
+      expect(Math.abs(comboboxWidth - bodyWidth)).toBeLessThan(FULL_WIDTH_TOLERANCE_PX);
+    });
+
+    test('link picker search filters options by title', async ({ page }) => {
+      const THREE_PARTIALS_ENTRY = {
+        kind: 'success' as const,
+        data: [POETRY_ANALYSIS_PARTIAL, ALGEBRA_HW_PARTIAL, ALGEBRA_HOMEWORK_PARTIAL],
+      };
+
+      const dialog = await setupLinkableDialog(
+        page,
+        createLinkableScenario({
+          getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
+          linkablePartialsEntry: THREE_PARTIALS_ENTRY,
+        })
+      );
+
+      await selectAssignmentAndStart(dialog, page);
+      await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
+
+      // Open the picker dropdown
+      await dialog.getByTestId('linkable-definition-select').click();
+      await expect(page.getByText('Algebra HW', { exact: true })).toBeVisible();
+      await expect(page.getByText('Poetry Analysis', { exact: true })).toBeVisible();
+      await expect(page.getByText('Algebra Homework Original', { exact: true })).toBeVisible();
+
+      // Type in the search input to filter by title. The combobox is the
+      // input element (antd v6 puts role="combobox" on the void input), so
+      // filling the combobox directly triggers showSearch filtering.
+      const searchInput = page.getByTestId('linkable-definition-select').getByRole('combobox');
+      await searchInput.fill('Algebra');
+
+      // The two algebra options remain; Poetry Analysis is filtered out
+      await expect(page.getByText('Algebra HW', { exact: true })).toBeVisible();
+      await expect(page.getByText('Algebra Homework Original', { exact: true })).toBeVisible();
+      await expect(page.getByText('Poetry Analysis', { exact: true })).toHaveCount(0);
+    });
+
+    test('link picker search clearing restores all options', async ({ page }) => {
+      const THREE_PARTIALS_ENTRY = {
+        kind: 'success' as const,
+        data: [POETRY_ANALYSIS_PARTIAL, ALGEBRA_HW_PARTIAL, ALGEBRA_HOMEWORK_PARTIAL],
+      };
+
+      const dialog = await setupLinkableDialog(
+        page,
+        createLinkableScenario({
+          getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
+          linkablePartialsEntry: THREE_PARTIALS_ENTRY,
+        })
+      );
+
+      await selectAssignmentAndStart(dialog, page);
+      await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
+
+      // Open the picker dropdown
+      await dialog.getByTestId('linkable-definition-select').click();
+      await expect(page.getByText('Algebra HW', { exact: true })).toBeVisible();
+      await expect(page.getByText('Poetry Analysis', { exact: true })).toBeVisible();
+      await expect(page.getByText('Algebra Homework Original', { exact: true })).toBeVisible();
+
+      // Type in the search input to filter by title. The combobox is the
+      // input element (antd v6 puts role="combobox" on the void input), so
+      // filling the combobox directly triggers showSearch filtering.
+      const searchInput = page.getByTestId('linkable-definition-select').getByRole('combobox');
+      await searchInput.fill('Algebra');
+
+      // Only the two algebra options remain; Poetry Analysis is filtered out
+      await expect(page.getByText('Algebra HW', { exact: true })).toBeVisible();
+      await expect(page.getByText('Algebra Homework Original', { exact: true })).toBeVisible();
+      await expect(page.getByText('Poetry Analysis', { exact: true })).toHaveCount(0);
+
+      // Clear the search input
+      await searchInput.clear();
+
+      // All three options reappear
+      await expect(page.getByText('Algebra HW', { exact: true })).toBeVisible();
+      await expect(page.getByText('Poetry Analysis', { exact: true })).toBeVisible();
+      await expect(page.getByText('Algebra Homework Original', { exact: true })).toBeVisible();
+    });
+
+    test('link picker search is case-insensitive', async ({ page }) => {
+      const POETRY_UPPER_PARTIAL = {
+        ...POETRY_ANALYSIS_PARTIAL,
+        primaryTitle: 'POETRY Analysis',
+      };
+
+      const TWO_PARTIALS_ENTRY = {
+        kind: 'success' as const,
+        data: [POETRY_UPPER_PARTIAL, ALGEBRA_HW_PARTIAL],
+      };
+
+      const dialog = await setupLinkableDialog(
+        page,
+        createLinkableScenario({
+          getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
+          linkablePartialsEntry: TWO_PARTIALS_ENTRY,
+        })
+      );
+
+      await selectAssignmentAndStart(dialog, page);
+      await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
+
+      // Open the picker dropdown
+      await dialog.getByTestId('linkable-definition-select').click();
+
+      // Type lowercase "algebra" — should match "Algebra HW"
+      const searchInput = page.getByTestId('linkable-definition-select').getByRole('combobox');
+      await searchInput.fill('algebra');
+
+      await expect(page.getByText('Algebra HW', { exact: true })).toBeVisible();
+      // POETRY Analysis should be filtered out (no "algebra" match)
+      await expect(page.getByText('POETRY Analysis', { exact: true })).toHaveCount(0);
+    });
+
+    test('link picker selected value shows title only', async ({ page }) => {
+      const dialog = await setupLinkableDialog(
+        page,
+        createLinkableScenario({
+          getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
+        })
+      );
+
+      await selectAssignmentAndStart(dialog, page);
+      await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
+      await pickLinkableDefinitionE2E(dialog, page, 'Algebra HW');
+
+      // The selected value renders the primaryTitle only (no topic/year subtitle).
+      // Use the combobox text content directly — the selected value appears in
+      // the combobox's accessible label, not in `.ant-select-selection-item`.
+      const selectedValue = dialog.getByTestId('linkable-definition-select');
+      await expect(selectedValue).toContainText('Algebra HW');
+      await expect(selectedValue).not.toContainText('Algebra · Year 10');
+    });
+
+    test('assignment Select is searchable', async ({ page }) => {
+      const scenario = createAssessTaskScenario();
+      await installRuntimeMock(page, scenario);
+      const dialog = await openAssessTaskModal(page);
+
+      // Open the assignment Select dropdown and confirm both options are listed
+      await dialog.getByTestId('assignment-select').click();
+      await expect(page.getByText('Algebra Homework', { exact: true })).toBeVisible();
+      await expect(page.getByText('Chapter 5 Review', { exact: true })).toBeVisible();
+
+      // Type in the search input to filter by title. The combobox is the
+      // input element (antd v6 puts role="combobox" on the void input), so
+      // filling the combobox directly triggers showSearch filtering.
+      const searchInput = page.getByTestId('assignment-select').getByRole('combobox');
+      await searchInput.fill('Algebra');
+
+      // Only Algebra Homework remains; Chapter 5 Review is filtered out
+      await expect(page.getByText('Algebra Homework', { exact: true })).toBeVisible();
+      await expect(page.getByText('Chapter 5 Review', { exact: true })).toHaveCount(0);
     });
   });
 });

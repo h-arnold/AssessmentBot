@@ -593,6 +593,15 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
   /**
    * Renders the dropdown and assignment-selection body content.
    *
+   * The assignment Select is searchable by title via `showSearch`.
+   *
+   * @remarks
+   * The Select uses `virtual={false}` to disable virtual scrolling so option
+   * elements are mounted in jsdom tests (virtual list omits unmounted options).
+   * This is acceptable for production as assignment lists are small (typically
+   * 5-20 items). No `notFoundContent` is provided — the empty state is handled
+   * by `renderFetchBody` (the assignment list is never empty when this renders).
+   *
    * @returns {React.ReactNode} The rendered assignments selection content.
    */
   function renderAssignmentsContent(): React.ReactNode {
@@ -619,6 +628,8 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
         {assessmentAlert}
         <Typography.Text>Select assignment</Typography.Text>
         <Select
+          data-testid="assignment-select"
+          showSearch={{ optionFilterProp: 'label' }}
           placeholder="Select an assignment"
           value={selectedAssignmentId}
           onChange={(value) => {
@@ -626,6 +637,9 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
           }}
           options={selectOptions}
           style={{ width: '100%' }}
+          // virtual={false} disables virtual scrolling so options render in jsdom tests;
+          // acceptable for production as assignment lists are small (typically 5-20 items)
+          virtual={false}
         />
         {selectedAssignmentId && (
           <Typography.Text type="secondary">

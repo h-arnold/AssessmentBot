@@ -392,7 +392,7 @@ export async function selectAssignmentAndStart(
   page: Page,
   title: string = 'Algebra Homework'
 ): Promise<void> {
-  await dialog.getByRole('combobox').click();
+  await dialog.getByTestId('assignment-select').click();
   await selectVisibleOption(page, title);
   await dialog.getByRole('button', { name: 'Start Assessment' }).click();
 }
@@ -407,6 +407,52 @@ export async function selectAssignmentAndStart(
  *
  * @param {Locator} dialog - The Assess Task modal dialog locator.
  * @param {Page} page - The Playwright page under test.
+ * @returns {Promise<ReturnType<typeof page.getByRole>>} The visible wizard dialog locator.
+ */
+
+/**
+ * Opens the linkable-definition Select dropdown and selects the option matching
+ * the given primary title.
+ *
+ * @param {Locator} dialog The Assess Task modal dialog locator.
+ * @param {Page} page The Playwright page under test.
+ * @param {string} title The primary title of the option to select.
+ * @returns {Promise<void>}
+ */
+export async function pickLinkableDefinitionE2E(
+  dialog: Locator,
+  page: Page,
+  title: string
+): Promise<void> {
+  await dialog.getByTestId('linkable-definition-select').click();
+  await selectVisibleOption(page, title);
+}
+
+/**
+ * Opens the assignment Select dropdown and selects the option matching
+ * the given title.
+ *
+ * @param {Locator} dialog The Assess Task modal dialog locator.
+ * @param {Page} page The Playwright page under test.
+ * @param {string} [title] The visible text of the assignment option to select.
+ * @returns {Promise<void>}
+ */
+export async function pickAssignmentE2E(
+  dialog: Locator,
+  page: Page,
+  title: string = 'Algebra Homework'
+): Promise<void> {
+  await dialog.getByTestId('assignment-select').click();
+  await selectVisibleOption(page, title);
+}
+
+/**
+ * Selects the default assignment, starts the assessment, clicks
+ * "Create New Definition" in the choice prompt, then asserts the
+ * wizard dialog is visible.
+ *
+ * @param {Locator} dialog The Assess Task modal dialog locator.
+ * @param {Page} page The Playwright page under test.
  * @returns {Promise<ReturnType<typeof page.getByRole>>} The visible wizard dialog locator.
  */
 export async function openWizardFromChoicePrompt(
