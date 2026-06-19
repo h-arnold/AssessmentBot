@@ -8,7 +8,7 @@ import {
   expectTaskWeightingMapEntries,
   seedExistingDefinition,
   setupUpsertControllerTestBed,
-  setupDuplicateDetectionTest,
+  setupDuplicateDetectionWithExisting,
 } from './assignmentDefinitionUpsertTestHelpers.js';
 
 const extractSlidesTaskDefinitionsMock = vi.fn();
@@ -16,25 +16,16 @@ const extractSheetsTaskDefinitionsMock = vi.fn();
 
 vi.mock('../../src/backend/DbManager/DbManager.js');
 vi.mock('../../src/backend/GoogleDriveManager/DriveManager.js');
-vi.mock('../../src/backend/DocumentParsers/SlidesParser.js', () => {
-  return {
-    default: class {
-      extractTaskDefinitions(referenceDocumentId, templateDocumentId) {
-        return extractSlidesTaskDefinitionsMock(referenceDocumentId, templateDocumentId);
-      }
-    },
-  };
-});
-
-vi.mock('../../src/backend/DocumentParsers/SheetsParser.js', () => {
-  return {
-    SheetsParser: class {
-      extractTaskDefinitions(referenceDocumentId, templateDocumentId) {
-        return extractSheetsTaskDefinitionsMock(referenceDocumentId, templateDocumentId);
-      }
-    },
-  };
-});
+vi.mock('../../src/backend/DocumentParsers/SlidesParser.js', () => ({
+  default: class {
+    extractTaskDefinitions = (...a) => extractSlidesTaskDefinitionsMock(...a);
+  },
+}));
+vi.mock('../../src/backend/DocumentParsers/SheetsParser.js', () => ({
+  SheetsParser: class {
+    extractTaskDefinitions = (...a) => extractSheetsTaskDefinitionsMock(...a);
+  },
+}));
 
 describe('AssignmentDefinitionController upsert behaviour — transport shape', () => {
   let controller;
@@ -123,7 +114,7 @@ describe('AssignmentDefinitionController upsert behaviour — transport shape', 
   });
 
   it('re-parse keeps matching task weightings and defaults new tasks to 1', () => {
-    const existing = seedExistingDefinition({
+    seedExistingDefinition({
       mockFullCollection,
       mockRegistryCollection,
       taskOverrides: { taskWeighting: 8 },
@@ -149,88 +140,20 @@ describe('AssignmentDefinitionController upsert behaviour — transport shape', 
   });
 
   it('detects duplicate tuples on final save when title/topic/yearGroupKey changes', () => {
-    const existing = {
-      ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
-      primaryTopic: 'Science',
-      tasks: {
-        t_task_1: {
-          id: 't_task_1',
-          taskTitle: 'Task A',
-          artifacts: { reference: [], template: [] },
-        },
-      },
-      referenceLastModified: '2025-04-01T00:00:00.000Z',
-      templateLastModified: '2025-04-01T00:00:00.000Z',
-    };
-    const payload = setupDuplicateDetectionTest(mockDbManager, {
-      findOneResult: existing,
+    const payload = setupDuplicateDetectionWithExisting(
+      mockDbManager,
       mockFullCollection,
-      mockRegistryCollection,
-      readAllResult: [
-        {
-          definitionKey: 'existing-stable-key',
-          primaryTitle: 'Water cycle explanation',
-          primaryTopicKey: 'topic-science',
-          yearGroupKey: 'year-group-8',
-        },
-        {
-          definitionKey: 'other-definition',
-          primaryTitle: 'Updated title',
-          primaryTopicKey: 'topic-maths',
-          yearGroupKey: 'year-group-10',
-        },
-      ],
-      createPayload: () =>
-        createWizardUpsertPayload({
-          definitionKey: 'existing-stable-key',
-          primaryTitle: 'Updated title',
-          primaryTopicKey: 'topic-maths',
-          yearGroupKey: 'year-group-10',
-        }),
-    });
+      mockRegistryCollection
+    );
     expect(() => controller.upsertDefinition(payload)).toThrow(/duplicate/i);
   });
 
   it('detects duplicate tuples using yearGroupKey only (ignoring yearGroup field in stored data)', () => {
-    const existing = {
-      ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
-      primaryTopic: 'Science',
-      tasks: {
-        t_task_1: {
-          id: 't_task_1',
-          taskTitle: 'Task A',
-          artifacts: { reference: [], template: [] },
-        },
-      },
-      referenceLastModified: '2025-04-01T00:00:00.000Z',
-      templateLastModified: '2025-04-01T00:00:00.000Z',
-    };
-    const payload = setupDuplicateDetectionTest(mockDbManager, {
-      findOneResult: existing,
+    const payload = setupDuplicateDetectionWithExisting(
+      mockDbManager,
       mockFullCollection,
-      mockRegistryCollection,
-      readAllResult: [
-        {
-          definitionKey: 'existing-stable-key',
-          primaryTitle: 'Water cycle explanation',
-          primaryTopicKey: 'topic-science',
-          yearGroupKey: 'year-group-8',
-        },
-        {
-          definitionKey: 'other-definition',
-          primaryTitle: 'Updated title',
-          primaryTopicKey: 'topic-maths',
-          yearGroupKey: 'year-group-10',
-        },
-      ],
-      createPayload: () =>
-        createWizardUpsertPayload({
-          definitionKey: 'existing-stable-key',
-          primaryTitle: 'Updated title',
-          primaryTopicKey: 'topic-maths',
-          yearGroupKey: 'year-group-10',
-        }),
-    });
+      mockRegistryCollection
+    );
     expect(() => controller.upsertDefinition(payload)).toThrow(/duplicate/i);
   });
 

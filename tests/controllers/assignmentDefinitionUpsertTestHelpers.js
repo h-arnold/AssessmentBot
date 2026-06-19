@@ -250,6 +250,61 @@ export function setupDuplicateDetectionTest(
 }
 
 /**
+ * Sets up a duplicate-detection test where an existing definition is already stored,
+ * and the mock registry contains entries that will trigger a duplicate-tuple error.
+ *
+ * @param {Object} mockDbManager
+ * @param {Object} mockFullCollection
+ * @param {Object} mockRegistryCollection
+ * @returns {Object} The upsert payload (pass to controller.upsertDefinition)
+ */
+export function setupDuplicateDetectionWithExisting(
+  mockDbManager,
+  mockFullCollection,
+  mockRegistryCollection
+) {
+  const existing = {
+    ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
+    primaryTopic: 'Science',
+    tasks: {
+      t_task_1: {
+        id: 't_task_1',
+        taskTitle: 'Task A',
+        artifacts: { reference: [], template: [] },
+      },
+    },
+    referenceLastModified: '2025-04-01T00:00:00.000Z',
+    templateLastModified: '2025-04-01T00:00:00.000Z',
+  };
+  return setupDuplicateDetectionTest(mockDbManager, {
+    findOneResult: existing,
+    mockFullCollection,
+    mockRegistryCollection,
+    readAllResult: [
+      {
+        definitionKey: 'existing-stable-key',
+        primaryTitle: 'Water cycle explanation',
+        primaryTopicKey: 'topic-science',
+        yearGroupKey: 'year-group-8',
+      },
+      {
+        definitionKey: 'other-definition',
+        primaryTitle: 'Updated title',
+        primaryTopicKey: 'topic-maths',
+        yearGroupKey: 'year-group-10',
+      },
+    ],
+    createPayload: () =>
+      createWizardUpsertPayload({
+        definitionKey: 'existing-stable-key',
+        primaryTitle: 'Updated title',
+        primaryTopicKey: 'topic-maths',
+        yearGroupKey: 'year-group-10',
+      }),
+  });
+}
+
+/**
  * Seeds both collection mocks with an "existing" definition built from
  * createUpsertPayload defaults.  Sets findOne on both mockFullCollection
  * and mockRegistryCollection to return the seeded record, then returns

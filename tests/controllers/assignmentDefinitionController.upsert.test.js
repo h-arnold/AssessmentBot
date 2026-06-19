@@ -13,25 +13,16 @@ const extractSheetsTaskDefinitionsMock = vi.fn();
 
 vi.mock('../../src/backend/DbManager/DbManager.js');
 vi.mock('../../src/backend/GoogleDriveManager/DriveManager.js');
-vi.mock('../../src/backend/DocumentParsers/SlidesParser.js', () => {
-  return {
-    default: class {
-      extractTaskDefinitions(referenceDocumentId, templateDocumentId) {
-        return extractSlidesTaskDefinitionsMock(referenceDocumentId, templateDocumentId);
-      }
-    },
-  };
-});
-
-vi.mock('../../src/backend/DocumentParsers/SheetsParser.js', () => {
-  return {
-    SheetsParser: class {
-      extractTaskDefinitions(referenceDocumentId, templateDocumentId) {
-        return extractSheetsTaskDefinitionsMock(referenceDocumentId, templateDocumentId);
-      }
-    },
-  };
-});
+vi.mock('../../src/backend/DocumentParsers/SlidesParser.js', () => ({
+  default: class {
+    extractTaskDefinitions = (...a) => extractSlidesTaskDefinitionsMock(...a);
+  },
+}));
+vi.mock('../../src/backend/DocumentParsers/SheetsParser.js', () => ({
+  SheetsParser: class {
+    extractTaskDefinitions = (...a) => extractSheetsTaskDefinitionsMock(...a);
+  },
+}));
 
 describe('AssignmentDefinitionController upsert behaviour', () => {
   let controller;
@@ -164,7 +155,7 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
   /* ---- Weighting / preserve / rollback / error tests ---- */
 
   it('preserves existing assignmentWeighting when updates omit assignmentWeighting', () => {
-    const existing = seedExistingDefinition({
+    seedExistingDefinition({
       mockFullCollection,
       mockRegistryCollection,
       overrides: { assignmentWeighting: 5 },
@@ -178,7 +169,7 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
   });
 
   it('rejects updates when yearGroupKey is omitted from the save payload', () => {
-    const existing = seedExistingDefinition({
+    seedExistingDefinition({
       mockFullCollection,
       mockRegistryCollection,
     });
@@ -218,7 +209,7 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
   });
 
   it('surfaces a distinct repair-required failure when rollback also fails', () => {
-    const existing = seedExistingDefinition({
+    seedExistingDefinition({
       mockFullCollection,
       mockRegistryCollection,
       overrides: { documentType: 'SLIDES' },
@@ -292,7 +283,7 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
   });
 
   it('keeps definitionKey stable when tuple edits change title/topic/yearGroupKey', () => {
-    const existing = seedExistingDefinition({
+    seedExistingDefinition({
       mockFullCollection,
       mockRegistryCollection,
       overrides: { primaryTitle: 'Old title', primaryTopicKey: 'topic-science' },

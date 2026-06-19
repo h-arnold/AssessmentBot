@@ -12,25 +12,16 @@ const extractSheetsTaskDefinitionsMock = vi.fn();
 
 vi.mock('../../src/backend/DbManager/DbManager.js');
 vi.mock('../../src/backend/GoogleDriveManager/DriveManager.js');
-vi.mock('../../src/backend/DocumentParsers/SlidesParser.js', () => {
-  return {
-    default: class {
-      extractTaskDefinitions(referenceDocumentId, templateDocumentId) {
-        return extractSlidesTaskDefinitionsMock(referenceDocumentId, templateDocumentId);
-      }
-    },
-  };
-});
-
-vi.mock('../../src/backend/DocumentParsers/SheetsParser.js', () => {
-  return {
-    SheetsParser: class {
-      extractTaskDefinitions(referenceDocumentId, templateDocumentId) {
-        return extractSheetsTaskDefinitionsMock(referenceDocumentId, templateDocumentId);
-      }
-    },
-  };
-});
+vi.mock('../../src/backend/DocumentParsers/SlidesParser.js', () => ({
+  default: class {
+    extractTaskDefinitions = (...a) => extractSlidesTaskDefinitionsMock(...a);
+  },
+}));
+vi.mock('../../src/backend/DocumentParsers/SheetsParser.js', () => ({
+  SheetsParser: class {
+    extractTaskDefinitions = (...a) => extractSheetsTaskDefinitionsMock(...a);
+  },
+}));
 
 describe('AssignmentDefinitionController upsert behaviour — validation', () => {
   let controller;
@@ -75,7 +66,7 @@ describe('AssignmentDefinitionController upsert behaviour — validation', () =>
   });
 
   it('reparses and refreshes timestamps when document IDs change for a slides definition', () => {
-    const existing = seedExistingDefinition({
+    seedExistingDefinition({
       mockFullCollection,
       mockRegistryCollection,
       overrides: {
@@ -114,7 +105,7 @@ describe('AssignmentDefinitionController upsert behaviour — validation', () =>
   });
 
   it('keeps fresh-definition refresh behaviour when documents are unchanged', () => {
-    const existing = seedExistingDefinition({
+    seedExistingDefinition({
       mockFullCollection,
       mockRegistryCollection,
       overrides: { documentType: 'SLIDES' },
@@ -188,5 +179,92 @@ describe('AssignmentDefinitionController upsert behaviour — validation', () =>
         })
       )
     ).toThrow(/reference.*template/i);
+  });
+
+  // ---- Alternate title and topic persistence / validation tests ----
+
+  it('preserves existing alternateTitles when updates omit alternateTitles', () => {
+    seedExistingDefinition({
+      mockFullCollection,
+      mockRegistryCollection,
+      overrides: { alternateTitles: ['Stored title A', 'Stored title B'] },
+    });
+
+    const payload = createUpsertPayload({ definitionKey: 'existing-stable-key' });
+    delete payload.alternateTitles;
+    const saved = controller.upsertDefinition(payload);
+
+    expect(saved.alternateTitles).toEqual(['Stored title A', 'Stored title B']);
+  });
+
+  it('preserves existing alternateTopics on update when payload omits alternateTopics', () => {
+    seedExistingDefinition({
+      mockFullCollection,
+      mockRegistryCollection,
+      overrides: {
+        alternateTitles: ['Stored alt title'],
+        alternateTopics: ['Stored topic A', 'Stored topic B'],
+      },
+    });
+
+    const payload = createUpsertPayload({ definitionKey: 'existing-stable-key' });
+    delete payload.alternateTopics;
+    const saved = controller.upsertDefinition(payload);
+
+    expect(saved.alternateTopics).toEqual(['Stored topic A', 'Stored topic B']);
+  });
+
+  it('clears existing alternateTopics when update payload provides empty array', () => {
+    seedExistingDefinition({
+      mockFullCollection,
+      mockRegistryCollection,
+      overrides: {
+        alternateTitles: ['Stored alt title'],
+        alternateTopics: ['Stored topic A', 'Stored topic B'],
+      },
+    });
+
+    const payload = createUpsertPayload({
+      definitionKey: 'existing-stable-key',
+      alternateTopics: [],
+    });
+    const saved = controller.upsertDefinition(payload);
+
+    expect(saved.alternateTopics).toEqual([]);
+  });
+
+  it('rejects alternateTopics with invalid entries (empty string after trim)', () => {
+    expect(() =>
+      controller.upsertDefinition(
+        createUpsertPayload({ alternateTopics: ['  Linear Equations  ', ''] })
+      )
+    ).toThrow();
+  });
+
+  it('rejects non-array alternateTopics', () => {
+    expect(() =>
+      controller.upsertDefinition(createUpsertPayload({ alternateTopics: 'not an array' }))
+    ).toThrow(TypeError);
+  });
+
+  it('rejects non-string entries in alternateTopics', () => {
+    expect(() =>
+      controller.upsertDefinition(createUpsertPayload({ alternateTopics: [123] }))
+    ).toThrow();
+  });
+
+  it('constructs AssignmentDefinition with both alternateTitles and alternateTopics from payload', () => {
+    mockFullCollection.findOne.mockReturnValue(null);
+    mockRegistryCollection.findOne.mockReturnValue(null);
+
+    const saved = controller.upsertDefinition(
+      createUpsertPayload({
+        alternateTitles: ['Alt title 1', 'Alt title 2'],
+        alternateTopics: ['Alt topic 1', 'Alt topic 2'],
+      })
+    );
+
+    expect(saved.alternateTitles).toEqual(['Alt title 1', 'Alt title 2']);
+    expect(saved.alternateTopics).toEqual(['Alt topic 1', 'Alt topic 2']);
   });
 });
