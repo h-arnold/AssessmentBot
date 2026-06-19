@@ -7,6 +7,8 @@ import { findMatchingDefinition } from './matchDefinitionForAssignment';
 import { startAssessmentRun } from '../../../services/assignmentAssessment/assignmentAssessmentService';
 import { upsertAssignmentDefinition } from '../../../services/assignmentDefinition/assignmentDefinitionService';
 import { ApiTransportError } from '../../../errors/apiTransportError';
+import { logFrontendError } from '../../../logging/frontendLogger';
+import { refetchAfterStaleInvalidate } from '../../../query/queryInvalidationHelpers';
 import { queryKeys } from '../../../query/queryKeys';
 import type { ClassPartial } from '../../../services/googleClassrooms/classPartials.zod';
 import type { AssignmentDefinitionPartial } from '../../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
@@ -558,6 +560,27 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
     } catch (error: unknown) {
       setNoMatchResolution('idle');
       handleApiError(error);
+    } finally {
+      // Regression fix for issue #262: the wizard's mutation already
+      // invalidates assignmentDefinitionPartials (marking the data as
+      // stale), but invalidateQueries only refetches ACTIVE observers.
+      // Since the user is on the ClassesPage (not the AssignmentsPage),
+      // usePageDataset is not mounted, so the stale data persists when
+      // the user later navigates to the AssignmentsPage. Use
+      // refetchAfterStaleInvalidate to force a fresh fetch so the
+      // AssignmentsPage shows the newly-created definition. The refetch
+      // is fire-and-forget; failures are logged but do not block the
+      // success state shown above.
+      refetchAfterStaleInvalidate(
+        queryClient,
+        queryKeys.assignmentDefinitionPartials()
+      ).catch((error) => {
+        logFrontendError(
+          'AssessTaskModal.handleWizardCreateSuccess',
+          error,
+          { definitionKey }
+        );
+      });
     }
   }
 
