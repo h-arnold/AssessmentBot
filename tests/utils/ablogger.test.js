@@ -89,4 +89,151 @@ describe('ABLogger', () => {
     expect(payload.cause.name).toBe('Error');
     expect(payload.cause.message).toBe('disk');
   });
+
+  describe('debug method', () => {
+    it('prepends [DEBUG] prefix and calls console.log', () => {
+      logger.debug('test message', 42);
+      expect(console.log).toHaveBeenCalledWith('[DEBUG]', 'test message', 42);
+    });
+
+    it('serialises Error arguments via debug', () => {
+      const err = new Error('debug error');
+      logger.debug(err);
+      expect(console.log).toHaveBeenCalled();
+      const args = console.log.mock.calls[0];
+      expect(args[0]).toBe('[DEBUG]');
+      expect(args[1]).toBeTruthy();
+      expect(args[1].message).toBe('debug error');
+    });
+  });
+
+  describe('serialiseArg', () => {
+    it('returns falsy values as-is', () => {
+      expect(logger.serialiseArg(null)).toBeNull();
+      expect(logger.serialiseArg(undefined)).toBeUndefined();
+      expect(logger.serialiseArg('')).toBe('');
+      expect(logger.serialiseArg(0)).toBe(0);
+      expect(logger.serialiseArg(false)).toBe(false);
+    });
+
+    it('serialises Error objects', () => {
+      const err = new Error('test error');
+      const result = logger.serialiseArg(err);
+      expect(result.name).toBe('Error');
+      expect(result.message).toBe('test error');
+      expect(result.stack).toBeTruthy();
+    });
+
+    it('performs shallow serialisation on plain objects', () => {
+      const obj = { a: 1, b: 'two' };
+      const result = logger.serialiseArg(obj);
+      expect(result).toEqual({ a: 1, b: 'two' });
+      expect(result).not.toBe(obj); // should be a copy
+    });
+
+    it('returns primitives as-is', () => {
+      expect(logger.serialiseArg('hello')).toBe('hello');
+      expect(logger.serialiseArg(42)).toBe(42);
+      expect(logger.serialiseArg(true)).toBe(true);
+    });
+  });
+
+  describe('serialiseError', () => {
+    it('serialises Error with name, message, and stack', () => {
+      const err = new Error('something broke');
+      err.name = 'TypeError';
+      const result = logger.serialiseError(err);
+      expect(result).toEqual({
+        name: 'TypeError',
+        message: 'something broke',
+        stack: expect.any(String),
+      });
+    });
+
+    it('serialises Error with cause', () => {
+      const cause = new Error('root cause');
+      const err = new Error('wrapped error', { cause });
+      const result = logger.serialiseError(err);
+      expect(result.message).toBe('wrapped error');
+      expect(result.cause).toBeDefined();
+      expect(result.cause.name).toBe('Error');
+      expect(result.cause.message).toBe('root cause');
+    });
+
+    it('returns non-object values as-is', () => {
+      expect(logger.serialiseError(null)).toBeNull();
+      expect(logger.serialiseError('string')).toBe('string');
+      expect(logger.serialiseError(42)).toBe(42);
+    });
+
+    it('handles Error-like objects without cause gracefully', () => {
+      const err = new Error('simple');
+      const result = logger.serialiseError(err);
+      expect(result.cause).toBeUndefined();
+    });
+  });
+
+  describe('isErrorLike', () => {
+    it('returns true for Error instances', () => {
+      // isErrorLike is not directly exported, but we can test it through serialiseArg
+      const result = logger.serialiseArg(new Error('test'));
+      expect(result.name).toBe('Error');
+      expect(result.message).toBe('test');
+    });
+
+    it('returns true for objects with name, message, and stack', () => {
+      const errLike = { name: 'CustomError', message: 'custom', stack: 'at line 1' };
+      const result = logger.serialiseArg(errLike);
+      // Should be serialised as an error-like object
+      expect(result.name).toBe('CustomError');
+      expect(result.message).toBe('custom');
+    });
+  });
+
+  describe('shallowSerialiseObject', () => {
+    it('returns a copy of the input', () => {
+      const input = { a: 1 };
+      const result = logger.shallowSerialiseObject(input, () => false);
+      expect(result).toEqual(input);
+      expect(result).not.toBe(input);
+    });
+
+    it('serialises error-like properties', () => {
+      const err = new Error('nested error');
+      const input = { key: 'value', error: err };
+      const result = logger.shallowSerialiseObject(input, (v) => v instanceof Error);
+      expect(result.key).toBe('value');
+      expect(result.error.name).toBe('Error');
+      expect(result.error.message).toBe('nested error');
+    });
+
+    it('handles arrays', () => {
+      const err = new Error('error in array');
+      const input = [1, err, 3];
+      const result = logger.shallowSerialiseObject(input, (v) => v instanceof Error);
+      expect(result[0]).toBe(1);
+      expect(result[1].name).toBe('Error');
+      expect(result[1].message).toBe('error in array');
+      expect(result[2]).toBe(3);
+    });
+
+    it('handles empty objects', () => {
+      const result = logger.shallowSerialiseObject({}, () => false);
+      expect(result).toEqual({});
+    });
+  });
+
+  describe('constructor singleton guard', () => {
+    it('does not replace _instance when one already exists', () => {
+      // _instance is already set from the beforeEach logger setup
+      const existing = ABLogger._instance;
+      // Call constructor directly (not through getInstance)
+      const orphan = new ABLogger(false);
+      // _instance should still point to the original
+      expect(ABLogger._instance).toBe(existing);
+      // The orphan instance is not the singleton
+      expect(orphan).not.toBe(existing);
+      expect(orphan).toBeInstanceOf(ABLogger);
+    });
+  });
 });

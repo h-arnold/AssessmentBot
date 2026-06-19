@@ -17,8 +17,8 @@ function createMissingCollectionError() {
 }
 
 function loadControllerModule() {
-  delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController.js')];
-  ABClassController = require('../../src/backend/y_controllers/ABClassController.js');
+  delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController')];
+  ABClassController = require('../../src/backend/y_controllers/ABClassController');
 }
 
 function createDeleteHarness({
@@ -64,7 +64,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanupControllerTestMocks();
-  delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController.js')];
+  delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController')];
   vi.restoreAllMocks();
 });
 

@@ -11,19 +11,15 @@ const { repeat } = require('../helpers/testUtils.js');
 
 describe('Singleton getInstance() idempotency', () => {
   const harness = new SingletonTestHarness();
-  let ConfigurationManager, InitController, UIManager, ProgressTracker;
+  let ConfigurationManager, ProgressTracker;
 
   beforeEach(async () => {
     await harness.withFreshSingletons(() => {
       const singletons = loadSingletonsWithMocks(harness, {
         loadConfigurationManager: true,
-        loadInitController: true,
-        loadUIManager: true,
         loadProgressTracker: true,
       });
       ConfigurationManager = singletons.ConfigurationManager;
-      InitController = singletons.InitController;
-      UIManager = singletons.UIManager;
       ProgressTracker = singletons.ProgressTracker;
     });
     harness.resetMockCalls();
@@ -32,20 +28,6 @@ describe('Singleton getInstance() idempotency', () => {
   test('ConfigurationManager.getInstance() returns same instance across calls', () => {
     const instances = [];
     repeat(10, () => instances.push(ConfigurationManager.getInstance()));
-    const first = instances[0];
-    instances.forEach((i) => expect(i).toBe(first));
-  });
-
-  test('InitController.getInstance() returns same instance across calls', () => {
-    const instances = [];
-    repeat(10, () => instances.push(InitController.getInstance()));
-    const first = instances[0];
-    instances.forEach((i) => expect(i).toBe(first));
-  });
-
-  test('UIManager.getInstance() returns same instance across calls', () => {
-    const instances = [];
-    repeat(10, () => instances.push(UIManager.getInstance()));
     const first = instances[0];
     instances.forEach((i) => expect(i).toBe(first));
   });

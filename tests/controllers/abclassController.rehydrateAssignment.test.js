@@ -13,35 +13,27 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-import { setupControllerTestMocks, cleanupControllerTestMocks } from '../helpers/mockFactories.js';
+import { cleanupControllerTestMocks } from '../helpers/mockFactories.js';
 import {
   createTestFixture,
   setupRehydrationScenario,
   assertMethodExists,
   createMultipleAssignments,
   setupErrorScenario,
+  setupAssignmentControllerTest,
 } from '../helpers/controllerTestHelpers.js';
 
 let ABClassController, ABClass, Assignment;
 let mockDbManager, mockCollection, mockABLogger;
 
 beforeEach(async () => {
-  // Setup controller test mocks
-  const mocks = setupControllerTestMocks(vi);
-  mockDbManager = mocks.mockDbManager;
-  mockCollection = mocks.mockCollection;
-  mockABLogger = mocks.mockABLogger;
-
-  // Dynamically import modules after mocks are in place (ESM pattern)
-  const [abClassModule, assignmentModule, abClassControllerModule] = await Promise.all([
-    import('../../src/backend/Models/ABClass.js'),
-    import('../../src/backend/AssignmentProcessor/Assignment.js'),
-    import('../../src/backend/y_controllers/ABClassController.js'),
-  ]);
-
-  ABClass = abClassModule.ABClass;
-  Assignment = assignmentModule.default || assignmentModule;
-  ABClassController = abClassControllerModule.default || abClassControllerModule;
+  const ctx = await setupAssignmentControllerTest(vi);
+  ABClass = ctx.ABClass;
+  Assignment = ctx.Assignment;
+  ABClassController = ctx.ABClassController;
+  mockDbManager = ctx.mockDbManager;
+  mockCollection = ctx.mockCollection;
+  mockABLogger = ctx.mockABLogger;
 });
 
 afterEach(() => {
@@ -376,6 +368,25 @@ describe('ABClassController Rehydrate Assignment', () => {
 
       // Should log error
       expect(mockABLogger.error).toHaveBeenCalled();
+    });
+
+    it('_loadFullAssignmentDocument throws AssignmentNotFoundError on missing document', () => {
+      const controller = new ABClassController();
+      const courseId = 'course-notfound-doc';
+      const assignmentId = 'assign-notfound-doc';
+      const expectedCollectionName = `assign_full_${courseId}_${assignmentId}`;
+
+      mockCollection.findOne.mockReturnValue(null);
+
+      // Verify the structured metadata on the error instance
+      try {
+        controller._loadFullAssignmentDocument(courseId, assignmentId);
+      } catch (error) {
+        expect(error).toBeInstanceOf(AssignmentNotFoundError);
+        expect(error.courseId).toBe(courseId);
+        expect(error.assignmentId).toBe(assignmentId);
+        expect(error.collectionName).toBe(expectedCollectionName);
+      }
     });
   });
 

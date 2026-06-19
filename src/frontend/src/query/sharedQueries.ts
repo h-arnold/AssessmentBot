@@ -14,6 +14,7 @@ import {
   getABClassPartials,
   type ClassPartial,
 } from '../services/googleClassrooms/classPartialsService';
+import { getABClass } from '../services/googleClassrooms/classDetail/classDetailService';
 import { getGoogleClassrooms } from '../services/googleClassrooms/googleClassroomsService';
 import { getCohorts, getYearGroups } from '../services/referenceData/referenceDataService';
 import type {
@@ -97,6 +98,23 @@ export function getAssignmentDefinitionQueryOptions(definitionKey: string) {
   return queryOptions({
     queryKey: queryKeys.assignmentDefinitionByKey(definitionKey),
     queryFn: () => getAssignmentDefinition({ definitionKey }),
+  });
+}
+
+/**
+ * Returns the shared abClass query definition.
+ *
+ * @remarks
+ * This is a per-class query — it is NOT added to the `startupWarmup` set.
+ * Use `invalidateQueries({ queryKey: queryKeys.abClass(classId) })` for invalidation.
+ *
+ * @param {string} classId The class ID to fetch.
+ * @returns {ReturnType<typeof queryOptions>} Shared abClass query options.
+ */
+export function getABClassQueryOptions(classId: string) {
+  return queryOptions({
+    queryKey: queryKeys.abClass(classId),
+    queryFn: () => getABClass({ classId }),
   });
 }
 

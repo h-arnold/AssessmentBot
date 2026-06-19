@@ -22,12 +22,7 @@ class SingletonTestHarness {
    */
   resetAllSingletons() {
     // Reset singleton instances
-    const singletonClasses = [
-      'ConfigurationManager',
-      'InitController',
-      'UIManager',
-      'ProgressTracker',
-    ];
+    const singletonClasses = ['ConfigurationManager', 'ProgressTracker'];
 
     // Clear static instances if they exist
     for (const className of singletonClasses) {

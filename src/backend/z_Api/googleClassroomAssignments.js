@@ -1,4 +1,4 @@
-/* global ClassroomApiClient, ApiValidationError, hasControlCharacters_ */
+/* global ClassroomApiClient, ApiValidationError, hasControlCharacters_, DateUtils */
 
 /**
  * Thin transport handler for Google Classroom assignment listing.
@@ -6,7 +6,7 @@
  *
  * @param {Object} parameters - Request parameters with classId.
  * @param {string} parameters.classId - Google Classroom course ID.
- * @returns {Array<{assignmentId: string, title: string, topicId: string|null, topicName: string|null}>} List of assignments.
+ * @returns {Array<{assignmentId: string, title: string, creationTime: string|null, topicId: string|null, topicName: string|null}>} List of assignments.
  * @throws {ApiValidationError} If parameters are invalid or Classroom rows are malformed.
  */
 function getGoogleClassroomAssignments_(parameters) {
@@ -64,7 +64,7 @@ function getGoogleClassroomAssignments_(parameters) {
   const courseWorkList = ClassroomApiClient.fetchCourseWork(classId);
 
   // Map and validate each row, excluding updateTime from the transport response.
-  return courseWorkList.map(function (cw) {
+  const result = courseWorkList.map(function (cw) {
     if (!cw || typeof cw !== 'object' || !cw.id || !cw.title) {
       throw new ApiValidationError('Google Classroom assignment record is malformed.', {
         method: 'getGoogleClassroomAssignments',
@@ -78,13 +78,20 @@ function getGoogleClassroomAssignments_(parameters) {
       topicName = ClassroomApiClient.fetchTopicName(classId, topicId);
     }
 
-    return {
+    const row = {
       assignmentId: cw.id,
       title: cw.title,
+      creationTime: cw.creationTime || null,
       topicId,
       topicName,
     };
+
+    DateUtils.normaliseDateFields(row, ['creationTime']);
+
+    return row;
   });
+
+  return result;
 }
 
 if (typeof module !== 'undefined' && module.exports) {

@@ -4,7 +4,7 @@
  * Tests for Assignment serialization including partial definitions with tasks: null.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import Assignment from '../../src/backend/AssignmentProcessor/Assignment.js';
 import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
 import {
@@ -59,6 +59,23 @@ function buildAssignmentFixture() {
 }
 
 describe('Assignment Serialisation', () => {
+  beforeEach(() => {
+    globalThis.Classroom = {
+      Courses: {
+        CourseWork: {
+          get: vi.fn(() => ({
+            creationTime: '2026-01-01T00:00:00.000Z',
+            title: 'Test Assignment',
+          })),
+        },
+      },
+    };
+  });
+
+  afterEach(() => {
+    delete globalThis.Classroom;
+  });
+
   describe('toPartialJSON()', () => {
     it('omits tasks, referenceDocumentId, and templateDocumentId from root for partial', () => {
       const { assignment } = buildAssignmentFixture();

@@ -212,6 +212,96 @@ Key notes:
 - Derived display fields such as `cohortLabel` and `yearGroupLabel` are intentionally excluded from backend transport; frontend view-models derive them from reference-data maps.
 - `getABClassPartials` returns the documented shape above, not the raw stored document. Storage-only fields such as `_id` and any accidental extras in the collection are stripped during normalisation.
 
+## ABClass full-read (`getABClass` response)
+
+The `getABClass` endpoint returns the full class document including students,
+teachers, and partial assignment summaries. Unlike the partial registry
+(`getABClassPartials`), this endpoint retrieves the complete stored record.
+
+### Purpose
+
+- Supports per-class detail operations (viewing class metadata, roster, and
+  assignment summaries for a single class).
+- Retrieved via the `getABClass` API method, which calls
+  `ABClassController.readClass()`.
+- Read responses are shaped by the controller's private `_toReadView()` method
+  before leaving the backend transport boundary.
+- Returns `null` when no persisted class record exists for the given classId
+  (ClassNotFoundError caught and mapped at the transport layer).
+
+### Shape
+
+```json
+{
+  "classId": "C123",
+  "className": "Year 10 English",
+  "cohortKey": "2025",
+  "courseLength": 1,
+  "yearGroupKey": "10",
+  "classOwner": { "userId": "T0", "email": "owner@school.com", "teacherName": "Ms Owner" },
+  "teachers": [{ "email": "teacher@school.com", "userId": "T1", "teacherName": "Ms Smith" }],
+  "students": [{ "name": "Alice Johnson", "email": "alice@example.com", "id": "S1" }],
+  "assignments": [
+    {
+      "courseId": "C123",
+      "assignmentId": "A1",
+      "assignmentName": "Algebra Baseline",
+      "dueDate": "2025-06-01T23:59:59.000Z",
+      "lastUpdated": "2025-05-15T12:00:00.000Z",
+      "createdAt": "2025-05-01T08:00:00.000Z",
+      "documentType": "SLIDES",
+      "submissions": [
+        {
+          "id": "sub-1",
+          "taskId": "task-1",
+          "artifact": {
+            "taskId": "task-1",
+            "role": "student",
+            "content": null,
+            "contentHash": null,
+            "uid": "uid-1",
+            "type": "slides"
+          },
+          "assessments": {},
+          "feedback": {}
+        }
+      ],
+      "assignmentDefinition": {
+        "primaryTitle": "Algebra Baseline",
+        "primaryTopic": "Algebra",
+        "primaryTopicKey": "algebra",
+        "yearGroupKey": "year-10",
+        "yearGroupLabel": "Year 10",
+        "alternateTitles": [],
+        "alternateTopics": [],
+        "documentType": "SLIDES",
+        "referenceDocumentId": "ref-doc-123",
+        "templateDocumentId": "template-doc-456",
+        "assignmentWeighting": 1,
+        "definitionKey": "algebra-baseline",
+        "tasks": null,
+        "createdAt": "2025-01-01T00:00:00.000Z",
+        "updatedAt": "2025-05-01T00:00:00.000Z"
+      }
+    }
+  ],
+  "active": true
+}
+```
+
+Key notes:
+
+- `assignments[]` uses the `Assignment.toPartialJSON()` shape (partial — no full artifact content, no assessment reasoning, no hydration metadata).
+- `assignments[].assignmentDefinition.tasks` is always `null` (partial shape).
+- `assignments[].submissions[].artifact.content` and `contentHash` are always `null` (redacted in partial).
+- `students` are plain objects with `name`, `email`, `id` (not model instances).
+- `classOwner` and every entry in `teachers` are teacher summary objects with `userId`, `email`, and `teacherName` fields only (same shape as the partial registry).
+- `active` is an explicit boolean (or `null` when unknown).
+- Derived display fields (e.g. `cohortLabel`, `yearGroupLabel`) are intentionally excluded from backend transport; frontend view-models derive them from reference-data maps.
+- The response omits `_hydrationLevel` and `progressTracker` fields (stripped as defence-in-depth by `_toReadView()`).
+- The response uses the same envelope contract as all other `z_Api` methods — see "Google Classroom Picker and ABClass Mutation Transport Shapes" section below.
+- Frontend Zod schema mirroring this shape lives in `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts`.
+
 ## Google Classroom Picker and ABClass Mutation Transport Shapes
 
 These shapes describe the `data` payload inside the stable `apiHandler` transport envelope:
@@ -582,7 +672,7 @@ Key notes:
 - `primaryTopicKey` is authoritative and mandatory in partial transport; `primaryTopic` is the resolved display label only.
 - `tasks` is always `null` in this transport shape.
 - `referenceLastModified` and `templateLastModified` are omitted from partial transport.
-- `alternateTopics` remains present in partial responses for registry compatibility, even though it is not part of the greenfield upsert request contract.
+- `alternateTopics` is present in partial responses for registry compatibility and is now a documented optional field in the upsert request contract. When the field is provided in an upsert request, the orchestrator's `_resolveAlternateTopics` method normalises and writes it to the `AssignmentDefinition` model via the same validation pipeline as `alternateTitles`. When the field is omitted on update, the orchestrator preserves the stored value.
 - The transport helper rejects rows where `definitionKey` or `primaryTopicKey` are missing, blank, or untrimmed, and where `createdAt` / `updatedAt` are neither `null` nor strict ISO datetime strings with timezone information.
 
 ### `upsertAssignmentDefinition` request and response data
@@ -628,8 +718,11 @@ Request notes:
 - Transport-required fields: `primaryTitle`, `primaryTopicKey`, `referenceDocumentId`, and `templateDocumentId`.
 - `definitionKey` is absent or `null` on create and must be an already-trimmed transport-safe string on update.
 - `documentType` is required by the controller for create upserts; updates may omit it and reuse the stored `documentType`.
+- `alternateTitles` is optional; when supplied it is an array of trimmed non-empty strings. On update the orchestrator preserves existing `alternateTitles` when the field is omitted; supplying the array overwrites.
+- `alternateTopics` is optional; when supplied it follows the same validation and preservation semantics as `alternateTitles` (delegates to `normaliseAlternateTitles` for array normalisation). This field is the new write path for the link-to-existing-definition flow.
 - `taskWeightings` is optional and, when supplied, must be an array of `{ taskId, taskWeighting }` objects. Transport validation checks only structural shape and safe-key rules; numeric weighting semantics remain controller-owned.
 - `primaryTopicKey` membership in `assignment_topics`, duplicate business-tuple detection, document-ID mismatch rules, and unknown task IDs are controller-owned domain checks.
+- The frontend Zod `UpsertAssignmentDefinitionRequestSchema` enforces a `superRefine` mutual-exclusion rule between the URL-shape (URL-shape: `referenceDocumentUrl` + `templateDocumentUrl`) and the ID-shape (ID-shape: `referenceDocumentId` + `templateDocumentId` + `documentType`). Payloads that include neither shape, only partial URL fields, or only partial ID fields are rejected before the request reaches the backend transport. The wizard's existing URL-shape payload continues to pass without modification; the link-to-existing-definition flow uses the ID-shape payload.
 
 Response notes:
 

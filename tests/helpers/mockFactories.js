@@ -380,6 +380,56 @@ function setupControllerTestMocks(vi) {
 }
 
 /**
+ * Create a DbManager with dual-collection routing for ABClass + abclass_partials tests.
+ * Routes 'abclass_partials' to the partials collection and everything else to the class collection.
+ *
+ * @param {Object} vi - Vitest vi object for creating mocks
+ * @param {Object} classCollection - Mock for the class-named collection
+ * @param {Object} partialsCollection - Mock for the 'abclass_partials' collection
+ * @returns {Object} Mock DbManager with getCollection spy
+ */
+function createDualCollectionDbManager(vi, classCollection, partialsCollection) {
+  return {
+    getCollection: vi.fn((name) => {
+      if (name === 'abclass_partials') return partialsCollection;
+      return classCollection;
+    }),
+  };
+}
+
+/**
+ * Build a test Teacher instance with sensible defaults.
+ *
+ * @param {Function} Teacher - Teacher constructor
+ * @param {Object} [overrides] - Optional field overrides
+ * @param {string} [overrides.email] - Teacher email
+ * @param {string} [overrides.userId] - Teacher user ID
+ * @param {string} [overrides.teacherName] - Teacher name
+ * @returns {Object} Teacher instance
+ */
+function buildTestTeacher(Teacher, { email, userId, teacherName } = {}) {
+  return new Teacher(
+    email || 'teacher@school.edu',
+    userId || 't-001',
+    teacherName || 'Test Teacher'
+  );
+}
+
+/**
+ * Build a test Student instance with sensible defaults.
+ *
+ * @param {Function} Student - Student constructor
+ * @param {Object} [overrides] - Optional field overrides
+ * @param {string} [overrides.name] - Student name
+ * @param {string} [overrides.email] - Student email
+ * @param {string} [overrides.id] - Student ID
+ * @returns {Object} Student instance
+ */
+function buildTestStudent(Student, { name, email, id } = {}) {
+  return new Student(name || 'Test Student', email || 'student@school.edu', id || 's-001');
+}
+
+/**
  * Cleanup controller test mocks from global scope
  */
 function cleanupControllerTestMocks() {
@@ -407,4 +457,7 @@ module.exports = {
   setupGlobalGASMocks,
   setupControllerTestMocks,
   cleanupControllerTestMocks,
+  createDualCollectionDbManager,
+  buildTestTeacher,
+  buildTestStudent,
 };

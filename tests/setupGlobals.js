@@ -59,6 +59,9 @@ g.PropertiesService = {
       setProperty(key, value) {
         _userPropertiesData[key] = value;
       },
+      deleteProperty(key) {
+        delete _userPropertiesData[key];
+      },
     };
   },
 };
@@ -110,6 +113,8 @@ g.GASPropertiesUtils = require('../src/backend/Utils/00_GASPropertiesUtils.js');
 
 g.ApiValidationError = require('../src/backend/Utils/ErrorTypes/ApiValidationError.js');
 g.DefinitionStaleError = require('../src/backend/Utils/ErrorTypes/DefinitionStaleError.js');
+g.AssignmentNotFoundError = require('../src/backend/Utils/ErrorTypes/AssignmentNotFoundError.js');
+g.ClassNotFoundError = require('../src/backend/Utils/ErrorTypes/ClassNotFoundError.js');
 
 // Expose ArtifactFactory globally before TaskDefinition usage (TaskDefinition references global ArtifactFactory)
 const { ArtifactFactory } = require('../src/backend/Models/Artifacts/index.js');
@@ -187,6 +192,10 @@ g.ClassroomManager = {
   },
 };
 
+// Expose abclass validation shared helpers for test access
+// Load validation module first (same order as GAS concatenation)
+Object.assign(g, require('../src/backend/z_Api/abclass/abclassValidation.js'));
+
 // Expose assignment-definition modules for test access
 // Load validation module first (same order as GAS concatenation), then transport module
 Object.assign(g, require('../src/backend/z_Api/assignmentDefinitionValidation.js'));
@@ -201,3 +210,11 @@ g.AssignmentDefinitionTaskWeighting = require('../src/backend/y_controllers/Assi
 g.AssignmentDefinitionPersistence = require('../src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionPersistence.js');
 g.AssignmentDefinitionUpsertOrchestrator = require('../src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionUpsertOrchestrator.js');
 g.AssignmentDefinitionResponseMapper = require('../src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionResponseMapper.js');
+
+// Load ABClassController sub-classes as globals (mirroring GAS concatenation order so
+// index.js can reference them by name when require() calls are absent in production).
+g.ABClassValidation = require('../src/backend/y_controllers/ABClassController/ABClassValidation.js');
+g.ABClassPersistence = require('../src/backend/y_controllers/ABClassController/ABClassPersistence.js');
+g.ABClassRoster = require('../src/backend/y_controllers/ABClassController/ABClassRoster.js');
+g.ABClassAssignmentOps = require('../src/backend/y_controllers/ABClassController/ABClassAssignmentOps.js');
+g.ABClassResponseMapper = require('../src/backend/y_controllers/ABClassController/ABClassResponseMapper.js');

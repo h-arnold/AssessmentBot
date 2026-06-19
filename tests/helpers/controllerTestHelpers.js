@@ -9,6 +9,7 @@ import {
   createTextTask,
   createStudentSubmission,
 } from './modelFactories.js';
+import { setupControllerTestMocks, cleanupControllerTestMocks } from './mockFactories.js';
 
 /**
  * Create a test fixture with ABClass and assignment for controller tests
@@ -193,4 +194,40 @@ export function setupErrorScenario(mockCollection, errorType) {
     default:
       throw new Error(`Unknown error type: ${errorType}`);
   }
+}
+
+/**
+ * Sets up controller test mocks and dynamically imports ABClass, Assignment,
+ * and ABClassController modules. Reduces duplication across assignment-related
+ * controller tests.
+ *
+ * Usage in beforeEach:
+ *   const ctx = await setupAssignmentControllerTest(vi);
+ *   ABClass = ctx.ABClass;
+ *   Assignment = ctx.Assignment;
+ *   ABClassController = ctx.ABClassController;
+ *   mockDbManager = ctx.mockDbManager;
+ *   mockCollection = ctx.mockCollection;
+ *   mockABLogger = ctx.mockABLogger;
+ *
+ * Use cleanupControllerTestMocks() in afterEach alongside vi.restoreAllMocks().
+ *
+ * @param {Object} vi - Vitest vi object
+ * @returns {Promise<Object>} Module instances and mocks
+ */
+export async function setupAssignmentControllerTest(vi) {
+  const mocks = setupControllerTestMocks(vi);
+
+  const [abClassModule, assignmentModule, abClassControllerModule] = await Promise.all([
+    import('../../src/backend/Models/ABClass.js'),
+    import('../../src/backend/AssignmentProcessor/Assignment.js'),
+    import('../../src/backend/y_controllers/ABClassController'),
+  ]);
+
+  return {
+    ABClass: abClassModule.ABClass,
+    Assignment: assignmentModule.default || assignmentModule,
+    ABClassController: abClassControllerModule.default || abClassControllerModule,
+    ...mocks,
+  };
 }
