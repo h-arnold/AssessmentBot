@@ -5,7 +5,8 @@ import { expect, type Locator, type Page } from '@playwright/test';
 // ---------------------------------------------------------------------------
 
 /**
- * Options for asserting create button positioning relative to table.
+ * Options for asserting create button positioning relative to the modal content
+ * flex container.
  */
 export type AssertCreateButtonPositioningOptions =
   | {
@@ -26,7 +27,33 @@ export type AssertCreateButtonPositioningOptions =
     };
 
 /**
- * Asserts create button positioning relative to table.
+ * Asserts create button positioning relative to the modal content flex container.
+ *
+ * Measures against the stable project-controlled scaffold `Flex` container (the
+ * direct parent of both the create button and the table) rather than antd's
+ * internal `ant-table-wrapper`. The flex container has an explicit
+ * `width: 100%` and `align="start"`, so its geometry is deterministic across
+ * Chromium builds and antd versions. The `ant-table-wrapper` bounding box can
+ * vary between headless CI rendering and local headed Chromium due to font
+ * substitution and antd internal CSS changes.
+ *
+ * The flex container is located via a CSS descendant selector that finds the
+ * `.ant-flex` element that is a direct child of `.ant-modal-body` within the
+ * dialog. In the scaffold markup, the `Flex` is the only `ant-flex` element
+ * rendered as a direct child of the antd Modal body, so this uniquely
+ * identifies the scaffold Flex. This avoids the ambiguity of `ant-flex`
+ * ancestor searches (which can match nested flex containers inside antd Table
+ * internals) and `ant-table-wrapper` parent navigation (which can resolve to
+ * intermediate wrappers depending on render state).
+ *
+ * Layout metrics are obtained via `offsetLeft` and `offsetWidth` (walked up
+ * the `offsetParent` chain for absolute positioning) rather than
+ * `boundingBox()`. This is critical because antd Modal's entrance zoom
+ * animation applies a CSS `transform: scale(...)` that makes `boundingBox()`
+ * return intermediate visual sizes during the animation. `offsetLeft` and
+ * `offsetWidth` are layout properties unaffected by CSS transforms, so they
+ * return the final layout dimensions immediately without waiting for the
+ * animation to settle.
  *
  * @param {AssertCreateButtonPositioningOptions} options Test options.
  * @returns {Promise<void>}
@@ -36,30 +63,43 @@ export async function assertCreateButtonPositioning(
 ): Promise<void> {
   const createButton = options.modal.getByRole('button', { name: options.createButtonName });
   const table = options.modal.getByRole('table', { name: options.tableName });
-  const tableWrapper = table.locator('xpath=ancestor::*[contains(@class, "ant-table-wrapper")][1]');
+  // Locate the scaffold Flex: the only .ant-flex that is a direct child of
+  // .ant-modal-body within the dialog. This is the project-controlled Flex
+  // container that owns both the create button and the table.
+  const flexContainer = options.modal.locator('.ant-modal-body > .ant-flex');
 
   await expect(createButton).toBeVisible();
   await expect(table).toBeVisible();
-  await expect(tableWrapper).toBeVisible();
+  await expect(flexContainer).toBeVisible();
 
-  const buttonBox = await createButton.boundingBox();
-  const tableWrapperBox = await tableWrapper.boundingBox();
-  const tableBox = await table.boundingBox();
-
-  const measurementBox = tableWrapperBox ?? tableBox;
-
-  // Null check for bounding boxes
-  if (buttonBox === null || measurementBox === null) {
-    throw new Error(
-      `Failed to get bounding boxes for Create button (${options.createButtonName}) and Table (${options.tableName})`
-    );
-  }
+  // Use offsetLeft/offsetWidth (layout properties) instead of boundingBox()
+  // (visual properties) to avoid interference from the antd Modal entrance
+  // zoom animation's CSS transform. offsetLeft is relative to the offsetParent,
+  // so we walk up the chain to compute an absolute left position.
+  const buttonBox = await createButton.evaluate((element) => {
+    let left = 0;
+    let current: Element | null = element;
+    while (current) {
+      left += (current as HTMLElement).offsetLeft;
+      current = (current as HTMLElement).offsetParent;
+    }
+    return { left, width: (element as HTMLElement).offsetWidth };
+  });
+  const flexBox = await flexContainer.evaluate((element) => {
+    let left = 0;
+    let current: Element | null = element;
+    while (current) {
+      left += (current as HTMLElement).offsetLeft;
+      current = (current as HTMLElement).offsetParent;
+    }
+    return { left, width: (element as HTMLElement).offsetWidth };
+  });
 
   if (options.assertionType === 'left edge') {
-    const leftEdgeDifference = Math.abs(buttonBox.x - measurementBox.x);
+    const leftEdgeDifference = Math.abs(buttonBox.left - flexBox.left);
     expect(leftEdgeDifference).toBeLessThanOrEqual(options.tolerance);
   } else {
-    const widthDifference = measurementBox.width - buttonBox.width;
+    const widthDifference = flexBox.width - buttonBox.width;
     expect(widthDifference).toBeGreaterThanOrEqual(options.minDiff);
   }
 }
