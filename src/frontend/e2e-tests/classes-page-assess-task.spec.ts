@@ -7,15 +7,18 @@ import {
   type RuntimeScenario,
 } from './shared/endToEndRuntimeMocks';
 import {
+  ALGEBRA_HOMEWORK_DATA,
   MOCK_COURSEWORK_ASSIGNMENTS,
+  algebraHomeworkEntry,
   createAssessTaskScenario,
   createLinkableScenario,
   openAssessTaskModal,
-  openWizardFromChoicePrompt,
+  openLinkPickerDropdown,
   pickAssignmentE2E,
   pickLinkableDefinitionE2E,
   selectAssignmentAndStart,
   setupLinkableDialog,
+  setupWizardDialog,
 } from './helpers/classes-page-end-to-end-helpers';
 
 // ============================================================================
@@ -38,24 +41,6 @@ import {
 // ---------------------------------------------------------------------------
 // Shared constants and helpers
 // ---------------------------------------------------------------------------
-
-/** Reusable assignment data for an "Algebra Homework" coursework assignment with topic. */
-const ALGEBRA_HOMEWORK_DATA = {
-  assignmentId: 'cw-1',
-  title: 'Algebra Homework',
-  topicId: 'topic-algebra',
-  topicName: 'Algebra',
-} as const;
-
-/**
- * Creates a success entry containing a single Algebra Homework assignment.
- * Suitable for scenario queues — call twice for StrictMode double-effect coverage.
- *
- * @returns {object} A success entry with one Algebra Homework assignment.
- */
-function algebraHomeworkEntry() {
-  return { kind: 'success' as const, data: [ALGEBRA_HOMEWORK_DATA] };
-}
 
 test.describe('Assess Task modal', () => {
   test('opens with correct title, Select dropdown, and disabled Start Assessment', async ({
@@ -376,13 +361,7 @@ test.describe('Assess Task modal', () => {
   });
 
   test('cancelling wizard returns to choice prompt', async ({ page }) => {
-    const scenario = createAssessTaskScenario({
-      getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
-    });
-    await installRuntimeMock(page, scenario);
-    const dialog = await openAssessTaskModal(page);
-
-    const wizardDialog = await openWizardFromChoicePrompt(dialog, page);
+    const { dialog, wizardDialog } = await setupWizardDialog({ page });
 
     // Cancel wizard (no dirty state — wizard closes without discard confirmation)
     await wizardDialog.getByRole('button', { name: 'Cancel' }).click();
@@ -476,13 +455,7 @@ test.describe('Assess Task modal', () => {
   });
 
   test('outer Cancel during wizard creation closes both modals', async ({ page }) => {
-    const scenario = createAssessTaskScenario({
-      getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
-    });
-    await installRuntimeMock(page, scenario);
-    const dialog = await openAssessTaskModal(page);
-
-    const wizardDialog = await openWizardFromChoicePrompt(dialog, page);
+    const { dialog, wizardDialog } = await setupWizardDialog({ page });
 
     // Close the wizard first (returns to choice prompt), then dismiss the choice prompt
     await wizardDialog.getByRole('button', { name: 'Cancel' }).click();
@@ -950,27 +923,16 @@ test.describe('Assess Task modal', () => {
         data: [POETRY_ANALYSIS_PARTIAL, ALGEBRA_HW_PARTIAL, ALGEBRA_HOMEWORK_PARTIAL],
       };
 
-      const dialog = await setupLinkableDialog(
+      const { searchInput } = await openLinkPickerDropdown({
         page,
-        createLinkableScenario({
-          getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
-          linkablePartialsEntry: THREE_PARTIALS_ENTRY,
-        })
-      );
+        linkablePartialsEntry: THREE_PARTIALS_ENTRY,
+      });
 
-      await selectAssignmentAndStart(dialog, page);
-      await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
-
-      // Open the picker dropdown
-      await dialog.getByTestId('linkable-definition-select').click();
       await expect(page.getByText('Algebra HW', { exact: true })).toBeVisible();
       await expect(page.getByText('Poetry Analysis', { exact: true })).toBeVisible();
       await expect(page.getByText('Algebra Homework Original', { exact: true })).toBeVisible();
 
-      // Type in the search input to filter by title. The combobox is the
-      // input element (antd v6 puts role="combobox" on the void input), so
-      // filling the combobox directly triggers showSearch filtering.
-      const searchInput = page.getByTestId('linkable-definition-select').getByRole('combobox');
+      // Type in the search input to filter by title
       await searchInput.fill('Algebra');
 
       // The two algebra options remain; Poetry Analysis is filtered out
@@ -985,27 +947,16 @@ test.describe('Assess Task modal', () => {
         data: [POETRY_ANALYSIS_PARTIAL, ALGEBRA_HW_PARTIAL, ALGEBRA_HOMEWORK_PARTIAL],
       };
 
-      const dialog = await setupLinkableDialog(
+      const { searchInput } = await openLinkPickerDropdown({
         page,
-        createLinkableScenario({
-          getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
-          linkablePartialsEntry: THREE_PARTIALS_ENTRY,
-        })
-      );
+        linkablePartialsEntry: THREE_PARTIALS_ENTRY,
+      });
 
-      await selectAssignmentAndStart(dialog, page);
-      await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
-
-      // Open the picker dropdown
-      await dialog.getByTestId('linkable-definition-select').click();
       await expect(page.getByText('Algebra HW', { exact: true })).toBeVisible();
       await expect(page.getByText('Poetry Analysis', { exact: true })).toBeVisible();
       await expect(page.getByText('Algebra Homework Original', { exact: true })).toBeVisible();
 
-      // Type in the search input to filter by title. The combobox is the
-      // input element (antd v6 puts role="combobox" on the void input), so
-      // filling the combobox directly triggers showSearch filtering.
-      const searchInput = page.getByTestId('linkable-definition-select').getByRole('combobox');
+      // Type in the search input to filter by title
       await searchInput.fill('Algebra');
 
       // Only the two algebra options remain; Poetry Analysis is filtered out
