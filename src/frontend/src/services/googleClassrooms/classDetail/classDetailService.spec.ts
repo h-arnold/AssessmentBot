@@ -7,21 +7,31 @@ vi.mock('../../apiService', () => ({
 }));
 
 const validSubmissionPartial = {
-  id: 'sub-1',
-  taskId: 'task-1',
-  artifact: {
-    taskId: 'task-1',
-    role: 'student',
-    pageId: 'slide-5',
-    documentId: 'doc-abc',
-    content: null,
-    contentHash: null,
-    metadata: { slideOrder: 3 },
-    uid: 'uid-artifact-1',
-    type: 'slides',
+  studentId: 'student-1',
+  studentName: 'Alice Johnson',
+  assignmentId: 'assign-1',
+  documentId: 'doc-abc',
+  items: {
+    'task-1': {
+      id: 'sub-1',
+      taskId: 'task-1',
+      artifact: {
+        taskId: 'task-1',
+        role: 'student',
+        pageId: 'slide-5',
+        documentId: 'doc-abc',
+        content: null,
+        contentHash: null,
+        metadata: { slideOrder: 3 },
+        uid: 'uid-artifact-1',
+        type: 'slides',
+      },
+      assessments: { accuracy: { score: 4 } },
+      feedback: { comment: 'Great effort' },
+    },
   },
-  assessments: { accuracy: { score: 4 } },
-  feedback: { comment: 'Great effort' },
+  createdAt: '2025-05-01T08:00:00.000Z',
+  updatedAt: '2025-05-15T12:00:00.000Z',
 };
 
 const validAssignmentDefinitionPartial = {

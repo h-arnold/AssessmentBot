@@ -5,6 +5,7 @@ import {
   BaseTaskArtifactPartialSchema,
   ClassFullResponseSchema,
   ClassFullSchema,
+  StudentSubmissionItemPartialSchema,
   StudentSubmissionPartialSchema,
   StudentSummarySchema,
   TeacherSummarySchema,
@@ -28,7 +29,7 @@ const validBaseTaskArtifactPartial = {
   type: 'slides',
 };
 
-const validStudentSubmissionPartial = {
+const validStudentSubmissionItemPartial = {
   id: 'sub-1',
   taskId: 'task-1',
   artifact: validBaseTaskArtifactPartial,
@@ -37,6 +38,16 @@ const validStudentSubmissionPartial = {
     completeness: { score: 5 },
   },
   feedback: { comment: 'Great effort' },
+};
+
+const validStudentSubmissionPartial = {
+  studentId: 'student-1',
+  studentName: 'Alice Johnson',
+  assignmentId: 'assign-1',
+  documentId: 'doc-abc',
+  items: { 'task-1': validStudentSubmissionItemPartial },
+  createdAt: '2025-05-01T08:00:00.000Z',
+  updatedAt: '2025-05-15T12:00:00.000Z',
 };
 
 const validAssignmentDefinitionPartial = {
@@ -65,7 +76,7 @@ const validAssignmentPartial = {
   lastUpdated: '2025-05-15T12:00:00.000Z',
   createdAt: '2025-05-01T08:00:00.000Z',
   documentType: 'SLIDES',
-  submissions: [validStudentSubmissionPartial],
+  submissions: [validStudentSubmissionPartial], // Uses the new nested-dictionary shape
   assignmentDefinition: validAssignmentDefinitionPartial,
 };
 
@@ -141,9 +152,10 @@ describe('AssignmentPartialSchema', () => {
   it('accepts submissions with redacted artifacts (content/contentHash set to null)', () => {
     const result = AssignmentPartialSchema.parse(validAssignmentPartial);
     expect(result.submissions).toHaveLength(1);
-    expect(result.submissions[0].artifact.content).toBeNull();
-    expect(result.submissions[0].artifact.contentHash).toBeNull();
-    expect(result.submissions[0].artifact.taskId).toBe('task-1');
+    const item = result.submissions[0].items['task-1'];
+    expect(item.artifact.content).toBeNull();
+    expect(item.artifact.contentHash).toBeNull();
+    expect(item.artifact.taskId).toBe('task-1');
   });
 
   it('accepts assignmentDefinition with tasks set to null', () => {
@@ -242,25 +254,64 @@ describe('StudentSummarySchema', () => {
   });
 });
 
-describe('StudentSubmissionPartialSchema', () => {
-  it('parses a valid submission partial with redacted artifact', () => {
-    const result = StudentSubmissionPartialSchema.parse(validStudentSubmissionPartial);
+describe('StudentSubmissionItemPartialSchema', () => {
+  it('parses a valid submission item partial with redacted artifact', () => {
+    const result = StudentSubmissionItemPartialSchema.parse(validStudentSubmissionItemPartial);
     expect(result.artifact.content).toBeNull();
     expect(result.artifact.contentHash).toBeNull();
     expect(result.id).toBe('sub-1');
     expect(result.taskId).toBe('task-1');
   });
 
-  it('rejects a submission missing id', () => {
-    const missing = { ...validStudentSubmissionPartial };
+  it('rejects a submission item missing id', () => {
+    const missing = { ...validStudentSubmissionItemPartial };
     delete (missing as Record<string, unknown>).id;
+    expect(() => StudentSubmissionItemPartialSchema.parse(missing)).toThrow();
+  });
+
+  it('rejects a submission item missing artifact', () => {
+    const missing = { ...validStudentSubmissionItemPartial };
+    delete (missing as Record<string, unknown>).artifact;
+    expect(() => StudentSubmissionItemPartialSchema.parse(missing)).toThrow();
+  });
+});
+
+describe('StudentSubmissionPartialSchema', () => {
+  it('parses a valid nested submission with items dictionary', () => {
+    const result = StudentSubmissionPartialSchema.parse(validStudentSubmissionPartial);
+    expect(result.studentId).toBe('student-1');
+    expect(result.studentName).toBe('Alice Johnson');
+    expect(result.assignmentId).toBe('assign-1');
+    expect(result.documentId).toBe('doc-abc');
+    expect(result.items).toBeDefined();
+    expect(result.items['task-1']).toBeDefined();
+    expect(result.items['task-1'].id).toBe('sub-1');
+  });
+
+  it('rejects a submission missing the items field', () => {
+    const missing = { ...validStudentSubmissionPartial };
+    delete (missing as Record<string, unknown>).items;
     expect(() => StudentSubmissionPartialSchema.parse(missing)).toThrow();
   });
 
-  it('rejects a submission missing artifact', () => {
+  it('rejects the old flat shape (single item, not nested submission)', () => {
+    expect(() => StudentSubmissionPartialSchema.parse(validStudentSubmissionItemPartial)).toThrow();
+  });
+
+  it('rejects a submission missing studentId', () => {
     const missing = { ...validStudentSubmissionPartial };
-    delete (missing as Record<string, unknown>).artifact;
+    delete (missing as Record<string, unknown>).studentId;
     expect(() => StudentSubmissionPartialSchema.parse(missing)).toThrow();
+  });
+
+  it('accepts null studentName and documentId', () => {
+    const result = StudentSubmissionPartialSchema.parse({
+      ...validStudentSubmissionPartial,
+      studentName: null,
+      documentId: null,
+    });
+    expect(result.studentName).toBeNull();
+    expect(result.documentId).toBeNull();
   });
 });
 

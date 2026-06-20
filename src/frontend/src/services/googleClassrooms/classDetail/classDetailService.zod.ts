@@ -34,12 +34,38 @@ export const BaseTaskArtifactPartialSchema = z.object({
 
 export type BaseTaskArtifactPartial = z.infer<typeof BaseTaskArtifactPartialSchema>;
 
-export const StudentSubmissionPartialSchema = z.object({
+/**
+ * A single `StudentSubmissionItem.toPartialJSON()` entry inside a parent submission's
+ * `items` dictionary.  This is the pre-existing (formerly named `StudentSubmissionPartialSchema`)
+ * schema, now correctly scoped to a single item.
+ * @remarks Matches the wire shape from {@link StudentSubmissionItem.toPartialJSON()} in
+ *          `src/backend/Models/StudentSubmission.js:121-126`.
+ */
+export const StudentSubmissionItemPartialSchema = z.object({
   id: z.string(),
   taskId: z.string(),
   artifact: BaseTaskArtifactPartialSchema,
   assessments: z.record(z.string(), z.unknown()).optional(),
   feedback: z.record(z.string(), z.unknown()).optional(),
+});
+
+export type StudentSubmissionItemPartial = z.infer<typeof StudentSubmissionItemPartialSchema>;
+
+/**
+ * Canonical nested-dictionary shape matching `StudentSubmission.toPartialJSON()` wire output.
+ * The `items` field is a dictionary keyed by `taskId`, not a flat array.
+ * @remarks This replaces the pre-existing buggy flat shape that modelled a single
+ *          `StudentSubmissionItem` instead of the outer submission wrapper.  See
+ *          `src/backend/Models/StudentSubmission.js:330-336` for the wire source of truth.
+ */
+export const StudentSubmissionPartialSchema = z.object({
+  studentId: z.string(),
+  studentName: z.string().nullable(),
+  assignmentId: z.string(),
+  documentId: z.string().nullable(),
+  items: z.record(z.string(), StudentSubmissionItemPartialSchema),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 
 export type StudentSubmissionPartial = z.infer<typeof StudentSubmissionPartialSchema>;

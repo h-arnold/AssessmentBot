@@ -282,8 +282,14 @@ No new shared helpers. The corrected `StudentSubmissionPartialSchema` lives in `
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** to be filled during implementation.
-- **Deviations from plan:** none expected.
+- **Implementation notes:**
+  - Renamed `StudentSubmissionPartialSchema` → `StudentSubmissionItemPartialSchema` (lines 44-52), exported with matching `StudentSubmissionItemPartial` type. Added `@remarks` JSDocs referencing backend wire source of truth (`StudentSubmissionItem.toPartialJSON()` lines 121-126).
+  - Created new `StudentSubmissionPartialSchema` (lines 61-69) with correct nested-dictionary shape: `{ studentId: z.string(), studentName: z.string().nullable(), assignmentId: z.string(), documentId: z.string().nullable(), items: z.record(z.string(), StudentSubmissionItemPartialSchema), createdAt: z.string(), updatedAt: z.string() }`. Added `@remarks` JSDoc referencing `StudentSubmission.toPartialJSON()` lines 330-336.
+  - `AssignmentPartialSchema.submissions` field remained `z.array(StudentSubmissionPartialSchema)` — no type parameter change needed, only element shape changed.
+  - Updated `classDetailService.zod.spec.ts`: renamed fixtures (`validStudentSubmissionPartial` → `validStudentSubmissionItemPartial`, new `validStudentSubmissionPartial` with nested structure), renamed describe block, added 5 new tests for `StudentSubmissionPartialSchema`, updated `AssignmentPartialSchema` test to access nested `items` dictionary path. 42 tests pass.
+  - Updated `classDetailService.spec.ts`: replaced flat `validSubmissionPartial` fixture with nested submission wrapper. 5 tests pass.
+  - Zero production consumers of the buggy flat shape were found — only the two spec files above consumed the shape.
+- **Deviations from plan:** none.
 - **Follow-up implications for later sections:** Section 5 (`dataAnalysis.zod.ts`) no longer defines its own `StudentSubmissionPartialSchema` — it imports the corrected version from `classDetailService.zod.ts`.
 
 ---
