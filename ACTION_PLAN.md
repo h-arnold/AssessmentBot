@@ -22,7 +22,7 @@ Before writing or executing this plan:
 - Frontend: implement `AveragingAnalyser` in `analysers/averagingAnalyser.ts`.
 - Frontend: implement `DataAnalysisService` orchestrator in `dataAnalysisService.ts`.
 - Co-located `.spec.ts` files for all new modules.
-- Update `docs/developer/DATA_SHAPES.md`: add a "Partial Task (`TaskPartial`)" entry with planned status `Not implemented`; update the partial definition entry to reflect `tasks: Array<TaskPartial>`; remove the existing *"Partial definitions use `tasks: null` (not `undefined` or `{}`)"* line. Reconcile to `Implemented` after delivery.
+- Update `docs/developer/DATA_SHAPES.md`: add a "Partial Task (`TaskPartial`)" entry with planned status `Not implemented`; update the partial definition entry to reflect `tasks: Array<TaskPartial>`; remove the existing _"Partial definitions use `tasks: null` (not `undefined` or `{}`)"_ line. Reconcile to `Implemented` after delivery.
 - Write teacher-facing algorithm documentation at `docs/pedagogy/data-analysis-scoring.md` explaining how the averaging algorithm computes scores (per SPEC § "Documentation and rollout notes").
 
 ### Out of scope
@@ -188,8 +188,15 @@ Backend model tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** to be filled during implementation.
-- **Deviations from plan:** none expected.
+- **Implementation notes:**
+  - Changed `toPartialJSON()` to emit `tasks: Array<{ id, taskWeighting }>` instead of `tasks: null`. Uses `!this.tasks || Object.keys(this.tasks).length === 0` to detect empty/null/undefined tasks and emits `[]`. For non-empty tasks, maps each `TaskDefinition` to `{ id, taskWeighting }` via `Object.values(this.tasks).map(...)`.
+  - Updated `_validate()` routing to treat empty arrays as partial-definition markers (routing to `_validatePartial()` instead of `_validateFull()`).
+  - Updated constructor tasks assignment to normalise empty arrays to `null` for internal state consistency.
+  - Updated `fromJSON()` to normalise array-format `tasks` from the wire back to `null` (lightweight `{id, taskWeighting}` summaries cannot be rehydrated to `TaskDefinition` instances).
+  - Updated JSDoc on `toPartialJSON()` with `@remarks` documenting the change per SPEC § "Backend changes required" §1.
+  - Updated 22 test assertions across 7 test files to reflect the new `tasks: Array<TaskPartial>` wire shape.
+  - Added 7 new focused tests in `tests/models/assignmentDefinition.test.js` covering all edge cases.
+- **Deviations from plan:** Extended test updates beyond the single listed file (`tests/models/assignmentDefinition.test.js`) to fix all 15 downstream test failures caused by the contract change (files: `assignmentDefinitionValidation.test.js`, `assignmentSerialisation.test.js`, `abclassController.readClass.test.js`, `abclassController.rehydrateAssignment.test.js`, `assignmentDefinitionController.test.js`, `assignmentDefinitionController.upsert.test.js`). These were all `tasks: null` → `tasks: []` assertion updates. The `_validate()` routing, constructor, and `fromJSON()` also required small changes to handle the new wire format correctly on deserialisation.
 - **Follow-up implications for later sections:** Sections 2–4 depend on this backend change landing in the same release. The two downstream partial Zod files (`assignmentDefinitionPartials.zod.ts` and `classDetailService.zod.ts`) are updated in §4 to use the new `tasks: Array<TaskPartialSchema>` shape. No transition union is required (atomic deployment).
 
 ---
@@ -216,6 +223,7 @@ Backend model tests:
 ### Delegation mandatory reads (when sub-agents are used)
 
 Testing Specialist mandatory docs:
+
 - `AGENTS.md`
 - `src/frontend/AGENTS.md`
 - `SPEC.md`
@@ -223,6 +231,7 @@ Testing Specialist mandatory docs:
 - `docs/developer/frontend/frontend-testing.md`
 
 Implementation mandatory docs:
+
 - `AGENTS.md`
 - `src/frontend/AGENTS.md`
 - `SPEC.md`
@@ -231,6 +240,7 @@ Implementation mandatory docs:
 - `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts`
 
 Code Reviewer mandatory docs:
+
 - `AGENTS.md`
 - `SPEC.md`
 
@@ -299,6 +309,7 @@ No new shared helpers. The corrected `StudentSubmissionPartialSchema` lives in `
 ### Delegation mandatory reads (when sub-agents are used)
 
 Testing Specialist mandatory docs:
+
 - `AGENTS.md`
 - `src/frontend/AGENTS.md`
 - `SPEC.md`
@@ -306,6 +317,7 @@ Testing Specialist mandatory docs:
 - `docs/developer/frontend/frontend-testing.md`
 
 Implementation mandatory docs:
+
 - `AGENTS.md`
 - `src/frontend/AGENTS.md`
 - `SPEC.md`
@@ -315,6 +327,7 @@ Implementation mandatory docs:
 - `src/frontend/src/features/classes/AssessTaskModal/getLinkableDefinitionsForModal.ts`
 
 Code Reviewer mandatory docs:
+
 - `AGENTS.md`
 - `SPEC.md`
 
@@ -414,9 +427,9 @@ Helper decision entries:
 1. Helper: `TaskPartialSchema` (Zod schema for `{ id: string, taskWeighting: number }`)
    - Decision: `new` — created in the new `src/frontend/src/services/assignmentDefinition/taskPartial.zod.ts` as the primary/canonical source, imported by other schemas.
    - Owning module/path: `src/frontend/src/services/assignmentDefinition/taskPartial.zod.ts`
-    - Call-site rationale: Used by `assignmentDefinitionPartials.zod.ts` (registry partials list), `classDetailService.zod.ts` (embedded `AssignmentDefinition` inside ABClass), and the analyser input schemas in `dataAnalysis.zod.ts` (Section 5). Extracting to a shared file in the `assignmentDefinition/` domain folder avoids inverting the data-load layering that would result from defining it inside `services/dataAnalysis/`.
+   - Call-site rationale: Used by `assignmentDefinitionPartials.zod.ts` (registry partials list), `classDetailService.zod.ts` (embedded `AssignmentDefinition` inside ABClass), and the analyser input schemas in `dataAnalysis.zod.ts` (Section 5). Extracting to a shared file in the `assignmentDefinition/` domain folder avoids inverting the data-load layering that would result from defining it inside `services/dataAnalysis/`.
    - Relevant canonical doc target: `docs/developer/DATA_SHAPES.md`
-    - Planned doc status: `Not implemented` (must be added to `DATA_SHAPES.md` before §4 begins, per the shared-helper planning gate)
+   - Planned doc status: `Not implemented` (must be added to `DATA_SHAPES.md` before §4 begins, per the shared-helper planning gate)
 
 ### Acceptance criteria
 
@@ -879,7 +892,7 @@ Docs mandatory docs:
   - `assignmentDefinitionPartials.zod.spec.ts` lines 399–465 (the `'tasks field backend-shape compatibility'` describe block) — rewritten in Section 4.
   - `classDetailService.zod.spec.ts` line 324–328 (the `'rejects a definition with tasks not null'` test) — removed in Section 4.
   - `assignmentDefinitionPartialsContract.guard.spec.ts` lines 33–60 (the `'accepts backend-compatible non-null tasks payloads and collapses them to null'` test) — deleted in Section 4.
-  These tests are expected to fail when their respective sections are partially landed (e.g. §1 backend change without §4 frontend update) and are fixed in the same section. This is the signal that the schema change is correct.
+    These tests are expected to fail when their respective sections are partially landed (e.g. §1 backend change without §4 frontend update) and are fixed in the same section. This is the signal that the schema change is correct.
 - **Schema reconciliation tests (Sections 2 and 3) are also updated in-line:**
   - `classDetailService.zod.spec.ts` — updated in Section 2 (StudentSubmissionPartialSchema fix) and Section 3 (AssignmentDefinitionPartialSchema unification).
   - `classDetailService.zod.spec.ts` line 330 REGRESSION (null `referenceDocumentId`) — now correctly handled by the canonical schema's `.nullable()` (Section 3).

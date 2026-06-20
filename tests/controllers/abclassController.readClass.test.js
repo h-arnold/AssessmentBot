@@ -8,6 +8,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { TaskDefinition } from '../../src/backend/Models/TaskDefinition.js';
 import {
   buildTestTeacher,
   buildTestStudent,
@@ -467,8 +468,9 @@ describe('ABClassController._toReadView', () => {
    */
   it('uses Assignment.toPartialJSON() output (not the full toJSON shape) on a real Assignment instance', () => {
     // Full AssignmentDefinition with a populated tasks tree. The toJSON() path would
-    // expose this tree at `assignmentDefinition.tasks`; the toPartialJSON() path forces
-    // it to null.
+    // expose this tree at `assignmentDefinition.tasks`; the toPartialJSON() path now
+    // carries lightweight {id, taskWeighting} summaries.
+    const task1 = new TaskDefinition({ taskTitle: 'Task 1' }, 2);
     const fullDef = new AssignmentDefinition({
       primaryTitle: 'Essay Draft',
       primaryTopic: 'English',
@@ -477,7 +479,7 @@ describe('ABClassController._toReadView', () => {
       documentType: 'SLIDES',
       referenceDocumentId: 'ref-doc-001',
       templateDocumentId: 'tpl-doc-001',
-      tasks: { t1: { taskTitle: 'Task 1' } },
+      tasks: { [task1.id]: task1 },
     });
 
     // Construct a real Assignment instance without invoking the constructor
@@ -519,14 +521,16 @@ describe('ABClassController._toReadView', () => {
     //   - Partial shape has NO `referenceDocumentId` / `templateDocumentId` at the root
     //     (toJSON exposes them via _extractFullDefinitionFields; partial embeds them
     //     only inside `assignmentDefinition`).
-    //   - Partial shape's `assignmentDefinition.tasks` is `null` (forced by
-    //     AssignmentDefinition.toPartialJSON()).
+    //   - Partial shape's `assignmentDefinition.tasks` carries lightweight summaries
+    //     (Array<TaskPartial>) from AssignmentDefinition.toPartialJSON().
     expect(result.assignments).toHaveLength(1);
     expect(result.assignments[0].documentType).toBe('SLIDES');
     expect(result.assignments[0]).not.toHaveProperty('tasks');
     expect(result.assignments[0]).not.toHaveProperty('referenceDocumentId');
     expect(result.assignments[0]).not.toHaveProperty('templateDocumentId');
-    expect(result.assignments[0].assignmentDefinition.tasks).toBeNull();
+    expect(result.assignments[0].assignmentDefinition.tasks).toEqual([
+      { id: task1.id, taskWeighting: 2 },
+    ]);
     // Document IDs survive, but only inside the embedded partial definition.
     expect(result.assignments[0].assignmentDefinition.referenceDocumentId).toBe('ref-doc-001');
     expect(result.assignments[0].assignmentDefinition.templateDocumentId).toBe('tpl-doc-001');

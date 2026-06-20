@@ -207,7 +207,7 @@ describe('AssignmentDefinition Validation', () => {
   });
 
   describe('toPartialJSON', () => {
-    it('should emit tasks: null for partial definitions', () => {
+    it('should emit tasks: [] for partial definitions', () => {
       const partialDef = new AssignmentDefinition({
         primaryTitle: 'Essay 1',
         primaryTopic: 'English',
@@ -221,7 +221,7 @@ describe('AssignmentDefinition Validation', () => {
 
       const json = partialDef.toPartialJSON();
 
-      expect(json.tasks).toBe(null);
+      expect(json.tasks).toEqual([]);
       expect(json.referenceDocumentId).toBe('ref123');
       expect(json.templateDocumentId).toBe('tmpl123');
       expect(json.documentType).toBe('SLIDES');
@@ -229,7 +229,7 @@ describe('AssignmentDefinition Validation', () => {
       expect(json.yearGroupLabel).toBe('Year 10');
     });
 
-    it('should emit tasks: null for full definitions when serialized as partial', () => {
+    it('should emit tasks as array of {id, taskWeighting} for full definitions when serialized as partial', () => {
       const fullDef = new AssignmentDefinition({
         primaryTitle: 'Essay 1',
         primaryTopic: 'English',
@@ -243,7 +243,11 @@ describe('AssignmentDefinition Validation', () => {
 
       const json = fullDef.toPartialJSON();
 
-      expect(json.tasks).toBe(null);
+      // The partial now carries lightweight {id, taskWeighting} summaries from each task
+      expect(Array.isArray(json.tasks)).toBe(true);
+      expect(json.tasks.length).toBe(1);
+      expect(json.tasks[0]).toHaveProperty('id');
+      expect(json.tasks[0]).toHaveProperty('taskWeighting');
       expect(json.referenceDocumentId).toBe('ref123');
       expect(json.templateDocumentId).toBe('tmpl123');
       expect(json.yearGroupKey).toBe('year-group-10');
