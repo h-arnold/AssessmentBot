@@ -1,4 +1,4 @@
-import { Alert, Flex, Radio, Typography } from 'antd';
+import { Alert, Flex, Select, Typography } from 'antd';
 import type { JSX } from 'react';
 import type { LinkableDefinition } from './getLinkableDefinitionsForModal';
 
@@ -14,11 +14,12 @@ export type LinkableDefinitionListProperties = Readonly<{
  * @remarks
  * Presentational: no state, no side effects, no React Query, no service calls.
  * The component receives the derived `LinkableDefinition[]` and the current
- * selection, and emits `onSelect(definitionKey)` when the user picks a row.
- * Every row is always selectable — no `disabled` prop is used. The
- * `Radio.Group` `name` prop enables native arrow-key navigation between rows.
- * The `Radio.Group` with `block` already applies width: 100%, so the outer
- * `Flex` does not need an explicit width style.
+ * selection, and emits `onSelect(definitionKey)` when the user picks a row
+ * from the searchable Select dropdown. Every row is always selectable —
+ * no `disabled` prop is used. The Select uses `showSearch` to enable
+ * type-to-filter behaviour on the option labels.
+ * The selected option displays as the `primaryTitle` only (via `labelRender`);
+ * arrow keys, Enter, and Escape are handled by antd defaults.
  *
  * @param {Readonly<LinkableDefinitionListProperties>} properties Component properties.
  * @returns {JSX.Element} The picker body.
@@ -33,28 +34,36 @@ export function LinkableDefinitionList(
       <Alert
         type="info"
         showIcon
-        description="Link to an existing definition to associate the Google Classroom assignment with it."
+        description="Choose the Assignment you want to link this one to:"
       />
-      <Radio.Group
+      <Select
+        data-testid="linkable-definition-select"
+        showSearch={{ optionFilterProp: 'label' }}
         value={selectedDefinitionKey}
-        onChange={(event) => onSelect(event.target.value)}
-        orientation="vertical"
-        block
-        name="linkable-definition"
-      >
-        {linkableDefinitions.map((definition) => (
-          <Radio key={definition.definitionKey} value={definition.definitionKey}>
-            <Flex vertical gap={2}>
-              <Typography.Text strong ellipsis>
-                {definition.primaryTitle}
-              </Typography.Text>
-              <Typography.Text type="secondary" ellipsis>
-                {definition.primaryTopic} · {definition.yearGroupLabel}
-              </Typography.Text>
-            </Flex>
-          </Radio>
-        ))}
-      </Radio.Group>
+        onChange={(value) => onSelect(value as string)}
+        style={{ width: '100%' }}
+        // virtual={false} ensures option elements render in jsdom tests (virtual list omits unmounted options)
+        virtual={false}
+        notFoundContent="Not found"
+        labelRender={(option) => option.label}
+        options={linkableDefinitions.map((d) => ({
+          value: d.definitionKey,
+          label: d.primaryTitle,
+          primaryTitle: d.primaryTitle,
+          primaryTopic: d.primaryTopic,
+          yearGroupLabel: d.yearGroupLabel,
+        }))}
+        optionRender={(option) => (
+          <Flex vertical gap={2}>
+            <Typography.Text strong ellipsis>
+              {option.data.primaryTitle}
+            </Typography.Text>
+            <Typography.Text type="secondary" ellipsis>
+              {option.data.primaryTopic} · {option.data.yearGroupLabel}
+            </Typography.Text>
+          </Flex>
+        )}
+      />
     </Flex>
   );
 }

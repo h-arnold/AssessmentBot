@@ -11,6 +11,28 @@ import {
 } from '../../src/test/classes/classesPageTestHelpers';
 
 // ============================================================================
+// Assignment Fixture Data
+// ============================================================================
+
+/** Reusable assignment data for an "Algebra Homework" coursework assignment with topic. */
+export const ALGEBRA_HOMEWORK_DATA = {
+  assignmentId: 'cw-1',
+  title: 'Algebra Homework',
+  topicId: 'topic-algebra',
+  topicName: 'Algebra',
+} as const;
+
+/**
+ * Creates a success entry containing a single Algebra Homework assignment.
+ * Suitable for scenario queues — call twice for StrictMode double-effect coverage.
+ *
+ * @returns {ResponseItem} A success entry with one Algebra Homework assignment.
+ */
+export function algebraHomeworkEntry(): ResponseItem {
+  return { kind: 'success' as const, data: [ALGEBRA_HOMEWORK_DATA] };
+}
+
+// ============================================================================
 // Navigation and UI Constants
 // ============================================================================
 
@@ -392,7 +414,7 @@ export async function selectAssignmentAndStart(
   page: Page,
   title: string = 'Algebra Homework'
 ): Promise<void> {
-  await dialog.getByRole('combobox').click();
+  await dialog.getByTestId('assignment-select').click();
   await selectVisibleOption(page, title);
   await dialog.getByRole('button', { name: 'Start Assessment' }).click();
 }
@@ -409,6 +431,52 @@ export async function selectAssignmentAndStart(
  * @param {Page} page - The Playwright page under test.
  * @returns {Promise<ReturnType<typeof page.getByRole>>} The visible wizard dialog locator.
  */
+
+/**
+ * Opens the linkable-definition Select dropdown and selects the option matching
+ * the given primary title.
+ *
+ * @param {Locator} dialog The Assess Task modal dialog locator.
+ * @param {Page} page The Playwright page under test.
+ * @param {string} title The primary title of the option to select.
+ * @returns {Promise<void>}
+ */
+export async function pickLinkableDefinitionE2E(
+  dialog: Locator,
+  page: Page,
+  title: string
+): Promise<void> {
+  await dialog.getByTestId('linkable-definition-select').click();
+  await selectVisibleOption(page, title);
+}
+
+/**
+ * Opens the assignment Select dropdown and selects the option matching
+ * the given title.
+ *
+ * @param {Locator} dialog The Assess Task modal dialog locator.
+ * @param {Page} page The Playwright page under test.
+ * @param {string} [title] The visible text of the assignment option to select.
+ * @returns {Promise<void>}
+ */
+export async function pickAssignmentE2E(
+  dialog: Locator,
+  page: Page,
+  title: string = 'Algebra Homework'
+): Promise<void> {
+  await dialog.getByTestId('assignment-select').click();
+  await selectVisibleOption(page, title);
+}
+
+/**
+ * Selects the default assignment, starts the assessment, clicks
+ * "Create New Definition" in the choice prompt, then asserts the
+ * wizard dialog is visible.
+ *
+ * @param {Locator} dialog The Assess Task modal dialog locator.
+ * @param {Page} page The Playwright page under test.
+ * @returns {Promise<ReturnType<typeof page.getByRole>>} The visible wizard dialog locator.
+ */
 export async function openWizardFromChoicePrompt(
   dialog: Locator,
   page: Page
@@ -420,6 +488,70 @@ export async function openWizardFromChoicePrompt(
   await expect(wizardDialog).toBeVisible();
 
   return wizardDialog;
+}
+
+/**
+ * Sets up the Assess Task modal with an Algebra Homework scenario, opens the
+ * wizard from the choice prompt, and returns both dialog locators.
+ *
+ * Replaces the common preamble shared by wizard cancellation tests.
+ *
+ * @param {{ page: Page; getGoogleClassroomAssignments?: ReadonlyArray<ResponseItem> }} options
+ *   Page and optional assignment queue override (defaults to two algebra entries).
+ * @returns {Promise<{ dialog: Locator; wizardDialog: Locator }>} The Assess Task
+ *   dialog and the wizard dialog locators.
+ */
+export async function setupWizardDialog({
+  page,
+  getGoogleClassroomAssignments,
+}: {
+  page: Page;
+  getGoogleClassroomAssignments?: ReadonlyArray<ResponseItem>;
+}): Promise<{ dialog: Locator; wizardDialog: Locator }> {
+  const scenario = createAssessTaskScenario({
+    getGoogleClassroomAssignments: getGoogleClassroomAssignments ?? [
+      algebraHomeworkEntry(),
+      algebraHomeworkEntry(),
+    ],
+  });
+  await installRuntimeMock(page, scenario);
+  const dialog = await openAssessTaskModal(page);
+  const wizardDialog = await openWizardFromChoicePrompt(dialog, page);
+  return { dialog, wizardDialog };
+}
+
+/**
+ * Sets up a linkable dialog with three linkable partials, opens the link picker
+ * dropdown, and returns the search input locator.
+ *
+ * Replaces the common preamble shared by link-picker search tests.
+ *
+ * @param {{ page: Page; linkablePartialsEntry: ResponseItem }} options
+ *   Page and the linkable partials entry containing the definitions to populate
+ *   the picker.
+ * @returns {Promise<{ searchInput: Locator }>} The combobox search input locator.
+ */
+export async function openLinkPickerDropdown({
+  page,
+  linkablePartialsEntry,
+}: {
+  page: Page;
+  linkablePartialsEntry: ResponseItem;
+}): Promise<{ searchInput: Locator }> {
+  const dialog = await setupLinkableDialog(
+    page,
+    createLinkableScenario({
+      getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
+      linkablePartialsEntry,
+    })
+  );
+
+  await selectAssignmentAndStart(dialog, page);
+  await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
+  await dialog.getByTestId('linkable-definition-select').click();
+
+  const searchInput = page.getByTestId('linkable-definition-select').getByRole('combobox');
+  return { searchInput };
 }
 
 // ============================================================================
