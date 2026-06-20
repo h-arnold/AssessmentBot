@@ -1156,9 +1156,11 @@ describe('No-match resolution — linking state and link flow', () => {
 
     await clickLinkToExisting(dialog);
 
-    // The LinkableDefinitionList radio group should appear
-    const radio = await within(dialog).findByRole('radio');
-    expect(radio).toBeInTheDocument();
+    // The linkable-definition Select combobox should appear in the linking
+    // state. The assignment Select is hidden during choice/linking, so only
+    // the linkable Select combobox should be present.
+    const comboboxes = await within(dialog).findAllByRole('combobox');
+    expect(comboboxes.length).toBe(1);
 
     // Choice buttons should be gone
     expect(within(dialog).queryByRole('button', { name: 'Create New Definition' })).toBeNull();
@@ -1181,8 +1183,9 @@ describe('No-match resolution — linking state and link flow', () => {
       expect(within(dialog).getByRole('button', { name: 'Link to Existing Definition' })).toBeInTheDocument();
     });
 
-    // Picker should be gone (no radio buttons)
-    expect(within(dialog).queryByRole('radio')).toBeNull();
+    // Picker should be gone — in choice state there are no comboboxes
+    // (the assignment Select is hidden during choice/linking).
+    expect(within(dialog).queryByRole('combobox')).toBeNull();
   });
 
   it('picker: Link button is disabled when no row is selected', async () => {
@@ -1456,8 +1459,9 @@ describe('No-match resolution — linking state and link flow', () => {
       expect(within(dialog).getByRole('button', { name: 'Create New Definition' })).toBeInTheDocument();
     });
 
-    // The picker is no longer visible — no radio buttons
-    expect(within(dialog).queryByRole('radio')).toBeNull();
+    // The picker is no longer visible — in choice state there are no comboboxes
+    // (the assignment Select is hidden during choice/linking).
+    expect(within(dialog).queryByRole('combobox')).toBeNull();
   });
 
   it('link flow: clicking Cancel during upsert loading closes the modal', async () => {

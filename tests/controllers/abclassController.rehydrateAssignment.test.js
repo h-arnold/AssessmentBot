@@ -21,6 +21,7 @@ import {
   createMultipleAssignments,
   setupErrorScenario,
   setupAssignmentControllerTest,
+  runRehydrateScenario,
 } from '../helpers/controllerTestHelpers.js';
 
 let ABClassController, ABClass, Assignment;
@@ -44,20 +45,15 @@ afterEach(() => {
 describe('ABClassController Rehydrate Assignment', () => {
   describe('rehydrateAssignment()', () => {
     it('reads full assignment document from dedicated collection', () => {
-      const controller = new ABClassController();
-      const { abClass, assignment } = createTestFixture({
+      const { rehydrated } = runRehydrateScenario({
         ABClass,
+        Assignment,
+        ABClassController,
         courseId: 'course-read',
         assignmentId: 'assign-read',
         includeTask: true,
+        mockCollection,
       });
-
-      setupRehydrationScenario({ abClass, assignment, Assignment, mockCollection });
-
-      // RED: Method doesn't exist yet
-      assertMethodExists(controller, 'rehydrateAssignment');
-
-      const rehydrated = controller.rehydrateAssignment(abClass, 'assign-read');
 
       // Should read from the correct collection
       expect(mockDbManager.getCollection).toHaveBeenCalledWith(
@@ -71,19 +67,14 @@ describe('ABClassController Rehydrate Assignment', () => {
     });
 
     it('reconstructs correct subclass instance via Assignment.fromJSON()', () => {
-      const controller = new ABClassController();
-      const { abClass, assignment } = createTestFixture({
+      const { rehydrated } = runRehydrateScenario({
         ABClass,
+        Assignment,
+        ABClassController,
         courseId: 'course-subclass',
         assignmentId: 'assign-subclass',
+        mockCollection,
       });
-
-      setupRehydrationScenario({ abClass, assignment, Assignment, mockCollection });
-
-      // RED: Method doesn't exist yet
-      assertMethodExists(controller, 'rehydrateAssignment');
-
-      const rehydrated = controller.rehydrateAssignment(abClass, 'assign-subclass');
 
       // Should be properly typed instance with methods
       expect(typeof rehydrated.toJSON).toBe('function');
@@ -92,20 +83,15 @@ describe('ABClassController Rehydrate Assignment', () => {
     });
 
     it('sets _hydrationLevel to "full" on rehydrated instance', () => {
-      const controller = new ABClassController();
-      const { abClass, assignment } = createTestFixture({
+      const { rehydrated } = runRehydrateScenario({
         ABClass,
+        Assignment,
+        ABClassController,
         courseId: 'course-hydration',
         assignmentId: 'assign-hydration',
         documentType: 'SHEETS',
+        mockCollection,
       });
-
-      setupRehydrationScenario({ abClass, assignment, Assignment, mockCollection });
-
-      // RED: Method doesn't exist yet
-      assertMethodExists(controller, 'rehydrateAssignment');
-
-      const rehydrated = controller.rehydrateAssignment(abClass, 'assign-hydration');
 
       // RED: _hydrationLevel field doesn't exist yet
       expect(rehydrated._hydrationLevel).toBe('full');
@@ -153,19 +139,14 @@ describe('ABClassController Rehydrate Assignment', () => {
     });
 
     it('returns the hydrated assignment instance', () => {
-      const controller = new ABClassController();
-      const { abClass, assignment } = createTestFixture({
+      const { rehydrated } = runRehydrateScenario({
         ABClass,
+        Assignment,
+        ABClassController,
         courseId: 'course-return',
         assignmentId: 'assign-return',
+        mockCollection,
       });
-
-      setupRehydrationScenario({ abClass, assignment, Assignment, mockCollection });
-
-      // RED: Method doesn't exist yet
-      assertMethodExists(controller, 'rehydrateAssignment');
-
-      const rehydrated = controller.rehydrateAssignment(abClass, 'assign-return');
 
       expect(rehydrated).toBeDefined();
       expect(rehydrated.assignmentId).toBe('assign-return');
@@ -173,19 +154,14 @@ describe('ABClassController Rehydrate Assignment', () => {
     });
 
     it('logs rehydration operation via ABLogger', () => {
-      const controller = new ABClassController();
-      const { abClass, assignment } = createTestFixture({
+      runRehydrateScenario({
         ABClass,
+        Assignment,
+        ABClassController,
         courseId: 'course-log-rehydrate',
         assignmentId: 'assign-log-rehydrate',
+        mockCollection,
       });
-
-      setupRehydrationScenario({ abClass, assignment, Assignment, mockCollection });
-
-      // RED: Method doesn't exist yet
-      assertMethodExists(controller, 'rehydrateAssignment');
-
-      controller.rehydrateAssignment(abClass, 'assign-log-rehydrate');
 
       // Should log rehydration operation
       expect(mockABLogger.info).toHaveBeenCalled();
@@ -391,47 +367,24 @@ describe('ABClassController Rehydrate Assignment', () => {
   });
 
   describe('Integration Scenarios', () => {
-    it('rehydrates correct subclass for SLIDES assignments', () => {
-      const controller = new ABClassController();
-      const { abClass, assignment } = createTestFixture({
-        ABClass,
-        courseId: 'course-slides-rehydrate',
-        assignmentId: 'assign-slides-rehydrate',
-        documentType: 'SLIDES',
-      });
+    it.each([['SLIDES'], ['SHEETS']])(
+      'rehydrates correct subclass for %s assignments',
+      (documentType) => {
+        const { rehydrated } = runRehydrateScenario({
+          ABClass,
+          Assignment,
+          ABClassController,
+          courseId: `course-${documentType.toLowerCase()}-rehydrate`,
+          assignmentId: `assign-${documentType.toLowerCase()}-rehydrate`,
+          documentType,
+          mockCollection,
+        });
 
-      setupRehydrationScenario({ abClass, assignment, Assignment, mockCollection });
-
-      // RED: Method doesn't exist yet
-      assertMethodExists(controller, 'rehydrateAssignment');
-
-      const rehydrated = controller.rehydrateAssignment(abClass, 'assign-slides-rehydrate');
-
-      expect(rehydrated.documentType).toBe('SLIDES');
-      expect(rehydrated.referenceDocumentId).toBeDefined();
-      expect(rehydrated.templateDocumentId).toBeDefined();
-    });
-
-    it('rehydrates correct subclass for SHEETS assignments', () => {
-      const controller = new ABClassController();
-      const { abClass, assignment } = createTestFixture({
-        ABClass,
-        courseId: 'course-sheets-rehydrate',
-        assignmentId: 'assign-sheets-rehydrate',
-        documentType: 'SHEETS',
-      });
-
-      setupRehydrationScenario({ abClass, assignment, Assignment, mockCollection });
-
-      // RED: Method doesn't exist yet
-      assertMethodExists(controller, 'rehydrateAssignment');
-
-      const rehydrated = controller.rehydrateAssignment(abClass, 'assign-sheets-rehydrate');
-
-      expect(rehydrated.documentType).toBe('SHEETS');
-      expect(rehydrated.referenceDocumentId).toBeDefined();
-      expect(rehydrated.templateDocumentId).toBeDefined();
-    });
+        expect(rehydrated.documentType).toBe(documentType);
+        expect(rehydrated.referenceDocumentId).toBeDefined();
+        expect(rehydrated.templateDocumentId).toBeDefined();
+      }
+    );
 
     it('handles multiple rehydrations in sequence', () => {
       const controller = new ABClassController();

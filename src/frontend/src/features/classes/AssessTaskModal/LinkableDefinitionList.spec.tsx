@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { LinkableDefinitionList } from './LinkableDefinitionList';
 import type { LinkableDefinition } from './getLinkableDefinitionsForModal';
 
@@ -22,7 +21,7 @@ const createLinkable = (
 });
 
 describe('LinkableDefinitionList', () => {
-  it('renders the Alert with the extended copy', () => {
+  it('renders the Alert with the updated copy', () => {
     render(
       <LinkableDefinitionList
         linkableDefinitions={[createLinkable()]}
@@ -32,15 +31,40 @@ describe('LinkableDefinitionList', () => {
     );
 
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'Link to an existing definition to associate the Google Classroom assignment with it.'
+      'Choose the Assignment you want to link this one to:'
     );
   });
 
-  it('renders one Radio per LinkableDefinition', () => {
+  it('renders a combobox', () => {
+    render(
+      <LinkableDefinitionList
+        linkableDefinitions={[createLinkable()]}
+        selectedDefinitionKey={null}
+        onSelect={() => {}}
+      />
+    );
+
+    expect(screen.getByRole('combobox')).toBeInTheDocument();
+  });
+
+  it('does not render a radio group', () => {
+    render(
+      <LinkableDefinitionList
+        linkableDefinitions={[createLinkable()]}
+        selectedDefinitionKey={null}
+        onSelect={() => {}}
+      />
+    );
+
+    expect(screen.queryByRole('radio')).toBeNull();
+    expect(screen.queryByRole('radiogroup')).toBeNull();
+  });
+
+  it('shows the expected options when opened', () => {
     const definitions = [
-      createLinkable({ definitionKey: 'def-001' }),
-      createLinkable({ definitionKey: 'def-002' }),
-      createLinkable({ definitionKey: 'def-003' }),
+      createLinkable({ definitionKey: 'def-001', primaryTitle: 'Essay 1' }),
+      createLinkable({ definitionKey: 'def-002', primaryTitle: 'Essay 2' }),
+      createLinkable({ definitionKey: 'def-003', primaryTitle: 'Essay 3' }),
     ];
 
     render(
@@ -51,31 +75,15 @@ describe('LinkableDefinitionList', () => {
       />
     );
 
-    expect(screen.getAllByRole('radio')).toHaveLength(definitions.length);
+    const combobox = screen.getByRole('combobox');
+    fireEvent.mouseDown(combobox);
+
+    expect(screen.getByText('Essay 1')).toBeInTheDocument();
+    expect(screen.getByText('Essay 2')).toBeInTheDocument();
+    expect(screen.getByText('Essay 3')).toBeInTheDocument();
   });
 
-  it('does not disable any Radio row', () => {
-    const definitions = [
-      createLinkable({ definitionKey: 'def-001' }),
-      createLinkable({ definitionKey: 'def-002' }),
-      createLinkable({ definitionKey: 'def-003' }),
-    ];
-
-    render(
-      <LinkableDefinitionList
-        linkableDefinitions={definitions}
-        selectedDefinitionKey={null}
-        onSelect={() => {}}
-      />
-    );
-
-    const radios = screen.getAllByRole('radio');
-    radios.forEach((radio) => {
-      expect(radio).not.toBeDisabled();
-    });
-  });
-
-  it('renders the title and subtitle for each row', () => {
+  it('renders the title and subtitle for each option', () => {
     render(
       <LinkableDefinitionList
         linkableDefinitions={[
@@ -91,82 +99,59 @@ describe('LinkableDefinitionList', () => {
       />
     );
 
+    const combobox = screen.getByRole('combobox');
+    fireEvent.mouseDown(combobox);
+
     expect(screen.getByText('Essay')).toBeInTheDocument();
     expect(screen.getByText('Writing · Year 10')).toBeInTheDocument();
   });
 
-  it('renders Radio.Group with name="linkable-definition"', () => {
-    render(
-      <LinkableDefinitionList
-        linkableDefinitions={[createLinkable()]}
-        selectedDefinitionKey={null}
-        onSelect={() => {}}
-      />
-    );
-
-    // The name prop on Radio.Group propagates to each <input type="radio">
-    // rather than the radiogroup container element.
-    const radios = screen.getAllByRole('radio');
-    radios.forEach((radio) => {
-      expect(radio).toHaveAttribute('name', 'linkable-definition');
-    });
-  });
-
-  it('renders Radio.Group with orientation="vertical" and block', () => {
-    render(
-      <LinkableDefinitionList
-        linkableDefinitions={[createLinkable()]}
-        selectedDefinitionKey={null}
-        onSelect={() => {}}
-      />
-    );
-
-    const radioGroup = screen.getByRole('radiogroup');
-    expect(radioGroup).toHaveClass('ant-radio-group-vertical');
-    expect(radioGroup).toHaveClass('ant-radio-group-block');
-    expect(screen.getAllByRole('radio')).toHaveLength(1);
-  });
-
-  it('calls onSelect with the definitionKey when a row is selected', async () => {
+  it('calls onSelect with the definitionKey when an option is selected', () => {
     const onSelect = vi.fn();
-    const user = userEvent.setup();
 
     render(
       <LinkableDefinitionList
         linkableDefinitions={[
-          createLinkable({ definitionKey: 'def-001' }),
-          createLinkable({ definitionKey: 'def-002' }),
+          createLinkable({ definitionKey: 'def-001', primaryTitle: 'Essay 1' }),
+          createLinkable({ definitionKey: 'def-002', primaryTitle: 'Essay 2' }),
         ]}
         selectedDefinitionKey={null}
         onSelect={onSelect}
       />
     );
 
-    const radios = screen.getAllByRole('radio');
-    await user.click(radios[0]);
-    expect(onSelect).toHaveBeenCalledWith('def-001');
+    const combobox = screen.getByRole('combobox');
 
-    await user.click(radios[1]);
+    // Select the first option
+    fireEvent.mouseDown(combobox);
+    fireEvent.click(screen.getAllByRole('option')[0]);
+    expect(onSelect).toHaveBeenCalledWith('def-001');
+    expect(onSelect).toHaveBeenCalledTimes(1);
+
+    // Re-open the dropdown and select the second option
+    fireEvent.mouseDown(combobox);
+    fireEvent.click(screen.getAllByRole('option')[1]);
     expect(onSelect).toHaveBeenCalledWith('def-002');
+    const EXPECTED_CALL_COUNT_AFTER_TWO_SELECTIONS = 2;
+    expect(onSelect.mock.calls).toHaveLength(EXPECTED_CALL_COUNT_AFTER_TWO_SELECTIONS);
   });
 
-  it('visually reflects the selectedDefinitionKey prop', () => {
+  it('reflects the selectedDefinitionKey prop', () => {
     render(
       <LinkableDefinitionList
         linkableDefinitions={[
-          createLinkable({ definitionKey: 'def-001' }),
-          createLinkable({ definitionKey: 'def-002' }),
+          createLinkable({ definitionKey: 'def-001', primaryTitle: 'Essay 1' }),
+          createLinkable({ definitionKey: 'def-002', primaryTitle: 'Essay 2' }),
         ]}
         selectedDefinitionKey="def-002"
         onSelect={() => {}}
       />
     );
-    const radios = screen.getAllByRole('radio');
-    expect(radios[0]).not.toBeChecked();
-    expect(radios[1]).toBeChecked();
+
+    expect(screen.getByText('Essay 2')).toBeInTheDocument();
   });
 
-  it('renders without error and produces no radios when linkableDefinitions is empty', () => {
+  it('renders with no options when linkableDefinitions is empty', () => {
     render(
       <LinkableDefinitionList
         linkableDefinitions={[]}
@@ -175,9 +160,11 @@ describe('LinkableDefinitionList', () => {
       />
     );
 
-    // The Alert should still render
-    expect(screen.getByRole('alert')).toBeInTheDocument();
-    // No radio rows when there are no definitions
-    expect(screen.queryAllByRole('radio')).toHaveLength(0);
+    expect(screen.getByRole('combobox')).toBeInTheDocument();
+
+    const combobox = screen.getByRole('combobox');
+    fireEvent.mouseDown(combobox);
+
+    expect(screen.getByText('Not found')).toBeInTheDocument();
   });
 });

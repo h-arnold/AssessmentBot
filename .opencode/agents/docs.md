@@ -1,7 +1,7 @@
 ---
 description: Keeps project documentation accurate, current, and aligned with actual code behaviour
 mode: all
-model: mimo-2.5-free
+model: opencode/deepseek-v4-flash-free
 steps: 100
 ---
 

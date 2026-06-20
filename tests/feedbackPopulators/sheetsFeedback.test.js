@@ -61,18 +61,9 @@ describe('SheetsFeedback', () => {
       expect(format.backgroundColor.alpha).toBe(1);
     });
 
-    it('returns white background for unknown status', () => {
+    it.each([['unknown'], ['']])('returns white background for %s status', (status) => {
       const feedback = new SheetsFeedback([]);
-      const format = feedback.getFormatForStatus('unknown');
-      expect(format.backgroundColor.red).toBe(1);
-      expect(format.backgroundColor.green).toBe(1);
-      expect(format.backgroundColor.blue).toBe(1);
-      expect(format.backgroundColor.alpha).toBe(1);
-    });
-
-    it('returns white background for empty status', () => {
-      const feedback = new SheetsFeedback([]);
-      const format = feedback.getFormatForStatus('');
+      const format = feedback.getFormatForStatus(status);
       expect(format.backgroundColor.red).toBe(1);
       expect(format.backgroundColor.green).toBe(1);
       expect(format.backgroundColor.blue).toBe(1);

@@ -18,6 +18,7 @@ import {
   createMultipleAssignments,
   verifyDatabaseWrite,
   setupAssignmentControllerTest,
+  runPersistScenario,
 } from '../helpers/controllerTestHelpers.js';
 
 let ABClassController, ABClass, Assignment;
@@ -84,16 +85,13 @@ describe('ABClassController Persist Assignment', () => {
 
   describe('persistAssignmentRun()', () => {
     it('serializes assignment to full payload and writes to dedicated collection', () => {
-      const controller = new ABClassController();
-      const { abClass, assignment } = createTestFixture({
+      const { controller, abClass, assignment } = runPersistScenario({
         ABClass,
+        ABClassController,
         courseId: 'course-persist',
         assignmentId: 'assign-persist',
         includeTask: true,
       });
-
-      // RED: Method doesn't exist yet
-      assertMethodExists(controller, 'persistAssignmentRun');
 
       controller.persistAssignmentRun(abClass, assignment);
 
@@ -114,9 +112,9 @@ describe('ABClassController Persist Assignment', () => {
     });
 
     it('generates partial summary via toPartialJSON()', () => {
-      const controller = new ABClassController();
-      const { abClass, assignment } = createTestFixture({
+      const { controller, abClass, assignment } = runPersistScenario({
         ABClass,
+        ABClassController,
         courseId: 'course-partial',
         assignmentId: 'assign-partial',
         includeTask: true,
@@ -126,9 +124,6 @@ describe('ABClassController Persist Assignment', () => {
       // Mock toPartialJSON to track invocation
       const toPartialJSONSpy = vi.spyOn(assignment, 'toPartialJSON');
 
-      // RED: Method doesn't exist yet
-      assertMethodExists(controller, 'persistAssignmentRun');
-
       controller.persistAssignmentRun(abClass, assignment);
 
       // Should call toPartialJSON to generate summary
@@ -136,15 +131,12 @@ describe('ABClassController Persist Assignment', () => {
     });
 
     it('reconstructs partial instance via Assignment.fromJSON()', () => {
-      const controller = new ABClassController();
-      const { abClass, assignment } = createTestFixture({
+      const { controller, abClass, assignment } = runPersistScenario({
         ABClass,
+        ABClassController,
         courseId: 'course-recon',
         assignmentId: 'assign-recon',
       });
-
-      // RED: Method doesn't exist yet
-      assertMethodExists(controller, 'persistAssignmentRun');
 
       controller.persistAssignmentRun(abClass, assignment);
 
@@ -207,15 +199,12 @@ describe('ABClassController Persist Assignment', () => {
     });
 
     it('logs all persistence operations via ABLogger', () => {
-      const controller = new ABClassController();
-      const { abClass, assignment } = createTestFixture({
+      const { controller, abClass, assignment } = runPersistScenario({
         ABClass,
+        ABClassController,
         courseId: 'course-log',
         assignmentId: 'assign-log',
       });
-
-      // RED: Method doesn't exist yet
-      assertMethodExists(controller, 'persistAssignmentRun');
 
       controller.persistAssignmentRun(abClass, assignment);
 
@@ -249,9 +238,9 @@ describe('ABClassController Persist Assignment', () => {
     });
 
     it('sets hydration markers on full and partial instances', () => {
-      const controller = new ABClassController();
-      const { abClass, assignment } = createTestFixture({
+      const { controller, abClass, assignment } = runPersistScenario({
         ABClass,
+        ABClassController,
         courseId: 'course-hydration-flags',
         assignmentId: 'assign-hydration-flags',
       });
@@ -291,15 +280,12 @@ describe('ABClassController Persist Assignment', () => {
     });
 
     it('supports both replaceOne and insertOne patterns for persistence', () => {
-      const controller = new ABClassController();
-      const { abClass, assignment } = createTestFixture({
+      const { controller, abClass, assignment } = runPersistScenario({
         ABClass,
+        ABClassController,
         courseId: 'course-upsert',
         assignmentId: 'assign-upsert',
       });
-
-      // RED: Method doesn't exist yet
-      assertMethodExists(controller, 'persistAssignmentRun');
 
       controller.persistAssignmentRun(abClass, assignment);
 
@@ -309,16 +295,13 @@ describe('ABClassController Persist Assignment', () => {
     });
 
     it('persists correct documentType in full assignment collection', () => {
-      const controller = new ABClassController();
-      const { abClass, assignment } = createTestFixture({
+      const { controller, abClass, assignment } = runPersistScenario({
         ABClass,
+        ABClassController,
         courseId: 'course-doctype',
         assignmentId: 'assign-doctype',
         documentType: 'SHEETS',
       });
-
-      // RED: Method doesn't exist yet
-      assertMethodExists(controller, 'persistAssignmentRun');
 
       controller.persistAssignmentRun(abClass, assignment);
 

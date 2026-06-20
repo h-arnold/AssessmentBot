@@ -317,31 +317,48 @@ export async function clickLink(dialog: HTMLElement): Promise<void> {
 }
 
 /**
- * Clicks a Radio row in the linkable-definition picker at the given index.
+ * Selects an option in the linkable-definition Select combobox at the given index.
  * Must be called after the picker is visible (after `clickLinkToExisting`).
  *
  * @remarks
- * Use this helper after `clickLinkToExisting` has opened the picker. Selects
- * the row at the given index (defaults to 0) to set `selectedDefinitionForLink`
- * and enable the Link button. Throws with a helpful message if the index is
- * out of bounds.
+ * Use this helper after `clickLinkToExisting` has opened the picker. Opens the
+ * linkable-definition Select dropdown (the only combobox visible in the linking
+ * state — the assignment Select is hidden during choice/linking) and clicks the
+ * option at the given index (defaults to 0) to set `selectedDefinitionForLink`
+ * and enable the Link button. Throws with a helpful message if no combobox is
+ * found or if the index is out of bounds.
  *
  * @param {HTMLElement} dialog The modal dialog element.
- * @param {number} [index=0] The index of the radio to click.
- * @returns {Promise<void>} Resolves when the radio has been clicked.
+ * @param {number} [index=0] The index of the option to click.
+ * @returns {Promise<void>} Resolves when the option has been clicked.
  */
 export async function pickLinkableDefinition(
   dialog: HTMLElement,
   index: number = 0
 ): Promise<void> {
-  const radios = await within(dialog).findAllByRole('radio');
-  if (index >= radios.length || index < 0) {
+  // In the linking state the assignment Select is hidden, so only the
+  // linkable-definition Select combobox is visible in the dialog.
+  const comboboxes = within(dialog).getAllByRole('combobox');
+  if (comboboxes.length === 0) {
     throw new Error(
-      `pickLinkableDefinition: index ${index} out of bounds (found ${radios.length} radio buttons)`
+      `pickLinkableDefinition: expected at least 1 combobox (linkable), found 0`
     );
   }
-  // eslint-disable-next-line security/detect-object-injection -- Array index access, not object property
-  fireEvent.click(radios[index]);
+  const linkableCombobox = comboboxes[0];
+  fireEvent.mouseDown(linkableCombobox);
+  const options = await screen.findAllByRole('option');
+  if (index >= options.length || index < 0) {
+    throw new Error(
+      `pickLinkableDefinition: index ${index} out of bounds (found ${options.length} options)`
+    );
+  }
+  const option = options.at(index);
+  if (option === undefined) {
+    throw new Error(
+      `pickLinkableDefinition: option at index ${index} is undefined (found ${options.length} options)`
+    );
+  }
+  fireEvent.click(option);
 }
 
 /**
