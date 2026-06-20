@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import {
   installRuntimeMock,
   releaseNextDeferredSuccess,
@@ -511,6 +511,38 @@ test.describe('Assess Task modal', () => {
       updatedAt: '2025-02-15T00:00:00.000Z',
     };
 
+    const THREE_PARTIALS_ENTRY = {
+      kind: 'success' as const,
+      data: [POETRY_ANALYSIS_PARTIAL, ALGEBRA_HW_PARTIAL, ALGEBRA_HOMEWORK_PARTIAL],
+    };
+
+    /**
+     * Opens the link picker dropdown with the three-partial entry and filters by
+     * "Algebra". Shared setup for search-related tests — verifies initial all-three
+     * visibility, the filter action, and the filtered state, then returns the
+     * search input for further test-specific assertions.
+     * @param {Page} page - Playwright page under test
+     * @returns {{ searchInput: import('@playwright/test').Locator }} The search input locator for further test-specific interactions
+     */
+    async function setupPickerSearch(page: Page) {
+      const { searchInput } = await openLinkPickerDropdown({
+        page,
+        linkablePartialsEntry: THREE_PARTIALS_ENTRY,
+      });
+
+      await expect(page.getByText('Algebra HW', { exact: true })).toBeVisible();
+      await expect(page.getByText('Poetry Analysis', { exact: true })).toBeVisible();
+      await expect(page.getByText('Algebra Homework Original', { exact: true })).toBeVisible();
+
+      await searchInput.fill('Algebra');
+
+      await expect(page.getByText('Algebra HW', { exact: true })).toBeVisible();
+      await expect(page.getByText('Algebra Homework Original', { exact: true })).toBeVisible();
+      await expect(page.getByText('Poetry Analysis', { exact: true })).toHaveCount(0);
+
+      return { searchInput };
+    }
+
     test('"Link to Existing Definition" button is enabled when a linkable definition exists', async ({
       page,
     }) => {
@@ -918,51 +950,11 @@ test.describe('Assess Task modal', () => {
     });
 
     test('link picker search filters options by title', async ({ page }) => {
-      const THREE_PARTIALS_ENTRY = {
-        kind: 'success' as const,
-        data: [POETRY_ANALYSIS_PARTIAL, ALGEBRA_HW_PARTIAL, ALGEBRA_HOMEWORK_PARTIAL],
-      };
-
-      const { searchInput } = await openLinkPickerDropdown({
-        page,
-        linkablePartialsEntry: THREE_PARTIALS_ENTRY,
-      });
-
-      await expect(page.getByText('Algebra HW', { exact: true })).toBeVisible();
-      await expect(page.getByText('Poetry Analysis', { exact: true })).toBeVisible();
-      await expect(page.getByText('Algebra Homework Original', { exact: true })).toBeVisible();
-
-      // Type in the search input to filter by title
-      await searchInput.fill('Algebra');
-
-      // The two algebra options remain; Poetry Analysis is filtered out
-      await expect(page.getByText('Algebra HW', { exact: true })).toBeVisible();
-      await expect(page.getByText('Algebra Homework Original', { exact: true })).toBeVisible();
-      await expect(page.getByText('Poetry Analysis', { exact: true })).toHaveCount(0);
+      await setupPickerSearch(page);
     });
 
     test('link picker search clearing restores all options', async ({ page }) => {
-      const THREE_PARTIALS_ENTRY = {
-        kind: 'success' as const,
-        data: [POETRY_ANALYSIS_PARTIAL, ALGEBRA_HW_PARTIAL, ALGEBRA_HOMEWORK_PARTIAL],
-      };
-
-      const { searchInput } = await openLinkPickerDropdown({
-        page,
-        linkablePartialsEntry: THREE_PARTIALS_ENTRY,
-      });
-
-      await expect(page.getByText('Algebra HW', { exact: true })).toBeVisible();
-      await expect(page.getByText('Poetry Analysis', { exact: true })).toBeVisible();
-      await expect(page.getByText('Algebra Homework Original', { exact: true })).toBeVisible();
-
-      // Type in the search input to filter by title
-      await searchInput.fill('Algebra');
-
-      // Only the two algebra options remain; Poetry Analysis is filtered out
-      await expect(page.getByText('Algebra HW', { exact: true })).toBeVisible();
-      await expect(page.getByText('Algebra Homework Original', { exact: true })).toBeVisible();
-      await expect(page.getByText('Poetry Analysis', { exact: true })).toHaveCount(0);
+      const { searchInput } = await setupPickerSearch(page);
 
       // Clear the search input
       await searchInput.clear();
