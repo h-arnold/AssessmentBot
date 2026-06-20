@@ -171,3 +171,29 @@ Internally calls `createTestFixture` + `assertMethodExists(controller, 'persistA
 **Production code touched:** none. `src/backend/**` and `src/frontend/**` are untouched.
 
 **No new files** (excluding the plan file itself, which lives at the repo root and is untracked until the orchestrator stages it).
+
+## 11. Follow-up: file split (resolves `max-lines` warning after Prettier)
+
+After Prettier ran during the pre-commit hook of the initial commit (`11ee4a0`), long object literals in the parser test were broken across multiple lines, moving the file from 496 to 528 lines and bringing back the `max-lines` warning. The user requested a structural split into two files to resolve it.
+
+**Actions (delegated to Testing Specialist, then Code Reviewer):**
+
+- Created `tests/parsers/slidesParserMatchingAndDocumentIds.test.js` (313 lines, 10 tests) — the SlidesParser section verbatim with its own imports, setup/teardown, helpers (`buildSlidesParserHarness`, `createShapeElement`, `createTableElement`, `createTaggedElement`, `createSlide`).
+- Created `tests/parsers/sheetsParserMatchingAndDocumentIds.test.js` (219 lines, 19 tests including 1 `it.each` with 3 cases) — the SheetsParser section verbatim with its own setup/teardown, `buildSheetsParserHarness`, and `SpreadsheetApp` / `TaskSheet` mocks.
+- Deleted `tests/parsers/parserMatchingAndDocumentIds.test.js`.
+- **No shared helper extracted** — KISS. The two sections had no genuinely shared logic (different `refDocId` constants, different mock setup, different helper functions). Self-contained files chosen.
+
+**Verification after split:**
+
+- Lint: **15 warnings** (down from 16 baseline) — the `max-lines` warning on the old file is fully removed; neither new file triggers it.
+- Tests: 1870/1870 backend tests pass (117 test files; one more file than before due to the split). 10 + 19 = 29 tests preserved exactly across the two new files.
+- Pre-commit hook: Prettier clean; ESLint reports 0 errors; TypeScript build passes.
+- Regression-checker: **Regressions 0, New Failures 0, Fixes 1** (the `max-lines` warning on the old file is gone).
+- Code Reviewer: **CLEAN**. All test names preserved, no assertions weakened, no production code touched.
+
+**Final state:**
+
+- All three SonarQube duplication hotspots (rehydrate 22.7%, sheetsFeedback 8.1%, parserMatchingAndDocumentIds 4.5%) addressed in working tree.
+- Pre-existing `max-lines` warning on the parser test is fully removed (was on a 624-line file that is now two sub-500-line files).
+- Pre-commit hook passes; CI lint behaviour matches baseline (15 warnings, all pre-existing on files outside this work's scope).
+- Branch `opencode/curious-cabin` is 1 commit ahead of `origin/opencode/curious-cabin` (commit 11ee4a0). Not pushed.
