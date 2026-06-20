@@ -44,6 +44,14 @@ describe('Parser matching and document ID propagation', () => {
       getPageElements: vi.fn(() => elements),
     });
 
+    function buildSlidesParserHarness(slidesByDocId) {
+      globalThis.SlidesApp.openById = vi.fn((id) => {
+        const val = slidesByDocId[id];
+        return { getSlides: typeof val === 'function' ? val : () => val || [] };
+      });
+      return new SlidesParser();
+    }
+
     beforeAll(async () => {
       const documentParserModule =
         await import('../../src/backend/DocumentParsers/DocumentParser.js');
@@ -93,14 +101,7 @@ describe('Parser matching and document ID propagation', () => {
     it('sets documentId for reference and template artifacts', () => {
       const refSlide = createSlide('page-1', [createShapeElement('# Task 1', 'Ref text')]);
       const tplSlide = createSlide('page-1', [createShapeElement('# Task 1', 'Tpl text')]);
-
-      globalThis.SlidesApp.openById = vi.fn((id) => {
-        if (id === refDocId) return { getSlides: () => [refSlide] };
-        if (id === tplDocId) return { getSlides: () => [tplSlide] };
-        return { getSlides: () => [] };
-      });
-
-      const parser = new SlidesParser();
+      const parser = buildSlidesParserHarness({ [refDocId]: [refSlide], [tplDocId]: [tplSlide] });
       const defs = parser.extractTaskDefinitions(refDocId, tplDocId);
       const [def] = defs;
       const refArtifact = def.getPrimaryReference();
@@ -115,14 +116,7 @@ describe('Parser matching and document ID propagation', () => {
       const templatePageId = 'tpl-page-2';
       const refSlide = createSlide(referencePageId, [createShapeElement('# Task 1', 'Ref text')]);
       const tplSlide = createSlide(templatePageId, [createShapeElement('# Task 1', 'Tpl text')]);
-
-      globalThis.SlidesApp.openById = vi.fn((id) => {
-        if (id === refDocId) return { getSlides: () => [refSlide] };
-        if (id === tplDocId) return { getSlides: () => [tplSlide] };
-        return { getSlides: () => [] };
-      });
-
-      const parser = new SlidesParser();
+      const parser = buildSlidesParserHarness({ [refDocId]: [refSlide], [tplDocId]: [tplSlide] });
       const defs = parser.extractTaskDefinitions(refDocId, tplDocId);
 
       expect(defs).toHaveLength(1);
@@ -143,13 +137,7 @@ describe('Parser matching and document ID propagation', () => {
         createSlide(definitionPageId, [createShapeElement('# Task 1', 'Ref text')]),
         createSlide(notesPageId, [createShapeElement('^ Task 1', 'Notes for Task 1')]),
       ];
-
-      globalThis.SlidesApp.openById = vi.fn((id) => {
-        if (id === refDocId) return { getSlides: () => refSlides };
-        return { getSlides: () => [] };
-      });
-
-      const parser = new SlidesParser();
+      const parser = buildSlidesParserHarness({ [refDocId]: refSlides });
       const defs = parser.extractTaskDefinitions(refDocId);
 
       expect(defs).toHaveLength(1);
@@ -162,15 +150,11 @@ describe('Parser matching and document ID propagation', () => {
       const refSlide = createSlide('page-1', [createShapeElement('# Task 1', 'Ref text')]);
       const tplSlide = createSlide('page-1', [createShapeElement('# Task 1', 'Tpl text')]);
       const studentSlide = createSlide('page-1', [createShapeElement('# Task 1', 'Student text')]);
-
-      globalThis.SlidesApp.openById = vi.fn((id) => {
-        if (id === refDocId) return { getSlides: () => [refSlide] };
-        if (id === tplDocId) return { getSlides: () => [tplSlide] };
-        if (id === studentDocId) return { getSlides: () => [studentSlide] };
-        return { getSlides: () => [] };
+      const parser = buildSlidesParserHarness({
+        [refDocId]: [refSlide],
+        [tplDocId]: [tplSlide],
+        [studentDocId]: [studentSlide],
       });
-
-      const parser = new SlidesParser();
       const defs = parser.extractTaskDefinitions(refDocId, tplDocId);
       const artifacts = parser.extractSubmissionArtifacts(studentDocId, defs);
 
@@ -185,15 +169,11 @@ describe('Parser matching and document ID propagation', () => {
         createSlide('student-page-other', [createShapeElement('# Task 2', 'Other task')]),
         createSlide('student-page-99', [createShapeElement('# Task 1', 'Student text')]),
       ];
-
-      globalThis.SlidesApp.openById = vi.fn((id) => {
-        if (id === refDocId) return { getSlides: () => [refSlide] };
-        if (id === tplDocId) return { getSlides: () => [tplSlide] };
-        if (id === studentDocId) return { getSlides: () => studentSlides };
-        return { getSlides: () => [] };
+      const parser = buildSlidesParserHarness({
+        [refDocId]: [refSlide],
+        [tplDocId]: [tplSlide],
+        [studentDocId]: studentSlides,
       });
-
-      const parser = new SlidesParser();
       const defs = parser.extractTaskDefinitions(refDocId, tplDocId);
       const artifacts = parser.extractSubmissionArtifacts(studentDocId, defs);
 
@@ -214,14 +194,10 @@ describe('Parser matching and document ID propagation', () => {
       const studentSlide = createSlide('student-table-page', [
         createTableElement('Task Table', [['Student value']]),
       ]);
-
-      globalThis.SlidesApp.openById = vi.fn((id) => {
-        if (id === refDocId) return { getSlides: () => [refSlide] };
-        if (id === studentDocId) return { getSlides: () => [studentSlide] };
-        return { getSlides: () => [] };
+      const parser = buildSlidesParserHarness({
+        [refDocId]: [refSlide],
+        [studentDocId]: [studentSlide],
       });
-
-      const parser = new SlidesParser();
       const defs = parser.extractTaskDefinitions(refDocId);
       const artifacts = parser.extractSubmissionArtifacts(studentDocId, defs);
 
@@ -243,22 +219,14 @@ describe('Parser matching and document ID propagation', () => {
         createTableElement('# Task Table', [['Reference value']]),
       ]);
       let studentTaskId = null;
-
-      globalThis.SlidesApp.openById = vi.fn((id) => {
-        if (id === refDocId) return { getSlides: () => [refSlide] };
-        if (id === studentDocId) {
-          return {
-            getSlides: () => [
-              createSlide('student-table-page', [
-                createTableElement(studentTaskId, [['Student value by id']]),
-              ]),
-            ],
-          };
-        }
-        return { getSlides: () => [] };
+      const parser = buildSlidesParserHarness({
+        [refDocId]: [refSlide],
+        [studentDocId]: () => [
+          createSlide('student-table-page', [
+            createTableElement(studentTaskId, [['Student value by id']]),
+          ]),
+        ],
       });
-
-      const parser = new SlidesParser();
       const defs = parser.extractTaskDefinitions(refDocId);
       studentTaskId = defs[0].getId();
       const artifacts = parser.extractSubmissionArtifacts(studentDocId, defs);
@@ -281,14 +249,10 @@ describe('Parser matching and document ID propagation', () => {
         createSlide('student-image-other', [createTaggedElement('| Task 2')]),
         createSlide('student-image-page', [createTaggedElement('| Task 1')]),
       ];
-
-      globalThis.SlidesApp.openById = vi.fn((id) => {
-        if (id === refDocId) return { getSlides: () => [refSlide] };
-        if (id === studentDocId) return { getSlides: () => studentSlides };
-        return { getSlides: () => [] };
+      const parser = buildSlidesParserHarness({
+        [refDocId]: [refSlide],
+        [studentDocId]: studentSlides,
       });
-
-      const parser = new SlidesParser();
       const defs = parser.extractTaskDefinitions(refDocId);
       const artifacts = parser.extractSubmissionArtifacts(studentDocId, defs);
 
@@ -311,21 +275,13 @@ describe('Parser matching and document ID propagation', () => {
     it('does not extract image submissions when the student description is only the stable task id without an image tag', () => {
       const refSlide = createSlide('ref-image-page', [createTaggedElement('~ Task 1')]);
       let studentTaskId = null;
-
-      globalThis.SlidesApp.openById = vi.fn((id) => {
-        if (id === refDocId) return { getSlides: () => [refSlide] };
-        if (id === studentDocId) {
-          return {
-            getSlides: () => [
-              createSlide('student-image-other', [createTaggedElement('Task 2')]),
-              createSlide('student-image-page-by-id', [createTaggedElement(studentTaskId)]),
-            ],
-          };
-        }
-        return { getSlides: () => [] };
+      const parser = buildSlidesParserHarness({
+        [refDocId]: [refSlide],
+        [studentDocId]: () => [
+          createSlide('student-image-other', [createTaggedElement('Task 2')]),
+          createSlide('student-image-page-by-id', [createTaggedElement(studentTaskId)]),
+        ],
       });
-
-      const parser = new SlidesParser();
       const defs = parser.extractTaskDefinitions(refDocId);
       studentTaskId = defs[0].getId();
       const artifacts = parser.extractSubmissionArtifacts(studentDocId, defs);
@@ -347,14 +303,7 @@ describe('Parser matching and document ID propagation', () => {
     it('does not create task definitions from untagged plain titles in reference or template slides', () => {
       const refSlide = createSlide('ref-plain-page', [createShapeElement('Task 1', 'Ref text')]);
       const tplSlide = createSlide('tpl-plain-page', [createShapeElement('Task 1', 'Tpl text')]);
-
-      globalThis.SlidesApp.openById = vi.fn((id) => {
-        if (id === refDocId) return { getSlides: () => [refSlide] };
-        if (id === tplDocId) return { getSlides: () => [tplSlide] };
-        return { getSlides: () => [] };
-      });
-
-      const parser = new SlidesParser();
+      const parser = buildSlidesParserHarness({ [refDocId]: [refSlide], [tplDocId]: [tplSlide] });
       const defs = parser.extractTaskDefinitions(refDocId, tplDocId);
 
       expect(defs).toHaveLength(0);
@@ -367,6 +316,7 @@ describe('Parser matching and document ID propagation', () => {
     const tplDocId = 'sheet-tpl-2';
     const studentDocId = 'sheet-student-3';
     let SheetsParser;
+    let parser;
 
     beforeAll(async () => {
       const documentParserModule =
@@ -406,6 +356,7 @@ describe('Parser matching and document ID propagation', () => {
           return [['=STUDENT']];
         }
       };
+      parser = new SheetsParser();
     });
 
     afterEach(() => {
@@ -414,63 +365,37 @@ describe('Parser matching and document ID propagation', () => {
       delete globalThis.ABLogger;
     });
 
-    const boundingBox = {
-      startRow: 1,
-      startColumn: 1,
-      endRow: 1,
-      endColumn: 1,
-      numRows: 1,
-      numColumns: 1,
-    };
-
-    it('sets documentId for reference and template spreadsheet artifacts', () => {
+    function buildSheetsParserHarness() {
       const parser = new SheetsParser();
       parser.processAndCompareSheets = vi.fn(() => ({
         SheetOne: {
           sheetId: 11,
-          formulas: [
-            {
-              referenceFormula: '=A1',
-              location: [0, 0],
-            },
-          ],
-          boundingBox,
+          formulas: [{ referenceFormula: '=A1', location: [0, 0] }],
+          boundingBox: {
+            startRow: 1,
+            startColumn: 1,
+            endRow: 1,
+            endColumn: 1,
+            numRows: 1,
+            numColumns: 1,
+          },
         },
       }));
+      return parser;
+    }
 
-      const defs = parser.extractTaskDefinitions(refDocId, tplDocId);
-      const [def] = defs;
-      const refArtifact = def.getPrimaryReference();
-      const tplArtifact = def.getPrimaryTemplate();
+    it('sets documentId on reference, template and submission artifacts', () => {
+      const p = buildSheetsParserHarness();
+      const defs = p.extractTaskDefinitions(refDocId, tplDocId);
+      const artifacts = p.extractSubmissionArtifacts(studentDocId, defs);
 
-      expect(refArtifact.documentId).toBe(refDocId);
-      expect(tplArtifact.documentId).toBe(tplDocId);
-    });
-
-    it('sets documentId on spreadsheet submission artifacts', () => {
-      const parser = new SheetsParser();
-      parser.processAndCompareSheets = vi.fn(() => ({
-        SheetOne: {
-          sheetId: 11,
-          formulas: [
-            {
-              referenceFormula: '=A1',
-              location: [0, 0],
-            },
-          ],
-          boundingBox,
-        },
-      }));
-
-      const defs = parser.extractTaskDefinitions(refDocId, tplDocId);
-      const artifacts = parser.extractSubmissionArtifacts(studentDocId, defs);
-
+      expect(defs[0].getPrimaryReference().documentId).toBe(refDocId);
+      expect(defs[0].getPrimaryTemplate().documentId).toBe(tplDocId);
       expect(artifacts).toHaveLength(1);
       expect(artifacts[0].documentId).toBe(studentDocId);
     });
 
     it('keeps raw reference formulas unchanged when building referenceFormula entries', () => {
-      const parser = new SheetsParser();
       const rawReferenceFormula = '=sum( \'Challenge 6\'!c11, "Mi xed" )';
 
       const differences = parser._compareFormulaArrays([[rawReferenceFormula]], [['=DIFFERENT']]);
@@ -485,7 +410,6 @@ describe('Parser matching and document ID propagation', () => {
 
     describe('_createReferenceLocationsMap', () => {
       it('creates a map from formula locations to indices', () => {
-        const parser = new SheetsParser();
         const formulas = [{ location: [0, 0] }, { location: [1, 2] }, { location: [3, 4] }];
         const map = parser._createReferenceLocationsMap(formulas);
         expect(map).toEqual({
@@ -496,13 +420,11 @@ describe('Parser matching and document ID propagation', () => {
       });
 
       it('handles single formula entry', () => {
-        const parser = new SheetsParser();
         const map = parser._createReferenceLocationsMap([{ location: [5, 10] }]);
         expect(map).toEqual({ '5,10': 0 });
       });
 
       it('overwrites duplicate locations with last index', () => {
-        const parser = new SheetsParser();
         const formulas = [{ location: [0, 0] }, { location: [0, 0] }, { location: [1, 1] }];
         const map = parser._createReferenceLocationsMap(formulas);
         expect(map['0,0']).toBe(1); // last index wins
@@ -510,7 +432,6 @@ describe('Parser matching and document ID propagation', () => {
       });
 
       it('handles empty formulas array', () => {
-        const parser = new SheetsParser();
         const map = parser._createReferenceLocationsMap([]);
         expect(map).toEqual({});
       });
@@ -518,7 +439,6 @@ describe('Parser matching and document ID propagation', () => {
 
     describe('_compareFormulaArrays', () => {
       it('returns empty array for identical formula arrays', () => {
-        const parser = new SheetsParser();
         const result = parser._compareFormulaArrays(
           [['=A1', '=B1'], ['=A2']],
           [['=A1', '=B1'], ['=A2']]
@@ -527,55 +447,42 @@ describe('Parser matching and document ID propagation', () => {
       });
 
       it('detects differences between reference and template arrays', () => {
-        const parser = new SheetsParser();
         const result = parser._compareFormulaArrays([['=A1', '=B1']], [['=A1', '=DIFFERENT']]);
         expect(result).toEqual([{ referenceFormula: '=B1', location: [0, 1] }]);
       });
 
       it('handles template array with fewer rows', () => {
-        const parser = new SheetsParser();
         const result = parser._compareFormulaArrays([['=A1'], ['=B1']], [['=A1']]);
         expect(result).toEqual([{ referenceFormula: '=B1', location: [1, 0] }]);
       });
 
       it('handles empty reference arrays', () => {
-        const parser = new SheetsParser();
         const result = parser._compareFormulaArrays([], [['=A1']]);
         expect(result).toEqual([]);
       });
 
       it('handles reference with empty formula cells', () => {
-        const parser = new SheetsParser();
         const result = parser._compareFormulaArrays([['', '=A1']], [['', '=A1']]);
         // Empty strings in reference are skipped
         expect(result).toEqual([]);
       });
 
       it('reports differences when template has shorter row', () => {
-        const parser = new SheetsParser();
         const result = parser._compareFormulaArrays([['=A1', '=B1', '=C1']], [['=A1', '=B1']]);
         expect(result).toEqual([{ referenceFormula: '=C1', location: [0, 2] }]);
       });
     });
 
     describe('_calculateBoundingBox', () => {
-      it('returns null for empty differences array', () => {
-        const parser = new SheetsParser();
-        expect(parser._calculateBoundingBox([])).toBeNull();
-      });
-
-      it('returns null for null input', () => {
-        const parser = new SheetsParser();
-        expect(parser._calculateBoundingBox(null)).toBeNull();
-      });
-
-      it('returns null for undefined input', () => {
-        const parser = new SheetsParser();
-        expect(parser._calculateBoundingBox(undefined)).toBeNull();
+      it.each([
+        ['empty array', []],
+        ['null', null],
+        ['undefined', undefined],
+      ])('returns null for %s input', (_, input) => {
+        expect(parser._calculateBoundingBox(input)).toBeNull();
       });
 
       it('calculates bounding box for single cell', () => {
-        const parser = new SheetsParser();
         const bbox = parser._calculateBoundingBox([{ location: [0, 0] }]);
         expect(bbox).toEqual({
           startRow: 1,
@@ -588,7 +495,6 @@ describe('Parser matching and document ID propagation', () => {
       });
 
       it('calculates bounding box for multiple cells', () => {
-        const parser = new SheetsParser();
         const bbox = parser._calculateBoundingBox([{ location: [1, 2] }, { location: [4, 6] }]);
         expect(bbox).toEqual({
           startRow: 2,
@@ -601,7 +507,6 @@ describe('Parser matching and document ID propagation', () => {
       });
 
       it('uses 1-based indexing for row and column', () => {
-        const parser = new SheetsParser();
         const bbox = parser._calculateBoundingBox([{ location: [0, 0] }, { location: [2, 3] }]);
         expect(bbox.startRow).toBe(1);
         expect(bbox.startColumn).toBe(1);
@@ -610,7 +515,6 @@ describe('Parser matching and document ID propagation', () => {
       });
 
       it('handles non-contiguous cells', () => {
-        const parser = new SheetsParser();
         const bbox = parser._calculateBoundingBox([
           { location: [0, 0] },
           { location: [0, 5] },

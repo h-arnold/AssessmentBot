@@ -169,6 +169,98 @@ export function verifyDatabaseWrite(mockCollection) {
 }
 
 /**
+ * Higher-order helper that performs the standard rehydrate-test setup and call.
+ * Returns the controller, fixture, and rehydrated assignment so the test can
+ * layer its specific assertions on top.
+ *
+ * Expected to be called after `setupAssignmentControllerTest(vi)` has populated
+ * `ctx.ABClass`, `ctx.Assignment`, `ctx.ABClassController` and `ctx.mockCollection`
+ * in the test's beforeEach.
+ *
+ * @param {Object}   options
+ * @param {Function} options.ABClass           - ABClass constructor
+ * @param {Function} options.Assignment        - Assignment constructor/factory
+ * @param {Function} options.ABClassController - ABClassController constructor
+ * @param {string}   options.courseId
+ * @param {string}   options.assignmentId
+ * @param {string}   [options.documentType='SLIDES']
+ * @param {boolean}  [options.includeTask=false]
+ * @param {boolean}  [options.includeSubmission=false]
+ * @param {Object}   options.mockCollection    - vi mock for the assignment collection
+ * @returns {{ controller: ABClassController, abClass, assignment, rehydrated }}
+ */
+export function runRehydrateScenario(options = {}) {
+  const {
+    ABClass,
+    Assignment,
+    ABClassController,
+    courseId,
+    assignmentId,
+    documentType = 'SLIDES',
+    includeTask = false,
+    includeSubmission = false,
+    mockCollection,
+  } = options;
+
+  const controller = new ABClassController();
+  const { abClass, assignment } = createTestFixture({
+    ABClass,
+    courseId,
+    assignmentId,
+    documentType,
+    includeTask,
+    includeSubmission,
+  });
+
+  setupRehydrationScenario({ abClass, assignment, Assignment, mockCollection });
+  assertMethodExists(controller, 'rehydrateAssignment');
+  const rehydrated = controller.rehydrateAssignment(abClass, assignmentId);
+
+  return { controller, abClass, assignment, rehydrated };
+}
+
+/**
+ * Higher-order helper that performs the standard persist-test setup up to the
+ * point of calling `controller.persistAssignmentRun(...)`. The call is left to
+ * the test because many cases vary the arguments or expect throws.
+ *
+ * @param {Object}   options
+ * @param {Function} options.ABClass           - ABClass constructor
+ * @param {Function} options.ABClassController - ABClassController constructor
+ * @param {string}   options.courseId
+ * @param {string}   options.assignmentId
+ * @param {string}   [options.documentType='SLIDES']
+ * @param {boolean}  [options.includeTask=false]
+ * @param {boolean}  [options.includeSubmission=false]
+ * @returns {{ controller: ABClassController, abClass, assignment }}
+ */
+export function runPersistScenario(options = {}) {
+  const {
+    ABClass,
+    ABClassController,
+    courseId,
+    assignmentId,
+    documentType = 'SLIDES',
+    includeTask = false,
+    includeSubmission = false,
+  } = options;
+
+  const controller = new ABClassController();
+  const { abClass, assignment } = createTestFixture({
+    ABClass,
+    courseId,
+    assignmentId,
+    documentType,
+    includeTask,
+    includeSubmission,
+  });
+
+  assertMethodExists(controller, 'persistAssignmentRun');
+
+  return { controller, abClass, assignment };
+}
+
+/**
  * Create error test scenario for missing/corrupt data
  * @param {Object} mockCollection - Mock collection to configure
  * @param {string} errorType - 'missing', 'empty', 'corrupt'
