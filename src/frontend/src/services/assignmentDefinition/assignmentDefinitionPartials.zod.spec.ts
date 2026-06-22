@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+type TaskPartialFixture = {
+  id: string;
+  taskWeighting: number;
+};
+
 type AssignmentDefinitionPartialFixture = {
   primaryTitle: string;
   primaryTopicKey: string;
@@ -13,7 +18,7 @@ type AssignmentDefinitionPartialFixture = {
   templateDocumentId: string | null;
   assignmentWeighting: number | null;
   definitionKey: string;
-  tasks: null;
+  tasks: TaskPartialFixture[];
   createdAt: string | null;
   updatedAt: string | null;
 };
@@ -33,7 +38,7 @@ const validAssignmentDefinitionPartialRow: AssignmentDefinitionPartialFixture = 
   templateDocumentId: 'tpl-doc-001',
   assignmentWeighting: null,
   definitionKey: 'algebra-baseline',
-  tasks: null,
+  tasks: [],
   createdAt: '2026-01-05T10:00:00.000Z',
   updatedAt: null,
 };
@@ -397,43 +402,63 @@ describe('assignmentDefinitionPartials.zod schemas', () => {
   });
 
   describe('tasks field backend-shape compatibility', () => {
-    it.each([
-      {
-        caseName: 'null',
-        tasks: null,
-      },
-      {
-        caseName: 'empty array',
-        tasks: [],
-      },
-      {
-        caseName: 'task-map object',
-        tasks: {
-          task_1: {
-            taskTitle: 'Solve equations',
-            taskWeighting: 1,
-          },
-        },
-      },
-      {
-        caseName: 'undefined',
-        tasks: undefined,
-      },
-    ])('normalises tasks as $caseName to null', async ({ tasks }) => {
+    it('accepts a partial with tasks as array of TaskPartial objects', async () => {
       const schemas = await loadAssignmentDefinitionPartialsSchemas();
       const assignmentDefinitionPartialSchema = asParserSchema(
         schemas.AssignmentDefinitionPartialSchema
       );
 
-      expect(
+      const result = assignmentDefinitionPartialSchema.parse({
+        ...validAssignmentDefinitionPartialRow,
+        tasks: [{ id: 't_abc123', taskWeighting: 2 }],
+      } as Record<string, unknown>);
+
+      expect(result).toHaveProperty('tasks');
+      expect((result as Record<string, unknown>).tasks).toEqual([
+        { id: 't_abc123', taskWeighting: 2 },
+      ]);
+    });
+
+    it('accepts a partial with tasks as empty array', async () => {
+      const schemas = await loadAssignmentDefinitionPartialsSchemas();
+      const assignmentDefinitionPartialSchema = asParserSchema(
+        schemas.AssignmentDefinitionPartialSchema
+      );
+
+      const result = assignmentDefinitionPartialSchema.parse({
+        ...validAssignmentDefinitionPartialRow,
+        tasks: [],
+      } as Record<string, unknown>);
+
+      expect((result as Record<string, unknown>).tasks).toEqual([]);
+    });
+
+    it('rejects a partial with tasks set to null', async () => {
+      const schemas = await loadAssignmentDefinitionPartialsSchemas();
+      const assignmentDefinitionPartialSchema = asParserSchema(
+        schemas.AssignmentDefinitionPartialSchema
+      );
+
+      expect(() =>
         assignmentDefinitionPartialSchema.parse({
           ...validAssignmentDefinitionPartialRow,
-          tasks,
+          tasks: null,
         })
-      ).toEqual({
-        ...validAssignmentDefinitionPartialRow,
-        tasks: null,
-      });
+      ).toThrow();
+    });
+
+    it('rejects a partial with extra fields in inner task objects', async () => {
+      const schemas = await loadAssignmentDefinitionPartialsSchemas();
+      const assignmentDefinitionPartialSchema = asParserSchema(
+        schemas.AssignmentDefinitionPartialSchema
+      );
+
+      expect(() =>
+        assignmentDefinitionPartialSchema.parse({
+          ...validAssignmentDefinitionPartialRow,
+          tasks: [{ id: 't_abc123', taskWeighting: 2, taskTitle: 'Extra' }],
+        } as Record<string, unknown>)
+      ).toThrow();
     });
 
     it.each([

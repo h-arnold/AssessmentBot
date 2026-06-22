@@ -63,7 +63,7 @@ const validAssignmentDefinitionPartial = {
   templateDocumentId: 'template-doc-456',
   assignmentWeighting: 1,
   definitionKey: 'algebra-baseline',
-  tasks: null,
+  tasks: [],
   createdAt: '2025-01-01T00:00:00.000Z',
   updatedAt: '2025-05-01T00:00:00.000Z',
 };
@@ -158,9 +158,9 @@ describe('AssignmentPartialSchema', () => {
     expect(item.artifact.taskId).toBe('task-1');
   });
 
-  it('accepts assignmentDefinition with tasks set to null', () => {
+  it('accepts assignmentDefinition with tasks as empty array', () => {
     const result = AssignmentPartialSchema.parse(validAssignmentPartial);
-    expect(result.assignmentDefinition.tasks).toBeNull();
+    expect(result.assignmentDefinition.tasks).toEqual([]);
     expect(result.assignmentDefinition.primaryTitle).toBe('Algebra Baseline');
   });
 
@@ -346,18 +346,13 @@ describe('BaseTaskArtifactPartialSchema', () => {
 });
 
 describe('AssignmentDefinitionPartialSchema', () => {
-  it('parses a valid assignment definition partial with tasks set to null', () => {
-    const result = AssignmentDefinitionPartialSchema.parse(validAssignmentDefinitionPartial);
-    expect(result.tasks).toBeNull();
-    expect(result.definitionKey).toBe('algebra-baseline');
-    expect(result.documentType).toBe('SLIDES');
-    expect(result.primaryTitle).toBe('Algebra Baseline');
-    expect(result.yearGroupLabel).toBe('Year 10');
-    expect(result.referenceDocumentId).toBe('ref-doc-123');
-    expect(result.templateDocumentId).toBe('template-doc-456');
-    expect(result.assignmentWeighting).toBe(1);
-    expect(result.createdAt).toBe('2025-01-01T00:00:00.000Z');
-    expect(result.updatedAt).toBe('2025-05-01T00:00:00.000Z');
+  it('rejects a partial with tasks set to null', () => {
+    expect(() =>
+      AssignmentDefinitionPartialSchema.parse({
+        ...validAssignmentDefinitionPartial,
+        tasks: null,
+      } as Record<string, unknown>)
+    ).toThrow();
   });
 
   it('rejects a definition missing primaryTitle', () => {
@@ -372,12 +367,22 @@ describe('AssignmentDefinitionPartialSchema', () => {
     expect(() => AssignmentDefinitionPartialSchema.parse(missing)).toThrow();
   });
 
-  it('accepts tasks as empty array (canonical schema normalises to null)', () => {
+  it('accepts a partial with tasks as empty array', () => {
     const result = AssignmentDefinitionPartialSchema.parse({
       ...validAssignmentDefinitionPartial,
       tasks: [],
-    });
-    expect(result.tasks).toBeNull();
+    } as Record<string, unknown>);
+    expect((result as Record<string, unknown>).tasks).toEqual([]);
+  });
+
+  it('accepts a partial with tasks as array of TaskPartial objects', () => {
+    const result = AssignmentDefinitionPartialSchema.parse({
+      ...validAssignmentDefinitionPartial,
+      tasks: [{ id: 't_abc123', taskWeighting: 2 }],
+    } as Record<string, unknown>);
+    expect((result as Record<string, unknown>).tasks).toEqual([
+      { id: 't_abc123', taskWeighting: 2 },
+    ]);
   });
 
   // REGRESSION: getABClass can return null for referenceDocumentId,

@@ -47,7 +47,7 @@ const validAssignmentDefinitionPartial = {
   templateDocumentId: 'template-doc-456',
   assignmentWeighting: 1,
   definitionKey: 'algebra-baseline',
-  tasks: null,
+  tasks: [],
   createdAt: '2025-01-01T00:00:00.000Z',
   updatedAt: '2025-05-01T00:00:00.000Z',
 };
@@ -117,7 +117,7 @@ describe('classDetailService.getABClass', () => {
       cohortKey: 'cohort-2025',
     });
     expect(result?.assignments).toHaveLength(1);
-    expect(result?.assignments[0].assignmentDefinition.tasks).toBeNull();
+    expect(result?.assignments[0].assignmentDefinition.tasks).toEqual([]);
   });
 
   it('returns null when the backend returns data: null', async () => {

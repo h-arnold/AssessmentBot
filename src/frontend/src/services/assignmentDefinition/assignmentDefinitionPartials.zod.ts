@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { TaskPartialSchema } from './taskPartial.zod';
 
 const TrimmedNonEmptyStringSchema = z
   .string()
@@ -167,10 +168,8 @@ export const IsoDateTimeWithTimezoneSchema = z.string().refine(isIsoDateTimeWith
 
 export const NullableIsoDateTimeWithTimezoneSchema = IsoDateTimeWithTimezoneSchema.nullable();
 
-const AssignmentDefinitionPartialTasksSchema = z
-  .union([z.null(), z.array(z.unknown()), z.record(z.string(), z.unknown())])
-  .optional()
-  .transform(() => null);
+/** @remarks Array of `TaskPartial` — no transition union required (atomic deployment). */
+const AssignmentDefinitionPartialTasksSchema = z.array(TaskPartialSchema);
 
 const SafeDeleteDefinitionKeySchema = TrimmedNonEmptyStringSchema.refine(
   (value) => {

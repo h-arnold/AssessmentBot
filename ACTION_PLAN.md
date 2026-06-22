@@ -492,8 +492,13 @@ Frontend tests (updated existing files):
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** to be filled during implementation.
-- **Deviations from plan:** none expected.
+- **Implementation notes:**
+  - Created `taskPartial.zod.ts` with `TaskPartialSchema` (`.strictObject({ id: z.string().min(1), taskWeighting: z.number() })`) and inferred `TaskPartial` type. Added `@remarks` JSDoc per plan.
+  - Replaced `AssignmentDefinitionPartialTasksSchema` transform-to-null union in `assignmentDefinitionPartials.zod.ts` with `z.array(TaskPartialSchema)`. Removed the now-unused helper schema. Added `@remarks` explaining atomic deployment rationale.
+  - Updated 9 test files where `tasks: null` fixtures/assertions changed to `tasks: []` or `tasks: [{ id, taskWeighting }]`: `assignmentDefinitionPartials.zod.spec.ts`, `assignmentDefinitionPartialsContract.guard.spec.ts`, `assignmentDefinitionPartialsService.spec.ts`, `classDetailService.zod.spec.ts`, `classDetailService.spec.ts`, `getLinkableDefinitionsForModal.spec.ts`, `AppAuthGate.auth.spec.tsx`, `matchDefinitionForAssignment.test-utilities.ts`.
+  - Verified zero production code references to `tasks === null` or `tasks: null` outside test files per plan requirement.
+  - Full frontend suite: 99 files, 1126 tests passed. Lint: zero warnings.
+- **Deviations from plan:** none.
 - **Follow-up implications for later sections:** Section 5 imports `TaskPartialSchema` from the new `taskPartial.zod.ts` file, plus `AssignmentDefinitionPartialsResponseSchema` and `IsoDateTimeWithTimezoneSchema` from the existing `assignmentDefinitionPartials.zod.ts`. No follow-up commit is required to remove a transition `z.null()` branch (none was added).
 
 ---

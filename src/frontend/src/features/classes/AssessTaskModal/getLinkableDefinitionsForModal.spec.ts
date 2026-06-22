@@ -26,7 +26,7 @@ function createPartial(
     templateDocumentId: 'tpl-001',
     assignmentWeighting: null,
     definitionKey: 'default-def-key',
-    tasks: null,
+    tasks: [],
     createdAt: DEFAULT_ISO_DATETIME,
     updatedAt: DEFAULT_ISO_DATETIME,
     ...overrides,
@@ -161,6 +161,22 @@ describe('getLinkableDefinitionsForModal', () => {
     // but never filtered out by score).
     expect(result).toHaveLength(1);
     expect(result[0]?.definitionKey).toBe('poetry');
+  });
+
+  it('passes null referenceDocumentId through when the partial has null (red-phase type gap)', () => {
+    const partialWithNullDocumentId = {
+      ...createPartial({}),
+      referenceDocumentId: null,
+    } as unknown as AssignmentDefinitionPartial;
+
+    const result = getLinkableDefinitionsForModal(
+      [partialWithNullDocumentId],
+      DEFAULT_CLASS_YEAR_GROUP_KEY,
+      DEFAULT_SELECTED_ASSIGNMENT
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].referenceDocumentId).toBeNull();
   });
 
   it('does not throw when partials have null primaryTitle or primaryTopic', () => {
