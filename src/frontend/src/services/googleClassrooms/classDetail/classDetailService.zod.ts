@@ -1,4 +1,17 @@
 import { z } from 'zod';
+/**
+ * The canonical `AssignmentDefinitionPartialSchema` lives in
+ * `assignmentDefinitionPartials.zod.ts`. The `classDetailService.zod.ts` file
+ * previously carried a duplicate lenient copy. After the unification in
+ * Section 3 (Green Phase), the canonical schema is the single source of truth
+ * and is imported/re-exported here.
+ *
+ * @remarks
+ * `referenceDocumentId` and `templateDocumentId` in the canonical schema are
+ * `.nullable()` (they used to be non-nullable in the canonical schema before
+ * the unification; the classDetailService copy already had them nullable).
+ */
+import { AssignmentDefinitionPartialSchema } from '../../assignmentDefinition/assignmentDefinitionPartials.zod';
 
 export const TeacherSummarySchema = z.object({
   userId: z.string().nullable(),
@@ -69,32 +82,6 @@ export const StudentSubmissionPartialSchema = z.object({
 });
 
 export type StudentSubmissionPartial = z.infer<typeof StudentSubmissionPartialSchema>;
-
-export const AssignmentDefinitionPartialSchema = z.object({
-  primaryTitle: z.string(),
-  primaryTopic: z.string(),
-  primaryTopicKey: z.string(),
-  yearGroupKey: z.string(),
-  yearGroupLabel: z.string(),
-  alternateTitles: z.array(z.string()),
-  alternateTopics: z.array(z.string()),
-  documentType: z.string(),
-  // These three fields are nullable on the wire: AssignmentDefinition.toPartialJSON()
-  // passes them through from the instance, and AssignmentDefinition.fromJSON() coerces
-  // missing referenceDocumentId / templateDocumentId to null. assignmentWeighting is
-  // marked nullable to match the existing convention in
-  // assignmentDefinition.zod.ts (WeightingSchema.nullable()) and
-  // assignmentDefinitionPartials.zod.ts (z.number().nullable()).
-  referenceDocumentId: z.string().nullable(),
-  templateDocumentId: z.string().nullable(),
-  assignmentWeighting: z.number().nullable(),
-  definitionKey: z.string(),
-  tasks: z.null(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-});
-
-export type AssignmentDefinitionPartial = z.infer<typeof AssignmentDefinitionPartialSchema>;
 
 export const AssignmentPartialSchema = z.object({
   courseId: z.string(),

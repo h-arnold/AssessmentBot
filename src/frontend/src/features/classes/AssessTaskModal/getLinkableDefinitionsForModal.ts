@@ -24,8 +24,8 @@ export type LinkableDefinition = {
   alternateTitles: string[];
   alternateTopics: string[];
   documentType: 'SLIDES' | 'SHEETS';
-  referenceDocumentId: string;
-  templateDocumentId: string;
+  referenceDocumentId: string | null;
+  templateDocumentId: string | null;
 };
 
 const SORT_NEWER_FIRST = -1;

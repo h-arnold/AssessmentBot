@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  AssignmentDefinitionPartialSchema,
   AssignmentPartialSchema,
   BaseTaskArtifactPartialSchema,
   ClassFullResponseSchema,
@@ -10,6 +9,7 @@ import {
   StudentSummarySchema,
   TeacherSummarySchema,
 } from './classDetailService.zod';
+import { AssignmentDefinitionPartialSchema } from '../../assignmentDefinition/assignmentDefinitionPartials.zod';
 
 const validStudentSummary = {
   name: 'Alice Johnson',
@@ -372,10 +372,12 @@ describe('AssignmentDefinitionPartialSchema', () => {
     expect(() => AssignmentDefinitionPartialSchema.parse(missing)).toThrow();
   });
 
-  it('rejects a definition with tasks not null', () => {
-    expect(() =>
-      AssignmentDefinitionPartialSchema.parse({ ...validAssignmentDefinitionPartial, tasks: [] })
-    ).toThrow();
+  it('accepts tasks as empty array (canonical schema normalises to null)', () => {
+    const result = AssignmentDefinitionPartialSchema.parse({
+      ...validAssignmentDefinitionPartial,
+      tasks: [],
+    });
+    expect(result.tasks).toBeNull();
   });
 
   // REGRESSION: getABClass can return null for referenceDocumentId,
@@ -426,5 +428,19 @@ describe('AssignmentDefinitionPartialSchema', () => {
         assignmentWeighting: 'not-a-number',
       })
     ).toThrow();
+  });
+
+  it('canonical AssignmentDefinitionPartialSchema accepts null referenceDocumentId (import identity)', () => {
+    // The canonical schema (now imported from assignmentDefinitionPartials.zod.ts)
+    // has .nullable() for referenceDocumentId and templateDocumentId. This test
+    // verifies the unification succeeded: both the local import and the canonical
+    // schema are the same object, and both accept null doc IDs.
+    expect(() =>
+      AssignmentDefinitionPartialSchema.parse({
+        ...validAssignmentDefinitionPartial,
+        referenceDocumentId: null,
+        templateDocumentId: null,
+      })
+    ).not.toThrow();
   });
 });

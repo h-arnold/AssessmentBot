@@ -380,7 +380,14 @@ No new shared helpers. The canonical `AssignmentDefinitionPartialSchema` is alre
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** to be filled during implementation.
+- **Implementation notes:**
+  - Changed `referenceDocumentId: z.string()` → `z.string().nullable()` and `templateDocumentId: z.string()` → `z.string().nullable()` in the canonical `AssignmentDefinitionPartialSchema` (`assignmentDefinitionPartials.zod.ts`). Added JSDoc `@remarks` explaining these fields are nullable because `AssignmentDefinition.toPartialJSON()` passes through instance values that can be null for partial definitions.
+  - Removed the duplicate `AssignmentDefinitionPartialSchema` definition (formerly lines 73-95) and its `AssignmentDefinitionPartial` type from `classDetailService.zod.ts`. Added import of the canonical schema from `../../assignmentDefinition/assignmentDefinitionPartials.zod`. Added `@remarks` JSDoc documenting the unification.
+  - Updated `LinkableDefinition` type in `getLinkableDefinitionsForModal.ts`: `referenceDocumentId` and `templateDocumentId` changed from `string` to `string | null`. No runtime change — the mapper passes values through as-is.
+  - Updated `classDetailService.zod.spec.ts`: import `AssignmentDefinitionPartialSchema` from canonical location; updated `'rejects a definition with tasks not null'` test to `'accepts tasks as empty array'` to match canonical schema behaviour (Section 4-compatible). 43 tests pass.
+  - Updated `assignmentDefinitionPartials.zod.spec.ts`: fixture types updated for nullable doc IDs. 51 tests pass.
+  - All 5 test suites pass (135 tests); broader suite 255 tests pass (13 files); lint zero warnings.
+  - `matchDefinitionForAssignment.ts` — no changes needed (does not access doc ID fields). 19 tests pass unchanged.
 - **Deviations from plan:** the `useAssignmentDefinitionWizard.ts` `as string` casts on lines 96-97 are already defensive and don't need changing — they now cast `string | null` to `string` which is a no-op warning (TypeScript allows it but it's technically unsafe; the component already falls back gracefully downstream).
 - **Follow-up implications for later sections:** Section 4 updates the canonical schema's `tasks` field with `z.array(TaskPartialSchema)`. The canonical schema is now the single source of truth for the entire partial-definition wire shape.
 

@@ -9,8 +9,8 @@ type AssignmentDefinitionPartialFixture = {
   alternateTitles: string[];
   alternateTopics: string[];
   documentType: string;
-  referenceDocumentId: string;
-  templateDocumentId: string;
+  referenceDocumentId: string | null;
+  templateDocumentId: string | null;
   assignmentWeighting: number | null;
   definitionKey: string;
   tasks: null;
@@ -512,6 +512,45 @@ describe('assignmentDefinitionPartials.zod schemas', () => {
           })
         ).toThrow();
       }
+    });
+  });
+
+  describe('nullable document ID fields (red-phase: canonical schema must support null)', () => {
+    it('accepts a partial with referenceDocumentId set to null', async () => {
+      const schemas = await loadAssignmentDefinitionPartialsSchemas();
+      const assignmentDefinitionPartialSchema = asParserSchema(
+        schemas.AssignmentDefinitionPartialSchema
+      );
+      const row = createMutableRowFixture();
+      (row as Record<string, unknown>).referenceDocumentId = null;
+
+      const result = assignmentDefinitionPartialSchema.parse(row);
+
+      expect(result).toHaveProperty('referenceDocumentId', null);
+    });
+
+    it('accepts a partial with templateDocumentId set to null', async () => {
+      const schemas = await loadAssignmentDefinitionPartialsSchemas();
+      const assignmentDefinitionPartialSchema = asParserSchema(
+        schemas.AssignmentDefinitionPartialSchema
+      );
+      const row = createMutableRowFixture();
+      (row as Record<string, unknown>).templateDocumentId = null;
+
+      const result = assignmentDefinitionPartialSchema.parse(row);
+
+      expect(result).toHaveProperty('templateDocumentId', null);
+    });
+
+    it('still accepts a partial with both doc IDs as non-null strings (regression)', async () => {
+      const schemas = await loadAssignmentDefinitionPartialsSchemas();
+      const assignmentDefinitionPartialSchema = asParserSchema(
+        schemas.AssignmentDefinitionPartialSchema
+      );
+
+      expect(assignmentDefinitionPartialSchema.parse(validAssignmentDefinitionPartialRow)).toEqual(
+        validAssignmentDefinitionPartialRow
+      );
     });
   });
 

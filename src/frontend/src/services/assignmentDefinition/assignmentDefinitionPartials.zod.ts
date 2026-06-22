@@ -181,6 +181,17 @@ const SafeDeleteDefinitionKeySchema = TrimmedNonEmptyStringSchema.refine(
   }
 );
 
+/**
+ * Canonical schema for the partial-definition wire shape returned by
+ * `AssignmentDefinition.toPartialJSON()`.
+ *
+ * @remarks
+ * `referenceDocumentId` and `templateDocumentId` are nullable because the backend
+ * `AssignmentDefinition.toPartialJSON()` passes through instance values which can
+ * be `null` for partial definitions. The test suite at
+ * `classDetailService.zod.spec.ts` documents that `getABClass` can return `null`
+ * for these fields.
+ */
 export const AssignmentDefinitionPartialSchema = z
   .object({
     primaryTitle: z.string(),
@@ -191,8 +202,10 @@ export const AssignmentDefinitionPartialSchema = z
     alternateTitles: z.array(z.string()),
     alternateTopics: z.array(z.string()),
     documentType: z.string(),
-    referenceDocumentId: z.string(),
-    templateDocumentId: z.string(),
+    /** Nullable because `AssignmentDefinition.toPartialJSON()` passes through instance values. */
+    referenceDocumentId: z.string().nullable(),
+    /** Nullable because `AssignmentDefinition.toPartialJSON()` passes through instance values. */
+    templateDocumentId: z.string().nullable(),
     assignmentWeighting: z.number().nullable(),
     definitionKey: TrimmedNonEmptyStringSchema,
     tasks: AssignmentDefinitionPartialTasksSchema,
