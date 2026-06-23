@@ -24,7 +24,10 @@ class AssignmentDefinition {
    * @param {string|null} [params.referenceLastModified=null] - ISO timestamp snapshot for reference document.
    * @param {string|null} [params.templateLastModified=null] - ISO timestamp snapshot for template document.
    * @param {number} [params.assignmentWeighting=1] - Optional weighting value. Defaults to 1. Must be in range 0-10.
-   * @param {Object<string, TaskDefinition>|Object|null} [params.tasks=null] - Task definitions keyed by taskId, or null for partial definitions.
+   * @param {Object<string, TaskDefinition>|Object|null|Array} [params.tasks=null] - Task definitions keyed by taskId, or null/empty-array for partial definitions.
+   *   The constructor normalises the wire-format `Array` (from `toPartialJSON()`) to `null` because
+   *   lightweight `{id, taskWeighting}` summaries cannot be rehydrated to `TaskDefinition` instances.
+   *   See {@link AssignmentDefinition#toPartialJSON} for the wire format.
    * @param {string|null} [params.createdAt=null] - ISO created timestamp; defaults to now when null.
    * @param {string|null} [params.updatedAt=null] - ISO updated timestamp; defaults to now when null.
    * @param {string|null} [params.definitionKey=null] - Stable definition key used for persistence.

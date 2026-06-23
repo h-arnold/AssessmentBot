@@ -7,6 +7,8 @@
   - [ABClass (root) and JsonDbApp partial hydration](#abclass-root-and-jsondbapp-partial-hydration)
   - [Assignment Definition](#assignment-definition)
     - [Full Assignment Definition Record (dedicated collection)](#full-assignment-definition-record-dedicated-collection)
+  - [Partial Task (`TaskPartial`)](#partial-task-taskpartial)
+    - [Canonical home](#canonical-home)
   - [Partial Hydration (summary-level)](#partial-hydration-summary-level)
   - [Full Hydration (complete payload)](#full-hydration-complete-payload)
   - [Feedback Structure](#feedback-structure)
@@ -44,7 +46,7 @@ To balance performance with data fidelity in the Google Apps Script environment,
 
 - **Purpose**: Lightweight index of definitions shared across classes/years.
 - **Storage**: Single collection keyed by `${primaryTitle}_${primaryTopic}_${yearGroup}`.
-- **Content**: **Partial** definition with `tasks: null` (no artifacts); includes metadata (titles, topics, yearGroup, weighting), `documentType` for routing, and doc IDs (`referenceDocumentId`, `templateDocumentId`) for reference.
+- **Content**: **Partial** definition with `tasks: Array<TaskPartial>` (lightweight task-weighting summaries); includes metadata (titles, topics, yearGroup, weighting), `documentType` for routing, and doc IDs (`referenceDocumentId`, `templateDocumentId`) for reference.
 - **Relationship**: Embedded into `Assignment` instances (Copy-on-Construct) and stored alongside partial assignments in `ABClass`.
 
 1. **Full Assignment Definition Record (`assdef_full_<definitionKey>`)**:
@@ -66,7 +68,7 @@ frequently stored with a "partial" (summary-level) representation so that
 list and overview flows avoid rehydrating heavy artifacts until required.
 
 Example: `ABClass` rehydrated from JsonDbApp where contained `assignments`
-are partially hydrated (note the embedded `assignmentDefinition` has `tasks: null` and omits doc IDs):
+are partially hydrated (note the embedded `assignmentDefinition` has `tasks: Array<TaskPartial>` and omits doc IDs):
 
 ```json
 {
@@ -96,7 +98,7 @@ are partially hydrated (note the embedded `assignmentDefinition` has `tasks: nul
         "templateDocumentId": "DriveTemplate123",
         "assignmentWeighting": null,
         "definitionKey": "Essay 1_English_10",
-        "tasks": null,
+        "tasks": [],
         "createdAt": "2025-09-01T10:00:00Z",
         "updatedAt": "2025-09-01T10:00:00Z"
       },
@@ -109,10 +111,9 @@ are partially hydrated (note the embedded `assignmentDefinition` has `tasks: nul
 Key notes:
 
 - The `ABClass` top-level fields are present and usable immediately.
-- **Partial Assignment Definitions**: The embedded `assignmentDefinition` has `tasks: null` (explicit marker) to minimize payload size while retaining `referenceDocumentId` and `templateDocumentId` for reference.
+- **Partial Assignment Definitions**: The embedded `assignmentDefinition` has `tasks: Array<TaskPartial>` (empty array `[]` when no tasks) — a lightweight task-weighting summary that retains `id` and `taskWeighting` per task without the full artefact payload. `referenceDocumentId` and `templateDocumentId` are retained for reference.
 - **Root `documentType`**: Preserved at assignment root for polymorphic routing (allows `Assignment.fromJSON` to instantiate correct subclass).
-- **Fail-Fast Design**: Code expecting tasks will throw immediately on `null` rather than silently operating on empty objects.
-- **Assignment Definition Embedding**: The `assignmentDefinition` object is embedded directly. For partial assignments in ABClass, the definition has `tasks: null` but includes doc IDs. Full assignments contain complete definitions with all tasks and artifacts. The assignment root includes `documentType` for polymorphic routing.
+- **Assignment Definition Embedding**: The `assignmentDefinition` object is embedded directly. For partial assignments in ABClass, the definition has `tasks: Array<TaskPartial>` but includes doc IDs. Full assignments contain complete definitions with all tasks and artifacts. The assignment root includes `documentType` for polymorphic routing.
 - This approach keeps server/drive calls minimal while maintaining a stable
   schema across hydration levels.
 - During assessment runs it is acceptable for an `Assignment` instance to carry a
@@ -121,14 +122,12 @@ Key notes:
   JsonDbApp or other serialized stores; doing so will duplicate roster entries
   each time an assessment is rehydrated.
 
-**Partial Definition Detection**: Code detects partial definitions via `assignmentDefinition.tasks === null` (not `undefined` or `{}`). This explicit marker enables fail-fast behavior when tasks are accessed without proper rehydration.
-
 Hydration markers (`_hydrationLevel`) are runtime-only flags set to `'full'` or
 `'partial'` so controllers know whether an `Assignment` holds the entire payload
 or a lightweight summary. They are never serialized in either the ABClass record
 or the dedicated `assign_full_*` collections.
 
-The same schema is used for every hydration level. Partial definitions use `tasks: null` as an explicit marker rather than redacted artifacts with null content.
+The same schema is used for every hydration level. Partial definitions carry a lightweight `tasks: Array<TaskPartial>` (empty array `[]` when no tasks) containing only stable task `id` and `taskWeighting` fields, rather than full task artefacts.
 
 ## Assignment Definition
 
@@ -235,15 +234,42 @@ Stored under `assdef_full_<definitionKey>`, containing full artifact content/has
 
 - **getAllPartialDefinitions()** — `AssignmentDefinitionController.getAllPartialDefinitions()` returns an array of rehydrated `AssignmentDefinition` model instances loaded from the registry collection (`assignment_definitions`).
   - Uses `DbManager.readAll('assignment_definitions')` to obtain a snapshot of documents and `AssignmentDefinition.fromJSON()` to rehydrate each document.
-  - Preserves *partial* hydration semantics (i.e., `tasks === null`) — callers should rehydrate to full definitions via the controller when they require task artifacts.
+  - Preserves *partial* hydration semantics (i.e., `tasks` is an `Array<TaskPartial>` — lightweight weighting summaries only, not reified `TaskDefinition` instances) — callers should rehydrate to full definitions via the controller when they require task artifacts.
   - Returns an empty array when the registry collection is empty.
 
 Tests: `tests/controllers/assignmentDefinitionController.test.js` (covers populated and empty-registry cases).
 ```
 
+## Partial Task (`TaskPartial`)
+
+The lightweight task-weighting summary emitted by `AssignmentDefinition.toPartialJSON()`. Each entry contains only the stable `id` and `taskWeighting` for a task definition, enabling the analyser to resolve per-task weightings without additional `getAssignmentDefinition` API calls.
+
+### Canonical home
+
+Defined in `src/frontend/src/services/assignmentDefinition/taskPartial.zod.ts` as a shared helper imported by:
+
+- `assignmentDefinitionPartials.zod.ts` (registry partials list)
+- `classDetailService.zod.ts` (embedded `AssignmentDefinition` inside ABClass)
+- `dataAnalysis.zod.ts` (analyser input schemas)
+
+**Status**: `Implemented`
+
+```ts
+import { z } from 'zod';
+
+export const TaskPartialSchema = z.strictObject({
+  id: z.string().min(1), // stable TaskDefinition.id (t_-prefixed hash)
+  taskWeighting: z.number(), // weighting; range enforcement is the analyser's job
+});
+
+export type TaskPartial = z.infer<typeof TaskPartialSchema>;
+```
+
+The backend `AssignmentDefinition.toPartialJSON()` emits `tasks: Array<{ id: string, taskWeighting: number }>` for non-empty task collections, and `tasks: []` when the definition has no tasks (`null`, `undefined`, or empty object `{}`). The frontend `TaskPartialSchema` matches this wire shape with `.strict()` Zod validation.
+
 ## Partial Hydration (summary-level)
 
-Used when we want a lightweight snapshot for list views or quick comparisons. The embedded `assignmentDefinition` has `tasks: null` to reduce payload size while retaining `referenceDocumentId` and `templateDocumentId` for reference. Submission artifacts are redacted (no `content` payload).
+Used when we want a lightweight snapshot for list views or quick comparisons. The embedded `assignmentDefinition` has `tasks: Array<TaskPartial>` (empty array `[]` when no tasks) to keep the payload lightweight while retaining `referenceDocumentId` and `templateDocumentId` for reference. Submission artifacts are redacted (no `content` payload).
 
 ```json
 {
@@ -265,7 +291,7 @@ Used when we want a lightweight snapshot for list views or quick comparisons. Th
     "assignmentWeighting": null,
     "definitionKey": "Essay 1_English_10",
     "TaskDefinitionsChanged": false,
-    "tasks": null,
+    "tasks": [],
     "createdAt": "2025-09-01T10:00:00Z",
     "updatedAt": "2025-09-01T10:00:00Z"
   },
@@ -332,7 +358,7 @@ For grading, auditing, or export flows we rehydrate every artifact exactly as st
 
 The **high-level shape stays consistent** (assignment identity + embedded `assignmentDefinition` + `submissions`), but **partial and full payloads are not field-identical**:
 
-- Partial payloads omit root-level `tasks`/doc IDs and use `assignmentDefinition.tasks: null` as an explicit marker.
+- Partial payloads omit root-level `tasks`/doc IDs and use `assignmentDefinition.tasks: Array<TaskPartial>` (empty array `[]` when no tasks) as a lightweight weighting summary.
 - Full payloads include the complete `tasks` map and document IDs.
 
 Partial JSONs also redact artifact `content`/`contentHash` and drop the `reasoning` entries from assessments so scores remain accessible while the payload stays lightweight; feedback objects remain intact in both partial and full forms.

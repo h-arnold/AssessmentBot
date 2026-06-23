@@ -169,7 +169,7 @@ export const AveragingResultSchema = z.strictObject({
 export type AveragingResult = z.infer<typeof AveragingResultSchema>;
 
 /**
- * Top-level data analysis response — an array of per-class results, or `null`.
+ * Top-level data analysis response — an array of per-class results.
  */
 export const DataAnalysisResponseSchema = z.array(AveragingResultSchema);
 
