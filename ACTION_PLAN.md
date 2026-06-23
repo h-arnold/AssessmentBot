@@ -711,8 +711,16 @@ Frontend tests (`averagingAnalyser.spec.ts`):
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** to be filled during implementation.
-- **Deviations from plan:** none expected.
+- **Implementation notes:**
+  - Created `averagingAnalyser.ts` (754 lines) — pure synchronous class implementing the weighted-average algorithm per SPEC.md.
+  - Constructor takes optional `CriterionWeightings` defaulting to `{ completeness: 0.4, accuracy: 0.4, spag: 0.2 }`. Single public method `analyse(input: AveragingAnalyserInput): AveragingResult[]`.
+  - Filters assignments by optional `dateRange` (inclusive from, exclusive to), `topicKeys`, and `assignmentDefinitionKeys`.
+  - Weight per data point = `assignmentWeighting × taskWeighting` (both default to 1 when null/missing). Task weighting resolved from pre-fetched `assignmentDefinitionPartials` cross-reference.
+  - SPaG `'N'` excluded from SPaG criterion sum; overall denominator renormalises.
+  - `MetricResult.value === null` iff `applicableDataPoints === 0`. Output sorted: perStudent by (studentName, studentId), perTask by (definitionKey, taskId), results by classId.
+  - Throws `Error` on missing `assignmentDefinition`. Pure — no I/O, no randomness, no React Query, no Ant Design.
+  - Created `averagingAnalyser.spec.ts` with 27 test cases. All pass, lint clean, TS clean.
+- **Deviations from plan:** none.
 - **Follow-up implications for later sections:** Section 7 imports and dispatches to this analyser.
 
 ---
