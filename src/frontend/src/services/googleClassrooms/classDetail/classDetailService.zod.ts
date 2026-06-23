@@ -1,4 +1,29 @@
 import { z } from 'zod';
+
+/** Maximum valid assessment score (inclusive). Backend PartialAssessment model range. */
+const MAX_ASSESSMENT_SCORE = 5;
+
+/**
+ * A single assessment score: an integer 0-5, or `'N'` for non-applicable (SPaG).
+ * @remarks Score range enforcement matches the backend PartialAssessment model.
+ */
+export const PartialAssessmentScoreSchema = z.union([
+  z.number().int().min(0).max(MAX_ASSESSMENT_SCORE),
+  z.literal('N'),
+]);
+
+export type PartialAssessmentScore = z.infer<typeof PartialAssessmentScoreSchema>;
+
+/**
+ * A single assessment entry keyed by criterion, containing only the `score` field
+ * in the partial wire shape (reasoning is stripped).
+ */
+export const PartialAssessmentEntrySchema = z.object({
+  score: PartialAssessmentScoreSchema,
+});
+
+export type PartialAssessmentEntry = z.infer<typeof PartialAssessmentEntrySchema>;
+
 /**
  * The canonical `AssignmentDefinitionPartialSchema` lives in
  * `assignmentDefinitionPartials.zod.ts`. The `classDetailService.zod.ts` file
@@ -58,7 +83,7 @@ export const StudentSubmissionItemPartialSchema = z.object({
   id: z.string(),
   taskId: z.string(),
   artifact: BaseTaskArtifactPartialSchema,
-  assessments: z.record(z.string(), z.unknown()).optional(),
+  assessments: z.record(z.string(), PartialAssessmentEntrySchema).optional(),
   feedback: z.record(z.string(), z.unknown()).optional(),
 });
 

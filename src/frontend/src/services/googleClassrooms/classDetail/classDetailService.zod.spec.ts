@@ -34,7 +34,7 @@ const validStudentSubmissionItemPartial = {
   taskId: 'task-1',
   artifact: validBaseTaskArtifactPartial,
   assessments: {
-    accuracy: { score: 4, feedback: 'Good work' },
+    accuracy: { score: 4 },
     completeness: { score: 5 },
   },
   feedback: { comment: 'Great effort' },

@@ -600,9 +600,15 @@ Frontend tests (`dataAnalysis.zod.spec.ts` — new file in this section):
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** to be filled during implementation.
-- **Deviations from plan:** none expected.
-- **Follow-up implications for later sections:** Sections 6 and 7 import types and schemas from this file. No deferred reconciliation is needed — the `StudentSubmissionPartialSchema` divergence is resolved (Section 2) and the `AssignmentDefinitionPartialSchema` is unified (Section 3).
+- **Implementation notes:**
+  - Created `dataAnalysis.zod.ts` with 9 schemas + inferred types: `AnalysisFilterSchema` (classIds, optional dateRange with from<=to refinement, optional criterionWeightings summing to 1.0), `AveragingAnalyserInputSchema`, `MetricResultSchema` (null iff 0 data points refinement), `PerStudentRowSchema`, `PerTaskRowSchema`, `PerClassResultSchema`, `AppliedCriterionWeightingsSchema`, `AveragingResultSchema`, `DataAnalysisResponseSchema` (`z.array(AveragingResultSchema)` — no nullable, per SPEC).
+  - Imports canonical schemas from `assignmentDefinitionPartials.zod.ts`, `taskPartial.zod.ts`, `classDetailService.zod.ts` — no local redefinitions.
+  - Created `PartialAssessmentScoreSchema` (integer 0-5 or 'N') and `PartialAssessmentEntrySchema` in `classDetailService.zod.ts`. Tightened `StudentSubmissionItemPartialSchema.assessments` from `z.record(z.string(), z.unknown())` to `z.record(z.string(), PartialAssessmentEntrySchema)`.
+  - Created `dataAnalysis.zod.spec.ts` with 21 test cases (including items 13-16 per ACTION_PLAN). All use imported canonical types — no local fixture duplication of submission/assignment schemas.
+  - Fixed Section 3 fallout: added `?? undefined` for docIds in `AssessTaskModal.tsx` upsert payload, extracted `resolveCachedDefinitionPartialForLink()` helper.
+  - 1147 tests pass (100 files), TS compiles clean, lint zero warnings.
+- **Deviations from plan:** Added `PartialAssessmentScoreSchema` and `PartialAssessmentEntrySchema` to `classDetailService.zod.ts` to properly validate assessment scores (integer 0-5 or 'N') as required by test cases 13-14. This was previously `z.unknown()` which accepted anything. This is a corrective fix, not a scope expansion.
+- **Follow-up implications for later sections:** Sections 6 and 7 import types and schemas from this file.
 
 ---
 

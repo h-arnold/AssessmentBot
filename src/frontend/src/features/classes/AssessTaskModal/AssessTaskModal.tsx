@@ -417,6 +417,47 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
    * and the modal transitions to the wizard's 2nd panel via
    * `noMatchResolution === 'creating'`.
    */
+
+  /**
+   * Resolves the cached definition partial for the selected linkable definition.
+   * Sets error state and returns `undefined` when the cache or the partial is
+   * unavailable so the caller can return early.
+   *
+   * @returns {AssignmentDefinitionPartial | undefined} The matching definition
+   *          partial, or `undefined` when the cache encounteres an error or the
+   *          partial is not found.
+   */
+  function resolveCachedDefinitionPartialForLink(): AssignmentDefinitionPartial | undefined {
+    const cached = getValidatedCachedData();
+    if (cached.kind === 'cache-error') {
+      setAssessmentAsError(cached.alertType, cached.message);
+      return undefined;
+    }
+
+    // Read primaryTopicKey from the cached partial (LinkableDefinition
+    // carries primaryTopic label but not the key)
+    const partial = cached.definitionPartials.find(
+      (p) => p.definitionKey === selectedDefinitionForLink!.definitionKey
+    );
+
+    if (!partial) {
+      setAssessmentState('idle');
+      setAssessmentAsError('error', 'Selected definition not found in cache. Please try again.');
+      return undefined;
+    }
+
+    return partial;
+  }
+
+  /**
+   * Handles the Link button click in the picker — upserts the definition
+   * partial, then starts the assessment run.
+   *
+   * @remarks
+   * On `DEFINITION_STALE` rejection from `startAssessmentRun`, the link
+   * (the alternateTitle write) is preserved and the modal transitions to
+   * the wizard's 2nd panel via `noMatchResolution === 'creating'`.
+   */
   async function handleLinkConfirm(): Promise<void> {
     if (!selectedDefinitionForLink || !selectedAssignmentForChoice) return;
 
@@ -441,21 +482,9 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
         selectedAssignmentForChoice.topicName
       );
 
-      const cached = getValidatedCachedData();
-      if (cached.kind === 'cache-error') {
-        setAssessmentAsError(cached.alertType, cached.message);
-        return;
-      }
-
-      // Read primaryTopicKey from the cached partial (LinkableDefinition
-      // carries primaryTopic label but not the key)
-      const cachedPartial = cached.definitionPartials.find(
-        (p) => p.definitionKey === selectedDefinitionForLink.definitionKey
-      );
+      const cachedPartial = resolveCachedDefinitionPartialForLink();
 
       if (!cachedPartial) {
-        setAssessmentState('idle');
-        setAssessmentAsError('error', 'Selected definition not found in cache. Please try again.');
         return;
       }
 
@@ -464,8 +493,8 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
         primaryTitle: selectedDefinitionForLink.primaryTitle,
         primaryTopicKey: cachedPartial.primaryTopicKey,
         yearGroupKey: selectedDefinitionForLink.yearGroupKey,
-        referenceDocumentId: selectedDefinitionForLink.referenceDocumentId,
-        templateDocumentId: selectedDefinitionForLink.templateDocumentId,
+        referenceDocumentId: selectedDefinitionForLink.referenceDocumentId ?? undefined,
+        templateDocumentId: selectedDefinitionForLink.templateDocumentId ?? undefined,
         documentType: selectedDefinitionForLink.documentType,
         alternateTitles,
         alternateTopics,
