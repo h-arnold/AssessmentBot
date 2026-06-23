@@ -798,8 +798,13 @@ Frontend tests (`dataAnalysisService.spec.ts`):
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** to be filled during implementation.
-- **Deviations from plan:** none expected.
+- **Implementation notes:**
+  - Created `dataAnalysisService.ts` (67 lines) — thin stateless orchestrator with pluggable analyser registry (strategy pattern per SPEC.md).
+  - `analyse(input: AveragingAnalyserInput, analyserKey: string = 'averaging'): DataAnalysisResponse` validates input via Zod, dispatches to registered analyser from `Map<string, AveragingAnalyser>` registry, validates output via Zod.
+  - Throws typed `Error` for unrecognised analyser keys. Constructor initialises registry with `'averaging' → new AveragingAnalyser()`.
+  - Created `dataAnalysisService.spec.ts` with 9 test cases. All pass, lint clean, TS clean.
+  - Full frontend suite: 102 files, 1183 tests pass.
+- **Deviations from plan:** none.
 - **Follow-up implications:** None — this is the final code-delivery section.
 
 ---
