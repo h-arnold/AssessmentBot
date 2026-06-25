@@ -86,19 +86,19 @@ function accumToMetric(accumulator: MetricAccumulator): MetricResult {
  *
  * @remarks
  * The analyser trusts its input is already Zod-validated by the orchestrator.
- * Task-weighting resolution avoids N+1 {@code getAssignmentDefinition} calls
- * by cross-referencing the pre-fetched {@code assignmentDefinitionPartials}
+ * Task-weighting resolution avoids N+1 `getAssignmentDefinition` calls
+ * by cross-referencing the pre-fetched `assignmentDefinitionPartials`
  * collection.
  *
- * SPaG {@code 'N'} causes renormalisation of the overall metric denominator
+ * SPaG `'N'` causes renormalisation of the overall metric denominator
  * (the criterion weight for SPaG is excluded from both numerator and
  * denominator).
  *
  * All output arrays are deterministically sorted for testability:
- * - {@code perStudent}: {@code studentName} asc, then {@code studentId} asc
+ * - `perStudent`: `studentName` asc, then `studentId` asc
  *   tie-breaker
- * - {@code perTask}: {@code (definitionKey, taskId)} asc
- * - {@code AveragingResult[]}: {@code classId} asc
+ * - `perTask`: `(definitionKey, taskId)` asc
+ * - `AveragingResult[]`: `classId` asc
  */
 export class AveragingAnalyser {
   private readonly criterionWeightings: CriterionWeightings;
