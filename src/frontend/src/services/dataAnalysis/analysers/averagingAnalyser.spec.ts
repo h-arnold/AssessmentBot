@@ -1423,7 +1423,111 @@ describe('AveragingAnalyser', () => {
     });
 
     // -----------------------------------------------------------------------
-    // 22) assignmentWeighting = null defaults to 1
+    // 22) resolveTaskWeight uses the pre-built Map (O(1) lookup)
+    // -----------------------------------------------------------------------
+    it('resolveTaskWeight uses the pre-built Map (O(1) lookup)', () => {
+      const preFetchedTaskWeighting = 5;
+      const input = buildInput(
+        [
+          {
+            classId: 'c_001',
+            studentIds: ['s_001'],
+            assignments: [
+              createAssignmentPartial({
+                assignmentId: 'a_001',
+                definitionKey: 'dk_algebra',
+                tasks: [createTaskPartial('t_001', 1)],
+                submissions: [
+                  createSubmission('s_001', 'Alice', 'a_001', {
+                    t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
+                  }),
+                ],
+              }),
+            ],
+          },
+        ],
+        {
+          // Pre-fetched partials supply taskWeighting=5 for t_001
+          assignmentDefinitionPartials: [
+            createDefinitionPartial({
+              definitionKey: 'dk_algebra',
+              tasks: [{ id: 't_001', taskWeighting: preFetchedTaskWeighting }],
+            }),
+          ],
+        }
+      );
+
+      const analyser = new AveragingAnalyser();
+      const results = analyser.analyse(input);
+
+      expect(results).toHaveLength(1);
+      // totalWeight = assignmentWeighting(1) × taskWeighting(5) = 5
+      // This matches the existing resolution-path tests, confirming
+      // behavioural equivalence regardless of how the cross-reference
+      // lookup is implemented internally.
+      expectMetricResult(results[0].perClass.accuracy, {
+        value: 4,
+        totalWeight: 5,
+        applicableDataPoints: 1,
+        totalDataPoints: 1,
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // 23) resolveTaskWeight falls back to 1 when definitionKey is missing
+    // -----------------------------------------------------------------------
+    it('resolveTaskWeight falls back to 1 when the definitionKey is not in the pre-fetched partials', () => {
+      // Arbitrary non-zero weighting used both in the assignment tasks
+      // (pre-registration) and the non-matching partial to prove the
+      // absent definition causes a full fallback to 1.
+      const unusedTaskWeighting = 5;
+      const input = buildInput(
+        [
+          {
+            classId: 'c_001',
+            studentIds: ['s_001'],
+            assignments: [
+              createAssignmentPartial({
+                assignmentId: 'a_001',
+                definitionKey: 'dk_algebra',
+                tasks: [createTaskPartial('t_001', unusedTaskWeighting)],
+                submissions: [
+                  createSubmission('s_001', 'Alice', 'a_001', {
+                    t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
+                  }),
+                ],
+              }),
+            ],
+          },
+        ],
+        {
+          // Pre-fetched partials exist but do NOT include 'dk_algebra'
+          assignmentDefinitionPartials: [
+            createDefinitionPartial({
+              definitionKey: 'dk_geometry',
+              tasks: [createTaskPartial('t_001', unusedTaskWeighting)],
+            }),
+          ],
+        }
+      );
+
+      const analyser = new AveragingAnalyser();
+      const results = analyser.analyse(input);
+
+      expect(results).toHaveLength(1);
+      // resolveTaskWeight cannot find 'dk_algebra' among the partials
+      // → falls back to taskWeighting 1
+      // totalWeight = assignmentWeighting(1) × taskWeighting(1) = 1
+      expectMetricResult(results[0].perClass.accuracy, {
+        value: 4,
+        totalWeight: 1,
+        applicableDataPoints: 1,
+        totalDataPoints: 1,
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // 24) assignmentWeighting = null defaults to 1
     // -----------------------------------------------------------------------
     it('treats null assignmentWeighting as 1', () => {
       const taskWeightingForNullTest = 2;
@@ -1461,7 +1565,7 @@ describe('AveragingAnalyser', () => {
     });
 
     // -----------------------------------------------------------------------
-    // 23) Missing assignmentDefinition throws typed error
+    // 25) Missing assignmentDefinition throws typed error
     // -----------------------------------------------------------------------
     it('throws a typed error when an assignment has no assignmentDefinition', () => {
       const assignmentWithoutDefinition = {
@@ -1501,7 +1605,7 @@ describe('AveragingAnalyser', () => {
     });
 
     // -----------------------------------------------------------------------
-    // 24) Student excluded from perStudent when all submissions filtered out
+    // 26) Student excluded from perStudent when all submissions filtered out
     // -----------------------------------------------------------------------
     it('excludes student from perStudent when all submissions are filtered out by date range', () => {
       const input: AveragingAnalyserInput = {
@@ -1569,7 +1673,7 @@ describe('AveragingAnalyser', () => {
     });
 
     // -----------------------------------------------------------------------
-    // 25) All criteria 'N' → overall null for that data point
+    // 27) All criteria 'N' → overall null for that data point
     // -----------------------------------------------------------------------
     it('returns null overall when all criteria are N for a data point', () => {
       const input = buildInput([

@@ -262,7 +262,8 @@ export function processItemAssessments(
  *   assignment - The assignment to process.
  * @param {number} assignmentWeighting - The resolved assignment weighting.
  * @param {string} definitionKey - The assignment definition key.
- * @param {AveragingAnalyserInput} input - Full analyser input.
+ * @param {Map<string, Map<string, number>>} taskWeightByDefinitionKey - Two-level
+ *   Map for O(1) task-weighting lookups (built once per analysis run).
  * @param {Map<string, { studentName: string | null } & DataPointAccumulator>}
  *   studentAccums - Per-student accumulators (mutated).
  * @param {Map<string, { definitionKey: string; taskId: string } & DataPointAccumulator>}
@@ -274,20 +275,18 @@ export function processAssignment(
   assignment: AveragingAnalyserInput['classes'][number]['assignments'][number],
   assignmentWeighting: number,
   definitionKey: string,
-  input: AveragingAnalyserInput,
+  taskWeightByDefinitionKey: Map<string, Map<string, number>>,
   studentAccums: Map<string, { studentName: string | null } & DataPointAccumulator>,
   taskAccums: Map<string, { definitionKey: string; taskId: string } & DataPointAccumulator>,
   classAccum: DataPointAccumulator,
   criterionWeightings: CriterionWeightings
 ): void {
-  const { assignmentDefinitionPartials } = input;
-
   for (const submission of assignment.submissions) {
     const { studentId, studentName, items } = submission;
     const studentAccum = getOrCreateStudentAccum(studentAccums, studentId, studentName);
 
     for (const [taskId, item] of Object.entries(items)) {
-      const taskWeighting = resolveTaskWeight(definitionKey, taskId, assignmentDefinitionPartials);
+      const taskWeighting = taskWeightByDefinitionKey.get(definitionKey)?.get(taskId) ?? 1;
 
       const weight = assignmentWeighting * taskWeighting;
       if (weight === 0) {
@@ -348,6 +347,10 @@ export function resolveTaskWeight(
  *   taskAccums: Map<string, { definitionKey: string; taskId: string } & DataPointAccumulator>,
  *   classAccum: DataPointAccumulator
  * }} The three accumulator containers.
+ * @remarks A two-level Map (`definitionKey → taskId → taskWeighting`) is built
+ *   once per analysis run from `input.assignmentDefinitionPartials`, giving O(1)
+ *   task-weighting lookup per submission item instead of O(P × T) linear
+ *   searches.
  */
 export function accumulateDataPoints(
   filteredAssignments: AveragingAnalyserInput['classes'][number]['assignments'],
@@ -367,6 +370,16 @@ export function accumulateDataPoints(
 
   const classAccum = createDataPointAccumulator();
 
+  // Build a two-level Map for O(1) task-weighting lookups.
+  const taskWeightByDefinitionKey = new Map<string, Map<string, number>>();
+  for (const p of input.assignmentDefinitionPartials) {
+    const taskMap = new Map<string, number>();
+    for (const t of p.tasks ?? []) {
+      taskMap.set(t.id, t.taskWeighting);
+    }
+    taskWeightByDefinitionKey.set(p.definitionKey, taskMap);
+  }
+
   for (const assignment of filteredAssignments) {
     const definition = assignment.assignmentDefinition!;
     const { assignmentWeighting, definitionKey, tasks } = definition;
@@ -378,7 +391,7 @@ export function accumulateDataPoints(
       assignment,
       resolvedAssignmentWeighting,
       definitionKey,
-      input,
+      taskWeightByDefinitionKey,
       studentAccums,
       taskAccums,
       classAccum,

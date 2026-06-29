@@ -690,8 +690,20 @@ submission item and become O(1) per item with the pre-built Map.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** record the actual change made.
-- **Deviations from plan:** note any departure.
+- **Implementation notes:**
+  - `averagingAnalyser.accumulation.ts`: Built `taskWeightByDefinitionKey`
+    (Map<definitionKey, Map<taskId, taskWeighting>>) once at the top of
+    `accumulateDataPoints`. Added the Map as a parameter to
+    `processAssignment`; removed the now-unnecessary `input` parameter
+    (only used to extract `assignmentDefinitionPartials`). Replaced the
+    `resolveTaskWeight` call with O(1) `Map.get().get()` lookup at the
+    call site. `resolveTaskWeight` is preserved as an exported function
+    (test seam). Added `@remarks` JSDoc explaining the optimisation.
+  - `averagingAnalyser.spec.ts`: Added two behavioural regression tests
+    (Map lookup equivalence, missing-definition fallback). All 29 tests
+    pass, lint green. Date: 2026-06-29.
+- **Deviations from plan:** None. The pre-built Map is built per analysis
+  run (not per assignment), matching the plan's constraints.
 - **Follow-up implications for later sections:** Section 8 (fixtures
   move) and Section 9 (spec split) reorganise the test file structure
   but do not change the assertions.
