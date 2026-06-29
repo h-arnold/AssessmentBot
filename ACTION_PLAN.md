@@ -236,8 +236,12 @@ shared-helper planning gate without changing any production code.
   status.
 - `frontend-shared-helpers-and-abstraction-standards.md` §3.4 references
   the data-analysis test helper location.
-- The action plan's "Files created or updated" lists both canonical doc
-  edits.
+- The action plan's "Files created or updated" lists both canonical doc edits.
+
+#### Files created or updated
+
+- `docs/developer/frontend/frontend-testing.md` (updated)
+- `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` (updated)
 
 #### Section checks
 
@@ -247,8 +251,14 @@ docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
 
 #### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** record entry path, status (`Not implemented`),
-  and date here after the entries are added.
+- **Implementation notes:**
+  - `docs/developer/frontend/frontend-testing.md`: Added planned-only entries for
+    `src/frontend/src/test/dataAnalysis/fixtures.ts` (Status: Not implemented)
+    and `src/frontend/src/test/dataAnalysis/averagingAnalyserAssertions.ts`
+    (Status: Not implemented). Date: 2026-06-29.
+  - `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §3.4:
+    Added cross-reference to data-analysis test helpers location
+    (`src/frontend/src/test/dataAnalysis/`). Date: 2026-06-29.
 
 ### Validation commands hierarchy
 
@@ -492,7 +502,7 @@ cache updates while the modal is open'`. The test:
 
 2. **Green — `AssessTaskModal.tsx`:** hoist the
    `queryClient.getQueryData<AssignmentDefinitionPartial[]>(
-  queryKeys.assignmentDefinitionPartials())` call out of the memo,
+queryKeys.assignmentDefinitionPartials())` call out of the memo,
    bind the result to a `const definitionPartialsFromCache`, and add it
    to the memo's dependency array. Remove the existing dependency-array
    lint suppression (it is no longer needed because `queryClient` is no

@@ -71,6 +71,8 @@ Feature-scoped helpers should stay feature-scoped unless there is proven cross-f
 - Shared classes test fixtures/builders: `src/frontend/src/test/classes/classesTestHelpers.ts`
 - Classes Page test fixtures and rendering helpers (including `createFixtureClassPartial`, `createFixtureYearGroup`, `renderClassesPage`, `toPlainClassPartials`, and shared fixture constants): `src/frontend/src/test/classes/classesPageTestHelpers.tsx`
 
+- Shared data-analysis test fixtures and assertion helpers: `src/frontend/src/test/dataAnalysis/` (fixtures, averaging analyser assertions). Placement follows the shared test helpers convention; cross-referenced from `docs/developer/frontend/frontend-testing.md`.
+
 Test helper placement rules remain governed by `docs/developer/frontend/frontend-testing.md`.
 
 ## 4. Extraction decision rules

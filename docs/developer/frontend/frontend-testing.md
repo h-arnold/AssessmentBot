@@ -135,6 +135,9 @@ When adding test scenarios, prefer extending an existing helper before copying s
 
 Shared frontend test helpers belong under `src/frontend/src/test/**`. Feature-scoped subfolders are allowed when they keep related fixtures together, but production feature folders should stay free of shared test helpers.
 
+- Data-analysis test fixtures: `src/frontend/src/test/dataAnalysis/fixtures.ts` — moves from `src/frontend/src/services/dataAnalysis/test/fixtures.ts` to the canonical shared-helpers location. Status: **Not implemented** (planned for ACTION_PLAN.md Section 8).
+- Data-analysis assertion helpers: `src/frontend/src/test/dataAnalysis/averagingAnalyserAssertions.ts` — new shared module exporting `expectMetricResult` and `checkMetricInvariant` (extracted from `averagingAnalyser.spec.ts`). Status: **Not implemented** (planned for ACTION_PLAN.md Section 9).
+
 ### Classes Modal Test Helpers
 
 The `src/frontend/src/test/classes/modalTestHelpers.tsx` module provides reusable utilities for testing modal components in the Classes feature:
