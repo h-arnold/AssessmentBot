@@ -1,5 +1,5 @@
 import { Alert, Button, Empty, Modal, Select, Space, Spin, Tooltip, Typography } from 'antd';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { getGoogleClassroomAssignments } from '../../../services/googleClassrooms/googleClassroomAssignmentsService';
@@ -164,25 +164,26 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
    * AssignmentDefinitionPartial rows. Returns the filtered, sorted list
    * or an empty array when not in the relevant no-match states.
    */
+  const { data: definitionPartialsFromCache } = useQuery<AssignmentDefinitionPartial[]>({
+    queryKey: queryKeys.assignmentDefinitionPartials(),
+    enabled: false,
+  });
+
   const linkableDefinitions = useMemo<LinkableDefinition[]>(() => {
     if (noMatchResolution !== 'linking' && noMatchResolution !== 'choice') return [];
     if (!classPartialForWizard?.yearGroupKey) return [];
     if (!selectedAssignmentForChoice) return [];
-
-    const definitionPartialsFromCache = queryClient.getQueryData<AssignmentDefinitionPartial[]>(
-      queryKeys.assignmentDefinitionPartials()
-    );
 
     return getLinkableDefinitionsForModal(
       definitionPartialsFromCache ?? [],
       classPartialForWizard.yearGroupKey,
       selectedAssignmentForChoice
     );
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- queryClient from useQueryClient() is stable per React Query contract
   }, [
     noMatchResolution,
     classPartialForWizard,
     selectedAssignmentForChoice,
+    definitionPartialsFromCache,
   ]);
 
   useEffect(() => {

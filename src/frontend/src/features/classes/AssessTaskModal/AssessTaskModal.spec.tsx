@@ -1451,4 +1451,33 @@ describe('No-match resolution — linking state and link flow', () => {
     // Footer should have Cancel button (modal stays open, teacher can retry)
     expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
   });
+
+  it('linkableDefinitions recomputes when assignmentDefinitionPartials cache updates while the modal is open', async () => {
+    const { dialog, queryClient } = renderWithNoMatchCache({
+      definitionPartials: [],
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    // The choice prompt should be visible and the Link button disabled because
+    // linkableDefinitions is empty (no definitions for year-10 in the cache)
+    const linkButton = within(dialog).getByRole('button', { name: 'Link to Existing Definition' });
+    expect(linkButton).toBeDisabled();
+
+    // Update the cache with a matching definition partial for the class's year group
+    queryClient.setQueryData(
+      queryKeys.assignmentDefinitionPartials(),
+      [createDefinitionPartial({ yearGroupKey: 'year-10' })]
+    );
+
+    // The Link to Existing Definition button should become enabled because the
+    // linkableDefinitions memo should recompute when the cache data updates.
+    // THIS EXPECTATION WILL FAIL due to the known bug (C3): the memo's
+    // dependency array does not include the cache data, so the memo does not
+    // recompute and linkableDefinitions remains the stale empty array.
+    await waitFor(() => {
+      expect(within(dialog).getByRole('button', { name: 'Link to Existing Definition' })).toBeEnabled();
+    });
+  });
 });

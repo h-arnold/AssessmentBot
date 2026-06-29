@@ -541,8 +541,25 @@ fully lint-clean (no suppression required).
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** record the actual change made.
-- **Deviations from plan:** note any departure.
+- **Implementation notes:**
+  - `AssessTaskModal.tsx`: Hoisted the cache read out of the memo using
+    `useQuery` with `enabled: false` (subscribes to cache updates,
+    triggers re-render on `setQueryData`). Updated the memo body to use
+    the hoisted variable. Added `definitionPartialsFromCache` to the
+    dependency array. Removed the existing dependency-array lint
+    suppression comment (no longer needed as `queryClient` is no longer
+    referenced inside the memo body).
+  - Added red-phase test for cache-update-triggered recomputation in
+    `AssessTaskModal.spec.tsx`.
+  - All 56 modal tests pass, lint green, suppression confirmed removed.
+    Date: 2026-06-29.
+- **Deviations from plan:** Used `useQuery` with `enabled: false` instead
+  of `queryClient.getQueryData()` at component scope. The plan's
+  `getQueryData` approach would not trigger re-renders on
+  `queryClient.setQueryData()`, which is the scenario the red-phase test
+  exercises. `useQuery` with `enabled: false` correctly subscribes to
+  cache updates and fixes the stale-cache bug properly. This deviation
+  is a better implementation that still meets all acceptance criteria.
 - **Follow-up implications for later sections:** Section 5 (H2/H3
   memoisation) is independent; Section 7 (M3 stale-recovery) is
   independent.
