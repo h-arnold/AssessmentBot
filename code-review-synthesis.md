@@ -85,7 +85,7 @@ return cls.assignments.filter((assignment) => {
 
 **Impact**: Runtime crash on malformed input.
 
-**Suggestion**: Add `tasks === undefined` to the condition:
+**Suggestion**: This is desireable behavior -- the constructor should throw on `undefined` to catch upstream bugs.
 
 ```javascript
 if (tasks === null || tasks === undefined || (Array.isArray(tasks) && tasks.length === 0)) {
@@ -125,21 +125,7 @@ const linkableDefinitions = useMemo(() => {
 
 ## High Severity Issues (Should Fix Before Merge)
 
-### H1. `AveragingAnalyser` Over-Decomposed into 5 Files
-
-|              |                                                                                                                                     |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
-| **Areas**    | KISS/DRY                                                                                                                            |
-| **Files**    | `src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.ts`, `.accumulation.ts`, `.filters.ts`, `.rows.ts`, `.types.ts` |
-| **Severity** | **HIGH**                                                                                                                            |
-
-**Issue**: The analyser is split across 5 files (~600 lines total) for a single pure-function class. The main file (102 lines) merely orchestrates the helpers. This adds significant navigation overhead and indirection. Each helper file is only called from the main analyser.
-
-**Suggestion**: Consolidate into 2 files: `averagingAnalyser.ts` (main class + private methods) and `averagingAnalyser.types.ts` (type definitions). This halves the file count and reduces cognitive load.
-
----
-
-### H2. Test File Exceeds 500-Line Guideline by 3x (1655 lines)
+### H1. Test File Exceeds 500-Line Guideline by 3x (1655 lines)
 
 |              |                                                                              |
 | ------------ | ---------------------------------------------------------------------------- |
@@ -153,7 +139,7 @@ const linkableDefinitions = useMemo(() => {
 
 ---
 
-### H3. Missing `React.memo` on Linkable Picker Component
+### H2. Missing `React.memo` on Linkable Picker Component
 
 |              |                                                                                                                        |
 | ------------ | ---------------------------------------------------------------------------------------------------------------------- |
@@ -167,7 +153,7 @@ const linkableDefinitions = useMemo(() => {
 
 ---
 
-### H4. Inline Function Creation in Render (AssessTaskModal)
+### H3. Inline Function Creation in Render (AssessTaskModal)
 
 |              |                                                                                                   |
 | ------------ | ------------------------------------------------------------------------------------------------- |
@@ -181,7 +167,7 @@ const linkableDefinitions = useMemo(() => {
 
 ---
 
-### H5. `referenceDocumentId ?? undefined` Loses `null` Distinction
+### H4. `referenceDocumentId ?? undefined` Loses `null` Distinction
 
 |              |                                                                                         |
 | ------------ | --------------------------------------------------------------------------------------- |
@@ -191,41 +177,15 @@ const linkableDefinitions = useMemo(() => {
 
 **Issue**: The upsert payload converts `referenceDocumentId: null` to `referenceDocumentId: undefined` using `null ?? undefined`. The backend expects nullable `string | null` -- `undefined` may be omitted from serialisation, losing the intent to clear the reference.
 
-**Suggestion**: Use the value directly: `referenceDocumentId: selectedDefinitionForLink.referenceDocumentId ?? null`.
+**Root cause**: `LinkableDefinition.referenceDocumentId` is `string | null` (`getLinkableDefinitionsForModal.ts:27`), derived from `AssignmentDefinitionPartial.referenceDocumentId` which is explicitly nullable (`assignmentDefinitionPartials.zod.ts:205`, JSDoc line 188). `getLinkableDefinitionsForModal` (line 78) only filters by `yearGroupKey` and admits partials with null IDs, so the picker can surface rows that have no linkable document. The `?? undefined` then silently collapses the `null` to `undefined`, which the upsert Zod schema treats as "omitted" and which the ID-shape discriminator in `validateUpsertShape` (`assignmentDefinition.zod.ts:197`) rejects as a missing required field -- failing fast at a layer far from the source.
+
+**Fix (mandated)**: **Option 2** -- tighten the `LinkableDefinition` type and enforce the filter at the derivation site. Change `LinkableDefinition.referenceDocumentId: string` and `LinkableDefinition.templateDocumentId: string` (non-nullable) in `getLinkableDefinitionsForModal.ts:27-28`, and update `getLinkableDefinitionsForModal` to drop partials with `referenceDocumentId === null || templateDocumentId === null` before mapping to `LinkableDefinition`. This removes the bug at its source, lets the type system prevent the whole class of "row without IDs" mistakes, and is the KISS fix. The reviewer's `?? null` tweak is rejected as it only surfaces the failure earlier in the Zod layer; it does not remove the underlying reachability.
 
 ---
 
 ## Medium Severity Issues (Should Address Before or Shortly After Merge)
 
-### M1. `DataAnalysisService` Uses Premature Strategy Pattern Registry
-
-|              |                                                                 |
-| ------------ | --------------------------------------------------------------- |
-| **Areas**    | KISS/DRY                                                        |
-| **Files**    | `src/frontend/src/services/dataAnalysis/dataAnalysisService.ts` |
-| **Severity** | **MEDIUM**                                                      |
-
-**Issue**: A `Map<string, AveragingAnalyser>` registry exists for a single analyser (`'averaging'`). The SPEC explicitly reserves future analysers for a separate work stream.
-
-**Suggestion**: Remove the registry; instantiate `AveragingAnalyser` directly. Add the registry only when a second analyser exists.
-
----
-
-### M2. Single-Use Helper Extracted in `AssessTaskModal`
-
-|              |                                                                                           |
-| ------------ | ----------------------------------------------------------------------------------------- |
-| **Areas**    | KISS/DRY                                                                                  |
-| **Files**    | `src/frontend/src/features/classes/AssessTaskModal/AssessTaskModal.tsx` (lines 2902-2922) |
-| **Severity** | **MEDIUM**                                                                                |
-
-**Issue**: `resolveCachedDefinitionPartialForLink()` is extracted but only called from `handleLinkConfirm()`. This adds a function boundary for zero reuse.
-
-**Suggestion**: Inline the logic back into `handleLinkConfirm()`.
-
----
-
-### M3. `averagingAnalyser.types.ts` Exports Implementation Helpers, Not Just Types
+### M1. `averagingAnalyser.types.ts` Exports Implementation Helpers, Not Just Types
 
 |              |                                                                               |
 | ------------ | ----------------------------------------------------------------------------- |
@@ -239,7 +199,7 @@ const linkableDefinitions = useMemo(() => {
 
 ---
 
-### M4. Modal Fetch Effect Doesn't Clean Up on Close Mid-Fetch
+### M2. Modal Fetch Effect Doesn't Clean Up on Close Mid-Fetch
 
 |              |                                                                                         |
 | ------------ | --------------------------------------------------------------------------------------- |
@@ -263,7 +223,7 @@ useEffect(() => {
 
 ---
 
-### M5. `DEFINITION_STALE` in Matched Flow Doesn't Trigger Wizard Recovery
+### M3. `DEFINITION_STALE` in Matched Flow Doesn't Trigger Wizard Recovery
 
 |              |                                                                                         |
 | ------------ | --------------------------------------------------------------------------------------- |
@@ -277,7 +237,7 @@ useEffect(() => {
 
 ---
 
-### M6. `.toSorted()` on Locally-Allocated Arrays Instead of `.sort()`
+### M4. `.toSorted()` on Locally-Allocated Arrays Instead of `.sort()`
 
 |              |                                                                                                           |
 | ------------ | --------------------------------------------------------------------------------------------------------- |
@@ -288,20 +248,6 @@ useEffect(() => {
 **Issue**: `rows.toSorted(...)` allocates a new array when `rows` is a freshly-created local array. Using `.sort()` (in-place) avoids the allocation.
 
 **Suggestion**: Replace `rows.toSorted(...)` with `rows.sort(...)`.
-
----
-
-### M7. File Approaching 500-Line Limit (390 lines)
-
-|              |                                                                                      |
-| ------------ | ------------------------------------------------------------------------------------ |
-| **Areas**    | Code Compliance                                                                      |
-| **Files**    | `src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.accumulation.ts` |
-| **Severity** | **MEDIUM**                                                                           |
-
-**Issue**: At 390 lines, this file is approaching the 500-line threshold.
-
-**Suggestion**: Monitor growth; if extended further, consider splitting or consolidating with the main analyser file.
 
 ---
 
@@ -365,7 +311,7 @@ useEffect(() => {
 
 **Issue**: `(a.studentName ?? '').localeCompare(b.studentName ?? '')` sorts students with `null` names before named students. The SPEC doesn't specify null handling.
 
-**Suggestion**: Document the sorting behaviour or handle nulls per product requirements.
+**Fix**: Students shouldn't have `null` names. If they do, this should throw as something has gone wrong. Please remove this logic and allow an unhandled exception to throw if a student name is null. This will make it easier to catch and fix the underlying issue and simplify the code.
 
 ### L6. `criterionWeightings` Tolerance Constant Not Exported
 
@@ -377,7 +323,7 @@ useEffect(() => {
 
 **Issue**: `CRITERION_WEIGHTINGS_TOLERANCE = 1e-9` is defined but not exported for potential reuse in the analyser.
 
-**Suggestion**: Export the constant if the analyser ever needs internal validation of weightings.
+**Fix**: Unless it's used, remove it.
 
 ---
 
@@ -393,28 +339,3 @@ useEffect(() => {
 - Correct service isolation -- services are pure (no React/AntD imports), follow domain folder convention
 
 ---
-
-## Remediation Priorities
-
-| Priority                                | Items                                                                                                                                                               | Effort    |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| **P0 -- Before merge**                  | C1 (Map-based lookups), C2 (Set-based filters), C3 (undefined handling), C4 (memo deps), H1 (over-decomposition), H2 (test file splitting), H5 (null/undefined fix) | 1-2 days  |
-| **P1 -- Before or shortly after merge** | M1 (service registry), M2 (inline helper), M3 (types file), M4 (fetch cleanup), M5 (DEFINITION_STALE), M6 (toSorted -> sort), M7 (file size)                        | 0.5-1 day |
-| **P2 -- Opportunistically**             | L1-L6 (all low-severity)                                                                                                                                            | Few hours |
-
----
-
-## 4-Focus Area Cross-Reference Matrix
-
-| File                            | KISS/DRY       | Compliance | Bugs           | Performance |
-| ------------------------------- | -------------- | ---------- | -------------- | ----------- |
-| `averagingAnalyser.*` (5 files) | H1, M2, M3, L6 | H2, M7     | --             | C1, C2, M6  |
-| `dataAnalysisService.ts`        | M1             | OK         | --             | OK          |
-| `dataAnalysis.zod.ts`           | L6             | OK         | OK             | OK          |
-| `AssessTaskModal.tsx`           | M2             | OK         | C4, H5, M4, M5 | H3, H4      |
-| `AssignmentDefinition.js`       | L2             | OK         | C3             | OK          |
-| `averagingAnalyser.spec.ts`     | L3             | H2         | OK             | OK          |
-
----
-
-_Review generated by Agent Orchestrator using 4 parallel code reviewer agents (KISS/DRY, Code Compliance, Bug Detection, Performance) on 2026-06-25_
