@@ -1,5 +1,5 @@
 import { Alert, Flex, Select, Typography } from 'antd';
-import type { JSX } from 'react';
+import { memo, type JSX } from 'react';
 import type { LinkableDefinition } from './getLinkableDefinitionsForModal';
 
 export type LinkableDefinitionListProperties = Readonly<{
@@ -21,10 +21,14 @@ export type LinkableDefinitionListProperties = Readonly<{
  * The selected option displays as the `primaryTitle` only (via `labelRender`);
  * arrow keys, Enter, and Escape are handled by antd defaults.
  *
+ * Wrapped in `React.memo` to prevent re-renders on parent state changes when
+ * props are stable — the parent (`AssessTaskModal`) manages transient modal
+ * state that otherwise triggers unnecessary re-renders of this leaf component.
+ *
  * @param {Readonly<LinkableDefinitionListProperties>} properties Component properties.
  * @returns {JSX.Element} The picker body.
  */
-export function LinkableDefinitionList(
+export const LinkableDefinitionList = memo(function LinkableDefinitionList(
   properties: Readonly<LinkableDefinitionListProperties>
 ): JSX.Element {
   const { linkableDefinitions, selectedDefinitionKey, onSelect } = properties;
@@ -66,4 +70,4 @@ export function LinkableDefinitionList(
       />
     </Flex>
   );
-}
+});

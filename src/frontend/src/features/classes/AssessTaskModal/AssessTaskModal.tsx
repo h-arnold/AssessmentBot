@@ -1,6 +1,6 @@
 import { Alert, Button, Empty, Modal, Select, Space, Spin, Tooltip, Typography } from 'antd';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { getGoogleClassroomAssignments } from '../../../services/googleClassrooms/googleClassroomAssignmentsService';
 import { findMatchingDefinition } from './matchDefinitionForAssignment';
@@ -615,6 +615,17 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
     setNoMatchResolution('choice');
   }
 
+  const handleAssignmentChange = useCallback((value: string) => {
+    setSelectedAssignmentId(value);
+  }, []);
+
+  const handleLinkSelect = useCallback((definitionKey: string) => {
+    const selected = linkableDefinitions.find(
+      (d) => d.definitionKey === definitionKey
+    );
+    setSelectedDefinitionForLink(selected ?? null);
+  }, [linkableDefinitions, setSelectedDefinitionForLink]);
+
   const isStartDisabled =
     fetchState !== 'ready' ||
     selectedAssignmentId === undefined ||
@@ -654,9 +665,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
           showSearch={{ optionFilterProp: 'label' }}
           placeholder="Select an assignment"
           value={selectedAssignmentId}
-          onChange={(value) => {
-            setSelectedAssignmentId(value);
-          }}
+          onChange={handleAssignmentChange}
           options={selectOptions}
           style={{ width: '100%' }}
           // virtual={false} disables virtual scrolling so options render in jsdom tests;
@@ -742,12 +751,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
         <LinkableDefinitionList
           linkableDefinitions={linkableDefinitions}
           selectedDefinitionKey={selectedDefinitionForLink?.definitionKey ?? null}
-          onSelect={(definitionKey) => {
-            const selected = linkableDefinitions.find(
-              (d) => d.definitionKey === definitionKey
-            );
-            setSelectedDefinitionForLink(selected ?? null);
-          }}
+          onSelect={handleLinkSelect}
         />
       </Space>
     );
@@ -832,7 +836,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
       <Button
         type="primary"
         disabled={selectedDefinitionForLink === null}
-        onClick={() => { void handleLinkConfirm(); }}
+        onClick={handleLinkConfirm}
       >
         Link
       </Button>
@@ -889,9 +893,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
           type="primary"
           disabled={isStartDisabled}
           loading={assessmentState === 'loading'}
-          onClick={() => {
-            void handleStartAssessment();
-          }}
+          onClick={handleStartAssessment}
         >
           Start Assessment
         </Button>

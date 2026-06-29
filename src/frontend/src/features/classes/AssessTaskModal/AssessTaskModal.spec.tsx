@@ -1481,3 +1481,60 @@ describe('No-match resolution — linking state and link flow', () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Inline Event Handler Stability
+// ---------------------------------------------------------------------------
+
+describe('Inline event handler stability', () => {
+  it('inline event handlers trigger the expected side effects after stabilisation', async () => {
+    const { dialog } = renderWithNoMatchCache({
+      upsertResult: DEFAULT_UPSERT_RESULT,
+      upsertType: 'resolve',
+      startRunResult: null,
+      startRunType: 'resolve',
+    });
+
+    // Handler 1: Assignment Select onChange — selects an assignment
+    // Side effect: selectedAssignmentId is set, enabling Start Assessment
+    await within(dialog).findByRole('combobox');
+    fireEvent.mouseDown(within(dialog).getByRole('combobox'));
+    const essayOption = await screen.findByText('Essay');
+    fireEvent.click(essayOption);
+    await waitFor(() => {
+      expect(within(dialog).getByRole('button', { name: 'Start Assessment' })).toBeEnabled();
+    });
+
+    // Handler 2: Start Assessment button onClick — triggers the no-match flow
+    // Side effect: assessment state transitions to no-match and choice prompt appears
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Start Assessment' }));
+    await within(dialog).findByRole('button', { name: 'Link to Existing Definition' });
+
+    // Navigate to the linking state
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Link to Existing Definition' }));
+
+    // Handler 3: Linkable definition Select onSelect — selects a definition row
+    // Side effect: selectedDefinitionForLink is set, enabling the Link button
+    const linkableSelect = within(dialog).getByRole('combobox');
+    fireEvent.mouseDown(linkableSelect);
+    const definitionOption = await screen.findByText('Essay');
+    fireEvent.click(definitionOption);
+    await waitFor(() => {
+      expect(within(dialog).getByRole('button', { name: 'Link' })).toBeEnabled();
+    });
+
+    // Handler 4: Link button onClick — triggers the link-upsert and assessment run
+    // Side effect: upsertAssignmentDefinition and startAssessmentRun are called
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Link' }));
+    await waitFor(() => {
+      expect(vi.mocked(upsertAssignmentDefinition)).toHaveBeenCalledTimes(1);
+    });
+    await waitFor(() => {
+      expect(vi.mocked(startAssessmentRun)).toHaveBeenCalledWith({
+        definitionKey: 'essay-def-key',
+        assignmentId: 'a1',
+        courseId: MOCK_CLASS_ID,
+      });
+    });
+  });
+});

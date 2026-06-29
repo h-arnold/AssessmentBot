@@ -976,8 +976,23 @@ changing the picker's props.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** record the actual changes made.
-- **Deviations from plan:** note any departure.
+- **Implementation notes:**
+  - `LinkableDefinitionList.tsx`: Wrapped in `React.memo` via `memo(function
+LinkableDefinitionList(...))`. Added `@remarks` JSDoc.
+  - `AssessTaskModal.tsx`: Stabilised four inline handlers — two via
+    `useCallback` (assignment Select onChange, link Select onSelect) and
+    two via direct function references (handleLinkConfirm, handleStartAssessment
+    — async functions recreated each render, so useCallback would produce
+    unstable-dependency warnings). Added `useCallback` to React imports.
+  - Added red-phase tests: picker row-count render test in
+    `LinkableDefinitionList.spec.tsx` and handler-stability functional test
+    in `AssessTaskModal.spec.tsx`.
+  - All 66 combined modal tests pass, lint green. Date: 2026-06-29.
+- **Deviations from plan:** Handlers 3 & 4 use direct function references
+  instead of `useCallback` — the underlying async functions are recreated
+  each render, so useCallback with an unstable dep would trigger lint
+  warnings. Direct reference still eliminates inline arrow creation in
+  JSX, achieving the H3 goal.
 - **Follow-up implications for later sections:** none.
 
 ---
