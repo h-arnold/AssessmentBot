@@ -224,10 +224,13 @@ test.describe('Assess Task modal', () => {
   });
 
   test('shows spinner during fetch and transitions to Select on response', async ({ page }) => {
-    // Two deferred entries for StrictMode.  Both effects will be held back;
-    // releasing the first deferred resolves the first effect and the component
-    // transitions to ready.  The second deferred stays pending and does not
-    // affect the already-stable ready state.
+    // Two deferred entries for StrictMode.  The AssessTaskModal uses a raw
+    // useEffect (not useQuery), so StrictMode fires the effect twice, creating
+    // two separate fetch promises and two deferred entries.  The first
+    // StrictMode mount's cleanup sets cancelled=true, so the first released
+    // deferred is silently dropped.  We must release both deferreds: the first
+    // is consumed by the cancelled mount, and the second triggers the visible
+    // component's state update.
     const deferredEntry = {
       kind: 'deferredSuccess' as const,
       data: MOCK_COURSEWORK_ASSIGNMENTS[0].data,
@@ -248,7 +251,9 @@ test.describe('Assess Task modal', () => {
     // Verify Select is not rendered during loading
     await expect(dialog.getByTestId('assignment-select')).toHaveCount(0);
 
-    // Release the first deferred success response
+    // Release both deferred success responses: the first is consumed by the
+    // cancelled StrictMode mount, the second transitions the visible component
+    await releaseNextDeferredSuccess(page);
     await releaseNextDeferredSuccess(page);
 
     // Verify spinner is replaced by Select dropdown
