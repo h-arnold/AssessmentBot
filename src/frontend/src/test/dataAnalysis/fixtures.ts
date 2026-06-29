@@ -1,4 +1,14 @@
-import type { AveragingAnalyserInput } from '../dataAnalysis.zod';
+/**
+ * Shared data-analysis test fixtures.
+ *
+ * Used by `averagingAnalyser.spec.ts` and `dataAnalysisService.spec.ts` to
+ * build minimal structurally-valid data shapes for analysis tests.
+ *
+ * @module test/dataAnalysis/fixtures
+ * @see docs/developer/frontend/frontend-testing.md §"Shared test helpers"
+ */
+
+import type { AveragingAnalyserInput } from '../../services/dataAnalysis/dataAnalysis.zod';
 
 // ---------------------------------------------------------------------------
 // Constants

@@ -10,7 +10,7 @@ import {
   createSubmissionItem,
   createTaskPartial,
   DEFAULT_CREATED_AT,
-} from '../test/fixtures';
+} from '../../../test/dataAnalysis/fixtures';
 
 /** Tolerance (decimal places) for `toBeCloseTo` floating-point comparisons. */
 const FLOAT_TOLERANCE = 10;

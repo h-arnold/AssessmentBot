@@ -1395,12 +1395,20 @@ the canonical location and convention.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** record the actual change made.
-- **Deviations from plan:** note any departure.
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:**
+  - Created `src/frontend/src/test/dataAnalysis/fixtures.ts` (verbatim copy with
+    new JSDoc header referencing `frontend-testing.md` §"Shared test helpers").
+    Updated imports in `averagingAnalyser.spec.ts` and `dataAnalysisService.spec.ts`.
+    Deleted old `services/dataAnalysis/test/fixtures.ts` and empty `test/` directory.
+    All 1194 tests pass, lint green, no source-code references to old path.
+    Date: 2026-06-29.
+- **Deviations from plan:** Corrected import path in `averagingAnalyser.spec.ts`
+  from the plan's stated `'../../../../test/...'` to `'../../../test/...'`
+  (the spec is 3 levels deep in `analysers/`, not 4).
 - **Follow-up implications for later sections:** Section 9 (H1) splits
-  the now-importable `averagingAnalyser.spec.ts` into category-based
-  spec files that all import the moved fixtures from the canonical
-  location.
+  specs that now import the moved fixtures from the canonical location.
 
 ---
 

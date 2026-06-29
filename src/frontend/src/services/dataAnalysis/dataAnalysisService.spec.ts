@@ -11,7 +11,7 @@ import {
   createSubmission,
   createSubmissionItem,
   createTaskPartial,
-} from './test/fixtures';
+} from '../../test/dataAnalysis/fixtures';
 
 // ---------------------------------------------------------------------------
 // Tests
