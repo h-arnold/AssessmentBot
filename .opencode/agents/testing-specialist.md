@@ -84,6 +84,46 @@ Choose test strategy by component.
 - When mocking `google.script.run.apiHandler`, reuse `src/frontend/src/test/googleScriptRunHarness.ts`. Use `createGoogleScriptRunApiHandlerMock(...)` in Vitest and `googleScriptRunApiHandlerFactorySource` for Playwright init scripts; do not add new shared-mutable runner mocks.
 - Shared frontend test helpers live under `src/frontend/src/test/**` (feature-scoped subfolders are allowed). Keep specs co-located in `src/frontend/src/**`, and do not import `src/test/**` from production source.
 
+#### Frontend `act()` warning avoidance
+
+The project runs React 19 with happy-dom, which together with antd v6 and React Query
+can produce `act(...)` warnings in test output. All tests still pass, but the noise
+obscures real issues. Follow these rules to keep suites clean:
+
+1. **Prefer `userEvent` over `fireEvent`.** `@testing-library/user-event` wraps
+   interactions inside `act()` and awaits settlement. `fireEvent` is synchronous and
+   does neither — every `fireEvent.click(...)` in a test with async side effects is a
+   likely source of `act` warnings. Import from `@testing-library/user-event` and use
+   `await user.click(...)` / `await user.selectOptions(...)` instead.
+
+2. **Use `mockImplementation(() => Promise.resolve(value))` over `mockResolvedValue`.**
+   `mockResolvedValue` returns a microtask-based promise that often resolves after the
+   current `act()` boundary has closed. `mockImplementation` with an explicit
+   `Promise.resolve` integrates more reliably with Testing Library's `act` wrapping.
+
+3. **Always `await` async queries and assertions.** Use `await screen.findByRole(...)`,
+   `await screen.findByText(...)`, or `await waitFor(() => ...)` to wait for DOM updates
+   triggered by async work. Tests that assert synchronously after state-changing
+   interactions will trigger `act` warnings from deferred React updates.
+
+4. **Ant Design CSSMotion/Portal animation warnings are expected but tolerated.**
+   antd v6 uses `rc-motion` internally for Select dropdowns, Modal transitions, and
+   similar animations. These fire `setTimeout` / `requestAnimationFrame` callbacks that
+   React sees as unwrapped state updates. Suppress these at the individual test level
+   by asserting on the final visible state (e.g., `await screen.findByText(...)`) rather
+   than fighting the animation lifecycle.
+
+5. **Set `globalThis.IS_REACT_ACT_ENVIRONMENT = true` in `setup.ts`** when writing new
+   component test files or when refactoring existing noisy ones. This suppresses the
+   "not configured to support act" variant of the warning. Check `src/frontend/src/test/setup.ts`
+   and add it if absent.
+
+6. **Avoid `fireEvent.mouseDown` / `fireEvent.click` on antd Select components.**
+   Ant Design v6 Select triggers dropdown rendering through a mousedown-then-click
+   sequence inside `rc-motion`. Use `userEvent.click(...)` or
+   `userEvent.selectOptions(...)` instead, which handle the full gesture and wait for
+   motion to settle.
+
 ### Builder (`scripts/builder`)
 
 - Framework: Vitest (`npm run test:builder`), Node environment.
@@ -114,7 +154,7 @@ If you add or modify tests, run the smallest targeted command first, then the re
 - Name tests, `describe(...)` blocks, helper constants, and fixtures after the behaviour or surface under test.
 - Do **not** use action-plan section numbering in test names or helpers (for example `Section 1`, `Section 2`, `SECTION_1_*`).
 - When migrating a transport surface, rename tests to the real method/class names and retire the old planning labels rather than carrying them forward.
-- For backend configuration transport, use `tests/api/backendConfigApi.test.js` as the dedicated suite and keep general dispatcher coverage in `tests/api/apiHandler.test.js`.
+- For backend configuration transport, use `tests/api/backendConfigApi.test.js` as the dedicated suite. General dispatcher coverage lives in `tests/api/apiHandler/` (dispatcher-\*.test.js files) and `tests/api/apiHandlerLocking.test.js`.
 - Do not recreate removed legacy configuration transport coverage around `src/backend/ConfigurationManager/99_globals.js`.
 
 ## 3. Idiomatic Patterns

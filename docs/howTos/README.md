@@ -28,11 +28,15 @@ Using Assessment Bot is straightforward. To assess a piece of work, you need thr
 
 ### Google Slides Tagging
 
-For Assessment Bot to identify which parts of the document to assess, the relevant sections need to be "tagged." At present, the following object types can be tagged:
+For Assessment Bot to identify which parts of the document to assess, the relevant sections need to be "tagged." At present, the following tags are supported:
 
-- Text: `#`
-- Tables: `#`
-- Whole Slide Images: `~`
+| Tag  | Used on     | Purpose                                                        |
+| ---- | ----------- | -------------------------------------------------------------- |
+| `#`  | Text shapes | Marks a text element for assessment.                           |
+| `#`  | Tables      | Marks a table element for assessment.                          |
+| `~`  | Images      | Marks an image on a slide for assessment as an image task.     |
+| `\|` | Images      | Alternative image tag (behaves the same as `~`).               |
+| `^`  | Text shapes | Marks a text element containing notes/instructions for a task. |
 
 > 💡 **Tip:** Assessing whole slide images is slower and potentially less accurate than text or table-based assessments. If your task is text or table-based only, ensure you tag it accordingly.
 
@@ -61,6 +65,19 @@ For Assessment Bot to identify which parts of the document to assess, the releva
    - `~ Task 2 - Sequence Block Code`
 
 > **Note:** You can have text, table, and image tasks in the same document.
+
+##### 📝 Notes Tags
+
+Notes tags allow you to attach guidance or instructions to a task. The tagged text is stored as task notes and can assist with assessment context.
+
+1. Open or create the template.
+2. Select the textbox containing the notes or instructions.
+3. Press `Ctrl` + `Alt` + `Y` to open the formatting options.
+4. Select **Alt Text**.
+5. In the **Description Box**, add the tag and the title of the task it relates to, e.g.:
+   - `^ Task 1 - Fill in the gaps`
+
+> **Note:** Notes tags (`^`) must reference an existing task title that is already tagged with `#`, `~`, or `|`.
 
 ### Google Sheets Tagging
 
@@ -108,10 +125,13 @@ You need the _Reference Slides_ and _Slide Template_ IDs to assess the work. To 
 
 ### ⚙️ The Assessment Process
 
-1. Open the Assessment Record Google Sheet for the class you want to assess.
-2. Click **Assessment Bot** from the menu at the top of the screen.
-3. Click **Assess Student Work**.
-4. Select the assignment you want to assess and click **Go**.
-5. Enter the Slide IDs for the _Reference Slides_ (top) and _Template_ (bottom) [which you obtained earlier](#-getting-the-slide-ids) and click **Go**.
-6. Wait patiently. The assessment can take 2 to 10 minutes depending on the document's size and complexity. Image tasks take significantly longer than text or table tasks.
-7. Once complete, you will have a RAG-coloured table summarising all the students' work.
+1. Open the Assessment Bot web app.
+2. Navigate to the **Classes** page and find the class you want to assess.
+3. Click the **Assess Task** button on the class card.
+4. Select the Google Classroom assignment you want to assess from the dropdown.
+5. If no matching assignment definition exists, you will be prompted to either:
+   - **Create a new definition** — this opens the definition wizard where you enter the _Reference Slides_ and _Slide Template_ IDs [which you obtained earlier](#-getting-the-slide-ids).
+   - **Link to an existing definition** — choose a previously created definition from the list.
+6. Click **Start Assessment**.
+7. Wait patiently. The assessment can take 2 to 10 minutes depending on the document's size and complexity. Image tasks take significantly longer than text or table tasks.
+8. Once complete, you can view the results in the **Assignments** page.

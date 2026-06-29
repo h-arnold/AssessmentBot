@@ -5,7 +5,7 @@ model: opencode-go/deepseek-v4-pro
 steps: 100
 ---
 
-# Agent Orchestrator Instructions
+# Action Plan Implementer Instructions
 
 ---
 

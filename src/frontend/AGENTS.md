@@ -202,12 +202,21 @@ services/assignmentDefinition/
 ├── assignmentTopicsService.ts
 ├── assignmentTopicsService.spec.ts
 ├── assignmentTopics.zod.ts
-└── assignmentTopics.zod.spec.ts
+├── assignmentTopics.zod.spec.ts
+├── taskPartial.zod.ts
+└── taskPartial.zod.spec.ts
 
 services/authService/
 ├── authService.ts
 ├── authService.spec.ts
 └── authService.zod.ts
+
+services/dataAnalysis/
+├── dataAnalysisService.ts
+├── dataAnalysisService.spec.ts
+├── dataAnalysis.zod.ts
+├── dataAnalysis.zod.spec.ts
+└── analysers/
 
 services/backendConfiguration/
 ├── backendConfigurationService.ts
@@ -227,7 +236,12 @@ services/googleClassrooms/
 ├── classPartialsService.ts
 ├── classPartialsService.spec.ts
 ├── classPartials.zod.ts
-└── classPartials.zod.spec.ts
+├── classPartials.zod.spec.ts
+├── classDetail/
+│   ├── classDetailService.ts
+│   ├── classDetailService.spec.ts
+│   ├── classDetailService.zod.ts
+│   └── classDetailService.zod.spec.ts
 
 services/referenceData/
 ├── referenceDataService.ts

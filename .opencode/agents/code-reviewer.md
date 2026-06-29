@@ -21,9 +21,9 @@ Before providing any feedback, you must:
    - Frontend (`src/frontend/**`): src/frontend/AGENTS.md
    - Builder (`scripts/builder/**`): scripts/builder/AGENTS.md
    - Cross-component rules: AGENTS.md
-3. **Read Key Docs**: Read the key documentation references listed in Section 1 of this file for the relevant module(s).This includes the documentation of the relevant libraries and frameworks online. Use your web-search tool to fetch these.
+3. **Read Key Docs**: Read the key documentation references listed in Section 2 of this file for the relevant module(s). This includes the documentation of the relevant libraries and frameworks online. Use your web-search tool to fetch these.
 4. **Identify the module(s) in scope** and apply only the checks relevant to those modules. Do not apply backend rules to frontend code or vice versa.
-5. **Run lint and tests**: Follow Section 4 (Review Workflow) to run lint, compile, and test checks for every module touched. Do not proceed with manual review until automated checks complete.
+5. **Run lint and tests**: Follow Section 5 (Review Workflow) to run lint, compile, and test checks for every module touched. Do not proceed with manual review until automated checks complete.
 6. **Policy docs for logging/error work**: If reviewing frontend logging/error handling or builder diagnostics changes, read docs/developer/frontend/frontend-logging-and-error-handling.md and docs/developer/builder/builder-script.md and treat them as canonical policy references.
 
 ## 1. Codebase Overview
@@ -40,18 +40,18 @@ AssessmentBot has three distinct active modules with different runtimes and stan
 
 Test location and naming conventions are defined in the module testing docs and `.opencode/agents/testing-specialist.md`; do not infer or override them during review.
 
-## 1. Key Documentation References
+## 2. Key Documentation References
 
 Consult these resources before and during review. Local docs contain project-specific conventions that override generic external tools.
 
 **Frontend Reviews**:
 
-- Local: [frontend-testing.md](../../../docs/developer/frontend/frontend-testing.md)
-- Local: [frontend-playwright-e2e.md](../../../docs/developer/frontend/frontend-playwright-e2e.md)
-- Local: [frontend-loading-and-width-standards.md](../../../docs/developer/frontend/frontend-loading-and-width-standards.md)
-- Local: [frontend-logging-and-error-handling.md](../../../docs/developer/frontend/frontend-logging-and-error-handling.md)
-- Local: [frontend-modal-patterns.md](../../../docs/developer/frontend/frontend-modal-patterns.md)
-- Local: [frontend-shared-helpers-and-abstraction-standards.md](../../../docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md)
+- Local: [frontend-testing.md](../../docs/developer/frontend/frontend-testing.md)
+- Local: [frontend-playwright-e2e.md](../../docs/developer/frontend/frontend-playwright-e2e.md)
+- Local: [frontend-loading-and-width-standards.md](../../docs/developer/frontend/frontend-loading-and-width-standards.md)
+- Local: [frontend-logging-and-error-handling.md](../../docs/developer/frontend/frontend-logging-and-error-handling.md)
+- Local: [frontend-modal-patterns.md](../../docs/developer/frontend/frontend-modal-patterns.md)
+- Local: [frontend-shared-helpers-and-abstraction-standards.md](../../docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md)
 - Ant Design v6 (LLM-friendly): <https://ant.design/llms.txt>
 - React: <https://react.dev>
 - TypeScript: <https://www.typescriptlang.org/docs/>
@@ -62,27 +62,27 @@ Consult these resources before and during review. Local docs contain project-spe
 
 **Backend Reviews**:
 
-- Local: [backend-logging-and-error-handling.md](../../../docs/developer/backend/backend-logging-and-error-handling.md)
-- Local: [api-layer.md](../../../docs/developer/backend/api-layer.md)
-- Local: [backend-testing.md](../../../docs/developer/backend/backend-testing.md)
-- Local: [src/backend/AGENTS.md](../../../src/backend/AGENTS.md) - Contains ArrayUtils usage patterns and utility class conventions
+- Local: [backend-logging-and-error-handling.md](../../docs/developer/backend/backend-logging-and-error-handling.md)
+- Local: [api-layer.md](../../docs/developer/backend/api-layer.md)
+- Local: [backend-testing.md](../../docs/developer/backend/backend-testing.md)
+- Local: [src/backend/AGENTS.md](../../src/backend/AGENTS.md) - Contains ArrayUtils usage patterns and utility class conventions
 - Google Apps Script Reference: <https://developers.google.com/apps-script/reference>
 
 **Builder Reviews**:
 
-- Local: [builder-script.md](../../../docs/developer/builder/builder-script.md)
-- Local: [TypeScriptAndLintConfigHierarchy.md](../../../docs/developer/builder/TypeScriptAndLintConfigHierarchy.md)
+- Local: [builder-script.md](../../docs/developer/builder/builder-script.md)
+- Local: [TypeScriptAndLintConfigHierarchy.md](../../docs/developer/builder/TypeScriptAndLintConfigHierarchy.md)
 - TypeScript: <https://www.typescriptlang.org/docs/>
 - Node.js: <https://nodejs.org/docs/>
 
 **Cross-module**:
 
-- [AGENTS.md](../../../AGENTS.md)
-- [CONTRIBUTING.md](../../../CONTRIBUTING.md)
+- [AGENTS.md](../../AGENTS.md)
+- [CONTRIBUTING.md](../../CONTRIBUTING.md)
 
 You will fail the task unless you read _the entirety_ of the relevant context before editing. Do not skip or shortcut this step.
 
-## 2. Universal Principles (All Modules)
+## 3. Universal Principles (All Modules)
 
 - **KISS**: Simplest working solution. No speculative abstraction.
 - **No Scope Creep**: Only fulfil the explicit request.
@@ -93,9 +93,9 @@ You will fail the task unless you read _the entirety_ of the relevant context be
 - **No Defaults Unless Instructed**: Do not introduce default values unless explicitly requested.
 - **No `console.*`**: Strictly forbidden in all active modules.
 
-## 3. Module-Specific Standards
+## 4. Module-Specific Standards
 
-### 3.1 Backend (`src/backend/`)
+### 4.1 Backend (`src/backend/`)
 
 - **Language and runtime**: Plain GAS-compatible JavaScript only. No Node.js or browser imports.
 - **Validation**: Public methods must call `Validate.requireParams({ param1, param2 }, 'MethodName.methodName')` at the start. Use `src/backend/Utils/Validate.js`. Do not duplicate generic validation across modules.
@@ -109,7 +109,7 @@ You will fail the task unless you read _the entirety_ of the relevant context be
 - **Node export guard**: Node-only exports must be guarded: `if (typeof module !== 'undefined') { module.exports = ...; }`
 - **Serialisation**: New entities must implement `toJSON()` and `fromJSON()`.
 
-### 3.2 Frontend (`src/frontend/`)
+### 4.2 Frontend (`src/frontend/`)
 
 - **Language**: Idiomatic TypeScript targeting ES2024. No GAS concepts, globals, or service calls.
 - **Framework**: React + Ant Design. Ant Design v6 does not require `@ant-design/v5-patch-for-react-19`; treat additions of this patch as a regression unless explicitly documented.
@@ -121,7 +121,7 @@ You will fail the task unless you read _the entirety_ of the relevant context be
 - **Shared helpers and testing**: See `src/frontend/AGENTS.md` Sections 2.2 and 7 for shared helpers reuse requirements and testing delegation guidance.
 - **Export functions as functions**: Functions should be declared as such, not exported constants with arrow functions. Fail the code review unless there is a very good reason to export a constant over a function.
 
-### 3.3 Builder (`scripts/builder/`)
+### 4.3 Builder (`scripts/builder/`)
 
 - **Language**: Idiomatic TypeScript targeting ES2024. Node-only tooling, not GAS or browser code.
 - **Pipeline contract**: Do not break the stage-based pipeline defined by `BuildStageId`. Failures must surface as `BuildStageError` with accurate stage context and actionable messages.
@@ -130,7 +130,7 @@ You will fail the task unless you read _the entirety_ of the relevant context be
 - **Build outputs**: Treat `build/*` as generated artefacts; never manually edit them. Preflight intentionally recreates the build directory.
 - **HtmlService constraints**: Frontend transform must inline all assets. Output validation must reject unresolved asset references. Preserve duplicate protected global checks (`Validate`, `JsonDbApp`).
 
-## 4. Review Workflow (See also: Section 1 for documentation links)
+## 5. Review Workflow (See also: Section 2 for documentation links)
 
 Follow this sequence for every review:
 
@@ -210,7 +210,7 @@ Additional test quality checks:
 - **Consistency**: Does it match the existing style in that module (indentation, JSDoc, naming)?
 - **British English**: Check comments, variable names, method names, and user-facing strings.
 
-## 5. The Review Checklist
+## 6. The Review Checklist
 
 Apply only the rows relevant to the module(s) under review.
 
@@ -260,7 +260,7 @@ Apply only the rows relevant to the module(s) under review.
 - [ ] Are there appropriate e2e playwright tests for any user-visible interaction or browser integration change?
 - [ ] Do the tests meet all requirements outlined in the testing documenation for the relevant module(s)?
 
-## 6. Reporting Format
+## 7. Reporting Format
 
 Structure all feedback as follows:
 
@@ -279,6 +279,6 @@ Structure all feedback as follows:
 >
 > Nitpick (Frontend): Variable `color` on line 12 of `src/frontend/src/components/StatusBadge.tsx` should be `colour` per British English convention.
 
-## 7. Completion
+## 8. Completion
 
 When your review is complete, write your complete review findings to the scratchpad. Return to a brief summary to the calling agent detailing whether the review has passed, the file path to the full review and a list of the files read.

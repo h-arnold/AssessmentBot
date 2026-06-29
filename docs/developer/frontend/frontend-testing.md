@@ -16,22 +16,22 @@ From repository root:
 
 ```bash
 # Frontend unit/component tests
-npm run frontend:test
+npm run test:frontend
 
 # Frontend tests in watch mode
-npm run frontend:test:watch
+npm run test:frontend:watch
 
 # Frontend Playwright E2E suite (see frontend-playwright-e2e.md)
-npm run frontend:test:e2e
+npm run test:frontend:e2e
 
 # Frontend unit/component coverage check (minimum 85%)
-npm run frontend:test:coverage
+npm run test:frontend:coverage
 ```
 
 Target a specific unit test pattern:
 
 ```bash
-npm run frontend:test -- src/App.spec.tsx
+npm run test:frontend -- src/App.spec.tsx
 ```
 
 ## Behaviour split: Vitest vs Playwright (authoritative)
@@ -96,7 +96,7 @@ When frontend work depends on backend configuration transport behaviour, keep th
 
 - frontend service validation and `callApi` usage belong in `src/frontend/src/services/backendConfiguration/backendConfigurationService.spec.ts`
 - dedicated backend configuration transport coverage belongs in `tests/api/backendConfigApi.test.js`
-- broader backend dispatcher coverage remains in `tests/api/apiHandler.test.js`
+- broader backend dispatcher coverage lives in `tests/api/apiHandler/` (dispatcher-\*.test.js files) and `tests/api/apiHandlerLocking.test.js`
 
 For assignment-definition transport work, keep the same split:
 
@@ -115,7 +115,7 @@ When tests cover logging/error pathways, keep expectations aligned with that doc
 
 ## Coverage requirement
 
-Frontend unit/component tests must meet a minimum coverage threshold of **85%** for lines, functions, statements, and branches. The threshold is enforced in `src/frontend/vite.config.ts` and checked via `npm run frontend:test:coverage`.
+Frontend unit/component tests must meet a minimum coverage threshold of **85%** for lines, functions, statements, and branches. The threshold is enforced in `src/frontend/vite.config.ts` and checked via `npm run test:frontend:coverage`.
 
 ## Shared test helpers
 
@@ -790,4 +790,4 @@ indicate bugs in application code, but they clutter output and obscure real fail
 
 - Frontend unit/component tests run in the frontend package (`src/frontend`) through root scripts.
 - For Playwright E2E tests, see `docs/developer/frontend/frontend-playwright-e2e.md`.
-- If frontend architecture changes substantially, update this file, `frontend-playwright-e2e.md`, and `.github/agents/Testing.agent.md` together.
+- If frontend architecture changes substantially, update this file, `frontend-playwright-e2e.md`, `.github/agents/Testing.agent.md`, and `.opencode/agents/testing-specialist.md` together.

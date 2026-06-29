@@ -389,6 +389,6 @@ const apiKey = config.getApiKey();
 5. **Direct constructor usage**:
    - ESLint rules help catch this, but always review PRs carefully
 
-💡 **Tip**: When in doubt, check existing singleton implementations like `ConfigurationManager`, `ProgressTracker`, or `UIManager` for reference patterns.
+💡 **Tip**: When in doubt, check existing singleton implementations like `ConfigurationManager`, `ProgressTracker`, or `ABLogger` for reference patterns.
 
 ⚠️ **Remember**: The goal is to have **zero heavy work** happening during file load or object construction. All expensive operations should be deferred until they're actually needed!

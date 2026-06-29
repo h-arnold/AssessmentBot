@@ -66,14 +66,16 @@ Reason: This asserts behaviour of `UIManager` UI probing in the legacy spreadshe
 
 ## What still runs
 
-`npm test` and `npm run test:all` now run the active backend logic tests (models, request handlers, parsers, assignment pipeline, configuration logic, etc.).
+`npm test` runs the active test suites: backend (`vitest run`), frontend (Vitest), and builder (Vitest). The backend suite covers models, controllers, request handlers, parsers, assignment pipeline, and configuration logic.
 
 ## Commands
 
-- Active backend suite: `npm test`
-- Active backend suite alias: `npm run test:all`
+- Full test suite: `npm test`
+- Backend tests only: `npm run test:backend`
+- Frontend tests only: `npm run test:frontend`
+- Builder tests only: `npm run test:builder`
 
 Notes:
 
-- `npm test` still excludes `tests/controllers/initController.test.js` by design.
-- `npm test` also excludes `tests/controllers/createDefinitionFromWizardInputs.test.js` by design.
+- `vitest.config.js` explicitly excludes `tests/controllers/initController.test.js` from the backend suite by design.
+- `tests/controllers/createDefinitionFromWizardInputs.test.js` was deleted and is therefore not picked up by the test runner.

@@ -44,7 +44,7 @@ This document captures the serialised structures produced by the models shared i
 
 - Assignment-definition task-weighting application helper
   - Status: `Implemented`
-  - Location: `AssignmentDefinitionController._applyTaskWeightingsIfProvided()` and `AssignmentDefinitionController._applyTaskWeightings()` in `src/backend/y_controllers/AssignmentDefinitionController.js`
+  - Location: `AssignmentDefinitionUpsertOrchestrator._applyTaskWeightingsIfProvided()` in `src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionUpsertOrchestrator.js`
   - Behaviour: applies validated `taskWeightings` patches to parsed or persisted task maps after refresh/reparse resolution and before final persistence.
 - Assignment-definition transport response normaliser
   - Status: `Not implemented`
@@ -130,6 +130,7 @@ are partially hydrated (note the embedded `assignmentDefinition` has `tasks: nul
         "yearGroupKey": "10",
         "yearGroupLabel": "Year 10",
         "alternateTitles": [],
+        "alternateTopics": [],
         "documentType": "SLIDES",
         "referenceDocumentId": "DriveRef123",
         "templateDocumentId": "DriveTemplate123",
@@ -431,7 +432,7 @@ Key notes:
 
 ### ABClass write-boundary ownership
 
-The ABClass write endpoints in `src/backend/z_Api/abclassMutations.js` split ownership of fields as follows:
+The ABClass write endpoints in `src/backend/z_Api/abclass/abclassMutations.js` split ownership of fields as follows:
 
 - User-managed inputs: `cohortKey`, `yearGroupKey`, `courseLength`, `active`
 - Google-derived write-path fields: `className`, `classOwner`, `teachers`, `students`
@@ -533,6 +534,7 @@ The `AssignmentDefinition` model encapsulates reusable lesson properties. For th
   "yearGroupKey": "10",
   "yearGroupLabel": "Year 10",
   "alternateTitles": [],
+  "alternateTopics": [],
   "documentType": "SLIDES",
   "referenceDocumentId": "DriveRef123",
   "templateDocumentId": "DriveTemplate123",
@@ -566,10 +568,13 @@ Stored under `assdef_full_<definitionKey>`, containing full artifact content/has
 
 ### Assignment-topic reference record
 
+Assignment topics carry `yearGroupKeys` (array of strings) for multi-year-group association.
+
 ```json
 {
   "key": "topic_english",
-  "name": "English"
+  "name": "English",
+  "yearGroupKeys": []
 }
 ```
 
@@ -587,6 +592,7 @@ Key notes:
   "yearGroupKey": "10",
   "yearGroupLabel": "Year 10",
   "alternateTitles": [],
+  "alternateTopics": [],
   "documentType": "SLIDES",
   "referenceDocumentId": "DriveRef123",
   "templateDocumentId": "DriveTemplate123",
@@ -689,7 +695,7 @@ Example create payload:
 {
   "primaryTitle": "Essay 1",
   "primaryTopicKey": "topic_english",
-  "yearGroup": 10,
+  "yearGroupKey": "10",
   "alternateTitles": ["Essay One"],
   "documentType": "SLIDES",
   "referenceDocumentId": "DriveRef123",
@@ -750,8 +756,10 @@ Used when we want a lightweight snapshot for list views or quick comparisons. Th
     "primaryTitle": "Essay 1",
     "primaryTopicKey": "topic_english",
     "primaryTopic": "English",
-    "yearGroup": 10,
+    "yearGroupKey": "10",
+    "yearGroupLabel": "Year 10",
     "alternateTitles": [],
+    "alternateTopics": [],
     "documentType": "SLIDES",
     "referenceDocumentId": "DriveRef123",
     "templateDocumentId": "DriveTemplate123",
@@ -882,8 +890,10 @@ Partial JSONs also redact artifact `content`/`contentHash` and drop the `reasoni
     "primaryTitle": "Essay 1",
     "primaryTopicKey": "topic_english",
     "primaryTopic": "English",
-    "yearGroup": 10,
+    "yearGroupKey": "10",
+    "yearGroupLabel": "Year 10",
     "alternateTitles": [],
+    "alternateTopics": [],
     "documentType": "SLIDES",
     "referenceDocumentId": "DriveRef123",
     "templateDocumentId": "DriveTemplate123",

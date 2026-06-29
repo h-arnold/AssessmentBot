@@ -14,20 +14,20 @@ From repository root:
 
 ```bash
 # Full Playwright E2E suite (pass/fail gate)
-npm run frontend:test:e2e
+npm run test:frontend:e2e
 
 # Run a single spec file
-npm run frontend:test:e2e -- e2e-tests/auth-status.spec.ts
+npm run test:frontend:e2e -- e2e-tests/auth-status.spec.ts
 
 # Run a specific test by name
-npm run frontend:test:e2e -- e2e-tests/auth-status.spec.ts -g "shows Authorised when backend returns true"
+npm run test:frontend:e2e -- e2e-tests/auth-status.spec.ts -g "shows Authorised when backend returns true"
 
 # Interactive modes (for debugging only)
-npm run frontend:test:e2e -- --ui
-npm run frontend:test:e2e -- --headed --debug
+npm run test:frontend:e2e -- --ui
+npm run test:frontend:e2e -- --headed --debug
 
 # Focused repeated runs for flakiness validation
-npm run frontend:test:e2e -- e2e-tests/classes-crud-manage-cohorts.spec.ts -g "Create cohort button" --repeat-each=10 --workers=1
+npm run test:frontend:e2e -- e2e-tests/classes-crud-manage-cohorts.spec.ts -g "Create cohort button" --repeat-each=10 --workers=1
 ```
 
 ### Chromium Installation
@@ -42,7 +42,7 @@ If Chromium or its system dependencies go missing, reinstall and rerun:
 
 ```bash
 npm --prefix src/frontend exec -- playwright install --with-deps chromium
-npm run frontend:test:e2e
+npm run test:frontend:e2e
 ```
 
 ## Test File Structure
@@ -403,7 +403,7 @@ When asserting modal layout geometry for Ant Design tables, use this stabilisati
 5. Validate with focused repeated runs (`--repeat-each`) and optionally serialise workers (`--workers=1`) before finalising thresholds.
 
 ```bash
-npm run frontend:test:e2e -- e2e-tests/classes-crud-manage-cohorts.spec.ts -g "Create cohort button" --repeat-each=10 --workers=1
+npm run test:frontend:e2e -- e2e-tests/classes-crud-manage-cohorts.spec.ts -g "Create cohort button" --repeat-each=10 --workers=1
 ```
 
 ---
@@ -414,13 +414,13 @@ npm run frontend:test:e2e -- e2e-tests/classes-crud-manage-cohorts.spec.ts -g "C
 
 ```bash
 # Open Playwright UI (good for clicking through scenarios)
-npm run frontend:test:e2e -- --ui
+npm run test:frontend:e2e -- --ui
 
 # Run in a visible browser with Playwright Inspector
-npm run frontend:test:e2e -- --headed --debug
+npm run test:frontend:e2e -- --headed --debug
 
 # Run a single mocked scenario by test name
-npm run frontend:test:e2e -- --headed --debug e2e-tests/auth-status.spec.ts -g "shows Authorised"
+npm run test:frontend:e2e -- --headed --debug e2e-tests/auth-status.spec.ts -g "shows Authorised"
 ```
 
 ### VS Code Extension
@@ -436,7 +436,7 @@ Install the Playwright Test extension for VS Code. It allows:
 Traces are configured as `on-first-retry` in `playwright.config.ts`. To force trace collection:
 
 ```bash
-npm run frontend:test:e2e -- --trace on
+npm run test:frontend:e2e -- --trace on
 npx playwright show-report
 ```
 

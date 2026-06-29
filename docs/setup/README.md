@@ -13,7 +13,7 @@ This guide will walk you through setting up the Google Slides Assessor, a tool d
     - [🖥️ Setting up the Google Apps Script Frontend](#️-setting-up-the-google-apps-script-frontend)
       - [1️⃣ Configuring Assessment Bot](#1️⃣-configuring-assessment-bot)
       - [2️⃣ Creating the Assessment Records](#2️⃣-creating-the-assessment-records)
-      - [4️⃣ Getting started with your first assessment.](#4️⃣-getting-started-with-your-first-assessment)
+      - [3️⃣ Getting started with your first assessment.](#3️⃣-getting-started-with-your-first-assessment)
   - [🌟 Final Thoughts](#-final-thoughts)
 
 ## 📝 Prerequisites
@@ -69,11 +69,11 @@ This section is primarily for Heads of Department or administrators responsible 
 
 #### [2️⃣ Creating the Assessment Records](./settingUpAssessmentRecords.md)
 
-- **Note**: Current docs are out of date. Check back later for updated versions¬
+- This step creates the class records that store assessment data.
 
-#### [4️⃣ Getting started with your first assessment.](/docs/howTos/README.md)
+#### [3️⃣ Getting started with your first assessment.](../howTos/README.md)
 
-- All the hard work has been done. Now you need to get assessing! [Check out the documentation for that here.](/docs/howTos/README.md)
+- All the hard work has been done. Now you need to get assessing! [Check out the documentation for that here.](../howTos/README.md)
 
 ---
 

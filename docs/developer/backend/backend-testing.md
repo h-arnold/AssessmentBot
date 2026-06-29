@@ -10,7 +10,7 @@ Backend currently exposes API-style entry files under `src/backend/z_Api`. Tests
 
 These API functions should be tested as thin wrappers around controller delegation and error propagation.
 
-Backend configuration transport is now covered by the dedicated suite in `tests/api/backendConfigApi.test.js`. Keep broader dispatcher and allowlist coverage in `tests/api/apiHandler.test.js`.
+Backend configuration transport is now covered by the dedicated suite in `tests/api/backendConfigApi.test.js`. Keep broader dispatcher and allowlist coverage in `tests/api/apiHandler/` (directory with multiple dispatcher test files).
 
 ## Backend logging test expectations
 
@@ -314,7 +314,7 @@ describe('MyTest', () => {
 - **Environment**: Node.js
 - **Configuration**: `vitest.config.js` (loads `tests/setupGlobals.js`)
 - **Test Runner (one-off)**: `npm test`
-- **Watch Mode**: `npm run test:watch`
+- **Watch Mode**: `npm run test:backend:watch`
 - **Module System**: Test files must use ESM `import` syntax for vitest (production code uses CommonJS `require`)
 
 ## Directory Structure
@@ -346,14 +346,14 @@ tests/
 ## Running Tests
 
 ```bash
-# Run default non-legacy suite (single run)
+# Run all tests (backend, frontend, builder) — single run
 npm test
 
-# Run the backend suite
-npm run test:all
+# Run only the backend suite
+npm run test:backend
 
-# Run all tests in watch mode
-npm run test:watch
+# Run backend tests in watch mode
+npm run test:backend:watch
 
 # Run a specific test file
 npm test -- tests/models/abclass.test.js
@@ -1356,8 +1356,8 @@ const MyClass = MyClassExport.MyClass || MyClassExport;
 
 The new React frontend under `src/frontend` has its own Vitest and Playwright configuration:
 
-- `npm run frontend:test` runs frontend unit tests.
-- `npm run frontend:test:e2e` runs Playwright browser tests against the Vite dev server.
-- `npm run frontend:test:watch` runs frontend Vitest in watch mode.
+- `npm run test:frontend` runs frontend unit tests.
+- `npm run test:frontend:e2e` runs Playwright browser tests against the Vite dev server.
+- `npm run test:frontend:watch` runs frontend Vitest in watch mode.
 
 Backend tests remain under `tests/` and should continue to avoid GAS runtime calls.

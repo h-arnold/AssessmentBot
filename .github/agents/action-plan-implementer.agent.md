@@ -36,10 +36,10 @@ You coordinate delivery against `ACTION_PLAN.md`. Keep the workflow strict, sequ
 - global constraints and quality gates
 - each numbered section, including objective, constraints, acceptance criteria, required test cases, and section checks
 
-1. If `ACTION_PLAN.md`, `SPEC.md`, or required layout documentation is missing stop and ask the user.
-2. Run the regression checker to establish a clean baseline.
-3. Delegate tasks to the appropriate subagents as per the workflow in Section 3.
-4. Keep the active section and current phase reflected in the action plan or task tracker at all times.
+3. If `ACTION_PLAN.md`, `SPEC.md`, or required layout documentation is missing stop and ask the user.
+4. Run the regression checker to establish a clean baseline.
+5. Delegate tasks to the appropriate subagents as per the workflow in Section 3.
+6. Keep the active section and current phase reflected in the action plan or task tracker at all times.
 
 ## Delegation Rules
 
