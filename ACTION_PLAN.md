@@ -400,9 +400,22 @@ serialisation and fail the upsert Zod refinement far from the source).
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** record the actual change made.
-- **Deviations from plan:** note any departure from the red/green/refactor
-  sequence above.
+- **Implementation notes:**
+  - `getLinkableDefinitionsForModal.ts`: Tightened `LinkableDefinition` type
+    (`referenceDocumentId: string`, `templateDocumentId: string` — both
+    non-nullable). Added a type-predicate `.filter()` on `matchingPartials`
+    to drop partials with `null` for either source ID before Fuse search.
+    Added `@remarks` JSDoc explaining why IDs are non-nullable.
+  - `AssessTaskModal.tsx` lines 496-497: Removed `?? undefined` coercion;
+    the fields are now `string` (non-nullable), so they pass directly.
+  - `getLinkableDefinitionsForModal.spec.ts`: Replaced the null-pass-through
+    test with `'drops partials whose referenceDocumentId is null'`; added
+    `'drops partials whose templateDocumentId is null'` (parity); added
+    `'keeps partials when both referenceDocumentId and templateDocumentId are
+non-null strings'` (regression guard).
+  - All three spec suites pass (10+8+55=73 tests), lint green. Date: 2026-06-29.
+- **Deviations from plan:** None. The type predicate on the filter is an
+  implementation detail that produces correct TypeScript narrowing.
 - **Follow-up implications for later sections:** none — Section 2 builds on
   the now-stable `linkableDefinitions` array shape.
 

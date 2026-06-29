@@ -13,6 +13,12 @@ import type { AssignmentDefinitionPartial } from '../../../services/assignmentDe
  * The `fuse.js` score is an implementation detail of the picker ordering
  * and is not surfaced as a field on `LinkableDefinition` (per
  * `SPEC.md` display-resolution recommendation).
+ *
+ * @remarks
+ * Both `referenceDocumentId` and `templateDocumentId` are non-nullable
+ * `string` fields. The derivation function filters out partials that
+ * have null for either source ID, preventing the link-upsert path from
+ * serialising `null` as `undefined`.
  */
 export type LinkableDefinition = {
   definitionKey: string;
@@ -24,8 +30,8 @@ export type LinkableDefinition = {
   alternateTitles: string[];
   alternateTopics: string[];
   documentType: 'SLIDES' | 'SHEETS';
-  referenceDocumentId: string | null;
-  templateDocumentId: string | null;
+  referenceDocumentId: string;
+  templateDocumentId: string;
 };
 
 const SORT_NEWER_FIRST = -1;
@@ -75,9 +81,16 @@ export function getLinkableDefinitionsForModal(
     return [];
   }
 
-  const matchingPartials = definitionPartials.filter(
-    (partial) => partial.yearGroupKey === classYearGroupKey
-  );
+  const matchingPartials = definitionPartials
+    .filter((partial) => partial.yearGroupKey === classYearGroupKey)
+    .filter(
+      (
+        partial
+      ): partial is AssignmentDefinitionPartial & {
+        referenceDocumentId: string;
+        templateDocumentId: string;
+      } => partial.referenceDocumentId !== null && partial.templateDocumentId !== null
+    );
 
   if (matchingPartials.length === 0) {
     return [];
