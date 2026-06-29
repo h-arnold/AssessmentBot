@@ -32,7 +32,7 @@ This feature is **not** intended to:
 
 ## Agreed product decisions
 
-(All decisions locked during planning rounds 1 and 2, 2026-06-15. Updated in v1.1 per codebase verification.)
+(All decisions locked during planning rounds 1 and 2, 2026-06-15. Updated in v1.1 per codebase verification. Updated 2026-06-29 with M3 matched-flow stale-recovery decision.)
 
 1. The Data Analysis Service is a **pure analysis layer**. It performs no transport, owns no React Query state, and does not import Ant Design. The hook layer in a future `features/dataAnalysis/` directory will own data fetching and feed pre-fetched data to the service.
 2. The service is organised as an **orchestrator + pluggable analysers** (strategy pattern). The v1 analyser is `AveragingAnalyser`. New analyses are added by writing a new analyser class and registering it with the orchestrator; the existing analyser contract and `AveragingResult` shape are not modified.
@@ -51,6 +51,7 @@ This feature is **not** intended to:
     - `assignmentDefinitionKeys?: string[]` — optional. Match against `assignment.assignmentDefinition.definitionKey`. `undefined` or `[]` means "no assignment filter".
 12. The result shape is **per-class** (`AveragingResult[]` indexed by `classId`), each containing per-student / per-task / per-class breakdowns. Cross-class / cohort analysis is a separate, future analyser.
 13. No layout spec, no page, no Ant Design adapter, no UI work in v1. The page and the chart/table adapter module are a separate work stream. This service emits stable, chart/table-friendly field names (`studentId`, `taskId`, `classId`, numeric criterion values) so the future adapter layer is trivial.
+14. **Matched-flow `DEFINITION_STALE` recovery (M3).** When `startAssessmentRun` rejects with `DEFINITION_STALE` from either the matched flow or the link flow, the `AssessTaskModal` transitions to the wizard's `'creating'` state to let the user re-derive the stale definition. Both flows invalidate the assignment definition partials cache before the transition. (Added 2026-06-29 per `ACTION_PLAN.md` Section 7.)
 
 ## Existing system constraints
 
@@ -471,6 +472,10 @@ The hook layer (deferred) is responsible for catching transport errors and rende
 - If `perStudent` is empty, the per-class metrics are still computed (and reported as `value: null` with `applicableDataPoints: 0`).
 - If `perTask` is empty, the same rule applies.
 - If no class has any qualifying data points, the analyser returns an empty `AveragingResult[]`. The hook / page layer (deferred) is responsible for rendering the empty state.
+
+### Matched-flow stale-recovery (M3)
+
+When `startAssessmentRun` rejects with `DEFINITION_STALE` from the matched flow, the `AssessTaskModal` transitions `noMatchResolution` to `'creating'`, resets `assessmentState` to `'idle'`, clears the assessment error, and invalidates the assignment definition partials cache. This mirrors the existing link-flow stale-recovery behaviour so both flows provide a symmetric path to re-derive the stale definition. The cache invalidation is performed before the state transitions. (Added 2026-06-29 per `ACTION_PLAN.md` Section 7.)
 
 ## Accessibility and usability notes
 

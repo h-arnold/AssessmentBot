@@ -1984,11 +1984,15 @@ or the wire-contract behaviour covered by the Zod schemas.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** record the verification results.
-- **Deviations from plan:** note any coverage gap and the action
-  taken.
-- **Follow-up implications for later sections:** Section 14 (docs)
-  reconciles the planned-only helper entries.
+- **Implementation notes:**
+  - Frontend: 104 test files, 1194 tests pass. Lint green (0/0).
+  - Backend: 15 lint warnings (pre-existing `max-lines` on Assignment.js).
+  - E2E: 212 failures due to missing Chromium binary (environment issue,
+    pre-existing). No regressions from baseline.
+  - Coverage: frontend test coverage meets 85% threshold.
+  - All mandatory-read evidence gates passed for Sections 1-12.
+  - Planned-only helper entries reconciled against implementation.
+    Date: 2026-06-29.
 
 ---
 
@@ -2065,8 +2069,16 @@ SPEC.md` shows only the planned updates.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** record the doc updates.
-- **Deviations from plan:** note any departure.
+- **Implementation notes:**
+  - `docs/developer/frontend/frontend-testing.md`: Updated both
+    planned-only helper entries from "Not implemented" to "Implemented".
+  - `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`:
+    Cross-reference added in Section 0; no further changes needed.
+  - `SPEC.md`: Added agreed product decision 14 (matched-flow
+    DEFINITION_STALE recovery) and "Matched-flow stale-recovery" section
+    under Error/loading/empty-state rules. Updated date stamp.
+  - No update to `DATA_SHAPES.md` required (wire shape unchanged).
+    Date: 2026-06-29.
 
 ---
 
