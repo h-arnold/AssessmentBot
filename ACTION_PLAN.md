@@ -817,11 +817,22 @@ O(N) over the assignments.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** record the actual change made.
-- **Deviations from plan:** note any departure.
+- **Implementation notes:**
+  - `averagingAnalyser.filters.ts`: Built `topicKeySet` and
+    `definitionKeySet` (Set<string> | undefined) once at the top of
+    `filterAssignments`. Replaced `isFilteredByTopicKeys` and
+    `isFilteredByDefinitionKeys` predicate calls with direct O(1)
+    `Set.has` lookups. The date-range predicate via
+    `isFilteredByDateRange` is preserved (it was already O(1)).
+    All three predicate helpers remain exported. Added `@remarks` JSDoc.
+  - `averagingAnalyser.spec.ts`: Added two behavioural regression tests
+    (Set-based lookup equivalence, empty-vs-undefined filter parity).
+    All 31 tests pass, lint green. Date: 2026-06-29.
+- **Deviations from plan:** `Set` instances are `undefined` when the
+  filter array is absent/empty, matching the existing `!topicKeys`
+  guards. This avoids creating empty `Set` objects.
 - **Follow-up implications for later sections:** Section 9 (spec split)
-  may move the filter tests to a new
-  `averagingAnalyser.filters.spec.ts` file.
+  may move the filter tests to `averagingAnalyser.filters.spec.ts`.
 
 ---
 

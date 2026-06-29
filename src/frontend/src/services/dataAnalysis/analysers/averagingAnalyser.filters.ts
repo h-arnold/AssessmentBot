@@ -8,27 +8,39 @@ import type { AveragingAnalyserInput } from '../dataAnalysis.zod';
  * @param {AveragingAnalyserInput} input - The full analyser input.
  * @returns {AveragingAnalyserInput['classes'][number]['assignments']}
  *   Filtered assignments.
+ * @remarks
+ * This function builds {@link Set} instances for the topicKeys and
+ * assignmentDefinitionKeys arrays once at call time, then uses
+ * O(1) {@link Set.has} lookups inside the filter callback instead of
+ * O(K) {@link Array.includes}. The date-range predicate remains a
+ * direct lexicographic string comparison via {@link isFilteredByDateRange}.
  */
 export function filterAssignments(
   cls: AveragingAnalyserInput['classes'][number],
   input: AveragingAnalyserInput
 ): AveragingAnalyserInput['classes'][number]['assignments'] {
+  const topicKeySet: Set<string> | undefined = input.filter.topicKeys?.length
+    ? new Set(input.filter.topicKeys)
+    : undefined;
+  const definitionKeySet: Set<string> | undefined = input.filter.assignmentDefinitionKeys?.length
+    ? new Set(input.filter.assignmentDefinitionKeys)
+    : undefined;
+  const { dateRange } = input.filter;
+
   return cls.assignments.filter((assignment) => {
     assertAssignmentDefinition(assignment, cls.classId);
 
     const definition = assignment.assignmentDefinition!;
 
-    if (isFilteredByDateRange(assignment.createdAt, input.filter.dateRange)) {
+    if (isFilteredByDateRange(assignment.createdAt, dateRange)) {
       return false;
     }
 
-    if (isFilteredByTopicKeys(definition.primaryTopicKey, input.filter.topicKeys)) {
+    if (topicKeySet && !topicKeySet.has(definition.primaryTopicKey)) {
       return false;
     }
 
-    if (
-      isFilteredByDefinitionKeys(definition.definitionKey, input.filter.assignmentDefinitionKeys)
-    ) {
+    if (definitionKeySet && !definitionKeySet.has(definition.definitionKey)) {
       return false;
     }
 
