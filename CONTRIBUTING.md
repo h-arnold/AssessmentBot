@@ -14,8 +14,6 @@ AssessmentBot has three active modules, each with its own runtime, language, and
 | Frontend | `src/frontend/`    | Browser (Vite + React) | TypeScript                |
 | Builder  | `scripts/builder/` | Node.js                | TypeScript                |
 
-> ⚠️ `src/AdminSheet/` and `src/AssessmentRecordTemplate/` are **deprecated** reference areas. Do not add new features there.
-
 Each module has a detailed `AGENTS.md` that describes its conventions and constraints. Read the relevant one before working in that area:
 
 - [src/backend/AGENTS.md](src/backend/AGENTS.md)

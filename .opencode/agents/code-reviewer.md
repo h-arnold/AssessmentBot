@@ -36,8 +36,6 @@ AssessmentBot has three distinct active modules with different runtimes and stan
 | Frontend | `src/frontend/`    | Browser (Vite + React) | TypeScript (ES2024)       |
 | Builder  | `scripts/builder/` | Node.js                | TypeScript (ES2024)       |
 
-**Deprecated** (read-only reference; do not add features): `src/AdminSheet/`, `src/AssessmentRecordTemplate/`
-
 Test location and naming conventions are defined in the module testing docs and `.opencode/agents/testing-specialist.md`; do not infer or override them during review.
 
 ## 2. Key Documentation References

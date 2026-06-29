@@ -159,8 +159,6 @@ Provide a concise handoff summary including:
 │   │   │   ├── backend-logging-and-error-handling.md # Canonical: ABLogger usage, validation ownership, error-boundary standards, apiHandler diagnostics
 │   │   │   ├── backend-testing.md                     # Vitest setup, GAS load order, test categories, mock factories, anti-patterns
 │   │   │   ├── DATA_SHAPES.md                         # Backend data structures and serialisation formats
-│   │   │   ├── DEPRECATED_LEGACY_TESTS_AUDIT.md        # Audit of deprecated legacy backend tests
-│   │   │   ├── DEPRECATED_LEGACY_UI_AUDIT.md          # Audit of deprecated legacy UI code
 │   │   │   ├── oauth-scopes.md                         # OAuth scopes required by the application
 │   │   │   ├── rehydration.md                         # Deserialising and reconstructing objects
 │   │   │   ├── singletons.md                           # Singleton pattern usage

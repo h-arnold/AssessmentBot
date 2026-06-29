@@ -6,8 +6,7 @@ This guide will walk you through setting up the Google Slides Assessor, a tool d
   - [📝 Prerequisites](#-prerequisites)
   - [🧩 Core Components](#-core-components)
     - [1️⃣ Assessment Bot Backend](#1️⃣-assessment-bot-backend)
-    - [2️⃣ Admin Sheet](#2️⃣-admin-sheet)
-    - [3️⃣ Assessment Records](#3️⃣-assessment-records)
+    - [2️⃣ Assessment Records](#2️⃣-assessment-records)
   - [🚀 The Setup Process](#-the-setup-process)
     - [🌐 Setting up the Backend](#-setting-up-the-backend)
     - [🖥️ Setting up the Google Apps Script Frontend](#️-setting-up-the-google-apps-script-frontend)
@@ -33,15 +32,7 @@ Understanding the system's components will help you see how it all fits together
 
 - ([The Assessment Bot Backend](https://github.com/h-arnold/AssessmentBot-Backend)) provides the LLM (Large Language Model) backend for handling assessments. This allows for automated interpretation and marking of student submissions.
 
-### 2️⃣ Admin Sheet
-
-- The Admin Sheet contains a bound script containing the frontend source code which is used as a library for the Assessment Records. It also allows you to:
-
-- Create and Manage Assessment Records for each class
-- Handle updates
-- Analyse whole-cohort data
-
-### 3️⃣ Assessment Records
+### 2️⃣ Assessment Records
 
 - A separate Google Sheet for each class, where assessment data is stored. This will be the tool most commonly used by your team.
 

@@ -1315,7 +1315,7 @@ it('should call dependency method', () => {
 
 ```javascript
 // For production modules (CommonJS): use require
-const ConfigurationManager = require('../../src/AdminSheet/ConfigurationManager/ConfigurationManagerClass.js');
+const ConfigurationManager = require('../../src/backend/ConfigurationManager/98_ConfigurationManagerClass.js');
 
 // For test helpers (may be CommonJS or ESM): use import
 import { setupGlobalGASMocks } from '../helpers/mockFactories.js';

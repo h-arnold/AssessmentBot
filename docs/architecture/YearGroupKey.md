@@ -53,7 +53,7 @@ The assignment definition creation path contained significant technical debt:
 1. **Breaking Change**: Existing stored definitions with `yearGroup` fields become inaccessible
    - **Mitigation**: No legacy data to preserve; existing definitions must be re-created through new flow
 2. **No Backwards Compatibility**: Legacy code using `yearGroup` will break
-   - **Mitigation**: Explicit per SPEC.md; deprecated code in `src/AdminSheet` and legacy `globals.js` intentionally excluded
+   - **Mitigation**: Explicit per SPEC.md; the `src/AdminSheet` directory has been fully removed from the repository.
 3. **Definition Key Format Change**: Old keys (e.g., `Math_Algebra_10`) won't match new keys (e.g., `Math_Algebra_year-group-10`)
    - **Mitigation**: Acceptable as part of architectural cleanup
 

@@ -19,8 +19,6 @@ Failing to read these files **will** result in you failing your task.
 ### 2. Active vs Deprecated Areas
 
 - Active implementation areas: `src/backend`, `src/frontend`, `scripts/builder`.
-- `src/AdminSheet` and `src/AssessmentRecordTemplate` are deprecated reference sources.
-- Do not add new features in deprecated areas unless explicitly requested.
 
 ### 3. Core Principles (All Components)
 

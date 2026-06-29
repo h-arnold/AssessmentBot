@@ -179,7 +179,7 @@ class BadManager extends BaseSingleton {
 ```javascript
 // ❌ Wrong - eager global instantiation (old pattern)
 const configurationManager = new ConfigurationManager();
-const uiManager = new UIManager();
+const abLogger = new ABLogger();
 
 // These create instances immediately when the file loads,
 // causing heavy work before it's needed!
