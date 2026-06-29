@@ -658,7 +658,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
       (d) => d.definitionKey === definitionKey
     );
     setSelectedDefinitionForLink(selected ?? null);
-  }, [linkableDefinitions, setSelectedDefinitionForLink]);
+  }, [linkableDefinitions]);
 
   const isStartDisabled =
     fetchState !== 'ready' ||
