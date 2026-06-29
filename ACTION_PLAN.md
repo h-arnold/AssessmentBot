@@ -1555,13 +1555,16 @@ explaining the floating-point tolerance strategy (`toBeCloseTo` with
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** record the actual changes made and the
-  pre-split test-case count from the `grep` / test-run cross-check.
-- **Deviations from plan:** note any departure.
-- **Follow-up implications for later sections:** Section 10 (M1) moves
-  helpers out of `averagingAnalyser.types.ts`; the test files imported
-  the helpers indirectly via the analyser, so the move does not
-  require test-import changes.
+- **Implementation notes:**
+  - Created `src/frontend/src/test/dataAnalysis/averagingAnalyserAssertions.ts`
+    exporting `expectMetricResult`, `checkMetricInvariant`, and `FLOAT_TOLERANCE`.
+  - Split the 1959-line spec into 4 co-located files:
+    - `averagingAnalyser.spec.ts` — 9 orchestration tests (436 lines)
+    - `averagingAnalyser.filters.spec.ts` — 5 filter tests (395 lines)
+    - `averagingAnalyser.accumulation.spec.ts` — 9 accumulation tests (457 lines)
+    - `averagingAnalyser.rows.spec.ts` — 8 row-building tests (512 lines)
+  - All 31 tests preserved verbatim, each spec independently runnable,
+    all under 550 lines. Lint green. Date: 2026-06-29.
 
 ---
 
