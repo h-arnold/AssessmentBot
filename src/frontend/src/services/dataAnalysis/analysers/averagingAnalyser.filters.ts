@@ -82,11 +82,3 @@ export function isFilteredByDateRange(
   if (!dateRange) return false;
   return createdAt < dateRange.from || createdAt >= dateRange.to;
 }
-
-/**
- * Check whether a primary topic key is excluded by the topic-key filter.
- *
- * @param {string} primaryTopicKey - The topic key to check.
- * @param {readonly string[] | undefined} topicKeys - The allow list.
- * @returns {boolean} True when the key is not in the allow list.
- */
