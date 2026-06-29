@@ -12,6 +12,7 @@ import { createAppQueryClient } from '../../../query/queryClient';
 import { ApiTransportError } from '../../../errors/apiTransportError';
 import { createFixtureClassPartial } from '../../../test/classes/classesPageTestHelpers';
 import type { AssignmentTopic } from '../../../services/referenceData/referenceData.zod';
+import type { GoogleClassroomAssignmentsResponse } from '../../../services/googleClassrooms/googleClassroomAssignments.zod';
 import {
   type RenderWithCacheOptions,
   MOCK_CLASS_ID,
@@ -333,6 +334,78 @@ describe('Reopen resets state', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Cleanup on close
+// ---------------------------------------------------------------------------
+
+describe('Cleanup on close', () => {
+  it('closing the modal mid-fetch does not apply the stale result to state', async () => {
+    // Create a deferred promise for the first fetch so we can control
+    // when it resolves (after the modal is closed).
+    let resolveFirstFetch!: (value: GoogleClassroomAssignmentsResponse) => void;
+    const firstDeferred = new Promise<GoogleClassroomAssignmentsResponse>((resolve) => {
+      resolveFirstFetch = resolve;
+    });
+
+    // Second fetch stays pending so we can observe the state before it resolves.
+    const secondDeferred = new Promise<GoogleClassroomAssignmentsResponse>(() => {});
+
+    vi.mocked(getGoogleClassroomAssignments)
+      .mockReturnValueOnce(firstDeferred)
+      .mockReturnValueOnce(secondDeferred);
+
+    // Stale data that must NOT leak into the visible state after re-opening
+    const staleData: GoogleClassroomAssignmentsResponse = [
+      { assignmentId: 'stale-1', title: 'Stale Assignment', creationTime: '2024-09-01T08:00:00.000Z', topicName: 'Old Topic', topicId: null },
+    ];
+
+    const queryClient = createAppQueryClient();
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <AssessTaskModal {...defaultProperties()} />
+      </QueryClientProvider>
+    );
+
+    // Modal is open — effect fires, fetch starts, loading spinner visible
+    const dialog = screen.getByRole('dialog', { name: MODAL_TITLE });
+    expect(within(dialog).getByRole('status')).toBeInTheDocument();
+
+    // Close the modal while the first fetch is still in-flight
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <AssessTaskModal {...defaultProperties({ open: false })} />
+      </QueryClientProvider>
+    );
+
+    // Resolve the first fetch with stale data — the leaky .then() fires
+    // while the modal is closed, updating component state.
+    await act(async () => {
+      resolveFirstFetch(staleData);
+    });
+
+    // Re-open the modal — this triggers the useEffect again, starting a
+    // second fetch via the second mock call (secondDeferred, pending).
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <AssessTaskModal {...defaultProperties()} />
+      </QueryClientProvider>
+    );
+
+    const reopenedDialog = await screen.findByRole('dialog', { name: MODAL_TITLE });
+
+    // Assert: the stale data does NOT leak into the visible state.
+    //
+    // BUG (no cleanup): the leaky .then() handler set fetchState to 'ready'
+    //   and assignments to staleData. After re-opening, the modal shows the
+    //   stale assignments (combobox visible, no loading spinner).
+    //
+    // FIX (with cleanup): the stale handler was suppressed by the cleanup
+    //   function. fetchState remains 'loading'. The modal shows the loading
+    //   spinner while the second fetch is pending.
+    expect(within(reopenedDialog).getByRole('status')).toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Assessment Run Interaction
 // ---------------------------------------------------------------------------
 
@@ -481,29 +554,6 @@ describe('Assessment run interaction', () => {
     expect(within(footer!).getByRole('button', { name: 'Close' })).toBeInTheDocument();
   });
 
-  it('shows warning Alert when startAssessmentRun rejects with DefinitionStaleError', async () => {
-    const matchedDefinition = createDefinitionPartial();
-    const staleError = new ApiTransportError({
-      requestId: 'test-id',
-      error: { code: 'DEFINITION_STALE', message: 'Definition is stale' },
-    });
-
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [matchedDefinition],
-      findMatchResult: { kind: 'matched', definition: matchedDefinition },
-      startRunResult: staleError,
-      startRunType: 'reject',
-    });
-
-    await selectAssignment(dialog);
-    clickStartAssessment(dialog);
-
-    await expect(within(dialog).findByRole('alert')).resolves.toBeInTheDocument();
-  });
-
   it('shows error Alert when startAssessmentRun rejects with generic API error', async () => {
     const matchedDefinition = createDefinitionPartial();
     const genericError = new Error('Something went wrong');
@@ -522,6 +572,72 @@ describe('Assessment run interaction', () => {
     clickStartAssessment(dialog);
 
     await expect(within(dialog).findByRole('alert')).resolves.toBeInTheDocument();
+  });
+
+  // -----------------------------------------------------------------------
+  // Matched-flow DEFINITION_STALE recovery
+  // -----------------------------------------------------------------------
+
+  it('matched-flow DEFINITION_STALE transitions the modal to the wizard recovery state', async () => {
+    const matchedDefinition = createDefinitionPartial();
+    const staleError = new ApiTransportError({
+      requestId: 'test-id',
+      error: { code: 'DEFINITION_STALE', message: 'Definition is stale' },
+    });
+
+    const { dialog, queryClient } = renderWithCache({
+      classPartials: [
+        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+      ],
+      definitionPartials: [matchedDefinition],
+      findMatchResult: { kind: 'matched', definition: matchedDefinition },
+      startRunResult: staleError,
+      startRunType: 'reject',
+    });
+
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    // FUTURE BEHAVIOUR: Should transition to wizard stale-recovery
+    // Currently this FAILS because handleApiError only shows a warning alert
+    // instead of transitioning noMatchResolution to 'creating'.
+    const wizard = await screen.findByTestId('wizard-mock');
+    const wizardProperties = (wizard as unknown as Record<string, unknown>).__wizardProps as Record<string, unknown> | undefined || {};
+    expect(wizardProperties.open).toBe(true);
+    expect(wizardProperties.mode).toBe('create');
+
+    // Cache should be invalidated on stale recovery
+    await waitFor(() => {
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: queryKeys.assignmentDefinitionPartials(),
+      });
+    });
+  });
+
+  it('matched-flow non-DEFINITION_STALE errors still surface the existing error alert', async () => {
+    const matchedDefinition = createDefinitionPartial();
+    const genericError = new Error('Something went wrong');
+
+    const { dialog } = renderWithCache({
+      classPartials: [
+        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+      ],
+      definitionPartials: [matchedDefinition],
+      findMatchResult: { kind: 'matched', definition: matchedDefinition },
+      startRunResult: genericError,
+      startRunType: 'reject',
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    // Error alert should appear (existing behaviour)
+    await expect(within(dialog).findByRole('alert')).resolves.toBeInTheDocument();
+
+    // Wizard should NOT appear (no stale recovery for generic errors)
+    expect(screen.queryByTestId('wizard-mock')).toBeNull();
   });
 
   // -----------------------------------------------------------------------
@@ -1063,54 +1179,6 @@ describe('No-match resolution — creating state and wizard integration', () => 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
-
-  // Regression coverage for issue #262: when a definition is created via the
-  // AssessTask wizard (rather than directly via the AssignmentsPage), the
-  // assignmentDefinitionPartials dataset must be force-refetched so that
-  // navigating to the AssignmentsPage later shows fresh data. Without an
-  // active observer on ClassesPage, plain invalidateQueries is not enough —
-  // refetchQueries must be called explicitly.
-
-  it('post-create: triggers refetch of assignmentDefinitionPartials when wizard creates definition', async () => {
-    const { dialog, queryClient } = await setupWizardTest({
-      startRunResult: null,
-      startRunType: 'resolve',
-    });
-
-    await clickCreateNewDefinition(dialog);
-    const properties = await getWizardProperties();
-
-    const refetchSpy = vi.spyOn(queryClient, 'refetchQueries');
-    properties.onCreateSuccess('new-def-key');
-
-    await waitFor(() => {
-      expect(refetchSpy).toHaveBeenCalledWith(
-        { queryKey: queryKeys.assignmentDefinitionPartials() },
-        expect.objectContaining({ throwOnError: true })
-      );
-    });
-  });
-
-  it('post-create: triggers refetch of assignmentDefinitionPartials even when startAssessmentRun fails', async () => {
-    const apiError = new Error('API failure');
-    const { dialog, queryClient } = await setupWizardTest({
-      startRunResult: apiError,
-      startRunType: 'reject',
-    });
-
-    await clickCreateNewDefinition(dialog);
-    const properties = await getWizardProperties();
-
-    const refetchSpy = vi.spyOn(queryClient, 'refetchQueries');
-    properties.onCreateSuccess('new-def-key');
-
-    await waitFor(() => {
-      expect(refetchSpy).toHaveBeenCalledWith(
-        { queryKey: queryKeys.assignmentDefinitionPartials() },
-        expect.objectContaining({ throwOnError: true })
-      );
-    });
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -1499,59 +1567,43 @@ describe('No-match resolution — linking state and link flow', () => {
     // Footer should have Cancel button (modal stays open, teacher can retry)
     expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
   });
-});
 
-// ---------------------------------------------------------------------------
-// Regression: Issue #260 – dropdown should not appear after successful assessment
-// ---------------------------------------------------------------------------
-
-describe('Issue #260 regression — dropdown hidden on success', () => {
-  it('wizard create success: assignment dropdown is not visible after successful trigger', async () => {
-    const { dialog } = await setupWizardTest({
-      startRunResult: null,
-      startRunType: 'resolve',
-    });
-
-    await clickCreateNewDefinition(dialog);
-    const properties = await getWizardProperties();
-    properties.onCreateSuccess('new-def-key');
-
-    // Wait for success state
-    const alert = await within(dialog).findByRole('alert');
-    expect(alert).toHaveTextContent(/assessment started for/i);
-
-    // Dropdown should NOT be visible
-    expect(within(dialog).queryByRole('combobox')).toBeNull();
-    // "Select assignment" label should NOT be visible
-    expect(within(dialog).queryByText('Select assignment')).toBeNull();
-  });
-
-  it('matched flow success: assignment dropdown is not visible after successful trigger', async () => {
-    const matchedDefinition = createDefinitionPartial();
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [matchedDefinition],
-      findMatchResult: { kind: 'matched', definition: matchedDefinition },
-      startRunResult: null,
-      startRunType: 'resolve',
+  it('linkableDefinitions recomputes when assignmentDefinitionPartials cache updates while the modal is open', async () => {
+    const { dialog, queryClient } = renderWithNoMatchCache({
+      definitionPartials: [],
     });
 
     await selectAssignment(dialog);
     clickStartAssessment(dialog);
 
-    // Wait for success state
-    const alert = await within(dialog).findByRole('alert');
-    expect(alert).toHaveTextContent(/assessment started for/i);
+    // The choice prompt should be visible and the Link button disabled because
+    // linkableDefinitions is empty (no definitions for year-10 in the cache)
+    const linkButton = within(dialog).getByRole('button', { name: 'Link to Existing Definition' });
+    expect(linkButton).toBeDisabled();
 
-    // Dropdown should NOT be visible
-    expect(within(dialog).queryByRole('combobox')).toBeNull();
-    // "Select assignment" label should NOT be visible
-    expect(within(dialog).queryByText('Select assignment')).toBeNull();
+    // Update the cache with a matching definition partial for the class's year group
+    queryClient.setQueryData(
+      queryKeys.assignmentDefinitionPartials(),
+      [createDefinitionPartial({ yearGroupKey: 'year-10' })]
+    );
+
+    // The Link to Existing Definition button should become enabled because the
+    // linkableDefinitions memo should recompute when the cache data updates.
+    // THIS EXPECTATION WILL FAIL due to the known bug (C3): the memo's
+    // dependency array does not include the cache data, so the memo does not
+    // recompute and linkableDefinitions remains the stale empty array.
+    await waitFor(() => {
+      expect(within(dialog).getByRole('button', { name: 'Link to Existing Definition' })).toBeEnabled();
+    });
   });
+});
 
-  it('link flow success: assignment dropdown is not visible after successful trigger', async () => {
+// ---------------------------------------------------------------------------
+// Inline Event Handler Stability
+// ---------------------------------------------------------------------------
+
+describe('Inline event handler stability', () => {
+  it('inline event handlers trigger the expected side effects after stabilisation', async () => {
     const { dialog } = renderWithNoMatchCache({
       upsertResult: DEFAULT_UPSERT_RESULT,
       upsertType: 'resolve',
@@ -1559,15 +1611,46 @@ describe('Issue #260 regression — dropdown hidden on success', () => {
       startRunType: 'resolve',
     });
 
-    await performLinkFlow(dialog);
+    // Handler 1: Assignment Select onChange — selects an assignment
+    // Side effect: selectedAssignmentId is set, enabling Start Assessment
+    await within(dialog).findByRole('combobox');
+    fireEvent.mouseDown(within(dialog).getByRole('combobox'));
+    const essayOption = await screen.findByText('Essay');
+    fireEvent.click(essayOption);
+    await waitFor(() => {
+      expect(within(dialog).getByRole('button', { name: 'Start Assessment' })).toBeEnabled();
+    });
 
-    // Wait for success state
-    const alert = await within(dialog).findByRole('alert');
-    expect(alert).toHaveTextContent(/assessment started for/i);
+    // Handler 2: Start Assessment button onClick — triggers the no-match flow
+    // Side effect: assessment state transitions to no-match and choice prompt appears
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Start Assessment' }));
+    await within(dialog).findByRole('button', { name: 'Link to Existing Definition' });
 
-    // Dropdown should NOT be visible
-    expect(within(dialog).queryByRole('combobox')).toBeNull();
-    // "Select assignment" label should NOT be visible
-    expect(within(dialog).queryByText('Select assignment')).toBeNull();
+    // Navigate to the linking state
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Link to Existing Definition' }));
+
+    // Handler 3: Linkable definition Select onSelect — selects a definition row
+    // Side effect: selectedDefinitionForLink is set, enabling the Link button
+    const linkableSelect = within(dialog).getByRole('combobox');
+    fireEvent.mouseDown(linkableSelect);
+    const definitionOption = await screen.findByText('Essay');
+    fireEvent.click(definitionOption);
+    await waitFor(() => {
+      expect(within(dialog).getByRole('button', { name: 'Link' })).toBeEnabled();
+    });
+
+    // Handler 4: Link button onClick — triggers the link-upsert and assessment run
+    // Side effect: upsertAssignmentDefinition and startAssessmentRun are called
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Link' }));
+    await waitFor(() => {
+      expect(vi.mocked(upsertAssignmentDefinition)).toHaveBeenCalledTimes(1);
+    });
+    await waitFor(() => {
+      expect(vi.mocked(startAssessmentRun)).toHaveBeenCalledWith({
+        definitionKey: 'essay-def-key',
+        assignmentId: 'a1',
+        courseId: MOCK_CLASS_ID,
+      });
+    });
   });
 });

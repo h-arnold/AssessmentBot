@@ -199,7 +199,6 @@ services/assignmentDefinition/
 ├── assignmentDefinitionPartialsService.spec.ts
 ├── assignmentDefinitionPartials.zod.ts
 ├── assignmentDefinitionPartials.zod.spec.ts
-├── assignmentDefinitionPartialsContract.guard.spec.ts
 ├── assignmentTopicsService.ts
 ├── assignmentTopicsService.spec.ts
 ├── assignmentTopics.zod.ts

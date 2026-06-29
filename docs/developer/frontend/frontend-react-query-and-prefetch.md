@@ -32,6 +32,7 @@ Current shared keys:
 - `authorisationStatus`
 - `backendConfig`
 - `classPartials`
+- `abClass`
 - `assignmentDefinitionPartials`
 - `assignmentDefinitionByKey`
 - `assignmentTopics`
@@ -43,6 +44,8 @@ Current shared keys:
 Keep future invalidation and warm-up work aligned to these helpers.
 
 The `assignmentDefinitionByKey` factory creates scoped query keys for full-definition reads by `definitionKey`, used by the assignment-definition wizard modal for update-mode entry.
+
+The `abClass` factory creates scoped query keys for individual class detail reads by `classId`. It is NOT part of the startup warm-up set; use `invalidateQueries({ queryKey: queryKeys.abClass(classId) })` for invalidation. See the `getABClassQueryOptions` shared query definition in `sharedQueries.ts`.
 
 ## 3. Shared query definitions
 

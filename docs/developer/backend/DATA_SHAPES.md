@@ -74,8 +74,8 @@ To balance performance with data fidelity in the Google Apps Script environment,
 3. **Assignment Definition Registry (`assignment_definitions`)**:
 
 - **Purpose**: Lightweight index of definitions shared across classes/years.
-- **Storage**: Single collection keyed by stable opaque `definitionKey`. Duplicate business identity is tracked separately by the canonical tuple `{ primaryTitle, primaryTopicKey, yearGroup }`; metadata edits must not rotate `definitionKey`.
-- **Content**: **Partial** definition with `tasks: null` (no artifacts); includes metadata (`primaryTitle`, `alternateTitles`, `yearGroup`, `assignmentWeighting`), authoritative topic reference (`primaryTopicKey` plus resolved `primaryTopic` label), `documentType` for routing, and doc IDs (`referenceDocumentId`, `templateDocumentId`) for reference.
+- **Storage**: Single collection keyed by stable opaque `definitionKey`. Duplicate business identity is tracked separately by the canonical tuple `{ primaryTitle, primaryTopicKey, yearGroupKey }`; metadata edits must not rotate `definitionKey`.
+- **Content**: **Partial** definition with `tasks: null` (no artifacts); includes metadata (`primaryTitle`, `alternateTitles`, `yearGroupKey`, `yearGroupLabel`, `assignmentWeighting`), authoritative topic reference (`primaryTopicKey` plus resolved `primaryTopic` label), `documentType` for routing, and doc IDs (`referenceDocumentId`, `templateDocumentId`) for reference.
 - **Relationship**: Embedded into `Assignment` instances (copy-on-construct) and stored alongside partial assignments in `ABClass`.
 
 4. **Full Assignment Definition Record (`assdef_full_<definitionKey>`)**:
@@ -127,7 +127,8 @@ are partially hydrated (note the embedded `assignmentDefinition` has `tasks: nul
         "primaryTitle": "Essay 1",
         "primaryTopicKey": "topic_english",
         "primaryTopic": "English",
-        "yearGroup": 10,
+        "yearGroupKey": "10",
+        "yearGroupLabel": "Year 10",
         "alternateTitles": [],
         "documentType": "SLIDES",
         "referenceDocumentId": "DriveRef123",
@@ -522,14 +523,15 @@ Key notes:
 
 ## Assignment Definition
 
-The `AssignmentDefinition` model encapsulates reusable lesson properties. For the current upsert contract, it is persisted twice: a partial copy in `assignment_definitions` (for embedding) and a full copy in `assdef_full_<definitionKey>` (for reuse without re-parsing). Assignments embed the partial copy. `definitionKey` is the stable opaque identifier for those writes, while `{ primaryTitle, primaryTopicKey, yearGroup }` remains the duplicate-detection tuple.
+The `AssignmentDefinition` model encapsulates reusable lesson properties. For the current upsert contract, it is persisted twice: a partial copy in `assignment_definitions` (for embedding) and a full copy in `assdef_full_<definitionKey>` (for reuse without re-parsing). Assignments embed the partial copy. `definitionKey` is the stable opaque identifier for those writes, while `{ primaryTitle, primaryTopicKey, yearGroupKey }` remains the duplicate-detection tuple.
 
 ```json
 {
   "primaryTitle": "Essay 1",
   "primaryTopicKey": "topic_english",
   "primaryTopic": "English",
-  "yearGroup": 10,
+  "yearGroupKey": "10",
+  "yearGroupLabel": "Year 10",
   "alternateTitles": [],
   "documentType": "SLIDES",
   "referenceDocumentId": "DriveRef123",
@@ -582,7 +584,8 @@ Key notes:
   "primaryTitle": "Essay 1",
   "primaryTopicKey": "topic_english",
   "primaryTopic": "English",
-  "yearGroup": 10,
+  "yearGroupKey": "10",
+  "yearGroupLabel": "Year 10",
   "alternateTitles": [],
   "documentType": "SLIDES",
   "referenceDocumentId": "DriveRef123",
@@ -653,7 +656,8 @@ Response rows are plain registry partials returned inside the standard `apiHandl
   "primaryTitle": "Essay 1",
   "primaryTopic": "English",
   "primaryTopicKey": "topic_english",
-  "yearGroup": 10,
+  "yearGroupKey": "10",
+  "yearGroupLabel": "Year 10",
   "alternateTitles": [],
   "alternateTopics": [],
   "documentType": "SLIDES",

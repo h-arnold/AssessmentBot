@@ -21,20 +21,9 @@ const validAssignmentDefinitionPartialsResponse = [
     templateDocumentId: 'tpl-doc-001',
     assignmentWeighting: null,
     definitionKey: 'algebra-baseline',
-    tasks: null,
+    tasks: [],
     createdAt: '2026-01-05T10:00:00.000Z',
     updatedAt: null,
-  },
-];
-
-const backendCompatibleNonNullTasksResponse = [
-  {
-    ...validAssignmentDefinitionPartialsResponse[0],
-    tasks: {
-      taskA: {
-        title: 'Solve two-step equations',
-      },
-    },
   },
 ];
 
@@ -87,19 +76,37 @@ describe('assignmentDefinitionPartialsService', () => {
     expect(callApiMock).toHaveBeenCalledTimes(1);
   });
 
-  it('getAssignmentDefinitionPartials() accepts backend-compatible non-null tasks payloads and normalises tasks to null', async () => {
-    callApiMock.mockResolvedValueOnce(backendCompatibleNonNullTasksResponse);
+  it('getAssignmentDefinitionPartials() accepts tasks as empty array and preserves the shape', async () => {
+    const responseWithEmptyTasks = [
+      {
+        ...validAssignmentDefinitionPartialsResponse[0],
+        tasks: [],
+      },
+    ];
+
+    callApiMock.mockResolvedValueOnce(responseWithEmptyTasks);
 
     const { getAssignmentDefinitionPartials } = await loadAssignmentDefinitionPartialsService();
 
-    await expect(getAssignmentDefinitionPartials()).resolves.toEqual([
-      {
-        ...validAssignmentDefinitionPartialsResponse[0],
-        tasks: null,
-      },
-    ]);
+    await expect(getAssignmentDefinitionPartials()).resolves.toEqual(responseWithEmptyTasks);
     expect(callApiMock).toHaveBeenCalledWith('getAssignmentDefinitionPartials');
     expect(callApiMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('getAssignmentDefinitionPartials() accepts nullable referenceDocumentId and templateDocumentId (red-phase: will fail until canonical schema becomes nullable)', async () => {
+    const nullableDocumentIdsResponse = [
+      {
+        ...validAssignmentDefinitionPartialsResponse[0],
+        referenceDocumentId: null,
+        templateDocumentId: null,
+      },
+    ];
+
+    callApiMock.mockResolvedValueOnce(nullableDocumentIdsResponse);
+
+    const { getAssignmentDefinitionPartials } = await loadAssignmentDefinitionPartialsService();
+
+    await expect(getAssignmentDefinitionPartials()).resolves.toEqual(nullableDocumentIdsResponse);
   });
 
   it('deleteAssignmentDefinition() delegates to callApi with a schema-valid definition key', async () => {

@@ -151,6 +151,29 @@ describe('LinkableDefinitionList', () => {
     expect(screen.getByText('Essay 2')).toBeInTheDocument();
   });
 
+  it('renders the correct number of option rows from linkableDefinitions', () => {
+    const definitions = [
+      createLinkable({ definitionKey: 'def-001', primaryTitle: 'Essay 1' }),
+      createLinkable({ definitionKey: 'def-002', primaryTitle: 'Essay 2' }),
+      createLinkable({ definitionKey: 'def-003', primaryTitle: 'Essay 3' }),
+    ];
+    const EXPECTED_OPTION_COUNT = 3;
+
+    render(
+      <LinkableDefinitionList
+        linkableDefinitions={definitions}
+        selectedDefinitionKey={null}
+        onSelect={() => {}}
+      />
+    );
+
+    const combobox = screen.getByRole('combobox');
+    fireEvent.mouseDown(combobox);
+
+    const options = screen.getAllByRole('option');
+    expect(options).toHaveLength(EXPECTED_OPTION_COUNT);
+  });
+
   it('renders with no options when linkableDefinitions is empty', () => {
     render(
       <LinkableDefinitionList

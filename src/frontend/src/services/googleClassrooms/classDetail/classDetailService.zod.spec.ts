@@ -1,14 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
-  AssignmentDefinitionPartialSchema,
   AssignmentPartialSchema,
   BaseTaskArtifactPartialSchema,
   ClassFullResponseSchema,
   ClassFullSchema,
+  StudentSubmissionItemPartialSchema,
   StudentSubmissionPartialSchema,
   StudentSummarySchema,
   TeacherSummarySchema,
 } from './classDetailService.zod';
+import { AssignmentDefinitionPartialSchema } from '../../assignmentDefinition/assignmentDefinitionPartials.zod';
 
 const validStudentSummary = {
   name: 'Alice Johnson',
@@ -28,15 +29,25 @@ const validBaseTaskArtifactPartial = {
   type: 'slides',
 };
 
-const validStudentSubmissionPartial = {
+const validStudentSubmissionItemPartial = {
   id: 'sub-1',
   taskId: 'task-1',
   artifact: validBaseTaskArtifactPartial,
   assessments: {
-    accuracy: { score: 4, feedback: 'Good work' },
+    accuracy: { score: 4 },
     completeness: { score: 5 },
   },
   feedback: { comment: 'Great effort' },
+};
+
+const validStudentSubmissionPartial = {
+  studentId: 'student-1',
+  studentName: 'Alice Johnson',
+  assignmentId: 'assign-1',
+  documentId: 'doc-abc',
+  items: { 'task-1': validStudentSubmissionItemPartial },
+  createdAt: '2025-05-01T08:00:00.000Z',
+  updatedAt: '2025-05-15T12:00:00.000Z',
 };
 
 const validAssignmentDefinitionPartial = {
@@ -52,7 +63,7 @@ const validAssignmentDefinitionPartial = {
   templateDocumentId: 'template-doc-456',
   assignmentWeighting: 1,
   definitionKey: 'algebra-baseline',
-  tasks: null,
+  tasks: [],
   createdAt: '2025-01-01T00:00:00.000Z',
   updatedAt: '2025-05-01T00:00:00.000Z',
 };
@@ -65,7 +76,7 @@ const validAssignmentPartial = {
   lastUpdated: '2025-05-15T12:00:00.000Z',
   createdAt: '2025-05-01T08:00:00.000Z',
   documentType: 'SLIDES',
-  submissions: [validStudentSubmissionPartial],
+  submissions: [validStudentSubmissionPartial], // Uses the new nested-dictionary shape
   assignmentDefinition: validAssignmentDefinitionPartial,
 };
 
@@ -141,14 +152,15 @@ describe('AssignmentPartialSchema', () => {
   it('accepts submissions with redacted artifacts (content/contentHash set to null)', () => {
     const result = AssignmentPartialSchema.parse(validAssignmentPartial);
     expect(result.submissions).toHaveLength(1);
-    expect(result.submissions[0].artifact.content).toBeNull();
-    expect(result.submissions[0].artifact.contentHash).toBeNull();
-    expect(result.submissions[0].artifact.taskId).toBe('task-1');
+    const item = result.submissions[0].items['task-1'];
+    expect(item.artifact.content).toBeNull();
+    expect(item.artifact.contentHash).toBeNull();
+    expect(item.artifact.taskId).toBe('task-1');
   });
 
-  it('accepts assignmentDefinition with tasks set to null', () => {
+  it('accepts assignmentDefinition with tasks as empty array', () => {
     const result = AssignmentPartialSchema.parse(validAssignmentPartial);
-    expect(result.assignmentDefinition.tasks).toBeNull();
+    expect(result.assignmentDefinition.tasks).toEqual([]);
     expect(result.assignmentDefinition.primaryTitle).toBe('Algebra Baseline');
   });
 
@@ -242,25 +254,64 @@ describe('StudentSummarySchema', () => {
   });
 });
 
-describe('StudentSubmissionPartialSchema', () => {
-  it('parses a valid submission partial with redacted artifact', () => {
-    const result = StudentSubmissionPartialSchema.parse(validStudentSubmissionPartial);
+describe('StudentSubmissionItemPartialSchema', () => {
+  it('parses a valid submission item partial with redacted artifact', () => {
+    const result = StudentSubmissionItemPartialSchema.parse(validStudentSubmissionItemPartial);
     expect(result.artifact.content).toBeNull();
     expect(result.artifact.contentHash).toBeNull();
     expect(result.id).toBe('sub-1');
     expect(result.taskId).toBe('task-1');
   });
 
-  it('rejects a submission missing id', () => {
-    const missing = { ...validStudentSubmissionPartial };
+  it('rejects a submission item missing id', () => {
+    const missing = { ...validStudentSubmissionItemPartial };
     delete (missing as Record<string, unknown>).id;
+    expect(() => StudentSubmissionItemPartialSchema.parse(missing)).toThrow();
+  });
+
+  it('rejects a submission item missing artifact', () => {
+    const missing = { ...validStudentSubmissionItemPartial };
+    delete (missing as Record<string, unknown>).artifact;
+    expect(() => StudentSubmissionItemPartialSchema.parse(missing)).toThrow();
+  });
+});
+
+describe('StudentSubmissionPartialSchema', () => {
+  it('parses a valid nested submission with items dictionary', () => {
+    const result = StudentSubmissionPartialSchema.parse(validStudentSubmissionPartial);
+    expect(result.studentId).toBe('student-1');
+    expect(result.studentName).toBe('Alice Johnson');
+    expect(result.assignmentId).toBe('assign-1');
+    expect(result.documentId).toBe('doc-abc');
+    expect(result.items).toBeDefined();
+    expect(result.items['task-1']).toBeDefined();
+    expect(result.items['task-1'].id).toBe('sub-1');
+  });
+
+  it('rejects a submission missing the items field', () => {
+    const missing = { ...validStudentSubmissionPartial };
+    delete (missing as Record<string, unknown>).items;
     expect(() => StudentSubmissionPartialSchema.parse(missing)).toThrow();
   });
 
-  it('rejects a submission missing artifact', () => {
+  it('rejects the old flat shape (single item, not nested submission)', () => {
+    expect(() => StudentSubmissionPartialSchema.parse(validStudentSubmissionItemPartial)).toThrow();
+  });
+
+  it('rejects a submission missing studentId', () => {
     const missing = { ...validStudentSubmissionPartial };
-    delete (missing as Record<string, unknown>).artifact;
+    delete (missing as Record<string, unknown>).studentId;
     expect(() => StudentSubmissionPartialSchema.parse(missing)).toThrow();
+  });
+
+  it('accepts null studentName and documentId', () => {
+    const result = StudentSubmissionPartialSchema.parse({
+      ...validStudentSubmissionPartial,
+      studentName: null,
+      documentId: null,
+    });
+    expect(result.studentName).toBeNull();
+    expect(result.documentId).toBeNull();
   });
 });
 
@@ -295,18 +346,13 @@ describe('BaseTaskArtifactPartialSchema', () => {
 });
 
 describe('AssignmentDefinitionPartialSchema', () => {
-  it('parses a valid assignment definition partial with tasks set to null', () => {
-    const result = AssignmentDefinitionPartialSchema.parse(validAssignmentDefinitionPartial);
-    expect(result.tasks).toBeNull();
-    expect(result.definitionKey).toBe('algebra-baseline');
-    expect(result.documentType).toBe('SLIDES');
-    expect(result.primaryTitle).toBe('Algebra Baseline');
-    expect(result.yearGroupLabel).toBe('Year 10');
-    expect(result.referenceDocumentId).toBe('ref-doc-123');
-    expect(result.templateDocumentId).toBe('template-doc-456');
-    expect(result.assignmentWeighting).toBe(1);
-    expect(result.createdAt).toBe('2025-01-01T00:00:00.000Z');
-    expect(result.updatedAt).toBe('2025-05-01T00:00:00.000Z');
+  it('rejects a partial with tasks set to null', () => {
+    expect(() =>
+      AssignmentDefinitionPartialSchema.parse({
+        ...validAssignmentDefinitionPartial,
+        tasks: null,
+      } as Record<string, unknown>)
+    ).toThrow();
   });
 
   it('rejects a definition missing primaryTitle', () => {
@@ -321,10 +367,22 @@ describe('AssignmentDefinitionPartialSchema', () => {
     expect(() => AssignmentDefinitionPartialSchema.parse(missing)).toThrow();
   });
 
-  it('rejects a definition with tasks not null', () => {
-    expect(() =>
-      AssignmentDefinitionPartialSchema.parse({ ...validAssignmentDefinitionPartial, tasks: [] })
-    ).toThrow();
+  it('accepts a partial with tasks as empty array', () => {
+    const result = AssignmentDefinitionPartialSchema.parse({
+      ...validAssignmentDefinitionPartial,
+      tasks: [],
+    } as Record<string, unknown>);
+    expect((result as Record<string, unknown>).tasks).toEqual([]);
+  });
+
+  it('accepts a partial with tasks as array of TaskPartial objects', () => {
+    const result = AssignmentDefinitionPartialSchema.parse({
+      ...validAssignmentDefinitionPartial,
+      tasks: [{ id: 't_abc123', taskWeighting: 2 }],
+    } as Record<string, unknown>);
+    expect((result as Record<string, unknown>).tasks).toEqual([
+      { id: 't_abc123', taskWeighting: 2 },
+    ]);
   });
 
   // REGRESSION: getABClass can return null for referenceDocumentId,
@@ -375,5 +433,19 @@ describe('AssignmentDefinitionPartialSchema', () => {
         assignmentWeighting: 'not-a-number',
       })
     ).toThrow();
+  });
+
+  it('canonical AssignmentDefinitionPartialSchema accepts null referenceDocumentId (import identity)', () => {
+    // The canonical schema (now imported from assignmentDefinitionPartials.zod.ts)
+    // has .nullable() for referenceDocumentId and templateDocumentId. This test
+    // verifies the unification succeeded: both the local import and the canonical
+    // schema are the same object, and both accept null doc IDs.
+    expect(() =>
+      AssignmentDefinitionPartialSchema.parse({
+        ...validAssignmentDefinitionPartial,
+        referenceDocumentId: null,
+        templateDocumentId: null,
+      })
+    ).not.toThrow();
   });
 });

@@ -66,7 +66,9 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
       expect.objectContaining({
         primaryTopicKey: 'topic-science',
         primaryTopic: 'Science',
-        tasks: null,
+        tasks: expect.arrayContaining([
+          expect.objectContaining({ id: expect.any(String), taskWeighting: expect.any(Number) }),
+        ]),
       })
     );
   });

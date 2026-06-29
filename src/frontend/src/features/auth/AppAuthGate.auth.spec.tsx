@@ -207,11 +207,7 @@ const backendCompatibleAssignmentDefinitionPartial = {
   templateDocumentId: 'tpl-doc-001',
   assignmentWeighting: null,
   definitionKey: 'algebra-baseline',
-  tasks: {
-    taskA: {
-      title: 'Solve two-step equations',
-    },
-  },
+  tasks: [],
   createdAt: '2026-01-05T10:00:00.000Z',
   updatedAt: null,
 };
@@ -474,7 +470,7 @@ describe('AppAuthGate', () => {
     ).toEqual([
       {
         ...backendCompatibleAssignmentDefinitionPartial,
-        tasks: null,
+        tasks: [],
       },
     ]);
     expect(callApiMock).toHaveBeenCalledWith('getAssignmentDefinitionPartials');

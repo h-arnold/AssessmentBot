@@ -6,6 +6,9 @@
     "bashDefaultTimeoutMs": 450000
   },
   "agent": {
+    "explore": {
+      "model": "opencode/north-mini-code-free"
+    },
     "planner-reviewer": {
       "description": "Reviews planning artefacts for gaps and contradictions",
       "mode": "subagent",

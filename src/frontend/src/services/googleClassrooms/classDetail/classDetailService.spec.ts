@@ -7,21 +7,31 @@ vi.mock('../../apiService', () => ({
 }));
 
 const validSubmissionPartial = {
-  id: 'sub-1',
-  taskId: 'task-1',
-  artifact: {
-    taskId: 'task-1',
-    role: 'student',
-    pageId: 'slide-5',
-    documentId: 'doc-abc',
-    content: null,
-    contentHash: null,
-    metadata: { slideOrder: 3 },
-    uid: 'uid-artifact-1',
-    type: 'slides',
+  studentId: 'student-1',
+  studentName: 'Alice Johnson',
+  assignmentId: 'assign-1',
+  documentId: 'doc-abc',
+  items: {
+    'task-1': {
+      id: 'sub-1',
+      taskId: 'task-1',
+      artifact: {
+        taskId: 'task-1',
+        role: 'student',
+        pageId: 'slide-5',
+        documentId: 'doc-abc',
+        content: null,
+        contentHash: null,
+        metadata: { slideOrder: 3 },
+        uid: 'uid-artifact-1',
+        type: 'slides',
+      },
+      assessments: { accuracy: { score: 4 } },
+      feedback: { comment: 'Great effort' },
+    },
   },
-  assessments: { accuracy: { score: 4 } },
-  feedback: { comment: 'Great effort' },
+  createdAt: '2025-05-01T08:00:00.000Z',
+  updatedAt: '2025-05-15T12:00:00.000Z',
 };
 
 const validAssignmentDefinitionPartial = {
@@ -37,7 +47,7 @@ const validAssignmentDefinitionPartial = {
   templateDocumentId: 'template-doc-456',
   assignmentWeighting: 1,
   definitionKey: 'algebra-baseline',
-  tasks: null,
+  tasks: [],
   createdAt: '2025-01-01T00:00:00.000Z',
   updatedAt: '2025-05-01T00:00:00.000Z',
 };
@@ -107,7 +117,7 @@ describe('classDetailService.getABClass', () => {
       cohortKey: 'cohort-2025',
     });
     expect(result?.assignments).toHaveLength(1);
-    expect(result?.assignments[0].assignmentDefinition.tasks).toBeNull();
+    expect(result?.assignments[0].assignmentDefinition.tasks).toEqual([]);
   });
 
   it('returns null when the backend returns data: null', async () => {

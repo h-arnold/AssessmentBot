@@ -117,7 +117,7 @@ describe('AssignmentDefinitionController', () => {
     expect(partialPayload.yearGroupKey).toBe('year-group-10');
     expect(partialPayload.yearGroupLabel).toBe('Year 10');
     expect(partialPayload.definitionKey).toBe('alg-10');
-    expect(partialPayload.tasks).toBeNull();
+    expect(partialPayload.tasks).toEqual([]);
   });
 
   it('getAllPartialDefinitions returns empty array when registry empty', () => {
