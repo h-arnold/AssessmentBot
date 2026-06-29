@@ -182,7 +182,7 @@ Provide a concise handoff summary including:
 │   ├── howTos/
 │   │   ├── README.md                                  # Step-by-step usage instructions (tagging, distributing, assessing)
 │   │   └── rehydration.md                             # Guide for rehydrating assessment data
-
+│   │
 │   ├── pedagogy/
 │   │   ├── README.md                                  # Pedagogical principles supporting AssessmentBot
 │   │   └── data-analysis-scoring.md                   # Guide to data analysis and scoring approaches

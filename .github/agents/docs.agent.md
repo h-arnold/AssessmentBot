@@ -177,11 +177,11 @@ Provide a concise handoff summary including:
 │   │       ├── frontend-shell-navigation-and-motion.md  # Shell navigation and motion/accessibility standards
 │   │       ├── frontend-playwright-e2e.md               # Playwright E2E testing patterns, runtime mock infrastructure, StrictMode
 │   │       └── frontend-testing.md                      # Canonical: Vitest + Playwright split, commands, structure, helpers, patterns
-
+│   │
 │   ├── howTos/
 │   │   ├── README.md                                  # Step-by-step usage instructions (tagging, distributing, assessing)
 │   │   └── rehydration.md                             # Guide for rehydrating assessment data
-
+│   │
 │   ├── pedagogy/
 │   │   ├── README.md                                  # Pedagogical principles supporting AssessmentBot
 │   │   └── data-analysis-scoring.md                   # Guide to data analysis and scoring approaches
