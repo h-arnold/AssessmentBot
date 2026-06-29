@@ -89,8 +89,11 @@ describe('Assignment Serialisation', () => {
       expect(partialJson).not.toHaveProperty('referenceDocumentId');
       expect(partialJson).not.toHaveProperty('templateDocumentId');
 
-      // assignmentDefinition should have tasks: null but include doc IDs
-      expect(partialJson.assignmentDefinition.tasks).toBe(null);
+      // assignmentDefinition should have tasks as lightweight array of {id, taskWeighting}
+      expect(Array.isArray(partialJson.assignmentDefinition.tasks)).toBe(true);
+      expect(partialJson.assignmentDefinition.tasks.length).toBe(1);
+      expect(partialJson.assignmentDefinition.tasks[0]).toHaveProperty('id');
+      expect(partialJson.assignmentDefinition.tasks[0]).toHaveProperty('taskWeighting');
       expect(partialJson.assignmentDefinition.referenceDocumentId).toBe('ref-serial');
       expect(partialJson.assignmentDefinition.templateDocumentId).toBe('tpl-serial');
 
@@ -172,7 +175,7 @@ describe('Assignment Serialisation', () => {
 
       expect(partialJson.documentType).toBe('SLIDES');
       expect(partialJson.assignmentDefinition.documentType).toBe('SLIDES');
-      expect(partialJson.assignmentDefinition.tasks).toBe(null);
+      expect(partialJson.assignmentDefinition.tasks).toEqual([]);
       expect(partialJson).not.toHaveProperty('referenceDocumentId');
       expect(partialJson).not.toHaveProperty('templateDocumentId');
       expect(partialJson).not.toHaveProperty('tasks');

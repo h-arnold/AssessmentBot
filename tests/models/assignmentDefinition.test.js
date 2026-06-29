@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
+import { TaskDefinition } from '../../src/backend/Models/TaskDefinition.js';
 
 describe('AssignmentDefinition - Section 1 Model Changes', () => {
   // Base valid params for testing
@@ -168,10 +169,10 @@ describe('AssignmentDefinition - Section 1 Model Changes', () => {
 
   // 9. Schema preservation
   describe('Schema preservation', () => {
-    it('should return tasks: null in toPartialJSON for partial definitions', () => {
+    it('should return tasks: [] in toPartialJSON for partial definitions', () => {
       const def = new AssignmentDefinition(baseValidParams);
       const partial = def.toPartialJSON();
-      expect(partial.tasks).toBe(null);
+      expect(partial.tasks).toEqual([]);
     });
 
     it('should return tasks object in toJSON for full definitions', () => {
@@ -183,7 +184,64 @@ describe('AssignmentDefinition - Section 1 Model Changes', () => {
     });
   });
 
-  // 10. buildDefinitionKey parameter renamed
+  // 10. toPartialJSON tasks as Array<TaskPartial>
+  describe('toPartialJSON tasks as Array<TaskPartial>', () => {
+    it('should include tasks as array of {id, taskWeighting} when definition has tasks', () => {
+      const task1 = new TaskDefinition({ taskTitle: 'Task One' }, 2);
+      const task2 = new TaskDefinition({ taskTitle: 'Task Two' });
+      const tasks = { [task1.id]: task1, [task2.id]: task2 };
+      const def = new AssignmentDefinition({ ...baseValidParams, tasks });
+      const partial = def.toPartialJSON();
+      expect(partial.tasks).toEqual([
+        { id: task1.id, taskWeighting: 2 },
+        { id: task2.id, taskWeighting: 1 },
+      ]);
+    });
+
+    it('should return tasks: [] when tasks is null', () => {
+      const def = new AssignmentDefinition({ ...baseValidParams, tasks: null });
+      const partial = def.toPartialJSON();
+      expect(partial.tasks).toEqual([]);
+    });
+
+    it('should return tasks: [] when tasks is empty object', () => {
+      const def = new AssignmentDefinition({ ...baseValidParams, tasks: {} });
+      const partial = def.toPartialJSON();
+      expect(partial.tasks).toEqual([]);
+    });
+
+    it('should return tasks: [] when tasks is undefined', () => {
+      const def = new AssignmentDefinition(baseValidParams);
+      def.tasks = undefined;
+      const partial = def.toPartialJSON();
+      expect(partial.tasks).toEqual([]);
+    });
+
+    it('should only include id and taskWeighting per task — no extraneous fields', () => {
+      const task = new TaskDefinition(
+        { taskTitle: 'Extra', pageId: 'p1', taskNotes: 'n', taskMetadata: { k: 'v' } },
+        3
+      );
+      const def = new AssignmentDefinition({ ...baseValidParams, tasks: { [task.id]: task } });
+      const partial = def.toPartialJSON();
+      expect(partial.tasks[0]).toEqual({ id: task.id, taskWeighting: 3 });
+      expect(Object.keys(partial.tasks[0]).sort()).toEqual(['id', 'taskWeighting']);
+    });
+
+    it('should reflect taskWeighting of 5', () => {
+      const task = new TaskDefinition({ taskTitle: 'W5' }, 5);
+      const def = new AssignmentDefinition({ ...baseValidParams, tasks: { [task.id]: task } });
+      expect(def.toPartialJSON().tasks[0].taskWeighting).toBe(5);
+    });
+
+    it('should reflect default taskWeighting of 1', () => {
+      const task = new TaskDefinition({ taskTitle: 'Default' });
+      const def = new AssignmentDefinition({ ...baseValidParams, tasks: { [task.id]: task } });
+      expect(def.toPartialJSON().tasks[0].taskWeighting).toBe(1);
+    });
+  });
+
+  // 11. buildDefinitionKey parameter renamed
   describe('buildDefinitionKey uses yearGroupKey parameter', () => {
     it('should build definition key using yearGroupKey parameter', () => {
       const key = AssignmentDefinition.buildDefinitionKey({
@@ -195,7 +253,7 @@ describe('AssignmentDefinition - Section 1 Model Changes', () => {
     });
   });
 
-  // 11. Model instance has no yearGroup property
+  // 12. Model instance has no yearGroup property
   describe('Model instance has no yearGroup property', () => {
     it('should not have yearGroup property on model instance', () => {
       const def = new AssignmentDefinition(baseValidParams);

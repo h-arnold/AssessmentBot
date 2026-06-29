@@ -135,6 +135,9 @@ When adding test scenarios, prefer extending an existing helper before copying s
 
 Shared frontend test helpers belong under `src/frontend/src/test/**`. Feature-scoped subfolders are allowed when they keep related fixtures together, but production feature folders should stay free of shared test helpers.
 
+- Data-analysis test fixtures: `src/frontend/src/test/dataAnalysis/fixtures.ts` — moved from `src/frontend/src/services/dataAnalysis/test/fixtures.ts` to the canonical shared-helpers location. Status: **Implemented** (ACTION_PLAN.md Section 8).
+- Data-analysis assertion helpers: `src/frontend/src/test/dataAnalysis/averagingAnalyserAssertions.ts` — shared module exporting `expectMetricResult` and `checkMetricInvariant` (extracted from `averagingAnalyser.spec.ts`). Status: **Implemented** (ACTION_PLAN.md Section 9).
+
 ### Classes Modal Test Helpers
 
 The `src/frontend/src/test/classes/modalTestHelpers.tsx` module provides reusable utilities for testing modal components in the Classes feature:
@@ -721,6 +724,67 @@ render(<Modal open={false} />);
 For Playwright-specific antd v6 patterns (StrictMode double-effect handling, `Typography.Text`
 visibility, E2E runtime mock infrastructure, `selectVisibleOption`, and modal mask clicks in
 a real browser), see `docs/developer/frontend/frontend-playwright-e2e.md`.
+
+## `act()` Warning Avoidance
+
+The project runs React 19 with `happy-dom` as the test environment. React 19 enforces
+strict `act()` compliance, and the happy-dom / antd v6 / React Query combination can
+produce `act(...)` warnings even in correctly passing tests. None of these warnings
+indicate bugs in application code, but they clutter output and obscure real failures.
+
+### Causes
+
+1. **happy-dom does not natively support `act()`.** `@testing-library/react` sets
+   `globalThis.IS_REACT_ACT_ENVIRONMENT` dynamically during its wrapped operations
+   (render, waitFor, userEvent), but restores it between operations. Any async state
+   update that fires between these boundaries triggers a warning.
+
+2. **Ant Design CSSMotion / Portal animations.** antd Select, Modal, and Dropdown
+   components use `rc-motion` internally, which schedules `setTimeout` /
+   `requestAnimationFrame` callbacks outside `act()` boundaries. This is a known
+   cross-cutting issue with any antd version using `rc-motion`.
+
+3. **React Query cache resolution after mock settlement.** When mocked service
+   functions (e.g. `mockResolvedValue`) resolve, the microtask often fires after
+   the current `act()` boundary has closed.
+
+4. **Synchronous mock harness (`google-script-run-harness-factory.js`).** The mock
+   calls `successHandler` / `failureHandler` synchronously inside `apiHandler`.
+   When these trigger React state updates, the updates occur in the same call stack
+   and may not be wrapped in `act()`.
+
+### Prevention rules
+
+1. **Prefer `userEvent` over `fireEvent`.** Always import interaction helpers from
+   `@testing-library/user-event` and use `await user.click(...)`,
+   `await user.selectOptions(...)`, etc. `fireEvent` is synchronous and does not
+   wrap interactions in `act()` — every `fireEvent.click(...)` in a test with async
+   side effects is a potential warning source.
+
+2. **Use `mockImplementation(() => Promise.resolve(value))` instead of
+   `mockResolvedValue(value)`.** The former integrates more reliably with Testing
+   Library's `act` boundaries. The latter creates microtask-based promises that tend
+   to resolve after the current `act()` block has finished.
+
+3. **Always `await` async queries.** Use `await screen.findByRole(...)`,
+   `await screen.findByText(...)`, or `await waitFor(() => ...)` to wait for DOM
+   updates triggered by async work. Synchronous assertions after state-changing
+   interactions let the test finish before React settles.
+
+4. **Assert on final visible state for antd animations.** Instead of trying to
+   synchronise with animation lifecycles, wait for the expected DOM element to appear:
+   `await screen.findByText('expected text')`. Once the element is visible, the
+   animation has settled.
+
+5. **Set `globalThis.IS_REACT_ACT_ENVIRONMENT = true` in `setup.ts`** when writing
+   new test files. This suppresses the "not configured to support act" warning
+   variant and is already done by RTL during operations anyway.
+
+6. **Avoid `fireEvent.mouseDown` / `fireEvent.click` on antd Select components.**
+   antd v6 Select triggers dropdown rendering through `rc-motion` via a
+   mousedown-then-click sequence. Use `userEvent.click(...)` or
+   `userEvent.selectOptions(...)` instead, which handle the full gesture and wait for
+   motion to settle.
 
 ## Notes
 

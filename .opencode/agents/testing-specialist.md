@@ -79,7 +79,7 @@ Choose test strategy by component.
 
 - Unit/component tests: Vitest + Testing Library (`npm run test:frontend`) in `src/frontend/src/**/*.spec.{ts,tsx}`.
 - Browser E2E tests: Playwright (`npm run test:frontend:e2e`) in `src/frontend/e2e-tests/**/*.spec.ts`. You must run them for any new or changed user-visible interaction or browser integration flow. If Chromium or its system dependencies are missing, install them with `npm --prefix src/frontend exec -- playwright install --with-deps chromium`, then rerun `npm run test:frontend:e2e` until it passes.
-- Environment: JSDOM for unit tests, real browser automation for E2E.
+- Environment: happy-dom for unit tests (configured in `src/frontend/vite.config.ts`), real browser automation for E2E.
 - Prefer behaviour-focused assertions over implementation details.
 - When mocking `google.script.run.apiHandler`, reuse `src/frontend/src/test/googleScriptRunHarness.ts`. Use `createGoogleScriptRunApiHandlerMock(...)` in Vitest and `googleScriptRunApiHandlerFactorySource` for Playwright init scripts; do not add new shared-mutable runner mocks.
 - Shared frontend test helpers live under `src/frontend/src/test/**` (feature-scoped subfolders are allowed). Keep specs co-located in `src/frontend/src/**`, and do not import `src/test/**` from production source.

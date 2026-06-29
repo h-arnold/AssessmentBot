@@ -132,11 +132,14 @@ For consistency, keep custom frontend error types in a dedicated error module tr
 - shared error contracts and base helpers: `src/frontend/src/errors/`
 - feature-specific mappings or wrappers: `src/frontend/src/features/<feature>/errors/`
 
-Recommended file split:
+Current file split:
 
-1. `src/frontend/src/errors/error-codes.ts` for shared frontend/domain error code unions.
-2. `src/frontend/src/errors/app-error.ts` for a small base error type (if needed).
-3. `src/frontend/src/errors/map-error-to-ui.ts` for transport/domain-to-UI mapping.
+1. `src/frontend/src/errors/map-error-to-ui.ts` for transport/domain-to-UI mapping and error code constants.
+2. `src/frontend/src/errors/apiTransportError.ts` for the `ApiTransportError` class used at the API boundary.
+3. `src/frontend/src/errors/blockingLoadError.ts` for blocking-load trust-boundary error helpers.
+4. `src/frontend/src/errors/normaliseUnknownError.ts` for unknown-error normalisation.
+
+Error code constants (RATE_LIMITED, INVALID_REQUEST, etc.) live inside `map-error-to-ui.ts` rather than a separate `error-codes.ts` file. No separate `app-error.ts` base error type exists; the existing concrete types in the module tree above cover current needs.
 
 Keep transport concerns (`ApiTransportError`) near the API boundary service, but map them to UI-safe contracts in the frontend error modules before rendering.
 

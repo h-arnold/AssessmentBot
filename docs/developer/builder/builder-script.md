@@ -31,10 +31,13 @@ Make sure these inputs exist:
 Use the builder commands from the root `package.json`:
 
 ```bash
-# Standard production builder routine (lint + tests + production build pipeline)
-npm run build
+# Full validation pipeline (lint:check + test:coverage + production build)
+npm run run-all-checks
 
-# Fast development builder routine (skip lint/tests, build with frontend debug mode)
+# Production build only (compiles builder, runs gas-bundle in production mode)
+npm run build:production
+
+# Fast development builder routine (compiles builder, runs gas-bundle in dev mode)
 npm run build:dev
 ```
 
@@ -42,10 +45,10 @@ Useful supporting commands:
 
 ```bash
 # Builder lint checks
-npm run builder:lint
+npm run lint:builder
 
 # Builder unit tests
-npm run builder:test
+npm run test:builder
 
 # Regression checker CLI
 npm run regression-checker -- [sessionId]
@@ -62,7 +65,7 @@ Builder unit tests must meet a minimum coverage threshold of **85%** for lines, 
 
 ### Typical local workflow
 
-1. `npm run build` (or `npm run build:dev` during frontend debugging)
+1. `npm run build:production` (or `npm run build:dev` during frontend debugging)
 2. Inspect `build/gas`
 3. Deploy with your normal clasp workflow
 
@@ -185,7 +188,10 @@ The entrypoint is `scripts/builder/src/build-gas-bundle.ts`. It resolves config 
 
 - Runs:
   - `npm --prefix <frontendDir> run build -- --base=./ --outDir <buildFrontendDir> --emptyOutDir`
-- Requires `build/frontend/index.html` to exist.
+- Accepts a `FrontendBuildMode` parameter (`production` or `dev`):
+  - In **dev mode**, the builder also sets `NODE_ENV=development` and appends `--mode=development --minify=false` to the Vite build args for faster iteration.
+  - In **production mode** (the default), no additional flags are added.
+- Requires `build/frontend/index.html` to exist after build completes.
 - Captures chunk and warning metadata from command output.
 
 ### Stage 4: HtmlService transform
@@ -217,8 +223,10 @@ The entrypoint is `scripts/builder/src/build-gas-bundle.ts`. It resolves config 
 
 ### Stage 7: Inline JsonDb namespace
 
-- Concatenates ordered JsonDb source files.
-- Wraps them in an IIFE namespace:
+- Resolves ordered JsonDb source files by sorting `jsonDbApp.sourceFiles` alphabetically via `localeCompare` for deterministic concatenation order.
+- Validates that every configured `jsonDbApp.publicExports` entry maps to an actual top-level declaration in the concatenated source before proceeding.
+- De-duplicates and preserves configured export order (from `jsonDbApp.publicExports`).
+- Concatenates the ordered source files and wraps them in an IIFE namespace:
 
 ```javascript
 const JsonDbApp = (function () {
@@ -280,7 +288,7 @@ const JsonDbApp = (function () {
 
 The builder already exposes two workflows:
 
-- `npm run build` (production-oriented)
+- `npm run build:production` (production-oriented)
 - `npm run build:dev` (fast developer feedback loop)
 
 Treat these modes as diagnostics controls, not separate runtime contracts.

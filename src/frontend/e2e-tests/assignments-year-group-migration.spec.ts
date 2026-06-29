@@ -15,7 +15,7 @@ const migratedAssignmentRows = [
     templateDocumentId: 'tpl-1',
     assignmentWeighting: 1,
     definitionKey: 'alg-10-safe',
-    tasks: null,
+    tasks: [],
     createdAt: '2025-01-15T08:00:00.000Z',
     updatedAt: '2025-01-16T08:00:00.000Z',
   },
@@ -32,7 +32,7 @@ const migratedAssignmentRows = [
     templateDocumentId: 'tpl-2',
     assignmentWeighting: null,
     definitionKey: 'unsafe/legacy-key',
-    tasks: null,
+    tasks: [],
     createdAt: '2025-01-16T08:00:00.000Z',
     updatedAt: null,
   },
@@ -110,7 +110,11 @@ async function mockAssignmentsRuntime(page: Page) {
  * @param {string} optionLabel Filter option label.
  * @returns {Promise<void>} Resolves when the option is selected.
  */
-async function applyAssignmentsFilterOption(page: Page, columnHeaderName: string, optionLabel: string) {
+async function applyAssignmentsFilterOption(
+  page: Page,
+  columnHeaderName: string,
+  optionLabel: string
+) {
   await page.getByRole('columnheader', { name: columnHeaderName }).getByRole('button').click();
 
   const activeFilterPopup = page.locator('.ant-dropdown:visible').last();
@@ -136,7 +140,9 @@ function getAssignmentsRowByTitle(page: Page, assignmentTitle: string) {
   return titleCell.locator('xpath=ancestor::tr');
 }
 
-test('assignments year-group label migration keeps delete available while create/update remain unavailable', async ({ page }) => {
+test('assignments year-group label migration keeps delete available while create/update remain unavailable', async ({
+  page,
+}) => {
   await mockAssignmentsRuntime(page);
 
   await page.goto('/');

@@ -26,7 +26,7 @@ function createPartial(
     templateDocumentId: 'tpl-001',
     assignmentWeighting: null,
     definitionKey: 'default-def-key',
-    tasks: null,
+    tasks: [],
     createdAt: DEFAULT_ISO_DATETIME,
     updatedAt: DEFAULT_ISO_DATETIME,
     ...overrides,
@@ -161,6 +161,55 @@ describe('getLinkableDefinitionsForModal', () => {
     // but never filtered out by score).
     expect(result).toHaveLength(1);
     expect(result[0]?.definitionKey).toBe('poetry');
+  });
+
+  it('drops partials whose referenceDocumentId is null', () => {
+    const partialWithNullDocumentId = {
+      ...createPartial({}),
+      referenceDocumentId: null,
+    } as unknown as AssignmentDefinitionPartial;
+
+    const result = getLinkableDefinitionsForModal(
+      [partialWithNullDocumentId],
+      DEFAULT_CLASS_YEAR_GROUP_KEY,
+      DEFAULT_SELECTED_ASSIGNMENT
+    );
+
+    expect(result).toEqual([]);
+  });
+
+  it('drops partials whose templateDocumentId is null', () => {
+    const partialWithNullTemplateId = {
+      ...createPartial({}),
+      templateDocumentId: null,
+    } as unknown as AssignmentDefinitionPartial;
+
+    const result = getLinkableDefinitionsForModal(
+      [partialWithNullTemplateId],
+      DEFAULT_CLASS_YEAR_GROUP_KEY,
+      DEFAULT_SELECTED_ASSIGNMENT
+    );
+
+    expect(result).toEqual([]);
+  });
+
+  it('keeps partials when both referenceDocumentId and templateDocumentId are non-null strings', () => {
+    const partialWithBothIds = createPartial({
+      definitionKey: 'keep-me',
+      referenceDocumentId: 'ref-002',
+      templateDocumentId: 'tpl-002',
+    });
+
+    const result = getLinkableDefinitionsForModal(
+      [partialWithBothIds],
+      DEFAULT_CLASS_YEAR_GROUP_KEY,
+      DEFAULT_SELECTED_ASSIGNMENT
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].definitionKey).toBe('keep-me');
+    expect(result[0].referenceDocumentId).toBe('ref-002');
+    expect(result[0].templateDocumentId).toBe('tpl-002');
   });
 
   it('does not throw when partials have null primaryTitle or primaryTopic', () => {

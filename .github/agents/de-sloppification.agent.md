@@ -2,7 +2,7 @@
 name: 'De-Sloppification'
 description: 'Finds and removes AI-slop, duplication, and unnecessary complexity'
 user-invocable: true
-model: 'opencode-go/deepseek-v4-pro'
+model: 'opencode-go/minimax-m3'
 tools: [vscode/askQuestions, vscode/memory, execute/getTerminalOutput, execute/createAndRunTask, execute/runInTerminal, read/problems, read/readFile, read/viewImage, edit/createFile, edit/editFiles, edit/rename, search, web, todo, sonarsource.sonarlint-vscode/sonarqube_getPotentialSecurityIssues, sonarsource.sonarlint-vscode/sonarqube_excludeFiles, sonarsource.sonarlint-vscode/sonarqube_setUpConnectedMode, sonarsource.sonarlint-vscode/sonarqube_analyzeFile]
 ---
 

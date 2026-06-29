@@ -1,14 +1,12 @@
 import { Alert, Button, Empty, Modal, Select, Space, Spin, Tooltip, Typography } from 'antd';
-import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { getGoogleClassroomAssignments } from '../../../services/googleClassrooms/googleClassroomAssignmentsService';
 import { findMatchingDefinition } from './matchDefinitionForAssignment';
 import { startAssessmentRun } from '../../../services/assignmentAssessment/assignmentAssessmentService';
 import { upsertAssignmentDefinition } from '../../../services/assignmentDefinition/assignmentDefinitionService';
 import { ApiTransportError } from '../../../errors/apiTransportError';
-import { logFrontendError } from '../../../logging/frontendLogger';
-import { refetchAfterStaleInvalidate } from '../../../query/queryInvalidationHelpers';
 import { queryKeys } from '../../../query/queryKeys';
 import type { ClassPartial } from '../../../services/googleClassrooms/classPartials.zod';
 import type { AssignmentDefinitionPartial } from '../../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
@@ -166,56 +164,75 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
    * AssignmentDefinitionPartial rows. Returns the filtered, sorted list
    * or an empty array when not in the relevant no-match states.
    */
+  const { data: definitionPartialsFromCache } = useQuery<AssignmentDefinitionPartial[]>({
+    queryKey: queryKeys.assignmentDefinitionPartials(),
+    enabled: false,
+  });
+
   const linkableDefinitions = useMemo<LinkableDefinition[]>(() => {
     if (noMatchResolution !== 'linking' && noMatchResolution !== 'choice') return [];
     if (!classPartialForWizard?.yearGroupKey) return [];
     if (!selectedAssignmentForChoice) return [];
-
-    const definitionPartialsFromCache = queryClient.getQueryData<AssignmentDefinitionPartial[]>(
-      queryKeys.assignmentDefinitionPartials()
-    );
 
     return getLinkableDefinitionsForModal(
       definitionPartialsFromCache ?? [],
       classPartialForWizard.yearGroupKey,
       selectedAssignmentForChoice
     );
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- queryClient from useQueryClient() is stable per React Query contract
   }, [
     noMatchResolution,
     classPartialForWizard,
     selectedAssignmentForChoice,
+    definitionPartialsFromCache,
   ]);
 
+  /**
+   * Fetches Google Classroom assignments when the modal opens.
+   *
+   * @remarks
+   * Uses a cancelled flag to gate setState calls after the modal has been
+   * closed mid-fetch. The underlying service call is not aborted because
+   * google.script.run does not support cancellation.
+   */
   useEffect(() => {
+    let cancelled = false;
+
     if (!open) return;
 
     getGoogleClassroomAssignments(classId)
       .then((data) => {
-        // Reset both state machines on modal open (SPEC.md transition rule 0)
-        setNoMatchResolution('idle');
-        setSelectedAssignmentForChoice(null);
-        setHasCreateSucceeded(false);
-        setSelectedDefinitionForLink(null);
-        setAssessmentState('idle');
-        setAssessmentError(undefined);
-        setSelectedAssignmentId(undefined);
-        setAssignments(data);
-        setFetchState('ready');
+        if (!cancelled) {
+          // Reset both state machines on modal open (SPEC.md transition rule 0)
+          setNoMatchResolution('idle');
+          setSelectedAssignmentForChoice(null);
+          setHasCreateSucceeded(false);
+          setSelectedDefinitionForLink(null);
+          setAssessmentState('idle');
+          setAssessmentError(undefined);
+          setSelectedAssignmentId(undefined);
+          setAssignments(data);
+          setFetchState('ready');
+        }
       })
       .catch((error: unknown) => {
-        // Reset state machines even on fetch failure
-        setNoMatchResolution('idle');
-        setSelectedAssignmentForChoice(null);
-        setHasCreateSucceeded(false);
-        setSelectedDefinitionForLink(null);
-        setAssessmentState('idle');
-        setAssessmentError(undefined);
-        setSelectedAssignmentId(undefined);
-        const message = error instanceof Error ? error.message : 'Failed to fetch assignments';
-        setErrorMessage(message);
-        setFetchState('error');
+        if (!cancelled) {
+          // Reset state machines even on fetch failure
+          setNoMatchResolution('idle');
+          setSelectedAssignmentForChoice(null);
+          setHasCreateSucceeded(false);
+          setSelectedDefinitionForLink(null);
+          setAssessmentState('idle');
+          setAssessmentError(undefined);
+          setSelectedAssignmentId(undefined);
+          const message = error instanceof Error ? error.message : 'Failed to fetch assignments';
+          setErrorMessage(message);
+          setFetchState('error');
+        }
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [open, classId]);
 
   /**
@@ -299,7 +316,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
       const matchResult = findMatchingDefinition(selectedAssignment, classPartial, definitionPartials);
       await handleMatchOutcome(matchResult, selectedAssignment);
     } catch (error: unknown) {
-      handleApiError(error);
+      handleStartAssessmentError(error);
     }
   }
 
@@ -357,6 +374,44 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
   }
 
   /**
+   * Handles errors from the matched-flow `handleStartAssessment` catch block.
+   *
+   * @remarks
+   * Dispatches `DEFINITION_STALE` errors to the stale-recovery wizard
+   * transition and all other errors to `handleApiError`.
+   *
+   * Extracted from `handleStartAssessment` to keep its cyclomatic complexity
+   * within the project's lint limit.
+   *
+   * @param {unknown} error The caught error.
+   */
+  function handleStartAssessmentError(error: unknown): void {
+    if (error instanceof ApiTransportError && error.code === 'DEFINITION_STALE') {
+      transitionToStaleRecovery();
+    } else {
+      handleApiError(error);
+    }
+  }
+
+  /**
+   * Transitions the modal to stale-recovery state after a DEFINITION_STALE
+   * error from `startAssessmentRun`.
+   *
+   * @remarks
+   * Invalidates the assignment definition partials cache to ensure the wizard
+   * reads fresh data, then transitions `noMatchResolution` to `'creating'` to
+   * open the wizard with the stale definition's data pre-populated. Cache
+   * invalidation is performed BEFORE state transitions to mirror the link-flow
+   * pattern.
+   */
+  function transitionToStaleRecovery(): void {
+    queryClient.invalidateQueries({ queryKey: queryKeys.assignmentDefinitionPartials() });
+    setNoMatchResolution('creating');
+    setAssessmentState('idle');
+    setAssessmentError(undefined);
+  }
+
+  /**
    * Transitions to the 'creating' state when the user clicks
    * "Create New Definition" in the choice prompt.
    */
@@ -383,16 +438,14 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
    * @param {boolean} linkWasCommitted Whether the upsert completed successfully.
    */
   function handleLinkConfirmError(error: unknown, linkWasCommitted: boolean): void {
-    // Invalidate cache on any failure (SPEC Decision 10)
-    queryClient.invalidateQueries({ queryKey: queryKeys.assignmentDefinitionPartials() });
-
     if (error instanceof ApiTransportError && error.code === 'DEFINITION_STALE') {
       // Preserve the link, transition to wizard stale-recovery
-      setNoMatchResolution('creating');
-      setAssessmentState('idle');
-      setAssessmentError(undefined);
+      transitionToStaleRecovery();
       return;
     }
+
+    // Invalidate cache on any failure (SPEC Decision 10)
+    queryClient.invalidateQueries({ queryKey: queryKeys.assignmentDefinitionPartials() });
     if (linkWasCommitted) {
       setAssessmentAsError('error', `Link was committed but assessment could not be started: ${error instanceof Error ? error.message : 'Unknown error'}.`);
       return;
@@ -401,23 +454,44 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
   }
 
   /**
-   * Handles the Link button click in the picker: upserts the definition
-   * with the alternate title and topic, then starts the assessment run.
+   * Resolves the cached definition partial for the selected linkable definition.
+   * Sets error state and returns `undefined` when the cache or the partial is
+   * unavailable so the caller can return early.
+   *
+   * @returns {AssignmentDefinitionPartial | undefined} The matching definition
+   *          partial, or `undefined` when the cache encounteres an error or the
+   *          partial is not found.
+   */
+  function resolveCachedDefinitionPartialForLink(): AssignmentDefinitionPartial | undefined {
+    const cached = getValidatedCachedData();
+    if (cached.kind === 'cache-error') {
+      setAssessmentAsError(cached.alertType, cached.message);
+      return undefined;
+    }
+
+    // Read primaryTopicKey from the cached partial (LinkableDefinition
+    // carries primaryTopic label but not the key)
+    const partial = cached.definitionPartials.find(
+      (p) => p.definitionKey === selectedDefinitionForLink!.definitionKey
+    );
+
+    if (!partial) {
+      setAssessmentState('idle');
+      setAssessmentAsError('error', 'Selected definition not found in cache. Please try again.');
+      return undefined;
+    }
+
+    return partial;
+  }
+
+  /**
+   * Handles the Link button click in the picker — upserts the definition
+   * partial, then starts the assessment run.
    *
    * @remarks
-   * The deduplication strategy for the new `alternateTitles` and
-   * `alternateTopics` uses case-insensitive trimmed equality via
-   * `caseInsensitiveTrimmedEquals`. The full array is always sent (never `[]`,
-   * even when the topic name is null — the existing array is sent unchanged).
-   *
-   * Cache invalidation (`queryKeys.assignmentDefinitionPartials()`) is
-   * fire-and-forget after the upsert resolves, and also on any failure path
-   * to defend against stale cache entries.
-   *
-   * `DEFINITION_STALE` recovery: when `startAssessmentRun` rejects with
-   * `DEFINITION_STALE`, the link (the alternateTitle write) is preserved
-   * and the modal transitions to the wizard's 2nd panel via
-   * `noMatchResolution === 'creating'`.
+   * On `DEFINITION_STALE` rejection from `startAssessmentRun`, the link
+   * (the alternateTitle write) is preserved and the modal transitions to
+   * the wizard's 2nd panel via `noMatchResolution === 'creating'`.
    */
   async function handleLinkConfirm(): Promise<void> {
     if (!selectedDefinitionForLink || !selectedAssignmentForChoice) return;
@@ -443,21 +517,9 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
         selectedAssignmentForChoice.topicName
       );
 
-      const cached = getValidatedCachedData();
-      if (cached.kind === 'cache-error') {
-        setAssessmentAsError(cached.alertType, cached.message);
-        return;
-      }
-
-      // Read primaryTopicKey from the cached partial (LinkableDefinition
-      // carries primaryTopic label but not the key)
-      const cachedPartial = cached.definitionPartials.find(
-        (p) => p.definitionKey === selectedDefinitionForLink.definitionKey
-      );
+      const cachedPartial = resolveCachedDefinitionPartialForLink();
 
       if (!cachedPartial) {
-        setAssessmentState('idle');
-        setAssessmentAsError('error', 'Selected definition not found in cache. Please try again.');
         return;
       }
 
@@ -560,27 +622,6 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
     } catch (error: unknown) {
       setNoMatchResolution('idle');
       handleApiError(error);
-    } finally {
-      // Regression fix for issue #262: the wizard's mutation already
-      // invalidates assignmentDefinitionPartials (marking the data as
-      // stale), but invalidateQueries only refetches ACTIVE observers.
-      // Since the user is on the ClassesPage (not the AssignmentsPage),
-      // usePageDataset is not mounted, so the stale data persists when
-      // the user later navigates to the AssignmentsPage. Use
-      // refetchAfterStaleInvalidate to force a fresh fetch so the
-      // AssignmentsPage shows the newly-created definition. The refetch
-      // is fire-and-forget; failures are logged but do not block the
-      // success state shown above.
-      refetchAfterStaleInvalidate(
-        queryClient,
-        queryKeys.assignmentDefinitionPartials()
-      ).catch((error) => {
-        logFrontendError(
-          'AssessTaskModal.handleWizardCreateSuccess',
-          error,
-          { definitionKey }
-        );
-      });
     }
   }
 
@@ -608,6 +649,17 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
     setNoMatchResolution('choice');
   }
 
+  const handleAssignmentChange = useCallback((value: string) => {
+    setSelectedAssignmentId(value);
+  }, []);
+
+  const handleLinkSelect = useCallback((definitionKey: string) => {
+    const selected = linkableDefinitions.find(
+      (d) => d.definitionKey === definitionKey
+    );
+    setSelectedDefinitionForLink(selected ?? null);
+  }, [linkableDefinitions]);
+
   const isStartDisabled =
     fetchState !== 'ready' ||
     selectedAssignmentId === undefined ||
@@ -628,23 +680,15 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
    * @returns {React.ReactNode} The rendered assignments selection content.
    */
   function renderAssignmentsContent(): React.ReactNode {
-    const assessmentAlert =
-      assessmentState === 'success' || (assessmentState === 'error' && assessmentError) ? (
-        <Alert type={assessmentAlertType} showIcon title={assessmentError} style={{ marginBottom: 16 }} />
-      ) : null;
-
-    if (assessmentState === 'success') {
-      return (
-        <Space vertical style={{ width: '100%' }}>
-          {assessmentAlert}
-        </Space>
-      );
-    }
-
     const selectOptions = assignments.map((assignment) => ({
       value: assignment.assignmentId,
       label: assignment.title,
     }));
+
+    const assessmentAlert =
+      assessmentState === 'success' || (assessmentState === 'error' && assessmentError) ? (
+        <Alert type={assessmentAlertType} showIcon title={assessmentError} style={{ marginBottom: 16 }} />
+      ) : null;
 
     return (
       <Space vertical style={{ width: '100%' }}>
@@ -655,9 +699,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
           showSearch={{ optionFilterProp: 'label' }}
           placeholder="Select an assignment"
           value={selectedAssignmentId}
-          onChange={(value) => {
-            setSelectedAssignmentId(value);
-          }}
+          onChange={handleAssignmentChange}
           options={selectOptions}
           style={{ width: '100%' }}
           // virtual={false} disables virtual scrolling so options render in jsdom tests;
@@ -729,8 +771,6 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
       );
     }
 
-    // On success, only show the Alert — no picker. Mirrors the renderAssignmentsContent()
-    // early-return for the matched/wizard success paths (see Issue #260).
     if (assessmentState === 'success') {
       return <Alert type="success" showIcon title={assessmentError} style={{ marginBottom: 16 }} />;
     }
@@ -745,12 +785,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
         <LinkableDefinitionList
           linkableDefinitions={linkableDefinitions}
           selectedDefinitionKey={selectedDefinitionForLink?.definitionKey ?? null}
-          onSelect={(definitionKey) => {
-            const selected = linkableDefinitions.find(
-              (d) => d.definitionKey === definitionKey
-            );
-            setSelectedDefinitionForLink(selected ?? null);
-          }}
+          onSelect={handleLinkSelect}
         />
       </Space>
     );
@@ -835,7 +870,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
       <Button
         type="primary"
         disabled={selectedDefinitionForLink === null}
-        onClick={() => { void handleLinkConfirm(); }}
+        onClick={handleLinkConfirm}
       >
         Link
       </Button>
@@ -892,9 +927,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
           type="primary"
           disabled={isStartDisabled}
           loading={assessmentState === 'loading'}
-          onClick={() => {
-            void handleStartAssessment();
-          }}
+          onClick={handleStartAssessment}
         >
           Start Assessment
         </Button>

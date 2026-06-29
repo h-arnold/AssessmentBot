@@ -96,7 +96,7 @@ export const mockPartialRows = [
     templateDocumentId: 'tpl-doc-456',
     assignmentWeighting: 5,
     definitionKey: 'algebra-baseline',
-    tasks: null,
+    tasks: [],
     createdAt: '2025-01-01T00:00:00.000Z',
     updatedAt: '2025-01-02T00:00:00.000Z',
   },
@@ -118,7 +118,7 @@ export const mockCreatedPartialRow = {
   templateDocumentId: 'test-tpl',
   assignmentWeighting: 5,
   definitionKey: 'new-assessment',
-  tasks: null,
+  tasks: [],
   createdAt: '2025-01-03T00:00:00.000Z',
   updatedAt: '2025-01-03T00:00:00.000Z',
 } as const;
