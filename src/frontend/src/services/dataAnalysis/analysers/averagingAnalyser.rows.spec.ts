@@ -497,6 +497,33 @@ describe('AveragingAnalyser', () => {
       });
     });
 
+    it('perStudent row building throws when a submission has a null studentName', () => {
+      const input = buildInput([
+        {
+          classId: 'c_001',
+          studentIds: ['s_001', 's_002'],
+          assignments: [
+            createAssignmentPartial({
+              assignmentId: 'a_001',
+              definitionKey: 'dk_algebra',
+              tasks: [createTaskPartial('t_001')],
+              submissions: [
+                createSubmission('s_001', 'Alice', 'a_001', {
+                  t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
+                }),
+                createSubmission('s_002', null, 'a_001', {
+                  t_001: createSubmissionItem('t_001', { accuracy: { score: 3 } }),
+                }),
+              ],
+            }),
+          ],
+        },
+      ]);
+
+      const analyser = new AveragingAnalyser();
+      expect(() => analyser.analyse(input)).toThrow();
+    });
+
     it('returns null overall when all criteria are N for a data point', () => {
       const input = buildInput([
         {

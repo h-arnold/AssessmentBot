@@ -1809,9 +1809,15 @@ dereferences it directly (allowing the throw to surface the bug).
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** record the actual changes made.
-- **Deviations from plan:** note any departure.
-- **Follow-up implications for later sections:** none.
+- **Implementation notes:**
+  - `averagingAnalyser.rows.ts`: Removed `?? ''` null-name defensive default
+    in `buildPerStudentRows` sort comparator; null `studentName` now throws
+    (fail-fast for data-source bugs). Replaced `.toSorted()` with `.sort()`
+    on locally-allocated arrays in both `buildPerStudentRows` and
+    `buildPerTaskRows`. Updated JSDoc to document the null-name throw.
+  - `averagingAnalyser.rows.spec.ts`: Added test `'perStudent row building
+throws when a submission has a null studentName'`.
+  - All 9 rows tests pass, lint green. Date: 2026-06-29.
 
 ---
 

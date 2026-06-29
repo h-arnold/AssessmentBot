@@ -5,6 +5,9 @@ import type { DataPointAccumulator } from './averagingAnalyser.types';
 /**
  * Build sorted per-student rows from accumulators.
  *
+ * A null `studentName` is a data-source bug and will cause the function to
+ * throw at runtime.
+ *
  * @param {Map<string, { studentName: string | null } & DataPointAccumulator>}
  *   studentAccums - Map of studentId to accumulator data.
  * @returns {PerStudentRow[]} Sorted per-student result rows.
@@ -25,11 +28,12 @@ export function buildPerStudentRows(
     });
   }
 
-  return rows.toSorted((a, b) => {
-    const nameComparison = (a.studentName ?? '').localeCompare(b.studentName ?? '');
+  rows.sort((a, b) => {
+    const nameComparison = a.studentName!.localeCompare(b.studentName!);
     if (nameComparison !== 0) return nameComparison;
     return a.studentId.localeCompare(b.studentId);
   });
+  return rows;
 }
 
 /**
@@ -56,9 +60,10 @@ export function buildPerTaskRows(
     });
   }
 
-  return rows.toSorted((a, b) => {
+  rows.sort((a, b) => {
     const definitionComparison = a.definitionKey.localeCompare(b.definitionKey);
     if (definitionComparison !== 0) return definitionComparison;
     return a.taskId.localeCompare(b.taskId);
   });
+  return rows;
 }
