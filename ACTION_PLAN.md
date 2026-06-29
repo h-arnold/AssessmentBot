@@ -1907,9 +1907,12 @@ None.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** record the file deletion.
-- **Deviations from plan:** note any departure.
-- **Follow-up implications for later sections:** none.
+- **Implementation notes:**
+  - Deleted `assignmentDefinitionPartialsContract.guard.spec.ts`. The two
+    assertions it contained (valid row parse, legacy yearGroup rejection)
+    are already covered by `assignmentDefinitionPartials.zod.spec.ts`.
+    Removed the file reference from `src/frontend/AGENTS.md` directory
+    listing. No source-code references remain. Date: 2026-06-29.
 
 ---
 
