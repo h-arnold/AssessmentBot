@@ -554,29 +554,6 @@ describe('Assessment run interaction', () => {
     expect(within(footer!).getByRole('button', { name: 'Close' })).toBeInTheDocument();
   });
 
-  it('shows warning Alert when startAssessmentRun rejects with DefinitionStaleError', async () => {
-    const matchedDefinition = createDefinitionPartial();
-    const staleError = new ApiTransportError({
-      requestId: 'test-id',
-      error: { code: 'DEFINITION_STALE', message: 'Definition is stale' },
-    });
-
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [matchedDefinition],
-      findMatchResult: { kind: 'matched', definition: matchedDefinition },
-      startRunResult: staleError,
-      startRunType: 'reject',
-    });
-
-    await selectAssignment(dialog);
-    clickStartAssessment(dialog);
-
-    await expect(within(dialog).findByRole('alert')).resolves.toBeInTheDocument();
-  });
-
   it('shows error Alert when startAssessmentRun rejects with generic API error', async () => {
     const matchedDefinition = createDefinitionPartial();
     const genericError = new Error('Something went wrong');
@@ -595,6 +572,72 @@ describe('Assessment run interaction', () => {
     clickStartAssessment(dialog);
 
     await expect(within(dialog).findByRole('alert')).resolves.toBeInTheDocument();
+  });
+
+  // -----------------------------------------------------------------------
+  // Matched-flow DEFINITION_STALE recovery
+  // -----------------------------------------------------------------------
+
+  it('matched-flow DEFINITION_STALE transitions the modal to the wizard recovery state', async () => {
+    const matchedDefinition = createDefinitionPartial();
+    const staleError = new ApiTransportError({
+      requestId: 'test-id',
+      error: { code: 'DEFINITION_STALE', message: 'Definition is stale' },
+    });
+
+    const { dialog, queryClient } = renderWithCache({
+      classPartials: [
+        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+      ],
+      definitionPartials: [matchedDefinition],
+      findMatchResult: { kind: 'matched', definition: matchedDefinition },
+      startRunResult: staleError,
+      startRunType: 'reject',
+    });
+
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    // FUTURE BEHAVIOUR: Should transition to wizard stale-recovery
+    // Currently this FAILS because handleApiError only shows a warning alert
+    // instead of transitioning noMatchResolution to 'creating'.
+    const wizard = await screen.findByTestId('wizard-mock');
+    const wizardProperties = (wizard as unknown as Record<string, unknown>).__wizardProps as Record<string, unknown> | undefined || {};
+    expect(wizardProperties.open).toBe(true);
+    expect(wizardProperties.mode).toBe('create');
+
+    // Cache should be invalidated on stale recovery
+    await waitFor(() => {
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: queryKeys.assignmentDefinitionPartials(),
+      });
+    });
+  });
+
+  it('matched-flow non-DEFINITION_STALE errors still surface the existing error alert', async () => {
+    const matchedDefinition = createDefinitionPartial();
+    const genericError = new Error('Something went wrong');
+
+    const { dialog } = renderWithCache({
+      classPartials: [
+        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+      ],
+      definitionPartials: [matchedDefinition],
+      findMatchResult: { kind: 'matched', definition: matchedDefinition },
+      startRunResult: genericError,
+      startRunType: 'reject',
+    });
+
+    await selectAssignment(dialog);
+    clickStartAssessment(dialog);
+
+    // Error alert should appear (existing behaviour)
+    await expect(within(dialog).findByRole('alert')).resolves.toBeInTheDocument();
+
+    // Wizard should NOT appear (no stale recovery for generic errors)
+    expect(screen.queryByTestId('wizard-mock')).toBeNull();
   });
 
   // -----------------------------------------------------------------------

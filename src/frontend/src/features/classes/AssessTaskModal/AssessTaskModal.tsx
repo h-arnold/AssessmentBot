@@ -316,7 +316,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
       const matchResult = findMatchingDefinition(selectedAssignment, classPartial, definitionPartials);
       await handleMatchOutcome(matchResult, selectedAssignment);
     } catch (error: unknown) {
-      handleApiError(error);
+      handleStartAssessmentError(error);
     }
   }
 
@@ -374,6 +374,58 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
   }
 
   /**
+   * Handles errors from the matched-flow `handleStartAssessment` catch block.
+   *
+   * @remarks
+   * Dispatches `DEFINITION_STALE` errors to the stale-recovery wizard
+   * transition and all other errors to `handleApiError`.
+   *
+   * Extracted from `handleStartAssessment` to keep its cyclomatic complexity
+   * within the project's lint limit.
+   *
+   * @param {unknown} error The caught error.
+   */
+  function handleStartAssessmentError(error: unknown): void {
+    if (error instanceof ApiTransportError && error.code === 'DEFINITION_STALE') {
+      handleMatchedStale();
+    } else {
+      handleApiError(error);
+    }
+  }
+
+  /**
+   * Transitions the modal to stale-recovery state after a DEFINITION_STALE
+   * error from `startAssessmentRun`.
+   *
+   * @remarks
+   * Invalidates the assignment definition partials cache to ensure the wizard
+   * reads fresh data, then transitions `noMatchResolution` to `'creating'` to
+   * open the wizard with the stale definition's data pre-populated. Cache
+   * invalidation is performed BEFORE state transitions to mirror the link-flow
+   * pattern.
+   */
+  function transitionToStaleRecovery(): void {
+    queryClient.invalidateQueries({ queryKey: queryKeys.assignmentDefinitionPartials() });
+    setNoMatchResolution('creating');
+    setAssessmentState('idle');
+    setAssessmentError(undefined);
+  }
+
+  /**
+   * Handles a DEFINITION_STALE error in the matched flow by transitioning
+   * to the wizard stale-recovery state.
+   *
+   * @remarks
+   * Called from the `handleStartAssessment` catch block when the error is
+   * an `ApiTransportError` with code `DEFINITION_STALE`. Delegates to
+   * `transitionToStaleRecovery` for the cache invalidation and state
+   * transitions.
+   */
+  function handleMatchedStale(): void {
+    transitionToStaleRecovery();
+  }
+
+  /**
    * Transitions to the 'creating' state when the user clicks
    * "Create New Definition" in the choice prompt.
    */
@@ -400,16 +452,14 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
    * @param {boolean} linkWasCommitted Whether the upsert completed successfully.
    */
   function handleLinkConfirmError(error: unknown, linkWasCommitted: boolean): void {
-    // Invalidate cache on any failure (SPEC Decision 10)
-    queryClient.invalidateQueries({ queryKey: queryKeys.assignmentDefinitionPartials() });
-
     if (error instanceof ApiTransportError && error.code === 'DEFINITION_STALE') {
       // Preserve the link, transition to wizard stale-recovery
-      setNoMatchResolution('creating');
-      setAssessmentState('idle');
-      setAssessmentError(undefined);
+      transitionToStaleRecovery();
       return;
     }
+
+    // Invalidate cache on any failure (SPEC Decision 10)
+    queryClient.invalidateQueries({ queryKey: queryKeys.assignmentDefinitionPartials() });
     if (linkWasCommitted) {
       setAssessmentAsError('error', `Link was committed but assessment could not be started: ${error instanceof Error ? error.message : 'Unknown error'}.`);
       return;

@@ -1255,13 +1255,24 @@ assessmentError).
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** record the actual changes made; if a helper
-  was extracted, record its location and signature.
-- **Deviations from plan:** note any departure.
-- **Follow-up implications for later sections:** Section 14 (docs)
-  should update `SPEC.md` §"Error, loading, and empty-state rules" to
-  mention matched-flow stale-recovery if the implementation changes
-  the user-visible behaviour.
+- **Implementation notes:**
+  - `AssessTaskModal.tsx`: Added `handleStartAssessmentError` helper that
+    routes `DEFINITION_STALE` to stale-recovery (instead of the warning
+    alert). Added `transitionToStaleRecovery` shared helper performing cache
+    invalidation + state transitions (called by both `handleMatchedStale`
+    and `handleLinkConfirmError`'s stale branch). Added `handleMatchedStale`
+    entry point for the matched-flow stale path. `handleApiError` is
+    unchanged (still called for non-stale errors and from wizard flow).
+  - `AssessTaskModal.spec.tsx`: Added red-phase tests for matched-flow
+    `DEFINITION_STALE` → wizard recovery (failing) and non-stale error
+    regression guard (passing). Removed old test asserting warning-alert
+    behaviour for matched-flow stale (behaviour changed).
+  - All 59 modal tests pass, lint green. Date: 2026-06-29.
+- **Deviations from plan:** Cache invalidation in `handleLinkConfirmError`
+  was moved below the stale check to avoid double-invalidation (the shared
+  `transitionToStaleRecovery` already invalidates).
+- **Follow-up implications for later sections:** Section 14 should update
+  `SPEC.md` to document the matched-flow stale-recovery behaviour.
 
 ---
 
