@@ -1104,11 +1104,20 @@ cancellation).
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** record the actual change made.
-- **Deviations from plan:** note any departure.
+- **Implementation notes:**
+  - `AssessTaskModal.tsx`: Added `let cancelled = false;` at the top of the
+    assignment-fetching useEffect; returned a cleanup function that sets
+    `cancelled = true;`. Gated both `.then()` and `.catch()` handlers with
+    `if (!cancelled)` before applying state updates. Added `@remarks` JSDoc
+    explaining the cancelled flag and the google.script.run limitation.
+  - `AssessTaskModal.spec.tsx`: Added red-phase test
+    `'closing the modal mid-fetch does not apply the stale result to state'`
+    using a deferred promise to simulate mid-close fetch completion.
+  - All 58 modal tests pass, lint green. Date: 2026-06-29.
+- **Deviations from plan:** None.
 - **Follow-up implications for later sections:** none.
 
----
+  ***
 
 ## Section 7 — Matched-flow `DEFINITION_STALE` recovery (M3)
 

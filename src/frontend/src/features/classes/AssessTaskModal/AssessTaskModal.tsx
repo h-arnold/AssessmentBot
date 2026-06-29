@@ -186,35 +186,53 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
     definitionPartialsFromCache,
   ]);
 
+  /**
+   * Fetches Google Classroom assignments when the modal opens.
+   *
+   * @remarks
+   * Uses a cancelled flag to gate setState calls after the modal has been
+   * closed mid-fetch. The underlying service call is not aborted because
+   * google.script.run does not support cancellation.
+   */
   useEffect(() => {
+    let cancelled = false;
+
     if (!open) return;
 
     getGoogleClassroomAssignments(classId)
       .then((data) => {
-        // Reset both state machines on modal open (SPEC.md transition rule 0)
-        setNoMatchResolution('idle');
-        setSelectedAssignmentForChoice(null);
-        setHasCreateSucceeded(false);
-        setSelectedDefinitionForLink(null);
-        setAssessmentState('idle');
-        setAssessmentError(undefined);
-        setSelectedAssignmentId(undefined);
-        setAssignments(data);
-        setFetchState('ready');
+        if (!cancelled) {
+          // Reset both state machines on modal open (SPEC.md transition rule 0)
+          setNoMatchResolution('idle');
+          setSelectedAssignmentForChoice(null);
+          setHasCreateSucceeded(false);
+          setSelectedDefinitionForLink(null);
+          setAssessmentState('idle');
+          setAssessmentError(undefined);
+          setSelectedAssignmentId(undefined);
+          setAssignments(data);
+          setFetchState('ready');
+        }
       })
       .catch((error: unknown) => {
-        // Reset state machines even on fetch failure
-        setNoMatchResolution('idle');
-        setSelectedAssignmentForChoice(null);
-        setHasCreateSucceeded(false);
-        setSelectedDefinitionForLink(null);
-        setAssessmentState('idle');
-        setAssessmentError(undefined);
-        setSelectedAssignmentId(undefined);
-        const message = error instanceof Error ? error.message : 'Failed to fetch assignments';
-        setErrorMessage(message);
-        setFetchState('error');
+        if (!cancelled) {
+          // Reset state machines even on fetch failure
+          setNoMatchResolution('idle');
+          setSelectedAssignmentForChoice(null);
+          setHasCreateSucceeded(false);
+          setSelectedDefinitionForLink(null);
+          setAssessmentState('idle');
+          setAssessmentError(undefined);
+          setSelectedAssignmentId(undefined);
+          const message = error instanceof Error ? error.message : 'Failed to fetch assignments';
+          setErrorMessage(message);
+          setFetchState('error');
+        }
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [open, classId]);
 
   /**

@@ -12,6 +12,7 @@ import { createAppQueryClient } from '../../../query/queryClient';
 import { ApiTransportError } from '../../../errors/apiTransportError';
 import { createFixtureClassPartial } from '../../../test/classes/classesPageTestHelpers';
 import type { AssignmentTopic } from '../../../services/referenceData/referenceData.zod';
+import type { GoogleClassroomAssignmentsResponse } from '../../../services/googleClassrooms/googleClassroomAssignments.zod';
 import {
   type RenderWithCacheOptions,
   MOCK_CLASS_ID,
@@ -329,6 +330,78 @@ describe('Reopen resets state', () => {
     const expectedFetchCountAfterReopen = 2;
     expect(mockedGetAssignments).toHaveBeenCalledWith(newClassId);
     expect(mockedGetAssignments).toHaveBeenCalledTimes(expectedFetchCountAfterReopen);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Cleanup on close
+// ---------------------------------------------------------------------------
+
+describe('Cleanup on close', () => {
+  it('closing the modal mid-fetch does not apply the stale result to state', async () => {
+    // Create a deferred promise for the first fetch so we can control
+    // when it resolves (after the modal is closed).
+    let resolveFirstFetch!: (value: GoogleClassroomAssignmentsResponse) => void;
+    const firstDeferred = new Promise<GoogleClassroomAssignmentsResponse>((resolve) => {
+      resolveFirstFetch = resolve;
+    });
+
+    // Second fetch stays pending so we can observe the state before it resolves.
+    const secondDeferred = new Promise<GoogleClassroomAssignmentsResponse>(() => {});
+
+    vi.mocked(getGoogleClassroomAssignments)
+      .mockReturnValueOnce(firstDeferred)
+      .mockReturnValueOnce(secondDeferred);
+
+    // Stale data that must NOT leak into the visible state after re-opening
+    const staleData: GoogleClassroomAssignmentsResponse = [
+      { assignmentId: 'stale-1', title: 'Stale Assignment', creationTime: '2024-09-01T08:00:00.000Z', topicName: 'Old Topic', topicId: null },
+    ];
+
+    const queryClient = createAppQueryClient();
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <AssessTaskModal {...defaultProperties()} />
+      </QueryClientProvider>
+    );
+
+    // Modal is open — effect fires, fetch starts, loading spinner visible
+    const dialog = screen.getByRole('dialog', { name: MODAL_TITLE });
+    expect(within(dialog).getByRole('status')).toBeInTheDocument();
+
+    // Close the modal while the first fetch is still in-flight
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <AssessTaskModal {...defaultProperties({ open: false })} />
+      </QueryClientProvider>
+    );
+
+    // Resolve the first fetch with stale data — the leaky .then() fires
+    // while the modal is closed, updating component state.
+    await act(async () => {
+      resolveFirstFetch(staleData);
+    });
+
+    // Re-open the modal — this triggers the useEffect again, starting a
+    // second fetch via the second mock call (secondDeferred, pending).
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <AssessTaskModal {...defaultProperties()} />
+      </QueryClientProvider>
+    );
+
+    const reopenedDialog = await screen.findByRole('dialog', { name: MODAL_TITLE });
+
+    // Assert: the stale data does NOT leak into the visible state.
+    //
+    // BUG (no cleanup): the leaky .then() handler set fetchState to 'ready'
+    //   and assignments to staleData. After re-opening, the modal shows the
+    //   stale assignments (combobox visible, no loading spinner).
+    //
+    // FIX (with cleanup): the stale handler was suppressed by the cleanup
+    //   function. fetchState remains 'loading'. The modal shows the loading
+    //   spinner while the second fetch is pending.
+    expect(within(reopenedDialog).getByRole('status')).toBeInTheDocument();
   });
 });
 
