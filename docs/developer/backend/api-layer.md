@@ -108,9 +108,10 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 ```
 
-This pattern is currently used by `getGoogleClassrooms_`, `getAssignmentDefinitionPartials_`,
-`deleteAssignmentDefinition_`, `upsertAssignmentDefinition_`, `getBackendConfig_`, `setBackendConfig_`,
-`upsertABClass_`, `updateABClass_`, `deleteABClass_`, `getABClass_`, and `startAssessmentRun_`.
+This pattern is currently used by `getGoogleClassrooms_`, `getGoogleClassroomAssignments_`,
+`getAssignmentDefinitionPartials_`, `deleteAssignmentDefinition_`, `upsertAssignmentDefinition_`,
+`getAssignmentDefinition_`, `getAssignment_`, `startAssessmentRun_`, `getBackendConfig_`, `setBackendConfig_`,
+`upsertABClass_`, `updateABClass_`, `deleteABClass_`, and `getABClass_`.
 
 ## Validation ownership rules
 
@@ -338,7 +339,7 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Source: `src/backend/z_Api/googleClassroomAssignments.js`, via the `getGoogleClassroomAssignments_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ClassroomApiClient.fetchCourseWork()` in `src/backend/GoogleClassroom/ClassroomApiClient.js`.
   Required request field: `classId`.
   Validation: `classId` must be a non-empty, already-trimmed string without path characters (`/`, `\`, `..`) or ASCII control characters (code points 0–31 and 127). Invalid payloads are reported as `INVALID_REQUEST` by the transport. Malformed Classroom API response rows are reported as `ApiValidationError`.
-  Handler behaviour: calls `ClassroomApiClient.fetchCourseWork(classId)`, maps each course-work item to `{ assignmentId, title }`.
+  Handler behaviour: calls `ClassroomApiClient.fetchCourseWork(classId)`, maps each course-work item to `{ assignmentId, title, creationTime, topicId, topicName }`. Topic names are resolved via a separate `ClassroomApiClient.fetchTopicName(classId, topicId)` call; when no topic is assigned, both `topicId` and `topicName` are `null`. `creationTime` is normalised to a string at the transport boundary.
   Frontend wrapper: `src/frontend/src/services/googleClassrooms/googleClassroomAssignmentsService.ts` (`getGoogleClassroomAssignments()`), with response validation in `src/frontend/src/services/googleClassrooms/googleClassroomAssignmentsService.spec.ts`.
 
 - `deleteAssignmentDefinition` — deletes one assignment definition from both the registry and its dedicated full-definition collection.
@@ -351,8 +352,8 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
 
 - `upsertAssignmentDefinition` — creates or updates a full assignment definition and synchronised registry partial.
   Source: `src/backend/z_Api/assignmentDefinitionPartials.js`, via the `upsertAssignmentDefinition_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `AssignmentDefinitionController.upsertDefinition()` in `src/backend/y_controllers/AssignmentDefinitionController.js`.
-  Transport-required request fields: `primaryTitle`, `primaryTopicKey`, `referenceDocumentId`, and `templateDocumentId`.
-  Optional request fields: `definitionKey`, `yearGroupKey`, `alternateTitles`, `alternateTopics`, `documentType`, `assignmentWeighting`, and `taskWeightings`.
+  Transport-required request fields: `primaryTitle`, `primaryTopicKey`, `referenceDocumentId`, `templateDocumentId`, and `yearGroupKey`.
+  Optional request fields: `definitionKey`, `alternateTitles`, `alternateTopics`, `documentType`, `assignmentWeighting`, and `taskWeightings`.
   Validation split: the transport helper enforces request shape, safe-key rules for `definitionKey` and `taskWeightings[].taskId`, and structural `taskWeightings` shape; the controller owns topic membership, duplicate-tuple rejection, numeric weighting rules, document-type rules, task-ID matching, and persistence semantics.
   Frontend validation split: the frontend Zod `UpsertAssignmentDefinitionRequestSchema` enforces a `superRefine` mutual-exclusion rule between the URL-shape (`referenceDocumentUrl` + `templateDocumentUrl`) and the ID-shape (`referenceDocumentId` + `templateDocumentId` + `documentType`). Payloads with neither shape, only partial URL fields, or only partial ID fields are rejected before the payload reaches the backend. The wizard's existing URL-shape payload continues to pass without modification; the link-to-existing-definition flow uses the ID-shape payload.
   Create behaviour: when `definitionKey` is absent or `null`, the controller requires `yearGroupKey` and `documentType` (or derives it from URLs when URL-based transport is used), parses tasks from the source documents, resolves `primaryTopic` from `assignment_topics`, generates a stable opaque `definitionKey`, and writes both the full store (`assdef_full_<definitionKey>`) and the registry partial (`assignment_definitions`). This is the stage-one create persistence path.
@@ -378,7 +379,7 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Source: `src/backend/z_Api/assignmentAssessment.js`, via the `getAssignment_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.loadClass()` and `ABClassController.rehydrateAssignment()` in `src/backend/y_controllers/ABClassController.js`.
   Required request fields: `courseId` and `assignmentId` (both non-empty, already-trimmed strings with no path/control characters).
   Validation: transport enforces `params` object shape, `courseId` and `assignmentId` presence, non-empty trimmed string, and path-character/control-character safety (using `hasControlCharacters_` global from `assignmentDefinitionValidation.js`); controller owns class existence and assignment existence checks.
-  Handler behaviour: loads the ABClass via `new ABClassController().loadClass(courseId)`, delegates to `abClassController.rehydrateAssignment(abClass, assignmentId)` (passing the same `abClass` instance — identity, not structural equality — because the controller mutates it via `_replaceAssignmentInClass`), serialises via `assignment.toJSON()`, defensively strips `progressTracker` at the boundary, and applies `DateUtils.normaliseDateFields(response, ['dueDate', 'lastUpdated'])`. On `AssignmentNotFoundError` thrown by `_loadFullAssignmentDocument`, returns `null` (caught via `instanceof` check); all other errors from `rehydrateAssignment` propagate.
+  Handler behaviour: loads the ABClass via `new ABClassController().loadClass(courseId)`, delegates to `abClassController.rehydrateAssignment(abClass, assignmentId)` (passing the same `abClass` instance — identity, not structural equality — because the controller mutates it via `_replaceAssignmentInClass`), serialises via `assignment.toJSON()`, defensively strips `progressTracker` at the boundary, and applies `DateUtils.normaliseDateFields(response, ['dueDate', 'lastUpdated', 'createdAt'])`. On `AssignmentNotFoundError` thrown by `_loadFullAssignmentDocument`, returns `null` (caught via `instanceof` check); all other errors from `rehydrateAssignment` propagate.
   Logging: `info` before loading ABClass (`"getAssignment: loading full assignment"` with `{ courseId, assignmentId }`), `info` after successful rehydration (`"getAssignment: rehydrated assignment"`), `warn` for not-found (`"getAssignment: assignment not found"` — `warn`, not `error`, because the API returns `null` gracefully), `error` for other failures (`"getAssignment failed"` with `{ courseId, assignmentId, err }`).
   Response data: the complete `Assignment.toJSON()` shape — `courseId`, `assignmentId`, `assignmentName`, `dueDate` (ISO string or `null`), `lastUpdated` (ISO string or `null`), `documentType`, `referenceDocumentId`, `templateDocumentId`, `tasks`, `submissions` (full artifacts, assessments, feedback), and `assignmentDefinition`. Or `null` when no persisted assignment document exists.
   Error codes: `INVALID_REQUEST` (transport validation failure: non-object params, missing fields, unsafe characters). `INTERNAL_ERROR` (class not found via `loadClass` — `ClassNotFoundError` with structured `courseId` metadata — corrupt assignment document, partial-definition rejection, assignment-not-in-class, or any other `rehydrateAssignment` failure). No new error code is introduced for not-found — the handler returns `null` for that case (catching the `AssignmentNotFoundError` typed error before it can reach the dispatcher's error envelope).

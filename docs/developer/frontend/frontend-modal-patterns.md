@@ -40,7 +40,7 @@ Check these existing patterns before introducing a new modal style.
 
 ### 3.1 One-off destructive confirmation modals
 
-- Classes bulk delete: `src/frontend/src/features/classes/BulkDeleteModal.tsx`
+- Classes bulk delete: `src/frontend/src/features/classes/bulk/BulkDeleteModal.tsx`
 - Assignment definition delete: `src/frontend/src/pages/AssignmentsPage.tsx`
 
 Use this family when:
@@ -84,16 +84,17 @@ Default decision:
 - accepted boundary for the classes modal-family compliance refactor: a narrow feature-local `src/frontend/src/features/classes/BulkFormModalScaffold.tsx` may be introduced for this family only
 - scaffold status for that refactor: `Implemented`; the scaffold now ships as the feature-local shared shell for the three bulk form modals
 
-### 3.3 Classes reference-data workflow modals
+### 3.3 Reference-data workflow modals
 
-- `src/frontend/src/features/classes/ManageCohortsModal.tsx`
-- `src/frontend/src/features/classes/ManageYearGroupsModal.tsx`
-- Extracted scaffold: `src/frontend/src/features/classes/ReferenceDataManagementModalScaffold.tsx`
+- `src/frontend/src/features/referenceData/ManageCohortsModal.tsx`
+- `src/frontend/src/features/referenceData/ManageYearGroupsModal.tsx`
+- `src/frontend/src/features/referenceData/ManageTopicsModal.tsx`
+- Extracted scaffold: `src/frontend/src/features/referenceData/ReferenceDataManagementModalScaffold.tsx`
 - Shared helpers:
-  - `src/frontend/src/features/classes/InlineDialog.tsx`
-  - `src/frontend/src/features/classes/manageReferenceDataDialogs.tsx`
-  - `src/frontend/src/features/classes/manageReferenceDataHelpers.ts`
-  - `src/frontend/src/features/classes/ReferenceDataInitialLoadingState.tsx`
+  - `src/frontend/src/features/referenceData/InlineDialog.tsx`
+  - `src/frontend/src/features/referenceData/manageReferenceDataDialogs.tsx`
+  - `src/frontend/src/features/referenceData/manageReferenceDataHelpers.ts`
+  - `src/frontend/src/features/referenceData/ReferenceDataInitialLoadingState.tsx`
 
 Shared traits:
 
@@ -120,7 +121,7 @@ Default decision:
 - do not replace this family with a generic app-wide CRUD modal abstraction
 - reuse the extracted `ReferenceDataManagementModalScaffold` for the shared outer modal shell, shared close wiring, create-action presentation, and slot placement
 - accepted boundary for the classes reference-data scaffold: reuse `InlineDialog.tsx`, `manageReferenceDataDialogs.tsx`, and `manageReferenceDataHelpers.ts` as-is, and use `ReferenceDataManagementModalScaffold.tsx` for modal shell composition
-- helper-change status for the current extraction: `Implemented`; the scaffold now ships as the feature-local shared shell for the classes reference-data modal family, with the accepted next topic caller as a future consumer
+- helper-change status for the current extraction: `Implemented`; the scaffold now ships as the feature-scoped shared shell for the reference-data modal family, with the accepted next topic caller (`ManageTopicsModal.tsx`) now implemented
 
 ### 3.4 Assignment definition create/update wizard modal
 

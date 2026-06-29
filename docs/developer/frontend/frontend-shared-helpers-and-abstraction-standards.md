@@ -60,7 +60,7 @@ Do not create a new helper only to move code out of a large file.
 - Classes bulk-mutation orchestration helper: `src/frontend/src/features/classes/bulkMutationOrchestration.ts`
 - Classes metadata bulk-update helper: `src/frontend/src/features/classes/bulkMetadataUpdateFlow.ts`
 - Classes query refresh and invalidation contract helpers: `src/frontend/src/features/classes/queryInvalidation.ts`
-- Classes reference-data workflow helpers: `src/frontend/src/features/referenceData/manageReferenceDataHelpers.ts`
+- Reference-data workflow helpers: `src/frontend/src/features/referenceData/manageReferenceDataHelpers.ts`
 
 Feature-scoped helpers should stay feature-scoped unless there is proven cross-feature reuse.
 
@@ -265,10 +265,10 @@ This section supersedes the earlier Section 9.7 defer decision for the specific 
 
 3. Helper or contract: `ReferenceDataTrustBoundary` type extension in `manageReferenceDataHelpers.ts`
 
-- Decision: extend (planned for future topic caller)
+- Decision: extend
 - Owning path: `src/frontend/src/features/referenceData/manageReferenceDataHelpers.ts`
-- Status: `Not implemented`
-- Rationale: the `ReferenceDataTrustBoundary` union type currently covers `'cohorts' | 'yearGroups'`; when the accepted next topic reference-data modal caller is implemented, `'assignmentTopics'` must be added to this union so the blocking-load trust-boundary helpers (`getPersistedBlockingLoadError`, `setPersistedBlockingLoadError`, `clearPersistedBlockingLoadError`, `syncReferenceDataModalBusyState`) work correctly for the topic entity; this is a deliberate deferred extension, not a speculative abstraction
+- Status: `Implemented`
+- Rationale: the `ReferenceDataTrustBoundary` union type now covers `'cohorts' | 'yearGroups' | 'assignmentTopics'` — `'assignmentTopics'` was added when the topic reference-data modal caller (`ManageTopicsModal.tsx`) was implemented, so the blocking-load trust-boundary helpers (`getPersistedBlockingLoadError`, `setPersistedBlockingLoadError`, `clearPersistedBlockingLoadError`, `syncReferenceDataModalBusyState`) work correctly for the topic entity
 
 ### 9.10 Section 5 de-sloppification: classes reference-data loading and test constants
 
