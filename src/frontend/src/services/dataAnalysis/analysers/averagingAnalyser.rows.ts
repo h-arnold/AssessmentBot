@@ -1,5 +1,5 @@
 import type { PerStudentRow, PerTaskRow } from '../dataAnalysis.zod';
-import { accumToMetric } from './averagingAnalyser.types';
+import { accumToMetric } from './averagingAnalyser.accumulation';
 import type { DataPointAccumulator } from './averagingAnalyser.types';
 
 /**

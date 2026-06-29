@@ -2,7 +2,7 @@ import type { AveragingAnalyserInput, AveragingResult, PerClassResult } from '..
 import { accumulateDataPoints } from './averagingAnalyser.accumulation';
 import { filterAssignments } from './averagingAnalyser.filters';
 import { buildPerStudentRows, buildPerTaskRows } from './averagingAnalyser.rows';
-import { accumToMetric } from './averagingAnalyser.types';
+import { accumToMetric } from './averagingAnalyser.accumulation';
 
 /**
  * Default criterion weightings: completeness=0.4, accuracy=0.4, spag=0.2.

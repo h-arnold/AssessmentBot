@@ -1677,9 +1677,14 @@ None — the helpers' JSDoc is preserved verbatim in the new location.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** record the actual change made.
-- **Deviations from plan:** note any departure.
-- **Follow-up implications for later sections:** none.
+- **Implementation notes:**
+  - Moved `createAccumulator`, `createDataPointAccumulator`, and
+    `accumToMetric` from `averagingAnalyser.types.ts` to
+    `averagingAnalyser.accumulation.ts`. Updated imports in
+    `averagingAnalyser.ts` and `averagingAnalyser.rows.ts`.
+    `averagingAnalyser.types.ts` now exports only types
+    (`MetricAccumulator`, `DataPointAccumulator`, `AssessmentScore`).
+    All 31 analyser tests pass, lint green. Date: 2026-06-29.
 
 ---
 
