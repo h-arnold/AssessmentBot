@@ -50,6 +50,7 @@ Consult these resources before and during review. Local docs contain project-spe
 - Local: [frontend-logging-and-error-handling.md](../../docs/developer/frontend/frontend-logging-and-error-handling.md)
 - Local: [frontend-modal-patterns.md](../../docs/developer/frontend/frontend-modal-patterns.md)
 - Local: [frontend-shared-helpers-and-abstraction-standards.md](../../docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md)
+- Local: [frontend-shell-navigation-and-motion.md](../../docs/developer/frontend/frontend-shell-navigation-and-motion.md)
 - Ant Design v6 (LLM-friendly): <https://ant.design/llms.txt>
 - React: <https://react.dev>
 - TypeScript: <https://www.typescriptlang.org/docs/>
