@@ -90,27 +90,3 @@ export function isFilteredByDateRange(
  * @param {readonly string[] | undefined} topicKeys - The allow list.
  * @returns {boolean} True when the key is not in the allow list.
  */
-export function isFilteredByTopicKeys(
-  primaryTopicKey: string,
-  topicKeys: readonly string[] | undefined
-): boolean {
-  if (!topicKeys || topicKeys.length === 0) return false;
-  return !topicKeys.includes(primaryTopicKey);
-}
-
-/**
- * Check whether a definition key is excluded by the definition-key filter.
- *
- * @param {string} definitionKey - The definition key to check.
- * @param {readonly string[] | undefined} assignmentDefinitionKeys - Allow list.
- * @returns {boolean} True when the key is not in the allow list.
- */
-export function isFilteredByDefinitionKeys(
-  definitionKey: string,
-  assignmentDefinitionKeys: readonly string[] | undefined
-): boolean {
-  if (!assignmentDefinitionKeys || assignmentDefinitionKeys.length === 0) {
-    return false;
-  }
-  return !assignmentDefinitionKeys.includes(definitionKey);
-}

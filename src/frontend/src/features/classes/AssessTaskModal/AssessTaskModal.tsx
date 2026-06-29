@@ -387,7 +387,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
    */
   function handleStartAssessmentError(error: unknown): void {
     if (error instanceof ApiTransportError && error.code === 'DEFINITION_STALE') {
-      handleMatchedStale();
+      transitionToStaleRecovery();
     } else {
       handleApiError(error);
     }
@@ -409,20 +409,6 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
     setNoMatchResolution('creating');
     setAssessmentState('idle');
     setAssessmentError(undefined);
-  }
-
-  /**
-   * Handles a DEFINITION_STALE error in the matched flow by transitioning
-   * to the wizard stale-recovery state.
-   *
-   * @remarks
-   * Called from the `handleStartAssessment` catch block when the error is
-   * an `ApiTransportError` with code `DEFINITION_STALE`. Delegates to
-   * `transitionToStaleRecovery` for the cache invalidation and state
-   * transitions.
-   */
-  function handleMatchedStale(): void {
-    transitionToStaleRecovery();
   }
 
   /**
@@ -466,26 +452,6 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
     }
     setAssessmentAsError('error', error instanceof Error ? error.message : 'An unexpected error occurred.');
   }
-
-  /**
-   * Handles the Link button click in the picker: upserts the definition
-   * with the alternate title and topic, then starts the assessment run.
-   *
-   * @remarks
-   * The deduplication strategy for the new `alternateTitles` and
-   * `alternateTopics` uses case-insensitive trimmed equality via
-   * `caseInsensitiveTrimmedEquals`. The full array is always sent (never `[]`,
-   * even when the topic name is null — the existing array is sent unchanged).
-   *
-   * Cache invalidation (`queryKeys.assignmentDefinitionPartials()`) is
-   * fire-and-forget after the upsert resolves, and also on any failure path
-   * to defend against stale cache entries.
-   *
-   * `DEFINITION_STALE` recovery: when `startAssessmentRun` rejects with
-   * `DEFINITION_STALE`, the link (the alternateTitle write) is preserved
-   * and the modal transitions to the wizard's 2nd panel via
-   * `noMatchResolution === 'creating'`.
-   */
 
   /**
    * Resolves the cached definition partial for the selected linkable definition.
