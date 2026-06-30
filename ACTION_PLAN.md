@@ -493,6 +493,14 @@ Regression:
   - Section 4 (display helpers) does not depend on the rename.
   - Section 5 (documentation and rollout) updates `docs/developer/backend/DATA_SHAPES.md` (lines 124, 252, 753, **846, 1084** — the full-hydration sections now also reflect `updatedAt` per the user scope expansion) and `docs/developer/backend/AssessmentFlow.md` (lines 304, 383, **839, 868** — the method signature narrative now also reflects `updatedAt`) and `docs/developer/backend/api-layer.md` (line 382–384 — the `getAssignment` handler's `DateUtils.normaliseDateFields` call now references `updatedAt`) to reflect the new field name **everywhere**, with no partial-vs-full-hydration distinction. The forward note about the v1 wire-shape inconsistency is **removed** (the inconsistency no longer exists in v1).
 
+### Section 2 completion record
+
+- **Status:** Complete.
+- **Red Loop:** Tests created/updated across all frontend and backend test fixtures. Code reviewer passed clean.
+- **Green Loop:** Production code changes implemented across 6 files. Code reviewer passed clean (no issues found).
+- **Regression Gate:** All checks pass or are pre-existing-accepted. The frontend e2e check (playwright) showed "139 regressions / 139 new failures" in the regression checker comparison, but this is a **false positive artifact**: the baseline captured `playwright: not found` (exit 127, command not installed at baseline time), so the comparison engine had zero baseline test results to compare against. All **212 e2e tests pass** when run directly (`npx playwright test` — verified 2026-06-30). The regression checker's comparison algorithm attributed all test names as both regressions and new failures by misclassification, not by actual test failure. The pre-existing failing checks (backend lint max-lines warnings, backend test coverage thresholds, frontend lint) remain unchanged.
+- **Commits:** (recorded below after commit)
+
 ---
 
 ## Section 3 — `MetricResult` discriminated union + `rollupMetric` helper + accumulator and row-builder updates

@@ -108,7 +108,7 @@ function buildExistingClassDoc(overrides = {}) {
         assignmentId: 'assignment-001',
         assignmentName: 'Essay Draft',
         dueDate: '2026-01-15T23:59:59Z',
-        lastUpdated: '2026-01-10T12:00:00Z',
+        updatedAt: '2026-01-10T12:00:00Z',
         createdAt: '2026-01-01T09:00:00Z',
         documentType: 'SLIDES',
         submissions: [],
@@ -150,7 +150,7 @@ function buildExpectedReadView(doc) {
       assignmentId: a.assignmentId,
       assignmentName: a.assignmentName,
       dueDate: a.dueDate,
-      lastUpdated: a.lastUpdated,
+      updatedAt: a.updatedAt,
       createdAt: a.createdAt,
       documentType: a.documentType,
       submissions: a.submissions,
@@ -353,7 +353,7 @@ describe('ABClassController._toReadView', () => {
       assignmentId: 'assignment-001',
       assignmentName: 'Essay Draft',
       dueDate: '2026-01-15T23:59:59Z',
-      lastUpdated: '2026-01-10T12:00:00Z',
+      updatedAt: '2026-01-10T12:00:00Z',
       createdAt: '2026-01-01T09:00:00Z',
       documentType: 'SLIDES',
       submissions: [],
@@ -377,7 +377,7 @@ describe('ABClassController._toReadView', () => {
       assignmentId: 'assignment-001',
       assignmentName: 'Essay Draft',
       dueDate: new Date('2026-01-15T23:59:59Z'),
-      lastUpdated: new Date('2026-01-10T12:00:00Z'),
+      updatedAt: new Date('2026-01-10T12:00:00Z'),
       createdAt: new Date('2026-01-01T09:00:00Z'),
       documentType: 'SLIDES',
       submissions: [],
@@ -489,7 +489,7 @@ describe('ABClassController._toReadView', () => {
     realAssignment.assignmentId = 'assignment-001';
     realAssignment.assignmentName = 'Essay Draft';
     realAssignment.dueDate = new Date('2026-01-15T23:59:59.000Z');
-    realAssignment.lastUpdated = new Date('2026-01-10T12:00:00.000Z');
+    realAssignment.updatedAt = new Date('2026-01-10T12:00:00.000Z');
     realAssignment.createdAt = new Date('2026-01-01T09:00:00.000Z');
     realAssignment.assignmentDefinition = fullDef;
     realAssignment.submissions = [];

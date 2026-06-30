@@ -21,7 +21,7 @@ class Assignment {
     this.assignmentName = this.fetchAssignmentName(courseId, assignmentId);
     this.dueDate = null; //to be implemented later with the homework tracker.
     // Timestamp for when this assignment was last updated. Use Date or null.
-    this.lastUpdated = null;
+    this.updatedAt = null;
     // Timestamp from Google Classroom indicating when the assignment was created.
     // Set by fetchAssignmentName() during construction.
 
@@ -74,7 +74,7 @@ class Assignment {
       assignmentId: this.assignmentId,
       assignmentName: this.assignmentName,
       dueDate: this.dueDate ? this.dueDate.toISOString() : null,
-      lastUpdated: this.lastUpdated ? this.lastUpdated.toISOString() : null,
+      updatedAt: this.updatedAt ? this.updatedAt.toISOString() : null,
       createdAt: this.createdAt.toISOString(),
       ...this._extractFullDefinitionFields(definitionJson),
       submissions,
@@ -125,7 +125,7 @@ class Assignment {
       assignmentId: this.assignmentId,
       assignmentName: this.assignmentName,
       dueDate: this.dueDate ? this.dueDate.toISOString() : null,
-      lastUpdated: this.lastUpdated ? this.lastUpdated.toISOString() : null,
+      updatedAt: this.updatedAt ? this.updatedAt.toISOString() : null,
       createdAt: this.createdAt.toISOString(),
       ...this._extractPartialRootFields(definitionJson),
       submissions: partialSubmissions,
@@ -182,7 +182,7 @@ class Assignment {
     inst.assignmentId = data.assignmentId;
     inst.assignmentName = data.assignmentName || `Assignment ${data.assignmentId}`;
     inst.dueDate = data.dueDate ? new Date(data.dueDate) : null;
-    inst.lastUpdated = data.lastUpdated ? new Date(data.lastUpdated) : null;
+    inst.updatedAt = data.updatedAt ? new Date(data.updatedAt) : null;
     if (!data.createdAt) {
       throw new Error(`createdAt is required to deserialize Assignment ${data.assignmentId}`);
     }
@@ -207,7 +207,7 @@ class Assignment {
       'assignmentId',
       'assignmentName',
       'dueDate',
-      'lastUpdated',
+      'updatedAt',
       'createdAt',
       'assignmentDefinition',
       'submissions',
@@ -363,41 +363,41 @@ class Assignment {
   }
 
   /**
-   * Updates the lastUpdated timestamp to the current date/time.
+   * Updates the updatedAt timestamp to the current date/time.
    * Call this whenever the assignment is modified in-memory.
-   * @returns {Date} The new lastUpdated value.
+   * @returns {Date} The new updatedAt value.
    */
   touchUpdated() {
-    // Use setLastUpdated to centralize validation/copying behavior.
-    return this.setLastUpdated(new Date());
+    // Use setUpdatedAt to centralize validation/copying behaviour.
+    return this.setUpdatedAt(new Date());
   }
 
   /**
-   * Returns the lastUpdated Date or null if not set.
-   * @returns {Date|null} The lastUpdated Date or null.
+   * Returns the updatedAt Date or null if not set.
+   * @returns {Date|null} The updatedAt Date or null.
    */
-  getLastUpdated() {
-    return this.lastUpdated || null;
+  getUpdatedAt() {
+    return this.updatedAt || null;
   }
 
   /**
-   * Sets the lastUpdated timestamp from a JavaScript Date object (or null to clear).
+   * Sets the updatedAt timestamp from a JavaScript Date object (or null to clear).
    * The method copies the provided Date to avoid external mutation.
    * @param {Date|null} date - The Date to set, or null to clear the timestamp.
    * @returns {Date|null} The stored Date instance or null.
    * @throws {TypeError} If the provided value is not a Date or null.
    */
-  setLastUpdated(date) {
+  setUpdatedAt(date) {
     if (date === null) {
-      this.lastUpdated = null;
+      this.updatedAt = null;
       return null;
     }
     if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
-      throw new TypeError('setLastUpdated expects a valid Date or null');
+      throw new TypeError('setUpdatedAt expects a valid Date or null');
     }
     // store a copy to avoid outside mutation
-    this.lastUpdated = new Date(date);
-    return this.lastUpdated;
+    this.updatedAt = new Date(date);
+    return this.updatedAt;
   }
 
   /**

@@ -73,7 +73,7 @@ const validAssignmentPartial = {
   assignmentId: 'assign-1',
   assignmentName: 'Algebra Basics',
   dueDate: '2025-06-01T23:59:59.000Z',
-  lastUpdated: '2025-05-15T12:00:00.000Z',
+  updatedAt: '2025-05-15T12:00:00.000Z',
   createdAt: '2025-05-01T08:00:00.000Z',
   documentType: 'SLIDES',
   submissions: [validStudentSubmissionPartial], // Uses the new nested-dictionary shape
@@ -192,6 +192,29 @@ describe('AssignmentPartialSchema', () => {
     const missing = { ...validAssignmentPartial };
     delete (missing as Record<string, unknown>).assignmentDefinition;
     expect(() => AssignmentPartialSchema.parse(missing)).toThrow();
+  });
+
+  it('rejects lastUpdated in strict mode (old field name is forbidden)', () => {
+    // Remove the renamed field and add back the old field name.
+    // After the rename, the schema uses updatedAt instead of lastUpdated,
+    // so strict mode must reject the legacy field name.
+    const payload = { ...validAssignmentPartial } as Record<string, unknown>;
+    delete payload.updatedAt;
+    payload.lastUpdated = '2025-05-15T12:00:00.000Z';
+    expect(() => AssignmentPartialSchema.strict().parse(payload)).toThrow();
+  });
+
+  it('accepts updatedAt set to null (cardinality preserved)', () => {
+    const result = AssignmentPartialSchema.parse({
+      ...validAssignmentPartial,
+      updatedAt: null,
+    });
+    expect(result.updatedAt).toBeNull();
+  });
+
+  it('round-trips validAssignmentPartial with the renamed updatedAt field', () => {
+    const result = AssignmentPartialSchema.parse(validAssignmentPartial);
+    expect(result).toEqual(validAssignmentPartial);
   });
 });
 

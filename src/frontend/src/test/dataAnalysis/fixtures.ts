@@ -172,7 +172,7 @@ export function createAssignmentPartial(overrides: {
     assignmentId,
     assignmentName: 'Test Assignment',
     dueDate: null,
-    lastUpdated: null,
+    updatedAt: null,
     createdAt,
     documentType: 'assessment',
     submissions,

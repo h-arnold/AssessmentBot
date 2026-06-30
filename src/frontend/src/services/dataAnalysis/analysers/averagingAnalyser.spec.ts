@@ -402,7 +402,7 @@ describe('AveragingAnalyser', () => {
         assignmentId: 'a_001',
         assignmentName: 'Test Assignment',
         dueDate: null,
-        lastUpdated: null,
+        updatedAt: null,
         createdAt: DEFAULT_CREATED_AT,
         documentType: 'assessment' as const,
         submissions: [

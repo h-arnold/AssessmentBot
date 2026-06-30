@@ -2,8 +2,8 @@ import { describe, it, expect, vi } from 'vitest';
 import Assignment from '../../src/backend/AssignmentProcessor/Assignment.js';
 import { createSlidesAssignment, createSheetsAssignment } from '../helpers/modelFactories.js';
 
-describe('Assignment lastUpdated behavior', () => {
-  it('touchUpdated sets lastUpdated to a recent Date', () => {
+describe('Assignment updatedAt behavior', () => {
+  it('touchUpdated sets updatedAt to a recent Date', () => {
     const a = createSlidesAssignment({
       courseId: 'c1',
       assignmentId: 'as1',
@@ -12,17 +12,17 @@ describe('Assignment lastUpdated behavior', () => {
       assignmentName: 'Slides Assignment',
     });
     expect(a.getDocumentType()).toBe('SLIDES');
-    expect(a.getLastUpdated()).toBeNull();
+    expect(a.getUpdatedAt()).toBeNull();
     const before = Date.now();
     const d = a.touchUpdated();
     expect(d).toBeInstanceOf(Date);
-    expect(a.getLastUpdated()).toBeInstanceOf(Date);
+    expect(a.getUpdatedAt()).toBeInstanceOf(Date);
     const after = Date.now();
     expect(d.getTime()).toBeGreaterThanOrEqual(before - 5);
     expect(d.getTime()).toBeLessThanOrEqual(after + 5);
   });
 
-  it('setLastUpdated accepts a Date and stores a copy (immutable)', () => {
+  it('setUpdatedAt accepts a Date and stores a copy (immutable)', () => {
     const a = createSlidesAssignment({
       courseId: 'c2',
       assignmentId: 'as2',
@@ -31,16 +31,16 @@ describe('Assignment lastUpdated behavior', () => {
       assignmentName: 'Slides Assignment 2',
     });
     const src = new Date(2020, 0, 2, 3, 4, 5);
-    const ret = a.setLastUpdated(src);
+    const ret = a.setUpdatedAt(src);
     expect(ret).toBeInstanceOf(Date);
     expect(ret.getTime()).toBe(src.getTime());
     src.setFullYear(1999);
-    expect(a.getLastUpdated().getFullYear()).not.toBe(1999);
-    a.setLastUpdated(null);
-    expect(a.getLastUpdated()).toBeNull();
+    expect(a.getUpdatedAt().getFullYear()).not.toBe(1999);
+    a.setUpdatedAt(null);
+    expect(a.getUpdatedAt()).toBeNull();
   });
 
-  it('setLastUpdated rejects invalid values', () => {
+  it('setUpdatedAt rejects invalid values', () => {
     const a = createSlidesAssignment({
       courseId: 'c3',
       assignmentId: 'as3',
@@ -48,12 +48,12 @@ describe('Assignment lastUpdated behavior', () => {
       templateDocumentId: 'tpl3',
       assignmentName: 'Slides Assignment 3',
     });
-    expect(() => a.setLastUpdated('2020-01-01')).toThrow();
-    expect(() => a.setLastUpdated(12345)).toThrow();
-    expect(() => a.setLastUpdated(new Date('invalid'))).toThrow();
+    expect(() => a.setUpdatedAt('2020-01-01')).toThrow();
+    expect(() => a.setUpdatedAt(12345)).toThrow();
+    expect(() => a.setUpdatedAt(new Date('invalid'))).toThrow();
   });
 
-  it('toJSON and fromJSON preserve lastUpdated', () => {
+  it('toJSON and fromJSON preserve updatedAt', () => {
     const a = createSheetsAssignment({
       courseId: 'c4',
       assignmentId: 'as4',
@@ -62,13 +62,13 @@ describe('Assignment lastUpdated behavior', () => {
       assignmentName: 'Sheets Assignment',
     });
     expect(a.getDocumentType()).toBe('SHEETS');
-    a.setLastUpdated(new Date(2021, 5, 6, 7, 8, 9));
+    a.setUpdatedAt(new Date(2021, 5, 6, 7, 8, 9));
     const json = a.toJSON();
-    expect(json.lastUpdated).toBeTruthy();
+    expect(json.updatedAt).toBeTruthy();
     const restored = Assignment.fromJSON(json);
     expect(restored.getDocumentType()).toBe('SHEETS');
-    expect(restored.getLastUpdated()).toBeInstanceOf(Date);
-    expect(restored.getLastUpdated().getTime()).toBe(a.getLastUpdated().getTime());
+    expect(restored.getUpdatedAt()).toBeInstanceOf(Date);
+    expect(restored.getUpdatedAt().getTime()).toBe(a.getUpdatedAt().getTime());
   });
 
   it('touchUpdated behaves consistently across subclasses', () => {
@@ -92,8 +92,8 @@ describe('Assignment lastUpdated behavior', () => {
 
     expect(slidesUpdated).toBeInstanceOf(Date);
     expect(sheetsUpdated).toBeInstanceOf(Date);
-    expect(slides.getLastUpdated()).toBeInstanceOf(Date);
-    expect(sheets.getLastUpdated()).toBeInstanceOf(Date);
+    expect(slides.getUpdatedAt()).toBeInstanceOf(Date);
+    expect(sheets.getUpdatedAt()).toBeInstanceOf(Date);
   });
 
   it('should surface an error via ProgressTracker when documentType is missing', () => {

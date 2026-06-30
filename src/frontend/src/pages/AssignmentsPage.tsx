@@ -32,6 +32,7 @@ import {
 } from '../services/assignmentDefinition/assignmentDefinitionPartialsService';
 import { DeleteAssignmentDefinitionRequestSchema } from '../services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import { AssignmentDefinitionWizardModal } from '../features/assignmentWizard/AssignmentDefinitionWizardModal';
+import { formatUpdatedAtLabel } from '../utils/dateFormatting';
 import { PageSection } from './PageSection';
 import { pageContent } from './pageContent';
 
@@ -137,26 +138,6 @@ function isSafeDefinitionKey(definitionKey: string): boolean {
  */
 function formatYearGroupLabel(yearGroupLabel: string): string {
   return yearGroupLabel.trim().length === 0 ? UNAVAILABLE_VALUE : yearGroupLabel;
-}
-
-/**
- * Formats an ISO timestamp for table display and filtering.
- *
- * @param {string | null} updatedAt Last-updated timestamp.
- * @returns {string} Display label.
- */
-function formatUpdatedAtLabel(updatedAt: string | null): string {
-  if (updatedAt === null) {
-    return UNAVAILABLE_VALUE;
-  }
-
-  const parsedDate = new Date(updatedAt);
-
-  if (Number.isNaN(parsedDate.getTime())) {
-    return UNAVAILABLE_VALUE;
-  }
-
-  return parsedDate.toLocaleDateString('en-GB', { timeZone: 'UTC' });
 }
 
 /**

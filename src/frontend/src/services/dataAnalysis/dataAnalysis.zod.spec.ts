@@ -72,7 +72,7 @@ const minimalClassFull = {
       assignmentId: 'a-1',
       assignmentName: 'Test Assignment',
       dueDate: null,
-      lastUpdated: null,
+      updatedAt: null,
       createdAt: validIsoTimestamp,
       documentType: null,
       submissions: [
