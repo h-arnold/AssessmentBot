@@ -786,6 +786,47 @@ indicate bugs in application code, but they clutter output and obscure real fail
    `userEvent.selectOptions(...)` instead, which handle the full gesture and wait for
    motion to settle.
 
+7. **Wrap direct mock callback calls in `act()`.**
+   When tests invoke callbacks obtained from mock components (for example
+   `properties.onClose()` or `properties.onCreateSuccess(...)` on a wizard mock),
+   those calls trigger synchronous React state transitions inside component state
+   reducers that aren't wrapped by any user interaction. Enclose them in
+   `await act(async () => { ... })`:
+
+   ```typescript
+   await act(async () => {
+     properties.onClose();
+   });
+
+   await act(async () => {
+     properties.onCreateSuccess('new-def-key');
+   });
+   ```
+
+   If the callback triggers async work (e.g. a `useMutation`), the `act()` wrapper
+   prevents the associated state updates from escaping the current test step.
+
+8. **Wrap `rerender()` calls in `act()` when they change component props that
+   trigger async initialisation.**
+   `rerender(...)` from Testing Library is synchronous and does not wrap the
+   component's re-mount / effect re-run inside `act()`. If the re-render changes
+   props that trigger data fetching, state transitions, or animation mounts, wrap
+   the call in `await act(async () => { ... })`:
+
+   ```typescript
+   await act(async () => {
+     rerender(
+       <QueryClientProvider client={queryClient}>
+         <AssessTaskModal {...defaultProperties({ open: false })} />
+       </QueryClientProvider>
+     );
+   });
+   ```
+
+   This applies specifically to prop changes that cause the component to mount
+   fresh effects (for example toggling `open` on a modal, or changing a `classId`
+   that triggers a `useEffect` fetch).
+
 ## Notes
 
 - Frontend unit/component tests run in the frontend package (`src/frontend`) through root scripts.
