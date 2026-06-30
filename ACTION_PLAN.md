@@ -764,6 +764,10 @@ The restructuring adds roughly 40–60 lines to `averagingAnalyser.accumulation.
 - **Regression Gate:** All 4 pre-existing failures unchanged. The 139 frontend-e2e "regressions" are the same false-positive artifact from the baseline (playwright not installed at baseline time). Zero regressions introduced by Section 3.
 - **Deviation recorded:** `averagingAnalyser.accumulation.ts` grew to 613 lines (projected 500-530). The decomposition was deferred per spec line 418; the file-size growth is noted as a deviation but decomposition is out of scope for this section (tracked in Section 6).
 - **Commits:** (recorded below after commit)
+- **Commits:**
+  - `26e74cd` — `feat: implement Section 3 of ACTION_PLAN - MetricResult discriminated union + rollupMetric helper + accumulator and row-builder updates`
+  - Branch: `opencode/eager-comet`
+  - Push: succeeded (a5bca82..26e74cd)
 
 ---
 
