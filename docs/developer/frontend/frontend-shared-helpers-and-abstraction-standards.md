@@ -470,17 +470,18 @@ These entries record the planned shared display helpers for the Class page featu
 
 - Decision: `new`
 - Owning module/path: `src/frontend/src/services/dataAnalysis/metricDisplay/`
-- Call-site rationale: at least two production files (`metricTone.ts`, `MetricPill.tsx`) plus their spec companions share the `metricDisplay` domain prefix, satisfying `src/frontend/AGENTS.md` §12 ("Create a subfolder when at least 2 files share a common domain prefix"). A barrel `index.ts` is included to keep call-site imports tidy; per §12, barrels are optional and may be removed if a later de-sloppification pass finds them unnecessary.
+- Call-site rationale: at least two production files (`metricTone.ts`, `MetricPill.tsx`) plus their spec companions share the `metricDisplay` domain prefix, satisfying `src/frontend/AGENTS.md` §13 ("Create a subfolder when at least 2 files share a common domain prefix"). No `index.ts` barrel is created in v1 per spec decision 8; consumers import directly (e.g. `import { resolveMetricTone } from '.../metricDisplay/metricTone'`). This is a deliberate v1 simplification; a barrel may be added in a later de-sloppification pass if call sites get noisy.
 - Status: `Not implemented`
 - Planned doc reconciliation: confirm the subfolder is created at the planned path and that the existing `services/dataAnalysis/` directory structure is preserved.
 
-4. Helper: `rollupMetric(subAccumulators: MetricAccumulator[]): MetricResult` — shared rollup precedence function
+4. Helper: `rollupMetric(subTasks: ReadonlyArray<MetricResult>, metric: 'completeness' | 'accuracy' | 'spag'): MetricResult` — shared rollup precedence function
 
 - Decision: `new`
-- Owning module/path: `src/frontend/src/services/dataAnalysis/analysers/accumulation/accumulationPolicies.ts`
-- Call-site rationale: both `buildPerStudentRows` and `buildPerTaskRows` in `averagingAnalyser.rows.ts` need to apply the same three-way rollup precedence when aggregating across multiple sub-accumulators (e.g., a student's submissions across several tasks). The function applies the rule: if any sub-accumulator produced `error`, the rollup is `error`; else if any produced `notAttempted`, the rollup is `notAttempted`; otherwise compute a weighted average over the `computed` sub-accumulators only. Pure function, no React or antd imports. Lives in the decomposed `accumulationPolicies.ts` file alongside the three-way state assignment rules.
+- Owning module/path: `src/frontend/src/services/dataAnalysis/analysers/rollupMetric.ts` (standalone; not in `accumulation/` subfolder)
+- Call-site rationale: called by both `buildPerStudentRows` and `buildPerTaskRows` in `averagingAnalyser.rows.ts`, and by the Class page's `classPageAdapter`, applying the same three-way rollup precedence across all aggregation levels. The function operates on the public `MetricResult` discriminated union (not internal `MetricAccumulator` values) and takes a metric discriminator to apply per-metric `notAttempted` handling (for accuracy and completeness, `notAttempted` contributes 0; for SPaG, `notAttempted` is excluded). The `RollupMetric` type is `'completeness' | 'accuracy' | 'spag'` only — `'average'` is intentionally excluded because the average is a composite of the three per-criterion rollups at the consumer level, not a fourth independent weighted average. Pure function, no React or antd imports.
 - Status: `Not implemented`
-- Planned doc reconciliation: confirm the rollup is called from both `buildPerStudentRows` and `buildPerTaskRows`, and that the precedence rule (error > notAttempted > computed) matches the `SPEC.md` contract.
+- Rationale (historical record): the planning-time entry recorded the signature as `rollupMetric(subAccumulators: MetricAccumulator[]): MetricResult` at `accumulation/accumulationPolicies.ts` (operating on internal accumulators with no metric discriminator). The prep spec reconciled the signature to operate on the public `MetricResult` discriminated union with a metric discriminator, at a standalone path. The facade decomposition that would have placed it in `accumulation/` has been deferred (see §9.18 item 3). The old signature is preserved here as a historical record of the planning-time contract; the canonical entry above is the reconciled signature.
+- Planned doc reconciliation: confirm the rollup is called from both analyser row builders and the Class page adapter, and that the precedence rule (error > notAttempted > computed) and per-metric `notAttempted` handling match the `SPEC_CLASS_PAGE_PREPARATION.md` contract.
 
 ### 9.18 Class page feature-local helpers
 
@@ -504,8 +505,21 @@ These entries record the planned feature-local helpers for the Class page. Per `
 
 3. Structural change: facade decomposition of `averagingAnalyser.accumulation.ts`
 
-- Decision: `new (structural)`
+- Decision: `defer`
 - Owning module/path: `src/frontend/src/services/dataAnalysis/analysers/accumulation/` (new subfolder), with `averagingAnalyser.accumulation.ts` becoming a facade.
-- Call-site rationale: the lead data analysis deliverable (the `MetricResult` discriminated union) grows `averagingAnalyser.accumulation.ts` from 447 lines to a projected ~520 lines, which crosses the 550-line threshold trigger for facade decomposition per `src/frontend/AGENTS.md` §12. The decomposition splits the file into `accumulation/metricAccumulator.ts` (the accumulator primitives — `createAccumulator`, `createDataPointAccumulator`, `accumToMetric`), `accumulation/accumulationPolicies.ts` (the three-state assignment rules and the shared `rollupMetric` helper from the new `MetricResult` discriminated union), `accumulation/processAssignment.ts` (per-assignment processing), and `accumulation/index.ts` (the facade that delegates). The public surface is preserved so no consumer is broken; this is purely a structural cleanup bundled with the data analysis contract change.
+- Call-site rationale: the projected post-change size is ~500–530 lines, which is under the 550-line threshold for facade decomposition per `src/frontend/AGENTS.md` §13 ("Do not pre-emptively split files that are approaching 550 lines; wait until the threshold is crossed or a concrete maintenance need arises"). The decomposition is deferred until the threshold is crossed or a concrete maintenance need arises. A concrete maintenance need (e.g. the three-way state assignment logic is hard to test in isolation) may trigger the decomposition in a future pass.
+- Status: `Deferred`
+- Planned doc reconciliation: confirm the projected post-change size at implementation time and confirm the defer decision remains valid.
+
+### 9.19 Frontend pure formatting helpers
+
+These entries record the planned pure formatting helpers extracted from feature code into shared utility modules.
+Per `SPEC_CLASS_PAGE_PREPARATION.md` line 382, the canonical home for these helpers is `src/frontend/src/utils/` — a new top-level folder for pure formatting / utility functions shared across the frontend. The folder is not governed by `src/frontend/AGENTS.md` §13 (which covers `services/` subfolders only); this is a separate convention for helpers that have no React, Ant Design, I/O, or state dependencies.
+
+1. Helper: `formatUpdatedAtLabel(updatedAt: string | null): string` — date formatting helper
+
+- Decision: `new`
+- Owning module/path: `src/frontend/src/utils/dateFormatting.ts` (new `utils/` folder, first entry)
+- Call-site rationale: extracted from `AssignmentsPage.tsx` as part of the rename deliverable because the Class page's `classPageAdapter` needs the same formatter. `en-GB` locale, date-only, rendered in UTC. The em-dash fallback (`UNAVAILABLE_VALUE = '—'`) is defined locally in the new module (does not import from `AssignmentsPage.tsx`). Pure formatting function, no React / antd / I/O / state. The Class page adapter does not use the fallback; it throws upstream on null or unparseable input. The helper preserves the fallback for the `AssignmentsPage` caller.
 - Status: `Not implemented`
-- Planned doc reconciliation: confirm the decomposition happens in the same change set as the contract change, confirm the public surface is byte-identical, and confirm the file-separation projection in `SPEC.md` matches the actual outcome.
+- Planned doc reconciliation: confirm the helper lives at the planned path, preserves the existing `AssignmentsPage` behaviour, and that the `UNAVAILABLE_VALUE` constant is defined locally (not imported from `AssignmentsPage.tsx`).
