@@ -9,7 +9,10 @@ import {
   createSubmissionItem,
   createTaskPartial,
 } from '../../../test/dataAnalysis/fixtures';
-import { expectMetricResult } from '../../../test/dataAnalysis/averagingAnalyserAssertions';
+import {
+  expectMetricResultStateAware,
+  type MetricResultType,
+} from '../../../test/dataAnalysis/averagingAnalyserAssertions';
 
 describe('AveragingAnalyser', () => {
   describe('analyse — filters', () => {
@@ -71,7 +74,8 @@ describe('AveragingAnalyser', () => {
 
       expect(results).toHaveLength(1);
       // Only the in-range assignment (a_in_range, createdAt=2026-01-03) contributes
-      expectMetricResult(results[0].perClass.accuracy, {
+      expectMetricResultStateAware(results[0].perClass.accuracy as unknown as MetricResultType, {
+        state: 'computed',
         value: 5,
         totalWeight: 1,
         applicableDataPoints: 1,
@@ -136,7 +140,8 @@ describe('AveragingAnalyser', () => {
 
       expect(results).toHaveLength(1);
       // Only the algebra assignment (primaryTopicKey='algebra') contributes
-      expectMetricResult(results[0].perClass.accuracy, {
+      expectMetricResultStateAware(results[0].perClass.accuracy as unknown as MetricResultType, {
+        state: 'computed',
         value: 4,
         totalWeight: 1,
         applicableDataPoints: 1,
@@ -186,7 +191,8 @@ describe('AveragingAnalyser', () => {
 
       expect(results).toHaveLength(1);
       // Only the algebra assignment (definitionKey='dk_algebra') contributes
-      expectMetricResult(results[0].perClass.accuracy, {
+      expectMetricResultStateAware(results[0].perClass.accuracy as unknown as MetricResultType, {
+        state: 'computed',
         value: 4,
         totalWeight: 1,
         applicableDataPoints: 1,
@@ -330,7 +336,8 @@ describe('AveragingAnalyser', () => {
       expect(results).toHaveLength(1);
       // Only 4 assignments (a_algebra, a_geometry, a_statistics, a_calculus) contribute
       // Weighted average = (1 + 2 + 3 + 4) / 4 = 2.5
-      expectMetricResult(results[0].perClass.accuracy, {
+      expectMetricResultStateAware(results[0].perClass.accuracy as unknown as MetricResultType, {
+        state: 'computed',
         value: 2.5,
         totalWeight: 4,
         applicableDataPoints: 4,

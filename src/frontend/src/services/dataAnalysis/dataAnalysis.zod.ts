@@ -66,27 +66,48 @@ export type AveragingAnalyserInput = z.infer<typeof AveragingAnalyserInputSchema
  * Result for a single metric (completeness, accuracy, spag, or overall).
  *
  * @remarks
- * `value` is `null` iff `applicableDataPoints === 0`. When `value` is non-null,
- * `applicableDataPoints` must be > 0.
+ * `MetricResult` is a discriminated union with three states:
+ * - `computed`: at least one numeric data point contributed. `value` is a number.
+ * - `notAttempted`: no numeric data points, but at least one raw `'N'` score was
+ *   seen. `value` is `'N'`.
+ * - `error`: no data points at all — no numeric scores and no `'N'` scores.
+ *   `value` is `'E'`.
+ *
+ * The discriminated union replaces the earlier invariant
+ * `value === null ⇔ applicableDataPoints === 0`.
+ *
+ * Precedence for rollups (not enforced at the schema level):
+ * `error` > `notAttempted` > `computed`.
  */
-export const MetricResultSchema = z
-  .strictObject({
-    value: z.number().nullable(),
-    totalWeight: z.number(),
-    applicableDataPoints: z.number().int().min(0),
-    totalDataPoints: z.number().int().min(0),
-  })
-  .refine(
-    (m) => {
-      if (m.value === null) return m.applicableDataPoints === 0;
-      return m.applicableDataPoints > 0;
-    },
-    {
-      message:
-        'If value is null then applicableDataPoints must be 0; ' +
-        'if value is non-null then applicableDataPoints must be > 0',
-    }
-  );
+const ComputedMetricSchema = z.strictObject({
+  state: z.literal('computed'),
+  value: z.number(),
+  totalWeight: z.number(),
+  applicableDataPoints: z.number().int().min(1),
+  totalDataPoints: z.number().int().min(0),
+});
+
+const NotAttemptedMetricSchema = z.strictObject({
+  state: z.literal('notAttempted'),
+  value: z.literal('N'),
+  totalWeight: z.number(),
+  applicableDataPoints: z.literal(0),
+  totalDataPoints: z.number().int().min(1),
+});
+
+const ErrorMetricSchema = z.strictObject({
+  state: z.literal('error'),
+  value: z.literal('E'),
+  totalWeight: z.number().min(0),
+  applicableDataPoints: z.literal(0),
+  totalDataPoints: z.number().int().min(0),
+});
+
+export const MetricResultSchema = z.discriminatedUnion('state', [
+  ComputedMetricSchema,
+  NotAttemptedMetricSchema,
+  ErrorMetricSchema,
+]);
 
 export type MetricResult = z.infer<typeof MetricResultSchema>;
 

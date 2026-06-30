@@ -18,6 +18,96 @@ import type { AveragingAnalyserInput } from '../../services/dataAnalysis/dataAna
 export const DEFAULT_CREATED_AT = '2026-01-01T00:00:00.000Z';
 
 // ---------------------------------------------------------------------------
+// MetricResult builders — produce discriminated-union MetricResult shapes
+// ---------------------------------------------------------------------------
+
+/**
+ * Build a `computed` MetricResult fixture.
+ *
+ * @param {Partial<{ value: number; totalWeight: number; applicableDataPoints: number; totalDataPoints: number }>} [overrides] - Optional field overrides.
+ * @returns {{ state: 'computed'; value: number; totalWeight: number; applicableDataPoints: number; totalDataPoints: number }} A computed MetricResult.
+ */
+export function createComputedMetricResult(
+  overrides?: Partial<{
+    value: number;
+    totalWeight: number;
+    applicableDataPoints: number;
+    totalDataPoints: number;
+  }>
+): {
+  state: 'computed';
+  value: number;
+  totalWeight: number;
+  applicableDataPoints: number;
+  totalDataPoints: number;
+} {
+  return {
+    state: 'computed',
+    value: 5,
+    totalWeight: 1,
+    applicableDataPoints: 1,
+    totalDataPoints: 1,
+    ...overrides,
+  };
+}
+
+/**
+ * Build a `notAttempted` MetricResult fixture.
+ *
+ * @param {Partial<{ totalWeight: number; totalDataPoints: number }>} [overrides] - Optional field overrides.
+ * @returns {{ state: 'notAttempted'; value: 'N'; totalWeight: number; applicableDataPoints: 0; totalDataPoints: number }} A notAttempted MetricResult.
+ */
+export function createNotAttemptedMetricResult(
+  overrides?: Partial<{
+    totalWeight: number;
+    totalDataPoints: number;
+  }>
+): {
+  state: 'notAttempted';
+  value: 'N';
+  totalWeight: number;
+  applicableDataPoints: 0;
+  totalDataPoints: number;
+} {
+  return {
+    state: 'notAttempted',
+    value: 'N',
+    totalWeight: 0,
+    applicableDataPoints: 0 as const,
+    totalDataPoints: 1,
+    ...overrides,
+  };
+}
+
+/**
+ * Build an `error` MetricResult fixture.
+ *
+ * @param {Partial<{ totalWeight: number; totalDataPoints: number }>} [overrides] - Optional field overrides.
+ * @returns {{ state: 'error'; value: 'E'; totalWeight: number; applicableDataPoints: 0; totalDataPoints: number }} An error MetricResult.
+ */
+export function createErrorMetricResult(
+  overrides?: Partial<{
+    totalWeight: number;
+    totalDataPoints: number;
+  }>
+): {
+  state: 'error';
+  value: 'E';
+  totalWeight: number;
+  applicableDataPoints: 0;
+  totalDataPoints: number;
+} {
+  return {
+    state: 'error',
+    value: 'E',
+    totalWeight: 0,
+    applicableDataPoints: 0 as const,
+    totalDataPoints: 1,
+    ...overrides,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Fixture builders — produce minimal structurally-valid data shapes
 // ---------------------------------------------------------------------------
 

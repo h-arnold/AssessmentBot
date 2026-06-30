@@ -1,8 +1,18 @@
-import type { AveragingAnalyserInput, AveragingResult, PerClassResult } from '../dataAnalysis.zod';
-import { accumulateDataPoints } from './averagingAnalyser.accumulation';
+import type {
+  AveragingAnalyserInput,
+  AveragingResult,
+  MetricResult,
+  PerClassResult,
+} from '../dataAnalysis.zod';
+import {
+  accumToMetric,
+  accumulateDataPoints,
+  computeOverallComposite,
+} from './averagingAnalyser.accumulation';
 import { filterAssignments } from './averagingAnalyser.filters';
 import { buildPerStudentRows, buildPerTaskRows } from './averagingAnalyser.rows';
-import { accumToMetric } from './averagingAnalyser.accumulation';
+import { rollupMetric } from './rollupMetric';
+import type { DataPointAccumulator } from './averagingAnalyser.types';
 
 /**
  * Default criterion weightings: completeness=0.4, accuracy=0.4, spag=0.2.
@@ -81,13 +91,55 @@ export class AveragingAnalyser {
     const filteredAssignments = filterAssignments(cls, input);
     const accumulators = accumulateDataPoints(filteredAssignments, input, this.criterionWeightings);
 
-    const perStudent = buildPerStudentRows(accumulators.studentAccums);
-    const perTask = buildPerTaskRows(accumulators.taskAccums);
+    const perStudent = buildPerStudentRows(
+      accumulators.studentAccums,
+      accumulators.perStudentTaskAccums,
+      this.criterionWeightings
+    );
+    const perTask = buildPerTaskRows(
+      accumulators.taskAccums,
+      accumulators.perStudentTaskAccums,
+      this.criterionWeightings
+    );
+
+    // Build per-class rollup from all per-(student, task) MetricResults
+    const allPerStudentTaskAccums: DataPointAccumulator[] = [];
+    for (const taskMap of accumulators.perStudentTaskAccums.values()) {
+      for (const accumulator of taskMap.values()) {
+        allPerStudentTaskAccums.push(accumulator);
+      }
+    }
+
+    const completenessResults: MetricResult[] = [];
+    const accuracyResults: MetricResult[] = [];
+    const spagResults: MetricResult[] = [];
+
+    for (const accumulator of allPerStudentTaskAccums) {
+      completenessResults.push(accumToMetric(accumulator.completeness));
+      accuracyResults.push(accumToMetric(accumulator.accuracy));
+      spagResults.push(accumToMetric(accumulator.spag));
+    }
+
+    let completeness: MetricResult;
+    let accuracy: MetricResult;
+    let spag: MetricResult;
+
+    if (completenessResults.length === 0) {
+      // Fall back to the classAccum aggregate when there are no per-student-task accumulators
+      completeness = accumToMetric(accumulators.classAccum.completeness);
+      accuracy = accumToMetric(accumulators.classAccum.accuracy);
+      spag = accumToMetric(accumulators.classAccum.spag);
+    } else {
+      completeness = rollupMetric(completenessResults, 'completeness');
+      accuracy = rollupMetric(accuracyResults, 'accuracy');
+      spag = rollupMetric(spagResults, 'spag');
+    }
+
     const perClass: PerClassResult = {
-      completeness: accumToMetric(accumulators.classAccum.completeness),
-      accuracy: accumToMetric(accumulators.classAccum.accuracy),
-      spag: accumToMetric(accumulators.classAccum.spag),
-      overall: accumToMetric(accumulators.classAccum.overall),
+      completeness,
+      accuracy,
+      spag,
+      overall: computeOverallComposite(completeness, accuracy, spag, this.criterionWeightings),
     };
 
     return {

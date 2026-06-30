@@ -12,7 +12,7 @@ import type {
  * @returns {MetricAccumulator} A fresh entry with all fields at zero.
  */
 export function createAccumulator(): MetricAccumulator {
-  return { weightedSum: 0, totalWeight: 0, applicableDataPoints: 0, totalDataPoints: 0 };
+  return { weightedSum: 0, totalWeight: 0, applicableDataPoints: 0, totalDataPoints: 0, nCount: 0 };
 }
 
 /**
@@ -32,17 +32,40 @@ export function createDataPointAccumulator(): DataPointAccumulator {
 /**
  * Convert a metric accumulator to its output MetricResult shape.
  *
+ * The three-way check:
+ * - `applicableDataPoints > 0` → `computed` (weighted mean).
+ * - `nCount > 0` and `applicableDataPoints === 0` → `notAttempted` (value `'N'`).
+ * - Otherwise → `error` (value `'E'`).
+ *
  * @param {MetricAccumulator} accumulator - The mutable accumulator to convert.
  * @returns {MetricResult} A read-only MetricResult snapshot.
  */
 export function accumToMetric(accumulator: MetricAccumulator): MetricResult {
+  if (accumulator.applicableDataPoints > 0) {
+    return {
+      state: 'computed',
+      value: accumulator.weightedSum / accumulator.totalWeight,
+      totalWeight: accumulator.totalWeight,
+      applicableDataPoints: accumulator.applicableDataPoints,
+      totalDataPoints: accumulator.totalDataPoints,
+    };
+  }
+
+  if (accumulator.nCount > 0) {
+    return {
+      state: 'notAttempted',
+      value: 'N',
+      totalWeight: accumulator.totalWeight,
+      applicableDataPoints: 0,
+      totalDataPoints: accumulator.totalDataPoints,
+    };
+  }
+
   return {
-    value:
-      accumulator.applicableDataPoints === 0
-        ? null
-        : accumulator.weightedSum / accumulator.totalWeight,
+    state: 'error',
+    value: 'E',
     totalWeight: accumulator.totalWeight,
-    applicableDataPoints: accumulator.applicableDataPoints,
+    applicableDataPoints: 0,
     totalDataPoints: accumulator.totalDataPoints,
   };
 }
@@ -121,6 +144,29 @@ export function getOrCreateTaskAccum(
 }
 
 /**
+ * Accumulate a single criterion score into its metric accumulator.
+ *
+ * @param {MetricAccumulator} accum - The metric accumulator to update.
+ * @param {AssessmentScore} score - The criterion score.
+ * @param {number} weight - The per-data-point weight.
+ */
+function accumulateCriterion(
+  accum: MetricAccumulator,
+  score: AssessmentScore,
+  weight: number
+): void {
+  if (typeof score === 'number') {
+    accum.totalDataPoints++;
+    accum.weightedSum += score * weight;
+    accum.totalWeight += weight;
+    accum.applicableDataPoints++;
+  } else if (score === 'N') {
+    accum.totalDataPoints++;
+    accum.nCount++;
+  }
+}
+
+/**
  * Accumulate all four metrics into a single target accumulator for one
  * data point.
  *
@@ -139,32 +185,18 @@ export function accumulateMetricsToTarget(
   overallValue: number | null,
   weight: number
 ): void {
-  target.completeness.totalDataPoints++;
-  if (typeof completenessScore === 'number') {
-    target.completeness.weightedSum += completenessScore * weight;
-    target.completeness.totalWeight += weight;
-    target.completeness.applicableDataPoints++;
-  }
+  accumulateCriterion(target.completeness, completenessScore, weight);
+  accumulateCriterion(target.accuracy, accuracyScore, weight);
+  accumulateCriterion(target.spag, spagScore, weight);
 
-  target.accuracy.totalDataPoints++;
-  if (typeof accuracyScore === 'number') {
-    target.accuracy.weightedSum += accuracyScore * weight;
-    target.accuracy.totalWeight += weight;
-    target.accuracy.applicableDataPoints++;
-  }
-
-  target.spag.totalDataPoints++;
-  if (typeof spagScore === 'number') {
-    target.spag.weightedSum += spagScore * weight;
-    target.spag.totalWeight += weight;
-    target.spag.applicableDataPoints++;
-  }
-
-  target.overall.totalDataPoints++;
   if (overallValue !== null) {
+    target.overall.totalDataPoints++;
     target.overall.weightedSum += overallValue * weight;
     target.overall.totalWeight += weight;
     target.overall.applicableDataPoints++;
+  } else if (completenessScore === 'N' || accuracyScore === 'N' || spagScore === 'N') {
+    target.overall.totalDataPoints++;
+    target.overall.nCount++;
   }
 }
 
@@ -207,7 +239,7 @@ export function computeOverall(
 }
 
 /**
- * Process one submission item, accumulating metrics into all three scopes.
+ * Process one submission item, accumulating metrics into all scopes.
  *
  * @param {AssessmentScore} completenessScore - The completeness score.
  * @param {AssessmentScore} accuracyScore - The accuracy score.
@@ -217,6 +249,8 @@ export function computeOverall(
  * @param {DataPointAccumulator} classAccum - Per-class accumulator.
  * @param {DataPointAccumulator} taskAccum - Per-task accumulator.
  * @param {CriterionWeightings} criterionWeightings - The criterion weightings.
+ * @param {DataPointAccumulator} [perStudentTaskAccum] - Optional per-(student, task)
+ *   accumulator for rollup input building.
  */
 export function processSubmissionItem(
   completenessScore: AssessmentScore,
@@ -226,7 +260,8 @@ export function processSubmissionItem(
   studentAccum: DataPointAccumulator,
   classAccum: DataPointAccumulator,
   taskAccum: DataPointAccumulator,
-  criterionWeightings: CriterionWeightings
+  criterionWeightings: CriterionWeightings,
+  perStudentTaskAccum?: DataPointAccumulator
 ): void {
   const overallValue = computeOverall(
     criterionWeightings,
@@ -259,11 +294,22 @@ export function processSubmissionItem(
     overallValue,
     weight
   );
+
+  if (perStudentTaskAccum) {
+    accumulateMetricsToTarget(
+      perStudentTaskAccum,
+      completenessScore,
+      accuracyScore,
+      spagScore,
+      overallValue,
+      weight
+    );
+  }
 }
 
 /**
  * Extract assessment scores from a submission item and apply them to all
- * three accumulator scopes.
+ * accumulator scopes.
  *
  * @param {AveragingAnalyserInput['classes'][number]['assignments'][number]['submissions'][number]['items'][string]}
  *   item - The submission item.
@@ -272,6 +318,8 @@ export function processSubmissionItem(
  * @param {DataPointAccumulator} classAccum - Per-class accumulator.
  * @param {DataPointAccumulator} taskAccum - Per-task accumulator.
  * @param {CriterionWeightings} criterionWeightings - The criterion weightings.
+ * @param {DataPointAccumulator} [perStudentTaskAccum] - Optional per-(student, task)
+ *   accumulator for rollup input building.
  */
 export function processItemAssessments(
   item: AveragingAnalyserInput['classes'][number]['assignments'][number]['submissions'][number]['items'][string],
@@ -279,7 +327,8 @@ export function processItemAssessments(
   studentAccum: DataPointAccumulator,
   classAccum: DataPointAccumulator,
   taskAccum: DataPointAccumulator,
-  criterionWeightings: CriterionWeightings
+  criterionWeightings: CriterionWeightings,
+  perStudentTaskAccum?: DataPointAccumulator
 ): void {
   const { assessments } = item;
   const assessmentsOrEmpty = assessments ?? {};
@@ -295,8 +344,33 @@ export function processItemAssessments(
     studentAccum,
     classAccum,
     taskAccum,
-    criterionWeightings
+    criterionWeightings,
+    perStudentTaskAccum
   );
+}
+
+/**
+ * Get or create a per-(student, task) accumulator.
+ *
+ * @param {Map<string, Map<string, DataPointAccumulator>>} perStudentTaskAccums -
+ *   The per-student-task accumulators map (mutated).
+ * @param {string} studentId - The student identifier.
+ * @param {string} taskKey - The composite key (`definitionKey::taskId`).
+ * @returns {DataPointAccumulator} The existing or new accumulator.
+ */
+export function getOrCreatePerStudentTaskAccum(
+  perStudentTaskAccums: Map<string, Map<string, DataPointAccumulator>>,
+  studentId: string,
+  taskKey: string
+): DataPointAccumulator {
+  if (!perStudentTaskAccums.has(studentId)) {
+    perStudentTaskAccums.set(studentId, new Map<string, DataPointAccumulator>());
+  }
+  const studentMap = perStudentTaskAccums.get(studentId)!;
+  if (!studentMap.has(taskKey)) {
+    studentMap.set(taskKey, createDataPointAccumulator());
+  }
+  return studentMap.get(taskKey)!;
 }
 
 /**
@@ -314,6 +388,8 @@ export function processItemAssessments(
  *   taskAccums - Per-task accumulators (mutated).
  * @param {DataPointAccumulator} classAccum - Per-class accumulator (mutated).
  * @param {CriterionWeightings} criterionWeightings - The criterion weightings.
+ * @param {Map<string, Map<string, DataPointAccumulator>>}
+ *   perStudentTaskAccums - Per-(student, task) accumulators (mutated).
  */
 export function processAssignment(
   assignment: AveragingAnalyserInput['classes'][number]['assignments'][number],
@@ -323,7 +399,8 @@ export function processAssignment(
   studentAccums: Map<string, { studentName: string | null } & DataPointAccumulator>,
   taskAccums: Map<string, { definitionKey: string; taskId: string } & DataPointAccumulator>,
   classAccum: DataPointAccumulator,
-  criterionWeightings: CriterionWeightings
+  criterionWeightings: CriterionWeightings,
+  perStudentTaskAccums: Map<string, Map<string, DataPointAccumulator>>
 ): void {
   for (const submission of assignment.submissions) {
     const { studentId, studentName, items } = submission;
@@ -337,7 +414,13 @@ export function processAssignment(
         continue;
       }
 
+      const taskKey = `${definitionKey}::${taskId}`;
       const taskAccum = getOrCreateTaskAccum(taskAccums, definitionKey, taskId);
+      const perStudentTaskAccum = getOrCreatePerStudentTaskAccum(
+        perStudentTaskAccums,
+        studentId,
+        taskKey
+      );
 
       processItemAssessments(
         item,
@@ -345,7 +428,8 @@ export function processAssignment(
         studentAccum,
         classAccum,
         taskAccum,
-        criterionWeightings
+        criterionWeightings,
+        perStudentTaskAccum
       );
     }
   }
@@ -389,8 +473,11 @@ export function resolveTaskWeight(
  * @returns {{
  *   studentAccums: Map<string, { studentName: string | null } & DataPointAccumulator>,
  *   taskAccums: Map<string, { definitionKey: string; taskId: string } & DataPointAccumulator>,
- *   classAccum: DataPointAccumulator
- * }} The three accumulator containers.
+ *   classAccum: DataPointAccumulator,
+ *   perStudentTaskAccums: Map<string, Map<string, DataPointAccumulator>>
+ * }} The four accumulator containers. `perStudentTaskAccums` is a new map
+ *   providing per-(student, task) accumulators that feed `rollupMetric` in the
+ *   row builders.
  * @remarks A two-level Map (`definitionKey → taskId → taskWeighting`) is built
  *   once per analysis run from `input.assignmentDefinitionPartials`, giving O(1)
  *   task-weighting lookup per submission item instead of O(P × T) linear
@@ -404,6 +491,7 @@ export function accumulateDataPoints(
   studentAccums: Map<string, { studentName: string | null } & DataPointAccumulator>;
   taskAccums: Map<string, { definitionKey: string; taskId: string } & DataPointAccumulator>;
   classAccum: DataPointAccumulator;
+  perStudentTaskAccums: Map<string, Map<string, DataPointAccumulator>>;
 } {
   const studentAccums = new Map<string, { studentName: string | null } & DataPointAccumulator>();
 
@@ -413,6 +501,8 @@ export function accumulateDataPoints(
   >();
 
   const classAccum = createDataPointAccumulator();
+
+  const perStudentTaskAccums = new Map<string, Map<string, DataPointAccumulator>>();
 
   // Build a two-level Map for O(1) task-weighting lookups.
   const taskWeightByDefinitionKey = new Map<string, Map<string, number>>();
@@ -439,9 +529,121 @@ export function accumulateDataPoints(
       studentAccums,
       taskAccums,
       classAccum,
-      criterionWeightings
+      criterionWeightings,
+      perStudentTaskAccums
     );
   }
 
-  return { studentAccums, taskAccums, classAccum };
+  return { studentAccums, taskAccums, classAccum, perStudentTaskAccums };
+}
+
+/**
+ * Compute the `overall` MetricResult as a composite of the three per-criterion
+ * rollups using the 40/40/20 weighting with SPaG-renormalisation.
+ *
+ * The composite rule (per spec decision 5):
+ * - If any criterion is `error`, overall is `error`.
+ * - If all criteria are `notAttempted`, overall is `notAttempted`.
+ * - Otherwise, compute the weighted average over the `computed` criteria,
+ *   treating `notAttempted` criteria as excluded (consistent with SPaG's
+ *   exclusion rule). The default weighting is 0.4 completeness + 0.4 accuracy
+ *   + 0.2 spag, with SPaG-renormalisation when spag is `notAttempted`
+ *   (renormalise the weighting to completeness + accuracy over 0.8).
+ *
+ * @param {MetricResult} completeness - The completeness rollup MetricResult.
+ * @param {MetricResult} accuracy - The accuracy rollup MetricResult.
+ * @param {MetricResult} spag - The spag rollup MetricResult.
+ * @param {CriterionWeightings} criterionWeightings - The criterion weightings.
+ * @returns {MetricResult} The composite overall MetricResult.
+ */
+export function computeOverallComposite(
+  completeness: MetricResult,
+  accuracy: MetricResult,
+  spag: MetricResult,
+  criterionWeightings: CriterionWeightings
+): MetricResult {
+  const statesSet = new Set([completeness.state, accuracy.state, spag.state]);
+  const hasComputed = statesSet.has('computed');
+  const hasNotAttempted = statesSet.has('notAttempted');
+
+  if (!hasComputed && !hasNotAttempted) {
+    return {
+      state: 'error',
+      value: 'E',
+      totalWeight: 0,
+      applicableDataPoints: 0,
+      totalDataPoints: Math.max(
+        completeness.totalDataPoints,
+        accuracy.totalDataPoints,
+        spag.totalDataPoints
+      ),
+    };
+  }
+
+  if (!hasComputed) {
+    return {
+      state: 'notAttempted',
+      value: 'N',
+      totalWeight: 0,
+      applicableDataPoints: 0,
+      totalDataPoints: Math.max(
+        completeness.totalDataPoints,
+        accuracy.totalDataPoints,
+        spag.totalDataPoints
+      ),
+    };
+  }
+
+  // Build the computed criteria list (error and notAttempted criteria are excluded)
+  const toComputedEntry = (
+    m: MetricResult,
+    w: number
+  ): {
+    value: number;
+    totalWeight: number;
+    applicableDataPoints: number;
+    totalDataPoints: number;
+    weighting: number;
+  } | null => {
+    if (m.state !== 'computed') return null;
+    return {
+      value: m.value,
+      totalWeight: m.totalWeight,
+      applicableDataPoints: m.applicableDataPoints,
+      totalDataPoints: m.totalDataPoints,
+      weighting: w,
+    };
+  };
+
+  const entries = [
+    toComputedEntry(completeness, criterionWeightings.completeness),
+    toComputedEntry(accuracy, criterionWeightings.accuracy),
+    toComputedEntry(spag, criterionWeightings.spag),
+  ].filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+
+  let numerator = 0;
+  let denominator = 0;
+  let maxTotalWeight = 0;
+  let maxApplicableDataPoints = 0;
+  let maxTotalDataPoints = 0;
+
+  for (const entry of entries) {
+    numerator += entry.weighting * entry.value;
+    denominator += entry.weighting;
+    maxTotalWeight = Math.max(maxTotalWeight, entry.totalWeight);
+    maxApplicableDataPoints = Math.max(maxApplicableDataPoints, entry.applicableDataPoints);
+    maxTotalDataPoints = Math.max(maxTotalDataPoints, entry.totalDataPoints);
+  }
+
+  if (denominator === 0) {
+    throw new Error('computeOverallComposite: no computed criteria in composite');
+  }
+
+  return {
+    state: 'computed',
+    value: numerator / denominator,
+    totalWeight: maxTotalWeight,
+    applicableDataPoints: maxApplicableDataPoints,
+    totalDataPoints: maxTotalDataPoints,
+  };
 }
