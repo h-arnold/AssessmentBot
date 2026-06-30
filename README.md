@@ -144,10 +144,10 @@ Useful commands:
 
 - `npm run frontend:dev`
 - `npm run frontend:build`
-- `npm run frontend:lint`
-- `npm run frontend:test`
-- `npm run frontend:test:e2e`
-- `npm run lint`
+- `npm run lint:frontend`
+- `npm run test:frontend`
+- `npm run test:frontend:e2e`
+- `npm run lint:backend`
 - `npm run test:backend`
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full developer guide.
