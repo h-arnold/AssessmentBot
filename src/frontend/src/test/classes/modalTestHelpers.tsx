@@ -204,13 +204,13 @@ export function CreateModalResetHarness<TProperties extends object>({ modalCompo
   const handleReopen = () => setOpen(true);
   const handleCancel = () => setOpen(false);
 
-  // Create a new element with updated props, preserving type safety
+  // Create a new element with updated props, preserving type safety.
+  // React forbids spreading `key` into JSX, so we pass `key` directly on the JSX element.
   const ModalComponent = modalComponent.type;
   const updatedProperties = {
     ...modalComponent.props,
     open: open as TProperties extends { open: infer TOpen } ? TOpen : boolean,
     onCancel: handleCancel as TProperties extends { onCancel: infer TOnCancel } ? TOnCancel : (() => void),
-    key: 'test-harness-modal',
   };
 
   return (
@@ -218,7 +218,7 @@ export function CreateModalResetHarness<TProperties extends object>({ modalCompo
       <button type="button" onClick={handleReopen} aria-label="Reopen modal">
         Reopen
       </button>
-      <ModalComponent {...updatedProperties} />
+      <ModalComponent key="test-harness-modal" {...updatedProperties} />
     </>
   );
 }

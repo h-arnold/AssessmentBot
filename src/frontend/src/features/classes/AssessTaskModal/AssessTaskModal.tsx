@@ -166,6 +166,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
    */
   const { data: definitionPartialsFromCache } = useQuery<AssignmentDefinitionPartial[]>({
     queryKey: queryKeys.assignmentDefinitionPartials(),
+    queryFn: () => Promise.resolve([] as AssignmentDefinitionPartial[]),
     enabled: false,
   });
 

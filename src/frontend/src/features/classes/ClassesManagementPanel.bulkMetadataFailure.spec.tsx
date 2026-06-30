@@ -9,7 +9,8 @@
 
 import * as React from 'react';
 import type { ReactElement } from 'react';
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { queryKeys } from '../../query/queryKeys';
 import { renderWithFrontendProviders } from '../../test/renderWithFrontendProviders';
@@ -258,6 +259,8 @@ const selectedMetadataYearGroups = yearGroupOptions.filter(
   ({ key }) => key === 'year-7' || key === 'year-8',
 );
 
+const user = userEvent.setup();
+
 /**
  * Renders the panel with a mocked classes-management state and query client.
  *
@@ -301,9 +304,9 @@ async function loadPanel() {
  * @returns {Promise<void>} Completion signal.
  */
 async function submitSelectModal(buttonName: 'Set cohort' | 'Set year group') {
-  fireEvent.click(screen.getByRole('button', { name: buttonName }));
+  await user.click(screen.getByRole('button', { name: buttonName }));
   const dialog = await screen.findByRole('dialog', { name: buttonName });
-  fireEvent.click(within(dialog).getByRole('button', { name: 'OK' }));
+  await user.click(within(dialog).getByRole('button', { name: 'OK' }));
 }
 
 /**
@@ -312,9 +315,9 @@ async function submitSelectModal(buttonName: 'Set cohort' | 'Set year group') {
  * @returns {Promise<void>} Completion signal.
  */
 async function submitCourseLengthModal() {
-  fireEvent.click(screen.getByRole('button', { name: 'Set course length' }));
+  await user.click(screen.getByRole('button', { name: 'Set course length' }));
   const dialog = await screen.findByRole('dialog', { name: 'Set course length' });
-  fireEvent.click(within(dialog).getByRole('button', { name: 'OK' }));
+  await user.click(within(dialog).getByRole('button', { name: 'OK' }));
 }
 
 /**
@@ -359,10 +362,10 @@ describe('ClassesManagementPanel bulk metadata failure handling', () => {
 
   it('shows a panel-level alert and closes the modal after a full cohort failure', async () => {
     const { ClassesManagementPanel } = await loadPanel();
-    bulkSetCohortMock.mockResolvedValue([
+    bulkSetCohortMock.mockImplementation(() => Promise.resolve([
       { status: 'rejected', row: rows[0], error: new Error('Update failed.') },
       { status: 'rejected', row: rows[1], error: new Error('Update failed.') },
-    ]);
+    ]));
     const { onSelectedRowKeysChange, invalidateQueriesSpy } = renderPanel(<ClassesManagementPanel />);
 
     await submitSelectModal('Set cohort');
@@ -379,10 +382,10 @@ describe('ClassesManagementPanel bulk metadata failure handling', () => {
 
   it('shows a panel-level alert and closes the modal after a full year-group failure', async () => {
     const { ClassesManagementPanel } = await loadPanel();
-    bulkSetYearGroupMock.mockResolvedValue([
+    bulkSetYearGroupMock.mockImplementation(() => Promise.resolve([
       { status: 'rejected', row: rows[0], error: new Error('Update failed.') },
       { status: 'rejected', row: rows[1], error: new Error('Update failed.') },
-    ]);
+    ]));
     const { onSelectedRowKeysChange, invalidateQueriesSpy } = renderPanel(<ClassesManagementPanel />);
 
     await submitSelectModal('Set year group');
@@ -399,10 +402,10 @@ describe('ClassesManagementPanel bulk metadata failure handling', () => {
 
   it('closes the metadata modal and promotes warning feedback to panel scope on partial failure', async () => {
     const { ClassesManagementPanel } = await loadPanel();
-    bulkSetCohortMock.mockResolvedValue([
+    bulkSetCohortMock.mockImplementation(() => Promise.resolve([
       { status: 'fulfilled', row: rows[0], data: { ok: true } },
       { status: 'rejected', row: rows[1], error: new Error('Update failed.') },
-    ]);
+    ]));
     const { onSelectedRowKeysChange, invalidateQueriesSpy } = renderPanel(<ClassesManagementPanel />);
 
     await submitSelectModal('Set cohort');
@@ -423,10 +426,10 @@ describe('ClassesManagementPanel bulk metadata failure handling', () => {
 
   it('shows a panel-level alert and closes the modal after a full course-length failure', async () => {
     const { ClassesManagementPanel } = await loadPanel();
-    bulkSetCourseLengthMock.mockResolvedValue([
+    bulkSetCourseLengthMock.mockImplementation(() => Promise.resolve([
       { status: 'rejected', row: rows[0], error: new Error('Update failed.') },
       { status: 'rejected', row: rows[1], error: new Error('Update failed.') },
-    ]);
+    ]));
     const { onSelectedRowKeysChange, invalidateQueriesSpy } = renderPanel(<ClassesManagementPanel />);
 
     await submitCourseLengthModal();
