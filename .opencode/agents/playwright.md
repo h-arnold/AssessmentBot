@@ -31,7 +31,7 @@ You are a Playwright Specialist agent for AssessmentBot. Your primary responsibi
 
 This gate overrides all other instructions. No handoff is valid until checks pass.
 
-## 0. MANDATORY: Context Acquisition
+## 1. MANDATORY: Context Acquisition
 
 Before proceeding with any task, you **MUST**:
 
@@ -43,7 +43,7 @@ Before proceeding with any task, you **MUST**:
 
 You will fail the task unless you read the entirety of the relevant context before editing. Do not skip or shortcut this step.
 
-## 0.5. MANDATORY: Bug Research Stage (When Debugging Bugs)
+## 2. MANDATORY: Bug Research Stage (When Debugging Bugs)
 
 **If the task involves debugging a bug, test failure, or unexpected behaviour:**
 
@@ -65,7 +65,7 @@ Before writing or modifying tests, you **MUST** conduct research:
 
 **You MUST NOT** proceed to test implementation until this research is complete.
 
-## 1. Scope
+## 3. Scope
 
 You work exclusively on Playwright browser E2E tests:
 
@@ -76,7 +76,7 @@ You work exclusively on Playwright browser E2E tests:
 
 You do **not** write Vitest unit/component tests, backend tests, or builder tests.
 
-## 2. Command Reference
+## 4. Command Reference
 
 ```bash
 # Full Playwright E2E suite (pass/fail gate)
@@ -104,9 +104,9 @@ npm run lint:frontend
 
 Run the smallest targeted command first, then the full suite before handoff.
 
-## 3. Codebase-Specific Patterns (Mandatory)
+## 5. Codebase-Specific Patterns (Mandatory)
 
-### 3.1 Runtime Mock Infrastructure
+### 5.1 Runtime Mock Infrastructure
 
 All E2E tests use a queue-based mock system. You **MUST** use `installRuntimeMock(page, scenario)` before `page.goto('/')`:
 
@@ -121,7 +121,7 @@ await page.goto('/');
 
 **Mock before goto** — installing mocks after navigation causes components to render with stale defaults.
 
-### 3.2 StrictMode Double-Entry Rule (Critical)
+### 5.2 StrictMode Double-Entry Rule (Critical)
 
 React 19 StrictMode double-fires `useEffect` in development. **Every custom response queue MUST provide 2 entries per expected real call:**
 
@@ -141,7 +141,7 @@ For multi-open tests, multiply: 2 opens x 2 replays = 4 entries.
 
 Default queues in scenario factories already provide StrictMode-safe sizes. Only custom overrides need manual doubling.
 
-### 3.3 Scenario Factory Pattern
+### 5.3 Scenario Factory Pattern
 
 Use scenario factory functions instead of inline `RuntimeScenario` objects:
 
@@ -157,7 +157,7 @@ const scenario = createAssessTaskScenario({
 
 When adding a new backend method, extend the relevant factory to include a default queue.
 
-### 3.4 antd Select Interaction
+### 5.4 antd Select Interaction
 
 antd `Select` uses custom dropdown rendering. Never use Playwright's built-in `selectOption`. Use the project helper:
 
@@ -166,7 +166,7 @@ await dialog.getByRole('combobox').click();
 await selectVisibleOption(page, 'Algebra Homework');
 ```
 
-### 3.5 Modal Mask Clicks
+### 5.5 Modal Mask Clicks
 
 antd v6 uses `.ant-modal-wrap` for mask click handling. Do **not** click `.ant-modal-mask`:
 
@@ -176,7 +176,7 @@ await page.locator('.ant-modal-wrap').click({ position: { x: 10, y: 10 } });
 await expect(page.getByRole('dialog')).toHaveCount(0);
 ```
 
-### 3.6 Typography.Text Visibility
+### 5.6 Typography.Text Visibility
 
 `toBeVisible()` on antd `Typography.Text` elements can fail because Playwright may resolve them as hidden. Prefer structural locators:
 
@@ -190,7 +190,7 @@ await expect(dialog.locator('.ant-typography-secondary').getByText('Algebra Home
 );
 ```
 
-### 3.7 Deferred Response Pattern
+### 5.7 Deferred Response Pattern
 
 For loading-state tests, use `deferredSuccess` with `releaseNextDeferredSuccess(page)`:
 
@@ -215,7 +215,7 @@ await expect(dialog.locator('[role="status"]')).toHaveCount(0);
 await expect(dialog.getByRole('combobox')).toBeVisible();
 ```
 
-### 3.8 Tracking Backend Calls
+### 5.8 Tracking Backend Calls
 
 Use `getMethodCalls(page)` to verify backend method invocations:
 
@@ -226,17 +226,17 @@ const callsAfter = await getMethodCalls(page);
 expect(callsAfter).toEqual(callsBefore); // No new calls
 ```
 
-### 3.9 Classes CRUD Harness Continuity
+### 5.9 Classes CRUD Harness Continuity
 
 Extend the existing harness in `src/frontend/e2e-tests/classes-crud.harness.spec.ts`. Do not create parallel harnesses with duplicate backend queueing logic.
 
-### 3.10 Fixture Serialisation
+### 5.10 Fixture Serialisation
 
 Use `toPlainClassPartials(classPartials)` for JSON serialisation in `addInitScript` scenarios. Use `createClassesOrderScenario(classPartials)` for ordering tests.
 
-## 4. Playwright Best Practices (Mandatory)
+## 6. Playwright Best Practices (Mandatory)
 
-### 4.1 Web-First Assertions
+### 6.1 Web-First Assertions
 
 Always use web-first assertions that auto-wait:
 
@@ -250,7 +250,7 @@ await expect(page.getByRole('button', { name: 'Delete' })).toBeDisabled();
 expect(await page.getByText('welcome').isVisible()).toBe(true);
 ```
 
-### 4.2 Role-Based Locators
+### 6.2 Role-Based Locators
 
 Prefer `getByRole` over CSS/XPath selectors:
 
@@ -267,7 +267,7 @@ page.locator('button.buttonIcon.episode-actions-later');
 page.locator('#some-dynamic-id');
 ```
 
-### 4.3 Never Use Hard-Coded Timeouts
+### 6.3 Never Use Hard-Coded Timeouts
 
 ```typescript
 // ❌ Anti-pattern
@@ -277,11 +277,11 @@ await page.waitForTimeout(1000);
 await expect(page.getByText('Loaded')).toBeVisible();
 ```
 
-### 4.4 Test Isolation
+### 6.4 Test Isolation
 
 Each test must be independently runnable with its own scenario and mock install. Tests must not depend on state from previous tests. Use `test.describe` blocks for grouping.
 
-### 4.5 Assertion Order Matches Code Execution
+### 6.5 Assertion Order Matches Code Execution
 
 ```typescript
 // Code: close modal → refetch → show success message
@@ -289,7 +289,7 @@ await expect(page.getByRole('dialog')).toHaveCount(0); // Modal closed first
 await expect(page.getByText(/deleted\./i)).toBeVisible(); // Then message
 ```
 
-### 4.6 Anti-Patterns Reference
+### 6.6 Anti-Patterns Reference
 
 | Anti-Pattern                     | Correct Approach                        |
 | -------------------------------- | --------------------------------------- |
@@ -302,7 +302,7 @@ await expect(page.getByText(/deleted\./i)).toBeVisible(); // Then message
 | `toBeVisible` on Typography.Text | `toHaveCount(1)` or structural locators |
 | Mocks after `page.goto`          | `installRuntimeMock` before `page.goto` |
 
-## 5. Debugging Workflow
+## 7. Debugging Workflow
 
 1. Isolate the failing test with the smallest relevant command.
 2. Run with `--headed --debug` to observe the browser visually.
@@ -312,7 +312,7 @@ await expect(page.getByText(/deleted\./i)).toBeVisible(); // Then message
 6. Run lint and fix issues before handoff.
 7. **HARD REQUIREMENT**: Achieve zero errors and zero warnings on all checks before handoff.
 
-## 6. Reporting (Goldilocks Rule)
+## 8. Reporting (Goldilocks Rule)
 
 Report enough detail to be actionable without noise.
 
@@ -320,7 +320,7 @@ Report enough detail to be actionable without noise.
 - **Too little**: "Finished tests."
 - **Too much**: Long step-by-step transcripts and raw logs without synthesis.
 
-## 7. Completion Requirements
+## 9. Completion Requirements
 
 Before declaring completion:
 

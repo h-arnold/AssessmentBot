@@ -445,3 +445,59 @@ This section supersedes the earlier Section 9.7 defer decision for the specific 
 - Owning module/path: `src/frontend/src/features/classes/AssessTaskModal/LinkableDefinitionList.tsx`
 - Call-site rationale: renders the picker as an Ant Design `Radio.Group` with vertical orientation, block width, and JSX children (rich per-row content with title and subtitle). The component is presentational (no state, no side effects); it receives the derived `LinkableDefinition[]` and the current selection, and emits `onSelect(definitionKey)`. All rows are always selectable. The component has exactly one caller (`AssessTaskModal`) and is not promoted to a shared component.
 - Status: `Implemented`
+
+### 9.17 Class page data analysis display helpers
+
+These entries record the planned shared display helpers for the Class page feature. The Class page is the first caller; cohort, trend, and distribution analyses (per `docs/pedagogy/data-analysis-scoring.md:92-99`) are the near-term second caller, so the helpers are planned as **shared** rather than feature-local.
+
+1. Helper: `resolveMetricTone(metric: MetricResult, range?: { lower: number; upper: number }): MetricToneResolution` — pure tone resolver
+
+- Decision: `new`
+- Owning module/path: `src/frontend/src/services/dataAnalysis/metricDisplay/metricTone.ts`
+- Call-site rationale: maps the data analysis service's `MetricResult` (a `state: 'computed' | 'notAttempted' | 'error'` discriminated union after the lead deliverable) to a `{ color, displayValue, muted }` triple that the Ant Design `Tag` consumes. The range parameter (default `{ lower: 0, upper: 5 }`) is used to compute the band boundaries as midpoints: `amber = (lower + upper) / 2`, `red/amber = (3·lower + upper) / 4`, `amber/green = (lower + 3·upper) / 4`. Pure function, no React or antd imports.
+- Status: `Not implemented`
+- Planned doc reconciliation: confirm at implementation time that the resolver remains pure (no antd imports) and that the range parameter is honoured without re-derivation on every call.
+
+2. Helper: `MetricPill` presentational component
+
+- Decision: `new`
+- Owning module/path: `src/frontend/src/services/dataAnalysis/metricDisplay/MetricPill.tsx`
+- Call-site rationale: renders a single `MetricResult` as a coloured Ant Design `Tag` (`variant="filled"`) using the output of `resolveMetricTone`. Exposes a `precision` prop (default 2 decimal places, matching the mockup) and an `emphasised` prop (used by the `Average` cell in both the cards and the table). Consumed by `RecentAssignmentCard` (four instances per card) and by the four metric columns of `StudentAveragesTable` (via the column `render` function). Future consumers: cohort, trend, and distribution analyses.
+- Status: `Not implemented`
+- Planned doc reconciliation: confirm that the Tag color choices for `computed` (`red` / `gold` / `green`), `notAttempted` (`default` grey), and `error` (`volcano`) are agreed during implementation. The `error` color is open per the SPEC.md open question 11.
+
+3. Helper: `metricDisplay/` subfolder under `services/dataAnalysis/`
+
+- Decision: `new`
+- Owning module/path: `src/frontend/src/services/dataAnalysis/metricDisplay/`
+- Call-site rationale: at least two production files (`metricTone.ts`, `MetricPill.tsx`) plus their spec companions share the `metricDisplay` domain prefix, satisfying `src/frontend/AGENTS.md` §12 ("Create a subfolder when at least 2 files share a common domain prefix"). A barrel `index.ts` is included to keep call-site imports tidy; per §12, barrels are optional and may be removed if a later de-sloppification pass finds them unnecessary.
+- Status: `Not implemented`
+- Planned doc reconciliation: confirm the subfolder is created at the planned path and that the existing `services/dataAnalysis/` directory structure is preserved.
+
+### 9.18 Class page feature-local helpers
+
+These entries record the planned feature-local helpers for the Class page. Per `frontend-shared-helpers-and-abstraction-standards.md` §4.4 ("Keep feature-specific helpers inside the owning feature folder"), these stay in `src/frontend/src/features/classPage/` and are not promoted to shared scope unless a documented cross-feature reuse emerges.
+
+1. Helper: `classPageAdapter` pure adapter module
+
+- Decision: `keep local`
+- Owning module/path: `src/frontend/src/features/classPage/classPageAdapter.ts`
+- Call-site rationale: the only module that knows how to translate the data analysis service's `AveragingResult` (with the new `MetricResult` discriminated union) plus the raw `ClassFull` into the view-model shapes the Class page consumes (`RecentAssignmentCardModel[]`, `StudentAverageRowModel[]`, `classMetrics`). Owns the assignment-level rollup precedence (error > notAttempted > computed) and the `lastUpdated`-based recent-assignment selection. Has exactly one caller (`useClassPageData`); promotion to a shared adapter would only make sense if a second consumer surface appears.
+- Status: `Not implemented`
+- Planned doc reconciliation: confirm the rollup precedence is documented inline in the adapter and that the `MetricResult` discriminated union is consumed via a `switch (metric.state)` rather than nullable checks.
+
+2. Helper: `classPageModel` pure view-model builder
+
+- Decision: `keep local`
+- Owning module/path: `src/frontend/src/features/classPage/classPageModel.ts`
+- Call-site rationale: pure view-model builder that applies user-controlled filtering and sorting (search term, column sort, future `Viewing` dropdown) on top of the adapter output. Has exactly one caller (`useClassPageData`); kept local because the search / sort / dropdown surface is specific to the Class page's owned region and does not generalise to other features.
+- Status: `Not implemented`
+- Planned doc reconciliation: confirm the model remains a pure function and that no React or React Query imports leak in.
+
+3. Structural change: facade decomposition of `averagingAnalyser.accumulation.ts`
+
+- Decision: `new (structural)`
+- Owning module/path: `src/frontend/src/services/dataAnalysis/analysers/accumulation/` (new subfolder), with `averagingAnalyser.accumulation.ts` becoming a facade.
+- Call-site rationale: the lead data analysis deliverable (the `MetricResult` discriminated union) grows `averagingAnalyser.accumulation.ts` from 447 lines to a projected ~520 lines, which crosses the 550-line threshold trigger for facade decomposition per `src/frontend/AGENTS.md` §12. The decomposition splits the file into `accumulation/metricAccumulator.js` (the accumulator primitives — `createAccumulator`, `createDataPointAccumulator`, `accumToMetric`), `accumulation/accumulationPolicies.js` (the state assignment rules from the new `MetricResult` discriminated union), `accumulation/processAssignment.js` (per-assignment processing), and `accumulation/index.js` (the facade that delegates). The public surface is preserved so no consumer is broken; this is purely a structural cleanup bundled with the data analysis contract change.
+- Status: `Not implemented`
+- Planned doc reconciliation: confirm the decomposition happens in the same change set as the contract change, confirm the public surface is byte-identical, and confirm the file-separation projection in `SPEC.md` matches the actual outcome.
