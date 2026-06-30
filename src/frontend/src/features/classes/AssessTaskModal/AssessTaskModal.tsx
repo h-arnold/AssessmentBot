@@ -1,5 +1,5 @@
 import { Alert, Button, Empty, Modal, Select, Space, Spin, Tooltip, Typography } from 'antd';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { getGoogleClassroomAssignments } from '../../../services/googleClassrooms/googleClassroomAssignmentsService';
@@ -166,8 +166,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
    */
   const { data: definitionPartialsFromCache } = useQuery<AssignmentDefinitionPartial[]>({
     queryKey: queryKeys.assignmentDefinitionPartials(),
-    queryFn: () => Promise.resolve([] as AssignmentDefinitionPartial[]),
-    enabled: false,
+    queryFn: skipToken,
   });
 
   const linkableDefinitions = useMemo<LinkableDefinition[]>(() => {

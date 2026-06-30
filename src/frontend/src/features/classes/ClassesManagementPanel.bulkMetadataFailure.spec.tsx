@@ -259,7 +259,7 @@ const selectedMetadataYearGroups = yearGroupOptions.filter(
   ({ key }) => key === 'year-7' || key === 'year-8',
 );
 
-const user = userEvent.setup();
+let user: ReturnType<typeof userEvent.setup>;
 
 /**
  * Renders the panel with a mocked classes-management state and query client.
@@ -356,6 +356,10 @@ async function expectAllFailureState(
 }
 
 describe('ClassesManagementPanel bulk metadata failure handling', () => {
+  beforeEach(() => {
+    user = userEvent.setup();
+  });
+
   afterEach(() => {
     vi.clearAllMocks();
   });

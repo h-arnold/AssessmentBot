@@ -362,6 +362,27 @@ afterEach(() => {
 
 **Rationale:** `vi.resetAllMocks()` ensures complete isolation between tests by resetting both the call history and any mock implementations. This prevents test pollution where one test's mock setup affects subsequent tests.
 
+### userEvent.setup() Isolation
+
+Create a fresh `userEvent` instance per test by initialising in `beforeEach` rather than at
+the module level. The `userEvent` instance maintains internal state (keyboard sequences,
+timer references) that can leak between tests if shared across the module.
+
+```typescript
+// ✅ Correct — fresh instance per test
+let user: ReturnType<typeof userEvent.setup>;
+
+beforeEach(() => {
+  user = userEvent.setup();
+});
+
+// ❌ Wrong — module-level instance leaks state between tests
+const user = userEvent.setup();
+```
+
+This rule applies to spec files (**`*.spec.tsx`**). Shared test helper functions that call
+`userEvent.setup()` locally within each function are not affected.
+
 ## React Query Testing Patterns
 
 When testing components that use `@tanstack/react-query`'s `useMutation`, be aware that the mutation function receives **additional arguments** beyond the request data. The `mutateAsync` method passes mutation context as a second argument:
