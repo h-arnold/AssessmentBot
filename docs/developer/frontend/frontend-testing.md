@@ -362,6 +362,27 @@ afterEach(() => {
 
 **Rationale:** `vi.resetAllMocks()` ensures complete isolation between tests by resetting both the call history and any mock implementations. This prevents test pollution where one test's mock setup affects subsequent tests.
 
+### userEvent.setup() Isolation
+
+Create a fresh `userEvent` instance per test by initialising in `beforeEach` rather than at
+the module level. The `userEvent` instance maintains internal state (keyboard sequences,
+timer references) that can leak between tests if shared across the module.
+
+```typescript
+// ✅ Correct — fresh instance per test
+let user: ReturnType<typeof userEvent.setup>;
+
+beforeEach(() => {
+  user = userEvent.setup();
+});
+
+// ❌ Wrong — module-level instance leaks state between tests
+const user = userEvent.setup();
+```
+
+This rule applies to spec files (**`*.spec.tsx`**). Shared test helper functions that call
+`userEvent.setup()` locally within each function are not affected.
+
 ## React Query Testing Patterns
 
 When testing components that use `@tanstack/react-query`'s `useMutation`, be aware that the mutation function receives **additional arguments** beyond the request data. The `mutateAsync` method passes mutation context as a second argument:
@@ -785,6 +806,47 @@ indicate bugs in application code, but they clutter output and obscure real fail
    mousedown-then-click sequence. Use `userEvent.click(...)` or
    `userEvent.selectOptions(...)` instead, which handle the full gesture and wait for
    motion to settle.
+
+7. **Wrap direct mock callback calls in `act()`.**
+   When tests invoke callbacks obtained from mock components (for example
+   `properties.onClose()` or `properties.onCreateSuccess(...)` on a wizard mock),
+   those calls trigger synchronous React state transitions inside component state
+   reducers that aren't wrapped by any user interaction. Enclose them in
+   `await act(async () => { ... })`:
+
+   ```typescript
+   await act(async () => {
+     properties.onClose();
+   });
+
+   await act(async () => {
+     properties.onCreateSuccess('new-def-key');
+   });
+   ```
+
+   If the callback triggers async work (e.g. a `useMutation`), the `act()` wrapper
+   prevents the associated state updates from escaping the current test step.
+
+8. **Wrap `rerender()` calls in `act()` when they change component props that
+   trigger async initialisation.**
+   `rerender(...)` from Testing Library is synchronous and does not wrap the
+   component's re-mount / effect re-run inside `act()`. If the re-render changes
+   props that trigger data fetching, state transitions, or animation mounts, wrap
+   the call in `await act(async () => { ... })`:
+
+   ```typescript
+   await act(async () => {
+     rerender(
+       <QueryClientProvider client={queryClient}>
+         <AssessTaskModal {...defaultProperties({ open: false })} />
+       </QueryClientProvider>
+     );
+   });
+   ```
+
+   This applies specifically to prop changes that cause the component to mount
+   fresh effects (for example toggling `open` on a modal, or changing a `classId`
+   that triggers a `useEffect` fetch).
 
 ## Notes
 

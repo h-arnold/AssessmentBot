@@ -191,3 +191,29 @@ interface AssignmentDefinitionPartial {
 
 Frontend cache persistence is intentionally disabled.
 Cached data remains in memory only for the current session because the app handles sensitive student-related data and should not persist shared query payloads in browser storage by default.
+
+### Disabled query pattern: use `skipToken`
+
+When a `useQuery` call is intentionally disabled (for example `enabled: false`) and the query
+should never execute, use `skipToken` from `@tanstack/react-query` as the `queryFn` value
+instead of providing a dummy async function that returns an empty value.
+
+```typescript
+import { skipToken, useQuery } from '@tanstack/react-query';
+
+// ✅ Correct — idiomatic, intent is clear, never executes
+const { data } = useQuery({
+  queryKey: queryKeys.assignmentDefinitionPartials(),
+  queryFn: skipToken,
+});
+
+// ❌ Wrong — dummy queryFn is unnecessary and misleading
+const { data } = useQuery({
+  queryKey: queryKeys.assignmentDefinitionPartials(),
+  queryFn: () => Promise.resolve([]),
+  enabled: false,
+});
+```
+
+`skipToken` makes the disabled intent explicit and eliminates the need for `enabled: false`
+(the query is implicitly skipped when `queryFn` is `skipToken`).

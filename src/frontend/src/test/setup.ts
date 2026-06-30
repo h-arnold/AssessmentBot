@@ -1,5 +1,15 @@
 import { vi } from 'vitest';
 
+// Set React 19 act environment flag to suppress "not configured to support act" warnings.
+// React Testing Library sets this dynamically during operations, but happy-dom can trigger
+// state updates between act() boundaries. Setting it globally suppresses the false-positive
+// variant of the act() warning that occurs between wrapped operations.
+Object.defineProperty(globalThis, 'IS_REACT_ACT_ENVIRONMENT', {
+  configurable: true,
+  value: true,
+  writable: true,
+});
+
 // Import jest-dom extensions for vitest
 import '@testing-library/jest-dom/vitest';
 
