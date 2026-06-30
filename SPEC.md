@@ -2,7 +2,7 @@
 
 ## Status
 
-- **Skeleton draft v1.0** — all 15 open questions in the main list are now resolved. The first component-level section (`RecentAssignmentCard`) is fleshed out; the remaining component-level sections (`RecentAssignmentsSection`, `StudentAveragesTableCard`, `studentAveragesTableColumns`, `ClassPageHeaderActions`, page-level composition root) are still placeholders to be filled in by a follow-up pass. Each follow-up adds a sibling component-level section in the same shape.
+- **Skeleton draft v1.0** — all 15 open questions in the main list are now resolved. Three component-level sections are fleshed out, in dependency order: `metricTone` (pure tone resolver), `MetricPill` (presentational Ant Design `Tag`), and `RecentAssignmentCard`. The remaining component-level sections (`RecentAssignmentsSection`, `StudentAveragesTableCard`, `studentAveragesTableColumns`, `ClassPageHeaderActions`, page-level composition root) are still placeholders to be filled in by a follow-up pass. Each follow-up adds a sibling component-level section in the same shape.
 - The card-section open question on the "Completed:" wording is **resolved** as a side effect of a bigger decision (see below). The label is **Last Assessed** (not "Completed"), the field is `updatedAt` (not `lastUpdated`), and a null `updatedAt` is a data bug that fails fast at the adapter boundary.
 - The card-section open question on the **empty state** is also **resolved**: the section renders an Ant Design `Empty` with a primary `Start New Assessment` CTA that opens the existing `AssessTaskModal`. The same callback is shared with the header button via the page-level composition root.
 - It is **not** a full spec. Per the planner's brief, the follow-up discussion will fill in the remaining component-level behavioural details for `RecentAssignmentsSection`, `StudentAveragesTableCard`, `studentAveragesTableColumns`, `ClassPageHeaderActions`, and the page-level composition root. Each follow-up adds a sibling component-level section in the same shape.
@@ -281,33 +281,9 @@ Frontend, in approximate ownership order:
 
 This subfolder is created because the `MetricPill` and its tone resolver are conceptually bound to the `MetricResult` shape produced by the data analysis service. At least two production files (`metricTone.ts`, `MetricPill.tsx`, and their spec companions) share the `metricDisplay` domain prefix, satisfying `src/frontend/AGENTS.md` §12. The Class page is the first caller; cohort, trend, and distribution analyses (per `docs/pedagogy/data-analysis-scoring.md:92-99`) are the near-term second caller, so the helper is **shared** rather than feature-local.
 
-- **`metricTone.ts`** — pure tone resolver. Input: a `MetricResult` (the new discriminated union) plus an optional `{ lower, upper }` range (default `{ lower: 0, upper: 5 }`). Output: a `MetricToneResolution` describing the tag color, the display value, and the muted flag. No React imports, no antd imports. Co-located `metricTone.spec.ts`.
-- **`MetricPill.tsx`** — presentational component. Input: a `MetricResult` plus an optional `range` prop and an optional `emphasised` flag (used by the `Average` cell). Renders an Ant Design `Tag` (`variant="filled"`) in the resolved colour, with the resolved display value. Co-located `MetricPill.spec.tsx`.
+- **`metricTone.ts`** — pure tone resolver. Full contract in [Component-level behaviour — `metricTone`](#component-level-behaviour--metrictone) below. Co-located `metricTone.spec.ts`.
+- **`MetricPill.tsx`** — presentational component that renders an Ant Design `Tag`. Full contract in [Component-level behaviour — `MetricPill`](#component-level-behaviour--metricpill) below. Co-located `MetricPill.spec.tsx`.
 - **`index.ts`** — barrel re-export of the two above so feature code can import `import { MetricPill } from 'src/frontend/src/services/dataAnalysis/metricDisplay';` (per `src/frontend/AGENTS.md` §12, barrels are optional but reasonable when a service domain exports a small, cohesive set of unrelated symbols).
-
-### Tone resolution rules (v1)
-
-The `resolveMetricTone` function applies the dynamic midpoint rule (decision 11) plus the state discriminator:
-
-| `state`        | Value range condition                                   | Ant Design Tag color | Display label    |
-| -------------- | ------------------------------------------------------- | -------------------- | ---------------- |
-| `computed`     | `value < (3·lower + upper) / 4`                         | `red`                | formatted number |
-| `computed`     | `(3·lower + upper) / 4 ≤ value < (lower + 3·upper) / 4` | `gold`               | formatted number |
-| `computed`     | `value ≥ (lower + 3·upper) / 4`                         | `green`              | formatted number |
-| `notAttempted` | (any)                                                   | `default` (grey)     | `N`              |
-| `error`        | (any)                                                   | `volcano`            | `E`              |
-
-For the default range `{ lower: 0, upper: 5 }`:
-
-- Red threshold: `1.25`
-- Amber thresholds: `1.25 ≤ value < 3.75`
-- Green threshold: `3.75`
-
-The `error` color (`volcano`) is the existing Ant Design preset for "important but not fatal" — red is reserved for the lowest band of computed values. The user is open to a different error color; the helper accepts an optional `errorColor` prop so the choice is testable.
-
-### Number formatting
-
-`MetricPill` formats `computed` values to two decimal places (matching the mockup, e.g. `2.18`, `3.63`). The precision is a `MetricPill` prop (`precision?: number`, default `2`) so future call sites can override.
 
 ### Navigation / shell plumbing
 
@@ -322,6 +298,258 @@ The `error` color (`volcano`) is the existing Ant Design preset for "important b
 - `getABClass` / `getABClassQueryOptions` (`src/frontend/src/services/googleClassrooms/classDetail/`, `src/frontend/src/query/sharedQueries.ts`).
 - `usePageDataset` / `useStartupWarmupState` for the `assignmentDefinitionPartials` warm-up-backed read.
 - `useQuery` directly for the per-class `abClass` query (per `frontend-react-query-and-prefetch.md` §2 — `abClass` is explicitly not warmup-backed).
+
+## Component-level behaviour — `metricTone`
+
+This section pins down the contract for `src/frontend/src/services/dataAnalysis/metricDisplay/metricTone.ts`. It is the source of truth for the tone resolver; the `MetricPill` component (next section) and any future caller (cohort / trend / distribution analyses per `docs/pedagogy/data-analysis-scoring.md:92-99`) inherit this contract verbatim.
+
+### Purpose and scope
+
+`metricTone` is a pure function that maps a `MetricResult` (the new discriminated union produced by the data analysis service) plus an optional scoring range to a `MetricToneResolution` describing the Ant Design `Tag` color, the raw display value, and a muted flag.
+
+**In scope**
+
+- Resolving the `color` token (`red` / `gold` / `green` / `default` / `volcano`) for the three `MetricResult` states plus the three `computed` bands.
+- Resolving the raw `displayValue` (`number` for `computed`, literal `'N'` for `notAttempted`, literal `'E'` for `error`).
+- Resolving the `muted` boolean (`true` for `notAttempted`, `false` otherwise).
+- Applying the dynamic midpoint rule (decision 11) for the `computed` bands.
+
+**Out of scope** (rendered or owned elsewhere)
+
+- Number formatting (precision) — owned by `MetricPill`.
+- The Ant Design `Tag` rendering — owned by `MetricPill`.
+- The `MetricResult` discriminated union definition — owned by the data analysis service.
+- The `emphasised` flag — owned by `MetricPill` (it is a presentational concern, not a tone-resolution concern).
+- Any I/O, React, or Ant Design concern.
+
+### Inputs
+
+```ts
+// Sketch only — the canonical type lives in metricTone.ts
+type MetricToneRange = { lower: number; upper: number };
+
+function resolveMetricTone(
+  metric: MetricResult, // required: the new discriminated union
+  range: MetricToneRange = { lower: 0, upper: 5 }, // optional, default { lower: 0, upper: 5 }
+  errorColor: 'volcano' = 'volcano' // optional, default 'volcano'; pass-through for testability
+): MetricToneResolution;
+```
+
+**Field notes**
+
+- `metric` is the `MetricResult` discriminated union. The function branches on `metric.state`.
+- `range` defines the scoring scale's lower and upper bounds. The function uses the dynamic midpoint rule (decision 11) to derive the red / amber / green band thresholds from the range. For the default range `{ lower: 0, upper: 5 }`, the thresholds are red below `1.25`, amber `[1.25, 3.75)`, green `[3.75, ∞)`. For a 0-100 range, the thresholds are red below `25`, amber `[25, 75)`, green `[75, 100]`. The helper does not validate that `range.upper > range.lower`; passing a degenerate range is undefined behaviour in v1.
+- `errorColor` is the Ant Design `Tag` color token used for the `error` state. Default `'volcano'`. Exposed for testability and for future visual revisions (e.g. switching to a different Ant Design preset if `'volcano'` is replaced). `MetricPill` passes its own `errorColor` prop through to this parameter; the default is identical at both layers.
+
+### Outputs
+
+```ts
+// Sketch only — the canonical type lives in metricTone.ts
+type MetricToneColor = 'red' | 'gold' | 'green' | 'default' | 'volcano';
+
+type MetricToneResolution = {
+  color: MetricToneColor; // the Ant Design Tag color token
+  displayValue: number | 'N' | 'E'; // the raw, unformatted value to display
+  muted: boolean; // true for notAttempted, false otherwise
+};
+```
+
+**Field notes**
+
+- `color` is one of the Ant Design `Tag` preset color tokens. `MetricPill` passes this to `<Tag color={...} />`. The five tokens cover the three `computed` bands (`red`, `gold`, `green`), the `notAttempted` state (`default` = grey), and the `error` state (`volcano`, overridable via `errorColor`).
+- `displayValue` is the raw, unformatted value. For `computed`, it is `metric.value` as a `number` (no precision formatting applied). For `notAttempted`, the literal `'N'`. For `error`, the literal `'E'`. `MetricPill` applies the `precision` formatting to numeric values when rendering.
+- `muted` is `true` for `notAttempted` and `false` for `computed` and `error`. `MetricPill` uses this to apply additional visual de-emphasis (e.g. `opacity: 0.7`) to the `notAttempted` pill beyond just the `default` (grey) color. The exact opacity value is a layout-spec concern.
+
+### Tone resolution rules (v1)
+
+The `resolveMetricTone` function applies the dynamic midpoint rule (decision 11) plus the state discriminator:
+
+| `state`        | Value range condition                                   | `color`                            | `displayValue` | `muted` |
+| -------------- | ------------------------------------------------------- | ---------------------------------- | -------------- | ------- |
+| `computed`     | `value < (3·lower + upper) / 4`                         | `red`                              | `metric.value` | `false` |
+| `computed`     | `(3·lower + upper) / 4 ≤ value < (lower + 3·upper) / 4` | `gold`                             | `metric.value` | `false` |
+| `computed`     | `value ≥ (lower + 3·upper) / 4`                         | `green`                            | `metric.value` | `false` |
+| `notAttempted` | (any)                                                   | `default`                          | `'N'`          | `true`  |
+| `error`        | (any)                                                   | `errorColor` (default `'volcano'`) | `'E'`          | `false` |
+
+For the default range `{ lower: 0, upper: 5 }`:
+
+- Red threshold: `1.25`
+- Amber thresholds: `1.25 ≤ value < 3.75`
+- Green threshold: `3.75`
+
+The `error` color (`volcano`) is the existing Ant Design preset for "important but not fatal" — red is reserved for the lowest band of `computed` values to keep the visual hierarchy clear (worst score = red, processing error = volcano). The user is open to a different error color; `errorColor` is exposed for testability and future visual revisions.
+
+### Behaviour
+
+- **Pure function.** No side effects, no React imports, no Ant Design imports, no I/O, no state, no thrown exceptions.
+- **Defaults live in the function signature** (per `src/frontend/AGENTS.md` §11). `range` defaults to `{ lower: 0, upper: 5 }`; `errorColor` defaults to `'volcano'`.
+- **No range validation.** A `range.upper <= range.lower` is undefined behaviour in v1; the helper does not throw or warn.
+- **No `NaN` / `Infinity` guards.** The `metric.value` is taken as-is for `computed` states. If a caller passes a `MetricResult` with `value: NaN` or `value: Infinity`, the function returns the value through; the data analysis service is contractually responsible for not producing such values (see "Failure modes that produce a hard throw" in the Data analysis service changes section).
+- **No caching / memoisation.** The function is cheap to call; `MetricPill` invokes it on every render. If a future caller discovers a hot path, memoisation is a localised change inside `MetricPill`.
+
+### Composition
+
+- `metricTone` is called only by `MetricPill` in v1. Future callers (cohort, trend, distribution analyses per `docs/pedagogy/data-analysis-scoring.md:92-99`) can import it directly from the `metricDisplay` barrel.
+- The helper is **not** called by `classPageAdapter` or `classPageModel` — those modules deal in `MetricResult` values, not `MetricToneResolution` values. The mapping from `MetricResult` to `MetricToneResolution` happens in the presentational layer (`MetricPill`).
+- The helper is **not** called by `useClassPageData` — that hook deals in `MetricResult` values and feature-specific shapes.
+
+### Test plan (co-located `metricTone.spec.ts`)
+
+Required red-first test cases:
+
+1. **`computed` red band.** Input: `computed` with value `1.0`, default range. Expected: `color === 'red'`, `displayValue === 1.0`, `muted === false`.
+2. **`computed` amber band (low boundary).** Input: `computed` with value `1.25`, default range. Expected: `color === 'gold'`, `displayValue === 1.25`, `muted === false`.
+3. **`computed` amber band (high).** Input: `computed` with value `3.74`, default range. Expected: `color === 'gold'`, `displayValue === 3.74`, `muted === false`.
+4. **`computed` green band (low boundary).** Input: `computed` with value `3.75`, default range. Expected: `color === 'green'`, `displayValue === 3.75`, `muted === false`.
+5. **`computed` green band (high).** Input: `computed` with value `5.0`, default range. Expected: `color === 'green'`, `displayValue === 5.0`, `muted === false`.
+6. **`notAttempted` state.** Input: `notAttempted`. Expected: `color === 'default'`, `displayValue === 'N'`, `muted === true`.
+7. **`error` state (default color).** Input: `error`. Expected: `color === 'volcano'`, `displayValue === 'E'`, `muted === false`.
+8. **`error` state (custom color).** Input: `error` with `errorColor = 'magenta'`. Expected: `color === 'magenta'`, `displayValue === 'E'`, `muted === false`.
+9. **Custom range shifts thresholds.** Input: `computed` with value `30.0`, custom range `{ lower: 0, upper: 100 }`. Expected: `color === 'red'`. Input: value `50.0` with the same range. Expected: `color === 'gold'`. Input: value `80.0` with the same range. Expected: `color === 'green'`.
+10. **Boundary at red/amber.** Input: `computed` with value `1.24`, default range. Expected: `color === 'red'`. Input: value `1.25`. Expected: `color === 'gold'`. The boundary belongs to amber.
+11. **Boundary at amber/green.** Input: `computed` with value `3.74`, default range. Expected: `color === 'gold'`. Input: value `3.75`. Expected: `color === 'green'`. The boundary belongs to green.
+12. **`displayValue` is raw, not formatted.** Input: `computed` with value `2.1837`. Expected: `displayValue === 2.1837` (not `'2.18'`). The precision formatting is `MetricPill`'s responsibility.
+13. **No React or antd imports.** Verify `metricTone.ts` does not import from `react` or `antd` (a simple grep-based test or a `package.json` boundary check).
+
+### Open questions
+
+None. All decisions for v1 are captured above.
+
+## Component-level behaviour — `MetricPill`
+
+This section pins down the contract for `src/frontend/src/services/dataAnalysis/metricDisplay/MetricPill.tsx`. It is the source of truth for the presentational pill; the `RecentAssignmentCard` and `studentAveragesTableColumns` consumers inherit this contract verbatim.
+
+### Purpose and scope
+
+`MetricPill` is a presentational React component that renders a `MetricResult` as an Ant Design `Tag` with the resolved color, the formatted display value, and optional emphasis / muted styles.
+
+**In scope**
+
+- Calling `resolveMetricTone` (from the previous section) with the supplied `metric` and `range`.
+- Applying the `precision` formatting to `computed` numeric values (default 2 decimal places).
+- Rendering an Ant Design `Tag` (`variant="filled"`) with the resolved color and the formatted display value.
+- Applying the `emphasised` style (larger font, bolder weight) when `emphasised={true}`.
+- Applying the `muted` style (lower opacity) when the resolved `muted === true`.
+
+**Out of scope** (rendered or owned elsewhere)
+
+- The tone-resolution rules (color, display value, muted) — owned by `metricTone`.
+- The `MetricResult` discriminated union definition — owned by the data analysis service.
+- The pill's position within a cell or its cell's layout — owned by the consumer (e.g. `RecentAssignmentCard`, `studentAveragesTableColumns`).
+- The Ant Design `Tooltip` wrapper for screen-reader-friendly copy — deferred to v1.1.
+
+### Inputs — `MetricPillProps`
+
+```ts
+// Sketch only — the canonical type lives in MetricPill.tsx
+type MetricPillProps = {
+  metric: MetricResult; // required: the new discriminated union
+  range?: { lower: number; upper: number }; // optional, default { lower: 0, upper: 5 }
+  emphasised?: boolean; // optional, default false
+  precision?: number; // optional, default 2
+  errorColor?: 'volcano'; // optional, default 'volcano'
+};
+```
+
+**Field notes**
+
+- `metric` is the `MetricResult` discriminated union. Required.
+- `range` is the scoring scale's lower and upper bounds, passed through to `resolveMetricTone`. Optional, default `{ lower: 0, upper: 5 }`.
+- `emphasised` controls the visual weight of the pill. When `true`, the pill is larger (~1.25x font size) and bolder (weight 600). Used by the `Average` cell in `RecentAssignmentCard`. Optional, default `false`.
+- `precision` controls the number of decimal places for `computed` values. Ignored for `notAttempted` and `error` (the literal `'N'` and `'E'` are always rendered as-is). Optional, default `2`.
+- `errorColor` is the Ant Design `Tag` color token used for the `error` state. Passed through to `resolveMetricTone`. Optional, default `'volcano'`. Exposed for testability and for future visual revisions.
+
+### Layout and structure
+
+The component renders a single Ant Design `Tag` with the following structure:
+
+```tsx
+<Tag
+  color={resolution.color}
+  variant="filled"
+  style={{
+    // Emphasised style: larger font, bolder weight
+    ...(emphasised ? { fontSize: '1.25em', fontWeight: 600 } : {}),
+    // Muted style: lower opacity (only when notAttempted)
+    ...(resolution.muted ? { opacity: 0.7 } : {}),
+  }}
+>
+  {formatDisplayValue(resolution.displayValue, precision)}
+</Tag>
+```
+
+The exact inline style values (font size, weight, padding, opacity) are layout-spec concerns and will be confirmed against the mockup. The contract is the presence of these styles, not the exact pixel values.
+
+### Rendering rules per `MetricResult` state
+
+| `state`        | Pill display                             | Pill color                                                                                               | `muted` |
+| -------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------- |
+| `computed`     | `value.toFixed(precision)` (e.g. `2.18`) | `red` / `gold` / `green` based on the range (see [`metricTone`](#component-level-behaviour--metrictone)) | `false` |
+| `notAttempted` | `N` (uppercase)                          | `default` (grey)                                                                                         | `true`  |
+| `error`        | `E` (uppercase)                          | `errorColor` (default `'volcano'`)                                                                       | `false` |
+
+**Important behavioural notes**
+
+- The pill renders the color and label even when the cell is "degraded" (`notAttempted` or `error`). It does not collapse the cell or hide the pill. A teacher's eye should land on every cell and recognise the state's meaning from the colour + label.
+- The pill does **not** add extra copy (e.g. "No data", "Not attempted", "Error"). The label and color are the only signal. This keeps the layout compact and consistent across the cards and the table.
+- The pill does **not** add a `Tooltip` in v1. A future iteration may add a `Tooltip` wrapper with screen-reader-friendly copy (e.g. "Completeness: 2.18 out of 5 — Green band") — deferred to v1.1.
+- The `emphasised` flag applies to the pill's font size and weight only. It does not change the color, the precision, or the display value.
+- The `muted` flag (from `resolveMetricTone`) applies a lower opacity to the pill. It is set only for `notAttempted`; the `computed` and `error` pills are always fully opaque.
+
+### Number formatting
+
+`MetricPill` formats `computed` values to `precision` decimal places (default `2`), matching the mockup (e.g. `2.18`, `3.63`). The formatting uses `Number.prototype.toFixed(precision)`, which is the standard library; no external library is required.
+
+- For `precision = 2` and `value = 2.18`, the display is `'2.18'`.
+- For `precision = 2` and `value = 3.6`, the display is `'3.60'` (trailing zero preserved by `toFixed`).
+- For `precision = 2` and `value = 5`, the display is `'5.00'`.
+- For `notAttempted`, the display is `'N'` (precision ignored).
+- For `error`, the display is `'E'` (precision ignored).
+
+The `precision` prop defaults to `2` in the function signature (per `src/frontend/AGENTS.md` §11). Future call sites can override the precision per use case.
+
+### Behaviour
+
+- **Pure presentational.** No React state, no `useEffect`, no data fetching, no callbacks, no refs. The component reads `props` and renders.
+- **No defaults inside the component other than the documented ones.** `precision` defaults to `2`, `range` defaults to `{ lower: 0, upper: 5 }`, `emphasised` defaults to `false`, `errorColor` defaults to `'volcano'`. Defaults are set in the function signature (per `src/frontend/AGENTS.md` §11).
+- **No interactivity.** No `onClick`, no `cursor: pointer`, no focus ring. The pill is informational only.
+- **Accessible.** The Ant Design `Tag` renders its content as plain text in source order. No `aria-label` is added in v1; the pill label and color are the affordance. A future iteration may add a screen-reader-only description (e.g. `Completeness: 2.18 out of 5`) once the product confirms the desired level of detail.
+- **No `Tooltip` wrapper in v1.** A `Tooltip` wrapper would change the accessibility tree and require a separate decision; deferred to v1.1.
+- **Bounded by loading standards.** When the parent is in the loading state, the pill is replaced by a shape-matched `Skeleton` placeholder. The pill itself does not render a skeleton.
+
+### Composition
+
+`MetricPill` is called by:
+
+- `RecentAssignmentCard` — four pills per card, one per criterion (Completeness, Accuracy, SpAG, Average). The `Average` pill uses `emphasised={true}`. The other three use `emphasised={false}` and the default `range`.
+- `studentAveragesTableColumns` — one pill per metric cell in the Student Averages table (four columns: Completeness, Accuracy, SpAG, Average). Whether the `Average` column uses `emphasised={true}` is a layout-spec concern; the contract is that `emphasised` is available to the column definitions.
+
+`MetricPill` is **not** called by `classPageAdapter` or `classPageModel` — those modules deal in `MetricResult` values, not presentational pills.
+
+### Test plan (co-located `MetricPill.spec.tsx`)
+
+Required red-first test cases:
+
+1. **Renders an Ant Design `Tag`.** Render with a `computed` metric. Expected: a single `Tag` element in the output.
+2. **`computed` red band.** Render with `computed` value `1.0`, default range, default precision. Expected: `Tag` color is `red`; children are `'1.00'`.
+3. **`computed` amber band.** Render with `computed` value `2.5`, default range, default precision. Expected: `Tag` color is `gold`; children are `'2.50'`.
+4. **`computed` green band.** Render with `computed` value `4.0`, default range, default precision. Expected: `Tag` color is `green`; children are `'4.00'`.
+5. **Custom precision.** Render with `computed` value `2.1837`, default range, `precision={3}`. Expected: children are `'2.184'`.
+6. **Default precision is 2.** Render with `computed` value `3.6`, default range, no `precision` prop. Expected: children are `'3.60'`.
+7. **`notAttempted` state.** Render with `notAttempted`. Expected: `Tag` color is `default`; children are `'N'`; `opacity: 0.7` is in the inline style.
+8. **`error` state (default color).** Render with `error`. Expected: `Tag` color is `volcano`; children are `'E'`; no opacity reduction.
+9. **`error` state (custom color).** Render with `error` and `errorColor='magenta'`. Expected: `Tag` color is `magenta`; children are `'E'`.
+10. **`emphasised={true}`.** Render with `computed` value `3.0`, `emphasised={true}`. Expected: inline style includes `fontSize: '1.25em'` and `fontWeight: 600`. `Tag` color is `green`.
+11. **`emphasised={false}` (default).** Render with `computed` value `3.0`, no `emphasised` prop. Expected: inline style does NOT include `fontSize: '1.25em'`.
+12. **Custom range shifts bands.** Render with `computed` value `30.0` and `range={ lower: 0, upper: 100 }`. Expected: `Tag` color is `red`. Render with value `80.0` and the same range. Expected: `Tag` color is `green`.
+13. **Custom range default precision.** Render with `computed` value `33.333` and `range={ lower: 0, upper: 100 }`. Expected: children are `'33.33'`.
+14. **Precision is ignored for `notAttempted` and `error`.** Render with `notAttempted` and `precision={5}`. Expected: children are `'N'`, not `'N.00000'`. Render with `error` and `precision={5}`. Expected: children are `'E'`.
+15. **Pure presentational.** The component does not call `useEffect`, `useState`, `useRef`, or any other React hook beyond what is strictly needed for rendering (none in v1).
+
+### Open questions
+
+None. All decisions for v1 are captured above.
 
 ## Component-level behaviour — `RecentAssignmentCard`
 
@@ -416,7 +644,7 @@ The Average cell visually balances the four-cell row because the three uniform c
 
 ### Rendering rules per `MetricResult` state
 
-The card does not branch on state — it passes each `MetricResult` to `MetricPill`, which applies the tone-resolution rules in the "Tone resolution rules (v1)" section above. The card's contract is summarised in the table below for clarity, not as a duplication of `MetricPill`.
+The card does not branch on state — it passes each `MetricResult` to `MetricPill`, which applies the tone-resolution rules in the [Component-level behaviour — `metricTone`](#component-level-behaviour--metrictone) section. The card's contract is summarised in the table below for clarity, not as a duplication of `MetricPill`.
 
 | `state`        | Pill display                   | Pill color                                                       | Visible in the cell as                 |
 | -------------- | ------------------------------ | ---------------------------------------------------------------- | -------------------------------------- |
