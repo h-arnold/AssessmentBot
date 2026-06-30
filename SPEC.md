@@ -2,7 +2,7 @@
 
 ## Status
 
-- **Skeleton draft v1.2** — all 15 open questions in the main list are now resolved. Twelve component-level sections are fleshed out, in dependency order: `metricTone` (pure tone resolver), `MetricPill` (presentational Ant Design `Tag`), `classPageAdapter` (raw-to-canonical view-model translation), `useClassPageData` (data orchestrator hook that calls the adapter), `classPageModel` (filter / sort on top of the adapter output), `RecentAssignmentCard`, `studentAveragesTableColumns` (column definitions for the table), `ClassPageHeaderActions` (header buttons), `StudentAveragesTableCard` (search / select / table card), `RecentAssignmentsSection` (heading + row of cards + empty state), `ClassPage.tsx` (page composition root), and **Shell and routing integration** (cross-cutting changes to `appNavigation.tsx`, `AppShell.tsx`, and `ClassesPage.tsx`). The shell integration is a section because the changes span three existing files rather than introducing a new component.
+- **Skeleton draft v1.3** — all 15 open questions in the main list are now resolved. Twelve component-level sections are fleshed out, in dependency order: `metricTone` (pure tone resolver), `MetricPill` (presentational Ant Design `Tag`), `classPageAdapter` (raw-to-canonical view-model translation), `useClassPageData` (data orchestrator hook that calls the adapter), `classPageModel` (filter / sort on top of the adapter output), `RecentAssignmentCard`, `studentAveragesTableColumns` (column definitions for the table), `ClassPageHeaderActions` (header buttons), `StudentAveragesTableCard` (search / select / table card), `RecentAssignmentsSection` (heading + row of cards + empty state), `ClassPage.tsx` (page composition root), and **Shell and routing integration** (cross-cutting changes to `appNavigation.tsx`, `AppShell.tsx`, and `ClassesPage.tsx`). The shell integration is a section because the changes span three existing files rather than introducing a new component. The rollup rule at line 227 was clarified in v1.3: `notAttempted` contributes 0 for accuracy and completeness but is excluded from SPAG; the adapter section's equivalent rule and summary were updated to match.
 - The card-section open question on the "Completed:" wording is **resolved** as a side effect of a bigger decision (see below). The label is **Last Assessed** (not "Completed"), the field is `updatedAt` (not `lastUpdated`), and a null `updatedAt` is a data bug that fails fast at the adapter boundary.
 - The card-section open question on the **empty state** is also **resolved**: the section renders an Ant Design `Empty` with a primary `Start New Assessment` CTA that opens the existing `AssessTaskModal`. The same callback is shared with the header button via the page-level composition root.
 - The spec is **complete at the component level**. All component-level decisions for v1 are captured. The next step is to draft `ACTION_PLAN.md` (a TDD-first delivery plan) against the agreed contracts. The action plan must respect the three-deliverable ordering (rename → data analysis service → Class page) and the file-separation projections.
@@ -224,7 +224,7 @@ A "mixed" case (e.g., a student with one numeric score and one `'N'`) produces `
 
 **Rollup rule (per-student, per-class, per-assignment):** when rolling sub-accumulator states upward, classify them into `computed` / `notAttempted` / `error` and apply the following precedence:
 
-1. If **any** sub-accumulator is `computed`, the rollup is `computed` — but only the `computed` and `notAttempted` sub-accumulators participate in the weighted average (not attempted assigns a score of 0 ); `error` sub-accumulators are excluded from the calculation.
+1. If **any** sub-accumulator is `computed`, the rollup is `computed` — but only the `computed` and `notAttempted` sub-accumulators participate in the weighted average (not attempted assigns a score of 0 for accuracy and completeness, but does not affect the SPAG score); `error` sub-accumulators are excluded from the calculation.
 2. If **no** sub-accumulator is `computed` but **at least one** is `notAttempted`, the rollup is `notAttempted`.
 3. Otherwise (all sub-accumulators are `error`), the rollup is `error`.
 
@@ -541,7 +541,7 @@ This section pins down the contract for `src/frontend/src/features/classPage/cla
 **In scope**
 
 - The adapter function `adaptClassPageToViewModel` (pure, synchronous).
-- The assignment-level rollup rule: classify sub-tasks into `computed` / `notAttempted` / `error`; weighted average over `computed` only; `error` only if zero `computed` sub-tasks.
+- The assignment-level rollup rule: classify sub-tasks into `computed` / `notAttempted` / `error`; weighted average over `computed` and `notAttempted` sub-tasks (with `notAttempted` contributing 0 for accuracy and completeness, and excluded for SPAG and overall); `error` sub-tasks excluded; escalates to `notAttempted` or `error` only when no `computed` sub-tasks exist.
 - The recent-assignments sort and limit (top 3 by `updatedAt` desc).
 - The student-averages no-data row synthesis (all students from `classFull.students` get a row, with a synthesised `notAttempted` row for unassessed students).
 - The date formatting via the shared `formatUpdatedAtLabel` helper.
@@ -614,15 +614,17 @@ After building all models, sort by `updatedAt` desc, take the top 3. If fewer th
 
 #### Assignment-level rollup rule
 
-For each of the four criteria, classify sub-tasks into `computed` / `notAttempted` / `error`:
+For each of the four criteria (`completeness`, `accuracy`, `spag`, `average`), classify sub-tasks into `computed` / `notAttempted` / `error`:
 
 - If zero sub-tasks are `computed` and all sub-tasks are `error`, the rolled metric is `error`.
-- If zero sub-tasks are `computed` and all sub-tasks are `notAttempted`, the rolled metric is `notAttempted`.
-- Otherwise, compute a weighted average over the `computed` sub-tasks only, with `error` and `notAttempted` sub-tasks excluded from the calculation.
+- If zero sub-tasks are `computed` and **at least one** sub-task is `notAttempted`, the rolled metric is `notAttempted`.
+- Otherwise (at least one `computed` sub-task), compute a weighted average over the `computed` and `notAttempted` sub-tasks only, with `error` sub-tasks excluded. The handling of `notAttempted` sub-tasks depends on the metric:
+  - For **accuracy** and **completeness**: `notAttempted` contributes a score of **0** — its weight is included in the denominator, zero in the numerator.
+  - For **SPAG** and the **average (overall)**: `notAttempted` is excluded from the calculation — its weight is not counted in the denominator, consistent with the principle that SPAG cannot be assessed on unsubmitted work, and that the overall is a composite of the three per-criterion rollups.
 
-The rationale: the LLM service sometimes fails on a single task; blocking the entire assignment's computation for one task failure is overkill and limits the usefulness of the tool. `error` sub-tasks are excluded gracefully, not propagated. The rollup only escalates to `error` when there's nothing left to average over.
+The rationale: the LLM service sometimes fails on a single task; blocking the entire assignment's computation for one task failure is overkill and limits the usefulness of the tool. `error` sub-tasks are excluded gracefully, not propagated. The rollup only escalates to `error` when there's nothing left to average over. The per-metric differentiation for `notAttempted` reflects the pedagogical reality that unsubmitted work correctly scores 0 for completion and correctness but cannot be evaluated for SPAG.
 
-The same rule is applied to the analyser's per-student and per-class rollups (see the "Data analysis service changes" lead deliverable section). The adapter's assignment-level rollup is the fourth application of the rule.
+The same rule is applied to the analyser's per-student and per-class rollups (see the "Data analysis service changes" lead deliverable section, rollup rule at line 227). The adapter's assignment-level rollup is the fourth application of the rule.
 
 #### Student averages — full roster, with no-data rows
 
