@@ -934,6 +934,24 @@ Helper decision entries:
   - Section 5 (documentation and rollout) confirms the `MetricToneColor` cross-spec contract is recorded in both `SPEC_CLASS_PAGE_PREPARATION.md` and `SPEC_CLASS_PAGE.md`. Any revision of the union is a cross-spec breaking change.
   - The Class page spec's adapter (owned by `SPEC_CLASS_PAGE.md`) imports `resolveMetricTone` and `MetricPill` directly (no barrel).
 
+### Section 4 completion record
+
+- **Status:** Complete.
+- **Red Loop:** Tests created across 2 new test files (`metricTone.spec.ts` — 11 tests, `MetricPill.spec.tsx` — 10 tests). Code reviewer found 1 Minor issue (missing colour-prop assertions on rendered Tag in `MetricPill.spec.tsx`). After fix, reviewer confirmed clean.
+- **Green Loop:** Production code implemented across 2 new files (`metricTone.ts` — 146 lines, `MetricPill.tsx` — 125 lines) + 1 modified file (`setup.ts` — enhanced `getComputedStyle` mock for inline-style assertions). Code reviewer found 1 Improvement (magic numbers 3/4 in `metricTone.ts`), 2 Minor, 2 Nitpick — no Critical/Major. Magic numbers extracted to named constants `QUARTILE_WEIGHT`/`QUARTILE_DENOMINATOR`; JSDoc boundary table corrected to match implementation (amber/green edge uses `>` not `≥`); `tagStyle` typed as `CSSProperties`. After fixes, all automated checks pass.
+- **Lint:** 0 errors, 0 warnings. (The magic-number extraction eliminated the 4 remaining frontend warnings — the frontend lint is now fully clean.)
+- **Tests:** 21 tests pass across 2 test files (11 metricTone + 10 MetricPill).
+- **Build:** `npm run build:production` succeeds.
+- **Regression Gate:** 0 regressions, 0 new failures. 2 pre-existing failures unchanged (backend lint 15 max-lines warnings, backend test coverage). 50 fixes (frontend lint went from 50 warnings to 0).
+- **Commits:** (recorded below after commit)
+- **Implementation notes:**
+  - `metricTone.ts` is 146 lines (projected ~95; actual higher due to JSDoc `@remarks` verbosity).
+  - `MetricPill.tsx` is 125 lines (projected ~65; actual higher due to JSDoc and type annotation verbosity).
+  - No `index.ts` barrel confirmed.
+  - No `bordered={false}` deviation — Tag uses default `bordered` behaviour.
+  - `setup.ts` enhanced with `readInlineStyles` helper and `getComputedStyle` mock improvements (fontSize/fontWeight/opacity getters, inline-style resolution) to support `MetricPill.spec.tsx` style assertions.
+  - Band boundary JSDoc in `metricTone.ts` corrected: the `>` vs `≥` distinction at the amber/green boundary matches the ACTION_PLAN test case 3 (value=3.75 → gold, not green — amber side inclusive).
+
 ---
 
 ## Regression and contract hardening
