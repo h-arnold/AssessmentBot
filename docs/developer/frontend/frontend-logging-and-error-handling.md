@@ -152,7 +152,7 @@ Idiomatic React + TypeScript guidance:
 
 ## 7. Builder mode implications for frontend logging
 
-The builder supports production and dev frontend modes (`npm run build` vs `npm run build:dev`).
+The builder supports production and dev frontend modes (`npm run build:production` vs `npm run build:dev`).
 
 Treat builder mode as an operational control, not as permission to blur boundaries:
 

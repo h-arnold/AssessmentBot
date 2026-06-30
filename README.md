@@ -142,8 +142,8 @@ The project has three active modules, each with its own runtime:
 
 Useful commands:
 
-- `npm run frontend:dev`
-- `npm run frontend:build`
+- `npm run build:dev`
+- `npm run build:frontend`
 - `npm run lint:frontend`
 - `npm run test:frontend`
 - `npm run test:frontend:e2e`
