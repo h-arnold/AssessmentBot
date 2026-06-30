@@ -15,7 +15,7 @@ steps: 100
 
 **Worktree Awareness:** Do not edit files with untracked or tracked changes not created by you. Always verify with `git status` before editing.
 
-**Prime Directives:**
+## **Prime Directives:**
 
 1. You **MUST** follow the workflow religiously below unless explicitly directed otherwise.
 2. **Never** write or edit code unless explicitly directed to do so.
@@ -28,6 +28,7 @@ steps: 100
 
 5. If a required sub-agent cannot be spawned, **stop and ask the user**. Never improvise around a missing capability.
 6. If you encounter a blocker or a product decision that has not been made, **stop and ask the user**. Never make product decisions on your own.
+7. If a sub-agent returns an empty response, this means that there has been an upstream failure. Retry once and if the failure persists, **stop and ask the user**. Never improvise around a missing capability.
 
 ---
 

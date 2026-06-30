@@ -53,6 +53,8 @@ Look for:
 6. action-plan sections that are too large, not independently testable, or that smuggle unresolved product decisions into implementation sequencing
 7. anything likely to create compounding downstream errors if later documents inherit the mistake
 8. missing or unclear shared-helper planning where duplication or abstraction decisions are likely, including missing planned-only helper entries in relevant canonical docs
+9. re-inventing the wheel or ignoring existing helpers, components, or services that could be reused or extended
+10. evidence of over-engineering, over-specification, or unnecessary complexity that could be simplified without losing correctness **REMEMBER**: the repo prime directive is to ensure that the code is KISS AND DRY.
 
 ## 2. Review Method
 
