@@ -474,6 +474,14 @@ These entries record the planned shared display helpers for the Class page featu
 - Status: `Not implemented`
 - Planned doc reconciliation: confirm the subfolder is created at the planned path and that the existing `services/dataAnalysis/` directory structure is preserved.
 
+4. Helper: `rollupMetric(subAccumulators: MetricAccumulator[]): MetricResult` — shared rollup precedence function
+
+- Decision: `new`
+- Owning module/path: `src/frontend/src/services/dataAnalysis/analysers/accumulation/accumulationPolicies.ts`
+- Call-site rationale: both `buildPerStudentRows` and `buildPerTaskRows` in `averagingAnalyser.rows.ts` need to apply the same three-way rollup precedence when aggregating across multiple sub-accumulators (e.g., a student's submissions across several tasks). The function applies the rule: if any sub-accumulator produced `error`, the rollup is `error`; else if any produced `notAttempted`, the rollup is `notAttempted`; otherwise compute a weighted average over the `computed` sub-accumulators only. Pure function, no React or antd imports. Lives in the decomposed `accumulationPolicies.ts` file alongside the three-way state assignment rules.
+- Status: `Not implemented`
+- Planned doc reconciliation: confirm the rollup is called from both `buildPerStudentRows` and `buildPerTaskRows`, and that the precedence rule (error > notAttempted > computed) matches the `SPEC.md` contract.
+
 ### 9.18 Class page feature-local helpers
 
 These entries record the planned feature-local helpers for the Class page. Per `frontend-shared-helpers-and-abstraction-standards.md` §4.4 ("Keep feature-specific helpers inside the owning feature folder"), these stay in `src/frontend/src/features/classPage/` and are not promoted to shared scope unless a documented cross-feature reuse emerges.
@@ -498,6 +506,6 @@ These entries record the planned feature-local helpers for the Class page. Per `
 
 - Decision: `new (structural)`
 - Owning module/path: `src/frontend/src/services/dataAnalysis/analysers/accumulation/` (new subfolder), with `averagingAnalyser.accumulation.ts` becoming a facade.
-- Call-site rationale: the lead data analysis deliverable (the `MetricResult` discriminated union) grows `averagingAnalyser.accumulation.ts` from 447 lines to a projected ~520 lines, which crosses the 550-line threshold trigger for facade decomposition per `src/frontend/AGENTS.md` §12. The decomposition splits the file into `accumulation/metricAccumulator.js` (the accumulator primitives — `createAccumulator`, `createDataPointAccumulator`, `accumToMetric`), `accumulation/accumulationPolicies.js` (the state assignment rules from the new `MetricResult` discriminated union), `accumulation/processAssignment.js` (per-assignment processing), and `accumulation/index.js` (the facade that delegates). The public surface is preserved so no consumer is broken; this is purely a structural cleanup bundled with the data analysis contract change.
+- Call-site rationale: the lead data analysis deliverable (the `MetricResult` discriminated union) grows `averagingAnalyser.accumulation.ts` from 447 lines to a projected ~520 lines, which crosses the 550-line threshold trigger for facade decomposition per `src/frontend/AGENTS.md` §12. The decomposition splits the file into `accumulation/metricAccumulator.ts` (the accumulator primitives — `createAccumulator`, `createDataPointAccumulator`, `accumToMetric`), `accumulation/accumulationPolicies.ts` (the three-state assignment rules and the shared `rollupMetric` helper from the new `MetricResult` discriminated union), `accumulation/processAssignment.ts` (per-assignment processing), and `accumulation/index.ts` (the facade that delegates). The public surface is preserved so no consumer is broken; this is purely a structural cleanup bundled with the data analysis contract change.
 - Status: `Not implemented`
 - Planned doc reconciliation: confirm the decomposition happens in the same change set as the contract change, confirm the public surface is byte-identical, and confirm the file-separation projection in `SPEC.md` matches the actual outcome.

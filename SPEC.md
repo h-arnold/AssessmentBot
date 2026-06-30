@@ -2,10 +2,10 @@
 
 ## Status
 
-- **Skeleton draft v1.0** — all 15 open questions in the main list are now resolved. Three component-level sections are fleshed out, in dependency order: `metricTone` (pure tone resolver), `MetricPill` (presentational Ant Design `Tag`), and `RecentAssignmentCard`. The remaining component-level sections (`RecentAssignmentsSection`, `StudentAveragesTableCard`, `studentAveragesTableColumns`, `ClassPageHeaderActions`, page-level composition root) are still placeholders to be filled in by a follow-up pass. Each follow-up adds a sibling component-level section in the same shape.
+- **Skeleton draft v1.1** — all 15 open questions in the main list are now resolved. Four component-level sections are fleshed out, in dependency order: `metricTone` (pure tone resolver), `MetricPill` (presentational Ant Design `Tag`), `useClassPageData` (data orchestrator hook for the Class page), and `RecentAssignmentCard`. The remaining component-level sections (`classPageAdapter` and `classPageModel` still have contract sketches; `RecentAssignmentsSection`, `StudentAveragesTableCard`, `studentAveragesTableColumns`, `ClassPageHeaderActions`, and the page-level composition root are still placeholders) are to be filled in by a follow-up pass. Each follow-up adds a sibling component-level section in the same shape.
 - The card-section open question on the "Completed:" wording is **resolved** as a side effect of a bigger decision (see below). The label is **Last Assessed** (not "Completed"), the field is `updatedAt` (not `lastUpdated`), and a null `updatedAt` is a data bug that fails fast at the adapter boundary.
 - The card-section open question on the **empty state** is also **resolved**: the section renders an Ant Design `Empty` with a primary `Start New Assessment` CTA that opens the existing `AssessTaskModal`. The same callback is shared with the header button via the page-level composition root.
-- It is **not** a full spec. Per the planner's brief, the follow-up discussion will fill in the remaining component-level behavioural details for `RecentAssignmentsSection`, `StudentAveragesTableCard`, `studentAveragesTableColumns`, `ClassPageHeaderActions`, and the page-level composition root. Each follow-up adds a sibling component-level section in the same shape.
+- It is **not** a full spec. Per the planner's brief, the follow-up discussion will fill in the remaining component-level behavioural details for `classPageAdapter`, `classPageModel`, `RecentAssignmentsSection`, `StudentAveragesTableCard`, `studentAveragesTableColumns`, `ClassPageHeaderActions`, and the page-level composition root. Each follow-up adds a sibling component-level section in the same shape.
 - The feature now spans **three deliverables** that must be sequenced: (1) `AssignmentPartial` `lastUpdated` → `updatedAt` rename (lead), (2) data analysis service contract change (lead), (3) the Class page (dependent). The rename is sequenced before the data analysis service change because the data analysis service touches fixtures and downstream code that share the property name. The full ordering is documented in the **Implementation readiness** section.
 - The user confirmed: (a) fix the `N` vs `E` distinction in the data analysis service rather than plaster over it in the display; (b) supersede the "amber = 3" anchor in favour of a dynamic midpoint rule; (c) **rename `lastUpdated` to `updatedAt` on `AssignmentPartial`** as a deliberate breaking change with no backwards-compat shim, so the field name is consistent with the rest of the codebase; the card's "Last Assessed" line reads from `updatedAt`, and a null `updatedAt` on a candidate assignment is a data bug that fails fast at the adapter boundary (page renders blocking state); (d) the Recent Assignment Card title should be the assignment name (not the literal "Recent Assignments" repeated on every card — the section heading renders that once); (e) the Average cell is visually emphasised while the other three cells are uniform; (f) the card is fully static with no hover or click handler for v1.
 - Open questions deliberately deferred to that follow-up discussion are listed in the **Open questions** section at the end; card-specific deferred items are listed at the end of the **Component-level behaviour — `RecentAssignmentCard`** section.
@@ -77,7 +77,7 @@ The codebase has three timestamp fields whose names overlap and whose semantics 
 | `StudentSubmissionPartial`    | `updatedAt`                 | `z.string()`                            | Per-submission timestamp (when the individual submission was last updated)         |
 | `AssignmentDefinitionPartial` | `updatedAt`                 | `NullableIsoDateTimeWithTimezoneSchema` | Per-definition template timestamp (when the assignment _template_ was last edited) |
 
-For the card's "Last Assessed" line, the per-assignment-instance activity timestamp is the correct semantic. Today that field is named `lastUpdated`, which is inconsistent with the rest of the codebase. The rename is a pure naming change — the wire shape, the on-disk model, and the test fixtures all need to be updated, but the data semantics do not change.
+For the card's "Last Assessed" line, the per-assignment-instance activity timestamp is the correct semantic. Today that field is named `lastUpdated`, which is inconsistent with the rest of the codebase. The rename of the field itself is a naming change (the wire shape, the on-disk model, and the test fixtures all need to be updated to emit `updatedAt` instead of `lastUpdated`). However, this deliverable also changes the **null-handling contract**: after the rename, a `null` `updatedAt` on a candidate assignment is a data bug that causes a throw at the adapter boundary (see "Fail-fast semantics" below), rather than silently dropping the assignment. This null-handling change is a semantic change, not a pure naming change.
 
 ### Schema contract
 
@@ -130,11 +130,16 @@ The rationale: a null `updatedAt` on an assignment with submissions is a data-in
 - **`src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.spec.ts`** — update any test fixtures that use `lastUpdated` (line 76) to use `updatedAt`.
 - **`src/frontend/src/services/googleClassrooms/classDetail/classDetailService.spec.ts`** — update any test fixtures that use `lastUpdated` (line 60) to use `updatedAt`.
 - **`src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.spec.ts`** — update any test fixtures that use `lastUpdated` on `AssignmentPartial`.
-- **`src/backend/Models/Assignment.js`** (or equivalent) — rename the underlying field and update `toPartialJSON()` to emit `updatedAt` instead of `lastUpdated`.
+- **`src/frontend/src/pages/AssignmentsPage.tsx`** — update `formatUpdatedAtLabel` (line 148) to read `assignment.updatedAt` instead of `assignment.lastUpdated`.
+- **`src/backend/Models/Assignment.js`** — rename `this.lastUpdated` to `this.updatedAt`; update `toPartialJSON()` (line 77) to emit `updatedAt`; rename methods `getLastUpdated` → `getUpdatedAt`, `setLastUpdated` → `setUpdatedAt`, `touchUpdated` → `touchUpdated` (this method name already uses the new convention and is fine as-is, but verify); update `knownFields` to reflect the new field name.
 - **`src/backend/Controllers/ClassDetailController.js`** (or equivalent) — verify the `getABClass` controller serialises the field as `updatedAt`.
-- **Backend test fixtures** — update any backend test fixtures that use the field name.
+- **`src/backend/z_Api/assignmentAssessment.js`** — update `DateUtils.normaliseDateFields(response, ['dueDate', 'lastUpdated', 'createdAt'])` (line 141) to use `'updatedAt'` instead of `'lastUpdated'`. This is critical: missing this rename would cause the date-normalisation step to silently skip the renamed field, leaving live `Date` objects in the response that violate `google.script.run` serialisation constraints.
+- **Backend test fixtures** — update any backend test fixtures that use the field name, including `tests/api/assignmentLastUpdated.test.js` (if it exists).
+- **Backend documentation** — update any canonical doc that references `Assignment.lastUpdated` (e.g., `docs/developer/backend/`, `docs/architecture/`).
 - **`src/frontend/src/features/classPage/classPageAdapter.ts`** — read `updatedAt` (not `lastUpdated`); implement the fail-fast throw when the field is null on a candidate assignment.
 - **Documentation** — update any canonical doc that references the field by name.
+
+**Explicitly out of scope for this rename:** `scripts/builder/vendor/` `CollectionMetadata` and `99_MasterIndex.js` — these use `lastUpdated` in a different domain (builder metadata), not `Assignment` model data. Do not rename them.
 
 ### Sequencing rationale
 
@@ -187,9 +192,9 @@ const NotAttemptedMetricSchema = z.strictObject({
 const ErrorMetricSchema = z.strictObject({
   state: z.literal('error'),
   value: z.literal('E'),
-  totalWeight: z.literal(0),
+  totalWeight: z.number().min(0),
   applicableDataPoints: z.literal(0),
-  totalDataPoints: z.literal(0), // no data at all
+  totalDataPoints: z.number().int().min(0), // may be > 0 when submissions exist but have no assessments
 });
 
 export const MetricResultSchema = z.discriminatedUnion('state', [
@@ -201,27 +206,30 @@ export const MetricResultSchema = z.discriminatedUnion('state', [
 
 The `state` discriminator is the primary key; consumers branch on it. The `value` field is a `number` for `computed`, the literal `'N'` for `notAttempted`, and the literal `'E'` for `error`. The numeric invariant is no longer encoded as a Zod `.refine()` — it falls out of the discriminated union naturally.
 
+**Important:** the `'E'` literal exists **only** in the `MetricResult` discriminated union (the analyser's output). It is **not** added to `PartialAssessmentScoreSchema` (`classDetailService.zod.ts:10-13`), which validates backend wire data and stays `number | 'N'`. The backend storage model does not produce `'E'` — a failed assessment simply has no entry in the `assessments` dict (`{}`). The `'E'` state is produced by the analyser when it has seen zero usable data points for a particular metric at a particular aggregation level.
+
 ### State assignment rules (v1)
 
-The accumulator in `averagingAnalyser.accumulation.ts` is updated so each per-criterion sub-accumulator produces one of the three states based on the data it has seen (per the strict trigger resolved in open question 8):
+The accumulator in `averagingAnalyser.accumulation.ts` is updated so each per-criterion sub-accumulator produces one of the three states based on the data it has seen (per the strict trigger resolved in open question 8). The `MetricAccumulator` interface is extended with an `nCount: number` field (initialised to 0 in `createAccumulator`) that tracks how many raw `'N'` scores were seen per criterion, so the accumulator can distinguish `notAttempted` from `error` at conversion time.
 
-| Condition                                                             | State          | Value         |
-| --------------------------------------------------------------------- | -------------- | ------------- |
-| At least one numeric score and at least one `applicableDataPoint`     | `computed`     | weighted mean |
-| No numeric scores but at least one raw `'N'` score                    | `notAttempted` | `'N'`         |
-| No scores at all (no submissions, or all scores structurally invalid) | `error`        | `'E'`         |
+| Condition                                                                          | State          | Value         |
+| ---------------------------------------------------------------------------------- | -------------- | ------------- |
+| At least one numeric score (`applicableDataPoints > 0`)                            | `computed`     | weighted mean |
+| No numeric scores but at least one raw `'N'` score (`nCount > 0`)                  | `notAttempted` | `'N'`         |
+| No scores at all — `nCount === 0` and `applicableDataPoints === 0`                 | `error`        | `'E'`         |
+| (submissions exist, no assessments performed, or all scores structurally unusable) |                |               |
 
 A "mixed" case (e.g., a student with one numeric score and one `'N'`) produces `computed` — the `'N'` is dropped from the average, consistent with the existing SPaG-renormalisation rule (`data-analysis-scoring.md:71-77`).
 
-**Rollup rule (per-student, per-class, per-assignment):** when rolling sub-accumulator states upward, classify them into `computed` / `notAttempted` / `error` and apply the rule resolved in open question 9: if zero sub-accumulators are `computed` and all are `error`, the rollup is `error`; if zero sub-accumulators are `computed` and all are `notAttempted`, the rollup is `notAttempted`; otherwise, compute a weighted average over the `computed` sub-accumulators only, with `error` and `notAttempted` sub-accumulators excluded from the calculation. Rationale: the LLM service sometimes fails on a single task; blocking the entire assignment's computation for one task failure is overkill and limits the usefulness of the tool. `error` sub-tasks are excluded gracefully, not propagated. The rollup only escalates to `error` when there is nothing left to average over.
+**Rollup rule (per-student, per-class, per-assignment):** when rolling sub-accumulator states upward, classify them into `computed` / `notAttempted` / `error` and apply a simple precedence: **error always wins over notAttempted** — if any sub-task produced an error, the rollup is `error`; if zero sub-accumulators are `error` and no sub-accumulator is `computed`, the rollup is `notAttempted`; otherwise, compute a weighted average over the `computed` sub-accumulators only, with `error` and `notAttempted` sub-accumulators excluded from the calculation. Rationale: the LLM service sometimes fails on a single task; blocking the entire assignment's computation for one task failure is overkill and limits the usefulness of the tool. `error` sub-tasks are excluded gracefully, not propagated. The rollup only escalates to `error` when there is nothing left to average over. The error-wins precedence over notAttempted keeps the rule simple and aligns with the real-world observation that when one task errors out, the whole subtask tends to error out.
 
 **Failure modes that produce a hard throw (not `error` state):** divide-by-zero during weighted averaging on this criterion, `NaN`/`Infinity` in the result, unexpected schema-shape violations. These are not caught and converted to `error`; they propagate as exceptions from the data analysis service, and the page surfaces them as a blocking state via the existing fail-closed pattern (`frontend-loading-and-width-standards.md` §5). The accumulator's contract is the three-state assignment; defensive guards for `NaN`/`Infinity` etc. are not added in v1.
 
 ### Files affected by this deliverable
 
 - **`src/frontend/src/services/dataAnalysis/dataAnalysis.zod.ts`** — replace the `MetricResultSchema` definition per the new shape. Update `AveragingAnalyserInput`, `AveragingResult`, `PerStudentRow`, `PerTaskRow`, `PerClassResult`, and `DataAnalysisResponseSchema` to thread the new `MetricResult` shape through.
-- **`src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.accumulation.ts`** — update `accumulateMetricsToTarget` (and any helpers it calls) so each sub-accumulator returns one of the three states, with the assignment rules above. Update `accumToMetric` to map the accumulator state to a `MetricResult` discriminated union value.
-- **`src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.rows.ts`** — update `buildPerStudentRows` and `buildPerTaskRows` to roll the new `MetricResult` upward with the precedence rule.
+- **`src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.accumulation.ts`** — update `accumulateMetricsToTarget` to track `'N'` scores via the new `nCount` field on each sub-accumulator. Update `accumToMetric` to map the accumulator state to a `MetricResult` discriminated union value using the three-way check (`applicableDataPoints > 0` → `computed`, `nCount > 0` → `notAttempted`, otherwise `error`). Also extract a shared `rollupMetric` helper (see the rollup rule above) used by both `buildPerStudentRows` and `buildPerTaskRows`.
+- **`src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.rows.ts`** — update `buildPerStudentRows` and `buildPerTaskRows` to call the shared `rollupMetric` helper when aggregating across sub-accumulators, rather than calling `accumToMetric` directly on each sub-accumulator. This ensures both row builders apply the same `error` > `notAttempted` > `computed` precedence rule.
 - **`src/frontend/src/services/dataAnalysis/dataAnalysis.zod.spec.ts`** — rewrite the `MetricResultSchema` test cases for the discriminated union. Add explicit tests for each of the three states.
 - **`src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.accumulation.spec.ts`** — rewrite the accumulator tests to assert the state output.
 - **`src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.rows.spec.ts`** — rewrite the per-student / per-task rollup tests with the new state.
@@ -229,7 +237,7 @@ A "mixed" case (e.g., a student with one numeric score and one `'N'`) produces `
 - **`src/frontend/src/services/dataAnalysis/dataAnalysisService.spec.ts`** — update the orchestrator tests.
 - **`src/frontend/src/test/dataAnalysis/fixtures.ts`** — update or add fixtures that produce `'N'`-shaped and `'E'`-shaped `MetricResult` outputs, so the new tests can reuse them.
 - **`docs/pedagogy/data-analysis-scoring.md`** — update the table at line 79–88 ("Understanding the numbers in the results table") to describe the three states. The "Value" row needs to distinguish the number case from the `N` case from the `E` case.
-- **`src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.types.ts`** — `AssessmentScore` already permits `'N'`; this is fine. The `MetricAccumulator` and `DataPointAccumulator` interfaces are unchanged in shape (they remain internal mutable accumulators); only the conversion to the public `MetricResult` discriminated union changes.
+- **`src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.types.ts`** — extend the `MetricAccumulator` interface with an `nCount: number` field (initialised to 0 in `createAccumulator`) so the accumulator can distinguish `notAttempted` (`nCount > 0`) from `error` (`nCount === 0` and `applicableDataPoints === 0`). The `AssessmentScore` type stays `number | 'N' | undefined`; the `'E'` literal does not appear here because it is a `MetricResult`-output concept, not a raw-score concept.
 
 ### Sequencing rationale
 
@@ -268,7 +276,7 @@ Frontend, in approximate ownership order:
 
 ### Feature-level (`src/frontend/src/features/classPage/`)
 
-- **`useClassPageData.ts`** — orchestrates the `getABClass` query, the cached `assignmentDefinitionPartials` and `classPartials` reads, the `DataAnalysisService.analyse(...)` call, and produces a typed `ClassPageData` result with the loading / blocking / ready states per the loading-and-width-standards policy.
+- **`useClassPageData.ts`** — orchestrates the per-class `getABClass` query, the warm-up-backed `assignmentDefinitionPartials` read, the `DataAnalysisService.analyse(...)` call, and the `classPageAdapter.adaptClassPageToViewModel(...)` call. Produces a typed `ClassPageData` result with the loading / blocking / ready / busy surface state per the loading-and-width-standards policy. Full contract in [Component-level behaviour — `useClassPageData`](#component-level-behaviour--useclasspagedata) below.
 - **`classPageModel.ts`** (or `.ts`) — pure view-model builder. Takes the typed inputs and produces the per-card and per-row shapes the UI consumes. Pure function, no I/O. Co-located `.spec.ts`.
 - **`classPageAdapter.ts`** (with optional `classPageAdapter.zod.ts`) — adapter layer. The only module that knows how to translate the analyser's `AveragingResult` (and the raw `ClassFull`) into the view-model shape. Sibling to `classPageModel.ts` so the two concerns stay separate (aggregation / ordering logic in the model, raw-to-view mapping in the adapter). Consumes the new `MetricResult` discriminated union from the data analysis service change. Co-located `.spec.ts`.
 - **`RecentAssignmentsSection.tsx`** — presentational container that renders the centred row of up-to-three `RecentAssignmentCard` instances and the empty state. Accepts a `onStartNewAssessment: () => void` callback prop; when the section is empty, it renders an Ant Design `Empty` with a primary `Start New Assessment` button that calls the callback. No state, no data fetching.
@@ -551,6 +559,231 @@ Required red-first test cases:
 
 None. All decisions for v1 are captured above.
 
+## Component-level behaviour — `useClassPageData`
+
+This section pins down the contract for `src/frontend/src/features/classPage/useClassPageData.ts`. It is the source of truth for the data orchestrator hook; the `ClassPage` composition root consumes its output and decides what to render.
+
+### Purpose and scope
+
+`useClassPageData` is the data orchestrator hook for the Class page. It wires together the per-class query (`getABClass({ classId })`), the warm-up-backed read of `assignmentDefinitionPartials`, the synchronous `DataAnalysisService.analyse(...)` call, and the `classPageAdapter.adaptClassPageToViewModel(...)` call. The hook produces a single typed `ClassPageData` result that includes the raw inputs, the derived analyser + adapter output, the structured error (if any), and the combined loading / blocking / ready / busy surface state per `frontend-loading-and-width-standards.md` §2-§5.
+
+**In scope**
+
+- Reading the per-class query via `useQuery` with `getABClassQueryOptions(classId)`.
+- Reading the warm-up-backed `assignmentDefinitionPartials` dataset via `usePageDataset('assignmentDefinitionPartials')`.
+- Calling the analyser inside a `useMemo` once both inputs are available; capturing any thrown error.
+- Calling the adapter inside a `useMemo` once the analyser result is available; capturing any thrown error.
+- Combining the per-class query state, the warm-up-backed dataset state, and the analyser / adapter outcomes into a single `ClassPageData` result with the surface state.
+- Computing the busy state from the underlying query's `isFetching` flags.
+
+**Out of scope** (rendered or owned elsewhere)
+
+- The analyser and adapter themselves — owned by `services/dataAnalysis` and `features/classPage/classPageAdapter.ts` respectively. The hook only invokes them.
+- The model (user-controlled filtering / sorting) — owned by `features/classPage/classPageModel.ts` and called at render time by the section components that own the user-controlled state (search term, sort column). The hook produces the adapter's canonical view-model, not the filtered / sorted view-model.
+- The `AssessTaskModal` open / close state — owned by the page-level composition root.
+- The page rendering decisions (skeleton, blocking, content) — owned by the page-level composition root, which reads `ClassPageData.surfaceState` and `ClassPageData.isBusy`.
+- The `selectedClassId` shell state — owned by `AppShell`.
+- The loading / blocking primitive components themselves (skeleton, `Alert`) — owned by the page-level composition root. The hook exposes the state; the page renders the primitive.
+
+### Inputs
+
+```ts
+// Sketch only — the canonical type lives in useClassPageData.ts
+function useClassPageData(classId: string): ClassPageData;
+```
+
+**Field notes**
+
+- `classId` is the selected class's ID. The page-level composition root reads this from the shell's `selectedClassId` state. The hook does not own this state; it is passed in as a hook argument.
+- The hook is reactive to `classId` changes: if the user navigates from one class to another via the breadcrumb or sidebar, the hook's inputs change and the surface state transitions through loading / blocking / ready accordingly. React Query's `queryKey: queryKeys.abClass(classId)` handles the per-class query keying.
+
+### Output — `ClassPageData`
+
+```ts
+// Sketch only — the canonical type lives in useClassPageData.ts
+type ClassPageData = Readonly<{
+  // Raw per-class query
+  classFull: ClassFull | null;
+  classFullQuery: UseQueryResult<ClassFull | null, Error>;
+
+  // Raw warm-up-backed dataset
+  assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse | null;
+  assignmentDefinitionPartialsDatasetState: PageDatasetState;
+
+  // Derived analyser + adapter output
+  analyserResult: AveragingResult | null;
+  adapterResult: ClassPageAdapterResult | null;
+
+  // The structured error (null if no error)
+  error: ClassPageError | null;
+
+  // The combined surface state and busy flag
+  surfaceState: ClassPageSurfaceState;
+  isBusy: boolean;
+}>;
+
+type ClassPageSurfaceState = Readonly<{
+  isLoading: boolean;
+  isBlocking: boolean;
+  isReady: boolean;
+}>;
+
+type ClassPageError = Readonly<
+  | { type: 'classNotFound' }
+  | { type: 'classQueryError'; cause: Error }
+  | { type: 'analyserError'; cause: Error }
+  | { type: 'adapterError'; cause: Error }
+  | { type: 'assignmentDefinitionPartialsFailed' }
+  | { type: 'assignmentDefinitionPartialsUntrustworthy' }
+>;
+```
+
+**Field notes**
+
+- `classFull` is the per-class query data; `null` while loading, errored, or when the class is not found. The `getABClass` contract maps `ClassNotFoundError` to `null` at the transport boundary (see `classDetailService.ts`).
+- `classFullQuery` is the underlying React Query result, exposed so the page can read `isFetching` and the original error for the busy affordance and diagnostics.
+- `assignmentDefinitionPartials` is the warm-up-backed data; `null` while the dataset is loading, failed, or untrustworthy.
+- `assignmentDefinitionPartialsDatasetState` is the raw `PageDatasetState` from `usePageDataset`, exposed for diagnostics and for any subregion that wants to render its own loading affordance.
+- `analyserResult` is the analyser's per-class output; `null` while the analyser hasn't run or threw. The hook calls the analyser only when both `classFull` and `assignmentDefinitionPartials` are non-null.
+- `adapterResult` is the adapter's view-model; `null` while the adapter hasn't run or threw. The hook calls the adapter only when `analyserResult` is non-null.
+- `error` is the structured error describing why the page is in a blocking state. The hook picks the **first** applicable error from the precedence below; the page can read this for diagnostics and the user-facing message.
+- `surfaceState` is the combined `isLoading` / `isBlocking` / `isReady` state. These are mutually exclusive in the rendering sense (the page picks one branch), but the underlying flags may overlap (e.g. `isBlocking` is `true` even if `isLoading` is also `true`).
+- `isBusy` is `true` when any underlying query is fetching (for the localised busy affordance on background refresh, per `frontend-loading-and-width-standards.md` §4).
+
+### Data sources
+
+| Source                                              | Type                                       | Purpose                                                                                           |
+| --------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| `getABClassQueryOptions(classId)`                   | `useQuery` (per-class, not warm-up-backed) | The single class document. Query key: `queryKeys.abClass(classId)`.                               |
+| `usePageDataset('assignmentDefinitionPartials')`    | `usePageDataset` (warm-up-backed)          | The cross-reference table of assignment definitions. Trust required.                              |
+| `DataAnalysisService.analyse(input, 'averaging')`   | Pure function call inside `useMemo`        | Converts the class + definitions + filter into a per-class `AveragingResult`.                     |
+| `classPageAdapter.adaptClassPageToViewModel(input)` | Pure function call inside `useMemo`        | Converts the analyser result + `classFull` into the view-model shape consumed by the UI sections. |
+
+**Why `classPartials` is NOT read here.** The Class page reads the single class document via `getABClass` (per-class query), not via the `classPartials` warm-up dataset (which is the list of all classes used by `ClassesPage`). The earlier one-line description in the spec had this confused; this section is the source of truth. `classPartials` is not used by `useClassPageData`.
+
+### State machine
+
+The hook combines three independent state machines into a single `surfaceState`:
+
+1. **Per-class query state** (`classFullQuery`):
+   - `isPending: true` → loading
+   - `isError: true` → blocking (`error.type === 'classQueryError'`)
+   - `data === null` (success but null) → blocking (`error.type === 'classNotFound'`)
+   - `data !== null` (success with data) → ready input
+
+2. **Warm-up-backed dataset state** (`assignmentDefinitionPartialsDatasetState`):
+   - `isDatasetFailed && (!hasQueryData || isQueryError)` → blocking (`error.type === 'assignmentDefinitionPartialsFailed'`)
+   - `!isDatasetTrustworthy && isDatasetReady` → blocking (`error.type === 'assignmentDefinitionPartialsUntrustworthy'`)
+   - `!isDatasetReady && !isDatasetFailed` → loading
+   - `hasTrustworthyDataset` → ready input
+
+3. **Analyser + adapter outcomes**:
+   - Analyser throws → blocking (`error.type === 'analyserError'`). The error is captured at the `try` / `catch` boundary; React Query state is not affected.
+   - Adapter throws → blocking (`error.type === 'adapterError'`). Same pattern.
+   - Both return valid results → ready input.
+
+**Combined `surfaceState` rules**
+
+| Condition                                                                                                                 | `isLoading`             | `isBlocking` | `isReady` |
+| ------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ------------ | --------- |
+| Any input is in the loading state AND no blocking has occurred                                                            | `true`                  | `false`      | `false`   |
+| Any input has failed (query error, class not found, dataset failed, dataset untrustworthy, analyser error, adapter error) | `false`                 | `true`       | `false`   |
+| All inputs are ready AND analyser and adapter have produced valid results                                                 | `false`                 | `false`      | `true`    |
+| Multiple states overlap (e.g. loading AND blocking)                                                                       | `false` (blocking wins) | `true`       | `false`   |
+
+**Error precedence.** The hook picks the first applicable error from this precedence, top to bottom:
+
+1. `classNotFound` (per-class query returned `null`)
+2. `classQueryError` (per-class query errored)
+3. `assignmentDefinitionPartialsFailed` (warm-up dataset failed)
+4. `assignmentDefinitionPartialsUntrustworthy` (warm-up dataset untrustworthy but marked ready)
+5. `analyserError` (analyser threw)
+6. `adapterError` (adapter threw)
+
+The page-level composition root reads `error.type` to pick a user-facing message and diagnostic log. The hook does not format the user-facing message; that's a presentation concern.
+
+### Behaviour
+
+- **Pure hook.** No I/O beyond the React Query calls and the synchronous analyser / adapter calls. No `useEffect` (other than what React Query uses internally). No subscriptions, no event listeners.
+- **No data fetching owned by the hook.** All data fetching is delegated to React Query via `useQuery` and `usePageDataset`. The hook only orchestrates the existing primitives.
+- **Memoised analyser call.** The analyser is called inside a `useMemo` keyed on `[classFull, assignmentDefinitionPartials, classId]`. The analyser is not called when either input is `null`. The analyser is re-called only when the inputs change.
+- **Memoised adapter call.** The adapter is called inside a `useMemo` keyed on `[analyserResult, classFull]`. The adapter is not called when `analyserResult` is `null`. The adapter is re-called only when the analyser result or class full changes.
+- **No data is mutated.** The hook does not call any mutation hooks (no `useMutation`, no `invalidateQueries`).
+- **No side effects on render.** The hook does not write to console (other than the standard React Query logging via the configured logger), does not dispatch events, does not store anything in local storage or session storage. Logging and error reporting follow `frontend-logging-and-error-handling.md`.
+- **No defaults inside the hook.** The hook takes a single argument (`classId: string`) and produces a single result. There is no optional configuration (no `range`, no `analyserKey`, no `filter`). The analyser key is hardcoded to `'averaging'` (the v1 default) and the filter is `{ classIds: [classId] }` (a single-class filter). Future multi-class or alternative-view filters are out of scope.
+- **Fail loudly.** The hook does not catch-and-ignore analyser or adapter errors. It captures them in the `error` field and surfaces them as a blocking state. Console errors follow the standard logging policy (`frontend-logging-and-error-handling.md`).
+- **Accessibility semantics are not owned by the hook.** The hook produces state; the page renders accessible loading (`role="status"`, `aria-live="polite"`) and busy (`aria-busy="true"`) regions. The hook is silent on accessibility.
+
+### Composition
+
+- `useClassPageData` is called only by `src/frontend/src/features/classPage/ClassPage.tsx` (the page composition root) in v1.
+- The hook calls into:
+  - `useQuery` from `@tanstack/react-query` (via `getABClassQueryOptions(classId)`)
+  - `usePageDataset` from `src/frontend/src/hooks/usePageDataset.ts`
+  - `DataAnalysisService` from `src/frontend/src/services/dataAnalysis/dataAnalysisService.ts`
+  - `classPageAdapter` from `src/frontend/src/features/classPage/classPageAdapter.ts`
+- The page-level composition root consumes `ClassPageData` and renders the page sections (`RecentAssignmentsSection`, `StudentAveragesTableCard`, `ClassPageHeaderActions`) using the data from `adapterResult`. The page also owns the `AssessTaskModal` open / close state and the `onStartNewAssessment` callback that flows into the section components.
+
+### Test plan (co-located `useClassPageData.spec.ts`)
+
+Required red-first test cases, organised by surface state:
+
+**Loading state**
+
+1. **Loading: per-class query pending.** Mock `useQuery` to return `isPending: true` for the per-class query. Mock `usePageDataset` to return a ready + trustworthy `assignmentDefinitionPartials`. Expected: `surfaceState.isLoading === true`, `surfaceState.isBlocking === false`, `surfaceState.isReady === false`, `error === null`, `analyserResult === null`, `adapterResult === null`.
+2. **Loading: warm-up dataset loading.** Mock `usePageDataset` to return `isDatasetReady: false`, `isDatasetFailed: false`. Mock `useQuery` to return a successful per-class query. Expected: `surfaceState.isLoading === true`, `surfaceState.isBlocking === false`, `surfaceState.isReady === false`, `error === null`, `analyserResult === null` (analyser is not called when the warm-up dataset is not ready).
+3. **Loading: both pending.** Mock both inputs as loading. Expected: `surfaceState.isLoading === true`, `error === null`, `analyserResult === null`.
+
+**Blocking state — per-class query**
+
+4. **Blocking: class not found.** Mock `useQuery` to return `{ isSuccess: true, data: null }`. Expected: `surfaceState.isBlocking === true`, `surfaceState.isLoading === false`, `error?.type === 'classNotFound'`.
+5. **Blocking: class query error.** Mock `useQuery` to return `{ isError: true, error: new Error('network') }`. Expected: `surfaceState.isBlocking === true`, `error?.type === 'classQueryError'`, `error.cause` is the original error.
+
+**Blocking state — warm-up dataset**
+
+6. **Blocking: warm-up dataset failed.** Mock `usePageDataset` to return `isDatasetFailed: true`, `hasQueryData: false`. Expected: `surfaceState.isBlocking === true`, `error?.type === 'assignmentDefinitionPartialsFailed'`.
+7. **Blocking: warm-up dataset untrustworthy.** Mock `usePageDataset` to return `isDatasetReady: true`, `isDatasetTrustworthy: false`. Expected: `surfaceState.isBlocking === true`, `error?.type === 'assignmentDefinitionPartialsUntrustworthy'`.
+
+**Blocking state — analyser and adapter**
+
+8. **Blocking: analyser throws.** Mock the analyser to throw `new Error('Zod validation failed')`. Mock both inputs as ready. Expected: `surfaceState.isBlocking === true`, `error?.type === 'analyserError'`, `error.cause` is the original error, `adapterResult === null`.
+9. **Blocking: adapter throws.** Mock the adapter to throw `new Error('updatedAt is null')` (the fail-fast case from decision 12). Mock the analyser to return a valid result. Expected: `surfaceState.isBlocking === true`, `error?.type === 'adapterError'`, `error.cause` is the original error, `adapterResult === null`.
+
+**Ready state**
+
+10. **Ready: all inputs valid.** Mock both inputs as ready + trustworthy + successful. Mock the analyser to return a valid `AveragingResult`. Mock the adapter to return a valid `ClassPageAdapterResult`. Expected: `surfaceState.isReady === true`, `surfaceState.isLoading === false`, `surfaceState.isBlocking === false`, `error === null`, `analyserResult` matches the mock, `adapterResult` matches the mock.
+11. **Ready: empty roster (no assignments).** Mock both inputs as ready. Mock the analyser to return a result with no `perTask` rows. Mock the adapter to return `recentAssignments: []` and `studentAverages: [...synthesised no-data rows for every student in classFull.students]`. Expected: `surfaceState.isReady === true`, `adapterResult.recentAssignments.length === 0`.
+
+**Busy state**
+
+12. **Busy: per-class query refetching.** Mock the per-class query to return `{ isSuccess: true, isFetching: true }`. Expected: `isBusy === true` (the per-class query is in the middle of a background refetch).
+13. **Busy: warm-up dataset refetching.** Mock the warm-up dataset to return `{ isDatasetReady: true, isQueryError: false, isFetching: true }`. Expected: `isBusy === true`.
+14. **Not busy: nothing fetching.** Mock both queries as idle. Expected: `isBusy === false`.
+
+**Memoisation**
+
+15. **Analyser is not called when inputs are not ready.** Render the hook with `useQuery` returning `isPending: true` and `usePageDataset` returning loading. Track analyser invocations. Expected: 0 invocations.
+16. **Analyser is called exactly once when both inputs become ready.** Render with both inputs as ready. Track analyser invocations. Expected: 1 invocation (across the initial render).
+17. **Analyser is re-called when `classId` changes.** Render with `classId: 'a'`, then re-render with `classId: 'b'`. Track analyser invocations. Expected: 2 invocations (the inputs are different, so the memo cache misses).
+18. **Analyser is NOT re-called when the same data is re-fetched in the background.** Render with successful per-class query and trustworthy warm-up dataset, then trigger a background refetch (data is the same). Expected: 1 analyser invocation (memo cache hit because the inputs are the same reference).
+19. **Adapter is not called when the analyser result is null.** Mock the analyser to throw (or not run). Expected: `adapterResult === null` and 0 adapter invocations.
+20. **Adapter is called exactly once when the analyser result is ready.** Mock the analyser to return a valid result. Track adapter invocations. Expected: 1 invocation.
+
+**Precedence**
+
+21. **Error precedence: class not found wins over warm-up failure.** Mock the per-class query to return `null` AND the warm-up dataset to be failed. Expected: `error?.type === 'classNotFound'` (the first applicable error in the precedence).
+22. **Error precedence: analyser error wins over warm-up untrustworthy.** Mock the warm-up dataset as untrustworthy AND the analyser to throw. Expected: `error?.type === 'analyserError'` (it comes after warm-up untrustworthy in the precedence).
+23. **Error precedence: blocking wins over loading.** Mock the per-class query as errored AND the warm-up dataset as loading. Expected: `surfaceState.isBlocking === true`, `surfaceState.isLoading === false`.
+
+**Pure hook**
+
+24. **No I/O outside the React Query calls.** Inspect the hook's source code. Expected: no `fetch`, no `XMLHttpRequest`, no `localStorage`, no `sessionStorage`, no direct `callApi` calls. All data fetching is delegated to React Query.
+25. **No `useEffect` calls in the hook body.** Inspect the hook's source code. Expected: no `useEffect` (other than what React Query uses internally, which is hidden inside `useQuery` and `usePageDataset`).
+
+### Open questions
+
+None for the hook's data flow contract. The page-level composition root's user-facing message format (e.g. "Class not found" vs "Couldn't load class") is a layout / copy concern and lives in the layout spec, not here.
+
 ## Component-level behaviour — `RecentAssignmentCard`
 
 This section pins down the contract for `src/frontend/src/features/classPage/RecentAssignmentCard.tsx` and its model. It is the source of truth for the adapter producer and the section consumer; later sections (the layout spec and the action plan) inherit this contract verbatim.
@@ -761,7 +994,7 @@ The user has flagged that this surface will grow. The skeleton intentionally kee
 **Class page (dependent deliverable):**
 
 - `ClassPage.tsx` — composition root, projected < 150 lines.
-- `useClassPageData.ts` — projected < 120 lines.
+- `useClassPageData.ts` — projected < 200 lines (includes the surface state computation, error precedence, and memoised analyser / adapter orchestration; larger than initially estimated because the new `MetricResult` discriminated union adds analyser-input branching and the structured `ClassPageError` adds error-mapping logic).
 - `classPageAdapter.ts` — projected < 200 lines (slightly larger than initially estimated because the new `MetricResult` discriminated union adds branching).
 - `classPageModel.ts` — projected < 200 lines.
 - `RecentAssignmentsSection.tsx` — projected < 80 lines (slightly larger than initially estimated because it now owns the empty-state CTA, which adds an `<Empty>` block, a button, and a callback prop).
@@ -818,13 +1051,13 @@ The facade-pattern decomposition of `averagingAnalyser.accumulation.ts` is a **m
 - **Adapter unit tests** — given a fixed `AveragingResult` (with the new `MetricResult` discriminated union) and `ClassFull`, the adapter produces the expected `recentAssignments` (length, ordering, rollup) and `studentAverages` (ordering). Co-located `classPageAdapter.spec.ts`.
 - **Model unit tests** — given fixed adapter output, the model applies the search / sort filters correctly. Co-located `classPageModel.spec.ts`.
 - **Component unit tests** — one spec per presentational component (`RecentAssignmentCard.spec.tsx`, `StudentAveragesTableCard.spec.tsx`, etc.). `MetricPill` is exercised via the shared helper spec above, not duplicated here.
-- **Hook unit tests** — `useClassPageData.spec.ts` covers the loading / blocking / ready state transitions and the React Query / `DataAnalysisService` wiring.
+- **Hook unit tests** — `useClassPageData.spec.ts` covers the loading / blocking / ready surface-state transitions, the busy flag, the error precedence, the memoisation of the analyser and adapter calls, and the React Query / `DataAnalysisService` wiring (full test plan in the [`useClassPageData` section](#component-level-behaviour--useclasspagedata)).
 - **Page test** — `ClassPage.spec.tsx` covers the heading, breadcrumb, header actions, and the owned-surface skeleton / blocking / empty / ready states.
 - **Regression** — enable the View button in `ClassesPage.spec.tsx` and add a click-to-navigate assertion.
 
 ## Documentation expectations (skeleton level)
 
-- **`docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`** — record the planned `resolveMetricTone`, `MetricPill`, and `metricDisplay/` subfolder decisions as **deferred / not yet implemented** entries in §9 so the de-sloppification review can see them. Also record the planned `classPageAdapter` and `classPageModel` decisions (already drafted in the previous skeleton, still planned). All five entries will be reconciled against the actual implementation during the documentation pass. Also record the planned `formatUpdatedAtLabel` extraction from `AssignmentsPage.tsx` to a shared helper module.
+- **`docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`** — record the planned `resolveMetricTone`, `MetricPill`, and `metricDisplay/` subfolder decisions as **deferred / not yet implemented** entries in §9 so the de-sloppification review can see them. Also record the planned `classPageAdapter`, `classPageModel`, and `useClassPageData` decisions (all three are now fleshed out in this spec but not yet implemented). All six entries will be reconciled against the actual implementation during the documentation pass. Also record the planned `formatUpdatedAtLabel` extraction from `AssignmentsPage.tsx` to a shared helper module.
 - **`docs/developer/frontend/frontend-react-query-and-prefetch.md`** — no change expected. The class page uses the existing per-class `abClass` query, which is already documented as view-entry (not warmup-backed).
 - **`docs/pedagogy/data-analysis-scoring.md`** — update the "Understanding the numbers in the results table" section to describe the three `MetricResult` states (`computed`, `notAttempted`, `error`). The pedagogy is the right place to explain to teachers what each state means. Also document the new "Last Assessed" line on the Recent Assignments cards, including the fail-fast behaviour when `updatedAt` is missing.
 - **`docs/architecture/`** — no change expected.
