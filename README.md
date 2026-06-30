@@ -122,9 +122,23 @@ It’s still up to you to address misconceptions, motivate students, and do all 
 
 ---
 
-### React frontend migration scaffold
+## ⚙️ Setup
 
-A new React frontend scaffold now lives in `src/frontend` and uses **Vite + TypeScript + Ant Design**. Existing non-deprecated GAS logic has been mirrored into `src/backend` so backend code can continue in vanilla V8-compatible JavaScript while the new UI is built separately.
+The initial set up should take no more than an hour, including deploying the backend and creating all the Assessment Records.
+
+Check out the [docs](./docs/README.md) for more details.
+
+---
+
+## 🛠️ Development
+
+The project has three active modules, each with its own runtime:
+
+| Module   | Path               | Runtime                |
+| -------- | ------------------ | ---------------------- |
+| Backend  | `src/backend/`     | Google Apps Script V8  |
+| Frontend | `src/frontend/`    | Browser (Vite + React) |
+| Builder  | `scripts/builder/` | Node.js                |
 
 Useful commands:
 
@@ -133,12 +147,10 @@ Useful commands:
 - `npm run frontend:lint`
 - `npm run frontend:test`
 - `npm run frontend:test:e2e`
+- `npm run lint`
+- `npm run test:backend`
 
-## ⚙️ Setup
-
-The inital set up should take no more than an hour, including deploying the backend and creating all the Assessment Records.
-
-Check out the [docs](./docs/README.md) for more details.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full developer guide.
 
 ---
 

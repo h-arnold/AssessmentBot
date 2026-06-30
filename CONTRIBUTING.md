@@ -42,9 +42,8 @@ npm --prefix src/frontend install
 ### Backend (tests at repo root)
 
 ```bash
-npm test                   # default suite (excludes legacy UI tests)
-npm run test:all           # full suite including legacy UI tests
-vitest run --coverage      # with coverage
+npm run test:backend            # backend GAS JavaScript tests
+npm run test:backend:coverage   # with coverage
 ```
 
 ### Frontend
@@ -58,8 +57,8 @@ npm run frontend:test:e2e   # Playwright end-to-end tests
 ### Builder
 
 ```bash
-npm run builder:test
-npm run builder:test:coverage
+npm run test:builder
+npm run test:builder:coverage
 ```
 
 ---
@@ -146,7 +145,7 @@ If a class has no `fromJSON()` method and you need constructor behaviour, mock t
 
 ## Pre-Submission Checklist
 
-- [ ] All relevant lint checks pass (`npm run lint`, `frontend:lint`, `builder:lint`)
+- [ ] All relevant lint checks pass (`npm run lint`, `npm run frontend:lint`, `npm run builder:lint`)
 - [ ] TypeScript compiles cleanly (frontend and builder)
 - [ ] Tests pass and new logic has test coverage
 - [ ] No `console.*` calls introduced
