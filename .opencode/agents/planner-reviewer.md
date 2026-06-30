@@ -2,7 +2,7 @@
 description: Provides impartial second-pass review of planning artefacts before implementation starts
 mode: all
 steps: 100
-model: nvidia/glm-5.1
+model: opencode/nemotron-3-ultra-free
 ---
 
 # Planner Reviewer Agent Instructions
