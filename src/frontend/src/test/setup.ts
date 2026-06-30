@@ -4,7 +4,11 @@ import { vi } from 'vitest';
 // React Testing Library sets this dynamically during operations, but happy-dom can trigger
 // state updates between act() boundaries. Setting it globally suppresses the false-positive
 // variant of the act() warning that occurs between wrapped operations.
-globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+Object.defineProperty(globalThis, 'IS_REACT_ACT_ENVIRONMENT', {
+  configurable: true,
+  value: true,
+  writable: true,
+});
 
 // Import jest-dom extensions for vitest
 import '@testing-library/jest-dom/vitest';
