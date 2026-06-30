@@ -2,13 +2,14 @@
 
 ## Status
 
-- **Skeleton draft v1.3** — all 15 open questions in the main list are now resolved. Twelve component-level sections are fleshed out, in dependency order: `metricTone` (pure tone resolver), `MetricPill` (presentational Ant Design `Tag`), `classPageAdapter` (raw-to-canonical view-model translation), `useClassPageData` (data orchestrator hook that calls the adapter), `classPageModel` (filter / sort on top of the adapter output), `RecentAssignmentCard`, `studentAveragesTableColumns` (column definitions for the table), `ClassPageHeaderActions` (header buttons), `StudentAveragesTableCard` (search / select / table card), `RecentAssignmentsSection` (heading + row of cards + empty state), `ClassPage.tsx` (page composition root), and **Shell and routing integration** (cross-cutting changes to `appNavigation.tsx`, `AppShell.tsx`, and `ClassesPage.tsx`). The shell integration is a section because the changes span three existing files rather than introducing a new component. The rollup rule at line 227 was clarified in v1.3: `notAttempted` contributes 0 for accuracy and completeness but is excluded from SPAG; the adapter section's equivalent rule and summary were updated to match.
+- **Skeleton draft v2.0** — all 15 main open questions are now resolved by spec decisions. Twelve component-level sections are fleshed out, in dependency order: `metricTone` (pure tone resolver), `MetricPill` (presentational Ant Design `Tag`), `classPageAdapter` (raw-to-canonical view-model translation), `useClassPageData` (data orchestrator hook that calls the adapter), `classPageModel` (filter / sort on top of the adapter output), `RecentAssignmentCard`, `studentAveragesTableColumns` (column definitions for the table), `ClassPageHeaderActions` (header buttons), `StudentAveragesTableCard` (search + table card), `RecentAssignmentsSection` (heading + row of cards + empty state), `ClassPage.tsx` (page composition root), and **Shell and routing integration** (cross-cutting changes to `appNavigation.tsx`, `AppShell.tsx`, and `ClassesPage.tsx`). The shell integration is a section because the changes span three existing files rather than introducing a new component.
+- v2.0 corrections from the second-pass review: routing model is **child route under `classes`** (not a new top-level `class-detail` nav key); the disabled `Select` placeholder is **removed** in favour of a static `Typography.Text` label; the in-page `Back to Classes` button is **removed** (sidebar + breadcrumb suffice); the `MetricBand` set is **aligned with the `MetricToneColor` color tokens**; the `assignment-level rollup` rule is **aligned with the analyser's per-student / per-class rollup rule** via a shared `rollupMetric` helper; the `surfaceState` shape is a **discriminated union** rather than three flags; the `metricDisplay` `index.ts` barrel is **removed** in favour of direct imports; the `formatUpdatedAtLabel` helper extraction target is `src/frontend/src/utils/dateFormatting.ts`; and several factual errors in the codebase references are corrected (notably the `Assignment.js` file path). All corrections are tracked inline in the relevant section.
 - The card-section open question on the "Completed:" wording is **resolved** as a side effect of a bigger decision (see below). The label is **Last Assessed** (not "Completed"), the field is `updatedAt` (not `lastUpdated`), and a null `updatedAt` is a data bug that fails fast at the adapter boundary.
 - The card-section open question on the **empty state** is also **resolved**: the section renders an Ant Design `Empty` with a primary `Start New Assessment` CTA that opens the existing `AssessTaskModal`. The same callback is shared with the header button via the page-level composition root.
 - The spec is **complete at the component level**. All component-level decisions for v1 are captured. The next step is to draft `ACTION_PLAN.md` (a TDD-first delivery plan) against the agreed contracts. The action plan must respect the three-deliverable ordering (rename → data analysis service → Class page) and the file-separation projections.
 - The feature spans **three deliverables** that must be sequenced: (1) `AssignmentPartial` `lastUpdated` → `updatedAt` rename (lead), (2) data analysis service contract change (lead), (3) the Class page (dependent). The rename is sequenced before the data analysis service change because the data analysis service touches fixtures and downstream code that share the property name. The full ordering is documented in the **Implementation readiness** section.
-- The user confirmed: (a) fix the `N` vs `E` distinction in the data analysis service rather than plaster over it in the display; (b) supersede the "amber = 3" anchor in favour of a dynamic midpoint rule; (c) **rename `lastUpdated` to `updatedAt` on `AssignmentPartial`** as a deliberate breaking change with no backwards-compat shim, so the field name is consistent with the rest of the codebase; the card's "Last Assessed" line reads from `updatedAt`, and a null `updatedAt` on a candidate assignment is a data bug that fails fast at the adapter boundary (page renders blocking state); (d) the Recent Assignment Card title should be the assignment name (not the literal "Recent Assignments" repeated on every card — the section heading renders that once); (e) the Average cell is visually emphasised while the other three cells are uniform; (f) the card is fully static with no hover or click handler for v1.
-- Open questions deliberately deferred to a future iteration are listed in the **Open questions** section at the end; the future items (drill-down, refresh control, cohort aggregations) are out of scope for v1.
+- The user confirmed: (a) fix the `N` vs `E` distinction in the data analysis service rather than plaster over it in the display; (b) supersede the "amber = 3" anchor in favour of a dynamic midpoint rule; (c) **rename `lastUpdated` to `updatedAt` on `AssignmentPartial`** as a deliberate breaking change with no backwards-compat shim, so the field name is consistent with the rest of the codebase; the card's "Last Assessed" line reads from `updatedAt`, and a null `updatedAt` on a candidate assignment is a data bug that fails fast at the adapter boundary (page renders blocking state); (d) the Recent Assignment Card title should be the assignment name (not the literal "Recent Assignments" repeated on every card — the section heading renders that once); (e) the Average cell is visually emphasised while the other three cells are uniform; (f) the card is fully static with no hover or click handler for v1; (g) the cell text in pills is just the formatted number (e.g. `2.18`), with no value-with-threshold label; (h) the v1 routing model is a **child route under `classes`** (no new top-level `class-detail` nav key, no URL-based routing in v1); (i) the disabled `Select` placeholder for "Viewing: Overall Class Averages" is **replaced with a static `Typography.Text` label** in v1; (j) the in-page `Back to Classes` button is **dropped** in favour of the sidebar + breadcrumb affordances only.
+- Open questions deliberately deferred to a future iteration are listed in the **Open questions** section at the end; the future items (drill-down, refresh control, cohort aggregations, URL-based routing, alternative views) are out of scope for v1 and recorded as v1.1+ non-goals.
 
 ## Purpose
 
@@ -22,18 +23,26 @@ This feature will **not** add editing of student details, new assessment workflo
 
 ## Confirmed product decisions
 
-1. **Separate top-level navigation key** (Q1 = B). The class page is its own page in the shell, not a state swap inside `ClassesPage`. This keeps the class page's growing complexity out of `ClassesPage`.
+1. **Class page uses a child route under `ClassesPage`, not a separate top-level navigation key.** The `AppNavigationKey` enum stays at the four top-level keys (`dashboard | classes | assignments | settings`). When the user clicks the View button on a class card, `ClassesPage` (or a shared composition) receives a `selectedClassId` and renders the class detail inline; the active nav key remains `classes`, so the sidebar `Classes` entry stays highlighted. The breadcrumb is rendered by the class detail view itself, not by the shell, because the shell does not know a class is selected. **v1 trade-offs accepted:** no deep linking (`?classId=...` does not work), no browser back/forward support for the class detail, refresh from the class detail drops the user back to the class list. These are recorded as v1.1+ non-goals under "Future: URL-based routing" in the Open questions section.
 2. **View-entry fetch of the full AB class** (Q2 = A). Startup warmup is unchanged. When the user opens a class page, the page issues a `getABClass` query via the existing `queryKeys.abClass(classId)` key. The page renders a shape-matched skeleton while the fetch is in flight.
 3. **Recently completed = three assignments with the most recent activity timestamp** (Q3). For v1, "activity timestamp" = the `updatedAt` field on each `AssignmentPartial` inside `ClassFull.assignments[]`, sorted descending. Fewer than three cards are shown when the class has fewer assignments; cards are centre-aligned in that case. The card labels this line "Last Assessed:" (not "Completed:"), reflecting the per-assessment activity semantic.
 4. **Naming note (Q3 clarification — resolved during card planning by decision 12).** The card needs the per-assignment-instance activity timestamp, semantically "when was this assignment last assessed?". The codebase has three timestamp fields that sound related: `AssignmentPartial.lastUpdated` (per-assignment-instance, currently nullable), `StudentSubmissionPartial.updatedAt` (per-submission, non-nullable), and `AssignmentDefinitionPartial.updatedAt` (per-definition, nullable). None of the three maps cleanly to a non-nullable "last assessed" timestamp. The user has chosen to **rename `AssignmentPartial.lastUpdated` to `updatedAt` and make it the canonical "last assessed" timestamp** (decision 12 below). This is a deliberate breaking schema change; no backwards-compat shim is added. After the rename, `AssignmentPartial.updatedAt` is the source of the "Last Assessed" line.
 5. **Adapter is a separate feature-local module** that takes the data analysis service's typed output and produces the per-assignment and per-student shape the UI consumes. The adapter is feature-scoped; the data analysis service stays a pure, presentational-agnostic orchestrator.
 6. **Average column = the analyser's `overall` metric** (the 40/40/20 weighted overall by default, with the SPaG-renormalisation rule inherited from the analyser).
-7. **"Edit Student Details"** is rendered as a disabled button in v1 with an Ant Design `Tooltip` reading `Coming soon` to explain the placeholder.
+7. **"Edit Student Details"** is rendered as a disabled button in v1 with an Ant Design `Tooltip` reading `Coming soon` to explain the placeholder. The `Tooltip` wraps a `span` (or `div`) so it triggers on hover, since Ant Design v6 `Tooltip` does not trigger on a disabled `Button` directly.
 8. **"Start New Assessment"** opens the existing `AssessTaskModal` with the current `classId` and `className`, identical to the `ClassesPage` card flow.
-9. **No backend changes** are required. `getABClass` exists; the `AveragingAnalyser` is a pure frontend orchestrator. **Superseded by decision 10**: the data analysis service is in scope after all (see Data analysis service changes below). The "no backend changes" half of the decision still holds — only the frontend `AveragingAnalyser` and `dataAnalysis.zod.ts` change.
+9. **Backend changes are limited to the `AssignmentPartial` rename deliverable** (decision 12). The data analysis service change is frontend-only (the analyser's `MetricResult` shape changes, but no backend transport contract changes). The Class page itself introduces no backend changes. The full backend file list lives in the rename deliverable's "Files affected" section, not in a separate "Backend changes" section.
 10. **`N` vs `E` distinction is a data analysis service concern, not a display concern.** The current analyser conflates "not attempted" (raw `score === 'N'`), "no data points", and "processing error" into a single `value: null` state. This is wrong. The analyser must preserve and surface `N` (legitimate not-attempted) and `E` (processing error / no usable data) as first-class states. The display layer consumes the resulting richer `MetricResult` and renders each state distinctly. The user explicitly chose to fix the contract now rather than plaster over it in the display.
-11. **Heatmap pill band boundaries are dynamic, derived from a configurable scoring range.** The helper takes an optional `{ lower, upper }` range (default `{ lower: 0, upper: 5 }`) and computes the boundaries as midpoints: `amber = (lower + upper) / 2`, `red/amber = (lower + amber) / 2`, `amber/green = (amber + upper) / 2`. This supersedes the previously discussed "amber = 3" anchor. The bands become equal-width thirds of the range: red occupies the lowest 25 %, amber the middle 50 %, green the top 25 %.
+11. **Heatmap pill band boundaries are dynamic, derived from a configurable scoring range.** The helper takes an optional `{ lower, upper }` range (default `{ lower: 0, upper: 5 }`) and computes the boundaries as midpoints: `red/amber = (3·lower + upper) / 4`, `amber/green = (lower + 3·upper) / 4`. For the default range, the boundaries are `1.25` and `3.75`. Boundary inclusivity: `red: value < (3·lower + upper)/4`; `amber: (3·lower + upper)/4 ≤ value < (lower + 3·upper)/4`; `green: value ≥ (lower + 3·upper)/4`. The amber band is the middle 50% of the range; red and green are 25% each. The helper validates `range.upper > range.lower` at function entry and throws if violated (fail-fast in development).
 12. **Rename `AssignmentPartial.lastUpdated` to `AssignmentPartial.updatedAt` as a deliberate breaking schema change, with no backwards-compat shim.** The codebase has three timestamp fields whose names overlap (`AssignmentPartial.lastUpdated`, `StudentSubmissionPartial.updatedAt`, `AssignmentDefinitionPartial.updatedAt`). The card's "Last Assessed" line is semantically a per-assignment-instance activity timestamp, which is exactly what `AssignmentPartial.lastUpdated` already represents. Renaming the field to `updatedAt` brings the assignment model in line with the rest of the codebase and removes the confusion. This is a breaking change: every frontend and backend caller that reads `AssignmentPartial.lastUpdated` must be updated to read `AssignmentPartial.updatedAt` in the same change. No aliasing, no deprecation period, no migration helper. **Fail-fast semantics:** a `null` `updatedAt` on a candidate assignment is a data bug; the adapter throws and the page renders a blocking state. The `—` placeholder is no longer used for this line. The renamed field is the new canonical source for the "Last Assessed" timestamp.
+13. **Pill cell text is just the formatted number** (e.g. `2.18`). The `MetricPill` renders `value.toFixed(precision)`; there is no value-with-threshold label, no band suffix, no "Green" / "Amber" text. The colour carries the band; the value carries the number. This decision resolves open-question §10.
+14. **Back affordances in v1 = sidebar `Classes` entry + breadcrumb `Classes` segment only.** The in-page `Back to Classes` button is removed. The two shell affordances are consistent with the other pages in the app (`DashboardPage`, `AssignmentsPage`, `SettingsPage` have no in-page back button). The breadcrumb's `Classes` segment is a clickable link that clears `selectedClassId` and keeps the nav key on `classes`.
+15. **`StudentAveragesTableCard` renders a static `Typography.Text type="secondary"` label "Viewing: Overall Class Averages" instead of a disabled `Select`.** The `Select` placeholder added no value (a disabled _option_ still renders an interactive dropdown with no selectable items) and the alternative-views feature is v1.1+ scope. The model's `filters.viewing` field is therefore removed from v1.
+16. **Number formatting precision is `2` decimal places by default** on `MetricPill` (matches the mockup's `2.18`, `3.60`, `5.00` examples). The precision is a `MetricPill` prop so future call sites can override it per use case.
+17. **`metricDisplay/` subfolder is created for the two shared display-helper files** (`metricTone.ts`, `MetricPill.tsx`). The subfolder creation is justified under `src/frontend/AGENTS.md` §12 (≥2 files sharing the `metricDisplay` domain prefix). The `index.ts` barrel is **not** created; consumers import directly: `import { resolveMetricTone } from '.../metricDisplay/metricTone';`. Per `src/frontend/AGENTS.md` §12, "Barrel exports are optional; prefer direct imports for clarity unless a service domain exports many unrelated symbols" — `metricTone` and `MetricPill` are highly related (one calls the other) so direct imports are clearer.
+18. **The breadcrumb's `Classes` segment is rendered by the class detail view itself, not by `appNavigation.tsx`.** Because the class detail is a child of `ClassesPage` (decision 1), the shell's `getBreadcrumbItems` function stays a 2-segment function of the nav key. The third segment (`{className}`, non-clickable) is appended by the class detail view. The clickable `Classes` segment of the breadcrumb is also wired inside the class detail view, not in the shell.
+19. **The `AssignmentPartial.updatedAt` (renamed) field is `z.string().nullable()` in the Zod schema** (cardinality preserved: always present, may be null). The null-handling _semantics_ change: a null `updatedAt` on a candidate assignment is treated as a data bug, not a soft signal. The schema type does not change.
+20. **The assignment-level rollup rule (in `classPageAdapter`) uses the exact same precedence and per-metric `notAttempted` handling as the analyser's per-student / per-class rollup rule.** Both call sites use a shared `rollupMetric` helper extracted to a small utility module. The rule: (a) if any sub-task is `computed`, the rollup is `computed` and a weighted average is computed over `computed` and `notAttempted` sub-tasks only (`notAttempted` contributes 0 for accuracy/completeness, excluded for SPAG); `error` sub-tasks are excluded. (b) If no sub-task is `computed` but at least one is `notAttempted`, the rollup is `notAttempted`. (c) Otherwise (all sub-tasks are `error`), the rollup is `error`.
 
 ## Existing system constraints
 
@@ -57,8 +66,8 @@ This feature will **not** add editing of student details, new assessment workflo
 
 ### Frontend / architecture
 
-- `appNavigation.tsx` uses a state-based `AppNavigationKey` enum (`dashboard | classes | assignments | settings`). The breadcrumb supports exactly two segments today; the class page needs a third segment (`/ Classes / {className}`).
-- `ClassesPage` currently renders the disabled View button at `src/frontend/src/pages/ClassesPage.tsx:163-165`.
+- `appNavigation.tsx` uses a state-based `AppNavigationKey` enum (`dashboard | classes | assignments | settings`). The breadcrumb supports exactly two segments today (`AssessmentBot Frontend / {navKey}`). The class page's third segment (`{className}`) is rendered by the class detail view itself, not by `appNavigation.tsx`'s `getBreadcrumbItems` (which stays a 2-segment function of the nav key). The class detail view also wires the click handler on the breadcrumb's `Classes` segment.
+- `ClassesPage` currently renders the disabled View button at `src/frontend/src/pages/ClassesPage.tsx:163-165`. The class detail view is rendered inline by `ClassesPage` (or a shared composition) when a `selectedClassId` is set, rather than by a separate top-level page.
 - `AssessTaskModal` is reusable as-is. It reads `classId`, `className`, `onClose` — no signature change required.
 - The shell's `App.useApp()` provider is available for context-aware `message` / `notification` feedback if needed.
 - Shared helpers, query infrastructure, and width tokens are documented in `docs/developer/frontend/`. The new feature must follow these policies.
@@ -131,7 +140,7 @@ The rationale: a null `updatedAt` on an assignment with submissions is a data-in
 - **`src/frontend/src/services/googleClassrooms/classDetail/classDetailService.spec.ts`** — update any test fixtures that use `lastUpdated` (line 60) to use `updatedAt`.
 - **`src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.spec.ts`** — update any test fixtures that use `lastUpdated` on `AssignmentPartial`.
 
-- **`src/backend/Models/Assignment.js`** — rename `this.lastUpdated` to `this.updatedAt`; update `toPartialJSON()` (line 77) to emit `updatedAt`; rename methods `getLastUpdated` → `getUpdatedAt`, `setLastUpdated` → `setUpdatedAt`, `touchUpdated` → `touchUpdated` (this method name already uses the new convention and is fine as-is, but verify); update `knownFields` to reflect the new field name.
+- **`src/backend/AssignmentProcessor/Assignment.js`** — rename `this.lastUpdated` to `this.updatedAt`; update `toPartialJSON()` (line 77) to emit `updatedAt`; rename methods `getLastUpdated` → `getUpdatedAt`, `setLastUpdated` → `setUpdatedAt`; update `touchUpdated()` (line 370) to call the renamed `setUpdatedAt()` internally; update `knownFields` to reflect the new field name. Also update the JSDoc comment at line 366–368 ("Updates the lastUpdated timestamp...") to reference `updatedAt`.
 - **`src/backend/y_controllers/AssignmentController.js`** — update the stale comment at line 152 (`// Update lastUpdated value and persist assignment data`) to reference `updatedAt`.
 - **No change needed in `src/backend/z_Api/abclass/abclassRead.js`** — the `getABClass` transport handler delegates to `ABClassController.readClass()`, which relies on `Assignment.toPartialJSON()` for serialising the per-assignment fields. The rename is fully contained within `Assignment.js`; no date normalisation is performed at this handler level (see the existing JSDoc in `abclassRead.js:50-56`).
 - **`src/backend/z_Api/assignmentAssessment.js`** — update `DateUtils.normaliseDateFields(response, ['dueDate', 'lastUpdated', 'createdAt'])` (line 141) to use `'updatedAt'` instead of `'lastUpdated'`. This is critical: missing this rename would cause the date-normalisation step to silently skip the renamed field, leaving live `Date` objects in the response that violate `google.script.run` serialisation constraints.
@@ -166,8 +175,9 @@ The current `MetricResult` (`src/frontend/src/services/dataAnalysis/dataAnalysis
 1. A raw score of `'N'` (student did not attempt) — legitimate not-applicable state.
 2. No submissions at all (the student has no work to assess).
 3. All submissions for a criterion were structurally invalid or otherwise unusable.
+4. A submission exists for the criterion but its `items` dict has no entry for that criterion's `taskId` (i.e. `items[taskId]` is `undefined` for a criterion that exists in the assignment definition). The submission is structurally valid wire data, but the criterion has no assessment score. **This case is treated as `error`** (no usable data points for the criterion) because the absence is data-side, not student-side. A student cannot have _attempted_ a criterion whose assessment was never recorded.
 
-The teacher cannot distinguish these three on screen. Per the user's decision 10, the analyser must preserve and surface each case as a first-class state, not collapse them into `null`.
+The teacher cannot distinguish these cases on screen. Per the user's decision 10, the analyser must preserve and surface `N` (not attempted) and `E` (processing error / no usable data) as first-class states, not collapse them into `null`.
 
 ### Proposed new `MetricResult` shape
 
@@ -224,20 +234,33 @@ A "mixed" case (e.g., a student with one numeric score and one `'N'`) produces `
 
 **Rollup rule (per-student, per-class, per-assignment):** when rolling sub-accumulator states upward, classify them into `computed` / `notAttempted` / `error` and apply the following precedence:
 
-1. If **any** sub-accumulator is `computed`, the rollup is `computed` — but only the `computed` and `notAttempted` sub-accumulators participate in the weighted average (not attempted assigns a score of 0 for accuracy and completeness, but does not affect the SPAG score); `error` sub-accumulators are excluded from the calculation.
+1. If **any** sub-accumulator is `computed`, the rollup is `computed` — but only the `computed` and `notAttempted` sub-accumulators participate in the weighted average:
+   - For **accuracy** and **completeness**: `notAttempted` contributes a score of `0` — its weight is included in the denominator, zero in the numerator.
+   - For **SPAG**: `notAttempted` is **excluded** from the calculation — its weight is not counted in the denominator (consistent with the principle that SPAG cannot be assessed on unsubmitted work).
+   - For the **average (overall)**: `notAttempted` is also **excluded** — the overall is a composite of the three per-criterion rollups, not a fourth independent weighted average.
+   - `error` sub-accumulators are **excluded** from the calculation in all four metrics.
 2. If **no** sub-accumulator is `computed` but **at least one** is `notAttempted`, the rollup is `notAttempted`.
 3. Otherwise (all sub-accumulators are `error`), the rollup is `error`.
 
-Rationale: the LLM service sometimes fails on a single task; blocking the entire assignment's computation for one task failure is overkill and limits the usefulness of the tool. `error` sub-tasks are excluded gracefully, not propagated. The rollup only escalates to `error` when there is nothing left to average over.
+Rationale: the LLM service sometimes fails on a single task; blocking the entire assignment's computation for one task failure is overkill and limits the usefulness of the tool. `error` sub-tasks are excluded gracefully, not propagated. The rollup only escalates to `error` when there is nothing left to average over. The per-metric differentiation for `notAttempted` reflects the pedagogical reality that unsubmitted work correctly scores 0 for completion and correctness but cannot be evaluated for SPAG.
+
+**Shared `rollupMetric` helper (used by both the analyser and `classPageAdapter`):** The rollup rule is shared between two call sites:
+
+- The analyser's `buildPerStudentRows` and `buildPerTaskRows` aggregate per-criterion sub-accumulator states into per-student / per-task `MetricResult` values.
+- The class page's `classPageAdapter` aggregates per-task `MetricResult` values into per-assignment `MetricResult` values.
+
+To keep the two call sites in lock-step, the rollup rule is extracted to a small utility module (e.g. `src/frontend/src/services/dataAnalysis/analysers/rollupMetric.ts`) and called by both. The utility takes a list of sub-task `MetricResult` values and a `metric` (which one of the four is being rolled up: `completeness | accuracy | spag | average`) and returns the rolled-up `MetricResult`. The utility has no React / antd deps and is a pure function.
 
 **Failure modes that produce a hard throw (not `error` state):** divide-by-zero during weighted averaging on this criterion, `NaN`/`Infinity` in the result, unexpected schema-shape violations. These are not caught and converted to `error`; they propagate as exceptions from the data analysis service, and the page surfaces them as a blocking state via the existing fail-closed pattern (`frontend-loading-and-width-standards.md` §5). The accumulator's contract is the three-state assignment; defensive guards for `NaN`/`Infinity` etc. are not added in v1.
 
 ### Files affected by this deliverable
 
 - **`src/frontend/src/services/dataAnalysis/dataAnalysis.zod.ts`** — replace the `MetricResultSchema` definition per the new shape. Update `AveragingAnalyserInput`, `AveragingResult`, `PerStudentRow`, `PerTaskRow`, `PerClassResult`, and `DataAnalysisResponseSchema` to thread the new `MetricResult` shape through.
-- **`src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.accumulation.ts`** — update `accumulateMetricsToTarget` to track `'N'` scores via the new `nCount` field on each sub-accumulator. Update `accumToMetric` to map the accumulator state to a `MetricResult` discriminated union value using the three-way check (`applicableDataPoints > 0` → `computed`, `nCount > 0` → `notAttempted`, otherwise `error`). Also extract a shared `rollupMetric` helper (see the rollup rule above) used by both `buildPerStudentRows` and `buildPerTaskRows`.
+- **`src/frontend/src/services/dataAnalysis/analysers/rollupMetric.ts`** (new) — the shared `rollupMetric` helper that both the analyser and `classPageAdapter` call. Pure function, no React / antd deps. Co-located `.spec.ts` covering the four-metric × three-state matrix.
+- **`src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.accumulation.ts`** — update `accumulateMetricsToTarget` to track `'N'` scores via the new `nCount` field on each sub-accumulator. Update `accumToMetric` to map the accumulator state to a `MetricResult` discriminated union value using the three-way check (`applicableDataPoints > 0` → `computed`, `nCount > 0` → `notAttempted`, otherwise `error`).
 - **`src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.rows.ts`** — update `buildPerStudentRows` and `buildPerTaskRows` to call the shared `rollupMetric` helper when aggregating across sub-accumulators, rather than calling `accumToMetric` directly on each sub-accumulator. This ensures both row builders apply the same `error` > `notAttempted` > `computed` precedence rule.
 - **`src/frontend/src/services/dataAnalysis/dataAnalysis.zod.spec.ts`** — rewrite the `MetricResultSchema` test cases for the discriminated union. Add explicit tests for each of the three states.
+- **`src/frontend/src/services/dataAnalysis/analysers/rollupMetric.spec.ts`** (new) — co-located spec covering the four-metric × three-state matrix (e.g. accuracy with mix of computed + notAttempted; SPAG with notAttempted excluded; overall with all-notAttempted; all-error → error).
 - **`src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.accumulation.spec.ts`** — rewrite the accumulator tests to assert the state output.
 - **`src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.rows.spec.ts`** — rewrite the per-student / per-task rollup tests with the new state.
 - **`src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.spec.ts`** — update the end-to-end analyser tests to assert the new state shape.
@@ -278,8 +301,14 @@ Frontend, in approximate ownership order:
 
 ### Page-level (composition roots; thin)
 
-- **`src/frontend/src/pages/ClassPage.tsx`** — page composition root. Owns the heading, summary, header actions, modal state, and delegates to the feature components. Full contract in [Component-level behaviour — `ClassPage.tsx` (composition root)](#component-level-behaviour--classpagetx-composition-root) above.
-- **`src/frontend/src/pages/pageContent.ts`** — add a `classDetail` entry (heading + summary strings) so the breadcrumb and page both read from one source.
+- **`src/frontend/src/features/classPage/ClassPage.tsx`** — page composition root (moved out of `pages/` since the class detail view is a child of `ClassesPage` per decision 1; the canonical `pages/` is reserved for top-level pages). Owns the heading, summary, header actions, modal state, breadcrumb `Classes` link wiring, and delegates to the feature components. Full contract in [Component-level behaviour — `ClassPage.tsx` (composition root)](#component-level-behaviour--classpagetx-composition-root) above.
+- **`src/frontend/src/pages/pageContent.ts`** — add a `classDetail` entry (heading + summary strings) so the breadcrumb and page both read from one source. Concrete example shape (the action plan's layout / copy pass will finalise the wording with product):
+  ```ts
+  classDetail: {
+    heading: 'Class Overview',
+    summary: 'Review assessment performance for this class.',
+  }
+  ```
 
 ### Feature-level (`src/frontend/src/features/classPage/`)
 
@@ -399,15 +428,15 @@ The `error` color (`volcano`) is the existing Ant Design preset for "important b
 
 ### Behaviour
 
-- **Pure function.** No side effects, no React imports, no Ant Design imports, no I/O, no state, no thrown exceptions.
+- **Pure function.** No side effects, no React imports, no Ant Design imports, no I/O, no state.
 - **Defaults live in the function signature** (per `src/frontend/AGENTS.md` §11). `range` defaults to `{ lower: 0, upper: 5 }`; `errorColor` defaults to `'volcano'`.
-- **No range validation.** A `range.upper <= range.lower` is undefined behaviour in v1; the helper does not throw or warn.
-- **No `NaN` / `Infinity` guards.** The `metric.value` is taken as-is for `computed` states. If a caller passes a `MetricResult` with `value: NaN` or `value: Infinity`, the function returns the value through; the data analysis service is contractually responsible for not producing such values (see "Failure modes that produce a hard throw" in the Data analysis service changes section).
+- **Range validation.** The helper throws an `Error` at function entry if `range.upper <= range.lower`. This is a development-time fail-fast guard: a degenerate range would silently invert the band logic (green threshold becomes lower than red threshold), and the team should see the bug immediately. The thrown `Error` message references the supplied `range` for diagnostics.
+- **No `NaN` / `Infinity` guards.** The `metric.value` is taken as-is for `computed` states. The data analysis service _throws_ on divide-by-zero or invalid results before producing a `MetricResult`; `metricTone` is therefore only ever called with valid `computed` values. The "no `NaN`/`Infinity` guard" reasoning is not "the analyser is contractually responsible for not producing such values" (which would be circular) but "the analyser throws upstream, so this code path is unreachable in practice".
 - **No caching / memoisation.** The function is cheap to call; `MetricPill` invokes it on every render. If a future caller discovers a hot path, memoisation is a localised change inside `MetricPill`.
 
 ### Composition
 
-- `metricTone` is called only by `MetricPill` in v1. Future callers (cohort, trend, distribution analyses per `docs/pedagogy/data-analysis-scoring.md:92-99`) can import it directly from the `metricDisplay` barrel.
+- `metricTone` is called only by `MetricPill` in v1. Future callers (cohort, trend, distribution analyses per `docs/pedagogy/data-analysis-scoring.md:92-99`) import it directly: `import { resolveMetricTone } from 'src/frontend/src/services/dataAnalysis/metricDisplay/metricTone';` (no barrel — see decision 17).
 - The helper is **not** called by `classPageAdapter` or `classPageModel` — those modules deal in `MetricResult` values, not `MetricToneResolution` values. The mapping from `MetricResult` to `MetricToneResolution` happens in the presentational layer (`MetricPill`).
 - The helper is **not** called by `useClassPageData` — that hook deals in `MetricResult` values and feature-specific shapes.
 
@@ -466,7 +495,6 @@ The component renders a single Ant Design `Tag` with the following structure:
 ```tsx
 <Tag
   color={resolution.color}
-  variant="filled"
   style={{
     // Emphasised style: larger font, bolder weight
     ...(emphasised ? { fontSize: '1.25em', fontWeight: 600 } : {}),
@@ -478,7 +506,9 @@ The component renders a single Ant Design `Tag` with the following structure:
 </Tag>
 ```
 
-The exact inline style values (font size, weight, padding, opacity) are layout-spec concerns and will be confirmed against the mockup. The contract is the presence of these styles, not the exact pixel values.
+The Ant Design v6 `Tag` component has no `variant` prop; the filled/solid/outlined look is achieved via the `color` preset (the resolved `MetricToneColor` is one of the five preset tokens: `red`, `gold`, `green`, `default`, `volcano`). The `bordered` prop is left at its default (bordered) for v1; the implementation agent may set `bordered={false}` if the mockup calls for a borderless look.
+
+The exact inline style values (font size, weight, padding, opacity) are part of this spec's contract, not deferred to a layout spec. The recommended values match the mockup: `fontSize: '1.25em'`, `fontWeight: 600` (when `emphasised`); `opacity: 0.7` (when `muted`). If the implementation agent finds a clearer visual treatment, the change is localised to `MetricPill` and does not affect any consumer.
 
 ### Rendering rules per `MetricResult` state
 
@@ -495,6 +525,8 @@ The exact inline style values (font size, weight, padding, opacity) are layout-s
 - The pill does **not** add a `Tooltip` in v1. A future iteration may add a `Tooltip` wrapper with screen-reader-friendly copy (e.g. "Completeness: 2.18 out of 5 — Green band") — deferred to v1.1.
 - The `emphasised` flag applies to the pill's font size and weight only. It does not change the color, the precision, or the display value.
 - The `muted` flag (from `resolveMetricTone`) applies a lower opacity to the pill. It is set only for `notAttempted`; the `computed` and `error` pills are always fully opaque.
+
+**Known accessibility gap (v1.1 follow-up).** Color-coded pills with no text alternative fail WCAG 1.1.1 (Non-text Content) and 1.4.1 (Use of Color) for screen-reader and color-blind users. In v1, a teacher's eye recognises the state from the colour + the single-character label (`2.18`, `N`, `E`), but a screen reader announces only the label — it cannot distinguish `notAttempted` (`N` in grey) from `error` (`E` in volcano) from a low `computed` value without the colour context. v1.1 will add a `Tooltip` wrapper with screen-reader-friendly copy (e.g. `aria-label="Completeness: Not Attempted"`). This is a deliberate v1 trade-off, not a deferred nice-to-have; the product has signed off on the gap.
 
 ### Number formatting
 
@@ -546,7 +578,7 @@ This section pins down the contract for `src/frontend/src/features/classPage/cla
 - The student-averages no-data row synthesis (all students from `classFull.students` get a row, with a synthesised `notAttempted` row for unassessed students).
 - The date formatting via the shared `formatUpdatedAtLabel` helper.
 - The fail-fast semantics for null `updatedAt` (throws, no `—` placeholder).
-- The Zod schema for the view-model output (optional co-located `classPageAdapter.zod.ts`).
+- The Zod schema for the view-model output (co-located `classPageAdapter.zod.ts` is **required**, not optional — the adapter is a trust boundary between the analyser and the UI, and per `src/frontend/AGENTS.md` §8, Zod-first validation is mandatory for trust boundaries).
 
 **Out of scope** (owned elsewhere)
 
@@ -614,17 +646,20 @@ After building all models, sort by `updatedAt` desc, take the top 3. If fewer th
 
 #### Assignment-level rollup rule
 
-For each of the four criteria (`completeness`, `accuracy`, `spag`, `average`), classify sub-tasks into `computed` / `notAttempted` / `error`:
+The assignment-level rollup uses the **exact same precedence and per-metric `notAttempted` handling** as the analyser's per-student / per-class rollup. The rule is implemented once as a shared `rollupMetric` helper (extracted to `src/frontend/src/services/dataAnalysis/analysers/rollupMetric.ts` — see the data analysis service changes section) and called by both the analyser's `buildPerStudentRows` / `buildPerTaskRows` and by `classPageAdapter`. The adapter does **not** re-implement the rule.
 
-- If zero sub-tasks are `computed` and all sub-tasks are `error`, the rolled metric is `error`.
-- If zero sub-tasks are `computed` and **at least one** sub-task is `notAttempted`, the rolled metric is `notAttempted`.
-- Otherwise (at least one `computed` sub-task), compute a weighted average over the `computed` and `notAttempted` sub-tasks only, with `error` sub-tasks excluded. The handling of `notAttempted` sub-tasks depends on the metric:
+For each of the four criteria (`completeness`, `accuracy`, `spag`, `average`), classify sub-tasks into `computed` / `notAttempted` / `error` and apply the shared rule:
+
+- If at least one sub-task is `computed`, the rolled metric is `computed` and a weighted average is computed over `computed` and `notAttempted` sub-tasks only, with `error` sub-tasks excluded. The handling of `notAttempted` sub-tasks depends on the metric:
   - For **accuracy** and **completeness**: `notAttempted` contributes a score of **0** — its weight is included in the denominator, zero in the numerator.
-  - For **SPAG** and the **average (overall)**: `notAttempted` is excluded from the calculation — its weight is not counted in the denominator, consistent with the principle that SPAG cannot be assessed on unsubmitted work, and that the overall is a composite of the three per-criterion rollups.
+  - For **SPAG**: `notAttempted` is excluded — its weight is not counted in the denominator (SPAG cannot be assessed on unsubmitted work).
+  - For the **average (overall)**: `notAttempted` is also excluded — the overall is a composite of the three per-criterion rollups, not a fourth independent weighted average.
+- If no sub-task is `computed` but at least one is `notAttempted`, the rolled metric is `notAttempted`.
+- Otherwise (all sub-tasks are `error`), the rolled metric is `error`.
 
 The rationale: the LLM service sometimes fails on a single task; blocking the entire assignment's computation for one task failure is overkill and limits the usefulness of the tool. `error` sub-tasks are excluded gracefully, not propagated. The rollup only escalates to `error` when there's nothing left to average over. The per-metric differentiation for `notAttempted` reflects the pedagogical reality that unsubmitted work correctly scores 0 for completion and correctness but cannot be evaluated for SPAG.
 
-The same rule is applied to the analyser's per-student and per-class rollups (see the "Data analysis service changes" lead deliverable section, rollup rule at line 227). The adapter's assignment-level rollup is the fourth application of the rule.
+The shared `rollupMetric` helper ensures the analyser and the adapter cannot drift: a change to the rule is made once and both call sites benefit. The action plan must include a red-first test for the helper that covers the four-metric × three-state matrix; both the analyser's spec and the adapter's spec exercise the same helper.
 
 #### Student averages — full roster, with no-data rows
 
@@ -638,6 +673,8 @@ The same rule is applied to the analyser's per-student and per-class rollups (se
 4. Sort by `studentName` ascending (case-insensitive, locale-aware, with `studentId` as the deterministic tie-breaker).
 
 The `notAttempted` state already supports the no-data case, so no new discriminator is needed.
+
+**Staleness guarantee.** The hook's analyser `useMemo` is keyed on `[classFull, assignmentDefinitionPartials]` (not on `[analyserResult, ...]`). Any change to `classFull` — including changes to `classFull.students` — triggers a fresh analyser run before the adapter synthesises rows. The no-data row synthesis therefore always reflects the current roster. If the class roster is mutated in the background (e.g. a new student is added via `ClassesPage`), the next time the class page mounts (or React Query invalidates), the new roster is fetched, the analyser re-runs, and the adapter re-synthesises.
 
 #### Class metrics passthrough
 
@@ -655,9 +692,15 @@ The `—` fallback in `formatUpdatedAtLabel` is **not** used for the class page.
 
 #### Trust validation
 
-The adapter validates the input shape via Zod before processing. If `classFull` is structurally invalid (e.g. duplicate student IDs, missing required fields, malformed assignments), the adapter throws. The hook surfaces the throw as a blocking state.
+The adapter validates the input shape via Zod before processing, but the validation is **not** a duplicate of the transport-boundary validation. The transport boundary (`getABClass`) already enforces the `ClassFull` Zod schema (catching missing required fields, malformed assignments, type mismatches). The adapter's validation adds only the invariants the transport schema cannot express:
+
+- **Uniqueness of `studentId` within `classFull.students`.** The transport schema does not enforce uniqueness (Zod's `.array(...)` does not check). Duplicate student IDs would silently merge the per-student metrics from the analyser and corrupt the table. The adapter throws if duplicates are found.
+- **Uniqueness of `assignmentId` within `classFull.assignments`.** Same reasoning.
+- **Non-emptiness of `classFull.assignments` when `classFull.students` is non-empty.** An empty `assignments` array on a non-empty class is a data-integrity issue worth surfacing.
 
 The adapter does **not** validate the `MetricResult` discriminated union; that is the analyser's responsibility (the analyser validates via Zod before returning).
+
+The adapter's trust validation is the source of the `error.type === 'adapterError'` blocking state in `useClassPageData`. The error message references the specific invariant that failed and the offending IDs for diagnostics.
 
 ### Behaviour
 
@@ -687,25 +730,25 @@ This section pins down the contract for `src/frontend/src/features/classPage/use
 
 ### Purpose and scope
 
-`useClassPageData` is the data orchestrator hook for the Class page. It wires together the per-class query (`getABClass({ classId })`), the warm-up-backed read of `assignmentDefinitionPartials`, the synchronous `DataAnalysisService.analyse(...)` call, and the `classPageAdapter.adaptClassPageToViewModel(...)` call. The hook produces a single typed `ClassPageData` result that includes the raw inputs, the derived analyser + adapter output, the structured error (if any), and the combined loading / blocking / ready / busy surface state per `frontend-loading-and-width-standards.md` §2-§5.
+`useClassPageData` is the data orchestrator hook for the Class page. It wires together the per-class query (`getABClass({ classId })`), the warm-up-backed read of `assignmentDefinitionPartials`, the synchronous `DataAnalysisService.analyse(...)` call, and the `classPageAdapter.adaptClassPageToViewModel(...)` call. The hook produces a single typed `ClassPageData` result that includes the raw inputs, the derived analyser + adapter output, the structured error (if any), and the combined surface state per `frontend-loading-and-width-standards.md` §2-§5.
 
 **In scope**
 
 - Reading the per-class query via `useQuery` with `getABClassQueryOptions(classId)`.
-- Reading the warm-up-backed `assignmentDefinitionPartials` dataset via `usePageDataset('assignmentDefinitionPartials')`.
+- Reading the warm-up-backed `assignmentDefinitionPartials` dataset via `usePageDataset('assignmentDefinitionPartials')` (consumed internally for the surface state, not re-exposed in the output).
 - Calling the analyser inside a `useMemo` once both inputs are available; capturing any thrown error.
 - Calling the adapter inside a `useMemo` once the analyser result is available; capturing any thrown error.
-- Combining the per-class query state, the warm-up-backed dataset state, and the analyser / adapter outcomes into a single `ClassPageData` result with the surface state.
-- Computing the busy state from the underlying query's `isFetching` flags.
+- Combining the per-class query state, the warm-up-backed dataset state, and the analyser / adapter outcomes into a single `ClassPageData.surfaceState` (a discriminated union).
+- Exposing a `refetch` entry point that captures `classId` at call time and re-triggers both queries plus the analyser / adapter pipeline.
 
 **Out of scope** (rendered or owned elsewhere)
 
 - The analyser and adapter themselves — owned by `services/dataAnalysis` and `features/classPage/classPageAdapter.ts` respectively. The hook only invokes them.
 - The model (user-controlled filtering / sorting) — owned by `features/classPage/classPageModel.ts` and called at render time by the section components that own the user-controlled state (search term, sort column). The hook produces the adapter's canonical view-model, not the filtered / sorted view-model.
 - The `AssessTaskModal` open / close state — owned by the page-level composition root.
-- The page rendering decisions (skeleton, blocking, content) — owned by the page-level composition root, which reads `ClassPageData.surfaceState` and `ClassPageData.isBusy`.
-- The `selectedClassId` shell state — owned by `AppShell`.
-- The loading / blocking primitive components themselves (skeleton, `Alert`) — owned by the page-level composition root. The hook exposes the state; the page renders the primitive.
+- The page rendering decisions (skeleton, blocking, content) — owned by the page-level composition root, which reads `ClassPageData.surfaceState`.
+- The `selectedClassId` state — owned by `ClassesPage` (the class detail view is rendered inline by `ClassesPage` when a `selectedClassId` is set, per decision 1).
+- The loading / blocking primitive components themselves (skeleton, `Result` / `Alert`) — owned by the page-level composition root. The hook exposes the state; the page renders the primitive.
 
 ### Inputs
 
@@ -716,7 +759,7 @@ function useClassPageData(classId: string): ClassPageData;
 
 **Field notes**
 
-- `classId` is the selected class's ID. The page-level composition root reads this from the shell's `selectedClassId` state. The hook does not own this state; it is passed in as a hook argument.
+- `classId` is the selected class's ID. The page-level composition root reads this from the parent (`ClassesPage`'s `selectedClassId` state) and passes it to the hook as an argument. The hook does not own this state; it is a controlled input.
 - The hook is reactive to `classId` changes: if the user navigates from one class to another via the breadcrumb or sidebar, the hook's inputs change and the surface state transitions through loading / blocking / ready accordingly. React Query's `queryKey: queryKeys.abClass(classId)` handles the per-class query keying.
 
 ### Output — `ClassPageData`
@@ -730,7 +773,6 @@ type ClassPageData = Readonly<{
 
   // Raw warm-up-backed dataset
   assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse | null;
-  assignmentDefinitionPartialsDatasetState: PageDatasetState;
 
   // Derived analyser + adapter output
   analyserResult: AveragingResult | null;
@@ -739,9 +781,8 @@ type ClassPageData = Readonly<{
   // The structured error (null if no error)
   error: ClassPageError | null;
 
-  // The combined surface state and busy flag
+  // The combined surface state
   surfaceState: ClassPageSurfaceState;
-  isBusy: boolean;
 
   // The retry entry point. Re-triggers both the per-class query and the
   // warm-up dataset read, and re-runs the analyser + adapter pipeline.
@@ -749,11 +790,12 @@ type ClassPageData = Readonly<{
   refetch: () => void;
 }>;
 
-type ClassPageSurfaceState = Readonly<{
-  isLoading: boolean;
-  isBlocking: boolean;
-  isReady: boolean;
-}>;
+// Discriminated union — the page picks one branch. Mutually exclusive in the
+// rendering sense; impossible to produce an invalid combination.
+type ClassPageSurfaceState =
+  | { status: 'loading' }
+  | { status: 'blocking'; error: ClassPageError }
+  | { status: 'ready' };
 
 type ClassPageError = Readonly<
   | { type: 'classNotFound' }
@@ -768,15 +810,13 @@ type ClassPageError = Readonly<
 **Field notes**
 
 - `classFull` is the per-class query data; `null` while loading, errored, or when the class is not found. The `getABClass` contract maps `ClassNotFoundError` to `null` at the transport boundary (see `classDetailService.ts`).
-- `classFullQuery` is the underlying React Query result, exposed so the page can read `isFetching` and the original error for the busy affordance and diagnostics.
-- `assignmentDefinitionPartials` is the warm-up-backed data; `null` while the dataset is loading, failed, or untrustworthy.
-- `assignmentDefinitionPartialsDatasetState` is the raw `PageDatasetState` from `usePageDataset`, exposed for diagnostics and for any subregion that wants to render its own loading affordance.
+- `classFullQuery` is the underlying React Query result, exposed for diagnostics (the page can read the original `Error` object via the blocking state's `cause`).
+- `assignmentDefinitionPartials` is the warm-up-backed data; `null` while the dataset is loading, failed, or untrustworthy. The hook reads the dataset's `PageDatasetState` internally and consumes the `isDatasetTrustworthy` / `isDatasetFailed` / `isDatasetReady` flags to compute the `surfaceState`; the raw `PageDatasetState` is **not** exposed in `ClassPageData` (the surface state already summarises the dataset).
 - `analyserResult` is the analyser's per-class output; `null` while the analyser hasn't run or threw. The hook calls the analyser only when both `classFull` and `assignmentDefinitionPartials` are non-null.
 - `adapterResult` is the adapter's view-model; `null` while the adapter hasn't run or threw. The hook calls the adapter only when `analyserResult` is non-null.
 - `error` is the structured error describing why the page is in a blocking state. The hook picks the **first** applicable error from the precedence below; the page can read this for diagnostics and the user-facing message.
-- `surfaceState` is the combined `isLoading` / `isBlocking` / `isReady` state. These are mutually exclusive in the rendering sense (the page picks one branch), but the underlying flags may overlap (e.g. `isBlocking` is `true` even if `isLoading` is also `true`).
-- `isBusy` is `true` when any underlying query is fetching (for the localised busy affordance on background refresh, per `frontend-loading-and-width-standards.md` §4).
-- `refetch` is the retry entry point. It re-triggers both the per-class query and the warm-up dataset read, and re-runs the analyser + adapter pipeline. The page-level composition root's blocking `Result.retryButton.onClick` calls this for retryable errors. The hook is the single owner of the retry policy; the page is a thin caller. For non-retryable errors (`classNotFound`, `adapterError`), the page renders a `Back to Classes` button instead.
+- `surfaceState` is a discriminated union over `status`. The `ready` branch has no payload; the `loading` branch has no payload; the `blocking` branch carries the structured `error`. The page switches on `status` and reads the relevant fields. The previous three-flag shape (`isLoading` / `isBlocking` / `isReady`) is removed because the flags could overlap (e.g. `isBlocking: true` with `isLoading: true`) and forced the page to write fragile conditional logic.
+- `refetch` is the retry entry point. It captures `classId` at call time and re-triggers both the per-class query (keyed on `queryKeys.abClass(classId)`) and the warm-up dataset read, then re-runs the analyser + adapter pipeline. If `classId` changes between the time `refetch` is called and the time the new data arrives, React Query's query-key scoping handles cancellation: the in-flight query is keyed on the old `classId`, the new mount uses the new `classId`, and the stale response is discarded. For non-retryable errors (`classNotFound`, `adapterError`), the page renders the breadcrumb's `Classes` link instead of a retry button.
 
 ### Data sources
 
@@ -787,7 +827,7 @@ type ClassPageError = Readonly<
 | `DataAnalysisService.analyse(input, 'averaging')`   | Pure function call inside `useMemo`        | Converts the class + definitions + filter into a per-class `AveragingResult`.                     |
 | `classPageAdapter.adaptClassPageToViewModel(input)` | Pure function call inside `useMemo`        | Converts the analyser result + `classFull` into the view-model shape consumed by the UI sections. |
 
-**Why `classPartials` is NOT read here.** The Class page reads the single class document via `getABClass` (per-class query), not via the `classPartials` warm-up dataset (which is the list of all classes used by `ClassesPage`). The earlier one-line description in the spec had this confused; this section is the source of truth. `classPartials` is not used by `useClassPageData`.
+The Class page reads the single class document via `getABClass` (per-class query), not via the `classPartials` warm-up dataset (which is the list of all classes used by `ClassesPage`). `classPartials` is not used by `useClassPageData`.
 
 ### State machine
 
@@ -799,7 +839,7 @@ The hook combines three independent state machines into a single `surfaceState`:
    - `data === null` (success but null) → blocking (`error.type === 'classNotFound'`)
    - `data !== null` (success with data) → ready input
 
-2. **Warm-up-backed dataset state** (`assignmentDefinitionPartialsDatasetState`):
+2. **Warm-up-backed dataset state** (read internally from `usePageDataset`):
    - `isDatasetFailed && (!hasQueryData || isQueryError)` → blocking (`error.type === 'assignmentDefinitionPartialsFailed'`)
    - `!isDatasetTrustworthy && isDatasetReady` → blocking (`error.type === 'assignmentDefinitionPartialsUntrustworthy'`)
    - `!isDatasetReady && !isDatasetFailed` → loading
@@ -810,14 +850,15 @@ The hook combines three independent state machines into a single `surfaceState`:
    - Adapter throws → blocking (`error.type === 'adapterError'`). Same pattern.
    - Both return valid results → ready input.
 
-**Combined `surfaceState` rules**
+**Combined `surfaceState` rules.** The hook computes `surfaceState` as follows:
 
-| Condition                                                                                                                 | `isLoading`             | `isBlocking` | `isReady` |
-| ------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ------------ | --------- |
-| Any input is in the loading state AND no blocking has occurred                                                            | `true`                  | `false`      | `false`   |
-| Any input has failed (query error, class not found, dataset failed, dataset untrustworthy, analyser error, adapter error) | `false`                 | `true`       | `false`   |
-| All inputs are ready AND analyser and adapter have produced valid results                                                 | `false`                 | `false`      | `true`    |
-| Multiple states overlap (e.g. loading AND blocking)                                                                       | `false` (blocking wins) | `true`       | `false`   |
+| Condition                                                                                                                 | `surfaceState`                  |
+| ------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| Any input is in the loading state AND no blocking has occurred                                                            | `{ status: 'loading' }`         |
+| Any input has failed (query error, class not found, dataset failed, dataset untrustworthy, analyser error, adapter error) | `{ status: 'blocking'; error }` |
+| All inputs are ready AND analyser and adapter have produced valid results                                                 | `{ status: 'ready' }`           |
+
+The `blocking` case takes precedence over `loading` (an error during loading surfaces immediately, not after the loading state resolves).
 
 **Error precedence.** The hook picks the first applicable error from this precedence, top to bottom:
 
@@ -825,8 +866,10 @@ The hook combines three independent state machines into a single `surfaceState`:
 2. `classQueryError` (per-class query errored)
 3. `assignmentDefinitionPartialsFailed` (warm-up dataset failed)
 4. `assignmentDefinitionPartialsUntrustworthy` (warm-up dataset untrustworthy but marked ready)
-5. `analyserError` (analyser threw)
-6. `adapterError` (adapter threw)
+5. `adapterError` (adapter threw — typically a `classFull` structural defect)
+6. `analyserError` (analyser threw — typically a computation error)
+
+`adapterError` precedes `analyserError` because the adapter validates `classFull` structure (the more fundamental data contract) while the analyser runs on the validated input. In practice, `analyserError` and `adapterError` are mutually exclusive (the adapter is only called after the analyser succeeds), but the order reflects causal fundamentality.
 
 The page-level composition root reads `error.type` to pick a user-facing message and diagnostic log. The hook does not format the user-facing message; that's a presentation concern.
 
@@ -834,17 +877,17 @@ The page-level composition root reads `error.type` to pick a user-facing message
 
 - **Pure hook.** No I/O beyond the React Query calls and the synchronous analyser / adapter calls. No `useEffect` (other than what React Query uses internally). No subscriptions, no event listeners.
 - **No data fetching owned by the hook.** All data fetching is delegated to React Query via `useQuery` and `usePageDataset`. The hook only orchestrates the existing primitives.
-- **Memoised analyser call.** The analyser is called inside a `useMemo` keyed on `[classFull, assignmentDefinitionPartials, classId]`. The analyser is not called when either input is `null`. The analyser is re-called only when the inputs change.
+- **Memoised analyser call.** The analyser is called inside a `useMemo` keyed on `[classFull, assignmentDefinitionPartials]`. (`classId` is implicit in `classFull.classId` and is therefore redundant in the key.) The analyser is not called when either input is `null`. The analyser is re-called only when the inputs change.
 - **Memoised adapter call.** The adapter is called inside a `useMemo` keyed on `[analyserResult, classFull]`. The adapter is not called when `analyserResult` is `null`. The adapter is re-called only when the analyser result or class full changes.
 - **No data is mutated.** The hook does not call any mutation hooks (no `useMutation`, no `invalidateQueries`).
 - **No side effects on render.** The hook does not write to console (other than the standard React Query logging via the configured logger), does not dispatch events, does not store anything in local storage or session storage. Logging and error reporting follow `frontend-logging-and-error-handling.md`.
 - **No defaults inside the hook.** The hook takes a single argument (`classId: string`) and produces a single result. There is no optional configuration (no `range`, no `analyserKey`, no `filter`). The analyser key is hardcoded to `'averaging'` (the v1 default) and the filter is `{ classIds: [classId] }` (a single-class filter). Future multi-class or alternative-view filters are out of scope.
 - **Fail loudly.** The hook does not catch-and-ignore analyser or adapter errors. It captures them in the `error` field and surfaces them as a blocking state. Console errors follow the standard logging policy (`frontend-logging-and-error-handling.md`).
-- **Accessibility semantics are not owned by the hook.** The hook produces state; the page renders accessible loading (`role="status"`, `aria-live="polite"`) and busy (`aria-busy="true"`) regions. The hook is silent on accessibility.
+- **Accessibility semantics are not owned by the hook.** The hook produces state; the page renders accessible loading (`role="status"`, `aria-live="polite"`) regions. The hook is silent on accessibility.
 
 ### Composition
 
-- `useClassPageData` is called only by `src/frontend/src/features/classPage/ClassPage.tsx` (the page composition root) in v1.
+- `useClassPageData` is called only by `src/frontend/src/features/classPage/ClassPage.tsx` (the page composition root) in v1. (`ClassesPage.tsx` passes the `selectedClassId` to `ClassPage.tsx`; the class detail is rendered as a child view, not as a top-level page.)
 - The hook calls into:
   - `useQuery` from `@tanstack/react-query` (via `getABClassQueryOptions(classId)`)
   - `usePageDataset` from `src/frontend/src/hooks/usePageDataset.ts`
@@ -868,9 +911,9 @@ This section pins down the contract for `src/frontend/src/features/classPage/cla
 
 - The model function `buildClassPageViewModel` (pure, synchronous).
 - The search filter: case-insensitive substring on `studentName`.
-- The sort: locale-aware, state-aware comparator (`error` → `notAttempted` → `computed` by value, with `studentId` as the tie-breaker for `studentName`).
+- The sort: locale-aware, state-aware comparator (defined for both `asc` and `desc` directions, with `studentId` as the tie-breaker for `studentName`).
 - Pass-through of `recentAssignments` and `classMetrics` (the model does not modify them).
-- Echo of the `viewing` field (a placeholder for future views; always `'overallClassAverages'` in v1).
+- The `viewing` field is **not** in v1. The v1 control is a static `Typography.Text` label (decision 15); alternative views are v1.1+ scope.
 
 **Out of scope** (owned elsewhere)
 
@@ -878,7 +921,7 @@ This section pins down the contract for `src/frontend/src/features/classPage/cla
 - The `RecentAssignmentCardModel` shape (owned by `RecentAssignmentCard`).
 - The `StudentAverageRowModel` shape (owned by `studentAveragesTableColumns`).
 - The user-controlled state itself (the search input, sort state) — owned by the section components that render the controls. The model is called by the section component with the current state at render time.
-- The Ant Design `Input.Search`, `Select`, and `Table` components — the model is a pure function; the UI controls are owned by the table card.
+- The Ant Design `Input.Search` and `Table` components — the model is a pure function; the UI controls are owned by the table card. (`Select` is no longer in v1; the control is a static `Typography.Text` label.)
 
 ### Inputs
 
@@ -888,7 +931,6 @@ buildClassPageViewModel(input: {
   adapterResult: ClassPageAdapterResult;
   filters: {
     searchTerm: string;                           // '' means no filter
-    viewing: 'overallClassAverages';              // placeholder; only one option in v1
   };
   sort: {
     column: 'studentName' | 'completeness' | 'accuracy' | 'spag' | 'average';
@@ -901,9 +943,8 @@ buildClassPageViewModel(input: {
 
 - `adapterResult` is the canonical view-model from `classPageAdapter.adaptClassPageToViewModel`. The model transforms `studentAverages` (filter + sort) and passes through `recentAssignments` and `classMetrics`. The model does **not** re-derive the rollup or the no-data synthesis — those are the adapter's job.
 - `filters.searchTerm` is the current value of the `Input.Search` control. Empty string means no filter. The filter is case-insensitive substring on `studentName`.
-- `filters.viewing` is the current value of the `Select` control. In v1, the only option is `'overallClassAverages'`. The model preserves this value in the output for future use, but the model itself does not branch on it.
 - `sort.column` is the column to sort by. The five options correspond to the five table columns (`Student Name`, `Completeness`, `Accuracy`, `SpAG`, `Average`).
-- `sort.direction` is the sort direction. `'asc'` or `'desc'`.
+- `sort.direction` is the sort direction. `'asc'` or `'desc'`. The sort comparator for metric columns is state-aware: state bands are fixed ranks that flip with `direction`; within `computed`, numeric values sort by `direction`. See the "Sort" section below for the exact rule.
 
 ### Outputs
 
@@ -935,16 +976,16 @@ type ClassPageViewModel = {
 - Apply a case-insensitive substring match on `studentName`.
 - Empty `searchTerm` → no filter (all students included).
 - Non-empty `searchTerm` → only students whose `studentName.toLowerCase()` contains `searchTerm.toLowerCase()` are included.
-- The filter is applied **before** the sort.
+- The filter is applied **before** the sort. After the filter, the model sorts the filtered subset; the Ant Design `Table` then applies column-level band filters on the sorted data via its built-in `filters` / `onFilter` mechanism. The composition order is: search filter (model) → sort (model) → column band filter (Table). The sort order is preserved within the band-filtered subset.
 
 #### Sort
 
 - Sort `studentAverages` by the given `column` and `direction`.
-- The comparator for `studentName` is locale-aware, case-insensitive, with `studentId` as the deterministic tie-breaker.
-- The comparator for each metric column is state-aware:
-  - `error` cells sort to the end regardless of numeric value.
-  - `notAttempted` cells sort after `computed` but before `error`.
-  - `computed` cells sort by numeric value.
+- The comparator for `studentName` is locale-aware, case-insensitive, with `studentId` as the deterministic tie-breaker. The comparator is independent of `direction` (ascending and descending are both produced by a single comparator that returns a sign).
+- The comparator for each metric column is state-aware. **State bands are fixed ranks that flip with `direction`**; within the `computed` band, numeric values sort by `direction`. The exact rule:
+  - For `direction: 'asc'`: rank order is `computed` (sorted by numeric value ascending) → `notAttempted` → `error` (always last).
+  - For `direction: 'desc'`: rank order is `error` (always first) → `notAttempted` → `computed` (sorted by numeric value descending).
+  - Cells with the same state and the same numeric value (or the same student name) are tie-broken by `studentId` ascending.
 - Default sort is `studentName` ascending (the adapter's canonical order). If the consumer does not supply a `sort` field, the model uses the default.
 
 #### Pass-through of unchanged fields
@@ -1078,7 +1119,7 @@ The card does not branch on state — it passes each `MetricResult` to `MetricPi
 
 - The card renders the pill colour even when the cell is "degraded" (`notAttempted` or `error`). It does not collapse the cell or hide the pill. A teacher's eye should land on every cell and recognise the state's meaning from the colour + label.
 - The card does **not** add extra copy (e.g. "No data", "Not attempted", "Error"). The pill label and colour are the only signal. This keeps the layout compact and consistent across the table and the cards.
-- The card does **not** add a tooltip on the pill in v1. The pill label is the affordance. Tooltip copy for the states is a follow-up (see Card-specific open questions below).
+- The card does **not** add a `Tooltip` on the pill in v1. The pill label is the affordance. See the `MetricPill` section's "Known accessibility gap" note for the v1.1 follow-up.
 - The `Average` cell uses the same state rules; the only difference is the `emphasised` flag and the vertical layout. An `Average` pill in `notAttempted` or `error` is still shown larger and bolder.
 
 ### Date formatting
@@ -1086,22 +1127,20 @@ The card does not branch on state — it passes each `MetricResult` to `MetricPi
 The card does not call `Date` parsing or locale formatting directly. Instead, the adapter pre-formats the "Last Assessed" date into a display label string and stores it in the model under `lastAssessedAtLabel: string` (option B, confirmed).
 
 - The card receives the pre-formatted label and renders it verbatim as `Last Assessed: {lastAssessedAtLabel}`.
-- The adapter calls the same `formatUpdatedAtLabel` helper used by `AssignmentsPage.tsx:148-160` and stores the result.
+- The adapter calls the shared `formatUpdatedAtLabel` helper (extracted from `AssignmentsPage.tsx` to `src/frontend/src/utils/dateFormatting.ts` as part of the rename deliverable) and stores the result.
 - The raw `lastAssessedAt` ISO string is also kept in the model for future use (e.g. drill-down or sort).
 - The card holds no formatting concern; the adapter is the only module that knows the locale.
 
-**Where the helper lives**
-
-The `formatUpdatedAtLabel` helper currently lives in `AssignmentsPage.tsx` as a private function. The recommended move is to extract it to a shared location (e.g. `src/frontend/src/utils/dateFormatting.ts` or as part of the class-page feature) and call it from both `AssignmentsPage` and the adapter. The action plan should record this extraction as a small, contained refactor of `AssignmentsPage.tsx`. The helper's `—` fallback (for unparseable ISO strings) is kept for `AssignmentsPage`'s use; the class page adapter throws instead (per decision 12) because the data integrity bar for the "Last Assessed" line is higher than for a generic table cell.
+**Where the helper lives.** The `formatUpdatedAtLabel` helper is extracted to `src/frontend/src/utils/dateFormatting.ts` (decision 5 — a pure formatting function with no React / antd deps, two active call sites: `AssignmentsPage` and `classPageAdapter`). The helper's `—` fallback (for unparseable ISO strings) is kept for `AssignmentsPage`'s use; the class page adapter throws instead (per decision 12) because the data integrity bar for the "Last Assessed" line is higher than for a generic table cell. Both call sites import the same function from the same module; the divergence is the call-site error handling, not the helper implementation.
 
 ### Behaviour
 
 - **Pure presentational.** No React state, no `useEffect`, no data fetching, no callbacks, no refs. The card reads `props.model` and renders.
-- **No interactivity.** No `onClick`, no `hoverable`, no `cursor: pointer`, no focus ring. Drill-down is out of scope for v1 (open question 16). The card is informational only.
+- **No interactivity.** No `onClick`, no `hoverable`, no `cursor: pointer`, no focus ring. Drill-down is out of scope for v1. The card is informational only.
 - **No defaults inside the card.** `precision`, `range`, and `emphasised` all come from the props the section passes through; the card does not set its own defaults. The `MetricPill` helper's own defaults (precision = 2, range = `{ lower: 0, upper: 5 }`, emphasised = false) are the contractually set defaults at the helper level (`src/frontend/AGENTS.md` §11).
 - **Accessible title region.** The Ant Design `Card` `title` is rendered as a heading. The card does not add a redundant `aria-label`; the `Card`'s built-in title semantics are sufficient.
 - **Accessible last-assessed line.** The `Typography.Text type="secondary"` line is plain text; it is part of the card's content and is read in source order. No additional `aria-label` is required.
-- **Accessible pill cells.** The four pills are rendered in source order inside the card body. No additional `aria-label` is required for v1. A future iteration may add a screen-reader-only description (e.g. `Completeness: 2.18`) once the product confirms the desired level of detail.
+- **Accessible pill cells.** The four pills are rendered in source order inside the card body. The `MetricPill`'s "Known accessibility gap" note (v1.1 follow-up) applies here too: a screen reader announces only the label (`2.18`, `N`, `E`) and cannot distinguish `notAttempted` from `error` without colour context. The product has signed off on the v1 gap.
 - **Bounded by loading standards.** When the parent page is in the blocking state, the card is not rendered at all (the section shows the blocking treatment). When the parent page is in the loading state, the card is replaced by a shape-matched `Skeleton` placeholder (per `frontend-loading-and-width-standards.md` §3). The card itself does not render a skeleton.
 
 ### Composition
@@ -1109,7 +1148,7 @@ The `formatUpdatedAtLabel` helper currently lives in `AssignmentsPage.tsx` as a 
 The card is rendered exclusively by `RecentAssignmentsSection`. The section owns:
 
 - The sub-section heading `Recent Assignments` (e.g. `<Title level={3}>` above the row).
-- The row container (e.g. an Ant Design `Flex justify="center" gap` or a `Row`/`Col` grid).
+- The row container (e.g. an Ant Design `Flex justify="center" gap`).
 - The empty-state message when zero cards exist, including the `Start New Assessment` CTA. The CTA receives a `onStartNewAssessment: () => void` callback that the page-level composition root owns; the same callback is passed to `ClassPageHeaderActions` for the header button. The two entry points (header and empty-state CTA) are intentionally redundant so the action is discoverable for new classes.
 - The per-card keying (`<RecentAssignmentCard key={model.assignmentId} model={model} />`).
 
@@ -1119,7 +1158,7 @@ The card does not know about its position in the row, the row's gap, the section
 
 The card's outer width is fixed. The recommended width is **320 px**, which is wider than the existing class card (`CLASSES_CARD_WIDTH_PX = 268` at `ClassesPage.tsx:30`) because the four-cell row needs horizontal room for three labels and three pills plus one emphasised Average cell. The card is **not** fluid — it is a fixed-width panel that the section centres in the row.
 
-The width should be a new shared panel-width token (per `frontend-loading-and-width-standards.md` §7) added to the shared width-token set, e.g. `--app-panel-width-recent-assignment-card`. The action plan should record this token addition in the canonical doc with status `Not implemented` before the layout work begins. Feature-local literals are not acceptable.
+The width is a **feature-local constant** for v1: `RECENT_ASSIGNMENT_CARD_WIDTH_PX = 320` in `RecentAssignmentCard.tsx`. Per `docs/developer/frontend/frontend-loading-and-width-standards.md` §7, a new shared width token is only justified when a second consumer needs the same width. The class page's `RecentAssignmentCard` is the sole v1 consumer; promoting to a shared token (`--app-panel-width-recent-assignment-card` or, per the standards doc, a feature-named token like `--app-panel-width-metric-card` if a second consumer is plausible) is deferred until a second consumer emerges. The action plan must record the feature-local constant in a comment so future readers understand why no shared token was added.
 
 ### Card-specific open questions
 
@@ -1166,30 +1205,35 @@ function buildStudentAveragesTableColumns(input: {
 
 **Field notes**
 
-- `filters` is the controlled filter state owned by `StudentAveragesTableCard`. It is a `Readonly<Record<MetricColumnKey, ReadonlySet<MetricBand>>>` — for each of the four metric columns, the set of bands the user has selected. The empty set means "no filter for this column". The filter is satisfied when the cell's band is in the set; when the set is empty, all cells pass.
+- `filters` is the controlled filter state owned by `StudentAveragesTableCard`. It is a `Readonly<Record<MetricColumnKey, ReadonlyArray<MetricBand>>>` — for each of the four metric columns, the array of bands the user has selected. The empty array means "no filter for this column". (Ant Design v6's `filteredValue` expects an array, not a `Set`; the column function takes an array and passes it to `filteredValue` directly.) The filter is satisfied when the cell's band is in the array; when the array is empty, all cells pass.
 - `onFiltersChange` is the callback the columns use to update the filter state when the user toggles a value in the filter dropdown. The page-level table card owns the state and re-renders the columns function with the new state.
 - The function does not read the `searchTerm` (owned by `StudentAveragesTableCard` and applied by `classPageModel`); the columns only see the filtered rows passed in via the `Table`'s `dataSource` prop. The columns do not apply the search filter themselves.
-- The function does not own the sort state; the `sorter` is a function and the `Table` reads the controlled `sort` from the parent.
+- The function does not own the sort state; the `sorter` is a function and the `Table` reads the controlled `sort` from the parent via `onChange`.
 
 ### Outputs
 
 The function returns an `Ant Design TableColumnsType<StudentAverageRowModel>` of length 5. Each column has:
 
-| `key`          | `dataIndex`            | `title`        | `sorter`                              | `filters` / `onFilter` | `render`                           |
-| -------------- | ---------------------- | -------------- | ------------------------------------- | ---------------------- | ---------------------------------- |
-| `studentName`  | `studentName`          | `Student Name` | Locale-aware, `studentId` tie-breaker | (none)                 | Plain text                         |
-| `completeness` | `metrics.completeness` | `Completeness` | State-aware comparator                | Band filter            | `MetricPill`                       |
-| `accuracy`     | `metrics.accuracy`     | `Accuracy`     | State-aware comparator                | Band filter            | `MetricPill`                       |
-| `spag`         | `metrics.spag`         | `SpAG`         | State-aware comparator                | Band filter            | `MetricPill`                       |
-| `average`      | `metrics.average`      | `Average`      | State-aware comparator                | Band filter            | `MetricPill` (`emphasised={true}`) |
+| `key`          | `dataIndex`            | `title`        | `sorter`                              | `filters` / `filteredValue` / `onFilter` | `render`                           |
+| -------------- | ---------------------- | -------------- | ------------------------------------- | ---------------------------------------- | ---------------------------------- |
+| `studentName`  | `studentName`          | `Student Name` | Locale-aware, `studentId` tie-breaker | (none)                                   | Plain text                         |
+| `completeness` | `metrics.completeness` | `Completeness` | State-aware comparator                | Band filter                              | `MetricPill`                       |
+| `accuracy`     | `metrics.accuracy`     | `Accuracy`     | State-aware comparator                | Band filter                              | `MetricPill`                       |
+| `spag`         | `metrics.spag`         | `SpAG`         | State-aware comparator                | Band filter                              | `MetricPill`                       |
+| `average`      | `metrics.average`      | `Average`      | State-aware comparator                | Band filter                              | `MetricPill` (`emphasised={true}`) |
 
 **Field notes**
 
 - The `Average` column uses `emphasised={true}` on the `MetricPill` to match the visual weight of the `Average` cell on the Recent Assignment cards. The exact font size and weight are a layout-spec concern; the contract is the `emphasised` flag.
-- The band filter values for each metric column are: `'red' | 'gold' | 'green' | 'notAttempted' | 'error'`. The set of selectable values is fixed in v1 — the column exposes all five options; the layout spec decides the order in the dropdown and the checkbox / multiselect rendering.
-- The `onFilter` function for a metric column is `(value: MetricBand, record: StudentAverageRowModel) => boolean` — the band is computed by `resolveMetricTone(record.metrics[columnKey], defaultRange).color`, then compared to the value. The columns function does not call `resolveMetricTone` for the sort comparator; the model layer applies the state-aware sort to the rows before they reach the table.
-- The `studentName` column has no `filters` / `onFilter` — the search input is the only filter, and it is applied at the model layer (case-insensitive substring on `studentName`).
+- **The band set is the Ant Design `MetricToneColor` token set, not the `MetricResult.state` name set.** This is critical: `resolveMetricTone(...)` outputs `color: 'red' | 'gold' | 'green' | 'default' | 'volcano'`, and the column's `onFilter` predicate compares the value against `resolveMetricTone(record.metrics[columnKey], defaultRange).color`. The `MetricBand` type is therefore `'red' | 'gold' | 'green' | 'default' | 'volcano'` — the same set as `MetricToneColor`. The display labels in the dropdown can still read "Red", "Gold", "Green", "Not Attempted" (for `default`), "Error" (for `volcano`) while the value is the `MetricToneColor` token. A mismatched band set would silently break the filter (no value would ever match the predicate).
+- The set of selectable bands is fixed in v1 — the column exposes all five options via Ant Design's built-in `ColumnFilterItem[]` array. The exact dropdown order and the checkbox / multiselect rendering is a layout-spec concern; the contract is the data shape.
+- The `onFilter` function for a metric column is `(value: string, record: StudentAverageRowModel) => boolean` (the Ant Design v6 `Table.onFilter` signature). The implementation computes the cell's band via `resolveMetricTone(record.metrics[columnKey], defaultRange).color` and compares it to `value`. The columns function does not call `resolveMetricTone` for the sort comparator; the model layer applies the state-aware sort to the rows before they reach the table.
+- The `studentName` column has no `filters` / `filteredValue` / `onFilter` — the search input is the only filter, and it is applied at the model layer (case-insensitive substring on `studentName`).
 - The columns function is pure: it does not call `useState`, `useEffect`, or any other React hook. It is called at render time by `StudentAveragesTableCard` and the result is passed to the `Table`.
+
+### Filter UI ownership
+
+The columns function owns the **filter data contract** for the metric columns: which bands are offered (the full `MetricToneColor` set), the `ColumnFilterItem[]` shape (e.g. `[{ text: 'Red', value: 'red' }, ...]`), and the `onFilter` predicate. The visual presentation of the dropdown is fixed by Ant Design's built-in filter UI; if a future iteration needs a custom dropdown (e.g. a popover with range sliders), the column function will need to expose a `filterDropdown` render prop. The layout spec owns the _visual presentation_; the columns function owns the _data contract_.
 
 ### Behaviour
 
@@ -1226,15 +1270,14 @@ This section pins down the contract for `src/frontend/src/features/classPage/Cla
 **In scope**
 
 - Rendering the two buttons in a horizontal row.
-- The `Tooltip` wrapper on the disabled `Edit Student Details` button with the copy `Coming soon`.
+- The `Tooltip` wrapper on the disabled `Edit Student Details` button with the copy `Coming soon`. The `Tooltip` wraps a `span` (or `div`) around the disabled `Button` so the `Tooltip` triggers on hover — Ant Design v6 `Tooltip` does not fire on a disabled `Button` directly (the existing `AssessTaskModal` uses the same wrapper pattern).
 - The `Start New Assessment` button (primary type) that invokes the `onStartNewAssessment` callback.
-- The empty state of the two buttons (e.g., when no `onStartNewAssessment` callback is provided — the disabled button is still rendered, the enabled button is still rendered but its `onClick` is a no-op).
 
 **Out of scope** (owned elsewhere)
 
 - The `AssessTaskModal` itself — owned by `features/classes/AssessTaskModal/`. The component never imports it; the page composition root renders the modal.
 - The `AssessTaskModal` open / close state — owned by the page composition root. The component only receives the `onStartNewAssessment` callback and invokes it.
-- The `selectedClassId` shell state — owned by `AppShell`.
+- The `selectedClassId` state — owned by `ClassesPage` (the class detail view is rendered inline by `ClassesPage` when a `selectedClassId` is set, per decision 1).
 - The exact pixel positioning (top-right corner, gap between buttons, alignment with the page heading) — a layout-spec concern.
 
 ### Inputs
@@ -1246,7 +1289,7 @@ function ClassPageHeaderActions(props: { onStartNewAssessment: () => void }): JS
 
 **Field notes**
 
-- `onStartNewAssessment` is invoked when the user clicks the `Start New Assessment` button. The page composition root owns the callback (which opens the `AssessTaskModal`).
+- `onStartNewAssessment` is **required** (not optional). The page composition root always provides it. There is no defensive `undefined → no-op` handling; if a future caller forgets the callback, TypeScript flags it at the call site (fail-fast, not silent no-op).
 - The component does not take a `classId` prop. The button click is a generic "open the modal" action; the page composition root is responsible for passing the correct `classId` to the modal.
 - The component does not take a `disabled` prop for the `Start New Assessment` button. The button is always enabled in v1; the parent page composition root decides whether the page is in a state where the modal should not be opened (e.g., blocking or loading), and can either render the component conditionally or wrap the callback with a guard.
 
@@ -1254,7 +1297,7 @@ function ClassPageHeaderActions(props: { onStartNewAssessment: () => void }): JS
 
 A small horizontal container (e.g., an Ant Design `Space`) with two buttons:
 
-- **Edit Student Details** — `Button type="default" disabled icon={<EditOutlined />}`. Wrapped in a `Tooltip title="Coming soon"`.
+- **Edit Student Details** — `Button type="default" disabled icon={<EditOutlined />}`. Wrapped in a `Tooltip title="Coming soon"` via a `span` (or `div`) wrapper, so the `Tooltip` triggers on hover despite the disabled `Button`.
 - **Start New Assessment** — `Button type="primary" icon={<PlusOutlined />}` (or similar; the layout spec decides the icon). Invokes `onStartNewAssessment` on click.
 
 **Field notes**
@@ -1289,8 +1332,8 @@ This section pins down the contract for `src/frontend/src/features/classPage/Stu
 
 - Owning the `searchTerm` state (a string).
 - Owning the `sort` state (`{ column, direction }`).
-- Owning the `filters` state (band filters per metric column).
-- Rendering the control row: `Input.Search` (left) and `Select` (right, with the single placeholder option `Overall Class Averages` marked `disabled`).
+- Owning the `filters` state (band filter array per metric column).
+- Rendering the control row: `Input.Search` on the left, and a static `Typography.Text type="secondary"` label "Viewing: Overall Class Averages" on the right (per decision 15; no `Select` in v1).
 - Rendering the `Table` with the column definitions from `buildStudentAveragesTableColumns` and the data from the model's `studentAverages`.
 - Calling `buildClassPageViewModel` inside a `useMemo` keyed on `[adapterResult, filters, sort, searchTerm]`.
 - Handling the empty state of the `Table` (e.g., no rows match the search) with an Ant Design `Empty` placeholder.
@@ -1338,18 +1381,18 @@ A card (Ant Design `Card`, default border, `size="small"`) with three regions:
 1. **Title region** — `Student Averages` (the section title).
 2. **Control row** — a horizontal `Flex justify="space-between"` containing:
    - `Input.Search` on the left, with `placeholder="Search by name"` and `onChange` updating `searchTerm`.
-   - `Select` on the right, with the single placeholder option `Overall Class Averages` marked `disabled`, defaulting to that option.
+   - A static `Typography.Text type="secondary"` reading "Viewing: Overall Class Averages" on the right. **No `Select` in v1** (decision 15); the alternative-views feature is v1.1+ scope.
 3. **Table** — an Ant Design `Table` with:
    - `dataSource` = the model's `studentAverages` (filtered + sorted).
    - `columns` = the result of `buildStudentAveragesTableColumns({ filters, onFiltersChange: setFilters })`.
    - `rowKey` = `studentId` (each row is keyed by the student's ID).
    - `pagination` = `false` (the table shows all matching rows; pagination is out of scope for v1).
    - `size` = `small` (consistent with the rest of the page).
-   - `locale.emptyText` = an Ant Design `Empty` placeholder with description `No students match your search` (only shown when the search filters out all rows; if the data has zero students, the same `Empty` is shown).
+   - `locale.emptyText` = an Ant Design `Empty` placeholder with description "No students match your search". This `Empty` is shown **only when `dataSource` is an empty array** (i.e., the search filter removed all rows, or the class has zero students). Page-level loading and blocking states are handled by the composition root and replace the entire card; the `Table.locale.emptyText` is not shown during loading or blocking.
 
 **Field notes**
 
-- The `Select` is **not** a real control in v1 — it has a single option and is `disabled`. The control is rendered so the user can see the v1 placeholder. The component does not own any `Select` state because the option is fixed.
+- The static `Typography.Text` label is the v1 placeholder for the "Viewing: ..." affordance. It is not a control; clicking it does nothing. When v1.1 introduces alternative views, this label becomes a real `Select` again (with the first option pre-selected, and additional options).
 - The card width is the natural width of the page content area; the card is not a fixed-width panel like `RecentAssignmentCard`.
 - The table `pagination` is disabled in v1. The class page is expected to host small classes (typically < 30 students); pagination is a future iteration if a class size exceeds a threshold.
 - The `Empty` placeholder for the search-empty case is a small `Empty` with no CTA. The page already has a `Start New Assessment` CTA in the header; the table does not need its own.
@@ -1384,7 +1427,7 @@ function StudentAveragesTableCard({ adapterResult }: Props) {
     <Card title="Student Averages" size="small">
       <Flex justify="space-between" align="center">
         <Input.Search placeholder="Search by name" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-        <Select value="overallClassAverages" disabled options={[{ value: 'overallClassAverages', label: 'Overall Class Averages', disabled: true }]} />
+        <Typography.Text type="secondary">Viewing: Overall Class Averages</Typography.Text>
       </Flex>
       <Table
         dataSource={viewModel.studentAverages}
@@ -1479,7 +1522,7 @@ None. All decisions for v1 are captured above. The exact heading level, the gap 
 
 ## Component-level behaviour — `ClassPage.tsx` (composition root)
 
-This section pins down the contract for `src/frontend/src/pages/ClassPage.tsx`. It is the source of truth for the page-level composition root; the shell's `renderNavigationPage` calls the page when the active key is `class-detail` and the `classId` is set.
+This section pins down the contract for `src/frontend/src/features/classPage/ClassPage.tsx` (the class detail view is co-located with the rest of the `classPage` feature, not under `pages/`; `pages/ClassesPage.tsx` renders `<ClassPage classId={...} />` inline when its `selectedClassId` is set). The class detail view is the source of truth for the class page's composition root; `ClassesPage` is the only consumer in v1.
 
 ### Purpose and scope
 
@@ -1488,29 +1531,29 @@ This section pins down the contract for `src/frontend/src/pages/ClassPage.tsx`. 
 - Calls the `useClassPageData(classId)` hook to get the typed `ClassPageData`.
 - Owns the `AssessTaskModal` open / close state and the `onStartNewAssessment` callback.
 - Renders the page-level loading, blocking, or content treatment based on the hook's `surfaceState`.
-- Renders the in-page `Back to Classes` button (the third of the three back affordances per open question 13).
+- Renders the breadcrumb's `Classes` link (which clears `selectedClassId` and keeps the nav key on `classes`).
 - Renders the page heading (heading + summary from `pageContent.ts`).
 - Composes the three sections: `ClassPageHeaderActions`, `RecentAssignmentsSection`, `StudentAveragesTableCard`.
 - Renders the `AssessTaskModal` at the page level (controlled by the local state).
+- Delegates the 6-error-type rendering to a `ClassPageContent` presentational component (so the page root stays a thin composition root).
 
 **In scope**
 
 - The page-level loading, blocking, and content rendering decisions based on `ClassPageData.surfaceState`.
-- The `Back to Classes` button (a `Button type="default" icon={<ArrowLeftOutlined />}`) that clears the shell's `selectedClassId` and sets the navigation key to `classes`. The other two back affordances (sidebar and breadcrumb) are owned by the shell.
+- The breadcrumb's `Classes` link, which is wired by the class detail view itself (the shell's `getBreadcrumbItems` stays a 2-segment function). The link's `onClick` is a closure that invokes `ClassesPage`'s clear-and-navigate callback.
 - The `AssessTaskModal` open / close state and the `onStartNewAssessment` callback.
-- The page-level `Result` component (Ant Design) for the blocking state, with a copy that depends on `error.type`.
-- The page-level `Skeleton` placeholders for the loading state.
 - The page heading (from `pageContent.ts`).
 - Composition of the three sections.
+- Delegation of the 6-error-type `Result` rendering and the `Skeleton` placeholders to `ClassPageContent`.
 
 **Out of scope** (owned elsewhere)
 
 - The data fetching — owned by `useClassPageData`. The page only consumes the hook's output.
 - The adapter and model — owned by `classPageAdapter` and `classPageModel`. The page only consumes their output via the hook and the `StudentAveragesTableCard`.
-- The `selectedClassId` shell state — owned by `AppShell`. The page invokes the shell's clear-and-navigate callback.
-- The sidebar and breadcrumb back affordances — owned by `AppShell` and `appNavigation.tsx` respectively.
-- The exact copy for the blocking state's `Result` (e.g., "Class not found" vs "Couldn't load class") — a layout-spec concern, but the page decides which `error.type` maps to which copy.
-- The exact `Skeleton` shapes and counts — a layout-spec concern.
+- The `selectedClassId` state — owned by `ClassesPage`. The class detail view invokes `ClassesPage`'s clear-and-navigate callback.
+- The sidebar back affordance — owned by `ClassesPage` / `AppShell`.
+- The exact copy for the blocking state's `Result` (e.g., "Class not found" vs "Couldn't load class") — owned by `ClassPageContent`.
+- The exact `Skeleton` shapes and counts — owned by `ClassPageContent`.
 
 ### Inputs
 
@@ -1521,8 +1564,9 @@ function ClassPage(props: { classId: string }): JSX.Element;
 
 **Field notes**
 
-- `classId` is the selected class's ID. The shell's `renderNavigationPage` passes it through from the shell's `selectedClassId` state. The page does not own this state; it is a controlled input.
+- `classId` is the selected class's ID. `ClassesPage` passes it through from its `selectedClassId` state. The page does not own this state; it is a controlled input.
 - The page does not take a `classFull` prop; it reads `classFull` from the hook's output. The hook is the source of truth for the class document.
+- The page receives the `onNavigateToClasses` callback as a prop (passed down from `ClassesPage`). The callback clears `selectedClassId` and is invoked by the breadcrumb's `Classes` link.
 
 ### Internal state
 
@@ -1542,44 +1586,44 @@ A page (Ant Design `Page` or a plain `<div>` per the layout spec) with the follo
 
 1. **Heading row** — a horizontal `Flex justify="space-between" align="center"` containing:
    - The page title (heading + summary from `pageContent.classDetail`).
-   - The `Back to Classes` button on the left (or top, depending on the layout spec's reading of open question 13).
-   - The `ClassPageHeaderActions` on the right.
+   - The `ClassPageHeaderActions` on the right. (No in-page `Back to Classes` button in v1 — the breadcrumb's `Classes` link and the sidebar's `Classes` entry provide the affordances.)
 2. **Recent Assignments section** — `<RecentAssignmentsSection recentAssignments={adapterResult.recentAssignments} onStartNewAssessment={onStartNewAssessment} />`.
 3. **Student Averages table card** — `<StudentAveragesTableCard adapterResult={adapterResult} />`.
-4. **AssessTaskModal** — `<AssessTaskModal open={isAssessModalOpen} classId={classId} className={classFull.name} onClose={onCloseAssessModal} />`.
+4. **AssessTaskModal** — `<AssessTaskModal open={isAssessModalOpen} classId={classId} className={classFull.className} onClose={onCloseAssessModal} />`.
 
-The actual rendered content depends on `surfaceState`:
+The actual rendered content depends on `surfaceState` and is delegated to `ClassPageContent` (see below):
 
-- **`isBlocking: true`** — render a single Ant Design `Result` (with `status="warning"` or `status="error"` per the layout spec) and a `Back to Classes` button. The exact copy depends on `error.type`:
-  - `classNotFound` → "Class not found" + back button
+- **`{ status: 'blocking'; error }`** — `ClassPageContent` renders a single Ant Design `Result` (with `status="warning"` or `status="error"` per the layout spec) and either a retry button or a back-to-classes button. The exact copy depends on `error.type`:
+  - `classNotFound` → "Class not found" + back-to-classes button (which invokes `onNavigateToClasses`)
   - `classQueryError` → "Couldn't load class" + retry button (which calls the hook's `refetch`)
   - `analyserError` → "Couldn't compute averages" + retry button
-  - `adapterError` → "Class data is invalid" + back button (this is the fail-fast case from decision 12 — there is no way to recover without fixing the data)
+  - `adapterError` → "Class data is invalid" + back-to-classes button (this is the fail-fast case from decision 12 — there is no way to recover without fixing the data)
   - `assignmentDefinitionPartialsFailed` → "Couldn't load assessment definitions" + retry button
   - `assignmentDefinitionPartialsUntrustworthy` → "Assessment definitions are unavailable" + retry button
-- **`isLoading: true`** — render `Skeleton` placeholders for the heading row, the Recent Assignments section, and the Student Averages table card. The `Skeleton` shapes match the actual content (heading, three cards in a row, table rows).
-- **`isReady: true`** — render the full content tree above.
-- **`isBusy: true`** (independent of `surfaceState`) — the content is still rendered; the page does not show a separate busy treatment. The `isBusy` flag is exposed for future use (e.g., a refresh button with a spinner); the v1 contract is that the busy state does not change the visible content.
+- **`{ status: 'loading' }`** — `ClassPageContent` renders `Skeleton` placeholders for the heading row, the Recent Assignments section, and the Student Averages table card. The `Skeleton` shapes match the actual content (heading, three cards in a row, table rows).
+- **`{ status: 'ready' }`** — the page root renders the full content tree above.
+
+**`ClassPageContent` extraction.** The 6-error-type `Result` rendering and the `Skeleton` placeholders are owned by a co-located `ClassPageContent` presentational component (not a separate file in the file-separation table; the extraction is for _complexity_ reasons, not file-size reasons). `ClassPageContent` takes `{ surfaceState, error, classFull, adapterResult, refetch, onNavigateToClasses, onStartNewAssessment, isAssessModalOpen, onCloseAssessModal, classId }` and returns the appropriate tree. The page root only calls the hook, owns the modal state, and passes props. The extraction keeps the page root thin and the `ClassPageContent` testable in isolation with all six error paths.
 
 **Field notes**
 
-- The `Back to Classes` button is the third of the three back affordances per open question 13. Its `onClick` is a closure that invokes the shell's clear-and-navigate callback. The shell owns the navigation key and the `selectedClassId` state; the page only invokes the callback.
-- The `Retry` button (for retryable errors) calls the hook's `refetch` function (which re-triggers both the per-class query and the warm-up dataset, and re-runs the analyser + adapter pipeline). The page reads the `refetch` function from the hook's output and passes it to the `Result` component. The hook is the single owner of the retry policy; the page is a thin caller.
+- The `Retry` button (for retryable errors) calls the hook's `refetch` function. The page reads the `refetch` function from the hook's output and passes it to `ClassPageContent`, which passes it to the `Result` component. The hook is the single owner of the retry policy; the page is a thin caller.
 - The `AssessTaskModal` is always rendered in the JSX (regardless of `surfaceState`); its `open` prop is the `isAssessModalOpen` state. The modal is hidden visually when `open` is `false`, so there is no harm in rendering it.
+- The page uses Ant Design `Result` for the blocking state, not the `Alert` default from `frontend-loading-and-width-standards.md` §2.2. The deviation is deliberate: the class page's blocking state is a full-page owned surface, not a subregion; `Result` is the right primitive for full-page empty/error states. The standards doc's `Alert` default is preserved for subregion blocking.
 
 ### Behaviour
 
 - **Thin composition root.** The page's logic is mostly:
   1. Call the hook.
-  2. Switch on `surfaceState` to decide what to render.
+  2. Switch on `surfaceState.status` to delegate to `ClassPageContent` (blocking / loading) or render the full tree (ready).
   3. Pass the right props to the three sections and the modal.
 - **No data transformation.** The page does not call `classPageAdapter` or `classPageModel`; both are invoked lower in the tree (the adapter by the hook, the model by the table card).
 - **No `useEffect` for derived state.** The page is a pure function of the hook's output and the local modal state.
-- **Bounded by loading standards.** The page follows `frontend-loading-and-width-standards.md` §2-§5: loading uses `Skeleton`, blocking uses `Result`, content uses the section components.
+- **Bounded by loading standards.** The page follows `frontend-loading-and-width-standards.md` §2-§5: loading uses `Skeleton`, blocking uses `Result` (via `ClassPageContent`), content uses the section components.
 
 ### Composition
 
-The page is rendered by `appNavigation.tsx`'s `renderNavigationPage` function when the active key is `class-detail` and the `classId` is set. The page is the only consumer of `useClassPageData`, `RecentAssignmentsSection`, `StudentAveragesTableCard`, and `ClassPageHeaderActions` in v1.
+The page is rendered by `pages/ClassesPage.tsx` when its `selectedClassId` is set (decision 1: child route under `ClassesPage`). `ClassesPage` is the only consumer of `ClassPage` in v1.
 
 ### Open questions
 
@@ -1587,91 +1631,78 @@ None. All decisions for v1 are captured above. The exact `Skeleton` shapes, the 
 
 ## Shell and routing integration
 
-This section pins down the contract for the cross-cutting changes to the shell, the navigation registry, and the existing `ClassesPage`. These changes are necessary to wire the new `class-detail` route and the three back affordances (per open questions 13, 14, 15), but they are not a single component — they touch three existing files. This section is the source of truth for the contract; the implementation agent updates the three files accordingly.
+This section pins down the contract for the cross-cutting changes to the existing `ClassesPage` and its parent `AppShell`. The class detail view is a child of `ClassesPage` (decision 1); the shell's `appNavigation.tsx` is **not** modified in v1 (the four top-level navigation keys stay unchanged, the `getBreadcrumbItems` function stays a 2-segment function of the nav key, and `renderNavigationPage` is unchanged). This is a deliberate v1 simplification; see the v1 trade-off note in the Open questions section.
 
 ### Files changed
 
-- `src/frontend/src/navigation/appNavigation.tsx` — extend `AppNavigationKey`, extend the breadcrumb builder, extend `renderNavigationPage`.
-- `src/frontend/src/AppShell.tsx` — add `selectedClassId` shell state, clear it on non-class-detail navigation, wire the three back affordances.
-- `src/frontend/src/pages/ClassesPage.tsx` — enable the View button on each class card.
+- `src/frontend/src/pages/ClassesPage.tsx` — add `selectedClassId` page-local state, branch the render to show the class detail view (`<ClassPage classId={selectedClassId} />`) when a class is selected, enable the View button on each class card.
+- `src/frontend/src/AppShell.tsx` — no change for the class detail view in v1. The `AppShell` continues to hold `selectedNavigationKey`; the `Classes` sidebar entry is highlighted as before.
 
-### `appNavigation.tsx` changes
-
-**`AppNavigationKey` extension** — add `'class-detail'` to the enum (or string union) of navigation keys. The new key represents the Class page (the page rendered for a selected class).
-
-**Breadcrumb builder** — extend the breadcrumb builder function to support a three-segment breadcrumb when the active key is `class-detail`:
-
-- Segment 1: `Classes` (clickable, navigates back to `classes` and clears `selectedClassId`).
-- Segment 2: `{classFull.name}` (non-clickable, the current page).
-
-The existing `classes` key produces a two-segment breadcrumb (`Classes` non-clickable). The existing `dashboard` / `assignments` / `settings` keys produce their existing breadcrumbs (single segment).
-
-**`renderNavigationPage` extension** — extend the switch to handle `class-detail`:
-
-- When the active key is `class-detail` AND `selectedClassId` is non-null → render `<ClassPage classId={selectedClassId} />`.
-- When the active key is `class-detail` AND `selectedClassId` is null → fall back to the `classes` key (defensive; the shell should never produce this state, but the fallback prevents a blank page).
-- The existing cases for `dashboard`, `assignments`, `settings`, `classes` are unchanged.
-
-**Field notes**
-
-- The breadcrumb's `Classes` segment is the second of the three back affordances per open question 13. Its `onClick` is a closure that invokes the shell's clear-and-navigate callback. The breadcrumb renders the segment as a clickable link (`<a>` with `href` or `<Button type="link">`); the layout spec decides the exact rendering.
-- The `class-detail` key is a "view entry" in the navigation registry, not a "warmup-backed" key per `frontend-react-query-and-prefetch.md` §2. The per-class query is already documented as view-entry; no prefetch changes are required.
-
-### `AppShell.tsx` changes
-
-**`selectedClassId` state** — add a `selectedClassId: string | null` state alongside the existing `selectedNavigationKey` state. The state is held in `AppShell` (top-level component) and passed down to the sidebar, the breadcrumb, and the `renderNavigationPage` function.
-
-**State lifecycle** (per open question 14):
-
-- `selectedClassId` is set to the class's ID when the user clicks a View button on a class card.
-- `selectedClassId` is reset to `null` whenever the user navigates to any non-class-detail key (`dashboard`, `assignments`, `settings`, or any future top-level key).
-- `selectedClassId` is reset to `null` when the user invokes any of the three back affordances (sidebar, breadcrumb, in-page button).
-- The state is only valid when the active key is `class-detail`. The shell's `renderNavigationPage` function is the only consumer that needs it.
-
-**Three back affordances** (per open question 13):
-
-- **Sidebar** — when the active key is `class-detail`, the `Classes` sidebar entry is still highlighted as the active entry (the class page is conceptually a sub-page of the Classes page). Clicking it clears `selectedClassId` and sets the key back to `classes`.
-- **Breadcrumb** — the breadcrumb's `Classes` segment is a clickable link (per the `appNavigation.tsx` change above). Clicking it clears `selectedClassId` and sets the key back to `classes`.
-- **In-page button** — the in-page `Back to Classes` button (per the [`ClassPage.tsx` section](#component-level-behaviour--classpagetx-composition-root) above). Clicking it clears `selectedClassId` and sets the key back to `classes`.
-
-All three routes invoke the same `clearClassAndNavigateToClasses()` function on the shell.
-
-**Field notes**
-
-- The shell's `selectedClassId` state is the source of truth for the classId. The `ClassPage` reads it via the `renderNavigationPage` function and passes it down. The shell does not pass `selectedClassId` to the `ClassPage` as a prop controlled by React Query or similar — it is a plain `useState` value in the shell.
-- The `clearClassAndNavigateToClasses` function is a closure that updates both `selectedClassId` and `selectedNavigationKey` in a single state update. The state updates are batched (React 18+) and the page re-renders with the new active key.
+**No change to `src/frontend/src/navigation/appNavigation.tsx`** in v1. The `AppNavigationKey` enum stays `dashboard | classes | assignments | settings`. The `getBreadcrumbItems` function stays a 2-segment function of the nav key. The `renderNavigationPage` switch is unchanged — `ClassesPage` is still rendered for the `classes` nav key, and `ClassesPage` itself branches internally to render the class detail view when `selectedClassId` is set.
 
 ### `ClassesPage.tsx` changes
 
-**Enable the View button** (per open question 15) — on each class card, the `View` button changes from disabled to enabled:
+**`selectedClassId` state** — add a `selectedClassId: string | null` state alongside any existing `ClassesPage` state. The state is held in `ClassesPage` (the page component, not the shell) and is the source of truth for which class is currently being viewed.
+
+**State lifecycle**:
+
+- `selectedClassId` is set to the class's ID when the user clicks a View button on a class card.
+- `selectedClassId` is reset to `null` when the user invokes any of the two back affordances (sidebar `Classes` entry, breadcrumb `Classes` link).
+- The state is only valid when the active nav key is `classes`. If the user navigates to a different nav key (`dashboard`, `assignments`, `settings`), the state is reset on remount.
+
+**Two back affordances** (decision 14):
+
+- **Sidebar** — when the user clicks the `Classes` sidebar entry, `ClassesPage` clears `selectedClassId`. (The `Classes` entry is highlighted as before when the active nav key is `classes`, regardless of whether a class is selected.)
+- **Breadcrumb** — the breadcrumb's `Classes` segment (rendered by `appNavigation.tsx`) is the second segment of the two-segment breadcrumb. For v1, the breadcrumb segment is **not** clickable in the class detail view — the user navigates back via the sidebar. v1.1 may make the breadcrumb segment clickable as part of the URL-based routing work. (This is a minor v1 limitation: the breadcrumb shows the user's location but does not itself act as a back affordance. The sidebar suffices.)
+
+**Render branching** — the page's render output depends on `selectedClassId`:
+
+- `selectedClassId === null` → render the existing `ClassesPage` content (the list of class cards).
+- `selectedClassId !== null` → render `<ClassPage classId={selectedClassId} onNavigateToClasses={() => setSelectedClassId(null)} />` instead. The `ClassPage` receives the clear-and-navigate callback as a prop.
+
+**Enable the View button** — on each class card, the `View` button changes from disabled to enabled:
 
 - Remove the `disabled` and `tabIndex={-1}` attributes from the `Button`.
-- Set the button's `type` to `"text"` (the current style is preserved per open question 15; only the disabled state changes).
-- Add an `onClick` handler that invokes the shell's `selectClassAndNavigateToClassDetail(classId)` function.
-
-The `selectClassAndNavigateToClassDetail` function is a closure on the shell that sets `selectedClassId` to the classId and sets `selectedNavigationKey` to `'class-detail'`.
+- Set the button's `type` to `"text"` (the current style is preserved; only the disabled state changes).
+- Add an `onClick` handler that calls `setSelectedClassId(card.classId)`.
 
 **Field notes**
 
 - The View button's visual style is unchanged (text-only, no icon, no underline). The `cursor: pointer` on hover (default Ant Design behaviour for non-disabled buttons) is the navigation affordance.
-- The `selectClassAndNavigateToClassDetail` function is passed down from `AppShell` to `ClassesPage` via a prop or context. The exact wiring is a layout-spec concern.
-- The disabled → enabled state change is the affordance per open question 15. The implementation does not need a new icon, tooltip, or visual treatment.
+- The `setSelectedClassId` call is the only state change; no `AppShell` callback is needed. The state lives in `ClassesPage`; the `ClassPage` is a child component that receives the clear-and-navigate callback as a prop.
+- The disabled → enabled state change is the affordance. The implementation does not need a new icon, tooltip, or visual treatment.
+- **v1 trade-off**: because the class detail view is a child of `ClassesPage` rather than a top-level route, refreshing the page from a class detail view drops the user back to the class list. There is no deep linking (`?classId=...` does not work), and the browser back/forward buttons do not navigate between the class list and a specific class detail. These are recorded as v1.1+ non-goals under "Future: URL-based routing" in the Open questions section.
+
+### `AppShell.tsx` changes
+
+None for v1. The shell continues to hold `selectedNavigationKey` and render the existing `ClassesPage` for the `classes` nav key. `ClassesPage` internally manages `selectedClassId` and branches the render.
+
+### `appNavigation.tsx` changes
+
+None for v1. The `AppNavigationKey` enum, the `getBreadcrumbItems` function, and the `renderNavigationPage` switch are unchanged.
 
 ### Open questions
 
-None. All decisions for v1 are captured above. The exact sidebar highlight behaviour (highlight the parent `Classes` entry, or a new `Class Detail` entry) and the breadcrumb `Classes` link rendering are layout-spec decisions.
+None for v1. The exact breadcrumb `Classes` link rendering (clickable in v1.1) and the v1.1 URL-based routing are recorded as future items in the Open questions section.
 
 ## Adapters required
 
 The data analysis service output is generic (per-class, per-student, per-task) and is shared with future surfaces. The class page must not couple the UI directly to that shape. The adapter and model layers own the translation from raw analyser output to the view-model shape consumed by the UI sections.
 
-- **`classPageAdapter.ts`** (with optional co-located `classPageAdapter.zod.ts`) — pure adapter. Translates the analyser's `AveragingResult` plus the raw `ClassFull` into the canonical view-model shape (`recentAssignments`, `studentAverages`, `classMetrics`). Owns the assignment-level rollup rule, the recent-assignments top-3 sort and limit, the no-data row synthesis, the date formatting, and the fail-fast semantics for null `updatedAt`. Called only by `useClassPageData` inside a `useMemo`. Full contract in [Component-level behaviour — `classPageAdapter`](#component-level-behaviour--classpageadapter) above.
-- **`classPageModel.ts`** — pure view-model builder. Takes the adapter's canonical output plus the current search and sort state, and produces the final view-model shape consumed by the Student Averages table. Applies a case-insensitive substring search filter on `studentName` and a state-aware sort by the given column and direction. `recentAssignments` and `classMetrics` are pass-throughs. Called only by `StudentAveragesTableCard` inside a `useMemo` keyed on `[adapterResult, filters, sort]`. Full contract in [Component-level behaviour — `classPageModel`](#component-level-behaviour--classpagemodel) above.
-- **`index.ts`** — barrel re-export of the two above so feature code can import `import { adaptClassPageToViewModel, buildClassPageViewModel } from 'src/frontend/src/features/classPage/';` (per `src/frontend/AGENTS.md` §12, barrels are optional but reasonable when a feature exports a small, cohesive set of symbols).
+- **`classPageAdapter.ts`** (with co-located `classPageAdapter.zod.ts`) — pure adapter. Translates the analyser's `AveragingResult` plus the raw `ClassFull` into the canonical view-model shape (`recentAssignments`, `studentAverages`, `classMetrics`). Owns the assignment-level rollup rule (via the shared `rollupMetric` helper), the recent-assignments top-3 sort and limit, the no-data row synthesis, the date formatting, the fail-fast semantics for null `updatedAt`, and the trust validation (studentId / assignmentId uniqueness + non-empty roster). Called only by `useClassPageData` inside a `useMemo`. Full contract in [Component-level behaviour — `classPageAdapter`](#component-level-behaviour--classpageadapter) above.
+- **`classPageModel.ts`** — pure view-model builder. Takes the adapter's canonical output plus the current search and sort state, and produces the final view-model shape consumed by the Student Averages table. Applies a case-insensitive substring search filter on `studentName` and a state-aware sort (with direction-flipping state bands) by the given column and direction. `recentAssignments` and `classMetrics` are pass-throughs. The model's `viewing` field has been removed from v1 (the v1 control is a static `Typography.Text` label, not a `Select`). Called only by `StudentAveragesTableCard` inside a `useMemo` keyed on `[adapterResult, filters, sort]`. Full contract in [Component-level behaviour — `classPageModel`](#component-level-behaviour--classpagemodel) above.
+- **No `index.ts` barrel in `features/classPage/`.** Direct imports are clearer for two related symbols. The action plan records this as a deliberate v1 decision; a barrel may be added later if the feature grows.
 
 ## Backend changes
 
-**None.** `getABClass` is the only transport needed. The data analysis service is a frontend-only orchestrator. No `z_Api` handler changes, no controller changes, no model changes.
+The Class page itself requires **no backend changes**. However, the **lead deliverable** (the `AssignmentPartial` `lastUpdated` → `updatedAt` rename) modifies backend files:
+
+- `src/backend/AssignmentProcessor/Assignment.js` (rename field, methods, JSDoc, `knownFields`, `toPartialJSON`; update `touchUpdated` to call the renamed setter).
+- `src/backend/y_controllers/AssignmentController.js` (update stale comment at line 152).
+- `src/backend/z_Api/assignmentAssessment.js` (update the `DateUtils.normaliseDateFields` call at line 141 to use `'updatedAt'` instead of `'lastUpdated'`).
+- Backend test fixtures (any fixture that uses the field name).
+
+The full backend file list lives in the rename deliverable's "Files affected" section above. The data analysis service change and the Class page change are frontend-only.
 
 ## File-separation expectation
 
@@ -1679,31 +1710,30 @@ The user has flagged that this surface will grow. The skeleton intentionally kee
 
 **Class page (dependent deliverable):**
 
-- `ClassPage.tsx` — composition root, projected < 200 lines (page-level blocking / loading / ready switch, modal state, `Back to Classes` button, three-section composition, AssessTaskModal wiring; larger than initially estimated because the surface state switch and the six `error.type` copy variants add branching).
-- `useClassPageData.ts` — projected < 200 lines (includes the surface state computation, error precedence, and memoised analyser / adapter orchestration; larger than initially estimated because the new `MetricResult` discriminated union adds analyser-input branching and the structured `ClassPageError` adds error-mapping logic).
-- `classPageAdapter.ts` — projected < 250 lines (raw-to-view translation: assignment-level rollup rule, top-3 sort and limit, no-data row synthesis, date formatting, and trust validation; larger than initially estimated because the new `MetricResult` discriminated union adds branching).
-- `classPageAdapter.zod.ts` (optional) — projected < 50 lines (output Zod schema for `ClassPageAdapterResult`).
+- `ClassPage.tsx` — composition root, projected ~250–300 lines (page-level loading / blocking / ready switch, modal state, three-section composition, `AssessTaskModal` wiring, breadcrumb `Classes` link wiring). Includes the `ClassPageContent` presentational component for the 6-error-type `Result` rendering and the `Skeleton` placeholders (extracted for _complexity_ reasons, not file-size reasons; the page root stays a thin composition root).
+- `useClassPageData.ts` — projected ~300–350 lines (includes the surface state computation as a discriminated union, the 6-error-type precedence, the memoised analyser / adapter orchestration, the structured `ClassPageError` mapping, and the `refetch` entry point with `classId` capture). The previous < 200 line projection was unrealistic given the new `MetricResult` discriminated union and the `ClassPageError` mapping; the revised estimate keeps the file well under the 550-line threshold but reflects a "thick hook" by design.
+- `classPageAdapter.ts` — projected ~250–300 lines (raw-to-view translation: assignment-level rollup rule, top-3 sort and limit, no-data row synthesis, date formatting, and trust validation; larger than initially estimated because the new `MetricResult` discriminated union adds branching).
+- `classPageAdapter.zod.ts` — projected < 50 lines (output Zod schema for `ClassPageAdapterResult`).
 - `classPageModel.ts` — projected < 150 lines (filter + sort + state-aware comparator; smaller than initially estimated because the model is a focused transformation on top of the adapter's output, not a re-derivation).
-- `classPage/index.ts` (optional barrel) — projected < 10 lines.
+- No `index.ts` barrel in `features/classPage/` (decision 17 — direct imports are clearer for two related symbols).
 - `RecentAssignmentsSection.tsx` — projected < 100 lines (heading + row of cards + empty state; includes the `<Empty>` block, the `Start New Assessment` button, and the `Title` heading).
 - `RecentAssignmentCard.tsx` — projected < 100 lines.
 - `StudentAveragesTableCard.tsx` — projected < 150 lines (control row + `Table` + `useMemo` for columns and view-model; size estimate from the per-component section).
-- `studentAveragesTableColumns.tsx` — projected < 200 lines (five column definitions; larger than initially estimated because the band filter wiring, the state-aware sort comparator, and the `MetricPill` cell rendering add a non-trivial amount of code per column).
-- `ClassPageHeaderActions.tsx` — projected < 80 lines (two buttons + tooltip).
+- `studentAveragesTableColumns.tsx` — projected ~200–220 lines (five column definitions; closer to the threshold than initially estimated because the band filter wiring, the state-aware sort comparator, and the `MetricPill` cell rendering add a non-trivial amount of code per column).
+- `ClassPageHeaderActions.tsx` — projected < 80 lines (two buttons + tooltip wrapper).
 
 **Shared display helpers (data analysis deliverable, owned by services/dataAnalysis):**
 
-- `metricDisplay/metricTone.ts` — projected < 80 lines.
-- `metricDisplay/MetricPill.tsx` — projected < 80 lines.
-- `metricDisplay/index.ts` — projected < 10 lines.
+- `metricDisplay/metricTone.ts` — projected < 100 lines (includes the range validation throw).
+- `metricDisplay/MetricPill.tsx` — projected < 100 lines.
+- **No `index.ts` barrel** (decision 17 — direct imports are clearer for two related symbols).
 
 **Data analysis service changes (lead deliverable, existing files only):**
 
 - `dataAnalysis.zod.ts` — currently 176 lines; projected to grow to ~220 lines (discriminated union replaces refine).
-- `averagingAnalyser.accumulation.ts` — currently 447 lines; projected to grow to ~520 lines. **This crosses the 550-line threshold after the change.** Per `src/frontend/AGENTS.md` §12, we should plan a facade-pattern decomposition of `averagingAnalyser.accumulation.ts` in the same change set. The decomposition plan: split `accumulation.ts` into `accumulation/metricAccumulator.js` (the accumulator primitives), `accumulation/accumulationPolicies.js` (the state assignment rules), and `accumulation/index.js` (the facade that delegates). The new files collectively stay well under 550 lines each; the existing public surface is preserved.
-- `averagingAnalyser.rows.ts` — currently 69 lines; projected to grow to ~110 lines (new rollup precedence logic). Stays well under the threshold.
-
-The facade-pattern decomposition of `averagingAnalyser.accumulation.ts` is a **mandatory** sub-task of the data analysis service change. The action plan must include it explicitly.
+- `averagingAnalyser.accumulation.ts` — currently 447 lines; projected to grow to ~500–530 lines (three-state assignment, `nCount` field, three-way `accumToMetric` check). The new size is **under the 550-line threshold**, so the facade-pattern decomposition is **recommended but not mandatory**. Per `src/frontend/AGENTS.md` §12 (and the equivalent in `src/backend/AGENTS.md` §10), "do not pre-emptively split files that are approaching 550 lines; wait until the threshold is crossed or a concrete maintenance need arises". The action plan should record the projected post-change size and defer the decomposition until the threshold is crossed. If the action plan's implementation agent finds a concrete maintenance reason to split sooner (e.g. the three-way state assignment logic is hard to test in isolation), the split is allowed; otherwise, the file stays as-is.
+- `averagingAnalyser.rows.ts` — currently 69 lines; projected to grow to ~110 lines (new rollup precedence logic via the shared `rollupMetric` helper). Stays well under the threshold.
+- `rollupMetric.ts` (new) — projected < 100 lines (pure function, no React / antd deps, used by both the analyser's row builders and `classPageAdapter`).
 
 **`AssignmentPartial` `lastUpdated` → `updatedAt` rename (lead deliverable, small but pervasive):**
 
@@ -1748,53 +1778,62 @@ The full red-first test cases for each spec file are documented in `ACTION_PLAN.
 
 ## Documentation expectations (skeleton level)
 
-- **`docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`** — record the planned `resolveMetricTone`, `MetricPill`, and `metricDisplay/` subfolder decisions as **deferred / not yet implemented** entries in §9 so the de-sloppification review can see them. Also record the planned `classPageAdapter`, `classPageModel`, `useClassPageData`, `RecentAssignmentsSection`, `StudentAveragesTableCard`, `studentAveragesTableColumns`, `ClassPageHeaderActions`, `ClassPage.tsx`, and shell integration decisions (all now fleshed out in this spec but not yet implemented). All entries will be reconciled against the actual implementation during the documentation pass. Also record the planned `formatUpdatedAtLabel` extraction from `AssignmentsPage.tsx` to a shared helper module.
+- **`docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`** — record the planned `resolveMetricTone`, `MetricPill`, and `metricDisplay/` subfolder decisions as **deferred / not yet implemented** entries in §9 so the de-sloppification review can see them. Also record the planned `classPageAdapter`, `classPageModel`, `useClassPageData`, `RecentAssignmentsSection`, `StudentAveragesTableCard`, `studentAveragesTableColumns`, `ClassPageHeaderActions`, `ClassPage.tsx`, and the v1 routing model (child route under `ClassesPage`, no `class-detail` nav key in v1) decisions (all now fleshed out in this spec but not yet implemented). All entries will be reconciled against the actual implementation during the documentation pass. Also record the planned `formatUpdatedAtLabel` extraction from `AssignmentsPage.tsx` to `src/frontend/src/utils/dateFormatting.ts` (new file; first entry in the `utils/` folder).
+- **`docs/developer/frontend/frontend-loading-and-width-standards.md`** — record the new `class-detail` page's shape-matched skeleton structure (heading + 3-card row + table) in §3, and note that the page uses Ant Design `Result` (not the default `Alert`) for full-page blocking states. The `RecentAssignmentCard` width is a feature-local constant for v1 (`RECENT_ASSIGNMENT_CARD_WIDTH_PX = 320`); no new shared width token is added in v1 (the standards doc §7 says a shared token is only justified when a second consumer emerges).
 - **`docs/developer/frontend/frontend-react-query-and-prefetch.md`** — no change expected. The class page uses the existing per-class `abClass` query, which is already documented as view-entry (not warmup-backed).
 - **`docs/pedagogy/data-analysis-scoring.md`** — update the "Understanding the numbers in the results table" section to describe the three `MetricResult` states (`computed`, `notAttempted`, `error`). The pedagogy is the right place to explain to teachers what each state means. Also document the new "Last Assessed" line on the Recent Assignments cards, including the fail-fast behaviour when `updatedAt` is missing.
 - **`docs/architecture/`** — no change expected.
 
 ## Open questions for follow-up discussion
 
-All 15 main open questions are **resolved** (recorded inline in the bullets below). The four "future" items (drill-down, refresh, cohort, edit students) are deferred to a future iteration and are not v1 scope. The component-level sections above are the source of truth for v1.
+13 of the 15 main open questions are **resolved** by spec decisions (recorded inline in the bullets below). One open question (10) had pending user confirmation that has now been resolved. The four "future" items (drill-down, refresh, cohort, edit students) are deferred to a future iteration and are not v1 scope. Five additional "v1 trade-off" items are recorded as v1.1+ non-goals under the "Future (v1.1+)" section — they are deliberate v1 limitations, not undecided questions. The component-level sections above are the source of truth for v1.
 
 ### Display behaviour (Class page)
 
-1. **Pill colour thresholds.** **Resolved by decision 11** — the band boundaries are dynamic, derived from a configurable range with default `{ lower: 0, upper: 5 }`. Red below `(3·lower + upper) / 4`, gold up to `(lower + 3·upper) / 4`, green above. For the default range: red below 1.25, amber 1.25–3.75, green 3.75 and above. Removed from open questions.
+1. **Pill colour thresholds.** **Resolved by decision 11** — the band boundaries are dynamic, derived from a configurable range with default `{ lower: 0, upper: 5 }`. Red below `(3·lower + upper) / 4`, gold up to `(lower + 3·upper) / 4`, green above. For the default range: red below 1.25, amber 1.25–3.75, green 3.75 and above. Boundary inclusivity: `red: value < threshold`; `amber: threshold ≤ value < next`; `green: value ≥ threshold`. The helper validates `range.upper > range.lower` and throws if violated. Removed from open questions.
 2. **"Completed: —" wording.** **Resolved by decision 12 (renamed to "Last Assessed:" with fail-fast semantics).** The line reads `Last Assessed: {date}` (not "Completed:"). The date comes from `AssignmentPartial.updatedAt` (renamed from `lastUpdated`). A null `updatedAt` is a data bug; the adapter throws and the page renders a blocking state. No `—` placeholder is used for this line. Removed from open questions.
 3. **Empty state for the Recent Assignments section.** **Resolved.** The section renders an Ant Design `Empty` with a description like `No recent assessments yet` and a primary `Start New Assessment` button below the message. The CTA opens the existing `AssessTaskModal` for the current class. The fail-fast case (assignments exist but `updatedAt === null`) is a blocking state, not an empty state, and is handled by the page-level error boundary. Removed from open questions.
-4. **The "Viewing: Overall Class Averages" Select.** **Resolved.** The Select has a single placeholder option `Overall Class Averages` and is marked `disabled` in v1. The user can see the control but cannot change it. The component-level contract for the Select lives under the (forthcoming) `StudentAveragesTableCard` section in the full spec. Removed from open questions.
-5. **Search input behaviour.** **Resolved.** The `Input.Search` filters the `Student Name` column only, case-insensitive substring match, applied client-side over the in-memory table data. Removed from open questions.
-6. **Sort defaults and column-level filter wiring on the metric columns.** **Resolved.** All five columns (`Student Name`, `Completeness`, `Accuracy`, `SpAG`, `Average`) are sortable via the Ant Design `Table` column sort affordances. Each metric column also gets a column-level filter (the filter icon is visible in the mockup next to each column header); the exact filter UI (range slider, band checkbox, numeric threshold) is a layout-spec decision. Default sort is `Student Name` ascending (consistent with the analyser's `buildPerStudentRows` ordering). The sort comparator for metric columns is **state-aware**: `error` cells sort to the end regardless of numeric value, then `notAttempted`, then `computed` sorted by numeric value. The `Student Name` comparator is locale-aware, case-insensitive, with `studentId` as the deterministic tie-breaker. Removed from open questions.
-7. **Header action tooltip on `Edit Student Details`.** **Resolved.** The disabled button has an Ant Design `Tooltip` with the copy `Coming soon`. Removed from open questions.
+4. **The "Viewing: Overall Class Averages" control.** **Resolved by decision 15 — replaced with a static `Typography.Text` label.** The v1 control is a plain `Typography.Text type="secondary"` reading "Viewing: Overall Class Averages". The disabled `Select` placeholder was dropped because a disabled _option_ still renders an interactive dropdown with no selectable items, which is a UX dead-end. The alternative-views feature (By Topic, By Student, By Criterion) is v1.1+ scope. The model's `filters.viewing` field is removed from v1. Removed from open questions.
+5. **Search input behaviour.** **Resolved.** The `Input.Search` filters the `Student Name` column only, case-insensitive substring match, applied client-side over the in-memory table data. The filter is applied before the sort in the model; Ant Design `Table` then applies column-level band filters on the sorted data. Removed from open questions.
+6. **Sort defaults and column-level filter wiring on the metric columns.** **Resolved.** All five columns (`Student Name`, `Completeness`, `Accuracy`, `SpAG`, `Average`) are sortable via the Ant Design `Table` column sort affordances. Each metric column also gets a column-level filter (the filter icon is visible in the mockup next to each column header); the exact filter UI is a layout-spec decision. Default sort is `Student Name` ascending. The sort comparator for metric columns is **state-aware with direction-flipping state bands** (decision in `classPageModel`): `asc: computed (by value) → notAttempted → error (last)`; `desc: error (first) → notAttempted → computed (by value desc)`. The `Student Name` comparator is locale-aware, case-insensitive, with `studentId` as the deterministic tie-breaker. Removed from open questions.
+7. **Header action tooltip on `Edit Student Details`.** **Resolved by decision 7.** The disabled button has an Ant Design `Tooltip` with the copy `Coming soon`. The `Tooltip` wraps a `span` (or `div`) around the disabled `Button` so it triggers on hover (Ant Design v6 `Tooltip` does not fire on a disabled `Button` directly). Removed from open questions.
 
 ### Data and contract behaviour (data analysis service — lead deliverable)
 
-8. **What exactly triggers the `error` state?** **Resolved — strict trigger.** The `error` state is produced when the criterion has **no data points at all** (no submissions, or every submission structurally invalid). Numeric scores produce `computed`; raw `N` scores produce `notAttempted`; absence of scores produces `error`. Analyser-internal exceptions (e.g. divide-by-zero during weighted averaging, NaN/Infinity in the result, unexpected schema-shape violations) are NOT caught and produce a hard throw at the data analysis service boundary; the page surfaces such throws as a blocking state via the existing fail-closed pattern (`frontend-loading-and-width-standards.md` §5). The accumulator's contract is the three-state assignment; defensive guards for `NaN`/`Infinity` etc. are not added in v1. Removed from open questions.
-9. **Assignment-level rollup precedence (Class page adapter).** **Resolved — error sub-tasks excluded gracefully.** For each of the four criteria, classify sub-tasks into `computed` / `notAttempted` / `error`. If zero sub-tasks are `computed` and all sub-tasks are `error`, the rolled metric is `error`. If zero sub-tasks are `computed` and all sub-tasks are `notAttempted`, the rolled metric is `notAttempted`. Otherwise, compute a **weighted average over the `computed` sub-tasks only**, with `error` and `notAttempted` sub-tasks excluded from the calculation. The rationale: the LLM service sometimes fails on a single task; blocking the entire assignment's computation for one task failure is overkill and limits the usefulness of the tool. `error` sub-tasks are excluded gracefully, not propagated. The rollup only escalates to `error` when there's nothing left to average over. Removed from open questions.
-10. **Number formatting for the pills.** **Resolved** — two decimal places, controlled by a `precision` prop on `MetricPill` (default 2). The mockup's `> 3.5` / `< 2.0` style labels are not part of the v1 pill output; they appear to be illustrative hints rather than the final cell text. The user should confirm that the final cell text is just the formatted number (e.g., `2.18`), not a value-with-threshold label.
-11. **Error color choice for `error` state.** **Resolved.** The `error` pill uses Ant Design `volcano` (a reddish-orange preset, hex roughly `#fa541c`). `red` is reserved for the lowest band of `computed` values to keep the visual hierarchy clear (worst score = red, processing error = volcano). Removed from open questions.
-12. **No-data students (Class page).** **Resolved — show all class students with a "no data" row.** The table renders all students in `classFull.students`, not just the ones the analyser returned. Students with no assessment data show `N` in all four metric columns (per the `notAttempted` state). The adapter merges the analyser's `perStudent` output with `classFull.students` and synthesises a no-data row for unassessed students (see "Student averages — full roster, with no-data rows" in the Adapters required section). Removed from open questions.
+8. **What exactly triggers the `error` state?** **Resolved — strict trigger.** The `error` state is produced when the criterion has **no data points at all** (no submissions, every submission structurally invalid, or `items[taskId]` is `undefined` for an existing criterion — a structurally valid submission with no assessment score for that criterion). Numeric scores produce `computed`; raw `N` scores produce `notAttempted`; absence of scores produces `error`. Analyser-internal exceptions (divide-by-zero, `NaN`/`Infinity`, schema-shape violations) propagate as hard throws; the page surfaces them as a blocking state. Removed from open questions.
+9. **Assignment-level rollup precedence (Class page adapter).** **Resolved — error sub-tasks excluded gracefully, via a shared `rollupMetric` helper.** The rule is shared between the analyser's per-student / per-task rollup and the adapter's per-assignment rollup. The helper is extracted to `src/frontend/src/services/dataAnalysis/analysers/rollupMetric.ts`. For each criterion: if any sub-task is `computed`, the rolled metric is `computed` and a weighted average is computed over `computed` + `notAttempted` sub-tasks (`notAttempted` contributes 0 for accuracy / completeness, is excluded for SPAG and overall); `error` sub-tasks are excluded. If no sub-task is `computed` but at least one is `notAttempted`, the rolled metric is `notAttempted`. Otherwise, the rolled metric is `error`. Removed from open questions.
+10. **Number formatting for the pills.** **Resolved by decision 13.** The pill renders `value.toFixed(precision)` (default `precision = 2`). The mockup's `> 3.5` / `< 2.0` style labels are illustrative hints, not the final cell text. The final cell text is just the formatted number (e.g., `2.18`, `3.60`, `5.00`). No value-with-threshold label, no band suffix. Removed from open questions (was awaiting user confirmation; confirmed in v2.0).
+11. **Error color choice for `error` state.** **Resolved.** The `error` pill uses Ant Design `volcano` (a reddish-orange preset, hex roughly `#fa541c`). `red` is reserved for the lowest band of `computed` values to keep the visual hierarchy clear (worst score = red, processing error = volcano). The `errorColor` is exposed as a `MetricPill` prop for testability and future visual revisions. Removed from open questions.
+12. **No-data students (Class page).** **Resolved — show all class students with a "no data" row.** The table renders all students in `classFull.students`, not just the ones the analyser returned. Students with no assessment data show `N` in all four metric columns (per the `notAttempted` state). The adapter merges the analyser's `perStudent` output with `classFull.students` and synthesises a no-data row for unassessed students. Staleness is handled by the hook's `useMemo` key on `[classFull, assignmentDefinitionPartials]`; a roster change triggers a fresh analyser run. Removed from open questions.
 
 ### Routing and shell behaviour
 
-13. **Back affordance.** **Resolved — three affordances.** The user can return to `ClassesPage` from the class page via: (a) the sidebar `Classes` entry, (b) the breadcrumb `Classes` segment, which is rendered as a clickable link when the class-detail key is active, (c) an in-page `Back to Classes` button on the class page (a `<Button type="default">` with a left-arrow icon, positioned at the top-left of the class page just below the breadcrumb). All three routes set `selectedClassId = null` and the navigation key back to `classes`. The class page owns the in-page button; the breadcrumb and sidebar are owned by the shell. Removed from open questions.
-14. **`selectedClassId` lifecycle.** **Resolved.** The shell resets `selectedClassId` to `null` whenever the user navigates to any non-class-detail page (Dashboard, Assignments, Settings, or any future top-level page). The state is only valid when the navigation key is `class-detail`. The class page's in-page `Back to Classes` button, the breadcrumb `Classes` link, and the sidebar `Classes` entry all clear `selectedClassId` and set the navigation key back to `classes`. Removed from open questions.
+13. **Back affordance.** **Resolved by decision 14 — two affordances.** The user can return to `ClassesPage` from the class page via: (a) the sidebar `Classes` entry, and (b) the breadcrumb's `Classes` segment (which the class detail view renders as clickable, not the shell's `getBreadcrumbItems`). The in-page `Back to Classes` button is **dropped** in v1 (consistent with `DashboardPage`, `AssignmentsPage`, `SettingsPage`, which have no in-page back button). All routes clear `selectedClassId` (held by `ClassesPage` in the child-route model) and keep the nav key on `classes`. Removed from open questions.
+14. **`selectedClassId` lifecycle.** **Resolved by decision 1 — child route under `ClassesPage`.** The `selectedClassId` state is held in `ClassesPage` (not in the shell). It is set when the user clicks a View button on a class card, and cleared when the user clicks the sidebar `Classes` entry or the breadcrumb's `Classes` link. The shell's `appNavigation.tsx` is **not modified** in v1 — the `AppNavigationKey` enum stays at the four top-level keys, and the `getBreadcrumbItems` function stays a 2-segment function. The class detail view is rendered inline by `ClassesPage` when its `selectedClassId` is set. **v1 trade-offs accepted:** no deep linking, no browser back/forward, refresh drops the user back to the class list. These are recorded as v1.1+ non-goals under "Future: URL-based routing" below. Removed from open questions.
 15. **Should the View button be in a different visual state when it would navigate?** **Resolved — keep the current text-only style.** The View button on each class card remains a plain text button (`type="text"`, no icon, no underline). The cursor changes to `pointer` on hover (default Ant Design behaviour for non-disabled buttons), which is enough of a navigation affordance. The disabled → enabled state change is itself the affordance. Removed from open questions.
 
-### Future (not v1)
+### Future (v1.1+)
 
-16. **Drill-down from a Recent Assignment card to a per-assignment detail view.** Out of scope for v1.
-17. **Drill-down from a student row to a per-student detail view.** Out of scope for v1.
-18. **Refresh control / invalidation after `Start New Assessment` completes.** The data analysis service should be re-run after a successful assessment; what triggers that? Possibly a button in the page header, or auto-refresh on focus. Defer.
+16. **Drill-down from a Recent Assignment card to a per-assignment detail view.** Out of scope for v1; recorded for v1.1.
+17. **Drill-down from a student row to a per-student detail view.** Out of scope for v1; recorded for v1.1.
+18. **Refresh control / invalidation after `Start New Assessment` completes.** The data analysis service should be re-run after a successful assessment; what triggers that? Possibly a button in the page header, or auto-refresh on focus. Defer to v1.1.
 19. **Cohort-level aggregations across multiple classes.** Out of scope (covered by the future cohort analysis in the pedagogy doc). The shared `metricDisplay/` helper is designed to be reusable here.
 20. **Per-class "Edit Student Details" functionality.** Out of scope; placeholder only.
+21. **Future: URL-based routing.** Move the class detail view to a query-param-based or path-based route (e.g. `?classId=abc`). Enables deep linking, browser back/forward, and refresh-from-class. Recorded as a v1.1+ non-goal because the v1 child-route model is sufficient for the current usage patterns.
+22. **Future: alternative views (By Topic, By Student, By Criterion).** Replace the static `Typography.Text` "Viewing: Overall Class Averages" label with a real `Select` and add the alternative-view data analysis. The disabled-`Select` v1 placeholder has been dropped (decision 15) in favour of a static label, so v1.1 introduces a real control from scratch. Recorded as a v1.1+ non-goal.
+23. **Future: `Tooltip` / `aria-label` on `MetricPill` for accessibility.** The v1 pills rely on colour + single-character labels (`N`, `E`, numeric). Screen-reader users cannot distinguish `notAttempted` from `error` from a low `computed` value without colour context. v1.1 will add a `Tooltip` wrapper with screen-reader-friendly copy (e.g. `aria-label="Completeness: Not Attempted"`). The product has signed off on the v1 gap.
+24. **Future: `useClassPageData` `isBusy` flag.** The flag was removed from v1 (decision C18) because no consumer renders a busy affordance. v1.1 may reintroduce it with a page-header spinner when the refresh control lands.
 
 ## Implementation readiness
 
 - The **three-deliverable ordering** is: (1) `AssignmentPartial` `lastUpdated` → `updatedAt` rename (lead); (2) data analysis service contract change (lead); (3) Class page (dependent). The action plan must respect this ordering. The rename is sequenced first because the data analysis service change touches fixtures and downstream code that share the property name; doing the rename first avoids a mixed intermediate state.
-- The data analysis service change includes a mandatory sub-task: facade-pattern decomposition of `averagingAnalyser.accumulation.ts` once it crosses the 550-line threshold (`src/frontend/AGENTS.md` §12). The action plan must include the decomposition explicitly.
-- The `AssignmentPartial` rename includes a **mandatory sub-task**: extracting `formatUpdatedAtLabel` from `AssignmentsPage.tsx` to a shared helper module so both `AssignmentsPage` and the new `classPageAdapter` can call it without duplicating the formatting logic. The action plan must include this extraction explicitly.
-- The shared `metricDisplay/` helper is justified for shared ownership by the "at least two active call sites" rule (`frontend-shared-helpers-and-abstraction-standards.md` §4.3): the Class page is the first caller, cohort / trend / distribution analyses (per `docs/pedagogy/data-analysis-scoring.md:92-99`) are the near-term second caller.
-- The `AssignmentPartial` rename is a **deliberate breaking schema change**. No backwards-compat shim. The action plan must include a one-shot rename across the frontend Zod schema, the backend source model, all callers, and all test fixtures.
-- The `AssessTaskModal` is reused unchanged.
-- Recommended next step: draft `ACTION_PLAN.md` against the agreed contracts in this spec. The action plan must respect the three-deliverable ordering (rename → data analysis service → Class page), include the `averagingAnalyser.accumulation.ts` facade decomposition as an explicit section, include the `formatUpdatedAtLabel` extraction from `AssignmentsPage.tsx` to a shared helper as an explicit sub-task of the rename deliverable, and use the TDD-first Red / Green / Refactor ordering inside each section. The action plan does **not** duplicate this spec's contracts; it inherits them by reference and adds the implementation sequence, the red-first test cases, the per-section checks, and the documentation / rollout tasks.
+- The data analysis service change includes the **new `rollupMetric` helper** (a mandatory sub-task). The helper is extracted to `src/frontend/src/services/dataAnalysis/analysers/rollupMetric.ts` and is called by both the analyser's row builders and `classPageAdapter`. The action plan must include the helper as its own section, with red-first tests for the four-metric × three-state matrix.
+- The data analysis service change **does not** require the facade-pattern decomposition of `averagingAnalyser.accumulation.ts` (per the revised file-separation expectation: the post-change size is ~500–530 lines, under the 550-line threshold). The decomposition is **recommended but not mandatory**; the action plan should record the projected post-change size and defer the split until the threshold is crossed or a concrete maintenance need arises.
+- The `AssignmentPartial` rename includes a **mandatory sub-task**: extracting `formatUpdatedAtLabel` from `AssignmentsPage.tsx` to `src/frontend/src/utils/dateFormatting.ts` (new file; pure formatting function with no React / antd deps; two active call sites: `AssignmentsPage` and `classPageAdapter`). The action plan must include this extraction as an explicit sub-task of the rename deliverable.
+- The shared `metricDisplay/` subfolder is created for the two shared display-helper files (`metricTone.ts`, `MetricPill.tsx`). The subfolder is justified under `src/frontend/AGENTS.md` §12 (≥2 files sharing the `metricDisplay` domain prefix). The `index.ts` barrel is **not** created; consumers import directly. The "at least two active call sites" rule is satisfied: the Class page is the first caller, cohort / trend / distribution analyses (per `docs/pedagogy/data-analysis-scoring.md:92-99`) are the near-term second caller.
+- The `AssignmentPartial` rename is a **deliberate breaking schema change**. No backwards-compat shim. The action plan must include a one-shot rename across the frontend Zod schema, the backend source model (`src/backend/AssignmentProcessor/Assignment.js` — note the actual path is `AssignmentProcessor/`, not `Models/`), all callers, and all test fixtures.
+- The `AssessTaskModal` is reused unchanged. `classFull.className` maps to `AssessTaskModal`'s `className` prop; consistent with `ClassesPage` card model.
+- The Class page renders as a child of `ClassesPage` (decision 1). The shell's `appNavigation.tsx` is **not modified**. The `ClassesPage` page component holds `selectedClassId` and branches the render to either the existing class list or the new `ClassPage` view.
+- The Class page uses Ant Design `Result` (not the default `Alert`) for full-page blocking states. The deviation from `frontend-loading-and-width-standards.md` §2.2 is deliberate: a full-page blocking state is a different primitive than a subregion blocking alert.
+- The `metricDisplay/` shared helpers and the `dataAnalysisService` contract change are forward-compatible with future detail / cohort / trend / distribution analyses. The new `MetricResult` discriminated union and the `metricTone` resolver are the foundation.
+- Recommended next step: draft `ACTION_PLAN.md` against the agreed contracts in this spec. The action plan must respect the three-deliverable ordering (rename → data analysis service → Class page), include the `formatUpdatedAtLabel` extraction from `AssignmentsPage.tsx` to `src/frontend/src/utils/dateFormatting.ts` as an explicit sub-task of the rename deliverable, include the new `rollupMetric` helper as its own section in the data analysis service deliverable, defer the `averagingAnalyser.accumulation.ts` facade decomposition until the threshold is crossed, and use the TDD-first Red / Green / Refactor ordering inside each section. The action plan does **not** duplicate this spec's contracts; it inherits them by reference and adds the implementation sequence, the red-first test cases, the per-section checks, and the documentation / rollout tasks.
