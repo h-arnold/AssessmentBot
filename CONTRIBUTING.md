@@ -145,7 +145,7 @@ If a class has no `fromJSON()` method and you need constructor behaviour, mock t
 
 ## Pre-Submission Checklist
 
-- [ ] All relevant lint checks pass (`npm run lint`, `npm run frontend:lint`, `npm run builder:lint`)
+- [ ] All relevant lint checks pass (`npm run lint:backend`, `npm run lint:frontend`, `npm run lint:builder`)
 - [ ] TypeScript compiles cleanly (frontend and builder)
 - [ ] Tests pass and new logic has test coverage
 - [ ] No `console.*` calls introduced
