@@ -46,6 +46,13 @@ async function loadRollupMetric(): Promise<{
 }
 
 // ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+/** Tolerance used for floating-point comparisons in toBeCloseTo assertions. */
+const FLOAT_TOLERANCE = 10;
+
+// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
@@ -66,12 +73,19 @@ describe('rollupMetric', () => {
       const result = rollupMetric(subTasks, 'completeness');
 
       // Weighted mean: (3*1 + 5*2) / (1 + 2) = 13/3 ≈ 4.333...
+      const COMPLETENESS_WEIGHTED_SUM = 13;
+      const COMPLETENESS_WEIGHTED_DENOM = 3;
+      const EXPECTED_MEAN = COMPLETENESS_WEIGHTED_SUM / COMPLETENESS_WEIGHTED_DENOM;
+      const EXPECTED_TOTAL_WEIGHT = 3;
+      const EXPECTED_APPLICABLE_POINTS = 2;
+      const EXPECTED_TOTAL_POINTS = 2;
+
       expect(result.state).toBe('computed');
       if (result.state === 'computed') {
-        expect(result.value).toBeCloseTo(13 / 3, 10);
-        expect(result.totalWeight).toBeCloseTo(3, 10);
-        expect(result.applicableDataPoints).toBe(2);
-        expect(result.totalDataPoints).toBe(2);
+        expect(result.value).toBeCloseTo(EXPECTED_MEAN, FLOAT_TOLERANCE);
+        expect(result.totalWeight).toBeCloseTo(EXPECTED_TOTAL_WEIGHT, FLOAT_TOLERANCE);
+        expect(result.applicableDataPoints).toBe(EXPECTED_APPLICABLE_POINTS);
+        expect(result.totalDataPoints).toBe(EXPECTED_TOTAL_POINTS);
       }
     });
 
@@ -85,12 +99,17 @@ describe('rollupMetric', () => {
 
       const result = rollupMetric(subTasks, 'accuracy');
 
+      const EXPECTED_MEAN = 5;
+      const EXPECTED_TOTAL_WEIGHT = 2;
+      const EXPECTED_APPLICABLE_POINTS = 2;
+      const EXPECTED_TOTAL_POINTS = 2;
+
       expect(result.state).toBe('computed');
       if (result.state === 'computed') {
-        expect(result.value).toBeCloseTo(5, 10);
-        expect(result.totalWeight).toBeCloseTo(2, 10);
-        expect(result.applicableDataPoints).toBe(2);
-        expect(result.totalDataPoints).toBe(2);
+        expect(result.value).toBeCloseTo(EXPECTED_MEAN, FLOAT_TOLERANCE);
+        expect(result.totalWeight).toBeCloseTo(EXPECTED_TOTAL_WEIGHT, FLOAT_TOLERANCE);
+        expect(result.applicableDataPoints).toBe(EXPECTED_APPLICABLE_POINTS);
+        expect(result.totalDataPoints).toBe(EXPECTED_TOTAL_POINTS);
       }
     });
 
@@ -105,12 +124,17 @@ describe('rollupMetric', () => {
       const result = rollupMetric(subTasks, 'spag');
 
       // Weighted mean: (2*3 + 4*1) / (3 + 1) = 10/4 = 2.5
+      const EXPECTED_MEAN = 2.5;
+      const EXPECTED_TOTAL_WEIGHT = 4;
+      const EXPECTED_APPLICABLE_POINTS = 2;
+      const EXPECTED_TOTAL_POINTS = 2;
+
       expect(result.state).toBe('computed');
       if (result.state === 'computed') {
-        expect(result.value).toBeCloseTo(2.5, 10);
-        expect(result.totalWeight).toBeCloseTo(4, 10);
-        expect(result.applicableDataPoints).toBe(2);
-        expect(result.totalDataPoints).toBe(2);
+        expect(result.value).toBeCloseTo(EXPECTED_MEAN, FLOAT_TOLERANCE);
+        expect(result.totalWeight).toBeCloseTo(EXPECTED_TOTAL_WEIGHT, FLOAT_TOLERANCE);
+        expect(result.applicableDataPoints).toBe(EXPECTED_APPLICABLE_POINTS);
+        expect(result.totalDataPoints).toBe(EXPECTED_TOTAL_POINTS);
       }
     });
   });
@@ -257,14 +281,17 @@ describe('rollupMetric', () => {
 
       const result = rollupMetric(subTasks, 'completeness');
 
+      const EXPECTED_MIXED_VALUE = 5;
+      const EXPECTED_MIXED_TOTAL_POINTS = 2;
+
       // Mixed computed + notAttempted → computed (the notAttempted contributes 0
       // for completeness/accuracy; the existing computed sub-task determines the state)
       expect(result.state).toBe('computed');
       if (result.state === 'computed') {
-        expect(result.value).toBeCloseTo(5, 10);
-        expect(result.totalWeight).toBeCloseTo(1, 10);
+        expect(result.value).toBeCloseTo(EXPECTED_MIXED_VALUE, FLOAT_TOLERANCE);
+        expect(result.totalWeight).toBeCloseTo(1, FLOAT_TOLERANCE);
         expect(result.applicableDataPoints).toBe(1);
-        expect(result.totalDataPoints).toBe(2);
+        expect(result.totalDataPoints).toBe(EXPECTED_MIXED_TOTAL_POINTS);
       }
     });
 
@@ -278,9 +305,11 @@ describe('rollupMetric', () => {
 
       const result = rollupMetric(subTasks, 'completeness');
 
+      const EXPECTED_ALL_COMPUTED_VALUE = 5;
+
       expect(result.state).toBe('computed');
       if (result.state === 'computed') {
-        expect(result.value).toBeCloseTo(5, 10);
+        expect(result.value).toBeCloseTo(EXPECTED_ALL_COMPUTED_VALUE, FLOAT_TOLERANCE);
       }
     });
 
@@ -348,6 +377,11 @@ describe('rollupMetric', () => {
 
       const result = rollupMetric(subTasks, 'completeness');
 
+      const EXPECTED_NA_COMPLETENESS_VALUE = 4;
+      const EXPECTED_NA_COMPLETENESS_TOTAL_WEIGHT = 2;
+      const EXPECTED_NA_COMPLETENESS_APPLICABLE_POINTS = 2;
+      const EXPECTED_NA_COMPLETENESS_TOTAL_POINTS = 3;
+
       // Weighted mean: (4*2 + 0) / (2 + 0_for_notAttempted_weight)
       // Wait - for completeness, notAttempted contributes 0 with its weight in denominator
       // But notAttempted has totalWeight: 0 (which it does since no numeric data), so it doesn't contribute to denominator either
@@ -356,10 +390,13 @@ describe('rollupMetric', () => {
       // The result should be computed with just the computed sub-task's data
       expect(result.state).toBe('computed');
       if (result.state === 'computed') {
-        expect(result.value).toBeCloseTo(4, 10);
-        expect(result.totalWeight).toBeCloseTo(2, 10);
-        expect(result.applicableDataPoints).toBe(2);
-        expect(result.totalDataPoints).toBe(3);
+        expect(result.value).toBeCloseTo(EXPECTED_NA_COMPLETENESS_VALUE, FLOAT_TOLERANCE);
+        expect(result.totalWeight).toBeCloseTo(
+          EXPECTED_NA_COMPLETENESS_TOTAL_WEIGHT,
+          FLOAT_TOLERANCE
+        );
+        expect(result.applicableDataPoints).toBe(EXPECTED_NA_COMPLETENESS_APPLICABLE_POINTS);
+        expect(result.totalDataPoints).toBe(EXPECTED_NA_COMPLETENESS_TOTAL_POINTS);
       }
     });
 
@@ -378,12 +415,15 @@ describe('rollupMetric', () => {
 
       const result = rollupMetric(subTasks, 'accuracy');
 
+      const EXPECTED_NA_ACCURACY_VALUE = 3;
+      const EXPECTED_NA_ACCURACY_TOTAL_POINTS = 3;
+
       expect(result.state).toBe('computed');
       if (result.state === 'computed') {
-        expect(result.value).toBeCloseTo(3, 10);
-        expect(result.totalWeight).toBeCloseTo(1, 10);
+        expect(result.value).toBeCloseTo(EXPECTED_NA_ACCURACY_VALUE, FLOAT_TOLERANCE);
+        expect(result.totalWeight).toBeCloseTo(1, FLOAT_TOLERANCE);
         expect(result.applicableDataPoints).toBe(1);
-        expect(result.totalDataPoints).toBe(3);
+        expect(result.totalDataPoints).toBe(EXPECTED_NA_ACCURACY_TOTAL_POINTS);
       }
     });
 
@@ -402,13 +442,18 @@ describe('rollupMetric', () => {
 
       const result = rollupMetric(subTasks, 'spag');
 
+      const EXPECTED_NA_SPAG_VALUE = 4;
+      const EXPECTED_NA_SPAG_TOTAL_WEIGHT = 2;
+      const EXPECTED_NA_SPAG_APPLICABLE_POINTS = 2;
+      const EXPECTED_NA_SPAG_TOTAL_POINTS = 2;
+
       // For spag, notAttempted is excluded entirely (weight not in denominator)
       expect(result.state).toBe('computed');
       if (result.state === 'computed') {
-        expect(result.value).toBeCloseTo(4, 10);
-        expect(result.totalWeight).toBeCloseTo(2, 10);
-        expect(result.applicableDataPoints).toBe(2);
-        expect(result.totalDataPoints).toBe(2); // spag: notAttempted excluded from totalDataPoints too
+        expect(result.value).toBeCloseTo(EXPECTED_NA_SPAG_VALUE, FLOAT_TOLERANCE);
+        expect(result.totalWeight).toBeCloseTo(EXPECTED_NA_SPAG_TOTAL_WEIGHT, FLOAT_TOLERANCE);
+        expect(result.applicableDataPoints).toBe(EXPECTED_NA_SPAG_APPLICABLE_POINTS);
+        expect(result.totalDataPoints).toBe(EXPECTED_NA_SPAG_TOTAL_POINTS); // spag: notAttempted excluded from totalDataPoints too
       }
     });
 
@@ -429,10 +474,12 @@ describe('rollupMetric', () => {
 
       const result = rollupMetric(subTasks, 'completeness');
 
+      const EXPECTED_MIXED_WITH_WEIGHT_VALUE = 6;
+
       expect(result.state).toBe('computed');
       if (result.state === 'computed') {
-        expect(result.value).toBeCloseTo(6, 10);
-        expect(result.totalWeight).toBeCloseTo(1, 10);
+        expect(result.value).toBeCloseTo(EXPECTED_MIXED_WITH_WEIGHT_VALUE, FLOAT_TOLERANCE);
+        expect(result.totalWeight).toBeCloseTo(1, FLOAT_TOLERANCE);
       }
     });
 
@@ -451,13 +498,21 @@ describe('rollupMetric', () => {
 
       const result = rollupMetric(subTasks, 'spag');
 
+      const EXPECTED_SPAG_EXCLUDED_VALUE = 8;
+      const EXPECTED_SPAG_EXCLUDED_TOTAL_WEIGHT = 2;
+      const EXPECTED_SPAG_EXCLUDED_APPLICABLE_POINTS = 2;
+      const EXPECTED_SPAG_EXCLUDED_TOTAL_POINTS = 2;
+
       expect(result.state).toBe('computed');
       if (result.state === 'computed') {
-        expect(result.value).toBeCloseTo(8, 10);
-        expect(result.totalWeight).toBeCloseTo(2, 10);
-        expect(result.applicableDataPoints).toBe(2);
+        expect(result.value).toBeCloseTo(EXPECTED_SPAG_EXCLUDED_VALUE, FLOAT_TOLERANCE);
+        expect(result.totalWeight).toBeCloseTo(
+          EXPECTED_SPAG_EXCLUDED_TOTAL_WEIGHT,
+          FLOAT_TOLERANCE
+        );
+        expect(result.applicableDataPoints).toBe(EXPECTED_SPAG_EXCLUDED_APPLICABLE_POINTS);
         // spag excludes notAttempted from everything
-        expect(result.totalDataPoints).toBe(2);
+        expect(result.totalDataPoints).toBe(EXPECTED_SPAG_EXCLUDED_TOTAL_POINTS);
       }
     });
   });
