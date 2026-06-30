@@ -55,7 +55,7 @@ export function renderWithNoMatchCache(
  */
 export async function performLinkFlow(dialog: HTMLElement): Promise<void> {
   await selectAssignment(dialog);
-  clickStartAssessment(dialog);
+  await clickStartAssessment(dialog);
   await clickLinkToExisting(dialog);
   await pickLinkableDefinition(dialog);
   await clickLink(dialog);
