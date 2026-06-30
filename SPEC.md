@@ -540,7 +540,7 @@ These are the **only** backend changes required. No new endpoint is needed.
 
 ## Documentation and rollout notes
 
-- Update `docs/developer/DATA_SHAPES.md` with the updated `AssignmentDefinitionPartial` shape once the backend lands the task-weighting extension. This includes:
+- Update `docs/developer/backend/DATA_SHAPES.md` with the updated `AssignmentDefinitionPartial` shape once the backend lands the task-weighting extension. This includes:
   - Adding a new "Partial Task (`TaskPartial`)" entry for `{ id: string, taskWeighting: number }`, with status `Not implemented` until the backend extension ships.
   - Updating the "Partial Definition" entry to reflect the new `tasks: Array<TaskPartial>` shape (no longer `tasks: null`).
   - Removing or rewriting the line _"Partial definitions use `tasks: null` (not `undefined` or `{}`). This explicit marker enables fail-fast behavior when tasks are accessed without proper rehydration."_ — the partial-vs-full distinction is no longer encoded by `tasks === null` on the wire (the constructor-side distinction in `AssignmentDefinition._validatePartial` is unaffected, but JSON output is `[]`).

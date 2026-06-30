@@ -1,5 +1,7 @@
 # Assessment Flow Documentation
 
+> **✅ Canonical document (June 2026):** This is the single canonical source for the assessment workflow and data flow. All file paths, method names, and architecture references describe the current `src/backend/` codebase. For any discrepancy found between this document and the source code, update the source code or file an issue — do not rely on stale copies.
+
 ## Shared Helper Status
 
 - `AssignmentDefinitionController.upsertDefinition()` assignment-definition upsert orchestration helper
@@ -13,43 +15,38 @@
   - Status: `Implemented`
   - Behaviour: paginating fetch of Google Classroom coursework by courseId, sorted by updateTime descending, throws on API failure
   - Owning path: `ClassroomApiClient.fetchCourseWork()` in `src/backend/GoogleClassroom/ClassroomApiClient.js`
-- Legacy wizard / trigger metadata-derived definition-key compatibility helper
-  - Status: `Pending / unchanged`
-  - Current note: the AdminSheet wizard and trigger flow still use `AssignmentDefinition.buildDefinitionKey(...)`; they have not been migrated to the `apiHandler` upsert contract in this cycle.
 
 ### Assignment-definition upsert contract note
 
-The active backend upsert surface now treats `definitionKey` as a stable opaque identifier generated on create and preserved on update. Assignment topics are authoritative keyed reference data via `primaryTopicKey`, with `primaryTopic` retained only as a resolved display label. Legacy flow notes below that mention metadata-derived key building or Classroom-topic string lookup remain historical current-state references for the AdminSheet wizard path only.
+The active backend upsert surface now treats `definitionKey` as a stable opaque identifier generated on create and preserved on update. Assignment topics are authoritative keyed reference data via `primaryTopicKey`, with `primaryTopic` retained only as a resolved display label.
 
 ## Summary Outline
 
-This document traces the complete assessment flow in AssessmentBot, starting from the user clicking "Assess Student Work" in the menu and ending with completed assessments written to the Analysis and Overview sheets.
+This document traces the complete assessment flow in AssessmentBot, starting from the `startAssessmentRun` API call and ending with completed assessments persisted to the database.
 
 ### High-Level Flow
 
-1. **UI Interaction Phase** - User selects assignment and provides document IDs
-2. **Trigger Setup Phase** - System creates time-based trigger with stored parameters
+1. **API Trigger Phase** - Frontend calls `startAssessmentRun` API with `definitionKey`, `assignmentId`, `courseId`
+2. **Trigger Setup Phase** - System validates definition freshness, creates time-based trigger with stored parameters
 3. **Trigger Execution Phase** - Trigger fires and orchestrates the assessment pipeline
 4. **Assignment Processing Pipeline** - Multi-stage processing including:
    - Assignment instance creation
    - Student roster hydration
-   - Task definition parsing/caching
+   - Task definition freshness check
    - Submission document fetching
    - Content extraction
    - Image processing (Slides only)
    - Assessment execution (LLM or formula-based)
    - Data persistence
-   - Analysis sheet generation
 
 ### Key Components
 
 - **Backend API Layer**: `src/backend/z_Api` thin GAS global wrappers for frontend `apiHandler` transport calls
-- **UI Layer**: `UIManager`, HTML templates
 - **Controllers**: `AssignmentController`, `AssignmentDefinitionController`, `ABClassController`
 - **Models**: `Assignment` (base), `SlidesAssignment`, `SheetsAssignment`, `AssignmentDefinition`, `TaskDefinition`, `StudentSubmission`
 - **Processors**: `SlidesParser`, `SheetsParser`, Document parsers
 - **Assessors**: `LLMRequestManager`, `SheetsAssessor`
-- **Managers**: `GoogleClassroomManager`, `ImageManager`, `AnalysisSheetManager`, `OverviewSheetManager`
+- **Managers**: `ImageManager`
 - **Utilities**: `ProgressTracker`, `TriggerController`, `DriveManager`, `Utils`
 
 ### Notes on Data Flow
@@ -61,7 +58,7 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
    - Partial summaries: Stored in `class_{courseId}` and `assignment_definitions` collections
 3. **Cache-First Assessment**: Always check cache before calling LLM to save API calls and time
 4. **Fail-Fast Error Handling**: Errors propagate up immediately and should be logged at the appropriate top-level boundary without duplicating the same details at every layer
-5. **Singleton Pattern**: UIManager, ProgressTracker, ABLogger, ConfigurationManager, DbManager are all singletons
+5. **Singleton Pattern**: ProgressTracker, ABLogger, ConfigurationManager, DbManager are all singletons
 6. **Factory Pattern**: Assignment.create() returns appropriate subclass based on documentType
 7. **Progress Tracking**: ProgressTracker updates visible to user throughout flow via Progress sheet
 8. **Lock Management**: Document lock prevents concurrent assessment runs using LockService
@@ -73,18 +70,18 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
 
 ---
 
-## Migration Note: API Layer
+## Architecture Note: API Layer
 
-The active backend currently uses `src/backend/z_Api` as the canonical GAS entry layer for frontend calls.
+The backend uses `src/backend/z_Api` as the canonical GAS entry layer for frontend calls.
 
 - API functions should stay thin and delegate to controllers.
 - Remaining `globals.js` files in backend are temporary references and should be deleted once equivalent API functions exist.
 - Backend configuration transport no longer uses `src/backend/ConfigurationManager/99_globals.js`; the canonical read/write methods are `getBackendConfig` and `setBackendConfig` through `src/backend/z_Api/z_apiHandler.js`.
-- Some detailed examples below still describe legacy AdminSheet/UI flows and should be treated as reference until fully migrated.
+- The frontend communicates with the backend exclusively through `apiHandler`.
 
 ### Current assignment-definition API contract
 
-The backend now exposes three assignment-definition API surfaces that sit alongside the legacy AdminSheet wizard flow:
+The backend now exposes three assignment-definition API surfaces:
 
 1. **Assignment-topic CRUD via `apiHandler`**
    - `getAssignmentTopics`, `createAssignmentTopic`, `updateAssignmentTopic`, and `deleteAssignmentTopic` are allowlisted in `src/backend/z_Api/z_apiHandler.js`.
@@ -98,127 +95,13 @@ The backend now exposes three assignment-definition API surfaces that sit alongs
    - `getAssignmentDefinitionPartials` returns registry rows with `tasks: null` and requires `primaryTopicKey` to be present, trimmed, and authoritative.
    - `primaryTopic` remains a resolved display label only.
 
-The rest of this document still describes the legacy trigger-driven assessment pipeline. Where that flow still references metadata-derived keys, treat those sections as legacy implementation notes rather than the contract for the new API transport.
-
 ---
 
 ## Detailed Flow Documentation
 
-### Phase 1: UI Interaction - Assignment Selection
+### Phase 1: Assessment Initiation
 
-#### Step 1.1: Show Assignment Dropdown
-
-**Entry Points**:
-
-- Admin Sheet: User clicks "Debug" > "Assess Student Work" menu item
-- Assessment Record: User clicks "Assessment Bot" > "Assess Assignment" menu item
-
-**Global Function**: `showAssignmentDropdown()` (in `UI/globals.js`)
-
-- **Location**: `/src/AdminSheet/UI/globals.js:41-44`
-- **Purpose**: Global wrapper that delegates to UIManager
-- **Calls**: `UIManager.getInstance().showAssignmentDropdown()`
-
-**Method**: `UIManager.showAssignmentDropdown()`
-
-- **Location**: `/src/AdminSheet/UI/UIManager.js:251-262`
-- **Class**: `UIManager` (singleton extending `BaseSingleton`)
-- **Process**:
-  1. Ensures `GoogleClassroomManager` is initialised via `ensureClassroomManager()`
-  2. Gets `courseId` from the classroom manager
-  3. Fetches assignments via `cm.getAssignments(courseId)`
-  4. Calculates modal width based on longest assignment title
-  5. Calls `_showTemplateDialog()` with assignment data
-- **Data Passed**:
-
-  ```javascript
-  {
-    assignments: [
-      { id: 'assignmentId', title: 'Assignment Title' },
-      // ... more assignments
-    ];
-  }
-  ```
-
-- **Template Shown**: `UI/AssignmentDropdown.html`
-
-**GoogleClassroomManager Methods**:
-
-- `getCourseId()`: Retrieves course ID from configuration
-- `getAssignments(courseId)`: Fetches assignments from Google Classroom API
-  - **Returns**: Array of assignment objects with `id` and `title` properties
-
-**HTML Template**: `AssignmentDropdown.html`
-
-- **Location**: `/src/AdminSheet/UI/AssignmentDropdown.html`
-- **Displays**: Dropdown list of assignments using Materialize CSS
-- **User Action**: User selects an assignment and clicks "Go" button
-- **On Go Click**: JavaScript function `go()` is called
-  - Constructs assignment data: `{ id: assignmentId, name: assignmentName }`
-  - Calls server-side function: `google.script.run.openReferenceSlideModal(assignmentData)`
-
-#### Step 1.2: Open Reference Slide Modal
-
-**Global Function**: `openReferenceSlideModal(assignmentData)`
-
-- **Location**: `/src/AdminSheet/UI/globals.js:17-20`
-- **Parameters**:
-  - `assignmentData` (string): JSON string containing `{ id, name }`
-- **Calls**: `UIManager.getInstance().openReferenceSlideModal(assignmentData)`
-
-**Method**: `UIManager.openReferenceSlideModal(assignmentData)`
-
-- **Location**: `/src/AdminSheet/UI/UIManager.js:285-320`
-- **Process**:
-  1. Parses the JSON assignment data
-  2. Retrieves course ID from GoogleClassroomManager
-  3. Fetches courseWork details from Google Classroom API
-  4. Extracts `topicId` from courseWork
-  5. Loads `ABClass` instance to get `yearGroup`
-  6. Fetches topic name if `topicId` exists so the legacy wizard flow can keep displaying the current Classroom topic label
-  7. Uses `AssignmentDefinition.buildDefinitionKey()` only for the legacy metadata-derived lookup path that current wizard code still uses
-  8. **Planning note for new upsert work**: this derived lookup key is not the target contract for the assignment-definition upsert surface; the new contract uses a stable opaque `definitionKey` generated once and preserved across metadata edits, with topic authority moving to keyed reference data via `primaryTopicKey`
-  9. Attempts to load existing definition via `AssignmentDefinitionController`
-  10. Extracts saved document IDs from definition if it exists
-  11. Shows modal with assignment data and saved document IDs
-- **Data Passed to Template**:
-
-  ```javascript
-  {
-    assignmentDataObj: { id: "assignmentId", name: "Assignment Name" },
-    savedDocumentIds: {
-      referenceDocumentId: "docId" || "",
-      templateDocumentId: "docId" || ""
-    }
-  }
-  ```
-
-- **Template Shown**: `UI/SlideIdsModal.html`
-
-**Classes Used**:
-
-- `ABClassController`: Loads class data
-  - `loadClass(courseId)`: Returns `ABClass` instance
-- `AssignmentDefinitionController`: Manages assignment definitions
-  - `getDefinitionByKey(definitionKey)`: Returns `AssignmentDefinition` or null
-- `ClassroomApiClient`: Fetches topic information
-  - `fetchTopicName(courseId, topicId)`: Returns topic name string
-- `AssignmentDefinition`: legacy current-state helper for wizard-era metadata lookup
-  - `buildDefinitionKey({ primaryTitle, primaryTopic, yearGroup })`: returns the currently derived lookup key string
-    - Existing format: `"{primaryTitle}_{primaryTopic}_{yearGroup}"` (e.g., "Essay 1_English_10")
-    - Planning constraint: do not treat this derived format as the future upsert identifier contract; the greenfield upsert surface should use a stable opaque `definitionKey` generated on create and preserved on update
-
-**HTML Template**: `SlideIdsModal.html`
-
-- **Location**: `/src/AdminSheet/UI/SlideIdsModal.html`
-- **Displays**: Form with two input fields for document IDs (pre-filled if previously saved)
-- **Validation**: Ensures reference and template IDs are different
-- **User Action**: User enters/confirms document IDs and clicks "Go" button
-- **On Go Click**: JavaScript function `saveAndRun()` is called
-  - Shows loading overlay
-  - Calls server-side function: `google.script.run.saveStartAndShowProgress(assignmentTitle, documentIds, assignmentId)` **(legacy HTML UI — deprecated; see Step 1.3 for the current `startAssessmentRun` API method)**
-
-#### Step 1.3: Start Assessment Run
+#### Step 1.1: Start Assessment Run
 
 **API method**: `startAssessmentRun`
 
@@ -234,7 +117,7 @@ The rest of this document still describes the legacy trigger-driven assessment p
 - **Process**:
   1. Validates all three required string fields at the transport boundary
   2. Fetches the full definition via `AssignmentDefinitionController.getDefinitionByKey`
-  3. Checks per-document freshness using `Utils.isNewer` — throws `DefinitionStaleError` if either document has changed
+  3. Checks per-document freshness via `_validateDefinitionFreshness()` using `DriveManager.getFileModifiedTime` and `DateUtils.isNewer` — throws `DefinitionStaleError` if either document has changed
   4. Resolves the ABClass via `ABClassController.loadClass(courseId)` — throws if no stored class exists
   5. Delegates to `startProcessing(assignmentId, definitionKey, courseId)` which creates the time-based trigger and stores context in `UserProperties` via `GASPropertiesUtils`
   6. Returns `null` (no data payload)
@@ -242,7 +125,6 @@ The rest of this document still describes the legacy trigger-driven assessment p
   - Transport validation failures throw `ApiValidationError` → mapped to `INVALID_REQUEST`
   - Stale definition throws `DefinitionStaleError` → mapped to `DEFINITION_STALE` with `details` block
   - Missing definition or ABClass throws `Error` → mapped to `INTERNAL_ERROR`
-- **Note**: This replaces the legacy `saveStartAndShowProgress` global, which was removed. The legacy HTML UI that called `saveStartAndShowProgress` is deprecated and no compatibility shim is required.
 
 ---
 
@@ -252,7 +134,7 @@ The rest of this document still describes the legacy trigger-driven assessment p
 
 **Method**: `AssignmentController.ensureDefinitionFromInputs()`
 
-- **Location**: `/src/AdminSheet/y_controllers/AssignmentController.js:398-427`
+- **Location**: `src/backend/y_controllers/AssignmentController.js:398-427`
 - **Parameters**:
 
   ```javascript
@@ -271,7 +153,7 @@ The rest of this document still describes the legacy trigger-driven assessment p
   2. Fetches courseWork from Google Classroom API
   3. Extracts topicId and primaryTitle from courseWork
   4. Loads ABClass to get yearGroup
-  5. Calls `AssignmentDefinitionController.ensureDefinition()` to get/create definition
+  5. Calls `AssignmentDefinitionController.upsertDefinition()` to create or update definition
 - **Returns**:
 
   ```javascript
@@ -284,7 +166,7 @@ The rest of this document still describes the legacy trigger-driven assessment p
 
 **Helper Method**: `_detectDocumentType(referenceDocumentId, templateDocumentId)`
 
-- **Location**: `/src/AdminSheet/y_controllers/AssignmentController.js:362-386`
+- **Location**: `src/backend/y_controllers/AssignmentController.js:362-386`
 - **Process**:
   1. Gets file from Drive using DriveApp.getFileById()
   2. Checks MIME type for each document
@@ -294,25 +176,27 @@ The rest of this document still describes the legacy trigger-driven assessment p
   - Slides: `application/vnd.google-apps.presentation`
   - Sheets: `application/vnd.google-apps.spreadsheet`
 
-**Controller**: `AssignmentDefinitionController.ensureDefinition()`
+**Controller**: `AssignmentDefinitionController.upsertDefinition()`
 
-- **Location**: `/src/AdminSheet/y_controllers/AssignmentDefinitionController.js`
-- **Purpose**: Gets existing definition or creates new one
+- **Location**: `src/backend/y_controllers/AssignmentDefinition/index.js` (facade)
+- **Purpose**: Creates or updates an assignment definition
 - **Process**:
-  1. Builds definition key from parameters
-  2. Attempts to load from database
-  3. If not found, creates new `AssignmentDefinition` instance
-  4. Saves to database if newly created
+  1. Delegates to `AssignmentDefinitionUpsertOrchestrator`
+  2. Generates UUID-style `definitionKey` on create; preserves stored key on update
+  3. Resolves `primaryTopicKey` from reference data
+  4. Rejects duplicate `{ primaryTitle, primaryTopicKey, yearGroup }` tuples
+  5. Writes full-definition store before registry partial
+  6. Attempts rollback of full-definition write if registry write fails
 - **Returns**: `AssignmentDefinition` instance
 
 #### Step 2.2: Create Time-Based Trigger
 
 **Method**: `AssignmentController.startProcessing(assignmentId, definitionKey)`
 
-- **Location**: `/src/AdminSheet/y_controllers/AssignmentController.js:68-95`
+- **Location**: `src/backend/y_controllers/AssignmentController.js:68-95`
 - **Parameters**:
   - `assignmentId` (string): Google Classroom assignment ID
-  - `definitionKey` (string): Current legacy metadata-derived assignment-definition lookup key used by the wizard/trigger path
+  - `definitionKey` (string): Stable opaque assignment-definition lookup key
 - **Process**:
   1. Creates TriggerController instance
   2. Gets PropertiesService.getDocumentProperties()
@@ -326,7 +210,7 @@ The rest of this document still describes the legacy trigger-driven assessment p
 
 **Class**: `TriggerController`
 
-- **Location**: `/src/AdminSheet/Utils/TriggerController.js`
+- **Location**: `src/backend/Utils/TriggerController.js`
 - **Key Method**: `createTimeBasedTrigger(functionName, triggerTime)`
   - Creates a ScriptApp trigger set to run at specified time
   - If triggerTime not provided, defaults to 5 seconds from now
@@ -334,18 +218,11 @@ The rest of this document still describes the legacy trigger-driven assessment p
   - Trigger will execute the named global function
   - Handles "too many triggers" error by cleaning up and retrying
 
-**Helper Method**: `applyDocumentProperties(properties, propertyMap)`
-
-- **Location**: `/src/AdminSheet/y_controllers/AssignmentController.js:347-351`
-- **Purpose**: Sets multiple document properties from object
-- **Parameters**:
-  - `properties`: PropertiesService document properties instance
-  - `propertyMap`: Object with key-value pairs to store
-- **Process**: Iterates through propertyMap and calls `properties.setProperty(key, value)` for each
+**Properties Storage**: Properties are stored inline in `startProcessing()` via `GASPropertiesUtils.applyProperties(properties, propertyMap)` — there is no separate `applyDocumentProperties` helper method.
 
 **Helper Method**: `runStage(startMessage, action, completionMessage)`
 
-- **Location**: `/src/AdminSheet/y_controllers/AssignmentController.js:333-340`
+- **Location**: `src/backend/y_controllers/AssignmentController.js:333-340`
 - **Purpose**: Wraps pipeline stages with consistent progress tracking
 - **Process**:
   1. Updates progress with start message
@@ -365,7 +242,7 @@ The rest of this document still describes the legacy trigger-driven assessment p
 }
 ```
 
-Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserProperties()` and `GASPropertiesUtils.applyProperties()`. The legacy `DocumentProperties` scope has been migrated to `UserProperties`.
+Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserProperties()` and `GASPropertiesUtils.applyProperties()`. The `DocumentProperties` scope has been migrated to `UserProperties`.
 
 ---
 
@@ -375,7 +252,7 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
 
 **Global Function**: `triggerProcessSelectedAssignment()`
 
-- **Location**: `/src/AdminSheet/AssignmentProcessor/globals.js:45-48`
+- **Location**: `src/backend/AssignmentProcessor/globals.js:45-48`
 - **Trigger**: Automatically called by time-based trigger (5 seconds after setup)
 - **Calls**: `AssignmentController.processSelectedAssignment()`
 
@@ -383,7 +260,7 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
 
 **Method**: `AssignmentController.processSelectedAssignment()`
 
-- **Location**: `/src/AdminSheet/y_controllers/AssignmentController.js:137-227`
+- **Location**: `src/backend/y_controllers/AssignmentController.js:137-227`
 - **Purpose**: Main orchestrator for the entire assessment pipeline
 - **Lock Management**: Uses `LockService.getDocumentLock()` to prevent concurrent execution
   - Attempts lock for 5 seconds
@@ -391,51 +268,47 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
 
 **Process Flow**:
 
-1. **Parameter Retrieval** (lines 147-157)
-   - Gets document properties: `assignmentId`, `definitionKey`, `triggerId`
+1. **Parameter Retrieval**
+   - Gets user properties: `assignmentId`, `definitionKey`, `triggerId`, `courseId`
    - Validates all parameters exist
    - Cleans up pending triggers if parameters missing
 
-2. **Trigger Cleanup** (lines 160-162)
+2. **Trigger Cleanup**
    - Deletes the trigger that launched this execution
    - Uses `TriggerController.deleteTriggerById(triggerId)`
 
-3. **Progress Initialisation** (lines 163-164)
+3. **Progress Initialisation**
    - Starts progress tracking
    - Updates progress: "Assessment run starting."
 
-4. **Course and Class Loading** (lines 166-178)
-   - Gets courseId from GoogleClassroomManager
-   - Loads ABClass via ABClassController
-   - Checks if assignment exists in class and rehydrates if needed
-
-5. **Definition Loading** (lines 180-186)
+4. **Definition Loading**
    - Loads full assignment definition via `AssignmentDefinitionController.getDefinitionByKey()`
    - Validates definition exists
    - Option `{ form: 'full' }` ensures all artifacts are loaded
 
-6. **Assignment Instance Creation** (line 188)
+5. **Course and Class Loading**
+   - Gets courseId from stored properties
+   - Loads ABClass via ABClassController
+   - Checks if assignment exists in class and rehydrates if needed
+
+6. **Assignment Instance Creation**
    - Calls `createAssignmentInstance(definition, courseId, assignmentId)`
    - Returns `SlidesAssignment` or `SheetsAssignment` instance
 
-7. **Pipeline Execution** (lines 190-192)
+7. **Pipeline Execution**
    - Extracts students from ABClass
    - Determines if images should be processed (SLIDES only)
    - Calls `runAssignmentPipeline(assignment, students, options)`
 
-8. **Persistence** (lines 196-200)
+8. **Persistence**
    - Updates assignment's `lastUpdated` timestamp
    - Persists assignment run via `ABClassController.persistAssignmentRun()`
    - Writes both full and partial (summary) versions to database
 
-9. **Analysis Generation** (line 203)
-   - Calls `analyseAssignmentData(assignment)`
-   - Creates Analysis and Overview sheets
-
-10. **Completion** (lines 205-208)
-    - Marks progress as complete
-    - Shows success toast message
-    - Logs completion
+9. **Completion**
+   - Marks progress as complete
+   - Shows success toast message
+   - Logs completion
 
 **Error Handling** (lines 210-226):
 
@@ -449,7 +322,6 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
 **Classes Instantiated**:
 
 - `TriggerController`: For trigger management
-- `GoogleClassroomManager`: For course operations
 - `ABClassController`: For class data operations
 - `AssignmentDefinitionController`: For definition operations
 
@@ -457,7 +329,7 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
 
 **Method**: `AssignmentController.createAssignmentInstance()`
 
-- **Location**: `/src/AdminSheet/y_controllers/AssignmentController.js:236-242`
+- **Location**: `src/backend/y_controllers/AssignmentController.js:236-242`
 - **Parameters**:
   - `assignmentDefinition` (AssignmentDefinition): Definition instance
   - `courseId` (string): Google Classroom course ID
@@ -472,7 +344,7 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
 
 **Static Factory Method**: `Assignment.create()`
 
-- **Location**: `/src/AdminSheet/AssignmentProcessor/Assignment.js:184-209`
+- **Location**: `src/backend/AssignmentProcessor/Assignment.js:184-209`
 - **Purpose**: Factory pattern for polymorphic instantiation
 - **Process**:
   1. Validates assignmentDefinition parameter
@@ -498,7 +370,7 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
 
 **Class**: `Assignment` (base class)
 
-- **Location**: `/src/AdminSheet/AssignmentProcessor/Assignment.js:6-695`
+- **Location**: `src/backend/AssignmentProcessor/Assignment.js:6-695`
 - **Constructor Properties**:
 
   ```javascript
@@ -516,8 +388,7 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
   }
   ```
 
-- **Legacy Aliases**: Via `_applyLegacyAliases()` for backward compatibility
-  - `documentType`, `referenceDocumentId`, `templateDocumentId`, `tasks`
+- Document metadata is accessed through the embedded `assignmentDefinition` object
 
 ---
 
@@ -527,7 +398,7 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
 
 **Method**: `AssignmentController.runAssignmentPipeline()`
 
-- **Location**: `/src/AdminSheet/y_controllers/AssignmentController.js:252-324`
+- **Location**: `src/backend/y_controllers/AssignmentController.js:252-324`
 - **Parameters**:
   - `assignment` (Assignment): Assignment instance
   - `students` (Array): Student objects from ABClass
@@ -547,12 +418,12 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
 
 **Method**: `Assignment.addStudent(student)`
 
-- **Location**: `/src/AdminSheet/AssignmentProcessor/Assignment.js:500-519`
+- **Location**: `src/backend/AssignmentProcessor/Assignment.js:500-519`
 - **Process**:
   1. Extracts studentId from student object
   2. Checks for duplicates in submissions array
   3. Creates new `StudentSubmission` instance
-  4. Attaches legacy student metadata (non-persisted)
+  4. Attaches student metadata (non-persisted)
   5. Adds to submissions array
 - **StudentSubmission Created**:
 
@@ -570,7 +441,7 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
 - **Purpose**: Validate that the stored assignment definition is still fresh before proceeding
 - **Process**:
   1. Gets reference and template modification times from Drive
-  2. Checks per-document staleness via `Utils.isNewer(referenceModified, definition.referenceLastModified)` and `Utils.isNewer(templateModified, definition.templateLastModified)`
+  2. Checks per-document staleness via `DateUtils.isNewer(referenceModified, definition.referenceLastModified)` and `DateUtils.isNewer(templateModified, definition.templateLastModified)`
   3. If either document is stale:
      - Throws `DefinitionStaleError` with `definitionKey`, `referenceStale`, `templateStale`, `referenceLastModified`, `templateLastModified`
      - The error is caught by `processSelectedAssignment`'s try/catch and surfaced via `ProgressTracker.logAndThrowError`
@@ -770,7 +641,7 @@ assignment.submissions = [
 
 **Class**: `ImageManager`
 
-- **Location**: `/src/AdminSheet/RequestHandlers/ImageManager.js`
+- **Location**: `src/backend/RequestHandlers/ImageManager.js`
 - **Purpose**: Batch-processes images for LLM consumption
 - **Methods**:
   - `collectAllImageArtifacts(assignment)`: Gathers all image artifact references
@@ -785,7 +656,7 @@ assignment.submissions = [
 
 **Method**: `Assignment.assessResponses()` (base implementation)
 
-- **Location**: `/src/AdminSheet/AssignmentProcessor/Assignment.js:645-654`
+- **Location**: `src/backend/AssignmentProcessor/Assignment.js:645-654`
 - **Purpose**: Routes to appropriate assessor based on document type
 - **Process**:
   1. Creates `LLMRequestManager` instance via `_getLLMManager()`
@@ -801,7 +672,7 @@ assignment.submissions = [
 
 **Class**: `LLMRequestManager` (extends `BaseRequestManager`)
 
-- **Location**: `/src/AdminSheet/RequestHandlers/LLMRequestManager.js`
+- **Location**: `src/backend/RequestHandlers/LLMRequestManager.js`
 
 **Method**: `generateRequestObjects(assignment)`
 
@@ -879,16 +750,13 @@ assignment.submissions = [
 
 **Class**: `Assessment`
 
-- **Location**: `/src/AdminSheet/Models/Assessment.js`
+- **Location**: `src/backend/Models/Assessment.js`
 - **Properties**:
 
   ```javascript
   {
-    category: string,      // completeness, accuracy, spag
-    score: number,         // 0-100
-    justification: string, // Explanation
-    createdAt: Date,
-    uid: string           // Unique identifier
+    score: number | string, // 0-5 or 'N' (for not attempted)
+    reasoning: string       // Explanation
   }
   ```
 
@@ -899,9 +767,9 @@ submission.items["task_001"] = {
   taskId: "task_001",
   artifact: { ... },
   assessments: {
-    completeness: Assessment { score: 85, justification: "..." },
-    accuracy: Assessment { score: 90, justification: "..." },
-    spag: Assessment { score: 95, justification: "..." }
+    completeness: Assessment { score: 4, reasoning: "..." },
+    accuracy: Assessment { score: 5, reasoning: "..." },
+    spag: Assessment { score: 3, reasoning: "..." }
   },
   feedback: {
     general: { text: "Great work!", category: "general" }
@@ -913,7 +781,7 @@ submission.items["task_001"] = {
 
 **Method**: `SheetsAssignment.assessResponses()` (overridden)
 
-- **Location**: `/src/AdminSheet/AssignmentProcessor/SheetsAssignment.js`
+- **Location**: `src/backend/AssignmentProcessor/SheetsAssignment.js`
 - **Process**:
   1. Creates `SheetsAssessor` instance with tasks and submissions
   2. Calls `assessor.assessResponses()`
@@ -921,7 +789,7 @@ submission.items["task_001"] = {
 
 **Class**: `SheetsAssessor`
 
-- **Location**: `/src/AdminSheet/Assessors/SheetsAssessor.js`
+- **Location**: `src/backend/Assessors/SheetsAssessor.js`
 
 **Method**: `SheetsAssessor.assessResponses()`
 
@@ -967,7 +835,7 @@ submission.items["task_001"] = {
 
 **Method**: `Assignment.touchUpdated()`
 
-- **Location**: `/src/AdminSheet/AssignmentProcessor/Assignment.js`
+- **Location**: `src/backend/AssignmentProcessor/Assignment.js`
 - **Purpose**: Sets lastUpdated to current timestamp
 - **Called**: Line 196 in `processSelectedAssignment()`
 
@@ -975,7 +843,7 @@ submission.items["task_001"] = {
 
 **Method**: `ABClassController.persistAssignmentRun(abClass, assignment)`
 
-- **Location**: `/src/AdminSheet/y_controllers/ABClassController.js`
+- **Location**: `src/backend/y_controllers/ABClassController.js`
 - **Purpose**: Saves assignment data in two forms
 - **Process**:
   1. Saves full assignment to dedicated collection
@@ -1024,9 +892,9 @@ submission.items["task_001"] = {
           taskId: "task_001",
           artifact: { content: "...", contentHash: "..." },
           assessments: {
-            completeness: { score: 85, justification: "..." },
-            accuracy: { score: 90, justification: "..." },
-            spag: { score: 95, justification: "..." }
+            completeness: { score: 4, reasoning: "..." },
+            accuracy: { score: 5, reasoning: "..." },
+            spag: { score: 3, reasoning: "..." }
           },
           feedback: [...]
         }
@@ -1047,81 +915,11 @@ submission.items["task_001"] = {
 }
 ```
 
----
-
-### Phase 6: Analysis and Reporting
-
-#### Step 6.1: Analyse Assignment Data
-
-**Method**: `AssignmentController.analyseAssignmentData(assignment)`
-
-- **Location**: `/src/AdminSheet/y_controllers/AssignmentController.js:102-112`
-- **Purpose**: Creates Analysis and Overview sheets
-- **Process**:
-  1. Creates Analysis Sheet:
-     - Instantiates `AnalysisSheetManager(assignment)`
-     - Calls `createAnalysisSheet()`
-  2. Updates Overview Sheet:
-     - Instantiates `OverviewSheetManager()`
-     - Calls `createOverviewSheet()`
-
-**Class**: `AnalysisSheetManager`
-
-- **Location**: `/src/AdminSheet/Sheets/AnalysisSheetManager.js`
-- **Purpose**: Creates detailed analysis sheet for single assignment
-- **Method**: `createAnalysisSheet()`
-  - Creates new sheet or clears existing
-  - Writes headers
-  - For each student submission:
-    - Writes student name
-    - For each task:
-      - Writes task title
-      - Writes assessment scores
-      - Writes feedback
-  - Formats cells and applies conditional formatting
-  - Calculates averages and statistics
-
-**Class**: `OverviewSheetManager`
-
-- **Location**: `/src/AdminSheet/Sheets/OverviewSheetManager.js`
-- **Purpose**: Creates/updates overview sheet with all assignments
-- **Method**: `createOverviewSheet()`
-  - Loads all assignments from ABClass
-  - Creates new sheet or clears existing
-  - Writes summary row for each assignment:
-    - Assignment name
-    - Average scores across all students
-    - Completion rates
-    - Last updated timestamp
-  - Sorts by date
-  - Applies formatting
-
-**Analysis Sheet Structure**:
-
-```text
-| Student Name | Task 1 - Completeness | Task 1 - Accuracy | Task 1 - SPaG | ... | Averages - Completeness | Averages - Accuracy | Averages - SPaG |
-|--------------|----------------------|-------------------|---------------|-----|------------------------|---------------------|-----------------|
-| Jane Doe     | 4                    | 5                 | 4             | ... | 4.2                    | 4.5                 | 4.3             |
-| John Smith   | 3                    | 4                 | 3             | ... | 3.5                    | 3.8                 | 3.6             |
-| Average      | 3.5                  | 4.5               | 3.5           | ... | 3.85                   | 4.15                | 3.95            |
-```
-
-Note: Scores are 0-5 (or 'N' for not attempted). Feedback is stored in the data model but not displayed in analysis sheets.
-
-**Overview Sheet Structure**:
-
-```text
-| Assignment Name | Avg Completeness | Avg Accuracy | Avg SPaG | Last Updated        |
-|----------------|------------------|--------------|----------|---------------------|
-| Essay 1        | 80               | 85           | 90       | 2025-01-15T10:30:00 |
-| Lab Report 1   | 85               | 88           | 92       | 2025-01-14T14:20:00 |
-```
-
-#### Step 6.2: Progress Completion
+#### Step 5.3: Progress Completion
 
 **Method**: `ProgressTracker.complete()`
 
-- **Location**: `/src/AdminSheet/Utils/ProgressTracker.js`
+- **Location**: `src/backend/Utils/ProgressTracker.js`
 - **Purpose**: Marks progress as complete
 - **Process**:
   1. Sets completion flag
@@ -1150,7 +948,7 @@ Note: Scores are 0-5 (or 'N' for not attempted). Feedback is stored in the data 
 {
   primaryTitle: string,
   primaryTopicKey: string | null,
-  primaryTopic: string | null, // resolved display label / legacy compatibility
+  primaryTopic: string | null, // resolved display label
   yearGroup: number | null,
   alternateTitles: string[],
   documentType: "SLIDES" | "SHEETS",
@@ -1159,7 +957,7 @@ Note: Scores are 0-5 (or 'N' for not attempted). Feedback is stored in the data 
   referenceLastModified: ISO date string,
   templateLastModified: ISO date string,
   assignmentWeighting: number | null,
-  definitionKey: string, // stable opaque identifier for current API upsert; legacy wizard flow still uses metadata-derived values
+  definitionKey: string, // stable opaque identifier for API upsert
   tasks: {
     [taskId]: TaskDefinition
   },
@@ -1258,7 +1056,7 @@ Note: Scores are 0-5 (or 'N' for not attempted). Feedback is stored in the data 
 
 ### ProgressTracker
 
-- **Location**: `/src/AdminSheet/Utils/ProgressTracker.js`
+- **Location**: `src/backend/Utils/ProgressTracker.js`
 - **Purpose**: Singleton for tracking progress and logging user-facing errors
 - **Key Methods**:
   - `updateProgress(message, incrementStep)`: Updates progress display
@@ -1269,7 +1067,7 @@ Note: Scores are 0-5 (or 'N' for not attempted). Feedback is stored in the data 
 
 ### ABLogger
 
-- **Location**: `/src/AdminSheet/ABLogger.js`
+- **Location**: `src/backend/Utils/ABLogger.js`
 - **Purpose**: Singleton for developer diagnostic logging
 - **Key Methods**:
   - `info(message, data)`: Informational log
@@ -1291,7 +1089,7 @@ Note: Scores are 0-5 (or 'N' for not attempted). Feedback is stored in the data 
 ### LLM Assessment Cache
 
 - **Manager**: `CacheManager`
-- **Location**: `/src/AdminSheet/RequestHandlers/CacheManager.js`
+- **Location**: `src/backend/RequestHandlers/CacheManager.js`
 - **Key**: `{referenceHash}_{studentHash}`
 - **Stored**: Assessment objects (completeness, accuracy, spag)
 - **Purpose**: Avoid re-assessing identical student responses
@@ -1319,37 +1117,19 @@ Note: Scores are 0-5 (or 'N' for not attempted). Feedback is stored in the data 
 Here's the complete chain from user action to completion:
 
 ```text
-User clicks "Assess Student Work"
-  ↓
-showAssignmentDropdown() [globals]
-  ↓
-UIManager.showAssignmentDropdown()
-  ↓
-GoogleClassroomManager.getAssignments()
-  ↓
-[User selects assignment in modal]
-  ↓
-openReferenceSlideModal(assignmentData) [HTML → globals]
-  ↓
-UIManager.openReferenceSlideModal()
-  ↓
-ABClassController.loadClass()
-AssignmentDefinitionController.getDefinitionByKey()
-  ↓
-[User enters document IDs in modal]
+Frontend calls startAssessmentRun() via apiHandler
   ↓
 startAssessmentRun() [apiHandler → startAssessmentRun_]
   ↓
 AssignmentController.startAssessmentRun()
   ├─ AssignmentDefinitionController.getDefinitionByKey()
-  ├─ Utils.isNewer() [per-document freshness]
+  ├─ _validateDefinitionFreshness() [DateUtils.isNewer]
   ├─ ABClassController.loadClass()
   └─ AssignmentController.startProcessing()
       ├─ TriggerController.createTimeBasedTrigger()
       └─ GASPropertiesUtils.applyProperties() [x4]
   ↓
 ProgressTracker.startTracking()
-UIManager.showProgressModal()
   ↓
 [5 second delay - trigger fires]
   ↓
@@ -1359,7 +1139,6 @@ AssignmentController.processSelectedAssignment()
   ├─ LockService.getDocumentLock()
   ├─ GASPropertiesUtils.getUserProperties() [x4]
   ├─ TriggerController.deleteTriggerById()
-  ├─ GoogleClassroomManager.getCourseId()
   ├─ ABClassController.loadClass()
   ├─ AssignmentDefinitionController.getDefinitionByKey()
   ├─ AssignmentController.createAssignmentInstance()
@@ -1367,8 +1146,8 @@ AssignmentController.processSelectedAssignment()
   │       └─ new SlidesAssignment() or new SheetsAssignment()
   ├─ AssignmentController.runAssignmentPipeline()
   │   ├─ Assignment.addStudent() [for each student]
-  │   ├─ DriveManager.getFileModifiedTime() [x2]
-  │   ├─ Utils.definitionNeedsRefresh()
+   │   ├─ DriveManager.getFileModifiedTime() [x2]
+   │   ├─ AssignmentController._validateDefinitionFreshness()
   │   ├─ [If refresh needed]:
   │   │   ├─ SlidesAssignment.populateTasks()
   │   │   │   └─ SlidesParser.extractTaskDefinitions()
@@ -1402,9 +1181,6 @@ AssignmentController.processSelectedAssignment()
   │   ├─ Save full assignment to `assign_full_*`
   │   ├─ Create partial assignment
   │   └─ Update ABClass.assignments and save to `class_*`
-  ├─ AssignmentController.analyseAssignmentData()
-  │   ├─ AnalysisSheetManager.createAnalysisSheet()
-  │   └─ OverviewSheetManager.createOverviewSheet()
   ├─ ProgressTracker.complete()
   └─ GASPropertiesUtils.clearProperties()
 ```
@@ -1412,12 +1188,6 @@ AssignmentController.processSelectedAssignment()
 ---
 
 ## Summary of Components by Role
-
-### UI Components
-
-- `UIManager`: Singleton managing all UI operations
-- `showAssignmentDropdown()`, `openReferenceSlideModal()`: Global wrapper functions
-- HTML Templates: `AssignmentDropdown.html`, `SlideIdsModal.html`, `ProgressModal.html`
 
 ### Controllers
 
@@ -1452,11 +1222,6 @@ AssignmentController.processSelectedAssignment()
 - `SheetsAssessor`: Formula-based assessment for spreadsheets
 - `CacheManager`: Caches assessment results
 
-### Sheet Managers
-
-- `AnalysisSheetManager`: Creates detailed analysis sheets
-- `OverviewSheetManager`: Creates summary overview sheets
-
 ### Utilities
 
 - `ProgressTracker`: Singleton for progress tracking and user errors
@@ -1470,7 +1235,6 @@ AssignmentController.processSelectedAssignment()
 
 ### External Services
 
-- `GoogleClassroomManager`: Google Classroom integration
 - `ClassroomApiClient`: Google Classroom API wrapper
 - Google Apps Script services: `LockService`, `PropertiesService`, `DriveApp`, `Classroom`, `Slides`, `Sheets`
 
@@ -1499,7 +1263,7 @@ To add a new assessment category (beyond completeness, accuracy, spag):
 
 1. Update LLM backend API to return new category
 2. Modify `LLMRequestManager._assignAssessmentArtifacts()` to handle new category
-3. Update `AnalysisSheetManager` to display new category in sheets
+3. Update any analysis or reporting views to display the new category
 4. No changes needed to data models (assessments stored as flexible objects)
 
 ### Extending the Pipeline

@@ -79,9 +79,9 @@ class AssignmentController {
    * - Retrieves and validates required parameters
    * - Creates an Assignment instance with student data
    * - Extracts and processes student submissions
-   * - Processes images from submissions
+   * - Processes images from submissions (Slides only)
    * - Assesses student responses
-   * - Generates analysis sheets and overview reports
+   * - Persists assignment data
    *
    * The method includes progress tracking and error handling throughout the process.
    * It cleans up resources (locks, properties) even if errors occur.
@@ -92,8 +92,8 @@ class AssignmentController {
    * Dependencies:
    * - Requires UserProperties: assignmentId, definitionKey, triggerId
    * - Uses services: PropertiesService
-   * - Relies on controllers: triggerController, progressTracker, classroomManager
-   * - Integrates with: Assignment, Student, AnalysisSheetManager, OverviewSheetManager
+   * - Relies on controllers: triggerController, progressTracker, abClassController
+   * - Integrates with: Assignment, StudentSubmission, ABClass
    */
   processSelectedAssignment() {
     try {

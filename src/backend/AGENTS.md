@@ -326,20 +326,23 @@ Rules:
 ## 11. API Domain Folder Organisation (`z_Api`)
 
 When two or more `z_Api` files share a common domain prefix, group them into a domain folder
-named after that prefix, following the pattern established by the `AssignmentDefinition` API
-methods.
+named after that prefix.
 
 Domain prefix is the leading part of the filename before the first capital letter or second
-conceptual segment (e.g. `assignmentDefinition` in `assignmentDefinitionTransport.js` and
-`assignmentDefinitionValidation.js`).
+conceptual segment (e.g. `abclass` in `abclassMutations.js`, `abclassRead.js`, and
+`abclassValidation.js`).
 
-Example — current `z_Api` files for this domain:
+Example — currently grouped `z_Api` files for a domain:
 
 ```
-z_Api/AssignmentDefinition/
-├── assignmentDefinitionTransport.js       # Upsert/read/delete/partials transport handlers
-└── assignmentDefinitionValidation.js      # Transport-boundary validation
+z_Api/abclass/
+├── abclassMutations.js        # ABClass create/update/delete transport handlers
+├── abclassRead.js             # ABClass read transport handlers
+└── abclassValidation.js       # Transport-boundary validation
 ```
+
+Files sharing a prefix that remain flat are candidates for future grouping (e.g.
+`assignmentDefinitionTransport.js` and `assignmentDefinitionValidation.js`).
 
 Rules:
 

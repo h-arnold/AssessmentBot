@@ -16,4 +16,4 @@ Fonts are currently allowed to use a CDN fallback.
 
 BeerCSS vendoring has been removed. The vendoring script `scripts/vendor-beercss.js` and command `npm run vendor:beercss` are no longer available.
 
-Previously, BeerCSS was installed via npm and vendored into HtmlService partials under `src/AdminSheet/UI/vendor/beercss/`. The existing vendored files remain in place for legacy compatibility.
+The `src/AdminSheet` directory and all its contents have been fully removed from the repository.

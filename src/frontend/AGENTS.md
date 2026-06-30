@@ -49,7 +49,7 @@ components. No feature logic, state machines, or hooks should live in `pages/`.
 
 - Current scaffold uses React + Ant Design.
 - Ant Design v6 does not require `@ant-design/v5-patch-for-react-19`; do not add that patch.
-- Keep UI work within frontend boundaries; do not add new UI behaviour in deprecated `src/AdminSheet/UI` unless explicitly requested.
+- Keep UI work within frontend boundaries; the `src/AdminSheet` directory has been fully removed, so no UI work should reference it.
 
 **Important**: When adding, using or modifying UI components, ALWAYS check the [Ant Design documentation](https://ant.design/llms.txt) and browse the relevant docs for the component or components you are working with. Ant Design has a lot of built-in functionality and options, and it's likely that the behaviour you want to implement is already supported by the library. Familiarise yourself with the documentation to ensure you're using the components effectively and following best practices.
 
@@ -202,12 +202,21 @@ services/assignmentDefinition/
 ├── assignmentTopicsService.ts
 ├── assignmentTopicsService.spec.ts
 ├── assignmentTopics.zod.ts
-└── assignmentTopics.zod.spec.ts
+├── assignmentTopics.zod.spec.ts
+├── taskPartial.zod.ts
+└── taskPartial.zod.spec.ts
 
 services/authService/
 ├── authService.ts
 ├── authService.spec.ts
 └── authService.zod.ts
+
+services/dataAnalysis/
+├── dataAnalysisService.ts
+├── dataAnalysisService.spec.ts
+├── dataAnalysis.zod.ts
+├── dataAnalysis.zod.spec.ts
+└── analysers/
 
 services/backendConfiguration/
 ├── backendConfigurationService.ts
@@ -227,7 +236,12 @@ services/googleClassrooms/
 ├── classPartialsService.ts
 ├── classPartialsService.spec.ts
 ├── classPartials.zod.ts
-└── classPartials.zod.spec.ts
+├── classPartials.zod.spec.ts
+├── classDetail/
+│   ├── classDetailService.ts
+│   ├── classDetailService.spec.ts
+│   ├── classDetailService.zod.ts
+│   └── classDetailService.zod.spec.ts
 
 services/referenceData/
 ├── referenceDataService.ts

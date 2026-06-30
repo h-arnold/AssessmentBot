@@ -68,12 +68,12 @@ When a section is likely to introduce helper reuse, helper extension, or new sha
 
 ### Validation commands hierarchy
 
-- Backend lint: `npm run lint`
-- Frontend lint: `npm run frontend:lint`
-- Builder lint (if touched): `npm run builder:lint`
-- Backend tests: `npm test -- <target>`
-- Frontend unit tests: `npm run frontend:test -- <target>`
-- Frontend e2e tests (if UX changes): `npm run frontend:test:e2e -- <target>`
+- Backend lint: `npm run lint:backend`
+- Frontend lint: `npm run lint:frontend`
+- Builder lint (if touched): `npm run lint:builder`
+- Backend tests: `npm run test:backend -- <target>`
+- Frontend unit tests: `npm run test:frontend -- <target>`
+- Frontend e2e tests (if UX changes): `npm run test:frontend:e2e -- <target>`
 
 ---
 

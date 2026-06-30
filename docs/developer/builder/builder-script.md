@@ -61,7 +61,7 @@ For full regression-checker configuration, report interpretation, compatibility 
 
 ### Coverage requirement
 
-Builder unit tests must meet a minimum coverage threshold of **85%** for lines, functions, statements, and branches. The threshold is enforced in `scripts/builder/vitest.config.ts` and checked via `npm run builder:test:coverage`.
+Builder unit tests must meet a minimum coverage threshold of **85%** for lines, functions, statements, and branches. The threshold is enforced in `scripts/builder/vitest.config.ts` and checked via `npm run test:builder:coverage`.
 
 ### Typical local workflow
 

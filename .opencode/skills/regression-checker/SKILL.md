@@ -75,13 +75,21 @@ Report file tree:
     ├── baseline/
     │   ├── manifest.json
     │   ├── baseline.txt              ← full baseline report
-    │   └── raw-artefacts/
+    │   └── checks/
+    │       ├── <check-id>/
+    │       │   ├── raw.json          ← tool raw output (raw.txt for tsc)
+    │       │   └── derived.json      ← structured summary for comparison
+    │       └── ...
     └── runs/
         └── <timestamp>/
             ├── manifest.json
             ├── comparison.json       ← structured comparison data
             ├── comparison.txt        ← full comparison report
-            └── raw-artefacts/
+            └── checks/
+                ├── <check-id>/
+                │   ├── raw.json      ← tool raw output (raw.txt for tsc)
+                │   └── derived.json  ← structured summary for comparison
+                └── ...
 ```
 
 Use `read` on `comparison.txt` or `baseline.txt` to inspect failure details without

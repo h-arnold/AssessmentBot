@@ -23,7 +23,7 @@ These tests are **NOT** blocking for feature development. They should be address
 
 **Current State**: Tolerance of 72px is still insufficient in some environments. Test is flaky across different Chromium versions and rendering modes.
 
-**Reference**: See `docs/developer/frontend/frontend-testing.md` lines 50-67 for geometry assertion stabilisation pattern.
+**Reference**: See `docs/developer/frontend/frontend-playwright-e2e.md` lines 395-408 for geometry assertion stabilisation pattern.
 
 ---
 
@@ -53,13 +53,15 @@ Full investigation documented at: `/tmp/vibe-scratchpad-b0dce62f-pvx7t902/flaky-
 
 ### For Geometry Tests
 
-1. Follow documented stabilisation pattern from `frontend-testing.md`:
+1. Follow documented stabilisation pattern from `docs/developer/frontend/frontend-playwright-e2e.md` (Geometry Assertion Stabilisation section):
 
    ```bash
    npm run test:frontend:e2e -- e2e-tests/classes-crud-manage-year-groups.spec.ts \
      -g "Create year group button stays near the table start edge within tolerance" \
      --repeat-each=10 --workers=1
    ```
+
+   The test file lives at `src/frontend/e2e-tests/classes-crud-manage-year-groups.spec.ts`.
 
 2. Consider further increasing tolerance or implementing dynamic tolerance based on environment
 
@@ -84,6 +86,8 @@ Full investigation documented at: `/tmp/vibe-scratchpad-b0dce62f-pvx7t902/flaky-
 
 ## Related Documentation
 
-- `docs/developer/frontend/frontend-testing.md` - Frontend testing guidelines including geometry assertion patterns
+- `docs/developer/frontend/frontend-playwright-e2e.md` - Geometry assertion stabilisation patterns (lines 395-408)
+- `docs/developer/frontend/frontend-testing.md` - Frontend testing guidelines
+- `src/frontend/e2e-tests/classes-crud-manage-year-groups.spec.ts` - The flaky test file
 - `ACTION_PLAN.md` - Section 1 delivery plan
 - `/tmp/vibe-scratchpad-b0dce62f-pvx7t902/flaky-tests-investigation.md` - Full investigation report

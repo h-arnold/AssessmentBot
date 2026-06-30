@@ -56,10 +56,11 @@ Do not create a new helper only to move code out of a large file.
 
 ### 3.3 Feature-shared helpers (existing local precedents)
 
-- Classes table shaping/filtering helpers: `src/frontend/src/features/classes/ClassesTable.helpers.ts`
-- Classes bulk-mutation orchestration helper: `src/frontend/src/features/classes/bulkMutationOrchestration.ts`
-- Classes metadata bulk-update helper: `src/frontend/src/features/classes/bulkMetadataUpdateFlow.ts`
-- Classes query refresh and invalidation contract helpers: `src/frontend/src/features/classes/queryInvalidation.ts`
+- Classes table shaping/filtering helpers: `src/frontend/src/features/classes/table/ClassesTable.helpers.ts`
+- Classes bulk-mutation orchestration helper (sequential FIFO): `src/frontend/src/features/classes/bulk/runQueuedBatchMutation.ts`
+- Classes batch-mutation shared types: `src/frontend/src/features/classes/bulk/batchMutationEngine.ts`
+- Classes metadata bulk-update helper: `src/frontend/src/features/classes/bulk/bulkMetadataUpdateFlow.ts`
+- Classes query refresh and invalidation contract helpers: `src/frontend/src/features/classes/bulk/queryInvalidation.ts`
 - Reference-data workflow helpers: `src/frontend/src/features/referenceData/manageReferenceDataHelpers.ts`
 
 Feature-scoped helpers should stay feature-scoped unless there is proven cross-feature reuse.
@@ -176,14 +177,14 @@ Keep them aligned with the current implementation if later cleanup extends, reve
 1. Helper or contract: bulk action descriptor feeding shared orchestration
 
 - Decision: extend
-- Owning path: `src/frontend/src/features/classes/ClassesManagementPanel.tsx`, `src/frontend/src/features/classes/bulkMutationOrchestration.ts`
+- Owning path: `src/frontend/src/features/classes/ClassesManagementPanel.tsx`, `src/frontend/src/features/classes/bulk/queryInvalidation.ts`
 - Status: `Implemented`
-- Rationale: the panel now drives top-level bulk actions through descriptor-shaped action data while preserving `runBulkMutationOrchestration(...)` as the shared mutation boundary
+- Rationale: the panel now drives top-level bulk actions through descriptor-shaped action data while preserving `runMutationWithRequiredClassPartialsRefresh(...)` as the shared mutation-boundary helper in `bulk/queryInvalidation.ts`
 
 2. Helper or contract: metadata bulk-update contract for editable existing rows
 
 - Decision: new
-- Owning path: `src/frontend/src/features/classes/bulkMetadataUpdateFlow.ts`
+- Owning path: `src/frontend/src/features/classes/bulk/bulkMetadataUpdateFlow.ts`
 - Status: `Implemented`
 - Rationale: cohort, year-group, and course-length updates now converge on one feature-local metadata contract for eligibility filtering, payload validation, and batch mutation dispatch
 

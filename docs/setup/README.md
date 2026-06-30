@@ -6,14 +6,13 @@ This guide will walk you through setting up the Google Slides Assessor, a tool d
   - [📝 Prerequisites](#-prerequisites)
   - [🧩 Core Components](#-core-components)
     - [1️⃣ Assessment Bot Backend](#1️⃣-assessment-bot-backend)
-    - [2️⃣ Admin Sheet](#2️⃣-admin-sheet)
-    - [3️⃣ Assessment Records](#3️⃣-assessment-records)
+    - [2️⃣ Assessment Records](#2️⃣-assessment-records)
   - [🚀 The Setup Process](#-the-setup-process)
     - [🌐 Setting up the Backend](#-setting-up-the-backend)
     - [🖥️ Setting up the Google Apps Script Frontend](#️-setting-up-the-google-apps-script-frontend)
       - [1️⃣ Configuring Assessment Bot](#1️⃣-configuring-assessment-bot)
       - [2️⃣ Creating the Assessment Records](#2️⃣-creating-the-assessment-records)
-      - [4️⃣ Getting started with your first assessment.](#4️⃣-getting-started-with-your-first-assessment)
+      - [3️⃣ Getting started with your first assessment.](#3️⃣-getting-started-with-your-first-assessment)
   - [🌟 Final Thoughts](#-final-thoughts)
 
 ## 📝 Prerequisites
@@ -33,15 +32,7 @@ Understanding the system's components will help you see how it all fits together
 
 - ([The Assessment Bot Backend](https://github.com/h-arnold/AssessmentBot-Backend)) provides the LLM (Large Language Model) backend for handling assessments. This allows for automated interpretation and marking of student submissions.
 
-### 2️⃣ Admin Sheet
-
-- The Admin Sheet contains a bound script containing the frontend source code which is used as a library for the Assessment Records. It also allows you to:
-
-- Create and Manage Assessment Records for each class
-- Handle updates
-- Analyse whole-cohort data
-
-### 3️⃣ Assessment Records
+### 2️⃣ Assessment Records
 
 - A separate Google Sheet for each class, where assessment data is stored. This will be the tool most commonly used by your team.
 
@@ -69,11 +60,11 @@ This section is primarily for Heads of Department or administrators responsible 
 
 #### [2️⃣ Creating the Assessment Records](./settingUpAssessmentRecords.md)
 
-- **Note**: Current docs are out of date. Check back later for updated versions¬
+- This step creates the class records that store assessment data.
 
-#### [4️⃣ Getting started with your first assessment.](/docs/howTos/README.md)
+#### [3️⃣ Getting started with your first assessment.](../howTos/README.md)
 
-- All the hard work has been done. Now you need to get assessing! [Check out the documentation for that here.](/docs/howTos/README.md)
+- All the hard work has been done. Now you need to get assessing! [Check out the documentation for that here.](../howTos/README.md)
 
 ---
 

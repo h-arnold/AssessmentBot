@@ -1,5 +1,7 @@
 # Managing OAuth Scopes
 
-The source of truth for Google Apps Script OAuth scopes lives in `src/AdminSheet/appsscript.json`, which is part of the deprecated reference implementation.
+The source of truth for Google Apps Script OAuth scopes lives in `src/backend/appsscript.json`. The backend manifest is the canonical scope source.
 
-Do not rely on sync tooling for this deprecated area. If legacy scope updates are ever required, they must be made explicitly and reviewed as direct file changes in the legacy files.
+When backend behaviour requires new scopes or services, update `src/backend/appsscript.json` and keep additions minimal and justified. The builder manifest merge process uses the backend manifest as its base.
+
+For the current list of required scopes, see the `oauthScopes` array in `src/backend/appsscript.json`.

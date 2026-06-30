@@ -57,9 +57,9 @@ Default decision:
 
 ### 3.2 Classes bulk form modals
 
-- `src/frontend/src/features/classes/BulkSetSelectModal.tsx`
-- `src/frontend/src/features/classes/BulkSetCourseLengthModal.tsx`
-- `src/frontend/src/features/classes/BulkCreateModal.tsx`
+- `src/frontend/src/features/classes/bulk/BulkSetSelectModal.tsx`
+- `src/frontend/src/features/classes/bulk/BulkSetCourseLengthModal.tsx`
+- `src/frontend/src/features/classes/bulk/BulkCreateModal.tsx`
 
 Shared traits:
 
@@ -81,7 +81,7 @@ Default decision:
 
 - reuse the family shape
 - extract helper behaviour only when repeated shell logic clearly outweighs the helper surface
-- accepted boundary for the classes modal-family compliance refactor: a narrow feature-local `src/frontend/src/features/classes/BulkFormModalScaffold.tsx` may be introduced for this family only
+- accepted boundary for the classes modal-family compliance refactor: a narrow feature-local `src/frontend/src/features/classes/bulk/BulkFormModalScaffold.tsx` may be introduced for this family only
 - scaffold status for that refactor: `Implemented`; the scaffold now ships as the feature-local shared shell for the three bulk form modals
 
 ### 3.3 Reference-data workflow modals

@@ -19,8 +19,6 @@ Failing to read these files **will** result in you failing your task.
 ### 2. Active vs Deprecated Areas
 
 - Active implementation areas: `src/backend`, `src/frontend`, `scripts/builder`.
-- `src/AdminSheet` and `src/AssessmentRecordTemplate` are deprecated reference sources.
-- Do not add new features in deprecated areas unless explicitly requested.
 
 ### 3. Core Principles (All Components)
 
@@ -39,7 +37,7 @@ Failing to read these files **will** result in you failing your task.
 
 ### 4. Delegation Protocol
 
-- Available project agents (source of truth: `.github/agents`; keep matching `.codex/agents/*.toml` files behaviourally aligned for the Codex runtime):
+- Available project agents (source of truth: `.github/agents`):
   - `Planner` (`.github/agents/planner.agent.md`) for clarification-driven planning that produces `SPEC.md`, optional frontend layout specs, and `ACTION_PLAN.md`.
   - `Planner Reviewer` (`.github/agents/planner-reviewer.agent.md`) for impartial second-pass review of planning artefacts against the codebase before later documents or implementation depend on them.
   - `Testing Specialist` (`.github/agents/Testing.agent.md`) for Vitest unit/component test and backend test implementation and debugging.

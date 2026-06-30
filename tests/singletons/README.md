@@ -48,7 +48,7 @@ These tests establish the current (eager) behavior and document the desired lazy
 
 - ConfigurationManager lazy initialization
 - InitController lazy UI instantiation
-- UIManager lazy classroom manager creation
+- UIManager lazy classroom manager creation (UIManager has been removed)
 - ProgressTracker control tests (already lazy)
 - Performance baseline measurements
 
