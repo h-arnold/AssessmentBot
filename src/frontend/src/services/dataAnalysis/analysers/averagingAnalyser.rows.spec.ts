@@ -596,3 +596,24 @@ describe('AveragingAnalyser', () => {
     });
   });
 });
+
+describe('rollupAccumulators (exported)', () => {
+  it('is exported and throws when called with empty accumulators iterable', async () => {
+    const module_ = (await import('./averagingAnalyser.rows')) as unknown as {
+      rollupAccumulators?: (...arguments_: unknown[]) => unknown;
+    };
+    const rollupAccumulators = module_.rollupAccumulators;
+
+    // Fails in RED phase because rollupAccumulators is currently private.
+    // GREEN phase exports it, making this assertion pass.
+    expect(typeof rollupAccumulators).toBe('function');
+
+    const criterionWeightings = { completeness: 0.4, accuracy: 0.4, spag: 0.2 };
+
+    // When no accumulators exist, rollupAccumulators delegates to rollupMetric
+    // which throws on an empty subTasks array.
+    expect(() =>
+      (rollupAccumulators as (...arguments_: unknown[]) => unknown)([], criterionWeightings)
+    ).toThrow();
+  });
+});

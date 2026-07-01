@@ -8,12 +8,17 @@ import type { DataPointAccumulator } from './averagingAnalyser.types';
  * Build the four MetricResults (completeness, accuracy, spag, overall) from
  * an iterable of DataPointAccumulators using rollupMetric and the composite rule.
  *
+ * @remarks
+ * This function was previously private and duplicated in `analyseClass`. The
+ * export unifies the rollup pattern across per-student, per-task, and per-class
+ * aggregation, eliminating the dual-path duplication.
+ *
  * @param {Iterable<DataPointAccumulator>} accumulators - The source accumulators.
  * @param {CriterionWeightings} criterionWeightings - The criterion weightings.
  * @returns {{ completeness: MetricResult; accuracy: MetricResult; spag: MetricResult; overall: MetricResult }}
  *   The four metric rollup results.
  */
-function rollupAccumulators(
+export function rollupAccumulators(
   accumulators: Iterable<DataPointAccumulator>,
   criterionWeightings: CriterionWeightings
 ): {
@@ -38,6 +43,26 @@ function rollupAccumulators(
   const overall = computeOverallComposite(completeness, accuracy, spag, criterionWeightings);
 
   return { completeness, accuracy, spag, overall };
+}
+
+/**
+ * Collect accumulators for a specific task from the per-student-task map.
+ *
+ * @param {Map<string, Map<string, DataPointAccumulator>>} perStudentTaskAccums -
+ *   The per-(student, task) accumulators.
+ * @param {string} taskKey - The task composite key (`definitionKey::taskId`).
+ * @returns {DataPointAccumulator[]} Array of accumulators for that task.
+ */
+function collectAccumulatorsForTask(
+  perStudentTaskAccums: Map<string, Map<string, DataPointAccumulator>>,
+  taskKey: string
+): DataPointAccumulator[] {
+  const result: DataPointAccumulator[] = [];
+  for (const taskMap of perStudentTaskAccums.values()) {
+    const accum = taskMap.get(taskKey);
+    if (accum) result.push(accum);
+  }
+  return result;
 }
 
 /**
@@ -131,19 +156,8 @@ export function buildPerTaskRows(
 ): PerTaskRow[] {
   const rows: PerTaskRow[] = [];
 
-  // Build a reverse index: taskKey → student accumulators
-  const taskToStudentAccums = new Map<string, Array<DataPointAccumulator>>();
-  for (const [, taskMap] of perStudentTaskAccums) {
-    for (const [taskKey, accum] of taskMap) {
-      if (!taskToStudentAccums.has(taskKey)) {
-        taskToStudentAccums.set(taskKey, []);
-      }
-      taskToStudentAccums.get(taskKey)!.push(accum);
-    }
-  }
-
   for (const [taskKey, accumulator] of taskAccums) {
-    const studentAccumsForTask = taskToStudentAccums.get(taskKey);
+    const studentAccumsForTask = collectAccumulatorsForTask(perStudentTaskAccums, taskKey);
 
     if (!studentAccumsForTask || studentAccumsForTask.length === 0) {
       rows.push({

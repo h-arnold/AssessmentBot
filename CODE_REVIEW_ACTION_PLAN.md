@@ -189,11 +189,21 @@ Frontend tests:
 
 ---
 
-## Section 2 — Unify per-class rollup paths (CRITICAL-2 + CRITICAL-5 + MAJOR-7 + MAJOR-6)
+## Section 2 — Unify per-class rollup paths (CRITICAL-2 + CRITICAL-5 + MAJOR-7 + MAJOR-6) ✅ COMPLETE
 
 ### Objective
 
 Fix CRITICAL-2: eliminate the dual per-class rollup paths in `averagingAnalyser.ts:106-135` that produce semantically different results depending on whether per-student-task data exists. Fix CRITICAL-5: eliminate the duplicated rollup/iterate pattern by exporting `rollupAccumulators` from `averagingAnalyser.rows.ts` and reusing it in `analyseClass`. Fix MAJOR-6: remove the unnecessary reverse index in `buildPerTaskRows`. Fix MAJOR-7: eliminate temporary `MetricResult[]` array allocations in `analyseClass`.
+
+### Completion summary
+
+- CRITICAL-2: Dual per-class rollup paths unified. `analyseClass` now calls `rollupAccumulators` for both populated and fallback paths. The populated path passes `allPerStudentTaskAccums`; the empty classAccum fallback passes `[accumulators.classAccum]` as a single-element array. No `accumToMetric(classAccum.completeness)` fallback remains.
+- CRITICAL-5: `rollupAccumulators` exported from `averagingAnalyser.rows.ts` and imported by `averagingAnalyser.ts`. Reused in `analyseClass` alongside the row builders.
+- MAJOR-6: Reverse index (`taskToStudentAccums` Map) removed from `buildPerTaskRows`. Replaced by `collectAccumulatorsForTask()` helper that iterates `perStudentTaskAccums` values directly.
+- MAJOR-7: Three intermediate `MetricResult[]` arrays (`completenessResults`, `accuracyResults`, `spagResults`) eliminated from `analyseClass`. Unused imports (`MetricResult`, `accumToMetric`, `computeOverallComposite`, `rollupMetric`) removed.
+- Coverage gaps 2 and 5 addressed: 3 new RED-phase tests (1 for empty accumulators, 1 for export verification, 1 structural regression).
+- Green-phase review: clean (no findings).
+- Regression gate: 1293 tests pass (109 files), 0 regressions; lint green.
 
 ### Constraints
 
