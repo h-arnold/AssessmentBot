@@ -8,23 +8,13 @@
  * Depends on global `Classroom`, `DriveApp`, `StudentSubmission`, and `ABLogger` (GAS runtime globals).
  * @class
  */
-/**
- * AssignmentSubmissions — Student submission management sub-class
- *
- * Owns addStudent(), _processAttachmentForSubmission(), fetchSubmittedDocumentsByMimeType(),
- * and isValidMimeType().
- *
- * Operates on the parent Assignment instance's state via this._assignment.
- * Depends on global `Classroom`, `DriveApp`, `StudentSubmission`, and `ABLogger` (GAS runtime globals).
- * @class
- */
 class AssignmentSubmissions {
   /**
    * Constructor.
-   * @param {import('../Assignment.js')} assignment - The parent Assignment instance.
+   * @param {import('./index.js')} assignment - The parent Assignment instance.
    */
   constructor(assignment) {
-    /** @type {import('../Assignment.js')} */
+    /** @type {import('./index.js')} */
     this._assignment = assignment;
   }
 

@@ -6,7 +6,7 @@
  *
  * Depends on global `SlidesAssignment`, `SheetsAssignment`, `AssignmentDefinition`,
  * and `ProgressTracker` (GAS runtime globals).
- * @class
+ * @namespace
  */
 const AssignmentFactory = {
   /**

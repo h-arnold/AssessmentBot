@@ -191,7 +191,6 @@ module.exports = [
   {
     files: [
       'src/backend/Assessors/SheetsAssessor.js',
-      'src/backend/AssignmentProcessor/Assignment.js',
       'src/backend/ConfigurationManager/98_ConfigurationManagerClass.js',
       'src/backend/ConfigurationManager/99_globals.js',
       'src/backend/DocumentParsers/DocumentParser.js',

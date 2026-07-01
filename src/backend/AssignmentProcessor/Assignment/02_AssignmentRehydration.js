@@ -6,7 +6,7 @@
  *
  * Depends on global `AssignmentDefinition`, `StudentSubmission`, `ProgressTracker`,
  * `ABLogger`, and `Validate` (GAS runtime globals).
- * @class
+ * @namespace
  */
 const AssignmentRehydration = {
   /**

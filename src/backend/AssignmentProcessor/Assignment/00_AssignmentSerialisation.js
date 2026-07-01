@@ -8,10 +8,10 @@
 class AssignmentSerialisation {
   /**
    * Constructor.
-   * @param {import('../Assignment.js')} assignment - The parent Assignment instance.
+   * @param {import('./index.js')} assignment - The parent Assignment instance.
    */
   constructor(assignment) {
-    /** @type {import('../Assignment.js')} */
+    /** @type {import('./index.js')} */
     this._assignment = assignment;
   }
 

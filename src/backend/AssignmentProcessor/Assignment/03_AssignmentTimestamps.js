@@ -5,20 +5,13 @@
  * Operates on the parent Assignment instance's date fields via this._assignment.
  * @class
  */
-/**
- * AssignmentTimestamps — Timestamp management sub-class
- *
- * Owns touchUpdated(), getUpdatedAt(), setUpdatedAt(), getCreatedAt(), setCreatedAt().
- * Operates on the parent Assignment instance's date fields via this._assignment.
- * @class
- */
 class AssignmentTimestamps {
   /**
    * Constructor.
-   * @param {import('../Assignment.js')} assignment - The parent Assignment instance.
+   * @param {import('./index.js')} assignment - The parent Assignment instance.
    */
   constructor(assignment) {
-    /** @type {import('../Assignment.js')} */
+    /** @type {import('./index.js')} */
     this._assignment = assignment;
   }
 
