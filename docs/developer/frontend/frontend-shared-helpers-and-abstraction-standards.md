@@ -526,13 +526,13 @@ These entries record the planned feature-local helpers for the Class page. Per `
 - Status: `Not implemented`
 - Planned doc reconciliation: confirm the model remains a pure function and that no React or React Query imports leak in.
 
-3. Structural change: facade decomposition of `averagingAnalyser.accumulation.ts`
+3. Structural change: extraction of `averagingAnalyser.criterionAccumulation.ts`
 
-- Decision: `defer`
-- Owning module/path: `src/frontend/src/services/dataAnalysis/analysers/accumulation/` (new subfolder), with `averagingAnalyser.accumulation.ts` becoming a facade.
-- Call-site rationale: the projected post-change size is ~500–530 lines, which is under the 550-line threshold for facade decomposition per `src/frontend/AGENTS.md` §13 ("Do not pre-emptively split files that are approaching 550 lines; wait until the threshold is crossed or a concrete maintenance need arises"). The decomposition is deferred until the threshold is crossed or a concrete maintenance need arises. A concrete maintenance need (e.g. the three-way state assignment logic is hard to test in isolation) may trigger the decomposition in a future pass.
-- Status: `Deferred`
-- Planned doc reconciliation: confirm the projected post-change size at implementation time and confirm the defer decision remains valid.
+- Decision: `extract`
+- Owning module/path: `src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.criterionAccumulation.ts` (new sibling file)
+- Call-site rationale: `averagingAnalyser.accumulation.ts` reached 649 lines (above the 550-line threshold in `src/frontend/AGENTS.md` §13), triggering a concrete maintenance need. Five criterion-accumulation functions (`accumulateCriterion`, `accumulateMetricsToTarget`, `computeOverall`, `processSubmissionItem`, `processItemAssessments`) were extracted to a new sibling module. The extraction preserved exact function bodies; no logic changes. `accumulation.ts` was reduced to 440 lines (under the threshold).
+- Status: `Implemented`
+- Planned doc reconciliation: confirmed the decomposition boundary (criterion-level accumulation only) is correct and the extracted module is under 550 lines (223 LOC).
 
 ### 9.19 Frontend pure formatting helpers
 
@@ -552,6 +552,15 @@ Per `SPEC_CLASS_PAGE_PREPARATION.md` line 382, the canonical home for these help
   - The helper preserves the existing `AssignmentsPage` behaviour (em-dash fallback for null/unparseable) while the Class page adapter (`classPageAdapter`) throws upstream on null.
   - Pure function: en-GB locale, date-only, rendered in UTC. No React / antd / I/O / state.
 - Planned doc reconciliation: confirmed the helper lives at the planned path, preserves the existing `AssignmentsPage` behaviour, and the `UNAVAILABLE_VALUE` constant is defined locally (not imported from `AssignmentsPage.tsx`).
+
+### 9.20 Data analysis accumulator helpers
+
+1. Helper: `rollupAccumulators` exported from `averagingAnalyser.rows.ts`
+
+- Decision: `extend` (existing function, now exported)
+- Owning module/path: `src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.rows.ts`
+- Call-site rationale: `rollupAccumulators` was previously private to `averagingAnalyser.rows.ts` and duplicated in `averagingAnalyser.ts` (`analyseClass`). By exporting it, the per-class rollup path in `analyseClass` now reuses the same `rollupAccumulators` call that the row builders use, eliminating the dual-path bug described in CRITICAL-2.
+- Status: `Implemented`
 
 ## 10. Frontend utils folder convention
 
