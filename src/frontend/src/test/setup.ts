@@ -116,7 +116,7 @@ function readInlineStyles(element: Element): Record<string, string> {
       const property = declaration.slice(0, Math.max(0, colonIndex)).trim();
       const value = declaration.slice(Math.max(0, colonIndex + 1)).trim();
       if (property && value) {
-        // eslint-disable-next-line security/detect-object-injection -- CSS property names are not user-controlled
+        // eslint-disable-next-line security/detect-object-injection -- CSS property names in this test double are not user-controlled; they are static inline style strings from component props, making the object-injection rule a false positive here
         styles[property] = value;
       }
     }

@@ -52,20 +52,25 @@ const QUARTILE_WEIGHT = 3;
 const QUARTILE_DENOMINATOR = 4;
 
 /**
- * Resolve a computed metric value to a band colour using the given range.
+ * Resolve a computed metric value to a band colour using the given precomputed boundaries.
  *
  * @remarks
  * The amber/green boundary uses `>=` per the spec boundary rule (`value >= amberGreenBoundary` yields
  * `green`). A prior implementation used `>` which misclassified the exact boundary value as `gold`.
  *
+ * Boundaries are precomputed by the caller (`resolveMetricTone`) so they are not recalculated
+ * on every invocation.
+ *
  * @param {number} value - The computed numeric value.
- * @param {MetricToneRange} range - The scoring range boundaries.
+ * @param {number} redAmberBoundary - The boundary between red and amber bands.
+ * @param {number} amberGreenBoundary - The boundary between amber and green bands.
  * @returns {MetricToneColor} The band colour for the value.
  */
-function resolveComputedColor(value: number, range: MetricToneRange): MetricToneColor {
-  const redAmberBoundary = (QUARTILE_WEIGHT * range.lower + range.upper) / QUARTILE_DENOMINATOR;
-  const amberGreenBoundary = (range.lower + QUARTILE_WEIGHT * range.upper) / QUARTILE_DENOMINATOR;
-
+function resolveComputedColor(
+  value: number,
+  redAmberBoundary: number,
+  amberGreenBoundary: number
+): MetricToneColor {
   if (value < redAmberBoundary) {
     return 'red';
   }
@@ -83,6 +88,10 @@ function resolveComputedColor(value: number, range: MetricToneRange): MetricTone
  * @remarks
  * **Pure function contract.** No side effects, no I/O, no React / antd imports.
  * Idempotent and stateless.
+ *
+ * **Boundary caching.** Boundary values (`redAmberBoundary`, `amberGreenBoundary`) are
+ * computed once per call in the `computed` case and passed as arguments to
+ * `resolveComputedColor`, avoiding repeated recalculation on every invocation.
  *
  * **Band boundary formulas** (applied only when `metric.state === 'computed'`):
  * ```
@@ -124,8 +133,11 @@ export function resolveMetricTone(
 
   switch (metric.state) {
     case 'computed': {
+      const redAmberBoundary = (QUARTILE_WEIGHT * range.lower + range.upper) / QUARTILE_DENOMINATOR;
+      const amberGreenBoundary =
+        (range.lower + QUARTILE_WEIGHT * range.upper) / QUARTILE_DENOMINATOR;
       return {
-        color: resolveComputedColor(metric.value, range),
+        color: resolveComputedColor(metric.value, redAmberBoundary, amberGreenBoundary),
         displayValue: metric.value,
         muted: false,
       };

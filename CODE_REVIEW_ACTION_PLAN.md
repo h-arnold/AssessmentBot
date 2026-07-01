@@ -596,7 +596,15 @@ Code Reviewer mandatory docs:
 
 ---
 
-## Section 6 — Boundary caching + linter comment improvement (MINOR-3 + MINOR-4)
+## Section 6 — Boundary caching + linter comment improvement (MINOR-3 + MINOR-4) ✅ COMPLETE
+
+### Completion summary
+
+- MINOR-3: `resolveComputedColor` now accepts precomputed boundary values (`redAmberBoundary`, `amberGreenBoundary`) instead of `MetricToneRange`. Boundaries computed once in `resolveMetricTone`'s `computed` case. JSDoc updated with "Boundary caching" `@remarks`.
+- MINOR-4: Linter suppression comment at `setup.ts:119` expanded with clear rationale (test double, static inline style strings, false positive).
+- No new tests needed (boundary behaviour already covered by Section 1's 13 tests in metricTone.spec.ts).
+- Full suite: 1299 tests, 109 files, 0 regressions. Lint: 0 errors, 14 pre-existing warnings.
+- Green-phase review: clean (no findings).
 
 ### Objective
 
