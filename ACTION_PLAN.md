@@ -1311,7 +1311,7 @@ This is a pure structural refactor; the existing tests are the safety net. There
   - `fetchAssignmentName` stays on the facade as a private lifecycle initialiser.
 - **Deviation:** Sub-class constructors use `this._assignment = assignment` rather than a single options-object parameter. This is consistent with the `AssignmentDefinition` pattern (sub-classes access parent state via the reference). The lazy-getter pattern is a design improvement over the planned simple delegation, resolving the `Object.create(Assignment.prototype)` compatibility issue without defensive null-check code.
 - **Code review findings:** 3 nitpicks (2 American spellings `serialization`→`serialisation`, `deserialization`→`deserialisation`; inconsistent export guard in facade) — all resolved before commit.
-- **Commits:** (recorded below after commit)
+- **Commits:** `912c8d8` — `refactor: decompose Assignment.js into facade with 7 sub-classes` — pushed to `origin/opencode/eager-comet` successfully.
 
 ---
 
