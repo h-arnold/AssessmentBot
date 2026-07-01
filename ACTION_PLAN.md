@@ -1310,8 +1310,21 @@ This is a pure structural refactor; the existing tests are the safety net. There
   - `SlidesAssignment.js` and `SheetsAssignment.js` are unmodified.
   - `fetchAssignmentName` stays on the facade as a private lifecycle initialiser.
 - **Deviation:** Sub-class constructors use `this._assignment = assignment` rather than a single options-object parameter. This is consistent with the `AssignmentDefinition` pattern (sub-classes access parent state via the reference). The lazy-getter pattern is a design improvement over the planned simple delegation, resolving the `Object.create(Assignment.prototype)` compatibility issue without defensive null-check code.
-- **Code review findings:** 3 nitpicks (2 American spellings `serialization`→`serialisation`, `deserialization`→`deserialisation`; inconsistent export guard in facade) — all resolved before commit.
-- **Commits:** `912c8d8` — `refactor: decompose Assignment.js into facade with 7 sub-classes` — pushed to `origin/opencode/eager-comet` successfully.
+- **Green-phase code review:** 3 nitpicks (2 American spellings `serialization`→`serialisation`, `deserialization`→`deserialisation`; inconsistent export guard in facade) — all resolved before commit.
+- **Regression gate:** 0 regressions from baseline (identical 0 errors / 14 warnings lint, 1877/1877 tests, 139 false-positive e2e baseline unchanged).
+- **De-sloppification pass:** 6 findings fixed and committed:
+  - C1: Stale JSDoc `import('../Assignment.js')` → `'./index.js'` across 5 sub-class files
+  - C2: Duplicated JSDoc class header removed in `03_AssignmentTimestamps.js`
+  - W1: Duplicated JSDoc class header removed in `04_AssignmentSubmissions.js`
+  - W2: Empty JSDoc block removed in `06_AssignmentLLMOrchestration.js`
+  - N1: `@class` → `@namespace` in `01_AssignmentFactory.js` & `02_AssignmentRehydration.js`
+  - N2: Stale `eslint.config.js` entry (`src/backend/AssignmentProcessor/Assignment.js`) removed
+- **Final documentation pass:** `docs/developer/backend/AssessmentFlow.md` updated — 8 stale monolithic `Assignment.js` path references replaced with decomposed file paths (pointing to `01_AssignmentFactory.js`, `index.js`, `04_AssignmentSubmissions.js`, `03_AssignmentTimestamps.js`, `06_AssignmentLLMOrchestration.js`, and the `Assignment/` subfolder for new subclasses). Zero stale references remain in `DATA_SHAPES.md`, `rehydration.md`, or other `docs/developer/` files.
+- **Commits (Section 6):**
+  - `912c8d8` — `refactor: decompose Assignment.js into facade with 7 sub-classes` (implementation)
+  - `e6081a7` — `docs: record Section 6 commit details in ACTION_PLAN.md` (plan update)
+  - `2fb2bfa` — `refactor: apply de-sloppification fixes to Section 6 files` (de-sloppification)
+  - All pushed to `origin/opencode/eager-comet` successfully.
 
 ---
 
