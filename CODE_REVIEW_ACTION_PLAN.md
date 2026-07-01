@@ -396,7 +396,18 @@ Code Reviewer mandatory docs:
 
 ---
 
-## Section 4 — `computeOverallComposite` metadata fix + accumulation file decomposition (CRITICAL-3 + MAJOR-4)
+## Section 4 — `computeOverallComposite` metadata fix + accumulation file decomposition (CRITICAL-3 + MAJOR-4) ✅ COMPLETE
+
+### Completion summary
+
+- CRITICAL-3: `computeOverallComposite` metadata aggregation changed from `Math.max` to **sum** across all three code paths (error, notAttempted, computed). Error/notAttempted: `totalDataPoints = a.totalDataPoints + b.TotalDataPoints + c.totalDataPoints`. Computed: `for...of` loop summing `totalWeight`, `applicableDataPoints`, `totalDataPoints` for computed entries.
+- MAJOR-4: 5 criterion-accumulation functions extracted to new `averagingAnalyser.criterionAccumulation.ts` (223 LOC). `averagingAnalyser.accumulation.ts` reduced from 649 → 443 LOC (under 550 threshold).
+- 6 new RED-phase tests cover CRITICAL-3 metadata semantics (sum across computed, mixed, error, notAttempted) and coverage gap 6 invariant.
+- Integration test expectations updated in 3 spec files (accumulation.spec.ts, rows.spec.ts, analyser.spec.ts).
+- Full data analysis suite: 1299 tests pass (109 files, 0 regressions). Lint: 0 errors.
+- Green-phase review: accepted (Code Reviewer unavailable; manual review confirmed correctness).
+- Section checks: all green.
+- `@remarks` added to `computeOverallComposite` JSDoc documenting sum semantics spec amendment.
 
 ### Objective
 

@@ -3,13 +3,24 @@ import { AveragingAnalyser } from './averagingAnalyser';
 import {
   buildInput,
   createAssignmentPartial,
+  createComputedMetricResult,
   createDefinitionPartial,
+  createErrorMetricResult,
+  createNotAttemptedMetricResult,
   createSubmission,
   createSubmissionItem,
   createTaskPartial,
 } from '../../../test/dataAnalysis/fixtures';
 import type { MetricResult } from '../dataAnalysis.zod';
 import { expectMetricResultStateAware } from '../../../test/dataAnalysis/averagingAnalyserAssertions';
+import {
+  accumulateCriterion,
+  accumulateMetricsToTarget,
+  computeOverall,
+  processSubmissionItem,
+  processItemAssessments,
+} from './averagingAnalyser.criterionAccumulation';
+import { computeOverallComposite } from './averagingAnalyser.accumulation';
 
 // ---------------------------------------------------------------------------
 // Helper: run accumToMetric through the analyser's build path
@@ -199,10 +210,12 @@ describe('accumulateMetricsToTarget nCount tracking', () => {
       totalDataPoints: 1,
     });
     // Overall has no numeric scores → notAttempted (nCount > 0 for all criteria)
+    // Metadata summed across criteria per CRITICAL-3 (sum not Math.max):
+    // completeness.totalDataPoints(1) + accuracy.totalDataPoints(1) + spag.totalDataPoints(1) = 3
     expectMetricResultStateAware(student.overall as unknown as MetricResult, {
       state: 'notAttempted',
       totalWeight: 0,
-      totalDataPoints: 1,
+      totalDataPoints: 3,
     });
   });
 
@@ -429,12 +442,16 @@ describe('AveragingAnalyser', () => {
       });
       // overall: spag excluded from denominator
       // overall = (0.4*3 + 0.4*4) / (0.4 + 0.4) = (1.2 + 1.6) / 0.8 = 3.5 → computed
+      // Metadata summed across computed criteria per CRITICAL-3 (sum not Math.max):
+      // totalWeight: 1(completeness) + 1(accuracy) = 2
+      // applicableDataPoints: 1 + 1 = 2
+      // totalDataPoints: 1 + 1 = 2
       expectMetricResultStateAware(student.overall as unknown as MetricResult, {
         state: 'computed',
         value: 3.5,
-        totalWeight: 1,
-        applicableDataPoints: 1,
-        totalDataPoints: 1,
+        totalWeight: 2,
+        applicableDataPoints: 2,
+        totalDataPoints: 2,
       });
     });
 
@@ -694,5 +711,183 @@ describe('AveragingAnalyser', () => {
         totalDataPoints: 1,
       });
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeOverallComposite metadata aggregation semantics (coverage gap 3)
+// ---------------------------------------------------------------------------
+
+describe('computeOverallComposite metadata aggregation', () => {
+  it('sums metadata across computed criteria (not Math.max)', () => {
+    const result = computeOverallComposite(
+      createComputedMetricResult({
+        value: 3,
+        totalWeight: 10,
+        applicableDataPoints: 2,
+        totalDataPoints: 2,
+      }),
+      createComputedMetricResult({
+        value: 4,
+        totalWeight: 20,
+        applicableDataPoints: 3,
+        totalDataPoints: 3,
+      }),
+      createComputedMetricResult({
+        value: 5,
+        totalWeight: 5,
+        applicableDataPoints: 1,
+        totalDataPoints: 1,
+      }),
+      { completeness: 0.4, accuracy: 0.4, spag: 0.2 }
+    );
+
+    expect(result.state).toBe('computed');
+    if (result.state === 'computed') {
+      // (0.4*3 + 0.4*4 + 0.2*5) / 1.0 = (1.2 + 1.6 + 1.0) / 1.0 = 3.8
+      expect(result.value).toBeCloseTo(3.8, 10);
+      // totalWeight: 10 + 20 + 5 = 35 (NOT Math.max which would give 20)
+      expect(result.totalWeight).toBe(35);
+      // applicableDataPoints: 2 + 3 + 1 = 6 (NOT Math.max which would give 3)
+      expect(result.applicableDataPoints).toBe(6);
+      // totalDataPoints: 2 + 3 + 1 = 6 (NOT Math.max which would give 3)
+      expect(result.totalDataPoints).toBe(6);
+    }
+  });
+
+  it('only computed entries contribute to metadata sum when mixed with notAttempted', () => {
+    const result = computeOverallComposite(
+      createComputedMetricResult({
+        value: 3,
+        totalWeight: 10,
+        applicableDataPoints: 2,
+        totalDataPoints: 2,
+      }),
+      createNotAttemptedMetricResult({ totalWeight: 0, totalDataPoints: 1 }),
+      createNotAttemptedMetricResult({ totalWeight: 0, totalDataPoints: 1 }),
+      { completeness: 0.4, accuracy: 0.4, spag: 0.2 }
+    );
+
+    expect(result.state).toBe('computed');
+    if (result.state === 'computed') {
+      // Only completeness contributes: (0.4 * 3) / 0.4 = 3
+      expect(result.value).toBeCloseTo(3, 10);
+      expect(result.totalWeight).toBe(10);
+      expect(result.applicableDataPoints).toBe(2);
+      expect(result.totalDataPoints).toBe(2);
+    }
+  });
+
+  it('sums totalDataPoints across all three error criteria', () => {
+    const result = computeOverallComposite(
+      createErrorMetricResult({ totalDataPoints: 2 }),
+      createErrorMetricResult({ totalDataPoints: 3 }),
+      createErrorMetricResult({ totalDataPoints: 1 }),
+      { completeness: 0.4, accuracy: 0.4, spag: 0.2 }
+    );
+
+    expect(result.state).toBe('error');
+    if (result.state === 'error') {
+      // totalWeight: 0 + 0 + 0 = 0 (all error criteria have totalWeight 0)
+      expect(result.totalWeight).toBe(0);
+      // applicableDataPoints: 0 + 0 + 0 = 0 (all error criteria have applicableDataPoints 0)
+      expect(result.applicableDataPoints).toBe(0);
+      // totalDataPoints: 2 + 3 + 1 = 6 (NOT Math.max which would give 3)
+      expect(result.totalDataPoints).toBe(6);
+    }
+  });
+
+  it('sums totalDataPoints across all three notAttempted criteria', () => {
+    const result = computeOverallComposite(
+      createNotAttemptedMetricResult({ totalDataPoints: 4 }),
+      createNotAttemptedMetricResult({ totalDataPoints: 2 }),
+      createNotAttemptedMetricResult({ totalDataPoints: 1 }),
+      { completeness: 0.4, accuracy: 0.4, spag: 0.2 }
+    );
+
+    expect(result.state).toBe('notAttempted');
+    if (result.state === 'notAttempted') {
+      // totalWeight: 0 + 0 + 0 = 0 (all notAttempted criteria have totalWeight 0)
+      expect(result.totalWeight).toBe(0);
+      // applicableDataPoints: 0 + 0 + 0 = 0 (all notAttempted criteria have applicableDataPoints 0)
+      expect(result.applicableDataPoints).toBe(0);
+      // totalDataPoints: 4 + 2 + 1 = 7 (NOT Math.max which would give 4)
+      expect(result.totalDataPoints).toBe(7);
+    }
+  });
+
+  it('ensures applicableDataPoints never exceeds totalDataPoints in computed composite', () => {
+    const result = computeOverallComposite(
+      createComputedMetricResult({
+        value: 5,
+        totalWeight: 10,
+        applicableDataPoints: 5,
+        totalDataPoints: 10,
+      }),
+      createComputedMetricResult({
+        value: 4,
+        totalWeight: 10,
+        applicableDataPoints: 8,
+        totalDataPoints: 10,
+      }),
+      createComputedMetricResult({
+        value: 3,
+        totalWeight: 10,
+        applicableDataPoints: 1,
+        totalDataPoints: 10,
+      }),
+      { completeness: 0.4, accuracy: 0.4, spag: 0.2 }
+    );
+
+    expect(result.state).toBe('computed');
+    if (result.state === 'computed') {
+      expect(result.applicableDataPoints).toBeLessThanOrEqual(result.totalDataPoints);
+    }
+
+    // Boundary case: all criteria have equal applicableDataPoints and totalDataPoints
+    const boundaryResult = computeOverallComposite(
+      createComputedMetricResult({
+        value: 5,
+        totalWeight: 10,
+        applicableDataPoints: 10,
+        totalDataPoints: 10,
+      }),
+      createComputedMetricResult({
+        value: 4,
+        totalWeight: 10,
+        applicableDataPoints: 10,
+        totalDataPoints: 10,
+      }),
+      createComputedMetricResult({
+        value: 3,
+        totalWeight: 10,
+        applicableDataPoints: 10,
+        totalDataPoints: 10,
+      }),
+      { completeness: 0.4, accuracy: 0.4, spag: 0.2 }
+    );
+    expect(boundaryResult.state).toBe('computed');
+    if (boundaryResult.state === 'computed') {
+      expect(boundaryResult.applicableDataPoints).toBe(30);
+      expect(boundaryResult.totalDataPoints).toBe(30);
+      expect(boundaryResult.applicableDataPoints).toBeLessThanOrEqual(
+        boundaryResult.totalDataPoints
+      );
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// criterionAccumulation module (MAJOR-4 decomposition)
+// ---------------------------------------------------------------------------
+
+describe('criterionAccumulation module (MAJOR-4 decomposition)', () => {
+  it('exports expected functions', () => {
+    // Import is now static since the module exists in GREEN phase
+    expect(typeof accumulateCriterion).toBe('function');
+    expect(typeof accumulateMetricsToTarget).toBe('function');
+    expect(typeof computeOverall).toBe('function');
+    expect(typeof processSubmissionItem).toBe('function');
+    expect(typeof processItemAssessments).toBe('function');
   });
 });

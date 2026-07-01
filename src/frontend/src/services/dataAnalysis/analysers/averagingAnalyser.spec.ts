@@ -262,12 +262,14 @@ describe('AveragingAnalyser', () => {
         totalDataPoints: 1,
       });
       // overall: (0.6*3 + 0.3*4 + 0.1*5) / 1.0 = 3.5
+      // Metadata summed across computed criteria per CRITICAL-3 (sum not Math.max):
+      // totalWeight: 1(completeness)+1(accuracy)+1(spag) = 3
       expectMetricResultStateAware(student.overall as unknown as MetricResult, {
         state: 'computed',
         value: 3.5,
-        totalWeight: 1,
-        applicableDataPoints: 1,
-        totalDataPoints: 1,
+        totalWeight: 3,
+        applicableDataPoints: 3,
+        totalDataPoints: 3,
       });
     });
 
@@ -537,12 +539,14 @@ describe('per-class rollup unification', () => {
     });
 
     // Per-class overall: Alice(0.4*3 + 0.4*4 + 0.2*5 = 3.8), Bob(5), avg(3.8+5)/2 = 4.4
+    // Metadata summed across computed criteria per CRITICAL-3 (sum not Math.max):
+    // totalWeight: 2(completeness)+2(accuracy)+2(spag) = 6
     expectMetricResultStateAware(results[0].perClass.overall as unknown as MetricResult, {
       state: 'computed',
       value: 4.4,
-      totalWeight: 2,
-      applicableDataPoints: 2,
-      totalDataPoints: 2,
+      totalWeight: 6,
+      applicableDataPoints: 6,
+      totalDataPoints: 6,
     });
   });
 });

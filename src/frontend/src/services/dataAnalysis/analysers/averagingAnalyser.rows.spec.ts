@@ -96,12 +96,14 @@ describe('AveragingAnalyser', () => {
         totalDataPoints: 2,
       });
       // Alice — overall: t1=(0.4*3+0.4*4+0.2*5)=3.8, t2=(0.4*4+0.4*3+0.2*4)=3.6, avg=(3.8+3.6)/2=3.7
+      // Metadata summed across computed criteria per CRITICAL-3 (sum not Math.max):
+      // totalWeight: 2(completeness)+2(accuracy)+2(spag) = 6
       expectMetricResultStateAware(alice.overall as unknown as MetricResult, {
         state: 'computed',
         value: 3.7,
-        totalWeight: 2,
-        applicableDataPoints: 2,
-        totalDataPoints: 2,
+        totalWeight: 6,
+        applicableDataPoints: 6,
+        totalDataPoints: 6,
       });
       // Bob — completeness (5+2)/2 = 3.5
       expectMetricResultStateAware(bob.completeness as unknown as MetricResult, {
@@ -128,12 +130,14 @@ describe('AveragingAnalyser', () => {
         totalDataPoints: 2,
       });
       // Bob — overall: t1=(0.4*5+0.4*5+0.2*5)=5, t2=(0.4*2+0.4*3+0.2*4)=2.8, avg=(5+2.8)/2=3.9
+      // Metadata summed across computed criteria per CRITICAL-3 (sum not Math.max):
+      // totalWeight: 2(completeness)+2(accuracy)+2(spag) = 6
       expectMetricResultStateAware(bob.overall as unknown as MetricResult, {
         state: 'computed',
         value: 3.9,
-        totalWeight: 2,
-        applicableDataPoints: 2,
-        totalDataPoints: 2,
+        totalWeight: 6,
+        applicableDataPoints: 6,
+        totalDataPoints: 6,
       });
 
       // perTask sorted by (definitionKey, taskId)
@@ -168,10 +172,10 @@ describe('AveragingAnalyser', () => {
       expectMetricResultStateAware(task1.overall as unknown as MetricResult, {
         state: 'computed',
         value: 4.4,
-        totalWeight: 2,
-        applicableDataPoints: 2,
-        totalDataPoints: 2,
-      }); // (3.8+5)/2=4.4
+        totalWeight: 6,
+        applicableDataPoints: 6,
+        totalDataPoints: 6,
+      }); // (3.8+5)/2=4.4, metadata summed across computed criteria per CRITICAL-3
       // Task t_002: Alice(4,3,4) Bob(2,3,4)
       expectMetricResultStateAware(task2.completeness as unknown as MetricResult, {
         state: 'computed',
@@ -197,10 +201,10 @@ describe('AveragingAnalyser', () => {
       expectMetricResultStateAware(task2.overall as unknown as MetricResult, {
         state: 'computed',
         value: 3.2,
-        totalWeight: 2,
-        applicableDataPoints: 2,
-        totalDataPoints: 2,
-      }); // (3.6+2.8)/2=3.2
+        totalWeight: 6,
+        applicableDataPoints: 6,
+        totalDataPoints: 6,
+      }); // (3.6+2.8)/2=3.2, metadata summed across computed criteria per CRITICAL-3
       // perClass — All 4 data points
       expectMetricResultStateAware(results[0].perClass.completeness as unknown as MetricResult, {
         state: 'computed',
@@ -226,10 +230,10 @@ describe('AveragingAnalyser', () => {
       expectMetricResultStateAware(results[0].perClass.overall as unknown as MetricResult, {
         state: 'computed',
         value: 3.8,
-        totalWeight: 4,
-        applicableDataPoints: 4,
-        totalDataPoints: 4,
-      }); // (3.8+3.6+5+2.8)/4=3.8
+        totalWeight: 12,
+        applicableDataPoints: 12,
+        totalDataPoints: 12,
+      }); // (3.8+3.6+5+2.8)/4=3.8, metadata summed across computed criteria per CRITICAL-3
     });
 
     it('returns empty array when no classes are provided', () => {
@@ -588,10 +592,12 @@ describe('AveragingAnalyser', () => {
         totalDataPoints: 1,
       });
       // Overall is notAttempted because all three criteria are 'N'
+      // Metadata summed across all criteria per CRITICAL-3 (sum not Math.max):
+      // totalDataPoints: 1(completeness)+1(accuracy)+1(spag) = 3
       expectMetricResultStateAware(student.overall as unknown as MetricResult, {
         state: 'notAttempted',
         totalWeight: 0,
-        totalDataPoints: 1,
+        totalDataPoints: 3,
       });
     });
   });
