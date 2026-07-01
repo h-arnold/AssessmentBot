@@ -10,18 +10,16 @@ import {
   createTaskPartial,
   DEFAULT_CREATED_AT,
 } from '../../../test/dataAnalysis/fixtures';
-import {
-  expectMetricResultStateAware,
-  type MetricResultType,
-} from '../../../test/dataAnalysis/averagingAnalyserAssertions';
+import type { MetricResult } from '../dataAnalysis.zod';
+import { expectMetricResultStateAware } from '../../../test/dataAnalysis/averagingAnalyserAssertions';
 
 /**
  * Validate that a discriminated-union MetricResult has a valid state
  * and that its value type is consistent with the state.
  *
- * @param {MetricResultType} metric — The metric result to validate.
+ * @param {MetricResult} metric — The metric result to validate.
  */
-function validateMetricState(metric: MetricResultType): void {
+function validateMetricState(metric: MetricResult): void {
   expect(['computed', 'notAttempted', 'error']).toContain(metric.state);
   if (metric.state === 'computed') {
     expect(typeof metric.value).toBe('number');
@@ -31,9 +29,9 @@ function validateMetricState(metric: MetricResultType): void {
 /**
  * Validate each metric in a criterion set.
  *
- * @param {...MetricResultType} metrics — The metric results to validate.
+ * @param {...MetricResult} metrics — The metric results to validate.
  */
-function validateCriterionSet(...metrics: MetricResultType[]): void {
+function validateCriterionSet(...metrics: MetricResult[]): void {
   for (const metric of metrics) validateMetricState(metric);
 }
 
@@ -87,13 +85,13 @@ describe('AveragingAnalyser', () => {
 
       // completeness: no data point → error (no numeric score, no 'N')
       // This will FAIL in the Red phase (current code produces value: null)
-      expectMetricResultStateAware(student.completeness as unknown as MetricResultType, {
+      expectMetricResultStateAware(student.completeness as unknown as MetricResult, {
         state: 'error',
         totalWeight: 0,
         totalDataPoints: 0,
       });
       // accuracy: single score 4, weight 1×1=1 → computed
-      expectMetricResultStateAware(student.accuracy as unknown as MetricResultType, {
+      expectMetricResultStateAware(student.accuracy as unknown as MetricResult, {
         state: 'computed',
         value: 4,
         totalWeight: 1,
@@ -101,13 +99,13 @@ describe('AveragingAnalyser', () => {
         totalDataPoints: 1,
       });
       // spag: no data point → error
-      expectMetricResultStateAware(student.spag as unknown as MetricResultType, {
+      expectMetricResultStateAware(student.spag as unknown as MetricResult, {
         state: 'error',
         totalWeight: 0,
         totalDataPoints: 0,
       });
       // overall: only accuracy contributes → (0.4*4) / 0.4 = 4 → computed
-      expectMetricResultStateAware(student.overall as unknown as MetricResultType, {
+      expectMetricResultStateAware(student.overall as unknown as MetricResult, {
         state: 'computed',
         value: 4,
         totalWeight: 1,
@@ -122,24 +120,24 @@ describe('AveragingAnalyser', () => {
       expect(taskRow.taskId).toBe('t_001');
       expect(taskRow.taskTitle).toBeNull();
 
-      expectMetricResultStateAware(taskRow.completeness as unknown as MetricResultType, {
+      expectMetricResultStateAware(taskRow.completeness as unknown as MetricResult, {
         state: 'error',
         totalWeight: 0,
         totalDataPoints: 0,
       });
-      expectMetricResultStateAware(taskRow.accuracy as unknown as MetricResultType, {
+      expectMetricResultStateAware(taskRow.accuracy as unknown as MetricResult, {
         state: 'computed',
         value: 4,
         totalWeight: 1,
         applicableDataPoints: 1,
         totalDataPoints: 1,
       });
-      expectMetricResultStateAware(taskRow.spag as unknown as MetricResultType, {
+      expectMetricResultStateAware(taskRow.spag as unknown as MetricResult, {
         state: 'error',
         totalWeight: 0,
         totalDataPoints: 0,
       });
-      expectMetricResultStateAware(taskRow.overall as unknown as MetricResultType, {
+      expectMetricResultStateAware(taskRow.overall as unknown as MetricResult, {
         state: 'computed',
         value: 4,
         totalWeight: 1,
@@ -148,27 +146,24 @@ describe('AveragingAnalyser', () => {
       });
 
       // perClass — same as per-student (single student)
-      expectMetricResultStateAware(
-        results[0].perClass.completeness as unknown as MetricResultType,
-        {
-          state: 'error',
-          totalWeight: 0,
-          totalDataPoints: 0,
-        }
-      );
-      expectMetricResultStateAware(results[0].perClass.accuracy as unknown as MetricResultType, {
+      expectMetricResultStateAware(results[0].perClass.completeness as unknown as MetricResult, {
+        state: 'error',
+        totalWeight: 0,
+        totalDataPoints: 0,
+      });
+      expectMetricResultStateAware(results[0].perClass.accuracy as unknown as MetricResult, {
         state: 'computed',
         value: 4,
         totalWeight: 1,
         applicableDataPoints: 1,
         totalDataPoints: 1,
       });
-      expectMetricResultStateAware(results[0].perClass.spag as unknown as MetricResultType, {
+      expectMetricResultStateAware(results[0].perClass.spag as unknown as MetricResult, {
         state: 'error',
         totalWeight: 0,
         totalDataPoints: 0,
       });
-      expectMetricResultStateAware(results[0].perClass.overall as unknown as MetricResultType, {
+      expectMetricResultStateAware(results[0].perClass.overall as unknown as MetricResult, {
         state: 'computed',
         value: 4,
         totalWeight: 1,
@@ -245,21 +240,21 @@ describe('AveragingAnalyser', () => {
       const student = results[0].perStudent[0];
 
       // Per-criterion values unchanged (weighted average per criterion is same regardless of criterion weightings)
-      expectMetricResultStateAware(student.completeness as unknown as MetricResultType, {
+      expectMetricResultStateAware(student.completeness as unknown as MetricResult, {
         state: 'computed',
         value: 3,
         totalWeight: 1,
         applicableDataPoints: 1,
         totalDataPoints: 1,
       });
-      expectMetricResultStateAware(student.accuracy as unknown as MetricResultType, {
+      expectMetricResultStateAware(student.accuracy as unknown as MetricResult, {
         state: 'computed',
         value: 4,
         totalWeight: 1,
         applicableDataPoints: 1,
         totalDataPoints: 1,
       });
-      expectMetricResultStateAware(student.spag as unknown as MetricResultType, {
+      expectMetricResultStateAware(student.spag as unknown as MetricResult, {
         state: 'computed',
         value: 5,
         totalWeight: 1,
@@ -267,7 +262,7 @@ describe('AveragingAnalyser', () => {
         totalDataPoints: 1,
       });
       // overall: (0.6*3 + 0.3*4 + 0.1*5) / 1.0 = 3.5
-      expectMetricResultStateAware(student.overall as unknown as MetricResultType, {
+      expectMetricResultStateAware(student.overall as unknown as MetricResult, {
         state: 'computed',
         value: 3.5,
         totalWeight: 1,
@@ -310,21 +305,21 @@ describe('AveragingAnalyser', () => {
       for (const result of results) {
         for (const student of result.perStudent) {
           validateCriterionSet(
-            student.completeness as unknown as MetricResultType,
-            student.accuracy as unknown as MetricResultType,
-            student.spag as unknown as MetricResultType,
-            student.overall as unknown as MetricResultType
+            student.completeness as unknown as MetricResult,
+            student.accuracy as unknown as MetricResult,
+            student.spag as unknown as MetricResult,
+            student.overall as unknown as MetricResult
           );
         }
         for (const taskRow of result.perTask) {
           validateCriterionSet(
-            taskRow.completeness as unknown as MetricResultType,
-            taskRow.accuracy as unknown as MetricResultType,
-            taskRow.spag as unknown as MetricResultType,
-            taskRow.overall as unknown as MetricResultType
+            taskRow.completeness as unknown as MetricResult,
+            taskRow.accuracy as unknown as MetricResult,
+            taskRow.spag as unknown as MetricResult,
+            taskRow.overall as unknown as MetricResult
           );
         }
-        const pc = result.perClass as unknown as Record<string, MetricResultType>;
+        const pc = result.perClass as unknown as Record<string, MetricResult>;
         validateCriterionSet(pc.completeness, pc.accuracy, pc.spag, pc.overall);
       }
     });

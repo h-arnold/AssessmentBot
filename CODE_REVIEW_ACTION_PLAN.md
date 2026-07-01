@@ -474,11 +474,20 @@ Helper decision entries:
 
 ---
 
-## Section 5 — Test infrastructure DRY fixes (CRITICAL-4 + MAJOR-3)
+## Section 5 — Test infrastructure DRY fixes (CRITICAL-4 + MAJOR-3) ✅ COMPLETE
 
 ### Objective
 
 Fix CRITICAL-4: replace the duplicated type definitions in `averagingAnalyserAssertions.ts:19-47` with imports from the production `dataAnalysis.zod.ts`. Fix MAJOR-3: consolidate the three separate fixture builders (`createComputedMetricResult`, `createNotAttemptedMetricResult`, `createErrorMetricResult`) into a single parameterised `createMetricResult(state, overrides?)` with backward-compatible thin wrappers.
+
+### Completion summary
+
+- CRITICAL-4: Removed duplicated `ComputedMetricResultType`, `NotAttemptedMetricResultType`, `ErrorMetricResultType`, `MetricResultType` union from `averagingAnalyserAssertions.ts`. Replaced with `import type { MetricResult }` from `dataAnalysis.zod.ts`. Per-state casts use `Extract<MetricResult, { state: 'X' }>`.
+- MAJOR-3: Added `createMetricResult(state, overrides?)` as primary builder. `createComputedMetricResult`, `createNotAttemptedMetricResult`, `createErrorMetricResult` now delegate to it.
+- Five consumer spec files updated: `rollupMetric.spec.ts`, `averagingAnalyser.spec.ts`, `averagingAnalyser.rows.spec.ts`, `averagingAnalyser.accumulation.spec.ts`, `averagingAnalyser.filters.spec.ts` — `MetricResultType` imports replaced with `MetricResult` from `dataAnalysis.zod.ts`.
+- 23 new tests in `fixtures.spec.ts` covering `createMetricResult` for all 3 states, backward-compatible wrappers, and type compatibility.
+- Green-phase review: clean (no findings).
+- Regression gate: 1287 tests pass, 0 regressions; lint green.
 
 ### Constraints
 

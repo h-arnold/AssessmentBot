@@ -4,57 +4,15 @@
  * Provides floating-point-tolerant metric comparisons and a state-aware
  * metric result checker for the discriminated-union MetricResult shape.
  *
+ * `MetricResult` is imported from the production Zod schema
+ * (`dataAnalysis.zod.ts`) rather than being duplicated locally.
+ *
  * @module test/dataAnalysis/averagingAnalyserAssertions
  * @see docs/developer/frontend/frontend-testing.md §"Shared test helpers"
  */
 
 import { expect } from 'vitest';
-
-// ---------------------------------------------------------------------------
-// Local type definitions for the new MetricResult discriminated union
-// (used in Red-phase tests; production type will be updated in Green phase)
-// ---------------------------------------------------------------------------
-
-/**
- * A `computed` MetricResult: at least one numeric data point contributed.
- */
-export interface ComputedMetricResultType {
-  state: 'computed';
-  value: number;
-  totalWeight: number;
-  applicableDataPoints: number;
-  totalDataPoints: number;
-}
-
-/**
- * A `notAttempted` MetricResult: no numeric data points, at least one 'N'.
- */
-export interface NotAttemptedMetricResultType {
-  state: 'notAttempted';
-  value: 'N';
-  totalWeight: number;
-  applicableDataPoints: 0;
-  totalDataPoints: number;
-}
-
-/**
- * An `error` MetricResult: no numeric data points and no 'N' seen.
- */
-export interface ErrorMetricResultType {
-  state: 'error';
-  value: 'E';
-  totalWeight: number;
-  applicableDataPoints: 0;
-  totalDataPoints: number;
-}
-
-/**
- * Discriminated union of all MetricResult states (Red-phase version).
- */
-export type MetricResultType =
-  | ComputedMetricResultType
-  | NotAttemptedMetricResultType
-  | ErrorMetricResultType;
+import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 
 // ---------------------------------------------------------------------------
 // Floating-point tolerance
@@ -126,11 +84,11 @@ export type MetricResultExpected =
  * - Literal fields (`state`, `value` for non-computed states) are checked
  *   with strict `toBe` equality.
  *
- * @param {MetricResultType} actual - The actual metric result from the analyser.
+ * @param {MetricResult} actual - The actual metric result from the analyser.
  * @param {MetricResultExpected} expected - The expected metric result values.
  */
 export function expectMetricResultStateAware(
-  actual: MetricResultType,
+  actual: MetricResult,
   expected: MetricResultExpected
 ): void {
   // Always check state first
@@ -139,7 +97,7 @@ export function expectMetricResultStateAware(
   switch (expected.state) {
     case 'computed': {
       const compExpected = expected as ComputedMetricResultExpected;
-      const compActual = actual as ComputedMetricResultType;
+      const compActual = actual as Extract<MetricResult, { state: 'computed' }>;
       expect(compActual.value).toBeCloseTo(compExpected.value, FLOAT_TOLERANCE);
       expect(compActual.totalWeight).toBeCloseTo(compExpected.totalWeight, FLOAT_TOLERANCE);
       expect(compActual.applicableDataPoints).toBe(compExpected.applicableDataPoints);
@@ -148,7 +106,7 @@ export function expectMetricResultStateAware(
     }
     case 'notAttempted': {
       const naExpected = expected as NotAttemptedMetricResultExpected;
-      const naActual = actual as NotAttemptedMetricResultType;
+      const naActual = actual as Extract<MetricResult, { state: 'notAttempted' }>;
       expect(naActual.value).toBe('N');
       expect(naActual.totalWeight).toBeCloseTo(naExpected.totalWeight, FLOAT_TOLERANCE);
       expect(naActual.applicableDataPoints).toBe(0);
@@ -157,7 +115,7 @@ export function expectMetricResultStateAware(
     }
     case 'error': {
       const errorExpected = expected as ErrorMetricResultExpected;
-      const errorActual = actual as ErrorMetricResultType;
+      const errorActual = actual as Extract<MetricResult, { state: 'error' }>;
       expect(errorActual.value).toBe('E');
       expect(errorActual.totalWeight).toBeCloseTo(errorExpected.totalWeight, FLOAT_TOLERANCE);
       expect(errorActual.applicableDataPoints).toBe(0);
@@ -202,7 +160,7 @@ export function expectMetricResult(
     // Delegate to state-aware helper for the new shape
     switch (actual.state) {
       case 'computed': {
-        expectMetricResultStateAware(actual as unknown as MetricResultType, {
+        expectMetricResultStateAware(actual as unknown as MetricResult, {
           state: 'computed',
           value: expected.value as number,
           totalWeight: expected.totalWeight,
@@ -213,7 +171,7 @@ export function expectMetricResult(
         break;
       }
       case 'notAttempted': {
-        expectMetricResultStateAware(actual as unknown as MetricResultType, {
+        expectMetricResultStateAware(actual as unknown as MetricResult, {
           state: 'notAttempted',
           totalWeight: expected.totalWeight,
           totalDataPoints: expected.totalDataPoints,
@@ -222,7 +180,7 @@ export function expectMetricResult(
         break;
       }
       case 'error': {
-        expectMetricResultStateAware(actual as unknown as MetricResultType, {
+        expectMetricResultStateAware(actual as unknown as MetricResult, {
           state: 'error',
           totalWeight: expected.totalWeight,
           totalDataPoints: expected.totalDataPoints,

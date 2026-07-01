@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import type { MetricResultType } from '../../../test/dataAnalysis/averagingAnalyserAssertions';
+import type { MetricResult } from '../dataAnalysis.zod';
 import {
   createComputedMetricResult,
   createNotAttemptedMetricResult,
@@ -26,22 +26,22 @@ import {
  *
  * @returns {Promise<{
  *   rollupMetric: (
- *     subTasks: ReadonlyArray<MetricResultType>,
+ *     subTasks: ReadonlyArray<MetricResult>,
  *     metric: 'completeness' | 'accuracy' | 'spag'
- *   ) => MetricResultType;
+ *   ) => MetricResult;
  * }>} A promise resolving to the rollupMetric module with the helper function.
  */
 async function loadRollupMetric(): Promise<{
   rollupMetric: (
-    subTasks: ReadonlyArray<MetricResultType>,
+    subTasks: ReadonlyArray<MetricResult>,
     metric: 'completeness' | 'accuracy' | 'spag'
-  ) => MetricResultType;
+  ) => MetricResult;
 }> {
   return import('./rollupMetric') as Promise<{
     rollupMetric: (
-      subTasks: ReadonlyArray<MetricResultType>,
+      subTasks: ReadonlyArray<MetricResult>,
       metric: 'completeness' | 'accuracy' | 'spag'
-    ) => MetricResultType;
+    ) => MetricResult;
   }>;
 }
 
@@ -537,7 +537,7 @@ describe('rollupMetric', () => {
         totalWeight: 1,
         applicableDataPoints: 1,
         totalDataPoints: 1,
-      } as unknown as MetricResultType;
+      } as unknown as MetricResult;
 
       expect(() => rollupMetric([invalidSubTask], 'completeness')).toThrow();
     });
@@ -551,7 +551,7 @@ describe('rollupMetric', () => {
         totalWeight: 1,
         applicableDataPoints: 1,
         totalDataPoints: 1,
-      } as unknown as MetricResultType;
+      } as unknown as MetricResult;
 
       expect(() => rollupMetric([invalidSubTask], 'completeness')).toThrow();
     });

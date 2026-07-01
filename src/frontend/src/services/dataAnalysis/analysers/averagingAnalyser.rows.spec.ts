@@ -9,10 +9,8 @@ import {
   createSubmissionItem,
   createTaskPartial,
 } from '../../../test/dataAnalysis/fixtures';
-import {
-  expectMetricResultStateAware,
-  type MetricResultType,
-} from '../../../test/dataAnalysis/averagingAnalyserAssertions';
+import type { MetricResult } from '../dataAnalysis.zod';
+import { expectMetricResultStateAware } from '../../../test/dataAnalysis/averagingAnalyserAssertions';
 
 describe('AveragingAnalyser', () => {
   describe('analyse — rows', () => {
@@ -74,7 +72,7 @@ describe('AveragingAnalyser', () => {
 
       // All results should be computed since we have numeric scores
       // Alice — completeness (3+4)/2 = 3.5
-      expectMetricResultStateAware(alice.completeness as unknown as MetricResultType, {
+      expectMetricResultStateAware(alice.completeness as unknown as MetricResult, {
         state: 'computed',
         value: 3.5,
         totalWeight: 2,
@@ -82,7 +80,7 @@ describe('AveragingAnalyser', () => {
         totalDataPoints: 2,
       });
       // Alice — accuracy (4+3)/2 = 3.5
-      expectMetricResultStateAware(alice.accuracy as unknown as MetricResultType, {
+      expectMetricResultStateAware(alice.accuracy as unknown as MetricResult, {
         state: 'computed',
         value: 3.5,
         totalWeight: 2,
@@ -90,7 +88,7 @@ describe('AveragingAnalyser', () => {
         totalDataPoints: 2,
       });
       // Alice — spag (5+4)/2 = 4.5
-      expectMetricResultStateAware(alice.spag as unknown as MetricResultType, {
+      expectMetricResultStateAware(alice.spag as unknown as MetricResult, {
         state: 'computed',
         value: 4.5,
         totalWeight: 2,
@@ -98,7 +96,7 @@ describe('AveragingAnalyser', () => {
         totalDataPoints: 2,
       });
       // Alice — overall: t1=(0.4*3+0.4*4+0.2*5)=3.8, t2=(0.4*4+0.4*3+0.2*4)=3.6, avg=(3.8+3.6)/2=3.7
-      expectMetricResultStateAware(alice.overall as unknown as MetricResultType, {
+      expectMetricResultStateAware(alice.overall as unknown as MetricResult, {
         state: 'computed',
         value: 3.7,
         totalWeight: 2,
@@ -106,7 +104,7 @@ describe('AveragingAnalyser', () => {
         totalDataPoints: 2,
       });
       // Bob — completeness (5+2)/2 = 3.5
-      expectMetricResultStateAware(bob.completeness as unknown as MetricResultType, {
+      expectMetricResultStateAware(bob.completeness as unknown as MetricResult, {
         state: 'computed',
         value: 3.5,
         totalWeight: 2,
@@ -114,7 +112,7 @@ describe('AveragingAnalyser', () => {
         totalDataPoints: 2,
       });
       // Bob — accuracy (5+3)/2 = 4
-      expectMetricResultStateAware(bob.accuracy as unknown as MetricResultType, {
+      expectMetricResultStateAware(bob.accuracy as unknown as MetricResult, {
         state: 'computed',
         value: 4,
         totalWeight: 2,
@@ -122,7 +120,7 @@ describe('AveragingAnalyser', () => {
         totalDataPoints: 2,
       });
       // Bob — spag (5+4)/2 = 4.5
-      expectMetricResultStateAware(bob.spag as unknown as MetricResultType, {
+      expectMetricResultStateAware(bob.spag as unknown as MetricResult, {
         state: 'computed',
         value: 4.5,
         totalWeight: 2,
@@ -130,7 +128,7 @@ describe('AveragingAnalyser', () => {
         totalDataPoints: 2,
       });
       // Bob — overall: t1=(0.4*5+0.4*5+0.2*5)=5, t2=(0.4*2+0.4*3+0.2*4)=2.8, avg=(5+2.8)/2=3.9
-      expectMetricResultStateAware(bob.overall as unknown as MetricResultType, {
+      expectMetricResultStateAware(bob.overall as unknown as MetricResult, {
         state: 'computed',
         value: 3.9,
         totalWeight: 2,
@@ -146,28 +144,28 @@ describe('AveragingAnalyser', () => {
       expect(task1.taskId).toBe('t_001');
       expect(task2.taskId).toBe('t_002');
       // Task t_001: Alice(3,4,5) Bob(5,5,5)
-      expectMetricResultStateAware(task1.completeness as unknown as MetricResultType, {
+      expectMetricResultStateAware(task1.completeness as unknown as MetricResult, {
         state: 'computed',
         value: 4,
         totalWeight: 2,
         applicableDataPoints: 2,
         totalDataPoints: 2,
       });
-      expectMetricResultStateAware(task1.accuracy as unknown as MetricResultType, {
+      expectMetricResultStateAware(task1.accuracy as unknown as MetricResult, {
         state: 'computed',
         value: 4.5,
         totalWeight: 2,
         applicableDataPoints: 2,
         totalDataPoints: 2,
       });
-      expectMetricResultStateAware(task1.spag as unknown as MetricResultType, {
+      expectMetricResultStateAware(task1.spag as unknown as MetricResult, {
         state: 'computed',
         value: 5,
         totalWeight: 2,
         applicableDataPoints: 2,
         totalDataPoints: 2,
       });
-      expectMetricResultStateAware(task1.overall as unknown as MetricResultType, {
+      expectMetricResultStateAware(task1.overall as unknown as MetricResult, {
         state: 'computed',
         value: 4.4,
         totalWeight: 2,
@@ -175,28 +173,28 @@ describe('AveragingAnalyser', () => {
         totalDataPoints: 2,
       }); // (3.8+5)/2=4.4
       // Task t_002: Alice(4,3,4) Bob(2,3,4)
-      expectMetricResultStateAware(task2.completeness as unknown as MetricResultType, {
+      expectMetricResultStateAware(task2.completeness as unknown as MetricResult, {
         state: 'computed',
         value: 3,
         totalWeight: 2,
         applicableDataPoints: 2,
         totalDataPoints: 2,
       });
-      expectMetricResultStateAware(task2.accuracy as unknown as MetricResultType, {
+      expectMetricResultStateAware(task2.accuracy as unknown as MetricResult, {
         state: 'computed',
         value: 3,
         totalWeight: 2,
         applicableDataPoints: 2,
         totalDataPoints: 2,
       });
-      expectMetricResultStateAware(task2.spag as unknown as MetricResultType, {
+      expectMetricResultStateAware(task2.spag as unknown as MetricResult, {
         state: 'computed',
         value: 4,
         totalWeight: 2,
         applicableDataPoints: 2,
         totalDataPoints: 2,
       });
-      expectMetricResultStateAware(task2.overall as unknown as MetricResultType, {
+      expectMetricResultStateAware(task2.overall as unknown as MetricResult, {
         state: 'computed',
         value: 3.2,
         totalWeight: 2,
@@ -204,31 +202,28 @@ describe('AveragingAnalyser', () => {
         totalDataPoints: 2,
       }); // (3.6+2.8)/2=3.2
       // perClass — All 4 data points
-      expectMetricResultStateAware(
-        results[0].perClass.completeness as unknown as MetricResultType,
-        {
-          state: 'computed',
-          value: 3.5,
-          totalWeight: 4,
-          applicableDataPoints: 4,
-          totalDataPoints: 4,
-        }
-      );
-      expectMetricResultStateAware(results[0].perClass.accuracy as unknown as MetricResultType, {
+      expectMetricResultStateAware(results[0].perClass.completeness as unknown as MetricResult, {
+        state: 'computed',
+        value: 3.5,
+        totalWeight: 4,
+        applicableDataPoints: 4,
+        totalDataPoints: 4,
+      });
+      expectMetricResultStateAware(results[0].perClass.accuracy as unknown as MetricResult, {
         state: 'computed',
         value: 3.75,
         totalWeight: 4,
         applicableDataPoints: 4,
         totalDataPoints: 4,
       });
-      expectMetricResultStateAware(results[0].perClass.spag as unknown as MetricResultType, {
+      expectMetricResultStateAware(results[0].perClass.spag as unknown as MetricResult, {
         state: 'computed',
         value: 4.5,
         totalWeight: 4,
         applicableDataPoints: 4,
         totalDataPoints: 4,
       });
-      expectMetricResultStateAware(results[0].perClass.overall as unknown as MetricResultType, {
+      expectMetricResultStateAware(results[0].perClass.overall as unknown as MetricResult, {
         state: 'computed',
         value: 3.8,
         totalWeight: 4,
@@ -268,25 +263,22 @@ describe('AveragingAnalyser', () => {
 
       // All per-class metric results should be error (0 data points, 0 'N')
       // This will FAIL in the Red phase (current code produces value: null)
-      expectMetricResultStateAware(
-        results[0].perClass.completeness as unknown as MetricResultType,
-        {
-          state: 'error',
-          totalWeight: 0,
-          totalDataPoints: 0,
-        }
-      );
-      expectMetricResultStateAware(results[0].perClass.accuracy as unknown as MetricResultType, {
+      expectMetricResultStateAware(results[0].perClass.completeness as unknown as MetricResult, {
         state: 'error',
         totalWeight: 0,
         totalDataPoints: 0,
       });
-      expectMetricResultStateAware(results[0].perClass.spag as unknown as MetricResultType, {
+      expectMetricResultStateAware(results[0].perClass.accuracy as unknown as MetricResult, {
         state: 'error',
         totalWeight: 0,
         totalDataPoints: 0,
       });
-      expectMetricResultStateAware(results[0].perClass.overall as unknown as MetricResultType, {
+      expectMetricResultStateAware(results[0].perClass.spag as unknown as MetricResult, {
+        state: 'error',
+        totalWeight: 0,
+        totalDataPoints: 0,
+      });
+      expectMetricResultStateAware(results[0].perClass.overall as unknown as MetricResult, {
         state: 'error',
         totalWeight: 0,
         totalDataPoints: 0,
@@ -320,22 +312,22 @@ describe('AveragingAnalyser', () => {
 
       // All student metrics are error (0 data points)
       // This will FAIL in the Red phase
-      expectMetricResultStateAware(student.completeness as unknown as MetricResultType, {
+      expectMetricResultStateAware(student.completeness as unknown as MetricResult, {
         state: 'error',
         totalWeight: 0,
         totalDataPoints: 0,
       });
-      expectMetricResultStateAware(student.accuracy as unknown as MetricResultType, {
+      expectMetricResultStateAware(student.accuracy as unknown as MetricResult, {
         state: 'error',
         totalWeight: 0,
         totalDataPoints: 0,
       });
-      expectMetricResultStateAware(student.spag as unknown as MetricResultType, {
+      expectMetricResultStateAware(student.spag as unknown as MetricResult, {
         state: 'error',
         totalWeight: 0,
         totalDataPoints: 0,
       });
-      expectMetricResultStateAware(student.overall as unknown as MetricResultType, {
+      expectMetricResultStateAware(student.overall as unknown as MetricResult, {
         state: 'error',
         totalWeight: 0,
         totalDataPoints: 0,
@@ -373,7 +365,7 @@ describe('AveragingAnalyser', () => {
       const taskWithoutData = results[0].perTask[1];
 
       expect(taskWithData.taskId).toBe('t_001');
-      expectMetricResultStateAware(taskWithData.accuracy as unknown as MetricResultType, {
+      expectMetricResultStateAware(taskWithData.accuracy as unknown as MetricResult, {
         state: 'computed',
         value: 4,
         totalWeight: 1,
@@ -384,22 +376,22 @@ describe('AveragingAnalyser', () => {
       expect(taskWithoutData.taskId).toBe('t_002');
       // No submissions for t_002 → error
       // This will FAIL in the Red phase
-      expectMetricResultStateAware(taskWithoutData.completeness as unknown as MetricResultType, {
+      expectMetricResultStateAware(taskWithoutData.completeness as unknown as MetricResult, {
         state: 'error',
         totalWeight: 0,
         totalDataPoints: 0,
       });
-      expectMetricResultStateAware(taskWithoutData.accuracy as unknown as MetricResultType, {
+      expectMetricResultStateAware(taskWithoutData.accuracy as unknown as MetricResult, {
         state: 'error',
         totalWeight: 0,
         totalDataPoints: 0,
       });
-      expectMetricResultStateAware(taskWithoutData.spag as unknown as MetricResultType, {
+      expectMetricResultStateAware(taskWithoutData.spag as unknown as MetricResult, {
         state: 'error',
         totalWeight: 0,
         totalDataPoints: 0,
       });
-      expectMetricResultStateAware(taskWithoutData.overall as unknown as MetricResultType, {
+      expectMetricResultStateAware(taskWithoutData.overall as unknown as MetricResult, {
         state: 'error',
         totalWeight: 0,
         totalDataPoints: 0,
@@ -512,7 +504,7 @@ describe('AveragingAnalyser', () => {
       // Bob's only submission is on a_outside which is out of range → excluded
 
       // perClass only considers Alice's in-range submission
-      expectMetricResultStateAware(results[0].perClass.accuracy as unknown as MetricResultType, {
+      expectMetricResultStateAware(results[0].perClass.accuracy as unknown as MetricResult, {
         state: 'computed',
         value: 4,
         totalWeight: 1,
@@ -580,23 +572,23 @@ describe('AveragingAnalyser', () => {
       const student = results[0].perStudent[0];
       // Per-criterion metrics all notAttempted with value 'N' (nCount > 0)
       // This will FAIL in the Red phase (current code produces value: null)
-      expectMetricResultStateAware(student.completeness as unknown as MetricResultType, {
+      expectMetricResultStateAware(student.completeness as unknown as MetricResult, {
         state: 'notAttempted',
         totalWeight: 0,
         totalDataPoints: 1,
       });
-      expectMetricResultStateAware(student.accuracy as unknown as MetricResultType, {
+      expectMetricResultStateAware(student.accuracy as unknown as MetricResult, {
         state: 'notAttempted',
         totalWeight: 0,
         totalDataPoints: 1,
       });
-      expectMetricResultStateAware(student.spag as unknown as MetricResultType, {
+      expectMetricResultStateAware(student.spag as unknown as MetricResult, {
         state: 'notAttempted',
         totalWeight: 0,
         totalDataPoints: 1,
       });
       // Overall is notAttempted because all three criteria are 'N'
-      expectMetricResultStateAware(student.overall as unknown as MetricResultType, {
+      expectMetricResultStateAware(student.overall as unknown as MetricResult, {
         state: 'notAttempted',
         totalWeight: 0,
         totalDataPoints: 1,

@@ -8,7 +8,10 @@
  * @see docs/developer/frontend/frontend-testing.md §"Shared test helpers"
  */
 
-import type { AveragingAnalyserInput } from '../../services/dataAnalysis/dataAnalysis.zod';
+import type {
+  AveragingAnalyserInput,
+  MetricResult,
+} from '../../services/dataAnalysis/dataAnalysis.zod';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -22,10 +25,70 @@ export const DEFAULT_CREATED_AT = '2026-01-01T00:00:00.000Z';
 // ---------------------------------------------------------------------------
 
 /**
+ * Build a MetricResult fixture of the specified state.
+ *
+ * @remarks
+ * This is the primary builder for MetricResult fixtures. The per-state
+ * convenience wrappers (`createComputedMetricResult`, etc.) delegate to
+ * this function for backward compatibility.
+ *
+ * @param {('computed' | 'notAttempted' | 'error')} state - The metric result state.
+ * @param {Object} [overrides] - Optional field overrides (state-dependent).
+ * @returns {MetricResult} A MetricResult fixture of the requested state.
+ */
+export function createMetricResult(
+  state: 'computed' | 'notAttempted' | 'error',
+  overrides?: Partial<{
+    value: number;
+    totalWeight: number;
+    applicableDataPoints: number;
+    totalDataPoints: number;
+  }>
+): MetricResult {
+  switch (state) {
+    case 'computed': {
+      return {
+        state: 'computed',
+        value: 5,
+        totalWeight: 1,
+        applicableDataPoints: 1,
+        totalDataPoints: 1,
+        ...overrides,
+      } as MetricResult;
+    }
+    case 'notAttempted': {
+      return {
+        state: 'notAttempted',
+        value: 'N',
+        totalWeight: 0,
+        applicableDataPoints: 0 as const,
+        totalDataPoints: 1,
+        ...overrides,
+      } as MetricResult;
+    }
+    case 'error': {
+      return {
+        state: 'error',
+        value: 'E',
+        totalWeight: 0,
+        applicableDataPoints: 0 as const,
+        totalDataPoints: 1,
+        ...overrides,
+      } as MetricResult;
+    }
+    default: {
+      throw new Error(`Unknown MetricResult state: ${state}`);
+    }
+  }
+}
+
+/**
  * Build a `computed` MetricResult fixture.
  *
+ * Delegates to {@link createMetricResult}.
+ *
  * @param {Partial<{ value: number; totalWeight: number; applicableDataPoints: number; totalDataPoints: number }>} [overrides] - Optional field overrides.
- * @returns {{ state: 'computed'; value: number; totalWeight: number; applicableDataPoints: number; totalDataPoints: number }} A computed MetricResult.
+ * @returns {MetricResult} A computed MetricResult.
  */
 export function createComputedMetricResult(
   overrides?: Partial<{
@@ -34,77 +97,42 @@ export function createComputedMetricResult(
     applicableDataPoints: number;
     totalDataPoints: number;
   }>
-): {
-  state: 'computed';
-  value: number;
-  totalWeight: number;
-  applicableDataPoints: number;
-  totalDataPoints: number;
-} {
-  return {
-    state: 'computed',
-    value: 5,
-    totalWeight: 1,
-    applicableDataPoints: 1,
-    totalDataPoints: 1,
-    ...overrides,
-  };
+): MetricResult {
+  return createMetricResult('computed', overrides);
 }
 
 /**
  * Build a `notAttempted` MetricResult fixture.
  *
+ * Delegates to {@link createMetricResult}.
+ *
  * @param {Partial<{ totalWeight: number; totalDataPoints: number }>} [overrides] - Optional field overrides.
- * @returns {{ state: 'notAttempted'; value: 'N'; totalWeight: number; applicableDataPoints: 0; totalDataPoints: number }} A notAttempted MetricResult.
+ * @returns {MetricResult} A notAttempted MetricResult.
  */
 export function createNotAttemptedMetricResult(
   overrides?: Partial<{
     totalWeight: number;
     totalDataPoints: number;
   }>
-): {
-  state: 'notAttempted';
-  value: 'N';
-  totalWeight: number;
-  applicableDataPoints: 0;
-  totalDataPoints: number;
-} {
-  return {
-    state: 'notAttempted',
-    value: 'N',
-    totalWeight: 0,
-    applicableDataPoints: 0 as const,
-    totalDataPoints: 1,
-    ...overrides,
-  };
+): MetricResult {
+  return createMetricResult('notAttempted', overrides);
 }
 
 /**
  * Build an `error` MetricResult fixture.
  *
+ * Delegates to {@link createMetricResult}.
+ *
  * @param {Partial<{ totalWeight: number; totalDataPoints: number }>} [overrides] - Optional field overrides.
- * @returns {{ state: 'error'; value: 'E'; totalWeight: number; applicableDataPoints: 0; totalDataPoints: number }} An error MetricResult.
+ * @returns {MetricResult} An error MetricResult.
  */
 export function createErrorMetricResult(
   overrides?: Partial<{
     totalWeight: number;
     totalDataPoints: number;
   }>
-): {
-  state: 'error';
-  value: 'E';
-  totalWeight: number;
-  applicableDataPoints: 0;
-  totalDataPoints: number;
-} {
-  return {
-    state: 'error',
-    value: 'E',
-    totalWeight: 0,
-    applicableDataPoints: 0 as const,
-    totalDataPoints: 1,
-    ...overrides,
-  };
+): MetricResult {
+  return createMetricResult('error', overrides);
 }
 
 // ---------------------------------------------------------------------------
