@@ -301,7 +301,7 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
    - Calls `runAssignmentPipeline(assignment, students, options)`
 
 8. **Persistence**
-   - Updates assignment's `lastUpdated` timestamp
+   - Updates assignment's `updatedAt` timestamp
    - Persists assignment run via `ABClassController.persistAssignmentRun()`
    - Writes both full and partial (summary) versions to database
 
@@ -380,7 +380,7 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
     assignmentName: string,
     assignmentMetadata: null,
     dueDate: null,
-    lastUpdated: null,
+    updatedAt: null,
     assignmentDefinition: AssignmentDefinition,
     submissions: [],
     progressTracker: ProgressTracker,
@@ -836,7 +836,7 @@ submission.items["task_001"] = {
 **Method**: `Assignment.touchUpdated()`
 
 - **Location**: `src/backend/AssignmentProcessor/Assignment.js`
-- **Purpose**: Sets lastUpdated to current timestamp
+- **Purpose**: Sets updatedAt to current timestamp
 - **Called**: Line 196 in `processSelectedAssignment()`
 
 #### Step 5.2: Persist Assignment Run
@@ -865,7 +865,7 @@ submission.items["task_001"] = {
   courseId: string,
   assignmentId: string,
   assignmentName: string,
-  lastUpdated: ISO date string,
+  updatedAt: ISO date string,
   assignmentDefinition: {
     primaryTitle: string,
     documentType: "SLIDES" | "SHEETS",

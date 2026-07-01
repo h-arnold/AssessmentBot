@@ -1072,6 +1072,26 @@ Update the canonical developer docs to match the implemented feature. Reconcile 
 - **Implementation notes:** record the actual doc edits (line-range anchors, section IDs). Confirm the `MetricToneColor` cross-spec contract is recorded in both specs (or flagged as an open follow-up).
 - **Deviations from plan:** if the implementation surfaces a method-rename boundary issue (e.g. `touchUpdated` should also be renamed), record the deviation and consult the spec owner before finalising the docs.
 
+### Documentation rollout completion record
+
+- **Status:** Complete.
+- **Frontend docs updated:**
+  - `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`:
+    - §9.17 items 1-4 flipped to `Implemented` with implementation notes.
+    - §9.19 item 1 (`formatUpdatedAtLabel`) flipped to `Implemented`.
+    - §9.18 item 3 (`averagingAnalyser.accumulation.ts` facade decomposition) confirmed `Deferred`.
+    - New §10 "Frontend utils folder convention" added documenting the `src/frontend/src/utils/` convention.
+    - §9.18 item 1 updated: `lastUpdated`-based → `updatedAt`-based.
+- **Backend docs updated:**
+  - `DATA_SHAPES.md`: 5 `lastUpdated` → `updatedAt` in JSON examples; removed forward note about wire-shape inconsistency.
+  - `AssessmentFlow.md`: 4 `lastUpdated` → `updatedAt` (narratives, examples, method signatures). `touchUpdated()` preserved.
+  - `api-layer.md`: 2 `lastUpdated` → `updatedAt` in `DateUtils.normaliseDateFields` call and response description.
+  - `rehydration.md`: 1 `lastUpdated` → `updatedAt` in Future Extensions.
+- **Pedagogy doc:** confirmed `data-analysis-scoring.md` Section 1 prose is accurate — no changes needed.
+- **Cross-spec contract confirmed:** `MetricToneColor` recorded in both `SPEC_CLASS_PAGE_PREPARATION.md` and `SPEC_CLASS_PAGE.md`.
+- **Deviation:** none. `touchUpdated` keeps its name per spec; no `lastUpdated` reference remains in any backend doc.
+- **Commits:** (recorded below after commit)
+
 ---
 
 ## Section 6 — `Assignment.js` facade decomposition (550-line rule compliance)
