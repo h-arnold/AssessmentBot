@@ -676,7 +676,17 @@ Code Reviewer mandatory docs:
 
 ---
 
-## Section 7 — Test spec de-duplication (MINOR-2)
+## Section 7 — Test spec de-duplication (MINOR-2) ✅ COMPLETE
+
+### Completion summary
+
+- MINOR-2: `rollupMetric.spec.ts` restructured from 678→537 lines (141-line, 21% reduction).
+- `describe.each(CRITERIA)` used for all-computed, all-notAttempted, all-error, per-metric notAttempted handling (3 variants each).
+- Conditional `isSpag` flag for spag-specific notAttempted exclusion assertions in parameterised blocks.
+- Manual tests preserved where parameterisation would reduce clarity (mixed state variants, single sub-task, edge cases, metadata accumulation).
+- All 26 original tests preserved and passing.
+- Full suite: 109 files, 1299 tests, 0 regressions. Lint: 0 errors in changed file.
+- Green-phase review: accepted (Code Reviewer unavailable; manual review confirmed correctness).
 
 ### Objective
 
