@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import Assignment from '../../src/backend/AssignmentProcessor/Assignment.js';
+import Assignment from '../../src/backend/AssignmentProcessor/Assignment/index.js';
 import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
 
 describe('Assignment (legacy alias removal)', () => {

@@ -1285,6 +1285,34 @@ This is a pure structural refactor; the existing tests are the safety net. There
   - The "Suggested implementation order" is updated to add this section as the last delivery step (after Section 5 docs / rollout, before the final regression sweep), with a note that Section 6 depends on Section 2's `updatedAt` rename having already landed.
   - If a future `BatchAssignmentSerializer` or similar reuse emerges, the canonical pattern (folder under the owning path, `index.js` facade) is already established. No additional decomposition work is anticipated.
 
+### Section 6 completion record
+
+- **Status:** Complete.
+- **New files created:** 8 files in `src/backend/AssignmentProcessor/Assignment/`:
+  - `00_AssignmentSerialisation.js` — `toJSON`, `toPartialJSON`, `_extractFullDefinitionFields`, `_extractPartialRootFields` (~130 lines)
+  - `01_AssignmentFactory.js` — static `create`, static `fromJSON` (~100 lines)
+  - `02_AssignmentRehydration.js` — static `_baseFromJSON`, static `_rehydrateSubmission`, `knownFields` set (~145 lines)
+  - `03_AssignmentTimestamps.js` — `touchUpdated`, `getUpdatedAt`, `setUpdatedAt`, `getCreatedAt`, `setCreatedAt` (~75 lines)
+  - `04_AssignmentSubmissions.js` — `addStudent`, `_processAttachmentForSubmission`, `fetchSubmittedDocumentsByMimeType`, `isValidMimeType` (~150 lines)
+  - `05_AssignmentAssessmentBase.js` — abstract-style methods + getters/setters (~90 lines)
+  - `06_AssignmentLLMOrchestration.js` — `generateLLMRequests`, `assessResponses`, `_getLLMManager` (~55 lines)
+  - `index.js` — facade (~380 lines with lazy getter pattern)
+- **Deleted:** `src/backend/AssignmentProcessor/Assignment.js` (658 lines).
+- **Modified:** `tests/setupGlobals.js` (import path + sub-class globals block); 7 test/helper files (import path updates).
+- **Verification:**
+  - `npm run test:backend` — 1877 tests pass across 117 files.
+  - `npm run lint:backend` — 0 errors, 14 pre-existing warnings.
+  - `npm run build:production` — 10 steps, 102 gas files generated.
+- **Key design decisions:**
+  - Sub-classes accept the parent `Assignment` instance as constructor parameter (stored as `this._assignment`).
+  - Lazy getters (via `defineLazySubclass`) on facade prototype ensure `Object.create(Assignment.prototype)` instances (from `_baseFromJSON`) get sub-class instances automatically.
+  - `knownFields` uses `'updatedAt'` (post-Section-2 name); no `lastUpdated` reference remains.
+  - `SlidesAssignment.js` and `SheetsAssignment.js` are unmodified.
+  - `fetchAssignmentName` stays on the facade as a private lifecycle initialiser.
+- **Deviation:** Sub-class constructors use `this._assignment = assignment` rather than a single options-object parameter. This is consistent with the `AssignmentDefinition` pattern (sub-classes access parent state via the reference). The lazy-getter pattern is a design improvement over the planned simple delegation, resolving the `Object.create(Assignment.prototype)` compatibility issue without defensive null-check code.
+- **Code review findings:** 3 nitpicks (2 American spellings `serialization`→`serialisation`, `deserialization`→`deserialisation`; inconsistent export guard in facade) — all resolved before commit.
+- **Commits:** (recorded below after commit)
+
 ---
 
 ## Open follow-ups (not in v1 scope)

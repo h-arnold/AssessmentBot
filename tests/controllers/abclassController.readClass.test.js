@@ -24,7 +24,7 @@ import {
 const ABClassModule = require('../../src/backend/Models/ABClass.js');
 const TeacherModule = require('../../src/backend/Models/Teacher.js');
 const StudentModule = require('../../src/backend/Models/Student.js');
-const AssignmentModule = require('../../src/backend/AssignmentProcessor/Assignment.js');
+const AssignmentModule = require('../../src/backend/AssignmentProcessor/Assignment/index.js');
 const AssignmentDefinitionModule = require('../../src/backend/Models/AssignmentDefinition.js');
 
 const ABClass = ABClassModule.ABClass || ABClassModule;

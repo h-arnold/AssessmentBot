@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import Assignment from '../../src/backend/AssignmentProcessor/Assignment.js';
+import Assignment from '../../src/backend/AssignmentProcessor/Assignment/index.js';
 import { createSlidesAssignment, createSheetsAssignment } from '../helpers/modelFactories.js';
 
 describe('Assignment updatedAt behavior', () => {
