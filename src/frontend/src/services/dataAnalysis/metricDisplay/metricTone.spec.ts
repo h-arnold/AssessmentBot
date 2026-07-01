@@ -43,14 +43,26 @@ describe('resolveMetricTone', () => {
     });
   });
 
-  it('returns gold for computed value at the amber/green edge (amber side inclusive)', () => {
+  it('returns green for computed value at the amber/green boundary', () => {
     const metric: MetricResult = createComputedMetricResult({ value: 3.75 });
 
     const result: MetricToneResolution = resolveMetricTone(metric);
 
     expect(result).toStrictEqual({
-      color: 'gold',
+      color: 'green',
       displayValue: 3.75,
+      muted: false,
+    });
+  });
+
+  it('returns gold for computed value just below the amber/green boundary', () => {
+    const metric: MetricResult = createComputedMetricResult({ value: 3.74 });
+
+    const result: MetricToneResolution = resolveMetricTone(metric);
+
+    expect(result).toStrictEqual({
+      color: 'gold',
+      displayValue: 3.74,
       muted: false,
     });
   });
@@ -135,6 +147,18 @@ describe('resolveMetricTone', () => {
     expect(result).toStrictEqual({
       color: 'gold',
       displayValue: 25,
+      muted: false,
+    });
+  });
+
+  it('returns green for computed value at the amber/green boundary in a 0-100 range', () => {
+    const metric: MetricResult = createComputedMetricResult({ value: 75 });
+
+    const result: MetricToneResolution = resolveMetricTone(metric, { lower: 0, upper: 100 });
+
+    expect(result).toStrictEqual({
+      color: 'green',
+      displayValue: 75,
       muted: false,
     });
   });

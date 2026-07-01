@@ -2,7 +2,7 @@
  * Pure tone resolver for `MetricResult` values.
  *
  * Maps a `MetricResult` plus an optional scoring range to a
- * `MetricToneResolution` describing the Ant Design `Tag` color, the raw display
+ * `MetricToneResolution` describing the Ant Design `Tag` colour, the raw display
  * value, and a muted flag. No React / antd / I/O / state imports.
  *
  * @module metricTone
@@ -29,7 +29,7 @@ export type MetricToneRange = { lower: number; upper: number };
  * Resolved tone for a single metric, ready for presentational consumption.
  */
 export type MetricToneResolution = {
-  /** Ant Design `Tag` color token. */
+  /** Ant Design `Tag` colour token. */
   color: MetricToneColor;
   /**
    * Raw display value:
@@ -54,6 +54,10 @@ const QUARTILE_DENOMINATOR = 4;
 /**
  * Resolve a computed metric value to a band colour using the given range.
  *
+ * @remarks
+ * The amber/green boundary uses `>=` per the spec boundary rule (`value >= amberGreenBoundary` yields
+ * `green`). A prior implementation used `>` which misclassified the exact boundary value as `gold`.
+ *
  * @param {number} value - The computed numeric value.
  * @param {MetricToneRange} range - The scoring range boundaries.
  * @returns {MetricToneColor} The band colour for the value.
@@ -66,7 +70,7 @@ function resolveComputedColor(value: number, range: MetricToneRange): MetricTone
     return 'red';
   }
 
-  if (value > amberGreenBoundary) {
+  if (value >= amberGreenBoundary) {
     return 'green';
   }
 
@@ -88,8 +92,8 @@ function resolveComputedColor(value: number, range: MetricToneRange): MetricTone
  * | `value` condition                                | Colour  |
  * | ------------------------------------------------ | ------- |
  * | `value < redAmberBoundary`                       | `red`   |
- * | `redAmberBoundary <= value <= amberGreenBoundary` | `gold`  |
- * | `value > amberGreenBoundary`                     | `green` |
+ * | `redAmberBoundary ≤ value < amberGreenBoundary`  | `gold`  |
+ * | `value ≥ amberGreenBoundary`                      | `green` |
  *
  * **Range validation.** The function throws an `Error` if `range.upper <= range.lower`
  * to fail fast on an inverted or degenerate range that would silently invert the
