@@ -527,33 +527,152 @@ describe('rollupMetric', () => {
 
       expect(() => rollupMetric([], 'completeness')).toThrow();
     });
+  });
 
-    it('throws on structurally-invalid sub-task', async () => {
+  // -----------------------------------------------------------------------
+  // Coverage gap 4 — notAttempted with non-zero totalWeight
+  // -----------------------------------------------------------------------
+
+  describe('notAttempted with non-zero totalWeight', () => {
+    it('contributes weight to denominator but zero to numerator for completeness', async () => {
       const { rollupMetric } = await loadRollupMetric();
 
-      const invalidSubTask = {
-        state: 'computed',
-        // missing `value`
-        totalWeight: 1,
-        applicableDataPoints: 1,
-        totalDataPoints: 1,
-      } as unknown as MetricResult;
+      const subTasks = [
+        createComputedMetricResult({ value: 4, totalWeight: 2 }),
+        createNotAttemptedMetricResult({ totalWeight: 3, totalDataPoints: 2 }),
+      ];
 
-      expect(() => rollupMetric([invalidSubTask], 'completeness')).toThrow();
+      const result = rollupMetric(subTasks, 'completeness');
+
+      // Weighted mean: (4*2) / (2 + 3) = 8 / 5 = 1.6
+      // totalWeight sums both: 2 + 3 = 5
+      // totalDataPoints sums both: default(1) + 2 = 3
+      const EXPECTED_VALUE = 1.6;
+      const EXPECTED_TOTAL_WEIGHT = 5;
+      const EXPECTED_TOTAL_POINTS = 3;
+
+      expect(result.state).toBe('computed');
+      if (result.state === 'computed') {
+        expect(result.value).toBeCloseTo(EXPECTED_VALUE, FLOAT_TOLERANCE);
+        expect(result.totalWeight).toBeCloseTo(EXPECTED_TOTAL_WEIGHT, FLOAT_TOLERANCE);
+        expect(result.totalDataPoints).toBe(EXPECTED_TOTAL_POINTS);
+      }
     });
 
-    it('throws on unknown state value', async () => {
+    it('is excluded entirely from spag rollup even with non-zero weight', async () => {
       const { rollupMetric } = await loadRollupMetric();
 
-      const invalidSubTask = {
-        state: 'invalid_state',
-        value: 5,
-        totalWeight: 1,
-        applicableDataPoints: 1,
-        totalDataPoints: 1,
-      } as unknown as MetricResult;
+      const subTasks = [
+        createComputedMetricResult({
+          value: 4,
+          totalWeight: 2,
+          applicableDataPoints: 2,
+          totalDataPoints: 2,
+        }),
+        createNotAttemptedMetricResult({ totalWeight: 3, totalDataPoints: 2 }),
+      ];
 
-      expect(() => rollupMetric([invalidSubTask], 'completeness')).toThrow();
+      const result = rollupMetric(subTasks, 'spag');
+
+      // For spag, notAttempted is excluded entirely
+      const EXPECTED_VALUE = 4;
+      const EXPECTED_TOTAL_WEIGHT = 2;
+      const EXPECTED_APPLICABLE_POINTS = 2;
+      const EXPECTED_TOTAL_POINTS = 2;
+
+      expect(result.state).toBe('computed');
+      if (result.state === 'computed') {
+        expect(result.value).toBeCloseTo(EXPECTED_VALUE, FLOAT_TOLERANCE);
+        expect(result.totalWeight).toBeCloseTo(EXPECTED_TOTAL_WEIGHT, FLOAT_TOLERANCE);
+        expect(result.applicableDataPoints).toBe(EXPECTED_APPLICABLE_POINTS);
+        expect(result.totalDataPoints).toBe(EXPECTED_TOTAL_POINTS);
+      }
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // Single sub-task
+  // -----------------------------------------------------------------------
+
+  describe('single sub-task', () => {
+    it('returns computed sub-task as-is', async () => {
+      const { rollupMetric } = await loadRollupMetric();
+
+      const subTasks = [
+        createComputedMetricResult({
+          value: 3,
+          totalWeight: 5,
+          applicableDataPoints: 3,
+          totalDataPoints: 3,
+        }),
+      ];
+
+      const result = rollupMetric(subTasks, 'completeness');
+
+      const EXPECTED_SINGLE_VALUE = 3;
+      const EXPECTED_SINGLE_WEIGHT = 5;
+      const EXPECTED_SINGLE_AP = 3;
+      const EXPECTED_SINGLE_TDP = 3;
+
+      expect(result.state).toBe('computed');
+      if (result.state === 'computed') {
+        expect(result.value).toBe(EXPECTED_SINGLE_VALUE);
+        expect(result.totalWeight).toBe(EXPECTED_SINGLE_WEIGHT);
+        expect(result.applicableDataPoints).toBe(EXPECTED_SINGLE_AP);
+        expect(result.totalDataPoints).toBe(EXPECTED_SINGLE_TDP);
+      }
+    });
+
+    it('returns notAttempted sub-task as-is', async () => {
+      const { rollupMetric } = await loadRollupMetric();
+
+      const subTasks = [createNotAttemptedMetricResult({ totalWeight: 2, totalDataPoints: 3 })];
+
+      const result = rollupMetric(subTasks, 'completeness');
+
+      const EXPECTED_NA_SINGLE_WEIGHT = 2;
+      const EXPECTED_NA_SINGLE_TDP = 3;
+
+      expect(result.state).toBe('notAttempted');
+      if (result.state === 'notAttempted') {
+        expect(result.value).toBe('N');
+        expect(result.totalWeight).toBe(EXPECTED_NA_SINGLE_WEIGHT);
+        expect(result.totalDataPoints).toBe(EXPECTED_NA_SINGLE_TDP);
+      }
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // Metadata accumulation across states — error wins and metadata sums
+  // -----------------------------------------------------------------------
+
+  describe('metadata accumulation across states', () => {
+    it('accumulates totalWeight and totalDataPoints from all sub-tasks when error wins', async () => {
+      const { rollupMetric } = await loadRollupMetric();
+
+      const subTasks = [
+        createComputedMetricResult({
+          value: 3,
+          totalWeight: 1,
+          applicableDataPoints: 1,
+          totalDataPoints: 1,
+        }),
+        createNotAttemptedMetricResult({ totalWeight: 2, totalDataPoints: 3 }),
+        createErrorMetricResult({ totalWeight: 0, totalDataPoints: 1 }),
+      ];
+
+      const result = rollupMetric(subTasks, 'completeness');
+
+      // error wins, so state is error
+      const EXPECTED_ERROR_TOTAL_WEIGHT = 3; // 1 + 2 + 0
+      const EXPECTED_ERROR_TOTAL_POINTS = 5; // 1 + 3 + 1
+
+      expect(result.state).toBe('error');
+      if (result.state === 'error') {
+        expect(result.value).toBe('E');
+        expect(result.totalWeight).toBe(EXPECTED_ERROR_TOTAL_WEIGHT);
+        expect(result.totalDataPoints).toBe(EXPECTED_ERROR_TOTAL_POINTS);
+      }
     });
   });
 });

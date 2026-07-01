@@ -296,11 +296,23 @@ Helper decision entries:
 
 ---
 
-## Section 3 — Single-pass `rollupMetric` rewrite + structural twin consolidation + validation removal (CRITICAL-6 + MAJOR-1 + MAJOR-2 + MAJOR-5)
+## Section 3 — Single-pass `rollupMetric` rewrite + structural twin consolidation + validation removal (CRITICAL-6 + MAJOR-1 + MAJOR-2 + MAJOR-5) ✅ COMPLETE
 
 ### Objective
 
 Fix CRITICAL-6: fuse the 4-5-iteration-per-call `rollupMetric` into a single pass with early-exit precedence logic. Fix MAJOR-1: consolidate `notAttemptedRollup` / `errorRollup` structural twins into a single parameterised function. Fix MAJOR-2: consolidate `rollupComputedForSpag` / `rollupCompletenessOrAccuracy` ~70% overlap into a shared accumulator helper with thin wrappers. Fix MAJOR-5: remove the 65-line `validateSubTasks` function that validates fields Zod already guarantees.
+
+### Completion summary
+
+- CRITICAL-6: `rollupMetric` now performs exactly **one** `for...of` pass over `subTasks` (down from 4-5 passes). A single `accumulateOne` function updates all accumulators (`allTotalWeight`, `allTotalDataPoints`, `totalWeightedSum`, `computedTotalWeight`, `computedAp`, `computedTd`, `naTotalWeight`, `naTotalDataPoints`, `hasError`, `hasComputed`) in one loop.
+- MAJOR-1: `notAttemptedRollup` and `errorRollup` merged into parameterised `terminalRollup(hasError, totalWeight, totalDataPoints)`.
+- MAJOR-2: `rollupComputedForSpag` and `rollupCompletenessOrAccuracy` consolidated into a single computed path with a `metric === 'spag'` branch controlling whether notAttempted weight is included.
+- MAJOR-5: `VALID_STATES`, `validateComputedFields`, `validateNotAttemptedFields`, `validateErrorFields`, `validateSubTasks` fully removed (~65 lines). Only empty-array guard retained.
+- `rollupMetric.ts` reduced from 267 to 223 lines.
+- Coverage gap 4 addressed: 5 new tests added in RED phase (notAttempted with non-zero totalWeight for completeness/spag, single sub-task pass-through, metadata accumulation across states).
+- 2 validation-throw edge-case tests removed (structurally-invalid sub-task, unknown state) per MAJOR-5.
+- Green-phase review: clean (no findings).
+- Regression gate: 1290 tests pass (109 files), 0 regressions; lint green.
 
 ### Constraints
 

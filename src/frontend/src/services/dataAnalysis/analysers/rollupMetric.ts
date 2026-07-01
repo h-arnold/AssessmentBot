@@ -11,10 +11,137 @@ import type { MetricResult } from '../dataAnalysis.zod';
 export type RollupMetric = 'completeness' | 'accuracy' | 'spag';
 
 /**
+ * Accumulated state from a single pass over sub-tasks.
+ */
+interface AccumulatedState {
+  hasError: boolean;
+  hasComputed: boolean;
+  totalWeightedSum: number;
+  computedTotalWeight: number;
+  computedAp: number;
+  computedTd: number;
+  naTotalWeight: number;
+  naTotalDataPoints: number;
+  allTotalWeight: number;
+  allTotalDataPoints: number;
+}
+
+/**
+ * Create an initial empty AccumulatedState.
+ *
+ * @returns {AccumulatedState} A zeroed AccumulatedState.
+ */
+function createAccumulatedState(): AccumulatedState {
+  return {
+    hasError: false,
+    hasComputed: false,
+    totalWeightedSum: 0,
+    computedTotalWeight: 0,
+    computedAp: 0,
+    computedTd: 0,
+    naTotalWeight: 0,
+    naTotalDataPoints: 0,
+    allTotalWeight: 0,
+    allTotalDataPoints: 0,
+  };
+}
+
+/**
+ * Accumulate one sub-task into the running accumulators.
+ *
+ * @param {AccumulatedState} accumulator - The running accumulators (mutated in place).
+ * @param {MetricResult} st - The sub-task to accumulate.
+ * @param {RollupMetric} metric - The criterion being rolled up.
+ */
+function accumulateOne(
+  accumulator: AccumulatedState,
+  st: MetricResult,
+  metric: RollupMetric
+): void {
+  accumulator.allTotalWeight += st.totalWeight;
+  accumulator.allTotalDataPoints += st.totalDataPoints;
+
+  switch (st.state) {
+    case 'error': {
+      accumulator.hasError = true;
+      break;
+    }
+    case 'computed': {
+      accumulator.hasComputed = true;
+      const cs = st as Extract<MetricResult, { state: 'computed' }>;
+      accumulator.totalWeightedSum += cs.value * cs.totalWeight;
+      accumulator.computedTotalWeight += cs.totalWeight;
+      accumulator.computedAp += cs.applicableDataPoints;
+      accumulator.computedTd += cs.totalDataPoints;
+      break;
+    }
+    case 'notAttempted': {
+      if (metric !== 'spag') {
+        accumulator.naTotalWeight += st.totalWeight;
+        accumulator.naTotalDataPoints += st.totalDataPoints;
+      }
+      break;
+    }
+  }
+}
+
+/**
+ * Build a terminal (non-computed) MetricResult for either the `error` or
+ * `notAttempted` state based on the `hasError` flag.
+ *
+ * @param {boolean} hasError - Whether the result should be in error state.
+ * @param {number} totalWeight - Sum of totalWeight across all sub-tasks.
+ * @param {number} totalDataPoints - Sum of totalDataPoints across all sub-tasks.
+ * @returns {MetricResult} An error MetricResult if `hasError` is true,
+ *   otherwise a notAttempted MetricResult.
+ */
+function terminalRollup(
+  hasError: boolean,
+  totalWeight: number,
+  totalDataPoints: number
+): MetricResult {
+  if (hasError) {
+    return {
+      state: 'error',
+      value: 'E',
+      totalWeight,
+      applicableDataPoints: 0,
+      totalDataPoints,
+    };
+  }
+  return {
+    state: 'notAttempted',
+    value: 'N',
+    totalWeight,
+    applicableDataPoints: 0,
+    totalDataPoints,
+  };
+}
+
+/**
  * Roll up an array of per-sub-task `MetricResult` values into a single
  * `MetricResult` for the given criterion.
  *
  * @remarks
+ * **Single-pass algorithm:**
+ * This function makes exactly **one** iteration over `subTasks` per call.
+ * The prior implementation iterated 4–5 times (validation, error detection,
+ * filtering, computation, reduce calls). All accumulators are updated in a
+ * single `for...of` loop via {@link accumulateOne}:
+ *
+ * - `allTotalWeight` / `allTotalDataPoints` — summed from every sub-task
+ *   (used for terminal rollup metadata).
+ * - `totalWeightedSum` / `computedTotalWeight` / `computedAp` / `computedTd`
+ *   — accumulated only from `computed` sub-tasks.
+ * - `naTotalWeight` / `naTotalDataPoints` — accumulated only from
+ *   `notAttempted` sub-tasks (and only for completeness/accuracy; spag
+ *   excludes them entirely).
+ * - `hasError` — set to `true` if any sub-task is in error state.
+ * - `hasComputed` — set to `true` if any sub-task is in computed state.
+ *
+ * After the loop, the result state is determined by precedence:
+ * `error` > `notAttempted` > `computed`.
+ *
  * **Precedence** (spec decision 4):
  * - `error` always wins: if **any** sub-task is `error`, the result is `error`.
  * - `notAttempted`: If ALL sub-tasks are `notAttempted` (no `error`, no
@@ -26,10 +153,10 @@ export type RollupMetric = 'completeness' | 'accuracy' | 'spag';
  * - `completeness` / `accuracy`: a `notAttempted` sub-task contributes a score
  *   of `0` — its `totalWeight` is included in the denominator, but zero in the
  *   numerator.
- * - `spag`: a `notAttempted` sub-task is **excluded entirely** — its `totalWeight`
- *   is not included in the denominator (SPaG cannot be assessed on unsubmitted
- *   work). When all sub-tasks are `notAttempted` (and excluded), the result is
- *   still `notAttempted`.
+ * - `spag`: a `notAttempted` sub-task is **excluded entirely** — its
+ *   `totalWeight` is not included in the denominator (SPaG cannot be assessed
+ *   on unsubmitted work). When all sub-tasks are `notAttempted` (and excluded),
+ *   the result is still `notAttempted`.
  *
  * **Error sub-tasks** are excluded from the calculation in all cases (no
  * contribution to numerator or denominator).
@@ -37,200 +164,13 @@ export type RollupMetric = 'completeness' | 'accuracy' | 'spag';
  * **Contract:**
  * - Pure function. No side effects, no React / antd / I/O / state.
  * - Throws on empty `subTasks` array.
- * - Throws on structurally-invalid sub-tasks (unknown `state` or missing
- *   required fields).
+ * - Throws if `finalTotalWeight` is zero in the computed path (all weights are
+ *   zero).
+ * - Input structural validation is assumed to have been performed by Zod at the
+ *   analyser boundary; no runtime field validation is performed.
  *
  * @param {ReadonlyArray<MetricResult>} subTasks - The per-sub-task MetricResults
  *   to roll up.
- * @param {RollupMetric} metric - The criterion being rolled up.
- * @returns {MetricResult} The rolled-up MetricResult.
- */
-/**
- * Validate all sub-tasks have recognised states and structurally-valid fields.
- *
- * @param {ReadonlyArray<MetricResult>} subTasks - The sub-tasks to validate.
- */
-const VALID_STATES = ['computed', 'notAttempted', 'error'] as const;
-
-/**
- * Validate required fields for a computed sub-task.
- *
- * @param {Record<string, unknown>} raw - The raw sub-task object to validate.
- */
-function validateComputedFields(raw: Record<string, unknown>): void {
-  if (typeof raw.value !== 'number') {
-    throw new TypeError('rollupMetric: computed sub-task is missing required numeric value field');
-  }
-  if (
-    typeof raw.totalWeight !== 'number' ||
-    typeof raw.applicableDataPoints !== 'number' ||
-    typeof raw.totalDataPoints !== 'number'
-  ) {
-    throw new TypeError(
-      'rollupMetric: computed sub-task is missing required numeric fields (totalWeight, applicableDataPoints, totalDataPoints)'
-    );
-  }
-}
-
-/**
- * Validate required fields for a notAttempted sub-task.
- *
- * @param {Record<string, unknown>} raw - The raw sub-task object to validate.
- */
-function validateNotAttemptedFields(raw: Record<string, unknown>): void {
-  if (raw.value !== 'N') {
-    throw new Error('rollupMetric: notAttempted sub-task has invalid value field');
-  }
-}
-
-/**
- * Validate required fields for an error sub-task.
- *
- * @param {Record<string, unknown>} raw - The raw sub-task object to validate.
- */
-function validateErrorFields(raw: Record<string, unknown>): void {
-  if (raw.value !== 'E') {
-    throw new Error('rollupMetric: error sub-task has invalid value field');
-  }
-}
-
-/**
- * Validate all sub-tasks have recognised states and structurally-valid fields.
- *
- * @param {ReadonlyArray<MetricResult>} subTasks - The sub-tasks to validate.
- */
-function validateSubTasks(subTasks: ReadonlyArray<MetricResult>): void {
-  for (const st of subTasks) {
-    const raw = st as Record<string, unknown>;
-    if (!(VALID_STATES as readonly string[]).includes(st.state)) {
-      throw new Error(`rollupMetric: invalid sub-task state: "${raw.state}"`);
-    }
-    if (st.state === 'computed') validateComputedFields(raw);
-    if (st.state === 'notAttempted') validateNotAttemptedFields(raw);
-    if (st.state === 'error') validateErrorFields(raw);
-  }
-}
-
-/**
- * Roll up computed sub-tasks for the spag metric (where notAttempted is excluded).
- *
- * @param {ReadonlyArray<MetricResult>} computedSubTasks - Only computed sub-tasks.
- * @returns {MetricResult} The rolled-up computed MetricResult.
- */
-function rollupComputedForSpag(computedSubTasks: ReadonlyArray<MetricResult>): MetricResult {
-  let totalWeightedSum = 0;
-  let computedTotalWeight = 0;
-  let computedAp = 0;
-  let computedTd = 0;
-
-  for (const st of computedSubTasks) {
-    const cs = st as {
-      state: 'computed';
-      value: number;
-      totalWeight: number;
-      applicableDataPoints: number;
-      totalDataPoints: number;
-    };
-    totalWeightedSum += cs.value * cs.totalWeight;
-    computedTotalWeight += cs.totalWeight;
-    computedAp += cs.applicableDataPoints;
-    computedTd += cs.totalDataPoints;
-  }
-
-  return {
-    state: 'computed',
-    value: totalWeightedSum / computedTotalWeight,
-    totalWeight: computedTotalWeight,
-    applicableDataPoints: Math.min(computedAp, computedTd),
-    totalDataPoints: computedTd,
-  };
-}
-
-/**
- * Compute the weighted mean for completeness/accuracy, including notAttempted
- * sub-tasks which contribute 0 with their weight in the denominator.
- *
- * @param {ReadonlyArray<MetricResult>} subTasks - All non-error sub-tasks.
- * @returns {MetricResult} The rolled-up computed MetricResult.
- */
-function rollupCompletenessOrAccuracy(subTasks: ReadonlyArray<MetricResult>): MetricResult {
-  let totalWeightedSum = 0;
-  let totalWeight = 0;
-  let sumComputedAp = 0;
-  let totalDataPoints = 0;
-
-  for (const st of subTasks) {
-    if (st.state === 'computed') {
-      const cs = st as {
-        state: 'computed';
-        value: number;
-        totalWeight: number;
-        applicableDataPoints: number;
-        totalDataPoints: number;
-      };
-      totalWeightedSum += cs.value * cs.totalWeight;
-      totalWeight += cs.totalWeight;
-      sumComputedAp += cs.applicableDataPoints;
-      totalDataPoints += cs.totalDataPoints;
-    } else {
-      // notAttempted contributes 0 with weight in denominator
-      totalWeight += st.totalWeight;
-      totalDataPoints += st.totalDataPoints;
-    }
-  }
-
-  if (totalWeight === 0) {
-    throw new Error('rollupMetric: all sub-task weights are zero');
-  }
-
-  return {
-    state: 'computed',
-    value: totalWeightedSum / totalWeight,
-    totalWeight,
-    applicableDataPoints: Math.min(sumComputedAp, totalDataPoints),
-    totalDataPoints,
-  };
-}
-
-/**
- * Create a notAttempted MetricResult for rollup output.
- *
- * @param {ReadonlyArray<MetricResult>} subTasks - All sub-tasks.
- * @returns {MetricResult} A notAttempted MetricResult.
- */
-function notAttemptedRollup(subTasks: ReadonlyArray<MetricResult>): MetricResult {
-  return {
-    state: 'notAttempted',
-    value: 'N',
-    totalWeight: subTasks.reduce((s, t) => s + t.totalWeight, 0),
-    applicableDataPoints: 0,
-    totalDataPoints: subTasks.reduce((s, t) => s + t.totalDataPoints, 0),
-  };
-}
-
-/**
- * Create an error MetricResult for rollup output.
- *
- * @param {ReadonlyArray<MetricResult>} subTasks - All sub-tasks.
- * @returns {MetricResult} An error MetricResult.
- */
-function errorRollup(subTasks: ReadonlyArray<MetricResult>): MetricResult {
-  return {
-    state: 'error',
-    value: 'E',
-    totalWeight: subTasks.reduce((s, t) => s + t.totalWeight, 0),
-    applicableDataPoints: 0,
-    totalDataPoints: subTasks.reduce((s, t) => s + t.totalDataPoints, 0),
-  };
-}
-
-/**
- * Roll up an array of per-sub-task `MetricResult` values into a single
- * `MetricResult` for the given criterion.
- *
- * See the file-level JSDoc for full contract details.
- *
- * @param {ReadonlyArray<MetricResult>} subTasks - The per-sub-task MetricResults.
  * @param {RollupMetric} metric - The criterion being rolled up.
  * @returns {MetricResult} The rolled-up MetricResult.
  */
@@ -242,26 +182,42 @@ export function rollupMetric(
     throw new Error('rollupMetric: subTasks must not be empty');
   }
 
-  validateSubTasks(subTasks);
+  const accumulator = createAccumulatedState();
 
-  // Precedence: error wins always
-  if (subTasks.some((t) => t.state === 'error')) {
-    return errorRollup(subTasks);
+  for (const st of subTasks) {
+    accumulateOne(accumulator, st, metric);
   }
 
-  // For spag: notAttempted is excluded entirely
+  // Precedence: error > notAttempted > computed
+  if (accumulator.hasError) {
+    return terminalRollup(true, accumulator.allTotalWeight, accumulator.allTotalDataPoints);
+  }
+
+  if (!accumulator.hasComputed) {
+    return terminalRollup(false, accumulator.allTotalWeight, accumulator.allTotalDataPoints);
+  }
+
+  // Computed path: determine whether to include notAttempted weight
+  let finalTotalWeight: number;
+  let finalTotalDataPoints: number;
+
   if (metric === 'spag') {
-    const computedSubTasks = subTasks.filter((t) => t.state === 'computed');
-    if (computedSubTasks.length === 0) {
-      return notAttemptedRollup(subTasks);
-    }
-    return rollupComputedForSpag(computedSubTasks);
+    finalTotalWeight = accumulator.computedTotalWeight;
+    finalTotalDataPoints = accumulator.computedTd;
+  } else {
+    finalTotalWeight = accumulator.computedTotalWeight + accumulator.naTotalWeight;
+    finalTotalDataPoints = accumulator.computedTd + accumulator.naTotalDataPoints;
   }
 
-  // For completeness/accuracy: mixed computed + notAttempted → computed
-  if (subTasks.some((t) => t.state === 'computed')) {
-    return rollupCompletenessOrAccuracy(subTasks);
+  if (finalTotalWeight === 0) {
+    throw new Error('rollupMetric: all sub-task weights are zero');
   }
 
-  return notAttemptedRollup(subTasks);
+  return {
+    state: 'computed',
+    value: accumulator.totalWeightedSum / finalTotalWeight,
+    totalWeight: finalTotalWeight,
+    applicableDataPoints: Math.min(accumulator.computedAp, finalTotalDataPoints),
+    totalDataPoints: finalTotalDataPoints,
+  };
 }
