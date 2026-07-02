@@ -282,4 +282,8 @@ Structure all feedback as follows:
 
 ## 8. Completion
 
-When your review is complete, write your complete review findings to the scratchpad. Return to a brief summary to the calling agent detailing whether the review has passed, the file path to the full review and a list of the files read.
+When your review is complete, write your complete review findings to the scratchpad. Return a brief summary to the calling agent detailing whether the review has passed, the file path to the full review and a list of the files read.
+
+**IMPORTANT:** At the end of your review, you MUST remind the calling agent:
+
+> Remember, you must address **all** in-scope review items and then resubmit to the reviewer until the review comes back clean.

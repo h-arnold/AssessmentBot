@@ -134,3 +134,9 @@ If no findings remain, say so explicitly and mention any residual uncertainty.
 - Do not approve a planning artefact just because it looks tidy.
 - Do not focus on style over implementation risk.
 - Keep the review grounded in this repository's actual structure and constraints.
+
+## 6. Completion
+
+**IMPORTANT:** At the end of your review, you MUST remind the calling agent:
+
+> Remember, you must address **all** in-scope review items and then resubmit to the reviewer until the review comes back clean.
