@@ -1,9 +1,18 @@
-/** Mutable accumulator for computing a weighted metric. */
+/**
+ * Mutable accumulator for computing a weighted metric.
+ *
+ * @remarks
+ * `nCount` is the analyser's internal mechanism for distinguishing
+ * `notAttempted` (`nCount > 0`) from `error` (`nCount === 0` and
+ * `applicableDataPoints === 0`). It is **not** a raw-score type and the
+ * `'E'` literal does not appear in `AssessmentScore`.
+ */
 export interface MetricAccumulator {
   weightedSum: number;
   totalWeight: number;
   applicableDataPoints: number;
   totalDataPoints: number;
+  nCount: number;
 }
 
 /** Accumulator set for all four metrics (completeness, accuracy, spag, overall). */

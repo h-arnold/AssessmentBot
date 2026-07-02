@@ -11,6 +11,9 @@ import {
   createSubmission,
   createSubmissionItem,
   createTaskPartial,
+  createComputedMetricResult,
+  createNotAttemptedMetricResult,
+  createErrorMetricResult,
 } from '../../test/dataAnalysis/fixtures';
 
 // ---------------------------------------------------------------------------
@@ -257,6 +260,162 @@ describe('DataAnalysisService', () => {
       expect(results).toHaveLength(CLASS_COUNT);
       expect(results[0].classId).toBe('c_001');
       expect(results[1].classId).toBe('c_002');
+    });
+
+    // -----------------------------------------------------------------------
+    // 10) Orchestrator's analyse returns the new MetricResult discriminated union shape
+    // -----------------------------------------------------------------------
+    it('returns the new MetricResult discriminated union shape on public output', () => {
+      const input = buildInput([
+        {
+          classId: 'c_001',
+          className: 'Test Class',
+          studentIds: ['s_001'],
+          assignments: [
+            createAssignmentPartial({
+              assignmentId: 'a_001',
+              definitionKey: 'dk_algebra',
+              tasks: [createTaskPartial('t_001')],
+              submissions: [
+                createSubmission('s_001', 'Alice', 'a_001', {
+                  t_001: createSubmissionItem('t_001', {
+                    completeness: { score: 3 },
+                    accuracy: { score: 4 },
+                    spag: { score: 5 },
+                  }),
+                }),
+              ],
+            }),
+          ],
+        },
+      ]);
+
+      const service = new DataAnalysisService();
+      const results = service.analyse(input);
+
+      // Check that the output contains MetricResults with the discriminated union shape
+      // This will FAIL in the Red phase (current code produces { value: number | null } shape)
+      expect(results[0].perStudent[0].completeness).toHaveProperty('state');
+      expect(results[0].perStudent[0].completeness).toHaveProperty('value');
+      // Verify it's a valid state
+      const completeness = results[0].perStudent[0].completeness as Record<string, unknown>;
+      expect(['computed', 'notAttempted', 'error']).toContain(completeness.state);
+    });
+
+    // -----------------------------------------------------------------------
+    // 11) Zod validation at the boundary accepts the new discriminated union shape
+    // -----------------------------------------------------------------------
+    it('DataAnalysisResponseSchema round-trips with new MetricResult shape', () => {
+      // Build a response with the new discriminated union MetricResult shape
+      const responseWithNewShape = [
+        {
+          classId: 'c_001',
+          className: 'Test Class',
+          perStudent: [
+            {
+              studentId: 's_001',
+              studentName: 'Alice',
+              completeness: createComputedMetricResult(),
+              accuracy: createComputedMetricResult(),
+              spag: createComputedMetricResult(),
+              overall: createComputedMetricResult(),
+            },
+          ],
+          perTask: [
+            {
+              definitionKey: 'dk_algebra',
+              taskId: 't_001',
+              taskTitle: null,
+              completeness: createComputedMetricResult(),
+              accuracy: createComputedMetricResult(),
+              spag: createComputedMetricResult(),
+              overall: createComputedMetricResult(),
+            },
+          ],
+          perClass: {
+            completeness: createComputedMetricResult(),
+            accuracy: createComputedMetricResult(),
+            spag: createComputedMetricResult(),
+            overall: createComputedMetricResult(),
+          },
+          appliedCriterionWeightings: { completeness: 0.4, accuracy: 0.4, spag: 0.2 },
+        },
+      ];
+
+      // This will FAIL in the Red phase (current schema expects { value: number | null })
+      expect(() => DataAnalysisResponseSchema.parse(responseWithNewShape)).not.toThrow();
+    });
+
+    // -----------------------------------------------------------------------
+    // 12) Zod validation rejects mismatched MetricResult shape
+    // -----------------------------------------------------------------------
+    it('DataAnalysisResponseSchema rejects mismatched MetricResult shape (computed with "N")', () => {
+      const responseWithInvalidMetric = [
+        {
+          classId: 'c_001',
+          className: 'Test Class',
+          perStudent: [
+            {
+              studentId: 's_001',
+              studentName: 'Alice',
+              completeness: {
+                state: 'computed',
+                value: 'N',
+                totalWeight: 1,
+                applicableDataPoints: 1,
+                totalDataPoints: 1,
+              },
+              accuracy: createComputedMetricResult(),
+              spag: createComputedMetricResult(),
+              overall: createComputedMetricResult(),
+            },
+          ],
+          perTask: [],
+          perClass: {
+            completeness: createComputedMetricResult(),
+            accuracy: createComputedMetricResult(),
+            spag: createComputedMetricResult(),
+            overall: createComputedMetricResult(),
+          },
+          appliedCriterionWeightings: { completeness: 0.4, accuracy: 0.4, spag: 0.2 },
+        },
+      ];
+
+      // This will FAIL in the Red phase because the old schema doesn't have discriminated union at all
+      expect(() => DataAnalysisResponseSchema.parse(responseWithInvalidMetric)).toThrow();
+    });
+
+    // -----------------------------------------------------------------------
+    // 13) Zod validation accepts notAttempted and error MetricResult shapes
+    // -----------------------------------------------------------------------
+    it('DataAnalysisResponseSchema accepts notAttempted and error MetricResult shapes', () => {
+      const responseWithAllStates = [
+        {
+          classId: 'c_001',
+          className: 'Test Class',
+          perStudent: [
+            {
+              studentId: 's_001',
+              studentName: 'Alice',
+              completeness: createComputedMetricResult(),
+              accuracy: createNotAttemptedMetricResult(),
+              spag: createErrorMetricResult(),
+              overall: createComputedMetricResult(),
+            },
+          ],
+          perTask: [],
+          perClass: {
+            completeness: createComputedMetricResult(),
+            accuracy: createNotAttemptedMetricResult(),
+            spag: createErrorMetricResult(),
+            overall: createComputedMetricResult(),
+          },
+          appliedCriterionWeightings: { completeness: 0.4, accuracy: 0.4, spag: 0.2 },
+        },
+      ];
+
+      // This will FAIL in the Red phase (current schema doesn't have discriminated union)
+      expect(() => DataAnalysisResponseSchema.parse(responseWithAllStates)).not.toThrow();
     });
   });
 });

@@ -312,7 +312,7 @@ export async function setupAssignmentControllerTest(vi) {
 
   const [abClassModule, assignmentModule, abClassControllerModule] = await Promise.all([
     import('../../src/backend/Models/ABClass.js'),
-    import('../../src/backend/AssignmentProcessor/Assignment.js'),
+    import('../../src/backend/AssignmentProcessor/Assignment/index.js'),
     import('../../src/backend/y_controllers/ABClassController'),
   ]);
 

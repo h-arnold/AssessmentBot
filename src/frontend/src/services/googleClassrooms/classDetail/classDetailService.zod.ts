@@ -108,12 +108,22 @@ export const StudentSubmissionPartialSchema = z.object({
 
 export type StudentSubmissionPartial = z.infer<typeof StudentSubmissionPartialSchema>;
 
+/**
+ * A partial assignment instance as returned by `toPartialJSON()`.
+ *
+ * @remarks
+ * The `updatedAt` field was renamed from `lastUpdated` in v1 to align with
+ * `StudentSubmissionPartial.updatedAt` and `AssignmentDefinitionPartial.updatedAt`.
+ * The field remains `z.string().nullable()`; a null `updatedAt` on a candidate
+ * assignment is a data bug that fails fast at the `getABClass` adapter boundary
+ * (not a soft signal).
+ */
 export const AssignmentPartialSchema = z.object({
   courseId: z.string(),
   assignmentId: z.string(),
   assignmentName: z.string(),
   dueDate: z.string().nullable(),
-  lastUpdated: z.string().nullable(),
+  updatedAt: z.string().nullable(),
   createdAt: z.string(),
   documentType: z.string().nullable(),
   submissions: z.array(StudentSubmissionPartialSchema),

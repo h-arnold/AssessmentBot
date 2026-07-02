@@ -149,7 +149,7 @@ class AssignmentController {
       const includeImages = definition.documentType === 'SLIDES';
       this.runAssignmentPipeline(assignment, students, { includeImages });
 
-      // Update lastUpdated value and persist assignment data
+      // Update updatedAt value and persist assignment data
 
       assignment.touchUpdated();
 
