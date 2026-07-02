@@ -950,7 +950,7 @@ Helper decision entries:
   - No `index.ts` barrel confirmed.
   - No `bordered={false}` deviation — Tag uses default `bordered` behaviour.
   - `setup.ts` enhanced with `readInlineStyles` helper and `getComputedStyle` mock improvements (fontSize/fontWeight/opacity getters, inline-style resolution) to support `MetricPill.spec.tsx` style assertions.
-  - Band boundary JSDoc in `metricTone.ts` corrected: the `>` vs `≥` distinction at the amber/green boundary matches the ACTION_PLAN test case 3 (value=3.75 → gold, not green — amber side inclusive).
+  - Band boundary in `metricTone.ts` corrected to `>=` per the spec rule (`value >= amberGreenBoundary` yields green). A prior implementation used `>` which misclassified the exact boundary value (3.75) as gold; this was fixed in CRITICAL-1. The completion note reflects the fixed code, not the buggy behaviour.
 
 ---
 

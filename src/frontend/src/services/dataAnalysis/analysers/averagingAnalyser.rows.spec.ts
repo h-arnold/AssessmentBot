@@ -576,19 +576,20 @@ describe('AveragingAnalyser', () => {
       const student = results[0].perStudent[0];
       // Per-criterion metrics all notAttempted with value 'N' (nCount > 0)
       // This will FAIL in the Red phase (current code produces value: null)
+      // totalWeight is now accumulated for 'N' scores (was 0 before Bug #1 fix)
       expectMetricResultStateAware(student.completeness as unknown as MetricResult, {
         state: 'notAttempted',
-        totalWeight: 0,
+        totalWeight: 1,
         totalDataPoints: 1,
       });
       expectMetricResultStateAware(student.accuracy as unknown as MetricResult, {
         state: 'notAttempted',
-        totalWeight: 0,
+        totalWeight: 1,
         totalDataPoints: 1,
       });
       expectMetricResultStateAware(student.spag as unknown as MetricResult, {
         state: 'notAttempted',
-        totalWeight: 0,
+        totalWeight: 1,
         totalDataPoints: 1,
       });
       // Overall is notAttempted because all three criteria are 'N'

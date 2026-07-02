@@ -35,6 +35,7 @@ export function accumulateCriterion(
     accum.applicableDataPoints++;
   } else if (score === 'N') {
     accum.totalDataPoints++;
+    accum.totalWeight += weight;
     accum.nCount++;
   }
 }

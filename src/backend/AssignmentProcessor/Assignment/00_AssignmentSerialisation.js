@@ -41,12 +41,7 @@ class AssignmentSerialisation {
         // copy any other enumerable properties (non-enumerable like methods are ignored)
         Object.entries(sub).forEach(([key, value]) => {
           if (!Object.hasOwn(out, key)) {
-            Object.defineProperty(out, key, {
-              value,
-              enumerable: true,
-              writable: true,
-              configurable: true,
-            });
+            out[key] = value;
           }
         });
       }

@@ -63,12 +63,7 @@ const AssignmentRehydration = {
     ]);
     Object.entries(data).forEach(([key, value]) => {
       if (!knownFields.has(key)) {
-        Object.defineProperty(inst, key, {
-          value,
-          enumerable: true,
-          writable: true,
-          configurable: true,
-        });
+        inst[key] = value;
       }
     });
 
@@ -115,12 +110,7 @@ const AssignmentRehydration = {
           submission.updatedAt = value instanceof Date ? value : new Date(value);
           return;
         }
-        Object.defineProperty(submission, key, {
-          value,
-          enumerable: true,
-          writable: true,
-          configurable: true,
-        });
+        submission[key] = value;
       });
       inst.submissions.push(submission);
     } catch (error_) {

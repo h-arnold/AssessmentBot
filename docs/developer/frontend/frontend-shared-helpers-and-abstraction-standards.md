@@ -458,7 +458,7 @@ These entries record the planned shared display helpers for the Class page featu
 - Status: `Implemented`
 - Implementation notes:
   - Added `errorColor: MetricToneColor` parameter (not in the planning-time signature) per the spec reconciliation in Section 1 and `SPEC_CLASS_PAGE_PREPARATION.md`. The default (`'volcano'`) lives in `resolveMetricTone`; `MetricPill` is a pass-through with no `errorColor`-level default.
-  - The band-boundary `>` vs `>=` distinction at the amber/green boundary matches the ACTION_PLAN test case 3 (value `3.75` → gold, not green — amber side inclusive). The function uses `value > amberGreenBoundary` for green; the boundary value itself falls in the gold band.
+  - The amber/green boundary uses `>=` per the spec boundary rule (`value >= amberGreenBoundary` yields `green`). A prior implementation used `>` which misclassified the exact boundary value as `gold`. This was fixed in CRITICAL-1 during the code-review remediation sweep.
   - Exported types: `MetricToneColor`, `MetricToneRange`, `MetricToneResolution`.
   - `MetricToneColor = 'red' | 'gold' | 'green' | 'default' | 'volcano'` is a cross-spec contract (used by Class page column filter). Any future revision is a cross-spec breaking change.
   - The `error` color (`volcano`) is the existing Ant Design preset for "important but not fatal" — `red` is reserved for the lowest band of `computed` values to keep visual hierarchy clear.

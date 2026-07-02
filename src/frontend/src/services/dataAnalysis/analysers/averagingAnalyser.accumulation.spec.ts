@@ -196,17 +196,17 @@ describe('accumulateMetricsToTarget nCount tracking', () => {
     // This will FAIL in the Red phase (current code produces value: null)
     expectMetricResultStateAware(student.completeness as unknown as MetricResult, {
       state: 'notAttempted',
-      totalWeight: 0,
+      totalWeight: 1,
       totalDataPoints: 1,
     });
     expectMetricResultStateAware(student.accuracy as unknown as MetricResult, {
       state: 'notAttempted',
-      totalWeight: 0,
+      totalWeight: 1,
       totalDataPoints: 1,
     });
     expectMetricResultStateAware(student.spag as unknown as MetricResult, {
       state: 'notAttempted',
-      totalWeight: 0,
+      totalWeight: 1,
       totalDataPoints: 1,
     });
     // Overall has no numeric scores → notAttempted (nCount > 0 for all criteria)
@@ -262,14 +262,14 @@ describe('accumulateMetricsToTarget nCount tracking', () => {
     // Accuracy has 'N' only → notAttempted
     expectMetricResultStateAware(student.accuracy as unknown as MetricResult, {
       state: 'notAttempted',
-      totalWeight: 0,
+      totalWeight: 1,
       totalDataPoints: 1,
     });
 
     // SPaG has 'N' only → notAttempted
     expectMetricResultStateAware(student.spag as unknown as MetricResult, {
       state: 'notAttempted',
-      totalWeight: 0,
+      totalWeight: 1,
       totalDataPoints: 1,
     });
   });
@@ -435,9 +435,10 @@ describe('AveragingAnalyser', () => {
       });
       // spag: 'N' → not contributing, applicableDataPoints = 0, totalDataPoints still 1 → notAttempted
       // This will FAIL in the Red phase (current code produces value: null)
+      // totalWeight is now accumulated for 'N' scores (was 0 before Bug #1 fix)
       expectMetricResultStateAware(student.spag as unknown as MetricResult, {
         state: 'notAttempted',
-        totalWeight: 0,
+        totalWeight: 1,
         totalDataPoints: 1,
       });
       // overall: spag excluded from denominator
@@ -470,7 +471,11 @@ describe('AveragingAnalyser', () => {
               tasks: [createTaskPartial('t_001', tripleTaskWeighting)],
               submissions: [
                 createSubmission('s_001', 'Alice', 'a_001', {
-                  t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
+                  t_001: createSubmissionItem('t_001', {
+                    completeness: { score: 4 },
+                    accuracy: { score: 4 },
+                    spag: { score: 4 },
+                  }),
                 }),
               ],
             }),
@@ -490,12 +495,15 @@ describe('AveragingAnalyser', () => {
         applicableDataPoints: 1,
         totalDataPoints: 1,
       });
+      // overall: all three criteria computed with weight 6 each
+      // overall = (0.4*4 + 0.4*4 + 0.2*4) / 1.0 = 4.0
+      // totalWeight = 6 + 6 + 6 = 18
       expectMetricResultStateAware(results[0].perStudent[0].overall as unknown as MetricResult, {
         state: 'computed',
         value: 4,
-        totalWeight: 6,
-        applicableDataPoints: 1,
-        totalDataPoints: 1,
+        totalWeight: 18,
+        applicableDataPoints: 3,
+        totalDataPoints: 3,
       });
     });
 

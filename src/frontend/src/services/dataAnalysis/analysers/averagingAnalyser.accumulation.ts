@@ -331,11 +331,12 @@ export function computeOverallComposite(
   spag: MetricResult,
   criterionWeightings: CriterionWeightings
 ): MetricResult {
-  const statesSet = new Set([completeness.state, accuracy.state, spag.state]);
-  const hasComputed = statesSet.has('computed');
-  const hasNotAttempted = statesSet.has('notAttempted');
-
-  if (!hasComputed && !hasNotAttempted) {
+  // Error-first precedence: if any criterion is error, overall is error.
+  // This check must come before notAttempted/computed checks so that mixed
+  // error states are not masked (the prior implementation allowed error +
+  // notAttempted to return notAttempted, and error + computed to return
+  // computed, violating the documented contract).
+  if (completeness.state === 'error' || accuracy.state === 'error' || spag.state === 'error') {
     return {
       state: 'error',
       value: 'E',
@@ -346,7 +347,11 @@ export function computeOverallComposite(
     };
   }
 
+  const statesSet = new Set([completeness.state, accuracy.state, spag.state]);
+  const hasComputed = statesSet.has('computed');
+
   if (!hasComputed) {
+    // All remaining criteria are notAttempted (error was already excluded above)
     return {
       state: 'notAttempted',
       value: 'N',
@@ -357,7 +362,8 @@ export function computeOverallComposite(
     };
   }
 
-  // Build the computed criteria list (error and notAttempted criteria are excluded)
+  // At least one criterion is computed and none are error.
+  // Build the computed criteria list (notAttempted criteria are excluded).
   const toComputedEntry = (
     m: MetricResult,
     w: number
