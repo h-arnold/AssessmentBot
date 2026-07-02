@@ -162,8 +162,8 @@ None. The schema files are straightforward contract definitions.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** to be filled after implementation.
-- **Deviations from plan:** to be filled after implementation.
+- **Implementation notes:** Section 1 implemented and reviewed clean. Files created: `classPageAdapter.zod.ts`, `pageContent.spec.ts`, `classPageAdapter.zod.spec.ts`. File modified: `pageContent.ts` (added `classDetail` entries). All 17 tests pass, lint clean (0 errors), TypeScript clean.
+- **Deviations from plan:** None.
 - **Follow-up implications for later sections:** The adapter, model, and all presentational components import from this schema module.
 
 ---
