@@ -1,4 +1,4 @@
-import { Alert, Button, Empty, Modal, Select, Skeleton, Space, Tooltip, Typography } from 'antd';
+import { Alert, Button, Empty, Modal, Select, Space, Tooltip, Typography } from 'antd';
 import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { flushSync } from 'react-dom';
@@ -15,6 +15,7 @@ import type { AssignmentTopic } from '../../../services/referenceData/referenceD
 import { LinkableDefinitionList } from './LinkableDefinitionList';
 import { getLinkableDefinitionsForModal, type LinkableDefinition } from './getLinkableDefinitionsForModal';
 import { caseInsensitiveTrimmedEquals } from './stringComparison';
+import { AssignmentSelectSkeleton } from './AssignmentSelectSkeleton';
 
 
 
@@ -763,14 +764,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
    */
   function renderLinkingBody(): React.ReactNode {
     if (assessmentState === 'loading') {
-      return (
-        <output aria-label="Loading linkable definitions" role="status">
-          <Space vertical style={{ width: '100%' }}>
-            <Skeleton active title={{ width: '30%' }} paragraph={false} />
-            <Skeleton.Input active style={{ width: '100%' }} />
-          </Space>
-        </output>
-      );
+      return <AssignmentSelectSkeleton ariaLabel="Loading linkable definitions" />;
     }
 
     if (assessmentState === 'success') {
@@ -804,14 +798,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
    */
   function renderFetchBody(): React.ReactNode {
     if (fetchState === 'loading') {
-      return (
-        <output aria-label="Loading assignments" role="status">
-          <Space vertical style={{ width: '100%' }}>
-            <Skeleton active title={{ width: '30%' }} paragraph={false} />
-            <Skeleton.Input active style={{ width: '100%' }} />
-          </Space>
-        </output>
-      );
+      return <AssignmentSelectSkeleton ariaLabel="Loading assignments" />;
     }
     if (fetchState === 'error') {
       return <Alert type="error" title={errorMessage} />;
