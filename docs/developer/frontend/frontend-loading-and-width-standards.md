@@ -27,6 +27,7 @@ Use it alongside:
 - The blocking-state treatment is the standard fail-closed UI for the affected owned region.
 - By default, reuse the standard blocking-error primitive for that region.
 - Unless a stronger documented UX case exists, that primitive should be an Ant Design `Alert` rendered in the affected owned region.
+- For full-page blocking states — where the entire owned surface is replaced because no usable content can be shown — an Ant Design `Result` is an acceptable alternative when the severity and scope warrant a more prominent treatment than a subregion `Alert`. The `Result` provides a centred, full-width outcome card with `title`, optional `subTitle`, and an `extra` action slot for retry/back navigation. The `Alert` remains the default for subregion blocking (e.g., a single panel).
 
 ### 2.3 Outer frame and inner panel
 
