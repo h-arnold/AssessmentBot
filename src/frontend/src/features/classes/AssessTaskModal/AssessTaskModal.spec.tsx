@@ -125,11 +125,11 @@ describe('AssessTaskModal shell', () => {
 // ---------------------------------------------------------------------------
 
 describe('Loading state', () => {
-  it('shows Spin centred in modal body, Select not rendered, Start Assessment disabled', () => {
+  it('shows loading skeleton in modal body, Select not rendered, Start Assessment disabled', () => {
     const dialog = renderAssessTaskModal(createPendingPromise());
 
-    // Spin is visible in the modal body
-    expect(within(dialog).getByRole('status')).toBeInTheDocument(); // Ant Spin renders role="status"
+    // Skeleton is visible in the modal body
+    expect(within(dialog).getByRole('status')).toBeInTheDocument();
 
     // Select (combobox) is not rendered while loading
     expect(within(dialog).queryByRole('combobox')).toBeNull();
@@ -371,7 +371,7 @@ describe('Cleanup on close', () => {
       </QueryClientProvider>
     );
 
-    // Modal is open — effect fires, fetch starts, loading spinner visible
+    // Modal is open — effect fires, fetch starts, loading skeleton visible
     const dialog = screen.getByRole('dialog', { name: MODAL_TITLE });
     expect(within(dialog).getByRole('status')).toBeInTheDocument();
 
@@ -402,11 +402,11 @@ describe('Cleanup on close', () => {
     //
     // BUG (no cleanup): the leaky .then() handler set fetchState to 'ready'
     //   and assignments to staleData. After re-opening, the modal shows the
-    //   stale assignments (combobox visible, no loading spinner).
+    //   stale assignments (combobox visible, no loading skeleton).
     //
     // FIX (with cleanup): the stale handler was suppressed by the cleanup
     //   function. fetchState remains 'loading'. The modal shows the loading
-    //   spinner while the second fetch is pending.
+    //   skeleton while the second fetch is pending.
     expect(within(reopenedDialog).getByRole('status')).toBeInTheDocument();
   });
 });
