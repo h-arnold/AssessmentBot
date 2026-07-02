@@ -77,7 +77,7 @@ function validateIdentifier_(value, fieldName) {
  *   error is thrown by `ABClassController._loadFullAssignmentDocument` when the
  *   full assignment document cannot be located in its dedicated collection.
  * - `DateUtils.normaliseDateFields` is applied to root-level `dueDate` and
- *   `lastUpdated` fields as defence-in-depth: `Assignment.toJSON()` already
+ *   `updatedAt` fields as defence-in-depth: `Assignment.toJSON()` already
  *   converts known Date fields to ISO strings, but `Date` objects are strictly
  *   prohibited in `google.script.run` return values, and a regression test
  *   proves the root-level call is wired by mocking `toJSON()` to return live
@@ -138,7 +138,7 @@ function getAssignment_(parameters) {
     // return values. Nested date conversion on submissions and
     // assignmentDefinition still relies on the corresponding toJSON()
     // implementations being correct.
-    DateUtils.normaliseDateFields(response, ['dueDate', 'lastUpdated', 'createdAt']);
+    DateUtils.normaliseDateFields(response, ['dueDate', 'updatedAt', 'createdAt']);
 
     logger.info('getAssignment: rehydrated assignment', { courseId, assignmentId });
     return response;

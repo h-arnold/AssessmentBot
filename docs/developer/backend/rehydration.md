@@ -183,7 +183,7 @@ rehydrateAssignment(abClass, assignmentId) {
 
 - Artifact-level selective hydration (per `artifact.uid`)
 - Background prefetch queue (hydrate last opened N assignments)
-- Staleness comparison using `lastUpdated` revision suffix
+- Staleness comparison using `updatedAt` revision suffix
 - Metrics: count hydration events / average ms
 
 ## Controller Integration Notes

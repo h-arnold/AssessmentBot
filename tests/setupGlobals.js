@@ -12,7 +12,17 @@ const constants = require('../src/backend/00_Constants.js');
 g.ALPHABET_LENGTH = constants.ALPHABET_LENGTH;
 g.ITEM_NOT_FOUND_INDEX = constants.ITEM_NOT_FOUND_INDEX;
 g.RuntimeConstants = require('../src/backend/00_RuntimeConstants.js').RuntimeConstants;
-g.Assignment = require('../src/backend/AssignmentProcessor/Assignment.js');
+// Load Assignment sub-classes as globals BEFORE the facade (index.js) so that
+// the facade's lazy getters can reference them at evaluation time. This mirrors
+// GAS concatenation order where sub-class files load before the facade file.
+g.AssignmentSerialisation = require('../src/backend/AssignmentProcessor/Assignment/00_AssignmentSerialisation.js');
+g.AssignmentFactory = require('../src/backend/AssignmentProcessor/Assignment/01_AssignmentFactory.js');
+g.AssignmentRehydration = require('../src/backend/AssignmentProcessor/Assignment/02_AssignmentRehydration.js');
+g.AssignmentTimestamps = require('../src/backend/AssignmentProcessor/Assignment/03_AssignmentTimestamps.js');
+g.AssignmentSubmissions = require('../src/backend/AssignmentProcessor/Assignment/04_AssignmentSubmissions.js');
+g.AssignmentAssessmentBase = require('../src/backend/AssignmentProcessor/Assignment/05_AssignmentAssessmentBase.js');
+g.AssignmentLLMOrchestration = require('../src/backend/AssignmentProcessor/Assignment/06_AssignmentLLMOrchestration.js');
+g.Assignment = require('../src/backend/AssignmentProcessor/Assignment/index.js');
 g.SlidesAssignment = require('../src/backend/AssignmentProcessor/SlidesAssignment.js');
 g.SheetsAssignment = require('../src/backend/AssignmentProcessor/SheetsAssignment.js');
 const { StudentSubmission } = require('../src/backend/Models/StudentSubmission.js');

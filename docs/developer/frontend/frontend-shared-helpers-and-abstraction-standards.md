@@ -450,37 +450,61 @@ This section supersedes the earlier Section 9.7 defer decision for the specific 
 
 These entries record the planned shared display helpers for the Class page feature. The Class page is the first caller; cohort, trend, and distribution analyses (per `docs/pedagogy/data-analysis-scoring.md:92-99`) are the near-term second caller, so the helpers are planned as **shared** rather than feature-local.
 
-1. Helper: `resolveMetricTone(metric: MetricResult, range?: { lower: number; upper: number }): MetricToneResolution` — pure tone resolver
+1. Helper: `resolveMetricTone(metric: MetricResult, range?: MetricToneRange, errorColor?: MetricToneColor): MetricToneResolution` — pure tone resolver
 
 - Decision: `new`
 - Owning module/path: `src/frontend/src/services/dataAnalysis/metricDisplay/metricTone.ts`
-- Call-site rationale: maps the data analysis service's `MetricResult` (a `state: 'computed' | 'notAttempted' | 'error'` discriminated union after the lead deliverable) to a `{ color, displayValue, muted }` triple that the Ant Design `Tag` consumes. The range parameter (default `{ lower: 0, upper: 5 }`) is used to compute the band boundaries as midpoints: `amber = (lower + upper) / 2`, `red/amber = (3·lower + upper) / 4`, `amber/green = (lower + 3·upper) / 4`. Pure function, no React or antd imports.
-- Status: `Not implemented`
-- Planned doc reconciliation: confirm at implementation time that the resolver remains pure (no antd imports) and that the range parameter is honoured without re-derivation on every call.
+- Call-site rationale: maps the data analysis service's `MetricResult` discriminated union (`state: 'computed' | 'notAttempted' | 'error'`) to a `{ color, displayValue, muted }` triple that the Ant Design `Tag` consumes. The range parameter (default `{ lower: 0, upper: 5 }`) is used to compute the band boundaries via the midpoint rule: `redAmberBoundary = (3·lower + upper) / 4`, `amberGreenBoundary = (lower + 3·upper) / 4`. The `errorColor` parameter (default `'volcano'`) is the `Tag` color for the `error` state. Pure function, no React or antd imports. Validates `range.upper > range.lower` and throws on violation.
+- Status: `Implemented`
+- Implementation notes:
+  - Added `errorColor: MetricToneColor` parameter (not in the planning-time signature) per the spec reconciliation in Section 1 and `SPEC_CLASS_PAGE_PREPARATION.md`. The default (`'volcano'`) lives in `resolveMetricTone`; `MetricPill` is a pass-through with no `errorColor`-level default.
+  - The amber/green boundary uses `>=` per the spec boundary rule (`value >= amberGreenBoundary` yields `green`). A prior implementation used `>` which misclassified the exact boundary value as `gold`. This was fixed in CRITICAL-1 during the code-review remediation sweep.
+  - Exported types: `MetricToneColor`, `MetricToneRange`, `MetricToneResolution`.
+  - `MetricToneColor = 'red' | 'gold' | 'green' | 'default' | 'volcano'` is a cross-spec contract (used by Class page column filter). Any future revision is a cross-spec breaking change.
+  - The `error` color (`volcano`) is the existing Ant Design preset for "important but not fatal" — `red` is reserved for the lowest band of `computed` values to keep visual hierarchy clear.
+  - File size: 146 lines (under 550; no separation needed).
+- Planned doc reconciliation: confirmed the resolver remains pure (no antd imports), the range parameter is honoured, and the `errorColor` default is set in `resolveMetricTone` (not in `MetricPill`) per the spec contract — the default-value rule "defaults must be set in a module's constructor only" is moot here because `resolveMetricTone` is a pure function, not a module constructor, and the default is set in the function parameter signature.
 
 2. Helper: `MetricPill` presentational component
 
 - Decision: `new`
 - Owning module/path: `src/frontend/src/services/dataAnalysis/metricDisplay/MetricPill.tsx`
-- Call-site rationale: renders a single `MetricResult` as a coloured Ant Design `Tag` (`variant="filled"`) using the output of `resolveMetricTone`. Exposes a `precision` prop (default 2 decimal places, matching the mockup) and an `emphasised` prop (used by the `Average` cell in both the cards and the table). Consumed by `RecentAssignmentCard` (four instances per card) and by the four metric columns of `StudentAveragesTable` (via the column `render` function). Future consumers: cohort, trend, and distribution analyses.
-- Status: `Not implemented`
-- Planned doc reconciliation: confirm that the Tag color choices for `computed` (`red` / `gold` / `green`), `notAttempted` (`default` grey), and `error` (`volcano`) are agreed during implementation. The `error` color is open per the SPEC.md open question 11.
+- Call-site rationale: renders a single `MetricResult` as a coloured Ant Design `Tag` using the output of `resolveMetricTone`. Exposes `precision` (default 2), `emphasised` (default false), `range` (pass-through), and `errorColor` (pass-through; no `MetricPill`-level default — the default lives in `resolveMetricTone`). Consumed by `RecentAssignmentCard` (four instances per card) and by the four metric columns of `StudentAveragesTable` (via the column `render` function). Future consumers: cohort, trend, and distribution analyses.
+- Status: `Implemented`
+- Implementation notes:
+  - Renders Ant Design `Tag` with the resolved color. No explicit `variant="filled"` prop — the default filled variant is used. The `bordered` prop is left at its default (`true`).
+  - The `emphasised` flag applies `fontSize: '17.5px'` (1.25× default) and `fontWeight: 600` via the `style` prop, merged with the muted opacity (`0.55`) when both are active.
+  - The `precision` prop is ignored for `notAttempted` and `error` (the literal `'N'` and `'E'` are rendered as-is).
+  - No `Tooltip` or `aria-label` in v1 (signed-off accessibility gap per `SPEC_CLASS_PAGE_PREPARATION.md`).
+  - No interactivity: no `onClick`, no `cursor: pointer`, no focus ring.
+  - File size: 125 lines (under 550; no separation needed).
+- Planned doc reconciliation: confirmed the Tag color choices: `computed` uses `red` / `gold` / `green` bands; `notAttempted` uses `default` (grey); `error` uses `volcano` (default) with `errorColor` pass-through. The `error` color (`volcano`) is agreed and closed per Section 1 spec reconciliation — `red` is reserved for the lowest band of `computed` values to keep visual hierarchy clear.
 
 3. Helper: `metricDisplay/` subfolder under `services/dataAnalysis/`
 
 - Decision: `new`
 - Owning module/path: `src/frontend/src/services/dataAnalysis/metricDisplay/`
-- Call-site rationale: at least two production files (`metricTone.ts`, `MetricPill.tsx`) plus their spec companions share the `metricDisplay` domain prefix, satisfying `src/frontend/AGENTS.md` §12 ("Create a subfolder when at least 2 files share a common domain prefix"). A barrel `index.ts` is included to keep call-site imports tidy; per §12, barrels are optional and may be removed if a later de-sloppification pass finds them unnecessary.
-- Status: `Not implemented`
-- Planned doc reconciliation: confirm the subfolder is created at the planned path and that the existing `services/dataAnalysis/` directory structure is preserved.
+- Call-site rationale: at least two production files (`metricTone.ts`, `MetricPill.tsx`) plus their spec companions share the `metricDisplay` domain prefix, satisfying `src/frontend/AGENTS.md` §13 ("Create a subfolder when at least 2 files share a common domain prefix"). No `index.ts` barrel is created in v1 per spec decision 8; consumers import directly (e.g. `import { resolveMetricTone } from '.../metricDisplay/metricTone'`). This is a deliberate v1 simplification; a barrel may be added in a later de-sloppification pass if call sites get noisy.
+- Status: `Implemented`
+- Implementation notes:
+  - Folder created at the planned path. Contains `metricTone.ts`, `MetricPill.tsx`, `metricTone.spec.ts`, `MetricPill.spec.tsx` (4 files).
+  - No `index.ts` barrel confirmed. Direct imports only.
+  - The existing `services/dataAnalysis/` directory structure (`analysers/`, flat files) is preserved.
+- Planned doc reconciliation: confirmed the subfolder is created at the planned path and the existing directory structure is preserved.
 
-4. Helper: `rollupMetric(subAccumulators: MetricAccumulator[]): MetricResult` — shared rollup precedence function
+4. Helper: `rollupMetric(subTasks: ReadonlyArray<MetricResult>, metric: 'completeness' | 'accuracy' | 'spag'): MetricResult` — shared rollup precedence function
 
 - Decision: `new`
-- Owning module/path: `src/frontend/src/services/dataAnalysis/analysers/accumulation/accumulationPolicies.ts`
-- Call-site rationale: both `buildPerStudentRows` and `buildPerTaskRows` in `averagingAnalyser.rows.ts` need to apply the same three-way rollup precedence when aggregating across multiple sub-accumulators (e.g., a student's submissions across several tasks). The function applies the rule: if any sub-accumulator produced `error`, the rollup is `error`; else if any produced `notAttempted`, the rollup is `notAttempted`; otherwise compute a weighted average over the `computed` sub-accumulators only. Pure function, no React or antd imports. Lives in the decomposed `accumulationPolicies.ts` file alongside the three-way state assignment rules.
-- Status: `Not implemented`
-- Planned doc reconciliation: confirm the rollup is called from both `buildPerStudentRows` and `buildPerTaskRows`, and that the precedence rule (error > notAttempted > computed) matches the `SPEC.md` contract.
+- Owning module/path: `src/frontend/src/services/dataAnalysis/analysers/rollupMetric.ts` (standalone; not in `accumulation/` subfolder)
+- Call-site rationale: called by both `buildPerStudentRows` and `buildPerTaskRows` in `averagingAnalyser.rows.ts`, and by the Class page's `classPageAdapter`, applying the same three-way rollup precedence across all aggregation levels. The function operates on the public `MetricResult` discriminated union (not internal `MetricAccumulator` values) and takes a metric discriminator to apply per-metric `notAttempted` handling (for accuracy and completeness, `notAttempted` contributes 0; for SPaG, `notAttempted` is excluded). The `RollupMetric` type is `'completeness' | 'accuracy' | 'spag'` only — `'average'` is intentionally excluded because the average is a composite of the three per-criterion rollups at the consumer level, not a fourth independent weighted average. Pure function, no React or antd imports.
+- Status: `Implemented`
+- Implementation notes:
+  - Implemented in Section 3 of the action plan as part of the MetricResult discriminated-union refactor.
+  - Rollup precedence: `error` > `notAttempted` > `computed`. First matching state wins.
+  - Per-metric `notAttempted` handling: for accuracy and completeness, `notAttempted` contributes 0; for SPaG, `notAttempted` is excluded from numerator/denominator.
+  - The function is called from `averagingAnalyser.rows.ts` row builders and will be consumed by the Class page adapter.
+  - Standalone file (not in `accumulation/` subfolder) per the spec reconciliation; the facade decomposition of `averagingAnalyser.accumulation.ts` is deferred to a future pass (see §9.18 item 3).
+- Planned doc reconciliation: confirmed the rollup is called from both analyser row builders and the precedence rule (`error` > `notAttempted` > `computed`) and per-metric `notAttempted` handling match the `SPEC_CLASS_PAGE_PREPARATION.md` contract.
 
 ### 9.18 Class page feature-local helpers
 
@@ -490,7 +514,7 @@ These entries record the planned feature-local helpers for the Class page. Per `
 
 - Decision: `keep local`
 - Owning module/path: `src/frontend/src/features/classPage/classPageAdapter.ts`
-- Call-site rationale: the only module that knows how to translate the data analysis service's `AveragingResult` (with the new `MetricResult` discriminated union) plus the raw `ClassFull` into the view-model shapes the Class page consumes (`RecentAssignmentCardModel[]`, `StudentAverageRowModel[]`, `classMetrics`). Owns the assignment-level rollup precedence (error > notAttempted > computed) and the `lastUpdated`-based recent-assignment selection. Has exactly one caller (`useClassPageData`); promotion to a shared adapter would only make sense if a second consumer surface appears.
+- Call-site rationale: the only module that knows how to translate the data analysis service's `AveragingResult` (with the new `MetricResult` discriminated union) plus the raw `ClassFull` into the view-model shapes the Class page consumes (`RecentAssignmentCardModel[]`, `StudentAverageRowModel[]`, `classMetrics`). Owns the assignment-level rollup precedence (error > notAttempted > computed) and the `updatedAt`-based recent-assignment selection. Has exactly one caller (`useClassPageData`); promotion to a shared adapter would only make sense if a second consumer surface appears.
 - Status: `Not implemented`
 - Planned doc reconciliation: confirm the rollup precedence is documented inline in the adapter and that the `MetricResult` discriminated union is consumed via a `switch (metric.state)` rather than nullable checks.
 
@@ -502,10 +526,48 @@ These entries record the planned feature-local helpers for the Class page. Per `
 - Status: `Not implemented`
 - Planned doc reconciliation: confirm the model remains a pure function and that no React or React Query imports leak in.
 
-3. Structural change: facade decomposition of `averagingAnalyser.accumulation.ts`
+3. Structural change: extraction of `averagingAnalyser.criterionAccumulation.ts`
 
-- Decision: `new (structural)`
-- Owning module/path: `src/frontend/src/services/dataAnalysis/analysers/accumulation/` (new subfolder), with `averagingAnalyser.accumulation.ts` becoming a facade.
-- Call-site rationale: the lead data analysis deliverable (the `MetricResult` discriminated union) grows `averagingAnalyser.accumulation.ts` from 447 lines to a projected ~520 lines, which crosses the 550-line threshold trigger for facade decomposition per `src/frontend/AGENTS.md` §12. The decomposition splits the file into `accumulation/metricAccumulator.ts` (the accumulator primitives — `createAccumulator`, `createDataPointAccumulator`, `accumToMetric`), `accumulation/accumulationPolicies.ts` (the three-state assignment rules and the shared `rollupMetric` helper from the new `MetricResult` discriminated union), `accumulation/processAssignment.ts` (per-assignment processing), and `accumulation/index.ts` (the facade that delegates). The public surface is preserved so no consumer is broken; this is purely a structural cleanup bundled with the data analysis contract change.
-- Status: `Not implemented`
-- Planned doc reconciliation: confirm the decomposition happens in the same change set as the contract change, confirm the public surface is byte-identical, and confirm the file-separation projection in `SPEC.md` matches the actual outcome.
+- Decision: `extract`
+- Owning module/path: `src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.criterionAccumulation.ts` (new sibling file)
+- Call-site rationale: `averagingAnalyser.accumulation.ts` reached 649 lines (above the 550-line threshold in `src/frontend/AGENTS.md` §13), triggering a concrete maintenance need. Five criterion-accumulation functions (`accumulateCriterion`, `accumulateMetricsToTarget`, `computeOverall`, `processSubmissionItem`, `processItemAssessments`) were extracted to a new sibling module. The extraction preserved exact function bodies; no logic changes. `accumulation.ts` was reduced to 440 lines (under the threshold).
+- Status: `Implemented`
+- Planned doc reconciliation: confirmed the decomposition boundary (criterion-level accumulation only) is correct and the extracted module is under 550 lines (223 LOC).
+
+### 9.19 Frontend pure formatting helpers
+
+These entries record the planned pure formatting helpers extracted from feature code into shared utility modules.
+Per `SPEC_CLASS_PAGE_PREPARATION.md` line 382, the canonical home for these helpers is `src/frontend/src/utils/` — a new top-level folder for pure formatting / utility functions shared across the frontend. The folder is not governed by `src/frontend/AGENTS.md` §13 (which covers `services/` subfolders only); this is a separate convention for helpers that have no React, Ant Design, I/O, or state dependencies.
+
+1. Helper: `formatUpdatedAtLabel(updatedAt: string | null): string` — date formatting helper
+
+- Decision: `new`
+- Owning module/path: `src/frontend/src/utils/dateFormatting.ts` (new `utils/` folder, first entry)
+- Call-site rationale: extracted from `AssignmentsPage.tsx` as part of the rename deliverable because the Class page's `classPageAdapter` needs the same formatter. `en-GB` locale, date-only, rendered in UTC. The em-dash fallback (`UNAVAILABLE_VALUE = '—'`) is defined locally in the new module (does not import from `AssignmentsPage.tsx`). Pure formatting function, no React / antd / I/O / state. The Class page adapter does not use the fallback; it throws upstream on null or unparseable input. The helper preserves the fallback for the `AssignmentsPage` caller.
+- Status: `Implemented`
+- Implementation notes:
+  - Implemented in Section 2 of the action plan alongside the `lastUpdated` → `updatedAt` rename.
+  - The helper lives at `src/frontend/src/utils/dateFormatting.ts` (first entry in the new `utils/` folder).
+  - `UNAVAILABLE_VALUE = '—'` is defined locally in `dateFormatting.ts`.
+  - The helper preserves the existing `AssignmentsPage` behaviour (em-dash fallback for null/unparseable) while the Class page adapter (`classPageAdapter`) throws upstream on null.
+  - Pure function: en-GB locale, date-only, rendered in UTC. No React / antd / I/O / state.
+- Planned doc reconciliation: confirmed the helper lives at the planned path, preserves the existing `AssignmentsPage` behaviour, and the `UNAVAILABLE_VALUE` constant is defined locally (not imported from `AssignmentsPage.tsx`).
+
+### 9.20 Data analysis accumulator helpers
+
+1. Helper: `rollupAccumulators` exported from `averagingAnalyser.rows.ts`
+
+- Decision: `extend` (existing function, now exported)
+- Owning module/path: `src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.rows.ts`
+- Call-site rationale: `rollupAccumulators` was previously private to `averagingAnalyser.rows.ts` and duplicated in `averagingAnalyser.ts` (`analyseClass`). By exporting it, the per-class rollup path in `analyseClass` now reuses the same `rollupAccumulators` call that the row builders use, eliminating the dual-path bug described in CRITICAL-2.
+- Status: `Implemented`
+
+## 10. Frontend utils folder convention
+
+The `src/frontend/src/utils/` folder exists for pure formatting / utility functions that are shared across the frontend. This folder is a separate convention from `src/frontend/AGENTS.md` §13, which governs only `services/` subfolder organisation.
+
+### Rules
+
+- **Pure functions only.** Files in `utils/` must have no React, Ant Design, I/O, or state dependencies. They are plain TypeScript modules exporting typed pure functions.
+- **No `src/frontend/AGENTS.md` §13 governance.** The §13 subfolder-by-domain-prefix rule applies only to `services/`. The `utils/` folder is a flat namespace; files are named by the domain they format (e.g. `dateFormatting.ts`). A future subfolder reorganisation may be considered if the folder exceeds 5–6 files, but no barrel exports (`index.ts`) are created in v1 — consumers import directly.
+- **First entry:** `dateFormatting.ts` — exports `formatUpdatedAtLabel(updatedAt: string | null): string`. See §9.19 item 1 above for the full contract.
