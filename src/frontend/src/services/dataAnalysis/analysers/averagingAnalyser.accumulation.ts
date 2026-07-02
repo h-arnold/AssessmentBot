@@ -227,34 +227,6 @@ export function processAssignment(
 }
 
 /**
- * Resolve the task weighting by cross-referencing the pre-fetched
- * assignmentDefinitionPartials collection.
- *
- * @param {string} definitionKey - The assignment definition key.
- * @param {string} taskId - The task identifier.
- * @param {ReadonlyArray<{ definitionKey: string; tasks?: ReadonlyArray<{ id: string; taskWeighting: number }> }>}
- *   assignmentDefinitionPartials - The pre-fetched partials.
- * @returns {number} The resolved task weighting, or `1` if no match.
- */
-export function resolveTaskWeight(
-  definitionKey: string,
-  taskId: string,
-  assignmentDefinitionPartials: ReadonlyArray<{
-    definitionKey: string;
-    tasks?: ReadonlyArray<{ id: string; taskWeighting: number }>;
-  }>
-): number {
-  const definitionPartial = assignmentDefinitionPartials.find(
-    (d) => d.definitionKey === definitionKey
-  );
-  if (!definitionPartial) return 1;
-
-  const tasks = definitionPartial.tasks ?? [];
-  const task = tasks.find((t) => t.id === taskId);
-  return task?.taskWeighting ?? 1;
-}
-
-/**
  * Accumulate data points across all filtered assignments.
  *
  * @param {AveragingAnalyserInput['classes'][number]['assignments']}

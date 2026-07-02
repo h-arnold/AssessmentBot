@@ -108,11 +108,6 @@ function resolveComputedColor(
  * to fail fast on an inverted or degenerate range that would silently invert the
  * band logic. The error message includes the supplied range for diagnostics.
  *
- * **Cross-spec `MetricToneColor` contract.** The `MetricToneColor` union is shared
- * between this resolver and `MetricPill` (and the Class page column filter). Any
- * future revision (adding/removing a colour token) is a cross-spec breaking change
- * and must be reviewed against every consumer that branches on the colour.
- *
  * @param {MetricResult} metric - The discriminated-union `MetricResult` value.
  * @param {MetricToneRange} [range] - Scoring range `{ lower, upper }`. Default `{ lower: 0, upper: 5 }`.
  * @param {MetricToneColor} [errorColor] - Ant Design `Tag` colour token for the `error` state.

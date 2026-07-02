@@ -421,24 +421,30 @@ describe('rollupMetric', () => {
   // -----------------------------------------------------------------------
 
   describe('notAttempted with non-zero totalWeight', () => {
-    describe.each([CRITERIA[0], CRITERIA[2]])('($metric)', ({ metric, isSpag }) => {
-      it('handles correctly', async () => {
-        const { rollupMetric } = await loadRollupMetric();
-        const d = NA_WEIGHT[isSpag ? 'spag' : 'completeness'];
+    describe.each(CRITERIA.filter((c) => c.metric !== 'accuracy'))(
+      '($metric)',
+      ({ metric, isSpag }) => {
+        it('handles correctly', async () => {
+          const { rollupMetric } = await loadRollupMetric();
+          const d = NA_WEIGHT[isSpag ? 'spag' : 'completeness'];
 
-        const subTasks = [createComputedMetricResult(d.task), createNotAttemptedMetricResult(d.na)];
+          const subTasks = [
+            createComputedMetricResult(d.task),
+            createNotAttemptedMetricResult(d.na),
+          ];
 
-        const result = rollupMetric(subTasks, metric);
+          const result = rollupMetric(subTasks, metric);
 
-        expect(result.state).toBe('computed');
-        if (result.state === 'computed') {
-          expect(result.value).toBeCloseTo(d.expectedValue, FLOAT_TOLERANCE);
-          expect(result.totalWeight).toBeCloseTo(d.expectedTw, FLOAT_TOLERANCE);
-          expect(result.applicableDataPoints).toBe(d.expectedAp);
-          expect(result.totalDataPoints).toBe(d.expectedTdp);
-        }
-      });
-    });
+          expect(result.state).toBe('computed');
+          if (result.state === 'computed') {
+            expect(result.value).toBeCloseTo(d.expectedValue, FLOAT_TOLERANCE);
+            expect(result.totalWeight).toBeCloseTo(d.expectedTw, FLOAT_TOLERANCE);
+            expect(result.applicableDataPoints).toBe(d.expectedAp);
+            expect(result.totalDataPoints).toBe(d.expectedTdp);
+          }
+        });
+      }
+    );
   });
 
   // -----------------------------------------------------------------------

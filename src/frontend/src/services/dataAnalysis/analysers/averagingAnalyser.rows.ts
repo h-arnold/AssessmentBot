@@ -159,7 +159,7 @@ export function buildPerTaskRows(
   for (const [taskKey, accumulator] of taskAccums) {
     const studentAccumsForTask = collectAccumulatorsForTask(perStudentTaskAccums, taskKey);
 
-    if (!studentAccumsForTask || studentAccumsForTask.length === 0) {
+    if (studentAccumsForTask.length === 0) {
       rows.push({
         definitionKey: accumulator.definitionKey,
         taskId: accumulator.taskId,
