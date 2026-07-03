@@ -1,4 +1,4 @@
-import { Alert, Button, Empty, Modal, Select, Space, Spin, Tooltip, Typography } from 'antd';
+import { Alert, Button, Empty, Modal, Select, Space, Tooltip, Typography } from 'antd';
 import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { flushSync } from 'react-dom';
@@ -15,9 +15,9 @@ import type { AssignmentTopic } from '../../../services/referenceData/referenceD
 import { LinkableDefinitionList } from './LinkableDefinitionList';
 import { getLinkableDefinitionsForModal, type LinkableDefinition } from './getLinkableDefinitionsForModal';
 import { caseInsensitiveTrimmedEquals } from './stringComparison';
+import { AssignmentSelectSkeleton } from './AssignmentSelectSkeleton';
 
-/** Loading spinner CSS properties used in both fetch and link body phases. */
-const LOADING_SPINNER_STYLE: React.CSSProperties = { textAlign: 'center', padding: '40px 0', display: 'block' };
+
 
 /**
  * Deduplicates and adds a new title to the alternateTitles array using
@@ -89,7 +89,7 @@ type CacheValidationError = {
  *
  * **`assessmentState`** (`'idle' | 'loading' | 'success' | 'error'`) governs the assessment lifecycle:
  * - **idle**: ready for user interaction (Select shown, Start Assessment enabled).
- * - **loading**: assessment run API call in progress (button shows spinner).
+ * - **loading**: assessment run API call in progress (button shows loading indicator).
  * - **success**: API call succeeded; success Alert replaces body content; footer
  *   shows single Close button.
  * - **error**: ambiguous, cache-miss, null data, or API failure; error Alert shown
@@ -756,7 +756,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
    *
    * @remarks
    * Only renders when `noMatchResolution === 'linking'`. Handles all four
-   * `assessmentState` sub-states: 'loading' (Spin), 'success' (Alert),
+   * `assessmentState` sub-states: 'loading' (skeleton), 'success' (Alert),
    * 'error' (Alert), and 'idle' (LinkableDefinitionList picker). The loading
    * and error states mirror the patterns used by the main assessment flow.
    *
@@ -764,11 +764,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
    */
   function renderLinkingBody(): React.ReactNode {
     if (assessmentState === 'loading') {
-      return (
-        <output style={LOADING_SPINNER_STYLE}>
-          <Spin />
-        </output>
-      );
+      return <AssignmentSelectSkeleton ariaLabel="Loading linkable definitions" />;
     }
 
     if (assessmentState === 'success') {
@@ -794,15 +790,15 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
   /**
    * Renders the loading, error, or empty body content for the fetch phase.
    *
+   * The loading state renders a shape-matched skeleton of the assignment
+   * selection panel: a label skeleton and a full-width input skeleton to
+   * represent the Select dropdown.
+   *
    * @returns {React.ReactNode} The fetch-phase body, or null if no match.
    */
   function renderFetchBody(): React.ReactNode {
     if (fetchState === 'loading') {
-      return (
-        <output style={LOADING_SPINNER_STYLE}>
-          <Spin />
-        </output>
-      );
+      return <AssignmentSelectSkeleton ariaLabel="Loading assignments" />;
     }
     if (fetchState === 'error') {
       return <Alert type="error" title={errorMessage} />;

@@ -446,6 +446,16 @@ This section supersedes the earlier Section 9.7 defer decision for the specific 
 - Call-site rationale: renders the picker as an Ant Design `Radio.Group` with vertical orientation, block width, and JSX children (rich per-row content with title and subtitle). The component is presentational (no state, no side effects); it receives the derived `LinkableDefinition[]` and the current selection, and emits `onSelect(definitionKey)`. All rows are always selectable. The component has exactly one caller (`AssessTaskModal`) and is not promoted to a shared component.
 - Status: `Implemented`
 
+### 9.16a AssessTaskModal loading skeleton extraction
+
+1. Helper: `AssignmentSelectSkeleton` presentational component
+
+- Decision: `new`
+- Owning module/path: `src/frontend/src/features/classes/AssessTaskModal/AssignmentSelectSkeleton.tsx`
+- Call-site rationale: renders the shape-matched loading skeleton for the assignment selection panel — a label skeleton (`Skeleton active title={{ width: '30%' }} paragraph={false}`) and a full-width input skeleton (`Skeleton.Input active style={{ width: '100%' }}`) wrapped in an accessible `<output>` element with an `ariaLabel`. The component is presentational (no state, no side effects); it accepts an `ariaLabel` prop for accessibility. Extracted from two identical inline JSX blocks in `renderFetchBody` and `renderLinkingBody` within `AssessTaskModal.tsx`, eliminating duplicated skeleton markup. The component is feature-local (not promoted to a shared component) because it has exactly two callers within the same modal and the skeleton shape is specific to the assignment selection panel.
+- Status: `Implemented`
+- Rationale: satisfies §4.3 (two active call sites need the same behaviour now); the `<output>` element's implicit `status` role satisfies the accessibility requirement in `frontend-loading-and-width-standards.md` §8 without an explicit `role="status"` attribute, which also resolved two SonarCloud `typescript:S6822` code smells (redundant implicit role)
+
 ### 9.17 Class page data analysis display helpers
 
 These entries record the planned shared display helpers for the Class page feature. The Class page is the first caller; cohort, trend, and distribution analyses (per `docs/pedagogy/data-analysis-scoring.md:92-99`) are the near-term second caller, so the helpers are planned as **shared** rather than feature-local.
