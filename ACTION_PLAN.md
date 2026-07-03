@@ -672,9 +672,9 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** to be filled after implementation.
-- **Deviations from plan:** to be filled after implementation.
-- **Follow-up implications for later sections:** The hook is consumed by `ClassPage.tsx` (Section 7).
+- **Implementation notes:** Section 4 Red and Green phases complete. Files created: `ClassPageHeaderActions.tsx` (span-wrapped Tooltip disabled button pattern), `RecentAssignmentCard.tsx` (320px card, 4 MetricPill cells, feature-local width constant), `RecentAssignmentsSection.tsx` (section Card with empty-state handling). Test files: 19 tests across 3 spec files. Review findings addressed: metric cell alignment (first 3 left-aligned, Average centre-aligned), Tooltip placement, Space size. Full regression: 116 test files, 1362 tests pass (19 new tests added, zero regressions).
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** These components are composed by `ClassPageReady` (Section 7).
 
 ---
 
