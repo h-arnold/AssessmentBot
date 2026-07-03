@@ -518,23 +518,138 @@ These entries record the planned shared display helpers for the Class page featu
 
 ### 9.18 Class page feature-local helpers
 
-These entries record the planned feature-local helpers for the Class page. Per `frontend-shared-helpers-and-abstraction-standards.md` §4.4 ("Keep feature-specific helpers inside the owning feature folder"), these stay in `src/frontend/src/features/classPage/` and are not promoted to shared scope unless a documented cross-feature reuse emerges.
+These entries record the feature-local helpers for the Class page. Per `frontend-shared-helpers-and-abstraction-standards.md` §4.4 ("Keep feature-specific helpers inside the owning feature folder"), these stay in `src/frontend/src/features/classPage/` and are not promoted to shared scope unless a documented cross-feature reuse emerges. All entries in this section are now `Implemented` as part of the Class page v1 deliverable.
+
+#### 9.18.1 Pure adapter: `classPageAdapter`
 
 1. Helper: `classPageAdapter` pure adapter module
 
 - Decision: `keep local`
 - Owning module/path: `src/frontend/src/features/classPage/classPageAdapter.ts`
-- Call-site rationale: the only module that knows how to translate the data analysis service's `AveragingResult` (with the new `MetricResult` discriminated union) plus the raw `ClassFull` into the view-model shapes the Class page consumes (`RecentAssignmentCardModel[]`, `StudentAverageRowModel[]`, `classMetrics`). Owns the assignment-level rollup precedence (error > notAttempted > computed) and the `updatedAt`-based recent-assignment selection. Has exactly one caller (`useClassPageData`); promotion to a shared adapter would only make sense if a second consumer surface appears.
-- Status: `Not implemented`
-- Planned doc reconciliation: confirm the rollup precedence is documented inline in the adapter and that the `MetricResult` discriminated union is consumed via a `switch (metric.state)` rather than nullable checks.
+- Call-site rationale: the only module that knows how to translate the data analysis service's `AveragingResult` (with the new `MetricResult` discriminated union) plus the raw `ClassFull` into the view-model shapes the Class page consumes (`RecentAssignmentCardModel[]`, `StudentAverageRowModel[]`, `classMetrics`). Owns the assignment-level rollup precedence (error > notAttempted > computed) via the shared `rollupMetric` helper, the `updatedAt`-based recent-assignment selection (top 3, sorted descending), the per-assignment `average` composite (40/40/20 weighting with SPaG renormalisation), the no-data row synthesis for unassessed students, and trust validation (null `updatedAt` throws, duplicate `studentId`/`assignmentId` throws, unparseable `updatedAt` throws). Has exactly one caller (`useClassPageData`); promotion to a shared adapter would only make sense if a second consumer surface appears.
+- Status: `Implemented`
+- Implementation notes:
+  - 495 lines (well under the 500-line threshold; no file separation required).
+  - Pure function — no I/O, no React imports, no Ant Design imports. The only side effect is throwing on data integrity violations.
+  - Calls `rollupMetric` (shared helper at `src/frontend/src/services/dataAnalysis/analysers/rollupMetric.ts`) for each of the three criteria.
+  - Calls `formatUpdatedAtLabel` (shared helper at `src/frontend/src/utils/dateFormatting.ts`) for date formatting.
+  - Per-assignment `average` is computed inline as a composite (40/40/20 weighting) — not delegated to `rollupMetric` because the average is a composite of three per-criterion rollups, not a fourth independent weighted average.
+  - Trust validation: `validateUpdatedAt` throws `TypeError` on null or unparseable `updatedAt`; `findDuplicateStudentId` / `findDuplicateAssignmentId` check uniqueness.
+  - Co-located spec: `classPageAdapter.spec.ts` (15 tests covering all contract behaviours).
+- Planned doc reconciliation: confirmed the rollup precedence is documented inline in the adapter JSDoc (`@remarks` blocks); `MetricResult` discriminated union is consumed via `.state` property checks (not nullable checks, consistent with the discriminated union contract).
+
+#### 9.18.2 Pure view-model builder: `classPageModel`
 
 2. Helper: `classPageModel` pure view-model builder
 
 - Decision: `keep local`
 - Owning module/path: `src/frontend/src/features/classPage/classPageModel.ts`
-- Call-site rationale: pure view-model builder that applies user-controlled filtering and sorting (search term, column sort, future `Viewing` dropdown) on top of the adapter output. Has exactly one caller (`useClassPageData`); kept local because the search / sort / dropdown surface is specific to the Class page's owned region and does not generalise to other features.
-- Status: `Not implemented`
-- Planned doc reconciliation: confirm the model remains a pure function and that no React or React Query imports leak in.
+- Call-site rationale: pure view-model builder that applies user-controlled filtering and sorting (search term, column sort) on top of the adapter output. Has exactly one caller (`StudentAveragesTableCard`); kept local because the search / sort surface is specific to the Class page's owned region and does not generalise to other features.
+- Status: `Implemented`
+- Implementation notes:
+  - 201 lines. Pure function — no React imports, no Ant Design imports, no I/O.
+  - Search filter: case-insensitive substring on `studentName`; empty `searchTerm` → no filter.
+  - State-aware metric sort: rank-based with `METRIC_STATE_RANK_ASC`/`METRIC_STATE_RANK_DESC` Maps. `asc`: computed (by value) → notAttempted → error. `desc`: error → notAttempted → computed (by value). Tie-break by `studentId` ascending.
+  - Student name sort: locale-aware, case-insensitive, `studentId` tie-breaker.
+  - Passes through `recentAssignments` and `classMetrics` unchanged.
+  - Default sort: `studentName` ascending.
+  - Co-located spec: `classPageModel.spec.ts` (12 test cases).
+- Planned doc reconciliation: confirmed the model is a pure function with no React or React Query imports. The `viewing` field is absent from v1 (static `Typography.Text` label instead of a `Select`).
+
+#### 9.18.3 Data orchestrator hook: `useClassPageData`
+
+3. Helper: `useClassPageData` data orchestrator hook
+
+- Decision: `keep local`
+- Owning module/path: `src/frontend/src/features/classPage/useClassPageData.ts`
+- Call-site rationale: sole data-fetching entry point for the Class page. Wires together `getABClass` query (view-entry fetch), `usePageDataset('assignmentDefinitionPartials')` (warm-up-backed), synchronous `DataAnalysisService.analyse(...)`, and `adaptClassPageToViewModel(...)`. Produces a typed `ClassPageData` result with `surfaceState` as a discriminated union. Has exactly one caller (`ClassPage.tsx`); promotion to a shared hook would only make sense if a second consumer page needs the same orchestration.
+- Status: `Implemented`
+- Implementation notes:
+  - 473 lines (well under the 500-line threshold).
+  - Pure hook — no I/O beyond React Query calls and synchronous analyser/adapter calls. No `useEffect` beyond what React Query uses internally.
+  - Surface state is a discriminated union: `{ status: 'loading' }` | `{ status: 'blocking'; error: ClassPageError }` | `{ status: 'ready' }`.
+  - Error precedence (top to bottom): `classNotFound` > `classQueryError` > `assignmentDefinitionPartialsFailed` > `assignmentDefinitionPartialsUntrustworthy` > `adapterError` > `analyserError`.
+  - `shouldRunPipeline` guard ensures analyser/adapter do not run when the dataset is untrustworthy or has failed.
+  - `refetch` uses `useCallback` with destructured `queryRefetch` to avoid stale-closure bugs.
+  - Module-level `createAnalysisService()` factory avoids test workaround in production code.
+  - Co-located spec: `useClassPageData.spec.ts` (16 tests covering all error states, memoisation, and refetch).
+  - Projected size in spec was ~300–350 lines; actual is 473 due to thorough JSDoc, extracted helper functions (kept under the 7-complexity limit), and the `shouldRunPipeline` guard logic. No splitting needed.
+
+#### 9.18.4 Page composition root: `ClassPage`
+
+4. Helper: `ClassPage` page composition root
+
+- Decision: `keep local`
+- Owning module/path: `src/frontend/src/features/classPage/ClassPage.tsx`
+- Call-site rationale: thin composition root for the Class page. Owns `isAssessModalOpen` state, breadcrumb `Classes` link wiring, and per-state content dispatcher (`ClassPageContent`). Has exactly one caller (`ClassesPage.tsx`, inline render when `selectedClassId` is set).
+- Status: `Implemented`
+- Implementation notes:
+  - 114 lines. Thin composition root.
+  - Renders a three-segment `Breadcrumb` (`AssessmentBot Frontend / Classes / {className}`) in-page — accepted v1 visual duplication with the shell's two-segment breadcrumb.
+  - Renders `ClassPageContent` with per-state content (loading/blocking/ready).
+  - Renders `AssessTaskModal` at the page root (not inside `ClassPageContent`) because the modal state spans loading/blocking/ready transitions.
+  - Co-located spec: `ClassPage.spec.tsx` (7 test cases covering breadcrumb, modal state, and navigation).
+
+#### 9.18.5 Per-state content dispatcher: `ClassPageContent`
+
+5. Component: `ClassPageContent` per-state content dispatcher
+
+- Decision: `keep local`
+- Owning module/path: `src/frontend/src/features/classPage/ClassPageContent.tsx`
+- Call-site rationale: thin `switch (status)` dispatcher that delegates to `ClassPageLoading`, `ClassPageBlocking`, or `ClassPageReady`. Extracted to keep `ClassPage.tsx` thin. Has exactly one caller (`ClassPage.tsx`).
+- Status: `Implemented`
+- Implementation notes:
+  - 295 lines. Three co-located sub-components:
+    - `ClassPageLoading`: shape-matched `Skeleton` (heading + 3-card row + table paragraph), wrapped in `role="status"` and `aria-live="polite"`. Uses a deliberate shape-matched pattern (not the paragraph-row pattern prescribed in `CLASS_PAGE_LAYOUT.md`) because the three distinct content regions benefit from visible card-shaped placeholders.
+    - `ClassPageBlocking`: single Ant Design `Result` per `error.type`. Retryable errors (`classQueryError`, `analyserError`, `assignmentDefinitionPartialsFailed`, `assignmentDefinitionPartialsUntrustworthy`) show `Retry` + `Back to Classes`. Non-retryable errors (`classNotFound`, `adapterError`) show only `Back to Classes`.
+    - `ClassPageReady`: full content tree — `ClassPageHeaderActions`, `RecentAssignmentsSection`, `StudentAveragesTableCard`.
+  - Co-located spec: `ClassPageContent.spec.tsx` (6 test cases covering all three states).
+
+#### 9.18.6 Presentational components
+
+6. Component: `ClassPageHeaderActions`
+
+- Decision: `keep local`
+- Owning module/path: `src/frontend/src/features/classPage/ClassPageHeaderActions.tsx`
+- Status: `Implemented`
+- Implementation notes: 56 lines. Pure presentational — renders disabled `Edit Student Details` (wrapped in `Tooltip` via `<span>`) and enabled `Start New Assessment`. Ant Design v6 `Tooltip` does not trigger on a disabled `Button` directly; the `<span>`-wrapper pattern is the established codebase convention (matches `AssessTaskModal`).
+
+7. Component: `RecentAssignmentCard`
+
+- Decision: `keep local`
+- Owning module/path: `src/frontend/src/features/classPage/RecentAssignmentCard.tsx`
+- Status: `Implemented`
+- Implementation notes: 87 lines. Renders assignment name as card title, "Last Assessed" date line, and four `MetricPill` instances (Completeness, Accuracy, SpAG, Average). Average cell uses `emphasised={true}`. Card width is a feature-local constant (`RECENT_ASSIGNMENT_CARD_WIDTH_PX = 320`); promotion to a shared width token is deferred until a second consumer emerges. Static card — no hover, no click handler, no `hoverable` prop in v1.
+
+8. Component: `RecentAssignmentsSection`
+
+- Decision: `keep local`
+- Owning module/path: `src/frontend/src/features/classPage/RecentAssignmentsSection.tsx`
+- Status: `Implemented`
+- Implementation notes: 73 lines. Pure presentational — section `Card` (`size="small"`, `title="Recent Assignments"`) wrapping either a centre-aligned `Flex` row of up to 3 `RecentAssignmentCard` components, or an `Empty` with CTA button. Empty state description sourced from `pageContent.classDetail.recentAssignmentsEmpty`.
+
+9. Component: `StudentAveragesTableCard`
+
+- Decision: `keep local`
+- Owning module/path: `src/frontend/src/features/classPage/StudentAveragesTableCard.tsx`
+- Status: `Implemented`
+- Implementation notes: 205 lines. Owns `searchTerm`, `sort`, and `filters` state. Uses `Space.Compact` + `Input` with `SearchOutlined` prefix instead of `Input.Search` — the layout spec requires no submit button, but Ant Design v6.3.1 always renders a `<button>` in `Input.Search` regardless of `enterButton`. Memoised `buildClassPageViewModel` (keyed on `[adapterResult, searchTerm, sort]`) and `buildStudentAveragesTableColumns` (keyed on `[filters]`). Table has `pagination={false}`, `size="small"`, `scroll={{ x: 'max-content' }}`. `Table.onChange` maps Ant Design's `'ascend'`/`'descend'` to model's `'asc'`/`'desc'`; clears to default `studentName` ascending when `sorter.order` is `null` (third-click clear-sort).
+
+10. Component: `studentAveragesTableColumns`
+
+- Decision: `keep local`
+- Owning module/path: `src/frontend/src/features/classPage/studentAveragesTableColumns.tsx`
+- Status: `Implemented`
+- Implementation notes: 204 lines. Pure function exporting `buildStudentAveragesTableColumns(filters)` — no React hooks. Five columns: `studentName` (locale-aware sort, no filters), `completeness`/`accuracy`/`spag`/`average` (metric columns with 5-band `MetricToneColor` filters, `onFilter` via `resolveMetricTone`, `MetricPill` render). Average column uses `emphasised={true}`.
+
+#### 9.18.7 Zod trust-boundary schema: `classPageAdapter.zod`
+
+11. Schema: `classPageAdapter.zod` — adapter output Zod schema
+
+- Decision: `keep local`
+- Owning module/path: `src/frontend/src/features/classPage/classPageAdapter.zod.ts`
+- Status: `Implemented`
+- Implementation notes: Defines `RecentAssignmentCardModelSchema`, `StudentAverageRowModelSchema`, and `ClassPageAdapterResultSchema`. All types derived via `z.infer`. Reuses `MetricResult` from `src/frontend/src/services/dataAnalysis/dataAnalysis.zod`. Co-located spec: `classPageAdapter.zod.spec.ts`.
 
 3. Structural change: extraction of `averagingAnalyser.criterionAccumulation.ts`
 

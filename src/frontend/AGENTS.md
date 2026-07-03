@@ -51,6 +51,7 @@ Feature state machines, hooks, modal components, and feature-scoped helpers live
 
 - `assignmentWizard/` — Assignment definition wizard (extracted from `pages/`)
 - `auth/` — Authorisation gate and status
+- `classPage/` — Class detail view (per-class overview surface); child of `ClassesPage`, not a top-level page
 - `classes/` — Class management, assessment, bulk operations, and table
 - `referenceData/` — Cross-cutting reference data management (cohorts, year groups, topics; extracted from `features/classes/management/` and `features/settings/`)
 - `settings/` — Backend settings configuration

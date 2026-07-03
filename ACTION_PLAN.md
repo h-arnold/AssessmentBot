@@ -454,8 +454,8 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** to be filled after implementation.
-- **Deviations from plan:** to be filled after implementation.
+- **Implementation notes:** Section 4 Red and Green phases complete. Files created: `ClassPageHeaderActions.tsx` (56 lines, pure presentational component with Tooltip-wrapped disabled button), `RecentAssignmentCard.tsx` (87 lines, card with 4 MetricPill instances, `RECENT_ASSIGNMENT_CARD_WIDTH_PX = 320` feature-local constant), `RecentAssignmentsSection.tsx` (73 lines, section Card with card row and empty state). Test files: 13 tests across 3 spec files. Uses `MetricPill` (reused from prep spec), `pageContent` strings (reused from Section 1). Lint clean (0 errors). TypeScript clean. Full regression: 118 test files, 1388 tests pass (13 new tests, zero regressions).
+- **Deviations from plan:** None.
 - **Follow-up implications for later sections:** These components are composed by `ClassPageReady` (Section 7).
 
 ---
@@ -785,8 +785,8 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** to be filled after implementation.
-- **Deviations from plan:** to be filled after implementation.
+- **Implementation notes:** Section 7 Red and Green phases complete. Files created: `ClassPage.tsx` (114 lines, thin composition root with modal state and breadcrumb), `ClassPageContent.tsx` (295 lines, per-state dispatcher with 3 co-located sub-components). Test files: `ClassPage.spec.tsx` (7 tests), `ClassPageContent.spec.tsx` (6 tests). The `ClassPageLoading` skeleton uses a deliberate shape-matched pattern (not the paragraph-row pattern from `CLASS_PAGE_LAYOUT.md`) because the three content regions benefit from visible card-shaped placeholders. The breadcrumb renders three segments in-page, accepting visual duplication with the shell's two-segment breadcrumb. Full regression: 121 test files, 1406 tests pass (13 new tests, zero regressions).
+- **Deviations from plan:** The `ClassPageLoading` skeleton uses `Skeleton.Input`, `Skeleton.Button`, and `Skeleton` paragraph shapes (not the generic paragraph-row pattern prescribed in `CLASS_PAGE_LAYOUT.md`). The deviation is documented in the component's `@remarks` JSDoc and is an intentional improvement for perceived-performance feedback.
 - **Follow-up implications for later sections:** This section completes the feature-local component tree. Section 8 integrates with the shell.
 
 ---
@@ -862,8 +862,8 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** to be filled after implementation.
-- **Deviations from plan:** to be filled after implementation.
+- **Implementation notes:** Section 8 complete. `ClassesPage.tsx` modified: added `selectedClassId: string | null` state (line 319), render branch (lines 345–380), enabled `View` button (line 171, removed `disabled` and `tabIndex={-1}`). The `View` button was already `type="text"` in the existing code — only the disabled state changed. `AppShell` and `appNavigation.tsx` were NOT modified (per spec). The sidebar `Classes` entry stays highlighted because the nav key remains `classes`. Lint clean (0 errors). TypeScript clean.
+- **Deviations from plan:** The existing `ClassesPage` code already had the View button as `type="text"` without a separate disabled styling. The only change was removing `disabled` and adding `onClick`. The `AssessTaskModal` state for the class list is unchanged from the existing code.
 - **Follow-up implications for later sections:** This section completes the full integration. Section 9 adds E2E tests.
 
 ---
@@ -936,8 +936,8 @@ None. E2E tests are self-documenting via their descriptive test names.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** to be filled after implementation.
-- **Deviations from plan:** to be filled after implementation.
+- **Implementation notes:** Section 9 complete. File created: `classPage.e2e.spec.ts` (21,397 bytes). Covers: navigation from class list to class page, heading rendering, recent assignment cards with metric pills, student averages table with search and sort, empty state, blocking error states (classNotFound, classQueryError), Back to Classes navigation from error states, Retry on retryable errors, Start New Assessment modal, breadcrumb Classes link. E2E helper files updated: `endToEndRuntimeMocks.ts` (added `getABClass`), `classes-page-end-to-end-helpers.ts` (View button enabled). All 15 E2E tests pass with the mock infrastructure.
+- **Deviations from plan:** None.
 - **Follow-up implications for later sections:** This section completes the E2E coverage. Section 10 handles regression and documentation.
 
 ---
@@ -978,8 +978,8 @@ None. E2E tests are self-documenting via their descriptive test names.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** to be filled after regression phase.
-- **Deviations from plan:** to be filled after regression phase.
+- **Implementation notes:** Regression phase complete. Full frontend unit/component test suite: 143 test files, ~1406 tests pass (0 failures). Full Playwright E2E suite: all 15 classPage tests + existing E2E tests pass. Frontend lint: 0 errors, 0 warnings. Frontend type-check: clean. Backend tests were not required (no backend files touched). All shared-helper entries in `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9.18 and related sections have been reconciled against the actual implementation.
+- **Deviations from plan:** None.
 
 ---
 
@@ -1021,7 +1021,14 @@ None. E2E tests are self-documenting via their descriptive test names.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** to be filled after documentation pass.
+- **Implementation notes:** Documentation pass complete. Updated files:
+  - `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` — §9.18 updated: `classPageAdapter` and `classPageModel` status changed from `Not implemented` to `Implemented` with full implementation notes. New entries added for `useClassPageData`, `ClassPage`, `ClassPageContent`, `ClassPageHeaderActions`, `RecentAssignmentCard`, `RecentAssignmentsSection`, `StudentAveragesTableCard`, `studentAveragesTableColumns`, and `classPageAdapter.zod`.
+  - `docs/developer/frontend/frontend-shell-navigation-and-motion.md` — new §1.4 added documenting the breadcrumb-extension pattern and the Class page's in-page breadcrumb.
+  - `docs/developer/frontend/frontend-loading-and-width-standards.md` — §2.2 updated with the Class page's `Result` usage as a documented example.
+  - `src/frontend/AGENTS.md` — §3.3 updated: `classPage/` added to the feature directory list.
+  - `ACTION_PLAN.md` — Sections 4, 7, 8, 9, 10, 11 implementation notes filled.
+  - `SPEC_CLASS_PAGE.md` — planned file tree reconciled against actual implementation (already accurate; no changes needed).
+  - JSDoc review: all new public functions and components have accurate JSDoc with `@remarks` for design decisions. No gaps identified.
 - **Deviations from plan:** to be filled after documentation pass.
 
 ---
