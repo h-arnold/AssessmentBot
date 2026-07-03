@@ -103,7 +103,7 @@ async function setupViewportAndVerifyCards(
   await page.goto('/');
   await navigateAndExpandAllPanels(page);
 
-  // Verify each card is visible, has proper width, and buttons are disabled
+  // Verify each card is visible, has proper width, and buttons are enabled
   const articles = page.locator('[role="article"]');
   const allArticles = await articles.all();
 
@@ -125,7 +125,7 @@ async function setupViewportAndVerifyCards(
     const assessTaskButton = article.getByRole('button', { name: 'Assess Task' });
     await expect(viewButton).toBeVisible();
     await expect(assessTaskButton).toBeVisible();
-    await expect(viewButton).toBeDisabled();
+    await expect(viewButton).toBeEnabled();
     await expect(assessTaskButton).toBeEnabled();
   }
 }
