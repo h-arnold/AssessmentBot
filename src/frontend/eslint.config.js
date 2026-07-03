@@ -44,6 +44,9 @@ export default defineConfig([
     },
     rules: {
       ...tsBaseRules,
+      // TypeScript's compiler enforces this check; the base ESLint rule is disabled
+      // as recommended by https://eslint.org/docs/latest/rules/no-unreachable#handled_by_typescript
+      'no-unreachable': 'off',
       // unicorn rules customization for frontend
       'unicorn/no-array-for-each': 'off',
       'unicorn/catch-error-name': 'error',
