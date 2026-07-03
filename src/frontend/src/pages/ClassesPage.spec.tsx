@@ -22,7 +22,8 @@
  * - src/frontend/src/test/classes/classesPageTestHelpers.ts
  */
 
-import { screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAppQueryClient } from '../query/queryClient';
 import { queryKeys } from '../query/queryKeys';
@@ -204,6 +205,15 @@ vi.mock('../services/assignmentDefinition/assignmentDefinitionPartialsService', 
 
 vi.mock('../services/assignmentDefinition/assignmentTopicsService', () => ({
   getAssignmentTopics: getAssignmentTopicsMock,
+}));
+
+// Mock ClassPage component for shell integration tests
+const { mockClassPage } = vi.hoisted(() => ({
+  mockClassPage: vi.fn(),
+}));
+
+vi.mock('../features/classPage/ClassPage', () => ({
+  ClassPage: mockClassPage,
 }));
 
 /**
@@ -978,10 +988,10 @@ describe('ClassesPage', () => {
         const expectedCardCount = viewButtons.length;
         expect(assessTaskButtons.length).toBe(expectedCardCount);
 
-        // Verify every View button is disabled and visible
+        // Verify every View button is enabled and visible
         for (const viewButton of viewButtons) {
           expect(viewButton).toBeInTheDocument();
-          expect(viewButton).toBeDisabled();
+          expect(viewButton).toBeEnabled();
           expect(viewButton).toBeVisible();
         }
 
@@ -1107,7 +1117,7 @@ describe('ClassesPage', () => {
         expect(EXPECTED_BUTTONS_PER_CARD).toBe(BUTTONS_PER_CARD_CONTRACT);
       });
 
-      it('keeps View button disabled and unchanged', () => {
+      it('renders the View button as enabled (not disabled)', () => {
         renderClassesPage();
 
         const viewButtons = screen.getAllByRole('button', { name: /view/i });
@@ -1115,7 +1125,7 @@ describe('ClassesPage', () => {
 
         for (const viewButton of viewButtons) {
           expect(viewButton).toBeVisible();
-          expect(viewButton).toBeDisabled();
+          expect(viewButton).toBeEnabled();
         }
       });
 
@@ -1333,6 +1343,81 @@ describe('ClassesPage', () => {
         const refreshStatus = screen.getByText(REFRESH_TEXT_PATTERN);
         expect(refreshStatus).toBeInTheDocument();
       });
+    });
+  });
+
+  // ==========================================================================
+  // Shell integration: selectedClassId state and ClassPage conditional rendering
+  // ==========================================================================
+
+  describe('Shell integration', () => {
+    beforeEach(() => {
+      useStartupWarmupStateMock.mockReturnValue(createReadyWarmupState());
+    });
+
+    it('renders the View button as enabled (not disabled)', () => {
+      renderClassesPage();
+
+      const viewButtons = screen.getAllByRole('button', { name: /view/i });
+      expect(viewButtons.length).toBeGreaterThan(0);
+      for (const button of viewButtons) {
+        expect(button).toBeEnabled();
+      }
+    });
+
+    it('clicking the View button sets selectedClassId and renders ClassPage', async () => {
+      const user = userEvent.setup();
+
+      renderClassesPage();
+
+      const viewButtons = screen.getAllByRole('button', { name: /view/i });
+      await user.click(viewButtons[0]);
+
+      // ClassPage should be rendered
+      expect(mockClassPage).toHaveBeenCalled();
+      // ClassPage should receive the correct classId
+      const classPageProperties = mockClassPage.mock.calls[0][0] as Record<string, unknown>;
+      expect(classPageProperties.classId).toBeTruthy();
+      // onNavigateToClasses should be a function
+      expect(classPageProperties.onNavigateToClasses).toBeTypeOf('function');
+    });
+
+    it('ClassPage receives onNavigateToClasses prop that clears selectedClassId and renders the class list', async () => {
+      const user = userEvent.setup();
+
+      renderClassesPage();
+
+      // Click View to select a class
+      const viewButtons = screen.getAllByRole('button', { name: /view/i });
+      await user.click(viewButtons[0]);
+
+      // ClassPage should be rendered
+      expect(mockClassPage).toHaveBeenCalled();
+
+      // Get the onNavigateToClasses callback from ClassPage props
+      const classPageProperties = mockClassPage.mock.calls[0][0] as Record<string, unknown>;
+      const onNavigateToClasses = classPageProperties.onNavigateToClasses as () => void;
+
+      // Call it
+      act(() => {
+        onNavigateToClasses();
+      });
+
+      // After navigating back, class list should be visible again
+      // ClassPage mock won't help us here directly, but we verify:
+      // The View button for the already-selected class should still be visible (class list is back)
+      const viewButtonsAfter = screen.getAllByRole('button', { name: /view/i });
+      expect(viewButtonsAfter.length).toBeGreaterThan(0);
+    });
+
+    it('the View button does not have tabIndex=-1', () => {
+      renderClassesPage();
+
+      const viewButtons = screen.getAllByRole('button', { name: /view/i });
+      expect(viewButtons.length).toBeGreaterThan(0);
+      for (const button of viewButtons) {
+        expect(button).not.toHaveAttribute('tabIndex', '-1');
+      }
     });
   });
 });

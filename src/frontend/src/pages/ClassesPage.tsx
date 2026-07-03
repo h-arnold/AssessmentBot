@@ -16,6 +16,7 @@ import {
   type InvalidClassesPageDataViewModel,
 } from './classesPageModel';
 import { AssessTaskModal } from '../features/classes/AssessTaskModal/AssessTaskModal';
+import { ClassPage } from '../features/classPage/ClassPage';
 import { PageSection } from './PageSection';
 import { pageContent } from './pageContent';
 
@@ -106,6 +107,11 @@ function isModelEmpty(
 type OnAssessTask = (classId: string, className: string) => void;
 
 /**
+ * Callback type for the view-class button on a class card.
+ */
+type OnViewClass = (classId: string) => void;
+
+/**
  * Renders the year-group collapse with class cards.
  *
  * Uses Collapse.Panel children pattern instead of items prop to ensure proper
@@ -115,11 +121,13 @@ type OnAssessTask = (classId: string, className: string) => void;
  *
  * @param {ClassesPagePanelViewModel} viewModel The view model with panels and default expanded keys.
  * @param {OnAssessTask} onAssessTask Callback when the Assess Task button is clicked.
+ * @param {OnViewClass} onViewClass Callback when the View button is clicked.
  * @returns {JSX.Element} The rendered collapse.
  */
 function renderYearGroupCollapse(
   viewModel: ClassesPagePanelViewModel,
-  onAssessTask: OnAssessTask
+  onAssessTask: OnAssessTask,
+  onViewClass: OnViewClass
 ): JSX.Element {
   const { panels, defaultExpandedPanelKeys } = viewModel;
 
@@ -160,7 +168,7 @@ function renderYearGroupCollapse(
                           >
                             <div style={{ display: 'flex', justifyContent: 'center' }}>
                               <Space wrap>
-                                <Button disabled tabIndex={-1} type="text">
+                                <Button type="text" onClick={() => onViewClass(card.classId)}>
                                   View
                                 </Button>
                                 <Tooltip title="Assess Task">
@@ -197,7 +205,7 @@ function renderYearGroupCollapse(
 /**
  * Renders the content based on the current state.
  *
- * @param {Readonly<{ finalShouldRenderBlockingState: boolean; shouldRenderLoadingState: boolean; shouldRenderEmptyState: boolean; viewModel: ClassesPagePanelViewModel | InvalidClassesPageDataViewModel; isBusy: boolean; onAssessTask: OnAssessTask; }>} properties Render properties.
+ * @param {Readonly<{ finalShouldRenderBlockingState: boolean; shouldRenderLoadingState: boolean; shouldRenderEmptyState: boolean; viewModel: ClassesPagePanelViewModel | InvalidClassesPageDataViewModel; isBusy: boolean; onAssessTask: OnAssessTask; onViewClass: OnViewClass; }>} properties Render properties.
  * @returns {JSX.Element} The rendered content.
  */
 function renderClassesContent(
@@ -208,6 +216,7 @@ function renderClassesContent(
     viewModel: ClassesPagePanelViewModel | InvalidClassesPageDataViewModel;
     isBusy: boolean;
     onAssessTask: OnAssessTask;
+    onViewClass: OnViewClass;
   }>
 ): JSX.Element {
   if (properties.finalShouldRenderBlockingState) {
@@ -236,7 +245,8 @@ function renderClassesContent(
       ) : null}
       {renderYearGroupCollapse(
         properties.viewModel as ClassesPagePanelViewModel,
-        properties.onAssessTask
+        properties.onAssessTask,
+        properties.onViewClass
       )}
     </>
   );
@@ -282,6 +292,12 @@ function getFinalClassesPageStates(
  * Renders the Classes page with owned-surface loading, blocking, and empty states.
  *
  * @returns {JSX.Element} The Classes page.
+ * @remarks
+ * - `selectedClassId` is page-local state (not URL-routed). No deep linking
+ *   or browser back/forward support in v1; a full page refresh resets to the
+ *   class list.
+ * - The ClassPage breadcrumb `Classes` link clears `selectedClassId` and
+ *   returns to the class list.
  */
 export function ClassesPage() {
   const { query: classPartialsQuery, datasetState: classPartialsDatasetState } =
@@ -298,6 +314,9 @@ export function ClassesPage() {
   // Modal state for Assess Task workflow
   const [assessModalClassId, setAssessModalClassId] = useState<string | null>(null);
   const [assessModalClassName, setAssessModalClassName] = useState<string | null>(null);
+
+  // Selected class for ClassPage detail view (page-local, not URL-routed)
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
 
   // Compute busy state
   const isClassesSurfaceBusy = computePageSurfaceBusy(
@@ -323,31 +342,40 @@ export function ClassesPage() {
 
   return (
     <PageSection heading={pageContent.classes.heading} summary={pageContent.classes.summary}>
-      <section
-        aria-label="Classes page content"
-        aria-busy={isClassesSurfaceBusy ? 'true' : undefined}
-      >
-        {renderClassesContent({
-          finalShouldRenderBlockingState,
-          shouldRenderLoadingState,
-          shouldRenderEmptyState,
-          viewModel: modelResult,
-          isBusy: isClassesSurfaceBusy,
-          onAssessTask: (classId, className) => {
-            setAssessModalClassId(classId);
-            setAssessModalClassName(className);
-          },
-        })}
-      </section>
-      {assessModalClassId !== null && assessModalClassName !== null && (
-        <AssessTaskModal
-          open
-          classId={assessModalClassId}
-          className={assessModalClassName}
-          onClose={() => {
-            setAssessModalClassId(null);
-            setAssessModalClassName(null);
-          }}
+      {selectedClassId === null ? (
+        <>
+          <section aria-label="Classes page content" aria-busy={isClassesSurfaceBusy ? 'true' : undefined}>
+            {renderClassesContent({
+              finalShouldRenderBlockingState,
+              shouldRenderLoadingState,
+              shouldRenderEmptyState,
+              viewModel: modelResult,
+              isBusy: isClassesSurfaceBusy,
+              onAssessTask: (classId, className) => {
+                setAssessModalClassId(classId);
+                setAssessModalClassName(className);
+              },
+              onViewClass: (classId) => {
+                setSelectedClassId(classId);
+              },
+            })}
+          </section>
+          {assessModalClassId !== null && assessModalClassName !== null && (
+            <AssessTaskModal
+              open
+              classId={assessModalClassId}
+              className={assessModalClassName}
+              onClose={() => {
+                setAssessModalClassId(null);
+                setAssessModalClassName(null);
+              }}
+            />
+          )}
+        </>
+      ) : (
+        <ClassPage
+          classId={selectedClassId}
+          onNavigateToClasses={() => setSelectedClassId(null)}
         />
       )}
     </PageSection>
