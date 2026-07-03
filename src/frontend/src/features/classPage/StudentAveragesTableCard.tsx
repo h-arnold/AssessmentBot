@@ -68,7 +68,6 @@ type SortState = {
 
 export type StudentAveragesTableCardProperties = {
   readonly adapterResult: ClassPageAdapterResult;
-  readonly onStartNewAssessment: () => void;
 };
 
 // ---------------------------------------------------------------------------
@@ -95,7 +94,6 @@ const INITIAL_FILTERS: StudentAveragesTableFilters = {
  *
  * @param {StudentAveragesTableCardProperties} properties - Component properties.
  * @param {ClassPageAdapterResult} properties.adapterResult - The adapter's canonical output.
- * @param {() => void} properties.onStartNewAssessment - Callback to start a new assessment.
  * @returns {JSX.Element} The Student Averages table card.
  */
 export function StudentAveragesTableCard(

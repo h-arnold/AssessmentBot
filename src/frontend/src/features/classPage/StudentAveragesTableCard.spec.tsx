@@ -214,13 +214,11 @@ afterEach(() => {
 function renderCard(options: {
   adapterResult?: Partial<ClassPageAdapterResult>;
 } = {}): ReturnType<typeof render> {
-  const onStartNewAssessment = vi.fn();
   const adapterResult = buildAdapterResult(options.adapterResult);
 
   return render(
     <StudentAveragesTableCard
       adapterResult={adapterResult}
-      onStartNewAssessment={onStartNewAssessment}
     />
   );
 }

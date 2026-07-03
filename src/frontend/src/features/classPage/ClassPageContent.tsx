@@ -231,7 +231,6 @@ function ClassPageReady({
       />
       <StudentAveragesTableCard
         adapterResult={adapterResult}
-        onStartNewAssessment={onStartNewAssessment}
       />
     </>
   );
