@@ -353,8 +353,8 @@ The state-aware sort comparator should document:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** to be filled after implementation.
-- **Deviations from plan:** to be filled after implementation.
+- **Implementation notes:** Section 3 Red and Green phases complete. Test file `classPageModel.spec.ts` (531 lines, 12 test cases) created covering: pass-through fields, search filtering (case-insensitive), studentName sorting (asc/desc/case-insensitive), state-aware metric sorting (completeness asc/desc), tie-breaking (metric values and names), default sort fallback (null and undefined). Implementation file `classPageModel.ts` (199 lines) created with: pass-through fields, case-insensitive search filter, state-aware metric sort comparator (Map-based rank lookup), locale-aware studentName sort with always-ascending studentId tie-break, default sort fallback. Lint clean (0 errors). TypeScript clean. Review approved with minor findings (addressed: semicolons→commas in DEFAULT_SORT type, tie-break direction consistency). Full regression: 113 test files, 1343 tests pass (12 new tests added, zero regressions).
+- **Deviations from plan:** None.
 - **Follow-up implications for later sections:** The model is consumed by `StudentAveragesTableCard` (Section 5).
 
 ---
