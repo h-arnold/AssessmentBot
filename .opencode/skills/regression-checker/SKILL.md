@@ -37,8 +37,8 @@ changing there.
 The wrapper first runs `npm run builder:compile` and then launches
 `scripts/builder/dist/regression-checker/run-regression-checker.js`.
 
-> **Timeout:** Do not pass a `timeout` argument when invoking this command via the `bash` tool.
-> Test suites can take several minutes. Let the tool use its configured default (300s in this repo).
+> **Timeout:** Always set a 10 minute (600000 ms) timeout when invoking this command via the `bash` tool.
+> Test suites can take several minutes and the default 120s timeout is not sufficient.
 
 ## How to use it with `ACTION_PLAN.md`
 
