@@ -557,8 +557,8 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** to be filled after implementation.
-- **Deviations from plan:** to be filled after implementation.
+- **Implementation notes:** Section 5 Red and Green phases complete. Files created: `studentAveragesTableColumns.tsx` (204 lines, pure function exporting `buildStudentAveragesTableColumns` with 5 column definitions), `StudentAveragesTableCard.tsx` (199 lines, presentational component owning search/sort/filter state with memoised model and column calls). Test files: 26 tests across 2 spec files (17 columns + 9 card). Full regression: 118 test files, 1388 tests pass (26 new tests, zero regressions).
+- **Deviations from plan:** `StudentAveragesTableCard` uses `Space.Compact` + `Input` with `SearchOutlined` prefix instead of `Input.Search`. This is because Ant Design v6.3.1 always renders a `<button>` in `Input.Search`, which contradicts the layout spec's requirement of no submit button (`enterButton` not used). The workaround achieves the same visual result (search icon, no submit button, filters apply on keystroke) while avoiding the always-rendered button. The `filters` state in `StudentAveragesTableCard` is locked (no setter) because `arrayOrUndefined` maps empty filter arrays to `undefined`, allowing Ant Design to manage filter-dropdown state internally via each column's `onFilter` predicate.
 - **Follow-up implications for later sections:** These components are composed by `ClassPageReady` (Section 7).
 
 ---
