@@ -561,6 +561,10 @@ Frontend tests:
 - **Deviations from plan:** `StudentAveragesTableCard` uses `Space.Compact` + `Input` with `SearchOutlined` prefix instead of `Input.Search`. This is because Ant Design v6.3.1 always renders a `<button>` in `Input.Search`, which contradicts the layout spec's requirement of no submit button (`enterButton` not used). The workaround achieves the same visual result (search icon, no submit button, filters apply on keystroke) while avoiding the always-rendered button. The `filters` state in `StudentAveragesTableCard` is locked (no setter) because `arrayOrUndefined` maps empty filter arrays to `undefined`, allowing Ant Design to manage filter-dropdown state internally via each column's `onFilter` predicate.
 - **Follow-up implications for later sections:** These components are composed by `ClassPageReady` (Section 7).
 
+### Spec clarification
+
+Section 5's spec originally listed the `buildClassPageViewModel` `useMemo` dependency array as `[adapterResult, filters, sort, searchTerm]`. However, `filters` (the metric column band filters state) is not consumed by `buildClassPageViewModel` — it only receives `{ searchTerm }` as its `filters` parameter. The column filters are handled by `buildStudentAveragesTableColumns` via the column's `onFilter` predicate. The `buildClassPageViewModel` dependency array is therefore `[adapterResult, searchTerm, sort]`, avoiding the `react-hooks/exhaustive-deps` lint warning. The `buildStudentAveragesTableColumns` `useMemo` correctly depends on `[filters]`.
+
 ---
 
 ## Section 6 — Data orchestrator hook (`useClassPageData`)

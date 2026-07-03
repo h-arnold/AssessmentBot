@@ -28,6 +28,14 @@
  * sorted column header a third time. The component detects this and resets
  * to the default sort.
  *
+ * **Search input (v1 workaround).** The component uses `Space.Compact` with a
+ * plain `Input` and `SearchOutlined` prefix instead of Ant Design's
+ * `Input.Search`, because Ant Design v6.3.1 always renders a `<button>` in
+ * `Input.Search` regardless of the `enterButton` prop, which contradicts the
+ * layout spec's requirement that no submit button is rendered (filters apply
+ * on keystroke). The workaround produces the same visual result (search icon,
+ * no submit button, updates on keystroke) and the same accessible role.
+ *
  * @see SPEC_CLASS_PAGE.md — "StudentAveragesTableCard"
  * @see CLASS_PAGE_LAYOUT.md — "4. Student Averages Table Card"
  */
