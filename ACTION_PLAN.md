@@ -676,9 +676,9 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Section 4 Red and Green phases complete. Files created: `ClassPageHeaderActions.tsx` (span-wrapped Tooltip disabled button pattern), `RecentAssignmentCard.tsx` (320px card, 4 MetricPill cells, feature-local width constant), `RecentAssignmentsSection.tsx` (section Card with empty-state handling). Test files: 19 tests across 3 spec files. Review findings addressed: metric cell alignment (first 3 left-aligned, Average centre-aligned), Tooltip placement, Space size. Full regression: 116 test files, 1362 tests pass (19 new tests added, zero regressions).
-- **Deviations from plan:** None.
-- **Follow-up implications for later sections:** These components are composed by `ClassPageReady` (Section 7).
+- **Implementation notes:** Section 6 Red and Green phases complete. File created: `useClassPageData.ts` (485 lines, data orchestrator hook). The hook wires together `useQuery(getABClassQueryOptions(classId))`, `usePageDataset('assignmentDefinitionPartials')`, `DataAnalysisService.analyse(...)`, and `adaptClassPageToViewModel(...)`. Produces a typed `ClassPageData` result with `surfaceState` as a discriminated union (`loading` | `blocking` | `ready`). Error precedence: `classNotFound` > `classQueryError` > `assignmentDefinitionPartialsFailed` > `assignmentDefinitionPartialsUntrustworthy` > `adapterError` > `analyserError`. Includes a `shouldRunPipeline` guard that blocks the analyser/adapter when the dataset is untrustworthy or failed, ensuring `analyserResult`/`adapterResult` are only non-null when `surfaceState.status === 'ready'`. refetch uses `useCallback` with destructured `queryRefetch` for stale-closure safety. Module-level `createAnalysisService()` factory avoids test workaround in production code. Co-located spec: 16 tests. Full regression: 121 test files, 1406 tests pass (16 new tests, zero regressions). One pre-existing debug file failure (`debug_dataanalysis_service.spec.ts`, untracked) is unrelated.
+- **Deviations from plan:** The analyser `useMemo` depends on `[shouldRunPipeline, classFull, assignmentDefinitionPartials, classId]` — `classId` is included because `runAnalyserStep` populates `AnalysisFilter.classIds` with it. Spec listed `[classFull, assignmentDefinitionPartials]` only; this deviation is required for correctness and is documented in `@remarks` JSDoc.
+- **Follow-up implications for later sections:** `ClassPage.tsx` (Section 7) consumes this hook as its sole data-fetching entry point.
 
 ---
 
