@@ -165,7 +165,43 @@ If you add or modify tests, run the smallest targeted command first, then the re
 - For builder tests, assert deterministic and stage-specific outcomes rather than incidental implementation details.
 - Do not add production code solely to satisfy tests.
 
-## 8. Debugging Workflow
+## 8. TDD Red Phase: Minimal Stubs for Unimplemented Code
+
+When writing tests **before** implementation (red phase of TDD), you **MUST** create minimal stubs for code that does not yet exist to ensure tests fail for the **right reason** — that is, the test fails because the expected behaviour is missing, not because of import errors or missing dependencies.
+
+### Rules for Red Phase Stubs
+
+1. **Stub only what is necessary to make the test runnable.** The goal is to verify the test can _attempt_ to call the unimplemented function/class and fail with an assertion error (or explicit "not implemented" marker), not to crash with `ReferenceError` or `TypeError` from missing modules.
+
+2. **Use `throw new Error('Not implemented')` as the default stub body.** This makes failures unmistakable:
+
+   ```ts
+   export function newFunction(): ReturnType {
+     throw new Error('Not implemented');
+   }
+   ```
+
+3. **Preserve the correct export signature.** The stub must export the same name, parameters, and return type as the planned implementation so the test compiles and runs.
+
+4. **Do not add real logic to stubs.** Stubs exist solely to make the test fail cleanly. Any premature logic risks masking the red-phase signal or accidentally making a test pass before implementation begins.
+
+5. **Place stubs in the production source location** (not in test files). This avoids test-only imports and ensures the test exercises the real module path.
+
+6. **Remove or replace stubs immediately when implementing.** Once you move to the green phase, replace the stub with working code. Do not leave `throw new Error('Not implemented')` in production files beyond the implementation cycle.
+
+7. **Document the stub's purpose with a comment:**
+   ```ts
+   // RED-PHASE STUB: will be replaced in green phase
+   export function calculateScore(answers: Answer[]): number {
+     throw new Error('Not implemented');
+   }
+   ```
+
+### Why This Matters
+
+Without minimal stubs, tests for unimplemented code fail with noisy `ReferenceError` or module-resolution errors. These failures obscure the real question: _"Does the test correctly express the intended behaviour?"_ Clean red-phase failures let you validate the test's intent before writing implementation.
+
+## 9. Debugging Workflow
 
 1. Isolate the failing suite with the smallest relevant command.
 2. Inspect failures and mock setup/teardown behaviour.
@@ -176,7 +212,7 @@ If you add or modify tests, run the smallest targeted command first, then the re
 7. Keep the validation loop focused; do not rerun the same failing command unchanged unless the code, test, or environment has changed.
 8. **HARD REQUIREMENT**: Achieve zero errors and zero warnings on all checks before handoff.
 
-## 9. Reporting (Goldilocks Rule)
+## 10. Reporting (Goldilocks Rule)
 
 Report enough detail to be actionable without noise.
 
@@ -188,7 +224,7 @@ Report enough detail to be actionable without noise.
 - Too much:
   - Long step-by-step transcripts and raw logs without synthesis.
 
-## 10. Completion Requirements
+## 11. Completion Requirements
 
 Before declaring completion:
 
