@@ -309,13 +309,19 @@ Frontend tests (migrate + extend `useClassPageData.spec.ts`):
 ### Implementation notes / deviations / follow-up
 
 - **Implementation notes:** Destructured `refetch: adpRefetch` from
-  `adpQuery`, updated `refetch` `useCallback` to call both, updated
-  dependency array.
-- **Deviations from plan:** None expected.
+  `adpQuery` (line 451), updated `refetch` `useCallback` to call both
+  `queryRefetch()` and `adpRefetch()` (lines 473-476), updated dependency
+  array to `[queryRefetch, adpRefetch]`. Updated JSDoc `@remarks` to document
+  dual-refetch contract. Fixed 2 stale JSDoc references in module-level and
+  type-level comments.
+- **Deviations from plan:** None.
 - **Follow-up implications:** C2 may indirectly affect `ClassPage.spec.tsx`
   tests if any test mocks `refetch` and asserts a single call. Verify after
   implementation. No E2E changes expected (the Retry button itself is
   unchanged; only its effect widens).
+- **Completion status:** ✅ COMPLETE. All 1,429 frontend tests pass (3 new).
+  Lint clean. TypeScript compilation clean. Build clean. `useClassPageData.ts`
+  is 492 lines (under 500). Dual-refetch contract fully implemented and tested.
 
 ---
 
