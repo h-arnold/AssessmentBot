@@ -18,7 +18,7 @@
     "code-reviewer": {
       "description": "Reviews code for quality, standards adherence, and defects",
       "mode": "subagent",
-      "model": "opencode/nemotron-3-ultra-free",
+      "model": "opencode-go/deepseek-v4-pro",
       "reasoningEffort": "high"
     }
   }
