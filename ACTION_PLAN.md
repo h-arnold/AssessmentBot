@@ -213,12 +213,18 @@ Frontend tests (extend `useClassPageData.spec.ts`):
 - **Implementation notes:** Added empty-array guard in `runAnalyserStep`
   returning `[null, new Error('Analyser returned empty result')]`. Outer
   pipeline memo already routes this through the `analyserError` surface state.
-  Added 4 new tests in `useClassPageData.spec.ts`.
-- **Deviations from plan:** None expected. If the existing test asserting
-  `surfaceState.status === 'ready'` after empty `analyse` exists, it must be
-  updated to assert `'blocking'` (the old assertion encoded the bug).
+  Added 3 new tests in `useClassPageData.spec.ts` (empty array → blocking/analyserError,
+  empty array → null results, non-empty array → ready regression guard).
+  Throw-path regression guard covered by existing test at line 524.
+  Added `@remarks` JSDoc note referencing CODE_REVIEW.md C1 finding.
+- **Deviations from plan:** None. Used `response.length === 0` check instead of
+  `aResult === null` to avoid false-positive `sonarjs/different-types-comparison`
+  lint error. Behaviour is identical.
 - **Follow-up implications for later sections:** None directly. C2 (Section 2)
   is independent of C1.
+- **Completion status:** ✅ COMPLETE. All 1,426 frontend tests pass (3 new).
+  Lint clean. TypeScript compilation clean. Build clean. `useClassPageData.ts`
+  is 481 lines (under 500). No new error type or UI surface introduced.
 
 ---
 
