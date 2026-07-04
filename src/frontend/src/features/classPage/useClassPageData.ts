@@ -18,8 +18,8 @@
  * or any other derived field.
  *
  * The `refetch` entry point captures `classId` at call time via a `useCallback`
- * dependent on `classFullQuery.refetch` to prevent stale-closure bugs that would
- * cause the retry button to refetch a class the user is no longer viewing.
+ * dependent on `classFullQuery.refetch` and `adpQuery.refetch` to prevent stale-closure
+ * bugs that would cause the retry button to refetch a class the user is no longer viewing.
  *
  * @see SPEC_CLASS_PAGE.md — "useClassPageData — data orchestrator hook"
  */
@@ -61,7 +61,7 @@ export type ClassPageData = Readonly<{
   /** Combined surface state — a discriminated union (`loading` | `blocking` | `ready`). */
   surfaceState: ClassPageSurfaceState;
 
-  /** Retry entry point — always refetches the current per-class query. */
+  /** Retry entry point — refetches both the per-class query and the assignmentDefinitionPartials dataset query. */
   refetch: () => void;
 }>;
 
@@ -441,28 +441,39 @@ export function useClassPageData(classId: string): ClassPageData {
     surfaceState.status === 'blocking' ? surfaceState.error : null;
 
   // -----------------------------------------------------------------------
-  // 7. Refetch — stable callback via destructured refetch dependency.
+  // 7. Refetch — stable callback via destructured refetch dependencies.
   //    React Query guarantees the refetch function is stable for the same
   //    query key.  When classId changes, the query key changes and a new
   //    refetch function is created — preventing stale-closure bugs.
   // -----------------------------------------------------------------------
 
   const { refetch: queryRefetch } = classFullQuery;
+  const { refetch: adpRefetch } = adpQuery;
 
   /**
-   * Stable callback that delegates to the per-class query's `refetch`.
+   * Stable callback that triggers a refetch of both the per-class query
+   * and the `assignmentDefinitionPartials` dataset query.
    *
    * @remarks
+   * The `ERROR_CONFIG_MAP` in `ClassPageContent.tsx` marks
+   * `assignmentDefinitionPartialsFailed` and
+   * `assignmentDefinitionPartialsUntrustworthy` as `retryable: true`.
+   * Refetching only the class query would leave dataset errors persisting,
+   * making the Retry button appear broken.  This dual-refetch contract
+   * resolves both query-level and dataset-level errors in a single action.
+   *
    * Avoids stale-closure bugs by depending on `queryRefetch` (destructured
-   * from `classFullQuery`) rather than capturing `classId` directly.  React
-   * Query guarantees the `refetch` function is stable for the same query key.
-   * When `classId` changes, React Query creates a new query with a new key,
-   * producing a new `refetch` function — preventing the retry button from
-   * refetching a class the user is no longer viewing.
+   * from `classFullQuery`) and `adpRefetch` (destructured from the dataset
+   * query) rather than capturing `classId` directly.  React Query guarantees
+   * the `refetch` function is stable for the same query key.  When `classId`
+   * changes, React Query creates a new query with a new key, producing new
+   * refetch functions — preventing the retry button from refetching a class
+   * the user is no longer viewing.
    */
   const refetch: () => void = useCallback((): void => {
     queryRefetch();
-  }, [queryRefetch]);
+    adpRefetch();
+  }, [queryRefetch, adpRefetch]);
 
   // -----------------------------------------------------------------------
   // Return

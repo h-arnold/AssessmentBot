@@ -735,33 +735,141 @@ describe('memoisation invalidation', () => {
 });
 
 // ===========================================================================
-// refetch test
+// refetch dual-query contract tests
 // ===========================================================================
 
-describe('refetch', () => {
-  it('calls refetch on the per-class query when refetch() is invoked', () => {
+describe('refetch dual-query contract', () => {
+  it('calls refetch on both the per-class and dataset queries when refetch() is invoked', () => {
     const classFull = createClassFull();
     const averagingResult = createAveragingResult();
     const adapterResult = createAdapterResult();
-    const refetchMock = vi.fn();
+    const queryRefetchMock = vi.fn();
+    const adpRefetchMock = vi.fn();
 
     mockAnalyse.mockReturnValue([averagingResult]);
     mockAdaptClassPageToViewModel.mockReturnValue(adapterResult);
 
     mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
     mockUseQuery.mockReturnValue(
-      createMockClassQueryResult({ data: classFull, refetch: refetchMock })
+      createMockClassQueryResult({ data: classFull, refetch: queryRefetchMock })
     );
-    mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
+    mockUsePageDataset.mockReturnValue(createPageDatasetReturn({ refetch: adpRefetchMock }));
 
     const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
 
-    // Clear initial calls so they don't interfere
-    refetchMock.mockClear();
+    queryRefetchMock.mockClear();
+    adpRefetchMock.mockClear();
 
     result.current.refetch();
 
-    expect(refetchMock).toHaveBeenCalledTimes(1);
+    expect(queryRefetchMock).toHaveBeenCalledTimes(1);
+    expect(adpRefetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('invokes both query and dataset refetch when assignmentDefinitionPartialsFailed is true and refetch() is called', () => {
+    const classFull = createClassFull();
+    const queryRefetchMock = vi.fn();
+    const adpRefetchMock = vi.fn();
+
+    mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
+    mockUseQuery.mockReturnValue(
+      createMockClassQueryResult({ data: classFull, refetch: queryRefetchMock })
+    );
+    mockUsePageDataset.mockReturnValue(
+      createPageDatasetReturn(
+        { refetch: adpRefetchMock, isError: true },
+        {
+          isDatasetFailed: true,
+          isDatasetReady: false,
+          isDatasetTrustworthy: false,
+          hasTrustworthyDataset: false,
+          hasQueryData: false,
+          isQueryError: true,
+        }
+      )
+    );
+
+    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+
+    expect(result.current.surfaceState).toEqual({
+      status: 'blocking',
+      error: { type: 'assignmentDefinitionPartialsFailed' },
+    });
+
+    queryRefetchMock.mockClear();
+    adpRefetchMock.mockClear();
+
+    result.current.refetch();
+
+    expect(queryRefetchMock).toHaveBeenCalledTimes(1);
+    expect(adpRefetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('remains stable across renders when neither refetch reference changes', () => {
+    const classFull = createClassFull();
+    const averagingResult = createAveragingResult();
+    const adapterResult = createAdapterResult();
+    const queryRefetchMock = vi.fn();
+    const adpRefetchMock = vi.fn();
+
+    mockAnalyse.mockReturnValue([averagingResult]);
+    mockAdaptClassPageToViewModel.mockReturnValue(adapterResult);
+
+    mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
+    mockUseQuery.mockReturnValue(
+      createMockClassQueryResult({ data: classFull, refetch: queryRefetchMock })
+    );
+    mockUsePageDataset.mockReturnValue(createPageDatasetReturn({ refetch: adpRefetchMock }));
+
+    const { rerender, result } = renderHook(
+      (properties: { classId: string }) => useClassPageData(properties.classId),
+      { initialProps: { classId: DEFAULT_CLASS_ID }, wrapper }
+    );
+
+    const firstRefetch = result.current.refetch;
+
+    rerender({ classId: DEFAULT_CLASS_ID });
+
+    expect(result.current.refetch).toBe(firstRefetch);
+  });
+
+  it('updates to use the new refs when classId changes', () => {
+    const classFull = createClassFull();
+    const averagingResult = createAveragingResult();
+    const adapterResult = createAdapterResult();
+    const initialQueryRefetchMock = vi.fn();
+    const initialAdpRefetchMock = vi.fn();
+    const newClassId = 'class-xyz-789';
+    const newQueryRefetchMock = vi.fn();
+    const newAdpRefetchMock = vi.fn();
+
+    mockAnalyse.mockReturnValue([averagingResult]);
+    mockAdaptClassPageToViewModel.mockReturnValue(adapterResult);
+
+    mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
+    mockUseQuery.mockReturnValue(
+      createMockClassQueryResult({ data: classFull, refetch: initialQueryRefetchMock })
+    );
+    mockUsePageDataset.mockReturnValue(createPageDatasetReturn({ refetch: initialAdpRefetchMock }));
+
+    const { rerender, result } = renderHook(
+      (properties: { classId: string }) => useClassPageData(properties.classId),
+      { initialProps: { classId: DEFAULT_CLASS_ID }, wrapper }
+    );
+
+    const firstRefetch = result.current.refetch;
+
+    // Update mocks to simulate new query results for a different classId
+    mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', newClassId] });
+    mockUseQuery.mockReturnValue(
+      createMockClassQueryResult({ data: classFull, refetch: newQueryRefetchMock })
+    );
+    mockUsePageDataset.mockReturnValue(createPageDatasetReturn({ refetch: newAdpRefetchMock }));
+
+    rerender({ classId: newClassId });
+
+    // The callback reference must change when the underlying query refs change
+    expect(result.current.refetch).not.toBe(firstRefetch);
   });
 });
 
