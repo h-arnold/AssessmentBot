@@ -186,6 +186,11 @@ function computeServiceError(
  * @param {AssignmentDefinitionPartialsResponse | null} assignmentDefinitionPartials - Reference data.
  * @param {string} classId - The class ID for the filter.
  * @returns {readonly [AveragingResult | null, Error | null]} The result and optional error.
+ *
+ * @remarks
+ * An empty array from the analyser is treated as an analyser error (not a silent
+ * null) to preserve the invariant that `adapterResult` is non-null when
+ * `surfaceState.status === 'ready'`.  See CODE_REVIEW.md finding C1.
  */
 function runAnalyserStep(
   classFull: ClassFull | null,
@@ -205,6 +210,9 @@ function runAnalyserStep(
       },
       'averaging'
     );
+    if (response.length === 0) {
+      return [null, new Error('Analyser returned empty result')];
+    }
     return [response[0] ?? null, null];
   } catch (error_: unknown) {
     return [null, error_ instanceof Error ? error_ : new Error(String(error_))];

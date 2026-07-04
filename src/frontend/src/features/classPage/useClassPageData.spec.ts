@@ -797,3 +797,57 @@ describe('blocking precedence', () => {
     });
   });
 });
+
+// ===========================================================================
+// Empty analyser response (C1 contract)
+// ===========================================================================
+
+describe('empty analyser response', () => {
+  it('produces blocking state with analyserError when the analyser returns an empty array', () => {
+    mockAnalyse.mockReturnValue([]);
+
+    mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
+    mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: createClassFull() }));
+    mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
+
+    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+
+    expect(result.current.surfaceState).toEqual({
+      status: 'blocking',
+      error: { type: 'analyserError', cause: expect.any(Error) },
+    });
+    expect(result.current.error?.type).toBe('analyserError');
+  });
+
+  it('yields null adapterResult and null analyserResult when the analyser returns an empty array', () => {
+    mockAnalyse.mockReturnValue([]);
+
+    mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
+    mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: createClassFull() }));
+    mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
+
+    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+
+    expect(result.current.adapterResult).toBeNull();
+    expect(result.current.analyserResult).toBeNull();
+  });
+
+  it('non-empty analyser response still works as expected (regression guard)', () => {
+    const averagingResult = createAveragingResult();
+    const adapterResult = createAdapterResult();
+
+    mockAnalyse.mockReturnValue([averagingResult]);
+    mockAdaptClassPageToViewModel.mockReturnValue(adapterResult);
+
+    mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
+    mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: createClassFull() }));
+    mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
+
+    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+
+    expect(result.current.surfaceState).toEqual({ status: 'ready' });
+    expect(result.current.error).toBeNull();
+    expect(result.current.analyserResult).toEqual(averagingResult);
+    expect(result.current.adapterResult).toEqual(adapterResult);
+  });
+});
