@@ -1,7 +1,7 @@
 ---
 description: Reviews code for quality, standards adherence, and defects using project-specific checklists
 mode: all
-model: opencode/mimo-v2.5-free
+model: opencode-go/qwen-3.7-plus
 steps: 100
 ---
 
