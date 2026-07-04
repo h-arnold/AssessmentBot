@@ -1,7 +1,7 @@
 ---
 description: Reviews code for quality, standards adherence, and defects using project-specific checklists
 mode: all
-model: opencode-go/deepseek-v4-pro
+model: opencode/mimo-v2.5-free
 steps: 100
 ---
 
