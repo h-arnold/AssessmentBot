@@ -18,7 +18,7 @@
     "code-reviewer": {
       "description": "Reviews code for quality, standards adherence, and defects",
       "mode": "subagent",
-      "model": "opencode-go/deepseek-v4-pro",
+      "model": "opencode-go/qwen3.7-plus",
       "reasoningEffort": "high"
     }
   }

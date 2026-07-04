@@ -1,7 +1,6 @@
 ---
 description: Orchestrates delivery against ACTION_PLAN.md in a strict TDD-first workflow
 mode: all
-model: opencode-go/qwen-3.7-plus
 steps: 100
 ---
 
