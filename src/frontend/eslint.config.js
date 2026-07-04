@@ -193,4 +193,16 @@ export default defineConfig([
       'security/detect-object-injection': 'off',
     },
   },
+  {
+    // This spec file contains computeOverallComposite aggregation tests where
+    // every flagged value is an expected assertion result derived from the
+    // test's input data (e.g. weighted-average sums, data-point counts).
+    // Extracting these into named constants adds indirection without improving
+    // readability — the inline comments already document the derivation and
+    // the values are immediately obvious from the inputs above each assertion.
+    files: ['src/services/dataAnalysis/analysers/averagingAnalyser.accumulation.spec.ts'],
+    rules: {
+      '@typescript-eslint/no-magic-numbers': 'off',
+    },
+  },
 ]);

@@ -31,18 +31,20 @@ export type ClassPageViewModel = {
 // Internal constants
 // ---------------------------------------------------------------------------
 
+const HIGHEST_METRIC_STATE_RANK = 2;
+
 /** Rank lookup for ascending metric column sort: computed → notAttempted → error. */
 const METRIC_STATE_RANK_ASC: ReadonlyMap<MetricResult['state'], number> = new Map([
   ['computed', 0],
   ['notAttempted', 1],
-  ['error', 2],
+  ['error', HIGHEST_METRIC_STATE_RANK],
 ]);
 
 /** Rank lookup for descending metric column sort: error → notAttempted → computed. */
 const METRIC_STATE_RANK_DESC: ReadonlyMap<MetricResult['state'], number> = new Map([
   ['error', 0],
   ['notAttempted', 1],
-  ['computed', 2],
+  ['computed', HIGHEST_METRIC_STATE_RANK],
 ]);
 
 // ---------------------------------------------------------------------------
