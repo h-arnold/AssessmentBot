@@ -34,9 +34,19 @@ import type { ClassFull } from '../../services/googleClassrooms/classDetail/clas
 import type { AveragingResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import type { AssignmentDefinitionPartialsResponse } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import type { ClassPageAdapterResult } from './classPageAdapter.zod';
+import type { ClassPageError } from './useClassPageData.helpers';
+import {
+  computeQueryBlockingError,
+  computeDatasetBlockingError,
+  computeServiceError,
+  computeIsLoading,
+} from './useClassPageData.helpers';
+
 // ---------------------------------------------------------------------------
 // Exported types
 // ---------------------------------------------------------------------------
+
+export type { ClassPageError } from './useClassPageData.helpers';
 
 /** Complete typed return value of {@link useClassPageData}. */
 export type ClassPageData = Readonly<{
@@ -78,104 +88,6 @@ export type ClassPageSurfaceState =
   | { status: 'loading' }
   | { status: 'blocking'; error: ClassPageError }
   | { status: 'ready' };
-
-/**
- * Structured error type for the class page.
- *
- * Error precedence (top to bottom, first applicable wins):
- * 1. `classNotFound` — per-class query returned `null`
- * 2. `classQueryError` — per-class query errored
- * 3. `assignmentDefinitionPartialsFailed` — warm-up dataset failed
- * 4. `assignmentDefinitionPartialsUntrustworthy` — warm-up dataset
- *    untrustworthy but marked ready
- * 5. `adapterError` — adapter threw (typically a `classFull` structural defect)
- * 6. `analyserError` — analyser threw (typically a computation error)
- */
-export type ClassPageError = Readonly<
-  | { type: 'classNotFound' }
-  | { type: 'classQueryError'; cause: Error }
-  | { type: 'analyserError'; cause: Error }
-  | { type: 'adapterError'; cause: Error }
-  | { type: 'assignmentDefinitionPartialsFailed' }
-  | { type: 'assignmentDefinitionPartialsUntrustworthy' }
->;
-
-// ---------------------------------------------------------------------------
-// Pure helper functions (complexity kept ≤ 7 per lint rule)
-// ---------------------------------------------------------------------------
-
-/**
- * Check per-class query for blocking errors (classNotFound, classQueryError).
- *
- * @param {ClassFull | null} classFull - The class full data (or null).
- * @param {boolean} isSuccess - Whether the query succeeded.
- * @param {boolean} isError - Whether the query errored.
- * @param {Error | null} queryError - The query error object.
- * @returns {ClassPageError | null} A blocking error, or null if none.
- */
-function computeQueryBlockingError(
-  classFull: ClassFull | null,
-  isSuccess: boolean,
-  isError: boolean,
-  queryError: Error | null
-): ClassPageError | null {
-  if (isSuccess && classFull === null) {
-    return { type: 'classNotFound' };
-  }
-
-  if (isError) {
-    const error = queryError instanceof Error ? queryError : new Error(String(queryError));
-    return { type: 'classQueryError', cause: error };
-  }
-
-  return null;
-}
-
-/**
- * Check dataset state for blocking errors (failed or untrustworthy).
- *
- * @param {boolean} isDatasetFailed - Whether the dataset has failed.
- * @param {boolean} isDatasetReady - Whether the dataset is ready.
- * @param {boolean} isDatasetTrustworthy - Whether the dataset is trustworthy.
- * @returns {ClassPageError | null} A blocking error, or null if none.
- */
-function computeDatasetBlockingError(
-  isDatasetFailed: boolean,
-  isDatasetReady: boolean,
-  isDatasetTrustworthy: boolean
-): ClassPageError | null {
-  if (isDatasetFailed) {
-    return { type: 'assignmentDefinitionPartialsFailed' };
-  }
-
-  if (!isDatasetTrustworthy && isDatasetReady) {
-    return { type: 'assignmentDefinitionPartialsUntrustworthy' };
-  }
-
-  return null;
-}
-
-/**
- * Check service-layer errors (adapterError precedes analyserError per spec).
- *
- * @param {Error | null} adapterError - The adapter error.
- * @param {Error | null} analyserError - The analyser error.
- * @returns {ClassPageError | null} A blocking error, or null if none.
- */
-function computeServiceError(
-  adapterError: Error | null,
-  analyserError: Error | null
-): ClassPageError | null {
-  if (adapterError !== null) {
-    return { type: 'adapterError', cause: adapterError };
-  }
-
-  if (analyserError !== null) {
-    return { type: 'analyserError', cause: analyserError };
-  }
-
-  return null;
-}
 
 /**
  * Run the analyser step of the pipeline.
@@ -413,11 +325,10 @@ export function useClassPageData(classId: string): ClassPageData {
     }
 
     // Loading check — if no blocking condition applies, check if any inputs
-    // are still loading
-    const isClassLoading: boolean = classFullQuery.isPending;
-    const isDatasetLoading: boolean = !isDatasetReady && !isDatasetFailed;
-
-    if (isClassLoading || isDatasetLoading) {
+    // are still loading (including the pipeline itself)
+    if (
+      computeIsLoading(classFullQuery.isPending, isDatasetReady, isDatasetFailed, adapterResult)
+    ) {
       return { status: 'loading' };
     }
 
@@ -434,6 +345,7 @@ export function useClassPageData(classId: string): ClassPageData {
     isDatasetTrustworthy,
     analyserError,
     adapterError,
+    adapterResult,
   ]);
 
   // Derive the structured error from the surface state (null when not blocking)

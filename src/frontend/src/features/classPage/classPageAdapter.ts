@@ -24,6 +24,7 @@ import type {
   RecentAssignmentCardModel,
   StudentAverageRowModel,
 } from './classPageAdapter.zod';
+import { compareStudentNames } from './classPageModel';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -478,14 +479,8 @@ export function adaptClassPageToViewModel(input: {
     }
   }
 
-  // Sort by studentName ascending, with studentId as tie-breaker
-  studentAverages = studentAverages.toSorted((a, b) => {
-    const nameCmp = a.studentName.localeCompare(b.studentName, undefined, {
-      sensitivity: 'base',
-    });
-    if (nameCmp !== 0) return nameCmp;
-    return a.studentId.localeCompare(b.studentId);
-  });
+  // Sort by studentName ascending with studentId tie-breaker (shared comparator)
+  studentAverages = studentAverages.toSorted(compareStudentNames);
 
   return {
     recentAssignments: topRecentAssignments,

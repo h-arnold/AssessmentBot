@@ -209,7 +209,7 @@ vi.mock('../services/assignmentDefinition/assignmentTopicsService', () => ({
 
 // Mock ClassPage component for shell integration tests
 const { mockClassPage } = vi.hoisted(() => ({
-  mockClassPage: vi.fn(),
+  mockClassPage: vi.fn().mockReturnValue(null),
 }));
 
 vi.mock('../features/classPage/ClassPage', () => ({

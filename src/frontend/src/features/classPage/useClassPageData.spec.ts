@@ -497,6 +497,26 @@ describe('surfaceState derivation', () => {
     expect(result.current.classFullQuery).toBeDefined();
     expect(result.current.assignmentDefinitionPartials).toBeDefined();
   });
+
+  it('returns loading when isDatasetReady is true but adapterResult is null (pipeline not yet run)', () => {
+    mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
+    mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: createClassFull() }));
+    // Dataset reports ready but the query data is null, so assignmentDefinitionPartials
+    // is null and the pipeline has not produced an adapterResult.
+    mockUsePageDataset.mockReturnValue(
+      createPageDatasetReturn(
+        { data: null as unknown as ClassFull | null },
+        { isDatasetReady: true, isDatasetTrustworthy: true }
+      )
+    );
+
+    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+
+    expect(result.current.surfaceState).toEqual({ status: 'loading' });
+    expect(result.current.adapterResult).toBeNull();
+    expect(result.current.analyserResult).toBeNull();
+    expect(result.current.error).toBeNull();
+  });
 });
 
 // ===========================================================================

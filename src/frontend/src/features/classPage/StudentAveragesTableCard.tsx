@@ -13,7 +13,8 @@
  * filters, initial all empty).
  *
  * **Memoisation.** `buildClassPageViewModel` is called inside a `useMemo`
- * keyed on `[adapterResult, filters, sort, searchTerm]`.
+ * keyed on `[adapterResult, searchTerm, sort]`, and the model is called with
+ * `filters: { searchTerm }`.
  * `buildStudentAveragesTableColumns` is called inside a `useMemo` keyed on
  * `[filters]`.
  *

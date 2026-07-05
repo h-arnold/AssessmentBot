@@ -27,10 +27,6 @@ const validNotAttemptedMetric = {
 };
 
 /**
- *
- * @param overrides
- */
-/**
  * Creates a valid RecentAssignmentCardModel fixture with optional overrides.
  *
  * @param {Record<string, unknown>} overrides - Partial overrides to apply.
@@ -53,10 +49,6 @@ function validRecentAssignmentCard(overrides: Record<string, unknown> = {}) {
 }
 
 /**
- *
- * @param overrides
- */
-/**
  * Creates a valid StudentAverageRowModel fixture with optional overrides.
  *
  * @param {Record<string, unknown>} overrides - Partial overrides to apply.
@@ -76,10 +68,6 @@ function validStudentAverageRow(overrides: Record<string, unknown> = {}) {
   };
 }
 
-/**
- *
- * @param overrides
- */
 /**
  * Creates a valid ClassPageAdapterResult fixture with optional overrides.
  *
