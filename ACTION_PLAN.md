@@ -860,6 +860,11 @@ For I4: Add one new test pinning the comparator's external contract:
 - **Deviations from plan:** None expected.
 - **Follow-up implications:** None. Add §9.18 helper entries during the
   Docs phase.
+- **Completion status:** ✅ COMPLETE. All 41 tests pass (15 classPageModel,
+  17 studentAveragesTableColumns, 9 StudentAveragesTableCard). Lint clean.
+  TypeScript compilation clean. §9.18.10 entry added to shared helpers doc
+  (Status: Implemented). DEFAULT_SORT deduplicated, compareStudentNames
+  extracted as single source of truth for student-name ordering.
 
 ---
 
