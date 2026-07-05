@@ -329,6 +329,44 @@ describe('adaptClassPageToViewModel', () => {
     });
 
     // -----------------------------------------------------------------------
+    // recentAssignments — millisecond-precision ordering via localeCompare
+    // -----------------------------------------------------------------------
+    it('preserves millisecond precision when sorting assignments by lastAssessedAt', () => {
+      const result = adaptClassPageToViewModel({
+        analyserResult: averagingResult({
+          perTask: [],
+        }),
+        classFull: classFull({
+          students: [student('s-1', 'Alice')],
+          assignments: [
+            assignment({
+              assignmentId: 'a-3',
+              updatedAt: '2026-01-01T00:00:00.002Z',
+              definitionKey: 'dk-3',
+              taskIds: ['t1'],
+            }),
+            assignment({
+              assignmentId: 'a-1',
+              updatedAt: '2026-01-01T00:00:00.000Z',
+              definitionKey: 'dk-1',
+              taskIds: ['t1'],
+            }),
+            assignment({
+              assignmentId: 'a-2',
+              updatedAt: '2026-01-01T00:00:00.001Z',
+              definitionKey: 'dk-2',
+              taskIds: ['t1'],
+            }),
+          ],
+        }),
+      });
+
+      expect(result.recentAssignments[0].assignmentId).toBe('a-3');
+      expect(result.recentAssignments[1].assignmentId).toBe('a-2');
+      expect(result.recentAssignments[2].assignmentId).toBe('a-1');
+    });
+
+    // -----------------------------------------------------------------------
     // recentAssignments — rollup via rollupMetric
     // -----------------------------------------------------------------------
     it('rolls up per-task metrics into per-assignment values using rollupMetric', () => {

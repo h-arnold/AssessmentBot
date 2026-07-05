@@ -439,9 +439,7 @@ export function adaptClassPageToViewModel(input: {
   }
 
   // Sort by updatedAt descending and take top 3
-  recentAssignments.sort(
-    (a, b) => new Date(b.lastAssessedAt).getTime() - new Date(a.lastAssessedAt).getTime()
-  );
+  recentAssignments.sort((a, b) => b.lastAssessedAt.localeCompare(a.lastAssessedAt));
   const topRecentAssignments = recentAssignments.slice(0, MAX_RECENT_ASSIGNMENTS);
 
   // -----------------------------------------------------------------------
@@ -457,7 +455,7 @@ export function adaptClassPageToViewModel(input: {
     perStudentLookup.set(row.studentId, row);
   }
 
-  const studentAverages: StudentAverageRowModel[] = [];
+  let studentAverages: StudentAverageRowModel[] = [];
 
   for (const student of classFull.students) {
     const analyserRow = perStudentLookup.get(student.id);
@@ -480,9 +478,8 @@ export function adaptClassPageToViewModel(input: {
     }
   }
 
-  // Sort by studentName ascending (locale-aware, case-insensitive),
-  // with studentId as the deterministic tie-breaker
-  studentAverages.sort((a, b) => {
+  // Sort by studentName ascending, with studentId as tie-breaker
+  studentAverages = studentAverages.toSorted((a, b) => {
     const nameCmp = a.studentName.localeCompare(b.studentName, undefined, {
       sensitivity: 'base',
     });
