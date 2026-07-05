@@ -1017,6 +1017,11 @@ Optionally add a regression test:
   `localeCompare`; switched `.sort()` to `.toSorted()`.
 - **Deviations from plan:** None expected.
 - **Follow-up implications:** None.
+- **Completion status:** ✅ COMPLETE. All 35 tests pass (1 new regression
+  test for millisecond precision). Lint clean. TypeScript compilation clean.
+  `classPageAdapter.ts` is 500 lines (≤ 500). ISO 8601 strings sort
+  lexicographically, avoiding Date allocations. Modern immutable convention
+  with `.toSorted()`.
 
 ---
 
