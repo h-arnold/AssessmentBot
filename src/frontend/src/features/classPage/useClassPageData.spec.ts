@@ -14,9 +14,10 @@ import { renderHook } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createElement, type ReactNode } from 'react';
 import type { UseQueryResult } from '@tanstack/react-query';
+import { createMetricResult } from '../../test/dataAnalysis/fixtures';
 import { useClassPageData } from './useClassPageData';
 import type { ClassPageAdapterResult } from './classPageAdapter.zod';
-import type { AveragingResult, MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
+import type { AveragingResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
 import type { PageDatasetState } from '../../hooks/usePageDataset';
 
@@ -98,68 +99,6 @@ function createTestWrapper(queryClient: QueryClient) {
   };
 }
 
-/**
- * Build a `MetricResult` fixture of the requested state.
- *
- * @param {'computed' | 'notAttempted' | 'error'} state - The MetricResult state discriminator.
- * @param {object} [overrides] - Optional partial overrides.
- * @returns {MetricResult} A MetricResult fixture.
- */
-function metric(
-  state: 'computed',
-  overrides?: Partial<{
-    value: number;
-    totalWeight: number;
-    applicableDataPoints: number;
-    totalDataPoints: number;
-  }>
-): MetricResult;
-function metric(
-  state: 'notAttempted',
-  overrides?: Partial<{ totalWeight: number; totalDataPoints: number }>
-): MetricResult;
-function metric(
-  state: 'error',
-  overrides?: Partial<{ totalWeight: number; totalDataPoints: number }>
-): MetricResult;
-function metric(
-  state: 'computed' | 'notAttempted' | 'error',
-  overrides?: Record<string, unknown>
-): MetricResult {
-  switch (state) {
-    case 'computed': {
-      return {
-        state: 'computed',
-        value: 5,
-        totalWeight: 1,
-        applicableDataPoints: 1,
-        totalDataPoints: 1,
-        ...overrides,
-      } as MetricResult;
-    }
-    case 'notAttempted': {
-      return {
-        state: 'notAttempted',
-        value: 'N',
-        totalWeight: 0,
-        applicableDataPoints: 0,
-        totalDataPoints: 1,
-        ...overrides,
-      } as MetricResult;
-    }
-    case 'error': {
-      return {
-        state: 'error',
-        value: 'E',
-        totalWeight: 0,
-        applicableDataPoints: 0,
-        totalDataPoints: 1,
-        ...overrides,
-      } as MetricResult;
-    }
-  }
-}
-
 // ===========================================================================
 // Fixture factories
 // ===========================================================================
@@ -202,10 +141,10 @@ function createAveragingResult(overrides?: Partial<AveragingResult>): AveragingR
     perStudent: [],
     perTask: [],
     perClass: {
-      completeness: metric('computed', { value: 4 }),
-      accuracy: metric('computed', { value: 3.5 }),
-      spag: metric('notAttempted'),
-      overall: metric('computed', { value: 3.8 }),
+      completeness: createMetricResult('computed', { value: 4 }),
+      accuracy: createMetricResult('computed', { value: 3.5 }),
+      spag: createMetricResult('notAttempted'),
+      overall: createMetricResult('computed', { value: 3.8 }),
     },
     appliedCriterionWeightings: { completeness: 0.4, accuracy: 0.4, spag: 0.2 },
     ...overrides,
@@ -223,10 +162,10 @@ function createAdapterResult(overrides?: Partial<ClassPageAdapterResult>): Class
     recentAssignments: [],
     studentAverages: [],
     classMetrics: {
-      completeness: metric('computed', { value: 4 }),
-      accuracy: metric('computed', { value: 3.5 }),
-      spag: metric('notAttempted'),
-      overall: metric('computed', { value: 3.8 }),
+      completeness: createMetricResult('computed', { value: 4 }),
+      accuracy: createMetricResult('computed', { value: 3.5 }),
+      spag: createMetricResult('notAttempted'),
+      overall: createMetricResult('computed', { value: 3.8 }),
     },
     ...overrides,
   };

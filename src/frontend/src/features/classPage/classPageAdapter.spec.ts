@@ -13,6 +13,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { createMetricResult } from '../../test/dataAnalysis/fixtures';
 import { adaptClassPageToViewModel } from './classPageAdapter';
 import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import type {
@@ -33,67 +34,6 @@ import type {
 
 /** Default ISO timestamp used as `createdAt` / `updatedAt` in fixtures. */
 const DEFAULT_TS = '2026-01-01T00:00:00.000Z';
-
-/**
- * Build a `MetricResult` fixture of the requested state.
- * @param {'computed' | 'notAttempted' | 'error'} state - The MetricResult state.
- * @param {Partial<{ value: number; totalWeight: number; applicableDataPoints: number; totalDataPoints: number }>} [overrides] - Optional partial overrides.
- * @returns {MetricResult} A fully typed MetricResult.
- */
-function metric(
-  state: 'computed',
-  overrides?: Partial<{
-    value: number;
-    totalWeight: number;
-    applicableDataPoints: number;
-    totalDataPoints: number;
-  }>
-): MetricResult;
-function metric(
-  state: 'notAttempted',
-  overrides?: Partial<{ totalWeight: number; totalDataPoints: number }>
-): MetricResult;
-function metric(
-  state: 'error',
-  overrides?: Partial<{ totalWeight: number; totalDataPoints: number }>
-): MetricResult;
-function metric(
-  state: 'computed' | 'notAttempted' | 'error',
-  overrides?: Record<string, unknown>
-): MetricResult {
-  switch (state) {
-    case 'computed': {
-      return {
-        state: 'computed',
-        value: 5,
-        totalWeight: 1,
-        applicableDataPoints: 1,
-        totalDataPoints: 1,
-        ...overrides,
-      } as MetricResult;
-    }
-    case 'notAttempted': {
-      return {
-        state: 'notAttempted',
-        value: 'N',
-        totalWeight: 0,
-        applicableDataPoints: 0,
-        totalDataPoints: 1,
-        ...overrides,
-      } as MetricResult;
-    }
-    case 'error': {
-      return {
-        state: 'error',
-        value: 'E',
-        totalWeight: 0,
-        applicableDataPoints: 0,
-        totalDataPoints: 1,
-        ...overrides,
-      } as MetricResult;
-    }
-  }
-}
 
 /**
  * Build a minimal StudentSummary fixture.
@@ -175,7 +115,7 @@ function perTaskRow(overrides: {
     completeness: overrides.completeness,
     accuracy: overrides.accuracy,
     spag: overrides.spag,
-    overall: metric('computed', { value: 0 }), // placeholder; not used by adapter
+    overall: createMetricResult('computed', { value: 0 }), // placeholder; not used by adapter
   } as PerTaskRow;
 }
 
@@ -215,10 +155,10 @@ function perStudentRow(overrides: {
  */
 function perClassResult(overrides?: Partial<PerClassResult>): PerClassResult {
   return {
-    completeness: metric('computed', { value: 4 }),
-    accuracy: metric('computed', { value: 3.5 }),
-    spag: metric('computed', { value: 2 }),
-    overall: metric('computed', { value: 3.4 }),
+    completeness: createMetricResult('computed', { value: 4 }),
+    accuracy: createMetricResult('computed', { value: 3.5 }),
+    spag: createMetricResult('computed', { value: 2 }),
+    overall: createMetricResult('computed', { value: 3.4 }),
     ...overrides,
   } as PerClassResult;
 }
@@ -312,36 +252,36 @@ describe('adaptClassPageToViewModel', () => {
         perTaskRow({
           definitionKey: 'dk-a',
           taskId: 't1',
-          completeness: metric('computed', { value: 4 }),
-          accuracy: metric('computed', { value: 3 }),
-          spag: metric('computed', { value: 2 }),
+          completeness: createMetricResult('computed', { value: 4 }),
+          accuracy: createMetricResult('computed', { value: 3 }),
+          spag: createMetricResult('computed', { value: 2 }),
         }),
       ];
       const perTaskRowsB: PerTaskRow[] = [
         perTaskRow({
           definitionKey: 'dk-b',
           taskId: 't1',
-          completeness: metric('computed', { value: 5 }),
-          accuracy: metric('computed', { value: 4 }),
-          spag: metric('computed', { value: 3 }),
+          completeness: createMetricResult('computed', { value: 5 }),
+          accuracy: createMetricResult('computed', { value: 4 }),
+          spag: createMetricResult('computed', { value: 3 }),
         }),
       ];
       const perTaskRowsC: PerTaskRow[] = [
         perTaskRow({
           definitionKey: 'dk-c',
           taskId: 't1',
-          completeness: metric('computed', { value: 3 }),
-          accuracy: metric('computed', { value: 2 }),
-          spag: metric('computed', { value: 1 }),
+          completeness: createMetricResult('computed', { value: 3 }),
+          accuracy: createMetricResult('computed', { value: 2 }),
+          spag: createMetricResult('computed', { value: 1 }),
         }),
       ];
       const perTaskRowsD: PerTaskRow[] = [
         perTaskRow({
           definitionKey: 'dk-d',
           taskId: 't1',
-          completeness: metric('computed', { value: 2 }),
-          accuracy: metric('computed', { value: 2 }),
-          spag: metric('computed', { value: 2 }),
+          completeness: createMetricResult('computed', { value: 2 }),
+          accuracy: createMetricResult('computed', { value: 2 }),
+          spag: createMetricResult('computed', { value: 2 }),
         }),
       ];
 
@@ -399,16 +339,16 @@ describe('adaptClassPageToViewModel', () => {
         perTaskRow({
           definitionKey: 'dk1',
           taskId: 't1',
-          completeness: metric('computed', { value: 4, totalWeight: 1 }),
-          accuracy: metric('computed', { value: 3, totalWeight: 1 }),
-          spag: metric('computed', { value: 2, totalWeight: 1 }),
+          completeness: createMetricResult('computed', { value: 4, totalWeight: 1 }),
+          accuracy: createMetricResult('computed', { value: 3, totalWeight: 1 }),
+          spag: createMetricResult('computed', { value: 2, totalWeight: 1 }),
         }),
         perTaskRow({
           definitionKey: 'dk1',
           taskId: 't2',
-          completeness: metric('computed', { value: 5, totalWeight: 1 }),
-          accuracy: metric('computed', { value: 4, totalWeight: 1 }),
-          spag: metric('computed', { value: 3, totalWeight: 1 }),
+          completeness: createMetricResult('computed', { value: 5, totalWeight: 1 }),
+          accuracy: createMetricResult('computed', { value: 4, totalWeight: 1 }),
+          spag: createMetricResult('computed', { value: 3, totalWeight: 1 }),
         }),
       ];
 
@@ -470,9 +410,9 @@ describe('adaptClassPageToViewModel', () => {
         perTaskRow({
           definitionKey: 'dk1',
           taskId: 't1',
-          completeness: metric('computed', { value: 5, totalWeight: 1 }),
-          accuracy: metric('computed', { value: 3, totalWeight: 1 }),
-          spag: metric('computed', { value: 2, totalWeight: 1 }),
+          completeness: createMetricResult('computed', { value: 5, totalWeight: 1 }),
+          accuracy: createMetricResult('computed', { value: 3, totalWeight: 1 }),
+          spag: createMetricResult('computed', { value: 2, totalWeight: 1 }),
         }),
       ];
 
@@ -510,9 +450,9 @@ describe('adaptClassPageToViewModel', () => {
         perTaskRow({
           definitionKey: 'dk1',
           taskId: 't1',
-          completeness: metric('computed', { value: 5 }),
-          accuracy: metric('error'),
-          spag: metric('computed', { value: 3 }),
+          completeness: createMetricResult('computed', { value: 5 }),
+          accuracy: createMetricResult('error'),
+          spag: createMetricResult('computed', { value: 3 }),
         }),
       ];
 
@@ -544,9 +484,9 @@ describe('adaptClassPageToViewModel', () => {
         perTaskRow({
           definitionKey: 'dk1',
           taskId: 't1',
-          completeness: metric('notAttempted'),
-          accuracy: metric('notAttempted'),
-          spag: metric('notAttempted'),
+          completeness: createMetricResult('notAttempted'),
+          accuracy: createMetricResult('notAttempted'),
+          spag: createMetricResult('notAttempted'),
         }),
       ];
 
@@ -578,9 +518,9 @@ describe('adaptClassPageToViewModel', () => {
         perTaskRow({
           definitionKey: 'dk1',
           taskId: 't1',
-          completeness: metric('computed', { value: 4, totalWeight: 1 }),
-          accuracy: metric('computed', { value: 4, totalWeight: 1 }),
-          spag: metric('notAttempted'),
+          completeness: createMetricResult('computed', { value: 4, totalWeight: 1 }),
+          accuracy: createMetricResult('computed', { value: 4, totalWeight: 1 }),
+          spag: createMetricResult('notAttempted'),
         }),
       ];
 
@@ -621,10 +561,10 @@ describe('adaptClassPageToViewModel', () => {
         perStudentRow({
           studentId: 's-1',
           studentName: 'Alice',
-          completeness: metric('computed', { value: 4 }),
-          accuracy: metric('computed', { value: 3 }),
-          spag: metric('computed', { value: 2 }),
-          overall: metric('computed', { value: 3.2 }),
+          completeness: createMetricResult('computed', { value: 4 }),
+          accuracy: createMetricResult('computed', { value: 3 }),
+          spag: createMetricResult('computed', { value: 2 }),
+          overall: createMetricResult('computed', { value: 3.2 }),
         }),
       ];
 
@@ -681,18 +621,18 @@ describe('adaptClassPageToViewModel', () => {
         perStudentRow({
           studentId: 's-2',
           studentName: 'Bob',
-          completeness: metric('computed', { value: 4 }),
-          accuracy: metric('computed', { value: 3 }),
-          spag: metric('computed', { value: 2 }),
-          overall: metric('computed', { value: 3 }),
+          completeness: createMetricResult('computed', { value: 4 }),
+          accuracy: createMetricResult('computed', { value: 3 }),
+          spag: createMetricResult('computed', { value: 2 }),
+          overall: createMetricResult('computed', { value: 3 }),
         }),
         perStudentRow({
           studentId: 's-1',
           studentName: 'Alice',
-          completeness: metric('computed', { value: 5 }),
-          accuracy: metric('computed', { value: 4 }),
-          spag: metric('computed', { value: 3 }),
-          overall: metric('computed', { value: 4 }),
+          completeness: createMetricResult('computed', { value: 5 }),
+          accuracy: createMetricResult('computed', { value: 4 }),
+          spag: createMetricResult('computed', { value: 3 }),
+          overall: createMetricResult('computed', { value: 4 }),
         }),
       ];
 
@@ -864,10 +804,10 @@ describe('adaptClassPageToViewModel', () => {
   describe('classMetrics', () => {
     it('passes through perClass from analyser result unchanged', () => {
       const customPerClass = perClassResult({
-        completeness: metric('computed', { value: 4.2 }),
-        accuracy: metric('notAttempted'),
-        spag: metric('error'),
-        overall: metric('computed', { value: 3.1 }),
+        completeness: createMetricResult('computed', { value: 4.2 }),
+        accuracy: createMetricResult('notAttempted'),
+        spag: createMetricResult('error'),
+        overall: createMetricResult('computed', { value: 3.1 }),
       });
 
       const result = adaptClassPageToViewModel({
@@ -905,16 +845,16 @@ describe('adaptClassPageToViewModel', () => {
       perTaskRow({
         definitionKey: 'shared-dk',
         taskId: 't1',
-        completeness: metric('computed', { value: 4, totalWeight: 1 }),
-        accuracy: metric('computed', { value: 3, totalWeight: 1 }),
-        spag: metric('computed', { value: 2, totalWeight: 1 }),
+        completeness: createMetricResult('computed', { value: 4, totalWeight: 1 }),
+        accuracy: createMetricResult('computed', { value: 3, totalWeight: 1 }),
+        spag: createMetricResult('computed', { value: 2, totalWeight: 1 }),
       }),
       perTaskRow({
         definitionKey: 'shared-dk',
         taskId: 't2',
-        completeness: metric('computed', { value: 5, totalWeight: 1 }),
-        accuracy: metric('computed', { value: 4, totalWeight: 1 }),
-        spag: metric('computed', { value: 3, totalWeight: 1 }),
+        completeness: createMetricResult('computed', { value: 5, totalWeight: 1 }),
+        accuracy: createMetricResult('computed', { value: 4, totalWeight: 1 }),
+        spag: createMetricResult('computed', { value: 3, totalWeight: 1 }),
       }),
     ];
 

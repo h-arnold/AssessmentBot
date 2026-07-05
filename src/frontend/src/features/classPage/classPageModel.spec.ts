@@ -11,79 +11,17 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { createMetricResult } from '../../test/dataAnalysis/fixtures';
 import { buildClassPageViewModel } from './classPageModel';
 import type {
   ClassPageAdapterResult,
   RecentAssignmentCardModel,
   StudentAverageRowModel,
 } from './classPageAdapter.zod';
-import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 
 // ---------------------------------------------------------------------------
 // Fixture helpers
 // ---------------------------------------------------------------------------
-
-/**
- * Build a `MetricResult` fixture of the requested state.
- *
- * @param {'computed' | 'notAttempted' | 'error'} state - The MetricResult state discriminator.
- * @param {object} [overrides] - Optional partial overrides for the MetricResult fields.
- * @returns {MetricResult} A fully typed MetricResult fixture.
- */
-function metric(
-  state: 'computed',
-  overrides?: Partial<{
-    value: number;
-    totalWeight: number;
-    applicableDataPoints: number;
-    totalDataPoints: number;
-  }>
-): MetricResult;
-function metric(
-  state: 'notAttempted',
-  overrides?: Partial<{ totalWeight: number; totalDataPoints: number }>
-): MetricResult;
-function metric(
-  state: 'error',
-  overrides?: Partial<{ totalWeight: number; totalDataPoints: number }>
-): MetricResult;
-function metric(
-  state: 'computed' | 'notAttempted' | 'error',
-  overrides?: Record<string, unknown>
-): MetricResult {
-  switch (state) {
-    case 'computed': {
-      return {
-        state: 'computed',
-        value: 5,
-        totalWeight: 1,
-        applicableDataPoints: 1,
-        totalDataPoints: 1,
-        ...overrides,
-      } as MetricResult;
-    }
-    case 'notAttempted': {
-      return {
-        state: 'notAttempted',
-        value: 'N',
-        totalWeight: 0,
-        applicableDataPoints: 0,
-        totalDataPoints: 1,
-        ...overrides,
-      } as MetricResult;
-    }
-    case 'error': {
-      return {
-        state: 'error',
-        value: 'E',
-        totalWeight: 0,
-        applicableDataPoints: 0,
-        totalDataPoints: 1,
-        ...overrides,
-      } as MetricResult;
-    }
-  }
-}
 
 /**
  * Build a `StudentAverageRowModel` fixture with sensible defaults.
@@ -98,10 +36,10 @@ function buildStudentRow(overrides?: Partial<StudentAverageRowModel>): StudentAv
     studentId: 's-1',
     studentName: 'Student A',
     metrics: {
-      completeness: metric('computed'),
-      accuracy: metric('computed'),
-      spag: metric('computed'),
-      average: metric('computed'),
+      completeness: createMetricResult('computed'),
+      accuracy: createMetricResult('computed'),
+      spag: createMetricResult('computed'),
+      average: createMetricResult('computed'),
     },
     ...overrides,
   };
@@ -124,19 +62,19 @@ function buildAdapterResult(overrides?: Partial<ClassPageAdapterResult>): ClassP
         lastAssessedAt: '2026-06-01T00:00:00.000Z',
         lastAssessedAtLabel: '01/06/2026',
         metrics: {
-          completeness: metric('computed'),
-          accuracy: metric('computed'),
-          spag: metric('computed'),
-          average: metric('computed'),
+          completeness: createMetricResult('computed'),
+          accuracy: createMetricResult('computed'),
+          spag: createMetricResult('computed'),
+          average: createMetricResult('computed'),
         },
       },
     ],
     studentAverages: [buildStudentRow()],
     classMetrics: {
-      completeness: metric('computed', { value: 4.2 }),
-      accuracy: metric('computed', { value: 3.5 }),
-      spag: metric('notAttempted'),
-      overall: metric('computed', { value: 3.8 }),
+      completeness: createMetricResult('computed', { value: 4.2 }),
+      accuracy: createMetricResult('computed', { value: 3.5 }),
+      spag: createMetricResult('notAttempted'),
+      overall: createMetricResult('computed', { value: 3.8 }),
     },
     ...overrides,
   };
@@ -158,18 +96,18 @@ describe('buildClassPageViewModel', () => {
         lastAssessedAt: '2026-06-01T00:00:00.000Z',
         lastAssessedAtLabel: '01/06/2026',
         metrics: {
-          completeness: metric('computed', { value: 4 }),
-          accuracy: metric('notAttempted'),
-          spag: metric('error'),
-          average: metric('computed', { value: 3.2 }),
+          completeness: createMetricResult('computed', { value: 4 }),
+          accuracy: createMetricResult('notAttempted'),
+          spag: createMetricResult('error'),
+          average: createMetricResult('computed', { value: 3.2 }),
         },
       };
 
       const classMetrics = {
-        completeness: metric('computed', { value: 4.5 }),
-        accuracy: metric('computed', { value: 3 }),
-        spag: metric('error'),
-        overall: metric('computed', { value: 3.7 }),
+        completeness: createMetricResult('computed', { value: 4.5 }),
+        accuracy: createMetricResult('computed', { value: 3 }),
+        spag: createMetricResult('error'),
+        overall: createMetricResult('computed', { value: 3.7 }),
       };
 
       const adapterResult = buildAdapterResult({
@@ -317,40 +255,40 @@ describe('buildClassPageViewModel', () => {
         studentId: 's-1',
         studentName: 'Alice',
         metrics: {
-          completeness: metric('computed', { value: 2 }),
-          accuracy: metric('computed'),
-          spag: metric('computed'),
-          average: metric('computed'),
+          completeness: createMetricResult('computed', { value: 2 }),
+          accuracy: createMetricResult('computed'),
+          spag: createMetricResult('computed'),
+          average: createMetricResult('computed'),
         },
       });
       const highComputedRow = buildStudentRow({
         studentId: 's-2',
         studentName: 'Bob',
         metrics: {
-          completeness: metric('computed', { value: 8 }),
-          accuracy: metric('computed'),
-          spag: metric('computed'),
-          average: metric('computed'),
+          completeness: createMetricResult('computed', { value: 8 }),
+          accuracy: createMetricResult('computed'),
+          spag: createMetricResult('computed'),
+          average: createMetricResult('computed'),
         },
       });
       const notAttemptedRow = buildStudentRow({
         studentId: 's-3',
         studentName: 'Charlie',
         metrics: {
-          completeness: metric('notAttempted'),
-          accuracy: metric('computed'),
-          spag: metric('computed'),
-          average: metric('computed'),
+          completeness: createMetricResult('notAttempted'),
+          accuracy: createMetricResult('computed'),
+          spag: createMetricResult('computed'),
+          average: createMetricResult('computed'),
         },
       });
       const errorRow = buildStudentRow({
         studentId: 's-4',
         studentName: 'Diana',
         metrics: {
-          completeness: metric('error'),
-          accuracy: metric('computed'),
-          spag: metric('computed'),
-          average: metric('computed'),
+          completeness: createMetricResult('error'),
+          accuracy: createMetricResult('computed'),
+          spag: createMetricResult('computed'),
+          average: createMetricResult('computed'),
         },
       });
 
@@ -376,40 +314,40 @@ describe('buildClassPageViewModel', () => {
         studentId: 's-2',
         studentName: 'Bob',
         metrics: {
-          completeness: metric('computed', { value: 8 }),
-          accuracy: metric('computed'),
-          spag: metric('computed'),
-          average: metric('computed'),
+          completeness: createMetricResult('computed', { value: 8 }),
+          accuracy: createMetricResult('computed'),
+          spag: createMetricResult('computed'),
+          average: createMetricResult('computed'),
         },
       });
       const lowComputedRow = buildStudentRow({
         studentId: 's-1',
         studentName: 'Alice',
         metrics: {
-          completeness: metric('computed', { value: 2 }),
-          accuracy: metric('computed'),
-          spag: metric('computed'),
-          average: metric('computed'),
+          completeness: createMetricResult('computed', { value: 2 }),
+          accuracy: createMetricResult('computed'),
+          spag: createMetricResult('computed'),
+          average: createMetricResult('computed'),
         },
       });
       const notAttemptedRow = buildStudentRow({
         studentId: 's-3',
         studentName: 'Charlie',
         metrics: {
-          completeness: metric('notAttempted'),
-          accuracy: metric('computed'),
-          spag: metric('computed'),
-          average: metric('computed'),
+          completeness: createMetricResult('notAttempted'),
+          accuracy: createMetricResult('computed'),
+          spag: createMetricResult('computed'),
+          average: createMetricResult('computed'),
         },
       });
       const errorRow = buildStudentRow({
         studentId: 's-4',
         studentName: 'Diana',
         metrics: {
-          completeness: metric('error'),
-          accuracy: metric('computed'),
-          spag: metric('computed'),
-          average: metric('computed'),
+          completeness: createMetricResult('error'),
+          accuracy: createMetricResult('computed'),
+          spag: createMetricResult('computed'),
+          average: createMetricResult('computed'),
         },
       });
 
@@ -440,20 +378,20 @@ describe('buildClassPageViewModel', () => {
         studentId: 's-B',
         studentName: 'Beta',
         metrics: {
-          completeness: metric('computed', { value: 5 }),
-          accuracy: metric('computed'),
-          spag: metric('computed'),
-          average: metric('computed'),
+          completeness: createMetricResult('computed', { value: 5 }),
+          accuracy: createMetricResult('computed'),
+          spag: createMetricResult('computed'),
+          average: createMetricResult('computed'),
         },
       });
       const studentARow = buildStudentRow({
         studentId: 's-A',
         studentName: 'Alpha',
         metrics: {
-          completeness: metric('computed', { value: 5 }),
-          accuracy: metric('computed'),
-          spag: metric('computed'),
-          average: metric('computed'),
+          completeness: createMetricResult('computed', { value: 5 }),
+          accuracy: createMetricResult('computed'),
+          spag: createMetricResult('computed'),
+          average: createMetricResult('computed'),
         },
       });
 
