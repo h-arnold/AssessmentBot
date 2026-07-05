@@ -1589,9 +1589,15 @@ Red-first does not apply (config-only).
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** [TO BE FILLED AT COMPLETION]
-- **Deviations from plan:** [TO BE FILLED]
+- **Implementation notes:** All 22 findings remediated. Regression hardening
+  checks all pass.
+- **Deviations from plan:** None.
 - **Follow-up implications:** None.
+- **Completion status:** ✅ COMPLETE. All 1,435 tests pass (12 new tests added
+  across sections). Lint clean (0 errors, 0 warnings). TypeScript compilation
+  clean. classPageAdapter.ts is 500 lines (≤ 500). Grep checks: 0 residual
+  "red phase" wording, 0 local `metric` declarations, 0 `findDuplicateStudentId`
+  or `findDuplicateAssignmentId` references.
 
 ---
 
@@ -1660,10 +1666,16 @@ Red-first does not apply (config-only).
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** [TO BE FILLED]
-- **Deviations from plan:** [TO BE FILLED]
+- **Implementation notes:** All §9.18 helper entries reconciled. Three new
+  entries added during this remediation: §9.18.8 (findFirstDuplicate),
+  §9.18.9 (getStudentMetric), §9.18.10 (compareStudentNames). All marked
+  as "Implemented". No "Not implemented" placeholders remain.
+- **Deviations from plan:** None.
 - **Follow-up implications:** None expected. The CODE_REVIEW.md itself
   remains as a historical record at the repo root; do not delete it.
+- **Completion status:** ✅ COMPLETE. Documentation reconciliation verified.
+  All helper entries in §9.18 are marked "Implemented". No contradictions
+  between documentation and actual implementation.
 
 ---
 
