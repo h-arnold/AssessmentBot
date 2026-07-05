@@ -659,6 +659,19 @@ These entries record the feature-local helpers for the Class page. Per `frontend
 - Status: `Implemented`
 - Planned doc reconciliation: confirmed the decomposition boundary (criterion-level accumulation only) is correct and the extracted module is under 550 lines (223 LOC).
 
+#### 9.18.8 Generic duplicate-detection helper extracted from duplicate validators
+
+12. Helper: `findFirstDuplicate<T>(items: readonly T[], keyFunction: (item: T) => string): string | null`
+
+- Decision: `extract`
+- Owning module/path: `src/frontend/src/features/classPage/classPageAdapter.ts` (private, kept local)
+- Call-site rationale: replaces two near-identical functions (`findDuplicateStudentId` and `findDuplicateAssignmentId`) with a single generic iterator over an array of typed items, accepting a key-extraction function. Both callers now invoke `findFirstDuplicate` with an inline lambda instead of maintaining separate strongly-typed iterators.
+- Status: `Implemented`
+- Implementation notes:
+  - Private inside `classPageAdapter.ts`; not exposed as a shared helper.
+  - Uses `readonly T[]` for broader type compatibility.
+  - Throws the same `TypeError` for duplicate IDs as the original functions via the same caller-site check.
+
 ### 9.19 Frontend pure formatting helpers
 
 These entries record the planned pure formatting helpers extracted from feature code into shared utility modules.

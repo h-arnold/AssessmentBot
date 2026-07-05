@@ -103,35 +103,25 @@ function validateUpdatedAt(
 }
 
 /**
- * Detect the first duplicate student ID in the roster.
+ * Find the first duplicate key in a list.
  *
- * @param {ClassFull['students']} students - The class student list.
- * @returns {string | null} The duplicate student ID, or `null` if all IDs are unique.
+ * @remarks Unifies duplicate-id detection for both students and assignments.
+ * @typeParam T - The item type.
+ * @param {readonly T[]} items - The items to scan for duplicates.
+ * @param {(item: T) => string} keyFunction - Extracts a string key from each item.
+ * @returns {string | null} The first duplicate key, or `null` if all are unique.
  */
-function findDuplicateStudentId(students: ClassFull['students']): string | null {
+function findFirstDuplicate<T>(
+  items: readonly T[],
+  keyFunction: (item: T) => string
+): string | null {
   const seen = new Set<string>();
-  for (const s of students) {
-    if (seen.has(s.id)) {
-      return s.id;
+  for (const item of items) {
+    const key = keyFunction(item);
+    if (seen.has(key)) {
+      return key;
     }
-    seen.add(s.id);
-  }
-  return null;
-}
-
-/**
- * Detect the first duplicate assignment ID in the assignments list.
- *
- * @param {ClassFull['assignments']} assignments - The class assignment list.
- * @returns {string | null} The duplicate assignment ID, or `null` if all IDs are unique.
- */
-function findDuplicateAssignmentId(assignments: ClassFull['assignments']): string | null {
-  const seen = new Set<string>();
-  for (const a of assignments) {
-    if (seen.has(a.assignmentId)) {
-      return a.assignmentId;
-    }
-    seen.add(a.assignmentId);
+    seen.add(key);
   }
   return null;
 }
@@ -417,12 +407,12 @@ export function adaptClassPageToViewModel(input: {
   // Trust validation
   // -----------------------------------------------------------------------
 
-  const dupStudentId = findDuplicateStudentId(classFull.students);
+  const dupStudentId = findFirstDuplicate(classFull.students, (s) => s.id);
   if (dupStudentId !== null) {
     throw new TypeError(`Duplicate student id: ${dupStudentId}`);
   }
 
-  const dupAssignmentId = findDuplicateAssignmentId(classFull.assignments);
+  const dupAssignmentId = findFirstDuplicate(classFull.assignments, (a) => a.assignmentId);
   if (dupAssignmentId !== null) {
     throw new TypeError(`Duplicate assignment id: ${dupAssignmentId}`);
   }
