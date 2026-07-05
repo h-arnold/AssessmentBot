@@ -1,8 +1,12 @@
 import type { AveragingAnalyserInput, AveragingResult, PerClassResult } from '../dataAnalysis.zod';
 import { accumulateDataPoints } from './averagingAnalyser.accumulation';
 import { filterAssignments } from './averagingAnalyser.filters';
-import { buildPerStudentRows, buildPerTaskRows } from './averagingAnalyser.rows';
-import { accumToMetric } from './averagingAnalyser.accumulation';
+import {
+  buildPerStudentRows,
+  buildPerTaskRows,
+  rollupAccumulators,
+} from './averagingAnalyser.rows';
+import type { DataPointAccumulator } from './averagingAnalyser.types';
 
 /**
  * Default criterion weightings: completeness=0.4, accuracy=0.4, spag=0.2.
@@ -70,6 +74,13 @@ export class AveragingAnalyser {
   /**
    * Analyse a single class and produce its AveragingResult.
    *
+   * @remarks
+   * The per-class rollup now uses `rollupAccumulators` — the same function as
+   * per-student and per-task rollups — eliminating the dual-path duplication.
+   * When no per-student-task accumulators exist, the fallback passes
+   * `[classAccum]` as a single-element array, which delegates to the same
+   * `rollupMetric` path as the populated case.
+   *
    * @param {AveragingAnalyserInput['classes'][number]} cls - The class data.
    * @param {AveragingAnalyserInput} input - The full analyser input.
    * @returns {AveragingResult} The per-class analysis result.
@@ -81,13 +92,35 @@ export class AveragingAnalyser {
     const filteredAssignments = filterAssignments(cls, input);
     const accumulators = accumulateDataPoints(filteredAssignments, input, this.criterionWeightings);
 
-    const perStudent = buildPerStudentRows(accumulators.studentAccums);
-    const perTask = buildPerTaskRows(accumulators.taskAccums);
+    const perStudent = buildPerStudentRows(
+      accumulators.studentAccums,
+      accumulators.perStudentTaskAccums,
+      this.criterionWeightings
+    );
+    const perTask = buildPerTaskRows(
+      accumulators.taskAccums,
+      accumulators.perStudentTaskAccums,
+      this.criterionWeightings
+    );
+
+    // Build per-class rollup from all per-(student, task) accumulators
+    const allPerStudentTaskAccums: DataPointAccumulator[] = [];
+    for (const taskMap of accumulators.perStudentTaskAccums.values()) {
+      for (const accumulator of taskMap.values()) {
+        allPerStudentTaskAccums.push(accumulator);
+      }
+    }
+
+    const { completeness, accuracy, spag, overall } =
+      allPerStudentTaskAccums.length > 0
+        ? rollupAccumulators(allPerStudentTaskAccums, this.criterionWeightings)
+        : rollupAccumulators([accumulators.classAccum], this.criterionWeightings);
+
     const perClass: PerClassResult = {
-      completeness: accumToMetric(accumulators.classAccum.completeness),
-      accuracy: accumToMetric(accumulators.classAccum.accuracy),
-      spag: accumToMetric(accumulators.classAccum.spag),
-      overall: accumToMetric(accumulators.classAccum.overall),
+      completeness,
+      accuracy,
+      spag,
+      overall,
     };
 
     return {

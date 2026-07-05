@@ -78,16 +78,20 @@ Some tasks — particularly spreadsheet or formula-based tasks — do not involv
 
 ## Understanding the numbers in the results table
 
-When you view analysis results, each metric shows four numbers:
+When you view analysis results, each metric shows four rows of summary data:
 
-| Field                      | What it means                                                                                                                                                          |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Value**                  | The weighted average score (0–5), or blank/`—` if there are no applicable data points.                                                                                 |
-| **Total weight**           | The sum of the influences (assignment weighting × task weighting) for all applicable submissions. This gives you a sense of how much evidence the average is based on. |
-| **Applicable data points** | How many submissions actually contributed to this metric. For example, if SPaG shows 8 out of 10, it means 2 submissions were formula tasks where SPaG did not apply.  |
-| **Total data points**      | The total number of submissions in this group, including those where the metric was not applicable.                                                                    |
+| Field                      | What it means                                                                                                                                                                                                                                                 |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Value**                  | The weighted average score (0–5) with the band colour (red, amber, or green); or **N** (grey) when the student did not attempt the work; or **E** (dark red) when the analyser could not compute a usable value. The colour is the visual signal of the band. |
+| **Total weight**           | The sum of the influences (assignment weighting × task weighting) for all applicable submissions. This gives you a sense of how much evidence the average is based on.                                                                                        |
+| **Applicable data points** | How many submissions actually contributed to this metric. For example, if SPaG shows 8 out of 10, it means 2 submissions were formula tasks where SPaG did not apply.                                                                                         |
+| **Total data points**      | The total number of submissions in this group, including those where the metric was not applicable.                                                                                                                                                           |
 
-**Example**: A student has 5 completed tasks. Their completeness score of 4.2 is based on all 5 tasks (applicable: 5 of 5). Their SPaG score of 3.8 is based on 4 of the 5 tasks (one was a formula task where SPaG was not applicable). The `totalWeight` for SPaG might be lower than for completeness because the formula task carried influence for completeness but not for SPaG.
+The **Value** row can now show three kinds of result: a number for computed scores, **N** for work the student did not attempt, or **E** for cases where the analyser could not produce a usable score (for example, submissions exist but no assessments were performed). The band colour (red, amber, green, grey, or dark red) is the visual signal that tells you at a glance which state applies. **N** is always a deliberate signal that the student did not attempt the work — it is not the same as a data problem. **E** means submissions exist but the analyser could not compute a usable value for that metric.
+
+Note: when the analyser encounters the **E** state, `totalDataPoints` may exceed `applicableDataPoints` even when no **N** is recorded. This simply means submissions exist but none of them had usable assessment data for that metric — it is not a sign of missing data.
+
+**Example**: A student has 5 completed tasks. Their completeness value of 4.2 is based on all 5 tasks (applicable: 5 of 5). Their SPaG value of 3.8 is based on 4 of the 5 tasks (one was a formula task where SPaG was not applicable). The `totalWeight` for SPaG might be lower than for completeness because the formula task carried influence for completeness but not for SPaG.
 
 ## Planned future analyses
 
@@ -98,3 +102,5 @@ The current analysis shows averages per student, per task, and per class. Future
 - **Distribution analysis** — see the spread of scores within a class.
 
 These will be added as separate analysis options and will not change the existing averages.
+
+The Class page (the per-class overview surface) is the first place the three states (computed score, **N** for not attempted, **E** for error) appear. Cohort, trend, and distribution analyses will reuse the same vocabulary when they are built.

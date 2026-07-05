@@ -61,7 +61,7 @@ function buildRepresentativePayload(overrides = {}) {
     assignmentId: 'assign-001',
     assignmentName: 'Test Assignment',
     dueDate: '2026-06-15T00:00:00.000Z',
-    lastUpdated: '2026-06-14T00:00:00.000Z',
+    updatedAt: '2026-06-14T00:00:00.000Z',
     createdAt: '2026-06-15T10:00:00.000Z',
     documentType: 'SLIDES',
     referenceDocumentId: 'ref-001',
@@ -257,7 +257,7 @@ describe('Api/getAssignment transport contract', () => {
     const { getAssignment_ } = loadModule();
 
     const dueDate = new Date('2026-06-15T00:00:00.000Z');
-    const lastUpdated = new Date('2026-06-14T00:00:00.000Z');
+    const updatedAt = new Date('2026-06-14T00:00:00.000Z');
     const createdAt = new Date('2026-06-15T10:00:00.000Z');
 
     const mockAssignment = {
@@ -266,7 +266,7 @@ describe('Api/getAssignment transport contract', () => {
         assignmentId: 'assign-001',
         assignmentName: 'Test Assignment',
         dueDate,
-        lastUpdated,
+        updatedAt,
         createdAt,
         documentType: 'SLIDES',
         referenceDocumentId: 'ref-001',
@@ -286,8 +286,8 @@ describe('Api/getAssignment transport contract', () => {
     // Both fields should be ISO strings after normaliseDateFields
     expect(typeof result.dueDate).toBe('string');
     expect(result.dueDate).toBe('2026-06-15T00:00:00.000Z');
-    expect(typeof result.lastUpdated).toBe('string');
-    expect(result.lastUpdated).toBe('2026-06-14T00:00:00.000Z');
+    expect(typeof result.updatedAt).toBe('string');
+    expect(result.updatedAt).toBe('2026-06-14T00:00:00.000Z');
     expect(typeof result.createdAt).toBe('string');
     expect(result.createdAt).toBe('2026-06-15T10:00:00.000Z');
   });
@@ -304,7 +304,7 @@ describe('Api/getAssignment transport contract', () => {
         assignmentId: 'assign-001',
         assignmentName: 'Test Assignment',
         dueDate: '2026-06-15T00:00:00.000Z',
-        lastUpdated: '2026-06-14T00:00:00.000Z',
+        updatedAt: '2026-06-14T00:00:00.000Z',
         createdAt: '2026-06-15T10:00:00.000Z',
         documentType: 'SLIDES',
         referenceDocumentId: 'ref-001',

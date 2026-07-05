@@ -300,7 +300,7 @@ Treat these modes as diagnostics controls, not separate runtime contracts.
   - Frontend debug logs can be enabled for local troubleshooting.
   - Builder step summaries should still stay deterministic and structured.
 
-- **Production mode (`build`)**
+- **Production mode (`build:production`)**
   - Keep logs concise and operationally useful.
   - Avoid noisy debug-level browser logs by default.
   - Keep stack-trace-heavy client diagnostics disabled by default.

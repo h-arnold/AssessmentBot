@@ -121,7 +121,7 @@ are partially hydrated (note the embedded `assignmentDefinition` has `tasks: nul
       "assignmentId": "A1",
       "assignmentName": "Essay 1",
       "dueDate": null,
-      "lastUpdated": "2025-09-10T12:34:56Z",
+      "updatedAt": "2025-09-10T12:34:56Z",
       "documentType": "SLIDES",
       "assignmentDefinition": {
         "primaryTitle": "Essay 1",
@@ -249,7 +249,7 @@ teachers, and partial assignment summaries. Unlike the partial registry
       "assignmentId": "A1",
       "assignmentName": "Algebra Baseline",
       "dueDate": "2025-06-01T23:59:59.000Z",
-      "lastUpdated": "2025-05-15T12:00:00.000Z",
+      "updatedAt": "2025-05-15T12:00:00.000Z",
       "createdAt": "2025-05-01T08:00:00.000Z",
       "documentType": "SLIDES",
       "submissions": [
@@ -750,7 +750,7 @@ Used when we want a lightweight snapshot for list views or quick comparisons. Th
   "assignmentId": "A1",
   "assignmentName": "Essay 1",
   "dueDate": null,
-  "lastUpdated": "2025-09-10T12:34:56Z",
+  "updatedAt": "2025-09-10T12:34:56Z",
   "documentType": "SLIDES",
   "assignmentDefinition": {
     "primaryTitle": "Essay 1",
@@ -843,7 +843,7 @@ Partial JSONs also redact artifact `content`/`contentHash` and drop the `reasoni
   "assignmentId": "A1",
   "assignmentName": "Essay 1",
   "dueDate": null,
-  "lastUpdated": "2025-09-10T12:34:56Z",
+  "updatedAt": "2025-09-10T12:34:56Z",
   "documentType": "SLIDES",
   "referenceDocumentId": "DriveRef123",
   "templateDocumentId": "DriveTemplate123",
@@ -1081,7 +1081,7 @@ When assessments and feedback data exists, both partial and full hydration inclu
   "assignmentId": "A1",
   "assignmentName": "Essay 1",
   "dueDate": null,
-  "lastUpdated": "2025-09-10T12:34:56Z",
+  "updatedAt": "2025-09-10T12:34:56Z",
   "documentType": "SLIDES",
   "submissions": [
     {

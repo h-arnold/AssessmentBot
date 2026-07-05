@@ -2,27 +2,40 @@
 
 Applies when editing `src/frontend/**`.
 
-## 1. Language and Runtime
+## 0. Key Documentation
+
+| Doc                                                                            | Summary                                            |
+| ------------------------------------------------------------------------------ | -------------------------------------------------- |
+| `docs/developer/frontend/frontend-loading-and-width-standards.md`              | Loading states, skeleton patterns, width tokens    |
+| `docs/developer/frontend/frontend-react-query-and-prefetch.md`                 | React Query baseline, prefetch/warm-up strategy    |
+| `docs/developer/frontend/frontend-shell-navigation-and-motion.md`              | Shell navigation, decorative icons, reduced-motion |
+| `docs/developer/frontend/frontend-playwright-e2e.md`                           | Playwright E2E test conventions and commands       |
+| `docs/developer/frontend/frontend-modal-patterns.md`                           | Modal-family reuse, discovery, extraction rules    |
+| `docs/developer/frontend/frontend-logging-and-error-handling.md`               | Frontend logging and error handling policy         |
+| `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` | Shared helpers, when to create new abstractions    |
+| `docs/developer/frontend/frontend-testing.md`                                  | Frontend Vitest testing conventions and commands   |
+
+## 2. Language and Runtime
 
 - Use idiomatic TypeScript targeting modern ECMAScript (ES2024-level standards in project config).
 - Frontend code is ESM React + Vite, not GAS runtime code.
 - Prefer typed, composable React function components and explicit data contracts.
 - Export functions as functions, not constants assigned to arrow functions, for better stack traces and readability. Exporting functions as constants without a very good reason is an anti-pattern and will cause a code review to fail.
 
-## 2. Frontend Structure
+## 3. Frontend Structure
 
 - App code: `src/frontend/src/**`
 - Frontend package/tooling is self-contained under `src/frontend/package.json`.
 
 Root scripts execute frontend tasks via `npm --prefix src/frontend ...`.
 
-### 2.1 App Composition Boundary (Mandatory)
+### 3.1 App Composition Boundary (Mandatory)
 
 - Keep `src/frontend/src/App.tsx` thin: composition root and layout shell only.
 - Compose feature entry components in `App.tsx`; do not place feature state machines in `App.tsx`.
 - Do not call service modules from `App.tsx`; invoke services from feature hooks/components.
 
-### 2.2 Hooks, Services, and Side Effects
+### 3.2 Hooks, Services, and Side Effects
 
 - Place async orchestration and side effects in feature hooks (for example `useXyz...`).
 - Keep service modules focused on external/runtime API boundaries and transport details.
@@ -31,13 +44,14 @@ Root scripts execute frontend tasks via `npm --prefix src/frontend ...`.
 - Utility functions, custom hooks, validators, and common components must check `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` before creating new abstractions. Flag code that duplicates logic already in shared helpers as a Critical issue during code review.
 - For React Query baseline, startup warm-up, and prefetch policy guidance, use `docs/developer/frontend/frontend-react-query-and-prefetch.md`.
 
-### 2.3 Feature Directory Layout
+### 3.3 Feature Directory Layout
 
 Feature state machines, hooks, modal components, and feature-scoped helpers live under
 `src/frontend/src/features/`. Current feature directories:
 
 - `assignmentWizard/` — Assignment definition wizard (extracted from `pages/`)
 - `auth/` — Authorisation gate and status
+- `classPage/` — Class detail view (per-class overview surface); child of `ClassesPage`, not a top-level page
 - `classes/` — Class management, assessment, bulk operations, and table
 - `referenceData/` — Cross-cutting reference data management (cohorts, year groups, topics; extracted from `features/classes/management/` and `features/settings/`)
 - `settings/` — Backend settings configuration
@@ -45,7 +59,7 @@ Feature state machines, hooks, modal components, and feature-scoped helpers live
 Pages under `src/frontend/src/pages/` remain thin composition roots that compose feature
 components. No feature logic, state machines, or hooks should live in `pages/`.
 
-## 3. Framework and UI Baseline
+## 4. Framework and UI Baseline
 
 - Current scaffold uses React + Ant Design.
 - Ant Design v6 does not require `@ant-design/v5-patch-for-react-19`; do not add that patch.
@@ -53,13 +67,13 @@ components. No feature logic, state machines, or hooks should live in `pages/`.
 
 **Important**: When adding, using or modifying UI components, ALWAYS check the [Ant Design documentation](https://ant.design/llms.txt) and browse the relevant docs for the component or components you are working with. Ant Design has a lot of built-in functionality and options, and it's likely that the behaviour you want to implement is already supported by the library. Familiarise yourself with the documentation to ensure you're using the components effectively and following best practices.
 
-## 4. Backend Boundary
+## 5. Backend Boundary
 
 - Do not import runtime modules directly from `src/backend` into frontend code.
 - Treat frontend/backend integration as an API boundary.
 - Keep frontend free of GAS global/service assumptions.
 
-### 4.1 Required API transport pattern
+### 5.1 Required API transport pattern
 
 - **Hard rule:** all frontend-to-backend calls must be routed through `src/frontend/src/services/apiService.ts` (`callApi`).
 - Never call backend API methods directly from frontend feature code, components, hooks, or services via `google.script.run`, backend globals, or any other transport shortcut.
@@ -70,7 +84,7 @@ components. No feature logic, state machines, or hooks should live in `pages/`.
 - Use `src/frontend/src/services/backendConfiguration/backendConfigurationService.ts` for backend configuration reads and writes; keep request and response validation in `src/frontend/src/services/backendConfiguration/backendConfiguration.zod.ts`.
 - Treat `getBackendConfig` and `setBackendConfig` as the canonical backend configuration method names. Do not route configuration UI flows through legacy backend globals.
 
-### 4.2 Serialization boundary
+### 5.2 Serialization boundary
 
 GAS `google.script.run` auto-JSON-stringifies backend return values before passing them to
 `withSuccessHandler`. The frontend must reverse this at a single choke point.
@@ -83,7 +97,7 @@ GAS `google.script.run` auto-JSON-stringifies backend return values before passi
 - **`failureHandler`:** GAS passes raw error strings (not JSON) to `failureHandler`.
   `apiService.ts` handles this without parsing.
 
-### 4.3 Prohibited types in `google.script.run` (critical)
+### 5.3 Prohibited types in `google.script.run` (critical)
 
 `google.script.run` **prohibits** `Date`, `Function`, and DOM elements in both **parameters and
 return values** — including inside nested objects and arrays. If any value in the response graph
@@ -108,9 +122,9 @@ Return value note: "return types are subject to the same restrictions as paramet
 For test mock fidelity rules (do not manually stringify/parse in individual test files), see
 `docs/developer/frontend/frontend-testing.md`.
 
-## 5. Error Handling and Quality
+## 6. Error Handling and Quality
 
-### 5.1 Loading and width standards
+### 6.1 Loading and width standards
 
 - Treat the smallest independently usable panel, card, table region, or dialog content as the owned surface for loading, mutation, and width decisions.
 - Initial entry with no usable data must render a shape-matched skeleton; once usable data is visible, keep it visible during refresh and show a local busy affordance scoped to the affected surface or subregion.
@@ -127,14 +141,14 @@ For test mock fidelity rules (do not manually stringify/parse in individual test
 - Never implement or fall back to defaults unless explicitly instructed to do so.
 - Keep component state and side effects predictable and testable.
 
-## 6. Builder Compatibility Notes
+## 7. Builder Compatibility Notes
 
 Frontend build output is consumed by the GAS builder pipeline.
 
 - Avoid introducing runtime assumptions that require external CDN assets at execution time.
 - Keep `index.html`-driven asset wiring compatible with builder inlining to HtmlService output.
 
-## 7. Config, Lint, and Testing Delegation
+## 8. Config, Lint, and Testing Delegation
 
 - Before changing TS/ESLint config, read `docs/developer/builder/TypeScriptAndLintConfigHierarchy.md`.
 - Delegate all Vitest unit/component test implementation and test-debugging work to `Testing Specialist` when sub-agent delegation is available.
@@ -143,7 +157,7 @@ Frontend build output is consumed by the GAS builder pipeline.
 - Shared frontend test helpers live under `src/frontend/src/test/**`; keep specs co-located in `src/frontend/src/**` and do not import `src/test/**` from production source.
 - When a frontend change depends on backend configuration transport behaviour, treat `tests/api/backendConfigApi.test.js` as the dedicated backend transport suite and keep frontend service assertions in `src/frontend/src/services/backendConfiguration/backendConfigurationService.spec.ts`.
 
-## 8. Validation and Type Definition Standard
+## 9. Validation and Type Definition Standard
 
 - Use **Zod** as the validation framework for all new and updated frontend validation logic.
 - Define the Zod schema first, then derive TypeScript types from that schema using `z.infer<typeof ...>` to avoid duplicated type declarations.
@@ -151,24 +165,24 @@ Frontend build output is consumed by the GAS builder pipeline.
 
 - **Void-response schemas must use `.nullable()`:** The backend `_success()` method converts `undefined → null` via `data: data ?? null`. Response schemas for delete/void methods (for example `z.void()`) must use `.nullable()` (for example `z.void().nullable()`) to accept `null` from the backend envelope. A bare `z.void()` rejects `null` and causes a Zod validation error at the transport boundary.
 
-## 9. Shell Navigation and Motion Standards
+## 10. Shell Navigation and Motion Standards
 
 For shell navigation and motion conventions (menu metadata, decorative icon semantics, and reduced-motion defaults), use:
 
 - `docs/developer/frontend/frontend-shell-navigation-and-motion.md`
 
-## 10. Modal Patterns and Reuse
+## 11. Modal Patterns and Reuse
 
 For modal-family discovery, reuse decisions, and extraction rules, use:
 
 - `docs/developer/frontend/frontend-modal-patterns.md`
 
-## 11. Default Values Rule
+## 12. Default Values Rule
 
 - Default values must be set in a module's constructor only.
 - If defaults are found elsewhere, they should be opportunistically moved to the constructor of the module.
 
-## 12. Service Domain Folder Organisation
+## 13. Service Domain Folder Organisation
 
 When two or more service files in `src/frontend/src/services/` share a common domain prefix,
 group them into a subfolder named after that domain prefix.

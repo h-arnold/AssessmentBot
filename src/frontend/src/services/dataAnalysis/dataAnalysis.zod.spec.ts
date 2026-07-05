@@ -20,6 +20,9 @@ interface AnalysisFilterSchemaModule {
   AveragingAnalyserInputSchema: ParseOnly;
   MetricResultSchema: ParseOnly;
   AveragingResultSchema: ParseOnly;
+  PerStudentRowSchema: ParseOnly;
+  PerTaskRowSchema: ParseOnly;
+  PerClassResultSchema: ParseOnly;
   DataAnalysisResponseSchema: ParseOnly;
 }
 
@@ -72,7 +75,7 @@ const minimalClassFull = {
       assignmentId: 'a-1',
       assignmentName: 'Test Assignment',
       dueDate: null,
-      lastUpdated: null,
+      updatedAt: null,
       createdAt: validIsoTimestamp,
       documentType: null,
       submissions: [
@@ -92,37 +95,55 @@ const minimalClassFull = {
   active: true,
 };
 
-const validMetricResult = {
+// MetricResult fixtures for the new discriminated union shape
+const computedMetricResult = {
+  state: 'computed' as const,
   value: 0.75,
   totalWeight: 2,
   applicableDataPoints: 2,
   totalDataPoints: 2,
 };
 
+const notAttemptedMetricResult = {
+  state: 'notAttempted' as const,
+  value: 'N' as const,
+  totalWeight: 0,
+  applicableDataPoints: 0 as const,
+  totalDataPoints: 3,
+};
+
+const errorMetricResult = {
+  state: 'error' as const,
+  value: 'E' as const,
+  totalWeight: 0,
+  applicableDataPoints: 0 as const,
+  totalDataPoints: 3,
+};
+
 const validPerStudentRow = {
   studentId: 's-1',
   studentName: 'Student A',
-  completeness: validMetricResult,
-  accuracy: validMetricResult,
-  spag: validMetricResult,
-  overall: validMetricResult,
+  completeness: computedMetricResult,
+  accuracy: computedMetricResult,
+  spag: computedMetricResult,
+  overall: computedMetricResult,
 };
 
 const validPerTaskRow = {
   definitionKey: 'def-1',
   taskId: 't_abc123',
   taskTitle: null,
-  completeness: validMetricResult,
-  accuracy: validMetricResult,
-  spag: validMetricResult,
-  overall: validMetricResult,
+  completeness: computedMetricResult,
+  accuracy: computedMetricResult,
+  spag: computedMetricResult,
+  overall: computedMetricResult,
 };
 
 const validPerClassResult = {
-  completeness: validMetricResult,
-  accuracy: validMetricResult,
-  spag: validMetricResult,
-  overall: validMetricResult,
+  completeness: computedMetricResult,
+  accuracy: computedMetricResult,
+  spag: computedMetricResult,
+  overall: computedMetricResult,
 };
 
 const validAppliedCriterionWeightings = {
@@ -289,38 +310,167 @@ describe('AveragingAnalyserInputSchema', () => {
 });
 
 // ---------------------------------------------------------------------------
-// MetricResultSchema
+// MetricResultSchema — rewritten for the new discriminated union shape
 // ---------------------------------------------------------------------------
 
 describe('MetricResultSchema', () => {
-  it('rejects value: null with applicableDataPoints > 0', async () => {
+  it('round-trips a computed shape', async () => {
+    const { MetricResultSchema } = await loadDataAnalysisZod();
+
+    const result = MetricResultSchema.parse(computedMetricResult);
+
+    expect(result).toMatchObject({
+      state: 'computed',
+      value: 0.75,
+      totalWeight: 2,
+      applicableDataPoints: 2,
+      totalDataPoints: 2,
+    });
+  });
+
+  it('round-trips a notAttempted shape with value: "N"', async () => {
+    const { MetricResultSchema } = await loadDataAnalysisZod();
+
+    const result = MetricResultSchema.parse(notAttemptedMetricResult);
+
+    expect(result).toMatchObject({
+      state: 'notAttempted',
+      value: 'N',
+      totalWeight: 0,
+      applicableDataPoints: 0,
+      totalDataPoints: 3,
+    });
+  });
+
+  it('round-trips an error shape with value: "E"', async () => {
+    const { MetricResultSchema } = await loadDataAnalysisZod();
+
+    const result = MetricResultSchema.parse(errorMetricResult);
+
+    expect(result).toMatchObject({
+      state: 'error',
+      value: 'E',
+      totalWeight: 0,
+      applicableDataPoints: 0,
+      totalDataPoints: 3,
+    });
+  });
+
+  it('rejects a mismatched shape (state: "computed" with value: "N")', async () => {
     const { MetricResultSchema } = await loadDataAnalysisZod();
 
     expect(() =>
       MetricResultSchema.parse({
-        value: null,
-        totalWeight: 0,
-        applicableDataPoints: 5,
-        totalDataPoints: 5,
+        state: 'computed',
+        value: 'N',
+        totalWeight: 1,
+        applicableDataPoints: 1,
+        totalDataPoints: 1,
       })
     ).toThrow();
   });
 
-  it('accepts value: null with applicableDataPoints = 0', async () => {
+  it('rejects computed state with applicableDataPoints = 0', async () => {
     const { MetricResultSchema } = await loadDataAnalysisZod();
 
-    const result = MetricResultSchema.parse({
-      value: null,
-      totalWeight: 0,
-      applicableDataPoints: 0,
-      totalDataPoints: 5,
-    });
+    expect(() =>
+      MetricResultSchema.parse({
+        state: 'computed',
+        value: 5,
+        totalWeight: 1,
+        applicableDataPoints: 0,
+        totalDataPoints: 1,
+      })
+    ).toThrow();
+  });
 
-    expect(result).toEqual({
-      value: null,
-      totalWeight: 0,
-      applicableDataPoints: 0,
-      totalDataPoints: 5,
+  it('rejects notAttempted state with applicableDataPoints > 0', async () => {
+    const { MetricResultSchema } = await loadDataAnalysisZod();
+
+    expect(() =>
+      MetricResultSchema.parse({
+        state: 'notAttempted',
+        value: 'N',
+        totalWeight: 0,
+        applicableDataPoints: 1,
+        totalDataPoints: 1,
+      })
+    ).toThrow();
+  });
+
+  it('rejects error state with applicableDataPoints > 0', async () => {
+    const { MetricResultSchema } = await loadDataAnalysisZod();
+
+    expect(() =>
+      MetricResultSchema.parse({
+        state: 'error',
+        value: 'E',
+        totalWeight: 0,
+        applicableDataPoints: 1,
+        totalDataPoints: 1,
+      })
+    ).toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PerStudentRowSchema — round-trip with new MetricResult shape
+// ---------------------------------------------------------------------------
+
+describe('PerStudentRowSchema', () => {
+  it('round-trips with the new MetricResult shape', async () => {
+    const { PerStudentRowSchema } = await loadDataAnalysisZod();
+
+    const result = PerStudentRowSchema.parse(validPerStudentRow);
+
+    expect(result).toMatchObject({
+      studentId: 's-1',
+      studentName: 'Student A',
+      completeness: { state: 'computed', value: 0.75 },
+      accuracy: { state: 'computed', value: 0.75 },
+      spag: { state: 'computed', value: 0.75 },
+      overall: { state: 'computed', value: 0.75 },
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PerTaskRowSchema — round-trip with new MetricResult shape
+// ---------------------------------------------------------------------------
+
+describe('PerTaskRowSchema', () => {
+  it('round-trips with the new MetricResult shape', async () => {
+    const { PerTaskRowSchema } = await loadDataAnalysisZod();
+
+    const result = PerTaskRowSchema.parse(validPerTaskRow);
+
+    expect(result).toMatchObject({
+      definitionKey: 'def-1',
+      taskId: 't_abc123',
+      taskTitle: null,
+      completeness: { state: 'computed', value: 0.75 },
+      accuracy: { state: 'computed', value: 0.75 },
+      spag: { state: 'computed', value: 0.75 },
+      overall: { state: 'computed', value: 0.75 },
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PerClassResultSchema — round-trip with new MetricResult shape
+// ---------------------------------------------------------------------------
+
+describe('PerClassResultSchema', () => {
+  it('round-trips with the new MetricResult shape', async () => {
+    const { PerClassResultSchema } = await loadDataAnalysisZod();
+
+    const result = PerClassResultSchema.parse(validPerClassResult);
+
+    expect(result).toMatchObject({
+      completeness: { state: 'computed', value: 0.75 },
+      accuracy: { state: 'computed', value: 0.75 },
+      spag: { state: 'computed', value: 0.75 },
+      overall: { state: 'computed', value: 0.75 },
     });
   });
 });

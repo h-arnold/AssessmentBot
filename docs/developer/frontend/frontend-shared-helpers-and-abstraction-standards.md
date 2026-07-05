@@ -445,3 +445,294 @@ This section supersedes the earlier Section 9.7 defer decision for the specific 
 - Owning module/path: `src/frontend/src/features/classes/AssessTaskModal/LinkableDefinitionList.tsx`
 - Call-site rationale: renders the picker as an Ant Design `Radio.Group` with vertical orientation, block width, and JSX children (rich per-row content with title and subtitle). The component is presentational (no state, no side effects); it receives the derived `LinkableDefinition[]` and the current selection, and emits `onSelect(definitionKey)`. All rows are always selectable. The component has exactly one caller (`AssessTaskModal`) and is not promoted to a shared component.
 - Status: `Implemented`
+
+### 9.16a AssessTaskModal loading skeleton extraction
+
+1. Helper: `AssignmentSelectSkeleton` presentational component
+
+- Decision: `new`
+- Owning module/path: `src/frontend/src/features/classes/AssessTaskModal/AssignmentSelectSkeleton.tsx`
+- Call-site rationale: renders the shape-matched loading skeleton for the assignment selection panel — a label skeleton (`Skeleton active title={{ width: '30%' }} paragraph={false}`) and a full-width input skeleton (`Skeleton.Input active style={{ width: '100%' }}`) wrapped in an accessible `<output>` element with an `ariaLabel`. The component is presentational (no state, no side effects); it accepts an `ariaLabel` prop for accessibility. Extracted from two identical inline JSX blocks in `renderFetchBody` and `renderLinkingBody` within `AssessTaskModal.tsx`, eliminating duplicated skeleton markup. The component is feature-local (not promoted to a shared component) because it has exactly two callers within the same modal and the skeleton shape is specific to the assignment selection panel.
+- Status: `Implemented`
+- Rationale: satisfies §4.3 (two active call sites need the same behaviour now); the `<output>` element's implicit `status` role satisfies the accessibility requirement in `frontend-loading-and-width-standards.md` §8 without an explicit `role="status"` attribute, which also resolved two SonarCloud `typescript:S6822` code smells (redundant implicit role)
+
+### 9.17 Class page data analysis display helpers
+
+These entries record the planned shared display helpers for the Class page feature. The Class page is the first caller; cohort, trend, and distribution analyses (per `docs/pedagogy/data-analysis-scoring.md:92-99`) are the near-term second caller, so the helpers are planned as **shared** rather than feature-local.
+
+1. Helper: `resolveMetricTone(metric: MetricResult, range?: MetricToneRange, errorColor?: MetricToneColor): MetricToneResolution` — pure tone resolver
+
+- Decision: `new`
+- Owning module/path: `src/frontend/src/services/dataAnalysis/metricDisplay/metricTone.ts`
+- Call-site rationale: maps the data analysis service's `MetricResult` discriminated union (`state: 'computed' | 'notAttempted' | 'error'`) to a `{ color, displayValue, muted }` triple that the Ant Design `Tag` consumes. The range parameter (default `{ lower: 0, upper: 5 }`) is used to compute the band boundaries via the midpoint rule: `redAmberBoundary = (3·lower + upper) / 4`, `amberGreenBoundary = (lower + 3·upper) / 4`. The `errorColor` parameter (default `'volcano'`) is the `Tag` color for the `error` state. Pure function, no React or antd imports. Validates `range.upper > range.lower` and throws on violation.
+- Status: `Implemented`
+- Implementation notes:
+  - Added `errorColor: MetricToneColor` parameter (not in the planning-time signature) per the spec reconciliation in Section 1 and `SPEC_CLASS_PAGE_PREPARATION.md`. The default (`'volcano'`) lives in `resolveMetricTone`; `MetricPill` is a pass-through with no `errorColor`-level default.
+  - The amber/green boundary uses `>=` per the spec boundary rule (`value >= amberGreenBoundary` yields `green`). A prior implementation used `>` which misclassified the exact boundary value as `gold`. This was fixed in CRITICAL-1 during the code-review remediation sweep.
+  - Exported types: `MetricToneColor`, `MetricToneRange`, `MetricToneResolution`.
+  - `MetricToneColor = 'red' | 'gold' | 'green' | 'default' | 'volcano'` is a cross-spec contract (used by Class page column filter). Any future revision is a cross-spec breaking change.
+  - The `error` color (`volcano`) is the existing Ant Design preset for "important but not fatal" — `red` is reserved for the lowest band of `computed` values to keep visual hierarchy clear.
+  - File size: 146 lines (under 550; no separation needed).
+- Planned doc reconciliation: confirmed the resolver remains pure (no antd imports), the range parameter is honoured, and the `errorColor` default is set in `resolveMetricTone` (not in `MetricPill`) per the spec contract — the default-value rule "defaults must be set in a module's constructor only" is moot here because `resolveMetricTone` is a pure function, not a module constructor, and the default is set in the function parameter signature.
+
+2. Helper: `MetricPill` presentational component
+
+- Decision: `new`
+- Owning module/path: `src/frontend/src/services/dataAnalysis/metricDisplay/MetricPill.tsx`
+- Call-site rationale: renders a single `MetricResult` as a coloured Ant Design `Tag` using the output of `resolveMetricTone`. Exposes `precision` (default 2), `emphasised` (default false), `range` (pass-through), and `errorColor` (pass-through; no `MetricPill`-level default — the default lives in `resolveMetricTone`). Consumed by `RecentAssignmentCard` (four instances per card) and by the four metric columns of `StudentAveragesTable` (via the column `render` function). Future consumers: cohort, trend, and distribution analyses.
+- Status: `Implemented`
+- Implementation notes:
+  - Renders Ant Design `Tag` with the resolved color. No explicit `variant="filled"` prop — the default filled variant is used. The `bordered` prop is left at its default (`true`).
+  - The `emphasised` flag applies `fontSize: '17.5px'` (1.25× default) and `fontWeight: 600` via the `style` prop, merged with the muted opacity (`0.55`) when both are active.
+  - The `precision` prop is ignored for `notAttempted` and `error` (the literal `'N'` and `'E'` are rendered as-is).
+  - No `Tooltip` or `aria-label` in v1 (signed-off accessibility gap per `SPEC_CLASS_PAGE_PREPARATION.md`).
+  - No interactivity: no `onClick`, no `cursor: pointer`, no focus ring.
+  - File size: 125 lines (under 550; no separation needed).
+- Planned doc reconciliation: confirmed the Tag color choices: `computed` uses `red` / `gold` / `green` bands; `notAttempted` uses `default` (grey); `error` uses `volcano` (default) with `errorColor` pass-through. The `error` color (`volcano`) is agreed and closed per Section 1 spec reconciliation — `red` is reserved for the lowest band of `computed` values to keep visual hierarchy clear.
+
+3. Helper: `metricDisplay/` subfolder under `services/dataAnalysis/`
+
+- Decision: `new`
+- Owning module/path: `src/frontend/src/services/dataAnalysis/metricDisplay/`
+- Call-site rationale: at least two production files (`metricTone.ts`, `MetricPill.tsx`) plus their spec companions share the `metricDisplay` domain prefix, satisfying `src/frontend/AGENTS.md` §13 ("Create a subfolder when at least 2 files share a common domain prefix"). No `index.ts` barrel is created in v1 per spec decision 8; consumers import directly (e.g. `import { resolveMetricTone } from '.../metricDisplay/metricTone'`). This is a deliberate v1 simplification; a barrel may be added in a later de-sloppification pass if call sites get noisy.
+- Status: `Implemented`
+- Implementation notes:
+  - Folder created at the planned path. Contains `metricTone.ts`, `MetricPill.tsx`, `metricTone.spec.ts`, `MetricPill.spec.tsx` (4 files).
+  - No `index.ts` barrel confirmed. Direct imports only.
+  - The existing `services/dataAnalysis/` directory structure (`analysers/`, flat files) is preserved.
+- Planned doc reconciliation: confirmed the subfolder is created at the planned path and the existing directory structure is preserved.
+
+4. Helper: `rollupMetric(subTasks: ReadonlyArray<MetricResult>, metric: 'completeness' | 'accuracy' | 'spag'): MetricResult` — shared rollup precedence function
+
+- Decision: `new`
+- Owning module/path: `src/frontend/src/services/dataAnalysis/analysers/rollupMetric.ts` (standalone; not in `accumulation/` subfolder)
+- Call-site rationale: called by both `buildPerStudentRows` and `buildPerTaskRows` in `averagingAnalyser.rows.ts`, and by the Class page's `classPageAdapter`, applying the same three-way rollup precedence across all aggregation levels. The function operates on the public `MetricResult` discriminated union (not internal `MetricAccumulator` values) and takes a metric discriminator to apply per-metric `notAttempted` handling (for accuracy and completeness, `notAttempted` contributes 0; for SPaG, `notAttempted` is excluded). The `RollupMetric` type is `'completeness' | 'accuracy' | 'spag'` only — `'average'` is intentionally excluded because the average is a composite of the three per-criterion rollups at the consumer level, not a fourth independent weighted average. Pure function, no React or antd imports.
+- Status: `Implemented`
+- Implementation notes:
+  - Implemented in Section 3 of the action plan as part of the MetricResult discriminated-union refactor.
+  - Rollup precedence: `error` > `notAttempted` > `computed`. First matching state wins.
+  - Per-metric `notAttempted` handling: for accuracy and completeness, `notAttempted` contributes 0; for SPaG, `notAttempted` is excluded from numerator/denominator.
+  - The function is called from `averagingAnalyser.rows.ts` row builders and will be consumed by the Class page adapter.
+  - Standalone file (not in `accumulation/` subfolder) per the spec reconciliation; the facade decomposition of `averagingAnalyser.accumulation.ts` is deferred to a future pass (see §9.18 item 3).
+- Planned doc reconciliation: confirmed the rollup is called from both analyser row builders and the precedence rule (`error` > `notAttempted` > `computed`) and per-metric `notAttempted` handling match the `SPEC_CLASS_PAGE_PREPARATION.md` contract.
+
+### 9.18 Class page feature-local helpers
+
+These entries record the feature-local helpers for the Class page. Per `frontend-shared-helpers-and-abstraction-standards.md` §4.4 ("Keep feature-specific helpers inside the owning feature folder"), these stay in `src/frontend/src/features/classPage/` and are not promoted to shared scope unless a documented cross-feature reuse emerges. All entries in this section are now `Implemented` as part of the Class page v1 deliverable.
+
+#### 9.18.1 Pure adapter: `classPageAdapter`
+
+1. Helper: `classPageAdapter` pure adapter module
+
+- Decision: `keep local`
+- Owning module/path: `src/frontend/src/features/classPage/classPageAdapter.ts`
+- Call-site rationale: the only module that knows how to translate the data analysis service's `AveragingResult` (with the new `MetricResult` discriminated union) plus the raw `ClassFull` into the view-model shapes the Class page consumes (`RecentAssignmentCardModel[]`, `StudentAverageRowModel[]`, `classMetrics`). Owns the assignment-level rollup precedence (error > notAttempted > computed) via the shared `rollupMetric` helper, the `updatedAt`-based recent-assignment selection (top 3, sorted descending), the per-assignment `average` composite (40/40/20 weighting with SPaG renormalisation), the no-data row synthesis for unassessed students, and trust validation (null `updatedAt` throws, duplicate `studentId`/`assignmentId` throws, unparseable `updatedAt` throws). Has exactly one caller (`useClassPageData`); promotion to a shared adapter would only make sense if a second consumer surface appears.
+- Status: `Implemented`
+- Implementation notes:
+  - 495 lines (well under the 500-line threshold; no file separation required).
+  - Pure function — no I/O, no React imports, no Ant Design imports. The only side effect is throwing on data integrity violations.
+  - Calls `rollupMetric` (shared helper at `src/frontend/src/services/dataAnalysis/analysers/rollupMetric.ts`) for each of the three criteria.
+  - Calls `formatUpdatedAtLabel` (shared helper at `src/frontend/src/utils/dateFormatting.ts`) for date formatting.
+  - Per-assignment `average` is computed inline as a composite (40/40/20 weighting) — not delegated to `rollupMetric` because the average is a composite of three per-criterion rollups, not a fourth independent weighted average.
+  - Trust validation: `validateUpdatedAt` throws `TypeError` on null or unparseable `updatedAt`; `findDuplicateStudentId` / `findDuplicateAssignmentId` check uniqueness.
+  - Co-located spec: `classPageAdapter.spec.ts` (15 tests covering all contract behaviours).
+- Planned doc reconciliation: confirmed the rollup precedence is documented inline in the adapter JSDoc (`@remarks` blocks); `MetricResult` discriminated union is consumed via `.state` property checks (not nullable checks, consistent with the discriminated union contract).
+
+#### 9.18.10 Shared comparator: `compareStudentNames`
+
+14. Helper: `compareStudentNames(a, b): number` — shared student-name comparator
+
+- Decision: `extract`
+- Owning module/path: `src/frontend/src/features/classPage/classPageModel.ts`
+- Call-site rationale: replaces two identical inline comparators — one in `buildClassPageViewModel` (studentName sort path) and one in `studentAveragesTableColumns.tsx` (`studentName` column `sorter.compare`). Both implement the same locale-aware, case-insensitive name comparison with `studentId` ascending tie-break. The model is the canonical owner of sorting logic.
+- Status: `Implemented`
+- Implementation notes:
+  - Signature: `export function compareStudentNames(a: StudentAverageRowModel, b: StudentAverageRowModel): number`
+  - Returns `a.studentName.localeCompare(b.studentName, undefined, { sensitivity: 'base' })` tie-broken by `a.studentId.localeCompare(b.studentId)`.
+  - Single source of truth for student-name ordering; call sites apply direction via `direction === 'asc' ? cmp : -cmp`.
+
+#### 9.18.2 Pure view-model builder: `classPageModel`
+
+2. Helper: `classPageModel` pure view-model builder
+
+- Decision: `keep local`
+- Owning module/path: `src/frontend/src/features/classPage/classPageModel.ts`
+- Call-site rationale: pure view-model builder that applies user-controlled filtering and sorting (search term, column sort) on top of the adapter output. Has exactly one caller (`StudentAveragesTableCard`); kept local because the search / sort surface is specific to the Class page's owned region and does not generalise to other features.
+- Status: `Implemented`
+- Implementation notes:
+  - 201 lines. Pure function — no React imports, no Ant Design imports, no I/O.
+  - Search filter: case-insensitive substring on `studentName`; empty `searchTerm` → no filter.
+  - State-aware metric sort: rank-based with `METRIC_STATE_RANK_ASC`/`METRIC_STATE_RANK_DESC` Maps. `asc`: computed (by value) → notAttempted → error. `desc`: error → notAttempted → computed (by value). Tie-break by `studentId` ascending.
+  - Student name sort: locale-aware, case-insensitive, `studentId` tie-breaker.
+  - Passes through `recentAssignments` and `classMetrics` unchanged.
+  - Default sort: `studentName` ascending.
+  - Co-located spec: `classPageModel.spec.ts` (12 test cases).
+- Planned doc reconciliation: confirmed the model is a pure function with no React or React Query imports. The `viewing` field is absent from v1 (static `Typography.Text` label instead of a `Select`).
+
+#### 9.18.3 Data orchestrator hook: `useClassPageData`
+
+3. Helper: `useClassPageData` data orchestrator hook
+
+- Decision: `keep local`
+- Owning module/path: `src/frontend/src/features/classPage/useClassPageData.ts`
+- Call-site rationale: sole data-fetching entry point for the Class page. Wires together `getABClass` query (view-entry fetch), `usePageDataset('assignmentDefinitionPartials')` (warm-up-backed), synchronous `DataAnalysisService.analyse(...)`, and `adaptClassPageToViewModel(...)`. Produces a typed `ClassPageData` result with `surfaceState` as a discriminated union. Has exactly one caller (`ClassPage.tsx`); promotion to a shared hook would only make sense if a second consumer page needs the same orchestration.
+- Status: `Implemented`
+- Implementation notes:
+  - 473 lines (well under the 500-line threshold).
+  - Pure hook — no I/O beyond React Query calls and synchronous analyser/adapter calls. No `useEffect` beyond what React Query uses internally.
+  - Surface state is a discriminated union: `{ status: 'loading' }` | `{ status: 'blocking'; error: ClassPageError }` | `{ status: 'ready' }`.
+  - Error precedence (top to bottom): `classNotFound` > `classQueryError` > `assignmentDefinitionPartialsFailed` > `assignmentDefinitionPartialsUntrustworthy` > `adapterError` > `analyserError`.
+  - `shouldRunPipeline` guard ensures analyser/adapter do not run when the dataset is untrustworthy or has failed.
+  - `refetch` uses `useCallback` with destructured `queryRefetch` to avoid stale-closure bugs.
+  - Module-level `createAnalysisService()` factory avoids test workaround in production code.
+  - Co-located spec: `useClassPageData.spec.ts` (16 tests covering all error states, memoisation, and refetch).
+  - Projected size in spec was ~300–350 lines; actual is 473 due to thorough JSDoc, extracted helper functions (kept under the 7-complexity limit), and the `shouldRunPipeline` guard logic. No splitting needed.
+
+#### 9.18.4 Page composition root: `ClassPage`
+
+4. Helper: `ClassPage` page composition root
+
+- Decision: `keep local`
+- Owning module/path: `src/frontend/src/features/classPage/ClassPage.tsx`
+- Call-site rationale: thin composition root for the Class page. Owns `isAssessModalOpen` state, breadcrumb `Classes` link wiring, and per-state content dispatcher (`ClassPageContent`). Has exactly one caller (`ClassesPage.tsx`, inline render when `selectedClassId` is set).
+- Status: `Implemented`
+- Implementation notes:
+  - 114 lines. Thin composition root.
+  - Renders a three-segment `Breadcrumb` (`AssessmentBot Frontend / Classes / {className}`) in-page — accepted v1 visual duplication with the shell's two-segment breadcrumb.
+  - Renders `ClassPageContent` with per-state content (loading/blocking/ready).
+  - Renders `AssessTaskModal` at the page root (not inside `ClassPageContent`) because the modal state spans loading/blocking/ready transitions.
+  - Co-located spec: `ClassPage.spec.tsx` (7 test cases covering breadcrumb, modal state, and navigation).
+
+#### 9.18.5 Per-state content dispatcher: `ClassPageContent`
+
+5. Component: `ClassPageContent` per-state content dispatcher
+
+- Decision: `keep local`
+- Owning module/path: `src/frontend/src/features/classPage/ClassPageContent.tsx`
+- Call-site rationale: thin `switch (status)` dispatcher that delegates to `ClassPageLoading`, `ClassPageBlocking`, or `ClassPageReady`. Extracted to keep `ClassPage.tsx` thin. Has exactly one caller (`ClassPage.tsx`).
+- Status: `Implemented`
+- Implementation notes:
+  - 295 lines. Three co-located sub-components:
+    - `ClassPageLoading`: shape-matched `Skeleton` (heading + 3-card row + table paragraph), wrapped in `role="status"` and `aria-live="polite"`. Uses a deliberate shape-matched pattern (not the paragraph-row pattern prescribed in `CLASS_PAGE_LAYOUT.md`) because the three distinct content regions benefit from visible card-shaped placeholders.
+    - `ClassPageBlocking`: single Ant Design `Result` per `error.type`. Retryable errors (`classQueryError`, `analyserError`, `assignmentDefinitionPartialsFailed`, `assignmentDefinitionPartialsUntrustworthy`) show `Retry` + `Back to Classes`. Non-retryable errors (`classNotFound`, `adapterError`) show only `Back to Classes`.
+    - `ClassPageReady`: full content tree — `ClassPageHeaderActions`, `RecentAssignmentsSection`, `StudentAveragesTableCard`.
+  - Co-located spec: `ClassPageContent.spec.tsx` (6 test cases covering all three states).
+
+#### 9.18.6 Presentational components
+
+6. Component: `ClassPageHeaderActions`
+
+- Decision: `keep local`
+- Owning module/path: `src/frontend/src/features/classPage/ClassPageHeaderActions.tsx`
+- Status: `Implemented`
+- Implementation notes: 56 lines. Pure presentational — renders disabled `Edit Student Details` (wrapped in `Tooltip` via `<span>`) and enabled `Start New Assessment`. Ant Design v6 `Tooltip` does not trigger on a disabled `Button` directly; the `<span>`-wrapper pattern is the established codebase convention (matches `AssessTaskModal`).
+
+7. Component: `RecentAssignmentCard`
+
+- Decision: `keep local`
+- Owning module/path: `src/frontend/src/features/classPage/RecentAssignmentCard.tsx`
+- Status: `Implemented`
+- Implementation notes: 87 lines. Renders assignment name as card title, "Last Assessed" date line, and four `MetricPill` instances (Completeness, Accuracy, SpAG, Average). Average cell uses `emphasised={true}`. Card width is a feature-local constant (`RECENT_ASSIGNMENT_CARD_WIDTH_PX = 320`); promotion to a shared width token is deferred until a second consumer emerges. Static card — no hover, no click handler, no `hoverable` prop in v1.
+
+8. Component: `RecentAssignmentsSection`
+
+- Decision: `keep local`
+- Owning module/path: `src/frontend/src/features/classPage/RecentAssignmentsSection.tsx`
+- Status: `Implemented`
+- Implementation notes: 73 lines. Pure presentational — section `Card` (`size="small"`, `title="Recent Assignments"`) wrapping either a centre-aligned `Flex` row of up to 3 `RecentAssignmentCard` components, or an `Empty` with CTA button. Empty state description sourced from `pageContent.classDetail.recentAssignmentsEmpty`.
+
+9. Component: `StudentAveragesTableCard`
+
+- Decision: `keep local`
+- Owning module/path: `src/frontend/src/features/classPage/StudentAveragesTableCard.tsx`
+- Status: `Implemented`
+- Implementation notes: 205 lines. Owns `searchTerm`, `sort`, and `filters` state. Uses `Space.Compact` + `Input` with `SearchOutlined` prefix instead of `Input.Search` — the layout spec requires no submit button, but Ant Design v6.3.1 always renders a `<button>` in `Input.Search` regardless of `enterButton`. Memoised `buildClassPageViewModel` (keyed on `[adapterResult, searchTerm, sort]`) and `buildStudentAveragesTableColumns` (keyed on `[filters]`). Table has `pagination={false}`, `size="small"`, `scroll={{ x: 'max-content' }}`. `Table.onChange` maps Ant Design's `'ascend'`/`'descend'` to model's `'asc'`/`'desc'`; clears to default `studentName` ascending when `sorter.order` is `null` (third-click clear-sort).
+
+10. Component: `studentAveragesTableColumns`
+
+- Decision: `keep local`
+- Owning module/path: `src/frontend/src/features/classPage/studentAveragesTableColumns.tsx`
+- Status: `Implemented`
+- Implementation notes: 204 lines. Pure function exporting `buildStudentAveragesTableColumns(filters)` — no React hooks. Five columns: `studentName` (locale-aware sort, no filters), `completeness`/`accuracy`/`spag`/`average` (metric columns with 5-band `MetricToneColor` filters, `onFilter` via `resolveMetricTone`, `MetricPill` render). Average column uses `emphasised={true}`.
+
+#### 9.18.7 Zod trust-boundary schema: `classPageAdapter.zod`
+
+11. Schema: `classPageAdapter.zod` — adapter output Zod schema
+
+- Decision: `keep local`
+- Owning module/path: `src/frontend/src/features/classPage/classPageAdapter.zod.ts`
+- Status: `Implemented`
+- Implementation notes: Defines `RecentAssignmentCardModelSchema`, `StudentAverageRowModelSchema`, and `ClassPageAdapterResultSchema`. All types derived via `z.infer`. Reuses `MetricResult` from `src/frontend/src/services/dataAnalysis/dataAnalysis.zod`. Co-located spec: `classPageAdapter.zod.spec.ts`.
+
+3. Structural change: extraction of `averagingAnalyser.criterionAccumulation.ts`
+
+- Decision: `extract`
+- Owning module/path: `src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.criterionAccumulation.ts` (new sibling file)
+- Call-site rationale: `averagingAnalyser.accumulation.ts` reached 649 lines (above the 550-line threshold in `src/frontend/AGENTS.md` §13), triggering a concrete maintenance need. Five criterion-accumulation functions (`accumulateCriterion`, `accumulateMetricsToTarget`, `computeOverall`, `processSubmissionItem`, `processItemAssessments`) were extracted to a new sibling module. The extraction preserved exact function bodies; no logic changes. `accumulation.ts` was reduced to 440 lines (under the threshold).
+- Status: `Implemented`
+- Planned doc reconciliation: confirmed the decomposition boundary (criterion-level accumulation only) is correct and the extracted module is under 550 lines (223 LOC).
+
+#### 9.18.8 Generic duplicate-detection helper extracted from duplicate validators
+
+12. Helper: `findFirstDuplicate<T>(items: readonly T[], keyFunction: (item: T) => string): string | null`
+
+- Decision: `extract`
+- Owning module/path: `src/frontend/src/features/classPage/classPageAdapter.ts` (private, kept local)
+- Call-site rationale: replaces two near-identical functions (`findDuplicateStudentId` and `findDuplicateAssignmentId`) with a single generic iterator over an array of typed items, accepting a key-extraction function. Both callers now invoke `findFirstDuplicate` with an inline lambda instead of maintaining separate strongly-typed iterators.
+- Status: `Implemented`
+- Implementation notes:
+  - Private inside `classPageAdapter.ts`; not exposed as a shared helper.
+  - Uses `readonly T[]` for broader type compatibility.
+  - Throws the same `TypeError` for duplicate IDs as the original functions via the same caller-site check.
+
+#### 9.18.9 Shared `getStudentMetric` accessor extracted from duplicated switch statements
+
+13. Helper: `getStudentMetric(metrics, key): MetricResult` — shared metric accessor
+
+- Decision: `extract`
+- Owning module/path: `src/frontend/src/features/classPage/classPageAdapter.zod.ts`
+- Call-site rationale: replaces two identical 4-case switch statements in `studentAveragesTableColumns.tsx` (`getMetric`) and `classPageModel.ts` (`getMetricForColumn`) with a single exported accessor. Both existed solely to satisfy the `security/detect-object-injection` lint rule. The owning module is the Zod trust-boundary schema file (not a new `helpers.ts`) because both callers already depend on it for types, and the accessor operates on the schema's `StudentAverageRowModel['metrics']` contract.
+- Status: `Implemented`
+- Implementation notes:
+  - Uses a `switch` statement (not computed property access) to satisfy the `security/detect-object-injection` lint rule.
+  - JSDoc explains the lint-rule motivation and the switch-statement pattern.
+  - `@remarks` documents the switch-statement rationale.
+  - Exported function signature: `getStudentMetric(metrics: StudentAverageRowModel['metrics'], key: 'completeness' | 'accuracy' | 'spag' | 'average'): MetricResult`
+
+### 9.19 Frontend pure formatting helpers
+
+These entries record the planned pure formatting helpers extracted from feature code into shared utility modules.
+Per `SPEC_CLASS_PAGE_PREPARATION.md` line 382, the canonical home for these helpers is `src/frontend/src/utils/` — a new top-level folder for pure formatting / utility functions shared across the frontend. The folder is not governed by `src/frontend/AGENTS.md` §13 (which covers `services/` subfolders only); this is a separate convention for helpers that have no React, Ant Design, I/O, or state dependencies.
+
+1. Helper: `formatUpdatedAtLabel(updatedAt: string | null): string` — date formatting helper
+
+- Decision: `new`
+- Owning module/path: `src/frontend/src/utils/dateFormatting.ts` (new `utils/` folder, first entry)
+- Call-site rationale: extracted from `AssignmentsPage.tsx` as part of the rename deliverable because the Class page's `classPageAdapter` needs the same formatter. `en-GB` locale, date-only, rendered in UTC. The em-dash fallback (`UNAVAILABLE_VALUE = '—'`) is defined locally in the new module (does not import from `AssignmentsPage.tsx`). Pure formatting function, no React / antd / I/O / state. The Class page adapter does not use the fallback; it throws upstream on null or unparseable input. The helper preserves the fallback for the `AssignmentsPage` caller.
+- Status: `Implemented`
+- Implementation notes:
+  - Implemented in Section 2 of the action plan alongside the `lastUpdated` → `updatedAt` rename.
+  - The helper lives at `src/frontend/src/utils/dateFormatting.ts` (first entry in the new `utils/` folder).
+  - `UNAVAILABLE_VALUE = '—'` is defined locally in `dateFormatting.ts`.
+  - The helper preserves the existing `AssignmentsPage` behaviour (em-dash fallback for null/unparseable) while the Class page adapter (`classPageAdapter`) throws upstream on null.
+  - Pure function: en-GB locale, date-only, rendered in UTC. No React / antd / I/O / state.
+- Planned doc reconciliation: confirmed the helper lives at the planned path, preserves the existing `AssignmentsPage` behaviour, and the `UNAVAILABLE_VALUE` constant is defined locally (not imported from `AssignmentsPage.tsx`).
+
+### 9.20 Data analysis accumulator helpers
+
+1. Helper: `rollupAccumulators` exported from `averagingAnalyser.rows.ts`
+
+- Decision: `extend` (existing function, now exported)
+- Owning module/path: `src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.rows.ts`
+- Call-site rationale: `rollupAccumulators` was previously private to `averagingAnalyser.rows.ts` and duplicated in `averagingAnalyser.ts` (`analyseClass`). By exporting it, the per-class rollup path in `analyseClass` now reuses the same `rollupAccumulators` call that the row builders use, eliminating the dual-path bug described in CRITICAL-2.
+- Status: `Implemented`
+
+## 10. Frontend utils folder convention
+
+The `src/frontend/src/utils/` folder exists for pure formatting / utility functions that are shared across the frontend. This folder is a separate convention from `src/frontend/AGENTS.md` §13, which governs only `services/` subfolder organisation.
+
+### Rules
+
+- **Pure functions only.** Files in `utils/` must have no React, Ant Design, I/O, or state dependencies. They are plain TypeScript modules exporting typed pure functions.
+- **No `src/frontend/AGENTS.md` §13 governance.** The §13 subfolder-by-domain-prefix rule applies only to `services/`. The `utils/` folder is a flat namespace; files are named by the domain they format (e.g. `dateFormatting.ts`). A future subfolder reorganisation may be considered if the folder exceeds 5–6 files, but no barrel exports (`index.ts`) are created in v1 — consumers import directly.
+- **First entry:** `dateFormatting.ts` — exports `formatUpdatedAtLabel(updatedAt: string | null): string`. See §9.19 item 1 above for the full contract.

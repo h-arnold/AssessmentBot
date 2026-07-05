@@ -3,6 +3,8 @@ description: Creates SPEC.md, optional frontend layout specs, and ACTION_PLAN.md
 mode: all
 model: nvidia/deepseek-ai/deepseek-v4-pro
 steps: 100
+permission:
+  question: allow
 ---
 
 # Planner Agent Instructions

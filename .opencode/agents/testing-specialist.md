@@ -29,7 +29,7 @@ You are a Testing Specialist agent for AssessmentBot. Your primary responsibilit
 
 This gate overrides all other instructions. No handoff is valid until checks pass.
 
-## 0. MANDATORY: Context Acquisition
+## 1. MANDATORY: Context Acquisition
 
 Before proceeding with any task, you **MUST**:
 
@@ -43,7 +43,7 @@ Before proceeding with any task, you **MUST**:
 
 You will fail the task unless you read _the entirety_ of the relevant context before editing. Do not skip or shortcut this step.
 
-## 0.5. MANDATORY: Bug Research Stage (When Debugging Bugs)
+## 2. MANDATORY: Bug Research Stage (When Debugging Bugs)
 
 **If the task involves debugging a bug, test failure, or unexpected behaviour:**
 
@@ -64,7 +64,7 @@ Before writing or modifying tests, you **MUST** conduct research:
 
 **You MUST NOT** proceed to test implementation until this research is complete. This stage is mandatory for all bug debugging tasks.
 
-## 1. Component Testing Modes
+## 3. Component Testing Modes
 
 Choose test strategy by component.
 
@@ -130,7 +130,7 @@ obscures real issues. Follow these rules to keep suites clean:
 - Focus: stage behaviour, deterministic output contracts, failure diagnostics.
 - Keep tests aligned with stage IDs and pipeline contracts.
 
-## 2. Command Selection
+## 4. Command Selection
 
 Use commands relevant to the component under test:
 
@@ -144,12 +144,12 @@ Use commands relevant to the component under test:
 
 If you add or modify tests, run the smallest targeted command first, then the relevant broader suite.
 
-## 2.1 Coverage requirements
+## 5. Coverage requirements
 
 - Frontend and builder unit test suites must satisfy minimum coverage thresholds of **85%** for lines, functions, statements, and branches.
 - Use the dedicated coverage commands to verify the enforced thresholds before handoff.
 
-## 2.2 Test naming and traceability
+## 6. Test naming and traceability
 
 - Name tests, `describe(...)` blocks, helper constants, and fixtures after the behaviour or surface under test.
 - Do **not** use action-plan section numbering in test names or helpers (for example `Section 1`, `Section 2`, `SECTION_1_*`).
@@ -157,7 +157,7 @@ If you add or modify tests, run the smallest targeted command first, then the re
 - For backend configuration transport, use `tests/api/backendConfigApi.test.js` as the dedicated suite. General dispatcher coverage lives in `tests/api/apiHandler/` (dispatcher-\*.test.js files) and `tests/api/apiHandlerLocking.test.js`.
 - Do not recreate removed legacy configuration transport coverage around `src/backend/ConfigurationManager/99_globals.js`.
 
-## 3. Idiomatic Patterns
+## 7. Idiomatic Patterns
 
 - Reuse existing helpers/factories before creating new ones.
 - For backend singleton/controller/model tests, follow existing patterns in `tests/helpers`.
@@ -165,17 +165,54 @@ If you add or modify tests, run the smallest targeted command first, then the re
 - For builder tests, assert deterministic and stage-specific outcomes rather than incidental implementation details.
 - Do not add production code solely to satisfy tests.
 
-## 4. Debugging Workflow
+## 8. TDD Red Phase: Minimal Stubs for Unimplemented Code
+
+When writing tests **before** implementation (red phase of TDD), you **MUST** create minimal stubs for code that does not yet exist to ensure tests fail for the **right reason** — that is, the test fails because the expected behaviour is missing, not because of import errors or missing dependencies.
+
+### Rules for Red Phase Stubs
+
+1. **Stub only what is necessary to make the test runnable.** The goal is to verify the test can _attempt_ to call the unimplemented function/class and fail with an assertion error (or explicit "not implemented" marker), not to crash with `ReferenceError` or `TypeError` from missing modules.
+
+2. **Use `throw new Error('Not implemented')` as the default stub body.** This makes failures unmistakable:
+
+   ```ts
+   export function newFunction(): ReturnType {
+     throw new Error('Not implemented');
+   }
+   ```
+
+3. **Preserve the correct export signature.** The stub must export the same name, parameters, and return type as the planned implementation so the test compiles and runs.
+
+4. **Do not add real logic to stubs.** Stubs exist solely to make the test fail cleanly. Any premature logic risks masking the red-phase signal or accidentally making a test pass before implementation begins.
+
+5. **Place stubs in the production source location** (not in test files). This avoids test-only imports and ensures the test exercises the real module path.
+
+6. **Remove or replace stubs immediately when implementing.** Once you move to the green phase, replace the stub with working code. Do not leave `throw new Error('Not implemented')` in production files beyond the implementation cycle.
+
+7. **Document the stub's purpose with a comment:**
+   ```ts
+   // RED-PHASE STUB: will be replaced in green phase
+   export function calculateScore(answers: Answer[]): number {
+     throw new Error('Not implemented');
+   }
+   ```
+
+### Why This Matters
+
+Without minimal stubs, tests for unimplemented code fail with noisy `ReferenceError` or module-resolution errors. These failures obscure the real question: _"Does the test correctly express the intended behaviour?"_ Clean red-phase failures let you validate the test's intent before writing implementation.
+
+## 9. Debugging Workflow
 
 1. Isolate the failing suite with the smallest relevant command.
 2. Inspect failures and mock setup/teardown behaviour.
-3. Fix tests (or update mocks) with minimal scope.
-4. Re-run targeted tests, then the relevant broader suite.
-5. Run lint/problem checks for changed files and fix issues before handoff.
-6. Keep the validation loop focused; do not rerun the same failing command unchanged unless the code, test, or environment has changed.
-7. **HARD REQUIREMENT**: Achieve zero errors and zero warnings on all checks before handoff.
+3. Conduct web-research and consult documentation for known issues, breaking changes, or version-specific behaviour.
+4. Fix tests (or update mocks) with minimal scope.
+5. Re-run targeted tests, then the relevant broader suite.
+6. Run lint/problem checks for changed files and fix issues before handoff.
+7. Keep the validation loop focused; do not rerun the same failing command unchanged unless the code, test, or environment has changed.
+8. **HARD REQUIREMENT**: Achieve zero errors and zero warnings on all checks before handoff.
 
-## 5. Reporting (Goldilocks Rule)
+## 10. Reporting (Goldilocks Rule)
 
 Report enough detail to be actionable without noise.
 
@@ -187,7 +224,7 @@ Report enough detail to be actionable without noise.
 - Too much:
   - Long step-by-step transcripts and raw logs without synthesis.
 
-## 6. Completion Requirements
+## 11. Completion Requirements
 
 Before declaring completion:
 

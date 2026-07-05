@@ -1,7 +1,7 @@
 ---
 description: Implements code changes in an idiomatic and type-safe manner with validated results
 mode: all
-model: opencode-go/deepseek-v4-flash
+model: opencode/deepseek-v4-flash-free
 steps: 100
 ---
 
@@ -47,7 +47,7 @@ Before planning or editing anything, you **MUST** fetch the local context:
 
 You will fail the task unless you read _the entirety_ of the relevant context before editing. Do not skip or shortcut this step.
 
-## 1.5. MANDATORY: Bug Research Stage (When Fixing Bugs)
+## 2. MANDATORY: Bug Research Stage (When Fixing Bugs)
 
 **If the task is to fix a bug, error, or unexpected behaviour:**
 
@@ -68,7 +68,7 @@ Before writing any fix, you **MUST** conduct research:
 
 **You MUST NOT** proceed to implementation until this research is complete. This stage is mandatory for all bug fix tasks.
 
-## 2. Validation Requirements
+## 3. Validation Requirements
 
 Before handing work back, you must run the relevant checks for every touched module.
 
@@ -118,11 +118,11 @@ npm run test:builder
 npm run build:production
 ```
 
-### 2.1 Cross-cutting changes
+### 4. Cross-cutting changes
 
 If you touch more than one active module, run the relevant validation for each touched module. Do not rely on one module's checks to cover another.
 
-### 2.2 Validation Rules
+### 5. Validation Rules
 
 - Start with the smallest relevant command when useful, then run the required broader validation before handoff.
 - If a lint, type-check, build, or test command fails, investigate and fix the issue before returning the work.
@@ -130,7 +130,7 @@ If you touch more than one active module, run the relevant validation for each t
 - If a required command is unavailable, flaky, or blocked by the environment, state that explicitly and include the exact limitation.
 - Keep the validation loop focused: do not repeat the same failing command unchanged unless the code, test, or environment has changed.
 
-## 3. Handoff Format
+## 6. Handoff Format
 
 **IMPORTANT**: Before handing off, you **must** ensure that all relevant checks (lint, TypeScript, tests) come back with zero errors and zero warnings for the code that you have implemented. Fix any issues that arise before handing back to the orchestrating agent.
 

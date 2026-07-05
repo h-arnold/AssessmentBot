@@ -1,14 +1,18 @@
 /**
  * Shared assertion helpers for averaging-analyser tests.
  *
- * Provides floating-point-tolerant metric comparisons and a
- * MetricResult-schema invariant checker.
+ * Provides floating-point-tolerant metric comparisons and a state-aware
+ * metric result checker for the discriminated-union MetricResult shape.
+ *
+ * `MetricResult` is imported from the production Zod schema
+ * (`dataAnalysis.zod.ts`) rather than being duplicated locally.
  *
  * @module test/dataAnalysis/averagingAnalyserAssertions
  * @see docs/developer/frontend/frontend-testing.md §"Shared test helpers"
  */
 
 import { expect } from 'vitest';
+import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 
 // ---------------------------------------------------------------------------
 // Floating-point tolerance
@@ -24,11 +28,49 @@ import { expect } from 'vitest';
 export const FLOAT_TOLERANCE = 10;
 
 // ---------------------------------------------------------------------------
-// expectMetricResult — deep numeric comparison with tolerance
+// State-aware MetricResult assertion
 // ---------------------------------------------------------------------------
 
 /**
- * Assert that an actual `MetricResult` matches the expected values.
+ * Expected values for a `computed` MetricResult.
+ */
+interface ComputedMetricResultExpected {
+  state: 'computed';
+  value: number;
+  totalWeight: number;
+  applicableDataPoints: number;
+  totalDataPoints: number;
+}
+
+/**
+ * Expected values for a `notAttempted` MetricResult.
+ */
+interface NotAttemptedMetricResultExpected {
+  state: 'notAttempted';
+  totalWeight: number;
+  totalDataPoints: number;
+}
+
+/**
+ * Expected values for an `error` MetricResult.
+ */
+interface ErrorMetricResultExpected {
+  state: 'error';
+  totalWeight: number;
+  totalDataPoints: number;
+}
+
+/**
+ * Union of expected value shapes for a MetricResult, discriminated by `state`.
+ */
+export type MetricResultExpected =
+  | ComputedMetricResultExpected
+  | NotAttemptedMetricResultExpected
+  | ErrorMetricResultExpected;
+
+/**
+ * Assert that an actual `MetricResult` matches the expected values,
+ * branching on `metric.state`.
  *
  * Numeric fields (`value`, `totalWeight`) are compared with `toBeCloseTo` to
  * tolerate floating-point drift from weighted-sum arithmetic.
@@ -39,66 +81,46 @@ export const FLOAT_TOLERANCE = 10;
  *   `toBeCloseTo` to accept minor IEEE-754 rounding in weighted-averages.
  * - `applicableDataPoints` and `totalDataPoints` are integer counts checked
  *   with strict `toBe` equality.
+ * - Literal fields (`state`, `value` for non-computed states) are checked
+ *   with strict `toBe` equality.
  *
- * @param {Object} actual - The actual metric result from the analyser.
- * @param {number|null} actual.value - The metric value (`null` when no data contributes).
- * @param {number} actual.totalWeight - The total weight of contributing data points.
- * @param {number} actual.applicableDataPoints - Count of contributing data points.
- * @param {number} actual.totalDataPoints - Total data points in the group.
- * @param {Object} expected - The expected metric result values.
- * @param {number|null} expected.value - The expected metric value (`null` when none contribute).
- * @param {number} expected.totalWeight - The expected total weight.
- * @param {number} expected.applicableDataPoints - Expected contributing count.
- * @param {number} expected.totalDataPoints - Expected total count.
+ * @param {MetricResult} actual - The actual metric result from the analyser.
+ * @param {MetricResultExpected} expected - The expected metric result values.
  */
-export function expectMetricResult(
-  actual: {
-    value: number | null;
-    totalWeight: number;
-    applicableDataPoints: number;
-    totalDataPoints: number;
-  },
-  expected: {
-    value: number | null;
-    totalWeight: number;
-    applicableDataPoints: number;
-    totalDataPoints: number;
-  }
+export function expectMetricResultStateAware(
+  actual: MetricResult,
+  expected: MetricResultExpected
 ): void {
-  if (expected.value === null) {
-    expect(actual.value).toBeNull();
-  } else {
-    expect(actual.value).toBeCloseTo(expected.value, FLOAT_TOLERANCE);
-  }
-  expect(actual.totalWeight).toBeCloseTo(expected.totalWeight, FLOAT_TOLERANCE);
-  expect(actual.applicableDataPoints).toBe(expected.applicableDataPoints);
-  expect(actual.totalDataPoints).toBe(expected.totalDataPoints);
-}
+  // Always check state first
+  expect(actual.state).toBe(expected.state);
 
-// ---------------------------------------------------------------------------
-// checkMetricInvariant — MetricResultSchema structural invariant
-// ---------------------------------------------------------------------------
-
-/**
- * Assert that a single `MetricResult` satisfies the schema invariant:
- * `value === null` iff `applicableDataPoints === 0`.
- *
- * @remarks
- * This invariant ensures the analyser never produces a MetricResult where
- * `value` is non-null but `applicableDataPoints` is zero (which would
- * imply a weighted average of no data) or vice versa.
- *
- * @param {Object} metric - The metric result to check.
- * @param {number|null} metric.value - The metric value (`null` or a number).
- * @param {number} metric.applicableDataPoints - Count of contributing data points.
- */
-export function checkMetricInvariant(metric: {
-  value: number | null;
-  applicableDataPoints: number;
-}): void {
-  if (metric.value === null) {
-    expect(metric.applicableDataPoints).toBe(0);
-  } else {
-    expect(metric.applicableDataPoints).toBeGreaterThan(0);
+  switch (expected.state) {
+    case 'computed': {
+      const compExpected = expected as ComputedMetricResultExpected;
+      const compActual = actual as Extract<MetricResult, { state: 'computed' }>;
+      expect(compActual.value).toBeCloseTo(compExpected.value, FLOAT_TOLERANCE);
+      expect(compActual.totalWeight).toBeCloseTo(compExpected.totalWeight, FLOAT_TOLERANCE);
+      expect(compActual.applicableDataPoints).toBe(compExpected.applicableDataPoints);
+      expect(compActual.totalDataPoints).toBe(compExpected.totalDataPoints);
+      break;
+    }
+    case 'notAttempted': {
+      const naExpected = expected as NotAttemptedMetricResultExpected;
+      const naActual = actual as Extract<MetricResult, { state: 'notAttempted' }>;
+      expect(naActual.value).toBe('N');
+      expect(naActual.totalWeight).toBeCloseTo(naExpected.totalWeight, FLOAT_TOLERANCE);
+      expect(naActual.applicableDataPoints).toBe(0);
+      expect(naActual.totalDataPoints).toBe(naExpected.totalDataPoints);
+      break;
+    }
+    case 'error': {
+      const errorExpected = expected as ErrorMetricResultExpected;
+      const errorActual = actual as Extract<MetricResult, { state: 'error' }>;
+      expect(errorActual.value).toBe('E');
+      expect(errorActual.totalWeight).toBeCloseTo(errorExpected.totalWeight, FLOAT_TOLERANCE);
+      expect(errorActual.applicableDataPoints).toBe(0);
+      expect(errorActual.totalDataPoints).toBe(errorExpected.totalDataPoints);
+      break;
+    }
   }
 }

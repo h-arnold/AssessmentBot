@@ -301,7 +301,7 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
    - Calls `runAssignmentPipeline(assignment, students, options)`
 
 8. **Persistence**
-   - Updates assignment's `lastUpdated` timestamp
+   - Updates assignment's `updatedAt` timestamp
    - Persists assignment run via `ABClassController.persistAssignmentRun()`
    - Writes both full and partial (summary) versions to database
 
@@ -344,7 +344,7 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
 
 **Static Factory Method**: `Assignment.create()`
 
-- **Location**: `src/backend/AssignmentProcessor/Assignment.js:184-209`
+- **Location**: `src/backend/AssignmentProcessor/Assignment/01_AssignmentFactory.js`
 - **Purpose**: Factory pattern for polymorphic instantiation
 - **Process**:
   1. Validates assignmentDefinition parameter
@@ -370,7 +370,7 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
 
 **Class**: `Assignment` (base class)
 
-- **Location**: `src/backend/AssignmentProcessor/Assignment.js:6-695`
+- **Location**: `src/backend/AssignmentProcessor/Assignment/index.js`
 - **Constructor Properties**:
 
   ```javascript
@@ -380,7 +380,7 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
     assignmentName: string,
     assignmentMetadata: null,
     dueDate: null,
-    lastUpdated: null,
+    updatedAt: null,
     assignmentDefinition: AssignmentDefinition,
     submissions: [],
     progressTracker: ProgressTracker,
@@ -418,7 +418,7 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
 
 **Method**: `Assignment.addStudent(student)`
 
-- **Location**: `src/backend/AssignmentProcessor/Assignment.js:500-519`
+- **Location**: `src/backend/AssignmentProcessor/Assignment/04_AssignmentSubmissions.js`
 - **Process**:
   1. Extracts studentId from student object
   2. Checks for duplicates in submissions array
@@ -511,7 +511,7 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
 
 **Method**: `Assignment.fetchSubmittedDocumentsByMimeType()`
 
-- **Location**: `/src/backend/AssignmentProcessor/Assignment.js`
+- **Location**: `src/backend/AssignmentProcessor/Assignment/04_AssignmentSubmissions.js`
 - **Process**:
   1. Calls Google Classroom API:
      - `Classroom.Courses.CourseWork.StudentSubmissions.list(courseId, assignmentId)`
@@ -524,14 +524,14 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
 
 **Helper Method**: `_processAttachmentForSubmission(attachment, studentId, mimeType)`
 
-- **Location**: `/src/backend/AssignmentProcessor/Assignment.js`
+- **Location**: `src/backend/AssignmentProcessor/Assignment/04_AssignmentSubmissions.js`
 - **Process**:
-  1. Extracts driveFileId from attachment
-  2. Fetches file from Drive
-  3. Validates MIME type matches expected type
-  4. Finds matching StudentSubmission in submissions array
-  5. Sets documentId on submission
-  6. Updates submission timestamp via `touchUpdated()`
+  1.  Extracts driveFileId from attachment
+  2.  Fetches file from Drive
+  3.  Validates MIME type matches expected type
+  4.  Finds matching StudentSubmission in submissions array
+  5.  Sets documentId on submission
+  6.  Updates submission timestamp via `touchUpdated()`
 - **Result**: Each StudentSubmission now has a documentId property pointing to their submission
 
 ##### Stage 4: Extract Student Work (lines 299-305)
@@ -656,7 +656,7 @@ assignment.submissions = [
 
 **Method**: `Assignment.assessResponses()` (base implementation)
 
-- **Location**: `src/backend/AssignmentProcessor/Assignment.js:645-654`
+- **Location**: `src/backend/AssignmentProcessor/Assignment/06_AssignmentLLMOrchestration.js`
 - **Purpose**: Routes to appropriate assessor based on document type
 - **Process**:
   1. Creates `LLMRequestManager` instance via `_getLLMManager()`
@@ -835,8 +835,8 @@ submission.items["task_001"] = {
 
 **Method**: `Assignment.touchUpdated()`
 
-- **Location**: `src/backend/AssignmentProcessor/Assignment.js`
-- **Purpose**: Sets lastUpdated to current timestamp
+- **Location**: `src/backend/AssignmentProcessor/Assignment/03_AssignmentTimestamps.js`
+- **Purpose**: Sets updatedAt to current timestamp
 - **Called**: Line 196 in `processSelectedAssignment()`
 
 #### Step 5.2: Persist Assignment Run
@@ -865,7 +865,7 @@ submission.items["task_001"] = {
   courseId: string,
   assignmentId: string,
   assignmentName: string,
-  lastUpdated: ISO date string,
+  updatedAt: ISO date string,
   assignmentDefinition: {
     primaryTitle: string,
     documentType: "SLIDES" | "SHEETS",
@@ -1246,7 +1246,7 @@ AssignmentController.processSelectedAssignment()
 
 To add a new document type (e.g., Google Docs):
 
-1. Create new subclass in `AssignmentProcessor/` (e.g., `DocsAssignment.js`)
+1. Create new subclass in `AssignmentProcessor/Assignment/` (e.g., `DocsAssignment.js`)
 2. Extend `Assignment` base class
 3. Implement required methods:
    - `populateTasks()`: Parse reference/template documents

@@ -1,4 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AssessTaskModal } from './AssessTaskModal';
@@ -93,7 +94,10 @@ vi.mock('../../assignmentWizard/AssignmentDefinitionWizardModal', () => ({
   }),
 }));
 
+let user: ReturnType<typeof userEvent.setup>;
+
 beforeEach(() => {
+  user = userEvent.setup();
   vi.clearAllMocks();
 });
 
@@ -121,11 +125,11 @@ describe('AssessTaskModal shell', () => {
 // ---------------------------------------------------------------------------
 
 describe('Loading state', () => {
-  it('shows Spin centred in modal body, Select not rendered, Start Assessment disabled', () => {
+  it('shows loading skeleton in modal body, Select not rendered, Start Assessment disabled', () => {
     const dialog = renderAssessTaskModal(createPendingPromise());
 
-    // Spin is visible in the modal body
-    expect(within(dialog).getByRole('status')).toBeInTheDocument(); // Ant Spin renders role="status"
+    // Skeleton is visible in the modal body
+    expect(within(dialog).getByRole('status')).toBeInTheDocument();
 
     // Select (combobox) is not rendered while loading
     expect(within(dialog).queryByRole('combobox')).toBeNull();
@@ -171,12 +175,10 @@ describe('Ready state (selection made)', () => {
     // Wait for the Select to appear
     await within(dialog).findByRole('combobox');
 
-    // Open the Select dropdown
-    fireEvent.mouseDown(within(dialog).getByRole('combobox'));
-
-    // Select the assignment option by its label
+    // Open the Select dropdown and select the assignment option
+    await user.click(within(dialog).getByRole('combobox'));
     const option = await screen.findByText('Essay');
-    fireEvent.click(option);
+    await user.click(option);
 
     // After selection, Start Assessment should be enabled
     await waitFor(() => {
@@ -235,7 +237,7 @@ describe('Error state', () => {
 describe('Cancel and close', () => {
   it('calls onClose when Cancel button is clicked', async () => {
     const mockedGetAssignments = vi.mocked(getGoogleClassroomAssignments);
-    mockedGetAssignments.mockResolvedValue(MOCK_ASSIGNMENTS);
+    mockedGetAssignments.mockImplementation(() => Promise.resolve(MOCK_ASSIGNMENTS));
     const onClose = vi.fn();
 
     renderWithFrontendProviders(<AssessTaskModal {...defaultProperties({ onClose })} />);
@@ -243,7 +245,7 @@ describe('Cancel and close', () => {
     const dialog = screen.getByRole('dialog', { name: MODAL_TITLE });
     await within(dialog).findByRole('combobox'); // wait for ready state
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });
@@ -254,7 +256,7 @@ describe('Cancel and close', () => {
   // system in JSDOM, we use native dispatchEvent to ensure the handlers fire.
   it('calls onClose when modal backdrop is clicked', async () => {
     const mockedGetAssignments = vi.mocked(getGoogleClassroomAssignments);
-    mockedGetAssignments.mockResolvedValue(MOCK_ASSIGNMENTS);
+    mockedGetAssignments.mockImplementation(() => Promise.resolve(MOCK_ASSIGNMENTS));
     const onClose = vi.fn();
 
     renderWithFrontendProviders(<AssessTaskModal {...defaultProperties({ onClose })} />);
@@ -298,7 +300,7 @@ describe('Fetch on open', () => {
 describe('Reopen resets state', () => {
   it('triggers fresh fetch with new classId when modal reopens for a different class', async () => {
     const mockedGetAssignments = vi.mocked(getGoogleClassroomAssignments);
-    mockedGetAssignments.mockResolvedValue(MOCK_ASSIGNMENTS);
+    mockedGetAssignments.mockImplementation(() => Promise.resolve(MOCK_ASSIGNMENTS));
 
     const queryClient = createAppQueryClient();
     const { rerender } = render(
@@ -312,19 +314,23 @@ describe('Reopen resets state', () => {
     expect(mockedGetAssignments).toHaveBeenCalledTimes(1);
 
     // Close the modal
-    rerender(
-      <QueryClientProvider client={queryClient}>
-        <AssessTaskModal {...defaultProperties({ open: false })} />
-      </QueryClientProvider>
-    );
+    await act(async () => {
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <AssessTaskModal {...defaultProperties({ open: false })} />
+        </QueryClientProvider>
+      );
+    });
 
     // Reopen with a different classId
     const newClassId = 'class-456';
-    rerender(
-      <QueryClientProvider client={queryClient}>
-        <AssessTaskModal {...defaultProperties({ open: true, classId: newClassId })} />
-      </QueryClientProvider>
-    );
+    await act(async () => {
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <AssessTaskModal {...defaultProperties({ open: true, classId: newClassId })} />
+        </QueryClientProvider>
+      );
+    });
 
     // Should trigger a fresh fetch with the new classId
     const expectedFetchCountAfterReopen = 2;
@@ -365,7 +371,7 @@ describe('Cleanup on close', () => {
       </QueryClientProvider>
     );
 
-    // Modal is open — effect fires, fetch starts, loading spinner visible
+    // Modal is open — effect fires, fetch starts, loading skeleton visible
     const dialog = screen.getByRole('dialog', { name: MODAL_TITLE });
     expect(within(dialog).getByRole('status')).toBeInTheDocument();
 
@@ -396,11 +402,11 @@ describe('Cleanup on close', () => {
     //
     // BUG (no cleanup): the leaky .then() handler set fetchState to 'ready'
     //   and assignments to staleData. After re-opening, the modal shows the
-    //   stale assignments (combobox visible, no loading spinner).
+    //   stale assignments (combobox visible, no loading skeleton).
     //
     // FIX (with cleanup): the stale handler was suppressed by the cleanup
     //   function. fetchState remains 'loading'. The modal shows the loading
-    //   spinner while the second fetch is pending.
+    //   skeleton while the second fetch is pending.
     expect(within(reopenedDialog).getByRole('status')).toBeInTheDocument();
   });
 });
@@ -422,7 +428,7 @@ describe('Assessment run interaction', () => {
     });
 
     await selectAssignment(dialog);
-    clickStartAssessment(dialog);
+    await clickStartAssessment(dialog);
 
     expect(await within(dialog).findByRole('alert')).toBeInTheDocument();
   });
@@ -437,7 +443,7 @@ describe('Assessment run interaction', () => {
     });
 
     await selectAssignment(dialog);
-    clickStartAssessment(dialog);
+    await clickStartAssessment(dialog);
 
     const alert = await within(dialog).findByRole('alert');
     expect(alert).toHaveTextContent('Class not found in cached data');
@@ -453,7 +459,7 @@ describe('Assessment run interaction', () => {
     });
 
     await selectAssignment(dialog);
-    clickStartAssessment(dialog);
+    await clickStartAssessment(dialog);
 
     expect(await within(dialog).findByRole('alert')).toBeInTheDocument();
   });
@@ -474,7 +480,7 @@ describe('Assessment run interaction', () => {
     });
 
     await selectAssignment(dialog);
-    clickStartAssessment(dialog);
+    await clickStartAssessment(dialog);
 
     const alert = await within(dialog).findByRole('alert');
     expect(alert).toBeInTheDocument();
@@ -489,7 +495,7 @@ describe('Assessment run interaction', () => {
     });
 
     await selectAssignment(dialog);
-    clickStartAssessment(dialog);
+    await clickStartAssessment(dialog);
 
     const alert = await within(dialog).findByRole('alert');
     expect(alert).toHaveTextContent('Cannot determine year group for this class');
@@ -512,7 +518,7 @@ describe('Assessment run interaction', () => {
     });
 
     await selectAssignment(dialog);
-    clickStartAssessment(dialog);
+    await clickStartAssessment(dialog);
 
     const alert = await within(dialog).findByRole('alert');
     expect(alert).toBeInTheDocument();
@@ -535,7 +541,7 @@ describe('Assessment run interaction', () => {
     });
 
     await selectAssignment(dialog);
-    clickStartAssessment(dialog);
+    await clickStartAssessment(dialog);
 
     // Success alert should appear
     const alert = await within(dialog).findByRole('alert');
@@ -569,7 +575,7 @@ describe('Assessment run interaction', () => {
     });
 
     await selectAssignment(dialog);
-    clickStartAssessment(dialog);
+    await clickStartAssessment(dialog);
 
     await expect(within(dialog).findByRole('alert')).resolves.toBeInTheDocument();
   });
@@ -598,7 +604,7 @@ describe('Assessment run interaction', () => {
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
 
     await selectAssignment(dialog);
-    clickStartAssessment(dialog);
+    await clickStartAssessment(dialog);
 
     // FUTURE BEHAVIOUR: Should transition to wizard stale-recovery
     // Currently this FAILS because handleApiError only shows a warning alert
@@ -631,7 +637,7 @@ describe('Assessment run interaction', () => {
     });
 
     await selectAssignment(dialog);
-    clickStartAssessment(dialog);
+    await clickStartAssessment(dialog);
 
     // Error alert should appear (existing behaviour)
     await expect(within(dialog).findByRole('alert')).resolves.toBeInTheDocument();
@@ -661,7 +667,7 @@ describe('Assessment run interaction', () => {
     });
 
     await selectAssignment(dialog);
-    clickStartAssessment(dialog);
+    await clickStartAssessment(dialog);
 
     // During API call, button should show loading state.
     // Ant Design appends "loading" to the accessible name when loading.
@@ -703,7 +709,7 @@ async function setupReopenInPlace() {
 
   const dialog = screen.getByRole('dialog', { name: MODAL_TITLE });
   await selectAssignment(dialog);
-  clickStartAssessment(dialog);
+  await clickStartAssessment(dialog);
 
   // Close the modal
   rerender(
@@ -731,7 +737,7 @@ describe('No-match resolution — choice state', () => {
     const { dialog } = renderWithNoMatchCache();
 
     await selectAssignment(dialog);
-    clickStartAssessment(dialog);
+    await clickStartAssessment(dialog);
 
     // An info Alert should explain the no-match situation
     const alert = await within(dialog).findByRole('alert');
@@ -750,7 +756,7 @@ describe('No-match resolution — choice state', () => {
     const { dialog } = renderWithNoMatchCache();
 
     await selectAssignment(dialog);
-    clickStartAssessment(dialog);
+    await clickStartAssessment(dialog);
 
     // Assignment Select should NOT be visible
     expect(within(dialog).queryByRole('combobox')).toBeNull();
@@ -764,10 +770,10 @@ describe('No-match resolution — choice state', () => {
     const { dialog } = renderWithNoMatchCache();
 
     await selectAssignment(dialog);
-    clickStartAssessment(dialog);
+    await clickStartAssessment(dialog);
 
     // Click "Create New Definition" — this should transition to 'creating'
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Create New Definition' }));
+    await clickCreateNewDefinition(dialog);
 
     // Once in creating state, the choice buttons should be gone
     await waitFor(() => {
@@ -785,7 +791,7 @@ describe('No-match resolution — choice state', () => {
     const { dialog } = renderWithNoMatchCache({ definitionPartials: [] });
 
     await selectAssignment(dialog);
-    clickStartAssessment(dialog);
+    await clickStartAssessment(dialog);
 
     const linkButton = within(dialog).getByRole('button', { name: 'Link to Existing Definition' });
     expect(linkButton).toBeDisabled();
@@ -829,7 +835,7 @@ describe('No-match resolution — choice state', () => {
     });
 
     await selectAssignment(dialog);
-    clickStartAssessment(dialog);
+    await clickStartAssessment(dialog);
 
     // The choice prompt must NOT appear — confirming noMatchResolution starts as 'idle'.
     // If noMatchResolution were 'choice', the choice prompt would render instead of
@@ -855,13 +861,13 @@ describe('Success state close', () => {
     const matchedDefinition = createDefinitionPartial();
     const onClose = vi.fn();
 
-    vi.mocked(getGoogleClassroomAssignments).mockResolvedValue(MOCK_ASSIGNMENTS);
+    vi.mocked(getGoogleClassroomAssignments).mockImplementation(() => Promise.resolve(MOCK_ASSIGNMENTS));
 
     vi.mocked(findMatchingDefinition).mockReturnValue({
       kind: 'matched',
       definition: matchedDefinition,
     });
-    vi.mocked(startAssessmentRun).mockResolvedValue(null);
+    vi.mocked(startAssessmentRun).mockImplementation(() => Promise.resolve(null));
 
     const queryClient = createAppQueryClient();
     queryClient.setQueryData(queryKeys.classPartials(), [
@@ -875,14 +881,14 @@ describe('Success state close', () => {
 
     const dialog = screen.getByRole('dialog', { name: MODAL_TITLE });
     await selectAssignment(dialog);
-    clickStartAssessment(dialog);
+    await clickStartAssessment(dialog);
 
     // Wait for success state — find the Close button in the footer
     const footer = dialog.querySelector('.ant-modal-footer') as HTMLElement | null;
     expect(footer).not.toBeNull();
     const closeButton = await within(footer!).findByRole('button', { name: 'Close' });
 
-    fireEvent.click(closeButton);
+    await user.click(closeButton);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
@@ -915,7 +921,7 @@ describe('Footer buttons across states', () => {
     cleanup();
 
     // Test empty state — separate render
-    mockedGetAssignments.mockResolvedValue(MOCK_EMPTY_ASSIGNMENTS);
+    mockedGetAssignments.mockImplementation(() => Promise.resolve(MOCK_EMPTY_ASSIGNMENTS));
     renderWithFrontendProviders(<AssessTaskModal {...defaultProperties()} key="empty" />);
     dialog = await screen.findByRole('dialog', { name: MODAL_TITLE });
     await within(dialog).findByText('No assignments found for this class');
@@ -925,7 +931,7 @@ describe('Footer buttons across states', () => {
     cleanup();
 
     // Test ready state (no selection) — separate render
-    mockedGetAssignments.mockResolvedValue(MOCK_ASSIGNMENTS);
+    mockedGetAssignments.mockImplementation(() => Promise.resolve(MOCK_ASSIGNMENTS));
     renderWithFrontendProviders(<AssessTaskModal {...defaultProperties()} key="ready-no-sel" />);
     dialog = await screen.findByRole('dialog', { name: MODAL_TITLE });
     await within(dialog).findByRole('combobox');
@@ -933,9 +939,9 @@ describe('Footer buttons across states', () => {
     expect(within(dialog).getByRole('button', { name: 'Start Assessment' })).toBeInTheDocument();
 
     // Test ready state (selection made) — same render, just interact
-    fireEvent.mouseDown(within(dialog).getByRole('combobox'));
+    await user.click(within(dialog).getByRole('combobox'));
     const option = await screen.findByText('Essay');
-    fireEvent.click(option);
+    await user.click(option);
     await waitFor(() => {
       expect(within(dialog).getByRole('button', { name: 'Start Assessment' })).toBeEnabled();
     });
@@ -956,7 +962,7 @@ async function setupWizardTest(options: Partial<RenderWithCacheOptions> = {}) {
   const { dialog, queryClient } = renderWithNoMatchCache(options);
 
   await selectAssignment(dialog);
-  clickStartAssessment(dialog);
+  await clickStartAssessment(dialog);
 
   return { dialog, queryClient };
 }
@@ -1047,7 +1053,9 @@ describe('No-match resolution — creating state and wizard integration', () => 
 
     await clickCreateNewDefinition(dialog);
     const properties = await getWizardProperties();
-    properties.onCreateSuccess('new-def-key');
+    await act(async () => {
+      properties.onCreateSuccess('new-def-key');
+    });
 
     // startAssessmentRun should have been called with the new definition key
     await waitFor(() => {
@@ -1078,7 +1086,9 @@ describe('No-match resolution — creating state and wizard integration', () => 
 
     await clickCreateNewDefinition(dialog);
     const properties = await getWizardProperties();
-    properties.onCreateSuccess('new-def-key');
+    await act(async () => {
+      properties.onCreateSuccess('new-def-key');
+    });
 
     // Error alert should appear
     const alert = await within(dialog).findByRole('alert');
@@ -1093,7 +1103,9 @@ describe('No-match resolution — creating state and wizard integration', () => 
     const properties = await getWizardProperties();
 
     // Simulate wizard cancel (onClose fires without onCreateSuccess having been called)
-    properties.onClose();
+    await act(async () => {
+      properties.onClose();
+    });
 
     // Should return to choice state — choice buttons appear again
     await waitFor(() => {
@@ -1113,7 +1125,7 @@ describe('No-match resolution — creating state and wizard integration', () => 
     await clickCreateNewDefinition(dialog);
 
     // Now in creating state — click Cancel in the AssessTaskModal footer
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });
@@ -1129,7 +1141,9 @@ describe('No-match resolution — creating state and wizard integration', () => 
 
     await clickCreateNewDefinition(dialog);
     const properties = await getWizardProperties();
-    properties.onCreateSuccess('new-def-key');
+    await act(async () => {
+      properties.onCreateSuccess('new-def-key');
+    });
 
     // During loading: the wizard mock should be unmounted
     expect(screen.queryByTestId('wizard-mock')).toBeNull();
@@ -1170,13 +1184,15 @@ describe('No-match resolution — creating state and wizard integration', () => 
 
     await clickCreateNewDefinition(dialog);
     const properties = await getWizardProperties();
-    properties.onCreateSuccess('test-key');
+    await act(async () => {
+      properties.onCreateSuccess('test-key');
+    });
 
     // During auto-assessment loading, Cancel should be in the footer
     expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
 
     // Click Cancel — the outer modal's Cancel during creating+loading calls onClose
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
@@ -1190,7 +1206,7 @@ describe('No-match resolution — linking state and link flow', () => {
     const { dialog } = renderWithNoMatchCache();
 
     await selectAssignment(dialog);
-    clickStartAssessment(dialog);
+    await clickStartAssessment(dialog);
 
     const linkButton = await within(dialog).findByRole('button', { name: 'Link to Existing Definition' });
     expect(linkButton).toBeEnabled();
@@ -1202,7 +1218,7 @@ describe('No-match resolution — linking state and link flow', () => {
     });
 
     await selectAssignment(dialog);
-    clickStartAssessment(dialog);
+    await clickStartAssessment(dialog);
 
     const linkButton = await within(dialog).findByRole('button', { name: 'Link to Existing Definition' });
     expect(linkButton).toBeDisabled();
@@ -1220,7 +1236,7 @@ describe('No-match resolution — linking state and link flow', () => {
     const { dialog } = renderWithNoMatchCache();
 
     await selectAssignment(dialog);
-    clickStartAssessment(dialog);
+    await clickStartAssessment(dialog);
 
     await clickLinkToExisting(dialog);
 
@@ -1239,11 +1255,11 @@ describe('No-match resolution — linking state and link flow', () => {
     const { dialog } = renderWithNoMatchCache();
 
     await selectAssignment(dialog);
-    clickStartAssessment(dialog);
+    await clickStartAssessment(dialog);
     await clickLinkToExisting(dialog);
 
     // Click Cancel in the picker footer
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
 
     // Choice buttons should reappear
     await waitFor(() => {
@@ -1260,7 +1276,7 @@ describe('No-match resolution — linking state and link flow', () => {
     const { dialog } = renderWithNoMatchCache();
 
     await selectAssignment(dialog);
-    clickStartAssessment(dialog);
+    await clickStartAssessment(dialog);
     await clickLinkToExisting(dialog);
 
     expectLinkButtonDisabled(dialog);
@@ -1471,7 +1487,7 @@ describe('No-match resolution — linking state and link flow', () => {
   it('state reset on modal reopen', async () => {
     const onClose = vi.fn();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    vi.mocked(upsertAssignmentDefinition).mockResolvedValue(DEFAULT_UPSERT_RESULT as any);
+    vi.mocked(upsertAssignmentDefinition).mockImplementation(() => Promise.resolve(DEFAULT_UPSERT_RESULT as any));
 
     const { queryClient } = renderWithNoMatchCache({ onClose });
     cleanup();
@@ -1484,7 +1500,7 @@ describe('No-match resolution — linking state and link flow', () => {
 
     const dialog = screen.getByRole('dialog', { name: MODAL_TITLE });
     await selectAssignment(dialog);
-    clickStartAssessment(dialog);
+    await clickStartAssessment(dialog);
 
     // Try to reach linking state
     await clickLinkToExisting(dialog);
@@ -1516,11 +1532,11 @@ describe('No-match resolution — linking state and link flow', () => {
     const { dialog } = renderWithNoMatchCache({ onClose });
 
     await selectAssignment(dialog);
-    clickStartAssessment(dialog);
+    await clickStartAssessment(dialog);
     await clickLinkToExisting(dialog);
 
     // Click Cancel in the picker footer — should return to choice, not close modal
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
 
     // noMatchResolution returns to 'choice' — choice buttons reappear
     await waitFor(() => {
@@ -1545,7 +1561,7 @@ describe('No-match resolution — linking state and link flow', () => {
     await performLinkFlow(dialog);
 
     // During loading, click Cancel — should close the modal
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });
@@ -1574,7 +1590,7 @@ describe('No-match resolution — linking state and link flow', () => {
     });
 
     await selectAssignment(dialog);
-    clickStartAssessment(dialog);
+    await clickStartAssessment(dialog);
 
     // The choice prompt should be visible and the Link button disabled because
     // linkableDefinitions is empty (no definitions for year-10 in the cache)
@@ -1614,34 +1630,34 @@ describe('Inline event handler stability', () => {
     // Handler 1: Assignment Select onChange — selects an assignment
     // Side effect: selectedAssignmentId is set, enabling Start Assessment
     await within(dialog).findByRole('combobox');
-    fireEvent.mouseDown(within(dialog).getByRole('combobox'));
+    await user.click(within(dialog).getByRole('combobox'));
     const essayOption = await screen.findByText('Essay');
-    fireEvent.click(essayOption);
+    await user.click(essayOption);
     await waitFor(() => {
       expect(within(dialog).getByRole('button', { name: 'Start Assessment' })).toBeEnabled();
     });
 
     // Handler 2: Start Assessment button onClick — triggers the no-match flow
     // Side effect: assessment state transitions to no-match and choice prompt appears
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Start Assessment' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Start Assessment' }));
     await within(dialog).findByRole('button', { name: 'Link to Existing Definition' });
 
     // Navigate to the linking state
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Link to Existing Definition' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Link to Existing Definition' }));
 
     // Handler 3: Linkable definition Select onSelect — selects a definition row
     // Side effect: selectedDefinitionForLink is set, enabling the Link button
     const linkableSelect = within(dialog).getByRole('combobox');
-    fireEvent.mouseDown(linkableSelect);
+    await user.click(linkableSelect);
     const definitionOption = await screen.findByText('Essay');
-    fireEvent.click(definitionOption);
+    await user.click(definitionOption);
     await waitFor(() => {
       expect(within(dialog).getByRole('button', { name: 'Link' })).toBeEnabled();
     });
 
     // Handler 4: Link button onClick — triggers the link-upsert and assessment run
     // Side effect: upsertAssignmentDefinition and startAssessmentRun are called
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Link' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Link' }));
     await waitFor(() => {
       expect(vi.mocked(upsertAssignmentDefinition)).toHaveBeenCalledTimes(1);
     });
