@@ -28,6 +28,7 @@ Use it alongside:
 - By default, reuse the standard blocking-error primitive for that region.
 - Unless a stronger documented UX case exists, that primitive should be an Ant Design `Alert` rendered in the affected owned region.
 - For full-page blocking states — where the entire owned surface is replaced because no usable content can be shown — an Ant Design `Result` is an acceptable alternative when the severity and scope warrant a more prominent treatment than a subregion `Alert`. The `Result` provides a centred, full-width outcome card with `title`, optional `subTitle`, and an `extra` action slot for retry/back navigation. The `Alert` remains the default for subregion blocking (e.g., a single panel).
+- **Current example:** The Class page (`src/frontend/src/features/classPage/`) uses `Result` for its six error-type blocking states. Retryable errors (`classQueryError`, `analyserError`, `assignmentDefinitionPartialsFailed`, `assignmentDefinitionPartialsUntrustworthy`) use `Result status="warning"` with `Retry` + `Back to Classes` buttons. Non-retryable errors (`classNotFound`, `adapterError`) use `Result status="error"` with only `Back to Classes`. The deviation from the default `Alert` pattern is documented in `SPEC_CLASS_PAGE.md` §"Error, loading, and empty-state rules".
 
 ### 2.3 Outer frame and inner panel
 

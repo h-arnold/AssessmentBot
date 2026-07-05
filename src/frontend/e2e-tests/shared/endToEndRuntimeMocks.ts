@@ -50,6 +50,7 @@ export type ResponseItem = Readonly<
 export type RuntimeScenario = Readonly<{
   getAuthorisationStatus?: ReadonlyArray<ResponseItem>;
   getABClassPartials?: ReadonlyArray<ResponseItem>;
+  getABClass?: ReadonlyArray<ResponseItem>;
   getCohorts?: ReadonlyArray<ResponseItem>;
   getYearGroups?: ReadonlyArray<ResponseItem>;
   getAssignmentTopics?: ReadonlyArray<ResponseItem>;
@@ -475,6 +476,7 @@ export async function installRuntimeMock(
   const allMethods = [
     'getAuthorisationStatus',
     'getABClassPartials',
+    'getABClass',
     'getCohorts',
     'getYearGroups',
     'getAssignmentTopics',

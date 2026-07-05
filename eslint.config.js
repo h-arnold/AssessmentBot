@@ -59,6 +59,7 @@ module.exports = [
     },
     plugins: { googleappsscript, jsdoc, security, unicorn, sonarjs },
     rules: {
+      'no-unreachable': 'error',
       ...securityRecommendedErrorRules,
       ...unicodeSecurityRules,
       ...sonarjs.configs.recommended.rules,

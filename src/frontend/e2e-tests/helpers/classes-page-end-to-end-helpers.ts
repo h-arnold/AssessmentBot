@@ -559,21 +559,22 @@ export async function openLinkPickerDropdown({
 // ============================================================================
 
 /**
- * Asserts that every card has View (disabled) and Assess Task (enabled) buttons.
+ * Asserts that every card has View (enabled) and Assess Task (enabled) buttons.
  * Edit buttons must be absent.
  *
  * Replaces the earlier assertAllViewEditButtonsDisabled to reflect the
- * Edit → Assess Task button replacement in Section 4.
+ * Edit → Assess Task button replacement in Section 4, and the View button
+ * enablement in Section 8 (Shell integration).
  *
  * @param {Page} page - The Playwright page under test.
  * @returns {Promise<void>}
  */
 export async function assertCardButtonStates(page: Page): Promise<void> {
-  // View buttons: exist, are disabled
+  // View buttons: exist, are enabled
   const allViewButtons = await page.getByRole('button', { name: /view/i }).all();
   for (const viewButton of allViewButtons) {
     await expect(viewButton).toBeVisible();
-    await expect(viewButton).toBeDisabled();
+    await expect(viewButton).toBeEnabled();
   }
 
   // Assess Task buttons: exist, are enabled, have aria-label

@@ -44,6 +44,9 @@ export default defineConfig([
     },
     rules: {
       ...tsBaseRules,
+      // TypeScript's compiler enforces this check; the base ESLint rule is disabled
+      // as recommended by https://eslint.org/docs/latest/rules/no-unreachable#handled_by_typescript
+      'no-unreachable': 'off',
       // unicorn rules customization for frontend
       'unicorn/no-array-for-each': 'off',
       'unicorn/catch-error-name': 'error',
@@ -188,6 +191,18 @@ export default defineConfig([
       ...unicodeSecurityRules,
       'require-unicode-regexp': 'off',
       'security/detect-object-injection': 'off',
+    },
+  },
+  {
+    // This spec file contains computeOverallComposite aggregation tests where
+    // every flagged value is an expected assertion result derived from the
+    // test's input data (e.g. weighted-average sums, data-point counts).
+    // Extracting these into named constants adds indirection without improving
+    // readability — the inline comments already document the derivation and
+    // the values are immediately obvious from the inputs above each assertion.
+    files: ['src/services/dataAnalysis/analysers/averagingAnalyser.accumulation.spec.ts'],
+    rules: {
+      '@typescript-eslint/no-magic-numbers': 'off',
     },
   },
 ]);

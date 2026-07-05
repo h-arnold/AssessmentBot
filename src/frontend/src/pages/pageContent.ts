@@ -20,4 +20,10 @@ export const pageContent = {
     heading: 'Settings',
     summary: 'Configure AssessmentBot preferences and workspace options.',
   },
+  classDetail: {
+    heading: 'Class Overview',
+    summary: 'Review assessment performance for this class.',
+    recentAssignmentsEmpty: 'No recent assessments yet',
+    searchEmpty: 'No students match your search',
+  },
 } as const;
