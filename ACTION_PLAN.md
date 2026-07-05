@@ -594,8 +594,12 @@ Red-first does not apply (refactor with no behaviour change).
 
 - **Implementation notes:** Extracted `findFirstDuplicate`, updated two
   callers, deleted the two originals.
-- **Deviations from plan:** None expected.
+- **Deviations from plan:** Used `keyFunction` parameter name instead of
+  `keyFn` to comply with `unicorn/prevent-abbreviations` ESLint rule.
 - **Follow-up implications:** None.
+- **Completion status:** ✅ COMPLETE. All 30 tests pass. Lint clean.
+  TypeScript compilation clean. `classPageAdapter.ts` is 500 lines (≤ 500).
+  §9.18.8 entry added to shared helpers doc (Status: Implemented).
 
 ---
 
