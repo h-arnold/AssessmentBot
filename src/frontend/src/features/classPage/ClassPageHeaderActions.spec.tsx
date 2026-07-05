@@ -68,7 +68,8 @@ describe('ClassPageHeaderActions', () => {
     // event is captured by the Tooltip trigger (antd v6 Tooltip does not
     // trigger on a disabled Button directly).
     const button = screen.getByRole('button', { name: /edit student details/i });
-    await user.hover(button);
+    const wrapper = button.parentElement!;
+    await user.hover(wrapper);
 
     // The Tooltip renders its content in a portal; findByText waits for
     // the portal content to appear.

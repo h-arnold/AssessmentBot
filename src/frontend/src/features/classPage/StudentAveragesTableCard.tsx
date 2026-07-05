@@ -48,6 +48,7 @@ import type { TableColumnsType, TablePaginationConfig } from 'antd';
 import type { SorterResult } from 'antd/es/table/interface';
 import { SearchOutlined } from '@ant-design/icons';
 import type { ClassPageAdapterResult, StudentAverageRowModel } from './classPageAdapter.zod';
+import { pageContent } from '../../pages/pageContent';
 
 import { buildClassPageViewModel, DEFAULT_SORT } from './classPageModel';
 import {
@@ -92,7 +93,7 @@ const INITIAL_FILTERS: StudentAveragesTableFilters = {
  * internal rendering of the empty state.
  */
 const EMPTY_LOCALE = {
-  emptyText: <Empty description="No students match your search" />,
+  emptyText: <Empty description={pageContent.classDetail.searchEmpty} />,
 } as const;
 
 // ---------------------------------------------------------------------------

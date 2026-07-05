@@ -33,10 +33,7 @@ class AssignmentSubmissions {
     // Avoid duplicates
     const existing = this._assignment.submissions.find((s) => s.studentId === studentId);
     if (existing) return existing;
-    const studentName =
-      student && (student.name || student.studentName || student.fullName)
-        ? student.name || student.studentName || student.fullName
-        : null;
+    const studentName = student.name || student.studentName || student.fullName || null;
     const submission = new StudentSubmission(
       studentId,
       this._assignment.assignmentId,

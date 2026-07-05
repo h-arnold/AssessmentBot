@@ -53,7 +53,8 @@ const AssignmentFactory = {
       throw new Error('courseId and assignmentId are required fields in Assignment data');
     }
 
-    if (!data.assignmentDefinition) {
+    let assignmentDefinition = data.assignmentDefinition;
+    if (!assignmentDefinition) {
       if (!data.documentType) {
         ProgressTracker.getInstance().logAndThrowError(
           `Assignment data missing documentType for courseId=${data.courseId}, assignmentId=${data.assignmentId}`,
@@ -61,7 +62,7 @@ const AssignmentFactory = {
         );
       }
 
-      data.assignmentDefinition = new AssignmentDefinition({
+      assignmentDefinition = new AssignmentDefinition({
         primaryTitle: data.assignmentName || `Assignment ${data.assignmentId}`,
         primaryTopic: data.assignmentName || 'Assignment',
         documentType: data.documentType,
@@ -73,7 +74,7 @@ const AssignmentFactory = {
       }).toJSON();
     }
 
-    const documentType = data.assignmentDefinition.documentType;
+    const documentType = assignmentDefinition.documentType;
 
     if (!documentType || typeof documentType !== 'string') {
       ProgressTracker.getInstance().logAndThrowError(
@@ -85,11 +86,11 @@ const AssignmentFactory = {
     const type = documentType.toUpperCase();
 
     if (type === 'SLIDES') {
-      return SlidesAssignment.fromJSON(data);
+      return SlidesAssignment.fromJSON({ ...data, assignmentDefinition });
     }
 
     if (type === 'SHEETS') {
-      return SheetsAssignment.fromJSON(data);
+      return SheetsAssignment.fromJSON({ ...data, assignmentDefinition });
     }
 
     ProgressTracker.getInstance().logAndThrowError(
