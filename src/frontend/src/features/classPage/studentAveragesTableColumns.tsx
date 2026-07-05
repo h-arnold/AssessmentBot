@@ -25,6 +25,7 @@ import { Typography } from 'antd';
 import type { TableColumnsType, TableColumnType } from 'antd';
 import { getStudentMetric } from './classPageAdapter.zod';
 import type { StudentAverageRowModel } from './classPageAdapter.zod';
+import { compareStudentNames } from './classPageModel';
 import { resolveMetricTone } from '../../services/dataAnalysis/metricDisplay/metricTone';
 import { MetricPill } from '../../services/dataAnalysis/metricDisplay/MetricPill';
 
@@ -145,18 +146,7 @@ export function buildStudentAveragesTableColumns(
       key: 'studentName',
       title: 'Student Name',
       sorter: {
-        compare: (
-          a: StudentAverageRowModel,
-          b: StudentAverageRowModel
-        ): number => {
-          // Locale-aware, case-insensitive name comparison
-          const nameCmp = a.studentName.localeCompare(b.studentName, undefined, {
-            sensitivity: 'base',
-          });
-          if (nameCmp !== 0) return nameCmp;
-          // Deterministic tie-breaker: studentId ascending
-          return a.studentId.localeCompare(b.studentId);
-        },
+        compare: compareStudentNames,
         multiple: 1,
       },
       defaultSortOrder: 'ascend',

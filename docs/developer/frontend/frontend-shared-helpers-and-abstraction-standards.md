@@ -538,6 +538,19 @@ These entries record the feature-local helpers for the Class page. Per `frontend
   - Co-located spec: `classPageAdapter.spec.ts` (15 tests covering all contract behaviours).
 - Planned doc reconciliation: confirmed the rollup precedence is documented inline in the adapter JSDoc (`@remarks` blocks); `MetricResult` discriminated union is consumed via `.state` property checks (not nullable checks, consistent with the discriminated union contract).
 
+#### 9.18.10 Shared comparator: `compareStudentNames`
+
+14. Helper: `compareStudentNames(a, b): number` — shared student-name comparator
+
+- Decision: `extract`
+- Owning module/path: `src/frontend/src/features/classPage/classPageModel.ts`
+- Call-site rationale: replaces two identical inline comparators — one in `buildClassPageViewModel` (studentName sort path) and one in `studentAveragesTableColumns.tsx` (`studentName` column `sorter.compare`). Both implement the same locale-aware, case-insensitive name comparison with `studentId` ascending tie-break. The model is the canonical owner of sorting logic.
+- Status: `Implemented`
+- Implementation notes:
+  - Signature: `export function compareStudentNames(a: StudentAverageRowModel, b: StudentAverageRowModel): number`
+  - Returns `a.studentName.localeCompare(b.studentName, undefined, { sensitivity: 'base' })` tie-broken by `a.studentId.localeCompare(b.studentId)`.
+  - Single source of truth for student-name ordering; call sites apply direction via `direction === 'asc' ? cmp : -cmp`.
+
 #### 9.18.2 Pure view-model builder: `classPageModel`
 
 2. Helper: `classPageModel` pure view-model builder

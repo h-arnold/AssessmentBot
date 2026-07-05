@@ -104,7 +104,7 @@ function buildMetricComparator(
  * Default sort configuration used when no explicit sort is provided.
  * Sorts by student name in ascending order.
  */
-const DEFAULT_SORT: {
+export const DEFAULT_SORT: {
   column: 'studentName';
   direction: 'asc';
 } = { column: 'studentName', direction: 'asc' };
@@ -112,6 +112,26 @@ const DEFAULT_SORT: {
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
+
+/**
+ * Compare two student rows by student name (locale-aware, case-insensitive)
+ * with a deterministic `studentId` ascending tie-break.
+ *
+ * @remarks
+ * This is the single source of truth for student-name ordering in the Class
+ * page. Call sites that need direction apply `direction === 'asc' ? cmp : -cmp`.
+ *
+ * @param {StudentAverageRowModel} a - The first row to compare.
+ * @param {StudentAverageRowModel} b - The second row to compare.
+ * @returns {number} Negative if `a < b`, positive if `a > b`, zero if equal.
+ */
+export function compareStudentNames(a: StudentAverageRowModel, b: StudentAverageRowModel): number {
+  const nameCmp = a.studentName.localeCompare(b.studentName, undefined, {
+    sensitivity: 'base',
+  });
+  if (nameCmp !== 0) return nameCmp;
+  return a.studentId.localeCompare(b.studentId);
+}
 
 /**
  * Build the final view model from the adapter result plus user-controlled
@@ -153,13 +173,8 @@ export function buildClassPageViewModel(input: {
   const { column, direction } = effectiveSort;
   if (column === 'studentName') {
     studentAverages = studentAverages.toSorted((a, b) => {
-      // Name comparison respects direction; studentId tie-break is always ascending
-      // per spec: "tie-broken by studentId ascending" regardless of direction.
-      const nameCmp = a.studentName.localeCompare(b.studentName, undefined, {
-        sensitivity: 'base',
-      });
-      if (nameCmp !== 0) return direction === 'asc' ? nameCmp : -nameCmp;
-      return a.studentId.localeCompare(b.studentId);
+      const cmp = compareStudentNames(a, b);
+      return direction === 'asc' ? cmp : -cmp;
     });
   } else {
     const comparator = buildMetricComparator(column, direction);

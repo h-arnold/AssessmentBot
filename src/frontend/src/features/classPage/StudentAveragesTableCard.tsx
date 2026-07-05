@@ -47,7 +47,7 @@ import type { TableColumnsType } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import type { ClassPageAdapterResult, StudentAverageRowModel } from './classPageAdapter.zod';
 
-import { buildClassPageViewModel } from './classPageModel';
+import { buildClassPageViewModel, DEFAULT_SORT } from './classPageModel';
 import {
   buildStudentAveragesTableColumns,
   type StudentAveragesTableFilters,
@@ -73,9 +73,6 @@ export type StudentAveragesTableCardProperties = {
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
-
-/** Default sort: student name ascending. */
-const DEFAULT_SORT: SortState = { column: 'studentName', direction: 'asc' };
 
 /** Initial filter state: all metric columns unfiltered. */
 const INITIAL_FILTERS: StudentAveragesTableFilters = {
