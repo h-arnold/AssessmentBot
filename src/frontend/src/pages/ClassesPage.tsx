@@ -1,6 +1,6 @@
 import { Alert, Button, Card, Col, Collapse, Empty, Row, Skeleton, Space, Tooltip, Typography } from 'antd';
 import { AuditOutlined } from '@ant-design/icons';
-import { type JSX, useMemo, useState } from 'react';
+import { type JSX, useCallback, useMemo, useState } from 'react';
 import {
   computeDatasetRenderable,
   computePageSurfaceBlocking,
@@ -318,6 +318,12 @@ export function ClassesPage() {
   // Selected class for ClassPage detail view (page-local, not URL-routed)
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
 
+  // Stable callback for navigating back to the class list from ClassPage.
+  // Wrapped in useCallback to avoid recreating the function on every render.
+  const handleNavigateToClasses = useCallback((): void => {
+    setSelectedClassId(null);
+  }, []);
+
   // Compute busy state
   const isClassesSurfaceBusy = computePageSurfaceBusy(
     [classPartialsQuery.isFetching, yearGroupsQuery.isFetching],
@@ -375,7 +381,7 @@ export function ClassesPage() {
       ) : (
         <ClassPage
           classId={selectedClassId}
-          onNavigateToClasses={() => setSelectedClassId(null)}
+          onNavigateToClasses={handleNavigateToClasses}
         />
       )}
     </PageSection>

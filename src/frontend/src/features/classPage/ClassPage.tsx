@@ -25,7 +25,7 @@
  * @see CLASS_PAGE_LAYOUT.md — "Surface hierarchy" and "Global state rules"
  */
 
-import { useState, type JSX } from 'react';
+import { useState, useMemo, type JSX } from 'react';
 import { Breadcrumb, Typography } from 'antd';
 import { ClassPageContent } from './ClassPageContent';
 import { useClassPageData } from './useClassPageData';
@@ -38,6 +38,16 @@ type ClassPageProperties = Readonly<{
   /** Callback invoked when the user navigates back to the classes list. */
   onNavigateToClasses: () => void;
 }>;
+
+// ---------------------------------------------------------------------------
+// Module-level constants
+// ---------------------------------------------------------------------------
+
+/** Static breadcrumb items that do not depend on component state or props. */
+const STATIC_BREADCRUMB_ITEMS = [
+  { title: 'AssessmentBot Frontend' },
+  { title: 'Classes' },
+] as const;
 
 /**
  * Render the Class page composition root.
@@ -62,6 +72,22 @@ export function ClassPage({
   const className: string = classFull?.className ?? '';
 
   /**
+   * Memoised breadcrumb items.
+   *
+   * The first two segments are static (module-level constant). The second
+   * carries the navigation callback so clicking "Classes" returns to the
+   * class list. The third uses the class name.
+   */
+  const breadcrumbItems = useMemo(
+    () => [
+      STATIC_BREADCRUMB_ITEMS[0],
+      { ...STATIC_BREADCRUMB_ITEMS[1], onClick: onNavigateToClasses },
+      { title: className },
+    ],
+    [className, onNavigateToClasses]
+  );
+
+  /**
    * Open the AssessTaskModal.
    * Called from both the header button and the empty-state CTA.
    */
@@ -78,13 +104,7 @@ export function ClassPage({
 
   return (
     <>
-      <Breadcrumb
-        items={[
-          { title: 'AssessmentBot Frontend' },
-          { title: 'Classes', onClick: onNavigateToClasses },
-          { title: className },
-        ]}
-      />
+      <Breadcrumb items={breadcrumbItems} />
 
       {surfaceState.status !== 'loading' && (
         <Typography.Title level={2}>

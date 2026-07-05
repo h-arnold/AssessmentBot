@@ -82,6 +82,17 @@ const INITIAL_FILTERS: StudentAveragesTableFilters = {
   average: [],
 };
 
+/**
+ * Module-level locale constant for the Table's empty state.
+ *
+ * Extracted to prevent recreating a new `<Empty>` React element on every
+ * render, which would cause Ant Design's `Table` to re-evaluate its
+ * internal rendering of the empty state.
+ */
+const EMPTY_LOCALE = {
+  emptyText: <Empty description="No students match your search" />,
+} as const;
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -193,9 +204,7 @@ export function StudentAveragesTableCard(
         size="small"
         scroll={{ x: 'max-content' }}
         onChange={handleTableChange}
-        locale={{
-          emptyText: <Empty description="No students match your search" />,
-        }}
+        locale={EMPTY_LOCALE}
       />
     </Card>
   );
