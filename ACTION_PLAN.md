@@ -932,6 +932,11 @@ tests serve as the regression anchor.
   pill labels and emphasised styling correctly.
 - **Deviations from plan:** None expected.
 - **Follow-up implications:** None.
+- **Completion status:** ✅ COMPLETE. All 8 tests pass. Lint clean.
+  TypeScript compilation clean. Descriptor-driven map with `as const` for
+  type narrowing. DRY fix: imported `getStudentMetric` instead of duplicating
+  `getMetric`. Removed unused `MetricResult` import. Added JSDoc to
+  `METRIC_ENTRIES`.
 
 ---
 
