@@ -27,6 +27,7 @@
 import type { JSX } from 'react';
 import { Card, Flex, Typography } from 'antd';
 import type { RecentAssignmentCardModel } from './classPageAdapter.zod';
+import { getStudentMetric } from './classPageAdapter.zod';
 import { MetricPill } from '../../services/dataAnalysis/metricDisplay/MetricPill';
 
 /** Width constant for a single Recent Assignment card.
@@ -39,6 +40,20 @@ import { MetricPill } from '../../services/dataAnalysis/metricDisplay/MetricPill
  * (Completeness, Accuracy, SpAG, Average) side-by-side without wrapping.
  */
 const RECENT_ASSIGNMENT_CARD_WIDTH_PX = 320;
+
+/**
+ * Descriptor array for the four metric pills rendered in the card.
+ *
+ * Each entry defines the metric key, display label, alignment, and emphasis
+ * flag. The Average cell uses `align="center"` and `emphasised={true}` for
+ * visual prominence; the other three cells use `align="start"` and no emphasis.
+ */
+const METRIC_ENTRIES = [
+  { key: 'completeness' as const, label: 'Completeness', align: 'start' as const, emphasised: false },
+  { key: 'accuracy' as const, label: 'Accuracy', align: 'start' as const, emphasised: false },
+  { key: 'spag' as const, label: 'SpAG', align: 'start' as const, emphasised: false },
+  { key: 'average' as const, label: 'Average', align: 'center' as const, emphasised: true },
+] as const;
 
 type RecentAssignmentCardProperties = Readonly<{
   /** The fully-built recent assignment card model. */
@@ -65,22 +80,12 @@ export function RecentAssignmentCard({
         Last Assessed: {card.lastAssessedAtLabel}
       </Typography.Text>
       <Flex justify="space-around" style={{ marginTop: 12 }}>
-        <Flex vertical align="start">
-          <Typography.Text>Completeness</Typography.Text>
-          <MetricPill metric={card.metrics.completeness} />
-        </Flex>
-        <Flex vertical align="start">
-          <Typography.Text>Accuracy</Typography.Text>
-          <MetricPill metric={card.metrics.accuracy} />
-        </Flex>
-        <Flex vertical align="start">
-          <Typography.Text>SpAG</Typography.Text>
-          <MetricPill metric={card.metrics.spag} />
-        </Flex>
-        <Flex vertical align="center">
-          <Typography.Text>Average</Typography.Text>
-          <MetricPill metric={card.metrics.average} emphasised />
-        </Flex>
+        {METRIC_ENTRIES.map(({ key, label, align, emphasised }) => (
+          <Flex key={key} vertical align={align}>
+            <Typography.Text>{label}</Typography.Text>
+            <MetricPill metric={getStudentMetric(card.metrics, key)} emphasised={emphasised} />
+          </Flex>
+        ))}
       </Flex>
     </Card>
   );
