@@ -23,8 +23,8 @@
 import type { JSX } from 'react';
 import { Typography } from 'antd';
 import type { TableColumnsType, TableColumnType } from 'antd';
+import { getStudentMetric } from './classPageAdapter.zod';
 import type { StudentAverageRowModel } from './classPageAdapter.zod';
-import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import { resolveMetricTone } from '../../services/dataAnalysis/metricDisplay/metricTone';
 import { MetricPill } from '../../services/dataAnalysis/metricDisplay/MetricPill';
 
@@ -88,39 +88,9 @@ function arrayOrUndefined(
 }
 
 /**
- * Access a metric result from a student row by column key.
- *
- * Uses a switch statement to satisfy the `security/detect-object-injection`
- * lint rule.
- *
- * @param {StudentAverageRowModel['metrics']} metrics - The student's metrics.
- * @param {MetricColumnKey} key - The metric column key.
- * @returns {MetricResult} The metric result for the given column.
- */
-function getMetric(
-  metrics: StudentAverageRowModel['metrics'],
-  key: MetricColumnKey
-): MetricResult {
-  switch (key) {
-    case 'completeness': {
-      return metrics.completeness;
-    }
-    case 'accuracy': {
-      return metrics.accuracy;
-    }
-    case 'spag': {
-      return metrics.spag;
-    }
-    case 'average': {
-      return metrics.average;
-    }
-  }
-}
-
-/**
  * Build a single metric column definition.
  *
- * @param {MetricColumnKey} key - The column key (metric field name).
+ * @param {'completeness' | 'accuracy' | 'spag' | 'average'} key - The column key (metric field name).
  * @param {string} title - The column header title.
  * @param {ReadonlyArray<string>} columnFilters - The selected filter values.
  * @param {boolean} [emphasised] - When true, renders the MetricPill with emphasised styling.
@@ -139,12 +109,12 @@ function buildMetricColumn(
     filters: METRIC_COLUMN_FILTERS,
     filteredValue: arrayOrUndefined(columnFilters),
     onFilter: (value, record): boolean => {
-      const metric = getMetric(record.metrics, key);
+      const metric = getStudentMetric(record.metrics, key);
       const { color } = resolveMetricTone(metric, DEFAULT_TONE_RANGE);
       return color === String(value);
     },
     render: (_: unknown, record: StudentAverageRowModel): JSX.Element => (
-      <MetricPill metric={getMetric(record.metrics, key)} emphasised={emphasised} />
+      <MetricPill metric={getStudentMetric(record.metrics, key)} emphasised={emphasised} />
     ),
   };
 }

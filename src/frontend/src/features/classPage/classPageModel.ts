@@ -8,6 +8,7 @@
  * @see SPEC_CLASS_PAGE.md § "classPageModel — view-model builder"
  */
 
+import { getStudentMetric } from './classPageAdapter.zod';
 import type { ClassPageAdapterResult, StudentAverageRowModel } from './classPageAdapter.zod';
 import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 
@@ -69,36 +70,6 @@ function getMetricStateRank(metric: MetricResult, direction: 'asc' | 'desc'): nu
 }
 
 /**
- * Extract the metric result for a given column from a student row.
- *
- * This accessor exists to avoid lint `security/detect-object-injection`
- * warnings from computed property access on the metrics object.
- *
- * @param {StudentAverageRowModel} row - The student row model.
- * @param {'completeness' | 'accuracy' | 'spag' | 'average'} column - The metric column key.
- * @returns {MetricResult} The metric result for the given column.
- */
-function getMetricForColumn(
-  row: StudentAverageRowModel,
-  column: 'completeness' | 'accuracy' | 'spag' | 'average'
-): MetricResult {
-  switch (column) {
-    case 'completeness': {
-      return row.metrics.completeness;
-    }
-    case 'accuracy': {
-      return row.metrics.accuracy;
-    }
-    case 'spag': {
-      return row.metrics.spag;
-    }
-    case 'average': {
-      return row.metrics.average;
-    }
-  }
-}
-
-/**
  * Build a comparator function for a metric column with state-aware ordering.
  *
  * @param {'completeness' | 'accuracy' | 'spag' | 'average'} column - The metric column to compare by.
@@ -110,8 +81,8 @@ function buildMetricComparator(
   direction: 'asc' | 'desc'
 ): (a: StudentAverageRowModel, b: StudentAverageRowModel) => number {
   return (a, b) => {
-    const aMetric = getMetricForColumn(a, column);
-    const bMetric = getMetricForColumn(b, column);
+    const aMetric = getStudentMetric(a.metrics, column);
+    const bMetric = getStudentMetric(b.metrics, column);
 
     const aRank = getMetricStateRank(aMetric, direction);
     const bRank = getMetricStateRank(bMetric, direction);

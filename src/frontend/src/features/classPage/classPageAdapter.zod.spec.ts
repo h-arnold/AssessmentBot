@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  getStudentMetric,
   RecentAssignmentCardModelSchema,
   StudentAverageRowModelSchema,
   ClassPageAdapterResultSchema,
@@ -219,5 +220,38 @@ describe('ClassPageAdapterResultSchema', () => {
   it('rejects missing classMetrics', () => {
     const input = validClassPageAdapterResult({ classMetrics: undefined });
     expect(() => ClassPageAdapterResultSchema.parse(input)).toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getStudentMetric
+// ---------------------------------------------------------------------------
+
+describe('getStudentMetric', () => {
+  const metrics = {
+    completeness: validComputedMetric,
+    accuracy: validComputedMetric,
+    spag: validNotAttemptedMetric,
+    average: validComputedMetric,
+  };
+
+  it('returns metrics.completeness for key "completeness"', () => {
+    const result = getStudentMetric(metrics, 'completeness');
+    expect(result).toBe(metrics.completeness);
+  });
+
+  it('returns metrics.accuracy for key "accuracy"', () => {
+    const result = getStudentMetric(metrics, 'accuracy');
+    expect(result).toBe(metrics.accuracy);
+  });
+
+  it('returns metrics.spag for key "spag"', () => {
+    const result = getStudentMetric(metrics, 'spag');
+    expect(result).toBe(metrics.spag);
+  });
+
+  it('returns metrics.average for key "average"', () => {
+    const result = getStudentMetric(metrics, 'average');
+    expect(result).toBe(metrics.average);
   });
 });

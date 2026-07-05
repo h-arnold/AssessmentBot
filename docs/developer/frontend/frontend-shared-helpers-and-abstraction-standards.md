@@ -672,6 +672,20 @@ These entries record the feature-local helpers for the Class page. Per `frontend
   - Uses `readonly T[]` for broader type compatibility.
   - Throws the same `TypeError` for duplicate IDs as the original functions via the same caller-site check.
 
+#### 9.18.9 Shared `getStudentMetric` accessor extracted from duplicated switch statements
+
+13. Helper: `getStudentMetric(metrics, key): MetricResult` — shared metric accessor
+
+- Decision: `extract`
+- Owning module/path: `src/frontend/src/features/classPage/classPageAdapter.zod.ts`
+- Call-site rationale: replaces two identical 4-case switch statements in `studentAveragesTableColumns.tsx` (`getMetric`) and `classPageModel.ts` (`getMetricForColumn`) with a single exported accessor. Both existed solely to satisfy the `security/detect-object-injection` lint rule. The owning module is the Zod trust-boundary schema file (not a new `helpers.ts`) because both callers already depend on it for types, and the accessor operates on the schema's `StudentAverageRowModel['metrics']` contract.
+- Status: `Implemented`
+- Implementation notes:
+  - Uses a `switch` statement (not computed property access) to satisfy the `security/detect-object-injection` lint rule.
+  - JSDoc explains the lint-rule motivation and the switch-statement pattern.
+  - `@remarks` documents the switch-statement rationale.
+  - Exported function signature: `getStudentMetric(metrics: StudentAverageRowModel['metrics'], key: 'completeness' | 'accuracy' | 'spag' | 'average'): MetricResult`
+
 ### 9.19 Frontend pure formatting helpers
 
 These entries record the planned pure formatting helpers extracted from feature code into shared utility modules.

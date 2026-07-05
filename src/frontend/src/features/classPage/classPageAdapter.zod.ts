@@ -14,7 +14,50 @@
  */
 
 import { z } from 'zod';
+import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import { MetricResultSchema } from '../../services/dataAnalysis/dataAnalysis.zod';
+
+/**
+ * Access a metric result from a student's metrics by key.
+ *
+ * Uses a `switch` statement (not computed property access, e.g.
+ * `metrics[key]`) to satisfy the `security/detect-object-injection` ESLint
+ * rule, which flags bracket-access on objects whose keys are not statically
+ * known. Each case is a literal string, so the lint rule is satisfied while
+ * keeping the accessor concise.
+ *
+ * @remarks
+ * The switch-statement pattern is deliberate: the `security/detect-object-injection`
+ * rule from `eslint-plugin-security` triggers on computed property access
+ * (`metrics[key]`) even when `key` is a union of known literal strings. A
+ * `switch` over a known-union type avoids the warning because each branch
+ * accesses a literal property directly. This pattern is repeated in two
+ * other modules (`studentAveragesTableColumns.tsx` and `classPageModel.ts`),
+ * which import this shared accessor instead of duplicating the switch.
+ *
+ * @param {StudentAverageRowModel['metrics']} metrics - The student's metrics object.
+ * @param {'completeness' | 'accuracy' | 'spag' | 'average'} key - The metric key to access.
+ * @returns {MetricResult} The metric result for the given key.
+ */
+export function getStudentMetric(
+  metrics: StudentAverageRowModel['metrics'],
+  key: 'completeness' | 'accuracy' | 'spag' | 'average'
+): MetricResult {
+  switch (key) {
+    case 'completeness': {
+      return metrics.completeness;
+    }
+    case 'accuracy': {
+      return metrics.accuracy;
+    }
+    case 'spag': {
+      return metrics.spag;
+    }
+    case 'average': {
+      return metrics.average;
+    }
+  }
+}
 
 /** Reuses the `MetricResult` discriminated union from the data analysis service. */
 const RecentAssignmentCardMetricSchema = MetricResultSchema;
