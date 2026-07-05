@@ -406,6 +406,9 @@ the strict sense — the existing 15 tests serve as the red anchor.
   empty-perTask edge cases.
 - **Deviations from plan:** None expected.
 - **Follow-up implications:** None.
+- **Completion status:** ✅ COMPLETE. All 17 tests pass (2 new). Lint clean.
+  TypeScript compilation clean. `classPageAdapter.ts` is 499 lines (≤ 500).
+  Map-based lookup produces identical output to old filter-in-loop.
 
 ---
 
