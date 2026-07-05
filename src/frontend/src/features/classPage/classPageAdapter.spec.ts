@@ -893,4 +893,106 @@ describe('adaptClassPageToViewModel', () => {
       expect(result.classMetrics.overall).toEqual(customPerClass.overall);
     });
   });
+
+  // -----------------------------------------------------------------------
+  // definitionKey mapping — multiple assignments share same definitionKey
+  // -----------------------------------------------------------------------
+  it('matches all per-task rows by definitionKey when multiple assignments share the same definitionKey', () => {
+    // Two assignments sharing definitionKey 'shared-dk', each with its own taskId.
+    // Two per-task rows exist for 'shared-dk' (one per taskId). Both assignments
+    // should receive both per-task rows in their recent assignment card.
+    const sharedPerTaskRows: PerTaskRow[] = [
+      perTaskRow({
+        definitionKey: 'shared-dk',
+        taskId: 't1',
+        completeness: metric('computed', { value: 4, totalWeight: 1 }),
+        accuracy: metric('computed', { value: 3, totalWeight: 1 }),
+        spag: metric('computed', { value: 2, totalWeight: 1 }),
+      }),
+      perTaskRow({
+        definitionKey: 'shared-dk',
+        taskId: 't2',
+        completeness: metric('computed', { value: 5, totalWeight: 1 }),
+        accuracy: metric('computed', { value: 4, totalWeight: 1 }),
+        spag: metric('computed', { value: 3, totalWeight: 1 }),
+      }),
+    ];
+
+    const result = adaptClassPageToViewModel({
+      analyserResult: averagingResult({
+        perTask: sharedPerTaskRows,
+      }),
+      classFull: classFull({
+        students: [student('s-1', 'Alice')],
+        assignments: [
+          assignment({
+            assignmentId: 'a-1',
+            updatedAt: DEFAULT_TS,
+            definitionKey: 'shared-dk',
+            taskIds: ['t1'],
+          }),
+          assignment({
+            assignmentId: 'a-2',
+            updatedAt: DEFAULT_TS,
+            definitionKey: 'shared-dk',
+            taskIds: ['t2'],
+          }),
+        ],
+      }),
+    });
+
+    const expectedSharedCardCount = 2;
+    const expectedSharedCompletenessRollup = 4.5;
+
+    // Both assignments should appear (no limit exceeded yet)
+    expect(result.recentAssignments).toHaveLength(expectedSharedCardCount);
+
+    // Assignment a-1 should have metrics rolled up from BOTH per-task rows
+    const card1 = result.recentAssignments.find((c) => c.assignmentId === 'a-1');
+    expect(card1).toBeDefined();
+    expect(card1!.metrics.completeness.state).toBe('computed');
+    if (card1!.metrics.completeness.state === 'computed') {
+      // completeness rollup: (4*1 + 5*1) / 2 = 4.5
+      expect(card1!.metrics.completeness.value).toBeCloseTo(expectedSharedCompletenessRollup);
+    }
+
+    // Assignment a-2 should also have metrics from BOTH per-task rows
+    const card2 = result.recentAssignments.find((c) => c.assignmentId === 'a-2');
+    expect(card2).toBeDefined();
+    expect(card2!.metrics.completeness.state).toBe('computed');
+    if (card2!.metrics.completeness.state === 'computed') {
+      expect(card2!.metrics.completeness.value).toBeCloseTo(expectedSharedCompletenessRollup);
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // definitionKey mapping — empty perTask
+  // -----------------------------------------------------------------------
+  it('produces all-notAttempted metrics when analyserResult.perTask is empty', () => {
+    // A single assignment with definitionKey 'dk1' but no per-task rows.
+    // The adapter should fall back to noDataMetric() for each criterion.
+    const result = adaptClassPageToViewModel({
+      analyserResult: averagingResult({
+        perTask: [],
+      }),
+      classFull: classFull({
+        students: [student('s-1', 'Alice')],
+        assignments: [
+          assignment({
+            assignmentId: 'a-1',
+            updatedAt: DEFAULT_TS,
+            definitionKey: 'dk1',
+            taskIds: ['t1'],
+          }),
+        ],
+      }),
+    });
+
+    expect(result.recentAssignments).toHaveLength(1);
+    const card = result.recentAssignments[0];
+    expect(card.metrics.completeness).toMatchObject({ state: 'notAttempted' });
+    expect(card.metrics.accuracy).toMatchObject({ state: 'notAttempted' });
+    expect(card.metrics.spag).toMatchObject({ state: 'notAttempted' });
+    expect(card.metrics.average).toMatchObject({ state: 'notAttempted' });
+  });
 });

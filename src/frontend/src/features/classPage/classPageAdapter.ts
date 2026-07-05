@@ -13,7 +13,11 @@
 
 import { rollupMetric } from '../../services/dataAnalysis/analysers/rollupMetric';
 import { formatUpdatedAtLabel } from '../../utils/dateFormatting';
-import type { AveragingResult, MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
+import type {
+  AveragingResult,
+  MetricResult,
+  PerTaskRow,
+} from '../../services/dataAnalysis/dataAnalysis.zod';
 import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
 import type {
   ClassPageAdapterResult,
@@ -295,30 +299,31 @@ function computeAverageMetric(
  */
 function buildRecentAssignment(
   assignment: ClassFull['assignments'][number],
-  matchingPerTask: AveragingResult['perTask'],
+  matchingPerTask: PerTaskRow[] | undefined,
   validatedUpdatedAt: string
 ): RecentAssignmentCardModel {
+  const rows = matchingPerTask ?? [];
   // Roll up per-task metrics into per-assignment values
   let rolledUpCompleteness: MetricResult;
   let rolledUpAccuracy: MetricResult;
   let rolledUpSpag: MetricResult;
 
-  if (matchingPerTask.length === 0) {
+  if (rows.length === 0) {
     // No per-task data — synthesise all-notAttempted
     rolledUpCompleteness = noDataMetric();
     rolledUpAccuracy = noDataMetric();
     rolledUpSpag = noDataMetric();
   } else {
     rolledUpCompleteness = rollupMetric(
-      matchingPerTask.map((r) => r.completeness),
+      rows.map((r) => r.completeness),
       'completeness'
     );
     rolledUpAccuracy = rollupMetric(
-      matchingPerTask.map((r) => r.accuracy),
+      rows.map((r) => r.accuracy),
       'accuracy'
     );
     rolledUpSpag = rollupMetric(
-      matchingPerTask.map((r) => r.spag),
+      rows.map((r) => r.spag),
       'spag'
     );
   }
@@ -369,9 +374,24 @@ function buildNoDataStudent(studentId: string, studentName: string): StudentAver
   };
 }
 
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
+/**
+ * Build a lookup: definitionKey → per-task rows for O(1) access.
+ *
+ * @param {AveragingResult['perTask']} perTask - The per-task analysis rows.
+ * @returns {Map<string, PerTaskRow[]>} A map from definitionKey to matching rows.
+ */
+function buildPerTaskLookup(perTask: AveragingResult['perTask']): Map<string, PerTaskRow[]> {
+  const lookup = new Map<string, PerTaskRow[]>();
+  for (const row of perTask) {
+    const group = lookup.get(row.definitionKey);
+    if (group) {
+      group.push(row);
+    } else {
+      lookup.set(row.definitionKey, [row]);
+    }
+  }
+  return lookup;
+}
 
 /**
  * Translate the data analysis service's `AveragingResult` plus the raw
@@ -412,18 +432,20 @@ export function adaptClassPageToViewModel(input: {
   // -----------------------------------------------------------------------
 
   const recentAssignments: RecentAssignmentCardModel[] = [];
+  const perTaskLookup = buildPerTaskLookup(analyserResult.perTask);
 
   for (const assignment of classFull.assignments) {
     // Null/unparseable updatedAt throws — extract to local for type narrowing
     const rawUpdatedAt: string | null = assignment.updatedAt;
     validateUpdatedAt(rawUpdatedAt, assignment.assignmentId);
 
-    // Find matching per-task rows by definitionKey
-    const matchingPerTask = analyserResult.perTask.filter(
-      (row) => row.definitionKey === assignment.assignmentDefinition.definitionKey
+    recentAssignments.push(
+      buildRecentAssignment(
+        assignment,
+        perTaskLookup.get(assignment.assignmentDefinition.definitionKey),
+        rawUpdatedAt
+      )
     );
-
-    recentAssignments.push(buildRecentAssignment(assignment, matchingPerTask, rawUpdatedAt));
   }
 
   // Sort by updatedAt descending and take top 3
@@ -477,10 +499,6 @@ export function adaptClassPageToViewModel(input: {
     if (nameCmp !== 0) return nameCmp;
     return a.studentId.localeCompare(b.studentId);
   });
-
-  // -----------------------------------------------------------------------
-  // Class metrics passthrough
-  // -----------------------------------------------------------------------
 
   return {
     recentAssignments: topRecentAssignments,
