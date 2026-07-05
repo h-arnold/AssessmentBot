@@ -502,6 +502,9 @@ Red-first is not applicable (refactor with no behaviour change).
   removed.
 - **Deviations from plan:** None expected.
 - **Follow-up implications:** None.
+- **Completion status:** ✅ COMPLETE. All 1,431 tests pass. Lint clean.
+  TypeScript compilation clean. 183 net lines removed (312 deletions, 129
+  insertions). All call sites migrated to shared helper.
 
 ---
 
