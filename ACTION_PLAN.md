@@ -739,6 +739,10 @@ Frontend tests:
   per planner-reviewer finding that the type-owning module is the natural
   home and avoids a single-helper file.)
 - **Follow-up implications:** None.
+- **Completion status:** ✅ COMPLETE. All tests pass (17 classPageAdapter.zod,
+  17 studentAveragesTableColumns, 12 classPageModel). Lint clean. TypeScript
+  compilation clean. §9.18.9 entry added to shared helpers doc (Status:
+  Implemented). Switch statement satisfies security/detect-object-injection.
 
 ---
 
