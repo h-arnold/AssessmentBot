@@ -1117,6 +1117,14 @@ Red-first does not apply.
 - **Implementation notes:** Extracted `EMPTY_LOCALE` and
   `STATIC_BREADCRUMB_ITEMS`; memoised the dynamic breadcrumb third item.
 - **Deviations from plan:** If the `onNavigateToClasses` stability check
+  required wrapping in `useCallback`, this was done as mandatory pre-work.
+- **Follow-up implications:** None.
+- **Completion status:** ✅ COMPLETE. All tests pass (9 StudentAveragesTableCard,
+  136 ClassPage, 41 ClassesPage). Lint clean. TypeScript compilation clean.
+  Module-level constants with `as const` preserve literal shapes. `useCallback`
+  wraps `handleNavigateToClasses` with empty deps. `useMemo` wraps breadcrumb
+  items keyed on `[className, onNavigateToClasses]`. Preserved `onClick` on
+  "Classes" item to maintain existing behaviour.
   required wrapping in `useCallback` in `ClassesPage.tsx`, note it here.
   Otherwise None expected.
 - **Follow-up implications:** None.
