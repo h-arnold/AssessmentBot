@@ -1,12 +1,6 @@
 /**
  * Tests for the Class page composition root (`ClassPage`).
  *
- * @remarks
- * **Red phase** — the implementation file `ClassPage.tsx` does not exist
- * yet, so running these tests will fail with "Cannot find module" for
- * `./ClassPage`.  This confirms the red-phase contract before
- * implementation (Section 7 of `ACTION_PLAN.md`).
- *
  * @see SPEC_CLASS_PAGE.md — "Page composition root"
  * @see CLASS_PAGE_LAYOUT.md — "Surface hierarchy" and "Global state rules"
  */

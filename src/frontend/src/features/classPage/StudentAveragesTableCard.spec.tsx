@@ -1,10 +1,6 @@
 /**
- * Red-phase tests for `StudentAveragesTableCard` — the Card wrapping the
+ * Tests for `StudentAveragesTableCard` — the Card wrapping the
  * control row (search + label) and the Student Averages Table.
- *
- * @remarks
- * These tests define the full behavioural contract of the component. They
- * will fail to import until the source module exists (red-phase).
  *
  * @see SPEC_CLASS_PAGE.md — "StudentAveragesTableCard"
  * @see CLASS_PAGE_LAYOUT.md — "4. Student Averages Table Card"
@@ -239,9 +235,9 @@ describe('StudentAveragesTableCard', () => {
   });
 
   // -----------------------------------------------------------------------
-  // Input.Search rendering
+  // Input / Space.Compact rendering
   // -----------------------------------------------------------------------
-  it('renders the Input.Search with placeholder "Search by name"', () => {
+  it('renders the Input / Space.Compact with placeholder "Search by name"', () => {
     renderCard();
 
     const searchInput = screen.getByPlaceholderText('Search by name');
@@ -278,7 +274,7 @@ describe('StudentAveragesTableCard', () => {
   // -----------------------------------------------------------------------
   // Search term update
   // -----------------------------------------------------------------------
-  it('updates searchTerm on Input.Search change and rebuilds the view model', async () => {
+  it('updates searchTerm on Input change and rebuilds the view model', async () => {
     renderCard();
 
     const searchInput = screen.getByPlaceholderText('Search by name');
@@ -366,14 +362,14 @@ describe('StudentAveragesTableCard', () => {
   });
 
   // -----------------------------------------------------------------------
-  // Input.Search does not render enterButton
+  // Input / Space.Compact does not render enterButton
   // -----------------------------------------------------------------------
-  it('Input.Search does not render enterButton (filters apply on keystroke)', () => {
+  it('Input / Space.Compact does not render enterButton (filters apply on keystroke)', () => {
     const { container } = renderCard();
 
-    // Input.Search renders an input with class .ant-input-search.
-    // When enterButton is used, it renders a button inside the search wrapper.
-    // When enterButton is not used, there is no button sibling.
+    // Space.Compact with plain Input renders with class .ant-input-search (applied
+    // via the Space.Compact className). Unlike Input.Search, plain Input never
+    // renders a submit button, so there is no button inside the wrapper.
     const searchInput = container.querySelector('.ant-input-search');
     expect(searchInput).toBeInTheDocument();
 

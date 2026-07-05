@@ -1,10 +1,6 @@
 /**
- * Red-phase tests for `buildStudentAveragesTableColumns` — column definitions
+ * Tests for `buildStudentAveragesTableColumns` — column definitions
  * for the Student Averages table.
- *
- * @remarks
- * These tests define the full behavioural contract of the columns function.
- * They will fail to import until the source module exists (red-phase).
  *
  * @see SPEC_CLASS_PAGE.md — "studentAveragesTableColumns"
  * @see CLASS_PAGE_LAYOUT.md — "4a. Column Filter Details"

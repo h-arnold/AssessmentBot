@@ -59,7 +59,7 @@ export function getStudentMetric(
   }
 }
 
-/** Reuses the `MetricResult` discriminated union from the data analysis service. */
+/** Alias documenting that recent-assignment card metric fields reuse the dataAnalysis.zod MetricResultSchema. */
 const RecentAssignmentCardMetricSchema = MetricResultSchema;
 
 /**

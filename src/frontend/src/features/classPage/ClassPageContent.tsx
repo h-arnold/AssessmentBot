@@ -109,6 +109,40 @@ const ERROR_CONFIG_MAP: Record<ClassPageError['type'], ErrorConfig> = {
 };
 
 // ---------------------------------------------------------------------------
+// Loading skeleton constants
+// ---------------------------------------------------------------------------
+
+/** Width of the heading skeleton placeholder. */
+const HEADING_SKELETON_WIDTH_PX = 300;
+
+/** Width of the section title skeleton button. */
+const SECTION_TITLE_SKELETON_WIDTH_PX = 80;
+
+/** Height of the section title skeleton button. */
+const SECTION_TITLE_SKELETON_HEIGHT_PX = 22;
+
+/** Top margin for the recent assignments section wrapper. */
+const ROW_TOP_MARGIN_PX = 16;
+
+/** Gap between skeleton cards in the card row. */
+const CARD_ROW_GAP_PX = 16;
+
+/** Top margin for the card row wrapper. */
+const CARD_ROW_TOP_MARGIN_PX = 12;
+
+/** Width of each recent assignment card skeleton. */
+const RECENT_CARD_SKELETON_WIDTH_PX = 280;
+
+/** Height of each recent assignment card skeleton. */
+const RECENT_CARD_SKELETON_HEIGHT_PX = 140;
+
+/** Top margin for the table skeleton wrapper. */
+const TABLE_TOP_MARGIN_PX = 16;
+
+/** Number of paragraph rows in the table skeleton. */
+const TABLE_SKELETON_ROWS = 6;
+
+// ---------------------------------------------------------------------------
 // Sub-component: ClassPageLoading
 // ---------------------------------------------------------------------------
 
@@ -137,21 +171,45 @@ function ClassPageLoading(): JSX.Element {
   return (
     <div role="status" aria-live="polite">
       {/* Heading skeleton */}
-      <Skeleton.Input size="large" style={{ width: 300 }} active />
+      <Skeleton.Input size="large" style={{ width: HEADING_SKELETON_WIDTH_PX }} active />
 
       {/* Recent assignments section skeleton */}
-      <div style={{ marginTop: 16 }}>
-        <Skeleton.Button active style={{ width: 80, height: 22 }} />
-        <div style={{ display: 'flex', gap: 16, marginTop: 12 }}>
-          <Skeleton.Button active style={{ width: 280, height: 140 }} />
-          <Skeleton.Button active style={{ width: 280, height: 140 }} />
-          <Skeleton.Button active style={{ width: 280, height: 140 }} />
+      <div style={{ marginTop: ROW_TOP_MARGIN_PX }}>
+        <Skeleton.Button
+          active
+          style={{
+            width: SECTION_TITLE_SKELETON_WIDTH_PX,
+            height: SECTION_TITLE_SKELETON_HEIGHT_PX,
+          }}
+        />
+        <div style={{ display: 'flex', gap: CARD_ROW_GAP_PX, marginTop: CARD_ROW_TOP_MARGIN_PX }}>
+          <Skeleton.Button
+            active
+            style={{
+              width: RECENT_CARD_SKELETON_WIDTH_PX,
+              height: RECENT_CARD_SKELETON_HEIGHT_PX,
+            }}
+          />
+          <Skeleton.Button
+            active
+            style={{
+              width: RECENT_CARD_SKELETON_WIDTH_PX,
+              height: RECENT_CARD_SKELETON_HEIGHT_PX,
+            }}
+          />
+          <Skeleton.Button
+            active
+            style={{
+              width: RECENT_CARD_SKELETON_WIDTH_PX,
+              height: RECENT_CARD_SKELETON_HEIGHT_PX,
+            }}
+          />
         </div>
       </div>
 
       {/* Table skeleton */}
-      <div style={{ marginTop: 16 }}>
-        <Skeleton paragraph={{ rows: 6 }} active />
+      <div style={{ marginTop: TABLE_TOP_MARGIN_PX }}>
+        <Skeleton paragraph={{ rows: TABLE_SKELETON_ROWS }} active />
       </div>
     </div>
   );

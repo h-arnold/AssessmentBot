@@ -1,11 +1,6 @@
 /**
  * Tests for the Class page data orchestrator hook (`useClassPageData`).
  *
- * @remarks
- * This is the **red phase** — the implementation file (`useClassPageData.ts`)
- * does not exist yet, so all tests will fail with "Cannot find module"
- * on import.  This confirms the red-phase contract before implementation.
- *
  * @see SPEC_CLASS_PAGE.md — "useClassPageData — data orchestrator hook"
  */
 

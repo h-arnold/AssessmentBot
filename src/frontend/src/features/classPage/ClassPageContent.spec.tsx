@@ -2,11 +2,6 @@
  * Tests for the Class page per-state content dispatcher (`ClassPageContent`).
  *
  * @remarks
- * **Red phase** — the implementation file `ClassPageContent.tsx` does not
- * exist yet, so running these tests will fail with "Cannot find module"
- * for `./ClassPageContent`.  This confirms the red-phase contract before
- * implementation (Section 7 of `ACTION_PLAN.md`).
- *
  * `ClassPageContent` is a thin `switch (status)` dispatcher that delegates
  * to three co-located sub-components:
  * - `ClassPageLoading` — shape-matched skeletons

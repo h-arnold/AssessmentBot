@@ -1307,9 +1307,12 @@ Red-first does not apply (test file deletion + comment-only changes).
 ### Implementation notes / deviations / follow-up
 
 - **Implementation notes:** Removed stale red-phase wording from 7 spec
-  files (kept `@see` refs); deleted `pageContent.spec.ts`.
-- **Deviations from plan:** None expected.
+  files (kept `@see` refs); deleted `pageContent.spec.ts`. Test count
+  dropped from 1439 to 1435 (4 tests removed from deleted file).
+- **Deviations from plan:** None.
 - **Follow-up implications:** None.
+- **Completion status:** ✅ COMPLETE. All 1435 tests pass. Lint clean.
+  TypeScript compilation clean. Grep for residual red-phase text: 0 matches.
 
 ---
 
@@ -1382,9 +1385,16 @@ Red-first does not apply.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** [TO BE FILLED AT IMPLEMENTATION TIME]
-- **Deviations from plan:** [Record IF tsc rejects the removal]
-- **Follow-up implications:** None.
+- **Implementation notes:** Attempted to remove JSX imports from 7 files.
+- **Deviations from plan:** JSX imports were **kept** (not removed). Despite
+  `jsx: 'react-jsx'` being set in tsconfig.app.json, TypeScript compilation
+  failed with 11 errors (`TS2503: Cannot find namespace 'JSX'`) when the
+  imports were removed. The project's TypeScript configuration requires the
+  explicit import. All imports were restored.
+- **Follow-up implications:** None. The imports remain necessary.
+- **Completion status:** ✅ COMPLETE (with deviation). All 1435 tests pass.
+  Lint clean. TypeScript compilation clean. JSX imports retained as required
+  by project configuration.
 
 ---
 
@@ -1458,9 +1468,14 @@ Red-first does not apply.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** [TO BE FILLED]
-- **Deviations from plan:** None expected.
+- **Implementation notes:** N2: Removed stray blank line in AssessTaskModal.tsx
+  imports. N3: Added JSDoc comment to RecentAssignmentCardMetricSchema alias
+  explaining semantic indirection. N4: Aligned totalDataPoints to 3 in both
+  validComputedMetric and validNotAttemptedMetric fixtures.
+- **Deviations from plan:** None.
 - **Follow-up implications:** None.
+- **Completion status:** ✅ COMPLETE. All 1435 tests pass. Lint clean.
+  TypeScript compilation clean. classPageAdapter.zod tests pass.
 
 ---
 

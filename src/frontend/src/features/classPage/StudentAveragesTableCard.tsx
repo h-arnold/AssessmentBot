@@ -43,7 +43,8 @@
 import type { JSX, ChangeEvent } from 'react';
 import { useState, useMemo, useCallback } from 'react';
 import { Card, Input, Space, Typography, Flex, Table, Empty } from 'antd';
-import type { TableColumnsType } from 'antd';
+import type { TableColumnsType, TablePaginationConfig } from 'antd';
+import type { SorterResult } from 'antd/es/table/interface';
 import { SearchOutlined } from '@ant-design/icons';
 import type { ClassPageAdapterResult, StudentAverageRowModel } from './classPageAdapter.zod';
 
@@ -157,9 +158,9 @@ export function StudentAveragesTableCard(
    */
   const handleTableChange = useCallback(
     (
-      _pagination: unknown,
+      _pagination: TablePaginationConfig,
       _filters: unknown,
-      sorter: unknown
+      sorter: SorterResult<StudentAverageRowModel> | SorterResult<StudentAverageRowModel>[]
     ): void => {
       // Normalise to a single sorter
       const singleSorter = Array.isArray(sorter) ? sorter[0] : sorter;

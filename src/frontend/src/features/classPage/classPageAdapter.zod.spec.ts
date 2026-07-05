@@ -15,7 +15,7 @@ const validComputedMetric = {
   value: 0.75,
   totalWeight: 2,
   applicableDataPoints: 2,
-  totalDataPoints: 2,
+  totalDataPoints: 3,
 };
 
 const validNotAttemptedMetric = {

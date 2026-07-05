@@ -17,8 +17,6 @@ import { getLinkableDefinitionsForModal, type LinkableDefinition } from './getLi
 import { caseInsensitiveTrimmedEquals } from './stringComparison';
 import { AssignmentSelectSkeleton } from './AssignmentSelectSkeleton';
 
-
-
 /**
  * Deduplicates and adds a new title to the alternateTitles array using
  * case-insensitive trimmed comparison. Accepts optional input arrays.

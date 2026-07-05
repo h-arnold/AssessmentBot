@@ -5,8 +5,7 @@
  * The adapter is a pure synchronous function that translates
  * `AveragingResult` + `ClassFull` into the canonical
  * `ClassPageAdapterResult` shape.  These tests define the full
- * behavioural contract; they will fail to import until the
- * implementation exists (red-phase).
+ * behavioural contract.
  *
  * @see SPEC_CLASS_PAGE.md - "classPageAdapter - pure adapter"
  * @see SPEC_CLASS_PAGE_PREPARATION.md - "rollupMetric helper contract"
