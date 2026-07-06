@@ -66,13 +66,15 @@ We use a **Factory Pattern** to handle polymorphic assignment types (`SlidesAssi
 Use `Assignment.create()` instead of `new Assignment()`:
 
 ```javascript
-const assignment = Assignment.create(
-  'SLIDES', // documentType
-  courseId,
-  assignmentId,
-  refDocId,
-  templateDocId
-);
+const definition = new AssignmentDefinition({
+  documentType: 'SLIDES',
+  referenceDocumentId: refDocId,
+  templateDocumentId: templateDocId,
+  primaryTitle: 'Essay 1',
+  primaryTopic: 'English',
+  yearGroupKey: '10',
+});
+const assignment = Assignment.create(definition, courseId, assignmentId);
 ```
 
 ### Rehydration / Deserialization
@@ -99,7 +101,7 @@ This ensures `ABClass` remains small and fast to load, while the full data is pr
 
 Classes and primary methods (in call order):
 
-1. **AssignmentDefinitionController.ensureDefinition()**
+1. **AssignmentDefinitionController.upsertDefinition()**
 
 - Validates inputs, resolves topic, and checks staleness.
 - Parses tasks via `_parseSlidesTasks`/`_parseSheetsTasks`, which now always rehydrate into `TaskDefinition` instances (`TaskDefinition.fromJSON(td.toJSON())`).
@@ -181,7 +183,7 @@ rehydrateAssignment(abClass, assignmentId) {
 
 - Artifact-level selective hydration (per `artifact.uid`)
 - Background prefetch queue (hydrate last opened N assignments)
-- Staleness comparison using `lastUpdated` revision suffix
+- Staleness comparison using `updatedAt` revision suffix
 - Metrics: count hydration events / average ms
 
 ## Controller Integration Notes

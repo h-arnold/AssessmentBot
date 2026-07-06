@@ -84,9 +84,10 @@ the rehydration call, avoiding unnecessary database reads.
 
 If you have existing data created before the `documentType` field was introduced:
 
-1.  **Reading**: `Assignment.fromJSON()` will fallback to creating a base `Assignment` instance if `documentType` is missing.
+1.  **Reading**: `Assignment.fromJSON()` handles legacy data in two ways:
+    - If `assignmentDefinition` is missing but a root-level `documentType` field exists, a new `AssignmentDefinition` is constructed from the legacy root fields and deserialisation proceeds normally.
+    - If both `assignmentDefinition` and `documentType` are missing, deserialisation fails with an error. You may need to manually patch the database document or re-run the assessment to generate a fresh, valid record.
 2.  **Writing**: When you next save/persist this assignment, ensure you are using the factory `Assignment.create(...)` or explicitly setting the type if you are manually migrating.
-3.  **Recovery**: If `rehydrateAssignment` fails due to missing `documentType`, you may need to manually patch the database document or re-run the assessment to generate a fresh, valid record.
 
 ## 5. Error Handling Strategies
 

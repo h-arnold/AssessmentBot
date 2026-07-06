@@ -57,7 +57,7 @@ const validAssignmentPartial = {
   assignmentId: 'assign-1',
   assignmentName: 'Algebra Basics',
   dueDate: '2025-06-01T23:59:59.000Z',
-  lastUpdated: '2025-05-15T12:00:00.000Z',
+  updatedAt: '2025-05-15T12:00:00.000Z',
   createdAt: '2025-05-01T08:00:00.000Z',
   documentType: 'SLIDES',
   submissions: [validSubmissionPartial],

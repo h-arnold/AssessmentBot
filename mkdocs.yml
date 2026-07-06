@@ -63,8 +63,7 @@ nav:
           - Singletons: developer/backend/singletons.md
           - Testing: developer/backend/backend-testing.md
           - Vendoring: developer/backend/Vendoring.md
-          - Deprecated Legacy UI Audit: developer/backend/DEPRECATED_LEGACY_UI_AUDIT.md
-          - Deprecated Legacy Tests Audit: developer/backend/DEPRECATED_LEGACY_TESTS_AUDIT.md
+
       - Frontend:
           - Agent Instructions: developer/frontend/AGENT_FRONTEND.md
           - Testing: developer/frontend/frontend-testing.md

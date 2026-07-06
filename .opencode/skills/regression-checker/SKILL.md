@@ -37,8 +37,8 @@ changing there.
 The wrapper first runs `npm run builder:compile` and then launches
 `scripts/builder/dist/regression-checker/run-regression-checker.js`.
 
-> **Timeout:** Do not pass a `timeout` argument when invoking this command via the `bash` tool.
-> Test suites can take several minutes. Let the tool use its configured default (300s in this repo).
+> **Timeout:** Always set a 10 minute (600000 ms) timeout when invoking this command via the `bash` tool.
+> Test suites can take several minutes and the default 120s timeout is not sufficient.
 
 ## How to use it with `ACTION_PLAN.md`
 
@@ -75,13 +75,21 @@ Report file tree:
     ├── baseline/
     │   ├── manifest.json
     │   ├── baseline.txt              ← full baseline report
-    │   └── raw-artefacts/
+    │   └── checks/
+    │       ├── <check-id>/
+    │       │   ├── raw.json          ← tool raw output (raw.txt for tsc)
+    │       │   └── derived.json      ← structured summary for comparison
+    │       └── ...
     └── runs/
         └── <timestamp>/
             ├── manifest.json
             ├── comparison.json       ← structured comparison data
             ├── comparison.txt        ← full comparison report
-            └── raw-artefacts/
+            └── checks/
+                ├── <check-id>/
+                │   ├── raw.json      ← tool raw output (raw.txt for tsc)
+                │   └── derived.json  ← structured summary for comparison
+                └── ...
 ```
 
 Use `read` on `comparison.txt` or `baseline.txt` to inspect failure details without

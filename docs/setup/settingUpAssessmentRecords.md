@@ -15,12 +15,12 @@ This guide explains how to create Assessment Records using Assessment Bot. These
 
 ## 🚀 Quickstart
 
-To quickly test Assessment Bot, set up the Admin Sheet as an Assessment Record:
+To quickly test Assessment Bot using the frontend application:
 
-1. Click `Assessment Bot` ➡️ `Settings` ➡️ `Debug`.
-2. Select a class you wish to test.
-
-<img src="./images/classroomPicker.png" alt="The Classroom Picker in the 'Debug' section of the settings dialog." width="300px">
+1. Open the Assessment Bot frontend application.
+2. Click **Settings** in the navigation sidebar.
+3. Click the **Classes** tab (the default when opening Settings).
+4. The class management panel lists available Google Classrooms and lets you create, manage, and configure class records.
 
 ---
 
@@ -28,35 +28,30 @@ To quickly test Assessment Bot, set up the Admin Sheet as an Assessment Record:
 
 ### ✅ Prerequisites
 
-- You have [deployed Langflow](./langflowDeployment/langflowDeployment.md).
 - You have [configured Assessment Bot](./configOptions.md).
 - You have at least one Google Classroom associated with the account running Assessment Bot.
-
-⚠️ **Note**: While the ability to create Google Classrooms exists, it has not been tested since merging functionality from [here](https://github.com/h-arnold/googleClassroomOrganiser). Use at your own risk.
+- You have [deployed the Assessment Bot Backend](https://github.com/h-arnold/AssessmentBot-Backend) (the LLM backend service).
 
 ---
 
 ### 🪜 Steps to Follow
 
-1. Click `Assessment Bot` ➡️ `Google Classrooms` ➡️ `Fetch Google Classrooms`.
+1. Open the Assessment Bot frontend application and click **Settings** in the navigation sidebar.
 
-   All going well, you should now see a `Classrooms` tab that looks similar to this:
+2. In the **Classes** tab you will see a table listing available Google Classrooms. Select the classes you want to set up as Assessment Records. Their current status (Created, Not Created) is shown for each row.
 
-   <img src="./images/classroomsSheetBeforeAssessmentRecords.png" alt="The Classrooms sheet before assessment records are created." width="600px">
+3. Use the **Create** button in the toolbar to bulk-create class records for the selected classrooms. A modal will prompt you to configure:
+   - **Cohort** — The cohort group for the class.
+   - **Year Group** — The year group key for the class.
+   - **Course Length** — The duration of the course.
 
-2. In the `createAssessmentRecord` column, enter `TRUE` for the classes you want to generate Assessment Records for. For example:
+   A progress modal should appear as your records are created. Once complete, the table will update to show the new status.
 
-   <img src="./images/enteringTRUEforAssessmentRecords.png" alt="The Classrooms sheet before Assessment Records are created." width="600px">
+4. After creation, you can set additional metadata for each class record:
+   - Click **Set year group** to assign or change the year group key.
+   - Use **Manage cohorts** or **Manage year groups** from the toolbar to create and edit reference data.
 
-3. Click `Assessment Bot` ➡️ `Google Classrooms` ➡️ `Create Assessment Records`.
-
-   A progress modal should appear as your records are created. Once complete, your `Classrooms` sheet will look like this:
-
-   <img src="./images/classroomsSheetAfterARCreation.png" alt="The Classrooms sheet after Assessment Records are created." width="600px">
-
-4. Populate the `Year Group` column with the appropriate number for each class. This enables the generation of the year group overview.
-
-5. Navigate to your Assessment Records folder, open a record, and [start assessing!](/docs/howTos/README.md)
+5. Navigate to the **Assignments** page in the sidebar and [start assessing!](../howTos/README.md)
 
 ---
 

@@ -20,31 +20,31 @@ This layer is deliberately REST-ish in structure:
   - Behaviour: shared primitive for the `abclass/` domain folder; validates that the parameters argument is a plain object (not an array). Referenced via `/* global validateParametersObject_ */` from `abclassMutations.js` and `abclassRead.js`.
 - Assignment-definition upsert request validator
   - Status: `Implemented`
-  - Location: `validateUpsertParameters_()` in `src/backend/z_Api/assignmentDefinitionPartials.js`
+  - Location: `validateUpsertParameters_()` in `src/backend/z_Api/assignmentDefinitionValidation.js`
   - Behaviour: owns request-shape validation, optional update-key safety, and structural `taskWeightings` array validation for `upsertAssignmentDefinition` without duplicating controller business rules.
 - Assignment-definition read request validator
   - Status: `Implemented`
-  - Location: `validateReadParameters_()` in `src/backend/z_Api/assignmentDefinitionPartials.js`
+  - Location: `validateReadParameters_()` in `src/backend/z_Api/assignmentDefinitionValidation.js`
   - Behaviour: owns safe-key validation for full-definition reads by `definitionKey`.
 - Assignment-definition full-definition response mapper
   - Status: `Removed`
-  - Location: `toCanonicalTransportDefinition_` in `src/backend/z_Api/assignmentDefinitionPartials.js`
+  - Location: `toCanonicalTransportDefinition_` in `src/backend/z_Api/assignmentDefinitionTransport.js` (originally in the file that was split and renamed)
   - Note: Replaced by direct use of `controller.toCanonicalFullDefinitionResponse(definition)`.
 - Assignment-definition partial row serializer
   - Status: `Removed`
-  - Location: `toPlainPartialRow_` in `src/backend/z_Api/assignmentDefinitionPartials.js`
+  - Location: `toPlainPartialRow_` in `src/backend/z_Api/assignmentDefinitionTransport.js` (file since split: transport functions moved to `assignmentDefinitionTransport.js`, validation functions to `assignmentDefinitionValidation.js`)
   - Note: Replaced by `toTransportPartialRow_` helper.
 - Assignment-definition upsert payload builder
   - Status: `Removed`
-  - Location: `buildControllerUpsertPayload_` in `src/backend/z_Api/assignmentDefinitionPartials.js`
+  - Location: `buildControllerUpsertPayload_` in `src/backend/z_Api/assignmentDefinitionTransport.js` (file since split)
   - Note: URL-to-ID translation inlined into `upsertAssignmentDefinition_` without `assignmentWeighting` defaulting logic.
 - Assignment-definition upsert context builder
   - Status: `Removed`
-  - Location: `_buildUpsertContext` in `src/backend/y_controllers/AssignmentDefinitionController.js`
+  - Location: `_buildUpsertContext` in `src/backend/y_controllers/AssignmentDefinition/index.js` (original location before removal; logic inlined into `upsertDefinition` method body)
   - Note: Logic moved into `upsertDefinition` method body.
 - Assignment-definition creation method
   - Status: `Removed`
-  - Location: `ensureDefinition` in `src/backend/y_controllers/AssignmentDefinitionController.js`
+  - Location: `ensureDefinition` in `src/backend/y_controllers/AssignmentDefinition/index.js` (original location before removal; `upsertDefinition` is the sole creation/update method)
   - Note: Removed per architectural decision; `upsertDefinition` is the sole creation/update method.
 - AssignmentDefinition yearGroup field
   - Status: `Removed`
@@ -52,7 +52,7 @@ This layer is deliberately REST-ish in structure:
   - Note: Deprecated in favour of `yearGroupKey` only.
 - Assignment-definition transport partial row helper
   - Status: `Implemented`
-  - Location: `toTransportPartialRow_` in `src/backend/z_Api/assignmentDefinitionPartials.js`
+  - Location: `toTransportPartialRow_` in `src/backend/z_Api/assignmentDefinitionTransport.js`
   - Note: New transport-boundary helper that accepts model instance, calls `definition.toPartialJSON()`, defensively strips `yearGroup`, and normalises Date fields.
 
 ## Design Rules
@@ -142,7 +142,7 @@ Rules:
 
 Status: `Implemented`
 
-`upsertAssignmentDefinition` now uses a transport validator in `src/backend/z_Api/assignmentDefinitionPartials.js` that owns only transport-boundary checks, while `AssignmentDefinitionController.upsertDefinition()` owns the domain contract.
+`upsertAssignmentDefinition` now uses a transport validator in `src/backend/z_Api/assignmentDefinitionValidation.js` that owns only transport-boundary checks, while `AssignmentDefinitionController.upsertDefinition()` owns the domain contract.
 
 Transport helper ownership:
 
@@ -305,7 +305,7 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Save-result contract: `{ success: true } | { success: false, error: string }`.
 
 - Dedicated transport tests for backend configuration live in `tests/api/backendConfigApi.test.js`.
-  Keep broader dispatcher coverage in `tests/api/apiHandler.test.js`.
+  Keep broader dispatcher coverage in `tests/api/apiHandler/` (directory with multiple dispatcher test files).
 
 - `getAuthorisationStatus` — returns current script authorisation status.
   Source: inline closure in `src/backend/z_Api/z_apiHandler.js` delegating to `new ScriptAppManager().isAuthorised()`.
@@ -329,7 +329,7 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Query factory: `getABClassQueryOptions(classId)` in `src/frontend/src/query/sharedQueries.ts` (not included in startup warmup — per-class query).
 
 - `getAssignmentDefinitionPartials` — returns assignment-definition registry rows for the Assignments page without loading task artifacts.
-  Source: `src/backend/z_Api/assignmentDefinitionPartials.js`, via the `getAssignmentDefinitionPartials_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `AssignmentDefinitionController.getAllPartialDefinitions()` in `src/backend/y_controllers/AssignmentDefinitionController.js`.
+  Source: `src/backend/z_Api/assignmentDefinitionTransport.js`, via the `getAssignmentDefinitionPartials_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `AssignmentDefinitionController.getAllPartialDefinitions()` in `src/backend/y_controllers/AssignmentDefinition/index.js`.
   Response data: `Array<{ primaryTitle, primaryTopic, primaryTopicKey, yearGroupKey, yearGroupLabel, alternateTitles, alternateTopics, documentType, referenceDocumentId, templateDocumentId, assignmentWeighting, definitionKey, tasks: null, createdAt: string | null, updatedAt: string | null }>` inside the standard success envelope.
   Registry contract: rows come from the lightweight `assignment_definitions` collection and intentionally keep `tasks` fixed to `null`; `primaryTopicKey` is authoritative, `primaryTopic` is the resolved label, and `referenceLastModified` / `templateLastModified` are not part of the partial transport shape.
   Validation: the helper rejects malformed rows with `ApiValidationError` when required fields are missing, `definitionKey` or `primaryTopicKey` are blank or untrimmed, `createdAt` / `updatedAt` are not `string | null`, non-null timestamps are not strict ISO datetime strings with timezone information, or `tasks` is not `null`.
@@ -343,7 +343,7 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Frontend wrapper: `src/frontend/src/services/googleClassrooms/googleClassroomAssignmentsService.ts` (`getGoogleClassroomAssignments()`), with response validation in `src/frontend/src/services/googleClassrooms/googleClassroomAssignmentsService.spec.ts`.
 
 - `deleteAssignmentDefinition` — deletes one assignment definition from both the registry and its dedicated full-definition collection.
-  Source: `src/backend/z_Api/assignmentDefinitionPartials.js`, via the `deleteAssignmentDefinition_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `AssignmentDefinitionController.deleteDefinitionByKey()` in `src/backend/y_controllers/AssignmentDefinitionController.js`.
+  Source: `src/backend/z_Api/assignmentDefinitionTransport.js`, via the `deleteAssignmentDefinition_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `AssignmentDefinitionController.deleteDefinitionByKey()` in `src/backend/y_controllers/AssignmentDefinition/index.js`.
   Required request field: `definitionKey`.
   Validation: `definitionKey` must be a non-empty, already-trimmed string and must not contain `/`, `\`, `..`, or ASCII control characters. Invalid payloads are reported as `INVALID_REQUEST` by the transport.
   Delete behaviour: removes the partial row from `assignment_definitions` and drops the corresponding `assdef_full_<definitionKey>` collection when present. Missing full collections are treated as already deleted, so repeated safe-key deletes remain idempotent.
@@ -351,7 +351,7 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Frontend wrapper: `src/frontend/src/services/assignmentDefinition/assignmentDefinitionPartialsService.ts` (`deleteAssignmentDefinition()`).
 
 - `upsertAssignmentDefinition` — creates or updates a full assignment definition and synchronised registry partial.
-  Source: `src/backend/z_Api/assignmentDefinitionPartials.js`, via the `upsertAssignmentDefinition_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `AssignmentDefinitionController.upsertDefinition()` in `src/backend/y_controllers/AssignmentDefinitionController.js`.
+  Source: `src/backend/z_Api/assignmentDefinitionTransport.js`, via the `upsertAssignmentDefinition_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `AssignmentDefinitionController.upsertDefinition()` in `src/backend/y_controllers/AssignmentDefinition/index.js`.
   Transport-required request fields: `primaryTitle`, `primaryTopicKey`, `referenceDocumentId`, `templateDocumentId`, and `yearGroupKey`.
   Optional request fields: `definitionKey`, `alternateTitles`, `alternateTopics`, `documentType`, `assignmentWeighting`, and `taskWeightings`.
   Validation split: the transport helper enforces request shape, safe-key rules for `definitionKey` and `taskWeightings[].taskId`, and structural `taskWeightings` shape; the controller owns topic membership, duplicate-tuple rejection, numeric weighting rules, document-type rules, task-ID matching, and persistence semantics.
@@ -362,15 +362,15 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Response data: the canonical full-definition response shape, including resolved `primaryTopic`, stable `definitionKey`, full `tasks` array, `yearGroupKey`, `yearGroupLabel`, `referenceDocumentId`, `templateDocumentId`, `documentType`, `assignmentWeighting`, `createdAt`, and `updatedAt`. This same response shape is returned for stage-one create, final save, and document-change re-parse so the frontend can keep one editable entity model.
 
 - `getAssignmentDefinition` — reads one full assignment definition by key.
-  Source: `src/backend/z_Api/assignmentDefinitionPartials.js`, via the `getAssignmentDefinition_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `AssignmentDefinitionController.getDefinitionByKey()` in `src/backend/y_controllers/AssignmentDefinitionController.js`.
+  Source: `src/backend/z_Api/assignmentDefinitionTransport.js`, via the `getAssignmentDefinition_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `AssignmentDefinitionController.getDefinitionByKey()` in `src/backend/y_controllers/AssignmentDefinition/index.js`.
   Required request field: `definitionKey` (non-empty, already-trimmed string with path-character safety enforced at transport boundary).
   Validation: transport enforces `params` object shape, `definitionKey` presence, and safe-key contract using `validateReadParameters_()`; controller performs lookup and returns the stored full definition.
-  Response data: the canonical full-definition response shape, identical to `upsertAssignmentDefinition` response, including resolved `primaryTopic`, `primaryTopicKey`, `yearGroupKey`, `yearGroupLabel`, full `tasks` array, and all metadata. This ensures `upsertAssignmentDefinition` and `getAssignmentDefinition` share the same canonical editable entity contract.
+  Response data: the canonical full-definition response shape, identical to `upsertAssignmentDefinition` response, including resolved `primaryTopic`, `primaryTopicKey`, `yearGroupKey`, `yearGroupLabel`, full `tasks` array, and all metadata; or `null` when the definition key is not found. This ensures `upsertAssignmentDefinition` and `getAssignmentDefinition` share the same canonical editable entity contract.
 
 - `startAssessmentRun` — starts an assessment run for an existing assignment definition.
   Source: `src/backend/z_Api/assignmentAssessment.js`, via the `startAssessmentRun_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `AssignmentController.startAssessmentRun()` in `src/backend/y_controllers/AssignmentController.js`.
   Required request fields: `definitionKey`, `assignmentId`, `courseId` (all non-empty strings).
-  Validation: transport enforces `params` object shape, required field presence, and non-empty string checks using `Validate.requireParams` and `Validate.validateNonEmptyString`; controller owns per-document freshness checks via `Utils.isNewer`, definition lookup, and ABClass resolution.
+  Validation: transport enforces `params` object shape, required field presence, and non-empty string checks using `Validate.requireParams` and `Validate.validateNonEmptyString`; controller owns per-document freshness checks via `DateUtils.isNewer`, definition lookup, and ABClass resolution.
   Controller behaviour: fetches the full definition by key, checks that neither the reference nor template document has been modified since the definition was created (throwing `DefinitionStaleError` if stale), resolves the ABClass via `loadClass(courseId)` (which throws if the class does not exist), and delegates to `startProcessing()` to create the time-based trigger with context stored in `UserProperties` via `GASPropertiesUtils`.
   Response data: `null` on success (no data payload; wrapped in standard success envelope).
   Error codes: `DEFINITION_STALE` (non-retriable, with `details` block), `INVALID_REQUEST` (transport validation failure), `INTERNAL_ERROR` (definition not found, ABClass not found, or other domain errors).
@@ -379,9 +379,9 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Source: `src/backend/z_Api/assignmentAssessment.js`, via the `getAssignment_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.loadClass()` and `ABClassController.rehydrateAssignment()` in `src/backend/y_controllers/ABClassController.js`.
   Required request fields: `courseId` and `assignmentId` (both non-empty, already-trimmed strings with no path/control characters).
   Validation: transport enforces `params` object shape, `courseId` and `assignmentId` presence, non-empty trimmed string, and path-character/control-character safety (using `hasControlCharacters_` global from `assignmentDefinitionValidation.js`); controller owns class existence and assignment existence checks.
-  Handler behaviour: loads the ABClass via `new ABClassController().loadClass(courseId)`, delegates to `abClassController.rehydrateAssignment(abClass, assignmentId)` (passing the same `abClass` instance — identity, not structural equality — because the controller mutates it via `_replaceAssignmentInClass`), serialises via `assignment.toJSON()`, defensively strips `progressTracker` at the boundary, and applies `DateUtils.normaliseDateFields(response, ['dueDate', 'lastUpdated', 'createdAt'])`. On `AssignmentNotFoundError` thrown by `_loadFullAssignmentDocument`, returns `null` (caught via `instanceof` check); all other errors from `rehydrateAssignment` propagate.
+  Handler behaviour: loads the ABClass via `new ABClassController().loadClass(courseId)`, delegates to `abClassController.rehydrateAssignment(abClass, assignmentId)` (passing the same `abClass` instance — identity, not structural equality — because the controller mutates it via `_replaceAssignmentInClass`), serialises via `assignment.toJSON()`, defensively strips `progressTracker` at the boundary, and applies `DateUtils.normaliseDateFields(response, ['dueDate', 'updatedAt', 'createdAt'])`. On `AssignmentNotFoundError` thrown by `_loadFullAssignmentDocument`, returns `null` (caught via `instanceof` check); all other errors from `rehydrateAssignment` propagate.
   Logging: `info` before loading ABClass (`"getAssignment: loading full assignment"` with `{ courseId, assignmentId }`), `info` after successful rehydration (`"getAssignment: rehydrated assignment"`), `warn` for not-found (`"getAssignment: assignment not found"` — `warn`, not `error`, because the API returns `null` gracefully), `error` for other failures (`"getAssignment failed"` with `{ courseId, assignmentId, err }`).
-  Response data: the complete `Assignment.toJSON()` shape — `courseId`, `assignmentId`, `assignmentName`, `dueDate` (ISO string or `null`), `lastUpdated` (ISO string or `null`), `documentType`, `referenceDocumentId`, `templateDocumentId`, `tasks`, `submissions` (full artifacts, assessments, feedback), and `assignmentDefinition`. Or `null` when no persisted assignment document exists.
+  Response data: the complete `Assignment.toJSON()` shape — `courseId`, `assignmentId`, `assignmentName`, `dueDate` (ISO string or `null`), `updatedAt` (ISO string or `null`), `documentType`, `referenceDocumentId`, `templateDocumentId`, `tasks`, `submissions` (full artifacts, assessments, feedback), and `assignmentDefinition`. Or `null` when no persisted assignment document exists.
   Error codes: `INVALID_REQUEST` (transport validation failure: non-object params, missing fields, unsafe characters). `INTERNAL_ERROR` (class not found via `loadClass` — `ClassNotFoundError` with structured `courseId` metadata — corrupt assignment document, partial-definition rejection, assignment-not-in-class, or any other `rehydrateAssignment` failure). No new error code is introduced for not-found — the handler returns `null` for that case (catching the `AssignmentNotFoundError` typed error before it can reach the dispatcher's error envelope).
 
 - `getGoogleClassrooms` — returns active Classroom picker rows for ABClass creation flows.

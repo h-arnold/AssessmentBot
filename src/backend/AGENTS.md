@@ -2,14 +2,23 @@
 
 Applies when editing `src/backend/**` and backend runtime behaviour.
 
-## 0. Backend API Entry Layer
+## 0. Key Documentation
 
-- `src/backend/z_Api` is the current active entry surface for functions called from the frontend via `google.script.run` / `apiHandler` as migration progresses.
-- Organise API files by domain/resource in a REST-ish style.
-- Keep API functions thin and delegate to controller classes unless delegation would add unnecessary verbosity.
-- Existing backend `globals.js` files are migration references and should be removed once equivalent `z_Api` functions exist.
+| Doc                                                            | Summary                                                         |
+| -------------------------------------------------------------- | --------------------------------------------------------------- |
+| `docs/developer/backend/backend-logging-and-error-handling.md` | Logging and error handling policy for backend code              |
+| `docs/developer/backend/backend-testing.md`                    | Backend testing conventions and commands                        |
+| `docs/developer/backend/api-layer.md`                          | API layer design, validation ownership rules                    |
+| `docs/developer/backend/AssessmentFlow.md`                     | Assessment workflow and data flow (canonical reference)         |
+| `docs/developer/backend/DATA_SHAPES.md`                        | Assignment data shapes, persistence strategy, partial hydration |
+| `docs/developer/backend/rehydration.md`                        | Full assignment hydration from partial class objects            |
+| `docs/developer/backend/singletons.md`                         | Singleton pattern guide and conventions                         |
+| `docs/developer/backend/oauth-scopes.md`                       | Managing OAuth scopes in appsscript.json                        |
+| `docs/developer/backend/Vendoring.md`                          | Third-party asset vendoring policy                              |
 
-### 0.1 Required `apiHandler` pattern
+## 1. Backend API Entry Layer
+
+### 1.1 Required `apiHandler` pattern
 
 - Treat `src/backend/z_Api/z_apiHandler.js` as the single frontend transport entrypoint.
 - `apiHandler` is the **sole** function callable by `google.script.run` for all active `z_Api` methods.
@@ -57,7 +66,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 This pattern is now used by `getGoogleClassrooms_`, `getAssignmentDefinitionPartials_`, `deleteAssignmentDefinition_`, `getBackendConfig_`, `setBackendConfig_`, `upsertABClass_`, `updateABClass_`, and `deleteABClass_` in their respective `z_Api` files.
 
-### 0.2 Validation ownership
+### 1.2 Validation ownership
 
 Transport-boundary validation belongs in API-layer trailing-underscore helpers. Domain invariants belong in the called controller, class, or manager.
 
@@ -71,7 +80,7 @@ Rules:
 
 See `docs/developer/backend/api-layer.md` — "Validation ownership rules" — for the canonical policy and examples.
 
-## 1. Runtime Model (GAS V8 Script)
+## 2. Runtime Model (GAS V8 Script)
 
 - Target runtime is Google Apps Script V8 (`src/backend/appsscript.json`).
 - Write plain GAS-compatible JavaScript (script/global style), not TypeScript.
@@ -90,7 +99,7 @@ Use GAS-native services where applicable:
 
 Do not replace GAS service calls with Node/browser equivalents that do not execute in Apps Script.
 
-### 1.1 Node test compatibility boundary
+### 2.1 Node test compatibility boundary
 
 - Production backend files run in a concatenated GAS script environment first, not a Node module graph.
 - Never add `require`, `import`, `export`, `module.exports`, or other Node module wiring to production backend logic just to satisfy tests.
@@ -112,7 +121,7 @@ if (typeof module !== 'undefined' && module.exports) {
 - Do not add top-of-file Node compatibility snippets such as guarded `require(...)` blocks, alias variables for globals, or mixed runtime/module initialisation unless there is no safer alternative and the user explicitly accepts it.
 - Treat any non-export Node-specific production code as an exception case that requires justification, not the default pattern.
 
-### 1.2 Concatenation and load-order model
+### 2.2 Concatenation and load-order model
 
 - Backend files are effectively evaluated as one large script in GAS, so definition order matters.
 - Assume later files can see globals created by earlier files; do not assume the reverse.
@@ -135,7 +144,7 @@ Rules:
 - Do not rename numbered files casually; tests, build steps, and runtime ordering may rely on those names.
 - Keep `y_*` and `z_*` directories/files in their established relative order when adding new backend entry surfaces or controllers.
 
-## 2. Validation Contract (Backend Only)
+## 3. Validation Contract (Backend Only)
 
 Use `src/backend/Utils/Validate.js` for generic validation.
 
@@ -151,10 +160,10 @@ Rules:
 - Add reusable generic validators to `Validate`.
 - Keep domain/business-specific validation in the owning class.
 - Do not duplicate generic validation logic across modules.
-- See § 0.2 above for the transport-vs-domain validation ownership rules that apply specifically
+- See § 1.2 above for the transport-vs-domain validation ownership rules that apply specifically
   to `z_Api` files.
 
-## 2.1 Utility Classes (Backend Only)
+## 3.1 Utility Classes (Backend Only)
 
 Use `src/backend/Utils/00_ArrayUtils.js` for generic array operations.
 
@@ -202,7 +211,7 @@ Rules:
 - When adding new methods to `ArrayUtils`, maintain the static method pattern and add appropriate JSDoc.
 - The `00_` prefix must be preserved to maintain GAS load ordering.
 
-## 3. Error and Logging Contract (Backend Only)
+## 4. Error and Logging Contract (Backend Only)
 
 Canonical policy source of truth:
 
@@ -238,19 +247,19 @@ try {
 }
 ```
 
-## 4. Defensive-Guard Policy
+## 5. Defensive-Guard Policy
 
 - Do not add existence/type/feature checks for known internal modules, singletons, logger methods, or GAS services.
 - Validate direct input parameters; do not mask internal wiring issues.
 
-## 5. Backend Conventions
+## 6. Backend Conventions
 
 - Singletons: always via `Class.getInstance()`.
 - Preserve existing file/load ordering conventions (including numeric prefixes where present).
 - Keep runtime exports GAS-compatible; the guarded `if (typeof module !== 'undefined' && module.exports)` block at the end of the file is the default and preferred test-enablement pattern.
 - When tests fail because a GAS global is missing in Node, update the test harness before changing production backend code.
 
-## 6. Manifest and Service Changes
+## 7. Manifest and Service Changes
 
 When backend behaviour requires new scopes/services:
 
@@ -258,14 +267,14 @@ When backend behaviour requires new scopes/services:
 - Keep scope/service additions minimal and justified.
 - Remember builder manifest merge uses backend manifest as base.
 
-## 7. Default Values Rule
+## 8. Default Values Rule
 
 - Default values must be set in a module's constructor only.
 - If defaults are found elsewhere, they should be opportunistically moved to the constructor of the module.
 
-## 8. Date handling at the transport boundary
+## 9. Date handling at the transport boundary
 
-`google.script.run` prohibits `Date` objects in return values (see `src/frontend/AGENTS.md` §4.3
+`google.script.run` prohibits `Date` objects in return values (see `src/frontend/AGENTS.md` §5.3
 for the full rules). All API handler functions must convert live `Date` objects to ISO strings
 before returning data.
 
@@ -277,12 +286,12 @@ before returning data.
 - `DateUtils` lives at `src/backend/Utils/DateUtils.js` and exports `normaliseDateFields`,
   `isNewer`, `definitionNeedsRefresh`, `getFormattedDate`, and `getFutureDate`.
 
-## 9. Testing Delegation
+## 10. Testing Delegation
 
 - Delegate all test implementation and test-debugging work to `Testing Specialist` when sub-agent delegation is available.
 - If delegation is unavailable, follow `.github/agents/Testing.agent.md` and `docs/developer/backend/backend-testing.md` before changing tests.
 
-## 10. Large File Decomposition (Non-API Files)
+## 11. Large File Decomposition (Non-API Files)
 
 When a non-API backend file (`y_controllers/`, `Models/`, `DocumentParsers/`, `Assessors/`,
 `RequestHandlers/`, `GoogleDriveManager/`, etc.) exceeds **550 lines** and can be meaningfully
@@ -323,29 +332,32 @@ Rules:
 - Sub-class constructors should accept their dependencies via a single options object
   parameter for consistency with the existing pattern.
 
-## 11. API Domain Folder Organisation (`z_Api`)
+## 12. API Domain Folder Organisation (`z_Api`)
 
 When two or more `z_Api` files share a common domain prefix, group them into a domain folder
-named after that prefix, following the pattern established by the `AssignmentDefinition` API
-methods.
+named after that prefix.
 
 Domain prefix is the leading part of the filename before the first capital letter or second
-conceptual segment (e.g. `assignmentDefinition` in `assignmentDefinitionTransport.js` and
-`assignmentDefinitionValidation.js`).
+conceptual segment (e.g. `abclass` in `abclassMutations.js`, `abclassRead.js`, and
+`abclassValidation.js`).
 
-Example — current `z_Api` files for this domain:
+Example — currently grouped `z_Api` files for a domain:
 
 ```
-z_Api/AssignmentDefinition/
-├── assignmentDefinitionTransport.js       # Upsert/read/delete/partials transport handlers
-└── assignmentDefinitionValidation.js      # Transport-boundary validation
+z_Api/abclass/
+├── abclassMutations.js        # ABClass create/update/delete transport handlers
+├── abclassRead.js             # ABClass read transport handlers
+└── abclassValidation.js       # Transport-boundary validation
 ```
+
+Files sharing a prefix that remain flat are candidates for future grouping (e.g.
+`assignmentDefinitionTransport.js` and `assignmentDefinitionValidation.js`).
 
 Rules:
 
 - Create a domain folder when **at least 2 files** share a common domain prefix.
 - Keep trailing-underscore private function and `module.exports` patterns intact inside
-  the moved files (see §0.1).
+  the moved files (see §1.1).
 - Keep single-file domains flat in `z_Api/`. Do not create folders for them.
 - Update `ALLOWLISTED_METHOD_HANDLERS` import paths in `z_apiHandler.js` if relative paths
   change due to folder nesting.

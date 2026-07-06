@@ -78,7 +78,7 @@ This project uses a shared configuration tree so TypeScript and linting standard
 Run all lint checks across the codebase from repo root:
 
 ```bash
-npm run lint && npm run frontend:lint && npm run builder:lint
+npm run lint:backend && npm run lint:frontend && npm run lint:builder
 ```
 
 Run lint for a specific module:
@@ -86,19 +86,19 @@ Run lint for a specific module:
 - Backend GAS JavaScript:
 
 ```bash
-npm run lint
+npm run lint:backend
 ```
 
 - Frontend TypeScript/React:
 
 ```bash
-npm run frontend:lint
+npm run lint:frontend
 ```
 
 - Builder TypeScript:
 
 ```bash
-npm run builder:lint
+npm run lint:builder
 ```
 
 ## Change policy
@@ -108,10 +108,10 @@ When updating TypeScript or lint standards:
 1. Update root shared base first (`tsconfig.base.json` or `config/eslint/ts-base-rules.cjs`) when the rule is intended to apply across components.
 2. Update leaf config only for runtime- or component-specific behaviour.
 3. Run affected validation commands:
-   - `npm run build`
-   - `npm run builder:lint`
+   - `npm run build:production`
+   - `npm run lint:builder`
    - `npm exec tsc -- -b src/frontend/tsconfig.json`
-   - `npm run frontend:build`
-   - `npm run frontend:lint`
+   - `npm run build:frontend`
+   - `npm run lint:frontend`
 
 If a proposed change does not clearly belong to a specific runtime, prefer placing it in a shared root config.

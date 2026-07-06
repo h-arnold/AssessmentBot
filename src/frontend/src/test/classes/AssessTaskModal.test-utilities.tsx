@@ -1,4 +1,5 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { AssessTaskModal } from '../../features/classes/AssessTaskModal/AssessTaskModal';
 import { getGoogleClassroomAssignments } from '../../services/googleClassrooms/googleClassroomAssignmentsService';
@@ -214,10 +215,11 @@ export function renderWithCache(options: RenderWithCacheOptions = {}): {
  * @returns {Promise<void>} Resolves when the button is enabled.
  */
 export async function selectAssignment(dialog: HTMLElement): Promise<void> {
+  const user = userEvent.setup();
   await within(dialog).findByRole('combobox');
-  fireEvent.mouseDown(within(dialog).getByRole('combobox'));
+  await user.click(within(dialog).getByRole('combobox'));
   const option = await screen.findByText('Essay');
-  fireEvent.click(option);
+  await user.click(option);
   await waitFor(() => {
     expect(within(dialog).getByRole('button', { name: 'Start Assessment' })).toBeEnabled();
   });
@@ -227,9 +229,11 @@ export async function selectAssignment(dialog: HTMLElement): Promise<void> {
  * Clicks the Start Assessment button.
  *
  * @param {HTMLElement} dialog The modal dialog element.
+ * @returns {Promise<void>} Resolves when the click action completes.
  */
-export function clickStartAssessment(dialog: HTMLElement): void {
-  fireEvent.click(within(dialog).getByRole('button', { name: 'Start Assessment' }));
+export async function clickStartAssessment(dialog: HTMLElement): Promise<void> {
+  const user = userEvent.setup();
+  await user.click(within(dialog).getByRole('button', { name: 'Start Assessment' }));
 }
 
 /**
@@ -238,8 +242,9 @@ export function clickStartAssessment(dialog: HTMLElement): void {
  * @param {HTMLElement} dialog The modal dialog element.
  */
 export async function clickCreateNewDefinition(dialog: HTMLElement): Promise<void> {
-  await within(dialog).findByRole('button', { name: 'Create New Definition' });
-  fireEvent.click(within(dialog).getByRole('button', { name: 'Create New Definition' }));
+  const user = userEvent.setup();
+  const button = await within(dialog).findByRole('button', { name: 'Create New Definition' });
+  await user.click(button);
 }
 
 /**
@@ -293,8 +298,9 @@ export function expectCancelButtonPresent(dialog: HTMLElement): void {
  * @returns {Promise<void>} Resolves when the button has been clicked.
  */
 export async function clickLinkToExisting(dialog: HTMLElement): Promise<void> {
+  const user = userEvent.setup();
   const button = await within(dialog).findByRole('button', { name: 'Link to Existing Definition' });
-  fireEvent.click(button);
+  await user.click(button);
 }
 
 /**
@@ -312,8 +318,9 @@ export async function clickLinkToExisting(dialog: HTMLElement): Promise<void> {
  * @returns {Promise<void>} Resolves when the button has been clicked.
  */
 export async function clickLink(dialog: HTMLElement): Promise<void> {
+  const user = userEvent.setup();
   const button = await within(dialog).findByRole('button', { name: 'Link' });
-  fireEvent.click(button);
+  await user.click(button);
 }
 
 /**
@@ -336,6 +343,8 @@ export async function pickLinkableDefinition(
   dialog: HTMLElement,
   index: number = 0
 ): Promise<void> {
+  const user = userEvent.setup();
+
   // In the linking state the assignment Select is hidden, so only the
   // linkable-definition Select combobox is visible in the dialog.
   const comboboxes = within(dialog).getAllByRole('combobox');
@@ -345,7 +354,7 @@ export async function pickLinkableDefinition(
     );
   }
   const linkableCombobox = comboboxes[0];
-  fireEvent.mouseDown(linkableCombobox);
+  await user.click(linkableCombobox);
   const options = await screen.findAllByRole('option');
   if (index >= options.length || index < 0) {
     throw new Error(
@@ -358,7 +367,7 @@ export async function pickLinkableDefinition(
       `pickLinkableDefinition: option at index ${index} is undefined (found ${options.length} options)`
     );
   }
-  fireEvent.click(option);
+  await user.click(option);
 }
 
 /**

@@ -61,7 +61,7 @@ For full regression-checker configuration, report interpretation, compatibility 
 
 ### Coverage requirement
 
-Builder unit tests must meet a minimum coverage threshold of **85%** for lines, functions, statements, and branches. The threshold is enforced in `scripts/builder/vitest.config.ts` and checked via `npm run builder:test:coverage`.
+Builder unit tests must meet a minimum coverage threshold of **85%** for lines, functions, statements, and branches. The threshold is enforced in `scripts/builder/vitest.config.ts` and checked via `npm run test:builder:coverage`.
 
 ### Typical local workflow
 
@@ -300,7 +300,7 @@ Treat these modes as diagnostics controls, not separate runtime contracts.
   - Frontend debug logs can be enabled for local troubleshooting.
   - Builder step summaries should still stay deterministic and structured.
 
-- **Production mode (`build`)**
+- **Production mode (`build:production`)**
   - Keep logs concise and operationally useful.
   - Avoid noisy debug-level browser logs by default.
   - Keep stack-trace-heavy client diagnostics disabled by default.

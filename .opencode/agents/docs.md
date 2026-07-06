@@ -41,8 +41,8 @@ You will fail the task unless you read _the entirety_ of the relevant context be
 3. **Agent guidance maintenance**:
    - Update `AGENTS.md` (or relevant component agent docs) only when new constraints are not discoverable by reading code alone, or when agent instructions are out of date.
    - Do not add bulky discoverable implementation detail to top-level agent files.
-   - Treat `.vibe/prompts` as the source of truth for project-agent behaviour.
-   - **Keep Code Reviewer docs list synchronised**: The `.vibe/prompts/code-reviewer.md` file maintains a "Key Documentation References" section (Section 1) listing local and external docs for each module. If this work adds, removes, or updates local docs (especially in `docs/developer/frontend/`, `docs/developer/backend/`, or `docs/developer/builder/`), update the corresponding entry in code-reviewer.md to keep the list current.
+   - Treat `.opencode/agents` as the source of truth for project-agent files.
+   - **Keep Code Reviewer docs list synchronised**: The `.opencode/agents/code-reviewer.md` file maintains a "Key Documentation References" section listing local and external docs for each module. If this work adds, removes, or updates local docs (especially in `docs/developer/frontend/`, `docs/developer/backend/`, or `docs/developer/builder/`), update the corresponding entry in code-reviewer.md to keep the list current.
 
 4. **JSDoc correctness**:
    - Ensure changed public methods/classes have accurate JSDoc descriptions, params, return values, and behaviour notes.
@@ -148,18 +148,17 @@ Provide a concise handoff summary including:
 │   │
 │   ├── developer/
 │   │   ├── ACTION_PLAN_TEMPLATE.md                    # Template for TDD-first delivery plans
-│   │   ├── AssessmentFlow.md                          # Assessment workflow and data flow
 │   │   ├── LAYOUT_SPEC_TEMPLATE.md                    # Template for frontend layout specifications
 │   │   ├── regression-cli-spec.md                     # Regression checker CLI specification
 │   │   ├── SPEC_TEMPLATE.md                           # Template for feature specifications
+│   │   ├── known-flaky-tests.md                       # Catalogue of known flaky tests and their root causes
 │   │   │
 │   │   ├── backend/
 │   │   │   ├── api-layer.md                           # Canonical: API layer, transport handlers, validation ownership, apiHandler standards, endpoints
+│   │   │   ├── AssessmentFlow.md                     # Canonical: Assessment workflow and data flow
 │   │   │   ├── backend-logging-and-error-handling.md # Canonical: ABLogger usage, validation ownership, error-boundary standards, apiHandler diagnostics
 │   │   │   ├── backend-testing.md                     # Vitest setup, GAS load order, test categories, mock factories, anti-patterns
 │   │   │   ├── DATA_SHAPES.md                         # Backend data structures and serialisation formats
-│   │   │   ├── DEPRECATED_LEGACY_TESTS_AUDIT.md        # Audit of deprecated legacy backend tests
-│   │   │   ├── DEPRECATED_LEGACY_UI_AUDIT.md          # Audit of deprecated legacy UI code
 │   │   │   ├── oauth-scopes.md                         # OAuth scopes required by the application
 │   │   │   ├── rehydration.md                         # Deserialising and reconstructing objects
 │   │   │   ├── singletons.md                           # Singleton pattern usage
@@ -177,13 +176,16 @@ Provide a concise handoff summary including:
 │   │       ├── frontend-react-query-and-prefetch.md     # React Query and prefetch patterns
 │   │       ├── frontend-shared-helpers-and-abstraction-standards.md # Shared helpers and abstraction standards
 │   │       ├── frontend-shell-navigation-and-motion.md  # Shell navigation and motion/accessibility standards
+│   │       ├── frontend-playwright-e2e.md               # Playwright E2E testing patterns, runtime mock infrastructure, StrictMode
 │   │       └── frontend-testing.md                      # Canonical: Vitest + Playwright split, commands, structure, helpers, patterns
 │   │
 │   ├── howTos/
-│   │   └── README.md                                  # Step-by-step usage instructions (tagging, distributing, assessing)
+│   │   ├── README.md                                  # Step-by-step usage instructions (tagging, distributing, assessing)
+│   │   └── rehydration.md                             # Guide for rehydrating assessment data
 │   │
 │   ├── pedagogy/
-│   │   └── README.md                                  # Pedagogical principles supporting AssessmentBot
+│   │   ├── README.md                                  # Pedagogical principles supporting AssessmentBot
+│   │   └── data-analysis-scoring.md                   # Guide to data analysis and scoring approaches
 │   │
 │   ├── releaseNotes/
 │   │   ├── RELEASES.md                               # Index of all release notes
@@ -195,6 +197,7 @@ Provide a concise handoff summary including:
 │   │   ├── v0.7.4_release_notes.md
 │   │   ├── v0.7.5_release_notes.md
 │   │   ├── v0.7.6_release_notes.md
+│   │   ├── v0.7.7_release_notes.md
 │   │   └── v0.7.8_release_notes.md
 │   │
 │   └── setup/
@@ -215,25 +218,25 @@ Provide a concise handoff summary including:
 └── src/frontend/AGENTS.md                            # Frontend-specific: React patterns, TypeScript conventions, Ant Design usage
 ```
 
-## Vibe Configuration (.opencode/)
+## OpenCode Configuration (.opencode/)
 
 ```
 .opencode/
 ├── agents/
 │   ├── action-plan-implementer.md                      # Implement action plans with TDD-first workflow
 │   ├── agent-orchestrator.md                           # Orchestrate delivery against ACTION_PLAN.md
-│   ├── code-reviewer.md                                 # Code Reviewer. Contains Key Documentation References (Section 1) - keep synchronised.
+│   ├── code-reviewer.md                                 # Code Reviewer. Contains Key Documentation References - keep synchronised.
 │   ├── de-sloppification.md                            # Find and remove AI-slop, duplication, complexity
 │   ├── docs.md                                          # THIS FILE - Documentation Agent instructions
 │   ├── implementation.md                                # Focused implementation tasks
 │   ├── kif.md                                           # Kif subagent for menial exploration tasks
 │   ├── planner.md                                       # Create SPEC.md, LAYOUT_SPEC.md, ACTION_PLAN.md
 │   ├── planner-reviewer.md                              # Impartial review of planning artefacts
+│   ├── playwright.md                                    # Playwright E2E testing agent
 │   └── testing-specialist.md                            # Test implementation and debugging
 │
 └── skills/
-    ├── agent-orchestrator/SKILL.md                     # Orchestrator workflow instructions
-    ├── agent-setup/SKILL.md                             # Configure Mistral Vibe subagents
+    ├── agent-setup/SKILL.md                             # Configure OpenCode subagents
     ├── loc-counter/SKILL.md                             # Count lines of code
     ├── regression-checker/SKILL.md                     # Regression checker CLI
     └── sonar-pr-duplication/SKILL.md                    # Fetch and expand Sonar PR duplication comments

@@ -3,14 +3,14 @@
 - [📝 Assessment Bot Configuration Options](#-assessment-bot-configuration-options)
   - [📂 Where to Find the Settings](#-where-to-find-the-settings)
   - [⚙️ The Options](#️-the-options)
-    - [🌐 Backend Tab](#-backend-tab)
+    - [🌐 Backend Section](#-backend-section)
       - [🔑 API Key](#-api-key)
       - [🌍 URL](#-url)
-    - [🧩 Advanced Options Tab](#-advanced-options-tab)
+    - [🧩 Advanced Options Section](#-advanced-options-section)
       - [📦 Backend Assessor Batch Size](#-backend-assessor-batch-size)
       - [🖼️ Slides Fetch Batch Size](#-slides-fetch-batch-size)
       - [⏳ Days Until Auth Revoke](#-days-until-auth-revoke)
-    - [🗃️ Database Tab](#-database-tab)
+    - [🗃️ Database Section](#-database-section)
       - [🗂️ JSON DB Master Index Key](#-json-db-master-index-key)
       - [⏱️ JSON DB Lock Timeout (ms)](#-json-db-lock-timeout-ms)
       - [📈 JSON DB Log Level](#-json-db-log-level)
@@ -19,12 +19,13 @@
 
 ## 📂 Where to Find the Settings
 
-1. Open your **Admin sheet**.
-2. Click **Assessment Bot** -> **Settings**.
+1. Open the Assessment Bot frontend application in your browser.
+2. Click **Settings** in the navigation sidebar.
+3. Click the **Backend settings** tab.
 
 ## ⚙️ The Options
 
-### 🌐 Backend Tab
+### 🌐 Backend Section
 
 **Important:** The two Backend settings are _required_ for Assessment Bot to function.
 
@@ -39,7 +40,7 @@ This is the URL of your deployed Assessment Bot backend. It should look somethin
 
 ---
 
-### 🧩 Advanced Options Tab
+### 🧩 Advanced Options Section
 
 These values are optional, but can be tuned for throughput and reliability.
 
@@ -63,7 +64,7 @@ After an assessment record has been created, this value controls when the automa
 
 ---
 
-### 🗃️ Database Tab
+### 🗃️ Database Section
 
 These settings control internal JsonDbApp storage behaviour.
 

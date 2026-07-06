@@ -8,7 +8,10 @@
  * @see docs/developer/frontend/frontend-testing.md §"Shared test helpers"
  */
 
-import type { AveragingAnalyserInput } from '../../services/dataAnalysis/dataAnalysis.zod';
+import type {
+  AveragingAnalyserInput,
+  MetricResult,
+} from '../../services/dataAnalysis/dataAnalysis.zod';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -16,6 +19,121 @@ import type { AveragingAnalyserInput } from '../../services/dataAnalysis/dataAna
 
 /** Fixed ISO timestamp used as the default `createdAt` value in fixtures. */
 export const DEFAULT_CREATED_AT = '2026-01-01T00:00:00.000Z';
+
+// ---------------------------------------------------------------------------
+// MetricResult builders — produce discriminated-union MetricResult shapes
+// ---------------------------------------------------------------------------
+
+/**
+ * Build a MetricResult fixture of the specified state.
+ *
+ * @remarks
+ * This is the primary builder for MetricResult fixtures. The per-state
+ * convenience wrappers (`createComputedMetricResult`, etc.) delegate to
+ * this function for backward compatibility.
+ *
+ * @param {('computed' | 'notAttempted' | 'error')} state - The metric result state.
+ * @param {Object} [overrides] - Optional field overrides (state-dependent).
+ * @returns {MetricResult} A MetricResult fixture of the requested state.
+ */
+export function createMetricResult(
+  state: 'computed' | 'notAttempted' | 'error',
+  overrides?: Partial<{
+    value: number;
+    totalWeight: number;
+    applicableDataPoints: number;
+    totalDataPoints: number;
+  }>
+): MetricResult {
+  switch (state) {
+    case 'computed': {
+      return {
+        state: 'computed',
+        value: 5,
+        totalWeight: 1,
+        applicableDataPoints: 1,
+        totalDataPoints: 1,
+        ...overrides,
+      } as MetricResult;
+    }
+    case 'notAttempted': {
+      return {
+        state: 'notAttempted',
+        value: 'N',
+        totalWeight: 0,
+        applicableDataPoints: 0 as const,
+        totalDataPoints: 1,
+        ...overrides,
+      } as MetricResult;
+    }
+    case 'error': {
+      return {
+        state: 'error',
+        value: 'E',
+        totalWeight: 0,
+        applicableDataPoints: 0 as const,
+        totalDataPoints: 1,
+        ...overrides,
+      } as MetricResult;
+    }
+    default: {
+      throw new Error(`Unknown MetricResult state: ${state}`);
+    }
+  }
+}
+
+/**
+ * Build a `computed` MetricResult fixture.
+ *
+ * Delegates to {@link createMetricResult}.
+ *
+ * @param {Partial<{ value: number; totalWeight: number; applicableDataPoints: number; totalDataPoints: number }>} [overrides] - Optional field overrides.
+ * @returns {MetricResult} A computed MetricResult.
+ */
+export function createComputedMetricResult(
+  overrides?: Partial<{
+    value: number;
+    totalWeight: number;
+    applicableDataPoints: number;
+    totalDataPoints: number;
+  }>
+): MetricResult {
+  return createMetricResult('computed', overrides);
+}
+
+/**
+ * Build a `notAttempted` MetricResult fixture.
+ *
+ * Delegates to {@link createMetricResult}.
+ *
+ * @param {Partial<{ totalWeight: number; totalDataPoints: number }>} [overrides] - Optional field overrides.
+ * @returns {MetricResult} A notAttempted MetricResult.
+ */
+export function createNotAttemptedMetricResult(
+  overrides?: Partial<{
+    totalWeight: number;
+    totalDataPoints: number;
+  }>
+): MetricResult {
+  return createMetricResult('notAttempted', overrides);
+}
+
+/**
+ * Build an `error` MetricResult fixture.
+ *
+ * Delegates to {@link createMetricResult}.
+ *
+ * @param {Partial<{ totalWeight: number; totalDataPoints: number }>} [overrides] - Optional field overrides.
+ * @returns {MetricResult} An error MetricResult.
+ */
+export function createErrorMetricResult(
+  overrides?: Partial<{
+    totalWeight: number;
+    totalDataPoints: number;
+  }>
+): MetricResult {
+  return createMetricResult('error', overrides);
+}
 
 // ---------------------------------------------------------------------------
 // Fixture builders — produce minimal structurally-valid data shapes
@@ -172,7 +290,7 @@ export function createAssignmentPartial(overrides: {
     assignmentId,
     assignmentName: 'Test Assignment',
     dueDate: null,
-    lastUpdated: null,
+    updatedAt: null,
     createdAt,
     documentType: 'assessment',
     submissions,
