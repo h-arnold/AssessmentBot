@@ -327,7 +327,7 @@ function buildRecentAssignment(
 
   return {
     assignmentId: assignment.assignmentId,
-    assignmentName: assignment.assignmentName,
+    assignmentName: assignment.assignmentDefinition.primaryTitle,
     lastAssessedAt: validatedUpdatedAt,
     lastAssessedAtLabel,
     metrics: {

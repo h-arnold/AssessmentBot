@@ -276,10 +276,17 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
 
 **Backend rules:**
 
-1. Convert live `Date` objects to ISO 8601 strings at the API boundary using
-   `DateUtils.normaliseDateFields(response, ['field1', 'field2'])` — apply the call after the
-   controller returns and before the response reaches `apiHandler` / `ALLOWLISTED_METHOD_HANDLERS`.
-   `DateUtils` lives at `src/backend/Utils/DateUtils.js`.
+1. Convert live `Date` objects to ISO 8601 strings at the API boundary before the response
+   reaches `apiHandler` / `ALLOWLISTED_METHOD_HANDLERS`. Two utilities are available in
+   `DateUtils` (at `src/backend/Utils/DateUtils.js`):
+   - `DateUtils.normaliseDateFields(response, ['field1', 'field2'])` — for shallow or known
+     date fields. Mutates the object in-place. Use this when the date fields are at a known
+     depth and you can enumerate them.
+   - `DateUtils.deepConvertDates(value)` — recursively converts all `Date` objects in a
+     structure to ISO strings, returning a new structure. Use this when the response contains
+     deeply nested date objects (e.g. assignments with nested submissions and artifacts) where
+     enumerating every field is impractical. Apply this in the specific handler rather than
+     in `apiHandler` to avoid the performance cost on endpoints that do not need it.
 2. Never return `Function` instances or DOM element references.
 3. Ensure all array/object fields are plain JS arrays/objects, not Java-backed types that GAS
    cannot serialise (e.g. `[Ljava.lang.Object;@...` references from Drive API wrappers).
