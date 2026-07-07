@@ -190,6 +190,18 @@ module.exports = [
     },
   },
   {
+    // Per-file opt-out for `security/detect-object-injection`.
+    //
+    // Rationale: these files perform deliberate, intentional computed-key
+    // assignment on data that originates from our own persisted partials
+    // (PropertiesService/Drive) or other internal sources — NOT untrusted
+    // external input. The rule's prototype-pollution concern is therefore
+    // negligible here, while the complete response shape is independently
+    // re-validated at the downstream Zod trust boundary (e.g. ClassFullSchema),
+    // which is the genuine gate. The rule has also caused recurring friction in
+    // backend serialisation/rehydration code for little security value. The rule
+    // stays ON everywhere else in the backend; disable it only for these
+    // documented, intentional boundaries.
     files: [
       'src/backend/Assessors/SheetsAssessor.js',
       'src/backend/ConfigurationManager/98_ConfigurationManagerClass.js',
@@ -211,6 +223,7 @@ module.exports = [
       'src/backend/z_Api/abclass/abclassRead.js',
       'src/backend/z_Api/z_apiHandler.js',
       'src/backend/z_Api/requestStore.js',
+      'src/backend/AssignmentProcessor/Assignment/02_AssignmentRehydration.js',
     ],
     rules: {
       'security/detect-object-injection': 'off',

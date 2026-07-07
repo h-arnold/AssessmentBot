@@ -330,6 +330,65 @@ describe('StudentSubmissionPartialSchema', () => {
     expect(result.studentName).toBeNull();
     expect(result.documentId).toBeNull();
   });
+
+  // REGRESSION: Google Classroom does not create a Drive document for students
+  // who never opened an assignment, so the `documentId` key may be entirely
+  // absent (undefined). The schema was changed from .nullable() to
+  // .nullable().optional() to accept this.
+  it('accepts omitted documentId key (undefined)', () => {
+    const payload = { ...validStudentSubmissionPartial };
+    delete (payload as Record<string, unknown>).documentId;
+    const result = StudentSubmissionPartialSchema.parse(payload);
+    expect(result.documentId).toBeUndefined();
+  });
+
+  // REGRESSION guard: the .optional() loosening must NOT also accept types
+  // that were previously rejected (e.g. a number instead of string).
+  it('rejects non-string, non-null documentId (number)', () => {
+    expect(() =>
+      StudentSubmissionPartialSchema.parse({
+        ...validStudentSubmissionPartial,
+        documentId: 42,
+      })
+    ).toThrow();
+  });
+});
+
+describe('StudentSubmissionPartialSchema — documentId regression via ClassFullSchema', () => {
+  it('accepts a full class payload where a submission has documentId: null', () => {
+    const classWithNullDocumentId = {
+      ...validClassFull,
+      assignments: [
+        {
+          ...validAssignmentPartial,
+          submissions: [
+            {
+              ...validStudentSubmissionPartial,
+              documentId: null,
+            },
+          ],
+        },
+      ],
+    };
+    const result = ClassFullSchema.parse(classWithNullDocumentId);
+    expect(result.assignments[0].submissions[0].documentId).toBeNull();
+  });
+
+  it('accepts a full class payload where a submission has no documentId key', () => {
+    const submissionWithoutDocumentId = { ...validStudentSubmissionPartial };
+    delete (submissionWithoutDocumentId as Record<string, unknown>).documentId;
+    const classWithoutDocumentId = {
+      ...validClassFull,
+      assignments: [
+        {
+          ...validAssignmentPartial,
+          submissions: [submissionWithoutDocumentId],
+        },
+      ],
+    };
+    const result = ClassFullSchema.parse(classWithoutDocumentId);
+    expect(result.assignments[0].submissions[0].documentId).toBeUndefined();
+  });
 });
 
 describe('BaseTaskArtifactPartialSchema', () => {

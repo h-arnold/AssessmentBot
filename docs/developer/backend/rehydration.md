@@ -160,6 +160,29 @@ rehydrateAssignment(abClass, assignmentId) {
 }
 ```
 
+### Fallback submission reconstruction (`_rehydrateSubmission`)
+
+When `StudentSubmission.fromJSON()` throws (e.g. for a corrupt or unexpected payload), `_rehydrateSubmission` falls back to constructing a new `StudentSubmission` instance from the stored `subObject` fields:
+
+```javascript
+const submission = new StudentSubmission(
+  identifier || null,
+  inst.assignmentId,
+  subObject.documentId || null, // ← constructor sets documentId to null when absent
+  subObject.studentName || subObject.name || null
+);
+Object.entries(subObject || {}).forEach(([key, value]) => {
+  if (value === undefined) return; // ← guard: preserve constructor defaults
+  if (key === 'updatedAt' && subObject.updatedAt) {
+    submission.updatedAt = value instanceof Date ? value : new Date(value);
+    return;
+  }
+  submission[key] = value;
+});
+```
+
+The `if (value === undefined) return;` guard prevents `undefined` values in the stored payload (e.g. a `documentId` key whose value is `undefined`) from overwriting constructor defaults. The constructor already sets `documentId` to `null` when the stored partial omits the field, so skipping `undefined` preserves the `string | null` contract at the transport boundary.
+
 ## Error Handling
 
 | Situation                                       | Action                                           |

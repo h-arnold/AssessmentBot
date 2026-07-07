@@ -30,7 +30,7 @@ const AssignmentRehydration = {
     inst.dueDate = data.dueDate ? new Date(data.dueDate) : null;
     inst.updatedAt = data.updatedAt ? new Date(data.updatedAt) : null;
     if (!data.createdAt) {
-      throw new Error(`createdAt is required to deserialize Assignment ${data.assignmentId}`);
+      throw new Error(`createdAt is required to deserialise Assignment ${data.assignmentId}`);
     }
     inst.createdAt = new Date(data.createdAt);
     inst.assignmentDefinition = data.assignmentDefinition
@@ -106,6 +106,7 @@ const AssignmentRehydration = {
         subObject.studentName || subObject.name || null
       );
       Object.entries(subObject || {}).forEach(([key, value]) => {
+        if (value === undefined) return;
         if (key === 'updatedAt' && subObject.updatedAt) {
           submission.updatedAt = value instanceof Date ? value : new Date(value);
           return;

@@ -98,7 +98,7 @@ export const StudentSubmissionPartialSchema = z.object({
   studentId: z.string(),
   studentName: z.string().nullable(),
   assignmentId: z.string(),
-  documentId: z.string().nullable(),
+  documentId: z.string().nullable().optional(),
   items: z.record(z.string(), StudentSubmissionItemPartialSchema),
   createdAt: z.string(),
   updatedAt: z.string(),
