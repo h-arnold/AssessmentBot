@@ -1,5 +1,6 @@
 import {
   createElement,
+  useMemo,
   type ComponentType,
   type CSSProperties,
   type MouseEventHandler,
@@ -102,16 +103,21 @@ export function LucideIcon(properties: Readonly<LucideIconProperties>): ReactEle
   // Override both with `size` so an explicit `size` (or our default `'1em'`)
   // always wins, while antd still owns the spin class and rotate transform via
   // the leftover `className`/`style` it injects into `rest`.
-  const SizedLucideIcon = (innerProperties: Readonly<LucideProps>): ReactElement => {
-    return createElement(icon, {
-      ...innerProperties,
-      width: size,
-      height: size,
-      size,
-      color,
-      strokeWidth,
-    });
-  };
+  // Memoise the inner component so its reference stays stable across renders;
+  // defining it inline would give it a new identity each render and force
+  // React to remount the SVG subtree.
+  const SizedLucideIcon = useMemo(() => {
+    return (innerProperties: Readonly<LucideProps>): ReactElement => {
+      return createElement(icon, {
+        ...innerProperties,
+        width: size,
+        height: size,
+        size,
+        color,
+        strokeWidth,
+      });
+    };
+  }, [icon, size, color, strokeWidth]);
 
   return (
     <Icon

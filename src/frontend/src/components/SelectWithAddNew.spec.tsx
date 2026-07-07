@@ -14,7 +14,7 @@ vi.mock('@ant-design/icons', () => ({
     // attributes (which triggers a React "non-boolean attribute" warning).
     delete properties.spin;
     delete properties.rotate;
-    if (Component && typeof Component === 'function') {
+    if (Component) {
       const C = Component as React.ComponentType<Record<string, unknown>>;
       return <C {...properties} />;
     }
@@ -73,8 +73,11 @@ describe('SelectWithAddNew - Basic Rendering', () => {
     fireEvent.mouseDown(select);
 
     // SelectWithAddNew renders the add-new icon via LucideIcon with lucide Plus.
-    // The antd Select dropdown is rendered as a portal, so query from document.
-    const icon = document.querySelector('.lucide-plus');
+    // The antd Select dropdown is rendered as a portal, so locate the "Add new"
+    // option and assert it contains an svg rather than relying on lucide's
+    // internal `.lucide-plus` class.
+    const addNewOption = screen.getByText('Add new');
+    const icon = addNewOption.querySelector('svg');
     expect(icon).toBeInTheDocument();
   });
 });
