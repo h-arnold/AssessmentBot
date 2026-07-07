@@ -1,6 +1,7 @@
 import { useCallback, type ReactElement } from 'react';
 import { Select, type SelectProps } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { Plus } from 'lucide-react';
+import { LucideIcon } from './icons/LucideIcon';
 import { useDebounce, DEFAULT_DEBOUNCE_MS } from '../hooks/useDebounce';
 
 /**
@@ -125,7 +126,7 @@ export function SelectWithAddNew(
       value: ADD_NEW_SENTINEL_VALUE,
       label: (
         <span aria-label={computedAddNewLabel}>
-          <PlusOutlined /> {computedAddNewLabel}
+          <LucideIcon icon={Plus} /> {computedAddNewLabel}
         </span>
       ),
       disabled,
