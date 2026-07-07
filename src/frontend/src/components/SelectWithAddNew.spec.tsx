@@ -3,8 +3,23 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { SelectWithAddNew } from './SelectWithAddNew';
 import * as useDebounceModule from '../hooks/useDebounce';
 
-// Mock PlusOutlined icon
+// Mock @ant-design/icons: provide a default Icon that renders the custom component
+// (LucideIcon uses the default Icon export), and keep PlusOutlined for existing tests.
 vi.mock('@ant-design/icons', () => ({
+  default: (allProperties: Record<string, unknown>) => {
+    const { component: Component, ...properties } = allProperties;
+    // antd's Icon consumes `spin` and `rotate` itself (for the wrapper span
+    // class/transform) and does not forward them to the inner component. Drop
+    // them so they don't leak onto the rendered DOM element as invalid
+    // attributes (which triggers a React "non-boolean attribute" warning).
+    delete properties.spin;
+    delete properties.rotate;
+    if (Component) {
+      const C = Component as React.ComponentType<Record<string, unknown>>;
+      return <C {...properties} />;
+    }
+    return <span {...properties} />;
+  },
   PlusOutlined: () => <span data-testid="plus-icon" />,
 }));
 
@@ -51,13 +66,19 @@ describe('SelectWithAddNew - Basic Rendering', () => {
     expect(screen.getByText('Add new')).toBeInTheDocument();
   });
 
-  it('renders \'Add new\' option with PlusOutlined icon', () => {
+  it('renders \'Add new\' option with LucideIcon (Plus icon)', () => {
     render(<SelectWithAddNew options={standardOptions} onAddNew={mockOnAddNew} />);
 
     const select = screen.getByRole('combobox');
     fireEvent.mouseDown(select);
 
-    expect(screen.getByTestId('plus-icon')).toBeInTheDocument();
+    // SelectWithAddNew renders the add-new icon via LucideIcon with lucide Plus.
+    // The antd Select dropdown is rendered as a portal, so locate the "Add new"
+    // option and assert it contains an svg rather than relying on lucide's
+    // internal `.lucide-plus` class.
+    const addNewOption = screen.getByText('Add new');
+    const icon = addNewOption.querySelector('svg');
+    expect(icon).toBeInTheDocument();
   });
 });
 
