@@ -90,6 +90,44 @@ describe('Deep Date Serialisation Regression', () => {
   }
 
   /**
+   * Matches a UTC ISO-8601 timestamp, e.g. "2026-01-01T00:00:00.000Z".
+   * This is the exact string shape the frontend transport (JSON.parse + Zod)
+   * consumes, and the contract that deepConvertDates must produce.
+   */
+  const ISO_8601_REGEX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/;
+
+  /**
+   * Walks `original` and `converted` in parallel, asserting that every position
+   * that held a live Date in `original` is now a valid ISO-8601 string in
+   * `converted`. This verifies the boundary contract the frontend depends on,
+   * rather than relying on JSON.stringify (which uses Date#toJSON and would
+   * mask unconverted Date objects).
+   * @param {*} original - The value before conversion (may contain Dates).
+   * @param {*} converted - The value after DateUtils.deepConvertDates.
+   * @param {string} path - The current path for error reporting.
+   */
+  function assertDatesConvertedToIso(original, converted, path = 'root') {
+    if (original instanceof Date) {
+      expect(
+        converted,
+        `expected ISO-8601 string at ${path}, received ${typeof converted}`
+      ).toMatch(ISO_8601_REGEX);
+      return;
+    }
+    if (Array.isArray(original)) {
+      original.forEach((item, index) =>
+        assertDatesConvertedToIso(item, converted[index], `${path}[${index}]`)
+      );
+      return;
+    }
+    if (original !== null && typeof original === 'object') {
+      for (const key of Object.keys(original)) {
+        assertDatesConvertedToIso(original[key], converted[key], `${path}.${key}`);
+      }
+    }
+  }
+
+  /**
    * Injects Date objects at various nesting levels in the test data to simulate
    * what happens when the controller returns data with live Date objects.
    * @param {Object} data - The test data to inject dates into.
@@ -158,8 +196,8 @@ describe('Deep Date Serialisation Regression', () => {
 
         expect(convertedDoc.classId).toBe(originalDoc.classId);
         expect(convertedDoc.className).toBe(originalDoc.className);
-        expect(convertedDoc.students.length).toBe(originalDoc.students.length);
-        expect(convertedDoc.assignments.length).toBe(originalDoc.assignments.length);
+        expect(convertedDoc.students).toHaveLength(originalDoc.students.length);
+        expect(convertedDoc.assignments).toHaveLength(originalDoc.assignments.length);
       }
     });
 
@@ -285,16 +323,19 @@ describe('Deep Date Serialisation Regression', () => {
       const datesWithoutConversion = collectDateObjects(dataWithDates);
       expect(datesWithoutConversion.length).toBeGreaterThan(0);
 
-      expect(() => JSON.stringify(dataWithDates)).not.toThrow();
-      const jsonString = JSON.stringify(dataWithDates);
-      const parsed = JSON.parse(jsonString);
-
-      const datesAfterJsonRoundTrip = collectDateObjects(parsed);
-      expect(datesAfterJsonRoundTrip.length).toBe(0);
-
       const converted = DateUtils.deepConvertDates(dataWithDates);
-      const datesAfterConversion = collectDateObjects(converted);
-      expect(datesAfterConversion.length).toBe(0);
+
+      // Regression guard: no Date objects survive conversion. If deepConvertDates
+      // is removed or stops traversing, this becomes non-empty.
+      expect(collectDateObjects(converted)).toEqual([]);
+
+      // Boundary contract: every position that held a Date is now a valid
+      // ISO-8601 string the frontend transport (JSON.parse + Zod) can consume.
+      assertDatesConvertedToIso(dataWithDates, converted);
+
+      // Contrast: without conversion the live Date objects remain, which is
+      // exactly the google.script.run serialisation bug this guards against.
+      expect(collectDateObjects(dataWithDates)).not.toEqual([]);
     });
   });
 

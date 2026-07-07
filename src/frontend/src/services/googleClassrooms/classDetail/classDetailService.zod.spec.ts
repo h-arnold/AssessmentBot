@@ -22,8 +22,6 @@ const validBaseTaskArtifactPartial = {
   role: 'student',
   pageId: 'slide-5',
   documentId: 'doc-abc',
-  content: null,
-  contentHash: null,
   metadata: { slideOrder: 3 },
   uid: 'uid-artifact-1',
   type: 'slides',
@@ -69,9 +67,7 @@ const validAssignmentDefinitionPartial = {
 };
 
 const validAssignmentPartial = {
-  courseId: 'course-1',
   assignmentId: 'assign-1',
-  assignmentName: 'Algebra Basics',
   dueDate: '2025-06-01T23:59:59.000Z',
   updatedAt: '2025-05-15T12:00:00.000Z',
   createdAt: '2025-05-01T08:00:00.000Z',
@@ -162,10 +158,12 @@ describe('AssignmentPartialSchema', () => {
     expect(result.assignmentDefinition.primaryTitle).toBe('Algebra Baseline');
   });
 
-  it('rejects a partial assignment missing courseId', () => {
-    const missing = { ...validAssignmentPartial };
-    delete (missing as Record<string, unknown>).courseId;
-    expect(() => AssignmentPartialSchema.parse(missing)).toThrow();
+  it('omits courseId (not part of the partial assignment contract)', () => {
+    const result = AssignmentPartialSchema.parse({
+      ...validAssignmentPartial,
+      courseId: 'course-1',
+    });
+    expect(result).not.toHaveProperty('courseId');
   });
 
   it('rejects a partial assignment missing assignmentId', () => {
