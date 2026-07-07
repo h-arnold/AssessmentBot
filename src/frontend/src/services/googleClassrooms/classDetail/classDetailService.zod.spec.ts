@@ -22,8 +22,6 @@ const validBaseTaskArtifactPartial = {
   role: 'student',
   pageId: 'slide-5',
   documentId: 'doc-abc',
-  content: null,
-  contentHash: null,
   metadata: { slideOrder: 3 },
   uid: 'uid-artifact-1',
   type: 'slides',
@@ -69,9 +67,7 @@ const validAssignmentDefinitionPartial = {
 };
 
 const validAssignmentPartial = {
-  courseId: 'course-1',
   assignmentId: 'assign-1',
-  assignmentName: 'Algebra Basics',
   dueDate: '2025-06-01T23:59:59.000Z',
   updatedAt: '2025-05-15T12:00:00.000Z',
   createdAt: '2025-05-01T08:00:00.000Z',
@@ -149,12 +145,10 @@ describe('AssignmentPartialSchema', () => {
     expect(result.documentType).toBe('SLIDES');
   });
 
-  it('accepts submissions with redacted artifacts (content/contentHash set to null)', () => {
+  it('accepts submissions with redacted artifacts', () => {
     const result = AssignmentPartialSchema.parse(validAssignmentPartial);
     expect(result.submissions).toHaveLength(1);
     const item = result.submissions[0].items['task-1'];
-    expect(item.artifact.content).toBeNull();
-    expect(item.artifact.contentHash).toBeNull();
     expect(item.artifact.taskId).toBe('task-1');
   });
 
@@ -164,10 +158,12 @@ describe('AssignmentPartialSchema', () => {
     expect(result.assignmentDefinition.primaryTitle).toBe('Algebra Baseline');
   });
 
-  it('rejects a partial assignment missing courseId', () => {
-    const missing = { ...validAssignmentPartial };
-    delete (missing as Record<string, unknown>).courseId;
-    expect(() => AssignmentPartialSchema.parse(missing)).toThrow();
+  it('omits courseId (not part of the partial assignment contract)', () => {
+    const result = AssignmentPartialSchema.parse({
+      ...validAssignmentPartial,
+      courseId: 'course-1',
+    });
+    expect(result).not.toHaveProperty('courseId');
   });
 
   it('rejects a partial assignment missing assignmentId', () => {
@@ -280,8 +276,6 @@ describe('StudentSummarySchema', () => {
 describe('StudentSubmissionItemPartialSchema', () => {
   it('parses a valid submission item partial with redacted artifact', () => {
     const result = StudentSubmissionItemPartialSchema.parse(validStudentSubmissionItemPartial);
-    expect(result.artifact.content).toBeNull();
-    expect(result.artifact.contentHash).toBeNull();
     expect(result.id).toBe('sub-1');
     expect(result.taskId).toBe('task-1');
   });
@@ -336,13 +330,70 @@ describe('StudentSubmissionPartialSchema', () => {
     expect(result.studentName).toBeNull();
     expect(result.documentId).toBeNull();
   });
+
+  // REGRESSION: Google Classroom does not create a Drive document for students
+  // who never opened an assignment, so the `documentId` key may be entirely
+  // absent (undefined). The schema was changed from .nullable() to
+  // .nullable().optional() to accept this.
+  it('accepts omitted documentId key (undefined)', () => {
+    const payload = { ...validStudentSubmissionPartial };
+    delete (payload as Record<string, unknown>).documentId;
+    const result = StudentSubmissionPartialSchema.parse(payload);
+    expect(result.documentId).toBeUndefined();
+  });
+
+  // REGRESSION guard: the .optional() loosening must NOT also accept types
+  // that were previously rejected (e.g. a number instead of string).
+  it('rejects non-string, non-null documentId (number)', () => {
+    expect(() =>
+      StudentSubmissionPartialSchema.parse({
+        ...validStudentSubmissionPartial,
+        documentId: 42,
+      })
+    ).toThrow();
+  });
+});
+
+describe('StudentSubmissionPartialSchema — documentId regression via ClassFullSchema', () => {
+  it('accepts a full class payload where a submission has documentId: null', () => {
+    const classWithNullDocumentId = {
+      ...validClassFull,
+      assignments: [
+        {
+          ...validAssignmentPartial,
+          submissions: [
+            {
+              ...validStudentSubmissionPartial,
+              documentId: null,
+            },
+          ],
+        },
+      ],
+    };
+    const result = ClassFullSchema.parse(classWithNullDocumentId);
+    expect(result.assignments[0].submissions[0].documentId).toBeNull();
+  });
+
+  it('accepts a full class payload where a submission has no documentId key', () => {
+    const submissionWithoutDocumentId = { ...validStudentSubmissionPartial };
+    delete (submissionWithoutDocumentId as Record<string, unknown>).documentId;
+    const classWithoutDocumentId = {
+      ...validClassFull,
+      assignments: [
+        {
+          ...validAssignmentPartial,
+          submissions: [submissionWithoutDocumentId],
+        },
+      ],
+    };
+    const result = ClassFullSchema.parse(classWithoutDocumentId);
+    expect(result.assignments[0].submissions[0].documentId).toBeUndefined();
+  });
 });
 
 describe('BaseTaskArtifactPartialSchema', () => {
-  it('parses a valid base task artifact partial with content and contentHash set to null', () => {
+  it('parses a valid base task artifact partial', () => {
     const result = BaseTaskArtifactPartialSchema.parse(validBaseTaskArtifactPartial);
-    expect(result.content).toBeNull();
-    expect(result.contentHash).toBeNull();
     expect(result.type).toBe('slides');
     expect(result.taskId).toBe('task-1');
     expect(result.role).toBe('student');
@@ -359,12 +410,6 @@ describe('BaseTaskArtifactPartialSchema', () => {
     const missing = { ...validBaseTaskArtifactPartial };
     delete (missing as Record<string, unknown>).type;
     expect(() => BaseTaskArtifactPartialSchema.parse(missing)).toThrow();
-  });
-
-  it('rejects an artifact with non-null content', () => {
-    expect(() =>
-      BaseTaskArtifactPartialSchema.parse({ ...validBaseTaskArtifactPartial, content: 'data' })
-    ).toThrow();
   });
 });
 

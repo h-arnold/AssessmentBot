@@ -63,8 +63,6 @@ export const BaseTaskArtifactPartialSchema = z.object({
   role: z.string(),
   pageId: z.string().nullable().optional(),
   documentId: z.string().nullable().optional(),
-  content: z.null(),
-  contentHash: z.null(),
   metadata: z.record(z.string(), z.unknown()).optional(),
   uid: z.string(),
   type: z.string(),
@@ -100,7 +98,7 @@ export const StudentSubmissionPartialSchema = z.object({
   studentId: z.string(),
   studentName: z.string().nullable(),
   assignmentId: z.string(),
-  documentId: z.string().nullable(),
+  documentId: z.string().nullable().optional(),
   items: z.record(z.string(), StudentSubmissionItemPartialSchema),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -119,10 +117,8 @@ export type StudentSubmissionPartial = z.infer<typeof StudentSubmissionPartialSc
  * (not a soft signal).
  */
 export const AssignmentPartialSchema = z.object({
-  courseId: z.string(),
   assignmentId: z.string(),
-  assignmentName: z.string(),
-  dueDate: z.string().nullable(),
+  dueDate: z.string().nullable().optional(),
   updatedAt: z.string().nullable(),
   createdAt: z.string(),
   documentType: z.string().nullable(),

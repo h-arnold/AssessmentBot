@@ -1,4 +1,4 @@
-/* global ABClassController, ABLogger, ApiValidationError, ClassNotFoundError, validateParametersObject_, validateSafeTrimmedIdentifier_ */
+/* global ABClassController, ABLogger, ApiValidationError, ClassNotFoundError, DateUtils, validateParametersObject_, validateSafeTrimmedIdentifier_ */
 
 /**
  * Throws an ApiValidationError for abclass validation failures.
@@ -47,10 +47,12 @@ function validateIdentifier_(value, fieldName) {
  * - Not-found detection uses an `instanceof ClassNotFoundError` check.
  *   The typed error is thrown by `ABClassController.readClass` when the
  *   class document cannot be located.
- * - The handler does NOT call `DateUtils.normaliseDateFields` because the
- *   response root has no Date fields (matching the `getAssignment_` precedent
- *   where date normalisation is only applied when the response carries Date
- *   objects).
+ * - The response is passed through `DateUtils.deepConvertDates()` to
+ *   recursively convert all `Date` objects to ISO 8601 strings. This is
+ *   required because `google.script.run` prohibits `Date` objects in return
+ *   values (including nested objects). The deep conversion is applied here
+ *   rather than in `apiHandler` to avoid the performance cost on endpoints
+ *   that do not return deeply nested Date objects.
  * - The handler does NOT strip `progressTracker` or `_hydrationLevel` from
  *   the response because `ABClassController._toReadView` already handles
  *   those defence-in-depth strips.
@@ -78,8 +80,15 @@ function getABClass_(parameters) {
   try {
     const response = new ABClassController().readClass(classId);
 
+    // Recursively convert all Date objects to ISO strings at the transport
+    // boundary. Date objects are prohibited in google.script.run return values
+    // (including nested objects). This deep conversion is applied here rather
+    // than in apiHandler to avoid the performance cost on endpoints that do
+    // not return deeply nested Date objects.
+    const sanitisedResponse = DateUtils.deepConvertDates(response);
+
     logger.info('getABClass: class read successfully', { classId });
-    return response;
+    return sanitisedResponse;
   } catch (error) {
     if (error instanceof ClassNotFoundError) {
       logger.warn('getABClass: class not found', { classId });

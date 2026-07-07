@@ -13,7 +13,8 @@
  * - Delegates to ABClassController.readClass
  * - Returns null on ClassNotFoundError
  * - Propagates non-not-found errors
- * - Does not call DateUtils.normaliseDateFields (no Date fields in the response root)
+ * - Does not call DateUtils.normaliseDateFields (uses deepConvertDates instead)
+ * - Calls DateUtils.deepConvertDates to sanitise Date objects at the boundary
  * - Logs info on success, warn on not-found, error on other failures
  */
 
@@ -89,7 +90,7 @@ describe('Api/getABClass transport contract', () => {
     originalABClassController = globalThis.ABClassController;
     originalABLogger = globalThis.ABLogger;
     originalDateUtils = globalThis.DateUtils;
-    globalThis.DateUtils = { normaliseDateFields: vi.fn() };
+    globalThis.DateUtils = { normaliseDateFields: vi.fn(), deepConvertDates: vi.fn((v) => v) };
   });
 
   afterEach(() => {
@@ -268,20 +269,20 @@ describe('Api/getABClass transport contract', () => {
     );
   });
 
-  // ── Test 11: DateUtils.normaliseDateFields NOT called ───────────────────
+  // ── Test 11: DateUtils.deepConvertDates IS called ───────────────────
 
-  it('does not call DateUtils.normaliseDateFields at the response root', () => {
+  it('calls DateUtils.deepConvertDates to sanitise Date objects at the boundary', () => {
     const { readClass } = installABClassControllerStub();
     const { getABClass_ } = loadModule();
 
     const controllerResult = buildControllerResult();
     readClass.mockReturnValue(controllerResult);
 
-    const normaliseDateFieldsSpy = vi.spyOn(globalThis.DateUtils, 'normaliseDateFields');
+    const deepConvertDatesSpy = vi.spyOn(globalThis.DateUtils, 'deepConvertDates');
 
     getABClass_({ classId: 'class-001' });
 
-    expect(normaliseDateFieldsSpy).not.toHaveBeenCalled();
+    expect(deepConvertDatesSpy).toHaveBeenCalledWith(controllerResult);
   });
 
   // ── Tests 12-14: Logger spy verification ────────────────────────────────
