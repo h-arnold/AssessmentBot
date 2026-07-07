@@ -278,13 +278,16 @@ When backend behaviour requires new scopes/services:
 for the full rules). All API handler functions must convert live `Date` objects to ISO strings
 before returning data.
 
-- Use `DateUtils.normaliseDateFields(response, ['field1', 'field2'])` in API handler functions
-  that return data carrying date fields.
-- Apply the call after the controller returns and before the handler returns to `apiHandler`.
+- Use `DateUtils.normaliseDateFields(response, ['field1', 'field2'])` for shallow or known
+  date fields. Apply the call after the controller returns and before the handler returns.
+- Use `DateUtils.deepConvertDates(value)` for responses with deeply nested date objects
+  (e.g. assignments with nested submissions). This recursively converts all `Date` objects
+  to ISO strings. Apply this in the specific handler rather than in `apiHandler` to avoid
+  the performance cost on endpoints that do not need it.
 - This is the canonical pattern; do not inline `instanceof Date` checks or push conversion into
   controllers or models.
 - `DateUtils` lives at `src/backend/Utils/DateUtils.js` and exports `normaliseDateFields`,
-  `isNewer`, `definitionNeedsRefresh`, `getFormattedDate`, and `getFutureDate`.
+  `deepConvertDates`, `isNewer`, `definitionNeedsRefresh`, `getFormattedDate`, and `getFutureDate`.
 
 ## 10. Testing Delegation
 

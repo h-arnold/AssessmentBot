@@ -1,5 +1,6 @@
 import { callApi } from '../../apiService';
 import { ClassFullResponseSchema, type ClassFull } from './classDetailService.zod';
+import { logFrontendError } from '../../../logging/frontendLogger';
 
 export type {
   ClassFull,
@@ -23,5 +24,14 @@ const GET_AB_CLASS_METHOD = 'getABClass';
  * @returns {Promise<ClassFull | null>} Typed class response or null.
  */
 export async function getABClass(parameters: { classId: string }): Promise<ClassFull | null> {
-  return ClassFullResponseSchema.parse(await callApi(GET_AB_CLASS_METHOD, parameters));
+  const responseData = await callApi(GET_AB_CLASS_METHOD, parameters);
+
+  try {
+    return ClassFullResponseSchema.parse(responseData);
+  } catch (error: unknown) {
+    logFrontendError('getABClass', error, {
+      classId: parameters.classId,
+    });
+    throw error;
+  }
 }

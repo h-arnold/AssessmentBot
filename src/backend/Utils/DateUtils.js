@@ -85,6 +85,36 @@ const DateUtils = {
     }
     return target;
   },
+
+  /**
+   * Recursively converts all Date objects in a structure to ISO 8601 strings.
+   * Returns a new structure without mutating the original.
+   *
+   * This is the canonical pattern for the API boundary where the full object
+   * graph must be sanitised for google.script.run (which prohibits Date objects).
+   *
+   * @param {*} value - The value to convert.
+   * @returns {*} A deep copy with all Date objects replaced by ISO strings.
+   */
+  deepConvertDates(value) {
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
+    if (Array.isArray(value)) {
+      return value.map((item) => this.deepConvertDates(item));
+    }
+    if (value !== null && typeof value === 'object') {
+      const result = {};
+      for (const [key, value_] of Object.entries(value)) {
+        // Disabling this method should only be used at the apiHandler boundary on data that has already been written and validated.
+        // It exists to stringify dates on deeply nested objects for when I'm too lazy to write a routine to catch them all properly.
+        /*eslint-disable-next-line security/detect-object-injection */
+        result[key] = this.deepConvertDates(value_);
+      }
+      return result;
+    }
+    return value;
+  },
 };
 
 // Export for Node tests

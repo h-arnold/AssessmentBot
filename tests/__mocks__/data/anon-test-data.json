@@ -1,0 +1,1111 @@
+{
+  "documents": {
+    "00000000-0000-0000-0000-000000000005": {
+      "classId": "100000000001",
+      "className": "7C2 Digital Technology 2025-2026",
+      "cohortKey": "00000000-0000-0000-0000-000000000001",
+      "courseLength": 1,
+      "yearGroupKey": "00000000-0000-0000-0000-000000000002",
+      "classOwner": {
+        "userId": "100000000002",
+        "email": "teacher1@example.com",
+        "teacherName": "Teacher A"
+      },
+      "teachers": [
+        {
+          "userId": "100000000003",
+          "email": "teacher2@example.com",
+          "teacherName": "Teacher B"
+        }
+      ],
+      "students": [
+        {
+          "name": "Student One",
+          "email": "student1@example.com",
+          "id": "100000000004"
+        },
+        {
+          "name": "Student Two",
+          "email": "student2@example.com",
+          "id": "100000000005"
+        },
+        {
+          "name": "Student Three",
+          "email": "student3@example.com",
+          "id": "100000000006"
+        },
+        {
+          "name": "Student Four",
+          "email": "student4@example.com",
+          "id": "100000000007"
+        },
+        {
+          "name": "Student Five",
+          "email": "student5@example.com",
+          "id": "100000000008"
+        },
+        {
+          "name": "Student Six",
+          "email": "student6@example.com",
+          "id": "100000000009"
+        },
+        {
+          "name": "Student Seven",
+          "email": "student7@example.com",
+          "id": "100000000010"
+        },
+        {
+          "name": "Student Eight",
+          "email": "student8@example.com",
+          "id": "100000000011"
+        },
+        {
+          "name": "Student Nine",
+          "email": "student9@example.com",
+          "id": "100000000012"
+        },
+        {
+          "name": "Student Ten",
+          "email": "student10@example.com",
+          "id": "100000000013"
+        },
+        {
+          "name": "Student Eleven",
+          "email": "student11@example.com",
+          "id": "100000000014"
+        },
+        {
+          "name": "Student Twelve",
+          "email": "student12@example.com",
+          "id": "100000000015"
+        },
+        {
+          "name": "Student Thirteen",
+          "email": "student13@example.com",
+          "id": "100000000016"
+        },
+        {
+          "name": "Student Fourteen",
+          "email": "student14@example.com",
+          "id": "100000000017"
+        },
+        {
+          "name": "Student Fifteen",
+          "email": "student15@example.com",
+          "id": "100000000018"
+        },
+        {
+          "name": "Student Sixteen",
+          "email": "student16@example.com",
+          "id": "100000000019"
+        },
+        {
+          "name": "Student Seventeen",
+          "email": "student17@example.com",
+          "id": "100000000020"
+        },
+        {
+          "name": "Student Eighteen",
+          "email": "student18@example.com",
+          "id": "100000000021"
+        },
+        {
+          "name": "Student Nineteen",
+          "email": "student19@example.com",
+          "id": "100000000022"
+        },
+        {
+          "name": "Student Twenty",
+          "email": "student20@example.com",
+          "id": "100000000023"
+        },
+        {
+          "name": "Student Twenty-One",
+          "email": "student21@example.com",
+          "id": "100000000024"
+        },
+        {
+          "name": "Student Twenty-Two",
+          "email": "student22@example.com",
+          "id": "100000000025"
+        },
+        {
+          "name": "Student Twenty-Three",
+          "email": "student23@example.com",
+          "id": "100000000026"
+        },
+        {
+          "name": "Student Twenty-Four",
+          "email": "student24@example.com",
+          "id": "100000000027"
+        },
+        {
+          "name": "Student Twenty-Five",
+          "email": "student25@example.com",
+          "id": "100000000028"
+        },
+        {
+          "name": "Student Twenty-Six",
+          "email": "student26@example.com",
+          "id": "100000000029"
+        },
+        {
+          "name": "Student Twenty-Seven",
+          "email": "student27@example.com",
+          "id": "100000000030"
+        },
+        {
+          "name": "Student Twenty-Eight",
+          "email": "student28@example.com",
+          "id": "100000000031"
+        },
+        {
+          "name": "Student Twenty-Nine",
+          "email": "student29@example.com",
+          "id": "100000000032"
+        },
+        {
+          "name": "Student Thirty",
+          "email": "student30@example.com",
+          "id": "100000000033"
+        },
+        {
+          "name": "Student Thirty-One",
+          "email": "student31@example.com",
+          "id": "100000000034"
+        },
+        {
+          "name": "Student Thirty-Two",
+          "email": "student32@example.com",
+          "id": "100000000035"
+        },
+        {
+          "name": "Student Thirty-Three",
+          "email": "student33@example.com",
+          "id": "100000000036"
+        }
+      ],
+      "assignments": [
+        {
+          "courseId": "100000000001",
+          "assignmentId": "100000000037",
+          "assignmentName": "4. Presenting our Findings - Video Plan",
+          "dueDate": null,
+          "updatedAt": "2026-07-07T07:51:13.282Z",
+          "createdAt": "2026-06-29T09:40:37.069Z",
+          "assignmentDefinition": {
+            "primaryTitle": "7. Video Plan",
+            "primaryTopic": "Earth",
+            "primaryTopicKey": "00000000-0000-0000-0000-000000000003",
+            "yearGroupKey": "00000000-0000-0000-0000-000000000002",
+            "yearGroupLabel": "7",
+            "alternateTitles": ["4. Presenting our Findings - Video Plan"],
+            "alternateTopics": ["Earth"],
+            "documentType": "SLIDES",
+            "referenceDocumentId": "FAKEHUhu7IViv8JWjw9KXkx-LYly_MZmzANan0BObo1C",
+            "templateDocumentId": "FAKEObo1CPcp2DQdq3ERer4FSfs5GTgt6HUhu7IViv8J",
+            "referenceLastModified": null,
+            "templateLastModified": null,
+            "assignmentWeighting": 1,
+            "definitionKey": "00000000-0000-0000-0000-000000000004",
+            "createdAt": "2026-07-07T07:45:23.916Z",
+            "updatedAt": "2026-07-07T07:49:06.791Z",
+            "tasks": null
+          },
+          "submissions": [
+            {
+              "studentId": "100000000004",
+              "assignmentId": "100000000037",
+              "documentId": "FAKEViv8JWjw9KXkx-LYly_MZmzANan0BObo1CPcp2DQ",
+              "studentName": "Student One",
+              "items": {
+                "task_001": {
+                  "taskId": "task_001",
+                  "artifact": {
+                    "taskId": "task_001",
+                    "role": "submission",
+                    "pageId": "page_001",
+                    "documentId": "FAKEViv8JWjw9KXkx-LYly_MZmzANan0BObo1CPcp2DQ",
+                    "metadata": {},
+                    "content": null,
+                    "contentHash": null,
+                    "_uid": "task_001-100000000004-page_001-0"
+                  },
+                  "assessments": {
+                    "completeness": {
+                      "score": "N"
+                    },
+                    "accuracy": {
+                      "score": "N"
+                    },
+                    "spag": {
+                      "score": "N"
+                    }
+                  },
+                  "feedback": {},
+                  "id": "ssi_0000000000000001"
+                },
+                "task_002": {
+                  "taskId": "task_002",
+                  "artifact": {
+                    "taskId": "task_002",
+                    "role": "submission",
+                    "pageId": "page_002",
+                    "documentId": "FAKEViv8JWjw9KXkx-LYly_MZmzANan0BObo1CPcp2DQ",
+                    "metadata": {},
+                    "content": null,
+                    "contentHash": null,
+                    "_uid": "task_002-100000000004-page_002-0"
+                  },
+                  "assessments": {
+                    "completeness": {
+                      "score": "N"
+                    },
+                    "accuracy": {
+                      "score": "N"
+                    },
+                    "spag": {
+                      "score": "N"
+                    }
+                  },
+                  "feedback": {},
+                  "id": "ssi_0000000000000002"
+                },
+                "task_003": {
+                  "taskId": "task_003",
+                  "artifact": {
+                    "taskId": "task_003",
+                    "role": "submission",
+                    "pageId": "page_003",
+                    "documentId": "FAKEViv8JWjw9KXkx-LYly_MZmzANan0BObo1CPcp2DQ",
+                    "metadata": {},
+                    "content": null,
+                    "contentHash": null,
+                    "_uid": "task_003-100000000004-page_003-0"
+                  },
+                  "assessments": {
+                    "completeness": {
+                      "score": "N"
+                    },
+                    "accuracy": {
+                      "score": "N"
+                    },
+                    "spag": {
+                      "score": "N"
+                    }
+                  },
+                  "feedback": {},
+                  "id": "ssi_0000000000000003"
+                }
+              },
+              "createdAt": "2026-07-07T07:49:23.014Z",
+              "updatedAt": "2026-07-07T07:49:29.872Z#4",
+              "_updateCounter": 0
+            },
+            {
+              "studentId": "100000000005",
+              "assignmentId": "100000000037",
+              "documentId": "FAKEcp2DQdq3ERer4FSfs5GTgt6HUhu7IViv8JWjw9KX",
+              "studentName": "Student Two",
+              "items": {
+                "task_001": {
+                  "taskId": "task_001",
+                  "artifact": {
+                    "taskId": "task_001",
+                    "role": "submission",
+                    "pageId": "page_001",
+                    "documentId": "FAKEcp2DQdq3ERer4FSfs5GTgt6HUhu7IViv8JWjw9KX",
+                    "metadata": {},
+                    "content": null,
+                    "contentHash": null,
+                    "_uid": "task_001-100000000005-page_001-0"
+                  },
+                  "assessments": {
+                    "completeness": {
+                      "score": 5
+                    },
+                    "accuracy": {
+                      "score": 3
+                    },
+                    "spag": {
+                      "score": 4
+                    }
+                  },
+                  "feedback": {},
+                  "id": "ssi_0000000000000004"
+                },
+                "task_002": {
+                  "taskId": "task_002",
+                  "artifact": {
+                    "taskId": "task_002",
+                    "role": "submission",
+                    "pageId": "page_002",
+                    "documentId": "FAKEcp2DQdq3ERer4FSfs5GTgt6HUhu7IViv8JWjw9KX",
+                    "metadata": {},
+                    "content": null,
+                    "contentHash": null,
+                    "_uid": "task_002-100000000005-page_002-0"
+                  },
+                  "assessments": {
+                    "completeness": {
+                      "score": 5
+                    },
+                    "accuracy": {
+                      "score": 4
+                    },
+                    "spag": {
+                      "score": 4
+                    }
+                  },
+                  "feedback": {},
+                  "id": "ssi_0000000000000005"
+                },
+                "task_003": {
+                  "taskId": "task_003",
+                  "artifact": {
+                    "taskId": "task_003",
+                    "role": "submission",
+                    "pageId": "page_003",
+                    "documentId": "FAKEcp2DQdq3ERer4FSfs5GTgt6HUhu7IViv8JWjw9KX",
+                    "metadata": {},
+                    "content": null,
+                    "contentHash": null,
+                    "_uid": "task_003-100000000005-page_003-0"
+                  },
+                  "assessments": {
+                    "completeness": {
+                      "score": 1
+                    },
+                    "accuracy": {
+                      "score": 1
+                    },
+                    "spag": {
+                      "score": 5
+                    }
+                  },
+                  "feedback": {},
+                  "id": "ssi_0000000000000006"
+                }
+              },
+              "createdAt": "2026-07-07T07:49:23.014Z",
+              "updatedAt": "2026-07-07T07:49:30.958Z#4",
+              "_updateCounter": 0
+            },
+            {
+              "studentId": "100000000006",
+              "assignmentId": "100000000037",
+              "documentId": "FAKEjw9KXkx-LYly_MZmzANan0BObo1CPcp2DQdq3ERe",
+              "studentName": "Student Three",
+              "items": {
+                "task_001": {
+                  "taskId": "task_001",
+                  "artifact": {
+                    "taskId": "task_001",
+                    "role": "submission",
+                    "pageId": "page_001",
+                    "documentId": "FAKEjw9KXkx-LYly_MZmzANan0BObo1CPcp2DQdq3ERe",
+                    "metadata": {},
+                    "content": null,
+                    "contentHash": null,
+                    "_uid": "task_001-100000000006-page_001-0"
+                  },
+                  "assessments": {
+                    "completeness": {
+                      "score": 5
+                    },
+                    "accuracy": {
+                      "score": 3
+                    },
+                    "spag": {
+                      "score": 4
+                    }
+                  },
+                  "feedback": {},
+                  "id": "ssi_0000000000000007"
+                },
+                "task_002": {
+                  "taskId": "task_002",
+                  "artifact": {
+                    "taskId": "task_002",
+                    "role": "submission",
+                    "pageId": "page_002",
+                    "documentId": "FAKEjw9KXkx-LYly_MZmzANan0BObo1CPcp2DQdq3ERe",
+                    "metadata": {},
+                    "content": null,
+                    "contentHash": null,
+                    "_uid": "task_002-100000000006-page_002-0"
+                  },
+                  "assessments": {
+                    "completeness": {
+                      "score": "N"
+                    },
+                    "accuracy": {
+                      "score": "N"
+                    },
+                    "spag": {
+                      "score": "N"
+                    }
+                  },
+                  "feedback": {},
+                  "id": "ssi_0000000000000008"
+                },
+                "task_003": {
+                  "taskId": "task_003",
+                  "artifact": {
+                    "taskId": "task_003",
+                    "role": "submission",
+                    "pageId": "page_003",
+                    "documentId": "FAKEjw9KXkx-LYly_MZmzANan0BObo1CPcp2DQdq3ERe",
+                    "metadata": {},
+                    "content": null,
+                    "contentHash": null,
+                    "_uid": "task_003-100000000006-page_003-0"
+                  },
+                  "assessments": {
+                    "completeness": {
+                      "score": "N"
+                    },
+                    "accuracy": {
+                      "score": "N"
+                    },
+                    "spag": {
+                      "score": "N"
+                    }
+                  },
+                  "feedback": {},
+                  "id": "ssi_0000000000000009"
+                }
+              },
+              "createdAt": "2026-07-07T07:49:23.014Z",
+              "updatedAt": "2026-07-07T07:49:32.100Z#4",
+              "_updateCounter": 0
+            },
+            {
+              "studentId": "100000000007",
+              "assignmentId": "100000000037",
+              "documentId": "FAKEq3ERer4FSfs5GTgt6HUhu7IViv8JWjw9KXkx-LYl",
+              "studentName": "Student Four",
+              "items": {
+                "task_001": {
+                  "taskId": "task_001",
+                  "artifact": {
+                    "taskId": "task_001",
+                    "role": "submission",
+                    "pageId": "page_001",
+                    "documentId": "FAKEq3ERer4FSfs5GTgt6HUhu7IViv8JWjw9KXkx-LYl",
+                    "metadata": {},
+                    "content": null,
+                    "contentHash": null,
+                    "_uid": "task_001-100000000007-page_001-0"
+                  },
+                  "assessments": {
+                    "completeness": {
+                      "score": "N"
+                    },
+                    "accuracy": {
+                      "score": "N"
+                    },
+                    "spag": {
+                      "score": "N"
+                    }
+                  },
+                  "feedback": {},
+                  "id": "ssi_0000000000000010"
+                },
+                "task_002": {
+                  "taskId": "task_002",
+                  "artifact": {
+                    "taskId": "task_002",
+                    "role": "submission",
+                    "pageId": "page_002",
+                    "documentId": "FAKEq3ERer4FSfs5GTgt6HUhu7IViv8JWjw9KXkx-LYl",
+                    "metadata": {},
+                    "content": null,
+                    "contentHash": null,
+                    "_uid": "task_002-100000000007-page_002-0"
+                  },
+                  "assessments": {
+                    "completeness": {
+                      "score": "N"
+                    },
+                    "accuracy": {
+                      "score": "N"
+                    },
+                    "spag": {
+                      "score": "N"
+                    }
+                  },
+                  "feedback": {},
+                  "id": "ssi_0000000000000011"
+                },
+                "task_003": {
+                  "taskId": "task_003",
+                  "artifact": {
+                    "taskId": "task_003",
+                    "role": "submission",
+                    "pageId": "page_003",
+                    "documentId": "FAKEq3ERer4FSfs5GTgt6HUhu7IViv8JWjw9KXkx-LYl",
+                    "metadata": {},
+                    "content": null,
+                    "contentHash": null,
+                    "_uid": "task_003-100000000007-page_003-0"
+                  },
+                  "assessments": {
+                    "completeness": {
+                      "score": "N"
+                    },
+                    "accuracy": {
+                      "score": "N"
+                    },
+                    "spag": {
+                      "score": "N"
+                    }
+                  },
+                  "feedback": {},
+                  "id": "ssi_0000000000000012"
+                }
+              },
+              "createdAt": "2026-07-07T07:49:23.014Z",
+              "updatedAt": "2026-07-07T07:49:33.335Z#4",
+              "_updateCounter": 0
+            },
+            {
+              "studentId": "100000000008",
+              "assignmentId": "100000000037",
+              "documentId": "FAKEx-LYly_MZmzANan0BObo1CPcp2DQdq3ERer4FSfs",
+              "studentName": "Student Five",
+              "items": {
+                "task_001": {
+                  "taskId": "task_001",
+                  "artifact": {
+                    "taskId": "task_001",
+                    "role": "submission",
+                    "pageId": "page_001",
+                    "documentId": "FAKEx-LYly_MZmzANan0BObo1CPcp2DQdq3ERer4FSfs",
+                    "metadata": {},
+                    "content": null,
+                    "contentHash": null,
+                    "_uid": "task_001-100000000008-page_001-0"
+                  },
+                  "assessments": {
+                    "completeness": {
+                      "score": 5
+                    },
+                    "accuracy": {
+                      "score": 4
+                    },
+                    "spag": {
+                      "score": 4
+                    }
+                  },
+                  "feedback": {},
+                  "id": "ssi_0000000000000013"
+                },
+                "task_002": {
+                  "taskId": "task_002",
+                  "artifact": {
+                    "taskId": "task_002",
+                    "role": "submission",
+                    "pageId": "page_002",
+                    "documentId": "FAKEx-LYly_MZmzANan0BObo1CPcp2DQdq3ERer4FSfs",
+                    "metadata": {},
+                    "content": null,
+                    "contentHash": null,
+                    "_uid": "task_002-100000000008-page_002-0"
+                  },
+                  "assessments": {
+                    "completeness": {
+                      "score": 3
+                    },
+                    "accuracy": {
+                      "score": 3
+                    },
+                    "spag": {
+                      "score": 3
+                    }
+                  },
+                  "feedback": {},
+                  "id": "ssi_0000000000000014"
+                },
+                "task_003": {
+                  "taskId": "task_003",
+                  "artifact": {
+                    "taskId": "task_003",
+                    "role": "submission",
+                    "pageId": "page_003",
+                    "documentId": "FAKEx-LYly_MZmzANan0BObo1CPcp2DQdq3ERer4FSfs",
+                    "metadata": {},
+                    "content": null,
+                    "contentHash": null,
+                    "_uid": "task_003-100000000008-page_003-0"
+                  },
+                  "assessments": {
+                    "completeness": {
+                      "score": "N"
+                    },
+                    "accuracy": {
+                      "score": "N"
+                    },
+                    "spag": {
+                      "score": "N"
+                    }
+                  },
+                  "feedback": {},
+                  "id": "ssi_0000000000000015"
+                }
+              },
+              "createdAt": "2026-07-07T07:49:23.014Z",
+              "updatedAt": "2026-07-07T07:49:34.519Z#4",
+              "_updateCounter": 0
+            },
+            {
+              "studentId": "100000000009",
+              "assignmentId": "100000000037",
+              "documentId": "FAKE4FSfs5GTgt6HUhu7IViv8JWjw9KXkx-LYly_MZmz",
+              "studentName": "Student Six",
+              "items": {
+                "task_001": {
+                  "taskId": "task_001",
+                  "artifact": {
+                    "taskId": "task_001",
+                    "role": "submission",
+                    "pageId": "page_001",
+                    "documentId": "FAKE4FSfs5GTgt6HUhu7IViv8JWjw9KXkx-LYly_MZmz",
+                    "metadata": {},
+                    "content": null,
+                    "contentHash": null,
+                    "_uid": "task_001-100000000009-page_001-0"
+                  },
+                  "assessments": {
+                    "completeness": {
+                      "score": 5
+                    },
+                    "accuracy": {
+                      "score": 1
+                    },
+                    "spag": {
+                      "score": 2
+                    }
+                  },
+                  "feedback": {},
+                  "id": "ssi_0000000000000016"
+                },
+                "task_002": {
+                  "taskId": "task_002",
+                  "artifact": {
+                    "taskId": "task_002",
+                    "role": "submission",
+                    "pageId": "page_002",
+                    "documentId": "FAKE4FSfs5GTgt6HUhu7IViv8JWjw9KXkx-LYly_MZmz",
+                    "metadata": {},
+                    "content": null,
+                    "contentHash": null,
+                    "_uid": "task_002-100000000009-page_002-0"
+                  },
+                  "assessments": {
+                    "completeness": {
+                      "score": 3
+                    },
+                    "accuracy": {
+                      "score": 4
+                    },
+                    "spag": {
+                      "score": 4
+                    }
+                  },
+                  "feedback": {},
+                  "id": "ssi_0000000000000017"
+                },
+                "task_003": {
+                  "taskId": "task_003",
+                  "artifact": {
+                    "taskId": "task_003",
+                    "role": "submission",
+                    "pageId": "page_003",
+                    "documentId": "FAKE4FSfs5GTgt6HUhu7IViv8JWjw9KXkx-LYly_MZmz",
+                    "metadata": {},
+                    "content": null,
+                    "contentHash": null,
+                    "_uid": "task_003-100000000009-page_003-0"
+                  },
+                  "assessments": {
+                    "completeness": {
+                      "score": 1
+                    },
+                    "accuracy": {
+                      "score": 1
+                    },
+                    "spag": {
+                      "score": 5
+                    }
+                  },
+                  "feedback": {},
+                  "id": "ssi_0000000000000018"
+                }
+              },
+              "createdAt": "2026-07-07T07:49:23.014Z",
+              "updatedAt": "2026-07-07T07:49:36.042Z#4",
+              "_updateCounter": 0
+            },
+            {
+              "studentId": "100000000010",
+              "assignmentId": "100000000037",
+              "documentId": "FAKE_MZmzANan0BObo1CPcp2DQdq3ERer4FSfs5GTgt6",
+              "studentName": "Student Seven",
+              "items": {
+                "task_001": {
+                  "taskId": "task_001",
+                  "artifact": {
+                    "taskId": "task_001",
+                    "role": "submission",
+                    "pageId": "page_001",
+                    "documentId": "FAKE_MZmzANan0BObo1CPcp2DQdq3ERer4FSfs5GTgt6",
+                    "metadata": {},
+                    "content": null,
+                    "contentHash": null,
+                    "_uid": "task_001-100000000010-page_001-0"
+                  },
+                  "assessments": {
+                    "completeness": {
+                      "score": 4
+                    },
+                    "accuracy": {
+                      "score": 3
+                    },
+                    "spag": {
+                      "score": 2
+                    }
+                  },
+                  "feedback": {},
+                  "id": "ssi_0000000000000019"
+                },
+                "task_002": {
+                  "taskId": "task_002",
+                  "artifact": {
+                    "taskId": "task_002",
+                    "role": "submission",
+                    "pageId": "page_002",
+                    "documentId": "FAKE_MZmzANan0BObo1CPcp2DQdq3ERer4FSfs5GTgt6",
+                    "metadata": {},
+                    "content": null,
+                    "contentHash": null,
+                    "_uid": "task_002-100000000010-page_002-0"
+                  },
+                  "assessments": {
+                    "completeness": {
+                      "score": 3
+                    },
+                    "accuracy": {
+                      "score": 3
+                    },
+                    "spag": {
+                      "score": 4
+                    }
+                  },
+                  "feedback": {},
+                  "id": "ssi_0000000000000020"
+                },
+                "task_003": {
+                  "taskId": "task_003",
+                  "artifact": {
+                    "taskId": "task_003",
+                    "role": "submission",
+                    "pageId": "page_003",
+                    "documentId": "FAKE_MZmzANan0BObo1CPcp2DQdq3ERer4FSfs5GTgt6",
+                    "metadata": {},
+                    "content": null,
+                    "contentHash": null,
+                    "_uid": "task_003-100000000010-page_003-0"
+                  },
+                  "assessments": {
+                    "completeness": {
+                      "score": 1
+                    },
+                    "accuracy": {
+                      "score": 1
+                    },
+                    "spag": {
+                      "score": 4
+                    }
+                  },
+                  "feedback": {},
+                  "id": "ssi_0000000000000021"
+                }
+              },
+              "createdAt": "2026-07-07T07:49:23.014Z",
+              "updatedAt": "2026-07-07T07:49:37.171Z#4",
+              "_updateCounter": 0
+            },
+            {
+              "studentId": "100000000011",
+              "assignmentId": "100000000037",
+              "documentId": "FAKEGTgt6HUhu7IViv8JWjw9KXkx-LYly_MZmzANan0B",
+              "studentName": "Student Eight",
+              "items": {
+                "task_001": {
+                  "taskId": "task_001",
+                  "artifact": {
+                    "taskId": "task_001",
+                    "role": "submission",
+                    "pageId": "page_001",
+                    "documentId": "FAKEGTgt6HUhu7IViv8JWjw9KXkx-LYly_MZmzANan0B",
+                    "metadata": {},
+                    "content": null,
+                    "contentHash": null,
+                    "_uid": "task_001-100000000011-page_001-0"
+                  },
+                  "assessments": {
+                    "completeness": {
+                      "score": 5
+                    },
+                    "accuracy": {
+                      "score": 2
+                    },
+                    "spag": {
+                      "score": 4
+                    }
+                  },
+                  "feedback": {},
+                  "id": "ssi_0000000000000022"
+                },
+                "task_002": {
+                  "taskId": "task_002",
+                  "artifact": {
+                    "taskId": "task_002",
+                    "role": "submission",
+                    "pageId": "page_002",
+                    "documentId": "FAKEGTgt6HUhu7IViv8JWjw9KXkx-LYly_MZmzANan0B",
+                    "metadata": {},
+                    "content": null,
+                    "contentHash": null,
+                    "_uid": "task_002-100000000011-page_002-0"
+                  },
+                  "assessments": {
+                    "completeness": {
+                      "score": 5
+                    },
+                    "accuracy": {
+                      "score": 4
+                    },
+                    "spag": {
+                      "score": 3
+                    }
+                  },
+                  "feedback": {},
+                  "id": "ssi_0000000000000023"
+                },
+                "task_003": {
+                  "taskId": "task_003",
+                  "artifact": {
+                    "taskId": "task_003",
+                    "role": "submission",
+                    "pageId": "page_003",
+                    "documentId": "FAKEGTgt6HUhu7IViv8JWjw9KXkx-LYly_MZmzANan0B",
+                    "metadata": {},
+                    "content": null,
+                    "contentHash": null,
+                    "_uid": "task_003-100000000011-page_003-0"
+                  },
+                  "assessments": {
+                    "completeness": {
+                      "score": 3
+                    },
+                    "accuracy": {
+                      "score": 2
+                    },
+                    "spag": {
+                      "score": 4
+                    }
+                  },
+                  "feedback": {},
+                  "id": "ssi_0000000000000024"
+                }
+              },
+              "createdAt": "2026-07-07T07:49:23.014Z",
+              "updatedAt": "2026-07-07T07:49:38.146Z#4",
+              "_updateCounter": 0
+            },
+            {
+              "studentId": "100000000012",
+              "assignmentId": "100000000037",
+              "documentId": "FAKENan0BObo1CPcp2DQdq3ERer4FSfs5GTgt6HUhu7I",
+              "studentName": "Student Nine",
+              "items": {
+                "task_001": {
+                  "taskId": "task_001",
+                  "artifact": {
+                    "taskId": "task_001",
+                    "role": "submission",
+                    "pageId": "page_001",
+                    "documentId": "FAKENan0BObo1CPcp2DQdq3ERer4FSfs5GTgt6HUhu7I",
+                    "metadata": {},
+                    "content": null,
+                    "contentHash": null,
+                    "_uid": "task_001-100000000012-page_001-0"
+                  },
+                  "assessments": {
+                    "completeness": {
+                      "score": 3
+                    },
+                    "accuracy": {
+                      "score": 2
+                    },
+                    "spag": {
+                      "score": 2
+                    }
+                  },
+                  "feedback": {},
+                  "id": "ssi_0000000000000025"
+                },
+                "task_002": {
+                  "taskId": "task_002",
+                  "artifact": {
+                    "taskId": "task_002",
+                    "role": "submission",
+                    "pageId": "page_002",
+                    "documentId": "FAKENan0BObo1CPcp2DQdq3ERer4FSfs5GTgt6HUhu7I",
+                    "metadata": {},
+                    "content": null,
+                    "contentHash": null,
+                    "_uid": "task_002-100000000012-page_002-0"
+                  },
+                  "assessments": {
+                    "completeness": {
+                      "score": 3
+                    },
+                    "accuracy": {
+                      "score": 2
+                    },
+                    "spag": {
+                      "score": 2
+                    }
+                  },
+                  "feedback": {},
+                  "id": "ssi_0000000000000026"
+                },
+                "task_003": {
+                  "taskId": "task_003",
+                  "artifact": {
+                    "taskId": "task_003",
+                    "role": "submission",
+                    "pageId": "page_003",
+                    "documentId": "FAKENan0BObo1CPcp2DQdq3ERer4FSfs5GTgt6HUhu7I",
+                    "metadata": {},
+                    "content": null,
+                    "contentHash": null,
+                    "_uid": "task_003-100000000012-page_003-0"
+                  },
+                  "assessments": {
+                    "completeness": {
+                      "score": "N"
+                    },
+                    "accuracy": {
+                      "score": "N"
+                    },
+                    "spag": {
+                      "score": "N"
+                    }
+                  },
+                  "feedback": {},
+                  "id": "ssi_0000000000000027"
+                }
+              },
+              "createdAt": "2026-07-07T07:49:23.014Z",
+              "updatedAt": "2026-07-07T07:49:39.179Z#4",
+              "_updateCounter": 0
+            },
+            {
+              "studentId": "100000000013",
+              "assignmentId": "100000000037",
+              "documentId": "FAKEUhu7IViv8JWjw9KXkx-LYly_MZmzANan0BObo1CP",
+              "studentName": "Student Ten",
+              "items": {
+                "task_001": {
+                  "taskId": "task_001",
+                  "artifact": {
+                    "taskId": "task_001",
+                    "role": "submission",
+                    "pageId": "page_001",
+                    "documentId": "FAKEUhu7IViv8JWjw9KXkx-LYly_MZmzANan0BObo1CP",
+                    "metadata": {},
+                    "content": null,
+                    "contentHash": null,
+                    "_uid": "task_001-100000000013-page_001-0"
+                  },
+                  "assessments": {
+                    "completeness": {
+                      "score": 4
+                    },
+                    "accuracy": {
+                      "score": 2
+                    },
+                    "spag": {
+                      "score": 2
+                    }
+                  },
+                  "feedback": {},
+                  "id": "ssi_0000000000000028"
+                },
+                "task_002": {
+                  "taskId": "task_002",
+                  "artifact": {
+                    "taskId": "task_002",
+                    "role": "submission",
+                    "pageId": "page_002",
+                    "documentId": "FAKEUhu7IViv8JWjw9KXkx-LYly_MZmzANan0BObo1CP",
+                    "metadata": {},
+                    "content": null,
+                    "contentHash": null,
+                    "_uid": "task_002-100000000013-page_002-0"
+                  },
+                  "assessments": {
+                    "completeness": {
+                      "score": 3
+                    },
+                    "accuracy": {
+                      "score": 3
+                    },
+                    "spag": {
+                      "score": 3
+                    }
+                  },
+                  "feedback": {},
+                  "id": "ssi_0000000000000029"
+                },
+                "task_003": {
+                  "taskId": "task_003",
+                  "artifact": {
+                    "taskId": "task_003",
+                    "role": "submission",
+                    "pageId": "page_003",
+                    "documentId": "FAKEUhu7IViv8JWjw9KXkx-LYly_MZmzANan0BObo1CP",
+                    "metadata": {},
+                    "content": null,
+                    "contentHash": null,
+                    "_uid": "task_003-100000000013-page_003-0"
+                  },
+                  "assessments": {
+                    "completeness": {
+                      "score": 0
+                    },
+                    "accuracy": {
+                      "score": 0
+                    },
+                    "spag": {
+                      "score": 0
+                    }
+                  },
+                  "feedback": {},
+                  "id": "ssi_0000000000000030"
+                }
+              },
+              "createdAt": "2026-07-07T07:49:23.014Z",
+              "updatedAt": "2026-07-07T07:49:40.098Z#4",
+              "_updateCounter": 0
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

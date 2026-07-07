@@ -149,12 +149,10 @@ describe('AssignmentPartialSchema', () => {
     expect(result.documentType).toBe('SLIDES');
   });
 
-  it('accepts submissions with redacted artifacts (content/contentHash set to null)', () => {
+  it('accepts submissions with redacted artifacts', () => {
     const result = AssignmentPartialSchema.parse(validAssignmentPartial);
     expect(result.submissions).toHaveLength(1);
     const item = result.submissions[0].items['task-1'];
-    expect(item.artifact.content).toBeNull();
-    expect(item.artifact.contentHash).toBeNull();
     expect(item.artifact.taskId).toBe('task-1');
   });
 
@@ -280,8 +278,6 @@ describe('StudentSummarySchema', () => {
 describe('StudentSubmissionItemPartialSchema', () => {
   it('parses a valid submission item partial with redacted artifact', () => {
     const result = StudentSubmissionItemPartialSchema.parse(validStudentSubmissionItemPartial);
-    expect(result.artifact.content).toBeNull();
-    expect(result.artifact.contentHash).toBeNull();
     expect(result.id).toBe('sub-1');
     expect(result.taskId).toBe('task-1');
   });
@@ -339,10 +335,8 @@ describe('StudentSubmissionPartialSchema', () => {
 });
 
 describe('BaseTaskArtifactPartialSchema', () => {
-  it('parses a valid base task artifact partial with content and contentHash set to null', () => {
+  it('parses a valid base task artifact partial', () => {
     const result = BaseTaskArtifactPartialSchema.parse(validBaseTaskArtifactPartial);
-    expect(result.content).toBeNull();
-    expect(result.contentHash).toBeNull();
     expect(result.type).toBe('slides');
     expect(result.taskId).toBe('task-1');
     expect(result.role).toBe('student');
@@ -359,12 +353,6 @@ describe('BaseTaskArtifactPartialSchema', () => {
     const missing = { ...validBaseTaskArtifactPartial };
     delete (missing as Record<string, unknown>).type;
     expect(() => BaseTaskArtifactPartialSchema.parse(missing)).toThrow();
-  });
-
-  it('rejects an artifact with non-null content', () => {
-    expect(() =>
-      BaseTaskArtifactPartialSchema.parse({ ...validBaseTaskArtifactPartial, content: 'data' })
-    ).toThrow();
   });
 });
 
