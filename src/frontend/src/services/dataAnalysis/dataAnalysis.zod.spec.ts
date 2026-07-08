@@ -24,6 +24,7 @@ interface AnalysisFilterSchemaModule {
   PerTaskRowSchema: ParseOnly;
   PerClassResultSchema: ParseOnly;
   DataAnalysisResponseSchema: ParseOnly;
+  PerStudentTaskMetricSchema: ParseOnly;
 }
 
 /**
@@ -32,7 +33,7 @@ interface AnalysisFilterSchemaModule {
  * @returns {Promise<AnalysisFilterSchemaModule>} The imported module.
  */
 async function loadDataAnalysisZod(): Promise<AnalysisFilterSchemaModule> {
-  return import('./dataAnalysis.zod') as Promise<AnalysisFilterSchemaModule>;
+  return import('./dataAnalysis.zod') as unknown as Promise<AnalysisFilterSchemaModule>;
 }
 
 // ---------------------------------------------------------------------------
@@ -640,5 +641,143 @@ describe('DataAnalysisResponseSchema', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].classId).toBe('c-1');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PerStudentTaskMetricSchema — RED phase (does not yet exist in production)
+// ---------------------------------------------------------------------------
+
+describe('PerStudentTaskMetricSchema', () => {
+  it('parses a valid metric with criterion scores 0..5 and "N" and string identifiers', async () => {
+    const { PerStudentTaskMetricSchema } = await loadDataAnalysisZod();
+
+    // RED phase: PerStudentTaskMetricSchema is undefined because it is not
+    // yet exported from dataAnalysis.zod.ts. Calling .parse() on undefined
+    // throws TypeError, causing the test to fail.
+    const result = PerStudentTaskMetricSchema.parse({
+      classId: 'c-1',
+      studentId: 's-1',
+      taskKey: 'dk_algebra::t_001',
+      completeness: computedMetricResult,
+      accuracy: computedMetricResult,
+      spag: notAttemptedMetricResult,
+      overall: computedMetricResult,
+    });
+
+    expect(result).toMatchObject({
+      classId: 'c-1',
+      studentId: 's-1',
+      taskKey: 'dk_algebra::t_001',
+    });
+  });
+
+  it('rejects extra keys such as taskId (strict object)', async () => {
+    const { PerStudentTaskMetricSchema } = await loadDataAnalysisZod();
+
+    expect(() =>
+      PerStudentTaskMetricSchema.parse({
+        classId: 'c-1',
+        studentId: 's-1',
+        taskKey: 'dk_algebra::t_001',
+        completeness: computedMetricResult,
+        accuracy: computedMetricResult,
+        spag: computedMetricResult,
+        overall: computedMetricResult,
+        taskId: 't_001',
+      })
+    ).toThrow();
+  });
+
+  it('rejects extra keys such as taskTitle (strict object)', async () => {
+    const { PerStudentTaskMetricSchema } = await loadDataAnalysisZod();
+
+    expect(() =>
+      PerStudentTaskMetricSchema.parse({
+        classId: 'c-1',
+        studentId: 's-1',
+        taskKey: 'dk_algebra::t_001',
+        completeness: computedMetricResult,
+        accuracy: computedMetricResult,
+        spag: computedMetricResult,
+        overall: computedMetricResult,
+        taskTitle: 'A Task',
+      })
+    ).toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AveragingResultSchema — perStudentTaskMetrics optional field (RED phase)
+// ---------------------------------------------------------------------------
+
+describe('AveragingResultSchema — perStudentTaskMetrics optional field', () => {
+  it('accepts a result without perStudentTaskMetrics (optional)', async () => {
+    const { AveragingResultSchema } = await loadDataAnalysisZod();
+
+    const result = AveragingResultSchema.parse({
+      classId: 'c-1',
+      className: 'Test Class',
+      perStudent: [validPerStudentRow],
+      perTask: [validPerTaskRow],
+      perClass: validPerClassResult,
+      appliedCriterionWeightings: validAppliedCriterionWeightings,
+    });
+
+    expect(result).toBeDefined();
+    // In RED phase the result has no perStudentTaskMetrics key at all (schema
+    // doesn't include it); in GREEN phase the key is optional and will also
+    // be absent when not provided.
+  });
+
+  it('rejects perStudentTaskMetrics when value is not an array', async () => {
+    const { AveragingResultSchema } = await loadDataAnalysisZod();
+
+    // RED phase: AveragingResultSchema is a strictObject that does not yet
+    // include perStudentTaskMetrics, so a string value for that key triggers
+    // "Unrecognized key(s)" rejection. GREEN phase: the key is present but
+    // requires z.array(...), so a string also fails.
+    expect(() =>
+      AveragingResultSchema.parse({
+        classId: 'c-1',
+        className: 'Test Class',
+        perStudent: [validPerStudentRow],
+        perTask: [validPerTaskRow],
+        perClass: validPerClassResult,
+        appliedCriterionWeightings: validAppliedCriterionWeightings,
+        perStudentTaskMetrics: 'not-an-array',
+      })
+    ).toThrow();
+  });
+
+  it('accepts perStudentTaskMetrics as an array of valid PerStudentTaskMetricSchema entries', async () => {
+    const { AveragingResultSchema, PerStudentTaskMetricSchema } = await loadDataAnalysisZod();
+
+    // RED phase: PerStudentTaskMetricSchema is undefined, so this test fails
+    // at the .parse() call before reaching the AveragingResultSchema assertion.
+    const validMetric = PerStudentTaskMetricSchema.parse({
+      classId: 'c-1',
+      studentId: 's-1',
+      taskKey: 'dk_algebra::t_001',
+      completeness: computedMetricResult,
+      accuracy: computedMetricResult,
+      spag: computedMetricResult,
+      overall: computedMetricResult,
+    });
+
+    const result = AveragingResultSchema.parse({
+      classId: 'c-1',
+      className: 'Test Class',
+      perStudent: [validPerStudentRow],
+      perTask: [validPerTaskRow],
+      perClass: validPerClassResult,
+      appliedCriterionWeightings: validAppliedCriterionWeightings,
+      perStudentTaskMetrics: [validMetric],
+    });
+
+    expect(result).toBeDefined();
+    const parsed = result as Record<string, unknown>;
+    expect(parsed.perStudentTaskMetrics).toBeDefined();
+    expect(Array.isArray(parsed.perStudentTaskMetrics)).toBe(true);
   });
 });

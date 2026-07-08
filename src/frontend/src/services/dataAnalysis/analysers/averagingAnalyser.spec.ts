@@ -271,6 +271,68 @@ describe('AveragingAnalyser', () => {
       });
     });
 
+    it('includes perStudentTaskMetrics with expected length and preserves perStudent/perTask counts', () => {
+      // RED phase: perStudentTaskMetrics is not yet populated on AveragingResult,
+      // so expect(...).toBeDefined() will fail.
+      const input = buildInput([
+        {
+          classId: 'c_001',
+          className: 'Test Class',
+          studentIds: ['s_001', 's_002'],
+          assignments: [
+            createAssignmentPartial({
+              assignmentId: 'a_001',
+              definitionKey: 'dk_algebra',
+              tasks: [createTaskPartial('t_001'), createTaskPartial('t_002')],
+              submissions: [
+                createSubmission('s_001', 'Alice', 'a_001', {
+                  t_001: createSubmissionItem('t_001', {
+                    completeness: { score: 3 },
+                    accuracy: { score: 4 },
+                    spag: { score: 5 },
+                  }),
+                  t_002: createSubmissionItem('t_002', {
+                    completeness: { score: 5 },
+                    accuracy: { score: 5 },
+                    spag: { score: 5 },
+                  }),
+                }),
+                createSubmission('s_002', 'Bob', 'a_001', {
+                  t_001: createSubmissionItem('t_001', {
+                    completeness: { score: 1 },
+                    accuracy: { score: 2 },
+                    spag: { score: 3 },
+                  }),
+                }),
+              ],
+            }),
+          ],
+        },
+      ]);
+
+      const analyser = new AveragingAnalyser();
+      const results = analyser.analyse(input);
+
+      expect(results).toHaveLength(1);
+      const result = results[0] as unknown as {
+        perStudent: unknown[];
+        perTask: unknown[];
+        perStudentTaskMetrics?: unknown[];
+      };
+
+      const expectedPerStudentTaskCount = 3; // Alice (2 tasks) + Bob (1 task)
+      const expectedPerStudentCount = 2; // Both students have per-student rows
+      const expectedPerTaskCount = 2; // Two distinct task IDs across submissions
+
+      // perStudentTaskMetrics should be populated — will fail in RED phase
+      expect(result.perStudentTaskMetrics).toBeDefined();
+      expect(result.perStudentTaskMetrics).toHaveLength(expectedPerStudentTaskCount);
+
+      // Existing perStudent/perTask counts are unchanged from prior baselines
+      expect(result.perStudent).toHaveLength(expectedPerStudentCount);
+      expect(result.perTask).toHaveLength(expectedPerTaskCount);
+    });
+
     it('produces correct discriminated union states throughout output', () => {
       const input = buildInput([
         {

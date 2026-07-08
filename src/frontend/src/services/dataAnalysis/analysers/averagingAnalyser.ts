@@ -1,5 +1,5 @@
 import type { AveragingAnalyserInput, AveragingResult, PerClassResult } from '../dataAnalysis.zod';
-import { accumulateDataPoints } from './averagingAnalyser.accumulation';
+import { accumulateDataPoints, buildPerStudentTaskMetrics } from './averagingAnalyser.accumulation';
 import { filterAssignments } from './averagingAnalyser.filters';
 import {
   buildPerStudentRows,
@@ -123,6 +123,11 @@ export class AveragingAnalyser {
       overall,
     };
 
+    const perStudentTaskMetrics = buildPerStudentTaskMetrics(
+      cls.classId,
+      accumulators.perStudentTaskAccums
+    );
+
     return {
       classId: cls.classId,
       className: cls.className,
@@ -130,6 +135,7 @@ export class AveragingAnalyser {
       perTask,
       perClass,
       appliedCriterionWeightings: { ...this.appliedCriterionWeightings },
+      perStudentTaskMetrics,
     };
   }
 }

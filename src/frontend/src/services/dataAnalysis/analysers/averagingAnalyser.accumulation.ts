@@ -1,4 +1,8 @@
-import type { AveragingAnalyserInput, MetricResult } from '../dataAnalysis.zod';
+import type {
+  AveragingAnalyserInput,
+  MetricResult,
+  PerStudentTaskMetric,
+} from '../dataAnalysis.zod';
 import type { CriterionWeightings } from './averagingAnalyser';
 import type { DataPointAccumulator, MetricAccumulator } from './averagingAnalyser.types';
 import { processItemAssessments } from './averagingAnalyser.criterionAccumulation';
@@ -415,4 +419,42 @@ export function computeOverallComposite(
     applicableDataPoints,
     totalDataPoints,
   };
+}
+
+/**
+ * Build the perStudentTaskMetrics array from the internal per-(student, task)
+ * accumulators.
+ *
+ * @param {string} classId - The class identifier to echo on each metric.
+ * @param {Map<string, Map<string, DataPointAccumulator>>} perStudentTaskAccums -
+ *   Outer key = studentId, inner key = taskKey (`definitionKey::taskId`).
+ * @returns {PerStudentTaskMetric[]} Sorted array by studentId, then taskKey.
+ */
+export function buildPerStudentTaskMetrics(
+  classId: string,
+  perStudentTaskAccums: Map<string, Map<string, DataPointAccumulator>>
+): PerStudentTaskMetric[] {
+  const metrics: PerStudentTaskMetric[] = [];
+
+  for (const [studentId, taskMap] of perStudentTaskAccums) {
+    for (const [taskKey, accum] of taskMap) {
+      metrics.push({
+        classId,
+        studentId,
+        taskKey,
+        completeness: accumToMetric(accum.completeness),
+        accuracy: accumToMetric(accum.accuracy),
+        spag: accumToMetric(accum.spag),
+        overall: accumToMetric(accum.overall),
+      });
+    }
+  }
+
+  // Deterministic sort: studentId asc, then taskKey asc
+  metrics.sort((a, b) => {
+    const byStudent = a.studentId.localeCompare(b.studentId);
+    return byStudent === 0 ? a.taskKey.localeCompare(b.taskKey) : byStudent;
+  });
+
+  return metrics;
 }
