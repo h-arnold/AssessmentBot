@@ -727,6 +727,13 @@ Per `SPEC_CLASS_PAGE_PREPARATION.md` line 382, the canonical home for these help
 - Call-site rationale: `rollupAccumulators` was previously private to `averagingAnalyser.rows.ts` and duplicated in `averagingAnalyser.ts` (`analyseClass`). By exporting it, the per-class rollup path in `analyseClass` now reuses the same `rollupAccumulators` call that the row builders use, eliminating the dual-path bug described in CRITICAL-2.
 - Status: `Implemented`
 
+2. Helper: `buildPerStudentTaskMetrics` — convert per-(student, task) accumulators to `PerStudentTaskMetric[]`
+
+- Decision: `new` (feature-local helper, kept inside the analyser package)
+- Owning module/path: `src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.accumulation.ts` (or `averagingAnalyser.perStudentTaskMetrics.ts` if `accumulation.ts` crosses the 500-LOC threshold)
+- Call-site rationale: converts `perStudentTaskAccums` (`Map<string, Map<string, DataPointAccumulator>>`) into the validated `PerStudentTaskMetric[]` array on `AveragingResult`, calling the existing `accumToMetric` path for each criterion (`completeness`, `accuracy`, `spag`, `overall`). Consumed by `analyseClass` in `averagingAnalyser.ts`. `taskKey` is `\`${definitionKey}::${taskId}\``; `classId` is echoed from the input class.
+- Status: `Implemented` (ACTION_PLAN.md Section 1 — `buildPerStudentTaskMetrics` added to `averagingAnalyser.accumulation.ts`, called by `analyseClass`; `PerStudentTaskMetricSchema` added to `dataAnalysis.zod.ts`).
+
 ## 10. Frontend utils folder convention
 
 The `src/frontend/src/utils/` folder exists for pure formatting / utility functions that are shared across the frontend. This folder is a separate convention from `src/frontend/AGENTS.md` §13, which governs only `services/` subfolder organisation.
