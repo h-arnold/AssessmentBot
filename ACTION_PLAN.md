@@ -510,7 +510,14 @@ Frontend Vitest (component):
   - Green Review: 2 Minor items (stale header `@remarks`; redundant defensive guard) returned and fixed.
   - Regression Gate: PASS (Regressions 0, New Failures 0; pre-existing out-of-scope `backend-lint-check` + `backend-test-coverage-check` failures unchanged).
   - Canonical doc: §9.18.7 (`RecentAssignmentCard`) interactivity note updated, §9.18.8 (`RecentAssignmentsSection`) onOpenHeatmap note added, §9.18.11 (`compareHeatmapStudentName`) added.
-- **Section 5b (pending):** `ClassPage` view-state dispatcher (`selectedView` = `{ view: 'overview' | 'heatmap'; assignmentId?: string }`), `TaskHeatmapPage` composition (Back button, header, `TaskHeatmapTable`, `TaskHeatmapBandFilterPanel`, `TaskHeatmapColumnSort`), and `METRIC_STATE_RANK_ASC` export from `classPageModel.ts`. Begins after Section 4 lands (Section 5b depends on Sections 2 + 4).
+- **Section 5b (completed — `TaskHeatmapPage` + `ClassPage` view-state wiring):**
+  - New `TaskHeatmapPage.tsx`: `adaptMetricsToHeatmap` computed exactly once via a `useState` lazy initializer; on throw it logs via `logFrontendError('TaskHeatmapPage', error)` inside a `useEffect` and then calls `onBack()` (auto-navigate back, NO in-view `Alert`). On success renders the three `Card`s — header (`Typography.Title` assignment name + back `Button` `aria-label="Back to Class overview"` + secondary class name), control (refresh `Button` → `refetch`), and the table `Card` (`TaskHeatmapTable`). Does NOT call `useClassPageData` (reuses the passed `analyserResult`).
+  - `ClassPageContent` gained `analyserResult`, `classFull`, `selectedView`, `onOpenHeatmap`, `onBack`, `refetch` props. In the `ready` case, when `selectedView.view === 'heatmap' && selectedView.assignmentId !== undefined && analyserResult && classFull`, it renders `TaskHeatmapPage` (non-null props); otherwise the overview tree forwards `onOpenHeatmap` → `RecentAssignmentsSection` → `RecentAssignmentCard`.
+  - `ClassPage` owns `selectedView` state (default `overview`), destructures `analyserResult` from the single `useClassPageData` (no second analysis), wires `handleOpenHeatmap`/`handleBack`, and appends a `Task Heatmap` breadcrumb segment when in the heatmap view.
+  - Tests (RED): `ClassPageHeatmapView.spec.tsx` — 3 integration tests (card click opens heatmap; Back returns to overview; unknown `assignmentId` auto-navigates back via `logFrontendError` + `onBack`, no in-view error). All fail before Green for the correct reasons. `ClassPageContent.spec.tsx` updated to supply the six new required props (no logic change).
+  - Green Review: 2 Minor items (removed `?? ''` default on `assignmentId` per core principle #7; removed a stray/duplicate JSDoc block) returned and fixed.
+  - Regression Gate: PASS (Regressions 0, New Failures 0; all in-scope frontend/CI checks green; pre-existing out-of-scope `backend-lint-check` + `backend-test-coverage-check` failures unchanged).
+  - Canonical doc: §9.18.4 (`ClassPage` selectedView + breadcrumb), §9.18.5 (`ClassPageContent` heatmap branch), §9.18.13 (`TaskHeatmapPage`) added. (Note: `METRIC_STATE_RANK_ASC` was already exported in Section 4.)
 
 ---
 

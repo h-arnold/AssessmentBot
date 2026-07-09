@@ -611,8 +611,9 @@ These entries record the feature-local helpers for the Class page. Per `frontend
 - Status: `Implemented`
 - Implementation notes:
   - 114 lines. Thin composition root.
-  - Renders a three-segment `Breadcrumb` (`AssessmentBot Frontend / Classes / {className}`) in-page — accepted v1 visual duplication with the shell's two-segment breadcrumb.
-  - Renders `ClassPageContent` with per-state content (loading/blocking/ready).
+  - Renders a three-segment `Breadcrumb` (`AssessmentBot Frontend / Classes / {className}`) in-page — accepted v1 visual duplication with the shell's two-segment breadcrumb. When `selectedView.view === 'heatmap'`, a fourth `Task Heatmap` segment is appended.
+  - Owns the `selectedView` state (`{ view: 'overview' | 'heatmap'; assignmentId?: string }`, default `overview`); `handleOpenHeatmap(assignmentId)` sets the heatmap view, `handleBack()` resets to overview. Destructures `analyserResult` from the single `useClassPageData(classId)` call and passes it (plus `classFull`, `onOpenHeatmap`, `onBack`, `refetch`, `selectedView`) into `ClassPageContent` — no second analysis call.
+  - Renders `ClassPageContent` with per-state content (loading/blocking/ready/heatmap).
   - Renders `AssessTaskModal` at the page root (not inside `ClassPageContent`) because the modal state spans loading/blocking/ready transitions.
   - Co-located spec: `ClassPage.spec.tsx` (7 test cases covering breadcrumb, modal state, and navigation).
 
@@ -628,8 +629,9 @@ These entries record the feature-local helpers for the Class page. Per `frontend
   - 295 lines. Three co-located sub-components:
     - `ClassPageLoading`: shape-matched `Skeleton` (heading + 3-card row + table paragraph), wrapped in `role="status"` and `aria-live="polite"`. Uses a deliberate shape-matched pattern (not the paragraph-row pattern prescribed in `CLASS_PAGE_LAYOUT.md`) because the three distinct content regions benefit from visible card-shaped placeholders.
     - `ClassPageBlocking`: single Ant Design `Result` per `error.type`. Retryable errors (`classQueryError`, `analyserError`, `assignmentDefinitionPartialsFailed`, `assignmentDefinitionPartialsUntrustworthy`) show `Retry` + `Back to Classes`. Non-retryable errors (`classNotFound`, `adapterError`) show only `Back to Classes`.
-    - `ClassPageReady`: full content tree — `ClassPageHeaderActions`, `RecentAssignmentsSection`, `StudentAveragesTableCard`.
-  - Co-located spec: `ClassPageContent.spec.tsx` (6 test cases covering all three states).
+    - `ClassPageReady`: full content tree — `ClassPageHeaderActions`, `RecentAssignmentsSection`, `StudentAveragesTableCard`; forwards the new `onOpenHeatmap` prop into `RecentAssignmentsSection` so a card click can open the heatmap.
+  - The `ready` branch additionally renders `TaskHeatmapPage` (instead of `ClassPageReady`) when `selectedView.view === 'heatmap' && selectedView.assignmentId !== undefined && analyserResult && classFull` — gated on the `ready` surface state and narrowed to non-null `analyserResult`/`classFull`/`assignmentId` before passing them to `TaskHeatmapPage` (no `?? ''` default on the id, per core principle #7).
+  - Co-located spec: `ClassPageContent.spec.tsx` (8 test cases covering all three states + the new required props).
 
 #### 9.18.6 Presentational components
 
@@ -726,6 +728,19 @@ These entries record the feature-local helpers for the Class page. Per `frontend
   - Empty-state: a "No submissions yet" caption renders above the table only when `taskColumns.length > 0 && rows.length > 0 &&` every cell is `notAttempted`; the guard suppresses the caption for the zero-tasks variant (`taskColumns: []` → only the Student Name column renders).
   - Cell access uses a safe `.find` by `taskKey` (not computed-index injection) plus a `switch`-based metric accessor, mirroring the `getStudentMetric` pattern to satisfy `security/detect-object-injection`.
   - Co-located spec: `TaskHeatmapTable.spec.tsx` (6 tests: grouped header; Green-band filter removes non-green rows; Student Name sort via `compareHeatmapStudentName`; per-cell `aria-label` format; no-submissions caption; zero-tasks variant).
+
+#### 9.18.13 Heatmap page composition: `TaskHeatmapPage`
+
+17. Component: `TaskHeatmapPage` — heatmap view composition root (header, control, table regions)
+
+- Decision: `keep local`
+- Owning module/path: `src/frontend/src/features/classPage/TaskHeatmapPage.tsx`
+- Call-site rationale: rendered by `ClassPageContent` when `selectedView.view === 'heatmap'`. It is a pure presentational view that receives the already-computed `analyserResult` + `classFull` (it must NOT call `useClassPageData` — a second hook instance would re-run the analyser, violating the "no new analysis call" contract). It projects the view model via `adaptMetricsToHeatmap(analyserResult, classFull, assignmentId)`.
+- Status: `Implemented`
+- Implementation notes:
+  - `adaptMetricsToHeatmap` is computed exactly once via a `useState` lazy initializer (not re-run on every render). On throw (unknown `assignmentId`), it logs via `logFrontendError('TaskHeatmapPage', error)` inside a `useEffect` and then calls `onBack()` — auto-navigating back to the overview with NO in-view `Alert`/error UI (per `SPEC.md`/`TASK_HEATMAP_LAYOUT.md`). The error is logged, never silently ignored, and never via `console.*`.
+  - Renders a `Flex` (`vertical`, `gap=16`) with three `Card`s (`size="small"`): a header `Card` (`Typography.Title` assignment name + back `Button` `aria-label="Back to Class overview"` + secondary class name), a control `Card` (refresh `Button` → `refetch`), and the table `Card` (`TaskHeatmapTable`). The breadcrumb (with the `Task Heatmap` segment) is owned by `ClassPage`, not duplicated here.
+  - Co-located integration spec: `ClassPageHeatmapView.spec.tsx` (3 tests: card click opens heatmap; Back returns to overview; unknown `assignmentId` auto-navigates back via `logFrontendError` + `onBack`, no in-view error).
 
 ### 9.19 Frontend pure formatting helpers
 
