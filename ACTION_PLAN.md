@@ -317,7 +317,11 @@ Frontend Vitest (component):
 
 ### Implementation notes / deviations / follow-up
 
-- (filled during implementation)
+- Added `compact?: boolean` prop to `MetricPill` (chosen form of the plan's "variant='compact' (or compact: boolean)", aligning with the layout spec's concrete `<MetricPill compact={true} />`). When set: `fontSize: '12px'`, `padding: '2px 4px'`; `precision` stays the default `2` (so `5` → `5.00`).
+- Extracted a pure `buildPillStyle(muted, emphasised, compact)` helper to keep `MetricPill` function complexity at/under the limit; `emphasised` (17.5px / 600) and `muted` (`opacity: 0.55`) behaviour preserved byte-for-byte; `compact`/`emphasised` are mutually exclusive render paths (`else if`). `resolveMetricTone` unchanged; no `aria-label`/`role` added (v1 signed-off gap preserved).
+- `metricTone.ts` untouched; existing `emphasised` callers (RecentAssignmentCard, StudentAveragesTableCard) unaffected.
+- RED→GREEN verified: 14 `MetricPill` Vitest tests pass; `lint:frontend` clean (0 errors, 0 warnings); `builder:compile` clean. Stray `MetricPill.orig.tsx` editor backup removed before commit.
+- Regression-gate note: combined `regression-checker` confirmed `Regressions Count: 0` / `New Failures Count: 0`; all in-scope frontend checks green. A transient `builder-test-coverage` flip in one concurrent run was a flaky builder suite (no builder code touched) and was green in the confirming run.
 
 ---
 
