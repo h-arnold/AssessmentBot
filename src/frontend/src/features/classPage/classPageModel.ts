@@ -36,7 +36,7 @@ export type ClassPageViewModel = {
 const HIGHEST_METRIC_STATE_RANK = 2;
 
 /** Rank lookup for ascending metric column sort: computed → notAttempted → error. */
-const METRIC_STATE_RANK_ASC: ReadonlyMap<MetricResult['state'], number> = new Map([
+export const METRIC_STATE_RANK_ASC: ReadonlyMap<MetricResult['state'], number> = new Map([
   ['computed', 0],
   ['notAttempted', 1],
   ['error', HIGHEST_METRIC_STATE_RANK],

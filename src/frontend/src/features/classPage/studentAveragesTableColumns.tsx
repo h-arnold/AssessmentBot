@@ -58,7 +58,7 @@ const DEFAULT_TONE_RANGE = { lower: 0, upper: 5 } as const;
  * set used by `resolveMetricTone` for rendering, so filter colours and pill
  * colours cannot diverge.
  */
-const METRIC_COLUMN_FILTERS: { text: string; value: string }[] = [
+export const METRIC_COLUMN_FILTERS: { text: string; value: string }[] = [
   { text: 'Red (low)', value: 'red' },
   { text: 'Amber (mid)', value: 'gold' },
   { text: 'Green (high)', value: 'green' },
