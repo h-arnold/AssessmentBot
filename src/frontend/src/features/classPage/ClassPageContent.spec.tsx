@@ -148,6 +148,12 @@ describe('ClassPageContent', () => {
         onStartNewAssessment: vi.fn(),
         onNavigateToClasses: vi.fn(),
         onRetry: vi.fn(),
+        analyserResult: null,
+        classFull: null,
+        selectedView: { view: 'overview' },
+        onOpenHeatmap: vi.fn(),
+        onBack: vi.fn(),
+        refetch: vi.fn(),
       })
     );
 
@@ -181,6 +187,12 @@ describe('ClassPageContent', () => {
         onStartNewAssessment: vi.fn(),
         onNavigateToClasses,
         onRetry,
+        analyserResult: null,
+        classFull: null,
+        selectedView: { view: 'overview' },
+        onOpenHeatmap: vi.fn(),
+        onBack: vi.fn(),
+        refetch: vi.fn(),
       })
     );
 
@@ -220,6 +232,12 @@ describe('ClassPageContent', () => {
         onStartNewAssessment: vi.fn(),
         onNavigateToClasses,
         onRetry,
+        analyserResult: null,
+        classFull: null,
+        selectedView: { view: 'overview' },
+        onOpenHeatmap: vi.fn(),
+        onBack: vi.fn(),
+        refetch: vi.fn(),
       })
     );
 
@@ -258,6 +276,12 @@ describe('ClassPageContent', () => {
         onStartNewAssessment: vi.fn(),
         onNavigateToClasses,
         onRetry,
+        analyserResult: null,
+        classFull: null,
+        selectedView: { view: 'overview' },
+        onOpenHeatmap: vi.fn(),
+        onBack: vi.fn(),
+        refetch: vi.fn(),
       })
     );
 
@@ -296,6 +320,12 @@ describe('ClassPageContent', () => {
         onStartNewAssessment: vi.fn(),
         onNavigateToClasses,
         onRetry,
+        analyserResult: null,
+        classFull: null,
+        selectedView: { view: 'overview' },
+        onOpenHeatmap: vi.fn(),
+        onBack: vi.fn(),
+        refetch: vi.fn(),
       })
     );
 
@@ -336,6 +366,12 @@ describe('ClassPageContent', () => {
         onStartNewAssessment: vi.fn(),
         onNavigateToClasses,
         onRetry,
+        analyserResult: null,
+        classFull: null,
+        selectedView: { view: 'overview' },
+        onOpenHeatmap: vi.fn(),
+        onBack: vi.fn(),
+        refetch: vi.fn(),
       })
     );
 
@@ -372,6 +408,12 @@ describe('ClassPageContent', () => {
         onStartNewAssessment: vi.fn(),
         onNavigateToClasses,
         onRetry,
+        analyserResult: null,
+        classFull: null,
+        selectedView: { view: 'overview' },
+        onOpenHeatmap: vi.fn(),
+        onBack: vi.fn(),
+        refetch: vi.fn(),
       })
     );
 
@@ -404,6 +446,12 @@ describe('ClassPageContent', () => {
         onStartNewAssessment: vi.fn(),
         onNavigateToClasses: vi.fn(),
         onRetry: vi.fn(),
+        analyserResult: null,
+        classFull: null,
+        selectedView: { view: 'overview' },
+        onOpenHeatmap: vi.fn(),
+        onBack: vi.fn(),
+        refetch: vi.fn(),
       })
     );
 

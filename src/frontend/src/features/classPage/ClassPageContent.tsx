@@ -34,9 +34,12 @@ import type {
   ClassPageError,
 } from './useClassPageData';
 import type { ClassPageAdapterResult } from './classPageAdapter.zod';
+import type { AveragingResult } from '../../services/dataAnalysis/dataAnalysis.zod';
+import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
 import { ClassPageHeaderActions } from './ClassPageHeaderActions';
 import { RecentAssignmentsSection } from './RecentAssignmentsSection';
 import { StudentAveragesTableCard } from './StudentAveragesTableCard';
+import { TaskHeatmapPage } from './TaskHeatmapPage';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -55,6 +58,18 @@ type ClassPageContentProperties = Readonly<{
   onNavigateToClasses: () => void;
   /** Callback invoked when the user clicks "Retry" on a retryable error. */
   onRetry: () => void;
+  /** Analyser result — non-null when `surfaceState.status === 'ready'`. */
+  analyserResult: AveragingResult | null;
+  /** The full class data — non-null when `surfaceState.status === 'ready'`. */
+  classFull: ClassFull | null;
+  /** The current view selection (overview or heatmap with optional assignmentId). */
+  selectedView: { view: 'overview' | 'heatmap'; assignmentId?: string };
+  /** Callback invoked when a RecentAssignmentCard is clicked to open the heatmap. */
+  onOpenHeatmap: (assignmentId: string) => void;
+  /** Callback invoked to return from the heatmap view to the overview. */
+  onBack: () => void;
+  /** Callback invoked to re-run the data pipeline (refresh). */
+  refetch: () => void;
 }>;
 
 type ClassPageBlockingProperties = Readonly<{
@@ -71,6 +86,8 @@ type ClassPageReadyProperties = Readonly<{
   adapterResult: ClassPageAdapterResult;
   /** Callback invoked when the user clicks "Start New Assessment". */
   onStartNewAssessment: () => void;
+  /** Callback forwarded to RecentAssignmentsSection for opening the heatmap view. */
+  onOpenHeatmap: (assignmentId: string) => void;
 }>;
 
 // ---------------------------------------------------------------------------
@@ -264,21 +281,74 @@ function ClassPageBlocking({
 // ---------------------------------------------------------------------------
 
 /**
+ * Render the appropriate ready-state content: either the heatmap page or the
+ * overview tree, depending on `selectedView`.
+ *
+ * @param {ClassPageContentProperties['selectedView']} selectedView - The current view selection.
+ * @param {AveragingResult | null} analyserResult - The analyser result.
+ * @param {ClassFull | null} classFull - The full class data.
+ * @param {ClassPageAdapterResult} adapterResult - The adapter result (non-null in ready state).
+ * @param {() => void} onStartNewAssessment - Callback to start a new assessment.
+ * @param {(assignmentId: string) => void} onOpenHeatmap - Callback to open the heatmap.
+ * @param {() => void} onBack - Callback to return to the overview.
+ * @param {() => void} refetch - Callback to re-run the data pipeline.
+ * @returns {JSX.Element} The rendered ready-state content.
+ */
+function renderReadyContent(
+  selectedView: ClassPageContentProperties['selectedView'],
+  analyserResult: AveragingResult | null,
+  classFull: ClassFull | null,
+  adapterResult: ClassPageAdapterResult,
+  onStartNewAssessment: () => void,
+  onOpenHeatmap: (assignmentId: string) => void,
+  onBack: () => void,
+  refetch: () => void,
+): JSX.Element {
+  if (
+    selectedView.view === 'heatmap' &&
+    selectedView.assignmentId !== undefined &&
+    analyserResult !== null &&
+    classFull !== null
+  ) {
+    return (
+      <TaskHeatmapPage
+        analyserResult={analyserResult}
+        classFull={classFull}
+        assignmentId={selectedView.assignmentId}
+        onBack={onBack}
+        refetch={refetch}
+      />
+    );
+  }
+
+  return (
+    <ClassPageReady
+      adapterResult={adapterResult}
+      onStartNewAssessment={onStartNewAssessment}
+      onOpenHeatmap={onOpenHeatmap}
+    />
+  );
+}
+
+/**
  * Ready-state content for the Class page.
  *
  * Renders the full content tree:
  * 1. `ClassPageHeaderActions` with the `onStartNewAssessment` callback
  * 2. `RecentAssignmentsSection` with `adapterResult.recentAssignments`
+ *    and the `onOpenHeatmap` callback
  * 3. `StudentAveragesTableCard` with `adapterResult`
  *
  * @param {ClassPageReadyProperties} properties - Component properties.
  * @param {ClassPageAdapterResult} properties.adapterResult - The adapter result.
  * @param {() => void} properties.onStartNewAssessment - Callback to start a new assessment.
- * @returns {JSX.Element} The full ready-state content tree.
+ * @param {(assignmentId: string) => void} properties.onOpenHeatmap - Callback to open the heatmap.
+ * @returns {JSX.Element} The rendered ready-state content tree.
  */
 function ClassPageReady({
   adapterResult,
   onStartNewAssessment,
+  onOpenHeatmap,
 }: ClassPageReadyProperties): JSX.Element {
   return (
     <>
@@ -286,6 +356,7 @@ function ClassPageReady({
       <RecentAssignmentsSection
         recentAssignments={adapterResult.recentAssignments}
         onStartNewAssessment={onStartNewAssessment}
+        onOpenHeatmap={onOpenHeatmap}
       />
       <StudentAveragesTableCard
         adapterResult={adapterResult}
@@ -323,6 +394,12 @@ export function ClassPageContent({
   onStartNewAssessment,
   onNavigateToClasses,
   onRetry,
+  analyserResult,
+  classFull,
+  selectedView,
+  onOpenHeatmap,
+  onBack,
+  refetch,
 }: ClassPageContentProperties): JSX.Element {
   switch (surfaceState.status) {
     case 'loading': {
@@ -341,12 +418,18 @@ export function ClassPageContent({
     }
 
     case 'ready': {
-      return (
-        // safe: status === 'ready' guarantees adapterResult is non-null
-        <ClassPageReady
-          adapterResult={adapterResult!}
-          onStartNewAssessment={onStartNewAssessment}
-        />
+      // When the heatmap view is selected and both analyserResult and classFull
+      // are non-null (guaranteed by the ready gate), render the heatmap page
+      // instead of the overview tree.
+      return renderReadyContent(
+        selectedView,
+        analyserResult,
+        classFull,
+        adapterResult!,
+        onStartNewAssessment,
+        onOpenHeatmap,
+        onBack,
+        refetch,
       );
     }
   }

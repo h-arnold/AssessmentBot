@@ -64,10 +64,15 @@ export function ClassPage({
   classId,
   onNavigateToClasses,
 }: ClassPageProperties): JSX.Element {
-  const { surfaceState, classFull, adapterResult, error, refetch } =
+  const { surfaceState, classFull, analyserResult, adapterResult, error, refetch } =
     useClassPageData(classId);
 
   const [isAssessModalOpen, setIsAssessModalOpen] = useState<boolean>(false);
+
+  const [selectedView, setSelectedView] = useState<{
+    view: 'overview' | 'heatmap';
+    assignmentId?: string;
+  }>({ view: 'overview' });
 
   const className: string = classFull?.className ?? '';
 
@@ -76,15 +81,22 @@ export function ClassPage({
    *
    * The first two segments are static (module-level constant). The second
    * carries the navigation callback so clicking "Classes" returns to the
-   * class list. The third uses the class name.
+   * class list. The third uses the class name. When the heatmap view is
+   * active, a fourth "Task Heatmap" segment is appended.
    */
   const breadcrumbItems = useMemo(
-    () => [
-      STATIC_BREADCRUMB_ITEMS[0],
-      { ...STATIC_BREADCRUMB_ITEMS[1], onClick: onNavigateToClasses },
-      { title: className },
-    ],
-    [className, onNavigateToClasses]
+    () => {
+      const items = [
+        STATIC_BREADCRUMB_ITEMS[0],
+        { ...STATIC_BREADCRUMB_ITEMS[1], onClick: onNavigateToClasses },
+        { title: className },
+      ];
+      if (selectedView.view === 'heatmap') {
+        items.push({ title: 'Task Heatmap' });
+      }
+      return items;
+    },
+    [className, onNavigateToClasses, selectedView.view]
   );
 
   /**
@@ -102,6 +114,22 @@ export function ClassPage({
     setIsAssessModalOpen(false);
   }
 
+  /**
+   * Switch to the heatmap view for the given assignment.
+   *
+   * @param {string} assignmentId - The assignment ID to open the heatmap for.
+   */
+  function handleOpenHeatmap(assignmentId: string): void {
+    setSelectedView({ view: 'heatmap', assignmentId });
+  }
+
+  /**
+   * Return to the overview view.
+   */
+  function handleBack(): void {
+    setSelectedView({ view: 'overview' });
+  }
+
   return (
     <>
       <Breadcrumb items={breadcrumbItems} />
@@ -116,6 +144,12 @@ export function ClassPage({
         surfaceState={surfaceState}
         adapterResult={adapterResult}
         error={error}
+        analyserResult={analyserResult}
+        classFull={classFull}
+        selectedView={selectedView}
+        onOpenHeatmap={handleOpenHeatmap}
+        onBack={handleBack}
+        refetch={refetch}
         onStartNewAssessment={handleStartNewAssessment}
         onNavigateToClasses={onNavigateToClasses}
         onRetry={refetch}
