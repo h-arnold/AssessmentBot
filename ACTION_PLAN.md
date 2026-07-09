@@ -407,7 +407,15 @@ Frontend Vitest (component, using a `HeatmapResult` fixture):
 
 ### Implementation notes / deviations / follow-up
 
-- (filled during implementation)
+- **Section 4 (completed — `TaskHeatmapTable`):**
+  - New `TaskHeatmapTable.tsx`: Ant Design `Table<HeatmapRow>`, `rowKey="studentId"`, `pagination={false}`, `bordered`, `scroll={{ x: 'max-content' }}`, `aria-label="Task Heatmap"`. Student Name = sticky top-level column (`fixed:'start'`, `width:200`) with `sorter` via the exported `compareHeatmapStudentName` (`multiple:1`, `defaultSortOrder:'ascend'`); initial ascending order achieved by pre-sorting the `dataSource` with `.toSorted(compareHeatmapStudentName)` because `defaultSortOrder` does not auto-apply the initial sort in the installed Ant Design version (non-mutating copy).
+  - Per-task grouped columns from `taskColumns` (title = `taskId`; `taskTitle` is `null` in v1), each with `Completeness`/`Accuracy`/`SPaG` children carrying `METRIC_COLUMN_FILTERS`, a `resolveMetricTone`-based `onFilter` (`color === String(value)`), a SPEC-ordered `sorter` built on the exported `METRIC_STATE_RANK_ASC` (`multiple:2`; computed by value asc → `notAttempted` → `error`, `studentId` tie-break), and a `compact` `MetricPill` wrapped in a `span` whose `aria-label` is exactly `"[Student Name], [Task ID], [Metric]: [Score]"` (`value.toFixed(2)` / `N` / `E`).
+  - Empty-state: "No submissions yet" caption above the table only when `taskColumns.length > 0 && rows.length > 0 &&` every cell is `notAttempted` (guard suppresses it for the zero-tasks variant where `taskColumns: []` → only the Student Name column renders).
+  - Two production exports added: `METRIC_COLUMN_FILTERS` (from `studentAveragesTableColumns.tsx`) and `METRIC_STATE_RANK_ASC` (from `classPageModel.ts`); both reused by the heatmap table, no second copy of the rank map or predicate.
+  - Tests (RED): `TaskHeatmapTable.spec.tsx` — 6 tests (grouped header; Green filter removes non-green rows; Student Name sort via `compareHeatmapStudentName`; per-cell `aria-label` format incl. computed/`notAttempted`/`error`/`Accuracy`; no-submissions caption; zero-tasks variant). All fail before Green for the correct reasons (missing `./TaskHeatmapTable`; unused-import cleaned during Red Review).
+  - Green Review: 1 Minor (`multiple: METRIC_COLUMN_FILTERS.length` vs documented `multiple: 2`) returned and fixed to `2`.
+  - Regression Gate: PASS (Regressions 0, New Failures 0; pre-existing out-of-scope `backend-lint-check` + `backend-test-coverage-check` failures unchanged).
+  - Canonical doc: §9.18.2 (`METRIC_STATE_RANK_ASC` export note), §9.18.12 (`TaskHeatmapTable`) added.
 
 ---
 

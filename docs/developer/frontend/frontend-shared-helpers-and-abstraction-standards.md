@@ -575,7 +575,7 @@ These entries record the feature-local helpers for the Class page. Per `frontend
 - Implementation notes:
   - 201 lines. Pure function — no React imports, no Ant Design imports, no I/O.
   - Search filter: case-insensitive substring on `studentName`; empty `searchTerm` → no filter.
-  - State-aware metric sort: rank-based with `METRIC_STATE_RANK_ASC`/`METRIC_STATE_RANK_DESC` Maps. `asc`: computed (by value) → notAttempted → error. `desc`: error → notAttempted → computed (by value). Tie-break by `studentId` ascending.
+  - State-aware metric sort: rank-based with `METRIC_STATE_RANK_ASC`/`METRIC_STATE_RANK_DESC` Maps. `asc`: computed (by value) → notAttempted → error. `desc`: error → notAttempted → computed (by value). Tie-break by `studentId` ascending. `METRIC_STATE_RANK_ASC` is now exported (consumed by `TaskHeatmapTable`'s `HeatmapRow`-typed metric comparator in Section 4 — the heatmap reuses the canonical rank map instead of declaring a second copy).
   - Student name sort: locale-aware, case-insensitive, `studentId` tie-breaker.
   - Passes through `recentAssignments` and `classMetrics` unchanged.
   - Default sort: `studentName` ascending.
@@ -711,6 +711,21 @@ These entries record the feature-local helpers for the Class page. Per `frontend
   - JSDoc explains the lint-rule motivation and the switch-statement pattern.
   - `@remarks` documents the switch-statement rationale.
   - Exported function signature: `getStudentMetric(metrics: StudentAverageRowModel['metrics'], key: 'completeness' | 'accuracy' | 'spag' | 'average'): MetricResult`
+
+#### 9.18.12 Heatmap table component: `TaskHeatmapTable`
+
+16. Component: `TaskHeatmapTable` — presentational heatmap table (grouped headers, band filters, sorters)
+
+- Decision: `keep local`
+- Owning module/path: `src/frontend/src/features/classPage/TaskHeatmapTable.tsx`
+- Call-site rationale: pure presentational table built from a `HeatmapResult`. Owns the Ant Design `Table<HeatmapRow>` column definitions (`buildHeatmapTableColumns` is internal): a sticky `Student Name` top-level column (`fixed: 'start'`, `width: 200`, `sorter` via the exported `compareHeatmapStudentName`, `defaultSortOrder: 'ascend'`), and one grouped column per `taskColumn` (title = `taskId`, since `taskTitle` is `null` in v1) with `Completeness`/`Accuracy`/`SPaG` children. Each metric sub-column reuses the exported `METRIC_COLUMN_FILTERS` and a `resolveMetricTone`-based `onFilter` predicate (keeping `color === String(value)`), a SPEC-ordered `sorter` built on the exported `METRIC_STATE_RANK_ASC` (computed by value asc → `notAttempted` → `error`, `studentId` tie-break), and renders a `compact` `MetricPill` inside a wrapper whose `aria-label` is `"[Student Name], [Task ID], [Metric]: [Score]"`. `pagination={false}`, `bordered`, `scroll={{ x: 'max-content' }}`, `aria-label="Task Heatmap"`.
+- Status: `Implemented`
+- Implementation notes:
+  - Reuses `compareHeatmapStudentName`, `METRIC_COLUMN_FILTERS`, and `METRIC_STATE_RANK_ASC` from `classPageModel.ts` / `studentAveragesTableColumns.tsx` — no second copy of the rank map or filter predicate. The `HeatmapRow`-typed metric comparator (`heatmapMetricComparator`) reads the canonical rank map so the heatmap and averages tables share one ordering definition.
+  - Initial ascending student-name order is achieved by pre-sorting the `dataSource` with `.toSorted(compareHeatmapStudentName)` because `defaultSortOrder` does not auto-apply the initial sort in the installed Ant Design version; this is a non-mutating copy.
+  - Empty-state: a "No submissions yet" caption renders above the table only when `taskColumns.length > 0 && rows.length > 0 &&` every cell is `notAttempted`; the guard suppresses the caption for the zero-tasks variant (`taskColumns: []` → only the Student Name column renders).
+  - Cell access uses a safe `.find` by `taskKey` (not computed-index injection) plus a `switch`-based metric accessor, mirroring the `getStudentMetric` pattern to satisfy `security/detect-object-injection`.
+  - Co-located spec: `TaskHeatmapTable.spec.tsx` (6 tests: grouped header; Green-band filter removes non-green rows; Student Name sort via `compareHeatmapStudentName`; per-cell `aria-label` format; no-submissions caption; zero-tasks variant).
 
 ### 9.19 Frontend pure formatting helpers
 
