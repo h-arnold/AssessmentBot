@@ -14,6 +14,7 @@
 
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { RecentAssignmentCardModel } from './classPageAdapter.zod';
 import {
   createComputedMetricResult,
@@ -162,5 +163,22 @@ describe('RecentAssignmentCard', () => {
     tags.forEach((tag) => {
       expect(tag).toHaveTextContent('E');
     });
+  });
+
+  it('invokes onOpenHeatmap with the card assignmentId when clicked', async () => {
+    const user = userEvent.setup();
+    const onOpenHeatmap = vi.fn();
+    const card = makeCard({ assignmentId: 'a-1' });
+
+    const { container } = render(
+      <RecentAssignmentCard card={card} onOpenHeatmap={onOpenHeatmap} />
+    );
+
+    const cardElement = container.querySelector('.ant-card');
+    expect(cardElement).not.toBeNull();
+    await user.click(cardElement!);
+
+    expect(onOpenHeatmap).toHaveBeenCalledTimes(1);
+    expect(onOpenHeatmap).toHaveBeenCalledWith('a-1');
   });
 });

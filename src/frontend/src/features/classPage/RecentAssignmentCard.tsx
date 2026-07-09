@@ -14,7 +14,9 @@
  * (268px) because the card must fit four MetricPill cells side-by-side without
  * wrapping the Average cell's emphasised content.
  *
- * **Static card.** No hover, no click handler, no `hoverable` prop in v1.
+ * **Conditional interactivity.** When `onOpenHeatmap` is supplied the card
+ * becomes an activatable button (role, keyboard, mouse); when absent it
+ * remains a static display card with no click or keyboard handler.
  *
  * **Fail loud for null `updatedAt`.** The "Last Assessed" line never renders
  * a `—` fallback. A null `updatedAt` is a data bug that the adapter surfaces
@@ -24,7 +26,7 @@
  * @see CLASS_PAGE_LAYOUT.md — "3a. RecentAssignmentCard"
  */
 
-import type { JSX } from 'react';
+import type { JSX, KeyboardEvent } from 'react';
 import { Card, Flex, Typography } from 'antd';
 import type { RecentAssignmentCardModel } from './classPageAdapter.zod';
 import { getStudentMetric } from './classPageAdapter.zod';
@@ -58,6 +60,8 @@ const METRIC_ENTRIES = [
 type RecentAssignmentCardProperties = Readonly<{
   /** The fully-built recent assignment card model. */
   card: RecentAssignmentCardModel;
+  /** Optional callback invoked when the card is clicked to open the heatmap view. */
+  onOpenHeatmap?: (assignmentId: string) => void;
 }>;
 
 /**
@@ -67,15 +71,40 @@ type RecentAssignmentCardProperties = Readonly<{
  * line, and four `MetricPill` instances (Completeness, Accuracy, SpAG,
  * Average). The Average cell uses `emphasised` for visual prominence.
  *
+ * When `onOpenHeatmap` is provided the card root becomes interactive (button
+ * role, pointer cursor, accessible keyboard activation); when absent the card
+ * remains fully static.
+ *
  * @param {Readonly<RecentAssignmentCardProperties>} root0 - Component properties.
  * @param {RecentAssignmentCardModel} root0.card - The fully-built recent assignment card model.
+ * @param {(assignmentId: string) => void} [root0.onOpenHeatmap] - Optional callback invoked when the card is clicked.
  * @returns {JSX.Element} The assignment card.
  */
 export function RecentAssignmentCard({
   card,
+  onOpenHeatmap,
 }: RecentAssignmentCardProperties): JSX.Element {
+  const clickable = onOpenHeatmap !== undefined;
+  const handleActivate = () => { onOpenHeatmap!(card.assignmentId); };
   return (
-    <Card size="small" title={card.assignmentName} style={{ width: RECENT_ASSIGNMENT_CARD_WIDTH_PX }}>
+    <Card
+      size="small"
+      title={card.assignmentName}
+      style={{ width: RECENT_ASSIGNMENT_CARD_WIDTH_PX, cursor: clickable ? 'pointer' : undefined }}
+      role={clickable ? 'button' : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onClick={clickable ? handleActivate : undefined}
+      onKeyDown={
+        clickable
+          ? (event: KeyboardEvent) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                handleActivate();
+              }
+            }
+          : undefined
+      }
+    >
       <Typography.Text type="secondary">
         Last Assessed: {card.lastAssessedAtLabel}
       </Typography.Text>

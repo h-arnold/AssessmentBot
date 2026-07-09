@@ -11,6 +11,7 @@
 import { getStudentMetric } from './classPageAdapter.zod';
 import type { ClassPageAdapterResult, StudentAverageRowModel } from './classPageAdapter.zod';
 import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
+import type { HeatmapRow } from '../../services/dataAnalysis/heatmapAdapter';
 
 // ---------------------------------------------------------------------------
 // Exported types
@@ -131,6 +132,29 @@ export function compareStudentNames(a: StudentAverageRowModel, b: StudentAverage
   });
   if (nameCmp !== 0) return nameCmp;
   return a.studentId.localeCompare(b.studentId);
+}
+
+/**
+ * Compare two `HeatmapRow`s by student name (locale-aware, case-insensitive)
+ * with a deterministic `studentId` ascending tie-break.
+ *
+ * @remarks
+ * Thin `HeatmapRow`-compatible wrapper around the locale-aware logic of
+ * `compareStudentNames`. The heatmap table must NOT import the
+ * `StudentAverageRowModel`-typed `compareStudentNames` directly because the
+ * row shapes differ (`HeatmapRow` carries `cells`, not `metrics`).
+ *
+ * @param {HeatmapRow} a - The first row.
+ * @param {HeatmapRow} b - The second row.
+ * @returns {number} Negative if `a < b`, positive if `a > b`, zero if equal.
+ */
+export function compareHeatmapStudentName(a: HeatmapRow, b: HeatmapRow): number {
+  // Delegate to the canonical `StudentAverageRowModel` comparator via cast
+  // because both types share the same `studentName` and `studentId` shape.
+  return compareStudentNames(
+    a as unknown as StudentAverageRowModel,
+    b as unknown as StudentAverageRowModel
+  );
 }
 
 /**
