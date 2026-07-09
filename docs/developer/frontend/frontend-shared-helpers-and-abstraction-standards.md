@@ -551,6 +551,19 @@ These entries record the feature-local helpers for the Class page. Per `frontend
   - Returns `a.studentName.localeCompare(b.studentName, undefined, { sensitivity: 'base' })` tie-broken by `a.studentId.localeCompare(b.studentId)`.
   - Single source of truth for student-name ordering; call sites apply direction via `direction === 'asc' ? cmp : -cmp`.
 
+#### 9.18.11 Heatmap row comparator: `compareHeatmapStudentName`
+
+15. Helper: `compareHeatmapStudentName(a: HeatmapRow, b: HeatmapRow): number` — `HeatmapRow`-typed student-name comparator
+
+- Decision: `extract`
+- Owning module/path: `src/frontend/src/features/classPage/classPageModel.ts`
+- Call-site rationale: the heatmap table (`TaskHeatmapPage`, built in Section 5b) must not import the `StudentAverageRowModel`-typed `compareStudentNames` directly because `HeatmapRow` and `StudentAverageRowModel` have different shapes (`HeatmapRow` carries `cells`, not `metrics`). This helper provides the same locale-aware, case-insensitive name ordering with `studentId` ascending tie-break, typed for `HeatmapRow`, so the heatmap's student-name sort has a single source of truth that mirrors `compareStudentNames` semantics exactly.
+- Status: `Implemented`
+- Implementation notes:
+  - Signature: `export function compareHeatmapStudentName(a: HeatmapRow, b: HeatmapRow): number`
+  - Delegates to the canonical `compareStudentNames` logic (locale-aware, `sensitivity: 'base'`, `studentId` ascending tie-break) via a type cast, avoiding `sonarjs/no-identical-functions` while preserving exact semantics. Both `HeatmapRow` and `StudentAverageRowModel` expose `studentName` and `studentId` identically.
+  - Co-located spec: `classPageModel.spec.ts` (`compareHeatmapStudentName` describe block — ordering, `studentId` tie-break, case-insensitivity).
+
 #### 9.18.2 Pure view-model builder: `classPageModel`
 
 2. Helper: `classPageModel` pure view-model builder
@@ -632,14 +645,14 @@ These entries record the feature-local helpers for the Class page. Per `frontend
 - Decision: `keep local`
 - Owning module/path: `src/frontend/src/features/classPage/RecentAssignmentCard.tsx`
 - Status: `Implemented`
-- Implementation notes: 87 lines. Renders assignment name as card title, "Last Assessed" date line, and four `MetricPill` instances (Completeness, Accuracy, SpAG, Average). Average cell uses `emphasised={true}`. Card width is a feature-local constant (`RECENT_ASSIGNMENT_CARD_WIDTH_PX = 320`); promotion to a shared width token is deferred until a second consumer emerges. Static card — no hover, no click handler, no `hoverable` prop in v1.
+- Implementation notes: 87 lines. Renders assignment name as card title, "Last Assessed" date line, and four `MetricPill` instances (Completeness, Accuracy, SpAG, Average). Average cell uses `emphasised={true}`. Card width is a feature-local constant (`RECENT_ASSIGNMENT_CARD_WIDTH_PX = 320`); promotion to a shared width token is deferred until a second consumer emerges. Conditional interactivity — when `onOpenHeatmap` is supplied the card becomes an activatable button (`role="button"`, `tabIndex={0}`, mouse click + Enter/Space activation, `cursor: 'pointer'`); when absent it stays a static display card. No `hoverable` prop in v1.
 
 8. Component: `RecentAssignmentsSection`
 
 - Decision: `keep local`
 - Owning module/path: `src/frontend/src/features/classPage/RecentAssignmentsSection.tsx`
 - Status: `Implemented`
-- Implementation notes: 73 lines. Pure presentational — section `Card` (`size="small"`, `title="Recent Assignments"`) wrapping either a centre-aligned `Flex` row of up to 3 `RecentAssignmentCard` components, or an `Empty` with CTA button. Empty state description sourced from `pageContent.classDetail.recentAssignmentsEmpty`.
+- Implementation notes: 73 lines. Pure presentational — section `Card` (`size="small"`, `title="Recent Assignments"`) wrapping either a centre-aligned `Flex` row of up to 3 `RecentAssignmentCard` components, or an `Empty` with CTA button. Empty state description sourced from `pageContent.classDetail.recentAssignmentsEmpty`. Forwards an optional `onOpenHeatmap?: (assignmentId: string) => void` prop to every `RecentAssignmentCard`, enabling the heatmap drill-down entry point (wired by `ClassPage` in Section 5b).
 
 9. Component: `StudentAveragesTableCard`
 

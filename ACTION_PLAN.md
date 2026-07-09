@@ -494,7 +494,15 @@ Frontend Vitest (component):
 
 ### Implementation notes / deviations / follow-up
 
-- (filled during implementation)
+- **Section 5a (completed — `compareHeatmapStudentName` + `RecentAssignmentCard` click + `RecentAssignmentsSection` prop threading):**
+  - `compareHeatmapStudentName(a: HeatmapRow, b: HeatmapRow): number` added and exported from `classPageModel.ts`; delegates to the canonical `compareStudentNames` logic (locale-aware, `sensitivity: 'base'`, `studentId` ascending tie-break) via a type cast. Mirrors `compareStudentNames` semantics exactly without duplicating the body (avoids `sonarjs/no-identical-functions`). `HeatmapRow` import is type-only.
+  - `RecentAssignmentCard` gained optional `onOpenHeatmap?: (assignmentId: string) => void`. When provided, the card root becomes an activatable button (`role="button"`, `tabIndex={0}`, `cursor: 'pointer'`, mouse click + Enter/Space activation); when absent it remains a static display card (backward compatible). Stale header JSDoc updated; redundant defensive guard removed.
+  - `RecentAssignmentsSection` gained optional `onOpenHeatmap?: (assignmentId: string) => void` and forwards it to every `RecentAssignmentCard`.
+  - Tests (RED): 6 new spec tests added across `classPageModel.spec.ts` (`compareHeatmapStudentName` — ordering, `studentId` tie-break, case-insensitivity), `RecentAssignmentCard.spec.tsx` (click → `onOpenHeatmap(assignmentId)`), and `RecentAssignmentsSection.spec.tsx` (per-card forwarding across 2 cards). All fail before Green for the correct reasons.
+  - Green Review: 2 Minor items (stale header `@remarks`; redundant defensive guard) returned and fixed.
+  - Regression Gate: PASS (Regressions 0, New Failures 0; pre-existing out-of-scope `backend-lint-check` + `backend-test-coverage-check` failures unchanged).
+  - Canonical doc: §9.18.7 (`RecentAssignmentCard`) interactivity note updated, §9.18.8 (`RecentAssignmentsSection`) onOpenHeatmap note added, §9.18.11 (`compareHeatmapStudentName`) added.
+- **Section 5b (pending):** `ClassPage` view-state dispatcher (`selectedView` = `{ view: 'overview' | 'heatmap'; assignmentId?: string }`), `TaskHeatmapPage` composition (Back button, header, `TaskHeatmapTable`, `TaskHeatmapBandFilterPanel`, `TaskHeatmapColumnSort`), and `METRIC_STATE_RANK_ASC` export from `classPageModel.ts`. Begins after Section 4 lands (Section 5b depends on Sections 2 + 4).
 
 ---
 
