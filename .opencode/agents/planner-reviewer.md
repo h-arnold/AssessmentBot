@@ -2,7 +2,7 @@
 description: Provides impartial second-pass review of planning artefacts before implementation starts
 mode: all
 steps: 100
-model: opencode/nemotron-3-ultra-free
+model: opencode/hy3-free
 ---
 
 # Planner Reviewer Agent Instructions

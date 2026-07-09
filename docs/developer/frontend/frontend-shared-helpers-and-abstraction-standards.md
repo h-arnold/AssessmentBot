@@ -742,6 +742,18 @@ These entries record the feature-local helpers for the Class page. Per `frontend
   - Renders a `Flex` (`vertical`, `gap=16`) with three `Card`s (`size="small"`): a header `Card` (`Typography.Title` assignment name + back `Button` `aria-label="Back to Class overview"` + secondary class name), a control `Card` (refresh `Button` → `refetch`), and the table `Card` (`TaskHeatmapTable`). The breadcrumb (with the `Task Heatmap` segment) is owned by `ClassPage`, not duplicated here.
   - Co-located integration spec: `ClassPageHeatmapView.spec.tsx` (3 tests: card click opens heatmap; Back returns to overview; unknown `assignmentId` auto-navigates back via `logFrontendError` + `onBack`, no in-view error).
 
+#### 9.18.14 E2E scenario helper: `task-heatmap-end-to-end-helpers`
+
+18. Helper (test-only): `createHeatmapScenario` — Playwright runtime-scenario factory for the Task Heatmap end-to-end journey
+
+- Decision: `new` (test-only helper, co-located with the E2E spec)
+- Owning module/path: `src/frontend/e2e-tests/helpers/task-heatmap-end-to-end-helpers.ts`
+- Call-site rationale: builds the `RuntimeScenario` (auth + reference data + `getAssignmentDefinitionPartials` warm-up + two identical `getABClass` StrictMode entries + a real `getABClassPartials` so the class card renders) that drives the full journey in `task-heatmap.spec.ts`. It self-builds the `ClassFull` fixture from `anon-test-data.json` via an internal `buildClassFullDocument` (deriving `assignmentDefinition.tasks` from submission item keys), keeping the E2E independent of the unit fixture builders. `HEATMAP_ASSIGNMENT_NAME` (`'4. …'`) is the fixture `assignmentName`; `HEATMAP_ASSIGNMENT_DISPLAY_TITLE` (`'7. Video Plan'`) is the `primaryTitle` the UI actually renders and must be used for card-click + header locators.
+- Status: `Implemented` (ACTION_PLAN.md Section 6 — `task-heatmap.spec.ts` + `task-heatmap-end-to-end-helpers.ts` added; 6 required cases, 7 passing tests).
+- Implementation notes:
+  - `createHeatmapScenario` exposes `deferredClass` (via `deferredSuccess`/`releaseNextDeferredSuccess`) for the loading-skeleton test, while always keeping two `getABClass` queue entries for StrictMode safety.
+  - A scoped-parent overload was added to `applyColumnFilterOption` in `src/frontend/e2e-tests/shared/endToEndRuntimeMocks.ts` so the band-filter test can target the first task group's `Completeness` columnheader without tripping Playwright strict mode (string callers are unchanged).
+
 ### 9.19 Frontend pure formatting helpers
 
 These entries record the planned pure formatting helpers extracted from feature code into shared utility modules.
