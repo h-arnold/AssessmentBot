@@ -33,17 +33,17 @@ click via a new ClassPage view-state. No parallel filter/transform engine is int
 - In-assignment task search (deferred in `SPEC.md`).
 - Persisting sort/filter preferences (user-declined).
 - Column reordering (user-declined).
-- Backend changes — analysis remains a pure frontend function; `getABClass` is unchanged.
+- Backend changes — the analyser remains a pure frontend function and `getABClass` is unchanged, but `AssignmentDefinition.toPartialJSON()` must emit `taskId` + `taskTitle` per task and `validatePartialRow_` is reconciled to the non-null `tasks` shape (see Section 7). No new endpoint is required.
 
 ### Assumptions
 
 1. `useClassPageData` already produces `analyserResult: AveragingResult` (with the new `perStudentTaskMetrics`) and `classFull: ClassFull`; the heatmap view consumes both unchanged. The analyser is invoked once per class, so Student Averages is unaffected.
-2. Task columns are derived from `classFull.assignments[].assignmentDefinition.tasks` (shape `TaskPartial[]` = `{ id, taskWeighting }`), not from submission item keys. `taskKey` is `${definitionKey}::${taskId}`.
-3. `anon-test-data.json` is a backend document-store snapshot whose `assignmentDefinition.tasks` is `null`. The E2E fixture **derives** `tasks` as the ordered, de-duplicated `taskId`s observed across the assignment's submission `items` (`task_001`, `task_002`, `task_003`), each mapped to `{ id, taskWeighting: 1 }`, so the `ClassFull` satisfies `ClassFullSchema` and the heatmap renders three task columns. This derivation runs on the **base** anon fixture and is independent of later transforms, so the "no submissions" variant keeps the derived `tasks` while stripping submissions (distinct from the zero-tasks variant).
+2. Task columns are derived from the warm-up `assignmentDefinitionPartials` located by the assignment's `definitionKey` via `getAssignmentDefinitionPartial` (not from the embedded `assignmentDefinition.tasks`, which is empty in live data). The partial task shape is `TaskPartial[]` = `{ taskId, taskWeighting, taskTitle }`. `taskKey` is `${definitionKey}::${taskId}`.
+3. The heatmap column set is sourced from the warm-up `assignmentDefinitionPartials` (Sections 7–8), so the E2E fixture must seed that dataset for the assignment's `definitionKey` with three tasks (`task_001`, `task_002`, `task_003`), each `{ taskId, taskWeighting: 1, taskTitle: '<human-readable>' }`. The embedded `classFull.assignments[].assignmentDefinition.tasks` may remain `null` — that is exactly the live condition this fix addresses. The fixture keeps the tasks available on the base anon fixture so the "no submissions" variant strips submissions while the task list stays populated (distinct from the zero-tasks variant).
 4. The E2E fixture loader imports `anon-test-data.json` via a repo-relative path from `src/frontend/e2e-tests/helpers/task-heatmap-end-to-end-helpers.ts`. If Vite's `server.fs.allow` blocks the cross-root import during E2E, the implementation falls back to a co-located typed `ClassFull` literal seeded from the same data (recorded as a deviation in Section 6).
 5. Band-filter values are the `MetricToneColor` tokens `red | gold | green | default | volcano`, with visible labels `Red (low)`, `Amber (mid)`, `Green (high)`, `Not Attempted`, `Error` (reused from `METRIC_COLUMN_FILTERS`).
 6. v1 single-assignment selection assumes the selected assignment's `definitionKey` is unique within `classFull.assignments` (no two assignments in the class share a `definitionKey`). If two assignments collide, their per-(student, task) accumulators merge under the same `taskKey`; this is out of scope for v1 because existing duplicate/integrity checks are expected to catch such data, and the deferred `assignmentIds` re-keying also closes it.
-7. `taskColumns` are derived from `assignment.assignmentDefinition.tasks` (the assignment's declared task list), treated as authoritative for column structure; `perStudentTaskMetrics` `taskKey`s derive from submission item keys and are expected to agree for valid data.
+7. `taskColumns` are derived from the warm-up `assignmentDefinitionPartials` located by `assignment.assignmentDefinition.definitionKey` via `getAssignmentDefinitionPartial` (treated as authoritative for column structure); `perStudentTaskMetrics` `taskKey`s derive from submission item keys and are expected to agree for valid data.
 
 ---
 
@@ -190,7 +190,7 @@ Add a pure adapter that projects `AveragingResult` + `ClassFull` + `assignmentId
 ### Constraints
 
 - Pure function; no React Query, no `google.script.run`, no side effects.
-- Derive `taskColumns` from the selected assignment's `assignmentDefinition.tasks` (stable order), carrying `taskKey` (`${definitionKey}::${taskId}`), `taskId`, `taskTitle` (`null` in v1).
+- **[Superseded by Section 8 — blocking-bug fix]** The column set (`taskKey`, `taskId`) and `taskTitle` are now sourced from the warm-up `assignmentDefinitionPartials` located by the assignment's `definitionKey` via `getAssignmentDefinitionPartial` — NOT from the embedded `assignment.assignmentDefinition.tasks` (empty in live data; the embedded definition is used only for `definitionKey`/`primaryTitle`). `taskTitle` is read directly off the partial's `tasks` and is nullable; a missing partial or `null` `taskTitle` throws `TaskTitlesUnavailableError` (see Section 8). The originally-implemented v1 behaviour derived columns from `assignmentDefinition.tasks` and hard-coded `taskTitle: null`; Section 8 replaces both.
 - Filter `perStudentTaskMetrics` to the selected assignment's `taskKey`s; group by `studentId` into `rows`.
 - `assignmentName` from the selected assignment's `assignmentDefinition.primaryTitle` (the assignment is located in `classFull.assignments` by `assignmentId`, mirroring `classPageAdapter.ts:330`); `className` from `classFull.className`, falling back to a static default label when `null` (reuse the `ClassPage.tsx` fallback pattern, e.g. `pageContent.classDetail.heading`, since the view model is reused more widely).
 - If `assignmentId` is not found in `classFull.assignments`, throw (fail fast — matches `SPEC.md` "assignment not found" handling). The throw is caught and converted to navigation by `TaskHeatmapPage` (Section 5): it logs via the frontend logger and calls `onBack`, so no in-view error message is shown (per `SPEC.md`/`TASK_HEATMAP_LAYOUT.md`).
@@ -225,7 +225,7 @@ Code Reviewer mandatory docs: same set plus `SPEC.md`.
 ### Acceptance criteria
 
 - `adaptMetricsToHeatmap(analyserResult, classFull, assignmentId)` returns `HeatmapResult` with `assignmentName`, `className`, `assignmentId`, `taskColumns`, `rows`.
-- `taskColumns` length equals the assignment's `tasks` length, in `tasks` order; each carries `taskKey`, `taskId`, `taskTitle: null`.
+- `taskColumns` length equals the located partial's `tasks` length, in task order; each carries `taskKey`, `taskId`, and `taskTitle` sourced from the warm-up partial (nullable; see Section 8 — the originally-implemented acceptance hard-coded `taskTitle: null`, now superseded by Section 8).
 - Each `row` maps one student; `cells` length equals `taskColumns` length and is ordered to match `taskColumns`; each cell carries the matching `PerStudentTaskMetric` criterion `MetricResult`s.
 - Students absent from `perStudentTaskMetrics` for this assignment still appear as rows with `notAttempted` cells (`'N'`) (empty-state contract).
 - Throws when `assignmentId` is absent from `classFull.assignments`.
@@ -238,7 +238,7 @@ Frontend Vitest:
 2. `heatmapAdapter.spec.ts`: a student with no submission for the assignment yields a row whose cells are `notAttempted` (`score: 'N'`, `state: 'notAttempted'`).
 3. `heatmapAdapter.spec.ts`: an assignment with zero `tasks` yields `taskColumns: []` and rows with empty `cells`.
 4. `heatmapAdapter.spec.ts`: an unknown `assignmentId` throws (fail fast).
-5. `heatmapAdapter.spec.ts`: `assignmentName`/`className` are taken from `classFull`, and `taskTitle` is `null` on every column.
+5. `heatmapAdapter.spec.ts`: `assignmentName`/`className` are taken from `classFull`; `taskTitle` is read from the warm-up partial via `getAssignmentDefinitionPartial` (nullable). **[Superseded by Section 8]** Update the originally-implemented `taskTitle: null` assertion to seed a partial with titles and assert they are reflected; add a case asserting `TaskTitlesUnavailableError` when the partial is missing or a title is `null` (see Section 8).
 
 ### Section checks
 
@@ -253,8 +253,8 @@ Frontend Vitest:
 ### Implementation notes / deviations / follow-up
 
 - Added `src/frontend/src/services/dataAnalysis/heatmapAdapter.ts` (single-file service, flat under `services/dataAnalysis/` per AGENTS §13). Exports `HeatmapCell`/`HeatmapRow`/`HeatmapTaskColumn`/`HeatmapResult` interfaces (view-model types, NOT a new Zod boundary — matching SPEC) and `adaptMetricsToHeatmap(analyserResult, classFull, assignmentId)`.
-- Pure function: no React Query, no `google.script.run`, no side effects. Throws on unknown `assignmentId` (fail fast). `assignmentName` from `primaryTitle`; `className` from `classFull.className ?? 'Class Overview'` (the static default mirrors `pageContent.classDetail.heading` used by `ClassPage.tsx`); `taskTitle` always `null` in v1.
-- `taskColumns` derived from `assignment.assignmentDefinition.tasks` in order (`taskKey = \`${definitionKey}::${taskId}\``, `taskId`, `taskTitle: null`); zero tasks → `[]`. `perStudentTaskMetrics`filtered to this assignment's taskKeys (and matching`classId`), grouped by `studentId`; one row per `classFull.students`; missing student–task → shared `notAttempted` cell (`state:'notAttempted', value:'N'`).
+- Pure function: no React Query, no `google.script.run`, no side effects. Throws on unknown `assignmentId` (fail fast). `assignmentName` from `primaryTitle`; `className` from `classFull.className ?? 'Class Overview'` (the static default mirrors `pageContent.classDetail.heading` used by `ClassPage.tsx`). **[Superseded by Section 8]** The original v1 implementation derived `taskColumns` from `assignment.assignmentDefinition.tasks` and hard-coded `taskTitle: null`; Section 8 re-sources both from the warm-up partial via `getAssignmentDefinitionPartial` and throws `TaskTitlesUnavailableError` on a missing partial or `null` title.
+- **[Superseded by Section 8]** `taskColumns` are now derived from the warm-up partial (via `getAssignmentDefinitionPartial`) in task order; `taskKey = \`${definitionKey}::${taskId}\``, `taskId`, `taskTitle`read from the partial (nullable). Zero tasks →`[]`. `perStudentTaskMetrics`filtered to this assignment's taskKeys (and matching`classId`), grouped by `studentId`; one row per `classFull.students`; missing student–task → shared `notAttempted` cell (`state:'notAttempted', value:'N'`).
 - Minor review fix: tightened `HeatmapRow.studentName` from `string | null` to `string` to match SPEC exactly (`StudentSummary.name` is non-null).
 - Canonical-doc entry for `adaptMetricsToHeatmap` recorded in §9.20 (Not implemented before green, then Implemented).
 - RED→GREEN verified: 6 `heatmapAdapter.spec.ts` tests pass; full frontend vitest 1471 passed; `lint:frontend` 0/0; `builder:compile` clean.
@@ -531,7 +531,7 @@ Cover the complete, user-visible heatmap journey in a real browser: navigate to 
 
 - E2E tests live in `src/frontend/e2e-tests/**/*.spec.ts`; runtime mocks via `installRuntimeMock(page, scenario)` **before** `page.goto`.
 - Analysis is a pure frontend function — the E2E mocks the **ClassPage data pipeline**, not analysis. `createHeatmapScenario` must mirror `createClassesScenario` and return a `RuntimeScenario` containing: `getAuthorisationStatus`, `getABClassPartials`, `getCohorts`, `getYearGroups`, `getAssignmentTopics`, `getAssignmentDefinitionPartials` (the warm-up `usePageDataset('assignmentDefinitionPartials')` must be satisfied or the surface never reaches `ready`), **plus** `getABClass` (two identical success entries for React 19 StrictMode double-effect). No analysis mock is needed.
-- Build the `ClassFull` fixture from `tests/__mocks__/data/anon-test-data.json` (Assumption 3/4): map the single class, its 33 students, the assignment, and submission scores; **derive** `assignmentDefinition.tasks` as `[{ id: 'task_001', taskWeighting: 1 }, { id: 'task_002', taskWeighting: 1 }, { id: 'task_003', taskWeighting: 1 }]` from submission item keys.
+- Build the `ClassFull` fixture from `tests/__mocks__/data/anon-test-data.json` (Assumption 3/4): map the single class, its 33 students, the assignment, and submission scores; **derive** `assignmentDefinition.tasks` as `[{ taskId: 'task_001', taskWeighting: 1, taskTitle: 'Task 1' }, { taskId: 'task_002', taskWeighting: 1, taskTitle: 'Task 2' }, { taskId: 'task_003', taskWeighting: 1, taskTitle: 'Task 3' }]` from submission item keys (post-§7 task shape uses `taskId`, and `taskTitle` keeps the fixture valid if the embedded definition is fully validated). **Note:** these embedded `tasks` are NOT the heatmap column source (that is the warm-up `assignmentDefinitionPartials`, per §8); they exist only so the `ClassFull` is well-formed. The column source must be seeded on the warm-up partial for the assignment's `definitionKey` (Assumption 3).
 - StrictMode double-effect: every `getABClass` queue needs **two** identical success entries.
 - Use `applyColumnFilterOption(page, columnHeaderName, optionLabel)` from `endToEndRuntimeMocks.ts` for band filters; use role-based locators; never `waitForTimeout`.
 - Deduplicate fixture code via a new E2E helper module `e2e-tests/helpers/task-heatmap-end-to-end-helpers.ts` that owns `buildHeatmapClassFull()` and `createHeatmapScenario()`.
@@ -671,6 +671,12 @@ Update docs to match the implemented feature and highlight caveats (multi-assign
 
 - (filled during implementation)
 
+### BLOCKING BUG — Task Heatmap renders no task columns on live data
+
+**Root cause:** `adaptMetricsToHeatmap` (`heatmapAdapter.ts`) builds `taskColumns` solely from `classFull.assignments[].assignmentDefinition.tasks`. In live data this embedded definition is a partial where `tasks` is `null`/empty (`getABClass` returns embedded partials for assignments), so `buildTaskColumns` returns `[]` and only the sticky Student Name column renders.
+
+**Resolution:** Sections 7 and 8 below. Section 7 restores `taskTitle` on the partial task shape, renames `id` → `taskId`, and introduces the `getAssignmentDefinitionPartial(partials, definitionKey)` helper. Section 8 wires the heatmap to source the column set and titles from the warm-up partial (via that helper), creates `TaskTitlesUnavailableError`, and handles the missing-title edge case.
+
 ---
 
 ## Suggested implementation order
@@ -681,6 +687,180 @@ Update docs to match the implemented feature and highlight caveats (multi-assign
 4. Section 5 — `compareHeatmapStudentName` + `RecentAssignmentCard` click + view-state (independent of Sections 2/3/4 except sharing the `HeatmapRow` type shape; `compareHeatmapStudentName` does not depend on `MetricPill`).
 5. Section 4 — `TaskHeatmapTable` (depends on Sections 2, 3, 5 comparator).
 6. Section 5 (cont.) — `TaskHeatmapPage` composition (depends on Sections 2, 4).
-7. Section 6 — E2E full journey (depends on all UI sections).
-8. Regression and contract hardening.
-9. Documentation and rollout notes.
+7. Section 7 — TaskPartial → `taskId` consistency + `taskTitle` on partial + `assignmentDefinitionUtils.getAssignmentDefinitionPartial` (prerequisite for Section 8; independent of Sections 1–6).
+8. Section 8 — Heatmap wiring: pass `assignmentDefinitionPartials`, source columns/titles via `getAssignmentDefinitionPartial`, `TaskTitlesUnavailableError`, in-view Alert (depends on Section 7; modifies Sections 2, 4, 5 components already in place).
+9. Section 6 — E2E full journey (depends on all UI sections, now including Sections 7–8).
+10. Regression and contract hardening.
+11. Documentation and rollout notes.
+
+---
+
+## Section 7 — TaskPartial → `taskId` consistency + `taskTitle` on partial + `assignmentDefinitionUtils`
+
+### Problem
+
+The two task shapes disagree on the identifier field name:
+
+- `TaskPartialSchema` (`taskPartial.zod.ts`): uses `id`
+- `AssignmentDefinitionTask` (`assignmentDefinition.zod.ts`): uses `taskId`
+
+The `taskId` convention dominates the codebase (taskKey `'${definitionKey}::${taskId}'`, etc.), so `TaskPartial` must be renamed for consistency. Additionally, `AssignmentDefinitionPartial.tasks` currently lacks `taskTitle`, which is needed for human-readable heatmap column headers.
+
+### Plan
+
+#### 1. `TaskPartialSchema` — rename `id` → `taskId` and add `taskTitle`
+
+**File:** `src/frontend/src/services/assignmentDefinition/taskPartial.zod.ts`
+
+```ts
+// Before
+const TaskPartialSchema = z.strictObject({
+  id: z.string().min(1),
+  taskWeighting: z.number(),
+});
+
+// After
+const TaskPartialSchema = z.strictObject({
+  taskId: z.string().min(1),
+  taskWeighting: z.number(),
+  taskTitle: z.string().nullable(),
+});
+```
+
+`taskTitle` is `nullable` so legacy/missing titles are representable and reach the `TaskTitlesUnavailableError` path (see Section 8); the backend `toPartialJSON()` always emits it for current data. `AssignmentDefinitionPartialTasksSchema` is `z.array(TaskPartialSchema)`, so this propagates to the partial task list automatically.
+
+#### 2. Backend `AssignmentDefinition.toPartialJSON()` — emit `taskId` + `taskTitle`
+
+**File:** `src/backend/Models/AssignmentDefinition.js`
+
+In `toPartialJSON()`, change each mapped task from `{ id: task.id, taskWeighting }` to `{ taskId: task.id, taskWeighting, taskTitle: task.taskTitle }`.
+
+#### 3. Catch-up find-replace for `task.id` references
+
+In frontend TypeScript, replace `task.id` → `task.taskId` in all files that reference `TaskPartial`-shaped data. Run `npm run lint:frontend && npm run typecheck` to verify no broken references.
+
+#### 4. `assignmentDefinitionUtils.ts` — pure `getAssignmentDefinitionPartial` helper
+
+**File:** `src/frontend/src/services/assignmentDefinition/assignmentDefinitionUtils.ts` (new)
+
+```ts
+import type {
+  AssignmentDefinitionPartial,
+  AssignmentDefinitionPartialsResponse,
+} from './assignmentDefinitionPartials.zod';
+
+export function getAssignmentDefinitionPartial(
+  partials: AssignmentDefinitionPartialsResponse,
+  definitionKey: string
+): AssignmentDefinitionPartial | null {
+  return partials.find((p) => p.definitionKey === definitionKey) ?? null;
+}
+```
+
+- This module is a pure utility; no wrapper class. It is the single seam through which the heatmap adapter locates a warm-up partial by `definitionKey` — keeping all `assignmentDefinitionPartials` dataset navigation in the `assignmentDefinition` module.
+- The per-task `taskTitle` is read directly off the returned partial's `tasks` entries by the caller (no separate title-lookup helper is needed — that would be a redundant wrapper).
+- Returns `null` when no partial matches the `definitionKey`; the calling adapter turns this into `TaskTitlesUnavailableError` (see Section 8).
+
+#### 5. Validation: update stale `validatePartialRow_` guard
+
+**File:** `src/backend/z_Api/assignmentDefinitionValidation.js`
+
+The existing guard `tasks must be null` must be reconciled to accept non-null `tasks` arrays with the new `taskId`/`taskTitle` shape. TDD: write a passing test for valid partial row, then update guard expression.
+
+### Acceptance criteria
+
+- `TaskPartialSchema` emits `taskId` + nullable `taskTitle` (no `id`).
+- `toPartialJSON()` emits `taskId` + `taskTitle` per task.
+- `getAssignmentDefinitionPartial(partials, definitionKey)` returns the matching `AssignmentDefinitionPartial` or `null`.
+- No `id` references remain on `TaskPartial`-shaped data in frontend files.
+- `validatePartialRow_` accepts the new shape.
+- `npm run lint:frontend && npm run typecheck` pass.
+
+---
+
+## Section 8 — Heatmap wiring: source columns/titles from warm-up partials via `getAssignmentDefinitionPartial`, `TaskTitlesUnavailableError`, in-view Alert
+
+### Problem
+
+`adaptMetricsToHeatmap` builds `taskColumns` from the embedded `classFull.assignments[].assignmentDefinition.tasks`, which is empty in live data (see BLOCKING BUG). The fix sources both the column set (task IDs + ordering) **and** the human-readable `taskTitle` from the warm-up `assignmentDefinitionPartials` dataset, located by the assignment's `definitionKey` via `getAssignmentDefinitionPartial` (Section 7). The embedded `assignmentDefinition` is used only to obtain the assignment's `definitionKey` and `primaryTitle`; it is no longer the source of the task list.
+
+### Plan
+
+#### 1. Define `TaskTitlesUnavailableError`
+
+**File:** `src/frontend/src/services/dataAnalysis/heatmapAdapter.ts`
+
+```ts
+export class TaskTitlesUnavailableError extends Error {
+  constructor(definitionKey: string) {
+    super(`Task titles unavailable for definition "${definitionKey}"`);
+    this.name = 'TaskTitlesUnavailableError';
+  }
+}
+```
+
+#### 2. `adaptMetricsToHeatmap` — accept `assignmentDefinitionPartials` and source columns from the partial
+
+**File:** `src/frontend/src/services/dataAnalysis/heatmapAdapter.ts`
+
+Add a 4th parameter `assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse`. Change `buildTaskColumns` so it receives the located partial (not the embedded definition) and reads tasks directly:
+
+```ts
+function buildTaskColumns(partial: AssignmentDefinitionPartial): HeatmapTaskColumn[] {
+  return partial.tasks.map((task) => ({
+    taskKey: `${partial.definitionKey}::${task.taskId}`,
+    taskId: task.taskId,
+    taskTitle: task.taskTitle,
+  }));
+}
+```
+
+In `adaptMetricsToHeatmap`, locate the partial by the assignment's `definitionKey` (from `assignment.assignmentDefinition.definitionKey`) and branch:
+
+```ts
+const definitionKey = assignment.assignmentDefinition.definitionKey;
+const partial = getAssignmentDefinitionPartial(assignmentDefinitionPartials, definitionKey);
+if (!partial) {
+  throw new TaskTitlesUnavailableError(definitionKey);
+}
+const taskColumns = buildTaskColumns(partial);
+// After building, if any non-empty column has a null taskTitle, treat as unavailable:
+if (taskColumns.length > 0 && taskColumns.some((c) => c.taskTitle === null)) {
+  throw new TaskTitlesUnavailableError(definitionKey);
+}
+```
+
+Return type unchanged; the signature change is additive.
+
+#### 3. Prop-thread `assignmentDefinitionPartials` → heatmap
+
+- **`ClassPage.tsx`** — destructure `assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse | null` from `useClassPageData` (already in the return) and pass down.
+- **`ClassPageContent.tsx`** — add `assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse | null` prop; forward to `TaskHeatmapPage`.
+- **`TaskHeatmapPage.tsx`** — extend component props to accept `assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse | null` and pass it to `adaptMetricsToHeatmap`.
+
+#### 4. Error handling in `TaskHeatmapPage`
+
+**File:** `src/frontend/src/features/classPage/TaskHeatmapPage.tsx`
+
+In the try–catch that calls `adaptMetricsToHeatmap`:
+
+- `TaskTitlesUnavailableError`: render an in-view Ant Design `Alert` (type `"error"`) with message "Task titles are currently unavailable. Please try reloading the page." Do **not** call `onBack`.
+- All other errors (unknown `assignmentId`, etc.): unchanged — log via frontend logger and call `onBack` (no in-view error).
+- When `taskColumns` is empty (zero tasks): render normally with no error (empty state). Note: an empty `taskColumns` only occurs when the partial genuinely has zero `tasks`; a missing partial is the `TaskTitlesUnavailableError` case above, not the empty state.
+
+#### 5. Update the layout spec error state
+
+**File:** `TASK_HEATMAP_LAYOUT.md`
+
+Add an error-state subsection for "task titles unavailable" (in-view `Alert`, type `error`, the message above, no `onBack`), mirroring the existing "assignment not found" entry. This keeps the UI-focused source of truth consistent with the new behaviour (per `frontend/AGENTS.md` §6.1).
+
+### Acceptance criteria
+
+- Task heatmap columns (IDs + ordering + `taskTitle`) are sourced from the warm-up partial located by `definitionKey` via `getAssignmentDefinitionPartial`; the embedded `assignmentDefinition.tasks` is no longer the column source.
+- A missing partial (or any non-empty column with `null` `taskTitle`) throws `TaskTitlesUnavailableError` → in-view `Alert`, no auto-navigate.
+- Unknown `assignmentId` still auto-navigates with log-only.
+- Zero tasks → normal empty-table rendering (no error).
+- `npm run lint:frontend && npm run typecheck` pass.
+- Unit tests cover: partial resolution, missing-partial error, missing-title error, zero-tasks early return.
+- `TASK_HEATMAP_LAYOUT.md` documents the new error state.
+- Existing Sections 1–6 tests remain green.

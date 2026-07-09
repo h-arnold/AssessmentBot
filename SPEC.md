@@ -195,7 +195,7 @@ ClassesPage
 ### Required datasets or dependencies
 
 - `ClassFull` — fetched via `getABClass(classId)` (existing `useClassPageData` query).
-- `AssignmentDefinitionPartials` — warm-up-backed dataset (existing).
+- `AssignmentDefinitionPartials` — warm-up-backed dataset (existing), typed `AssignmentDefinitionPartialsResponse` (`z.array` of `AssignmentDefinitionPartial`, not a map). Its `tasks` entries carry `taskId` and `taskTitle`; the heatmap column set and titles are sourced from here via `getAssignmentDefinitionPartial(partials, definitionKey)` in `assignmentDefinitionUtils.ts`. The partial and full definition task shapes use `taskId` consistently.
 - `analyserResult` — already produced by `useClassPageData` (`useClassPageData.ts:117-124`).
 
 ### Prefetch or initialisation policy
@@ -245,9 +245,9 @@ ClassesPage
 
 #### HeatmapResult
 
-- `taskColumns` derived from the selected assignment's tasks (stable task order), carrying `taskKey`, `taskId`, and `taskTitle`. `taskTitle` mirrors `PerTaskRow.taskTitle` and is `null` in v1 because `AssignmentDefinitionPartial` carries no per-task title (`dataAnalysis.zod.ts:135-137`); the table header falls back to `taskId` for display. A real title source is a future `assignmentDefinitionPartials` extension and is out of scope for v1.
+- `taskColumns` derived from the warm-up `assignmentDefinitionPartials` dataset, located by the selected assignment's `definitionKey` via `getAssignmentDefinitionPartial(partials, definitionKey)` (see `ACTION_PLAN.md` §7). Each column carries `taskKey` (`${definitionKey}::${taskId}`), `taskId`, and `taskTitle`, read directly from the partial's `tasks` (which carry `taskId` and `taskTitle`); the partial and full definition shapes use `taskId` consistently. The embedded `classFull.assignments[].assignmentDefinition.tasks` is NOT the column source because it is empty in live data. If the partial is missing for the `definitionKey`, or any column's `taskTitle` is `null`, `adaptMetricsToHeatmap` throws `TaskTitlesUnavailableError` (see the error-state section) — there is no `taskId`-only fallback for column headers.
   - `assignmentName` and `className` are derived from `classFull`: `assignmentName` is the `assignmentDefinition.primaryTitle` of the assignment in `classFull.assignments` whose `assignmentId` equals `assignmentId` (mirrors `classPageAdapter.ts:330`); `className` is `classFull.className`. When `classFull.className` is `null`, fall back to a static default label (reuse the `ClassPage.tsx` pattern, e.g. `pageContent.classDetail.heading`) because the view model is reused more widely.
-- Only the selected assignment's tasks appear; the adapter selects them by deriving `taskKey`s (`${definitionKey}::${taskId}`) from the assignment in `classFull`.
+- Only the selected assignment's tasks appear; the adapter selects them by locating the warm-up partial via the embedded `definitionKey` (using `getAssignmentDefinitionPartial`) and reading the partial's `tasks`.
 
 ### Sort order or priority rules
 
@@ -344,17 +344,23 @@ ClassesPage
 
 - Effectively unreachable in v1 (the `assignmentId` always originates from a validated clicked card). If it ever occurs, auto-navigate back to ClassPage overview with **no in-view error message**: `adaptMetricsToHeatmap` throws, `TaskHeatmapPage` catches it, logs via the frontend logger (`src/frontend/src/logging/frontendLogger.ts`, context `'TaskHeatmapPage'`), and calls `onBack` (see `ACTION_PLAN.md` Section 5). Do not render an in-view `Alert`.
 
+#### Task titles unavailable (v1 behaviour change)
+
+- When `taskColumns` is non-empty but the partial for the assignment's `definitionKey` is missing, or any column's `taskTitle` is `null` (e.g. legacy data with no title), the heatmap renders an **in-view error `Alert`** and does **not** auto-navigate. This is distinct from "Assignment not found" above: a missing title is a data-completeness defect the user must see, whereas an unknown `assignmentId` is unreachable in v1 and is best handled by silently returning to the overview.
+- `adaptMetricsToHeatmap` throws a dedicated `TaskTitlesUnavailableError`; `TaskHeatmapPage` distinguishes this error type from the unknown-`assignmentId` case and renders the `Alert` in place (it does **not** call `onBack`). There is no `taskId`-only fallback for column headers.
+- If the assignment has zero tasks (`taskColumns` empty), this is the normal zero-tasks empty state — no error is shown (see "No submissions" above).
+
 ## Accessibility and usability notes
 
 - All cells show numeric values (not colour alone).
-- `aria-label` on each cell: "[Student Name], [Task ID], [Metric]: [Score]" (in v1 the task is identified by `taskId`, since `taskTitle` is `null` — see `TASK_HEATMAP_LAYOUT.md`).
+- `aria-label` on each cell: "[Student Name], [Task ID], [Metric]: [Score]" (the task is identified by `taskId`; `taskTitle` is shown in the column header when the partial provides one — see `TASK_HEATMAP_LAYOUT.md`).
 - Keyboard navigation via Ant Design `Table` (arrow keys).
 - Focus visible on interactive elements.
 - Reduced motion: no cell animation on filter/sort.
 
 ## Backend changes required to support agreed behaviour
 
-None. The existing `getABClass` response and the pure frontend `DataAnalysisService` are sufficient for v1 **and** for the multi-class future (more `ABClass` collections are passed into the same `analyse()` call).
+`AssignmentDefinition.toPartialJSON()` (backend `Models/AssignmentDefinition.js`) must emit each task as `{ taskId: task.id, taskWeighting, taskTitle: task.taskTitle }` — adding `taskTitle` to the partial task shape and renaming the identifier field from `id` to `taskId` so the partial and full definition task shapes are consistent. This flows to both `getAssignmentDefinitionPartials` and the embedded `assignmentDefinition` in `getABClass`, and to registry persistence (no new endpoint is required). The `getABClass` response shape and the pure frontend `DataAnalysisService` remain otherwise sufficient for v1 and the multi-class future.
 
 ## Planning handoff notes
 
