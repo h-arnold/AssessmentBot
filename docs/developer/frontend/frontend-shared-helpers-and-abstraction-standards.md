@@ -734,6 +734,13 @@ Per `SPEC_CLASS_PAGE_PREPARATION.md` line 382, the canonical home for these help
 - Call-site rationale: converts `perStudentTaskAccums` (`Map<string, Map<string, DataPointAccumulator>>`) into the validated `PerStudentTaskMetric[]` array on `AveragingResult`, calling the existing `accumToMetric` path for each criterion (`completeness`, `accuracy`, `spag`, `overall`). Consumed by `analyseClass` in `averagingAnalyser.ts`. `taskKey` is `\`${definitionKey}::${taskId}\``; `classId` is echoed from the input class.
 - Status: `Implemented` (ACTION_PLAN.md Section 1 — `buildPerStudentTaskMetrics` added to `averagingAnalyser.accumulation.ts`, called by `analyseClass`; `PerStudentTaskMetricSchema` added to `dataAnalysis.zod.ts`).
 
+3. Helper: `adaptMetricsToHeatmap` — pure projection adapter (`AveragingResult` + `ClassFull` + `assignmentId` → `HeatmapResult`)
+
+- Decision: `new` (single-file service module; flat under `services/dataAnalysis/`)
+- Owning module/path: `src/frontend/src/services/dataAnalysis/heatmapAdapter.ts`
+- Call-site rationale: the single projection boundary consumed by `TaskHeatmapPage`. Filters `perStudentTaskMetrics` to the selected assignment's `taskKey`s (derived from `assignment.assignmentDefinition.definitionKey`), groups by `studentId` into `HeatmapRow`s, and derives `taskColumns` from `assignment.assignmentDefinition.tasks`. `assignmentName` from `primaryTitle`, `className` from `classFull.className` (fallback `'Class Overview'`), `taskTitle` always `null` in v1. Throws on unknown `assignmentId` (fail fast).
+- Status: `Implemented` (ACTION_PLAN.md Section 2 — `adaptMetricsToHeatmap` added to `heatmapAdapter.ts`; `HeatmapResult`/`HeatmapRow`/`HeatmapCell`/`HeatmapTaskColumn` interfaces exported).
+
 ## 10. Frontend utils folder convention
 
 The `src/frontend/src/utils/` folder exists for pure formatting / utility functions that are shared across the frontend. This folder is a separate convention from `src/frontend/AGENTS.md` §13, which governs only `services/` subfolder organisation.

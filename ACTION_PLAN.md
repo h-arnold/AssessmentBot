@@ -252,7 +252,13 @@ Frontend Vitest:
 
 ### Implementation notes / deviations / follow-up
 
-- (filled during implementation)
+- Added `src/frontend/src/services/dataAnalysis/heatmapAdapter.ts` (single-file service, flat under `services/dataAnalysis/` per AGENTS §13). Exports `HeatmapCell`/`HeatmapRow`/`HeatmapTaskColumn`/`HeatmapResult` interfaces (view-model types, NOT a new Zod boundary — matching SPEC) and `adaptMetricsToHeatmap(analyserResult, classFull, assignmentId)`.
+- Pure function: no React Query, no `google.script.run`, no side effects. Throws on unknown `assignmentId` (fail fast). `assignmentName` from `primaryTitle`; `className` from `classFull.className ?? 'Class Overview'` (the static default mirrors `pageContent.classDetail.heading` used by `ClassPage.tsx`); `taskTitle` always `null` in v1.
+- `taskColumns` derived from `assignment.assignmentDefinition.tasks` in order (`taskKey = \`${definitionKey}::${taskId}\``, `taskId`, `taskTitle: null`); zero tasks → `[]`. `perStudentTaskMetrics`filtered to this assignment's taskKeys (and matching`classId`), grouped by `studentId`; one row per `classFull.students`; missing student–task → shared `notAttempted` cell (`state:'notAttempted', value:'N'`).
+- Minor review fix: tightened `HeatmapRow.studentName` from `string | null` to `string` to match SPEC exactly (`StudentSummary.name` is non-null).
+- Canonical-doc entry for `adaptMetricsToHeatmap` recorded in §9.20 (Not implemented before green, then Implemented).
+- RED→GREEN verified: 6 `heatmapAdapter.spec.ts` tests pass; full frontend vitest 1471 passed; `lint:frontend` 0/0; `builder:compile` clean.
+- Regression-gate note: combined `regression-checker` again showed `frontend-test-coverage-check` and `frontend-e2e-check` flip to failing, but `New Failures Count: 0`; isolated re-runs confirmed both fully green (vitest 1471 passed, e2e 212 passed) — confirmed infrastructure flake, not a code regression.
 
 ---
 
