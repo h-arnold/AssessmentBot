@@ -20,6 +20,12 @@ const DEFAULT_TAG_FONT_SIZE_PX = 14;
 /** Bold font weight used when `emphasised` is true. */
 const EMPHASISED_FONT_WEIGHT = 600;
 
+/** Font size (px) for a compact Tag. */
+const COMPACT_TAG_FONT_SIZE_PX = 12;
+
+/** Font size (px) for an emphasised Tag. */
+const EMPHASISED_TAG_FONT_SIZE_PX = 17.5;
+
 describe('MetricPill', () => {
   // -------------------------------------------------------------------------
   // Computed state rendering
@@ -168,5 +174,92 @@ describe('MetricPill', () => {
     const pill = screen.getByText('E');
     expect(pill).toBeInTheDocument();
     expect(pill.closest('.ant-tag')).not.toBeNull();
+  });
+
+  // -------------------------------------------------------------------------
+  // Compact variant (RED phase — compact prop does not exist yet)
+  // -------------------------------------------------------------------------
+
+  it('renders computed score with 2dp, green band, and compact footprint when compact', () => {
+    const metric: MetricResult = createComputedMetricResult({ value: 5 });
+    const { container } = render(<MetricPill metric={metric} compact />);
+
+    // Score displayed with 2dp (same precision default)
+    const pill = screen.getByText('5.00');
+    expect(pill).toBeInTheDocument();
+
+    // Green band for value 5 on default {0, 5} range
+    const tag = container.querySelector('.ant-tag');
+    expect(tag).not.toBeNull();
+    expect(tag!.className).toContain('ant-tag-green');
+
+    // Compact footprint: smaller font (12px) and reduced padding (2px 4px)
+    // RED: these fail because `compact` is not yet handled in MetricPill
+    expect(Number.parseFloat(getComputedStyle(tag!).fontSize)).toBe(COMPACT_TAG_FONT_SIZE_PX);
+    expect(getComputedStyle(tag!).getPropertyValue('padding')).toBe('2px 4px');
+  });
+
+  it('renders N with default band colour for notAttempted when compact', () => {
+    const metric: MetricResult = createNotAttemptedMetricResult();
+
+    render(<MetricPill metric={metric} compact />);
+
+    // Literal 'N' — no decimal padding
+    const pill = screen.getByText('N');
+    expect(pill).toBeInTheDocument();
+
+    const tag = pill.closest('.ant-tag');
+    expect(tag).not.toBeNull();
+    // Default band — ant-tag-default (not red, gold, green, or volcano)
+    expect(tag!.className).toContain('ant-tag-default');
+    expect(tag!.className).not.toContain('ant-tag-red');
+  });
+
+  it('renders same colour token as emphasised and introduces no aria-label or role', () => {
+    const metric: MetricResult = createComputedMetricResult({ value: 5 });
+
+    const { container: compactContainer } = render(<MetricPill metric={metric} compact />);
+    const { container: emphasisedContainer } = render(
+      <MetricPill metric={metric} emphasised />
+    );
+
+    const compactTag = compactContainer.querySelector('.ant-tag');
+    const emphasisedTag = emphasisedContainer.querySelector('.ant-tag');
+    expect(compactTag).not.toBeNull();
+    expect(emphasisedTag).not.toBeNull();
+
+    // Same green colour for value 5
+    expect(compactTag!.className).toContain('ant-tag-green');
+    expect(emphasisedTag!.className).toContain('ant-tag-green');
+
+    // v1 signed-off accessibility gap: no aria-label or role on the pill
+    expect(compactTag!.getAttribute('aria-label')).toBeNull();
+    expect(compactTag!.getAttribute('role')).toBeNull();
+  });
+
+  // -------------------------------------------------------------------------
+  // Emphasised regression
+  // -------------------------------------------------------------------------
+
+  it('renders computed score with 2dp, large font, bold weight, and green band when emphasised', () => {
+    const metric: MetricResult = createComputedMetricResult({ value: 5 });
+    const { container } = render(<MetricPill metric={metric} emphasised />);
+
+    // Score formatted to 2dp
+    const pill = screen.getByText('5.00');
+    expect(pill).toBeInTheDocument();
+
+    const tag = container.querySelector('.ant-tag');
+    expect(tag).not.toBeNull();
+
+    // Green band for value 5 on default {0, 5} range
+    expect(tag!.className).toContain('ant-tag-green');
+
+    // Emphasised styling: large font size and bold weight
+    expect(Number.parseFloat(getComputedStyle(tag!).fontSize)).toBeCloseTo(
+      EMPHASISED_TAG_FONT_SIZE_PX,
+      1,
+    );
+    expect(Number(getComputedStyle(tag!).fontWeight)).toBe(EMPHASISED_FONT_WEIGHT);
   });
 });

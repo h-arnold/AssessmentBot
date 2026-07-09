@@ -35,6 +35,15 @@ type MetricPillProperties = {
    */
   readonly emphasised?: boolean;
   /**
+   * When `true`, renders a smaller footprint (font ~12px, padding `2px 4px`)
+   * for the dense heatmap matrix while keeping `precision: 2` and the same
+   * `resolveMetricTone` colouring. Mutually exclusive in intent from
+   * `emphasised` (a cell is one or the other).
+   *
+   * @default false
+   */
+  readonly compact?: boolean;
+  /**
    * Number of decimal places for `computed` values. Ignored for
    * `notAttempted` and `error` (the literal `'N'` and `'E'` are rendered
    * as-is).
@@ -55,6 +64,32 @@ type MetricPillProperties = {
    */
   readonly errorColor?: MetricToneColor;
 };
+
+/**
+ * Build the CSS style object for a `MetricPill` Tag based on display variant.
+ *
+ * @param {boolean} muted - When true applies reduced opacity.
+ * @param {boolean} emphasised - When true applies larger font and bold weight.
+ * @param {boolean} compact - When true applies smaller font and tighter padding.
+ * @returns {CSSProperties} The merged style object.
+ */
+function buildPillStyle(muted: boolean, emphasised: boolean, compact: boolean): CSSProperties {
+  const style: CSSProperties = {};
+
+  if (muted) {
+    style.opacity = 0.55;
+  }
+
+  if (emphasised) {
+    style.fontSize = '17.5px';
+    style.fontWeight = 600;
+  } else if (compact) {
+    style.fontSize = '12px';
+    style.padding = '2px 4px';
+  }
+
+  return style;
+}
 
 /**
  * Render a `MetricResult` as an Ant Design `Tag` pill.
@@ -95,6 +130,7 @@ export function MetricPill({
   metric,
   range,
   emphasised = false,
+  compact = false,
   precision = DEFAULT_PRECISION,
   errorColor,
 }: MetricPillProperties): JSX.Element {
@@ -102,20 +138,9 @@ export function MetricPill({
 
   const displayText: string = metric.state === 'computed'
     ? metric.value.toFixed(precision)
-    // notAttempted or error - use the literal 'N' / 'E' from the resolution
     : (resolution.displayValue as string);
 
-  // Build style object — empty when no overrides are needed
-  const tagStyle: CSSProperties = {};
-
-  if (resolution.muted) {
-    tagStyle.opacity = 0.55;
-  }
-
-  if (emphasised) {
-    tagStyle.fontSize = '17.5px';
-    tagStyle.fontWeight = 600;
-  }
+  const tagStyle: CSSProperties = buildPillStyle(resolution.muted, emphasised, compact);
 
   return (
     <Tag color={resolution.color} style={tagStyle}>
