@@ -194,13 +194,13 @@ The following inconsistencies were identified in the initial audit. These should
 
 ### 6.1 Resolved Baseline
 
-| Location                 | Current Value           | Status                       |
-| ------------------------ | ----------------------- | ---------------------------- |
-| `.app-content` padding   | `2rem 1rem` (32px/16px) | To be changed to `24px 16px` |
-| `.app-breadcrumb` margin | `1.5rem` (24px)         | ✅ Aligned                   |
-| Card `bodyPadding`       | 24 (default)            | ✅ Aligned                   |
-| Card `headerPadding`     | 24 (default)            | ✅ Aligned                   |
-| Space `size="middle"`    | 16px                    | ✅ Aligned                   |
+| Location                 | Current Value                                             | Status                            |
+| ------------------------ | --------------------------------------------------------- | --------------------------------- |
+| `.app-content` padding   | `var(--app-spacing-lg) var(--app-spacing-md)` (24px/16px) | ✅ Resolved — uses spacing tokens |
+| `.app-breadcrumb` margin | `1.5rem` (24px)                                           | ✅ Aligned                        |
+| Card `bodyPadding`       | 24 (default)                                              | ✅ Aligned                        |
+| Card `headerPadding`     | 24 (default)                                              | ✅ Aligned                        |
+| Space `size="middle"`    | 16px                                                      | ✅ Aligned                        |
 
 ### 6.2 Values Already Aligned (Do Not Change)
 

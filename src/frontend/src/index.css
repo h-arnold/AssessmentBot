@@ -6,6 +6,14 @@
   --app-panel-width-default: 720px;
   --app-panel-width-wide-data: 1280px;
   --app-modal-width-wide-data: 1280px;
+
+  /* Spacing tokens — aligned to Ant Design 8px grid */
+  --app-spacing-xs: 4px; /* Half-unit exception (tight inner-element spacing only) */
+  --app-spacing-sm: 8px; /* Small spacing */
+  --app-spacing-md: 16px; /* Middle spacing */
+  --app-spacing-lg: 24px; /* Large spacing */
+  --app-spacing-xl: 32px; /* Extra-large (section margins, large containers) */
+  --app-spacing-xxl: 48px; /* Major section separations */
 }
 
 body {
@@ -25,7 +33,7 @@ body {
   font-weight: 600;
   display: flex;
   align-items: center;
-  padding-inline: 1rem;
+  padding-inline: var(--app-spacing-md);
 }
 
 .app-header-bar {
@@ -33,7 +41,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: var(--app-spacing-md);
 }
 
 .app-header-toggle {
@@ -66,11 +74,12 @@ body {
 .app-header-theme-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--app-spacing-sm);
 }
 
 .app-content {
-  padding: 2rem 1rem;
+  padding: var(--app-spacing-lg) var(--app-spacing-md);
+  /* = 24px top/bottom, 16px left/right */
 }
 
 .app-breadcrumb {

@@ -148,7 +148,7 @@ const ROW_TOP_MARGIN_PX = 16;
 const CARD_ROW_GAP_PX = 16;
 
 /** Top margin for the card row wrapper. */
-const CARD_ROW_TOP_MARGIN_PX = 12;
+const CARD_ROW_TOP_MARGIN_PX = 16;
 
 /** Width of each recent assignment card skeleton. */
 const RECENT_CARD_SKELETON_WIDTH_PX = 280;

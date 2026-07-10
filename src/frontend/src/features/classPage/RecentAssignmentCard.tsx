@@ -108,7 +108,7 @@ export function RecentAssignmentCard({
       <Typography.Text type="secondary">
         Last Assessed: {card.lastAssessedAtLabel}
       </Typography.Text>
-      <Flex justify="space-around" style={{ marginTop: 12 }}>
+      <Flex justify="space-around" style={{ marginTop: 8 }}>
         {METRIC_ENTRIES.map(({ key, label, align, emphasised }) => (
           <Flex key={key} vertical align={align}>
             <Typography.Text>{label}</Typography.Text>

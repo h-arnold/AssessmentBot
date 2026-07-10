@@ -439,7 +439,7 @@ export function BackendSettingsPanel() {
                       {section === 'Backend' && fieldDescriptor.name === 'apiKey' ? (
                         <Text
                           type="secondary"
-                          style={{ display: 'block', marginBottom: 24, marginTop: -16 }}
+                          style={{ display: 'block', marginBottom: 24, marginTop: 'calc(-1 * var(--app-spacing-md))' }}
                         >
                           {getApiKeyHelperCopy(hasApiKey)}
                         </Text>
