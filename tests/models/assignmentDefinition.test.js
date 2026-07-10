@@ -193,8 +193,8 @@ describe('AssignmentDefinition - Section 1 Model Changes', () => {
       const def = new AssignmentDefinition({ ...baseValidParams, tasks });
       const partial = def.toPartialJSON();
       expect(partial.tasks).toEqual([
-        { id: task1.id, taskWeighting: 2, taskTitle: 'Task One' },
-        { id: task2.id, taskWeighting: 1, taskTitle: 'Task Two' },
+        { taskId: task1.id, taskWeighting: 2, taskTitle: 'Task One' },
+        { taskId: task2.id, taskWeighting: 1, taskTitle: 'Task Two' },
       ]);
     });
 
@@ -224,8 +224,12 @@ describe('AssignmentDefinition - Section 1 Model Changes', () => {
       );
       const def = new AssignmentDefinition({ ...baseValidParams, tasks: { [task.id]: task } });
       const partial = def.toPartialJSON();
-      expect(partial.tasks[0]).toEqual({ id: task.id, taskWeighting: 3, taskTitle: 'Extra' });
-      expect(Object.keys(partial.tasks[0]).sort()).toEqual(['id', 'taskTitle', 'taskWeighting']);
+      expect(partial.tasks[0]).toEqual({ taskId: task.id, taskWeighting: 3, taskTitle: 'Extra' });
+      expect(Object.keys(partial.tasks[0]).sort()).toEqual([
+        'taskId',
+        'taskTitle',
+        'taskWeighting',
+      ]);
     });
 
     it('should reflect taskWeighting of 5', () => {

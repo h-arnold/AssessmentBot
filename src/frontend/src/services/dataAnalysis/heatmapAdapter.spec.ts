@@ -1,21 +1,26 @@
 /**
- * RED-phase tests for `adaptMetricsToHeatmap` — the pure adapter that projects
- * an `AveragingResult` + `ClassFull` into a `HeatmapResult` view model.
+ * RED-phase tests for the `adaptMetricsToHeatmap` 4-parameter rewrite.
  *
  * @remarks
- * These tests are expected to FAIL because `heatmapAdapter.ts` does not exist
- * yet. The failures should be module-resolution errors:
- *   "Cannot find module './heatmapAdapter'"
- * or similar, confirming the tests correctly express the intended behaviour
- * before implementation exists.
+ * The adapter now takes a 4th parameter (`assignmentDefinitionPartials`) and
+ * sources task columns from the warm-up partial located via
+ * `getAssignmentDefinitionPartial`. It throws `TaskTitlesUnavailableError`
+ * when the partial is missing or a task has null `taskTitle`.
  *
- * See ACTION_PLAN.md §Section 2 — Required test cases (Red first).
+ * These tests are expected to FAIL because:
+ *   - `TaskTitlesUnavailableError` does not exist yet
+ *   - `getAssignmentDefinitionPartial` does not exist yet
+ *   - `adaptMetricsToHeatmap` still has the old 3-arg signature
+ *   - `taskPartial.zod.ts` still uses `id` not `taskId`
+ *
+ * See ACTION_PLAN.md §8 — Required test cases (Red first).
  */
 
 import { describe, expect, it } from 'vitest';
 import type { AveragingResult } from './dataAnalysis.zod';
 import type { ClassFull } from '../googleClassrooms/classDetail/classDetailService.zod';
-import { adaptMetricsToHeatmap } from './heatmapAdapter';
+import type { AssignmentDefinitionPartialsResponse } from '../assignmentDefinition/assignmentDefinitionPartials.zod';
+import { adaptMetricsToHeatmap, TaskTitlesUnavailableError } from './heatmapAdapter';
 import { createComputedMetricResult, createTaskPartial } from '../../test/dataAnalysis/fixtures';
 
 // ---------------------------------------------------------------------------
@@ -60,7 +65,7 @@ function buildStudentSummaries() {
 /**
  * Build a task-partials array from the shared TASK_IDS constant.
  *
- * @returns {Array<{id: string, taskWeighting: number}>} An array of task-partial objects.
+ * @returns {Array<{taskId: string, taskWeighting: number, taskTitle: string | null}>} An array of task-partial objects.
  */
 function buildTasks() {
   return TASK_IDS.map((id) => createTaskPartial(id, 1));
@@ -133,6 +138,45 @@ function buildClassFull(): ClassFull {
 }
 
 /**
+ * Build a minimal AssignmentDefinitionPartialsResponse (array) containing a
+ * single partial matching DEFINITION_KEY with titles set to the task id.
+ *
+ * @param {Partial<{taskTitle: string | null}>[]} [titleOverrides] - Optional per-task title overrides.
+ * @returns {AssignmentDefinitionPartialsResponse} The partials array.
+ */
+function buildPartials(
+  titleOverrides?: Array<{ taskTitle?: string | null }>
+): AssignmentDefinitionPartialsResponse {
+  const titles = titleOverrides ?? TASK_IDS.map((id) => ({ taskTitle: id }));
+  return [
+    {
+      ...buildDefinition(),
+      tasks: TASK_IDS.map((id, index) => ({
+        taskId: id,
+        taskWeighting: 1,
+        taskTitle: titles[index]?.taskTitle ?? null,
+      })),
+    },
+  ] as AssignmentDefinitionPartialsResponse;
+}
+
+/**
+ * Build part of the assignmentDefinitionPartials where the definitionKey does
+ * NOT match DEFINITION_KEY (so getAssignmentDefinitionPartial returns null).
+ *
+ * @returns {AssignmentDefinitionPartialsResponse} A partials array with a non-matching partial.
+ */
+function buildNonMatchingPartials(): AssignmentDefinitionPartialsResponse {
+  return [
+    {
+      ...buildDefinition(),
+      definitionKey: 'dk_other',
+      tasks: [{ taskId: 't_other', taskWeighting: 1, taskTitle: 'Other Task' }],
+    },
+  ] as AssignmentDefinitionPartialsResponse;
+}
+
+/**
  * Build a PerStudentTaskMetric fixture for a given student and task.
  *
  * @param {string} studentId - The student identifier.
@@ -183,7 +227,9 @@ function minimalAveragingResult(
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('adaptMetricsToHeatmap', () => {
+describe('adaptMetricsToHeatmap — 4-parameter warm-up partial sourcing', () => {
+  // ── Ported Section 2 tests ──────────────────────────────────────────
+
   it('returns three taskColumns in task order and one row per student, each with three cells aligned by taskKey', () => {
     const aliceT1 = buildPerStudentTaskMetric('s_001', 'task_001');
     const aliceT2 = buildPerStudentTaskMetric('s_001', 'task_002');
@@ -195,24 +241,25 @@ describe('adaptMetricsToHeatmap', () => {
     const analyserResult = minimalAveragingResult([aliceT1, aliceT2, aliceT3, bobT1, bobT2, bobT3]);
 
     const classFull = buildClassFull();
-    const result = adaptMetricsToHeatmap(analyserResult, classFull, ASSIGNMENT_ID);
+    const partials = buildPartials();
+    const result = adaptMetricsToHeatmap(analyserResult, classFull, ASSIGNMENT_ID, partials);
 
     // taskColumns in task order
     expect(result.taskColumns).toHaveLength(expectedTaskColumnCount);
     expect(result.taskColumns[0]).toEqual({
       taskKey: taskKey('task_001'),
       taskId: 'task_001',
-      taskTitle: null,
+      taskTitle: 'task_001',
     });
     expect(result.taskColumns[1]).toEqual({
       taskKey: taskKey('task_002'),
       taskId: 'task_002',
-      taskTitle: null,
+      taskTitle: 'task_002',
     });
     expect(result.taskColumns[2]).toEqual({
       taskKey: taskKey('task_003'),
       taskId: 'task_003',
-      taskTitle: null,
+      taskTitle: 'task_003',
     });
 
     // Rows — one per student in roster order
@@ -257,7 +304,8 @@ describe('adaptMetricsToHeatmap', () => {
 
     const analyserResult = minimalAveragingResult([aliceT1, aliceT2, aliceT3]);
     const classFull = buildClassFull();
-    const result = adaptMetricsToHeatmap(analyserResult, classFull, ASSIGNMENT_ID);
+    const partials = buildPartials();
+    const result = adaptMetricsToHeatmap(analyserResult, classFull, ASSIGNMENT_ID, partials);
 
     expect(result.rows).toHaveLength(expectedStudentCount);
 
@@ -282,10 +330,11 @@ describe('adaptMetricsToHeatmap', () => {
   it('yields empty taskColumns and empty cells when the assignment has zero tasks', () => {
     const analyserResult = minimalAveragingResult([]);
     const classFull = buildClassFull();
-    // Override the assignment's tasks to be empty
-    (classFull.assignments[0].assignmentDefinition as { tasks: unknown[] }).tasks = [];
+    const partials = buildPartials();
+    // Override the located partial's tasks to be empty
+    (partials[0] as { tasks: unknown[] }).tasks = [];
 
-    const result = adaptMetricsToHeatmap(analyserResult, classFull, ASSIGNMENT_ID);
+    const result = adaptMetricsToHeatmap(analyserResult, classFull, ASSIGNMENT_ID, partials);
 
     expect(result.taskColumns).toHaveLength(0);
     expect(result.rows).toHaveLength(expectedStudentCount);
@@ -297,35 +346,92 @@ describe('adaptMetricsToHeatmap', () => {
   it('throws when assignmentId is not found in classFull.assignments', () => {
     const analyserResult = minimalAveragingResult([]);
     const classFull = buildClassFull();
+    const partials = buildPartials();
     const unknownId = 'nonexistent_assignment';
 
-    expect(() => adaptMetricsToHeatmap(analyserResult, classFull, unknownId)).toThrow();
+    expect(() => adaptMetricsToHeatmap(analyserResult, classFull, unknownId, partials)).toThrow();
   });
 
-  it('derives assignmentName from primaryTitle, className from classFull.className, and every taskTitle is null', () => {
+  it('derives assignmentName from primaryTitle, className from classFull.className', () => {
     const aliceT1 = buildPerStudentTaskMetric('s_001', 'task_001');
     const bobT1 = buildPerStudentTaskMetric('s_002', 'task_001');
 
     const analyserResult = minimalAveragingResult([aliceT1, bobT1]);
     const classFull = buildClassFull();
-    const result = adaptMetricsToHeatmap(analyserResult, classFull, ASSIGNMENT_ID);
+    const partials = buildPartials();
+    const result = adaptMetricsToHeatmap(analyserResult, classFull, ASSIGNMENT_ID, partials);
 
     expect(result.assignmentId).toBe(ASSIGNMENT_ID);
     expect(result.assignmentName).toBe('Quadratics Assessment');
     expect(result.className).toBe(CLASS_NAME);
-
-    for (const col of result.taskColumns) {
-      expect(col.taskTitle).toBeNull();
-    }
   });
 
   it('fallbacks className to "Class Overview" when classFull.className is null', () => {
     const analyserResult = minimalAveragingResult([]);
     const classFull = buildClassFull();
     classFull.className = null;
+    const partials = buildPartials();
 
-    const result = adaptMetricsToHeatmap(analyserResult, classFull, ASSIGNMENT_ID);
+    const result = adaptMetricsToHeatmap(analyserResult, classFull, ASSIGNMENT_ID, partials);
 
     expect(result.className).toBe('Class Overview');
+  });
+
+  // ── Section 8 new error-path tests ──────────────────────────────────
+
+  it('throws TaskTitlesUnavailableError when partials has no entry for the assignment definitionKey', () => {
+    const analyserResult = minimalAveragingResult([]);
+    const classFull = buildClassFull();
+    const partials = buildNonMatchingPartials();
+
+    expect(() => adaptMetricsToHeatmap(analyserResult, classFull, ASSIGNMENT_ID, partials)).toThrow(
+      TaskTitlesUnavailableError
+    );
+  });
+
+  it('throws TaskTitlesUnavailableError when located partial has a task with null taskTitle', () => {
+    const analyserResult = minimalAveragingResult([]);
+    const classFull = buildClassFull();
+    // First task has null title, second has a valid title
+    const partials = buildPartials([
+      { taskTitle: null },
+      { taskTitle: 'A valid task title' },
+      { taskTitle: null },
+    ]);
+
+    expect(() => adaptMetricsToHeatmap(analyserResult, classFull, ASSIGNMENT_ID, partials)).toThrow(
+      TaskTitlesUnavailableError
+    );
+  });
+
+  it('does NOT throw when all tasks have non-null taskTitle, even if classFull embedded tasks are the weight-summary shape', () => {
+    const aliceT1 = buildPerStudentTaskMetric('s_001', 'task_001');
+    const analyserResult = minimalAveragingResult([aliceT1]);
+    const classFull = buildClassFull();
+
+    // The partial has non-null titles
+    const partials = buildPartials([
+      { taskTitle: 'Task One Title' },
+      { taskTitle: 'Task Two Title' },
+      { taskTitle: 'Task Three Title' },
+    ]);
+
+    const result = adaptMetricsToHeatmap(analyserResult, classFull, ASSIGNMENT_ID, partials);
+
+    // taskColumns carry the partial's titles
+    expect(result.taskColumns).toHaveLength(expectedTaskColumnCount);
+    expect(result.taskColumns[0].taskTitle).toBe('Task One Title');
+    expect(result.taskColumns[1].taskTitle).toBe('Task Two Title');
+    expect(result.taskColumns[2].taskTitle).toBe('Task Three Title');
+  });
+
+  it('throws TaskTitlesUnavailableError when assignmentDefinitionPartials is an empty array', () => {
+    const analyserResult = minimalAveragingResult([]);
+    const classFull = buildClassFull();
+    const emptyPartials = [] as unknown as AssignmentDefinitionPartialsResponse;
+
+    expect(() =>
+      adaptMetricsToHeatmap(analyserResult, classFull, ASSIGNMENT_ID, emptyPartials)
+    ).toThrow(TaskTitlesUnavailableError);
   });
 });

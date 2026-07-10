@@ -1933,9 +1933,9 @@ describe('toPartialJSON taskTitle emission (RED — tests fail until Green)', ()
     const partial = def.toPartialJSON();
 
     expect(partial.tasks).toHaveLength(1);
-    expect(partial.tasks[0]).toHaveProperty('id', task.id);
+    expect(partial.tasks[0]).toHaveProperty('taskId', task.id);
     expect(partial.tasks[0]).toHaveProperty('taskWeighting', 3);
-    // RED: toPartialJSON does not yet emit taskTitle — this assertion will fail
+    // RED: toPartialJSON does not yet emit taskId — this assertion will fail
     expect(partial.tasks[0]).toHaveProperty('taskTitle', task.taskTitle);
   });
 });
@@ -2068,7 +2068,7 @@ describe('validatePartialRow_', () => {
     },
     {
       description: 'row with valid tasks array (non-null)',
-      row: buildValidRow({ tasks: [{ id: 't_001', taskWeighting: 1, taskTitle: 'Task 1' }] }),
+      row: buildValidRow({ tasks: [{ taskId: 't_001', taskWeighting: 1, taskTitle: 'Task 1' }] }),
       rowIndex: 0,
       shouldThrow: false,
     },

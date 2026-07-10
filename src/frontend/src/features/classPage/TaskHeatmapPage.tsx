@@ -11,15 +11,29 @@
  * @see SPEC.md — §"Page composition", §"Navigation / breadcrumb", §"Error handling"
  */
 
-import { useEffect, useState, type JSX } from 'react';
-import { Button, Card, Flex, Typography } from 'antd';
+import { useEffect, useMemo, useState, type JSX } from 'react';
+import { Alert, Button, Card, Flex, Typography } from 'antd';
 import { ArrowLeft, RefreshCw } from 'lucide-react';
 
 import type { AveragingResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
-import { adaptMetricsToHeatmap } from '../../services/dataAnalysis/heatmapAdapter';
+import type { AssignmentDefinitionPartialsResponse } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import {
+  adaptMetricsToHeatmap,
+  TaskTitlesUnavailableError,
+} from '../../services/dataAnalysis/heatmapAdapter';
 import { logFrontendError } from '../../logging/frontendLogger';
 import { TaskHeatmapTable } from './TaskHeatmapTable';
+
+type HeatmapPageState = Readonly<{
+  heatmapResult: ReturnType<typeof adaptMetricsToHeatmap> | null;
+  error: unknown;
+}>;
+
+type HeaderLabels = Readonly<{
+  assignmentName: string;
+  className: string;
+}>;
 
 type TaskHeatmapPageProperties = Readonly<{
   /** The already-computed analyser result (non-null, narrowed by the ready gate). */
@@ -28,6 +42,8 @@ type TaskHeatmapPageProperties = Readonly<{
   classFull: ClassFull;
   /** The assignment ID to project the heatmap for. */
   assignmentId: string;
+  /** Warm-up assignment-definition partials (non-null, narrowed by the ready gate). */
+  assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse;
   /** Callback invoked when the user clicks Back to return to the overview. */
   onBack: () => void;
   /** Callback invoked when the user clicks Refresh to re-run the data pipeline. */
@@ -35,89 +51,137 @@ type TaskHeatmapPageProperties = Readonly<{
 }>;
 
 /**
+ * Derive the header display labels from class data.
+ *
+ * @param {ClassFull} classFull - The full class data.
+ * @param {string} assignmentId - The assignment identifier.
+ * @returns {HeaderLabels} Always-available header values.
+ */
+function getHeaderLabels(classFull: ClassFull, assignmentId: string): HeaderLabels {
+  const assignment = classFull.assignments.find((a) => a.assignmentId === assignmentId);
+  return {
+    assignmentName: assignment?.assignmentDefinition.primaryTitle ?? '',
+    className: classFull.className ?? 'Class Overview',
+  };
+}
+
+/**
+ * Lazily compute the heatmap result, catching errors into state.
+ *
+ * @param {AveragingResult} analyserResult - The analyser result.
+ * @param {ClassFull} classFull - The full class data.
+ * @param {string} assignmentId - The assignment identifier.
+ * @param {AssignmentDefinitionPartialsResponse} adp - Warm-up partials.
+ * @returns {HeatmapPageState} The result or error.
+ */
+function computeHeatmapState(
+  analyserResult: AveragingResult,
+  classFull: ClassFull,
+  assignmentId: string,
+  adp: AssignmentDefinitionPartialsResponse
+): HeatmapPageState {
+  try {
+    return {
+      heatmapResult: adaptMetricsToHeatmap(analyserResult, classFull, assignmentId, adp),
+      error: null,
+    };
+  } catch (error: unknown) {
+    return { heatmapResult: null, error };
+  }
+}
+
+/**
  * Render the Task Heatmap page for a single assignment.
  *
  * Computes `HeatmapResult` exactly once via a lazy `useState` initializer.
- * When `adaptMetricsToHeatmap` throws (unknown `assignmentId`), the error is
- * logged via `logFrontendError('TaskHeatmapPage', error)` and `onBack` is
- * called — no in-view error message is rendered.
+ * The error catch distinguishes two error types:
+ *
+ * - {@link TaskTitlesUnavailableError}: renders an in-view `Alert` in place of
+ *   the table region while keeping the header `Card` visible.  Does NOT call
+ *   `onBack`.
+ * - All other errors (generic `Error`, unknown `assignmentId`): logs via
+ *   `logFrontendError('TaskHeatmapPage', error)` and calls `onBack` exactly
+ *   once — no in-view error UI.
  *
  * @param {TaskHeatmapPageProperties} properties - Component properties.
  * @param {AveragingResult} properties.analyserResult - The analyser result.
  * @param {ClassFull} properties.classFull - The full class data.
  * @param {string} properties.assignmentId - The assignment ID.
+ * @param {AssignmentDefinitionPartialsResponse} properties.assignmentDefinitionPartials -
+ *   Warm-up partials for column/title sourcing.
  * @param {() => void} properties.onBack - Back callback.
  * @param {() => void} properties.refetch - Refresh callback.
- * @returns {JSX.Element | null} The rendered heatmap page or `null` on error.
+ * @returns {JSX.Element | null} The rendered heatmap page, an error `Alert`,
+ *   or `null` on generic error (after navigation).
  */
 export function TaskHeatmapPage({
   analyserResult,
   classFull,
   assignmentId,
-  onBack,
+  assignmentDefinitionPartials,
+  onBack: backCallback,
   refetch,
 }: TaskHeatmapPageProperties): JSX.Element | null {
-  // Compute the heatmap result exactly ONCE via a lazy initializer. If the
-  // adapter throws (unknown assignmentId), the error is caught and stored so
-  // the effect below can log it and navigate back.
-  const [state] = useState(() => {
-    try {
-      return {
-        heatmapResult: adaptMetricsToHeatmap(analyserResult, classFull, assignmentId),
-        error: null as unknown,
-      };
-    } catch (error: unknown) {
-      return { heatmapResult: null, error };
-    }
-  });
+  const [state] = useState<HeatmapPageState>(() =>
+    computeHeatmapState(analyserResult, classFull, assignmentId, assignmentDefinitionPartials)
+  );
 
-  // On mount (or when error/onBack changes), log the error and auto-navigate
-  // back to the overview. No in-view error UI is rendered.
+  const { assignmentName, className } = useMemo<HeaderLabels>(
+    () => getHeaderLabels(classFull, assignmentId),
+    [classFull, assignmentId]
+  );
+
+  const isTitleError: boolean = state.error instanceof TaskTitlesUnavailableError;
+  const isGenericError: boolean = state.error !== null && !isTitleError;
+
+  // Generic errors (unknown assignmentId): log and auto-navigate back.
   useEffect(() => {
-    if (state.error !== null) {
+    if (isGenericError) {
       logFrontendError('TaskHeatmapPage', state.error);
-      onBack();
+      backCallback();
     }
-  }, [state.error, onBack]);
+  }, [isGenericError, state.error, backCallback]);
 
-  // When the adapter threw, render nothing — the effect above will have called
-  // onBack and the component will be unmounted.
-  if (state.error !== null || state.heatmapResult === null) {
+  if (isGenericError) {
     return null;
   }
 
-  const { heatmapResult } = state;
+  if (isTitleError) {
+    // Title-error: render header + Alert, no onBack auto-navigate.
+    // The control Card is intentionally removed per spec: the Alert replaces the
+    // control-region body AND the table region; only the header Card stays visible.
+    return (
+      <Flex vertical gap={16}>
+        <Card size="small">
+          <Flex justify="space-between" align="center">
+            <Typography.Title level={4} style={{ margin: 0 }}>{assignmentName}</Typography.Title>
+            <Button type="text" icon={<ArrowLeft size={16} />} aria-label="Back to Class overview" onClick={backCallback} />
+          </Flex>
+          <Typography.Text type="secondary">{className}</Typography.Text>
+        </Card>
+        <Alert type="error" showIcon title="Task titles are currently unavailable." description="Please try reloading the page." role="alert" />
+      </Flex>
+    );
+  }
 
+  // Normal (successful) rendering.
+  const { heatmapResult } = state;
   return (
     <Flex vertical gap={16}>
-      {/* ── Header region ──────────────────────────────────────────── */}
       <Card size="small">
         <Flex justify="space-between" align="center">
-          <Typography.Title level={4} style={{ margin: 0 }}>
-          {heatmapResult.assignmentName}
-          </Typography.Title>
-          <Button
-            type="text"
-            icon={<ArrowLeft size={16} />}
-            aria-label="Back to Class overview"
-            onClick={onBack}
-          />
+          <Typography.Title level={4} style={{ margin: 0 }}>{heatmapResult!.assignmentName}</Typography.Title>
+          <Button type="text" icon={<ArrowLeft size={16} />} aria-label="Back to Class overview" onClick={backCallback} />
         </Flex>
-        <Typography.Text type="secondary">{heatmapResult.className}</Typography.Text>
+        <Typography.Text type="secondary">{heatmapResult!.className}</Typography.Text>
       </Card>
-
-      {/* ── Control region ─────────────────────────────────────────── */}
       <Card size="small">
         <Flex justify="space-between">
-          <Button icon={<RefreshCw size={16} />} onClick={refetch}>
-            Refresh
-          </Button>
+          <Button icon={<RefreshCw size={16} />} onClick={refetch}>Refresh</Button>
         </Flex>
       </Card>
-
-      {/* ── Table region ───────────────────────────────────────────── */}
       <Card size="small">
-        <TaskHeatmapTable heatmapResult={heatmapResult} />
+        <TaskHeatmapTable heatmapResult={heatmapResult!} />
       </Card>
     </Flex>
   );

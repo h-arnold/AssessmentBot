@@ -64,7 +64,7 @@ export function ClassPage({
   classId,
   onNavigateToClasses,
 }: ClassPageProperties): JSX.Element {
-  const { surfaceState, classFull, analyserResult, adapterResult, error, refetch } =
+  const { surfaceState, classFull, analyserResult, adapterResult, error, refetch, assignmentDefinitionPartials } =
     useClassPageData(classId);
 
   const [isAssessModalOpen, setIsAssessModalOpen] = useState<boolean>(false);
@@ -147,6 +147,7 @@ export function ClassPage({
         analyserResult={analyserResult}
         classFull={classFull}
         selectedView={selectedView}
+        assignmentDefinitionPartials={assignmentDefinitionPartials}
         onOpenHeatmap={handleOpenHeatmap}
         onBack={handleBack}
         refetch={refetch}

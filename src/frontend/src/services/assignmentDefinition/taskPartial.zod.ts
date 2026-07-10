@@ -8,17 +8,16 @@ import { z } from 'zod';
  * The full task schema is in `assignmentDefinition.zod.ts`
  * (`AssignmentDefinitionTaskSchema`). Range enforcement on `taskWeighting`
  * is the analyser's job — the wire schema only enforces shape (matching the
- * existing `assignmentDefinition.zod.ts` convention). `id` uses `.min(1)`
+ * existing `assignmentDefinition.zod.ts` convention). `taskId` uses `.min(1)`
  * because `TaskDefinition._deriveId` always produces a `t_`-prefixed non-empty
  * hash.
  *
- * After the Section 7b rename, `id` will become `taskId` to align with
- * `AssignmentDefinitionTaskSchema.taskId`. `taskTitle` is nullable so that
- * legacy or missing titles reach the `TaskTitlesUnavailableError` path
- * (Section 8).
+ * `taskId` aligns with `AssignmentDefinitionTaskSchema.taskId`. `taskTitle`
+ * is nullable so that legacy or missing titles reach the
+ * `TaskTitlesUnavailableError` path (Section 8).
  */
 export const TaskPartialSchema = z.strictObject({
-  id: z.string().min(1),
+  taskId: z.string().min(1),
   taskWeighting: z.number(),
   taskTitle: z.string().nullable(),
 });

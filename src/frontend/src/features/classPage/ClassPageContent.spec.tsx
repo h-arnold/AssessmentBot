@@ -19,6 +19,8 @@ import { createElement } from 'react';
 import { ClassPageContent } from './ClassPageContent';
 import type { ClassPageSurfaceState, ClassPageError } from './useClassPageData';
 import type { ClassPageAdapterResult } from './classPageAdapter.zod';
+import type { AveragingResult } from '../../services/dataAnalysis/dataAnalysis.zod';
+import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
 
 // ===========================================================================
 // Mock setup
@@ -33,6 +35,12 @@ const { mockRecentAssignmentsSection } = vi.hoisted(() => ({
 const { mockStudentAveragesTableCard } = vi.hoisted(() => ({
   mockStudentAveragesTableCard: vi.fn(function MockStudentAveragesTableCard() {
     return createElement('div', { 'data-testid': 'student-averages-table-card' });
+  }),
+}));
+
+const { mockTaskHeatmapPage } = vi.hoisted(() => ({
+  mockTaskHeatmapPage: vi.fn(function MockTaskHeatmapPage() {
+    return createElement('div', { 'data-testid': 'task-heatmap-page' });
   }),
 }));
 
@@ -52,6 +60,10 @@ vi.mock('./StudentAveragesTableCard', () => ({
 
 vi.mock('./ClassPageHeaderActions', () => ({
   ClassPageHeaderActions: mockClassPageHeaderActions,
+}));
+
+vi.mock('./TaskHeatmapPage', () => ({
+  TaskHeatmapPage: mockTaskHeatmapPage,
 }));
 
 // ===========================================================================
@@ -125,6 +137,12 @@ function getFirstCallArguments(mock: ReturnType<typeof vi.fn>): Record<string, u
 describe('ClassPageContent', () => {
   let user: ReturnType<typeof userEvent.setup>;
 
+  /** Minimal non-null AveragingResult fixture for the heatmap ready gate. */
+  const nonNullAnalyserResult = { classId: 'c-1' } as unknown as AveragingResult;
+
+  /** Minimal non-null ClassFull fixture for the heatmap ready gate. */
+  const nonNullClassFull = { classId: 'c-1' } as unknown as ClassFull;
+
   beforeEach(() => {
     user = userEvent.setup();
   });
@@ -154,6 +172,7 @@ describe('ClassPageContent', () => {
         onOpenHeatmap: vi.fn(),
         onBack: vi.fn(),
         refetch: vi.fn(),
+        assignmentDefinitionPartials: null,
       })
     );
 
@@ -193,6 +212,7 @@ describe('ClassPageContent', () => {
         onOpenHeatmap: vi.fn(),
         onBack: vi.fn(),
         refetch: vi.fn(),
+        assignmentDefinitionPartials: null,
       })
     );
 
@@ -238,6 +258,7 @@ describe('ClassPageContent', () => {
         onOpenHeatmap: vi.fn(),
         onBack: vi.fn(),
         refetch: vi.fn(),
+        assignmentDefinitionPartials: null,
       })
     );
 
@@ -282,6 +303,7 @@ describe('ClassPageContent', () => {
         onOpenHeatmap: vi.fn(),
         onBack: vi.fn(),
         refetch: vi.fn(),
+        assignmentDefinitionPartials: null,
       })
     );
 
@@ -326,6 +348,7 @@ describe('ClassPageContent', () => {
         onOpenHeatmap: vi.fn(),
         onBack: vi.fn(),
         refetch: vi.fn(),
+        assignmentDefinitionPartials: null,
       })
     );
 
@@ -372,6 +395,7 @@ describe('ClassPageContent', () => {
         onOpenHeatmap: vi.fn(),
         onBack: vi.fn(),
         refetch: vi.fn(),
+        assignmentDefinitionPartials: null,
       })
     );
 
@@ -414,6 +438,7 @@ describe('ClassPageContent', () => {
         onOpenHeatmap: vi.fn(),
         onBack: vi.fn(),
         refetch: vi.fn(),
+        assignmentDefinitionPartials: null,
       })
     );
 
@@ -452,6 +477,7 @@ describe('ClassPageContent', () => {
         onOpenHeatmap: vi.fn(),
         onBack: vi.fn(),
         refetch: vi.fn(),
+        assignmentDefinitionPartials: null,
       })
     );
 
@@ -477,5 +503,79 @@ describe('ClassPageContent', () => {
     // Verify ClassPageHeaderActions receives the onStartNewAssessment callback
     const headerActionsProperties = getFirstCallArguments(mockClassPageHeaderActions);
     expect(headerActionsProperties.onStartNewAssessment).toBeTypeOf('function');
+  });
+
+  // -----------------------------------------------------------------------
+  // Heatmap view with assignmentDefinitionPartials (Section 8 prop-thread)
+  // -----------------------------------------------------------------------
+
+  it('renders TaskHeatmapPage when selectedView.view is heatmap and assignmentDefinitionPartials is non-null', () => {
+    const adapterResult = createAdapterResult();
+    const surfaceState: ClassPageSurfaceState = { status: 'ready' };
+
+    render(
+      createElement(ClassPageContent, {
+        surfaceState,
+        adapterResult,
+        error: null,
+        onStartNewAssessment: vi.fn(),
+        onNavigateToClasses: vi.fn(),
+        onRetry: vi.fn(),
+        analyserResult: nonNullAnalyserResult,
+        classFull: nonNullClassFull,
+        selectedView: { view: 'heatmap', assignmentId: 'a-1' },
+        onOpenHeatmap: vi.fn(),
+        onBack: vi.fn(),
+        refetch: vi.fn(),
+        assignmentDefinitionPartials: [],
+      })
+    );
+
+    // TaskHeatmapPage should receive the correct props
+    expect(mockTaskHeatmapPage).toHaveBeenCalledTimes(1);
+    const callArguments = getFirstCallArguments(mockTaskHeatmapPage);
+    expect(callArguments).toMatchObject({
+      analyserResult: { classId: 'c-1' },
+      classFull: { classId: 'c-1' },
+      assignmentId: 'a-1',
+      assignmentDefinitionPartials: [],
+    });
+    expect(typeof callArguments.onBack).toBe('function');
+    expect(typeof callArguments.refetch).toBe('function');
+
+    // Overview content should NOT render
+    expect(mockRecentAssignmentsSection).not.toHaveBeenCalled();
+    expect(mockStudentAveragesTableCard).not.toHaveBeenCalled();
+  });
+
+  it('falls back to overview content when selectedView.view is heatmap but assignmentDefinitionPartials is null', () => {
+    const adapterResult = createAdapterResult();
+    const surfaceState: ClassPageSurfaceState = { status: 'ready' };
+
+    render(
+      createElement(ClassPageContent, {
+        surfaceState,
+        adapterResult,
+        error: null,
+        onStartNewAssessment: vi.fn(),
+        onNavigateToClasses: vi.fn(),
+        onRetry: vi.fn(),
+        analyserResult: nonNullAnalyserResult,
+        classFull: nonNullClassFull,
+        selectedView: { view: 'heatmap', assignmentId: 'a-1' },
+        onOpenHeatmap: vi.fn(),
+        onBack: vi.fn(),
+        refetch: vi.fn(),
+        assignmentDefinitionPartials: null,
+      })
+    );
+
+    // TaskHeatmapPage should NOT render
+    expect(mockTaskHeatmapPage).not.toHaveBeenCalled();
+
+    // Overview content should render instead (fallback)
+    expect(mockRecentAssignmentsSection).toHaveBeenCalled();
+    expect(mockStudentAveragesTableCard).toHaveBeenCalled();
+    expect(mockClassPageHeaderActions).toHaveBeenCalled();
   });
 });

@@ -348,7 +348,7 @@ class AssignmentDefinition {
         !this.tasks || Object.keys(this.tasks).length === 0
           ? []
           : Object.values(this.tasks).map((task) => ({
-              id: task.id,
+              taskId: task.id,
               taskWeighting: task.taskWeighting,
               taskTitle: task.taskTitle,
             })),

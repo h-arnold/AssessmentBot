@@ -17,10 +17,13 @@ import type { ResponseItem, RuntimeScenario } from '../shared/endToEndRuntimeMoc
 // Per the plan's documented fallback, the `ClassFull` journey fixture is co-located here
 // as a typed literal seeded from the same anon mock data (class
 // "7C2 Digital Technology 2025-2026", 10 students, one assignment with three
-// submission tasks). The `assignmentDefinition.tasks` is derived from the
+// submission tasks). The embedded `assignmentDefinition.tasks` is derived from the
 // submission item keys (`task_001`/`task_002`/`task_003`) as
-// `[{ id, taskWeighting: 1, taskTitle: 'Task 1' }, ...]` (the `taskTitle`
-// field is required post-ACTION_PLAN §7a).
+// `[{ taskId, taskWeighting: 1, taskTitle: 'Task 1' }, ...]` matching the `TaskPartial`
+// shape (`taskPartial.zod.ts`, post-ACTION_PLAN §7b). The warm-up
+// `getAssignmentDefinitionPartials` dataset is seeded separately (see
+// `buildAssignmentDefinitionPartial`) because Section 8 sources the heatmap column
+// set and titles from that warm-up partial, located by `definitionKey`.
 
 /**
  * A single heatmap journey student (seeded from anon-test-data.json).
@@ -194,8 +197,8 @@ function buildClassFullDocument(
           updatedAt: '2026-07-07T07:49:06.791Z',
           tasks: zeroTasks
             ? []
-            : HEATMAP_TASK_IDS.map((id, index) => ({
-                id,
+            : HEATMAP_TASK_IDS.map((taskId, index) => ({
+                taskId,
                 taskWeighting: 1,
                 taskTitle: `Task ${index + 1}`,
               })),
@@ -262,6 +265,51 @@ function buildClassFullDocument(
 }
 
 /**
+ * Builds the warm-up `getAssignmentDefinitionPartials` payload for the heatmap
+ * journey (ACTION_PLAN §8 / SPEC.md heatmap column sourcing).
+ *
+ * Section 8 sources the heatmap column set and per-task `taskTitle` from the
+ * warm-up `assignmentDefinitionPartials` dataset, located by the assignment's
+ * `definitionKey` via `getAssignmentDefinitionPartial`. The embedded
+ * `classFull.assignments[].assignmentDefinition` is no longer the column source.
+ * Each task must therefore carry `taskId`, `taskWeighting`, and a **non-null**
+ * `taskTitle` matching the `TaskPartial` shape, or `adaptMetricsToHeatmap`
+ * throws `TaskTitlesUnavailableError`.
+ *
+ * The partial mirrors the embedded assignment definition's fields (the strict
+ * `AssignmentDefinitionPartialSchema` is enforced by `callApi`) and uses the
+ * same `definitionKey` so the lookup resolves against the journey fixture.
+ *
+ * @param {boolean} zeroTasks Emit `tasks: []` (no task columns) for the zero-tasks variant.
+ * @returns {Record<string, unknown>} A complete `AssignmentDefinitionPartial`.
+ */
+function buildAssignmentDefinitionPartial(zeroTasks: boolean): Record<string, unknown> {
+  return {
+    primaryTitle: '7. Video Plan',
+    primaryTopic: 'Earth',
+    primaryTopicKey: '00000000-0000-0000-0000-000000000003',
+    yearGroupKey: '00000000-0000-0000-0000-000000000002',
+    yearGroupLabel: '7',
+    alternateTitles: [HEATMAP_ASSIGNMENT_NAME],
+    alternateTopics: ['Earth'],
+    documentType: 'SLIDES',
+    referenceDocumentId: 'ref',
+    templateDocumentId: 'tpl',
+    assignmentWeighting: 1,
+    definitionKey: HEATMAP_DEFINITION_KEY,
+    tasks: zeroTasks
+      ? []
+      : HEATMAP_TASK_IDS.map((taskId, index) => ({
+          taskId,
+          taskWeighting: 1,
+          taskTitle: `Task ${index + 1}`,
+        })),
+    createdAt: '2026-07-07T07:45:23.916Z',
+    updatedAt: '2026-07-07T07:49:06.791Z',
+  };
+}
+
+/**
  * Creates a runtime scenario for the Task Heatmap E2E journey.
  *
  * Mirrors `createClassesScenario`: satisfies the warm-up `usePageDataset`
@@ -324,7 +372,9 @@ export function createHeatmapScenario(options: CreateHeatmapScenarioOptions = {}
       },
     ],
     getAssignmentTopics: [{ kind: 'success', data: [] }],
-    getAssignmentDefinitionPartials: [{ kind: 'success', data: [] }],
+    getAssignmentDefinitionPartials: [
+      { kind: 'success', data: [buildAssignmentDefinitionPartial(zeroTasks)] },
+    ],
     getABClass: classEntries,
   };
 }

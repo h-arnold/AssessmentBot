@@ -5,6 +5,7 @@ import type {
 } from '../dataAnalysis.zod';
 import type { CriterionWeightings } from './averagingAnalyser';
 import type { DataPointAccumulator, MetricAccumulator } from './averagingAnalyser.types';
+import type { TaskPartial } from '../../assignmentDefinition/taskPartial.zod';
 import { processItemAssessments } from './averagingAnalyser.criterionAccumulation';
 
 /**
@@ -74,22 +75,22 @@ export function accumToMetric(accumulator: MetricAccumulator): MetricResult {
 /**
  * Pre-register tasks so entries with zero submissions appear in perTask.
  *
- * @param {ReadonlyArray<{ id: string }>} tasks - The tasks array.
+ * @param {ReadonlyArray<TaskPartial>} tasks - The tasks array.
  * @param {string} definitionKey - The definition key.
  * @param {Map<string, { definitionKey: string; taskId: string } & DataPointAccumulator>}
  *   taskAccums - The task accumulation map (mutated).
  */
 export function preRegisterTasks(
-  tasks: ReadonlyArray<{ id: string }>,
+  tasks: ReadonlyArray<TaskPartial>,
   definitionKey: string,
   taskAccums: Map<string, { definitionKey: string; taskId: string } & DataPointAccumulator>
 ): void {
   for (const task of tasks) {
-    const taskKey = `${definitionKey}::${task.id}`;
+    const taskKey = `${definitionKey}::${task.taskId}`;
     if (!taskAccums.has(taskKey)) {
       taskAccums.set(taskKey, {
         definitionKey,
-        taskId: task.id,
+        taskId: task.taskId,
         ...createDataPointAccumulator(),
       });
     }
@@ -276,7 +277,7 @@ export function accumulateDataPoints(
   for (const p of input.assignmentDefinitionPartials) {
     const taskMap = new Map<string, number>();
     for (const t of p.tasks ?? []) {
-      taskMap.set(t.id, t.taskWeighting);
+      taskMap.set(t.taskId, t.taskWeighting);
     }
     taskWeightByDefinitionKey.set(p.definitionKey, taskMap);
   }

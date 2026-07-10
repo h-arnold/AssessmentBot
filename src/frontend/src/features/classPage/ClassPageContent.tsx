@@ -36,6 +36,7 @@ import type {
 import type { ClassPageAdapterResult } from './classPageAdapter.zod';
 import type { AveragingResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
+import type { AssignmentDefinitionPartialsResponse } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import { ClassPageHeaderActions } from './ClassPageHeaderActions';
 import { RecentAssignmentsSection } from './RecentAssignmentsSection';
 import { StudentAveragesTableCard } from './StudentAveragesTableCard';
@@ -64,6 +65,8 @@ type ClassPageContentProperties = Readonly<{
   classFull: ClassFull | null;
   /** The current view selection (overview or heatmap with optional assignmentId). */
   selectedView: { view: 'overview' | 'heatmap'; assignmentId?: string };
+  /** Warm-up assignment-definition partials (non-null when `surfaceState.status === 'ready'`). */
+  assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse | null;
   /** Callback invoked when a RecentAssignmentCard is clicked to open the heatmap. */
   onOpenHeatmap: (assignmentId: string) => void;
   /** Callback invoked to return from the heatmap view to the overview. */
@@ -287,6 +290,7 @@ function ClassPageBlocking({
  * @param {ClassPageContentProperties['selectedView']} selectedView - The current view selection.
  * @param {AveragingResult | null} analyserResult - The analyser result.
  * @param {ClassFull | null} classFull - The full class data.
+ * @param {import('../../services/assignmentDefinition/assignmentDefinitionPartials.zod').AssignmentDefinitionPartialsResponse | null} assignmentDefinitionPartials - Warm-up partials (non-null gates the heatmap branch).
  * @param {ClassPageAdapterResult} adapterResult - The adapter result (non-null in ready state).
  * @param {() => void} onStartNewAssessment - Callback to start a new assessment.
  * @param {(assignmentId: string) => void} onOpenHeatmap - Callback to open the heatmap.
@@ -298,6 +302,7 @@ function renderReadyContent(
   selectedView: ClassPageContentProperties['selectedView'],
   analyserResult: AveragingResult | null,
   classFull: ClassFull | null,
+  assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse | null,
   adapterResult: ClassPageAdapterResult,
   onStartNewAssessment: () => void,
   onOpenHeatmap: (assignmentId: string) => void,
@@ -308,13 +313,15 @@ function renderReadyContent(
     selectedView.view === 'heatmap' &&
     selectedView.assignmentId !== undefined &&
     analyserResult !== null &&
-    classFull !== null
+    classFull !== null &&
+    assignmentDefinitionPartials !== null
   ) {
     return (
       <TaskHeatmapPage
         analyserResult={analyserResult}
         classFull={classFull}
         assignmentId={selectedView.assignmentId}
+        assignmentDefinitionPartials={assignmentDefinitionPartials}
         onBack={onBack}
         refetch={refetch}
       />
@@ -397,6 +404,7 @@ export function ClassPageContent({
   analyserResult,
   classFull,
   selectedView,
+  assignmentDefinitionPartials,
   onOpenHeatmap,
   onBack,
   refetch,
@@ -425,6 +433,7 @@ export function ClassPageContent({
         selectedView,
         analyserResult,
         classFull,
+        assignmentDefinitionPartials,
         adapterResult!,
         onStartNewAssessment,
         onOpenHeatmap,

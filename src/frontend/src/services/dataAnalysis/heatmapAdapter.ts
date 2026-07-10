@@ -1,6 +1,32 @@
 import type { AveragingResult, MetricResult, PerStudentTaskMetric } from './dataAnalysis.zod';
 import type { ClassFull } from '../googleClassrooms/classDetail/classDetailService.zod';
-import type { AssignmentDefinitionPartial } from '../assignmentDefinition/assignmentDefinitionPartials.zod';
+import type {
+  AssignmentDefinitionPartial,
+  AssignmentDefinitionPartialsResponse,
+} from '../assignmentDefinition/assignmentDefinitionPartials.zod';
+import { getAssignmentDefinitionPartial } from '../assignmentDefinition/assignmentDefinitionUtilities';
+
+/**
+ * Error thrown when task titles cannot be resolved for a heatmap assignment.
+ *
+ * @remarks
+ * This indicates either the warm-up `assignmentDefinitionPartials` dataset has
+ * no entry for the assignment's `definitionKey`, or the located partial has at
+ * least one task with a `null` `taskTitle`.  The caller should render an
+ * in-view `Alert` rather than auto-navigating.
+ */
+export class TaskTitlesUnavailableError extends Error {
+  /**
+   * Construct a TaskTitlesUnavailableError for the given definition key.
+   *
+   * @param {string} definitionKey - The definition key whose titles could not
+   *   be resolved.
+   */
+  constructor(definitionKey: string) {
+    super(`Task titles unavailable for definition "${definitionKey}"`);
+    this.name = 'TaskTitlesUnavailableError';
+  }
+}
 
 /**
  * A single heatmap cell containing the three criterion metric results for one
@@ -26,9 +52,9 @@ export interface HeatmapRow {
  * A column descriptor for a single task in the heatmap table.
  *
  * @remarks
- * `taskTitle` is always `null` in v1 because the assignment definition partial
- * carries no per-task title. The table header falls back to `taskId` for
- * display.
+ * `taskTitle` is sourced from the warm-up `assignmentDefinitionPartials`
+ * dataset and may be `null` (which triggers a `TaskTitlesUnavailableError`
+ * during projection).  The table header falls back to `taskId` for display.
  */
 export interface HeatmapTaskColumn {
   taskKey: string;
@@ -63,18 +89,19 @@ const NOT_ATTEMPTED_METRIC: MetricResult = {
 };
 
 /**
- * Build the ordered task-column descriptors for a single assignment.
+ * Build the ordered task-column descriptors from a warm-up assignment-definition
+ * partial.
  *
- * @param {AssignmentDefinitionPartial} definition - The assignment definition containing the
- *   task list.
+ * @param {AssignmentDefinitionPartial} partial - The assignment-definition
+ *   partial whose tasks define the column set.
  * @returns {HeatmapTaskColumn[]} Ordered task-column descriptors with `taskKey`,
- *   `taskId`, and `taskTitle: null`.
+ *   `taskId`, and `taskTitle` read directly from the partial.
  */
-function buildTaskColumns(definition: AssignmentDefinitionPartial): HeatmapTaskColumn[] {
-  return (definition.tasks ?? []).map((task) => ({
-    taskKey: `${definition.definitionKey}::${task.id}`,
-    taskId: task.id,
-    taskTitle: null,
+function buildTaskColumns(partial: AssignmentDefinitionPartial): HeatmapTaskColumn[] {
+  return partial.tasks.map((task) => ({
+    taskKey: `${partial.definitionKey}::${task.taskId}`,
+    taskId: task.taskId,
+    taskTitle: task.taskTitle,
   }));
 }
 
@@ -104,26 +131,43 @@ function groupMetricsByStudent(
 }
 
 /**
- * Project an `AveragingResult` (with per-student-task metrics) and a `ClassFull`
- * into a `HeatmapResult` view model for a single assignment.
+ * Project an `AveragingResult` (with per-student-task metrics), a `ClassFull`,
+ * an `assignmentId`, and the warm-up `assignmentDefinitionPartials` into a
+ * `HeatmapResult` view model for a single assignment.
  *
  * @param {AveragingResult} analyserResult - The analysis result containing
  *   per-student-task metrics.
  * @param {ClassFull} classFull - The full class data including assignment
  *   definitions and roster.
  * @param {string} assignmentId - The identifier of the assignment to project.
+ * @param {AssignmentDefinitionPartialsResponse} assignmentDefinitionPartials -
+ *   The warm-up assignment-definition partials dataset.  Task columns and
+ *   titles are sourced from the entry matching the assignment's `definitionKey`.
  * @returns {HeatmapResult} A `HeatmapResult` with task columns, per-student rows,
  *   and metadata.
+ * @throws {TaskTitlesUnavailableError} When the warm-up partial is missing for
+ *   the assignment's `definitionKey`, or any non-empty task column has a `null`
+ *   `taskTitle`.
  * @throws {Error} If `assignmentId` is not found in `classFull.assignments`.
+ *
  * @remarks
+ * **Breaking change (Section 8):** the signature now requires a 4th parameter
+ * (`assignmentDefinitionPartials`).  Task columns are sourced from the warm-up
+ * partial located via `getAssignmentDefinitionPartial`, NOT from the embedded
+ * `assignment.assignmentDefinition.tasks` (which carries the weight-summary
+ * shape).  If the partial is missing or any task has `null` `taskTitle`,
+ * `TaskTitlesUnavailableError` is thrown.  This is distinct from a generic
+ * `Error` (unknown `assignmentId`).
+ *
  * v1 uses single-assignment selection at the adapter boundary by deriving
- * `taskKey`s (`${definitionKey}::${taskId}`) from the assignment in `classFull`.
+ * `taskKey`s (`${definitionKey}::${taskId}`) from the warm-up partial.
  * Multi-assignment selection is deferred — see SPEC.md §Deferrals.
  */
 export function adaptMetricsToHeatmap(
   analyserResult: AveragingResult,
   classFull: ClassFull,
-  assignmentId: string
+  assignmentId: string,
+  assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse
 ): HeatmapResult {
   const assignment = classFull.assignments.find((a) => a.assignmentId === assignmentId);
   if (!assignment) {
@@ -132,9 +176,22 @@ export function adaptMetricsToHeatmap(
     );
   }
 
-  const definition = assignment.assignmentDefinition;
-  const className = classFull.className ?? DEFAULT_CLASS_NAME_LABEL;
-  const taskColumns = buildTaskColumns(definition);
+  const definitionKey: string = assignment.assignmentDefinition.definitionKey;
+  const className: string = classFull.className ?? DEFAULT_CLASS_NAME_LABEL;
+
+  // Source task columns from the warm-up partial, not the embedded definition.
+  const partial = getAssignmentDefinitionPartial(assignmentDefinitionPartials, definitionKey);
+  if (!partial) {
+    throw new TaskTitlesUnavailableError(definitionKey);
+  }
+
+  const taskColumns = buildTaskColumns(partial);
+
+  // When the assignment has tasks but any title is null, throw.
+  if (taskColumns.some((c) => c.taskTitle === null)) {
+    throw new TaskTitlesUnavailableError(definitionKey);
+  }
+
   const columnTaskKeys = new Set(taskColumns.map((c) => c.taskKey));
   const metricsByStudent = groupMetricsByStudent(analyserResult, classFull.classId, columnTaskKeys);
 
@@ -161,5 +218,11 @@ export function adaptMetricsToHeatmap(
     return { studentId: student.id, studentName: student.name, cells };
   });
 
-  return { assignmentId, assignmentName: definition.primaryTitle, className, rows, taskColumns };
+  return {
+    assignmentId,
+    assignmentName: assignment.assignmentDefinition.primaryTitle,
+    className,
+    rows,
+    taskColumns,
+  };
 }

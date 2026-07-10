@@ -72,23 +72,23 @@ Where helper reuse/extension/new helpers are expected, the section records the d
 
 ### Module sizing / LOC (Planner §1.11)
 
-| File                                                                | Current LOC | Projected LOC | Action                                                                                                                                                                                                                     |
-| ------------------------------------------------------------------- | ----------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `services/dataAnalysis/dataAnalysis.zod.ts`                         | 197         | ~235          | No separation (< 500)                                                                                                                                                                                                      |
-| `services/dataAnalysis/analysers/averagingAnalyser.accumulation.ts` | 418         | ~470          | No separation. **If** it crosses 500, extract `buildPerStudentTaskMetrics` into `averagingAnalyser.perStudentTaskMetrics.ts`.                                                                                              |
-| `services/dataAnalysis/metricDisplay/MetricPill.tsx`                | 125         | ~170          | No separation                                                                                                                                                                                                              |
-| `features/classPage/classPageModel.ts`                              | 189         | ~210          | Add `compareHeatmapStudentName` (keep local) + `export` `METRIC_STATE_RANK_ASC` (reused by heatmap comparator)                                                                                                             |
-| `features/classPage/RecentAssignmentCard.tsx`                       | 92          | ~120          | Add `onOpenHeatmap` prop                                                                                                                                                                                                   |
-| `features/classPage/useClassPageData.ts`                            | 404         | 404           | **Unchanged**                                                                                                                                                                                                              |
-| `features/classPage/studentAveragesTableColumns.tsx`                | 164         | ~168          | `export` `METRIC_COLUMN_FILTERS` (reused by the heatmap table); `compareStudentNames` reused as-is. `DEFAULT_TONE_RANGE` is **not** exported — the heatmap table calls `resolveMetricTone(metric)` with the default range. |
-| `services/dataAnalysis/heatmapAdapter.ts`                           | 165         | ~215          | §8 adds `TaskTitlesUnavailableError` (class), the required 4th parameter, partial-source `buildTaskColumns`, and `TaskTitlesUnavailableError` branching. < 500 — no separation.                                            |
-| `features/classPage/TaskHeatmapTable.tsx`                           | —           | < 300         | Fresh file (Section 4)                                                                                                                                                                                                     |
-| `features/classPage/TaskHeatmapPage.tsx`                            | 123         | ~175          | §8 adds the `TaskTitlesUnavailableError` / generic-`Error` branch in the existing try-catch and the in-view `Alert`. < 500 — no separation.                                                                                |
-| `features/classPage/ClassPageContent.tsx`                           | 436         | ~455          | §8 widens the `ready` heatmap gate (lines 307–312) and forwards an `assignmentDefinitionPartials` prop. < 500 — no separation.                                                                                             |
-| `features/classPage/ClassPage.tsx`                                  | existing    | +~10          | §8 destructures `assignmentDefinitionPartials` from `useClassPageData` and threads it through `ClassPageContent`.                                                                                                          |
-| `services/assignmentDefinition/taskPartial.zod.ts`                  | 20          | ~25           | §7 Step 1a/1b: add `taskTitle` (nullable) + rename `id` → `taskId`.                                                                                                                                                        |
-| `backend/Models/AssignmentDefinition.js`                            | 414         | ~418          | §7 Step 2a/2b: add `taskTitle` to `toPartialJSON()` map + rename `id` → `taskId` in the emit. GAS exposure unchanged (guarded `module.exports` retained).                                                                  |
-| New: `services/assignmentDefinition/assignmentDefinitionUtils.ts`   | —           | < 25          | Fresh file (§7 Step 4) — `getAssignmentDefinitionPartial` pure helper. Single-file utility; no folder expansion triggered.                                                                                                 |
+| File                                                                  | Current LOC | Projected LOC | Action                                                                                                                                                                                                                     |
+| --------------------------------------------------------------------- | ----------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `services/dataAnalysis/dataAnalysis.zod.ts`                           | 197         | ~235          | No separation (< 500)                                                                                                                                                                                                      |
+| `services/dataAnalysis/analysers/averagingAnalyser.accumulation.ts`   | 418         | ~470          | No separation. **If** it crosses 500, extract `buildPerStudentTaskMetrics` into `averagingAnalyser.perStudentTaskMetrics.ts`.                                                                                              |
+| `services/dataAnalysis/metricDisplay/MetricPill.tsx`                  | 125         | ~170          | No separation                                                                                                                                                                                                              |
+| `features/classPage/classPageModel.ts`                                | 189         | ~210          | Add `compareHeatmapStudentName` (keep local) + `export` `METRIC_STATE_RANK_ASC` (reused by heatmap comparator)                                                                                                             |
+| `features/classPage/RecentAssignmentCard.tsx`                         | 92          | ~120          | Add `onOpenHeatmap` prop                                                                                                                                                                                                   |
+| `features/classPage/useClassPageData.ts`                              | 404         | 404           | **Unchanged**                                                                                                                                                                                                              |
+| `features/classPage/studentAveragesTableColumns.tsx`                  | 164         | ~168          | `export` `METRIC_COLUMN_FILTERS` (reused by the heatmap table); `compareStudentNames` reused as-is. `DEFAULT_TONE_RANGE` is **not** exported — the heatmap table calls `resolveMetricTone(metric)` with the default range. |
+| `services/dataAnalysis/heatmapAdapter.ts`                             | 165         | ~215          | §8 adds `TaskTitlesUnavailableError` (class), the required 4th parameter, partial-source `buildTaskColumns`, and `TaskTitlesUnavailableError` branching. < 500 — no separation.                                            |
+| `features/classPage/TaskHeatmapTable.tsx`                             | —           | < 300         | Fresh file (Section 4)                                                                                                                                                                                                     |
+| `features/classPage/TaskHeatmapPage.tsx`                              | 123         | ~175          | §8 adds the `TaskTitlesUnavailableError` / generic-`Error` branch in the existing try-catch and the in-view `Alert`. < 500 — no separation.                                                                                |
+| `features/classPage/ClassPageContent.tsx`                             | 436         | ~455          | §8 widens the `ready` heatmap gate (lines 307–312) and forwards an `assignmentDefinitionPartials` prop. < 500 — no separation.                                                                                             |
+| `features/classPage/ClassPage.tsx`                                    | existing    | +~10          | §8 destructures `assignmentDefinitionPartials` from `useClassPageData` and threads it through `ClassPageContent`.                                                                                                          |
+| `services/assignmentDefinition/taskPartial.zod.ts`                    | 20          | ~25           | §7 Step 1a/1b: add `taskTitle` (nullable) + rename `id` → `taskId`.                                                                                                                                                        |
+| `backend/Models/AssignmentDefinition.js`                              | 414         | ~418          | §7 Step 2a/2b: add `taskTitle` to `toPartialJSON()` map + rename `id` → `taskId` in the emit. GAS exposure unchanged (guarded `module.exports` retained).                                                                  |
+| New: `services/assignmentDefinition/assignmentDefinitionUtilities.ts` | —           | < 25          | Fresh file (§7 Step 4) — `getAssignmentDefinitionPartial` pure helper. Single-file utility; no folder expansion triggered.                                                                                                 |
 
 ### Validation commands hierarchy
 
@@ -714,7 +714,7 @@ Update docs to match the implemented feature and highlight caveats (multi-assign
 
 ---
 
-## Section 7 — TaskPartial → `taskId` consistency + `taskTitle` on partial + `assignmentDefinitionUtils`
+## Section 7 — TaskPartial → `taskId` consistency + `taskTitle` on partial + `assignmentDefinitionUtilities`
 
 ### Problem
 
@@ -730,7 +730,7 @@ The `taskId` convention dominates the codebase (`taskKey = '${definitionKey}::${
 > **Tree-green staging note:** Section 7 is split into two atomic commits so the tree never breaks between Section 7 and Section 8:
 >
 > - **Commit 7a — Step 1a + Step 2a (additive only):** add the nullable `taskTitle` field to `TaskPartialSchema` and the matching `taskTitle` emission in `toPartialJSON()`. These are purely additive — `z.strictObject` accepts a new nullable field without rejecting any current data, and the backend emitter (`Step 2a`) starts emitting `taskTitle` on every served definition (`TaskDefinition` requires it in its constructor at `Models/TaskDefinition.js:29`, so there is no `null`-emitting edge case at the source). No production consumer reads `taskTitle` yet, so the analyser, adapter, and all existing tests remain green. The frontend `AssignmentDefinitionPartialSchema` already requires `tasks: Array<TaskPartial>` (line 210); adding `taskTitle` as a known-nullable field keeps `z.strictObject` accepting every payload it accepted before, plus the new `taskTitle` field after Step 2a emits it.
-> - **Commit 7b+§8 — Step 1b + Step 2b + Section 8:** the `id` → `taskId` rename (Step 1b), the matching `{ id } → { taskId }` emission in `toPartialJSON()` (Step 2b), every catch-up find-replace from Step 3, the new `assignmentDefinitionUtils.ts` (Step 4), and the full Section 8 adapter rewrite happen **in one commit**, so the only commit that breaks existing `task.id` references is the same commit that fixes `heatmapAdapter.ts`, the analyser source code, and every `TaskPartial`-shaped test fixture in lock-step. The tree compiles and the full test suite stays green at both commit 7a and commit 7b+§8; there is no intermediate commit where `task.id` references no longer type-check.
+> - **Commit 7b+§8 — Step 1b + Step 2b + Section 8:** the `id` → `taskId` rename (Step 1b), the matching `{ id } → { taskId }` emission in `toPartialJSON()` (Step 2b), every catch-up find-replace from Step 3, the new `assignmentDefinitionUtilities.ts` (Step 4), and the full Section 8 adapter rewrite happen **in one commit**, so the only commit that breaks existing `task.id` references is the same commit that fixes `heatmapAdapter.ts`, the analyser source code, and every `TaskPartial`-shaped test fixture in lock-step. The tree compiles and the full test suite stays green at both commit 7a and commit 7b+§8; there is no intermediate commit where `task.id` references no longer type-check.
 > - `validatePartialRow_` test reconciliation (Step 5) may land in either 7a or 7b+§8; recommended 7a so the backend guard tests match the additive `taskTitle` emission immediately (the guard currently rejects any non-null `tasks`, which already disagrees with the live `toPartialJSON()` emitter, so fixing it earlier is safe).
 >
 > See §"Suggested implementation order" for the precise sequence including Sections 1–6.
@@ -839,11 +839,13 @@ Test fixtures and specs (must rename before specs re-parse):
 
 Verify with `npm run lint:frontend && npm run typecheck` — a clean run is impossible while any unrenamed `task.id` reference remains, because the schema is a `z.strictObject` and TypeScript will reject the missing `id` property.
 
-#### 4. `assignmentDefinitionUtils.ts` — pure `getAssignmentDefinitionPartial` helper
+#### 4. `assignmentDefinitionUtilities.ts` — pure `getAssignmentDefinitionPartial` helper
 
 > **Staging:** the new module can land in either commit 7a or 7b+§8 — it has no callers until §8. Recommended 7b+§8 so the helper and its only consumer (the adapter) land together; alternatively land in 7a as a self-contained utility and add §8 as its first consumer.
 
-**File:** `src/frontend/src/services/assignmentDefinition/assignmentDefinitionUtils.ts` (new)
+**File:** `src/frontend/src/services/assignmentDefinition/assignmentDefinitionUtilities.ts` (new)
+
+> **Naming note:** the file is named `assignmentDefinitionUtilities.ts` (not `…Utils.ts`) because the frontend `unicorn/prevent-abbreviations` rule (severity `warn`) is enforced under `--max-warnings 0` by `lint:frontend:check`, so the abbreviated `Utils` form would fail the commit gate. No eslint override is introduced.
 
 ```ts
 import type {
@@ -904,7 +906,7 @@ Code Reviewer mandatory docs: same set plus `SPEC.md` and `TASK_HEATMAP_LAYOUT.m
 
 1. Helper: `getAssignmentDefinitionPartial` (new)
    - Decision: `new` (pure utility; single seam for warm-up-partial navigation by `definitionKey`).
-   - Owning module: `src/frontend/src/services/assignmentDefinition/assignmentDefinitionUtils.ts` (new module). Single-file utility; no folder expansion is triggered because the helper is the only fixed member, and grouping rules (`src/frontend/AGENTS.md` §13) require ≥2 sharing files before folder-creating. The existing `services/assignmentDefinition/` folder already houses the `*.zod.ts` siblings, so `assignmentDefinitionUtils.ts` joins them without a structural change.
+   - Owning module: `src/frontend/src/services/assignmentDefinition/assignmentDefinitionUtilities.ts` (new module). Single-file utility; no folder expansion is triggered because the helper is the only fixed member, and grouping rules (`src/frontend/AGENTS.md` §13) require ≥2 sharing files before folder-creating. The existing `services/assignmentDefinition/` folder already houses the `*.zod.ts` siblings, so `assignmentDefinitionUtilities.ts` joins them without a structural change.
    - Call-site rationale: the heatmap adapter is the first and only consumer; placing the helper in the assignment-definition module keeps all `assignmentDefinitionPartials` dataset navigation in that domain (per `src/frontend/AGENTS.md` §3.2).
    - Relevant canonical-doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` — record as `Not implemented` (Section 7 pre-implementation), update to `Implemented` after green. Likely slot: §9.20 (Data analysis accumulator helpers area, mirroring the Section 1 deviation note at line 178) OR a new §9.x entry for assignment-definition-domain helpers. (Decide at implementation time; the canonical home is the assignment-definition domain, not the ClassPage feature folder.)
    - Planned doc status: `Not implemented`.
@@ -929,6 +931,7 @@ Code Reviewer mandatory docs: same set plus `SPEC.md` and `TASK_HEATMAP_LAYOUT.m
 - `npm run test:frontend -- src/frontend/src/services/assignmentDefinition src/frontend/src/services/dataAnalysis`
 - Backend: `npm run test:backend -- tests/backend-api/assignmentDefinitionPartials.unit.test.js` (verifies the guard test reconciliation and the new `toPartialJSON` emission test).
 - Mandatory-read evidence gate passed.
+- **Status: COMPLETE.** Section 7 delivered across two atomic commits so the tree never breaks: **Commit 7a** (Steps 1a+2a, additive `taskTitle`) and **Commit 7b+§8** (Steps 1b+2b+3+4 + the Section 8 adapter rewrite), pair-landing per the tree-green staging note. All section checks green at both boundaries.
 
 ### Optional `@remarks` JSDoc follow-through
 
@@ -1054,7 +1057,7 @@ Testing Specialist mandatory docs:
 - `TASK_HEATMAP_LAYOUT.md` (§"1. Header region", §"3. Table region", §"Empty state")
 - `src/frontend/src/services/dataAnalysis/heatmapAdapter.ts` (current; will be modified)
 - `src/frontend/src/services/assignmentDefinition/assignmentDefinitionPartials.zod.ts` (`AssignmentDefinitionPartialsResponse`)
-- `src/frontend/src/services/assignmentDefinition/assignmentDefinitionUtils.ts` (new, post-§7)
+- `src/frontend/src/services/assignmentDefinition/assignmentDefinitionUtilities.ts` (new, post-§7)
 - `src/frontend/src/features/classPage/useClassPageData.ts` (`assignmentDefinitionPartials` return; surface-state machine; lines 117–124)
 - `src/frontend/src/features/classPage/ClassPage.tsx` (existing destructure at line 67; view-state, breadcrumb)
 - `src/frontend/src/features/classPage/ClassPageContent.tsx` (ready gate at lines 307–312; existing `ClassPageHeatmapView.spec.tsx`)
@@ -1126,6 +1129,10 @@ Frontend Vitest — `TaskHeatmapPage.spec.tsx` (new tests, accreting onto the ex
 - `npm run test:frontend -- src/frontend/src/features/classPage`
 - `npm run lint:frontend && npm run typecheck`
 - Mandatory-read evidence gate passed.
+- **Status: COMPLETE (paired commit 7b+§8 with Section 7 Steps 1b/2b/3/4).** All steps (1–5) implemented: 4-arg `adaptMetricsToHeatmap`, `TaskTitlesUnavailableError`, prop-thread `assignmentDefinitionPartials` through `ClassPage`→`ClassPageContent`→`TaskHeatmapPage`, in-view `Alert` (header `Card` visible, no `onBack` on title error), ready-gate widener on `ClassPageContent`, and `TASK_HEATMAP_LAYOUT.md` error-state update.
+- **`getAssignmentDefinitionPartial` helper** landed as `src/frontend/src/services/assignmentDefinition/assignmentDefinitionUtilities.ts` (Step 4). NOTE: filename is `…Utilities.ts` (not `…Utils.ts`) — the abbreviated form triggers `unicorn/prevent-abbreviations`, which is enforced under `--max-warnings 0` by `lint:frontend:check`; no eslint override was introduced (AGENTS.md rule #10).
+- **Regression Gate reconciliation within this commit:** the `id`→`taskId` rename in `toPartialJSON()` had a wider blast radius than the three originally-planned backend test files — `tests/assignment/assignmentDefinitionValidation.test.js`, `tests/assignment/assignmentSerialisation.test.js`, and `tests/controllers/assignmentDefinitionController.upsert.test.js` still asserted the old `id` emission and regressed; all three were updated to expect `{ taskId, taskWeighting, taskTitle }`. The Section 8 4-arg adapter also broke the `task-heatmap.spec.ts` E2E journey (7 tests) because the warm-up `getAssignmentDefinitionPartials` partial was empty; `task-heatmap-end-to-end-helpers.ts` `createHeatmapScenario` now seeds a populated partial with `taskId`+`taskTitle` tasks, restoring all 7 journey tests.
+- **Verified green:** `tsc` clean; `lint:frontend:check` 0 errors / 0 warnings; `lint:backend:check` 0 errors (14 pre-existing `max-lines` warnings are accepted debt); frontend Vitest 494 pass; backend Vitest 1893 pass; `task-heatmap.spec.ts` 7 E2E pass. Remaining regression-checker "failures" are all pre-existing baseline debt: `backend-lint-check` `max-lines` (incl. a benign line-count shift 2733→2777 on `assignmentDefinitionPartials.unit.test.js` from required test edits), `backend-test-coverage-check` (coverage threshold), `frontend-e2e-check` flaky app-shell `app.spec.ts` tests (nav/theme, unrelated to heatmap), `builder-test-coverage-check` 1 flaky builder test.
 
 ### Optional `@remarks` JSDoc follow-through
 

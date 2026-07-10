@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 type TaskPartialFixture = {
-  id: string;
+  taskId: string;
   taskWeighting: number;
   taskTitle?: string | null;
 };
@@ -411,12 +411,12 @@ describe('assignmentDefinitionPartials.zod schemas', () => {
 
       const result = assignmentDefinitionPartialSchema.parse({
         ...validAssignmentDefinitionPartialRow,
-        tasks: [{ id: 't_abc123', taskWeighting: 2, taskTitle: null }],
+        tasks: [{ taskId: 't_abc123', taskWeighting: 2, taskTitle: null }],
       } as Record<string, unknown>);
 
       expect(result).toHaveProperty('tasks');
       expect((result as Record<string, unknown>).tasks).toEqual([
-        { id: 't_abc123', taskWeighting: 2, taskTitle: null },
+        { taskId: 't_abc123', taskWeighting: 2, taskTitle: null },
       ]);
     });
 
@@ -457,7 +457,7 @@ describe('assignmentDefinitionPartials.zod schemas', () => {
       expect(() =>
         assignmentDefinitionPartialSchema.parse({
           ...validAssignmentDefinitionPartialRow,
-          tasks: [{ id: 't_abc123', taskWeighting: 2, taskTitle: null, extra: 'x' }],
+          tasks: [{ taskId: 't_abc123', taskWeighting: 2, taskTitle: null, extra: 'x' }],
         } as Record<string, unknown>)
       ).toThrow();
     });
@@ -470,12 +470,12 @@ describe('assignmentDefinitionPartials.zod schemas', () => {
 
       const result = assignmentDefinitionPartialSchema.parse({
         ...validAssignmentDefinitionPartialRow,
-        tasks: [{ id: 't_abc123', taskWeighting: 2, taskTitle: null }],
+        tasks: [{ taskId: 't_abc123', taskWeighting: 2, taskTitle: null }],
       } as Record<string, unknown>);
 
       expect(result).toHaveProperty('tasks');
       expect((result as Record<string, unknown>).tasks).toEqual([
-        { id: 't_abc123', taskWeighting: 2, taskTitle: null },
+        { taskId: 't_abc123', taskWeighting: 2, taskTitle: null },
       ]);
     });
 
@@ -487,12 +487,12 @@ describe('assignmentDefinitionPartials.zod schemas', () => {
 
       const result = assignmentDefinitionPartialSchema.parse({
         ...validAssignmentDefinitionPartialRow,
-        tasks: [{ id: 't_abc123', taskWeighting: 2, taskTitle: 'My Task' }],
+        tasks: [{ taskId: 't_abc123', taskWeighting: 2, taskTitle: 'My Task' }],
       } as Record<string, unknown>);
 
       expect(result).toHaveProperty('tasks');
       expect((result as Record<string, unknown>).tasks).toEqual([
-        { id: 't_abc123', taskWeighting: 2, taskTitle: 'My Task' },
+        { taskId: 't_abc123', taskWeighting: 2, taskTitle: 'My Task' },
       ]);
     });
 

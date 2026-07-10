@@ -130,7 +130,7 @@ const classFullFixture: ClassFull = {
         templateDocumentId: null,
         assignmentWeighting: 1,
         definitionKey: 'def-1',
-        tasks: [{ id: 't-1', taskWeighting: 1, taskTitle: null }],
+        tasks: [{ taskId: 't-1', taskWeighting: 1, taskTitle: 'Task One' }],
         createdAt: '2026-01-01T00:00:00.000Z',
         updatedAt: null,
       },
@@ -194,6 +194,28 @@ const adapterResultFixture: ClassPageAdapterResult = {
   },
 };
 
+/**
+ * A minimal `AssignmentDefinitionPartial` fixture for 'def-1' so the heatmap
+ * adapter can resolve task titles from the warm-up dataset.
+ */
+const assignmentPartialFixture = {
+  definitionKey: 'def-1',
+  primaryTitle: 'Assignment One',
+  primaryTopic: 'Algebra',
+  primaryTopicKey: 'algebra',
+  yearGroupKey: 'yg-10',
+  yearGroupLabel: 'Year 10',
+  alternateTitles: [],
+  alternateTopics: [],
+  documentType: 'assignment',
+  referenceDocumentId: null,
+  templateDocumentId: null,
+  assignmentWeighting: 1,
+  tasks: [{ taskId: 't-1', taskWeighting: 1, taskTitle: 'Task One' }],
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: null,
+};
+
 // ===========================================================================
 // Harness component
 // ===========================================================================
@@ -237,6 +259,7 @@ function Harness({ initialView = 'overview', assignmentId }: HarnessProperties) 
       onOpenHeatmap: (id: string) => setSelectedView({ view: 'heatmap', assignmentId: id }),
       onBack: () => setSelectedView({ view: 'overview' }),
       refetch: vi.fn(),
+      assignmentDefinitionPartials: [assignmentPartialFixture],
       onStartNewAssessment: vi.fn(),
       onNavigateToClasses: vi.fn(),
       onRetry: vi.fn(),

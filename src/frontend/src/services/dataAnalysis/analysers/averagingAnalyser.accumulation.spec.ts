@@ -621,7 +621,7 @@ describe('AveragingAnalyser', () => {
           assignmentDefinitionPartials: [
             createDefinitionPartial({
               definitionKey: 'dk_algebra',
-              tasks: [{ id: 't_001', taskWeighting: preFetchedTaskWeighting, taskTitle: null }],
+              tasks: [{ taskId: 't_001', taskWeighting: preFetchedTaskWeighting, taskTitle: null }],
             }),
           ],
         }

@@ -446,10 +446,10 @@ describe('AssignmentDefinitionPartialSchema', () => {
   it('accepts a partial with tasks as array of TaskPartial objects', () => {
     const result = AssignmentDefinitionPartialSchema.parse({
       ...validAssignmentDefinitionPartial,
-      tasks: [{ id: 't_abc123', taskWeighting: 2, taskTitle: null }],
+      tasks: [{ taskId: 't_abc123', taskWeighting: 2, taskTitle: null }],
     } as Record<string, unknown>);
     expect((result as Record<string, unknown>).tasks).toEqual([
-      { id: 't_abc123', taskWeighting: 2, taskTitle: null },
+      { taskId: 't_abc123', taskWeighting: 2, taskTitle: null },
     ]);
   });
 
