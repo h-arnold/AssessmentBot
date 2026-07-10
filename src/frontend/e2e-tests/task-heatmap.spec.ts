@@ -14,8 +14,8 @@ const CLASSES_LABEL = 'Classes';
 const HEATMAP_TABLE_NAME = 'Task Heatmap';
 /** Number of metric sub-columns per task group (Completeness, Accuracy, SPaG). */
 const METRIC_SUBCOLUMN_COUNT = 3;
-/** Task column ids rendered by production (taskColumn.taskId). */
-const HEATMAP_TASK_IDS = ['task_001', 'task_002', 'task_003'];
+/** Human-readable task titles sourced from the warm-up partial (taskColumn.taskTitle). */
+const HEATMAP_TASK_TITLES = ['Task 1', 'Task 2', 'Task 3'];
 
 /**
  * Navigate from the root shell to the heatmap class overview (ready state).
@@ -56,8 +56,8 @@ test.describe('Task Heatmap E2E journey (RED)', () => {
     const table = page.getByRole('table', { name: HEATMAP_TABLE_NAME });
     await expect(table).toBeVisible();
     await expect(table.getByRole('columnheader', { name: 'Student Name' })).toHaveCount(1);
-    for (const taskId of HEATMAP_TASK_IDS) {
-      await expect(table.getByRole('columnheader', { name: taskId })).toHaveCount(1);
+    for (const taskTitle of HEATMAP_TASK_TITLES) {
+      await expect(table.getByRole('columnheader', { name: taskTitle })).toHaveCount(1);
     }
     await expect(table.getByRole('columnheader', { name: 'Completeness' })).toHaveCount(
       METRIC_SUBCOLUMN_COUNT

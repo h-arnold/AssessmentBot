@@ -38,6 +38,10 @@ import {
 const TASK_1_ID = 'task_001';
 /** Task column key used in the fixture. */
 const TASK_2_ID = 'task_002';
+/** Human-readable task title used in the fixture. */
+const TASK_1_TITLE = 'Task 1';
+/** Human-readable task title used in the fixture. */
+const TASK_2_TITLE = 'Task 2';
 
 /** Number of metric sub-columns per task group. */
 const METRIC_COLUMNS_PER_TASK = 3;
@@ -50,8 +54,8 @@ const STUDENT_ROW_COUNT = 3;
 
 /** Shared task-column descriptors. */
 const TASK_COLUMNS: HeatmapTaskColumn[] = [
-  { taskKey: 'definitionKey::task_001', taskId: TASK_1_ID, taskTitle: null },
-  { taskKey: 'definitionKey::task_002', taskId: TASK_2_ID, taskTitle: null },
+  { taskKey: 'definitionKey::task_001', taskId: TASK_1_ID, taskTitle: TASK_1_TITLE },
+  { taskKey: 'definitionKey::task_002', taskId: TASK_2_ID, taskTitle: TASK_2_TITLE },
 ];
 
 /**
@@ -287,10 +291,10 @@ describe('TaskHeatmapTable', () => {
 
     // Assert task group headers
     expect(
-      screen.getByRole('columnheader', { name: TASK_1_ID })
+      screen.getByRole('columnheader', { name: TASK_1_TITLE })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('columnheader', { name: TASK_2_ID })
+      screen.getByRole('columnheader', { name: TASK_2_TITLE })
     ).toBeInTheDocument();
 
     // Find the three metric sub-column headers by their text
@@ -460,10 +464,10 @@ describe('TaskHeatmapTable', () => {
 
       // Assert every task column renders with the expected group headers
       expect(
-        screen.getByRole('columnheader', { name: TASK_1_ID })
+        screen.getByRole('columnheader', { name: TASK_1_TITLE })
       ).toBeInTheDocument();
       expect(
-        screen.getByRole('columnheader', { name: TASK_2_ID })
+        screen.getByRole('columnheader', { name: TASK_2_TITLE })
       ).toBeInTheDocument();
 
       // Each cell should show 'N' (rendered by MetricPill compact)

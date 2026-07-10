@@ -242,7 +242,7 @@ export function TaskHeatmapTable({
     // ── Per-task group columns ────────────────────────────────────
     ...taskColumns.map((taskColumn, taskIndex) => ({
       key: taskColumn.taskKey,
-      title: taskColumn.taskId,
+      title: taskColumn.taskTitle,
       children: METRICS.map((metric) => ({
         key: `${taskColumn.taskKey}::${metric}`,
         title: getDisplayTitle(metric),
