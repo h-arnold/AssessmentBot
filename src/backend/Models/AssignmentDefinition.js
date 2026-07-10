@@ -350,6 +350,7 @@ class AssignmentDefinition {
           : Object.values(this.tasks).map((task) => ({
               id: task.id,
               taskWeighting: task.taskWeighting,
+              taskTitle: task.taskTitle,
             })),
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,

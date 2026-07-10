@@ -16,17 +16,37 @@ describe('TaskPartialSchema', () => {
   it('accepts a valid task partial with id and taskWeighting', async () => {
     const { TaskPartialSchema } = await loadTaskPartialSchema();
 
-    const result = TaskPartialSchema.parse({ id: 't_abc123', taskWeighting: 2 });
+    const result = TaskPartialSchema.parse({ id: 't_abc123', taskWeighting: 2, taskTitle: null });
 
-    expect(result).toEqual({ id: 't_abc123', taskWeighting: 2 });
+    expect(result).toEqual({ id: 't_abc123', taskWeighting: 2, taskTitle: null });
   });
 
   it('rejects extra fields (strict schema)', async () => {
     const { TaskPartialSchema } = await loadTaskPartialSchema();
 
     expect(() =>
-      TaskPartialSchema.parse({ id: 't_abc123', taskWeighting: 2, taskTitle: 'Extra' })
+      TaskPartialSchema.parse({ id: 't_abc123', taskWeighting: 2, taskTitle: null, extra: 'x' })
     ).toThrow();
+  });
+
+  it('accepts nullable taskTitle', async () => {
+    const { TaskPartialSchema } = await loadTaskPartialSchema();
+
+    const result = TaskPartialSchema.parse({ id: 't_abc123', taskWeighting: 2, taskTitle: null });
+
+    expect(result).toEqual({ id: 't_abc123', taskWeighting: 2, taskTitle: null });
+  });
+
+  it('accepts non-null taskTitle', async () => {
+    const { TaskPartialSchema } = await loadTaskPartialSchema();
+
+    const result = TaskPartialSchema.parse({
+      id: 't_abc123',
+      taskWeighting: 2,
+      taskTitle: 'My Task',
+    });
+
+    expect(result).toEqual({ id: 't_abc123', taskWeighting: 2, taskTitle: 'My Task' });
   });
 
   it('rejects missing required fields', async () => {

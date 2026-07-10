@@ -790,7 +790,7 @@ Object.values(this.tasks).map((task) => ({
 ```
 
 - `TaskDefinition` already exposes `this.taskTitle` (`Models/TaskDefinition.js:30`), so this is a one-line addition. No `null` fallback needed at the emitter; `TaskDefinition` requires `taskTitle` in its constructor (`Models/TaskDefinition.js:29`).
-- Update the stale `'tasks must be null in partial transport.'` assertion at `tests/api/backend/assignmentDefinitionPartials.unit.test.js:2036` to accept the now-populated `tasks` array (with the new `taskTitle` field) — see Step 5.
+- Update the stale `'tasks must be null in partial transport.'` assertion at `tests/backend-api/assignmentDefinitionPartials.unit.test.js:2036` to accept the now-populated `tasks` array (with the new `taskTitle` field) — see Step 5.
 
 #### 2b. Backend `AssignmentDefinition.toPartialJSON()` — rename `id` → `taskId` (paired with Section 8)
 
@@ -867,13 +867,13 @@ export function getAssignmentDefinitionPartial(
 
 **File:** `src/backend/z_Api/assignmentDefinitionValidation.js`
 
-Codebase verification note: at planning time, `validatePartialRow_` (line 669) is **defined and exported but never invoked from production backend code**. `getAssignmentDefinitionPartials_` (`assignmentDefinitionTransport.js:113–121`) validates only that the controller response is an array; it does not call `validatePartialRow_`. The guard is exercised solely from `tests/api/backend/assignmentDefinitionPartials.unit.test.js` (see the `describe('validatePartialRow_', …)` block at line 1905 and the `expectedError: 'tasks must be null in partial transport.'` assertion at line 2036).
+Codebase verification note: at planning time, `validatePartialRow_` (line 669) is **defined and exported but never invoked from production backend code**. `getAssignmentDefinitionPartials_` (`assignmentDefinitionTransport.js:113–121`) validates only that the controller response is an array; it does not call `validatePartialRow_`. The guard is exercised solely from `tests/backend-api/assignmentDefinitionPartials.unit.test.js` (see the `describe('validatePartialRow_', …)` block at line 1905 and the `expectedError: 'tasks must be null in partial transport.'` assertion at line 2036).
 
 Furthermore, the live `AssignmentDefinition.toPartialJSON()` (`Models/AssignmentDefinition.js:347–353`) **already** emits `tasks: []` (zero-task case) or `tasks: [{ id, taskWeighting }]` (with-task case) — not `null`. The frontend `AssignmentDefinitionPartialSchema` (`assignmentDefinitionPartials.zod.ts:210`) already requires `tasks: Array<TaskPartial>`. The model output and the wire acceptance therefore already disagree with the stale test-only guard; the guard has been stale and dead since the partial-tasks shape introduced in a prior round.
 
 Action: this step is **test reconciliation, not a live constraint lift**. TDD:
 
-1. Update `tests/api/backend/assignmentDefinitionPartials.unit.test.js` so the `validatePartialRow_` block mirrors the live `toPartialJSON()` behaviour: it must now accept `tasks: []`, accept `tasks: [{ taskId, taskWeighting, taskTitle }]`, and reject the deprecated `{ id, … }` shape (the inverse of the prior assertion).
+1. Update `tests/backend-api/assignmentDefinitionPartials.unit.test.js` so the `validatePartialRow_` block mirrors the live `toPartialJSON()` behaviour: it must now accept `tasks: []`, accept `tasks: [{ taskId, taskWeighting, taskTitle }]`, and reject the deprecated `{ id, … }` shape (the inverse of the prior assertion).
 2. Update the `'tasks must be null in partial transport.'` asserted-error test to instead assert the new reasons the guard rejects (e.g. `'tasks must be an array in partial transport.'` if any non-array value is passed), OR mark this thrown-error case as removed-by-design. Recommended: replace the guard body entirely with `if (!Array.isArray(row.tasks)) throw …` so the guard still fails loudly on a malformed (non-array) `tasks` value, but accepts the live `[]` / `[{ taskId, … }]` shape.
 3. Add a backend test asserting `toPartialJSON()` now emits `{ taskId: task.id, taskWeighting, taskTitle: task.taskTitle }` per task (this is the load-bearing test for Step 2's backend change).
 
@@ -892,7 +892,7 @@ Testing Specialist mandatory docs:
 - `src/backend/Models/AssignmentDefinition.js` (lines 333–357 — `toPartialJSON`)
 - `src/backend/z_Api/assignmentDefinitionValidation.js` (lines 669–680 — `validatePartialRow_`)
 - `src/backend/z_Api/assignmentDefinitionTransport.js` (lines 92–121 — `toTransportPartialRow_` and `getAssignmentDefinitionPartials_`, to confirm the guard is not invoked in production)
-- `tests/api/backend/assignmentDefinitionPartials.unit.test.js` (lines 1905, 2036 — the test-only guard assertions being reconciled)
+- `tests/backend-api/assignmentDefinitionPartials.unit.test.js` (lines 1905, 2036 — the test-only guard assertions being reconciled)
 - `docs/developer/backend/backend-testing.md` (backend test conventions)
 - `docs/developer/frontend/frontend-testing.md` (frontend Zod test conventions)
 
@@ -927,12 +927,24 @@ Code Reviewer mandatory docs: same set plus `SPEC.md` and `TASK_HEATMAP_LAYOUT.m
 
 - `npm run lint:frontend && npm run typecheck`
 - `npm run test:frontend -- src/frontend/src/services/assignmentDefinition src/frontend/src/services/dataAnalysis`
-- Backend: `npm run test:backend -- tests/api/backend/assignmentDefinitionPartials.unit.test.js` (verifies the guard test reconciliation and the new `toPartialJSON` emission test).
+- Backend: `npm run test:backend -- tests/backend-api/assignmentDefinitionPartials.unit.test.js` (verifies the guard test reconciliation and the new `toPartialJSON` emission test).
 - Mandatory-read evidence gate passed.
 
 ### Optional `@remarks` JSDoc follow-through
 
 - Add `@remarks` to `TaskPartialSchema` recording that `taskId` (not `id`) aligns with `AssignmentDefinitionTaskSchema.taskId`, and that `taskTitle` is nullable so legacy/missing titles reach the `TaskTitlesUnavailableError` path (Section 8).
+
+### Implementation notes / deviations / follow-up (7a — additive: `taskTitle` on `TaskPartialSchema` + backend emit + guard reconciliation)
+
+- `TaskPartialSchema` (`taskPartial.zod.ts`) gained `taskTitle: z.string().nullable()` — **REQUIRED, not optional**. A first Green attempt weakened it to `.optional()` to dodge a test that omitted `taskTitle`; this was rejected in review (Critical C1/C2) and corrected by repairing the offending fixtures/tests instead of relaxing the contract. `@remarks` added noting the 7b `id`→`taskId` rename and the `TaskTitlesUnavailableError` path.
+- Backend `AssignmentDefinition.toPartialJSON()` (`Models/AssignmentDefinition.js`) now emits `taskTitle: task.taskTitle` per task (additive; `id` retained — the rename to `taskId` is 7b). `TaskDefinition` requires `taskTitle` in its constructor, so no null fallback needed.
+- Stale `validatePartialRow_` test-only guard (`z_Api/assignmentDefinitionValidation.js`) reconciled: body replaced with `if (!Array.isArray(row.tasks)) throw …` so it accepts the live `[]` / `[{ id, taskWeighting, taskTitle }]` shape and still fails loudly on a non-array `tasks`; the thrown message matches the updated test (`'tasks must be an array.'`). Confirmed `validatePartialRow_` is never invoked from production (`getAssignmentDefinitionPartials_` does not call it).
+- Tests: `taskPartial.zod.spec.ts` + `assignmentDefinitionPartials.zod.spec.ts` strict-rejection tests flipped from `taskTitle` (now an accepted field) to `extra`; both assert nullable `taskTitle` is accepted. Backend `assignmentDefinitionPartials.unit.test.js` gained a `toPartialJSON` emission test and reconciled the `validatePartialRow_` block.
+- Fixture/test repair for the now-required `taskTitle`: `createTaskPartial` (`fixtures.ts`) returns `taskTitle: null` (optional 3rd arg); `createDefinitionPartial`/`createAssignmentPartial` override types widened; literals in `classDetailService.zod.spec.ts`, `averagingAnalyser.accumulation.spec.ts`, and `ClassPageHeatmapView.spec.tsx` gained `taskTitle: null`.
+- **E2E regression fix (same commit):** making `taskTitle` required broke all 7 `task-heatmap.spec.ts` E2E tests because the journey fixture's embedded `assignmentDefinition.tasks` lacked `taskTitle`. `task-heatmap-end-to-end-helpers.ts` `buildClassFullDocument` now derives tasks as `[{ id, taskWeighting: 1, taskTitle: 'Task N' }, …]`; the warm-up `getAssignmentDefinitionPartials` stays `[]` (Section 8 seeds it). All 7 heatmap E2E tests pass again.
+- **Doc correction:** the plan's backend test path used the wrong directory (`tests/api/backend/`); the actual path is `tests/backend-api/` (corrected in the Section checks / Step 5.3 above).
+- Regression Gate (re-run): task-heatmap E2E regressions resolved (0 new heatmap failures). Remaining failing checks are pre-existing accepted technical debt: `backend-lint-check` 14 `max-lines` warnings (incl. a fingerprint shift on the grown `assignmentDefinitionPartials.unit.test.js` 2733→2777 lines — same warning, not a new error), `backend-test-coverage-check`, `frontend-e2e-check` 4 theme-toggle failures (unrelated to heatmap), `builder-test-coverage-check` 1 flaky builder test. No new defect attributable to 7a.
+- GREEN→REGRESSION verified: `assignmentDefinition` 161, `dataAnalysis` 181, `classDetail` 55, `classPage` 149 Vitest pass; `lint:frontend` 0/0; `tsc` clean; backend `assignmentDefinitionPartials.unit.test.js` 290 pass; `task-heatmap.spec.ts` 7 pass.
 
 ---
 

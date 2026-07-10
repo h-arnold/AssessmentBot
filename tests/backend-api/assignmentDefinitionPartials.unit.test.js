@@ -1902,6 +1902,44 @@ describe('validateTimestamp_', () => {
   );
 });
 
+describe('toPartialJSON taskTitle emission (RED — tests fail until Green)', () => {
+  const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
+  beforeEach(beforeEachHandler);
+  afterEach(afterEachHandler);
+
+  it('emits taskTitle per task in toPartialJSON tasks array', () => {
+    const { AssignmentDefinition } = require('../../src/backend/Models/AssignmentDefinition.js');
+    const { TaskDefinition } = require('../../src/backend/Models/TaskDefinition.js');
+
+    const task = new TaskDefinition({ taskTitle: 'My Task Title' }, 3);
+    const def = new AssignmentDefinition({
+      primaryTitle: 'Algebra Baseline',
+      primaryTopic: 'Algebra',
+      primaryTopicKey: 'topic-algebra',
+      yearGroupKey: 'year-group-10',
+      yearGroupLabel: 'Year 10',
+      alternateTitles: [],
+      alternateTopics: [],
+      documentType: 'SLIDES',
+      referenceDocumentId: 'ref-001',
+      templateDocumentId: 'tpl-001',
+      assignmentWeighting: null,
+      definitionKey: 'algebra-baseline',
+      tasks: { [task.id]: task },
+      createdAt: '2026-01-05T10:00:00.000Z',
+      updatedAt: '2026-01-06T12:30:00.000Z',
+    });
+
+    const partial = def.toPartialJSON();
+
+    expect(partial.tasks).toHaveLength(1);
+    expect(partial.tasks[0]).toHaveProperty('id', task.id);
+    expect(partial.tasks[0]).toHaveProperty('taskWeighting', 3);
+    // RED: toPartialJSON does not yet emit taskTitle — this assertion will fail
+    expect(partial.tasks[0]).toHaveProperty('taskTitle', task.taskTitle);
+  });
+});
+
 describe('validatePartialRow_', () => {
   const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
 
@@ -1921,7 +1959,7 @@ describe('validatePartialRow_', () => {
     templateDocumentId: 'tpl-doc-001',
     assignmentWeighting: null,
     definitionKey: 'algebra-baseline',
-    tasks: null,
+    tasks: [],
     createdAt: '2026-01-05T10:00:00.000Z',
     updatedAt: '2026-01-06T12:30:00.000Z',
     ...overrides,
@@ -2029,11 +2067,17 @@ describe('validatePartialRow_', () => {
       expectedField: 'yearGroupLabel',
     },
     {
-      description: 'row with non-null tasks',
-      row: buildValidRow({ tasks: [{ id: 'task-1' }] }),
+      description: 'row with valid tasks array (non-null)',
+      row: buildValidRow({ tasks: [{ id: 't_001', taskWeighting: 1, taskTitle: 'Task 1' }] }),
+      rowIndex: 0,
+      shouldThrow: false,
+    },
+    {
+      description: 'row with non-array tasks value',
+      row: buildValidRow({ tasks: 'not-an-array' }),
       rowIndex: 0,
       shouldThrow: true,
-      expectedError: 'tasks must be null in partial transport.',
+      expectedError: 'tasks must be an array.',
       expectedField: 'tasks',
     },
     {

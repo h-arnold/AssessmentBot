@@ -130,7 +130,7 @@ const classFullFixture: ClassFull = {
         templateDocumentId: null,
         assignmentWeighting: 1,
         definitionKey: 'def-1',
-        tasks: [{ id: 't-1', taskWeighting: 1 }],
+        tasks: [{ id: 't-1', taskWeighting: 1, taskTitle: null }],
         createdAt: '2026-01-01T00:00:00.000Z',
         updatedAt: null,
       },

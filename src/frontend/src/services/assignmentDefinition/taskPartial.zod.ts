@@ -11,10 +11,16 @@ import { z } from 'zod';
  * existing `assignmentDefinition.zod.ts` convention). `id` uses `.min(1)`
  * because `TaskDefinition._deriveId` always produces a `t_`-prefixed non-empty
  * hash.
+ *
+ * After the Section 7b rename, `id` will become `taskId` to align with
+ * `AssignmentDefinitionTaskSchema.taskId`. `taskTitle` is nullable so that
+ * legacy or missing titles reach the `TaskTitlesUnavailableError` path
+ * (Section 8).
  */
 export const TaskPartialSchema = z.strictObject({
   id: z.string().min(1),
   taskWeighting: z.number(),
+  taskTitle: z.string().nullable(),
 });
 
 export type TaskPartial = z.infer<typeof TaskPartialSchema>;

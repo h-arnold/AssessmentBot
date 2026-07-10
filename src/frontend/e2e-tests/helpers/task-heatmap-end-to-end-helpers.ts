@@ -19,7 +19,8 @@ import type { ResponseItem, RuntimeScenario } from '../shared/endToEndRuntimeMoc
 // "7C2 Digital Technology 2025-2026", 10 students, one assignment with three
 // submission tasks). The `assignmentDefinition.tasks` is derived from the
 // submission item keys (`task_001`/`task_002`/`task_003`) as
-// `[{ id, taskWeighting: 1 }, ...]`.
+// `[{ id, taskWeighting: 1, taskTitle: 'Task 1' }, ...]` (the `taskTitle`
+// field is required post-ACTION_PLAN §7a).
 
 /**
  * A single heatmap journey student (seeded from anon-test-data.json).
@@ -191,7 +192,13 @@ function buildClassFullDocument(
           definitionKey: HEATMAP_DEFINITION_KEY,
           createdAt: '2026-07-07T07:45:23.916Z',
           updatedAt: '2026-07-07T07:49:06.791Z',
-          tasks: zeroTasks ? [] : HEATMAP_TASK_IDS.map((id) => ({ id, taskWeighting: 1 })),
+          tasks: zeroTasks
+            ? []
+            : HEATMAP_TASK_IDS.map((id, index) => ({
+                id,
+                taskWeighting: 1,
+                taskTitle: `Task ${index + 1}`,
+              })),
         },
         submissions: HEATMAP_STUDENTS.map((student) => {
           const studentScores: HeatmapStudentScores = emptySubmissions
