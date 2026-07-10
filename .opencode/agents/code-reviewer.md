@@ -52,6 +52,7 @@ Consult these resources before and during review. Local docs contain project-spe
 - Local: [frontend-modal-patterns.md](../../docs/developer/frontend/frontend-modal-patterns.md)
 - Local: [frontend-shared-helpers-and-abstraction-standards.md](../../docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md)
 - Local: [frontend-shell-navigation-and-motion.md](../../docs/developer/frontend/frontend-shell-navigation-and-motion.md)
+- Local: [frontend-spacing-and-padding-standards.md](../../docs/developer/frontend/frontend-spacing-and-padding-standards.md)
 - Ant Design v6 (LLM-friendly): <https://ant.design/llms.txt>
 - React: <https://react.dev>
 - TypeScript: <https://www.typescriptlang.org/docs/>
@@ -245,6 +246,7 @@ Apply only the rows relevant to the module(s) under review.
 - [ ] `@ant-design/v5-patch-for-react-19` has not been added unless a documented exception explicitly requires it.
 - [ ] No CDN-dependent runtime assets; assets must be inlineable by the builder.
 - [ ] Playwright E2E has passed for any user-visible interaction or browser integration change.
+- [ ] All padding, margin, and gap values follow the 8px grid system from `frontend-spacing-and-padding-standards.md` — no non-multiple-of-8 values unless a documented 4px exception.
 
 ### Builder Only
 

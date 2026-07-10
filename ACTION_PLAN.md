@@ -1134,6 +1134,20 @@ Frontend Vitest — `TaskHeatmapPage.spec.tsx` (new tests, accreting onto the ex
 - **Regression Gate reconciliation within this commit:** the `id`→`taskId` rename in `toPartialJSON()` had a wider blast radius than the three originally-planned backend test files — `tests/assignment/assignmentDefinitionValidation.test.js`, `tests/assignment/assignmentSerialisation.test.js`, and `tests/controllers/assignmentDefinitionController.upsert.test.js` still asserted the old `id` emission and regressed; all three were updated to expect `{ taskId, taskWeighting, taskTitle }`. The Section 8 4-arg adapter also broke the `task-heatmap.spec.ts` E2E journey (7 tests) because the warm-up `getAssignmentDefinitionPartials` partial was empty; `task-heatmap-end-to-end-helpers.ts` `createHeatmapScenario` now seeds a populated partial with `taskId`+`taskTitle` tasks, restoring all 7 journey tests.
 - **Verified green:** `tsc` clean; `lint:frontend:check` 0 errors / 0 warnings; `lint:backend:check` 0 errors (14 pre-existing `max-lines` warnings are accepted debt); frontend Vitest 494 pass; backend Vitest 1893 pass; `task-heatmap.spec.ts` 7 E2E pass. Remaining regression-checker "failures" are all pre-existing baseline debt: `backend-lint-check` `max-lines` (incl. a benign line-count shift 2733→2777 on `assignmentDefinitionPartials.unit.test.js` from required test edits), `backend-test-coverage-check` (coverage threshold), `frontend-e2e-check` flaky app-shell `app.spec.ts` tests (nav/theme, unrelated to heatmap), `builder-test-coverage-check` 1 flaky builder test.
 
+### Breadcrumb consolidation (concurrent work, separate commit)
+
+A concurrent breadcrumb simplification was delivered alongside Section 8 in a separate commit (`feat(breadcrumb)`). This is unrelated to the heatmap feature and lives on the same branch:
+
+- **Goal:** Remove the duplicate in-page breadcrumb from `ClassPage.tsx`, keep a single shell breadcrumb in `AppShell.tsx`, make clickable breadcrumb segments visually obvious, and remove the redundant `AssessmentBot Frontend` base label.
+- **Key changes:**
+  - Created `ClassSelectionContext` to lift class-selection state into `AppShell` (avoids prop-drilling through the `renderNavigationPage` contract).
+  - Removed the in-page `<Breadcrumb>` and `STATIC_BREADCRUMB_ITEMS` from `ClassPage.tsx`; shell owns the single breadcrumb via `getBreadcrumbItems`.
+  - Removed `appBreadcrumbBaseLabel` ("AssessmentBot Frontend") from the breadcrumb items array — breadcrumb now starts directly with the navigation label (e.g. `Classes`, `Dashboard`).
+  - Made the "Classes" breadcrumb segment clickable (`onClick` + `.app-breadcrumb-link` CSS class) when a class detail is open; uses `var(--ant-color-text-description)` / `var(--ant-color-text)` for theme-aware link styling.
+  - Added `.app-breadcrumb-link` to `index.css` with cursor, hover, and underline affordances.
+- **Tests:** Updated `App.spec.tsx` (4 breadcrumb assertions), `ClassesPage.spec.tsx` (Shell integration tests rewritten to use context mock), `ClassPage.spec.tsx` (breadcrumb tests removed, context mock added), and E2E suites (`app.spec.ts` 4 assertions, `classes-page.spec.ts` 2 assertions). All Vitest and Playwright tests pass; `tsc` and `lint:frontend` clean.
+- **Remaining gap (tracked):** The clickable breadcrumb branch (`Classes` → `{className}`) has no dedicated unit or E2E test coverage. A follow-up task has been delegated to the Playwright agent to add a test: select a class → click breadcrumb "Classes" link → assert return to the class list.
+
 ### Optional `@remarks` JSDoc follow-through
 
 - Add `@remarks` to `adaptMetricsToHeatmap` describing (a) the breaking 4-arg signature change vs the originally-implemented 3-arg v1 adapter, (b) the column source shift from embedded definition to warm-up partial, and (c) the `TaskTitlesUnavailableError` semantics. Update the existing `@remarks` rather than appending a duplicate.
