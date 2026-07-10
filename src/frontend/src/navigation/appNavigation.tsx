@@ -143,16 +143,41 @@ export function getNavigationLabel(key: AppNavigationKey) {
 }
 
 /**
- * Builds the minimal breadcrumb trail for the active navigation entry.
+ * Builds the breadcrumb trail for the active navigation entry.
+ *
+ * @remarks
+ * When a class detail is open (`className` is provided) and the active key is `classes`,
+ * the second segment becomes a clickable link that navigates back to the class list.
+ * A third segment showing the class name is appended.
  *
  * @param {AppNavigationKey} key Active navigation key.
+ * @param {string | undefined} className The class name when a class detail is open.
+ * @param {(() => void) | undefined} onNavigateToClasses Callback to return to the class list.
  * @returns {NonNullable<BreadcrumbProps['items']>} Breadcrumb items for the active navigation key.
  */
-export function getBreadcrumbItems(key: AppNavigationKey): NonNullable<BreadcrumbProps['items']> {
-  return [
-    { title: appBreadcrumbBaseLabel } satisfies AppBreadcrumbDefinition,
-    { title: getNavigationLabel(key) } satisfies AppBreadcrumbDefinition,
+export function getBreadcrumbItems(
+  key: AppNavigationKey,
+  className?: string,
+  onNavigateToClasses?: () => void
+): NonNullable<BreadcrumbProps['items']> {
+  const secondSegment =
+    key === 'classes' && className !== undefined && onNavigateToClasses !== undefined
+      ? {
+          title: getNavigationLabel(key),
+          onClick: onNavigateToClasses,
+          className: 'app-breadcrumb-link',
+        }
+      : { title: getNavigationLabel(key) };
+
+  const items: NonNullable<BreadcrumbProps['items']> = [
+    secondSegment satisfies AppBreadcrumbDefinition,
   ];
+
+  if (className !== undefined) {
+    items.push({ title: className } satisfies AppBreadcrumbDefinition);
+  }
+
+  return items;
 }
 
 /**

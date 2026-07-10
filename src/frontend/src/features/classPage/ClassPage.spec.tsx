@@ -5,9 +5,8 @@
  * @see CLASS_PAGE_LAYOUT.md — "Surface hierarchy" and "Global state rules"
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { createElement } from 'react';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { ClassPage } from './ClassPage';
@@ -33,6 +32,15 @@ const { mockAssessTaskModal } = vi.hoisted(() => ({
   }),
 }));
 
+const { mockUseClassSelection } = vi.hoisted(() => ({
+  mockUseClassSelection: vi.fn(() => ({
+    selectedClassId: DEFAULT_CLASS_ID,
+    className: CLASS_NAME,
+    onSelectClass: vi.fn(),
+    onNavigateToClasses: vi.fn(),
+  })),
+}));
+
 vi.mock('./useClassPageData', () => ({
   useClassPageData: mockUseClassPageData,
 }));
@@ -54,6 +62,10 @@ vi.mock('../../pages/pageContent', () => ({
       searchEmpty: 'No students match your search',
     },
   },
+}));
+
+vi.mock('../../ClassSelectionContext', () => ({
+  useClassSelection: mockUseClassSelection,
 }));
 
 // ===========================================================================
@@ -197,45 +209,8 @@ function getLastCallArguments(mock: ReturnType<typeof vi.fn>): Record<string, un
 // ===========================================================================
 
 describe('ClassPage', () => {
-  let user: ReturnType<typeof userEvent.setup>;
-
-  beforeEach(() => {
-    user = userEvent.setup();
-  });
-
   afterEach(() => {
     vi.resetAllMocks();
-  });
-
-  // -----------------------------------------------------------------------
-  // Breadcrumb tests
-  // -----------------------------------------------------------------------
-
-  it('renders the three-segment breadcrumb with Classes clickable and className non-clickable', async () => {
-    mockUseClassPageData.mockReturnValue(createReadyClassPageData());
-
-    const onNavigateToClasses = vi.fn();
-    render(
-      createElement(ClassPage, {
-        classId: DEFAULT_CLASS_ID,
-        onNavigateToClasses,
-      })
-    );
-
-    // All three segments should be visible
-    expect(screen.getByText('AssessmentBot Frontend')).toBeInTheDocument();
-    expect(screen.getByText('Classes')).toBeInTheDocument();
-
-    // className appears in both the breadcrumb (3rd segment) and the page heading
-    const classNameElements = screen.getAllByText(CLASS_NAME);
-    const expectedClassNameInstances = 2;
-    expect(classNameElements).toHaveLength(expectedClassNameInstances);
-
-    // The Classes segment is clickable — clicking it calls onNavigateToClasses
-    const classesSegment = screen.getByText('Classes');
-    await user.click(classesSegment);
-
-    expect(onNavigateToClasses).toHaveBeenCalledTimes(1);
   });
 
   // -----------------------------------------------------------------------
@@ -248,7 +223,6 @@ describe('ClassPage', () => {
     render(
       createElement(ClassPage, {
         classId: DEFAULT_CLASS_ID,
-        onNavigateToClasses: vi.fn(),
       })
     );
 
@@ -266,7 +240,6 @@ describe('ClassPage', () => {
     render(
       createElement(ClassPage, {
         classId: DEFAULT_CLASS_ID,
-        onNavigateToClasses: vi.fn(),
       })
     );
 
@@ -285,7 +258,6 @@ describe('ClassPage', () => {
     render(
       createElement(ClassPage, {
         classId: DEFAULT_CLASS_ID,
-        onNavigateToClasses: vi.fn(),
       })
     );
 
@@ -315,7 +287,6 @@ describe('ClassPage', () => {
     render(
       createElement(ClassPage, {
         classId: DEFAULT_CLASS_ID,
-        onNavigateToClasses: vi.fn(),
       })
     );
 
@@ -351,46 +322,5 @@ describe('ClassPage', () => {
     expect(mockAssessTaskModal.mock.calls.length).toBeGreaterThan(
       callCountBeforeReopen
     );
-  });
-
-  // -----------------------------------------------------------------------
-  // Navigation via breadcrumb
-  // -----------------------------------------------------------------------
-
-  it('calls onNavigateToClasses prop when the breadcrumb Classes segment is clicked', async () => {
-    mockUseClassPageData.mockReturnValue(createReadyClassPageData());
-
-    const onNavigateToClasses = vi.fn();
-    render(
-      createElement(ClassPage, {
-        classId: DEFAULT_CLASS_ID,
-        onNavigateToClasses,
-      })
-    );
-
-    const classesSegment = screen.getByText('Classes');
-    await user.click(classesSegment);
-
-    expect(onNavigateToClasses).toHaveBeenCalledTimes(1);
-  });
-
-  // -----------------------------------------------------------------------
-  // Breadcrumb component present
-  // -----------------------------------------------------------------------
-
-  it('renders an Ant Design Breadcrumb component (not overriding the shell breadcrumb)', () => {
-    mockUseClassPageData.mockReturnValue(createReadyClassPageData());
-
-    const { container } = render(
-      createElement(ClassPage, {
-        classId: DEFAULT_CLASS_ID,
-        onNavigateToClasses: vi.fn(),
-      })
-    );
-
-    // Ant Design Breadcrumb renders with aria-label="breadcrumb" and
-    // produces an .ant-breadcrumb class on the container.
-    const breadcrumb = container.querySelector('.ant-breadcrumb');
-    expect(breadcrumb).toBeInTheDocument();
   });
 });

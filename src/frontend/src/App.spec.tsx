@@ -321,7 +321,7 @@ describe('App', () => {
 
     await renderPendingApp();
 
-    expectBreadcrumbLabels([appBreadcrumbBaseLabel, getNavigationLabel(defaultNavigationKey)]);
+    expectBreadcrumbLabels([getNavigationLabel(defaultNavigationKey)]);
   });
 
   it('changing selected page updates breadcrumb text immediately', async () => {
@@ -336,7 +336,7 @@ describe('App', () => {
       fireEvent.click(within(navigation).getByRole('menuitem', { name: assignmentsLabel }));
     });
 
-    expectBreadcrumbLabels([appBreadcrumbBaseLabel, assignmentsLabel]);
+    expectBreadcrumbLabels([assignmentsLabel]);
   });
 
   it('breadcrumb labels are sourced from shared metadata (single source of truth)', async () => {
@@ -351,7 +351,7 @@ describe('App', () => {
         fireEvent.click(within(navigation).getByRole('menuitem', { name: label }));
       });
 
-      expectBreadcrumbLabels([appBreadcrumbBaseLabel, label]);
+      expectBreadcrumbLabels([label]);
     }
   });
 
@@ -395,7 +395,6 @@ describe('App', () => {
       appBreadcrumbBaseLabel: 'AssessmentBot Frontend',
       defaultNavigationKey: 'dashboard',
       getBreadcrumbItems: () => [
-        { title: 'AssessmentBot Frontend' },
         { title: 'Dashboard' },
       ],
       isAppNavigationKey: (key: string) =>
@@ -448,7 +447,7 @@ describe('App', () => {
 
     const breadcrumb = getBreadcrumbElement();
 
-    expectBreadcrumbLabels([appBreadcrumbBaseLabel, getNavigationLabel('settings')]);
+    expectBreadcrumbLabels([getNavigationLabel('settings')]);
     expect(breadcrumb).not.toHaveTextContent(getNavigationLabel('assignments'));
     expect(breadcrumb).not.toHaveTextContent(getNavigationLabel('classes'));
   });

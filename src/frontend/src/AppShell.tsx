@@ -2,7 +2,8 @@ import { BookOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/
 import { Breadcrumb, Button, Layout, Menu, Space, Switch, theme } from 'antd';
 import type { MenuProps } from 'antd';
 import type { CSSProperties, ReactNode } from 'react';
-import { useId, useMemo, useState } from 'react';
+import { useCallback, useId, useMemo, useState } from 'react';
+import { ClassSelectionContext } from './ClassSelectionContext';
 import {
   appBreadcrumbBaseLabel,
   defaultNavigationKey,
@@ -53,6 +54,18 @@ export function AppShell(properties: AppShellProperties) {
   const [isNavigationCollapsed, setIsNavigationCollapsed] = useState(false);
   const [selectedNavigationKey, setSelectedNavigationKey] =
     useState<AppNavigationKey>(defaultNavigationKey);
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const [selectedClassName, setSelectedClassName] = useState<string | null>(null);
+
+  const handleSelectClass = useCallback((classId: string, className: string) => {
+    setSelectedClassId(classId);
+    setSelectedClassName(className);
+  }, []);
+
+  const handleNavigateToClasses = useCallback(() => {
+    setSelectedClassId(null);
+    setSelectedClassName(null);
+  }, []);
   const { token } = theme.useToken();
   const navigationId = useId();
   const navigationButtonLabel = isNavigationCollapsed
@@ -147,12 +160,25 @@ export function AppShell(properties: AppShellProperties) {
           />
         </Sider>
         <Content className="app-content" style={{ backgroundColor: token.colorBgLayout }}>
-          <Breadcrumb
-            items={getBreadcrumbItems(selectedNavigationKey)}
-            aria-label="Breadcrumb"
-            className="app-breadcrumb"
-          />
-          {renderNavigationPage(selectedNavigationKey, dashboardContent)}
+          <ClassSelectionContext.Provider
+            value={{
+              selectedClassId,
+              className: selectedClassName,
+              onSelectClass: handleSelectClass,
+              onNavigateToClasses: handleNavigateToClasses,
+            }}
+          >
+            <Breadcrumb
+              items={getBreadcrumbItems(
+                selectedNavigationKey,
+                selectedClassName ?? undefined,
+                handleNavigateToClasses
+              )}
+              aria-label="Breadcrumb"
+              className="app-breadcrumb"
+            />
+            {renderNavigationPage(selectedNavigationKey, dashboardContent)}
+          </ClassSelectionContext.Provider>
         </Content>
       </Layout>
     </Layout>

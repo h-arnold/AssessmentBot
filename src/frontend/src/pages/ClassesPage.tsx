@@ -1,6 +1,6 @@
 import { Alert, Button, Card, Col, Collapse, Empty, Row, Skeleton, Space, Tooltip, Typography } from 'antd';
 import { AuditOutlined } from '@ant-design/icons';
-import { type JSX, useCallback, useMemo, useState } from 'react';
+import { type JSX, useMemo, useState } from 'react';
 import {
   computeDatasetRenderable,
   computePageSurfaceBlocking,
@@ -19,6 +19,7 @@ import { AssessTaskModal } from '../features/classes/AssessTaskModal/AssessTaskM
 import { ClassPage } from '../features/classPage/ClassPage';
 import { PageSection } from './PageSection';
 import { pageContent } from './pageContent';
+import { useClassSelection } from '../ClassSelectionContext';
 
 /**
  * Messages for Classes page states.
@@ -109,7 +110,7 @@ type OnAssessTask = (classId: string, className: string) => void;
 /**
  * Callback type for the view-class button on a class card.
  */
-type OnViewClass = (classId: string) => void;
+type OnViewClass = (classId: string, className: string) => void;
 
 /**
  * Renders the year-group collapse with class cards.
@@ -168,7 +169,7 @@ function renderYearGroupCollapse(
                           >
                             <div style={{ display: 'flex', justifyContent: 'center' }}>
                               <Space wrap>
-                                <Button type="text" onClick={() => onViewClass(card.classId)}>
+                                <Button type="text" onClick={() => onViewClass(card.classId, card.className)}>
                                   View
                                 </Button>
                                 <Tooltip title="Assess Task">
@@ -293,13 +294,14 @@ function getFinalClassesPageStates(
  *
  * @returns {JSX.Element} The Classes page.
  * @remarks
- * - `selectedClassId` is page-local state (not URL-routed). No deep linking
- *   or browser back/forward support in v1; a full page refresh resets to the
+ * - `selectedClassId` is managed via `ClassSelectionContext` (owned by `AppShell`),
+ *   not page-local state. No deep linking or browser back/forward support in v1;
+ *   a full page refresh resets to the class list.
+ * - The shell breadcrumb `Classes` link clears the selection and returns to the
  *   class list.
- * - The ClassPage breadcrumb `Classes` link clears `selectedClassId` and
- *   returns to the class list.
  */
 export function ClassesPage() {
+  const { selectedClassId, onSelectClass } = useClassSelection();
   const { query: classPartialsQuery, datasetState: classPartialsDatasetState } =
     usePageDataset<ClassPartial[]>('classPartials');
   const { query: yearGroupsQuery, datasetState: yearGroupsDatasetState } =
@@ -314,15 +316,6 @@ export function ClassesPage() {
   // Modal state for Assess Task workflow
   const [assessModalClassId, setAssessModalClassId] = useState<string | null>(null);
   const [assessModalClassName, setAssessModalClassName] = useState<string | null>(null);
-
-  // Selected class for ClassPage detail view (page-local, not URL-routed)
-  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
-
-  // Stable callback for navigating back to the class list from ClassPage.
-  // Wrapped in useCallback to avoid recreating the function on every render.
-  const handleNavigateToClasses = useCallback((): void => {
-    setSelectedClassId(null);
-  }, []);
 
   // Compute busy state
   const isClassesSurfaceBusy = computePageSurfaceBusy(
@@ -361,8 +354,8 @@ export function ClassesPage() {
                 setAssessModalClassId(classId);
                 setAssessModalClassName(className);
               },
-              onViewClass: (classId) => {
-                setSelectedClassId(classId);
+              onViewClass: (classId, className) => {
+                onSelectClass(classId, className);
               },
             })}
           </section>
@@ -381,7 +374,6 @@ export function ClassesPage() {
       ) : (
         <ClassPage
           classId={selectedClassId}
-          onNavigateToClasses={handleNavigateToClasses}
         />
       )}
     </PageSection>

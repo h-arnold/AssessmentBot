@@ -2,7 +2,6 @@ import { expect, test, type Page } from '@playwright/test';
 import { pageContent } from '../src/pages/pageContent';
 import { googleScriptRunApiHandlerFactorySource } from '../src/test/googleScriptRunHarness';
 
-const appBreadcrumbBaseLabel = 'AssessmentBot Frontend';
 const breadcrumbNavigationName = 'Breadcrumb';
 const defaultNavigationLabel = 'Dashboard';
 const pageExpectations = [
@@ -129,11 +128,11 @@ test.describe('app shell', () => {
     await mockPendingGoogleScriptRun(page);
     await page.goto('/');
 
-    await expectBreadcrumbLabels(page, [appBreadcrumbBaseLabel, defaultNavigationLabel]);
+    await expectBreadcrumbLabels(page, [defaultNavigationLabel]);
 
     for (const { heading } of pageExpectations) {
       await page.getByRole('menuitem', { name: heading }).click();
-      await expectBreadcrumbLabels(page, [appBreadcrumbBaseLabel, heading]);
+      await expectBreadcrumbLabels(page, [heading]);
     }
   });
 
@@ -143,7 +142,7 @@ test.describe('app shell', () => {
 
     for (const heading of ['Assignments', settingsLabel, 'Dashboard']) {
       await page.getByRole('menuitem', { name: heading }).click();
-      await expectBreadcrumbLabels(page, [appBreadcrumbBaseLabel, heading]);
+      await expectBreadcrumbLabels(page, [heading]);
     }
   });
 
@@ -157,7 +156,7 @@ test.describe('app shell', () => {
     await page.getByRole('button', { name: expandNavigationButtonLabel }).click();
 
     await page.getByRole('menuitem', { name: settingsLabel }).click();
-    await expectBreadcrumbLabels(page, [appBreadcrumbBaseLabel, settingsLabel]);
+    await expectBreadcrumbLabels(page, [settingsLabel]);
   });
 
   test('user can navigate to the top-level pages via menu clicks', async ({ page }) => {

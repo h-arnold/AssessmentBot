@@ -77,6 +77,17 @@ body {
   margin-bottom: 1.5rem;
 }
 
+.app-breadcrumb-link {
+  color: var(--ant-color-text-description);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.app-breadcrumb-link:hover {
+  color: var(--ant-color-text);
+  text-decoration: underline;
+}
+
 .app-page {
   width: 100%;
   display: flex;
