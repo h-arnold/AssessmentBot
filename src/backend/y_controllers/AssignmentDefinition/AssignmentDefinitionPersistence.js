@@ -49,7 +49,7 @@ class AssignmentDefinitionPersistence {
 
   /**
    * Return all partial assignment definitions from the registry as model instances.
-   * Partial definitions contain essential metadata only; tasks are stored separately in full definitions.
+   * Partial definitions carry a tasks array of lightweight summaries alongside essential metadata.
    *
    * @returns {Array<AssignmentDefinition>} Array of all partial definitions in the registry.
    */

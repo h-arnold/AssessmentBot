@@ -11,6 +11,7 @@ import {
   createSlidesAssignment,
   createTextTask,
   createStudentSubmission,
+  DUMMY_TASK_PARTIALS,
 } from '../helpers/modelFactories.js';
 
 /**
@@ -135,14 +136,14 @@ describe('Assignment Serialisation', () => {
   });
 
   describe('Round-trip partial serialization', () => {
-    it('maintains tasks: null through round-trip', () => {
+    it('maintains tasks array through round-trip', () => {
       const partialDef = new AssignmentDefinition({
         primaryTitle: 'Essay 1',
         primaryTopic: 'English',
         yearGroupKey: 'year-group-10',
         yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
-        tasks: null,
+        tasks: DUMMY_TASK_PARTIALS,
       });
 
       const assignment = Assignment.create(partialDef, 'C123', 'A1');
@@ -151,7 +152,8 @@ describe('Assignment Serialisation', () => {
       const partialJson = assignment.toPartialJSON();
       const restored = Assignment.fromJSON(partialJson);
 
-      expect(restored.assignmentDefinition.tasks).toBe(null);
+      // Partial definitions now carry tasks as an array (wire format preserved through round-trip)
+      expect(restored.assignmentDefinition.tasks).toEqual(DUMMY_TASK_PARTIALS);
       expect(restored.assignmentDefinition.referenceDocumentId).toBe(null);
       expect(restored.assignmentDefinition.templateDocumentId).toBe(null);
       expect(restored.documentType).toBe('SLIDES');

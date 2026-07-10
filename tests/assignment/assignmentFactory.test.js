@@ -135,6 +135,7 @@ describe('Assignment.create() Factory Method', () => {
         documentType: 'INVALID',
         referenceDocumentId: 'ref1',
         templateDocumentId: 'tpl1',
+        tasks: [],
       });
       Assignment.create(definition, 'c1', 'a1');
     }).toThrow(/Unknown documentType/i);

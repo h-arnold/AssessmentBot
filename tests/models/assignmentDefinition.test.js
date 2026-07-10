@@ -11,6 +11,7 @@ describe('AssignmentDefinition - Section 1 Model Changes', () => {
     documentType: 'SLIDES',
     referenceDocumentId: 'ref-123',
     templateDocumentId: 'tpl-123',
+    tasks: [],
   };
 
   // 1. Constructor rejects yearGroup presence
@@ -198,8 +199,8 @@ describe('AssignmentDefinition - Section 1 Model Changes', () => {
       ]);
     });
 
-    it('should return tasks: [] when tasks is null', () => {
-      const def = new AssignmentDefinition({ ...baseValidParams, tasks: null });
+    it('should return tasks: [] when tasks is empty array', () => {
+      const def = new AssignmentDefinition({ ...baseValidParams, tasks: [] });
       const partial = def.toPartialJSON();
       expect(partial.tasks).toEqual([]);
     });
@@ -210,7 +211,7 @@ describe('AssignmentDefinition - Section 1 Model Changes', () => {
       expect(partial.tasks).toEqual([]);
     });
 
-    it('should return tasks: [] when tasks is undefined', () => {
+    it('should return tasks: [] when tasks is set to undefined on instance', () => {
       const def = new AssignmentDefinition(baseValidParams);
       def.tasks = undefined;
       const partial = def.toPartialJSON();
@@ -267,6 +268,43 @@ describe('AssignmentDefinition - Section 1 Model Changes', () => {
     it('should return undefined when accessing yearGroup on instance', () => {
       const def = new AssignmentDefinition(baseValidParams);
       expect(def.yearGroup).toBeUndefined();
+    });
+  });
+
+  // 13. fromJSON -> toPartialJSON preserves tasks array on partial definitions
+  // RED PHASE: This test intentionally fails against the current buggy code.
+  // AssignmentDefinition.fromJSON drops the tasks array when it is an array
+  // (the post-§7 wire format with { taskId, taskWeighting, taskTitle } summaries).
+  describe('fromJSON round-trip preserves tasks array on partial definitions', () => {
+    it('should preserve tasks array through fromJSON -> toPartialJSON round trip', () => {
+      const tasks = [
+        { taskId: 't_1', taskWeighting: 1, taskTitle: 'Task 1' },
+        { taskId: 't_2', taskWeighting: 2, taskTitle: 'Task 2' },
+        { taskId: 't_3', taskWeighting: 3, taskTitle: 'Task 3' },
+      ];
+
+      const partialDoc = {
+        primaryTitle: 'Algebra foundations',
+        primaryTopic: 'Algebra',
+        primaryTopicKey: 'topic-algebra',
+        yearGroupKey: 'year-group-10',
+        yearGroupLabel: 'Year 10',
+        alternateTitles: [],
+        alternateTopics: [],
+        documentType: 'SLIDES',
+        referenceDocumentId: 'ref-abc',
+        templateDocumentId: 'tpl-abc',
+        assignmentWeighting: 1,
+        definitionKey: 'Algebra foundations_Algebra_year-group-10',
+        tasks,
+      };
+
+      const def = AssignmentDefinition.fromJSON(partialDoc);
+      const roundTripped = def.toPartialJSON();
+
+      // This assertion MUST fail on the current buggy code because
+      // fromJSON nulls the tasks array, producing tasks: [] via toPartialJSON.
+      expect(roundTripped.tasks).toEqual(tasks);
     });
   });
 });
