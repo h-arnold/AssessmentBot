@@ -14,6 +14,7 @@ import { ClassPage } from './ClassPage';
 import type { ClassPageData, ClassPageSurfaceState } from './useClassPageData';
 import type { ClassPageAdapterResult } from './classPageAdapter.zod';
 import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
+import type { ClassPageContent as ClassPageContentType } from './ClassPageContent';
 
 // ===========================================================================
 // Mock setup (hoisted to avoid temporal dead zone issues)
@@ -30,6 +31,18 @@ const { mockClassPageContent } = vi.hoisted(() => ({
 const { mockAssessTaskModal } = vi.hoisted(() => ({
   mockAssessTaskModal: vi.fn(function MockAssessTaskModal() {
     return createElement('div', { 'data-testid': 'assess-task-modal' });
+  }),
+}));
+
+const { mockStudentAveragesTableCard } = vi.hoisted(() => ({
+  mockStudentAveragesTableCard: vi.fn(function MockStudentAveragesTableCard() {
+    return createElement('div', { 'data-testid': 'student-averages-table-card' });
+  }),
+}));
+
+const { mockTaskHeatmapTable } = vi.hoisted(() => ({
+  mockTaskHeatmapTable: vi.fn(function MockTaskHeatmapTable() {
+    return createElement('div', { 'data-testid': 'task-heatmap-table' });
   }),
 }));
 
@@ -67,6 +80,14 @@ vi.mock('../../pages/pageContent', () => ({
 
 vi.mock('../../ClassSelectionContext', () => ({
   useClassSelection: mockUseClassSelection,
+}));
+
+vi.mock('./StudentAveragesTableCard', () => ({
+  StudentAveragesTableCard: mockStudentAveragesTableCard,
+}));
+
+vi.mock('./TaskHeatmapTable', () => ({
+  TaskHeatmapTable: mockTaskHeatmapTable,
 }));
 
 // ===========================================================================
@@ -215,6 +236,84 @@ describe('ClassPage', () => {
 
     // The class name should appear as the heading
     expect(screen.getByRole('heading', { name: CLASS_NAME })).toBeInTheDocument();
+  });
+
+  // -----------------------------------------------------------------------
+  // Navigation card visibility tests
+  // -----------------------------------------------------------------------
+
+  it('renders the Back to Classes nav card in the overview view', () => {
+    mockUseClassPageData.mockReturnValue(createReadyClassPageData());
+
+    render(
+      createElement(ClassPage, {
+        classId: DEFAULT_CLASS_ID,
+      })
+    );
+
+    // The nav card should appear with both text and aria-label in overview
+    expect(screen.getByLabelText('Back to Classes')).toBeInTheDocument();
+    expect(screen.getByText('Back to Classes')).toBeInTheDocument();
+  });
+
+  it('hides the Back to Classes nav card when the heatmap view is active', async () => {
+    const user = userEvent.setup();
+
+    // Provide an adapter result with a recent assignment so a clickable card
+    // renders in the overview.  We use the real ClassPageContent component
+    // (via vi.importActual) so clicking the RecentAssignmentCard triggers
+    // the view transition inside ClassPage.
+    const computedMetric = {
+      state: 'computed' as const,
+      value: 4,
+      totalWeight: 1,
+      applicableDataPoints: 1,
+      totalDataPoints: 1,
+    };
+
+    mockUseClassPageData.mockReturnValue(
+      createReadyClassPageData({
+        adapterResult: {
+          ...createAdapterResult(),
+          recentAssignments: [
+            {
+              assignmentId: 'a-1',
+              assignmentName: 'Test Assignment',
+              lastAssessedAt: '2026-01-15T00:00:00.000Z',
+              lastAssessedAtLabel: '15 Jan 2026',
+              metrics: {
+                completeness: { ...computedMetric },
+                accuracy: { ...computedMetric },
+                spag: { ...computedMetric, value: 3 },
+                average: { ...computedMetric },
+              },
+            },
+          ],
+        },
+      })
+    );
+
+    // Override the ClassPageContent mock to use the real component so the
+    // RecentAssignmentCard → onOpenHeatmap → view transition chain works.
+    const { ClassPageContent: RealClassPageContent } =
+      await vi.importActual<{ ClassPageContent: typeof ClassPageContentType }>('./ClassPageContent');
+    mockClassPageContent.mockImplementation(RealClassPageContent as unknown as typeof mockClassPageContent);
+
+    render(
+      createElement(ClassPage, {
+        classId: DEFAULT_CLASS_ID,
+      })
+    );
+
+    // The nav card should be visible initially (overview view)
+    expect(screen.getByLabelText('Back to Classes')).toBeInTheDocument();
+
+    // Click the recent assignment card to navigate into the heatmap view
+    const card = screen.getByRole('button', { name: /test assignment/i });
+    await user.click(card);
+
+    // In the heatmap view the parent "Back to Classes" nav card must not appear
+    expect(screen.queryByLabelText('Back to Classes')).not.toBeInTheDocument();
   });
 
   // -----------------------------------------------------------------------

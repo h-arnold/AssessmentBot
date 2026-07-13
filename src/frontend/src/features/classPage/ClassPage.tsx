@@ -39,6 +39,53 @@ type ClassPageProperties = Readonly<{
   classId: string;
 }>;
 
+type ClassPageHeaderProperties = Readonly<{
+  /** The class name to display as the page title. */
+  className: string;
+  /** Whether the overview view is active (controls the parent nav card). */
+  isOverview: boolean;
+  /** Callback invoked when the user clicks "Back to Classes". */
+  onNavigateToClasses: () => void;
+  /** Callback invoked when the user clicks "Start New Assessment". */
+  onStartNewAssessment: () => void;
+}>;
+
+/**
+ * Render the Class page header.
+ *
+ * Always shows the class-name {@link PageTitleCard}. The parent {@link PageNavCard}
+ * ("Back to Classes") is shown only in the overview view; when a child view
+ * (heatmap) is active, the child page renders its own navigation card so that
+ * only the most-junior nav card is visible.
+ *
+ * @param {ClassPageHeaderProperties} properties - Component properties.
+ * @param {string} properties.className - The class name to display.
+ * @param {boolean} properties.isOverview - Whether the overview view is active.
+ * @param {() => void} properties.onNavigateToClasses - Back-to-classes callback.
+ * @param {() => void} properties.onStartNewAssessment - Start-assessment callback.
+ * @returns {JSX.Element} The rendered header.
+ */
+function ClassPageHeader({
+  className,
+  isOverview,
+  onNavigateToClasses,
+  onStartNewAssessment,
+}: ClassPageHeaderProperties): JSX.Element {
+  return (
+    <>
+      <PageTitleCard title={className || pageContent.classDetail.heading} titleLevel={2} />
+      {isOverview && (
+        <PageNavCard
+          onBack={onNavigateToClasses}
+          backLabel="Back to Classes"
+          backAriaLabel="Back to Classes"
+          actions={<ClassPageHeaderActions onStartNewAssessment={onStartNewAssessment} />}
+        />
+      )}
+    </>
+  );
+}
+
 /**
  * Render the Class page composition root.
  *
@@ -62,6 +109,8 @@ export function ClassPage({ classId }: ClassPageProperties): JSX.Element {
   }>({ view: 'overview' });
 
   const className: string = classFull?.className ?? '';
+  const isLoading: boolean = surfaceState.status === 'loading';
+  const isOverview: boolean = selectedView.view === 'overview';
 
   /**
    * Open the AssessTaskModal.
@@ -97,19 +146,13 @@ export function ClassPage({ classId }: ClassPageProperties): JSX.Element {
   return (
     <>
       <Flex vertical gap={APP_GAP_MD}>
-        {surfaceState.status !== 'loading' && (
-          <>
-            <PageTitleCard
-              title={className || pageContent.classDetail.heading}
-              titleLevel={2}
-            />
-            <PageNavCard
-              onBack={onNavigateToClasses}
-              backLabel="Back to Classes"
-              backAriaLabel="Back to Classes"
-              actions={<ClassPageHeaderActions onStartNewAssessment={handleStartNewAssessment} />}
-            />
-          </>
+        {!isLoading && (
+          <ClassPageHeader
+            className={className}
+            isOverview={isOverview}
+            onNavigateToClasses={onNavigateToClasses}
+            onStartNewAssessment={handleStartNewAssessment}
+          />
         )}
 
         <ClassPageContent
