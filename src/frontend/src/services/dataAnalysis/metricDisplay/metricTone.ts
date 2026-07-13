@@ -8,6 +8,7 @@
  * @module metricTone
  */
 
+import type { CSSProperties } from 'react';
 import type { MetricResult } from '../dataAnalysis.zod';
 
 /**
@@ -44,6 +45,25 @@ export type MetricToneResolution = {
 
 /** Default scoring range: 0 to 5. */
 const DEFAULT_RANGE: MetricToneRange = { lower: 0, upper: 5 };
+
+/**
+ * Spreadsheet-style cell styling keyed by resolved tone colour.
+ *
+ * Maps each {@link MetricToneColor} to an inline `<td>` style so the *entire*
+ * heatmap cell (including its padding area) carries the band colour, rather
+ * than a pill inside the cell. The hex values mirror Ant Design's preset
+ * palette background/text pairs (the per-component `colorXxxBg`/`colorXxx`
+ * shades, which are not exposed as top-level `theme.useToken()` tokens in
+ * v6). `notAttempted` (`'default'`) is intentionally left unstyled so the
+ * table background shows through.
+ */
+export const METRIC_TONE_CELL_STYLE: Readonly<Record<MetricToneColor, CSSProperties>> = {
+  red: { backgroundColor: '#fff1f0', color: '#cf1322' },
+  gold: { backgroundColor: '#fffbe6', color: '#d48806' },
+  green: { backgroundColor: '#f6ffed', color: '#389e0d' },
+  volcano: { backgroundColor: '#fff2e8', color: '#d4380d' },
+  default: {},
+};
 
 /** Quartile weight applied to the boundary closer to its own end of the range. */
 const QUARTILE_WEIGHT = 3;

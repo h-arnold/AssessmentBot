@@ -12,7 +12,7 @@
  * @see SPEC.md — §"Rendering rules", §"Sorting, filtering", §"Empty state"
  */
 
-import type { JSX } from 'react';
+import type { CSSProperties, JSX } from 'react';
 import { Table, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 
@@ -29,8 +29,10 @@ import {
 } from './classPageModel';
 import type { HeatmapMetricKey } from './classPageModel';
 import { METRIC_COLUMN_FILTERS } from './studentAveragesTableColumns';
-import { resolveMetricTone } from '../../services/dataAnalysis/metricDisplay/metricTone';
-import { MetricPill } from '../../services/dataAnalysis/metricDisplay/MetricPill';
+import {
+  resolveMetricTone,
+  METRIC_TONE_CELL_STYLE,
+} from '../../services/dataAnalysis/metricDisplay/metricTone';
 import { MetricIconLabel } from './MetricIconLabel';
 
 // ---------------------------------------------------------------------------
@@ -240,15 +242,19 @@ export function TaskHeatmapTable({
             compare: buildMetricSorter(taskIndex, metric),
             multiple: 2,
           },
-          render: (_: unknown, record: HeatmapRow): JSX.Element => {
+          onCell: (record: HeatmapRow): { style: CSSProperties; 'aria-label': string } => {
             const m = getCellMetric(record.cells[taskIndex], metric);
+            const { color } = resolveMetricTone(m);
             const score = renderScore(m);
             const ariaLabel = `${record.studentName}, ${taskColumn.taskId}, ${getDisplayTitle(metric)}: ${score}`;
-            return (
-              <span aria-label={ariaLabel}>
-                <MetricPill metric={m} compact precision={INDIVIDUAL_SCORE_PRECISION} />
-              </span>
-            );
+            return {
+              style: METRIC_TONE_CELL_STYLE[color],
+              'aria-label': ariaLabel,
+            };
+          },
+          render: (_: unknown, record: HeatmapRow): JSX.Element => {
+            const m = getCellMetric(record.cells[taskIndex], metric);
+            return <span>{renderScore(m)}</span>;
           },
         };
       }),

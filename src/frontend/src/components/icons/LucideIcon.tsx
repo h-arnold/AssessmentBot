@@ -112,6 +112,10 @@ export const LucideIcon = forwardRef<HTMLSpanElement, LucideIconProperties>(
       return (innerProperties: Readonly<LucideProps>): ReactElement => {
         return createElement(icon, {
           ...innerProperties,
+          // antd's `Icon` injects `fill="currentColor"` into the inner
+          // component; Lucide icons are stroke-based (default `fill="none"`),
+          // so force it back to `none` or the shapes render solid/heavy.
+          fill: 'none',
           width: size,
           height: size,
           size,

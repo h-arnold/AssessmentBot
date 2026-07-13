@@ -7,14 +7,20 @@
  * `token.colorText` via `theme.useToken()`, so it automatically adapts to
  * dark mode.
  *
- * Uses the shared `LucideIcon` wrapper with explicit `size` and `strokeWidth`
- * props for consistent column-header appearance. The wrapper span applies
- * `color: token.colorText`, which `LucideIcon` inherits via `currentColor`.
+ * This component renders the icon directly via `createElement` rather than
+ * using the shared `LucideIcon` wrapper. The `LucideIcon` wrapper routes the
+ * icon through antd's `Icon` component, which injects `svgBaseProps`
+ * (`width: '1em'`, `height: '1em'`, `fill: 'currentColor'`) into the inner
+ * component's props. Even though `LucideIcon` overrides `fill` with `'none'`,
+ * the antd injection of `width`/`height` as `'1em'` strings conflicts with
+ * the numeric `size` prop, causing the stroke to render at the wrong visual
+ * weight. Rendering directly avoids this interference.
  */
 
 import type { JSX } from 'react';
 import { theme, Tooltip } from 'antd';
-import { LucideIcon, type LucideIconComponent } from '../../components/icons/LucideIcon';
+import { createElement } from 'react';
+import type { LucideIconComponent } from '../../components/icons/LucideIcon';
 
 type MetricIconLabelProperties = Readonly<{
   /** The Lucide icon component to render. */
@@ -39,7 +45,11 @@ export function MetricIconLabel({ icon, label }: MetricIconLabelProperties): JSX
   return (
     <Tooltip title={label}>
       <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '100%', color: token.colorText }}>
-        <LucideIcon icon={icon} size={20} strokeWidth={1.5} title={label} />
+        {createElement(icon, {
+          size: 20,
+          strokeWidth: 1.5,
+          'aria-label': label,
+        })}
       </span>
     </Tooltip>
   );

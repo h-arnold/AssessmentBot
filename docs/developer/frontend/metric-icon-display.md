@@ -17,11 +17,13 @@ The component wraps a Lucide icon in an Ant Design `Tooltip` so that:
 - the icon provides an accessible `aria-label` via its `title` prop
 - the `Tooltip` provides a visible hover affordance showing the label text
 
-## 2. Use of the shared `LucideIcon` wrapper
+## 2. Direct `createElement` rendering (bypassing `LucideIcon`)
 
-`MetricIconLabel` uses the project's shared `LucideIcon` component (`src/frontend/src/components/icons/LucideIcon.tsx`) to render Lucide icons. `LucideIcon` renders through Ant Design's `Icon` wrapper, which provides Ant Design-compatible ergonomics (`spin`, `rotate`, `className`, `style`, `onClick`) while correctly forwarding `strokeWidth`, `size`, and `color` to the underlying Lucide SVG.
+`MetricIconLabel` renders Lucide icons directly via `createElement` rather than using the project's shared `LucideIcon` component (`src/frontend/src/components/icons/LucideIcon.tsx`).
 
-The component passes explicit `size={20}` and `strokeWidth={1.5}` props to `LucideIcon` for consistent visual appearance across metric icons. The `title` prop sets the accessible `aria-label` on the Ant Design `Icon` wrapper span.
+The `LucideIcon` wrapper routes icons through Ant Design's `Icon` component, which injects `svgBaseProps` (`width: '1em'`, `height: '1em'`, `fill: 'currentColor'`) into the inner component's props. Even though `LucideIcon` overrides `fill` with `'none'`, the antd injection of `width`/`height` as `'1em'` strings conflicts with the numeric `size` prop, causing the stroke to render at the wrong visual weight. Rendering directly via `createElement` avoids this interference.
+
+The component passes explicit `size: 20` and `strokeWidth: 1.5` props for consistent visual appearance across metric icons. The `aria-label` prop sets the accessible label directly on the SVG element.
 
 ## 3. Theme-aware colouring
 
@@ -55,7 +57,7 @@ The `width: 100%` ensures the icon fills the column header width, letting the co
 | `size`        | `20`  | Fits within 24px column headers with comfortable padding.                                                   |
 | `strokeWidth` | `1.5` | Thinner than the Lucide default of `2`, producing a lighter visual weight suited to compact column headers. |
 
-These values are passed as props to `LucideIcon` (`size={20} strokeWidth={1.5}`) and are baked into the component — they are not configurable via props.
+These values are passed directly to `createElement(icon, { size: 20, strokeWidth: 1.5, ... })` and are baked into the component — they are not configurable via props.
 
 ## 5. Relationship to heatmap table columns
 

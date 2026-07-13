@@ -240,18 +240,16 @@ test.describe('Task Heatmap E2E journey (RED)', () => {
     // (the body cells render their own per-cell metric icons, so scope to `thead`).
     const expectedLabels = ['Completeness', 'Accuracy', 'SPaG'];
     for (const label of expectedLabels) {
-      // With LucideIcon, the aria-label is on the antd Icon wrapper span (role="img"),
-      // not directly on the SVG element. Scope to the SVG descendant for stroke checks.
-      const headerIconWrappers = table.locator(`thead [role="img"][aria-label="${label}"]`);
-      const headerSvgs = headerIconWrappers.locator('svg');
+      // The aria-label is on the SVG element itself (direct createElement rendering).
+      const headerIcons = table.locator(`thead svg[aria-label="${label}"]`);
 
       // One icon per task group column, all visible in the header cells.
-      await expect(headerIconWrappers).toHaveCount(METRIC_SUBCOLUMN_COUNT);
-      await expect(headerIconWrappers.first()).toBeVisible();
+      await expect(headerIcons).toHaveCount(METRIC_SUBCOLUMN_COUNT);
+      await expect(headerIcons.first()).toBeVisible();
 
       // The Lucide SVG carries stroke attributes; the colour resolves from the
       // wrapping span's `token.colorText` (theme token) via `currentColor`.
-      const strokeWidth = await headerSvgs.first().getAttribute('stroke-width');
+      const strokeWidth = await headerIcons.first().getAttribute('stroke-width');
       expect(strokeWidth).toBeTruthy();
     }
   });

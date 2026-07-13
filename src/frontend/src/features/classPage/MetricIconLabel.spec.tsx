@@ -19,11 +19,10 @@ describe('MetricIconLabel', () => {
 
   it('renders an SVG icon with the correct aria-label', () => {
     render(<MetricIconLabel {...defaultProperties} />);
-    const iconWrapper = screen.getByLabelText('Completeness');
-    expect(iconWrapper).toBeInTheDocument();
-    // The aria-label is on the antd Icon wrapper span; the SVG is a descendant
-    const svg = iconWrapper.querySelector('svg');
-    expect(svg).toBeInTheDocument();
+    const icon = screen.getByLabelText('Completeness');
+    expect(icon).toBeInTheDocument();
+    // happy-dom returns lowercase tagName for SVG elements
+    expect(icon.tagName).toBe('svg');
   });
 
   it('sets aria-label for accessibility', () => {
@@ -47,36 +46,34 @@ describe('MetricIconLabel', () => {
 
   it('the wrapper span has inline-flex display style', () => {
     render(<MetricIconLabel {...defaultProperties} />);
-    const iconWrapper = screen.getByLabelText('Completeness');
-    // The outer wrapper span (our flex container) is the parent of the LucideIcon span
-    const outerWrapper = iconWrapper.parentElement!;
-    expect(outerWrapper).toBeInTheDocument();
-    expect(outerWrapper).toHaveStyle('display: inline-flex');
+    const icon = screen.getByLabelText('Completeness');
+    const wrapper = icon.closest('span')!;
+    expect(wrapper).toBeInTheDocument();
+    expect(wrapper).toHaveStyle('display: inline-flex');
   });
 
   it('the wrapper span has a colour derived from the theme token', () => {
     render(<MetricIconLabel {...defaultProperties} />);
-    const iconWrapper = screen.getByLabelText('Completeness');
-    const outerWrapper = iconWrapper.parentElement!;
-    expect(outerWrapper).toBeInTheDocument();
+    const icon = screen.getByLabelText('Completeness');
+    const wrapper = icon.closest('span')!;
+    expect(wrapper).toBeInTheDocument();
 
     // Colour should be a non-empty CSS value derived from the theme
-    expect(outerWrapper.style.color).toBeTruthy();
+    expect(wrapper.style.color).toBeTruthy();
 
     // Should NOT be the old hardcoded black
-    expect(outerWrapper.style.color).not.toBe('#000000');
+    expect(wrapper.style.color).not.toBe('#000000');
   });
 
-  it('icon receives size and strokeWidth props via LucideIcon', () => {
+  it('icon receives size and strokeWidth props passed to createElement', () => {
     render(<MetricIconLabel {...defaultProperties} />);
-    const iconWrapper = screen.getByLabelText('Completeness');
-    const svg = iconWrapper.querySelector('svg')!;
+    const icon = screen.getByLabelText('Completeness');
 
     // Lucide renders size as width/height attributes on the SVG
-    expect(svg).toHaveAttribute('width', '20');
-    expect(svg).toHaveAttribute('height', '20');
+    expect(icon).toHaveAttribute('width', '20');
+    expect(icon).toHaveAttribute('height', '20');
 
     // Lucide renders strokeWidth as stroke-width attribute on the SVG
-    expect(svg).toHaveAttribute('stroke-width', '1.5');
+    expect(icon).toHaveAttribute('stroke-width', '1.5');
   });
 });
