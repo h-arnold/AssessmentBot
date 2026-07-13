@@ -36,9 +36,11 @@ type MetricPillProperties = {
   readonly emphasised?: boolean;
   /**
    * When `true`, renders a smaller footprint (font ~12px, padding `2px 4px`)
-   * for the dense heatmap matrix while keeping `precision: 2` and the same
-   * `resolveMetricTone` colouring. Mutually exclusive in intent from
-   * `emphasised` (a cell is one or the other).
+   * for the dense heatmap matrix while keeping `precision: 2` (the default)
+   * and the same `resolveMetricTone` colouring. Mutually exclusive in intent
+   * from `emphasised` (a cell is one or the other). The `precision` prop is
+   * independently configurable — callers may override it (see the heatmap's
+   * `INDIVIDUAL_SCORE_PRECISION = 0`).
    *
    * @default false
    */

@@ -415,10 +415,10 @@ describe('TaskHeatmapTable', () => {
     const result = buildHeatmapResult();
     render(<TaskHeatmapTable heatmapResult={result} />);
 
-    // Student One (s-1), Task 1 (task_001), Completeness: 5.00 (green / computed)
-    // Expected aria-label: "Student One, task_001, Completeness: 5.00"
+    // Student One (s-1), Task 1 (task_001), Completeness: 5 (green / computed)
+    // Expected aria-label: "Student One, task_001, Completeness: 5"
     const cellAriaComputed = screen.getByLabelText(
-      'Student One, task_001, Completeness: 5.00'
+      'Student One, task_001, Completeness: 5'
     );
     expect(cellAriaComputed).toBeInTheDocument();
 
@@ -429,10 +429,10 @@ describe('TaskHeatmapTable', () => {
     );
     expect(cellAriaNotAttempted).toBeInTheDocument();
 
-    // Student One (s-1), Task 1 (task_001), Accuracy: 3.00 (computed, default)
-    // Expected aria-label: "Student One, task_001, Accuracy: 3.00"
+    // Student One (s-1), Task 1 (task_001), Accuracy: 3 (computed, default)
+    // Expected aria-label: "Student One, task_001, Accuracy: 3"
     const cellAriaAccuracy = screen.getByLabelText(
-      'Student One, task_001, Accuracy: 3.00'
+      'Student One, task_001, Accuracy: 3'
     );
     expect(cellAriaAccuracy).toBeInTheDocument();
 

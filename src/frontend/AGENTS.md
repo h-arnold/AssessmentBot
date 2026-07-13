@@ -7,14 +7,15 @@ Applies when editing `src/frontend/**`.
 | Doc                                                                            | Summary                                            |
 | ------------------------------------------------------------------------------ | -------------------------------------------------- |
 | `docs/developer/frontend/frontend-loading-and-width-standards.md`              | Loading states, skeleton patterns, width tokens    |
-| `docs/developer/frontend/frontend-react-query-and-prefetch.md`                 | React Query baseline, prefetch/warm-up strategy    |
-| `docs/developer/frontend/frontend-shell-navigation-and-motion.md`              | Shell navigation, decorative icons, reduced-motion |
-| `docs/developer/frontend/frontend-playwright-e2e.md`                           | Playwright E2E test conventions and commands       |
-| `docs/developer/frontend/frontend-modal-patterns.md`                           | Modal-family reuse, discovery, extraction rules    |
 | `docs/developer/frontend/frontend-logging-and-error-handling.md`               | Frontend logging and error handling policy         |
+| `docs/developer/frontend/frontend-modal-patterns.md`                           | Modal-family reuse, discovery, extraction rules    |
+| `docs/developer/frontend/frontend-playwright-e2e.md`                           | Playwright E2E test conventions and commands       |
+| `docs/developer/frontend/frontend-react-query-and-prefetch.md`                 | React Query baseline, prefetch/warm-up strategy    |
 | `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` | Shared helpers, when to create new abstractions    |
-| `docs/developer/frontend/frontend-testing.md`                                  | Frontend Vitest testing conventions and commands   |
+| `docs/developer/frontend/frontend-shell-navigation-and-motion.md`              | Shell navigation, decorative icons, reduced-motion |
 | `docs/developer/frontend/frontend-spacing-and-padding-standards.md`            | Spacing tokens, 8px grid, component defaults       |
+| `docs/developer/frontend/frontend-testing.md`                                  | Frontend Vitest testing conventions and commands   |
+| `docs/developer/frontend/metric-display-precision.md`                          | Metric score decimal-place convention              |
 
 ## 2. Language and Runtime
 

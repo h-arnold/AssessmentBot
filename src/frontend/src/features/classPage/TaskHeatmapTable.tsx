@@ -4,7 +4,7 @@
  * Renders a grouped-header Ant Design Table from a `HeatmapResult` view model.
  * The first column (Student Name) is sticky with locale-aware sorting and
  * default ascending order. Each task column groups three metric sub-columns
- * (Completeness, Accuracy, SpAG) with band filters and a SPEC-ordered metric
+ * (Completeness, Accuracy, SPaG) with band filters and a SPEC-ordered metric
  * comparator.
  *
  * @see ACTION_PLAN.md §4 — TaskHeatmapTable
@@ -37,8 +37,11 @@ import { MetricIconLabel } from './MetricIconLabel';
 // Internal constants
 // ---------------------------------------------------------------------------
 
-/** Default number of decimal places for computed metric values. */
-const METRIC_PRECISION = 2;
+/**
+ * Number of decimal places for individual student task scores. Individual
+ * task scores are always integers, so they are rendered without decimals.
+ */
+const INDIVIDUAL_SCORE_PRECISION = 0;
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -60,7 +63,7 @@ function getDisplayTitle(key: HeatmapMetricKey): string {
  * @param {object} cell - The heatmap cell containing three metric results.
  * @param {MetricResult} cell.completeness - The completeness metric result.
  * @param {MetricResult} cell.accuracy - The accuracy metric result.
- * @param {MetricResult} cell.spag - The SpAG metric result.
+ * @param {MetricResult} cell.spag - The SPaG metric result.
  * @param {HeatmapMetricKey} key - The metric key to extract.
  * @returns {MetricResult} The matching metric result.
  */
@@ -89,7 +92,7 @@ function getCellMetric(
  */
 function renderScore(metric: MetricResult): string {
   if (metric.state === 'computed') {
-    return metric.value.toFixed(METRIC_PRECISION);
+    return metric.value.toFixed(INDIVIDUAL_SCORE_PRECISION);
   }
   if (metric.state === 'notAttempted') {
     return 'N';
@@ -229,6 +232,8 @@ export function TaskHeatmapTable({
         return {
           key: `${taskColumn.taskKey}::${metric}`,
           title: <MetricIconLabel icon={meta.icon} label={meta.label} />,
+          align: 'center' as const,
+          width: 48,
           filters: METRIC_COLUMN_FILTERS,
           onFilter: buildMetricOnFilter(taskIndex, metric),
           sorter: {
@@ -241,7 +246,7 @@ export function TaskHeatmapTable({
             const ariaLabel = `${record.studentName}, ${taskColumn.taskId}, ${getDisplayTitle(metric)}: ${score}`;
             return (
               <span aria-label={ariaLabel}>
-                <MetricPill metric={m} compact />
+                <MetricPill metric={m} compact precision={INDIVIDUAL_SCORE_PRECISION} />
               </span>
             );
           },

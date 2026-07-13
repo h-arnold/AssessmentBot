@@ -178,7 +178,8 @@ Provide a concise handoff summary including:
 │   │       ├── frontend-spacing-and-padding-standards.md # Canonical: Spacing tokens, 8px grid, component defaults
 │   │       ├── frontend-shell-navigation-and-motion.md  # Shell navigation and motion/accessibility standards
 │   │       ├── frontend-playwright-e2e.md               # Playwright E2E testing patterns, runtime mock infrastructure, StrictMode
-│   │       └── frontend-testing.md                      # Canonical: Vitest + Playwright split, commands, structure, helpers, patterns
+│   │       ├── frontend-testing.md                      # Canonical: Vitest + Playwright split, commands, structure, helpers, patterns
+│   │       └── metric-display-precision.md              # Metric score decimal-place convention (0dp individual, 2dp averages)
 │   │
 │   ├── howTos/
 │   │   ├── README.md                                  # Step-by-step usage instructions (tagging, distributing, assessing)

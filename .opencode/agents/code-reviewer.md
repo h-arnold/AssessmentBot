@@ -53,6 +53,7 @@ Consult these resources before and during review. Local docs contain project-spe
 - Local: [frontend-shared-helpers-and-abstraction-standards.md](../../docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md)
 - Local: [frontend-shell-navigation-and-motion.md](../../docs/developer/frontend/frontend-shell-navigation-and-motion.md)
 - Local: [frontend-spacing-and-padding-standards.md](../../docs/developer/frontend/frontend-spacing-and-padding-standards.md)
+- Local: [metric-display-precision.md](../../docs/developer/frontend/metric-display-precision.md)
 - Ant Design v6 (LLM-friendly): <https://ant.design/llms.txt>
 - React: <https://react.dev>
 - TypeScript: <https://www.typescriptlang.org/docs/>
