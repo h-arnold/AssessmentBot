@@ -173,7 +173,7 @@ export function getBreadcrumbItems(
     secondSegment satisfies AppBreadcrumbDefinition,
   ];
 
-  if (className !== undefined) {
+  if (key === 'classes' && className !== undefined) {
     items.push({ title: className } satisfies AppBreadcrumbDefinition);
   }
 

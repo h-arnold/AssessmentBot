@@ -9,6 +9,7 @@ import { createAppQueryClient } from './query/queryClient';
 import {
   appBreadcrumbBaseLabel,
   defaultNavigationKey,
+  getBreadcrumbItems,
   getNavigationLabel,
   type AppNavigationKey,
 } from './navigation/appNavigation';
@@ -450,6 +451,28 @@ describe('App', () => {
     expectBreadcrumbLabels([getNavigationLabel('settings')]);
     expect(breadcrumb).not.toHaveTextContent(getNavigationLabel('assignments'));
     expect(breadcrumb).not.toHaveTextContent(getNavigationLabel('classes'));
+  });
+
+  it('prevents stale breadcrumb class-name crumb on non-class pages', () => {
+    const testClassName = 'Year 9 Maths';
+
+    // Non-class pages must not include the class name in the breadcrumb
+    const assignmentsCrumb = getBreadcrumbItems('assignments', testClassName);
+
+    expect(assignmentsCrumb).toHaveLength(1);
+    expect(assignmentsCrumb[0]).not.toHaveProperty('title', testClassName);
+
+    const settingsCrumb = getBreadcrumbItems('settings', testClassName);
+
+    expect(settingsCrumb).toHaveLength(1);
+    expect(settingsCrumb[0]).not.toHaveProperty('title', testClassName);
+
+    // Classes page must still include the class name (guard against over-fixing)
+    const classPageCrumbCount = 2;
+    const classesCrumb = getBreadcrumbItems('classes', testClassName, () => {});
+
+    expect(classesCrumb).toHaveLength(classPageCrumbCount);
+    expect(classesCrumb[classPageCrumbCount - 1]).toHaveProperty('title', testClassName);
   });
 
   it('Dashboard default selection renders expected default page content', async () => {
