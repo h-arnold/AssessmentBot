@@ -1,19 +1,9 @@
 /**
- * RED-phase integration tests for the Section 5b heatmap view-state wiring.
+ * Integration tests for the heatmap view-state wiring.
  *
  * @remarks
- * **RED phase.** `TaskHeatmapPage` does NOT exist yet. The suite verifies the
- * wiring contract between `ClassPageContent`, `RecentAssignmentsSection`,
- * `RecentAssignmentCard`, and the not-yet-existing `TaskHeatmapPage` by
- * expecting runtime assertion failures caused by absent Section 5b wiring:
- * `ClassPageContent` does not yet accept the GREEN-contract props
- * (`selectedView`, `analyserResult`, `classFull`, `onOpenHeatmap`, `onBack`,
- * `refetch`), so `onOpenHeatmap` is not threaded through to
- * `RecentAssignmentCard` (the card has no `role="button"`), `TaskHeatmapPage`
- * is never rendered, and `logFrontendError` is never called.
- *
- * These tests encode the planned GREEN contract:
- * - `ClassPageContent` gains props: `selectedView`, `analyserResult`,
+ * These tests verify the implemented heatmap view-state wiring contract:
+ * - `ClassPageContent` accepts props: `selectedView`, `analyserResult`,
  *   `classFull`, `onOpenHeatmap`, `onBack`, `refetch` (plus existing props).
  * - When `surfaceState.status === 'ready' && selectedView.view === 'heatmap'`
  *   (and `analyserResult`/`classFull` non-null), it renders `TaskHeatmapPage`
@@ -233,11 +223,6 @@ function Harness({ initialView = 'overview', assignmentId }: HarnessProperties) 
     assignmentId?: string;
   }>({ view: initialView, assignmentId });
 
-  // RED-PHASE CAST: ClassPageContent does not yet accept the GREEN-contract
-  // props (analyserResult, classFull, selectedView, onOpenHeatmap, onBack,
-  // refetch). The cast through unknown is required so the test can be collected;
-  // the suite will fail at runtime (not type-check time) because the view-state
-  // wiring does not exist. This cast is removed in the GREEN phase.
   return createElement(
     ClassPageContent,
     {
@@ -261,7 +246,7 @@ function Harness({ initialView = 'overview', assignmentId }: HarnessProperties) 
 // Tests
 // ===========================================================================
 
-describe('ClassPage heatmap view-state wiring (RED phase)', () => {
+describe('ClassPage heatmap view-state wiring', () => {
   let user: ReturnType<typeof userEvent.setup>;
 
   beforeEach(() => {
@@ -277,14 +262,6 @@ describe('ClassPage heatmap view-state wiring (RED phase)', () => {
   // -----------------------------------------------------------------------
 
   it('opens the heatmap view when a RecentAssignmentCard is clicked', async () => {
-    // RED phase: this test fails because ClassPageContent does not yet
-    // accept the GREEN-contract props (selectedView, analyserResult,
-    // classFull, onOpenHeatmap, onBack), so onOpenHeatmap is not threaded
-    // to RecentAssignmentCard, meaning the card lacks role="button" and
-    // getByRole('button', ...) throws.
-    // When GREEN lands, this test passes and the assertions below verify
-    // the click→heatmap contract.
-
     render(createElement(Harness, { initialView: 'overview' }));
 
     // The overview should render a RecentAssignmentCard for "Assignment One"
@@ -346,15 +323,13 @@ describe('ClassPage heatmap view-state wiring (RED phase)', () => {
 
     render(createElement(Harness, { initialView: 'heatmap', assignmentId: 'missing-id' }));
 
-    // In RED phase this test can't reach assertions because the module won't load.
-    // In GREEN, the catch-and-navigate behaviour means:
+    // The catch-and-navigate behaviour means:
     //   - logFrontendError was called with first argument 'TaskHeatmapPage'
     //   - The heatmap table (aria-label="Task Heatmap") is NOT present
     //   - The overview card IS present (onBack returned to overview)
     //   - No in-view Alert/Result error message is shown
 
-    // The following assertions are the GREEN-contract expectations.
-    // They will only pass once TaskHeatmapPage catches the throw and calls onBack.
+    // These assertions verify the catch-and-navigate behaviour.
 
     expect(mockLogFrontendError).toHaveBeenCalledWith('TaskHeatmapPage', expect.any(Error));
 

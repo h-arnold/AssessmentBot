@@ -1,9 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import {
-  installRuntimeMock,
-  releaseNextDeferredSuccess,
-  applyColumnFilterOption,
-} from './shared/endToEndRuntimeMocks';
+import { installRuntimeMock, releaseNextDeferredSuccess } from './shared/endToEndRuntimeMocks';
 import {
   createHeatmapScenario,
   HEATMAP_CLASS_NAME,
@@ -36,7 +32,7 @@ async function openHeatmapClass(page: Page): Promise<void> {
   await expect(page.getByText('Recent Assignments')).toBeVisible();
 }
 
-test.describe('Task Heatmap E2E journey (RED)', () => {
+test.describe('Task Heatmap E2E journey', () => {
   test('opens heatmap from recent assignment card', async ({ page }) => {
     const scenario = createHeatmapScenario();
     await installRuntimeMock(page, scenario);
@@ -63,10 +59,10 @@ test.describe('Task Heatmap E2E journey (RED)', () => {
       METRIC_SUBCOLUMN_COUNT
     );
 
-    // Student Two's task_001 Completeness cell shows green band + aria-label (2 dp).
-    const cell = page.getByRole('cell').filter({
-      has: page.locator(`[aria-label="Student Two, task_001, Completeness: 5.00"]`),
-    });
+    // Student Two's task_001 Completeness cell shows green band + aria-label (integer, 0 dp).
+    // The aria-label is set directly on the <td role="cell"> via onCell, so target it by
+    // attribute rather than a descendant filter (which would never match the cell itself).
+    const cell = page.locator(`[aria-label="Student Two, task_001, Completeness: 5"]`);
     await expect(cell).toHaveCount(1);
   });
 
@@ -79,14 +75,34 @@ test.describe('Task Heatmap E2E journey (RED)', () => {
     const table = page.getByRole('table', { name: HEATMAP_TABLE_NAME });
     await expect(table).toBeVisible();
 
-    // Apply Green (high) filter to task_001 > Completeness (strict: first group header).
-    await applyColumnFilterOption(
-      page,
-      table.getByRole('columnheader', { name: 'Completeness' }).first(),
-      'Green (high)'
+    // Open the numeric range (band) filter on the first Completeness column header.
+    const completenessHeader = table.getByRole('columnheader', { name: 'Completeness' }).first();
+    await completenessHeader.getByRole('button').click();
+
+    // The metric band filter renders an Ant Design range Slider inside the
+    // antd dropdown overlay (not a text menu), per MetricRangeFilterDropdown.
+    const filterPopup = page.locator('.ant-dropdown:visible').last();
+    await expect(filterPopup).toBeVisible();
+
+    // Apply a high-band range filter by nudging the lower slider handle up the
+    // rail. The default `includeNotAttempted` is false, so activating any numeric
+    // range hides Not-Attempted (N) rows while keeping scored rows visible.
+    const slider = filterPopup.locator('.ant-slider').first();
+    await expect(slider).toBeVisible();
+    const sliderBox = await slider.boundingBox();
+    if (!sliderBox) {
+      throw new Error('Band filter slider bounding box was not found.');
+    }
+    // Ratios expressed as property values (lint exempt) rather than bare literals.
+    const railRatios = { lowerHandleNudge: 0.12, verticalCenter: 0.5 };
+    // Click near the lower end of the rail so the nearest (lower) handle moves up,
+    // activating a [min, max] range filter that excludes N rows.
+    await page.mouse.click(
+      sliderBox.x + sliderBox.width * railRatios.lowerHandleNudge,
+      sliderBox.y + sliderBox.height * railRatios.verticalCenter
     );
 
-    // Student One (N) should disappear; a green-band student should remain.
+    // Student One (N) should disappear; a scored (green-band) student should remain.
     await expect(table.getByText('Student One')).toHaveCount(0);
     await expect(table.getByText('Student Two')).toHaveCount(1);
   });

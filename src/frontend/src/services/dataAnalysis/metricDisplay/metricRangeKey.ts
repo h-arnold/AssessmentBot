@@ -15,6 +15,9 @@
 /** Separator used to encode the filter state into a single filter key. */
 const RANGE_KEY_SEPARATOR = '|';
 
+/** Expected number of range parts when parsing a range key. */
+const RANGE_KEY_PART_COUNT = 2;
+
 /** Full filter state stored in a single Ant Design filter key. */
 export type MetricRangeFilterState = {
   /** Inclusive lower bound of the score range. */
@@ -62,7 +65,7 @@ export function decodeMetricFilter(key: unknown): MetricRangeFilterState | null 
     return null;
   }
   const parts = key.split(RANGE_KEY_SEPARATOR);
-  if (parts.length < 2) {
+  if (parts.length < RANGE_KEY_PART_COUNT) {
     return null;
   }
   const min = Number(parts[0]);

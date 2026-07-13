@@ -64,12 +64,18 @@ export type MetricRangeFilterOptions<RecordType> = {
    * sourced from the parent's filter state.
    */
   activeRange: readonly number[];
-  /** `Slider` step. Defaults to `0.5`. */
+  /** `Slider` step. Defaults to {@link RANGE_SLIDER_STEP}. */
   step?: number;
 };
 
+/** Step interval for the range slider. */
+const RANGE_SLIDER_STEP = 0.5;
+
+/** Number of slider handle marks. */
+const RANGE_SLIDER_HANDLE_COUNT = 2;
+
 /** Column filter props returned by {@link buildMetricRangeFilter}. */
-export type MetricRangeFilterProps = {
+export type MetricRangeFilterProperties = {
   filterDropdown: (properties: FilterDropdownProps) => JSX.Element;
   onFilter: (value: unknown, record: unknown) => boolean;
   filteredValue: string[] | undefined;
@@ -86,15 +92,15 @@ export type MetricRangeFilterProps = {
  * `onFilter` decodes that key and applies {@link metricInRange} to each row.
  *
  * @param {MetricRangeFilterOptions<RecordType>} options - Range filter options.
- * @returns {MetricRangeFilterProps} The column filter props.
+ * @returns {MetricRangeFilterProperties} The column filter props.
  */
 export function buildMetricRangeFilter<RecordType>(
   options: MetricRangeFilterOptions<RecordType>
-): MetricRangeFilterProps {
-  const { range, getMetric, activeRange, step = 0.5 } = options;
+): MetricRangeFilterProperties {
+  const { range, getMetric, activeRange, step = RANGE_SLIDER_STEP } = options;
 
   const filteredValue: string[] | undefined =
-    activeRange.length === 2
+    activeRange.length === RANGE_SLIDER_HANDLE_COUNT
       ? [
           encodeMetricFilter({
             min: activeRange[0],

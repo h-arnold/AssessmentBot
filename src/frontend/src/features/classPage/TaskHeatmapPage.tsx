@@ -33,7 +33,6 @@ type HeatmapPageState = Readonly<{
 }>;
 
 type HeaderLabels = Readonly<{
-  className: string;
   assignmentName: string;
 }>;
 
@@ -62,7 +61,6 @@ type TaskHeatmapPageProperties = Readonly<{
 function getHeaderLabels(classFull: ClassFull, assignmentId: string): HeaderLabels {
   const assignment = classFull.assignments.find((a) => a.assignmentId === assignmentId);
   return {
-    className: classFull.className ?? '',
     assignmentName: assignment?.assignmentDefinition.primaryTitle ?? '',
   };
 }
@@ -128,7 +126,7 @@ export function TaskHeatmapPage({
     computeHeatmapState(analyserResult, classFull, assignmentId, assignmentDefinitionPartials)
   );
 
-  const { className, assignmentName } = useMemo<HeaderLabels>(
+  const { assignmentName } = useMemo<HeaderLabels>(
     () => getHeaderLabels(classFull, assignmentId),
     [classFull, assignmentId]
   );
@@ -153,7 +151,6 @@ export function TaskHeatmapPage({
     // The Alert replaces the table region; only the title Cards and nav Card stay visible.
     return (
       <Flex vertical gap={APP_GAP_MD}>
-        <PageTitleCard title={className} titleLevel={2} />
         <PageTitleCard title={assignmentName} />
         <PageNavCard
           onBack={backCallback}
@@ -169,7 +166,6 @@ export function TaskHeatmapPage({
   const { heatmapResult } = state;
   return (
     <Flex vertical gap={APP_GAP_MD}>
-      <PageTitleCard title={className} titleLevel={2} />
       <PageTitleCard title={heatmapResult!.assignmentName} />
       <PageNavCard
         onBack={backCallback}

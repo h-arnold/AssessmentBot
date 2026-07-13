@@ -89,15 +89,25 @@ describe('RecentAssignmentCard', () => {
     expect(tags).toHaveLength(EXPECTED_METRIC_PILL_COUNT);
   });
 
-  it('renders metric labels for Completeness, Accuracy, SpAG, and Average', () => {
-    const card = makeCard();
-    render(<RecentAssignmentCard card={card} />);
+  it('renders metric labels for Completeness, Accuracy, SPaG, and Average', () => {
+    const { container } = render(<RecentAssignmentCard card={makeCard()} />);
 
-    // Labels are now rendered as Lucide icons with aria-label via the title prop
-    expect(screen.getByLabelText('Completeness')).toBeInTheDocument();
-    expect(screen.getByLabelText('Accuracy')).toBeInTheDocument();
-    expect(screen.getByLabelText('SpAG')).toBeInTheDocument();
-    expect(screen.getByLabelText('Average')).toBeInTheDocument();
+    // Use querySelector on the rendered container's ownerDocument because
+    // neither getByLabelText nor getByRole('img') resolve
+    // <svg aria-label="…"> in the happy‑dom stack (MetricIconLabel renders
+    // aria-label on an <svg> element).
+    expect(
+      container.ownerDocument.querySelector('[aria-label="Completeness"]')
+    ).not.toBeNull();
+    expect(
+      container.ownerDocument.querySelector('[aria-label="Accuracy"]')
+    ).not.toBeNull();
+    expect(
+      container.ownerDocument.querySelector('[aria-label="SPaG"]')
+    ).not.toBeNull();
+    expect(
+      container.ownerDocument.querySelector('[aria-label="Average"]')
+    ).not.toBeNull();
   });
 
   it('uses emphasised={true} on the Average pill', () => {

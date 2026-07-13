@@ -130,8 +130,8 @@ class ABClassAssignmentOps {
       });
     } catch (error) {
       logger.error('persistAssignmentRun failed', {
-        courseId: assignment.courseId,
-        assignmentId: assignment.assignmentId,
+        courseId: assignment?.courseId,
+        assignmentId: assignment?.assignmentId,
         err: error,
       });
       throw error;

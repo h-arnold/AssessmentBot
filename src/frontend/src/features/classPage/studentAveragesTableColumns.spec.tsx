@@ -38,15 +38,27 @@ const EXPECTED_COLUMN_HEADERS = [
   'Student Name',
   'Completeness',
   'Accuracy',
-  'SpAG',
+  'SPaG',
   'Average',
 ] as const;
 
 /** Metric column keys (the four metric columns, not studentName). */
 const METRIC_COLUMN_KEYS = ['completeness', 'accuracy', 'spag', 'average'] as const;
 
-/** Bold font weight applied when `emphasised` is true on MetricPill. */
-const EMPHASISED_FONT_WEIGHT = 600;
+// ---------------------------------------------------------------------------
+// Score‑range magic‑number constants (avoids @typescript-eslint/no-magic-numbers)
+// ---------------------------------------------------------------------------
+
+/** Lower bound for the "inside the range" test. */
+const RANGE_LOWER = 2;
+/** Upper bound for the "inside the range" test. */
+const RANGE_UPPER = 4;
+/** Alternative upper bound for edge‑case test. */
+const RANGE_UPPER_ALT = 5;
+/** Value below RANGE_LOWER used for the "outside the range" test. */
+const BELOW_RANGE = 1;
+/** Value above range used for the "outside the range" test. */
+const ABOVE_RANGE = 5.1;
 
 // ---------------------------------------------------------------------------
 // Default filters (empty — no filter active)
@@ -105,9 +117,16 @@ describe('buildStudentAveragesTableColumns', () => {
       if (index === 0) {
         expect(column.title).toBe(expectedHeader);
       } else {
-        // Render the JSX title element and verify the accessible label
-        const { unmount } = render(<>{column.title as unknown as React.ReactElement}</>);
-        expect(screen.getByLabelText(expectedHeader)).toBeInTheDocument();
+        // Render the JSX title element and check the SVG's aria-label via
+        // querySelector (getByLabelText does not resolve <svg aria-label="…">
+        // in the happy‑dom stack).
+        const { container, unmount } = render(
+          <>{column.title as unknown as React.ReactElement}</>
+        );
+        const headerElement = container.ownerDocument.querySelector(
+          `[aria-label="${expectedHeader}"]`
+        );
+        expect(headerElement).not.toBeNull();
         unmount();
       }
     });
@@ -147,18 +166,18 @@ describe('buildStudentAveragesTableColumns', () => {
   // -----------------------------------------------------------------------
   describe('metricInRange predicate', () => {
     it('matches computed values inside the range', () => {
-      expect(metricInRange(createComputedMetricResult({ value: 3 }), 2, 4)).toBe(true);
-      expect(metricInRange(createComputedMetricResult({ value: 4 }), 4, 5)).toBe(true);
+      expect(metricInRange(createComputedMetricResult({ value: 3 }), RANGE_LOWER, RANGE_UPPER)).toBe(true);
+      expect(metricInRange(createComputedMetricResult({ value: 4 }), RANGE_UPPER, RANGE_UPPER_ALT)).toBe(true);
     });
 
     it('excludes computed values outside the range', () => {
-      expect(metricInRange(createComputedMetricResult({ value: 1 }), 2, 4)).toBe(false);
-      expect(metricInRange(createComputedMetricResult({ value: 5.1 }), 0, 5)).toBe(false);
+      expect(metricInRange(createComputedMetricResult({ value: BELOW_RANGE }), RANGE_LOWER, RANGE_UPPER)).toBe(false);
+      expect(metricInRange(createComputedMetricResult({ value: ABOVE_RANGE }), 0, RANGE_UPPER_ALT)).toBe(false);
     });
 
     it('excludes notAttempted and error metrics', () => {
-      expect(metricInRange(createNotAttemptedMetricResult(), 0, 5)).toBe(false);
-      expect(metricInRange(createErrorMetricResult(), 0, 5)).toBe(false);
+      expect(metricInRange(createNotAttemptedMetricResult(), 0, RANGE_UPPER_ALT)).toBe(false);
+      expect(metricInRange(createErrorMetricResult(), 0, RANGE_UPPER_ALT)).toBe(false);
     });
   });
 
@@ -204,9 +223,9 @@ describe('buildStudentAveragesTableColumns', () => {
   });
 
   // -----------------------------------------------------------------------
-  // Average column uses emphasised={true}
+  // Average column renders plain <span> with the score (no MetricPill)
   // -----------------------------------------------------------------------
-  it('Average column uses emphasised={true} on the MetricPill', () => {
+  it('Average column renders plain span with score', () => {
     const columns = buildStudentAveragesTableColumns(EMPTY_FILTERS);
     const averageColumn = columns.find((c) => c.key === 'average');
     expect(averageColumn).toBeDefined();
@@ -215,12 +234,8 @@ describe('buildStudentAveragesTableColumns', () => {
     const record = buildRow();
     const renderedElement = averageColumn!.render!(null, record, 0);
 
-    const { container } = render(<>{renderedElement}</>);
-    const tags = container.querySelectorAll('.ant-tag');
-    expect(tags).toHaveLength(1);
-
-    // emphasised={true} applies fontWeight: 600 as an inline style
-    expect(tags[0]).toHaveStyle({ fontWeight: EMPHASISED_FONT_WEIGHT });
+    render(<>{renderedElement}</>);
+    expect(screen.getByText('3.70')).toBeInTheDocument();
   });
 
   // -----------------------------------------------------------------------

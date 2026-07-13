@@ -180,7 +180,7 @@ describe('MetricPill', () => {
   });
 
   // -------------------------------------------------------------------------
-  // Compact variant (RED phase — compact prop does not exist yet)
+  // Compact variant
   // -------------------------------------------------------------------------
 
   it('renders computed score with 2dp, green band, and compact footprint when compact', () => {
@@ -203,7 +203,7 @@ describe('MetricPill', () => {
     expect(getComputedStyle(tag!).getPropertyValue('padding')).toBe('2px 4px');
   });
 
-  it('renders N with default band colour for notAttempted when compact', () => {
+  it('renders N with filled band colour for notAttempted when compact', () => {
     const metric: MetricResult = createNotAttemptedMetricResult();
 
     render(<MetricPill metric={metric} compact />);
@@ -214,9 +214,8 @@ describe('MetricPill', () => {
 
     const tag = pill.closest('.ant-tag');
     expect(tag).not.toBeNull();
-    // Default band — ant-tag-default (not red, gold, green, or volcano)
-    expect(tag!.className).toContain('ant-tag-default');
-    expect(tag!.className).not.toContain('ant-tag-red');
+    // Custom grey colour (#434343) renders as ant-tag-filled
+    expect(tag!.className).toContain('ant-tag-filled');
   });
 
   it('renders same colour token as emphasised and introduces no aria-label or role', () => {

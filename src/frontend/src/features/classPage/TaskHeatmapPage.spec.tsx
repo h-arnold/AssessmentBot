@@ -1,12 +1,12 @@
 /**
- * RED-phase tests for TaskHeatmapPage — TaskTitlesUnavailableError and generic Error handling.
+ * Tests for TaskHeatmapPage — TaskTitlesUnavailableError and generic Error handling.
  *
  * @remarks
- * These tests are expected to FAIL because TaskHeatmapPage does not yet:
- *   - accept `assignmentDefinitionPartials` as a prop
- *   - import or handle `TaskTitlesUnavailableError`
- *   - render an in-view Ant Design Alert for TaskTitlesUnavailableError
- *   - log via logFrontendError on generic Error and call onBack
+ * These tests verify TaskHeatmapPage's error handling:
+ *   - it accepts `assignmentDefinitionPartials` as a prop
+ *   - it imports and handles `TaskTitlesUnavailableError`
+ *   - it renders an in-view Ant Design Alert for TaskTitlesUnavailableError
+ *   - it logs via logFrontendError on generic Error and calls onBack
  *
  * See ACTION_PLAN.md §8 — Required test cases 9 and 10.
  */
@@ -154,9 +154,9 @@ describe('TaskHeatmapPage — TaskTitlesUnavailableError and generic Error handl
       })
     );
 
-    // The parent title Card (class name) and child title Card (assignment name) stay visible.
+    // The child title Card (assignment name) stays visible.
+    // The parent class-name title is owned by ClassPage, not TaskHeatmapPage.
     expect(screen.getByText('Assignment One')).toBeInTheDocument();
-    expect(screen.getByText('Class A')).toBeInTheDocument();
 
     // Back button should be present and functional
     const backButton = screen.getByLabelText('Back to Class overview');

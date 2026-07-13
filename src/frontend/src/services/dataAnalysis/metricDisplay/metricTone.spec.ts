@@ -14,6 +14,9 @@ import {
 import { resolveMetricTone } from './metricTone';
 import type { MetricToneResolution } from './metricTone';
 
+/** Value at the default range ceiling (upper bound of { lower: 0, upper: 5 }). */
+const DEFAULT_RANGE_CEILING = 5;
+
 describe('resolveMetricTone', () => {
   // -------------------------------------------------------------------------
   // Computed state — default range { lower: 0, upper: 5 }
@@ -25,7 +28,7 @@ describe('resolveMetricTone', () => {
     const result: MetricToneResolution = resolveMetricTone(metric);
 
     expect(result).toStrictEqual({
-      color: 'hsl(0.0, 70%, 38.0%)',
+      color: 'hsl(0.0, 70%, 34.0%)',
       cellStyle: {
         backgroundColor: 'hsl(0.0, 75%, 92%)',
         color: 'hsl(0.0, 70%, 32%)',
@@ -40,11 +43,11 @@ describe('resolveMetricTone', () => {
 
     const result: MetricToneResolution = resolveMetricTone(metric);
 
-    // t = (1 - 0) / 5 = 0.2 -> hue 24, lightness 38 + 10·sin(0.2π) ≈ 43.9
-    expect(result.color).toBe('hsl(24.0, 70%, 43.9%)');
+    // t = (1 - 0) / 5 = 0.2 -> hue 120·0.2^1.5 ≈ 10.7, lightness 34 + 9·sin(0.2π) ≈ 39.3
+    expect(result.color).toBe('hsl(10.7, 70%, 39.3%)');
     expect(result.cellStyle).toEqual({
-      backgroundColor: 'hsl(24.0, 75%, 92%)',
-      color: 'hsl(24.0, 70%, 32%)',
+      backgroundColor: 'hsl(10.7, 75%, 92%)',
+      color: 'hsl(10.7, 70%, 32%)',
     });
     expect(result.displayValue).toBe(1);
     expect(result.muted).toBe(false);
@@ -55,25 +58,26 @@ describe('resolveMetricTone', () => {
 
     const result: MetricToneResolution = resolveMetricTone(metric);
 
-    // t = 0.5 -> hue 60, lightness 48
-    expect(result.color).toBe('hsl(60.0, 70%, 48.0%)');
+    // t = 0.5 -> hue 120·0.5^1.5 ≈ 42.4, lightness 34 + 9·sin(0.5π) = 43.0
+    expect(result.color).toBe('hsl(42.4, 70%, 43.0%)');
     expect(result.cellStyle).toEqual({
-      backgroundColor: 'hsl(60.0, 75%, 92%)',
-      color: 'hsl(60.0, 70%, 32%)',
+      backgroundColor: 'hsl(42.4, 75%, 92%)',
+      color: 'hsl(42.4, 70%, 32%)',
     });
   });
 
   it('returns a dark-green gradient colour for a computed value at the range ceiling', () => {
-    const metric: MetricResult = createComputedMetricResult({ value: 5 });
+    const metric: MetricResult = createComputedMetricResult({ value: DEFAULT_RANGE_CEILING });
 
     const result: MetricToneResolution = resolveMetricTone(metric);
 
-    expect(result.color).toBe('hsl(120.0, 70%, 38.0%)');
+    // t = 1 -> hue 120, lightness 34 + 9·sin(π) = 34.0
+    expect(result.color).toBe('hsl(120.0, 70%, 34.0%)');
     expect(result.cellStyle).toEqual({
       backgroundColor: 'hsl(120.0, 75%, 92%)',
       color: 'hsl(120.0, 70%, 32%)',
     });
-    expect(result.displayValue).toBe(5);
+    expect(result.displayValue).toBe(DEFAULT_RANGE_CEILING);
     expect(result.muted).toBe(false);
   });
 
@@ -81,14 +85,14 @@ describe('resolveMetricTone', () => {
   // NotAttempted state
   // -------------------------------------------------------------------------
 
-  it('returns default colour with muted=true for notAttempted metric', () => {
+  it('returns dark-grey colour with muted=true for notAttempted metric', () => {
     const metric: MetricResult = createNotAttemptedMetricResult();
 
     const result: MetricToneResolution = resolveMetricTone(metric);
 
     expect(result).toStrictEqual({
-      color: 'default',
-      cellStyle: {},
+      color: '#434343',
+      cellStyle: { backgroundColor: '#e8e8e8', color: '#434343' },
       displayValue: 'N',
       muted: true,
     });
@@ -133,7 +137,7 @@ describe('resolveMetricTone', () => {
 
     const result: MetricToneResolution = resolveMetricTone(metric, { lower: 0, upper: 100 });
 
-    expect(result.color).toBe('hsl(0.0, 70%, 38.0%)');
+    expect(result.color).toBe('hsl(0.0, 70%, 34.0%)');
     expect(result.cellStyle).toEqual({
       backgroundColor: 'hsl(0.0, 75%, 92%)',
       color: 'hsl(0.0, 70%, 32%)',
@@ -147,11 +151,11 @@ describe('resolveMetricTone', () => {
 
     const result: MetricToneResolution = resolveMetricTone(metric, { lower: 0, upper: 100 });
 
-    // t = 0.5 -> hue 60, lightness 48
-    expect(result.color).toBe('hsl(60.0, 70%, 48.0%)');
+    // t = 0.5 -> hue 120·0.5^1.5 ≈ 42.4, lightness 34 + 9·sin(0.5π) = 43.0
+    expect(result.color).toBe('hsl(42.4, 70%, 43.0%)');
     expect(result.cellStyle).toEqual({
-      backgroundColor: 'hsl(60.0, 75%, 92%)',
-      color: 'hsl(60.0, 70%, 32%)',
+      backgroundColor: 'hsl(42.4, 75%, 92%)',
+      color: 'hsl(42.4, 70%, 32%)',
     });
   });
 
@@ -160,7 +164,8 @@ describe('resolveMetricTone', () => {
 
     const result: MetricToneResolution = resolveMetricTone(metric, { lower: 0, upper: 100 });
 
-    expect(result.color).toBe('hsl(120.0, 70%, 38.0%)');
+    // t = 1 -> hue 120, lightness 34 + 9·sin(π) = 34.0
+    expect(result.color).toBe('hsl(120.0, 70%, 34.0%)');
     expect(result.cellStyle).toEqual({
       backgroundColor: 'hsl(120.0, 75%, 92%)',
       color: 'hsl(120.0, 70%, 32%)',

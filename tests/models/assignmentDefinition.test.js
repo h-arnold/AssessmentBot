@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
 import { TaskDefinition } from '../../src/backend/Models/TaskDefinition.js';
 
-describe('AssignmentDefinition - Section 1 Model Changes', () => {
+describe('AssignmentDefinition', () => {
   // Base valid params for testing
   const baseValidParams = {
     primaryTitle: 'Test Assignment',

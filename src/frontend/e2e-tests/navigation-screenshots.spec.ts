@@ -17,7 +17,7 @@ const CLASSES_NAV_LABEL = 'Classes';
 
 /**
  * Navigate to the Task Heatmap from the Classes list.
- * @param page
+ * @param {Page} page - The Playwright page instance.
  */
 async function openTaskHeatmap(page: Page): Promise<void> {
   await page.goto('/');

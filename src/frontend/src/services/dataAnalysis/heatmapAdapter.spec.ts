@@ -1,5 +1,5 @@
 /**
- * RED-phase tests for the `adaptMetricsToHeatmap` 4-parameter rewrite.
+ * Tests for `adaptMetricsToHeatmap` — the 4-parameter rewrite.
  *
  * @remarks
  * The adapter now takes a 4th parameter (`assignmentDefinitionPartials`) and

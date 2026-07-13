@@ -1,5 +1,5 @@
 /**
- * RED-phase tests for `TaskHeatmapTable`.
+ * Tests for `TaskHeatmapTable`.
  *
  * These tests encode the planned API surface of the component. The heatmap's
  * metric columns use a continuous gradient for cell colouring and a numeric
@@ -50,6 +50,9 @@ const TASK_GROUP_COUNT = 2;
 
 /** Number of student rows in the default fixture. */
 const STUDENT_ROW_COUNT = 3;
+
+/** Number of slider handles in the metric range filter. */
+const RANGE_SLIDER_HANDLE_COUNT = 2;
 
 /** Shared task-column descriptors. */
 const TASK_COLUMNS: HeatmapTaskColumn[] = [
@@ -342,7 +345,7 @@ describe('TaskHeatmapTable', () => {
     await user.click(filterButton);
 
     const sliders = await screen.findAllByRole('slider');
-    expect(sliders.length).toBe(2);
+    expect(sliders.length).toBe(RANGE_SLIDER_HANDLE_COUNT);
 
     const lowerHandle = sliders.find(
       (handle): boolean => handle.getAttribute('aria-valuenow') === '0'

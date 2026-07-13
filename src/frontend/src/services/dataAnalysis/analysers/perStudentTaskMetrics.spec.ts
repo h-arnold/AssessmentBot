@@ -10,7 +10,7 @@ import {
 
 // ---------------------------------------------------------------------------
 // perStudentTaskMetrics — conversion from perStudentTaskAccums to the typed
-// array on AveragingResult (RED phase: does not yet exist in production).
+// array on AveragingResult.
 // ---------------------------------------------------------------------------
 
 describe('perStudentTaskMetrics conversion', () => {
@@ -51,8 +51,6 @@ describe('perStudentTaskMetrics conversion', () => {
 
     expect(results).toHaveLength(1);
 
-    // RED phase: perStudentTaskMetrics is undefined on AveragingResult because
-    // the production code does not yet populate it. The expect below will fail.
     const result = results[0] as unknown as {
       perStudentTaskMetrics?: Array<Record<string, unknown>>;
     };
@@ -114,7 +112,6 @@ describe('perStudentTaskMetrics conversion', () => {
     const expectedSpag = 3;
     const expectedOverall = 4.2;
 
-    // RED phase: perStudentTaskMetrics is undefined, so this test fails
     expect(result.perStudentTaskMetrics).toBeDefined();
     expect(result.perStudentTaskMetrics).toHaveLength(expectedEntryCount);
 
@@ -171,7 +168,6 @@ describe('perStudentTaskMetrics conversion', () => {
     const expectedT001Completeness = 5;
     const expectedT002Completeness = 2;
 
-    // RED phase: perStudentTaskMetrics is undefined, so this test fails
     expect(result.perStudentTaskMetrics).toBeDefined();
     expect(result.perStudentTaskMetrics).toHaveLength(expectedEntryCount);
 

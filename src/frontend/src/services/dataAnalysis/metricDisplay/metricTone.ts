@@ -33,8 +33,8 @@ export type MetricToneResolution = {
   /**
    * Ant Design `Tag` colour. For `computed` values this is a continuous
    * gradient HSL string (red at the range floor → amber mid → green at the
-   * ceiling); for `notAttempted` it is `'default'` and for `error` it is the
-   * `errorColor` token.
+   * ceiling); for `notAttempted` it is a dark grey (`#434343`) and for `error`
+   * it is the `errorColor` token.
    */
   color: string;
   /**
@@ -67,8 +67,9 @@ const DEFAULT_RANGE: MetricToneRange = { lower: 0, upper: 5 };
  * than a pill inside the cell. The hex values mirror Ant Design's preset
  * palette background/text pairs (the per-component `colorXxxBg`/`colorXxx`
  * shades, which are not exposed as top-level `theme.useToken()` tokens in
- * v6). `notAttempted` (`'default'`) is intentionally left unstyled so the
- * table background shows through.
+ * v6). `notAttempted` now has a dedicated cell style (see
+ * {@link NOT_ATTEMPTED_CELL_STYLE}) with a light grey background and dark grey
+ * text; the `'default'` entry in this record is the unused fallback.
  */
 export const METRIC_TONE_CELL_STYLE: Readonly<Record<MetricToneColor, CSSProperties>> = {
   red: { backgroundColor: '#fff1f0', color: '#cf1322' },
@@ -84,6 +85,18 @@ export const METRIC_TONE_CELL_STYLE: Readonly<Record<MetricToneColor, CSSPropert
  * clearly grey, low-emphasis marker rather than blending into the table.
  */
 const NOT_ATTEMPTED_GREY = '#434343';
+
+/** Maximum hue angle (green endpoint) for the continuous gradient. */
+const GRADIENT_MAX_HUE = 120;
+
+/** Non-linearity exponent for the hue curve (t^1.5 biases toward red at low t). */
+const GRADIENT_HUE_EXPONENT = 1.5;
+
+/** Base lightness at the endpoints of the gradient (darkest red/green). */
+const GRADIENT_LIGHTNESS_BASE = 34;
+
+/** Lightness amplitude for the sinusoidal mid-range boost. */
+const GRADIENT_LIGHTNESS_AMPLITUDE = 9;
 
 /**
  * Cell style for the `notAttempted` (`N`) state: a light grey wash with a dark
@@ -138,8 +151,8 @@ function resolveNormalisedPosition(value: number, range: MetricToneRange): numbe
  * @returns {string} An `hsl(...)` colour string for use as a `Tag` colour.
  */
 function resolveGradientFill(t: number): string {
-  const hue = 120 * Math.pow(t, 1.5);
-  const lightness = 34 + 9 * Math.sin(Math.PI * t);
+  const hue = GRADIENT_MAX_HUE * Math.pow(t, GRADIENT_HUE_EXPONENT);
+  const lightness = GRADIENT_LIGHTNESS_BASE + GRADIENT_LIGHTNESS_AMPLITUDE * Math.sin(Math.PI * t);
   return `hsl(${hue.toFixed(1)}, 70%, ${lightness.toFixed(1)}%)`;
 }
 
@@ -156,7 +169,7 @@ function resolveGradientFill(t: number): string {
  * @returns {CSSProperties} The inline `<td>` style for the cell.
  */
 function resolveGradientCellStyle(t: number): CSSProperties {
-  const hue = 120 * Math.pow(t, 1.5);
+  const hue = GRADIENT_MAX_HUE * Math.pow(t, GRADIENT_HUE_EXPONENT);
   return {
     backgroundColor: `hsl(${hue.toFixed(1)}, 75%, 92%)`,
     color: `hsl(${hue.toFixed(1)}, 70%, 32%)`,
@@ -180,8 +193,10 @@ function resolveGradientCellStyle(t: number): CSSProperties {
  * amber (`60`) → green (`120`). Lightness is darker at the range ends (darkest
  * red at the floor, darkest green at the ceiling) and lighter in the middle,
  * making differences between adjacent scores obvious. Discrete states
- * (`notAttempted`, `error`) keep their fixed `Tag` colour tokens and cell
- * styles — only `computed` values participate in the gradient.
+ * (`notAttempted`, `error`) keep their fixed colour and cell styles — only
+ * `computed` values participate in the gradient. `notAttempted` uses a custom
+ * dark grey (`#434343`) rather than the `'default'` token, with its own light
+ * grey cell background.
  *
  * | `value` condition              | Colour (computed)        |
  * | ------------------------------ | ------------------------ |

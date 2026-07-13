@@ -1902,7 +1902,7 @@ describe('validateTimestamp_', () => {
   );
 });
 
-describe('toPartialJSON taskTitle emission (RED — tests fail until Green)', () => {
+describe('toPartialJSON emits taskTitle per task', () => {
   const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
   beforeEach(beforeEachHandler);
   afterEach(afterEachHandler);
@@ -1935,7 +1935,6 @@ describe('toPartialJSON taskTitle emission (RED — tests fail until Green)', ()
     expect(partial.tasks).toHaveLength(1);
     expect(partial.tasks[0]).toHaveProperty('taskId', task.id);
     expect(partial.tasks[0]).toHaveProperty('taskWeighting', 3);
-    // RED: toPartialJSON does not yet emit taskId — this assertion will fail
     expect(partial.tasks[0]).toHaveProperty('taskTitle', task.taskTitle);
   });
 });

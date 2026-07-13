@@ -25,6 +25,9 @@ import {
   type MetricRangeFilterState,
 } from './metricRangeKey';
 
+/** Step interval for the range slider. */
+const RANGE_SLIDER_STEP = 0.5;
+
 /**
  * Dropdown body for a numeric score-range filter.
  *
@@ -37,7 +40,7 @@ export function MetricRangeFilterDropdown(
 ): JSX.Element {
   const {
     range,
-    step = 0.5,
+    step = RANGE_SLIDER_STEP,
     selectedKeys,
     setSelectedKeys,
     confirm,
