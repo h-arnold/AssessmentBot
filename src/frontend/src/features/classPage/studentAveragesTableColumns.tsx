@@ -23,11 +23,14 @@
 import type { JSX } from 'react';
 import { Typography } from 'antd';
 import type { TableColumnsType, TableColumnType } from 'antd';
+
 import { getStudentMetric } from './classPageAdapter.zod';
 import type { StudentAverageRowModel } from './classPageAdapter.zod';
-import { compareStudentNames } from './classPageModel';
+import { compareStudentNames, METRIC_DISPLAY_META } from './classPageModel';
+import type { MetricColumnKey } from './classPageModel';
 import { resolveMetricTone } from '../../services/dataAnalysis/metricDisplay/metricTone';
 import { MetricPill } from '../../services/dataAnalysis/metricDisplay/MetricPill';
+import { MetricIconLabel } from './MetricIconLabel';
 
 // ---------------------------------------------------------------------------
 // Exported types
@@ -66,9 +69,6 @@ export const METRIC_COLUMN_FILTERS: { text: string; value: string }[] = [
   { text: 'Error', value: 'volcano' },
 ];
 
-/** The four metric column keys used in the table. */
-type MetricColumnKey = 'completeness' | 'accuracy' | 'spag' | 'average';
-
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
@@ -79,8 +79,8 @@ type MetricColumnKey = 'completeness' | 'accuracy' | 'spag' | 'average';
  * Returns `undefined` when the filter array is empty (Ant Design v6 treats
  * an empty array as "no filter" but prefers `undefined` for correct rendering).
  *
- * @param {ReadonlyArray<MetricToneColor>} array - The selected filter values.
- * @returns {MetricToneColor[] | undefined} A mutable copy when non-empty, or `undefined`.
+ * @param {ReadonlyArray<string>} array - The selected filter values.
+ * @returns {string[] | undefined} A mutable copy when non-empty, or `undefined`.
  */
 function arrayOrUndefined(
   array: readonly string[]
@@ -91,21 +91,20 @@ function arrayOrUndefined(
 /**
  * Build a single metric column definition.
  *
- * @param {'completeness' | 'accuracy' | 'spag' | 'average'} key - The column key (metric field name).
- * @param {string} title - The column header title.
+ * @param {MetricColumnKey} key - The column key (metric field name).
  * @param {ReadonlyArray<string>} columnFilters - The selected filter values.
  * @param {boolean} [emphasised] - When true, renders the MetricPill with emphasised styling.
  * @returns {TableColumnType<StudentAverageRowModel>} A column definition.
  */
 function buildMetricColumn(
   key: MetricColumnKey,
-  title: string,
   columnFilters: readonly string[],
   emphasised?: boolean
 ): TableColumnType<StudentAverageRowModel> {
+  const meta = METRIC_DISPLAY_META.get(key)!;
   return {
     key,
-    title,
+    title: <MetricIconLabel icon={meta.icon} label={meta.label} />,
     sorter: true,
     filters: METRIC_COLUMN_FILTERS,
     filteredValue: arrayOrUndefined(columnFilters),
@@ -156,9 +155,9 @@ export function buildStudentAveragesTableColumns(
     },
 
     // ── Metric columns ─────────────────────────────────────────────────
-    buildMetricColumn('completeness', 'Completeness', filters.completeness),
-    buildMetricColumn('accuracy', 'Accuracy', filters.accuracy),
-    buildMetricColumn('spag', 'SpAG', filters.spag),
-    buildMetricColumn('average', 'Average', filters.average, true),
+    buildMetricColumn('completeness', filters.completeness),
+    buildMetricColumn('accuracy', filters.accuracy),
+    buildMetricColumn('spag', filters.spag),
+    buildMetricColumn('average', filters.average, true),
   ];
 }

@@ -205,4 +205,18 @@ export default defineConfig([
       '@typescript-eslint/no-magic-numbers': 'off',
     },
   },
+  {
+    // TaskHeatmapTable accesses heatmap cells by numeric index (`cells[index]`)
+    // where the index is a bounded loop variable or a pre-computed task index
+    // that has been validated upstream by the heatmap adapter (Zod schema). The
+    // `security/detect-object-injection` rule flags all bracket access with a
+    // variable index, but in this case the index is thoroughly validated and
+    // satisfies the data contract before it reaches this component. Disabling
+    // at file level avoids repetitive inline suppressions while keeping the
+    // rule active for genuinely untrusted input elsewhere.
+    files: ['src/features/classPage/TaskHeatmapTable.tsx'],
+    rules: {
+      'security/detect-object-injection': 'off',
+    },
+  },
 ]);

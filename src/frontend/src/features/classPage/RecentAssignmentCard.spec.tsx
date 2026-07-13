@@ -12,7 +12,7 @@
  * @see CLASS_PAGE_LAYOUT.md - "3a. RecentAssignmentCard"
  */
 
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { RecentAssignmentCardModel } from './classPageAdapter.zod';
@@ -66,10 +66,6 @@ function makeCard(
 // ---------------------------------------------------------------------------
 
 describe('RecentAssignmentCard', () => {
-  afterEach(() => {
-    vi.resetAllMocks();
-  });
-
   it('renders the assignment name as the card title', () => {
     const card = makeCard();
     render(<RecentAssignmentCard card={card} />);
@@ -97,10 +93,11 @@ describe('RecentAssignmentCard', () => {
     const card = makeCard();
     render(<RecentAssignmentCard card={card} />);
 
-    expect(screen.getByText('Completeness')).toBeInTheDocument();
-    expect(screen.getByText('Accuracy')).toBeInTheDocument();
-    expect(screen.getByText('SpAG')).toBeInTheDocument();
-    expect(screen.getByText('Average')).toBeInTheDocument();
+    // Labels are now rendered as Lucide icons with aria-label via the title prop
+    expect(screen.getByLabelText('Completeness')).toBeInTheDocument();
+    expect(screen.getByLabelText('Accuracy')).toBeInTheDocument();
+    expect(screen.getByLabelText('SpAG')).toBeInTheDocument();
+    expect(screen.getByLabelText('Average')).toBeInTheDocument();
   });
 
   it('uses emphasised={true} on the Average pill', () => {

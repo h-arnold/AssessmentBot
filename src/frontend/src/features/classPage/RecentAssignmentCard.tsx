@@ -28,9 +28,13 @@
 
 import type { JSX, KeyboardEvent } from 'react';
 import { Card, Flex, Typography } from 'antd';
+
 import type { RecentAssignmentCardModel } from './classPageAdapter.zod';
 import { getStudentMetric } from './classPageAdapter.zod';
+import { METRIC_DISPLAY_META } from './classPageModel';
+import type { MetricColumnKey } from './classPageModel';
 import { MetricPill } from '../../services/dataAnalysis/metricDisplay/MetricPill';
+import { MetricIconLabel } from './MetricIconLabel';
 
 /** Width constant for a single Recent Assignment card.
  *
@@ -46,15 +50,16 @@ const RECENT_ASSIGNMENT_CARD_WIDTH_PX = 320;
 /**
  * Descriptor array for the four metric pills rendered in the card.
  *
- * Each entry defines the metric key, display label, alignment, and emphasis
- * flag. The Average cell uses `align="center"` and `emphasised={true}` for
- * visual prominence; the other three cells use `align="start"` and no emphasis.
+ * Each entry defines the metric key, alignment, and emphasis flag. The Average
+ * cell uses `align="center"` and `emphasised={true}` for visual prominence;
+ * the other three cells use `align="start"` and no emphasis. Labels and icons
+ * are derived from the shared `METRIC_DISPLAY_META` map.
  */
 const METRIC_ENTRIES = [
-  { key: 'completeness' as const, label: 'Completeness', align: 'start' as const, emphasised: false },
-  { key: 'accuracy' as const, label: 'Accuracy', align: 'start' as const, emphasised: false },
-  { key: 'spag' as const, label: 'SpAG', align: 'start' as const, emphasised: false },
-  { key: 'average' as const, label: 'Average', align: 'center' as const, emphasised: true },
+  { key: 'completeness' as const, align: 'start' as const, emphasised: false },
+  { key: 'accuracy' as const, align: 'start' as const, emphasised: false },
+  { key: 'spag' as const, align: 'start' as const, emphasised: false },
+  { key: 'average' as const, align: 'center' as const, emphasised: true },
 ] as const;
 
 type RecentAssignmentCardProperties = Readonly<{
@@ -109,12 +114,15 @@ export function RecentAssignmentCard({
         Last Assessed: {card.lastAssessedAtLabel}
       </Typography.Text>
       <Flex justify="space-around" style={{ marginTop: 8 }}>
-        {METRIC_ENTRIES.map(({ key, label, align, emphasised }) => (
-          <Flex key={key} vertical align={align}>
-            <Typography.Text>{label}</Typography.Text>
-            <MetricPill metric={getStudentMetric(card.metrics, key)} emphasised={emphasised} />
-          </Flex>
-        ))}
+        {METRIC_ENTRIES.map(({ key, align, emphasised }) => {
+          const meta = METRIC_DISPLAY_META.get(key as MetricColumnKey)!;
+          return (
+            <Flex key={key} vertical align={align}>
+              <MetricIconLabel icon={meta.icon} label={meta.label} />
+              <MetricPill metric={getStudentMetric(card.metrics, key)} emphasised={emphasised} />
+            </Flex>
+          );
+        })}
       </Flex>
     </Card>
   );

@@ -8,6 +8,8 @@
  * @see SPEC_CLASS_PAGE.md § "classPageModel — view-model builder"
  */
 
+import { ListTodo, Merge, SpellCheck, Target } from 'lucide-react';
+import type { LucideIconComponent } from '../../components/icons/LucideIcon';
 import { getStudentMetric } from './classPageAdapter.zod';
 import type { ClassPageAdapterResult, StudentAverageRowModel } from './classPageAdapter.zod';
 import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
@@ -30,8 +32,32 @@ export type ClassPageViewModel = {
 };
 
 // ---------------------------------------------------------------------------
-// Internal constants
+// Metric display metadata
 // ---------------------------------------------------------------------------
+
+/** The metric keys that appear as sub-columns under each heatmap task group. */
+export type HeatmapMetricKey = 'completeness' | 'accuracy' | 'spag';
+
+/** All metric column keys (heatmap sub-columns plus the average rollup). */
+export type MetricColumnKey = 'completeness' | 'accuracy' | 'spag' | 'average';
+
+/** Shared metric display metadata: label and icon for each metric key. */
+export const METRIC_DISPLAY_META: ReadonlyMap<
+  MetricColumnKey,
+  { readonly label: string; readonly icon: LucideIconComponent }
+> = new Map([
+  ['completeness', { label: 'Completeness', icon: ListTodo }],
+  ['accuracy', { label: 'Accuracy', icon: Target }],
+  ['spag', { label: 'SpAG', icon: SpellCheck }],
+  ['average', { label: 'Average', icon: Merge }],
+]);
+
+/** The three metric keys appearing as sub-columns under each heatmap task group. */
+export const HEATMAP_METRIC_KEYS: readonly HeatmapMetricKey[] = [
+  'completeness',
+  'accuracy',
+  'spag',
+];
 
 const HIGHEST_METRIC_STATE_RANK = 2;
 
@@ -73,12 +99,12 @@ function getMetricStateRank(metric: MetricResult, direction: 'asc' | 'desc'): nu
 /**
  * Build a comparator function for a metric column with state-aware ordering.
  *
- * @param {'completeness' | 'accuracy' | 'spag' | 'average'} column - The metric column to compare by.
+ * @param {MetricColumnKey} column - The metric column to compare by.
  * @param {'asc' | 'desc'} direction - Sort direction (`'asc'` or `'desc'`).
  * @returns {(a: StudentAverageRowModel, b: StudentAverageRowModel) => number} A comparator suitable for `Array.prototype.toSorted()`.
  */
 function buildMetricComparator(
-  column: 'completeness' | 'accuracy' | 'spag' | 'average',
+  column: MetricColumnKey,
   direction: 'asc' | 'desc'
 ): (a: StudentAverageRowModel, b: StudentAverageRowModel) => number {
   return (a, b) => {
@@ -166,7 +192,7 @@ export function compareHeatmapStudentName(a: HeatmapRow, b: HeatmapRow): number 
  * @param {{ searchTerm: string }} input.filters - User-controlled filters.
  * @param {string} input.filters.searchTerm - Substring filter on student name (case-insensitive).
  *   Empty string means no filter.
- * @param {({ column: 'studentName' | 'completeness' | 'accuracy' | 'spag' | 'average'; direction: 'asc' | 'desc' }) | null} [input.sort] - User-controlled sort column and direction.
+ * @param {({ column: 'studentName' | MetricColumnKey; direction: 'asc' | 'desc' }) | null} [input.sort] - User-controlled sort column and direction.
  *   When `null` or `undefined`, defaults to `studentName` ascending.
  * @returns {ClassPageViewModel} The filtered and sorted view model.
  */
@@ -174,7 +200,7 @@ export function buildClassPageViewModel(input: {
   adapterResult: ClassPageAdapterResult;
   filters: { searchTerm: string };
   sort?: {
-    column: 'studentName' | 'completeness' | 'accuracy' | 'spag' | 'average';
+    column: 'studentName' | MetricColumnKey;
     direction: 'asc' | 'desc';
   } | null;
 }): ClassPageViewModel {

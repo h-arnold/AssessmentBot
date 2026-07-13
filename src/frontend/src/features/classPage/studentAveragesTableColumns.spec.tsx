@@ -9,9 +9,9 @@
 
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import type { ReactNode } from 'react';
 import {
   buildStudentAveragesTableColumns,
+  METRIC_COLUMN_FILTERS,
 } from './studentAveragesTableColumns';
 import type { StudentAverageRowModel } from './classPageAdapter.zod';
 import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
@@ -23,41 +23,8 @@ import {
 } from '../../test/dataAnalysis/fixtures';
 
 // ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-/**
- * Minimal column shape used by these tests.
- *
- * @remarks
- * This local type mirrors the relevant subset of Ant Design's `ColumnType`
- * that the tests access. It is used only until `studentAveragesTableColumns.tsx`
- * exists and TypeScript can resolve the return type of `buildStudentAveragesTableColumns`.
- *
- * Once the source module is created, the `buildStudentAveragesTableColumns` return
- * type resolves and this local type can be replaced with the real column type.
- */
-interface TestColumn {
-  key?: string;
-  title?: string;
-  filters?: ReadonlyArray<{ text: string; value: string }>;
-  filteredValue?: unknown;
-  onFilter?: (value: string, record: StudentAverageRowModel) => boolean;
-  render?: (value: unknown, record: StudentAverageRowModel, index: number) => ReactNode;
-}
-
-// ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
-
-/** Expected filter entries for each metric column (in order). */
-const EXPECTED_FILTERS: ReadonlyArray<{ text: string; value: string }> = [
-  { text: 'Red (low)', value: 'red' },
-  { text: 'Amber (mid)', value: 'gold' },
-  { text: 'Green (high)', value: 'green' },
-  { text: 'Not Attempted', value: 'default' },
-  { text: 'Error', value: 'volcano' },
-];
 
 /** Expected column keys in order. */
 const EXPECTED_COLUMN_KEYS = [
@@ -68,7 +35,7 @@ const EXPECTED_COLUMN_KEYS = [
   'average',
 ] as const;
 
-/** Expected column headers in order. */
+/** Expected column header accessible names in order. */
 const EXPECTED_COLUMN_HEADERS = [
   'Student Name',
   'Completeness',
@@ -131,13 +98,23 @@ describe('buildStudentAveragesTableColumns', () => {
   // Column count and headers
   // -----------------------------------------------------------------------
   it('returns five columns with correct keys and headers', () => {
-    const columns = buildStudentAveragesTableColumns(EMPTY_FILTERS) as TestColumn[];
+    const columns = buildStudentAveragesTableColumns(EMPTY_FILTERS);
 
     expect(columns).toHaveLength(EXPECTED_COLUMN_KEYS.length);
 
-    columns.forEach((column: TestColumn, index: number) => {
+    columns.forEach((column, index) => {
       expect(column.key).toBe(EXPECTED_COLUMN_KEYS[index]);
-      expect(column.title).toBe(EXPECTED_COLUMN_HEADERS[index]);
+      const expectedHeader = EXPECTED_COLUMN_HEADERS[index];
+      // The studentName column (index 0) still has a plain string title;
+      // metric columns (indices 1-4) have a MetricIconLabel title (JSX).
+      if (index === 0) {
+        expect(column.title).toBe(expectedHeader);
+      } else {
+        // Render the JSX title element and verify the accessible label
+        const { unmount } = render(<>{column.title as unknown as React.ReactElement}</>);
+        expect(screen.getByLabelText(expectedHeader)).toBeInTheDocument();
+        unmount();
+      }
     });
   });
 
@@ -145,8 +122,8 @@ describe('buildStudentAveragesTableColumns', () => {
   // studentName column has no filter properties
   // -----------------------------------------------------------------------
   it('studentName column has no filters/filteredValue/onFilter', () => {
-    const columns = buildStudentAveragesTableColumns(EMPTY_FILTERS) as TestColumn[];
-    const nameColumn = columns.find((c: TestColumn) => c.key === 'studentName');
+    const columns = buildStudentAveragesTableColumns(EMPTY_FILTERS);
+    const nameColumn = columns.find((c) => c.key === 'studentName');
 
     expect(nameColumn).toBeDefined();
     expect(nameColumn!.filters).toBeUndefined();
@@ -160,11 +137,11 @@ describe('buildStudentAveragesTableColumns', () => {
   it.each(METRIC_COLUMN_KEYS)(
     'the %s column has five filter entries with exact text/value pairs',
     (columnKey: string) => {
-      const columns = buildStudentAveragesTableColumns(EMPTY_FILTERS) as TestColumn[];
-      const metricColumn = columns.find((c: TestColumn) => c.key === columnKey);
+      const columns = buildStudentAveragesTableColumns(EMPTY_FILTERS);
+      const metricColumn = columns.find((c) => c.key === columnKey);
 
       expect(metricColumn).toBeDefined();
-      expect(metricColumn!.filters).toEqual(EXPECTED_FILTERS);
+      expect(metricColumn!.filters).toEqual(METRIC_COLUMN_FILTERS);
     }
   );
 
@@ -224,8 +201,8 @@ describe('buildStudentAveragesTableColumns', () => {
     ])(
       'onFilter for completeness column: $description',
       ({ metricValue, filterValue, expected }: { metricValue: MetricResult; filterValue: string; expected: boolean }) => {
-        const columns = buildStudentAveragesTableColumns(EMPTY_FILTERS) as TestColumn[];
-        const completenessColumn = columns.find((c: TestColumn) => c.key === 'completeness');
+        const columns = buildStudentAveragesTableColumns(EMPTY_FILTERS);
+        const completenessColumn = columns.find((c) => c.key === 'completeness');
         expect(completenessColumn).toBeDefined();
         expect(completenessColumn!.onFilter).toBeDefined();
 
@@ -243,8 +220,8 @@ describe('buildStudentAveragesTableColumns', () => {
     );
 
     it('onFilter uses resolveMetricTone with the correct range', () => {
-      const columns = buildStudentAveragesTableColumns(EMPTY_FILTERS) as TestColumn[];
-      const completenessColumn = columns.find((c: TestColumn) => c.key === 'completeness');
+      const columns = buildStudentAveragesTableColumns(EMPTY_FILTERS);
+      const completenessColumn = columns.find((c) => c.key === 'completeness');
       expect(completenessColumn).toBeDefined();
       expect(completenessColumn!.onFilter).toBeDefined();
 
@@ -268,8 +245,8 @@ describe('buildStudentAveragesTableColumns', () => {
   // Average column uses emphasised={true}
   // -----------------------------------------------------------------------
   it('Average column uses emphasised={true} on the MetricPill', () => {
-    const columns = buildStudentAveragesTableColumns(EMPTY_FILTERS) as TestColumn[];
-    const averageColumn = columns.find((c: TestColumn) => c.key === 'average');
+    const columns = buildStudentAveragesTableColumns(EMPTY_FILTERS);
+    const averageColumn = columns.find((c) => c.key === 'average');
     expect(averageColumn).toBeDefined();
     expect(averageColumn!.render).toBeDefined();
 
@@ -288,8 +265,8 @@ describe('buildStudentAveragesTableColumns', () => {
   // studentName column renders plain Typography.Text
   // -----------------------------------------------------------------------
   it('studentName column renders plain Typography.Text with the student name', () => {
-    const columns = buildStudentAveragesTableColumns(EMPTY_FILTERS) as TestColumn[];
-    const nameColumn = columns.find((c: TestColumn) => c.key === 'studentName');
+    const columns = buildStudentAveragesTableColumns(EMPTY_FILTERS);
+    const nameColumn = columns.find((c) => c.key === 'studentName');
     expect(nameColumn).toBeDefined();
     expect(nameColumn!.render).toBeDefined();
 

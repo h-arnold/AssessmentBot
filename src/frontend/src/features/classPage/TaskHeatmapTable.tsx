@@ -4,7 +4,7 @@
  * Renders a grouped-header Ant Design Table from a `HeatmapResult` view model.
  * The first column (Student Name) is sticky with locale-aware sorting and
  * default ascending order. Each task column groups three metric sub-columns
- * (Completeness, Accuracy, SPaG) with band filters and a SPEC-ordered metric
+ * (Completeness, Accuracy, SpAG) with band filters and a SPEC-ordered metric
  * comparator.
  *
  * @see ACTION_PLAN.md §4 — TaskHeatmapTable
@@ -19,22 +19,23 @@ import type { TableColumnsType } from 'antd';
 import type {
   HeatmapResult,
   HeatmapRow,
-  HeatmapCell,
 } from '../../services/dataAnalysis/heatmapAdapter';
 import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
-import { compareHeatmapStudentName, METRIC_STATE_RANK_ASC } from './classPageModel';
+import {
+  compareHeatmapStudentName,
+  METRIC_STATE_RANK_ASC,
+  METRIC_DISPLAY_META,
+  HEATMAP_METRIC_KEYS,
+} from './classPageModel';
+import type { HeatmapMetricKey } from './classPageModel';
 import { METRIC_COLUMN_FILTERS } from './studentAveragesTableColumns';
 import { resolveMetricTone } from '../../services/dataAnalysis/metricDisplay/metricTone';
 import { MetricPill } from '../../services/dataAnalysis/metricDisplay/MetricPill';
+import { MetricIconLabel } from './MetricIconLabel';
 
 // ---------------------------------------------------------------------------
 // Internal constants
 // ---------------------------------------------------------------------------
-
-/** The three metric keys appearing as sub-columns under each task group. */
-type MetricKey = 'completeness' | 'accuracy' | 'spag';
-
-const METRICS: readonly MetricKey[] = ['completeness', 'accuracy', 'spag'];
 
 /** Default number of decimal places for computed metric values. */
 const METRIC_PRECISION = 2;
@@ -44,29 +45,29 @@ const METRIC_PRECISION = 2;
 // ---------------------------------------------------------------------------
 
 /**
- * Retrieve the heatmap cell at the given index. Uses `find` instead of bracket
- * access to avoid eslint-plugin-security object-injection warnings that flag
- * all bracket access with a variable index.
+ * Retrieve the display label for a heatmap metric key.
  *
- * @param {readonly HeatmapCell[]} cells - The cells array.
- * @param {number} index - The index to retrieve.
- * @returns {HeatmapCell} The cell at that index.
+ * @param {HeatmapMetricKey} key - The metric key.
+ * @returns {string} The display title.
  */
-function getCellAt(cells: readonly HeatmapCell[], index: number): HeatmapCell {
-  const cell = cells.find((_, index_) => index_ === index);
-  return cell as HeatmapCell;
+function getDisplayTitle(key: HeatmapMetricKey): string {
+  return METRIC_DISPLAY_META.get(key)!.label;
 }
 
 /**
- * Safe accessor for a single cell metric by key, mirroring the pattern used by
- * `getStudentMetric` in `classPageAdapter.zod.ts` to avoid eslint-plugin-security
- * object-injection warnings.
+ * Extract a single cell metric by key via direct property access.
  *
- * @param {HeatmapCell} cell - The heatmap cell containing three metric results.
- * @param {MetricKey} key - The metric key to extract.
+ * @param {object} cell - The heatmap cell containing three metric results.
+ * @param {MetricResult} cell.completeness - The completeness metric result.
+ * @param {MetricResult} cell.accuracy - The accuracy metric result.
+ * @param {MetricResult} cell.spag - The SpAG metric result.
+ * @param {HeatmapMetricKey} key - The metric key to extract.
  * @returns {MetricResult} The matching metric result.
  */
-function getCellMetric(cell: HeatmapCell, key: MetricKey): MetricResult {
+function getCellMetric(
+  cell: { completeness: MetricResult; accuracy: MetricResult; spag: MetricResult },
+  key: HeatmapMetricKey,
+): MetricResult {
   switch (key) {
     case 'completeness': {
       return cell.completeness;
@@ -76,26 +77,6 @@ function getCellMetric(cell: HeatmapCell, key: MetricKey): MetricResult {
     }
     case 'spag': {
       return cell.spag;
-    }
-  }
-}
-
-/**
- * Resolve the human-readable display title for a metric key.
- *
- * @param {MetricKey} key - The metric key.
- * @returns {string} The display title.
- */
-function getDisplayTitle(key: MetricKey): string {
-  switch (key) {
-    case 'completeness': {
-      return 'Completeness';
-    }
-    case 'accuracy': {
-      return 'Accuracy';
-    }
-    case 'spag': {
-      return 'SPaG';
     }
   }
 }
@@ -150,20 +131,20 @@ function heatmapMetricComparator(
 
 /**
  * Build a compare function for a single metric sub-column at the given task
- * index. Uses the safe `getCellMetric` accessor to avoid injection warnings.
+ * index.
  *
  * @param {number} taskIndex - The index of the task column.
- * @param {MetricKey} metric - The metric key.
+ * @param {HeatmapMetricKey} metric - The metric key.
  * @returns {(a: HeatmapRow, b: HeatmapRow) => number} A compare function.
  */
 function buildMetricSorter(
   taskIndex: number,
-  metric: MetricKey,
+  metric: HeatmapMetricKey,
 ): (a: HeatmapRow, b: HeatmapRow) => number {
   return (a: HeatmapRow, b: HeatmapRow): number =>
     heatmapMetricComparator(
-      getCellMetric(getCellAt(a.cells, taskIndex), metric),
-      getCellMetric(getCellAt(b.cells, taskIndex), metric),
+      getCellMetric(a.cells[taskIndex], metric),
+      getCellMetric(b.cells[taskIndex], metric),
       a.studentId,
       b.studentId,
     );
@@ -171,20 +152,20 @@ function buildMetricSorter(
 
 /**
  * Build an `onFilter` predicate for a single metric column at the given task
- * index. Uses the safe `getCellMetric` accessor to avoid injection warnings.
+ * index.
  *
  * @param {number} taskIndex - The index of the task column.
- * @param {MetricKey} metric - The metric key.
+ * @param {HeatmapMetricKey} metric - The metric key.
  * @returns {(value: string | number | boolean, record: HeatmapRow) => boolean}
  *   A filter predicate.
  */
 function buildMetricOnFilter(
   taskIndex: number,
-  metric: MetricKey,
+  metric: HeatmapMetricKey,
 ): (value: string | number | boolean, record: HeatmapRow) => boolean {
   return (value: string | number | boolean, record: HeatmapRow): boolean => {
     const { color } = resolveMetricTone(
-      getCellMetric(getCellAt(record.cells, taskIndex), metric),
+      getCellMetric(record.cells[taskIndex], metric),
     );
     return color === String(value);
   };
@@ -243,26 +224,29 @@ export function TaskHeatmapTable({
     ...taskColumns.map((taskColumn, taskIndex) => ({
       key: taskColumn.taskKey,
       title: taskColumn.taskTitle,
-      children: METRICS.map((metric) => ({
-        key: `${taskColumn.taskKey}::${metric}`,
-        title: getDisplayTitle(metric),
-        filters: METRIC_COLUMN_FILTERS,
-        onFilter: buildMetricOnFilter(taskIndex, metric),
-        sorter: {
-          compare: buildMetricSorter(taskIndex, metric),
-          multiple: 2,
-        },
-        render: (_: unknown, record: HeatmapRow): JSX.Element => {
-          const m = getCellMetric(getCellAt(record.cells, taskIndex), metric);
-          const score = renderScore(m);
-          const ariaLabel = `${record.studentName}, ${taskColumn.taskId}, ${getDisplayTitle(metric)}: ${score}`;
-          return (
-            <span aria-label={ariaLabel}>
-              <MetricPill metric={m} compact />
-            </span>
-          );
-        },
-      })),
+      children: HEATMAP_METRIC_KEYS.map((metric) => {
+        const meta = METRIC_DISPLAY_META.get(metric)!;
+        return {
+          key: `${taskColumn.taskKey}::${metric}`,
+          title: <MetricIconLabel icon={meta.icon} label={meta.label} />,
+          filters: METRIC_COLUMN_FILTERS,
+          onFilter: buildMetricOnFilter(taskIndex, metric),
+          sorter: {
+            compare: buildMetricSorter(taskIndex, metric),
+            multiple: 2,
+          },
+          render: (_: unknown, record: HeatmapRow): JSX.Element => {
+            const m = getCellMetric(record.cells[taskIndex], metric);
+            const score = renderScore(m);
+            const ariaLabel = `${record.studentName}, ${taskColumn.taskId}, ${getDisplayTitle(metric)}: ${score}`;
+            return (
+              <span aria-label={ariaLabel}>
+                <MetricPill metric={m} compact />
+              </span>
+            );
+          },
+        };
+      }),
     })),
   ];
 

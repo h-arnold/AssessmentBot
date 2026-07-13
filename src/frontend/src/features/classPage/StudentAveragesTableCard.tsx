@@ -51,6 +51,7 @@ import type { ClassPageAdapterResult, StudentAverageRowModel } from './classPage
 import { pageContent } from '../../pages/pageContent';
 
 import { buildClassPageViewModel, DEFAULT_SORT } from './classPageModel';
+import type { MetricColumnKey } from './classPageModel';
 import {
   buildStudentAveragesTableColumns,
   type StudentAveragesTableFilters,
@@ -61,7 +62,7 @@ import {
 // ---------------------------------------------------------------------------
 
 /** Valid sort column keys for the Student Averages table. */
-type SortColumn = 'studentName' | 'completeness' | 'accuracy' | 'spag' | 'average';
+type SortColumn = 'studentName' | MetricColumnKey;
 
 /** Sort state shape passed to the model. */
 type SortState = {
