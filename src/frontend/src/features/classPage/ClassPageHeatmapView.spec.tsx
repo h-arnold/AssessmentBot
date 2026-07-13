@@ -58,22 +58,12 @@ const { mockStudentAveragesTableCard } = vi.hoisted(() => ({
   }),
 }));
 
-const { mockClassPageHeaderActions } = vi.hoisted(() => ({
-  mockClassPageHeaderActions: vi.fn(function MockClassPageHeaderActions() {
-    return createElement('div', { 'data-testid': 'header-actions' });
-  }),
-}));
-
 const { logFrontendError: mockLogFrontendError } = vi.hoisted(() => ({
   logFrontendError: vi.fn(),
 }));
 
 vi.mock('./StudentAveragesTableCard', () => ({
   StudentAveragesTableCard: mockStudentAveragesTableCard,
-}));
-
-vi.mock('./ClassPageHeaderActions', () => ({
-  ClassPageHeaderActions: mockClassPageHeaderActions,
 }));
 
 vi.mock('../../logging/frontendLogger', () => ({

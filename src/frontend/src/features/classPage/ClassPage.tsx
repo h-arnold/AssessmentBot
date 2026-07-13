@@ -24,13 +24,15 @@
  */
 
 import { useState, type JSX } from 'react';
-import { Flex, Typography } from 'antd';
+import { Flex } from 'antd';
 import { ClassPageContent } from './ClassPageContent';
+import { ClassPageHeaderActions } from './ClassPageHeaderActions';
 import { useClassPageData } from './useClassPageData';
 import { AssessTaskModal } from '../../features/classes/AssessTaskModal/AssessTaskModal';
 import { pageContent } from '../../pages/pageContent';
 import { useClassSelection } from '../../ClassSelectionContext';
 import { APP_GAP_MD } from '../../theme/spacing';
+import { PageTitleCard, PageNavCard } from '../../components/PageHeader';
 
 type ClassPageProperties = Readonly<{
   /** The class ID to fetch data for. */
@@ -96,9 +98,18 @@ export function ClassPage({ classId }: ClassPageProperties): JSX.Element {
     <>
       <Flex vertical gap={APP_GAP_MD}>
         {surfaceState.status !== 'loading' && (
-          <Typography.Title level={2}>
-            {className || pageContent.classDetail.heading}
-          </Typography.Title>
+          <>
+            <PageTitleCard
+              title={className || pageContent.classDetail.heading}
+              titleLevel={2}
+            />
+            <PageNavCard
+              onBack={onNavigateToClasses}
+              backLabel="Back to Classes"
+              backAriaLabel="Back to Classes"
+              actions={<ClassPageHeaderActions onStartNewAssessment={handleStartNewAssessment} />}
+            />
+          </>
         )}
 
         <ClassPageContent

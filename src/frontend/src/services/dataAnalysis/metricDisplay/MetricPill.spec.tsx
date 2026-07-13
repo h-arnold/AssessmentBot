@@ -13,6 +13,7 @@ import {
   createErrorMetricResult,
 } from '../../../test/dataAnalysis/fixtures';
 import { MetricPill } from './MetricPill';
+import { resolveMetricTone } from './metricTone';
 
 /** Default font size (px) for a non-emphasised Tag. */
 const DEFAULT_TAG_FONT_SIZE_PX = 14;
@@ -39,10 +40,12 @@ describe('MetricPill', () => {
     const pill = screen.getByText('3.14');
     expect(pill).toBeInTheDocument();
 
-    // Value 3.14 in default range {0,5} falls in the second quartile → gold colour
+    // Computed values render a continuous gradient (custom HSL) via the
+    // filled-tag style rather than a fixed band class.
     const tag = container.querySelector('.ant-tag');
     expect(tag).not.toBeNull();
-    expect(tag!.className).toContain('ant-tag-gold');
+    expect(tag!.className).toContain('ant-tag-filled');
+    expect(tag!.getAttribute('style')).toContain(resolveMetricTone(metric).color);
   });
 
   // -------------------------------------------------------------------------
@@ -188,10 +191,11 @@ describe('MetricPill', () => {
     const pill = screen.getByText('5.00');
     expect(pill).toBeInTheDocument();
 
-    // Green band for value 5 on default {0, 5} range
+    // Gradient colour for value 5 (dark green end of the 0–5 range)
     const tag = container.querySelector('.ant-tag');
     expect(tag).not.toBeNull();
-    expect(tag!.className).toContain('ant-tag-green');
+    expect(tag!.className).toContain('ant-tag-filled');
+    expect(tag!.getAttribute('style')).toContain(resolveMetricTone(metric).color);
 
     // Compact footprint: smaller font (12px) and reduced padding (2px 4px)
     // RED: these fail because `compact` is not yet handled in MetricPill
@@ -228,9 +232,11 @@ describe('MetricPill', () => {
     expect(compactTag).not.toBeNull();
     expect(emphasisedTag).not.toBeNull();
 
-    // Same green colour for value 5
-    expect(compactTag!.className).toContain('ant-tag-green');
-    expect(emphasisedTag!.className).toContain('ant-tag-green');
+    // Same gradient colour (dark green) for value 5 in both variants
+    expect(compactTag!.className).toContain('ant-tag-filled');
+    expect(emphasisedTag!.className).toContain('ant-tag-filled');
+    expect(compactTag!.getAttribute('style')).toContain(resolveMetricTone(metric).color);
+    expect(emphasisedTag!.getAttribute('style')).toContain(resolveMetricTone(metric).color);
 
     // v1 signed-off accessibility gap: no aria-label or role on the pill
     expect(compactTag!.getAttribute('aria-label')).toBeNull();
@@ -252,8 +258,9 @@ describe('MetricPill', () => {
     const tag = container.querySelector('.ant-tag');
     expect(tag).not.toBeNull();
 
-    // Green band for value 5 on default {0, 5} range
-    expect(tag!.className).toContain('ant-tag-green');
+    // Gradient colour for value 5 (dark green end of the 0–5 range)
+    expect(tag!.className).toContain('ant-tag-filled');
+    expect(tag!.getAttribute('style')).toContain(resolveMetricTone(metric).color);
 
     // Emphasised styling: large font size and bold weight
     expect(Number.parseFloat(getComputedStyle(tag!).fontSize)).toBeCloseTo(

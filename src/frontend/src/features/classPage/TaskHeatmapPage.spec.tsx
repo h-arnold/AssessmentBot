@@ -154,11 +154,9 @@ describe('TaskHeatmapPage — TaskTitlesUnavailableError and generic Error handl
       })
     );
 
-    // The header Card (assignment name + Back) stays visible; the class name
-    // subheading is intentionally not rendered to avoid duplication with the
-    // page-level class heading.
+    // The parent title Card (class name) and child title Card (assignment name) stay visible.
     expect(screen.getByText('Assignment One')).toBeInTheDocument();
-    expect(screen.queryByText('Class A')).not.toBeInTheDocument();
+    expect(screen.getByText('Class A')).toBeInTheDocument();
 
     // Back button should be present and functional
     const backButton = screen.getByLabelText('Back to Class overview');

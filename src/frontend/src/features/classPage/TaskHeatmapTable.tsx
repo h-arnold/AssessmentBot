@@ -4,7 +4,7 @@
  * Renders a grouped-header Ant Design Table from a `HeatmapResult` view model.
  * The first column (Student Name) is sticky with locale-aware sorting and
  * default ascending order. Each task column groups three metric sub-columns
- * (Completeness, Accuracy, SPaG) with band filters and a SPEC-ordered metric
+ * (Completeness, Accuracy, SPaG) with score-range filters and a SPEC-ordered metric
  * comparator.
  *
  * @see ACTION_PLAN.md §4 — TaskHeatmapTable
@@ -28,11 +28,11 @@ import {
   HEATMAP_METRIC_KEYS,
 } from './classPageModel';
 import type { HeatmapMetricKey } from './classPageModel';
-import { METRIC_COLUMN_FILTERS } from './studentAveragesTableColumns';
 import {
   resolveMetricTone,
-  METRIC_TONE_CELL_STYLE,
+  type MetricToneRange,
 } from '../../services/dataAnalysis/metricDisplay/metricTone';
+import { buildMetricRangeFilter } from '../../services/dataAnalysis/metricDisplay/metricRangeFilter';
 import { MetricIconLabel } from './MetricIconLabel';
 import {
   APP_COL_WIDTH_STUDENT_NAME,
@@ -160,25 +160,9 @@ function buildMetricSorter(
 }
 
 /**
- * Build an `onFilter` predicate for a single metric column at the given task
- * index.
- *
- * @param {number} taskIndex - The index of the task column.
- * @param {HeatmapMetricKey} metric - The metric key.
- * @returns {(value: string | number | boolean, record: HeatmapRow) => boolean}
- *   A filter predicate.
+ * Default scoring range for heatmap metric cells (0–5).
  */
-function buildMetricOnFilter(
-  taskIndex: number,
-  metric: HeatmapMetricKey,
-): (value: string | number | boolean, record: HeatmapRow) => boolean {
-  return (value: string | number | boolean, record: HeatmapRow): boolean => {
-    const { color } = resolveMetricTone(
-      getCellMetric(record.cells[taskIndex], metric),
-    );
-    return color === String(value);
-  };
-}
+const DEFAULT_TONE_RANGE: MetricToneRange = { lower: 0, upper: 5 };
 
 // ---------------------------------------------------------------------------
 // Component
@@ -235,24 +219,28 @@ export function TaskHeatmapTable({
       title: taskColumn.taskTitle,
       children: HEATMAP_METRIC_KEYS.map((metric) => {
         const meta = METRIC_DISPLAY_META.get(metric)!;
+        const rangeFilter = buildMetricRangeFilter<HeatmapRow>({
+          range: DEFAULT_TONE_RANGE,
+          getMetric: (record): MetricResult => getCellMetric(record.cells[taskIndex], metric),
+          activeRange: [],
+        });
         return {
           key: `${taskColumn.taskKey}::${metric}`,
           title: <MetricIconLabel icon={meta.icon} label={meta.label} />,
           align: 'center' as const,
           width: APP_COL_WIDTH_METRIC,
-          filters: METRIC_COLUMN_FILTERS,
-          onFilter: buildMetricOnFilter(taskIndex, metric),
+          ...rangeFilter,
           sorter: {
             compare: buildMetricSorter(taskIndex, metric),
             multiple: 2,
           },
           onCell: (record: HeatmapRow): { style: CSSProperties; 'aria-label': string } => {
             const m = getCellMetric(record.cells[taskIndex], metric);
-            const { color } = resolveMetricTone(m);
+            const { cellStyle } = resolveMetricTone(m);
             const score = renderScore(m);
             const ariaLabel = `${record.studentName}, ${taskColumn.taskId}, ${getDisplayTitle(metric)}: ${score}`;
             return {
-              style: METRIC_TONE_CELL_STYLE[color],
+              style: cellStyle,
               'aria-label': ariaLabel,
             };
           },

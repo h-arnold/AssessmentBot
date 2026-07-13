@@ -20,8 +20,9 @@
  *   retryable, `error` for non-retryable).  Retryable errors include
  *   `Retry` + `Back to Classes` buttons; non-retryable errors include
  *   only `Back to Classes`.
- * - {@link ClassPageReady} — the full content tree (heading row with
- *   header actions, `RecentAssignmentsSection`, `StudentAveragesTableCard`).
+ * - {@link ClassPageReady} — the full content tree (`RecentAssignmentsSection`,
+ *   `StudentAveragesTableCard`).  Header actions are rendered by the parent
+ *   `ClassPage` via `PageHeader`, not here.
  *
  * @see SPEC_CLASS_PAGE.md — "ClassPageContent — per-state dispatcher"
  * @see CLASS_PAGE_LAYOUT.md — "Surface hierarchy"
@@ -37,7 +38,6 @@ import type { ClassPageAdapterResult } from './classPageAdapter.zod';
 import type { AveragingResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
 import type { AssignmentDefinitionPartialsResponse } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
-import { ClassPageHeaderActions } from './ClassPageHeaderActions';
 import { RecentAssignmentsSection } from './RecentAssignmentsSection';
 import { StudentAveragesTableCard } from './StudentAveragesTableCard';
 import { TaskHeatmapPage } from './TaskHeatmapPage';
@@ -53,8 +53,6 @@ type ClassPageContentProperties = Readonly<{
   adapterResult: ClassPageAdapterResult | null;
   /** Structured error (non-null only when `surfaceState.status === 'blocking'`). */
   error: ClassPageError | null;
-  /** Callback invoked when the user clicks "Start New Assessment". */
-  onStartNewAssessment: () => void;
   /** Callback invoked when the user clicks "Back to Classes". */
   onNavigateToClasses: () => void;
   /** Callback invoked when the user clicks "Retry" on a retryable error. */
@@ -73,6 +71,8 @@ type ClassPageContentProperties = Readonly<{
   onBack: () => void;
   /** Callback invoked to re-run the data pipeline (refresh). */
   refetch: () => void;
+  /** Callback invoked when the user clicks "Start New Assessment" (used by empty-state CTA). */
+  onStartNewAssessment: () => void;
 }>;
 
 type ClassPageBlockingProperties = Readonly<{
@@ -87,10 +87,10 @@ type ClassPageBlockingProperties = Readonly<{
 type ClassPageReadyProperties = Readonly<{
   /** The adapter result with recent assignments and student averages. */
   adapterResult: ClassPageAdapterResult;
-  /** Callback invoked when the user clicks "Start New Assessment". */
-  onStartNewAssessment: () => void;
   /** Callback forwarded to RecentAssignmentsSection for opening the heatmap view. */
   onOpenHeatmap: (assignmentId: string) => void;
+  /** Callback invoked when the user clicks "Start New Assessment" (used by empty-state CTA). */
+  onStartNewAssessment: () => void;
 }>;
 
 // ---------------------------------------------------------------------------
@@ -292,10 +292,10 @@ function ClassPageBlocking({
  * @param {ClassFull | null} classFull - The full class data.
  * @param {import('../../services/assignmentDefinition/assignmentDefinitionPartials.zod').AssignmentDefinitionPartialsResponse | null} assignmentDefinitionPartials - Warm-up partials (non-null gates the heatmap branch).
  * @param {ClassPageAdapterResult} adapterResult - The adapter result (non-null in ready state).
- * @param {() => void} onStartNewAssessment - Callback to start a new assessment.
  * @param {(assignmentId: string) => void} onOpenHeatmap - Callback to open the heatmap.
  * @param {() => void} onBack - Callback to return to the overview.
  * @param {() => void} refetch - Callback to re-run the data pipeline.
+ * @param {() => void} onStartNewAssessment - Callback to start a new assessment (empty-state CTA).
  * @returns {JSX.Element} The rendered ready-state content.
  */
 function renderReadyContent(
@@ -304,10 +304,10 @@ function renderReadyContent(
   classFull: ClassFull | null,
   assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse | null,
   adapterResult: ClassPageAdapterResult,
-  onStartNewAssessment: () => void,
   onOpenHeatmap: (assignmentId: string) => void,
   onBack: () => void,
   refetch: () => void,
+  onStartNewAssessment: () => void,
 ): JSX.Element {
   if (
     selectedView.view === 'heatmap' &&
@@ -331,8 +331,8 @@ function renderReadyContent(
   return (
     <ClassPageReady
       adapterResult={adapterResult}
-      onStartNewAssessment={onStartNewAssessment}
       onOpenHeatmap={onOpenHeatmap}
+      onStartNewAssessment={onStartNewAssessment}
     />
   );
 }
@@ -341,25 +341,23 @@ function renderReadyContent(
  * Ready-state content for the Class page.
  *
  * Renders the full content tree:
- * 1. `ClassPageHeaderActions` with the `onStartNewAssessment` callback
- * 2. `RecentAssignmentsSection` with `adapterResult.recentAssignments`
+ * 1. `RecentAssignmentsSection` with `adapterResult.recentAssignments`
  *    and the `onOpenHeatmap` callback
- * 3. `StudentAveragesTableCard` with `adapterResult`
+ * 2. `StudentAveragesTableCard` with `adapterResult`
  *
  * @param {ClassPageReadyProperties} properties - Component properties.
  * @param {ClassPageAdapterResult} properties.adapterResult - The adapter result.
- * @param {() => void} properties.onStartNewAssessment - Callback to start a new assessment.
  * @param {(assignmentId: string) => void} properties.onOpenHeatmap - Callback to open the heatmap.
+ * @param {() => void} properties.onStartNewAssessment - Callback to start a new assessment (empty-state CTA).
  * @returns {JSX.Element} The rendered ready-state content tree.
  */
 function ClassPageReady({
   adapterResult,
-  onStartNewAssessment,
   onOpenHeatmap,
+  onStartNewAssessment,
 }: ClassPageReadyProperties): JSX.Element {
   return (
     <>
-      <ClassPageHeaderActions onStartNewAssessment={onStartNewAssessment} />
       <RecentAssignmentsSection
         recentAssignments={adapterResult.recentAssignments}
         onStartNewAssessment={onStartNewAssessment}
@@ -389,18 +387,18 @@ function ClassPageReady({
  * @param {ClassPageSurfaceState} properties.surfaceState - The combined surface state.
  * @param {ClassPageAdapterResult | null} properties.adapterResult - Adapter result.
  * @param {ClassPageError | null} properties.error - Structured error.
- * @param {() => void} properties.onStartNewAssessment - Start new assessment callback.
  * @param {() => void} properties.onNavigateToClasses - Navigation callback.
  * @param {() => void} properties.onRetry - Retry callback.
+ * @param {() => void} properties.onStartNewAssessment - Start new assessment callback (empty-state CTA).
  * @returns {JSX.Element} The rendered content for the current surface state.
  */
 export function ClassPageContent({
   surfaceState,
   adapterResult,
   error,
-  onStartNewAssessment,
   onNavigateToClasses,
   onRetry,
+  onStartNewAssessment,
   analyserResult,
   classFull,
   selectedView,
@@ -435,10 +433,10 @@ export function ClassPageContent({
         classFull,
         assignmentDefinitionPartials,
         adapterResult!,
-        onStartNewAssessment,
         onOpenHeatmap,
         onBack,
         refetch,
+        onStartNewAssessment,
       );
     }
   }

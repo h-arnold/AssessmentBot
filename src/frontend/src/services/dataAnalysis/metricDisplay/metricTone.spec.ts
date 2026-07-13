@@ -19,64 +19,62 @@ describe('resolveMetricTone', () => {
   // Computed state — default range { lower: 0, upper: 5 }
   // -------------------------------------------------------------------------
 
-  it('returns red for computed value below the red/amber boundary', () => {
+  it('returns a dark-red gradient colour for a computed value at the range floor', () => {
+    const metric: MetricResult = createComputedMetricResult({ value: 0 });
+
+    const result: MetricToneResolution = resolveMetricTone(metric);
+
+    expect(result).toStrictEqual({
+      color: 'hsl(0.0, 70%, 38.0%)',
+      cellStyle: {
+        backgroundColor: 'hsl(0.0, 75%, 92%)',
+        color: 'hsl(0.0, 70%, 32%)',
+      },
+      displayValue: 0,
+      muted: false,
+    });
+  });
+
+  it('returns a darker-red gradient colour for computed value 1 (default 0–5 range)', () => {
     const metric: MetricResult = createComputedMetricResult({ value: 1 });
 
     const result: MetricToneResolution = resolveMetricTone(metric);
 
-    expect(result).toStrictEqual({
-      color: 'red',
-      displayValue: 1,
-      muted: false,
+    // t = (1 - 0) / 5 = 0.2 -> hue 24, lightness 38 + 10·sin(0.2π) ≈ 43.9
+    expect(result.color).toBe('hsl(24.0, 70%, 43.9%)');
+    expect(result.cellStyle).toEqual({
+      backgroundColor: 'hsl(24.0, 75%, 92%)',
+      color: 'hsl(24.0, 70%, 32%)',
     });
+    expect(result.displayValue).toBe(1);
+    expect(result.muted).toBe(false);
   });
 
-  it('returns gold for computed value at the red/amber edge (amber side inclusive)', () => {
-    const metric: MetricResult = createComputedMetricResult({ value: 1.25 });
+  it('returns an amber gradient colour for a computed value at the midpoint', () => {
+    const metric: MetricResult = createComputedMetricResult({ value: 2.5 });
 
     const result: MetricToneResolution = resolveMetricTone(metric);
 
-    expect(result).toStrictEqual({
-      color: 'gold',
-      displayValue: 1.25,
-      muted: false,
+    // t = 0.5 -> hue 60, lightness 48
+    expect(result.color).toBe('hsl(60.0, 70%, 48.0%)');
+    expect(result.cellStyle).toEqual({
+      backgroundColor: 'hsl(60.0, 75%, 92%)',
+      color: 'hsl(60.0, 70%, 32%)',
     });
   });
 
-  it('returns green for computed value at the amber/green boundary', () => {
-    const metric: MetricResult = createComputedMetricResult({ value: 3.75 });
+  it('returns a dark-green gradient colour for a computed value at the range ceiling', () => {
+    const metric: MetricResult = createComputedMetricResult({ value: 5 });
 
     const result: MetricToneResolution = resolveMetricTone(metric);
 
-    expect(result).toStrictEqual({
-      color: 'green',
-      displayValue: 3.75,
-      muted: false,
+    expect(result.color).toBe('hsl(120.0, 70%, 38.0%)');
+    expect(result.cellStyle).toEqual({
+      backgroundColor: 'hsl(120.0, 75%, 92%)',
+      color: 'hsl(120.0, 70%, 32%)',
     });
-  });
-
-  it('returns gold for computed value just below the amber/green boundary', () => {
-    const metric: MetricResult = createComputedMetricResult({ value: 3.74 });
-
-    const result: MetricToneResolution = resolveMetricTone(metric);
-
-    expect(result).toStrictEqual({
-      color: 'gold',
-      displayValue: 3.74,
-      muted: false,
-    });
-  });
-
-  it('returns green for computed value at the green boundary', () => {
-    const metric: MetricResult = createComputedMetricResult({ value: 4 });
-
-    const result: MetricToneResolution = resolveMetricTone(metric);
-
-    expect(result).toStrictEqual({
-      color: 'green',
-      displayValue: 4,
-      muted: false,
-    });
+    expect(result.displayValue).toBe(5);
+    expect(result.muted).toBe(false);
   });
 
   // -------------------------------------------------------------------------
@@ -90,6 +88,7 @@ describe('resolveMetricTone', () => {
 
     expect(result).toStrictEqual({
       color: 'default',
+      cellStyle: {},
       displayValue: 'N',
       muted: true,
     });
@@ -106,6 +105,7 @@ describe('resolveMetricTone', () => {
 
     expect(result).toStrictEqual({
       color: 'volcano',
+      cellStyle: { backgroundColor: '#fff2e8', color: '#d4380d' },
       displayValue: 'E',
       muted: false,
     });
@@ -118,6 +118,7 @@ describe('resolveMetricTone', () => {
 
     expect(result).toStrictEqual({
       color: 'red',
+      cellStyle: { backgroundColor: '#fff1f0', color: '#cf1322' },
       displayValue: 'E',
       muted: false,
     });
@@ -127,39 +128,42 @@ describe('resolveMetricTone', () => {
   // Custom range { lower: 0, upper: 100 }
   // -------------------------------------------------------------------------
 
-  it('returns red for computed value 24 in a 0-100 range (below red/amber boundary 25)', () => {
-    const metric: MetricResult = createComputedMetricResult({ value: 24 });
+  it('returns a dark-red gradient colour for computed value 0 in a 0-100 range', () => {
+    const metric: MetricResult = createComputedMetricResult({ value: 0 });
 
     const result: MetricToneResolution = resolveMetricTone(metric, { lower: 0, upper: 100 });
 
-    expect(result).toStrictEqual({
-      color: 'red',
-      displayValue: 24,
-      muted: false,
+    expect(result.color).toBe('hsl(0.0, 70%, 38.0%)');
+    expect(result.cellStyle).toEqual({
+      backgroundColor: 'hsl(0.0, 75%, 92%)',
+      color: 'hsl(0.0, 70%, 32%)',
+    });
+    expect(result.displayValue).toBe(0);
+    expect(result.muted).toBe(false);
+  });
+
+  it('returns an amber gradient colour for computed value 50 in a 0-100 range', () => {
+    const metric: MetricResult = createComputedMetricResult({ value: 50 });
+
+    const result: MetricToneResolution = resolveMetricTone(metric, { lower: 0, upper: 100 });
+
+    // t = 0.5 -> hue 60, lightness 48
+    expect(result.color).toBe('hsl(60.0, 70%, 48.0%)');
+    expect(result.cellStyle).toEqual({
+      backgroundColor: 'hsl(60.0, 75%, 92%)',
+      color: 'hsl(60.0, 70%, 32%)',
     });
   });
 
-  it('returns gold for computed value 25 in a 0-100 range (at red/amber edge, amber side)', () => {
-    const metric: MetricResult = createComputedMetricResult({ value: 25 });
+  it('returns a dark-green gradient colour for computed value 100 in a 0-100 range', () => {
+    const metric: MetricResult = createComputedMetricResult({ value: 100 });
 
     const result: MetricToneResolution = resolveMetricTone(metric, { lower: 0, upper: 100 });
 
-    expect(result).toStrictEqual({
-      color: 'gold',
-      displayValue: 25,
-      muted: false,
-    });
-  });
-
-  it('returns green for computed value at the amber/green boundary in a 0-100 range', () => {
-    const metric: MetricResult = createComputedMetricResult({ value: 75 });
-
-    const result: MetricToneResolution = resolveMetricTone(metric, { lower: 0, upper: 100 });
-
-    expect(result).toStrictEqual({
-      color: 'green',
-      displayValue: 75,
-      muted: false,
+    expect(result.color).toBe('hsl(120.0, 70%, 38.0%)');
+    expect(result.cellStyle).toEqual({
+      backgroundColor: 'hsl(120.0, 75%, 92%)',
+      color: 'hsl(120.0, 70%, 32%)',
     });
   });
 

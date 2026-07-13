@@ -3,13 +3,14 @@
  *
  * Exports a pure function that returns five column definitions in fixed order:
  * `studentName`, `completeness`, `accuracy`, `spag`, `average`. The metric
- * columns share a common pattern: coloured-cell rendering (band background via
- * `METRIC_TONE_CELL_STYLE`), band filters using `MetricToneColor` tokens, and
- * `onFilter` via `resolveMetricTone`.
+ * columns share a common pattern: gradient coloured-cell rendering (via
+ * `resolveMetricTone(...).cellStyle`), and a numeric score-range filter via
+ * `buildMetricRangeFilter`.
  *
  * @remarks
- * The `MetricToneColor` token set is the filter value set (not the
- * `MetricResult.state` name set). The `onFilter` predicate uses
+ * The `MetricToneColor` token set covers discrete `notAttempted` (`'default'`)
+ * and `error` (`errorColor`) states only. Computed values render on a continuous
+ * gradient and are filtered by score range, not by colour band. The `onFilter`
  * `resolveMetricTone` with the default scoring range `{ lower: 0, upper: 5 }`
  * to compute the cell's band, then compares the band colour string to the
  * filter value.
@@ -32,8 +33,9 @@ import { compareStudentNames, METRIC_DISPLAY_META } from './classPageModel';
 import type { MetricColumnKey } from './classPageModel';
 import {
   resolveMetricTone,
-  METRIC_TONE_CELL_STYLE,
+  type MetricToneRange,
 } from '../../services/dataAnalysis/metricDisplay/metricTone';
+import { buildMetricRangeFilter } from '../../services/dataAnalysis/metricDisplay/metricRangeFilter';
 import { MetricIconLabel } from './MetricIconLabel';
 import {
   APP_COL_WIDTH_STUDENT_NAME,
@@ -47,14 +49,14 @@ import {
 /**
  * User-controlled filter state for the four metric columns.
  *
- * Each key maps to an array of selected `MetricToneColor` values.
- * An empty array means "no filter for this column" (all rows pass).
+ * Each key maps to the active numeric score range `[min, max]`, or an empty
+ * array when the column is unfiltered (all rows pass).
  */
 export type StudentAveragesTableFilters = Readonly<{
-  completeness: readonly string[];
-  accuracy: readonly string[];
-  spag: readonly string[];
-  average: readonly string[];
+  completeness: readonly number[];
+  accuracy: readonly number[];
+  spag: readonly number[];
+  average: readonly number[];
 }>;
 
 // ---------------------------------------------------------------------------
@@ -62,39 +64,11 @@ export type StudentAveragesTableFilters = Readonly<{
 // ---------------------------------------------------------------------------
 
 /** Default scoring range for metric columns (0–5). */
-const DEFAULT_TONE_RANGE = { lower: 0, upper: 5 } as const;
-
-/**
- * Filter items for each metric column, matching the `MetricToneColor` token
- * set used by `resolveMetricTone` for rendering, so filter colours and pill
- * colours cannot diverge.
- */
-export const METRIC_COLUMN_FILTERS: { text: string; value: string }[] = [
-  { text: 'Red (low)', value: 'red' },
-  { text: 'Amber (mid)', value: 'gold' },
-  { text: 'Green (high)', value: 'green' },
-  { text: 'Not Attempted', value: 'default' },
-  { text: 'Error', value: 'volcano' },
-];
+const DEFAULT_TONE_RANGE: MetricToneRange = { lower: 0, upper: 5 };
 
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
-
-/**
- * Resolve the effective `filteredValue` for a metric column.
- *
- * Returns `undefined` when the filter array is empty (Ant Design v6 treats
- * an empty array as "no filter" but prefers `undefined` for correct rendering).
- *
- * @param {ReadonlyArray<string>} array - The selected filter values.
- * @returns {string[] | undefined} A mutable copy when non-empty, or `undefined`.
- */
-function arrayOrUndefined(
-  array: readonly string[]
-): string[] | undefined {
-  return array.length > 0 ? [...array] : undefined;
-}
 
 /**
  * Number of decimal places for the Class Page student-average scores.
@@ -122,38 +96,39 @@ function renderClassPageScore(metric: MetricResult): string {
 /**
  * Build a single metric column definition.
  *
- * Renders the score as plain text inside a band-coloured cell (via `onCell`
- * + `METRIC_TONE_CELL_STYLE`), mirroring the Task Heatmap's cell treatment.
+ * Renders the score as plain text inside a gradient-coloured cell (via `onCell`
+ * + `resolveMetricTone(...).cellStyle`), mirroring the Task Heatmap's cell
+ * treatment, and exposes a numeric score-range filter.
  *
  * @param {MetricColumnKey} key - The column key (metric field name).
- * @param {ReadonlyArray<string>} columnFilters - The selected filter values.
+ * @param {readonly number[]} columnFilters - The active `[min, max]` range, or
+ *   an empty array when the column is unfiltered.
  * @returns {TableColumnType<StudentAverageRowModel>} A column definition.
  */
 function buildMetricColumn(
   key: MetricColumnKey,
-  columnFilters: readonly string[]
+  columnFilters: readonly number[]
 ): TableColumnType<StudentAverageRowModel> {
   const meta = METRIC_DISPLAY_META.get(key)!;
+  const rangeFilter = buildMetricRangeFilter<StudentAverageRowModel>({
+    range: DEFAULT_TONE_RANGE,
+    getMetric: (record): MetricResult => getStudentMetric(record.metrics, key),
+    activeRange: columnFilters,
+  });
   return {
     key,
     title: <MetricIconLabel icon={meta.icon} label={meta.label} />,
     width: APP_COL_WIDTH_METRIC_PILL,
     align: 'center',
     sorter: true,
-    filters: METRIC_COLUMN_FILTERS,
-    filteredValue: arrayOrUndefined(columnFilters),
-    onFilter: (value, record): boolean => {
-      const metric = getStudentMetric(record.metrics, key);
-      const { color } = resolveMetricTone(metric, DEFAULT_TONE_RANGE);
-      return color === String(value);
-    },
+    ...rangeFilter,
     onCell: (record: StudentAverageRowModel): { style: CSSProperties; 'aria-label': string } => {
       const metric = getStudentMetric(record.metrics, key);
-      const { color } = resolveMetricTone(metric, DEFAULT_TONE_RANGE);
+      const { cellStyle } = resolveMetricTone(metric, DEFAULT_TONE_RANGE);
       const score = renderClassPageScore(metric);
       const ariaLabel = `${record.studentName}, ${meta.label}: ${score}`;
       return {
-        style: METRIC_TONE_CELL_STYLE[color],
+        style: cellStyle,
         'aria-label': ariaLabel,
       };
     },
@@ -173,9 +148,9 @@ function buildMetricColumn(
  * Columns in fixed order: `studentName`, `completeness`, `accuracy`, `spag`,
  * `average`. The `studentName` column is sortable with locale-aware,
  * case-insensitive comparison and a `studentId` tie-breaker. The four metric
- * columns each have band filters (five `MetricToneColor` values) and a
- * `resolveMetricTone`-based `onFilter` predicate.
- *
+ * columns each have a numeric score-range filter (via `buildMetricRangeFilter`)
+ * and a `resolveMetricTone`-based gradient `cellStyle`.
+ * 
  * @param {StudentAveragesTableFilters} filters - The current filter state for
  *   each metric column. Empty arrays mean no filter.
  * @returns {TableColumnsType<StudentAverageRowModel>} Five column definitions.

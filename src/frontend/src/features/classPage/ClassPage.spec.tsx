@@ -7,6 +7,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { createElement } from 'react';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { ClassPage } from './ClassPage';
@@ -175,20 +176,6 @@ function createReadyClassPageData(overrides?: Partial<ClassPageData>): ClassPage
 }
 
 /**
- * Extract the first call's first argument as a record.
- * Returns an empty object if the mock has not been called.
- *
- * @param {import('vitest').Mock} mock - The mock function to inspect.
- * @returns {Record<string, unknown>} The first argument of the first call.
- */
-function getFirstCallArguments(mock: ReturnType<typeof vi.fn>): Record<string, unknown> {
-  if (mock.mock.calls.length === 0 || mock.mock.calls[0].length === 0) {
-    return {};
-  }
-  return mock.mock.calls[0][0] as Record<string, unknown>;
-}
-
-/**
  * Extract the last call's first argument as a record.
  * Returns an empty object if the mock has not been called.
  *
@@ -234,25 +221,8 @@ describe('ClassPage', () => {
   // Header actions tests
   // -----------------------------------------------------------------------
 
-  it('passes onStartNewAssessment callback to ClassPageContent', () => {
-    mockUseClassPageData.mockReturnValue(createReadyClassPageData());
-
-    render(
-      createElement(ClassPage, {
-        classId: DEFAULT_CLASS_ID,
-      })
-    );
-
-    // onStartNewAssessment should be wired through ClassPageContent props
-    const contentProperties = getFirstCallArguments(mockClassPageContent);
-    expect(contentProperties.onStartNewAssessment).toBeTypeOf('function');
-  });
-
-  // -----------------------------------------------------------------------
-  // Modal open/close tests
-  // -----------------------------------------------------------------------
-
-  it('opens the AssessTaskModal when Start New Assessment is clicked', () => {
+  it('renders Start New Assessment button that opens the modal', async () => {
+    const user = userEvent.setup();
     mockUseClassPageData.mockReturnValue(createReadyClassPageData());
 
     render(
@@ -264,16 +234,11 @@ describe('ClassPage', () => {
     // The modal should NOT be rendered initially
     expect(mockAssessTaskModal).not.toHaveBeenCalled();
 
-    // Retrieve the onStartNewAssessment callback from ClassPageContent props
-    const contentProperties = getFirstCallArguments(mockClassPageContent);
-    const onStartNewAssessment = contentProperties.onStartNewAssessment as () => void;
+    // Click the Start New Assessment button
+    const startButton = screen.getByRole('button', { name: /start new assessment/i });
+    await user.click(startButton);
 
-    act(() => {
-      onStartNewAssessment();
-    });
-
-    // After calling onStartNewAssessment, AssessTaskModal should be rendered
-    // with the correct classId, className, and onClose
+    // After clicking, AssessTaskModal should be rendered
     expect(mockAssessTaskModal).toHaveBeenCalled();
     const modalCallArguments = getLastCallArguments(mockAssessTaskModal);
     expect(modalCallArguments.classId).toBe(DEFAULT_CLASS_ID);
@@ -281,7 +246,12 @@ describe('ClassPage', () => {
     expect(modalCallArguments.onClose).toBeTypeOf('function');
   });
 
-  it('closes the AssessTaskModal when onClose is called', () => {
+  // -----------------------------------------------------------------------
+  // Modal open/close tests
+  // -----------------------------------------------------------------------
+
+  it('opens the AssessTaskModal when Start New Assessment is clicked', async () => {
+    const user = userEvent.setup();
     mockUseClassPageData.mockReturnValue(createReadyClassPageData());
 
     render(
@@ -290,13 +260,34 @@ describe('ClassPage', () => {
       })
     );
 
-    // Open the modal first by calling onStartNewAssessment via ClassPageContent props
-    const contentProperties = getFirstCallArguments(mockClassPageContent);
-    const onStartNewAssessment = contentProperties.onStartNewAssessment as () => void;
+    // The modal should NOT be rendered initially
+    expect(mockAssessTaskModal).not.toHaveBeenCalled();
 
-    act(() => {
-      onStartNewAssessment();
-    });
+    // Click the Start New Assessment button
+    const startButton = screen.getByRole('button', { name: /start new assessment/i });
+    await user.click(startButton);
+
+    // After clicking, AssessTaskModal should be rendered
+    expect(mockAssessTaskModal).toHaveBeenCalled();
+    const modalCallArguments = getLastCallArguments(mockAssessTaskModal);
+    expect(modalCallArguments.classId).toBe(DEFAULT_CLASS_ID);
+    expect(modalCallArguments.className).toBe(CLASS_NAME);
+    expect(modalCallArguments.onClose).toBeTypeOf('function');
+  });
+
+  it('closes the AssessTaskModal when onClose is called', async () => {
+    const user = userEvent.setup();
+    mockUseClassPageData.mockReturnValue(createReadyClassPageData());
+
+    render(
+      createElement(ClassPage, {
+        classId: DEFAULT_CLASS_ID,
+      })
+    );
+
+    // Open the modal first by clicking Start New Assessment
+    const startButton = screen.getByRole('button', { name: /start new assessment/i });
+    await user.click(startButton);
 
     // The modal should have been called (rendered open)
     expect(mockAssessTaskModal).toHaveBeenCalled();
@@ -309,14 +300,12 @@ describe('ClassPage', () => {
       onClose();
     });
 
-    // After closing: verify onStartNewAssessment toggles correctly.
-    // Call onStartNewAssessment again — the modal should be re-rendered
+    // After closing: verify the modal can be re-opened.
+    // Click Start New Assessment again — the modal should be re-rendered
     // with an additional call.
     const callCountBeforeReopen = mockAssessTaskModal.mock.calls.length;
 
-    act(() => {
-      onStartNewAssessment();
-    });
+    await user.click(startButton);
 
     // The modal should have been called again (re-opened)
     expect(mockAssessTaskModal.mock.calls.length).toBeGreaterThan(

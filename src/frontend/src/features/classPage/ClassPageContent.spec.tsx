@@ -44,22 +44,12 @@ const { mockTaskHeatmapPage } = vi.hoisted(() => ({
   }),
 }));
 
-const { mockClassPageHeaderActions } = vi.hoisted(() => ({
-  mockClassPageHeaderActions: vi.fn(function MockClassPageHeaderActions() {
-    return createElement('div', { 'data-testid': 'header-actions' });
-  }),
-}));
-
 vi.mock('./RecentAssignmentsSection', () => ({
   RecentAssignmentsSection: mockRecentAssignmentsSection,
 }));
 
 vi.mock('./StudentAveragesTableCard', () => ({
   StudentAveragesTableCard: mockStudentAveragesTableCard,
-}));
-
-vi.mock('./ClassPageHeaderActions', () => ({
-  ClassPageHeaderActions: mockClassPageHeaderActions,
 }));
 
 vi.mock('./TaskHeatmapPage', () => ({
@@ -481,9 +471,6 @@ describe('ClassPageContent', () => {
       })
     );
 
-    // The ready state should render ClassPageHeaderActions
-    expect(mockClassPageHeaderActions).toHaveBeenCalled();
-
     // The ready state should render RecentAssignmentsSection
     expect(mockRecentAssignmentsSection).toHaveBeenCalled();
 
@@ -499,10 +486,6 @@ describe('ClassPageContent', () => {
     // Verify StudentAveragesTableCard receives the adapterResult
     const studentTableProperties = getFirstCallArguments(mockStudentAveragesTableCard);
     expect(studentTableProperties.adapterResult).toEqual(adapterResult);
-
-    // Verify ClassPageHeaderActions receives the onStartNewAssessment callback
-    const headerActionsProperties = getFirstCallArguments(mockClassPageHeaderActions);
-    expect(headerActionsProperties.onStartNewAssessment).toBeTypeOf('function');
   });
 
   // -----------------------------------------------------------------------
@@ -576,6 +559,5 @@ describe('ClassPageContent', () => {
     // Overview content should render instead (fallback)
     expect(mockRecentAssignmentsSection).toHaveBeenCalled();
     expect(mockStudentAveragesTableCard).toHaveBeenCalled();
-    expect(mockClassPageHeaderActions).toHaveBeenCalled();
   });
 });

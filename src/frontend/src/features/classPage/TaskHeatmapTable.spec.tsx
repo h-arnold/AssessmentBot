@@ -1,13 +1,12 @@
 /**
  * RED-phase tests for `TaskHeatmapTable`.
  *
- * These tests encode the planned API surface of the component and will fail
- * until `TaskHeatmapTable` and the exported `METRIC_COLUMN_FILTERS` are
- * implemented in the GREEN phase. Every test currently errors with module-
- * resolution failures (missing `./TaskHeatmapTable` / missing `METRIC_COLUMN_FILTERS`
- * export in `./studentAveragesTableColumns`).
+ * These tests encode the planned API surface of the component. The heatmap's
+ * metric columns use a continuous gradient for cell colouring and a numeric
+ * score-range `filterDropdown` (via `buildMetricRangeFilter`) rather than the
+ * fixed `METRIC_COLUMN_FILTERS` band list.
  *
- * @see ACTION_PLAN.md §4 — TaskHeatmapTable (grouped headers, band filters, sorters)
+ * @see ACTION_PLAN.md §4 — TaskHeatmapTable (grouped headers, score-range filters, sorters)
  * @see TASK_HEATMAP_LAYOUT.md — §"3. Table region", §"Cell rendering", §"States", §"Screen reader labelling"
  * @see SPEC.md — §"Rendering rules", §"Sorting, filtering", §"Empty state", §"Accessibility"
  */
@@ -315,59 +314,48 @@ describe('TaskHeatmapTable', () => {
   });
 
   // -------------------------------------------------------------------------
-  // 2. Band filter — apply Green (high) filter on Task 1 > Completeness
-  //    and assert non-green rows are removed.
+  // 2. Score-range filter UI — the Task 1 > Completeness column exposes a
+  //    numeric range filter (two-thumb Slider + Reset) instead of the old
+  //    fixed band menu. The predicate itself is covered by the
+  //    `metricInRange` unit tests and the averages-table onFilter integration.
   // -------------------------------------------------------------------------
-  it('applying Green (high) filter on Task 1 Completeness removes rows whose band is not green', async () => {
+  it('exposes a score-range filter dropdown (slider + reset) on Task 1 Completeness', async () => {
     const result = buildHeatmapResult();
     render(<TaskHeatmapTable heatmapResult={result} />);
 
     // Locate the "Completeness" columnheader that belongs to Task 1.
-    // Task 1 is the first task group; its Completeness sub-header is the
-    // first columnheader matching "Completeness".
     const completenessHeaders = screen.getAllByRole('columnheader', {
       name: /completeness/i,
     });
     expect(completenessHeaders.length).toBeGreaterThanOrEqual(1);
 
-    // The first Completeness header belongs to Task 1.
-    // This relies on column render order: Task 1 group is rendered before Task 2,
-    // so its Completeness sub-header is the first among the two. If the column
-    // order changes (e.g. Task 2 before Task 1), this index assumption breaks.
+    // The first Completeness header belongs to Task 1 (Task 1 group renders
+    // before Task 2, so its sub-header is first).
     const task1CompletenessHeader = completenessHeaders[0];
 
     // Ant Design renders a filter button inside the column header
     const filterButton = within(task1CompletenessHeader).getByRole('button');
     expect(filterButton).toBeInTheDocument();
 
-    // Open the filter dropdown
+    // Open the filter dropdown — it renders a two-thumb Slider (0–5) + Reset,
+    // and must NOT contain the old fixed band menu items.
     await user.click(filterButton);
 
-    // Click the "Green (high)" filter menu item
-    const greenOption = await screen.findByText('Green (high)');
-    expect(greenOption).toBeInTheDocument();
-    await user.click(greenOption);
+    const sliders = await screen.findAllByRole('slider');
+    expect(sliders.length).toBe(2);
 
-    // Close the dropdown and apply the filter — Ant Design v6 fires
-    // onFilter immediately when the option is toggled. We need to click
-    // outside or press Escape to close the menu; but the simplest approach
-    // is to wait for the table to re-render and then assert.
-    // Press Escape to close the filter dropdown.
-    await user.keyboard('{Escape}');
+    const lowerHandle = sliders.find(
+      (handle): boolean => handle.getAttribute('aria-valuenow') === '0'
+    )!;
+    const upperHandle = sliders.find(
+      (handle): boolean => handle.getAttribute('aria-valuenow') === '5'
+    )!;
+    expect(lowerHandle).toBeInTheDocument();
+    expect(upperHandle).toBeInTheDocument();
 
-    // Wait for the table to settle after filter application
-    // Student One (s-1): Task 1 Completeness = 5 => green => should remain
-    // Student Two (s-2): Task 1 Completeness = 3 => gold => should be removed
-    // Student Three (s-3): Task 1 Completeness = 'N' => default => should be removed
-    // Only Student One should remain.
-
-    // Check the rendered body rows — only studentId 's-1' should be visible
-    const tableRows = document.querySelectorAll('tbody tr[data-row-key]');
-    const visibleRowKeys = [...tableRows].map(
-      (row) => (row as HTMLElement).dataset.rowKey
-    );
-
-    expect(visibleRowKeys).toEqual(['s-1']);
+    expect(screen.getByRole('button', { name: /reset/i })).toBeInTheDocument();
+    expect(screen.queryByText('Green (high)')).not.toBeInTheDocument();
+    expect(screen.queryByText('Red (low)')).not.toBeInTheDocument();
   });
 
   // -------------------------------------------------------------------------

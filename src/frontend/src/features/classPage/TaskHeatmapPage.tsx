@@ -12,8 +12,8 @@
  */
 
 import { useEffect, useMemo, useState, type JSX } from 'react';
-import { Alert, Button, Card, Flex, Typography } from 'antd';
-import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { Alert, Button, Card, Flex } from 'antd';
+import { RefreshCw } from 'lucide-react';
 import { APP_GAP_MD } from '../../theme/spacing';
 
 import type { AveragingResult } from '../../services/dataAnalysis/dataAnalysis.zod';
@@ -25,6 +25,7 @@ import {
 } from '../../services/dataAnalysis/heatmapAdapter';
 import { logFrontendError } from '../../logging/frontendLogger';
 import { TaskHeatmapTable } from './TaskHeatmapTable';
+import { PageTitleCard, PageNavCard } from '../../components/PageHeader';
 
 type HeatmapPageState = Readonly<{
   heatmapResult: ReturnType<typeof adaptMetricsToHeatmap> | null;
@@ -32,6 +33,7 @@ type HeatmapPageState = Readonly<{
 }>;
 
 type HeaderLabels = Readonly<{
+  className: string;
   assignmentName: string;
 }>;
 
@@ -60,6 +62,7 @@ type TaskHeatmapPageProperties = Readonly<{
 function getHeaderLabels(classFull: ClassFull, assignmentId: string): HeaderLabels {
   const assignment = classFull.assignments.find((a) => a.assignmentId === assignmentId);
   return {
+    className: classFull.className ?? '',
     assignmentName: assignment?.assignmentDefinition.primaryTitle ?? '',
   };
 }
@@ -125,7 +128,7 @@ export function TaskHeatmapPage({
     computeHeatmapState(analyserResult, classFull, assignmentId, assignmentDefinitionPartials)
   );
 
-  const { assignmentName } = useMemo<HeaderLabels>(
+  const { className, assignmentName } = useMemo<HeaderLabels>(
     () => getHeaderLabels(classFull, assignmentId),
     [classFull, assignmentId]
   );
@@ -146,17 +149,17 @@ export function TaskHeatmapPage({
   }
 
   if (isTitleError) {
-    // Title-error: render header + Alert, no onBack auto-navigate.
-    // The control Card is intentionally removed per spec: the Alert replaces the
-    // control-region body AND the table region; only the header Card stays visible.
+    // Title-error: render parent title + child title + nav + Alert, no onBack auto-navigate.
+    // The Alert replaces the table region; only the title Cards and nav Card stay visible.
     return (
       <Flex vertical gap={APP_GAP_MD}>
-        <Card size="small">
-          <Flex justify="space-between" align="center">
-            <Typography.Title level={4} style={{ margin: 0 }}>{assignmentName}</Typography.Title>
-            <Button type="text" icon={<ArrowLeft size={16} />} aria-label="Back to Class overview" onClick={backCallback} />
-          </Flex>
-        </Card>
+        <PageTitleCard title={className} titleLevel={2} />
+        <PageTitleCard title={assignmentName} />
+        <PageNavCard
+          onBack={backCallback}
+          backLabel="Back to Class overview"
+          backAriaLabel="Back to Class overview"
+        />
         <Alert type="error" showIcon title="Task titles are currently unavailable." description="Please try reloading the page." role="alert" />
       </Flex>
     );
@@ -166,17 +169,18 @@ export function TaskHeatmapPage({
   const { heatmapResult } = state;
   return (
     <Flex vertical gap={APP_GAP_MD}>
-      <Card size="small">
-        <Typography.Title level={4} style={{ margin: 0 }}>{heatmapResult!.assignmentName}</Typography.Title>
-      </Card>
-      <Card size="small">
-        <Flex justify="space-between" align="center">
-          <Button type="link" icon={<ArrowLeft size={16} />} aria-label="Back to Class overview" onClick={backCallback}>
-            Back to Class overview
+      <PageTitleCard title={className} titleLevel={2} />
+      <PageTitleCard title={heatmapResult!.assignmentName} />
+      <PageNavCard
+        onBack={backCallback}
+        backLabel="Back to Class overview"
+        backAriaLabel="Back to Class overview"
+        actions={
+          <Button icon={<RefreshCw size={16} />} onClick={refetch}>
+            Refresh
           </Button>
-          <Button icon={<RefreshCw size={16} />} onClick={refetch}>Refresh</Button>
-        </Flex>
-      </Card>
+        }
+      />
       <Card size="small">
         <TaskHeatmapTable heatmapResult={heatmapResult!} />
       </Card>
