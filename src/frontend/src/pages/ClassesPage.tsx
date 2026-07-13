@@ -338,43 +338,37 @@ export function ClassesPage() {
       hasTrustworthyYearGroups: yearGroupsDatasetState.hasTrustworthyDataset,
     });
 
-  return (
+  return selectedClassId === null ? (
     <PageSection heading={pageContent.classes.heading} summary={pageContent.classes.summary}>
-      {selectedClassId === null ? (
-        <>
-          <section aria-label="Classes page content" aria-busy={isClassesSurfaceBusy ? 'true' : undefined}>
-            {renderClassesContent({
-              finalShouldRenderBlockingState,
-              shouldRenderLoadingState,
-              shouldRenderEmptyState,
-              viewModel: modelResult,
-              isBusy: isClassesSurfaceBusy,
-              onAssessTask: (classId, className) => {
-                setAssessModalClassId(classId);
-                setAssessModalClassName(className);
-              },
-              onViewClass: (classId, className) => {
-                onSelectClass(classId, className);
-              },
-            })}
-          </section>
-          {assessModalClassId !== null && assessModalClassName !== null && (
-            <AssessTaskModal
-              open
-              classId={assessModalClassId}
-              className={assessModalClassName}
-              onClose={() => {
-                setAssessModalClassId(null);
-                setAssessModalClassName(null);
-              }}
-            />
-          )}
-        </>
-      ) : (
-        <ClassPage
-          classId={selectedClassId}
+      <section aria-label="Classes page content" aria-busy={isClassesSurfaceBusy ? 'true' : undefined}>
+        {renderClassesContent({
+          finalShouldRenderBlockingState,
+          shouldRenderLoadingState,
+          shouldRenderEmptyState,
+          viewModel: modelResult,
+          isBusy: isClassesSurfaceBusy,
+          onAssessTask: (classId, className) => {
+            setAssessModalClassId(classId);
+            setAssessModalClassName(className);
+          },
+          onViewClass: (classId, className) => {
+            onSelectClass(classId, className);
+          },
+        })}
+      </section>
+      {assessModalClassId !== null && assessModalClassName !== null && (
+        <AssessTaskModal
+          open
+          classId={assessModalClassId}
+          className={assessModalClassName}
+          onClose={() => {
+            setAssessModalClassId(null);
+            setAssessModalClassName(null);
+          }}
         />
       )}
     </PageSection>
+  ) : (
+    <ClassPage classId={selectedClassId} />
   );
 }

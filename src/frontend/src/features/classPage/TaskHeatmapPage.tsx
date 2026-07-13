@@ -33,7 +33,6 @@ type HeatmapPageState = Readonly<{
 
 type HeaderLabels = Readonly<{
   assignmentName: string;
-  className: string;
 }>;
 
 type TaskHeatmapPageProperties = Readonly<{
@@ -62,7 +61,6 @@ function getHeaderLabels(classFull: ClassFull, assignmentId: string): HeaderLabe
   const assignment = classFull.assignments.find((a) => a.assignmentId === assignmentId);
   return {
     assignmentName: assignment?.assignmentDefinition.primaryTitle ?? '',
-    className: classFull.className ?? 'Class Overview',
   };
 }
 
@@ -127,7 +125,7 @@ export function TaskHeatmapPage({
     computeHeatmapState(analyserResult, classFull, assignmentId, assignmentDefinitionPartials)
   );
 
-  const { assignmentName, className } = useMemo<HeaderLabels>(
+  const { assignmentName } = useMemo<HeaderLabels>(
     () => getHeaderLabels(classFull, assignmentId),
     [classFull, assignmentId]
   );
@@ -158,7 +156,6 @@ export function TaskHeatmapPage({
             <Typography.Title level={4} style={{ margin: 0 }}>{assignmentName}</Typography.Title>
             <Button type="text" icon={<ArrowLeft size={16} />} aria-label="Back to Class overview" onClick={backCallback} />
           </Flex>
-          <Typography.Text type="secondary">{className}</Typography.Text>
         </Card>
         <Alert type="error" showIcon title="Task titles are currently unavailable." description="Please try reloading the page." role="alert" />
       </Flex>
@@ -170,14 +167,13 @@ export function TaskHeatmapPage({
   return (
     <Flex vertical gap={APP_GAP_MD}>
       <Card size="small">
-        <Flex justify="space-between" align="center">
-          <Typography.Title level={4} style={{ margin: 0 }}>{heatmapResult!.assignmentName}</Typography.Title>
-          <Button type="text" icon={<ArrowLeft size={16} />} aria-label="Back to Class overview" onClick={backCallback} />
-        </Flex>
-        <Typography.Text type="secondary">{heatmapResult!.className}</Typography.Text>
+        <Typography.Title level={4} style={{ margin: 0 }}>{heatmapResult!.assignmentName}</Typography.Title>
       </Card>
       <Card size="small">
-        <Flex justify="space-between">
+        <Flex justify="space-between" align="center">
+          <Button type="link" icon={<ArrowLeft size={16} />} aria-label="Back to Class overview" onClick={backCallback}>
+            Back to Class overview
+          </Button>
           <Button icon={<RefreshCw size={16} />} onClick={refetch}>Refresh</Button>
         </Flex>
       </Card>
