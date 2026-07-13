@@ -4,7 +4,7 @@
  * Renders an Ant Design `Card` (`size="small"`, title `"Student Averages"`)
  * containing a control row (`Input.Search` on the left, static label on the
  * right) and an Ant Design `Table` with five columns (Student Name,
- * Completeness, Accuracy, SpAG, Average).
+ * Completeness, Accuracy, SPaG, Average).
  *
  * @remarks
  * **State ownership.** The component owns three pieces of user-controlled

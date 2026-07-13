@@ -1,5 +1,6 @@
 import {
   createElement,
+  forwardRef,
   useMemo,
   type ComponentType,
   type CSSProperties,
@@ -85,49 +86,52 @@ export interface LucideIconProperties {
  * @param {LucideIconProperties} properties - The icon configuration.
  * @returns {ReactElement} The rendered antd `Icon` wrapper containing the lucide SVG.
  */
-export function LucideIcon(properties: Readonly<LucideIconProperties>): ReactElement {
-  const {
-    icon,
-    size = '1em',
-    color = 'currentColor',
-    strokeWidth,
-    spin = false,
-    rotate,
-    className,
-    style,
-    title,
-    onClick,
-  } = properties;
+export const LucideIcon = forwardRef<HTMLSpanElement, LucideIconProperties>(
+  function LucideIcon(properties, reference): ReactElement {
+    const {
+      icon,
+      size = '1em',
+      color = 'currentColor',
+      strokeWidth,
+      spin = false,
+      rotate,
+      className,
+      style,
+      title,
+      onClick,
+    } = properties;
 
-  // antd's `Icon` passes `width="1em" height="1em"` to its inner component.
-  // Override both with `size` so an explicit `size` (or our default `'1em'`)
-  // always wins, while antd still owns the spin class and rotate transform via
-  // the leftover `className`/`style` it injects into `rest`.
-  // Memoise the inner component so its reference stays stable across renders;
-  // defining it inline would give it a new identity each render and force
-  // React to remount the SVG subtree.
-  const SizedLucideIcon = useMemo(() => {
-    return (innerProperties: Readonly<LucideProps>): ReactElement => {
-      return createElement(icon, {
-        ...innerProperties,
-        width: size,
-        height: size,
-        size,
-        color,
-        strokeWidth,
-      });
-    };
-  }, [icon, size, color, strokeWidth]);
+    // antd's `Icon` passes `width="1em" height="1em"` to its inner component.
+    // Override both with `size` so an explicit `size` (or our default `'1em'`)
+    // always wins, while antd still owns the spin class and rotate transform via
+    // the leftover `className`/`style` it injects into `rest`.
+    // Memoise the inner component so its reference stays stable across renders;
+    // defining it inline would give it a new identity each render and force
+    // React to remount the SVG subtree.
+    const SizedLucideIcon = useMemo(() => {
+      return (innerProperties: Readonly<LucideProps>): ReactElement => {
+        return createElement(icon, {
+          ...innerProperties,
+          width: size,
+          height: size,
+          size,
+          color,
+          strokeWidth,
+        });
+      };
+    }, [icon, size, color, strokeWidth]);
 
-  return (
-    <Icon
-      component={SizedLucideIcon as ComponentType<LucideProps>}
-      spin={spin}
-      rotate={rotate}
-      className={className}
-      style={style}
-      onClick={onClick}
-      {...(title ? { 'aria-label': title } : { 'aria-hidden': true })}
-    />
-  );
-}
+    return (
+      <Icon
+        ref={reference}
+        component={SizedLucideIcon as ComponentType<LucideProps>}
+        spin={spin}
+        rotate={rotate}
+        className={className}
+        style={style}
+        onClick={onClick}
+        {...(title ? { 'aria-label': title } : { 'aria-hidden': true })}
+      />
+    );
+  }
+);

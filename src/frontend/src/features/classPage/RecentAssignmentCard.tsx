@@ -2,7 +2,7 @@
  * A single card in the Recent Assignments section.
  *
  * Renders the assignment name, a "Last Assessed" date line, and four
- * `MetricPill` instances (Completeness, Accuracy, SpAG, Average). The
+ * `MetricPill` instances (Completeness, Accuracy, SPaG, Average). The
  * Average cell uses `emphasised={true}` for visual prominence.
  *
  * @remarks
@@ -43,7 +43,7 @@ import { MetricIconLabel } from './MetricIconLabel';
  * v1 consumer; promotion to a shared width token is deferred until a second
  * consumer emerges. The 320px width is wider than the existing ClassesPage
  * class cards (268px) because the card must fit four MetricPill cells
- * (Completeness, Accuracy, SpAG, Average) side-by-side without wrapping.
+ * (Completeness, Accuracy, SPaG, Average) side-by-side without wrapping.
  */
 const RECENT_ASSIGNMENT_CARD_WIDTH_PX = 320;
 
@@ -73,7 +73,7 @@ type RecentAssignmentCardProperties = Readonly<{
  * Render a single Recent Assignment card.
  *
  * Displays the assignment name as the card title, a "Last Assessed" date
- * line, and four `MetricPill` instances (Completeness, Accuracy, SpAG,
+ * line, and four `MetricPill` instances (Completeness, Accuracy, SPaG,
  * Average). The Average cell uses `emphasised` for visual prominence.
  *
  * When `onOpenHeatmap` is provided the card root becomes interactive (button

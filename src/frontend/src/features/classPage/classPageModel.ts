@@ -48,7 +48,7 @@ export const METRIC_DISPLAY_META: ReadonlyMap<
 > = new Map([
   ['completeness', { label: 'Completeness', icon: ListTodo }],
   ['accuracy', { label: 'Accuracy', icon: Target }],
-  ['spag', { label: 'SpAG', icon: SpellCheck }],
+  ['spag', { label: 'SPaG', icon: SpellCheck }],
   ['average', { label: 'Average', icon: Merge }],
 ]);
 
