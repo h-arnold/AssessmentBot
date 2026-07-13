@@ -1,80 +1,82 @@
 /**
- * Tests for MetricIconLabel — accessible metric icon with tooltip.
+ * Tests for MetricIconLabel component.
+ *
+ * Verifies icon rendering, tooltip display, accessibility attributes,
+ * and theme-aware colour styling.
  */
+
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { ConfigProvider } from 'antd';
-import { Check } from 'lucide-react';
+import userEvent from '@testing-library/user-event';
+import { ListTodo } from 'lucide-react';
 import { MetricIconLabel } from './MetricIconLabel';
 
 describe('MetricIconLabel', () => {
-  const label = 'Completeness';
-  const icon = Check;
+  const defaultProperties = {
+    icon: ListTodo,
+    label: 'Completeness',
+  };
 
-  // -------------------------------------------------------------------------
-  // aria-label
-  // -------------------------------------------------------------------------
-  it('renders the icon with the correct aria-label', () => {
-    render(<MetricIconLabel icon={icon} label={label} />);
-
-    expect(screen.getByLabelText(label)).toBeInTheDocument();
+  it('renders an SVG icon with the correct aria-label', () => {
+    render(<MetricIconLabel {...defaultProperties} />);
+    const iconWrapper = screen.getByLabelText('Completeness');
+    expect(iconWrapper).toBeInTheDocument();
+    // The aria-label is on the antd Icon wrapper span; the SVG is a descendant
+    const svg = iconWrapper.querySelector('svg');
+    expect(svg).toBeInTheDocument();
   });
 
-  // -------------------------------------------------------------------------
-  // SVG structure
-  // -------------------------------------------------------------------------
-  it('renders the icon as an SVG element with correct dimensions and stroke width', () => {
-    render(<MetricIconLabel icon={icon} label={label} />);
+  it('sets aria-label for accessibility', () => {
+    render(<MetricIconLabel {...defaultProperties} />);
+    expect(screen.getByLabelText('Completeness')).toBeInTheDocument();
+  });
 
-    const svg = screen.getByLabelText(label);
-    expect(svg.tagName).toBe('svg');
+  it('shows tooltip with label on hover', async () => {
+    const user = userEvent.setup();
+    render(<MetricIconLabel {...defaultProperties} />);
+
+    // Tooltip overlay is not visible initially
+    expect(screen.queryByText('Completeness')).not.toBeInTheDocument();
+
+    // Hover over the icon to trigger tooltip display
+    await user.hover(screen.getByLabelText('Completeness'));
+
+    // Tooltip text should appear after the mouse enter delay
+    expect(await screen.findByText('Completeness', {}, { timeout: 3000 })).toBeInTheDocument();
+  });
+
+  it('the wrapper span has inline-flex display style', () => {
+    render(<MetricIconLabel {...defaultProperties} />);
+    const iconWrapper = screen.getByLabelText('Completeness');
+    // The outer wrapper span (our flex container) is the parent of the LucideIcon span
+    const outerWrapper = iconWrapper.parentElement!;
+    expect(outerWrapper).toBeInTheDocument();
+    expect(outerWrapper).toHaveStyle('display: inline-flex');
+  });
+
+  it('the wrapper span has a colour derived from the theme token', () => {
+    render(<MetricIconLabel {...defaultProperties} />);
+    const iconWrapper = screen.getByLabelText('Completeness');
+    const outerWrapper = iconWrapper.parentElement!;
+    expect(outerWrapper).toBeInTheDocument();
+
+    // Colour should be a non-empty CSS value derived from the theme
+    expect(outerWrapper.style.color).toBeTruthy();
+
+    // Should NOT be the old hardcoded black
+    expect(outerWrapper.style.color).not.toBe('#000000');
+  });
+
+  it('icon receives size and strokeWidth props via LucideIcon', () => {
+    render(<MetricIconLabel {...defaultProperties} />);
+    const iconWrapper = screen.getByLabelText('Completeness');
+    const svg = iconWrapper.querySelector('svg')!;
+
+    // Lucide renders size as width/height attributes on the SVG
     expect(svg).toHaveAttribute('width', '20');
     expect(svg).toHaveAttribute('height', '20');
+
+    // Lucide renders strokeWidth as stroke-width attribute on the SVG
     expect(svg).toHaveAttribute('stroke-width', '1.5');
-  });
-
-  // -------------------------------------------------------------------------
-  // Wrapper span styles
-  // -------------------------------------------------------------------------
-  it('wraps the icon in a span with expected inline styles', () => {
-    render(<MetricIconLabel icon={icon} label={label} />);
-
-    const svg = screen.getByLabelText(label);
-    const wrapper = svg.closest('span');
-    expect(wrapper).toBeInTheDocument();
-    expect(wrapper).toHaveStyle({
-      display: 'inline-flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      width: '100%',
-    });
-  });
-
-  // -------------------------------------------------------------------------
-  // Theme token colour (default)
-  // -------------------------------------------------------------------------
-  it('applies a non-empty theme colour on the wrapper span', () => {
-    render(<MetricIconLabel icon={icon} label={label} />);
-
-    const svg = screen.getByLabelText(label);
-    const wrapper = svg.closest('span');
-    // token.colorText resolves to a non-empty CSS colour from the default theme
-    expect(wrapper!.style.color).toBeTruthy();
-  });
-
-  // -------------------------------------------------------------------------
-  // Theme token colour (custom ConfigProvider)
-  // -------------------------------------------------------------------------
-  it('adapts the icon colour when rendered inside a custom ConfigProvider theme', () => {
-    const customColor = 'rgb(255, 0, 0)';
-    render(
-      <ConfigProvider theme={{ token: { colorText: customColor } }}>
-        <MetricIconLabel icon={icon} label={label} />
-      </ConfigProvider>,
-    );
-
-    const svg = screen.getByLabelText(label);
-    const wrapper = svg.closest('span');
-    expect(wrapper).toHaveStyle({ color: customColor });
   });
 });

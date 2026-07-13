@@ -179,7 +179,8 @@ Provide a concise handoff summary including:
 │   │       ├── frontend-shell-navigation-and-motion.md  # Shell navigation and motion/accessibility standards
 │   │       ├── frontend-playwright-e2e.md               # Playwright E2E testing patterns, runtime mock infrastructure, StrictMode
 │   │       ├── frontend-testing.md                      # Canonical: Vitest + Playwright split, commands, structure, helpers, patterns
-│   │       └── metric-display-precision.md              # Metric score decimal-place convention (0dp individual, 2dp averages)
+│   │       ├── metric-display-precision.md              # Metric score decimal-place convention (0dp individual, 2dp averages)
+│   │       └── metric-icon-display.md                   # Metric icon rendering, theme-aware colour, stroke conventions
 │   │
 │   ├── howTos/
 │   │   ├── README.md                                  # Step-by-step usage instructions (tagging, distributing, assessing)

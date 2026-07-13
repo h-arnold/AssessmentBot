@@ -187,4 +187,72 @@ test.describe('Task Heatmap E2E journey (RED)', () => {
     await expect(zeroTable).toBeVisible();
     await expect(zeroTable.getByRole('columnheader', { name: /task_\d/ })).toHaveCount(0);
   });
+
+  test('metric icons visible and themed in light and dark modes', async ({ page }) => {
+    const scenario = createHeatmapScenario();
+    await installRuntimeMock(page, scenario);
+    await openHeatmapClass(page);
+
+    await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
+    const table = page.getByRole('table', { name: HEATMAP_TABLE_NAME });
+    await expect(table).toBeVisible();
+
+    // The three metric icons render in the grouped column headers.
+    const completenessIcon = table.locator('[aria-label="Completeness"]').first();
+    const accuracyIcon = table.locator('[aria-label="Accuracy"]').first();
+    const spagIcon = table.locator('[aria-label="SPaG"]').first();
+
+    // Light mode: every metric icon is visible.
+    await expect(completenessIcon).toBeVisible();
+    await expect(accuracyIcon).toBeVisible();
+    await expect(spagIcon).toBeVisible();
+
+    // Capture the themed colour in light mode (driven by theme.useToken().colorText).
+    const lightColor = await completenessIcon.evaluate(
+      (element) => getComputedStyle(element).color
+    );
+
+    // Toggle dark mode via the header switch.
+    const themeSwitch = page.getByRole('switch', { name: 'Dark mode' });
+    await expect(themeSwitch).toBeVisible();
+    await themeSwitch.click();
+    await expect(themeSwitch).toBeChecked();
+
+    // Dark mode: icons remain visible and their themed colour adapts to the dark algorithm.
+    await expect(completenessIcon).toBeVisible();
+    await expect(accuracyIcon).toBeVisible();
+    await expect(spagIcon).toBeVisible();
+
+    const darkColor = await completenessIcon.evaluate((element) => getComputedStyle(element).color);
+    expect(darkColor).not.toBe(lightColor);
+  });
+
+  test('metric icons expose aria-labels and themed stroke in header cells', async ({ page }) => {
+    const scenario = createHeatmapScenario();
+    await installRuntimeMock(page, scenario);
+    await openHeatmapClass(page);
+
+    await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
+    const table = page.getByRole('table', { name: HEATMAP_TABLE_NAME });
+    await expect(table).toBeVisible();
+
+    // Each metric renders one icon per task group inside the grouped header row
+    // (the body cells render their own per-cell metric icons, so scope to `thead`).
+    const expectedLabels = ['Completeness', 'Accuracy', 'SPaG'];
+    for (const label of expectedLabels) {
+      // With LucideIcon, the aria-label is on the antd Icon wrapper span (role="img"),
+      // not directly on the SVG element. Scope to the SVG descendant for stroke checks.
+      const headerIconWrappers = table.locator(`thead [role="img"][aria-label="${label}"]`);
+      const headerSvgs = headerIconWrappers.locator('svg');
+
+      // One icon per task group column, all visible in the header cells.
+      await expect(headerIconWrappers).toHaveCount(METRIC_SUBCOLUMN_COUNT);
+      await expect(headerIconWrappers.first()).toBeVisible();
+
+      // The Lucide SVG carries stroke attributes; the colour resolves from the
+      // wrapping span's `token.colorText` (theme token) via `currentColor`.
+      const strokeWidth = await headerSvgs.first().getAttribute('stroke-width');
+      expect(strokeWidth).toBeTruthy();
+    }
+  });
 });

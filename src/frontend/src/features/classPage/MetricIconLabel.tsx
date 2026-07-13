@@ -6,12 +6,15 @@
  * the visual hover affordance. Icon colour is derived from Ant Design's
  * `token.colorText` via `theme.useToken()`, so it automatically adapts to
  * dark mode.
+ *
+ * Uses the shared `LucideIcon` wrapper with explicit `size` and `strokeWidth`
+ * props for consistent column-header appearance. The wrapper span applies
+ * `color: token.colorText`, which `LucideIcon` inherits via `currentColor`.
  */
 
 import type { JSX } from 'react';
 import { theme, Tooltip } from 'antd';
-import { createElement } from 'react';
-import type { LucideIconComponent } from '../../components/icons/LucideIcon';
+import { LucideIcon, type LucideIconComponent } from '../../components/icons/LucideIcon';
 
 type MetricIconLabelProperties = Readonly<{
   /** The Lucide icon component to render. */
@@ -36,11 +39,7 @@ export function MetricIconLabel({ icon, label }: MetricIconLabelProperties): JSX
   return (
     <Tooltip title={label}>
       <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '100%', color: token.colorText }}>
-        {createElement(icon, {
-          size: 20,
-          strokeWidth: 1.5,
-          'aria-label': label,
-        })}
+        <LucideIcon icon={icon} size={20} strokeWidth={1.5} title={label} />
       </span>
     </Tooltip>
   );
