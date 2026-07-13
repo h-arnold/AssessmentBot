@@ -24,12 +24,13 @@
  */
 
 import { useState, type JSX } from 'react';
-import { Typography } from 'antd';
+import { Flex, Typography } from 'antd';
 import { ClassPageContent } from './ClassPageContent';
 import { useClassPageData } from './useClassPageData';
 import { AssessTaskModal } from '../../features/classes/AssessTaskModal/AssessTaskModal';
 import { pageContent } from '../../pages/pageContent';
 import { useClassSelection } from '../../ClassSelectionContext';
+import { APP_GAP_MD } from '../../theme/spacing';
 
 type ClassPageProperties = Readonly<{
   /** The class ID to fetch data for. */
@@ -93,27 +94,29 @@ export function ClassPage({ classId }: ClassPageProperties): JSX.Element {
 
   return (
     <>
-      {surfaceState.status !== 'loading' && (
-        <Typography.Title level={2}>
-          {className || pageContent.classDetail.heading}
-        </Typography.Title>
-      )}
+      <Flex vertical gap={APP_GAP_MD}>
+        {surfaceState.status !== 'loading' && (
+          <Typography.Title level={2}>
+            {className || pageContent.classDetail.heading}
+          </Typography.Title>
+        )}
 
-      <ClassPageContent
-        surfaceState={surfaceState}
-        adapterResult={adapterResult}
-        error={error}
-        analyserResult={analyserResult}
-        classFull={classFull}
-        selectedView={selectedView}
-        assignmentDefinitionPartials={assignmentDefinitionPartials}
-        onOpenHeatmap={handleOpenHeatmap}
-        onBack={handleBack}
-        refetch={refetch}
-        onStartNewAssessment={handleStartNewAssessment}
-        onNavigateToClasses={onNavigateToClasses}
-        onRetry={refetch}
-      />
+        <ClassPageContent
+          surfaceState={surfaceState}
+          adapterResult={adapterResult}
+          error={error}
+          analyserResult={analyserResult}
+          classFull={classFull}
+          selectedView={selectedView}
+          assignmentDefinitionPartials={assignmentDefinitionPartials}
+          onOpenHeatmap={handleOpenHeatmap}
+          onBack={handleBack}
+          refetch={refetch}
+          onStartNewAssessment={handleStartNewAssessment}
+          onNavigateToClasses={onNavigateToClasses}
+          onRetry={refetch}
+        />
+      </Flex>
 
       {isAssessModalOpen && (
         <AssessTaskModal
