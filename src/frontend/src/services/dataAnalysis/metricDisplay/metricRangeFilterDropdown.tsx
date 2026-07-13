@@ -28,12 +28,12 @@ import {
 /**
  * Dropdown body for a numeric score-range filter.
  *
- * @param {FilterDropdownProps & { range: MetricToneRange; step?: number }} dropdownProps -
+ * @param {FilterDropdownProps & { range: MetricToneRange; step?: number }} dropdownProperties -
  *   Ant Design filter-dropdown props plus the scoring `range` and optional `step`.
  * @returns {JSX.Element} The dropdown body.
  */
 export function MetricRangeFilterDropdown(
-  dropdownProps: FilterDropdownProps & { range: MetricToneRange; step?: number }
+  dropdownProperties: FilterDropdownProps & { range: MetricToneRange; step?: number }
 ): JSX.Element {
   const {
     range,
@@ -41,7 +41,7 @@ export function MetricRangeFilterDropdown(
     selectedKeys,
     setSelectedKeys,
     confirm,
-  } = dropdownProps;
+  } = dropdownProperties;
 
   const fallback: MetricRangeFilterState = {
     min: range.lower,
