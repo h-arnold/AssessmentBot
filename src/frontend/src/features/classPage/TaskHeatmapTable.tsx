@@ -34,6 +34,10 @@ import {
   METRIC_TONE_CELL_STYLE,
 } from '../../services/dataAnalysis/metricDisplay/metricTone';
 import { MetricIconLabel } from './MetricIconLabel';
+import {
+  APP_COL_WIDTH_STUDENT_NAME,
+  APP_COL_WIDTH_METRIC,
+} from '../../theme/spacing';
 
 // ---------------------------------------------------------------------------
 // Internal constants
@@ -217,7 +221,7 @@ export function TaskHeatmapTable({
       key: 'studentName',
       title: 'Student Name',
       fixed: 'start',
-      width: 200,
+      width: APP_COL_WIDTH_STUDENT_NAME,
       sorter: { compare: compareHeatmapStudentName, multiple: 1 },
       defaultSortOrder: 'ascend',
       render: (_: unknown, record: HeatmapRow): JSX.Element => (
@@ -235,7 +239,7 @@ export function TaskHeatmapTable({
           key: `${taskColumn.taskKey}::${metric}`,
           title: <MetricIconLabel icon={meta.icon} label={meta.label} />,
           align: 'center' as const,
-          width: 48,
+          width: APP_COL_WIDTH_METRIC,
           filters: METRIC_COLUMN_FILTERS,
           onFilter: buildMetricOnFilter(taskIndex, metric),
           sorter: {
@@ -271,6 +275,7 @@ export function TaskHeatmapTable({
         columns={columns}
         dataSource={sortedRows}
         pagination={false}
+        size="small"
         bordered
         scroll={{ x: 'max-content' }}
         aria-label="Task Heatmap"

@@ -88,6 +88,16 @@ export default defineConfig([
     },
   },
   {
+    // This file is the canonical TS-side mapping of --app-spacing-* CSS tokens
+    // (see src/frontend/src/theme/spacing.ts). Every export is a named constant
+    // whose literal value IS the documented purpose of the module; extracting
+    // them into further indirections would defeat the point.
+    files: ['src/theme/spacing.ts'],
+    rules: {
+      '@typescript-eslint/no-magic-numbers': 'off',
+    },
+  },
+  {
     files: ['src/logging/frontendLogger.ts'],
     rules: {
       'no-console': 'off',
@@ -215,6 +225,20 @@ export default defineConfig([
     // at file level avoids repetitive inline suppressions while keeping the
     // rule active for genuinely untrusted input elsewhere.
     files: ['src/features/classPage/TaskHeatmapTable.tsx'],
+    rules: {
+      'security/detect-object-injection': 'off',
+    },
+  },
+  {
+    // `studentAveragesTableColumns` colours each metric cell via
+    // `METRIC_TONE_CELL_STYLE[color]`, where `color` is the bounded
+    // `MetricToneColor` union (resolved by `resolveMetricTone` against a fixed
+    // scoring range). The lookup is therefore type-safe and cannot address an
+    // arbitrary property; the `security/detect-object-injection` heuristic
+    // cannot see the union narrowing and would otherwise flag it. Mirror the
+    // TaskHeatmapTable exception so the band-colour pattern stays consistent
+    // across both class-page tables.
+    files: ['src/features/classPage/studentAveragesTableColumns.tsx'],
     rules: {
       'security/detect-object-injection': 'off',
     },

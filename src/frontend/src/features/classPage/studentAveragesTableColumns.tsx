@@ -3,8 +3,9 @@
  *
  * Exports a pure function that returns five column definitions in fixed order:
  * `studentName`, `completeness`, `accuracy`, `spag`, `average`. The metric
- * columns share a common pattern: `MetricPill` rendering, band filters using
- * `MetricToneColor` tokens, and `onFilter` via `resolveMetricTone`.
+ * columns share a common pattern: coloured-cell rendering (band background via
+ * `METRIC_TONE_CELL_STYLE`), band filters using `MetricToneColor` tokens, and
+ * `onFilter` via `resolveMetricTone`.
  *
  * @remarks
  * The `MetricToneColor` token set is the filter value set (not the
@@ -20,17 +21,24 @@
  * @see CLASS_PAGE_LAYOUT.md — "4a. Column Filter Details"
  */
 
-import type { JSX } from 'react';
+import type { CSSProperties, JSX } from 'react';
 import { Typography } from 'antd';
 import type { TableColumnsType, TableColumnType } from 'antd';
 
+import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import { getStudentMetric } from './classPageAdapter.zod';
 import type { StudentAverageRowModel } from './classPageAdapter.zod';
 import { compareStudentNames, METRIC_DISPLAY_META } from './classPageModel';
 import type { MetricColumnKey } from './classPageModel';
-import { resolveMetricTone } from '../../services/dataAnalysis/metricDisplay/metricTone';
-import { MetricPill } from '../../services/dataAnalysis/metricDisplay/MetricPill';
+import {
+  resolveMetricTone,
+  METRIC_TONE_CELL_STYLE,
+} from '../../services/dataAnalysis/metricDisplay/metricTone';
 import { MetricIconLabel } from './MetricIconLabel';
+import {
+  APP_COL_WIDTH_STUDENT_NAME,
+  APP_COL_WIDTH_METRIC_PILL,
+} from '../../theme/spacing';
 
 // ---------------------------------------------------------------------------
 // Exported types
@@ -89,22 +97,48 @@ function arrayOrUndefined(
 }
 
 /**
+ * Number of decimal places for the Class Page student-average scores.
+ * Averaging across tasks yields decimals, so scores are shown to 2 dp
+ * (matching the heatmap's coloured-cell rendering but with higher precision).
+ */
+const CLASS_PAGE_SCORE_PRECISION = 2;
+
+/**
+ * Render a metric score as plain text at {@link CLASS_PAGE_SCORE_PRECISION}.
+ *
+ * @param {MetricResult} metric - The metric result to render.
+ * @returns {string} The formatted score, or `N`/`E` for non-computed states.
+ */
+function renderClassPageScore(metric: MetricResult): string {
+  if (metric.state === 'computed') {
+    return metric.value.toFixed(CLASS_PAGE_SCORE_PRECISION);
+  }
+  if (metric.state === 'notAttempted') {
+    return 'N';
+  }
+  return 'E';
+}
+
+/**
  * Build a single metric column definition.
+ *
+ * Renders the score as plain text inside a band-coloured cell (via `onCell`
+ * + `METRIC_TONE_CELL_STYLE`), mirroring the Task Heatmap's cell treatment.
  *
  * @param {MetricColumnKey} key - The column key (metric field name).
  * @param {ReadonlyArray<string>} columnFilters - The selected filter values.
- * @param {boolean} [emphasised] - When true, renders the MetricPill with emphasised styling.
  * @returns {TableColumnType<StudentAverageRowModel>} A column definition.
  */
 function buildMetricColumn(
   key: MetricColumnKey,
-  columnFilters: readonly string[],
-  emphasised?: boolean
+  columnFilters: readonly string[]
 ): TableColumnType<StudentAverageRowModel> {
   const meta = METRIC_DISPLAY_META.get(key)!;
   return {
     key,
     title: <MetricIconLabel icon={meta.icon} label={meta.label} />,
+    width: APP_COL_WIDTH_METRIC_PILL,
+    align: 'center',
     sorter: true,
     filters: METRIC_COLUMN_FILTERS,
     filteredValue: arrayOrUndefined(columnFilters),
@@ -113,8 +147,18 @@ function buildMetricColumn(
       const { color } = resolveMetricTone(metric, DEFAULT_TONE_RANGE);
       return color === String(value);
     },
+    onCell: (record: StudentAverageRowModel): { style: CSSProperties; 'aria-label': string } => {
+      const metric = getStudentMetric(record.metrics, key);
+      const { color } = resolveMetricTone(metric, DEFAULT_TONE_RANGE);
+      const score = renderClassPageScore(metric);
+      const ariaLabel = `${record.studentName}, ${meta.label}: ${score}`;
+      return {
+        style: METRIC_TONE_CELL_STYLE[color],
+        'aria-label': ariaLabel,
+      };
+    },
     render: (_: unknown, record: StudentAverageRowModel): JSX.Element => (
-      <MetricPill metric={getStudentMetric(record.metrics, key)} emphasised={emphasised} />
+      <span>{renderClassPageScore(getStudentMetric(record.metrics, key))}</span>
     ),
   };
 }
@@ -144,6 +188,7 @@ export function buildStudentAveragesTableColumns(
     {
       key: 'studentName',
       title: 'Student Name',
+      width: APP_COL_WIDTH_STUDENT_NAME,
       sorter: {
         compare: compareStudentNames,
         multiple: 1,
@@ -158,6 +203,6 @@ export function buildStudentAveragesTableColumns(
     buildMetricColumn('completeness', filters.completeness),
     buildMetricColumn('accuracy', filters.accuracy),
     buildMetricColumn('spag', filters.spag),
-    buildMetricColumn('average', filters.average, true),
+    buildMetricColumn('average', filters.average),
   ];
 }
