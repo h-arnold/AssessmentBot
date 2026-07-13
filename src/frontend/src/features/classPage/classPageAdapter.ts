@@ -11,6 +11,7 @@
  * @see SPEC_CLASS_PAGE.md §"classPageAdapter — pure adapter"
  */
 
+import { computeOverallComposite } from '../../services/dataAnalysis/analysers/averagingAnalyser.accumulation';
 import { rollupMetric } from '../../services/dataAnalysis/analysers/rollupMetric';
 import { formatUpdatedAtLabel } from '../../utils/dateFormatting';
 import type {
@@ -34,49 +35,11 @@ import { compareStudentNames } from './classPageModel';
 const MAX_RECENT_ASSIGNMENTS = 3;
 
 /** Default criterion weightings for the per-assignment average composite. */
-const WEIGHTS: Record<string, number> = {
+const WEIGHTS = {
   completeness: 0.4,
   accuracy: 0.4,
   spag: 0.2,
 };
-
-// ---------------------------------------------------------------------------
-// State detection helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Check whether any of the three criterion metrics is in the `error` state.
- *
- * @param {MetricResult} completeness - The completeness metric.
- * @param {MetricResult} accuracy - The accuracy metric.
- * @param {MetricResult} spag - The SPaG metric.
- * @returns {boolean} `true` if any metric has state `'error'`.
- */
-function isAnyError(
-  completeness: MetricResult,
-  accuracy: MetricResult,
-  spag: MetricResult
-): boolean {
-  return completeness.state === 'error' || accuracy.state === 'error' || spag.state === 'error';
-}
-
-/**
- * Check whether any of the three criterion metrics is in the `computed` state.
- *
- * @param {MetricResult} completeness - The completeness metric.
- * @param {MetricResult} accuracy - The accuracy metric.
- * @param {MetricResult} spag - The SPaG metric.
- * @returns {boolean} `true` if any metric has state `'computed'`.
- */
-function isAnyComputed(
-  completeness: MetricResult,
-  accuracy: MetricResult,
-  spag: MetricResult
-): boolean {
-  return (
-    completeness.state === 'computed' || accuracy.state === 'computed' || spag.state === 'computed'
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Trust validation helpers
@@ -147,52 +110,6 @@ function noDataMetric(): MetricResult {
   };
 }
 
-/**
- * Build a `MetricResult` in the `error` state summing totalWeight and
- * totalDataPoints from all three criterion metrics.
- *
- * @param {MetricResult} completeness - The completeness metric.
- * @param {MetricResult} accuracy - The accuracy metric.
- * @param {MetricResult} spag - The SPaG metric.
- * @returns {MetricResult} An `error` MetricResult with aggregated weight fields.
- */
-function buildErrorMetric(
-  completeness: MetricResult,
-  accuracy: MetricResult,
-  spag: MetricResult
-): MetricResult {
-  return {
-    state: 'error',
-    value: 'E',
-    totalWeight: completeness.totalWeight + accuracy.totalWeight + spag.totalWeight,
-    applicableDataPoints: 0,
-    totalDataPoints: completeness.totalDataPoints + accuracy.totalDataPoints + spag.totalDataPoints,
-  };
-}
-
-/**
- * Build a `MetricResult` in the `notAttempted` state summing totalWeight
- * and totalDataPoints from all three criterion metrics.
- *
- * @param {MetricResult} completeness - The completeness metric.
- * @param {MetricResult} accuracy - The accuracy metric.
- * @param {MetricResult} spag - The SPaG metric.
- * @returns {MetricResult} A `notAttempted` MetricResult with aggregated weight fields.
- */
-function buildNotAttemptedMetric(
-  completeness: MetricResult,
-  accuracy: MetricResult,
-  spag: MetricResult
-): MetricResult {
-  return {
-    state: 'notAttempted',
-    value: 'N',
-    totalWeight: completeness.totalWeight + accuracy.totalWeight + spag.totalWeight,
-    applicableDataPoints: 0,
-    totalDataPoints: completeness.totalDataPoints + accuracy.totalDataPoints + spag.totalDataPoints,
-  };
-}
-
 // ---------------------------------------------------------------------------
 // Average composite computation
 // ---------------------------------------------------------------------------
@@ -202,21 +119,15 @@ function buildNotAttemptedMetric(
  * criterion metrics.
  *
  * @remarks
+ * Delegates to the shared {@link computeOverallComposite} helper from the
+ * dataAnalysis averaging pipeline. Error criteria are **excluded** from the
+ * weighted average rather than collapsing the result — the average is `error`
+ * only when **all three** criteria are `error`. This matches the behaviour of
+ * the analyser's per-student and per-task overall composite.
+ *
  * The average is NOT computed by `rollupMetric` — it is a composite of the
  * three per-criterion values using the 40/40/20 weighting with SPaG
  * renormalisation.
- *
- * Rule:
- * 1. If any criterion is `error` → average is `error` (error escalation).
- * 2. If all three are `notAttempted` and none is `computed` → average is
- *    `notAttempted`.
- * 3. Otherwise, weighted average over `computed` criteria:
- *    - Default weighting: 0.4 completeness + 0.4 accuracy + 0.2 spag.
- *    - When SPaG is `notAttempted`: renormalise completeness + accuracy
- *      over 0.8 (i.e. 0.5 each).
- *    - `notAttempted` criteria are excluded from the weighted average.
- *    - The result carries the sum of `totalWeight`, `applicableDataPoints`,
- *      and `totalDataPoints` from all computed criteria.
  *
  * @param {MetricResult} completeness - The rolled-up completeness metric.
  * @param {MetricResult} accuracy - The rolled-up accuracy metric.
@@ -228,51 +139,7 @@ function computeAverageMetric(
   accuracy: MetricResult,
   spag: MetricResult
 ): MetricResult {
-  // 1. Error escalation
-  if (isAnyError(completeness, accuracy, spag)) {
-    return buildErrorMetric(completeness, accuracy, spag);
-  }
-
-  // 2. All notAttempted and none computed
-  if (!isAnyComputed(completeness, accuracy, spag)) {
-    return buildNotAttemptedMetric(completeness, accuracy, spag);
-  }
-
-  // 3. Weighted average over computed criteria
-  // Collect all criteria; filter keeps only computed entries.
-  const allCriteria = [
-    { metric: completeness, weight: WEIGHTS.completeness },
-    { metric: accuracy, weight: WEIGHTS.accuracy },
-    { metric: spag, weight: WEIGHTS.spag },
-  ];
-
-  const computedCriteria = allCriteria.filter(
-    (c): c is { metric: Extract<MetricResult, { state: 'computed' }>; weight: number } =>
-      c.metric.state === 'computed'
-  );
-
-  // Renormalise weights so they sum to 1.0
-  const rawTotalWeight = computedCriteria.reduce((sum, c) => sum + c.weight, 0);
-
-  let weightedValue = 0;
-  let sumTotalWeight = 0;
-  let sumApplicableDataPoints = 0;
-  let sumTotalDataPoints = 0;
-
-  for (const { metric, weight } of computedCriteria) {
-    weightedValue += metric.value * (weight / rawTotalWeight);
-    sumTotalWeight += metric.totalWeight;
-    sumApplicableDataPoints += metric.applicableDataPoints;
-    sumTotalDataPoints += metric.totalDataPoints;
-  }
-
-  return {
-    state: 'computed',
-    value: weightedValue,
-    totalWeight: sumTotalWeight,
-    applicableDataPoints: sumApplicableDataPoints,
-    totalDataPoints: sumTotalDataPoints,
-  };
+  return computeOverallComposite(completeness, accuracy, spag, WEIGHTS);
 }
 
 // ---------------------------------------------------------------------------

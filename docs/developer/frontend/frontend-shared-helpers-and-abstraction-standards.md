@@ -510,11 +510,11 @@ These entries record the planned shared display helpers for the Class page featu
 - Status: `Implemented`
 - Implementation notes:
   - Implemented in Section 3 of the action plan as part of the MetricResult discriminated-union refactor.
-  - Rollup precedence: `error` > `notAttempted` > `computed`. First matching state wins.
+  - At aggregation levels above the per-(student, task) cell, `error` entries are **excluded** from the rollup. The result is `error` only when **every** input is `error`; otherwise it is `computed` (over non-error entries) or `notAttempted` (when no computed entries remain). Error entries are excluded from both numerator and denominator.
   - Per-metric `notAttempted` handling: for accuracy and completeness, `notAttempted` contributes 0; for SPaG, `notAttempted` is excluded from numerator/denominator.
   - The function is called from `averagingAnalyser.rows.ts` row builders and will be consumed by the Class page adapter.
   - Standalone file (not in `accumulation/` subfolder) per the spec reconciliation; the facade decomposition of `averagingAnalyser.accumulation.ts` is deferred to a future pass (see §9.18 item 3).
-- Planned doc reconciliation: confirmed the rollup is called from both analyser row builders and the precedence rule (`error` > `notAttempted` > `computed`) and per-metric `notAttempted` handling match the `SPEC_CLASS_PAGE_PREPARATION.md` contract.
+- Planned doc reconciliation: confirmed the rollup is called from both analyser row builders, errors are **excluded** at aggregation levels above the per-(student, task) cell (the result is `error` only when every input is `error`), and per-metric `notAttempted` handling matches the `SPEC_CLASS_PAGE_PREPARATION.md` contract.
 
 ### 9.18 Class page feature-local helpers
 
@@ -526,14 +526,14 @@ These entries record the feature-local helpers for the Class page. Per `frontend
 
 - Decision: `keep local`
 - Owning module/path: `src/frontend/src/features/classPage/classPageAdapter.ts`
-- Call-site rationale: the only module that knows how to translate the data analysis service's `AveragingResult` (with the new `MetricResult` discriminated union) plus the raw `ClassFull` into the view-model shapes the Class page consumes (`RecentAssignmentCardModel[]`, `StudentAverageRowModel[]`, `classMetrics`). Owns the assignment-level rollup precedence (error > notAttempted > computed) via the shared `rollupMetric` helper, the `updatedAt`-based recent-assignment selection (top 3, sorted descending), the per-assignment `average` composite (40/40/20 weighting with SPaG renormalisation), the no-data row synthesis for unassessed students, and trust validation (null `updatedAt` throws, duplicate `studentId`/`assignmentId` throws, unparseable `updatedAt` throws). Has exactly one caller (`useClassPageData`); promotion to a shared adapter would only make sense if a second consumer surface appears.
+- Call-site rationale: the only module that knows how to translate the data analysis service's `AveragingResult` (with the new `MetricResult` discriminated union) plus the raw `ClassFull` into the view-model shapes the Class page consumes (`RecentAssignmentCardModel[]`, `StudentAverageRowModel[]`, `classMetrics`). Rolls up each criterion via the shared `rollupMetric` helper (which excludes errors at aggregation levels above the per-cell level) and computes the per-assignment `average` by delegating to the shared `computeOverallComposite` helper (40/40/20 weighting with SPaG renormalisation; also excludes error criteria). Also handles the `updatedAt`-based recent-assignment selection (top 3, sorted descending), the no-data row synthesis for unassessed students, and trust validation (null `updatedAt` throws, duplicate `studentId`/`assignmentId` throws, unparseable `updatedAt` throws). Has exactly one caller (`useClassPageData`); promotion to a shared adapter would only make sense if a second consumer surface appears.
 - Status: `Implemented`
 - Implementation notes:
   - 495 lines (well under the 500-line threshold; no file separation required).
   - Pure function — no I/O, no React imports, no Ant Design imports. The only side effect is throwing on data integrity violations.
   - Calls `rollupMetric` (shared helper at `src/frontend/src/services/dataAnalysis/analysers/rollupMetric.ts`) for each of the three criteria.
   - Calls `formatUpdatedAtLabel` (shared helper at `src/frontend/src/utils/dateFormatting.ts`) for date formatting.
-  - Per-assignment `average` is computed inline as a composite (40/40/20 weighting) — not delegated to `rollupMetric` because the average is a composite of three per-criterion rollups, not a fourth independent weighted average.
+  - Per-assignment `average` is computed by delegating to the shared `computeOverallComposite` helper (40/40/20 weighting with SPaG renormalisation); that helper excludes `error` and `notAttempted` criteria, matching the analyser's per-student and per-task overall behaviour. The average is a composite of three per-criterion rollups, not a fourth independent weighted average.
   - Trust validation: `validateUpdatedAt` throws `TypeError` on null or unparseable `updatedAt`; `findDuplicateStudentId` / `findDuplicateAssignmentId` check uniqueness.
   - Co-located spec: `classPageAdapter.spec.ts` (15 tests covering all contract behaviours).
 - Planned doc reconciliation: confirmed the rollup precedence is documented inline in the adapter JSDoc (`@remarks` blocks); `MetricResult` discriminated union is consumed via `.state` property checks (not nullable checks, consistent with the discriminated union contract).

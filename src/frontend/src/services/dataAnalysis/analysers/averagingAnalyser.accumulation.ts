@@ -309,20 +309,29 @@ export function accumulateDataPoints(
  * Compute the `overall` MetricResult as a composite of the three per-criterion
  * rollups using the 40/40/20 weighting with SPaG-renormalisation.
  *
- * The composite rule (per spec decision 5):
- * - If any criterion is `error`, overall is `error`.
- * - If all criteria are `notAttempted`, overall is `notAttempted`.
- * - Otherwise, compute the weighted average over the `computed` criteria,
- *   treating `notAttempted` criteria as excluded (consistent with SPaG's
- *   exclusion rule). The default weighting is 0.4 completeness + 0.4 accuracy
- *   + 0.2 spag, with SPaG-renormalisation when spag is `notAttempted`
- *   (renormalise the weighting to completeness + accuracy over 0.8).
+ * The composite rule:
+ * - If **all three** criteria are `error`, overall is `error`.
+ * - If no criterion is `computed`, overall is `notAttempted` (error criteria are
+ *   excluded the same way `notAttempted` criteria are below).
+ * - Otherwise, compute the weighted average over the `computed` criteria only;
+ *   both `error` and `notAttempted` criteria are excluded from the weighted
+ *   average (consistent with SPaG's exclusion rule). The default weighting is
+ *   0.4 completeness + 0.4 accuracy + 0.2 spag, with SPaG-renormalisation when
+ *   spag is `notAttempted` (renormalise the weighting to completeness +
+ *   accuracy over 0.8).
+ *
+ * Error criteria at the composite level are **excluded** rather than collapsing
+ * the result, so a single errored criterion does not wipe out the overall metric.
+ * The result is `error` only when every contributing criterion is `error`.
  *
  * @remarks Metadata fields (`totalWeight`, `applicableDataPoints`,
  *   `totalDataPoints`) in the composite result are **summed** across the
  *   contributing criteria entries (not `Math.max`). The prior implementation
  *   used `Math.max`, which discarded data when criteria had different weights.
  *   The sum semantics was confirmed as a spec amendment per user decision.
+ *   On terminal (`error` / `notAttempted`) branches, `totalWeight` is the sum
+ *   of all three criteria's `totalWeight` (resolving a pre-existing
+ *   inconsistency where terminal results used `totalWeight: 0`).
  *
  * @param {MetricResult} completeness - The completeness rollup MetricResult.
  * @param {MetricResult} accuracy - The accuracy rollup MetricResult.
@@ -336,31 +345,26 @@ export function computeOverallComposite(
   spag: MetricResult,
   criterionWeightings: CriterionWeightings
 ): MetricResult {
-  // Error-first precedence: if any criterion is error, overall is error.
-  // This check must come before notAttempted/computed checks so that mixed
-  // error states are not masked (the prior implementation allowed error +
-  // notAttempted to return notAttempted, and error + computed to return
-  // computed, violating the documented contract).
-  if (completeness.state === 'error' || accuracy.state === 'error' || spag.state === 'error') {
+  const criteria = [completeness, accuracy, spag];
+  const allError = criteria.every((c) => c.state === 'error');
+  const hasComputed = criteria.some((c) => c.state === 'computed');
+
+  if (allError) {
     return {
       state: 'error',
       value: 'E',
-      totalWeight: 0,
+      totalWeight: completeness.totalWeight + accuracy.totalWeight + spag.totalWeight,
       applicableDataPoints: 0,
       totalDataPoints:
         completeness.totalDataPoints + accuracy.totalDataPoints + spag.totalDataPoints,
     };
   }
 
-  const statesSet = new Set([completeness.state, accuracy.state, spag.state]);
-  const hasComputed = statesSet.has('computed');
-
   if (!hasComputed) {
-    // All remaining criteria are notAttempted (error was already excluded above)
     return {
       state: 'notAttempted',
       value: 'N',
-      totalWeight: 0,
+      totalWeight: completeness.totalWeight + accuracy.totalWeight + spag.totalWeight,
       applicableDataPoints: 0,
       totalDataPoints:
         completeness.totalDataPoints + accuracy.totalDataPoints + spag.totalDataPoints,

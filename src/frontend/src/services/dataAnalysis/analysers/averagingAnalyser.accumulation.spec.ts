@@ -210,11 +210,12 @@ describe('accumulateMetricsToTarget nCount tracking', () => {
       totalDataPoints: 1,
     });
     // Overall has no numeric scores → notAttempted (nCount > 0 for all criteria)
-    // Metadata summed across criteria per CRITICAL-3 (sum not Math.max):
-    // completeness.totalDataPoints(1) + accuracy.totalDataPoints(1) + spag.totalDataPoints(1) = 3
+    // Metadata summed across criteria (sum not Math.max):
+    // totalWeight: 1(completeness)+1(accuracy)+1(spag) = 3
+    // totalDataPoints: 1+1+1 = 3
     expectMetricResultStateAware(student.overall as unknown as MetricResult, {
       state: 'notAttempted',
-      totalWeight: 0,
+      totalWeight: 3,
       totalDataPoints: 3,
     });
   });
@@ -821,6 +822,38 @@ describe('computeOverallComposite metadata aggregation', () => {
       expect(result.applicableDataPoints).toBe(0);
       // totalDataPoints: 4 + 2 + 1 = 7 (NOT Math.max which would give 4)
       expect(result.totalDataPoints).toBe(7);
+    }
+  });
+
+  it('excludes an error criterion from the weighted average when mixed with computed criteria', () => {
+    const result = computeOverallComposite(
+      createComputedMetricResult({
+        value: 8,
+        totalWeight: 2,
+        applicableDataPoints: 2,
+        totalDataPoints: 2,
+      }),
+      createErrorMetricResult({ totalDataPoints: 1 }),
+      createComputedMetricResult({
+        value: 4,
+        totalWeight: 1,
+        applicableDataPoints: 1,
+        totalDataPoints: 1,
+      }),
+      { completeness: 0.4, accuracy: 0.4, spag: 0.2 }
+    );
+
+    // accuracy is error → excluded. Weighted average over completeness(0.4) and spag(0.2) only.
+    // numerator = 0.4*8 + 0.2*4 = 3.2 + 0.8 = 4.0
+    // denominator = 0.4 + 0.2 = 0.6
+    // value = 4.0 / 0.6 = 6.666...
+    // totalWeight = 2 + 1 = 3, applicableDataPoints = 2 + 1 = 3, totalDataPoints = 2 + 1 = 3
+    expect(result.state).toBe('computed');
+    if (result.state === 'computed') {
+      expect(result.value).toBeCloseTo(4 / 0.6, 10);
+      expect(result.totalWeight).toBe(3);
+      expect(result.applicableDataPoints).toBe(3);
+      expect(result.totalDataPoints).toBe(3);
     }
   });
 

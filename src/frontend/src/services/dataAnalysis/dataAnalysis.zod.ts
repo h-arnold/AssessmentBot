@@ -76,8 +76,10 @@ export type AveragingAnalyserInput = z.infer<typeof AveragingAnalyserInputSchema
  * The discriminated union replaces the earlier invariant
  * `value === null ⇔ applicableDataPoints === 0`.
  *
- * Precedence for rollups (not enforced at the schema level):
- * `error` > `notAttempted` > `computed`.
+ * Display/sort precedence for a single MetricResult (not enforced at the schema
+ * level): `error` > `notAttempted` > `computed`.
+ * At rollup levels, `error` entries/criteria are **excluded** from averages rather
+ * than escalating the result — the rollup is `error` only when every input is `error`.
  */
 const ComputedMetricSchema = z.strictObject({
   state: z.literal('computed'),

@@ -104,12 +104,14 @@ describe('AveragingAnalyser', () => {
         totalWeight: 0,
         totalDataPoints: 0,
       });
-      // overall: completeness and spag are error, so overall is error (error-first
-      // precedence per spec — previously error was masked in mixed states).
-      // totalDataPoints is summed across all three criteria (1 from accuracy)
+      // overall: completeness and spag are error (excluded), accuracy is computed
+      // only — the weighted average over the single computed criterion (weight 0.4)
+      // gives value = 4, metadata from accuracy only.
       expectMetricResultStateAware(student.overall as unknown as MetricResult, {
-        state: 'error',
-        totalWeight: 0,
+        state: 'computed',
+        value: 4,
+        totalWeight: 1,
+        applicableDataPoints: 1,
         totalDataPoints: 1,
       });
 
@@ -137,10 +139,12 @@ describe('AveragingAnalyser', () => {
         totalWeight: 0,
         totalDataPoints: 0,
       });
-      // overall is error because completeness and spag are error (error-first precedence)
+      // overall is computed: completeness and spag are error (excluded), accuracy is computed only
       expectMetricResultStateAware(taskRow.overall as unknown as MetricResult, {
-        state: 'error',
-        totalWeight: 0,
+        state: 'computed',
+        value: 4,
+        totalWeight: 1,
+        applicableDataPoints: 1,
         totalDataPoints: 1,
       });
 
@@ -162,10 +166,12 @@ describe('AveragingAnalyser', () => {
         totalWeight: 0,
         totalDataPoints: 0,
       });
-      // overall is error because completeness and spag are error (error-first precedence)
+      // overall is computed: completeness and spag are error (excluded), accuracy is computed only
       expectMetricResultStateAware(results[0].perClass.overall as unknown as MetricResult, {
-        state: 'error',
-        totalWeight: 0,
+        state: 'computed',
+        value: 4,
+        totalWeight: 1,
+        applicableDataPoints: 1,
         totalDataPoints: 1,
       });
     });
