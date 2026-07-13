@@ -20,6 +20,7 @@ import { ClassPage } from '../features/classPage/ClassPage';
 import { PageSection } from './PageSection';
 import { pageContent } from './pageContent';
 import { useClassSelection } from '../ClassSelectionContext';
+import { APP_GAP_MD, APP_SPACE_SIZE_TIGHT } from '../theme/spacing';
 
 /**
  * Messages for Classes page states.
@@ -30,10 +31,9 @@ const CLASSES_PAGE_EMPTY_DESCRIPTION = 'No year groups configured yet.';
 const CLASSES_REFRESH_TEXT = 'Refreshing...';
 
 const CLASSES_CARD_WIDTH_PX = 268;
-const CLASSES_CARD_GAP_PX = 16;
 const CLASSES_CARD_HORIZONTAL_PADDING_FACTOR = 2;
 const MIN_PANEL_WIDTH_PX =
-  CLASSES_CARD_WIDTH_PX + CLASSES_CARD_HORIZONTAL_PADDING_FACTOR * CLASSES_CARD_GAP_PX; // 300px
+  CLASSES_CARD_WIDTH_PX + CLASSES_CARD_HORIZONTAL_PADDING_FACTOR * APP_GAP_MD; // 300px
 const CLASSES_MOBILE_BREAKPOINT_PX = 768;
 
 /**
@@ -154,7 +154,7 @@ function renderYearGroupCollapse(
               <section id={contentId} aria-label={panel.yearGroupLabel} aria-labelledby={headerId}>
                 {panel.classes.length > 0 ? (
                   <div style={{ display: 'flex', justifyContent: 'center' }}>
-                    <Row gutter={[CLASSES_CARD_GAP_PX, CLASSES_CARD_GAP_PX]}>
+                    <Row gutter={[APP_GAP_MD, APP_GAP_MD]}>
                       {panel.classes.map((card) => (
                         <Col key={card.classId}>
                           <Card
@@ -168,15 +168,14 @@ function renderYearGroupCollapse(
                             }}
                           >
                             <div style={{ display: 'flex', justifyContent: 'center' }}>
-                              <Space wrap>
-                                <Button type="text" onClick={() => onViewClass(card.classId, card.className)}>
+                              <Space wrap size={APP_SPACE_SIZE_TIGHT}>
+                                <Button onClick={() => onViewClass(card.classId, card.className)}>
                                   View
                                 </Button>
                                 <Tooltip title="Assess Task">
                                   <Button
                                     aria-label="Assess Task"
                                     icon={<AuditOutlined />}
-                                    type="text"
                                     onClick={() => {
                                       onAssessTask(card.classId, card.className);
                                     }}
@@ -190,7 +189,7 @@ function renderYearGroupCollapse(
                     </Row>
                   </div>
                 ) : (
-                  <Card style={{ marginTop: `${CLASSES_CARD_GAP_PX}px` }}>
+                  <Card size="small" style={{ marginTop: APP_GAP_MD }}>
                     <Empty description="No classes" />
                   </Card>
                 )}

@@ -121,6 +121,10 @@ Ant Design components have baked-in spacing that follows the 8px grid. **Do not 
 | `Typography.Title`              | `titleMarginTop`      | 1.2em         | Do not override                                          |
 | `Flex` gap                      | —                     | —             | Use token values only: `{sm: 8}`, `{md: 16}`, `{lg: 24}` |
 
+**Card size convention:** List/grid _data_ cards (e.g. class cards in a grid, per-row/per-item cards in tables, bulk-action cards) **must** use `size="small"`. Standalone _settings / configuration_ panels (e.g. the `settings-tab-panel` cards, `BackendSettingsPanel` cards, `AuthStatusCard`) use `size="medium"` (the Ant default — do not set `size`). Rationale: small keeps dense list/grid layouts compact; medium gives standalone config surfaces room. This is intentional, not an inconsistency.
+
+**Text button restriction:** `Button type="text"` is permitted **only** for (a) icon-only actions such as back/chevron buttons, and (b) header-inline toggles in the app shell. All other action buttons (including in-card "View"/"Assess Task" style actions) **must** use the default button (or `primary` where it is the primary action), which carries Ant's standard `paddingInline` (15px medium / 7px small). Do not use `type="text"` for labelled in-card actions.
+
 ### 4.2 Space Component Usage
 
 Use `Space` for aligning related controls:
@@ -154,6 +158,26 @@ When a `Card` contains multiple child sections, prefer Ant Design's built-in `Ca
 ### 4.6 Inline-Dialog Container
 
 The `InlineDialog` container uses `padding: 24` with `marginTop: 16` — both values align to the 8px grid and are correct. Do not change these values.
+
+### 4.7 Canonical Gap Constants
+
+All inter-element gaps/spacings expressed in TSX must come from a single constant module:
+
+- **Module path:** `src/frontend/src/theme/spacing.ts` (created during implementation; this section documents its intended contract).
+- **Exports and their token mapping:**
+
+  | Constant                 | Value      | Maps To                            |
+  | ------------------------ | ---------- | ---------------------------------- |
+  | `APP_GAP_XS`             | `4`        | `--app-spacing-xs`                 |
+  | `APP_GAP_SM`             | `8`        | `--app-spacing-sm`                 |
+  | `APP_GAP_COMPACT`        | `12`       | Accepted Flex half-step (see §6.2) |
+  | `APP_GAP_MD`             | `16`       | `--app-spacing-md`                 |
+  | `APP_GAP_LG`             | `24`       | `--app-spacing-lg`                 |
+  | `APP_SPACE_SIZE_DEFAULT` | `'middle'` | 16px Space size                    |
+  | `APP_SPACE_SIZE_TIGHT`   | `'small'`  | 8px Space size                     |
+
+- **Rule:** Replace magic-number `gap`/`margin`/`padding` literals and implicit `<Space>` sizes with these constants. The `<Space size={0}>` skeleton list pattern in `AssignmentsPage.tsx` is a documented exception (zero-gap skeleton) and need not use a constant.
+- **Relationship to CSS tokens:** These constants mirror the existing `--app-spacing-*` CSS custom properties defined in `src/frontend/src/index.css`. The TS module is the TypeScript-side source of truth for component code.
 
 ## 5. Inline Style Rules
 
@@ -208,16 +232,18 @@ The following inline values are already on the 8px grid and should not be change
 
 - `padding: '4px 8px'` in `AssignmentsPage.tsx` filter dropdowns — 4px is a permitted half-unit exception
 - `padding: 24` in `InlineDialog.tsx` — maps to `var(--app-spacing-lg)`
-- `marginBottom: 16` in Alert components across the codebase — maps to `var(--app-spacing-md)`
-- `gap: 12` in `ClassesManagementPanel.tsx` and `AssignmentsPage.tsx` — 12px is accepted within the 8px system (8 + 4 half-step, permitted for Flex gap)
+- `marginBottom: 16` in Alert components across the codebase — maps to `var(--app-spacing-md)`; migrated instances now use `APP_GAP_MD` (see §4.7)
+- `gap: 12` in `ClassesManagementPanel.tsx` and `AssignmentsPage.tsx` — 12px is accepted within the 8px system (8 + 4 half-step, permitted for Flex gap); now `APP_GAP_COMPACT` (see §4.7)
 - `marginTop: 16` in `InlineDialog.tsx` — maps to `var(--app-spacing-md)`
 - `marginTop: 8` in `AssignmentDefinitionWizardModalShell.tsx` — maps to `var(--app-spacing-sm)`
-- `gap: 16` in `TaskHeatmapPage.tsx` and `AssignmentsPage.tsx` — maps to `var(--app-spacing-md)`
-- `gap: 24` in `BackendSettingsPanel.tsx` — maps to `var(--app-spacing-lg)`
+- `gap: 16` in `TaskHeatmapPage.tsx` and `AssignmentsPage.tsx` — maps to `var(--app-spacing-md)`; now `APP_GAP_MD` (see §4.7)
+- `gap: 24` in `BackendSettingsPanel.tsx` — maps to `var(--app-spacing-lg)`; now `APP_GAP_LG` (see §4.7)
+
+> These literals have been replaced with the canonical `theme/spacing.ts` constants (see §4.7).
 
 ### 6.3 Check-Once Values (Borderline)
 
-- `CLASSES_CARD_GAP_PX = 16` in `ClassesPage.tsx` — maps to `var(--app-spacing-md)`, aligned
+- `ClassesPage.tsx` card gap derives from `APP_GAP_MD` (the canonical constant in `src/frontend/src/theme/spacing.ts`; previously a local `CLASSES_CARD_GAP_PX = 16` literal, since removed)
 - `CLASSES_CARD_HORIZONTAL_PADDING_FACTOR = 2` — a scaling factor, not a spacing literal
 - `ASSIGNMENTS} filter dropdown padding: '4px 8px'` — the 4px vertical is a permitted half-unit exception; the 8px horizontal maps to `var(--app-spacing-sm)`
 

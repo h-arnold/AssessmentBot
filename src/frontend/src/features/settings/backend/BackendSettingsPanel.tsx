@@ -15,6 +15,7 @@ import type { ReactNode } from 'react';
 import { Fragment, useEffect } from 'react';
 import { BackendSettingsFormSchema, type BackendSettingsForm } from './backendSettingsForm.zod';
 import { useBackendSettings } from './useBackendSettings';
+import { APP_GAP_LG } from '../../../theme/spacing';
 
 const { Text, Title } = Typography;
 
@@ -413,7 +414,7 @@ export function BackendSettingsPanel() {
       aria-label="Backend settings panel"
       aria-busy={isRefreshing ? 'true' : undefined}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 24, width: '100%' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: APP_GAP_LG, width: '100%' }}>
         {renderBackendSettingsPanelStatus({ isRefreshing, saveError })}
 
         <Form<BackendSettingsForm>
@@ -423,7 +424,7 @@ export function BackendSettingsPanel() {
           onFinish={handleFinish}
           scrollToFirstError={{ focus: true }}
         >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 24, width: '100%' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: APP_GAP_LG, width: '100%' }}>
             {backendSettingsSectionOrder.map((section) => (
               <SettingsSectionCard key={section} title={section}>
                 {backendSettingsFieldDescriptors
@@ -439,7 +440,7 @@ export function BackendSettingsPanel() {
                       {section === 'Backend' && fieldDescriptor.name === 'apiKey' ? (
                         <Text
                           type="secondary"
-                          style={{ display: 'block', marginBottom: 24, marginTop: 'calc(-1 * var(--app-spacing-md))' }}
+                          style={{ display: 'block', marginBottom: APP_GAP_LG, marginTop: 'calc(-1 * var(--app-spacing-md))' }}
                         >
                           {getApiKeyHelperCopy(hasApiKey)}
                         </Text>

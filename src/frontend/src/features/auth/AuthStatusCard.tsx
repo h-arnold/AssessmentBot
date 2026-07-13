@@ -1,5 +1,6 @@
 import { Card, Result, Skeleton, Space } from 'antd';
 import { useAuthorisationStatus } from './useAuthorisationStatus';
+import { APP_SPACE_SIZE_DEFAULT } from '../../theme/spacing';
 
 /**
  * Renders the auth status card content for loading and resolved states.
@@ -23,7 +24,7 @@ export function AuthStatusCard() {
 
   return (
     <Card className="auth-card">
-      <Space orientation="vertical" size="middle" className="auth-card-content">
+      <Space orientation="vertical" size={APP_SPACE_SIZE_DEFAULT} className="auth-card-content">
         <Result
           status={isAuthorised ? 'success' : 'error'}
           title={isAuthorised ? 'Authorised' : 'Unauthorised'}

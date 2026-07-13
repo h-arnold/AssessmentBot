@@ -19,6 +19,7 @@
 import type { JSX } from 'react';
 import { Button, Space, Tooltip } from 'antd';
 import { EditOutlined, PlusOutlined } from '@ant-design/icons';
+import { APP_SPACE_SIZE_TIGHT } from '../../theme/spacing';
 
 type ClassPageHeaderActionsProperties = Readonly<{
   /** Callback invoked when the user clicks "Start New Assessment". */
@@ -40,7 +41,7 @@ export function ClassPageHeaderActions({
   onStartNewAssessment,
 }: ClassPageHeaderActionsProperties): JSX.Element {
   return (
-    <Space size="small">
+    <Space size={APP_SPACE_SIZE_TIGHT}>
       <Tooltip title="Coming soon" placement="top">
         <span>
           <Button type="default" disabled icon={<EditOutlined />}>

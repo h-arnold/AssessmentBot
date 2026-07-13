@@ -14,6 +14,7 @@ import { cloneElement, useEffect, useRef, type ReactElement } from 'react';
 import { Alert, Button, Flex, Modal, Table, Typography, type TableColumnType } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { syncReferenceDataModalBusyState } from './manageReferenceDataHelpers';
+import { APP_GAP_COMPACT } from '../../theme/spacing';
 
 const { Text } = Typography;
 
@@ -142,7 +143,7 @@ export function ReferenceDataManagementModalScaffold<T extends { key: string }>(
       {blockingBody ?? (
         !properties.isInitialLoading &&
         properties.loadError === null && (
-          <Flex vertical align="start" gap={12} style={{ width: '100%' }}>
+          <Flex vertical align="start" gap={APP_GAP_COMPACT} style={{ width: '100%' }}>
             {properties.isRefreshing && (
               <div aria-live="polite" role="status">
                 <Text type="secondary">{properties.refreshStatusCopy}</Text>

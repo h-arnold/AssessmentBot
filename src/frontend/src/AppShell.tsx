@@ -14,6 +14,7 @@ import {
   type AppNavigationItem,
   type AppNavigationKey,
 } from './navigation/appNavigation';
+import { APP_SPACE_SIZE_DEFAULT } from './theme/spacing';
 
 const { Header, Sider, Content } = Layout;
 
@@ -94,7 +95,7 @@ export function AppShell(properties: AppShellProperties) {
         }}
       >
         <div className="app-header-bar">
-          <Space size="middle">
+          <Space size={APP_SPACE_SIZE_DEFAULT}>
             <Button
               type="text"
               size="large"
@@ -108,7 +109,7 @@ export function AppShell(properties: AppShellProperties) {
                 setIsNavigationCollapsed((currentState) => !currentState);
               }}
             />
-            <Space>
+            <Space size={APP_SPACE_SIZE_DEFAULT}>
               <BookOutlined aria-hidden="true" />
               <span>{appBreadcrumbBaseLabel}</span>
             </Space>

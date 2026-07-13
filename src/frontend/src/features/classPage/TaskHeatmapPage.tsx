@@ -14,6 +14,7 @@
 import { useEffect, useMemo, useState, type JSX } from 'react';
 import { Alert, Button, Card, Flex, Typography } from 'antd';
 import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { APP_GAP_MD } from '../../theme/spacing';
 
 import type { AveragingResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
@@ -151,7 +152,7 @@ export function TaskHeatmapPage({
     // The control Card is intentionally removed per spec: the Alert replaces the
     // control-region body AND the table region; only the header Card stays visible.
     return (
-      <Flex vertical gap={16}>
+      <Flex vertical gap={APP_GAP_MD}>
         <Card size="small">
           <Flex justify="space-between" align="center">
             <Typography.Title level={4} style={{ margin: 0 }}>{assignmentName}</Typography.Title>
@@ -167,7 +168,7 @@ export function TaskHeatmapPage({
   // Normal (successful) rendering.
   const { heatmapResult } = state;
   return (
-    <Flex vertical gap={16}>
+    <Flex vertical gap={APP_GAP_MD}>
       <Card size="small">
         <Flex justify="space-between" align="center">
           <Typography.Title level={4} style={{ margin: 0 }}>{heatmapResult!.assignmentName}</Typography.Title>
