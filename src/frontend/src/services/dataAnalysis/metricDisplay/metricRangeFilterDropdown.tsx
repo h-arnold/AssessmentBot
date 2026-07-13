@@ -15,7 +15,7 @@
 
 import { useState } from 'react';
 import type { JSX } from 'react';
-import { Button, Checkbox, Slider, Space, Typography } from 'antd';
+import { Button, Checkbox, Slider, Typography } from 'antd';
 import type { FilterDropdownProps } from 'antd/es/table/interface';
 
 import type { MetricToneRange } from './metricTone';
@@ -81,7 +81,14 @@ export function MetricRangeFilterDropdown(
 
   return (
     <div style={{ padding: 8, width: 240 }}>
-      <Space direction="vertical" size={8} style={{ width: '100%' }}>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+          width: '100%',
+        }}
+      >
         <Typography.Text type="secondary">
           Showing {bounds[0]} – {bounds[1]}
         </Typography.Text>
@@ -131,7 +138,7 @@ export function MetricRangeFilterDropdown(
         >
           Reset
         </Button>
-      </Space>
+      </div>
     </div>
   );
 }
