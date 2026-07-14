@@ -7,6 +7,8 @@ import type { CriterionWeightings } from './averagingAnalyser';
 import type { DataPointAccumulator, MetricAccumulator } from './averagingAnalyser.types';
 import type { TaskPartial } from '../../assignmentDefinition/taskPartial.zod';
 import { processItemAssessments } from './averagingAnalyser.criterionAccumulation';
+import { resolveAssignmentDefinitionData } from './resolveAssignmentDefinition';
+import type { AssignmentDefinitionPartial } from '../../assignmentDefinition/assignmentDefinitionPartials.zod';
 
 /**
  * Create a zeroed-out metric accumulator.
@@ -272,9 +274,11 @@ export function accumulateDataPoints(
 
   const perStudentTaskAccums = new Map<string, Map<string, DataPointAccumulator>>();
 
-  // Build a two-level Map for O(1) task-weighting lookups.
+  // Build lookup Maps for O(1) resolution.
+  const partialsByDefinitionKey = new Map<string, AssignmentDefinitionPartial>();
   const taskWeightByDefinitionKey = new Map<string, Map<string, number>>();
   for (const p of input.assignmentDefinitionPartials) {
+    partialsByDefinitionKey.set(p.definitionKey, p);
     const taskMap = new Map<string, number>();
     for (const t of p.tasks ?? []) {
       taskMap.set(t.taskId, t.taskWeighting);
@@ -284,14 +288,15 @@ export function accumulateDataPoints(
 
   for (const assignment of filteredAssignments) {
     const definition = assignment.assignmentDefinition!;
-    const { assignmentWeighting, definitionKey, tasks } = definition;
-    const resolvedAssignmentWeighting = assignmentWeighting ?? 1;
+    const { definitionKey } = definition;
 
-    preRegisterTasks(tasks ?? [], definitionKey, taskAccums);
+    const resolved = resolveAssignmentDefinitionData(definitionKey, partialsByDefinitionKey);
+
+    preRegisterTasks([...resolved.tasks], definitionKey, taskAccums);
 
     processAssignment(
       assignment,
-      resolvedAssignmentWeighting,
+      resolved.assignmentWeighting,
       definitionKey,
       taskWeightByDefinitionKey,
       studentAccums,
