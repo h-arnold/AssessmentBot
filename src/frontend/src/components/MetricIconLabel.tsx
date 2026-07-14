@@ -20,7 +20,7 @@
 import type { JSX } from 'react';
 import { theme, Tooltip } from 'antd';
 import { createElement } from 'react';
-import type { LucideIconComponent } from '../../components/icons/LucideIcon';
+import type { LucideIconComponent } from './icons/LucideIcon';
 
 type MetricIconLabelProperties = Readonly<{
   /** The Lucide icon component to render. */

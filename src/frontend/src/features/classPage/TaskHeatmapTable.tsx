@@ -24,16 +24,18 @@ import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod'
 import {
   compareHeatmapStudentName,
   METRIC_STATE_RANK_ASC,
+} from './classPageModel';
+import {
   METRIC_DISPLAY_META,
   HEATMAP_METRIC_KEYS,
-} from './classPageModel';
-import type { HeatmapMetricKey } from './classPageModel';
+} from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
+import type { HeatmapMetricKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import {
   resolveMetricTone,
   type MetricToneRange,
 } from '../../services/dataAnalysis/metricDisplay/metricTone';
 import { buildMetricRangeFilter } from '../../services/dataAnalysis/metricDisplay/metricRangeFilter';
-import { MetricIconLabel } from './MetricIconLabel';
+import { MetricIconLabel } from '../../components/MetricIconLabel';
 import {
   APP_COL_WIDTH_STUDENT_NAME,
   APP_COL_WIDTH_METRIC,

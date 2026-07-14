@@ -29,14 +29,15 @@ import type { TableColumnsType, TableColumnType } from 'antd';
 import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import { getStudentMetric } from './classPageAdapter.zod';
 import type { StudentAverageRowModel } from './classPageAdapter.zod';
-import { compareStudentNames, METRIC_DISPLAY_META } from './classPageModel';
-import type { MetricColumnKey } from './classPageModel';
+import { compareStudentNames } from './classPageModel';
+import { METRIC_DISPLAY_META } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
+import type { MetricColumnKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import {
   resolveMetricTone,
   type MetricToneRange,
 } from '../../services/dataAnalysis/metricDisplay/metricTone';
 import { buildMetricRangeFilter } from '../../services/dataAnalysis/metricDisplay/metricRangeFilter';
-import { MetricIconLabel } from './MetricIconLabel';
+import { MetricIconLabel } from '../../components/MetricIconLabel';
 import {
   APP_COL_WIDTH_STUDENT_NAME,
   APP_COL_WIDTH_METRIC_PILL,

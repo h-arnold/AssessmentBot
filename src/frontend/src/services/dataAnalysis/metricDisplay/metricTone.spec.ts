@@ -187,4 +187,107 @@ describe('resolveMetricTone', () => {
 
     expect(() => resolveMetricTone(metric, { lower: 5, upper: 0 })).toThrow();
   });
+
+  // -------------------------------------------------------------------------
+  // Error state — all discrete cell style tokens via errorColor
+  // -------------------------------------------------------------------------
+
+  it('returns gold cell style for error metric with errorColor="gold"', () => {
+    const metric: MetricResult = createErrorMetricResult();
+
+    const result: MetricToneResolution = resolveMetricTone(metric, { lower: 0, upper: 5 }, 'gold');
+
+    expect(result).toStrictEqual({
+      color: 'gold',
+      cellStyle: { backgroundColor: '#fffbe6', color: '#d48806' },
+      displayValue: 'E',
+      muted: false,
+    });
+  });
+
+  it('returns green cell style for error metric with errorColor="green"', () => {
+    const metric: MetricResult = createErrorMetricResult();
+
+    const result: MetricToneResolution = resolveMetricTone(metric, { lower: 0, upper: 5 }, 'green');
+
+    expect(result).toStrictEqual({
+      color: 'green',
+      cellStyle: { backgroundColor: '#f6ffed', color: '#389e0d' },
+      displayValue: 'E',
+      muted: false,
+    });
+  });
+
+  it('returns empty cell style for error metric with errorColor="default"', () => {
+    const metric: MetricResult = createErrorMetricResult();
+
+    const result: MetricToneResolution = resolveMetricTone(
+      metric,
+      { lower: 0, upper: 5 },
+      'default'
+    );
+
+    expect(result).toStrictEqual({
+      color: 'default',
+      cellStyle: {},
+      displayValue: 'E',
+      muted: false,
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Edge-case range boundaries
+  // -------------------------------------------------------------------------
+
+  it('resolves a computed value at the lower bound of a 0-to-1 range', () => {
+    const metric: MetricResult = createComputedMetricResult({ value: 0 });
+
+    const result: MetricToneResolution = resolveMetricTone(metric, { lower: 0, upper: 1 });
+
+    // t = 0 -> hue 0, should be dark red
+    expect(result.color).toBe('hsl(0.0, 70%, 34.0%)');
+    expect(result.displayValue).toBe(0);
+    expect(result.muted).toBe(false);
+  });
+
+  it('resolves a computed value at the upper bound of a 0-to-1 range', () => {
+    const metric: MetricResult = createComputedMetricResult({ value: 1 });
+
+    const result: MetricToneResolution = resolveMetricTone(metric, { lower: 0, upper: 1 });
+
+    // t = 1 -> hue 120, should be dark green
+    expect(result.color).toBe('hsl(120.0, 70%, 34.0%)');
+    expect(result.displayValue).toBe(1);
+    expect(result.muted).toBe(false);
+  });
+
+  // -------------------------------------------------------------------------
+  // Computed value above and below range (clamped)
+  // -------------------------------------------------------------------------
+
+  /** Value below the default scoring range floor for clamp testing. */
+  const BELOW_RANGE_VALUE = -1;
+
+  it('clamps a computed value below the range lower bound', () => {
+    const metric: MetricResult = createComputedMetricResult({ value: BELOW_RANGE_VALUE });
+
+    const result: MetricToneResolution = resolveMetricTone(metric, { lower: 0, upper: 5 });
+
+    // t = clampUnit((BELOW_RANGE_VALUE - 0) / 5) = clampUnit(-0.2) = 0
+    expect(result.color).toBe('hsl(0.0, 70%, 34.0%)');
+    expect(result.displayValue).toBe(BELOW_RANGE_VALUE);
+  });
+
+  /** Value above the default scoring range ceiling for clamp testing. */
+  const ABOVE_RANGE_VALUE = 10;
+
+  it('clamps a computed value above the range upper bound', () => {
+    const metric: MetricResult = createComputedMetricResult({ value: ABOVE_RANGE_VALUE });
+
+    const result: MetricToneResolution = resolveMetricTone(metric, { lower: 0, upper: 5 });
+
+    // t = clampUnit((ABOVE_RANGE_VALUE - 0) / 5) = clampUnit(2) = 1
+    expect(result.color).toBe('hsl(120.0, 70%, 34.0%)');
+    expect(result.displayValue).toBe(ABOVE_RANGE_VALUE);
+  });
 });

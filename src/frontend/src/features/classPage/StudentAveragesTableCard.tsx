@@ -51,7 +51,7 @@ import type { ClassPageAdapterResult, StudentAverageRowModel } from './classPage
 import { pageContent } from '../../pages/pageContent';
 
 import { buildClassPageViewModel, DEFAULT_SORT } from './classPageModel';
-import type { MetricColumnKey } from './classPageModel';
+import type { MetricColumnKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import {
   buildStudentAveragesTableColumns,
   type StudentAveragesTableFilters,
