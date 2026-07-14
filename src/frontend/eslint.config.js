@@ -216,6 +216,22 @@ export default defineConfig([
     },
   },
   {
+    // These DataAnalysisService integration specs construct fixture inputs
+    // (assignment/task weightings, submission scores) and assert the numeric
+    // results the analyser produces from those exact inputs. The flagged
+    // literals are therefore either fixture data or expected outputs whose
+    // meaning is self-evident from the inputs declared immediately above each
+    // expectation; hoisting them into named constants would scatter the
+    // input/expected-output pairing across the file and reduce readability.
+    files: [
+      'src/services/dataAnalysis/dataAnalysis.integration.spec.ts',
+      'src/services/dataAnalysis/dataAnalysis.integration.scenarios.spec.ts',
+    ],
+    rules: {
+      '@typescript-eslint/no-magic-numbers': 'off',
+    },
+  },
+  {
     // TaskHeatmapTable accesses heatmap cells by numeric index (`cells[index]`)
     // where the index is a bounded loop variable or a pre-computed task index
     // that has been validated upstream by the heatmap adapter (Zod schema). The
