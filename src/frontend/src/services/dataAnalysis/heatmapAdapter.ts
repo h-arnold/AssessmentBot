@@ -10,9 +10,8 @@ import { getAssignmentDefinitionPartial } from '../assignmentDefinition/assignme
  * Error thrown when task titles cannot be resolved for a heatmap assignment.
  *
  * @remarks
- * This indicates either the warm-up `assignmentDefinitionPartials` dataset has
- * no entry for the assignment's `definitionKey`, or the located partial has at
- * least one task with a `null` `taskTitle`.  The caller should render an
+ * This indicates the warm-up `assignmentDefinitionPartials` dataset has
+ * no entry for the assignment's `definitionKey`.  The caller should render an
  * in-view `Alert` rather than auto-navigating.
  */
 export class TaskTitlesUnavailableError extends Error {
@@ -53,8 +52,8 @@ export interface HeatmapRow {
  *
  * @remarks
  * `taskTitle` is sourced from the warm-up `assignmentDefinitionPartials`
- * dataset and may be `null` (which triggers a `TaskTitlesUnavailableError`
- * during projection).  The table header falls back to `taskId` for display.
+ * dataset and may be `null` (carried through to the column; the table header
+ * falls back to `taskId` for display).
  */
 export interface HeatmapTaskColumn {
   taskKey: string;
@@ -162,9 +161,10 @@ function groupMetricsByStudent(
  * shape).  If the partial is missing, `TaskTitlesUnavailableError` is thrown.
  * This is distinct from a generic `Error` (unknown `assignmentId`).
  *
- * The per-task `null`-title branch was removed (E3–F3) because the partial
- * schema enforces non-nullable `taskTitle` — any genuinely missing titles are
- * caught by the `getAssignmentDefinitionPartial` check above.
+ * The per-task `null`-title branch was removed (E3–F3) because `null` titles
+ * are now carried through to the column descriptor (the table header falls back
+ * to `taskId` for display).  Missing partials are caught by the
+ * `getAssignmentDefinitionPartial` check above.
  *
  * v1 uses single-assignment selection at the adapter boundary by deriving
  * `taskKey`s (`${definitionKey}::${taskId}`) from the warm-up partial.

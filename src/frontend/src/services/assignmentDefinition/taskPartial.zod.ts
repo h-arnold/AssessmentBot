@@ -13,8 +13,8 @@ import { z } from 'zod';
  * hash.
  *
  * `taskId` aligns with `AssignmentDefinitionTaskSchema.taskId`. `taskTitle`
- * is nullable so that legacy or missing titles reach the
- * `TaskTitlesUnavailableError` path (Section 8).
+ * is nullable so that legacy or missing titles are carried through to the
+ * heatmap column (the table header falls back to `taskId` for display).
  */
 export const TaskPartialSchema = z.strictObject({
   taskId: z.string().min(1),
