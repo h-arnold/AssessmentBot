@@ -1,7 +1,7 @@
 ---
 description: Inspects code for AI-slop, duplication, unnecessary complexity, and stale code
 mode: all
-model: opencode/hy3-free
+model: opencode-go/qwen3.7-plus
 steps: 100
 ---
 
