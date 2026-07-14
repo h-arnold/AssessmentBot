@@ -5,7 +5,7 @@ const MAX_ASSIGNMENT_WEIGHTING = 10;
 
 /**
  * Represents a reusable assignment definition with reference and template documents.
- * Can be instantiated in "partial" form (metadata only, tasks: null) or "full" form (with tasks).
+ * Can be instantiated in "partial" form (with a tasks array of lightweight summaries) or "full" form (with keyed task objects).
  */
 class AssignmentDefinition {
   /**
@@ -24,9 +24,10 @@ class AssignmentDefinition {
    * @param {string|null} [params.referenceLastModified=null] - ISO timestamp snapshot for reference document.
    * @param {string|null} [params.templateLastModified=null] - ISO timestamp snapshot for template document.
    * @param {number} [params.assignmentWeighting=1] - Optional weighting value. Defaults to 1. Must be in range 0-10.
-   * @param {Object<string, TaskDefinition>|Object|null|Array} [params.tasks=null] - Task definitions keyed by taskId, or null/empty-array for partial definitions.
-   *   The constructor normalises the wire-format `Array` (from `toPartialJSON()`) to `null` because
-   *   lightweight `{id, taskWeighting}` summaries cannot be rehydrated to `TaskDefinition` instances.
+   * @param {Object<string, TaskDefinition>|Array} [params.tasks] - Task definitions keyed by taskId (full definition,
+   *   rehydrated via {@link _hydrateTasks}) or an array of lightweight `{taskId, taskWeighting, taskTitle}` summaries
+   *   (partial wire format, stored verbatim). Must be provided — null/undefined is a hard error.
+   *   The constructor stores arrays verbatim (no rehydration to `TaskDefinition` instances).
    *   See {@link AssignmentDefinition#toPartialJSON} for the wire format.
    * @param {string|null} [params.createdAt=null] - ISO created timestamp; defaults to now when null.
    * @param {string|null} [params.updatedAt=null] - ISO updated timestamp; defaults to now when null.
@@ -55,7 +56,7 @@ class AssignmentDefinition {
     referenceLastModified = null,
     templateLastModified = null,
     assignmentWeighting,
-    tasks = null,
+    tasks,
     createdAt = null,
     updatedAt = null,
     definitionKey = null,
@@ -104,14 +105,22 @@ class AssignmentDefinition {
     this.createdAt = createdAt || new Date().toISOString();
     this.updatedAt = updatedAt || this.createdAt;
 
-    // Validate based on whether tasks is null (partial) or not (full)
+    // Fail-fast: tasks must be provided (array for partial, object for full)
+    if (!tasks) {
+      ProgressTracker.getInstance().logAndThrowError(
+        'AssignmentDefinition requires a tasks value (array for partials, object for full definitions); received null/undefined.',
+        { devContext: { tasks } }
+      );
+    }
+
+    // Validate based on whether tasks is an array (partial) or object (full)
     this._validate(tasks);
 
-    // Partial definitions have tasks: null or empty array (wire format).
-    // Full definitions have a non-empty tasks object.
-    if (tasks === null || (Array.isArray(tasks) && tasks.length === 0)) {
-      this.tasks = null;
+    // Array tasks are lightweight summaries stored verbatim (partial wire format)
+    if (Array.isArray(tasks)) {
+      this.tasks = tasks;
     } else {
+      // Object tasks are keyed by taskId, rehydrated to TaskDefinition instances
       this._hydrateTasks(tasks);
     }
 
@@ -127,14 +136,13 @@ class AssignmentDefinition {
   /**
    * Validate required fields and types based on whether this is a partial or full definition.
    * Routes to appropriate validation method based on tasks parameter.
-   * Accepts `null` and empty arrays as partial-definition markers (the `toPartialJSON()`
-   * wire format emits `[]` for no-tasks definitions, and `fromJSON` passes that through).
-   * @param {Object|null|Array} tasks - The tasks parameter passed to constructor
+   * With the fail-fast guard in the constructor, `tasks` is guaranteed to be present
+   * (not null/undefined). Arrays are treated as partial-definition markers.
+   * @param {Object|Array} tasks - The tasks parameter passed to constructor (never null/undefined)
    * @private
    */
   _validate(tasks) {
-    const hasNoTasks = tasks === null || (Array.isArray(tasks) && tasks.length === 0);
-    if (hasNoTasks) {
+    if (Array.isArray(tasks)) {
       this._validatePartial();
     } else {
       this._validateFull();
@@ -162,7 +170,7 @@ class AssignmentDefinition {
   }
 
   /**
-   * Validate partial definition (tasks must be null).
+   * Validate partial definition (tasks is an array of lightweight summaries).
    * Partial definitions require metadata + documentType but NOT doc IDs.
    * @private
    */
@@ -180,7 +188,7 @@ class AssignmentDefinition {
   }
 
   /**
-   * Validate full definition (requires documentType, doc IDs, and non-null tasks).
+   * Validate full definition (requires documentType, doc IDs, and keyed task objects).
    * @private
    */
   _validateFull() {
@@ -205,28 +213,15 @@ class AssignmentDefinition {
         devContext: { property: 'templateDocumentId', value: this.templateDocumentId },
       });
     }
-
-    // Full definition cannot have null tasks
-    if (this.tasks === null) {
-      tracker.logAndThrowError('Full definition cannot have tasks: null', {
-        devContext: { tasks: this.tasks },
-      });
-    }
   }
 
   /**
    * Hydrates task objects from plain JSON or existing TaskDefinition instances.
-   * Converts raw task payloads to TaskDefinition instances, skipping if tasks is null (partial definition).
-   * @param {Object|null} tasks - A map of taskId to task objects, or null for partial definitions
+   * Converts raw task payloads to TaskDefinition instances.
+   * @param {Object} tasks - A map of taskId to task objects
    * @private
    */
   _hydrateTasks(tasks) {
-    // Skip hydration if tasks is null (partial definition)
-    if (tasks === null) {
-      this.tasks = null;
-      return;
-    }
-
     this.tasks = Object.fromEntries(
       Object.entries(tasks).map(([taskId, task]) => {
         if (task instanceof TaskDefinition) {
@@ -285,18 +280,24 @@ class AssignmentDefinition {
 
   /**
    * Serialises this assignment definition to a JSON object.
+   * Assumes `this.tasks` is a keyed object (full definition); do not call on partial instances
+   * where `tasks` is an array.
    * @returns {Object} A plain object representation of the full assignment with all tasks
+   * @throws {TypeError} If called on a partial instance (tasks is an array).
    */
   toJSON() {
-    const tasks =
-      this.tasks === null
-        ? null
-        : Object.fromEntries(
-            Object.entries(this.tasks).map(([taskId, task]) => [
-              taskId,
-              task.toJSON ? task.toJSON() : task,
-            ])
-          );
+    if (Array.isArray(this.tasks)) {
+      throw new TypeError(
+        'toJSON() must not be called on a partial AssignmentDefinition (tasks is an array). Use toPartialJSON().'
+      );
+    }
+
+    const tasks = Object.fromEntries(
+      Object.entries(this.tasks).map(([taskId, task]) => [
+        taskId,
+        task.toJSON ? task.toJSON() : task,
+      ])
+    );
     return {
       primaryTitle: this.primaryTitle,
       primaryTopic: this.primaryTopic,
@@ -320,7 +321,7 @@ class AssignmentDefinition {
 
   /**
    * Serialises this assignment definition to the lightweight registry payload.
-   * Carries `tasks` as an array of lightweight `{ id, taskWeighting }` summaries
+   * Carries `tasks` as an array of lightweight `{ taskId, taskWeighting, taskTitle }` summaries
    * (empty array when no tasks), and omits document-modified timestamp fields that
    * are only stored on full definitions.
    * @returns {Object} A plain object representation for the `assignment_definitions` registry
@@ -344,16 +345,35 @@ class AssignmentDefinition {
       templateDocumentId: this.templateDocumentId,
       assignmentWeighting: this.assignmentWeighting,
       definitionKey: this.definitionKey,
-      tasks:
-        !this.tasks || Object.keys(this.tasks).length === 0
-          ? []
-          : Object.values(this.tasks).map((task) => ({
-              id: task.id,
-              taskWeighting: task.taskWeighting,
-            })),
+      tasks: this._computePartialTasks(),
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };
+  }
+
+  /**
+   * Computes the tasks array for partial JSON serialisation.
+   * Handles three shapes: null/undefined → [], array (partial wire format) → mapped,
+   * keyed object (full definition with TaskDefinition instances) → mapped.
+   * @returns {Array<{taskId: string, taskWeighting: number, taskTitle: string}>} The tasks array for partial JSON serialisation
+   * @private
+   */
+  _computePartialTasks() {
+    if (!this.tasks) {
+      return [];
+    }
+    if (Array.isArray(this.tasks)) {
+      return this.tasks.map((task) => ({
+        taskId: task.taskId,
+        taskWeighting: task.taskWeighting,
+        taskTitle: task.taskTitle,
+      }));
+    }
+    return Object.values(this.tasks).map((task) => ({
+      taskId: task.taskId ?? task.id,
+      taskWeighting: task.taskWeighting,
+      taskTitle: task.taskTitle,
+    }));
   }
 
   /**
@@ -383,9 +403,12 @@ class AssignmentDefinition {
       throw new TypeError('yearGroupKey must be a string');
     }
 
-    // Array tasks values are the toPartialJSON() wire format; normalise to null
-    // because the lightweight summaries cannot be rehydrated to TaskDefinition instances.
-    const tasksValue = 'tasks' in json && !Array.isArray(json.tasks) ? json.tasks : null;
+    // Tasks can be a keyed object (full definition, rehydrated to TaskDefinition instances)
+    // or an array of lightweight summaries (partial wire format, stored verbatim).
+    // Pass through whatever shape is present; the constructor handles each case.
+    // Backward compatibility: legacy persisted partials stored tasks: null.
+    // Coerce to the wire-format array so historical records still load.
+    const tasksValue = 'tasks' in json ? (json.tasks ?? []) : [];
 
     return new AssignmentDefinition({
       primaryTitle: json.primaryTitle,

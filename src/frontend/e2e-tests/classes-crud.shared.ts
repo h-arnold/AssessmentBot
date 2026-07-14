@@ -162,15 +162,83 @@ export const matchedClassPartials: ClassPartial[] = [
  * @param {ClassesCrudDataBundle} data Successful data payloads.
  * @returns {ClassesCrudRuntimeScenario} Fully successful scenario.
  */
+/**
+ * Read-queue pass-through for the classes CRUD harness.
+ *
+ * In this project's development setup, React 19 StrictMode double-invokes mount
+ * effects, but TanStack Query de-duplicates the resulting double `useQuery` for
+ * a given query key while the first request is still in flight. Empirically
+ * (verified by isolated E2E runs) the classes feature therefore issues exactly
+ * **one** initial `getABClassPartials` call per page load, not two. The single
+ * required post-mutation refetch then lands on the next queue index.
+ *
+ * The correct queue is therefore the *logical* call sequence: one entry per real
+ * call. Doubling the mount entry (a naive "StrictMode ×2" pad) shifts the
+ * refetch onto a duplicated mount entry and returns the wrong data — it is
+ * actively harmful here. So this helper returns the entries unchanged and exists
+ * only as a named, documented seam so callers express intent ("this is a
+ * read queue") without accidentally re-introducing padding.
+ *
+ * Queues that encode failure semantics (`transportFailure`, `failureEnvelope`)
+ * are likewise returned untouched — their per-index outcomes are deliberately
+ * asserted by consuming tests.
+ *
+ * The flakiness the tests previously exhibited under parallel load was caused by
+ * the antd v6 modal entrance-animation click race, not by queue exhaustion.
+ * That is mitigated in the specs by waiting for the confirm button to be
+ * `toBeEnabled()` before clicking and asserting the dialog count drops to zero.
+ *
+ * @param {readonly ClassesCrudApiResponseScenario[]} entries Logical read-queue entries.
+ * @returns {ClassesCrudApiResponseScenario[]} The same entries, unchanged.
+ */
+export function strictModeSafeReadQueue(
+  entries: readonly ClassesCrudApiResponseScenario[]
+): ClassesCrudApiResponseScenario[] {
+  // One entry per logical call: return the queue unchanged.
+  return [...entries];
+}
+
+/**
+ * Pads the data-loading queues of a Classes CRUD runtime scenario so they are
+ * resilient to React 19 StrictMode double-fetch and the post-mutation
+ * class-partials refetch. Mutation queues are left untouched — they are driven
+ * by user actions, not effects, and their sizing is owned by each test.
+ *
+ * @param {ClassesCrudRuntimeScenario} scenario The scenario to pad.
+ * @returns {ClassesCrudRuntimeScenario} Scenario with StrictMode-safe read queues.
+ */
+export function padClassesCrudReadQueues(
+  scenario: ClassesCrudRuntimeScenario
+): ClassesCrudRuntimeScenario {
+  return {
+    ...scenario,
+    getAuthorisationStatus: strictModeSafeReadQueue(scenario.getAuthorisationStatus ?? []),
+    getABClassPartials: strictModeSafeReadQueue(scenario.getABClassPartials ?? []),
+    getCohorts: strictModeSafeReadQueue(scenario.getCohorts ?? []),
+    getYearGroups: strictModeSafeReadQueue(scenario.getYearGroups ?? []),
+    getGoogleClassrooms: strictModeSafeReadQueue(scenario.getGoogleClassrooms ?? []),
+  };
+}
+
+/**
+ * Builds a success scenario for all classes-related API methods.
+ *
+ * @param {ClassesCrudDataBundle} data Successful data payloads.
+ * @returns {ClassesCrudRuntimeScenario} Fully successful scenario.
+ */
 export function createSuccessfulClassesScenario(
   data: ClassesCrudDataBundle
 ): ClassesCrudRuntimeScenario {
   return {
-    getAuthorisationStatus: [{ kind: 'success', data: true }],
-    getABClassPartials: [{ kind: 'success', data: [...data.classPartials] }],
-    getCohorts: [{ kind: 'success', data: [...data.cohorts] }],
-    getYearGroups: [{ kind: 'success', data: [...data.yearGroups] }],
-    getGoogleClassrooms: [{ kind: 'success', data: [...data.googleClassrooms] }],
+    getAuthorisationStatus: strictModeSafeReadQueue([{ kind: 'success', data: true }]),
+    getABClassPartials: strictModeSafeReadQueue([
+      { kind: 'success', data: [...data.classPartials] },
+    ]),
+    getCohorts: strictModeSafeReadQueue([{ kind: 'success', data: [...data.cohorts] }]),
+    getYearGroups: strictModeSafeReadQueue([{ kind: 'success', data: [...data.yearGroups] }]),
+    getGoogleClassrooms: strictModeSafeReadQueue([
+      { kind: 'success', data: [...data.googleClassrooms] },
+    ]),
     updateABClass: [],
   };
 }

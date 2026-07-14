@@ -1,7 +1,15 @@
-import type { AveragingAnalyserInput, MetricResult } from '../dataAnalysis.zod';
+import { logFrontendEvent } from '../../../logging/frontendLogger';
+import type {
+  AveragingAnalyserInput,
+  MetricResult,
+  PerStudentTaskMetric,
+} from '../dataAnalysis.zod';
 import type { CriterionWeightings } from './averagingAnalyser';
 import type { DataPointAccumulator, MetricAccumulator } from './averagingAnalyser.types';
+import type { TaskPartial } from '../../assignmentDefinition/taskPartial.zod';
 import { processItemAssessments } from './averagingAnalyser.criterionAccumulation';
+import { resolveAssignmentDefinitionData } from './resolveAssignmentDefinition';
+import type { AssignmentDefinitionPartial } from '../../assignmentDefinition/assignmentDefinitionPartials.zod';
 
 /**
  * Create a zeroed-out metric accumulator.
@@ -70,22 +78,22 @@ export function accumToMetric(accumulator: MetricAccumulator): MetricResult {
 /**
  * Pre-register tasks so entries with zero submissions appear in perTask.
  *
- * @param {ReadonlyArray<{ id: string }>} tasks - The tasks array.
+ * @param {ReadonlyArray<TaskPartial>} tasks - The tasks array.
  * @param {string} definitionKey - The definition key.
  * @param {Map<string, { definitionKey: string; taskId: string } & DataPointAccumulator>}
  *   taskAccums - The task accumulation map (mutated).
  */
 export function preRegisterTasks(
-  tasks: ReadonlyArray<{ id: string }>,
+  tasks: ReadonlyArray<TaskPartial>,
   definitionKey: string,
   taskAccums: Map<string, { definitionKey: string; taskId: string } & DataPointAccumulator>
 ): void {
   for (const task of tasks) {
-    const taskKey = `${definitionKey}::${task.id}`;
+    const taskKey = `${definitionKey}::${task.taskId}`;
     if (!taskAccums.has(taskKey)) {
       taskAccums.set(taskKey, {
         definitionKey,
-        taskId: task.id,
+        taskId: task.taskId,
         ...createDataPointAccumulator(),
       });
     }
@@ -202,6 +210,26 @@ export function processAssignment(
 
       const weight = assignmentWeighting * taskWeighting;
       if (weight === 0) {
+        // Zero-weight task: mark accumulators so accumToMetric returns
+        // notAttempted ('N') rather than error ('E') — the task had
+        // submissions but was excluded by weight.
+        const taskKeyForWeight = `${definitionKey}::${taskId}`;
+        const excludedTaskAccum = getOrCreateTaskAccum(taskAccums, definitionKey, taskId);
+        const excludedPerStudentTaskAccum = getOrCreatePerStudentTaskAccum(
+          perStudentTaskAccums,
+          studentId,
+          taskKeyForWeight
+        );
+        for (const accum of [excludedTaskAccum, excludedPerStudentTaskAccum]) {
+          accum.completeness.nCount++;
+          accum.completeness.totalDataPoints++;
+          accum.accuracy.nCount++;
+          accum.accuracy.totalDataPoints++;
+          accum.spag.nCount++;
+          accum.spag.totalDataPoints++;
+          accum.overall.nCount++;
+          accum.overall.totalDataPoints++;
+        }
         continue;
       }
 
@@ -267,26 +295,38 @@ export function accumulateDataPoints(
 
   const perStudentTaskAccums = new Map<string, Map<string, DataPointAccumulator>>();
 
-  // Build a two-level Map for O(1) task-weighting lookups.
+  // Build lookup Maps for O(1) resolution.
+  const partialsByDefinitionKey = new Map<string, AssignmentDefinitionPartial>();
   const taskWeightByDefinitionKey = new Map<string, Map<string, number>>();
   for (const p of input.assignmentDefinitionPartials) {
+    partialsByDefinitionKey.set(p.definitionKey, p);
     const taskMap = new Map<string, number>();
     for (const t of p.tasks ?? []) {
-      taskMap.set(t.id, t.taskWeighting);
+      taskMap.set(t.taskId, t.taskWeighting);
     }
     taskWeightByDefinitionKey.set(p.definitionKey, taskMap);
   }
 
   for (const assignment of filteredAssignments) {
     const definition = assignment.assignmentDefinition!;
-    const { assignmentWeighting, definitionKey, tasks } = definition;
-    const resolvedAssignmentWeighting = assignmentWeighting ?? 1;
+    const { definitionKey } = definition;
 
-    preRegisterTasks(tasks ?? [], definitionKey, taskAccums);
+    const resolved = resolveAssignmentDefinitionData(definitionKey, partialsByDefinitionKey);
+
+    if (!resolved) {
+      logFrontendEvent('warn', {
+        context: 'accumulateDataPoints',
+        errorMessage: `No assignment definition partial found for definitionKey '${definitionKey}'`,
+        metadata: { definitionKey },
+      });
+      continue;
+    }
+
+    preRegisterTasks([...resolved.tasks], definitionKey, taskAccums);
 
     processAssignment(
       assignment,
-      resolvedAssignmentWeighting,
+      resolved.assignmentWeighting,
       definitionKey,
       taskWeightByDefinitionKey,
       studentAccums,
@@ -304,20 +344,29 @@ export function accumulateDataPoints(
  * Compute the `overall` MetricResult as a composite of the three per-criterion
  * rollups using the 40/40/20 weighting with SPaG-renormalisation.
  *
- * The composite rule (per spec decision 5):
- * - If any criterion is `error`, overall is `error`.
- * - If all criteria are `notAttempted`, overall is `notAttempted`.
- * - Otherwise, compute the weighted average over the `computed` criteria,
- *   treating `notAttempted` criteria as excluded (consistent with SPaG's
- *   exclusion rule). The default weighting is 0.4 completeness + 0.4 accuracy
- *   + 0.2 spag, with SPaG-renormalisation when spag is `notAttempted`
- *   (renormalise the weighting to completeness + accuracy over 0.8).
+ * The composite rule:
+ * - If **all three** criteria are `error`, overall is `error`.
+ * - If no criterion is `computed`, overall is `notAttempted` (error criteria are
+ *   excluded the same way `notAttempted` criteria are below).
+ * - Otherwise, compute the weighted average over the `computed` criteria only;
+ *   both `error` and `notAttempted` criteria are excluded from the weighted
+ *   average (consistent with SPaG's exclusion rule). The default weighting is
+ *   0.4 completeness + 0.4 accuracy + 0.2 spag, with SPaG-renormalisation when
+ *   spag is `notAttempted` (renormalise the weighting to completeness +
+ *   accuracy over 0.8).
+ *
+ * Error criteria at the composite level are **excluded** rather than collapsing
+ * the result, so a single errored criterion does not wipe out the overall metric.
+ * The result is `error` only when every contributing criterion is `error`.
  *
  * @remarks Metadata fields (`totalWeight`, `applicableDataPoints`,
  *   `totalDataPoints`) in the composite result are **summed** across the
  *   contributing criteria entries (not `Math.max`). The prior implementation
  *   used `Math.max`, which discarded data when criteria had different weights.
  *   The sum semantics was confirmed as a spec amendment per user decision.
+ *   On terminal (`error` / `notAttempted`) branches, `totalWeight` is the sum
+ *   of all three criteria's `totalWeight` (resolving a pre-existing
+ *   inconsistency where terminal results used `totalWeight: 0`).
  *
  * @param {MetricResult} completeness - The completeness rollup MetricResult.
  * @param {MetricResult} accuracy - The accuracy rollup MetricResult.
@@ -331,31 +380,26 @@ export function computeOverallComposite(
   spag: MetricResult,
   criterionWeightings: CriterionWeightings
 ): MetricResult {
-  // Error-first precedence: if any criterion is error, overall is error.
-  // This check must come before notAttempted/computed checks so that mixed
-  // error states are not masked (the prior implementation allowed error +
-  // notAttempted to return notAttempted, and error + computed to return
-  // computed, violating the documented contract).
-  if (completeness.state === 'error' || accuracy.state === 'error' || spag.state === 'error') {
+  const criteria = [completeness, accuracy, spag];
+  const allError = criteria.every((c) => c.state === 'error');
+  const hasComputed = criteria.some((c) => c.state === 'computed');
+
+  if (allError) {
     return {
       state: 'error',
       value: 'E',
-      totalWeight: 0,
+      totalWeight: completeness.totalWeight + accuracy.totalWeight + spag.totalWeight,
       applicableDataPoints: 0,
       totalDataPoints:
         completeness.totalDataPoints + accuracy.totalDataPoints + spag.totalDataPoints,
     };
   }
 
-  const statesSet = new Set([completeness.state, accuracy.state, spag.state]);
-  const hasComputed = statesSet.has('computed');
-
   if (!hasComputed) {
-    // All remaining criteria are notAttempted (error was already excluded above)
     return {
       state: 'notAttempted',
       value: 'N',
-      totalWeight: 0,
+      totalWeight: completeness.totalWeight + accuracy.totalWeight + spag.totalWeight,
       applicableDataPoints: 0,
       totalDataPoints:
         completeness.totalDataPoints + accuracy.totalDataPoints + spag.totalDataPoints,
@@ -405,7 +449,17 @@ export function computeOverallComposite(
   }
 
   if (denominator === 0) {
-    throw new Error('computeOverallComposite: no computed criteria in composite');
+    // All computed criteria had zero weighting — return notAttempted
+    // instead of throwing so the caller (including classPageAdapter)
+    // receives a safe MetricResult rather than crashing.
+    return {
+      state: 'notAttempted',
+      value: 'N',
+      totalWeight: completeness.totalWeight + accuracy.totalWeight + spag.totalWeight,
+      applicableDataPoints: 0,
+      totalDataPoints:
+        completeness.totalDataPoints + accuracy.totalDataPoints + spag.totalDataPoints,
+    };
   }
 
   return {
@@ -415,4 +469,42 @@ export function computeOverallComposite(
     applicableDataPoints,
     totalDataPoints,
   };
+}
+
+/**
+ * Build the perStudentTaskMetrics array from the internal per-(student, task)
+ * accumulators.
+ *
+ * @param {string} classId - The class identifier to echo on each metric.
+ * @param {Map<string, Map<string, DataPointAccumulator>>} perStudentTaskAccums -
+ *   Outer key = studentId, inner key = taskKey (`definitionKey::taskId`).
+ * @returns {PerStudentTaskMetric[]} Sorted array by studentId, then taskKey.
+ */
+export function buildPerStudentTaskMetrics(
+  classId: string,
+  perStudentTaskAccums: Map<string, Map<string, DataPointAccumulator>>
+): PerStudentTaskMetric[] {
+  const metrics: PerStudentTaskMetric[] = [];
+
+  for (const [studentId, taskMap] of perStudentTaskAccums) {
+    for (const [taskKey, accum] of taskMap) {
+      metrics.push({
+        classId,
+        studentId,
+        taskKey,
+        completeness: accumToMetric(accum.completeness),
+        accuracy: accumToMetric(accum.accuracy),
+        spag: accumToMetric(accum.spag),
+        overall: accumToMetric(accum.overall),
+      });
+    }
+  }
+
+  // Deterministic sort: studentId asc, then taskKey asc
+  metrics.sort((a, b) => {
+    const byStudent = a.studentId.localeCompare(b.studentId);
+    return byStudent === 0 ? a.taskKey.localeCompare(b.taskKey) : byStudent;
+  });
+
+  return metrics;
 }

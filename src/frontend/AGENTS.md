@@ -4,16 +4,19 @@ Applies when editing `src/frontend/**`.
 
 ## 0. Key Documentation
 
-| Doc                                                                            | Summary                                            |
-| ------------------------------------------------------------------------------ | -------------------------------------------------- |
-| `docs/developer/frontend/frontend-loading-and-width-standards.md`              | Loading states, skeleton patterns, width tokens    |
-| `docs/developer/frontend/frontend-react-query-and-prefetch.md`                 | React Query baseline, prefetch/warm-up strategy    |
-| `docs/developer/frontend/frontend-shell-navigation-and-motion.md`              | Shell navigation, decorative icons, reduced-motion |
-| `docs/developer/frontend/frontend-playwright-e2e.md`                           | Playwright E2E test conventions and commands       |
-| `docs/developer/frontend/frontend-modal-patterns.md`                           | Modal-family reuse, discovery, extraction rules    |
-| `docs/developer/frontend/frontend-logging-and-error-handling.md`               | Frontend logging and error handling policy         |
-| `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` | Shared helpers, when to create new abstractions    |
-| `docs/developer/frontend/frontend-testing.md`                                  | Frontend Vitest testing conventions and commands   |
+| Doc                                                                            | Summary                                                       |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------- |
+| `docs/developer/frontend/frontend-loading-and-width-standards.md`              | Loading states, skeleton patterns, width tokens               |
+| `docs/developer/frontend/frontend-logging-and-error-handling.md`               | Frontend logging and error handling policy                    |
+| `docs/developer/frontend/frontend-modal-patterns.md`                           | Modal-family reuse, discovery, extraction rules               |
+| `docs/developer/frontend/frontend-playwright-e2e.md`                           | Playwright E2E test conventions and commands                  |
+| `docs/developer/frontend/frontend-react-query-and-prefetch.md`                 | React Query baseline, prefetch/warm-up strategy               |
+| `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` | Shared helpers, when to create new abstractions               |
+| `docs/developer/frontend/frontend-shell-navigation-and-motion.md`              | Shell navigation, decorative icons, reduced-motion            |
+| `docs/developer/frontend/frontend-spacing-and-padding-standards.md`            | Spacing tokens, 8px grid, component defaults                  |
+| `docs/developer/frontend/frontend-testing.md`                                  | Frontend Vitest testing conventions and commands              |
+| `docs/developer/frontend/metric-display-precision.md`                          | Metric score decimal-place convention                         |
+| `docs/developer/frontend/metric-icon-display.md`                               | Metric icon rendering, theme-aware colour, stroke conventions |
 
 ## 2. Language and Runtime
 
@@ -66,6 +69,8 @@ components. No feature logic, state machines, or hooks should live in `pages/`.
 - Keep UI work within frontend boundaries; the `src/AdminSheet` directory has been fully removed, so no UI work should reference it.
 
 **Important**: When adding, using or modifying UI components, ALWAYS check the [Ant Design documentation](https://ant.design/llms.txt) and browse the relevant docs for the component or components you are working with. Ant Design has a lot of built-in functionality and options, and it's likely that the behaviour you want to implement is already supported by the library. Familiarise yourself with the documentation to ensure you're using the components effectively and following best practices.
+
+**Mandatory spacing and padding read**: Before adding, modifying, or reviewing any UI element that affects layout spacing, ALWAYS read `docs/developer/frontend/frontend-spacing-and-padding-standards.md`. All padding, margin, and gap values must follow the 8px grid system defined there. Reject any spacing value that is not a multiple of 8 (or a documented 4px exception) during implementation and code review.
 
 ## 5. Backend Boundary
 
@@ -171,18 +176,26 @@ For shell navigation and motion conventions (menu metadata, decorative icon sema
 
 - `docs/developer/frontend/frontend-shell-navigation-and-motion.md`
 
-## 11. Modal Patterns and Reuse
+## 11. Spacing and Padding Standards
+
+For spacing and padding rules (8px grid, CSS custom property tokens, container-level and component-level spacing, inline style rules, and code-review enforcement), use:
+
+- `docs/developer/frontend/frontend-spacing-and-padding-standards.md`
+
+This document **must** be read before adding, modifying, or reviewing any UI element that affects layout spacing.
+
+## 12. Modal Patterns and Reuse
 
 For modal-family discovery, reuse decisions, and extraction rules, use:
 
 - `docs/developer/frontend/frontend-modal-patterns.md`
 
-## 12. Default Values Rule
+## 13. Default Values Rule
 
 - Default values must be set in a module's constructor only.
 - If defaults are found elsewhere, they should be opportunistically moved to the constructor of the module.
 
-## 13. Service Domain Folder Organisation
+## 14. Service Domain Folder Organisation
 
 When two or more service files in `src/frontend/src/services/` share a common domain prefix,
 group them into a subfolder named after that domain prefix.

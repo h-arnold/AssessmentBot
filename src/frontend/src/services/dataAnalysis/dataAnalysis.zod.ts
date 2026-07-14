@@ -76,8 +76,10 @@ export type AveragingAnalyserInput = z.infer<typeof AveragingAnalyserInputSchema
  * The discriminated union replaces the earlier invariant
  * `value === null ⇔ applicableDataPoints === 0`.
  *
- * Precedence for rollups (not enforced at the schema level):
- * `error` > `notAttempted` > `computed`.
+ * Display/sort precedence for a single MetricResult (not enforced at the schema
+ * level): `error` > `notAttempted` > `computed`.
+ * At rollup levels, `error` entries/criteria are **excluded** from averages rather
+ * than escalating the result — the rollup is `error` only when every input is `error`.
  */
 const ComputedMetricSchema = z.strictObject({
   state: z.literal('computed'),
@@ -176,6 +178,26 @@ export const AppliedCriterionWeightingsSchema = z.strictObject({
 export type AppliedCriterionWeightings = z.infer<typeof AppliedCriterionWeightingsSchema>;
 
 /**
+ * Per-(student, task) metric for the heatmap — one entry per (studentId, taskKey)
+ * present in the per-student-task accumulators.
+ *
+ * @remarks
+ * `taskKey` omits `assignmentId` in v1 (deferred multi-assignment re-keying).
+ * See SPEC.md §Deferrals.
+ */
+export const PerStudentTaskMetricSchema = z.strictObject({
+  classId: z.string(),
+  studentId: z.string(),
+  taskKey: z.string(),
+  completeness: MetricResultSchema,
+  accuracy: MetricResultSchema,
+  spag: MetricResultSchema,
+  overall: MetricResultSchema,
+});
+
+export type PerStudentTaskMetric = z.infer<typeof PerStudentTaskMetricSchema>;
+
+/**
  * Complete analysis result for a single class.
  */
 export const AveragingResultSchema = z.strictObject({
@@ -185,6 +207,7 @@ export const AveragingResultSchema = z.strictObject({
   perTask: z.array(PerTaskRowSchema),
   perClass: PerClassResultSchema,
   appliedCriterionWeightings: AppliedCriterionWeightingsSchema,
+  perStudentTaskMetrics: z.array(PerStudentTaskMetricSchema).optional(),
 });
 
 export type AveragingResult = z.infer<typeof AveragingResultSchema>;

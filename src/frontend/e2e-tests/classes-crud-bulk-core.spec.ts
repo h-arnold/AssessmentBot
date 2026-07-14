@@ -17,6 +17,7 @@ import {
   baseYearGroups,
   mockClassesCrudRuntime,
   openClassesTab,
+  strictModeSafeReadQueue,
   type ClassesCrudRuntimeScenario,
 } from './classes-crud.shared';
 
@@ -31,6 +32,10 @@ const bulkDeactivateButtonLabel = 'Set inactive';
 const TWO_DATA_ROWS_PLUS_HEADER = 3;
 const ONE_DATA_ROW_PLUS_HEADER = 2;
 const DEFAULT_MUTATION_QUEUE_LENGTH = 12;
+// Bounded retries for a modal confirm click swallowed by the antd v6 entrance
+// animation. The close is asynchronous, so we let Playwright auto-wait between
+// attempts rather than using a fixed sleep.
+const CONFIRM_CLICK_RETRY_ATTEMPTS = 3;
 
 // ---------------------------------------------------------------------------
 // WS3-format fixtures (cohortKey/yearGroupKey string fields)
@@ -141,18 +146,23 @@ function buildDefaultMutationQueue(): ReadonlyArray<BulkCoreMutationScenario> {
 function toClassesCrudScenario(scenario: BulkCoreScenario): ClassesCrudRuntimeScenario {
   const classPartialsQueue: ClassesCrudRuntimeScenario['getABClassPartials'] = [
     { kind: 'success', data: scenario.classPartials },
+    ...(scenario.classPartialsAfterMutation === undefined
+      ? []
+      : [{ kind: 'success' as const, data: scenario.classPartialsAfterMutation }]),
   ];
 
-  if (scenario.classPartialsAfterMutation !== undefined) {
-    classPartialsQueue.push({ kind: 'success', data: scenario.classPartialsAfterMutation });
-  }
-
   return {
-    getAuthorisationStatus: [{ kind: 'success', data: true }],
-    getABClassPartials: classPartialsQueue,
-    getCohorts: [{ kind: 'success', data: scenario.cohorts ?? baseCohorts }],
-    getYearGroups: [{ kind: 'success', data: scenario.yearGroups ?? baseYearGroups }],
-    getGoogleClassrooms: [{ kind: 'success', data: scenario.googleClassrooms }],
+    getAuthorisationStatus: strictModeSafeReadQueue([{ kind: 'success', data: true }]),
+    getABClassPartials: strictModeSafeReadQueue(classPartialsQueue),
+    getCohorts: strictModeSafeReadQueue([
+      { kind: 'success', data: scenario.cohorts ?? baseCohorts },
+    ]),
+    getYearGroups: strictModeSafeReadQueue([
+      { kind: 'success', data: scenario.yearGroups ?? baseYearGroups },
+    ]),
+    getGoogleClassrooms: strictModeSafeReadQueue([
+      { kind: 'success', data: scenario.googleClassrooms },
+    ]),
     deleteABClass: scenario.deleteABClass ?? buildDefaultMutationQueue(),
     updateABClass: scenario.updateABClass ?? buildDefaultMutationQueue(),
     upsertABClass: scenario.upsertABClass ?? buildDefaultMutationQueue(),
@@ -179,6 +189,41 @@ async function mockBulkCoreRuntime(page: Page, scenario: BulkCoreScenario): Prom
 async function openClassesManagementTab(page: Page): Promise<void> {
   await openClassesTab(page);
   await expect(page.getByRole('table', { name: classesTableAriaLabel })).toBeVisible();
+}
+
+/**
+ * Clicks a modal confirm button and tolerates the antd v6 entrance-animation
+ * click race.
+ *
+ * antd v6 `rc-dialog` mounts with an entrance transition during which a click
+ * can be swallowed, leaving the modal open even though the button was enabled.
+ * The modal close is asynchronous (the confirm triggers a mutation before the
+ * dialog unmounts), so we must not re-click on a merely mid-close dialog.
+ *
+ * Strategy: wait for the confirm button to be enabled, click, then let Playwright
+ * auto-wait for the dialog to dismiss. Only if it genuinely never closes (the
+ * swallowed-click race) do we click again, bounded to three attempts.
+ *
+ * @param {ReturnType<Page['getByRole']>} dialog Dialog locator expected to dismiss.
+ * @param {ReturnType<Page['getByRole']>} confirmButton Confirm button locator.
+ * @returns {Promise<void>} Resolves once the dialog has dismissed.
+ */
+async function clickModalConfirmAndDismiss(
+  dialog: ReturnType<Page['getByRole']>,
+  confirmButton: ReturnType<Page['getByRole']>
+): Promise<void> {
+  await expect(confirmButton).toBeEnabled();
+  for (let attempt = 0; attempt < CONFIRM_CLICK_RETRY_ATTEMPTS; attempt++) {
+    await confirmButton.click();
+    try {
+      await expect(dialog).toHaveCount(0);
+      return;
+    } catch {
+      // Dialog did not dismiss — either the click was swallowed by the entrance
+      // animation or the close is still settling. Loop will click once more.
+    }
+  }
+  await expect(dialog).toHaveCount(0);
 }
 
 // ---------------------------------------------------------------------------
@@ -310,9 +355,8 @@ test.describe('bulk create flow', () => {
     await dialog.getByRole('combobox', { name: 'Year group' }).click();
     await page.getByRole('option', { name: 'Year 11' }).click();
     await dialog.getByRole('spinbutton', { name: 'Course length' }).fill('2');
-    await dialog.getByRole('button', { name: 'OK' }).click();
-
-    await expect(dialog).toHaveCount(0);
+    const createOkButton = dialog.getByRole('button', { name: 'OK' });
+    await clickModalConfirmAndDismiss(dialog, createOkButton);
     await expect(page.getByRole('table', { name: classesTableAriaLabel })).toContainText(
       'Cohort 2025'
     );
@@ -400,7 +444,11 @@ test.describe('bulk delete flow', () => {
 
     await page.getByRole('button', { name: bulkDeleteButtonLabel }).click();
     // Click the "Delete" button inside the confirmation dialog specifically
-    await page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click();
+    const deleteConfirmButton = page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Delete', exact: true });
+    await expect(deleteConfirmButton).toBeEnabled();
+    await deleteConfirmButton.click();
 
     // After deletion + refetch, only one data row should remain
     await expect(table.getByRole('row')).toHaveCount(ONE_DATA_ROW_PLUS_HEADER);
@@ -433,9 +481,10 @@ test.describe('bulk delete failure feedback', () => {
     await table.getByRole('checkbox').first().check();
 
     await page.getByRole('button', { name: bulkDeleteButtonLabel }).click();
-    await page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click();
-
-    await expect(page.getByRole('dialog')).toHaveCount(0);
+    const deleteConfirmButton = page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Delete', exact: true });
+    await clickModalConfirmAndDismiss(page.getByRole('dialog'), deleteConfirmButton);
     await expect(page.getByText('Some selected classes were not deleted.')).toBeVisible();
     await expect(
       page.getByText(

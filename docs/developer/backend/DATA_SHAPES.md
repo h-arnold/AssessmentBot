@@ -75,7 +75,7 @@ To balance performance with data fidelity in the Google Apps Script environment,
 
 - **Purpose**: Lightweight index of definitions shared across classes/years.
 - **Storage**: Single collection keyed by stable opaque `definitionKey`. Duplicate business identity is tracked separately by the canonical tuple `{ primaryTitle, primaryTopicKey, yearGroupKey }`; metadata edits must not rotate `definitionKey`.
-- **Content**: **Partial** definition with `tasks: null` (no artifacts); includes metadata (`primaryTitle`, `alternateTitles`, `yearGroupKey`, `yearGroupLabel`, `assignmentWeighting`), authoritative topic reference (`primaryTopicKey` plus resolved `primaryTopic` label), `documentType` for routing, and doc IDs (`referenceDocumentId`, `templateDocumentId`) for reference.
+- **Content**: **Partial** definition with `tasks` as an array of lightweight `{taskId, taskWeighting, taskTitle}` summaries (empty array for a bare partial); includes metadata (`primaryTitle`, `alternateTitles`, `yearGroupKey`, `yearGroupLabel`, `assignmentWeighting`), authoritative topic reference (`primaryTopicKey` plus resolved `primaryTopic` label), `documentType` for routing, and doc IDs (`referenceDocumentId`, `templateDocumentId`) for reference.
 - **Relationship**: Embedded into `Assignment` instances (copy-on-construct) and stored alongside partial assignments in `ABClass`.
 
 4. **Full Assignment Definition Record (`assdef_full_<definitionKey>`)**:
@@ -104,7 +104,7 @@ frequently stored with a "partial" (summary-level) representation so that
 list and overview flows avoid rehydrating heavy artifacts until required.
 
 Example: `ABClass` rehydrated from JsonDbApp where contained `assignments`
-are partially hydrated (note the embedded `assignmentDefinition` has `tasks: null` while retaining doc IDs for reference):
+are partially hydrated (note the embedded `assignmentDefinition` has `tasks` as an array — `[]` for a bare partial — while retaining doc IDs for reference):
 
 ```json
 {
@@ -136,7 +136,7 @@ are partially hydrated (note the embedded `assignmentDefinition` has `tasks: nul
         "templateDocumentId": "DriveTemplate123",
         "assignmentWeighting": null,
         "definitionKey": "11111111-2222-4333-8444-555555555555",
-        "tasks": null,
+        "tasks": [],
         "createdAt": "2025-09-01T10:00:00Z",
         "updatedAt": "2025-09-01T10:00:00Z"
       },
@@ -149,12 +149,12 @@ are partially hydrated (note the embedded `assignmentDefinition` has `tasks: nul
 Key notes:
 
 - The `ABClass` top-level fields are present and usable immediately.
-- **Partial Assignment Definitions**: The embedded `assignmentDefinition` has `tasks: null` (explicit marker) to minimise payload size while retaining `referenceDocumentId` and `templateDocumentId` for reference.
+- **Partial Assignment Definitions**: The embedded `assignmentDefinition` has `tasks` as an array (array marker) to minimise payload size while retaining `referenceDocumentId` and `templateDocumentId` for reference.
 - **Authoritative topic identity**: `primaryTopicKey` is the persisted source of truth for topic selection; `primaryTopic` is the resolved display label carried for convenience.
 - **Stable identifier direction**: `definitionKey` is planned as an opaque stable identifier rather than a metadata-derived string that rotates when title/topic/year-group values change.
 - **Root `documentType`**: Preserved at assignment root for polymorphic routing (allows `Assignment.fromJSON` to instantiate correct subclass).
-- **Fail-Fast Design**: Code expecting tasks will throw immediately on `null` rather than silently operating on empty objects.
-- **Assignment Definition Embedding**: The `assignmentDefinition` object is embedded directly. For partial assignments in ABClass, the definition has `tasks: null` but includes doc IDs. Full assignments contain complete definitions with all tasks and artifacts. The assignment root includes `documentType` for polymorphic routing.
+- **Fail-Fast Design**: The constructor throws immediately when `tasks` is `null` or `undefined` (fail-fast) rather than silently operating on empty objects.
+- **Assignment Definition Embedding**: The `assignmentDefinition` object is embedded directly. For partial assignments in ABClass, the definition has `tasks` as an array (array marker) but includes doc IDs. Full assignments contain complete definitions with all tasks and artifacts. The assignment root includes `documentType` for polymorphic routing.
 - This approach keeps server/drive calls minimal while maintaining a stable
   schema across hydration levels.
 - During assessment runs it is acceptable for an `Assignment` instance to carry a
@@ -163,14 +163,14 @@ Key notes:
   JsonDbApp or other serialized stores; doing so will duplicate roster entries
   each time an assessment is rehydrated.
 
-**Partial Definition Detection**: Code detects partial definitions via `assignmentDefinition.tasks === null` (not `undefined` or `{}`). This explicit marker enables fail-fast behavior when tasks are accessed without proper rehydration.
+**Partial Definition Detection**: Code detects partial definitions via `Array.isArray(assignmentDefinition.tasks)`. The constructor throws immediately when `tasks` is `null` or `undefined`, so a partial definition always carries `tasks` as an array (or array-like). Full definitions carry `tasks` as a keyed object.
 
 Hydration markers (`_hydrationLevel`) are runtime-only flags set to `'full'` or
 `'partial'` so controllers know whether an `Assignment` holds the entire payload
 or a lightweight summary. They are never serialized in either the ABClass record
 or the dedicated `assign_full_*` collections.
 
-The same schema is used for every hydration level. Partial definitions use `tasks: null` as an explicit marker rather than redacted artifacts with null content.
+The same schema is used for every hydration level. Partial definitions use `tasks` as an array marker (`Array.isArray(tasks)` is truthy) rather than redacted artifacts with null content.
 
 ## ABClassPartials — class list index
 
@@ -281,7 +281,7 @@ teachers, and partial assignment summaries. Unlike the partial registry
         "templateDocumentId": "template-doc-456",
         "assignmentWeighting": 1,
         "definitionKey": "algebra-baseline",
-        "tasks": null,
+        "tasks": [],
         "createdAt": "2025-01-01T00:00:00.000Z",
         "updatedAt": "2025-05-01T00:00:00.000Z"
       }
@@ -294,7 +294,7 @@ teachers, and partial assignment summaries. Unlike the partial registry
 Key notes:
 
 - `assignments[]` uses the `Assignment.toPartialJSON()` shape (partial — no full artifact content, no assessment reasoning, no hydration metadata).
-- `assignments[].assignmentDefinition.tasks` is always `null` (partial shape).
+- `assignments[].assignmentDefinition.tasks` is always an array (partial shape).
 - `assignments[].submissions[].artifact.content` and `contentHash` are always `null` (redacted in partial).
 - `students` are plain objects with `name`, `email`, `id` (not model instances).
 - `classOwner` and every entry in `teachers` are teacher summary objects with `userId`, `email`, and `teacherName` fields only (same shape as the partial registry).
@@ -671,7 +671,7 @@ Response rows are plain registry partials returned inside the standard `apiHandl
   "templateDocumentId": "DriveTemplate123",
   "assignmentWeighting": null,
   "definitionKey": "11111111-2222-4333-8444-555555555555",
-  "tasks": null,
+  "tasks": [],
   "createdAt": "2025-09-01T10:00:00.000Z",
   "updatedAt": "2025-09-01T10:00:00.000Z"
 }
@@ -680,7 +680,7 @@ Response rows are plain registry partials returned inside the standard `apiHandl
 Key notes:
 
 - `primaryTopicKey` is authoritative and mandatory in partial transport; `primaryTopic` is the resolved display label only.
-- `tasks` is always `null` in this transport shape.
+- `tasks` is always an array in this transport shape.
 - `referenceLastModified` and `templateLastModified` are omitted from partial transport.
 - `alternateTopics` is present in partial responses for registry compatibility and is now a documented optional field in the upsert request contract. When the field is provided in an upsert request, the orchestrator's `_resolveAlternateTopics` method normalises and writes it to the `AssignmentDefinition` model via the same validation pipeline as `alternateTitles`. When the field is omitted on update, the orchestrator preserves the stored value.
 - The transport helper rejects rows where `definitionKey` or `primaryTopicKey` are missing, blank, or untrimmed, and where `createdAt` / `updatedAt` are neither `null` nor strict ISO datetime strings with timezone information.
@@ -742,7 +742,7 @@ Response notes:
 
 ## Partial Hydration (summary-level)
 
-Used when we want a lightweight snapshot for list views or quick comparisons. The embedded `assignmentDefinition` has `tasks: null` to reduce payload size while retaining `referenceDocumentId` and `templateDocumentId` for reference. Submission artifacts are redacted (no `content` payload).
+Used when we want a lightweight snapshot for list views or quick comparisons. The embedded `assignmentDefinition` has `tasks` as an array (array marker) to reduce payload size while retaining `referenceDocumentId` and `templateDocumentId` for reference. Submission artifacts are redacted (no `content` payload).
 
 ```json
 {

@@ -36,6 +36,9 @@ const TAGS_FOR_TWO_CARDS = 8;
 /** Three cards × four MetricPill instances each. */
 const TAGS_FOR_THREE_CARDS = 12;
 
+/** Two cards rendered with onOpenHeatmap forwarding. */
+const EXPECTED_HEATMAP_CALLS = 2;
+
 // ---------------------------------------------------------------------------
 // Fixture helpers
 // ---------------------------------------------------------------------------
@@ -184,5 +187,28 @@ describe('RecentAssignmentsSection', () => {
     await user.click(ctaButton);
 
     expect(onStartNewAssessment).toHaveBeenCalledTimes(1);
+  });
+
+  it('forwards onOpenHeatmap to each RecentAssignmentCard', async () => {
+    const onOpenHeatmap = vi.fn();
+    const cards: RecentAssignmentCardModel[] = [
+      makeCard({ assignmentId: 'a-1', assignmentName: 'Algebra Baseline' }),
+      makeCard({ assignmentId: 'a-2', assignmentName: 'Geometry Quiz' }),
+    ];
+
+    render(
+      <RecentAssignmentsSection
+        recentAssignments={cards}
+        onStartNewAssessment={vi.fn()}
+        onOpenHeatmap={onOpenHeatmap}
+      />
+    );
+
+    await user.click(screen.getByText('Algebra Baseline'));
+    await user.click(screen.getByText('Geometry Quiz'));
+
+    expect(onOpenHeatmap).toHaveBeenCalledTimes(EXPECTED_HEATMAP_CALLS);
+    expect(onOpenHeatmap).toHaveBeenCalledWith('a-1');
+    expect(onOpenHeatmap).toHaveBeenCalledWith('a-2');
   });
 });

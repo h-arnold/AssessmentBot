@@ -58,7 +58,7 @@ export const LinkableDefinitionList = memo(function LinkableDefinitionList(
           yearGroupLabel: d.yearGroupLabel,
         }))}
         optionRender={(option) => (
-          <Flex vertical gap={2}>
+          <Flex vertical gap="small">
             <Typography.Text strong ellipsis>
               {option.data.primaryTitle}
             </Typography.Text>

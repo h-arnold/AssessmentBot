@@ -251,7 +251,7 @@ describe('rollupMetric', () => {
   // -----------------------------------------------------------------------
 
   describe('mixed states precedence', () => {
-    it('returns error when any sub-task is error', async () => {
+    it('returns computed (error sub-task excluded) when mixing computed, notAttempted, and error', async () => {
       const { rollupMetric } = await loadRollupMetric();
 
       const subTasks = [
@@ -261,10 +261,20 @@ describe('rollupMetric', () => {
       ];
 
       const result = rollupMetric(subTasks, 'completeness');
-
-      expect(result.state).toBe('error');
-      if (result.state === 'error') {
-        expect(result.value).toBe('E');
+      // computed(5, tw=1, ap=1, tdp=1) + notAttempted(tw=0, tdp=1) + error(tdp=1)
+      // totalWeightedSum = 5*1 = 5, computedTotalWeight = 1, naTotalWeight = 0
+      // finalTotalWeight = 1, finalTotalDataPoints = 1 + 1 = 2
+      // value = 5/1 = 5, ap = min(1, 2) = 1
+      const EXPECTED_VALUE = 5;
+      const EXPECTED_TW = 1;
+      const EXPECTED_AP = 1;
+      const EXPECTED_TDP = 2;
+      expect(result.state).toBe('computed');
+      if (result.state === 'computed') {
+        expect(result.value).toBeCloseTo(EXPECTED_VALUE, FLOAT_TOLERANCE);
+        expect(result.totalWeight).toBeCloseTo(EXPECTED_TW, FLOAT_TOLERANCE);
+        expect(result.applicableDataPoints).toBe(EXPECTED_AP);
+        expect(result.totalDataPoints).toBe(EXPECTED_TDP);
       }
     });
 
@@ -315,17 +325,73 @@ describe('rollupMetric', () => {
 
     describe.each(CRITERIA)(
       'error sub-tasks are excluded from weighted average ($metric)',
-      ({ metric }) => {
-        it('returns error', async () => {
+      ({ metric, isSpag }) => {
+        it('produces computed (error excluded)', async () => {
           const { rollupMetric } = await loadRollupMetric();
           const d = ERROR_EXCLUSION[metric];
 
           const result = rollupMetric(d.tasks, metric);
 
-          expect(result.state).toBe('error');
+          // All ERROR_EXCLUSION data has one computed entry (4, tw=2, ap=2)
+          // plus error/notAttempted entries. Error is excluded from the average.
+          const EXPECTED_VALUE = 4;
+          const EXPECTED_TOTAL_WEIGHT = 2;
+          expect(result.state).toBe('computed');
+          if (result.state === 'computed') {
+            expect(result.value).toBeCloseTo(EXPECTED_VALUE, FLOAT_TOLERANCE);
+            expect(result.totalWeight).toBeCloseTo(EXPECTED_TOTAL_WEIGHT, FLOAT_TOLERANCE);
+            // completeness has na(tw=0, tdp=1) → finalTotalDataPoints=2, ap=min(2,2)=2
+            // accuracy/spag has no na → finalTotalDataPoints=1, ap=min(2,1)=1
+            if (isSpag || metric === 'accuracy') {
+              expect(result.applicableDataPoints).toBe(1);
+            } else {
+              const EXPECTED_AP = 2;
+              expect(result.applicableDataPoints).toBe(EXPECTED_AP);
+            }
+          }
         });
       }
     );
+  });
+
+  it('error sub-task excluded from weighted average when mixed with two computed entries', async () => {
+    const { rollupMetric } = await loadRollupMetric();
+
+    // Two computed entries (value=5, tw=2 and value=3, tw=1) plus one error
+    const subTasks = [
+      createComputedMetricResult({
+        value: 5,
+        totalWeight: 2,
+        applicableDataPoints: 2,
+        totalDataPoints: 2,
+      }),
+      createComputedMetricResult({
+        value: 3,
+        totalWeight: 1,
+        applicableDataPoints: 1,
+        totalDataPoints: 1,
+      }),
+      createErrorMetricResult({ totalDataPoints: 1 }),
+    ];
+
+    const COMPUTED_TOTAL_WEIGHTED_SUM = 13;
+    const COMPUTED_TOTAL_WEIGHT = 3;
+    const EXPECTED_VALUE = COMPUTED_TOTAL_WEIGHTED_SUM / COMPUTED_TOTAL_WEIGHT;
+    const EXPECTED_TOTAL_WEIGHT = COMPUTED_TOTAL_WEIGHT;
+    const EXPECTED_AP = 3;
+    const EXPECTED_TDP = 3;
+    const result = rollupMetric(subTasks, 'completeness');
+    // totalWeightedSum = 5*2 + 3*1 = 13
+    // computedTotalWeight = 3, finalTotalWeight = 3
+    // value = 13/3 ≈ 4.333
+    // computedTd = 3, no na → finalTotalDataPoints = 3, ap = min(2+1=3, 3) = 3
+    expect(result.state).toBe('computed');
+    if (result.state === 'computed') {
+      expect(result.value).toBeCloseTo(EXPECTED_VALUE, FLOAT_TOLERANCE);
+      expect(result.totalWeight).toBeCloseTo(EXPECTED_TOTAL_WEIGHT, FLOAT_TOLERANCE);
+      expect(result.applicableDataPoints).toBe(EXPECTED_AP);
+      expect(result.totalDataPoints).toBe(EXPECTED_TDP);
+    }
   });
 
   // -----------------------------------------------------------------------
@@ -504,10 +570,8 @@ describe('rollupMetric', () => {
   // -----------------------------------------------------------------------
 
   describe('metadata accumulation across states', () => {
-    it('accumulates totalWeight and totalDataPoints from all sub-tasks when error wins', async () => {
+    it('accumulates totalWeight and totalDataPoints from computed and notAttempted sub-tasks, excluding error', async () => {
       const { rollupMetric } = await loadRollupMetric();
-      const EXPECTED_TW = 3;
-      const EXPECTED_TDP = 5;
 
       const subTasks = [
         createComputedMetricResult({
@@ -520,13 +584,19 @@ describe('rollupMetric', () => {
         createErrorMetricResult({ totalWeight: 0, totalDataPoints: 1 }),
       ];
 
+      const EXPECTED_TOTAL_WEIGHT = 3;
+      const EXPECTED_TOTAL_DATA_POINTS = 4;
       const result = rollupMetric(subTasks, 'completeness');
-
-      expect(result.state).toBe('error');
-      if (result.state === 'error') {
-        expect(result.value).toBe('E');
-        expect(result.totalWeight).toBe(EXPECTED_TW);
-        expect(result.totalDataPoints).toBe(EXPECTED_TDP);
+      // totalWeightedSum = 3*1 = 3
+      // computedTotalWeight = 1, naTotalWeight = 2 → finalTotalWeight = 3
+      // computedTd = 1, naTotalDataPoints = 3 → finalTotalDataPoints = 4
+      // value = 3/3 = 1, ap = min(1, 4) = 1
+      expect(result.state).toBe('computed');
+      if (result.state === 'computed') {
+        expect(result.value).toBeCloseTo(1, FLOAT_TOLERANCE);
+        expect(result.totalWeight).toBeCloseTo(EXPECTED_TOTAL_WEIGHT, FLOAT_TOLERANCE);
+        expect(result.applicableDataPoints).toBe(1);
+        expect(result.totalDataPoints).toBe(EXPECTED_TOTAL_DATA_POINTS);
       }
     });
   });

@@ -176,7 +176,7 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
         referenceDocumentId: 'ref',
         templateDocumentId: 'tpl',
         definitionKey: 'Test_Topic_10',
-        tasks: null,
+        tasks: [],
       };
       mockRegistryCollection.findOne.mockReturnValue(partialDef);
 
@@ -186,7 +186,7 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
       expect(result).toMatchObject({
         definitionKey: 'Test_Topic_10',
       });
-      expect(result.tasks).toBeNull();
+      expect(result.tasks).toEqual([]);
     });
 
     it('should fail fast when definitionKey is missing', () => {

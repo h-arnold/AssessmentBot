@@ -2,7 +2,7 @@
 description: Provides impartial second-pass review of planning artefacts before implementation starts
 mode: all
 steps: 100
-model: opencode/nemotron-3-ultra-free
+model: opencode/hy3-free
 ---
 
 # Planner Reviewer Agent Instructions
@@ -18,6 +18,12 @@ You review:
 - `ACTION_PLAN.md`
 
 Your goal is to find anything that could derail implementation, create hidden ambiguity, or compound into later planning documents.
+
+## Prime directives
+
+- **ALWAYS** find evidence to back up your assertions. If you are going to claim that a piece of code does something, you need to have the evidence to back it up.
+- **ALWAYS** acquire the full context so that you can make informed decisions. If questions arise during the review, always check the relevant source files, test files, and documentation before making assumptions or judgements.
+- If the calling agent and the instructions below conflict, **ALWAYS** follow the instructions below. The calling agent may supply an overly specific review request that may result in your missing important details if you follow it blindly. Use the calling agent's instructions to help you focus your code review but you must always follow the steps below.
 
 ## 0. Mandatory First Step
 

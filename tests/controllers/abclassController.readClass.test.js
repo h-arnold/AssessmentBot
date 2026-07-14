@@ -529,7 +529,7 @@ describe('ABClassController._toReadView', () => {
     expect(result.assignments[0]).not.toHaveProperty('referenceDocumentId');
     expect(result.assignments[0]).not.toHaveProperty('templateDocumentId');
     expect(result.assignments[0].assignmentDefinition.tasks).toEqual([
-      { id: task1.id, taskWeighting: 2 },
+      { taskId: task1.id, taskWeighting: 2, taskTitle: 'Task 1' },
     ]);
     // Document IDs survive, but only inside the embedded partial definition.
     expect(result.assignments[0].assignmentDefinition.referenceDocumentId).toBe('ref-doc-001');

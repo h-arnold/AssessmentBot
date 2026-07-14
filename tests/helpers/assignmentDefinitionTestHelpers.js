@@ -126,7 +126,7 @@ export function createSamplePartialDefinitionDocs() {
       referenceDocumentId: '1fuOQ8ZFoB1Kdk9_rgEErRs4jrphRkB6zJYYLjEbVoII',
       templateDocumentId: '1blHtdE5Ieyr7F_XYuAta1O4PlVhDcmJJw0OJd0BakKY',
       definitionKey: '1.1 Learning to Research_Space_year-group-10',
-      tasks: null,
+      tasks: [],
     },
     {
       _id: '9387cd91-c034-4e0a-a896-f25a7bcfca4a',
@@ -139,7 +139,7 @@ export function createSamplePartialDefinitionDocs() {
       referenceDocumentId: '1Qa3SXcZfFPtKVU0mZbbIyq3kksXOVMK12IvrLgnmwmk',
       templateDocumentId: '1kfWiX2QfzK39q98r_RxPqEvteShuUMfCdOg2wtJgCfg',
       definitionKey: '8. Secondary Storage - Cloud_1.1 Computer Architecture_year-group-10',
-      tasks: null,
+      tasks: [],
     },
     {
       _id: 'cb412c10-a619-4e3c-bba2-821b0ce33a08',
@@ -152,7 +152,7 @@ export function createSamplePartialDefinitionDocs() {
       referenceDocumentId: '1fXe7mD6YgBixNcLpRl-6NTSTayraVCDvGTIjLQ_vh24',
       templateDocumentId: '1nguALHo-wXxxMlml49_7JoQ8sFt0-0_eF9ec4_pX6JQ',
       definitionKey: '1. DigiTech Pathways_Pathways_year-group-10',
-      tasks: null,
+      tasks: [],
     },
   ];
 }

@@ -18,6 +18,7 @@ import {
   baseYearGroups,
   mockClassesCrudRuntime,
   openClassesTab,
+  padClassesCrudReadQueues,
   releaseClassesCrudSignal,
   type ClassesCrudRuntimeScenario,
 } from './classes-crud.shared';
@@ -95,6 +96,10 @@ const bulkSetCohortButtonLabel = 'Set cohort';
 const progressModalTitle = 'Bulk class update in progress';
 const THREE_ROWS = 3;
 const TWO_ROWS = 2;
+// Bounded retries for a modal confirm click swallowed by the antd v6 entrance
+// animation. The close is asynchronous, so we let Playwright auto-wait between
+// attempts rather than using a fixed sleep.
+const CONFIRM_CLICK_RETRY_ATTEMPTS = 3;
 
 /**
  * Builds deferred success entries for N rows.
@@ -120,6 +125,41 @@ function buildDeferredMutationEntries(count: number, prefix: string) {
 async function openClassesManagementTab(page: Page): Promise<void> {
   await openClassesTab(page);
   await expect(page.getByRole('table', { name: classesTableAriaLabel })).toBeVisible();
+}
+
+/**
+ * Clicks a modal confirm button and tolerates the antd v6 entrance-animation
+ * click race.
+ *
+ * antd v6 `rc-dialog` mounts with an entrance transition during which a click
+ * can be swallowed, leaving the modal open even though the button was enabled.
+ * The modal close is asynchronous (the confirm triggers a mutation before the
+ * dialog unmounts), so we must not re-click on a merely mid-close dialog.
+ *
+ * Strategy: wait for the confirm button to be enabled, click, then let Playwright
+ * auto-wait for the dialog to dismiss. Only if it genuinely never closes (the
+ * swallowed-click race) do we click again, bounded to three attempts.
+ *
+ * @param {ReturnType<Page['getByRole']>} dialog Dialog locator expected to dismiss.
+ * @param {ReturnType<Page['getByRole']>} confirmButton Confirm button locator.
+ * @returns {Promise<void>} Resolves once the dialog has dismissed.
+ */
+async function clickModalConfirmAndDismiss(
+  dialog: ReturnType<Page['getByRole']>,
+  confirmButton: ReturnType<Page['getByRole']>
+): Promise<void> {
+  await expect(confirmButton).toBeEnabled();
+  for (let attempt = 0; attempt < CONFIRM_CLICK_RETRY_ATTEMPTS; attempt++) {
+    await confirmButton.click();
+    try {
+      await expect(dialog).toHaveCount(0);
+      return;
+    } catch {
+      // Dialog did not dismiss — either the click was swallowed by the entrance
+      // animation or the close is still settling. Loop will click once more.
+    }
+  }
+  await expect(dialog).toHaveCount(0);
 }
 
 /**
@@ -150,10 +190,9 @@ async function startBulkCreateWithDeferredUpserts(page: Page) {
   await createDialog.getByRole('combobox', { name: 'Year group' }).click();
   await page.getByRole('option', { name: 'Year 11' }).click();
   await createDialog.getByRole('spinbutton', { name: 'Course length' }).fill('2');
-  await createDialog.getByRole('button', { name: 'OK' }).click();
-
+  const createOkButton = createDialog.getByRole('button', { name: 'OK' });
   // The create modal closes synchronously before the progress modal opens
-  await expect(createDialog).toHaveCount(0);
+  await clickModalConfirmAndDismiss(createDialog, createOkButton);
 
   const progressDialog = page.getByRole('dialog', { name: progressModalTitle });
   await expect(progressDialog).toBeVisible();
@@ -176,7 +215,7 @@ test.describe('bulk progress modal', () => {
       upsertABClass: buildDeferredMutationEntries(THREE_ROWS, UPSERT_SIGNAL_PREFIX),
     };
 
-    await mockClassesCrudRuntime(page, scenario);
+    await mockClassesCrudRuntime(page, padClassesCrudReadQueues(scenario));
     await page.goto('/');
     await openClassesManagementTab(page);
 
@@ -203,7 +242,7 @@ test.describe('bulk progress modal', () => {
       upsertABClass: buildDeferredMutationEntries(THREE_ROWS, UPSERT_SIGNAL_PREFIX),
     };
 
-    await mockClassesCrudRuntime(page, scenario);
+    await mockClassesCrudRuntime(page, padClassesCrudReadQueues(scenario));
     await page.goto('/');
     await openClassesManagementTab(page);
 
@@ -249,7 +288,7 @@ test.describe('bulk progress modal', () => {
       upsertABClass: buildDeferredMutationEntries(THREE_ROWS, UPSERT_SIGNAL_PREFIX),
     };
 
-    await mockClassesCrudRuntime(page, scenario);
+    await mockClassesCrudRuntime(page, padClassesCrudReadQueues(scenario));
     await page.goto('/');
     await openClassesManagementTab(page);
 
@@ -287,7 +326,7 @@ test.describe('bulk progress modal', () => {
       upsertABClass: buildDeferredMutationEntries(THREE_ROWS, UPSERT_SIGNAL_PREFIX),
     };
 
-    await mockClassesCrudRuntime(page, scenario);
+    await mockClassesCrudRuntime(page, padClassesCrudReadQueues(scenario));
     await page.goto('/');
     await openClassesManagementTab(page);
 
@@ -330,7 +369,7 @@ test.describe('bulk progress modal', () => {
       })),
     };
 
-    await mockClassesCrudRuntime(page, scenario);
+    await mockClassesCrudRuntime(page, padClassesCrudReadQueues(scenario));
     await page.goto('/');
     await openClassesManagementTab(page);
 
@@ -349,10 +388,9 @@ test.describe('bulk progress modal', () => {
     await expect(deleteDialog).toBeVisible();
 
     // Confirm deletion
-    await deleteDialog.getByRole('button', { name: 'Delete', exact: true }).click();
-
+    const deleteConfirmButton = deleteDialog.getByRole('button', { name: 'Delete', exact: true });
     // The delete modal closes; progress modal opens
-    await expect(deleteDialog).toHaveCount(0);
+    await clickModalConfirmAndDismiss(deleteDialog, deleteConfirmButton);
     const progressDialog = page.getByRole('dialog', { name: progressModalTitle });
     await expect(progressDialog).toBeVisible();
 
@@ -386,7 +424,7 @@ test.describe('bulk progress modal', () => {
       })),
     };
 
-    await mockClassesCrudRuntime(page, scenario);
+    await mockClassesCrudRuntime(page, padClassesCrudReadQueues(scenario));
     await page.goto('/');
     await openClassesManagementTab(page);
 
@@ -407,10 +445,9 @@ test.describe('bulk progress modal', () => {
     // Select a cohort
     await setCohortDialog.getByRole('combobox', { name: 'Cohort' }).click();
     await page.getByRole('option', { name: 'Cohort 2024' }).click();
-    await setCohortDialog.getByRole('button', { name: 'OK' }).click();
-
+    const setCohortOkButton = setCohortDialog.getByRole('button', { name: 'OK' });
     // The set-cohort modal closes; progress modal opens
-    await expect(setCohortDialog).toHaveCount(0);
+    await clickModalConfirmAndDismiss(setCohortDialog, setCohortOkButton);
     const progressDialog = page.getByRole('dialog', { name: progressModalTitle });
     await expect(progressDialog).toBeVisible();
 

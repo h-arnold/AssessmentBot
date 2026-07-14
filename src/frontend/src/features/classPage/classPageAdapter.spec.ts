@@ -480,16 +480,16 @@ describe('adaptClassPageToViewModel', () => {
     });
 
     // -----------------------------------------------------------------------
-    // per-assignment average — error escalation
+    // per-assignment average — error exclusion
     // -----------------------------------------------------------------------
-    it('sets per-assignment average to error when any criterion is error', () => {
+    it('computes per-assignment average excluding error criteria when at least one criterion is computed', () => {
       const perTaskRows: PerTaskRow[] = [
         perTaskRow({
           definitionKey: 'dk1',
           taskId: 't1',
-          completeness: createMetricResult('computed', { value: 5 }),
+          completeness: createMetricResult('computed', { value: 5, totalWeight: 1 }),
           accuracy: createMetricResult('error'),
-          spag: createMetricResult('computed', { value: 3 }),
+          spag: createMetricResult('computed', { value: 3, totalWeight: 1 }),
         }),
       ];
 
@@ -510,6 +510,61 @@ describe('adaptClassPageToViewModel', () => {
         }),
       });
 
+      const COMPOSITE_NUMERATOR = 2.6;
+      const COMPOSITE_DENOMINATOR = 0.6;
+      const EXPECTED_AVERAGE_VALUE = COMPOSITE_NUMERATOR / COMPOSITE_DENOMINATOR;
+      const EXPECTED_SUM_TOTAL_WEIGHT = 2;
+      const EXPECTED_SUM_AP = 2;
+      const EXPECTED_SUM_TDP = 2;
+      const average = result.recentAssignments[0].metrics.average;
+      // completeness rollup → computed(5, tw=1), accuracy rollup → error, spag rollup → computed(3, tw=1)
+      // computeAverageMetric with error-exclusion:
+      // entries: completeness(0.4, 5) and spag(0.2, 3)
+      // numerator = 0.4*5 + 0.2*3 = 2.0 + 0.6 = 2.6
+      // denominator = 0.4 + 0.2 = 0.6
+      // value = 2.6 / 0.6 = 4.333...
+      expect(average.state).toBe('computed');
+      if (average.state === 'computed') {
+        expect(average.value).toBeCloseTo(EXPECTED_AVERAGE_VALUE);
+        expect(average.totalWeight).toBe(EXPECTED_SUM_TOTAL_WEIGHT);
+        expect(average.applicableDataPoints).toBe(EXPECTED_SUM_AP);
+        expect(average.totalDataPoints).toBe(EXPECTED_SUM_TDP);
+      }
+    });
+
+    // -----------------------------------------------------------------------
+    // per-assignment average — all criteria error
+    // -----------------------------------------------------------------------
+    it('sets per-assignment average to error only when all three criteria are error', () => {
+      const perTaskRows: PerTaskRow[] = [
+        perTaskRow({
+          definitionKey: 'dk1',
+          taskId: 't1',
+          completeness: createMetricResult('error'),
+          accuracy: createMetricResult('error'),
+          spag: createMetricResult('error'),
+        }),
+      ];
+
+      const result = adaptClassPageToViewModel({
+        analyserResult: averagingResult({
+          perTask: perTaskRows,
+        }),
+        classFull: classFull({
+          students: [student('s-1', 'Alice')],
+          assignments: [
+            assignment({
+              assignmentId: 'a-1',
+              updatedAt: DEFAULT_TS,
+              definitionKey: 'dk1',
+              taskIds: ['t1'],
+            }),
+          ],
+        }),
+      });
+
+      // All three rows are error → rollupMetric(all error) → error for each criterion
+      // then computeAverageMetric(all three error) → error
       expect(result.recentAssignments[0].metrics.average.state).toBe('error');
     });
 

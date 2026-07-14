@@ -16,6 +16,7 @@ export type RollupMetric = 'completeness' | 'accuracy' | 'spag';
 interface AccumulatedState {
   hasError: boolean;
   hasComputed: boolean;
+  hasNotAttempted: boolean;
   totalWeightedSum: number;
   computedTotalWeight: number;
   computedAp: number;
@@ -35,6 +36,7 @@ function createAccumulatedState(): AccumulatedState {
   return {
     hasError: false,
     hasComputed: false,
+    hasNotAttempted: false,
     totalWeightedSum: 0,
     computedTotalWeight: 0,
     computedAp: 0,
@@ -76,6 +78,7 @@ function accumulateOne(
       break;
     }
     case 'notAttempted': {
+      accumulator.hasNotAttempted = true;
       if (metric !== 'spag') {
         accumulator.naTotalWeight += st.totalWeight;
         accumulator.naTotalDataPoints += st.totalDataPoints;
@@ -83,6 +86,23 @@ function accumulateOne(
       break;
     }
   }
+}
+
+/**
+ * Determine whether a rollup should be `error`, `notAttempted`, or should fall
+ * through to the `computed` path.
+ *
+ * @param {AccumulatedState} accumulator - The accumulated state after one pass.
+ * @returns {'error' | 'notAttempted' | 'computed'} The terminal state, or
+ *   `'computed'` to signal the caller to run the weighted average.
+ */
+function determineRollupState(
+  accumulator: AccumulatedState
+): 'error' | 'notAttempted' | 'computed' {
+  if (accumulator.hasError && !accumulator.hasComputed && !accumulator.hasNotAttempted)
+    return 'error';
+  if (!accumulator.hasComputed) return 'notAttempted';
+  return 'computed';
 }
 
 /**
@@ -138,16 +158,19 @@ function terminalRollup(
  *   excludes them entirely).
  * - `hasError` — set to `true` if any sub-task is in error state.
  * - `hasComputed` — set to `true` if any sub-task is in computed state.
+ * - `hasNotAttempted` — set to `true` if any sub-task is in notAttempted state.
  *
- * After the loop, the result state is determined by precedence:
- * `error` > `notAttempted` > `computed`.
+ * After the loop, the result state is determined by the following precedence:
  *
- * **Precedence** (spec decision 4):
- * - `error` always wins: if **any** sub-task is `error`, the result is `error`.
- * - `notAttempted`: If ALL sub-tasks are `notAttempted` (no `error`, no
- *   `computed`), result is `notAttempted`.
- * - `computed`: If at least one sub-task is `computed` and no `error`, result
- *   is `computed`.
+ * **Precedence:**
+ * - `error` only when **every** input is `error` (no `computed`, no
+ *   `notAttempted`). Error entries at aggregation levels above the per-cell
+ *   level are **excluded** from the weighted average, preventing a single
+ *   erroneous cell from collapsing the entire rollup.
+ * - `notAttempted` when no `computed` entries remain (error entries are
+ *   excluded); this includes the mixed `error` + `notAttempted` case.
+ * - `computed` when at least one `computed` entry exists; `error` entries are
+ *   excluded (they contribute nothing to numerator or denominator).
  *
  * **Per-metric `notAttempted` handling** (spec decision 5):
  * - `completeness` / `accuracy`: a `notAttempted` sub-task contributes a score
@@ -188,12 +211,13 @@ export function rollupMetric(
     accumulateOne(accumulator, st, metric);
   }
 
-  // Precedence: error > notAttempted > computed
-  if (accumulator.hasError) {
+  // Precedence: error only when ALL inputs are error; notAttempted when no
+  // computed entries remain (errors are excluded); otherwise computed.
+  const rollupState = determineRollupState(accumulator);
+  if (rollupState === 'error') {
     return terminalRollup(true, accumulator.allTotalWeight, accumulator.allTotalDataPoints);
   }
-
-  if (!accumulator.hasComputed) {
+  if (rollupState === 'notAttempted') {
     return terminalRollup(false, accumulator.allTotalWeight, accumulator.allTotalDataPoints);
   }
 

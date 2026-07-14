@@ -22,7 +22,7 @@
  * - src/frontend/src/test/classes/classesPageTestHelpers.ts
  */
 
-import { act, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAppQueryClient } from '../query/queryClient';
@@ -214,6 +214,20 @@ const { mockClassPage } = vi.hoisted(() => ({
 
 vi.mock('../features/classPage/ClassPage', () => ({
   ClassPage: mockClassPage,
+}));
+
+// Mock ClassSelectionContext for shell integration tests
+const { mockUseClassSelection } = vi.hoisted(() => ({
+  mockUseClassSelection: vi.fn(() => ({
+    selectedClassId: null as string | null,
+    className: null as string | null,
+    onSelectClass: vi.fn(),
+    onNavigateToClasses: vi.fn(),
+  })),
+}));
+
+vi.mock('../ClassSelectionContext', () => ({
+  useClassSelection: mockUseClassSelection,
 }));
 
 /**
@@ -1353,6 +1367,13 @@ describe('ClassesPage', () => {
   describe('Shell integration', () => {
     beforeEach(() => {
       useStartupWarmupStateMock.mockReturnValue(createReadyWarmupState());
+      // Reset context mock to default state (no class selected)
+      mockUseClassSelection.mockReturnValue({
+        selectedClassId: null,
+        className: null,
+        onSelectClass: vi.fn(),
+        onNavigateToClasses: vi.fn(),
+      });
     });
 
     it('renders the View button as enabled (not disabled)', () => {
@@ -1365,49 +1386,44 @@ describe('ClassesPage', () => {
       }
     });
 
-    it('clicking the View button sets selectedClassId and renders ClassPage', async () => {
+    it('clicking the View button calls onSelectClass from context', async () => {
       const user = userEvent.setup();
+      const onSelectClass = vi.fn();
+      mockUseClassSelection.mockReturnValue({
+        selectedClassId: null,
+        className: null,
+        onSelectClass,
+        onNavigateToClasses: vi.fn(),
+      });
 
       renderClassesPage();
 
       const viewButtons = screen.getAllByRole('button', { name: /view/i });
       await user.click(viewButtons[0]);
+
+      // onSelectClass should have been called with classId and className
+      expect(onSelectClass).toHaveBeenCalled();
+      const callArguments = onSelectClass.mock.calls[0] as unknown[];
+      expect(callArguments[0]).toBeTruthy();
+      expect(callArguments[1]).toBeTruthy();
+    });
+
+    it('when selectedClassId is set in context, ClassPage is rendered with correct classId', () => {
+      const testClassId = 'class-test-123';
+      mockUseClassSelection.mockReturnValue({
+        selectedClassId: testClassId,
+        className: 'Test Class',
+        onSelectClass: vi.fn(),
+        onNavigateToClasses: vi.fn(),
+      });
+
+      renderClassesPage();
 
       // ClassPage should be rendered
       expect(mockClassPage).toHaveBeenCalled();
       // ClassPage should receive the correct classId
       const classPageProperties = mockClassPage.mock.calls[0][0] as Record<string, unknown>;
-      expect(classPageProperties.classId).toBeTruthy();
-      // onNavigateToClasses should be a function
-      expect(classPageProperties.onNavigateToClasses).toBeTypeOf('function');
-    });
-
-    it('ClassPage receives onNavigateToClasses prop that clears selectedClassId and renders the class list', async () => {
-      const user = userEvent.setup();
-
-      renderClassesPage();
-
-      // Click View to select a class
-      const viewButtons = screen.getAllByRole('button', { name: /view/i });
-      await user.click(viewButtons[0]);
-
-      // ClassPage should be rendered
-      expect(mockClassPage).toHaveBeenCalled();
-
-      // Get the onNavigateToClasses callback from ClassPage props
-      const classPageProperties = mockClassPage.mock.calls[0][0] as Record<string, unknown>;
-      const onNavigateToClasses = classPageProperties.onNavigateToClasses as () => void;
-
-      // Call it
-      act(() => {
-        onNavigateToClasses();
-      });
-
-      // After navigating back, class list should be visible again
-      // ClassPage mock won't help us here directly, but we verify:
-      // The View button for the already-selected class should still be visible (class list is back)
-      const viewButtonsAfter = screen.getAllByRole('button', { name: /view/i });
-      expect(viewButtonsAfter.length).toBeGreaterThan(0);
+      expect(classPageProperties.classId).toBe(testClassId);
     });
 
     it('the View button does not have tabIndex=-1', () => {

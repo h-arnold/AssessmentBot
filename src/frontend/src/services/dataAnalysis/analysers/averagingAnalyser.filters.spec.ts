@@ -64,7 +64,12 @@ describe('AveragingAnalyser', () => {
             ],
           }),
         ],
-        assignmentDefinitionPartials: [],
+        assignmentDefinitionPartials: [
+          createDefinitionPartial({
+            definitionKey: 'dk_algebra',
+            tasks: [createTaskPartial('t_001')],
+          }),
+        ],
       };
 
       const analyser = new AveragingAnalyser();
@@ -130,7 +135,12 @@ describe('AveragingAnalyser', () => {
             ],
           }),
         ],
-        assignmentDefinitionPartials: [],
+        assignmentDefinitionPartials: [
+          createDefinitionPartial({
+            definitionKey: 'dk_algebra',
+            tasks: [createTaskPartial('t_001')],
+          }),
+        ],
       };
 
       const analyser = new AveragingAnalyser();
@@ -181,7 +191,12 @@ describe('AveragingAnalyser', () => {
             ],
           }),
         ],
-        assignmentDefinitionPartials: [],
+        assignmentDefinitionPartials: [
+          createDefinitionPartial({
+            definitionKey: 'dk_algebra',
+            tasks: [createTaskPartial('t_001')],
+          }),
+        ],
       };
 
       const analyser = new AveragingAnalyser();
@@ -229,6 +244,9 @@ describe('AveragingAnalyser', () => {
         'dk_sequences',
         'dk_graphs',
       ];
+
+      // Only these 4 definition keys match both topic and definition filters
+      const includedDefinitionKeys = ['dk_algebra', 'dk_geometry', 'dk_statistics', 'dk_calculus'];
 
       const input: AveragingAnalyserInput = {
         filter: {
@@ -325,7 +343,9 @@ describe('AveragingAnalyser', () => {
             ],
           }),
         ],
-        assignmentDefinitionPartials: [],
+        assignmentDefinitionPartials: includedDefinitionKeys.map((dk) =>
+          createDefinitionPartial({ definitionKey: dk, tasks: [createTaskPartial('t_001')] })
+        ),
       };
 
       const analyser = new AveragingAnalyser();

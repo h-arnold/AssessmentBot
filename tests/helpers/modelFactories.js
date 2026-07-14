@@ -295,6 +295,17 @@ function setupGlobalDummyClasses() {
   }
 }
 
+/**
+ * Lightweight task-partial summaries matching AssignmentDefinition.toPartialJSON() wire format.
+ * Each entry represents a summary of a task in the partial-definition payload.
+ * @type {Array<{taskId: string, taskWeighting: number, taskTitle: string}>}
+ */
+const DUMMY_TASK_PARTIALS = [
+  { taskId: 't_dummy_001', taskWeighting: 1, taskTitle: 'Source Analysis' },
+  { taskId: 't_dummy_002', taskWeighting: 1, taskTitle: 'Draft Essay' },
+  { taskId: 't_dummy_003', taskWeighting: 2, taskTitle: 'Final Presentation' },
+];
+
 module.exports = {
   createTaskDefinition,
   createTextTask,
@@ -308,4 +319,5 @@ module.exports = {
   setupGlobalDummyClasses,
   DummyCacheManager,
   DummyBaseRequestManager,
+  DUMMY_TASK_PARTIALS,
 };

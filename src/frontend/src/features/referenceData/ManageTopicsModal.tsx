@@ -21,6 +21,7 @@
 import { Alert, Button, Form, Input, Select, Space, type FormInstance, type TableColumnType } from 'antd';
 import type { ReactElement } from 'react';
 import type { UseQueryOptions } from '@tanstack/react-query';
+import { APP_GAP_MD } from '../../theme/spacing';
 import type { AssignmentTopic, YearGroup, TopicFormValues } from '../../services/referenceData/referenceData.zod';
 import {
   createAssignmentTopic,
@@ -207,7 +208,7 @@ function TopicFormDialog(properties: Readonly<{
           description={properties.formError}
           type="error"
           showIcon
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: APP_GAP_MD }}
         />
       )}
       <Form<TopicFormValues>
@@ -234,7 +235,7 @@ function TopicFormDialog(properties: Readonly<{
           />
         </Form.Item>
       </Form>
-      <Space style={{ marginTop: 16 }}>
+      <Space style={{ marginTop: APP_GAP_MD }}>
         <Button onClick={properties.onClose}>Cancel</Button>
         <Button type="primary" loading={properties.formSubmitting} onClick={properties.onOk}>
           OK

@@ -1,6 +1,6 @@
 import { Alert, Button, Card, Col, Collapse, Empty, Row, Skeleton, Space, Tooltip, Typography } from 'antd';
 import { AuditOutlined } from '@ant-design/icons';
-import { type JSX, useCallback, useMemo, useState } from 'react';
+import { type JSX, useMemo, useState } from 'react';
 import {
   computeDatasetRenderable,
   computePageSurfaceBlocking,
@@ -19,6 +19,8 @@ import { AssessTaskModal } from '../features/classes/AssessTaskModal/AssessTaskM
 import { ClassPage } from '../features/classPage/ClassPage';
 import { PageSection } from './PageSection';
 import { pageContent } from './pageContent';
+import { useClassSelection } from '../ClassSelectionContext';
+import { APP_GAP_MD, APP_SPACE_SIZE_TIGHT } from '../theme/spacing';
 
 /**
  * Messages for Classes page states.
@@ -29,10 +31,9 @@ const CLASSES_PAGE_EMPTY_DESCRIPTION = 'No year groups configured yet.';
 const CLASSES_REFRESH_TEXT = 'Refreshing...';
 
 const CLASSES_CARD_WIDTH_PX = 268;
-const CLASSES_CARD_GAP_PX = 16;
 const CLASSES_CARD_HORIZONTAL_PADDING_FACTOR = 2;
 const MIN_PANEL_WIDTH_PX =
-  CLASSES_CARD_WIDTH_PX + CLASSES_CARD_HORIZONTAL_PADDING_FACTOR * CLASSES_CARD_GAP_PX; // 300px
+  CLASSES_CARD_WIDTH_PX + CLASSES_CARD_HORIZONTAL_PADDING_FACTOR * APP_GAP_MD; // 300px
 const CLASSES_MOBILE_BREAKPOINT_PX = 768;
 
 /**
@@ -109,7 +110,7 @@ type OnAssessTask = (classId: string, className: string) => void;
 /**
  * Callback type for the view-class button on a class card.
  */
-type OnViewClass = (classId: string) => void;
+type OnViewClass = (classId: string, className: string) => void;
 
 /**
  * Renders the year-group collapse with class cards.
@@ -153,7 +154,7 @@ function renderYearGroupCollapse(
               <section id={contentId} aria-label={panel.yearGroupLabel} aria-labelledby={headerId}>
                 {panel.classes.length > 0 ? (
                   <div style={{ display: 'flex', justifyContent: 'center' }}>
-                    <Row gutter={[CLASSES_CARD_GAP_PX, CLASSES_CARD_GAP_PX]}>
+                    <Row gutter={[APP_GAP_MD, APP_GAP_MD]}>
                       {panel.classes.map((card) => (
                         <Col key={card.classId}>
                           <Card
@@ -167,15 +168,14 @@ function renderYearGroupCollapse(
                             }}
                           >
                             <div style={{ display: 'flex', justifyContent: 'center' }}>
-                              <Space wrap>
-                                <Button type="text" onClick={() => onViewClass(card.classId)}>
+                              <Space wrap size={APP_SPACE_SIZE_TIGHT}>
+                                <Button onClick={() => onViewClass(card.classId, card.className)}>
                                   View
                                 </Button>
                                 <Tooltip title="Assess Task">
                                   <Button
                                     aria-label="Assess Task"
                                     icon={<AuditOutlined />}
-                                    type="text"
                                     onClick={() => {
                                       onAssessTask(card.classId, card.className);
                                     }}
@@ -189,7 +189,7 @@ function renderYearGroupCollapse(
                     </Row>
                   </div>
                 ) : (
-                  <Card style={{ marginTop: `${CLASSES_CARD_GAP_PX}px` }}>
+                  <Card size="small" style={{ marginTop: APP_GAP_MD }}>
                     <Empty description="No classes" />
                   </Card>
                 )}
@@ -293,13 +293,14 @@ function getFinalClassesPageStates(
  *
  * @returns {JSX.Element} The Classes page.
  * @remarks
- * - `selectedClassId` is page-local state (not URL-routed). No deep linking
- *   or browser back/forward support in v1; a full page refresh resets to the
+ * - `selectedClassId` is managed via `ClassSelectionContext` (owned by `AppShell`),
+ *   not page-local state. No deep linking or browser back/forward support in v1;
+ *   a full page refresh resets to the class list.
+ * - The shell breadcrumb `Classes` link clears the selection and returns to the
  *   class list.
- * - The ClassPage breadcrumb `Classes` link clears `selectedClassId` and
- *   returns to the class list.
  */
 export function ClassesPage() {
+  const { selectedClassId, onSelectClass } = useClassSelection();
   const { query: classPartialsQuery, datasetState: classPartialsDatasetState } =
     usePageDataset<ClassPartial[]>('classPartials');
   const { query: yearGroupsQuery, datasetState: yearGroupsDatasetState } =
@@ -314,15 +315,6 @@ export function ClassesPage() {
   // Modal state for Assess Task workflow
   const [assessModalClassId, setAssessModalClassId] = useState<string | null>(null);
   const [assessModalClassName, setAssessModalClassName] = useState<string | null>(null);
-
-  // Selected class for ClassPage detail view (page-local, not URL-routed)
-  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
-
-  // Stable callback for navigating back to the class list from ClassPage.
-  // Wrapped in useCallback to avoid recreating the function on every render.
-  const handleNavigateToClasses = useCallback((): void => {
-    setSelectedClassId(null);
-  }, []);
 
   // Compute busy state
   const isClassesSurfaceBusy = computePageSurfaceBusy(
@@ -346,44 +338,37 @@ export function ClassesPage() {
       hasTrustworthyYearGroups: yearGroupsDatasetState.hasTrustworthyDataset,
     });
 
-  return (
+  return selectedClassId === null ? (
     <PageSection heading={pageContent.classes.heading} summary={pageContent.classes.summary}>
-      {selectedClassId === null ? (
-        <>
-          <section aria-label="Classes page content" aria-busy={isClassesSurfaceBusy ? 'true' : undefined}>
-            {renderClassesContent({
-              finalShouldRenderBlockingState,
-              shouldRenderLoadingState,
-              shouldRenderEmptyState,
-              viewModel: modelResult,
-              isBusy: isClassesSurfaceBusy,
-              onAssessTask: (classId, className) => {
-                setAssessModalClassId(classId);
-                setAssessModalClassName(className);
-              },
-              onViewClass: (classId) => {
-                setSelectedClassId(classId);
-              },
-            })}
-          </section>
-          {assessModalClassId !== null && assessModalClassName !== null && (
-            <AssessTaskModal
-              open
-              classId={assessModalClassId}
-              className={assessModalClassName}
-              onClose={() => {
-                setAssessModalClassId(null);
-                setAssessModalClassName(null);
-              }}
-            />
-          )}
-        </>
-      ) : (
-        <ClassPage
-          classId={selectedClassId}
-          onNavigateToClasses={handleNavigateToClasses}
+      <section aria-label="Classes page content" aria-busy={isClassesSurfaceBusy ? 'true' : undefined}>
+        {renderClassesContent({
+          finalShouldRenderBlockingState,
+          shouldRenderLoadingState,
+          shouldRenderEmptyState,
+          viewModel: modelResult,
+          isBusy: isClassesSurfaceBusy,
+          onAssessTask: (classId, className) => {
+            setAssessModalClassId(classId);
+            setAssessModalClassName(className);
+          },
+          onViewClass: (classId, className) => {
+            onSelectClass(classId, className);
+          },
+        })}
+      </section>
+      {assessModalClassId !== null && assessModalClassName !== null && (
+        <AssessTaskModal
+          open
+          classId={assessModalClassId}
+          className={assessModalClassName}
+          onClose={() => {
+            setAssessModalClassId(null);
+            setAssessModalClassName(null);
+          }}
         />
       )}
     </PageSection>
+  ) : (
+    <ClassPage classId={selectedClassId} />
   );
 }
