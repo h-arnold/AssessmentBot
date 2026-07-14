@@ -12,6 +12,7 @@ import { render, screen } from '@testing-library/react';
 import {
   buildStudentAveragesTableColumns,
 } from './studentAveragesTableColumns';
+import type { StudentAveragesTableFilters } from './studentAveragesTableColumns';
 import type { StudentAverageRowModel } from './classPageAdapter.zod';
 import { metricInRange } from '../../services/dataAnalysis/metricDisplay/metricRangeFilter';
 import {
@@ -66,10 +67,10 @@ const ABOVE_RANGE = 5.1;
 
 /** Empty filters: no column has an active range filter selection. */
 const EMPTY_FILTERS = {
-  completeness: [] as readonly number[],
-  accuracy: [] as readonly number[],
-  spag: [] as readonly number[],
-  average: [] as readonly number[],
+  completeness: [] as readonly string[],
+  accuracy: [] as readonly string[],
+  spag: [] as readonly string[],
+  average: [] as readonly string[],
 };
 
 // ---------------------------------------------------------------------------
@@ -252,5 +253,108 @@ describe('buildStudentAveragesTableColumns', () => {
 
     render(<>{renderedElement}</>);
     expect(screen.getByText('Alice')).toBeInTheDocument();
+  });
+
+  // -----------------------------------------------------------------------
+  // activeFilterKey: raw encoded key is preserved, N/E toggles honoured
+  // -----------------------------------------------------------------------
+  describe('activeFilterKey code path', () => {
+    /** Encoded key: min=2, max=4, includeNotAttempted=1, includeError=0. */
+    const ENCODED_KEY_INCLUDE_N = '2|4|1|0';
+    /** Encoded key: min=2, max=4, includeNotAttempted=0, includeError=1. */
+    const ENCODED_KEY_INCLUDE_E = '2|4|0|1';
+
+    /** Filters with a populated encoded key for completeness. */
+    const POPULATED_FILTERS: StudentAveragesTableFilters = {
+      completeness: [ENCODED_KEY_INCLUDE_N],
+      accuracy: [] as readonly string[],
+      spag: [] as readonly string[],
+      average: [] as readonly string[],
+    };
+
+    it('preserves the raw encoded key as filteredValue', () => {
+      const columns = buildStudentAveragesTableColumns(POPULATED_FILTERS);
+      const completenessColumn = columns.find((c) => c.key === 'completeness')!;
+
+      expect(completenessColumn.filteredValue).toEqual([ENCODED_KEY_INCLUDE_N]);
+    });
+
+    it('keeps notAttempted rows when includeN=1 and drops them when includeN=0', () => {
+      const columns = buildStudentAveragesTableColumns(POPULATED_FILTERS);
+      const completenessColumn = columns.find((c) => c.key === 'completeness')!;
+
+      const record = buildRow({
+        metrics: {
+          completeness: createNotAttemptedMetricResult(),
+          accuracy: createComputedMetricResult({ value: 3 }),
+          spag: createComputedMetricResult({ value: 3.5 }),
+          average: createComputedMetricResult({ value: 3.7 }),
+        },
+      });
+
+      // includeN=1: notAttempted should pass
+      expect(completenessColumn.onFilter!(ENCODED_KEY_INCLUDE_N, record)).toBe(true);
+
+      // includeN=0: notAttempted should be dropped
+      expect(completenessColumn.onFilter!(ENCODED_KEY_INCLUDE_E, record)).toBe(false);
+    });
+
+    it('keeps error rows when includeE=1 and drops them when includeE=0', () => {
+      const columns = buildStudentAveragesTableColumns(POPULATED_FILTERS);
+      const completenessColumn = columns.find((c) => c.key === 'completeness')!;
+
+      const record = buildRow({
+        metrics: {
+          completeness: createErrorMetricResult(),
+          accuracy: createComputedMetricResult({ value: 3 }),
+          spag: createComputedMetricResult({ value: 3.5 }),
+          average: createComputedMetricResult({ value: 3.7 }),
+        },
+      });
+
+      // includeE=1 (ENCODED_KEY_INCLUDE_E): error should pass
+      expect(completenessColumn.onFilter!(ENCODED_KEY_INCLUDE_E, record)).toBe(true);
+
+      // includeE=0 (ENCODED_KEY_INCLUDE_N): error should be dropped
+      expect(completenessColumn.onFilter!(ENCODED_KEY_INCLUDE_N, record)).toBe(false);
+    });
+
+    it('filters computed values correctly with the preserved key', () => {
+      const columns = buildStudentAveragesTableColumns(POPULATED_FILTERS);
+      const completenessColumn = columns.find((c) => c.key === 'completeness')!;
+
+      // Record inside range (value=3, inside 2-4)
+      const inRangeRecord = buildRow({
+        metrics: {
+          completeness: createComputedMetricResult({ value: 3 }),
+          accuracy: createComputedMetricResult({ value: 3 }),
+          spag: createComputedMetricResult({ value: 3.5 }),
+          average: createComputedMetricResult({ value: 3.7 }),
+        },
+      });
+      expect(completenessColumn.onFilter!(ENCODED_KEY_INCLUDE_N, inRangeRecord)).toBe(true);
+
+      // Record below range (value=1, outside 2-4)
+      const belowRangeRecord = buildRow({
+        metrics: {
+          completeness: createComputedMetricResult({ value: 1 }),
+          accuracy: createComputedMetricResult({ value: 3 }),
+          spag: createComputedMetricResult({ value: 3.5 }),
+          average: createComputedMetricResult({ value: 3.7 }),
+        },
+      });
+      expect(completenessColumn.onFilter!(ENCODED_KEY_INCLUDE_N, belowRangeRecord)).toBe(false);
+
+      // Record above range (value=5, outside 2-4)
+      const aboveRangeRecord = buildRow({
+        metrics: {
+          completeness: createComputedMetricResult({ value: 5 }),
+          accuracy: createComputedMetricResult({ value: 3 }),
+          spag: createComputedMetricResult({ value: 3.5 }),
+          average: createComputedMetricResult({ value: 3.7 }),
+        },
+      });
+      expect(completenessColumn.onFilter!(ENCODED_KEY_INCLUDE_N, aboveRangeRecord)).toBe(false);
+    });
   });
 });

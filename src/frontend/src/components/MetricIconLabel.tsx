@@ -1,9 +1,9 @@
 /**
  * Accessible metric icon label with tooltip.
  *
- * Renders a Lucide icon wrapped in an antd Tooltip. The icon's `title` prop
- * exposes an `aria-label` for assistive technology, while the Tooltip provides
- * the visual hover affordance. Icon colour is derived from Ant Design's
+ * Renders a Lucide icon wrapped in an antd Tooltip. The icon receives an explicit
+ * `aria-label` for assistive technology, while the Tooltip provides the visual
+ * hover affordance. Icon colour is derived from Ant Design's
  * `token.colorText` via `theme.useToken()`, so it automatically adapts to
  * dark mode.
  *

@@ -78,6 +78,15 @@ export function AppShell(properties: AppShellProperties) {
     <MenuFoldOutlined />
   );
   const navigationMenuItems = useMemo(() => toMenuItems(navigationItems), []);
+  const contextValue = useMemo(
+    () => ({
+      selectedClassId,
+      className: selectedClassName,
+      onSelectClass: handleSelectClass,
+      onNavigateToClasses: handleNavigateToClasses,
+    }),
+    [selectedClassId, selectedClassName, handleSelectClass, handleNavigateToClasses]
+  );
   const shellStyle: CSSProperties = {
     backgroundColor: token.colorBgLayout,
     '--app-motion-duration-mid': token.motionDurationMid,
@@ -161,14 +170,7 @@ export function AppShell(properties: AppShellProperties) {
           />
         </Sider>
         <Content className="app-content" style={{ backgroundColor: token.colorBgLayout }}>
-          <ClassSelectionContext.Provider
-            value={{
-              selectedClassId,
-              className: selectedClassName,
-              onSelectClass: handleSelectClass,
-              onNavigateToClasses: handleNavigateToClasses,
-            }}
-          >
+          <ClassSelectionContext.Provider value={contextValue}>
             <Breadcrumb
               items={getBreadcrumbItems(
                 selectedNavigationKey,

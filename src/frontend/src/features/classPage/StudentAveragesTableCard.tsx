@@ -12,10 +12,11 @@
  * initial `studentName` ascending), and `filters` (metric column band
  * filters, initial all empty).
  *
- * **Filtering.** The `onChange` callback decodes the Ant Design filter values
- * (encoded score ranges) into the typed `StudentAveragesTableFilters` state,
- * which is passed to `buildMetricRangeFilter` as `activeRange`. This makes the
- * score-range dropdown filters functional.
+ * **Filtering.** The `onChange` callback stores the raw encoded filter keys
+ * (score ranges with N/E toggle flags) into the typed `StudentAveragesTableFilters`
+ * state, which is passed to `buildMetricRangeFilter` as `activeFilterKey`. This
+ * preserves the "Include Not Attempted (N)" and "Include Error (E)" toggle state
+ * across renders.
  *
  * **Memoisation.** `buildClassPageViewModel` is called inside a `useMemo`
  * keyed on `[adapterResult, searchTerm, sort]`, and the model is called with
@@ -57,7 +58,6 @@ import { pageContent } from '../../pages/pageContent';
 
 import { buildClassPageViewModel, DEFAULT_SORT } from './classPageModel';
 import type { MetricColumnKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
-import { decodeFilterToRange } from '../../services/dataAnalysis/metricDisplay/metricRangeKey';
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -107,6 +107,51 @@ const INITIAL_FILTERS: StudentAveragesTableFilters = {
 const EMPTY_LOCALE = {
   emptyText: <Empty description={pageContent.classDetail.searchEmpty} />,
 } as const;
+
+// ---------------------------------------------------------------------------
+// Helper functions
+// ---------------------------------------------------------------------------
+
+/**
+ * Safely extract string values from an Ant Design `FilterValue`.
+ *
+ * Returns an empty array when the value is `null`, `undefined`, or contains
+ * no string elements. This avoids unchecked `as string[]` casts across the
+ * filter-state boundary.
+ *
+ * @param {FilterValue | null | undefined} fv - The raw filter value from
+ *   Ant Design's table `onChange`.
+ * @returns {readonly string[]} The string elements of the filter value, or
+ *   an empty array.
+ */
+function extractFilterKeys(fv: FilterValue | null | undefined): readonly string[] {
+  if (!fv) return [];
+  return fv.filter((v): v is string => typeof v === 'string');
+}
+
+/**
+ * Normalise a single or array `SorterResult` to a typed `SortState`.
+ *
+ * Returns the default sort when the sort is cleared (third click) or when the
+ * column key is missing.
+ *
+ * @param {SorterResult<StudentAverageRowModel> | SorterResult<StudentAverageRowModel>[]} sorter -
+ *   The sorter result from Ant Design's `onChange`.
+ * @returns {SortState} The normalised sort state.
+ */
+function normaliseSorter(
+  sorter: SorterResult<StudentAverageRowModel> | SorterResult<StudentAverageRowModel>[]
+): SortState {
+  const singleSorter = Array.isArray(sorter) ? sorter[0] : sorter;
+  if (!singleSorter?.order || !singleSorter.columnKey) {
+    return DEFAULT_SORT;
+  }
+  const sortDirection = singleSorter.order === 'ascend' ? 'asc' : 'desc';
+  return {
+    column: singleSorter.columnKey as SortColumn,
+    direction: sortDirection,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -170,9 +215,9 @@ export function StudentAveragesTableCard(
    * sort when the sort is cleared (third click) or when the column key is
    * missing.
    *
-   * Also decodes the Ant Design `filters` object into the typed
-   * `StudentAveragesTableFilters` state so `buildMetricRangeFilter` receives
-   * the correct `activeRange` for each metric column.
+   * Also stores the raw encoded filter keys from Ant Design's `filters` object
+   * into the typed `StudentAveragesTableFilters` state so N/E toggle state set
+   * by the dropdown is preserved across renders.
    */
   const handleTableChange = useCallback(
     (
@@ -180,27 +225,16 @@ export function StudentAveragesTableCard(
       filtersArgument: Record<string, FilterValue | null>,
       sorter: SorterResult<StudentAverageRowModel> | SorterResult<StudentAverageRowModel>[]
     ): void => {
-      // Update filter state from Ant Design table filters
+      // Store raw encoded keys so the N/E toggle state from the dropdown
+      // is preserved across renders via activeFilterKey in buildMetricColumn.
       setFilters({
-        completeness: decodeFilterToRange(filtersArgument.completeness),
-        accuracy: decodeFilterToRange(filtersArgument.accuracy),
-        spag: decodeFilterToRange(filtersArgument.spag),
-        average: decodeFilterToRange(filtersArgument.average),
+        completeness: extractFilterKeys(filtersArgument.completeness),
+        accuracy: extractFilterKeys(filtersArgument.accuracy),
+        spag: extractFilterKeys(filtersArgument.spag),
+        average: extractFilterKeys(filtersArgument.average),
       });
 
-      // Normalise to a single sorter
-      const singleSorter = Array.isArray(sorter) ? sorter[0] : sorter;
-
-      if (!singleSorter?.order || !singleSorter.columnKey) {
-        setSort(DEFAULT_SORT);
-        return;
-      }
-
-      const sortDirection = singleSorter.order === 'ascend' ? 'asc' : 'desc';
-      setSort({
-        column: singleSorter.columnKey as SortColumn,
-        direction: sortDirection,
-      });
+      setSort(normaliseSorter(sorter));
     },
     []
   );

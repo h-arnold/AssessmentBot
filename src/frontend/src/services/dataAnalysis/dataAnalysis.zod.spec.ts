@@ -652,9 +652,6 @@ describe('PerStudentTaskMetricSchema', () => {
   it('parses a valid metric with criterion scores 0..5 and "N" and string identifiers', async () => {
     const { PerStudentTaskMetricSchema } = await loadDataAnalysisZod();
 
-    // RED phase: PerStudentTaskMetricSchema is undefined because it is not
-    // yet exported from dataAnalysis.zod.ts. Calling .parse() on undefined
-    // throws TypeError, causing the test to fail.
     const result = PerStudentTaskMetricSchema.parse({
       classId: 'c-1',
       studentId: 's-1',

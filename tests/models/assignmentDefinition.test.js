@@ -157,16 +157,17 @@ describe('AssignmentDefinition', () => {
       expect(partial).toHaveProperty('yearGroupLabel', 'Year 10');
     });
 
-    it('should include yearGroupKey in toPartialJSON output', () => {
+    it('should include yearGroupKey in toPartialJSON output even when yearGroupLabel is missing', () => {
       const def = new AssignmentDefinition(baseValidParams);
       const partial = def.toPartialJSON();
       expect(partial).toHaveProperty('yearGroupKey', 'year-group-10');
     });
 
-    it('should include yearGroupLabel in toPartialJSON output when provided', () => {
+    it('should include both yearGroupKey and yearGroupLabel in toPartialJSON output when provided', () => {
       const params = { ...baseValidParams, yearGroupLabel: 'Year 10' };
       const def = new AssignmentDefinition(params);
       const partial = def.toPartialJSON();
+      expect(partial).toHaveProperty('yearGroupKey', 'year-group-10');
       expect(partial).toHaveProperty('yearGroupLabel', 'Year 10');
     });
   });
@@ -302,8 +303,6 @@ describe('AssignmentDefinition', () => {
       const def = AssignmentDefinition.fromJSON(partialDoc);
       const roundTripped = def.toPartialJSON();
 
-      // This assertion MUST fail on the current buggy code because
-      // fromJSON nulls the tasks array, producing tasks: [] via toPartialJSON.
       expect(roundTripped.tasks).toEqual(tasks);
     });
   });

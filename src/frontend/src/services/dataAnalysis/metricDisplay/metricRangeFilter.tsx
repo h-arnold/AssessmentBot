@@ -64,6 +64,12 @@ export type MetricRangeFilterOptions<RecordType> = {
    * sourced from the parent's filter state.
    */
   activeRange: readonly number[];
+  /**
+   * Optional raw encoded filter key from the parent's filter state. When provided,
+   * used directly as `filteredValue` instead of re-encoding from `activeRange`,
+   * preserving the N/E toggle state from the dropdown.
+   */
+  activeFilterKey?: string;
   /** `Slider` step. Defaults to {@link RANGE_SLIDER_STEP}. */
   step?: number;
 };
@@ -97,19 +103,21 @@ export type MetricRangeFilterProperties = {
 export function buildMetricRangeFilter<RecordType>(
   options: MetricRangeFilterOptions<RecordType>
 ): MetricRangeFilterProperties {
-  const { range, getMetric, activeRange, step = RANGE_SLIDER_STEP } = options;
+  const { range, getMetric, activeRange, activeFilterKey, step = RANGE_SLIDER_STEP } = options;
 
-  const filteredValue: string[] | undefined =
-    activeRange.length === RANGE_SLIDER_HANDLE_COUNT
-      ? [
-          encodeMetricFilter({
-            min: activeRange[0],
-            max: activeRange[1],
-            includeNotAttempted: false,
-            includeError: false,
-          }),
-        ]
-      : undefined;
+  let filteredValue: string[] | undefined;
+  if (activeFilterKey) {
+    filteredValue = [activeFilterKey];
+  } else if (activeRange.length === RANGE_SLIDER_HANDLE_COUNT) {
+    filteredValue = [
+      encodeMetricFilter({
+        min: activeRange[0],
+        max: activeRange[1],
+        includeNotAttempted: false,
+        includeError: false,
+      }),
+    ];
+  }
 
   const filterDropdown = (properties: FilterDropdownProps): JSX.Element => (
     <MetricRangeFilterDropdown {...properties} range={range} step={step} />

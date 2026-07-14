@@ -194,10 +194,14 @@ function buildTaskMetricSubColumns(
   return HEATMAP_METRIC_KEYS.map((metric) => {
     const meta = METRIC_DISPLAY_META.get(metric)!;
     const columnKey = `${taskColumn.taskKey}::${metric}`;
+    const filterValue = tableFilters[columnKey];
     const rangeFilter = buildMetricRangeFilter<HeatmapRow>({
       range: DEFAULT_TONE_RANGE,
       getMetric: (record): MetricResult => getCellMetric(record.cells[taskIndex], metric),
-      activeRange: decodeFilterToRange(tableFilters[columnKey]),
+      activeRange: decodeFilterToRange(filterValue),
+      activeFilterKey: filterValue && filterValue.length > 0 && typeof filterValue[0] === 'string'
+        ? filterValue[0]
+        : undefined,
     });
     return {
       key: columnKey,

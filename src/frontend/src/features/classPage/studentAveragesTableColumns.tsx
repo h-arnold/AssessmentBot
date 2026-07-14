@@ -25,6 +25,7 @@
 import type { CSSProperties, JSX } from 'react';
 import { Typography } from 'antd';
 import type { TableColumnsType, TableColumnType } from 'antd';
+import type { FilterValue } from 'antd/es/table/interface';
 
 import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import { getStudentMetric } from './classPageAdapter.zod';
@@ -37,6 +38,7 @@ import {
   type MetricToneRange,
 } from '../../services/dataAnalysis/metricDisplay/metricTone';
 import { buildMetricRangeFilter } from '../../services/dataAnalysis/metricDisplay/metricRangeFilter';
+import { decodeFilterToRange } from '../../services/dataAnalysis/metricDisplay/metricRangeKey';
 import { MetricIconLabel } from '../../components/MetricIconLabel';
 import {
   APP_COL_WIDTH_STUDENT_NAME,
@@ -50,14 +52,15 @@ import {
 /**
  * User-controlled filter state for the four metric columns.
  *
- * Each key maps to the active numeric score range `[min, max]`, or an empty
- * array when the column is unfiltered (all rows pass).
+ * Each key stores the raw encoded filter key from Ant Design's filter state,
+ * or an empty array when the column is unfiltered (all rows pass). The encoded
+ * key preserves the N/E toggle state set by the dropdown.
  */
 export type StudentAveragesTableFilters = Readonly<{
-  completeness: readonly number[];
-  accuracy: readonly number[];
-  spag: readonly number[];
-  average: readonly number[];
+  completeness: readonly string[];
+  accuracy: readonly string[];
+  spag: readonly string[];
+  average: readonly string[];
 }>;
 
 // ---------------------------------------------------------------------------
@@ -102,19 +105,24 @@ function renderClassPageScore(metric: MetricResult): string {
  * treatment, and exposes a numeric score-range filter.
  *
  * @param {MetricColumnKey} key - The column key (metric field name).
- * @param {readonly number[]} columnFilters - The active `[min, max]` range, or
- *   an empty array when the column is unfiltered.
+ * @param {readonly string[]} columnFilters - The raw encoded filter keys, or an
+ *   empty array when the column is unfiltered.
  * @returns {TableColumnType<StudentAverageRowModel>} A column definition.
  */
 function buildMetricColumn(
   key: MetricColumnKey,
-  columnFilters: readonly number[]
+  columnFilters: readonly string[]
 ): TableColumnType<StudentAverageRowModel> {
   const meta = METRIC_DISPLAY_META.get(key)!;
+  const activeRange: readonly number[] = columnFilters.length > 0
+    ? decodeFilterToRange([columnFilters[0]!] as FilterValue)
+    : [];
+  const activeFilterKey: string | undefined = activeRange.length > 0 ? columnFilters[0] : undefined;
   const rangeFilter = buildMetricRangeFilter<StudentAverageRowModel>({
     range: DEFAULT_TONE_RANGE,
     getMetric: (record): MetricResult => getStudentMetric(record.metrics, key),
-    activeRange: columnFilters,
+    activeRange,
+    activeFilterKey,
   });
   return {
     key,

@@ -198,7 +198,6 @@ describe('MetricPill', () => {
     expect(tag!.getAttribute('style')).toContain(resolveMetricTone(metric).color);
 
     // Compact footprint: smaller font (12px) and reduced padding (2px 4px)
-    // RED: these fail because `compact` is not yet handled in MetricPill
     expect(Number.parseFloat(getComputedStyle(tag!).fontSize)).toBe(COMPACT_TAG_FONT_SIZE_PX);
     expect(getComputedStyle(tag!).getPropertyValue('padding')).toBe('2px 4px');
   });

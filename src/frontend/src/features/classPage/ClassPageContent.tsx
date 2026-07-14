@@ -283,32 +283,38 @@ function ClassPageBlocking({
 // Sub-component: ClassPageReady
 // ---------------------------------------------------------------------------
 
+/** Options for {@link renderReadyContent}. */
+interface RenderReadyContentOptions {
+  selectedView: ClassPageContentProperties['selectedView'];
+  analyserResult: AveragingResult | null;
+  classFull: ClassFull | null;
+  assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse | null;
+  adapterResult: ClassPageAdapterResult;
+  onOpenHeatmap: (assignmentId: string) => void;
+  onBack: () => void;
+  refetch: () => void;
+  onStartNewAssessment: () => void;
+}
+
 /**
  * Render the appropriate ready-state content: either the heatmap page or the
  * overview tree, depending on `selectedView`.
  *
- * @param {ClassPageContentProperties['selectedView']} selectedView - The current view selection.
- * @param {AveragingResult | null} analyserResult - The analyser result.
- * @param {ClassFull | null} classFull - The full class data.
- * @param {import('../../services/assignmentDefinition/assignmentDefinitionPartials.zod').AssignmentDefinitionPartialsResponse | null} assignmentDefinitionPartials - Warm-up partials (non-null gates the heatmap branch).
- * @param {ClassPageAdapterResult} adapterResult - The adapter result (non-null in ready state).
- * @param {(assignmentId: string) => void} onOpenHeatmap - Callback to open the heatmap.
- * @param {() => void} onBack - Callback to return to the overview.
- * @param {() => void} refetch - Callback to re-run the data pipeline.
- * @param {() => void} onStartNewAssessment - Callback to start a new assessment (empty-state CTA).
+ * @param {RenderReadyContentOptions} options - The ready-content options.
  * @returns {JSX.Element} The rendered ready-state content.
  */
-function renderReadyContent(
-  selectedView: ClassPageContentProperties['selectedView'],
-  analyserResult: AveragingResult | null,
-  classFull: ClassFull | null,
-  assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse | null,
-  adapterResult: ClassPageAdapterResult,
-  onOpenHeatmap: (assignmentId: string) => void,
-  onBack: () => void,
-  refetch: () => void,
-  onStartNewAssessment: () => void,
-): JSX.Element {
+function renderReadyContent(options: RenderReadyContentOptions): JSX.Element {
+  const {
+    selectedView,
+    analyserResult,
+    classFull,
+    assignmentDefinitionPartials,
+    adapterResult,
+    onOpenHeatmap,
+    onBack,
+    refetch,
+    onStartNewAssessment,
+  } = options;
   if (
     selectedView.view === 'heatmap' &&
     selectedView.assignmentId !== undefined &&
@@ -427,17 +433,17 @@ export function ClassPageContent({
       // When the heatmap view is selected and both analyserResult and classFull
       // are non-null (guaranteed by the ready gate), render the heatmap page
       // instead of the overview tree.
-      return renderReadyContent(
+      return renderReadyContent({
         selectedView,
         analyserResult,
         classFull,
         assignmentDefinitionPartials,
-        adapterResult!,
+        adapterResult: adapterResult!,
         onOpenHeatmap,
         onBack,
         refetch,
         onStartNewAssessment,
-      );
+      });
     }
   }
 }

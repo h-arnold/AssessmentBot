@@ -56,13 +56,6 @@ function parseFlag(value: string | undefined): boolean {
 }
 
 /**
- * Decode a filter key back into a {@link MetricRangeFilterState}.
- *
- * @param {unknown} key - The encoded key (expected string).
- * @returns {MetricRangeFilterState | null} The decoded state, or `null` when
- *   the key is not a valid encoded range.
- */
-/**
  * Decode an Ant Design filter value back to a numeric range `[min, max]`,
  * or `[]` when the column is unfiltered.
  *
