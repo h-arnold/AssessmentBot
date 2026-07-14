@@ -98,7 +98,7 @@ describe('AssignmentDefinitionController', () => {
         templateDocumentId: 'tpl-1',
         assignmentWeighting: 1,
         definitionKey: 'alg-10',
-        tasks: null,
+        tasks: [],
         createdAt: '2026-01-05T10:00:00.000Z',
         updatedAt: null,
       },

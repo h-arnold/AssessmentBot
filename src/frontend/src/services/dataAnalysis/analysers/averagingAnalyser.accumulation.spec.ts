@@ -210,11 +210,12 @@ describe('accumulateMetricsToTarget nCount tracking', () => {
       totalDataPoints: 1,
     });
     // Overall has no numeric scores → notAttempted (nCount > 0 for all criteria)
-    // Metadata summed across criteria per CRITICAL-3 (sum not Math.max):
-    // completeness.totalDataPoints(1) + accuracy.totalDataPoints(1) + spag.totalDataPoints(1) = 3
+    // Metadata summed across criteria (sum not Math.max):
+    // totalWeight: 1(completeness)+1(accuracy)+1(spag) = 3
+    // totalDataPoints: 1+1+1 = 3
     expectMetricResultStateAware(student.overall as unknown as MetricResult, {
       state: 'notAttempted',
-      totalWeight: 0,
+      totalWeight: 3,
       totalDataPoints: 3,
     });
   });
@@ -310,27 +311,27 @@ describe('AveragingAnalyser', () => {
       const results = analyser.analyse(input);
 
       expect(results).toHaveLength(1);
-      // Zero-weight assignment → no data points → error state
-      // This will FAIL in the Red phase (current code produces value: null)
+      // Zero-weight assignment → excluded by weight → notAttempted state ('N')
+      // rather than error ('E') — the task had submissions but was excluded.
       expectMetricResultStateAware(results[0].perClass.completeness as unknown as MetricResult, {
-        state: 'error',
+        state: 'notAttempted',
         totalWeight: 0,
-        totalDataPoints: 0,
+        totalDataPoints: 1,
       });
       expectMetricResultStateAware(results[0].perClass.accuracy as unknown as MetricResult, {
-        state: 'error',
+        state: 'notAttempted',
         totalWeight: 0,
-        totalDataPoints: 0,
+        totalDataPoints: 1,
       });
       expectMetricResultStateAware(results[0].perClass.spag as unknown as MetricResult, {
-        state: 'error',
+        state: 'notAttempted',
         totalWeight: 0,
-        totalDataPoints: 0,
+        totalDataPoints: 1,
       });
       expectMetricResultStateAware(results[0].perClass.overall as unknown as MetricResult, {
-        state: 'error',
+        state: 'notAttempted',
         totalWeight: 0,
-        totalDataPoints: 0,
+        totalDataPoints: 3,
       });
     });
 
@@ -362,27 +363,27 @@ describe('AveragingAnalyser', () => {
       const results = analyser.analyse(input);
 
       expect(results).toHaveLength(1);
-      // Zero-weight task → no data points → error state
-      // This will FAIL in the Red phase
+      // Zero-weight task → excluded by weight → notAttempted state ('N')
+      // rather than error ('E') — the task had submissions but was excluded.
       expectMetricResultStateAware(results[0].perClass.completeness as unknown as MetricResult, {
-        state: 'error',
+        state: 'notAttempted',
         totalWeight: 0,
-        totalDataPoints: 0,
+        totalDataPoints: 1,
       });
       expectMetricResultStateAware(results[0].perClass.accuracy as unknown as MetricResult, {
-        state: 'error',
+        state: 'notAttempted',
         totalWeight: 0,
-        totalDataPoints: 0,
+        totalDataPoints: 1,
       });
       expectMetricResultStateAware(results[0].perClass.spag as unknown as MetricResult, {
-        state: 'error',
+        state: 'notAttempted',
         totalWeight: 0,
-        totalDataPoints: 0,
+        totalDataPoints: 1,
       });
       expectMetricResultStateAware(results[0].perClass.overall as unknown as MetricResult, {
-        state: 'error',
+        state: 'notAttempted',
         totalWeight: 0,
-        totalDataPoints: 0,
+        totalDataPoints: 3,
       });
     });
 
@@ -621,7 +622,7 @@ describe('AveragingAnalyser', () => {
           assignmentDefinitionPartials: [
             createDefinitionPartial({
               definitionKey: 'dk_algebra',
-              tasks: [{ id: 't_001', taskWeighting: preFetchedTaskWeighting }],
+              tasks: [{ taskId: 't_001', taskWeighting: preFetchedTaskWeighting, taskTitle: null }],
             }),
           ],
         }
@@ -675,12 +676,13 @@ describe('AveragingAnalyser', () => {
       const results = analyser.analyse(input);
 
       expect(results).toHaveLength(1);
+      // Assignment definitionKey 'dk_algebra' is not in the pre-fetched
+      // partials → assignment is skipped (no partial fallback).
+      // Per-class result is 'error' because no data was accumulated.
       expectMetricResultStateAware(results[0].perClass.accuracy as unknown as MetricResult, {
-        state: 'computed',
-        value: 4,
-        totalWeight: 1,
-        applicableDataPoints: 1,
-        totalDataPoints: 1,
+        state: 'error',
+        totalWeight: 0,
+        totalDataPoints: 0,
       });
     });
 
@@ -821,6 +823,38 @@ describe('computeOverallComposite metadata aggregation', () => {
       expect(result.applicableDataPoints).toBe(0);
       // totalDataPoints: 4 + 2 + 1 = 7 (NOT Math.max which would give 4)
       expect(result.totalDataPoints).toBe(7);
+    }
+  });
+
+  it('excludes an error criterion from the weighted average when mixed with computed criteria', () => {
+    const result = computeOverallComposite(
+      createComputedMetricResult({
+        value: 8,
+        totalWeight: 2,
+        applicableDataPoints: 2,
+        totalDataPoints: 2,
+      }),
+      createErrorMetricResult({ totalDataPoints: 1 }),
+      createComputedMetricResult({
+        value: 4,
+        totalWeight: 1,
+        applicableDataPoints: 1,
+        totalDataPoints: 1,
+      }),
+      { completeness: 0.4, accuracy: 0.4, spag: 0.2 }
+    );
+
+    // accuracy is error → excluded. Weighted average over completeness(0.4) and spag(0.2) only.
+    // numerator = 0.4*8 + 0.2*4 = 3.2 + 0.8 = 4.0
+    // denominator = 0.4 + 0.2 = 0.6
+    // value = 4.0 / 0.6 = 6.666...
+    // totalWeight = 2 + 1 = 3, applicableDataPoints = 2 + 1 = 3, totalDataPoints = 2 + 1 = 3
+    expect(result.state).toBe('computed');
+    if (result.state === 'computed') {
+      expect(result.value).toBeCloseTo(4 / 0.6, 10);
+      expect(result.totalWeight).toBe(3);
+      expect(result.applicableDataPoints).toBe(3);
+      expect(result.totalDataPoints).toBe(3);
     }
   });
 

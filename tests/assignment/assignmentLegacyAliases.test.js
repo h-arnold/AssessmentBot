@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import Assignment from '../../src/backend/AssignmentProcessor/Assignment/index.js';
 import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
+import { DUMMY_TASK_PARTIALS } from '../helpers/modelFactories.js';
 
 describe('Assignment (legacy alias removal)', () => {
   beforeEach(() => {
@@ -27,7 +28,7 @@ describe('Assignment (legacy alias removal)', () => {
         yearGroupKey: 'year-group-10',
         yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
-        tasks: null,
+        tasks: [],
       });
 
       const assignment = Assignment.create(partialDef, 'C123', 'A1');
@@ -61,7 +62,7 @@ describe('Assignment (legacy alias removal)', () => {
         yearGroupKey: 'year-group-10',
         yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
-        tasks: null,
+        tasks: [],
       });
 
       const assignment = Assignment.create(partialDef, 'C123', 'A1');
@@ -78,7 +79,7 @@ describe('Assignment (legacy alias removal)', () => {
         yearGroupKey: 'year-group-10',
         yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
-        tasks: null,
+        tasks: [],
       });
 
       const assignment = Assignment.create(partialDef, 'C123', 'A1');
@@ -97,7 +98,7 @@ describe('Assignment (legacy alias removal)', () => {
         yearGroupKey: 'year-group-10',
         yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
-        tasks: null,
+        tasks: [],
       });
 
       const assignment = Assignment.create(partialDef, 'C123', 'A1');
@@ -132,7 +133,7 @@ describe('Assignment (legacy alias removal)', () => {
         yearGroupKey: 'year-group-10',
         yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
-        tasks: null,
+        tasks: [],
       });
 
       const assignment = Assignment.create(partialDef, 'C123', 'A1');
@@ -167,7 +168,7 @@ describe('Assignment (legacy alias removal)', () => {
         yearGroupKey: 'year-group-10',
         yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
-        tasks: null,
+        tasks: [],
       });
 
       const assignment = Assignment.create(partialDef, 'C123', 'A1');
@@ -196,19 +197,19 @@ describe('Assignment (legacy alias removal)', () => {
   });
 
   describe('getTasks() helper', () => {
-    it('should return null for partial definition', () => {
+    it('should return the tasks array for a partial definition', () => {
       const partialDef = new AssignmentDefinition({
         primaryTitle: 'Essay 1',
         primaryTopic: 'English',
         yearGroupKey: 'year-group-10',
         yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
-        tasks: null,
+        tasks: DUMMY_TASK_PARTIALS,
       });
 
       const assignment = Assignment.create(partialDef, 'C123', 'A1');
 
-      expect(assignment.getTasks()).toBe(null);
+      expect(assignment.getTasks()).toEqual(DUMMY_TASK_PARTIALS);
     });
 
     it('should return tasks object for full definition', () => {
@@ -238,7 +239,7 @@ describe('Assignment (legacy alias removal)', () => {
         yearGroupKey: 'year-group-10',
         yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
-        tasks: null,
+        tasks: [],
       });
 
       const assignment = Assignment.create(partialDef, 'C123', 'A1');
@@ -253,7 +254,7 @@ describe('Assignment (legacy alias removal)', () => {
         yearGroupKey: 'year-group-10',
         yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
-        tasks: null,
+        tasks: [],
       });
 
       const assignment = Assignment.create(partialDef, 'C123', 'A1');
@@ -268,7 +269,7 @@ describe('Assignment (legacy alias removal)', () => {
         yearGroupKey: 'year-group-10',
         yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
-        tasks: null,
+        tasks: [],
       });
 
       const assignment = Assignment.create(partialDef, 'C123', 'A1');

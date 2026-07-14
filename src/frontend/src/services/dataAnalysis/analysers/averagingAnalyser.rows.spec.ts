@@ -5,6 +5,7 @@ import {
   buildInput,
   createAssignmentPartial,
   createClassFull,
+  createDefinitionPartial,
   createSubmission,
   createSubmissionItem,
   createTaskPartial,
@@ -493,7 +494,12 @@ describe('AveragingAnalyser', () => {
             ],
           }),
         ],
-        assignmentDefinitionPartials: [],
+        assignmentDefinitionPartials: [
+          createDefinitionPartial({
+            definitionKey: 'dk_algebra',
+            tasks: [createTaskPartial('t_001')],
+          }),
+        ],
       };
 
       const analyser = new AveragingAnalyser();
@@ -593,11 +599,12 @@ describe('AveragingAnalyser', () => {
         totalDataPoints: 1,
       });
       // Overall is notAttempted because all three criteria are 'N'
-      // Metadata summed across all criteria per CRITICAL-3 (sum not Math.max):
-      // totalDataPoints: 1(completeness)+1(accuracy)+1(spag) = 3
+      // Metadata summed across criteria (sum not Math.max):
+      // totalWeight: 1(completeness)+1(accuracy)+1(spag) = 3
+      // totalDataPoints: 1+1+1 = 3
       expectMetricResultStateAware(student.overall as unknown as MetricResult, {
         state: 'notAttempted',
-        totalWeight: 0,
+        totalWeight: 3,
         totalDataPoints: 3,
       });
     });

@@ -1,19 +1,20 @@
 import { describe, it, expect } from 'vitest';
 import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
+import { DUMMY_TASK_PARTIALS } from '../helpers/modelFactories.js';
 
 describe('AssignmentDefinition Validation', () => {
   describe('Partial Definition Validation', () => {
-    it('should validate a partial definition with tasks: null', () => {
+    it('should validate a partial definition with tasks array', () => {
       const partialDef = new AssignmentDefinition({
         primaryTitle: 'Essay 1',
         primaryTopic: 'English',
         yearGroupKey: 'year-group-10',
         yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
-        tasks: null,
+        tasks: DUMMY_TASK_PARTIALS,
       });
 
-      expect(partialDef.tasks).toBe(null);
+      expect(partialDef.tasks).toEqual(DUMMY_TASK_PARTIALS);
       expect(partialDef.primaryTitle).toBe('Essay 1');
       expect(partialDef.primaryTopic).toBe('English');
       expect(partialDef.yearGroupKey).toBe('year-group-10');
@@ -41,7 +42,7 @@ describe('AssignmentDefinition Validation', () => {
           primaryTopic: 'English',
           yearGroupKey: 'year-group-10',
           yearGroupLabel: 'Year 10',
-          tasks: null,
+          tasks: DUMMY_TASK_PARTIALS,
         });
       }).toThrow('Missing required assignment property: primaryTitle');
     });
@@ -52,7 +53,7 @@ describe('AssignmentDefinition Validation', () => {
           primaryTitle: 'Essay 1',
           yearGroupKey: 'year-group-10',
           yearGroupLabel: 'Year 10',
-          tasks: null,
+          tasks: DUMMY_TASK_PARTIALS,
         });
       }).toThrow('Missing required assignment property: primaryTopic');
     });
@@ -64,7 +65,7 @@ describe('AssignmentDefinition Validation', () => {
         yearGroupKey: 'year-group-10',
         yearGroupLabel: 'Year 10',
         documentType: 'SLIDES', // Required for partial definitions (routing)
-        tasks: null,
+        tasks: DUMMY_TASK_PARTIALS,
       });
 
       expect(partialDef.yearGroupKey).toBe('year-group-10');
@@ -104,8 +105,8 @@ describe('AssignmentDefinition Validation', () => {
       expect(fullDef.yearGroupLabel).toBe('Year 10');
     });
 
-    it('should allow full definition with doc IDs and tasks: null (validates as partial)', () => {
-      // When tasks: null, it's validated as partial (doc IDs are allowed but not required)
+    it('should allow full definition with doc IDs and tasks array (validates as partial)', () => {
+      // When tasks is an array, it's validated as partial (doc IDs are allowed but not required)
       const def = new AssignmentDefinition({
         primaryTitle: 'Essay 1',
         primaryTopic: 'English',
@@ -114,10 +115,10 @@ describe('AssignmentDefinition Validation', () => {
         documentType: 'SLIDES',
         referenceDocumentId: 'ref123', // Will be preserved but not validated
         templateDocumentId: 'tmpl123', // Will be preserved but not validated
-        tasks: null,
+        tasks: DUMMY_TASK_PARTIALS,
       });
 
-      expect(def.tasks).toBe(null);
+      expect(def.tasks).toEqual(DUMMY_TASK_PARTIALS);
       expect(def.referenceDocumentId).toBe('ref123');
       expect(def.templateDocumentId).toBe('tmpl123');
       expect(def.yearGroupKey).toBe('year-group-10');
@@ -168,7 +169,7 @@ describe('AssignmentDefinition Validation', () => {
   });
 
   describe('fromJSON with Partial Data', () => {
-    it('should reconstruct partial definition with tasks: null', () => {
+    it('should reconstruct partial definition with tasks array', () => {
       const partialJson = {
         primaryTitle: 'Essay 1',
         primaryTopic: 'English',
@@ -177,14 +178,14 @@ describe('AssignmentDefinition Validation', () => {
         documentType: 'SLIDES',
         assignmentWeighting: null,
         definitionKey: 'Essay 1_English_year-group-10',
-        tasks: null,
+        tasks: DUMMY_TASK_PARTIALS,
         createdAt: '2025-01-01T00:00:00Z',
         updatedAt: '2025-01-01T00:00:00Z',
       };
 
       const def = AssignmentDefinition.fromJSON(partialJson);
 
-      expect(def.tasks).toBe(null);
+      expect(def.tasks).toEqual(DUMMY_TASK_PARTIALS);
       expect(def.referenceDocumentId).toBe(null);
       expect(def.templateDocumentId).toBe(null);
       expect(def.documentType).toBe('SLIDES');
@@ -199,7 +200,7 @@ describe('AssignmentDefinition Validation', () => {
           primaryTopic: 'English',
           yearGroupKey: 'year-group-10',
           yearGroupLabel: 'Year 10',
-          tasks: null,
+          tasks: DUMMY_TASK_PARTIALS,
           // Missing documentType - should fail validation
         });
       }).toThrow('Missing required assignment property: documentType');
@@ -207,7 +208,7 @@ describe('AssignmentDefinition Validation', () => {
   });
 
   describe('toPartialJSON', () => {
-    it('should emit tasks: [] for partial definitions', () => {
+    it('should emit tasks array for partial definitions', () => {
       const partialDef = new AssignmentDefinition({
         primaryTitle: 'Essay 1',
         primaryTopic: 'English',
@@ -216,12 +217,12 @@ describe('AssignmentDefinition Validation', () => {
         documentType: 'SLIDES',
         referenceDocumentId: 'ref123',
         templateDocumentId: 'tmpl123',
-        tasks: null,
+        tasks: DUMMY_TASK_PARTIALS,
       });
 
       const json = partialDef.toPartialJSON();
 
-      expect(json.tasks).toEqual([]);
+      expect(json.tasks).toEqual(DUMMY_TASK_PARTIALS);
       expect(json.referenceDocumentId).toBe('ref123');
       expect(json.templateDocumentId).toBe('tmpl123');
       expect(json.documentType).toBe('SLIDES');
@@ -229,7 +230,7 @@ describe('AssignmentDefinition Validation', () => {
       expect(json.yearGroupLabel).toBe('Year 10');
     });
 
-    it('should emit tasks as array of {id, taskWeighting} for full definitions when serialized as partial', () => {
+    it('should emit tasks as array of {taskId, taskWeighting, taskTitle} for full definitions when serialized as partial', () => {
       const fullDef = new AssignmentDefinition({
         primaryTitle: 'Essay 1',
         primaryTopic: 'English',
@@ -243,11 +244,12 @@ describe('AssignmentDefinition Validation', () => {
 
       const json = fullDef.toPartialJSON();
 
-      // The partial now carries lightweight {id, taskWeighting} summaries from each task
+      // The partial now carries lightweight {taskId, taskWeighting, taskTitle} summaries from each task
       expect(Array.isArray(json.tasks)).toBe(true);
       expect(json.tasks.length).toBe(1);
-      expect(json.tasks[0]).toHaveProperty('id');
+      expect(json.tasks[0]).toHaveProperty('taskId');
       expect(json.tasks[0]).toHaveProperty('taskWeighting');
+      expect(json.tasks[0]).toHaveProperty('taskTitle');
       expect(json.referenceDocumentId).toBe('ref123');
       expect(json.templateDocumentId).toBe('tmpl123');
       expect(json.yearGroupKey).toBe('year-group-10');
@@ -256,20 +258,21 @@ describe('AssignmentDefinition Validation', () => {
   });
 
   describe('Round-trip Serialization', () => {
-    it('should maintain tasks: null through round-trip', () => {
+    it('should maintain tasks array through round-trip', () => {
       const partialDef = new AssignmentDefinition({
         primaryTitle: 'Essay 1',
         primaryTopic: 'English',
         yearGroupKey: 'year-group-10',
         yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
-        tasks: null,
+        tasks: DUMMY_TASK_PARTIALS,
       });
 
       const json = partialDef.toPartialJSON();
       const restored = AssignmentDefinition.fromJSON(json);
 
-      expect(restored.tasks).toBe(null);
+      // Partial definitions with tasks now carry the wire-format array preserved through round-trip
+      expect(restored.tasks).toEqual(DUMMY_TASK_PARTIALS);
       expect(restored.referenceDocumentId).toBe(null);
       expect(restored.templateDocumentId).toBe(null);
       expect(restored.yearGroupKey).toBe('year-group-10');

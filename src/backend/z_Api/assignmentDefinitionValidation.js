@@ -674,8 +674,8 @@ function validatePartialRow_(row, rowIndex) {
   validateTimestamp_(row.createdAt, 'createdAt', rowIndex);
   validateTimestamp_(row.updatedAt, 'updatedAt', rowIndex);
 
-  if (row.tasks !== null) {
-    throwValidationError_('tasks must be null in partial transport.', 'tasks', rowIndex);
+  if (!Array.isArray(row.tasks)) {
+    throwValidationError_('tasks must be an array.', 'tasks', rowIndex);
   }
 }
 

@@ -1,5 +1,6 @@
 import { Card, Flex, Typography } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
+import { APP_GAP_COMPACT } from '../../theme/spacing';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../../query/queryKeys';
 import { type RequiredClassPartialsRefreshOutcome } from './bulk/queryInvalidation';
@@ -459,9 +460,9 @@ export function ClassesManagementPanel() {
     }
 
     return (
-      <Flex vertical gap={12}>
+      <Flex vertical gap={APP_GAP_COMPACT}>
         <section aria-label="Classes data workflow" aria-busy={getClassesWorkflowBusyState(classesManagement.isRefreshing)}>
-          <Flex vertical gap={12}>
+          <Flex vertical gap={APP_GAP_COMPACT}>
             <ClassesSummaryCard rows={classesManagement.rows} selectedCount={classesManagement.selectedRowKeys.length} />
             <ClassesToolbar
               selectedRows={selectedRows}

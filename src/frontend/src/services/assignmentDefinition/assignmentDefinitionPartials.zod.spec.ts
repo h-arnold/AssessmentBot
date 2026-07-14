@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 type TaskPartialFixture = {
-  id: string;
+  taskId: string;
   taskWeighting: number;
+  taskTitle?: string | null;
 };
 
 type AssignmentDefinitionPartialFixture = {
@@ -410,12 +411,12 @@ describe('assignmentDefinitionPartials.zod schemas', () => {
 
       const result = assignmentDefinitionPartialSchema.parse({
         ...validAssignmentDefinitionPartialRow,
-        tasks: [{ id: 't_abc123', taskWeighting: 2 }],
+        tasks: [{ taskId: 't_abc123', taskWeighting: 2, taskTitle: null }],
       } as Record<string, unknown>);
 
       expect(result).toHaveProperty('tasks');
       expect((result as Record<string, unknown>).tasks).toEqual([
-        { id: 't_abc123', taskWeighting: 2 },
+        { taskId: 't_abc123', taskWeighting: 2, taskTitle: null },
       ]);
     });
 
@@ -456,9 +457,43 @@ describe('assignmentDefinitionPartials.zod schemas', () => {
       expect(() =>
         assignmentDefinitionPartialSchema.parse({
           ...validAssignmentDefinitionPartialRow,
-          tasks: [{ id: 't_abc123', taskWeighting: 2, taskTitle: 'Extra' }],
+          tasks: [{ taskId: 't_abc123', taskWeighting: 2, taskTitle: null, extra: 'x' }],
         } as Record<string, unknown>)
       ).toThrow();
+    });
+
+    it('accepts a partial with nullable taskTitle on inner task objects', async () => {
+      const schemas = await loadAssignmentDefinitionPartialsSchemas();
+      const assignmentDefinitionPartialSchema = asParserSchema(
+        schemas.AssignmentDefinitionPartialSchema
+      );
+
+      const result = assignmentDefinitionPartialSchema.parse({
+        ...validAssignmentDefinitionPartialRow,
+        tasks: [{ taskId: 't_abc123', taskWeighting: 2, taskTitle: null }],
+      } as Record<string, unknown>);
+
+      expect(result).toHaveProperty('tasks');
+      expect((result as Record<string, unknown>).tasks).toEqual([
+        { taskId: 't_abc123', taskWeighting: 2, taskTitle: null },
+      ]);
+    });
+
+    it('accepts a partial with non-null taskTitle on inner task objects', async () => {
+      const schemas = await loadAssignmentDefinitionPartialsSchemas();
+      const assignmentDefinitionPartialSchema = asParserSchema(
+        schemas.AssignmentDefinitionPartialSchema
+      );
+
+      const result = assignmentDefinitionPartialSchema.parse({
+        ...validAssignmentDefinitionPartialRow,
+        tasks: [{ taskId: 't_abc123', taskWeighting: 2, taskTitle: 'My Task' }],
+      } as Record<string, unknown>);
+
+      expect(result).toHaveProperty('tasks');
+      expect((result as Record<string, unknown>).tasks).toEqual([
+        { taskId: 't_abc123', taskWeighting: 2, taskTitle: 'My Task' },
+      ]);
     });
 
     it.each([

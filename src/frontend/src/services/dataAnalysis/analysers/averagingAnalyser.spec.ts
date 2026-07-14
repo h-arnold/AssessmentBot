@@ -104,12 +104,14 @@ describe('AveragingAnalyser', () => {
         totalWeight: 0,
         totalDataPoints: 0,
       });
-      // overall: completeness and spag are error, so overall is error (error-first
-      // precedence per spec — previously error was masked in mixed states).
-      // totalDataPoints is summed across all three criteria (1 from accuracy)
+      // overall: completeness and spag are error (excluded), accuracy is computed
+      // only — the weighted average over the single computed criterion (weight 0.4)
+      // gives value = 4, metadata from accuracy only.
       expectMetricResultStateAware(student.overall as unknown as MetricResult, {
-        state: 'error',
-        totalWeight: 0,
+        state: 'computed',
+        value: 4,
+        totalWeight: 1,
+        applicableDataPoints: 1,
         totalDataPoints: 1,
       });
 
@@ -137,10 +139,12 @@ describe('AveragingAnalyser', () => {
         totalWeight: 0,
         totalDataPoints: 0,
       });
-      // overall is error because completeness and spag are error (error-first precedence)
+      // overall is computed: completeness and spag are error (excluded), accuracy is computed only
       expectMetricResultStateAware(taskRow.overall as unknown as MetricResult, {
-        state: 'error',
-        totalWeight: 0,
+        state: 'computed',
+        value: 4,
+        totalWeight: 1,
+        applicableDataPoints: 1,
         totalDataPoints: 1,
       });
 
@@ -162,10 +166,12 @@ describe('AveragingAnalyser', () => {
         totalWeight: 0,
         totalDataPoints: 0,
       });
-      // overall is error because completeness and spag are error (error-first precedence)
+      // overall is computed: completeness and spag are error (excluded), accuracy is computed only
       expectMetricResultStateAware(results[0].perClass.overall as unknown as MetricResult, {
-        state: 'error',
-        totalWeight: 0,
+        state: 'computed',
+        value: 4,
+        totalWeight: 1,
+        applicableDataPoints: 1,
         totalDataPoints: 1,
       });
     });
@@ -269,6 +275,68 @@ describe('AveragingAnalyser', () => {
         applicableDataPoints: 3,
         totalDataPoints: 3,
       });
+    });
+
+    it('includes perStudentTaskMetrics with expected length and preserves perStudent/perTask counts', () => {
+      // RED phase: perStudentTaskMetrics is not yet populated on AveragingResult,
+      // so expect(...).toBeDefined() will fail.
+      const input = buildInput([
+        {
+          classId: 'c_001',
+          className: 'Test Class',
+          studentIds: ['s_001', 's_002'],
+          assignments: [
+            createAssignmentPartial({
+              assignmentId: 'a_001',
+              definitionKey: 'dk_algebra',
+              tasks: [createTaskPartial('t_001'), createTaskPartial('t_002')],
+              submissions: [
+                createSubmission('s_001', 'Alice', 'a_001', {
+                  t_001: createSubmissionItem('t_001', {
+                    completeness: { score: 3 },
+                    accuracy: { score: 4 },
+                    spag: { score: 5 },
+                  }),
+                  t_002: createSubmissionItem('t_002', {
+                    completeness: { score: 5 },
+                    accuracy: { score: 5 },
+                    spag: { score: 5 },
+                  }),
+                }),
+                createSubmission('s_002', 'Bob', 'a_001', {
+                  t_001: createSubmissionItem('t_001', {
+                    completeness: { score: 1 },
+                    accuracy: { score: 2 },
+                    spag: { score: 3 },
+                  }),
+                }),
+              ],
+            }),
+          ],
+        },
+      ]);
+
+      const analyser = new AveragingAnalyser();
+      const results = analyser.analyse(input);
+
+      expect(results).toHaveLength(1);
+      const result = results[0] as unknown as {
+        perStudent: unknown[];
+        perTask: unknown[];
+        perStudentTaskMetrics?: unknown[];
+      };
+
+      const expectedPerStudentTaskCount = 3; // Alice (2 tasks) + Bob (1 task)
+      const expectedPerStudentCount = 2; // Both students have per-student rows
+      const expectedPerTaskCount = 2; // Two distinct task IDs across submissions
+
+      // perStudentTaskMetrics should be populated — will fail in RED phase
+      expect(result.perStudentTaskMetrics).toBeDefined();
+      expect(result.perStudentTaskMetrics).toHaveLength(expectedPerStudentTaskCount);
+
+      // Existing perStudent/perTask counts are unchanged from prior baselines
+      expect(result.perStudent).toHaveLength(expectedPerStudentCount);
+      expect(result.perTask).toHaveLength(expectedPerTaskCount);
     });
 
     it('produces correct discriminated union states throughout output', () => {

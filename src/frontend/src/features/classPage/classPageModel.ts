@@ -11,6 +11,8 @@
 import { getStudentMetric } from './classPageAdapter.zod';
 import type { ClassPageAdapterResult, StudentAverageRowModel } from './classPageAdapter.zod';
 import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
+import type { HeatmapRow } from '../../services/dataAnalysis/heatmapAdapter';
+import type { MetricColumnKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 
 // ---------------------------------------------------------------------------
 // Exported types
@@ -28,14 +30,10 @@ export type ClassPageViewModel = {
   classMetrics: ClassPageAdapterResult['classMetrics'];
 };
 
-// ---------------------------------------------------------------------------
-// Internal constants
-// ---------------------------------------------------------------------------
-
 const HIGHEST_METRIC_STATE_RANK = 2;
 
 /** Rank lookup for ascending metric column sort: computed → notAttempted → error. */
-const METRIC_STATE_RANK_ASC: ReadonlyMap<MetricResult['state'], number> = new Map([
+export const METRIC_STATE_RANK_ASC: ReadonlyMap<MetricResult['state'], number> = new Map([
   ['computed', 0],
   ['notAttempted', 1],
   ['error', HIGHEST_METRIC_STATE_RANK],
@@ -72,12 +70,12 @@ function getMetricStateRank(metric: MetricResult, direction: 'asc' | 'desc'): nu
 /**
  * Build a comparator function for a metric column with state-aware ordering.
  *
- * @param {'completeness' | 'accuracy' | 'spag' | 'average'} column - The metric column to compare by.
+ * @param {MetricColumnKey} column - The metric column to compare by.
  * @param {'asc' | 'desc'} direction - Sort direction (`'asc'` or `'desc'`).
  * @returns {(a: StudentAverageRowModel, b: StudentAverageRowModel) => number} A comparator suitable for `Array.prototype.toSorted()`.
  */
 function buildMetricComparator(
-  column: 'completeness' | 'accuracy' | 'spag' | 'average',
+  column: MetricColumnKey,
   direction: 'asc' | 'desc'
 ): (a: StudentAverageRowModel, b: StudentAverageRowModel) => number {
   return (a, b) => {
@@ -134,6 +132,29 @@ export function compareStudentNames(a: StudentAverageRowModel, b: StudentAverage
 }
 
 /**
+ * Compare two `HeatmapRow`s by student name (locale-aware, case-insensitive)
+ * with a deterministic `studentId` ascending tie-break.
+ *
+ * @remarks
+ * Thin `HeatmapRow`-compatible wrapper around the locale-aware logic of
+ * `compareStudentNames`. The heatmap table must NOT import the
+ * `StudentAverageRowModel`-typed `compareStudentNames` directly because the
+ * row shapes differ (`HeatmapRow` carries `cells`, not `metrics`).
+ *
+ * @param {HeatmapRow} a - The first row.
+ * @param {HeatmapRow} b - The second row.
+ * @returns {number} Negative if `a < b`, positive if `a > b`, zero if equal.
+ */
+export function compareHeatmapStudentName(a: HeatmapRow, b: HeatmapRow): number {
+  // Delegate to the canonical `StudentAverageRowModel` comparator via cast
+  // because both types share the same `studentName` and `studentId` shape.
+  return compareStudentNames(
+    a as unknown as StudentAverageRowModel,
+    b as unknown as StudentAverageRowModel
+  );
+}
+
+/**
  * Build the final view model from the adapter result plus user-controlled
  * search and sort state.
  *
@@ -142,7 +163,7 @@ export function compareStudentNames(a: StudentAverageRowModel, b: StudentAverage
  * @param {{ searchTerm: string }} input.filters - User-controlled filters.
  * @param {string} input.filters.searchTerm - Substring filter on student name (case-insensitive).
  *   Empty string means no filter.
- * @param {({ column: 'studentName' | 'completeness' | 'accuracy' | 'spag' | 'average'; direction: 'asc' | 'desc' }) | null} [input.sort] - User-controlled sort column and direction.
+ * @param {({ column: 'studentName' | MetricColumnKey; direction: 'asc' | 'desc' }) | null} [input.sort] - User-controlled sort column and direction.
  *   When `null` or `undefined`, defaults to `studentName` ascending.
  * @returns {ClassPageViewModel} The filtered and sorted view model.
  */
@@ -150,7 +171,7 @@ export function buildClassPageViewModel(input: {
   adapterResult: ClassPageAdapterResult;
   filters: { searchTerm: string };
   sort?: {
-    column: 'studentName' | 'completeness' | 'accuracy' | 'spag' | 'average';
+    column: 'studentName' | MetricColumnKey;
     direction: 'asc' | 'desc';
   } | null;
 }): ClassPageViewModel {

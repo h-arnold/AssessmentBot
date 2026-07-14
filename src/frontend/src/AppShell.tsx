@@ -2,7 +2,8 @@ import { BookOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/
 import { Breadcrumb, Button, Layout, Menu, Space, Switch, theme } from 'antd';
 import type { MenuProps } from 'antd';
 import type { CSSProperties, ReactNode } from 'react';
-import { useId, useMemo, useState } from 'react';
+import { useCallback, useId, useMemo, useState } from 'react';
+import { ClassSelectionContext } from './ClassSelectionContext';
 import {
   appBreadcrumbBaseLabel,
   defaultNavigationKey,
@@ -13,6 +14,7 @@ import {
   type AppNavigationItem,
   type AppNavigationKey,
 } from './navigation/appNavigation';
+import { APP_SPACE_SIZE_DEFAULT } from './theme/spacing';
 
 const { Header, Sider, Content } = Layout;
 
@@ -53,6 +55,18 @@ export function AppShell(properties: AppShellProperties) {
   const [isNavigationCollapsed, setIsNavigationCollapsed] = useState(false);
   const [selectedNavigationKey, setSelectedNavigationKey] =
     useState<AppNavigationKey>(defaultNavigationKey);
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const [selectedClassName, setSelectedClassName] = useState<string | null>(null);
+
+  const handleSelectClass = useCallback((classId: string, className: string) => {
+    setSelectedClassId(classId);
+    setSelectedClassName(className);
+  }, []);
+
+  const handleNavigateToClasses = useCallback(() => {
+    setSelectedClassId(null);
+    setSelectedClassName(null);
+  }, []);
   const { token } = theme.useToken();
   const navigationId = useId();
   const navigationButtonLabel = isNavigationCollapsed
@@ -64,6 +78,15 @@ export function AppShell(properties: AppShellProperties) {
     <MenuFoldOutlined />
   );
   const navigationMenuItems = useMemo(() => toMenuItems(navigationItems), []);
+  const contextValue = useMemo(
+    () => ({
+      selectedClassId,
+      className: selectedClassName,
+      onSelectClass: handleSelectClass,
+      onNavigateToClasses: handleNavigateToClasses,
+    }),
+    [selectedClassId, selectedClassName, handleSelectClass, handleNavigateToClasses]
+  );
   const shellStyle: CSSProperties = {
     backgroundColor: token.colorBgLayout,
     '--app-motion-duration-mid': token.motionDurationMid,
@@ -81,7 +104,7 @@ export function AppShell(properties: AppShellProperties) {
         }}
       >
         <div className="app-header-bar">
-          <Space size="middle">
+          <Space size={APP_SPACE_SIZE_DEFAULT}>
             <Button
               type="text"
               size="large"
@@ -95,7 +118,7 @@ export function AppShell(properties: AppShellProperties) {
                 setIsNavigationCollapsed((currentState) => !currentState);
               }}
             />
-            <Space>
+            <Space size={APP_SPACE_SIZE_DEFAULT}>
               <BookOutlined aria-hidden="true" />
               <span>{appBreadcrumbBaseLabel}</span>
             </Space>
@@ -147,12 +170,18 @@ export function AppShell(properties: AppShellProperties) {
           />
         </Sider>
         <Content className="app-content" style={{ backgroundColor: token.colorBgLayout }}>
-          <Breadcrumb
-            items={getBreadcrumbItems(selectedNavigationKey)}
-            aria-label="Breadcrumb"
-            className="app-breadcrumb"
-          />
-          {renderNavigationPage(selectedNavigationKey, dashboardContent)}
+          <ClassSelectionContext.Provider value={contextValue}>
+            <Breadcrumb
+              items={getBreadcrumbItems(
+                selectedNavigationKey,
+                selectedClassName ?? undefined,
+                handleNavigateToClasses
+              )}
+              aria-label="Breadcrumb"
+              className="app-breadcrumb"
+            />
+            {renderNavigationPage(selectedNavigationKey, dashboardContent)}
+          </ClassSelectionContext.Provider>
         </Content>
       </Layout>
     </Layout>

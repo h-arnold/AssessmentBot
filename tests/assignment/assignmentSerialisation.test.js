@@ -11,6 +11,7 @@ import {
   createSlidesAssignment,
   createTextTask,
   createStudentSubmission,
+  DUMMY_TASK_PARTIALS,
 } from '../helpers/modelFactories.js';
 
 /**
@@ -89,11 +90,12 @@ describe('Assignment Serialisation', () => {
       expect(partialJson).not.toHaveProperty('referenceDocumentId');
       expect(partialJson).not.toHaveProperty('templateDocumentId');
 
-      // assignmentDefinition should have tasks as lightweight array of {id, taskWeighting}
+      // assignmentDefinition should have tasks as lightweight array of {taskId, taskWeighting, taskTitle}
       expect(Array.isArray(partialJson.assignmentDefinition.tasks)).toBe(true);
       expect(partialJson.assignmentDefinition.tasks.length).toBe(1);
-      expect(partialJson.assignmentDefinition.tasks[0]).toHaveProperty('id');
+      expect(partialJson.assignmentDefinition.tasks[0]).toHaveProperty('taskId');
       expect(partialJson.assignmentDefinition.tasks[0]).toHaveProperty('taskWeighting');
+      expect(partialJson.assignmentDefinition.tasks[0]).toHaveProperty('taskTitle');
       expect(partialJson.assignmentDefinition.referenceDocumentId).toBe('ref-serial');
       expect(partialJson.assignmentDefinition.templateDocumentId).toBe('tpl-serial');
 
@@ -134,14 +136,14 @@ describe('Assignment Serialisation', () => {
   });
 
   describe('Round-trip partial serialization', () => {
-    it('maintains tasks: null through round-trip', () => {
+    it('maintains tasks array through round-trip', () => {
       const partialDef = new AssignmentDefinition({
         primaryTitle: 'Essay 1',
         primaryTopic: 'English',
         yearGroupKey: 'year-group-10',
         yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
-        tasks: null,
+        tasks: DUMMY_TASK_PARTIALS,
       });
 
       const assignment = Assignment.create(partialDef, 'C123', 'A1');
@@ -150,7 +152,8 @@ describe('Assignment Serialisation', () => {
       const partialJson = assignment.toPartialJSON();
       const restored = Assignment.fromJSON(partialJson);
 
-      expect(restored.assignmentDefinition.tasks).toBe(null);
+      // Partial definitions now carry tasks as an array (wire format preserved through round-trip)
+      expect(restored.assignmentDefinition.tasks).toEqual(DUMMY_TASK_PARTIALS);
       expect(restored.assignmentDefinition.referenceDocumentId).toBe(null);
       expect(restored.assignmentDefinition.templateDocumentId).toBe(null);
       expect(restored.documentType).toBe('SLIDES');

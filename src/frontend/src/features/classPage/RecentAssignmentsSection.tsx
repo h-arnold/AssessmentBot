@@ -33,6 +33,8 @@ type RecentAssignmentsSectionProperties = Readonly<{
   recentAssignments: RecentAssignmentCardModel[];
   /** Callback invoked when the user clicks "Start New Assessment". */
   onStartNewAssessment: () => void;
+  /** Optional callback forwarded to each card, invoked on card click to open the heatmap view. */
+  onOpenHeatmap?: (assignmentId: string) => void;
 }>;
 
 /**
@@ -45,11 +47,14 @@ type RecentAssignmentsSectionProperties = Readonly<{
  * @param {Readonly<RecentAssignmentsSectionProperties>} root0 - Component properties.
  * @param {RecentAssignmentCardModel[]} root0.recentAssignments - The list of recent assignment cards.
  * @param {() => void} root0.onStartNewAssessment - Callback invoked when the user clicks "Start New Assessment".
+ * @param {(assignmentId: string) => void} [root0.onOpenHeatmap] - Optional callback forwarded to each card,
+ *   invoked on card click to open the heatmap view.
  * @returns {JSX.Element} The Recent Assignments section card.
  */
 export function RecentAssignmentsSection({
   recentAssignments,
   onStartNewAssessment,
+  onOpenHeatmap,
 }: RecentAssignmentsSectionProperties): JSX.Element {
   return (
     <Card size="small" title="Recent Assignments">
@@ -64,7 +69,7 @@ export function RecentAssignmentsSection({
       ) : (
         <Flex justify="center" gap="middle" wrap>
           {recentAssignments.map((card) => (
-            <RecentAssignmentCard key={card.assignmentId} card={card} />
+            <RecentAssignmentCard key={card.assignmentId} card={card} onOpenHeatmap={onOpenHeatmap} />
           ))}
         </Flex>
       )}

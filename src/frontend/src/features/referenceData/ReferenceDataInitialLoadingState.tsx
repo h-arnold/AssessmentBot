@@ -6,6 +6,7 @@
  */
 
 import { Flex, Skeleton } from 'antd';
+import { APP_GAP_COMPACT } from '../../theme/spacing';
 
 export type ReferenceDataInitialLoadingStateProperties = Readonly<{
   ariaLabel: string;
@@ -24,7 +25,7 @@ export function ReferenceDataInitialLoadingState(
 ) {
   return (
     <output aria-label={properties.ariaLabel} aria-live={properties['aria-live']} role={properties.role}>
-      <Flex vertical gap={12}>
+      <Flex vertical gap={APP_GAP_COMPACT}>
         <Skeleton.Button active />
         <Skeleton active paragraph={{ rows: 5 }} title={{ width: '24%' }} />
       </Flex>

@@ -5,7 +5,7 @@
  * @see CLASS_PAGE_LAYOUT.md — "Surface hierarchy" and "Global state rules"
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createElement } from 'react';
@@ -14,6 +14,7 @@ import { ClassPage } from './ClassPage';
 import type { ClassPageData, ClassPageSurfaceState } from './useClassPageData';
 import type { ClassPageAdapterResult } from './classPageAdapter.zod';
 import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
+import type { ClassPageContent as ClassPageContentType } from './ClassPageContent';
 
 // ===========================================================================
 // Mock setup (hoisted to avoid temporal dead zone issues)
@@ -31,6 +32,27 @@ const { mockAssessTaskModal } = vi.hoisted(() => ({
   mockAssessTaskModal: vi.fn(function MockAssessTaskModal() {
     return createElement('div', { 'data-testid': 'assess-task-modal' });
   }),
+}));
+
+const { mockStudentAveragesTableCard } = vi.hoisted(() => ({
+  mockStudentAveragesTableCard: vi.fn(function MockStudentAveragesTableCard() {
+    return createElement('div', { 'data-testid': 'student-averages-table-card' });
+  }),
+}));
+
+const { mockTaskHeatmapTable } = vi.hoisted(() => ({
+  mockTaskHeatmapTable: vi.fn(function MockTaskHeatmapTable() {
+    return createElement('div', { 'data-testid': 'task-heatmap-table' });
+  }),
+}));
+
+const { mockUseClassSelection } = vi.hoisted(() => ({
+  mockUseClassSelection: vi.fn(() => ({
+    selectedClassId: DEFAULT_CLASS_ID,
+    className: CLASS_NAME,
+    onSelectClass: vi.fn(),
+    onNavigateToClasses: vi.fn(),
+  })),
 }));
 
 vi.mock('./useClassPageData', () => ({
@@ -54,6 +76,18 @@ vi.mock('../../pages/pageContent', () => ({
       searchEmpty: 'No students match your search',
     },
   },
+}));
+
+vi.mock('../../ClassSelectionContext', () => ({
+  useClassSelection: mockUseClassSelection,
+}));
+
+vi.mock('./StudentAveragesTableCard', () => ({
+  StudentAveragesTableCard: mockStudentAveragesTableCard,
+}));
+
+vi.mock('./TaskHeatmapTable', () => ({
+  TaskHeatmapTable: mockTaskHeatmapTable,
 }));
 
 // ===========================================================================
@@ -163,20 +197,6 @@ function createReadyClassPageData(overrides?: Partial<ClassPageData>): ClassPage
 }
 
 /**
- * Extract the first call's first argument as a record.
- * Returns an empty object if the mock has not been called.
- *
- * @param {import('vitest').Mock} mock - The mock function to inspect.
- * @returns {Record<string, unknown>} The first argument of the first call.
- */
-function getFirstCallArguments(mock: ReturnType<typeof vi.fn>): Record<string, unknown> {
-  if (mock.mock.calls.length === 0 || mock.mock.calls[0].length === 0) {
-    return {};
-  }
-  return mock.mock.calls[0][0] as Record<string, unknown>;
-}
-
-/**
  * Extract the last call's first argument as a record.
  * Returns an empty object if the mock has not been called.
  *
@@ -197,45 +217,8 @@ function getLastCallArguments(mock: ReturnType<typeof vi.fn>): Record<string, un
 // ===========================================================================
 
 describe('ClassPage', () => {
-  let user: ReturnType<typeof userEvent.setup>;
-
-  beforeEach(() => {
-    user = userEvent.setup();
-  });
-
   afterEach(() => {
     vi.resetAllMocks();
-  });
-
-  // -----------------------------------------------------------------------
-  // Breadcrumb tests
-  // -----------------------------------------------------------------------
-
-  it('renders the three-segment breadcrumb with Classes clickable and className non-clickable', async () => {
-    mockUseClassPageData.mockReturnValue(createReadyClassPageData());
-
-    const onNavigateToClasses = vi.fn();
-    render(
-      createElement(ClassPage, {
-        classId: DEFAULT_CLASS_ID,
-        onNavigateToClasses,
-      })
-    );
-
-    // All three segments should be visible
-    expect(screen.getByText('AssessmentBot Frontend')).toBeInTheDocument();
-    expect(screen.getByText('Classes')).toBeInTheDocument();
-
-    // className appears in both the breadcrumb (3rd segment) and the page heading
-    const classNameElements = screen.getAllByText(CLASS_NAME);
-    const expectedClassNameInstances = 2;
-    expect(classNameElements).toHaveLength(expectedClassNameInstances);
-
-    // The Classes segment is clickable — clicking it calls onNavigateToClasses
-    const classesSegment = screen.getByText('Classes');
-    await user.click(classesSegment);
-
-    expect(onNavigateToClasses).toHaveBeenCalledTimes(1);
   });
 
   // -----------------------------------------------------------------------
@@ -248,7 +231,6 @@ describe('ClassPage', () => {
     render(
       createElement(ClassPage, {
         classId: DEFAULT_CLASS_ID,
-        onNavigateToClasses: vi.fn(),
       })
     );
 
@@ -257,51 +239,105 @@ describe('ClassPage', () => {
   });
 
   // -----------------------------------------------------------------------
-  // Header actions tests
+  // Navigation card visibility tests
   // -----------------------------------------------------------------------
 
-  it('passes onStartNewAssessment callback to ClassPageContent', () => {
+  it('renders the Back to Classes nav card in the overview view', () => {
     mockUseClassPageData.mockReturnValue(createReadyClassPageData());
 
     render(
       createElement(ClassPage, {
         classId: DEFAULT_CLASS_ID,
-        onNavigateToClasses: vi.fn(),
       })
     );
 
-    // onStartNewAssessment should be wired through ClassPageContent props
-    const contentProperties = getFirstCallArguments(mockClassPageContent);
-    expect(contentProperties.onStartNewAssessment).toBeTypeOf('function');
+    // The nav card should appear with both text and aria-label in overview
+    expect(screen.getByLabelText('Back to Classes')).toBeInTheDocument();
+    expect(screen.getByText('Back to Classes')).toBeInTheDocument();
+  });
+
+  it('hides the Back to Classes nav card when the heatmap view is active', async () => {
+    const user = userEvent.setup();
+
+    // Provide an adapter result with a recent assignment so a clickable card
+    // renders in the overview.  We use the real ClassPageContent component
+    // (via vi.importActual) so clicking the RecentAssignmentCard triggers
+    // the view transition inside ClassPage.
+    const computedMetric = {
+      state: 'computed' as const,
+      value: 4,
+      totalWeight: 1,
+      applicableDataPoints: 1,
+      totalDataPoints: 1,
+    };
+
+    mockUseClassPageData.mockReturnValue(
+      createReadyClassPageData({
+        adapterResult: {
+          ...createAdapterResult(),
+          recentAssignments: [
+            {
+              assignmentId: 'a-1',
+              assignmentName: 'Test Assignment',
+              lastAssessedAt: '2026-01-15T00:00:00.000Z',
+              lastAssessedAtLabel: '15 Jan 2026',
+              metrics: {
+                completeness: { ...computedMetric },
+                accuracy: { ...computedMetric },
+                spag: { ...computedMetric, value: 3 },
+                average: { ...computedMetric },
+              },
+            },
+          ],
+        },
+      })
+    );
+
+    // Override the ClassPageContent mock to use the real component so the
+    // RecentAssignmentCard → onOpenHeatmap → view transition chain works.
+    const { ClassPageContent: RealClassPageContent } =
+      await vi.importActual<{ ClassPageContent: typeof ClassPageContentType }>('./ClassPageContent');
+    mockClassPageContent.mockImplementation(RealClassPageContent as unknown as typeof mockClassPageContent);
+
+    render(
+      createElement(ClassPage, {
+        classId: DEFAULT_CLASS_ID,
+      })
+    );
+
+    // The nav card should be visible initially (overview view)
+    expect(screen.getByLabelText('Back to Classes')).toBeInTheDocument();
+
+    // Click the recent assignment card to navigate into the heatmap view
+    const card = screen.getByRole('button', { name: /test assignment/i });
+    await user.click(card);
+
+    // In the heatmap view the parent "Back to Classes" nav card must not appear
+    expect(screen.queryByLabelText('Back to Classes')).not.toBeInTheDocument();
   });
 
   // -----------------------------------------------------------------------
-  // Modal open/close tests
+  // Header actions tests
   // -----------------------------------------------------------------------
 
-  it('opens the AssessTaskModal when Start New Assessment is clicked', () => {
+  it('renders Start New Assessment button that opens the modal', async () => {
+    const user = userEvent.setup();
     mockUseClassPageData.mockReturnValue(createReadyClassPageData());
 
     render(
       createElement(ClassPage, {
         classId: DEFAULT_CLASS_ID,
-        onNavigateToClasses: vi.fn(),
       })
     );
 
     // The modal should NOT be rendered initially
     expect(mockAssessTaskModal).not.toHaveBeenCalled();
 
-    // Retrieve the onStartNewAssessment callback from ClassPageContent props
-    const contentProperties = getFirstCallArguments(mockClassPageContent);
-    const onStartNewAssessment = contentProperties.onStartNewAssessment as () => void;
+    // Click the Start New Assessment button
+    const startButton = screen.getByRole('button', { name: /start new assessment/i });
+    await user.click(startButton);
 
-    act(() => {
-      onStartNewAssessment();
-    });
-
-    // After calling onStartNewAssessment, AssessTaskModal should be rendered
-    // with the correct classId, className, and onClose
+    // After clicking, AssessTaskModal should be rendered
     expect(mockAssessTaskModal).toHaveBeenCalled();
     const modalCallArguments = getLastCallArguments(mockAssessTaskModal);
     expect(modalCallArguments.classId).toBe(DEFAULT_CLASS_ID);
@@ -309,23 +345,48 @@ describe('ClassPage', () => {
     expect(modalCallArguments.onClose).toBeTypeOf('function');
   });
 
-  it('closes the AssessTaskModal when onClose is called', () => {
+  // -----------------------------------------------------------------------
+  // Modal open/close tests
+  // -----------------------------------------------------------------------
+
+  it('opens the AssessTaskModal when Start New Assessment is clicked', async () => {
+    const user = userEvent.setup();
     mockUseClassPageData.mockReturnValue(createReadyClassPageData());
 
     render(
       createElement(ClassPage, {
         classId: DEFAULT_CLASS_ID,
-        onNavigateToClasses: vi.fn(),
       })
     );
 
-    // Open the modal first by calling onStartNewAssessment via ClassPageContent props
-    const contentProperties = getFirstCallArguments(mockClassPageContent);
-    const onStartNewAssessment = contentProperties.onStartNewAssessment as () => void;
+    // The modal should NOT be rendered initially
+    expect(mockAssessTaskModal).not.toHaveBeenCalled();
 
-    act(() => {
-      onStartNewAssessment();
-    });
+    // Click the Start New Assessment button
+    const startButton = screen.getByRole('button', { name: /start new assessment/i });
+    await user.click(startButton);
+
+    // After clicking, AssessTaskModal should be rendered
+    expect(mockAssessTaskModal).toHaveBeenCalled();
+    const modalCallArguments = getLastCallArguments(mockAssessTaskModal);
+    expect(modalCallArguments.classId).toBe(DEFAULT_CLASS_ID);
+    expect(modalCallArguments.className).toBe(CLASS_NAME);
+    expect(modalCallArguments.onClose).toBeTypeOf('function');
+  });
+
+  it('closes the AssessTaskModal when onClose is called', async () => {
+    const user = userEvent.setup();
+    mockUseClassPageData.mockReturnValue(createReadyClassPageData());
+
+    render(
+      createElement(ClassPage, {
+        classId: DEFAULT_CLASS_ID,
+      })
+    );
+
+    // Open the modal first by clicking Start New Assessment
+    const startButton = screen.getByRole('button', { name: /start new assessment/i });
+    await user.click(startButton);
 
     // The modal should have been called (rendered open)
     expect(mockAssessTaskModal).toHaveBeenCalled();
@@ -338,59 +399,16 @@ describe('ClassPage', () => {
       onClose();
     });
 
-    // After closing: verify onStartNewAssessment toggles correctly.
-    // Call onStartNewAssessment again — the modal should be re-rendered
+    // After closing: verify the modal can be re-opened.
+    // Click Start New Assessment again — the modal should be re-rendered
     // with an additional call.
     const callCountBeforeReopen = mockAssessTaskModal.mock.calls.length;
 
-    act(() => {
-      onStartNewAssessment();
-    });
+    await user.click(startButton);
 
     // The modal should have been called again (re-opened)
     expect(mockAssessTaskModal.mock.calls.length).toBeGreaterThan(
       callCountBeforeReopen
     );
-  });
-
-  // -----------------------------------------------------------------------
-  // Navigation via breadcrumb
-  // -----------------------------------------------------------------------
-
-  it('calls onNavigateToClasses prop when the breadcrumb Classes segment is clicked', async () => {
-    mockUseClassPageData.mockReturnValue(createReadyClassPageData());
-
-    const onNavigateToClasses = vi.fn();
-    render(
-      createElement(ClassPage, {
-        classId: DEFAULT_CLASS_ID,
-        onNavigateToClasses,
-      })
-    );
-
-    const classesSegment = screen.getByText('Classes');
-    await user.click(classesSegment);
-
-    expect(onNavigateToClasses).toHaveBeenCalledTimes(1);
-  });
-
-  // -----------------------------------------------------------------------
-  // Breadcrumb component present
-  // -----------------------------------------------------------------------
-
-  it('renders an Ant Design Breadcrumb component (not overriding the shell breadcrumb)', () => {
-    mockUseClassPageData.mockReturnValue(createReadyClassPageData());
-
-    const { container } = render(
-      createElement(ClassPage, {
-        classId: DEFAULT_CLASS_ID,
-        onNavigateToClasses: vi.fn(),
-      })
-    );
-
-    // Ant Design Breadcrumb renders with aria-label="breadcrumb" and
-    // produces an .ant-breadcrumb class on the container.
-    const breadcrumb = container.querySelector('.ant-breadcrumb');
-    expect(breadcrumb).toBeInTheDocument();
   });
 });

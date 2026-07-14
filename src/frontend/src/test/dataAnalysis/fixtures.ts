@@ -142,12 +142,17 @@ export function createErrorMetricResult(
 /**
  * Build a minimal task-partial object.
  *
- * @param {string} id - The stable task identifier.
+ * @param {string} taskId - The stable task identifier.
  * @param {number} [taskWeighting=1] - The task weighting factor.
- * @returns {{ id: string, taskWeighting: number }} A minimal TaskPartial-shaped object.
+ * @param {string | null} [taskTitle=null] - An optional task title (defaults to null).
+ * @returns {{ taskId: string, taskWeighting: number, taskTitle: string | null }} A minimal TaskPartial-shaped object.
  */
-export function createTaskPartial(id: string, taskWeighting: number = 1) {
-  return { id, taskWeighting };
+export function createTaskPartial(
+  taskId: string,
+  taskWeighting: number = 1,
+  taskTitle: string | null = null
+) {
+  return { taskId, taskWeighting, taskTitle };
 }
 
 /**
@@ -156,7 +161,7 @@ export function createTaskPartial(id: string, taskWeighting: number = 1) {
  * @param {Object} [overrides] - Optional overrides.
  * @param {string} [overrides.definitionKey='dk_algebra'] - The definition key.
  * @param {number|null} [overrides.assignmentWeighting=1] - The assignment weighting.
- * @param {Array<{id: string, taskWeighting: number}>} [overrides.tasks] - Task partials.
+ * @param {Array<{taskId: string, taskWeighting: number, taskTitle: string | null}>} [overrides.tasks] - Task partials.
  * @param {string} [overrides.createdAt] - ISO creation timestamp.
  * @param {string} [overrides.primaryTopicKey='algebra'] - The primary topic key.
  * @returns {Object} A minimal assignment-definition-partial fixture.
@@ -165,7 +170,7 @@ export function createDefinitionPartial(
   overrides: Partial<{
     definitionKey: string;
     assignmentWeighting: number | null;
-    tasks: Array<{ id: string; taskWeighting: number }>;
+    tasks: Array<{ taskId: string; taskWeighting: number; taskTitle: string | null }>;
     createdAt: string;
     primaryTopicKey: string;
   }> = {}
@@ -260,7 +265,7 @@ export function createSubmission(
  * @param {string} overrides.assignmentId - The assignment identifier.
  * @param {string} overrides.definitionKey - The definition key.
  * @param {Array<Object>} overrides.submissions - Student submissions.
- * @param {Array<{id: string, taskWeighting: number}>} overrides.tasks - Task partials.
+ * @param {Array<{taskId: string, taskWeighting: number, taskTitle: string | null}>} overrides.tasks - Task partials.
  * @param {number|null} [overrides.assignmentWeighting=1] - The assignment weighting.
  * @param {string} [overrides.createdAt] - ISO creation timestamp.
  * @param {string} [overrides.primaryTopicKey='algebra'] - The primary topic key.
@@ -270,7 +275,7 @@ export function createAssignmentPartial(overrides: {
   assignmentId: string;
   definitionKey: string;
   submissions: ReturnType<typeof createSubmission>[];
-  tasks: Array<{ id: string; taskWeighting: number }>;
+  tasks: Array<{ taskId: string; taskWeighting: number; taskTitle: string | null }>;
   assignmentWeighting?: number | null;
   createdAt?: string;
   primaryTopicKey?: string;

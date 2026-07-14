@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 import { googleScriptRunApiHandlerFactorySource } from '../../src/test/googleScriptRunHarness';
 import {
   mockTopics,
@@ -633,16 +633,20 @@ export async function getMethodCalls(
  * Applies one column filter option using visible controls only.
  *
  * @param {Page} page Playwright page instance.
- * @param {string} columnHeaderName Column header label.
- * @param {string} optionLabel Visible filter option label.
+ * @param {Locator | string | RegExp} columnHeader The column header to filter — a `Locator` (for scoped/anonymous-name headers) or a `string`/`RegExp` name.
+ * @param {string | RegExp} optionLabel Visible filter option label.
  * @returns {Promise<void>} Resolves when the option is selected.
  */
 export async function applyColumnFilterOption(
   page: Page,
-  columnHeaderName: string | RegExp,
+  columnHeader: Locator | string | RegExp,
   optionLabel: string | RegExp
 ): Promise<void> {
-  await page.getByRole('columnheader', { name: columnHeaderName }).getByRole('button').click();
+  const headerLocator =
+    typeof columnHeader === 'string' || columnHeader instanceof RegExp
+      ? page.getByRole('columnheader', { name: columnHeader })
+      : columnHeader;
+  await headerLocator.getByRole('button').click();
 
   const activeFilterPopup = page.locator('.ant-dropdown:visible').last();
   await expect(activeFilterPopup).toBeVisible();

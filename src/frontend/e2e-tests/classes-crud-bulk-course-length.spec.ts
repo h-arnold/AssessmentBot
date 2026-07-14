@@ -4,6 +4,7 @@ import {
   baseYearGroups,
   createSuccessfulClassesScenario,
   openClassesTabWithScenario,
+  padClassesCrudReadQueues,
 } from './classes-crud.shared';
 
 const courseLengthEligibleClassPartials = [
@@ -62,7 +63,7 @@ const courseLengthPartialsAfterPartialFailure = [
  * @returns {ReturnType<Page['locator']>} Row locator.
  */
 function getRow(page: Page, rowKey: string) {
-  return page.locator("tbody tr[data-row-key=\"" + rowKey + "\"]");
+  return page.locator('tbody tr[data-row-key="' + rowKey + '"]');
 }
 
 /**
@@ -98,7 +99,7 @@ test.describe('Classes CRUD bulk course-length flow', () => {
         cohorts: baseCohorts,
         yearGroups: baseYearGroups,
         googleClassrooms: courseLengthEligibleGoogleClassrooms,
-      }),
+      })
     );
 
     await selectRowByKey(page, 'gc-active');
@@ -115,33 +116,46 @@ test.describe('Classes CRUD bulk course-length flow', () => {
 
     await expect(page.getByRole('dialog', { name: 'Set course length' })).toBeVisible();
     await page.getByRole('spinbutton', { name: 'Course length' }).fill('0');
-    await page.getByRole('dialog', { name: 'Set course length' }).getByRole('button', { name: 'OK' }).click();
-    await expect(page.getByText('Course length must be an integer greater than or equal to 1.')).toBeVisible();
+    const courseLengthOkButton = page
+      .getByRole('dialog', { name: 'Set course length' })
+      .getByRole('button', { name: 'OK' });
+    await expect(courseLengthOkButton).toBeEnabled();
+    await courseLengthOkButton.click();
+    await expect(
+      page.getByText('Course length must be an integer greater than or equal to 1.')
+    ).toBeVisible();
   });
 
   test('hands off partial course-length updates to the summary alert, refreshes successful rows, and reselects only failed rows', async ({
     page,
   }) => {
-    await openClassesTabWithScenario(page, {
-      getAuthorisationStatus: [{ kind: 'success', data: true }],
-      getABClassPartials: [
-        { kind: 'success', data: courseLengthEligibleClassPartials },
-        { kind: 'success', data: courseLengthPartialsAfterPartialFailure },
-      ],
-      getCohorts: [{ kind: 'success', data: baseCohorts }],
-      getYearGroups: [{ kind: 'success', data: baseYearGroups }],
-      getGoogleClassrooms: [{ kind: 'success', data: courseLengthEligibleGoogleClassrooms }],
-      updateABClass: [
-        { kind: 'success', data: { ok: true } },
-        { kind: 'failureEnvelope', message: 'Second update failed.' },
-      ],
-    });
+    await openClassesTabWithScenario(
+      page,
+      padClassesCrudReadQueues({
+        getAuthorisationStatus: [{ kind: 'success', data: true }],
+        getABClassPartials: [
+          { kind: 'success', data: courseLengthEligibleClassPartials },
+          { kind: 'success', data: courseLengthPartialsAfterPartialFailure },
+        ],
+        getCohorts: [{ kind: 'success', data: baseCohorts }],
+        getYearGroups: [{ kind: 'success', data: baseYearGroups }],
+        getGoogleClassrooms: [{ kind: 'success', data: courseLengthEligibleGoogleClassrooms }],
+        updateABClass: [
+          { kind: 'success', data: { ok: true } },
+          { kind: 'failureEnvelope', message: 'Second update failed.' },
+        ],
+      })
+    );
 
     await selectRowByKey(page, 'gc-active');
     await selectRowByKey(page, 'gc-inactive');
     await page.getByRole('button', { name: 'Set course length' }).click();
     await page.getByRole('spinbutton', { name: 'Course length' }).fill('40');
-    await page.getByRole('dialog', { name: 'Set course length' }).getByRole('button', { name: 'OK' }).click();
+    const courseLengthOkButton = page
+      .getByRole('dialog', { name: 'Set course length' })
+      .getByRole('button', { name: 'OK' });
+    await expect(courseLengthOkButton).toBeEnabled();
+    await courseLengthOkButton.click();
 
     await expect(page.getByRole('dialog', { name: 'Set course length' })).toHaveCount(0);
     await expect(page.getByText('Some selected classes were not updated.')).toBeVisible();
@@ -151,31 +165,46 @@ test.describe('Classes CRUD bulk course-length flow', () => {
     await expect(getRow(page, 'gc-inactive').getByRole('checkbox')).toBeChecked();
   });
 
-  test('keeps the course-length modal open with inline feedback when all selected updates fail', async ({ page }) => {
-    await openClassesTabWithScenario(page, {
-      getAuthorisationStatus: [{ kind: 'success', data: true }],
-      getABClassPartials: [{ kind: 'success', data: courseLengthEligibleClassPartials }],
-      getCohorts: [{ kind: 'success', data: baseCohorts }],
-      getYearGroups: [{ kind: 'success', data: baseYearGroups }],
-      getGoogleClassrooms: [{ kind: 'success', data: courseLengthEligibleGoogleClassrooms }],
-      updateABClass: [
-        { kind: 'failureEnvelope', message: 'First update failed.' },
-        { kind: 'failureEnvelope', message: 'Second update failed.' },
-      ],
-    });
+  test('keeps the course-length modal open with inline feedback when all selected updates fail', async ({
+    page,
+  }) => {
+    await openClassesTabWithScenario(
+      page,
+      padClassesCrudReadQueues({
+        getAuthorisationStatus: [{ kind: 'success', data: true }],
+        getABClassPartials: [{ kind: 'success', data: courseLengthEligibleClassPartials }],
+        getCohorts: [{ kind: 'success', data: baseCohorts }],
+        getYearGroups: [{ kind: 'success', data: baseYearGroups }],
+        getGoogleClassrooms: [{ kind: 'success', data: courseLengthEligibleGoogleClassrooms }],
+        updateABClass: [
+          { kind: 'failureEnvelope', message: 'First update failed.' },
+          { kind: 'failureEnvelope', message: 'Second update failed.' },
+        ],
+      })
+    );
 
     await selectRowByKey(page, 'gc-active');
     await selectRowByKey(page, 'gc-inactive');
     await page.getByRole('button', { name: 'Set course length' }).click();
     await page.getByRole('spinbutton', { name: 'Course length' }).fill('40');
-    await page.getByRole('dialog', { name: 'Set course length' }).getByRole('button', { name: 'OK' }).click();
+    const courseLengthOkButton = page
+      .getByRole('dialog', { name: 'Set course length' })
+      .getByRole('button', { name: 'OK' });
+    await expect(courseLengthOkButton).toBeEnabled();
+    await courseLengthOkButton.click();
 
     await expect(page.getByRole('dialog', { name: 'Set course length' })).toBeVisible();
-    await expect(page.getByText('Unable to update any of the 2 selected classes. Please review the remaining selection and try again.')).toBeVisible();
+    await expect(
+      page.getByText(
+        'Unable to update any of the 2 selected classes. Please review the remaining selection and try again.'
+      )
+    ).toBeVisible();
     await expect(page.getByText('Some selected classes were not updated.')).toHaveCount(0);
   });
 
-  test('keeps bulk course-length disabled for notCreated and orphaned selections', async ({ page }) => {
+  test('keeps bulk course-length disabled for notCreated and orphaned selections', async ({
+    page,
+  }) => {
     await openClassesTabWithScenario(
       page,
       createSuccessfulClassesScenario({
@@ -183,7 +212,7 @@ test.describe('Classes CRUD bulk course-length flow', () => {
         cohorts: baseCohorts,
         yearGroups: baseYearGroups,
         googleClassrooms: courseLengthEligibleGoogleClassrooms,
-      }),
+      })
     );
 
     await selectRowByKey(page, 'gc-not-created');

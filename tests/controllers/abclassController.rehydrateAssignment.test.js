@@ -116,8 +116,8 @@ describe('ABClassController Rehydrate Assignment', () => {
       abClass.addAssignment(partial1);
       abClass.addAssignment(partial2);
 
-      // Verify partial has null tasks
-      expect(partial2.assignmentDefinition.tasks).toBe(null);
+      // Verify partial has tasks as an array (wire format preserved through round-trip)
+      expect(partial2.assignmentDefinition.tasks).toEqual(expect.any(Array));
 
       // Mock database to return full assignment2
       const fullJson = assignment2.toJSON();
@@ -133,9 +133,10 @@ describe('ABClassController Rehydrate Assignment', () => {
       expect(abClass.assignments[1]).toBe(rehydrated);
       expect(abClass.assignments[1].assignmentId).toBe('assign-2');
 
-      // Should have full content restored (not null)
+      // Should have full content restored (keyed object, not array)
       expect(rehydrated.assignmentDefinition.tasks).not.toBe(null);
       expect(typeof rehydrated.assignmentDefinition.tasks).toBe('object');
+      expect(Array.isArray(rehydrated.assignmentDefinition.tasks)).toBe(false);
     });
 
     it('returns the hydrated assignment instance', () => {
@@ -184,17 +185,18 @@ describe('ABClassController Rehydrate Assignment', () => {
         mockCollection,
       });
 
-      // Verify partial has null tasks
-      expect(partialInstance.assignmentDefinition.tasks).toBe(null);
+      // Verify partial has tasks as an array (wire format preserved through round-trip)
+      expect(partialInstance.assignmentDefinition.tasks).toEqual(expect.any(Array));
 
       // RED: Method doesn't exist yet
       assertMethodExists(controller, 'rehydrateAssignment');
 
       const rehydrated = controller.rehydrateAssignment(abClass, 'assign-nested-rehydrate');
 
-      // Full content should be restored
+      // Full content should be restored (keyed object, not array)
       const taskId = taskDef.getId();
       expect(rehydrated.assignmentDefinition.tasks).not.toBe(null);
+      expect(Array.isArray(rehydrated.assignmentDefinition.tasks)).toBe(false);
       expect(rehydrated.assignmentDefinition.tasks[taskId]).toBeDefined();
       expect(rehydrated.assignmentDefinition.tasks[taskId].artifacts.reference[0].content).toBe(
         'Reference content'

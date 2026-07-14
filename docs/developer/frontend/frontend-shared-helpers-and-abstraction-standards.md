@@ -464,15 +464,15 @@ These entries record the planned shared display helpers for the Class page featu
 
 - Decision: `new`
 - Owning module/path: `src/frontend/src/services/dataAnalysis/metricDisplay/metricTone.ts`
-- Call-site rationale: maps the data analysis service's `MetricResult` discriminated union (`state: 'computed' | 'notAttempted' | 'error'`) to a `{ color, displayValue, muted }` triple that the Ant Design `Tag` consumes. The range parameter (default `{ lower: 0, upper: 5 }`) is used to compute the band boundaries via the midpoint rule: `redAmberBoundary = (3·lower + upper) / 4`, `amberGreenBoundary = (lower + 3·upper) / 4`. The `errorColor` parameter (default `'volcano'`) is the `Tag` color for the `error` state. Pure function, no React or antd imports. Validates `range.upper > range.lower` and throws on violation.
+- Call-site rationale: maps the data analysis service's `MetricResult` discriminated union (`state: 'computed' | 'notAttempted' | 'error'`) to a `{ color, cellStyle, displayValue, muted }` resolution that the Ant Design `Tag` (and table cells) consume. For `computed` values the colour is a **continuous gradient**: the normalised position `t = (value - lower) / (upper - lower)` (clamped to `[0, 1]`) maps to an `hsl` colour whose hue sweeps red (`0`) → amber (`60`) → green (`120`), with lightness darker at the range ends (darkest red at the floor, darkest green at the ceiling) and lighter in the middle. `cellStyle` carries the matching light-background / dark-text pair for table cells. `notAttempted` returns `'#434343'` (dark grey with light grey cell background) and `error` returns the `errorColor` token (default `'volcano'`), both with their preset `cellStyle`. Pure function, no React or antd imports. Validates `range.upper > range.lower` and throws on violation.
 - Status: `Implemented`
 - Implementation notes:
   - Added `errorColor: MetricToneColor` parameter (not in the planning-time signature) per the spec reconciliation in Section 1 and `SPEC_CLASS_PAGE_PREPARATION.md`. The default (`'volcano'`) lives in `resolveMetricTone`; `MetricPill` is a pass-through with no `errorColor`-level default.
-  - The amber/green boundary uses `>=` per the spec boundary rule (`value >= amberGreenBoundary` yields `green`). A prior implementation used `>` which misclassified the exact boundary value as `gold`. This was fixed in CRITICAL-1 during the code-review remediation sweep.
+  - Computed values use a continuous gradient (no fixed band boundaries), so adjacent integer scores such as `4` and `5` or `2` and `3` now render with visibly different colours. Discrete states keep their fixed `Tag` colour tokens and cell styles.
   - Exported types: `MetricToneColor`, `MetricToneRange`, `MetricToneResolution`.
-  - `MetricToneColor = 'red' | 'gold' | 'green' | 'default' | 'volcano'` is a cross-spec contract (used by Class page column filter). Any future revision is a cross-spec breaking change.
-  - The `error` color (`volcano`) is the existing Ant Design preset for "important but not fatal" — `red` is reserved for the lowest band of `computed` values to keep visual hierarchy clear.
-  - File size: 146 lines (under 550; no separation needed).
+  - `MetricToneColor = 'red' | 'gold' | 'green' | 'default' | 'volcano'` remains the union for discrete `notAttempted` (`'default'`) and `error` (`errorColor`) states; the column **score-range filter** (see helper 4) is the consumer of filter values, not the continuous gradient. Any future revision to `MetricToneColor` is a cross-spec breaking change.
+  - The `error` color (`volcano`) is the existing Ant Design preset for "important but not fatal" — `red` is reserved for the lowest end of the `computed` gradient to keep visual hierarchy clear.
+  - File size: ~223 lines (under 550; no separation needed).
 - Planned doc reconciliation: confirmed the resolver remains pure (no antd imports), the range parameter is honoured, and the `errorColor` default is set in `resolveMetricTone` (not in `MetricPill`) per the spec contract — the default-value rule "defaults must be set in a module's constructor only" is moot here because `resolveMetricTone` is a pure function, not a module constructor, and the default is set in the function parameter signature.
 
 2. Helper: `MetricPill` presentational component
@@ -510,11 +510,11 @@ These entries record the planned shared display helpers for the Class page featu
 - Status: `Implemented`
 - Implementation notes:
   - Implemented in Section 3 of the action plan as part of the MetricResult discriminated-union refactor.
-  - Rollup precedence: `error` > `notAttempted` > `computed`. First matching state wins.
+  - At aggregation levels above the per-(student, task) cell, `error` entries are **excluded** from the rollup. The result is `error` only when **every** input is `error`; otherwise it is `computed` (over non-error entries) or `notAttempted` (when no computed entries remain). Error entries are excluded from both numerator and denominator.
   - Per-metric `notAttempted` handling: for accuracy and completeness, `notAttempted` contributes 0; for SPaG, `notAttempted` is excluded from numerator/denominator.
   - The function is called from `averagingAnalyser.rows.ts` row builders and will be consumed by the Class page adapter.
   - Standalone file (not in `accumulation/` subfolder) per the spec reconciliation; the facade decomposition of `averagingAnalyser.accumulation.ts` is deferred to a future pass (see §9.18 item 3).
-- Planned doc reconciliation: confirmed the rollup is called from both analyser row builders and the precedence rule (`error` > `notAttempted` > `computed`) and per-metric `notAttempted` handling match the `SPEC_CLASS_PAGE_PREPARATION.md` contract.
+- Planned doc reconciliation: confirmed the rollup is called from both analyser row builders, errors are **excluded** at aggregation levels above the per-(student, task) cell (the result is `error` only when every input is `error`), and per-metric `notAttempted` handling matches the `SPEC_CLASS_PAGE_PREPARATION.md` contract.
 
 ### 9.18 Class page feature-local helpers
 
@@ -526,14 +526,14 @@ These entries record the feature-local helpers for the Class page. Per `frontend
 
 - Decision: `keep local`
 - Owning module/path: `src/frontend/src/features/classPage/classPageAdapter.ts`
-- Call-site rationale: the only module that knows how to translate the data analysis service's `AveragingResult` (with the new `MetricResult` discriminated union) plus the raw `ClassFull` into the view-model shapes the Class page consumes (`RecentAssignmentCardModel[]`, `StudentAverageRowModel[]`, `classMetrics`). Owns the assignment-level rollup precedence (error > notAttempted > computed) via the shared `rollupMetric` helper, the `updatedAt`-based recent-assignment selection (top 3, sorted descending), the per-assignment `average` composite (40/40/20 weighting with SPaG renormalisation), the no-data row synthesis for unassessed students, and trust validation (null `updatedAt` throws, duplicate `studentId`/`assignmentId` throws, unparseable `updatedAt` throws). Has exactly one caller (`useClassPageData`); promotion to a shared adapter would only make sense if a second consumer surface appears.
+- Call-site rationale: the only module that knows how to translate the data analysis service's `AveragingResult` (with the new `MetricResult` discriminated union) plus the raw `ClassFull` into the view-model shapes the Class page consumes (`RecentAssignmentCardModel[]`, `StudentAverageRowModel[]`, `classMetrics`). Rolls up each criterion via the shared `rollupMetric` helper (which excludes errors at aggregation levels above the per-cell level) and computes the per-assignment `average` by delegating to the shared `computeOverallComposite` helper (40/40/20 weighting with SPaG renormalisation; also excludes error criteria). Also handles the `updatedAt`-based recent-assignment selection (top 3, sorted descending), the no-data row synthesis for unassessed students, and trust validation (null `updatedAt` throws, duplicate `studentId`/`assignmentId` throws, unparseable `updatedAt` throws). Has exactly one caller (`useClassPageData`); promotion to a shared adapter would only make sense if a second consumer surface appears.
 - Status: `Implemented`
 - Implementation notes:
   - 495 lines (well under the 500-line threshold; no file separation required).
   - Pure function — no I/O, no React imports, no Ant Design imports. The only side effect is throwing on data integrity violations.
   - Calls `rollupMetric` (shared helper at `src/frontend/src/services/dataAnalysis/analysers/rollupMetric.ts`) for each of the three criteria.
   - Calls `formatUpdatedAtLabel` (shared helper at `src/frontend/src/utils/dateFormatting.ts`) for date formatting.
-  - Per-assignment `average` is computed inline as a composite (40/40/20 weighting) — not delegated to `rollupMetric` because the average is a composite of three per-criterion rollups, not a fourth independent weighted average.
+  - Per-assignment `average` is computed by delegating to the shared `computeOverallComposite` helper (40/40/20 weighting with SPaG renormalisation); that helper excludes `error` and `notAttempted` criteria, matching the analyser's per-student and per-task overall behaviour. The average is a composite of three per-criterion rollups, not a fourth independent weighted average.
   - Trust validation: `validateUpdatedAt` throws `TypeError` on null or unparseable `updatedAt`; `findDuplicateStudentId` / `findDuplicateAssignmentId` check uniqueness.
   - Co-located spec: `classPageAdapter.spec.ts` (15 tests covering all contract behaviours).
 - Planned doc reconciliation: confirmed the rollup precedence is documented inline in the adapter JSDoc (`@remarks` blocks); `MetricResult` discriminated union is consumed via `.state` property checks (not nullable checks, consistent with the discriminated union contract).
@@ -551,6 +551,19 @@ These entries record the feature-local helpers for the Class page. Per `frontend
   - Returns `a.studentName.localeCompare(b.studentName, undefined, { sensitivity: 'base' })` tie-broken by `a.studentId.localeCompare(b.studentId)`.
   - Single source of truth for student-name ordering; call sites apply direction via `direction === 'asc' ? cmp : -cmp`.
 
+#### 9.18.11 Heatmap row comparator: `compareHeatmapStudentName`
+
+15. Helper: `compareHeatmapStudentName(a: HeatmapRow, b: HeatmapRow): number` — `HeatmapRow`-typed student-name comparator
+
+- Decision: `extract`
+- Owning module/path: `src/frontend/src/features/classPage/classPageModel.ts`
+- Call-site rationale: the heatmap table (`TaskHeatmapPage`, built in Section 5b) must not import the `StudentAverageRowModel`-typed `compareStudentNames` directly because `HeatmapRow` and `StudentAverageRowModel` have different shapes (`HeatmapRow` carries `cells`, not `metrics`). This helper provides the same locale-aware, case-insensitive name ordering with `studentId` ascending tie-break, typed for `HeatmapRow`, so the heatmap's student-name sort has a single source of truth that mirrors `compareStudentNames` semantics exactly.
+- Status: `Implemented`
+- Implementation notes:
+  - Signature: `export function compareHeatmapStudentName(a: HeatmapRow, b: HeatmapRow): number`
+  - Delegates to the canonical `compareStudentNames` logic (locale-aware, `sensitivity: 'base'`, `studentId` ascending tie-break) via a type cast, avoiding `sonarjs/no-identical-functions` while preserving exact semantics. Both `HeatmapRow` and `StudentAverageRowModel` expose `studentName` and `studentId` identically.
+  - Co-located spec: `classPageModel.spec.ts` (`compareHeatmapStudentName` describe block — ordering, `studentId` tie-break, case-insensitivity).
+
 #### 9.18.2 Pure view-model builder: `classPageModel`
 
 2. Helper: `classPageModel` pure view-model builder
@@ -562,7 +575,7 @@ These entries record the feature-local helpers for the Class page. Per `frontend
 - Implementation notes:
   - 201 lines. Pure function — no React imports, no Ant Design imports, no I/O.
   - Search filter: case-insensitive substring on `studentName`; empty `searchTerm` → no filter.
-  - State-aware metric sort: rank-based with `METRIC_STATE_RANK_ASC`/`METRIC_STATE_RANK_DESC` Maps. `asc`: computed (by value) → notAttempted → error. `desc`: error → notAttempted → computed (by value). Tie-break by `studentId` ascending.
+  - State-aware metric sort: rank-based with `METRIC_STATE_RANK_ASC`/`METRIC_STATE_RANK_DESC` Maps. `asc`: computed (by value) → notAttempted → error. `desc`: error → notAttempted → computed (by value). Tie-break by `studentId` ascending. `METRIC_STATE_RANK_ASC` is now exported (consumed by `TaskHeatmapTable`'s `HeatmapRow`-typed metric comparator in Section 4 — the heatmap reuses the canonical rank map instead of declaring a second copy).
   - Student name sort: locale-aware, case-insensitive, `studentId` tie-breaker.
   - Passes through `recentAssignments` and `classMetrics` unchanged.
   - Default sort: `studentName` ascending.
@@ -598,8 +611,9 @@ These entries record the feature-local helpers for the Class page. Per `frontend
 - Status: `Implemented`
 - Implementation notes:
   - 114 lines. Thin composition root.
-  - Renders a three-segment `Breadcrumb` (`AssessmentBot Frontend / Classes / {className}`) in-page — accepted v1 visual duplication with the shell's two-segment breadcrumb.
-  - Renders `ClassPageContent` with per-state content (loading/blocking/ready).
+  - Renders a three-segment `Breadcrumb` (`AssessmentBot Frontend / Classes / {className}`) in-page — accepted v1 visual duplication with the shell's two-segment breadcrumb. When `selectedView.view === 'heatmap'`, a fourth `Task Heatmap` segment is appended.
+  - Owns the `selectedView` state (`{ view: 'overview' | 'heatmap'; assignmentId?: string }`, default `overview`); `handleOpenHeatmap(assignmentId)` sets the heatmap view, `handleBack()` resets to overview. Destructures `analyserResult` from the single `useClassPageData(classId)` call and passes it (plus `classFull`, `onOpenHeatmap`, `onBack`, `refetch`, `selectedView`) into `ClassPageContent` — no second analysis call.
+  - Renders `ClassPageContent` with per-state content (loading/blocking/ready/heatmap).
   - Renders `AssessTaskModal` at the page root (not inside `ClassPageContent`) because the modal state spans loading/blocking/ready transitions.
   - Co-located spec: `ClassPage.spec.tsx` (7 test cases covering breadcrumb, modal state, and navigation).
 
@@ -615,8 +629,9 @@ These entries record the feature-local helpers for the Class page. Per `frontend
   - 295 lines. Three co-located sub-components:
     - `ClassPageLoading`: shape-matched `Skeleton` (heading + 3-card row + table paragraph), wrapped in `role="status"` and `aria-live="polite"`. Uses a deliberate shape-matched pattern (not the paragraph-row pattern prescribed in `CLASS_PAGE_LAYOUT.md`) because the three distinct content regions benefit from visible card-shaped placeholders.
     - `ClassPageBlocking`: single Ant Design `Result` per `error.type`. Retryable errors (`classQueryError`, `analyserError`, `assignmentDefinitionPartialsFailed`, `assignmentDefinitionPartialsUntrustworthy`) show `Retry` + `Back to Classes`. Non-retryable errors (`classNotFound`, `adapterError`) show only `Back to Classes`.
-    - `ClassPageReady`: full content tree — `ClassPageHeaderActions`, `RecentAssignmentsSection`, `StudentAveragesTableCard`.
-  - Co-located spec: `ClassPageContent.spec.tsx` (6 test cases covering all three states).
+    - `ClassPageReady`: full content tree — `ClassPageHeaderActions`, `RecentAssignmentsSection`, `StudentAveragesTableCard`; forwards the new `onOpenHeatmap` prop into `RecentAssignmentsSection` so a card click can open the heatmap.
+  - The `ready` branch additionally renders `TaskHeatmapPage` (instead of `ClassPageReady`) when `selectedView.view === 'heatmap' && selectedView.assignmentId !== undefined && analyserResult && classFull` — gated on the `ready` surface state and narrowed to non-null `analyserResult`/`classFull`/`assignmentId` before passing them to `TaskHeatmapPage` (no `?? ''` default on the id, per core principle #7).
+  - Co-located spec: `ClassPageContent.spec.tsx` (8 test cases covering all three states + the new required props).
 
 #### 9.18.6 Presentational components
 
@@ -632,14 +647,14 @@ These entries record the feature-local helpers for the Class page. Per `frontend
 - Decision: `keep local`
 - Owning module/path: `src/frontend/src/features/classPage/RecentAssignmentCard.tsx`
 - Status: `Implemented`
-- Implementation notes: 87 lines. Renders assignment name as card title, "Last Assessed" date line, and four `MetricPill` instances (Completeness, Accuracy, SpAG, Average). Average cell uses `emphasised={true}`. Card width is a feature-local constant (`RECENT_ASSIGNMENT_CARD_WIDTH_PX = 320`); promotion to a shared width token is deferred until a second consumer emerges. Static card — no hover, no click handler, no `hoverable` prop in v1.
+- Implementation notes: 87 lines. Renders assignment name as card title, "Last Assessed" date line, and four `MetricPill` instances (Completeness, Accuracy, SpAG, Average). Average cell uses `emphasised={true}`. Card width is a feature-local constant (`RECENT_ASSIGNMENT_CARD_WIDTH_PX = 320`); promotion to a shared width token is deferred until a second consumer emerges. Conditional interactivity — when `onOpenHeatmap` is supplied the card becomes an activatable button (`role="button"`, `tabIndex={0}`, mouse click + Enter/Space activation, `cursor: 'pointer'`); when absent it stays a static display card. No `hoverable` prop in v1.
 
 8. Component: `RecentAssignmentsSection`
 
 - Decision: `keep local`
 - Owning module/path: `src/frontend/src/features/classPage/RecentAssignmentsSection.tsx`
 - Status: `Implemented`
-- Implementation notes: 73 lines. Pure presentational — section `Card` (`size="small"`, `title="Recent Assignments"`) wrapping either a centre-aligned `Flex` row of up to 3 `RecentAssignmentCard` components, or an `Empty` with CTA button. Empty state description sourced from `pageContent.classDetail.recentAssignmentsEmpty`.
+- Implementation notes: 73 lines. Pure presentational — section `Card` (`size="small"`, `title="Recent Assignments"`) wrapping either a centre-aligned `Flex` row of up to 3 `RecentAssignmentCard` components, or an `Empty` with CTA button. Empty state description sourced from `pageContent.classDetail.recentAssignmentsEmpty`. Forwards an optional `onOpenHeatmap?: (assignmentId: string) => void` prop to every `RecentAssignmentCard`, enabling the heatmap drill-down entry point (wired by `ClassPage` in Section 5b).
 
 9. Component: `StudentAveragesTableCard`
 
@@ -653,7 +668,7 @@ These entries record the feature-local helpers for the Class page. Per `frontend
 - Decision: `keep local`
 - Owning module/path: `src/frontend/src/features/classPage/studentAveragesTableColumns.tsx`
 - Status: `Implemented`
-- Implementation notes: 204 lines. Pure function exporting `buildStudentAveragesTableColumns(filters)` — no React hooks. Five columns: `studentName` (locale-aware sort, no filters), `completeness`/`accuracy`/`spag`/`average` (metric columns with 5-band `MetricToneColor` filters, `onFilter` via `resolveMetricTone`, `MetricPill` render). Average column uses `emphasised={true}`.
+- Implementation notes: Pure function exporting `buildStudentAveragesTableColumns(filters)` — no React hooks. Five columns: `studentName` (locale-aware sort, no filters), `completeness`/`accuracy`/`spag`/`average` (metric columns with a numeric **score-range filter** via `buildMetricRangeFilter`, gradient cell colour via `resolveMetricTone(...).cellStyle`, `MetricPill` render). The `filters` prop is `StudentAveragesTableFilters` (`readonly number[]` per column, the active `[min, max]` range or `[]`).
 
 #### 9.18.7 Zod trust-boundary schema: `classPageAdapter.zod`
 
@@ -699,6 +714,46 @@ These entries record the feature-local helpers for the Class page. Per `frontend
   - `@remarks` documents the switch-statement rationale.
   - Exported function signature: `getStudentMetric(metrics: StudentAverageRowModel['metrics'], key: 'completeness' | 'accuracy' | 'spag' | 'average'): MetricResult`
 
+#### 9.18.12 Heatmap table component: `TaskHeatmapTable`
+
+16. Component: `TaskHeatmapTable` — presentational heatmap table (grouped headers, score-range filters, sorters)
+
+- Decision: `keep local`
+- Owning module/path: `src/frontend/src/features/classPage/TaskHeatmapTable.tsx`
+- Call-site rationale: pure presentational table built from a `HeatmapResult`. Owns the Ant Design `Table<HeatmapRow>` column definitions (`buildHeatmapTableColumns` is internal): a sticky `Student Name` top-level column (`fixed: 'start'`, `width: 200`, `sorter` via the exported `compareHeatmapStudentName`, `defaultSortOrder: 'ascend'`), and one grouped column per `taskColumn` (title = `taskId`, since `taskTitle` is `null` in v1) with `Completeness`/`Accuracy`/`SPaG` children. Each metric sub-column uses `buildMetricRangeFilter` (a numeric score-range `filterDropdown` + `onFilter` over a two-thumb `Slider`), a SPEC-ordered `sorter` built on the exported `METRIC_STATE_RANK_ASC` (computed by value asc → `notAttempted` → `error`, `studentId` tie-break), and renders a `compact` `MetricPill` inside a gradient-coloured cell (`resolveMetricTone(...).cellStyle`) whose `aria-label` is `"[Student Name], [Task ID], [Metric]: [Score]"`. `pagination={false}`, `bordered`, `scroll={{ x: 'max-content' }}`, `aria-label="Task Heatmap"`.
+- Status: `Implemented`
+- Implementation notes:
+  - Reuses `compareHeatmapStudentName` and `METRIC_STATE_RANK_ASC` from `classPageModel.ts`, and the shared `buildMetricRangeFilter` (with its `MetricRangeFilterDropdown` UI and `metricRangeKey` encode/decode helpers) from `metricDisplay/` — no second copy of the filter predicate. The `HeatmapRow`-typed metric comparator (`heatmapMetricComparator`) reads the canonical rank map so the heatmap and averages tables share one ordering definition.
+  - Initial ascending student-name order is achieved by pre-sorting the `dataSource` with `.toSorted(compareHeatmapStudentName)` because `defaultSortOrder` does not auto-apply the initial sort in the installed Ant Design version; this is a non-mutating copy.
+  - Empty-state: a "No submissions yet" caption renders above the table only when `taskColumns.length > 0 && rows.length > 0 &&` every cell is `notAttempted`; the guard suppresses the caption for the zero-tasks variant (`taskColumns: []` → only the Student Name column renders).
+  - Cell access uses a safe `.find` by `taskKey` (not computed-index injection) plus a `switch`-based metric accessor, mirroring the `getStudentMetric` pattern to satisfy `security/detect-object-injection`.
+  - Co-located spec: `TaskHeatmapTable.spec.tsx` (6 tests: grouped header; Green-band filter removes non-green rows; Student Name sort via `compareHeatmapStudentName`; per-cell `aria-label` format; no-submissions caption; zero-tasks variant).
+
+#### 9.18.13 Heatmap page composition: `TaskHeatmapPage`
+
+17. Component: `TaskHeatmapPage` — heatmap view composition root (header, control, table regions)
+
+- Decision: `keep local`
+- Owning module/path: `src/frontend/src/features/classPage/TaskHeatmapPage.tsx`
+- Call-site rationale: rendered by `ClassPageContent` when `selectedView.view === 'heatmap'`. It is a pure presentational view that receives the already-computed `analyserResult` + `classFull` (it must NOT call `useClassPageData` — a second hook instance would re-run the analyser, violating the "no new analysis call" contract). It projects the view model via `adaptMetricsToHeatmap(analyserResult, classFull, assignmentId)`.
+- Status: `Implemented`
+- Implementation notes:
+  - `adaptMetricsToHeatmap` is computed exactly once via a `useState` lazy initializer (not re-run on every render). On throw (unknown `assignmentId`), it logs via `logFrontendError('TaskHeatmapPage', error)` inside a `useEffect` and then calls `onBack()` — auto-navigating back to the overview with NO in-view `Alert`/error UI (per `SPEC.md`/`TASK_HEATMAP_LAYOUT.md`). The error is logged, never silently ignored, and never via `console.*`.
+  - Renders a `Flex` (`vertical`, `gap=16`) with three `Card`s (`size="small"`): a header `Card` (`Typography.Title` assignment name + back `Button` `aria-label="Back to Class overview"` + secondary class name), a control `Card` (refresh `Button` → `refetch`), and the table `Card` (`TaskHeatmapTable`). The breadcrumb (with the `Task Heatmap` segment) is owned by `ClassPage`, not duplicated here.
+  - Co-located integration spec: `ClassPageHeatmapView.spec.tsx` (3 tests: card click opens heatmap; Back returns to overview; unknown `assignmentId` auto-navigates back via `logFrontendError` + `onBack`, no in-view error).
+
+#### 9.18.14 E2E scenario helper: `task-heatmap-end-to-end-helpers`
+
+18. Helper (test-only): `createHeatmapScenario` — Playwright runtime-scenario factory for the Task Heatmap end-to-end journey
+
+- Decision: `new` (test-only helper, co-located with the E2E spec)
+- Owning module/path: `src/frontend/e2e-tests/helpers/task-heatmap-end-to-end-helpers.ts`
+- Call-site rationale: builds the `RuntimeScenario` (auth + reference data + `getAssignmentDefinitionPartials` warm-up + two identical `getABClass` StrictMode entries + a real `getABClassPartials` so the class card renders) that drives the full journey in `task-heatmap.spec.ts`. It self-builds the `ClassFull` fixture from `anon-test-data.json` via an internal `buildClassFullDocument` (deriving `assignmentDefinition.tasks` from submission item keys), keeping the E2E independent of the unit fixture builders. `HEATMAP_ASSIGNMENT_NAME` (`'4. …'`) is the fixture `assignmentName`; `HEATMAP_ASSIGNMENT_DISPLAY_TITLE` (`'7. Video Plan'`) is the `primaryTitle` the UI actually renders and must be used for card-click + header locators.
+- Status: `Implemented` (ACTION_PLAN.md Section 6 — `task-heatmap.spec.ts` + `task-heatmap-end-to-end-helpers.ts` added; 6 required cases, 7 passing tests).
+- Implementation notes:
+  - `createHeatmapScenario` exposes `deferredClass` (via `deferredSuccess`/`releaseNextDeferredSuccess`) for the loading-skeleton test, while always keeping two `getABClass` queue entries for StrictMode safety.
+  - A scoped-parent overload was added to `applyColumnFilterOption` in `src/frontend/e2e-tests/shared/endToEndRuntimeMocks.ts` so the band-filter test can target the first task group's `Completeness` columnheader without tripping Playwright strict mode (string callers are unchanged).
+
 ### 9.19 Frontend pure formatting helpers
 
 These entries record the planned pure formatting helpers extracted from feature code into shared utility modules.
@@ -726,6 +781,20 @@ Per `SPEC_CLASS_PAGE_PREPARATION.md` line 382, the canonical home for these help
 - Owning module/path: `src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.rows.ts`
 - Call-site rationale: `rollupAccumulators` was previously private to `averagingAnalyser.rows.ts` and duplicated in `averagingAnalyser.ts` (`analyseClass`). By exporting it, the per-class rollup path in `analyseClass` now reuses the same `rollupAccumulators` call that the row builders use, eliminating the dual-path bug described in CRITICAL-2.
 - Status: `Implemented`
+
+2. Helper: `buildPerStudentTaskMetrics` — convert per-(student, task) accumulators to `PerStudentTaskMetric[]`
+
+- Decision: `new` (feature-local helper, kept inside the analyser package)
+- Owning module/path: `src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.accumulation.ts` (or `averagingAnalyser.perStudentTaskMetrics.ts` if `accumulation.ts` crosses the 500-LOC threshold)
+- Call-site rationale: converts `perStudentTaskAccums` (`Map<string, Map<string, DataPointAccumulator>>`) into the validated `PerStudentTaskMetric[]` array on `AveragingResult`, calling the existing `accumToMetric` path for each criterion (`completeness`, `accuracy`, `spag`, `overall`). Consumed by `analyseClass` in `averagingAnalyser.ts`. `taskKey` is `\`${definitionKey}::${taskId}\``; `classId` is echoed from the input class.
+- Status: `Implemented` (ACTION_PLAN.md Section 1 — `buildPerStudentTaskMetrics` added to `averagingAnalyser.accumulation.ts`, called by `analyseClass`; `PerStudentTaskMetricSchema` added to `dataAnalysis.zod.ts`).
+
+3. Helper: `adaptMetricsToHeatmap` — pure projection adapter (`AveragingResult` + `ClassFull` + `assignmentId` → `HeatmapResult`)
+
+- Decision: `new` (single-file service module; flat under `services/dataAnalysis/`)
+- Owning module/path: `src/frontend/src/services/dataAnalysis/heatmapAdapter.ts`
+- Call-site rationale: the single projection boundary consumed by `TaskHeatmapPage`. Filters `perStudentTaskMetrics` to the selected assignment's `taskKey`s (derived from `assignment.assignmentDefinition.definitionKey`), groups by `studentId` into `HeatmapRow`s, and derives `taskColumns` from `assignment.assignmentDefinition.tasks`. `assignmentName` from `primaryTitle`, `className` from `classFull.className` (fallback `'Class Overview'`), `taskTitle` always `null` in v1. Throws on unknown `assignmentId` (fail fast).
+- Status: `Implemented` (ACTION_PLAN.md Section 2 — `adaptMetricsToHeatmap` added to `heatmapAdapter.ts`; `HeatmapResult`/`HeatmapRow`/`HeatmapCell`/`HeatmapTaskColumn` interfaces exported).
 
 ## 10. Frontend utils folder convention
 

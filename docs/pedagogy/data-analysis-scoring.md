@@ -91,6 +91,8 @@ The **Value** row can now show three kinds of result: a number for computed scor
 
 Note: when the analyser encounters the **E** state, `totalDataPoints` may exceed `applicableDataPoints` even when no **N** is recorded. This simply means submissions exist but none of them had usable assessment data for that metric — it is not a sign of missing data.
 
+It is important to know that a single task showing **E** does **not** ruin the whole average for a student or for the class. If one task cannot be scored (and shows **E**), the system simply leaves that task out of the average and works out the result from the remaining tasks that have usable scores. This means a few missing scores in a handful of tasks will not wipe out the overall picture — the remaining data still counts.
+
 **Example**: A student has 5 completed tasks. Their completeness value of 4.2 is based on all 5 tasks (applicable: 5 of 5). Their SPaG value of 3.8 is based on 4 of the 5 tasks (one was a formula task where SPaG was not applicable). The `totalWeight` for SPaG might be lower than for completeness because the formula task carried influence for completeness but not for SPaG.
 
 ## Planned future analyses

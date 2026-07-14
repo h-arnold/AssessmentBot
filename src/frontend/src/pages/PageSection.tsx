@@ -1,5 +1,6 @@
 import { Space, Typography } from 'antd';
 import type { ReactNode } from 'react';
+import { APP_SPACE_SIZE_DEFAULT } from '../theme/spacing';
 
 const { Paragraph, Title } = Typography;
 
@@ -28,7 +29,7 @@ export function PageSection(properties: PageSectionProperties) {
 
   return (
     <section className={pageSectionClassName} aria-label={`${heading} page`}>
-      <Space orientation="vertical" size="middle" className={pageContentClassName}>
+      <Space orientation="vertical" size={APP_SPACE_SIZE_DEFAULT} className={pageContentClassName}>
         <div>
           <Title level={2}>{heading}</Title>
           <Paragraph>{summary}</Paragraph>

@@ -108,7 +108,7 @@ function toTransportPartialRow_(definition) {
  * @throws {ApiValidationError} If controller response is not an array.
  * @remarks Updated per SPEC.md v1.9.0 Section 5: now uses `toTransportPartialRow_` helper instead of
  * the removed `toPlainPartialRow_`. Returned objects will NO LONGER include the `yearGroup` field;
- * Date fields are normalised as ISO strings. Partial definitions have `tasks: null`.
+ * Date fields are normalised as ISO strings. Partial definitions carry a `tasks` array of lightweight summaries.
  */
 function getAssignmentDefinitionPartials_() {
   const definitions = getAssignmentDefinitionController_().getAllPartialDefinitions();
@@ -117,7 +117,17 @@ function getAssignmentDefinitionPartials_() {
     throwValidationError_('Controller response must be an array.', RESPONSE_FIELD_NAME, 0);
   }
 
-  return definitions.map((definition) => toTransportPartialRow_(definition));
+  const rows = definitions.map((definition) => toTransportPartialRow_(definition));
+
+  // Enforce the array-tasks contract at the transport boundary so that
+  // corrupt partial rows are caught in production, not just in tests.
+  rows.forEach((row, index) => {
+    if (!Array.isArray(row.tasks)) {
+      throwValidationError_('tasks must be an array.', 'tasks', index);
+    }
+  });
+
+  return rows;
 }
 
 /**
@@ -133,7 +143,7 @@ function deleteAssignmentDefinition_(parameters) {
 /**
  * Creates or updates an assignment definition through strict transport-boundary validation.
  *
- * Stage-one create persists a definition with parsed tasks (tasks: null in partial, full tasks in full store).
+ * Stage-one create persists a definition with parsed tasks (tasks array in partial, keyed task objects in full store).
  * Final save persists metadata and weighting edits. Re-parse transport behaviour: when document URLs change,
  * existing task weightings are preserved for matching task IDs, and new tasks default to 1.
  * Duplicate detection uses the normalised (primaryTitle, primaryTopicKey, yearGroupKey) tuple.

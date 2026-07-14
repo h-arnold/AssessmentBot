@@ -1,10 +1,12 @@
-import { AppstoreOutlined, BookOutlined, HomeOutlined, SettingOutlined } from '@ant-design/icons';
+import { HomeOutlined, SettingOutlined } from '@ant-design/icons';
 import type { BreadcrumbProps } from 'antd';
-import type { ComponentType, ReactElement, ReactNode } from 'react';
+import type { ReactElement, ReactNode } from 'react';
+import { BookA, GraduationCap } from 'lucide-react';
 import { AssignmentsPage } from '../pages/AssignmentsPage';
 import { ClassesPage } from '../pages/ClassesPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { SettingsPage } from '../pages/SettingsPage';
+import { LucideIcon } from '../components/icons/LucideIcon';
 import { pageContent } from '../pages/pageContent';
 
 export type AppNavigationKey = 'dashboard' | 'assignments' | 'classes' | 'settings';
@@ -29,16 +31,16 @@ type AppNavigationDefinition = {
 type AppBreadcrumbDefinition = NonNullable<BreadcrumbProps['items']>[number];
 
 /**
- * Wraps Ant Design icons so menu items keep a visual icon in collapsed mode while
- * hiding decorative icon wrappers from assistive technology.
+ * Wraps a navigation icon element so menu items keep a visual icon in collapsed
+ * mode while hiding decorative icon wrappers from assistive technology.
  *
- * @param {ComponentType<{ 'aria-hidden'?: boolean }>} Icon Icon component to wrap.
+ * @param {ReactElement} icon Icon element to wrap.
  * @returns {ReactElement} The wrapped navigation icon.
  */
-function renderNavigationIcon(Icon: ComponentType<{ 'aria-hidden'?: boolean }>) {
+function renderNavigationIcon(icon: ReactElement) {
   return (
     <span aria-hidden className="app-navigation-icon">
-      <Icon aria-hidden />
+      {icon}
     </span>
   );
 }
@@ -47,22 +49,22 @@ const navigationDefinitions: readonly AppNavigationDefinition[] = [
   {
     key: 'dashboard',
     label: pageContent.dashboard.heading,
-    icon: renderNavigationIcon(HomeOutlined),
+    icon: renderNavigationIcon(<HomeOutlined aria-hidden />),
   },
     {
-  key: 'classes',
+    key: 'classes',
     label: pageContent.classes.heading,
-    icon: renderNavigationIcon(BookOutlined),
+    icon: renderNavigationIcon(<LucideIcon icon={GraduationCap} />),
   },
   {
     key: 'assignments',
     label: pageContent.assignments.heading,
-    icon: renderNavigationIcon(AppstoreOutlined),
+    icon: renderNavigationIcon(<LucideIcon icon={BookA} />),
   },
   {
     key: 'settings',
     label: pageContent.settings.heading,
-    icon: renderNavigationIcon(SettingOutlined),
+    icon: renderNavigationIcon(<SettingOutlined aria-hidden />),
   },
 ] as const;
 
@@ -143,16 +145,41 @@ export function getNavigationLabel(key: AppNavigationKey) {
 }
 
 /**
- * Builds the minimal breadcrumb trail for the active navigation entry.
+ * Builds the breadcrumb trail for the active navigation entry.
+ *
+ * @remarks
+ * When a class detail is open (`className` is provided) and the active key is `classes`,
+ * the second segment becomes a clickable link that navigates back to the class list.
+ * A third segment showing the class name is appended.
  *
  * @param {AppNavigationKey} key Active navigation key.
+ * @param {string | undefined} className The class name when a class detail is open.
+ * @param {(() => void) | undefined} onNavigateToClasses Callback to return to the class list.
  * @returns {NonNullable<BreadcrumbProps['items']>} Breadcrumb items for the active navigation key.
  */
-export function getBreadcrumbItems(key: AppNavigationKey): NonNullable<BreadcrumbProps['items']> {
-  return [
-    { title: appBreadcrumbBaseLabel } satisfies AppBreadcrumbDefinition,
-    { title: getNavigationLabel(key) } satisfies AppBreadcrumbDefinition,
+export function getBreadcrumbItems(
+  key: AppNavigationKey,
+  className?: string,
+  onNavigateToClasses?: () => void
+): NonNullable<BreadcrumbProps['items']> {
+  const secondSegment =
+    key === 'classes' && className !== undefined && onNavigateToClasses !== undefined
+      ? {
+          title: getNavigationLabel(key),
+          onClick: onNavigateToClasses,
+          className: 'app-breadcrumb-link',
+        }
+      : { title: getNavigationLabel(key) };
+
+  const items: NonNullable<BreadcrumbProps['items']> = [
+    secondSegment satisfies AppBreadcrumbDefinition,
   ];
+
+  if (key === 'classes' && className !== undefined) {
+    items.push({ title: className } satisfies AppBreadcrumbDefinition);
+  }
+
+  return items;
 }
 
 /**

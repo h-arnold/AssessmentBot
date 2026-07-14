@@ -35,6 +35,7 @@ import { AssignmentDefinitionWizardModal } from '../features/assignmentWizard/As
 import { formatUpdatedAtLabel } from '../utils/dateFormatting';
 import { PageSection } from './PageSection';
 import { pageContent } from './pageContent';
+import { APP_GAP_COMPACT, APP_GAP_MD, APP_GAP_SM, APP_SPACE_SIZE_TIGHT } from '../theme/spacing';
 
 const { Text } = Typography;
 
@@ -286,6 +287,7 @@ function AssignmentsFilterDropdown(
 ) {
   const selectedValues = new Set((properties.selectedValues ?? []).map(String));
 
+  // size={0} is the intentional zero-gap skeleton exception (see §4.7)
   return (
     <Space orientation="vertical" size={0}>
       {properties.options.map((option) => {
@@ -384,7 +386,7 @@ function AssignmentsStatusAndActionsCard(
 ) {
   return (
     <Card size="small" title="Status and actions">
-      <Flex vertical gap={12}>
+      <Flex vertical gap={APP_GAP_COMPACT}>
         {properties.shouldRenderBlockingState ? (
           <Alert showIcon title={BLOCKING_ERROR_MESSAGE} type="error" />
         ) : null}
@@ -406,7 +408,7 @@ function AssignmentsStatusAndActionsCard(
             </Space>
           </div>
         ) : (
-          <Flex gap={8} justify="space-between" wrap>
+          <Flex gap={APP_GAP_SM} justify="space-between" wrap>
             <Space wrap>
               <Button onClick={properties.onRefreshAssignmentsData}>
                 Refresh assignments data
@@ -516,13 +518,13 @@ function AssignmentsDeleteModal(
       title="Delete assignment definition"
       transitionName=""
     >
-      <Space orientation="vertical" size="small">
+      <Space orientation="vertical" size={APP_SPACE_SIZE_TIGHT}>
         {properties.error && (
           <Alert
             description={properties.error}
             showIcon
             type="error"
-            style={{ marginBottom: 16 }}
+            style={{ marginBottom: APP_GAP_MD }}
           />
         )}
         <Text>You are deleting this assignment definition.</Text>
@@ -790,7 +792,7 @@ export function AssignmentsPage() {
         aria-label={ASSIGNMENTS_PANEL_REGION_LABEL}
         aria-busy={isAssignmentsSurfaceBusy ? 'true' : undefined}
       >
-        <Flex vertical gap={16}>
+        <Flex vertical gap={APP_GAP_MD}>
           <AssignmentsStatusAndActionsCard
             deleteOutcome={deleteOutcome}
             hasTrustworthyData={hasTrustworthyAssignmentsDataset && hasTrustworthyReferenceData}

@@ -4,7 +4,6 @@ import { pageContent } from '../src/pages/pageContent';
 import { googleScriptRunApiHandlerFactorySource } from '../src/test/googleScriptRunHarness';
 import { installRuntimeMock } from './shared/endToEndRuntimeMocks';
 import {
-  APP_BREADCRUMB_BASE_LABEL,
   PRIMARY_NAVIGATION_LABEL,
   CLASSES_LABEL,
   EXPECTED_MENU_ITEM_COUNT,
@@ -230,7 +229,7 @@ test.describe('Classes page navigation', () => {
 
     await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
 
-    await expectBreadcrumbLabels(page, [APP_BREADCRUMB_BASE_LABEL, CLASSES_LABEL]);
+    await expectBreadcrumbLabels(page, [CLASSES_LABEL]);
   });
 
   test('Classes page menu item becomes selected when clicked', async ({ page }) => {
@@ -317,7 +316,7 @@ test.describe('Classes page shell-wide integration', () => {
       await page.getByRole('menuitem', { name }).click();
       await expect(page.getByRole('heading', { level: 2, name: heading })).toBeVisible();
       await expect(page.getByText(summary)).toBeVisible();
-      await expectBreadcrumbLabels(page, [APP_BREADCRUMB_BASE_LABEL, name]);
+      await expectBreadcrumbLabels(page, [name]);
     }
   });
 

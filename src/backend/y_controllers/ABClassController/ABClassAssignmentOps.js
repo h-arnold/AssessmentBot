@@ -1,4 +1,4 @@
-/* global ABLogger, Assignment, AssignmentNotFoundError, TypeError, AssignmentDefinitionController */
+/* global ABLogger, Assignment, AssignmentNotFoundError, TypeError, AssignmentDefinitionController, Validate */
 
 /**
  * ABClassAssignmentOps
@@ -43,41 +43,42 @@ class ABClassAssignmentOps {
   persistAssignmentRun(abClass, assignment) {
     const logger = ABLogger.getInstance();
 
-    if (!abClass || !assignment) {
-      throw new TypeError('persistAssignmentRun requires abClass and assignment');
-    }
-
-    if (!assignment.courseId || !assignment.assignmentId) {
-      throw new TypeError('Assignment must have courseId and assignmentId');
-    }
-
-    if (typeof abClass.classId !== 'string' || abClass.classId.trim().length === 0) {
-      throw new TypeError(
-        'persistAssignmentRun: expected abClass.classId to be a non-empty string'
-      );
-    }
-
-    if (typeof assignment.courseId !== 'string' || assignment.courseId.trim().length === 0) {
-      throw new TypeError(
-        'persistAssignmentRun: expected assignment.courseId to be a non-empty string'
-      );
-    }
-
-    if (
-      typeof assignment.assignmentId !== 'string' ||
-      assignment.assignmentId.trim().length === 0
-    ) {
-      throw new TypeError(
-        'persistAssignmentRun: expected assignment.assignmentId to be a non-empty string'
-      );
-    }
-
     try {
-      if (assignment.assignmentDefinition?.tasks === null) {
-        throw new Error(
-          'Cannot persist full assignment with partial assignmentDefinition (tasks: null)'
+      Validate.requireParams({ abClass, assignment }, 'persistAssignmentRun');
+
+      if (!assignment.courseId || !assignment.assignmentId) {
+        throw new TypeError('Assignment must have courseId and assignmentId');
+      }
+
+      if (typeof abClass.classId !== 'string' || abClass.classId.trim().length === 0) {
+        throw new TypeError(
+          'persistAssignmentRun: expected abClass.classId to be a non-empty string'
         );
       }
+
+      if (typeof assignment.courseId !== 'string' || assignment.courseId.trim().length === 0) {
+        throw new TypeError(
+          'persistAssignmentRun: expected assignment.courseId to be a non-empty string'
+        );
+      }
+
+      if (
+        typeof assignment.assignmentId !== 'string' ||
+        assignment.assignmentId.trim().length === 0
+      ) {
+        throw new TypeError(
+          'persistAssignmentRun: expected assignment.assignmentId to be a non-empty string'
+        );
+      }
+
+      // Fail-fast: reject partial assignmentDefinition (tasks is an array).
+      // Full persistence requires a fully hydrated definition with keyed task objects.
+      if (Array.isArray(assignment.assignmentDefinition?.tasks)) {
+        throw new TypeError(
+          'Cannot persist full assignment with partial assignmentDefinition (tasks is an array)'
+        );
+      }
+
       // 1. Serialize full assignment and write to dedicated collection
       const collectionName = this._getFullAssignmentCollectionName(
         assignment.courseId,
@@ -135,8 +136,8 @@ class ABClassAssignmentOps {
       });
     } catch (error) {
       logger.error('persistAssignmentRun failed', {
-        courseId: assignment.courseId,
-        assignmentId: assignment.assignmentId,
+        courseId: assignment?.courseId,
+        assignmentId: assignment?.assignmentId,
         err: error,
       });
       throw error;
@@ -156,9 +157,7 @@ class ABClassAssignmentOps {
   rehydrateAssignment(abClass, assignmentId) {
     const logger = ABLogger.getInstance();
 
-    if (!abClass || !assignmentId) {
-      throw new TypeError('rehydrateAssignment requires abClass and assignmentId');
-    }
+    Validate.requireParams({ abClass, assignmentId }, 'rehydrateAssignment');
 
     if (typeof abClass.classId !== 'string' || abClass.classId.trim().length === 0) {
       throw new TypeError('rehydrateAssignment: expected abClass.classId to be a non-empty string');
@@ -244,7 +243,7 @@ class ABClassAssignmentOps {
 
   /**
    * Ensures the assignment has a full definition.
-   * Detects partial definitions (tasks === null) and fetches or persists the full definition as needed.
+   * Detects partial definitions (tasks is an array) and fetches the full definition as needed.
    *
    * @param {Assignment} assignment - The assignment to check and potentially complete.
    */
@@ -252,8 +251,8 @@ class ABClassAssignmentOps {
     const definitionKey = assignment.assignmentDefinition?.definitionKey;
     if (!definitionKey) return;
 
-    // Detect partial definition by checking if tasks is null
-    const isPartial = assignment.assignmentDefinition?.tasks === null;
+    // Detect partial definition by checking if tasks is an array
+    const isPartial = Array.isArray(assignment.assignmentDefinition?.tasks);
 
     if (isPartial) {
       const definitionController = new AssignmentDefinitionController();
@@ -261,12 +260,12 @@ class ABClassAssignmentOps {
         form: 'full',
       });
 
-      if (storedDefinition && storedDefinition.tasks !== null) {
+      if (storedDefinition && !Array.isArray(storedDefinition.tasks)) {
         // Use the full definition from the registry
         assignment.assignmentDefinition = storedDefinition;
       } else {
         throw new Error(
-          `Failed to rehydrate definition '${definitionKey}': the authoritative record is partial (tasks: null).`
+          `Failed to rehydrate definition '${definitionKey}': the authoritative record is a partial (tasks is an array).`
         );
       }
     }

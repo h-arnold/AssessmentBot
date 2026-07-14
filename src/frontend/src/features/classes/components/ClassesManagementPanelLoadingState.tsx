@@ -1,4 +1,5 @@
 import { Flex, Skeleton } from 'antd';
+import { APP_GAP_COMPACT, APP_GAP_SM } from '../../../theme/spacing';
 
 /**
  * Renders the initial blocking-load treatment for the classes panel.
@@ -8,9 +9,9 @@ import { Flex, Skeleton } from 'antd';
 export function ClassesManagementPanelLoadingState() {
   return (
     <output aria-label="Loading classes">
-      <Flex vertical gap={12}>
+      <Flex vertical gap={APP_GAP_COMPACT}>
         <Skeleton active paragraph={{ rows: 2 }} title={{ width: '35%' }} />
-        <Flex gap={8} wrap>
+        <Flex gap={APP_GAP_SM} wrap>
           <Skeleton.Button active />
           <Skeleton.Button active />
           <Skeleton.Button active />

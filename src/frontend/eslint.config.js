@@ -88,6 +88,16 @@ export default defineConfig([
     },
   },
   {
+    // This file is the canonical TS-side mapping of --app-spacing-* CSS tokens
+    // (see src/frontend/src/theme/spacing.ts). Every export is a named constant
+    // whose literal value IS the documented purpose of the module; extracting
+    // them into further indirections would defeat the point.
+    files: ['src/theme/spacing.ts'],
+    rules: {
+      '@typescript-eslint/no-magic-numbers': 'off',
+    },
+  },
+  {
     files: ['src/logging/frontendLogger.ts'],
     rules: {
       'no-console': 'off',
@@ -203,6 +213,50 @@ export default defineConfig([
     files: ['src/services/dataAnalysis/analysers/averagingAnalyser.accumulation.spec.ts'],
     rules: {
       '@typescript-eslint/no-magic-numbers': 'off',
+    },
+  },
+  {
+    // These DataAnalysisService integration specs construct fixture inputs
+    // (assignment/task weightings, submission scores) and assert the numeric
+    // results the analyser produces from those exact inputs. The flagged
+    // literals are therefore either fixture data or expected outputs whose
+    // meaning is self-evident from the inputs declared immediately above each
+    // expectation; hoisting them into named constants would scatter the
+    // input/expected-output pairing across the file and reduce readability.
+    files: [
+      'src/services/dataAnalysis/dataAnalysis.integration.spec.ts',
+      'src/services/dataAnalysis/dataAnalysis.integration.scenarios.spec.ts',
+    ],
+    rules: {
+      '@typescript-eslint/no-magic-numbers': 'off',
+    },
+  },
+  {
+    // TaskHeatmapTable accesses heatmap cells by numeric index (`cells[index]`)
+    // where the index is a bounded loop variable or a pre-computed task index
+    // that has been validated upstream by the heatmap adapter (Zod schema). The
+    // `security/detect-object-injection` rule flags all bracket access with a
+    // variable index, but in this case the index is thoroughly validated and
+    // satisfies the data contract before it reaches this component. Disabling
+    // at file level avoids repetitive inline suppressions while keeping the
+    // rule active for genuinely untrusted input elsewhere.
+    files: ['src/features/classPage/TaskHeatmapTable.tsx'],
+    rules: {
+      'security/detect-object-injection': 'off',
+    },
+  },
+  {
+    // `studentAveragesTableColumns` colours each metric cell via
+    // `METRIC_TONE_CELL_STYLE[color]`, where `color` is the bounded
+    // `MetricToneColor` union (resolved by `resolveMetricTone` against a fixed
+    // scoring range). The lookup is therefore type-safe and cannot address an
+    // arbitrary property; the `security/detect-object-injection` heuristic
+    // cannot see the union narrowing and would otherwise flag it. Mirror the
+    // TaskHeatmapTable exception so the band-colour pattern stays consistent
+    // across both class-page tables.
+    files: ['src/features/classPage/studentAveragesTableColumns.tsx'],
+    rules: {
+      'security/detect-object-injection': 'off',
     },
   },
 ]);

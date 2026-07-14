@@ -36,7 +36,6 @@ export function algebraHomeworkEntry(): ResponseItem {
 // Navigation and UI Constants
 // ============================================================================
 
-export const APP_BREADCRUMB_BASE_LABEL = 'AssessmentBot Frontend' as const;
 export const BREADCRUMB_NAVIGATION_NAME = 'Breadcrumb' as const;
 export const PRIMARY_NAVIGATION_LABEL = 'Primary navigation' as const;
 export const CLASSES_LABEL = 'Classes' as const;
