@@ -13,3 +13,138 @@ export type StartAssessmentRunRequest = z.infer<typeof StartAssessmentRunRequest
 export const StartAssessmentRunResponseSchema = z.void().nullable();
 
 export type StartAssessmentRunResponse = z.infer<typeof StartAssessmentRunResponseSchema>;
+
+/**
+ * Schema for a base task artifact, matching `BaseTaskArtifact.toJSON()` in
+ * `src/backend/Models/Artifacts/0_BaseTaskArtifact.js`.
+ */
+export const BaseTaskArtifactSchema = z.object({
+  taskId: z.string(),
+  role: z.string(),
+  pageId: z.string(),
+  documentId: z.string(),
+  uid: z.string(),
+  type: z.string(),
+  content: z.unknown(),
+  contentHash: z.unknown(),
+  metadata: z.unknown(),
+});
+
+/**
+ * Schema for a task definition, matching `TaskDefinition.toJSON()` in
+ * `src/backend/Models/TaskDefinition.js`.
+ */
+export const TaskDefinitionSchema = z.object({
+  id: z.string(),
+  taskTitle: z.string(),
+  pageId: z.string(),
+  taskNotes: z.unknown(),
+  taskMetadata: z.unknown(),
+  taskWeighting: z.unknown(),
+  index: z.unknown(),
+  artifacts: z.object({
+    reference: z.array(BaseTaskArtifactSchema),
+    template: z.array(BaseTaskArtifactSchema),
+  }),
+});
+
+/**
+ * Schema for a student submission item, matching `StudentSubmissionItem.toJSON()` in
+ * `src/backend/Models/StudentSubmission.js`.
+ */
+export const StudentSubmissionItemSchema = z.object({
+  id: z.unknown(),
+  taskId: z.unknown(),
+  artifact: BaseTaskArtifactSchema,
+  assessments: z.unknown(),
+  feedback: z.unknown(),
+});
+
+/**
+ * Schema for a student submission, matching `StudentSubmission.toJSON()` in
+ * `src/backend/Models/StudentSubmission.js`.
+ */
+export const StudentSubmissionSchema = z.object({
+  studentId: z.unknown(),
+  studentName: z.unknown(),
+  assignmentId: z.unknown(),
+  documentId: z.unknown(),
+  items: z.record(z.string(), StudentSubmissionItemSchema),
+  createdAt: z.unknown(),
+  updatedAt: z.unknown(),
+});
+
+/**
+ * Schema for an assignment definition, matching `AssignmentDefinition.toJSON()` in
+ * `src/backend/Models/AssignmentDefinition.js`.
+ */
+export const AssignmentDefinitionSchema = z.object({
+  primaryTitle: z.unknown(),
+  primaryTopic: z.unknown(),
+  primaryTopicKey: z.unknown(),
+  yearGroupKey: z.unknown(),
+  yearGroupLabel: z.unknown(),
+  alternateTitles: z.unknown(),
+  alternateTopics: z.unknown(),
+  documentType: z.string().nullable(),
+  referenceDocumentId: z.string().nullable(),
+  templateDocumentId: z.string().nullable(),
+  referenceLastModified: z.unknown(),
+  templateLastModified: z.unknown(),
+  assignmentWeighting: z.unknown(),
+  definitionKey: z.unknown(),
+  tasks: z.record(z.string(), TaskDefinitionSchema),
+  createdAt: z.unknown(),
+  updatedAt: z.unknown(),
+});
+
+/**
+ * Schema for the full assignment payload returned by `getAssignment`.
+ *
+ * Mirrors the top-level fields of `Assignment.toJSON()` in
+ * `src/backend/AssignmentProcessor/Assignment/00_AssignmentSerialisation.js`,
+ * which emits `courseId`, `assignmentId`, `assignmentName`, `dueDate`,
+ * `updatedAt`, `createdAt`, plus `_extractFullDefinitionFields` (documentType,
+ * referenceDocumentId, templateDocumentId, tasks), submissions, and
+ * assignmentDefinition.
+ *
+ * This schema is `.strict()` so extra fields on the wire cause a Zod error.
+ */
+export const AssignmentFullSchema = z
+  .object({
+    courseId: z.string(),
+    assignmentId: z.string(),
+    assignmentName: z.string(),
+    dueDate: z.string().nullable(),
+    updatedAt: z.string().nullable(),
+    createdAt: z.string(),
+    documentType: z.string().nullable(),
+    referenceDocumentId: z.string().nullable(),
+    templateDocumentId: z.string().nullable(),
+    tasks: z.record(z.string(), TaskDefinitionSchema).nullable(),
+    submissions: z.array(StudentSubmissionSchema),
+    assignmentDefinition: AssignmentDefinitionSchema,
+  })
+  .strict();
+
+export type AssignmentFull = z.infer<typeof AssignmentFullSchema>;
+
+/**
+ * Response schema for `getAssignment`. Accepts the full assignment object or `null`
+ * (when the backend cannot find the assignment document).
+ */
+export const AssignmentFullResponseSchema = AssignmentFullSchema.nullable();
+
+export type AssignmentFullResponse = z.infer<typeof AssignmentFullResponseSchema>;
+
+/**
+ * Request schema for `getAssignment`. Requires `courseId` and `assignmentId` as strings.
+ */
+export const GetAssignmentRequestSchema = z
+  .object({
+    courseId: z.string(),
+    assignmentId: z.string(),
+  })
+  .strict();
+
+export type GetAssignmentRequest = z.infer<typeof GetAssignmentRequestSchema>;
