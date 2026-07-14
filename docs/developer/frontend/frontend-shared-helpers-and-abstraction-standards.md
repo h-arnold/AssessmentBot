@@ -754,6 +754,50 @@ These entries record the feature-local helpers for the Class page. Per `frontend
   - `createHeatmapScenario` exposes `deferredClass` (via `deferredSuccess`/`releaseNextDeferredSuccess`) for the loading-skeleton test, while always keeping two `getABClass` queue entries for StrictMode safety.
   - A scoped-parent overload was added to `applyColumnFilterOption` in `src/frontend/e2e-tests/shared/endToEndRuntimeMocks.ts` so the band-filter test can target the first task group's `Completeness` columnheader without tripping Playwright strict mode (string callers are unchanged).
 
+#### 9.18.15 ClassPage assignment prefetch support helpers (planned — ACTION_PLAN.md Sections 1/2/3)
+
+These entries record the helpers introduced to support the ClassPage assignment prefetch feature (see `ACTION_PLAN.md`). Status is `Not implemented` until the relevant section lands; the documentation pass (ACTION_PLAN.md final section) marks each `Implemented`.
+
+19. Helper: `getAssignment` service function
+
+- Decision: `new`
+- Owning module/path: `src/frontend/src/services/assignmentAssessment/assignmentAssessmentService.ts`
+- Call-site rationale: wraps the backend `getAssignment_` allowlisted method; the prefetch effect in `useClassPageData` and future per-assignment query hooks call this function. Routes through `callApi('getAssignment', ...)` and validates the response through `AssignmentFullResponseSchema`.
+- Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9
+- Status: `Not implemented`
+
+20. Helper: `AssignmentFullSchema` / `AssignmentFullResponseSchema` Zod schemas
+
+- Decision: `new`
+- Owning module/path: `src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts`
+- Call-site rationale: validates the full `Assignment.toJSON()` response at the transport boundary; required by the `getAssignment` service function. `AssignmentFullResponseSchema` is the nullable wrapper (`null` = assignment not found).
+- Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9
+- Status: `Not implemented`
+
+21. Helper: `queryKeys.assignment(courseId, assignmentId)` query key factory
+
+- Decision: `new`
+- Owning module/path: `src/frontend/src/query/queryKeys.ts`
+- Call-site rationale: scoped query key factory for per-assignment full reads; consumed by `getAssignmentQueryOptions` and future invalidation calls.
+- Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9
+- Status: `Not implemented`
+
+22. Helper: `getAssignmentQueryOptions(courseId, assignmentId)` shared query options
+
+- Decision: `new`
+- Owning module/path: `src/frontend/src/query/sharedQueries.ts`
+- Call-site rationale: shared query options for the `prefetchQuery` call in `useClassPageData` and future `useQuery` consumers. Declares `staleTime: 5 * 60 * 1000` and `retry: false`.
+- Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9
+- Status: `Not implemented`
+
+23. Helper: `compareAssignmentUpdatedAtDesc(a, b)` shared comparator
+
+- Decision: `new` (shared between the prefetch and the adapter's `recentAssignments` pipeline)
+- Owning module/path: `src/frontend/src/features/classPage/classPageModel.ts`
+- Call-site rationale: ensures the prefetched top-3 and the adapter's displayed `recentAssignments` use identical ordering (updatedAt desc, assignmentId asc tie-break); prevents divergence when `updatedAt` values are equal.
+- Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9
+- Status: `Not implemented`
+
 ### 9.19 Frontend pure formatting helpers
 
 These entries record the planned pure formatting helpers extracted from feature code into shared utility modules.
