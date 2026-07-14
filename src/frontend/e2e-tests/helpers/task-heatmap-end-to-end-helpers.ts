@@ -33,7 +33,6 @@ type HeatmapStudent = Readonly<{
   name: string;
 }>;
 
-/**
 /** Class id for the heatmap journey fixture. */
 export const HEATMAP_CLASS_ID = '100000000001';
 const HEATMAP_ASSIGNMENT_ID = '100000000037';

@@ -2,8 +2,10 @@
  * A single card in the Recent Assignments section.
  *
  * Renders the assignment name, a "Last Assessed" date line, and four
- * `MetricPill` instances (Completeness, Accuracy, SPaG, Average). The
- * Average cell uses `emphasised={true}` for visual prominence.
+ * `MetricPill` instances (Completeness, Accuracy, SPaG, Average). All cells
+ * use the default (non-emphasised) MetricPill style; the `buildMetricColumn`
+ * refactor in the Student Averages table eliminated emphasis for consistency,
+ * so the card follows the same convention.
  *
  * @remarks
  * **Card width rationale.** The card width (`RECENT_ASSIGNMENT_CARD_WIDTH_PX = 320`)
@@ -12,7 +14,7 @@
  * §7, promotion to a shared width token is deferred until a second consumer
  * emerges. The 320px width is wider than the existing ClassesPage class cards
  * (268px) because the card must fit four MetricPill cells side-by-side without
- * wrapping the Average cell's emphasised content.
+ * wrapping.
  *
  * **Conditional interactivity.** When `onOpenHeatmap` is supplied the card
  * becomes an activatable button (role, keyboard, mouse); when absent it
@@ -50,16 +52,16 @@ const RECENT_ASSIGNMENT_CARD_WIDTH_PX = 320;
 /**
  * Descriptor array for the four metric pills rendered in the card.
  *
- * Each entry defines the metric key, alignment, and emphasis flag. The Average
- * cell uses `align="center"` and `emphasised={true}` for visual prominence;
- * the other three cells use `align="start"` and no emphasis. Labels and icons
- * are derived from the shared `METRIC_DISPLAY_META` map.
+ * Each entry defines the metric key and alignment. Labels and icons
+ * are derived from the shared `METRIC_DISPLAY_META` map. All cells use
+ * the default (non-emphasised) MetricPill style for consistency with the
+ * `buildMetricColumn` refactor in the Student Averages table.
  */
 const METRIC_ENTRIES = [
-  { key: 'completeness' as const, align: 'start' as const, emphasised: false },
-  { key: 'accuracy' as const, align: 'start' as const, emphasised: false },
-  { key: 'spag' as const, align: 'start' as const, emphasised: false },
-  { key: 'average' as const, align: 'center' as const, emphasised: true },
+  { key: 'completeness' as const, align: 'start' as const },
+  { key: 'accuracy' as const, align: 'start' as const },
+  { key: 'spag' as const, align: 'start' as const },
+  { key: 'average' as const, align: 'center' as const },
 ] as const;
 
 type RecentAssignmentCardProperties = Readonly<{
@@ -74,7 +76,8 @@ type RecentAssignmentCardProperties = Readonly<{
  *
  * Displays the assignment name as the card title, a "Last Assessed" date
  * line, and four `MetricPill` instances (Completeness, Accuracy, SPaG,
- * Average). The Average cell uses `emphasised` for visual prominence.
+ * Average). All cells use the default (non-emphasised) MetricPill style
+ * for consistency with the `buildMetricColumn` refactor.
  *
  * When `onOpenHeatmap` is provided the card root becomes interactive (button
  * role, pointer cursor, accessible keyboard activation); when absent the card
@@ -114,12 +117,12 @@ export function RecentAssignmentCard({
         Last Assessed: {card.lastAssessedAtLabel}
       </Typography.Text>
       <Flex justify="space-around" style={{ marginTop: 8 }}>
-        {METRIC_ENTRIES.map(({ key, align, emphasised }) => {
+        {METRIC_ENTRIES.map(({ key, align }) => {
           const meta = METRIC_DISPLAY_META.get(key as MetricColumnKey)!;
           return (
             <Flex key={key} vertical align={align}>
               <MetricIconLabel icon={meta.icon} label={meta.label} />
-              <MetricPill metric={getStudentMetric(card.metrics, key)} emphasised={emphasised} />
+              <MetricPill metric={getStudentMetric(card.metrics, key)} />
             </Flex>
           );
         })}

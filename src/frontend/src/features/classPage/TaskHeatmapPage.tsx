@@ -11,7 +11,7 @@
  * @see SPEC.md — §"Page composition", §"Navigation / breadcrumb", §"Error handling"
  */
 
-import { useEffect, useMemo, useState, type JSX } from 'react';
+import { useEffect, useMemo, useRef, useState, type JSX } from 'react';
 import { Alert, Button, Card, Flex } from 'antd';
 import { RefreshCw } from 'lucide-react';
 import { APP_GAP_MD } from '../../theme/spacing';
@@ -135,8 +135,11 @@ export function TaskHeatmapPage({
   const isGenericError: boolean = state.error !== null && !isTitleError;
 
   // Generic errors (unknown assignmentId): log and auto-navigate back.
+  // Guarded against double-execution in React 19 StrictMode via useRef.
+  const hasHandledGenericErrorReference = useRef(false);
   useEffect(() => {
-    if (isGenericError) {
+    if (isGenericError && !hasHandledGenericErrorReference.current) {
+      hasHandledGenericErrorReference.current = true;
       logFrontendError('TaskHeatmapPage', state.error);
       backCallback();
     }

@@ -6,7 +6,8 @@
  * @remarks
  * The card is fully static: no hover, no click, no `hoverable` prop in v1.
  * The card width is a feature-local constant (`RECENT_ASSIGNMENT_CARD_WIDTH_PX = 320`).
- * The `Average` metric cell uses `MetricPill` with `emphasised={true}`.
+ * All cells use the default (non-emphasised) MetricPill style for consistency
+ * with `buildMetricColumn`.
  *
  * @see SPEC_CLASS_PAGE.md - "RecentAssignmentCard"
  * @see CLASS_PAGE_LAYOUT.md - "3a. RecentAssignmentCard"
@@ -29,9 +30,6 @@ import { RecentAssignmentCard } from './RecentAssignmentCard';
 
 /** A RecentAssignmentCard renders exactly four MetricPill instances. */
 const EXPECTED_METRIC_PILL_COUNT = 4;
-
-/** Bold font weight applied when `emphasised` is true on MetricPill. */
-const EMPHASISED_FONT_WEIGHT = 600;
 
 // ---------------------------------------------------------------------------
 // Fixture helpers
@@ -108,19 +106,6 @@ describe('RecentAssignmentCard', () => {
     expect(
       container.ownerDocument.querySelector('[aria-label="Average"]')
     ).not.toBeNull();
-  });
-
-  it('uses emphasised={true} on the Average pill', () => {
-    const card = makeCard();
-    const { container } = render(<RecentAssignmentCard card={card} />);
-
-    // The fourth MetricPill (Average) is rendered with `emphasised={true}`,
-    // which applies `fontWeight: 600` as an inline style.
-    const tags = container.querySelectorAll('.ant-tag');
-    expect(tags).toHaveLength(EXPECTED_METRIC_PILL_COUNT);
-
-    const averageTag = tags[3];
-    expect(averageTag).toHaveStyle({ fontWeight: EMPHASISED_FONT_WEIGHT });
   });
 
   it('renders Card with style width 320px', () => {
