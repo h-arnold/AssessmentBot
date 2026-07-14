@@ -5,6 +5,7 @@ import {
   buildInput,
   createAssignmentPartial,
   createClassFull,
+  createDefinitionPartial,
   createSubmission,
   createSubmissionItem,
   createTaskPartial,
@@ -493,7 +494,12 @@ describe('AveragingAnalyser', () => {
             ],
           }),
         ],
-        assignmentDefinitionPartials: [],
+        assignmentDefinitionPartials: [
+          createDefinitionPartial({
+            definitionKey: 'dk_algebra',
+            tasks: [createTaskPartial('t_001')],
+          }),
+        ],
       };
 
       const analyser = new AveragingAnalyser();

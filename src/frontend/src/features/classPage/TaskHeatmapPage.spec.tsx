@@ -15,6 +15,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createElement } from 'react';
+import { App } from 'antd';
 import type { AveragingResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
 import { TaskHeatmapPage } from './TaskHeatmapPage';
@@ -121,8 +122,8 @@ describe('TaskHeatmapPage — TaskTitlesUnavailableError and generic Error handl
     const onBack = vi.fn();
     const refetch = vi.fn();
 
-    // Provide a matching partial with null taskTitle to trigger
-    // TaskTitlesUnavailableError in the adapter.
+    // Provide a partial with a non-matching definitionKey so the adapter
+    // throws TaskTitlesUnavailableError (the partial is not found).
     const partials = [
       {
         primaryTitle: 'Assignment One',
@@ -136,22 +137,24 @@ describe('TaskHeatmapPage — TaskTitlesUnavailableError and generic Error handl
         referenceDocumentId: null,
         templateDocumentId: null,
         assignmentWeighting: 1,
-        definitionKey: 'def-1',
-        tasks: [{ taskId: 't-1', taskWeighting: 1, taskTitle: null }],
+        definitionKey: 'def-999',
+        tasks: [{ taskId: 't-1', taskWeighting: 1, taskTitle: 'Some Title' }],
         createdAt: '2026-01-01T00:00:00.000Z',
         updatedAt: null,
       },
     ];
 
     render(
-      createElement(TaskHeatmapPage, {
-        analyserResult: analyserResultFixture,
-        classFull: classFullFixture,
-        assignmentId: 'a-1',
-        assignmentDefinitionPartials: partials,
-        onBack,
-        refetch,
-      })
+      createElement(App, null,
+        createElement(TaskHeatmapPage, {
+          analyserResult: analyserResultFixture,
+          classFull: classFullFixture,
+          assignmentId: 'a-1',
+          assignmentDefinitionPartials: partials,
+          onBack,
+          refetch,
+        })
+      )
     );
 
     // The child title Card (assignment name) stays visible.
@@ -189,14 +192,16 @@ describe('TaskHeatmapPage — TaskTitlesUnavailableError and generic Error handl
 
     // Pass an unknown assignmentId that the adapter will reject with a generic Error
     render(
-      createElement(TaskHeatmapPage, {
-        analyserResult: analyserResultFixture,
-        classFull: classFullFixture,
-        assignmentId: 'nonexistent-id',
-        assignmentDefinitionPartials: [],
-        onBack,
-        refetch,
-      })
+      createElement(App, null,
+        createElement(TaskHeatmapPage, {
+          analyserResult: analyserResultFixture,
+          classFull: classFullFixture,
+          assignmentId: 'nonexistent-id',
+          assignmentDefinitionPartials: [],
+          onBack,
+          refetch,
+        })
+      )
     );
 
     // The error should be logged via logFrontendError('TaskHeatmapPage', ...)

@@ -11,8 +11,8 @@
  * @see SPEC.md — §"Page composition", §"Navigation / breadcrumb", §"Error handling"
  */
 
-import { useEffect, useMemo, useRef, useState, type JSX } from 'react';
-import { Alert, Button, Card, Flex } from 'antd';
+import { useEffect, useMemo, useRef, type JSX } from 'react';
+import { Alert, Button, Card, Flex, App as AntdApp } from 'antd';
 import { RefreshCw } from 'lucide-react';
 import { APP_GAP_MD } from '../../theme/spacing';
 
@@ -66,7 +66,10 @@ function getHeaderLabels(classFull: ClassFull, assignmentId: string): HeaderLabe
 }
 
 /**
- * Lazily compute the heatmap result, catching errors into state.
+ * Compute the heatmap result, catching errors into state.
+ *
+ * Called by `useMemo` so the result is recomputed whenever the inputs change
+ * (e.g. after a `refetch`).
  *
  * @param {AveragingResult} analyserResult - The analyser result.
  * @param {ClassFull} classFull - The full class data.
@@ -93,15 +96,16 @@ function computeHeatmapState(
 /**
  * Render the Task Heatmap page for a single assignment.
  *
- * Computes `HeatmapResult` exactly once via a lazy `useState` initializer.
- * The error catch distinguishes two error types:
+ * Computes `HeatmapResult` via `useMemo` keyed on the four data props so the
+ * result stays fresh after `refetch` brings new data.  The error catch
+ * distinguishes two error types:
  *
  * - {@link TaskTitlesUnavailableError}: renders an in-view `Alert` in place of
  *   the table region while keeping the header `Card` visible.  Does NOT call
  *   `onBack`.
  * - All other errors (generic `Error`, unknown `assignmentId`): logs via
- *   `logFrontendError('TaskHeatmapPage', error)` and calls `onBack` exactly
- *   once — no in-view error UI.
+ *   `logFrontendError('TaskHeatmapPage', error)`, surfaces a user-safe
+ *   toast message, then calls `onBack` exactly once — no in-view error UI.
  *
  * @param {TaskHeatmapPageProperties} properties - Component properties.
  * @param {AveragingResult} properties.analyserResult - The analyser result.
@@ -122,8 +126,9 @@ export function TaskHeatmapPage({
   onBack: backCallback,
   refetch,
 }: TaskHeatmapPageProperties): JSX.Element | null {
-  const [state] = useState<HeatmapPageState>(() =>
-    computeHeatmapState(analyserResult, classFull, assignmentId, assignmentDefinitionPartials)
+  const state = useMemo<HeatmapPageState>(() =>
+    computeHeatmapState(analyserResult, classFull, assignmentId, assignmentDefinitionPartials),
+    [analyserResult, classFull, assignmentId, assignmentDefinitionPartials]
   );
 
   const { assignmentName } = useMemo<HeaderLabels>(
@@ -134,16 +139,21 @@ export function TaskHeatmapPage({
   const isTitleError: boolean = state.error instanceof TaskTitlesUnavailableError;
   const isGenericError: boolean = state.error !== null && !isTitleError;
 
-  // Generic errors (unknown assignmentId): log and auto-navigate back.
-  // Guarded against double-execution in React 19 StrictMode via useRef.
+  // Context-aware Ant Design message/notification API for user feedback.
+  const { message } = AntdApp.useApp();
+
+  // Generic errors (unknown assignmentId): log, surface user-safe message,
+  // and auto-navigate back. Guarded against double-execution in React 19
+  // StrictMode via useRef.
   const hasHandledGenericErrorReference = useRef(false);
   useEffect(() => {
     if (isGenericError && !hasHandledGenericErrorReference.current) {
       hasHandledGenericErrorReference.current = true;
       logFrontendError('TaskHeatmapPage', state.error);
+      message.error('Something went wrong while loading the heatmap. Returning to class overview.');
       backCallback();
     }
-  }, [isGenericError, state.error, backCallback]);
+  }, [isGenericError, state.error, backCallback, message]);
 
   if (isGenericError) {
     return null;

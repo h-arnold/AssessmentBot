@@ -1,3 +1,4 @@
+import { logFrontendEvent } from '../../../logging/frontendLogger';
 import type {
   AveragingAnalyserInput,
   MetricResult,
@@ -209,6 +210,26 @@ export function processAssignment(
 
       const weight = assignmentWeighting * taskWeighting;
       if (weight === 0) {
+        // Zero-weight task: mark accumulators so accumToMetric returns
+        // notAttempted ('N') rather than error ('E') — the task had
+        // submissions but was excluded by weight.
+        const taskKeyForWeight = `${definitionKey}::${taskId}`;
+        const excludedTaskAccum = getOrCreateTaskAccum(taskAccums, definitionKey, taskId);
+        const excludedPerStudentTaskAccum = getOrCreatePerStudentTaskAccum(
+          perStudentTaskAccums,
+          studentId,
+          taskKeyForWeight
+        );
+        for (const accum of [excludedTaskAccum, excludedPerStudentTaskAccum]) {
+          accum.completeness.nCount++;
+          accum.completeness.totalDataPoints++;
+          accum.accuracy.nCount++;
+          accum.accuracy.totalDataPoints++;
+          accum.spag.nCount++;
+          accum.spag.totalDataPoints++;
+          accum.overall.nCount++;
+          accum.overall.totalDataPoints++;
+        }
         continue;
       }
 
@@ -291,6 +312,15 @@ export function accumulateDataPoints(
     const { definitionKey } = definition;
 
     const resolved = resolveAssignmentDefinitionData(definitionKey, partialsByDefinitionKey);
+
+    if (!resolved) {
+      logFrontendEvent('warn', {
+        context: 'accumulateDataPoints',
+        errorMessage: `No assignment definition partial found for definitionKey '${definitionKey}'`,
+        metadata: { definitionKey },
+      });
+      continue;
+    }
 
     preRegisterTasks([...resolved.tasks], definitionKey, taskAccums);
 
@@ -419,7 +449,17 @@ export function computeOverallComposite(
   }
 
   if (denominator === 0) {
-    throw new Error('computeOverallComposite: no computed criteria in composite');
+    // All computed criteria had zero weighting — return notAttempted
+    // instead of throwing so the caller (including classPageAdapter)
+    // receives a safe MetricResult rather than crashing.
+    return {
+      state: 'notAttempted',
+      value: 'N',
+      totalWeight: completeness.totalWeight + accuracy.totalWeight + spag.totalWeight,
+      applicableDataPoints: 0,
+      totalDataPoints:
+        completeness.totalDataPoints + accuracy.totalDataPoints + spag.totalDataPoints,
+    };
   }
 
   return {

@@ -12,6 +12,8 @@
  * @module metricRangeKey
  */
 
+import type { FilterValue } from 'antd/es/table/interface';
+
 /** Separator used to encode the filter state into a single filter key. */
 const RANGE_KEY_SEPARATOR = '|';
 
@@ -60,7 +62,27 @@ function parseFlag(value: string | undefined): boolean {
  * @returns {MetricRangeFilterState | null} The decoded state, or `null` when
  *   the key is not a valid encoded range.
  */
-export function decodeMetricFilter(key: unknown): MetricRangeFilterState | null {
+/**
+ * Decode an Ant Design filter value back to a numeric range `[min, max]`,
+ * or `[]` when the column is unfiltered.
+ *
+ * @param {FilterValue | null} filterValue - The raw filter value from onChange.
+ * @returns {number[]} A two-element range array, or empty when unfiltered.
+ */
+export function decodeFilterToRange(filterValue: FilterValue | null): number[] {
+  if (!filterValue || filterValue.length === 0) return [];
+  const decoded = decodeMetricFilter(filterValue[0]);
+  return decoded ? [decoded.min, decoded.max] : [];
+}
+
+/**
+ * Decode a filter key back into a {@link MetricRangeFilterState}.
+ *
+ * @param {unknown} key - The encoded key (expected string).
+ * @returns {MetricRangeFilterState | null} The decoded state, or `null` when
+ *   the key is not a valid encoded range.
+ */
+export function decodeMetricFilter(key?: unknown): MetricRangeFilterState | null {
   if (typeof key !== 'string' || !key.includes(RANGE_KEY_SEPARATOR)) {
     return null;
   }

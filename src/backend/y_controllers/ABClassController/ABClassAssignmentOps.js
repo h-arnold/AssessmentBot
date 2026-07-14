@@ -71,6 +71,14 @@ class ABClassAssignmentOps {
         );
       }
 
+      // Fail-fast: reject partial assignmentDefinition (tasks is an array).
+      // Full persistence requires a fully hydrated definition with keyed task objects.
+      if (Array.isArray(assignment.assignmentDefinition?.tasks)) {
+        throw new TypeError(
+          'Cannot persist full assignment with partial assignmentDefinition (tasks is an array)'
+        );
+      }
+
       // 1. Serialize full assignment and write to dedicated collection
       const collectionName = this._getFullAssignmentCollectionName(
         assignment.courseId,

@@ -77,16 +77,21 @@ export interface HeatmapResult {
 const DEFAULT_CLASS_NAME_LABEL = 'Class Overview';
 
 /**
- * A not-attempted `MetricResult` used as the default cell value when a student
- * has no per-student-task metric for a given task column.
+ * A frozen not-attempted `MetricResult` used as the default cell value when a
+ * student has no per-student-task metric for a given task column.
+ *
+ * @remarks
+ * This object is frozen to prevent accidental mutation from corrupting every
+ * missing cell simultaneously.  If mutation is ever required, return a fresh
+ * object per cell instead of unfreezing this one.
  */
-const NOT_ATTEMPTED_METRIC: MetricResult = {
-  state: 'notAttempted',
-  value: 'N',
+const NOT_ATTEMPTED_METRIC: Readonly<MetricResult> = Object.freeze({
+  state: 'notAttempted' as const,
+  value: 'N' as const,
   totalWeight: 0,
   applicableDataPoints: 0,
   totalDataPoints: 1,
-};
+});
 
 /**
  * Build the ordered task-column descriptors from a warm-up assignment-definition
@@ -146,8 +151,7 @@ function groupMetricsByStudent(
  * @returns {HeatmapResult} A `HeatmapResult` with task columns, per-student rows,
  *   and metadata.
  * @throws {TaskTitlesUnavailableError} When the warm-up partial is missing for
- *   the assignment's `definitionKey`, or any non-empty task column has a `null`
- *   `taskTitle`.
+ *   the assignment's `definitionKey`.
  * @throws {Error} If `assignmentId` is not found in `classFull.assignments`.
  *
  * @remarks
@@ -155,9 +159,12 @@ function groupMetricsByStudent(
  * (`assignmentDefinitionPartials`).  Task columns are sourced from the warm-up
  * partial located via `getAssignmentDefinitionPartial`, NOT from the embedded
  * `assignment.assignmentDefinition.tasks` (which carries the weight-summary
- * shape).  If the partial is missing or any task has `null` `taskTitle`,
- * `TaskTitlesUnavailableError` is thrown.  This is distinct from a generic
- * `Error` (unknown `assignmentId`).
+ * shape).  If the partial is missing, `TaskTitlesUnavailableError` is thrown.
+ * This is distinct from a generic `Error` (unknown `assignmentId`).
+ *
+ * The per-task `null`-title branch was removed (E3–F3) because the partial
+ * schema enforces non-nullable `taskTitle` — any genuinely missing titles are
+ * caught by the `getAssignmentDefinitionPartial` check above.
  *
  * v1 uses single-assignment selection at the adapter boundary by deriving
  * `taskKey`s (`${definitionKey}::${taskId}`) from the warm-up partial.
@@ -187,20 +194,14 @@ export function adaptMetricsToHeatmap(
 
   const taskColumns = buildTaskColumns(partial);
 
-  // When the assignment has tasks but any title is null, throw.
-  if (taskColumns.some((c) => c.taskTitle === null)) {
-    throw new TaskTitlesUnavailableError(definitionKey);
-  }
-
   const columnTaskKeys = new Set(taskColumns.map((c) => c.taskKey));
   const metricsByStudent = groupMetricsByStudent(analyserResult, classFull.classId, columnTaskKeys);
 
   const rows: HeatmapRow[] = classFull.students.map((student) => {
     const studentMetrics = metricsByStudent.get(student.id) ?? [];
-    const metricByTaskKey = new Map(studentMetrics.map((m) => [m.taskKey, m]));
 
     const cells: HeatmapCell[] = taskColumns.map((column) => {
-      const metric = metricByTaskKey.get(column.taskKey);
+      const metric = studentMetrics.find((m) => m.taskKey === column.taskKey);
       if (metric) {
         return {
           completeness: metric.completeness,

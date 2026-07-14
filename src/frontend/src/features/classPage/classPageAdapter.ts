@@ -289,26 +289,31 @@ export function adaptClassPageToViewModel(input: {
   // Recent assignments
   // -----------------------------------------------------------------------
 
-  const recentAssignments: RecentAssignmentCardModel[] = [];
   const perTaskLookup = buildPerTaskLookup(analyserResult.perTask);
 
-  for (const assignment of classFull.assignments) {
-    // Null/unparseable updatedAt throws — extract to local for type narrowing
+  // Validate all assignments first (required for sorting — trust validation)
+  const validatedAssignments: Array<{
+    assignment: ClassFull['assignments'][number];
+    validatedUpdatedAt: string;
+  }> = classFull.assignments.map((assignment) => {
     const rawUpdatedAt: string | null = assignment.updatedAt;
     validateUpdatedAt(rawUpdatedAt, assignment.assignmentId);
+    return { assignment, validatedUpdatedAt: rawUpdatedAt };
+  });
 
-    recentAssignments.push(
+  // Take the most recent 3 *before* rolling up (avoids ~(A-3)·T wasted rollups)
+  const topAssignments = validatedAssignments
+    .toSorted((a, b) => b.validatedUpdatedAt.localeCompare(a.validatedUpdatedAt))
+    .slice(0, MAX_RECENT_ASSIGNMENTS);
+
+  const recentAssignments: RecentAssignmentCardModel[] = topAssignments.map(
+    ({ assignment, validatedUpdatedAt }) =>
       buildRecentAssignment(
         assignment,
         perTaskLookup.get(assignment.assignmentDefinition.definitionKey),
-        rawUpdatedAt
+        validatedUpdatedAt
       )
-    );
-  }
-
-  // Sort by updatedAt descending and take top 3
-  recentAssignments.sort((a, b) => b.lastAssessedAt.localeCompare(a.lastAssessedAt));
-  const topRecentAssignments = recentAssignments.slice(0, MAX_RECENT_ASSIGNMENTS);
+  );
 
   // -----------------------------------------------------------------------
   // Student averages — full roster
@@ -350,7 +355,7 @@ export function adaptClassPageToViewModel(input: {
   studentAverages = studentAverages.toSorted(compareStudentNames);
 
   return {
-    recentAssignments: topRecentAssignments,
+    recentAssignments,
     studentAverages,
     classMetrics: {
       completeness: analyserResult.perClass.completeness,

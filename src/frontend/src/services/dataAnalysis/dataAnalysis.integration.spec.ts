@@ -207,8 +207,8 @@ describe('DataAnalysisService integration', () => {
     });
   });
 
-  describe('missing definition key throws', () => {
-    it('throws when assignmentDefinitionPartials lacks the required definition key', () => {
+  describe('missing definition key is skipped gracefully', () => {
+    it('returns empty result when assignmentDefinitionPartials lacks the required definition key', () => {
       const input = buildInput(
         [
           {
@@ -235,10 +235,36 @@ describe('DataAnalysisService integration', () => {
       );
 
       const service = new DataAnalysisService();
+      const results = service.analyse(input);
 
-      expect(() => service.analyse(input)).toThrow(
-        "No assignment definition partial found for definitionKey 'dk_missing'"
-      );
+      // The missing definition key degrades per-assignment: the assignment
+      // is skipped and the rest of the class analysis completes with no data.
+      expect(results).toHaveLength(1);
+      expect(results[0].classId).toBe('c_001');
+      expect(results[0].perStudent).toHaveLength(0);
+      expect(results[0].perTask).toHaveLength(0);
+
+      // All per-class metrics are error because no data was accumulated
+      expectMetricResultStateAware(results[0].perClass.completeness as unknown as MetricResult, {
+        state: 'error',
+        totalWeight: 0,
+        totalDataPoints: 0,
+      });
+      expectMetricResultStateAware(results[0].perClass.accuracy as unknown as MetricResult, {
+        state: 'error',
+        totalWeight: 0,
+        totalDataPoints: 0,
+      });
+      expectMetricResultStateAware(results[0].perClass.spag as unknown as MetricResult, {
+        state: 'error',
+        totalWeight: 0,
+        totalDataPoints: 0,
+      });
+      expectMetricResultStateAware(results[0].perClass.overall as unknown as MetricResult, {
+        state: 'error',
+        totalWeight: 0,
+        totalDataPoints: 0,
+      });
     });
   });
 

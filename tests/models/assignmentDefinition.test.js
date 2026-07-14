@@ -126,32 +126,35 @@ describe('AssignmentDefinition', () => {
 
   // 7. Serialization excludes yearGroup
   describe('Serialization excludes yearGroup', () => {
-    it('should not include yearGroup in toJSON output', () => {
-      const def = new AssignmentDefinition(baseValidParams);
-      const json = def.toJSON();
-      expect(json).not.toHaveProperty('yearGroup');
-    });
-
-    it('should not include yearGroup in toPartialJSON output', () => {
+    it('should not include yearGroup in toPartialJSON output (partial instance)', () => {
       const def = new AssignmentDefinition(baseValidParams);
       const partial = def.toPartialJSON();
       expect(partial).not.toHaveProperty('yearGroup');
+    });
+
+    it('should not include yearGroup in toJSON output (full instance)', () => {
+      const def = new AssignmentDefinition({
+        ...baseValidParams,
+        tasks: { t1: { taskTitle: 'Task 1' } },
+      });
+      const json = def.toJSON();
+      expect(json).not.toHaveProperty('yearGroup');
     });
   });
 
   // 8. Serialization includes yearGroupKey and yearGroupLabel
   describe('Serialization includes yearGroupKey and yearGroupLabel', () => {
-    it('should include yearGroupKey in toJSON output', () => {
+    it('should include yearGroupKey in toPartialJSON output', () => {
       const def = new AssignmentDefinition(baseValidParams);
-      const json = def.toJSON();
-      expect(json).toHaveProperty('yearGroupKey', 'year-group-10');
+      const partial = def.toPartialJSON();
+      expect(partial).toHaveProperty('yearGroupKey', 'year-group-10');
     });
 
-    it('should include yearGroupLabel in toJSON output when provided', () => {
+    it('should include yearGroupLabel in toPartialJSON output when provided', () => {
       const params = { ...baseValidParams, yearGroupLabel: 'Year 10' };
       const def = new AssignmentDefinition(params);
-      const json = def.toJSON();
-      expect(json).toHaveProperty('yearGroupLabel', 'Year 10');
+      const partial = def.toPartialJSON();
+      expect(partial).toHaveProperty('yearGroupLabel', 'Year 10');
     });
 
     it('should include yearGroupKey in toPartialJSON output', () => {
@@ -302,6 +305,22 @@ describe('AssignmentDefinition', () => {
       // This assertion MUST fail on the current buggy code because
       // fromJSON nulls the tasks array, producing tasks: [] via toPartialJSON.
       expect(roundTripped.tasks).toEqual(tasks);
+    });
+  });
+
+  // 14. toJSON throws on partial instances
+  describe('toJSON throws on partial instances', () => {
+    it('should throw TypeError when toJSON() is called on a partial instance (tasks is an array)', () => {
+      const def = new AssignmentDefinition(baseValidParams);
+      expect(() => def.toJSON()).toThrow(TypeError);
+    });
+
+    it('should succeed when toJSON() is called on a full instance (tasks is an object)', () => {
+      const def = new AssignmentDefinition({
+        ...baseValidParams,
+        tasks: { t1: { taskTitle: 'Task 1' } },
+      });
+      expect(() => def.toJSON()).not.toThrow();
     });
   });
 });

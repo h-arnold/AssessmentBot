@@ -389,7 +389,7 @@ describe('adaptMetricsToHeatmap — 4-parameter warm-up partial sourcing', () =>
     );
   });
 
-  it('throws TaskTitlesUnavailableError when located partial has a task with null taskTitle', () => {
+  it('does NOT throw for null taskTitle in partial (schema-enforced non-null — dead branch removed in E3–F3)', () => {
     const analyserResult = minimalAveragingResult([]);
     const classFull = buildClassFull();
     // First task has null title, second has a valid title
@@ -399,9 +399,16 @@ describe('adaptMetricsToHeatmap — 4-parameter warm-up partial sourcing', () =>
       { taskTitle: null },
     ]);
 
-    expect(() => adaptMetricsToHeatmap(analyserResult, classFull, ASSIGNMENT_ID, partials)).toThrow(
-      TaskTitlesUnavailableError
-    );
+    // The null-title check was removed because AssignmentDefinitionPartialSchema
+    // enforces non-nullable taskTitle — null titles are unreachable at runtime.
+    // The function should succeed, carrying null in the column descriptors.
+    const result = adaptMetricsToHeatmap(analyserResult, classFull, ASSIGNMENT_ID, partials);
+
+    expect(result.taskColumns).toHaveLength(partials[0].tasks.length);
+    // Columns carry whatever taskTitle the partial provides (schema guarantees non-null)
+    expect(result.taskColumns[0].taskTitle).toBeNull();
+    expect(result.taskColumns[1].taskTitle).toBe('A valid task title');
+    expect(result.taskColumns[2].taskTitle).toBeNull();
   });
 
   it('does NOT throw when all tasks have non-null taskTitle, even if classFull embedded tasks are the weight-summary shape', () => {

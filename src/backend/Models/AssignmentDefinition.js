@@ -283,8 +283,15 @@ class AssignmentDefinition {
    * Assumes `this.tasks` is a keyed object (full definition); do not call on partial instances
    * where `tasks` is an array.
    * @returns {Object} A plain object representation of the full assignment with all tasks
+   * @throws {TypeError} If called on a partial instance (tasks is an array).
    */
   toJSON() {
+    if (Array.isArray(this.tasks)) {
+      throw new TypeError(
+        'toJSON() must not be called on a partial AssignmentDefinition (tasks is an array). Use toPartialJSON().'
+      );
+    }
+
     const tasks = Object.fromEntries(
       Object.entries(this.tasks).map(([taskId, task]) => [
         taskId,

@@ -311,27 +311,27 @@ describe('AveragingAnalyser', () => {
       const results = analyser.analyse(input);
 
       expect(results).toHaveLength(1);
-      // Zero-weight assignment → no data points → error state
-      // This will FAIL in the Red phase (current code produces value: null)
+      // Zero-weight assignment → excluded by weight → notAttempted state ('N')
+      // rather than error ('E') — the task had submissions but was excluded.
       expectMetricResultStateAware(results[0].perClass.completeness as unknown as MetricResult, {
-        state: 'error',
+        state: 'notAttempted',
         totalWeight: 0,
-        totalDataPoints: 0,
+        totalDataPoints: 1,
       });
       expectMetricResultStateAware(results[0].perClass.accuracy as unknown as MetricResult, {
-        state: 'error',
+        state: 'notAttempted',
         totalWeight: 0,
-        totalDataPoints: 0,
+        totalDataPoints: 1,
       });
       expectMetricResultStateAware(results[0].perClass.spag as unknown as MetricResult, {
-        state: 'error',
+        state: 'notAttempted',
         totalWeight: 0,
-        totalDataPoints: 0,
+        totalDataPoints: 1,
       });
       expectMetricResultStateAware(results[0].perClass.overall as unknown as MetricResult, {
-        state: 'error',
+        state: 'notAttempted',
         totalWeight: 0,
-        totalDataPoints: 0,
+        totalDataPoints: 3,
       });
     });
 
@@ -363,27 +363,27 @@ describe('AveragingAnalyser', () => {
       const results = analyser.analyse(input);
 
       expect(results).toHaveLength(1);
-      // Zero-weight task → no data points → error state
-      // This will FAIL in the Red phase
+      // Zero-weight task → excluded by weight → notAttempted state ('N')
+      // rather than error ('E') — the task had submissions but was excluded.
       expectMetricResultStateAware(results[0].perClass.completeness as unknown as MetricResult, {
-        state: 'error',
+        state: 'notAttempted',
         totalWeight: 0,
-        totalDataPoints: 0,
+        totalDataPoints: 1,
       });
       expectMetricResultStateAware(results[0].perClass.accuracy as unknown as MetricResult, {
-        state: 'error',
+        state: 'notAttempted',
         totalWeight: 0,
-        totalDataPoints: 0,
+        totalDataPoints: 1,
       });
       expectMetricResultStateAware(results[0].perClass.spag as unknown as MetricResult, {
-        state: 'error',
+        state: 'notAttempted',
         totalWeight: 0,
-        totalDataPoints: 0,
+        totalDataPoints: 1,
       });
       expectMetricResultStateAware(results[0].perClass.overall as unknown as MetricResult, {
-        state: 'error',
+        state: 'notAttempted',
         totalWeight: 0,
-        totalDataPoints: 0,
+        totalDataPoints: 3,
       });
     });
 
@@ -676,12 +676,13 @@ describe('AveragingAnalyser', () => {
       const results = analyser.analyse(input);
 
       expect(results).toHaveLength(1);
+      // Assignment definitionKey 'dk_algebra' is not in the pre-fetched
+      // partials → assignment is skipped (no partial fallback).
+      // Per-class result is 'error' because no data was accumulated.
       expectMetricResultStateAware(results[0].perClass.accuracy as unknown as MetricResult, {
-        state: 'computed',
-        value: 4,
-        totalWeight: 1,
-        applicableDataPoints: 1,
-        totalDataPoints: 1,
+        state: 'error',
+        totalWeight: 0,
+        totalDataPoints: 0,
       });
     });
 

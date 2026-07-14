@@ -94,7 +94,7 @@ describe('decodeMetricFilter', () => {
   });
 
   it('returns null for undefined input', () => {
-    expect(decodeMetricFilter(undefined)).toBeNull();
+    expect(decodeMetricFilter()).toBeNull();
   });
 
   /** Arbitrary number used to test that non-string inputs return null. */

@@ -12,6 +12,11 @@
  * initial `studentName` ascending), and `filters` (metric column band
  * filters, initial all empty).
  *
+ * **Filtering.** The `onChange` callback decodes the Ant Design filter values
+ * (encoded score ranges) into the typed `StudentAveragesTableFilters` state,
+ * which is passed to `buildMetricRangeFilter` as `activeRange`. This makes the
+ * score-range dropdown filters functional.
+ *
  * **Memoisation.** `buildClassPageViewModel` is called inside a `useMemo`
  * keyed on `[adapterResult, searchTerm, sort]`, and the model is called with
  * `filters: { searchTerm }`.
@@ -45,13 +50,19 @@ import type { JSX, ChangeEvent } from 'react';
 import { useState, useMemo, useCallback } from 'react';
 import { Card, Input, Space, Typography, Flex, Table, Empty } from 'antd';
 import type { TableColumnsType, TablePaginationConfig } from 'antd';
-import type { SorterResult } from 'antd/es/table/interface';
+import type { FilterValue, SorterResult } from 'antd/es/table/interface';
 import { SearchOutlined } from '@ant-design/icons';
 import type { ClassPageAdapterResult, StudentAverageRowModel } from './classPageAdapter.zod';
 import { pageContent } from '../../pages/pageContent';
 
 import { buildClassPageViewModel, DEFAULT_SORT } from './classPageModel';
 import type { MetricColumnKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
+import { decodeFilterToRange } from '../../services/dataAnalysis/metricDisplay/metricRangeKey';
+
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
+
 import {
   buildStudentAveragesTableColumns,
   type StudentAveragesTableFilters,
@@ -116,7 +127,7 @@ export function StudentAveragesTableCard(
   // ── State ──────────────────────────────────────────────────────────────
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [sort, setSort] = useState<SortState>(DEFAULT_SORT);
-  const [filters] = useState<StudentAveragesTableFilters>(INITIAL_FILTERS);
+  const [filters, setFilters] = useState<StudentAveragesTableFilters>(INITIAL_FILTERS);
 
   // ── Memoised derived values ────────────────────────────────────────────
 
@@ -152,19 +163,31 @@ export function StudentAveragesTableCard(
   );
 
   /**
-   * Handle table sort change.
+   * Handle table sort and filter change.
    *
    * Maps the Ant Design `SorterResult` to the model's sort state vocabulary
    * (`'ascend'` / `'descend'` → `'asc'` / `'desc'`). Resets to the default
    * sort when the sort is cleared (third click) or when the column key is
    * missing.
+   *
+   * Also decodes the Ant Design `filters` object into the typed
+   * `StudentAveragesTableFilters` state so `buildMetricRangeFilter` receives
+   * the correct `activeRange` for each metric column.
    */
   const handleTableChange = useCallback(
     (
       _pagination: TablePaginationConfig,
-      _filters: unknown,
+      filtersArgument: Record<string, FilterValue | null>,
       sorter: SorterResult<StudentAverageRowModel> | SorterResult<StudentAverageRowModel>[]
     ): void => {
+      // Update filter state from Ant Design table filters
+      setFilters({
+        completeness: decodeFilterToRange(filtersArgument.completeness),
+        accuracy: decodeFilterToRange(filtersArgument.accuracy),
+        spag: decodeFilterToRange(filtersArgument.spag),
+        average: decodeFilterToRange(filtersArgument.average),
+      });
+
       // Normalise to a single sorter
       const singleSorter = Array.isArray(sorter) ? sorter[0] : sorter;
 

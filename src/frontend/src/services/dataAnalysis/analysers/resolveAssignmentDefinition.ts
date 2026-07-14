@@ -14,23 +14,24 @@ export interface ResolvedAssignmentDefinition {
  * Resolve assignment definition data from the live partials registry.
  *
  * The partials registry is the sole authoritative source. When no entry
- * exists for {@link definitionKey}, the function throws — it does not
- * fall back to the embedded `assignment.assignmentDefinition`.
+ * exists for {@link definitionKey}, the function returns `null` — the
+ * caller should skip that assignment (degrading per-assignment rather
+ * than failing the entire analyser run).
  *
  * @param {string} definitionKey - The definition key to look up.
  * @param {ReadonlyMap<string, AssignmentDefinitionPartial>} partialsByDefinitionKey -
  *   Pre-built Map of definitionKey → live partial.
- * @returns {ResolvedAssignmentDefinition} The resolved weighting and tasks.
- * @throws {Error} When no partial exists for {@link definitionKey}.
+ * @returns {ResolvedAssignmentDefinition | null} The resolved weighting and
+ *   tasks, or `null` when no partial exists for {@link definitionKey}.
  */
 export function resolveAssignmentDefinitionData(
   definitionKey: string,
   partialsByDefinitionKey: ReadonlyMap<string, AssignmentDefinitionPartial>
-): ResolvedAssignmentDefinition {
+): ResolvedAssignmentDefinition | null {
   const partial = partialsByDefinitionKey.get(definitionKey);
 
   if (!partial) {
-    throw new Error(`No assignment definition partial found for definitionKey '${definitionKey}'`);
+    return null;
   }
 
   return {

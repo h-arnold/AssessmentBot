@@ -46,26 +46,6 @@ export function rollupAccumulators(
 }
 
 /**
- * Collect accumulators for a specific task from the per-student-task map.
- *
- * @param {Map<string, Map<string, DataPointAccumulator>>} perStudentTaskAccums -
- *   The per-(student, task) accumulators.
- * @param {string} taskKey - The task composite key (`definitionKey::taskId`).
- * @returns {DataPointAccumulator[]} Array of accumulators for that task.
- */
-function collectAccumulatorsForTask(
-  perStudentTaskAccums: Map<string, Map<string, DataPointAccumulator>>,
-  taskKey: string
-): DataPointAccumulator[] {
-  const result: DataPointAccumulator[] = [];
-  for (const taskMap of perStudentTaskAccums.values()) {
-    const accum = taskMap.get(taskKey);
-    if (accum) result.push(accum);
-  }
-  return result;
-}
-
-/**
  * Build sorted per-student rows from accumulators.
  *
  * @remarks
@@ -156,8 +136,22 @@ export function buildPerTaskRows(
 ): PerTaskRow[] {
   const rows: PerTaskRow[] = [];
 
+  // Build inverted index: taskKey → accumulators[] with a single O(S·T) pass,
+  // avoiding the previous O(T·S) rescans that re-scanned all students per task.
+  const taskKeyToAccumulators = new Map<string, DataPointAccumulator[]>();
+  for (const taskMap of perStudentTaskAccums.values()) {
+    for (const [taskKey, accum] of taskMap) {
+      let list = taskKeyToAccumulators.get(taskKey);
+      if (!list) {
+        list = [];
+        taskKeyToAccumulators.set(taskKey, list);
+      }
+      list.push(accum);
+    }
+  }
+
   for (const [taskKey, accumulator] of taskAccums) {
-    const studentAccumsForTask = collectAccumulatorsForTask(perStudentTaskAccums, taskKey);
+    const studentAccumsForTask = taskKeyToAccumulators.get(taskKey) ?? [];
 
     if (studentAccumsForTask.length === 0) {
       rows.push({

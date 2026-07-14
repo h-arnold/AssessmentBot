@@ -7,18 +7,26 @@
  * (Completeness, Accuracy, SPaG) with score-range filters and a SPEC-ordered metric
  * comparator.
  *
+ * The component owns local filter state (keyed by column key) so the score-range
+ * filter dropdowns are functional.  Rows are paginated at 50 per page to bound
+ * DOM node count on large classes.  `sortedRows`, `hasNoSubmissions`, and
+ * `columns` are memoised to avoid redundant recomputation on each render.
+ *
  * @see ACTION_PLAN.md §4 — TaskHeatmapTable
  * @see TASK_HEATMAP_LAYOUT.md — §"3. Table region", §"Cell rendering", §"States"
  * @see SPEC.md — §"Rendering rules", §"Sorting, filtering", §"Empty state"
  */
 
 import type { CSSProperties, JSX } from 'react';
+import { useMemo, useState } from 'react';
 import { Table, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
+import type { FilterValue } from 'antd/es/table/interface';
 
 import type {
   HeatmapResult,
   HeatmapRow,
+  HeatmapTaskColumn,
 } from '../../services/dataAnalysis/heatmapAdapter';
 import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import {
@@ -35,6 +43,7 @@ import {
   type MetricToneRange,
 } from '../../services/dataAnalysis/metricDisplay/metricTone';
 import { buildMetricRangeFilter } from '../../services/dataAnalysis/metricDisplay/metricRangeFilter';
+import { decodeFilterToRange } from '../../services/dataAnalysis/metricDisplay/metricRangeKey';
 import { MetricIconLabel } from '../../components/MetricIconLabel';
 import {
   APP_COL_WIDTH_STUDENT_NAME,
@@ -166,6 +175,58 @@ function buildMetricSorter(
  */
 const DEFAULT_TONE_RANGE: MetricToneRange = { lower: 0, upper: 5 };
 
+/**
+ * Build the three metric sub-columns (Completeness, Accuracy, SPaG) for a
+ * single task group.
+ *
+ * Extracted to avoid excessive function nesting inside `useMemo`.
+ *
+ * @param {HeatmapTaskColumn} taskColumn - The task column descriptor.
+ * @param {number} taskIndex - The index of the task within the heatmap.
+ * @param {Record<string, FilterValue | null>} tableFilters - Current filter state.
+ * @returns {TableColumnsType<HeatmapRow>} Three metric sub-column definitions.
+ */
+function buildTaskMetricSubColumns(
+  taskColumn: HeatmapTaskColumn,
+  taskIndex: number,
+  tableFilters: Record<string, FilterValue | null>,
+): TableColumnsType<HeatmapRow> {
+  return HEATMAP_METRIC_KEYS.map((metric) => {
+    const meta = METRIC_DISPLAY_META.get(metric)!;
+    const columnKey = `${taskColumn.taskKey}::${metric}`;
+    const rangeFilter = buildMetricRangeFilter<HeatmapRow>({
+      range: DEFAULT_TONE_RANGE,
+      getMetric: (record): MetricResult => getCellMetric(record.cells[taskIndex], metric),
+      activeRange: decodeFilterToRange(tableFilters[columnKey]),
+    });
+    return {
+      key: columnKey,
+      title: <MetricIconLabel icon={meta.icon} label={meta.label} />,
+      align: 'center' as const,
+      width: APP_COL_WIDTH_METRIC,
+      ...rangeFilter,
+      sorter: {
+        compare: buildMetricSorter(taskIndex, metric),
+        multiple: 2,
+      },
+      onCell: (record: HeatmapRow): { style: CSSProperties; 'aria-label': string } => {
+        const m = getCellMetric(record.cells[taskIndex], metric);
+        const { cellStyle } = resolveMetricTone(m);
+        const score = renderScore(m);
+        const ariaLabel = `${record.studentName}, ${taskColumn.taskId}, ${getDisplayTitle(metric)}: ${score}`;
+        return {
+          style: cellStyle,
+          'aria-label': ariaLabel,
+        };
+      },
+      render: (_: unknown, record: HeatmapRow): JSX.Element => {
+        const m = getCellMetric(record.cells[taskIndex], metric);
+        return <span>{renderScore(m)}</span>;
+      },
+    };
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -181,79 +242,61 @@ export function TaskHeatmapTable({
 }: Readonly<{ heatmapResult: HeatmapResult }>): JSX.Element {
   const { taskColumns, rows } = heatmapResult;
 
+  // ── Table-level filter state lifted from the onChange callback ──────────
+  const [tableFilters, setTableFilters] = useState<Record<string, FilterValue | null>>({});
+
+  // ── Memoised derived values ─────────────────────────────────────────────
+
   // Pre-sort by student name ascending so the default sort order is applied
   // to the initial render. Ant Design Table applies subsequent sorter changes
   // over the dataSource prop.
-  const sortedRows = rows.toSorted(compareHeatmapStudentName);
+  const sortedRows = useMemo(
+    () => rows.toSorted(compareHeatmapStudentName),
+    [rows],
+  );
 
   // Determine whether every cell across every row is not-attempted (the "no
   // submissions" empty-state variant). The guard includes `taskColumns.length > 0`
   // to prevent a false caption when the assignment has zero tasks.
-  const hasNoSubmissions =
-    taskColumns.length > 0 &&
-    rows.length > 0 &&
-    rows.every((row) =>
-      row.cells.every(
-        (cell) =>
-          cell.completeness.state === 'notAttempted' &&
-          cell.accuracy.state === 'notAttempted' &&
-          cell.spag.state === 'notAttempted',
+  const hasNoSubmissions = useMemo(
+    () =>
+      taskColumns.length > 0 &&
+      rows.length > 0 &&
+      rows.every((row) =>
+        row.cells.every(
+          (cell) =>
+            cell.completeness.state === 'notAttempted' &&
+            cell.accuracy.state === 'notAttempted' &&
+            cell.spag.state === 'notAttempted',
+        ),
       ),
-    );
+    [rows, taskColumns],
+  );
 
-  const columns: TableColumnsType<HeatmapRow> = [
-    // ── Student Name (top-level column, no children) ──────────────
-    {
-      key: 'studentName',
-      title: 'Student Name',
-      fixed: 'start',
-      width: APP_COL_WIDTH_STUDENT_NAME,
-      sorter: { compare: compareHeatmapStudentName, multiple: 1 },
-      defaultSortOrder: 'ascend',
-      render: (_: unknown, record: HeatmapRow): JSX.Element => (
-        <Typography.Text>{record.studentName}</Typography.Text>
-      ),
-    },
+  const columns: TableColumnsType<HeatmapRow> = useMemo(
+    () => [
+      // ── Student Name (top-level column, no children) ──────────────
+      {
+        key: 'studentName',
+        title: 'Student Name',
+        fixed: 'start',
+        width: APP_COL_WIDTH_STUDENT_NAME,
+        sorter: { compare: compareHeatmapStudentName, multiple: 1 },
+        defaultSortOrder: 'ascend',
+        render: (_: unknown, record: HeatmapRow): JSX.Element => (
+          <Typography.Text>{record.studentName}</Typography.Text>
+        ),
+      },
 
-    // ── Per-task group columns ────────────────────────────────────
-    ...taskColumns.map((taskColumn, taskIndex) => ({
-      key: taskColumn.taskKey,
-      title: taskColumn.taskTitle,
-      children: HEATMAP_METRIC_KEYS.map((metric) => {
-        const meta = METRIC_DISPLAY_META.get(metric)!;
-        const rangeFilter = buildMetricRangeFilter<HeatmapRow>({
-          range: DEFAULT_TONE_RANGE,
-          getMetric: (record): MetricResult => getCellMetric(record.cells[taskIndex], metric),
-          activeRange: [],
-        });
-        return {
-          key: `${taskColumn.taskKey}::${metric}`,
-          title: <MetricIconLabel icon={meta.icon} label={meta.label} />,
-          align: 'center' as const,
-          width: APP_COL_WIDTH_METRIC,
-          ...rangeFilter,
-          sorter: {
-            compare: buildMetricSorter(taskIndex, metric),
-            multiple: 2,
-          },
-          onCell: (record: HeatmapRow): { style: CSSProperties; 'aria-label': string } => {
-            const m = getCellMetric(record.cells[taskIndex], metric);
-            const { cellStyle } = resolveMetricTone(m);
-            const score = renderScore(m);
-            const ariaLabel = `${record.studentName}, ${taskColumn.taskId}, ${getDisplayTitle(metric)}: ${score}`;
-            return {
-              style: cellStyle,
-              'aria-label': ariaLabel,
-            };
-          },
-          render: (_: unknown, record: HeatmapRow): JSX.Element => {
-            const m = getCellMetric(record.cells[taskIndex], metric);
-            return <span>{renderScore(m)}</span>;
-          },
-        };
-      }),
-    })),
-  ];
+      // ── Per-task group columns ────────────────────────────────────
+      ...taskColumns.map((taskColumn, taskIndex) => ({
+        key: taskColumn.taskKey,
+        title: taskColumn.taskTitle ?? taskColumn.taskId,
+        children: buildTaskMetricSubColumns(taskColumn, taskIndex, tableFilters),
+      })),
+    ],
+    [taskColumns, tableFilters],
+  );
 
   return (
     <>
@@ -264,11 +307,14 @@ export function TaskHeatmapTable({
         rowKey="studentId"
         columns={columns}
         dataSource={sortedRows}
-        pagination={false}
+        pagination={{ pageSize: 50, showSizeChanger: true }}
         size="small"
         bordered
         scroll={{ x: 'max-content' }}
         aria-label="Task Heatmap"
+        onChange={(_pagination, filters): void => {
+          setTableFilters(filters as Record<string, FilterValue | null>);
+        }}
       />
     </>
   );

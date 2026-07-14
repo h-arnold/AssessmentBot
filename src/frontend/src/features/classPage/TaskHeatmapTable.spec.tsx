@@ -345,7 +345,7 @@ describe('TaskHeatmapTable', () => {
     await user.click(filterButton);
 
     const sliders = await screen.findAllByRole('slider');
-    expect(sliders.length).toBe(RANGE_SLIDER_HANDLE_COUNT);
+    expect(sliders).toHaveLength(RANGE_SLIDER_HANDLE_COUNT);
 
     const lowerHandle = sliders.find(
       (handle): boolean => handle.getAttribute('aria-valuenow') === '0'

@@ -22,6 +22,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createElement, useState } from 'react';
+import { App } from 'antd';
 import { ClassPageContent } from './ClassPageContent';
 import type { ClassPageSurfaceState } from './useClassPageData';
 import type { ClassPageAdapterResult } from './classPageAdapter.zod';
@@ -262,7 +263,7 @@ describe('ClassPage heatmap view-state wiring', () => {
   // -----------------------------------------------------------------------
 
   it('opens the heatmap view when a RecentAssignmentCard is clicked', async () => {
-    render(createElement(Harness, { initialView: 'overview' }));
+    render(createElement(App, null, createElement(Harness, { initialView: 'overview' })));
 
     // The overview should render a RecentAssignmentCard for "Assignment One"
     // with role="button" — the card is clickable via onOpenHeatmap.
@@ -294,7 +295,7 @@ describe('ClassPage heatmap view-state wiring', () => {
   // -----------------------------------------------------------------------
 
   it('returns to the overview when the Back button is clicked', async () => {
-    render(createElement(Harness, { initialView: 'heatmap', assignmentId: 'a-1' }));
+    render(createElement(App, null, createElement(Harness, { initialView: 'heatmap', assignmentId: 'a-1' })));
 
     // The heatmap should render — the TaskHeatmapTable with aria-label="Task Heatmap"
     // and the Back button with aria-label "Back to Class overview" should be present.
@@ -321,7 +322,7 @@ describe('ClassPage heatmap view-state wiring', () => {
     // and calls onBack (returning to overview). No Ant Design Alert/Result error
     // is rendered in the heatmap view.
 
-    render(createElement(Harness, { initialView: 'heatmap', assignmentId: 'missing-id' }));
+    render(createElement(App, null, createElement(Harness, { initialView: 'heatmap', assignmentId: 'missing-id' })));
 
     // The catch-and-navigate behaviour means:
     //   - logFrontendError was called with first argument 'TaskHeatmapPage'
