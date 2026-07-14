@@ -78,7 +78,7 @@ export function createMockDefinitionForPartialRow(overrides = {}) {
     templateDocumentId: 'tpl-001',
     assignmentWeighting: 1,
     definitionKey: 'test-key',
-    tasks: null,
+    tasks: [],
     createdAt: '2026-01-05T10:00:00.000Z',
     updatedAt: '2026-01-06T12:30:00.000Z',
   };
@@ -226,7 +226,7 @@ export function buildValidPartial(overrides = {}) {
     templateDocumentId: 'tpl-doc-001',
     assignmentWeighting: null,
     definitionKey: 'algebra-baseline',
-    tasks: null,
+    tasks: [],
     createdAt: '2026-01-05T10:00:00.000Z',
     updatedAt: '2026-01-06T12:30:00.000Z',
     ...overrides,

@@ -117,7 +117,17 @@ function getAssignmentDefinitionPartials_() {
     throwValidationError_('Controller response must be an array.', RESPONSE_FIELD_NAME, 0);
   }
 
-  return definitions.map((definition) => toTransportPartialRow_(definition));
+  const rows = definitions.map((definition) => toTransportPartialRow_(definition));
+
+  // Enforce the array-tasks contract at the transport boundary so that
+  // corrupt partial rows are caught in production, not just in tests.
+  rows.forEach((row, index) => {
+    if (!Array.isArray(row.tasks)) {
+      throwValidationError_('tasks must be an array.', 'tasks', index);
+    }
+  });
+
+  return rows;
 }
 
 /**

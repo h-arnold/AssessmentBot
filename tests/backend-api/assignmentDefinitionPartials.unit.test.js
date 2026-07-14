@@ -55,7 +55,7 @@ describe('Api/assignmentDefinitionPartials transport contract', () => {
 
     const controllerRows = [
       new ControllerLikePartial(),
-      new ControllerLikePartial({ definitionKey: 'geometry-baseline', tasks: null }),
+      new ControllerLikePartial({ definitionKey: 'geometry-baseline', tasks: [] }),
     ];
 
     const { AssignmentDefinitionController, getAllPartialDefinitions } =
@@ -65,7 +65,7 @@ describe('Api/assignmentDefinitionPartials transport contract', () => {
     const result = getAssignmentDefinitionPartials_();
     const expectedRows = [
       buildValidPartial(),
-      buildValidPartial({ definitionKey: 'geometry-baseline', tasks: null }),
+      buildValidPartial({ definitionKey: 'geometry-baseline', tasks: [] }),
     ];
 
     expect(result).toHaveLength(2);
@@ -252,9 +252,9 @@ describe('Api/assignmentDefinitionPartials transport contract', () => {
     }
   );
 
-  it('ensures tasks field is null for all partial definition rows', () => {
-    const row1 = buildValidPartial({ definitionKey: 'algebra-baseline', tasks: null });
-    const row2 = buildValidPartial({ definitionKey: 'geometry-baseline', tasks: null });
+  it('ensures tasks field is an array for all partial definition rows', () => {
+    const row1 = buildValidPartial({ definitionKey: 'algebra-baseline', tasks: [] });
+    const row2 = buildValidPartial({ definitionKey: 'geometry-baseline', tasks: [] });
     installAssignmentDefinitionControllerStub([row1, row2]);
 
     const { getAssignmentDefinitionPartials_ } = loadAssignmentDefinitionPartialsModule();
@@ -262,7 +262,7 @@ describe('Api/assignmentDefinitionPartials transport contract', () => {
 
     expect(result).toHaveLength(2);
     result.forEach((row) => {
-      expect(row.tasks).toBeNull();
+      expect(row.tasks).toEqual([]);
     });
   });
 
@@ -605,12 +605,12 @@ describe('extractSupportedDocumentDescriptor_ URL parsing regression tests', () 
 });
 
 // ============================================================================
-// Section 5 Red Phase Tests - API layer: Remove helper functions, inline logic,
-// and update transport boundary
-// These tests are intentionally written to FAIL until Section 5 implementation is complete
+// ============================================================================
+// API layer refactoring tests — helper removal, call-site updates,
+// transport-boundary validation, and inlining rules
 // ============================================================================
 
-describe('Section 5: API layer refactoring - Helper functions removed from source', () => {
+describe('API layer: helper functions removed from source', () => {
   const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
 
   beforeEach(beforeEachHandler);
@@ -632,7 +632,7 @@ describe('Section 5: API layer refactoring - Helper functions removed from sourc
   });
 });
 
-describe('Section 5: API layer refactoring - Call sites updated', () => {
+describe('API layer: call sites updated', () => {
   const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
 
   beforeEach(beforeEachHandler);
@@ -651,7 +651,7 @@ describe('Section 5: API layer refactoring - Call sites updated', () => {
   });
 });
 
-describe('Section 5: API layer refactoring - getAssignmentDefinitionPartials_ return shape', () => {
+describe('API layer: getAssignmentDefinitionPartials_ return shape', () => {
   const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
 
   beforeEach(beforeEachHandler);
@@ -710,7 +710,7 @@ describe('Section 5: API layer refactoring - getAssignmentDefinitionPartials_ re
     expect(result.updatedAt).toBe('2026-01-06T12:30:00.000Z');
   });
 
-  it('should ensure tasks field is null for partial definitions', () => {
+  it('should ensure tasks field is an array for partial definitions', () => {
     installAssignmentDefinitionControllerStub([]);
 
     const moduleExports = require(transportModulePath);
@@ -719,11 +719,11 @@ describe('Section 5: API layer refactoring - getAssignmentDefinitionPartials_ re
     const mockDefinition = createMockDefinitionForPartialRow();
     const result = moduleExports.toTransportPartialRow_(mockDefinition);
 
-    expect(result.tasks).toBeNull();
+    expect(result.tasks).toEqual([]);
   });
 });
 
-describe('Section 5: API layer refactoring - Transport validation unchanged', () => {
+describe('API layer: transport validation unchanged', () => {
   const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
 
   beforeEach(beforeEachHandler);
@@ -777,7 +777,7 @@ describe('Section 5: API layer refactoring - Transport validation unchanged', ()
   });
 });
 
-describe('Section 5: API layer refactoring - No assignmentWeighting defaulting in inlined code', () => {
+describe('API layer: no assignmentWeighting defaulting in inlined code', () => {
   const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
 
   beforeEach(beforeEachHandler);

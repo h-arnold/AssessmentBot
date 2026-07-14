@@ -280,6 +280,8 @@ class AssignmentDefinition {
 
   /**
    * Serialises this assignment definition to a JSON object.
+   * Assumes `this.tasks` is a keyed object (full definition); do not call on partial instances
+   * where `tasks` is an array.
    * @returns {Object} A plain object representation of the full assignment with all tasks
    */
   toJSON() {
@@ -312,7 +314,7 @@ class AssignmentDefinition {
 
   /**
    * Serialises this assignment definition to the lightweight registry payload.
-   * Carries `tasks` as an array of lightweight `{ id, taskWeighting }` summaries
+   * Carries `tasks` as an array of lightweight `{ taskId, taskWeighting, taskTitle }` summaries
    * (empty array when no tasks), and omits document-modified timestamp fields that
    * are only stored on full definitions.
    * @returns {Object} A plain object representation for the `assignment_definitions` registry

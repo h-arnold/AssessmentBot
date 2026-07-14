@@ -1,4 +1,4 @@
-/* global ABLogger, Assignment, AssignmentNotFoundError, TypeError, AssignmentDefinitionController */
+/* global ABLogger, Assignment, AssignmentNotFoundError, TypeError, AssignmentDefinitionController, Validate */
 
 /**
  * ABClassAssignmentOps
@@ -44,9 +44,7 @@ class ABClassAssignmentOps {
     const logger = ABLogger.getInstance();
 
     try {
-      if (!abClass || !assignment) {
-        throw new TypeError('persistAssignmentRun requires abClass and assignment');
-      }
+      Validate.requireParams({ abClass, assignment }, 'persistAssignmentRun');
 
       if (!assignment.courseId || !assignment.assignmentId) {
         throw new TypeError('Assignment must have courseId and assignmentId');
@@ -151,9 +149,7 @@ class ABClassAssignmentOps {
   rehydrateAssignment(abClass, assignmentId) {
     const logger = ABLogger.getInstance();
 
-    if (!abClass || !assignmentId) {
-      throw new TypeError('rehydrateAssignment requires abClass and assignmentId');
-    }
+    Validate.requireParams({ abClass, assignmentId }, 'rehydrateAssignment');
 
     if (typeof abClass.classId !== 'string' || abClass.classId.trim().length === 0) {
       throw new TypeError('rehydrateAssignment: expected abClass.classId to be a non-empty string');

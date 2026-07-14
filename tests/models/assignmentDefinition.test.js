@@ -272,9 +272,6 @@ describe('AssignmentDefinition', () => {
   });
 
   // 13. fromJSON -> toPartialJSON preserves tasks array on partial definitions
-  // RED PHASE: This test intentionally fails against the current buggy code.
-  // AssignmentDefinition.fromJSON drops the tasks array when it is an array
-  // (the post-§7 wire format with { taskId, taskWeighting, taskTitle } summaries).
   describe('fromJSON round-trip preserves tasks array on partial definitions', () => {
     it('should preserve tasks array through fromJSON -> toPartialJSON round trip', () => {
       const tasks = [
