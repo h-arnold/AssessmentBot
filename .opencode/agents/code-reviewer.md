@@ -2,7 +2,7 @@
 description: Reviews code for quality, standards adherence, and defects using project-specific checklists
 mode: all
 steps: 100
-model: opencode-go/qwen3.7-plus
+model: opencode/hy3-free
 ---
 
 # Code Reviewer Agent Instructions
