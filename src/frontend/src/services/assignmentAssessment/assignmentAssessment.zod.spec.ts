@@ -34,7 +34,7 @@ const validFullAssignment = {
       taskTitle: 'Task One',
       pageId: 'page-1',
       taskNotes: null,
-      taskMetadata: null,
+      taskMetadata: {},
       taskWeighting: 1,
       index: 0,
       artifacts: {
@@ -46,9 +46,9 @@ const validFullAssignment = {
             documentId: 'doc-ref',
             content: null,
             contentHash: null,
-            metadata: null,
+            metadata: {},
             uid: 'uid-1',
-            type: 'SLIDES',
+            type: 'TEXT',
           },
         ],
         template: [],
@@ -72,9 +72,9 @@ const validFullAssignment = {
             documentId: 'doc-ref',
             content: null,
             contentHash: null,
-            metadata: null,
+            metadata: {},
             uid: 'uid-1',
-            type: 'SLIDES',
+            type: 'TEXT',
           },
           assessments: {},
           feedback: {},
@@ -105,7 +105,7 @@ const validFullAssignment = {
         taskTitle: 'Task One',
         pageId: 'page-1',
         taskNotes: null,
-        taskMetadata: null,
+        taskMetadata: {},
         taskWeighting: 1,
         index: 0,
         artifacts: {
@@ -117,9 +117,9 @@ const validFullAssignment = {
               documentId: 'doc-ref',
               content: null,
               contentHash: null,
-              metadata: null,
+              metadata: {},
               uid: 'uid-1',
-              type: 'SLIDES',
+              type: 'TEXT',
             },
           ],
           template: [],
@@ -193,7 +193,7 @@ describe('assignmentAssessment.zod schemas', () => {
             taskTitle: 'Task One',
             pageId: 'page-1',
             taskNotes: null,
-            taskMetadata: null,
+            taskMetadata: {},
             taskWeighting: 1,
             index: 0,
             artifacts: { reference: [], template: [] },
@@ -253,10 +253,10 @@ describe('assignmentAssessment.zod schemas', () => {
         pageId: 'page-1',
         documentId: 'doc-ref',
         uid: 'uid-1',
-        type: 'SLIDES',
+        type: 'TEXT',
         content: null,
         contentHash: null,
-        metadata: null,
+        metadata: {},
       };
       expect(BaseTaskArtifactSchema.parse(validArtifact)).toEqual(validArtifact);
     });
@@ -268,10 +268,10 @@ describe('assignmentAssessment.zod schemas', () => {
           pageId: 'page-1',
           documentId: 'doc-ref',
           uid: 'uid-1',
-          type: 'SLIDES',
+          type: 'TEXT',
           content: null,
           contentHash: null,
-          metadata: null,
+          metadata: {},
         })
       ).toThrow();
     });
@@ -284,10 +284,120 @@ describe('assignmentAssessment.zod schemas', () => {
           pageId: 'page-1',
           documentId: 'doc-ref',
           uid: 'uid-1',
-          type: 'SLIDES',
+          type: 'TEXT',
           content: null,
           contentHash: 123,
-          metadata: null,
+          metadata: {},
+        })
+      ).toThrow();
+    });
+
+    it('accepts a TEXT artifact with string content', () => {
+      const artifact = {
+        taskId: 'task-1',
+        role: 'reference',
+        pageId: 'page-1',
+        documentId: 'doc-ref',
+        uid: 'uid-1',
+        type: 'TEXT',
+        content: 'some text content',
+        contentHash: null,
+        metadata: {},
+      };
+      expect(BaseTaskArtifactSchema.parse(artifact)).toEqual(artifact);
+    });
+
+    it('accepts a TEXT artifact with null content', () => {
+      const artifact = {
+        taskId: 'task-1',
+        role: 'reference',
+        pageId: 'page-1',
+        documentId: 'doc-ref',
+        uid: 'uid-1',
+        type: 'TEXT',
+        content: null,
+        contentHash: null,
+        metadata: {},
+      };
+      expect(BaseTaskArtifactSchema.parse(artifact)).toEqual(artifact);
+    });
+
+    it('accepts a SPREADSHEET artifact with 2D array content', () => {
+      const artifact = {
+        taskId: 'task-1',
+        role: 'reference',
+        pageId: 'page-1',
+        documentId: 'doc-ref',
+        uid: 'uid-1',
+        type: 'SPREADSHEET',
+        content: [
+          ['a', 1, null],
+          ['b', 1, null],
+        ],
+        contentHash: null,
+        metadata: {},
+      };
+      expect(BaseTaskArtifactSchema.parse(artifact)).toEqual(artifact);
+    });
+
+    it('accepts a SPREADSHEET artifact with null content', () => {
+      const artifact = {
+        taskId: 'task-1',
+        role: 'reference',
+        pageId: 'page-1',
+        documentId: 'doc-ref',
+        uid: 'uid-1',
+        type: 'SPREADSHEET',
+        content: null,
+        contentHash: null,
+        metadata: {},
+      };
+      expect(BaseTaskArtifactSchema.parse(artifact)).toEqual(artifact);
+    });
+
+    it('accepts a base artifact with unknown content', () => {
+      const artifact = {
+        taskId: 'task-1',
+        role: 'reference',
+        pageId: 'page-1',
+        documentId: 'doc-ref',
+        uid: 'uid-1',
+        type: 'base',
+        content: { arbitrary: 'object' },
+        contentHash: null,
+        metadata: {},
+      };
+      expect(BaseTaskArtifactSchema.parse(artifact)).toEqual(artifact);
+    });
+
+    it('rejects a SPREADSHEET artifact with string content', () => {
+      expect(() =>
+        BaseTaskArtifactSchema.parse({
+          taskId: 'task-1',
+          role: 'reference',
+          pageId: 'page-1',
+          documentId: 'doc-ref',
+          uid: 'uid-1',
+          type: 'SPREADSHEET',
+          content: 'string instead of 2D array',
+          contentHash: null,
+          metadata: {},
+        })
+      ).toThrow();
+    });
+
+    it('rejects an artifact with an unrecognised type', () => {
+      expect(() =>
+        BaseTaskArtifactSchema.parse({
+          taskId: 'task-1',
+          role: 'reference',
+          pageId: 'page-1',
+          documentId: 'doc-ref',
+          uid: 'uid-1',
+          type: 'BOGUS',
+          content: null,
+          contentHash: null,
+          metadata: {},
         })
       ).toThrow();
     });
@@ -300,7 +410,7 @@ describe('assignmentAssessment.zod schemas', () => {
         taskTitle: 'Task One',
         pageId: 'page-1',
         taskNotes: null,
-        taskMetadata: null,
+        taskMetadata: {},
         taskWeighting: 1,
         index: null,
         artifacts: {
@@ -318,7 +428,7 @@ describe('assignmentAssessment.zod schemas', () => {
           taskTitle: 'Task One',
           pageId: 'page-1',
           taskNotes: null,
-          taskMetadata: null,
+          taskMetadata: {},
           taskWeighting: 'heavy',
           index: null,
           artifacts: { reference: [], template: [] },
@@ -333,7 +443,7 @@ describe('assignmentAssessment.zod schemas', () => {
           taskTitle: 'Task One',
           pageId: 'page-1',
           taskNotes: null,
-          taskMetadata: null,
+          taskMetadata: {},
           taskWeighting: 1,
           index: 'first',
           artifacts: { reference: [], template: [] },
@@ -349,10 +459,10 @@ describe('assignmentAssessment.zod schemas', () => {
       pageId: 'page-1',
       documentId: 'doc-ref',
       uid: 'uid-1',
-      type: 'SLIDES',
+      type: 'TEXT',
       content: null,
       contentHash: null,
-      metadata: null,
+      metadata: {},
     };
 
     it('accepts a valid item with id and taskId as strings', () => {
@@ -389,6 +499,46 @@ describe('assignmentAssessment.zod schemas', () => {
         })
       ).toThrow();
     });
+
+    it('accepts an item with valid assessments', () => {
+      const item = {
+        id: 'item-1',
+        taskId: 'task-1',
+        artifact: validBaseArtifact,
+        assessments: { clarity: { score: 3, reasoning: 'good' } },
+        feedback: {},
+      };
+      expect(StudentSubmissionItemSchema.parse(item)).toEqual(item);
+    });
+
+    it('rejects an item with assessments where score is a string instead of number', () => {
+      expect(() =>
+        StudentSubmissionItemSchema.parse({
+          id: 'item-1',
+          taskId: 'task-1',
+          artifact: validBaseArtifact,
+          assessments: { clarity: { score: '3', reasoning: 'good' } },
+          feedback: {},
+        })
+      ).toThrow();
+    });
+
+    it('accepts an item with valid feedback', () => {
+      const item = {
+        id: 'item-1',
+        taskId: 'task-1',
+        artifact: validBaseArtifact,
+        assessments: {},
+        feedback: {
+          cellReference: {
+            type: 'cellReference',
+            createdAt: '2026-01-01T00:00:00.000Z',
+            items: [],
+          },
+        },
+      };
+      expect(StudentSubmissionItemSchema.parse(item)).toEqual(item);
+    });
   });
 
   describe('StudentSubmissionSchema', () => {
@@ -398,10 +548,10 @@ describe('assignmentAssessment.zod schemas', () => {
       pageId: 'page-1',
       documentId: 'doc-ref',
       uid: 'uid-1',
-      type: 'SLIDES',
+      type: 'TEXT',
       content: null,
       contentHash: null,
-      metadata: null,
+      metadata: {},
     };
 
     it('accepts a valid submission with documentId: null, createdAt and updatedAt as ISO strings', () => {
