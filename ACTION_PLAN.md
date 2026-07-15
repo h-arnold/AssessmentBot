@@ -4,7 +4,7 @@
 
 Before writing or executing this plan:
 
-1. Read the current `SPEC.md` (Task Preview Card Specification, draft v1.5).
+1. Read the current `SPEC.md` (Task Preview Card Specification, draft v1.6).
 2. Read `TASK_PREVIEW_CARD_LAYOUT.md` (Task Preview Card Layout Specification).
 3. Treat those documents as the source of truth for product behaviour, contracts, and layout rules.
 4. Use this action plan to sequence delivery and testing; do not restate or redefine material already settled in the spec or layout docs.
@@ -180,15 +180,22 @@ Implementation mandatory docs:
 - `TASK_PREVIEW_CARD_LAYOUT.md`
 - `docs/developer/frontend/frontend-spacing-and-padding-standards.md`
 
+Code Reviewer mandatory docs:
+
+- `SPEC.md`
+- `TASK_PREVIEW_CARD_LAYOUT.md`
+- `src/frontend/AGENTS.md`
+- `docs/developer/frontend/frontend-spacing-and-padding-standards.md`
+
 ### Shared helper plan
 
 Helper decision entries:
 
 1. Helper: `ImageRenderer` presentational component
    - Decision: `new`
-   - Owning module/path: `src/frontend/src/components/ImageRenderer.tsx`
-   - Call-site rationale: renders base64 data URLs as constrained `<img>` elements for the task preview card and future consumers. Placed directly in shared components as the user expects reuse across the project.
-   - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9 (new entry)
+   - Owning module/path: `src/frontend/src/components/ImageRenderer/ImageRenderer.tsx`
+   - Call-site rationale: renders base64 data URLs as constrained `<img>` elements for the task preview card and future consumers. Placed in their own subdirectories under `src/frontend/src/components/` as the user expects reuse across the project.
+   - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §3 (Canonical helper map — new entry)
    - Planned doc status: `Not implemented`
 
 ### Acceptance criteria
@@ -209,8 +216,9 @@ Frontend tests:
 
 ### Section checks
 
-- `npm run test:frontend -- src/frontend/src/components/ImageRenderer.spec.tsx`
+- `npm run test:frontend -- src/frontend/src/components/ImageRenderer/ImageRenderer.spec.tsx`
 - `npm run lint:frontend`
+- Planned `ImageRenderer` shared-helper entry added to the canonical helper map (§3) with status `Not implemented` before implementation starts (per the global Shared-helper planning gate).
 
 ### Optional `@remarks` JSDoc follow-through
 
@@ -253,15 +261,22 @@ Implementation mandatory docs:
 - `TASK_PREVIEW_CARD_LAYOUT.md`
 - `docs/developer/frontend/frontend-spacing-and-padding-standards.md`
 
+Code Reviewer mandatory docs:
+
+- `SPEC.md`
+- `TASK_PREVIEW_CARD_LAYOUT.md`
+- `src/frontend/AGENTS.md`
+- `docs/developer/frontend/frontend-spacing-and-padding-standards.md`
+
 ### Shared helper plan
 
 Helper decision entries:
 
 1. Helper: `MarkdownRenderer` presentational component
    - Decision: `new`
-   - Owning module/path: `src/frontend/src/components/MarkdownRenderer.tsx`
-   - Call-site rationale: renders markdown text and tables for the task preview card and future consumers. Placed directly in shared components as the user expects reuse across the project.
-   - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9 (new entry)
+   - Owning module/path: `src/frontend/src/components/MarkdownRenderer/MarkdownRenderer.tsx`
+   - Call-site rationale: renders markdown text and tables for the task preview card and future consumers. Placed in their own subdirectories under `src/frontend/src/components/` as the user expects reuse across the project.
+   - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §3 (Canonical helper map — new entry)
    - Planned doc status: `Not implemented`
 
 ### Acceptance criteria
@@ -283,8 +298,9 @@ Frontend tests:
 
 ### Section checks
 
-- `npm run test:frontend -- src/frontend/src/components/MarkdownRenderer.spec.tsx`
+- `npm run test:frontend -- src/frontend/src/components/MarkdownRenderer/MarkdownRenderer.spec.tsx`
 - `npm run lint:frontend`
+- Planned `MarkdownRenderer` shared-helper entry added to the canonical helper map (§3) with status `Not implemented` before implementation starts (per the global Shared-helper planning gate).
 
 ### Optional `@remarks` JSDoc follow-through
 
@@ -329,7 +345,14 @@ Implementation mandatory docs:
 - `TASK_PREVIEW_CARD_LAYOUT.md`
 - `docs/developer/frontend/frontend-spacing-and-padding-standards.md`
 - `src/frontend/src/services/dataAnalysis/metricDisplay/MetricPill.tsx`
-- `src/frontend/src/components/MetricIconLabel.tsx`
+- `src/frontend/src/components/MetricIconLabel/MetricIconLabel.tsx`
+
+Code Reviewer mandatory docs:
+
+- `SPEC.md`
+- `TASK_PREVIEW_CARD_LAYOUT.md`
+- `src/frontend/AGENTS.md`
+- `docs/developer/frontend/frontend-spacing-and-padding-standards.md`
 
 ### Shared helper plan
 
@@ -404,6 +427,12 @@ Implementation mandatory docs:
 - `SPEC.md`
 - `src/frontend/src/services/dataAnalysis/dataAnalysis.zod.ts` (MetricResult type)
 
+Code Reviewer mandatory docs:
+
+- `SPEC.md`
+- `src/frontend/AGENTS.md`
+- `src/frontend/src/services/dataAnalysis/dataAnalysis.zod.ts`
+
 ### Shared helper plan
 
 No shared helper changes.
@@ -470,6 +499,13 @@ Implementation mandatory docs:
 - `src/frontend/src/features/classPage/TaskHeatmapTable.tsx`
 - `docs/developer/frontend/frontend-spacing-and-padding-standards.md`
 
+Code Reviewer mandatory docs:
+
+- `SPEC.md`
+- `TASK_PREVIEW_CARD_LAYOUT.md`
+- `src/frontend/AGENTS.md`
+- `docs/developer/frontend/frontend-spacing-and-padding-standards.md`
+
 ### Shared helper plan
 
 No shared helper changes.
@@ -527,6 +563,12 @@ Implementation mandatory docs:
 - `src/frontend/AGENTS.md`
 - `TASK_PREVIEW_CARD_LAYOUT.md`
 
+Code Reviewer mandatory docs:
+
+- `SPEC.md`
+- `TASK_PREVIEW_CARD_LAYOUT.md`
+- `src/frontend/AGENTS.md`
+
 ### Shared helper plan
 
 No shared helper changes.
@@ -570,6 +612,7 @@ Create Playwright E2E tests that navigate to the heatmap table, hover over metri
 - Screenshots should capture the popover in both hover and pinned states as supplementary evidence.
 - Tests should cover all three artifact types (IMAGE, TABLE, TEXT).
 - Use structural locators (e.g. `getByText`, `locator('img')`, `toHaveCount(1)`) rather than `toBeVisible()` on `Typography.Text` (which can falsely resolve as hidden per the E2E doc).
+- The aria-label values used in the required test cases (e.g. `Student Two, task_001, Completeness: 5`, `Accuracy: 3`, `SPaG: 4`) are illustrative. The Playwright agent must derive the exact `studentName`/`taskId`/score values from the `createHeatmapScenario` fixture data at implementation time, and confirm they match the `onCell` aria-label format in `TaskHeatmapTable.tsx` (`${studentName}, ${taskId}, ${metricLabel}: ${score}`).
 
 ### Delegation mandatory reads (when sub-agents are used)
 
@@ -673,7 +716,7 @@ Update docs to match implemented feature and highlight any caveats.
 
 ### Acceptance criteria
 
-- `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` has planned entries for `ImageRenderer` and `MarkdownRenderer` (status: `Not implemented` → `Implemented`).
+- `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §3 (Canonical helper map) has planned entries for `ImageRenderer` and `MarkdownRenderer` (status: `Not implemented` → `Implemented`).
 - Any deviations or caveats are documented.
 
 ### Required checks

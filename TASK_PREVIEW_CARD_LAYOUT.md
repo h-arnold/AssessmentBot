@@ -66,8 +66,8 @@ TaskHeatmapTable (Ant Design Table)
                 └── Student Response section
                     ├── Typography.Text label: "Student Response"
                     └── Artifact renderer
-                        ├── ImageRenderer (<img>) — for IMAGE artifacts
-                        ── MarkdownRenderer (react-markdown) — for TABLE/TEXT artifacts
+                         ├── ImageRenderer (<img>) — for IMAGE artifacts
+                         └── MarkdownRenderer (react-markdown) — for TABLE/TEXT artifacts
 ```
 
 This is the only supported entry point for the feature. The popover is triggered exclusively from metric sub-cells in the `TaskHeatmapTable`.
@@ -108,8 +108,7 @@ The trigger element is the existing metric score `<span>` rendered by `TaskHeatm
 ### Notes
 
 - The trigger element is a plain `<span>` (not focusable). Keyboard focus trigger is deferred.
-- The Popover `destroyOnHidden` is left at its default (`false`) so the content is cached between hover cycles — this avoids re-rendering the markdown/image on every hover.
-- The Popover `fresh` prop is not set (default `false`) — content is cached when closed.
+  - The Popover keeps its content cached between hover cycles by default: `fresh` (boolean, default `false` since antd 5.10.0) means the tooltip caches content when closed, so no override is required to avoid re-rendering the markdown/image on each hover. `destroyOnHidden` (default `false`; the v5 `destroyTooltipOnHide` was renamed to `destroyOnHidden` in v6) keeps the DOM mounted rather than unmounting it on hide. Both defaults yield the desired "keep mounted and cached" behaviour, so no explicit prop override is required unless a future antd major version changes them.
 
 ## 2. Popover card header
 
@@ -342,7 +341,7 @@ The popover is not a data-heavy region — it displays a single cell's data. How
 - Do not add action buttons, links, or edit capabilities to the popover.
 - Do not make the trigger element focusable in v1 (deferred).
 - Do not add `rehype-raw` to the markdown renderer (XSS guard).
-- Keep the `MarkdownRenderer` and `ImageRenderer` in `src/frontend/src/components/` as shared components (expected to be reused across the project).
+  - Keep the `MarkdownRenderer` and `ImageRenderer` in their own subdirectories under `src/frontend/src/components/MarkdownRenderer/` and `src/frontend/src/components/ImageRenderer/` respectively (each in its own subdirectory per the shared-component convention used by `MetricIconLabel/`, `PageHeader/`, and `SelectWithAddNew/`), as shared components expected to be reused across the project.
 - Spacing values must be multiples of 8 (or documented 4px exceptions).
 - The `@see TASK_HEATMAP_LAYOUT.md` references in `TaskHeatmapTable.tsx`, `TaskHeatmapPage.tsx`, `ClassPageHeatmapView.spec.tsx`, and `TaskHeatmapTable.spec.tsx` must be updated to point to this document during implementation. (The fifth reference in `frontend-shared-helpers-and-abstraction-standards.md:741` was already corrected.)
 

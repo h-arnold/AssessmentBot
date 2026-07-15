@@ -2,9 +2,10 @@
 
 ## Status
 
-- Draft v1.5
+- Draft v1.6
+- Addresses Planner Reviewer re-review findings (I-1, I-2, I-3, N-1, N-2, N-3): moved `ImageRenderer` and `MarkdownRenderer` into their own subdirectories under `src/frontend/src/components/` to match the existing shared-component convention (`MetricIconLabel/`, `PageHeader/`, `SelectWithAddNew/`); corrected the `MetricIconLabel` mandatory-read path in the action plan to the real `components/MetricIconLabel/MetricIconLabel.tsx`; added Code Reviewer mandatory-read blocks to all implementation sections of the action plan; corrected the fixture source path to `src/frontend/src/test/shared/`; and verified the Ant Design v6 Popover `destroyOnHidden` default is `false` (the v5 `destroyTooltipOnHide` was renamed, default unchanged).
 - Addresses Planner Reviewer findings from v1.4 re-review: fixed header example contradiction (I-1), locked `MetricPill` `precision={0}` and `compact={true}` in Section 4 (I-2), clarified `MetricResult` reassembly with schema-valid values (I-3), added concrete E2E hover-target cell locators (I-4), reworded smoke test to available fixture scale (I-5), corrected @see count to four code locations (N-1), updated helper-plan decision label for shared renderers (N-2), specified MarkdownRenderer CSS is co-located (N-3), updated SPEC version in Read-First (N-4), aligned scaling wording (N-5).
-- **Scope change:** `ImageRenderer` and `MarkdownRenderer` are now placed directly in `src/frontend/src/components/` as shared components (user decision; expected reuse across the project).
+- **Scope change:** `ImageRenderer` and `MarkdownRenderer` are now placed in their own subdirectories under `src/frontend/src/components/` (`ImageRenderer/`, `MarkdownRenderer/`) as shared components (user decision; expected reuse across the project).
 - Previous revisions: v1.4 scoped E2E label assertions (I-2), removed unreachable defensive null (I-3), fixed arithmetic (N-1), clarified header format (N-2), assigned composite aria-label (N-3), fixed taskId imprecision (N-4), noted `TaskPreviewData | null` (N-5). v1.3 fixed file tree (I4), set concrete maxHeight values (I5), corrected render-cost claim (I1). v1.2 resolved unreachable null-return test (M1), documented known v1 demo artefact (M2), added shared-helper planning gate (M3), broadened @see scope (M4), documented unused taskId (M5), adopted MetricIconLabel (S1).
 - Added precise next-round wiring path analysis confirming existing data shapes (`AssignmentFull`, `StudentSubmission`, `StudentSubmissionItem`, `BaseTaskArtifact`, `Assessment`) align perfectly with the `TaskPreviewData` contract — no backend changes needed, purely frontend wiring.
 
@@ -205,7 +206,7 @@ Avoid:
 
 - **Component ownership:** `src/frontend/src/features/classPage/` (feature-local; the popover is only consumed by the heatmap table in v1)
 - **Feature-local fixtures:** `src/frontend/src/features/classPage/fixtures/` (temporary v1 copies of test fixture JSON files with unique taskIds)
-- **Shared renderers:** `src/frontend/src/components/` (`MarkdownRenderer` and `ImageRenderer` are placed directly as shared components, expected to be reused across the project)
+- **Shared renderers:** `src/frontend/src/components/ImageRenderer/` and `src/frontend/src/components/MarkdownRenderer/` (each renderer is placed in its own subdirectory as a shared component, expected to be reused across the project — consistent with the existing `MetricIconLabel/`, `PageHeader/`, and `SelectWithAddNew/` subdirectory convention in `components/`)
 
 ### Proposed high-level tree
 
@@ -217,15 +218,17 @@ src/frontend/src/features/classPage/
 ├── taskPreviewFixtures.ts            (new: fixture loader/adapter with deterministic lookup)
 ├── taskPreviewFixtures.spec.ts       (new: fixture adapter tests)
 └── fixtures/
-    ├── imageTask.json                (copied from src/test/shared/, taskId changed)
-    ├── textTask.json                 (copied from src/test/shared/, taskId changed)
-    └── table_task.json               (copied from src/test/shared/, taskId changed)
+    ├── imageTask.json                (copied from src/frontend/src/test/shared/, taskId changed)
+    ├── textTask.json                 (copied from src/frontend/src/test/shared/, taskId changed)
+    └── table_task.json               (copied from src/frontend/src/test/shared/, taskId changed)
 
 src/frontend/src/components/
-├── ImageRenderer.tsx                 (new: shared base64 image renderer)
-├── ImageRenderer.spec.tsx            (new: component tests)
-├── MarkdownRenderer.tsx              (new: shared markdown renderer)
-└── MarkdownRenderer.spec.tsx         (new: component tests)
+├── ImageRenderer/
+│   ├── ImageRenderer.tsx             (new: shared base64 image renderer)
+│   └── ImageRenderer.spec.tsx        (new: component tests)
+└── MarkdownRenderer/
+    ├── MarkdownRenderer.tsx          (new: shared markdown renderer)
+    └── MarkdownRenderer.spec.tsx     (new: component tests)
 ```
 
 ### Out of scope for this surface
@@ -427,7 +430,7 @@ The following analysis confirms the existing data shapes already support the pre
 
 - The `TaskPreviewCard` component is **presentational only** — it receives all data via props and has no internal state or side effects
 - The popover wrapper logic lives in `TaskHeatmapTable.tsx` (wrapping the existing `render` function for metric sub-cells)
-- The markdown renderer (`MarkdownRenderer`) and image renderer (`ImageRenderer`) are new shared components placed directly in `src/frontend/src/components/` (expected to be reused across the project). The action plan records shared-helper planning gate decisions (`new`) for each, with canonical-doc entries marked `Not implemented` per `ACTION_PLAN_TEMPLATE` §"Shared-helper planning gate".
+- The markdown renderer (`MarkdownRenderer`) and image renderer (`ImageRenderer`) are new shared components placed in their own subdirectories under `src/frontend/src/components/` (`MarkdownRenderer/`, `ImageRenderer/`) (expected to be reused across the project). The action plan records shared-helper planning gate decisions (`new`) for each, with canonical-doc entries marked `Not implemented` per `ACTION_PLAN_TEMPLATE` §"Shared-helper planning gate".
 - The existing `@see TASK_HEATMAP_LAYOUT.md` reference points to a non-existent file in **four code locations**: `TaskHeatmapTable.tsx:16`, `TaskHeatmapPage.tsx:10`, `ClassPageHeatmapView.spec.tsx:17`, and `TaskHeatmapTable.spec.tsx:10`. (The fifth reference in `frontend-shared-helpers-and-abstraction-standards.md:741` was already corrected to `TASK_PREVIEW_CARD_LAYOUT.md`.) The new layout spec (written after this spec is approved) becomes the canonical document and all four code `@see` references are updated during implementation.
 - Wrapping every metric sub-cell (up to 50 rows × N tasks × 3 metrics) in its own `Popover` is expected to be fine (Ant Design `Popover` is lazy). The action plan includes a smoke test in §6 verifying the heatmap renders and remains interactive with the available test fixture after the Popover wrapper is added.
 - The `maxHeight` values for the card body (480px) and image (400px) are set in the layout spec. The layout spec is the single source of truth for these UI specifics and aligns with `frontend-spacing-and-padding-standards.md`.
@@ -447,7 +450,7 @@ The following analysis confirms the existing data shapes already support the pre
 
 ## Documentation and rollout notes
 
-- No canonical docs need updating for v1 (feature-local component with placeholder data)
+- No canonical docs need updating for v1 except the planned shared-helper entries for `ImageRenderer` and `MarkdownRenderer` in the canonical helper map (§3 of `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`), recorded by the action plan's shared-helper planning gate. These two renderers are shared components (not feature-local), so the canonical entry must be reconciled from `Not implemented` to `Implemented` during the documentation pass.
 - When wired to the `assignmentAssessment` service in the next round, update the relevant service docs
 - The `@see TASK_HEATMAP_LAYOUT.md` references in `TaskHeatmapTable.tsx`, `TaskHeatmapPage.tsx`, `ClassPageHeatmapView.spec.tsx`, and `TaskHeatmapTable.spec.tsx` are updated to point to the new layout spec during implementation. (The fifth reference in `frontend-shared-helpers-and-abstraction-standards.md:741` was already corrected.)
 
