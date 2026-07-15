@@ -9,6 +9,19 @@ const SILENCE_PATTERNS = [
   /type:\s*ignore/i,
 ];
 
+const SOURCE_EXTENSIONS = new Set([
+  '.js',
+  '.jsx',
+  '.mjs',
+  '.cjs',
+  '.ts',
+  '.tsx',
+  '.mts',
+  '.cts',
+  '.vue',
+  '.svelte',
+]);
+
 function hasSilencingRule(text: string): string | null {
   for (const pattern of SILENCE_PATTERNS) {
     if (pattern.test(text)) return pattern.source;
@@ -16,27 +29,37 @@ function hasSilencingRule(text: string): string | null {
   return null;
 }
 
+function isSourceFile(filePath: string | undefined): boolean {
+  if (!filePath) return false;
+  if (filePath.includes('/.opencode/plugins/')) return false;
+  return SOURCE_EXTENSIONS.has(filePath.slice(filePath.lastIndexOf('.')));
+}
+
 export default (async () => {
   return {
     'tool.execute.before': async (input, output) => {
       if (input.tool === 'edit') {
+        if (!isSourceFile(output.args.filePath)) return;
         const match = hasSilencingRule(output.args.newString);
         if (match) {
           throw new Error(
             `Blocked edit: new text contains a lint/ts silencing rule (${match}). ` +
-              `Fix the underlying issue instead of suppressing the warning. ` +
-              `If you truly believe there is no good way around the eslint rule, stop and hand back to the user for permission before proceeding.`
+              `Disabling eslint/ts lint rules through this construct is blocked. ` +
+              `Fix the underlying issue rather than suppressing the warning. ` +
+              `If you are unable to address the underlying issue, stop work and hand back to the user to ask for permission, explaining why there is no other way around the rule.`
           );
         }
       }
 
       if (input.tool === 'write') {
+        if (!isSourceFile(output.args.filePath)) return;
         const match = hasSilencingRule(output.args.content);
         if (match) {
           throw new Error(
             `Blocked write: content contains a lint/ts silencing rule (${match}). ` +
-              `Fix the underlying issue instead of suppressing the warning. ` +
-              `If you truly believe there is no good way around the eslint rule, stop and hand back to the user for permission before proceeding.`
+              `Disabling eslint/ts lint rules through this construct is blocked. ` +
+              `Fix the underlying issue rather than suppressing the warning. ` +
+              `If you are unable to address the underlying issue, stop work and hand back to the user to ask for permission, explaining why there is no other way around the rule.`
           );
         }
       }
