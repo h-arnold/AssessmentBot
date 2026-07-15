@@ -25,7 +25,7 @@ import {
 } from '../../services/dataAnalysis/heatmapAdapter';
 import { logFrontendError } from '../../logging/frontendLogger';
 import { TaskHeatmapTable } from './TaskHeatmapTable';
-import { PageTitleCard, PageNavCard } from '../../components/PageHeader';
+import { PageTitleCard, PageNavCard } from '../../components/PageHeader/PageHeader';
 
 type HeatmapPageState = Readonly<{
   heatmapResult: ReturnType<typeof adaptMetricsToHeatmap> | null;

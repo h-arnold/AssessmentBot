@@ -7,7 +7,7 @@ import {
   bulkReferenceKeySchema,
   courseLengthValidationMessage,
 } from './bulkEditValidation.zod';
-import { SelectWithAddNew } from '../../../components/SelectWithAddNew';
+import { SelectWithAddNew } from '../../../components/SelectWithAddNew/SelectWithAddNew';
 
 type SelectOption = Readonly<{
   label: string;

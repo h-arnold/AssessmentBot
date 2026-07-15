@@ -26,7 +26,7 @@
 import type { JSX } from 'react';
 import { Button, Card, Flex, Space, Typography } from 'antd';
 import { ArrowLeft } from 'lucide-react';
-import { APP_SPACE_SIZE_TIGHT } from '../theme/spacing';
+import { APP_SPACE_SIZE_TIGHT } from '../../theme/spacing';
 
 type TitleLevel = 2 | 3 | 4;
 

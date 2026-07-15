@@ -1,8 +1,8 @@
 import { useCallback, type ReactElement } from 'react';
 import { Select, type SelectProps } from 'antd';
 import { Plus } from 'lucide-react';
-import { LucideIcon } from './icons/LucideIcon';
-import { useDebounce, DEFAULT_DEBOUNCE_MS } from '../hooks/useDebounce';
+import { LucideIcon } from '../icons/LucideIcon';
+import { useDebounce, DEFAULT_DEBOUNCE_MS } from '../../hooks/useDebounce';
 
 /**
  * Sentinel value used internally to identify the 'Add new' option.

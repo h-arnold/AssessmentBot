@@ -36,7 +36,7 @@ import { getStudentMetric } from './classPageAdapter.zod';
 import { METRIC_DISPLAY_META } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import type { MetricColumnKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import { MetricPill } from '../../services/dataAnalysis/metricDisplay/MetricPill';
-import { MetricIconLabel } from '../../components/MetricIconLabel';
+import { MetricIconLabel } from '../../components/MetricIconLabel/MetricIconLabel';
 
 /** Width constant for a single Recent Assignment card.
  *

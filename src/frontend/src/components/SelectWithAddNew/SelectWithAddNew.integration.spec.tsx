@@ -12,7 +12,7 @@ describe('Section 7 - SelectWithAddNew Integration Tests', () => {
       // After implementation, it should pass to verify no regression
       
       // Import the actual BulkCreateModal (not mocked)
-      const { BulkCreateModal } = await import('../features/classes/bulk/BulkCreateModal');
+      const { BulkCreateModal } = await import('../../features/classes/bulk/BulkCreateModal');
       
       const cohortOptions = [
         { label: 'Cohort 2025', value: 'cohort-2025' },
@@ -56,7 +56,7 @@ describe('Section 7 - SelectWithAddNew Integration Tests', () => {
     it('Rapid clicks on \'Add new\' only open modal once (debounce verification)', async () => {
       // This test should fail because debounce isn't implemented yet
       
-      const { BulkCreateModal } = await import('../features/classes/bulk/BulkCreateModal');
+      const { BulkCreateModal } = await import('../../features/classes/bulk/BulkCreateModal');
       
       const cohortOptions = [
         { label: 'Cohort 2025', value: 'cohort-2025' },

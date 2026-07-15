@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { SelectWithAddNew } from './SelectWithAddNew';
-import * as useDebounceModule from '../hooks/useDebounce';
+import * as useDebounceModule from '../../hooks/useDebounce';
 
 // Mock @ant-design/icons: provide a default Icon that renders the custom component
 // (LucideIcon uses the default Icon export), and keep PlusOutlined for existing tests.

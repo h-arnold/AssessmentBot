@@ -32,7 +32,7 @@ import { AssessTaskModal } from '../../features/classes/AssessTaskModal/AssessTa
 import { pageContent } from '../../pages/pageContent';
 import { useClassSelection } from '../../ClassSelectionContext';
 import { APP_GAP_MD } from '../../theme/spacing';
-import { PageTitleCard, PageNavCard } from '../../components/PageHeader';
+import { PageTitleCard, PageNavCard } from '../../components/PageHeader/PageHeader';
 
 type ClassPageProperties = Readonly<{
   /** The class ID to fetch data for. */

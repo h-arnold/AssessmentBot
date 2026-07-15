@@ -2,7 +2,7 @@ import { Form } from 'antd';
 import { useEffect, useMemo } from 'react';
 import { BulkFormModalScaffold } from './BulkFormModalScaffold';
 import { bulkReferenceKeySchema } from './bulkEditValidation.zod';
-import { SelectWithAddNew } from '../../../components/SelectWithAddNew';
+import { SelectWithAddNew } from '../../../components/SelectWithAddNew/SelectWithAddNew';
 
 type SelectOption = Readonly<{
   label: string;

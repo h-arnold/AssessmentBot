@@ -39,7 +39,7 @@ import {
 } from '../../services/dataAnalysis/metricDisplay/metricTone';
 import { buildMetricRangeFilter } from '../../services/dataAnalysis/metricDisplay/metricRangeFilter';
 import { decodeFilterToRange } from '../../services/dataAnalysis/metricDisplay/metricRangeKey';
-import { MetricIconLabel } from '../../components/MetricIconLabel';
+import { MetricIconLabel } from '../../components/MetricIconLabel/MetricIconLabel';
 import {
   APP_COL_WIDTH_STUDENT_NAME,
   APP_COL_WIDTH_METRIC_PILL,

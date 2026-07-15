@@ -6,7 +6,7 @@ import {
   MAX_WEIGHTING_VALUE,
   MIN_WEIGHTING_VALUE,
 } from '../../services/assignmentDefinition/assignmentDefinition.zod';
-import { SelectWithAddNew } from '../../components/SelectWithAddNew';
+import { SelectWithAddNew } from '../../components/SelectWithAddNew/SelectWithAddNew';
 import { type DocumentChangeState, type TaskRow } from './useAssignmentDefinitionWizard';
 
 const CREATE_TITLE = 'Create assignment';
