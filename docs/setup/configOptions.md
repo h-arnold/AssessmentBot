@@ -31,11 +31,11 @@
 
 #### 🔑 API Key
 
-This authenticates you with the Assessment Bot backend, which you should have set up already. It is the same API key you set in the `API_KEYS` environment variable when deploying the backend.
+This authenticates you with the Assessment Bot LLM Service, which you should have set up already. It is the same API key you set in the `API_KEYS` environment variable when deploying the LLM Service.
 
 #### 🌍 URL
 
-This is the URL of your deployed Assessment Bot backend. It should look something like:
+This is the URL of your deployed Assessment Bot LLM Service. It should look something like:
 `https://assessment-bot-backend.yourdomain.com/v1/assessor`
 
 ---
@@ -48,7 +48,7 @@ These values are optional, but can be tuned for throughput and reliability.
 
 **Default:** 120
 
-This is the number of student-response requests Assessment Bot sends to the backend in each batch.
+This is the number of student-response requests Assessment Bot sends to the LLM Service in each batch.
 
 #### 🖼️ Slides Fetch Batch Size
 

@@ -77,7 +77,7 @@ Your students’ privacy is a top priority. Here's how their data is protected:
 
 - **No intentional sharing of PII**: The tool only processes data within the user’s Google Workspace account, managed by the educational institution.
 - **Mitigations against accidental PII submission**:
-  - **Ephemeral image storage**: The AssessmentBot backend is stateless when deployed to a serverless platform, ensuring uploaded images exist only temporarily during processing.
+  - **Ephemeral image storage**: The AssessmentBot LLM Service is stateless when deployed to a serverless platform, ensuring uploaded images exist only temporarily during processing.
   - **GDPR compliance**: The tool integrates with the GDPR-compliant version of the Gemini Flash API. While this comes with a small cost, it ensures adherence to strict privacy standards.
 - **FOSS Transparency**: The entire tool, including the Langflow backend, is **free and open-source software (FOSS)**. If you don’t trust my word, you can inspect the source code yourself!
 - **HWB Ready**: The tool works seamlessly with HWB accounts! 🏴‍☠️

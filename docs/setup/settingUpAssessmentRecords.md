@@ -30,7 +30,7 @@ To quickly test Assessment Bot using the frontend application:
 
 - You have [configured Assessment Bot](./configOptions.md).
 - You have at least one Google Classroom associated with the account running Assessment Bot.
-- You have [deployed the Assessment Bot Backend](https://github.com/h-arnold/AssessmentBot-Backend) (the LLM backend service).
+- You have [deployed the Assessment Bot LLM Service](https://github.com/h-arnold/AssessmentBot-LLM-Service).
 
 ---
 

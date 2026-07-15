@@ -5,10 +5,10 @@ This guide will walk you through setting up the Google Slides Assessor, a tool d
 - [🛠️ Setting up Assessment Bot](#️-setting-up-assessment-bot)
   - [📝 Prerequisites](#-prerequisites)
   - [🧩 Core Components](#-core-components)
-    - [1️⃣ Assessment Bot Backend](#1️⃣-assessment-bot-backend)
+    - [1️⃣ Assessment Bot LLM Service](#1️⃣-assessment-bot-llm-service)
     - [2️⃣ Assessment Records](#2️⃣-assessment-records)
   - [🚀 The Setup Process](#-the-setup-process)
-    - [🌐 Setting up the Backend](#-setting-up-the-backend)
+    - [🌐 Setting up the LLM Service](#-setting-up-the-llm-service)
     - [🖥️ Setting up the Google Apps Script Frontend](#️-setting-up-the-google-apps-script-frontend)
       - [1️⃣ Configuring Assessment Bot](#1️⃣-configuring-assessment-bot)
       - [2️⃣ Creating the Assessment Records](#2️⃣-creating-the-assessment-records)
@@ -28,9 +28,9 @@ Before starting, ensure you have the following:
 
 Understanding the system's components will help you see how it all fits together:
 
-### 1️⃣ Assessment Bot Backend
+### 1️⃣ Assessment Bot LLM Service
 
-- ([The Assessment Bot Backend](https://github.com/h-arnold/AssessmentBot-Backend)) provides the LLM (Large Language Model) backend for handling assessments. This allows for automated interpretation and marking of student submissions.
+- ([The Assessment Bot LLM Service](https://github.com/h-arnold/AssessmentBot-LLM-Service)) provides the LLM (Large Language Model) service for handling assessments. This allows for automated interpretation and marking of student submissions.
 
 ### 2️⃣ Assessment Records
 
@@ -44,9 +44,9 @@ Follow these steps to set up the system.
 
 ---
 
-### 🌐 Setting up the Backend
+### 🌐 Setting up the LLM Service
 
-The Backend has an Alpine Linux based Docker image that can be deployed to a cloud provider of your choice. Check out the deloyment instructions here: [Assessment Bot Backend Deployment Instructions](https://github.com/h-arnold/AssessmentBot-Backend/blob/master/docs/deployment/docker.md)
+The LLM Service has an Alpine Linux based Docker image that can be deployed to a cloud provider of your choice. Check out the deloyment instructions here: [Assessment Bot LLM Service Deployment Instructions](https://github.com/h-arnold/AssessmentBot-LLM-Service/blob/master/docs/deployment/docker.md)
 
 ---
 
@@ -56,7 +56,7 @@ This section is primarily for Heads of Department or administrators responsible 
 
 #### [1️⃣ Configuring Assessment Bot](./configOptions.md)
 
-- This step links the frontend (Google Apps Script) to the backend (Langflow instance). It ensures the system knows where to send and receive data during assessments. [Follow this guide](./configOptions.md) to configure it.
+- This step links the frontend (Google Apps Script) to the LLM Service. It ensures the system knows where to send and receive data during assessments. [Follow this guide](./configOptions.md) to configure it.
 
 #### [2️⃣ Creating the Assessment Records](./settingUpAssessmentRecords.md)
 
