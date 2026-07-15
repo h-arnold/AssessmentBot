@@ -1,0 +1,10 @@
+.markdown table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+.markdown th,
+.markdown td {
+  border: 1px solid #d9d9d9;
+  padding: 8px;
+}

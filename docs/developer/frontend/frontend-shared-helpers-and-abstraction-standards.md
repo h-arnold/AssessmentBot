@@ -79,6 +79,7 @@ Test helper placement rules remain governed by `docs/developer/frontend/frontend
 ### 3.5 Shared presentational components (planned)
 
 - `ImageRenderer` (planned, status: Not implemented): shared presentational component at `src/frontend/src/components/ImageRenderer/ImageRenderer.tsx`. Renders a base64 data URL as a constrained `<img>` (maxWidth 100%, height auto, maxHeight 400, default alt "Student response image"). Introduced for the Task Preview Card; expected to be reused across the project.
+- `MarkdownRenderer` (planned, status: Not implemented): shared presentational component at `src/frontend/src/components/MarkdownRenderer/MarkdownRenderer.tsx`. Renders markdown text and tables via `react-markdown` + `remark-gfm` (no `rehype-raw`, for XSS safety). Co-located CSS for basic table styling. Introduced for the Task Preview Card; expected to be reused across the project.
 
 ## 4. Extraction decision rules
 

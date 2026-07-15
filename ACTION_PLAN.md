@@ -312,9 +312,11 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** describe actual changes made when done.
-- **Deviations from plan:** note any departures from the original section design.
-- **Follow-up implications for later sections:** none.
+- **Implementation notes:** Created `src/frontend/src/components/MarkdownRenderer/MarkdownRenderer.tsx` (function declaration `MarkdownRenderer`, `children: string` + optional `className?`, renders via `react-markdown` + `remark-gfm`, no `rehype-raw`) and `MarkdownRenderer.module.css` (scoped table styling: `border-collapse: collapse`, cell borders, `padding: 8px` — 8px grid compliant). Added `MarkdownRenderer.spec.tsx` (6 tests). Added a planned `MarkdownRenderer` entry to canonical helper map §3.5 (status `Not implemented`).
+- **Deviations from plan:** None material. The test file initially produced 4 `@typescript-eslint/no-magic-numbers` warnings (literal `2` count assertions); these were resolved by extracting named count constants, so the file is warning-clean.
+- **Follow-up implications for later sections:** `TaskPreviewCard` (Section 4) will consume `MarkdownRenderer` for TEXT and TABLE artifacts.
+
+**Status: Complete** — 6 tests pass, lint clean (0 warnings), frontend unit coverage passing, full frontend suite green (no regression; regression-checker shows Regressions Count 0, New Failures 0). Reviewed clean by Code Reviewer.
 
 ---
 
