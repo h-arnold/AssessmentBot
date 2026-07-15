@@ -20,6 +20,7 @@ const getGoogleClassroomsMock = vi.fn();
 const getAssignmentTopicsMock = vi.fn();
 const getYearGroupsMock = vi.fn();
 const getABClassMock = vi.fn();
+const getAssignmentMock = vi.fn();
 
 vi.mock('../services/authService/authService', () => ({
   getAuthorisationStatus: getAuthorisationStatusMock,
@@ -48,6 +49,10 @@ vi.mock('../services/referenceData/referenceDataService', () => ({
 
 vi.mock('../services/googleClassrooms/classDetail/classDetailService', () => ({
   getABClass: getABClassMock,
+}));
+
+vi.mock('../services/assignmentAssessment/assignmentAssessmentService', () => ({
+  getAssignment: getAssignmentMock,
 }));
 
 // The configureDeferredWarmupDatasets function is imported from the shared module
@@ -273,5 +278,45 @@ describe('shared query definitions', () => {
     await expect(
       createAppQueryClient().fetchQuery(getABClassQueryOptions('class-001')),
     ).rejects.toThrow();
+  });
+});
+
+describe('getAssignmentQueryOptions', () => {
+  it('queryKey matches queryKeys.assignment(courseId, assignmentId)', async () => {
+    const { getAssignmentQueryOptions } = await import('./sharedQueries');
+    const queryOptions = getAssignmentQueryOptions('courseA', 'assign1');
+
+    expect(queryOptions.queryKey).toEqual(queryKeys.assignment('courseA', 'assign1'));
+  });
+
+  it('staleTime is 300000 (5 minutes)', async () => {
+    const { getAssignmentQueryOptions, ASSIGNMENT_QUERY_STALE_TIME_MS } = await import('./sharedQueries');
+    const queryOptions = getAssignmentQueryOptions('courseA', 'assign1');
+
+    expect(queryOptions.staleTime).toBe(ASSIGNMENT_QUERY_STALE_TIME_MS);
+  });
+
+  it('retry is false', async () => {
+    const { getAssignmentQueryOptions } = await import('./sharedQueries');
+    const queryOptions = getAssignmentQueryOptions('courseA', 'assign1');
+
+    expect(queryOptions.retry).toBe(false);
+  });
+
+  it('delegates to getAssignment service with correct parameters', async () => {
+    const expectedResult = { courseId: 'courseA', assignmentId: 'assign1' };
+    getAssignmentMock.mockResolvedValueOnce(expectedResult);
+
+    const { getAssignmentQueryOptions } = await import('./sharedQueries');
+    const queryClient = createAppQueryClient();
+
+    await expect(
+      queryClient.fetchQuery(getAssignmentQueryOptions('courseA', 'assign1')),
+    ).resolves.toEqual(expectedResult);
+    expect(getAssignmentMock).toHaveBeenCalledWith({
+      courseId: 'courseA',
+      assignmentId: 'assign1',
+    });
+    expect(getAssignmentMock).toHaveBeenCalledTimes(1);
   });
 });
