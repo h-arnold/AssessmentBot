@@ -25,7 +25,7 @@ import type {
   RecentAssignmentCardModel,
   StudentAverageRowModel,
 } from './classPageAdapter.zod';
-import { compareStudentNames } from './classPageModel';
+import { compareAssignmentUpdatedAtDesc, compareStudentNames } from './classPageModel';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -303,7 +303,12 @@ export function adaptClassPageToViewModel(input: {
 
   // Take the most recent 3 *before* rolling up (avoids ~(A-3)·T wasted rollups)
   const topAssignments = validatedAssignments
-    .toSorted((a, b) => b.validatedUpdatedAt.localeCompare(a.validatedUpdatedAt))
+    .toSorted((a, b) =>
+      compareAssignmentUpdatedAtDesc(
+        { updatedAt: a.validatedUpdatedAt, assignmentId: a.assignment.assignmentId },
+        { updatedAt: b.validatedUpdatedAt, assignmentId: b.assignment.assignmentId }
+      )
+    )
     .slice(0, MAX_RECENT_ASSIGNMENTS);
 
   const recentAssignments: RecentAssignmentCardModel[] = topAssignments.map(

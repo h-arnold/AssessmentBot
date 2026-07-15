@@ -132,6 +132,33 @@ export function compareStudentNames(a: StudentAverageRowModel, b: StudentAverage
 }
 
 /**
+ * Compare two assignments by `updatedAt` descending, with `assignmentId` ascending
+ * as a deterministic tie-break when `updatedAt` values are equal.
+ *
+ * @remarks
+ * Shared by the ClassPage prefetch (top-3 recency selection) and the adapter's
+ * `recentAssignments` pipeline so the prefetched set and the displayed cards always
+ * use identical ordering. The minimal `{ updatedAt, assignmentId }` shape lets both
+ * call sites map their own element shapes into the comparator without structural coupling.
+ *
+ * @param {{ updatedAt: string; assignmentId: string }} a - The first assignment.
+ * @param {string} a.updatedAt - The ISO timestamp string for `a`.
+ * @param {string} a.assignmentId - The identifier for `a`.
+ * @param {{ updatedAt: string; assignmentId: string }} b - The second assignment.
+ * @param {string} b.updatedAt - The ISO timestamp string for `b`.
+ * @param {string} b.assignmentId - The identifier for `b`.
+ * @returns {number} Negative if `a` is more recent, positive if `b` is, zero if equal.
+ */
+export function compareAssignmentUpdatedAtDesc(
+  a: { updatedAt: string; assignmentId: string },
+  b: { updatedAt: string; assignmentId: string }
+): number {
+  const updatedAtCmp = b.updatedAt.localeCompare(a.updatedAt);
+  if (updatedAtCmp !== 0) return updatedAtCmp;
+  return a.assignmentId.localeCompare(b.assignmentId);
+}
+
+/**
  * Compare two `HeatmapRow`s by student name (locale-aware, case-insensitive)
  * with a deterministic `studentId` ascending tie-break.
  *

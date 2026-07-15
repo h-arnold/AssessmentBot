@@ -15,6 +15,7 @@ import {
   buildClassPageViewModel,
   compareStudentNames,
   compareHeatmapStudentName,
+  compareAssignmentUpdatedAtDesc,
 } from './classPageModel';
 import type { HeatmapRow } from '../../services/dataAnalysis/heatmapAdapter';
 import type {
@@ -555,6 +556,40 @@ describe('buildClassPageViewModel', () => {
       // RED phase fails because compareHeatmapStudentName is not yet exported.
       // Green phase: this call confirms the function signature accepts HeatmapRow.
       expect(typeof compareHeatmapStudentName).toBe('function');
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // compareAssignmentUpdatedAtDesc — shared recency comparator
+  // -----------------------------------------------------------------------
+  describe('compareAssignmentUpdatedAtDesc', () => {
+    it('returns less than 0 when a has a later updatedAt than b (descending)', () => {
+      const result = compareAssignmentUpdatedAtDesc(
+        { updatedAt: '2026-02-01', assignmentId: 'a' },
+        { updatedAt: '2026-01-01', assignmentId: 'b' }
+      );
+
+      // The later-updated entry (a) must sort before the earlier one (b)
+      expect(result).toBeLessThan(0);
+    });
+
+    it('returns greater than 0 when updatedAt is equal and assignmentId tie-break is ascending', () => {
+      const result = compareAssignmentUpdatedAtDesc(
+        { updatedAt: '2026-01-01', assignmentId: 'b' },
+        { updatedAt: '2026-01-01', assignmentId: 'a' }
+      );
+
+      // Same updatedAt — smaller assignmentId (a) sorts first, so b sorts after
+      expect(result).toBeGreaterThan(0);
+    });
+
+    it('returns 0 when updatedAt and assignmentId are both equal', () => {
+      const result = compareAssignmentUpdatedAtDesc(
+        { updatedAt: '2026-01-01', assignmentId: 'a' },
+        { updatedAt: '2026-01-01', assignmentId: 'a' }
+      );
+
+      expect(result).toBe(0);
     });
   });
 });
