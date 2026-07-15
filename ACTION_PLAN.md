@@ -434,6 +434,10 @@ Helper decision entries:
 
 - Prefetch effect: document that it gates on `surfaceState.status === 'ready'`, uses the shared `compareAssignmentUpdatedAtDesc` comparator, and is intentionally fire-and-forget with `.catch(() => undefined)`. Note the `prefetchQuery` keyed-and-idempotent property that makes StrictMode double-fire safe.
 
+**Status: Complete** — red/green loops clean, code review clean, regression gate passed (0 regressions vs baseline; the 3 pre-existing baseline failures remain, accepted as technical debt).
+
+**De-sloppification pass: clean.** Verdict: no slop across the 17 changed files. One valid simplification applied to `sharedQueries.ts` (the three intermediate stale-time constants collapsed to a single `export const ASSIGNMENT_QUERY_STALE_TIME_MS = 300_000;`, runtime value unchanged). The ref-name nitpick was rejected: `unicorn/prevent-abbreviations` requires the full-word `prefetchedClassIdReference` (the abbreviated `prefetchedClassIdRef` trips the rule), so the committed name stands. The §9.18.15 planning-entry `Not implemented` statuses will be flipped to `Implemented` during the documentation pass.
+
 ---
 
 ## Regression and contract hardening
@@ -499,9 +503,7 @@ Docs agent mandatory docs:
 
 - Confirm that all `@remarks` planned in Sections 1–4 are present in the relevant source files before closing.
 
-**Status: Complete** — red/green loops clean, code review clean, regression gate passed (0 regressions vs baseline; the 3 pre-existing baseline failures remain, accepted as technical debt).
-
-**De-sloppification pass: clean.** Verdict: no slop across the 17 changed files. One valid simplification applied to `sharedQueries.ts` (the three intermediate stale-time constants collapsed to a single `export const ASSIGNMENT_QUERY_STALE_TIME_MS = 300_000;`, runtime value unchanged). The ref-name nitpick was rejected: `unicorn/prevent-abbreviations` requires the full-word `prefetchedClassIdReference` (the abbreviated `prefetchedClassIdRef` trips the rule), so the committed name stands. The §9.18.15 planning-entry `Not implemented` statuses will be flipped to `Implemented` during the documentation pass.
+**Status: Complete** — all five canonical-doc acceptance criteria met; §9.18.15 entries flipped `Not implemented` → `Implemented`; §9.18.3 stale "Pure hook" claim and line count (now 447) corrected; §9.18.1 notes the shared comparator; `@remarks` added/confirmed on `getAssignment`, `AssignmentFullSchema`/`AssignmentFullResponseSchema`, `getAssignmentQueryOptions`, `compareAssignmentUpdatedAtDesc`, and the prefetch effect. Lint clean for all changed files (14 pre-existing baseline errors elsewhere untouched).
 
 ---
 

@@ -526,7 +526,7 @@ These entries record the feature-local helpers for the Class page. Per `frontend
 
 - Decision: `keep local`
 - Owning module/path: `src/frontend/src/features/classPage/classPageAdapter.ts`
-- Call-site rationale: the only module that knows how to translate the data analysis service's `AveragingResult` (with the new `MetricResult` discriminated union) plus the raw `ClassFull` into the view-model shapes the Class page consumes (`RecentAssignmentCardModel[]`, `StudentAverageRowModel[]`, `classMetrics`). Rolls up each criterion via the shared `rollupMetric` helper (which excludes errors at aggregation levels above the per-cell level) and computes the per-assignment `average` by delegating to the shared `computeOverallComposite` helper (40/40/20 weighting with SPaG renormalisation; also excludes error criteria). Also handles the `updatedAt`-based recent-assignment selection (top 3, sorted descending), the no-data row synthesis for unassessed students, and trust validation (null `updatedAt` throws, duplicate `studentId`/`assignmentId` throws, unparseable `updatedAt` throws). Has exactly one caller (`useClassPageData`); promotion to a shared adapter would only make sense if a second consumer surface appears.
+- Call-site rationale: the only module that knows how to translate the data analysis service's `AveragingResult` (with the new `MetricResult` discriminated union) plus the raw `ClassFull` into the view-model shapes the Class page consumes (`RecentAssignmentCardModel[]`, `StudentAverageRowModel[]`, `classMetrics`). Rolls up each criterion via the shared `rollupMetric` helper (which excludes errors at aggregation levels above the per-cell level) and computes the per-assignment `average` by delegating to the shared `computeOverallComposite` helper (40/40/20 weighting with SPaG renormalisation; also excludes error criteria). Also handles the `updatedAt`-based recent-assignment selection (top 3, sorted descending via the shared `compareAssignmentUpdatedAtDesc` comparator — replaced the previous inline stable sort), the no-data row synthesis for unassessed students, and trust validation (null `updatedAt` throws, duplicate `studentId`/`assignmentId` throws, unparseable `updatedAt` throws). Has exactly one caller (`useClassPageData`); promotion to a shared adapter would only make sense if a second consumer surface appears.
 - Status: `Implemented`
 - Implementation notes:
   - 495 lines (well under the 500-line threshold; no file separation required).
@@ -591,15 +591,15 @@ These entries record the feature-local helpers for the Class page. Per `frontend
 - Call-site rationale: sole data-fetching entry point for the Class page. Wires together `getABClass` query (view-entry fetch), `usePageDataset('assignmentDefinitionPartials')` (warm-up-backed), synchronous `DataAnalysisService.analyse(...)`, and `adaptClassPageToViewModel(...)`. Produces a typed `ClassPageData` result with `surfaceState` as a discriminated union. Has exactly one caller (`ClassPage.tsx`); promotion to a shared hook would only make sense if a second consumer page needs the same orchestration.
 - Status: `Implemented`
 - Implementation notes:
-  - 473 lines (well under the 500-line threshold).
-  - Pure hook — no I/O beyond React Query calls and synchronous analyser/adapter calls. No `useEffect` beyond what React Query uses internally.
+  - 447 lines (well under the 500-line threshold).
+  - Side-effect-light hook: one fire-and-forget prefetch `useEffect` alongside the existing data-orchestration logic. The effect gates on `surfaceState.status === 'ready'`, sorts top-3 assignments via the shared `compareAssignmentUpdatedAtDesc` comparator, and fires `queryClient.prefetchQuery` with `.catch(() => undefined)` for each. A `useRef` guard ensures single dispatch per classId. No I/O beyond React Query calls and synchronous analyser/adapter calls.
   - Surface state is a discriminated union: `{ status: 'loading' }` | `{ status: 'blocking'; error: ClassPageError }` | `{ status: 'ready' }`.
   - Error precedence (top to bottom): `classNotFound` > `classQueryError` > `assignmentDefinitionPartialsFailed` > `assignmentDefinitionPartialsUntrustworthy` > `adapterError` > `analyserError`.
   - `shouldRunPipeline` guard ensures analyser/adapter do not run when the dataset is untrustworthy or has failed.
   - `refetch` uses `useCallback` with destructured `queryRefetch` to avoid stale-closure bugs.
   - Module-level `createAnalysisService()` factory avoids test workaround in production code.
   - Co-located spec: `useClassPageData.spec.ts` (16 tests covering all error states, memoisation, and refetch).
-  - Projected size in spec was ~300–350 lines; actual is 473 due to thorough JSDoc, extracted helper functions (kept under the 7-complexity limit), and the `shouldRunPipeline` guard logic. No splitting needed.
+  - Projected size in spec was ~300–350 lines; the post-prefetch actual is ~447 lines (the prefetch `useEffect` and `useRef` guard added lines, but de-sloppification compressed others, landing below the original 473). No splitting needed.
 
 #### 9.18.4 Page composition root: `ClassPage`
 
@@ -754,9 +754,9 @@ These entries record the feature-local helpers for the Class page. Per `frontend
   - `createHeatmapScenario` exposes `deferredClass` (via `deferredSuccess`/`releaseNextDeferredSuccess`) for the loading-skeleton test, while always keeping two `getABClass` queue entries for StrictMode safety.
   - A scoped-parent overload was added to `applyColumnFilterOption` in `src/frontend/e2e-tests/shared/endToEndRuntimeMocks.ts` so the band-filter test can target the first task group's `Completeness` columnheader without tripping Playwright strict mode (string callers are unchanged).
 
-#### 9.18.15 ClassPage assignment prefetch support helpers (planned — ACTION_PLAN.md Sections 1/2/3)
+#### 9.18.15 ClassPage assignment prefetch support helpers
 
-These entries record the helpers introduced to support the ClassPage assignment prefetch feature (see `ACTION_PLAN.md`). Status is `Not implemented` until the relevant section lands; the documentation pass (ACTION_PLAN.md final section) marks each `Implemented`.
+These entries record the helpers introduced to support the ClassPage assignment prefetch feature (see `ACTION_PLAN.md`). All entries delivered in the ClassPage Assignment Prefetch cycle.
 
 19. Helper: `getAssignment` service function
 
@@ -764,7 +764,7 @@ These entries record the helpers introduced to support the ClassPage assignment 
 - Owning module/path: `src/frontend/src/services/assignmentAssessment/assignmentAssessmentService.ts`
 - Call-site rationale: wraps the backend `getAssignment_` allowlisted method; the prefetch effect in `useClassPageData` and future per-assignment query hooks call this function. Routes through `callApi('getAssignment', ...)` and validates the response through `AssignmentFullResponseSchema`.
 - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9
-- Status: `Not implemented`
+- Status: `Implemented`
 
 20. Helper: `AssignmentFullSchema` / `AssignmentFullResponseSchema` Zod schemas
 
@@ -772,7 +772,7 @@ These entries record the helpers introduced to support the ClassPage assignment 
 - Owning module/path: `src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts`
 - Call-site rationale: validates the full `Assignment.toJSON()` response at the transport boundary; required by the `getAssignment` service function. `AssignmentFullResponseSchema` is the nullable wrapper (`null` = assignment not found).
 - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9
-- Status: `Not implemented`
+- Status: `Implemented`
 
 21. Helper: `queryKeys.assignment(courseId, assignmentId)` query key factory
 
@@ -780,7 +780,7 @@ These entries record the helpers introduced to support the ClassPage assignment 
 - Owning module/path: `src/frontend/src/query/queryKeys.ts`
 - Call-site rationale: scoped query key factory for per-assignment full reads; consumed by `getAssignmentQueryOptions` and future invalidation calls.
 - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9
-- Status: `Not implemented`
+- Status: `Implemented`
 
 22. Helper: `getAssignmentQueryOptions(courseId, assignmentId)` shared query options
 
@@ -788,7 +788,7 @@ These entries record the helpers introduced to support the ClassPage assignment 
 - Owning module/path: `src/frontend/src/query/sharedQueries.ts`
 - Call-site rationale: shared query options for the `prefetchQuery` call in `useClassPageData` and future `useQuery` consumers. Declares `staleTime: 5 * 60 * 1000` and `retry: false`.
 - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9
-- Status: `Not implemented`
+- Status: `Implemented`
 
 23. Helper: `compareAssignmentUpdatedAtDesc(a, b)` shared comparator
 
@@ -796,7 +796,7 @@ These entries record the helpers introduced to support the ClassPage assignment 
 - Owning module/path: `src/frontend/src/features/classPage/classPageModel.ts`
 - Call-site rationale: ensures the prefetched top-3 and the adapter's displayed `recentAssignments` use identical ordering (updatedAt desc, assignmentId asc tie-break); prevents divergence when `updatedAt` values are equal.
 - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9
-- Status: `Not implemented`
+- Status: `Implemented`
 
 ### 9.19 Frontend pure formatting helpers
 

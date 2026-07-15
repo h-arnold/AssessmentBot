@@ -101,12 +101,15 @@ export const AssignmentDefinitionSchema = z.object({
 /**
  * Schema for the full assignment payload returned by `getAssignment`.
  *
+ * @remarks
  * Mirrors the top-level fields of `Assignment.toJSON()` in
  * `src/backend/AssignmentProcessor/Assignment/00_AssignmentSerialisation.js`,
  * which emits `courseId`, `assignmentId`, `assignmentName`, `dueDate`,
  * `updatedAt`, `createdAt`, plus `_extractFullDefinitionFields` (documentType,
  * referenceDocumentId, templateDocumentId, tasks), submissions, and
- * assignmentDefinition.
+ * assignmentDefinition. The inner `AssignmentDefinition.toJSON()` is the
+ * source of truth at `src/backend/Models/AssignmentDefinition.js`.
+ * Check those files when the backend response shape changes.
  *
  * This schema is `.strict()` so extra fields on the wire cause a Zod error.
  */
@@ -132,6 +135,11 @@ export type AssignmentFull = z.infer<typeof AssignmentFullSchema>;
 /**
  * Response schema for `getAssignment`. Accepts the full assignment object or `null`
  * (when the backend cannot find the assignment document).
+ *
+ * @remarks
+ * The non-null payload mirrors `Assignment.toJSON()` from the backend. The
+ * nullable wrapper matches the backend's `null`-on-not-found contract.
+ * Source-of-truth backend file: `00_AssignmentSerialisation.js`.
  */
 export const AssignmentFullResponseSchema = AssignmentFullSchema.nullable();
 

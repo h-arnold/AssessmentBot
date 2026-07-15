@@ -21,6 +21,16 @@
  * dependent on `classFullQuery.refetch` and `adpQuery.refetch` to prevent stale-closure
  * bugs that would cause the retry button to refetch a class the user is no longer viewing.
  *
+ * A fire-and-forget prefetch `useEffect` runs alongside the data-orchestration
+ * logic.  When `surfaceState.status === 'ready'`, it sorts
+ * `classFull.assignments` via the shared {@link compareAssignmentUpdatedAtDesc}
+ * comparator, takes the top 3, and calls
+ * `queryClient.prefetchQuery(getAssignmentQueryOptions(...))` for each.
+ * Failures are swallowed (`.catch(() => undefined)`); the `prefetchQuery` call
+ * is keyed and idempotent, so React StrictMode double-fire is safe.  A
+ * `useRef<string | null>` guard (`prefetchedClassIdReference`) prevents
+ * re-dispatch for the same `classId` and resets on cross-class navigation.
+ *
  * @see SPEC_CLASS_PAGE.md — "useClassPageData — data orchestrator hook"
  */
 
