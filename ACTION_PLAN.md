@@ -1,39 +1,44 @@
-# Feature Delivery Plan — ClassPage Assignment Prefetch
+# Task Preview Card — Feature Delivery Plan (TDD-First)
 
 ## Read-First Context
 
 Before writing or executing this plan:
 
-1. Read the current `SPEC.md`.
-2. Treat `SPEC.md` as the source of truth for product behaviour, contracts, and scope boundaries.
-3. Use this action plan to sequence delivery and testing; do not restate or redefine material already settled in the spec.
+1. Read the current `SPEC.md` (Task Preview Card Specification, draft v1.5).
+2. Read `TASK_PREVIEW_CARD_LAYOUT.md` (Task Preview Card Layout Specification).
+3. Treat those documents as the source of truth for product behaviour, contracts, and layout rules.
+4. Use this action plan to sequence delivery and testing; do not restate or redefine material already settled in the spec or layout docs.
 
 ## Scope and assumptions
 
 ### Scope
 
-- Frontend service function `getAssignment` wrapping the existing backend `getAssignment` method
-- Zod request and response schemas for full `Assignment.toJSON()` payloads
-- React Query key factory and shared query options (with `staleTime` and `retry: false`)
-- Shared comparator `compareAssignmentUpdatedAtDesc` for deterministic recency sort
-- Adoption of the shared comparator in `classPageAdapter.ts` `recentAssignments` pipeline
-- Prefetch side effect in `useClassPageData`, gated on `surfaceState.status === 'ready'`
+- New `TaskPreviewCard` presentational component (popover content)
+- New `MarkdownRenderer` shared component (`react-markdown` + `remark-gfm`) in `src/frontend/src/components/`
+- New `ImageRenderer` shared component (base64 `<img>`) in `src/frontend/src/components/`
+- Popover integration in `TaskHeatmapTable` wrapping metric sub-cell `render` functions
+- Feature-local fixture copies in `classPage/fixtures/` with unique taskIds
+- `getTaskPreviewData` adapter with deterministic metricKey→fixture lookup
+- `react-markdown` and `remark-gfm` added to `src/frontend/package.json`
+- Playwright E2E tests with web-first content assertions and supplementary screenshots
+- Unit/component tests for all new components and the fixture adapter
+- Update four dangling `@see TASK_HEATMAP_LAYOUT.md` references to point to the new layout spec
 
 ### Out of scope
 
-- Backend changes — none required
-- UI consumers of the prefetched assignment data
-- Cache invalidation rules for assignment reads
-- Bulk assignment endpoint
-- Assignment prefetch on any page other than ClassPage
+- Live wiring to the `assignmentAssessment` service (next implementation round)
+- SPREADSHEET (Sheets) and `base` task artifact rendering
+- Custom popover styling beyond Ant Design defaults
+- Keyboard focus trigger for the popover
+- Removal of feature-local fixture copies (done when service is wired)
 
 ### Assumptions
 
-1. `assignmentName` is always populated by the backend; the Zod schema treats it as non-nullable.
-2. `surfaceState.status === 'ready'` guarantees every `classFull.assignments[].updatedAt` is non-null and parseable because the adapter validates them before reaching `ready`.
-3. `courseId` in `getAssignment` is the same value as `ClassFull.classId` (the Google Classroom course ID).
-4. `staleTime: 5 minutes` and `retry: false` are appropriate for this fire-and-forget prefetch boundary.
-5. React StrictMode double-effect invocation is acceptable; `prefetchQuery` is keyed and idempotent.
+1. `react-markdown` and `remark-gfm` bundle cleanly through the Vite/GAS builder pipeline (pure JS/TS, no CDN).
+2. The existing `MetricPill` and `MetricIconLabel` components are stable and can be reused without modification.
+3. The heatmap table's existing `render` function for metric sub-cells can be wrapped in a `Popover` without breaking sorting, filtering, or aria-label behaviour.
+4. Wrapping ~450 cells (50 rows × 3 tasks × 3 metric sub-columns, worst case) in individual `Popover` components has acceptable render cost (Ant Design `Popover` is lazy).
+5. The `taskId` parameter in `getTaskPreviewData` is unused in v1 but retained for the forward-looking contract.
 
 ---
 
@@ -47,7 +52,8 @@ Before writing or executing this plan:
 - Keep changes minimal, localised, and consistent with repository conventions.
 - Use British English in comments and documentation.
 - Export service functions as `function` declarations, not `const` arrow functions (frontend AGENTS §2).
-- All frontend-to-backend calls must route through `callApi` in `apiService.ts`.
+- All spacing must follow the 8px grid system.
+- Production source must not import from `src/test/**`.
 
 ### TDD workflow (mandatory per section)
 
@@ -62,6 +68,13 @@ For each section below:
 
 When a section is delegated to sub-agents, the plan must define and enforce mandatory documentation reads.
 
+For each delegated phase (`Testing Specialist`, `Implementation`, `Code Reviewer`, `Docs`, `De-Sloppification`, or planning agents when used):
+
+1. list required documentation file paths under that phase before delegation
+2. require the sub-agent handoff to include `Files read` with explicit file paths
+3. verify every mandatory file is listed before accepting the handoff
+4. if any mandatory file is missing, return the work to the same sub-agent and block progression to the next phase
+
 ### Shared-helper planning gate (mandatory when helper changes are expected)
 
 When a section is likely to introduce helper reuse, helper extension, or new shared helpers:
@@ -73,370 +86,543 @@ When a section is likely to introduce helper reuse, helper extension, or new sha
 
 ### Validation commands hierarchy
 
+- Backend lint: `npm run lint:backend`
 - Frontend lint: `npm run lint:frontend`
+- Builder lint (if touched): `npm run lint:builder`
+- Backend tests: `npm run test:backend -- <target>`
 - Frontend unit tests: `npm run test:frontend -- <target>`
-- Backend lint (if touched): `npm run lint:backend`
-- Backend tests (if touched): `npm run test:backend -- <target>`
+- Frontend e2e tests (if UX changes): `npm run test:frontend:e2e -- <target>`
 
 ---
 
-## Section 1 — Frontend `getAssignment` service and Zod schemas
-
-**Status: Complete** — red/green loops clean, code review clean, regression gate passed (0 regressions vs baseline).
+## Section 1 — Dependencies and fixture setup
 
 ### Objective
 
-Add the `getAssignment` service function and full `Assignment` Zod schemas to the existing `assignmentAssessment` service domain.
+Add `react-markdown` and `remark-gfm` to the frontend package, and copy the three test fixture JSON files into a feature-local `fixtures/` directory with unique taskIds.
 
 ### Constraints
 
-- Add to existing files: `assignmentAssessmentService.ts` and `assignmentAssessment.zod.ts`
-- Do not create new schema or service files
-- Export as `function` declarations
-- Route through `callApi('getAssignment', ...)`
-- Model the full `Assignment.toJSON()`, `StudentSubmission.toJSON()`, `TaskDefinition.toJSON()`, and `AssignmentDefinition.toJSON()` shapes — do not reuse partial schemas
-- Response schema must be nullable (backend returns `null` for not-found)
+- `react-markdown` and `remark-gfm` must be added to `src/frontend/package.json` (not the root).
+- Fixture copies must have unique `taskId` values to avoid the `t_eb2bc6cd1605` collision.
+- Both the top-level key and the nested `artifact.taskId` field must be updated in each fixture copy. The fixture object also has a top-level `taskId` field and an `id` field; these should also be updated for fidelity, even though the v1 loader does not use them.
+- Production source must not import from `src/test/**`.
 
 ### Delegation mandatory reads (when sub-agents are used)
 
-Testing Specialist mandatory docs:
-
-- `docs/developer/frontend/frontend-testing.md`
-- `src/frontend/AGENTS.md`
-
 Implementation mandatory docs:
 
-- `SPEC.md`
 - `src/frontend/AGENTS.md`
-- Backend serialisation source of truth: `src/backend/AssignmentProcessor/Assignment/00_AssignmentSerialisation.js`
-- Backend `StudentSubmission.toJSON()`: `src/backend/Models/StudentSubmission.js` (around line 313)
-- Backend `TaskDefinition.toJSON()`: `src/backend/Models/TaskDefinition.js` (around line 142)
-- Backend `AssignmentDefinition.toJSON()`: `src/backend/Models/AssignmentDefinition.js` (around line 288)
-- Backend `BaseTaskArtifact.toJSON()`: `src/backend/Models/Artifacts/0_BaseTaskArtifact.js` (around line 124)
-
-Code Reviewer mandatory docs:
-
 - `SPEC.md`
-- `src/frontend/AGENTS.md`
+- `TASK_PREVIEW_CARD_LAYOUT.md`
+- `docs/developer/frontend/frontend-spacing-and-padding-standards.md`
+- `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
 
-### Shared helper plan (when helper changes are expected)
+### Shared helper plan
 
-1. Helper: `getAssignment` service function
-   - Decision: `new`
-   - Owning module/path: `src/frontend/src/services/assignmentAssessment/assignmentAssessmentService.ts`
-   - Call-site rationale: Wraps the backend `getAssignment` allowlisted method; consumers (prefetch effect, future query hooks) call this function
-   - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9
-   - Planned doc status: `Not implemented`
-
-2. Helper: `AssignmentFullSchema` / `AssignmentFullResponseSchema` Zod schemas
-   - Decision: `new`
-   - Owning module/path: `src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts`
-   - Call-site rationale: Validates full `Assignment.toJSON()` responses at the transport boundary; required by the `getAssignment` service function
-   - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9
-   - Planned doc status: `Not implemented`
+No shared helper changes in this section.
 
 ### Acceptance criteria
 
-- `getAssignment({ courseId, assignmentId })` calls `callApi('getAssignment', ...)` and validates the response through the new Zod schema
-- The response schema accepts the full assignment shape with per-field nullability matching `Assignment.toJSON()`: `courseId` is `z.string()`, `assignmentId` is `z.string()`, `assignmentName` is `z.string()`, `createdAt` is `z.string()`, `dueDate` / `updatedAt` / `documentType` / `referenceDocumentId` / `templateDocumentId` are `z.string().nullable()`, `tasks` is `z.record(z.string(), TaskDefinitionSchema).nullable()` (keyed object `{[taskId]: TaskDefinition}`, **not an array** — matches `AssignmentDefinition.toJSON()` at `src/backend/Models/AssignmentDefinition.js:295–300` which emits `tasks` via `Object.fromEntries(...)` and throws if `tasks` is an array), `submissions` is `z.array(StudentSubmissionSchema)`, `assignmentDefinition` is `AssignmentDefinitionSchema` (whose inner `tasks` field is likewise `z.record(z.string(), TaskDefinitionSchema)`)
-- The response schema is nullable (`z.nullable()`) — a valid `null` response passes validation
-- The request schema enforces `{ courseId: z.string(), assignmentId: z.string() }` with `.strict()`
-- Invalid responses (wrong types, missing required fields, extra fields) throw a Zod error
-- The service function and schemas are exported and importable by `sharedQueries.ts`
+- `react-markdown` and `remark-gfm` are listed in `src/frontend/package.json` dependencies.
+- Three fixture copies exist at `src/frontend/src/features/classPage/fixtures/` with unique taskIds:
+  - `imageTask.json` → `t_preview_image_001`
+  - `textTask.json` → `t_preview_text_001`
+  - `table_task.json` → `t_preview_table_001`
+- `npm run lint:frontend` passes.
 
 ### Required test cases (Red first)
 
-Frontend service tests:
-
-1. `getAssignment` resolves with valid data when the backend returns a well-formed full assignment
-2. `getAssignment` rejects with a Zod error when the response has an unexpected shape (e.g. missing `courseId`)
-3. `getAssignment` accepts `null` as a valid response (assignment not found)
-4. `getAssignment` rejects with a Zod error when the response has extra fields not in the `.strict()` schema
-
-Frontend schema tests:
-
-1. `AssignmentFullSchema` accepts a minimally valid full assignment payload
-2. `AssignmentFullSchema` rejects payloads that look like the partial assignment shape (missing `referenceDocumentId`, missing `templateDocumentId`)
-3. `AssignmentFullSchema` **rejects an array-valued `tasks` field** — the partial `AssignmentDefinitionPartialSchema.tasks` is an array, but the full `Assignment.toJSON().assignmentDefinition.tasks` is a keyed object (`{[taskId]: TaskDefinition}`, emitted via `Object.fromEntries(...)` at `src/backend/Models/AssignmentDefinition.js:295–300`). This is the canonical full-vs-partial divergence and must be asserted explicitly so a future schema drift toward the partial shape fails loudly
-4. `AssignmentFullSchema.nullable()` accepts `null`
-5. The request schema (`GetAssignmentRequestSchema`) rejects a parameters object with a missing `courseId` or `assignmentId`
-6. The `getAssignment` service function parses input through the request schema before calling `callApi` (mirroring `startAssessmentRun`'s pattern)
+No tests needed for this section (dependency addition and file copy).
 
 ### Section checks
 
-- Before implementation: add §9 entries for `getAssignment`, `AssignmentFullSchema` / `AssignmentFullResponseSchema` (Zod schemas), `queryKeys.assignment`, `getAssignmentQueryOptions`, and `compareAssignmentUpdatedAtDesc` to `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` with status `Not implemented`
-- `npm run test:frontend -- src/frontend/src/services/assignmentAssessment/assignmentAssessmentService.spec.ts`
-- `npm run test:frontend -- src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.spec.ts`
 - `npm run lint:frontend`
+- Fixture files exist with correct taskIds.
 
 ### Optional `@remarks` JSDoc follow-through
 
-- `getAssignment`: document that it wraps the backend `getAssignment_` handler and that the response is the full rehydrated `Assignment.toJSON()` (not a partial). Note that `null` means the assignment document was not found.
-- `AssignmentFullSchema`: document the source-of-truth backend methods this schema models (`Assignment.toJSON()` etc.) so future maintainers know where to check when the backend changes.
+None.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** describe actual changes made when done.
+- **Deviations from plan:** note any departures from the original section design.
+- **Follow-up implications for later sections:** none.
 
 ---
 
-## Section 2 — Query key factory and shared query options
-
-**Status: Complete** — red/green loops clean, code review clean, regression gate passed (0 regressions vs baseline).
+## Section 2 — ImageRenderer component
 
 ### Objective
 
-Add `queryKeys.assignment(courseId, assignmentId)` factory and `getAssignmentQueryOptions(courseId, assignmentId)` shared query options.
+Create a presentational `ImageRenderer` shared component that renders a base64 data URL as an `<img>` element with appropriate constraints and accessibility attributes.
 
 ### Constraints
 
-- Key factory in `src/frontend/src/query/queryKeys.ts`
-- Query options in `src/frontend/src/query/sharedQueries.ts`
-- Follow existing factory pattern (`queryOptions({ queryKey, queryFn })`)
-- Set `staleTime: 5 * 60 * 1000` (5 minutes) and `retry: false`
-- The `queryFn` delegates to the new `getAssignment` service function from Section 1
+- Lives in `src/frontend/src/components/` as a shared component (expected to be reused across the project).
+- Accepts `src` (base64 data URL string) and optional `alt` text.
+- Image must have `maxWidth: '100%'`, `height: 'auto'`, and `maxHeight: 400`.
+- Must have `alt` attribute for accessibility.
 
 ### Delegation mandatory reads (when sub-agents are used)
 
 Testing Specialist mandatory docs:
 
 - `docs/developer/frontend/frontend-testing.md`
-- `src/frontend/AGENTS.md`
+- `SPEC.md`
+- `TASK_PREVIEW_CARD_LAYOUT.md`
 
 Implementation mandatory docs:
 
+- `src/frontend/AGENTS.md`
 - `SPEC.md`
-- `src/frontend/AGENTS.md`
-- `docs/developer/frontend/frontend-react-query-and-prefetch.md`
-- `src/frontend/src/query/queryKeys.ts` (existing pattern)
-- `src/frontend/src/query/sharedQueries.ts` (existing pattern)
+- `TASK_PREVIEW_CARD_LAYOUT.md`
+- `docs/developer/frontend/frontend-spacing-and-padding-standards.md`
 
-Code Reviewer mandatory docs:
-
-- `SPEC.md`
-- `src/frontend/AGENTS.md`
-
-### Shared helper plan (when helper changes are expected)
-
-1. Helper: `queryKeys.assignment(courseId, assignmentId)`
-   - Decision: `new`
-   - Owning module/path: `src/frontend/src/query/queryKeys.ts`
-   - Call-site rationale: Scoped query key factory for per-assignment full reads; consumed by `getAssignmentQueryOptions` and future invalidation calls
-   - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9
-   - Planned doc status: `Not implemented`
-
-2. Helper: `getAssignmentQueryOptions(courseId, assignmentId)`
-   - Decision: `new`
-   - Owning module/path: `src/frontend/src/query/sharedQueries.ts`
-   - Call-site rationale: Shared query options for the `prefetchQuery` call in `useClassPageData` and future `useQuery` consumers
-   - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9
-   - Planned doc status: `Not implemented`
-
-### Acceptance criteria
-
-- `queryKeys.assignment('courseA', 'assign1')` returns `['assignment', 'courseA', 'assign1'] as const`
-- `getAssignmentQueryOptions('courseA', 'assign1')` returns a `queryOptions` object with the correct `queryKey`, `queryFn`, `staleTime`, and `retry`
-- The factory follows the `queryOptions({ queryKey, queryFn })` shape used by `getABClassQueryOptions`
-- The query key is not added to the `startupWarmup` definitions (it is view-entry-only)
-
-### Required test cases (Red first)
-
-Query key tests:
-
-1. `queryKeys.assignment(courseId, assignmentId)` returns the expected tuple shape
-
-Query options tests:
-
-1. `getAssignmentQueryOptions(courseId, assignmentId).queryKey` matches the query key factory output
-2. `getAssignmentQueryOptions(courseId, assignmentId).staleTime` is `300000`
-3. `getAssignmentQueryOptions(courseId, assignmentId).retry` is `false`
-
-Startup warm-up exclusion tests:
-
-1. No entry in `startupWarmupQueryKeys` has a first element equal to `'assignment'` (prefix guard — stronger than an exact-element match, which would be vacuously true against 1- or 2-tuple warmup keys and would not catch a future mis-wiring that adds the assignment key to the warmup set)
-2. No entry in `startupWarmupDatasetKeys` is named `assignment` (string-key guard)
-
-### Section checks
-
-- `npm run test:frontend -- src/frontend/src/query/` (all query module tests)
-- `npm run lint:frontend`
-
-### Optional `@remarks` JSDoc follow-through
-
-- `getAssignmentQueryOptions`: document that this is a view-entry query (not startup warm-up). Note `staleTime` and `retry: false` are chosen because this is a fire-and-forget prefetch. Future consumers can override via spread.
-
----
-
-## Section 3 — Shared comparator extraction
-
-**Status: Complete** — red/green loops clean, code review clean, regression gate passed (42 classPage tests green, lint clean for changed files).
-
-### Objective
-
-Extract a shared `compareAssignmentUpdatedAtDesc` comparator and replace the adapter's existing `.toSorted(...)` call so both the prefetch and the displayed `recentAssignments` use the same deterministic order.
-
-### Constraints
-
-- Place the comparator in `src/frontend/src/features/classPage/classPageModel.ts` (alongside the existing `compareStudentNames` precedent)
-- Comparator signature: `(a: { updatedAt: string; assignmentId: string }, b: { updatedAt: string; assignmentId: string }) => number`
-- Sort descending by `updatedAt` (string `localeCompare`), ascending by `assignmentId` as tie-break
-- In `classPageAdapter.ts`, the existing `.toSorted(...)` call at line 306 sorts an intermediate tuple `{ assignment, validatedUpdatedAt }`. The shared comparator replaces the inline comparator only; the call site maps each tuple into the comparator's minimal shape:
-  `.toSorted((a, b) => compareAssignmentUpdatedAtDesc({ updatedAt: a.validatedUpdatedAt, assignmentId: a.assignment.assignmentId }, { updatedAt: b.validatedUpdatedAt, assignmentId: b.assignment.assignmentId }))`
-- **Rename scope — bounded and optional**: the intermediate tuple's `validatedUpdatedAt` field — at the type annotation (line 297), the `.map()` return (line 301), the `.toSorted()` comparator args (line 306), and the `.map()` destructure for `recentAssignments` followed by its use in the `buildRecentAssignment` call (lines 310 and 314) — MAY be renamed to `updatedAt` for consistency with the comparator's parameter name, but this rename is **optional and strictly bounded to those five sort-block lines (297, 301, 306, 310, 314)**. It is not a prerequisite for the comparator extraction — the call-site mapping works whether the field is named `validatedUpdatedAt` or `updatedAt`.
-- **Out of scope**: the `validatedUpdatedAt` parameter of `buildRecentAssignment` (lines 155–198: the `@param` JSDoc, the function parameter, the `formatUpdatedAtLabel(validatedUpdatedAt)` call, and the `lastAssessedAt: validatedUpdatedAt` assignment) MUST NOT be renamed. That parameter name carries the semantic "the validated non-null `updatedAt` of this assignment" distinct from the raw nullable wire value; renaming it would erase that distinction and is unrelated to the comparator extraction. The sort-block rename (lines 297, 301, 306, 310, 314 — if taken) does not propagate into `buildRecentAssignment`'s parameter — the call site passes the sort-block `validatedUpdatedAt` (or `updatedAt`, post-rename) as the argument by position.
-- The adapter test at `classPageAdapter.spec.ts:249` ("returns up to 3 assignments sorted by updatedAt descending") must still pass
-- The millisecond-precision test at `classPageAdapter.spec.ts:333` must still pass
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Testing Specialist mandatory docs:
-
-- `docs/developer/frontend/frontend-testing.md`
-- `src/frontend/AGENTS.md`
-
-Implementation mandatory docs:
-
-- `SPEC.md`
-- `src/frontend/AGENTS.md`
-- `src/frontend/src/features/classPage/classPageModel.ts` (existing `compareStudentNames` pattern)
-- `src/frontend/src/features/classPage/classPageAdapter.ts` (the `recentAssignments` sort block — lines 294–316, plus the `validatedUpdatedAt` occurrences at 297, 301, 306, 310, and 314 that fall within it)
-
-Code Reviewer mandatory docs:
-
-- `SPEC.md`
-- `src/frontend/AGENTS.md`
-
-### Shared helper plan (when helper changes are expected)
-
-1. Helper: `compareAssignmentUpdatedAtDesc`
-   - Decision: `new` (shared between prefetch and adapter)
-   - Owning module/path: `src/frontend/src/features/classPage/classPageModel.ts`
-   - Call-site rationale: Ensures the prefetched top-3 and the adapter's displayed `recentAssignments` use identical ordering; prevents divergence when `updatedAt` values are equal
-   - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9
-   - Planned doc status: `Not implemented`
-
-### Acceptance criteria
-
-- `compareAssignmentUpdatedAtDesc` is exported from `classPageModel.ts`
-- It accepts two objects `{ updatedAt: string; assignmentId: string }` and returns a number suitable for `.sort()` / `.toSorted()`
-- Primary sort: `updatedAt` descending (b.updatedAt.localeCompare(a.updatedAt))
-- Tie-break: `assignmentId` ascending (a.assignmentId.localeCompare(b.assignmentId))
-- The adapter's `recentAssignments` pipeline uses the shared comparator instead of the inline `.toSorted(...)`
-- All existing adapter tests pass without modification to their assertions
-
-### Required test cases (Red first)
-
-Comparator unit tests:
-
-1. Later `updatedAt` sorts before earlier `updatedAt` (descending)
-2. Equal `updatedAt` — `assignmentId` ascending breaks the tie
-3. Equal `updatedAt`, equal `assignmentId` — returns 0
-
-Adapter regression tests:
-
-1. The existing `recentAssignments` sort tests pass unmodified (confirm the shared comparator produces the same ordering the tests already expect)
-
-### Section checks
-
-- `npm run test:frontend -- src/frontend/src/features/classPage/classPageModel.spec.ts`
-- `npm run test:frontend -- src/frontend/src/features/classPage/classPageAdapter.spec.ts`
-- `npm run lint:frontend`
-
-### Optional `@remarks` JSDoc follow-through
-
-- `compareAssignmentUpdatedAtDesc`: document the two-level sort (updatedAt desc, assignmentId asc) and note that it is used by both the prefetch and the adapter's `recentAssignments` pipeline for determinism.
-
----
-
-## Section 4 — Prefetch effect in `useClassPageData`
-
-### Objective
-
-Add a `useEffect`-based prefetch side effect that fires when `surfaceState.status === 'ready'`, sorts `classFull.assignments` using the shared comparator, takes the top 3, and calls `queryClient.prefetchQuery` for each.
-
-### Constraints
-
-- Obtain `QueryClient` via `useQueryClient()`
-- Gate on `surfaceState.status === 'ready'` and `classFull` being non-null
-- Guard against re-dispatch: use a `useRef<string | null>` tracking the last-dispatched `classId`. The effect fires only when `surfaceState.status === 'ready'` AND the guard ref's value differs from the current `classId`. On fire, set the ref to `classId`. This ensures exactly one prefetch per class reaching `ready`, with the guard resetting when the user navigates to a different class.
-- **Effect dependency array (mandatory)**: the effect's dependency array MUST include both `surfaceState.status` and `classId` (read fresh inside the effect body for the ref comparison). Omitting `classId` from the deps would cause the ref-vs-current-`classId` comparison to use a stale `classId` when the user navigates to a new class while the `useClassPageData` instance stays mounted (the `ClassesPage` inline-render pattern per `frontend-shared-helpers-and-abstraction-standards.md` §9.18.4). The flow on navigation is: `classId` changes → `classFull` becomes pending → `surfaceState.status` transitions `ready → loading` → effect re-runs (deps changed), but the `ready`-gate is false so it's a no-op → new `classFull` resolves → `surfaceState.status` returns to `ready` → effect re-runs again (deps changed), now with the new `classId` read fresh, the ref still holds the _old_ `classId` (different from new), so the prefetch fires exactly once for the new class. The combination of `classId` in deps + guard ref read inside the effect body is what makes the cross-class navigation reset work.
-- Sort using the shared `compareAssignmentUpdatedAtDesc` comparator. The `ClassFull.assignments[].updatedAt` type is `string | null` — narrow to `string` before sorting: since the `ready`-gate guarantee (SPEC assumption 2) asserts every `updatedAt` is non-null and parseable when `surfaceState.status === 'ready'`, narrow via a **type-level assertion at the sort boundary** (e.g. `classFull.assignments as Array<{ assignmentId: string; updatedAt: string }>`, or by deriving a narrowed const above the `.toSorted(...)` call). **Do not filter** — filtering implies nulls are expected, which contradicts the `ready`-gate invariant and would hide a genuine invariant violation. The assertion is purely a TypeScript-level concern; at runtime the values are guaranteed non-null.
-- Take first 3 (or fewer); no-op when 0
-- Call `queryClient.prefetchQuery(getAssignmentQueryOptions(classFull.classId, assignmentId)).catch(() => undefined)` for each
-- Prefetch failures must not affect `surfaceState`, `error`, or any existing return values
-- Current LOC: 404; projected: ~435 — well under the 500-line threshold
-- **Pre-existing test mitigation**: Before implementing the effect, update the existing `useClassPageData.spec.ts` setup to spy on `queryClient.prefetchQuery` (e.g. `vi.spyOn(queryClient, 'prefetchQuery').mockResolvedValue(undefined)`) so that existing ready-state tests do not invoke the real `callApi` → `getAssignment` transport path
-- **React StrictMode double-invoke**: In development, `useEffect` runs twice on mount. The guard-ref mechanism ensures the second invocation is a no-op (the ref already holds the current `classId`). A dedicated test asserting exactly one `prefetchQuery` call even under double-effect is recommended but optional; the guard-ref already provides this property.
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Testing Specialist mandatory docs:
-
-- `docs/developer/frontend/frontend-testing.md`
-- `src/frontend/AGENTS.md`
-
-Implementation mandatory docs:
-
-- `SPEC.md`
-- `src/frontend/AGENTS.md`
-- `docs/developer/frontend/frontend-react-query-and-prefetch.md`
-- `src/frontend/src/features/classPage/useClassPageData.ts`
-- `src/frontend/src/features/classPage/useClassPageData.helpers.ts`
-- `src/frontend/src/query/sharedQueries.ts` (for `getAssignmentQueryOptions`)
-- `src/frontend/src/features/classPage/classPageModel.ts` (for `compareAssignmentUpdatedAtDesc`)
-
-Code Reviewer mandatory docs:
-
-- `SPEC.md`
-- `src/frontend/AGENTS.md`
-
-### Shared helper plan (when helper changes are expected)
+### Shared helper plan
 
 Helper decision entries:
 
-1. Helper: `compareAssignmentUpdatedAtDesc` (from Section 3)
-   - Decision: `reuse` — already created in Section 3
-   - Owning module/path: `src/frontend/src/features/classPage/classPageModel.ts`
-   - Call-site rationale: Imported in `useClassPageData` for sorting `classFull.assignments` before prefetch
-
-2. Helper: `getAssignmentQueryOptions` (from Section 2)
-   - Decision: `reuse` — already created in Section 2
-   - Owning module/path: `src/frontend/src/query/sharedQueries.ts`
-   - Call-site rationale: Passed to `queryClient.prefetchQuery` for each candidate assignment
-
-3. Prefetch logic itself
-   - Decision: `keep local` — the effect stays in `useClassPageData`; it is feature-specific wiring, not a reusable abstraction
+1. Helper: `ImageRenderer` presentational component
+   - Decision: `new`
+   - Owning module/path: `src/frontend/src/components/ImageRenderer.tsx`
+   - Call-site rationale: renders base64 data URLs as constrained `<img>` elements for the task preview card and future consumers. Placed directly in shared components as the user expects reuse across the project.
+   - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9 (new entry)
+   - Planned doc status: `Not implemented`
 
 ### Acceptance criteria
 
-- When the page reaches `ready` state, `prefetchQuery` is called for the 3 most recently updated assignments
-- The assignments are sorted using `compareAssignmentUpdatedAtDesc`
-- `courseId` passed to `getAssignmentQueryOptions` is `classFull.classId`
-- When there are fewer than 3 assignments, only the available ones are prefetched
-- When there are 0 assignments, no `prefetchQuery` calls are made
-- A failing `prefetchQuery` (e.g. network error) does not throw, does not change `surfaceState`, and does not populate `error`
-- The effect does not re-fire on subsequent `refetch()` calls or dataset refreshes
-- All existing `useClassPageData` tests continue to pass
+- `ImageRenderer` renders an `<img>` element with the provided `src` as the data URL.
+- The image has `alt="Student response image"` by default (overridable via prop).
+- The image has `maxWidth: '100%'`, `height: 'auto'`, and `maxHeight: 400`.
+- Component is presentational (no state, no side effects).
 
 ### Required test cases (Red first)
 
-1. **Ready state triggers prefetch**: Mock `prefetchQuery` on `QueryClient`. When `surfaceState.status === 'ready'` and `classFull` has 4 assignments with distinct `updatedAt` timestamps, assert `prefetchQuery` is called exactly 3 times with query options whose `queryKey` matches the 3 most recently updated assignments
-2. **Tie-break ordering**: When two assignments share the same `updatedAt`, assert the `assignmentId` ascending tie-break determines which is prefetched first
-3. **Fewer than 3**: When `classFull.assignments` has only 1 entry, assert `prefetchQuery` is called once for that single assignment
-4. **Zero assignments**: When `classFull.assignments` is empty, assert `prefetchQuery` is never called
-5. **Prefetch failure is swallowed**: Mock `prefetchQuery` to return a rejected promise. Assert `surfaceState` remains `ready` and `error` remains `null`
-6. **Effect does not re-fire on refetch**: Mock `prefetchQuery`. Use the guard-ref mechanism. Trigger `refetch()` (which resolves to a new `classFull` object). Assert `prefetchQuery` was called once before the refetch and is not called again after — the guard ref prevents re-dispatch for the same `classId`
-7. **Effect does not fire before `ready`**: In `loading` or `blocking` state, assert `prefetchQuery` is never called, even if `classFull` is non-null
-8. **Existing tests remain green**: Run the full `useClassPageData.spec.ts` suite and verify no regressions. The pre-existing test suite must already spy on `queryClient.prefetchQuery` per the Constraints mitigation step above.
+Frontend tests:
+
+1. Renders an `<img>` with the correct `src` attribute.
+2. Renders with the default `alt` text "Student response image".
+3. Renders with a custom `alt` text when provided.
+4. Applies the correct inline styles (`maxWidth`, `height`, `maxHeight`).
 
 ### Section checks
 
-- `npm run test:frontend -- src/frontend/src/features/classPage/useClassPageData.spec.ts`
+- `npm run test:frontend -- src/frontend/src/components/ImageRenderer.spec.tsx`
 - `npm run lint:frontend`
 
 ### Optional `@remarks` JSDoc follow-through
 
-- Prefetch effect: document that it gates on `surfaceState.status === 'ready'`, uses the shared `compareAssignmentUpdatedAtDesc` comparator, and is intentionally fire-and-forget with `.catch(() => undefined)`. Note the `prefetchQuery` keyed-and-idempotent property that makes StrictMode double-fire safe.
+- Document that `maxHeight: 400` is set per the layout spec and may be adjusted if needed.
 
-**Status: Complete** — red/green loops clean, code review clean, regression gate passed (0 regressions vs baseline; the 3 pre-existing baseline failures remain, accepted as technical debt).
+### Implementation notes / deviations / follow-up
 
-**De-sloppification pass: clean.** Verdict: no slop across the 17 changed files. One valid simplification applied to `sharedQueries.ts` (the three intermediate stale-time constants collapsed to a single `export const ASSIGNMENT_QUERY_STALE_TIME_MS = 300_000;`, runtime value unchanged). The ref-name nitpick was rejected: `unicorn/prevent-abbreviations` requires the full-word `prefetchedClassIdReference` (the abbreviated `prefetchedClassIdRef` trips the rule), so the committed name stands. The §9.18.15 planning-entry `Not implemented` statuses will be flipped to `Implemented` during the documentation pass.
+- **Implementation notes:** describe actual changes made when done.
+- **Deviations from plan:** note any departures from the original section design.
+- **Follow-up implications for later sections:** none.
+
+---
+
+## Section 3 — MarkdownRenderer component
+
+### Objective
+
+Create a presentational `MarkdownRenderer` shared component that renders markdown text (including tables) using `react-markdown` + `remark-gfm`.
+
+### Constraints
+
+- Lives in `src/frontend/src/components/` as a shared component (expected to be reused across the project).
+- Accepts markdown string as children.
+- Must use `react-markdown` with `remark-gfm` plugin for table support.
+- Must NOT use `rehype-raw` (XSS guard).
+- Tables rendered by the component should have basic styling (borders, padding) via a co-located CSS module or inline style object within `MarkdownRenderer.tsx` — not a new global stylesheet.
+
+### Delegation mandatory reads (when sub-agents are used)
+
+Testing Specialist mandatory docs:
+
+- `docs/developer/frontend/frontend-testing.md`
+- `SPEC.md`
+- `TASK_PREVIEW_CARD_LAYOUT.md`
+
+Implementation mandatory docs:
+
+- `src/frontend/AGENTS.md`
+- `SPEC.md`
+- `TASK_PREVIEW_CARD_LAYOUT.md`
+- `docs/developer/frontend/frontend-spacing-and-padding-standards.md`
+
+### Shared helper plan
+
+Helper decision entries:
+
+1. Helper: `MarkdownRenderer` presentational component
+   - Decision: `new`
+   - Owning module/path: `src/frontend/src/components/MarkdownRenderer.tsx`
+   - Call-site rationale: renders markdown text and tables for the task preview card and future consumers. Placed directly in shared components as the user expects reuse across the project.
+   - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9 (new entry)
+   - Planned doc status: `Not implemented`
+
+### Acceptance criteria
+
+- `MarkdownRenderer` renders markdown text (paragraphs, bold, italic, lists) correctly.
+- `MarkdownRenderer` renders markdown tables with `remark-gfm` plugin.
+- Raw HTML in markdown is escaped (no `rehype-raw`).
+- Tables have basic styling (borders, padding) via co-located CSS.
+
+### Required test cases (Red first)
+
+Frontend tests:
+
+1. Renders plain text markdown correctly.
+2. Renders bold and italic text.
+3. Renders a markdown table with correct structure (`<table>`, `<tr>`, `<td>`).
+4. Escapes raw HTML (does not render `<script>` tags, etc.).
+5. Renders lists (ordered and unordered).
+
+### Section checks
+
+- `npm run test:frontend -- src/frontend/src/components/MarkdownRenderer.spec.tsx`
+- `npm run lint:frontend`
+
+### Optional `@remarks` JSDoc follow-through
+
+- Document that `rehype-raw` is intentionally excluded for XSS protection.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** describe actual changes made when done.
+- **Deviations from plan:** note any departures from the original section design.
+- **Follow-up implications for later sections:** none.
+
+---
+
+## Section 4 — TaskPreviewCard component
+
+### Objective
+
+Create the `TaskPreviewCard` presentational component that displays the metric header (icon + label + score), reasoning section, and student response section.
+
+### Constraints
+
+- Presentational only — receives all data via props, no internal state or side effects.
+- Reuses `MetricIconLabel` for the header icon.
+- Reuses `MetricPill` for the header score (reassembled `MetricResult`) with `precision={0}` and `compact={true}` (per layout spec §2).
+- Uses `Typography` for section labels and reasoning text.
+- Uses `Divider` between reasoning and student response sections.
+- Uses `ImageRenderer` or `MarkdownRenderer` based on artifact type.
+- Card body has `maxHeight: 480` with `overflow: 'auto'` for scrolling.
+
+### Delegation mandatory reads (when sub-agents are used)
+
+Testing Specialist mandatory docs:
+
+- `docs/developer/frontend/frontend-testing.md`
+- `SPEC.md`
+- `TASK_PREVIEW_CARD_LAYOUT.md`
+
+Implementation mandatory docs:
+
+- `src/frontend/AGENTS.md`
+- `SPEC.md`
+- `TASK_PREVIEW_CARD_LAYOUT.md`
+- `docs/developer/frontend/frontend-spacing-and-padding-standards.md`
+- `src/frontend/src/services/dataAnalysis/metricDisplay/MetricPill.tsx`
+- `src/frontend/src/components/MetricIconLabel.tsx`
+
+### Shared helper plan
+
+No new shared helpers. Reuses existing `MetricPill` and `MetricIconLabel`.
+
+### Acceptance criteria
+
+- Renders the header with `MetricIconLabel`, metric label, and `MetricPill` score.
+- Renders the reasoning section with label and text (or placeholder if empty).
+- Renders the student response section with the appropriate renderer based on artifact type.
+- Renders "Task data not available" when no preview data is provided.
+- Card body scrolls when content exceeds `maxHeight`.
+
+### Required test cases (Red first)
+
+Frontend tests:
+
+1. Renders the header with correct metric icon, label, and score for a computed metric.
+2. Renders the header with "N" for a notAttempted metric.
+3. Renders the header with "E" for an error metric.
+4. Renders the reasoning section with the provided reasoning text.
+5. Renders "No reasoning available" when reasoning is empty.
+6. Renders an IMAGE artifact using `ImageRenderer`.
+7. Renders a TABLE artifact using `MarkdownRenderer`.
+8. Renders a TEXT artifact using `MarkdownRenderer`.
+9. Renders "No submission available" when artifact content is empty (notAttempted).
+10. Renders "Error loading response" when artifact content is empty (error).
+11. Renders "Task data not available" when no preview data is provided.
+12. Renders the computed score as an integer (e.g. "5", not "5.00") — verifies `MetricPill` is called with `precision={0}`.
+
+### Section checks
+
+- `npm run test:frontend -- src/frontend/src/features/classPage/TaskPreviewCard.spec.tsx`
+- `npm run lint:frontend`
+
+### Optional `@remarks` JSDoc follow-through
+
+- Document the `MetricResult` reassembly logic (from `metricState` + `metricScore` with schema-valid values per SPEC §"MetricPill reuse").
+- Document the known v1 demo artefact (notAttempted/error cells show fixture reasoning/artifact regardless of cell state).
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** describe actual changes made when done.
+- **Deviations from plan:** note any departures from the original section design.
+- **Follow-up implications for later sections:** none.
+
+---
+
+## Section 5 — getTaskPreviewData adapter
+
+### Objective
+
+Create the `getTaskPreviewData` pure function that resolves preview data for a given heatmap cell using the deterministic metricKey→fixture lookup table.
+
+### Constraints
+
+- Pure function, no React imports, no side effects.
+- In v1, the `taskId` parameter is unused (lookup is keyed by `metricKey` only).
+- Returns `TaskPreviewData | null`.
+- Deterministic mapping: completeness → image fixture, accuracy → text fixture, spag → table fixture.
+
+### Delegation mandatory reads (when sub-agents are used)
+
+Testing Specialist mandatory docs:
+
+- `docs/developer/frontend/frontend-testing.md`
+- `SPEC.md`
+
+Implementation mandatory docs:
+
+- `src/frontend/AGENTS.md`
+- `SPEC.md`
+- `src/frontend/src/services/dataAnalysis/dataAnalysis.zod.ts` (MetricResult type)
+
+### Shared helper plan
+
+No shared helper changes.
+
+### Acceptance criteria
+
+- Returns correct `TaskPreviewData` for `metricKey === 'completeness'` (IMAGE artifact).
+- Returns correct `TaskPreviewData` for `metricKey === 'accuracy'` (TEXT artifact).
+- Returns correct `TaskPreviewData` for `metricKey === 'spag'` (TABLE artifact).
+- The `taskId` parameter is accepted but not used (forward-looking contract).
+
+### Required test cases (Red first)
+
+Frontend tests:
+
+1. Returns IMAGE artifact data for `metricKey === 'completeness'`.
+2. Returns TEXT artifact data for `metricKey === 'accuracy'`.
+3. Returns TABLE artifact data for `metricKey === 'spag'`.
+4. Preserves `metricScore` and `metricState` from the input `metricResult`.
+
+### Section checks
+
+- `npm run test:frontend -- src/frontend/src/features/classPage/taskPreviewFixtures.spec.ts`
+- `npm run lint:frontend`
+
+### Optional `@remarks` JSDoc follow-through
+
+- Document that `taskId` is unused in v1 but retained for the service-wiring contract.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** describe actual changes made when done.
+- **Deviations from plan:** note any departures from the original section design.
+- **Follow-up implications for later sections:** none.
+
+---
+
+## Section 6 — Popover integration in TaskHeatmapTable
+
+### Objective
+
+Wrap each metric sub-cell's `render` function in `TaskHeatmapTable` with an Ant Design `Popover` that displays the `TaskPreviewCard`.
+
+### Constraints
+
+- Must not break existing table layout, sorting, filtering, or aria-label behaviour.
+- Popover uses `trigger={['hover', 'click']}` and `placement="right"`.
+- The trigger element remains a plain `<span>` (non-focusable) in v1.
+- `TaskHeatmapTable` imports `getTaskPreviewData` directly from `taskPreviewFixtures.ts` (co-located in `classPage/`; no prop drilling needed per frontend AGENTS §3 and KISS).
+
+### Delegation mandatory reads (when sub-agents are used)
+
+Testing Specialist mandatory docs:
+
+- `docs/developer/frontend/frontend-testing.md`
+- `SPEC.md`
+- `TASK_PREVIEW_CARD_LAYOUT.md`
+
+Implementation mandatory docs:
+
+- `src/frontend/AGENTS.md`
+- `SPEC.md`
+- `TASK_PREVIEW_CARD_LAYOUT.md`
+- `src/frontend/src/features/classPage/TaskHeatmapTable.tsx`
+- `docs/developer/frontend/frontend-spacing-and-padding-standards.md`
+
+### Shared helper plan
+
+No shared helper changes.
+
+### Acceptance criteria
+
+- Hovering over a metric sub-cell shows the popover with the correct preview card.
+- Clicking a metric sub-cell pins the popover open.
+- The popover displays the correct metric header, reasoning, and student response.
+- Existing table sorting, filtering, and aria-label behaviour is preserved.
+- The popover does not break the heatmap table layout.
+- Smoke test: the heatmap renders and remains interactive with the available test fixture after the Popover wrapper is added.
+
+### Required test cases (Red first)
+
+Frontend tests:
+
+1. Wraps each metric sub-cell in a Popover component.
+2. Popover content renders the TaskPreviewCard with correct data.
+3. Existing aria-label on the cell is preserved.
+4. Existing cell style (tone colour) is preserved.
+5. Smoke test: the heatmap renders and remains interactive (cells are clickable/hoverable) with the available test fixture after the Popover wrapper is added. Note: the 50-row scaling bound (per `pageSize: 50` in `TaskHeatmapTable.tsx`) is not exercisable with the seeded 10-student fixture; the risk is accepted on the basis of Ant Design Popover laziness.
+
+### Section checks
+
+- `npm run test:frontend -- src/frontend/src/features/classPage/TaskHeatmapTable.spec.tsx`
+- `npm run lint:frontend`
+
+### Optional `@remarks` JSDoc follow-through
+
+- Document that the Popover wrapper is added to the existing `render` function without changing the cell's visual appearance.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** describe actual changes made when done.
+- **Deviations from plan:** note any departures from the original section design.
+- **Follow-up implications for later sections:** none.
+
+---
+
+## Section 7 — @see reference updates
+
+### Objective
+
+Update the four dangling `@see TASK_HEATMAP_LAYOUT.md` references in code to point to the new layout spec. (The fifth reference in `frontend-shared-helpers-and-abstraction-standards.md:741` was already corrected.)
+
+### Constraints
+
+- Must update all four code files: `TaskHeatmapTable.tsx`, `TaskHeatmapPage.tsx`, `ClassPageHeatmapView.spec.tsx`, `TaskHeatmapTable.spec.tsx`.
+
+### Delegation mandatory reads (when sub-agents are used)
+
+Implementation mandatory docs:
+
+- `src/frontend/AGENTS.md`
+- `TASK_PREVIEW_CARD_LAYOUT.md`
+
+### Shared helper plan
+
+No shared helper changes.
+
+### Acceptance criteria
+
+- All four code files reference `TASK_PREVIEW_CARD_LAYOUT.md` instead of `TASK_HEATMAP_LAYOUT.md`.
+- `npm run lint:frontend` passes.
+
+### Required test cases (Red first)
+
+No tests needed (documentation update only).
+
+### Section checks
+
+- `npm run lint:frontend`
+- Grep for `TASK_HEATMAP_LAYOUT.md` returns no matches in the four code files.
+
+### Optional `@remarks` JSDoc follow-through
+
+None.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** describe actual changes made when done.
+- **Deviations from plan:** note any departures from the original section design.
+- **Follow-up implications for later sections:** none.
+
+---
+
+## Section 8 — Playwright E2E tests
+
+### Objective
+
+Create Playwright E2E tests that navigate to the heatmap table, hover over metric sub-cells, and verify the preview card content with web-first assertions. Screenshots are captured as supplementary evidence.
+
+### Constraints
+
+- Must use the existing `createHeatmapScenario` factory from `task-heatmap-end-to-end-helpers.ts`.
+- Tests must include web-first content assertions (not screenshot-only) per `frontend-playwright-e2e.md`.
+- Screenshots should capture the popover in both hover and pinned states as supplementary evidence.
+- Tests should cover all three artifact types (IMAGE, TABLE, TEXT).
+- Use structural locators (e.g. `getByText`, `locator('img')`, `toHaveCount(1)`) rather than `toBeVisible()` on `Typography.Text` (which can falsely resolve as hidden per the E2E doc).
+
+### Delegation mandatory reads (when sub-agents are used)
+
+Playwright mandatory docs:
+
+- `docs/developer/frontend/frontend-playwright-e2e.md`
+- `SPEC.md`
+- `TASK_PREVIEW_CARD_LAYOUT.md`
+
+Implementation mandatory docs:
+
+- `src/frontend/AGENTS.md`
+- `docs/developer/frontend/frontend-playwright-e2e.md`
+- `src/frontend/e2e-tests/task-heatmap.spec.ts`
+- `src/frontend/e2e-tests/helpers/task-heatmap-end-to-end-helpers.ts`
+- `src/frontend/e2e-tests/shared/endToEndRuntimeMocks.ts`
+
+### Shared helper plan
+
+No shared helper changes.
+
+### Acceptance criteria
+
+- E2E test navigates to the heatmap table.
+- E2E test hovers over a completeness cell and asserts the IMAGE preview card content (metric label scoped to popover, "Reasoning", "Student Response", `<img>` element) and captures a screenshot.
+- E2E test hovers over an accuracy cell and asserts the TEXT preview card content (metric label scoped to popover, "Reasoning", "Student Response", markdown-rendered text) and captures a screenshot.
+- E2E test hovers over a spag cell and asserts the TABLE preview card content (metric label scoped to popover, "Reasoning", "Student Response", `<table>` element) and captures a screenshot.
+- E2E test clicks a cell to pin the popover and asserts the popover remains visible after mouse leave.
+- Screenshots are stored in `e2e-tests/task-preview-card.spec.ts-snapshots/`.
+
+### Required test cases (Red first)
+
+Playwright E2E tests:
+
+1. Shows IMAGE preview card when hovering over a completeness cell: target a specific cell via its `aria-label` (e.g. `page.locator('[aria-label="Student Two, task_001, Completeness: 5"]')`, matching the pattern from `task-heatmap.spec.ts:65`). Asserts the metric label ("Completeness") scoped to the popover (e.g. `page.locator('.ant-popover').getByText('Completeness')`), "Reasoning" section, "Student Response" section, and an `<img>` element are present; captures screenshot.
+2. Shows TEXT preview card when hovering over an accuracy cell: target a specific cell via its `aria-label` (e.g. `page.locator('[aria-label="Student Two, task_001, Accuracy: 3"]')`). Asserts the metric label ("Accuracy") scoped to the popover, "Reasoning" section, "Student Response" section, and markdown-rendered text content are present; captures screenshot.
+3. Shows TABLE preview card when hovering over a spag cell: target a specific cell via its `aria-label` (e.g. `page.locator('[aria-label="Student Two, task_001, SPaG: 4"]')`). Asserts the metric label ("SPaG") scoped to the popover, "Reasoning" section, "Student Response" section, and a `<table>` element are present; captures screenshot.
+4. Pins the popover when clicking a cell: target a specific cell via its `aria-label`, click to open the popover, then move the mouse to a neutral coordinate (e.g. `page.mouse.move(0, 0)`) to trigger `mouseLeave`. Asserts the popover remains visible after mouse leave; captures screenshot.
+
+### Section checks
+
+- `npm run test:frontend:e2e -- e2e-tests/task-preview-card.spec.ts`
+- Screenshots exist in `e2e-tests/task-preview-card.spec.ts-snapshots/`.
+
+### Optional `@remarks` JSDoc follow-through
+
+None.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** describe actual changes made when done.
+- **Deviations from plan:** note any departures from the original section design.
+- **Follow-up implications for later sections:** none.
 
 ---
 
@@ -444,29 +630,34 @@ Helper decision entries:
 
 ### Objective
 
-Verify that all existing ClassPage, service, and query tests pass, and that no regression is introduced.
+Run all existing tests and lints to ensure the new feature does not introduce regressions.
 
-### Delegation mandatory reads (when sub-agents are used)
+### Constraints
 
-Testing Specialist mandatory docs:
-
-- `docs/developer/frontend/frontend-testing.md`
-- `src/frontend/AGENTS.md`
+- Prefer focused test runs before broader validation.
 
 ### Acceptance criteria
 
-- All existing ClassPage feature tests pass: `npm run test:frontend -- src/frontend/src/features/classPage/`
-- All existing query module tests pass: `npm run test:frontend -- src/frontend/src/query/`
-- All existing assignment assessment service tests pass: `npm run test:frontend -- src/frontend/src/services/assignmentAssessment/`
-- Frontend lint passes: `npm run lint:frontend`
-- No new console warnings or errors in test output (beyond pre-existing ones)
+- All existing frontend unit tests pass.
+- All existing Playwright E2E tests pass.
+- Frontend lint passes.
+- No new TypeScript errors.
+
+### Required test cases/checks
+
+1. Run `npm run test:frontend` (all frontend unit tests).
+2. Run `npm run test:frontend:e2e` (all Playwright E2E tests).
+3. Run `npm run lint:frontend`.
+4. Verify mandatory-read evidence (`Files read`) is complete for every delegated regression handoff.
 
 ### Section checks
 
-- `npm run test:frontend -- src/frontend/src/features/classPage/`
-- `npm run test:frontend -- src/frontend/src/query/`
-- `npm run test:frontend -- src/frontend/src/services/assignmentAssessment/`
-- `npm run lint:frontend`
+- Run the commands listed above and ensure green results.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** summarise what was done during regression phase.
+- **Deviations from plan:** note any additional work discovered or done.
 
 ---
 
@@ -474,44 +665,45 @@ Testing Specialist mandatory docs:
 
 ### Objective
 
-Update canonical docs to record the new shared helpers, the view-entry prefetch decision, and any caveats.
+Update docs to match implemented feature and highlight any caveats.
 
-### Delegation mandatory reads (when sub-agents are used)
+### Constraints
 
-Docs agent mandatory docs:
-
-- `SPEC.md`
-- `src/frontend/AGENTS.md`
-- `docs/developer/frontend/frontend-react-query-and-prefetch.md`
-- `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
+- Only modify documents relevant to the touched areas.
 
 ### Acceptance criteria
 
-1. `docs/developer/frontend/frontend-react-query-and-prefetch.md` §5 updated: record `getAssignment` per-assignment full-read prefetch as a view-entry prefetch triggered from ClassPage `useClassPageData`
-2. `docs/developer/frontend/frontend-react-query-and-prefetch.md` §2 "Query-key convention" updated to list the new `queryKeys.assignment` key factory.
-3. `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9 updated: add entries for `getAssignment` (service), `AssignmentFullSchema` / `AssignmentFullResponseSchema` (Zod schemas), `queryKeys.assignment` (query key factory), `getAssignmentQueryOptions` (query options), and `compareAssignmentUpdatedAtDesc` (comparator). Mark each as implemented (not `Not implemented`), since all are delivered in this plan.
-4. `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9.18.3 updated: the "Pure hook — no useEffect beyond what React Query uses internally" claim is now stale — note the new fire-and-forget prefetch `useEffect` alongside the existing data-orchestration logic. The hook remains side-effect-light (one additional fire-and-forget effect). Also update the line-count claim from the stale "473 lines" to the post-change ~435 lines.
-5. `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9.18.1 updated: note that the adapter now imports and uses the shared `compareAssignmentUpdatedAtDesc` comparator for `recentAssignments` ordering (was previously an inline stable sort).
+- `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` has planned entries for `ImageRenderer` and `MarkdownRenderer` (status: `Not implemented` → `Implemented`).
+- Any deviations or caveats are documented.
 
-### Section checks
+### Required checks
 
-- Verify the doc changes are consistent with the implemented code
-- Reconcile all shared-helper planning entries from Sections 1–3: mark `Not implemented` → implemented in the canonical docs
-- `npm run lint:frontend`
+1. Verify docs mention the new components and their placement.
+2. Confirm notes/deviations fields are filled during implementation.
+3. Verify mandatory-read evidence (`Files read`) is complete for delegated docs/review handoffs.
+4. Reconcile planned shared-helper entries in canonical docs: update `Not implemented` → `Implemented` where delivered.
 
 ### Optional `@remarks` JSDoc review
 
-- Confirm that all `@remarks` planned in Sections 1–4 are present in the relevant source files before closing.
+- Confirm whether any non-obvious design decisions, gotchas, or cross-component interactions discovered during implementation should be preserved in `@remarks` documentation.
+- If earlier sections planned `@remarks`, verify that the relevant code now contains them before deleting the action plan.
+- If no `@remarks` are needed, record `None`.
 
-**Status: Complete** — all five canonical-doc acceptance criteria met; §9.18.15 entries flipped `Not implemented` → `Implemented`; §9.18.3 stale "Pure hook" claim and line count (now 447) corrected; §9.18.1 notes the shared comparator; `@remarks` added/confirmed on `getAssignment`, `AssignmentFullSchema`/`AssignmentFullResponseSchema`, `getAssignmentQueryOptions`, `compareAssignmentUpdatedAtDesc`, and the prefetch effect. Lint clean for all changed files (14 pre-existing baseline errors elsewhere untouched).
+### Implementation notes / deviations / follow-up
+
+- ...
 
 ---
 
 ## Suggested implementation order
 
-1. **Section 1** — Frontend `getAssignment` service and Zod schemas (enabling contract)
-2. **Section 2** — Query key factory and shared query options (depends on Section 1)
-3. **Section 3** — Shared comparator extraction (independent; can run in parallel with 1–2)
-4. **Section 4** — Prefetch effect in `useClassPageData` (depends on Sections 1, 2, 3)
-5. **Regression and contract hardening** — after all sections are complete
-6. **Documentation and rollout notes** — after regression pass
+1. Section 1 (dependencies and fixture setup)
+2. Section 2 (ImageRenderer component)
+3. Section 3 (MarkdownRenderer component)
+4. Section 4 (TaskPreviewCard component)
+5. Section 5 (getTaskPreviewData adapter)
+6. Section 6 (Popover integration in TaskHeatmapTable)
+7. Section 7 (@see reference updates)
+8. Section 8 (Playwright E2E tests)
+9. Regression and contract hardening
+10. Documentation and rollout notes
