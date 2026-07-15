@@ -44,7 +44,7 @@ const BaseTaskArtifactFields = z.object({
  * - base → content is `unknown` (the base type; artifacts that have not been
  *   assigned a more specific type)
  */
-export const BaseTaskArtifactSchema = z.union([
+export const BaseTaskArtifactSchema = z.discriminatedUnion('type', [
   BaseTaskArtifactFields.extend({
     type: z.enum(['TEXT', 'TABLE', 'IMAGE']),
     content: z.string().nullable(),
