@@ -21,15 +21,30 @@
  * dependent on `classFullQuery.refetch` and `adpQuery.refetch` to prevent stale-closure
  * bugs that would cause the retry button to refetch a class the user is no longer viewing.
  *
+ * A fire-and-forget prefetch `useEffect` runs alongside the data-orchestration
+ * logic.  When `surfaceState.status === 'ready'`, it sorts
+ * `classFull.assignments` via the shared {@link compareAssignmentUpdatedAtDesc}
+ * comparator, takes the top 3, and calls
+ * `queryClient.prefetchQuery(getAssignmentQueryOptions(...))` for each.
+ * Prefetch rejections are logged (not silently swallowed) but never affect the
+ * page surface.  A `useRef<string | null>`
+ * guard (`prefetchedClassIdReference`) persists across React StrictMode's
+ * mount/unmount/remount cycle and prevents double-dispatch; `prefetchQuery`
+ * idempotency provides a secondary safeguard against duplicate in-flight
+ * requests. The guard resets on cross-class navigation (new `classId` differs
+ * from the ref).
+ *
  * @see SPEC_CLASS_PAGE.md — "useClassPageData — data orchestrator hook"
  */
 
-import { useCallback, useMemo } from 'react';
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-import { getABClassQueryOptions } from '../../query/sharedQueries';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
+import { getABClassQueryOptions, getAssignmentQueryOptions } from '../../query/sharedQueries';
 import { usePageDataset } from '../../hooks/usePageDataset';
 import { DataAnalysisService } from '../../services/dataAnalysis/dataAnalysisService';
 import { adaptClassPageToViewModel } from './classPageAdapter';
+import { compareAssignmentUpdatedAtDesc } from './classPageModel';
+import { logFrontendError } from '../../logging/frontendLogger';
 import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
 import type { AveragingResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import type { AssignmentDefinitionPartialsResponse } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
@@ -41,6 +56,13 @@ import {
   computeServiceError,
   computeIsLoading,
 } from './useClassPageData.helpers';
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+/** Maximum number of recent assignments to prefetch per class. */
+const MAX_PREFETCH_ASSIGNMENTS = 3;
 
 // ---------------------------------------------------------------------------
 // Exported types
@@ -85,9 +107,7 @@ export type ClassPageData = Readonly<{
  *   valid results.
  */
 export type ClassPageSurfaceState =
-  | { status: 'loading' }
-  | { status: 'blocking'; error: ClassPageError }
-  | { status: 'ready' };
+  { status: 'loading' } | { status: 'blocking'; error: ClassPageError } | { status: 'ready' };
 
 /**
  * Run the analyser step of the pipeline.
@@ -127,6 +147,7 @@ function runAnalyserStep(
     }
     return [response[0] ?? null, null];
   } catch (error_: unknown) {
+    logFrontendError('useClassPageData.runAnalyserStep', error_, { classId });
     return [null, error_ instanceof Error ? error_ : new Error(String(error_))];
   }
 }
@@ -156,6 +177,7 @@ function runAdapterStep(
     });
     return [result, null];
   } catch (error_: unknown) {
+    logFrontendError('useClassPageData.runAdapterStep', error_);
     return [null, error_ instanceof Error ? error_ : new Error(String(error_))];
   }
 }
@@ -353,7 +375,64 @@ export function useClassPageData(classId: string): ClassPageData {
     surfaceState.status === 'blocking' ? surfaceState.error : null;
 
   // -----------------------------------------------------------------------
-  // 7. Refetch — stable callback via destructured refetch dependencies.
+  // 8. Prefetch effect — fire-and-forget top-3 assignment warm-up.
+  //
+  // Fires once when `surfaceState.status === 'ready'` and `classFull` is
+  // non-null.  Sorts `classFull.assignments` using the shared comparator,
+  // takes the first 3 (or fewer), and calls `queryClient.prefetchQuery`
+  // for each.  A `useRef` guard ensures exactly one dispatch per classId;
+  // navigating to a different class resets the guard (the new `classId`
+  // differs from the ref).  This is intentionally fire-and-forget:
+  // prefetch rejections are logged but never affect the page surface.
+  // -----------------------------------------------------------------------
+
+  const queryClient = useQueryClient();
+  const prefetchedClassIdReference = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (surfaceState.status !== 'ready' || classFull === null) {
+      return;
+    }
+
+    if (prefetchedClassIdReference.current === classId) {
+      return;
+    }
+
+    // Defensive guard: every assignment must have a non-null updatedAt before the sort.
+    // The adapter's validateUpdatedAt throws before surfaceState can become 'ready',
+    // so this invariant always holds; throwing here fails fast if violated.
+    for (const a of classFull.assignments) {
+      if (!a.updatedAt) {
+        throw new Error(
+          `Cannot prefetch: assignment ${a.assignmentId} has null or falsy updatedAt`
+        );
+      }
+    }
+
+    // Set the guard only after the invariant check succeeds, so a thrown violation
+    // (or a rejected prefetch) does not permanently disable prefetch for this classId.
+    prefetchedClassIdReference.current = classId;
+
+    const sorted = (classFull.assignments as Array<{ assignmentId: string; updatedAt: string }>)
+      .toSorted(compareAssignmentUpdatedAtDesc)
+      .slice(0, MAX_PREFETCH_ASSIGNMENTS);
+
+    for (const assignment of sorted) {
+      void queryClient
+        .prefetchQuery(getAssignmentQueryOptions(classFull.classId, assignment.assignmentId))
+        .catch((error) => {
+          logFrontendError('useClassPageData.prefetch', error, {
+            courseId: classFull.classId,
+            assignmentId: assignment.assignmentId,
+          });
+        });
+    }
+    // The ref guard prevents re-dispatch when classFull reference changes; the effect
+    // fires when surfaceState.status transitions to 'ready' or classId changes.
+  }, [surfaceState.status, classId, classFull, queryClient]);
+
+  // -----------------------------------------------------------------------
+  // 9. Refetch — stable callback via destructured refetch dependencies.
   //    React Query guarantees the refetch function is stable for the same
   //    query key.  When classId changes, the query key changes and a new
   //    refetch function is created — preventing stale-closure bugs.

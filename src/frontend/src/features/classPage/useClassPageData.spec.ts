@@ -13,7 +13,10 @@ import { createMetricResult } from '../../test/dataAnalysis/fixtures';
 import { useClassPageData } from './useClassPageData';
 import type { ClassPageAdapterResult } from './classPageAdapter.zod';
 import type { AveragingResult } from '../../services/dataAnalysis/dataAnalysis.zod';
-import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
+import type {
+  AssignmentPartial,
+  ClassFull,
+} from '../../services/googleClassrooms/classDetail/classDetailService.zod';
 import type { PageDatasetState } from '../../hooks/usePageDataset';
 
 // ===========================================================================
@@ -264,6 +267,42 @@ function createMockClassQueryResult(overrides: {
 }
 
 /**
+ * Creates a minimal AssignmentPartial fixture for prefetch effect tests.
+ * Only assignmentId and updatedAt vary; all other fields use defaults.
+ *
+ * @param {string} assignmentId - The assignment identifier.
+ * @param {string} updatedAt - The ISO timestamp string for sorting.
+ * @returns {AssignmentPartial} A minimal assignment fixture.
+ */
+function createAssignment(assignmentId: string, updatedAt: string): AssignmentPartial {
+  return {
+    assignmentId,
+    updatedAt,
+    createdAt: '2025-01-01T00:00:00.000Z',
+    dueDate: null,
+    documentType: null,
+    submissions: [],
+    assignmentDefinition: {
+      definitionKey: 'def-key',
+      primaryTitle: 'Test Assignment',
+      primaryTopic: 'Topic',
+      primaryTopicKey: 'topic-key',
+      yearGroupKey: 'yg-7',
+      yearGroupLabel: 'Year 7',
+      alternateTitles: [],
+      alternateTopics: [],
+      documentType: 'html',
+      referenceDocumentId: null,
+      templateDocumentId: null,
+      assignmentWeighting: null,
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+      tasks: [],
+    },
+  } as AssignmentPartial;
+}
+
+/**
  * Build a PageDatasetState fixture with the given overrides.
  * Defaults to a trustworthily-ready dataset.
  *
@@ -316,10 +355,12 @@ function createPageDatasetReturn(
 
 let queryClient: QueryClient;
 let wrapper: ReturnType<typeof createTestWrapper>;
+let prefetchSpy: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
   queryClient = createTestQueryClient();
   wrapper = createTestWrapper(queryClient);
+  prefetchSpy = vi.spyOn(queryClient, 'prefetchQuery').mockResolvedValue();
 });
 
 afterEach(() => {
@@ -911,5 +952,214 @@ describe('empty analyser response', () => {
     expect(result.current.error).toBeNull();
     expect(result.current.analyserResult).toEqual(averagingResult);
     expect(result.current.adapterResult).toEqual(adapterResult);
+  });
+});
+
+// ===========================================================================
+// Prefetch effect tests
+// ===========================================================================
+
+const EXPECTED_PREFETCH_COUNT_TOP_3 = 3;
+const EXPECTED_PREFETCH_COUNT_SINGLE = 1;
+const THIRD_CALL_INDEX = 2;
+
+describe('prefetch effect', () => {
+  it('calls prefetchQuery for the 3 most recently updated assignments when surfaceState becomes ready', () => {
+    const assignments = [
+      createAssignment('oldest', '2025-01-01T00:00:00.000Z'),
+      createAssignment('middle-2', '2025-02-01T00:00:00.000Z'),
+      createAssignment('middle-1', '2025-03-01T00:00:00.000Z'),
+      createAssignment('newest', '2025-04-01T00:00:00.000Z'),
+    ];
+    const averagingResult = createAveragingResult();
+    const adapterResult = createAdapterResult();
+
+    mockAnalyse.mockReturnValue([averagingResult]);
+    mockAdaptClassPageToViewModel.mockReturnValue(adapterResult);
+    mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
+    mockUseQuery.mockReturnValue(
+      createMockClassQueryResult({ data: createClassFull({ assignments }) })
+    );
+    mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
+
+    renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+
+    // Top 3 by updatedAt desc: newest, middle-1, middle-2.  oldest is excluded.
+    expect(prefetchSpy.mock.calls).toHaveLength(EXPECTED_PREFETCH_COUNT_TOP_3);
+    expect(prefetchSpy.mock.calls[0][0]).toMatchObject(
+      expect.objectContaining({ queryKey: ['assignment', DEFAULT_CLASS_ID, 'newest'] })
+    );
+    expect(prefetchSpy.mock.calls[1][0]).toMatchObject(
+      expect.objectContaining({ queryKey: ['assignment', DEFAULT_CLASS_ID, 'middle-1'] })
+    );
+    expect(prefetchSpy.mock.calls[THIRD_CALL_INDEX][0]).toMatchObject(
+      expect.objectContaining({ queryKey: ['assignment', DEFAULT_CLASS_ID, 'middle-2'] })
+    );
+  });
+
+  it('uses assignmentId ascending as tie-break when two assignments share the same updatedAt', () => {
+    const assignments = [
+      createAssignment('b-assign', '2025-04-01T00:00:00.000Z'),
+      createAssignment('a-assign', '2025-04-01T00:00:00.000Z'),
+      createAssignment('c-assign', '2025-03-01T00:00:00.000Z'),
+      createAssignment('d-assign', '2025-02-01T00:00:00.000Z'),
+    ];
+    const averagingResult = createAveragingResult();
+    const adapterResult = createAdapterResult();
+
+    mockAnalyse.mockReturnValue([averagingResult]);
+    mockAdaptClassPageToViewModel.mockReturnValue(adapterResult);
+    mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
+    mockUseQuery.mockReturnValue(
+      createMockClassQueryResult({ data: createClassFull({ assignments }) })
+    );
+    mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
+
+    renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+
+    // Sorted: a-assign, b-assign (tie on updatedAt, a.id < b.id), c-assign, d-assign
+    // Top 3: a-assign, b-assign, c-assign
+    expect(prefetchSpy.mock.calls).toHaveLength(EXPECTED_PREFETCH_COUNT_TOP_3);
+    expect(prefetchSpy.mock.calls[0][0]).toMatchObject(
+      expect.objectContaining({ queryKey: ['assignment', DEFAULT_CLASS_ID, 'a-assign'] })
+    );
+    expect(prefetchSpy.mock.calls[1][0]).toMatchObject(
+      expect.objectContaining({ queryKey: ['assignment', DEFAULT_CLASS_ID, 'b-assign'] })
+    );
+    expect(prefetchSpy.mock.calls[THIRD_CALL_INDEX][0]).toMatchObject(
+      expect.objectContaining({ queryKey: ['assignment', DEFAULT_CLASS_ID, 'c-assign'] })
+    );
+  });
+
+  it('calls prefetchQuery once when classFull has only 1 assignment', () => {
+    const assignments = [createAssignment('only-assign', '2025-04-01T00:00:00.000Z')];
+    const averagingResult = createAveragingResult();
+    const adapterResult = createAdapterResult();
+
+    mockAnalyse.mockReturnValue([averagingResult]);
+    mockAdaptClassPageToViewModel.mockReturnValue(adapterResult);
+    mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
+    mockUseQuery.mockReturnValue(
+      createMockClassQueryResult({ data: createClassFull({ assignments }) })
+    );
+    mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
+
+    renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+
+    expect(prefetchSpy.mock.calls).toHaveLength(EXPECTED_PREFETCH_COUNT_SINGLE);
+    expect(prefetchSpy.mock.calls[0][0]).toMatchObject(
+      expect.objectContaining({ queryKey: ['assignment', DEFAULT_CLASS_ID, 'only-assign'] })
+    );
+  });
+
+  it('does not call prefetchQuery when classFull has zero assignments', () => {
+    const averagingResult = createAveragingResult();
+    const adapterResult = createAdapterResult();
+
+    mockAnalyse.mockReturnValue([averagingResult]);
+    mockAdaptClassPageToViewModel.mockReturnValue(adapterResult);
+    mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
+    mockUseQuery.mockReturnValue(
+      createMockClassQueryResult({ data: createClassFull({ assignments: [] }) })
+    );
+    mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
+
+    renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+
+    expect(prefetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('swallows prefetchQuery rejection without affecting surfaceState or error', () => {
+    prefetchSpy.mockRejectedValue(new Error('Prefetch network error'));
+
+    const assignments = [
+      createAssignment('a1', '2025-04-01T00:00:00.000Z'),
+      createAssignment('a2', '2025-03-01T00:00:00.000Z'),
+      createAssignment('a3', '2025-02-01T00:00:00.000Z'),
+      createAssignment('a4', '2025-01-01T00:00:00.000Z'),
+    ];
+    const averagingResult = createAveragingResult();
+    const adapterResult = createAdapterResult();
+
+    mockAnalyse.mockReturnValue([averagingResult]);
+    mockAdaptClassPageToViewModel.mockReturnValue(adapterResult);
+    mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
+    mockUseQuery.mockReturnValue(
+      createMockClassQueryResult({ data: createClassFull({ assignments }) })
+    );
+    mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
+
+    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+
+    // Surface state must remain ready and error must stay null even though
+    // prefetchQuery rejected — the effect's .catch(() => undefined) swallows it
+    expect(result.current.surfaceState).toEqual({ status: 'ready' });
+    expect(result.current.error).toBeNull();
+  });
+
+  it('does not re-fire prefetchQuery on refetch when classId remains the same', () => {
+    const assignments = [
+      createAssignment('a1', '2025-04-01T00:00:00.000Z'),
+      createAssignment('a2', '2025-03-01T00:00:00.000Z'),
+      createAssignment('a3', '2025-02-01T00:00:00.000Z'),
+      createAssignment('a4', '2025-01-01T00:00:00.000Z'),
+    ];
+    const classFull = createClassFull({ assignments });
+    const averagingResult = createAveragingResult();
+    const adapterResult = createAdapterResult();
+
+    mockAnalyse.mockReturnValue([averagingResult]);
+    mockAdaptClassPageToViewModel.mockReturnValue(adapterResult);
+    mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
+    mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: classFull }));
+    mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
+
+    const { rerender } = renderHook(
+      (properties: { classId: string }) => useClassPageData(properties.classId),
+      { initialProps: { classId: DEFAULT_CLASS_ID }, wrapper }
+    );
+
+    // Effect should have fired exactly 3 times for top-3 assignments
+    expect(prefetchSpy.mock.calls).toHaveLength(EXPECTED_PREFETCH_COUNT_TOP_3);
+
+    // Simulate a refetch: fresh classFull (new reference, same classId, same content).
+    // A new classFull reference triggers the effect to re-run (classFull is in the
+    // dependency array); the guard ref must prevent re-dispatch.
+    mockUseQuery.mockReturnValue(
+      createMockClassQueryResult({
+        data: createClassFull({ assignments: [...assignments] }),
+      })
+    );
+    rerender({ classId: DEFAULT_CLASS_ID });
+
+    // Guard ref prevents re-dispatch for the same classId — count must not increase
+    expect(prefetchSpy.mock.calls).toHaveLength(EXPECTED_PREFETCH_COUNT_TOP_3);
+  });
+
+  it('does not call prefetchQuery before surfaceState becomes ready', () => {
+    // Keep classFull non-null with assignments to verify the effect does NOT
+    // fire even when classFull data is available but the page is not yet ready.
+    mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
+    mockUseQuery.mockReturnValue(
+      createMockClassQueryResult({
+        data: createClassFull({
+          assignments: [createAssignment('a1', '2025-04-01T00:00:00.000Z')],
+        }),
+        isPending: true,
+      })
+    );
+    // Set adpQuery.data to null so the pipeline guard blocks execution,
+    // keeping surfaceState as 'loading' without needing analyser/adapter mocks.
+    mockUsePageDataset.mockReturnValue(
+      createPageDatasetReturn(
+        { data: null as unknown as ClassFull | null, isPending: true },
+        { isDatasetReady: false, isDatasetTrustworthy: false, hasTrustworthyDataset: false }
+      )
+    );
+
+    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+
+    expect(result.current.surfaceState.status).toBe('loading');
+    expect(prefetchSpy).not.toHaveBeenCalled();
   });
 });

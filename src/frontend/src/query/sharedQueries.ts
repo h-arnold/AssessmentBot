@@ -15,13 +15,18 @@ import {
   type ClassPartial,
 } from '../services/googleClassrooms/classPartialsService';
 import { getABClass } from '../services/googleClassrooms/classDetail/classDetailService';
+import { getAssignment } from '../services/assignmentAssessment/assignmentAssessmentService';
 import { getGoogleClassrooms } from '../services/googleClassrooms/googleClassroomsService';
 import { getCohorts, getYearGroups } from '../services/referenceData/referenceDataService';
 import type {
   CohortListResponse,
   YearGroupListResponse,
 } from '../services/referenceData/referenceData.zod';
+import { logFrontendEvent } from '../logging/frontendLogger';
+import { normaliseUnknownError } from '../errors/normaliseUnknownError';
 import { queryKeys } from './queryKeys';
+
+export const ASSIGNMENT_QUERY_STALE_TIME_MS = 300_000;
 
 const startupWarmupPromises = new WeakMap<QueryClient, Promise<StartupWarmupQueriesResult>>();
 
@@ -115,6 +120,28 @@ export function getABClassQueryOptions(classId: string) {
   return queryOptions({
     queryKey: queryKeys.abClass(classId),
     queryFn: () => getABClass({ classId }),
+  });
+}
+
+/**
+ * Returns the shared per-assignment full-read query definition.
+ *
+ * @remarks
+ * This is a view-entry query (used by the ClassPage prefetch), NOT a startup
+ * warm-up query. It declares `staleTime` of 5 minutes and `retry: false` because
+ * the prefetch is intentionally fire-and-forget best-effort. Future `useQuery`
+ * consumers can override via spread if they need retry.
+ *
+ * @param {string} courseId The Google Classroom course ID (same value as `ClassFull.classId`).
+ * @param {string} assignmentId The assignment ID to fetch.
+ * @returns {ReturnType<typeof queryOptions>} Shared assignment full-read query options.
+ */
+export function getAssignmentQueryOptions(courseId: string, assignmentId: string) {
+  return queryOptions({
+    queryKey: queryKeys.assignment(courseId, assignmentId),
+    queryFn: () => getAssignment({ courseId, assignmentId }),
+    staleTime: ASSIGNMENT_QUERY_STALE_TIME_MS,
+    retry: false,
   });
 }
 
@@ -264,6 +291,11 @@ export function warmStartupQueries(queryClient: QueryClient): Promise<StartupWar
       const rejectedResult = results.find((result) => result.status === 'rejected');
 
       if (rejectedResult) {
+        logFrontendEvent('debug', {
+          context: 'sharedQueries.warmStartupQueries',
+          errorMessage: normaliseUnknownError(rejectedResult.reason).errorMessage,
+          metadata: { datasetKeys: startupWarmupQueryDefinitions.map((d) => d.datasetKey) },
+        });
         throw rejectedResult.reason;
       }
 

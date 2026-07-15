@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getStartupWarmupQueryOptions } from './sharedQueries';
+import { getStartupWarmupQueryOptions, startupWarmupDatasetKeys } from './sharedQueries';
 import { queryKeys } from './queryKeys';
 
 describe('getStartupWarmupQueryOptions', () => {
@@ -50,5 +50,9 @@ describe('getStartupWarmupQueryOptions', () => {
     expect(result.queryKey).toBeDefined();
     expect(result.queryFn).toBeDefined();
     expect(typeof result.queryFn).toBe('function');
+  });
+
+  it('does not include assignment in startupWarmupDatasetKeys', () => {
+    expect(startupWarmupDatasetKeys).not.toContain('assignment');
   });
 });

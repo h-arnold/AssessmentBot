@@ -25,7 +25,7 @@ import type {
   RecentAssignmentCardModel,
   StudentAverageRowModel,
 } from './classPageAdapter.zod';
-import { compareStudentNames } from './classPageModel';
+import { compareAssignmentUpdatedAtDesc, compareStudentNames } from './classPageModel';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -172,18 +172,17 @@ function buildRecentAssignment(
     rolledUpAccuracy = noDataMetric();
     rolledUpSpag = noDataMetric();
   } else {
-    rolledUpCompleteness = rollupMetric(
-      rows.map((r) => r.completeness),
-      'completeness'
-    );
-    rolledUpAccuracy = rollupMetric(
-      rows.map((r) => r.accuracy),
-      'accuracy'
-    );
-    rolledUpSpag = rollupMetric(
-      rows.map((r) => r.spag),
-      'spag'
-    );
+    const completenessValues: MetricResult[] = [];
+    const accuracyValues: MetricResult[] = [];
+    const spagValues: MetricResult[] = [];
+    for (const r of rows) {
+      completenessValues.push(r.completeness);
+      accuracyValues.push(r.accuracy);
+      spagValues.push(r.spag);
+    }
+    rolledUpCompleteness = rollupMetric(completenessValues, 'completeness');
+    rolledUpAccuracy = rollupMetric(accuracyValues, 'accuracy');
+    rolledUpSpag = rollupMetric(spagValues, 'spag');
   }
 
   // Compute the per-assignment average composite
@@ -303,7 +302,12 @@ export function adaptClassPageToViewModel(input: {
 
   // Take the most recent 3 *before* rolling up (avoids ~(A-3)·T wasted rollups)
   const topAssignments = validatedAssignments
-    .toSorted((a, b) => b.validatedUpdatedAt.localeCompare(a.validatedUpdatedAt))
+    .toSorted((a, b) =>
+      compareAssignmentUpdatedAtDesc(
+        { updatedAt: a.validatedUpdatedAt, assignmentId: a.assignment.assignmentId },
+        { updatedAt: b.validatedUpdatedAt, assignmentId: b.assignment.assignmentId }
+      )
+    )
     .slice(0, MAX_RECENT_ASSIGNMENTS);
 
   const recentAssignments: RecentAssignmentCardModel[] = topAssignments.map(

@@ -33,6 +33,7 @@ Current shared keys:
 - `backendConfig`
 - `classPartials`
 - `abClass`
+- `assignment` — scoped by `courseId, assignmentId`; consumed by the ClassPage prefetch and future per-assignment query hooks
 - `assignmentDefinitionPartials`
 - `assignmentDefinitionByKey`
 - `assignmentTopics`
@@ -91,6 +92,10 @@ Future frontend work must choose one policy per feature and record that decision
 
 Keep startup prefetch limited to slow, shared datasets where the latency trade-off is justified.
 Do not add startup prefetch only to exercise React Query.
+
+### Current view-entry prefetches
+
+- **ClassPage assignment prefetch**: a `useEffect` in `useClassPageData` fires when `surfaceState.status === 'ready'`. It sorts `classFull.assignments` using the shared `compareAssignmentUpdatedAtDesc` comparator (updatedAt descending, assignmentId ascending tie-break), takes the top 3, and calls `queryClient.prefetchQuery(getAssignmentQueryOptions(classFull.classId, assignmentId))` for each — a fire-and-forget call with `.catch(() => undefined)`. A `useRef<string | null>` guard ensures exactly one dispatch per classId and resets on cross-class navigation. `prefetchQuery` is keyed and idempotent, so React StrictMode double-fire is safe.
 
 ## 6. Freshness and invalidation expectations
 
