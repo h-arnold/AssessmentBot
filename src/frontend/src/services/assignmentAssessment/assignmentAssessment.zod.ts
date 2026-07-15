@@ -26,7 +26,7 @@ export const BaseTaskArtifactSchema = z.object({
   uid: z.string(),
   type: z.string(),
   content: z.unknown(),
-  contentHash: z.unknown(),
+  contentHash: z.string().nullable(),
   metadata: z.unknown(),
 });
 
@@ -38,10 +38,10 @@ export const TaskDefinitionSchema = z.object({
   id: z.string(),
   taskTitle: z.string(),
   pageId: z.string(),
-  taskNotes: z.unknown(),
+  taskNotes: z.string().nullable(),
   taskMetadata: z.unknown(),
-  taskWeighting: z.unknown(),
-  index: z.unknown(),
+  taskWeighting: z.number(),
+  index: z.number().nullable(),
   artifacts: z.object({
     reference: z.array(BaseTaskArtifactSchema),
     template: z.array(BaseTaskArtifactSchema),
@@ -53,8 +53,8 @@ export const TaskDefinitionSchema = z.object({
  * `src/backend/Models/StudentSubmission.js`.
  */
 export const StudentSubmissionItemSchema = z.object({
-  id: z.unknown(),
-  taskId: z.unknown(),
+  id: z.string(),
+  taskId: z.string(),
   artifact: BaseTaskArtifactSchema,
   assessments: z.unknown(),
   feedback: z.unknown(),
@@ -65,13 +65,13 @@ export const StudentSubmissionItemSchema = z.object({
  * `src/backend/Models/StudentSubmission.js`.
  */
 export const StudentSubmissionSchema = z.object({
-  studentId: z.unknown(),
-  studentName: z.unknown(),
-  assignmentId: z.unknown(),
-  documentId: z.unknown(),
+  studentId: z.string(),
+  studentName: z.string(),
+  assignmentId: z.string(),
+  documentId: z.string().nullable(),
   items: z.record(z.string(), StudentSubmissionItemSchema),
-  createdAt: z.unknown(),
-  updatedAt: z.unknown(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 
 /**
@@ -79,23 +79,23 @@ export const StudentSubmissionSchema = z.object({
  * `src/backend/Models/AssignmentDefinition.js`.
  */
 export const AssignmentDefinitionSchema = z.object({
-  primaryTitle: z.unknown(),
-  primaryTopic: z.unknown(),
-  primaryTopicKey: z.unknown(),
-  yearGroupKey: z.unknown(),
-  yearGroupLabel: z.unknown(),
-  alternateTitles: z.unknown(),
-  alternateTopics: z.unknown(),
+  primaryTitle: z.string(),
+  primaryTopic: z.string().nullable(),
+  primaryTopicKey: z.string().nullable(),
+  yearGroupKey: z.string().nullable(),
+  yearGroupLabel: z.string().nullable(),
+  alternateTitles: z.array(z.string()),
+  alternateTopics: z.array(z.string()),
   documentType: z.string().nullable(),
   referenceDocumentId: z.string().nullable(),
   templateDocumentId: z.string().nullable(),
-  referenceLastModified: z.unknown(),
-  templateLastModified: z.unknown(),
-  assignmentWeighting: z.unknown(),
-  definitionKey: z.unknown(),
+  referenceLastModified: z.string().nullable(),
+  templateLastModified: z.string().nullable(),
+  assignmentWeighting: z.number(),
+  definitionKey: z.string(),
   tasks: z.record(z.string(), TaskDefinitionSchema),
-  createdAt: z.unknown(),
-  updatedAt: z.unknown(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 
 /**
@@ -111,7 +111,11 @@ export const AssignmentDefinitionSchema = z.object({
  * source of truth at `src/backend/Models/AssignmentDefinition.js`.
  * Check those files when the backend response shape changes.
  *
- * This schema is `.strict()` so extra fields on the wire cause a Zod error.
+ * This top-level schema is `.strict()`, so extra fields directly on the
+ * assignment payload cause a Zod error. Nested object schemas (for example
+ * `TaskDefinitionSchema`, `StudentSubmissionSchema`, `AssignmentDefinitionSchema`,
+ * and `BaseTaskArtifactSchema`) are intentionally non-strict and tolerate extra
+ * keys, so only the top-level shape is enforced strictly.
  */
 export const AssignmentFullSchema = z
   .object({

@@ -26,7 +26,8 @@
  * `classFull.assignments` via the shared {@link compareAssignmentUpdatedAtDesc}
  * comparator, takes the top 3, and calls
  * `queryClient.prefetchQuery(getAssignmentQueryOptions(...))` for each.
- * Failures are swallowed (`.catch(() => {})`).  A `useRef<string | null>`
+ * Prefetch rejections are logged (not silently swallowed) but never affect the
+ * page surface.  A `useRef<string | null>`
  * guard (`prefetchedClassIdReference`) persists across React StrictMode's
  * mount/unmount/remount cycle and prevents double-dispatch; `prefetchQuery`
  * idempotency provides a secondary safeguard against duplicate in-flight
@@ -382,7 +383,7 @@ export function useClassPageData(classId: string): ClassPageData {
   // for each.  A `useRef` guard ensures exactly one dispatch per classId;
   // navigating to a different class resets the guard (the new `classId`
   // differs from the ref).  This is intentionally fire-and-forget:
-  // failures are swallowed so they never affect the page surface.
+  // prefetch rejections are logged but never affect the page surface.
   // -----------------------------------------------------------------------
 
   const queryClient = useQueryClient();
@@ -397,8 +398,6 @@ export function useClassPageData(classId: string): ClassPageData {
       return;
     }
 
-    prefetchedClassIdReference.current = classId;
-
     // Defensive guard: every assignment must have a non-null updatedAt before the sort.
     // The adapter's validateUpdatedAt throws before surfaceState can become 'ready',
     // so this invariant always holds; throwing here fails fast if violated.
@@ -410,6 +409,10 @@ export function useClassPageData(classId: string): ClassPageData {
       }
     }
 
+    // Set the guard only after the invariant check succeeds, so a thrown violation
+    // (or a rejected prefetch) does not permanently disable prefetch for this classId.
+    prefetchedClassIdReference.current = classId;
+
     const sorted = (classFull.assignments as Array<{ assignmentId: string; updatedAt: string }>)
       .toSorted(compareAssignmentUpdatedAtDesc)
       .slice(0, MAX_PREFETCH_ASSIGNMENTS);
@@ -417,13 +420,16 @@ export function useClassPageData(classId: string): ClassPageData {
     for (const assignment of sorted) {
       void queryClient
         .prefetchQuery(getAssignmentQueryOptions(classFull.classId, assignment.assignmentId))
-        .catch(() => {});
+        .catch((error) => {
+          logFrontendError('useClassPageData.prefetch', error, {
+            courseId: classFull.classId,
+            assignmentId: assignment.assignmentId,
+          });
+        });
     }
-    // ref guard prevents re-dispatch on classFull reference changes; effect
-    // only needs to fire when surfaceState.status transitions to 'ready' or
-    // classId changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [surfaceState.status, classId, queryClient]);
+    // The ref guard prevents re-dispatch when classFull reference changes; the effect
+    // fires when surfaceState.status transitions to 'ready' or classId changes.
+  }, [surfaceState.status, classId, classFull, queryClient]);
 
   // -----------------------------------------------------------------------
   // 9. Refetch — stable callback via destructured refetch dependencies.
