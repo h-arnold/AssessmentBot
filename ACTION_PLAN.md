@@ -146,9 +146,11 @@ None.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** describe actual changes made when done.
-- **Deviations from plan:** note any departures from the original section design.
+- **Implementation notes:** Added `react-markdown` (`^10.1.0`) and `remark-gfm` (`^4.0.1`) to `src/frontend/package.json` `dependencies` and ran `npm install` in `src/frontend/` (node_modules + lockfile updated). Copied `imageTask.json`, `textTask.json`, and `table_task.json` from `src/frontend/src/test/shared/` into `src/frontend/src/features/classPage/fixtures/`, rewriting the top-level key, `id`, `taskId`, and nested `artifact.taskId` to unique values `t_preview_image_001`, `t_preview_text_001`, and `t_preview_table_001` respectively (types IMAGE/TEXT/TABLE). Transformation done via a throwaway Node script; source fixtures untouched.
+- **Deviations from plan:** None.
 - **Follow-up implications for later sections:** none.
+
+**Status: Complete** — lint clean, all 1618 frontend unit tests pass (no regressions). Reviewed clean by Code Reviewer.
 
 ---
 

@@ -1,0 +1,32 @@
+{
+  "t_preview_table_001": {
+    "id": "t_preview_table_001",
+    "taskId": "t_preview_table_001",
+    "artifact": {
+      "taskId": "t_preview_table_001",
+      "role": "submission",
+      "pageId": "g209ab742e66_0_31",
+      "documentId": "1BKFhH2gT8t5diaX0itjgA1DyfcBXlgTVcDgsuw157sA",
+      "content": "| What is social engineering? How is it different to regular hacking? |\n| --- |\n| They pretend to be workers/ employees |\n| List three different types of social engineering and explain what they are. |\n| Phishing emails: Tricking them to press on a malicious link\nPhysical breaches: pretending to be someone they are not for information\nPretext calling: makeup situation for information |\n| Why is social engineering effective? |\n|  |",
+      "contentHash": "95ca0a0cc70a728014df5c9f345643e127a3bc8fd90b51adaaaa63a5b9171597",
+      "metadata": {},
+      "uid": "t_eb2bc6cd1605-116426410475350780438-g209ab742e88_0_31-0",
+      "type": "TABLE"
+    },
+    "assessments": {
+      "completeness": {
+        "score": 2,
+        "reasoning": "The student has provided information for two out of the three sections, but one section is incomplete and another is entirely missing."
+      },
+      "accuracy": {
+        "score": 3,
+        "reasoning": "The provided information is mostly correct but lacks detail and completeness in some areas, and the final section is missing."
+      },
+      "spag": {
+        "score": 3,
+        "reasoning": "There are a few minor spelling and grammatical errors, but the text is largely understandable."
+      }
+    },
+    "feedback": {}
+  }
+}
