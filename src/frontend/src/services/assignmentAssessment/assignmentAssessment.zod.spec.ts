@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AssessmentSchema,
   AssignmentDefinitionSchema,
   AssignmentFullSchema,
   AssignmentFullResponseSchema,
@@ -16,6 +17,18 @@ const validStartAssessmentRunRequest = {
   definitionKey: 'algebra-baseline',
   assignmentId: 'assign-123',
   courseId: 'course-456',
+};
+
+const validBaseArtifact = {
+  taskId: 'task-1',
+  role: 'reference',
+  pageId: 'page-1',
+  documentId: 'doc-ref',
+  uid: 'uid-1',
+  type: 'TEXT' as const,
+  content: null,
+  contentHash: null,
+  metadata: {},
 };
 
 const validFullAssignment = {
@@ -403,6 +416,26 @@ describe('assignmentAssessment.zod schemas', () => {
     });
   });
 
+  describe('AssessmentSchema', () => {
+    it('accepts a valid assessment with score and reasoning', () => {
+      const assessment = { score: 3, reasoning: 'good work' };
+      expect(AssessmentSchema.parse(assessment)).toEqual(assessment);
+    });
+
+    it('rejects an assessment with score as a string', () => {
+      expect(() => AssessmentSchema.parse({ score: 'three', reasoning: 'ok' })).toThrow();
+    });
+
+    it('rejects an assessment with missing reasoning', () => {
+      expect(() => AssessmentSchema.parse({ score: 3 })).toThrow();
+    });
+
+    it('strips unknown extra fields (strict by default in Zod v4)', () => {
+      const assessment = { score: 3, reasoning: 'good', extra: 'field' };
+      expect(AssessmentSchema.parse(assessment)).toEqual({ score: 3, reasoning: 'good' });
+    });
+  });
+
   describe('TaskDefinitionSchema', () => {
     it('accepts a valid definition with taskWeighting: 1, index: null, taskNotes: null', () => {
       const validDefinition = {
@@ -453,18 +486,6 @@ describe('assignmentAssessment.zod schemas', () => {
   });
 
   describe('StudentSubmissionItemSchema', () => {
-    const validBaseArtifact = {
-      taskId: 'task-1',
-      role: 'reference',
-      pageId: 'page-1',
-      documentId: 'doc-ref',
-      uid: 'uid-1',
-      type: 'TEXT',
-      content: null,
-      contentHash: null,
-      metadata: {},
-    };
-
     it('accepts a valid item with id and taskId as strings', () => {
       const validItem = {
         id: 'item-1',
@@ -542,18 +563,6 @@ describe('assignmentAssessment.zod schemas', () => {
   });
 
   describe('StudentSubmissionSchema', () => {
-    const validBaseArtifact = {
-      taskId: 'task-1',
-      role: 'reference',
-      pageId: 'page-1',
-      documentId: 'doc-ref',
-      uid: 'uid-1',
-      type: 'TEXT',
-      content: null,
-      contentHash: null,
-      metadata: {},
-    };
-
     it('accepts a valid submission with documentId: null, createdAt and updatedAt as ISO strings', () => {
       const validSubmission = {
         studentId: 'student-1',
@@ -648,7 +657,7 @@ describe('assignmentAssessment.zod schemas', () => {
         primaryTitle: 'Algebra',
         primaryTopic: null,
         primaryTopicKey: null,
-        yearGroupKey: null,
+        yearGroupKey: 'yg-1',
         yearGroupLabel: null,
         alternateTitles: [],
         alternateTopics: [],
@@ -672,7 +681,7 @@ describe('assignmentAssessment.zod schemas', () => {
           primaryTitle: 42,
           primaryTopic: null,
           primaryTopicKey: null,
-          yearGroupKey: null,
+          yearGroupKey: 'yg-1',
           yearGroupLabel: null,
           alternateTitles: [],
           alternateTopics: [],
@@ -696,7 +705,7 @@ describe('assignmentAssessment.zod schemas', () => {
           primaryTitle: 'Algebra',
           primaryTopic: null,
           primaryTopicKey: null,
-          yearGroupKey: null,
+          yearGroupKey: 'yg-1',
           yearGroupLabel: null,
           alternateTitles: [],
           alternateTopics: [],
@@ -720,7 +729,7 @@ describe('assignmentAssessment.zod schemas', () => {
           primaryTitle: 'Algebra',
           primaryTopic: null,
           primaryTopicKey: null,
-          yearGroupKey: null,
+          yearGroupKey: 'yg-1',
           yearGroupLabel: null,
           alternateTitles: 'not-an-array',
           alternateTopics: [],
@@ -744,7 +753,7 @@ describe('assignmentAssessment.zod schemas', () => {
           primaryTitle: 'Algebra',
           primaryTopic: null,
           primaryTopicKey: null,
-          yearGroupKey: null,
+          yearGroupKey: 'yg-1',
           yearGroupLabel: null,
           alternateTitles: [1, Number('2'), Number('3')],
           alternateTopics: [],

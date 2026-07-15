@@ -117,7 +117,7 @@ export const AssignmentDefinitionSchema = z.object({
   primaryTitle: z.string(),
   primaryTopic: z.string().nullable(),
   primaryTopicKey: z.string().nullable(),
-  yearGroupKey: z.string().nullable(),
+  yearGroupKey: z.string(),
   yearGroupLabel: z.string().nullable(),
   alternateTitles: z.array(z.string()),
   alternateTopics: z.array(z.string()),
