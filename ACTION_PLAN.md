@@ -401,9 +401,11 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** describe actual changes made when done.
-- **Deviations from plan:** note any departures from the original section design.
-- **Follow-up implications for later sections:** none.
+- **Implementation notes:** Created `src/frontend/src/features/classPage/TaskPreviewCard.tsx` (function declaration `TaskPreviewCard`, props `data: TaskPreviewData | null`; exports the `TaskPreviewData` interface). Header = `MetricIconLabel` + `Typography.Text` label + `MetricPill` reassembled from `metricState`/`metricScore` with `precision={0}` + `compact={true}`; reasoning section with placeholder; `Divider`; student-response section delegating to `ImageRenderer`/`MarkdownRenderer` by `artifactType` with empty-state placeholders; card body `maxHeight: 480`, `overflow: 'auto'`. Spacing uses `APP_GAP_SM` (8px grid); aria-label `"{label} score: {score}"`. Added `TaskPreviewCard.spec.tsx` (12 tests).
+- **Deviations from plan:** None material. The test file initially had 4 jsdoc errors and stale RED-phase wording plus a duplicate local `TaskPreviewData` interface; all resolved (spec now imports `TaskPreviewData` from the component). `TaskPreviewCard` defines its own `TaskPreviewData` (no shared module yet — Section 5's adapter will produce shape-compatible data).
+- **Follow-up implications for later sections:** Section 5 `getTaskPreviewData` must return a `TaskPreviewData`-shaped object (shape-compatible with this component's exported interface) and Section 6 will wrap heatmap cells with a Popover rendering this card.
+
+**Status: Complete** — 12 tests pass, lint clean (0 errors/warnings), full suite green (no regression; regression-checker Regressions Count 0, New Failures 0). Reviewed clean by Code Reviewer (one minor doc nitpick fixed).
 
 ---
 
