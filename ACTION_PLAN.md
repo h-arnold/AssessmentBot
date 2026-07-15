@@ -178,6 +178,8 @@ Frontend schema tests:
 
 ## Section 2 — Query key factory and shared query options
 
+**Status: Complete** — red/green loops clean, code review clean, regression gate passed (0 regressions vs baseline).
+
 ### Objective
 
 Add `queryKeys.assignment(courseId, assignmentId)` factory and `getAssignmentQueryOptions(courseId, assignmentId)` shared query options.
