@@ -22,6 +22,8 @@ import type {
   CohortListResponse,
   YearGroupListResponse,
 } from '../services/referenceData/referenceData.zod';
+import { logFrontendEvent } from '../logging/frontendLogger';
+import { normaliseUnknownError } from '../errors/normaliseUnknownError';
 import { queryKeys } from './queryKeys';
 
 export const ASSIGNMENT_QUERY_STALE_TIME_MS = 300_000;
@@ -289,6 +291,11 @@ export function warmStartupQueries(queryClient: QueryClient): Promise<StartupWar
       const rejectedResult = results.find((result) => result.status === 'rejected');
 
       if (rejectedResult) {
+        logFrontendEvent('debug', {
+          context: 'sharedQueries.warmStartupQueries',
+          errorMessage: normaliseUnknownError(rejectedResult.reason).errorMessage,
+          metadata: { datasetKeys: startupWarmupQueryDefinitions.map((d) => d.datasetKey) },
+        });
         throw rejectedResult.reason;
       }
 

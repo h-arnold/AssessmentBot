@@ -26,10 +26,12 @@
  * `classFull.assignments` via the shared {@link compareAssignmentUpdatedAtDesc}
  * comparator, takes the top 3, and calls
  * `queryClient.prefetchQuery(getAssignmentQueryOptions(...))` for each.
- * Failures are swallowed (`.catch(() => undefined)`); the `prefetchQuery` call
- * is keyed and idempotent, so React StrictMode double-fire is safe.  A
- * `useRef<string | null>` guard (`prefetchedClassIdReference`) prevents
- * re-dispatch for the same `classId` and resets on cross-class navigation.
+ * Failures are swallowed (`.catch(() => {})`).  A `useRef<string | null>`
+ * guard (`prefetchedClassIdReference`) persists across React StrictMode's
+ * mount/unmount/remount cycle and prevents double-dispatch; `prefetchQuery`
+ * idempotency provides a secondary safeguard against duplicate in-flight
+ * requests. The guard resets on cross-class navigation (new `classId` differs
+ * from the ref).
  *
  * @see SPEC_CLASS_PAGE.md — "useClassPageData — data orchestrator hook"
  */
@@ -41,6 +43,7 @@ import { usePageDataset } from '../../hooks/usePageDataset';
 import { DataAnalysisService } from '../../services/dataAnalysis/dataAnalysisService';
 import { adaptClassPageToViewModel } from './classPageAdapter';
 import { compareAssignmentUpdatedAtDesc } from './classPageModel';
+import { logFrontendError } from '../../logging/frontendLogger';
 import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
 import type { AveragingResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import type { AssignmentDefinitionPartialsResponse } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
@@ -143,6 +146,7 @@ function runAnalyserStep(
     }
     return [response[0] ?? null, null];
   } catch (error_: unknown) {
+    logFrontendError('useClassPageData.runAnalyserStep', error_, { classId });
     return [null, error_ instanceof Error ? error_ : new Error(String(error_))];
   }
 }
@@ -172,6 +176,7 @@ function runAdapterStep(
     });
     return [result, null];
   } catch (error_: unknown) {
+    logFrontendError('useClassPageData.runAdapterStep', error_);
     return [null, error_ instanceof Error ? error_ : new Error(String(error_))];
   }
 }
@@ -394,6 +399,17 @@ export function useClassPageData(classId: string): ClassPageData {
 
     prefetchedClassIdReference.current = classId;
 
+    // Defensive guard: every assignment must have a non-null updatedAt before the sort.
+    // The adapter's validateUpdatedAt throws before surfaceState can become 'ready',
+    // so this invariant always holds; throwing here fails fast if violated.
+    for (const a of classFull.assignments) {
+      if (!a.updatedAt) {
+        throw new Error(
+          `Cannot prefetch: assignment ${a.assignmentId} has null or falsy updatedAt`
+        );
+      }
+    }
+
     const sorted = (classFull.assignments as Array<{ assignmentId: string; updatedAt: string }>)
       .toSorted(compareAssignmentUpdatedAtDesc)
       .slice(0, MAX_PREFETCH_ASSIGNMENTS);
@@ -403,7 +419,11 @@ export function useClassPageData(classId: string): ClassPageData {
         .prefetchQuery(getAssignmentQueryOptions(classFull.classId, assignment.assignmentId))
         .catch(() => {});
     }
-  }, [surfaceState.status, classId, classFull, queryClient]);
+    // ref guard prevents re-dispatch on classFull reference changes; effect
+    // only needs to fire when surfaceState.status transitions to 'ready' or
+    // classId changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [surfaceState.status, classId, queryClient]);
 
   // -----------------------------------------------------------------------
   // 9. Refetch — stable callback via destructured refetch dependencies.

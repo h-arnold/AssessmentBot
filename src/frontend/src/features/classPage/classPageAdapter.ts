@@ -172,18 +172,17 @@ function buildRecentAssignment(
     rolledUpAccuracy = noDataMetric();
     rolledUpSpag = noDataMetric();
   } else {
-    rolledUpCompleteness = rollupMetric(
-      rows.map((r) => r.completeness),
-      'completeness'
-    );
-    rolledUpAccuracy = rollupMetric(
-      rows.map((r) => r.accuracy),
-      'accuracy'
-    );
-    rolledUpSpag = rollupMetric(
-      rows.map((r) => r.spag),
-      'spag'
-    );
+    const completenessValues: MetricResult[] = [];
+    const accuracyValues: MetricResult[] = [];
+    const spagValues: MetricResult[] = [];
+    for (const r of rows) {
+      completenessValues.push(r.completeness);
+      accuracyValues.push(r.accuracy);
+      spagValues.push(r.spag);
+    }
+    rolledUpCompleteness = rollupMetric(completenessValues, 'completeness');
+    rolledUpAccuracy = rollupMetric(accuracyValues, 'accuracy');
+    rolledUpSpag = rollupMetric(spagValues, 'spag');
   }
 
   // Compute the per-assignment average composite

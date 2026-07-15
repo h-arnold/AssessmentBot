@@ -28,7 +28,7 @@ export async function startAssessmentRun(input: StartAssessmentRunRequest): Prom
 /**
  * Fetches the fully rehydrated Assignment for a single assignment.
  *
- * @remarks Wraps the backend `getAssignment_` handler. The response is the full
+ * @remarks Wraps the backend `getAssignment` method (dispatches internally to `getAssignment_`). The response is the full
  * rehydrated `Assignment.toJSON()` shape (not a partial). `null` means the
  * assignment document was not found.
  *
