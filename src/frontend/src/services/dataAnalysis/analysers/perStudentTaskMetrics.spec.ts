@@ -8,6 +8,9 @@ import {
   createTaskPartial,
 } from '../../../test/dataAnalysis/fixtures';
 
+// Number of decimal places of tolerance used when asserting composite floating-point scores.
+const COMPOSITE_SCORE_TOLERANCE_DIGITS = 5;
+
 // ---------------------------------------------------------------------------
 // perStudentTaskMetrics — conversion from perStudentTaskAccums to the typed
 // array on AveragingResult.
@@ -124,7 +127,10 @@ describe('perStudentTaskMetrics conversion', () => {
     expect((entry.spag as Record<string, unknown>).value).toBe(expectedSpag);
     // overall is a composite computed score
     expect(entry.overall).toMatchObject({ state: 'computed' });
-    expect((entry.overall as Record<string, unknown>).value).toBe(expectedOverall);
+    expect((entry.overall as Record<string, unknown>).value).toBeCloseTo(
+      expectedOverall,
+      COMPOSITE_SCORE_TOLERANCE_DIGITS
+    );
   });
 
   it('produces one entry per (student, taskKey) across multiple tasks and students', () => {

@@ -53,7 +53,7 @@ export interface RenderWizardModalOptions {
   /** Optional flag to mock invalidateQueries (default: true). */
   mockInvalidateQueries?: boolean;
   /** Optional warmup state override. */
-  warmupState?: FrontendProvidersOptions['warmupState'];
+  warmupState?: NonNullable<FrontendProvidersOptions['warmupState']>;
   /** Whether to wait for the interactive form fields (default: true). */
   waitForFormFields?: boolean;
   /** Optional initial values to pre-populate form fields in create mode. */

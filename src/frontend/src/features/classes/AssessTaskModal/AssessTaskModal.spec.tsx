@@ -1244,7 +1244,7 @@ describe('No-match resolution — linking state and link flow', () => {
     // state. The assignment Select is hidden during choice/linking, so only
     // the linkable Select combobox should be present.
     const comboboxes = await within(dialog).findAllByRole('combobox');
-    expect(comboboxes.length).toBe(1);
+    expect(comboboxes).toHaveLength(1);
 
     // Choice buttons should be gone
     expect(within(dialog).queryByRole('button', { name: 'Create New Definition' })).toBeNull();

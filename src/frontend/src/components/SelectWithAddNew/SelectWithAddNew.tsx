@@ -45,7 +45,7 @@ export interface SelectWithAddNewProperties extends Omit<SelectProps, 'options'>
   /**
    * The options to display in the Select dropdown.
    */
-  options?: SelectProps['options'];
+  options?: NonNullable<SelectProps['options']>;
 }
 
 /**

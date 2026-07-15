@@ -91,8 +91,7 @@ async function loadCallApi(): Promise<CallApi> {
 }
 
 type RunnerHarnessResponse =
-  | { kind: 'success'; payload: unknown }
-  | { kind: 'failure'; payload: unknown };
+  { kind: 'success'; payload: unknown } | { kind: 'failure'; payload: unknown };
 
 const SECOND_ATTEMPT_CALL_COUNT = 2;
 const MAX_ATTEMPTS = 4;
@@ -1072,7 +1071,7 @@ describe('getQueueState live snapshots', () => {
     const promiseC = callApiQueued!('methodC', { id: 3 }, 'live-job');
 
     // One dispatch should have fired — release captured for the in-flight request.
-    expect(releaseFns.length).toBe(1);
+    expect(releaseFns).toHaveLength(1);
 
     // After enqueuing 3 requests for an idle queue: 1 in-flight, 2 pending.
     expect(getQueueState!('live-job')).toEqual({ pending: 2, active: true });
@@ -1083,7 +1082,7 @@ describe('getQueueState live snapshots', () => {
     await expect(promiseA).resolves.toEqual({ seq: 1 });
 
     // Second dispatch should have fired now. Queue has 1 pending, 1 active.
-    expect(releaseFns.length).toBe(SECOND_DISPATCH_CALLBACK_COUNT);
+    expect(releaseFns).toHaveLength(SECOND_DISPATCH_CALLBACK_COUNT);
 
     // After first resolve: 1 in-flight, 1 pending.
     expect(getQueueState!('live-job')).toEqual({ pending: 1, active: true });
@@ -1093,7 +1092,7 @@ describe('getQueueState live snapshots', () => {
     await expect(promiseB).resolves.toEqual({ seq: 2 });
 
     // Third dispatch should have fired. Queue has 0 pending, 1 active.
-    expect(releaseFns.length).toBe(THIRD_DISPATCH_CALLBACK_COUNT);
+    expect(releaseFns).toHaveLength(THIRD_DISPATCH_CALLBACK_COUNT);
 
     // After second resolve: 0 pending, 1 in-flight.
     expect(getQueueState!('live-job')).toEqual({ pending: 0, active: true });

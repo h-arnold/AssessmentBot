@@ -203,6 +203,32 @@ function derivePrimaryActionState(
 }
 
 /**
+ * Derives the effective blocking error, preferring a failed assignment definition
+ * query error and falling back to any submit-time error.
+ *
+ * The query-derived error reflects the definition query's last known failure. The
+ * query retains that error state even when disabled (whilst the modal is closed),
+ * so the derived value can remain non-null until the next successful fetch. This
+ * matches the prior effect-based behaviour and is surfaced only when the wizard
+ * renders the blocking alert.
+ *
+ * @param {boolean} isQueryError Whether the query errored.
+ * @param {unknown} queryError The query error, if any.
+ * @param {string | null} submitError Error captured from a failed submission.
+ * @returns {string | null} A user-safe message, or null when there is no error.
+ */
+function deriveBlockingError(
+  isQueryError: boolean,
+  queryError: unknown,
+  submitError: string | null
+): string | null {
+  if (isQueryError && queryError) {
+    return mapErrorToUserMessage(queryError);
+  }
+  return submitError;
+}
+
+/**
  * Custom hook to handle form initialization for the assignment definition wizard.
  * Manages modal open/close state, form reset, definition hydration, and dirty state tracking.
  *
@@ -217,7 +243,7 @@ function derivePrimaryActionState(
  * @param {function} setTaskRows - State setter for task rows.
  * @param {function} setDocumentChange - State setter for document change state.
  * @param {function} setHasDirtyEdits - State setter for dirty edits flag.
- * @param {function} setBlockingError - State setter for blocking error.
+ * @param {function} setSubmitBlockingError - State setter for blocking error from submit failures.
  * @param {function} setLocalDefinitionKey - State setter for local definition key.
  * @param {string | null} localDefinitionKey - The local definition key from parse response in create mode.
  * @param {QueryClient} queryClient - The React Query client for accessing cached data.
@@ -237,7 +263,7 @@ export interface FormInitializationOptions {
   setTaskRows: (rows: TaskRow[]) => void;
   setDocumentChange: (state: DocumentChangeState) => void;
   setHasDirtyEdits: (value: boolean) => void;
-  setBlockingError: (error: string | null) => void;
+  setSubmitBlockingError: (error: string | null) => void;
   setLocalDefinitionKey: (key: string | null) => void;
 }
 
@@ -272,7 +298,7 @@ function useFormInitialization(
     setTaskRows,
     setDocumentChange,
     setHasDirtyEdits,
-    setBlockingError,
+    setSubmitBlockingError,
     setLocalDefinitionKey,
   } = options;
   const isHydratingDefinitionReference = useRef(false);
@@ -295,7 +321,7 @@ function useFormInitialization(
       previousTemplateUrl: '',
     });
     setHasDirtyEdits(false);
-    setBlockingError(null);
+    setSubmitBlockingError(null);
     setLocalDefinitionKey(null);
 
     if (isCreateMode) {
@@ -326,7 +352,7 @@ function useFormInitialization(
     setHasParsedTasks,
     setDocumentChange,
     setHasDirtyEdits,
-    setBlockingError,
+    setSubmitBlockingError,
     setLocalDefinitionKey,
   ]);
 
@@ -840,17 +866,18 @@ export function useAssignmentDefinitionWizard(
   const [hasDirtyEdits, setHasDirtyEdits] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [blockingError, setBlockingError] = useState<string | null>(null);
+  const [submitBlockingError, setSubmitBlockingError] = useState<string | null>(null);
   const [selectedTopicKey, setSelectedTopicKey] = useState<string | undefined>();
   const [selectedYearGroupKey, setSelectedYearGroupKey] = useState<string | undefined>();
 
   // Surface useQuery errors (e.g. ZodError from malformed GAS-serialized response, issue #244)
-  // through the wizard's existing blocking error mechanism
-  useEffect(() => {
-    if (isDefinitionError && definitionError) {
-      setBlockingError(mapErrorToUserMessage(definitionError));
-    }
-  }, [isDefinitionError, definitionError, open, setBlockingError]);
+  // through the wizard's existing blocking error mechanism. Derived rather than stored in state
+  // to avoid synchronous setState within an effect.
+  const blockingError = deriveBlockingError(
+    isDefinitionError,
+    definitionError,
+    submitBlockingError
+  );
 
   const upsertMutation = useMutation({
     mutationFn: upsertAssignmentDefinition,
@@ -895,7 +922,7 @@ export function useAssignmentDefinitionWizard(
       setTaskRows,
       setDocumentChange,
       setHasDirtyEdits,
-      setBlockingError,
+      setSubmitBlockingError,
       setLocalDefinitionKey,
     },
     queryClient
@@ -1160,7 +1187,7 @@ export function useAssignmentDefinitionWizard(
 
         // Map to user-safe message using error code per frontend-logging-and-error-handling.md
         const userSafeMessage = mapErrorToUserMessage(caughtError);
-        setBlockingError(userSafeMessage);
+        setSubmitBlockingError(userSafeMessage);
         return undefined;
       } finally {
         setIsSubmitting(false);

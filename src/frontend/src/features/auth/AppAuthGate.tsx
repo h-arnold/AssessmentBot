@@ -165,13 +165,10 @@ export function AppAuthGate(properties: Readonly<PropsWithChildren>) {
   const { children } = properties;
   const queryClient = useQueryClient();
   const { isAuthResolved, isAuthorised } = useAuthorisationStatus();
-  const [warmupCycleState, setWarmupCycleState] = useState<StartupWarmupCycle>(() =>
-    getStoredWarmupCycle(queryClient)
-  );
-
-  useEffect(() => {
-    setWarmupCycleState(getStoredWarmupCycle(queryClient));
-  }, [queryClient]);
+  const [warmupCycleState, setWarmupCycleState] = useState<StartupWarmupCycle>(() => {
+    const existingCycle = startupWarmupCycles.get(queryClient);
+    return existingCycle ?? getStoredWarmupCycle(queryClient);
+  });
 
   useEffect(() => {
     if (!isAuthResolved || !isAuthorised) {
@@ -182,8 +179,8 @@ export function AppAuthGate(properties: Readonly<PropsWithChildren>) {
     let isMounted = true;
 
     if (existingCycle) {
-      setWarmupCycleState(existingCycle);
-
+      // The lazy state initialiser already adopted the existing cycle from the registry.
+      // Subscribe to its promise so the provider updates when warm-up resolves.
       if (existingCycle.promise) {
         void existingCycle.promise.then(
           () => {
@@ -227,8 +224,10 @@ export function AppAuthGate(properties: Readonly<PropsWithChildren>) {
       promise: cyclePromise,
     };
     startupWarmupCycles.set(queryClient, cycle);
-    setWarmupCycleState(cycle);
 
+    // The lazy state initialiser already published a matching 'loading' cycle, so the
+    // provider shows the correct initial state. The promise handlers below republish on
+    // resolution. Avoids a synchronous setState within the effect.
     void cyclePromise.then(
       () => {
         const nextSnapshot = resolveNextWarmupSnapshot(queryClient, 'ready');

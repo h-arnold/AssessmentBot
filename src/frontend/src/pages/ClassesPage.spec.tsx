@@ -1000,7 +1000,7 @@ describe('ClassesPage', () => {
 
         // Total cards = total View buttons = total Assess Task buttons
         const expectedCardCount = viewButtons.length;
-        expect(assessTaskButtons.length).toBe(expectedCardCount);
+        expect(assessTaskButtons).toHaveLength(expectedCardCount);
 
         // Verify every View button is enabled and visible
         for (const viewButton of viewButtons) {
@@ -1092,7 +1092,7 @@ describe('ClassesPage', () => {
 
           // Check that the card has exactly View and Assess Task buttons
           const cardButtons = card.querySelectorAll('button');
-          expect(cardButtons.length).toBe(EXPECTED_BUTTONS_PER_CARD);
+          expect(cardButtons).toHaveLength(EXPECTED_BUTTONS_PER_CARD);
           // The View button has textContent "View"
           expect(cardButtons[0]?.textContent).toMatch(/view/i);
           // The Assess Task button is icon-only; its accessible name is "Assess Task"
@@ -1123,12 +1123,8 @@ describe('ClassesPage', () => {
         // Assess Task buttons should exist on every card — FAILS because not implemented yet
         const assessTaskButtons = screen.getAllByRole('button', { name: 'Assess Task' });
         const cards = screen.getAllByRole('article');
-        expect(assessTaskButtons.length).toBe(cards.length);
+        expect(assessTaskButtons).toHaveLength(cards.length);
         expect(assessTaskButtons.length).toBeGreaterThan(0);
-
-        // EXPECTED_BUTTONS_PER_CARD stays at 2 (View + Assess Task)
-        const BUTTONS_PER_CARD_CONTRACT = 2;
-        expect(EXPECTED_BUTTONS_PER_CARD).toBe(BUTTONS_PER_CARD_CONTRACT);
       });
 
       it('renders the View button as enabled (not disabled)', () => {
