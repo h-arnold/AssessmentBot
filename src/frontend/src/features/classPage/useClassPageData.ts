@@ -24,12 +24,13 @@
  * @see SPEC_CLASS_PAGE.md — "useClassPageData — data orchestrator hook"
  */
 
-import { useCallback, useMemo } from 'react';
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-import { getABClassQueryOptions } from '../../query/sharedQueries';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
+import { getABClassQueryOptions, getAssignmentQueryOptions } from '../../query/sharedQueries';
 import { usePageDataset } from '../../hooks/usePageDataset';
 import { DataAnalysisService } from '../../services/dataAnalysis/dataAnalysisService';
 import { adaptClassPageToViewModel } from './classPageAdapter';
+import { compareAssignmentUpdatedAtDesc } from './classPageModel';
 import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
 import type { AveragingResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import type { AssignmentDefinitionPartialsResponse } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
@@ -41,6 +42,13 @@ import {
   computeServiceError,
   computeIsLoading,
 } from './useClassPageData.helpers';
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+/** Maximum number of recent assignments to prefetch per class. */
+const MAX_PREFETCH_ASSIGNMENTS = 3;
 
 // ---------------------------------------------------------------------------
 // Exported types
@@ -85,9 +93,7 @@ export type ClassPageData = Readonly<{
  *   valid results.
  */
 export type ClassPageSurfaceState =
-  | { status: 'loading' }
-  | { status: 'blocking'; error: ClassPageError }
-  | { status: 'ready' };
+  { status: 'loading' } | { status: 'blocking'; error: ClassPageError } | { status: 'ready' };
 
 /**
  * Run the analyser step of the pipeline.
@@ -353,7 +359,44 @@ export function useClassPageData(classId: string): ClassPageData {
     surfaceState.status === 'blocking' ? surfaceState.error : null;
 
   // -----------------------------------------------------------------------
-  // 7. Refetch — stable callback via destructured refetch dependencies.
+  // 8. Prefetch effect — fire-and-forget top-3 assignment warm-up.
+  //
+  // Fires once when `surfaceState.status === 'ready'` and `classFull` is
+  // non-null.  Sorts `classFull.assignments` using the shared comparator,
+  // takes the first 3 (or fewer), and calls `queryClient.prefetchQuery`
+  // for each.  A `useRef` guard ensures exactly one dispatch per classId;
+  // navigating to a different class resets the guard (the new `classId`
+  // differs from the ref).  This is intentionally fire-and-forget:
+  // failures are swallowed so they never affect the page surface.
+  // -----------------------------------------------------------------------
+
+  const queryClient = useQueryClient();
+  const prefetchedClassIdReference = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (surfaceState.status !== 'ready' || classFull === null) {
+      return;
+    }
+
+    if (prefetchedClassIdReference.current === classId) {
+      return;
+    }
+
+    prefetchedClassIdReference.current = classId;
+
+    const sorted = (classFull.assignments as Array<{ assignmentId: string; updatedAt: string }>)
+      .toSorted(compareAssignmentUpdatedAtDesc)
+      .slice(0, MAX_PREFETCH_ASSIGNMENTS);
+
+    for (const assignment of sorted) {
+      void queryClient
+        .prefetchQuery(getAssignmentQueryOptions(classFull.classId, assignment.assignmentId))
+        .catch(() => {});
+    }
+  }, [surfaceState.status, classId, classFull, queryClient]);
+
+  // -----------------------------------------------------------------------
+  // 9. Refetch — stable callback via destructured refetch dependencies.
   //    React Query guarantees the refetch function is stable for the same
   //    query key.  When classId changes, the query key changes and a new
   //    refetch function is created — preventing stale-closure bugs.
