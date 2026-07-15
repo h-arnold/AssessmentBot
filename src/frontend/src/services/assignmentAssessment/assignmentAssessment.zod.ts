@@ -41,8 +41,8 @@ const BaseTaskArtifactFields = z.object({
  * Uses a union discriminated by `type` to validate `content` shape:
  * - TEXT/TABLE/IMAGE → content is `string | null`
  * - SPREADSHEET → content is `Array<Array<string | number | null>> | null`
- * - any other string → content is `unknown` (catch-all for the base type and
- *   artifacts that have not been assigned a more specific type)
+ * - base → content is `unknown` (the base type; artifacts that have not been
+ *   assigned a more specific type)
  */
 export const BaseTaskArtifactSchema = z.union([
   BaseTaskArtifactFields.extend({
