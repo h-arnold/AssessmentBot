@@ -24,13 +24,7 @@ import type {
 } from '../services/referenceData/referenceData.zod';
 import { queryKeys } from './queryKeys';
 
-const ASSIGNMENT_QUERY_STALE_TIME_MINUTES = 5;
-const ASSIGNMENT_QUERY_STALE_TIME_SECONDS_PER_MINUTE = 60;
-const ASSIGNMENT_QUERY_STALE_TIME_MS_PER_SECOND = 1000;
-export const ASSIGNMENT_QUERY_STALE_TIME_MS =
-  ASSIGNMENT_QUERY_STALE_TIME_MINUTES *
-  ASSIGNMENT_QUERY_STALE_TIME_SECONDS_PER_MINUTE *
-  ASSIGNMENT_QUERY_STALE_TIME_MS_PER_SECOND;
+export const ASSIGNMENT_QUERY_STALE_TIME_MS = 300_000;
 
 const startupWarmupPromises = new WeakMap<QueryClient, Promise<StartupWarmupQueriesResult>>();
 

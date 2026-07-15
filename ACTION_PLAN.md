@@ -499,6 +499,10 @@ Docs agent mandatory docs:
 
 - Confirm that all `@remarks` planned in Sections 1–4 are present in the relevant source files before closing.
 
+**Status: Complete** — red/green loops clean, code review clean, regression gate passed (0 regressions vs baseline; the 3 pre-existing baseline failures remain, accepted as technical debt).
+
+**De-sloppification pass: clean.** Verdict: no slop across the 17 changed files. One valid simplification applied to `sharedQueries.ts` (the three intermediate stale-time constants collapsed to a single `export const ASSIGNMENT_QUERY_STALE_TIME_MS = 300_000;`, runtime value unchanged). The ref-name nitpick was rejected: `unicorn/prevent-abbreviations` requires the full-word `prefetchedClassIdReference` (the abbreviated `prefetchedClassIdRef` trips the rule), so the committed name stands. The §9.18.15 planning-entry `Not implemented` statuses will be flipped to `Implemented` during the documentation pass.
+
 ---
 
 ## Suggested implementation order
