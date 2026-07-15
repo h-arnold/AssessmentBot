@@ -265,6 +265,8 @@ Startup warm-up exclusion tests:
 
 ## Section 3 — Shared comparator extraction
 
+**Status: Complete** — red/green loops clean, code review clean, regression gate passed (42 classPage tests green, lint clean for changed files).
+
 ### Objective
 
 Extract a shared `compareAssignmentUpdatedAtDesc` comparator and replace the adapter's existing `.toSorted(...)` call so both the prefetch and the displayed `recentAssignments` use the same deterministic order.
