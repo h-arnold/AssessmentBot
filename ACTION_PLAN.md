@@ -228,9 +228,11 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** describe actual changes made when done.
-- **Deviations from plan:** note any departures from the original section design.
+- **Implementation notes:** Created `src/frontend/src/components/ImageRenderer/ImageRenderer.tsx` (function declaration `ImageRenderer`, props `src` + optional `alt` defaulting to `"Student response image"`, inline `style` `{ maxWidth: '100%', height: 'auto', maxHeight: 400 }`) and `ImageRenderer.spec.tsx` (4 tests). Added a planned `ImageRenderer` entry to `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §3.5 (status `Not implemented`).
+- **Deviations from plan:** The test asserts inline styles via direct `img.style` reads (`.maxWidth === '100%'`, `.height === 'auto'`, `.maxHeight === '400px'`) rather than `toHaveStyle`, because the shared `src/frontend/src/test/setup.ts` `getComputedStyleMock` does not normalise multi-word CSS properties / `px` lengths the way `@testing-library/jest-dom`'s `toHaveStyle` expects. The shared harness was deliberately left unmodified (out of scope and brittle). `maxHeight` is a numeric `400` so React emits valid `max-height: 400px` (a unitless non-zero length is invalid CSS).
 - **Follow-up implications for later sections:** none.
+
+**Status: Complete** — 4 tests pass, lint clean, all 1622 frontend unit tests green (no regression). Reviewed clean by Code Reviewer (one minor JSDoc type-reference nitpick fixed).
 
 ---
 

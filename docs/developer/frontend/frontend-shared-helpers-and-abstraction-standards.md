@@ -76,6 +76,10 @@ Feature-scoped helpers should stay feature-scoped unless there is proven cross-f
 
 Test helper placement rules remain governed by `docs/developer/frontend/frontend-testing.md`.
 
+### 3.5 Shared presentational components (planned)
+
+- `ImageRenderer` (planned, status: Not implemented): shared presentational component at `src/frontend/src/components/ImageRenderer/ImageRenderer.tsx`. Renders a base64 data URL as a constrained `<img>` (maxWidth 100%, height auto, maxHeight 400, default alt "Student response image"). Introduced for the Task Preview Card; expected to be reused across the project.
+
 ## 4. Extraction decision rules
 
 ### 4.1 Keep logic local when
