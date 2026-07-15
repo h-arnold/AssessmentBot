@@ -15,20 +15,49 @@ export const StartAssessmentRunResponseSchema = z.void().nullable();
 export type StartAssessmentRunResponse = z.infer<typeof StartAssessmentRunResponseSchema>;
 
 /**
- * Schema for a base task artifact, matching `BaseTaskArtifact.toJSON()` in
- * `src/backend/Models/Artifacts/0_BaseTaskArtifact.js`.
+ * Schema for an assessment, matching `Assessment.toJSON()` in
+ * `src/backend/Models/Assessment.js`.
  */
-export const BaseTaskArtifactSchema = z.object({
+export const AssessmentSchema = z.object({
+  score: z.number(),
+  reasoning: z.string(),
+});
+
+const BaseTaskArtifactFields = z.object({
   taskId: z.string(),
   role: z.string(),
   pageId: z.string(),
   documentId: z.string(),
   uid: z.string(),
-  type: z.string(),
-  content: z.unknown(),
   contentHash: z.string().nullable(),
-  metadata: z.unknown(),
+  metadata: z.record(z.string(), z.unknown()),
 });
+
+/**
+ * Schema for a base task artifact, matching `BaseTaskArtifact.toJSON()` in
+ * `src/backend/Models/Artifacts/0_BaseTaskArtifact.js`.
+ *
+ * @remarks
+ * Uses a union discriminated by `type` to validate `content` shape:
+ * - TEXT/TABLE/IMAGE → content is `string | null`
+ * - SPREADSHEET → content is `Array<Array<string | number | null>> | null`
+ * - any other string → content is `unknown` (catch-all for the base type and
+ *   artifacts that have not been assigned a more specific type)
+ */
+export const BaseTaskArtifactSchema = z.union([
+  BaseTaskArtifactFields.extend({
+    type: z.enum(['TEXT', 'TABLE', 'IMAGE']),
+    content: z.string().nullable(),
+  }),
+  BaseTaskArtifactFields.extend({
+    type: z.literal('SPREADSHEET'),
+    content: z.array(z.array(z.union([z.string(), z.number(), z.null()]))).nullable(),
+  }),
+  BaseTaskArtifactFields.extend({
+    type: z.literal('base'),
+    content: z.unknown(),
+  }),
+]);
 
 /**
  * Schema for a task definition, matching `TaskDefinition.toJSON()` in
@@ -39,7 +68,7 @@ export const TaskDefinitionSchema = z.object({
   taskTitle: z.string(),
   pageId: z.string(),
   taskNotes: z.string().nullable(),
-  taskMetadata: z.unknown(),
+  taskMetadata: z.record(z.string(), z.unknown()),
   taskWeighting: z.number(),
   index: z.number().nullable(),
   artifacts: z.object({
@@ -56,8 +85,14 @@ export const StudentSubmissionItemSchema = z.object({
   id: z.string(),
   taskId: z.string(),
   artifact: BaseTaskArtifactSchema,
-  assessments: z.unknown(),
-  feedback: z.unknown(),
+  assessments: z.record(z.string(), AssessmentSchema),
+  feedback: z.record(
+    z.string(),
+    z.looseObject({
+      type: z.string(),
+      createdAt: z.string(),
+    })
+  ),
 });
 
 /**
