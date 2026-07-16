@@ -50,6 +50,7 @@ import { getTaskPreviewData } from './taskPreviewFixtures';
 import {
   APP_COL_WIDTH_STUDENT_NAME,
   APP_COL_WIDTH_METRIC,
+  APP_GAP_XS,
 } from '../../theme/spacing';
 
 // ---------------------------------------------------------------------------
@@ -234,7 +235,10 @@ function buildTaskMetricSubColumns(
             placement="right"
             content={previewData ? <TaskPreviewCard data={previewData} /> : null}
           >
-            <span>{renderScore(m)}</span>
+            {/* 4px padding (APP_GAP_XS, documented half-unit exception) widens the
+                Popover hover/click target around the score without covering the
+                whole cell; inline-block is required for padding to take effect. */}
+            <span style={{ padding: APP_GAP_XS, display: 'inline-block' }}>{renderScore(m)}</span>
           </Popover>
         );
       },

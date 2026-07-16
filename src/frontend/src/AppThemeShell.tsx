@@ -73,6 +73,7 @@ export function AppThemeShell(properties: AppThemeShellProperties) {
       token: {
         ...appThemeToken,
         motion: !prefersReducedMotion,
+        motionDurationMid: '0.1s',
       },
     }),
     [isDarkMode, prefersReducedMotion],
