@@ -68,23 +68,7 @@ function assignment(overrides: {
     createdAt: DEFAULT_TS,
     documentType: 'assessment',
     submissions: [],
-    assignmentDefinition: {
-      primaryTitle: 'Test',
-      primaryTopic: 'Algebra',
-      primaryTopicKey: 'algebra',
-      yearGroupKey: 'yg-10',
-      yearGroupLabel: 'Year 10',
-      alternateTitles: [],
-      alternateTopics: [],
-      documentType: 'assignment',
-      referenceDocumentId: null,
-      templateDocumentId: null,
-      assignmentWeighting: 1,
-      definitionKey: overrides.definitionKey,
-      tasks: overrides.taskIds.map((tid) => ({ id: tid, taskWeighting: 1 })),
-      createdAt: DEFAULT_TS,
-      updatedAt: DEFAULT_TS,
-    },
+    assignmentDefinitionKey: overrides.definitionKey,
   } as unknown as AssignmentPartial;
 }
 
@@ -238,6 +222,7 @@ describe('adaptClassPageToViewModel', () => {
           students: [student('s-1', 'Alice')],
           assignments: [],
         }),
+        assignmentDefinitionPartials: [],
       });
 
       expect(result.recentAssignments).toEqual([]);
@@ -317,6 +302,7 @@ describe('adaptClassPageToViewModel', () => {
             }),
           ],
         }),
+        assignmentDefinitionPartials: [],
       });
 
       const expectedTopCount = 3;
@@ -358,6 +344,7 @@ describe('adaptClassPageToViewModel', () => {
             }),
           ],
         }),
+        assignmentDefinitionPartials: [],
       });
 
       expect(result.recentAssignments[0].assignmentId).toBe('a-3');
@@ -404,6 +391,7 @@ describe('adaptClassPageToViewModel', () => {
             }),
           ],
         }),
+        assignmentDefinitionPartials: [],
       });
 
       expect(result.recentAssignments).toHaveLength(1);
@@ -468,6 +456,7 @@ describe('adaptClassPageToViewModel', () => {
             }),
           ],
         }),
+        assignmentDefinitionPartials: [],
       });
 
       const average = result.recentAssignments[0].metrics.average;
@@ -508,6 +497,7 @@ describe('adaptClassPageToViewModel', () => {
             }),
           ],
         }),
+        assignmentDefinitionPartials: [],
       });
 
       const COMPOSITE_NUMERATOR = 2.6;
@@ -561,6 +551,7 @@ describe('adaptClassPageToViewModel', () => {
             }),
           ],
         }),
+        assignmentDefinitionPartials: [],
       });
 
       // All three rows are error → rollupMetric(all error) → error for each criterion
@@ -597,6 +588,7 @@ describe('adaptClassPageToViewModel', () => {
             }),
           ],
         }),
+        assignmentDefinitionPartials: [],
       });
 
       expect(result.recentAssignments[0].metrics.average.state).toBe('notAttempted');
@@ -631,6 +623,7 @@ describe('adaptClassPageToViewModel', () => {
             }),
           ],
         }),
+        assignmentDefinitionPartials: [],
       });
 
       const average = result.recentAssignments[0].metrics.average;
@@ -675,6 +668,7 @@ describe('adaptClassPageToViewModel', () => {
             }),
           ],
         }),
+        assignmentDefinitionPartials: [],
       });
 
       const expectedStudentCount = 3;
@@ -750,6 +744,7 @@ describe('adaptClassPageToViewModel', () => {
             }),
           ],
         }),
+        assignmentDefinitionPartials: [],
       });
 
       const expectedStudentSortCount = 5;
@@ -781,6 +776,7 @@ describe('adaptClassPageToViewModel', () => {
             }),
           ],
         }),
+        assignmentDefinitionPartials: [],
       });
 
       expect(result.recentAssignments).toHaveLength(1);
@@ -810,6 +806,7 @@ describe('adaptClassPageToViewModel', () => {
             students: [student('s-1', 'Alice')],
             assignments: [nullUpdatedAtAssignment],
           }),
+          assignmentDefinitionPartials: [],
         })
       ).toThrow(/a-bad/);
     });
@@ -832,6 +829,7 @@ describe('adaptClassPageToViewModel', () => {
             students: [student('s-1', 'Alice')],
             assignments: [badUpdatedAtAssignment],
           }),
+          assignmentDefinitionPartials: [],
         })
       ).toThrow(/a-bad-format/);
     });
@@ -857,6 +855,7 @@ describe('adaptClassPageToViewModel', () => {
               }),
             ],
           }),
+          assignmentDefinitionPartials: [],
         })
       ).toThrow(/duplicate.*student/i);
     });
@@ -885,6 +884,7 @@ describe('adaptClassPageToViewModel', () => {
               }), // duplicate id
             ],
           }),
+          assignmentDefinitionPartials: [],
         })
       ).toThrow(/duplicate.*assignment/i);
     });
@@ -917,6 +917,7 @@ describe('adaptClassPageToViewModel', () => {
             }),
           ],
         }),
+        assignmentDefinitionPartials: [],
       });
 
       expect(result.classMetrics.completeness).toEqual(customPerClass.completeness);
@@ -971,6 +972,7 @@ describe('adaptClassPageToViewModel', () => {
           }),
         ],
       }),
+      assignmentDefinitionPartials: [],
     });
 
     const expectedSharedCardCount = 2;
@@ -1018,6 +1020,7 @@ describe('adaptClassPageToViewModel', () => {
           }),
         ],
       }),
+      assignmentDefinitionPartials: [],
     });
 
     expect(result.recentAssignments).toHaveLength(1);

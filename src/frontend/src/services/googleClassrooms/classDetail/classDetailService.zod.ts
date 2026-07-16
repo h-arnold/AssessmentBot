@@ -27,16 +27,18 @@ export type PartialAssessmentEntry = z.infer<typeof PartialAssessmentEntrySchema
 /**
  * The canonical `AssignmentDefinitionPartialSchema` lives in
  * `assignmentDefinitionPartials.zod.ts`. The `classDetailService.zod.ts` file
- * previously carried a duplicate lenient copy. After the unification in
+ * previously carried a duplicate lenient copy.  After the unification in
  * Section 3 (Green Phase), the canonical schema is the single source of truth
  * and is imported/re-exported here.
  *
- * @remarks
- * `referenceDocumentId` and `templateDocumentId` in the canonical schema are
- * `.nullable()` (they used to be non-nullable in the canonical schema before
- * the unification; the classDetailService copy already had them nullable).
+ * The embedded `assignmentDefinition` object on `AssignmentPartial` was
+ * replaced with `assignmentDefinitionKey` (a simple lookup key).  The frontend
+ * resolves definition details (primaryTitle, tasks, etc.) from its own
+ * `AssignmentDefinitionPartials` registry, so the full embedded object was
+ * redundant transport payload that also carried a serialisation risk whenever
+ * the stored definition was partial (tasks stored as an array rather than
+ * keyed objects).
  */
-import { AssignmentDefinitionPartialSchema } from '../../assignmentDefinition/assignmentDefinitionPartials.zod';
 
 export const TeacherSummarySchema = z.object({
   userId: z.string().nullable(),
@@ -115,6 +117,11 @@ export type StudentSubmissionPartial = z.infer<typeof StudentSubmissionPartialSc
  * The field remains `z.string().nullable()`; a null `updatedAt` on a candidate
  * assignment is a data bug that fails fast at the `getABClass` adapter boundary
  * (not a soft signal).
+ *
+ * The embedded `assignmentDefinition` object was replaced with
+ * `assignmentDefinitionKey`.  The frontend resolves definition details
+ * (primaryTitle, tasks, etc.) from its own `AssignmentDefinitionPartials`
+ * registry, making the full embedded object redundant transport payload.
  */
 export const AssignmentPartialSchema = z.object({
   assignmentId: z.string(),
@@ -123,7 +130,7 @@ export const AssignmentPartialSchema = z.object({
   createdAt: z.string(),
   documentType: z.string().nullable(),
   submissions: z.array(StudentSubmissionPartialSchema),
-  assignmentDefinition: AssignmentDefinitionPartialSchema,
+  assignmentDefinitionKey: z.string().nullable(),
 });
 
 export type AssignmentPartial = z.infer<typeof AssignmentPartialSchema>;

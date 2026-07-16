@@ -73,7 +73,7 @@ const validAssignmentPartial = {
   createdAt: '2025-05-01T08:00:00.000Z',
   documentType: 'SLIDES',
   submissions: [validStudentSubmissionPartial], // Uses the new nested-dictionary shape
-  assignmentDefinition: validAssignmentDefinitionPartial,
+  assignmentDefinitionKey: 'algebra-baseline',
 };
 
 const validClassFull = {
@@ -152,10 +152,9 @@ describe('AssignmentPartialSchema', () => {
     expect(item.artifact.taskId).toBe('task-1');
   });
 
-  it('accepts assignmentDefinition with tasks as empty array', () => {
+  it('accepts assignmentDefinitionKey', () => {
     const result = AssignmentPartialSchema.parse(validAssignmentPartial);
-    expect(result.assignmentDefinition.tasks).toEqual([]);
-    expect(result.assignmentDefinition.primaryTitle).toBe('Algebra Baseline');
+    expect(result.assignmentDefinitionKey).toBe('algebra-baseline');
   });
 
   it('omits courseId (not part of the partial assignment contract)', () => {
@@ -184,9 +183,9 @@ describe('AssignmentPartialSchema', () => {
     ).toThrow();
   });
 
-  it('rejects a partial assignment missing assignmentDefinition', () => {
+  it('rejects a partial assignment missing assignmentDefinitionKey', () => {
     const missing = { ...validAssignmentPartial };
-    delete (missing as Record<string, unknown>).assignmentDefinition;
+    delete (missing as Record<string, unknown>).assignmentDefinitionKey;
     expect(() => AssignmentPartialSchema.parse(missing)).toThrow();
   });
 

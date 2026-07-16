@@ -12,6 +12,7 @@ import type {
   AveragingAnalyserInput,
   MetricResult,
 } from '../../services/dataAnalysis/dataAnalysis.zod';
+import type { AssignmentPartial } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -279,7 +280,7 @@ export function createAssignmentPartial(overrides: {
   assignmentWeighting?: number | null;
   createdAt?: string;
   primaryTopicKey?: string;
-}) {
+}): AssignmentPartial {
   const {
     assignmentId,
     definitionKey,
@@ -299,6 +300,7 @@ export function createAssignmentPartial(overrides: {
     createdAt,
     documentType: 'assessment',
     submissions,
+    assignmentDefinitionKey: definitionKey,
     assignmentDefinition: createDefinitionPartial({
       definitionKey,
       assignmentWeighting,
@@ -306,7 +308,7 @@ export function createAssignmentPartial(overrides: {
       createdAt,
       primaryTopicKey,
     }),
-  };
+  } as unknown as AssignmentPartial;
 }
 
 /**
@@ -360,7 +362,9 @@ export function buildInput(
   const classIds = classOverrides.map((c) => c.classId);
   const classes = classOverrides.map((c) => createClassFull(c));
   const allDefinitionPartials = classes.flatMap((c) =>
-    c.assignments.map((a) => a.assignmentDefinition)
+    (c.assignments as Array<Record<string, unknown>>).map(
+      (a) => a.assignmentDefinition as ReturnType<typeof createDefinitionPartial>
+    )
   );
 
   // De-duplicate by definitionKey

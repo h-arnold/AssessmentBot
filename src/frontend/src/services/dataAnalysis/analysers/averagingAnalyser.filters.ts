@@ -1,19 +1,62 @@
 import type { AveragingAnalyserInput } from '../dataAnalysis.zod';
+import type { AssignmentDefinitionPartial } from '../../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
+
+/**
+ * Check if a single assignment should be excluded from analysis based on
+ * date range, topic filter, and definition-key filter.
+ *
+ * @param {AveragingAnalyserInput['classes'][number]['assignments'][number]}
+ *   a - The assignment to evaluate.
+ * @param {{ from: string; to: string } | undefined} dateRange - Optional
+ *   date-range filter.
+ * @param {Set<string> | undefined} topicKeySet - Optional set of topic keys
+ *   to include.
+ * @param {Set<string> | undefined} definitionKeySet - Optional set of
+ *   definition keys to include.
+ * @param {Map<string, AssignmentDefinitionPartial>} definitionByKey -
+ *   Registry mapping definition keys to their partial definitions.
+ * @param {string} classId - Class identifier for error messages.
+ * @returns {boolean} True when the assignment should be excluded.
+ */
+function shouldExcludeAssignment(
+  a: AveragingAnalyserInput['classes'][number]['assignments'][number],
+  dateRange: { from: string; to: string } | undefined,
+  topicKeySet: Set<string> | undefined,
+  definitionKeySet: Set<string> | undefined,
+  definitionByKey: Map<string, AssignmentDefinitionPartial>,
+  classId: string
+): boolean {
+  const definitionKey = a.assignmentDefinitionKey;
+  if (!definitionKey) {
+    throw new Error(
+      `Missing assignmentDefinitionKey for class ${classId}, assignment ${a.assignmentId}`
+    );
+  }
+
+  if (isFilteredByDateRange(a.createdAt, dateRange)) return true;
+
+  const definition = definitionByKey.get(definitionKey);
+  return (
+    !definition ||
+    (topicKeySet != null && !topicKeySet.has(definition.primaryTopicKey)) ||
+    (definitionKeySet != null && !definitionKeySet.has(definitionKey))
+  );
+}
 
 /**
  * Filter a class's assignments by dateRange, topicKeys, and
- * assignmentDefinitionKeys. Throws if any assignment lacks a definition.
+ * assignmentDefinitionKeys. Throws if any assignment lacks a definitionKey.
+ *
+ * The definition fields (primaryTopicKey, definitionKey) are resolved from
+ * `input.assignmentDefinitionPartials` because the embedded
+ * `assignment.assignmentDefinition` object was replaced with a lightweight
+ * `assignmentDefinitionKey` to avoid serialisation failures with partial
+ * definitions (tasks as arrays).
  *
  * @param {AveragingAnalyserInput['classes'][number]} cls - The class.
  * @param {AveragingAnalyserInput} input - The full analyser input.
  * @returns {AveragingAnalyserInput['classes'][number]['assignments']}
  *   Filtered assignments.
- * @remarks
- * This function builds {@link Set} instances for the topicKeys and
- * assignmentDefinitionKeys arrays once at call time, then uses
- * O(1) {@link Set.has} lookups inside the filter callback instead of
- * O(K) {@link Array.includes}. The date-range predicate remains a
- * direct lexicographic string comparison via {@link isFilteredByDateRange}.
  */
 export function filterAssignments(
   cls: AveragingAnalyserInput['classes'][number],
@@ -27,45 +70,22 @@ export function filterAssignments(
     : undefined;
   const { dateRange } = input.filter;
 
-  return cls.assignments.filter((assignment) => {
-    assertAssignmentDefinition(assignment, cls.classId);
-
-    const definition = assignment.assignmentDefinition!;
-
-    if (isFilteredByDateRange(assignment.createdAt, dateRange)) {
-      return false;
-    }
-
-    if (topicKeySet && !topicKeySet.has(definition.primaryTopicKey)) {
-      return false;
-    }
-
-    if (definitionKeySet && !definitionKeySet.has(definition.definitionKey)) {
-      return false;
-    }
-
-    return true;
-  });
-}
-
-/**
- * Assert that an assignment has an assignmentDefinition.
- *
- * @param {AveragingAnalyserInput['classes'][number]['assignments'][number]}
- *   assignment - The assignment to check.
- * @param {string} classId - The class identifier for error context.
- * @throws When the assignment lacks a definition.
- */
-export function assertAssignmentDefinition(
-  assignment: AveragingAnalyserInput['classes'][number]['assignments'][number],
-  classId: string
-): void {
-  if (!assignment.assignmentDefinition) {
-    throw new Error(
-      `Missing assignmentDefinition for class ${classId}, ` +
-        `assignment ${assignment.assignmentId}`
-    );
+  const definitionByKey = new Map<string, AssignmentDefinitionPartial>();
+  for (const p of input.assignmentDefinitionPartials ?? []) {
+    definitionByKey.set(p.definitionKey, p);
   }
+
+  return cls.assignments.filter(
+    (a) =>
+      !shouldExcludeAssignment(
+        a,
+        dateRange,
+        topicKeySet,
+        definitionKeySet,
+        definitionByKey,
+        cls.classId
+      )
+  );
 }
 
 /**

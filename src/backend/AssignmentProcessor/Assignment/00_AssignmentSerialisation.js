@@ -22,9 +22,23 @@ class AssignmentSerialisation {
    * @returns {object} Assignment data with course/assignment IDs, dates, definition, and submissions.
    */
   toJSON() {
-    const definitionJson = this._assignment.assignmentDefinition?.toJSON
-      ? this._assignment.assignmentDefinition.toJSON()
-      : this._assignment.assignmentDefinition;
+    // Prefer definition.toJSON(), but a partial AssignmentDefinition (tasks as an
+    // array) throws from its toJSON() guard.  Fall back to toPartialJSON() so that
+    // serialisation survives when the class body stores a partial assignment —
+    // e.g. after persistAssignmentRun replaces the full assignment with a partial.
+    let definitionJson;
+    if (this._assignment.assignmentDefinition?.toJSON) {
+      try {
+        definitionJson = this._assignment.assignmentDefinition.toJSON();
+      } catch {
+        definitionJson =
+          typeof this._assignment.assignmentDefinition.toPartialJSON === 'function'
+            ? this._assignment.assignmentDefinition.toPartialJSON()
+            : this._assignment.assignmentDefinition;
+      }
+    } else {
+      definitionJson = this._assignment.assignmentDefinition;
+    }
 
     const submissions = (this._assignment.submissions || []).map((sub) => {
       if (sub && typeof sub.toJSON === 'function') return sub.toJSON();
@@ -39,11 +53,10 @@ class AssignmentSerialisation {
           out.updatedAt = sub.updatedAt.toISOString();
         else if (sub.updatedAt) out.updatedAt = sub.updatedAt;
         // copy any other enumerable properties (non-enumerable like methods are ignored)
-        Object.entries(sub).forEach(([key, value]) => {
-          if (!Object.hasOwn(out, key)) {
-            out[key] = value;
-          }
-        });
+        Object.assign(
+          out,
+          Object.fromEntries(Object.entries(sub).filter(([key]) => !Object.hasOwn(out, key)))
+        );
       }
       return out;
     });

@@ -282,24 +282,8 @@ function createAssignment(assignmentId: string, updatedAt: string): AssignmentPa
     dueDate: null,
     documentType: null,
     submissions: [],
-    assignmentDefinition: {
-      definitionKey: 'def-key',
-      primaryTitle: 'Test Assignment',
-      primaryTopic: 'Topic',
-      primaryTopicKey: 'topic-key',
-      yearGroupKey: 'yg-7',
-      yearGroupLabel: 'Year 7',
-      alternateTitles: [],
-      alternateTopics: [],
-      documentType: 'html',
-      referenceDocumentId: null,
-      templateDocumentId: null,
-      assignmentWeighting: null,
-      createdAt: '2025-01-01T00:00:00.000Z',
-      updatedAt: '2025-01-01T00:00:00.000Z',
-      tasks: [],
-    },
-  } as AssignmentPartial;
+    assignmentDefinitionKey: 'def-key',
+  } as unknown as AssignmentPartial;
 }
 
 /**

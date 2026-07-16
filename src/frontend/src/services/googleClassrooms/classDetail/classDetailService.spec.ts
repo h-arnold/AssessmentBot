@@ -34,24 +34,6 @@ const validSubmissionPartial = {
   updatedAt: '2025-05-15T12:00:00.000Z',
 };
 
-const validAssignmentDefinitionPartial = {
-  primaryTitle: 'Algebra Baseline',
-  primaryTopic: 'Algebra',
-  primaryTopicKey: 'algebra',
-  yearGroupKey: 'year-10',
-  yearGroupLabel: 'Year 10',
-  alternateTitles: [],
-  alternateTopics: [],
-  documentType: 'SLIDES',
-  referenceDocumentId: 'ref-doc-123',
-  templateDocumentId: 'template-doc-456',
-  assignmentWeighting: 1,
-  definitionKey: 'algebra-baseline',
-  tasks: [],
-  createdAt: '2025-01-01T00:00:00.000Z',
-  updatedAt: '2025-05-01T00:00:00.000Z',
-};
-
 const validAssignmentPartial = {
   courseId: 'course-1',
   assignmentId: 'assign-1',
@@ -61,7 +43,7 @@ const validAssignmentPartial = {
   createdAt: '2025-05-01T08:00:00.000Z',
   documentType: 'SLIDES',
   submissions: [validSubmissionPartial],
-  assignmentDefinition: validAssignmentDefinitionPartial,
+  assignmentDefinitionKey: 'algebra-baseline',
 };
 
 const validClassFull = {
@@ -117,7 +99,7 @@ describe('classDetailService.getABClass', () => {
       cohortKey: 'cohort-2025',
     });
     expect(result?.assignments).toHaveLength(1);
-    expect(result?.assignments[0].assignmentDefinition.tasks).toEqual([]);
+    expect(result?.assignments[0].assignmentDefinitionKey).toBe('algebra-baseline');
   });
 
   it('returns null when the backend returns data: null', async () => {

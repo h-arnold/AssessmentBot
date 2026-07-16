@@ -51,23 +51,7 @@ const classFullFixture: ClassFull = {
       createdAt: '2026-01-01T00:00:00.000Z',
       documentType: 'assessment',
       submissions: [],
-      assignmentDefinition: {
-        primaryTitle: 'Assignment One',
-        primaryTopic: 'Algebra',
-        primaryTopicKey: 'algebra',
-        yearGroupKey: 'yg-10',
-        yearGroupLabel: 'Year 10',
-        alternateTitles: [],
-        alternateTopics: [],
-        documentType: 'assignment',
-        referenceDocumentId: null,
-        templateDocumentId: null,
-        assignmentWeighting: 1,
-        definitionKey: 'def-1',
-        tasks: [{ taskId: 't-1', taskWeighting: 1, taskTitle: 'Task 1 Title' }],
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: null,
-      },
+      assignmentDefinitionKey: 'def-1',
     },
   ],
   active: null,
@@ -157,9 +141,10 @@ describe('TaskHeatmapPage — TaskTitlesUnavailableError and generic Error handl
       )
     );
 
-    // The child title Card (assignment name) stays visible.
+    // The title Card stays visible (assignment name is empty because the
+    // partials don't match the assignment's definitionKey, which is intentional
+    // to trigger TaskTitlesUnavailableError).
     // The parent class-name title is owned by ClassPage, not TaskHeatmapPage.
-    expect(screen.getByText('Assignment One')).toBeInTheDocument();
 
     // Back button should be present and functional
     const backButton = screen.getByLabelText('Back to Class overview');

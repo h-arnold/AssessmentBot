@@ -160,13 +160,15 @@ function runAnalyserStep(
  *
  * @param {AveragingResult | null} analyserResult - The analyser result (null skips adapter).
  * @param {ClassFull} classFull - The class data (non-null, guaranteed by caller).
+ * @param {AssignmentDefinitionPartialsResponse | null} assignmentDefinitionPartials - The definition registry.
  * @returns {readonly [ClassPageAdapterResult | null, Error | null]} The adapter result and optional error.
  */
 function runAdapterStep(
   analyserResult: AveragingResult | null,
-  classFull: ClassFull
+  classFull: ClassFull,
+  assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse | null
 ): readonly [ClassPageAdapterResult | null, Error | null] {
-  if (analyserResult === null) {
+  if (analyserResult === null || assignmentDefinitionPartials === null) {
     return [null, null];
   }
 
@@ -174,6 +176,7 @@ function runAdapterStep(
     const result = adaptClassPageToViewModel({
       analyserResult,
       classFull,
+      assignmentDefinitionPartials,
     });
     return [result, null];
   } catch (error_: unknown) {
@@ -303,7 +306,11 @@ export function useClassPageData(classId: string): ClassPageData {
       return [null, aError, null, null];
     }
 
-    const [adResult, adError] = runAdapterStep(aResult, classFull as ClassFull);
+    const [adResult, adError] = runAdapterStep(
+      aResult,
+      classFull as ClassFull,
+      assignmentDefinitionPartials
+    );
 
     if (adError !== null) {
       return [null, null, null, adError];

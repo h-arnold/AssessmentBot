@@ -20,6 +20,7 @@ import type {
   PerTaskRow,
 } from '../../services/dataAnalysis/dataAnalysis.zod';
 import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
+import type { AssignmentDefinitionPartialsResponse } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import type {
   ClassPageAdapterResult,
   RecentAssignmentCardModel,
@@ -150,13 +151,15 @@ function computeAverageMetric(
  * Build a single `RecentAssignmentCardModel` from an `AssignmentPartial`,
  * its matching per-task rows, and the validated `updatedAt` string.
  *
- * @param {ClassFull['assignments'][number]} assignment - The raw assignment partial.
+ * @param {string} assignmentId - The assignment ID.
+ * @param {string} assignmentName - The resolved display name (primaryTitle from definition registry).
  * @param {AveragingResult['perTask']} matchingPerTask - The per-task analysis rows matching this assignment.
  * @param {string} validatedUpdatedAt - The validated non-null parseable updatedAt string.
  * @returns {RecentAssignmentCardModel} A fully-populated recent assignment card model.
  */
 function buildRecentAssignment(
-  assignment: ClassFull['assignments'][number],
+  assignmentId: string,
+  assignmentName: string,
   matchingPerTask: PerTaskRow[] | undefined,
   validatedUpdatedAt: string
 ): RecentAssignmentCardModel {
@@ -192,8 +195,8 @@ function buildRecentAssignment(
   const lastAssessedAtLabel = formatUpdatedAtLabel(validatedUpdatedAt);
 
   return {
-    assignmentId: assignment.assignmentId,
-    assignmentName: assignment.assignmentDefinition.primaryTitle,
+    assignmentId,
+    assignmentName,
     lastAssessedAt: validatedUpdatedAt,
     lastAssessedAtLabel,
     metrics: {
@@ -254,9 +257,14 @@ function buildPerTaskLookup(perTask: AveragingResult['perTask']): Map<string, Pe
  * Translate the data analysis service's `AveragingResult` plus the raw
  * `ClassFull` into the canonical `ClassPageAdapterResult` shape.
  *
- * @param {{ analyserResult: AveragingResult; classFull: ClassFull }} input - The combined input.
+ * `assignmentDefinitionPartials` is the registry used to resolve
+ * `primaryTitle` from each assignment's `assignmentDefinitionKey`, replacing
+ * the previously embedded `assignmentDefinition` object.
+ *
+ * @param {{ analyserResult: AveragingResult; classFull: ClassFull; assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse }} input - The combined input.
  * @param {AveragingResult} input.analyserResult - The analysis result from the averaging analyser.
  * @param {ClassFull} input.classFull - The raw class document from `getABClass`.
+ * @param {AssignmentDefinitionPartialsResponse} input.assignmentDefinitionPartials - The assignment definition registry.
  * @returns {ClassPageAdapterResult} The canonical adapter result consumed by the Class page UI.
  * @throws {TypeError} On data integrity violations:
  *   - Duplicate `studentId` within `classFull.students`
@@ -267,8 +275,15 @@ function buildPerTaskLookup(perTask: AveragingResult['perTask']): Map<string, Pe
 export function adaptClassPageToViewModel(input: {
   analyserResult: AveragingResult;
   classFull: ClassFull;
+  assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse;
 }): ClassPageAdapterResult {
-  const { analyserResult, classFull } = input;
+  const { analyserResult, classFull, assignmentDefinitionPartials } = input;
+
+  // Build lookup: definitionKey → primaryTitle
+  const primaryTitleByKey = new Map<string, string>();
+  for (const p of assignmentDefinitionPartials) {
+    primaryTitleByKey.set(p.definitionKey, p.primaryTitle);
+  }
 
   // -----------------------------------------------------------------------
   // Trust validation
@@ -311,12 +326,16 @@ export function adaptClassPageToViewModel(input: {
     .slice(0, MAX_RECENT_ASSIGNMENTS);
 
   const recentAssignments: RecentAssignmentCardModel[] = topAssignments.map(
-    ({ assignment, validatedUpdatedAt }) =>
-      buildRecentAssignment(
-        assignment,
-        perTaskLookup.get(assignment.assignmentDefinition.definitionKey),
+    ({ assignment, validatedUpdatedAt }) => {
+      const definitionKey = assignment.assignmentDefinitionKey ?? '';
+      const assignmentName = primaryTitleByKey.get(definitionKey) ?? assignment.assignmentId;
+      return buildRecentAssignment(
+        assignment.assignmentId,
+        assignmentName,
+        perTaskLookup.get(definitionKey),
         validatedUpdatedAt
-      )
+      );
+    }
   );
 
   // -----------------------------------------------------------------------

@@ -87,15 +87,6 @@ describe('AveragingAnalyser', () => {
     });
 
     it('filters assignments by topicKeys, excluding non-matching primaryTopicKey', () => {
-      const algebraDefinition = {
-        ...createDefinitionPartial({ definitionKey: 'dk_algebra' }),
-        primaryTopicKey: 'algebra',
-      };
-      const geometryDefinition = {
-        ...createDefinitionPartial({ definitionKey: 'dk_geometry' }),
-        primaryTopicKey: 'geometry',
-      };
-
       const input: AveragingAnalyserInput = {
         filter: {
           classIds: ['c_001'],
@@ -106,40 +97,44 @@ describe('AveragingAnalyser', () => {
             classId: 'c_001',
             studentIds: ['s_001'],
             assignments: [
-              {
-                ...createAssignmentPartial({
-                  assignmentId: 'a_algebra',
-                  definitionKey: 'dk_algebra',
-                  tasks: [createTaskPartial('t_001')],
-                  submissions: [
-                    createSubmission('s_001', 'Alice', 'a_algebra', {
-                      t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
-                    }),
-                  ],
-                }),
-                assignmentDefinition: algebraDefinition,
-              },
-              {
-                ...createAssignmentPartial({
-                  assignmentId: 'a_geometry',
-                  definitionKey: 'dk_geometry',
-                  tasks: [createTaskPartial('t_001')],
-                  submissions: [
-                    createSubmission('s_001', 'Alice', 'a_geometry', {
-                      t_001: createSubmissionItem('t_001', { accuracy: { score: 5 } }),
-                    }),
-                  ],
-                }),
-                assignmentDefinition: geometryDefinition,
-              },
+              createAssignmentPartial({
+                assignmentId: 'a_algebra',
+                definitionKey: 'dk_algebra',
+                tasks: [createTaskPartial('t_001')],
+                submissions: [
+                  createSubmission('s_001', 'Alice', 'a_algebra', {
+                    t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
+                  }),
+                ],
+              }),
+              createAssignmentPartial({
+                assignmentId: 'a_geometry',
+                definitionKey: 'dk_geometry',
+                tasks: [createTaskPartial('t_001')],
+                submissions: [
+                  createSubmission('s_001', 'Alice', 'a_geometry', {
+                    t_001: createSubmissionItem('t_001', { accuracy: { score: 5 } }),
+                  }),
+                ],
+              }),
             ],
           }),
         ],
         assignmentDefinitionPartials: [
-          createDefinitionPartial({
-            definitionKey: 'dk_algebra',
-            tasks: [createTaskPartial('t_001')],
-          }),
+          {
+            ...createDefinitionPartial({
+              definitionKey: 'dk_algebra',
+              tasks: [createTaskPartial('t_001')],
+            }),
+            primaryTopicKey: 'algebra',
+          },
+          {
+            ...createDefinitionPartial({
+              definitionKey: 'dk_geometry',
+              tasks: [createTaskPartial('t_001')],
+            }),
+            primaryTopicKey: 'geometry',
+          },
         ],
       };
 
@@ -317,9 +312,11 @@ describe('AveragingAnalyser', () => {
                 ],
               }),
               // Definition in filter, topic NOT in filter → excluded
+              // Uses dk_ratio (in assignmentDefinitionKeys filter) with a definition
+              // partial whose primaryTopicKey='biology' (NOT in topicKeys filter).
               createAssignmentPartial({
                 assignmentId: 'a_def_match_topic_mismatch',
-                definitionKey: 'dk_algebra',
+                definitionKey: 'dk_ratio',
                 primaryTopicKey: 'biology',
                 tasks: [createTaskPartial('t_001')],
                 submissions: [
@@ -343,9 +340,19 @@ describe('AveragingAnalyser', () => {
             ],
           }),
         ],
-        assignmentDefinitionPartials: includedDefinitionKeys.map((dk) =>
-          createDefinitionPartial({ definitionKey: dk, tasks: [createTaskPartial('t_001')] })
-        ),
+        assignmentDefinitionPartials: [
+          ...includedDefinitionKeys.map((dk) =>
+            createDefinitionPartial({ definitionKey: dk, tasks: [createTaskPartial('t_001')] })
+          ),
+          // dk_ratio is in the filter's assignmentDefinitionKeys but its partial
+          // has primaryTopicKey='biology' (NOT in topicKeys), so assignments
+          // that use it are excluded by the topic check (AND logic).
+          createDefinitionPartial({
+            definitionKey: 'dk_ratio',
+            primaryTopicKey: 'biology',
+            tasks: [createTaskPartial('t_001')],
+          }),
+        ],
       };
 
       const analyser = new AveragingAnalyser();

@@ -112,7 +112,7 @@ function buildAssignmentPartial() {
     createdAt: '2026-01-15T09:00:00.000Z',
     documentType: 'assessment',
     submissions: [],
-    assignmentDefinition: buildDefinition(),
+    assignmentDefinitionKey: DEFINITION_KEY,
   };
 }
 

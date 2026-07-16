@@ -53,32 +53,48 @@ class ABClassResponseMapper {
    * Assignments are included as Assignment.toPartialJSON() output.
    * Defence-in-depth: strips _hydrationLevel and progressTracker from each assignment.
    *
-   * @remarks Iterates `abClass.assignments` (model instances) rather than
-   * `json.assignments` (already-serialised plain objects) so that
-   * `Assignment.toPartialJSON()` is actually invoked. Once `ABClass.toJSON()` has
-   * been called, each element of `json.assignments` is a plain object produced by
-   * `Assignment.toJSON()` and has no `toPartialJSON` method, which would cause
-   * the partial-shape transformation to be silently skipped and the full
-   * assignment payload (including `tasks` and document IDs) to leak into the
-   * response.
+   * @remarks Builds the JSON object manually rather than calling `abClass.toJSON()`,
+   * which would invoke `Assignment.toJSON()` on each assignment and in turn
+   * `AssignmentDefinition.toJSON()`.  That call chain fails when assignments carry
+   * a partial definition (tasks stored as an array).  The read-view response
+   * always uses `toPartialJSON()` for assignments, so the full serialisation
+   * path is unnecessary and harmful.
    *
    * @param {ABClass} abClass - The class instance to convert.
    * @returns {Object} A plain read-view object.
    */
   _toReadView(abClass) {
-    const json = abClass.toJSON();
-
-    if (Array.isArray(abClass.assignments)) {
-      json.assignments = abClass.assignments.map((assignment) => {
-        const partial =
-          typeof assignment.toPartialJSON === 'function'
-            ? assignment.toPartialJSON()
-            : assignment.toJSON();
-        // Defence-in-depth: strip _hydrationLevel and progressTracker
-        const { _hydrationLevel, progressTracker, ...safe } = partial;
-        return safe;
-      });
-    }
+    const json = {
+      classId: abClass.classId,
+      className: abClass.className,
+      cohortKey: abClass.cohortKey,
+      courseLength: abClass.courseLength,
+      yearGroupKey: abClass.yearGroupKey,
+      classOwner: abClass.serialiseOwner(abClass.classOwner),
+      teachers: ArrayUtils.serialiseArray(abClass.teachers),
+      students: ArrayUtils.serialiseArray(abClass.students),
+      active: abClass.active ?? null,
+      assignments: Array.isArray(abClass.assignments)
+        ? abClass.assignments.map((assignment) => {
+            const partial =
+              typeof assignment.toPartialJSON === 'function'
+                ? assignment.toPartialJSON()
+                : assignment.toJSON();
+            // Defence-in-depth: strip _hydrationLevel and progressTracker
+            const { _hydrationLevel, progressTracker, ...safe } = partial;
+            // Replace the embedded assignmentDefinition with just the definitionKey.
+            // The frontend resolves definition details from its own registry
+            // (AssignmentDefinitionPartials), so the full embedded object is redundant
+            // transport payload that also risks serialisation failures when the
+            // stored definition is partial (tasks as an array).
+            if (safe.assignmentDefinition) {
+              safe.assignmentDefinitionKey = safe.assignmentDefinition.definitionKey ?? null;
+              delete safe.assignmentDefinition;
+            }
+            return safe;
+          })
+        : [],
+    };
 
     return json;
   }

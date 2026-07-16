@@ -90,7 +90,7 @@ const minimalClassFull = {
           updatedAt: validIsoTimestamp,
         },
       ],
-      assignmentDefinition: minimalAssignmentDefinitionPartial,
+      assignmentDefinitionKey: 'def-1',
     },
   ],
   active: true,

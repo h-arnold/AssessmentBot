@@ -154,7 +154,7 @@ function buildExpectedReadView(doc) {
       createdAt: a.createdAt,
       documentType: a.documentType,
       submissions: a.submissions,
-      assignmentDefinition: a.assignmentDefinition,
+      assignmentDefinitionKey: a.assignmentDefinition?.definitionKey ?? null,
     })),
     active: doc.active,
   };
@@ -357,21 +357,11 @@ describe('ABClassController._toReadView', () => {
       createdAt: '2026-01-01T09:00:00Z',
       documentType: 'SLIDES',
       submissions: [],
-      assignmentDefinition: {
-        primaryTitle: 'Essay Draft',
-        primaryTopicKey: 'topic-english',
-        documentType: 'SLIDES',
-        referenceDocumentId: 'ref-doc-001',
-        templateDocumentId: 'tpl-doc-001',
-        assignmentWeighting: null,
-        definitionKey: 'def-key-001',
-        tasks: null,
-        createdAt: '2026-01-01T09:00:00Z',
-        updatedAt: '2026-01-01T09:00:00Z',
-      },
+      assignmentDefinitionKey: 'def-key-001',
     };
 
-    // Mock assignments with toPartialJSON
+    // Mock assignments with toPartialJSON (still returns the embedded object;
+    // _toReadView replaces it with assignmentDefinitionKey).
     const mockAssignment = {
       courseId: 'class-001',
       assignmentId: 'assignment-001',
@@ -381,10 +371,22 @@ describe('ABClassController._toReadView', () => {
       createdAt: new Date('2026-01-01T09:00:00Z'),
       documentType: 'SLIDES',
       submissions: [],
-      assignmentDefinition: {},
+      assignmentDefinition: { definitionKey: 'def-key-001' },
       _hydrationLevel: 'partial',
       progressTracker: {},
-      toPartialJSON: vi.fn().mockReturnValue(partialAssignment),
+      toPartialJSON: vi.fn().mockReturnValue({
+        courseId: 'class-001',
+        assignmentId: 'assignment-001',
+        assignmentName: 'Essay Draft',
+        dueDate: '2026-01-15T23:59:59Z',
+        updatedAt: '2026-01-10T12:00:00Z',
+        createdAt: '2026-01-01T09:00:00Z',
+        documentType: 'SLIDES',
+        submissions: [],
+        assignmentDefinition: { definitionKey: 'def-key-001' },
+        _hydrationLevel: 'partial',
+        progressTracker: {},
+      }),
     };
 
     const teacherObj = buildTeacher({
@@ -422,7 +424,7 @@ describe('ABClassController._toReadView', () => {
       assignmentName: 'Test',
       documentType: 'SLIDES',
       submissions: [],
-      assignmentDefinition: { tasks: null },
+      assignmentDefinition: { definitionKey: 'def-key-001' },
       _hydrationLevel: 'partial',
       progressTracker: { some: 'data' },
       toPartialJSON: vi.fn().mockReturnValue({
@@ -431,7 +433,9 @@ describe('ABClassController._toReadView', () => {
         assignmentName: 'Test',
         documentType: 'SLIDES',
         submissions: [],
-        assignmentDefinition: { tasks: null },
+        assignmentDefinition: { definitionKey: 'def-key-001' },
+        _hydrationLevel: 'partial',
+        progressTracker: { some: 'data' },
       }),
     };
 
@@ -514,26 +518,21 @@ describe('ABClassController._toReadView', () => {
     const controller = new ABClassController();
     const result = controller._toReadView(abClass);
 
-    // The fix: each assignment must be Assignment.toPartialJSON() output, not the
-    // full Assignment.toJSON() output. Distinguishing signals:
-    //   - Partial shape has NO `tasks` field at the root (toJSON exposes it via
-    //     _extractFullDefinitionFields).
-    //   - Partial shape has NO `referenceDocumentId` / `templateDocumentId` at the root
-    //     (toJSON exposes them via _extractFullDefinitionFields; partial embeds them
-    //     only inside `assignmentDefinition`).
-    //   - Partial shape's `assignmentDefinition.tasks` carries lightweight summaries
-    //     (Array<TaskPartial>) from AssignmentDefinition.toPartialJSON().
+    // The output must be the Assignment.toPartialJSON() shape, but with the embedded
+    // assignmentDefinition replaced by a lightweight assignmentDefinitionKey.
+    // The frontend resolves definition detail (primaryTitle, tasks, doc IDs) from its
+    // own AssignmentDefinitionPartials registry.
+    // Distinguishing signals:
+    //   - No `assignmentDefinition` object (replaced with `assignmentDefinitionKey`).
+    //   - No `tasks` / `referenceDocumentId` / `templateDocumentId` at the root.
+    //   - Defence-in-depth strip removes `_hydrationLevel` and `progressTracker`.
     expect(result.assignments).toHaveLength(1);
     expect(result.assignments[0].documentType).toBe('SLIDES');
     expect(result.assignments[0]).not.toHaveProperty('tasks');
     expect(result.assignments[0]).not.toHaveProperty('referenceDocumentId');
     expect(result.assignments[0]).not.toHaveProperty('templateDocumentId');
-    expect(result.assignments[0].assignmentDefinition.tasks).toEqual([
-      { taskId: task1.id, taskWeighting: 2, taskTitle: 'Task 1' },
-    ]);
-    // Document IDs survive, but only inside the embedded partial definition.
-    expect(result.assignments[0].assignmentDefinition.referenceDocumentId).toBe('ref-doc-001');
-    expect(result.assignments[0].assignmentDefinition.templateDocumentId).toBe('tpl-doc-001');
+    expect(result.assignments[0]).not.toHaveProperty('assignmentDefinition');
+    expect(result.assignments[0].assignmentDefinitionKey).toBe(fullDef.definitionKey);
     // Defence-in-depth strip still applies.
     expect(result.assignments[0]).not.toHaveProperty('_hydrationLevel');
     expect(result.assignments[0]).not.toHaveProperty('progressTracker');

@@ -54,14 +54,28 @@ type TaskHeatmapPageProperties = Readonly<{
 /**
  * Derive the header display labels from class data.
  *
+ * Resolves the assignment's `primaryTitle` from the
+ * `assignmentDefinitionPartials` registry rather than from an embedded
+ * `assignmentDefinition` object (which was replaced with a lightweight
+ * `assignmentDefinitionKey`).
+ *
  * @param {ClassFull} classFull - The full class data.
  * @param {string} assignmentId - The assignment identifier.
+ * @param {AssignmentDefinitionPartialsResponse} adp - The definition registry.
  * @returns {HeaderLabels} Always-available header values.
  */
-function getHeaderLabels(classFull: ClassFull, assignmentId: string): HeaderLabels {
+function getHeaderLabels(
+  classFull: ClassFull,
+  assignmentId: string,
+  adp: AssignmentDefinitionPartialsResponse
+): HeaderLabels {
   const assignment = classFull.assignments.find((a) => a.assignmentId === assignmentId);
+  const definitionKey = assignment?.assignmentDefinitionKey;
+  const partial = definitionKey
+    ? adp.find((p) => p.definitionKey === definitionKey)
+    : undefined;
   return {
-    assignmentName: assignment?.assignmentDefinition.primaryTitle ?? '',
+    assignmentName: partial?.primaryTitle ?? '',
   };
 }
 
@@ -132,8 +146,8 @@ export function TaskHeatmapPage({
   );
 
   const { assignmentName } = useMemo<HeaderLabels>(
-    () => getHeaderLabels(classFull, assignmentId),
-    [classFull, assignmentId]
+    () => getHeaderLabels(classFull, assignmentId, assignmentDefinitionPartials),
+    [classFull, assignmentId, assignmentDefinitionPartials]
   );
 
   const isTitleError: boolean = state.error instanceof TaskTitlesUnavailableError;
