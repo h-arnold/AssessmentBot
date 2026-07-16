@@ -7,7 +7,7 @@
  * fixed `METRIC_COLUMN_FILTERS` band list.
  *
  * @see ACTION_PLAN.md §4 — TaskHeatmapTable (grouped headers, score-range filters, sorters)
- * @see TASK_HEATMAP_LAYOUT.md — §"3. Table region", §"Cell rendering", §"States", §"Screen reader labelling"
+ * @see TASK_PREVIEW_CARD_LAYOUT.md — §"1. Popover trigger (metric sub-cell)", §"States", §"Accessibility and motion"
  * @see SPEC.md — §"Rendering rules", §"Sorting, filtering", §"Empty state", §"Accessibility"
  */
 

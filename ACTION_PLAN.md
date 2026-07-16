@@ -607,9 +607,11 @@ None.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** describe actual changes made when done.
-- **Deviations from plan:** note any departures from the original section design.
+- **Implementation notes:** Replaced all four dangling `@see TASK_HEATMAP_LAYOUT.md` references in `TaskHeatmapTable.tsx`, `TaskHeatmapTable.spec.tsx`, `ClassPageHeatmapView.spec.tsx`, and `TaskHeatmapPage.tsx` with `@see TASK_PREVIEW_CARD_LAYOUT.md`. The first Code Reviewer pass flagged that the original section qualifiers (`§"3. Table region"`, `§"Cell rendering"`, `§"Screen reader labelling"`, `§"1. Header region"`, etc.) did not exist in the new spec. Corrected the qualifiers to real headings: `TaskHeatmapTable.tsx`/`TaskHeatmapTable.spec.tsx` now cite `§"1. Popover trigger (metric sub-cell)", §"States", §"Accessibility and motion"`; `ClassPageHeatmapView.spec.tsx`/`TaskHeatmapPage.tsx` cite `§"Surface hierarchy", §"Outer layout"`.
+- **Deviations from plan:** None material beyond the qualifier correction noted above.
 - **Follow-up implications for later sections:** none.
+
+**Status: Complete** — documentation-only change; `npm run lint:frontend` clean (0 errors/warnings), `tsc -b` exit 0, grep confirms no `TASK_HEATMAP_LAYOUT.md` references remain in `src/frontend`. Reviewed clean by Code Reviewer (second pass). Regression Gate skipped per user direction (docs-only, no behavioural impact).
 
 ---
 
