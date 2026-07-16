@@ -13,6 +13,7 @@
 
 import type { TaskPreviewData } from './TaskPreviewCard';
 import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
+import type { HeatmapMetricKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 
 import imageFixture from './fixtures/imageTask.json';
 import textFixture from './fixtures/textTask.json';
@@ -22,44 +23,17 @@ import tableFixture from './fixtures/table_task.json';
 // Local types (minimal — only the fields consumed by the adapter)
 // ---------------------------------------------------------------------------
 
-type MetricKey = 'completeness' | 'accuracy' | 'spag';
-
 interface FixtureEntry {
   readonly taskId: string;
   readonly artifact: {
     readonly type: 'IMAGE' | 'TEXT' | 'TABLE';
     readonly content: string;
   };
-  readonly assessments: Record<MetricKey, { readonly reasoning: string }>;
+  readonly assessments: Record<HeatmapMetricKey, { readonly reasoning: string }>;
 }
 
 interface FixtureData {
   readonly [taskId: string]: FixtureEntry;
-}
-
-// ---------------------------------------------------------------------------
-// MetricScore / MetricState extraction helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Extract the flat `metricScore` value from a `MetricResult`.
- *
- * @param {MetricResult} metricResult - The heatmap cell's MetricResult.
- * @returns {number | 'N' | 'E'} The numeric value when computed, `'N'` when
- *   not attempted, or `'E'` on error.
- */
-function extractMetricScore(metricResult: MetricResult): number | 'N' | 'E' {
-  return metricResult.value;
-}
-
-/**
- * Extract the flat `metricState` string from a `MetricResult`.
- *
- * @param {MetricResult} metricResult - The heatmap cell's MetricResult.
- * @returns {'computed' | 'notAttempted' | 'error'} The state discriminator string.
- */
-function extractMetricState(metricResult: MetricResult): 'computed' | 'notAttempted' | 'error' {
-  return metricResult.state;
 }
 
 // ---------------------------------------------------------------------------
@@ -72,13 +46,13 @@ function extractMetricState(metricResult: MetricResult): 'computed' | 'notAttemp
  * Uses a switch statement (not dynamic property access) to satisfy the
  * `security/detect-object-injection` lint rule.
  *
- * @param {MetricKey} metricKey - The metric sub-column key.
+ * @param {HeatmapMetricKey} metricKey - The metric sub-column key.
  * @returns {{ readonly entry: FixtureEntry; readonly fixtureTaskId: string } | null}
  *   An object containing the resolved fixture entry and its taskId, or `null`
  *   when the metricKey is unrecognised.
  */
 function getFixtureEntry(
-  metricKey: MetricKey
+  metricKey: HeatmapMetricKey
 ): { readonly entry: FixtureEntry; readonly fixtureTaskId: string } | null {
   switch (metricKey) {
     case 'completeness': {
@@ -100,10 +74,10 @@ function getFixtureEntry(
  * Extract the reasoning text for a given metricKey from a fixture entry.
  *
  * @param {FixtureEntry} entry - The fixture entry containing assessments.
- * @param {MetricKey} metricKey - The metric key to extract reasoning for.
+ * @param {HeatmapMetricKey} metricKey - The metric key to extract reasoning for.
  * @returns {string} The reasoning text string.
  */
-function getReasoning(entry: FixtureEntry, metricKey: MetricKey): string {
+function getReasoning(entry: FixtureEntry, metricKey: HeatmapMetricKey): string {
   switch (metricKey) {
     case 'completeness': {
       return entry.assessments.completeness.reasoning;
@@ -127,7 +101,7 @@ function getReasoning(entry: FixtureEntry, metricKey: MetricKey): string {
  * @param {string} _taskId - Heatmap cell task ID **(unused in v1)**; retained
  *   for the service-wiring contract so that the signature does not change when
  *   the fixture adapter is replaced by the `assignmentAssessment` service hook.
- * @param {MetricKey} metricKey - The metric sub-column key.
+ * @param {HeatmapMetricKey} metricKey - The metric sub-column key.
  * @param {MetricResult} metricResult - The heatmap cell's `MetricResult`
  *   (score + state). `metricScore` and `metricState` in the returned
  *   `TaskPreviewData` are derived from this value, not from the fixture data.
@@ -137,7 +111,7 @@ function getReasoning(entry: FixtureEntry, metricKey: MetricKey): string {
  */
 export function getTaskPreviewData(
   _taskId: string,
-  metricKey: MetricKey,
+  metricKey: HeatmapMetricKey,
   metricResult: MetricResult
 ): TaskPreviewData | null {
   const resolved = getFixtureEntry(metricKey);
@@ -153,8 +127,8 @@ export function getTaskPreviewData(
     artifactType: entry.artifact.type,
     artifactContent: entry.artifact.content,
     metricKey,
-    metricScore: extractMetricScore(metricResult),
-    metricState: extractMetricState(metricResult),
+    metricScore: metricResult.value,
+    metricState: metricResult.state,
     reasoning: getReasoning(entry, metricKey),
   };
 }

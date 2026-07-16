@@ -146,9 +146,7 @@ function renderArtifact(
     case 'IMAGE': {
       return <ImageRenderer src={artifactContent} />;
     }
-    case 'TABLE': {
-      return <MarkdownRenderer>{artifactContent}</MarkdownRenderer>;
-    }
+    case 'TABLE':
     case 'TEXT': {
       return <MarkdownRenderer>{artifactContent}</MarkdownRenderer>;
     }

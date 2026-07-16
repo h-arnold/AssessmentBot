@@ -170,7 +170,7 @@ export function TaskHeatmapPage({
           backLabel="Back to Class overview"
           backAriaLabel="Back to Class overview"
         />
-        <Alert type="error" showIcon title="Task titles are currently unavailable." description="Please try reloading the page." role="alert" />
+        <Alert type="error" showIcon title="Task titles are currently unavailable." description="Please try reloading the page." />
       </Flex>
     );
   }
