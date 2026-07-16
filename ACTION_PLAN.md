@@ -679,9 +679,11 @@ None.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** describe actual changes made when done.
-- **Deviations from plan:** note any departures from the original section design.
+- **Implementation notes:** Created `src/frontend/e2e-tests/task-preview-card.spec.ts` with 4 Playwright E2E tests covering the Task Preview Card Popover: (1) IMAGE preview on completeness-cell hover (asserts `.ant-popover`-scoped "Completeness" label, "Reasoning", "Student Response", and `img` count 1); (2) TEXT preview on accuracy-cell hover (asserts "Accuracy" label + fixture markdown text `/preview cards work properly/i`); (3) TABLE preview on spag-cell hover (asserts "SPaG" label + `table` count 1); (4) click-to-pin — click a completeness cell, move mouse to (0,0) to trigger mouseLeave, assert the popover remains visible. Uses `createHeatmapScenario` + `installRuntimeMock(page, scenario)` before `page.goto('/')` per the E2E harness contract. Cells targeted via their `onCell` aria-label (`${studentName}, ${taskId}, ${metricLabel}: ${score}`, derived from the fixture). Screenshots saved to `e2e-tests/task-preview-card.spec.ts-snapshots/`. The three hover screenshots use element-scoped `popover.screenshot(...)`.
+- **Deviations from plan:** None material. The RED-phase tests pass against the live wiring because the Popover feature was implemented in Section 6, so this section is test-authoring only — there is no separate Green implementation loop.
 - **Follow-up implications for later sections:** none.
+
+**Status: Complete** — 4 E2E tests pass (`npm run test:frontend:e2e -- e2e-tests/task-preview-card.spec.ts`), lint clean (0 errors/warnings), `tsc -b` exit 0. Red review clean (1 Improvement + 2 Nitpicks resolved). Regression Gate skipped per user direction (regression-checker crashes in this environment; targeted E2E/lint/tsc checks used as validation evidence instead).
 
 ---
 
