@@ -53,10 +53,9 @@ This document does **not** redefine:
 TaskHeatmapTable (Ant Design Table)
 └── Metric sub-cell <td> (render function)
     └── Ant Design Popover (trigger={['hover', 'click']}, placement="right")
-        └── Ant Design Card (size="small")
+        └── Ant Design Card (size="small", maxWidth=400)
             ├── Card title (header row)
-            │   ├── MetricIconLabel (icon + tooltip)
-            │   ├── Metric label text (from METRIC_DISPLAY_META)
+            │   ├── Typography.Text (metric label with colon, e.g. "Completeness:")
             │   └── MetricPill (score tag)
             └── Card body
                 ├── Reasoning section
@@ -84,7 +83,7 @@ The popover is a read-only preview surface. It contains no tabs, no accordions, 
 
 The popover is positioned by Ant Design's Popover placement engine. The spec recommends `placement="right"` so the card appears to the right of the hovered cell, keeping the user's focus on the table. Ant Design auto-flips to `left` when the right side is off-screen.
 
-The popover's width is determined by its content (no fixed width). The card body has a `maxHeight: 480` with `overflow: 'auto'` to prevent viewport overflow.
+The popover's width is determined by its content, capped at 400px by the card's `maxWidth`. The card body has a `maxHeight: 480` with `overflow: 'auto'` to prevent viewport overflow.
 
 ## Region-by-region design
 
@@ -114,25 +113,22 @@ The trigger element is the existing metric score `<span>` rendered by `TaskHeatm
 
 ### Components
 
-- Ant Design `Card` with `size="small"` and `title` prop
-- `MetricIconLabel` (reused from heatmap column headers)
+- Ant Design `Card` with `size="small"` and `style={{ maxWidth: 400 }}`
 - `MetricPill` (reused from heatmap cells)
-- `Typography.Text` for the metric label
+- `Typography.Text` for the metric label with colon
 
 ### Content
 
-The card `title` is a horizontal flex row containing:
+The card `title` is a centred horizontal flex row containing:
 
-1. `MetricIconLabel` — the Lucide icon for the metric (ListTodo/Target/SpellCheck) with its tooltip (renders at its fixed 20px / 1.5 stroke)
-2. `Typography.Text` — the metric label from `METRIC_DISPLAY_META.get(metricKey).label` ("Completeness", "Accuracy", or "SPaG")
-3. `MetricPill` — the score tag, reassembled from `metricState` + `metricScore`
+1. `Typography.Text` — the metric label from `METRIC_DISPLAY_META.get(metricKey).label` with a trailing colon (e.g. "Completeness:", "Accuracy:", "SPaG:")
+2. `MetricPill` — the score tag, reassembled from `metricState` + `metricScore`
 
 ### Recommended structure
 
 ```text
-Card title (Flex row, gap=8)
-├── MetricIconLabel (renders the icon at its fixed 20px / 1.5 stroke)
-├── Typography.Text (metric label, e.g. "Completeness")
+Card title (Flex row, gap=8, justify=center)
+├── Typography.Text (metric label with colon, e.g. "Completeness:")
 └── MetricPill (score, precision=0, compact=true)
 ```
 
@@ -145,8 +141,8 @@ Card title (Flex row, gap=8)
 ### Notes
 
 - `MetricPill` is used with `precision={0}` (integer scores) and `compact={true}` (smaller footprint for the dense header).
-- The `MetricIconLabel` tooltip provides the metric name on hover — redundant with the adjacent label text, but consistent with the heatmap column header pattern.
-- The header uses `Flex` with `gap={APP_GAP_SM}` (8px) for spacing between icon, label, and pill.
+- The header uses `Flex` with `gap={APP_GAP_SM}` (8px) and `justify="center"` for centred spacing between label and pill.
+- The card is constrained to `maxWidth: 400` to keep the preview compact.
 
 ## 3. Reasoning section
 
@@ -321,7 +317,7 @@ The popover is not a data-heavy region — it displays a single cell's data. How
 
 ## Responsive behaviour
 
-- The popover width is content-driven (no fixed width). On narrow screens, Ant Design auto-flips placement from `right` to `left`.
+- The popover width is content-driven, capped at 400px by the card's `maxWidth`. On narrow screens, Ant Design auto-flips placement from `right` to `left`.
 - The card body `maxHeight` prevents the popover from exceeding the viewport height.
 - Long markdown tables may require horizontal scrolling within the card body.
 - The image renderer's `maxWidth: '100%'` ensures images scale down on narrow popovers.
@@ -329,7 +325,6 @@ The popover is not a data-heavy region — it displays a single cell's data. How
 ## Accessibility and motion
 
 - The trigger element is a plain `<span>` (not focusable) in v1. Keyboard users cannot trigger the popover via focus. This is a **signed-off v1 accessibility gap** — focus trigger is deferred.
-- The `MetricIconLabel` in the header has an `aria-label` for the metric name.
 - The card header's wrapping `Flex` container has a composite `aria-label` describing the metric and score (e.g. "Completeness score: 5").
 - The student response image has `alt="Student response image"`.
 - No motion/animation beyond Ant Design's default Popover entrance animation. Reduced-motion users see the standard Ant Design behaviour (no custom motion overrides).

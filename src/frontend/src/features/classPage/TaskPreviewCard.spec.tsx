@@ -48,7 +48,7 @@ function createPreviewData(
 
 describe('TaskPreviewCard', () => {
   // --- Header: computed metric ---
-  it('renders header with correct metric icon, label, and score for a computed metric', () => {
+  it('renders header with correct metric label and score for a computed metric', () => {
     renderWithFrontendProviders(
       <TaskPreviewCard
         data={createPreviewData({
@@ -59,12 +59,12 @@ describe('TaskPreviewCard', () => {
       />,
     );
 
-    // MetricIconLabel: icon with accessible label
-    expect(screen.getByLabelText('Completeness')).toBeInTheDocument();
-    // Metric label text from Typography.Text
-    expect(screen.getByText('Completeness')).toBeInTheDocument();
+    // Metric label text with colon from Typography.Text
+    expect(screen.getByText('Completeness:')).toBeInTheDocument();
     // MetricPill score value
     expect(screen.getByText('5')).toBeInTheDocument();
+    // MetricIconLabel must not be rendered (icon removed in favour of text-only header)
+    expect(screen.queryByLabelText('Completeness')).not.toBeInTheDocument();
   });
 
   // --- Header: notAttempted ---

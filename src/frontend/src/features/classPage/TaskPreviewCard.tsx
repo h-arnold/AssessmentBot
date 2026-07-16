@@ -30,7 +30,6 @@
 
 import type { JSX } from 'react';
 import { Card, Typography, Divider, Flex } from 'antd';
-import { MetricIconLabel } from '../../components/MetricIconLabel/MetricIconLabel';
 import { MetricPill } from '../../services/dataAnalysis/metricDisplay/MetricPill';
 import { METRIC_DISPLAY_META } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
@@ -64,6 +63,14 @@ export interface TaskPreviewData {
  * value (see `TASK_PREVIEW_CARD_LAYOUT.md` §2).
  */
 const CARD_BODY_MAX_HEIGHT = 480;
+
+/**
+ * Maximum width of the preview card.
+ *
+ * Exempt from the 8px grid as it is a max-width constraint, not a spacing
+ * value (see `TASK_PREVIEW_CARD_LAYOUT.md` §2).
+ */
+const CARD_MAX_WIDTH = 400;
 
 // ---------------------------------------------------------------------------
 // MetricResult reassembly (local concern)
@@ -160,8 +167,8 @@ function renderArtifact(
 /**
  * Task Preview Card — popover content for the heatmap metric sub-cells.
  *
- * Renders a compact card with:
- * - **Header**: `MetricIconLabel` + metric label text + `MetricPill` score
+ * Renders a compact card (maxWidth 400) with:
+ * - **Header**: centred metric label with colon + `MetricPill` score
  * - **Reasoning**: bold "Reasoning" label and the LLM reasoning text (or
  *   "No reasoning available" placeholder)
  * - **Student Response**: bold "Student Response" label and the artifact
@@ -193,7 +200,6 @@ export function TaskPreviewCard({
   } = data;
 
   const meta = METRIC_DISPLAY_META.get(metricKey)!;
-  const icon = meta.icon;
   const label = meta.label;
 
   const metricResult = buildMetricResult(metricState, metricScore);
@@ -201,14 +207,15 @@ export function TaskPreviewCard({
   return (
     <Card
       size="small"
+      style={{ maxWidth: CARD_MAX_WIDTH }}
       title={
         <Flex
           gap={APP_GAP_SM}
           align="center"
+          justify="center"
           aria-label={`${label} score: ${String(metricScore)}`}
         >
-          <MetricIconLabel icon={icon} label={label} />
-          <Typography.Text>{label}</Typography.Text>
+          <Typography.Text>{label}:</Typography.Text>
           <MetricPill metric={metricResult} precision={0} compact />
         </Flex>
       }
