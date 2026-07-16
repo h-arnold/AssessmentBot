@@ -4,7 +4,7 @@
  * @returns {GoogleAppsScript.HTML.HtmlOutput} Rendered web-app HTML output.
  */
 function doGet() {
-  return HtmlService.createTemplateFromFile('UI/ReactApp').evaluate();
+  return HtmlService.createHtmlOutputFromFile('UI/ReactApp');
 }
 
 if (typeof module !== 'undefined') {
