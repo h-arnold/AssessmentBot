@@ -1,6 +1,6 @@
 ---
 name: pre-pr-review
-description: Pre-PR code review orchestrator. Runs the regression checker first and blocks on any regressions, then runs a set of code review focuses in parallel (repo rule compliance, KISS/DRY, de-sloppification, performance/Big-O, logging rules, plus optional layer-scoped focuses) and synthesises them into a single PR_REVIEW.md at the repo root.
+description: Pre-PR code review orchestrator. Runs the regression checker first and blocks on any regressions, then runs a set of code review focuses in parallel (repo rule compliance, KISS/DRY, de-sloppification, performance/Big-O, logging rules, plus optional layer-scoped focuses), synthesises them into a single PR_REVIEW.md at the repo root, walks through each finding with the user via the ask-user-a-question tool to capture a decision, and records those decisions in detail in the review document.
 license: MIT
 compatibility: Mistral Vibe CLI
 user-invocable: true
@@ -221,14 +221,56 @@ diff findings and incidental findings intact — render incidental items in thei
 cleanup opportunities. Omit a section only if that focus did not run (optional focus not in scope);
 label omitted optional sections with `_(not in scope for this diff)_`.
 
-## Step 5 — Return to the user
+## Step 5 — Decision pass with the user
+
+Before finalising, walk through **every** finding in the synthesised `PR_REVIEW.md` with the user, one
+item at a time, using the **ask user a question** tool. For each finding, capture the user's decision on
+whether and how to address it. Where appropriate, ask for the chosen approach (e.g. fix now, fix later,
+wontfix, or a specific remediation strategy) so the outcome is unambiguous.
+
+Guidance:
+
+- Work through findings in order of severity (Critical → Improvement → Nitpick), including incidental items.
+- For each item, present the finding, its `file:line` evidence, and the available options, then let the
+  user decide.
+- Record each decision in full detail — do not reduce it to a single word. Capture the chosen option and
+  any specifics the user provides about _how_ the issue should be addressed (e.g. the intended fix, the
+  trade-offs considered, or why a finding is being rejected).
+
+## Step 6 — Record decisions in PR_REVIEW.md
+
+Append a **Decisions** section to `PR_REVIEW.md` that documents, in detail, every decision captured in
+Step 5. Each decision MUST be written so that another engineer can pick up the document later and act on
+it without further context from the conversation. For each finding include:
+
+- The finding reference (focus area + severity + `file:line`).
+- The decision (e.g. Fix now / Fix later / Wontfix).
+- The detailed rationale and, where applicable, the agreed approach for addressing it.
+
+Structure:
+
+```markdown
+## Decisions
+
+### Repo rule compliance
+
+- **[Critical] `src/backend/foo.js:42`** — Decision: Fix later. Approach: extract the duplicated
+  validation into `Validate.requireParams` and add a unit test; deferred because it is not on the hot
+  path. Rationale: user wants the PR to ship first, follow-up ticket to be raised.
+- **[Nitpick] `src/frontend/Bar.tsx:88`** — Decision: Wontfix. Rationale: intentional deviation agreed
+  with design; documented so a future reviewer does not re-raise it.
+
+...
+```
+
+## Step 7 — Return to the user
 
 Print a brief summary:
 
 - The overall verdict (Pass / Needs Improvement / Fail).
 - Regression gate result.
 - The list of focuses run.
-- The path to `PR_REVIEW.md`.
+- The path to `PR_REVIEW.md` (now including the recorded decisions).
 
 Do not mark the review complete while any Critical item remains unaddressed; instead report the
 Critical items so the user can address them and re-run the skill.
