@@ -219,7 +219,30 @@ is used throughout, per AGENTS.md §3(4).
   useful resilience — the author explicitly agreed the degrade hides a real condition. The backend
   Error/Logging Contract (§4: never suppress errors with defensive feature detection; prefer fail-fast
   log-and-rethrow) is thereby restored.
-- **Dependency:** Drives the related test-coverage decision (C5) — no degrade path remains to test.
+- **Dependency:** Drives C5 (no degrade path remains to test) and enables I3 (see below).
+- **Safety analysis — all `assignment.toJSON()` call sites audited.** Removing the fallback will not
+  break any code path. Three consumers exist and all three are already guarded against a partial
+  definition reaching `toJSON()`:
+
+  | Call site              | File:line                           | Guard                                                                                                                                                                                                                                 |
+  | ---------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | `getAssignment_`       | `z_Api/assignmentAssessment.js:126` | `rehydrateAssignment` runs `_ensureFullDefinition` which calls `AssignmentDefinitionController.getDefinitionByKey()` to replace any partial definition with the full one before `toJSON()` is reached.                                |
+  | `persistAssignmentRun` | `ABClassAssignmentOps.js:89`        | `Array.isArray(assignment.assignmentDefinition?.tasks)` check at `:76` throws `TypeError` before `toJSON()`.                                                                                                                          |
+  | `_toReadView` fallback | `ABClassResponseMapper.js:82`       | **Dead code.** Only reached when `typeof assignment.toPartialJSON !== 'function'`, which is never true — `toPartialJSON` is defined on the `Assignment` prototype. The ternary at `:80-82` always takes the `toPartialJSON()` branch. |
+
+  `ABClass.toJSON()` (which would cascade to `Assignment.toJSON()` on every assignment) has
+  **zero callers** in the codebase — the `ABClassResponseMapper` explicitly avoids it
+  (`:56-61`) citing partial-definition failures. Once C1 removes the fallback that caused
+  those failures, the `ABClassResponseMapper` _can_ safely delegate to `abClass.toJSON()` (see I3).
+
+- **Additional cleanup unlocked by C1.** Once the fallback is removed, the following become dead or
+  simplify naturally:
+
+  1. **`00_AssignmentSerialisation.js:30` — overly defensive guard.** `if (this._assignment.assignmentDefinition?.toJSON)` — remove the optional-chaining and existence check. Once C1 is applied, this block becomes a direct call because `assignmentDefinition` is always an `AssignmentDefinition` instance when set (it is never a raw object or `null` on the serialisation path). See also I3 — after that change the guard collapses further.
+
+  2. **`ABClassResponseMapper.js:80-82` — dead ternary.** The `typeof assignment.toPartialJSON === 'function'` guard and the `: assignment.toJSON()` fallback vanish once `_toReadView` is deleted per I3.
+
+  3. **`ABClassResponseMapper.js:56-61` `@remarks` — stale rationale.** Delete the comment block justifying manual field building; it cites the partial-definition failure mode that C1 removes.
 
 ### C2 — British-English `artifact`/`artefact` inconsistency
 
@@ -295,10 +318,21 @@ JSON.stringify(data)` + slice pattern; a single helper prevents drift if the len
   (`_toReadView` duplicates `ABClass.toJSON()` field list) is subsumed by this deletion.
 - **Nuance / rationale:** The original `@remarks` justified avoiding `toJSON()` because the call chain
   "fails when assignments carry a partial definition." That failure mode is removed by C1 (the
-  serialisation fallback is gone, so `Assignment.toJSON()` no longer downgrades). The mapper's
-  `_toReadView` can therefore safely delegate to `toJSON()` + post-process. The single backend emission
-  point of `assignmentDefinitionKey` (`ABClassResponseMapper.js:91`) is preserved in the post-process
-  step.
+  serialisation fallback is gone, so `Assignment.toJSON()` throws instead of downgrading). The
+  mapper's `_toReadView` can therefore safely delegate to `abClass.toJSON()` + post-process. The
+  single backend emission point of `assignmentDefinitionKey` (`ABClassResponseMapper.js:91`) is
+  preserved in the post-process step. C1's safety analysis confirmed that `ABClass.toJSON()` has
+  zero callers today — implementing I3 restores `abClass.toJSON()` as the canonical serialisation
+  path and eliminates the `~30`-line manual field list.
+- **Side-effects of this change:**
+  1. `ABClassResponseMapper.js:80-82` ternary (`typeof assignment.toPartialJSON === 'function'` /
+     `assignment.toJSON()` fallback) disappears — the post-process iterates the assignments from
+     `abClass.toJSON()` output directly.
+  2. `ABClassResponseMapper.js:56-61` `@remarks` block (justifying manual field building) is deleted.
+  3. `00_AssignmentSerialisation.js:30` `if (this._assignment.assignmentDefinition?.toJSON)` guard
+     can be simplified to a direct call — after C1+I3, every assignment reaching `toJSON()` has a
+     full `AssignmentDefinition` instance (C1 ensures throw-instead-of-degrade; I3 ensures the mapper
+     routes through `abClass.toJSON()`).
 
 ### I4 — `taskPreviewFixtures.ts:106` unused `_taskId` parameter
 
@@ -468,11 +502,27 @@ code change, no further investigation):
 
 Recommended order (minimises rework):
 
-1. C1 (remove serialisation fallback) → then I3/E3-dependent mapper + classPageAdapter changes.
-2. C3 (delete dead `getAssignmentTopics`) and C5 (extract truncation helper).
-3. I10 + E1 (data-shape alignment, frontend-only) — delete dead `accumulation.ts` guard.
-4. I1, I2, I6, I9 (DRY, performance hoist, layout/a11y).
-5. I12, N1–N7 (security validation, nitpicks).
-6. C2 (British-English `artefact` normalisation, including `DATA_SHAPES.md`) — broad, do last to avoid
+1. **C1** (remove serialisation fallback) — confirmed safe: all 3 `assignment.toJSON()` call sites
+   already guard against partial definitions reaching the serialisation path. No breakage.
+
+2. **C1-post-cleanup** — after C1 is applied, simplify or remove:
+   - `00_AssignmentSerialisation.js:30` — remove optional-chaining and existence guard; make a direct
+     `this._assignment.assignmentDefinition.toJSON()` call.
+   - `ABClassResponseMapper.js:56-61` — delete stale `@remarks` block citing partial-definition
+     failures as rationale for manual field building.
+
+3. **I3** (delete `_toReadView`, use `abClass.toJSON()`) — now unblocked by C1. This eliminates the
+   duplicated field list, the dead ternary at `:80-82`, and restores `abClass.toJSON()` as the
+   canonical serialisation path.
+
+4. E3 (useClassPageData error return) → classPageAdapter changes. C3 (delete dead `getAssignmentTopics`)
+   and C5 (extract truncation helper).
+
+5. I10 + E1 (data-shape alignment, frontend-only) — delete dead `accumulation.ts` guard.
+
+6. I1, I2, I6, I9 (DRY, performance hoist, layout/a11y).
+
+7. I12, N1–N7 (security validation, nitpicks).
+8. C2 (British-English `artefact` normalisation, including `DATA_SHAPES.md`) — broad, do last to avoid
    churn while other edits touch the same files.
-7. C4 and I4/I5/I8/I13 and all Incidental items: **no action**.
+9. C4 and I4/I5/I8/I13 and all Incidental items: **no action**.
