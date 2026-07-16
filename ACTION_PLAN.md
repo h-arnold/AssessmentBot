@@ -472,9 +472,11 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** describe actual changes made when done.
-- **Deviations from plan:** note any departures from the original section design.
-- **Follow-up implications for later sections:** none.
+- **Implementation notes:** Created `src/frontend/src/features/classPage/taskPreviewFixtures.ts` with the pure function `getTaskPreviewData(taskId, metricKey, metricResult)` returning `TaskPreviewData | null`. Imports the three fixtures from `./fixtures/...`, maps `metricKey` deterministically (completeness→IMAGE `t_preview_image_001`, accuracy→TEXT `t_preview_text_001`, spag→TABLE `t_preview_table_001`), and assembles `TaskPreviewData` (fixture `taskId`/`artifactType`/`artifactContent`/`reasoning[metricKey]`, plus `metricScore`/`metricState` taken from the passed `metricResult`). Reuses the `TaskPreviewData` interface exported by `TaskPreviewCard.tsx` (no duplicate). `taskId` param is accepted but unused (prefixed `_taskId`, documented via `@remarks`). Added `taskPreviewFixtures.spec.ts` (4 tests).
+- **Deviations from plan:** None material. The test file initially had 2 `no-magic-numbers` warnings on literal `5`; resolved via a named constant, so the file is warning-clean.
+- **Follow-up implications for later sections:** Section 6 `TaskHeatmapTable` will import `getTaskPreviewData` from `taskPreviewFixtures.ts` and wrap metric sub-cells with a Popover rendering `TaskPreviewCard`.
+
+**Status: Complete** — 4 tests pass, lint clean (0 errors/warnings), full suite green (no regression; regression-checker Regressions Count 0, New Failures 0). Reviewed clean by Code Reviewer.
 
 ---
 
