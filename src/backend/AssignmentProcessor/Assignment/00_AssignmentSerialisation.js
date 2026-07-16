@@ -31,6 +31,10 @@ class AssignmentSerialisation {
       try {
         definitionJson = this._assignment.assignmentDefinition.toJSON();
       } catch {
+        ABLogger.getInstance().warn(
+          'AssignmentSerialisation.toJSON() fell back to toPartialJSON() for ' +
+            `assignment ${this._assignment.assignmentId}`
+        );
         definitionJson =
           typeof this._assignment.assignmentDefinition.toPartialJSON === 'function'
             ? this._assignment.assignmentDefinition.toPartialJSON()

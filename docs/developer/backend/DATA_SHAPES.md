@@ -254,37 +254,34 @@ teachers, and partial assignment summaries. Unlike the partial registry
       "documentType": "SLIDES",
       "submissions": [
         {
-          "id": "sub-1",
-          "taskId": "task-1",
-          "artifact": {
-            "taskId": "task-1",
-            "role": "student",
-            "content": null,
-            "contentHash": null,
-            "uid": "uid-1",
-            "type": "slides"
+          "studentId": "S1",
+          "studentName": "Alice Johnson",
+          "assignmentId": "A1",
+          "documentId": "drive-file-123",
+          "items": {
+            "task-1": {
+              "id": "ssi_abc123",
+              "taskId": "task-1",
+              "artifact": {
+                "taskId": "task-1",
+                "role": "submission",
+                "pageId": "p-1",
+                "documentId": "drive-file-123",
+                "content": null,
+                "contentHash": null,
+                "metadata": {},
+                "uid": "task-1-S1-p-1-0",
+                "type": "TEXT"
+              },
+              "assessments": {},
+              "feedback": {}
+            }
           },
-          "assessments": {},
-          "feedback": {}
+          "createdAt": "2025-05-01T08:00:00.000Z",
+          "updatedAt": "2025-05-15T12:00:00.000Z"
         }
       ],
-      "assignmentDefinition": {
-        "primaryTitle": "Algebra Baseline",
-        "primaryTopic": "Algebra",
-        "primaryTopicKey": "algebra",
-        "yearGroupKey": "year-10",
-        "yearGroupLabel": "Year 10",
-        "alternateTitles": [],
-        "alternateTopics": [],
-        "documentType": "SLIDES",
-        "referenceDocumentId": "ref-doc-123",
-        "templateDocumentId": "template-doc-456",
-        "assignmentWeighting": 1,
-        "definitionKey": "algebra-baseline",
-        "tasks": [],
-        "createdAt": "2025-01-01T00:00:00.000Z",
-        "updatedAt": "2025-05-01T00:00:00.000Z"
-      }
+      "assignmentDefinitionKey": "algebra-baseline"
     }
   ],
   "active": true
@@ -293,14 +290,14 @@ teachers, and partial assignment summaries. Unlike the partial registry
 
 Key notes:
 
-- `assignments[]` uses the `Assignment.toPartialJSON()` shape (partial — no full artifact content, no assessment reasoning, no hydration metadata).
-- `assignments[].assignmentDefinition.tasks` is always an array (partial shape).
+- `assignments[]` starts from the `Assignment.toPartialJSON()` shape, but the response mapper (`_toReadView()`) performs an additional transport-boundary transformation before returning.
+- The embedded `assignmentDefinition` object is replaced with a lightweight `assignmentDefinitionKey` string (the `definitionKey` from the stored definition). The frontend resolves definition details (primaryTitle, tasks, topic, etc.) from its own warm-up `AssignmentDefinitionPartials` registry, so the full embedded object was redundant transport payload that also risked serialisation failures with partial definitions.
 - `assignments[].submissions[].artifact.content` and `contentHash` are always `null` (redacted in partial).
 - `students` are plain objects with `name`, `email`, `id` (not model instances).
 - `classOwner` and every entry in `teachers` are teacher summary objects with `userId`, `email`, and `teacherName` fields only (same shape as the partial registry).
 - `active` is an explicit boolean (or `null` when unknown).
 - Derived display fields (e.g. `cohortLabel`, `yearGroupLabel`) are intentionally excluded from backend transport; frontend view-models derive them from reference-data maps.
-- The response omits `_hydrationLevel` and `progressTracker` fields (stripped as defence-in-depth by `_toReadView()`).
+- The response omits `_hydrationLevel` and `progressTracker` fields (stripped as defence-in-depth by `_toReadView()`), and the embedded `assignmentDefinition` object is replaced with `assignmentDefinitionKey`.
 - The response uses the same envelope contract as all other `z_Api` methods — see "Google Classroom Picker and ABClass Mutation Transport Shapes" section below.
 - Frontend Zod schema mirroring this shape lives in `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts`.
 

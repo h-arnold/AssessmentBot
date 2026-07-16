@@ -1,3 +1,4 @@
+import { logFrontendEvent } from '../../../logging/frontendLogger';
 import type { AveragingAnalyserInput } from '../dataAnalysis.zod';
 import type { AssignmentDefinitionPartial } from '../../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
 
@@ -36,8 +37,15 @@ function shouldExcludeAssignment(
   if (isFilteredByDateRange(a.createdAt, dateRange)) return true;
 
   const definition = definitionByKey.get(definitionKey);
+  if (!definition) {
+    logFrontendEvent('warn', {
+      context: 'shouldExcludeAssignment',
+      errorMessage: `No assignment definition partial found for definitionKey '${definitionKey}' (class ${classId}, assignment ${a.assignmentId})`,
+      metadata: { definitionKey, classId, assignmentId: a.assignmentId },
+    });
+    return true;
+  }
   return (
-    !definition ||
     (topicKeySet != null && !topicKeySet.has(definition.primaryTopicKey)) ||
     (definitionKeySet != null && !definitionKeySet.has(definitionKey))
   );

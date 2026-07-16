@@ -842,7 +842,7 @@ Per `SPEC_CLASS_PAGE_PREPARATION.md` line 382, the canonical home for these help
 
 - Decision: `new` (single-file service module; flat under `services/dataAnalysis/`)
 - Owning module/path: `src/frontend/src/services/dataAnalysis/heatmapAdapter.ts`
-- Call-site rationale: the single projection boundary consumed by `TaskHeatmapPage`. Filters `perStudentTaskMetrics` to the selected assignment's `taskKey`s (derived from `assignment.assignmentDefinition.definitionKey`), groups by `studentId` into `HeatmapRow`s, and derives `taskColumns` from `assignment.assignmentDefinition.tasks`. `assignmentName` from `primaryTitle`, `className` from `classFull.className` (fallback `'Class Overview'`), `taskTitle` always `null` in v1. Throws on unknown `assignmentId` (fail fast).
+- Call-site rationale: the single projection boundary consumed by `TaskHeatmapPage`. Reads `assignment.assignmentDefinitionKey` from the class-full assignment, resolves the definition partial from the warm-up `assignmentDefinitionPartials` registry, and derives `taskKey`s and `taskColumns` from the resolved partial's `tasks` array (no longer reads tasks from an embedded `assignment.assignmentDefinition` object, which was removed from the transport shape). `assignmentName` from `primaryTitle`, `className` from `classFull.className` (fallback `'Class Overview'`). Throws `TaskTitlesUnavailableError` when the definition partial is missing, and throws on unknown `assignmentId` (fail fast).
 - Status: `Implemented` (ACTION_PLAN.md Section 2 — `adaptMetricsToHeatmap` added to `heatmapAdapter.ts`; `HeatmapResult`/`HeatmapRow`/`HeatmapCell`/`HeatmapTaskColumn` interfaces exported).
 
 ## 10. Frontend utils folder convention

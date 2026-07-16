@@ -157,8 +157,9 @@ function groupMetricsByStudent(
  * **Breaking change (Section 8):** the signature now requires a 4th parameter
  * (`assignmentDefinitionPartials`).  Task columns are sourced from the warm-up
  * partial located via `getAssignmentDefinitionPartial`, NOT from the embedded
- * `assignment.assignmentDefinition.tasks` (which carries the weight-summary
- * shape).  If the partial is missing, `TaskTitlesUnavailableError` is thrown.
+ * `assignment.assignmentDefinition.tasks` (which was removed in favour of the
+ * lightweight `assignmentDefinitionKey`).  If the partial is missing,
+ * `TaskTitlesUnavailableError` is thrown.
  * This is distinct from a generic `Error` (unknown `assignmentId`).
  *
  * The per-task `null`-title branch was removed (E3–F3) because `null` titles

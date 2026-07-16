@@ -276,20 +276,10 @@ export function createAssignmentPartial(overrides: {
   assignmentId: string;
   definitionKey: string;
   submissions: ReturnType<typeof createSubmission>[];
-  tasks: Array<{ taskId: string; taskWeighting: number; taskTitle: string | null }>;
-  assignmentWeighting?: number | null;
   createdAt?: string;
-  primaryTopicKey?: string;
+  [key: string]: unknown;
 }): AssignmentPartial {
-  const {
-    assignmentId,
-    definitionKey,
-    submissions,
-    tasks,
-    assignmentWeighting = 1,
-    createdAt = DEFAULT_CREATED_AT,
-    primaryTopicKey = 'algebra',
-  } = overrides;
+  const { assignmentId, definitionKey, submissions, createdAt = DEFAULT_CREATED_AT } = overrides;
 
   return {
     courseId: 'course_001',
@@ -301,13 +291,6 @@ export function createAssignmentPartial(overrides: {
     documentType: 'assessment',
     submissions,
     assignmentDefinitionKey: definitionKey,
-    assignmentDefinition: createDefinitionPartial({
-      definitionKey,
-      assignmentWeighting,
-      tasks,
-      createdAt,
-      primaryTopicKey,
-    }),
   } as unknown as AssignmentPartial;
 }
 
@@ -361,18 +344,17 @@ export function buildInput(
 ): AveragingAnalyserInput {
   const classIds = classOverrides.map((c) => c.classId);
   const classes = classOverrides.map((c) => createClassFull(c));
-  const allDefinitionPartials = classes.flatMap((c) =>
-    (c.assignments as Array<Record<string, unknown>>).map(
-      (a) => a.assignmentDefinition as ReturnType<typeof createDefinitionPartial>
-    )
-  );
 
-  // De-duplicate by definitionKey
-  const seen = new Set<string>();
-  const uniqueDefinitionPartials = allDefinitionPartials.filter((d) => {
-    const k = d.definitionKey;
-    return seen.has(k) ? false : (seen.add(k), true);
-  });
+  // Collect unique definitionKeys from assignments and build a partial per key
+  const seenKeys = new Set<string>();
+  const uniqueDefinitionPartials = classes.flatMap((c) =>
+    (c.assignments as Array<{ assignmentDefinitionKey: string | null }>)
+      .filter((a) => a.assignmentDefinitionKey != null && !seenKeys.has(a.assignmentDefinitionKey!))
+      .map((a) => {
+        seenKeys.add(a.assignmentDefinitionKey!);
+        return createDefinitionPartial({ definitionKey: a.assignmentDefinitionKey! });
+      })
+  );
 
   return {
     filter: {

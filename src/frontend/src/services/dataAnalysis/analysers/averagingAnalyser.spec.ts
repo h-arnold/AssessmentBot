@@ -484,8 +484,8 @@ describe('AveragingAnalyser', () => {
       expect(results[1].classId).toBe('c_002');
     });
 
-    it('throws a typed error when an assignment has no assignmentDefinition', () => {
-      const assignmentWithoutDefinition = {
+    it('throws when an assignment has no assignmentDefinitionKey', () => {
+      const assignmentWithoutKey = {
         courseId: 'course_001' as const,
         assignmentId: 'a_001',
         assignmentName: 'Test Assignment',
@@ -498,7 +498,7 @@ describe('AveragingAnalyser', () => {
             t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
           }),
         ],
-        assignmentDefinition: null as unknown as undefined,
+        assignmentDefinitionKey: null,
       };
 
       const input: AveragingAnalyserInput = {
@@ -510,7 +510,7 @@ describe('AveragingAnalyser', () => {
             classId: 'c_001',
             studentIds: ['s_001'],
             assignments: [
-              assignmentWithoutDefinition as unknown as ReturnType<typeof createAssignmentPartial>,
+              assignmentWithoutKey as unknown as ReturnType<typeof createAssignmentPartial>,
             ],
           }),
         ],
