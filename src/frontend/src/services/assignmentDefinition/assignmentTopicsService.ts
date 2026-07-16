@@ -1,4 +1,4 @@
-import { callApi } from '../apiService';
+import { callApi, parseApiResponse } from '../apiService';
 import {
   AssignmentTopicListResponseSchema,
   type AssignmentTopicListResponse,
@@ -6,7 +6,10 @@ import {
 
 const GET_ASSIGNMENT_TOPICS_METHOD = 'getAssignmentTopics';
 
-export type { AssignmentTopic, AssignmentTopicListResponse } from '../referenceData/referenceData.zod';
+export type {
+  AssignmentTopic,
+  AssignmentTopicListResponse,
+} from '../referenceData/referenceData.zod';
 
 /**
  * Retrieves assignment-topic reference data from backend transport.
@@ -19,5 +22,9 @@ export type { AssignmentTopic, AssignmentTopicListResponse } from '../referenceD
  *   as an array of { key, name, yearGroupKeys } objects.
  */
 export async function getAssignmentTopics(): Promise<AssignmentTopicListResponse> {
-  return AssignmentTopicListResponseSchema.parse(await callApi(GET_ASSIGNMENT_TOPICS_METHOD));
+  return parseApiResponse(
+    AssignmentTopicListResponseSchema,
+    GET_ASSIGNMENT_TOPICS_METHOD,
+    await callApi(GET_ASSIGNMENT_TOPICS_METHOD)
+  );
 }

@@ -1,4 +1,4 @@
-import { callApi } from '../apiService';
+import { callApi, parseApiResponse } from '../apiService';
 import { ClassPartialsResponseSchema, type ClassPartial } from './classPartials.zod';
 
 export type { ClassPartial, TeacherSummary } from './classPartials.zod';
@@ -14,5 +14,9 @@ const GET_AB_CLASS_PARTIALS_METHOD = 'getABClassPartials';
  * @returns {Promise<ClassPartial[]>} Promise resolving to validated class partial transport objects.
  */
 export async function getABClassPartials(): Promise<ClassPartial[]> {
-  return ClassPartialsResponseSchema.parse(await callApi(GET_AB_CLASS_PARTIALS_METHOD));
+  return parseApiResponse(
+    ClassPartialsResponseSchema,
+    GET_AB_CLASS_PARTIALS_METHOD,
+    await callApi(GET_AB_CLASS_PARTIALS_METHOD)
+  );
 }

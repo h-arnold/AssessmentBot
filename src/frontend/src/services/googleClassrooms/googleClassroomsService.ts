@@ -1,4 +1,4 @@
-import { callApi } from '../apiService';
+import { callApi, parseApiResponse } from '../apiService';
 import {
   GoogleClassroomsResponseSchema,
   type GoogleClassroomsResponse,
@@ -14,5 +14,9 @@ const GET_GOOGLE_CLASSROOMS_METHOD = 'getGoogleClassrooms';
  * @returns {Promise<GoogleClassroomsResponse>} Promise resolving to validated classroom summaries.
  */
 export async function getGoogleClassrooms(): Promise<GoogleClassroomsResponse> {
-  return GoogleClassroomsResponseSchema.parse(await callApi(GET_GOOGLE_CLASSROOMS_METHOD));
+  return parseApiResponse(
+    GoogleClassroomsResponseSchema,
+    GET_GOOGLE_CLASSROOMS_METHOD,
+    await callApi(GET_GOOGLE_CLASSROOMS_METHOD)
+  );
 }

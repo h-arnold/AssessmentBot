@@ -1,15 +1,17 @@
 import { ZodError } from 'zod';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { StartAssessmentRunResponseSchema } from './assignmentAssessment.zod';
 
 const callApiMock = vi.fn();
-const logFrontendErrorMock = vi.fn();
+const parseApiResponseMock = vi.fn((schema: unknown, _method: string, data: unknown) => {
+  // Default behaviour mirrors schema.parse so valid responses pass through and
+  // invalid ones surface as ZodError (delegated to the real schema in tests).
+  return (schema as { parse: (value: unknown) => unknown }).parse(data);
+});
 
 vi.mock('../apiService', () => ({
   callApi: callApiMock,
-}));
-
-vi.mock('../../logging/frontendLogger', () => ({
-  logFrontendError: logFrontendErrorMock,
+  parseApiResponse: parseApiResponseMock,
 }));
 
 const validStartAssessmentRunRequest = {
@@ -143,7 +145,7 @@ async function loadAssignmentAssessmentService() {
 describe('assignmentAssessmentService', () => {
   afterEach(() => {
     callApiMock.mockReset();
-    logFrontendErrorMock.mockReset();
+    parseApiResponseMock.mockReset();
     vi.resetModules();
   });
 
@@ -154,7 +156,12 @@ describe('assignmentAssessmentService', () => {
 
     await expect(startAssessmentRun(validStartAssessmentRunRequest)).resolves.toBeNull();
     expect(callApiMock).toHaveBeenCalledTimes(1);
-    expect(logFrontendErrorMock).not.toHaveBeenCalled();
+    expect(parseApiResponseMock).toHaveBeenCalledTimes(1);
+    expect(parseApiResponseMock).toHaveBeenCalledWith(
+      StartAssessmentRunResponseSchema,
+      'startAssessmentRun',
+      null
+    );
   });
 
   it('startAssessmentRun() calls callApi with the correct method name and payload', async () => {
@@ -237,20 +244,14 @@ describe('assignmentAssessmentService', () => {
         getAssignment({ courseId: 'course-1', assignmentId: 'assign-1' })
       ).rejects.toBeInstanceOf(ZodError);
 
-      expect(logFrontendErrorMock).toHaveBeenCalledTimes(1);
-      const [context, error, metadata] = logFrontendErrorMock.mock.calls[0] as [
-        string,
-        unknown,
-        Record<string, unknown>,
-      ];
-      expect(context).toBe('services/assignmentAssessment.parseResponse');
-      expect(error).toBeInstanceOf(ZodError);
-      expect(metadata).toMatchObject({
-        method: 'getAssignment',
-        zodIssues: expect.any(Array),
-      });
-      expect((metadata.zodIssues as unknown[]).length).toBeGreaterThan(0);
-      expect(typeof metadata.responsePreview).toBe('string');
+      // Validation (and its structured diagnostics logging) is delegated to the
+      // shared parseApiResponse helper; here we assert the service forwards the
+      // correct method and raw response. The helper's schema validation and
+      // logging behaviour is covered by apiService.spec.ts.
+      expect(parseApiResponseMock).toHaveBeenCalledTimes(1);
+      const [, method, data] = parseApiResponseMock.mock.calls[0];
+      expect(method).toBe('getAssignment');
+      expect(data).toEqual(incompleteResponse);
     });
 
     it('parses input through the request schema before calling callApi', async () => {

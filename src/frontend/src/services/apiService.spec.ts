@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 import {
   createGoogleScriptRunApiHandlerMock,
   type GoogleScriptRunApiHandler,
@@ -88,6 +89,19 @@ async function loadCallApi(): Promise<CallApi> {
   };
 
   return apiServiceModule.callApi;
+}
+
+/**
+ * Loads a fresh `parseApiResponse` export from the module under test.
+ *
+ * @returns {Promise<typeof import('./apiService')['parseApiResponse']>} The helper under test.
+ */
+async function loadParseApiResponse() {
+  const apiServiceModule = (await import(apiServiceModulePath)) as {
+    parseApiResponse: <T>(schema: unknown, method: string, data: unknown) => T;
+  };
+
+  return apiServiceModule.parseApiResponse;
 }
 
 type RunnerHarnessResponse =
@@ -1590,5 +1604,65 @@ describe('cancelApiQueued', () => {
     // Suppress unhandled rejections from cancelled pending entries
     await expect(promiseB).rejects.toEqual({ reason: 'CANCELLED' });
     await expect(promiseC).rejects.toEqual({ reason: 'CANCELLED' });
+  });
+});
+
+describe('apiService.parseApiResponse', () => {
+  const context = 'services/apiService.parseApiResponse';
+  const oversizedPaddingLength = 400;
+  const truncatedPreviewMaxLength = 201;
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('returns the parsed value and logs nothing for a valid response', async () => {
+    const parseApiResponse = await loadParseApiResponse();
+    const consoleErrorSpy = vi.spyOn(console, 'error');
+
+    const schema = z.object({ id: z.string() });
+    const result = parseApiResponse(schema, 'getWidget', { id: 'w-1' });
+
+    expect(result).toEqual({ id: 'w-1' });
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+
+  it('logs structured diagnostics (method, zodIssues, responsePreview) and re-throws on schema failure', async () => {
+    const parseApiResponse = await loadParseApiResponse();
+    const consoleErrorSpy = vi.spyOn(console, 'error');
+
+    const schema = z.object({ id: z.string() });
+
+    expect(() => parseApiResponse(schema, 'getWidget', { id: 42 })).toThrow(z.ZodError);
+
+    const errorEntry = consoleErrorSpy.mock.calls
+      .map(([, entry]) => entry as Record<string, unknown>)
+      .find((entry) => entry.context === context && entry.level === 'error');
+
+    expect(errorEntry).toBeDefined();
+    const metadata = errorEntry!.metadata as Record<string, unknown>;
+    expect(metadata).toMatchObject({ method: 'getWidget' });
+    expect(Array.isArray(metadata.zodIssues)).toBe(true);
+    expect((metadata.zodIssues as unknown[]).length).toBeGreaterThan(0);
+    expect(typeof metadata.responsePreview).toBe('string');
+  });
+
+  it('truncates the responsePreview with an ellipsis when the payload exceeds 200 characters', async () => {
+    const parseApiResponse = await loadParseApiResponse();
+    const consoleErrorSpy = vi.spyOn(console, 'error');
+
+    const schema = z.object({ id: z.string() });
+    const oversized = { id: 42, padding: 'y'.repeat(oversizedPaddingLength) };
+
+    expect(() => parseApiResponse(schema, 'getWidget', oversized)).toThrow(z.ZodError);
+
+    const errorEntry = consoleErrorSpy.mock.calls
+      .map(([, entry]) => entry as Record<string, unknown>)
+      .find((entry) => entry.context === context && entry.level === 'error');
+
+    const metadata = errorEntry!.metadata as Record<string, unknown>;
+    const preview = metadata.responsePreview as string;
+    expect(preview.endsWith('…')).toBe(true);
+    expect(preview.length).toBeLessThanOrEqual(truncatedPreviewMaxLength);
   });
 });

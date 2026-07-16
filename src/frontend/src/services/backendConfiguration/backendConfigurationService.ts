@@ -1,4 +1,4 @@
-import { callApi } from '../apiService';
+import { callApi, parseApiResponse } from '../apiService';
 import type {
   BackendConfig,
   BackendConfigWriteInput,
@@ -16,7 +16,11 @@ import {
  * @returns {Promise<BackendConfig>} The parsed backend configuration payload.
  */
 export async function getBackendConfig(): Promise<BackendConfig> {
-  return BackendConfigSchema.parse(await callApi('getBackendConfig'));
+  return parseApiResponse(
+    BackendConfigSchema,
+    'getBackendConfig',
+    await callApi('getBackendConfig')
+  );
 }
 
 /**
@@ -29,5 +33,9 @@ export async function setBackendConfig(
   input: BackendConfigWriteInput
 ): Promise<BackendConfigWriteResult> {
   const parsedInput = BackendConfigWriteInputSchema.parse(input);
-  return BackendConfigWriteResultSchema.parse(await callApi('setBackendConfig', parsedInput));
+  return parseApiResponse(
+    BackendConfigWriteResultSchema,
+    'setBackendConfig',
+    await callApi('setBackendConfig', parsedInput)
+  );
 }

@@ -1,4 +1,4 @@
-import { callApi } from '../apiService';
+import { callApi, parseApiResponse } from '../apiService';
 import { AuthorisationStatusSchema } from './authService.zod';
 
 const GET_AUTHORISATION_STATUS_METHOD = 'getAuthorisationStatus';
@@ -9,5 +9,9 @@ const GET_AUTHORISATION_STATUS_METHOD = 'getAuthorisationStatus';
  * @returns {Promise<boolean>} Whether the current user is authorised.
  */
 export async function getAuthorisationStatus(): Promise<boolean> {
-  return AuthorisationStatusSchema.parse(await callApi<boolean>(GET_AUTHORISATION_STATUS_METHOD));
+  return parseApiResponse(
+    AuthorisationStatusSchema,
+    GET_AUTHORISATION_STATUS_METHOD,
+    await callApi<boolean>(GET_AUTHORISATION_STATUS_METHOD)
+  );
 }

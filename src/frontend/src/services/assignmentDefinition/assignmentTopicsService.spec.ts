@@ -2,9 +2,14 @@ import { ZodError } from 'zod';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const callApiMock = vi.fn();
+const parseApiResponseMock = vi.fn(
+  (schema: { parse: (data: unknown) => unknown }, _method: string, data: unknown) =>
+    schema.parse(data)
+);
 
 vi.mock('../apiService', () => ({
   callApi: callApiMock,
+  parseApiResponse: parseApiResponseMock,
 }));
 
 const validAssignmentTopicsResponse = [

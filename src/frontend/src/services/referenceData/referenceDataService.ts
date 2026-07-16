@@ -1,4 +1,4 @@
-import { callApi } from '../apiService';
+import { callApi, parseApiResponse } from '../apiService';
 import type {
   AssignmentTopicListResponse,
   CohortListResponse,
@@ -52,7 +52,7 @@ import {
  * @returns {Promise<CohortListResponse>} The cohort list response.
  */
 export async function getCohorts(): Promise<CohortListResponse> {
-  return CohortListResponseSchema.parse(await callApi('getCohorts'));
+  return parseApiResponse(CohortListResponseSchema, 'getCohorts', await callApi('getCohorts'));
 }
 
 /**
@@ -63,7 +63,11 @@ export async function getCohorts(): Promise<CohortListResponse> {
  */
 export async function createCohort(input: CreateCohortInput): Promise<CreateCohortResponse> {
   const parsedInput = CreateCohortInputSchema.parse(input);
-  return CreateCohortResponseSchema.parse(await callApi('createCohort', parsedInput));
+  return parseApiResponse(
+    CreateCohortResponseSchema,
+    'createCohort',
+    await callApi('createCohort', parsedInput)
+  );
 }
 
 /**
@@ -74,7 +78,11 @@ export async function createCohort(input: CreateCohortInput): Promise<CreateCoho
  */
 export async function updateCohort(input: UpdateCohortInput): Promise<UpdateCohortResponse> {
   const parsedInput = UpdateCohortInputSchema.parse(input);
-  return UpdateCohortResponseSchema.parse(await callApi('updateCohort', parsedInput));
+  return parseApiResponse(
+    UpdateCohortResponseSchema,
+    'updateCohort',
+    await callApi('updateCohort', parsedInput)
+  );
 }
 
 /**
@@ -85,7 +93,11 @@ export async function updateCohort(input: UpdateCohortInput): Promise<UpdateCoho
  */
 export async function deleteCohort(input: DeleteCohortInput): Promise<DeleteCohortResponse> {
   const parsedInput = DeleteCohortInputSchema.parse(input);
-  return DeleteCohortResponseSchema.parse(await callApi('deleteCohort', parsedInput));
+  return parseApiResponse(
+    DeleteCohortResponseSchema,
+    'deleteCohort',
+    await callApi('deleteCohort', parsedInput)
+  );
 }
 
 /**
@@ -94,7 +106,11 @@ export async function deleteCohort(input: DeleteCohortInput): Promise<DeleteCoho
  * @returns {Promise<YearGroupListResponse>} The year-group list response.
  */
 export async function getYearGroups(): Promise<YearGroupListResponse> {
-  return YearGroupListResponseSchema.parse(await callApi('getYearGroups'));
+  return parseApiResponse(
+    YearGroupListResponseSchema,
+    'getYearGroups',
+    await callApi('getYearGroups')
+  );
 }
 
 /**
@@ -107,7 +123,11 @@ export async function createYearGroup(
   input: CreateYearGroupInput
 ): Promise<CreateYearGroupResponse> {
   const parsedInput = CreateYearGroupInputSchema.parse(input);
-  return CreateYearGroupResponseSchema.parse(await callApi('createYearGroup', parsedInput));
+  return parseApiResponse(
+    CreateYearGroupResponseSchema,
+    'createYearGroup',
+    await callApi('createYearGroup', parsedInput)
+  );
 }
 
 /**
@@ -120,7 +140,11 @@ export async function updateYearGroup(
   input: UpdateYearGroupInput
 ): Promise<UpdateYearGroupResponse> {
   const parsedInput = UpdateYearGroupInputSchema.parse(input);
-  return UpdateYearGroupResponseSchema.parse(await callApi('updateYearGroup', parsedInput));
+  return parseApiResponse(
+    UpdateYearGroupResponseSchema,
+    'updateYearGroup',
+    await callApi('updateYearGroup', parsedInput)
+  );
 }
 
 /**
@@ -133,7 +157,11 @@ export async function deleteYearGroup(
   input: DeleteYearGroupInput
 ): Promise<DeleteYearGroupResponse> {
   const parsedInput = DeleteYearGroupInputSchema.parse(input);
-  return DeleteYearGroupResponseSchema.parse(await callApi('deleteYearGroup', parsedInput));
+  return parseApiResponse(
+    DeleteYearGroupResponseSchema,
+    'deleteYearGroup',
+    await callApi('deleteYearGroup', parsedInput)
+  );
 }
 
 /**
@@ -142,7 +170,11 @@ export async function deleteYearGroup(
  * @returns {Promise<AssignmentTopicListResponse>} The assignment-topic list response.
  */
 export async function getAssignmentTopics(): Promise<AssignmentTopicListResponse> {
-  return AssignmentTopicListResponseSchema.parse(await callApi('getAssignmentTopics'));
+  return parseApiResponse(
+    AssignmentTopicListResponseSchema,
+    'getAssignmentTopics',
+    await callApi('getAssignmentTopics')
+  );
 }
 
 /**
@@ -155,7 +187,9 @@ export async function createAssignmentTopic(
   input: CreateAssignmentTopicInput
 ): Promise<CreateAssignmentTopicResponse> {
   const parsedInput = CreateAssignmentTopicInputSchema.parse(input);
-  return CreateAssignmentTopicResponseSchema.parse(
+  return parseApiResponse(
+    CreateAssignmentTopicResponseSchema,
+    'createAssignmentTopic',
     await callApi('createAssignmentTopic', parsedInput)
   );
 }
@@ -170,7 +204,9 @@ export async function updateAssignmentTopic(
   input: UpdateAssignmentTopicInput
 ): Promise<UpdateAssignmentTopicResponse> {
   const parsedInput = UpdateAssignmentTopicInputSchema.parse(input);
-  return UpdateAssignmentTopicResponseSchema.parse(
+  return parseApiResponse(
+    UpdateAssignmentTopicResponseSchema,
+    'updateAssignmentTopic',
     await callApi('updateAssignmentTopic', parsedInput)
   );
 }
@@ -185,7 +221,9 @@ export async function deleteAssignmentTopic(
   input: DeleteAssignmentTopicInput
 ): Promise<DeleteAssignmentTopicResponse> {
   const parsedInput = DeleteAssignmentTopicInputSchema.parse(input);
-  return DeleteAssignmentTopicResponseSchema.parse(
+  return parseApiResponse(
+    DeleteAssignmentTopicResponseSchema,
+    'deleteAssignmentTopic',
     await callApi('deleteAssignmentTopic', parsedInput)
   );
 }

@@ -145,6 +145,51 @@ function parseApiEnvelope(deserialisedResponse: unknown): z.infer<typeof ApiResp
 }
 
 /**
+ * Validates a received backend response against a caller-supplied schema and
+ * returns the typed result.
+ *
+ * The transport layer (`callApi`) enriches only transport-level failures with
+ * the backend `method`, structured `zodIssues`, and a `responsePreview`. Schema
+ * validation of the inner payload runs after the envelope has been accepted, so
+ * a rejection there would otherwise surface as a bare `ZodError` with no clue
+ * which method or which field failed. This helper mirrors `callApi`'s
+ * `buildFailureMetadata` contract: on a `ZodError` it logs the `method`,
+ * structured `zodIssues`, and a truncated `responsePreview` before re-throwing
+ * the original error so caller behaviour is unchanged.
+ *
+ * @template TResponse The expected parsed response type.
+ * @param {z.ZodType<TResponse>} schema Schema to validate the response against.
+ * @param {string} method Backend method name that produced the response.
+ * @param {unknown} data Raw response returned from `callApi`.
+ * @returns {TResponse} The validated response.
+ */
+export function parseApiResponse<TResponse>(
+  schema: z.ZodType<TResponse>,
+  method: string,
+  data: unknown
+): TResponse {
+  try {
+    return schema.parse(data);
+  } catch (error: unknown) {
+    if (error instanceof z.ZodError) {
+      const previewSource = typeof data === 'string' ? data : JSON.stringify(data);
+      const responsePreview =
+        previewSource.length > ZOD_ERROR_PREVIEW_LENGTH
+          ? `${previewSource.slice(0, ZOD_ERROR_PREVIEW_LENGTH)}…`
+          : previewSource;
+
+      logFrontendError('services/apiService.parseApiResponse', error, {
+        method,
+        zodIssues: error.issues,
+        responsePreview,
+      });
+    }
+
+    throw error;
+  }
+}
+
+/**
  * Dispatches a single API attempt and returns the parsed response data,
  * or throws ApiTransportError if the backend returns a failure envelope.
  *

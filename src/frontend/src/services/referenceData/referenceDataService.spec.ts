@@ -3,9 +3,14 @@ import { ZodError } from 'zod';
 import { ApiTransportError } from '../../errors/apiTransportError';
 
 const callApiMock = vi.fn();
+const parseApiResponseMock = vi.fn(
+  (schema: { parse: (data: unknown) => unknown }, _method: string, data: unknown) =>
+    schema.parse(data)
+);
 
 vi.mock('../apiService', () => ({
   callApi: callApiMock,
+  parseApiResponse: parseApiResponseMock,
 }));
 
 const validCohorts = [
