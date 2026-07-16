@@ -550,9 +550,13 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** describe actual changes made when done.
-- **Deviations from plan:** note any departures from the original section design.
-- **Follow-up implications for later sections:** none.
+- **Implementation notes:** `TaskHeatmapTable.tsx` `render` wraps the metric sub-cell in an Ant Design `Popover` (`trigger={['hover', 'click']}`, `placement="right"`, `content={previewData ? <TaskPreviewCard data={previewData}/> : null}`, plain `<span>` trigger, no `title` prop). Imports `Popover`, `TaskPreviewCard`, and `getTaskPreviewData` (co-located in `classPage/`). `previewData` is computed via `getTaskPreviewData(taskId, metricKey, metricResult)` inside `render`. Cell `aria-label` and tone `style` are preserved on the inner `<span>`. Added 5 Popover tests to `TaskHeatmapTable.spec.tsx` (was 6, now 11 tests).
+- **Deviations from plan:** Initial green implementation included `title={null}` on the `Popover`; removed after Code Reviewer nitpick (antd already omits the title by default). One intentional carry-over: the stale `@see TASK_HEATMAP_LAYOUT.md` reference in `TaskHeatmapTable.tsx` is deferred to Section 7 (not in Section 6 scope).
+- **Follow-up implications for later sections:** Section 7 must correct the `@see TASK_HEATMAP_LAYOUT.md` reference in `TaskHeatmapTable.tsx` (and the three sibling files). Section 8 will add Playwright E2E coverage for the Popover/TaskPreviewCard interaction.
+
+**Section 6 E2E regression remediation (config-only, unblocking the frontend-e2e-check):** Section 3 introduced the project's first CSS module (`MarkdownRenderer.module.css`). Playwright's Babel/ESM test transform cannot parse `.css` imports that are transitively reached from imported source modules, which broke **all** E2E specs (transform `SyntaxError`) — a real regression introduced by Section 3 that the stored baseline had already captured, so the regression-checker reported it as `Regressions Count: 0 / New Failures Count: 0`. Fixed at the transform level without touching production code: added `src/frontend/e2e-css-loader.mjs` (custom Node ESM loader resolving/stubbing any `.css` import as `export default {};` and restoring the `importAttributes: { type: 'json' }` attribute for `.json` modules under Node 24) and `src/frontend/e2e-css-loader-bootstrap.mjs` (calls `register()` to install the loader). `package.json` `test:e2e` now runs `NODE_OPTIONS="--import ./e2e-css-loader-bootstrap.mjs" playwright test`. `playwright.config.ts` reverted to its original state (no top-level css loader). Verified: `npx playwright test --list` and an actual run of `e2e-tests/auth-status.spec.ts` (5 tests pass) succeed; `frontend-e2e-check` now PASSES in the regression-checker.
+
+**Status: Complete** — 11 tests pass, lint clean (0 errors/warnings). Regression Gate passed (Regressions Count 0, New Failures Count 0); `frontend-e2e-check` now PASSING (was failing due to the CSS-module transform regression, now remediated). Remaining failing checks (`backend-lint-check`, `backend-test-coverage-check`, `frontend-test-coverage-check`, `builder-test-coverage-check`) are the pre-existing accepted technical debt documented in the baseline. Reviewed clean by Code Reviewer (1 nitpick fixed; 1 doc reference intentionally deferred to Section 7).
 
 ---
 

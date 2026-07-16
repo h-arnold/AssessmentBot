@@ -19,7 +19,7 @@
 
 import type { CSSProperties, JSX } from 'react';
 import { useMemo, useState } from 'react';
-import { Table, Typography } from 'antd';
+import { Popover, Table, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 import type { FilterValue } from 'antd/es/table/interface';
 
@@ -45,6 +45,8 @@ import {
 import { buildMetricRangeFilter } from '../../services/dataAnalysis/metricDisplay/metricRangeFilter';
 import { decodeFilterToRange } from '../../services/dataAnalysis/metricDisplay/metricRangeKey';
 import { MetricIconLabel } from '../../components/MetricIconLabel/MetricIconLabel';
+import { TaskPreviewCard } from './TaskPreviewCard';
+import { getTaskPreviewData } from './taskPreviewFixtures';
 import {
   APP_COL_WIDTH_STUDENT_NAME,
   APP_COL_WIDTH_METRIC,
@@ -225,7 +227,16 @@ function buildTaskMetricSubColumns(
       },
       render: (_: unknown, record: HeatmapRow): JSX.Element => {
         const m = getCellMetric(record.cells[taskIndex], metric);
-        return <span>{renderScore(m)}</span>;
+        const previewData = getTaskPreviewData(taskColumn.taskId, metric, m);
+        return (
+          <Popover
+            trigger={['hover', 'click']}
+            placement="right"
+            content={previewData ? <TaskPreviewCard data={previewData} /> : null}
+          >
+            <span>{renderScore(m)}</span>
+          </Popover>
+        );
       },
     };
   });

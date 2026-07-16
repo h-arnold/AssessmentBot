@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect, afterEach, beforeEach } from 'vitest';
-import { render, screen, within, cleanup } from '@testing-library/react';
+import { render, screen, within, cleanup, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { TaskHeatmapTable } from './TaskHeatmapTable';
@@ -494,6 +494,113 @@ describe('TaskHeatmapTable', () => {
       // No task-001 or task-002 references anywhere in the document
       expect(screen.queryByText(TASK_1_ID)).not.toBeInTheDocument();
       expect(screen.queryByText(TASK_2_ID)).not.toBeInTheDocument();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 6. Popover integration — metric sub-cells are wrapped in Popover with
+  //    TaskPreviewCard content, while existing cell appearance is preserved.
+  // -------------------------------------------------------------------------
+
+  it('wraps each metric sub-cell render output in an Ant Design Popover', async () => {
+    const result = buildHeatmapResult();
+    render(<TaskHeatmapTable heatmapResult={result} />);
+
+    // Find a computed cell's score span via its aria-label
+    const cell = screen.getByLabelText(
+      'Student One, task_001, Completeness: 5'
+    );
+    const trigger = cell.querySelector('span');
+    expect(trigger).toBeInTheDocument();
+
+    // Hover the trigger — Popover should appear after mouseEnterDelay
+    await user.hover(trigger!);
+
+    // Assert the popover wrapper appears in the DOM
+    await waitFor(() => {
+      expect(document.querySelector('.ant-popover')).toBeInTheDocument();
+    });
+  });
+
+  it('popover content renders the TaskPreviewCard with metric label, reasoning, and student response sections', async () => {
+    const result = buildHeatmapResult();
+    render(<TaskHeatmapTable heatmapResult={result} />);
+
+    const cell = screen.getByLabelText(
+      'Student One, task_001, Completeness: 5'
+    );
+    const trigger = cell.querySelector('span')!;
+    expect(trigger).toBeInTheDocument();
+
+    await user.hover(trigger);
+
+    // Wait for popover to open and assert TaskPreviewCard sections
+    await waitFor(() => {
+      const popover = document.querySelector('.ant-popover');
+      expect(popover).toBeInTheDocument();
+      expect(popover!.textContent).toContain('Completeness');
+      expect(popover!.textContent).toContain('Reasoning');
+      expect(popover!.textContent).toContain('Student Response');
+    });
+  });
+
+  it('preserves the existing aria-label on metric sub-cells after popover integration', () => {
+    const result = buildHeatmapResult();
+    render(<TaskHeatmapTable heatmapResult={result} />);
+
+    // The aria-label comes from onCell, not from render — Popover does not
+    // change onCell, so the label should be unchanged.
+    expect(
+      screen.getByLabelText('Student One, task_001, Completeness: 5')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText('Student One, task_001, Accuracy: 3')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText('Student Two, task_002, Completeness: E')
+    ).toBeInTheDocument();
+  });
+
+  it('preserves the existing cell tone style (background colour) after popover integration', () => {
+    const result = buildHeatmapResult();
+    render(<TaskHeatmapTable heatmapResult={result} />);
+
+    // Student One, Task 1, Completeness: 5 is a computed score at the ceiling
+    // of the range — the cell should carry a green/gradient background colour.
+    const cell = screen.getByLabelText(
+      'Student One, task_001, Completeness: 5'
+    );
+    // resolveMetricTone sets backgroundColor (camelCase) on the <td> via onCell
+    expect(cell.style.backgroundColor).toBeTruthy();
+    expect(cell.style.backgroundColor).not.toBe('');
+  });
+
+  it('renders the heatmap with interactive metric sub-cells that open a popover on hover', async () => {
+    const result = buildHeatmapResult();
+    render(<TaskHeatmapTable heatmapResult={result} />);
+
+    // Assert metric sub-cells are present and labelled
+    expect(
+      screen.getByLabelText('Student One, task_001, Completeness: 5')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText('Student Two, task_001, Completeness: 3')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText('Student Three, task_001, Completeness: N')
+    ).toBeInTheDocument();
+
+    // Hover a computed cell and assert the popover opens
+    const cell = screen.getByLabelText(
+      'Student One, task_001, Completeness: 5'
+    );
+    const trigger = cell.querySelector('span')!;
+    expect(trigger).toBeInTheDocument();
+
+    await user.hover(trigger);
+
+    await waitFor(() => {
+      expect(document.querySelector('.ant-popover')).toBeInTheDocument();
     });
   });
 });

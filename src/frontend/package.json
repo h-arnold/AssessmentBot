@@ -11,7 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test",
+    "test:e2e": "NODE_OPTIONS=\"--import ./e2e-css-loader-bootstrap.mjs\" playwright test",
     "test:e2e:interactive": "playwright test --headed"
   },
   "dependencies": {
