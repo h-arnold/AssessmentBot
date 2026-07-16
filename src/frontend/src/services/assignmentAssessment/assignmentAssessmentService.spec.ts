@@ -2,9 +2,14 @@ import { ZodError } from 'zod';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const callApiMock = vi.fn();
+const logFrontendErrorMock = vi.fn();
 
 vi.mock('../apiService', () => ({
   callApi: callApiMock,
+}));
+
+vi.mock('../../logging/frontendLogger', () => ({
+  logFrontendError: logFrontendErrorMock,
 }));
 
 const validStartAssessmentRunRequest = {
@@ -138,6 +143,7 @@ async function loadAssignmentAssessmentService() {
 describe('assignmentAssessmentService', () => {
   afterEach(() => {
     callApiMock.mockReset();
+    logFrontendErrorMock.mockReset();
     vi.resetModules();
   });
 
@@ -148,6 +154,7 @@ describe('assignmentAssessmentService', () => {
 
     await expect(startAssessmentRun(validStartAssessmentRunRequest)).resolves.toBeNull();
     expect(callApiMock).toHaveBeenCalledTimes(1);
+    expect(logFrontendErrorMock).not.toHaveBeenCalled();
   });
 
   it('startAssessmentRun() calls callApi with the correct method name and payload', async () => {
@@ -217,6 +224,33 @@ describe('assignmentAssessmentService', () => {
       await expect(
         getAssignment({ courseId: 'course-1', assignmentId: 'assign-1' })
       ).rejects.toBeInstanceOf(ZodError);
+    });
+
+    it('logs structured diagnostics (method and zodIssues) when the response fails schema validation', async () => {
+      const incompleteResponse = { ...validFullAssignment };
+      delete (incompleteResponse as Record<string, unknown>).courseId;
+      callApiMock.mockResolvedValueOnce(incompleteResponse);
+
+      const { getAssignment } = await loadAssignmentAssessmentService();
+
+      await expect(
+        getAssignment({ courseId: 'course-1', assignmentId: 'assign-1' })
+      ).rejects.toBeInstanceOf(ZodError);
+
+      expect(logFrontendErrorMock).toHaveBeenCalledTimes(1);
+      const [context, error, metadata] = logFrontendErrorMock.mock.calls[0] as [
+        string,
+        unknown,
+        Record<string, unknown>,
+      ];
+      expect(context).toBe('services/assignmentAssessment.parseResponse');
+      expect(error).toBeInstanceOf(ZodError);
+      expect(metadata).toMatchObject({
+        method: 'getAssignment',
+        zodIssues: expect.any(Array),
+      });
+      expect((metadata.zodIssues as unknown[]).length).toBeGreaterThan(0);
+      expect(typeof metadata.responsePreview).toBe('string');
     });
 
     it('parses input through the request schema before calling callApi', async () => {
