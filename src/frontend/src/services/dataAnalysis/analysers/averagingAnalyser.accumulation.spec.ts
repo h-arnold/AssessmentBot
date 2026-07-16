@@ -283,29 +283,40 @@ describe('accumulateMetricsToTarget nCount tracking', () => {
 describe('AveragingAnalyser', () => {
   describe('analyse — accumulation', () => {
     it('skips assignment when assignmentWeighting is 0', () => {
-      const input = buildInput([
-        {
-          classId: 'c_001',
-          studentIds: ['s_001'],
-          assignments: [
-            createAssignmentPartial({
-              assignmentId: 'a_001',
-              definitionKey: 'dk_algebra',
-              tasks: [createTaskPartial('t_001')],
-              assignmentWeighting: 0,
-              submissions: [
-                createSubmission('s_001', 'Alice', 'a_001', {
-                  t_001: createSubmissionItem('t_001', {
-                    completeness: { score: 5 },
-                    accuracy: { score: 5 },
-                    spag: { score: 5 },
+      const input = buildInput(
+        [
+          {
+            classId: 'c_001',
+            studentIds: ['s_001'],
+            assignments: [
+              createAssignmentPartial({
+                assignmentId: 'a_001',
+                definitionKey: 'dk_algebra',
+                tasks: [createTaskPartial('t_001')],
+                assignmentWeighting: 0,
+                submissions: [
+                  createSubmission('s_001', 'Alice', 'a_001', {
+                    t_001: createSubmissionItem('t_001', {
+                      completeness: { score: 5 },
+                      accuracy: { score: 5 },
+                      spag: { score: 5 },
+                    }),
                   }),
-                }),
-              ],
+                ],
+              }),
+            ],
+          },
+        ],
+        {
+          assignmentDefinitionPartials: [
+            createDefinitionPartial({
+              definitionKey: 'dk_algebra',
+              assignmentWeighting: 0,
+              tasks: [createTaskPartial('t_001')],
             }),
           ],
-        },
-      ]);
+        }
+      );
 
       const analyser = new AveragingAnalyser();
       const results = analyser.analyse(input);
@@ -336,28 +347,38 @@ describe('AveragingAnalyser', () => {
     });
 
     it('skips task when taskWeighting is 0', () => {
-      const input = buildInput([
+      const input = buildInput(
+        [
+          {
+            classId: 'c_001',
+            studentIds: ['s_001'],
+            assignments: [
+              createAssignmentPartial({
+                assignmentId: 'a_001',
+                definitionKey: 'dk_algebra',
+                tasks: [createTaskPartial('t_001', 0)],
+                submissions: [
+                  createSubmission('s_001', 'Alice', 'a_001', {
+                    t_001: createSubmissionItem('t_001', {
+                      completeness: { score: 5 },
+                      accuracy: { score: 5 },
+                      spag: { score: 5 },
+                    }),
+                  }),
+                ],
+              }),
+            ],
+          },
+        ],
         {
-          classId: 'c_001',
-          studentIds: ['s_001'],
-          assignments: [
-            createAssignmentPartial({
-              assignmentId: 'a_001',
+          assignmentDefinitionPartials: [
+            createDefinitionPartial({
               definitionKey: 'dk_algebra',
               tasks: [createTaskPartial('t_001', 0)],
-              submissions: [
-                createSubmission('s_001', 'Alice', 'a_001', {
-                  t_001: createSubmissionItem('t_001', {
-                    completeness: { score: 5 },
-                    accuracy: { score: 5 },
-                    spag: { score: 5 },
-                  }),
-                }),
-              ],
             }),
           ],
-        },
-      ]);
+        }
+      );
 
       const analyser = new AveragingAnalyser();
       const results = analyser.analyse(input);
@@ -460,29 +481,40 @@ describe('AveragingAnalyser', () => {
     it('uses product of assignmentWeighting and taskWeighting as per-data-point weight', () => {
       const doubleAssignmentWeighting = 2;
       const tripleTaskWeighting = 3;
-      const input = buildInput([
+      const input = buildInput(
+        [
+          {
+            classId: 'c_001',
+            studentIds: ['s_001'],
+            assignments: [
+              createAssignmentPartial({
+                assignmentId: 'a_001',
+                definitionKey: 'dk_algebra',
+                assignmentWeighting: doubleAssignmentWeighting,
+                tasks: [createTaskPartial('t_001', tripleTaskWeighting)],
+                submissions: [
+                  createSubmission('s_001', 'Alice', 'a_001', {
+                    t_001: createSubmissionItem('t_001', {
+                      completeness: { score: 4 },
+                      accuracy: { score: 4 },
+                      spag: { score: 4 },
+                    }),
+                  }),
+                ],
+              }),
+            ],
+          },
+        ],
         {
-          classId: 'c_001',
-          studentIds: ['s_001'],
-          assignments: [
-            createAssignmentPartial({
-              assignmentId: 'a_001',
+          assignmentDefinitionPartials: [
+            createDefinitionPartial({
               definitionKey: 'dk_algebra',
               assignmentWeighting: doubleAssignmentWeighting,
               tasks: [createTaskPartial('t_001', tripleTaskWeighting)],
-              submissions: [
-                createSubmission('s_001', 'Alice', 'a_001', {
-                  t_001: createSubmissionItem('t_001', {
-                    completeness: { score: 4 },
-                    accuracy: { score: 4 },
-                    spag: { score: 4 },
-                  }),
-                }),
-              ],
             }),
           ],
-        },
-      ]);
+        }
+      );
 
       const analyser = new AveragingAnalyser();
       const results = analyser.analyse(input);
@@ -688,25 +720,36 @@ describe('AveragingAnalyser', () => {
 
     it('treats null assignmentWeighting as 1', () => {
       const taskWeightingForNullTest = 2;
-      const input = buildInput([
+      const input = buildInput(
+        [
+          {
+            classId: 'c_001',
+            studentIds: ['s_001'],
+            assignments: [
+              createAssignmentPartial({
+                assignmentId: 'a_001',
+                definitionKey: 'dk_algebra',
+                assignmentWeighting: null,
+                tasks: [createTaskPartial('t_001', taskWeightingForNullTest)],
+                submissions: [
+                  createSubmission('s_001', 'Alice', 'a_001', {
+                    t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
+                  }),
+                ],
+              }),
+            ],
+          },
+        ],
         {
-          classId: 'c_001',
-          studentIds: ['s_001'],
-          assignments: [
-            createAssignmentPartial({
-              assignmentId: 'a_001',
+          assignmentDefinitionPartials: [
+            createDefinitionPartial({
               definitionKey: 'dk_algebra',
               assignmentWeighting: null,
               tasks: [createTaskPartial('t_001', taskWeightingForNullTest)],
-              submissions: [
-                createSubmission('s_001', 'Alice', 'a_001', {
-                  t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
-                }),
-              ],
             }),
           ],
-        },
-      ]);
+        }
+      );
 
       const analyser = new AveragingAnalyser();
       const results = analyser.analyse(input);

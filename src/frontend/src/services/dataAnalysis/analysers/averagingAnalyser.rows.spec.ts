@@ -341,24 +341,34 @@ describe('AveragingAnalyser', () => {
 
     it('returns per-task metrics all error when no student submitted for a task', () => {
       const tasksInNoSubmissionTest = [createTaskPartial('t_001'), createTaskPartial('t_002')];
-      const input = buildInput([
+      const input = buildInput(
+        [
+          {
+            classId: 'c_001',
+            studentIds: ['s_001'],
+            assignments: [
+              createAssignmentPartial({
+                assignmentId: 'a_001',
+                definitionKey: 'dk_algebra',
+                tasks: tasksInNoSubmissionTest,
+                submissions: [
+                  createSubmission('s_001', 'Alice', 'a_001', {
+                    t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
+                  }),
+                ],
+              }),
+            ],
+          },
+        ],
         {
-          classId: 'c_001',
-          studentIds: ['s_001'],
-          assignments: [
-            createAssignmentPartial({
-              assignmentId: 'a_001',
+          assignmentDefinitionPartials: [
+            createDefinitionPartial({
               definitionKey: 'dk_algebra',
               tasks: tasksInNoSubmissionTest,
-              submissions: [
-                createSubmission('s_001', 'Alice', 'a_001', {
-                  t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
-                }),
-              ],
             }),
           ],
-        },
-      ]);
+        }
+      );
 
       const analyser = new AveragingAnalyser();
       const results = analyser.analyse(input);
