@@ -78,6 +78,7 @@ const JITTER_MS = 500;
 const UINT32_MAX = 4_294_967_295;
 const EXPONENTIAL_BACKOFF_BASE = 2;
 const JSON_PARSE_ERROR_PREVIEW_LENGTH = 120;
+const ZOD_ERROR_PREVIEW_LENGTH = 200;
 
 /**
  * Returns a cryptographically-safe random jitter value between 0 and JITTER_MS milliseconds.
@@ -88,6 +89,59 @@ function randomJitterMs(): number {
   const buf = new Uint32Array(1);
   globalThis.crypto.getRandomValues(buf);
   return (buf[0] / UINT32_MAX) * JITTER_MS;
+}
+
+/**
+ * Deserialises the GAS raw response (string or object) into a usable value.
+ * On JSON parse failure, attaches a `preview` string to the thrown error.
+ *
+ * @param {unknown} response Raw response from GAS successHandler.
+ * @returns {unknown} Deserialised value ready for Zod validation.
+ */
+function deserialiseRawResponse(response: unknown): unknown {
+  if (typeof response !== 'string') {
+    return response;
+  }
+
+  try {
+    return JSON.parse(response);
+  } catch (parseError: unknown) {
+    const preview =
+      response.length > JSON_PARSE_ERROR_PREVIEW_LENGTH
+        ? response.slice(0, JSON_PARSE_ERROR_PREVIEW_LENGTH) + '…'
+        : response;
+    const jsonError = new Error(`Failed to parse API response as JSON. Preview: ${preview}`, {
+      cause: parseError,
+    });
+    (jsonError as unknown as { preview: string }).preview = preview;
+    throw jsonError;
+  }
+}
+
+/**
+ * Parses a deserialised response through the API response envelope schema.
+ * On Zod validation failure, attaches a `preview` string (truncated raw value)
+ * to the thrown error for enriched logging upstream.
+ *
+ * @param {unknown} deserialisedResponse Value to validate.
+ * @returns {import('zod').infer<typeof ApiResponseSchema>} Validated envelope.
+ */
+function parseApiEnvelope(deserialisedResponse: unknown): z.infer<typeof ApiResponseSchema> {
+  try {
+    return ApiResponseSchema.parse(deserialisedResponse);
+  } catch (schemaError: unknown) {
+    if (schemaError instanceof z.ZodError && deserialisedResponse !== undefined) {
+      const previewValue =
+        typeof deserialisedResponse === 'string'
+          ? deserialisedResponse
+          : JSON.stringify(deserialisedResponse);
+      (schemaError as unknown as { preview: string }).preview =
+        previewValue.length > ZOD_ERROR_PREVIEW_LENGTH
+          ? `${previewValue.slice(0, ZOD_ERROR_PREVIEW_LENGTH)}…`
+          : previewValue;
+    }
+    throw schemaError;
+  }
 }
 
 /**
@@ -103,28 +157,8 @@ async function dispatchAttempt<TResponse>(requestPayload: unknown): Promise<TRes
     getRunner()
       .withSuccessHandler((response: unknown) => {
         try {
-          // GAS google.script.run auto-stringifies return values.
-          // Parse the JSON string back to an object before Zod validation.
-          // Wrap in a dedicated try-catch so non-JSON responses (e.g. HTML
-          // error pages or login redirects) produce a descriptive error that
-          // includes a preview of the raw payload for production debugging.
-          let deserialisedResponse: unknown;
-          if (typeof response === 'string') {
-            try {
-              deserialisedResponse = JSON.parse(response);
-            } catch (parseError: unknown) {
-              const preview =
-                response.length > JSON_PARSE_ERROR_PREVIEW_LENGTH
-                  ? response.slice(0, JSON_PARSE_ERROR_PREVIEW_LENGTH) + '…'
-                  : response;
-              throw new Error(`Failed to parse API response as JSON. Preview: ${preview}`, {
-                cause: parseError,
-              });
-            }
-          } else {
-            deserialisedResponse = response;
-          }
-          const parsedResponse = ApiResponseSchema.parse(deserialisedResponse);
+          const deserialisedResponse = deserialiseRawResponse(response);
+          const parsedResponse = parseApiEnvelope(deserialisedResponse);
           if (parsedResponse.ok) {
             resolve(parsedResponse.data as TResponse);
             return;
@@ -158,6 +192,46 @@ function shouldRetry(error: unknown, attempt: number): boolean {
 }
 
 /**
+ * Builds enriched failure metadata for a non-retryable `callApi` error.
+ *
+ * Derives structured diagnostics from the thrown error without branching inside
+ * `callApi` (keeps the latter's complexity bounded): the backend `method`,
+ * transport `requestId`/`errorCode` when present, structured Zod `zodIssues`
+ * for schema failures, and a sanitised `responsePreview` for parse failures.
+ *
+ * @param {unknown} error Thrown error from the dispatch attempt.
+ * @param {number} attempt Zero-based attempt index.
+ * @param {string} method Backend method name that was dispatched.
+ * @returns {Record<string, unknown>} Enriched failure metadata for logging.
+ */
+function buildFailureMetadata(
+  error: unknown,
+  attempt: number,
+  method: string
+): Record<string, unknown> {
+  const failureMetadata: Record<string, unknown> = {
+    attempt,
+    method,
+  };
+
+  if (error instanceof ApiTransportError) {
+    failureMetadata.requestId = error.requestId;
+    failureMetadata.errorCode = error.code;
+  }
+
+  if (error instanceof z.ZodError) {
+    failureMetadata.zodIssues = error.issues;
+  }
+
+  const preview = (error as Record<string, unknown>).preview;
+  if (typeof preview === 'string') {
+    failureMetadata.responsePreview = preview;
+  }
+
+  return failureMetadata;
+}
+
+/**
  * Calls the backend API handler and returns parsed response data.
  *
  * Automatically retries up to MAX_ATTEMPTS total attempts when the backend
@@ -180,6 +254,12 @@ export async function callApi<TResponse>(method: string, parameters?: unknown): 
     }
 
     try {
+      logFrontendEvent('debug', {
+        context: 'services/apiService.callApi',
+        errorMessage: `dispatch attempt ${attempt}`,
+        metadata: { attempt, params: requestPayload.params, method: requestPayload.method },
+      });
+
       return await dispatchAttempt<TResponse>(requestPayload);
     } catch (error: unknown) {
       if (shouldRetry(error, attempt)) {
@@ -195,7 +275,11 @@ export async function callApi<TResponse>(method: string, parameters?: unknown): 
         continue;
       }
 
-      logFrontendError('services/apiService.callApi', error, { attempt });
+      logFrontendError(
+        'services/apiService.callApi',
+        error,
+        buildFailureMetadata(error, attempt, requestPayload.method)
+      );
       throw error;
     }
   }

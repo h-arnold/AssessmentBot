@@ -261,6 +261,80 @@ describe('apiService.callApi', () => {
     await expect(callApi('getAuthorisationStatus')).rejects.toThrow();
   });
 
+  it('logs enriched error metadata with method and zodIssues for a malformed success envelope', async () => {
+    const callApi = await loadCallApi();
+    const consoleErrorSpy = vi.spyOn(console, 'error');
+
+    const malformedSuccessEnvelope = {
+      ok: true,
+      requestId: 'req-malformed-enriched',
+    };
+    const { runner } = createGoogleScriptRunHarness({
+      kind: 'success',
+      payload: malformedSuccessEnvelope,
+    });
+
+    setGoogle({
+      script: { run: runner },
+    });
+
+    await expect(callApi('getAuthorisationStatus')).rejects.toThrow();
+
+    // Find error-level log entries from our context
+    const errorEntries = consoleErrorSpy.mock.calls
+      .filter(([context]) => context === 'services/apiService.callApi')
+      .map(([, entry]) => entry as Record<string, unknown>)
+      .filter((entry) => entry.level === 'error');
+
+    expect(errorEntries.length).toBeGreaterThanOrEqual(1);
+    const lastErrorEntry = errorEntries.at(-1) as Record<string, unknown>;
+
+    const metadata = lastErrorEntry.metadata as Record<string, unknown>;
+    expect(metadata).toMatchObject({
+      attempt: 0,
+      method: 'getAuthorisationStatus',
+    });
+    expect(metadata).toHaveProperty('zodIssues');
+    const zodIssues = metadata.zodIssues as Array<unknown>;
+    expect(Array.isArray(zodIssues)).toBe(true);
+    expect(zodIssues.length).toBeGreaterThan(0);
+  });
+
+  it('logs debug event with method and attempt info before dispatch', async () => {
+    const callApi = await loadCallApi();
+    const consoleDebugSpy = vi.spyOn(console, 'debug');
+
+    const successEnvelope = {
+      ok: true,
+      requestId: 'req-debug-assert',
+      data: { authorised: true },
+    };
+    const { runner } = createGoogleScriptRunHarness({
+      kind: 'success',
+      payload: successEnvelope,
+    });
+
+    setGoogle({
+      script: { run: runner },
+    });
+
+    await callApi('getAuthorisationStatus', { cohortId: 'cohort-1' });
+
+    // The debug log is written as console.debug(contextString, entryObject)
+    expect(consoleDebugSpy).toHaveBeenCalledWith(
+      'services/apiService.callApi',
+      expect.objectContaining({
+        level: 'debug',
+        context: 'services/apiService.callApi',
+        metadata: expect.objectContaining({
+          attempt: 0,
+          params: { cohortId: 'cohort-1' },
+          method: 'getAuthorisationStatus',
+        }),
+      })
+    );
+  });
+
   it('rejects with descriptive error when GAS returns non-JSON in successHandler', async () => {
     const callApi = await loadCallApi();
 

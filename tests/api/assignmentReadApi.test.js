@@ -252,7 +252,7 @@ describe('Api/getAssignment transport contract', () => {
 
   // ── Test 8: Date normalisation defence-in-depth ───────────────────────────
 
-  it('normalises live Date objects via DateUtils.normaliseDateFields at the boundary', () => {
+  it('converts live Date objects via DateUtils.deepConvertDates at the boundary', () => {
     const { loadClass, rehydrateAssignment } = installABClassControllerStub();
     const { getAssignment_ } = loadModule();
 
@@ -290,6 +290,54 @@ describe('Api/getAssignment transport contract', () => {
     expect(result.updatedAt).toBe('2026-06-14T00:00:00.000Z');
     expect(typeof result.createdAt).toBe('string');
     expect(result.createdAt).toBe('2026-06-15T10:00:00.000Z');
+  });
+
+  // ── Test 8b: Nested date conversion (deepConvertDates regression) ─────────
+
+  it('converts nested Date objects in submissions via deepConvertDates at the boundary', () => {
+    const { loadClass, rehydrateAssignment } = installABClassControllerStub();
+    const { getAssignment_ } = loadModule();
+
+    const submissionCreatedAt = new Date('2026-07-07T07:49:23.014Z');
+    const submissionUpdatedAt = new Date('2026-07-07T07:49:29.872Z');
+
+    const mockAssignment = {
+      toJSON: vi.fn(() => ({
+        courseId: 'course-001',
+        assignmentId: 'assign-001',
+        assignmentName: 'Test Assignment',
+        dueDate: new Date('2026-06-15T00:00:00.000Z'),
+        documentType: 'SLIDES',
+        tasks: {},
+        submissions: [
+          {
+            studentId: 'student-001',
+            createdAt: submissionCreatedAt,
+            updatedAt: submissionUpdatedAt,
+            items: {},
+          },
+        ],
+        assignmentDefinition: {},
+      })),
+    };
+
+    const mockABClass = { classId: 'course-001' };
+    loadClass.mockReturnValue(mockABClass);
+    rehydrateAssignment.mockReturnValue(mockAssignment);
+
+    const result = getAssignment_({ courseId: 'course-001', assignmentId: 'assign-001' });
+
+    // Root-level dates still converted
+    expect(typeof result.dueDate).toBe('string');
+    expect(result.dueDate).toBe('2026-06-15T00:00:00.000Z');
+
+    // Nested submission dates converted to ISO strings
+    expect(Array.isArray(result.submissions)).toBe(true);
+    expect(result.submissions).toHaveLength(1);
+    expect(typeof result.submissions[0].createdAt).toBe('string');
+    expect(result.submissions[0].createdAt).toBe('2026-07-07T07:49:23.014Z');
+    expect(typeof result.submissions[0].updatedAt).toBe('string');
+    expect(result.submissions[0].updatedAt).toBe('2026-07-07T07:49:29.872Z');
   });
 
   // ── Test 9: progressTracker strip defence-in-depth ────────────────────────

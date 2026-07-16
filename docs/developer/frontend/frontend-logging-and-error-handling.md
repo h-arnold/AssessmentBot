@@ -90,6 +90,16 @@ To keep logs both useful and safe, apply these baseline rules in all environment
 
 Keep redaction and normalisation in shared logger utilities (for example `src/frontend/src/logging/`) rather than duplicating checks in each feature.
 
+#### Transport-boundary failure logging (`callApi`)
+
+The API transport boundary (`src/frontend/src/services/apiService.ts`) is the single choke point for all backend calls, so its logs must make the failing call identifiable without manual per-feature wiring. Apply these rules at that boundary:
+
+- always include the backend `method` (e.g. `getAssignment`) in the log entry's `metadata` so failures are grep-able by endpoint, rather than baking the calling service name into `context`.
+- on envelope or schema parse failures, include the structured `zodIssues` array (from `error.issues`) — not the opaque stringified `ZodError.message`.
+- on parse failures, include a sanitised, truncated `responsePreview` of the raw response (string or short `JSON.stringify`) so the offending payload is visible without logging full payloads.
+- include `requestId` and `errorCode` in `metadata` when present (available on `ApiTransportError`); omit them when the failure precedes a valid error envelope.
+- rely on the shared logger's existing redaction/cap behaviour — do not add ad-hoc secret handling in the transport module.
+
 For test code, prefer `vi.spyOn(console, '<level>')` assertions over implementation-specific internals.
 
 ## 4. User feedback policy (Ant Design)

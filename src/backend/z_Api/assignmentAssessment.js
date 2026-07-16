@@ -68,23 +68,21 @@ function validateIdentifier_(value, fieldName) {
 /**
  * Transport-boundary handler for getAssignment.
  * Loads the full, hydrated assignment for a given course and assignment id and
- * returns the canonical `Assignment.toJSON()` shape with date fields normalised
- * to ISO strings and transient fields stripped.
+ * returns the canonical `Assignment.toJSON()` shape with all Date objects
+ * recursively converted to ISO strings and transient fields stripped.
  *
  * @remarks
  * - Not-found detection uses an `instanceof AssignmentNotFoundError` check,
  *   which is robust to message changes and is structurally testable. The typed
  *   error is thrown by `ABClassController._loadFullAssignmentDocument` when the
  *   full assignment document cannot be located in its dedicated collection.
- * - `DateUtils.normaliseDateFields` is applied to root-level `dueDate` and
- *   `updatedAt` fields as defence-in-depth: `Assignment.toJSON()` already
- *   converts known Date fields to ISO strings, but `Date` objects are strictly
- *   prohibited in `google.script.run` return values, and a regression test
- *   proves the root-level call is wired by mocking `toJSON()` to return live
- *   `Date` objects. Note: this is shallow defence-in-depth for root-level
- *   fields only; nested date conversion (e.g. `createdAt`/`updatedAt` on
- *   `submissions`, dates inside `assignmentDefinition`) relies on the
- *   corresponding `toJSON()` implementations being correct.
+ * - The response is passed through `DateUtils.deepConvertDates()` to
+ *   recursively convert all `Date` objects to ISO 8601 strings. This is
+ *   required because `google.script.run` prohibits `Date` objects in return
+ *   values (including nested objects). The deep conversion handles dates at
+ *   every level — root fields such as `dueDate`, nested structures such as
+ *   `submissions[].createdAt`/`updatedAt`, and any dates inside
+ *   `assignmentDefinition`.
  * - `progressTracker` is stripped at the boundary as defence-in-depth:
  *   `Assignment.toJSON()` already omits it per its JSDoc, but a future model
  *   change could regress, and the explicit strip is the canonical boundary
@@ -133,15 +131,14 @@ function getAssignment_(parameters) {
     // canonical boundary defence pattern.
     delete response.progressTracker;
 
-    // Defence-in-depth: convert any live Date objects to ISO strings at the
-    // transport boundary. Date objects are prohibited in google.script.run
-    // return values. Nested date conversion on submissions and
-    // assignmentDefinition still relies on the corresponding toJSON()
-    // implementations being correct.
-    DateUtils.normaliseDateFields(response, ['dueDate', 'updatedAt', 'createdAt']);
+    // Recursively convert all Date objects to ISO strings at the transport
+    // boundary. Date objects are prohibited in google.script.run return values
+    // (including nested objects). This deep conversion ensures dates in nested
+    // structures such as submissions and assignmentDefinition are handled.
+    const sanitisedResponse = DateUtils.deepConvertDates(response);
 
     logger.info('getAssignment: rehydrated assignment', { courseId, assignmentId });
-    return response;
+    return sanitisedResponse;
   } catch (error) {
     if (error instanceof AssignmentNotFoundError) {
       logger.warn('getAssignment: assignment not found', { courseId, assignmentId });
