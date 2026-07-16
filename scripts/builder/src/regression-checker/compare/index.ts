@@ -24,8 +24,7 @@ type CheckPair = {
 };
 
 type BaselineCompatibility =
-  | { compatible: true }
-  | { compatible: false; reason: StructuredExecutionFailure };
+  { compatible: true } | { compatible: false; reason: StructuredExecutionFailure };
 
 type ComparisonCheckResult = {
   id: string;
@@ -251,9 +250,10 @@ function compareEslintSummaries(
     regressions: currentFingerprints.filter(
       (fingerprint) => !baselineFingerprints.has(fingerprint)
     ),
-    newFailures: currentFingerprints.filter(
-      (fingerprint) => !baselineFingerprints.has(fingerprint)
-    ),
+    // ESLint diagnostics have no "previously passing" state; a newly appearing
+    // finding is a regression, never a distinct "new failure", so this list is
+    // intentionally empty to avoid double-counting against `regressions`.
+    newFailures: [],
     fixes: baselineSummary.findings
       .map((finding) => finding.fingerprint)
       .filter((fingerprint) => !currentFingerprintSet.has(fingerprint)),
@@ -397,9 +397,10 @@ function compareTscSummaries(
     regressions: currentFingerprints.filter(
       (fingerprint) => !baselineFingerprints.has(fingerprint)
     ),
-    newFailures: currentFingerprints.filter(
-      (fingerprint) => !baselineFingerprints.has(fingerprint)
-    ),
+    // TypeScript diagnostics have no "previously passing" state; a newly
+    // appearing diagnostic is a regression, never a distinct "new failure", so
+    // this list is intentionally empty to avoid double-counting `regressions`.
+    newFailures: [],
     fixes: baselineSummary.diagnostics
       .map((diagnostic) => diagnostic.fingerprint)
       .filter((fingerprint) => !currentFingerprintSet.has(fingerprint)),
@@ -431,15 +432,20 @@ function isRegressionTransition(
 /**
  * Determines if a test status transition represents a new failure.
  *
+ * A new failure is specifically a test that previously passed and now fails.
+ * Other degradations (for example a skipped test that now fails, or a test
+ * that now reports as skipped) are regressions but are not "new failures", so
+ * they must not be double-counted in both the regression and new-failure lists.
+ *
  * @param {TestOutcome['status'] | undefined} baselineStatus - The baseline test status.
  * @param {TestOutcome['status']} currentStatus - The current test status.
- * @returns {boolean} True if this is a new failure transition.
+ * @returns {boolean} True if this is a new failure transition (passed -> failed).
  */
 function isNewFailureTransition(
   baselineStatus: TestOutcome['status'] | undefined,
   currentStatus: TestOutcome['status']
 ): boolean {
-  return currentStatus === 'failed' && baselineStatus !== 'failed';
+  return currentStatus === 'failed' && baselineStatus === 'passed';
 }
 
 /**

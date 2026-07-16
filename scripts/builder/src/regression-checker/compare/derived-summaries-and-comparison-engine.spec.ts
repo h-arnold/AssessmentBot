@@ -14,8 +14,7 @@ type CheckRun = {
 type CheckPair = { baseline: CheckRun; current: CheckRun };
 
 type BaselineCompatibility =
-  | { compatible: true }
-  | { compatible: false; reason: { code: string; message: string } };
+  { compatible: true } | { compatible: false; reason: { code: string; message: string } };
 
 type ComparisonResult = {
   overallStatus: 'GREEN' | 'FAILING' | 'BASELINE-INCOMPATIBLE';
@@ -65,7 +64,7 @@ const TSC_CURRENT_REGRESSION_LINE = 1;
 const TSC_CURRENT_REGRESSION_COLUMN = 1;
 const NEWLINE_SEPARATOR = '\n';
 const EXPECTED_REGRESSIONS_TOTAL = 2;
-const EXPECTED_NEW_FAILURES_TOTAL = 1;
+const EXPECTED_NEW_FAILURES_TOTAL = 0;
 const EXPECTED_FIXES_TOTAL = 1;
 const EXPECTED_FAILING_CHECKS_TOTAL = 2;
 const EXPECTED_PASSING_CHECKS_TOTAL = 1;
@@ -210,10 +209,9 @@ describe('derived summaries and comparison engine', () => {
         "eqeqeq|src/a.ts|18|16|Expected '===' and instead saw '=='.",
         'no-debugger|src/a.ts|12|1|Unexpected debugger statement.',
       ],
-      newFailures: [
-        "eqeqeq|src/a.ts|18|16|Expected '===' and instead saw '=='.",
-        'no-debugger|src/a.ts|12|1|Unexpected debugger statement.',
-      ],
+      // ESLint findings have no "previously passing" state, so newly appearing
+      // findings are regressions only, not new failures.
+      newFailures: [],
       fixes: [],
     });
   });
@@ -326,7 +324,10 @@ describe('derived summaries and comparison engine', () => {
         'e2e/settings.spec.ts|settings|opens panel',
         'e2e/settings.spec.ts|settings|saves panel',
       ],
-      newFailures: ['e2e/settings.spec.ts|settings|saves panel'],
+      // `saves panel` had no baseline entry (it is a newly introduced test that
+      // now fails), so it is a regression, not a new failure (new failures are
+      // restricted to previously-passing tests that now fail).
+      newFailures: [],
     });
   });
 
@@ -367,7 +368,8 @@ describe('derived summaries and comparison engine', () => {
     expect(result.checks[0]?.currentSummary).toBeDefined();
     expect(result.checks[0]).toMatchObject({
       regressions: ["TS1005|src/c.ts|1|1|';' expected."],
-      newFailures: ["TS1005|src/c.ts|1|1|';' expected."],
+      // TypeScript diagnostics are regressions only, not new failures.
+      newFailures: [],
       fixes: ["TS2304|src/a.ts|2|5|Cannot find name 'x'."],
     });
   });
@@ -657,9 +659,7 @@ describe('derived summaries and comparison engine', () => {
     expect(result.checks.find((check) => check.id === 'playwright-malformed')?.status).toBe(
       'passing'
     );
-    expect(result.checks.find((check) => check.id === 'tsc-malformed')?.newFailures).toEqual([
-      "TS1005|src/file.ts|1|2|';' expected.",
-    ]);
+    expect(result.checks.find((check) => check.id === 'tsc-malformed')?.newFailures).toEqual([]);
     expect(result.checks.find((check) => check.id === 'unknown-exec-error')?.regressions).toEqual([
       'execution-error|unknown|Unknown execution failure.',
     ]);
@@ -735,5 +735,107 @@ describe('derived summaries and comparison engine', () => {
     expect(() => deriveSummaryFromArtefact('made-up' as Tool, {})).toThrow(
       'Unsupported regression tool: made-up'
     );
+  });
+
+  it('keeps regressions and newFailures semantically distinct (no double-count)', async () => {
+    const { compareRegressionChecks } = await loadCompareModule();
+
+    const result = await compareRegressionChecks({
+      baselineCompatibility: { compatible: true },
+      checksInConfigOrder: [
+        {
+          baseline: {
+            id: 'vitest-check',
+            tool: 'vitest',
+            status: 'failing',
+            rawArtefactPath: 'baseline/vitest.json',
+            error: null,
+            rawArtefact: {
+              testResults: [
+                {
+                  name: 'src/auth.spec.ts',
+                  assertionResults: [
+                    { ancestorTitles: ['auth'], title: 'used to pass', status: 'passed' },
+                    { ancestorTitles: ['auth'], title: 'used to be skipped', status: 'skipped' },
+                  ],
+                },
+              ],
+            },
+          },
+          current: {
+            id: 'vitest-check',
+            tool: 'vitest',
+            status: 'failing',
+            rawArtefactPath: 'run/vitest.json',
+            error: null,
+            rawArtefact: {
+              testResults: [
+                {
+                  name: 'src/auth.spec.ts',
+                  assertionResults: [
+                    { ancestorTitles: ['auth'], title: 'used to pass', status: 'failed' },
+                    { ancestorTitles: ['auth'], title: 'used to be skipped', status: 'failed' },
+                  ],
+                },
+              ],
+            },
+          },
+        },
+        {
+          baseline: {
+            id: 'eslint-check',
+            tool: 'eslint',
+            status: 'passing',
+            rawArtefactPath: 'baseline/eslint.json',
+            error: null,
+            rawArtefact: [],
+          },
+          current: {
+            id: 'eslint-check',
+            tool: 'eslint',
+            status: 'failing',
+            rawArtefactPath: 'run/eslint.json',
+            error: null,
+            rawArtefact: [
+              {
+                filePath: 'src/a.ts',
+                messages: [
+                  {
+                    ruleId: 'eqeqeq',
+                    severity: ESLINT_ERROR_SEVERITY,
+                    message: "Expected '===' and instead saw '=='.",
+                    line: CURRENT_EQEQEQ_LINE,
+                    column: CURRENT_EQEQEQ_COLUMN,
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    const vitestCheck = result.checks.find((check) => check.id === 'vitest-check');
+    const eslintCheck = result.checks.find((check) => check.id === 'eslint-check');
+
+    // A test that newly fails (passed -> failed) is BOTH a regression and a
+    // new failure, and must NOT be erroneously duplicated across both lists.
+    expect(vitestCheck?.newFailures).toEqual(['src/auth.spec.ts|auth|used to pass']);
+    expect(vitestCheck?.regressions).toEqual([
+      'src/auth.spec.ts|auth|used to be skipped',
+      'src/auth.spec.ts|auth|used to pass',
+    ]);
+
+    // An ESLint finding that did not exist in the baseline is a REGRESSION only
+    // (lint diagnostics have no "previously passing" state), never a new failure.
+    expect(eslintCheck?.regressions).toEqual([
+      "eqeqeq|src/a.ts|18|16|Expected '===' and instead saw '=='.",
+    ]);
+    expect(eslintCheck?.newFailures).toEqual([]);
+
+    // Aggregate totals must reflect the distinction (no double-counting):
+    // 3 regressions (2 vitest + 1 eslint) and 1 new failure (the passed -> failed test).
+    expect(result.totals.regressionsCount).toBe(3);
+    expect(result.totals.newFailuresCount).toBe(1);
   });
 });

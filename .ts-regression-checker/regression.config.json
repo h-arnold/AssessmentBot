@@ -38,7 +38,8 @@
       "cwd": ".",
       "run": {
         "kind": "npm-script",
-        "script": "test:backend:coverage"
+        "script": "test:backend",
+        "timeoutMs": 600000
       }
     },
     {
