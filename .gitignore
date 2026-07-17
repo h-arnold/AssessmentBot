@@ -25,4 +25,4 @@ playwright-report/
 .vibe/trusted_folders.toml
 .vibe/update_cache.json
 .vibe/vibehistory
-/scratchpad/
+.scratchpad/
