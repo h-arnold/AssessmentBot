@@ -28,6 +28,7 @@ import type {
 } from './classPageAdapter.zod';
 import { compareAssignmentUpdatedAtDesc, compareStudentNames } from './classPageModel';
 import { TaskTitlesUnavailableError } from '../../services/dataAnalysis/heatmapAdapter';
+import { getAssignmentDefinitionPartial } from '../../services/assignmentDefinition/assignmentDefinitionUtilities';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -280,12 +281,6 @@ export function adaptClassPageToViewModel(input: {
 }): ClassPageAdapterResult {
   const { analyserResult, classFull, assignmentDefinitionPartials } = input;
 
-  // Build lookup: definitionKey → primaryTitle
-  const primaryTitleByKey = new Map<string, string>();
-  for (const p of assignmentDefinitionPartials) {
-    primaryTitleByKey.set(p.definitionKey, p.primaryTitle);
-  }
-
   // -----------------------------------------------------------------------
   // Trust validation
   // -----------------------------------------------------------------------
@@ -329,10 +324,11 @@ export function adaptClassPageToViewModel(input: {
   const recentAssignments: RecentAssignmentCardModel[] = topAssignments.map(
     ({ assignment, validatedUpdatedAt }) => {
       const definitionKey = assignment.assignmentDefinitionKey;
-      const assignmentName = primaryTitleByKey.get(definitionKey);
-      if (assignmentName === undefined) {
+      const partial = getAssignmentDefinitionPartial(assignmentDefinitionPartials, definitionKey);
+      if (!partial) {
         throw new TaskTitlesUnavailableError(definitionKey);
       }
+      const assignmentName = partial.primaryTitle;
       return buildRecentAssignment(
         assignment.assignmentId,
         assignmentName,

@@ -4,6 +4,11 @@ const callApiMock = vi.fn();
 
 vi.mock('../../apiService', () => ({
   callApi: callApiMock,
+  parseApiResponse: (
+    schema: { parse: (data: unknown) => unknown },
+    _method: string,
+    data: unknown
+  ) => schema.parse(data),
 }));
 
 const validSubmissionPartial = {
