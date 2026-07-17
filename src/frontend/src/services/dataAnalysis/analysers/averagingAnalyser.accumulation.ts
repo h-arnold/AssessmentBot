@@ -321,7 +321,7 @@ export function accumulateDataPoints(
       continue;
     }
 
-    preRegisterTasks([...resolved.tasks], definitionKey, taskAccums);
+    preRegisterTasks(resolved.tasks, definitionKey, taskAccums);
 
     processAssignment(
       assignment,

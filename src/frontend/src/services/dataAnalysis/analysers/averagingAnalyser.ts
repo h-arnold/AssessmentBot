@@ -66,9 +66,18 @@ export class AveragingAnalyser {
    * @returns {AveragingResult[]} An array of per-class results sorted by classId.
    */
   analyse(input: AveragingAnalyserInput): AveragingResult[] {
+    // Build filter Sets once — they depend only on input.filter, which is
+    // identical for every class in one analyse() run.
+    const topicKeySet: Set<string> | undefined = input.filter.topicKeys?.length
+      ? new Set(input.filter.topicKeys)
+      : undefined;
+    const definitionKeySet: Set<string> | undefined = input.filter.assignmentDefinitionKeys?.length
+      ? new Set(input.filter.assignmentDefinitionKeys)
+      : undefined;
+
     const sortedClasses = [...input.classes].toSorted((a, b) => a.classId.localeCompare(b.classId));
 
-    return sortedClasses.map((cls) => this.analyseClass(cls, input));
+    return sortedClasses.map((cls) => this.analyseClass(cls, input, topicKeySet, definitionKeySet));
   }
 
   /**
@@ -83,13 +92,19 @@ export class AveragingAnalyser {
    *
    * @param {AveragingAnalyserInput['classes'][number]} cls - The class data.
    * @param {AveragingAnalyserInput} input - The full analyser input.
+   * @param {Set<string> | undefined} topicKeySet - Optional set of topic keys
+   *   to include (built once per analyse() call).
+   * @param {Set<string> | undefined} definitionKeySet - Optional set of
+   *   definition keys to include (built once per analyse() call).
    * @returns {AveragingResult} The per-class analysis result.
    */
   private analyseClass(
     cls: AveragingAnalyserInput['classes'][number],
-    input: AveragingAnalyserInput
+    input: AveragingAnalyserInput,
+    topicKeySet: Set<string> | undefined,
+    definitionKeySet: Set<string> | undefined
   ): AveragingResult {
-    const filteredAssignments = filterAssignments(cls, input);
+    const filteredAssignments = filterAssignments(cls, input, topicKeySet, definitionKeySet);
     const accumulators = accumulateDataPoints(filteredAssignments, input, this.criterionWeightings);
 
     const perStudent = buildPerStudentRows(

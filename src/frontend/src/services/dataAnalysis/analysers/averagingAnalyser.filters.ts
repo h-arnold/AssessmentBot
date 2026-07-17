@@ -61,21 +61,25 @@ function shouldExcludeAssignment(
  * `assignmentDefinitionKey` to avoid serialisation failures with partial
  * definitions (tasks as arrays).
  *
+ * The {@link topicKeySet} and {@link definitionKeySet} Sets are built once per
+ * `analyse()` call and hoisted through `analyseClass` to avoid rebuilding them
+ * for every class.
+ *
  * @param {AveragingAnalyserInput['classes'][number]} cls - The class.
  * @param {AveragingAnalyserInput} input - The full analyser input.
+ * @param {Set<string> | undefined} topicKeySet - Optional set of topic keys
+ *   to include (built once per analyse() call).
+ * @param {Set<string> | undefined} definitionKeySet - Optional set of
+ *   definition keys to include (built once per analyse() call).
  * @returns {AveragingAnalyserInput['classes'][number]['assignments']}
  *   Filtered assignments.
  */
 export function filterAssignments(
   cls: AveragingAnalyserInput['classes'][number],
-  input: AveragingAnalyserInput
+  input: AveragingAnalyserInput,
+  topicKeySet: Set<string> | undefined,
+  definitionKeySet: Set<string> | undefined
 ): AveragingAnalyserInput['classes'][number]['assignments'] {
-  const topicKeySet: Set<string> | undefined = input.filter.topicKeys?.length
-    ? new Set(input.filter.topicKeys)
-    : undefined;
-  const definitionKeySet: Set<string> | undefined = input.filter.assignmentDefinitionKeys?.length
-    ? new Set(input.filter.assignmentDefinitionKeys)
-    : undefined;
   const { dateRange } = input.filter;
 
   const definitionByKey = new Map<string, AssignmentDefinitionPartial>();
