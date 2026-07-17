@@ -162,14 +162,25 @@ function runAnalyserStep(
  * @param {ClassFull} classFull - The class data (non-null, guaranteed by caller).
  * @param {AssignmentDefinitionPartialsResponse | null} assignmentDefinitionPartials - The definition registry.
  * @returns {readonly [ClassPageAdapterResult | null, Error | null]} The adapter result and optional error.
+ *
+ * @remarks Fail-closed guards: the pipeline's `shouldRunPipeline` already
+ *   ensures both inputs are non-null before this step runs, so these branches
+ *   are defensive. They return an explicit `Error` (not a silent `[null, null]`)
+ *   so any future caller-skip regression surfaces as a blocking error.
  */
 function runAdapterStep(
   analyserResult: AveragingResult | null,
   classFull: ClassFull,
   assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse | null
 ): readonly [ClassPageAdapterResult | null, Error | null] {
-  if (analyserResult === null || assignmentDefinitionPartials === null) {
-    return [null, null];
+  if (analyserResult === null) {
+    return [null, new Error('useClassPageData.runAdapterStep: analyserResult is null')];
+  }
+  if (assignmentDefinitionPartials === null) {
+    return [
+      null,
+      new Error('useClassPageData.runAdapterStep: assignmentDefinitionPartials is null'),
+    ];
   }
 
   try {
