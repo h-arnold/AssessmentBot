@@ -491,7 +491,6 @@ export async function installRuntimeMock(
 
   // Method names are from a known const array - safe to use as keys
   for (const method of allMethods) {
-    // eslint-disable-next-line security/detect-object-injection
     responseQueues[method] = scenario[method] ?? [];
   }
 

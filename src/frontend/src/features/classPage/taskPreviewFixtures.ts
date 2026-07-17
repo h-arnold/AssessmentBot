@@ -14,79 +14,69 @@
 import type { TaskPreviewData } from './TaskPreviewCard';
 import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import type { HeatmapMetricKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
+import { z } from 'zod';
 
-import imageFixture from './fixtures/imageTask.json';
-import textFixture from './fixtures/textTask.json';
-import tableFixture from './fixtures/table_task.json';
-
-// ---------------------------------------------------------------------------
-// Local types (minimal — only the fields consumed by the adapter)
-// ---------------------------------------------------------------------------
-
-interface FixtureEntry {
-  readonly taskId: string;
-  readonly artifact: {
-    readonly type: 'IMAGE' | 'TEXT' | 'TABLE';
-    readonly content: string;
-  };
-  readonly assessments: Record<HeatmapMetricKey, { readonly reasoning: string }>;
-}
-
-interface FixtureData {
-  readonly [taskId: string]: FixtureEntry;
-}
+import imageFixtureJson from './fixtures/imageTask.json';
+import textFixtureJson from './fixtures/textTask.json';
+import tableFixtureJson from './fixtures/table_task.json';
 
 // ---------------------------------------------------------------------------
-// Fixture resolution (switch-based to avoid object-injection lint)
+// Zod schemas for fixture validation
+// ---------------------------------------------------------------------------
+
+const FixtureArtifactSchema = z.object({
+  type: z.enum(['IMAGE', 'TEXT', 'TABLE']),
+  content: z.string(),
+});
+
+const FixtureAssessmentSchema = z.object({ reasoning: z.string() });
+
+const FixtureEntrySchema = z.object({
+  artifact: FixtureArtifactSchema,
+  assessments: z.object({
+    completeness: FixtureAssessmentSchema,
+    accuracy: FixtureAssessmentSchema,
+    spag: FixtureAssessmentSchema,
+  }),
+});
+
+const FixtureDataSchema = z.record(z.string(), FixtureEntrySchema);
+
+// ---------------------------------------------------------------------------
+// Parsed fixtures (validated at module load)
+// ---------------------------------------------------------------------------
+
+const imageFixture = FixtureDataSchema.parse(imageFixtureJson);
+const textFixture = FixtureDataSchema.parse(textFixtureJson);
+const tableFixture = FixtureDataSchema.parse(tableFixtureJson);
+
+// ---------------------------------------------------------------------------
+// Fixture resolution
 // ---------------------------------------------------------------------------
 
 /**
  * Resolve a fixture entry and its taskId for the given metricKey.
  *
- * Uses a switch statement (not dynamic property access) to satisfy the
- * `security/detect-object-injection` lint rule.
- *
  * @param {HeatmapMetricKey} metricKey - The metric sub-column key.
- * @returns {{ readonly entry: FixtureEntry; readonly fixtureTaskId: string } | null}
+ * @returns {{ readonly entry: z.infer<typeof FixtureEntrySchema>; readonly fixtureTaskId: string } | null}
  *   An object containing the resolved fixture entry and its taskId, or `null`
  *   when the metricKey is unrecognised.
  */
 function getFixtureEntry(
   metricKey: HeatmapMetricKey
-): { readonly entry: FixtureEntry; readonly fixtureTaskId: string } | null {
+): { readonly entry: z.infer<typeof FixtureEntrySchema>; readonly fixtureTaskId: string } | null {
   switch (metricKey) {
     case 'completeness': {
-      const data = imageFixture as FixtureData;
+      const data = imageFixture;
       return { entry: data.t_preview_image_001, fixtureTaskId: 't_preview_image_001' };
     }
     case 'accuracy': {
-      const data = textFixture as FixtureData;
+      const data = textFixture;
       return { entry: data.t_preview_text_001, fixtureTaskId: 't_preview_text_001' };
     }
     case 'spag': {
-      const data = tableFixture as FixtureData;
+      const data = tableFixture;
       return { entry: data.t_preview_table_001, fixtureTaskId: 't_preview_table_001' };
-    }
-  }
-}
-
-/**
- * Extract the reasoning text for a given metricKey from a fixture entry.
- *
- * @param {FixtureEntry} entry - The fixture entry containing assessments.
- * @param {HeatmapMetricKey} metricKey - The metric key to extract reasoning for.
- * @returns {string} The reasoning text string.
- */
-function getReasoning(entry: FixtureEntry, metricKey: HeatmapMetricKey): string {
-  switch (metricKey) {
-    case 'completeness': {
-      return entry.assessments.completeness.reasoning;
-    }
-    case 'accuracy': {
-      return entry.assessments.accuracy.reasoning;
-    }
-    case 'spag': {
-      return entry.assessments.spag.reasoning;
     }
   }
 }
@@ -129,6 +119,6 @@ export function getTaskPreviewData(
     metricKey,
     metricScore: metricResult.value,
     metricState: metricResult.state,
-    reasoning: getReasoning(entry, metricKey),
+    reasoning: entry.assessments[metricKey].reasoning,
   };
 }

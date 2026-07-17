@@ -254,7 +254,6 @@ function createDatasetSnapshot(
   // Keys are from a known const array from sharedQueries - safe to use as object keys
   for (const key of DATASET_KEYS) {
     const status = getSingleDatasetStatus(key, options);
-    // eslint-disable-next-line security/detect-object-injection
     datasets[key] = {
       status,
       isTrustworthy: status === 'ready',

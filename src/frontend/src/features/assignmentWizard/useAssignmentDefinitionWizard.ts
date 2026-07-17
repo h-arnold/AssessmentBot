@@ -477,7 +477,6 @@ function buildYearGroupOptions(
 function hasAllParseFields(values: Record<string, unknown>): boolean {
   // REQUIRED_PARSE_FIELDS contains known field names that are safe to access on values
   return REQUIRED_PARSE_FIELDS.every((field) => {
-    // eslint-disable-next-line security/detect-object-injection -- field comes from hardcoded REQUIRED_PARSE_FIELDS constant, not user input; false positive
     const value = values[field];
     return typeof value === 'string' ? value.trim() !== '' : false;
   });

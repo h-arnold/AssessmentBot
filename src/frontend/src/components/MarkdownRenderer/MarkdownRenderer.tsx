@@ -24,8 +24,6 @@ import styles from './MarkdownRenderer.module.css';
 export interface MarkdownRendererProperties {
   /** Markdown string content to render. */
   readonly children: string;
-  /** Optional additional CSS class name. */
-  readonly className?: string;
 }
 
 /**
@@ -33,19 +31,13 @@ export interface MarkdownRendererProperties {
  *
  * @param {MarkdownRendererProperties} props - Component properties.
  * @param {string} props.children - Markdown string to render.
- * @param {string} [props.className] - Optional additional CSS class.
  * @returns {JSX.Element} Rendered markdown wrapped in a styled container.
  */
 export function MarkdownRenderer({
   children,
-  className,
 }: MarkdownRendererProperties): JSX.Element {
-  const classes = className
-    ? `${styles.markdown} ${className}`
-    : styles.markdown;
-
   return (
-    <div className={classes}>
+    <div className={styles.markdown}>
       <ReactMarkdown remarkPlugins={[remarkGfm]}>
         {children}
       </ReactMarkdown>

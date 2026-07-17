@@ -116,7 +116,6 @@ function readInlineStyles(element: Element): Record<string, string> {
       const property = declaration.slice(0, Math.max(0, colonIndex)).trim();
       const value = declaration.slice(Math.max(0, colonIndex + 1)).trim();
       if (property && value) {
-        // eslint-disable-next-line security/detect-object-injection -- CSS property names in this test double are not user-controlled; they are static inline style strings from component props, making the object-injection rule a false positive here
         styles[property] = value;
       }
     }
@@ -136,7 +135,6 @@ function readInlineStyles(element: Element): Record<string, string> {
  * @returns {CSSStyleDeclaration} The computed style declaration.
  */
 function getComputedStyleMock(element?: Element): CSSStyleDeclaration {
-  /* eslint-disable security/detect-object-injection -- mock lookups use controlled property keys only */
   // Essential properties that Ant Design commonly checks
   // Modal: position, z-index, left, top, width, height, display
   // Table: width, height, overflow, display
@@ -188,7 +186,6 @@ function getComputedStyleMock(element?: Element): CSSStyleDeclaration {
 
   const propertyNames = Object.keys(essentialProperties);
 
-  /* eslint-enable security/detect-object-injection */
   return {
     getPropertyValue: (property: string) => resolveValue(property),
     setProperty: () => {},

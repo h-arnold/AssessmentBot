@@ -51,7 +51,7 @@ export function computePageDatasetState(
   const isQueryError = queryResult.isError;
   const isDatasetFailed = startupWarmupState.isDatasetFailed(datasetKey);
   const isDatasetReady = startupWarmupState.isDatasetReady(datasetKey);
-  const isDatasetTrustworthy = startupWarmupState.snapshot.datasets[datasetKey].isTrustworthy; // eslint-disable-line security/detect-object-injection -- datasetKey is a compile-time-checked union (StartupWarmupDatasetKey), not user input; false positive
+  const isDatasetTrustworthy = startupWarmupState.snapshot.datasets[datasetKey].isTrustworthy; // datasetKey is a compile-time-checked union (StartupWarmupDatasetKey), not user input
   const hasTrustworthyDataset = isDatasetReady && isDatasetTrustworthy;
 
   return {

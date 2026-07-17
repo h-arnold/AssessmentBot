@@ -54,6 +54,10 @@ export default defineConfig([
       'unicorn/prevent-abbreviations': 'warn',
       'unicorn/no-keyword-prefix': 'off',
       'unicorn/filename-case': 'off',
+      // Disabled by explicit user authorisation: this rule produces spaghetti
+      // workarounds (switch statements / indexed-union lookups) without improving
+      // security for the controlled, compile-time-checked property access used here.
+      'security/detect-object-injection': 'off',
       'no-console': 'error',
       'no-restricted-properties': [
         'error',

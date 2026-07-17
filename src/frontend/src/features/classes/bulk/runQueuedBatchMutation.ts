@@ -100,7 +100,6 @@ export async function runQueuedBatchMutation<TData>(
     });
 
     try {
-      // eslint-disable-next-line security/detect-object-injection -- index from a bounded `for` loop
       const data = await promises[index];
       results.push({ status: 'fulfilled', row: item.row, data } as FulfilledRowResult<
         ClassesManagementRow,

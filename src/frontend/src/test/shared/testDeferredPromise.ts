@@ -109,7 +109,6 @@ export function createDeferredStartupDatasets<TDatasets extends Record<string, u
       const deferredKey = `${String(key)}Deferred`;
 
       // Build result with proper typing - key comes from datasetFactories which is typed
-      // eslint-disable-next-line security/detect-object-injection
       (result as Record<string, unknown>)[deferredKey] = deferred;
     }
   }
