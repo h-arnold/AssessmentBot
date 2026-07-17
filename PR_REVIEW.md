@@ -523,6 +523,55 @@ Recommended order (minimises rework):
 6. I1, I2, I6, I9 (DRY, performance hoist, layout/a11y).
 
 7. I12, N1–N7 (security validation, nitpicks).
-8. C2 (British-English `artefact` normalisation, including `DATA_SHAPES.md`) — broad, do last to avoid
-   churn while other edits touch the same files.
+8. C2 (British-English `artefact` normalisation, including `DATA_SHAPES.md`) — **DEFERRED** (see
+   Deferred Work section below). Spellings left as-is for now.
 9. C4 and I4/I5/I8/I13 and all Incidental items: **no action**.
+
+---
+
+## Deferred Work
+
+### C2 — `artifact` → `artefact` British-English normalisation — **DEFERRED (2026-07-17)**
+
+**Decision:** Leave all current `artifact`/`Artifact` spellings unchanged for now. The change is
+documented here so it is not lost, but will be scheduled as a separate, explicitly-scoped piece of
+work rather than folded into `feat/PreviewCards`.
+
+**Rationale / risk analysis (captured so the future owner has full context):**
+
+A naive find-and-replace of `artifact`→`artefact` / `Artifact`→`Artefact` across the whole repo
+would cause concrete problems at the backend–frontend contract seam:
+
+1. **Wire-format key.** The backend emits the serialised property name `artifact` and reads it back:
+   - `src/backend/Models/StudentSubmission.js:110` → `artifact: this.artifact.toJSON()`
+   - `src/backend/Models/StudentSubmission.js:162` → `ArtifactFactory.fromJSON(json.artifact)`
+     The frontend Zod schemas parse that exact key:
+   - `src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts:87` → `artifact: BaseTaskArtifactSchema`
+   - `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts:85` → `artifact: BaseTaskArtifactPartialSchema`
+     Renaming the schema key to `artefact` would break parsing of real backend responses.
+
+2. **Test fixtures mirroring the backend shape.** `textTask.json`, `table_task.json`, `imageTask.json`,
+   `src/frontend/src/test/dataAnalysis/fixtures.ts`, `assignmentAssessment.zod.spec.ts`,
+   `assignmentAssessmentService.spec.ts`, `classDetailService.spec.ts`, `classDetailService.zod.spec.ts`,
+   `e2e-tests/helpers/task-heatmap-end-to-end-helpers.ts`, `e2e-tests/task-preview-card.spec.ts`
+   all carry the `artifact` key intentionally to match the wire format.
+
+3. **Docs describing the backend contract.** `docs/developer/backend/DATA_SHAPES.md`, `AssessmentFlow.md`,
+   and `rehydration.md` document the real emitted shape and must stay in sync with the backend, not the
+   other way round.
+
+4. **Already-persisted assignment documents.** Any `assign_*` / `assdef_*` collection rows written with
+   the old `artifact` key would no longer parse after a key rename (mitigated only by re-running
+   assessments against a fresh database).
+
+**Recommended future approach (when picked up):**
+
+- Treat it as a **full-stack rename** (backend emission + frontend schema key + fixtures + specs + docs
+  together) in its own PR, accompanied by a fresh-database re-run of affected assessments. Do **not**
+  land a frontend-only key rename that desynchronises from the backend.
+- Alternatively, if only cosmetic British-English consistency is wanted without a wire-format change,
+  rename **only our own frontend-only identifiers** (`artifactType`/`artifactContent` props,
+  `renderArtifact` function, the `BaseTaskArtifactSchema`/`BaseTaskArtifactPartialSchema` _type names_)
+  and leave the `artifact:` schema keys, backend-mirroring fixtures, and backend docs untouched.
+
+**Owner:** unassigned. **Branch target:** separate PR (not `feat/PreviewCards`).
