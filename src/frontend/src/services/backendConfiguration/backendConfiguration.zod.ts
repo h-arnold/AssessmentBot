@@ -9,9 +9,12 @@ const IntegerSchema = z.number().int();
 const NonEmptyStringSchema = z.string();
 const BackendUrlSchema = z.union([z.url(), z.literal('')]);
 
-const BackendApiKeyWriteSchema = z.string().refine((value) => isBackendApiKeyToken(value), {
-  message: backendApiKeyValidationMessage,
-});
+const BackendApiKeyWriteSchema = z
+  .string()
+  .trim()
+  .refine((value) => isBackendApiKeyToken(value), {
+    message: backendApiKeyValidationMessage,
+  });
 const MaskedApiKeySchema = z.string().refine(isMaskedBackendApiKeyValue);
 
 /**

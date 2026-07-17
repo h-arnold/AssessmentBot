@@ -62,7 +62,7 @@ const validBackendConfigPatch = {
 
 const validBackendConfigReplacementPatch = {
   ...validBackendConfigPatch,
-  apiKey: 'replacement-key-123',
+  apiKey: 'abt_7pC98PCoGJOcjN-qz6rNlSzKkgySJF-1',
 };
 
 const malformedReadResponse = {
@@ -82,7 +82,7 @@ const invalidLoadErrorReadResponse = {
 
 const unmaskedApiKeyReadResponse = {
   ...validMaskedBackendConfig,
-  apiKey: 'sk-live-abcdef123456',
+  apiKey: 'abt_7pC98PCoGJOcjN-qz6rNlSzKkgySJF-1',
 };
 
 const invalidMaskedApiKeyReadResponse = {

@@ -1,12 +1,14 @@
 const minimumDriveFolderIdLength = 10;
 const maskedApiKeyPrefix = '****';
 const maskedApiKeyWithSuffixLength = 8;
-const backendApiKeyTokenCharacterRegex = /^[\dA-Za-z-]+$/u;
+// API key contract: an alphanumeric prefix followed by an underscore and exactly 32 base64url
+// characters. The backend mirrors this exact pattern in 03_validators.js; keep both in sync so
+// validation does not drift between runtimes.
+const backendApiKeyTokenRegex = /^[A-Za-z0-9]+_[A-Za-z0-9_-]{32}$/u;
 const driveFolderIdRegex = /^[\dA-Za-z_-]+$/u;
-const finalCharacterOffset = -1;
 
 export const backendApiKeyValidationMessage =
-  'API Key must be a valid string of alphanumeric characters and hyphens, without leading/trailing hyphens or consecutive hyphens.';
+  'API Key must be an alphanumeric prefix followed by an underscore and exactly 32 base64url characters (A-Z, a-z, 0-9, hyphen, underscore).';
 
 /**
  * Determines whether a value matches the backend API key token contract.
@@ -15,13 +17,7 @@ export const backendApiKeyValidationMessage =
  * @returns {boolean} True when the value is a valid token.
  */
 export function isBackendApiKeyToken(value: string): boolean {
-  return (
-    value !== '' &&
-    !value.startsWith('-') &&
-    value.at(finalCharacterOffset) !== '-' &&
-    !value.includes('--') &&
-    backendApiKeyTokenCharacterRegex.test(value)
-  );
+  return value !== '' && backendApiKeyTokenRegex.test(value);
 }
 
 /**

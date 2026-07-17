@@ -92,7 +92,7 @@ const baseStoredKeyFormValues = {
 const baseReplacementFormValues = {
   ...baseStoredKeyFormValues,
   hasApiKey: true,
-  apiKey: 'replacement-key-123',
+  apiKey: 'abt_7pC98PCoGJOcjN-qz6rNlSzKkgySJF-1',
 } satisfies BackendSettingsForm;
 
 const baseNoKeyBackendConfig = {
@@ -121,7 +121,7 @@ const baseWriteInputWithoutApiKey = {
 
 const baseWriteInputWithApiKey = {
   ...baseWriteInputWithoutApiKey,
-  apiKey: 'replacement-key-123',
+  apiKey: 'abt_7pC98PCoGJOcjN-qz6rNlSzKkgySJF-1',
 } satisfies BackendConfigWriteInput;
 
 const partialLoadBackendConfig = {

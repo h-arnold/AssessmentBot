@@ -63,11 +63,11 @@ describe('ConfigurationManager Section 1 red contract', () => {
       [CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET]: 'false',
     };
 
-    configManager.setProperty(CONFIG_KEYS.API_KEY, 'sk-new');
+    configManager.setProperty(CONFIG_KEYS.API_KEY, 'abt_7pC98PCoGJOcjN-qz6rNlSzKkgySJF-2');
 
     expect(configManager.configCache).toEqual({
       [CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE]: '25',
-      [CONFIG_KEYS.API_KEY]: 'sk-new',
+      [CONFIG_KEYS.API_KEY]: 'abt_7pC98PCoGJOcjN-qz6rNlSzKkgySJF-2',
       [CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET]: 'false',
     });
     expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledTimes(1);
@@ -78,7 +78,7 @@ describe('ConfigurationManager Section 1 red contract', () => {
     expect(storeKey).toBe(expectedStoreKey);
     expect(JSON.parse(serialisedConfig)).toEqual({
       [CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE]: '25',
-      [CONFIG_KEYS.API_KEY]: 'sk-new',
+      [CONFIG_KEYS.API_KEY]: 'abt_7pC98PCoGJOcjN-qz6rNlSzKkgySJF-2',
       [CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET]: 'false',
     });
     expect(mocks.PropertiesService.documentProperties.setProperty).not.toHaveBeenCalled();
@@ -161,7 +161,9 @@ describe('ConfigurationManager Section 1 red contract', () => {
       }
     });
 
-    expect(() => configManager.setProperty(CONFIG_KEYS.API_KEY, 'sk-next')).toThrow(persistError);
+    expect(() =>
+      configManager.setProperty(CONFIG_KEYS.API_KEY, 'cust_7pC98PCoGJOcjN-qz6rNlSzKkgySJF-9')
+    ).toThrow(persistError);
     expect(logger.error).toHaveBeenCalledWith(
       expect.stringContaining('Failed to persist'),
       expect.any(Object)

@@ -126,26 +126,29 @@ describe('ConfigurationManager setProperty', () => {
   });
 
   describe('API_KEY validation', () => {
-    it('should accept valid API key', () => {
+    it('should accept a valid API key with an alphanumeric prefix, underscore, and 32 base64url characters', () => {
       expect(() => {
-        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.API_KEY, 'sk-abc123');
+        configManager.setProperty(
+          ConfigurationManager.CONFIG_KEYS.API_KEY,
+          'abt_7pC98PCoGJOcjN-qz6rNlSzKkgySJF-1'
+        );
       }).not.toThrow();
 
       expectPersistedConfig(mocks, {
-        [ConfigurationManager.CONFIG_KEYS.API_KEY]: 'sk-abc123',
+        [ConfigurationManager.CONFIG_KEYS.API_KEY]: 'abt_7pC98PCoGJOcjN-qz6rNlSzKkgySJF-1',
       });
     });
 
-    it('should reject invalid API key', () => {
+    it('should reject an API key with an invalid token format', () => {
       expect(() => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.API_KEY, 'invalid-key-');
-      }).toThrow('API Key must be a valid string of alphanumeric characters and hyphens');
+      }).toThrow('API Key must be an alphanumeric prefix');
     });
 
-    it('should reject non-string API key', () => {
+    it('should reject a non-string API key', () => {
       expect(() => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.API_KEY, 123);
-      }).toThrow('API Key must be a valid string of alphanumeric characters and hyphens');
+      }).toThrow('API Key must be an alphanumeric prefix');
     });
   });
 
@@ -722,7 +725,7 @@ describe('ConfigurationManager internal helper branches', () => {
   });
 
   it('validates API keys using the configured token pattern', () => {
-    expect(configManager.isValidApiKey('sk-abc123')).toBe(true);
+    expect(configManager.isValidApiKey('abt_7pC98PCoGJOcjN-qz6rNlSzKkgySJF-1')).toBe(true);
     expect(configManager.isValidApiKey('invalid-key-')).toBe(false);
   });
 
@@ -759,13 +762,13 @@ describe('ConfigurationManager internal helper branches', () => {
   it('delegates API key and backend URL setters to setProperty', () => {
     const setPropertySpy = vi.spyOn(configManager, 'setProperty');
 
-    configManager.setApiKey('sk-abc123');
+    configManager.setApiKey('abt_7pC98PCoGJOcjN-qz6rNlSzKkgySJF-1');
     configManager.setBackendUrl('https://example.com');
 
     expect(setPropertySpy).toHaveBeenNthCalledWith(
       1,
       ConfigurationManager.CONFIG_KEYS.API_KEY,
-      'sk-abc123'
+      'abt_7pC98PCoGJOcjN-qz6rNlSzKkgySJF-1'
     );
     expect(setPropertySpy).toHaveBeenNthCalledWith(
       2,
