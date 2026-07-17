@@ -27,6 +27,7 @@ import type {
   StudentAverageRowModel,
 } from './classPageAdapter.zod';
 import { compareAssignmentUpdatedAtDesc, compareStudentNames } from './classPageModel';
+import { TaskTitlesUnavailableError } from '../../services/dataAnalysis/heatmapAdapter';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -327,8 +328,11 @@ export function adaptClassPageToViewModel(input: {
 
   const recentAssignments: RecentAssignmentCardModel[] = topAssignments.map(
     ({ assignment, validatedUpdatedAt }) => {
-      const definitionKey = assignment.assignmentDefinitionKey ?? '';
-      const assignmentName = primaryTitleByKey.get(definitionKey) ?? assignment.assignmentId;
+      const definitionKey = assignment.assignmentDefinitionKey;
+      const assignmentName = primaryTitleByKey.get(definitionKey);
+      if (assignmentName === undefined) {
+        throw new TaskTitlesUnavailableError(definitionKey);
+      }
       return buildRecentAssignment(
         assignment.assignmentId,
         assignmentName,

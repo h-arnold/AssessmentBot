@@ -184,7 +184,7 @@ export function adaptMetricsToHeatmap(
     );
   }
 
-  const definitionKey: string = assignment.assignmentDefinitionKey ?? '';
+  const definitionKey = assignment.assignmentDefinitionKey;
   const className: string = classFull.className ?? DEFAULT_CLASS_NAME_LABEL;
 
   // Source task columns from the warm-up partial, not the embedded definition.

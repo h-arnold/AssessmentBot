@@ -12,8 +12,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { createMetricResult } from '../../test/dataAnalysis/fixtures';
+import { createMetricResult, createDefinitionPartial } from '../../test/dataAnalysis/fixtures';
 import { adaptClassPageToViewModel } from './classPageAdapter';
+import { TaskTitlesUnavailableError } from '../../services/dataAnalysis/heatmapAdapter';
 import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import type {
   AveragingResult,
@@ -302,7 +303,9 @@ describe('adaptClassPageToViewModel', () => {
             }),
           ],
         }),
-        assignmentDefinitionPartials: [],
+        assignmentDefinitionPartials: ['dk-a', 'dk-b', 'dk-c', 'dk-d'].map((dk) =>
+          createDefinitionPartial({ definitionKey: dk })
+        ),
       });
 
       const expectedTopCount = 3;
@@ -344,7 +347,9 @@ describe('adaptClassPageToViewModel', () => {
             }),
           ],
         }),
-        assignmentDefinitionPartials: [],
+        assignmentDefinitionPartials: ['dk-1', 'dk-2', 'dk-3'].map((dk) =>
+          createDefinitionPartial({ definitionKey: dk })
+        ),
       });
 
       expect(result.recentAssignments[0].assignmentId).toBe('a-3');
@@ -391,7 +396,7 @@ describe('adaptClassPageToViewModel', () => {
             }),
           ],
         }),
-        assignmentDefinitionPartials: [],
+        assignmentDefinitionPartials: [createDefinitionPartial({ definitionKey: 'dk1' })],
       });
 
       expect(result.recentAssignments).toHaveLength(1);
@@ -456,7 +461,7 @@ describe('adaptClassPageToViewModel', () => {
             }),
           ],
         }),
-        assignmentDefinitionPartials: [],
+        assignmentDefinitionPartials: [createDefinitionPartial({ definitionKey: 'dk1' })],
       });
 
       const average = result.recentAssignments[0].metrics.average;
@@ -497,7 +502,7 @@ describe('adaptClassPageToViewModel', () => {
             }),
           ],
         }),
-        assignmentDefinitionPartials: [],
+        assignmentDefinitionPartials: [createDefinitionPartial({ definitionKey: 'dk1' })],
       });
 
       const COMPOSITE_NUMERATOR = 2.6;
@@ -551,7 +556,7 @@ describe('adaptClassPageToViewModel', () => {
             }),
           ],
         }),
-        assignmentDefinitionPartials: [],
+        assignmentDefinitionPartials: [createDefinitionPartial({ definitionKey: 'dk1' })],
       });
 
       // All three rows are error → rollupMetric(all error) → error for each criterion
@@ -588,7 +593,7 @@ describe('adaptClassPageToViewModel', () => {
             }),
           ],
         }),
-        assignmentDefinitionPartials: [],
+        assignmentDefinitionPartials: [createDefinitionPartial({ definitionKey: 'dk1' })],
       });
 
       expect(result.recentAssignments[0].metrics.average.state).toBe('notAttempted');
@@ -623,7 +628,7 @@ describe('adaptClassPageToViewModel', () => {
             }),
           ],
         }),
-        assignmentDefinitionPartials: [],
+        assignmentDefinitionPartials: [createDefinitionPartial({ definitionKey: 'dk1' })],
       });
 
       const average = result.recentAssignments[0].metrics.average;
@@ -668,7 +673,7 @@ describe('adaptClassPageToViewModel', () => {
             }),
           ],
         }),
-        assignmentDefinitionPartials: [],
+        assignmentDefinitionPartials: [createDefinitionPartial({ definitionKey: 'dk1' })],
       });
 
       const expectedStudentCount = 3;
@@ -744,7 +749,7 @@ describe('adaptClassPageToViewModel', () => {
             }),
           ],
         }),
-        assignmentDefinitionPartials: [],
+        assignmentDefinitionPartials: [createDefinitionPartial({ definitionKey: 'dk1' })],
       });
 
       const expectedStudentSortCount = 5;
@@ -776,7 +781,7 @@ describe('adaptClassPageToViewModel', () => {
             }),
           ],
         }),
-        assignmentDefinitionPartials: [],
+        assignmentDefinitionPartials: [createDefinitionPartial({ definitionKey: 'dk1' })],
       });
 
       expect(result.recentAssignments).toHaveLength(1);
@@ -917,7 +922,7 @@ describe('adaptClassPageToViewModel', () => {
             }),
           ],
         }),
-        assignmentDefinitionPartials: [],
+        assignmentDefinitionPartials: [createDefinitionPartial({ definitionKey: 'dk1' })],
       });
 
       expect(result.classMetrics.completeness).toEqual(customPerClass.completeness);
@@ -972,7 +977,7 @@ describe('adaptClassPageToViewModel', () => {
           }),
         ],
       }),
-      assignmentDefinitionPartials: [],
+      assignmentDefinitionPartials: [createDefinitionPartial({ definitionKey: 'shared-dk' })],
     });
 
     const expectedSharedCardCount = 2;
@@ -1020,7 +1025,7 @@ describe('adaptClassPageToViewModel', () => {
           }),
         ],
       }),
-      assignmentDefinitionPartials: [],
+      assignmentDefinitionPartials: [createDefinitionPartial({ definitionKey: 'dk1' })],
     });
 
     expect(result.recentAssignments).toHaveLength(1);
@@ -1029,5 +1034,28 @@ describe('adaptClassPageToViewModel', () => {
     expect(card.metrics.accuracy).toMatchObject({ state: 'notAttempted' });
     expect(card.metrics.spag).toMatchObject({ state: 'notAttempted' });
     expect(card.metrics.average).toMatchObject({ state: 'notAttempted' });
+  });
+
+  // -----------------------------------------------------------------------
+  // definitionKey lookup — missing partial entry
+  // -----------------------------------------------------------------------
+  it('throws TaskTitlesUnavailableError when assignmentDefinitionPartials has no matching entry for the assignment definitionKey', () => {
+    expect(() =>
+      adaptClassPageToViewModel({
+        analyserResult: averagingResult(),
+        classFull: classFull({
+          students: [student('s-1', 'Alice')],
+          assignments: [
+            assignment({
+              assignmentId: 'a-1',
+              updatedAt: DEFAULT_TS,
+              definitionKey: 'DEF_MISSING',
+              taskIds: ['t1'],
+            }),
+          ],
+        }),
+        assignmentDefinitionPartials: [createDefinitionPartial({ definitionKey: 'DEF_OTHER' })],
+      })
+    ).toThrow(TaskTitlesUnavailableError);
   });
 });

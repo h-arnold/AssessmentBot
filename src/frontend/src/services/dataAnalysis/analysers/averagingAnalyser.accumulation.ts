@@ -309,14 +309,6 @@ export function accumulateDataPoints(
 
   for (const assignment of filteredAssignments) {
     const definitionKey = assignment.assignmentDefinitionKey;
-    if (!definitionKey) {
-      logFrontendEvent('warn', {
-        context: 'accumulateDataPoints',
-        errorMessage: `Missing assignmentDefinitionKey for assignment '${assignment.assignmentId}'`,
-        metadata: { assignmentId: assignment.assignmentId },
-      });
-      continue;
-    }
 
     const resolved = resolveAssignmentDefinitionData(definitionKey, partialsByDefinitionKey);
 
