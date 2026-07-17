@@ -42,4 +42,10 @@ describe('ImageRenderer', () => {
     expect(img.style.height).toBe('auto');
     expect(img.style.maxHeight).toBe('400px');
   });
+
+  it('renders "Invalid image source" and no <img> when src is not an image data URL', () => {
+    render(<ImageRenderer src="https://example.com/x.png" />);
+    expect(screen.getByText('Invalid image source')).toBeInTheDocument();
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+  });
 });

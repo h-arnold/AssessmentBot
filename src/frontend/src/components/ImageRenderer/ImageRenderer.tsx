@@ -11,7 +11,11 @@
  * This value may be adjusted in future if the card layout changes.
  */
 
+import { Typography } from 'antd';
 import type { JSX } from 'react';
+
+/** Prefix used to validate that a src value is an image data URL. */
+const IMAGE_DATA_URL_PREFIX = 'data:image';
 
 export interface ImageRendererProperties {
   /** Base64 data URL of the student's image response. */
@@ -32,6 +36,10 @@ export function ImageRenderer({
   src,
   alt = 'Student response image',
 }: ImageRendererProperties): JSX.Element {
+  if (!src.startsWith(IMAGE_DATA_URL_PREFIX)) {
+    return <Typography.Text type="danger">Invalid image source</Typography.Text>;
+  }
+
   return (
     <img
       src={src}
