@@ -58,11 +58,6 @@ const deleteYearGroupInput = {
   key: 'year-10',
 };
 
-const validAssignmentTopics = [
-  { key: 'topic-algebra', name: 'Algebra', yearGroupKeys: ['yg-math'] },
-  { key: 'topic-geometry', name: 'Geometry', yearGroupKeys: ['yg-math', 'yg-advanced'] },
-];
-
 const createAssignmentTopicInput = {
   record: {
     name: 'Algebra',
@@ -115,9 +110,6 @@ function invokeServiceMethodForMalformedPayload(
     case 'deleteYearGroup': {
       return service.deleteYearGroup(deleteYearGroupInput);
     }
-    case 'getAssignmentTopics': {
-      return service.getAssignmentTopics();
-    }
     case 'deleteAssignmentTopic': {
       return service.deleteAssignmentTopic(deleteAssignmentTopicInput);
     }
@@ -148,15 +140,6 @@ describe('referenceDataService keyed contracts', () => {
 
     await expect(getYearGroups()).resolves.toEqual(validYearGroups);
     expect(callApiMock).toHaveBeenCalledWith('getYearGroups');
-    expect(callApiMock).toHaveBeenCalledTimes(1);
-  });
-
-  it('getAssignmentTopics() parses keyed assignment-topic payloads with yearGroupKeys before returning them', async () => {
-    callApiMock.mockResolvedValueOnce(validAssignmentTopics);
-    const { getAssignmentTopics } = await loadReferenceDataService();
-
-    await expect(getAssignmentTopics()).resolves.toEqual(validAssignmentTopics);
-    expect(callApiMock).toHaveBeenCalledWith('getAssignmentTopics');
     expect(callApiMock).toHaveBeenCalledTimes(1);
   });
 

@@ -85,7 +85,6 @@ async function verifyModalCanBeReopenedForTest(
 // Mock the services that ManageTopicsModal depends on
 const getAssignmentTopicsFromAssignmentTopicsServiceMock = vi.hoisted(() => vi.fn());
 const getYearGroupsMock = vi.hoisted(() => vi.fn());
-const getAssignmentTopicsFromReferenceDataServiceMock = vi.hoisted(() => vi.fn());
 const createAssignmentTopicMock = vi.hoisted(() => vi.fn());
 const updateAssignmentTopicMock = vi.hoisted(() => vi.fn());
 const deleteAssignmentTopicMock = vi.hoisted(() => vi.fn());
@@ -108,7 +107,6 @@ vi.mock('../../services/referenceData/referenceDataService', () => ({
   createAssignmentTopic: createAssignmentTopicMock,
   updateAssignmentTopic: updateAssignmentTopicMock,
   deleteAssignmentTopic: deleteAssignmentTopicMock,
-  getAssignmentTopics: getAssignmentTopicsFromReferenceDataServiceMock,
 }));
 
 // Section 4 - ReferenceDataSettingsPanel basic rendering tests
@@ -119,7 +117,6 @@ describe('ReferenceDataSettingsPanel', () => {
     // Set up default mock responses to prevent API calls from failing
     getAssignmentTopicsFromAssignmentTopicsServiceMock.mockResolvedValue([]);
     getYearGroupsMock.mockResolvedValue([]);
-    getAssignmentTopicsFromReferenceDataServiceMock.mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -207,7 +204,6 @@ describe('ReferenceDataSettingsPanel modal wiring', () => {
     // Set up default mock responses to prevent API calls from failing
     getAssignmentTopicsFromAssignmentTopicsServiceMock.mockResolvedValue([]);
     getYearGroupsMock.mockResolvedValue([]);
-    getAssignmentTopicsFromReferenceDataServiceMock.mockResolvedValue([]);
   });
 
   afterEach(() => {

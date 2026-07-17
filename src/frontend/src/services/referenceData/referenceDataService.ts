@@ -1,6 +1,5 @@
 import { callApi, parseApiResponse } from '../apiService';
 import type {
-  AssignmentTopicListResponse,
   CohortListResponse,
   CreateAssignmentTopicInput,
   CreateAssignmentTopicResponse,
@@ -23,7 +22,6 @@ import type {
   YearGroupListResponse,
 } from './referenceData.zod';
 import {
-  AssignmentTopicListResponseSchema,
   CohortListResponseSchema,
   CreateAssignmentTopicInputSchema,
   CreateAssignmentTopicResponseSchema,
@@ -161,19 +159,6 @@ export async function deleteYearGroup(
     DeleteYearGroupResponseSchema,
     'deleteYearGroup',
     await callApi('deleteYearGroup', parsedInput)
-  );
-}
-
-/**
- * Retrieves assignment-topic reference-data records from the backend transport.
- *
- * @returns {Promise<AssignmentTopicListResponse>} The assignment-topic list response.
- */
-export async function getAssignmentTopics(): Promise<AssignmentTopicListResponse> {
-  return parseApiResponse(
-    AssignmentTopicListResponseSchema,
-    'getAssignmentTopics',
-    await callApi('getAssignmentTopics')
   );
 }
 
