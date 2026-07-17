@@ -53,12 +53,12 @@ class ABClassResponseMapper {
    * Assignments are included as Assignment.toPartialJSON() output.
    * Defence-in-depth: strips _hydrationLevel and progressTracker from each assignment.
    *
-   * @remarks Builds the JSON object manually rather than calling `abClass.toJSON()`,
-   * which would invoke `Assignment.toJSON()` on each assignment and in turn
-   * `AssignmentDefinition.toJSON()`.  That call chain fails when assignments carry
-   * a partial definition (tasks stored as an array).  The read-view response
-   * always uses `toPartialJSON()` for assignments, so the full serialisation
-   * path is unnecessary and harmful.
+   * @remarks Uses `Assignment.toPartialJSON()` for assignments because stored ABClass
+   * documents carry partial-definition assignment instances.  Calling `Assignment.toJSON()`
+   * would reach `AssignmentDefinition.toJSON()`, which throws a `TypeError` when the
+   * definition's `tasks` is an array (the partial shape).  The read-view therefore
+   * intentionally emits the lightweight partial assignment shape with
+   * `assignmentDefinitionKey` rather than the full hydrated definition.
    *
    * @param {ABClass} abClass - The class instance to convert.
    * @returns {Object} A plain read-view object.
@@ -76,10 +76,7 @@ class ABClassResponseMapper {
       active: abClass.active ?? null,
       assignments: Array.isArray(abClass.assignments)
         ? abClass.assignments.map((assignment) => {
-            const partial =
-              typeof assignment.toPartialJSON === 'function'
-                ? assignment.toPartialJSON()
-                : assignment.toJSON();
+            const partial = assignment.toPartialJSON();
             // Defence-in-depth: strip _hydrationLevel and progressTracker
             const { _hydrationLevel, progressTracker, ...safe } = partial;
             // Replace the embedded assignmentDefinition with just the definitionKey.

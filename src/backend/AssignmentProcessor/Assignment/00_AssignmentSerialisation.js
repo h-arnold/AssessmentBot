@@ -22,27 +22,10 @@ class AssignmentSerialisation {
    * @returns {object} Assignment data with course/assignment IDs, dates, definition, and submissions.
    */
   toJSON() {
-    // Prefer definition.toJSON(), but a partial AssignmentDefinition (tasks as an
-    // array) throws from its toJSON() guard.  Fall back to toPartialJSON() so that
-    // serialisation survives when the class body stores a partial assignment —
-    // e.g. after persistAssignmentRun replaces the full assignment with a partial.
-    let definitionJson;
-    if (this._assignment.assignmentDefinition?.toJSON) {
-      try {
-        definitionJson = this._assignment.assignmentDefinition.toJSON();
-      } catch {
-        ABLogger.getInstance().warn(
-          'AssignmentSerialisation.toJSON() fell back to toPartialJSON() for ' +
-            `assignment ${this._assignment.assignmentId}`
-        );
-        definitionJson =
-          typeof this._assignment.assignmentDefinition.toPartialJSON === 'function'
-            ? this._assignment.assignmentDefinition.toPartialJSON()
-            : this._assignment.assignmentDefinition;
-      }
-    } else {
-      definitionJson = this._assignment.assignmentDefinition;
-    }
+    // toJSON() emits the full definition; partial definitions are expected to be
+    // replaced with full ones by callers before serialisation, so
+    // assignmentDefinition.toJSON() is called directly and any error propagates.
+    const definitionJson = this._assignment.assignmentDefinition.toJSON();
 
     const submissions = (this._assignment.submissions || []).map((sub) => {
       if (sub && typeof sub.toJSON === 'function') return sub.toJSON();
