@@ -146,13 +146,9 @@ export interface CreateHeatmapScenarioOptions {
  * heatmap journey, seeded from the co-located anon data.
  *
  * @param {boolean} emptySubmissions Strip submissions (every cell not-attempted).
- * @param {boolean} zeroTasks Emit `tasks: []` (no task columns).
  * @returns {object} A plain `ClassFull` document.
  */
-function buildClassFullDocument(
-  emptySubmissions: boolean,
-  zeroTasks: boolean
-): Record<string, unknown> {
+function buildClassFullDocument(emptySubmissions: boolean): Record<string, unknown> {
   return {
     classId: HEATMAP_CLASS_ID,
     className: HEATMAP_CLASS_NAME,
@@ -179,29 +175,11 @@ function buildClassFullDocument(
         updatedAt: '2026-07-07T07:51:13.282Z',
         createdAt: '2026-06-29T09:40:37.069Z',
         documentType: 'SLIDES',
-        assignmentDefinition: {
-          primaryTitle: '7. Video Plan',
-          primaryTopic: 'Earth',
-          primaryTopicKey: '00000000-0000-0000-0000-000000000003',
-          yearGroupKey: '00000000-0000-0000-0000-000000000002',
-          yearGroupLabel: '7',
-          alternateTitles: [HEATMAP_ASSIGNMENT_NAME],
-          alternateTopics: ['Earth'],
-          documentType: 'SLIDES',
-          referenceDocumentId: 'ref',
-          templateDocumentId: 'tpl',
-          assignmentWeighting: 1,
-          definitionKey: HEATMAP_DEFINITION_KEY,
-          createdAt: '2026-07-07T07:45:23.916Z',
-          updatedAt: '2026-07-07T07:49:06.791Z',
-          tasks: zeroTasks
-            ? []
-            : HEATMAP_TASK_IDS.map((taskId, index) => ({
-                taskId,
-                taskWeighting: 1,
-                taskTitle: `Task ${index + 1}`,
-              })),
-        },
+        // Transport shape after the embedded-assignmentDefinition removal
+        // (commit 1472ed0): the frontend resolves definition details (primaryTitle,
+        // tasks, etc.) from its own AssignmentDefinitionPartials registry keyed by
+        // `assignmentDefinitionKey`. The full embedded object is no longer sent.
+        assignmentDefinitionKey: HEATMAP_DEFINITION_KEY,
         submissions: HEATMAP_STUDENTS.map((student) => {
           const studentScores: HeatmapStudentScores = emptySubmissions
             ? {}
@@ -324,7 +302,7 @@ function buildAssignmentDefinitionPartial(zeroTasks: boolean): Record<string, un
 export function createHeatmapScenario(options: CreateHeatmapScenarioOptions = {}): RuntimeScenario {
   const { deferredClass = false, emptySubmissions = false, zeroTasks = false } = options;
 
-  const classDocument = buildClassFullDocument(emptySubmissions, zeroTasks);
+  const classDocument = buildClassFullDocument(emptySubmissions);
 
   const classEntries: ReadonlyArray<ResponseItem> = deferredClass
     ? [

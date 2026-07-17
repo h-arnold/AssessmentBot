@@ -104,6 +104,10 @@ npm run lint:frontend
 
 Run the smallest targeted command first, then the full suite before handoff.
 
+> **Timeout:** Always set a 10 minute (600000 ms) timeout when invoking Playwright test commands via the `bash` tool. Browser E2E suites can take several minutes and the default 120s timeout is not sufficient.
+
+> **Playwright MCP server:** A Playwright MCP server is available and may be used to drive the browser directly for exploratory interaction, navigation, and visual inspection without authoring test files. Prefer the MCP server for ad-hoc exploration; reserve authored `*.spec.ts` tests for the regression-tracking suite.
+
 ## 5. Codebase-Specific Patterns (Mandatory)
 
 ### 5.1 Runtime Mock Infrastructure

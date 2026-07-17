@@ -77,8 +77,10 @@ function metricCell(page: Page, ariaLabel: string) {
  * @returns {Promise<void>}
  */
 async function assertPopoverStructure(popover: Locator, metricLabel: string): Promise<void> {
-  // Metric label in the header (structural — see §5.6 of the E2E doc).
-  await expect(popover.getByText(metricLabel, { exact: true })).toHaveCount(1);
+  // Metric label in the header — assert via the Card title Flex `aria-label`
+  // (`"Completeness score: 5"`), which is structural and avoids the flaky
+  // `toBeVisible`/`getByText` behaviour on antd `Typography.Text` (see §5.6).
+  await expect(popover.locator(`[aria-label^="${metricLabel} score:"]`).first()).toHaveCount(1);
   // Reasoning section label.
   await expect(popover.getByText('Reasoning', { exact: true })).toHaveCount(1);
   // Student Response section label.
@@ -179,7 +181,7 @@ test.describe('Task Preview Card popover', () => {
 
     // Popover must remain visible after unpinned-hover would have closed it.
     await expect(popover).toBeVisible();
-    await expect(popover.getByText('Completeness', { exact: true })).toHaveCount(1);
+    await expect(popover.locator(`[aria-label^="Completeness score:"]`).first()).toHaveCount(1);
 
     await page.screenshot({
       path: `${test.info().snapshotDir}/completeness-pinned.png`,
