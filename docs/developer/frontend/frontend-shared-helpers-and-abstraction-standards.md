@@ -800,8 +800,31 @@ These entries record the helpers introduced to support the ClassPage assignment 
 - Decision: `new` (shared between the prefetch and the adapter's `recentAssignments` pipeline)
 - Owning module/path: `src/frontend/src/features/classPage/classPageModel.ts`
 - Call-site rationale: ensures the prefetched top-3 and the adapter's displayed `recentAssignments` use identical ordering (updatedAt desc, assignmentId asc tie-break); prevents divergence when `updatedAt` values are equal.
-- Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9
-- Status: `Implemented`
+  - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9
+  - Status: `Implemented`
+
+#### 9.18.16 Task Preview Card real-data wiring helpers
+
+24. Helper: `buildCellPreviewLookup(assignment: AssignmentFull): CellPreviewLookup` — builds a `studentId × taskId` keyed lookup from the AssignmentFull payload
+
+- Decision: `new`
+- Owning module/path: `src/frontend/src/features/classPage/buildCellPreviewLookup.ts`
+- Call-site rationale: called by `TaskHeatmapPage` via `useMemo` to pre-compute O(1) popover data retrieval; consumed by `TaskHeatmapTable` cell renders via `cellPreviewLookup.get(studentId)?.get(taskId)`. Has exactly one caller.
+- Status: `Not implemented`
+
+25. Helper: `assembleTaskPreviewData(cellData, metricResult, metricKey, taskId): TaskPreviewData` — maps a `CellPreviewData` + analyser `MetricResult` into the `TaskPreviewCard`'s `TaskPreviewData` contract
+
+- Decision: `new`
+- Owning module/path: `src/frontend/src/features/classPage/assembleTaskPreviewData.ts`
+- Call-site rationale: the single point where the wider backend types (`SPREADSHEET`, `base`, `unknown` content) are narrowed to `TaskPreviewData`'s narrower contract; handles artifact type coercion, reasoning extraction per metric key, and score/state pass-through from the analyser's `MetricResult`. Has exactly one caller (`TaskHeatmapTable` cell render).
+- Status: `Not implemented`
+
+26. Helper: `spreadsheetToMarkdownTable(rows): string` — converts a `Array<Array<string | number | null>>` to a GitHub-flavoured markdown table string
+
+- Decision: `new`
+- Owning module/path: `src/frontend/src/features/classPage/spreadsheetToMarkdownTable.ts`
+- Call-site rationale: called by `assembleTaskPreviewData` when `artifactType === 'SPREADSHEET'` to produce a markdown string renderable by the existing `MarkdownRenderer`; no existing converter in the codebase. Has exactly one caller (via `assembleTaskPreviewData`).
+- Status: `Not implemented`
 
 ### 9.19 Frontend pure formatting helpers
 
