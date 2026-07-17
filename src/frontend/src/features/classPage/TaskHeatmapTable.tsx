@@ -238,7 +238,19 @@ function buildTaskMetricSubColumns(
             {/* 4px padding (APP_GAP_XS, documented half-unit exception) widens the
                 Popover hover/click target around the score without covering the
                 whole cell; inline-block is required for padding to take effect. */}
-            <span style={{ padding: APP_GAP_XS, display: 'inline-block' }}>{renderScore(m)}</span>
+            <span
+              tabIndex={0}
+              role="button"
+              style={{ padding: APP_GAP_XS, display: 'inline-block' }}
+              onKeyDown={(event): void => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  (event.currentTarget as HTMLElement).click();
+                }
+              }}
+            >
+              {renderScore(m)}
+            </span>
           </Popover>
         );
       },

@@ -175,13 +175,6 @@ describe('TaskPreviewCard', () => {
     expect(screen.getByText('Error loading response')).toBeInTheDocument();
   });
 
-  // --- Null data ---
-  it('renders "Task data not available" when no preview data is provided', () => {
-    renderWithFrontendProviders(<TaskPreviewCard data={null} />);
-
-    expect(screen.getByText('Task data not available')).toBeInTheDocument();
-  });
-
   // --- Integer score precision ---
   it('renders the computed score as an integer (e.g. "5", not "5.00")', () => {
     renderWithFrontendProviders(

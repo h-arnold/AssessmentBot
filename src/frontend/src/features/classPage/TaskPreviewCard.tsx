@@ -174,21 +174,15 @@ function renderArtifact(
  * - **Student Response**: bold "Student Response" label and the artifact
  *   rendered by the appropriate renderer (ImageRenderer or MarkdownRenderer)
  *
- * When `data` is `null`, the component renders only the text
- * "Task data not available" without header, reasoning, or response sections.
- *
  * @param {Object} props - Component properties.
- * @param {TaskPreviewData | null} props.data - Preview data to display, or null for the fallback state.
- * @returns {JSX.Element} The rendered card or a fallback message.
+ * @param {TaskPreviewData} props.data - Preview data to display.
+ * @returns {JSX.Element} The rendered card.
  */
 export function TaskPreviewCard({
   data,
 }: {
-  readonly data: TaskPreviewData | null;
+  readonly data: TaskPreviewData;
 }): JSX.Element {
-  if (data === null) {
-    return <Typography.Text>Task data not available</Typography.Text>;
-  }
 
   const {
     artifactType,
