@@ -81,6 +81,20 @@ const JSON_PARSE_ERROR_PREVIEW_LENGTH = 120;
 const ZOD_ERROR_PREVIEW_LENGTH = 200;
 
 /**
+ * Builds a truncated preview string for logging/diagnostics from an arbitrary
+ * value, serialising objects to JSON first. Truncates to `maxLen` characters
+ * (preserving the ellipsis behaviour used across the transport layer).
+ *
+ * @param {unknown} value - The value to preview.
+ * @param {number} maxLength - Maximum preview length in characters.
+ * @returns {string} A truncated, log-safe preview string.
+ */
+function truncateForPreview(value: unknown, maxLength: number): string {
+  const source = typeof value === 'string' ? value : JSON.stringify(value);
+  return source.length > maxLength ? `${source.slice(0, maxLength)}…` : source;
+}
+
+/**
  * Returns a cryptographically-safe random jitter value between 0 and JITTER_MS milliseconds.
  *
  * @returns {number} A jitter value in milliseconds.
@@ -131,31 +145,18 @@ function parseApiEnvelope(deserialisedResponse: unknown): z.infer<typeof ApiResp
     return ApiResponseSchema.parse(deserialisedResponse);
   } catch (schemaError: unknown) {
     if (schemaError instanceof z.ZodError && deserialisedResponse !== undefined) {
-      const previewValue =
-        typeof deserialisedResponse === 'string'
-          ? deserialisedResponse
-          : JSON.stringify(deserialisedResponse);
-      (schemaError as unknown as { preview: string }).preview =
-        previewValue.length > ZOD_ERROR_PREVIEW_LENGTH
-          ? `${previewValue.slice(0, ZOD_ERROR_PREVIEW_LENGTH)}…`
-          : previewValue;
+      (schemaError as unknown as { preview: string }).preview = truncateForPreview(
+        deserialisedResponse,
+        ZOD_ERROR_PREVIEW_LENGTH
+      );
     }
     throw schemaError;
   }
 }
 
 /**
- * Validates a received backend response against a caller-supplied schema and
- * returns the typed result.
- *
- * The transport layer (`callApi`) enriches only transport-level failures with
- * the backend `method`, structured `zodIssues`, and a `responsePreview`. Schema
- * validation of the inner payload runs after the envelope has been accepted, so
- * a rejection there would otherwise surface as a bare `ZodError` with no clue
- * which method or which field failed. This helper mirrors `callApi`'s
- * `buildFailureMetadata` contract: on a `ZodError` it logs the `method`,
- * structured `zodIssues`, and a truncated `responsePreview` before re-throwing
- * the original error so caller behaviour is unchanged.
+ * Validates the inner payload against `schema`, logs structured `zodIssues`,
+ * `responsePreview`, and `method` on `ZodError`, and re-throws.
  *
  * @template TResponse The expected parsed response type.
  * @param {z.ZodType<TResponse>} schema Schema to validate the response against.
@@ -172,11 +173,7 @@ export function parseApiResponse<TResponse>(
     return schema.parse(data);
   } catch (error: unknown) {
     if (error instanceof z.ZodError) {
-      const previewSource = typeof data === 'string' ? data : JSON.stringify(data);
-      const responsePreview =
-        previewSource.length > ZOD_ERROR_PREVIEW_LENGTH
-          ? `${previewSource.slice(0, ZOD_ERROR_PREVIEW_LENGTH)}…`
-          : previewSource;
+      const responsePreview = truncateForPreview(data, ZOD_ERROR_PREVIEW_LENGTH);
 
       logFrontendError('services/apiService.parseApiResponse', error, {
         method,
