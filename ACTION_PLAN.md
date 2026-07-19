@@ -1434,3 +1434,51 @@ Docs mandatory docs:
    the moment the fixture adapter import is removed)
 8. Regression and contract hardening
 9. Documentation and rollout
+
+---
+
+## Progress log & baseline
+
+### Baseline (established at branch start — `feat/preview-card-real-data-wiring`)
+
+- **Baseline session:** `feat-preview-card-real-data-wiring` (regression-checker,
+  mode `baseline`, created 2026-07-19).
+- **Overall baseline status:** FAILING — **3 pre-existing failures**, all
+  accepted as technical debt and **unrelated** to the preview-card feature:
+
+  1. `backend-lint-check` — 14 `max-lines` warnings in legacy backend JS files
+     (e.g. `ConfigurationManagerClass.js`, `SlidesParser.js`, `DriveManager.js`).
+     Warnings only; not touched by this plan's scope.
+  2. `frontend-lint-check` — 1 `no-magic-numbers` warning in
+     `src/frontend/src/services/apiService.spec.ts:304`. Pre-existing; outside
+     this plan's scope.
+  3. `frontend-e2e-check` — 2 failed E2E tests:
+     - `progress count updates as queued create calls complete`
+     - `supports keyboard-only edits and focuses the first invalid field when API key is required`
+       Neither is in `task-preview-card.spec.ts`; both are pre-existing and out of
+       this plan's scope.
+
+- **Clean baseline suites (must stay green through the plan):** `builder-lint`,
+  `backend-test-coverage`, `frontend-test-coverage`, `builder-test-coverage`,
+  `builder-compile`. The `frontend-test-coverage` (Vitest) suite is the primary
+  gate for Sections 1–6 unit/component work and is **green** at baseline.
+
+- **Regression Gate rule for this branch:** progression is blocked only on
+  _new_ regressions or _new_ failures within the preview-card scope. The three
+  baseline failures above are documented technical debt and are **not** blocking.
+
+### Section status
+
+| Section                               | Phase  | Status          |
+| ------------------------------------- | ------ | --------------- |
+| 1 — `buildCellPreviewLookup`          | red    | **IN PROGRESS** |
+| 1 — `buildCellPreviewLookup`          | green  | pending         |
+| 1 — `buildCellPreviewLookup`          | commit | pending         |
+| 2 — `spreadsheetToMarkdownTable`      | —      | pending         |
+| 3 — `assembleTaskPreviewData`         | —      | pending         |
+| 4 — Wire `TaskHeatmapPage`            | —      | pending         |
+| 5 — Wire `TaskHeatmapTable`           | —      | pending         |
+| 5.5 — E2E `task-preview-card.spec.ts` | —      | pending         |
+| 6 — Delete fixtures                   | —      | pending         |
+| 7 — Regression & contract hardening   | —      | pending         |
+| 8 — Documentation & rollout           | —      | pending         |
