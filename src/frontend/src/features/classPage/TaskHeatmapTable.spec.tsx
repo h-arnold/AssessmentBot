@@ -284,7 +284,7 @@ describe('TaskHeatmapTable', () => {
   // -------------------------------------------------------------------------
   it('renders a grouped header with one group per taskColumn and Completeness / Accuracy / SPaG sub-columns', () => {
     const result = buildHeatmapResult();
-    render(<TaskHeatmapTable heatmapResult={result} />);
+    render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
 
     // Assert Student Name top-level column header
     expect(
@@ -324,7 +324,7 @@ describe('TaskHeatmapTable', () => {
   // -------------------------------------------------------------------------
   it('exposes a score-range filter dropdown (slider + reset) on Task 1 Completeness', async () => {
     const result = buildHeatmapResult();
-    render(<TaskHeatmapTable heatmapResult={result} />);
+    render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
 
     // Locate the "Completeness" columnheader that belongs to Task 1.
     const completenessHeaders = screen.getAllByRole('columnheader', {
@@ -367,7 +367,7 @@ describe('TaskHeatmapTable', () => {
   // -------------------------------------------------------------------------
   it('clicking Student Name column sorter reorders rows via compareHeatmapStudentName', async () => {
     const result = buildHeatmapResult();
-    const { container } = render(<TaskHeatmapTable heatmapResult={result} />);
+    const { container } = render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
 
     // Default sort should be ascending by student name.
     // Fixture students: Student One, Student Two, Student Three
@@ -404,7 +404,7 @@ describe('TaskHeatmapTable', () => {
   // -------------------------------------------------------------------------
   it('renders per-cell aria-labels matching "[Student Name], [Task ID], [Metric]: [Score]"', () => {
     const result = buildHeatmapResult();
-    render(<TaskHeatmapTable heatmapResult={result} />);
+    render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
 
     // Student One (s-1), Task 1 (task_001), Completeness: 5 (green / computed)
     // Expected aria-label: "Student One, task_001, Completeness: 5"
@@ -443,7 +443,7 @@ describe('TaskHeatmapTable', () => {
   describe('empty state', () => {
     it('renders all rows with N cells and a "No submissions yet" caption when every cell is notAttempted', () => {
       const result = buildNoSubmissionsResult();
-      render(<TaskHeatmapTable heatmapResult={result} />);
+      render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
 
       // Assert "No submissions yet" caption is present above the table
       expect(screen.getByText('No submissions yet')).toBeInTheDocument();
@@ -471,7 +471,7 @@ describe('TaskHeatmapTable', () => {
 
     it('renders only the Student Name column header when taskColumns is empty', () => {
       const result = buildZeroTasksResult();
-      render(<TaskHeatmapTable heatmapResult={result} />);
+      render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
 
       // Student Name column should render
       expect(
@@ -504,7 +504,7 @@ describe('TaskHeatmapTable', () => {
 
   it('wraps each metric sub-cell render output in an Ant Design Popover', async () => {
     const result = buildHeatmapResult();
-    render(<TaskHeatmapTable heatmapResult={result} />);
+    render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
 
     // Find a computed cell's score span via its aria-label
     const cell = screen.getByLabelText(
@@ -524,7 +524,7 @@ describe('TaskHeatmapTable', () => {
 
   it('popover content renders the TaskPreviewCard with metric label, reasoning, and student response sections', async () => {
     const result = buildHeatmapResult();
-    render(<TaskHeatmapTable heatmapResult={result} />);
+    render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
 
     const cell = screen.getByLabelText(
       'Student One, task_001, Completeness: 5'
@@ -546,7 +546,7 @@ describe('TaskHeatmapTable', () => {
 
   it('preserves the existing aria-label on metric sub-cells after popover integration', () => {
     const result = buildHeatmapResult();
-    render(<TaskHeatmapTable heatmapResult={result} />);
+    render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
 
     // The aria-label comes from onCell, not from render — Popover does not
     // change onCell, so the label should be unchanged.
@@ -563,7 +563,7 @@ describe('TaskHeatmapTable', () => {
 
   it('preserves the existing cell tone style (background colour) after popover integration', () => {
     const result = buildHeatmapResult();
-    render(<TaskHeatmapTable heatmapResult={result} />);
+    render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
 
     // Student One, Task 1, Completeness: 5 is a computed score at the ceiling
     // of the range — the cell should carry a green/gradient background colour.
@@ -577,7 +577,7 @@ describe('TaskHeatmapTable', () => {
 
   it('renders the heatmap with interactive metric sub-cells that open a popover on hover', async () => {
     const result = buildHeatmapResult();
-    render(<TaskHeatmapTable heatmapResult={result} />);
+    render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
 
     // Assert metric sub-cells are present and labelled
     expect(

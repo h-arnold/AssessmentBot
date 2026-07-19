@@ -47,6 +47,7 @@ import { decodeFilterToRange } from '../../services/dataAnalysis/metricDisplay/m
 import { MetricIconLabel } from '../../components/MetricIconLabel/MetricIconLabel';
 import { TaskPreviewCard } from './TaskPreviewCard';
 import { getTaskPreviewData } from './taskPreviewFixtures';
+import type { CellPreviewLookup } from './buildCellPreviewLookup';
 import {
   APP_COL_WIDTH_STUDENT_NAME,
   APP_COL_WIDTH_METRIC,
@@ -270,7 +271,12 @@ function buildTaskMetricSubColumns(
  */
 export function TaskHeatmapTable({
   heatmapResult,
-}: Readonly<{ heatmapResult: HeatmapResult }>): JSX.Element {
+}: Readonly<{
+  heatmapResult: HeatmapResult;
+  cellPreviewLookup: CellPreviewLookup | null;
+  isAssignmentLoading: boolean;
+  showAssignmentError: boolean;
+}>): JSX.Element {
   const { taskColumns, rows } = heatmapResult;
 
   // ── Table-level filter state lifted from the onChange callback ──────────

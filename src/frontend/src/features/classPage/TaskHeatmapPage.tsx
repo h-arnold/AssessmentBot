@@ -12,6 +12,7 @@
  */
 
 import { useEffect, useMemo, useRef, type JSX } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Alert, Button, Card, Flex, App as AntdApp } from 'antd';
 import { RefreshCw } from 'lucide-react';
 import { APP_GAP_MD } from '../../theme/spacing';
@@ -23,7 +24,10 @@ import {
   adaptMetricsToHeatmap,
   TaskTitlesUnavailableError,
 } from '../../services/dataAnalysis/heatmapAdapter';
-import { logFrontendError } from '../../logging/frontendLogger';
+import { logFrontendError, logFrontendEvent } from '../../logging/frontendLogger';
+import { buildCellPreviewLookup } from './buildCellPreviewLookup';
+import type { CellPreviewLookup } from './buildCellPreviewLookup';
+import { getAssignmentQueryOptions } from '../../query/sharedQueries';
 import { TaskHeatmapTable } from './TaskHeatmapTable';
 import { PageTitleCard, PageNavCard } from '../../components/PageHeader/PageHeader';
 
@@ -156,6 +160,43 @@ export function TaskHeatmapPage({
   // Context-aware Ant Design message/notification API for user feedback.
   const { message } = AntdApp.useApp();
 
+  // Assignment full-data query for cell preview popover data.
+  const assignmentQuery = useQuery(getAssignmentQueryOptions(classFull.classId, assignmentId));
+
+  const cellPreviewLookup = useMemo<CellPreviewLookup | null>(
+    () => (assignmentQuery.data ? buildCellPreviewLookup(assignmentQuery.data) : null),
+    [assignmentQuery.data],
+  );
+
+  const showAssignmentError: boolean = assignmentQuery.isError || assignmentQuery.data === null;
+  const isAssignmentLoading: boolean = assignmentQuery.isPending;
+
+  // Assignment-query error logging guard (separate from the generic heatmap-error guard).
+  const hasLoggedAssignmentErrorReference = useRef(false);
+  useEffect(() => {
+    if (assignmentQuery.isError && !hasLoggedAssignmentErrorReference.current) {
+      hasLoggedAssignmentErrorReference.current = true;
+      logFrontendError('TaskHeatmapPage', assignmentQuery.error);
+    }
+  }, [assignmentQuery.isError, assignmentQuery.error]);
+
+  // Assignment not-found logging guard (separate useRef from the error guard).
+  const hasLoggedAssignmentNotFoundReference = useRef(false);
+  useEffect(() => {
+    if (
+      assignmentQuery.data === null &&
+      !assignmentQuery.isPending &&
+      !assignmentQuery.isError &&
+      !hasLoggedAssignmentNotFoundReference.current
+    ) {
+      hasLoggedAssignmentNotFoundReference.current = true;
+      logFrontendEvent('warn', {
+        context: 'TaskHeatmapPage',
+        errorMessage: 'Assignment not found in AssignmentFull payload',
+      });
+    }
+  }, [assignmentQuery.data, assignmentQuery.isPending, assignmentQuery.isError]);
+
   // Generic errors (unknown assignmentId): log, surface user-safe message,
   // and auto-navigate back. Guarded against double-execution in React 19
   // StrictMode via useRef.
@@ -199,13 +240,13 @@ export function TaskHeatmapPage({
         backLabel="Back to Class overview"
         backAriaLabel="Back to Class overview"
         actions={
-          <Button icon={<RefreshCw size={16} />} onClick={refetch}>
+          <Button icon={<RefreshCw size={16} />} onClick={() => { refetch(); assignmentQuery.refetch(); }}>
             Refresh
           </Button>
         }
       />
       <Card size="small">
-        <TaskHeatmapTable heatmapResult={heatmapResult!} />
+        <TaskHeatmapTable heatmapResult={heatmapResult!} cellPreviewLookup={cellPreviewLookup} isAssignmentLoading={isAssignmentLoading} showAssignmentError={showAssignmentError} />
       </Card>
     </Flex>
   );
