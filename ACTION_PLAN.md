@@ -1500,24 +1500,47 @@ Docs mandatory docs:
 
 ### Section status
 
-| Section                               | Phase  | Status          |
-| ------------------------------------- | ------ | --------------- |
-| 1 — `buildCellPreviewLookup`          | red    | complete        |
-| 1 — `buildCellPreviewLookup`          | green  | complete        |
-| 1 — `buildCellPreviewLookup`          | commit | complete        |
-| 2 — `spreadsheetToMarkdownTable`      | red    | complete        |
-| 2 — `spreadsheetToMarkdownTable`      | green  | complete        |
-| 2 — `spreadsheetToMarkdownTable`      | commit | complete        |
-| 3 — `assembleTaskPreviewData`         | red    | complete        |
-| 3 — `assembleTaskPreviewData`         | green  | complete        |
-| 3 — `assembleTaskPreviewData`         | commit | complete        |
-| 4 — Wire `TaskHeatmapPage`            | red    | complete        |
-| 4 — Wire `TaskHeatmapPage`            | green  | complete        |
-| 4 — Wire `TaskHeatmapPage`            | commit | complete        |
-| 5 — Wire `TaskHeatmapTable`           | red    | complete        |
-| 5 — Wire `TaskHeatmapTable`           | green  | complete        |
-| 5 — Wire `TaskHeatmapTable`           | commit | **IN PROGRESS** |
-| 5.5 — E2E `task-preview-card.spec.ts` | —      | pending         |
-| 6 — Delete fixtures                   | —      | pending         |
-| 7 — Regression & contract hardening   | —      | pending         |
-| 8 — Documentation & rollout           | —      | pending         |
+| Section                               | Phase  | Status   |
+| ------------------------------------- | ------ | -------- |
+| 1 — `buildCellPreviewLookup`          | red    | complete |
+| 1 — `buildCellPreviewLookup`          | green  | complete |
+| 1 — `buildCellPreviewLookup`          | commit | complete |
+| 2 — `spreadsheetToMarkdownTable`      | red    | complete |
+| 2 — `spreadsheetToMarkdownTable`      | green  | complete |
+| 2 — `spreadsheetToMarkdownTable`      | commit | complete |
+| 3 — `assembleTaskPreviewData`         | red    | complete |
+| 3 — `assembleTaskPreviewData`         | green  | complete |
+| 3 — `assembleTaskPreviewData`         | commit | complete |
+| 4 — Wire `TaskHeatmapPage`            | red    | complete |
+| 4 — Wire `TaskHeatmapPage`            | green  | complete |
+| 4 — Wire `TaskHeatmapPage`            | commit | complete |
+| 5 — Wire `TaskHeatmapTable`           | red    | complete |
+| 5 — Wire `TaskHeatmapTable`           | green  | complete |
+| 5 — Wire `TaskHeatmapTable`           | commit | complete |
+| 5.5 — E2E `task-preview-card.spec.ts` | —      | complete |
+| 6 — Delete fixtures                   | —      | pending  |
+| 7 — Regression & contract hardening   | —      | pending  |
+| 8 — Documentation & rollout           | —      | pending  |
+
+### Section 5.5 — completion record (2026-07-19)
+
+- **Red/green:** Delegated to `Playwright` agent. `task-preview-card.spec.ts`
+  (4 popover tests) adapted to real-data assertions; `endToEndRuntimeMocks.ts`
+  gained `getAssignment` in `allMethods` + optional `RuntimeScenario.getAssignment?`;
+  `task-heatmap-end-to-end-helpers.ts` gained `buildAssignmentFullDocument` and
+  seeded two identical `getAssignment` success entries (StrictMode) in
+  `createHeatmapScenario`. Per-task artifacts: `task_001→IMAGE`,
+  `task_002→TEXT`, `task_003→TABLE`.
+- **Review:** `Code Reviewer` returned CLEAN with one non-blocking nitpick —
+  orphaned/detached JSDoc block above `buildAssignmentFullDocument`. Fixed by
+  `Implementation` (deleted the orphaned block only; lint clean on changed file).
+- **Regression Gate (compare, `feat/preview-card-real-data-wiring`):** Overall
+  FAILING with **0 regressions**, **0 new failures**, **1 fix**
+  (`classes-crud-bulk-progress.spec.ts` passed this run). The only failing checks
+  are the 3 baseline debt families (backend-lint 14 max-lines, frontend-lint 1
+  pre-existing `apiService.spec.ts` magic number, frontend-e2e 1 flaky
+  `settings-backend.spec.ts`). **`task-preview-card.spec.ts` is NOT among the
+  failing E2E suites** — the Section 5 → 5.5 planned breakage is RESOLVED. In-scope
+  suites (`frontend-test-coverage` Vitest, `builder-compile` tsc, `builder-lint`,
+  backend/frontend/builder test-coverage) all GREEN. Progression to Section 6 is
+  permitted.
