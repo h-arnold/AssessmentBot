@@ -1471,9 +1471,9 @@ Docs mandatory docs:
 
 | Section                               | Phase  | Status          |
 | ------------------------------------- | ------ | --------------- |
-| 1 — `buildCellPreviewLookup`          | red    | **IN PROGRESS** |
-| 1 — `buildCellPreviewLookup`          | green  | pending         |
-| 1 — `buildCellPreviewLookup`          | commit | pending         |
+| 1 — `buildCellPreviewLookup`          | red    | complete        |
+| 1 — `buildCellPreviewLookup`          | green  | complete        |
+| 1 — `buildCellPreviewLookup`          | commit | **IN PROGRESS** |
 | 2 — `spreadsheetToMarkdownTable`      | —      | pending         |
 | 3 — `assembleTaskPreviewData`         | —      | pending         |
 | 4 — Wire `TaskHeatmapPage`            | —      | pending         |
