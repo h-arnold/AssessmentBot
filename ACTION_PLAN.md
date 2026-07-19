@@ -1485,6 +1485,18 @@ Docs mandatory docs:
   _new_ regressions or _new_ failures within the preview-card scope. The three
   baseline failure families above (backend-lint, frontend-lint, and the churning
   unrelated E2E specs) are documented technical debt and are **not** blocking.
+  **Planned Section 5 → 5.5 E2E breakage (explicitly authorised by this plan):**
+  Section 5 removes the `getTaskPreviewData` fixture rendering from
+  `TaskHeatmapTable.tsx`, so the popover now queries the real `getAssignment`
+  query. Until Section 5.5 lands, the `task-preview-card.spec.ts` E2E popover
+  tests (IMAGE/TEXT/TABLE hover + pinned-popover) FAIL because `installRuntimeMock`
+  does not yet intercept `getAssignment` (Section 5.5) and the assertions still
+  reference the deleted fixture text. This is an anticipated, plan-owned
+  regression owned by Section 5.5 (which must run before Section 6). It is NOT a
+  defect in Section 5's component wiring — the Vitest `TaskHeatmapTable.spec.tsx`
+  suite (16/16) confirms the real-data popover behaves correctly. Progression
+  past Section 5 is therefore permitted; Section 5.5 MUST restore E2E green for
+  `task-preview-card.spec.ts` before Section 6 deletes the fixtures.
 
 ### Section status
 
@@ -1501,8 +1513,10 @@ Docs mandatory docs:
 | 3 — `assembleTaskPreviewData`         | commit | complete        |
 | 4 — Wire `TaskHeatmapPage`            | red    | complete        |
 | 4 — Wire `TaskHeatmapPage`            | green  | complete        |
-| 4 — Wire `TaskHeatmapPage`            | commit | **IN PROGRESS** |
-| 5 — Wire `TaskHeatmapTable`           | —      | pending         |
+| 4 — Wire `TaskHeatmapPage`            | commit | complete        |
+| 5 — Wire `TaskHeatmapTable`           | red    | complete        |
+| 5 — Wire `TaskHeatmapTable`           | green  | complete        |
+| 5 — Wire `TaskHeatmapTable`           | commit | **IN PROGRESS** |
 | 5.5 — E2E `task-preview-card.spec.ts` | —      | pending         |
 | 6 — Delete fixtures                   | —      | pending         |
 | 7 — Regression & contract hardening   | —      | pending         |
