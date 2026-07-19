@@ -1473,8 +1473,10 @@ Docs mandatory docs:
 | ------------------------------------- | ------ | --------------- |
 | 1 — `buildCellPreviewLookup`          | red    | complete        |
 | 1 — `buildCellPreviewLookup`          | green  | complete        |
-| 1 — `buildCellPreviewLookup`          | commit | **IN PROGRESS** |
-| 2 — `spreadsheetToMarkdownTable`      | —      | pending         |
+| 1 — `buildCellPreviewLookup`          | commit | complete        |
+| 2 — `spreadsheetToMarkdownTable`      | red    | complete        |
+| 2 — `spreadsheetToMarkdownTable`      | green  | complete        |
+| 2 — `spreadsheetToMarkdownTable`      | commit | **IN PROGRESS** |
 | 3 — `assembleTaskPreviewData`         | —      | pending         |
 | 4 — Wire `TaskHeatmapPage`            | —      | pending         |
 | 5 — Wire `TaskHeatmapTable`           | —      | pending         |
