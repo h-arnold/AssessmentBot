@@ -29,6 +29,8 @@ import {
   createErrorMetricResult,
 } from '../../test/dataAnalysis/fixtures';
 
+import type { CellPreviewLookup, CellPreviewData } from './buildCellPreviewLookup';
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -59,6 +61,34 @@ const TASK_COLUMNS: HeatmapTaskColumn[] = [
   { taskKey: 'definitionKey::task_001', taskId: TASK_1_ID, taskTitle: TASK_1_TITLE },
   { taskKey: 'definitionKey::task_002', taskId: TASK_2_ID, taskTitle: TASK_2_TITLE },
 ];
+
+// ---------------------------------------------------------------------------
+// CellPreviewLookup fixtures for popover state tests
+// ---------------------------------------------------------------------------
+
+/** CellPreviewData fixture for the populated-lookup test (TEXT artifact). */
+const TEXT_CELL_PREVIEW_DATA: CellPreviewData = {
+  artifactType: 'TEXT',
+  artifactContent: 'Student answered the question correctly.',
+  reasoning: {
+    completeness: 'Good understanding of concepts',
+    accuracy: null,
+    spag: null,
+  },
+};
+
+/** Inner map (taskId → CellPreviewData) for the populated-lookup test. */
+const TASK_INNER_LOOKUP: ReadonlyMap<string, CellPreviewData> = new Map([
+  ['task_001', TEXT_CELL_PREVIEW_DATA],
+]);
+
+/** CellPreviewLookup that includes data for s-1 / task_001. */
+const POPULATED_LOOKUP: CellPreviewLookup = new Map([
+  ['s-1', TASK_INNER_LOOKUP],
+]);
+
+/** Empty CellPreviewLookup — no entries at all (simulates absent lookup data). */
+const EMPTY_LOOKUP: CellPreviewLookup = new Map();
 
 /**
  * A score value that may be a numeric score, not attempted, or error.
@@ -602,5 +632,145 @@ describe('TaskHeatmapTable', () => {
     await waitFor(() => {
       expect(document.querySelector('.ant-popover')).toBeInTheDocument();
     });
+  });
+
+  // -------------------------------------------------------------------------
+  // real-data wiring: skeleton, error, populated, empty popover states
+  // and metric cell display invariance.
+  // -------------------------------------------------------------------------
+
+  it('renders a skeleton in the popover when isAssignmentLoading is true', async () => {
+    const result = buildHeatmapResult();
+    render(
+      <TaskHeatmapTable
+        heatmapResult={result}
+        cellPreviewLookup={null}
+        isAssignmentLoading={true}
+        showAssignmentError={false}
+      />
+    );
+
+    const cell = screen.getByLabelText(
+      'Student One, task_001, Completeness: 5'
+    );
+    const trigger = cell.querySelector('span')!;
+    expect(trigger).toBeInTheDocument();
+
+    await user.hover(trigger);
+
+    await waitFor(() => {
+      const popover = document.querySelector('.ant-popover');
+      expect(popover).toBeInTheDocument();
+      // The skeleton must be wrapped in role="status" and aria-busy="true"
+      const skeleton = popover!.querySelector(
+        '[role="status"][aria-busy="true"]'
+      );
+      expect(skeleton).toBeInTheDocument();
+    });
+  });
+
+  it('renders an error Alert in the popover when showAssignmentError is true', async () => {
+    const result = buildHeatmapResult();
+    render(
+      <TaskHeatmapTable
+        heatmapResult={result}
+        cellPreviewLookup={null}
+        isAssignmentLoading={false}
+        showAssignmentError={true}
+      />
+    );
+
+    const cell = screen.getByLabelText(
+      'Student One, task_001, Completeness: 5'
+    );
+    const trigger = cell.querySelector('span')!;
+    expect(trigger).toBeInTheDocument();
+
+    await user.hover(trigger);
+
+    await waitFor(() => {
+      const popover = document.querySelector('.ant-popover');
+      expect(popover).toBeInTheDocument();
+      expect(popover!.textContent).toContain("Couldn't load task details");
+    });
+  });
+
+  it('shows artifact content from cellPreviewLookup in the popover when the lookup has data', async () => {
+    const result = buildHeatmapResult();
+    render(
+      <TaskHeatmapTable
+        heatmapResult={result}
+        cellPreviewLookup={POPULATED_LOOKUP}
+        isAssignmentLoading={false}
+        showAssignmentError={false}
+      />
+    );
+
+    const cell = screen.getByLabelText(
+      'Student One, task_001, Completeness: 5'
+    );
+    const trigger = cell.querySelector('span')!;
+    expect(trigger).toBeInTheDocument();
+
+    await user.hover(trigger);
+
+    await waitFor(() => {
+      const popover = document.querySelector('.ant-popover');
+      expect(popover).toBeInTheDocument();
+      // The lookup provides TEXT artifact content — assert the reasoning text
+      expect(popover!.textContent).toContain(
+        'Student answered the question correctly.'
+      );
+    });
+  });
+
+  it('shows empty artifact and No reasoning available in the popover when the lookup has no entry', async () => {
+    const result = buildHeatmapResult();
+    render(
+      <TaskHeatmapTable
+        heatmapResult={result}
+        cellPreviewLookup={EMPTY_LOOKUP}
+        isAssignmentLoading={false}
+        showAssignmentError={false}
+      />
+    );
+
+    const cell = screen.getByLabelText(
+      'Student One, task_001, Completeness: 5'
+    );
+    const trigger = cell.querySelector('span')!;
+    expect(trigger).toBeInTheDocument();
+
+    await user.hover(trigger);
+
+    await waitFor(() => {
+      const popover = document.querySelector('.ant-popover');
+      expect(popover).toBeInTheDocument();
+      // GREEN behaviour: when the lookup has no entry for this student/task,
+      // the popover shows "No reasoning available"
+      expect(popover!.textContent).toContain('No reasoning available');
+    });
+  });
+
+  it('keeps metric score cell display unchanged regardless of the three new props', () => {
+    // Render with loading state — cell display must be unchanged
+    render(
+      <TaskHeatmapTable
+        heatmapResult={buildHeatmapResult()}
+        cellPreviewLookup={null}
+        isAssignmentLoading={true}
+        showAssignmentError={false}
+      />
+    );
+
+    expect(
+      screen.getByLabelText('Student One, task_001, Completeness: 5')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText('Student One, task_001, Accuracy: 3')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText('Student Two, task_002, Completeness: E')
+    ).toBeInTheDocument();
   });
 });
