@@ -1518,7 +1518,7 @@ Docs mandatory docs:
 | 5 — Wire `TaskHeatmapTable`           | green  | complete |
 | 5 — Wire `TaskHeatmapTable`           | commit | complete |
 | 5.5 — E2E `task-preview-card.spec.ts` | —      | complete |
-| 6 — Delete fixtures                   | —      | pending  |
+| 6 — Delete fixtures                   | —      | complete |
 | 7 — Regression & contract hardening   | —      | pending  |
 | 8 — Documentation & rollout           | —      | pending  |
 
@@ -1544,3 +1544,28 @@ Docs mandatory docs:
   suites (`frontend-test-coverage` Vitest, `builder-compile` tsc, `builder-lint`,
   backend/frontend/builder test-coverage) all GREEN. Progression to Section 6 is
   permitted.
+
+### Section 6 — completion record (2026-07-19)
+
+- **Red (baseline safety):** Confirmed all 19 classPage Vitest spec files pass
+  (232 tests) WITH fixtures present; content search confirmed `getTaskPreviewData`
+  and `taskPreviewFixtures` appear ONLY inside the files slated for deletion — so
+  deletion is safe (no other source depends on them).
+- **Green:** Delegated to `Implementation`. Deleted the five files
+  (`taskPreviewFixtures.ts`, `taskPreviewFixtures.spec.ts`, `fixtures/imageTask.json`,
+  `fixtures/textTask.json`, `fixtures/table_task.json`); removed the now-empty
+  `fixtures/` directory; removed the stale "Known v1 demo artefact" `@remarks`
+  paragraph from `TaskPreviewCard.tsx` (comment-only edit, no logic touched).
+- **Review:** `Code Reviewer` returned CLEAN — zero dangling imports, no barrel
+  re-exports, diff strictly limited to the 6 in-scope files, `lint:frontend` 0
+  errors. LSP diagnostics on the deleted files are the expected consequence of the
+  co-dependent deletion and self-resolve on commit.
+- **Section checks:** content search for both literals = 0 occurrences in
+  `src/frontend/src/`; `npm run test:frontend -- classPage` = 18 files / 228 tests
+  pass; `npm run lint:frontend` passes (pre-existing `apiService.spec.ts` warning
+  only).
+- **Regression Gate (compare):** Overall FAILING with **0 regressions**, **0 new
+  failures**, **1 fix** (`classes-crud-bulk-progress.spec.ts`). Only the 3 baseline
+  debt families fail; `task-preview-card.spec.ts` is NOT in the failing E2E set —
+  fixture deletion did not break the real-data popover E2E. In-scope suites all
+  GREEN. Progression to Section 7 is permitted.

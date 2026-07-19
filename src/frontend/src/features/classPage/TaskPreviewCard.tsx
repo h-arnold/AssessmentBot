@@ -19,13 +19,6 @@
  * These weight/data-point fields are inert for display (`MetricPill` ignores
  * them) but must satisfy the `MetricResult` discriminated-union constraints
  * per SPEC §"MetricPill reuse".
- *
- * **Known v1 demo artefact.** In v1, the fixture data is static and always
- * carries full reasoning and artifact content regardless of the cell's
- * `metricState`. A `notAttempted` or `error` cell will therefore show fixture
- * reasoning alongside a full image or table — a semantic mismatch with the
- * score pill. This artefact is resolved when wired to the
- * `assignmentAssessment` service in a later round.
  */
 
 import type { JSX } from 'react';
