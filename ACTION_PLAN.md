@@ -1519,7 +1519,7 @@ Docs mandatory docs:
 | 5 — Wire `TaskHeatmapTable`           | commit | complete |
 | 5.5 — E2E `task-preview-card.spec.ts` | —      | complete |
 | 6 — Delete fixtures                   | —      | complete |
-| 7 — Regression & contract hardening   | —      | pending  |
+| 7 — Regression & contract hardening   | —      | complete |
 | 8 — Documentation & rollout           | —      | pending  |
 
 ### Section 5.5 — completion record (2026-07-19)
@@ -1569,3 +1569,34 @@ Docs mandatory docs:
   debt families fail; `task-preview-card.spec.ts` is NOT in the failing E2E set —
   fixture deletion did not break the real-data popover E2E. In-scope suites all
   GREEN. Progression to Section 7 is permitted.
+
+### Section 7 — completion record (2026-07-19)
+
+- **Verification battery (Vitest) — `Testing Specialist`:** All 5 commands PASS.
+  - `npm run test:frontend -- classPage` → 18 files / 228 tests green (deleted
+    `taskPreviewFixtures.spec.ts` absent).
+  - `buildCellPreviewLookup` (14), `spreadsheetToMarkdownTable` (5),
+    `assembleTaskPreviewData` (16) all green.
+  - `npm run lint:frontend` → 0 errors (only pre-existing `apiService.spec.ts:304`
+    magic-number warning = baseline debt).
+  - All 7 acceptance-criteria spec files pass: `useClassPageData.spec.ts` (30),
+    `TaskHeatmapTable.spec.tsx` (16), `TaskHeatmapPage.spec.tsx` (11),
+    `ClassPageHeatmapView.spec.tsx` (3), `ClassPage.spec.tsx` (6),
+    `TaskPreviewCard.spec.tsx` (11), plus remaining classPage specs.
+- **Verification battery (E2E) — `Playwright`:** `npm run test:frontend:e2e --
+task-preview-card` → **4/4 popover tests PASS** (IMAGE/TEXT/TABLE/pinned) against
+  real-data wiring. Confirmed spec contains NO `/preview cards work properly/i`
+  fixture text. Deterministic single-worker run, no flakiness observed.
+- **Regression Gate (compare, two runs):** First run reported Regressions=1 /
+  NewFailures=1 because the churning flaky E2E set flipped (`classes-crud-bulk-progress.spec.ts`
+  failed that run instead of `settings-backend.spec.ts`); a **second run returned
+  Regressions=0 / NewFailures=0 / Fixes=1**, proving it is the documented
+  environment flakiness, NOT a preview-card defect. The failing E2E
+  (`settings-backend.spec.ts`) is categorically outside preview-card scope and was
+  failing at baseline. `task-preview-card.spec.ts` is NOT in the failing E2E set in
+  either run. In-scope suites (Vitest `frontend-test-coverage`, `builder-compile`
+  tsc, `builder-lint`, backend/frontend/builder test-coverage) all GREEN.
+- **Conclusion:** All Section 7 acceptance criteria met. No new TypeScript errors,
+  no new lint errors, no genuine regressions. Progression to Section 8 is permitted.
+  (Section 7 is verification-only; the only file change is this ACTION_PLAN.md
+  progress update, committed separately.)
