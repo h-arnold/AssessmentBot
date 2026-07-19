@@ -1498,8 +1498,10 @@ Docs mandatory docs:
 | 2 — `spreadsheetToMarkdownTable`      | commit | complete        |
 | 3 — `assembleTaskPreviewData`         | red    | complete        |
 | 3 — `assembleTaskPreviewData`         | green  | complete        |
-| 3 — `assembleTaskPreviewData`         | commit | **IN PROGRESS** |
-| 4 — Wire `TaskHeatmapPage`            | —      | pending         |
+| 3 — `assembleTaskPreviewData`         | commit | complete        |
+| 4 — Wire `TaskHeatmapPage`            | red    | complete        |
+| 4 — Wire `TaskHeatmapPage`            | green  | complete        |
+| 4 — Wire `TaskHeatmapPage`            | commit | **IN PROGRESS** |
 | 5 — Wire `TaskHeatmapTable`           | —      | pending         |
 | 5.5 — E2E `task-preview-card.spec.ts` | —      | pending         |
 | 6 — Delete fixtures                   | —      | pending         |
