@@ -324,7 +324,7 @@ function buildTaskMetricSubColumns(
 /**
  * Render a heatmap table from the given `HeatmapResult`.
  *
- * @param {Readonly<{ heatmapResult: HeatmapResult }>} props - Component properties.
+ * @param {Readonly<{ heatmapResult: HeatmapResult; cellPreviewLookup: CellPreviewLookup | null; isAssignmentLoading: boolean; showAssignmentError: boolean }>} props - Component properties.
  * @returns {JSX.Element} The rendered table.
  */
 export function TaskHeatmapTable({
