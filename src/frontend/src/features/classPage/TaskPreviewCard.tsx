@@ -19,13 +19,6 @@
  * These weight/data-point fields are inert for display (`MetricPill` ignores
  * them) but must satisfy the `MetricResult` discriminated-union constraints
  * per SPEC §"MetricPill reuse".
- *
- * **Known v1 demo artefact.** In v1, the fixture data is static and always
- * carries full reasoning and artifact content regardless of the cell's
- * `metricState`. A `notAttempted` or `error` cell will therefore show fixture
- * reasoning alongside a full image or table — a semantic mismatch with the
- * score pill. This artefact is resolved when wired to the
- * `assignmentAssessment` service in a later round.
  */
 
 import type { JSX } from 'react';
@@ -60,7 +53,7 @@ export interface TaskPreviewData {
  * Maximum height of the card body before scrolling.
  *
  * Exempt from the 8px grid as it is a max-height constraint, not a spacing
- * value (see `TASK_PREVIEW_CARD_LAYOUT.md` §2).
+ * value.
  */
 const CARD_BODY_MAX_HEIGHT = 480;
 
@@ -68,7 +61,7 @@ const CARD_BODY_MAX_HEIGHT = 480;
  * Maximum width of the preview card.
  *
  * Exempt from the 8px grid as it is a max-width constraint, not a spacing
- * value (see `TASK_PREVIEW_CARD_LAYOUT.md` §2).
+ * value.
  */
 const CARD_MAX_WIDTH = 400;
 

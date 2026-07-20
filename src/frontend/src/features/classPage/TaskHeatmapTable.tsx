@@ -13,13 +13,12 @@
  * `columns` are memoised to avoid redundant recomputation on each render.
  *
  * @see ACTION_PLAN.md §4 — TaskHeatmapTable
- * @see TASK_PREVIEW_CARD_LAYOUT.md — §"1. Popover trigger (metric sub-cell)", §"States", §"Accessibility and motion"
  * @see SPEC.md — §"Rendering rules", §"Sorting, filtering", §"Empty state"
  */
 
 import type { CSSProperties, JSX } from 'react';
 import { useMemo, useState } from 'react';
-import { Popover, Table, Typography } from 'antd';
+import { Alert, Popover, Skeleton, Table, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 import type { FilterValue } from 'antd/es/table/interface';
 
@@ -46,10 +45,12 @@ import { buildMetricRangeFilter } from '../../services/dataAnalysis/metricDispla
 import { decodeFilterToRange } from '../../services/dataAnalysis/metricDisplay/metricRangeKey';
 import { MetricIconLabel } from '../../components/MetricIconLabel/MetricIconLabel';
 import { TaskPreviewCard } from './TaskPreviewCard';
-import { getTaskPreviewData } from './taskPreviewFixtures';
+import { assembleTaskPreviewData } from './assembleTaskPreviewData';
+import type { CellPreviewLookup } from './buildCellPreviewLookup';
 import {
   APP_COL_WIDTH_STUDENT_NAME,
   APP_COL_WIDTH_METRIC,
+  APP_GAP_MD,
   APP_GAP_XS,
 } from '../../theme/spacing';
 
@@ -179,6 +180,47 @@ function buildMetricSorter(
 const DEFAULT_TONE_RANGE: MetricToneRange = { lower: 0, upper: 5 };
 
 /**
+ * Inline skeleton for the TaskPreviewCard popover during assignment loading.
+ *
+ * Shape dimensions are hard-coded locally and cross-reference
+ * TaskPreviewCard's private constants:
+ *   CARD_MAX_WIDTH = 400
+ *   CARD_BODY_MAX_HEIGHT = 480
+ * Those constants must NOT be refactored out of TaskPreviewCard.tsx.
+ *
+ * @returns {JSX.Element} A skeleton placeholder matching the card shape.
+ */
+function TaskPreviewSkeleton(): JSX.Element {
+  return (
+    <div
+      role="status"
+      aria-busy="true"
+      style={{ width: 400 }}
+    >
+      {/* Title bar — approximates TaskPreviewCard header height */}
+      <Skeleton.Input
+        active
+        size="small"
+        style={{ width: 200, height: 24, marginBottom: APP_GAP_MD }}
+      />
+      {/* Reasoning skeleton — 3 rows matching the card's reasoning section */}
+      <Skeleton
+        active
+        paragraph={{ rows: 3 }}
+        title={false}
+        style={{ marginBottom: APP_GAP_MD }}
+      />
+      {/* Artifact image placeholder — approximate height for an image block */}
+      <Skeleton.Input
+        active
+        size="small"
+        style={{ width: '100%', height: 120 }}
+      />
+    </div>
+  );
+}
+
+/**
  * Build the three metric sub-columns (Completeness, Accuracy, SPaG) for a
  * single task group.
  *
@@ -187,12 +229,18 @@ const DEFAULT_TONE_RANGE: MetricToneRange = { lower: 0, upper: 5 };
  * @param {HeatmapTaskColumn} taskColumn - The task column descriptor.
  * @param {number} taskIndex - The index of the task within the heatmap.
  * @param {Record<string, FilterValue | null>} tableFilters - Current filter state.
+ * @param {CellPreviewLookup | null} cellPreviewLookup - Assignment lookup keyed by studentId × taskId.
+ * @param {boolean} isAssignmentLoading - Whether the assignment query is still pending.
+ * @param {boolean} showAssignmentError - Whether the assignment query errored or returned null.
  * @returns {TableColumnsType<HeatmapRow>} Three metric sub-column definitions.
  */
 function buildTaskMetricSubColumns(
   taskColumn: HeatmapTaskColumn,
   taskIndex: number,
   tableFilters: Record<string, FilterValue | null>,
+  cellPreviewLookup: CellPreviewLookup | null,
+  isAssignmentLoading: boolean,
+  showAssignmentError: boolean,
 ): TableColumnsType<HeatmapRow> {
   return HEATMAP_METRIC_KEYS.map((metric) => {
     const meta = METRIC_DISPLAY_META.get(metric)!;
@@ -228,12 +276,23 @@ function buildTaskMetricSubColumns(
       },
       render: (_: unknown, record: HeatmapRow): JSX.Element => {
         const m = getCellMetric(record.cells[taskIndex], metric);
-        const previewData = getTaskPreviewData(taskColumn.taskId, metric, m);
+        const cellData = cellPreviewLookup?.get(record.studentId)?.get(taskColumn.taskId) ?? null;
+        const previewData = assembleTaskPreviewData(cellData, m, metric, taskColumn.taskId);
+
+        let popoverContent: JSX.Element;
+        if (isAssignmentLoading) {
+          popoverContent = <TaskPreviewSkeleton />;
+        } else if (showAssignmentError) {
+          popoverContent = <Alert type="error" showIcon title="Couldn't load task details" />;
+        } else {
+          popoverContent = <TaskPreviewCard data={previewData} />;
+        }
+
         return (
           <Popover
             trigger={['hover', 'click']}
             placement="right"
-            content={previewData ? <TaskPreviewCard data={previewData} /> : null}
+            content={popoverContent}
           >
             {/* 4px padding (APP_GAP_XS, documented half-unit exception) widens the
                 Popover hover/click target around the score without covering the
@@ -265,12 +324,20 @@ function buildTaskMetricSubColumns(
 /**
  * Render a heatmap table from the given `HeatmapResult`.
  *
- * @param {Readonly<{ heatmapResult: HeatmapResult }>} props - Component properties.
+ * @param {Readonly<{ heatmapResult: HeatmapResult; cellPreviewLookup: CellPreviewLookup | null; isAssignmentLoading: boolean; showAssignmentError: boolean }>} props - Component properties.
  * @returns {JSX.Element} The rendered table.
  */
 export function TaskHeatmapTable({
   heatmapResult,
-}: Readonly<{ heatmapResult: HeatmapResult }>): JSX.Element {
+  cellPreviewLookup,
+  isAssignmentLoading,
+  showAssignmentError,
+}: Readonly<{
+  heatmapResult: HeatmapResult;
+  cellPreviewLookup: CellPreviewLookup | null;
+  isAssignmentLoading: boolean;
+  showAssignmentError: boolean;
+}>): JSX.Element {
   const { taskColumns, rows } = heatmapResult;
 
   // ── Table-level filter state lifted from the onChange callback ──────────
@@ -323,10 +390,17 @@ export function TaskHeatmapTable({
       ...taskColumns.map((taskColumn, taskIndex) => ({
         key: taskColumn.taskKey,
         title: taskColumn.taskTitle ?? taskColumn.taskId,
-        children: buildTaskMetricSubColumns(taskColumn, taskIndex, tableFilters),
+        children: buildTaskMetricSubColumns(
+          taskColumn,
+          taskIndex,
+          tableFilters,
+          cellPreviewLookup,
+          isAssignmentLoading,
+          showAssignmentError,
+        ),
       })),
     ],
-    [taskColumns, tableFilters],
+    [taskColumns, tableFilters, cellPreviewLookup, isAssignmentLoading, showAssignmentError],
   );
 
   return (
