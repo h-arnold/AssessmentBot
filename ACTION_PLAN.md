@@ -1520,7 +1520,7 @@ Docs mandatory docs:
 | 5.5 — E2E `task-preview-card.spec.ts` | —      | complete |
 | 6 — Delete fixtures                   | —      | complete |
 | 7 — Regression & contract hardening   | —      | complete |
-| 8 — Documentation & rollout           | —      | pending  |
+| 8 — Documentation & rollout           | —      | complete |
 
 ### Section 5.5 — completion record (2026-07-19)
 
@@ -1600,3 +1600,60 @@ task-preview-card` → **4/4 popover tests PASS** (IMAGE/TEXT/TABLE/pinned) agai
   no new lint errors, no genuine regressions. Progression to Section 8 is permitted.
   (Section 7 is verification-only; the only file change is this ACTION_PLAN.md
   progress update, committed separately.)
+
+### Section 8 — completion record (2026-07-20)
+
+- **Documentation pass — `Docs` agent:** All in-scope work CLEAN.
+  - Part A: `frontend-shared-helpers-and-abstraction-standards.md` §9.18.16 entries
+    24 (`buildCellPreviewLookup`), 25 (`assembleTaskPreviewData`), 26
+    (`spreadsheetToMarkdownTable`) changed `Not implemented` → `Implemented` with
+    short British-English implementation notes. All other §9.18.16 entries untouched.
+  - Part B: Dangling `TASK_PREVIEW_CARD_LAYOUT.md` references removed from all seven
+    enumerated files with exact per-file scoping (TaskHeatmapPage, TaskHeatmapTable,
+    TaskHeatmapTable.spec, TaskPreviewCard [parentheticals only],
+    ClassPageHeatmapView.spec, ImageRenderer [line only],
+    task-preview-card.spec [line only; other @see preserved]).
+  - Part C verified: zero `TASK_PREVIEW_CARD_LAYOUT` in `src/frontend/src/` +
+    `e2e-tests/`; zero `taskPreviewFixtures` in `@see`/`@link`; `lint:frontend` 0 errors.
+- **Review — `Code Reviewer`:** CLEAN. Confirmed scoping discipline on all 8 in-scope
+  files; flagged a pre-existing dangling `(per SPEC.md/TASK_PREVIEW_CARD_LAYOUT.md)`
+  reference at `frontend-shared-helpers-and-abstraction-standards.md:746` (§9.18.13,
+  outside the seven-file enumeration).
+- **User directive (2026-07-20):** "Remove the layout document entirely." The
+  §9.18.13 dangling reference was therefore ALSO removed → `(per SPEC.md)`.
+  Re-verified: zero `TASK_PREVIEW_CARD_LAYOUT` references remain in any committed
+  source/doc path (only `ACTION_PLAN.md`/`SPEC.md` themselves mention it, as
+  branch-ephemeral planning artefacts per user policy). The layout document is now
+  fully removed.
+- **Regression Gate (compare):** Overall FAILING with **0 regressions**, **0 new
+  failures**, **1 fix** (`classes-crud-bulk-progress.spec.ts`). Only the 3 baseline
+  debt families fail; in-scope suites GREEN. Progression to post-implementation
+  passes permitted.
+- **Note:** `ACTION_PLAN.md`/`SPEC.md` are branch-ephemeral per user policy; they will
+  be removed at branch completion (after de-sloppification + final docs pass), not now
+  (still required as execution source).
+
+### De-Sloppification pass (2026-07-20)
+
+- **Scope:** Full branch diff vs base `feat/PreviewCardWiring` (merge-base `9e28eb7`),
+  17 implementation files (excluded planning docs + deleted fixtures + PNG snapshots).
+- **`De-Sloppification` agent findings:** 4 minor issues, no blocking defects.
+  - FIXED (Medium): `assembleTaskPreviewData.ts` — removed unattached duplicated
+    file-level JSDoc (lines 1-27); function-level JSDoc retained.
+  - FIXED (Low): `ImageRenderer.tsx` — reworded broken JSDoc sentence that referenced
+    the now-deleted layout doc → "The `maxHeight: 400` constraint prevents the image
+    from making the popover card overflow the viewport."
+  - FIXED (Medium, SPEC-alignment): `buildCellPreviewLookup.ts` — changed
+    `CellPreviewData.reasoning` to `Record<HeatmapMetricKey, string | null>` and
+    iterated canonical `HEATMAP_METRIC_KEYS` (SPEC §"CellPreviewData" prescribes this;
+    prior code hard-coded the three keys). Safe ripple: `assembleTaskPreviewData.ts`
+    reads `cellData.reasoning[metricKey]` (unchanged), `TaskPreviewCard.tsx` unaffected.
+  - SKIPPED (Low): `TaskHeatmapTable.tsx` unconditional `assembleTaskPreviewData` call —
+    pure function, no side effects, harmless; top-level computation is a clean KISS
+    pattern. Deliberate non-action (no speculative refactor).
+- **Validation:** `lint:frontend` 0 errors; `buildCellPreviewLookup` + `assembleTaskPreviewData`
+  Vitest suites = 30 tests pass; `tsc -b` exit 0.
+- **Review — `Code Reviewer`:** CLEAN (all 3 fix files; scope confined; SPEC contract
+  confirmed).
+- **Regression Gate (compare):** Overall FAILING, **0 regressions**, **0 new failures**,
+  **1 fix** (`classes-crud-bulk-progress.spec.ts`). In-scope suites GREEN.
