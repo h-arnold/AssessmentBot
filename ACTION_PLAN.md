@@ -1657,3 +1657,27 @@ task-preview-card` → **4/4 popover tests PASS** (IMAGE/TEXT/TABLE/pinned) agai
   confirmed).
 - **Regression Gate (compare):** Overall FAILING, **0 regressions**, **0 new failures**,
   **1 fix** (`classes-crud-bulk-progress.spec.ts`). In-scope suites GREEN.
+
+### Final Documentation pass (2026-07-20)
+
+- **Scope:** Verify all changed implementation files' JSDoc/inline docs reflect the
+  real-data wiring (not the deleted fixture adapter); check module AGENTS.md + testing
+  docs for drift. Section 8 already handled §9.18.16 + dangling-ref cleanup, so this
+  pass targets residual drift only.
+- **`Docs` agent findings:** All changed-file JSDoc accurate except ONE genuine drift —
+  `TaskHeatmapTable.tsx` `@param` (line 327) still described the OLD props shape
+  (`Readonly<{ heatmapResult: HeatmapResult }>`) instead of the current 4-prop
+  signature (`heatmapResult`, `cellPreviewLookup`, `isAssignmentLoading`,
+  `showAssignmentError`). Fixed to match the actual function signature.
+- **Verified accurate (no change):** three new helper modules' JSDoc; TaskHeatmapPage
+  useQuery wiring docs; TaskPreviewCard (stale @remarks already removed in Section 6);
+  `frontend-testing.md` / `frontend-playwright-e2e.md` (no fixture-adapter references);
+  root + frontend `AGENTS.md`; `code-reviewer.md`. Zero `TASK_PREVIEW_CARD_LAYOUT`
+  references remain anywhere. No speculative edits made.
+- **Regression Gate (compare):** Overall FAILING with **Regressions=1 / NewFailures=1**
+  on THIS run — but the single failing E2E is `settings-backend.spec.ts` (known flaky
+  baseline test, outside preview-card scope, and unrelated to a JSDoc-only edit). The
+  displayed "regression" is the documented run-to-run churn of the flaky E2E set (the
+  failing test flipped vs the prior run). `task-preview-card.spec.ts` is NOT in the
+  failing E2E set; in-scope suites GREEN. Gate satisfied (no genuine preview-card
+  regression).
