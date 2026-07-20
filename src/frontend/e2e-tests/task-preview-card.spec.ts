@@ -12,7 +12,6 @@
  *
  * @see ACTION_PLAN.md §8 — Playwright E2E tests
  * @see SPEC.md — Task Preview Card contract
- * @see TASK_PREVIEW_CARD_LAYOUT.md — popover region hierarchy
  * @see docs/developer/frontend/frontend-playwright-e2e.md — runtime mocks, StrictMode rule
  */
 

@@ -6,7 +6,7 @@
  *
  * @remarks
  * The `maxHeight: 400` constraint matches the layout specification
- * (see `TASK_PREVIEW_CARD_LAYOUT.md` §5 — Student Response section), which
+ * which
  * prevents the image from making the popover card overflow the viewport.
  * This value may be adjusted in future if the card layout changes.
  */

@@ -13,7 +13,6 @@
  * `columns` are memoised to avoid redundant recomputation on each render.
  *
  * @see ACTION_PLAN.md §4 — TaskHeatmapTable
- * @see TASK_PREVIEW_CARD_LAYOUT.md — §"1. Popover trigger (metric sub-cell)", §"States", §"Accessibility and motion"
  * @see SPEC.md — §"Rendering rules", §"Sorting, filtering", §"Empty state"
  */
 

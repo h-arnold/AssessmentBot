@@ -7,7 +7,6 @@
  * via the frontend logger and calls `onBack` (no in-view error UI).
  *
  * @see ACTION_PLAN.md §5 — TaskHeatmapPage
- * @see TASK_PREVIEW_CARD_LAYOUT.md — §"Surface hierarchy", §"Outer layout"
  * @see SPEC.md — §"Page composition", §"Navigation / breadcrumb", §"Error handling"
  */
 

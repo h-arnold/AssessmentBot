@@ -53,7 +53,7 @@ export interface TaskPreviewData {
  * Maximum height of the card body before scrolling.
  *
  * Exempt from the 8px grid as it is a max-height constraint, not a spacing
- * value (see `TASK_PREVIEW_CARD_LAYOUT.md` §2).
+ * value.
  */
 const CARD_BODY_MAX_HEIGHT = 480;
 
@@ -61,7 +61,7 @@ const CARD_BODY_MAX_HEIGHT = 480;
  * Maximum width of the preview card.
  *
  * Exempt from the 8px grid as it is a max-width constraint, not a spacing
- * value (see `TASK_PREVIEW_CARD_LAYOUT.md` §2).
+ * value.
  */
 const CARD_MAX_WIDTH = 400;
 
