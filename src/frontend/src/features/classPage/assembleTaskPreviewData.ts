@@ -1,31 +1,3 @@
-/**
- * Assembles a `TaskPreviewData` from a `CellPreviewData` (or `null`), the
- * analyser's `MetricResult`, the metric key, and the task ID.
- *
- * This is the single point where wider backend types (`SPREADSHEET`, `base`,
- * `unknown` content) are narrowed to the `TaskPreviewCard` contract.
- *
- * @remarks
- * **Artifact type coercion** (per SPEC coercion table):
- * - `TEXT` → `artifactType: 'TEXT'`, `artifactContent` as string
- * - `TABLE` → `artifactType: 'TABLE'`, `artifactContent` as string
- * - `IMAGE` → `artifactType: 'IMAGE'`, `artifactContent` as string
- * - `SPREADSHEET` → `artifactType: 'TABLE'`, `artifactContent` via
- *   `spreadsheetToMarkdownTable`
- * - `base` → `artifactType: 'TEXT'`, `artifactContent: ''`
- * - `null` cellData → `artifactType: 'TEXT'`, `artifactContent: ''`,
- *   `reasoning: ''`
- *
- * **Reasoning extraction:** `cellData?.reasoning[metricKey] ?? ''`.
- *
- * **Score and state:** pass through from `metricResult.value` and
- * `metricResult.state`.
- *
- * **`taskId` propagation:** forwarded unchanged from the caller-supplied
- * `taskId` parameter (never derived from `cellData`), so the popover header
- * stays stable across loading / no-submission / populated states.
- */
-
 import type { CellPreviewData } from './buildCellPreviewLookup';
 import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import type { HeatmapMetricKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';

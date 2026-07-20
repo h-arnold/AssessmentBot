@@ -5,9 +5,7 @@
  * element constrained to the popover layout dimensions.
  *
  * @remarks
- * The `maxHeight: 400` constraint matches the layout specification
- * which
- * prevents the image from making the popover card overflow the viewport.
+ * The `maxHeight: 400` constraint prevents the image from making the popover card overflow the viewport.
  * This value may be adjusted in future if the card layout changes.
  */
 

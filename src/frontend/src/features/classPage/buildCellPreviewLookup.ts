@@ -1,4 +1,6 @@
 import type { AssignmentFull } from '../../services/assignmentAssessment/assignmentAssessment.zod';
+import { HEATMAP_METRIC_KEYS } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
+import type { HeatmapMetricKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 
 /**
  * Discriminant values for a task artifact's type, matching the discriminator
@@ -16,11 +18,7 @@ export interface CellPreviewData {
   /** The artifact content (varies by type: string for TEXT/TABLE/IMAGE, 2D array for SPREADSHEET). */
   readonly artifactContent: unknown;
   /** Per-metric reasoning strings (null when assessment is absent for that metric). */
-  readonly reasoning: {
-    completeness: string | null;
-    accuracy: string | null;
-    spag: string | null;
-  };
+  readonly reasoning: Record<HeatmapMetricKey, string | null>;
 }
 
 /**
@@ -47,11 +45,9 @@ function createCellPreviewData(
   return {
     artifactType,
     artifactContent,
-    reasoning: {
-      completeness: assessments['completeness'] ? assessments['completeness'].reasoning : null,
-      accuracy: assessments['accuracy'] ? assessments['accuracy'].reasoning : null,
-      spag: assessments['spag'] ? assessments['spag'].reasoning : null,
-    },
+    reasoning: Object.fromEntries(
+      HEATMAP_METRIC_KEYS.map((key) => [key, assessments[key]?.reasoning ?? null])
+    ) as Record<HeatmapMetricKey, string | null>,
   };
 }
 
