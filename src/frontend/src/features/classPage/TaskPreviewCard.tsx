@@ -140,6 +140,8 @@ function renderArtifact(
     if (metricState === 'error') {
       return <Typography.Text>Error loading response</Typography.Text>;
     }
+    // Catch-all for computed state with empty content
+    return <Typography.Text>No content available</Typography.Text>;
   }
 
   switch (artifactType) {
