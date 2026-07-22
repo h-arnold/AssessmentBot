@@ -46,6 +46,7 @@ Do not create a new helper only to move code out of a large file.
 ### 3.1a Hooks and derivation helpers
 
 - Page dataset-state hook and pure helpers: `src/frontend/src/hooks/usePageDataset.ts`
+- Once-only conditional callback hook (React 19 StrictMode-safe): `src/frontend/src/hooks/useLogOnce.ts`
 
 ### 3.2 Error and transport helpers
 
