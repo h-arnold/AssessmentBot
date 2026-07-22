@@ -599,7 +599,7 @@ describe('TaskHeatmapPage — assignment useQuery wiring', () => {
     const calls = mockLogFrontendError.mock.calls.filter(
       (call: unknown[]) => call[0] === 'TaskHeatmapPage'
     );
-    expect(calls.length).toBeGreaterThanOrEqual(1);
+    expect(calls).toHaveLength(1);
   });
 
   // -------------------------------------------------------------------------

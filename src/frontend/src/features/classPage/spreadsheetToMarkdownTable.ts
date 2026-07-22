@@ -18,7 +18,7 @@ function formatCell(cell: string | number | null): string {
   if (cell == null) {
     return '';
   }
-  return String(cell).replaceAll(String.raw`|`, String.raw`\|`);
+  return String(cell).replaceAll('|', String.raw`\|`);
 }
 
 /**

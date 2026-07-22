@@ -674,9 +674,9 @@ describe('TaskHeatmapTable', () => {
     await waitFor(() => {
       const popover = document.querySelector('.ant-popover');
       expect(popover).toBeInTheDocument();
-      // The skeleton must be wrapped in role="status" and aria-busy="true"
+      // The skeleton must use an <output> element (implicit role="status") with aria-busy="true"
       const skeleton = popover!.querySelector(
-        '[role="status"][aria-busy="true"]'
+        'output[aria-busy="true"]'
       );
       expect(skeleton).toBeInTheDocument();
     });

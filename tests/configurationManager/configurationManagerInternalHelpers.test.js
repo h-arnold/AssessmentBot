@@ -141,22 +141,12 @@ describe('ConfigurationManager internal helper branches', () => {
     }
   });
 
-  it('returns an empty object for invalid stored configuration JSON', () => {
-    mocks.PropertiesService.scriptProperties.getProperty.mockReturnValueOnce('{');
-    configManager.configCache = null;
-
-    expect(configManager.getAllConfigurations()).toEqual({});
-  });
-
-  it('returns an empty object when stored configuration is not an object', () => {
-    mocks.PropertiesService.scriptProperties.getProperty.mockReturnValueOnce('123');
-    configManager.configCache = null;
-
-    expect(configManager.getAllConfigurations()).toEqual({});
-  });
-
-  it('returns an empty object when stored configuration is an array', () => {
-    mocks.PropertiesService.scriptProperties.getProperty.mockReturnValueOnce('[]');
+  it.each([
+    ['invalid stored configuration JSON', '{'],
+    ['stored configuration is not an object', '123'],
+    ['stored configuration is an array', '[]'],
+  ])('returns an empty object when %s', (_label, storedValue) => {
+    mocks.PropertiesService.scriptProperties.getProperty.mockReturnValueOnce(storedValue);
     configManager.configCache = null;
 
     expect(configManager.getAllConfigurations()).toEqual({});

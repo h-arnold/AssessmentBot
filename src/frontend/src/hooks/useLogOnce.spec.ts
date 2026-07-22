@@ -35,7 +35,7 @@ describe('useLogOnce', () => {
     expect(callback).toHaveBeenCalledTimes(1);
   });
 
-  it('does not invoke callback when condition is already true on first render', () => {
+  it('invokes callback once when condition is already true on first render', () => {
     const callback = vi.fn();
     renderHook(({ condition }: { condition: boolean }) => useLogOnce(condition, callback), {
       initialProps: { condition: true },

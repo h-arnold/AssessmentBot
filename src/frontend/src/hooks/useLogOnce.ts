@@ -8,7 +8,7 @@ import { useEffect, useRef } from 'react';
  *
  * @param {boolean} condition - When truthy, the callback is invoked (once).
  * @param {() => void} callback - The function to call exactly once when the
- *   condition transitions to true.
+ *   condition is truthy, including on the initial render if it is already true.
  */
 export function useLogOnce(condition: boolean, callback: () => void): void {
   const hasLoggedReference = useRef(false);

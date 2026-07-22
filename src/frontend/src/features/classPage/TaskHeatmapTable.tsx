@@ -190,11 +190,10 @@ const DEFAULT_TONE_RANGE: MetricToneRange = { lower: 0, upper: 5 };
  */
 function TaskPreviewSkeleton(): JSX.Element {
   return (
-    <div
-      role="status"
+    <output
       aria-busy="true"
       aria-label="Loading task preview"
-      style={{ width: 400 }}
+      style={{ display: 'block', width: 400 }}
     >
       {/* Title bar — approximates TaskPreviewCard header height */}
       <Skeleton.Input
@@ -215,7 +214,7 @@ function TaskPreviewSkeleton(): JSX.Element {
         size="small"
         style={{ width: '100%', height: 120 }}
       />
-    </div>
+    </output>
   );
 }
 
