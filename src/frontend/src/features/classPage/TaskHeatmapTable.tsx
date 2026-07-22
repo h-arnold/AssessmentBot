@@ -46,7 +46,7 @@ import { decodeFilterToRange } from '../../services/dataAnalysis/metricDisplay/m
 import { MetricIconLabel } from '../../components/MetricIconLabel/MetricIconLabel';
 import { TaskPreviewCard } from './TaskPreviewCard';
 import { assembleTaskPreviewData } from './assembleTaskPreviewData';
-import type { CellPreviewLookup } from './buildCellPreviewLookup';
+import type { CellPreviewData, CellPreviewLookup } from './buildCellPreviewLookup';
 import {
   APP_COL_WIDTH_STUDENT_NAME,
   APP_COL_WIDTH_METRIC,
@@ -182,11 +182,9 @@ const DEFAULT_TONE_RANGE: MetricToneRange = { lower: 0, upper: 5 };
 /**
  * Inline skeleton for the TaskPreviewCard popover during assignment loading.
  *
- * Shape dimensions are hard-coded locally and cross-reference
- * TaskPreviewCard's private constants:
- *   CARD_MAX_WIDTH = 400
- *   CARD_BODY_MAX_HEIGHT = 480
- * Those constants must NOT be refactored out of TaskPreviewCard.tsx.
+ * The width (400px) mirrors `CARD_MAX_WIDTH` from TaskPreviewCard.tsx. The
+ * constant is intentionally not exported from that module because the preview
+ * card differs from all other cards and is unlikely to be reused.
  *
  * @returns {JSX.Element} A skeleton placeholder matching the card shape.
  */
@@ -195,6 +193,7 @@ function TaskPreviewSkeleton(): JSX.Element {
     <div
       role="status"
       aria-busy="true"
+      aria-label="Loading task preview"
       style={{ width: 400 }}
     >
       {/* Title bar — approximates TaskPreviewCard header height */}
@@ -218,6 +217,49 @@ function TaskPreviewSkeleton(): JSX.Element {
       />
     </div>
   );
+}
+
+/**
+ * Local popover content wrapper that defers `assembleTaskPreviewData` until
+ * the popover is actually opened.
+ *
+ * When `isAssignmentLoading` or `showAssignmentError` is true, the expensive
+ * conversion is short-circuited entirely.
+ *
+ * @param {CellPreviewData | null} cellData - The cell preview data from the lookup.
+ * @param {MetricResult} metricResult - The analyser's metric result for this cell.
+ * @param {HeatmapMetricKey} metricKey - Which metric column this preview is for.
+ * @param {string} taskId - The heatmap column's task ID.
+ * @param {boolean} isAssignmentLoading - Whether the assignment query is pending.
+ * @param {boolean} showAssignmentError - Whether the assignment query errored or returned null.
+ * @returns {JSX.Element} The popover content (skeleton, alert, or TaskPreviewCard).
+ */
+function CellPopoverContent({
+  cellData,
+  metricResult,
+  metricKey,
+  taskId,
+  isAssignmentLoading,
+  showAssignmentError,
+}: Readonly<{
+  cellData: CellPreviewData | null;
+  metricResult: MetricResult;
+  metricKey: HeatmapMetricKey;
+  taskId: string;
+  isAssignmentLoading: boolean;
+  showAssignmentError: boolean;
+}>): JSX.Element {
+  if (isAssignmentLoading) {
+    return <TaskPreviewSkeleton />;
+  }
+
+  if (showAssignmentError) {
+    return <Alert type="error" showIcon title="Couldn't load task details" />;
+  }
+
+  // Defer the expensive assembleTaskPreviewData call until the popover opens.
+  const previewData = assembleTaskPreviewData(cellData, metricResult, metricKey, taskId);
+  return <TaskPreviewCard data={previewData} />;
 }
 
 /**
@@ -277,22 +319,23 @@ function buildTaskMetricSubColumns(
       render: (_: unknown, record: HeatmapRow): JSX.Element => {
         const m = getCellMetric(record.cells[taskIndex], metric);
         const cellData = cellPreviewLookup?.get(record.studentId)?.get(taskColumn.taskId) ?? null;
-        const previewData = assembleTaskPreviewData(cellData, m, metric, taskColumn.taskId);
-
-        let popoverContent: JSX.Element;
-        if (isAssignmentLoading) {
-          popoverContent = <TaskPreviewSkeleton />;
-        } else if (showAssignmentError) {
-          popoverContent = <Alert type="error" showIcon title="Couldn't load task details" />;
-        } else {
-          popoverContent = <TaskPreviewCard data={previewData} />;
-        }
+        const score = renderScore(m);
+        const ariaLabel = `${record.studentName}, ${taskColumn.taskId}, ${getDisplayTitle(metric)}: ${score}`;
 
         return (
           <Popover
             trigger={['hover', 'click']}
             placement="right"
-            content={popoverContent}
+            content={
+              <CellPopoverContent
+                cellData={cellData}
+                metricResult={m}
+                metricKey={metric}
+                taskId={taskColumn.taskId}
+                isAssignmentLoading={isAssignmentLoading}
+                showAssignmentError={showAssignmentError}
+              />
+            }
           >
             {/* 4px padding (APP_GAP_XS, documented half-unit exception) widens the
                 Popover hover/click target around the score without covering the
@@ -300,6 +343,8 @@ function buildTaskMetricSubColumns(
             <span
               tabIndex={0}
               role="button"
+              aria-label={ariaLabel}
+              aria-haspopup="dialog"
               style={{ padding: APP_GAP_XS, display: 'inline-block' }}
               onKeyDown={(event): void => {
                 if (event.key === 'Enter' || event.key === ' ') {

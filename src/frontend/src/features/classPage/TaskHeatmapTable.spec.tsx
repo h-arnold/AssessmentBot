@@ -288,6 +288,20 @@ function getRenderedRowKeys(container: HTMLElement): string[] {
   );
 }
 
+/**
+ * Find the table cell `<td>` by its aria-label.
+ *
+ * Since both the `<td>` (via `onCell`) and the popover `<span>` trigger (via
+ * `aria-label` + `aria-haspopup`) share the same label, use `getAllByLabelText`
+ * and return the first match (the `<td>`, which comes first in DOM order).
+ *
+ * @param {string} label - The aria-label value to search for.
+ * @returns {HTMLElement} The first matching element (the table cell).
+ */
+function getHeatmapCellByLabel(label: string): HTMLElement {
+  return screen.getAllByLabelText(label)[0];
+}
+
 // ---------------------------------------------------------------------------
 // Setup
 // ---------------------------------------------------------------------------
@@ -437,28 +451,28 @@ describe('TaskHeatmapTable', () => {
 
     // Student One (s-1), Task 1 (task_001), Completeness: 5 (green / computed)
     // Expected aria-label: "Student One, task_001, Completeness: 5"
-    const cellAriaComputed = screen.getByLabelText(
+    const cellAriaComputed = getHeatmapCellByLabel(
       'Student One, task_001, Completeness: 5'
     );
     expect(cellAriaComputed).toBeInTheDocument();
 
     // Student Three (s-3), Task 1 (task_001), Completeness: notAttempted ('N')
     // Expected aria-label: "Student Three, task_001, Completeness: N"
-    const cellAriaNotAttempted = screen.getByLabelText(
+    const cellAriaNotAttempted = getHeatmapCellByLabel(
       'Student Three, task_001, Completeness: N'
     );
     expect(cellAriaNotAttempted).toBeInTheDocument();
 
     // Student One (s-1), Task 1 (task_001), Accuracy: 3 (computed, default)
     // Expected aria-label: "Student One, task_001, Accuracy: 3"
-    const cellAriaAccuracy = screen.getByLabelText(
+    const cellAriaAccuracy = getHeatmapCellByLabel(
       'Student One, task_001, Accuracy: 3'
     );
     expect(cellAriaAccuracy).toBeInTheDocument();
 
     // Student Two (s-2), Task 2 (task_002), Completeness: E (error)
     // Expected aria-label: "Student Two, task_002, Completeness: E"
-    const cellAriaError = screen.getByLabelText(
+    const cellAriaError = getHeatmapCellByLabel(
       'Student Two, task_002, Completeness: E'
     );
     expect(cellAriaError).toBeInTheDocument();
@@ -536,7 +550,7 @@ describe('TaskHeatmapTable', () => {
     render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
 
     // Find a computed cell's score span via its aria-label
-    const cell = screen.getByLabelText(
+    const cell = getHeatmapCellByLabel(
       'Student One, task_001, Completeness: 5'
     );
     const trigger = cell.querySelector('span');
@@ -555,7 +569,7 @@ describe('TaskHeatmapTable', () => {
     const result = buildHeatmapResult();
     render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
 
-    const cell = screen.getByLabelText(
+    const cell = getHeatmapCellByLabel(
       'Student One, task_001, Completeness: 5'
     );
     const trigger = cell.querySelector('span')!;
@@ -580,13 +594,13 @@ describe('TaskHeatmapTable', () => {
     // The aria-label comes from onCell, not from render — Popover does not
     // change onCell, so the label should be unchanged.
     expect(
-      screen.getByLabelText('Student One, task_001, Completeness: 5')
+      getHeatmapCellByLabel('Student One, task_001, Completeness: 5')
     ).toBeInTheDocument();
     expect(
-      screen.getByLabelText('Student One, task_001, Accuracy: 3')
+      getHeatmapCellByLabel('Student One, task_001, Accuracy: 3')
     ).toBeInTheDocument();
     expect(
-      screen.getByLabelText('Student Two, task_002, Completeness: E')
+      getHeatmapCellByLabel('Student Two, task_002, Completeness: E')
     ).toBeInTheDocument();
   });
 
@@ -596,7 +610,7 @@ describe('TaskHeatmapTable', () => {
 
     // Student One, Task 1, Completeness: 5 is a computed score at the ceiling
     // of the range — the cell should carry a green/gradient background colour.
-    const cell = screen.getByLabelText(
+    const cell = getHeatmapCellByLabel(
       'Student One, task_001, Completeness: 5'
     );
     // resolveMetricTone sets backgroundColor (camelCase) on the <td> via onCell
@@ -610,17 +624,17 @@ describe('TaskHeatmapTable', () => {
 
     // Assert metric sub-cells are present and labelled
     expect(
-      screen.getByLabelText('Student One, task_001, Completeness: 5')
+      getHeatmapCellByLabel('Student One, task_001, Completeness: 5')
     ).toBeInTheDocument();
     expect(
-      screen.getByLabelText('Student Two, task_001, Completeness: 3')
+      getHeatmapCellByLabel('Student Two, task_001, Completeness: 3')
     ).toBeInTheDocument();
     expect(
-      screen.getByLabelText('Student Three, task_001, Completeness: N')
+      getHeatmapCellByLabel('Student Three, task_001, Completeness: N')
     ).toBeInTheDocument();
 
     // Hover a computed cell and assert the popover opens
-    const cell = screen.getByLabelText(
+    const cell = getHeatmapCellByLabel(
       'Student One, task_001, Completeness: 5'
     );
     const trigger = cell.querySelector('span')!;
@@ -649,7 +663,7 @@ describe('TaskHeatmapTable', () => {
       />
     );
 
-    const cell = screen.getByLabelText(
+    const cell = getHeatmapCellByLabel(
       'Student One, task_001, Completeness: 5'
     );
     const trigger = cell.querySelector('span')!;
@@ -679,7 +693,7 @@ describe('TaskHeatmapTable', () => {
       />
     );
 
-    const cell = screen.getByLabelText(
+    const cell = getHeatmapCellByLabel(
       'Student One, task_001, Completeness: 5'
     );
     const trigger = cell.querySelector('span')!;
@@ -705,7 +719,7 @@ describe('TaskHeatmapTable', () => {
       />
     );
 
-    const cell = screen.getByLabelText(
+    const cell = getHeatmapCellByLabel(
       'Student One, task_001, Completeness: 5'
     );
     const trigger = cell.querySelector('span')!;
@@ -734,7 +748,7 @@ describe('TaskHeatmapTable', () => {
       />
     );
 
-    const cell = screen.getByLabelText(
+    const cell = getHeatmapCellByLabel(
       'Student One, task_001, Completeness: 5'
     );
     const trigger = cell.querySelector('span')!;
@@ -763,13 +777,13 @@ describe('TaskHeatmapTable', () => {
     );
 
     expect(
-      screen.getByLabelText('Student One, task_001, Completeness: 5')
+      getHeatmapCellByLabel('Student One, task_001, Completeness: 5')
     ).toBeInTheDocument();
     expect(
-      screen.getByLabelText('Student One, task_001, Accuracy: 3')
+      getHeatmapCellByLabel('Student One, task_001, Accuracy: 3')
     ).toBeInTheDocument();
     expect(
-      screen.getByLabelText('Student Two, task_002, Completeness: E')
+      getHeatmapCellByLabel('Student Two, task_002, Completeness: E')
     ).toBeInTheDocument();
   });
 });

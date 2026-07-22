@@ -10,7 +10,7 @@
  * @see SPEC.md — §"Page composition", §"Navigation / breadcrumb", §"Error handling"
  */
 
-import { useEffect, useMemo, useRef, type JSX } from 'react';
+import { useMemo, type JSX } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Alert, Button, Card, Flex, App as AntdApp } from 'antd';
 import { RefreshCw } from 'lucide-react';
@@ -24,6 +24,7 @@ import {
   TaskTitlesUnavailableError,
 } from '../../services/dataAnalysis/heatmapAdapter';
 import { logFrontendError, logFrontendEvent } from '../../logging/frontendLogger';
+import { useLogOnce } from '../../hooks/useLogOnce';
 import { buildCellPreviewLookup } from './buildCellPreviewLookup';
 import type { CellPreviewLookup } from './buildCellPreviewLookup';
 import { getAssignmentQueryOptions } from '../../query/sharedQueries';
@@ -170,44 +171,39 @@ export function TaskHeatmapPage({
   const showAssignmentError: boolean = assignmentQuery.isError || assignmentQuery.data === null;
   const isAssignmentLoading: boolean = assignmentQuery.isPending;
 
-  // Assignment-query error logging guard (separate from the generic heatmap-error guard).
-  const hasLoggedAssignmentErrorReference = useRef(false);
-  useEffect(() => {
-    if (assignmentQuery.isError && !hasLoggedAssignmentErrorReference.current) {
-      hasLoggedAssignmentErrorReference.current = true;
-      logFrontendError('TaskHeatmapPage', assignmentQuery.error);
-    }
-  }, [assignmentQuery.isError, assignmentQuery.error]);
+  // Assignment-query error logging: fires once via useLogOnce guard.
+  useLogOnce(assignmentQuery.isError, () => {
+    logFrontendError('TaskHeatmapPage', assignmentQuery.error);
+  });
 
-  // Assignment not-found logging guard (separate useRef from the error guard).
-  const hasLoggedAssignmentNotFoundReference = useRef(false);
-  useEffect(() => {
-    if (
-      assignmentQuery.data === null &&
-      !assignmentQuery.isPending &&
-      !assignmentQuery.isError &&
-      !hasLoggedAssignmentNotFoundReference.current
-    ) {
-      hasLoggedAssignmentNotFoundReference.current = true;
+  // Assignment not-found logging: fires once via useLogOnce guard.
+  useLogOnce(
+    assignmentQuery.data === null && !assignmentQuery.isPending && !assignmentQuery.isError,
+    () => {
       logFrontendEvent('warn', {
         context: 'TaskHeatmapPage',
         errorMessage: 'Assignment not found in AssignmentFull payload',
       });
-    }
-  }, [assignmentQuery.data, assignmentQuery.isPending, assignmentQuery.isError]);
+    },
+  );
 
   // Generic errors (unknown assignmentId): log, surface user-safe message,
   // and auto-navigate back. Guarded against double-execution in React 19
-  // StrictMode via useRef.
-  const hasHandledGenericErrorReference = useRef(false);
-  useEffect(() => {
-    if (isGenericError && !hasHandledGenericErrorReference.current) {
-      hasHandledGenericErrorReference.current = true;
-      logFrontendError('TaskHeatmapPage', state.error);
-      message.error('Something went wrong while loading the heatmap. Returning to class overview.');
-      backCallback();
-    }
-  }, [isGenericError, state.error, backCallback, message]);
+  // StrictMode via useLogOnce.
+  useLogOnce(isGenericError, () => {
+    logFrontendError('TaskHeatmapPage', state.error);
+    message.error('Something went wrong while loading the heatmap. Returning to class overview.');
+    backCallback();
+  });
+
+  // Title-error logging: emits a developer diagnostic once when task titles
+  // cannot be resolved, alongside the in-view Alert for the user.
+  useLogOnce(isTitleError, () => {
+    logFrontendEvent('warn', {
+      context: 'TaskHeatmapPage',
+      errorMessage: 'Task titles are currently unavailable.',
+    });
+  });
 
   if (isGenericError) {
     return null;
