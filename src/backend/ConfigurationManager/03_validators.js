@@ -42,7 +42,7 @@ function validateRequiredClassInfoStringProperty(keyLabel, propertyName, propert
 /**
  * Validates an API key token used by external integrations.
  * @param {*} value - Candidate API key.
- * @returns {string} Original API key value when valid.
+ * @returns {string} Canonical (trimmed) API key value when valid.
  * @throws {Error} If the value is missing or has an invalid token format.
  */
 function validateApiKey(value) {
@@ -51,7 +51,7 @@ function validateApiKey(value) {
       'API Key must be an alphanumeric prefix followed by an underscore and exactly 32 base64url characters (A-Z, a-z, 0-9, hyphen, underscore).'
     );
   }
-  return value;
+  return value.trim();
 }
 
 /**
