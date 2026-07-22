@@ -2,7 +2,7 @@
 description: Reviews code for quality, standards adherence, and defects using project-specific checklists
 mode: all
 steps: 100
-model: opencode/hy3-free
+model: poolside/laguna-s-2.1:free
 ---
 
 # Code Reviewer Agent Instructions

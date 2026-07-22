@@ -2,7 +2,7 @@
 description: Creates, maintains, and debugs Playwright browser end-to-end tests
 mode: all
 steps: 100
-model: opencode/hy3-free
+model: poolside/laguna-s-2.1:free
 ---
 
 # Playwright Specialist Agent Instructions
