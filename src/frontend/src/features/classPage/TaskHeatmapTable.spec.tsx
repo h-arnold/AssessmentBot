@@ -786,4 +786,43 @@ describe('TaskHeatmapTable', () => {
       getHeatmapCellByLabel('Student Two, task_002, Completeness: E')
     ).toBeInTheDocument();
   });
+
+  // -------------------------------------------------------------------------
+  // 7. Metric column sorter — clicking a metric sub-column sorter reorders
+  //    rows via heatmapMetricComparator.
+  // -------------------------------------------------------------------------
+
+  it('clicking Task 1 Completeness column sorter changes row order from the default sort', async () => {
+    const result = buildHeatmapResult();
+    const { container } = render(
+      <TaskHeatmapTable
+        heatmapResult={result}
+        cellPreviewLookup={null}
+        isAssignmentLoading={false}
+        showAssignmentError={false}
+      />
+    );
+
+    // Default sort: student name ascending → s-1, s-3, s-2
+    const defaultRowKeys = getRenderedRowKeys(container);
+    expect(defaultRowKeys).toEqual(['s-1', 's-3', 's-2']);
+
+    // Find the first Completeness column header (Task 1)
+    const completenessHeaders = screen.getAllByRole('columnheader', {
+      name: /completeness/i,
+    });
+    const task1CompletenessHeader = completenessHeaders[0];
+
+    // Click its sorter
+    const sorter = task1CompletenessHeader.querySelector('.ant-table-column-sorters');
+    expect(sorter).toBeInTheDocument();
+    await user.click(sorter!);
+
+    // After clicking the metric column sorter, the row order should differ
+    // from the default student-name sort.
+    const sortedRowKeys = getRenderedRowKeys(container);
+    expect(sortedRowKeys).not.toEqual(defaultRowKeys);
+    // The first row should no longer be s-1 (Student One)
+    expect(sortedRowKeys[0]).not.toBe('s-1');
+  });
 });

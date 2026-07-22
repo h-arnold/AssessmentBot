@@ -32,6 +32,8 @@ const IMAGE_SCORE = 3;
 const BASE_SCORE = 2;
 /** Score value used for null cellData test assertion. */
 const NULL_CELL_SCORE = 4;
+/** Score value used for null cellData with computed metric test assertion. */
+const NULL_CELL_COMPUTED_SCORE = 5;
 /** Score value used for reasoning-present test assertion. */
 const REASONING_PRESENT_SCORE = 5;
 /** Score value used for reasoning-absent test assertion. */
@@ -195,6 +197,34 @@ describe('assembleTaskPreviewData', () => {
     expect(result.artifactType).toBe('TEXT');
     expect(result.artifactContent).toBe('');
     expect(result.reasoning).toBe('');
+  });
+
+  it('throws when SPREADSHEET artifact content is null', () => {
+    const data = cellData('SPREADSHEET', null);
+
+    expect(() =>
+      assembleTaskPreviewData(data, computedMetric(TEXT_SCORE), 'completeness', 'task-15')
+    ).toThrow(TypeError);
+  });
+
+  it('handles TEXT artifact with null content by coercing to empty string', () => {
+    const data = cellData('TEXT', null);
+
+    const result = assembleTaskPreviewData(data, computedMetric(TEXT_SCORE), 'accuracy', 'task-16');
+
+    expect(result.artifactContent).toBe('');
+  });
+
+  it('null cellData returns notAttempted even when metricResult is computed', () => {
+    const result = assembleTaskPreviewData(
+      null,
+      computedMetric(NULL_CELL_COMPUTED_SCORE),
+      'spag',
+      'task-17'
+    );
+
+    expect(result.metricState).toBe('notAttempted');
+    expect(result.metricScore).toBe('N');
   });
 
   // -------------------------------------------------------------------------

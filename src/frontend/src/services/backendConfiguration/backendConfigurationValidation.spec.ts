@@ -3,6 +3,7 @@ import {
   backendApiKeyValidationMessage,
   isBackendApiKeyToken,
   isMaskedBackendApiKeyValue,
+  isDriveFolderId,
 } from './backendConfigurationValidation';
 
 const validApiKey = 'abt_7pC98PCoGJOcjN-qz6rNlSzKkgySJF-1';
@@ -16,8 +17,8 @@ describe('isBackendApiKeyToken', () => {
     expect(isBackendApiKeyToken('custom_7pC98PCoGJOcjN-qz6rNlSzKkgySJF-1')).toBe(true);
   });
 
-  it('accepts base64url characters including hyphens and underscores in the token', () => {
-    expect(isBackendApiKeyToken('abt_7pC98PCoGJOcjN-qz6rNlSzKkgySJF-1')).toBe(true);
+  it('accepts base64url characters including multiple hyphens and underscores in the token', () => {
+    expect(isBackendApiKeyToken('abt_a-b_c-d_e-f_g-h_i-j_k-l_m-n_o_pq')).toBe(true);
   });
 
   it('rejects a blank value', () => {
@@ -43,6 +44,10 @@ describe('isBackendApiKeyToken', () => {
   it('rejects a key containing invalid characters in the token', () => {
     expect(isBackendApiKeyToken('abt_7pC98PCoGJOcjN+qz6rNlSzKkgySJF-1')).toBe(false);
   });
+
+  it('accepts a key with surrounding whitespace after trimming', () => {
+    expect(isBackendApiKeyToken('  ' + validApiKey + '  ')).toBe(true);
+  });
 });
 
 describe('backendApiKeyValidationMessage', () => {
@@ -66,5 +71,23 @@ describe('isMaskedBackendApiKeyValue', () => {
 
   it('rejects an unmasked raw key', () => {
     expect(isMaskedBackendApiKeyValue(validApiKey)).toBe(false);
+  });
+
+  it('rejects a masked value shorter than the expected suffix length', () => {
+    expect(isMaskedBackendApiKeyValue('****ab')).toBe(false);
+  });
+});
+
+describe('isDriveFolderId', () => {
+  it('accepts a valid Drive folder ID (10+ alphanumeric chars)', () => {
+    expect(isDriveFolderId('folder12345')).toBe(true);
+  });
+
+  it('rejects a value shorter than the minimum length', () => {
+    expect(isDriveFolderId('short')).toBe(false);
+  });
+
+  it('rejects a value containing illegal characters', () => {
+    expect(isDriveFolderId('bad id!')).toBe(false);
   });
 });

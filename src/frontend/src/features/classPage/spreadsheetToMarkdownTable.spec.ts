@@ -108,4 +108,29 @@ describe('spreadsheetToMarkdownTable', () => {
 
     expect(result).toBe(expected);
   });
+
+  // -----------------------------------------------------------------------
+  // Empty header row
+  // -----------------------------------------------------------------------
+  it('handles an empty header row by producing a degenerate table with zero columns', () => {
+    const input: SpreadsheetRows = [[]];
+    const result = spreadsheetToMarkdownTable(input);
+
+    // With 0 columns each row renders as "|  |" (padded to columnCount 0)
+    const expected = ['|  |', '|  |'].join('\n');
+
+    expect(result).toBe(expected);
+  });
+
+  // -----------------------------------------------------------------------
+  // Ragged rows
+  // -----------------------------------------------------------------------
+  it('pads ragged rows to fit the widest row', () => {
+    const input: SpreadsheetRows = [['A', 'B'], [1]];
+    const result = spreadsheetToMarkdownTable(input);
+
+    const expected = ['| A | B |', '| --- | --- |', '| 1 |  |'].join('\n');
+
+    expect(result).toBe(expected);
+  });
 });

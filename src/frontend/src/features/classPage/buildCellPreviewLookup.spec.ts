@@ -678,6 +678,69 @@ describe('buildCellPreviewLookup', () => {
   // Additional acceptance: missing task returns undefined
   // -----------------------------------------------------------------------
 
+  // -----------------------------------------------------------------------
+  // Test 10 — duplicate student submissions: last-wins
+  // -----------------------------------------------------------------------
+
+  it('overwrites (last-wins) when same studentId appears in two submissions', () => {
+    const assignment = createAssignment([
+      {
+        studentId: 'student-1',
+        studentName: 'Alice',
+        assignmentId: 'assignment-1',
+        documentId: null,
+        items: {
+          'item-1': {
+            id: 'item-1',
+            taskId: 'task-1',
+            artifact: {
+              ...BASE_ARTIFACT_FIELDS,
+              type: 'TEXT' as const,
+              content: 'First submission content',
+              taskId: 'task-1',
+            },
+            assessments: {
+              completeness: { score: 4, reasoning: 'First version' },
+            },
+            feedback: {},
+          },
+        },
+        createdAt: DEFAULT_DATE,
+        updatedAt: DEFAULT_DATE,
+      },
+      {
+        studentId: 'student-1',
+        studentName: 'Alice',
+        assignmentId: 'assignment-1',
+        documentId: null,
+        items: {
+          'item-2': {
+            id: 'item-2',
+            taskId: 'task-1',
+            artifact: {
+              ...BASE_ARTIFACT_FIELDS,
+              type: 'TEXT' as const,
+              content: 'Second submission content',
+              taskId: 'task-1',
+            },
+            assessments: {
+              completeness: { score: 5, reasoning: 'Second version' },
+            },
+            feedback: {},
+          },
+        },
+        createdAt: DEFAULT_DATE,
+        updatedAt: DEFAULT_DATE,
+      },
+    ]);
+
+    const lookup: CellPreviewLookup = buildCellPreviewLookup(assignment);
+    const cellData = lookup.get('student-1')?.get('task-1');
+
+    expect(cellData).toBeDefined();
+    expect(cellData!.artifactContent).toBe('Second submission content');
+  });
+
   it('returns undefined for a taskId not present in the submission', () => {
     const assignment = createAssignment([
       {
