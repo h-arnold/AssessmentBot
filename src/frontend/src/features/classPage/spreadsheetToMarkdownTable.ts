@@ -15,7 +15,7 @@ type SpreadsheetRows = Array<Array<string | number | null>>;
  * @returns {string} The formatted string representation of the cell.
  */
 function formatCell(cell: string | number | null): string {
-  if (cell === null) {
+  if (cell == null) {
     return '';
   }
   return String(cell).replaceAll(String.raw`|`, String.raw`\|`);
@@ -25,10 +25,16 @@ function formatCell(cell: string | number | null): string {
  * Builds a single GFM markdown table row from an array of cell values.
  *
  * @param {Array<string | number | null>} row - The array of cell values for the row.
+ * @param {number} columnCount - The expected number of columns; ragged rows are padded to this length.
  * @returns {string} The formatted pipe-delimited row string.
  */
-function buildRow(row: SpreadsheetRows[number]): string {
-  const formatted = row.map((cell) => formatCell(cell));
+function buildRow(row: SpreadsheetRows[number], columnCount: number): string {
+  // Pad ragged rows so every row has `columnCount` cells
+  const padded: Array<string | number | null> = [...row];
+  while (padded.length < columnCount) {
+    padded.push(null);
+  }
+  const formatted = padded.map((cell) => formatCell(cell));
   return `| ${formatted.join(' | ')} |`;
 }
 
@@ -48,11 +54,11 @@ export function spreadsheetToMarkdownTable(rows: SpreadsheetRows): string {
     return '';
   }
 
-  const columnCount = rows[0].length;
+  const columnCount = Math.max(...rows.map((r) => r.length));
 
-  const headerRow = buildRow(rows[0]);
+  const headerRow = buildRow(rows[0], columnCount);
   const separatorRow = `| ${Array.from({ length: columnCount }, () => '---').join(' | ')} |`;
-  const dataRows = rows.slice(1).map((row) => buildRow(row));
+  const dataRows = rows.slice(1).map((row) => buildRow(row, columnCount));
 
   return [headerRow, separatorRow, ...dataRows].join('\n');
 }

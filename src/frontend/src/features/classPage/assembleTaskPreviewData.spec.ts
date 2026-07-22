@@ -109,7 +109,7 @@ function cellData(
       accuracy: overrides?.accuracy ?? null,
       spag: overrides?.spag ?? null,
     },
-  };
+  } as CellPreviewData;
 }
 
 // ===========================================================================

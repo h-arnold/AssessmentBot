@@ -1,25 +1,41 @@
-import type { AssignmentFull } from '../../services/assignmentAssessment/assignmentAssessment.zod';
+import type {
+  AssignmentFull,
+  BaseTaskArtifactSchema,
+} from '../../services/assignmentAssessment/assignmentAssessment.zod';
 import { HEATMAP_METRIC_KEYS } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import type { HeatmapMetricKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
+import type { z } from 'zod';
 
 /**
- * Discriminant values for a task artifact's type, matching the discriminator
- * union in {@link BaseTaskArtifactSchema}.
+ * Discriminant values for a task artifact's type, derived from the
+ * {@link BaseTaskArtifactSchema} discriminated union so the two cannot drift.
  */
-type ArtifactType = 'TEXT' | 'TABLE' | 'IMAGE' | 'SPREADSHEET' | 'base';
+type ArtifactType = z.infer<typeof BaseTaskArtifactSchema>['type'];
+
+/**
+ * Maps each `ArtifactType` to its corresponding `artifactContent` type.
+ */
+type ArtifactContentByType<T extends ArtifactType> = T extends 'SPREADSHEET'
+  ? Array<Array<string | number | null>> | null
+  : T extends 'base'
+    ? unknown
+    : string | null;
 
 /**
  * Per-cell preview data extracted from a single (student, task) pair in
  * the AssignmentFull payload.
+ *
+ * Discriminated union keyed on `artifactType` so that `artifactContent`
+ * narrows automatically when the type is checked.
  */
-export interface CellPreviewData {
-  /** The artifact type discriminator from the backend. */
-  readonly artifactType: ArtifactType;
-  /** The artifact content (varies by type: string for TEXT/TABLE/IMAGE, 2D array for SPREADSHEET). */
-  readonly artifactContent: unknown;
-  /** Per-metric reasoning strings (null when assessment is absent for that metric). */
-  readonly reasoning: Record<HeatmapMetricKey, string | null>;
-}
+export type CellPreviewData = {
+  [K in ArtifactType]: {
+    readonly artifactType: K;
+    readonly artifactContent: ArtifactContentByType<K>;
+    /** Per-metric reasoning strings (null when assessment is absent for that metric). */
+    readonly reasoning: Record<HeatmapMetricKey, string | null>;
+  };
+}[ArtifactType];
 
 /**
  * Keyed lookup: outer key is studentId, inner key is taskId.
@@ -45,10 +61,14 @@ function createCellPreviewData(
   return {
     artifactType,
     artifactContent,
+    // `assessments` is keyed by backend metric names (`completeness`,
+    // `accuracy`, `spag`). `HEATMAP_METRIC_KEYS` provides the same three
+    // keys used for lookup. If a metric key is absent, `reasoning` defaults
+    // to `null`.
     reasoning: Object.fromEntries(
       HEATMAP_METRIC_KEYS.map((key) => [key, assessments[key]?.reasoning ?? null])
     ) as Record<HeatmapMetricKey, string | null>,
-  };
+  } as CellPreviewData;
 }
 
 /**

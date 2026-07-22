@@ -22,15 +22,16 @@ export function assembleTaskPreviewData(
   metricKey: HeatmapMetricKey,
   taskId: string
 ): TaskPreviewData {
-  // Null cellData: return empty defaults matching the no-submission contract
+  // Null cellData: return empty defaults matching the no-submission contract.
+  // Even if the metric result says 'computed', no submission means not attempted.
   if (cellData === null) {
     return {
       taskId,
       artifactType: 'TEXT',
       artifactContent: '',
       metricKey,
-      metricScore: metricResult.value,
-      metricState: metricResult.state,
+      metricScore: 'N' as const,
+      metricState: 'notAttempted' as const,
       reasoning: '',
     };
   }
@@ -78,32 +79,58 @@ function coerceArtifactType(
     case 'base': {
       return 'TEXT';
     }
+    default: {
+      // Exhaustiveness assertion: if a new artifact type is added to the
+      // schema without a matching case, this line will fail at compile time.
+      ((_exhaustive: never) => {
+        throw new Error(`Unhandled artifact type: ${String(_exhaustive)}`);
+      })(type);
+    }
   }
 }
 
 /**
- * Coerce the artifact content from `unknown` to the `string` expected by
- * `TaskPreviewData`.
+ * Validate and convert SPREADSHEET artifact content.
+ *
+ * @param {Array<Array<string | number | null>> | null} content - The spreadsheet content.
+ * @returns {string} A GFM markdown table string.
+ */
+function coerceSpreadsheetContent(content: Array<Array<string | number | null>> | null): string {
+  if (content === null) {
+    throw new TypeError('SPREADSHEET artifact content is null');
+  }
+  if (!Array.isArray(content)) {
+    throw new TypeError('SPREADSHEET artifact content is not a 2D array');
+  }
+  return spreadsheetToMarkdownTable(content);
+}
+
+/**
+ * Coerce the artifact content from a `CellPreviewData` to the `string` expected
+ * by `TaskPreviewData`.
  *
  * - `SPREADSHEET` content is converted through `spreadsheetToMarkdownTable`.
  * - `base` content always yields `''`.
+ * - `IMAGE` content that is `null` throws a `TypeError`.
  * - `TEXT`, `TABLE`, and `IMAGE` content is safely stringified.
  *
- * @param {CellPreviewData} cellData - The cell preview data (non-null; caller
- *        guards null).
+ * @param {CellPreviewData} cellData - The cell preview data (non-null; caller guards null).
  * @returns {string} A string representation of the artifact.
  */
 function coerceArtifactContent(cellData: CellPreviewData): string {
   if (cellData.artifactType === 'SPREADSHEET') {
-    return spreadsheetToMarkdownTable(
-      (cellData.artifactContent as Array<Array<string | number | null>> | null) ?? []
-    );
+    return coerceSpreadsheetContent(cellData.artifactContent);
   }
 
   if (cellData.artifactType === 'base') {
     return '';
   }
 
-  // TEXT, TABLE, IMAGE: coerce unknown → string, defaulting to empty
-  return String(cellData.artifactContent ?? '');
+  // IMAGE: null content would produce a broken <img src=""> — fail fast
+  if (cellData.artifactType === 'IMAGE' && cellData.artifactContent === null) {
+    throw new TypeError('IMAGE artifact content is null');
+  }
+
+  // TEXT, TABLE, IMAGE: coerce null to empty string, string pass-through
+  return cellData.artifactContent ?? '';
 }
