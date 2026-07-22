@@ -9,6 +9,10 @@ const IntegerSchema = z.number().int();
 const NonEmptyStringSchema = z.string();
 const BackendUrlSchema = z.union([z.url(), z.literal('')]);
 
+/**
+ * `.trim()` silently normalises user input at the transport boundary (matching backend
+ * behaviour), rather than rejecting stray whitespace.
+ */
 const BackendApiKeyWriteSchema = z
   .string()
   .trim()

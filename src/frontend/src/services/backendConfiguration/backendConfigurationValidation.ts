@@ -17,7 +17,7 @@ export const backendApiKeyValidationMessage =
  * @returns {boolean} True when the value is a valid token.
  */
 export function isBackendApiKeyToken(value: string): boolean {
-  return value !== '' && backendApiKeyTokenRegex.test(value);
+  return backendApiKeyTokenRegex.test(value.trim());
 }
 
 /**
