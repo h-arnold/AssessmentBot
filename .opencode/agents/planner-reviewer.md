@@ -2,7 +2,7 @@
 description: Provides impartial second-pass review of planning artefacts before implementation starts
 mode: all
 steps: 100
-model: poolside/laguna-s-2.1:free
+model: openrouter/tencent/hy3
 ---
 
 # Planner Reviewer Agent Instructions

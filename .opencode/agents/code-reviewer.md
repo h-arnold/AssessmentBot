@@ -2,7 +2,7 @@
 description: Reviews code for quality, standards adherence, and defects using project-specific checklists
 mode: all
 steps: 100
-model: poolside/laguna-s-2.1:free
+model: openrouter/tencent/hy3
 ---
 
 # Code Reviewer Agent Instructions
