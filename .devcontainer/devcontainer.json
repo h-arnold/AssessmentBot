@@ -18,16 +18,13 @@
         "dbaeumer.vscode-eslint",
         "esbenp.prettier-vscode",
         "sonarsource.sonarlint-vscode",
-        "github.copilot",
         "github.copilot-chat",
         "yzhang.markdown-all-in-one",
         "ms-vscode.js-debug",
         "vscjava.vscode-java-pack",
         "DavidAnson.vscode-markdownlint",
         "bierner.markdown-mermaid",
-        "openai.chatgpt",
         "github.vscode-github-actions",
-        "GitHub.copilot-chat",
         "ms-vscode.vscode-typescript-next",
         "rvest.vs-code-prettier-eslint",
         "SonarSource.sonarlint-vscode",
@@ -46,18 +43,13 @@
         "keyboard.layout": "gb",
         "github.copilot.chat.localeOverride": "en",
         "github.copilot.chat.codesearch.enabled": true,
-        "github.copilot.chat.agent.thinkingTool": true,
-        "github.copilot.chat.generateTests.codeLens": true,
-        "github.copilot.commitMessageGeneration.instructionsPath": "./.github/.copilot-commit-message-instructions.md",
-        "github.copilot.chat.commitMessageGeneration.instructionsPath": "./.github/.copilot-commit-message-instructions.md",
         "github.copilot.chat.edits.temporalContext.enabled": true,
         "java.import.gradle.java.home": "/usr/local/sdkman/candidates/java/current",
         "java.jdt.ls.java.home": "/usr/local/sdkman/candidates/java/current"
       }
     }
   },
-  "postCreateCommand": "apt-get update && apt-get install -y wget ca-certificates gnupg2 && mkdir -p /etc/apt/keyrings && wget -qO- https://cli.github.com/packages/githubcli-archive-keyring.gpg | tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null && echo \"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main\" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null && apt-get update && apt-get install -y gh && /workspaces/AssessmentBot/scripts/builder/install_scc.sh && npm install && npm install -g typescript && npm install -g @google/clasp && npm install -g @openai/codex && npm --prefix src/frontend ci && npm --prefix src/frontend exec -- playwright install --with-deps chromium && curl -LsSf https://mistral.ai/vibe/install.sh",
-  "postStartCommand": "export VIBE_HOME=/workspaces/AssessmentBot/.vibe",
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
   "remoteUser": "node",
   "mounts": [
     "source=${localWorkspaceFolder}/.git,target=/workspaces/${localWorkspaceFolderBasename}/.git,type=bind,consistency=cached"
