@@ -1,10 +1,17 @@
-import type {
-  AssignmentFull,
-  BaseTaskArtifactSchema,
+import type { AssessmentSchema } from '../../services/assignmentAssessment/assignmentAssessment.zod';
+import {
+  type AssignmentFull,
+  type BaseTaskArtifactSchema,
 } from '../../services/assignmentAssessment/assignmentAssessment.zod';
 import { HEATMAP_METRIC_KEYS } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import type { HeatmapMetricKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import type { z } from 'zod';
+
+/**
+ * Assessment shape, derived from {@link AssessmentSchema} so the two cannot
+ * drift. Mirrors `Assessment.toJSON()` in `src/backend/Models/Assessment.js`.
+ */
+type Assessment = z.infer<typeof AssessmentSchema>;
 
 /**
  * Discriminant values for a task artifact's type, derived from the
@@ -50,13 +57,13 @@ export type CellPreviewLookup = ReadonlyMap<string, ReadonlyMap<string, CellPrev
  *
  * @param {ArtifactType} artifactType - The artifact type discriminator.
  * @param {unknown} artifactContent - The artifact content.
- * @param {Record<string, { score: number; reasoning: string }>} assessments - The per-metric assessments.
+ * @param {Record<string, Assessment>} assessments - The per-metric assessments.
  * @returns {CellPreviewData} The assembled cell preview data.
  */
 function createCellPreviewData(
   artifactType: ArtifactType,
   artifactContent: unknown,
-  assessments: Record<string, { score: number; reasoning: string }>
+  assessments: Record<string, Assessment>
 ): CellPreviewData {
   return {
     artifactType,
