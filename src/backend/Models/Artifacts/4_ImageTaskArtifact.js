@@ -49,8 +49,11 @@ class ImageTaskArtifact extends BaseTaskArtifact {
       const pngPrefix = 'data:image/png;base64,';
       this.content = pngPrefix + base64;
       this.ensureHash();
-    } catch {
-      // swallow errors
+    } catch (error) {
+      // Do not swallow: a base64 encode or hash failure must surface so the
+      // caller (ImageManager.writeBackBlobs) can report which artifact failed
+      // instead of silently leaving content in an inconsistent state.
+      throw error;
     }
   }
 }

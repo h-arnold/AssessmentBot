@@ -79,6 +79,11 @@ class ImageManager extends BaseRequestManager {
               taskId: item.taskId,
               itemId: item.id,
             });
+          } else {
+            ABLogger.getInstance().warn(
+              'Submission image artifact has no valid sourceUrl; it will not be hydrated and content stays null',
+              { uid: art.getUid?.(), taskId: item.taskId, sourceUrl }
+            );
           }
         }
       });
@@ -137,10 +142,18 @@ class ImageManager extends BaseRequestManager {
             const blob = resp.getBlob();
             results.push({ uid: entry.uid, blob });
           } catch (error) {
-            console.warn('Failed to read blob for image uid ' + entry.uid, error);
+            ABLogger.getInstance().warn('Failed to read image blob from response', {
+              uid: entry.uid,
+              url: entry.url,
+              err: error,
+            });
           }
         } else {
-          console.warn('Failed to fetch image for uid ' + entry.uid);
+          ABLogger.getInstance().warn('Failed to fetch image', {
+            uid: entry.uid,
+            url: entry.url,
+            responseCode: resp?.getResponseCode?.() ?? null,
+          });
         }
       });
     }
