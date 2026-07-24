@@ -12,6 +12,24 @@ This layer is deliberately REST-ish in structure:
 - keep endpoint-style naming coherent within each file
 - use each `.js` file as an API surface for a specific capability area
 
+## Canonical data-shape specifications
+
+All API contracts — request shapes, response envelopes, transport-boundary validation rules, and
+persisted data models — are documented in canonical specifications under
+`docs/developer/data-shapes/`. These docs are the authoritative contract reference for the
+entire codebase.
+
+**Before changing any API method, schema, transport shape, or persistence model, you must:**
+
+1. Read the relevant data-shape specification(s) in `docs/developer/data-shapes/` that cover the
+   contract you are changing.
+2. Ensure the planned change is accounted for in those docs — either as an existing entry to be
+   modified or as a new `Not implemented` planned entry (per the planner workflow in `AGENTS.md`).
+3. Update the specification to match the implementation as part of the change.
+
+Do not modify API contracts based on assumptions about what the data-shape docs say. Always verify
+against the current specification first.
+
 ## Shared Helper Status
 
 - ABClass parameters-object validator
