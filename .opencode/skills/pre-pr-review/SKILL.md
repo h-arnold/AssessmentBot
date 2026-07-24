@@ -147,6 +147,24 @@ Enable each only if its layer appears in the Step 2 classification.
 - **Error-handling robustness** → `code-reviewer`
   - Broad `catch`/swallow, missing rethrow at boundaries, and missing `Validate.requireParams` on
     public backend methods.
+- **Data-shape docs consistency** → `data-shapes-agent`
+  - **Trigger:** run if the diff touches any file under `docs/developer/data-shapes/` or any backend
+    schema/persistence file (`*.zod.ts`, `*Schema*`, `*Entity*`, `*Model*`, files under `src/backend/`
+    that define or consume data shapes).
+  - Inspect the diff against the canonical data-shape specifications in `docs/developer/data-shapes/`.
+  - Check that the data-shape docs have been updated to reflect the changes — they should have been,
+    per the data-shapes-agent workflow mandated in `AGENTS.md` section 4 and the implementation
+    ACTION_PLAN.md.
+  - Cross-reference code vs docs: do the schemas in code match the documented contracts in
+    `docs/developer/data-shapes/`? Note any discrepancies (field names, types, optionality,
+    constraints, serialisation format).
+  - Flag issues highlighted by the docs that are not addressed in the code (e.g. documented
+    invariants that the code does not enforce, documented constraints that are absent, or
+    documented shape changes that were not implemented).
+  - Also flag reverse problems: code changes that introduce new schema or persistence behaviour
+    that is not yet documented.
+  - Report incidental findings from reading the data-shape docs (e.g. stale content, contradictions
+    between docs, missing entries for existing code constructs). Clearly label these as incidental.
 
 ## Step 4 — Synthesise into PR_REVIEW.md
 
@@ -211,6 +229,10 @@ Write the synthesised document to `PR_REVIEW.md` at the repository root. Structu
 ...
 
 ### Error-handling robustness (optional)
+
+...
+
+### Data-shape docs consistency (optional)
 
 ...
 ```
