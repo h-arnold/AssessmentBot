@@ -88,6 +88,16 @@ Consult these resources before and during review. Local docs contain project-spe
 - [AGENTS.md](../../AGENTS.md)
 - [CONTRIBUTING.md](../../CONTRIBUTING.md)
 
+**Data shapes (all modules — persistence, transport, validation)**:
+
+- [Data Shapes INDEX.md](../../docs/developer/data-shapes/INDEX.md) — entry point with contract registry and containment hierarchy
+- [Transport Envelope](../../docs/developer/data-shapes/transport-envelope.md) — shared API handler success/error envelope
+- [Contract: ABClass](../../docs/developer/data-shapes/abclass.md)
+- [Contract: AssignmentDefinition](../../docs/developer/data-shapes/assignment-definition.md)
+- [Contract: Assignment](../../docs/developer/data-shapes/assignment.md)
+- [Contract: BackendConfig](../../docs/developer/data-shapes/backend-config.md)
+- [Contract: Reference Data](../../docs/developer/data-shapes/reference-data.md)
+
 You will fail the task unless you read _the entirety_ of the relevant context before editing. Do not skip or shortcut this step.
 
 ## 3. Universal Principles (All Modules)

@@ -1,0 +1,307 @@
+# Contract: BackendConfig
+
+Singleton configuration store for backend behaviour, exposed to the frontend settings UI
+via read and write endpoints.
+
+Backend model: `src/backend/ConfigurationManager/98_ConfigurationManagerClass.js` — singleton (not a Model with `toJSON()`)
+Collections: None — persisted as a single JSON blob in script properties via `PropertiesService.getScriptProperties()` under key `__CONFIG_STORE_KEY__`
+API handlers: `src/backend/z_Api/apiConfig.js`
+Response mapper: None — `getBackendConfig_()` directly shapes data from `ConfigurationManager` methods
+Frontend service: `src/frontend/src/services/backendConfiguration/backendConfigurationService.ts`
+Frontend Zod: `src/frontend/src/services/backendConfiguration/backendConfiguration.zod.ts`
+
+Sibling contracts:
+
+- [Contract: ABClass](abclass.md) — No direct relationship.
+- [Contract: AssignmentDefinition](assignment-definition.md) — No direct relationship.
+- [Contract: Assignment](assignment.md) — No direct relationship.
+- [Contract: Reference Data](reference-data.md) — No direct relationship.
+
+---
+
+## Persistence
+
+BackendConfig has no model class with `toJSON()`. Configuration is managed by the
+`ConfigurationManager` singleton, which reads/writes a single JSON blob from
+`PropertiesService.getScriptProperties()` under the key `__CONFIG_STORE_KEY__`.
+
+All stored values are serialised as strings via `String(normalizedValue)` before being
+written into the JSON blob. When read back, typed getter methods (e.g.
+`getBackendAssessorBatchSize()`) convert from strings to the expected types. The transport
+layer calls these typed getters and returns properly-typed values.
+
+The `ensureDefaultConfiguration()` method seeds defaultable fields on first boot if no
+prior configuration exists. Notable fields that are **not** seeded during initialisation:
+`apiKey`, `backendUrl`, and `jsonDbRootFolderId`.
+
+| #   | Field                      | Stored type                        | Persistence                                                       | Transport                                           | Frontend Zod                                                           | Notes                                                                                                                       |
+| --- | -------------------------- | ---------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `backendAssessorBatchSize` | `string` (number stored as string) | Always included                                                   | `number` — parsed via `getIntConfig()`              | `z.number().int()`                                                     | Default 120. Clamped to [1, 500].                                                                                           |
+| 2   | `apiKey`                   | `string`                           | Always included                                                   | `string` — masked via `maskApiKey_()`               | `MaskedApiKeySchema` — `z.string().refine(isMaskedBackendApiKeyValue)` | Never raw stored value in transport. Empty string when no key stored. See [$transport-masking](#transport) for mask shapes. |
+| 3   | `hasApiKey`                | `boolean\|string`                  | Not stored directly; derived at transport time from `!!rawApiKey` | `boolean` — `!!rawApiKey`                           | `z.boolean()`                                                          | Computed at transport boundary, not persisted.                                                                              |
+| 4   | `backendUrl`               | `string`                           | Always included                                                   | `string` — may be empty                             | `BackendUrlSchema` — `z.union([z.url(), z.literal('')])`               | Empty string when unset. Read transport allows blank; write requires valid URL.                                             |
+| 5   | `revokeAuthTriggerSet`     | `string` (`'true'` / `'false'`)    | Always included                                                   | `boolean` — via `ConfigurationManager.toBoolean()`  | `z.boolean()`                                                          | Treated as read-only by frontend (not in write input schema).                                                               |
+| 6   | `daysUntilAuthRevoke`      | `string` (number stored as string) | Always included                                                   | `number` — parsed via `getIntConfig()`              | `z.number().int()`                                                     | Default 60. Clamped to [1, 365].                                                                                            |
+| 7   | `slidesFetchBatchSize`     | `string` (number stored as string) | Always included                                                   | `number` — parsed via `getIntConfig()`              | `z.number().int()`                                                     | Default 30. Clamped to [1, 100].                                                                                            |
+| 8   | `jsonDbMasterIndexKey`     | `string`                           | Always included                                                   | `string` — returns default if stored value is empty | `z.string()` (non-empty enforced)                                      | Default `'ASSESSMENT_BOT_DB_MASTER_INDEX'`.                                                                                 |
+| 9   | `jsonDbLockTimeoutMs`      | `string` (number stored as string) | Always included                                                   | `number` — parsed via `getIntConfig()`              | `z.number().int()`                                                     | Default 15000. Clamped to [1000, 600000].                                                                                   |
+| 10  | `jsonDbLogLevel`           | `string`                           | Always included                                                   | `string` — trimmed and uppercased by getter         | `z.string()`                                                           | Default `'INFO'`. Valid levels: `DEBUG`, `INFO`, `WARN`, `ERROR`.                                                           |
+| 11  | `jsonDbBackupOnInitialise` | `string` (`'true'` / `'false'`)    | Always included                                                   | `boolean` — via `ConfigurationManager.toBoolean()`  | `z.boolean()`                                                          | Default `false`.                                                                                                            |
+| 12  | `jsonDbRootFolderId`       | `string`                           | Always included                                                   | `string` — coerced to `''` when blank/null          | `z.string()`                                                           | May be empty string when unset. Transport normalises `null` → `''`.                                                         |
+
+Key notes:
+
+- All values are stored as strings in the JSON blob. Typed getters convert on read.
+- `hasApiKey` is not a stored field; it is derived at transport time from `!!rawApiKey`.
+- `apiKey`, `backendUrl`, and `jsonDbRootFolderId` are excluded from `ensureDefaultConfiguration()` seeding.
+- `jsonDbRootFolderId` normalisation: `configManager.getJsonDbRootFolderId() || ''` ensures the transport always returns a string.
+
+---
+
+## Transport
+
+### `getBackendConfig` (read)
+
+Returns the full typed configuration object.
+
+| Aspect           | Detail                                                                                                 |
+| ---------------- | ------------------------------------------------------------------------------------------------------ |
+| Backend handler  | `src/backend/z_Api/apiConfig.js` → `getBackendConfig_()`                                               |
+| Controller       | — (ConfigurationManager singleton called directly)                                                     |
+| Response mapper  | — (handler shapes the response inline)                                                                 |
+| Frontend Zod     | `src/frontend/src/services/backendConfiguration/backendConfiguration.zod.ts` → `BackendConfigSchema`   |
+| Frontend service | `src/frontend/src/services/backendConfiguration/backendConfigurationService.ts` → `getBackendConfig()` |
+
+**Request:** No parameters.
+
+**Response:** `BackendConfigSchema`
+
+| Field                      | Type                    | Required | Notes                                        |
+| -------------------------- | ----------------------- | -------- | -------------------------------------------- |
+| `backendAssessorBatchSize` | `number`                | yes      | Integer. Default 120.                        |
+| `apiKey`                   | `string`                | yes      | Masked value. See masking contract below.    |
+| `hasApiKey`                | `boolean`               | yes      | `true` when a raw API key exists in storage. |
+| `backendUrl`               | `string` (URL \| empty) | yes      | May be empty string when unset.              |
+| `revokeAuthTriggerSet`     | `boolean`               | yes      |                                              |
+| `daysUntilAuthRevoke`      | `number`                | yes      | Integer. Default 60.                         |
+| `slidesFetchBatchSize`     | `number`                | yes      | Integer. Default 30.                         |
+| `jsonDbMasterIndexKey`     | `string`                | yes      |                                              |
+| `jsonDbLockTimeoutMs`      | `number`                | yes      | Integer. Default 15000.                      |
+| `jsonDbLogLevel`           | `string`                | yes      | One of `DEBUG`, `INFO`, `WARN`, `ERROR`.     |
+| `jsonDbBackupOnInitialise` | `boolean`               | yes      |                                              |
+| `jsonDbRootFolderId`       | `string`                | yes      | May be empty string when unset.              |
+
+Key contract notes:
+
+- The handler calls `configManager.ensureDefaultConfiguration()` first, which seeds
+  defaultable fields on first boot. After seeding, it builds the response from typed getters.
+- **API key masking contract** (`maskApiKey_()`):
+  - No key stored → `''` (empty string)
+  - Key length ≤ 4 chars → `'****'`
+  - Key length > 4 chars → `'****'` + last 4 characters (e.g. `'****7890'`)
+- `jsonDbRootFolderId` normalisation: `configManager.getJsonDbRootFolderId() || ''` produces
+  empty string when the stored value is `null` (the default) or blank.
+- The handler does **not** call `DateUtils.deepConvertDates()` because no config values
+  are `Date` objects.
+- The response is plain object shaped inline, not derived from a model's `toJSON()`.
+- The frontend schema adds an optional `loadError?: string` field (not in backend response)
+  which is populated client-side when the API call fails partially. This is outside the
+  transport contract but present in the Zod schema for error-surface handling.
+
+### `setBackendConfig` (write)
+
+Accepts a partial patch: only supplied fields are written. Omitted fields are left unchanged.
+
+| Aspect           | Detail                                                                                                                                           |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Backend handler  | `src/backend/z_Api/apiConfig.js` → `setBackendConfig_()`                                                                                         |
+| Controller       | — (ConfigurationManager singleton called directly)                                                                                               |
+| Response mapper  | — (handler returns the save result inline)                                                                                                       |
+| Frontend Zod     | `src/frontend/src/services/backendConfiguration/backendConfiguration.zod.ts` → `BackendConfigWriteInputSchema`, `BackendConfigWriteResultSchema` |
+| Frontend service | `src/frontend/src/services/backendConfiguration/backendConfigurationService.ts` → `setBackendConfig()`                                           |
+
+**Request:**
+
+| Field                      | Type           | Required | Notes                                                                                                                                                                                                                    |
+| -------------------------- | -------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `backendAssessorBatchSize` | `number`       | no       | Must be integer 1–500.                                                                                                                                                                                                   |
+| `apiKey`                   | `string`       | no       | Validated against API key pattern (alphanumeric segments, hyphens, no leading/trailing/consecutive hyphens). Explicit empty string clears the stored key.                                                                |
+| `backendUrl`               | `string` (URL) | no       | Must be a valid URL.                                                                                                                                                                                                     |
+| `daysUntilAuthRevoke`      | `number`       | no       | Must be integer 1–365.                                                                                                                                                                                                   |
+| `slidesFetchBatchSize`     | `number`       | no       | Must be integer 1–100.                                                                                                                                                                                                   |
+| `jsonDbMasterIndexKey`     | `string`       | no       | Non-empty string.                                                                                                                                                                                                        |
+| `jsonDbLockTimeoutMs`      | `number`       | no       | Must be integer 1000–600000.                                                                                                                                                                                             |
+| `jsonDbLogLevel`           | `string`       | no       | One of `DEBUG`, `INFO`, `WARN`, `ERROR`.                                                                                                                                                                                 |
+| `jsonDbBackupOnInitialise` | `boolean`      | no       |                                                                                                                                                                                                                          |
+| `jsonDbRootFolderId`       | `string`       | no       | Must be a valid Google Drive folder ID (alphanumeric, underscores, hyphens; minimum 10 chars) _as validated by the backend's `isValidGoogleDriveFolderId` which also verifies existence via `DriveApp.getFolderById()`_. |
+
+**Request validation notes:**
+
+- `params` must be a plain object; `ApiValidationError` is thrown otherwise.
+- Each supplied field whose `value !== undefined` is written via the corresponding
+  `ConfigurationManager` setter.
+- The frontend `BackendConfigWriteInputSchema` uses `.strict()` — fields outside the schema
+  are silently stripped before the request reaches the backend.
+- The writable field set in the backend is the **superset** of all 11 fields listed above.
+  The frontend schema **intentionally excludes** `revokeAuthTriggerSet` (treated as read-only
+  by the frontend although the backend accepts writes for it).
+
+**Response:** `BackendConfigWriteResultSchema` — a discriminated union:
+
+| Shape   | `success` | Additional fields                                                   |
+| ------- | --------- | ------------------------------------------------------------------- |
+| Success | `true`    | —                                                                   |
+| Failure | `false`   | `error: string` — aggregate error message without raw secret values |
+
+Example success:
+
+```json
+{ "success": true }
+```
+
+Example failure:
+
+```json
+{
+  "success": false,
+  "error": "Failed to save some configuration values: backendUrl: REDACTED; apiKey: REDACTED"
+}
+```
+
+Key contract notes:
+
+- The backend iterates over the full list of writable fields, checks `if (value === undefined) continue`
+  for each, and writes only supplied fields. Omitted fields are never read or touched.
+- Errors are aggregated. Each failed field appends `"${name}: REDACTED"` to the error list (secrets
+  are never exposed in error messages). On any failure, the handler logs with `ABLogger` and returns
+  `{ success: false, error: <aggregated> }`.
+- The frontend form mapper (`mapBackendSettingsFormValuesToBackendConfigWriteInput`) only includes
+  `apiKey` when the form value is non-empty, preventing accidental clearing of the stored key.
+- An explicit empty-string `apiKey` in the request **clears** the stored key (the backend
+  `setProperty` serialises `''` → `"''"` and writes it).
+- This endpoint is wrapped by the standard `apiHandler` transport envelope
+  (see [transport-envelope.md](transport-envelope.md)).
+
+---
+
+## Sub-entities
+
+None. BackendConfig is a standalone contract with no embedded sub-entities.
+
+---
+
+## Validation
+
+**Frontend Zod:**
+
+- `src/frontend/src/services/backendConfiguration/backendConfiguration.zod.ts`:
+  - `BackendConfigSchema` — validates the `getBackendConfig` response (12 fields + optional `loadError`). Uses `.strict()`.
+  - `BackendConfigWriteInputSchema` — validates the `setBackendConfig` request (10 writable fields, all optional). Uses `.strict()`.
+  - `BackendConfigWriteResultSchema` — validates the `setBackendConfig` response. Discriminated union of `{ success: true }` and `{ success: false, error: string }`. Both branches use `.strict()`.
+- `src/frontend/src/features/settings/backend/backendSettingsForm.zod.ts`:
+  - `BackendSettingsFormSchema` — form-level validation with `superRefine` for API key token check. Uses `.strict()`.
+- `src/frontend/src/services/backendConfiguration/backendConfigurationValidation.ts`:
+  - `isBackendApiKeyToken(value)` — validates API key token shape (alphanumeric + hyphens, no leading/trailing/consecutive hyphens).
+  - `isMaskedBackendApiKeyValue(value)` — validates masked API key value matches the backend masking contract (`''` \| `'****'` \| `'****'` + 4 characters).
+  - `isDriveFolderId(value)` — validates Drive folder ID shape (min 10 chars, alphanumeric + underscores + hyphens).
+
+**Backend transport validation:**
+
+- `src/backend/z_Api/apiConfig.js`:
+  - `setBackendConfig_(config)` — validates `params` is a plain object (throws `ApiValidationError` for non-object/array). Defers per-field validation to `ConfigurationManager.setProperty()` → `CONFIG_SCHEMA` rules.
+- `src/backend/ConfigurationManager/01_configKeysAndSchema.js` — `CONFIG_SCHEMA` defines per-key validation:
+  - Integer fields: `Validate.validateIntegerInRange()` with domain-appropriate bounds.
+  - `apiKey`: `validateApiKey()` — pattern check.
+  - `backendUrl`: `Validate.validateUrl()` — URL string validation.
+  - `revokeAuthTriggerSet` / `jsonDbBackupOnInitialise`: `Validate.validateBoolean()` + normalise via `toBooleanString`.
+  - `jsonDbLogLevel`: `validateLogLevel()` — enum check + normalise.
+  - `jsonDbRootFolderId`: calls `instance.isValidGoogleDriveFolderId()` which checks format via regex and existence via `DriveApp.getFolderById()`.
+
+**Key domain validation rules:**
+
+- Integer fields are clamped at the backend getter level (`getIntConfig()` returns the fallback default if the stored value is out of range). Write path rejects out-of-range values via CONFIG_SCHEMA validation.
+- `jsonDbRootFolderId` write validation requires the folder to actually exist in Drive (checked via `DriveApp.getFolderById()`). This is a heavyweight side-effect validation that is not mirrored in the frontend form schema (frontend validates only the identifier pattern).
+- API key validation on the write path validates against the `API_KEY_PATTERN` regex (alphanumeric segments separated by hyphens, no leading/trailing/consecutive hyphens). The frontend `isBackendApiKeyToken` mirrors this pattern.
+- `backendUrl` is stored as a plain string; no validation on read is performed beyond returning whatever is in storage.
+
+### Known discrepancies
+
+1. **`revokeAuthTriggerSet` is writable in backend but excluded from frontend write schema.**
+   The `setBackendConfig_()` handler accepts and writes `revokeAuthTriggerSet`, but
+   `BackendConfigWriteInputSchema` (and the form mapper) intentionally exclude it. The frontend
+   treats this field as read-only, surfacing it in the settings UI but never sending it back.
+   **Classification: Aligned** — deliberate design choice. The backend can still write it if
+   called via a different path (e.g. raw API call, tests).
+
+2. **`backendUrl` write schema stricter than read schema.**
+   Read response: `BackendUrlSchema` (`z.union([z.url(), z.literal('')])`) allows empty string.
+   Write request: `z.url().optional()` requires a valid URL and does not allow empty string.
+   The backend `ConfigurationManager` can return an empty `backendUrl` (e.g. before first save),
+   but the frontend will not send a blank URL in a write request.
+   **Classification: Aligned** — the form field is required and URL-validated; a blank URL
+   can only be read, not written.
+
+3. **`loadError` field exists in frontend Zod but not in backend response.**
+   `BackendConfigSchema` includes `loadError: z.string().optional()` which is populated
+   client-side (by the service layer) when the API request itself fails. The backend never
+   sends this field.
+   **Classification: Aligned** — frontend-only field for error surfaced handling.
+
+4. **Form mapping transforms apiKey: read echoes '' and write omits when blank.**
+   `mapBackendConfigToBackendSettingsFormValues()` always sets `apiKey` to `''` to avoid
+   echoing the masked transport value into a password input. `mapBackendSettingsFormValuesToBackendConfigWriteInput()`
+   only includes `apiKey` in the write payload when the form value is non-empty (preserving
+   the stored key across a save that doesn't touch the API key field).
+   **Classification: Aligned** — deliberate transformation layer between transport schema
+   and form state.
+
+5. **`jsonDbRootFolderId` backend validation differs from frontend validation.**
+   Backend write validation (`CONFIG_SCHEMA`) checks format via regex **and** calls
+   `DriveApp.getFolderById()` to verify the folder actually exists. Frontend form validation
+   (`isDriveFolderId`) only checks the identifier format (alphanumeric, underscores, hyphens,
+   min 10 chars). The frontend cannot replicate the Drive existence check without a server round-trip.
+   **Classification: Aligned** — the backend is the authoritative validator; the frontend
+   catches only format errors before submission.
+
+6. **`BackendConfigSchema` uses `.strict()` — backend may add unknown fields in future.**
+   The read schema is `.strict()`, meaning any unexpected backend field will cause a Zod
+   validation error on the frontend. Currently the backend returns exactly the 12 documented
+   fields. If a new field is added to the backend response without updating the frontend
+   schema, the entire `getBackendConfig` response will be rejected.
+   **Classification: Fragile** — tight coupling. The frontend will reject
+   unexpected additional fields instead of silently stripping them. To add a new config field,
+   both backend and frontend schemas must be updated in lockstep.
+
+---
+
+## File Index
+
+```
+Persistence:                 src/backend/ConfigurationManager/
+  ├── 01_configKeysAndSchema.js     — CONFIG_KEYS, CONFIG_SCHEMA
+  ├── 02_defaults.js               — DEFAULTS
+  ├── 98_ConfigurationManagerClass.js  — ConfigurationManager singleton
+  └── 03_validators.js             — Shared validators (API_KEY_PATTERN, etc.)
+
+API handlers:                src/backend/z_Api/
+  ├── apiConfig.js                 — getBackendConfig_(), setBackendConfig_()
+  └── z_apiHandler.js              — apiHandler(), ALLOWLISTED_METHOD_HANDLERS registration
+
+Transport envelope:          src/backend/z_Api/z_apiHandler.js
+  └── apiHandler(), ApiDispatcher, ALLOWLISTED_METHOD_HANDLERS
+
+Frontend:
+  ├── src/frontend/src/services/backendConfiguration/
+  │   ├── backendConfiguration.zod.ts
+  │   │     → BackendConfigSchema, BackendConfigWriteInputSchema, BackendConfigWriteResultSchema
+  │   ├── backendConfigurationService.ts
+  │   │     → getBackendConfig(), setBackendConfig()
+  │   └── backendConfigurationValidation.ts
+  │         → isBackendApiKeyToken(), isMaskedBackendApiKeyValue(), isDriveFolderId()
+  └── src/frontend/src/features/settings/backend/
+      ├── backendSettingsForm.zod.ts
+      │     → BackendSettingsFormSchema
+      └── backendSettingsFormMapper.ts
+            → mapBackendConfigToBackendSettingsFormValues(),
+              mapBackendSettingsFormValuesToBackendConfigWriteInput()
+```
