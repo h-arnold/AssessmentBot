@@ -65,8 +65,10 @@ Look for:
 6. action-plan sections that are too large, not independently testable, or that smuggle unresolved product decisions into implementation sequencing
 7. anything likely to create compounding downstream errors if later documents inherit the mistake
 8. missing or unclear shared-helper planning where duplication or abstraction decisions are likely, including missing planned-only helper entries in relevant canonical docs
-9. re-inventing the wheel or ignoring existing helpers, components, or services that could be reused or extended
-10. evidence of over-engineering, over-specification, or unnecessary complexity that could be simplified without losing correctness **REMEMBER**: the repo prime directive is to ensure that the code is KISS AND DRY.
+9. missing or incomplete data-shape doc planning — any planned change to a validation schema (Zod or otherwise), persistence model, API contract, or transport shape must have corresponding planned-only entries in the relevant canonical data-shape docs under `docs/developer/data-shapes/`, marked `Not implemented`
+10. missing or incomplete planned data-shape entries: entries that describe behaviour the spec or action plan relies on but that have not been recorded in the data-shape docs at all
+11. re-inventing the wheel or ignoring existing helpers, components, or services that could be reused or extended
+12. evidence of over-engineering, over-specification, or unnecessary complexity that could be simplified without losing correctness **REMEMBER**: the repo prime directive is to ensure that the code is KISS AND DRY.
 
 ## 2. Review Method
 
@@ -80,6 +82,7 @@ Check that the spec:
 - does not leave core behavioural decisions to `ACTION_PLAN.md`
 - stays consistent with existing code, naming, and data-shape constraints
 - does not misuse `SPEC.md` as an implementation-status tracker for planned helpers
+- calls out any data-shape, schema, persistence, or API-contract changes explicitly, and confirms they are recorded as planned-only `Not implemented` entries in the relevant `docs/developer/data-shapes/` file(s)
 
 ### For layout specs
 
@@ -104,6 +107,8 @@ Check that the plan:
 - includes regression and documentation follow-through
 - includes shared-helper planning where relevant (reuse/extend/new/keep-local decisions, ownership, and relevant doc targets)
 - requires planned helper entries in relevant canonical docs to be marked `Not implemented` before implementation starts
+- includes data-shape doc planning for sections that change schemas, persistence, API contracts, or transport shapes, with corresponding `Not implemented` entries in `docs/developer/data-shapes/`
+- requires planned data-shape doc entries to be marked `Not implemented` before implementation starts, and that section ordering lands data-shape doc entry creation before code changes in those sections
 
 ## 3. Impartiality Rules
 
