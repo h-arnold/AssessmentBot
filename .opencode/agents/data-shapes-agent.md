@@ -53,7 +53,9 @@ docs/developer/data-shapes/
 ├── assignment.md               # Contract: Assignment (+ StudentSubmission, StudentSubmissionItem,
 │                               #   Assessment, Feedback)
 ├── backend-config.md           # Contract: BackendConfig
-└── reference-data.md           # Contract: Reference Data (cohorts, year groups, assignment topics)
+├── google-classrooms.md        # Contract: GoogleClassrooms (Google API passthrough)
+├── reference-data.md           # Contract: Reference Data (cohorts, year groups, assignment topics)
+└── request-store.md            # Contract: RequestStore (internal GAS PropertiesService store)
 ```
 
 ### 1.1 When to create or remove files
@@ -71,15 +73,17 @@ docs/developer/data-shapes/
 
 ## 2. Contract Boundaries and Entity Placement Rules
 
-### 2.1 The five contracts
+### 2.1 The seven contracts
 
-| Contract                 | Persistence                                                    | API Endpoints                                                                                                                                                                                                                            | Sub-entities                                                   |
+| Contract                 | Persistence                                                    | API Endpoints / Store Operations                                                                                                                                                                                                         | Sub-entities                                                   |
 | ------------------------ | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
 | **ABClass**              | Main doc + `abclass_partials` registry                         | `getABClassPartials`, `getABClass`, `upsertABClass`, `updateABClass`, `deleteABClass`                                                                                                                                                    | Teacher, Student                                               |
 | **AssignmentDefinition** | `assignment_definitions` registry + `assdef_full_*` full cache | `getAssignmentDefinitionPartials`, `getAssignmentDefinition`, `upsertAssignmentDefinition`, `deleteAssignmentDefinition`                                                                                                                 | TaskDefinition, BaseTaskArtifact                               |
 | **Assignment**           | `assign_full_*` full records                                   | `getAssignment`, `startAssessmentRun`                                                                                                                                                                                                    | StudentSubmission, StudentSubmissionItem, Assessment, Feedback |
 | **BackendConfig**        | Singleton document                                             | `getBackendConfig`, `setBackendConfig`                                                                                                                                                                                                   | —                                                              |
+| **GoogleClassrooms**     | None (Google API passthrough)                                  | `getGoogleClassrooms`, `getGoogleClassroomAssignments`                                                                                                                                                                                   | —                                                              |
 | **Reference Data**       | Cohorts, YearGroups, AssignmentTopics collections              | `getCohorts`, `createCohort`, `updateCohort`, `deleteCohort`, `getYearGroups`, `createYearGroup`, `updateYearGroup`, `deleteYearGroup`, `getAssignmentTopics`, `createAssignmentTopic`, `updateAssignmentTopic`, `deleteAssignmentTopic` | —                                                              |
+| **RequestStore**         | GAS PropertiesService (key-value)                              | `getRecord`, `saveRequestRecord`, `listRecordsInWindow`, `deleteExpiredRecords` (internal store, not API-callable)                                                                                                                       | —                                                              |
 
 ### 2.2 Sub-entity placement rules
 
