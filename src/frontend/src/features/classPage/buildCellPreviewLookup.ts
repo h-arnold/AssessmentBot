@@ -1,7 +1,7 @@
-import type { AssessmentSchema } from '../../services/assignmentAssessment/assignmentAssessment.zod';
-import {
-  type AssignmentFull,
-  type BaseTaskArtifactSchema,
+import type {
+  AssessmentSchema,
+  AssignmentFull,
+  BaseTaskArtifactSchema,
 } from '../../services/assignmentAssessment/assignmentAssessment.zod';
 import { HEATMAP_METRIC_KEYS } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import type { HeatmapMetricKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';

@@ -80,7 +80,7 @@ const AssignmentRehydration = {
    * @param {object} subObject - The submission object to rehydrate.
    */
   _rehydrateSubmission(inst, subObject) {
-    const identifier = subObject && (subObject.studentId || subObject.userId);
+    const identifier = subObject?.studentId || subObject?.userId;
 
     try {
       const submission = StudentSubmission.fromJSON(subObject);
@@ -132,8 +132,8 @@ const AssignmentRehydration = {
             {
               studentId: identifier,
               taskId,
-              itemId: itemJson && itemJson.id,
-              artifactType: itemJson && itemJson.artifact && itemJson.artifact.type,
+              itemId: itemJson?.id,
+              artifactType: itemJson?.artifact?.type,
               err: itemError,
             }
           );
@@ -159,11 +159,11 @@ const AssignmentRehydration = {
    * @returns {Array<{taskId: string, itemId: (string|undefined), missing: string[]}>} A list of items whose artifact is missing one or more required fields.
    */
   _summariseCorruptArtifacts(subObject) {
-    const items = subObject && subObject.items;
+    const items = subObject?.items;
     if (!items || typeof items !== 'object') return [];
     return Object.entries(items)
       .map(([taskId, item]) => {
-        const art = item && item.artifact;
+        const art = item?.artifact;
         const missing = [];
         if (!art || typeof art !== 'object') {
           missing.push('artifact');
@@ -173,7 +173,7 @@ const AssignmentRehydration = {
           if (art.type === undefined) missing.push('type');
           if (art.role === undefined) missing.push('role');
         }
-        return { taskId, itemId: item && item.id, missing };
+        return { taskId, itemId: item?.id, missing };
       })
       .filter((entry) => entry.missing.length > 0);
   },
