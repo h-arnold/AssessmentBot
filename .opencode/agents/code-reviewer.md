@@ -3,6 +3,12 @@ description: Reviews code for quality, standards adherence, and defects using pr
 mode: all
 steps: 100
 model: opencode/hy3-free
+permission:
+  edit:
+    '*': 'deny'
+    '.opencode/scratchpad/*.md': 'allow'
+  read:
+    '*': 'allow'
 ---
 
 # Code Reviewer Agent Instructions

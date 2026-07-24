@@ -3,6 +3,12 @@ description: Provides impartial second-pass review of planning artefacts before 
 mode: all
 steps: 100
 model: opencode/hy3-free
+permission:
+  edit:
+    '*': 'deny'
+    '.opencode/scratchpad/*.md': 'allow'
+  read:
+    '*': 'allow'
 ---
 
 # Planner Reviewer Agent Instructions
