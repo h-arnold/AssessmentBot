@@ -147,7 +147,7 @@ Enable each only if its layer appears in the Step 2 classification.
 - **Error-handling robustness** → `code-reviewer`
   - Broad `catch`/swallow, missing rethrow at boundaries, and missing `Validate.requireParams` on
     public backend methods.
-- **Data-shape docs consistency** → `data-shapes-agent`
+- **Data-shape docs consistency** → `code-reviewer`
   - **Trigger:** run if the diff touches any file under `docs/developer/data-shapes/` or any backend
     schema/persistence file (`*.zod.ts`, `*Schema*`, `*Entity*`, `*Model*`, files under `src/backend/`
     that define or consume data shapes).
