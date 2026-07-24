@@ -287,6 +287,144 @@ function buildAssignmentDefinitionPartial(zeroTasks: boolean): Record<string, un
 }
 
 /**
+ * Deterministic per (task, metric) reasoning strings seeded into the
+ * `getAssignment` payload so the popover-content assertions can target
+ * non-fixture, real-data text. Keyed by `${taskId}.${metric}`.
+ */
+const HEATMAP_REASONING: Readonly<Record<string, string>> = {
+  'task_001.completeness': 'Student included all required sections of the video plan.',
+  'task_001.accuracy': 'Student labelled the equipment accurately and used correct terms.',
+  'task_001.spag': 'Spelling and grammar were consistently correct throughout.',
+  'task_002.completeness': 'Student explained the method clearly and showed all working.',
+  'task_002.accuracy': 'Student explained the method clearly and showed all working.',
+  'task_002.spag': 'Spelling and grammar were consistently correct throughout.',
+  'task_003.completeness': 'Student laid out the table with all required columns.',
+  'task_003.accuracy': 'Table values were accurate against the source data.',
+  'task_003.spag': 'Table formatting and headings were consistent and clear.',
+};
+
+/**
+ * Returns the seeded reasoning string for a (task, metric) pair, or a safe
+ * default if the key is unknown.
+ *
+ * @param {string} taskId The task identifier.
+ * @param {string} metric The metric key (`completeness` | `accuracy` | `spag`).
+ * @returns {string} The deterministic reasoning text.
+ */
+function reasoningFor(taskId: string, metric: string): string {
+  return (
+    HEATMAP_REASONING[`${taskId}.${metric}`] ??
+    'Student completed the task to an acceptable standard.'
+  );
+}
+
+/** Per-task artifact `content` seeded into the `getAssignment` payload. */
+const HEATMAP_ARTIFACT_CONTENT: Readonly<Record<string, string>> = {
+  // Non-empty, renderable data URI (1x1 transparent PNG) so ImageRenderer
+  // produces an <img> element for the popover's img assertion.
+  task_001:
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC',
+  task_002: 'The student wrote a clear, step-by-step plan for the video.',
+  // Non-empty markdown table so MarkdownRenderer produces a <table> element.
+  task_003: '| Criteria | Met |\n| --- | --- |\n| Layout | Yes |\n| Accuracy | Yes |',
+};
+
+/**
+ * Builds the real-data `getAssignment` payload (an `AssignmentFull` document)
+ * for the heatmap journey, seeded so the popover wires to real content instead
+ * of the deleted fixture adapter (ACTION_PLAN.md §5.5 / SPEC.md §"E2E plumbing
+ * updates").
+ *
+ * @returns {Record<string, unknown>} A schema-valid `AssignmentFull` document.
+ */
+function buildAssignmentFullDocument(): Record<string, unknown> {
+  const studentId = '100000000005'; // Student Two — target of all four popover tests.
+
+  // Per-task artifact type distributed to match the real-data wiring
+  // (one StudentSubmissionItem per taskId yields one artifactType).
+  const artifactTypeFor: Record<string, string> = {
+    task_001: 'IMAGE',
+    task_002: 'TEXT',
+    task_003: 'TABLE',
+  };
+
+  const buildArtifact = (taskId: string): Record<string, unknown> => ({
+    taskId,
+    role: 'submission',
+    pageId: 'page-1',
+    documentId: `doc-${studentId}`,
+    uid: `uid-${studentId}-${taskId}`,
+    contentHash: null,
+    metadata: {},
+    type: artifactTypeFor[taskId],
+    content: HEATMAP_ARTIFACT_CONTENT[taskId],
+  });
+
+  const buildItem = (taskId: string): Record<string, unknown> => ({
+    id: `ssi-${studentId}-${taskId}`,
+    taskId,
+    artifact: buildArtifact(taskId),
+    assessments: {
+      completeness: { score: 5, reasoning: reasoningFor(taskId, 'completeness') },
+      accuracy: { score: 4, reasoning: reasoningFor(taskId, 'accuracy') },
+      spag: { score: 5, reasoning: reasoningFor(taskId, 'spag') },
+    },
+    feedback: {},
+  });
+
+  const submission: Record<string, unknown> = {
+    studentId,
+    studentName: 'Student Two',
+    assignmentId: HEATMAP_ASSIGNMENT_ID,
+    documentId: `doc-${studentId}`,
+    items: {
+      task_001: buildItem('task_001'),
+      task_002: buildItem('task_002'),
+      task_003: buildItem('task_003'),
+    },
+    createdAt: '2026-07-07T07:49:23.014Z',
+    updatedAt: '2026-07-07T07:49:29.872Z',
+  };
+
+  // Full AssignmentDefinitionSchema (not the partial produced by
+  // buildAssignmentDefinitionPartial) — the popover tests do not assert on it.
+  const assignmentDefinition: Record<string, unknown> = {
+    primaryTitle: '7. Video Plan',
+    primaryTopic: 'Earth',
+    primaryTopicKey: '00000000-0000-0000-0000-000000000003',
+    yearGroupKey: '00000000-0000-0000-0000-000000000002',
+    yearGroupLabel: '7',
+    alternateTitles: [HEATMAP_ASSIGNMENT_NAME],
+    alternateTopics: ['Earth'],
+    documentType: 'SLIDES',
+    referenceDocumentId: 'ref',
+    templateDocumentId: 'tpl',
+    referenceLastModified: '2026-07-07T07:45:23.916Z',
+    templateLastModified: '2026-07-07T07:45:23.916Z',
+    assignmentWeighting: 1,
+    definitionKey: HEATMAP_DEFINITION_KEY,
+    tasks: {},
+    createdAt: '2026-07-07T07:45:23.916Z',
+    updatedAt: '2026-07-07T07:49:06.791Z',
+  };
+
+  return {
+    courseId: HEATMAP_CLASS_ID,
+    assignmentId: HEATMAP_ASSIGNMENT_ID,
+    assignmentName: HEATMAP_ASSIGNMENT_NAME,
+    dueDate: null,
+    updatedAt: '2026-07-07T07:51:13.282Z',
+    createdAt: '2026-06-29T09:40:37.069Z',
+    documentType: 'SLIDES',
+    referenceDocumentId: 'ref',
+    templateDocumentId: 'tpl',
+    tasks: {},
+    submissions: [submission],
+    assignmentDefinition,
+  };
+}
+
+/**
  * Creates a runtime scenario for the Task Heatmap E2E journey.
  *
  * Mirrors `createClassesScenario`: satisfies the warm-up `usePageDataset`
@@ -351,6 +489,12 @@ export function createHeatmapScenario(options: CreateHeatmapScenarioOptions = {}
     getAssignmentTopics: [{ kind: 'success', data: [] }],
     getAssignmentDefinitionPartials: [
       { kind: 'success', data: [buildAssignmentDefinitionPartial(zeroTasks)] },
+    ],
+    // Two identical entries — React 19 StrictMode double-effect must not
+    // exhaust the queue (same rationale as getABClass two-entry pattern).
+    getAssignment: [
+      { kind: 'success', data: buildAssignmentFullDocument() },
+      { kind: 'success', data: buildAssignmentFullDocument() },
     ],
     getABClass: classEntries,
   };

@@ -3,6 +3,7 @@ import type {
   BackendConfig,
   BackendConfigWriteResult,
 } from '../src/services/backendConfiguration/backendConfiguration.zod';
+import { backendApiKeyValidationMessage } from '../src/services/backendConfiguration/backendConfigurationValidation';
 import { googleScriptRunApiHandlerFactorySource } from '../src/test/googleScriptRunHarness';
 
 type BackendApiResponseScenario = Readonly<
@@ -50,8 +51,7 @@ const backendSettingsSavedCopy = 'Backend settings saved.';
 const backendSettingsLoadReleaseSignal = 'backend-settings-initial-load';
 const backendSettingsSaveDelayMs = 150;
 const backendSettingsRefreshReleaseSignal = 'backend-settings-post-save-refresh';
-const apiKeyValidationMessage =
-  'API Key must be a valid string of alphanumeric characters and hyphens, without leading/trailing hyphens or consecutive hyphens.';
+const apiKeyValidationMessage = backendApiKeyValidationMessage;
 
 const baseBackendConfig = {
   backendAssessorBatchSize: 30,

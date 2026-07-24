@@ -11,7 +11,7 @@
  * @example
  * const config = ConfigurationManager.getInstance();
  * const backendAssessorBatchSize = config.getBackendAssessorBatchSize();
- * config.setLangflowApiKey('sk-abc123');
+ * config.setApiKey('abt_7pC98PCoGJOcjN-qz6rNlSzKkgySJF-1');
  */
 
 /**
@@ -94,11 +94,11 @@ class ConfigurationManager extends BaseSingleton {
 
   /**
    * Gets the API key pattern regex.
-   * Alphanumeric segments separated by single hyphens; no leading/trailing/consecutive hyphens.
+   * An alphanumeric prefix followed by an underscore and exactly 32 base64url characters (A-Z, a-z, 0-9, hyphen, underscore).
    * @returns {RegExp} Pattern for validating API keys.
    */
   static get API_KEY_PATTERN() {
-    // Alphanumeric segments separated by single hyphens; no leading/trailing/consecutive hyphens
+    // An alphanumeric prefix followed by an underscore and exactly 32 base64url characters
     return ConfigurationManager._API_KEY_PATTERN || API_KEY_PATTERN;
   }
   /**

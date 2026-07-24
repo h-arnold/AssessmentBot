@@ -289,10 +289,14 @@ describe('SlidesParser matching and document ID propagation', () => {
       expect(defs).toHaveLength(1);
       expect(artifacts).toEqual([
         {
+          type: 'IMAGE',
           taskId: defs[0].getId(),
           pageId: null,
           content: null,
+          contentHash: null,
           documentId: studentDocId,
+          role: 'submission',
+          metadata: {},
         },
       ]);
       expect(mockLogger.error).toHaveBeenCalledWith(

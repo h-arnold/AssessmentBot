@@ -301,7 +301,8 @@ describe('apiService.callApi', () => {
       .filter((entry) => entry.level === 'error');
 
     expect(errorEntries.length).toBeGreaterThanOrEqual(1);
-    const lastErrorEntry = errorEntries.at(-1) as Record<string, unknown>;
+    const LAST_ENTRY_INDEX = -1;
+    const lastErrorEntry = errorEntries.at(LAST_ENTRY_INDEX) as Record<string, unknown>;
 
     const metadata = lastErrorEntry.metadata as Record<string, unknown>;
     expect(metadata).toMatchObject({

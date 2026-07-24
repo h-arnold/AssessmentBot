@@ -3,8 +3,10 @@
  * Delegates to shared utils where available to keep behaviour consistent.
  */
 
-// eslint-disable-next-line security/detect-unsafe-regex -- anchored token validation with bounded character classes; false positive.
-const API_KEY_PATTERN = /^(?!-)([\dA-Za-z]+(?:-[\dA-Za-z]+)*)$/u;
+// API key contract: an alphanumeric prefix followed by an underscore and exactly 32 base64url
+// characters. The frontend mirrors this exact pattern in backendConfigurationValidation.ts; keep
+// both in sync so validation does not drift between runtimes.
+const API_KEY_PATTERN = /^[A-Za-z0-9]+_[A-Za-z0-9_-]{32}$/u;
 const DRIVE_ID_PATTERN = /^[\w-]{10,}$/u;
 const JSON_DB_LOG_LEVELS = Object.freeze(['DEBUG', 'INFO', 'WARN', 'ERROR']);
 
@@ -40,16 +42,16 @@ function validateRequiredClassInfoStringProperty(keyLabel, propertyName, propert
 /**
  * Validates an API key token used by external integrations.
  * @param {*} value - Candidate API key.
- * @returns {string} Original API key value when valid.
+ * @returns {string} Canonical (trimmed) API key value when valid.
  * @throws {Error} If the value is missing or has an invalid token format.
  */
 function validateApiKey(value) {
   if (!Validate.isNonEmptyString(value) || !API_KEY_PATTERN.test(value.trim())) {
     throw new Error(
-      'API Key must be a valid string of alphanumeric characters and hyphens, without leading/trailing hyphens or consecutive hyphens.'
+      'API Key must be an alphanumeric prefix followed by an underscore and exactly 32 base64url characters (A-Z, a-z, 0-9, hyphen, underscore).'
     );
   }
-  return value;
+  return value.trim();
 }
 
 /**

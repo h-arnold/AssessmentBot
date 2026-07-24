@@ -37,7 +37,7 @@ describe('ConfigurationManager lazy-init and heuristic validation', () => {
       const callsAfterFirst = globalThis.PropertiesService._calls.length;
 
       // Second unrelated setter should NOT cause a second heavy init beyond normal property set
-      cfg.setApiKey('abc-123');
+      cfg.setApiKey('abt_7pC98PCoGJOcjN-qz6rNlSzKkgySJF-1');
       const callsAfterSecond = globalThis.PropertiesService._calls.length;
       expect(callsAfterSecond).toBeGreaterThanOrEqual(callsAfterFirst); // sets will add minimal calls
       // but should not explode (heuristic: fewer than +5 calls)

@@ -2,7 +2,7 @@
 description: Creates, maintains, and debugs Playwright browser end-to-end tests
 mode: all
 steps: 100
-model: opencode/hy3-free
+model: openrouter/tencent/hy3
 ---
 
 # Playwright Specialist Agent Instructions

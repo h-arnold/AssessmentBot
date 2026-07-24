@@ -7,7 +7,6 @@
  * fixed `METRIC_COLUMN_FILTERS` band list.
  *
  * @see ACTION_PLAN.md §4 — TaskHeatmapTable (grouped headers, score-range filters, sorters)
- * @see TASK_PREVIEW_CARD_LAYOUT.md — §"1. Popover trigger (metric sub-cell)", §"States", §"Accessibility and motion"
  * @see SPEC.md — §"Rendering rules", §"Sorting, filtering", §"Empty state", §"Accessibility"
  */
 
@@ -28,6 +27,8 @@ import {
   createNotAttemptedMetricResult,
   createErrorMetricResult,
 } from '../../test/dataAnalysis/fixtures';
+
+import type { CellPreviewLookup, CellPreviewData } from './buildCellPreviewLookup';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -59,6 +60,34 @@ const TASK_COLUMNS: HeatmapTaskColumn[] = [
   { taskKey: 'definitionKey::task_001', taskId: TASK_1_ID, taskTitle: TASK_1_TITLE },
   { taskKey: 'definitionKey::task_002', taskId: TASK_2_ID, taskTitle: TASK_2_TITLE },
 ];
+
+// ---------------------------------------------------------------------------
+// CellPreviewLookup fixtures for popover state tests
+// ---------------------------------------------------------------------------
+
+/** CellPreviewData fixture for the populated-lookup test (TEXT artifact). */
+const TEXT_CELL_PREVIEW_DATA: CellPreviewData = {
+  artifactType: 'TEXT',
+  artifactContent: 'Student answered the question correctly.',
+  reasoning: {
+    completeness: 'Good understanding of concepts',
+    accuracy: null,
+    spag: null,
+  },
+};
+
+/** Inner map (taskId → CellPreviewData) for the populated-lookup test. */
+const TASK_INNER_LOOKUP: ReadonlyMap<string, CellPreviewData> = new Map([
+  ['task_001', TEXT_CELL_PREVIEW_DATA],
+]);
+
+/** CellPreviewLookup that includes data for s-1 / task_001. */
+const POPULATED_LOOKUP: CellPreviewLookup = new Map([
+  ['s-1', TASK_INNER_LOOKUP],
+]);
+
+/** Empty CellPreviewLookup — no entries at all (simulates absent lookup data). */
+const EMPTY_LOOKUP: CellPreviewLookup = new Map();
 
 /**
  * A score value that may be a numeric score, not attempted, or error.
@@ -259,6 +288,20 @@ function getRenderedRowKeys(container: HTMLElement): string[] {
   );
 }
 
+/**
+ * Find the table cell `<td>` by its aria-label.
+ *
+ * Since both the `<td>` (via `onCell`) and the popover `<span>` trigger (via
+ * `aria-label` + `aria-haspopup`) share the same label, use `getAllByLabelText`
+ * and return the first match (the `<td>`, which comes first in DOM order).
+ *
+ * @param {string} label - The aria-label value to search for.
+ * @returns {HTMLElement} The first matching element (the table cell).
+ */
+function getHeatmapCellByLabel(label: string): HTMLElement {
+  return screen.getAllByLabelText(label)[0];
+}
+
 // ---------------------------------------------------------------------------
 // Setup
 // ---------------------------------------------------------------------------
@@ -284,7 +327,7 @@ describe('TaskHeatmapTable', () => {
   // -------------------------------------------------------------------------
   it('renders a grouped header with one group per taskColumn and Completeness / Accuracy / SPaG sub-columns', () => {
     const result = buildHeatmapResult();
-    render(<TaskHeatmapTable heatmapResult={result} />);
+    render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
 
     // Assert Student Name top-level column header
     expect(
@@ -324,7 +367,7 @@ describe('TaskHeatmapTable', () => {
   // -------------------------------------------------------------------------
   it('exposes a score-range filter dropdown (slider + reset) on Task 1 Completeness', async () => {
     const result = buildHeatmapResult();
-    render(<TaskHeatmapTable heatmapResult={result} />);
+    render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
 
     // Locate the "Completeness" columnheader that belongs to Task 1.
     const completenessHeaders = screen.getAllByRole('columnheader', {
@@ -367,7 +410,7 @@ describe('TaskHeatmapTable', () => {
   // -------------------------------------------------------------------------
   it('clicking Student Name column sorter reorders rows via compareHeatmapStudentName', async () => {
     const result = buildHeatmapResult();
-    const { container } = render(<TaskHeatmapTable heatmapResult={result} />);
+    const { container } = render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
 
     // Default sort should be ascending by student name.
     // Fixture students: Student One, Student Two, Student Three
@@ -404,32 +447,32 @@ describe('TaskHeatmapTable', () => {
   // -------------------------------------------------------------------------
   it('renders per-cell aria-labels matching "[Student Name], [Task ID], [Metric]: [Score]"', () => {
     const result = buildHeatmapResult();
-    render(<TaskHeatmapTable heatmapResult={result} />);
+    render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
 
     // Student One (s-1), Task 1 (task_001), Completeness: 5 (green / computed)
     // Expected aria-label: "Student One, task_001, Completeness: 5"
-    const cellAriaComputed = screen.getByLabelText(
+    const cellAriaComputed = getHeatmapCellByLabel(
       'Student One, task_001, Completeness: 5'
     );
     expect(cellAriaComputed).toBeInTheDocument();
 
     // Student Three (s-3), Task 1 (task_001), Completeness: notAttempted ('N')
     // Expected aria-label: "Student Three, task_001, Completeness: N"
-    const cellAriaNotAttempted = screen.getByLabelText(
+    const cellAriaNotAttempted = getHeatmapCellByLabel(
       'Student Three, task_001, Completeness: N'
     );
     expect(cellAriaNotAttempted).toBeInTheDocument();
 
     // Student One (s-1), Task 1 (task_001), Accuracy: 3 (computed, default)
     // Expected aria-label: "Student One, task_001, Accuracy: 3"
-    const cellAriaAccuracy = screen.getByLabelText(
+    const cellAriaAccuracy = getHeatmapCellByLabel(
       'Student One, task_001, Accuracy: 3'
     );
     expect(cellAriaAccuracy).toBeInTheDocument();
 
     // Student Two (s-2), Task 2 (task_002), Completeness: E (error)
     // Expected aria-label: "Student Two, task_002, Completeness: E"
-    const cellAriaError = screen.getByLabelText(
+    const cellAriaError = getHeatmapCellByLabel(
       'Student Two, task_002, Completeness: E'
     );
     expect(cellAriaError).toBeInTheDocument();
@@ -443,7 +486,7 @@ describe('TaskHeatmapTable', () => {
   describe('empty state', () => {
     it('renders all rows with N cells and a "No submissions yet" caption when every cell is notAttempted', () => {
       const result = buildNoSubmissionsResult();
-      render(<TaskHeatmapTable heatmapResult={result} />);
+      render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
 
       // Assert "No submissions yet" caption is present above the table
       expect(screen.getByText('No submissions yet')).toBeInTheDocument();
@@ -471,7 +514,7 @@ describe('TaskHeatmapTable', () => {
 
     it('renders only the Student Name column header when taskColumns is empty', () => {
       const result = buildZeroTasksResult();
-      render(<TaskHeatmapTable heatmapResult={result} />);
+      render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
 
       // Student Name column should render
       expect(
@@ -504,10 +547,10 @@ describe('TaskHeatmapTable', () => {
 
   it('wraps each metric sub-cell render output in an Ant Design Popover', async () => {
     const result = buildHeatmapResult();
-    render(<TaskHeatmapTable heatmapResult={result} />);
+    render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
 
     // Find a computed cell's score span via its aria-label
-    const cell = screen.getByLabelText(
+    const cell = getHeatmapCellByLabel(
       'Student One, task_001, Completeness: 5'
     );
     const trigger = cell.querySelector('span');
@@ -524,9 +567,9 @@ describe('TaskHeatmapTable', () => {
 
   it('popover content renders the TaskPreviewCard with metric label, reasoning, and student response sections', async () => {
     const result = buildHeatmapResult();
-    render(<TaskHeatmapTable heatmapResult={result} />);
+    render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
 
-    const cell = screen.getByLabelText(
+    const cell = getHeatmapCellByLabel(
       'Student One, task_001, Completeness: 5'
     );
     const trigger = cell.querySelector('span')!;
@@ -546,28 +589,28 @@ describe('TaskHeatmapTable', () => {
 
   it('preserves the existing aria-label on metric sub-cells after popover integration', () => {
     const result = buildHeatmapResult();
-    render(<TaskHeatmapTable heatmapResult={result} />);
+    render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
 
     // The aria-label comes from onCell, not from render — Popover does not
     // change onCell, so the label should be unchanged.
     expect(
-      screen.getByLabelText('Student One, task_001, Completeness: 5')
+      getHeatmapCellByLabel('Student One, task_001, Completeness: 5')
     ).toBeInTheDocument();
     expect(
-      screen.getByLabelText('Student One, task_001, Accuracy: 3')
+      getHeatmapCellByLabel('Student One, task_001, Accuracy: 3')
     ).toBeInTheDocument();
     expect(
-      screen.getByLabelText('Student Two, task_002, Completeness: E')
+      getHeatmapCellByLabel('Student Two, task_002, Completeness: E')
     ).toBeInTheDocument();
   });
 
   it('preserves the existing cell tone style (background colour) after popover integration', () => {
     const result = buildHeatmapResult();
-    render(<TaskHeatmapTable heatmapResult={result} />);
+    render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
 
     // Student One, Task 1, Completeness: 5 is a computed score at the ceiling
     // of the range — the cell should carry a green/gradient background colour.
-    const cell = screen.getByLabelText(
+    const cell = getHeatmapCellByLabel(
       'Student One, task_001, Completeness: 5'
     );
     // resolveMetricTone sets backgroundColor (camelCase) on the <td> via onCell
@@ -577,21 +620,21 @@ describe('TaskHeatmapTable', () => {
 
   it('renders the heatmap with interactive metric sub-cells that open a popover on hover', async () => {
     const result = buildHeatmapResult();
-    render(<TaskHeatmapTable heatmapResult={result} />);
+    render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
 
     // Assert metric sub-cells are present and labelled
     expect(
-      screen.getByLabelText('Student One, task_001, Completeness: 5')
+      getHeatmapCellByLabel('Student One, task_001, Completeness: 5')
     ).toBeInTheDocument();
     expect(
-      screen.getByLabelText('Student Two, task_001, Completeness: 3')
+      getHeatmapCellByLabel('Student Two, task_001, Completeness: 3')
     ).toBeInTheDocument();
     expect(
-      screen.getByLabelText('Student Three, task_001, Completeness: N')
+      getHeatmapCellByLabel('Student Three, task_001, Completeness: N')
     ).toBeInTheDocument();
 
     // Hover a computed cell and assert the popover opens
-    const cell = screen.getByLabelText(
+    const cell = getHeatmapCellByLabel(
       'Student One, task_001, Completeness: 5'
     );
     const trigger = cell.querySelector('span')!;
@@ -602,5 +645,184 @@ describe('TaskHeatmapTable', () => {
     await waitFor(() => {
       expect(document.querySelector('.ant-popover')).toBeInTheDocument();
     });
+  });
+
+  // -------------------------------------------------------------------------
+  // real-data wiring: skeleton, error, populated, empty popover states
+  // and metric cell display invariance.
+  // -------------------------------------------------------------------------
+
+  it('renders a skeleton in the popover when isAssignmentLoading is true', async () => {
+    const result = buildHeatmapResult();
+    render(
+      <TaskHeatmapTable
+        heatmapResult={result}
+        cellPreviewLookup={null}
+        isAssignmentLoading={true}
+        showAssignmentError={false}
+      />
+    );
+
+    const cell = getHeatmapCellByLabel(
+      'Student One, task_001, Completeness: 5'
+    );
+    const trigger = cell.querySelector('span')!;
+    expect(trigger).toBeInTheDocument();
+
+    await user.hover(trigger);
+
+    await waitFor(() => {
+      const popover = document.querySelector('.ant-popover');
+      expect(popover).toBeInTheDocument();
+      // The skeleton must use an <output> element (implicit role="status") with aria-busy="true"
+      const skeleton = popover!.querySelector(
+        'output[aria-busy="true"]'
+      );
+      expect(skeleton).toBeInTheDocument();
+    });
+  });
+
+  it('renders an error Alert in the popover when showAssignmentError is true', async () => {
+    const result = buildHeatmapResult();
+    render(
+      <TaskHeatmapTable
+        heatmapResult={result}
+        cellPreviewLookup={null}
+        isAssignmentLoading={false}
+        showAssignmentError={true}
+      />
+    );
+
+    const cell = getHeatmapCellByLabel(
+      'Student One, task_001, Completeness: 5'
+    );
+    const trigger = cell.querySelector('span')!;
+    expect(trigger).toBeInTheDocument();
+
+    await user.hover(trigger);
+
+    await waitFor(() => {
+      const popover = document.querySelector('.ant-popover');
+      expect(popover).toBeInTheDocument();
+      expect(popover!.textContent).toContain("Couldn't load task details");
+    });
+  });
+
+  it('shows artifact content from cellPreviewLookup in the popover when the lookup has data', async () => {
+    const result = buildHeatmapResult();
+    render(
+      <TaskHeatmapTable
+        heatmapResult={result}
+        cellPreviewLookup={POPULATED_LOOKUP}
+        isAssignmentLoading={false}
+        showAssignmentError={false}
+      />
+    );
+
+    const cell = getHeatmapCellByLabel(
+      'Student One, task_001, Completeness: 5'
+    );
+    const trigger = cell.querySelector('span')!;
+    expect(trigger).toBeInTheDocument();
+
+    await user.hover(trigger);
+
+    await waitFor(() => {
+      const popover = document.querySelector('.ant-popover');
+      expect(popover).toBeInTheDocument();
+      // The lookup provides TEXT artifact content — assert the reasoning text
+      expect(popover!.textContent).toContain(
+        'Student answered the question correctly.'
+      );
+    });
+  });
+
+  it('shows empty artifact and No reasoning available in the popover when the lookup has no entry', async () => {
+    const result = buildHeatmapResult();
+    render(
+      <TaskHeatmapTable
+        heatmapResult={result}
+        cellPreviewLookup={EMPTY_LOOKUP}
+        isAssignmentLoading={false}
+        showAssignmentError={false}
+      />
+    );
+
+    const cell = getHeatmapCellByLabel(
+      'Student One, task_001, Completeness: 5'
+    );
+    const trigger = cell.querySelector('span')!;
+    expect(trigger).toBeInTheDocument();
+
+    await user.hover(trigger);
+
+    await waitFor(() => {
+      const popover = document.querySelector('.ant-popover');
+      expect(popover).toBeInTheDocument();
+      // GREEN behaviour: when the lookup has no entry for this student/task,
+      // the popover shows "No reasoning available"
+      expect(popover!.textContent).toContain('No reasoning available');
+    });
+  });
+
+  it('keeps metric score cell display unchanged regardless of the three new props', () => {
+    // Render with loading state — cell display must be unchanged
+    render(
+      <TaskHeatmapTable
+        heatmapResult={buildHeatmapResult()}
+        cellPreviewLookup={null}
+        isAssignmentLoading={true}
+        showAssignmentError={false}
+      />
+    );
+
+    expect(
+      getHeatmapCellByLabel('Student One, task_001, Completeness: 5')
+    ).toBeInTheDocument();
+    expect(
+      getHeatmapCellByLabel('Student One, task_001, Accuracy: 3')
+    ).toBeInTheDocument();
+    expect(
+      getHeatmapCellByLabel('Student Two, task_002, Completeness: E')
+    ).toBeInTheDocument();
+  });
+
+  // -------------------------------------------------------------------------
+  // 7. Metric column sorter — clicking a metric sub-column sorter reorders
+  //    rows via heatmapMetricComparator.
+  // -------------------------------------------------------------------------
+
+  it('clicking Task 1 Completeness column sorter changes row order from the default sort', async () => {
+    const result = buildHeatmapResult();
+    const { container } = render(
+      <TaskHeatmapTable
+        heatmapResult={result}
+        cellPreviewLookup={null}
+        isAssignmentLoading={false}
+        showAssignmentError={false}
+      />
+    );
+
+    // Default sort: student name ascending → s-1, s-3, s-2
+    const defaultRowKeys = getRenderedRowKeys(container);
+    expect(defaultRowKeys).toEqual(['s-1', 's-3', 's-2']);
+
+    // Find the first Completeness column header (Task 1)
+    const completenessHeaders = screen.getAllByRole('columnheader', {
+      name: /completeness/i,
+    });
+    const task1CompletenessHeader = completenessHeaders[0];
+
+    // Click its sorter
+    const sorter = task1CompletenessHeader.querySelector('.ant-table-column-sorters');
+    expect(sorter).toBeInTheDocument();
+    await user.click(sorter!);
+
+    // After clicking the metric column sorter, the row order should differ
+    // from the default student-name sort.
+    const sortedRowKeys = getRenderedRowKeys(container);
+    expect(sortedRowKeys).not.toEqual(defaultRowKeys);
+    // The first row should no longer be s-1 (Student One)
+    expect(sortedRowKeys[0]).not.toBe('s-1');
   });
 });

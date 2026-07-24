@@ -248,8 +248,7 @@ class StudentSubmission {
 
     if (item) {
       if (content !== undefined) {
-        item.artifact.content = item.artifact.normalizeContent(content);
-        item.artifact.ensureHash();
+        this._mergeExtractedContent(item.artifact, content);
         mutated = true;
       }
       if (hasMetadata) {
@@ -288,6 +287,23 @@ class StudentSubmission {
     }
     if (mutated) this.touchUpdated();
     return item;
+  }
+
+  /**
+   * Applies extracted content to an existing artifact, keeping the serialised
+   * shape complete. A null/empty content means there is no artifact body to
+   * hash, so the content hash is set explicitly to null rather than left
+   * undefined (which would fail transport validation).
+   * @param {BaseTaskArtifact} artifact - The artifact to update.
+   * @param {*} content - Extracted content (may be null/undefined).
+   */
+  _mergeExtractedContent(artifact, content) {
+    artifact.content = artifact.normalizeContent(content);
+    if (artifact.content == null) {
+      artifact.contentHash = null;
+    } else {
+      artifact.ensureHash();
+    }
   }
 
   /**
