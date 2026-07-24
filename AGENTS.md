@@ -45,6 +45,7 @@ Failing to read these files **will** result in you failing your task.
   - `Code Reviewer` (`.opencode/agents/code-reviewer.md`) for code review and standards checks.
   - `Implementation` (`.opencode/agents/implementation.md`) for focused implementation tasks.
   - `Docs` (`.opencode/agents/docs.md`) for developer-documentation and JSDoc updates.
+  - `Data Shapes Agent` (`.opencode/agents/data-shapes-agent.md`) for creating and maintaining canonical data-shape specifications across persistence, transport, and validation boundaries.
   - `De-Sloppification` (`.opencode/agents/de-sloppification.md`) for slop review.
 
 Sub-agents are stateless. Provide explicit context in prompts:
@@ -90,6 +91,7 @@ For non-trivial code changes (multi-file logic changes, behavioural changes, ref
 4. Re-submit updated changes to `Code Reviewer`.
 5. Repeat steps 3-4 until review returns clean (no outstanding issues).
 6. Pass the changes to the `Docs` (`.opencode/agents/docs.md`) agent to update relevant documentation, if applicable.
+7. If the change affects data persistence, transport, or validation boundaries, pass the changes to `Data Shapes Agent` (`.opencode/agents/data-shapes-agent.md`) to update canonical data-shape specifications. Data-shape docs must be updated before code-review sign-off when shapes are contractually affected.
 
 **E2E test routing:** When a change requires Playwright E2E tests, delegate E2E test work to `Playwright` (`.opencode/agents/playwright.md`), not `Testing Specialist`. The Testing Specialist handles Vitest unit/component and backend tests only.
 
@@ -118,7 +120,13 @@ When validating lint output, use the runtime-specific commands defined in the co
 
 Do not run frontend or builder files through the root backend ESLint command directly; use their leaf configs via the commands above.
 
-### 9. Testing Delegation Policy
+### 9. Temporary Workspace Convention
+
+All agents **must** use `.opencode/scratchpad/` as the temporary workspace for files that should not be tracked by git. Use this instead of `/tmp` or other system temp directories when writing ephemeral artefacts (e.g. diagnostic dumps, intermediate reports, exploration notes). This directory is already covered by `.gitignore` and will never be committed.
+
+Do not write planning artefacts (`SPEC.md`, `ACTION_PLAN.md`, layout specs, etc.) to scratchpad — those belong in the project root where the orchestrator can retrieve them.
+
+### 10. Testing Delegation Policy
 
 - Do not define or duplicate module-specific test file naming/location conventions in `AGENTS.md` files.
 - For Vitest unit/component tests and backend tests, always delegate test implementation/debugging tasks to `Testing Specialist` when your environment supports sub-agent delegation.

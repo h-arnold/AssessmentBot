@@ -26,3 +26,4 @@ playwright-report/
 .vibe/update_cache.json
 .vibe/vibehistory
 .scratchpad/
+.opencode/scratchpad/

@@ -54,12 +54,13 @@ Do not start by drafting from memory or by asking generic discovery questions th
 8. If reviewer findings on the layout spec require further user clarification, stop and ask focused questions before revising it.
 9. If the user's answer is still not clear enough to remove the ambiguity, ask follow-up questions rather than guessing.
 10. Identify shared-helper or abstraction decisions implied by the agreed scope and record them in the relevant canonical docs as planned-only entries marked `Not implemented`.
-11. **Assess module sizing and plan file separation.** Before writing the action plan, check the current line counts of all modules that will be materially changed or extended. Estimate the projected LOC increase for each from the agreed scope. When a file is projected to exceed **500 lines** after the change, plan explicit file separation in the action plan — split logic into dedicated modules grouped by domain (following existing folder conventions). Apply this to both frontend (TypeScript/React) and backend (GAS JavaScript) files. Record the current and projected LOC counts and the separation plan in the relevant action-plan section(s). **Refer to the relevant component AGENTS.md for repo-specific splitting rules:** `src/backend/AGENTS.md` §10 for backend facade-pattern decomposition (550-line threshold, sub-class injection, GAS load ordering) and `src/frontend/AGENTS.md` §12 for frontend service domain-folder grouping.
-12. After the spec and any required layout spec are complete, write `ACTION_PLAN.md` as a TDD-first delivery plan split into small independently testable sections.
-13. Submit the drafted action plan to `Planner Reviewer`, address findings, and repeat until it is clean enough for implementation orchestration.
-14. If reviewer findings on the action plan require user decisions, missing constraints, or clarification, stop and ask the user before refining it.
-15. If the user's response remains unclear or internally inconsistent, ask follow-up questions rather than guessing.
-16. Hand the finished planning artefacts back to the calling user or orchestrator with assumptions and open questions called out.
+11. **Document planned data-shape changes first.** When the scope changes any validation schema (Zod or otherwise), persistence model, API contract, or transport shape, identify the planned changes and record them as planned-only entries in the relevant canonical data-shape doc under `docs/developer/data-shapes/`, marked `Not implemented`. Do this before writing any code and before finalising `ACTION_PLAN.md`, so the implementation agent has a documented target contract to build against.
+12. **Assess module sizing and plan file separation.** Before writing the action plan, check the current line counts of all modules that will be materially changed or extended. Estimate the projected LOC increase for each from the agreed scope. When a file is projected to exceed **500 lines** after the change, plan explicit file separation in the action plan — split logic into dedicated modules grouped by domain (following existing folder conventions). Apply this to both frontend (TypeScript/React) and backend (GAS JavaScript) files. Record the current and projected LOC counts and the separation plan in the relevant action-plan section(s). **Refer to the relevant component AGENTS.md for repo-specific splitting rules:** `src/backend/AGENTS.md` §10 for backend facade-pattern decomposition (550-line threshold, sub-class injection, GAS load ordering) and `src/frontend/AGENTS.md` §12 for frontend service domain-folder grouping.
+13. After the spec and any required layout spec are complete, write `ACTION_PLAN.md` as a TDD-first delivery plan split into small independently testable sections.
+14. Submit the drafted action plan to `Planner Reviewer`, address findings, and repeat until it is clean enough for implementation orchestration.
+15. If reviewer findings on the action plan require user decisions, missing constraints, or clarification, stop and ask the user before refining it.
+16. If the user's response remains unclear or internally inconsistent, ask follow-up questions rather than guessing.
+17. Hand the finished planning artefacts back to the calling user or orchestrator with assumptions and open questions called out.
 
 ## 2. Clarification Loop for the Spec
 
@@ -204,7 +205,8 @@ After the spec and any required layout spec are complete:
 - Include regression/contract hardening and documentation/rollout sections.
 - Include a per-section shared-helper planning block when helper reuse/extension/new extraction is expected.
 - For planned shared helpers, reference the relevant canonical docs where planned-only helper entries were recorded as `Not implemented`.
-- **File separation by LOC**: See §1 item 11. When a section touches a file projected to exceed 500 lines, include the separation plan (current LOC, projected LOC, target modules) in that section's constraints or implementation notes.
+- **Include a per-section data-shape planning block** when the section changes any schema, persistence model, API contract, or transport shape. Reference the relevant data-shape doc(s) in `docs/developer/data-shapes/` where planned-only entries were recorded as `Not implemented`. The implementation agent should update those entries to remove the `Not implemented` marker as they implement them.
+- **File separation by LOC**: See §1 item 12. When a section touches a file projected to exceed 500 lines, include the separation plan (current LOC, projected LOC, target modules) in that section's constraints or implementation notes.
 
 The plan should be specific enough for the implementation orchestrator to execute sequentially without having to reopen core product decisions.
 

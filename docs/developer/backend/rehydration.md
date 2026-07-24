@@ -1,5 +1,10 @@
 # Assignment Rehydration Strategy
 
+> **See also:** Canonical shape definitions for partial and full assignment records
+> live in [`docs/developer/data-shapes/`](../data-shapes/INDEX.md).
+> This doc describes the _process_ of hydration; the data-shape docs define the
+> _structure_ at each hydration level.
+
 This document describes how _full_ assignment hydration works when starting from the
 lightweight (partially hydrated) assignment objects embedded inside an `ABClass`
 instance that was loaded from JsonDbApp.

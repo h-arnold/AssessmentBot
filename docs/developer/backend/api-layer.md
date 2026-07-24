@@ -12,6 +12,24 @@ This layer is deliberately REST-ish in structure:
 - keep endpoint-style naming coherent within each file
 - use each `.js` file as an API surface for a specific capability area
 
+## Canonical data-shape specifications
+
+All API contracts — request shapes, response envelopes, transport-boundary validation rules, and
+persisted data models — are documented in canonical specifications under
+`docs/developer/data-shapes/`. These docs are the authoritative contract reference for the
+entire codebase.
+
+**Before changing any API method, schema, transport shape, or persistence model, you must:**
+
+1. Read the relevant data-shape specification(s) in `docs/developer/data-shapes/` that cover the
+   contract you are changing.
+2. Ensure the planned change is accounted for in those docs — either as an existing entry to be
+   modified or as a new `Not implemented` planned entry (per the planner workflow in `AGENTS.md`).
+3. Update the specification to match the implementation as part of the change.
+
+Do not modify API contracts based on assumptions about what the data-shape docs say. Always verify
+against the current specification first.
+
 ## Shared Helper Status
 
 - ABClass parameters-object validator
@@ -324,14 +342,14 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Handler behaviour: instantiates `ABClassController` inside the inline closure at call time.
   The controller normalises stored records before returning them, so transport consumers receive only the documented class-partial fields and not storage metadata such as `_id`.
   The frontend service models `classOwner` and `teachers` as explicit `TeacherSummary` objects (`userId`, `email`, `teacherName`).
-  See `docs/developer/backend/DATA_SHAPES.md` for the class partial shape and persistence strategy.
+  See `docs/developer/data-shapes/abclass.md` (§ABClassPartials) for the class partial shape and persistence strategy.
 
 - `getABClass` — reads a stored class document and returns a transport-ready plain object with partial assignments (no Classroom API calls, no storage mutation).
   Source: `src/backend/z_Api/abclass/abclassRead.js`, via the `getABClass_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.readClass()` in `src/backend/y_controllers/ABClassController.js`.
   Required request field: `classId`.
   Validation: the helper validates `parameters` is a plain object via the shared `validateParametersObject_` primitive. `classId` must be a non-empty, already-trimmed string without path characters (`/`, `\`, `..`) or ASCII control characters (code points 0–31 and 127). Invalid payloads are reported as `INVALID_REQUEST` by the transport.
   Handler behaviour: calls `new ABClassController().readClass(classId)`. Returns the controller's shaped response (produced by the private `_toReadView` method) on success. Catches `ClassNotFoundError` explicitly and returns `null`. Re-throws all other errors.
-  Response shape is produced by `ABClassController._toReadView()` — see `docs/developer/backend/DATA_SHAPES.md` for the full shape.
+  Response shape is produced by `ABClassController._toReadView()` — see `docs/developer/data-shapes/abclass.md` (§ABClass full-read) for the full shape.
   Frontend wrapper: `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.ts` (`getABClass()`), with response validation in `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts`.
   Query factory: `getABClassQueryOptions(classId)` in `src/frontend/src/query/sharedQueries.ts` (not included in startup warmup — per-class query).
 

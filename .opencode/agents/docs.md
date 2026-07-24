@@ -113,6 +113,7 @@ Provide a concise handoff summary including:
 
 ## 7. Guardrails
 
+- **Never edit production code.** This agent updates documentation, JSDoc, and code comments only. Do not modify `.ts`, `.js`, `.spec.ts`, `.zod.ts`, backend model files, or any other implementation source file beyond JSDoc and inline comments. If the user explicitly asks you to change code, refuse politely and hand back with an explanation that code changes are outside your scope.
 - Do not invent behaviour not present in the code.
 - Do not backfill speculative roadmap content unless explicitly requested.
 - Do not rewrite unrelated docs for style-only changes.
@@ -158,7 +159,17 @@ Provide a concise handoff summary including:
 │   │   │   ├── AssessmentFlow.md                     # Canonical: Assessment workflow and data flow
 │   │   │   ├── backend-logging-and-error-handling.md # Canonical: ABLogger usage, validation ownership, error-boundary standards, apiHandler diagnostics
 │   │   │   ├── backend-testing.md                     # Vitest setup, GAS load order, test categories, mock factories, anti-patterns
-│   │   │   ├── DATA_SHAPES.md                         # Backend data structures and serialisation formats
+│   │   │   │
+│   │   │   ├── data-shapes/                           # Canonical data-shape specifications (persistence, transport, validation)
+│   │   │   │   ├── INDEX.md                           # Contract registry, containment hierarchy, workflow
+│   │   │   │   ├── transport-envelope.md               # Shared apiHandler success/error envelope
+│   │   │   │   ├── abclass.md                         # Contract: ABClass (+ Teacher, Student)
+│   │   │   │   ├── assignment-definition.md           # Contract: AssignmentDefinition (+ TaskDefinition, BaseTaskArtifact)
+│   │   │   │   ├── assignment.md                      # Contract: Assignment (+ StudentSubmission, StudentSubmissionItem, Assessment, Feedback)
+│   │   │   │   ├── backend-config.md                  # Contract: BackendConfig
+│   │   │   │   ├── google-classrooms.md               # Contract: GoogleClassrooms (upstream API passthrough)
+│   │   │   │   ├── reference-data.md                  # Contract: Reference Data (cohorts, year groups, assignment topics)
+│   │   │   │   └── request-store.md                   # Contract: RequestStore (internal backend API request tracking)
 │   │   │   ├── oauth-scopes.md                         # OAuth scopes required by the application
 │   │   │   ├── rehydration.md                         # Deserialising and reconstructing objects
 │   │   │   ├── singletons.md                           # Singleton pattern usage
@@ -218,7 +229,8 @@ Provide a concise handoff summary including:
 ├── AGENTS.md                                         # Root: cross-component rules, delegation protocol, agentic workflow, lint commands
 ├── scripts/builder/AGENTS.md                         # Builder-specific: purpose, modes, constraints, validation rules
 ├── src/backend/AGENTS.md                             # Backend-specific: coding standards, file organisation, GAS patterns
-└── src/frontend/AGENTS.md                            # Frontend-specific: React patterns, TypeScript conventions, Ant Design usage
+├── src/frontend/AGENTS.md                            # Frontend-specific: React patterns, TypeScript conventions, Ant Design usage
+└── docs/developer/data-shapes/                       # Canonical data-shape specifications (persistence, transport, validation)
 ```
 
 ## OpenCode Configuration (.opencode/)
@@ -229,6 +241,7 @@ Provide a concise handoff summary including:
 │   ├── action-plan-implementer.md                      # Implement action plans with TDD-first workflow
 │   ├── agent-orchestrator.md                           # Orchestrate delivery against ACTION_PLAN.md
 │   ├── code-reviewer.md                                 # Code Reviewer. Contains Key Documentation References - keep synchronised.
+│   ├── data-shapes-agent.md                             # Create and maintain canonical data-shape specifications
 │   ├── de-sloppification.md                            # Find and remove AI-slop, duplication, complexity
 │   ├── docs.md                                          # THIS FILE - Documentation Agent instructions
 │   ├── implementation.md                                # Focused implementation tasks

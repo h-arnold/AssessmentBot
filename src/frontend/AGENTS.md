@@ -165,6 +165,7 @@ Frontend build output is consumed by the GAS builder pipeline.
 ## 9. Validation and Type Definition Standard
 
 - Use **Zod** as the validation framework for all new and updated frontend validation logic.
+- **Canonical shape definitions live in `docs/developer/data-shapes/`.** Before defining or updating a Zod schema for a backend-facing service, read the relevant contract in `docs/developer/data-shapes/INDEX.md` to ensure your schema matches the authoritative backend contract.
 - Define the Zod schema first, then derive TypeScript types from that schema using `z.infer<typeof ...>` to avoid duplicated type declarations.
 - Store validation schemas in a dedicated adjacent schema file (for example `*.zod.ts` or `zodSchemas.ts`) near the code consuming them.
 

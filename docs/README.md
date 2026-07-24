@@ -31,7 +31,7 @@ Technical documentation for developers contributing to the AssessmentBot codebas
 - [**API Layer**](./developer/backend/api-layer.md) – Backend transport handlers, validation ownership, `apiHandler` standards, and endpoint documentation
 - [**Backend Logging and Error Handling**](./developer/backend/backend-logging-and-error-handling.md) – Canonical standards for `ABLogger` usage, validation ownership, and error-boundary patterns
 - [**Backend Testing Structure**](./developer/backend/backend-testing.md) – Comprehensive guide to backend testing patterns and practices
-- [**Data Shapes**](./developer/backend/DATA_SHAPES.md) – Documentation of data structures and serialisation formats
+- [**Data Shapes**](./developer/data-shapes/INDEX.md) – Canonical data-shape specifications for all API contracts
 - [**Rehydration**](./developer/backend/rehydration.md) – Guide to deserialising and reconstructing objects
 - [**Singleton Pattern**](./developer/backend/singletons.md) – How to work with singletons in the codebase
 - [**Vendoring**](./developer/backend/Vendoring.md) – How vendored third-party UI assets are managed
