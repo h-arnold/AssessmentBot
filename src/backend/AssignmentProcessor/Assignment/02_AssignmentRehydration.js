@@ -80,21 +80,24 @@ const AssignmentRehydration = {
    * @param {object} subObject - The submission object to rehydrate.
    */
   _rehydrateSubmission(inst, subObject) {
-    const identifier = subObject && (subObject.studentId || subObject.userId);
+    const identifier = subObject?.studentId || subObject?.userId;
 
     try {
-      if (
-        typeof StudentSubmission !== 'undefined' &&
-        typeof StudentSubmission.fromJSON === 'function'
-      ) {
-        const submission = StudentSubmission.fromJSON(subObject);
-        inst.submissions.push(submission);
-        return;
-      }
+      const submission = StudentSubmission.fromJSON(subObject);
+      inst.submissions.push(submission);
+      return;
     } catch (error) {
+      // The model layer refused the submission (typically a malformed/legacy
+      // artifact). Surface the corruption with enough context to diagnose, then
+      // fall back to a resilient reconstruction below rather than throwing —
+      // throwing here would lose every student's data for the whole assignment.
       ABLogger.getInstance().warn(
-        `StudentSubmission.fromJSON threw for studentId=${identifier}:`,
-        error
+        'rehydrateAssignment: submission deserialisation failed; reconstructing resiliently',
+        {
+          studentId: identifier,
+          err: error,
+          corruptArtifacts: this._summariseCorruptArtifacts(subObject),
+        }
       );
     }
 
@@ -105,30 +108,74 @@ const AssignmentRehydration = {
         subObject.documentId || null,
         subObject.studentName || subObject.name || null
       );
-      Object.entries(subObject || {}).forEach(([key, value]) => {
-        if (value === undefined) return;
-        if (key === 'updatedAt' && subObject.updatedAt) {
-          submission.updatedAt = value instanceof Date ? value : new Date(value);
-          return;
+      if (subObject.createdAt) {
+        submission.createdAt =
+          subObject.createdAt instanceof Date
+            ? subObject.createdAt.toISOString()
+            : subObject.createdAt;
+      }
+      if (subObject.updatedAt) {
+        submission.updatedAt =
+          subObject.updatedAt instanceof Date
+            ? subObject.updatedAt.toISOString()
+            : subObject.updatedAt;
+      }
+      const items = subObject.items || {};
+      Object.entries(items).forEach(([taskId, itemJson]) => {
+        try {
+          submission.items[taskId] = StudentSubmissionItem.fromJSON(itemJson);
+        } catch (itemError) {
+          // A single corrupt item must not break serialisation of the whole
+          // submission. Drop it but log it so the corruption is visible.
+          ABLogger.getInstance().warn(
+            'rehydrateAssignment: dropped corrupt submission item during resilient reconstruction',
+            {
+              studentId: identifier,
+              taskId,
+              itemId: itemJson?.id,
+              artifactType: itemJson?.artifact?.type,
+              err: itemError,
+            }
+          );
         }
-        submission[key] = value;
       });
       inst.submissions.push(submission);
     } catch (error_) {
-      ABLogger.getInstance().warn(
-        `StudentSubmission reconstruction failed for studentId=${identifier}:`,
-        error_
+      // As a last resort, never return a raw object: that bypasses the model's
+      // serialisation contract and reproduces the transport validation failure.
+      // Log and omit the submission instead.
+      ABLogger.getInstance().error(
+        'rehydrateAssignment: submission reconstruction failed; submission omitted',
+        { studentId: identifier, err: error_ }
       );
-      const raw = { ...subObject };
-      if (raw.updatedAt) {
-        if (raw.updatedAt instanceof Date) raw.updatedAt = raw.updatedAt.toISOString();
-        else if (Validate.isString(raw.updatedAt)) {
-          const parsed = new Date(raw.updatedAt);
-          if (!Number.isNaN(parsed.getTime())) raw.updatedAt = parsed.toISOString();
-        }
-      }
-      inst.submissions.push(raw);
     }
+  },
+
+  /**
+   * Summarises artifacts in a submission JSON that are missing the fields
+   * required for the model layer to accept them. Used only for diagnostic
+   * logging so corruption is visible without dumping full payloads.
+   * @param {Object} subObject - Raw submission JSON.
+   * @returns {Array<{taskId: string, itemId: (string|undefined), missing: string[]}>} A list of items whose artifact is missing one or more required fields.
+   */
+  _summariseCorruptArtifacts(subObject) {
+    const items = subObject?.items;
+    if (!items || typeof items !== 'object') return [];
+    return Object.entries(items)
+      .map(([taskId, item]) => {
+        const art = item?.artifact;
+        const missing = [];
+        if (!art || typeof art !== 'object') {
+          missing.push('artifact');
+        } else {
+          if (art.contentHash === undefined) missing.push('contentHash');
+          if (art.content === undefined) missing.push('content');
+          if (art.type === undefined) missing.push('type');
+          if (art.role === undefined) missing.push('role');
+        }
+        return { taskId, itemId: item?.id, missing };
+      })
+      .filter((entry) => entry.missing.length > 0);
   },
 };
 

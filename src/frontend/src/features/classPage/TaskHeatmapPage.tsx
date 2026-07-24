@@ -7,11 +7,11 @@
  * via the frontend logger and calls `onBack` (no in-view error UI).
  *
  * @see ACTION_PLAN.md §5 — TaskHeatmapPage
- * @see TASK_PREVIEW_CARD_LAYOUT.md — §"Surface hierarchy", §"Outer layout"
  * @see SPEC.md — §"Page composition", §"Navigation / breadcrumb", §"Error handling"
  */
 
-import { useEffect, useMemo, useRef, type JSX } from 'react';
+import { useMemo, type JSX } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Alert, Button, Card, Flex, App as AntdApp } from 'antd';
 import { RefreshCw } from 'lucide-react';
 import { APP_GAP_MD } from '../../theme/spacing';
@@ -23,7 +23,11 @@ import {
   adaptMetricsToHeatmap,
   TaskTitlesUnavailableError,
 } from '../../services/dataAnalysis/heatmapAdapter';
-import { logFrontendError } from '../../logging/frontendLogger';
+import { logFrontendError, logFrontendEvent } from '../../logging/frontendLogger';
+import { useLogOnce } from '../../hooks/useLogOnce';
+import { buildCellPreviewLookup } from './buildCellPreviewLookup';
+import type { CellPreviewLookup } from './buildCellPreviewLookup';
+import { getAssignmentQueryOptions } from '../../query/sharedQueries';
 import { TaskHeatmapTable } from './TaskHeatmapTable';
 import { PageTitleCard, PageNavCard } from '../../components/PageHeader/PageHeader';
 
@@ -156,18 +160,50 @@ export function TaskHeatmapPage({
   // Context-aware Ant Design message/notification API for user feedback.
   const { message } = AntdApp.useApp();
 
+  // Assignment full-data query for cell preview popover data.
+  const assignmentQuery = useQuery(getAssignmentQueryOptions(classFull.classId, assignmentId));
+
+  const cellPreviewLookup = useMemo<CellPreviewLookup | null>(
+    () => (assignmentQuery.data ? buildCellPreviewLookup(assignmentQuery.data) : null),
+    [assignmentQuery.data],
+  );
+
+  const showAssignmentError: boolean = assignmentQuery.isError || assignmentQuery.data === null;
+  const isAssignmentLoading: boolean = assignmentQuery.isPending;
+
+  // Assignment-query error logging: fires once via useLogOnce guard.
+  useLogOnce(assignmentQuery.isError, () => {
+    logFrontendError('TaskHeatmapPage', assignmentQuery.error);
+  });
+
+  // Assignment not-found logging: fires once via useLogOnce guard.
+  useLogOnce(
+    assignmentQuery.data === null && !assignmentQuery.isPending && !assignmentQuery.isError,
+    () => {
+      logFrontendEvent('warn', {
+        context: 'TaskHeatmapPage',
+        errorMessage: 'Assignment not found in AssignmentFull payload',
+      });
+    },
+  );
+
   // Generic errors (unknown assignmentId): log, surface user-safe message,
   // and auto-navigate back. Guarded against double-execution in React 19
-  // StrictMode via useRef.
-  const hasHandledGenericErrorReference = useRef(false);
-  useEffect(() => {
-    if (isGenericError && !hasHandledGenericErrorReference.current) {
-      hasHandledGenericErrorReference.current = true;
-      logFrontendError('TaskHeatmapPage', state.error);
-      message.error('Something went wrong while loading the heatmap. Returning to class overview.');
-      backCallback();
-    }
-  }, [isGenericError, state.error, backCallback, message]);
+  // StrictMode via useLogOnce.
+  useLogOnce(isGenericError, () => {
+    logFrontendError('TaskHeatmapPage', state.error);
+    message.error('Something went wrong while loading the heatmap. Returning to class overview.');
+    backCallback();
+  });
+
+  // Title-error logging: emits a developer diagnostic once when task titles
+  // cannot be resolved, alongside the in-view Alert for the user.
+  useLogOnce(isTitleError, () => {
+    logFrontendEvent('warn', {
+      context: 'TaskHeatmapPage',
+      errorMessage: 'Task titles are currently unavailable.',
+    });
+  });
 
   if (isGenericError) {
     return null;
@@ -199,13 +235,13 @@ export function TaskHeatmapPage({
         backLabel="Back to Class overview"
         backAriaLabel="Back to Class overview"
         actions={
-          <Button icon={<RefreshCw size={16} />} onClick={refetch}>
+          <Button icon={<RefreshCw size={16} />} onClick={() => { refetch(); assignmentQuery.refetch(); }}>
             Refresh
           </Button>
         }
       />
       <Card size="small">
-        <TaskHeatmapTable heatmapResult={heatmapResult!} />
+        <TaskHeatmapTable heatmapResult={heatmapResult!} cellPreviewLookup={cellPreviewLookup} isAssignmentLoading={isAssignmentLoading} showAssignmentError={showAssignmentError} />
       </Card>
     </Flex>
   );

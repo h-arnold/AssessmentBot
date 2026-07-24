@@ -46,6 +46,7 @@ Do not create a new helper only to move code out of a large file.
 ### 3.1a Hooks and derivation helpers
 
 - Page dataset-state hook and pure helpers: `src/frontend/src/hooks/usePageDataset.ts`
+- Once-only conditional callback hook (React 19 StrictMode-safe): `src/frontend/src/hooks/useLogOnce.ts`
 
 ### 3.2 Error and transport helpers
 
@@ -743,7 +744,7 @@ These entries record the feature-local helpers for the Class page. Per `frontend
 - Call-site rationale: rendered by `ClassPageContent` when `selectedView.view === 'heatmap'`. It is a pure presentational view that receives the already-computed `analyserResult` + `classFull` (it must NOT call `useClassPageData` — a second hook instance would re-run the analyser, violating the "no new analysis call" contract). It projects the view model via `adaptMetricsToHeatmap(analyserResult, classFull, assignmentId)`.
 - Status: `Implemented`
 - Implementation notes:
-  - `adaptMetricsToHeatmap` is computed exactly once via a `useState` lazy initializer (not re-run on every render). On throw (unknown `assignmentId`), it logs via `logFrontendError('TaskHeatmapPage', error)` inside a `useEffect` and then calls `onBack()` — auto-navigating back to the overview with NO in-view `Alert`/error UI (per `SPEC.md`/`TASK_PREVIEW_CARD_LAYOUT.md`). The error is logged, never silently ignored, and never via `console.*`.
+  - `adaptMetricsToHeatmap` is computed exactly once via a `useState` lazy initializer (not re-run on every render). On throw (unknown `assignmentId`), it logs via `logFrontendError('TaskHeatmapPage', error)` inside a `useEffect` and then calls `onBack()` — auto-navigating back to the overview with NO in-view `Alert`/error UI (per `SPEC.md`). The error is logged, never silently ignored, and never via `console.*`.
   - Renders a `Flex` (`vertical`, `gap=16`) with three `Card`s (`size="small"`): a header `Card` (`Typography.Title` assignment name + back `Button` `aria-label="Back to Class overview"` + secondary class name), a control `Card` (refresh `Button` → `refetch`), and the table `Card` (`TaskHeatmapTable`). The breadcrumb (with the `Task Heatmap` segment) is owned by `ClassPage`, not duplicated here.
   - Co-located integration spec: `ClassPageHeatmapView.spec.tsx` (3 tests: card click opens heatmap; Back returns to overview; unknown `assignmentId` auto-navigates back via `logFrontendError` + `onBack`, no in-view error).
 
@@ -800,8 +801,34 @@ These entries record the helpers introduced to support the ClassPage assignment 
 - Decision: `new` (shared between the prefetch and the adapter's `recentAssignments` pipeline)
 - Owning module/path: `src/frontend/src/features/classPage/classPageModel.ts`
 - Call-site rationale: ensures the prefetched top-3 and the adapter's displayed `recentAssignments` use identical ordering (updatedAt desc, assignmentId asc tie-break); prevents divergence when `updatedAt` values are equal.
-- Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9
+  - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9
+  - Status: `Implemented`
+
+#### 9.18.16 Task Preview Card real-data wiring helpers
+
+24. Helper: `buildCellPreviewLookup(assignment: AssignmentFull): CellPreviewLookup` — builds a `studentId × taskId` keyed lookup from the AssignmentFull payload
+
+- Decision: `new`
+- Owning module/path: `src/frontend/src/features/classPage/buildCellPreviewLookup.ts`
+- Call-site rationale: called by `TaskHeatmapPage` via `useMemo` to pre-compute O(1) popover data retrieval; consumed by `TaskHeatmapTable` cell renders via `cellPreviewLookup.get(studentId)?.get(taskId)`. Has exactly one caller.
 - Status: `Implemented`
+- Implementation notes: Builds a lookup from grid coordinate → preview datum for the class heatmap popover.
+
+25. Helper: `assembleTaskPreviewData(cellData, metricResult, metricKey, taskId): TaskPreviewData` — maps a `CellPreviewData` + analyser `MetricResult` into the `TaskPreviewCard`'s `TaskPreviewData` contract
+
+- Decision: `new`
+- Owning module/path: `src/frontend/src/features/classPage/assembleTaskPreviewData.ts`
+- Call-site rationale: the single point where the wider backend types (`SPREADSHEET`, `base`, `unknown` content) are narrowed to `TaskPreviewData`'s narrower contract; handles artifact type coercion, reasoning extraction per metric key, and score/state pass-through from the analyser's `MetricResult`. Has exactly one caller (`TaskHeatmapTable` cell render).
+- Status: `Implemented`
+- Implementation notes: Maps an AssignmentFull cell to TaskPreviewData (reasoning, artifact type, metric result).
+
+26. Helper: `spreadsheetToMarkdownTable(rows): string` — converts a `Array<Array<string | number | null>>` to a GitHub-flavoured markdown table string
+
+- Decision: `new`
+- Owning module/path: `src/frontend/src/features/classPage/spreadsheetToMarkdownTable.ts`
+- Call-site rationale: called by `assembleTaskPreviewData` when `artifactType === 'SPREADSHEET'` to produce a markdown string renderable by the existing `MarkdownRenderer`; no existing converter in the codebase. Has exactly one caller (via `assembleTaskPreviewData`).
+- Status: `Implemented`
+- Implementation notes: Converts a tabular spreadsheet value to a Markdown table for TABLE-artifact preview cards.
 
 ### 9.19 Frontend pure formatting helpers
 

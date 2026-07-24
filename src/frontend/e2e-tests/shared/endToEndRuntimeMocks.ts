@@ -59,6 +59,8 @@ export type RuntimeScenario = Readonly<{
   startAssessmentRun?: ReadonlyArray<ResponseItem>;
   getAssignmentDefinitionPartials?: ReadonlyArray<ResponseItem>;
   getAssignmentDefinition?: ReadonlyArray<ResponseItem>;
+  /** Real-data popover wiring (ACTION_PLAN.md §5.5). Mirrors the two-entry StrictMode pattern used by `getABClass`. */
+  getAssignment?: ReadonlyArray<ResponseItem>;
   upsertAssignmentDefinition?: ReadonlyArray<ResponseItem>;
   deleteAssignmentDefinition?: ReadonlyArray<ResponseItem>;
 }>;
@@ -485,6 +487,7 @@ export async function installRuntimeMock(
     'startAssessmentRun',
     'getAssignmentDefinitionPartials',
     'getAssignmentDefinition',
+    'getAssignment',
     'upsertAssignmentDefinition',
     'deleteAssignmentDefinition',
   ] as const;

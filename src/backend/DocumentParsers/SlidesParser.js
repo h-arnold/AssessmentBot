@@ -306,7 +306,21 @@ class SlidesParser extends DocumentParser {
       if (extracted) {
         artifacts.push(extracted);
       } else {
-        artifacts.push({ taskId: definition.getId(), pageId: null, content: null, documentId });
+        // Emit a well-formed placeholder artifact so the stored submission is
+        // always complete (content/contentHash present as null). A missing or
+        // malformed artifact would otherwise fail transport validation and be
+        // impossible to diagnose later. The real type is used so downstream
+        // hydration/serialisation stays consistent.
+        artifacts.push({
+          type: primary.getType(),
+          taskId: definition.getId(),
+          pageId: null,
+          content: null,
+          contentHash: null,
+          documentId,
+          role: 'submission',
+          metadata: {},
+        });
         ABLogger.getInstance().error(
           `Failed to extract artifact for task "${definition.taskTitle}" in document ${documentId}.`
         );
@@ -442,6 +456,7 @@ class SlidesParser extends DocumentParser {
       pageId,
       documentId,
       content: null,
+      contentHash: null,
       metadata: {
         sourceUrl: this.generateSlideImageUrl(documentId, pageId),
       },

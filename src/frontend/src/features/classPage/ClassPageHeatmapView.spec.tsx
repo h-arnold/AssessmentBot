@@ -14,7 +14,6 @@
  *   `onBack` (no in-view error UI).
  *
  * @see ACTION_PLAN.md §5 — TaskHeatmapPage view-state wiring
- * @see TASK_PREVIEW_CARD_LAYOUT.md — §"Surface hierarchy", §"Outer layout"
  * @see SPEC.md — §"Page composition", §"Navigation / breadcrumb", §"Error handling"
  */
 
@@ -23,6 +22,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createElement, useState } from 'react';
 import { App } from 'antd';
+import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
+import type { AssignmentFull } from '../../services/assignmentAssessment/assignmentAssessment.zod';
 import { ClassPageContent } from './ClassPageContent';
 import type { ClassPageSurfaceState } from './useClassPageData';
 import type { ClassPageAdapterResult } from './classPageAdapter.zod';
@@ -43,6 +44,49 @@ import {
 //
 // Also mock the frontend logger to spy on error-handling pathways.
 
+/**
+ * Builds a minimal schema-valid `AssignmentFull` fixture for default mock.
+ *
+ * @returns {AssignmentFull} A valid, empty-submissions assignment.
+ */
+function buildDefaultAssignmentFixture(): AssignmentFull {
+  return {
+    courseId: 'class-1',
+    assignmentId: 'a-1',
+    assignmentName: 'Assignment One',
+    dueDate: null,
+    updatedAt: null,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    documentType: 'assessment',
+    referenceDocumentId: null,
+    templateDocumentId: null,
+    tasks: null,
+    submissions: [],
+    assignmentDefinition: {
+      primaryTitle: 'Assignment One',
+      primaryTopic: null,
+      primaryTopicKey: null,
+      yearGroupKey: 'yg-10',
+      yearGroupLabel: null,
+      alternateTitles: [],
+      alternateTopics: [],
+      documentType: 'assessment',
+      referenceDocumentId: null,
+      templateDocumentId: null,
+      referenceLastModified: null,
+      templateLastModified: null,
+      assignmentWeighting: 1,
+      definitionKey: 'def-1',
+      tasks: {},
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  };
+}
+
+const { mockGetAssignment } = vi.hoisted(() => ({ mockGetAssignment: vi.fn() }));
+mockGetAssignment.mockResolvedValue(buildDefaultAssignmentFixture());
+
 const { mockStudentAveragesTableCard } = vi.hoisted(() => ({
   mockStudentAveragesTableCard: vi.fn(function MockStudentAveragesTableCard() {
     return createElement('div', { 'data-testid': 'student-averages-table-card' });
@@ -53,6 +97,10 @@ const { logFrontendError: mockLogFrontendError } = vi.hoisted(() => ({
   logFrontendError: vi.fn(),
 }));
 
+vi.mock('../../services/assignmentAssessment/assignmentAssessmentService', () => ({
+  getAssignment: mockGetAssignment,
+}));
+
 vi.mock('./StudentAveragesTableCard', () => ({
   StudentAveragesTableCard: mockStudentAveragesTableCard,
 }));
@@ -60,6 +108,19 @@ vi.mock('./StudentAveragesTableCard', () => ({
 vi.mock('../../logging/frontendLogger', () => ({
   logFrontendError: mockLogFrontendError,
 }));
+
+/**
+ * Creates a fresh QueryClient for test isolation.
+ *
+ * @returns {QueryClient} A test QueryClient with retries disabled.
+ */
+function createTestQueryClient(): QueryClient {
+  return new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+    },
+  });
+}
 
 // ===========================================================================
 // Fixtures
@@ -247,7 +308,10 @@ describe('ClassPage heatmap view-state wiring', () => {
   // -----------------------------------------------------------------------
 
   it('opens the heatmap view when a RecentAssignmentCard is clicked', async () => {
-    render(createElement(App, null, createElement(Harness, { initialView: 'overview' })));
+    const queryClient = createTestQueryClient();
+    render(createElement(QueryClientProvider, { client: queryClient },
+      createElement(App, null, createElement(Harness, { initialView: 'overview' }))
+    ));
 
     // The overview should render a RecentAssignmentCard for "Assignment One"
     // with role="button" — the card is clickable via onOpenHeatmap.
@@ -279,7 +343,10 @@ describe('ClassPage heatmap view-state wiring', () => {
   // -----------------------------------------------------------------------
 
   it('returns to the overview when the Back button is clicked', async () => {
-    render(createElement(App, null, createElement(Harness, { initialView: 'heatmap', assignmentId: 'a-1' })));
+    const queryClient = createTestQueryClient();
+    render(createElement(QueryClientProvider, { client: queryClient },
+      createElement(App, null, createElement(Harness, { initialView: 'heatmap', assignmentId: 'a-1' }))
+    ));
 
     // The heatmap should render — the TaskHeatmapTable with aria-label="Task Heatmap"
     // and the Back button with aria-label "Back to Class overview" should be present.
@@ -305,8 +372,11 @@ describe('ClassPage heatmap view-state wiring', () => {
     // TaskHeatmapPage catches, logs via logFrontendError('TaskHeatmapPage', error),
     // and calls onBack (returning to overview). No Ant Design Alert/Result error
     // is rendered in the heatmap view.
+    const queryClient = createTestQueryClient();
 
-    render(createElement(App, null, createElement(Harness, { initialView: 'heatmap', assignmentId: 'missing-id' })));
+    render(createElement(QueryClientProvider, { client: queryClient },
+      createElement(App, null, createElement(Harness, { initialView: 'heatmap', assignmentId: 'missing-id' }))
+    ));
 
     // The catch-and-navigate behaviour means:
     //   - logFrontendError was called with first argument 'TaskHeatmapPage'

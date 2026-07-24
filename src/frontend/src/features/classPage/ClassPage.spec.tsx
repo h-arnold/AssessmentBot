@@ -9,7 +9,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createElement } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { UseQueryResult } from '@tanstack/react-query';
+import type { AssignmentFull } from '../../services/assignmentAssessment/assignmentAssessment.zod';
 import { ClassPage } from './ClassPage';
 import type { ClassPageData, ClassPageSurfaceState } from './useClassPageData';
 import type { ClassPageAdapterResult } from './classPageAdapter.zod';
@@ -46,6 +48,40 @@ const { mockTaskHeatmapTable } = vi.hoisted(() => ({
   }),
 }));
 
+const { mockGetAssignment } = vi.hoisted(() => ({ mockGetAssignment: vi.fn() }));
+mockGetAssignment.mockResolvedValue({
+  courseId: 'class-abc-123',
+  assignmentId: 'a-1',
+  assignmentName: 'Test Assignment',
+  dueDate: null,
+  updatedAt: null,
+  createdAt: '2026-01-01T00:00:00.000Z',
+  documentType: 'assessment',
+  referenceDocumentId: null,
+  templateDocumentId: null,
+  tasks: null,
+  submissions: [],
+  assignmentDefinition: {
+    primaryTitle: 'Test Assignment',
+    primaryTopic: null,
+    primaryTopicKey: null,
+    yearGroupKey: 'yg-10',
+    yearGroupLabel: null,
+    alternateTitles: [],
+    alternateTopics: [],
+    documentType: 'assessment',
+    referenceDocumentId: null,
+    templateDocumentId: null,
+    referenceLastModified: null,
+    templateLastModified: null,
+    assignmentWeighting: 1,
+    definitionKey: 'def-1',
+    tasks: {},
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+  },
+} satisfies AssignmentFull);
+
 const { mockUseClassSelection } = vi.hoisted(() => ({
   mockUseClassSelection: vi.fn(() => ({
     selectedClassId: DEFAULT_CLASS_ID,
@@ -53,6 +89,10 @@ const { mockUseClassSelection } = vi.hoisted(() => ({
     onSelectClass: vi.fn(),
     onNavigateToClasses: vi.fn(),
   })),
+}));
+
+vi.mock('../../services/assignmentAssessment/assignmentAssessmentService', () => ({
+  getAssignment: mockGetAssignment,
 }));
 
 vi.mock('./useClassPageData', () => ({
@@ -299,10 +339,15 @@ describe('ClassPage', () => {
       await vi.importActual<{ ClassPageContent: typeof ClassPageContentType }>('./ClassPageContent');
     mockClassPageContent.mockImplementation(RealClassPageContent as unknown as typeof mockClassPageContent);
 
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
     render(
-      createElement(ClassPage, {
-        classId: DEFAULT_CLASS_ID,
-      })
+      createElement(QueryClientProvider, { client: queryClient },
+        createElement(ClassPage, {
+          classId: DEFAULT_CLASS_ID,
+        })
+      )
     );
 
     // The nav card should be visible initially (overview view)

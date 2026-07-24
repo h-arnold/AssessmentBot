@@ -17,9 +17,18 @@ export type StartAssessmentRunResponse = z.infer<typeof StartAssessmentRunRespon
 /**
  * Schema for an assessment, matching `Assessment.toJSON()` in
  * `src/backend/Models/Assessment.js`.
+ *
+ * @remarks
+ * `score` accepts a numeric value or the literal string `'N'`. The backend
+ * emits `'N'` (via `LLMRequestManager.createNotAttemptedAssessment()` →
+ * `new Assessment('N', ...)`) for criteria a student did not attempt, so `'N'`
+ * is a valid, intentional sentinel rather than a parse error. `null` is
+ * intentionally rejected; the data-analysis layer models this same contract as
+ * `AssessmentScore = number | 'N' | undefined` (see
+ * `src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.types.ts`).
  */
 export const AssessmentSchema = z.object({
-  score: z.number(),
+  score: z.union([z.number(), z.literal('N')]),
   reasoning: z.string(),
 });
 
@@ -103,7 +112,9 @@ export const StudentSubmissionSchema = z.object({
   studentId: z.string(),
   studentName: z.string(),
   assignmentId: z.string(),
-  documentId: z.string().nullable(),
+  // `documentId` may be absent from real backend payloads (the key is omitted
+  // entirely, not merely `null`), so it is both nullable and optional.
+  documentId: z.string().nullable().optional(),
   items: z.record(z.string(), StudentSubmissionItemSchema),
   createdAt: z.string(),
   updatedAt: z.string(),

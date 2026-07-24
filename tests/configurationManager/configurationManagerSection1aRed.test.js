@@ -97,13 +97,18 @@ describe('ConfigurationManager Section 1a red contract — documentProperties re
       const config = createFreshManager();
       config.configCache = {};
 
-      config.setProperty(ConfigurationManager.CONFIG_KEYS.API_KEY, 'sk-new-key');
+      config.setProperty(
+        ConfigurationManager.CONFIG_KEYS.API_KEY,
+        'abt_7pC98PCoGJOcjN-qz6rNlSzKkgySJF-3'
+      );
 
       expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
         ConfigurationManager.CONFIG_STORE_KEY,
-        expect.stringContaining('sk-new-key')
+        expect.stringContaining('abt_7pC98PCoGJOcjN-qz6rNlSzKkgySJF-3')
       );
-      expect(config.getProperty(ConfigurationManager.CONFIG_KEYS.API_KEY)).toBe('sk-new-key');
+      expect(config.getProperty(ConfigurationManager.CONFIG_KEYS.API_KEY)).toBe(
+        'abt_7pC98PCoGJOcjN-qz6rNlSzKkgySJF-3'
+      );
     });
   });
 });

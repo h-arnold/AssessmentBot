@@ -60,9 +60,12 @@ test.describe('Task Heatmap E2E journey', () => {
     );
 
     // Student Two's task_001 Completeness cell shows green band + aria-label (integer, 0 dp).
-    // The aria-label is set directly on the <td role="cell"> via onCell, so target it by
-    // attribute rather than a descendant filter (which would never match the cell itself).
-    const cell = page.locator(`[aria-label="Student Two, task_001, Completeness: 5"]`);
+    // The aria-label is now applied to BOTH the `<td role="cell">` (via onCell) and the nested
+    // `<span role="button" aria-haspopup="dialog">` popover trigger, so a bare `[aria-label=...]`
+    // selector matches two elements. Target the `role="button"` trigger to keep a single match.
+    const cell = page.locator(
+      `[role="button"][aria-label="Student Two, task_001, Completeness: 5"]`
+    );
     await expect(cell).toHaveCount(1);
   });
 
