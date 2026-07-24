@@ -120,7 +120,13 @@ When validating lint output, use the runtime-specific commands defined in the co
 
 Do not run frontend or builder files through the root backend ESLint command directly; use their leaf configs via the commands above.
 
-### 9. Testing Delegation Policy
+### 9. Temporary Workspace Convention
+
+All agents **must** use `.opencode/scratchpad/` as the temporary workspace for files that should not be tracked by git. Use this instead of `/tmp` or other system temp directories when writing ephemeral artefacts (e.g. diagnostic dumps, intermediate reports, exploration notes). This directory is already covered by `.gitignore` and will never be committed.
+
+Do not write planning artefacts (`SPEC.md`, `ACTION_PLAN.md`, layout specs, etc.) to scratchpad — those belong in the project root where the orchestrator can retrieve them.
+
+### 10. Testing Delegation Policy
 
 - Do not define or duplicate module-specific test file naming/location conventions in `AGENTS.md` files.
 - For Vitest unit/component tests and backend tests, always delegate test implementation/debugging tasks to `Testing Specialist` when your environment supports sub-agent delegation.
