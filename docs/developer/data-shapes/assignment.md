@@ -386,7 +386,7 @@ The full and partial schemas on the frontend are:
 
 3. **`StudentSubmissionPartialSchema.documentId` is `.nullable().optional()` but backend `toPartialJSON()` always emits it.**
    Backend `StudentSubmission.toPartialJSON()` always includes `documentId` (which may be `null`). The frontend schema tolerates both `null` and an absent field to handle cases where Google Classroom omits the Drive file reference for students who never opened an assignment.
-   **Classification: Aligned** — documented in legacy DATA_SHAPES.md. The Zod schema is permissive to handle both backend and Google Classroom edge cases.
+   **Classification: Aligned** — documented in the partial-vs-full hydration pattern in [rehydration.md](../backend/rehydration.md). The Zod schema is permissive to handle both backend and Google Classroom edge cases.
 
 4. **`StudentSubmissionPartialSchema.studentName` is `z.string().nullable()` but backend always emits it as a nullable string.**
    Backend `StudentSubmission.toPartialJSON()` always includes `studentName` (which may be `null` per constructor default). The frontend schema expects `string | null`. Both sides aligned.
@@ -414,7 +414,7 @@ The full and partial schemas on the frontend are:
 
 10. **`StudentSubmission.updatedAt` uses a monotonic counter suffix (e.g. `"2025-09-10T12:30:00Z#2"`).**
     This is not a standard ISO 8601 format. The frontend `StudentSubmissionSchema` uses `z.string()`, which accepts any string, so this passes validation. However, any downstream code that parses this as ISO 8601 will fail on the `#N` suffix.
-    **Classification: Aligned** — the Zod schema is intentionally loose (string), and consuming code is expected to handle the suffix. The monotonic counter is documented in legacy DATA_SHAPES.md.
+    **Classification: Aligned** — the Zod schema is intentionally loose (string), and consuming code is expected to handle the suffix. The monotonic counter is documented in [rehydration.md](../backend/rehydration.md) (§Hydration Guidelines).
 
 11. **`startAssessmentRun` returns `null` and the frontend schema uses `z.void().nullable()`.**
     Backend returns `null` (no payload on success). The frontend `StartAssessmentRunResponseSchema` is `z.void().nullable()` which accepts both `undefined` (from the envelope's `data ?? null` coercion) and `null`.

@@ -359,6 +359,9 @@ contract for StudentSubmission is documented in [Contract: Assignment](assignmen
   - `StudentSummarySchema` — validates student objects.
   - `AssignmentPartialSchema` — validates each assignment entry.
   - `TeacherSummarySchema` — duplicated from `classPartials.zod.ts` for self-contained validation.
+  - **Cross-reference:** `ClassFullSchema` is consumed by
+    `src/frontend/src/services/dataAnalysis/dataAnalysis.zod.ts` (`AveragingAnalyserInputSchema`)
+    where pre-fetched full class documents serve as the primary data source for analysis.
 
 **Backend transport validation:**
 

@@ -386,10 +386,29 @@ Key notes:
   `TaskDefinition.createArtifact()` and stored in `TaskDefinition.artifacts.{reference,template}`).
 - It is **cross-referenced** from the [Contract: Assignment](assignment.md) contract where
   `StudentSubmissionItem.artifact` uses the same shape (with `role: 'submission'`).
-- The `type` field identifies the runtime artifact class, not a Drive MIME type. Known values:
-  `'TEXT'` (TextTaskArtifact), `'base'` (BaseTaskArtifact).
+- The `type` field identifies the runtime artifact class, not a Drive MIME type. See
+  [§ Concrete artifact types](#concrete-artifact-types) below for the full list of known values.
 - `content` can be a string, array, or null depending on the artifact type. TextTaskArtifact
   normalises content to a trimmed LF-only string.
+
+#### Concrete artifact types
+
+| `type` value    | Class                     | `normalizeContent()` behaviour                                                                                                                      | Frontend discriminated union content shape                                 |
+| --------------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `'TEXT'`        | `TextTaskArtifact`        | Returns trimmed LF-only string; null/undefined→null; non-string coerced via `String()`                                                              | `z.string().nullable()`                                                    |
+| `'TABLE'`       | `TableTaskArtifact`       | Returns Markdown table string; null→null (logged); string→trimmed string; 2D array→padded rows→Markdown; 50×50 hard limit; throws on limit exceeded | `z.union([z.string(), z.null()])`                                          |
+| `'SPREADSHEET'` | `SpreadsheetTaskArtifact` | Returns trimmed 2D array; null→null; string→null; formula strings canonicalised (space-stripped, uppercased); trailing empty rows/cols trimmed      | `z.array(z.array(z.union([z.number(), z.string(), z.null()]))).nullable()` |
+| `'IMAGE'`       | `ImageTaskArtifact`       | Returns trimmed string (data URL) or null; null→null; non-string→null; empty→null                                                                   | `z.string().nullable()`                                                    |
+| `'base'`        | `BaseTaskArtifact`        | Returns raw content as-is                                                                                                                           | `z.unknown()`                                                              |
+
+Key notes:
+
+- The frontend `BaseTaskArtifactSchema` in `assignmentAssessment.zod.ts` is a `z.discriminatedUnion('type', [...])` — each row above corresponds to one variant in the union.
+- The `content` field shape differs per type: `TEXT` uses string, `TABLE` uses a Markdown-formatted string, `SPREADSHEET` uses a 2D array of `(number|string|null)`, `IMAGE` uses a base64 data URL string, `base` uses `unknown`.
+- `contentHash` is `string|null` on all full variants and omitted entirely from the partial schema.
+- The `ArtifactFactory.create()` dispatches on `type` (uppercased): TEXT→TextTaskArtifact, TABLE→TableTaskArtifact, SPREADSHEET→SpreadsheetTaskArtifact, IMAGE→ImageTaskArtifact, anything else→BaseTaskArtifact (fallback).
+- TextTaskArtifact normalises CRLF/CR→LF and trims; SpreadsheetTaskArtifact canonicalises formula strings (strips non-quoted spaces, uppercases); TableTaskArtifact enforces a 50×50 size limit; ImageTaskArtifact provides `setContentFromBlob()` for binary-to-data-URL conversion.
+- The partial variant (`BaseTaskArtifactPartialSchema` in `classDetailService.zod.ts`) omits `content` and `contentHash` entirely regardless of type.
 
 ---
 
@@ -408,6 +427,9 @@ Key notes:
   - `AssignmentDefinitionPartialsResponseSchema` — `z.array(AssignmentDefinitionPartialSchema)`.
   - `DeleteAssignmentDefinitionRequestSchema` — validates delete request with `SafeDeleteDefinitionKeySchema` (safe key without path traversal/control chars).
   - `DeleteAssignmentDefinitionResponseSchema` — `z.void().nullable()`.
+  - **Cross-reference:** `AssignmentDefinitionPartialsResponseSchema` is consumed by
+    `src/frontend/src/services/dataAnalysis/dataAnalysis.zod.ts` (`AveragingAnalyserInputSchema`)
+    where pre-fetched assignment-definition partials serve as cross-reference data for analysis.
 - `src/frontend/src/services/assignmentDefinition/taskPartial.zod.ts`:
   - `TaskPartialSchema` — validates lightweight task entries in partial transport (`taskId: z.string().min(1)`, `taskWeighting: z.number()`, `taskTitle: z.string().nullable()`).
 - `src/frontend/src/services/assignmentDefinition/assignmentTopics.zod.ts`:

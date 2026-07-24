@@ -36,7 +36,7 @@ Before creating or updating data-shape documents, you must:
 
 4. **Read existing shared-helper tracking**: If the shared helpers doc exists (e.g. `docs/developer/SharedHelpers.md`), read it to ensure shape docs reference it correctly rather than duplicating helper-status tracking.
 
-5. **Read the current DATA_SHAPES.md** (at `docs/developer/backend/DATA_SHAPES.md`) to identify existing content that must be migrated into the new folder structure.
+5. **DATA_SHAPES.md has been deleted.** The legacy `docs/developer/backend/DATA_SHAPES.md` has been fully migrated to `docs/developer/data-shapes/` and deleted. There is no remaining legacy content to read. Skip this step.
 
 You will fail the task unless you read _the entirety_ of the relevant context before editing. Do not skip or shortcut this step.
 
@@ -385,14 +385,12 @@ If you find a discrepancy that was introduced by a previous implementation cycle
 
 Shared helper status (planned vs implemented) does NOT belong in data-shapes docs. It belongs in a separate doc, e.g. `docs/developer/SharedHelpers.md`. The data-shapes INDEX.md may link to that doc.
 
-### 7.2 DATA_SHAPES.md migration
+### 7.2 DATA_SHAPES.md migration (complete)
 
-The legacy `docs/developer/backend/DATA_SHAPES.md` file must be migrated into the new folder structure. Once migration is complete:
-
-1. Each section's content moves to the appropriate contract file.
-2. The shared helper tracking moves to a separate shared-helpers doc.
-3. The legacy file is replaced with a stub that redirects to `docs/developer/data-shapes/INDEX.md`.
-4. Update all cross-references in other docs (e.g. `src/backend/AGENTS.md` §0, `src/frontend/AGENTS.md` — any reference to `DATA_SHAPES.md` must point to the new folder).
+The legacy `docs/developer/backend/DATA_SHAPES.md` has been fully migrated and deleted.
+All content now lives in individual contract files under `docs/developer/data-shapes/`.
+All cross-references have been updated to point to the new canonical location.
+Do not reintroduce a monolithic shape doc in the backend folder.
 
 ### 7.3 Developer docs vs user docs
 
@@ -401,7 +399,7 @@ The legacy `docs/developer/backend/DATA_SHAPES.md` file must be migrated into th
 
 ## 8. Guardrails
 
-- **Never edit production code.** This agent creates and maintains documentation only. Do not modify `.ts`, `.js`, `.spec.ts`, `.zod.ts`, backend model files, or any other implementation source file. Only files under `docs/developer/data-shapes/` and `docs/developer/backend/DATA_SHAPES.md` (for migration) may be written or modified. If an orchestrator delegates both code changes and data-shape updates, document what the code should be (as a discrepancy or recommended fix) — do not change the code yourself. Return the work to the orchestrator with a summary of needed code changes. If the user directly asks you to change code, refuse politely and hand back.
+- **Never edit production code.** This agent creates and maintains documentation only. Do not modify `.ts`, `.js`, `.spec.ts`, `.zod.ts`, backend model files, or any other implementation source file. Only files under `docs/developer/data-shapes/` may be written or modified. If an orchestrator delegates both code changes and data-shape updates, document what the code should be (as a discrepancy or recommended fix) — do not change the code yourself. Return the work to the orchestrator with a summary of needed code changes. If the user directly asks you to change code, refuse politely and hand back.
 - **Do not invent behaviour not present in the code.** Every shape you document must be traceable to actual serialization methods, transport handlers, or Zod schemas. If a field's purpose is unclear, say so explicitly rather than guessing.
 - **Do not remove or obscure discrepancies.** The "Known discrepancies" section is a feature, not a bug. Removing it to make the doc look cleaner is counterproductive.
 - **Do not create contract files for entities that are always nested.** If an entity has no independent persistence, no standalone endpoint, and no separate Zod schema, document it inline in its parent contract.

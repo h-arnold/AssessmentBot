@@ -157,7 +157,6 @@ Provide a concise handoff summary including:
 │   │   │   ├── AssessmentFlow.md                     # Canonical: Assessment workflow and data flow
 │   │   │   ├── backend-logging-and-error-handling.md # Canonical: ABLogger usage, validation ownership, error-boundary standards, apiHandler diagnostics
 │   │   │   ├── backend-testing.md                     # Vitest setup, GAS load order, test categories, mock factories, anti-patterns
-│   │   │   ├── DATA_SHAPES.md                         # Backend data structures and serialisation formats
 │   │   │   ├── oauth-scopes.md                         # OAuth scopes required by the application
 │   │   │   ├── rehydration.md                         # Deserialising and reconstructing objects
 │   │   │   ├── singletons.md                           # Singleton pattern usage

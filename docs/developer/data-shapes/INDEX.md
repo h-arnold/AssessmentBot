@@ -22,6 +22,8 @@ reference.
 | **Assignment**           | [`assignment.md`](assignment.md)                       | `assign_full_*` full records                                   | `getAssignment`, `startAssessmentRun`                                                                                                                                                                                                    | StudentSubmission, StudentSubmissionItem, Assessment, Feedback, AssignmentDefinition (embedded), BaseTaskArtifact (cross-ref) |
 | **BackendConfig**        | [`backend-config.md`](backend-config.md)               | Singleton document                                             | `getBackendConfig`, `setBackendConfig`                                                                                                                                                                                                   | —                                                                                                                             |
 | **Reference Data**       | [`reference-data.md`](reference-data.md)               | Cohorts, YearGroups, AssignmentTopics collections              | `getCohorts`, `createCohort`, `updateCohort`, `deleteCohort`, `getYearGroups`, `createYearGroup`, `updateYearGroup`, `deleteYearGroup`, `getAssignmentTopics`, `createAssignmentTopic`, `updateAssignmentTopic`, `deleteAssignmentTopic` | —                                                                                                                             |
+| **RequestStore**         | [`request-store.md`](request-store.md)                 | User Properties (JSON blob)                                    | None — internal backend mechanism                                                                                                                                                                                                        | —                                                                                                                             |
+| **GoogleClassrooms**     | [`google-classrooms.md`](google-classrooms.md)         | None (upstream API passthrough)                                | `getGoogleClassrooms`, `getGoogleClassroomAssignments`                                                                                                                                                                                   | —                                                                                                                             |
 
 ## Containment Hierarchy
 
@@ -30,6 +32,8 @@ reference.
 - **AssignmentDefinition** embeds **TaskDefinition** (which embeds **BaseTaskArtifact**).
 - **BackendConfig** is standalone — no embedded sub-entities.
 - **Reference Data** (Cohorts, YearGroups, AssignmentTopics) is standalone — no embedded sub-entities.
+- **RequestStore** is standalone — internal backend mechanism, no embedded sub-entities.
+- **GoogleClassrooms** is an upstream API passthrough — no persistence, no embedded sub-entities.
 
 ### Cross-reference rules
 
@@ -38,10 +42,9 @@ reference.
 
 ## Documented Contracts
 
-All five contracts are now fully documented. The legacy
-[`docs/developer/backend/DATA_SHAPES.md`](../backend/DATA_SHAPES.md)
-still contains some content that has been migrated; it will be replaced
-with a redirect stub once all sections are confirmed superseded.
+All seven contracts are now fully documented in this directory. The legacy
+`docs/developer/backend/DATA_SHAPES.md` has been deleted; all content has been
+migrated to the individual contract files listed below.
 
 ## Transport Envelope
 

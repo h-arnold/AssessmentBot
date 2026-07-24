@@ -102,7 +102,9 @@ Consult these resources before and during review. Local docs contain project-spe
 - [Contract: AssignmentDefinition](../../docs/developer/data-shapes/assignment-definition.md)
 - [Contract: Assignment](../../docs/developer/data-shapes/assignment.md)
 - [Contract: BackendConfig](../../docs/developer/data-shapes/backend-config.md)
+- [Contract: GoogleClassrooms](../../docs/developer/data-shapes/google-classrooms.md)
 - [Contract: Reference Data](../../docs/developer/data-shapes/reference-data.md)
+- [Contract: RequestStore](../../docs/developer/data-shapes/request-store.md)
 
 You will fail the task unless you read _the entirety_ of the relevant context before editing. Do not skip or shortcut this step.
 

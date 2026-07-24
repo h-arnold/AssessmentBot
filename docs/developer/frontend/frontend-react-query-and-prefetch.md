@@ -61,6 +61,11 @@ Runtime validation should happen at the service boundary before data is cached.
 `classPartials` and `assignmentDefinitionPartials` therefore use adjacent Zod schema files in the service layer.
 `backendConfig`, `cohorts`, and `yearGroups` continue to reuse their existing validated service contracts.
 
+Canonical backend shape definitions for all service contracts live in
+[`docs/developer/data-shapes/`](../../../docs/developer/data-shapes/INDEX.md)
+(classPartials → `abclass.md`, assignmentDefinitionPartials → `assignment-definition.md`,
+backendConfig → `backend-config.md`, etc.).
+
 ## 4. Startup warm-up policy
 
 Startup warm-up uses the shared lookup datasets needed across the growing interface.

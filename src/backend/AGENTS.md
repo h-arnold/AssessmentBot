@@ -4,17 +4,17 @@ Applies when editing `src/backend/**` and backend runtime behaviour.
 
 ## 0. Key Documentation
 
-| Doc                                                            | Summary                                                         |
-| -------------------------------------------------------------- | --------------------------------------------------------------- |
-| `docs/developer/backend/backend-logging-and-error-handling.md` | Logging and error handling policy for backend code              |
-| `docs/developer/backend/backend-testing.md`                    | Backend testing conventions and commands                        |
-| `docs/developer/backend/api-layer.md`                          | API layer design, validation ownership rules                    |
-| `docs/developer/backend/AssessmentFlow.md`                     | Assessment workflow and data flow (canonical reference)         |
-| `docs/developer/backend/DATA_SHAPES.md`                        | Assignment data shapes, persistence strategy, partial hydration |
-| `docs/developer/backend/rehydration.md`                        | Full assignment hydration from partial class objects            |
-| `docs/developer/backend/singletons.md`                         | Singleton pattern guide and conventions                         |
-| `docs/developer/backend/oauth-scopes.md`                       | Managing OAuth scopes in appsscript.json                        |
-| `docs/developer/backend/Vendoring.md`                          | Third-party asset vendoring policy                              |
+| Doc                                                            | Summary                                                 |
+| -------------------------------------------------------------- | ------------------------------------------------------- |
+| `docs/developer/backend/backend-logging-and-error-handling.md` | Logging and error handling policy for backend code      |
+| `docs/developer/backend/backend-testing.md`                    | Backend testing conventions and commands                |
+| `docs/developer/backend/api-layer.md`                          | API layer design, validation ownership rules            |
+| `docs/developer/backend/AssessmentFlow.md`                     | Assessment workflow and data flow (canonical reference) |
+| `docs/developer/data-shapes/INDEX.md`                          | Canonical data-shape specifications (contract registry) |
+| `docs/developer/backend/rehydration.md`                        | Full assignment hydration from partial class objects    |
+| `docs/developer/backend/singletons.md`                         | Singleton pattern guide and conventions                 |
+| `docs/developer/backend/oauth-scopes.md`                       | Managing OAuth scopes in appsscript.json                |
+| `docs/developer/backend/Vendoring.md`                          | Third-party asset vendoring policy                      |
 
 ## 1. Backend API Entry Layer
 

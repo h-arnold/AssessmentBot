@@ -159,7 +159,6 @@ Provide a concise handoff summary including:
 │   │   │   ├── AssessmentFlow.md                     # Canonical: Assessment workflow and data flow
 │   │   │   ├── backend-logging-and-error-handling.md # Canonical: ABLogger usage, validation ownership, error-boundary standards, apiHandler diagnostics
 │   │   │   ├── backend-testing.md                     # Vitest setup, GAS load order, test categories, mock factories, anti-patterns
-│   │   │   ├── DATA_SHAPES.md                         # [Legacy] Backend data structures — being migrated to docs/developer/data-shapes/
 │   │   │   │
 │   │   │   ├── data-shapes/                           # Canonical data-shape specifications (persistence, transport, validation)
 │   │   │   │   ├── INDEX.md                           # Contract registry, containment hierarchy, workflow
@@ -168,7 +167,9 @@ Provide a concise handoff summary including:
 │   │   │   │   ├── assignment-definition.md           # Contract: AssignmentDefinition (+ TaskDefinition, BaseTaskArtifact)
 │   │   │   │   ├── assignment.md                      # Contract: Assignment (+ StudentSubmission, StudentSubmissionItem, Assessment, Feedback)
 │   │   │   │   ├── backend-config.md                  # Contract: BackendConfig
-│   │   │   │   └── reference-data.md                  # Contract: Reference Data (cohorts, year groups, assignment topics)
+│   │   │   │   ├── google-classrooms.md               # Contract: GoogleClassrooms (upstream API passthrough)
+│   │   │   │   ├── reference-data.md                  # Contract: Reference Data (cohorts, year groups, assignment topics)
+│   │   │   │   └── request-store.md                   # Contract: RequestStore (internal backend API request tracking)
 │   │   │   ├── oauth-scopes.md                         # OAuth scopes required by the application
 │   │   │   ├── rehydration.md                         # Deserialising and reconstructing objects
 │   │   │   ├── singletons.md                           # Singleton pattern usage
