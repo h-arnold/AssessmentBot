@@ -148,9 +148,10 @@ Enable each only if its layer appears in the Step 2 classification.
   - Broad `catch`/swallow, missing rethrow at boundaries, and missing `Validate.requireParams` on
     public backend methods.
 - **Data-shape docs consistency** → `code-reviewer`
-  - **Trigger:** run if the diff touches any file under `docs/developer/data-shapes/` or any backend
-    schema/persistence file (`*.zod.ts`, `*Schema*`, `*Entity*`, `*Model*`, files under `src/backend/`
-    that define or consume data shapes).
+  - **Trigger:** run if the diff touches any file under `docs/developer/data-shapes/`, or any
+    validation schema (e.g. `*.zod.ts`, `*Schema*`, `*Validation*`), API contract (transport
+    handlers, API request/response shapes, boundary types), or data persistence model (entities,
+    `toJSON`/`fromJSON`, storage layer, model files) — on either the frontend or backend.
   - Inspect the diff against the canonical data-shape specifications in `docs/developer/data-shapes/`.
   - Check that the data-shape docs have been updated to reflect the changes — they should have been,
     per the data-shapes-agent workflow mandated in `AGENTS.md` section 4 and the implementation
