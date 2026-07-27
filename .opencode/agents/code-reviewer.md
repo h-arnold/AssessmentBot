@@ -2,7 +2,7 @@
 description: Reviews code for quality, standards adherence, and defects using project-specific checklists
 mode: all
 steps: 100
-model: openrouter/tencent/hy3
+model: opencode-go/hy3
 permission:
   edit:
     '*': 'deny'
