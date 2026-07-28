@@ -291,7 +291,7 @@ When the full plan is complete, provide:
 - **No speculative scope expansion.**
 - **One section at a time.**
 - **Keep phases separate:** Red, green, review, refactor, commit.
-- **Pass full context** to sub-agents; return work if mandatory docs are missing.
+- **Pass full context** to sub-agents via the `files` parameter of the `task` tool (injected by the `task-files` plugin); return work if mandatory files are missing from the `files` array.
 - If delegation fails or the state is unclear: **stop and ask the user**.
 - Do not mark work complete before:
   - A clean review pass.

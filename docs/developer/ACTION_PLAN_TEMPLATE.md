@@ -46,9 +46,9 @@ For each section below:
 3. **Refactor**: tidy implementation with all tests still green.
 4. Run section-level verification commands.
 
-### Delegation mandatory-read gate (mandatory for sub-agent execution)
+### Delegation file-injection gate (mandatory for sub-agent execution)
 
-When a section is delegated to sub-agents, the plan must define and enforce mandatory documentation via the `files` parameter.
+When a section is delegated to sub-agents, the plan must specify required documentation files via the `files` parameter of the `task` tool. The `task-files` plugin reads and injects file contents automatically into the subagent prompt. Sub-agents must not re-read injected files.
 
 For each delegated phase (`Testing Specialist`, `Implementation`, `Code Reviewer`, `Docs`, `De-Sloppification`, or planning agents when used):
 
@@ -87,21 +87,21 @@ When a section is likely to introduce helper reuse, helper extension, or new sha
 
 - List relevant architectural or behavioural constraints.
 
-### Delegation mandatory reads (when sub-agents are used)
+### Delegation files (injected automatically by the `task-files` plugin)
 
-Testing Specialist mandatory docs:
-
-- ...
-
-Implementation mandatory docs:
+Testing Specialist receives these files via the `files` array:
 
 - ...
 
-Code Reviewer mandatory docs:
+Implementation receives these files via the `files` array:
 
 - ...
 
-Other delegated agents (if used) mandatory docs:
+Code Reviewer receives these files via the `files` array:
+
+- ...
+
+Other delegated agents (if used) receive these files via the `files` array:
 
 - ...
 
@@ -143,7 +143,7 @@ Frontend tests:
 ### Section checks
 
 - `npm test -- tests/...`
-- Mandatory-read evidence gate passed for all delegated handoffs in this section.
+- Confirm the `files` array was populated for every delegated handoff (the `task-files` plugin injects them automatically).
 - Shared-helper planning entries are present when helper changes are expected.
 - Planned helper entries were added to relevant canonical docs with status `Not implemented` before implementation starts.
 
@@ -189,7 +189,7 @@ _(Repeat above section template for each logical chunk of work, renumbering sect
 2. Run touched frontend service/UI suites.
 3. Run backend frontend lint commands.
 4. Run any required e2e tests.
-5. Verify mandatory-file evidence (the `files` array) is complete for every delegated regression handoff.
+5. Confirm the `files` array was populated for every delegated regression handoff (the `task-files` plugin injects them automatically).
 
 ### Section checks
 
@@ -222,7 +222,7 @@ _(Repeat above section template for each logical chunk of work, renumbering sect
 1. Verify docs mention persistence/transport strategies.
 2. Verify API docs list new endpoints/methods.
 3. Confirm notes/deviations fields are filled during implementation.
-4. Verify mandatory-file evidence (the `files` array) is complete for delegated docs/review handoffs.
+4. Confirm the `files` array was populated for every delegated docs/review handoff (the `task-files` plugin injects them automatically).
 5. Reconcile planned shared-helper entries in canonical docs: keep `Not implemented` where still pending, and update implemented entries where delivered.
 
 ### Optional `@remarks` JSDoc review
