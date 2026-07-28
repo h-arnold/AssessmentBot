@@ -10,7 +10,7 @@
  * - Validates parameters is a plain object
  * - Validates required string fields (courseId, assignmentId)
  * - Rejects unsafe characters in identifiers (path traversal + control chars)
- * - Delegates to ABClassController.loadClass and rehydrateAssignment
+ * - Delegates to ABClassController.readRehydrateAssignment
  * - Returns null on AssignmentNotFoundError
  * - Propagates non-not-found errors
  */
@@ -33,20 +33,18 @@ function loadModule() {
 }
 
 /**
- * Installs the ABClassController global mock with loadClass and
- * rehydrateAssignment spies for controller delegation tests.
+ * Installs the ABClassController global mock with a readRehydrateAssignment
+ * spy for controller delegation tests.
  *
- * @returns {{ loadClass: import('vitest').Mock, rehydrateAssignment: import('vitest').Mock }}
+ * @returns {{ readRehydrateAssignment: import('vitest').Mock }}
  */
 function installABClassControllerStub() {
-  const loadClass = vi.fn();
-  const rehydrateAssignment = vi.fn();
+  const readRehydrateAssignment = vi.fn();
   const ABClassController = vi.fn(function StubABClassController() {
-    this.loadClass = loadClass;
-    this.rehydrateAssignment = rehydrateAssignment;
+    this.readRehydrateAssignment = readRehydrateAssignment;
   });
   globalThis.ABClassController = ABClassController;
-  return { loadClass, rehydrateAssignment };
+  return { readRehydrateAssignment };
 }
 
 /**
@@ -210,12 +208,12 @@ describe('Api/getAssignment transport contract', () => {
 
   // ── Test 7: Successful delegation ─────────────────────────────────────────
 
-  it('delegates to ABClassController.rehydrateAssignment on valid input and returns Assignment shape', () => {
-    // Install ABLogger spy for this test (test harness note: tests 7d, 10, 11, 12)
+  it('delegates to ABClassController.readRehydrateAssignment on valid input and returns Assignment shape', () => {
+    // Install ABLogger spy for this test (test harness note: tests 7, 10, 11, 12)
     const abLoggerSpies = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
     globalThis.ABLogger = { getInstance: () => abLoggerSpies };
 
-    const { loadClass, rehydrateAssignment } = installABClassControllerStub();
+    const { readRehydrateAssignment } = installABClassControllerStub();
     const { getAssignment_ } = loadModule();
 
     const expectedPayload = buildRepresentativePayload({});
@@ -223,20 +221,14 @@ describe('Api/getAssignment transport contract', () => {
       toJSON: vi.fn(() => ({ ...expectedPayload })),
     };
 
-    const mockABClass = { classId: 'course-001' };
-    loadClass.mockReturnValue(mockABClass);
-    rehydrateAssignment.mockReturnValue(mockAssignment);
+    readRehydrateAssignment.mockReturnValue(mockAssignment);
 
     const result = getAssignment_({ courseId: 'course-001', assignmentId: 'assign-001' });
 
-    // (a) loadClass called with the correct courseId
-    expect(loadClass).toHaveBeenCalledWith('course-001');
+    // (a) readRehydrateAssignment called with the correct (courseId, assignmentId)
+    expect(readRehydrateAssignment).toHaveBeenCalledWith('course-001', 'assign-001');
 
-    // (b) rehydrateAssignment called with the captured ABClass reference (identity)
-    //     and the correct assignmentId
-    expect(rehydrateAssignment).toHaveBeenCalledWith(mockABClass, 'assign-001');
-
-    // (c) returned data matches the toJSON() output
+    // (b) returned data matches the toJSON() output
     expect(result).toEqual(expectedPayload);
 
     // (d) ABLogger.getInstance().info called for both log points
@@ -253,7 +245,7 @@ describe('Api/getAssignment transport contract', () => {
   // ── Test 8: Date normalisation defence-in-depth ───────────────────────────
 
   it('converts live Date objects via DateUtils.deepConvertDates at the boundary', () => {
-    const { loadClass, rehydrateAssignment } = installABClassControllerStub();
+    const { readRehydrateAssignment } = installABClassControllerStub();
     const { getAssignment_ } = loadModule();
 
     const dueDate = new Date('2026-06-15T00:00:00.000Z');
@@ -277,13 +269,11 @@ describe('Api/getAssignment transport contract', () => {
       })),
     };
 
-    const mockABClass = { classId: 'course-001' };
-    loadClass.mockReturnValue(mockABClass);
-    rehydrateAssignment.mockReturnValue(mockAssignment);
+    readRehydrateAssignment.mockReturnValue(mockAssignment);
 
     const result = getAssignment_({ courseId: 'course-001', assignmentId: 'assign-001' });
 
-    // Both fields should be ISO strings after normaliseDateFields
+    // Both fields should be ISO strings after deepConvertDates
     expect(typeof result.dueDate).toBe('string');
     expect(result.dueDate).toBe('2026-06-15T00:00:00.000Z');
     expect(typeof result.updatedAt).toBe('string');
@@ -295,7 +285,7 @@ describe('Api/getAssignment transport contract', () => {
   // ── Test 8b: Nested date conversion (deepConvertDates regression) ─────────
 
   it('converts nested Date objects in submissions via deepConvertDates at the boundary', () => {
-    const { loadClass, rehydrateAssignment } = installABClassControllerStub();
+    const { readRehydrateAssignment } = installABClassControllerStub();
     const { getAssignment_ } = loadModule();
 
     const submissionCreatedAt = new Date('2026-07-07T07:49:23.014Z');
@@ -321,9 +311,7 @@ describe('Api/getAssignment transport contract', () => {
       })),
     };
 
-    const mockABClass = { classId: 'course-001' };
-    loadClass.mockReturnValue(mockABClass);
-    rehydrateAssignment.mockReturnValue(mockAssignment);
+    readRehydrateAssignment.mockReturnValue(mockAssignment);
 
     const result = getAssignment_({ courseId: 'course-001', assignmentId: 'assign-001' });
 
@@ -343,7 +331,7 @@ describe('Api/getAssignment transport contract', () => {
   // ── Test 9: progressTracker strip defence-in-depth ────────────────────────
 
   it('strips progressTracker from the response', () => {
-    const { loadClass, rehydrateAssignment } = installABClassControllerStub();
+    const { readRehydrateAssignment } = installABClassControllerStub();
     const { getAssignment_ } = loadModule();
 
     const mockAssignment = {
@@ -364,9 +352,7 @@ describe('Api/getAssignment transport contract', () => {
       })),
     };
 
-    const mockABClass = { classId: 'course-001' };
-    loadClass.mockReturnValue(mockABClass);
-    rehydrateAssignment.mockReturnValue(mockAssignment);
+    readRehydrateAssignment.mockReturnValue(mockAssignment);
 
     const result = getAssignment_({ courseId: 'course-001', assignmentId: 'assign-001' });
 
@@ -375,17 +361,14 @@ describe('Api/getAssignment transport contract', () => {
 
   // ── Test 10: Null on AssignmentNotFoundError ──────────────────────────────
 
-  it('returns null when rehydrateAssignment throws AssignmentNotFoundError', () => {
+  it('returns null when readRehydrateAssignment throws AssignmentNotFoundError', () => {
     // Install ABLogger spy for warn verification
     const abLoggerSpies = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
     globalThis.ABLogger = { getInstance: () => abLoggerSpies };
 
     const AssignmentNotFoundError = require('../../src/backend/Utils/ErrorTypes/AssignmentNotFoundError.js');
-    const { loadClass, rehydrateAssignment } = installABClassControllerStub();
+    const { readRehydrateAssignment } = installABClassControllerStub();
     const { getAssignment_ } = loadModule();
-
-    const mockABClass = { classId: 'course-001' };
-    loadClass.mockReturnValue(mockABClass);
 
     const notFoundError = new AssignmentNotFoundError(
       'No document found in collection assign_full_course-001_assign-001 for courseId=course-001, assignmentId=assign-001.',
@@ -395,7 +378,7 @@ describe('Api/getAssignment transport contract', () => {
         collectionName: 'assign_full_course-001_assign-001',
       }
     );
-    rehydrateAssignment.mockImplementation(() => {
+    readRehydrateAssignment.mockImplementation(() => {
       throw notFoundError;
     });
 
@@ -411,19 +394,17 @@ describe('Api/getAssignment transport contract', () => {
     );
   });
 
-  // ── Test 11: Propagates non-typed errors from rehydrateAssignment ─────────
+  // ── Test 11: Propagates non-typed errors from readRehydrateAssignment ─────────
 
-  it('propagates non-not-found errors from rehydrateAssignment', () => {
+  it('propagates non-not-found errors from readRehydrateAssignment', () => {
     // Install ABLogger spy for error verification
     const abLoggerSpies = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
     globalThis.ABLogger = { getInstance: () => abLoggerSpies };
 
-    const { loadClass, rehydrateAssignment } = installABClassControllerStub();
+    const { readRehydrateAssignment } = installABClassControllerStub();
     const { getAssignment_ } = loadModule();
 
-    const mockABClass = { classId: 'course-001' };
-    loadClass.mockReturnValue(mockABClass);
-    rehydrateAssignment.mockImplementation(() => {
+    readRehydrateAssignment.mockImplementation(() => {
       throw new Error('Corrupt assignment data');
     });
 
@@ -438,23 +419,23 @@ describe('Api/getAssignment transport contract', () => {
     );
   });
 
-  // ── Test 12: Propagates errors from loadClass ─────────────────────────────
+  // ── Test 12: Propagates TypeError thrown by readRehydrateAssignment verbatim ─────────
 
-  it('propagates errors from loadClass', () => {
+  it('propagates TypeError thrown by readRehydrateAssignment verbatim', () => {
     // Install ABLogger spy for error verification
     const abLoggerSpies = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
     globalThis.ABLogger = { getInstance: () => abLoggerSpies };
 
-    const { loadClass } = installABClassControllerStub();
+    const { readRehydrateAssignment } = installABClassControllerStub();
     const { getAssignment_ } = loadModule();
 
-    loadClass.mockImplementation(() => {
-      throw new Error('loadClass failed');
+    readRehydrateAssignment.mockImplementation(() => {
+      throw new TypeError('readRehydrateAssignment: expected courseId to be a non-empty string');
     });
 
     expect(() => {
       getAssignment_({ courseId: 'course-001', assignmentId: 'assign-001' });
-    }).toThrow('loadClass failed');
+    }).toThrow(TypeError);
 
     // ABLogger.error called with the failure message
     expect(abLoggerSpies.error).toHaveBeenCalledWith(
