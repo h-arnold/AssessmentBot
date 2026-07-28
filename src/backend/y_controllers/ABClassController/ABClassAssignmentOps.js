@@ -170,16 +170,10 @@ class ABClassAssignmentOps {
     const courseId = abClass.classId;
 
     try {
-      const document = this._loadFullAssignmentDocument(courseId, assignmentId);
-      this._validateAssignmentDocument(document);
+      const result = this.readRehydrateAssignment(courseId, assignmentId);
+      this._replaceAssignmentInClass(abClass, assignmentId, result);
 
-      const hydratedAssignment = Assignment.fromJSON(document);
-      this._ensureFullDefinition(hydratedAssignment);
-      hydratedAssignment._hydrationLevel = 'full';
-
-      this._replaceAssignmentInClass(abClass, assignmentId, hydratedAssignment);
-
-      return hydratedAssignment;
+      return result;
     } catch (error) {
       logger.error('rehydrateAssignment failed', {
         courseId,
