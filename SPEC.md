@@ -140,7 +140,7 @@ rehydrateAssignment(abClass, assignmentId)  [existing, refactored]
 
 The response shape of `getAssignment` is **unchanged** by this feature — the data contract between the backend and frontend is preserved (see §"Current data-shape constraints"). No new schema, persistence model, API contract field, or transport envelope change is introduced.
 
-The only canonical data-shape document affected is `docs/developer/data-shapes/assignment.md`, and the change is documentation text only (no contract change). The following entry is recorded as planned and **Not implemented** until the docs pass at the end of the action plan updates it; the implementation agent should update the entry to remove the `Not implemented` marker as part of the docs pass.
+The only canonical data-shape document affected is `docs/developer/data-shapes/assignment.md`, and the change is documentation text only (no contract change). The following entry was completed during the docs pass and is now **implemented**.
 
 1. **Entry:** `getAssignment` (read) — `docs/developer/data-shapes/assignment.md`
    - Decision: `update canonical doc text` (no contract change)
@@ -150,8 +150,9 @@ The only canonical data-shape document affected is `docs/developer/data-shapes/a
      - The key-contract note about identity-threading (currently line ~128): delete — the new path does not mutate an `ABClass` instance, so the threading rationale no longer applies.
      - The key-domain-validation entry (currently line ~371): rewrite to state that `ABClassController.readRehydrateAssignment()` performs the full-definition hydration for `getAssignment`; `rehydrateAssignment` continues to perform it for the assessment-run flow.
    - Relevant canonical doc target: `docs/developer/data-shapes/assignment.md`
-   - Planned doc status: `Not implemented`
-   - Note: line numbers are approximate; the docs agent must locate the entries by heading/text per the canonical-doc workflow and re-confirm before editing.
+
+- Planned doc status: `implemented`
+- Note: this entry was completed during the docs pass; all three sub-items in the canonical data-shape doc have been applied.
 
 ## Data loading and orchestration
 
