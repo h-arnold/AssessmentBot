@@ -471,6 +471,21 @@ class ABClassController {
     return this._assignmentOps.rehydrateAssignment(abClass, assignmentId);
   }
 
+  /**
+   * Read-only rehydrate: loads and hydrates an assignment directly from its
+   * dedicated collection without needing an ABClass instance.
+   * Performs no roster refresh, no database write, and no ABClass mutation.
+   * Delegates to ABClassAssignmentOps.readRehydrateAssignment.
+   * @param {string} courseId - The Classroom course identifier.
+   * @param {string} assignmentId - The assignment ID to rehydrate.
+   * @returns {Assignment} The fully hydrated assignment instance.
+   * @throws {TypeError} If courseId or assignmentId is not a non-empty string.
+   * @throws {AssignmentNotFoundError} If no document exists for the given identifiers.
+   */
+  readRehydrateAssignment(courseId, assignmentId) {
+    return this._assignmentOps.readRehydrateAssignment(courseId, assignmentId);
+  }
+
   // ──────────────────────────────────────────────
   //  Private method delegators — ABClassPersistence
   // ──────────────────────────────────────────────

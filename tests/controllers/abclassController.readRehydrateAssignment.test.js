@@ -258,3 +258,38 @@ describe('ABClassAssignmentOps.readRehydrateAssignment', () => {
     });
   });
 });
+
+describe('ABClassController.readRehydrateAssignment', () => {
+  /** @type {import('../../src/backend/y_controllers/ABClassController')} */
+  let ABClassController;
+  /** @type {InstanceType<import('../../src/backend/y_controllers/ABClassController')>} */
+  let controller;
+
+  beforeEach(async () => {
+    setupControllerTestMocks(vi);
+    const controllerModule = await import('../../src/backend/y_controllers/ABClassController');
+    ABClassController = controllerModule.default ?? controllerModule;
+    controller = new ABClassController();
+  });
+
+  afterEach(() => {
+    cleanupControllerTestMocks();
+    vi.restoreAllMocks();
+  });
+
+  it('delegates readRehydrateAssignment through the facade to _assignmentOps', () => {
+    const courseId = 'course-001';
+    const assignmentId = 'assign-001';
+    const sentinel = { assignmentId, courseId, toJSON: () => ({}) };
+
+    vi.spyOn(controller._assignmentOps, 'readRehydrateAssignment').mockReturnValue(sentinel);
+
+    const result = controller.readRehydrateAssignment(courseId, assignmentId);
+
+    expect(controller._assignmentOps.readRehydrateAssignment).toHaveBeenCalledWith(
+      courseId,
+      assignmentId
+    );
+    expect(result).toBe(sentinel);
+  });
+});
