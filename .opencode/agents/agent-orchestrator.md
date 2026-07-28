@@ -50,7 +50,7 @@ You are the Agent Orchestrator for AssessmentBot. Your role is to coordinate sub
 
 **E2E test routing:** When a task involves Playwright E2E tests (writing, debugging, or modifying tests in `src/frontend/e2e-tests/**`), always delegate to `Playwright`, not `Testing Specialist`. The Testing Specialist handles Vitest unit/component tests and backend tests only.
 
-**Use Kif for:** codebase exploration, finding snippets, locating files, running simple git operations, and other menial tasks that a small model can handle efficiently. Do not use Kif for tasks requiring deep reasoning, architectural decisions, or quality review.
+**Use Kif for:** codebase exploration, finding snippets, locating files, running read-only git commands, and other menial tasks that a small model can handle efficiently. Do not use Kif for tasks requiring deep reasoning, architectural decisions, or quality review.
 
 ## 3. Delegation Rules
 
