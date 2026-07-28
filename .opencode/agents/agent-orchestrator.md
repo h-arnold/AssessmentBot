@@ -64,13 +64,12 @@ When delegating to subagents, specify **WHAT** needs to be accomplished and **WH
 
 Every subagent handoff **must** include:
 
-- `Mandatory Reading` section with explicit file paths (mandatory)
-- All mandatory documentation required by the subagent's own instructions
+- Mandatory files via the `files` parameter of the `task` tool — file contents are injected automatically into the subagent's prompt; do not rely on the subagent to read them itself
 - Constraints and scope boundaries
 - Exact requested outcome
 - Expected deliverables
 
-**Blocking rule**: If a handoff omits mandatory `Files read` evidence, return the work immediately to the same subagent with a correction request. Do not proceed.
+**Blocking rule**: If a handoff omits a mandatory file from the `files` array, return the work immediately to the same subagent with a correction request. Do not proceed.
 
 ### 3.3 Sub-Agent Delegation Constraints
 
@@ -84,57 +83,63 @@ Every subagent handoff **must** include:
 
 **Principle:** Only prompt subagents to read documentation directly related to the task at hand. Do **not** include documentation that the subagent is already required to read per its own instructions.
 
-**What to include in `Mandatory Reading`:**
+**What to include in the `files` array (task-specific context):**
 
-| Documentation Type                                             | Include? | Rationale                                        |
-| -------------------------------------------------------------- | -------- | ------------------------------------------------ |
-| Planning artefacts (SPEC.md, ACTION_PLAN.md, layout specs)     | ✅ Yes   | Task-specific, not in subagent's baseline        |
-| Changed source files                                           | ✅ Yes   | Task-specific context                            |
-| Nearby test files                                              | ✅ Yes   | Task-specific context                            |
-| Online/official docs (Ant Design, library docs)                | ✅ Yes   | Task-specific reference                          |
-| Module AGENTS.md files                                         | ❌ No    | Already required by subagent's own instructions  |
-| Module testing docs (backend-testing.md, frontend-testing.md)  | ❌ No    | Already required by Testing Specialist           |
-| Playwright E2E guide (frontend-playwright-e2e.md)              | ❌ No    | Already required by Playwright                   |
-| CONTRIBUTING.md, top-level AGENTS.md                           | ❌ No    | Already required by Implementation/Code Reviewer |
-| Canonical policy docs (frontend-logging-and-error-handling.md) | ❌ No    | Already required by relevant subagents           |
+| Documentation Type                                             | Mechanism      | Rationale                                        |
+| -------------------------------------------------------------- | -------------- | ------------------------------------------------ |
+| Planning artefacts (SPEC.md, ACTION_PLAN.md, layout specs)     | `files` array  | Task-specific, not in subagent's baseline        |
+| Changed source files                                           | `files` array  | Task-specific context                            |
+| Nearby test files                                              | `files` array  | Task-specific context                            |
+| Online/official docs (Ant Design, library docs)                | Prompt text    | Task-specific reference; URLs cannot be injected |
+| Module AGENTS.md files                                         | ❌ Do not pass | Already required by subagent's own instructions  |
+| Module testing docs (backend-testing.md, frontend-testing.md)  | ❌ Do not pass | Already required by Testing Specialist           |
+| Playwright E2E guide (frontend-playwright-e2e.md)              | ❌ Do not pass | Already required by Playwright                   |
+| CONTRIBUTING.md, top-level AGENTS.md                           | ❌ Do not pass | Already required by Implementation/Code Reviewer |
+| Canonical policy docs (frontend-logging-and-error-handling.md) | ❌ Do not pass | Already required by relevant subagents           |
 
 **Example delegations:**
 
 To Testing Specialist for a frontend component:
 
 ```
-Mandatory reading:
-- SPEC.md (section 3.2 covers this feature)
-- ACTION_PLAN.md (section 4)
-- src/frontend/src/features/assessment/ScoringDialog.tsx
-- tests/frontend/features/assessment/ScoringDialog.spec.tsx
-- https://ant.design/components/modal (for modal interaction patterns)
+files: [
+  "SPEC.md",
+  "ACTION_PLAN.md",
+  "src/frontend/src/features/assessment/ScoringDialog.tsx",
+  "tests/frontend/features/assessment/ScoringDialog.spec.tsx",
+]
 
 Testing Specialist, add tests for the new scoring validation in ScoringDialog.
+Use the attached files from your prompt — they are already injected and do not need re-reading.
+Consult https://ant.design/components/modal for modal interaction patterns.
 Meet minimum coverage thresholds and follow idiomatic testing patterns.
 ```
 
 To Implementation for a backend service:
 
 ```
-Mandatory reading:
-- SPEC.md (section 2.1)
-- src/backend/Services/AssessmentService.js
-- tests/backend/Services/AssessmentService.test.js
+files: [
+  "SPEC.md",
+  "src/backend/Services/AssessmentService.js",
+  "tests/backend/Services/AssessmentService.test.js",
+]
 
 Implementation, add the new validation logic to AssessmentService.
+Consume the attached files from your prompt — they are already injected.
 Follow all applicable module standards and ensure all validation passes.
 ```
 
 To Docs for a new feature:
 
 ```
-Mandatory reading:
-- SPEC.md (full document)
-- src/backend/Models/NewAssessmentModel.js
-- docs/developer/backend/assessment-workflow.md (existing related doc)
+files: [
+  "SPEC.md",
+  "src/backend/Models/NewAssessmentModel.js",
+  "docs/developer/backend/assessment-workflow.md",
+]
 
 Docs, document the new assessment model in all relevant developer documentation.
+The attached files are already injected into your prompt — do not re-read them.
 Ensure JSDoc accuracy.
 ```
 
@@ -154,7 +159,7 @@ Write your findings as a structured list to the scratchpad as `task-docs.md`. Re
 Include file paths and URLs only — no analysis or interpretation.
 ```
 
-Use the scratchpad file to populate the task-specific `Mandatory Reading` section for the primary agent delegation.
+Use the scratchpad file to populate the task-specific `files` array for the primary agent delegation.
 
 **When to use this:**
 
@@ -267,11 +272,11 @@ Process changes in logical units. For each unit, select the appropriate agent(s)
 
 ### 6.1 Context Discovery (Optional)
 
-For changes with unclear scope or dependencies, first use Kif to discover relevant documentation (see Section 4). Use the scratchpad output to build the task-specific `Mandatory reading` list.
+For changes with unclear scope or dependencies, first use Kif to discover relevant documentation (see Section 4). Use the scratchpad output to populate the task-specific `files` array.
 
 ### 6.2 Task Execution Phase
 
-Delegate to the most appropriate agent with a **WHAT**-focused prompt and task-specific `Mandatory Reading`:
+Delegate to the most appropriate agent with a **WHAT**-focused prompt and task-specific files via the `files` parameter:
 
 - **For test work (Vitest/backend)**: "Testing Specialist, add tests for [behaviour]. Follow idiomatic testing patterns and meet coverage thresholds."
 - **For E2E test work (Playwright)**: "Playwright, add E2E tests for [visible behaviour]. Follow the runtime mock infrastructure and StrictMode patterns."
@@ -388,7 +393,7 @@ When returning work to the user, always provide:
 - **Use Kif for context discovery** — to identify relevant docs and dependencies before delegation
 - **Use Kif efficiently** — for menial tasks only; do not use for reasoning-heavy work
 - **Write Kif findings to scratchpad** — for documentation discovery, not direct return
-- **Fail fast on missing evidence** — return work immediately when `Files read` is incomplete
+- **Fail fast on missing evidence** — return work immediately when mandatory files are missing from the `files` array
 - **Always establish regression baseline first** — before non-trivial code/test changes begin
 - **Always verify no regressions** — before marking non-trivial code/test changes complete
 - **Stay within scope** — no speculative expansions

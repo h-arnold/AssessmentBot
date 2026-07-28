@@ -48,14 +48,14 @@ For each section below:
 
 ### Delegation mandatory-read gate (mandatory for sub-agent execution)
 
-When a section is delegated to sub-agents, the plan must define and enforce mandatory documentation reads.
+When a section is delegated to sub-agents, the plan must define and enforce mandatory documentation via the `files` parameter.
 
 For each delegated phase (`Testing Specialist`, `Implementation`, `Code Reviewer`, `Docs`, `De-Sloppification`, or planning agents when used):
 
 1. list required documentation file paths under that phase before delegation
-2. require the sub-agent handoff to include `Files read` with explicit file paths
-3. verify every mandatory file is listed before accepting the handoff
-4. if any mandatory file is missing, return the work to the same sub-agent and block progression to the next phase
+2. require the sub-agent handoff to receive all mandatory files via the `files` parameter of the `task` tool
+3. verify every mandatory file is included in the `files` array before accepting the handoff
+4. if any mandatory file is missing from the `files` array, return the work to the same sub-agent and block progression to the next phase
 
 ### Shared-helper planning gate (mandatory when helper changes are expected)
 
@@ -189,7 +189,7 @@ _(Repeat above section template for each logical chunk of work, renumbering sect
 2. Run touched frontend service/UI suites.
 3. Run backend frontend lint commands.
 4. Run any required e2e tests.
-5. Verify mandatory-read evidence (`Files read`) is complete for every delegated regression handoff.
+5. Verify mandatory-file evidence (the `files` array) is complete for every delegated regression handoff.
 
 ### Section checks
 
@@ -222,7 +222,7 @@ _(Repeat above section template for each logical chunk of work, renumbering sect
 1. Verify docs mention persistence/transport strategies.
 2. Verify API docs list new endpoints/methods.
 3. Confirm notes/deviations fields are filled during implementation.
-4. Verify mandatory-read evidence (`Files read`) is complete for delegated docs/review handoffs.
+4. Verify mandatory-file evidence (the `files` array) is complete for delegated docs/review handoffs.
 5. Reconcile planned shared-helper entries in canonical docs: keep `Not implemented` where still pending, and update implemented entries where delivered.
 
 ### Optional `@remarks` JSDoc review

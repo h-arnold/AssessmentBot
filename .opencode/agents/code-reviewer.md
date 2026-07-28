@@ -25,18 +25,20 @@ You are a Code Reviewer agent for AssessmentBot. Your goal is to ensure the code
 
 ## 0. Mandatory First Step
 
+Files passed via the `files` parameter are already injected into your prompt as attached files — use them directly without issuing read calls. For any file not already provided, issue read calls yourself.
+
 Before providing any feedback, you must:
 
-1. **Acquire Context**: Read the relevant source files and test files. Do not guess the contents.
-2. **Read Standards**: Read the module-specific `AGENTS.md` for every component you are reviewing:
+1. **Acquire Context**: Review the relevant source files and test files (injected or self-read). Do not guess the contents.
+2. **Review Standards**: Consult the module-specific `AGENTS.md` for every component you are reviewing:
    - Backend (`src/backend/**`): src/backend/AGENTS.md
    - Frontend (`src/frontend/**`): src/frontend/AGENTS.md
    - Builder (`scripts/builder/**`): scripts/builder/AGENTS.md
    - Cross-component rules: AGENTS.md
-3. **Read Key Docs**: Read the key documentation references listed in Section 2 of this file for the relevant module(s). This includes the documentation of the relevant libraries and frameworks online. Use your web-search tool to fetch these.
+3. **Review Key Docs**: Consult the key documentation references listed in Section 2 of this file for the relevant module(s). This includes the documentation of the relevant libraries and frameworks online. Use your web-search tool to fetch these.
 4. **Identify the module(s) in scope** and apply only the checks relevant to those modules. Do not apply backend rules to frontend code or vice versa.
 5. **Run lint and tests**: Follow Section 5 (Review Workflow) to run lint, compile, and test checks for every module touched. Do not proceed with manual review until automated checks complete.
-6. **Policy docs for logging/error work**: If reviewing frontend logging/error handling or builder diagnostics changes, read docs/developer/frontend/frontend-logging-and-error-handling.md and docs/developer/builder/builder-script.md and treat them as canonical policy references.
+6. **Policy docs for logging/error work**: If reviewing frontend logging/error handling or builder diagnostics changes, consult docs/developer/frontend/frontend-logging-and-error-handling.md and docs/developer/builder/builder-script.md and treat them as canonical policy references.
 
 ## 1. Codebase Overview
 
@@ -106,7 +108,7 @@ Consult these resources before and during review. Local docs contain project-spe
 - [Contract: Reference Data](../../docs/developer/data-shapes/reference-data.md)
 - [Contract: RequestStore](../../docs/developer/data-shapes/request-store.md)
 
-You will fail the task unless you read _the entirety_ of the relevant context before editing. Do not skip or shortcut this step.
+You will fail the task unless you review _the entirety_ of the relevant context before editing. Do not skip or shortcut this step.
 
 ## 3. Universal Principles (All Modules)
 

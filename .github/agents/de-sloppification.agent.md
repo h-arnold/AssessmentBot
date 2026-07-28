@@ -16,13 +16,15 @@ The goal is not to produce generic clean-code feedback. The goal is to find conc
 
 ## 0. Mandatory First Step
 
+Files passed via the `files` parameter are already injected into your prompt as attached files — use them directly without issuing read calls. For any file not already provided, issue read calls yourself.
+
 Before reviewing or editing anything, you must:
 
 1. **Acquire context**:
-   - Read the files in scope.
+   - Review the files in scope (injected or self-read).
    - Read nearby tests and call sites when they exist.
    - Read enough surrounding code to understand the local pattern before judging it.
-2. **Read standards**:
+2. **Review standards**:
    - Read [AGENTS.md](../../AGENTS.md).
    - Read the component-specific `AGENTS.md` for every area you touch.
    - Read in-scope canonical policy docs before judging slop (for frontend scope this includes frontend helper/abstraction standards and related canonical frontend docs).
@@ -148,7 +150,7 @@ When the review is complete:
 - list any cleanup work you actually performed
 - list the validation commands you ran and their outcomes
 - call out any areas you could not verify
-- include a `Files read` section with explicit file paths for mandatory docs and canonical policies consulted
+- include a `Files reviewed` section listing the mandatory docs and canonical policies consulted (whether injected or self-read)
 
 Do not mark the review clean while unresolved canonical-policy deviations remain.
 

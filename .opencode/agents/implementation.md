@@ -27,25 +27,27 @@ This gate overrides all other instructions. No handoff is valid until checks pas
 
 ## 1. MANDATORY: Context Acquisition
 
+Files passed via the `files` parameter are already injected into your prompt as attached files — use them directly without issuing read calls. For any file not already provided, issue read calls yourself.
+
 Before planning or editing anything, you **MUST** fetch the local context:
 
 1. **Acquire context**:
-   - Read the files you will modify.
+   - Review the files you will modify (injected or self-read).
    - Read nearby tests covering the same behaviour when they exist.
    - Read enough surrounding code to understand the local pattern before changing it.
-2. **Read standards**:
-   - Read AGENTS.md.
-   - Read the module-specific `AGENTS.md` for every area you touch:
+2. **Review standards**:
+   - Consult AGENTS.md.
+   - Consult the module-specific `AGENTS.md` for every area you touch:
      - Backend: src/backend/AGENTS.md
      - Frontend: src/frontend/AGENTS.md
      - Builder: scripts/builder/AGENTS.md
-3. **Read canonical docs when the task touches these areas**:
+3. **Review canonical docs when the task touches these areas**:
    - Frontend logging/error handling: docs/developer/frontend/frontend-logging-and-error-handling.md
    - Builder pipeline/diagnostics: docs/developer/builder/builder-script.md
    - Shared TypeScript/ESLint config changes: docs/developer/builder/TypeScriptAndLintConfigHierarchy.md
 4. **Identify the module(s) in scope** and apply only the relevant rules.
 
-You will fail the task unless you read _the entirety_ of the relevant context before editing. Do not skip or shortcut this step.
+You will fail the task unless you review _the entirety_ of the relevant context before editing. Do not skip or shortcut this step.
 
 ## 2. MANDATORY: Bug Research Stage (When Fixing Bugs)
 

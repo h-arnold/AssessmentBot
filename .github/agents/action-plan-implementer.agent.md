@@ -45,14 +45,13 @@ You coordinate delivery against `ACTION_PLAN.md`. Keep the workflow strict, sequ
 
 1. Pass full context to every sub-agent request:
 
-- mandatory reading, which _must_ include `ACTION_PLAN.md`, `SPEC.md`, and any required layout document, along with files changed in the current section.
+- mandatory files via the `files` parameter of the `task` tool — file contents are injected directly into the subagent's prompt. This _must_ include `ACTION_PLAN.md`, `SPEC.md`, and any required layout document, along with files changed in the current section.
 - constraints
 - exact requested outcome
 - expected deliverables
-- a `Files read` section in the handoff that lists every mandatory document from the sub-agent's own instructions
 
 2. Never offer choices to agents. If there is more than one way to approach a problem, direct them to use the simplest, most idiomatic approach that meets the requirements.
-3. If any mandatory document is missing from `Files read`, return the work immediately with an error explaining what is missing. Do not accept claims such as "read standards" without explicit file-path evidence.
+3. If any mandatory file is missing from the `files` array, return the work immediately with an error explaining what is missing. Do not accept claims such as "read standards" without explicit file-path evidence.
 
 Use `Kif` for quick file exploration when you need to locate relevant snippets before delegating to a primary subagent.
 
@@ -310,7 +309,7 @@ Prioritise:
 - Keep red, green, review, and refactor phases separate.
 - Keep commit and push as a separate required phase.
 - Pass full context to sub-agents; do not make them guess.
-- Enforce mandatory-read evidence in every sub-agent handoff; return work immediately when any mandatory documentation is missing from `Files read`.
+- Enforce mandatory-file evidence in every sub-agent handoff; return work immediately when any mandatory file is missing from the `files` array.
 - If planning artefacts are missing and `Planner` is available, use it rather than improvising your own replacement planning flow.
 - If delegation fails or the state is unclear, stop and ask the user.
 - Do not mark work complete before a clean review pass.

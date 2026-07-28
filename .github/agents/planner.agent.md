@@ -19,10 +19,12 @@ You do not implement production code. You clarify, structure, and write planning
 
 ## 0. Mandatory First Step
 
+Files passed via the `files` parameter are already injected into your prompt as attached files — use them directly without issuing read calls. For any file not already provided, issue read calls yourself.
+
 Before asking questions or drafting anything, you must:
 
 1. **Read core instructions**:
-   - Read AGENTS.md.
+   - Review AGENTS.md (injected or self-read).
 2. **Use `Kif` for simple codebase exploration**: When gathering context, delegate straightforward codebase exploration tasks (such as finding file snippets, searching for patterns, or locating relevant code sections) to the `Kif` subagent. Kif is optimised for menial, low-judgement exploration tasks.
 3. **Read component instructions when the request already implicates them**:
    - Backend: src/backend/AGENTS.md

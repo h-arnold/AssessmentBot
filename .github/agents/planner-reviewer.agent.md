@@ -21,10 +21,12 @@ Your goal is to find anything that could derail implementation, create hidden am
 
 ## 0. Mandatory First Step
 
+Files passed via the `files` parameter are already injected into your prompt as attached files — use them directly without issuing read calls. For any file not already provided, issue read calls yourself.
+
 Before giving feedback, you must:
 
 1. **Read core instructions**:
-   - Read AGENTS.md.
+   - Review AGENTS.md (injected or self-read).
 2. **Read the planning artefacts in scope**:
    - the document being reviewed
    - any companion planning docs already written for the feature

@@ -33,15 +33,17 @@ This gate overrides all other instructions. No handoff is valid until checks pas
 
 ## 0. MANDATORY: Context Acquisition
 
+Files passed via the `files` parameter are already injected into your prompt as attached files — use them directly without issuing read calls. For any file not already provided, issue read calls yourself.
+
 Before proceeding with any task, you **MUST**:
 
-1. **Acquire context**: You are stateless. Read the source code you are testing and any existing related tests before planning changes.
+1. **Acquire context**: You are stateless. Review the source code you are testing and any existing related tests (injected or self-read) before planning changes.
 2. **Read testing docs**:
    - Backend: docs/developer/backend/backend-testing.md
    - Frontend: docs/developer/frontend/frontend-testing.md
    - Frontend logging/error policy (when tests touch error or logging flows): docs/developer/frontend/frontend-logging-and-error-handling.md
    - Builder pipeline context: docs/developer/builder/builder-script.md
-3. **Read standards**: Read AGENTS.md.
+3. **Review standards**: Read AGENTS.md.
 
 ## 0.5. MANDATORY: Bug Research Stage (When Debugging Bugs)
 

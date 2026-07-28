@@ -33,15 +33,17 @@ This gate overrides all other instructions. No handoff is valid until checks pas
 
 ## 0. MANDATORY: Context Acquisition
 
+Files passed via the `files` parameter are already injected into your prompt as attached files — use them directly without issuing read calls. For any file not already provided, issue read calls yourself.
+
 Before proceeding with any task, you **MUST**:
 
-1. **Acquire context**: You are stateless. Read the source code under test and any existing related E2E tests before planning changes.
+1. **Acquire context**: You are stateless. Review the source code under test and any existing related E2E tests (injected or self-read) before planning changes.
 2. **Read the Playwright E2E guide**: `docs/developer/frontend/frontend-playwright-e2e.md` (mandatory for every task).
 3. **Read the frontend AGENTS.md**: `src/frontend/AGENTS.md` for frontend conventions.
 4. **Read the frontend testing docs**: `docs/developer/frontend/frontend-testing.md` for the behaviour split between Vitest and Playwright.
 5. **Read existing test files**: study nearby E2E specs for patterns, fixtures, and helpers.
 
-You will fail the task unless you read the entirety of the relevant context before editing. Do not skip or shortcut this step.
+You will fail the task unless you review the entirety of the relevant context before editing. Do not skip or shortcut this step.
 
 ## 0.5. MANDATORY: Bug Research Stage (When Debugging Bugs)
 

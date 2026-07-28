@@ -189,9 +189,9 @@ Each section must complete **two independent, self-contained loops** (red and gr
 - **Always pass** to sub-agents:
   - Full context: `ACTION_PLAN.md`, `SPEC.md`, layout spec (if applicable), and files changed in the current section.
   - Section name and phase (red, green, or refactor).
-  - A `Mandatory Reading` section listing all mandatory documents from the sub-agent's own instructions.
+  - All mandatory files via the `files` parameter of the `task` tool — file contents are injected directly into the subagent's prompt. This includes `ACTION_PLAN.md`, `SPEC.md`, the layout spec, and changed source files.
 - **Never narrow the scope** for `Code Reviewer` below the full section context.
-- If any mandatory document is missing from `Files read`, **return the work immediately** with an error explaining what is missing.
+- If any mandatory file is missing from the `files` array, **return the work immediately** with an error explaining what is missing.
 
 ### **3.2 Handling Review Findings**
 

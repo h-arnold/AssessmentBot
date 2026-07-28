@@ -21,24 +21,26 @@ You are typically invoked by an orchestrator when a change affects data persiste
 
 ## 0. Mandatory First Step
 
+Files passed via the `files` parameter are already injected into your prompt as attached files — use them directly without issuing read calls. For any file not already provided, issue read calls yourself.
+
 Before creating or updating data-shape documents, you must:
 
-1. **Read existing data-shape docs**: Read all files under `docs/developer/data-shapes/` (starting with `INDEX.md`) to understand current contracts and see if the affected contract already has a file.
+1. **Review existing data-shape docs**: Consult all files under `docs/developer/data-shapes/` (starting with `INDEX.md`) to understand current contracts and see if the affected contract already has a file.
 
-2. **Read source files directly**: For every contract in scope, read:
+2. **Review source files directly**: For every contract in scope, consult:
    - Backend model `toJSON()` and `toPartialJSON()` methods (these define the actual persistence shapes)
    - Backend `z_Api` handler files (these define the actual transport shapes)
    - Backend controller response-mapper methods (these apply transport-boundary transformations)
    - Frontend Zod schema files (`.zod.ts`) for both request and response shapes
    - Frontend service files (`.ts`) that consume the schemas
 
-3. **Read standards**: Read `AGENTS.md`, `src/backend/AGENTS.md`, and `src/frontend/AGENTS.md` to understand the conventions that shapes must follow.
+3. **Review standards**: Consult `AGENTS.md`, `src/backend/AGENTS.md`, and `src/frontend/AGENTS.md` to understand the conventions that shapes must follow.
 
-4. **Read existing shared-helper tracking**: If the shared helpers doc exists (e.g. `docs/developer/SharedHelpers.md`), read it to ensure shape docs reference it correctly rather than duplicating helper-status tracking.
+4. **Review existing shared-helper tracking**: If the shared helpers doc exists (e.g. `docs/developer/SharedHelpers.md`), consult it to ensure shape docs reference it correctly rather than duplicating helper-status tracking.
 
 5. **DATA_SHAPES.md has been deleted.** The legacy `docs/developer/backend/DATA_SHAPES.md` has been fully migrated to `docs/developer/data-shapes/` and deleted. There is no remaining legacy content to read. Skip this step.
 
-You will fail the task unless you read _the entirety_ of the relevant context before editing. Do not skip or shortcut this step.
+You will fail the task unless you review _the entirety_ of the relevant context before editing. Do not skip or shortcut this step.
 
 ## 1. Folder and File Structure
 
@@ -415,7 +417,7 @@ Do not reintroduce a monolithic shape doc in the backend folder.
 
 Provide a concise handoff summary including:
 
-- **Files read** (explicit paths): every backend model, z_Api handler, response mapper, frontend Zod schema, and service file read during this pass.
+- **Files reviewed** (explicit paths): every backend model, z_Api handler, response mapper, frontend Zod schema, and service file consulted during this pass (whether injected via `files` or self-read).
 - **Files created/updated**: paths and a one-line summary of the change.
 - **Contracts documented**: which contracts were created, updated, or left untouched with rationale.
 - **Discrepancies surfaced**: every discrepancy found and its classification (aligned/misaligned/fragile).
