@@ -191,6 +191,52 @@ class ABClassAssignmentOps {
   }
 
   /**
+   * Read-only rehydration of an assignment from its dedicated collection.
+   * Loads and hydrates an assignment without requiring an ABClass instance,
+   * triggering a roster refresh, or mutating any class.
+   *
+   * @param {string} courseId - The Classroom course ID.
+   * @param {string} assignmentId - The assignment ID to rehydrate.
+   * @returns {Assignment} The fully hydrated assignment instance.
+   * @throws {TypeError} If courseId or assignmentId are not non-empty strings.
+   * @throws {AssignmentNotFoundError} If no document exists for the given identifiers.
+   * @throws {Error} If the document is corrupt or the definition cannot be resolved.
+   */
+  readRehydrateAssignment(courseId, assignmentId) {
+    const logger = ABLogger.getInstance();
+
+    Validate.requireParams({ courseId, assignmentId }, 'readRehydrateAssignment');
+
+    if (typeof courseId !== 'string' || courseId.trim().length === 0) {
+      throw new TypeError('readRehydrateAssignment: expected courseId to be a non-empty string');
+    }
+
+    if (typeof assignmentId !== 'string' || assignmentId.trim().length === 0) {
+      throw new TypeError(
+        'readRehydrateAssignment: expected assignmentId to be a non-empty string'
+      );
+    }
+
+    try {
+      const document = this._loadFullAssignmentDocument(courseId, assignmentId);
+      this._validateAssignmentDocument(document);
+
+      const hydratedAssignment = Assignment.fromJSON(document);
+      this._ensureFullDefinition(hydratedAssignment);
+      hydratedAssignment._hydrationLevel = 'full';
+
+      return hydratedAssignment;
+    } catch (error) {
+      logger.error('readRehydrateAssignment failed', {
+        courseId,
+        assignmentId,
+        err: error,
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Loads the full assignment document from its dedicated collection.
    *
    * @param {string} courseId - The Classroom course ID.
