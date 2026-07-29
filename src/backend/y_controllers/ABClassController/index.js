@@ -426,17 +426,6 @@ class ABClassController {
     return this._assignmentOps._ensureFullDefinition(assignment);
   }
   /**
-   * Delegates to ABClassAssignmentOps._replaceAssignmentInClass.
-   * @param {ABClass} abClass - The class containing the assignments.
-   * @param {string} assignmentId - The assignment ID to replace.
-   * @param {Assignment} hydratedAssignment - The new fully hydrated assignment instance.
-   * @returns {void}
-   * @throws {Error} If the assignment ID is not found in the class.
-   */
-  _replaceAssignmentInClass(abClass, assignmentId, hydratedAssignment) {
-    return this._assignmentOps._replaceAssignmentInClass(abClass, assignmentId, hydratedAssignment);
-  }
-  /**
    * Delegates to ABClassAssignmentOps._getFullAssignmentCollectionName.
    * @param {string} courseId - The Classroom course ID.
    * @param {string} assignmentId - The assignment ID.
@@ -458,17 +447,6 @@ class ABClassController {
   persistAssignmentRun(abClass, assignment) {
     this._assignmentOps.persistAssignmentRun(abClass, assignment);
     this.saveClass(abClass);
-  }
-
-  /**
-   * Rehydrates an assignment by loading the full version from its dedicated collection.
-   * Delegates to ABClassAssignmentOps.
-   * @param {Object} abClass - The ABClass instance containing the assignment.
-   * @param {string} assignmentId - The assignment ID to rehydrate.
-   * @returns {Assignment} The fully hydrated assignment instance.
-   */
-  rehydrateAssignment(abClass, assignmentId) {
-    return this._assignmentOps.rehydrateAssignment(abClass, assignmentId);
   }
 
   /**

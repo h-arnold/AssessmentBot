@@ -10,9 +10,8 @@
  *
  * This error is caught at the API boundary in `getAssignment_` and
  * translated into a `null` response. Other errors from
- * `ABClassController.rehydrateAssignment` (corrupt document, partial
- * definition rejection, assignment not in class) are unaffected and must
- * still propagate.
+ * `ABClassAssignmentOps._loadFullAssignmentDocument` (corrupt document,
+ * partial definition rejection) are unaffected and must still propagate.
  */
 class AssignmentNotFoundError extends Error {
   /**

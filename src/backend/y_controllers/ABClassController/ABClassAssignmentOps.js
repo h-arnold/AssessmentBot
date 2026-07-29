@@ -145,46 +145,6 @@ class ABClassAssignmentOps {
   }
 
   /**
-   * Rehydrate an assignment by loading the full version from its dedicated collection.
-   * Updates the ABClass with the hydrated assignment and ensures full definition is available.
-   *
-   * @param {ABClass|Object} abClass - An ABClass instance with classId property.
-   * @param {string} assignmentId - The assignment ID to rehydrate.
-   * @returns {Assignment} The fully hydrated assignment instance.
-   * @throws {TypeError} If parameters are invalid.
-   * @throws {Error} If the assignment document is not found or corrupt.
-   */
-  rehydrateAssignment(abClass, assignmentId) {
-    const logger = ABLogger.getInstance();
-
-    Validate.requireParams({ abClass, assignmentId }, 'rehydrateAssignment');
-
-    if (typeof abClass.classId !== 'string' || abClass.classId.trim().length === 0) {
-      throw new TypeError('rehydrateAssignment: expected abClass.classId to be a non-empty string');
-    }
-
-    if (typeof assignmentId !== 'string' || assignmentId.trim().length === 0) {
-      throw new TypeError('rehydrateAssignment: expected assignmentId to be a non-empty string');
-    }
-
-    const courseId = abClass.classId;
-
-    try {
-      const result = this.readRehydrateAssignment(courseId, assignmentId);
-      this._replaceAssignmentInClass(abClass, assignmentId, result);
-
-      return result;
-    } catch (error) {
-      logger.error('rehydrateAssignment failed', {
-        courseId,
-        assignmentId,
-        err: error,
-      });
-      throw error;
-    }
-  }
-
-  /**
    * Read-only rehydration of an assignment from its dedicated collection.
    * Loads and hydrates an assignment without requiring an ABClass instance,
    * triggering a roster refresh, or mutating any class.
@@ -197,10 +157,6 @@ class ABClassAssignmentOps {
    * @throws {Error} If the document is corrupt or the definition cannot be resolved.
    */
   readRehydrateAssignment(courseId, assignmentId) {
-    const logger = ABLogger.getInstance();
-
-    Validate.requireParams({ courseId, assignmentId }, 'readRehydrateAssignment');
-
     if (typeof courseId !== 'string' || courseId.trim().length === 0) {
       throw new TypeError('readRehydrateAssignment: expected courseId to be a non-empty string');
     }
@@ -211,23 +167,14 @@ class ABClassAssignmentOps {
       );
     }
 
-    try {
-      const document = this._loadFullAssignmentDocument(courseId, assignmentId);
-      this._validateAssignmentDocument(document);
+    const document = this._loadFullAssignmentDocument(courseId, assignmentId);
+    this._validateAssignmentDocument(document);
 
-      const hydratedAssignment = Assignment.fromJSON(document);
-      this._ensureFullDefinition(hydratedAssignment);
-      hydratedAssignment._hydrationLevel = 'full';
+    const hydratedAssignment = Assignment.fromJSON(document);
+    this._ensureFullDefinition(hydratedAssignment);
+    hydratedAssignment._hydrationLevel = 'full';
 
-      return hydratedAssignment;
-    } catch (error) {
-      logger.error('readRehydrateAssignment failed', {
-        courseId,
-        assignmentId,
-        err: error,
-      });
-      throw error;
-    }
+    return hydratedAssignment;
   }
 
   /**
@@ -252,7 +199,7 @@ class ABClassAssignmentOps {
       );
     }
 
-    logger.info('rehydrateAssignment: loading full assignment', {
+    logger.info('_loadFullAssignmentDocument: loading full assignment', {
       courseId,
       assignmentId,
       collectionName,
@@ -308,32 +255,6 @@ class ABClassAssignmentOps {
           `Failed to rehydrate definition '${definitionKey}': the authoritative record is a partial (tasks is an array).`
         );
       }
-    }
-  }
-
-  /**
-   * Replaces an assignment in the ABClass assignments array.
-   *
-   * @param {ABClass|Object} abClass - The class containing the assignments.
-   * @param {string} assignmentId - The assignment ID to replace.
-   * @param {Assignment} hydratedAssignment - The new fully hydrated assignment instance.
-   * @throws {Error} If the assignment ID is not found in the class.
-   */
-  _replaceAssignmentInClass(abClass, assignmentId, hydratedAssignment) {
-    const logger = ABLogger.getInstance();
-    const index = abClass.findAssignmentIndex((a) => a.assignmentId === assignmentId);
-
-    if (index >= 0) {
-      // eslint-disable-next-line security/detect-object-injection
-      abClass.assignments[index] = hydratedAssignment;
-      logger.info('rehydrateAssignment: replaced assignment in ABClass', {
-        assignmentId,
-        index: index,
-      });
-    } else {
-      throw new Error(
-        `Assignment with ID '${assignmentId}' not found in the provided ABClass instance for course '${abClass.classId}'.`
-      );
     }
   }
 }

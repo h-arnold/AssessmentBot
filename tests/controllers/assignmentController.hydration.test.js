@@ -197,7 +197,6 @@ describe('AssignmentController - Definition Hydration', () => {
     };
     mockABClassController = {
       loadClass: vi.fn().mockReturnValue(mockABClass),
-      rehydrateAssignment: vi.fn(),
       persistAssignmentRun: vi.fn(),
     };
     globalThis.ABClassController = vi.fn().mockImplementation(function () {

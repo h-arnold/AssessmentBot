@@ -339,7 +339,6 @@ describe('AssignmentController - runAssignmentPipeline throw-on-stale', () => {
       globalThis.ABClassController = vi.fn().mockImplementation(function () {
         return {
           loadClass: vi.fn().mockReturnValue(mockABClass),
-          rehydrateAssignment: vi.fn(),
           persistAssignmentRun: vi.fn(),
         };
       });

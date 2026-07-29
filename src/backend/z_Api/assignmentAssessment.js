@@ -19,7 +19,6 @@ function startAssessmentRun_(parameters) {
 
   const { definitionKey, assignmentId, courseId } = parameters;
 
-  Validate.requireParams({ definitionKey, assignmentId, courseId }, 'startAssessmentRun');
   Validate.validateNonEmptyString('definitionKey', definitionKey);
   Validate.validateNonEmptyString('assignmentId', assignmentId);
   Validate.validateNonEmptyString('courseId', courseId);

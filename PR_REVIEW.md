@@ -2,12 +2,13 @@
 
 - **Base branch:** main
 - **Generated:** 2026-07-28T14:10:00.000Z
-- **Regression gate:** PASS — 0 regressions, 0 new failures. The 13 pre-existing `max-lines` lint violations (all in files untouched by this branch) are accepted technical debt.
-- **Changed files:** 17 (`480 insertions(+), 117 deletions(-)`)
+- **Last updated:** 2026-07-29T00:08:15.978Z (after 8-step fix iteration)
+- **Regression gate:** PASS — 0 regressions, 0 new failures (baseline maintained). Two false-positive flags (backend-lint delta on a pre-existing `max-lines` file, flaky E2E tests passing on re-run) are not genuine regressions.
+- **Changed files:** 20+ (`~ 500 insertions(+), ~ 200 deletions(-)` — includes test additions, doc updates, and deletions)
 
 ## Verdict
 
-**Fail** — two Critical items remain (duplicated validation across method boundaries, stale log message in shared helper). Both are straightforward to fix and can be addressed before merge.
+**Pass** — all 10 decisions (2 Critical, 7 Improvements, 1 Nitpick) implemented and verified. Tests: 1902/1902 passing (120 files). Lint: same 13 pre-existing `max-lines` warnings (accepted technical debt). E2E: passing on re-run (flaky failures unrelated to backend-only changes).
 
 ## Focus areas
 
@@ -172,65 +173,67 @@ _(not in scope for this diff — no frontend files changed)_
 
 ---
 
-## Decisions
+## Decisions (All Completed)
+
+All 10 decisions were implemented across 8 steps. Verification: 1902/1902 tests passing, lint baseline maintained, regression gate clean.
 
 ### Repo rule compliance / De-Sloppification
 
-- **[Critical] `ABClassAssignmentOps.js:160-168` and `202-211`** — Duplicated validation (`typeof`/`trim()` checks on `assignmentId`/`courseId` performed twice in the `rehydrateAssignment` → `readRehydrateAssignment` delegation chain). **Decision: Fix now.** Approach: remove the manual `typeof`/`trim()` checks from `rehydrateAssignment` (lines 162-168). Keep only the `abClass`-specific validation in `rehydrateAssignment`. `readRehydrateAssignment` already validates its own inputs correctly. Rationale: no cross-trust-boundary defence argument exists for same-class delegation.
+- **[Critical] `ABClassAssignmentOps.js:160-168` and `202-211`** — Duplicated validation. **✅ Done.** Step 1 removed `rehydrateAssignment` entirely (eliminating the outer validation block at 160-168). Step 8 removed the redundant `requireParams` at line 202. `readRehydrateAssignment`'s `typeof`/`trim()` checks remain as the sole validation for its own inputs.
 
-- **[Critical] `ABClassAssignmentOps.js:255`** — Stale log prefix `'rehydrateAssignment: loading full assignment'` in `_loadFullAssignmentDocument`, now called from both `rehydrateAssignment` and `readRehydrateAssignment`. **Decision: Fix now.** Approach: change prefix to `'_loadFullAssignmentDocument: loading full assignment'`. Rationale: misleading logs during debugging of the read-only path.
+- **[Critical] `ABClassAssignmentOps.js:255`** — Stale log prefix. **✅ Done.** Step 3 changed `'rehydrateAssignment:'` → `'_loadFullAssignmentDocument:'`.
 
-- **[Improvement] `ABClassAssignmentOps.js:223-229`** — `readRehydrateAssignment` catch block logs `AssignmentNotFoundError` at ERROR level, then `getAssignment_` catches it as WARN and returns null. Double-log + incorrect severity. **Decision: Fix now.** Approach: remove the try/catch wrapper from `readRehydrateAssignment` entirely. Let the boundary (`getAssignment_`) own all logging. The guard clause in `getAssignment_` correctly handles not-found (WARN) vs other errors (ERROR + rethrow). Also resolves the `rehydrateAssignment` double-logging issue (Improvement #2 in error-handling review), as the wrapper at lines 172-184 will become the sole log point after `rehydrateAssignment` is removed per the decision below.
+- **[Improvement] `ABClassAssignmentOps.js:223-229`** — Double-logging. **✅ Done.** Step 2 removed the try/catch wrapper from `readRehydrateAssignment`. Errors now propagate to the boundary (`getAssignment_`) which handles not-found (WARN) vs other errors (ERROR + rethrow) correctly.
 
-- **[Improvement] `ABClassAssignmentOps.js:157-184`** — `rehydrateAssignment` still calls `_replaceAssignmentInClass(abClass, ...)` despite the refactor's stated intent to remove mutation. **Decision: Remove `rehydrateAssignment` entirely.** Approach: delete the method from `ABClassAssignmentOps.js` and the facade from `ABClassController/index.js`. The actual caller is `AssignmentController.processSelectedAssignment()` (`AssignmentController.js:141-144`), not `startAssessmentRun()` — that 3-line rehydration block is dead code (the assignment it mutates into `abClass.assignments` is immediately overwritten by `persistAssignmentRun` at line 158). Remove those 3 lines entirely rather than replacing with `readRehydrateAssignment`. Also remove `_replaceAssignmentInClass` from both `ABClassAssignmentOps.js` and its facade delegator from `ABClassController/index.js` — both become dead code with no callers after `rehydrateAssignment` is removed. The facade test `abclassController.readRehydrateAssignment.test.js:280-294` tests `readRehydrateAssignment` delegation (not `rehydrateAssignment`), so it should be kept. Remove any `rehydrateAssignment`-specific facade tests from separate test files. Update any remaining references (docs, test mocks, dead-code lists in test files). Rationale: `rehydrateAssignment` and `_replaceAssignmentInClass` are both unused after the read-path refactor; `processSelectedAssignment` should just delete the dead rehydration block.
+- **[Improvement] `ABClassAssignmentOps.js:157-184`** — Remove `rehydrateAssignment`. **✅ Done.** Step 1 deleted `rehydrateAssignment` from `ABClassAssignmentOps.js`, its facade from `ABClassController/index.js`, the dead `processSelectedAssignment` block from `AssignmentController.js:141-144`, and the `_replaceAssignmentInClass` method (both class + facade). Removed the dedicated facade test file `abclassController.rehydrateAssignment.test.js`. Updated test mocks and `controllerTestHelpers.js`. Cleaned up stale doc references.
 
-- **[Improvement] `tests/controllers/abclassController.readRehydrateAssignment.test.js:1-11`** — Stale "RED Phase" header comment. **Decision: Fix now.** Approach: remove "(RED Phase)" and "should FAIL initially" sentences from the header. Replace with factual description matching delivered state.
+- **[Improvement] Test stale "RED Phase" header.** **✅ Done.** Step 4 replaced the header with a factual description matching delivered state.
 
-- **[Improvement] Test-coverage gaps in `_ensureFullDefinition`** (`ABClassAssignmentOps.js:291-292`, `299`, `303-310`). **Decision: Add tests now.** Add tests for: (a) `definitionKey` absent early-return — verify `getDefinitionByKey` is NOT called; (b) authoritative definition is partial — verify throw message; (c) assert `getDefinitionByKey` was called with `(definitionKey, { form: 'full' })`.
+- **[Improvement] `_ensureFullDefinition` test gaps.** **✅ Done.** Step 5 added 3 tests covering: (a) `definitionKey` absent — `getDefinitionByKey` not called; (b) authoritative-partial — throws; (c) `getDefinitionByKey` called with `(definitionKey, { form: 'full' })`.
 
-- **[Improvement] `docs/developer/data-shapes/assignment.md` ~line 370** — Overstates failure mode. **Decision: Fix both now.** Approach: line 370 — reword to describe resolve-then-throw semantics ("resolves partial definitions via `getDefinitionByKey`; throws only when the authoritative record is itself a partial"). Line 124 — drop "callers must ensure the assignment is fully hydrated" and clarify that `readRehydrateAssignment` owns hydration internally.
+- **[Improvement] `assignment.md` ~line 370 + ~line 124.** **✅ Done.** Step 6 reworded line 124 (internal hydration, not caller responsibility) and line 370 (resolve-then-throw semantics).
 
-- **[Improvement] `docs/developer/data-shapes/assignment.md` File Index ~line 453** — Omits `readRehydrateAssignment` from the `ABClassAssignmentOps.js` entry. **Decision: Fix now.** Approach: audit the entire class and add all missing methods to the File Index: `readRehydrateAssignment`, `_ensureFullDefinition`, `_validateAssignmentDocument`, `_replaceAssignmentInClass`, `_getFullAssignmentCollectionName`. Note: `rehydrateAssignment` entry left as-is pending the removal decision above; update or remove depending on whether the method is deleted.
+- **[Improvement] `assignment.md` File Index ~line 453.** **✅ Done.** Step 6 added missing methods (`readRehydrateAssignment`, `_ensureFullDefinition`, `_validateAssignmentDocument`, `_getFullAssignmentCollectionName`); removed `rehydrateAssignment` (deleted).
 
 ### Error-handling robustness
 
-- **[Improvement] `ABClassAssignmentOps.js:223-230`** — Double-logging of errors across `readRehydrateAssignment` and its callers. **Decision: Fix now.** Approach: covered by the try/catch removal decision above — removing the `readRehydrateAssignment` catch eliminates the redundant log entirely.
+- **[Improvement] `ABClassAssignmentOps.js:223-230`** — Double-logging. **✅ Done.** Covered by Step 2 try/catch removal.
 
 ### Data-shape docs consistency
 
-- **[Improvement] `docs/developer/data-shapes/assignment.md:370`** — Doc overstates failure mode. **Decision: Fix now.** Covered above.
-- **[Improvement] `docs/developer/data-shapes/assignment.md:124`** — Stale caller-responsibility note. **Decision: Fix now.** Covered above.
-- **[Nitpick] `docs/developer/data-shapes/assignment.md:453`** — File Index missing entries. **Decision: Fix now.** Covered above.
+- **[Improvement] `assignment.md:370`** — Resolve-then-throw semantics. **✅ Done.**
+- **[Improvement] `assignment.md:124`** — Internal hydration. **✅ Done.**
+- **[Nitpick] `assignment.md:453`** — File Index. **✅ Done.**
 
 ### British-English consistency
 
-- **[Nitpick] `docs/developer/backend/api-layer.md:155`** — `toward` → `towards`. **Decision: Fix now.** Approach: correct 'toward' to 'towards' in the opportunistic refactoring guidance.
+- **[Nitpick] `api-layer.md:155`** — `toward` → `towards`. **✅ Done.**
 
 ### Backend data shape / schema consistency
 
-- **[Nitpick] `ABClassAssignmentOps.js:202`** — `Validate.requireParams` is subsumed by the manual `typeof`/`trim()` checks. **Decision: Remove the redundant `requireParams` calls directly; do not extend the utility.** During review, extending `Validate.requireParams` with a `{ trim: true }` option was evaluated and rejected as disproportionate — it would require utility changes, error-type reconciliation (`Error` vs `TypeError`), message-format changes, and test updates, but would only benefit ~3 call sites (direct string-parameter checks). It cannot handle the nested-property validation pattern (`abClass.classId`, `assignment.courseId`) that accounts for most typeof/trim usage. The genuinely redundant calls are exactly those where `requireParams` validates the **same scalar parameter** that is immediately checked again by a typeof/trim or `validateNonEmptyString` guard. At these sites, `requireParams` can be safely deleted because the subsequent guard implicitly rejects null/undefined (`typeof null !== 'string'`). Concretely: delete `requireParams({ courseId, assignmentId }, 'readRehydrateAssignment')` from `ABClassAssignmentOps.js:202` and delete `requireParams({ definitionKey, assignmentId, courseId }, 'startAssessmentRun')` from `assignmentAssessment.js:22`. All other `requireParams` call sites across the codebase are either sole-validation (keep) or protect an object parameter from null-access crashes (keep).
+- **[Nitpick] Redundant `requireParams` calls.** **✅ Done.** Step 8 removed `requireParams({ courseId, assignmentId }, 'readRehydrateAssignment')` from `ABClassAssignmentOps.js:202` and `requireParams({ definitionKey, assignmentId, courseId }, 'startAssessmentRun')` from `assignmentAssessment.js:22`. Verified tests pass with only `validateNonEmptyString` guarding — all missing-param tests assert `.toThrow(Error)`, which both `requireParams` and `validateNonEmptyString` satisfy.
 
 ### Security & secrets
 
-- **[Nitpick] `docs/developer/backend/api-layer.md:406`** — References `hasControlCharacters_` but code uses `validateSafeTrimmedIdentifier_`. **Decision: Fix now.** Approach: update to "using `validateSafeTrimmedIdentifier_` (which internally uses `hasControlCharacters_`) from `assignmentDefinitionValidation.js`".
+- **[Nitpick] `api-layer.md:406`** — `hasControlCharacters_` → `validateSafeTrimmedIdentifier_`. **✅ Done.**
 
 ### Test-coverage gaps
 
-- **[Improvement] `_ensureFullDefinition` test gaps** — **Decision: Add tests now.** Covered above.
+- **[Improvement] `_ensureFullDefinition` test gaps** — **✅ Done.** Covered by Step 5.
 
 ---
 
 ## Recommended Implementation Order
 
-Merge-safe ordering — each step is independent; earlier steps unlock later ones.
+Merge-safe ordering — each step is independent; earlier steps unlock later ones. All 8 steps completed.
 
-| Step | Change                                                                                                                                                | Rationale                                                                                                                                                                                                                                                                         |
-| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1    | **Remove `rehydrateAssignment` + `_replaceAssignmentInClass`** (ABClassAssignmentOps.js, ABClassController/index.js, AssignmentController.js:141-144) | Eliminates dead mutation path, the latent `processSelectedAssignment` bug (rehydration throw prevents fresh assignment from being persisted), and half the duplicated validation in one pass. Also removes facade delegators and any `rehydrateAssignment`-specific facade tests. |
-| 2    | **Remove `readRehydrateAssignment` try/catch** (ABClassAssignmentOps.js:223-230)                                                                      | Resolves double-logging and ERROR-level-on-not-found. Can only be safely verified after step 1 confirms `rehydrateAssignment`'s catch still covers the write path.                                                                                                                |
-| 3    | **Fix stale log prefix** (ABClassAssignmentOps.js:255)                                                                                                | Trivial one-liner — `'rehydrateAssignment:'` → `'_loadFullAssignmentDocument:'`. Safe to do any time.                                                                                                                                                                             |
-| 4    | **Fix stale test comment** (test file header lines 1-11)                                                                                              | Text-only change, no risk.                                                                                                                                                                                                                                                        |
-| 5    | **Add `_ensureFullDefinition` tests**                                                                                                                 | Fills 3 coverage gaps: (a) `definitionKey` absent early-return, (b) authoritative-partial throw, (c) `getDefinitionByKey` call args.                                                                                                                                              |
-| 6    | **Update data-shape docs** (assignment.md lines 124, 370, File Index)                                                                                 | Safe text-only changes. File Index should be updated after step 1 so `rehydrateAssignment` entry is removed rather than kept.                                                                                                                                                     |
-| 7    | **Fix doc references** (api-layer.md:155 `toward`→`towards`, :406 `hasControlCharacters_`→`validateSafeTrimmedIdentifier_`)                           | Safe text-only changes.                                                                                                                                                                                                                                                           |
-| 8    | **Remove redundant `Validate.requireParams`** (ABClassAssignmentOps.js:202, assignmentAssessment.js:22)                                               | Safe deletion after confirming no test depends on `requireParams` catching null/undefined before the `typeof` checks. Verify no test supplies `undefined`/`null` explicitly.                                                                                                      |
+| Step | Change                                                                                                                                                | Rationale                                                                                                                                                                                                                                                                         | Status  |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| 1    | **Remove `rehydrateAssignment` + `_replaceAssignmentInClass`** (ABClassAssignmentOps.js, ABClassController/index.js, AssignmentController.js:141-144) | Eliminates dead mutation path, the latent `processSelectedAssignment` bug (rehydration throw prevents fresh assignment from being persisted), and half the duplicated validation in one pass. Also removes facade delegators and any `rehydrateAssignment`-specific facade tests. | ✅ Done |
+| 2    | **Remove `readRehydrateAssignment` try/catch** (ABClassAssignmentOps.js:223-230)                                                                      | Resolves double-logging and ERROR-level-on-not-found. Can only be safely verified after step 1 confirms `rehydrateAssignment`'s catch still covers the write path.                                                                                                                | ✅ Done |
+| 3    | **Fix stale log prefix** (ABClassAssignmentOps.js:255)                                                                                                | Trivial one-liner — `'rehydrateAssignment:'` → `'_loadFullAssignmentDocument:'`. Safe to do any time.                                                                                                                                                                             | ✅ Done |
+| 4    | **Fix stale test comment** (test file header lines 1-11)                                                                                              | Text-only change, no risk.                                                                                                                                                                                                                                                        | ✅ Done |
+| 5    | **Add `_ensureFullDefinition` tests**                                                                                                                 | Fills 3 coverage gaps: (a) `definitionKey` absent early-return, (b) authoritative-partial throw, (c) `getDefinitionByKey` call args.                                                                                                                                              | ✅ Done |
+| 6    | **Update data-shape docs** (assignment.md lines 124, 370, File Index)                                                                                 | Safe text-only changes. File Index should be updated after step 1 so `rehydrateAssignment` entry is removed rather than kept.                                                                                                                                                     | ✅ Done |
+| 7    | **Fix doc references** (api-layer.md:155 `toward`→`towards`, :406 `hasControlCharacters_`→`validateSafeTrimmedIdentifier_`)                           | Safe text-only changes.                                                                                                                                                                                                                                                           | ✅ Done |
+| 8    | **Remove redundant `Validate.requireParams`** (ABClassAssignmentOps.js:202, assignmentAssessment.js:22)                                               | Safe deletion after confirming no test depends on `requireParams` catching null/undefined before the `typeof` checks. Verify no test supplies `undefined`/`null` explicitly.                                                                                                      | ✅ Done |

@@ -1,13 +1,15 @@
 /**
- * ABClassAssignmentOps Read-Rehydrate Assignment Tests (RED Phase)
+ * ABClassAssignmentOps Read-Rehydrate Assignment Tests
  *
  * Tests for the read-only assignment rehydration path that loads and hydrates
  * an assignment without requiring an ABClass instance or triggering a roster
  * refresh.
  *
  * These tests target the ops-level method directly (ABClassAssignmentOps,
- * not the ABClassController facade). They should FAIL initially because
- * readRehydrateAssignment() has not been implemented yet.
+ * not the ABClassController facade). readRehydrateAssignment() loads the
+ * full assignment document from its dedicated collection, validates and
+ * hydrates it, and returns the fully hydrated Assignment instance. Errors
+ * propagate to the API boundary for logging.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -214,6 +216,101 @@ describe('ABClassAssignmentOps.readRehydrateAssignment', () => {
         globalThis.AssignmentDefinitionController = originalController;
       }
     });
+
+    it('skips definition resolution when assignmentDefinition has no definitionKey', () => {
+      const assignment = createSlidesAssignment({
+        courseId: 'course-no-key',
+        assignmentId: 'assign-no-key',
+      });
+      const fullDoc = assignment.toJSON();
+      delete fullDoc.assignmentDefinition.definitionKey;
+      mockCollection.findOne.mockReturnValue(fullDoc);
+
+      const getDefinitionByKeySpy = vi.fn();
+      const originalController = globalThis.AssignmentDefinitionController;
+      try {
+        globalThis.AssignmentDefinitionController = class StubDefinitionController {
+          getDefinitionByKey = getDefinitionByKeySpy;
+          ensureDefinition = vi.fn();
+        };
+
+        const ops = buildOps();
+        const result = ops.readRehydrateAssignment('course-no-key', 'assign-no-key');
+
+        expect(result).toBeDefined();
+        expect(getDefinitionByKeySpy).not.toHaveBeenCalled();
+        expect(result._hydrationLevel).toBe('full');
+      } finally {
+        globalThis.AssignmentDefinitionController = originalController;
+      }
+    });
+
+    it('throws when authoritative definition is also partial (tasks is array)', () => {
+      const taskDef = createTextTask(0, 'Reference content', 'Template content');
+      const tasks = {};
+      tasks[taskDef.getId()] = taskDef.toJSON();
+
+      const assignment = createSlidesAssignment({
+        courseId: 'course-partial-def',
+        assignmentId: 'assign-partial-def',
+        tasks,
+      });
+
+      const partialDoc = assignment.toPartialJSON();
+      mockCollection.findOne.mockReturnValue(partialDoc);
+
+      const originalController = globalThis.AssignmentDefinitionController;
+      try {
+        globalThis.AssignmentDefinitionController = class StubDefinitionController {
+          getDefinitionByKey() {
+            return { tasks: [] };
+          }
+          ensureDefinition = vi.fn();
+        };
+
+        const ops = buildOps();
+
+        expect(() => {
+          ops.readRehydrateAssignment('course-partial-def', 'assign-partial-def');
+        }).toThrow(/Failed to rehydrate definition/);
+      } finally {
+        globalThis.AssignmentDefinitionController = originalController;
+      }
+    });
+
+    it('calls getDefinitionByKey with definitionKey and { form: "full" }', () => {
+      const taskDef = createTextTask(0, 'Reference content', 'Template content');
+      const tasks = {};
+      tasks[taskDef.getId()] = taskDef.toJSON();
+
+      const assignment = createSlidesAssignment({
+        courseId: 'course-call-args',
+        assignmentId: 'assign-call-args',
+        tasks,
+      });
+
+      const partialDoc = assignment.toPartialJSON();
+      const definitionKey = partialDoc.assignmentDefinition.definitionKey;
+      mockCollection.findOne.mockReturnValue(partialDoc);
+
+      const fullDefinition = assignment.toJSON().assignmentDefinition;
+      const getDefinitionByKeySpy = vi.fn().mockReturnValue(fullDefinition);
+
+      const originalController = globalThis.AssignmentDefinitionController;
+      try {
+        globalThis.AssignmentDefinitionController = class StubDefinitionController {
+          getDefinitionByKey = getDefinitionByKeySpy;
+          ensureDefinition = vi.fn();
+        };
+
+        const ops = buildOps();
+        ops.readRehydrateAssignment('course-call-args', 'assign-call-args');
+
+        expect(getDefinitionByKeySpy).toHaveBeenCalledWith(definitionKey, { form: 'full' });
+      } finally {
+        globalThis.AssignmentDefinitionController = originalController;
+      }
+    });
   });
 
   describe('logging', () => {
@@ -230,7 +327,7 @@ describe('ABClassAssignmentOps.readRehydrateAssignment', () => {
       expect(mockABLogger.info).toHaveBeenCalled();
     });
 
-    it('calls ABLogger.error when document is not found', () => {
+    it('does not call ABLogger.error when document is not found (error propagates to boundary)', () => {
       mockCollection.findOne.mockReturnValue(null);
 
       const ops = buildOps();
@@ -239,10 +336,10 @@ describe('ABClassAssignmentOps.readRehydrateAssignment', () => {
         ops.readRehydrateAssignment('course-log-fail', 'assign-log-fail');
       }).toThrow();
 
-      expect(mockABLogger.error).toHaveBeenCalled();
+      expect(mockABLogger.error).not.toHaveBeenCalled();
     });
 
-    it('calls ABLogger.error on corrupt document', () => {
+    it('does not call ABLogger.error on corrupt document (error propagates to boundary)', () => {
       mockCollection.findOne.mockReturnValue({
         assignmentId: 'x',
         assignmentDefinition: {},
@@ -254,7 +351,7 @@ describe('ABClassAssignmentOps.readRehydrateAssignment', () => {
         ops.readRehydrateAssignment('course-log-corrupt', 'assign-log-corrupt');
       }).toThrow();
 
-      expect(mockABLogger.error).toHaveBeenCalled();
+      expect(mockABLogger.error).not.toHaveBeenCalled();
     });
   });
 });
