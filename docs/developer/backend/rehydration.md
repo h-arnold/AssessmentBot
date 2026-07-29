@@ -173,26 +173,43 @@ readRehydrateAssignment(courseId, assignmentId) {
 
 ### Fallback submission reconstruction (`_rehydrateSubmission`)
 
-When `StudentSubmission.fromJSON()` throws (e.g. for a corrupt or unexpected payload), `_rehydrateSubmission` falls back to constructing a new `StudentSubmission` instance from the stored `subObject` fields:
+When `StudentSubmission.fromJSON()` throws (e.g. for a corrupt or unexpected artifact payload), `_rehydrateSubmission` logs a warning and falls back to constructing a `StudentSubmission` directly from the stored `subObject` fields:
 
 ```javascript
 const submission = new StudentSubmission(
   identifier || null,
   inst.assignmentId,
-  subObject.documentId || null, // ← constructor sets documentId to null when absent
+  subObject.documentId || null,
   subObject.studentName || subObject.name || null
 );
-Object.entries(subObject || {}).forEach(([key, value]) => {
-  if (value === undefined) return; // ← guard: preserve constructor defaults
-  if (key === 'updatedAt' && subObject.updatedAt) {
-    submission.updatedAt = value instanceof Date ? value : new Date(value);
-    return;
+if (subObject.createdAt) {
+  submission.createdAt =
+    subObject.createdAt instanceof Date ? subObject.createdAt.toISOString() : subObject.createdAt;
+}
+if (subObject.updatedAt) {
+  submission.updatedAt =
+    subObject.updatedAt instanceof Date ? subObject.updatedAt.toISOString() : subObject.updatedAt;
+}
+const items = subObject.items || {};
+Object.entries(items).forEach(([taskId, itemJson]) => {
+  try {
+    submission.items[taskId] = StudentSubmissionItem.fromJSON(itemJson);
+  } catch (itemError) {
+    ABLogger.getInstance().warn(
+      'rehydrateAssignment: dropped corrupt submission item during resilient reconstruction',
+      { studentId: identifier, taskId, err: itemError }
+    );
   }
-  submission[key] = value;
 });
+inst.submissions.push(submission);
 ```
 
-The `if (value === undefined) return;` guard prevents `undefined` values in the stored payload (e.g. a `documentId` key whose value is `undefined`) from overwriting constructor defaults. The constructor already sets `documentId` to `null` when the stored partial omits the field, so skipping `undefined` preserves the `string | null` contract at the transport boundary.
+Key points:
+
+- `createdAt` / `updatedAt` are converted to ISO strings via `toISOString()` when they are `Date` instances, preserving the `string` transport contract (GAS `google.script.run` prohibits `Date` return values). Non-`Date` values (already ISO strings) are stored as-is.
+- `items` are reconstructed individually through `StudentSubmissionItem.fromJSON`; a single corrupt item is dropped with a warning rather than failing the whole submission.
+- The reconstructor never returns a raw object: if even the fallback throws, the submission is omitted (logged at `error` level) so the model's serialisation contract is preserved and the transport boundary is not handed a plain-object payload.
+- `documentId` is defaulted to `null` by the `StudentSubmission` constructor when the stored partial omits it, preserving the `string | null` contract at the transport boundary.
 
 ## Error Handling
 

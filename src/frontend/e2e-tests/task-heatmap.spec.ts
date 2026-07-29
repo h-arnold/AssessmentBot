@@ -10,6 +10,8 @@ const CLASSES_LABEL = 'Classes';
 const HEATMAP_TABLE_NAME = 'Task Heatmap';
 /** Number of metric sub-columns per task group (Completeness, Accuracy, SPaG). */
 const METRIC_SUBCOLUMN_COUNT = 3;
+/** Number of keyboard steps to nudge the lower band-filter handle up past zero. */
+const LOWER_HANDLE_NUDGE_STEPS = 3;
 /** Human-readable task titles sourced from the warm-up partial (taskColumn.taskTitle). */
 const HEATMAP_TASK_TITLES = ['Task 1', 'Task 2', 'Task 3'];
 
@@ -87,23 +89,25 @@ test.describe('Task Heatmap E2E journey', () => {
     const filterPopup = page.locator('.ant-dropdown:visible').last();
     await expect(filterPopup).toBeVisible();
 
-    // Apply a high-band range filter by nudging the lower slider handle up the
-    // rail. The default `includeNotAttempted` is false, so activating any numeric
-    // range hides Not-Attempted (N) rows while keeping scored rows visible.
+    // Move the lower (min) slider handle up via the keyboard to activate a numeric
+    // range that excludes Not-Attempted (N) rows. The default `includeNotAttempted`
+    // is false, so any active numeric range hides N rows while keeping scored rows
+    // (e.g. Student Two, score 5) visible.
+    //
+    // Keyboard interaction is used deliberately instead of a pixel-positioned
+    // `mouse.click` on the rail: the rail click was position-sensitive and flaked
+    // under parallel `--ci` execution when layout settled late.
     const slider = filterPopup.locator('.ant-slider').first();
     await expect(slider).toBeVisible();
-    const sliderBox = await slider.boundingBox();
-    if (!sliderBox) {
-      throw new Error('Band filter slider bounding box was not found.');
+    const lowerHandle = slider.locator('.ant-slider-handle').first();
+    await expect(lowerHandle).toBeVisible();
+    await lowerHandle.focus();
+    // Step the lower bound up past zero so N (which sits below the numeric range)
+    // is excluded. A few steps guarantee we clear the threshold regardless of the
+    // metric's exact step size.
+    for (let step = 0; step < LOWER_HANDLE_NUDGE_STEPS; step += 1) {
+      await page.keyboard.press('ArrowUp');
     }
-    // Ratios expressed as property values (lint exempt) rather than bare literals.
-    const railRatios = { lowerHandleNudge: 0.12, verticalCenter: 0.5 };
-    // Click near the lower end of the rail so the nearest (lower) handle moves up,
-    // activating a [min, max] range filter that excludes N rows.
-    await page.mouse.click(
-      sliderBox.x + sliderBox.width * railRatios.lowerHandleNudge,
-      sliderBox.y + sliderBox.height * railRatios.verticalCenter
-    );
 
     // Student One (N) should disappear; a scored (green-band) student should remain.
     await expect(table.getByText('Student One')).toHaveCount(0);
