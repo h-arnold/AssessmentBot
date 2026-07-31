@@ -157,6 +157,21 @@ class ABClassAssignmentOps {
    * @throws {Error} If the document is corrupt or the definition cannot be resolved.
    */
   readRehydrateAssignment(courseId, assignmentId) {
+    // NOTE: Validate.requireParams is deliberately NOT used here.
+    // Sibling public ops methods (e.g. persistAssignmentRun) call
+    // Validate.requireParams as a presence guard, but in this method it would be
+    // both redundant and harmful to the error contract:
+    //   1. requireParams only rejects null/undefined. The combined
+    //      `typeof ... !== 'string' || ...trim().length === 0` guard below already
+    //      rejects null, undefined, non-strings, empty strings, and whitespace-only
+    //      strings in a single check, so a separate presence guard adds nothing.
+    //   2. The agreed contract mandates verbatim TypeError messages for invalid
+    //      inputs (e.g. "readRehydrateAssignment: expected courseId to be a
+    //      non-empty string"), and the unit tests assert those messages exactly
+    //      (not by substring). A requireParams failure would instead throw a
+    //      generic Error ("courseId is required for readRehydrateAssignment") for
+    //      null/undefined inputs, silently breaking that contract. The explicit
+    //      guards below preserve the exact TypeError messages the contract requires.
     if (typeof courseId !== 'string' || courseId.trim().length === 0) {
       throw new TypeError('readRehydrateAssignment: expected courseId to be a non-empty string');
     }

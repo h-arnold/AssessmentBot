@@ -843,7 +843,7 @@ submission.items["task_001"] = {
 
 **Method**: `ABClassController.persistAssignmentRun(abClass, assignment)`
 
-- **Location**: `src/backend/y_controllers/ABClassController.js`
+- **Location**: `src/backend/y_controllers/ABClassController/index.js`
 - **Purpose**: Saves assignment data in two forms
 - **Process**:
   1. Saves full assignment to dedicated collection

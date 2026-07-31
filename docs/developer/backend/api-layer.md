@@ -345,7 +345,7 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   See `docs/developer/data-shapes/abclass.md` (§ABClassPartials) for the class partial shape and persistence strategy.
 
 - `getABClass` — reads a stored class document and returns a transport-ready plain object with partial assignments (no Classroom API calls, no storage mutation).
-  Source: `src/backend/z_Api/abclass/abclassRead.js`, via the `getABClass_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.readClass()` in `src/backend/y_controllers/ABClassController.js`.
+  Source: `src/backend/z_Api/abclass/abclassRead.js`, via the `getABClass_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.readClass()` in `src/backend/y_controllers/ABClassController/index.js`.
   Required request field: `classId`.
   Validation: the helper validates `parameters` is a plain object via the shared `validateParametersObject_` primitive. `classId` must be a non-empty, already-trimmed string without path characters (`/`, `\`, `..`) or ASCII control characters (code points 0–31 and 127). Invalid payloads are reported as `INVALID_REQUEST` by the transport.
   Handler behaviour: calls `new ABClassController().readClass(classId)`. Returns the controller's shaped response (produced by the private `_toReadView` method) on success. Catches `ClassNotFoundError` explicitly and returns `null`. Re-throws all other errors.
@@ -401,7 +401,7 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Error codes: `DEFINITION_STALE` (non-retriable, with `details` block), `INVALID_REQUEST` (transport validation failure), `INTERNAL_ERROR` (definition not found, ABClass not found, or other domain errors).
 
 - `getAssignment` — reads a single fully-hydrated assignment by course and assignment id.
-  Source: `src/backend/z_Api/assignmentAssessment.js`, via the `getAssignment_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.readRehydrateAssignment()` in `src/backend/y_controllers/ABClassController.js`.
+  Source: `src/backend/z_Api/assignmentAssessment.js`, via the `getAssignment_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.readRehydrateAssignment()` in `src/backend/y_controllers/ABClassController/index.js`.
   Required request fields: `courseId` and `assignmentId` (both non-empty, already-trimmed strings with no path/control characters).
   Validation: transport enforces `params` object shape, `courseId` and `assignmentId` presence, non-empty trimmed string, and path-character/control-character safety (using `validateSafeTrimmedIdentifier_`, which internally uses `hasControlCharacters_`, from `assignmentDefinitionValidation.js`); the controller's `readRehydrateAssignment` method owns assignment-existence validation and throws `AssignmentNotFoundError` when no document exists.
   Handler behaviour: calls `new ABClassController().readRehydrateAssignment(courseId, assignmentId)` for a read-only load and hydration (no roster refresh, no `loadClass`, no ABClass mutation). Serialises via `assignment.toJSON()`, defensively strips `progressTracker` at the boundary, and applies `DateUtils.deepConvertDates(response)` to recursively convert all `Date` objects to ISO 8601 strings (required because `google.script.run` prohibits `Date` objects in return values). On `AssignmentNotFoundError` thrown by `readRehydrateAssignment`, returns `null` (caught via `instanceof` check); all other errors from `readRehydrateAssignment` propagate.
@@ -418,14 +418,14 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Failure nuance: upstream Classroom fetch failures currently log inside `ClassroomApiClient.fetchAllActiveClassrooms()` and return `[]`, so not every upstream Classroom failure becomes a transport error envelope today.
 
 - `upsertABClass` — creates a new ABClass or refreshes an existing one using Classroom data plus user-supplied metadata.
-  Source: `src/backend/z_Api/abclassMutations.js`, via the `upsertABClass_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.upsertABClass()` in `src/backend/y_controllers/ABClassController.js`.
+  Source: `src/backend/z_Api/abclassMutations.js`, via the `upsertABClass_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.upsertABClass()` in `src/backend/y_controllers/ABClassController/index.js`.
   Required request fields: `classId`, `cohortKey`, `yearGroupKey`, `courseLength`.
   Validation: transport enforces `params` as an object and rejects unsafe `classId` path characters (`..`, `/`, `\`) when `classId` is supplied as a string; controller validation owns required-field completeness, non-empty `classId`, and `courseLength` integer/range checks.
   Write-path behaviour: hydrates `className`, `classOwner`, `teachers`, and `students` from Google Classroom. When the class already exists, the controller refreshes the roster and preserves existing `assignments`.
   Response data: the partial class summary returned by `ABClass.toPartialJSON()`, not the full class document. `students` and `assignments` are not returned.
 
 - `updateABClass` — applies a lightweight patch to editable ABClass fields.
-  Source: `src/backend/z_Api/abclassMutations.js`, via the `updateABClass_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.updateABClass()` in `src/backend/y_controllers/ABClassController.js`.
+  Source: `src/backend/z_Api/abclassMutations.js`, via the `updateABClass_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.updateABClass()` in `src/backend/y_controllers/ABClassController/index.js`.
   Required request field: `classId`.
   Optional patch fields: `cohortKey`, `yearGroupKey`, `courseLength`, `active`.
   Forbidden request fields: `classOwner`, `teachers`, `students`, `assignments`.
@@ -435,7 +435,7 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Response data: the same partial class summary shape used by `upsertABClass()`.
 
 - `deleteABClass` — deletes the stored class record and its class-partial registry row.
-  Source: `src/backend/z_Api/abclassMutations.js`, via the `deleteABClass_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.deleteABClass()` in `src/backend/y_controllers/ABClassController.js`.
+  Source: `src/backend/z_Api/abclassMutations.js`, via the `deleteABClass_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.deleteABClass()` in `src/backend/y_controllers/ABClassController/index.js`.
   Required request field: `classId`.
   Validation: transport enforces `params` as an object and rejects unsafe `classId` path characters when `classId` is a string; controller validation owns missing, non-string, and non-empty `classId` checks.
   Controller behaviour: deletes the full-class collection with `dropCollection(classId)` and removes the matching `abclass_partials` row with `deleteOne({ classId })`.
