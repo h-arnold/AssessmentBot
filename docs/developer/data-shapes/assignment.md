@@ -90,7 +90,7 @@ when no persisted document exists.
 | Aspect           | Detail                                                                                                                                            |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Backend handler  | `src/backend/z_Api/assignmentAssessment.js` → `getAssignment_()`                                                                                  |
-| Controller       | `ABClassController.loadClass()` + `ABClassController.rehydrateAssignment()`                                                                       |
+| Controller       | `ABClassController.readRehydrateAssignment()`                                                                                                     |
 | Response mapper  | — (returns `Assignment.toJSON()` directly with `DateUtils.deepConvertDates()` and defensive `progressTracker` strip)                              |
 | Frontend Zod     | `src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts` → `AssignmentFullResponseSchema` (`AssignmentFullSchema.nullable()`) |
 | Frontend service | `src/frontend/src/services/assignmentAssessment/assignmentAssessmentService.ts` → `getAssignment()`                                               |
@@ -121,11 +121,10 @@ when no persisted document exists.
 
 Key contract notes:
 
-- The response is built from `Assignment.toJSON()`, which calls `AssignmentDefinition.toJSON()` on the embedded definition. If the stored definition is partial (`tasks` is an array), this will throw — callers must ensure the assignment is fully hydrated before calling `getAssignment`.
+- The response is built from `Assignment.toJSON()`, which calls `AssignmentDefinition.toJSON()` on the embedded definition. The `readRehydrateAssignment` handler internally performs full hydration (resolving partial definitions via `getDefinitionByKey`), so a throw only occurs when the authoritative record is itself unresolvable or partial.
 - `progressTracker` is stripped from the response at the transport boundary as defence-in-depth (already omitted by `toJSON()` per JSDoc).
 - `DateUtils.deepConvertDates()` is called on the entire response before returning, because `google.script.run` prohibits `Date` objects in return values.
 - Returns `null` when no persisted assignment document exists for the given `courseId`/`assignmentId` pair (`AssignmentNotFoundError` caught at the transport boundary).
-- The controller threads the same `abClass` instance through `loadClass` and `rehydrateAssignment` because it mutates that instance via `_replaceAssignmentInClass` to keep the assignment cache state coherent.
 
 #### `getAssignment` — Partial variant via ABClass transport
 
@@ -368,7 +367,7 @@ The full and partial schemas on the frontend are:
 
 **Key domain validation rules** (controller-level business logic not visible from schemas):
 
-- `ABClassController.rehydrateAssignment()` ensures the assignment's embedded definition is fully hydrated before `getAssignment` can succeed. If the stored definition is partial, an error is thrown.
+- `ABClassAssignmentOps.readRehydrateAssignment()` ensures the assignment's embedded definition is fully hydrated before returning. It resolves partial definitions (where `tasks` is an array) via `AssignmentDefinitionController.getDefinitionByKey(definitionKey, { form: 'full' })` and throws only when the authoritative record is itself a partial (tasks is still an array after resolution).
 - `AssignmentController.startAssessmentRun()` validates definition freshness: compares Drive modification timestamps for reference and template documents against stored `referenceLastModified`/`templateLastModified`. Throws `DefinitionStaleError` on mismatch.
 - `Assignment._requireImplementation()` enforces subclass implementation of document-type-specific methods.
 - The `Assignment` constructor fetches `assignmentName` from Google Classroom and throws if `creationTime` is missing.
@@ -449,8 +448,10 @@ Sub-entity models:
 Controller:                src/backend/y_controllers/
   ├── AssignmentController.js                   — startAssessmentRun, processSelectedAssignment
   └── ABClassController/
-        └── index.js                            — loadClass, rehydrateAssignment
-        └── ABClassAssignmentOps.js             — _loadFullAssignmentDocument, persistAssignmentRun
+        └── index.js                            — loadClass, readRehydrateAssignment
+        └── ABClassAssignmentOps.js             — readRehydrateAssignment, _loadFullAssignmentDocument,
+                                                  _validateAssignmentDocument, _ensureFullDefinition,
+                                                  _getFullAssignmentCollectionName, persistAssignmentRun
         └── ABClassResponseMapper.js            — _toReadView() transport transformation
 
 API handlers:              src/backend/z_Api/assignmentAssessment.js

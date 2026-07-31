@@ -19,7 +19,6 @@ function startAssessmentRun_(parameters) {
 
   const { definitionKey, assignmentId, courseId } = parameters;
 
-  Validate.requireParams({ definitionKey, assignmentId, courseId }, 'startAssessmentRun');
   Validate.validateNonEmptyString('definitionKey', definitionKey);
   Validate.validateNonEmptyString('assignmentId', assignmentId);
   Validate.validateNonEmptyString('courseId', courseId);
@@ -87,11 +86,6 @@ function validateIdentifier_(value, fieldName) {
  *   `Assignment.toJSON()` already omits it per its JSDoc, but a future model
  *   change could regress, and the explicit strip is the canonical boundary
  *   defence pattern.
- * - The same `abClass` instance returned by `loadClass` is threaded through to
- *   `rehydrateAssignment` (identity, not structural equality) because the
- *   controller mutates that instance via `_replaceAssignmentInClass` to keep
- *   the assignment cache state coherent. Passing a fresh instance would
- *   silently break that cache mutation.
  *
  * @param {*} parameters - Request payload containing courseId and assignmentId.
  * @param {string} parameters.courseId - The Classroom course ID.
@@ -101,8 +95,7 @@ function validateIdentifier_(value, fieldName) {
  * @throws {ApiValidationError} If parameters shape is invalid or identifiers
  *   are missing, not non-empty strings, not trimmed, or contain unsafe
  *   characters.
- * @throws {Error} If `loadClass` fails (class not found), if the assignment
- *   document is corrupt, or if any other `rehydrateAssignment` error occurs.
+ * @throws {Error} If the assignment document is corrupt, or if any other `readRehydrateAssignment` error occurs.
  */
 function getAssignment_(parameters) {
   if (!parameters || typeof parameters !== 'object' || Array.isArray(parameters)) {
@@ -121,8 +114,7 @@ function getAssignment_(parameters) {
 
   try {
     const abClassController = new ABClassController();
-    const abClass = abClassController.loadClass(courseId);
-    const assignment = abClassController.rehydrateAssignment(abClass, assignmentId);
+    const assignment = abClassController.readRehydrateAssignment(courseId, assignmentId);
     const response = assignment.toJSON();
 
     // Defence-in-depth: strip transient, non-`toJSON` fields at the boundary.

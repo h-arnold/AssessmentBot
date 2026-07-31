@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { encodeMetricFilter, decodeMetricFilter } from './metricRangeKey';
+import { encodeMetricFilter, decodeMetricFilter, decodeFilterToRange } from './metricRangeKey';
 
 describe('encodeMetricFilter', () => {
   it('encodes both flags as 0 when false', () => {
@@ -142,5 +142,23 @@ describe('decodeMetricFilter', () => {
     const encoded = encodeMetricFilter(state);
     const decoded = decodeMetricFilter(encoded);
     expect(decoded).toEqual(state);
+  });
+});
+
+describe('decodeFilterToRange', () => {
+  it('returns an empty array when the filter value is null', () => {
+    expect(decodeFilterToRange(null)).toEqual([]);
+  });
+
+  it('returns an empty array when the filter value is empty', () => {
+    expect(decodeFilterToRange([])).toEqual([]);
+  });
+
+  it('returns the decoded [min, max] for a valid key', () => {
+    expect(decodeFilterToRange(['0|5|0|0'])).toEqual([0, 5]);
+  });
+
+  it('returns an empty array when the key cannot be decoded', () => {
+    expect(decodeFilterToRange(['not-a-valid-key'])).toEqual([]);
   });
 });

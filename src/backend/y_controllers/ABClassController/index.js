@@ -426,17 +426,6 @@ class ABClassController {
     return this._assignmentOps._ensureFullDefinition(assignment);
   }
   /**
-   * Delegates to ABClassAssignmentOps._replaceAssignmentInClass.
-   * @param {ABClass} abClass - The class containing the assignments.
-   * @param {string} assignmentId - The assignment ID to replace.
-   * @param {Assignment} hydratedAssignment - The new fully hydrated assignment instance.
-   * @returns {void}
-   * @throws {Error} If the assignment ID is not found in the class.
-   */
-  _replaceAssignmentInClass(abClass, assignmentId, hydratedAssignment) {
-    return this._assignmentOps._replaceAssignmentInClass(abClass, assignmentId, hydratedAssignment);
-  }
-  /**
    * Delegates to ABClassAssignmentOps._getFullAssignmentCollectionName.
    * @param {string} courseId - The Classroom course ID.
    * @param {string} assignmentId - The assignment ID.
@@ -461,14 +450,18 @@ class ABClassController {
   }
 
   /**
-   * Rehydrates an assignment by loading the full version from its dedicated collection.
-   * Delegates to ABClassAssignmentOps.
-   * @param {Object} abClass - The ABClass instance containing the assignment.
+   * Read-only rehydrate: loads and hydrates an assignment directly from its
+   * dedicated collection without needing an ABClass instance.
+   * Performs no roster refresh, no database write, and no ABClass mutation.
+   * Delegates to ABClassAssignmentOps.readRehydrateAssignment.
+   * @param {string} courseId - The Classroom course identifier.
    * @param {string} assignmentId - The assignment ID to rehydrate.
    * @returns {Assignment} The fully hydrated assignment instance.
+   * @throws {TypeError} If courseId or assignmentId is not a non-empty string.
+   * @throws {AssignmentNotFoundError} If no document exists for the given identifiers.
    */
-  rehydrateAssignment(abClass, assignmentId) {
-    return this._assignmentOps.rehydrateAssignment(abClass, assignmentId);
+  readRehydrateAssignment(courseId, assignmentId) {
+    return this._assignmentOps.readRehydrateAssignment(courseId, assignmentId);
   }
 
   // ──────────────────────────────────────────────

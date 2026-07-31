@@ -29,7 +29,7 @@ instance that was loaded from JsonDbApp.
 
 | Component              | Responsibility                                                                                               |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `ABClassController`    | Owns persistence access (JsonDbApp collections) and provides a `rehydrateAssignment` method.                 |
+| `ABClassController`    | Owns persistence access (JsonDbApp collections) and provides a `readRehydrateAssignment` read-only method.   |
 | Assignment Model       | Pure data + business logic. It does **not** know how to talk to storage.                                     |
 | `AssignmentController` | Rehydrates only the assignment currently being processed so the rest of the class payload stays lightweight. |
 
@@ -123,13 +123,14 @@ Classes and primary methods (in call order):
 
 4. **AssignmentController.processSelectedAssignment()**
 
-- For the selected assignment, calls `ABClassController.rehydrateAssignment()` when a full run is needed.
+- Creates a fresh `Assignment` instance from the definition, runs the assessment pipeline, then persists via `ABClassController.persistAssignmentRun()`. Does not rehydrate from the full collection — the full document is written anew on each run.
 
-5. **ABClassController.rehydrateAssignment()**
+5. **ABClassController.readRehydrateAssignment(courseId, assignmentId)**
 
-- Reads the full document from `assign_full_...`.
+- Read-only operation: loads the full document from `assign_full_<courseId>_<assignmentId>` without refreshing roster data or mutating ABClass.
 - Reconstructs the typed instance via `Assignment.fromJSON()`; this cascades into `AssignmentDefinition.fromJSON()`, which in turn strictly hydrates tasks (`_hydrateTasks` requires `taskTitle` and instantiates `TaskDefinition`, whose artifacts are materialised via `ArtifactFactory.fromJSON`).
-- Marks `_hydrationLevel = 'full'` and immutably replaces the partial assignment inside `ABClass.assignments`.
+- Resolves partial definitions via `AssignmentDefinitionController.getDefinitionByKey(definitionKey, { form: 'full' })`.
+- Marks `_hydrationLevel = 'full'` on the returned instance.
 
 6. **Assignment runtime**
 
@@ -141,61 +142,83 @@ Classes and primary methods (in call order):
 - Parser outputs are normalised back into `TaskDefinition` instances before persistence to guarantee `toPartialJSON()` is available and consistent.
 - Artifact redaction now relies on artifact classes’ `toPartialJSON()`; legacy plain-object fallbacks have been removed.
 
-## Rehydration Algorithm (Immutable Replace)
+## Rehydration Algorithm (Read-Only)
 
-We use an **Immutable Replace** pattern to rehydrate assignments. This avoids deep mutation and ensures consistency.
+The read-only rehydration path uses `readRehydrateAssignment` which loads and hydrates an assignment without requiring an ABClass instance or triggering a roster refresh.
 
 ```javascript
-rehydrateAssignment(abClass, assignmentId) {
-  // 1. Read full document
-  const fullDoc = fetchFullAssignment(abClass.classId, assignmentId);
+readRehydrateAssignment(courseId, assignmentId) {
+  // 1. Validate inputs
+  if (typeof courseId !== 'string' || !courseId.trim()) throw new TypeError(...);
+  if (typeof assignmentId !== 'string' || !assignmentId.trim()) throw new TypeError(...);
 
-  // 2. Reconstruct typed instance
-  const fullInstance = Assignment.fromJSON(fullDoc);
-  fullInstance._hydrationLevel = 'full';
+  // 2. Read full document from dedicated collection
+  const document = this._loadFullAssignmentDocument(courseId, assignmentId);
 
-  // 3. Find index in ABClass
-  const idx = abClass.findAssignmentIndex(a => a.assignmentId === assignmentId);
-  if (idx === -1) throw new Error(...);
+  // 3. Validate document structure
+  this._validateAssignmentDocument(document);
 
-  // 4. Replace in array
-  abClass.assignments[idx] = fullInstance;
+  // 4. Reconstruct typed instance
+  const hydratedAssignment = Assignment.fromJSON(document);
 
-  return fullInstance;
+  // 5. Resolve partial definition if needed
+  this._ensureFullDefinition(hydratedAssignment);
+
+  // 6. Mark as full
+  hydratedAssignment._hydrationLevel = 'full';
+
+  return hydratedAssignment;
 }
 ```
 
 ### Fallback submission reconstruction (`_rehydrateSubmission`)
 
-When `StudentSubmission.fromJSON()` throws (e.g. for a corrupt or unexpected payload), `_rehydrateSubmission` falls back to constructing a new `StudentSubmission` instance from the stored `subObject` fields:
+When `StudentSubmission.fromJSON()` throws (e.g. for a corrupt or unexpected artifact payload), `_rehydrateSubmission` logs a warning and falls back to constructing a `StudentSubmission` directly from the stored `subObject` fields:
 
 ```javascript
 const submission = new StudentSubmission(
   identifier || null,
   inst.assignmentId,
-  subObject.documentId || null, // ← constructor sets documentId to null when absent
+  subObject.documentId || null,
   subObject.studentName || subObject.name || null
 );
-Object.entries(subObject || {}).forEach(([key, value]) => {
-  if (value === undefined) return; // ← guard: preserve constructor defaults
-  if (key === 'updatedAt' && subObject.updatedAt) {
-    submission.updatedAt = value instanceof Date ? value : new Date(value);
-    return;
+if (subObject.createdAt) {
+  submission.createdAt =
+    subObject.createdAt instanceof Date ? subObject.createdAt.toISOString() : subObject.createdAt;
+}
+if (subObject.updatedAt) {
+  submission.updatedAt =
+    subObject.updatedAt instanceof Date ? subObject.updatedAt.toISOString() : subObject.updatedAt;
+}
+const items = subObject.items || {};
+Object.entries(items).forEach(([taskId, itemJson]) => {
+  try {
+    submission.items[taskId] = StudentSubmissionItem.fromJSON(itemJson);
+  } catch (itemError) {
+    ABLogger.getInstance().warn(
+      'rehydrateAssignment: dropped corrupt submission item during resilient reconstruction',
+      { studentId: identifier, taskId, err: itemError }
+    );
   }
-  submission[key] = value;
 });
+inst.submissions.push(submission);
 ```
 
-The `if (value === undefined) return;` guard prevents `undefined` values in the stored payload (e.g. a `documentId` key whose value is `undefined`) from overwriting constructor defaults. The constructor already sets `documentId` to `null` when the stored partial omits the field, so skipping `undefined` preserves the `string | null` contract at the transport boundary.
+Key points:
+
+- `createdAt` / `updatedAt` are converted to ISO strings via `toISOString()` when they are `Date` instances, preserving the `string` transport contract (GAS `google.script.run` prohibits `Date` return values). Non-`Date` values (already ISO strings) are stored as-is.
+- `items` are reconstructed individually through `StudentSubmissionItem.fromJSON`; a single corrupt item is dropped with a warning rather than failing the whole submission.
+- The reconstructor never returns a raw object: if even the fallback throws, the submission is omitted (logged at `error` level) so the model's serialisation contract is preserved and the transport boundary is not handed a plain-object payload.
+- `documentId` is defaulted to `null` by the `StudentSubmission` constructor when the stored partial omits it, preserving the `string | null` contract at the transport boundary.
 
 ## Error Handling
 
-| Situation                                       | Action                                           |
-| ----------------------------------------------- | ------------------------------------------------ |
-| Full collection missing                         | Throw `Error` (message includes collection name) |
-| Empty collection                                | Throw (treated same as missing)                  |
-| Corrupt doc (missing `assignmentId` / mismatch) | Throw                                            |
-| Assignment absent in `ABClass.assignments`      | Throw before attempting hydration                |
+| Situation                                         | Action                                           |
+| ------------------------------------------------- | ------------------------------------------------ |
+| Full collection missing                           | Throw `Error` (message includes collection name) |
+| Empty collection                                  | Throw (treated same as missing)                  |
+| Corrupt doc (missing `assignmentId` / mismatch)   | Throw                                            |
+| Assignment absent in `assign_full_...` collection | Throw `AssignmentNotFoundError`                  |
 
 ## Testing Guidelines (Vitest)
 
@@ -216,9 +239,11 @@ The `if (value === undefined) return;` guard prevents `undefined` values in the 
 
 ## Controller Integration Notes
 
-- `AssignmentController.processSelectedAssignment()` now rehydrates the target
-  assignment **only if** that assignment already exists inside the loaded
-  `ABClass`. This ensures we skip the full read on first run (no full record yet)
-  while guaranteeing that reruns work with hydrated data.
+- `readRehydrateAssignment()` is a read-only path used by the `getAssignment_()` API
+  handler. It loads and hydrates an assignment from its dedicated collection
+  without an ABClass instance, roster refresh, or persistence write.
+- `processSelectedAssignment()` (the write path) creates a new `Assignment` instance
+  from the definition and persists via `persistAssignmentRun()`. It does not call
+  `readRehydrateAssignment()` — the full document is written from scratch on each run.
 - Other assignments remain partially hydrated inside `abClass.assignments`, so
   list and cohort views stay light even while one assignment is being processed.

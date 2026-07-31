@@ -141,9 +141,6 @@ Enable each only if its layer appears in the Step 2 classification.
 - **Test-coverage gaps** → `code-reviewer`
   - Changed logic with no corresponding test, per `docs/developer/backend/backend-testing.md` and
     `docs/developer/frontend/frontend-testing.md`. Flag untested paths; do not write tests.
-- **British-English consistency** → `code-reviewer`
-  - American-English leaks in user-facing strings, identifiers, and comments (`color`→`colour`,
-    `center`→`centre`, `normalize`→`normalise`, etc.).
 - **Error-handling robustness** → `code-reviewer`
   - Broad `catch`/swallow, missing rethrow at boundaries, and missing `Validate.requireParams` on
     public backend methods.
@@ -222,10 +219,6 @@ Write the synthesised document to `PR_REVIEW.md` at the repository root. Structu
 ...
 
 ### Test-coverage gaps (optional)
-
-...
-
-### British-English consistency (optional)
 
 ...
 

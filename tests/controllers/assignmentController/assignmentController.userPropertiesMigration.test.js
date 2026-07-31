@@ -213,7 +213,6 @@ describe('AssignmentController - UserProperties Migration', () => {
             findAssignmentIndex: vi.fn().mockReturnValue(-1),
             yearGroupKey: 'year-group-10',
           }),
-          rehydrateAssignment: vi.fn(),
           persistAssignmentRun: vi.fn(),
         };
       });

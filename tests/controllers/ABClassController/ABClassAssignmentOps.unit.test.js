@@ -30,10 +30,8 @@ describe('ABClassAssignmentOps sub-class', () => {
       '_loadFullAssignmentDocument',
       '_validateAssignmentDocument',
       '_ensureFullDefinition',
-      '_replaceAssignmentInClass',
       '_getFullAssignmentCollectionName',
       'persistAssignmentRun',
-      'rehydrateAssignment',
     ];
 
     expectedMethods.forEach((methodName) => {

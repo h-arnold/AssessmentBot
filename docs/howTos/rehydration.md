@@ -34,19 +34,16 @@ abClassController.persistAssignmentRun(abClass, assignment);
 
 3. `persistAssignmentRun` replaces/creates the partial assignment inside the ABClass record and saves the full payload separately.
 
-## 2. Rehydrating an Assignment
+## 2. Rehydrating an Assignment (Read-Only Path)
 
-When you need to access the full details of an assignment (e.g., for re-running an assessment or generating a deep report), use `rehydrateAssignment`.
+When you need to access the full details of an assignment (e.g., for re-running an assessment or generating a deep report), use `readRehydrateAssignment`. This is a read-only operation that does not require an ABClass instance and does not mutate any class record.
 
 ```javascript
 const abClassController = new ABClassController();
-const abClass = abClassController.loadClass(courseId);
-
-// At this point, abClass.assignments contains only partial summaries (content is null)
 
 try {
-  // Fetch full data and replace the partial instance in memory
-  const fullAssignment = abClassController.rehydrateAssignment(abClass, assignmentId);
+  // Fetch full assignment data (read-only, no roster refresh)
+  const fullAssignment = abClassController.readRehydrateAssignment(courseId, assignmentId);
 
   // Now you can access heavy fields
   console.log(fullAssignment.submissions[0].items['task1'].artifact.content);
@@ -56,19 +53,14 @@ try {
 }
 ```
 
-**Important**: Always use the returned `fullAssignment` instance or re-access it from `abClass.assignments` after the call. Old references to the partial assignment object will remain partial.
+The returned assignment is fully hydrated in memory. No ABClass mutation or persistence write occurs.
 
 ### Full hydration chain for assessment objects (on rehydrate)
 
-1. `rehydrateAssignment` reads the full document from `assign_full_<courseId>_<assignmentId>`.
+1. `readRehydrateAssignment` reads the full document from `assign_full_<courseId>_<assignmentId>`.
 2. `Assignment.fromJSON` rebuilds the object graph; `StudentSubmission.fromJSON` and `StudentSubmissionItem.fromJSON` restore assessments **with** reasoning and artifacts **with** content.
 3. `_ensureFullDefinition` swaps in a full `AssignmentDefinition` (from `AssignmentDefinitionController`) if the embedded copy was only partial.
-4. The hydrated assignment replaces the partial one inside `abClass.assignments`, so subsequent pipeline steps see the complete data (scores, reasoning, artifacts).
-
-`AssignmentController.processSelectedAssignment()` automatically calls
-`rehydrateAssignment` for the assignment it is about to process **if and only
-if** that assignment already exists in the class record. First-time runs skip
-the rehydration call, avoiding unnecessary database reads.
+4. The hydrated assignment is returned as a full instance with `_hydrationLevel = 'full'` for subsequent pipeline steps.
 
 ## 3. When to Rehydrate?
 
@@ -91,7 +83,7 @@ If you have existing data created before the `documentType` field was introduced
 
 ## 5. Error Handling Strategies
 
-- **Collection Missing**: If `rehydrateAssignment` throws "Collection not found", it usually means the assignment was never successfully persisted. **Action**: Treat as a fresh run.
+- **Collection Missing**: If `readRehydrateAssignment` throws `AssignmentNotFoundError`, it usually means the assignment was never successfully persisted. **Action**: Treat as a fresh run.
 - **Corrupt Data**: If it throws "Corrupt data", the JSON might be truncated. **Action**: Log error and potentially archive the bad document, then treat as fresh run.
 
 ## 6. Hydration Markers

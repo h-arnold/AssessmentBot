@@ -138,11 +138,6 @@ class AssignmentController {
       const abClassController = new ABClassController();
       const abClass = abClassController.loadClass(courseId);
 
-      const assignmentIndex = abClass.findAssignmentIndex((a) => a.assignmentId === assignmentId);
-      if (assignmentIndex >= 0) {
-        abClassController.rehydrateAssignment(abClass, assignmentId);
-      }
-
       const assignment = this.createAssignmentInstance(definition, courseId, assignmentId);
 
       const students = abClass.students;

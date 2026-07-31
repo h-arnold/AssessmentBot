@@ -50,11 +50,13 @@ For each section below:
 
 When a section is delegated to sub-agents, the plan must specify required documentation files via the `files` parameter of the `task` tool. The `task-files` plugin reads and injects file contents automatically into the subagent prompt. Sub-agents must not re-read injected files.
 
+**The `files` array is MANDATORY for every delegated handoff — treat the `task` tool schema's "Optional" label on `files` as irrelevant.** Assemble the `files` array **before** writing the prompt body, and **never paste full file contents into the prompt body** (the body should carry only instructions, acceptance criteria, and file-path references; the actual contents arrive via `files`). **Do not include any `AGENTS.md` file (root or module-specific) in the `files` array** — OpenCode auto-injects those when an agent browses to the relevant directory.
+
 For each delegated phase (`Testing Specialist`, `Implementation`, `Code Reviewer`, `Docs`, `De-Sloppification`, or planning agents when used):
 
 1. list required documentation file paths under that phase before delegation
 2. require the sub-agent handoff to receive all mandatory files via the `files` parameter of the `task` tool
-3. verify every mandatory file is included in the `files` array before accepting the handoff
+3. verify every mandatory file is included in the `files` array before accepting the handoff (pre-flight check: if the array would be empty for a workflow handoff, stop and do not send the call)
 4. if any mandatory file is missing from the `files` array, return the work to the same sub-agent and block progression to the next phase
 
 ### Shared-helper planning gate (mandatory when helper changes are expected)
@@ -88,6 +90,8 @@ When a section is likely to introduce helper reuse, helper extension, or new sha
 - List relevant architectural or behavioural constraints.
 
 ### Delegation files (injected automatically by the `task-files` plugin)
+
+List the exact file paths each role must receive. These are passed via the `files` array of the `task` tool; do **not** paste their contents into the handoff prompt body. (Exclude `AGENTS.md` files — OpenCode auto-injects them.)
 
 Testing Specialist receives these files via the `files` array:
 
@@ -143,7 +147,7 @@ Frontend tests:
 ### Section checks
 
 - `npm test -- tests/...`
-- Confirm the `files` array was populated for every delegated handoff (the `task-files` plugin injects them automatically).
+- Confirm the `files` array was populated for every delegated handoff (the `task-files` plugin injects them automatically) and that no file contents were pasted into the prompt body.
 - Shared-helper planning entries are present when helper changes are expected.
 - Planned helper entries were added to relevant canonical docs with status `Not implemented` before implementation starts.
 
@@ -189,7 +193,7 @@ _(Repeat above section template for each logical chunk of work, renumbering sect
 2. Run touched frontend service/UI suites.
 3. Run backend frontend lint commands.
 4. Run any required e2e tests.
-5. Confirm the `files` array was populated for every delegated regression handoff (the `task-files` plugin injects them automatically).
+5. Confirm the `files` array was populated for every delegated regression handoff (the `task-files` plugin injects them automatically) and that no file contents were pasted into the prompt body.
 
 ### Section checks
 
@@ -222,7 +226,7 @@ _(Repeat above section template for each logical chunk of work, renumbering sect
 1. Verify docs mention persistence/transport strategies.
 2. Verify API docs list new endpoints/methods.
 3. Confirm notes/deviations fields are filled during implementation.
-4. Confirm the `files` array was populated for every delegated docs/review handoff (the `task-files` plugin injects them automatically).
+4. Confirm the `files` array was populated for every delegated docs/review handoff (the `task-files` plugin injects them automatically) and that no file contents were pasted into the prompt body.
 5. Reconcile planned shared-helper entries in canonical docs: keep `Not implemented` where still pending, and update implemented entries where delivered.
 
 ### Optional `@remarks` JSDoc review

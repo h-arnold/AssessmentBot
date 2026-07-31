@@ -145,49 +145,51 @@ class ABClassAssignmentOps {
   }
 
   /**
-   * Rehydrate an assignment by loading the full version from its dedicated collection.
-   * Updates the ABClass with the hydrated assignment and ensures full definition is available.
+   * Read-only rehydration of an assignment from its dedicated collection.
+   * Loads and hydrates an assignment without requiring an ABClass instance,
+   * triggering a roster refresh, or mutating any class.
    *
-   * @param {ABClass|Object} abClass - An ABClass instance with classId property.
+   * @param {string} courseId - The Classroom course ID.
    * @param {string} assignmentId - The assignment ID to rehydrate.
    * @returns {Assignment} The fully hydrated assignment instance.
-   * @throws {TypeError} If parameters are invalid.
-   * @throws {Error} If the assignment document is not found or corrupt.
+   * @throws {TypeError} If courseId or assignmentId are not non-empty strings.
+   * @throws {AssignmentNotFoundError} If no document exists for the given identifiers.
+   * @throws {Error} If the document is corrupt or the definition cannot be resolved.
    */
-  rehydrateAssignment(abClass, assignmentId) {
-    const logger = ABLogger.getInstance();
-
-    Validate.requireParams({ abClass, assignmentId }, 'rehydrateAssignment');
-
-    if (typeof abClass.classId !== 'string' || abClass.classId.trim().length === 0) {
-      throw new TypeError('rehydrateAssignment: expected abClass.classId to be a non-empty string');
+  readRehydrateAssignment(courseId, assignmentId) {
+    // NOTE: Validate.requireParams is deliberately NOT used here.
+    // Sibling public ops methods (e.g. persistAssignmentRun) call
+    // Validate.requireParams as a presence guard, but in this method it would be
+    // both redundant and harmful to the error contract:
+    //   1. requireParams only rejects null/undefined. The combined
+    //      `typeof ... !== 'string' || ...trim().length === 0` guard below already
+    //      rejects null, undefined, non-strings, empty strings, and whitespace-only
+    //      strings in a single check, so a separate presence guard adds nothing.
+    //   2. The agreed contract mandates verbatim TypeError messages for invalid
+    //      inputs (e.g. "readRehydrateAssignment: expected courseId to be a
+    //      non-empty string"), and the unit tests assert those messages exactly
+    //      (not by substring). A requireParams failure would instead throw a
+    //      generic Error ("courseId is required for readRehydrateAssignment") for
+    //      null/undefined inputs, silently breaking that contract. The explicit
+    //      guards below preserve the exact TypeError messages the contract requires.
+    if (typeof courseId !== 'string' || courseId.trim().length === 0) {
+      throw new TypeError('readRehydrateAssignment: expected courseId to be a non-empty string');
     }
 
     if (typeof assignmentId !== 'string' || assignmentId.trim().length === 0) {
-      throw new TypeError('rehydrateAssignment: expected assignmentId to be a non-empty string');
+      throw new TypeError(
+        'readRehydrateAssignment: expected assignmentId to be a non-empty string'
+      );
     }
 
-    const courseId = abClass.classId;
+    const document = this._loadFullAssignmentDocument(courseId, assignmentId);
+    this._validateAssignmentDocument(document);
 
-    try {
-      const document = this._loadFullAssignmentDocument(courseId, assignmentId);
-      this._validateAssignmentDocument(document);
+    const hydratedAssignment = Assignment.fromJSON(document);
+    this._ensureFullDefinition(hydratedAssignment);
+    hydratedAssignment._hydrationLevel = 'full';
 
-      const hydratedAssignment = Assignment.fromJSON(document);
-      this._ensureFullDefinition(hydratedAssignment);
-      hydratedAssignment._hydrationLevel = 'full';
-
-      this._replaceAssignmentInClass(abClass, assignmentId, hydratedAssignment);
-
-      return hydratedAssignment;
-    } catch (error) {
-      logger.error('rehydrateAssignment failed', {
-        courseId,
-        assignmentId,
-        err: error,
-      });
-      throw error;
-    }
+    return hydratedAssignment;
   }
 
   /**
@@ -212,7 +214,7 @@ class ABClassAssignmentOps {
       );
     }
 
-    logger.info('rehydrateAssignment: loading full assignment', {
+    logger.info('_loadFullAssignmentDocument: loading full assignment', {
       courseId,
       assignmentId,
       collectionName,
@@ -268,32 +270,6 @@ class ABClassAssignmentOps {
           `Failed to rehydrate definition '${definitionKey}': the authoritative record is a partial (tasks is an array).`
         );
       }
-    }
-  }
-
-  /**
-   * Replaces an assignment in the ABClass assignments array.
-   *
-   * @param {ABClass|Object} abClass - The class containing the assignments.
-   * @param {string} assignmentId - The assignment ID to replace.
-   * @param {Assignment} hydratedAssignment - The new fully hydrated assignment instance.
-   * @throws {Error} If the assignment ID is not found in the class.
-   */
-  _replaceAssignmentInClass(abClass, assignmentId, hydratedAssignment) {
-    const logger = ABLogger.getInstance();
-    const index = abClass.findAssignmentIndex((a) => a.assignmentId === assignmentId);
-
-    if (index >= 0) {
-      // eslint-disable-next-line security/detect-object-injection
-      abClass.assignments[index] = hydratedAssignment;
-      logger.info('rehydrateAssignment: replaced assignment in ABClass', {
-        assignmentId,
-        index: index,
-      });
-    } else {
-      throw new Error(
-        `Assignment with ID '${assignmentId}' not found in the provided ABClass instance for course '${abClass.classId}'.`
-      );
     }
   }
 }
