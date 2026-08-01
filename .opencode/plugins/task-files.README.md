@@ -28,17 +28,25 @@ and `output.jsonSchema` (the parse schema). Patching only `parameters` would be 
 parse time, so the model's `files` argument would never reach the next hook.
 
 The parameter is also added to the `required` array of both schemas (an empty array is a valid
-value), so models cannot omit it and silently lose file context. Keep this `required` patch in
-place: it is the mechanism that forces orchestrators to pass the array. Only the provider-facing
-`inputSchema` (built from `jsonSchema`) enforces it, so opencode's internal programmatic task path,
-which constructs args without a `files` key, is unaffected.
+value), so models are told to pass it on every call. The `required` patch is the first line of
+defence, but it is advisory only — models occasionally omit `required` fields. The authoritative
+enforcement is in `tool.execute.before`: when a model-initiated task call arrives without a `files`
+array (missing, `undefined`, or a non-array value), the hook throws. The error surfaces to the
+model as a tool result, so the sub-agent is told to retry with `files: []` rather than proceeding
+with no file context. Empty `files: []` remains valid and leaves the prompt untouched.
+
+opencode's internal programmatic task path (sub-agent launches via `registry.named().task`)
+calls `TaskTool.execute` directly and never triggers `tool.execute.before`, so the rejection does
+not affect internal calls.
 
 ### `tool.execute.before`
 
 Runs after argument parsing but before the built-in tool executes. It:
 
-1. Reads `args.files`. A missing or non-array value is ignored; an **empty array** is stripped from
-   the args (so the built-in tool never sees the stray key) and the prompt is left untouched.
+1. Reads `args.files`. A missing, `undefined`, or non-array value **throws**, rejecting the call
+   so the model must retry with a proper `files` argument (use `files: []` when no injection is
+   needed). An **empty array** is stripped from the args (so the built-in tool never sees the stray
+   key) and the prompt is left untouched.
 2. Normalises each entry to a `{ path, offset, limit }` shape. Entries can be:
    - A plain string (equivalent to `{ path: '<string>', offset: 1 }`).
    - An object with `path` (required), `offset` (1-indexed start line, optional, default 1),

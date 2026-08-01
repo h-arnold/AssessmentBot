@@ -301,7 +301,11 @@ export default (async ({ worktree, directory }) => {
     'tool.execute.before': async (input, output) => {
       if (input.tool !== 'task') return;
       const files = (output.args as { files?: unknown }).files;
-      if (!Array.isArray(files)) return;
+      if (!Array.isArray(files)) {
+        throw new Error(
+          'The `files` parameter is REQUIRED for every task call. Pass `files: []` when the task needs no file injection; files named only in the `prompt` are not injected.'
+        );
+      }
       if (files.length === 0) {
         delete (output.args as { files?: unknown }).files;
         return;

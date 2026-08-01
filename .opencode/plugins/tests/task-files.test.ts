@@ -207,22 +207,40 @@ async function assertNoFilesUntouched(hooks: HookMap): Promise<void> {
 }
 
 /**
- * Scenario 4b: a missing or undefined `files` value is ignored, protecting the internal
- * programmatic task path (which builds task args without a `files` key).
+ * Scenario 4b: a missing or non-array `files` value is REJECTED (the parameter is
+ * mandatory). This protects against silent file-context loss — the call must not proceed.
+ * Internal programmatic task calls (via `registry.named().task`) never reach this hook, so
+ * they are unaffected by the rejection.
  *
  * @param {HookMap} hooks - The loaded plugin hooks.
  */
-async function assertNoFilesKeyIgnored(hooks: HookMap): Promise<void> {
+async function assertMissingFilesRejected(hooks: HookMap): Promise<void> {
   const absent = { args: { prompt: 'ABSENT' } };
-  await hooks['tool.execute.before']({ tool: 'task' }, absent);
-  assert('no-files-key: prompt unchanged', absent.args.prompt === 'ABSENT');
+  let absentThrew = false;
+  try {
+    await hooks['tool.execute.before']({ tool: 'task' }, absent);
+  } catch {
+    absentThrew = true;
+  }
+  assert('no-files-key: missing files rejects the call', absentThrew);
 
   const undefinedFiles = { args: { prompt: 'UNDEFINED', files: undefined } };
-  await hooks['tool.execute.before']({ tool: 'task' }, undefinedFiles);
-  assert(
-    'no-files-key: undefined files left untouched',
-    undefinedFiles.args.prompt === 'UNDEFINED'
-  );
+  let undefinedThrew = false;
+  try {
+    await hooks['tool.execute.before']({ tool: 'task' }, undefinedFiles);
+  } catch {
+    undefinedThrew = true;
+  }
+  assert('no-files-key: undefined files rejects the call', undefinedThrew);
+
+  const wrongType = { args: { prompt: 'WRONG', files: 'src/foo.ts' } };
+  let wrongThrew = false;
+  try {
+    await hooks['tool.execute.before']({ tool: 'task' }, wrongType);
+  } catch {
+    wrongThrew = true;
+  }
+  assert('no-files-key: non-array files rejects the call', wrongThrew);
 }
 
 /**
@@ -486,7 +504,7 @@ export async function run(): Promise<number> {
   await assertOrderedInjection(hooks);
   await assertEscapedPathSkipped(hooks);
   await assertNoFilesUntouched(hooks);
-  await assertNoFilesKeyIgnored(hooks);
+  await assertMissingFilesRejected(hooks);
   await assertOversizedSkipped(hooks);
   await assertStringPathBackCompat(hooks);
   await assertOffsetOnly(hooks);
