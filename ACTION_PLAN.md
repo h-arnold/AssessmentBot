@@ -1,5 +1,24 @@
 # Feature Delivery Plan (TDD-First) — Auth Service
 
+## Execution progress (orchestrator-maintained)
+
+| Section                                 | Status       | Commit               |
+| --------------------------------------- | ------------ | -------------------- |
+| 1. Data-shape doc updates               | ✅ Completed | see Section 1 commit |
+| 2. Backend config AUTH_GROUP_EMAIL      | Pending      | —                    |
+| 3. CacheManager generic methods         | Pending      | —                    |
+| 4. AuthService singleton                | Pending      | —                    |
+| 5. FORBIDDEN + auth gate                | Pending      | —                    |
+| 6. appsscript.json scopes + webapp      | Pending      | —                    |
+| 7. Security audit                       | Pending      | —                    |
+| 8. Triggers/ domain                     | Pending      | —                    |
+| 9. processSelectedAssignment signature  | Pending      | —                    |
+| 10. startProcessing trigger integration | Pending      | —                    |
+| 11. Frontend config transport + form    | Pending      | —                    |
+| 12. Frontend auth features              | Pending      | —                    |
+| Regression + contract hardening         | Pending      | —                    |
+| Documentation + rollout notes           | Pending      | —                    |
+
 ## Read-First Context
 
 1. Read `SPEC.md` v1.8 — the canonical source of truth for behaviour, contracts, and layout rules.
@@ -1265,12 +1284,14 @@ Docs subagent receives:
 - `SPEC.md`
 - `docs/developer/backend/singletons.md`
 - `docs/developer/backend/oauth-scopes.md`
+- `docs/developer/backend/api-layer.md` (add `FORBIDDEN` row to §Error mapping — review finding §1-8)
 - `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
 - `docs/developer/data-shapes/backend-config.md`
 - `docs/developer/data-shapes/transport-envelope.md`
 - `docs/developer/data-shapes/request-store.md`
 - `docs/developer/data-shapes/trigger-context.md`
 - `docs/developer/data-shapes/auth-cache.md`
+- `.opencode/agents/data-shapes-agent.md` (§1 file tree and §2.1 "seven contracts" heading drift — review finding §1-9)
 
 Note: `src/backend/AGENTS.md` is updated by this section but is auto-injected by OpenCode and must **not** be added to the `files` array.
 
@@ -1286,6 +1307,8 @@ Note: `src/backend/AGENTS.md` is updated by this section but is auto-injected by
   - CacheManager entry updated (generic methods delivered).
 - `docs/developer/backend/oauth-scopes.md` updated with note about new scopes (reference `appsscript.json` as canonical source).
 - `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` updated with descriptor type `helperText` extension entry (remove `Not implemented` marker).
+- `docs/developer/backend/api-layer.md` §Error mapping updated with the `FORBIDDEN` row (matches `transport-envelope.md`; review finding §1-8).
+- `.opencode/agents/data-shapes-agent.md` §1 file tree and §2.1 heading reconciled to nine contracts (review finding §1-9).
 - All five data-shape doc entries (`backend-config.md`, `transport-envelope.md`, `request-store.md`, `trigger-context.md`, `auth-cache.md`) have `Not implemented` markers removed (or updated to `Implemented`).
 
 ### Required checks

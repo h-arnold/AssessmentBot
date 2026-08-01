@@ -168,10 +168,12 @@ Provide a concise handoff summary including:
 │   │   │   │   ├── abclass.md                         # Contract: ABClass (+ Teacher, Student)
 │   │   │   │   ├── assignment-definition.md           # Contract: AssignmentDefinition (+ TaskDefinition, BaseTaskArtifact)
 │   │   │   │   ├── assignment.md                      # Contract: Assignment (+ StudentSubmission, StudentSubmissionItem, Assessment, Feedback)
+│   │   │   │   ├── auth-cache.md                      # Contract: AuthCache (CacheService auth entry, 6h TTL)
 │   │   │   │   ├── backend-config.md                  # Contract: BackendConfig
 │   │   │   │   ├── google-classrooms.md               # Contract: GoogleClassrooms (upstream API passthrough)
 │   │   │   │   ├── reference-data.md                  # Contract: Reference Data (cohorts, year groups, assignment topics)
-│   │   │   │   └── request-store.md                   # Contract: RequestStore (internal backend API request tracking)
+│   │   │   │   ├── request-store.md                   # Contract: RequestStore (internal backend API request tracking)
+│   │   │   │   └── trigger-context.md                 # Contract: TriggerContext (Script Properties trigger context)
 │   │   │   ├── oauth-scopes.md                         # OAuth scopes required by the application
 │   │   │   ├── rehydration.md                         # Deserialising and reconstructing objects
 │   │   │   ├── singletons.md                           # Singleton pattern usage

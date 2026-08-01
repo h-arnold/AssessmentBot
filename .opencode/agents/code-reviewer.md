@@ -107,6 +107,8 @@ Consult these resources before and during review. Local docs contain project-spe
 - [Contract: GoogleClassrooms](../../docs/developer/data-shapes/google-classrooms.md)
 - [Contract: Reference Data](../../docs/developer/data-shapes/reference-data.md)
 - [Contract: RequestStore](../../docs/developer/data-shapes/request-store.md)
+- [Contract: AuthCache](../../docs/developer/data-shapes/auth-cache.md)
+- [Contract: TriggerContext](../../docs/developer/data-shapes/trigger-context.md)
 
 You will fail the task unless you review _the entirety_ of the relevant context before editing. Do not skip or shortcut this step.
 
