@@ -37,7 +37,7 @@ const FILES_PARAMETER = {
   type: 'array',
   items: ITEMS_SCHEMA,
   description:
-    "Optional list of file paths (relative to the project worktree) to read and inject into this task's context as compulsory reading. The subagent receives the file contents directly, so it does not need to issue read calls for them. Paths are sorted alphabetically before injection to keep the injected content deterministic for prompt caching. Each entry can be a string path or an object with `path` (string), `offset` (1-indexed start line, optional), and `limit` (max lines, optional).",
+    "List of worktree-relative file paths to inject into this task's context as compulsory reading. Each entry is a string path or an object with `path`, `offset` (1-indexed start line, optional), and `limit` (max lines, optional).",
 };
 
 /**
@@ -298,7 +298,7 @@ export default (async ({ worktree, directory }) => {
 
       output.description =
         (output.description ?? '') +
-        "\n\nSupports an optional `files` array of paths (relative to the project worktree). Each named file is read and concatenated into this task's context as compulsory reading, so the subagent does not need to issue read calls for them. Paths are sorted alphabetically before injection to keep the injected content deterministic for prompt caching.";
+        '\n\nTo give the subagent files, you MUST pass their worktree-relative paths in the `files` array — do not list them in the `prompt`. Files named only in the `prompt` are not injected.';
     },
     'tool.execute.before': async (input, output) => {
       if (input.tool !== 'task') return;
