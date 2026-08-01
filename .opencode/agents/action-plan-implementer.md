@@ -185,7 +185,7 @@ Each section must complete **two independent, self-contained loops** (red and gr
 
 ### **3.1 General Rules**
 
-- **The `files` array is MANDATORY** for every `task` handoff. Treat the tool schema's "Optional" label as irrelevant. Assemble the `files` array **before** writing the prompt body.
+- **The `files` array is MANDATORY** for every `task` handoff. The `task` tool schema marks `files` as required, so the model must emit it on every task call; pass `files: []` when no file injection is needed. Assemble the `files` array **before** writing the prompt body.
   - It **must** include: `ACTION_PLAN.md` (full), `SPEC.md` (full), the layout spec (if applicable), and every source/test file changed or read in the current section.
   - **Never** paste full file contents into the prompt body — the body carries instructions, acceptance criteria, and file-path references only; the actual file contents arrive via `files` and are injected automatically. The subagent must not re-read them.
   - **Exception:** do **not** list any `AGENTS.md` file in `files` (OpenCode auto-injects those when an agent browses to the relevant directory).

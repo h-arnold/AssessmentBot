@@ -37,7 +37,7 @@ const FILES_PARAMETER = {
   type: 'array',
   items: ITEMS_SCHEMA,
   description:
-    "List of worktree-relative file paths to inject into this task's context as compulsory reading. Each entry is a string path or an object with `path`, `offset` (1-indexed start line, optional), and `limit` (max lines, optional).",
+    "REQUIRED for every task call: worktree-relative file paths to inject into this task's context as compulsory reading. Pass an empty array (`files: []`) when the task needs no file injection. Each entry is a string path or an object with `path`, `offset` (1-indexed start line, optional), and `limit` (max lines, optional).",
 };
 
 /**
@@ -243,9 +243,7 @@ function patchJsonSchema(output: unknown): void {
     (output as { jsonSchema?: unknown }).jsonSchema = {
       ...js,
       properties: { ...js.properties, files: FILES_PARAMETER },
-      required: Array.isArray(js.required)
-        ? js.required.filter((name) => name !== 'files')
-        : js.required,
+      required: Array.isArray(js.required) ? [...new Set([...js.required, 'files'])] : ['files'],
     };
   }
 }
@@ -291,19 +289,23 @@ export default (async ({ worktree, directory }) => {
         files: FILES_PARAMETER,
       };
       parameters.required = Array.isArray(parameters.required)
-        ? parameters.required.filter((name) => name !== 'files')
-        : parameters.required;
+        ? [...new Set([...parameters.required, 'files'])]
+        : ['files'];
 
       patchJsonSchema(output);
 
       output.description =
         (output.description ?? '') +
-        '\n\nTo give the subagent files, you MUST pass their worktree-relative paths in the `files` array — do not list them in the `prompt`. Files named only in the `prompt` are not injected.';
+        '\n\nThe `files` parameter is REQUIRED: pass worktree-relative paths to inject as compulsory reading (or `files: []` when none are needed). Do not list file paths in the `prompt`; files named only in the `prompt` are not injected.';
     },
     'tool.execute.before': async (input, output) => {
       if (input.tool !== 'task') return;
       const files = (output.args as { files?: unknown }).files;
-      if (!Array.isArray(files) || files.length === 0) return;
+      if (!Array.isArray(files)) return;
+      if (files.length === 0) {
+        delete (output.args as { files?: unknown }).files;
+        return;
+      }
 
       const ordered = normaliseFiles(files);
 

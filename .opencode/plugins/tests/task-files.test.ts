@@ -138,6 +138,14 @@ async function assertDefinitionHooks(hooks: HookMap): Promise<void> {
     'definition: existing params preserved',
     'prompt' in baseTool.parameters.properties && 'subagent_type' in baseTool.parameters.properties
   );
+  assert(
+    'definition: parameters.required includes files',
+    baseTool.parameters.required.includes('files')
+  );
+  assert(
+    'definition: jsonSchema.required includes files',
+    baseTool.jsonSchema.required.includes('files')
+  );
 }
 
 /**
@@ -195,6 +203,26 @@ async function assertNoFilesUntouched(hooks: HookMap): Promise<void> {
   const none = { args: { prompt: 'PLAIN', files: [] } };
   await hooks['tool.execute.before']({ tool: 'task' }, none);
   assert('no-files: prompt unchanged', none.args.prompt === 'PLAIN');
+  assert('no-files: files arg removed', !('files' in none.args));
+}
+
+/**
+ * Scenario 4b: a missing or undefined `files` value is ignored, protecting the internal
+ * programmatic task path (which builds task args without a `files` key).
+ *
+ * @param {HookMap} hooks - The loaded plugin hooks.
+ */
+async function assertNoFilesKeyIgnored(hooks: HookMap): Promise<void> {
+  const absent = { args: { prompt: 'ABSENT' } };
+  await hooks['tool.execute.before']({ tool: 'task' }, absent);
+  assert('no-files-key: prompt unchanged', absent.args.prompt === 'ABSENT');
+
+  const undefinedFiles = { args: { prompt: 'UNDEFINED', files: undefined } };
+  await hooks['tool.execute.before']({ tool: 'task' }, undefinedFiles);
+  assert(
+    'no-files-key: undefined files left untouched',
+    undefinedFiles.args.prompt === 'UNDEFINED'
+  );
 }
 
 /**
@@ -458,6 +486,7 @@ export async function run(): Promise<number> {
   await assertOrderedInjection(hooks);
   await assertEscapedPathSkipped(hooks);
   await assertNoFilesUntouched(hooks);
+  await assertNoFilesKeyIgnored(hooks);
   await assertOversizedSkipped(hooks);
   await assertStringPathBackCompat(hooks);
   await assertOffsetOnly(hooks);

@@ -1,9 +1,14 @@
 # task-files plugin
 
-A local opencode plugin that extends the built-in `task` tool with an optional `files` argument
+A local opencode plugin that extends the built-in `task` tool with a **required** `files` argument
 (a list of worktree-relative paths). Each named file is read and concatenated into the subagent's
 `prompt` as **compulsory reading**, so the subagent receives the contents directly and does not
 need to issue its own `read` calls for them.
+
+The `files` parameter is added to the tool schema's `required` array, so the model must emit it on
+every task call. Pass `files: []` when a task genuinely needs no file injection; the prompt is then
+left untouched. Making the parameter required is deliberate: subagent handoffs that depend on file
+context fail silently when the array is omitted, so the schema enforces it up front.
 
 ## Why
 
@@ -22,11 +27,18 @@ Advertises the `files` parameter to the model. Because the `task` tool ships an 
 and `output.jsonSchema` (the parse schema). Patching only `parameters` would be silently dropped at
 parse time, so the model's `files` argument would never reach the next hook.
 
+The parameter is also added to the `required` array of both schemas (an empty array is a valid
+value), so models cannot omit it and silently lose file context. Keep this `required` patch in
+place: it is the mechanism that forces orchestrators to pass the array. Only the provider-facing
+`inputSchema` (built from `jsonSchema`) enforces it, so opencode's internal programmatic task path,
+which constructs args without a `files` key, is unaffected.
+
 ### `tool.execute.before`
 
 Runs after argument parsing but before the built-in tool executes. It:
 
-1. Reads `args.files` (ignored unless it is a non-empty array).
+1. Reads `args.files`. A missing or non-array value is ignored; an **empty array** is stripped from
+   the args (so the built-in tool never sees the stray key) and the prompt is left untouched.
 2. Normalises each entry to a `{ path, offset, limit }` shape. Entries can be:
    - A plain string (equivalent to `{ path: '<string>', offset: 1 }`).
    - An object with `path` (required), `offset` (1-indexed start line, optional, default 1),
@@ -57,7 +69,8 @@ Runs after argument parsing but before the built-in tool executes. It:
 
 ## Usage
 
-From any agent that can call `task`, add a `files` array of worktree-relative paths. Each entry can
+From any agent that can call `task`, `files` is a **required** parameter: pass an array of
+worktree-relative paths, or `files: []` when the task needs no file injection. Each entry can
 be a plain string path or an object with `path`, `offset` (1-indexed start line), and `limit`
 (maximum lines to inject).
 

@@ -50,7 +50,7 @@ For each section below:
 
 When a section is delegated to sub-agents, the plan must specify required documentation files via the `files` parameter of the `task` tool. The `task-files` plugin reads and injects file contents automatically into the subagent prompt. Sub-agents must not re-read injected files.
 
-**The `files` array is MANDATORY for every delegated handoff — treat the `task` tool schema's "Optional" label on `files` as irrelevant.** Assemble the `files` array **before** writing the prompt body, and **never paste full file contents into the prompt body** (the body should carry only instructions, acceptance criteria, and file-path references; the actual contents arrive via `files`). **Do not include any `AGENTS.md` file (root or module-specific) in the `files` array** — OpenCode auto-injects those when an agent browses to the relevant directory.
+**The `files` array is MANDATORY for every delegated handoff — the `task` tool schema marks `files` as required, so the model must emit it on every task call; pass `files: []` when no file injection is needed.** Assemble the `files` array **before** writing the prompt body, and **never paste full file contents into the prompt body** (the body should carry only instructions, acceptance criteria, and file-path references; the actual contents arrive via `files`). **Do not include any `AGENTS.md` file (root or module-specific) in the `files` array** — OpenCode auto-injects those when an agent browses to the relevant directory.
 
 For each delegated phase (`Testing Specialist`, `Implementation`, `Code Reviewer`, `Docs`, `De-Sloppification`, or planning agents when used):
 

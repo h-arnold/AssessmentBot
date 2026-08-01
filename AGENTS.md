@@ -48,7 +48,7 @@ Failing to read these files **will** result in you failing your task.
   - `Data Shapes Agent` (`.opencode/agents/data-shapes-agent.md`) for creating and maintaining canonical data-shape specifications across persistence, transport, and validation boundaries.
   - `De-Sloppification` (`.opencode/agents/de-sloppification.md`) for slop review.
 
-Sub-agents are stateless. Every delegated handoff **MUST** populate the `files` array of the `task` tool with the full context the sub-agent needs. This is **mandatory** — treat the tool schema's "Optional" label on `files` as irrelevant for workflow handoffs.
+Sub-agents are stateless. Every delegated handoff **MUST** populate the `files` array of the `task` tool with the full context the sub-agent needs. This is **mandatory** — the `task` tool schema marks `files` as required, so the model must emit it on every task call; pass `files: []` when no file injection is needed.
 
 - The `files` array **must** contain: `SPEC.md`, `ACTION_PLAN.md` (or the relevant section), any frontend layout spec, and every source/test file changed or read in the current section.
 - **Never** paste full file contents into the prompt body. The prompt body should contain only instructions, acceptance criteria, and references (file paths); the actual file contents are delivered via `files` and injected automatically. The subagent must not re-read them.
