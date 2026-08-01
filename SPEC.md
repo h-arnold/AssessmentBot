@@ -2,7 +2,17 @@
 
 ## Status
 
-- Draft v1.7 — tenth-pass review confirmed clean. Spec is ready to build `ACTION_PLAN.md` from. Reconciled with ACTION_PLAN (guard-test static scan and AuthService `isGroupMember` naming) during second-pass planning review.
+- Draft v1.8 — post-planning-review fixes applied (see "Changes from v1.7"). Ready to build `ACTION_PLAN.md` from.
+
+### Changes from v1.7
+
+- **R1 (Backend-enforced compulsory-once-set):** `setAuthGroupEmail('')` is rejected when a non-blank value is already stored; the write path surfaces an aggregated error entry. Changing to a different non-blank email remains allowed. Recovery stays via hand-editing Script Properties (Admin lockout recovery). This is the backend layer of the compulsory-once-set rule; the form-level guard is the frontend layer.
+- **R2 (`checkAccess` method option):** `options` now accepts `method?: string`; when provided, the audit log records the requested method ("method if available"). The API gate passes `request.method`; `triggerHandler` passes the trigger method resolved from context during input validation.
+- **R3 (Gate placement vs method lookup):** The auth gate runs after request validation but **before the allowlist method lookup** and admission phase — non-members receive `FORBIDDEN` uniformly and cannot probe which API methods exist. Gate-exempt status is determined by method name (`getAuthorisationStatus`).
+- **R4 (Guard-test static scan precision):** The static source scan is line-start anchored (`^function`) so indented nested declarations (e.g. `apiConfig.js`'s `safeSet`) are not false-flagged, and it skips backend files that do not exist at scan time (e.g. `triggerHandler.js` before the Triggers/ section).
+- **R5 (GWS-domain prerequisite + staging verification):** `webapp.access: "DOMAIN"` is only valid within a Google Workspace domain; the GWS-domain prerequisite is recorded as an explicit assumption, and a staging verification checklist was added to the rollout steps. **User-confirmed:** the deployment is in a Google Workspace domain; `DOMAIN` is correct.
+- **R6 (Warmup failure rendering):** The gate only denies on `FORBIDDEN`. Non-FORBIDDEN warmup failures render children normally — the gate does not add a second blocking layer; existing per-surface degraded/blocking states apply (confirmed user decision).
+- **R7 (Stale scope comment only):** The stale "DO NOT UPDATE THE REQUIRED SCOPES HERE" comment (references non-existent `src/AdminSheet`/`scripts/sync-appscript.js`) is removed; `REQUIRED_SCOPES` is kept in sync with `appsscript.json` manually. The existing `ScriptApp.requireScopes(ScriptApp.AuthMode.FULL, TriggerController.REQUIRED_SCOPES)` call at `TriggerController.js:17` matches the documented `requireScopes(authMode, oAuthScopes)` signature and is **not** modified (an earlier draft recorded it as a defect; that premise was verified incorrect against the official Apps Script reference and is retracted).
 
 ### Changes from v1.6
 
@@ -24,7 +34,7 @@
 - **I8 (Denial UI):** Hook returns `{ isAuthorised, isLoading }`. Group denial via `FORBIDDEN` → existing error infrastructure.
 - **I9 (Config defaults):** `02_defaults.js` DEFAULTS entry and blank-aware getter added to change lists.
 - **I10 (Helper text):** Descriptor type extended with `helperText` field, hard-coded special cases replaced with declarative rendering.
-- **I11 (Zod schema):** Single canonical form: `z.email().optional()`. Form-level compulsory-once-set. Backend transport always emits `authGroupEmail` with `|| ''` fallback (unchanged from the field-always-present pattern used by every other config field).
+- **I11 (Zod schema, corrected — review finding I3):** Single canonical transport form: `z.union([z.literal(''), z.email()]).optional()` (blank-tolerant — matches C10 and rollout steps 837-838). Form-level compulsory-once-set. Backend transport always emits `authGroupEmail` with `|| ''` fallback (unchanged from the field-always-present pattern used by every other config field). An earlier `z.email().optional()` wording was inconsistent — `z.email()` rejects the `''` the backend always emits, so the union form is mandatory.
 - **I12 (GASPropertiesUtils):** Trigger context storage uses `GASPropertiesUtils`, not raw `PropertiesService`.
 - **I13 (Open questions):** Resolved inline. `webapp.access = "DOMAIN"`.
 - **I14 (Data-shape doc):** Deferred to action plan and docs subagent.
@@ -35,12 +45,12 @@
 ### Changes from fifth-pass review
 
 - **C-a (Flow diagram):** Fixed step-number routing: gate-exempt methods skip to step 7 (admission), not step 6 (GroupsApp check).
-- **C-b (Blank-tolerant validation):** Transport schemas use `z.email().optional()` (field absent = undefined = not configured). Backend transport always emits the field with `|| ''` fallback.
+- **C-b (Blank-tolerant validation, corrected — review finding I3):** Transport schemas use `z.union([z.literal(''), z.email()]).optional()` (blank-tolerant; field absent = undefined = not configured). Backend transport always emits the field with `|| ''` fallback. An earlier `z.email().optional()` wording was inconsistent — `z.email()` rejects the `''` the backend always emits.
 - **I-a (Zod v4 idiom):** Use `z.email()` instead of deprecated `z.string().email()`.
 - **I-b (AppAuthGate provider):** Block around existing `StartupWarmupStateProvider`. `isAuthResolved` → `!isLoading`.
 - **I-c (Hook error):** Hook returns `{ isAuthorised, isLoading, error: string | null }`. Gate has loading/error/OAuth-denied/authorised states.
 - **I-d (Helper text):** Keep `apiKey` dynamic helper case. Add static `helperText` for `authGroupEmail` only.
-- **I-e (Trigger identity):** Record assumption that `getEmail()` is available in trigger context. Bypass auth cache for trigger re-check so revocation is detected immediately.
+- **I-e (Trigger identity, resolved — verified against official Apps Script docs):** `getActiveUser().getEmail()` is available in installable-trigger context because installable triggers run under the account of the user who created them (with that user's authorization). Bypass auth cache for trigger re-check so revocation is detected immediately. Staging verification retained as a prudent check.
 
 ### Changes from sixth-pass review
 
@@ -60,7 +70,7 @@
 
 - **C1 (Stale FORBIDDEN refs):** Removed "handle FORBIDDEN" from Placement, tree, and Testing hook section. FORBIDDEN-via-warmup test added to AppAuthGate tests.
 - **C2 (Transport blank handling):** Read and write transport schemas use `z.union([z.literal(''), z.email()]).optional()` (blank-tolerant, matches `BackendUrlSchema` precedent). `apiConfig.js` always emits the field.
-- **I1 (AuthStatusCard):** Simplified — denial branch subsumed by the gate. Renders only authorised state.
+- **I1 (AuthStatusCard):** Simplified — access-status card (user decision): shows authorised content when granted, generic "You do not have access to this application." when denied (no reason-specific copy). Loading/error states owned by the gate.
 - **I2 (Transient shell):** Decision 10 updated to accept transient shell render before warmup FORBIDDEN retraction. Safety via closed queries.
 - **I3 (Test gaps):** Added gate FORBIDDEN-via-warmup test, form blank-tolerance test, form compulsory-once-set rejection test.
 - **I4 (CacheManager console):** `console.error` → `ABLogger` conversion in scope for `CacheManager.js`.
@@ -87,7 +97,7 @@ This feature is **not** intended to:
 ## Agreed product decisions
 
 1. **Google Groups membership is the authorisation source.** The app checks whether the calling user is a member of a designated Google Group via `GroupsApp.getGroupByEmail()` and `group.hasUser()`. The full member list never touches the script's storage.
-2. **`Session.getActiveUser().getEmail()` is the identity source.** In a web app deployed to "execute as user accessing the web app", this reliably returns the accessing user's email.
+2. **`Session.getActiveUser().getEmail()` is the identity source.** In a web app deployed to "execute as user accessing the web app", this reliably returns the accessing user's email. **Identity-model clarification (review finding C2 — verified against the official Apps Script Session reference):** the docs state `User.getEmail()` returns a blank string when the script runs _without the user's authorization_ — e.g. a web app deployed "execute as me" (`USER_DEPLOYING`), anonymous access, or trigger/custom-function contexts — and that this restriction "generally does not apply" when the deployer belongs to the same Google Workspace domain as the user. The `executeAs: USER_ACCESSING` + `access: DOMAIN` combination mandated here is the valid pairing under which the signed-in domain member's email is available; `DOMAIN` access does not blank the email. The blank-email denial at line 687 remains as defence-in-depth.
 3. **Role mapping is simple for v1.** `OWNER` and `MANAGER` map to `admin`. `MEMBER` maps to `user`. All other roles (`INVITED`, `PENDING`, `BANNED`) are denied.
 4. **Fail closed.** If the email is blank, if GroupsApp throws, if the group does not exist, or if any unexpected error occurs, access is denied.
 5. **Cache for performance.** Auth results are cached in `CacheService` via the existing `CacheManager` (extended with generic methods) with a 6-hour TTL. Only successful authorisations are cached; denials are not cached, so a user who is subsequently added to the group will be authorised on their next request without waiting for cache expiry.
@@ -298,17 +308,17 @@ These functions are internal utilities, validators, or helpers that should never
 12. **Update `TriggerController.createTimeBasedTrigger`** hardcoded recovery path to use `'triggerHandler'` instead of `'triggerProcessSelectedAssignment'`.
 13. **Drain existing triggers** before deploying (they use the old UserProperties model).
 14. **Add documentation** to `src/backend/AGENTS.md` establishing the private-by-default convention and the trigger handler architecture.
-15. **Add a guard test** that extends the existing `tests/api/apiHandler/globalExposure.test.js` helper to scan all backend files for public function declarations and fails if any are found that are not in the explicit allowlist (`apiHandler`, `doGet`, `triggerHandler`).
+15. **Add a guard test** that extends the existing `tests/api/apiHandler/globalExposure.test.js` helper to scan all backend files for public function declarations and fails if any are found that are not in the explicit allowlist (`apiHandler`, `doGet`, `triggerHandler`). The static scan is **line-start anchored** (`^function`) so indented nested declarations (e.g. `apiConfig.js`'s `safeSet`) are not false-flagged, and it skips backend files that do not exist at scan time (e.g. `triggerHandler.js` before the Triggers/ section — `triggerHandler` is allowlisted from the start).
 
 ## Shared-helper planning
 
 The following abstraction decisions are implied by the scope and should be recorded in the relevant canonical docs as planned-only entries marked `Not implemented`:
 
-| Abstraction                                            | Canonical doc                                                                  | Action                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| ------------------------------------------------------ | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Generic `get`/`put`/`remove` methods on `CacheManager` | `docs/developer/backend/singletons.md`                                         | Add a new CacheManager entry describing the extended generic cache methods. Mark as `Not implemented`.                                                                                                                                                                                                                                                                                                                           |
-| Extend descriptor type with `helperText` field         | `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` | Add `helperText?: string` to the form descriptor type. Use static `helperText` for `authGroupEmail` and other static fields. The existing `apiKey` dynamic helper case is preserved as-is. Mark as `Not implemented`.                                                                                                                                                                                                            |
-| Guard test uses static source scan of backend files    | `tests/api/apiHandler/globalExposure.test.js`                                  | Extend the existing global-exposure guard test to scan all backend files using a static source scan (reading file text and flagging top-level `function` declarations without trailing underscore, excluding the three allowlisted entrypoints). This avoids the load-time `class extends`/`ReferenceError` failures inherent to the execution-based `loadModuleGlobalsInVmContext` approach. Action plan §7 adopts this method. |
+| Abstraction                                            | Canonical doc                                                                  | Action                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Generic `get`/`put`/`remove` methods on `CacheManager` | `docs/developer/backend/singletons.md`                                         | Add a new CacheManager entry describing the extended generic cache methods. Mark as `Not implemented`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Extend descriptor type with `helperText` field         | `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` | Add `helperText?: string` to the form descriptor type. Use static `helperText` for `authGroupEmail` and other static fields. The existing `apiKey` dynamic helper case is preserved as-is. Mark as `Not implemented`.                                                                                                                                                                                                                                                                                                                                                                        |
+| Guard test uses static source scan of backend files    | `tests/api/apiHandler/globalExposure.test.js`                                  | Extend the existing global-exposure guard test to scan all backend files using a static source scan (reading file text and flagging top-level `function` declarations without trailing underscore, excluding the three allowlisted entrypoints). The scan is line-start anchored (`^function`) to avoid false-flagging indented nested declarations, and skips backend files that do not exist at scan time. This avoids the load-time `class extends`/`ReferenceError` failures inherent to the execution-based `loadModuleGlobalsInVmContext` approach. Action plan §7 adopts this method. |
 
 ## Domain and contract recommendations
 
@@ -401,7 +411,7 @@ This feature changes several contracts that cross persistence, transport, or val
 - `src/backend/ConfigurationManager/01_configKeysAndSchema.js` — new `AUTH_GROUP_EMAIL` key and schema entry.
 - `src/backend/ConfigurationManager/02_defaults.js` — new `AUTH_GROUP_EMAIL` default entry (`''`).
 - `src/backend/ConfigurationManager/98_ConfigurationManagerClass.js` — new `getAuthGroupEmail()` blank-aware getter.
-- `src/backend/z_Api/z_apiHandler.js` — auth gate added to `ApiDispatcher.handle()` before `_runAdmissionPhase()`. `getAuthorisationStatus` is gate-exempt.
+- `src/backend/z_Api/z_apiHandler.js` — auth gate added to `ApiDispatcher.handle()` after request validation but **before the allowlist method lookup** and `_runAdmissionPhase()`. `getAuthorisationStatus` is gate-exempt (determined by method name).
 - `src/backend/z_Api/apiConfig.js` — add `authGroupEmail` to backend config transport payload.
 - `src/backend/AssignmentProcessor/globals.js` — **DELETE** (all 4 functions deleted, file empty).
 - `src/backend/y_controllers/AssignmentController.js` — update `startProcessing()` and `processSelectedAssignment()` to use new trigger context model.
@@ -573,7 +583,7 @@ Not applicable — this is a boolean gate, not a ranked model.
 
 - **`AppAuthGate`** — the blocking auth gate that wraps the entire app. Must prevent rendering of protected content when unauthorised.
 - **`useAuthorisationStatus`** — the hook that resolves OAuth scope status. Returns `{ isAuthorised, isLoading, error }`.
-- **`AuthStatusCard`** — displays auth status for authorised users. Its denial branch has been subsumed by `AppAuthGate`; it now confirms the authorised state only.
+- **`AuthStatusCard`** — access-status card: shows authorised content when access is granted, and a generic "You do not have access to this application." message when denied (no reason-specific copy; user decision). Loading and error states are owned by `AppAuthGate`.
 - **`BackendSettingsPanel`** — the settings form where admins configure the auth group email.
 
 ### Fields, columns, or visible sections
@@ -583,7 +593,7 @@ Not applicable — this is a boolean gate, not a ranked model.
 - **Auth group email** — a text input field for the Google Group email address.
   - Located in the "Backend" section of the settings form.
   - Validated as an email address using Zod (`z.union([z.literal(''), z.email()])` — blank-tolerant).
-  - **Form-level validation:** Once set, the field is compulsory (cannot be cleared to blank). Lockout recovery requires hand-editing Script Properties.
+  - **Form-level validation:** Once set, the field is compulsory (cannot be cleared to blank). This is enforced in the form submission logic, and the **backend independently rejects clearing** (`setAuthGroupEmail('')` is refused when a value is already stored) as defence-in-depth. Lockout recovery requires hand-editing Script Properties.
   - Helper text: "Enter the email address of the Google Group whose members are allowed to access this application."
 
 ### Rendering rules
@@ -632,7 +642,7 @@ Not applicable — this is a boolean gate, not a ranked model.
 - The group email address is stored as a ScriptProperty via `ConfigurationManager`.
 - The key is `AUTH_GROUP_EMAIL`.
 - The value is the full email address of the Google Group (e.g., `teachers@school.edu`).
-- The field is optional initially but **compulsory once set** (cannot be cleared to blank through the UI).
+- The field is optional initially but **compulsory once set** (cannot be cleared to blank through the UI). The backend also rejects clearing a stored value via `setBackendConfig` (defence-in-depth).
 
 ### Behaviour
 
@@ -684,6 +694,7 @@ Not applicable — this is a boolean gate, not a ranked model.
 - **Auth transport error:** `AppAuthGate` shows the error message with a retry option when `error` is non-null. No protected content is rendered. This is distinct from OAuth denial.
 - **OAuth denial:** `AppAuthGate` shows "Permissions required" message when `isAuthorised === false` and `error === null`. User can reload to grant permissions.
 - **Group denial (FORBIDDEN):** The existing frontend error infrastructure processes the error code. The user sees a permanent "Access denied" message with no recovery path.
+- **Warmup failure (non-FORBIDDEN):** The gate renders children normally — it does not add a second blocking layer. Existing per-surface degraded/blocking states apply (e.g. the startup warmup provider's own failure handling).
 - **Backend config load failure:** The settings panel shows an error alert. The user cannot configure the auth group email until the backend config is loadable.
 
 ### Partial-load or partial-success failure
@@ -717,7 +728,7 @@ Not applicable — auth is a binary gate.
 1. **Create `AuthService` singleton**
    - Location: `src/backend/Utils/AuthService.js`
    - Extends `BaseSingleton`
-   - Methods: `isGroupMember(email)` returns `{ allowed, role }` (private, checks group membership), `checkAccess(options?)` resolves email and delegates to `isGroupMember`. `options` accepts `{ bypassCache?: boolean, requireConfigured?: boolean }`.
+   - Methods: `isGroupMember(email)` returns `{ allowed, role }` (private, checks group membership), `checkAccess(options?)` resolves email and delegates to `isGroupMember`. `options` accepts `{ bypassCache?: boolean, requireConfigured?: boolean, method?: string }`. When `method` is provided it is included in the audit log entry (the "method if available" the audit contract promises); the API gate passes `request.method`, `triggerHandler` passes the trigger method resolved from context.
    - **Naming note:** The private method is named `isGroupMember` to avoid collision with `ScriptAppManager.isAuthorised()` (which checks OAuth scopes, a different concern). SPEC §Naming advises against names ambiguous with the existing OAuth check.
    - **Fail-open when unconfigured:** If `AUTH_GROUP_EMAIL` is empty/missing and `requireConfigured` is not set, `checkAccess()` returns `{ allowed: true, role: 'user' }` with a loud `ABLogger.warn`. This is the bootstrap state for the API gate.
    - **Fail-closed when `requireConfigured` is set:** If `AUTH_GROUP_EMAIL` is empty/missing and `requireConfigured: true`, `checkAccess()` denies with a loud `ABLogger.error`. This is used by `triggerHandler()`.
@@ -735,12 +746,14 @@ Not applicable — auth is a binary gate.
    - Add `getAuthGroupEmail()` blank-aware getter and `setAuthGroupEmail(value)` setter to `98_ConfigurationManagerClass.js`
    - Include `authGroupEmail` in `getBackendConfig_()` transport payload (`apiConfig.js`). **Always emits** `authGroupEmail: getAuthGroupEmail() || ''`.
    - Add `authGroupEmail` to `setBackendConfig_()` write path (`apiConfig.js`): add an entry to the `updates` array calling `configManager.setAuthGroupEmail(value)`
+   - **Backend-enforced compulsory-once-set:** `setAuthGroupEmail('')` (blank) is rejected when a non-blank value is already stored — the stored value is preserved and the write path surfaces an aggregated error entry so the frontend can display the rejection. Changing the value to a different non-blank email remains allowed. This is the backend layer of the compulsory-once-set rule (defence-in-depth; the form-level guard is the frontend layer). Recovery stays via hand-editing Script Properties (see Admin lockout recovery).
 
 4. **Add auth gate to `ApiDispatcher.handle()`**
-   - Insert auth check after request validation, before `_runAdmissionPhase()`
-   - Gate applies to all methods **except** `getAuthorisationStatus` (gate-exempt)
+   - Insert auth check after request validation, **before the allowlist method lookup** and `_runAdmissionPhase()`. Non-members receive `FORBIDDEN` uniformly and cannot probe which API methods exist (`UNKNOWN_METHOD` responses are only observable by authorised callers).
+   - Gate applies to all methods **except** `getAuthorisationStatus` (gate-exempt). Gate-exempt status is determined by the method name before the gate runs — the full allowlist lookup happens after the gate.
    - On denial, return `_failure(requestId, 'FORBIDDEN', 'Access denied.', false)`
    - Do not proceed to admission phase on denial
+   - Pass `method: request.method` to `checkAccess()` so the audit log records the requested method.
    - **Fail-open when `AUTH_GROUP_EMAIL` is empty:** Skip the auth check and proceed to admission with a warning log.
 
 5. **Add `FORBIDDEN` to `API_ERROR_CODE_MAP`**
@@ -758,6 +771,7 @@ Not applicable — auth is a binary gate.
    - Add `"https://www.googleapis.com/auth/userinfo.email"` to `oauthScopes` array
    - Add `"webapp": { "executeAs": "USER_ACCESSING", "access": "DOMAIN" }` block
    - **This is critical:** Without `userinfo.email`, `Session.getActiveUser().getEmail()` returns blank → all users denied. Without `webapp.executeAs = USER_ACCESSING`, the identity model is unreliable.
+   - **GWS-domain prerequisite (assumption):** `webapp.access: "DOMAIN"` is only valid when the deployment belongs to a Google Workspace domain. This feature assumes the project is deployed within such a domain (the same Workspace org as the Google Group). If the project uses a personal (Gmail) identity, DOMAIN access is not applicable — confirm the appropriate `access` value with the deploying admin before rollout.
 
 8. **Secure all public functions that bypass auth**
    - Delete 6 dead wrapper functions (no production callers)
@@ -775,8 +789,8 @@ Not applicable — auth is a binary gate.
    - Convert all `console.*` calls in `TriggerController.js` to `ABLogger` as part of the move
    - Create `triggerHandler.js` — single public entrypoint for all trigger execution
    - Create `triggerMethodHandlers.js` — contains `TRIGGER_METHOD_HANDLERS` registry and handler implementations
-   - `triggerHandler()` validates input before dispatching (missing event → log error, unknown triggerUid → INVALID_REQUEST, unknown method → UNKNOWN_METHOD)
-   - Performs auth check via `AuthService.checkAccess({ bypassCache: true, requireConfigured: true })` before dispatching. **Bypasses the auth cache** (always calls `GroupsApp` directly so that recently revoked users are detected immediately). **Requires group to be configured** (denies if `AUTH_GROUP_EMAIL` is empty — triggers are more restrictive than the API gate which fails open in bootstrap).
+   - `triggerHandler()` validates input before dispatching (missing event → log error via `ABLogger` and abort; unknown triggerUid → log error and abort; unknown method → log error and abort). **No return value is expected from a trigger** — GAS discards trigger return values, so validation failures surface via fail-loud logging + skipping execution (review finding C3)
+   - Performs auth check via `AuthService.checkAccess({ bypassCache: true, requireConfigured: true, method: <trigger method> })` before dispatching. **Bypasses the auth cache** (always calls `GroupsApp` directly so that recently revoked users are detected immediately). **Requires group to be configured** (denies if `AUTH_GROUP_EMAIL` is empty — triggers are more restrictive than the API gate which fails open in bootstrap). The trigger method is resolved from the trigger context during input validation (the unknown-method check reads `context.method`), so it is available at auth time and recorded in the audit log.
    - Retrieves trigger context via `TriggerController.getTriggerContext(triggerUid)`
    - Dispatches to registered handler in `TRIGGER_METHOD_HANDLERS` map, passing params
    - Cleans up trigger context and deletes trigger in `finally` block (only for known, resolved triggerUid)
@@ -810,6 +824,7 @@ Not applicable — auth is a binary gate.
 
 15. **Add guard test for public function exposure**
     - Extend the existing `tests/api/apiHandler/globalExposure.test.js` guard test to scan all backend files for public function declarations (no trailing underscore) using a static source scan (read file text, flag top-level `function` declarations) and fail if any are found that are not in the explicit allowlist (`apiHandler`, `doGet`, `triggerHandler`). The action plan must enumerate backend source files (excluding tests and vendored code) and discover them via a glob over `src/backend/**/*.js` at test time. The three allowlisted entrypoints must be excluded from the scan.
+    - **Scan precision:** anchor the match to line starts (`^function`) so indented nested function declarations (e.g. `apiConfig.js`'s `safeSet`) are not false-flagged; skip backend source files that do not exist at scan time (e.g. `src/backend/Triggers/triggerHandler.js` before the Triggers/ section creates it — `triggerHandler` is allowlisted from the start).
 
 16. **Frontend error handling for `FORBIDDEN`**
     - The frontend must recognise the `FORBIDDEN` error code and display a clear "Access denied" message.
@@ -827,7 +842,7 @@ Not applicable — auth is a binary gate.
 2. **Add `authGroupEmail` to backend settings form schema**
    - File: `src/frontend/src/features/settings/backend/backendSettingsForm.zod.ts`
    - Add `authGroupEmail` to `BackendSettingsFormSchema` as a blank-tolerant email field using `z.union([z.literal(''), z.email()])`. This tolerates an empty string (the `Input` component submits `''` when blank) while validating non-empty values as email addresses. (Note: the `jsonDbRootFolderId` form field uses a different blank-tolerant idiom — `z.union` is chosen here for clarity with the email validator.)
-   - **Form-level validation rule:** Once the field has a value, it cannot be cleared to blank. This is enforced in the form submission logic, not the Zod schema.
+   - **Form-level validation rule:** Once the field has a value, it cannot be cleared to blank. This is enforced in the form submission logic, not the Zod schema. The backend independently enforces the same rule: `setBackendConfig` with a blank `authGroupEmail` while a value is stored is rejected (defence-in-depth).
 
 3. **Map `authGroupEmail` in the form mapper**
    - File: `src/frontend/src/features/settings/backend/backendSettingsFormMapper.ts`
@@ -875,12 +890,12 @@ Not applicable — auth is a binary gate.
    - When `error` is non-null: render a transport error message with retry option. The retry triggers a refetch of the `getAuthorisationStatus` query via `queryClient.invalidateQueries`.
    - When `isAuthorised === false`: render the OAuth "Permissions required" message (recoverable).
    - When `isAuthorised === true`: render children inside `StartupWarmupStateProvider` (protected content).
-   - **Group-denial detection:** The gate reads the warmup query error from the React Query cache. When the error's `code` field equals `'FORBIDDEN'` (from `map-error-to-ui.ts`), the gate switches to a denied render state, replacing children with the access-denied message. Other failures (network errors, transient failures) are handled as errors — the gate only denies on `FORBIDDEN`. This ensures the gate's "access denied" message is shown specifically for group membership denial.
+   - **Group-denial detection:** The gate reads the warmup query error from the React Query cache. When the error's `code` field equals `'FORBIDDEN'` (from `map-error-to-ui.ts`), the gate switches to a denied render state, replacing children with the access-denied message. **Non-FORBIDDEN warmup failures render children normally** — the gate does not add a second blocking layer; existing per-surface degraded/blocking states apply (confirmed user decision). The gate only denies on `FORBIDDEN`, ensuring its "access denied" message is shown specifically for group membership denial.
 
 8. **Update `AuthStatusCard` for new hook contract**
    - File: `src/frontend/src/features/auth/AuthStatusCard.tsx`
    - Update to consume the new hook return shape (`{ isAuthorised, isLoading, error }`)
-   - Simplified: the gate now owns loading/OAuth-denied/error/group-denied states. `AuthStatusCard` renders only the authorised state (its denial branch is subsumed by the gate)
+   - Simplified to an **access-status card (user decision):** shows authorised content when access is granted, and a generic "You do not have access to this application." message when denied — without reason-specific copy. Loading/error states are owned by `AppAuthGate`.
 
 ## Planning handoff notes
 
@@ -889,7 +904,7 @@ Not applicable — auth is a binary gate.
 - **Security critical:** 6 dead wrapper functions must be deleted, 3 empty source files and 2 test files must be deleted, 20 internal functions must be renamed with trailing underscores before the auth service is deployed.
 - **Trigger architecture:** New `triggerHandler()` entrypoint must be created. `TriggerController` must be extended with context storage methods (using `GASPropertiesUtils`). `AssignmentController.startProcessing()` and `processSelectedAssignment()` must be updated to use the new trigger context model.
 - **Trigger migration:** Existing triggers must be drained before deploying (they use the old UserProperties model). After deploying, new triggers will point at `triggerHandler` and use ScriptProperties keyed by triggerUid.
-- **Trigger identity assumption:** `Session.getActiveUser().getEmail()` is assumed to be available in installable-trigger execution context. This must be verified in staging before the fail-closed trigger auth rule is deployed to production.
+- **Trigger identity (verified against official Apps Script docs):** `Session.getActiveUser().getEmail()` is available in installable-trigger execution context — the Installable Triggers guide states installable triggers "always run under the account of the person who created them" with that user's authorization, so the trigger resolves the creating user's email (not blank). Staging verification (rollout step 4) is retained as a prudent pre-production check before the fail-closed trigger auth rule is deployed.
 - **Scopes critical:** Both `groups` and `userinfo.email` scopes must be added to `appsscript.json`. Without `userinfo.email`, `Session.getActiveUser().getEmail()` returns blank → all users denied.
 - **Deployment mode critical:** The `webapp` block must be added to `appsscript.json` with `executeAs: USER_ACCESSING` and `access: DOMAIN`. Without this, the identity model is unreliable.
 - The `CacheManager` extension is a prerequisite for the `AuthService` implementation. The generic methods must be in place before the auth cache logic is built.
@@ -937,7 +952,7 @@ The deployment must follow this sequence to avoid bricking the app:
 - **`TriggerController` context storage tests:** Must verify `storeTriggerContext`, `getTriggerContext`, `clearTriggerContext` methods. Must verify ScriptProperties are keyed by triggerUid via `GASPropertiesUtils`. Must verify concurrent triggers don't collide.
 - **`AssignmentController` trigger integration tests:** Must verify `startProcessing()` stores context via `TriggerController.storeTriggerContext()` with correct method and params. Must verify `processSelectedAssignment()` accepts params directly.
 - **Test harness provisioning:** GAS stubs for `Session`, `GroupsApp`, and `CacheService` must be added to `tests/setupGlobals.js` or `tests/helpers` before the gate can be integrated. Any existing test file whose source is deleted must also be deleted. `tests/utils/triggerController.test.js` must be relocated to `tests/triggers/`.
-- **Public function security guard test:** The existing `tests/api/apiHandler/globalExposure.test.js` must be extended to scan all backend files for public function declarations (no trailing underscore) using a static source scan and fail if any are found that are not in the explicit allowlist (`apiHandler`, `doGet`, `triggerHandler`).
+- **Public function security guard test:** The existing `tests/api/apiHandler/globalExposure.test.js` must be extended to scan all backend files for public function declarations (no trailing underscore) using a static source scan and fail if any are found that are not in the explicit allowlist (`apiHandler`, `doGet`, `triggerHandler`). The scan is line-start anchored (`^function`) so indented nested declarations are not false-flagged, and it skips backend files that do not exist at scan time.
 
 ### Frontend tests
 
@@ -975,9 +990,16 @@ The deployment must follow this sequence to avoid bricking the app:
 1. The admin must create a Google Group and populate it with authorised teachers.
 2. **Verify the `webapp` block** in `appsscript.json` declares `"executeAs": "USER_ACCESSING"` and `"access": "DOMAIN"`. If not, add it and redeploy.
 3. The app must be redeployed after the `groups` and `userinfo.email` scopes are added to `appsscript.json`. Users must re-authorise the app to grant the new scopes (this happens automatically on next access).
-4. **Before deploying:** Drain all existing triggers (they use the old UserProperties model). After deploying, new triggers will point at `triggerHandler` and use ScriptProperties keyed by triggerUid.
-5. On first access after deployment, the auth gate will be in **fail-open** state (no group configured). The admin should immediately set the `AUTH_GROUP_EMAIL` config value via the backend settings form.
-6. Once the group email is configured, the auth gate becomes **fail-closed**. All subsequent requests will require valid group membership.
+4. **Staging verification (before enabling production group enforcement):** In a staging deployment with the new scopes and webapp block, verify:
+   - `Session.getActiveUser().getEmail()` resolves to the signed-in user's email (not blank).
+   - The Google Group resolves via `GroupsApp.getGroupByEmail()` and membership checks behave as expected.
+   - A non-member receives `FORBIDDEN` on a protected API call.
+   - The web app is reachable at DOMAIN level and the signed-in identity is used (`executeAs: USER_ACCESSING`).
+   - **Trigger identity:** `Session.getActiveUser().getEmail()` resolves in installable-trigger execution context (this gates the fail-closed trigger auth rule — see Planning handoff notes).
+     Only after these pass, proceed to production enforcement.
+5. **Before deploying to production:** Drain all existing triggers (they use the old UserProperties model). After deploying, new triggers will point at `triggerHandler` and use ScriptProperties keyed by triggerUid.
+6. On first access after deployment, the auth gate will be in **fail-open** state (no group configured). The admin should immediately set the `AUTH_GROUP_EMAIL` config value via the backend settings form.
+7. Once the group email is configured, the auth gate becomes **fail-closed**. All subsequent requests will require valid group membership.
 
 ### Admin lockout recovery
 

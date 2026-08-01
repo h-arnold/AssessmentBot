@@ -392,3 +392,24 @@ const apiKey = config.getApiKey();
 💡 **Tip**: When in doubt, check existing singleton implementations like `ConfigurationManager`, `ProgressTracker`, or `ABLogger` for reference patterns.
 
 ⚠️ **Remember**: The goal is to have **zero heavy work** happening during file load or object construction. All expensive operations should be deferred until they're actually needed!
+
+---
+
+## 📋 Planned entries (Not implemented)
+
+Entries below are planned-only additions for the Auth Service feature (source: repository-root `SPEC.md` and `ACTION_PLAN.md`). They are recorded here so later implementation agents have a documented target contract. The implementation agent removes the `Not implemented` marker as each entry is delivered.
+
+### AuthService (new singleton)
+
+- Status: `Not implemented`
+- Owning path: `src/backend/Utils/AuthService.js`
+- Decision: new singleton extending `BaseSingleton`.
+- Contract: `checkAccess({ bypassCache?, requireConfigured?, method? })` resolves the caller's email via `Session.getActiveUser().getEmail()`, verifies Google Group membership via `GroupsApp.getGroupByEmail(groupEmail).hasUser(email)`, maps roles (`OWNER`/`MANAGER` → `admin`, `MEMBER` → `user`, others → deny), caches successful results via `CacheManager` (6-hour TTL, key `auth:<groupEmail>:<email>`), and audits all attempts via `ABLogger` (including the provided `method` when supplied). Fail-open when `AUTH_GROUP_EMAIL` is unconfigured unless `requireConfigured` is set (fail-closed for triggers). Denials are never cached.
+- References: SPEC.md §Backend changes (1); ACTION_PLAN.md §4.
+
+### CacheManager generic methods (extended)
+
+- Status: `Not implemented`
+- Owning path: `src/backend/RequestHandlers/CacheManager.js`
+- Decision: extend the existing class with generic `get(key)`, `put(key, value, ttlSeconds)`, `remove(key)` methods. Generic methods handle JSON serialisation/deserialisation internally; `put()` requires an explicit TTL (no default — the AuthService passes its 6-hour TTL at the call site). Existing assessment-specific methods stay unchanged; existing `console.error` calls convert to `ABLogger`.
+- References: SPEC.md §Backend changes (2); ACTION_PLAN.md §3.
