@@ -1,7 +1,7 @@
 ---
 description: Implements code changes in an idiomatic and type-safe manner with validated results
 mode: all
-model: opencode/deepseek-v4-flash-free
+model: openrouter/poolside/laguna-s-2.1:free
 steps: 100
 ---
 

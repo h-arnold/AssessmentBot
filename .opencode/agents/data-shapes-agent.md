@@ -1,7 +1,7 @@
 ---
 description: Creates and maintains canonical data-shape specifications across all persistence, transport, and validation boundaries
 mode: all
-model: opencode/deepseek-v4-flash-free
+model: openrouter/poolside/laguna-s-2.1:free
 steps: 100
 permission:
   edit:
