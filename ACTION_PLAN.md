@@ -2,22 +2,32 @@
 
 ## Execution progress (orchestrator-maintained)
 
-| Section                                 | Status       | Commit               |
-| --------------------------------------- | ------------ | -------------------- |
-| 1. Data-shape doc updates               | ✅ Completed | see Section 1 commit |
-| 2. Backend config AUTH_GROUP_EMAIL      | Pending      | —                    |
-| 3. CacheManager generic methods         | Pending      | —                    |
-| 4. AuthService singleton                | Pending      | —                    |
-| 5. FORBIDDEN + auth gate                | Pending      | —                    |
-| 6. appsscript.json scopes + webapp      | Pending      | —                    |
-| 7. Security audit                       | Pending      | —                    |
-| 8. Triggers/ domain                     | Pending      | —                    |
-| 9. processSelectedAssignment signature  | Pending      | —                    |
-| 10. startProcessing trigger integration | Pending      | —                    |
-| 11. Frontend config transport + form    | Pending      | —                    |
-| 12. Frontend auth features              | Pending      | —                    |
-| Regression + contract hardening         | Pending      | —                    |
-| Documentation + rollout notes           | Pending      | —                    |
+| Section                                 | Status                                                  | Commit             |
+| --------------------------------------- | ------------------------------------------------------- | ------------------ |
+| 1. Data-shape doc updates               | ✅ Completed                                            | `55456dd` (pushed) |
+| 2. Backend config AUTH_GROUP_EMAIL      | 🔄 Red phase complete (review clean); green not started | —                  |
+| 3. CacheManager generic methods         | Pending                                                 | —                  |
+| 4. AuthService singleton                | Pending                                                 | —                  |
+| 5. FORBIDDEN + auth gate                | Pending                                                 | —                  |
+| 6. appsscript.json scopes + webapp      | Pending                                                 | —                  |
+| 7. Security audit                       | Pending                                                 | —                  |
+| 8. Triggers/ domain                     | Pending                                                 | —                  |
+| 9. processSelectedAssignment signature  | Pending                                                 | —                  |
+| 10. startProcessing trigger integration | Pending                                                 | —                  |
+| 11. Frontend config transport + form    | Pending                                                 | —                  |
+| 12. Frontend auth features              | Pending                                                 | —                  |
+| Regression + contract hardening         | Pending                                                 | —                  |
+| Documentation + rollout notes           | Pending                                                 | —                  |
+
+### Execution log (orchestrator-maintained)
+
+- **Section 1** — delivered, reviewed clean, committed `55456dd`, pushed to `feature/auth-service`.
+- **Section 2 (red)** — completed and reviewed clean:
+  - New: `tests/configurationManager/configurationManagerAuthGroupEmail.test.js` (13 model/schema tests), `tests/api/backendConfigAuthGroupEmail.test.js` (3 transport tests).
+  - Modified (test infra): `tests/helpers/backendConfigTestHelpers.js` (+3 lines: `authGroupEmail: ''` value + `getAuthGroupEmail`/`setAuthGroupEmail` vi.fn).
+  - Red suite confirmed failing (16 expected failures) against current code; lint clean.
+- **Section 2 (green)** — **NOT started.** The implementation handoff was interrupted before any production file was modified (`git diff` shows no `src/backend` changes). Resume by re-delegating the green implementation per the section's contract.
+- **Worktree hygiene (2026-08-01):** a concurrent process committed `41aabff` (task-files plugin: `files` schema-required) and has uncommitted model-field edits in `.opencode/agents/{data-shapes-agent,docs,implementation,testing-specialist}.md` (`opencode/deepseek-v4-flash-free` → `openrouter/poolside/laguna-s-2.1:free`). These are **not** part of this feature — do not stage them in feature commits; decide separately.
 
 ## Read-First Context
 

@@ -68,6 +68,7 @@ function createConfigurationManagerMock(
     jsonDbLogLevel: 'INFO',
     jsonDbBackupOnInitialise: false,
     jsonDbRootFolderId: 'folder-123',
+    authGroupEmail: '',
     ...getterValues,
   };
 
@@ -121,6 +122,7 @@ function createConfigurationManagerMock(
         ? values.jsonDbRootFolderId
         : CONFIGURATION_MANAGER_DEFAULTS.JSON_DB_ROOT_FOLDER_ID
     ),
+    getAuthGroupEmail: vi.fn(() => (hasPersistedConfiguration ? values.authGroupEmail : '')),
     setBackendAssessorBatchSize: vi.fn(
       setterImplementations.setBackendAssessorBatchSize || (() => {})
     ),
@@ -136,6 +138,7 @@ function createConfigurationManagerMock(
       setterImplementations.setJsonDbBackupOnInitialise || (() => {})
     ),
     setJsonDbRootFolderId: vi.fn(setterImplementations.setJsonDbRootFolderId || (() => {})),
+    setAuthGroupEmail: vi.fn(setterImplementations.setAuthGroupEmail || (() => {})),
   };
 
   globalThis.ConfigurationManager = {
