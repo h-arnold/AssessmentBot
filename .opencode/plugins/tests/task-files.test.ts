@@ -1,61 +1,123 @@
 import { stat, readFile, writeFile, unlink } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import path from 'node:path';
 import { argv } from 'node:process';
+import { test } from 'node:test';
+import { pathToFileURL } from 'node:url';
 
 // The plugin runs under opencode's bundled Bun, which provides `Bun.file`. This regression
 // harness runs under plain Node (no Bun installed in CI/test shells), so we shim the single
 // Bun API the plugin touches. This is the only place a global shim is acceptable.
-const bunFileShim = (path: string) => ({
-  async stat() {
-    const s = await stat(path);
-    return { size: s.size };
+interface BunFileShim {
+  stat: () => Promise<{ size: number }>;
+  text: () => Promise<string>;
+}
+
+const bunFileShim = (filePath: string): BunFileShim => ({
+  async stat(): Promise<{ size: number }> {
+    const fileStat = await stat(filePath);
+    return { size: fileStat.size };
   },
-  async text() {
-    return await readFile(path, 'utf8');
-  },
+  text: async (): Promise<string> => await readFile(filePath, 'utf8'),
 });
-(globalThis as unknown as { Bun: { file: typeof bunFileShim } }).Bun = { file: bunFileShim };
 
 // Worktree root: three levels up from this file (.opencode/plugins/tests/ -> repo root).
 const WORKTREE =
-  process.env.OPENCODE_WORKTREE ??
-  resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+  process.env.OPENCODE_WORKTREE ?? path.resolve(import.meta.dirname, '..', '..', '..');
 
-type Hook = (input: Record<string, unknown>, output: Record<string, any>) => Promise<void>;
-type HookMap = Record<string, Hook>;
+interface ToolDefinitionHookOutput {
+  parameters: unknown;
+  description?: string;
+}
 
-interface ExecOutput {
+interface ExecuteBeforeHookOutput {
   args: { prompt?: string; files?: unknown };
 }
 
-interface ToolDef {
+type HookMap = {
+  'tool.definition': (input: { toolID: string }, output: ToolDefinitionHookOutput) => Promise<void>;
+  'tool.execute.before': (
+    input: { tool: string },
+    output: ExecuteBeforeHookOutput
+  ) => Promise<void>;
+};
+
+interface ToolDefinition {
   name: string;
   description: string;
-  parameters: { type: string; properties: Record<string, unknown>; required: string[] };
-  jsonSchema: { type: string; properties: Record<string, unknown>; required: string[] };
+  parameters: {
+    type: string;
+    properties: Record<string, unknown>;
+    required: string[];
+  };
+  jsonSchema: {
+    type: string;
+    properties: Record<string, unknown>;
+    required: string[];
+  };
 }
 
+// Shared `lines.txt` fixture, relative to the worktree root.
+const FIXTURE_LINES_PATH = '.opencode/plugins/tests/fixtures/lines.txt';
+
+// Line counts asserted against the shared `lines.txt` fixture.
+const FIXTURE_TOTAL_LINES = 10;
+const FIXTURE_OFFSET_ONLY_LINES = 6;
+const FIXTURE_LIMIT_ONLY_LINES = 3;
+const FIXTURE_OFFSET_AND_LIMIT_LINES = 4;
+const FIXTURE_REMAINING_LINES = 3;
+const FIXTURE_DUPLICATE_RANGES_LINES = 4;
+
+const failedAssertions: string[] = [];
+
+/**
+ * Record the outcome of a single harness assertion.
+ *
+ * @param {string} name - Human-readable description of the assertion being checked.
+ * @param {boolean} condition - Whether the assertion passed.
+ */
+function assert(name: string, condition: boolean): void {
+  if (!condition) {
+    failedAssertions.push(name);
+  }
+}
+
+/**
+ * Load the task-files plugin and return its registered hooks.
+ *
+ * @returns {Promise<HookMap>} The plugin's `tool.definition` and `tool.execute.before` hooks.
+ */
 async function loadPlugin(): Promise<HookMap> {
-  const mod = (await import('../task-files.ts')) as unknown as {
+  // Install the Bun.file shim before importing the plugin module; the plugin only
+  // touches `Bun.file` when its hooks execute, which always happens after this point.
+  Object.assign(globalThis, { Bun: { file: bunFileShim } });
+  const pluginModule = (await import('../task-files.ts')) as unknown as {
     default: (input: { worktree: string; directory: string }) => Promise<HookMap>;
   };
-  return mod.default({ worktree: WORKTREE, directory: WORKTREE });
+  return pluginModule.default({ worktree: WORKTREE, directory: WORKTREE });
 }
 
-let failures = 0;
-function assert(name: string, condition: boolean) {
-  console.log(`${condition ? 'PASS' : 'FAIL'}  ${name}`);
-  if (!condition) failures++;
+/**
+ * Remove a temporary fixture file, ignoring failure so cleanup never masks the assertions.
+ *
+ * @param {string} filePath - Absolute path of the temporary file to remove.
+ */
+async function removeIfExists(filePath: string): Promise<void> {
+  try {
+    await unlink(filePath);
+  } catch {
+    // Best-effort cleanup; the file may already be gone.
+  }
 }
 
-export async function run(): Promise<number> {
-  const hooks = await loadPlugin();
-
-  // 1) tool.definition must advertise `files` in BOTH the model-facing parameters and the
-  //    parse-time jsonSchema (the task tool ships an explicit jsonSchema, so patching only
-  //    parameters would be silently dropped at parse time).
-  const baseTool: ToolDef = {
+/**
+ * Scenario 1: tool.definition must advertise `files` in BOTH the model-facing parameters
+ * and the parse-time jsonSchema (the task tool ships an explicit jsonSchema, so patching
+ * only parameters would be silently dropped at parse time).
+ *
+ * @param {HookMap} hooks - The loaded plugin hooks.
+ */
+async function assertDefinitionHooks(hooks: HookMap): Promise<void> {
+  const baseTool: ToolDefinition = {
     name: 'task',
     description: 'run a task',
     parameters: {
@@ -69,15 +131,21 @@ export async function run(): Promise<number> {
       required: ['prompt'],
     },
   };
-  await hooks['tool.definition']({ toolID: 'task' }, baseTool as unknown as Record<string, any>);
+  await hooks['tool.definition']({ toolID: 'task' }, baseTool);
   assert('definition: parameters.files present', 'files' in baseTool.parameters.properties);
   assert('definition: jsonSchema.files present', 'files' in baseTool.jsonSchema.properties);
   assert(
     'definition: existing params preserved',
     'prompt' in baseTool.parameters.properties && 'subagent_type' in baseTool.parameters.properties
   );
+}
 
-  // 2) tool.execute.before constructs the injected prompt deterministically.
+/**
+ * Scenario 2: tool.execute.before constructs the injected prompt deterministically.
+ *
+ * @param {HookMap} hooks - The loaded plugin hooks.
+ */
+async function assertOrderedInjection(hooks: HookMap): Promise<void> {
   const ordered = {
     args: {
       prompt: 'ACTUAL_INSTRUCTION_TEXT',
@@ -88,7 +156,7 @@ export async function run(): Promise<number> {
       ],
     },
   };
-  await hooks['tool.execute.before']({ tool: 'task' }, ordered as unknown as ExecOutput);
+  await hooks['tool.execute.before']({ tool: 'task' }, ordered);
   const prompt = ordered.args.prompt ?? '';
   assert('execute: files arg removed from args', !('files' in ordered.args));
   assert('execute: contains ALPHA marker', prompt.includes('ALPHA_MARKER_8821'));
@@ -100,82 +168,152 @@ export async function run(): Promise<number> {
   );
   assert('execute: original instruction preserved', prompt.includes('ACTUAL_INSTRUCTION_TEXT'));
   assert('execute: separator present', prompt.includes('\n---\n'));
+}
 
-  // 3) Security: a path escaping the worktree is skipped, never read or injected.
+/**
+ * Scenario 3: a path escaping the worktree is skipped, never read or injected.
+ *
+ * @param {HookMap} hooks - The loaded plugin hooks.
+ */
+async function assertEscapedPathSkipped(hooks: HookMap): Promise<void> {
   const escaped = { args: { prompt: 'X', files: ['../etc/passwd'] } };
-  await hooks['tool.execute.before']({ tool: 'task' }, escaped as unknown as ExecOutput);
+  await hooks['tool.execute.before']({ tool: 'task' }, escaped);
   const escapedPrompt = escaped.args.prompt ?? '';
   assert('security: escape path not injected as content', !escapedPrompt.includes('root:'));
   assert(
     'security: escape produces out-of-worktree skip note',
     escapedPrompt.includes('Skipped') && escapedPrompt.includes('outside the project worktree')
   );
+}
 
-  // 4) No files -> prompt left untouched.
+/**
+ * Scenario 4: no files leaves the prompt untouched.
+ *
+ * @param {HookMap} hooks - The loaded plugin hooks.
+ */
+async function assertNoFilesUntouched(hooks: HookMap): Promise<void> {
   const none = { args: { prompt: 'PLAIN', files: [] } };
-  await hooks['tool.execute.before']({ tool: 'task' }, none as unknown as ExecOutput);
+  await hooks['tool.execute.before']({ tool: 'task' }, none);
   assert('no-files: prompt unchanged', none.args.prompt === 'PLAIN');
+}
 
-  // 5) Oversized file (above the 256 KB cap) is skipped with a note, not injected.
-  const MAX_FILE_BYTES = 256 * 1024;
-  const oversizedRel = '.opencode/plugins/tests/fixtures/oversized.tmp';
-  const oversizedAbs = resolve(WORKTREE, oversizedRel);
-  await writeFile(oversizedAbs, Buffer.alloc(MAX_FILE_BYTES + 1, 0x41));
+/**
+ * Scenario 5: an oversized file (above the 256 KiB cap) is skipped with a note, not injected.
+ *
+ * @param {HookMap} hooks - The loaded plugin hooks.
+ */
+async function assertOversizedSkipped(hooks: HookMap): Promise<void> {
+  const MAX_FILE_BYTES = 262_144;
+  const oversizedRelativePath = '.opencode/plugins/tests/fixtures/oversized.tmp';
+  const oversizedAbsolutePath = path.resolve(WORKTREE, oversizedRelativePath);
+  await writeFile(oversizedAbsolutePath, Buffer.alloc(MAX_FILE_BYTES + 1, 'A'.charCodeAt(0)));
+  const big = { args: { prompt: 'Y', files: [oversizedRelativePath] } };
   try {
-    const big = { args: { prompt: 'Y', files: [oversizedRel] } };
-    await hooks['tool.execute.before']({ tool: 'task' }, big as unknown as ExecOutput);
-    const bigPrompt = big.args.prompt ?? '';
-    assert('oversized: not injected as content', !bigPrompt.includes('AAAA'));
-    assert(
-      'oversized: skip note present',
-      bigPrompt.includes('Skipped') && bigPrompt.includes('byte limit')
-    );
+    await hooks['tool.execute.before']({ tool: 'task' }, big);
   } finally {
-    await unlink(oversizedAbs).catch(() => {});
+    await removeIfExists(oversizedAbsolutePath);
   }
+  const bigPrompt = big.args.prompt ?? '';
+  assert('oversized: not injected as content', !bigPrompt.includes('AAAA'));
+  assert(
+    'oversized: skip note present',
+    bigPrompt.includes('Skipped') && bigPrompt.includes('byte limit')
+  );
+}
 
-  // 6) Backwards compatibility: string paths still work and get line-numbered output.
-  const linesRel = '.opencode/plugins/tests/fixtures/lines.txt';
-  const bc = { args: { prompt: 'S', files: [linesRel] } };
-  await hooks['tool.execute.before']({ tool: 'task' }, bc as unknown as ExecOutput);
+/**
+ * Scenario 6: string paths still work and get line-numbered output.
+ *
+ * @param {HookMap} hooks - The loaded plugin hooks.
+ */
+async function assertStringPathBackCompat(hooks: HookMap): Promise<void> {
+  const bc = { args: { prompt: 'S', files: [FIXTURE_LINES_PATH] } };
+  await hooks['tool.execute.before']({ tool: 'task' }, bc);
   const bcPrompt = bc.args.prompt ?? '';
   assert('backcompat: files arg removed', !('files' in bc.args));
   assert('backcompat: first line numbered', bcPrompt.includes('1: first line'));
   assert('backcompat: tenth line numbered', bcPrompt.includes('10: tenth line'));
-  assert('backcompat: all 10 lines present', (bcPrompt.match(/\n\d+: /g) ?? []).length === 10);
+  assert(
+    'backcompat: all 10 lines present',
+    (bcPrompt.match(/\n\d+: /g) ?? []).length === FIXTURE_TOTAL_LINES
+  );
   assert('backcompat: original instruction preserved', bcPrompt.includes('S'));
+}
 
-  // 7) Object format with offset only (start at line 5).
-  const offsetOnly = { args: { prompt: 'T', files: [{ path: linesRel, offset: 5 }] } };
-  await hooks['tool.execute.before']({ tool: 'task' }, offsetOnly as unknown as ExecOutput);
+/**
+ * Scenario 7: object format with offset only (start at line 5).
+ *
+ * @param {HookMap} hooks - The loaded plugin hooks.
+ */
+async function assertOffsetOnly(hooks: HookMap): Promise<void> {
+  const offsetOnly = {
+    args: { prompt: 'T', files: [{ path: FIXTURE_LINES_PATH, offset: 5 }] },
+  };
+  await hooks['tool.execute.before']({ tool: 'task' }, offsetOnly);
   const offPrompt = offsetOnly.args.prompt ?? '';
   assert('offset-only: starts at line 5', offPrompt.includes('5: fifth line'));
   assert('offset-only: ends at line 10', offPrompt.includes('10: tenth line'));
   assert('offset-only: does not include line 4', !offPrompt.includes('4: fourth line'));
-  assert('offset-only: 6 lines injected', (offPrompt.match(/\n\d+: /g) ?? []).length === 6);
+  assert(
+    'offset-only: 6 lines injected',
+    (offPrompt.match(/\n\d+: /g) ?? []).length === FIXTURE_OFFSET_ONLY_LINES
+  );
+}
 
-  // 8) Object format with limit only (first 3 lines).
-  const limitOnly = { args: { prompt: 'U', files: [{ path: linesRel, limit: 3 }] } };
-  await hooks['tool.execute.before']({ tool: 'task' }, limitOnly as unknown as ExecOutput);
+/**
+ * Scenario 8: object format with limit only (first 3 lines).
+ *
+ * @param {HookMap} hooks - The loaded plugin hooks.
+ */
+async function assertLimitOnly(hooks: HookMap): Promise<void> {
+  const limitOnly = {
+    args: { prompt: 'U', files: [{ path: FIXTURE_LINES_PATH, limit: 3 }] },
+  };
+  await hooks['tool.execute.before']({ tool: 'task' }, limitOnly);
   const limPrompt = limitOnly.args.prompt ?? '';
   assert('limit-only: line 1 present', limPrompt.includes('1: first line'));
   assert('limit-only: line 3 present', limPrompt.includes('3: third line'));
   assert('limit-only: does not include line 4', !limPrompt.includes('4: fourth'));
-  assert('limit-only: 3 lines injected', (limPrompt.match(/\n\d+: /g) ?? []).length === 3);
+  assert(
+    'limit-only: 3 lines injected',
+    (limPrompt.match(/\n\d+: /g) ?? []).length === FIXTURE_LIMIT_ONLY_LINES
+  );
+}
 
-  // 9) Object format with both offset and limit (offset=3, limit=4 -> lines 3-6).
-  const both = { args: { prompt: 'V', files: [{ path: linesRel, offset: 3, limit: 4 }] } };
-  await hooks['tool.execute.before']({ tool: 'task' }, both as unknown as ExecOutput);
+/**
+ * Scenario 9: object format with both offset and limit (offset=3, limit=4 -> lines 3-6).
+ *
+ * @param {HookMap} hooks - The loaded plugin hooks.
+ */
+async function assertOffsetAndLimit(hooks: HookMap): Promise<void> {
+  const both = {
+    args: {
+      prompt: 'V',
+      files: [{ path: FIXTURE_LINES_PATH, offset: 3, limit: 4 }],
+    },
+  };
+  await hooks['tool.execute.before']({ tool: 'task' }, both);
   const bothPrompt = both.args.prompt ?? '';
   assert('both: line 3 present', bothPrompt.includes('3: third line'));
   assert('both: line 6 present', bothPrompt.includes('6: sixth line'));
   assert('both: does not include line 2', !bothPrompt.includes('2: second line'));
   assert('both: does not include line 7', !bothPrompt.includes('7: seventh line'));
-  assert('both: 4 lines injected', (bothPrompt.match(/\n\d+: /g) ?? []).length === 4);
+  assert(
+    'both: 4 lines injected',
+    (bothPrompt.match(/\n\d+: /g) ?? []).length === FIXTURE_OFFSET_AND_LIMIT_LINES
+  );
+}
 
-  // 10) Invalid offset (< 1) produces a skip note.
-  const badOff = { args: { prompt: 'W', files: [{ path: linesRel, offset: 0 }] } };
-  await hooks['tool.execute.before']({ tool: 'task' }, badOff as unknown as ExecOutput);
+/**
+ * Scenario 10: an invalid offset (< 1) produces a skip note.
+ *
+ * @param {HookMap} hooks - The loaded plugin hooks.
+ */
+async function assertInvalidOffset(hooks: HookMap): Promise<void> {
+  const badOff = {
+    args: { prompt: 'W', files: [{ path: FIXTURE_LINES_PATH, offset: 0 }] },
+  };
+  await hooks['tool.execute.before']({ tool: 'task' }, badOff);
   const badOffPrompt = badOff.args.prompt ?? '';
   assert('invalid-offset: skip note present', badOffPrompt.includes('Skipped'));
   assert(
@@ -183,19 +321,34 @@ export async function run(): Promise<number> {
     badOffPrompt.includes('offset must be an integer >= 1')
   );
   assert('invalid-offset: file content not injected', !badOffPrompt.includes('first line'));
+}
 
-  // 11) Invalid limit (< 1) produces a skip note.
-  const badLim = { args: { prompt: 'X', files: [{ path: linesRel, limit: 0 }] } };
-  await hooks['tool.execute.before']({ tool: 'task' }, badLim as unknown as ExecOutput);
+/**
+ * Scenario 11: an invalid limit (< 1) produces a skip note.
+ *
+ * @param {HookMap} hooks - The loaded plugin hooks.
+ */
+async function assertInvalidLimit(hooks: HookMap): Promise<void> {
+  const badLim = {
+    args: { prompt: 'X', files: [{ path: FIXTURE_LINES_PATH, limit: 0 }] },
+  };
+  await hooks['tool.execute.before']({ tool: 'task' }, badLim);
   const badLimPrompt = badLim.args.prompt ?? '';
   assert('invalid-limit: skip note present', badLimPrompt.includes('Skipped'));
   assert('invalid-limit: mentions limit', badLimPrompt.includes('limit must be an integer >= 1'));
   assert('invalid-limit: file content not injected', !badLimPrompt.includes('first line'));
+}
 
-  // 12) Offset beyond EOF produces a skip note, not a silent empty section.
-  const beyondRel = '.opencode/plugins/tests/fixtures/lines.txt';
-  const beyond = { args: { prompt: 'Y', files: [{ path: beyondRel, offset: 20 }] } };
-  await hooks['tool.execute.before']({ tool: 'task' }, beyond as unknown as ExecOutput);
+/**
+ * Scenario 12: an offset beyond EOF produces a skip note, not a silent empty section.
+ *
+ * @param {HookMap} hooks - The loaded plugin hooks.
+ */
+async function assertOffsetBeyondEof(hooks: HookMap): Promise<void> {
+  const beyond = {
+    args: { prompt: 'Y', files: [{ path: FIXTURE_LINES_PATH, offset: 20 }] },
+  };
+  await hooks['tool.execute.before']({ tool: 'task' }, beyond);
   const beyondPrompt = beyond.args.prompt ?? '';
   assert('beyond-eof: skip note present', beyondPrompt.includes('Skipped'));
   assert(
@@ -203,69 +356,130 @@ export async function run(): Promise<number> {
     beyondPrompt.includes('offset 20 exceeds file length (10 lines)')
   );
   assert('beyond-eof: file content not injected', !beyondPrompt.includes('first line'));
+}
 
-  // 13) Limit exceeding remaining lines gracefully injects available lines.
-  const exceed = { args: { prompt: 'Z', files: [{ path: beyondRel, offset: 8, limit: 10 }] } };
-  await hooks['tool.execute.before']({ tool: 'task' }, exceed as unknown as ExecOutput);
+/**
+ * Scenario 13: a limit exceeding the remaining lines gracefully injects available lines.
+ *
+ * @param {HookMap} hooks - The loaded plugin hooks.
+ */
+async function assertLimitExceedingRemaining(hooks: HookMap): Promise<void> {
+  const exceed = {
+    args: {
+      prompt: 'Z',
+      files: [{ path: FIXTURE_LINES_PATH, offset: 8, limit: 10 }],
+    },
+  };
+  await hooks['tool.execute.before']({ tool: 'task' }, exceed);
   const exceedPrompt = exceed.args.prompt ?? '';
   assert('exceed-limit: line 8 present', exceedPrompt.includes('8: eighth line'));
   assert('exceed-limit: line 10 present', exceedPrompt.includes('10: tenth line'));
   assert(
     'exceed-limit: only 3 lines injected',
-    (exceedPrompt.match(/\n\d+: /g) ?? []).length === 3
+    (exceedPrompt.match(/\n\d+: /g) ?? []).length === FIXTURE_REMAINING_LINES
   );
   assert('exceed-limit: does not include line 11', !exceedPrompt.includes('11:'));
+}
 
-  // 14) Empty file produces a skip note.
-  const emptyRel = '.opencode/plugins/tests/fixtures/empty.tmp';
-  const emptyAbs = resolve(WORKTREE, emptyRel);
-  await writeFile(emptyAbs, '');
+/**
+ * Scenario 14: an empty file produces a skip note.
+ *
+ * @param {HookMap} hooks - The loaded plugin hooks.
+ */
+async function assertEmptyFile(hooks: HookMap): Promise<void> {
+  const emptyRelativePath = '.opencode/plugins/tests/fixtures/empty.tmp';
+  const emptyAbsolutePath = path.resolve(WORKTREE, emptyRelativePath);
+  await writeFile(emptyAbsolutePath, '');
+  const empty = { args: { prompt: 'A', files: [emptyRelativePath] } };
   try {
-    const empty = { args: { prompt: 'A', files: [emptyRel] } };
-    await hooks['tool.execute.before']({ tool: 'task' }, empty as unknown as ExecOutput);
-    const emptyPrompt = empty.args.prompt ?? '';
-    assert('empty-file: skip note present', emptyPrompt.includes('Skipped'));
-    assert('empty-file: mentions 0 lines', emptyPrompt.includes('0 lines'));
-    assert('empty-file: no numbered lines injected', !emptyPrompt.match(/\n\d+: /g));
+    await hooks['tool.execute.before']({ tool: 'task' }, empty);
   } finally {
-    await unlink(emptyAbs).catch(() => {});
+    await removeIfExists(emptyAbsolutePath);
   }
+  const emptyPrompt = empty.args.prompt ?? '';
+  assert('empty-file: skip note present', emptyPrompt.includes('Skipped'));
+  assert('empty-file: mentions 0 lines', emptyPrompt.includes('0 lines'));
+  assert('empty-file: no numbered lines injected', !/\n\d+: /.test(emptyPrompt));
+}
 
-  // 15) Duplicate path with different ranges — both ranges are injected.
+/**
+ * Scenario 15: duplicate paths with different ranges — both ranges are injected.
+ *
+ * @param {HookMap} hooks - The loaded plugin hooks.
+ */
+async function assertDuplicateRanges(hooks: HookMap): Promise<void> {
   const dupe = {
     args: {
       prompt: 'B',
       files: [
-        { path: beyondRel, offset: 1, limit: 2 },
-        { path: beyondRel, offset: 5, limit: 2 },
+        { path: FIXTURE_LINES_PATH, offset: 1, limit: 2 },
+        { path: FIXTURE_LINES_PATH, offset: 5, limit: 2 },
       ],
     },
   };
-  await hooks['tool.execute.before']({ tool: 'task' }, dupe as unknown as ExecOutput);
+  await hooks['tool.execute.before']({ tool: 'task' }, dupe);
   const dupePrompt = dupe.args.prompt ?? '';
   assert('dupe-range: first range (line 1) present', dupePrompt.includes('1: first line'));
   assert('dupe-range: first range (line 2) present', dupePrompt.includes('2: second line'));
   assert('dupe-range: second range (line 5) present', dupePrompt.includes('5: fifth line'));
   assert('dupe-range: second range (line 6) present', dupePrompt.includes('6: sixth line'));
-  assert('dupe-range: 4 lines total', (dupePrompt.match(/\n\d+: /g) ?? []).length === 4);
+  assert(
+    'dupe-range: 4 lines total',
+    (dupePrompt.match(/\n\d+: /g) ?? []).length === FIXTURE_DUPLICATE_RANGES_LINES
+  );
   assert('dupe-range: does not include line 3', !dupePrompt.includes('3: third'));
+}
 
-  // 16) Non-integer offset produces a skip note.
-  const nonInt = { args: { prompt: 'C', files: [{ path: beyondRel, offset: 1.5 }] } };
-  await hooks['tool.execute.before']({ tool: 'task' }, nonInt as unknown as ExecOutput);
+/**
+ * Scenario 16: a non-integer offset produces a skip note.
+ *
+ * @param {HookMap} hooks - The loaded plugin hooks.
+ */
+async function assertNonIntegerOffset(hooks: HookMap): Promise<void> {
+  const nonInt = {
+    args: { prompt: 'C', files: [{ path: FIXTURE_LINES_PATH, offset: 1.5 }] },
+  };
+  await hooks['tool.execute.before']({ tool: 'task' }, nonInt);
   const nonIntPrompt = nonInt.args.prompt ?? '';
   assert('nonint-offset: skip note present', nonIntPrompt.includes('Skipped'));
   assert('nonint-offset: mentions non-integer', nonIntPrompt.includes('offset must be an integer'));
   assert('nonint-offset: file content not injected', !nonIntPrompt.includes('first line'));
+}
 
-  console.log(`\n===== CONSTRUCTED PROMPT (case 2) =====\n${prompt}`);
-  console.log(`\n${failures === 0 ? 'ALL ASSERTIONS PASSED' : failures + ' ASSERTION(S) FAILED'}`);
-  return failures;
+/**
+ * Run every regression scenario against the loaded plugin hooks.
+ *
+ * @returns {Promise<number>} The number of failed assertions (zero when the harness is green).
+ */
+export async function run(): Promise<number> {
+  const hooks = await loadPlugin();
+
+  await assertDefinitionHooks(hooks);
+  await assertOrderedInjection(hooks);
+  await assertEscapedPathSkipped(hooks);
+  await assertNoFilesUntouched(hooks);
+  await assertOversizedSkipped(hooks);
+  await assertStringPathBackCompat(hooks);
+  await assertOffsetOnly(hooks);
+  await assertLimitOnly(hooks);
+  await assertOffsetAndLimit(hooks);
+  await assertInvalidOffset(hooks);
+  await assertInvalidLimit(hooks);
+  await assertOffsetBeyondEof(hooks);
+  await assertLimitExceedingRemaining(hooks);
+  await assertEmptyFile(hooks);
+  await assertDuplicateRanges(hooks);
+  await assertNonIntegerOffset(hooks);
+
+  return failedAssertions.length;
 }
 
 const isMain = argv[1] !== undefined && import.meta.url === pathToFileURL(argv[1]).href;
 if (isMain) {
-  run().then((failed) => {
-    process.exitCode = failed === 0 ? 0 : 1;
+  test('task-files plugin regression harness', async () => {
+    const failed = await run();
+    if (failed !== 0) {
+      throw new Error(`${failed} assertion(s) failed: ${failedAssertions.join('; ')}`);
+    }
   });
 }

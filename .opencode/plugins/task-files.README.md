@@ -116,9 +116,14 @@ injected alphabetically by path (then by offset for multiple ranges of the same 
   opencode is restarted.
 - **256 KB per-file cap.** `MAX_FILE_BYTES` guards against blowing up the context window. Raise it
   in `task-files.ts` if you have a deliberate need for larger injections.
-- **Editor type noise.** The plugin references `node:path` and the `Bun` global, both provided by
-  opencode's bundled Bun at runtime. Editors without `@types/node`/`@types/bun` in scope may
-  underline these as unresolved; this is cosmetic and does not affect loading.
+- **Editor type noise.** The plugin references the `Bun` global, provided by opencode's bundled Bun
+  at runtime. Editors without `@types/bun` in scope may underline it as unresolved; this is cosmetic
+  and does not affect loading. (`node:path` is covered by `@types/node`, which the lint-only
+  `.opencode/tsconfig.json` project wires in.)
+- **Lint coverage.** The plugin tree is linted to the same standard as the builder scripts (see
+  `scripts/builder/eslint.config.js` and `docs/developer/builder/TypeScriptAndLintConfigHierarchy.md`);
+  `npm run lint:builder:check` covers `.opencode/plugins`, and the pre-commit hook routes staged plugin
+  files through the same ESLint config.
 
 ## Testing
 
@@ -131,10 +136,11 @@ A deterministic regression harness lives alongside the plugin:
 .opencode/plugins/tests/fixtures/lines.txt
 ```
 
-Run it with plain Node (Bun is not required — the harness shims the single `Bun.file` call):
+The harness runs under `node:test`. Run it with plain Node (Bun is not required — the harness
+shims the single `Bun.file` call):
 
 ```bash
-node --experimental-strip-types .opencode/plugins/tests/task-files.test.ts
+node .opencode/plugins/tests/task-files.test.ts
 ```
 
 It asserts that `tool.definition` adds `files` to both schemas, that `tool.execute.before`

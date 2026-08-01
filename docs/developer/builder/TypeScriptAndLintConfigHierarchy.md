@@ -42,6 +42,9 @@ This project uses a shared configuration tree so TypeScript and linting standard
 - `scripts/builder/tsconfig.json`
   - Extends `../../tsconfig.base.json`.
   - Adds builder specifics only: `rootDir`, `outDir`, JSON module resolution, include paths.
+- `.opencode/tsconfig.json`
+  - Extends `../tsconfig.base.json`.
+  - Lint-only project (`noEmit`) backing the type-aware ESLint rules for the OpenCode plugin tree (`.opencode/plugins/**/*.ts`).
 
 ## ESLint hierarchy
 
@@ -66,6 +69,7 @@ This project uses a shared configuration tree so TypeScript and linting standard
 - `scripts/builder/eslint.config.js`
   - Imports shared TS base rules.
   - Adds builder-only parser/project context for Node-side TypeScript files.
+  - Also governs the OpenCode plugin tree (`.opencode/plugins/**`) via the lint-only `.opencode/tsconfig.json` project.
   - Keeps `security/detect-non-literal-fs-filename` disabled because builder path resolution is already constrained to repo-root-safe paths, plus a small explicit `security/detect-object-injection` allowlist for triaged false positives.
 - `eslint.config.js` (repo root)
   - Remains focused on backend JavaScript linting rules.
@@ -95,7 +99,7 @@ npm run lint:backend
 npm run lint:frontend
 ```
 
-- Builder TypeScript:
+- Builder TypeScript and OpenCode plugins:
 
 ```bash
 npm run lint:builder

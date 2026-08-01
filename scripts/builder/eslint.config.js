@@ -15,6 +15,20 @@ const {
   unicorn: unicornPlugin,
 } = require('../../config/eslint/ts-base-rules.cjs');
 
+const typescriptPlugins = {
+  '@typescript-eslint': tseslint,
+  jsdoc,
+  security: securityPlugin,
+  sonarjs: sonarjsPlugin,
+  unicorn: unicornPlugin,
+};
+
+const sharedRules = {
+  ...tseslint.configs.recommended.rules,
+  ...tsBaseRules,
+  'security/detect-non-literal-fs-filename': 'off',
+};
+
 export default [
   {
     files: ['scripts/builder/src/**/*.ts'],
@@ -27,18 +41,25 @@ export default [
         ecmaVersion: 2024,
       },
     },
-    plugins: {
-      '@typescript-eslint': tseslint,
-      jsdoc,
-      security: securityPlugin,
-      sonarjs: sonarjsPlugin,
-      unicorn: unicornPlugin,
+    plugins: typescriptPlugins,
+    rules: sharedRules,
+  },
+  {
+    // OpenCode plugins are Node-side TypeScript tooling, so they are linted to the
+    // same standard as builder scripts via the shared rule set and the lint-only
+    // .opencode/tsconfig.json project.
+    files: ['.opencode/plugins/**/*.ts'],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        project: '../../.opencode/tsconfig.json',
+        tsconfigRootDir: __dirname,
+        sourceType: 'module',
+        ecmaVersion: 2024,
+      },
     },
-    rules: {
-      ...tseslint.configs.recommended.rules,
-      ...tsBaseRules,
-      'security/detect-non-literal-fs-filename': 'off',
-    },
+    plugins: typescriptPlugins,
+    rules: sharedRules,
   },
   {
     files: [

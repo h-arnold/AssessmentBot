@@ -36,7 +36,7 @@ if [ -n "$LINT_FILES" ]; then
 	# Separate files by component and run appropriate linters
 	BACKEND_FILES=$(echo "$LINT_FILES" | grep -E "^(src/backend|tests)/.*\.js$" || true)
 	FRONTEND_FILES=$(echo "$LINT_FILES" | grep -E "^src/frontend/.*\.(js|ts|tsx|jsx)$" || true)
-	BUILDER_FILES=$(echo "$LINT_FILES" | grep -E "^scripts/builder/.*\.ts$" || true)
+	BUILDER_FILES=$(echo "$LINT_FILES" | grep -E "^(scripts/builder|\.opencode/plugins)/.*\.ts$" || true)
 	
 	# ESLint backend staged files with the main config
 	if [ -n "$BACKEND_FILES" ]; then
