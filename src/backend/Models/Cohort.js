@@ -10,7 +10,7 @@ const MONTHS_IN_YEAR = 12;
  * @param {Date} [now] - Current date reference.
  * @returns {number} Academic-year start year.
  */
-function getCurrentAcademicYearStart(now = new Date()) {
+function getCurrentAcademicYearStart_(now = new Date()) {
   const month = now.getMonth() + 1;
   return month >= ACADEMIC_YEAR_START_MONTH ? now.getFullYear() : now.getFullYear() - 1;
 }
@@ -32,14 +32,14 @@ class Cohort {
     this.key = '';
     this.name = '';
     this.active = true;
-    this.startYear = getCurrentAcademicYearStart();
+    this.startYear = getCurrentAcademicYearStart_();
     this.startMonth = ACADEMIC_YEAR_START_MONTH;
 
     this.setKey(key);
     this.setName(name);
     this.setActive(active === undefined ? true : active);
     this.setStartMonth(startMonth === undefined ? ACADEMIC_YEAR_START_MONTH : startMonth);
-    this.setStartYear(startYear === undefined ? getCurrentAcademicYearStart() : startYear);
+    this.setStartYear(startYear === undefined ? getCurrentAcademicYearStart_() : startYear);
   }
 
   /**
@@ -174,7 +174,7 @@ class Cohort {
       : ACADEMIC_YEAR_START_MONTH;
     const startYear = Object.hasOwn(cohortJson, 'startYear')
       ? cohortJson.startYear
-      : getCurrentAcademicYearStart();
+      : getCurrentAcademicYearStart_();
 
     return new Cohort(cohortJson.key, cohortJson.name, active, startYear, startMonth);
   }

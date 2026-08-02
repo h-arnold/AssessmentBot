@@ -23,13 +23,13 @@ describe('Api/requestStore', () => {
     globalThis.PropertiesService._resetUserProperties();
   });
 
-  // ── createStartedRecord ────────────────────────────────────────────────────
+  // ── createStartedRecord_ ────────────────────────────────────────────────────
 
-  describe('createStartedRecord', () => {
+  describe('createStartedRecord_', () => {
     it('returns a record with requestId, method, status "started", and a numeric startedAtMs', () => {
-      const { createStartedRecord } = loadRequestStoreModule();
+      const { createStartedRecord_ } = loadRequestStoreModule();
 
-      const record = createStartedRecord('req-001', 'getAuthorisationStatus');
+      const record = createStartedRecord_('req-001', 'getAuthorisationStatus');
 
       expect(record.requestId).toBe('req-001');
       expect(record.method).toBe('getAuthorisationStatus');
@@ -39,23 +39,23 @@ describe('Api/requestStore', () => {
     });
 
     it('uses a provided startedAtMs value without calling Date.now again', () => {
-      const { createStartedRecord } = loadRequestStoreModule();
+      const { createStartedRecord_ } = loadRequestStoreModule();
 
-      const record = createStartedRecord('req-001', 'getAuthorisationStatus', 12345);
+      const record = createStartedRecord_('req-001', 'getAuthorisationStatus', 12345);
 
       expect(record.startedAtMs).toBe(12345);
     });
   });
 
-  // ── markSuccess ───────────────────────────────────────────────────────────
+  // ── markSuccess_ ───────────────────────────────────────────────────────────
 
-  describe('markSuccess', () => {
+  describe('markSuccess_', () => {
     it('updates status to "success" and sets a numeric finishedAtMs', () => {
-      const { createStartedRecord, markSuccess } = loadRequestStoreModule();
+      const { createStartedRecord_, markSuccess_ } = loadRequestStoreModule();
 
-      const store = { 'req-002': createStartedRecord('req-002', 'someMethod') };
+      const store = { 'req-002': createStartedRecord_('req-002', 'someMethod') };
 
-      const updated = markSuccess(store, 'req-002');
+      const updated = markSuccess_(store, 'req-002');
 
       expect(updated['req-002'].status).toBe('success');
       expect(updated['req-002'].finishedAtMs).toBeTypeOf('number');
@@ -63,15 +63,15 @@ describe('Api/requestStore', () => {
     });
   });
 
-  // ── markError ─────────────────────────────────────────────────────────────
+  // ── markError_ ─────────────────────────────────────────────────────────────
 
-  describe('markError', () => {
+  describe('markError_', () => {
     it('updates status to "error", sets finishedAtMs, and stores the errorMessage', () => {
-      const { createStartedRecord, markError } = loadRequestStoreModule();
+      const { createStartedRecord_, markError_ } = loadRequestStoreModule();
 
-      const store = { 'req-003': createStartedRecord('req-003', 'someMethod') };
+      const store = { 'req-003': createStartedRecord_('req-003', 'someMethod') };
 
-      const updated = markError(store, 'req-003', 'Something went wrong');
+      const updated = markError_(store, 'req-003', 'Something went wrong');
 
       expect(updated['req-003'].status).toBe('error');
       expect(updated['req-003'].finishedAtMs).toBeTypeOf('number');
@@ -80,14 +80,14 @@ describe('Api/requestStore', () => {
     });
   });
 
-  // ── loadStore ─────────────────────────────────────────────────────────────
+  // ── loadStore_ ─────────────────────────────────────────────────────────────
 
-  describe('loadStore', () => {
+  describe('loadStore_', () => {
     it('returns an empty object when the user property is absent (getProperty returns null)', () => {
-      const { loadStore } = loadRequestStoreModule();
+      const { loadStore_ } = loadRequestStoreModule();
 
       // PropertiesService returns null by default — no prior setProperty call.
-      const store = loadStore();
+      const store = loadStore_();
 
       expect(store).toEqual({});
     });
@@ -98,9 +98,9 @@ describe('Api/requestStore', () => {
         'not-valid-json{{{'
       );
 
-      const { loadStore } = loadRequestStoreModule();
+      const { loadStore_ } = loadRequestStoreModule();
 
-      const store = loadStore();
+      const store = loadStore_();
 
       expect(store).toEqual({});
     });
@@ -111,9 +111,9 @@ describe('Api/requestStore', () => {
         JSON.stringify([1, 2, 3])
       );
 
-      const { loadStore } = loadRequestStoreModule();
+      const { loadStore_ } = loadRequestStoreModule();
 
-      const store = loadStore();
+      const store = loadStore_();
 
       expect(store).toEqual({});
     });
@@ -124,26 +124,26 @@ describe('Api/requestStore', () => {
         JSON.stringify(42)
       );
 
-      const { loadStore } = loadRequestStoreModule();
+      const { loadStore_ } = loadRequestStoreModule();
 
-      const store = loadStore();
+      const store = loadStore_();
 
       expect(store).toEqual({});
     });
   });
 
-  // ── saveStore ─────────────────────────────────────────────────────────────
+  // ── saveStore_ ─────────────────────────────────────────────────────────────
 
-  describe('saveStore', () => {
-    it('persists the store so a subsequent loadStore returns the same data', () => {
-      const { createStartedRecord, saveStore, loadStore } = loadRequestStoreModule();
+  describe('saveStore_', () => {
+    it('persists the store so a subsequent loadStore_ returns the same data', () => {
+      const { createStartedRecord_, saveStore_, loadStore_ } = loadRequestStoreModule();
 
-      const record = createStartedRecord('req-save-01', 'someMethod');
+      const record = createStartedRecord_('req-save-01', 'someMethod');
       const store = { 'req-save-01': record };
 
-      saveStore(store);
+      saveStore_(store);
 
-      const reloaded = loadStore();
+      const reloaded = loadStore_();
 
       expect(reloaded).toEqual(store);
     });
@@ -154,42 +154,48 @@ describe('Api/requestStore', () => {
   describe('validation guards', () => {
     it.each([
       [
-        'createStartedRecord — missing requestId',
-        () => loadRequestStoreModule().createStartedRecord(null, 'someMethod'),
+        'createStartedRecord_ — missing requestId',
+        () => loadRequestStoreModule().createStartedRecord_(null, 'someMethod'),
       ],
       [
-        'createStartedRecord — missing method',
-        () => loadRequestStoreModule().createStartedRecord('req-v-1', null),
+        'createStartedRecord_ — missing method',
+        () => loadRequestStoreModule().createStartedRecord_('req-v-1', null),
       ],
       [
-        'createStartedRecord — invalid startedAtMs',
-        () => loadRequestStoreModule().createStartedRecord('req-v-1', 'someMethod', Number.NaN),
+        'createStartedRecord_ — invalid startedAtMs',
+        () => loadRequestStoreModule().createStartedRecord_('req-v-1', 'someMethod', Number.NaN),
       ],
-      ['saveStore — missing store', () => loadRequestStoreModule().saveStore(null)],
-      ['markSuccess — missing store', () => loadRequestStoreModule().markSuccess(null, 'req-v-1')],
-      ['markSuccess — missing requestId', () => loadRequestStoreModule().markSuccess({}, null)],
+      ['saveStore_ — missing store', () => loadRequestStoreModule().saveStore_(null)],
       [
-        'markError — missing store',
-        () => loadRequestStoreModule().markError(null, 'req-v-1', 'msg'),
+        'markSuccess_ — missing store',
+        () => loadRequestStoreModule().markSuccess_(null, 'req-v-1'),
       ],
-      ['markError — missing requestId', () => loadRequestStoreModule().markError({}, null, 'msg')],
+      ['markSuccess_ — missing requestId', () => loadRequestStoreModule().markSuccess_({}, null)],
       [
-        'markError — missing errorMessage',
-        () => loadRequestStoreModule().markError({}, 'req-v-1', null),
+        'markError_ — missing store',
+        () => loadRequestStoreModule().markError_(null, 'req-v-1', 'msg'),
       ],
       [
-        'pruneStaleEntries — invalid referenceTimeMs',
-        () => loadRequestStoreModule().pruneStaleEntries({}, 1000, Number.POSITIVE_INFINITY),
+        'markError_ — missing requestId',
+        () => loadRequestStoreModule().markError_({}, null, 'msg'),
       ],
-      ['compactStore — missing store', () => loadRequestStoreModule().compactStore(null)],
+      [
+        'markError_ — missing errorMessage',
+        () => loadRequestStoreModule().markError_({}, 'req-v-1', null),
+      ],
+      [
+        'pruneStaleEntries_ — invalid referenceTimeMs',
+        () => loadRequestStoreModule().pruneStaleEntries_({}, 1000, Number.POSITIVE_INFINITY),
+      ],
+      ['compactStore_ — missing store', () => loadRequestStoreModule().compactStore_(null)],
     ])('throws when validation fails: %s', (_label, fn) => {
       expect(fn).toThrow();
     });
   });
 
-  describe('pruneStaleEntries', () => {
+  describe('pruneStaleEntries_', () => {
     it('removes only started entries older than the provided reference time threshold', () => {
-      const { pruneStaleEntries } = loadRequestStoreModule();
+      const { pruneStaleEntries_ } = loadRequestStoreModule();
 
       const store = {
         'stale-req-1': {
@@ -206,16 +212,16 @@ describe('Api/requestStore', () => {
         },
       };
 
-      pruneStaleEntries(store, 5000, 7000);
+      pruneStaleEntries_(store, 5000, 7000);
 
       expect(store['stale-req-1']).toBeUndefined();
       expect(store['recent-req-1']).toBeDefined();
     });
   });
 
-  describe('compactStore', () => {
+  describe('compactStore_', () => {
     it('removes oldest completed (success/error) entries first when count exceeds MAX_TRACKED_REQUESTS', () => {
-      const { compactStore } = loadRequestStoreModule();
+      const { compactStore_ } = loadRequestStoreModule();
 
       // Build a store of exactly MAX_TRACKED_REQUESTS completed entries,
       // with ascending startedAtMs so req-completed-0 is the oldest.
@@ -239,7 +245,7 @@ describe('Api/requestStore', () => {
         startedAtMs: 9999,
       };
 
-      const compacted = compactStore(store);
+      const compacted = compactStore_(store);
 
       expect(Object.keys(compacted).length).toBeLessThanOrEqual(MAX_TRACKED_REQUESTS);
       // The active entry must survive.
@@ -249,7 +255,7 @@ describe('Api/requestStore', () => {
     });
 
     it('preserves all active (started) entries even when the store is at MAX_TRACKED_REQUESTS', () => {
-      const { compactStore } = loadRequestStoreModule();
+      const { compactStore_ } = loadRequestStoreModule();
 
       // Fill the store entirely with active entries.
       const store = {};
@@ -263,7 +269,7 @@ describe('Api/requestStore', () => {
         };
       }
 
-      const compacted = compactStore(store);
+      const compacted = compactStore_(store);
 
       for (let i = 0; i < MAX_TRACKED_REQUESTS; i++) {
         expect(compacted[`req-active-${i}`]).toBeDefined();

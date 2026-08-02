@@ -17,7 +17,7 @@ const JSON_DB_LOG_LEVELS = Object.freeze(['DEBUG', 'INFO', 'WARN', 'ERROR']);
  * @returns {string} Validated uppercase log level.
  * @throws {Error} If the value is empty or not one of the supported levels.
  */
-function validateLogLevel(label, value) {
+function validateLogLevel_(label, value) {
   Validate.validateNonEmptyString(label, value);
   const upper = value.trim().toUpperCase();
   if (!JSON_DB_LOG_LEVELS.includes(upper)) {
@@ -33,7 +33,7 @@ function validateLogLevel(label, value) {
  * @param {*} propertyValue - Candidate property value.
  * @throws {TypeError} If the property is missing or empty.
  */
-function validateRequiredClassInfoStringProperty(keyLabel, propertyName, propertyValue) {
+function validateRequiredClassInfoStringProperty_(keyLabel, propertyName, propertyValue) {
   if (!Validate.isNonEmptyString(propertyValue)) {
     throw new TypeError(`${keyLabel} must have a ${propertyName} property (non-empty string).`);
   }
@@ -45,7 +45,7 @@ function validateRequiredClassInfoStringProperty(keyLabel, propertyName, propert
  * @returns {string} Canonical (trimmed) API key value when valid.
  * @throws {Error} If the value is missing or has an invalid token format.
  */
-function validateApiKey(value) {
+function validateApiKey_(value) {
   if (!Validate.isNonEmptyString(value) || !API_KEY_PATTERN.test(value.trim())) {
     throw new Error(
       'API Key must be an alphanumeric prefix followed by an underscore and exactly 32 base64url characters (A-Z, a-z, 0-9, hyphen, underscore).'
@@ -59,7 +59,7 @@ function validateApiKey(value) {
  * @param {*} value - Value to coerce.
  * @returns {boolean} Coerced boolean value.
  */
-function toBoolean(value) {
+function toBoolean_(value) {
   if (Validate.isBoolean(value)) return value;
   if (value == null) return false;
   if (typeof value === 'number') return value !== 0;
@@ -74,8 +74,8 @@ function toBoolean(value) {
  * @param {*} value - Value to normalise.
  * @returns {string} `'true'` or `'false'` depending on the coerced value.
  */
-function toBooleanString(value) {
-  return toBoolean(value) ? 'true' : 'false';
+function toBooleanString_(value) {
+  return toBoolean_(value) ? 'true' : 'false';
 }
 
 /**
@@ -83,7 +83,7 @@ function toBooleanString(value) {
  * @param {string} key - Internal configuration key.
  * @returns {string} Human-readable label.
  */
-function toReadableKey(key) {
+function toReadableKey_(key) {
   return key.replaceAll(/([A-Z])/gu, ' $1').replace(/^./u, (string_) => string_.toUpperCase());
 }
 
@@ -94,7 +94,7 @@ function toReadableKey(key) {
  * @returns {string} The validated JSON string
  * @throws {TypeError} If validation fails
  */
-function validateClassInfo(label, value) {
+function validateClassInfo_(label, value) {
   const keyLabel = label || 'Assessment Record Class Info';
   // Must be a string
   if (!Validate.isString(value)) {
@@ -115,8 +115,8 @@ function validateClassInfo(label, value) {
   }
 
   // Validate required properties
-  validateRequiredClassInfoStringProperty(keyLabel, 'ClassName', parsed.ClassName);
-  validateRequiredClassInfoStringProperty(keyLabel, 'CourseId', parsed.CourseId);
+  validateRequiredClassInfoStringProperty_(keyLabel, 'ClassName', parsed.ClassName);
+  validateRequiredClassInfoStringProperty_(keyLabel, 'CourseId', parsed.CourseId);
 
   // Validate CourseId format - Google Classroom course IDs are typically numeric or alphanumeric
   const courseIdPattern = /^[\w-]+$/u;
@@ -141,11 +141,11 @@ if (typeof module !== 'undefined' && module.exports) {
     API_KEY_PATTERN,
     DRIVE_ID_PATTERN,
     JSON_DB_LOG_LEVELS,
-    validateLogLevel,
-    validateApiKey,
-    validateClassInfo,
-    toBoolean,
-    toBooleanString,
-    toReadableKey,
+    validateLogLevel_,
+    validateApiKey_,
+    validateClassInfo_,
+    toBoolean_,
+    toBooleanString_,
+    toReadableKey_,
   };
 }

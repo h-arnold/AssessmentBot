@@ -6,7 +6,7 @@ let fallbackKeyCounter = 0;
  * Generates a stable key for reference-data records.
  * @returns {string} Stable key.
  */
-function generateStableKey() {
+function generateStableKey_() {
   if (typeof Utilities !== 'undefined' && typeof Utilities.getUuid === 'function') {
     return Utilities.getUuid();
   }
@@ -212,7 +212,7 @@ class ReferenceDataController {
     const storedRecords = collection.find({});
     const serialisedRecord = this._buildRecord(config, {
       ...record,
-      key: generateStableKey(),
+      key: generateStableKey_(),
     });
     const normalisedName = this._normaliseName(serialisedRecord.name);
 

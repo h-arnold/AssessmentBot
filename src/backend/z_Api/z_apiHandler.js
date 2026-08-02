@@ -90,13 +90,13 @@ if (typeof module !== 'undefined' && module.exports) {
   activeLimit = ACTIVE_LIMIT;
   staleRequestAgeMs = STALE_REQUEST_AGE_MS;
   requestStoreFns = {
-    loadStore,
-    saveStore,
-    createStartedRecord,
-    markSuccess,
-    markError,
-    compactStore,
-    pruneStaleEntries,
+    loadStore_,
+    saveStore_,
+    createStartedRecord_,
+    markSuccess_,
+    markError_,
+    compactStore_,
+    pruneStaleEntries_,
   };
   apiRateLimitErrorName = ApiRateLimitError.name;
   apiValidationErrorName = ApiValidationError.name;
@@ -251,10 +251,10 @@ class ApiDispatcher extends BaseSingleton {
       });
     }
     try {
-      const store = requestStoreFns.loadStore();
+      const store = requestStoreFns.loadStore_();
 
       const keysBefore = Object.keys(store);
-      requestStoreFns.pruneStaleEntries(store, staleRequestAgeMs, lockAcquiredAt);
+      requestStoreFns.pruneStaleEntries_(store, staleRequestAgeMs, lockAcquiredAt);
       const keysAfterSet = new Set(Object.keys(store));
       for (const candidateId of keysBefore) {
         if (!keysAfterSet.has(candidateId)) {
@@ -266,7 +266,7 @@ class ApiDispatcher extends BaseSingleton {
       }
 
       // Persist pruned state immediately so stale entries don't accumulate on rate-limited paths.
-      requestStoreFns.saveStore(store);
+      requestStoreFns.saveStore_(store);
 
       const activeCount = Object.values(store).filter((r) => r.status === 'started').length;
       if (activeCount >= activeLimit) {
@@ -278,8 +278,8 @@ class ApiDispatcher extends BaseSingleton {
         );
       }
 
-      store[requestId] = requestStoreFns.createStartedRecord(requestId, method, lockAcquiredAt);
-      requestStoreFns.saveStore(store);
+      store[requestId] = requestStoreFns.createStartedRecord_(requestId, method, lockAcquiredAt);
+      requestStoreFns.saveStore_(store);
       const endTime = Date.now();
       const stateUpdateMs = endTime - lockAcquiredAt;
       const totalPhaseMs = endTime - phaseStart;
@@ -325,13 +325,13 @@ class ApiDispatcher extends BaseSingleton {
       });
     }
     try {
-      const store = requestStoreFns.loadStore();
+      const store = requestStoreFns.loadStore_();
       if (handlerFailed) {
-        requestStoreFns.markError(store, requestId, String(handlerError));
+        requestStoreFns.markError_(store, requestId, String(handlerError));
       } else {
-        requestStoreFns.markSuccess(store, requestId);
+        requestStoreFns.markSuccess_(store, requestId);
       }
-      requestStoreFns.saveStore(requestStoreFns.compactStore(store));
+      requestStoreFns.saveStore_(requestStoreFns.compactStore_(store));
       const endTime = Date.now();
       const stateUpdateMs = endTime - lockAcquiredAt;
       const totalPhaseMs = endTime - phaseStart;

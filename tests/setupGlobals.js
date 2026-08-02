@@ -149,12 +149,12 @@ const validators = require('../src/backend/ConfigurationManager/03_validators.js
 g.API_KEY_PATTERN = validators.API_KEY_PATTERN;
 g.DRIVE_ID_PATTERN = validators.DRIVE_ID_PATTERN;
 g.JSON_DB_LOG_LEVELS = validators.JSON_DB_LOG_LEVELS;
-g.validateLogLevel = validators.validateLogLevel;
-g.validateApiKey = validators.validateApiKey;
-g.validateClassInfo = validators.validateClassInfo;
-g.toBoolean = validators.toBoolean;
-g.toBooleanString = validators.toBooleanString;
-g.toReadableKey = validators.toReadableKey;
+g.validateLogLevel_ = validators.validateLogLevel_;
+g.validateApiKey_ = validators.validateApiKey_;
+g.validateClassInfo_ = validators.validateClassInfo_;
+g.toBoolean_ = validators.toBoolean_;
+g.toBooleanString_ = validators.toBooleanString_;
+g.toReadableKey_ = validators.toReadableKey_;
 
 // Default LockService mock — always acquires the lock successfully.
 // Individual tests that need to control lock behaviour should override

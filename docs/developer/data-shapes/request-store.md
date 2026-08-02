@@ -22,11 +22,6 @@ Sibling contracts:
 
 ## Persistence
 
-> **Status: Not implemented** — the trailing-underscore function names below are planned-only
-> entries from the Auth Service security audit (ACTION_PLAN §1/§7). The seven `requestStore.js`
-> functions are public by accident and will be renamed to match GAS's private-by-default
-> convention. Remove this marker once the renames land.
-
 ### Store shape
 
 The store is a JSON-serialised object stored under `USER_REQUEST_STORE_KEY` (value: `'AB_USER_REQUEST_STORE'`)

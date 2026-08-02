@@ -20,7 +20,7 @@
  * @param {Object} store - The property store object (or null).
  * @returns {Array<string>} Array of property keys, or empty array on failure.
  */
-function safeGetPropertyKeys(store) {
+function safeGetPropertyKeys_(store) {
   if (!store) return [];
   try {
     return store.getKeys ? store.getKeys() : [];
@@ -40,7 +40,7 @@ function safeGetPropertyKeys(store) {
  * @param {string} serialisedConfig - Serialised JSON configuration string.
  * @returns {Object} Parsed configuration object, or empty object on failure.
  */
-function safeParseConfigObject(serialisedConfig) {
+function safeParseConfigObject_(serialisedConfig) {
   if (serialisedConfig == null || serialisedConfig === '') {
     return {};
   }
@@ -182,7 +182,7 @@ class ConfigurationManager extends BaseSingleton {
    */
   maybeDeserializeProperties() {
     try {
-      const hasScript = safeGetPropertyKeys(this.scriptProperties).length > 0;
+      const hasScript = safeGetPropertyKeys_(this.scriptProperties).length > 0;
       if (hasScript) return; // early return – nothing to do
 
       const propertiesCloner = new PropertiesCloner();
@@ -209,7 +209,7 @@ class ConfigurationManager extends BaseSingleton {
   getAllConfigurations() {
     this.ensureInitialized();
     if (!this.configCache) {
-      this.configCache = safeParseConfigObject(
+      this.configCache = safeParseConfigObject_(
         this.scriptProperties.getProperty(ConfigurationManager.CONFIG_STORE_KEY)
       );
     }
@@ -587,7 +587,7 @@ class ConfigurationManager extends BaseSingleton {
    * @returns {boolean} The boolean representation of the input value.
    */
   static toBoolean(value) {
-    const toBooleanFunction = ConfigurationManager._toBoolean || toBoolean;
+    const toBooleanFunction = ConfigurationManager._toBoolean || toBoolean_;
     return toBooleanFunction(value);
   }
   /**
@@ -596,7 +596,7 @@ class ConfigurationManager extends BaseSingleton {
    * @returns {string} The string representation of the boolean value (e.g., 'true' or 'false').
    */
   static toBooleanString(value) {
-    const toBooleanStringFunction = ConfigurationManager._toBooleanString || toBooleanString;
+    const toBooleanStringFunction = ConfigurationManager._toBooleanString || toBooleanString_;
     return toBooleanStringFunction(value);
   }
 
@@ -650,8 +650,8 @@ if (typeof module !== 'undefined' && module.exports) {
   ConfigurationManager._DRIVE_ID_PATTERN = validators.DRIVE_ID_PATTERN;
   ConfigurationManager._JSON_DB_LOG_LEVELS = validators.JSON_DB_LOG_LEVELS;
   ConfigurationManager._CONFIG_STORE_KEY = '__CONFIG_STORE_KEY__';
-  ConfigurationManager._toBoolean = validators.toBoolean;
-  ConfigurationManager._toBooleanString = validators.toBooleanString;
+  ConfigurationManager._toBoolean = validators.toBoolean_;
+  ConfigurationManager._toBooleanString = validators.toBooleanString_;
 }
 
 if (!globalThis.__CONFIG_MANAGER_STATICS_INITIALISED__) {
