@@ -168,6 +168,103 @@ g.LockService = {
   },
 };
 
+// Default Session mock — supplies the active-user identity for auth checks.
+// Follows the LockService convention: individual tests that need to control the
+// active-user email should override globalThis.Session in their own
+// beforeEach/afterEach, or switch the default email via Session._setActiveUserEmail().
+const _activeUserEmail = { value: 'teacher@school.edu' };
+g.Session = {
+  _setActiveUserEmail(email) {
+    _activeUserEmail.value = email;
+  },
+  _resetActiveUserEmail() {
+    _activeUserEmail.value = 'teacher@school.edu';
+  },
+  getActiveUser() {
+    return { getEmail: () => _activeUserEmail.value };
+  },
+};
+
+// Default GroupsApp mock — resolves a configurable Google Group object exposing
+// hasUser(email) and getRole(email). Members are keyed by role; the default set
+// is benign (a member allowed with role MEMBER). Tests may (re)configure the
+// membership map via GroupsApp._setMembers(groupEmail, members) or override
+// globalThis.GroupsApp outright; GroupsApp._resetGroups() restores the default.
+const _groupMemberRoles = {};
+function _registerGroup(groupEmail, membersByRole) {
+  _groupMemberRoles[groupEmail] = new Map(Object.entries(membersByRole));
+}
+_registerGroup('teachers@school.edu', {
+  'teacher@school.edu': 'MEMBER',
+  'admin@school.edu': 'OWNER',
+  'manager@school.edu': 'MANAGER',
+});
+g.GroupsApp = {
+  _resetGroups() {
+    for (const key of Object.keys(_groupMemberRoles)) {
+      delete _groupMemberRoles[key];
+    }
+    _registerGroup('teachers@school.edu', {
+      'teacher@school.edu': 'MEMBER',
+      'admin@school.edu': 'OWNER',
+      'manager@school.edu': 'MANAGER',
+    });
+  },
+  _setMembers(groupEmail, membersByRole) {
+    _registerGroup(groupEmail, membersByRole);
+  },
+  getGroupByEmail(groupEmail) {
+    const members = _groupMemberRoles[groupEmail];
+    if (!members) {
+      // A configured group that has not been registered surfaces as a lookup error,
+      // mirroring the "group not found" denial path the AuthService handles.
+      throw new Error(`Group not found: ${groupEmail}`);
+    }
+    return {
+      hasUser(email) {
+        return members.has(email);
+      },
+      getRole(email) {
+        return members.get(email) ?? null;
+      },
+    };
+  },
+};
+
+// In-memory CacheService mock backed by a real get/put/remove ScriptCache so
+// CacheManager round-trips (and consequent AuthService cache reads/writes) can
+// be exercised without a per-test mock. TTLs are accepted but are only recorded
+// against the inner cache; individual tests may wrap the cache to assert TTLs.
+// Tests should reset it via CacheService._resetScriptCache() in beforeEach.
+const _scriptCacheStore = {};
+const _scriptCache = {
+  get(key) {
+    return Object.hasOwn(_scriptCacheStore, key) ? _scriptCacheStore[key] : null;
+  },
+  put(key, value, ttlSeconds) {
+    _scriptCacheStore[key] = value;
+  },
+  remove(key) {
+    delete _scriptCacheStore[key];
+  },
+};
+g.CacheService = {
+  _resetScriptCache() {
+    for (const key of Object.keys(_scriptCacheStore)) {
+      delete _scriptCacheStore[key];
+    }
+  },
+  getScriptCache() {
+    return _scriptCache;
+  },
+};
+
+// Register the real CacheManager class as a global so production code can call
+// `new CacheManager()` in Node (mirroring the GAS concatenated environment,
+// where CacheManager resolves as a global). Individual tests that need a dummy
+// cache manager override globalThis.CacheManager in their own beforeEach.
+g.CacheManager = require('../src/backend/RequestHandlers/CacheManager.js').CacheManager;
+
 // Lightweight ClassroomManager shim used by some modules. Tests often mock
 // Classroom.Courses.Students.list directly, so prefer that when available.
 g.ClassroomManager = {

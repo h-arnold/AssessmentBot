@@ -4,11 +4,11 @@ In-memory CacheService cache entry used by `AuthService.checkAccess()` to memois
 Group membership results between API requests. Stored via the generic `CacheManager`
 methods (extended with `get`/`put`/`remove`).
 
-> **Status: Implemented** — the generic `CacheManager` methods (ACTION_PLAN §3) have
-> landed. `AuthService` (ACTION_PLAN §4) is still pending; this marker is removed once
-> both consumers exist.
+> **Status: Implemented** — the generic `CacheManager` methods (ACTION_PLAN §3) and the
+> `AuthService` singleton (ACTION_PLAN §4) have landed, so both the cache access and its
+> sole producer/consumer exist.
 
-Backend implementation: `src/backend/Utils/AuthService.js` (planned)
+Backend implementation: `src/backend/Utils/AuthService.js`
 Cache access: `src/backend/RequestHandlers/CacheManager.js` → generic `get(key)`, `put(key, value, ttlSeconds)`, `remove(key)`
 Persistence: `CacheService.getScriptCache()` — in-memory cache with TTL, not durable storage
 API handlers: Not directly callable — consumed internally by `AuthService.checkAccess()`
@@ -93,7 +93,8 @@ None — AuthCache is a single flat key-value entry with no embedded sub-entitie
 
 ### Known discrepancies
 
-None — planned contract; no implementation exists yet.
+None — the contract is implemented. `AuthService.checkAccess()` derives the cache key
+`auth:<groupEmail>:<email>` and reads/writes via the `CacheManager` generic methods.
 
 ---
 
@@ -105,7 +106,7 @@ Cache access:         src/backend/RequestHandlers/CacheManager.js
   ├── put(key, value, ttlSeconds) — serialise + write with explicit TTL
   └── remove(key)                 — delete entry
 
-Producer/consumer:    src/backend/Utils/AuthService.js (planned)
+Producer/consumer:    src/backend/Utils/AuthService.js
   ├── checkAccess(options?)       — cache read → GroupsApp check → cache write (allowed only)
   └── isGroupMember(email)        — private group membership + role resolution
 
