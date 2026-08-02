@@ -77,8 +77,7 @@ class TriggerController {
 
 // Static: required OAuth scopes for trigger installation and execution.
 // Defined as a static property to avoid recreating the array per instance.
-// DO NOT UPDATE THE REQUIRED SCOPES HERE. Update scopes in src/AdminSheet/appscript.json.
-// A husky pre-commit hook will run srcipts/sync-appscript.js to propagate the changes from the Admin Sheet code to here.
+// REQUIRED_SCOPES must be kept manually in sync with the oauthScopes array in src/backend/appsscript.json.
 TriggerController.REQUIRED_SCOPES = [
   'https://www.googleapis.com/auth/presentations',
   'https://www.googleapis.com/auth/classroom.courses.readonly',
@@ -93,6 +92,8 @@ TriggerController.REQUIRED_SCOPES = [
   'https://www.googleapis.com/auth/script.container.ui',
   'https://www.googleapis.com/auth/script.scriptapp',
   'https://www.googleapis.com/auth/classroom.topics.readonly',
+  'https://www.googleapis.com/auth/groups',
+  'https://www.googleapis.com/auth/userinfo.email',
 ];
 
 if (typeof module !== 'undefined') {
