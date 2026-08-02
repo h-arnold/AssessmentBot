@@ -11,6 +11,7 @@ const DEFAULTS = Object.freeze({
   JSON_DB_LOG_LEVEL: 'INFO',
   JSON_DB_BACKUP_ON_INITIALISE: false,
   JSON_DB_ROOT_FOLDER_ID: null,
+  AUTH_GROUP_EMAIL: '',
 });
 
 if (typeof module !== 'undefined' && module.exports) {

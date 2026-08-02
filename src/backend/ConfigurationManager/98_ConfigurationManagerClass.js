@@ -372,6 +372,24 @@ class ConfigurationManager extends BaseSingleton {
   }
 
   /**
+   * Retrieves the configured Google Group email for auth group membership checks.
+   * Returns empty string when unset or blank (fail-open bootstrap state).
+   * @returns {string} The auth group email, or empty string if not configured.
+   */
+  getAuthGroupEmail() {
+    return this.getProperty(ConfigurationManager.CONFIG_KEYS.AUTH_GROUP_EMAIL);
+  }
+
+  /**
+   * Sets the configured Google Group email for auth group membership checks.
+   * @param {string} value - The Google Group email address to store.
+   * @returns {void}
+   */
+  setAuthGroupEmail(value) {
+    this.setProperty(ConfigurationManager.CONFIG_KEYS.AUTH_GROUP_EMAIL, value);
+  }
+
+  /**
    * Retrieves the configured URL for the backend service endpoint.
    * @returns {string} The backend URL, or empty string if not configured.
    */

@@ -27,6 +27,7 @@ const CONFIG_KEYS = Object.freeze({
   JSON_DB_LOG_LEVEL: 'jsonDbLogLevel',
   JSON_DB_BACKUP_ON_INITIALISE: 'jsonDbBackupOnInitialise',
   JSON_DB_ROOT_FOLDER_ID: 'jsonDbRootFolderId',
+  AUTH_GROUP_EMAIL: 'authGroupEmail',
 });
 
 const CONFIG_SCHEMA = Object.freeze({
@@ -96,6 +97,23 @@ const CONFIG_SCHEMA = Object.freeze({
       const trimmed = String(v).trim();
       if (!instance.isValidGoogleDriveFolderId(trimmed)) {
         throw new Error('JSON DB Root Folder ID must be a valid Google Drive Folder ID.');
+      }
+      return trimmed;
+    },
+  },
+  [CONFIG_KEYS.AUTH_GROUP_EMAIL]: {
+    storage: 'script',
+    validate: (v, instance) => {
+      if (v == null || String(v).trim() === '') {
+        const stored = instance.getProperty(CONFIG_KEYS.AUTH_GROUP_EMAIL);
+        if (stored && String(stored).trim() !== '') {
+          throw new Error('Auth Group Email cannot be cleared once set.');
+        }
+        return '';
+      }
+      const trimmed = String(v).trim();
+      if (!Validate.isEmail(trimmed)) {
+        throw new Error('Auth Group Email must be a valid email address.');
       }
       return trimmed;
     },

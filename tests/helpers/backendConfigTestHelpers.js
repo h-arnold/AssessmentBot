@@ -16,6 +16,7 @@ function buildBackendConfigResponse(overrides = {}) {
     jsonDbLogLevel: 'INFO',
     jsonDbBackupOnInitialise: false,
     jsonDbRootFolderId: 'folder-123',
+    authGroupEmail: '',
     ...overrides,
   };
 }

@@ -44,6 +44,7 @@ function getBackendConfig_() {
     jsonDbLogLevel: configManager.getJsonDbLogLevel(),
     jsonDbBackupOnInitialise: configManager.getJsonDbBackupOnInitialise(),
     jsonDbRootFolderId: jsonDatabaseRootFolderId || '',
+    authGroupEmail: configManager.getAuthGroupEmail() || '',
   };
 
   return config;
@@ -119,6 +120,11 @@ function setBackendConfig_(config) {
       name: 'jsonDbRootFolderId',
       value: config.jsonDbRootFolderId,
       applySetting: (value) => configManager.setJsonDbRootFolderId(value),
+    },
+    {
+      name: 'authGroupEmail',
+      value: config.authGroupEmail,
+      applySetting: (value) => configManager.setAuthGroupEmail(value),
     },
   ];
 
