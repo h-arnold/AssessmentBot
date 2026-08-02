@@ -4,9 +4,9 @@ In-memory CacheService cache entry used by `AuthService.checkAccess()` to memois
 Group membership results between API requests. Stored via the generic `CacheManager`
 methods (extended with `get`/`put`/`remove`).
 
-> **Status: Not implemented** — planned-only entry for the Auth Service feature
-> (ACTION_PLAN §1/§4). Remove this marker once `AuthService` and the generic `CacheManager`
-> methods land.
+> **Status: Implemented** — the generic `CacheManager` methods (ACTION_PLAN §3) have
+> landed. `AuthService` (ACTION_PLAN §4) is still pending; this marker is removed once
+> both consumers exist.
 
 Backend implementation: `src/backend/Utils/AuthService.js` (planned)
 Cache access: `src/backend/RequestHandlers/CacheManager.js` → generic `get(key)`, `put(key, value, ttlSeconds)`, `remove(key)`

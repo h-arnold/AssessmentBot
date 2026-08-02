@@ -409,7 +409,7 @@ Entries below are planned-only additions for the Auth Service feature (source: r
 
 ### CacheManager generic methods (extended)
 
-- Status: `Not implemented`
+- Status: `Implemented`
 - Owning path: `src/backend/RequestHandlers/CacheManager.js`
 - Decision: extend the existing class with generic `get(key)`, `put(key, value, ttlSeconds)`, `remove(key)` methods. Generic methods handle JSON serialisation/deserialisation internally; `put()` requires an explicit TTL (no default — the AuthService passes its 6-hour TTL at the call site). Existing assessment-specific methods stay unchanged; existing `console.error` calls convert to `ABLogger`.
 - References: SPEC.md §Backend changes (2); ACTION_PLAN.md §3.

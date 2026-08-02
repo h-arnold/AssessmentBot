@@ -16,6 +16,7 @@ describe('CacheManager', () => {
   let mockScriptCache;
   let mockUtils;
   let mockRuntimeConstants;
+  let mockAbLoggerInstance;
   let mockConsole;
 
   beforeEach(() => {
@@ -23,6 +24,7 @@ describe('CacheManager', () => {
     mockScriptCache = {
       get: vi.fn(),
       put: vi.fn(),
+      remove: vi.fn(),
     };
     mockCacheService = {
       getScriptCache: vi.fn().mockReturnValue(mockScriptCache),
@@ -39,6 +41,16 @@ describe('CacheManager', () => {
       SECONDS_PER_MINUTE: 60,
     };
 
+    // Mock ABLogger instance for assertions on error calls
+    mockAbLoggerInstance = {
+      debug: vi.fn(),
+      debugUi: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      log: vi.fn(),
+    };
+
     // Mock console to avoid noise
     mockConsole = {
       log: vi.fn(),
@@ -51,6 +63,7 @@ describe('CacheManager', () => {
       CacheService: () => mockCacheService,
       Utils: () => mockUtils,
       RuntimeConstants: () => mockRuntimeConstants,
+      ABLogger: () => ({ getInstance: () => mockAbLoggerInstance }),
       console: () => mockConsole,
     });
     restoreCacheManagerGlobals = mockContext.restore;
@@ -148,7 +161,7 @@ describe('CacheManager', () => {
       mockUtils.generateHash.mockReturnValue('valid-key');
       const result = manager.getCachedAssessment('ref-hash', 'resp-hash');
       expect(result).toBeNull();
-      expect(console.error).toHaveBeenCalledWith(
+      expect(mockAbLoggerInstance.error).toHaveBeenCalledWith(
         'Error parsing cached assessment data:',
         expect.any(Error)
       );
@@ -162,7 +175,10 @@ describe('CacheManager', () => {
       mockUtils.generateHash.mockReturnValue('valid-key');
       const result = manager.getCachedAssessment('ref-hash', 'resp-hash');
       expect(result).toBeNull();
-      expect(console.error).toHaveBeenCalledWith('Error retrieving cached assessment:', error);
+      expect(mockAbLoggerInstance.error).toHaveBeenCalledWith(
+        'Error retrieving cached assessment:',
+        error
+      );
     });
   });
 
@@ -213,7 +229,10 @@ describe('CacheManager', () => {
       const assessmentData = { score: 100 };
       // Should not throw
       manager.setCachedAssessment('ref-hash', 'resp-hash', assessmentData);
-      expect(console.error).toHaveBeenCalledWith('Error storing cached assessment data:', error);
+      expect(mockAbLoggerInstance.error).toHaveBeenCalledWith(
+        'Error storing cached assessment data:',
+        error
+      );
     });
 
     it('should store complex assessment data', () => {
@@ -230,6 +249,82 @@ describe('CacheManager', () => {
         JSON.stringify(complexData),
         expect.any(Number)
       );
+    });
+  });
+
+  describe('Generic cache methods', () => {
+    let manager;
+
+    beforeEach(() => {
+      manager = new CacheManager();
+    });
+
+    it('get() returns null when key does not exist in cache', () => {
+      mockScriptCache.get.mockReturnValue(null);
+      const result = manager.get('auth:g:e');
+      expect(result).toBeNull();
+      expect(mockScriptCache.get).toHaveBeenCalledWith('auth:g:e');
+    });
+
+    it('get() returns the parsed value when key exists with valid JSON', () => {
+      const cachedValue = { allowed: true, role: 'user' };
+      mockScriptCache.get.mockReturnValue(JSON.stringify(cachedValue));
+      const result = manager.get('auth:g:e');
+      expect(result).toEqual(cachedValue);
+    });
+
+    it('get() returns null when the cached value is not valid JSON', () => {
+      mockScriptCache.get.mockReturnValue('not-json');
+      const result = manager.get('auth:g:e');
+      expect(result).toBeNull();
+      expect(mockAbLoggerInstance.error).toHaveBeenCalledWith(
+        'Error parsing cached value:',
+        expect.any(Error)
+      );
+    });
+
+    it('put() stores a value and get() retrieves it correctly', () => {
+      const value = { allowed: true, role: 'user' };
+      manager.put('auth:g:e', value, 21600);
+      expect(mockScriptCache.put).toHaveBeenCalledWith('auth:g:e', JSON.stringify(value), 21600);
+      mockScriptCache.get.mockReturnValue(JSON.stringify(value));
+      const result = manager.get('auth:g:e');
+      expect(result).toEqual(value);
+    });
+
+    it('put() respects the explicit TTL passed by the caller', () => {
+      const value = { allowed: true };
+      manager.put('auth:g:e', value, 12345);
+      expect(mockScriptCache.put).toHaveBeenCalledWith('auth:g:e', JSON.stringify(value), 12345);
+    });
+
+    it('remove() deletes the key and subsequent get() returns null', () => {
+      manager.remove('auth:g:e');
+      expect(mockScriptCache.remove).toHaveBeenCalledWith('auth:g:e');
+      mockScriptCache.get.mockReturnValue(null);
+      const result = manager.get('auth:g:e');
+      expect(result).toBeNull();
+    });
+
+    it('ABLogger.error() is called on cache errors instead of console.error', () => {
+      const getError = new Error('Cache get error');
+      mockScriptCache.get.mockImplementation(() => {
+        throw getError;
+      });
+      const getResult = manager.get('auth:g:e');
+      expect(getResult).toBeNull();
+      expect(mockAbLoggerInstance.error).toHaveBeenCalledWith(
+        'Error reading from cache:',
+        getError
+      );
+
+      const putError = new Error('Cache put error');
+      mockScriptCache.put.mockImplementation(() => {
+        throw putError;
+      });
+      // put() should not throw — caching is best-effort
+      expect(() => manager.put('auth:g:e', { allowed: true }, 21600)).not.toThrow();
+      expect(mockAbLoggerInstance.error).toHaveBeenCalledWith('Error writing to cache:', putError);
     });
   });
 

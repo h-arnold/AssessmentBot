@@ -2,22 +2,22 @@
 
 ## Execution progress (orchestrator-maintained)
 
-| Section                                 | Status       | Commit                                     |
-| --------------------------------------- | ------------ | ------------------------------------------ |
-| 1. Data-shape doc updates               | ✅ Completed | `55456dd` (pushed)                         |
-| 2. Backend config AUTH_GROUP_EMAIL      | ✅ Completed | `b9c2633` (red) / `HEAD` (green, unpushed) |
-| 3. CacheManager generic methods         | Pending      | —                                          |
-| 4. AuthService singleton                | Pending      | —                                          |
-| 5. FORBIDDEN + auth gate                | Pending      | —                                          |
-| 6. appsscript.json scopes + webapp      | Pending      | —                                          |
-| 7. Security audit                       | Pending      | —                                          |
-| 8. Triggers/ domain                     | Pending      | —                                          |
-| 9. processSelectedAssignment signature  | Pending      | —                                          |
-| 10. startProcessing trigger integration | Pending      | —                                          |
-| 11. Frontend config transport + form    | Pending      | —                                          |
-| 12. Frontend auth features              | Pending      | —                                          |
-| Regression + contract hardening         | Pending      | —                                          |
-| Documentation + rollout notes           | Pending      | —                                          |
+| Section                                 | Status       | Commit                                      |
+| --------------------------------------- | ------------ | ------------------------------------------- |
+| 1. Data-shape doc updates               | ✅ Completed | `55456dd` (pushed)                          |
+| 2. Backend config AUTH_GROUP_EMAIL      | ✅ Completed | `b9c2633` (red) / `a6c32a6` (green, pushed) |
+| 3. CacheManager generic methods         | ✅ Completed | see execution log                           |
+| 4. AuthService singleton                | Pending      | —                                           |
+| 5. FORBIDDEN + auth gate                | Pending      | —                                           |
+| 6. appsscript.json scopes + webapp      | Pending      | —                                           |
+| 7. Security audit                       | Pending      | —                                           |
+| 8. Triggers/ domain                     | Pending      | —                                           |
+| 9. processSelectedAssignment signature  | Pending      | —                                           |
+| 10. startProcessing trigger integration | Pending      | —                                           |
+| 11. Frontend config transport + form    | Pending      | —                                           |
+| 12. Frontend auth features              | Pending      | —                                           |
+| Regression + contract hardening         | Pending      | —                                           |
+| Documentation + rollout notes           | Pending      | —                                           |
 
 ### Execution log (orchestrator-maintained)
 
@@ -28,7 +28,9 @@
   - Red suite confirmed failing (16 expected failures) against current code; lint clean.
 - **Section 2 (green)** — **NOT started.** The implementation handoff was interrupted before any production file was modified (`git diff` shows no `src/backend` changes). Resume by re-delegating the green implementation per the section's contract.
 - **Section 2 (green, completed 2026-08-02):** implemented and reviewed clean. Production changes: `AUTH_GROUP_EMAIL` key/schema/defaults/getter/setter, compulsory-once-set guard in the `CONFIG_SCHEMA` validator, transport emission + write path in `apiConfig.js`; test-helper sync (`authGroupEmail: ''` in `buildBackendConfigResponse()`); `backend-config.md` markers removed for delivered entries (Section 11 frontend markers retained). Data-shape canonical pass corrected write-side field counts (12 writable = 11 documented + `revokeAuthTriggerSet`; frontend `BackendConfigWriteInputSchema` 11 fields). 31/31 tests pass; lint 0 errors. Coverage follow-up (non-blocking, from code review): no explicit transport-level test drives a `setBackendConfig` payload with `authGroupEmail: ''` against a stored value asserting the aggregated rejection envelope — model-level coverage exists.
-- **Worktree hygiene (2026-08-01):** a concurrent process committed `41aabff` (task-files plugin: `files` schema-required) and has uncommitted model-field edits in `.opencode/agents/{data-shapes-agent,docs,implementation,testing-specialist}.md` (`opencode/deepseek-v4-flash-free` → `openrouter/poolside/laguna-s-2.1:free`). These are **not** part of this feature — do not stage them in feature commits; decide separately.
+- **Section 3 (red, completed 2026-08-02):** `describe('Generic cache methods')` added 7 generic tests (`get()` miss/valid/invalid-parse, `put()`+`get()` round-trip, `put()` explicit TTL, `remove()`, ABLogger-error paths); ABLogger mock added to harness; 3 existing `console.error` assertions migrated to `mockAbLoggerInstance.error`. Verified **10 failed | 16 passed (26 total)** — all 10 failures correct (7 missing generic methods, 3 `console.error` still in code). Lint 0 errors; prettier normalised the test file. Red-phase tests define exact error strings green must use: `Error parsing cached value:` / `Error reading from cache:` / `Error writing to cache:`.
+- **Section 3 (green, completed 2026-08-02):** implemented and reviewed clean (code review CLEAN, one cosmetic pre-existing JSDoc nitpick declined). Production changes: `get(key)`/`put(key, value, ttlSeconds)`/`remove(key)` generic methods (put uses the caller-provided TTL — no default invented, best-effort no-throw); all 3 `console.error` → `ABLogger.getInstance().error(...)` preserving exact assessment-specific strings. Docs: `singletons.md` CacheManager entry → `Implemented`; `auth-cache.md` marker removed for the CacheManager portion while noting AuthService (§4) still pending. Verification: 26/26 CacheManager tests, 51/51 in `tests/requestHandlers/`, lint 0 errors (13 pre-existing warnings). Sub-agent mangled the constructor JSDoc — repaired by orchestrator.
+- **Worktree hygiene (2026-08-01):** a concurrent process committed `41aabff` (task-files plugin: `files` schema-required) and has uncommitted model-field edits in `.opencode/agents/{data-shapes-agent,docs,implementation,testing-specialist}.md` (currently `openrouter/inclusionai/ling-3.0-flash:free`). These are **not** part of this feature — do not stage them in feature commits; decide separately.
 
 ## Read-First Context
 

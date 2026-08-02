@@ -17,6 +17,57 @@ class CacheManager {
   }
 
   /**
+   * Retrieves a generic cached value.
+   * @param {string} key - The cache key.
+   * @returns {Object|null} The parsed cached value, or null on cache miss or parse error.
+   */
+  get(key) {
+    try {
+      const cached = this.cache.get(key);
+      if (!cached) return null;
+      try {
+        return JSON.parse(cached);
+      } catch (error) {
+        ABLogger.getInstance().error('Error parsing cached value:', error);
+        return null;
+      }
+    } catch (error) {
+      ABLogger.getInstance().error('Error reading from cache:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Stores a generic value in the cache.
+   * @param {string} key - The cache key.
+   * @param {Object} value - The value to cache.
+   * @param {number} ttlSeconds - The cache entry TTL in seconds. Must be provided explicitly by the caller.
+   * @returns {void}
+   */
+  put(key, value, ttlSeconds) {
+    const serialized = JSON.stringify(value);
+    try {
+      this.cache.put(key, serialized, ttlSeconds);
+    } catch (error) {
+      ABLogger.getInstance().error('Error writing to cache:', error);
+      // Don't throw — caching should be best-effort.
+    }
+  }
+
+  /**
+   * Removes a generic cache entry.
+   * @param {string} key - The cache key to remove.
+   * @returns {void}
+   */
+  remove(key) {
+    try {
+      this.cache.remove(key);
+    } catch (error) {
+      ABLogger.getInstance().error('Error writing to cache:', error);
+    }
+  }
+
+  /**
    * Generates a unique cache key based on content hashes.
    * @param {string} contentHashReference - Hash of the reference content.
    * @param {string} contentHashResponse - Hash of the student's response content.
@@ -52,11 +103,11 @@ class CacheManager {
       try {
         return JSON.parse(cached);
       } catch (error) {
-        console.error('Error parsing cached assessment data:', error);
+        ABLogger.getInstance().error('Error parsing cached assessment data:', error);
         return null;
       }
     } catch (error) {
-      console.error('Error retrieving cached assessment:', error);
+      ABLogger.getInstance().error('Error retrieving cached assessment:', error);
       return null;
     }
   }
@@ -78,7 +129,7 @@ class CacheManager {
     try {
       this.cache.put(cacheKey, serialized, cacheExpirationInSeconds);
     } catch (error) {
-      console.error('Error storing cached assessment data:', error);
+      ABLogger.getInstance().error('Error storing cached assessment data:', error);
       // Don't throw — caching should be best-effort.
     }
   }
