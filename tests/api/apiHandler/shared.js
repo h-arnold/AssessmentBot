@@ -17,6 +17,7 @@ const abclassMutationsPath = '../../../src/backend/z_Api/abclass/abclassMutation
 const {
   callAuthorisationStatus,
   getApiDispatcherInstance,
+  installLockServiceMock,
   loadApiHandlerModule,
   readPersistedUserRequestStore,
   REFERENCE_DATA_API_METHOD_NAMES,
@@ -432,6 +433,19 @@ function makeVmGlobals(overrides = {}) {
     ScriptAppManager: function ScriptAppManager() {
       this.isAuthorised = () => true;
     },
+    // GAS globals required by the ApiDispatcher auth gate (z_apiHandler.js) in the
+    // vm-simulated concatenated runtime. Defaults fail open so non-auth dispatch
+    // tests proceed normally.
+    AuthService: {
+      getInstance() {
+        return { checkAccess: () => ({ allowed: true, role: 'user' }) };
+      },
+    },
+    ConfigurationManager: {
+      getInstance() {
+        return { getAuthGroupEmail: () => '' };
+      },
+    },
     ...overrides,
   };
 }
@@ -485,6 +499,7 @@ module.exports = {
   // Re-exports from apiHandlerTestUtils
   callAuthorisationStatus,
   getApiDispatcherInstance,
+  installLockServiceMock,
   loadApiHandlerModule,
   readPersistedUserRequestStore,
   REFERENCE_DATA_API_METHOD_NAMES,

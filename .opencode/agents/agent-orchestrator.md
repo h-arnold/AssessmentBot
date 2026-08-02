@@ -64,10 +64,12 @@ When delegating to subagents, specify **WHAT** needs to be accomplished and **WH
 
 Every subagent handoff **must** include:
 
-- Mandatory files via the `files` parameter of the `task` tool — file contents are injected automatically into the subagent's prompt; do not rely on the subagent to read them itself
+- Mandatory files via the `files` parameter of the `task` tool — file contents are injected automatically into the subagent's prompt; list **paths only**, and do not rely on the subagent to read them itself
 - Constraints and scope boundaries
 - Exact requested outcome
 - Expected deliverables
+
+**Never paste file contents into the prompt body.** The `files` array carries file paths only; the body carries instructions, acceptance criteria, and non-file context. The `task-files` plugin injects the referenced files automatically, so the subagent must not re-read or paste them.
 
 **Blocking rule**: If a handoff omits a mandatory file from the `files` array, return the work immediately to the same subagent with a correction request. Do not proceed.
 
@@ -98,6 +100,8 @@ Every subagent handoff **must** include:
 | Canonical policy docs (frontend-logging-and-error-handling.md) | ❌ Do not pass | Already required by relevant subagents           |
 
 **Example delegations:**
+
+In each example below, the `files:` block is the **`files` parameter** of the `task` tool (paths only, passed as JSON) and the lines after it are the **prompt body**. Pass them separately on the `task` call — do **not** paste the `files:` block into the prompt body.
 
 To Testing Specialist for a frontend component:
 
@@ -298,11 +302,12 @@ Expect:
 Delegate to `Code Reviewer`:
 
 - "Code Reviewer, review [changed files] for [behaviour]. Apply all relevant module review checklists."
-- Pass: changed files, acceptance criteria, constraints, proof that checks pass
+- **`files` array (paths only):** the changed files
+- **prompt body:** the behaviour under review, acceptance criteria, constraints, and the fact that checks pass
 - If review returns findings:
   1. Send findings back to the **original executing agent**
-  2. Require fixes plus re-running validation
-  3. Re-submit to `Code Reviewer`
+  2. Require fixes plus re-running validation, and **re-attach the same `files` array** to the handoff (paths only)
+  3. Re-submit to `Code Reviewer`, again re-attaching the `files` array
   4. Repeat until review returns **clean**
 
 **Do not consider the change complete until review is clean.**
@@ -390,6 +395,7 @@ When returning work to the user, always provide:
 - **Select the right agent for the job** — Testing Specialist for Vitest/backend tests, Playwright for E2E tests, Implementation for code, Docs for documentation, Kif for menial tasks
 - **Delegate outcomes, not implementation** — specify WHAT needs to happen, not HOW
 - **Provide task-specific reads only** — do not list docs already required by subagent's own instructions
+- **Never paste file contents into the prompt body** — pass file paths via the `files` array; the plugin injects the contents automatically
 - **Use Kif for context discovery** — to identify relevant docs and dependencies before delegation
 - **Use Kif efficiently** — for menial tasks only; do not use for reasoning-heavy work
 - **Write Kif findings to scratchpad** — for documentation discovery, not direct return

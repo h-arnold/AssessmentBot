@@ -1,6 +1,6 @@
 // z_apiHandler.js
 
-/* global BaseSingleton, Utilities, LockService, ABLogger, ScriptAppManager, ABClassController, ReferenceDataController */
+/* global BaseSingleton, Utilities, LockService, ABLogger, ScriptAppManager, ABClassController, ReferenceDataController, AuthService */
 
 let lockTimeoutMs;
 let lockWaitWarnThresholdMs;
@@ -18,6 +18,7 @@ const API_ERROR_CODE_MAP = {
   UNKNOWN_METHOD: 'UNKNOWN_METHOD',
   IN_USE: 'IN_USE',
   DEFINITION_STALE: 'DEFINITION_STALE',
+  FORBIDDEN: 'FORBIDDEN', // authenticated but not a group member
 };
 
 const ALLOWLISTED_METHOD_HANDLERS = Object.freeze({
@@ -137,6 +138,27 @@ class ApiDispatcher extends BaseSingleton {
     });
 
     const methodName = request.method.trim();
+
+    // Auth gate: runs after request validation but before the allowlist method
+    // lookup and admission phase, so non-members receive FORBIDDEN uniformly and
+    // cannot probe which API methods exist (UNKNOWN_METHOD is only observable by
+    // authorised callers). `getAuthorisationStatus` is gate-exempt — it skips the
+    // group check entirely and runs its OAuth-only handler.
+    if (methodName !== 'getAuthorisationStatus') {
+      let access;
+      try {
+        access = AuthService.getInstance().checkAccess({ method: request.method });
+      } catch (error) {
+        // A thrown auth check (e.g. ConfigurationManager persistence failure) is a
+        // transport-boundary error, not a group-membership denial — map it to the
+        // INTERNAL_ERROR envelope rather than FORBIDDEN.
+        return this._mapErrorToFailureEnvelope(requestId, error);
+      }
+      if (!access.allowed) {
+        return this._failure(requestId, API_ERROR_CODE_MAP.FORBIDDEN, 'Access denied.', false);
+      }
+    }
+
     const handler = ALLOWLISTED_METHOD_HANDLERS[methodName];
 
     if (!handler) {

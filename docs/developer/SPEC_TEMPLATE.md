@@ -321,6 +321,8 @@ Use this section only for constraints that the later action plan must respect.
 - [ownership or sequencing constraint that must not be lost]
 - [explicit note for the later layout spec or action plan]
 
+The action plan will hand this spec to sub-agents **by file path** via the `task` tool's `files` array (the `task-files` plugin injects the contents automatically). Keep this spec self-contained and stable so sub-agents can rely on it across red/green loops. Do not write this spec to be pasted inline — it is always referenced by path, never inlined into a handoff prompt body.
+
 ## Testing expectations
 
 - [backend unit or API coverage]

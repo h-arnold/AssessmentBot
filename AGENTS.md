@@ -54,6 +54,28 @@ Sub-agents are stateless. Every delegated handoff **MUST** populate the `files` 
 - **Never** paste full file contents into the prompt body. The prompt body should contain only instructions, acceptance criteria, and references (file paths); the actual file contents are delivered via `files` and injected automatically. The subagent must not re-read them.
 - **Exception:** do **not** include any `AGENTS.md` file (root or module-specific) in the `files` array — OpenCode auto-injects these when an agent browses to the relevant directory.
 
+**Concrete example (handoff to `Implementation`):** the `files` array carries paths only; the prompt body carries instructions. Pass them as separate arguments on the `task` call:
+
+```js
+// prompt body — instructions, acceptance criteria and references only
+task({
+  description: "Implement scoring validation",
+  subagent_type: "implementation",
+  files: [
+    "SPEC.md",
+    "ACTION_PLAN.md",
+    "src/backend/Services/AssessmentService.js",
+    "tests/backend/Services/AssessmentService.test.js",
+  ],
+  prompt:
+    "Implement the scoring validation per ACTION_PLAN.md section 2. " +
+    "The files listed are already injected; do not re-read them. " +
+    "Follow all applicable module standards; do not paste file contents into this body.",
+});
+```
+
+Do **not** paste file contents into the prompt body — only the paths above go in `files`.
+
 **Pre-flight check (non-negotiable):** Before issuing any `task` call, first assemble the `files` array. If it would be empty for a workflow handoff, **stop — do not send the call.** Sub-agent handoffs must confirm which files were used. If a mandatory file is missing from the `files` array, return the work to the same sub-agent and do not proceed.
 
 ### 5. Shared Config Rule

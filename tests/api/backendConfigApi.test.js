@@ -36,7 +36,9 @@ describe('backend configuration API transport', () => {
         method: 'getBackendConfig',
       });
 
-      expect(configurationManagerMock.configurationManager.getInstance).toHaveBeenCalledTimes(1);
+      // Called once by the ApiDispatcher auth gate's group email lookup and once by
+      // the getBackendConfig handler.
+      expect(configurationManagerMock.configurationManager.getInstance).toHaveBeenCalledTimes(2);
       expect(configurationManagerMock.manager.ensureDefaultConfiguration).toHaveBeenCalledTimes(1);
       expect(response).toEqual({
         ok: true,
@@ -95,7 +97,9 @@ describe('backend configuration API transport', () => {
         method: 'getBackendConfig',
       });
 
-      expect(configurationManagerMock.configurationManager.getInstance).toHaveBeenCalledTimes(1);
+      // Called once by the ApiDispatcher auth gate (AuthService group-email lookup)
+      // and once by the getBackendConfig handler.
+      expect(configurationManagerMock.configurationManager.getInstance).toHaveBeenCalledTimes(2);
       expect(configurationManagerMock.manager.ensureDefaultConfiguration).toHaveBeenCalledTimes(1);
       expect(configurationManagerMock.manager.setBackendAssessorBatchSize).not.toHaveBeenCalled();
       expect(configurationManagerMock.manager.setSlidesFetchBatchSize).not.toHaveBeenCalled();
@@ -160,7 +164,9 @@ describe('backend configuration API transport', () => {
         method: 'getBackendConfig',
       });
 
-      expect(configurationManagerMock.configurationManager.getInstance).toHaveBeenCalledTimes(1);
+      // Called once by the ApiDispatcher auth gate (AuthService group-email lookup)
+      // and once by the getBackendConfig handler.
+      expect(configurationManagerMock.configurationManager.getInstance).toHaveBeenCalledTimes(2);
       expect(configurationManagerMock.manager.ensureDefaultConfiguration).toHaveBeenCalledTimes(1);
       expect(configurationManagerMock.manager.setBackendAssessorBatchSize).not.toHaveBeenCalled();
       expect(configurationManagerMock.manager.setSlidesFetchBatchSize).not.toHaveBeenCalled();
@@ -403,7 +409,9 @@ describe('backend configuration API transport', () => {
           params,
         });
 
-        expect(configurationManagerMock.configurationManager.getInstance).not.toHaveBeenCalled();
+        // Called once by the ApiDispatcher auth gate's group email lookup before the
+        // handler rejects the malformed params.
+        expect(configurationManagerMock.configurationManager.getInstance).toHaveBeenCalledTimes(1);
         expect(response).toEqual({
           ok: false,
           requestId: response.requestId,

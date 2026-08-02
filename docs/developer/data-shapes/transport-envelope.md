@@ -42,10 +42,6 @@ payload inside this envelope.
 }
 ```
 
-> **Status: Not implemented** — the `FORBIDDEN` code below is a planned-only entry for the
-> Auth Service feature (ACTION_PLAN §1/§5). Remove this marker once `API_ERROR_CODE_MAP`
-> gains `FORBIDDEN` and the `ApiDispatcher` auth gate returns it.
-
 ### Error code mapping
 
 | Error type                                              | Code               | retriable |
@@ -58,7 +54,7 @@ payload inside this envelope.
 | Auth gate denial (authenticated but not a group member) | `FORBIDDEN`        | `false`   |
 | Any other error                                         | `INTERNAL_ERROR`   | `false`   |
 
-`FORBIDDEN` (**Not implemented**) is produced directly by the `ApiDispatcher` auth gate in
+`FORBIDDEN` is produced directly by the `ApiDispatcher` auth gate in
 `z_apiHandler.js` — it is not thrown by a dedicated exception type. Justification:
 "authenticated but not a group member". Denied requests never reach the admission phase, so
 no lock is consumed and the request is not counted against rate limits.

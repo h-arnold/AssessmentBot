@@ -265,6 +265,21 @@ g.CacheService = {
 // cache manager override globalThis.CacheManager in their own beforeEach.
 g.CacheManager = require('../src/backend/RequestHandlers/CacheManager.js').CacheManager;
 
+// Register the real AuthService singleton as a global (mirrors the GAS concatenated
+// environment, where AuthService resolves as a global). The ApiDispatcher auth gate
+// (`z_apiHandler.js`) calls AuthService.getInstance().checkAccess() before dispatch.
+g.AuthService = require('../src/backend/Utils/AuthService.js');
+
+// Default ConfigurationManager global used by the auth gate's fail-open bootstrap.
+// Any test focused on auth overrides globalThis.ConfigurationManager with a
+// getAuthGroupEmail mock (mirroring dispatcher-auth-gate.test.js). The default
+// returns '' so the gate fails open and non-auth dispatcher tests proceed normally.
+g.ConfigurationManager = {
+  getInstance() {
+    return { getAuthGroupEmail: () => '' };
+  },
+};
+
 // Lightweight ClassroomManager shim used by some modules. Tests often mock
 // Classroom.Courses.Students.list directly, so prefer that when available.
 g.ClassroomManager = {
