@@ -76,7 +76,7 @@ class AssignmentController {
   /**
    * Processes and assesses a selected Google Classroom assignment.
    * This is the main orchestration method that handles the complete assessment workflow:
-   * - Retrieves and validates required parameters
+   * - Validates the direct task params
    * - Creates an Assignment instance with student data
    * - Extracts and processes student submissions
    * - Processes images from submissions (Slides only)
@@ -84,36 +84,30 @@ class AssignmentController {
    * - Persists assignment data
    *
    * The method includes progress tracking and error handling throughout the process.
-   * It cleans up resources (locks, properties) even if errors occur.
+   * It receives task params directly; it does not read from or write to UserProperties,
+   * and it does not clean up trigger context or delete the trigger (triggerHandler owns
+   * all trigger cleanup).
    *
+   * @param {Object} params - Parameters object.
+   * @param {string} params.assignmentId - The Google Classroom coursework ID.
+   * @param {string} params.definitionKey - The key of the assignment definition to use.
+   * @param {string} params.courseId - The Google Classroom course ID.
    * @throws {Error} If required parameters are missing or if processing fails
    * @returns {void}
    *
    * Dependencies:
-   * - Requires UserProperties: assignmentId, definitionKey, triggerId
-   * - Uses services: PropertiesService
-   * - Relies on controllers: triggerController, progressTracker, abClassController
+   * - Uses services: DateUtils, DriveManager (via the pipeline)
+   * - Relies on controllers: definitionController, abClassController, progressTracker
    * - Integrates with: Assignment, StudentSubmission, ABClass
    */
-  processSelectedAssignment() {
+  processSelectedAssignment({ assignmentId, definitionKey, courseId }) {
     try {
-      const properties = GASPropertiesUtils.getUserProperties();
-      const assignmentId = properties.getProperty('assignmentId');
-      const definitionKey = properties.getProperty('definitionKey');
-      const triggerId = properties.getProperty('triggerId');
-      const storedCourseId = properties.getProperty('courseId');
+      // Validate required task params — triggerHandler dispatches with a validated params object
+      Validate.requireParams(
+        { assignmentId, definitionKey, courseId },
+        'processSelectedAssignment'
+      );
 
-      if (!assignmentId || !definitionKey || !triggerId) {
-        // Lazily instantiate TriggerController to clean up pending triggers
-        const triggerController = new TriggerController();
-        triggerController.removeTriggers('triggerProcessSelectedAssignment');
-        this.progressTracker.logAndThrowError('Missing parameters for processing.');
-      }
-
-      // Lazily instantiate TriggerController for trigger deletion
-      const triggerController = new TriggerController();
-      triggerController.deleteTriggerById(triggerId);
-      ABLogger.getInstance().info('Trigger deleted after processing.');
       this.progressTracker.startTracking();
       this.progressTracker.updateProgress('Assessment run starting.');
 
@@ -122,13 +116,6 @@ class AssignmentController {
       if (!definition) {
         this.progressTracker.logAndThrowError(
           `Assignment definition not found for key ${definitionKey}. Cannot proceed.`
-        );
-      }
-
-      const courseId = storedCourseId;
-      if (!courseId) {
-        this.progressTracker.logAndThrowError(
-          'Course ID could not be determined. It is missing from stored properties.'
         );
       }
 
@@ -159,23 +146,6 @@ class AssignmentController {
       ABLogger.getInstance().info(ASSESSMENT_RUN_SUCCESS_MESSAGE);
     } catch (error) {
       this.progressTracker.logAndThrowError(error.message, error);
-    } finally {
-      try {
-        // Use the hydrated roster from the class record for processing. This data is transient
-        // and must not be persisted with the Assignment to prevent data duplication.
-        const properties = GASPropertiesUtils.getUserProperties();
-        GASPropertiesUtils.clearProperties(properties, [
-          'assignmentId',
-          'definitionKey',
-          'triggerId',
-          'courseId',
-        ]);
-        ABLogger.getInstance().info('User properties cleaned up.');
-      } catch (cleanupError) {
-        this.progressTracker.logError(`Failed to clean up properties: ${cleanupError.message}`, {
-          err: cleanupError,
-        });
-      }
     }
   }
 

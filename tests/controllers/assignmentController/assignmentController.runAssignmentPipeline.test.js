@@ -384,18 +384,21 @@ describe('AssignmentController - runAssignmentPipeline throw-on-stale', () => {
      * processSelectedAssignment catches it and calls logAndThrowError.
      *
      * This is a regression test: the catch block in processSelectedAssignment
-     * already handles errors from runAssignmentPipeline. Once the throw-on-stale
-     * behaviour is added, the error will propagate correctly through the
-     * existing error boundary.
+     * already handles errors from runAssignmentPipeline. The method receives
+     * its task params directly; the error is routed through the existing
+     * error boundary via logAndThrowError.
      */
     it('processSelectedAssignment catches DefinitionStaleError and calls logAndThrowError', () => {
       // Act: run processSelectedAssignment which internally calls runAssignmentPipeline
-      controller.processSelectedAssignment();
+      controller.processSelectedAssignment({
+        assignmentId: 'assignment-456',
+        definitionKey: TEST_DEFINITION_KEY,
+        courseId: 'course-123',
+      });
 
-      // ASSERTION: This will FAIL (RED) because the current code silently re-parses
-      // instead of throwing DefinitionStaleError. Once the throw-on-stale behaviour
-      // is implemented, runAssignmentPipeline will throw, and the catch block in
-      // processSelectedAssignment will call logAndThrowError.
+      // runAssignmentPipeline throws DefinitionStaleError (both documents are
+      // stale per the mocks), and the catch block in processSelectedAssignment
+      // routes the error through logAndThrowError.
       expect(mockProgressTracker.logAndThrowError).toHaveBeenCalled();
     });
   });
