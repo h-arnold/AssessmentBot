@@ -4,12 +4,11 @@ Internal trigger execution context store persisted via GAS Script Properties, ke
 triggerUid. Stores the method and params for a scheduled time-based trigger so the single
 public `triggerHandler()` entrypoint can validate, authorise, and dispatch on fire.
 
-> **Status: Not implemented** — planned-only entry for the Auth Service feature
-> (ACTION_PLAN §1/§8). Remove this marker once the `Triggers/` domain lands
-> (`TriggerController` move + context storage methods, `triggerHandler.js`,
-> `triggerMethodHandlers.js`).
+> **Status: Implemented** — delivered in `src/backend/Triggers/`
+> (`TriggerController` moved from `src/backend/Utils/` + context storage
+> methods, `triggerHandler.js`, `triggerMethodHandlers.js`).
 
-Backend implementation: `src/backend/Triggers/TriggerController.js` (planned location — moved from `src/backend/Utils/TriggerController.js`)
+Backend implementation: `src/backend/Triggers/TriggerController.js` (moved from `src/backend/Utils/TriggerController.js`)
 Persistence: `PropertiesService.getScriptProperties()` via `GASPropertiesUtils` (`src/backend/Utils/00_GASPropertiesUtils.js`)
 API handlers: Not directly callable — consumed internally by `triggerHandler()` in `src/backend/Triggers/triggerHandler.js`
 Frontend service: None — internal backend mechanism
@@ -56,7 +55,7 @@ The store is managed by three instance methods on `TriggerController`
 2. **`getTriggerContext(triggerUid)`** — Reads both keys directly from
    `GASPropertiesUtils.getScriptProperties()` (there is no single-key getter wrapper on
    `GASPropertiesUtils`) and returns `{ method, params }` (params deserialised from JSON).
-   Returns `null` when the triggerUid is unknown or either key is missing. When only one of
+   Returns `null` when the triggerUid is unknown or when both keys are missing. When only one of
    the two keys exists it returns a partial context (`{ method }` or `{ params }`, with the
    missing key set to `null`) — `triggerHandler()` treats any partial context as invalid and
    aborts. Returns `null` on malformed `params` JSON (parse failure), consistent with the
@@ -134,7 +133,7 @@ None — TriggerContext is a pair of flat key-value properties with no embedded 
 ## File Index
 
 ```
-Implementation:       src/backend/Triggers/TriggerController.js (planned — moved from src/backend/Utils/TriggerController.js)
+Implementation:       src/backend/Triggers/TriggerController.js
   ├── storeTriggerContext(triggerUid, { method, params })  — write method + params via GASPropertiesUtils
   ├── getTriggerContext(triggerUid)                        — read { method, params }
   └── clearTriggerContext(triggerUid)                      — remove both keys

@@ -64,14 +64,13 @@ When delegating to subagents, specify **WHAT** needs to be accomplished and **WH
 
 Every subagent handoff **must** include:
 
-- Mandatory files via the `files` parameter of the `task` tool — file contents are injected automatically into the subagent's prompt; list **paths only**, and do not rely on the subagent to read them itself
+- `Mandatory Reading` section with explicit file paths (mandatory)
+- All mandatory documentation required by the subagent's own instructions
 - Constraints and scope boundaries
 - Exact requested outcome
 - Expected deliverables
 
-**Never paste file contents into the prompt body.** The `files` array carries file paths only; the body carries instructions, acceptance criteria, and non-file context. The `task-files` plugin injects the referenced files automatically, so the subagent must not re-read or paste them.
-
-**Blocking rule**: If a handoff omits a mandatory file from the `files` array, return the work immediately to the same subagent with a correction request. Do not proceed.
+**Blocking rule**: If a handoff omits mandatory `Files read` evidence, return the work immediately to the same subagent with a correction request. Do not proceed.
 
 ### 3.3 Sub-Agent Delegation Constraints
 
@@ -85,65 +84,57 @@ Every subagent handoff **must** include:
 
 **Principle:** Only prompt subagents to read documentation directly related to the task at hand. Do **not** include documentation that the subagent is already required to read per its own instructions.
 
-**What to include in the `files` array (task-specific context):**
+**What to include in `Mandatory Reading`:**
 
-| Documentation Type                                             | Mechanism      | Rationale                                        |
-| -------------------------------------------------------------- | -------------- | ------------------------------------------------ |
-| Planning artefacts (SPEC.md, ACTION_PLAN.md, layout specs)     | `files` array  | Task-specific, not in subagent's baseline        |
-| Changed source files                                           | `files` array  | Task-specific context                            |
-| Nearby test files                                              | `files` array  | Task-specific context                            |
-| Online/official docs (Ant Design, library docs)                | Prompt text    | Task-specific reference; URLs cannot be injected |
-| Module AGENTS.md files                                         | ❌ Do not pass | Already required by subagent's own instructions  |
-| Module testing docs (backend-testing.md, frontend-testing.md)  | ❌ Do not pass | Already required by Testing Specialist           |
-| Playwright E2E guide (frontend-playwright-e2e.md)              | ❌ Do not pass | Already required by Playwright                   |
-| CONTRIBUTING.md, top-level AGENTS.md                           | ❌ Do not pass | Already required by Implementation/Code Reviewer |
-| Canonical policy docs (frontend-logging-and-error-handling.md) | ❌ Do not pass | Already required by relevant subagents           |
+| Documentation Type                                             | Include? | Rationale                                        |
+| -------------------------------------------------------------- | -------- | ------------------------------------------------ |
+| Planning artefacts (SPEC.md, ACTION_PLAN.md, layout specs)     | ✅ Yes   | Task-specific, not in subagent's baseline        |
+| Changed source files                                           | ✅ Yes   | Task-specific context                            |
+| Nearby test files                                              | ✅ Yes   | Task-specific context                            |
+| Online/official docs (Ant Design, library docs)                | ✅ Yes   | Task-specific reference                          |
+| Module AGENTS.md files                                         | ❌ No    | Already required by subagent's own instructions  |
+| Module testing docs (backend-testing.md, frontend-testing.md)  | ❌ No    | Already required by Testing Specialist           |
+| Playwright E2E guide (frontend-playwright-e2e.md)              | ❌ No    | Already required by Playwright                   |
+| CONTRIBUTING.md, top-level AGENTS.md                           | ❌ No    | Already required by Implementation/Code Reviewer |
+| Canonical policy docs (frontend-logging-and-error-handling.md) | ❌ No    | Already required by relevant subagents           |
 
 **Example delegations:**
-
-In each example below, the `files:` block is the **`files` parameter** of the `task` tool (paths only, passed as JSON) and the lines after it are the **prompt body**. Pass them separately on the `task` call — do **not** paste the `files:` block into the prompt body.
 
 To Testing Specialist for a frontend component:
 
 ```
-files: [
-  "SPEC.md",
-  "ACTION_PLAN.md",
-  "src/frontend/src/features/assessment/ScoringDialog.tsx",
-  "tests/frontend/features/assessment/ScoringDialog.spec.tsx",
-]
+Mandatory reading:
+- SPEC.md (section 3.2 covers this feature)
+- ACTION_PLAN.md (section 4)
+- src/frontend/src/features/assessment/ScoringDialog.tsx
+- tests/frontend/features/assessment/ScoringDialog.spec.tsx
+- https://ant.design/components/modal (for modal interaction patterns)
 
 Testing Specialist, add tests for the new scoring validation in ScoringDialog.
-Use the attached files from your prompt — they are already injected and do not need re-reading.
-Consult https://ant.design/components/modal for modal interaction patterns.
 Meet minimum coverage thresholds and follow idiomatic testing patterns.
 ```
 
 To Implementation for a backend service:
 
 ```
-files: [
-  "SPEC.md",
-  "src/backend/Services/AssessmentService.js",
-  "tests/backend/Services/AssessmentService.test.js",
-]
+Mandatory reading:
+- SPEC.md (section 2.1)
+- src/backend/Services/AssessmentService.js
+- tests/backend/Services/AssessmentService.test.js
 
 Implementation, add the new validation logic to AssessmentService.
-Consume the attached files from your prompt — they are already injected.
 Follow all applicable module standards and ensure all validation passes.
 ```
 
 To Docs for a new feature:
 
 ```
-files: [
-  "SPEC.md",
-  "src/backend/Models/NewAssessmentModel.js",
-  "docs/developer/backend/assessment-workflow.md",
-]
+Mandatory reading:
+- SPEC.md (full document)
+- src/backend/Models/NewAssessmentModel.js
+- docs/developer/backend/assessment-workflow.md (existing related doc)
 
 Docs, document the new assessment model in all relevant developer documentation.
-The attached files are already injected into your prompt — do not re-read them.
 Ensure JSDoc accuracy.
 ```
 
@@ -163,7 +154,7 @@ Write your findings as a structured list to the scratchpad as `task-docs.md`. Re
 Include file paths and URLs only — no analysis or interpretation.
 ```
 
-Use the scratchpad file to populate the task-specific `files` array for the primary agent delegation.
+Use the scratchpad file to populate the task-specific `Mandatory Reading` section for the primary agent delegation.
 
 **When to use this:**
 
@@ -276,11 +267,11 @@ Process changes in logical units. For each unit, select the appropriate agent(s)
 
 ### 6.1 Context Discovery (Optional)
 
-For changes with unclear scope or dependencies, first use Kif to discover relevant documentation (see Section 4). Use the scratchpad output to populate the task-specific `files` array.
+For changes with unclear scope or dependencies, first use Kif to discover relevant documentation (see Section 4). Use the scratchpad output to build the task-specific `Mandatory reading` list.
 
 ### 6.2 Task Execution Phase
 
-Delegate to the most appropriate agent with a **WHAT**-focused prompt and task-specific files via the `files` parameter:
+Delegate to the most appropriate agent with a **WHAT**-focused prompt and task-specific `Mandatory Reading`:
 
 - **For test work (Vitest/backend)**: "Testing Specialist, add tests for [behaviour]. Follow idiomatic testing patterns and meet coverage thresholds."
 - **For E2E test work (Playwright)**: "Playwright, add E2E tests for [visible behaviour]. Follow the runtime mock infrastructure and StrictMode patterns."
@@ -302,12 +293,11 @@ Expect:
 Delegate to `Code Reviewer`:
 
 - "Code Reviewer, review [changed files] for [behaviour]. Apply all relevant module review checklists."
-- **`files` array (paths only):** the changed files
-- **prompt body:** the behaviour under review, acceptance criteria, constraints, and the fact that checks pass
+- Pass: changed files, acceptance criteria, constraints, proof that checks pass
 - If review returns findings:
   1. Send findings back to the **original executing agent**
-  2. Require fixes plus re-running validation, and **re-attach the same `files` array** to the handoff (paths only)
-  3. Re-submit to `Code Reviewer`, again re-attaching the `files` array
+  2. Require fixes plus re-running validation
+  3. Re-submit to `Code Reviewer`
   4. Repeat until review returns **clean**
 
 **Do not consider the change complete until review is clean.**
@@ -395,11 +385,10 @@ When returning work to the user, always provide:
 - **Select the right agent for the job** — Testing Specialist for Vitest/backend tests, Playwright for E2E tests, Implementation for code, Docs for documentation, Kif for menial tasks
 - **Delegate outcomes, not implementation** — specify WHAT needs to happen, not HOW
 - **Provide task-specific reads only** — do not list docs already required by subagent's own instructions
-- **Never paste file contents into the prompt body** — pass file paths via the `files` array; the plugin injects the contents automatically
 - **Use Kif for context discovery** — to identify relevant docs and dependencies before delegation
 - **Use Kif efficiently** — for menial tasks only; do not use for reasoning-heavy work
 - **Write Kif findings to scratchpad** — for documentation discovery, not direct return
-- **Fail fast on missing evidence** — return work immediately when mandatory files are missing from the `files` array
+- **Fail fast on missing evidence** — return work immediately when `Files read` is incomplete
 - **Always establish regression baseline first** — before non-trivial code/test changes begin
 - **Always verify no regressions** — before marking non-trivial code/test changes complete
 - **Stay within scope** — no speculative expansions

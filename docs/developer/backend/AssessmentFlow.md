@@ -210,7 +210,7 @@ The backend now exposes three assignment-definition API surfaces:
 
 **Class**: `TriggerController`
 
-- **Location**: `src/backend/Utils/TriggerController.js`
+- **Location**: `src/backend/Triggers/TriggerController.js`
 - **Key Method**: `createTimeBasedTrigger(functionName, triggerTime)`
   - Creates a ScriptApp trigger set to run at specified time
   - If triggerTime not provided, defaults to 5 seconds from now

@@ -48,35 +48,16 @@ Failing to read these files **will** result in you failing your task.
   - `Data Shapes Agent` (`.opencode/agents/data-shapes-agent.md`) for creating and maintaining canonical data-shape specifications across persistence, transport, and validation boundaries.
   - `De-Sloppification` (`.opencode/agents/de-sloppification.md`) for slop review.
 
-Sub-agents are stateless. Every delegated handoff **MUST** populate the `files` array of the `task` tool with the full context the sub-agent needs. This is **mandatory** — the `task` tool schema marks `files` as required, so the model must emit it on every task call; pass `files: []` when no file injection is needed.
+Sub-agents are stateless. Provide explicit context in prompts:
 
-- The `files` array **must** contain: `SPEC.md`, `ACTION_PLAN.md` (or the relevant section), any frontend layout spec, and every source/test file changed or read in the current section.
-- **Never** paste full file contents into the prompt body. The prompt body should contain only instructions, acceptance criteria, and references (file paths); the actual file contents are delivered via `files` and injected automatically. The subagent must not re-read them.
-- **Exception:** do **not** include any `AGENTS.md` file (root or module-specific) in the `files` array — OpenCode auto-injects these when an agent browses to the relevant directory.
+- relevant source snippets
+- concrete requirements
+- error/output details
+- exact changes already made
+- mandatory documentation that must be read for the task
 
-**Concrete example (handoff to `Implementation`):** the `files` array carries paths only; the prompt body carries instructions. Pass them as separate arguments on the `task` call:
-
-```js
-// prompt body — instructions, acceptance criteria and references only
-task({
-  description: "Implement scoring validation",
-  subagent_type: "implementation",
-  files: [
-    "SPEC.md",
-    "ACTION_PLAN.md",
-    "src/backend/Services/AssessmentService.js",
-    "tests/backend/Services/AssessmentService.test.js",
-  ],
-  prompt:
-    "Implement the scoring validation per ACTION_PLAN.md section 2. " +
-    "The files listed are already injected; do not re-read them. " +
-    "Follow all applicable module standards; do not paste file contents into this body.",
-});
-```
-
-Do **not** paste file contents into the prompt body — only the paths above go in `files`.
-
-**Pre-flight check (non-negotiable):** Before issuing any `task` call, first assemble the `files` array. If it would be empty for a workflow handoff, **stop — do not send the call.** Sub-agent handoffs must confirm which files were used. If a mandatory file is missing from the `files` array, return the work to the same sub-agent and do not proceed.
+Sub-agent handoffs must include a `Mandatory Reading` section with explicit file paths.
+If mandatory documentation is missing from `Files read`, return the work to the same sub-agent and do not proceed.
 
 ### 5. Shared Config Rule
 
@@ -119,8 +100,8 @@ Rules:
 - Do not mark non-trivial work complete before a clean reviewer pass.
 - Preserve explicit handoff context each cycle: changed files, review findings, constraints, and acceptance criteria.
 - Keep the loop scoped to the requested task; avoid opportunistic refactors unless requested.
-- **Mandatory `files` array:** When using `ACTION_PLAN.md`, every delegated handoff **must** pass phase-level mandatory documentation (`SPEC.md`, `ACTION_PLAN.md`/section, layout spec if applicable, and changed source/test files) via the `files` parameter. Verify the `files` array is populated before sending. Do **not** include `AGENTS.md` files (auto-injected by OpenCode).
-- If any delegated handoff is missing mandatory files from the `files` array, return the work to the same sub-agent and block progression until corrected.
+- When using `ACTION_PLAN.md`, include phase-level mandatory documentation paths for delegated agents and enforce a `Files read` evidence gate in every delegated handoff.
+- If any delegated handoff omits mandatory documentation from `Files read`, return the work to the same sub-agent and block progression until corrected.
 
 ### 7. Ambiguity Rule
 

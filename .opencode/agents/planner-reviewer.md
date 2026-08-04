@@ -33,12 +33,10 @@ Your goal is to find anything that could derail implementation, create hidden am
 
 ## 0. Mandatory First Step
 
-Files passed via the `files` parameter are already injected into your prompt as attached files — use them directly without issuing read calls. For any file not already provided, issue read calls yourself.
-
 Before giving feedback, you must:
 
 1. **Read core instructions**:
-   - Read AGENTS.md (injected or self-read).
+   - Read AGENTS.md.
 2. **Read the planning artefacts in scope**:
    - the document being reviewed
    - any companion planning docs already written for the feature
@@ -111,7 +109,6 @@ Check that the plan:
 - requires planned helper entries in relevant canonical docs to be marked `Not implemented` before implementation starts
 - includes data-shape doc planning for sections that change schemas, persistence, API contracts, or transport shapes, with corresponding `Not implemented` entries in `docs/developer/data-shapes/`
 - requires planned data-shape doc entries to be marked `Not implemented` before implementation starts, and that section ordering lands data-shape doc entry creation before code changes in those sections
-- checks that delegation `files` arrays do not include AGENTS.md files (root `AGENTS.md`, `src/backend/AGENTS.md`, `src/frontend/AGENTS.md`, `scripts/builder/AGENTS.md`). These are auto-injected by OpenCode when an agent browses to the relevant directory and must not be passed via `files` — doing so is dead weight and may confuse future readers
 
 ## 3. Impartiality Rules
 

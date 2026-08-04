@@ -23,12 +23,10 @@ You do not implement production code. You clarify, structure, and write planning
 
 ## 0. Mandatory First Step
 
-Files passed via the `files` parameter are already injected into your prompt as attached files — use them directly without issuing read calls. For any file not already provided, issue read calls yourself.
-
 Before asking questions or drafting anything, you must:
 
 1. **Read core instructions**:
-   - Read AGENTS.md (injected or self-read).
+   - Read AGENTS.md.
 2. **Use `Kif` for simple codebase exploration**: When gathering context, delegate straightforward codebase exploration tasks (such as finding file snippets, searching for patterns, or locating relevant code sections) to the `Kif` subagent. Kif is optimised for menial, low-judgement exploration tasks.
 3. **Read component instructions when the request already implicates them**:
    - Backend: src/backend/AGENTS.md
@@ -208,18 +206,7 @@ After the spec and any required layout spec are complete:
 - Include a per-section shared-helper planning block when helper reuse/extension/new extraction is expected.
 - For planned shared helpers, reference the relevant canonical docs where planned-only helper entries were recorded as `Not implemented`.
 - **Include a per-section data-shape planning block** when the section changes any schema, persistence model, API contract, or transport shape. Reference the relevant data-shape doc(s) in `docs/developer/data-shapes/` where planned-only entries were recorded as `Not implemented`. The implementation agent should update those entries to remove the `Not implemented` marker as they implement them.
-- **When writing delegation `files` arrays for sub-agent sections, do not include AGENTS.md files** (root `AGENTS.md` or any module-specific `AGENTS.md` like `src/backend/AGENTS.md`, `src/frontend/AGENTS.md`, `scripts/builder/AGENTS.md`). OpenCode automatically discovers and injects these files when an agent browses to the relevant directory. Include only supplementary docs that the sub-agent's own instructions are not guaranteed to inject. This applies to all sub-agent delegations (Implementation, Testing Specialist, Code Reviewer, Docs, etc.).
 - **File separation by LOC**: See §1 item 12. When a section touches a file projected to exceed 500 lines, include the separation plan (current LOC, projected LOC, target modules) in that section's constraints or implementation notes.
-
-- **Audit delegation `files` arrays before review**: After drafting `ACTION_PLAN.md` and before submitting to Planner Reviewer, delegate a delegation-files audit to a **Docs subagent**. Pass the following files via the `task` tool's `files` array so the Docs agent has full context without extra read calls:
-  - `ACTION_PLAN.md`
-  - `SPEC.md`
-  - all source files identified in the plan's sections as being materially changed (the files that sub-agents will implement)
-
-  The Docs agent should:
-  1. Thoroughly familiarise itself with the task context (action plan, spec, changed files).
-  2. Audit every sub-agent `files` array across all sections for correctness — no AGENTS.md files (auto-injected by OpenCode), and each role (Implementation, Testing Specialist, Code Reviewer) receives the mandatory docs needed for its scope.
-  3. **Update the `files` arrays directly** in `ACTION_PLAN.md` to add any missing mandatory docs and remove any auto-injected AGENTS.md references. Return the corrected plan.
 
 The plan should be specific enough for the implementation orchestrator to execute sequentially without having to reopen core product decisions.
 
