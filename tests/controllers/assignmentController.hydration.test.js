@@ -627,9 +627,10 @@ describe('AssignmentController - Definition Hydration', () => {
   });
 
   describe('startProcessing', () => {
-    it('should store only definitionKey in properties (no doc IDs)', () => {
+    it('stores task context via TriggerController.storeTriggerContext() and targets triggerHandler', () => {
       const mockTrigger = {
         createTimeBasedTrigger: vi.fn().mockReturnValue('trigger-123'),
+        storeTriggerContext: vi.fn(),
       };
       globalThis.TriggerController.mockImplementation(function () {
         return mockTrigger;
@@ -638,26 +639,15 @@ describe('AssignmentController - Definition Hydration', () => {
       const controller = new AssignmentController();
       controller.startProcessing('assignment-456', 'Essay 1_English_year-group-10');
 
-      expect(mockProperties.setProperty).toHaveBeenCalledWith('assignmentId', 'assignment-456');
-      expect(mockProperties.setProperty).toHaveBeenCalledWith(
-        'definitionKey',
-        'Essay 1_English_year-group-10'
-      );
-      expect(mockProperties.setProperty).toHaveBeenCalledWith('triggerId', 'trigger-123');
-
-      // Should NOT store documentType, referenceDocumentId, or templateDocumentId
-      expect(mockProperties.setProperty).not.toHaveBeenCalledWith(
-        'documentType',
-        expect.anything()
-      );
-      expect(mockProperties.setProperty).not.toHaveBeenCalledWith(
-        'referenceDocumentId',
-        expect.anything()
-      );
-      expect(mockProperties.setProperty).not.toHaveBeenCalledWith(
-        'templateDocumentId',
-        expect.anything()
-      );
+      expect(mockTrigger.createTimeBasedTrigger).toHaveBeenCalledWith('triggerHandler');
+      expect(mockTrigger.storeTriggerContext).toHaveBeenCalledWith('trigger-123', {
+        method: 'processSelectedAssignment',
+        params: {
+          assignmentId: 'assignment-456',
+          definitionKey: 'Essay 1_English_year-group-10',
+          courseId: '',
+        },
+      });
     });
   });
 });

@@ -25,25 +25,29 @@ class AssignmentController {
   }
 
   /**
-   * Initiates the Assignment Assessment Workflow by creating a time-based trigger and storing necessary properties.
-   * This method sets up `triggerProcessSelectedAssignment` by creating the trigger and storing assignment details
-   * in UserProperties for access when the trigger executes.
+   * Initiates the Assignment Assessment Workflow by creating a time-based trigger and
+   * storing the task context in Script Properties.
+   *
+   * Sets up `triggerHandler` as the scheduled entrypoint and stores assignment details via
+   * `TriggerController.storeTriggerContext()` (Script Properties keyed by the triggerUid),
+   * so the trigger handler can resolve and dispatch the task when the trigger fires. No
+   * longer uses User Properties for task context — `triggerHandler()` owns all trigger
+   * cleanup (context clear + trigger deletion).
    *
    * @param {string} assignmentId - The ID of the assignment to be processed
    * @param {string} definitionKey - The key of the assignment definition to use
    * @param {string} courseId - Classroom course ID used for downstream processing.
-   * @throws {Error} If trigger creation fails or if setting user properties fails
+   * @throws {Error} If trigger creation fails or if storing the trigger context fails
    */
   startProcessing(assignmentId, definitionKey, courseId = '') {
     // Lazily instantiate TriggerController
     const triggerController = new TriggerController();
-    const properties = GASPropertiesUtils.getUserProperties();
     let triggerId;
 
     try {
-      triggerId = triggerController.createTimeBasedTrigger('triggerProcessSelectedAssignment');
+      triggerId = triggerController.createTimeBasedTrigger('triggerHandler');
       ABLogger.getInstance().info(
-        `Trigger created for triggerProcessSelectedAssignment with triggerId: ${triggerId}`
+        `Trigger created for triggerHandler with triggerId: ${triggerId}`
       );
     } catch (error) {
       this.progressTracker.logAndThrowError(`Error creating trigger: ${error.message}`, error);
@@ -55,18 +59,18 @@ class AssignmentController {
     }
 
     try {
-      const propertyMap = {
-        assignmentId,
-        definitionKey,
-        triggerId,
-        courseId,
-      };
-      GASPropertiesUtils.applyProperties(properties, propertyMap);
-      ABLogger.getInstance().info('Properties set for processing.');
+      triggerController.storeTriggerContext(triggerId, {
+        method: 'processSelectedAssignment',
+        params: { assignmentId, definitionKey, courseId },
+      });
+      ABLogger.getInstance().info('Trigger context stored for processing.');
     } catch (error) {
-      this.progressTracker.logAndThrowError(`Error setting properties: ${error.message}`, error);
+      this.progressTracker.logAndThrowError(
+        `Error storing trigger context: ${error.message}`,
+        error
+      );
       this.utils.toastMessage(
-        'Failed to set processing properties: ' + error.message,
+        'Failed to store trigger context: ' + error.message,
         'Error',
         TOAST_DURATION_SECONDS
       );
