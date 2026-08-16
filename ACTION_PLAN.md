@@ -2,22 +2,22 @@
 
 ## Execution progress (orchestrator-maintained)
 
-| Section                                 | Status       | Commit                                      |
-| --------------------------------------- | ------------ | ------------------------------------------- |
-| 1. Data-shape doc updates               | ✅ Completed | `55456dd` (pushed)                          |
-| 2. Backend config AUTH_GROUP_EMAIL      | ✅ Completed | `b9c2633` (red) / `a6c32a6` (green, pushed) |
-| 3. CacheManager generic methods         | ✅ Completed | see execution log                           |
-| 4. AuthService singleton                | ✅ Completed | `fae689a` (green, pushed)                   |
-| 5. FORBIDDEN + auth gate                | ✅ Completed | see execution log (red + green, pushed)     |
-| 6. appsscript.json scopes + webapp      | ✅ Completed | see execution log (green, pushed)           |
-| 7. Security audit                       | ✅ Completed | `e35f318` (green, pushed)                   |
-| 8. Triggers/ domain                     | In progress  | red+green complete, review fixes pending    |
-| 9. processSelectedAssignment signature  | ✅ Completed | `972b5b5` (green, pushed)                   |
-| 10. startProcessing trigger integration | Pending      | —                                           |
-| 11. Frontend config transport + form    | Pending      | —                                           |
-| 12. Frontend auth features              | Pending      | —                                           |
-| Regression + contract hardening         | Pending      | —                                           |
-| Documentation + rollout notes           | Pending      | —                                           |
+| Section                                 | Status         | Commit                                                |
+| --------------------------------------- | -------------- | ----------------------------------------------------- |
+| 1. Data-shape doc updates               | ✅ Completed   | `55456dd` (pushed)                                    |
+| 2. Backend config AUTH_GROUP_EMAIL      | ✅ Completed   | `b9c2633` (red) / `a6c32a6` (green, pushed)           |
+| 3. CacheManager generic methods         | ✅ Completed   | `fb5c15a` (pushed)                                    |
+| 4. AuthService singleton                | ✅ Completed   | `fae689a` (green, pushed)                             |
+| 5. FORBIDDEN + auth gate                | ✅ Completed   | see execution log (red + green, pushed)               |
+| 6. appsscript.json scopes + webapp      | ✅ Completed   | `f254114` (green, pushed)                             |
+| 7. Security audit                       | ✅ Completed   | `e35f318` (green, pushed)                             |
+| 8. Triggers/ domain                     | ✅ Implemented | `02ec30d` (pushed); formal gate evidence to reconcile |
+| 9. processSelectedAssignment signature  | ✅ Completed   | `972b5b5` (green, pushed)                             |
+| 10. startProcessing trigger integration | Pending        | —                                                     |
+| 11. Frontend config transport + form    | Pending        | —                                                     |
+| 12. Frontend auth features              | Pending        | —                                                     |
+| Regression + contract hardening         | Pending        | —                                                     |
+| Documentation + rollout notes           | Pending        | —                                                     |
 
 ### Execution log (orchestrator-maintained)
 
@@ -65,7 +65,9 @@
   - Fix 5: `src/backend/Triggers/triggerHandler.js` — extracted `cleanupTrigger_` helper, replaced 4× repeated cleanup pairs
   - Fix 6: test file docblocks — updated stale red-phase tense to delivered state in `triggerHandler.test.js` and `triggerMethodHandlers.test.js`
   - Fix 7: export-guard consistency — `TriggerController.js` aligned to canonical `if (typeof module !== 'undefined' && module.exports)` form
-  - **§8 still requires: Code Reviewer re-pass (post-fix), Regression Gate, commit + push.**
+  - **§8 status reconciliation:** implementation and review-fix changes were committed and pushed in `02ec30d`. The previous entry listed the Code Reviewer re-pass and Regression Gate as pending; their final evidence is not recorded here and must be verified separately before treating §8 as fully signed off. Do not duplicate the commit or push.
+
+- **Plan accuracy audit (2026-08-16):** reconciled stale Section 8 status and commit traceability, refreshed the LOC assessment, and recorded the Section 9-before-8 execution order. The current branch remains **not deployable for assessment-trigger execution** until Section 10 is delivered because `startProcessing()` still targets the deleted `triggerProcessSelectedAssignment` function. `docs/developer/data-shapes/INDEX.md` also retains a contradictory AuthCache/TriggerContext `Not implemented` banner; this is a documentation follow-up for the Documentation section.
 
 ## Read-First Context
 
@@ -104,15 +106,17 @@ The full Auth Service feature as defined in SPEC.md v1.8:
 
 ### LOC assessment
 
-| File                              | Current LOC | Projected Δ      | Projected LOC | Over 550?    | Action                                                                                                                                                                                                                                                                                                                 |
-| --------------------------------- | ----------- | ---------------- | ------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `98_ConfigurationManagerClass.js` | 650         | +30              | 680           | Already >550 | **Documented AGENTS §11 deviation:** no split this feature — scope changes are minimal (2 renames in §7 + `getAuthGroupEmail`/`setAuthGroupEmail` in §2); file was already over the 550-line threshold before this feature. Facade decomposition (per `src/backend/AGENTS.md` §11) is deferred to a tracked follow-up. |
-| `z_apiHandler.js`                 | 486         | +50              | 536           | No           | Under backend 550-line threshold                                                                                                                                                                                                                                                                                       |
-| `BackendSettingsPanel.tsx`        | 468         | +20              | 488           | No           | Under general 500-line threshold                                                                                                                                                                                                                                                                                       |
-| `AssignmentController.js`         | 466         | +30              | 496           | No           | Under 500                                                                                                                                                                                                                                                                                                              |
-| `ReferenceDataController.js`      | 436         | 0 (renames only) | 436           | No           | Under 500                                                                                                                                                                                                                                                                                                              |
+The values below reflect the current tree after the completed sections. Projected deltas now refer to remaining work, not the original pre-implementation estimate.
 
-No mandatory file separation is required for this feature. **Known deviation (AGENTS §11):** `98_ConfigurationManagerClass.js` is 650 lines (over the 550-line non-API threshold) and is intentionally NOT decomposed in this feature — the changes are additive (one getter/setter pair) plus two renames, and the file was already over threshold before this feature. A facade-pattern decomposition (per `src/backend/AGENTS.md` §11) is tracked as a separate follow-up and is out of scope here.
+| File                              | Current LOC | Projected Δ | Projected LOC | Over 550?    | Action                                                                                                                                                                                                                                                                                                                 |
+| --------------------------------- | ----------- | ----------- | ------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `98_ConfigurationManagerClass.js` | 668         | +0          | 668           | Already >550 | **Documented AGENTS §11 deviation:** no split this feature — scope changes are minimal (2 renames in §7 + `getAuthGroupEmail`/`setAuthGroupEmail` in §2); file was already over the 550-line threshold before this feature. Facade decomposition (per `src/backend/AGENTS.md` §11) is deferred to a tracked follow-up. |
+| `z_apiHandler.js`                 | 508         | +0          | 508           | No           | Under backend 550-line threshold                                                                                                                                                                                                                                                                                       |
+| `BackendSettingsPanel.tsx`        | 468         | +20         | 488           | No           | Under general 500-line threshold                                                                                                                                                                                                                                                                                       |
+| `AssignmentController.js`         | 436         | +30         | 466           | No           | Under 500                                                                                                                                                                                                                                                                                                              |
+| `ReferenceDataController.js`      | 436         | 0           | 436           | No           | Under 500                                                                                                                                                                                                                                                                                                              |
+
+No mandatory file separation is required for this feature. **Known deviation (AGENTS §11):** `98_ConfigurationManagerClass.js` is 668 lines (over the 550-line non-API threshold) and is intentionally NOT decomposed in this feature — the changes are additive (one getter/setter pair) plus two renames, and the file was already over threshold before this feature. A facade-pattern decomposition (per `src/backend/AGENTS.md` §11) is tracked as a separate follow-up and is out of scope here.
 
 ---
 
@@ -836,6 +840,8 @@ This section implements the `request-store.md` name changes planned in Section 1
 
 ## Section 8 — Triggers/ domain: TriggerController move/extend, triggerHandler, triggerMethodHandlers
 
+> **Execution-order note:** Section 9 was intentionally implemented before Section 8 because the direct-params `processSelectedAssignment()` contract is required by the trigger registry. The numeric section labels are retained for traceability; follow the suggested implementation order below rather than document order.
+
 ### Objective
 
 Create the `Triggers/` domain folder, move and extend `TriggerController` (context storage methods + ABLogger conversion), create `triggerHandler()` as the single public trigger entrypoint with centralised auth, and create the `TRIGGER_METHOD_HANDLERS` registry.
@@ -1004,8 +1010,8 @@ files: ['ACTION_PLAN.md', 'SPEC.md', 'src/backend/y_controllers/AssignmentContro
 
 ### Implementation notes / deviations / follow-up
 
-- **Progress (red phase):** New test file `tests/controllers/assignmentController/processSelectedAssignmentParams.test.js` created with the two required red tests. Red state verified: 1 failed file | 2 passed files, 2 failed | 18 passed tests (both failures intentional — params read from properties instead of direct params; `deleteTriggerById` called). Lint clean. No production file touched. Red-phase review was NOT yet performed when this session was paused — resume by submitting this to the Code Reviewer with the `files` array below.
-- `AssignmentController.js` current LOC: 466. Projected after change: ~486. Under 500-line threshold.
+- **Progress:** Section 9 was implemented, reviewed, regression-checked, committed as `972b5b5`, and pushed. The red-phase details are retained in the execution log above for audit history.
+- `AssignmentController.js` current LOC: 436. Remaining Section 10 work is projected at approximately +30 lines, for approximately 466 lines.
 - This section MUST be delivered before Section 8 so the `TRIGGER_METHOD_HANDLERS` dispatch path is executable with the new signature.
 - The `startProcessing()` trigger-integration work that previously lived in this section is now Section 10 (it depends on Section 8's `TriggerController.storeTriggerContext`).
 
@@ -1088,8 +1094,9 @@ files: [
 
 ### Implementation notes / deviations / follow-up
 
-- `AssignmentController.js` current LOC: 466. Projected after change: ~496. Under 500-line threshold.
+- `AssignmentController.js` current LOC: 436. Remaining Section 10 work is projected at approximately +30 lines, for approximately 466 lines.
 - This section MUST be delivered after Section 8 (needs `TriggerController.storeTriggerContext`) and after Section 9 (needs the params-accepting `processSelectedAssignment`).
+- **Deployment blocker:** until this section is delivered, `startProcessing()` still targets the deleted `triggerProcessSelectedAssignment` function and stores task context in UserProperties. Do not deploy the assessment-trigger flow between Sections 7/8 and 10.
 
 ---
 
