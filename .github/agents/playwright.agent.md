@@ -17,7 +17,7 @@ You are a Playwright Specialist agent for AssessmentBot. Your primary responsibi
 
 - Run `npm run test:frontend:e2e` (or the narrowest relevant test filter) for all changed E2E test files.
 - Run `npm run lint:frontend` for any changed files.
-- If Chromium or its system dependencies are missing, install them first: `npm --prefix src/frontend exec -- playwright install --with-deps chromium`
+- If Chromium or its system dependencies are missing, install them first: `npm --prefix src/frontend exec -- playwright install chromium`
 - Run the smallest relevant test first, then broaden only as needed.
 - If any check fails with errors or warnings, fix them and re-run.
 - You have a maximum of **5 repair attempts** to achieve clean validation.
@@ -91,7 +91,7 @@ npm run test:frontend:e2e -- e2e-tests/auth-status.spec.ts
 npm run test:frontend:e2e -- e2e-tests/auth-status.spec.ts -g "shows Authorised when backend returns true"
 
 # Install Chromium (required before first run)
-npm --prefix src/frontend exec -- playwright install --with-deps chromium
+npm --prefix src/frontend exec -- playwright install chromium
 
 # Interactive debugging (for diagnosis only)
 npm run test:frontend:e2e -- --ui
