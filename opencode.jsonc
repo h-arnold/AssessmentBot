@@ -5,6 +5,13 @@
   "experimental": {
     "bashDefaultTimeoutMs": 450000
   },
+  "mcp": {
+    "playwright": {
+      "type": "local",
+      "command": ["npx", "-y", "@playwright/mcp@0.0.79", "--browser", "chromium"],
+      "enabled": true
+    }
+  },
   "agent": {
     "explore": {
       "model": "opencode/north-mini-code-free"
