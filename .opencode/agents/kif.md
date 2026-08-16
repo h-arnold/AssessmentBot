@@ -1,7 +1,7 @@
 ---
 description: Performs simple, straightforward menial tasks with minimal judgement required
 mode: all
-model: opencode/north-mini-code-free
+model: opencode/nemotron-3.5-lightning-free
 steps: 50
 ---
 
