@@ -52,7 +52,10 @@ When a section is delegated to sub-agents, the plan must define and enforce mand
 
 For each delegated phase (`Testing Specialist`, `Implementation`, `Code Reviewer`, `Docs`, `De-Sloppification`, or planning agents when used):
 
-1. list required documentation file paths under that phase before delegation
+1. list required documentation file paths under that phase before delegation, written as
+   `@`-prefixed worktree-relative paths (e.g. `@SPEC.md`, `@src/backend/Services/AssessmentService.js`)
+   so opencode injects the line-numbered file contents into the sub-agent prompt — never paste
+   file contents into the prompt body
 2. require the sub-agent handoff to include `Files read` with explicit file paths
 3. verify every mandatory file is listed before accepting the handoff
 4. if any mandatory file is missing, return the work to the same sub-agent and block progression to the next phase
@@ -88,6 +91,10 @@ When a section is likely to introduce helper reuse, helper extension, or new sha
 - List relevant architectural or behavioural constraints.
 
 ### Delegation mandatory reads (when sub-agents are used)
+
+List every mandatory file as an `@`-prefixed worktree-relative path (e.g. `@SPEC.md`,
+`@src/backend/...`) so the orchestrator's delegation prompt injects the file contents
+automatically; do not paste file contents into the prompt body.
 
 Testing Specialist mandatory docs:
 

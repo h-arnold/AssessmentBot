@@ -112,8 +112,8 @@ After drafting `SPEC.md`:
 1. Delegate review to `Planner Reviewer`.
 2. Pass only neutral context:
    - the user request or objective
-   - the document path
-   - companion planning-doc paths, if any
+   - the document path as `@`-prefixed (e.g. `@SPEC.md`)
+   - companion planning-doc paths as `@`-prefixed, if any
    - relevant code areas or entrypoints
 3. Do **not** pre-list suspected issues unless omission would make the review impossible.
 4. Treat the review as independent evidence, address valid findings, and resubmit until the spec is clean enough to support later documents.
@@ -178,8 +178,8 @@ After drafting a layout spec:
 1. Delegate review to `Planner Reviewer`.
 2. Pass only neutral context:
    - the user request or objective
-   - the layout-spec path
-   - the related `SPEC.md` path
+   - the layout-spec path as `@`-prefixed (e.g. `@SETTINGS_PAGE_LAYOUT.md`)
+   - the related `@SPEC.md` path
    - relevant frontend code areas or entrypoints
 3. Do **not** pre-list suspected issues unless omission would make the review impossible.
 4. Address valid findings and resubmit until the layout spec is clean enough to support the action plan.
@@ -217,9 +217,9 @@ After drafting `ACTION_PLAN.md`:
 1. Delegate review to `Planner Reviewer`.
 2. Pass only neutral context:
    - the user request or objective
-   - the action-plan path
-   - the related `SPEC.md` path
-   - the layout-spec path if one exists
+   - the action-plan path as `@`-prefixed (e.g. `@ACTION_PLAN.md`)
+   - the related `@SPEC.md` path
+   - the layout-spec path as `@`-prefixed if one exists
    - relevant code areas or entrypoints
 3. Do **not** pre-list suspected issues unless omission would make the review impossible.
 4. Address valid findings and resubmit until the action plan is clean enough for implementation orchestration.

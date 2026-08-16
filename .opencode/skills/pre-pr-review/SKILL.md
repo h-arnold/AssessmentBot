@@ -36,8 +36,10 @@ the branch name and `main` are detected automatically.
 
 - Delegate outcomes, not implementation. Review sub-agents contain their own methodology.
 - Sub-agents cannot spawn sub-agents. The skill coordinates all parallel calls.
-- Only task-specific files appear in a sub-agent's `files` array; agents read their own
-  standards (AGENTS.md, module docs) per their own instructions.
+- Only task-specific files are handed to a sub-agent, as `@`-prefixed worktree-relative
+  paths in the prompt body (e.g. `@src/backend/foo.js`); opencode injects the line-numbered
+  contents of each `@path` token into the sub-agent's context automatically. Agents still
+  read their own standards (AGENTS.md, module docs) per their own instructions.
 - British English in all outputs and the synthesised document.
 - Stay within scope: no auto-fix, no commit/push, no CI wiring.
 
@@ -93,7 +95,9 @@ run in parallel. The skill owns all coordination; never instruct a sub-agent to 
 
 For every focus, the handoff prompt MUST include:
 
-- The `files` array with the actual changed files (and changed test files) for that focus.
+- The actual changed files (and changed test files) for that focus, as `@`-prefixed
+  worktree-relative paths in the prompt body (e.g. `@src/frontend/.../Xyz.tsx`), so opencode
+  injects their line-numbered contents. Do not paste file contents into the prompt body.
 - The explicit constraint: _"Do NOT run lint, type-check, or tests. All automated checks are expected
   to pass already and are verified by the regression gate before this review began."_
   - The instruction to focus primarily on the diff findings, but also to report incidental issues

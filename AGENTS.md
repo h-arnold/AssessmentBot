@@ -54,9 +54,14 @@ Sub-agents are stateless. Provide explicit context in prompts:
 - concrete requirements
 - error/output details
 - exact changes already made
-- mandatory documentation that must be read for the task
+- mandatory documentation that must be read for the task, written as `@`-prefixed
+  worktree-relative paths (e.g. `@AGENTS.md`, `@src/backend/Services/AssessmentService.js`)
+  so opencode injects the line-numbered file contents into the sub-agent's context.
+  Bare paths in prose are not injected; only `@path` tokens are, and they must not be
+  immediately preceded by a word character or backtick.
 
-Sub-agent handoffs must include a `Mandatory Reading` section with explicit file paths.
+Sub-agent handoffs must include a `Mandatory Reading` section listing mandatory files as
+`@`-prefixed paths.
 If mandatory documentation is missing from `Files read`, return the work to the same sub-agent and do not proceed.
 
 ### 5. Shared Config Rule
@@ -100,7 +105,10 @@ Rules:
 - Do not mark non-trivial work complete before a clean reviewer pass.
 - Preserve explicit handoff context each cycle: changed files, review findings, constraints, and acceptance criteria.
 - Keep the loop scoped to the requested task; avoid opportunistic refactors unless requested.
-- When using `ACTION_PLAN.md`, include phase-level mandatory documentation paths for delegated agents and enforce a `Files read` evidence gate in every delegated handoff.
+- When using `ACTION_PLAN.md`, include phase-level mandatory documentation paths for
+  delegated agents as `@`-prefixed worktree-relative paths (e.g. `@ACTION_PLAN.md`,
+  `@SPEC.md`) so opencode injects their contents, and enforce a `Files read` evidence gate
+  in every delegated handoff.
 - If any delegated handoff omits mandatory documentation from `Files read`, return the work to the same sub-agent and block progression until corrected.
 
 ### 7. Ambiguity Rule
