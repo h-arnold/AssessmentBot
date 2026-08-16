@@ -1,8 +1,34 @@
 ---
 description: Performs simple, straightforward menial tasks with minimal judgement required
 mode: all
-model: opencode/nemotron-3.5-lightning-free
+model: opencode/laguna-s-2.1-free
 steps: 50
+permission:
+  bash:
+    'git reset*': 'deny'
+    'git rebase*': 'deny'
+    'git stash*': 'deny'
+    'git reflog*': 'deny'
+    'git clean*': 'deny'
+    'git restore*': 'deny'
+    'git checkout --*': 'deny'
+    'git rm*': 'deny'
+    'git filter-branch*': 'deny'
+    'git filter-repo*': 'deny'
+    'git prune*': 'deny'
+    'git gc*': 'deny'
+    'git update-ref*': 'deny'
+    'shred*': 'deny'
+    'truncate*': 'deny'
+    'git push --force*': 'ask'
+    'git push -f*': 'ask'
+    'git revert*': 'ask'
+    'git branch -D*': 'ask'
+    'git cherry-pick*': 'ask'
+    'git checkout -B*': 'ask'
+    'rmdir*': 'ask'
+    'rm *': 'ask'
+    'rm': 'ask'
 ---
 
 # Kif Agent Instructions
