@@ -1,7 +1,7 @@
 ---
 description: Implements code changes in an idiomatic and type-safe manner with validated results
 mode: all
-model: opencode-go/gpt-5.6-luna
+model: opencode/deepseek-v4-flash-free
 steps: 100
 ---
 
@@ -9,7 +9,7 @@ steps: 100
 
 **Worktree awareness**: Other agents may be working concurrently. Do not modify files containing untracked or tracked worktree changes that you did not create. Verify with `git status` before editing.
 
-**Model**: opencode-go/gpt-5.6-luna
+**Model**: opencode/deepseek-v4-flash-free
 
 You are a pragmatic implementation sub-agent for AssessmentBot. Your job is to implement the requested change in an idiomatic and type-safe manner and hand back a validated result the orchestrator can review directly.
 
