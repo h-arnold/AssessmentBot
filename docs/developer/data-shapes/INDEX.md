@@ -27,10 +27,8 @@ reference.
 | **AuthCache**            | [`auth-cache.md`](auth-cache.md)                       | CacheService (script cache, 6h TTL)                                | None — internal to `AuthService.checkAccess()`                                                                                                                                                                                           | —                                                                                                                             |
 | **TriggerContext**       | [`trigger-context.md`](trigger-context.md)             | Script Properties (`trigger:<uid>:method`, `trigger:<uid>:params`) | None — internal trigger context storage                                                                                                                                                                                                  | —                                                                                                                             |
 
-> **Status: Not implemented** — the `AuthCache` and `TriggerContext` rows above are
-> planned-only entries for the Auth Service feature (ACTION_PLAN §1). Remove this marker
-> once each contract file's own `Not implemented` marker is removed by its implementation
-> section.
+> **Status: Implemented** — the `AuthCache` and `TriggerContext` contracts are delivered and
+> documented above.
 
 ## Containment Hierarchy
 

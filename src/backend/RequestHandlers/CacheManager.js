@@ -20,6 +20,8 @@ class CacheManager {
    * Retrieves a generic cached value.
    * @param {string} key - The cache key.
    * @returns {Object|null} The parsed cached value, or null on cache miss or parse error.
+   * @remarks Generic cache reads degrade to a miss when cached JSON is malformed or the cache
+   * service read fails; the condition is recorded through ABLogger.
    */
   get(key) {
     try {
@@ -43,6 +45,8 @@ class CacheManager {
    * @param {Object} value - The value to cache.
    * @param {number} ttlSeconds - The cache entry TTL in seconds. Must be provided explicitly by the caller.
    * @returns {void}
+   * @remarks The caller must provide the TTL explicitly; this generic method has no default TTL.
+   * Cache write failures are logged through ABLogger and do not break the calling workflow.
    */
   put(key, value, ttlSeconds) {
     const serialized = JSON.stringify(value);
@@ -58,6 +62,8 @@ class CacheManager {
    * Removes a generic cache entry.
    * @param {string} key - The cache key to remove.
    * @returns {void}
+   * @remarks Removal is best-effort. Cache-service failures are logged through ABLogger rather
+   * than being allowed to break the calling workflow.
    */
   remove(key) {
     try {

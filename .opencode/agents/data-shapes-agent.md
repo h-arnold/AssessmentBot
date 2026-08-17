@@ -57,7 +57,9 @@ docs/developer/data-shapes/
 ├── backend-config.md           # Contract: BackendConfig
 ├── google-classrooms.md        # Contract: GoogleClassrooms (Google API passthrough)
 ├── reference-data.md           # Contract: Reference Data (cohorts, year groups, assignment topics)
-└── request-store.md            # Contract: RequestStore (internal GAS PropertiesService store)
+├── request-store.md            # Contract: RequestStore (internal GAS PropertiesService store)
+├── trigger-context.md          # Contract: TriggerContext (triggerUid-keyed Script Properties store)
+└── auth-cache.md               # Contract: AuthCache (internal CacheService entry)
 ```
 
 ### 1.1 When to create or remove files
@@ -75,7 +77,7 @@ docs/developer/data-shapes/
 
 ## 2. Contract Boundaries and Entity Placement Rules
 
-### 2.1 The seven contracts
+### 2.1 The nine contracts
 
 | Contract                 | Persistence                                                    | API Endpoints / Store Operations                                                                                                                                                                                                         | Sub-entities                                                   |
 | ------------------------ | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
@@ -86,6 +88,8 @@ docs/developer/data-shapes/
 | **GoogleClassrooms**     | None (Google API passthrough)                                  | `getGoogleClassrooms`, `getGoogleClassroomAssignments`                                                                                                                                                                                   | —                                                              |
 | **Reference Data**       | Cohorts, YearGroups, AssignmentTopics collections              | `getCohorts`, `createCohort`, `updateCohort`, `deleteCohort`, `getYearGroups`, `createYearGroup`, `updateYearGroup`, `deleteYearGroup`, `getAssignmentTopics`, `createAssignmentTopic`, `updateAssignmentTopic`, `deleteAssignmentTopic` | —                                                              |
 | **RequestStore**         | GAS PropertiesService (key-value)                              | `getRecord`, `saveRequestRecord`, `listRecordsInWindow`, `deleteExpiredRecords` (internal store, not API-callable)                                                                                                                       | —                                                              |
+| **TriggerContext**       | GAS Script Properties (triggerUid-keyed)                       | Trigger context store operations (internal store, not API-callable)                                                                                                                                                                      | —                                                              |
+| **AuthCache**            | GAS CacheService (script cache)                                | AuthService cache operations (internal store, not API-callable)                                                                                                                                                                          | —                                                              |
 
 ### 2.2 Sub-entity placement rules
 

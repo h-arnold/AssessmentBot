@@ -259,6 +259,7 @@ Known backend error types are mapped to transport error codes:
 - `ApiDisabledError` -> `UNKNOWN_METHOD`
 - `DefinitionStaleError` -> `DEFINITION_STALE` (non-retriable; includes `details` block with `definitionKey`, `referenceStale`, `templateStale`, `referenceLastModified`, `templateLastModified`)
 - errors thrown with `reason === 'IN_USE'` -> `IN_USE` (used by `ReferenceDataController` when a cohort, year group, or assignment topic cannot be deleted because it is still referenced by persisted records)
+- Auth gate denial (authenticated but not a group member) -> `FORBIDDEN` (non-retriable)
 
 Unmapped or malformed errors return `INTERNAL_ERROR` with a generic message.
 

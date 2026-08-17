@@ -395,9 +395,10 @@ const apiKey = config.getApiKey();
 
 ---
 
-## 📋 Planned entries (Not implemented)
+## 📋 Delivered feature entries
 
-Entries below are planned-only additions for the Auth Service feature (source: repository-root `SPEC.md` and `ACTION_PLAN.md`). They are recorded here so later implementation agents have a documented target contract. The implementation agent removes the `Not implemented` marker as each entry is delivered.
+Entries below record the delivered Auth Service singleton and CacheManager extension (source:
+repository-root `SPEC.md` and `ACTION_PLAN.md`).
 
 ### AuthService (new singleton)
 

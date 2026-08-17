@@ -144,6 +144,41 @@ Rules:
 - Do not rename numbered files casually; tests, build steps, and runtime ordering may rely on those names.
 - Keep `y_*` and `z_*` directories/files in their established relative order when adding new backend entry surfaces or controllers.
 
+### 2.3 AuthService singleton
+
+- `src/backend/Utils/AuthService.js` is the singleton for application-level authorisation.
+- It centralises Google Group membership checks, role mapping, successful-result caching, and
+  access-attempt audit logging.
+- The API gate fails open during bootstrap when `AUTH_GROUP_EMAIL` is empty so an administrator can
+  configure the application. Trigger execution passes `requireConfigured: true` and fails closed.
+- Access the service with `AuthService.getInstance()`; do not instantiate it directly.
+
+### 2.4 Backend function exposure and security audit
+
+Backend functions are private by default: every top-level backend function **must** have a trailing
+underscore (`_`) so Google Apps Script does not expose it to `google.script.run`. The exceptions are
+the public entrypoints `apiHandler`, `doGet`, and `triggerHandler`, plus functions explicitly named
+in `ALLOWLISTED_METHOD_HANDLERS` when that constant is present. The Section 7 security audit deleted
+six dead wrappers and renamed 20 required functions to this convention; the static global-exposure
+guard test protects the boundary.
+
+### 2.5 Web-app deployment block
+
+The backend manifest must retain `webapp.executeAs: USER_ACCESSING` and `webapp.access: DOMAIN`.
+This identity model requires deployment within a Google Workspace domain; a personal Gmail
+deployment must be reviewed with the deploying administrator before rollout.
+
+### 2.6 Trigger handler architecture
+
+- Trigger functionality lives in the `src/backend/Triggers/` domain folder.
+- `triggerHandler()` is the single public trigger entrypoint and performs validate-then-dispatch
+  with fail-closed authorisation.
+- `TriggerController` owns Script Properties context storage keyed by `triggerUid`:
+  `trigger:<uid>:method` and `trigger:<uid>:params`.
+- `TRIGGER_METHOD_HANDLERS` is the registry for dispatchable trigger methods.
+- `triggerHandler()` owns cleanup for resolved trigger IDs: it clears context and deletes the fired
+  trigger, including when dispatch throws.
+
 ## 3. Validation Contract (Backend Only)
 
 Use `src/backend/Utils/Validate.js` for generic validation.
