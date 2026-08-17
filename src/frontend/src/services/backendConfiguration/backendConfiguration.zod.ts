@@ -43,6 +43,7 @@ export const BackendConfigSchema = z
     jsonDbLogLevel: NonEmptyStringSchema,
     jsonDbBackupOnInitialise: z.boolean(),
     jsonDbRootFolderId: z.string(),
+    authGroupEmail: z.union([z.literal(''), z.email()]).optional(),
     loadError: z.string().optional(),
   })
   .strict();
@@ -68,6 +69,7 @@ export const BackendConfigWriteInputSchema = z
     jsonDbLogLevel: NonEmptyStringSchema.optional(),
     jsonDbBackupOnInitialise: z.boolean().optional(),
     jsonDbRootFolderId: z.string().optional(),
+    authGroupEmail: z.union([z.literal(''), z.email()]).optional(),
   })
   .strict();
 

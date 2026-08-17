@@ -112,7 +112,7 @@ Key contract notes:
 - `jsonDbRootFolderId` normalisation: `configManager.getJsonDbRootFolderId() || ''` produces
   empty string when the stored value is `null` (the default) or blank.
 - `authGroupEmail` normalisation: `configManager.getAuthGroupEmail() || ''` produces empty string when the stored value is unset or blank (fail-open bootstrap state).
-- **Frontend `.strict()` lockstep (planned — Not implemented):** `BackendConfigSchema` uses
+- **Frontend `.strict()` lockstep:** `BackendConfigSchema` uses
   `.strict()`, so the deploy-order constraint is asymmetric: the backend must not emit
   `authGroupEmail` before the frontend schema accepts it (an unknown key under `.strict()`
   rejects the whole read); the reverse order — frontend schema accepting the field while the
@@ -210,7 +210,7 @@ Key contract notes:
   backend layer is defence-in-depth, not the UX path. Changing to a different non-blank email
   remains allowed. Recovery stays via hand-editing Script Properties (SPEC Admin lockout
   recovery).
-- **Form-schema reconciliation (planned — Not implemented):** the frontend
+- **Form-schema reconciliation:** the frontend
   `BackendSettingsFormSchema` mirrors the transport contract with
   `z.union([z.literal(''), z.email()])` (blank-tolerant) plus a form-level compulsory-once-set
   guard in `BackendSettingsPanel.handleFinish`.
@@ -228,12 +228,12 @@ None. BackendConfig is a standalone contract with no embedded sub-entities.
 **Frontend Zod:**
 
 - `src/frontend/src/services/backendConfiguration/backendConfiguration.zod.ts`:
-  - `BackendConfigSchema` — validates the `getBackendConfig` response (13 fields + optional `loadError`; the planned `authGroupEmail` field is **Not implemented**). Uses `.strict()`.
-  - `BackendConfigWriteInputSchema` — validates the `setBackendConfig` request (11 writable fields, all optional; the planned `authGroupEmail` field is **Not implemented** — frontend schema, see Section 11). Uses `.strict()`.
+  - `BackendConfigSchema` — validates the `getBackendConfig` response (13 fields + optional `loadError`; `authGroupEmail` is optional). Uses `.strict()`.
+  - `BackendConfigWriteInputSchema` — validates the `setBackendConfig` request (11 writable fields, all optional, including `authGroupEmail`). Uses `.strict()`.
   - `BackendConfigWriteResultSchema` — validates the `setBackendConfig` response. Discriminated union of `{ success: true }` and `{ success: false, error: string }`. Both branches use `.strict()`.
 - `src/frontend/src/features/settings/backend/backendSettingsForm.zod.ts`:
   - `BackendSettingsFormSchema` — form-level validation with `superRefine` for API key token check. Uses `.strict()`.
-  - Planned `authGroupEmail` form field (**Not implemented**): `z.union([z.literal(''), z.email()])`
+  - `authGroupEmail` form field: `z.union([z.literal(''), z.email()])`
     — blank-tolerant, following the transport idiom; form-level compulsory-once-set is enforced
     in `BackendSettingsPanel.handleFinish` (submitting blank while a non-blank baseline is loaded
     sets a field error and skips the save).

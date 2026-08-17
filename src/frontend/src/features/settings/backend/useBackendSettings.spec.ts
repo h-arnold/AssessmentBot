@@ -73,6 +73,7 @@ const baseBackendConfig = {
   jsonDbLogLevel: 'INFO',
   jsonDbBackupOnInitialise: true,
   jsonDbRootFolderId: 'folder-1234',
+  authGroupEmail: '',
 } satisfies BackendConfig;
 
 const baseStoredKeyFormValues = {
@@ -87,6 +88,7 @@ const baseStoredKeyFormValues = {
   jsonDbLogLevel: 'INFO',
   jsonDbBackupOnInitialise: true,
   jsonDbRootFolderId: 'folder-1234',
+  authGroupEmail: '',
 } satisfies BackendSettingsForm;
 
 const baseReplacementFormValues = {
@@ -150,6 +152,7 @@ const refreshedFormValues = {
   jsonDbLogLevel: 'INFO',
   jsonDbBackupOnInitialise: true,
   jsonDbRootFolderId: 'folder-5678',
+  authGroupEmail: '',
 } satisfies BackendSettingsForm;
 
 const blankApiKeyWriteInput = baseWriteInputWithoutApiKey;

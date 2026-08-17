@@ -41,6 +41,8 @@ const loadingBackendSettingsLabel = 'Loading backend settings';
 const saveButtonLabel = 'Save';
 const apiKeyLabel = 'API key';
 const backendUrlLabel = 'Backend URL';
+const authGroupEmailLabel = 'Auth group email';
+const authGroupEmailTestValue = 'teachers@school.edu';
 const backendAssessorBatchSizeLabel = 'Backend assessor batch size';
 const storedApiKeyHelperCopy = 'Stored API key already exists. Leave this field blank to keep it.';
 const emptyApiKeyHelperCopy = 'Enter a new API key.';
@@ -363,6 +365,11 @@ test.describe('backend settings journey', () => {
     await page.keyboard.type('https://backend-settings.example.com');
 
     await page.keyboard.press('Tab');
+    await expect(getField(page, authGroupEmailLabel)).toBeFocused();
+    await page.keyboard.press('Control+A');
+    await page.keyboard.type(authGroupEmailTestValue);
+
+    await page.keyboard.press('Tab');
     await expect(getField(page, backendAssessorBatchSizeLabel)).toBeFocused();
     await page.keyboard.press('Control+A');
     await page.keyboard.type('45');
@@ -424,6 +431,10 @@ test.describe('backend settings journey', () => {
     await page.keyboard.press('Tab');
     await page.keyboard.press('Tab');
     await page.keyboard.press('Tab');
+    await expect(getField(page, authGroupEmailLabel)).toBeFocused();
+    await page.keyboard.press('Control+A');
+    await page.keyboard.type(authGroupEmailTestValue);
+    await page.keyboard.press('Tab');
     await expect(getField(page, backendAssessorBatchSizeLabel)).toBeFocused();
     await page.keyboard.press('Control+A');
     await page.keyboard.type('45');
@@ -474,6 +485,10 @@ test.describe('backend settings journey', () => {
     await page.keyboard.press('Tab');
     await page.keyboard.press('Tab');
     await page.keyboard.press('Tab');
+    await expect(getField(page, authGroupEmailLabel)).toBeFocused();
+    await page.keyboard.press('Control+A');
+    await page.keyboard.type(authGroupEmailTestValue);
+    await page.keyboard.press('Tab');
     await expect(getField(page, backendAssessorBatchSizeLabel)).toBeFocused();
     await page.keyboard.press('Control+A');
     await page.keyboard.type('45');
@@ -519,6 +534,10 @@ test.describe('backend settings journey', () => {
     await page.keyboard.press('Tab');
     await page.keyboard.press('Tab');
     await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+    await expect(getField(page, authGroupEmailLabel)).toBeFocused();
+    await page.keyboard.press('Control+A');
+    await page.keyboard.type(authGroupEmailTestValue);
     await page.keyboard.press('Tab');
     await expect(getField(page, backendAssessorBatchSizeLabel)).toBeFocused();
     await page.keyboard.press('Control+A');

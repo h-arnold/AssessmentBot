@@ -69,6 +69,7 @@ export const BackendSettingsFormSchema = z
       .refine((value) => value === '' || isDriveFolderId(value), {
         message: 'JSON DB Root Folder ID must match the backend Drive folder identifier contract.',
       }),
+    authGroupEmail: z.union([z.literal(''), z.email()]),
   })
   .superRefine((value, context) => {
     const isTokenInvalid = !isBackendApiKeyToken(value.apiKey);
