@@ -215,11 +215,11 @@ const backendCompatibleAssignmentDefinitionPartial = {
 describe('AppAuthGate', () => {
   afterEach(() => {
     vi.restoreAllMocks();
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     vi.resetModules();
   });
 
-  it('keeps the auth UI render non-blocking while warm-up state moves from loading to ready', async () => {
+  it('blocks protected children until authorisation has resolved, then tracks warm-up state', async () => {
     const deferredWarmup = createDeferredPromise<void>();
     const { QueryWrapper, queryClient } = createQueryWrapper();
     getAuthorisationStatusMock.mockResolvedValueOnce(true);
@@ -235,17 +235,8 @@ describe('AppAuthGate', () => {
       }
     );
 
-    expect(
-      screen.getByRole('status', { name: 'Loading authorisation status' })
-    ).toBeInTheDocument();
-    expect(screen.getByTestId('startup-warmup-probe')).toHaveTextContent(
-      JSON.stringify({
-        warmupState: 'loading',
-        isLoading: true,
-        isReady: false,
-        isFailed: false,
-      })
-    );
+    expect(screen.getByRole('status', { name: 'Loading authorisation status' })).toBeInTheDocument();
+    expect(screen.queryByTestId('startup-warmup-probe')).not.toBeInTheDocument();
 
     expect(await screen.findByText('Authorised')).toBeInTheDocument();
     expect(screen.getByTestId('startup-warmup-probe')).toHaveTextContent(
@@ -277,7 +268,7 @@ describe('AppAuthGate', () => {
     expect(getAuthorisationStatusMock).toHaveBeenCalledTimes(1);
   });
 
-  it('preserves the unauthorised auth UI behaviour without starting startup warm-up', async () => {
+  it('renders the permissions-required gate surface without starting startup warm-up', async () => {
     const { QueryWrapper } = createQueryWrapper();
     getAuthorisationStatusMock.mockResolvedValueOnce(false);
 
@@ -290,12 +281,92 @@ describe('AppAuthGate', () => {
       }
     );
 
-    expect(await screen.findByText('Unauthorised')).toBeInTheDocument();
+    expect(await screen.findByText('Permissions required')).toBeInTheDocument();
+    expect(screen.queryByText('Unauthorised')).not.toBeInTheDocument();
     expect(
       screen.queryByRole('status', { name: 'Loading authorisation status' })
     ).not.toBeInTheDocument();
     expect(warmStartupQueriesMock).not.toHaveBeenCalled();
     expect(getAuthorisationStatusMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders the access-denied surface when a warm-up query reports FORBIDDEN', async () => {
+    const { QueryWrapper, queryClient } = createQueryWrapper();
+    const forbiddenError = new ApiTransportError({
+      requestId: 'req-warmup-forbidden',
+      error: { code: 'FORBIDDEN', message: 'Access denied.', retriable: false },
+    });
+    queryClient.setQueryData(getStartupWarmupQueryKey('classPartials'), []);
+    queryClient.getQueryCache().find({
+      queryKey: getStartupWarmupQueryKey('classPartials'),
+    })?.setState({
+      data: undefined,
+      dataUpdateCount: 0,
+      dataUpdatedAt: 0,
+      error: forbiddenError,
+      errorUpdateCount: 1,
+      errorUpdatedAt: Date.now(),
+      fetchFailureCount: 1,
+      fetchFailureReason: forbiddenError,
+      fetchMeta: undefined,
+      isInvalidated: false,
+      status: 'error',
+      fetchStatus: 'idle',
+    });
+    getAuthorisationStatusMock.mockResolvedValueOnce(true);
+    warmStartupQueriesMock.mockResolvedValueOnce({});
+
+    render(
+      <AppAuthGate>
+        <output>Protected content</output>
+      </AppAuthGate>,
+      { wrapper: QueryWrapper }
+    );
+
+    expect(
+      await screen.findByText(
+        'You do not have permission to access this application. Please contact your administrator.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Protected content')).not.toBeInTheDocument();
+  });
+
+  it('renders the loading gate surface while authorisation is pending', () => {
+    const { QueryWrapper } = createQueryWrapper();
+    getAuthorisationStatusMock.mockReturnValueOnce(new Promise<boolean>(() => {}));
+
+    render(
+      <AppAuthGate>
+        <output>Protected content</output>
+      </AppAuthGate>,
+      { wrapper: QueryWrapper }
+    );
+
+    expect(screen.getByRole('status', { name: 'Loading authorisation status' })).toBeInTheDocument();
+    expect(screen.queryByText('Protected content')).not.toBeInTheDocument();
+  });
+
+  it('renders the transport error and retry surface without protected children', async () => {
+    const { QueryWrapper } = createQueryWrapper();
+    getAuthorisationStatusMock.mockRejectedValueOnce(
+      new ApiTransportError({
+        requestId: 'req-auth-gate-surface',
+        error: { code: 'RATE_LIMITED', message: 'Rate limited.', retriable: true },
+      })
+    );
+
+    render(
+      <AppAuthGate>
+        <output>Protected content</output>
+      </AppAuthGate>,
+      { wrapper: QueryWrapper }
+    );
+
+    expect(
+      await screen.findByText('Too many requests. Please wait a moment and try again.')
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
+    expect(screen.queryByText('Protected content')).not.toBeInTheDocument();
   });
 
   it('publishes failed startup warm-up state and logs one error event for the failed cycle without breaking auth UI', async () => {
@@ -547,10 +618,11 @@ describe('AppAuthGate', () => {
       }
     );
 
-    expect(await screen.findByText('Unauthorised')).toBeInTheDocument();
     expect(
-      await screen.findByText('The service is busy. Please try again shortly.')
+      await screen.findByText('Too many requests. Please wait a moment and try again.')
     ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
+    expect(screen.queryByText('Unauthorised')).not.toBeInTheDocument();
     expect(warmStartupQueriesMock).not.toHaveBeenCalled();
     expect(getAuthorisationStatusMock).toHaveBeenCalledTimes(1);
   });

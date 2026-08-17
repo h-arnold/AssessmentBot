@@ -1,11 +1,14 @@
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { Button, Result } from 'antd';
 import type { PropsWithChildren } from 'react';
 import { useEffect, useState } from 'react';
 import { ApiTransportError } from '../../errors/apiTransportError';
+import { extractErrorCode, mapErrorCodeToUserMessage } from '../../errors/map-error-to-ui';
 import { normaliseUnknownError } from '../../errors/normaliseUnknownError';
 import { logFrontendError } from '../../logging/frontendLogger';
 import {
   getStartupWarmupQueryKey,
+  getAuthorisationStatusQueryOptions,
   startupWarmupDatasetKeys,
   startupWarmupQueryKeys,
   type StartupWarmupDatasetKey,
@@ -156,7 +159,28 @@ function logStartupWarmupFailure(error: unknown) {
 }
 
 /**
+ * Finds a group-authorisation denial in the startup warm-up query states.
+ *
+ * @param {QueryClient} queryClient Query client holding the warm-up queries.
+ * @returns {string | null} Access-denied copy, or null when no denial is present.
+ */
+function getWarmupForbiddenMessage(queryClient: QueryClient): string | null {
+  const hasForbiddenError = startupWarmupDatasetKeys.some((datasetKey) => {
+    const error = queryClient.getQueryState(getStartupWarmupQueryKey(datasetKey))?.error;
+    return extractErrorCode(error) === 'FORBIDDEN';
+  });
+
+  return hasForbiddenError ? mapErrorCodeToUserMessage('FORBIDDEN') : null;
+}
+
+/**
  * Provides an auth-aware boundary for startup warm-up orchestration.
+ *
+ * @remarks
+ * FORBIDDEN is detected by reading each startup warm-up query's error directly from the
+ * React Query cache via `queryClient.getQueryState(getStartupWarmupQueryKey(dataset))?.error`
+ * and `extractErrorCode`. An access-denied message is rendered for code `FORBIDDEN` with
+ * highest precedence, before transport error, loading, or authorisation states.
  *
  * @param {Readonly<PropsWithChildren>} properties Wrapper properties.
  * @returns {JSX.Element} The auth gate wrapper.
@@ -164,14 +188,14 @@ function logStartupWarmupFailure(error: unknown) {
 export function AppAuthGate(properties: Readonly<PropsWithChildren>) {
   const { children } = properties;
   const queryClient = useQueryClient();
-  const { isAuthResolved, isAuthorised } = useAuthorisationStatus();
+  const { isAuthorised, isLoading, error } = useAuthorisationStatus();
   const [warmupCycleState, setWarmupCycleState] = useState<StartupWarmupCycle>(() => {
     const existingCycle = startupWarmupCycles.get(queryClient);
     return existingCycle ?? getStoredWarmupCycle(queryClient);
   });
 
   useEffect(() => {
-    if (!isAuthResolved || !isAuthorised) {
+    if (isLoading || !isAuthorised || error) {
       return;
     }
 
@@ -257,7 +281,42 @@ export function AppAuthGate(properties: Readonly<PropsWithChildren>) {
     return () => {
       isMounted = false;
     };
-  }, [isAuthResolved, isAuthorised, queryClient]);
+  }, [error, isAuthorised, isLoading, queryClient]);
+
+  const warmupForbiddenMessage = getWarmupForbiddenMessage(queryClient);
+
+  if (warmupForbiddenMessage) {
+    return <Result status="error" title={warmupForbiddenMessage} />;
+  }
+
+  if (error) {
+    return (
+      <Result
+        status="warning"
+        title={error}
+        extra={
+          <Button
+            type="primary"
+            onClick={() => {
+              void queryClient.invalidateQueries({
+                queryKey: getAuthorisationStatusQueryOptions().queryKey,
+              });
+            }}
+          >
+            Retry
+          </Button>
+        }
+      />
+    );
+  }
+
+  if (isLoading) {
+    return <output aria-label="Loading authorisation status">Loading authorisation status</output>;
+  }
+
+  if (!isAuthorised) {
+    return <Result status="warning" title="Permissions required" />;
+  }
 
   return (
     <StartupWarmupStateProvider

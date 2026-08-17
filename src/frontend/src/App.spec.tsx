@@ -23,7 +23,7 @@ const primaryNavigationLabel = 'Primary navigation';
 const collapseNavigationButtonLabel = 'Collapse navigation';
 const expandNavigationButtonLabel = 'Expand navigation';
 const ariaCheckedAttribute = 'aria-checked';
-const unableToCheckAuthorisationStatusMessage = 'Unable to check authorisation status right now.';
+const unableToCheckAuthorisationStatusMessage = 'An error occurred. Please try again.';
 
 type ApiResponseEnvelope =
   | {
@@ -130,8 +130,8 @@ function installApiHandlerMock(responsesByMethod: ApiMethodResponseMap) {
 }
 
 /**
- * Installs a `google.script.run.apiHandler` mock that leaves all startup warmup
- * queries pending, including auth status, class partials, assignment topics,
+ * Installs a `google.script.run.apiHandler` mock that resolves auth and leaves all startup warmup
+ * queries pending, including class partials, assignment topics,
  * assignment definition partials, cohorts, year groups, and Google Classrooms.
  *
  * Mocking these as pending suppresses noisy transport errors that would otherwise
@@ -142,7 +142,11 @@ function installApiHandlerMock(responsesByMethod: ApiMethodResponseMap) {
  */
 function installPendingApiHandlerMock() {
   return installApiHandlerMock({
-    [authStatusMethodName]: 'pending',
+    [authStatusMethodName]: {
+      ok: true,
+      requestId: 'req-auth-pending-warmup',
+      data: true,
+    },
     [classPartialsMethodName]: 'pending',
     [assignmentTopicsMethodName]: 'pending',
     [assignmentDefinitionPartialsMethodName]: 'pending',
@@ -177,6 +181,7 @@ async function renderPendingApp() {
   await act(async () => {
     renderApp();
   });
+  await screen.findByRole('navigation', { name: primaryNavigationLabel });
 }
 
 const breadcrumbNavigationName = 'Breadcrumb';
@@ -235,10 +240,10 @@ async function expectUnauthorisedOutcome(
   options: { expectedMessage?: string } = {}
 ) {
   expect(screen.getByRole('status', { name: loadingAuthorisationStatusLabel })).toBeInTheDocument();
-  expect(await screen.findByText('Unauthorised', {}, { timeout: 10_000 })).toBeInTheDocument();
-
-  if (options.expectedMessage !== undefined) {
-    expect(await screen.findByText(options.expectedMessage)).toBeInTheDocument();
+  if (options.expectedMessage === undefined) {
+    expect(await screen.findByText('Permissions required', {}, { timeout: 10_000 })).toBeInTheDocument();
+  } else {
+    expect(await screen.findByText(options.expectedMessage, {}, { timeout: 10_000 })).toBeInTheDocument();
   }
 
   if (transport !== null) {
@@ -541,7 +546,7 @@ describe('App', () => {
 
     const mainRegion = screen.getByRole('main');
 
-    expect(within(mainRegion).getByRole('status', { name: loadingAuthorisationStatusLabel })).toBeInTheDocument();
+    expect(within(mainRegion).queryByRole('status', { name: loadingAuthorisationStatusLabel })).not.toBeInTheDocument();
   });
 
   it('toggle control renders with accessible label', async () => {
@@ -650,7 +655,6 @@ describe('App', () => {
 
     renderApp();
 
-    expect(screen.getByRole('banner')).toHaveTextContent(applicationTitleText);
     expect(screen.getByRole('status', { name: loadingAuthorisationStatusLabel })).toBeInTheDocument();
     expect(await screen.findByText('Authorised')).toBeInTheDocument();
     expect(transport.getCallCount(authStatusMethodName)).toBe(1);
@@ -689,7 +693,8 @@ describe('App', () => {
     renderApp();
 
     await expectUnauthorisedOutcome(transport, {
-      expectedMessage: unableToCheckAuthorisationStatusMessage,
+      expectedMessage:
+        'An internal error occurred. Please try again or contact support if the issue persists.',
     });
   });
 
@@ -723,7 +728,7 @@ describe('App', () => {
     renderApp();
 
     await expectUnauthorisedOutcome(transport, {
-      expectedMessage: 'The service is busy. Please try again shortly.',
+      expectedMessage: 'Too many requests. Please wait a moment and try again.',
     });
   });
 
@@ -736,9 +741,19 @@ describe('App', () => {
   });
 
   it('does not start class-partials warm-up while auth is unresolved', async () => {
-    const transport = installPendingApiHandlerMock();
+    const transport = installApiHandlerMock({
+      [authStatusMethodName]: 'pending',
+      [classPartialsMethodName]: 'pending',
+      [assignmentTopicsMethodName]: 'pending',
+      [assignmentDefinitionPartialsMethodName]: 'pending',
+      [cohortsMethodName]: 'pending',
+      [yearGroupsMethodName]: 'pending',
+      [googleClassroomsMethodName]: 'pending',
+    });
 
-    await renderPendingApp();
+    await act(async () => {
+      renderApp();
+    });
 
     expect(screen.getByRole('status', { name: loadingAuthorisationStatusLabel })).toBeInTheDocument();
     expect(transport.getCallCount(classPartialsMethodName)).toBe(0);
@@ -761,7 +776,7 @@ describe('App', () => {
 
     renderApp();
 
-    expect(screen.getByRole('navigation', { name: primaryNavigationLabel })).toBeInTheDocument();
+    expect(await screen.findByRole('navigation', { name: primaryNavigationLabel })).toBeInTheDocument();
     expect(await screen.findByText('Authorised')).toBeInTheDocument();
     expect(transport.getCallCount(authStatusMethodName)).toBe(1);
     expect(transport.getCallCount(classPartialsMethodName)).toBe(1);

@@ -33,15 +33,18 @@ function createQueryWrapper() {
  * @returns {JSX.Element} The rendered auth hook probe.
  */
 function AuthHookProbe() {
-  const { authViewState, authError, isAuthResolved, isAuthorised } = useAuthorisationStatus();
+  const { isAuthorised, isLoading, error } = useAuthorisationStatus() as unknown as {
+    isAuthorised: boolean;
+    isLoading: boolean;
+    error: string | null;
+  };
 
   return (
     <output data-testid="auth-hook-probe">
       {JSON.stringify({
-        authViewState,
-        authError,
-        isAuthResolved,
         isAuthorised,
+        isLoading,
+        error,
       })}
     </output>
   );
@@ -60,20 +63,18 @@ describe('useAuthorisationStatus', () => {
       wrapper: createQueryWrapper(),
     });
 
-    expect(result.current.authViewState).toBe('loading');
-    expect(result.current.isAuthResolved).toBe(false);
+    expect(result.current).toMatchObject({ isLoading: true });
 
     await waitFor(() => {
       expect(result.current).toMatchObject({
-        authViewState: 'authorised',
-        authError: null,
-        isAuthResolved: true,
         isAuthorised: true,
+        isLoading: false,
+        error: null,
       });
     });
   });
 
-  it('maps an unauthorised backend result to the existing unauthorised view state', async () => {
+  it('maps an unauthorised backend result to isAuthorised false with no error', async () => {
     getAuthorisationStatusMock.mockResolvedValueOnce(false);
 
     const { useAuthorisationStatus } = await import('./useAuthorisationStatus');
@@ -83,10 +84,9 @@ describe('useAuthorisationStatus', () => {
 
     await waitFor(() => {
       expect(result.current).toMatchObject({
-        authViewState: 'unauthorised',
-        authError: null,
-        isAuthResolved: true,
         isAuthorised: false,
+        isLoading: false,
+        error: null,
       });
     });
   });
@@ -110,10 +110,9 @@ describe('useAuthorisationStatus', () => {
 
     await waitFor(() => {
       expect(result.current).toMatchObject({
-        authViewState: 'unauthorised',
-        authError: 'The service is busy. Please try again shortly.',
-        isAuthResolved: true,
         isAuthorised: false,
+        isLoading: false,
+        error: 'Too many requests. Please wait a moment and try again.',
       });
     });
   });
@@ -133,15 +132,13 @@ describe('useAuthorisationStatus', () => {
       }
     );
 
-    expect(screen.getByRole('status', { name: 'Loading authorisation status' })).toBeInTheDocument();
     expect(await screen.findByText('Authorised')).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByTestId('auth-hook-probe')).toHaveTextContent(
         JSON.stringify({
-          authViewState: 'authorised',
-          authError: null,
-          isAuthResolved: true,
           isAuthorised: true,
+          isLoading: false,
+          error: null,
         })
       );
     });

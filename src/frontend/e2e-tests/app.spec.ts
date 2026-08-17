@@ -109,6 +109,19 @@ async function mockPendingGoogleScriptRun(page: Page) {
               return;
             }
 
+            if (request?.method === 'getAuthorisationStatus') {
+              // §12: AppAuthGate (wrapping the whole app in main.tsx) blocks the shell until
+              // authorisation resolves, so the pending mock must answer the auth call. Warm-up
+              // queries are intentionally left pending — the gate's warm-up provider renders
+              // children without blocking on them.
+              callbacks.successHandler?.({
+                ok: true,
+                requestId: 'req-authorisation-status',
+                data: true,
+              });
+              return;
+            }
+
             if (request?.method === 'getABClassPartials') {
               callbacks.successHandler?.({
                 ok: true,

@@ -44,6 +44,12 @@ describe('mapErrorCodeToUserMessage', () => {
       'Missing error mapping for code: UNMAPPED_CODE'
     );
   });
+
+  it('maps FORBIDDEN to the access-denied message', () => {
+    expect(mapErrorCodeToUserMessage('FORBIDDEN' as never)).toBe(
+      'You do not have permission to access this application. Please contact your administrator.'
+    );
+  });
 });
 
 describe('extractErrorCode', () => {
@@ -57,6 +63,15 @@ describe('extractErrorCode', () => {
     });
 
     expect(extractErrorCode(error)).toBe(errorCodes.RATE_LIMITED);
+  });
+
+  it('returns FORBIDDEN from an ApiTransportError instance', () => {
+    const error = new ApiTransportError({
+      requestId: 'req-forbidden',
+      error: { code: 'FORBIDDEN', message: 'Access denied.', retriable: false },
+    });
+
+    expect(extractErrorCode(error)).toBe('FORBIDDEN');
   });
 
   it('returns a valid code from a plain Error with a code property', () => {

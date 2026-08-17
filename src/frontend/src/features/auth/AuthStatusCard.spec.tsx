@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderWithFrontendProviders } from '../../test/renderWithFrontendProviders';
 import { getCssRuleBlock } from '../../test/appStylesRaw';
@@ -15,10 +15,9 @@ vi.mock('./useAuthorisationStatus', () => ({
 describe('AuthStatusCard', () => {
   beforeEach(() => {
     useAuthorisationStatusMock.mockReturnValue({
-      authViewState: 'authorised',
-      authError: null,
-      isAuthResolved: true,
       isAuthorised: true,
+      isLoading: false,
+      error: null,
     });
   });
 
@@ -27,26 +26,18 @@ describe('AuthStatusCard', () => {
     vi.clearAllMocks();
   });
 
-  it('renders a skeleton status region while the auth status is loading', () => {
+  it('renders a generic no-access message when authorisation is denied', () => {
     useAuthorisationStatusMock.mockReturnValue({
-      authViewState: 'loading',
-      authError: null,
-      isAuthResolved: false,
       isAuthorised: false,
+      isLoading: false,
+      error: null,
     });
 
     renderWithFrontendProviders(<AuthStatusCard />);
 
-    const loadingStatus = screen.getByRole('status', { name: 'Loading authorisation status' });
-    const authCard = loadingStatus.closest('.auth-card');
-
-    expect(authCard).not.toBeNull();
-    expect(within(authCard as HTMLElement).getByRole('status', { name: 'Loading authorisation status' })).toBeInTheDocument();
-    expect(authCard?.querySelector('.ant-skeleton')).not.toBeNull();
-    expect(within(authCard as HTMLElement).queryByText('Checking authorisation status...')).not.toBeInTheDocument();
-    expect(within(authCard as HTMLElement).queryByText('Authorised')).not.toBeInTheDocument();
-    expect(within(authCard as HTMLElement).queryByText('Unauthorised')).not.toBeInTheDocument();
-    expect(within(authCard as HTMLElement).queryByRole('progressbar')).not.toBeInTheDocument();
+    expect(screen.getByText('You do not have access to this application.')).toBeInTheDocument();
+    expect(screen.queryByText('Unauthorised')).not.toBeInTheDocument();
+    expect(screen.queryByRole('status', { name: 'Loading authorisation status' })).not.toBeInTheDocument();
   });
 
   it('renders the standalone auth status card surface', () => {
