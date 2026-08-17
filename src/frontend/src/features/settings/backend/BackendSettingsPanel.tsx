@@ -254,7 +254,7 @@ function getBackendSettingsFieldHelperText(
   descriptor: BackendSettingsFieldDescriptor,
   hasApiKey: boolean
 ): string | null {
-  if ('helperText' in descriptor && descriptor.helperText !== undefined) {
+  if (descriptor.helperText !== undefined) {
     return descriptor.helperText;
   }
 
