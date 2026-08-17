@@ -146,6 +146,9 @@ describe('decodeMetricFilter', () => {
 });
 
 describe('decodeFilterToRange', () => {
+  /** Maximum (upper) bound of the score range encoded in the filter key. */
+  const MAX_RANGE_BOUND = 5;
+
   it('returns an empty array when the filter value is null', () => {
     expect(decodeFilterToRange(null)).toEqual([]);
   });
@@ -155,7 +158,7 @@ describe('decodeFilterToRange', () => {
   });
 
   it('returns the decoded [min, max] for a valid key', () => {
-    expect(decodeFilterToRange(['0|5|0|0'])).toEqual([0, 5]);
+    expect(decodeFilterToRange(['0|5|0|0'])).toEqual([0, MAX_RANGE_BOUND]);
   });
 
   it('returns an empty array when the key cannot be decoded', () => {

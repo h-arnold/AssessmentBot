@@ -154,24 +154,32 @@ describe('ABClassAssignmentOps.readRehydrateAssignment', () => {
     it('throws TypeError with verbatim message when courseId is an empty string', () => {
       const ops = buildOps();
 
-      expect(() => {
+      let thrown;
+      try {
         ops.readRehydrateAssignment('', 'assign-001');
-      }).toThrowError(
-        (err) =>
-          err instanceof TypeError &&
-          err.message === 'readRehydrateAssignment: expected courseId to be a non-empty string'
+      } catch (error) {
+        thrown = error;
+      }
+
+      expect(thrown).toBeInstanceOf(TypeError);
+      expect(thrown.message).toBe(
+        'readRehydrateAssignment: expected courseId to be a non-empty string'
       );
     });
 
     it('throws TypeError with verbatim message when assignmentId is an empty string', () => {
       const ops = buildOps();
 
-      expect(() => {
+      let thrown;
+      try {
         ops.readRehydrateAssignment('course-001', '');
-      }).toThrowError(
-        (err) =>
-          err instanceof TypeError &&
-          err.message === 'readRehydrateAssignment: expected assignmentId to be a non-empty string'
+      } catch (error) {
+        thrown = error;
+      }
+
+      expect(thrown).toBeInstanceOf(TypeError);
+      expect(thrown.message).toBe(
+        'readRehydrateAssignment: expected assignmentId to be a non-empty string'
       );
     });
   });

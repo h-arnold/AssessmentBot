@@ -2,7 +2,7 @@
 description: Creates, maintains, and debugs Playwright browser end-to-end tests
 mode: all
 steps: 100
-model: opencode/hy3-free
+model: opencode-go/gpt-5.6-luna
 ---
 
 # Playwright Specialist Agent Instructions
@@ -106,7 +106,7 @@ Run the smallest targeted command first, then the full suite before handoff.
 
 > **Timeout:** Always set a 10 minute (600000 ms) timeout when invoking Playwright test commands via the `bash` tool. Browser E2E suites can take several minutes and the default 120s timeout is not sufficient.
 
-> **Playwright MCP server:** A Playwright MCP server is available and may be used to drive the browser directly for exploratory interaction, navigation, and visual inspection without authoring test files. Prefer the MCP server for ad-hoc exploration; reserve authored `*.spec.ts` tests for the regression-tracking suite.
+> **Playwright MCP server:** A Playwright MCP server is available and may be used to drive the browser directly for exploratory interaction, navigation, and visual inspection without authoring test files. You MUST use the Playwright MCP server for ad-hoc exploration and debugging where practical, including taking and viewing screenshots to identify visual layout, rendering, interaction, and responsive-behaviour issues. Prefer MCP exploration before authoring regression tests; reserve authored `*.spec.ts` tests for the regression-tracking suite.
 
 ## 5. Codebase-Specific Patterns (Mandatory)
 

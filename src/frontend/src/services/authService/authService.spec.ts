@@ -24,7 +24,7 @@ describe('authService.getAuthorisationStatus', () => {
 
     const authorisationStatusPromise = getAuthorisationStatus();
 
-    await expect(authorisationStatusPromise).rejects.toThrowError(ZodError);
+    await expect(authorisationStatusPromise).rejects.toThrow(ZodError);
     await expect(authorisationStatusPromise).rejects.toThrow(/expected boolean/i);
     expect(callApiMock).toHaveBeenCalledWith('getAuthorisationStatus');
     expect(callApiMock).toHaveBeenCalledTimes(1);
@@ -37,7 +37,7 @@ describe('authService.getAuthorisationStatus', () => {
 
     const authorisationStatusPromise = getAuthorisationStatus();
 
-    await expect(authorisationStatusPromise).rejects.toThrowError(ZodError);
+    await expect(authorisationStatusPromise).rejects.toThrow(ZodError);
     await expect(authorisationStatusPromise).rejects.toThrow(/expected boolean/i);
     expect(callApiMock).toHaveBeenCalledWith('getAuthorisationStatus');
     expect(callApiMock).toHaveBeenCalledTimes(1);
