@@ -2,14 +2,14 @@
 
 In-memory CacheService cache entry used by `AuthService.checkAccess()` to memoise Google
 Group membership results between API requests. Stored via the generic `CacheManager`
-methods (extended with `get`/`put`/`remove`).
+methods (extended with `get`/`put`).
 
 > **Status: Implemented** — the generic `CacheManager` methods (ACTION_PLAN §3) and the
 > `AuthService` singleton (ACTION_PLAN §4) have landed, so both the cache access and its
 > sole producer/consumer exist.
 
 Backend implementation: `src/backend/Utils/AuthService.js`
-Cache access: `src/backend/RequestHandlers/CacheManager.js` → generic `get(key)`, `put(key, value, ttlSeconds)`, `remove(key)`
+Cache access: `src/backend/RequestHandlers/CacheManager.js` → generic `get(key)`, `put(key, value, ttlSeconds)`
 Persistence: `CacheService.getScriptCache()` — in-memory cache with TTL, not durable storage
 API handlers: Not directly callable — consumed internally by `AuthService.checkAccess()`
 Frontend service: None — internal backend mechanism
@@ -103,12 +103,12 @@ None — the contract is implemented. `AuthService.checkAccess()` derives the ca
 ```
 Cache access:         src/backend/RequestHandlers/CacheManager.js
   ├── get(key)                    — read + deserialise JSON; null on miss/parse error
-  ├── put(key, value, ttlSeconds) — serialise + write with explicit TTL
-  └── remove(key)                 — delete entry
+  └── put(key, value, ttlSeconds) — serialise + write with explicit TTL
+                                  (no `remove` method — entries expire via TTL)
 
 Producer/consumer:    src/backend/Utils/AuthService.js
   ├── checkAccess(options?)       — cache read → GroupsApp check → cache write (allowed only)
-  └── isGroupMember(email)        — private group membership + role resolution
+  └── _isGroupMember(email, groupEmail) — private group membership + role resolution
 
 Consumers:            src/backend/z_Api/z_apiHandler.js (auth gate, via AuthService)
                       src/backend/Triggers/triggerHandler.js (cache bypass, via AuthService)

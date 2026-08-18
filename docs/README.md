@@ -48,6 +48,15 @@ Technical documentation for developers contributing to the AssessmentBot codebas
 - [**Frontend Shared Helpers and Abstraction Standards**](./developer/frontend/frontend-shared-helpers-and-abstraction-standards.md) – Shared helpers and abstraction standards
 - [**Frontend Shell Navigation and Motion**](./developer/frontend/frontend-shell-navigation-and-motion.md) – Shell navigation and motion/accessibility standards
 
+### Security
+
+- [**Security Approach**](./developer/security/README.md) – Overview of the defence-in-depth security model, threat model, and layer summaries
+- [**Platform Security**](./developer/security/platform-security.md) – Layer 1: GAS deployment mode, OAuth scopes, Drive permissions, trigger execution model
+- [**Application Authentication**](./developer/security/application-authentication.md) – Layer 2: the `AuthService` Google Group gate, caching, audit logging
+- [**Attack-Surface Reduction**](./developer/security/attack-surface-reduction.md) – Layer 3: private-by-default functions, sole transport, envelope hygiene
+- [**Data-Handling Discipline**](./developer/security/data-handling.md) – Layer 4: no durable client storage, server-side persistence, logging hygiene
+- [**Accepted Risks and Trade-offs**](./developer/security/accepted-risks.md) – Accepted risks, justifications, and future security direction
+
 ### Builder
 
 - [**Builder Script**](./developer/builder/builder-script.md) – How to use the build pipeline and how each stage works internally

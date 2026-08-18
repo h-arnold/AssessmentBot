@@ -108,6 +108,15 @@ Consult these resources before and during review. Local docs contain project-spe
 - [Contract: AuthCache](../../docs/developer/data-shapes/auth-cache.md)
 - [Contract: TriggerContext](../../docs/developer/data-shapes/trigger-context.md)
 
+**Security documentation (all modules — defence-in-depth model)**:
+
+- [Security Approach Overview](../../docs/developer/security/README.md) — layering model, threat model, layer summaries
+- [Platform Security](../../docs/developer/security/platform-security.md) — Layer 1: deployment mode, OAuth scopes, Drive permissions, triggers
+- [Application Authentication](../../docs/developer/security/application-authentication.md) — Layer 2: AuthService group gate, caching, audit logging
+- [Attack-Surface Reduction](../../docs/developer/security/attack-surface-reduction.md) — Layer 3: private-by-default functions, sole transport, envelope hygiene
+- [Data-Handling Discipline](../../docs/developer/security/data-handling.md) — Layer 4: no durable client storage, server-side persistence, logging hygiene
+- [Accepted Risks and Trade-offs](../../docs/developer/security/accepted-risks.md) — accepted risks, justifications, future direction
+
 You will fail the task unless you read _the entirety_ of the relevant context before editing. Do not skip or shortcut this step.
 
 ## 3. Universal Principles (All Modules)

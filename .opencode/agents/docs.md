@@ -186,18 +186,26 @@ Provide a concise handoff summary including:
 │   │   │   ├── regression-checker-how-to.md           # Regression checker configuration, execution, troubleshooting
 │   │   │   └── TypeScriptAndLintConfigHierarchy.md      # TypeScript and ESLint configuration hierarchy
 │   │   │
-│   │   └── frontend/
-│   │       ├── frontend-loading-and-width-standards.md    # Canonical: Loading states, width-token system, accessibility-semantics rules
-│   │       ├── frontend-logging-and-error-handling.md  # Canonical: Environment-specific logging, Ant Design feedback, error mapping, React patterns
-│   │       ├── frontend-modal-patterns.md               # Modal component patterns
-│   │       ├── frontend-react-query-and-prefetch.md     # React Query and prefetch patterns
-│   │       ├── frontend-shared-helpers-and-abstraction-standards.md # Shared helpers and abstraction standards
-│   │       ├── frontend-spacing-and-padding-standards.md # Canonical: Spacing tokens, 8px grid, component defaults
-│   │       ├── frontend-shell-navigation-and-motion.md  # Shell navigation and motion/accessibility standards
-│   │       ├── frontend-playwright-e2e.md               # Playwright E2E testing patterns, runtime mock infrastructure, StrictMode
-│   │       ├── frontend-testing.md                      # Canonical: Vitest + Playwright split, commands, structure, helpers, patterns
-│   │       ├── metric-display-precision.md              # Metric score decimal-place convention (0dp individual, 2dp averages)
-│   │       └── metric-icon-display.md                   # Metric icon rendering, theme-aware colour, stroke conventions
+│   │   ├── frontend/
+│   │   │   ├── frontend-loading-and-width-standards.md    # Canonical: Loading states, width-token system, accessibility-semantics rules
+│   │   │   ├── frontend-logging-and-error-handling.md  # Canonical: Environment-specific logging, Ant Design feedback, error mapping, React patterns
+│   │   │   ├── frontend-modal-patterns.md               # Modal component patterns
+│   │   │   ├── frontend-react-query-and-prefetch.md     # React Query and prefetch patterns
+│   │   │   ├── frontend-shared-helpers-and-abstraction-standards.md # Shared helpers and abstraction standards
+│   │   │   ├── frontend-spacing-and-padding-standards.md # Canonical: Spacing tokens, 8px grid, component defaults
+│   │   │   ├── frontend-shell-navigation-and-motion.md  # Shell navigation and motion/accessibility standards
+│   │   │   ├── frontend-playwright-e2e.md               # Playwright E2E testing patterns, runtime mock infrastructure, StrictMode
+│   │   │   ├── frontend-testing.md                      # Canonical: Vitest + Playwright split, commands, structure, helpers, patterns
+│   │   │   ├── metric-display-precision.md              # Metric score decimal-place convention (0dp individual, 2dp averages)
+│   │   │   └── metric-icon-display.md                   # Metric icon rendering, theme-aware colour, stroke conventions
+│   │   │
+│   │   └── security/                                    # Security approach documentation (defence-in-depth model)
+│   │       ├── README.md                                # Overview: layering model, threat model, layer summaries, links
+│   │       ├── accepted-risks.md                        # Accepted risks, trade-offs, justifications, future direction
+│   │       ├── platform-security.md                     # Layer 1: GAS deployment mode, OAuth scopes, Drive permissions, triggers
+│   │       ├── application-authentication.md            # Layer 2: AuthService group gate, caching, audit logging
+│   │       ├── attack-surface-reduction.md              # Layer 3: private-by-default functions, sole transport, envelope hygiene
+│   │       └── data-handling.md                         # Layer 4: no durable client storage, server-side persistence, logging hygiene
 │   │
 │   ├── howTos/
 │   │   ├── README.md                                  # Step-by-step usage instructions (tagging, distributing, assessing)
