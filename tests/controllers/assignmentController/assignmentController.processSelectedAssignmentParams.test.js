@@ -243,4 +243,20 @@ describe('AssignmentController.processSelectedAssignment - direct params contrac
     // owns all cleanup, so clearProperties() must never be called here.
     expect(GASPropertiesUtils.clearProperties).not.toHaveBeenCalled();
   });
+
+  /**
+   * Test 3: processSelectedAssignment throws when a required param is missing.
+   *
+   * The direct-params contract requires assignmentId, definitionKey AND
+   * courseId; omitting courseId must surface the requireParams guard error so
+   * an incomplete dispatch fails fast.
+   */
+  it('throws when required params are missing', () => {
+    expect(() =>
+      controller.processSelectedAssignment({
+        assignmentId: 'assignment-456',
+        definitionKey: 'Essay_1_defKey',
+      })
+    ).toThrow(/is required/);
+  });
 });

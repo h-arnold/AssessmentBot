@@ -8,9 +8,9 @@
  * alongside the existing createTimeBasedTrigger(), removeTriggers() and
  * deleteTriggerById() instance methods.
  *
- * The too-many-triggers recovery path removes triggers pointing at the single
- * public entrypoint (triggerHandler), not the deleted legacy
- * triggerProcessSelectedAssignment wrapper.
+ * The too-many-triggers recovery path removes triggers for the functionName
+ * passed to createTimeBasedTrigger (not a hardcoded entrypoint literal), and
+ * never touches the deleted legacy triggerProcessSelectedAssignment wrapper.
  *
  * The storage seam is the real GASPropertiesUtils global (registered in
  * tests/setupGlobals.js): getTriggerContext() reads each key directly via
@@ -257,7 +257,7 @@ describe('TriggerController', () => {
     expect(source).toMatch(/ABLogger\.getInstance\(\)/);
   });
 
-  it('uses triggerHandler as the removal target when too many triggers error occurs', () => {
+  it('removes triggers for the passed-in functionName when too many triggers error occurs', () => {
     const newTriggerChain = {
       timeBased: vi.fn().mockReturnThis(),
       at: vi.fn().mockReturnThis(),
@@ -274,10 +274,11 @@ describe('TriggerController', () => {
     const controller = new TriggerController();
     const triggerId = controller.createTimeBasedTrigger('runTask');
 
-    // Section 8 acceptance criterion: the recovery path must remove triggers
-    // pointing at the new single public entrypoint (triggerHandler), not the
-    // deleted legacy triggerProcessSelectedAssignment wrapper.
-    expect(removeTriggersSpy).toHaveBeenCalledWith('triggerHandler');
+    // The recovery path must remove triggers for the functionName passed to
+    // createTimeBasedTrigger ('runTask'), not a hardcoded literal
+    // ('triggerHandler') — a second handler must never silently clean the
+    // wrong trigger family.
+    expect(removeTriggersSpy).toHaveBeenCalledWith('runTask');
     expect(removeTriggersSpy).not.toHaveBeenCalledWith('triggerProcessSelectedAssignment');
     expect(triggerId).toBe('trigger-recovery-1');
   });

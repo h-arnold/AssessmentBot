@@ -4,8 +4,9 @@
  * runAssignmentPipeline checks per-document freshness via DateUtils.isNewer and
  * throws DefinitionStaleError with structured metadata when any document is stale.
  *
- * processSelectedAssignment catches the error from runAssignmentPipeline
- * and calls ProgressTracker.logAndThrowError.
+ * processSelectedAssignment lets DefinitionStaleError propagate unlogged so the
+ * triggerHandler boundary owns the single log (ACTION_PLAN Section 3,
+ * acceptance #2).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
@@ -380,26 +381,27 @@ describe('AssignmentController - runAssignmentPipeline throw-on-stale', () => {
     });
 
     /**
-     * Test 6: When runAssignmentPipeline throws DefinitionStaleError,
-     * processSelectedAssignment catches it and calls logAndThrowError.
-     *
-     * This is a regression test: the catch block in processSelectedAssignment
-     * already handles errors from runAssignmentPipeline. The method receives
-     * its task params directly; the error is routed through the existing
-     * error boundary via logAndThrowError.
+     * Test 6: processSelectedAssignment lets DefinitionStaleError propagate
+     * unlogged so the triggerHandler boundary owns the single log (ACTION_PLAN
+     * Section 3, acceptance #2). The outer try/catch that previously routed the
+     * error through logAndThrowError was removed, so the method must NOT call
+     * logAndThrowError itself.
      */
-    it('processSelectedAssignment catches DefinitionStaleError and calls logAndThrowError', () => {
-      // Act: run processSelectedAssignment which internally calls runAssignmentPipeline
-      controller.processSelectedAssignment({
-        assignmentId: 'assignment-456',
-        definitionKey: TEST_DEFINITION_KEY,
-        courseId: 'course-123',
-      });
+    it('processSelectedAssignment lets DefinitionStaleError propagate unlogged', () => {
+      // Act & Assert: runAssignmentPipeline throws DefinitionStaleError (both
+      // documents are stale per the mocks) and processSelectedAssignment lets
+      // the error propagate without logging.
+      expect(() =>
+        controller.processSelectedAssignment({
+          assignmentId: 'assignment-456',
+          definitionKey: TEST_DEFINITION_KEY,
+          courseId: 'course-123',
+        })
+      ).toThrow();
 
-      // runAssignmentPipeline throws DefinitionStaleError (both documents are
-      // stale per the mocks), and the catch block in processSelectedAssignment
-      // routes the error through logAndThrowError.
-      expect(mockProgressTracker.logAndThrowError).toHaveBeenCalled();
+      // The single log boundary lives at triggerHandler; processSelectedAssignment
+      // must not route the error through logAndThrowError itself.
+      expect(mockProgressTracker.logAndThrowError).not.toHaveBeenCalled();
     });
   });
 });

@@ -29,9 +29,9 @@ class TriggerController {
     } catch (error) {
       if (error.message.includes('This script has too many triggers')) {
         ABLogger.getInstance().warn(`Too many triggers error occurred: ${error.message}`);
-        this.removeTriggers('triggerHandler');
+        this.removeTriggers(functionName);
         ABLogger.getInstance().info(
-          "Removed all triggers for 'triggerHandler'. Retrying trigger creation..."
+          `Removed all triggers for '${functionName}'. Retrying trigger creation...`
         );
         return this.createTimeBasedTrigger(functionName);
       } else {

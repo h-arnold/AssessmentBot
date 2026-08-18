@@ -27,24 +27,17 @@ function cleanupTrigger_(triggerController, triggerUid) {
  * @param {string} [event.triggerUid] - The unique ID of the fired trigger.
  * @returns {undefined} Always returns undefined — GAS discards trigger return values.
  * @remarks
- * Validate-then-dispatch: input is validated before any context resolution or
- * dispatch. A missing/undefined event, a missing triggerUid, an unknown
- * triggerUid, an incomplete context, or an unregistered method all surface via
- * fail-loud ABLogger error logging and skip execution — GAS discards trigger
- * return values, so no error envelope is produced.
- *
- * Fail-closed auth: AuthService.getInstance().checkAccess is always invoked
- * with { bypassCache: true, requireConfigured: true, method: <context method> }
- * before any handler runs, so runs from revoked users or an unconfigured auth
- * group never dispatch. On denial the handler logs the denial itself
- * (ABLogger.warn) and aborts without dispatching.
- *
  * Cleanup ownership: this function owns all cleanup
  * (TriggerController.clearTriggerContext + TriggerController.deleteTriggerById)
- * for any resolved, known triggerUid — including partial-context, unknown-method
- * and auth-denial paths. When the handler dispatches, cleanup runs in a finally
- * block so it also runs when the handler throws; the error is routed through
- * ProgressTracker.logAndThrowError(error.message, error) and rethrown.
+ * for any resolved, known triggerUid — including partial-context,
+ * unknown-method, auth-denial and auth-throw paths. The dispatch try/finally
+ * runs cleanup even when the handler throws (routed through
+ * ProgressTracker.logAndThrowError and rethrown); the auth-check try/catch
+ * runs the same cleanup when AuthService.checkAccess throws.
+ *
+ * Single log boundary: the group-membership denial and any auth failure are
+ * each logged exactly once by AuthService.checkAccess, so this handler never
+ * duplicates that log.
  *
  * Dependencies are resolved as bare globals (GAS concatenation order):
  * TriggerController (Triggers/TriggerController.js) must load before this file.
@@ -87,17 +80,23 @@ function triggerHandler(event) {
     return;
   }
 
-  // 5. Fail-closed auth with cache bypass. On denial the handler logs the
-  //    denial itself (ABLogger.warn) and cleans up without dispatching.
-  const result = AuthService.getInstance().checkAccess({
-    bypassCache: true,
-    requireConfigured: true,
-    method: context.method,
-  });
+  // 5. Fail-closed auth with cache bypass. AuthService.checkAccess logs the
+  //    denial/failure exactly once, so this handler never duplicates that log.
+  let result;
+  try {
+    result = AuthService.getInstance().checkAccess({
+      bypassCache: true,
+      requireConfigured: true,
+      method: context.method,
+    });
+  } catch (accessError) {
+    // AuthService already failed loud; still release the trigger context so the
+    // trigger does not accumulate on persistent auth errors.
+    cleanupTrigger_(triggerController, event.triggerUid);
+    throw accessError;
+  }
   if (!result.allowed) {
-    ABLogger.getInstance().warn(
-      `triggerHandler: access denied for trigger method '${context.method}' (triggerUid ${event.triggerUid}).`
-    );
+    // Denial — logged once by AuthService.checkAccess. Release context.
     cleanupTrigger_(triggerController, event.triggerUid);
     return;
   }

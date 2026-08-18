@@ -105,52 +105,45 @@ class AssignmentController {
    * - Integrates with: Assignment, StudentSubmission, ABClass
    */
   processSelectedAssignment({ assignmentId, definitionKey, courseId }) {
-    try {
-      // Validate required task params — triggerHandler dispatches with a validated params object
-      Validate.requireParams(
-        { assignmentId, definitionKey, courseId },
-        'processSelectedAssignment'
+    // Validate required task params — triggerHandler dispatches with a validated params object
+    Validate.requireParams({ assignmentId, definitionKey, courseId }, 'processSelectedAssignment');
+
+    this.progressTracker.startTracking();
+    this.progressTracker.updateProgress('Assessment run starting.');
+
+    const definitionController = new AssignmentDefinitionController();
+    const definition = definitionController.getDefinitionByKey(definitionKey, { form: 'full' });
+    if (!definition) {
+      this.progressTracker.logAndThrowError(
+        `Assignment definition not found for key ${definitionKey}. Cannot proceed.`
       );
-
-      this.progressTracker.startTracking();
-      this.progressTracker.updateProgress('Assessment run starting.');
-
-      const definitionController = new AssignmentDefinitionController();
-      const definition = definitionController.getDefinitionByKey(definitionKey, { form: 'full' });
-      if (!definition) {
-        this.progressTracker.logAndThrowError(
-          `Assignment definition not found for key ${definitionKey}. Cannot proceed.`
-        );
-      }
-
-      ABLogger.getInstance().info('Course ID retrieved: ' + courseId);
-      this.progressTracker.updateProgress(`Course ID retrieved: ${courseId}`, false);
-
-      const abClassController = new ABClassController();
-      const abClass = abClassController.loadClass(courseId);
-
-      const assignment = this.createAssignmentInstance(definition, courseId, assignmentId);
-
-      const students = abClass.students;
-      const includeImages = definition.documentType === 'SLIDES';
-      this.runAssignmentPipeline(assignment, students, { includeImages });
-
-      // Update updatedAt value and persist assignment data
-
-      assignment.touchUpdated();
-
-      // Persist assignment using controller pattern - writes full assignment to dedicated
-      // collection and stores partial summary in ABClass
-      abClassController.persistAssignmentRun(abClass, assignment);
-
-      this.progressTracker.updateProgress(ASSESSMENT_RUN_SUCCESS_MESSAGE, false);
-      this.progressTracker.complete();
-
-      this.utils.toastMessage(ASSESSMENT_RUN_SUCCESS_MESSAGE, 'Success', TOAST_DURATION_SECONDS);
-      ABLogger.getInstance().info(ASSESSMENT_RUN_SUCCESS_MESSAGE);
-    } catch (error) {
-      this.progressTracker.logAndThrowError(error.message, error);
     }
+
+    ABLogger.getInstance().info('Course ID retrieved: ' + courseId);
+    this.progressTracker.updateProgress(`Course ID retrieved: ${courseId}`, false);
+
+    const abClassController = new ABClassController();
+    const abClass = abClassController.loadClass(courseId);
+
+    const assignment = this.createAssignmentInstance(definition, courseId, assignmentId);
+
+    const students = abClass.students;
+    const includeImages = definition.documentType === 'SLIDES';
+    this.runAssignmentPipeline(assignment, students, { includeImages });
+
+    // Update updatedAt value and persist assignment data
+
+    assignment.touchUpdated();
+
+    // Persist assignment using controller pattern - writes full assignment to dedicated
+    // collection and stores partial summary in ABClass
+    abClassController.persistAssignmentRun(abClass, assignment);
+
+    this.progressTracker.updateProgress(ASSESSMENT_RUN_SUCCESS_MESSAGE, false);
+    this.progressTracker.complete();
+
+    this.utils.toastMessage(ASSESSMENT_RUN_SUCCESS_MESSAGE, 'Success', TOAST_DURATION_SECONDS);
+    ABLogger.getInstance().info(ASSESSMENT_RUN_SUCCESS_MESSAGE);
   }
 
   /**

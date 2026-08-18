@@ -8,9 +8,10 @@
  *   triggerHandler(event) validates the event first (missing/malformed event,
  *   unknown triggerUid → ABLogger.error + abort with NO cleanup), then
  *   authorises via AuthService.checkAccess({ bypassCache: true,
- *   requireConfigured: true, method: <context method> }) — denial → the
- *   handler logs the denial itself (ABLogger.warn, SPEC "If denied → log and
- *   abort") and cleans up. On success it dispatches to
+ *   requireConfigured: true, method: <context method> }) — denial →
+ *   AuthService.checkAccess owns the denial log (logged exactly once inside
+ *   the service), so the handler does NOT duplicate it here and only cleans
+ *   up and aborts. On success it dispatches to
  *   TRIGGER_METHOD_HANDLERS[method](params) and cleans up in a finally block
  *   (clearTriggerContext + deleteTriggerById) for any resolved, known
  *   triggerUid — including when the dispatched handler throws, when the
@@ -246,7 +247,7 @@ describe('triggerHandler', () => {
       expect(mockTriggerController.deleteTriggerById).toHaveBeenCalledWith('trigger-uid-6');
     });
 
-    it('logs the denial itself via ABLogger.warn and still cleans up when auth denies', () => {
+    it('aborts and cleans up when auth denies without duplicating the denial log', () => {
       mockTriggerController.getTriggerContext.mockReturnValue({
         method: 'processSelectedAssignment',
         params: {
@@ -255,9 +256,9 @@ describe('triggerHandler', () => {
           courseId: 'course-123',
         },
       });
-      // Bypass AuthService's own fail-open/fail-closed logging so the only
-      // warn that can fire comes from the handler's own denial log (SPEC: "If
-      // denied → log and abort").
+      // AuthService.checkAccess owns the denial log (logged exactly once
+      // inside the service), so the handler must NOT duplicate it here — it
+      // only cleans up the resolved trigger and aborts.
       const checkAccessSpy = vi
         .spyOn(AuthService.getInstance(), 'checkAccess')
         .mockReturnValue({ allowed: false });
@@ -265,7 +266,7 @@ describe('triggerHandler', () => {
       triggerHandler({ triggerUid: 'trigger-uid-7' });
 
       expect(checkAccessSpy).toHaveBeenCalledTimes(1);
-      expect(mockABLogger.warn).toHaveBeenCalled();
+      expect(mockABLogger.warn).not.toHaveBeenCalled();
       expect(mockDispatchHandler).not.toHaveBeenCalled();
       expect(mockTriggerController.clearTriggerContext).toHaveBeenCalledWith('trigger-uid-7');
       expect(mockTriggerController.deleteTriggerById).toHaveBeenCalledWith('trigger-uid-7');
@@ -335,6 +336,32 @@ describe('triggerHandler', () => {
         method: 'processSelectedAssignment',
       });
       expect(mockDispatchHandler).toHaveBeenCalledTimes(1);
+    });
+
+    it('still cleans up when the auth check throws for a known triggerUid', () => {
+      mockTriggerController.getTriggerContext.mockReturnValue({
+        method: 'processSelectedAssignment',
+        params: {
+          assignmentId: 'assignment-456',
+          definitionKey: 'Essay_1_defKey',
+          courseId: 'course-123',
+        },
+      });
+      const checkAccessSpy = vi
+        .spyOn(AuthService.getInstance(), 'checkAccess')
+        .mockImplementation(() => {
+          throw new Error('auth boom');
+        });
+
+      // The auth gate must be protected so cleanup still runs for the resolved
+      // triggerUid when checkAccess throws — the error may propagate, but the
+      // trigger context and the fired trigger must never leak.
+      expect(() => triggerHandler({ triggerUid: 'known-uid' })).toThrow('auth boom');
+
+      expect(checkAccessSpy).toHaveBeenCalledTimes(1);
+      expect(mockDispatchHandler).not.toHaveBeenCalled();
+      expect(mockTriggerController.clearTriggerContext).toHaveBeenCalledWith('known-uid');
+      expect(mockTriggerController.deleteTriggerById).toHaveBeenCalledWith('known-uid');
     });
   });
 });
