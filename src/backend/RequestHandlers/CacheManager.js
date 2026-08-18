@@ -3,7 +3,10 @@
  *
  * Handles caching of assessment data to prevent redundant processing.
  */
+// Single source of truth for the assessment/auth cache TTL (6 hours, in seconds).
 const CACHE_EXPIRY_HOURS = 6;
+const CACHE_EXPIRY_SECONDS =
+  CACHE_EXPIRY_HOURS * RuntimeConstants.MINUTES_PER_HOUR * RuntimeConstants.SECONDS_PER_MINUTE;
 
 /**
  * Cache manager.
@@ -59,21 +62,6 @@ class CacheManager {
   }
 
   /**
-   * Removes a generic cache entry.
-   * @param {string} key - The cache key to remove.
-   * @returns {void}
-   * @remarks Removal is best-effort. Cache-service failures are logged through ABLogger rather
-   * than being allowed to break the calling workflow.
-   */
-  remove(key) {
-    try {
-      this.cache.remove(key);
-    } catch (error) {
-      ABLogger.getInstance().error('Error writing to cache:', error);
-    }
-  }
-
-  /**
    * Generates a unique cache key based on content hashes.
    * @param {string} contentHashReference - Hash of the reference content.
    * @param {string} contentHashResponse - Hash of the student's response content.
@@ -102,20 +90,7 @@ class CacheManager {
   getCachedAssessment(contentHashReference, contentHashResponse) {
     const cacheKey = this.generateCacheKey(contentHashReference, contentHashResponse);
     if (!cacheKey) return null;
-
-    try {
-      const cached = this.cache.get(cacheKey);
-      if (!cached) return null;
-      try {
-        return JSON.parse(cached);
-      } catch (error) {
-        ABLogger.getInstance().error('Error parsing cached assessment data:', error);
-        return null;
-      }
-    } catch (error) {
-      ABLogger.getInstance().error('Error retrieving cached assessment:', error);
-      return null;
-    }
+    return this.get(cacheKey);
   }
 
   /**
@@ -128,18 +103,12 @@ class CacheManager {
   setCachedAssessment(contentHashReference, contentHashResponse, assessmentData) {
     const cacheKey = this.generateCacheKey(contentHashReference, contentHashResponse);
     if (!cacheKey) return;
-
-    const serialized = JSON.stringify(assessmentData);
-    const cacheExpirationInSeconds =
-      CACHE_EXPIRY_HOURS * RuntimeConstants.MINUTES_PER_HOUR * RuntimeConstants.SECONDS_PER_MINUTE;
-    try {
-      this.cache.put(cacheKey, serialized, cacheExpirationInSeconds);
-    } catch (error) {
-      ABLogger.getInstance().error('Error storing cached assessment data:', error);
-      // Don't throw — caching should be best-effort.
-    }
+    this.put(cacheKey, assessmentData, CACHE_EXPIRY_SECONDS);
   }
 }
+
+// Expose the shared cache TTL (seconds) so other GAS modules (e.g. AuthService) can reuse it.
+CacheManager.CACHE_EXPIRY_SECONDS = CACHE_EXPIRY_SECONDS;
 
 // Export for Node.js tests
 if (typeof module !== 'undefined' && module.exports) {

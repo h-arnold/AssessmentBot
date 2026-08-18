@@ -199,9 +199,9 @@ Implementation / Testing Specialist / Code Reviewer mandatory docs:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** record the chosen home for the shared TTL constant.
-- **Deviations:** none expected.
-- **Follow-up:** Section 2 (AuthService) consumes the shared TTL.
+- **Implementation notes:** The shared TTL source of truth is a module-level `const CACHE_EXPIRY_HOURS = 6;` derived to `const CACHE_EXPIRY_SECONDS = CACHE_EXPIRY_HOURS * RuntimeConstants.MINUTES_PER_HOUR * RuntimeConstants.SECONDS_PER_MINUTE;`, exposed as the static `CacheManager.CACHE_EXPIRY_SECONDS` for cross-module reuse (consumed by AuthService in Section 2). `remove()` and its JSDoc were deleted; `getCachedAssessment`/`setCachedAssessment` now delegate to `get`/`put` with the falsy-key early-return preserved. The three assessment-specific log-message assertions were aligned to the generic `get`/`put` messages (PR_REVIEW permits "equivalent log text"); the 25/25 CacheManager tests pass and `CacheManager.js` lints clean (0 errors, 0 warnings).
+- **Deviations:** none.
+- **Follow-up:** Section 2 (AuthService) consumes the shared TTL via `CacheManager.CACHE_EXPIRY_SECONDS`.
 
 ---
 

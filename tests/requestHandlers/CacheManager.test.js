@@ -24,7 +24,6 @@ describe('CacheManager', () => {
     mockScriptCache = {
       get: vi.fn(),
       put: vi.fn(),
-      remove: vi.fn(),
     };
     mockCacheService = {
       getScriptCache: vi.fn().mockReturnValue(mockScriptCache),
@@ -162,7 +161,7 @@ describe('CacheManager', () => {
       const result = manager.getCachedAssessment('ref-hash', 'resp-hash');
       expect(result).toBeNull();
       expect(mockAbLoggerInstance.error).toHaveBeenCalledWith(
-        'Error parsing cached assessment data:',
+        'Error parsing cached value:',
         expect.any(Error)
       );
     });
@@ -175,10 +174,7 @@ describe('CacheManager', () => {
       mockUtils.generateHash.mockReturnValue('valid-key');
       const result = manager.getCachedAssessment('ref-hash', 'resp-hash');
       expect(result).toBeNull();
-      expect(mockAbLoggerInstance.error).toHaveBeenCalledWith(
-        'Error retrieving cached assessment:',
-        error
-      );
+      expect(mockAbLoggerInstance.error).toHaveBeenCalledWith('Error reading from cache:', error);
     });
   });
 
@@ -229,10 +225,7 @@ describe('CacheManager', () => {
       const assessmentData = { score: 100 };
       // Should not throw
       manager.setCachedAssessment('ref-hash', 'resp-hash', assessmentData);
-      expect(mockAbLoggerInstance.error).toHaveBeenCalledWith(
-        'Error storing cached assessment data:',
-        error
-      );
+      expect(mockAbLoggerInstance.error).toHaveBeenCalledWith('Error writing to cache:', error);
     });
 
     it('should store complex assessment data', () => {
@@ -296,14 +289,6 @@ describe('CacheManager', () => {
       const value = { allowed: true };
       manager.put('auth:g:e', value, 12345);
       expect(mockScriptCache.put).toHaveBeenCalledWith('auth:g:e', JSON.stringify(value), 12345);
-    });
-
-    it('remove() deletes the key and subsequent get() returns null', () => {
-      manager.remove('auth:g:e');
-      expect(mockScriptCache.remove).toHaveBeenCalledWith('auth:g:e');
-      mockScriptCache.get.mockReturnValue(null);
-      const result = manager.get('auth:g:e');
-      expect(result).toBeNull();
     });
 
     it('ABLogger.error() is called on cache errors instead of console.error', () => {
