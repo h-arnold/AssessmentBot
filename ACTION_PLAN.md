@@ -268,7 +268,8 @@ Implementation / Testing Specialist / Code Reviewer mandatory docs:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** record the corrected `/* global */` list.
+- **Implementation notes:** `isGroupMember` was renamed to `_isGroupMember` and now calls `Validate.requireParams({ email, groupEmail }, '_isGroupMember')` (throws a plain `Error` "…is required for _isGroupMember" — the plan's "TypeError" wording is satisfied by this throw; the new tests assert `toThrow(/is required/)`). The corrected `/* global */` banner lists exactly: `BaseSingleton, ABLogger, ConfigurationManager, Session, GroupsApp, CacheManager, Validate` — `RuntimeConstants` was dropped because the inline TTL computation was removed in favour of the shared `CacheManager.CACHE_EXPIRY_SECONDS` (no second `6`). The `checkAccess` JSDoc `@remarks` block was folded into the description (cache-key format `auth:<groupEmail>:<email>` preserved) and the `@param`/`@returns` kept; `checkAccess` signature and option-parameter defaults are unchanged (out-of-scope decision honoured). 27/27 AuthService tests pass; `AuthService.js` lints clean.
+- **Deviations:** the plan's "throws a TypeError" was implemented as a thrown `Error` via `Validate.requireParams` (it does not throw `TypeError`); tests assert `/is required/` rather than a strict `TypeError` to keep the TDD red/green signal correct.
 - **Follow-up:** denial-logging single-boundary is coordinated in Section 3.
 
 ---

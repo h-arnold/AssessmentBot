@@ -1,3 +1,4 @@
+/* global BaseSingleton, ABLogger, ConfigurationManager, Session, GroupsApp, CacheManager, Validate */
 /**
  * AuthService
  *
@@ -8,8 +9,6 @@
  *
  * Use AuthService.getInstance(); do not call the constructor directly.
  */
-// Number of hours an authorised result remains cached before it is re-verified.
-const AUTH_CACHE_EXPIRY_HOURS = 6;
 
 /**
  * The auth service singleton.
@@ -58,16 +57,18 @@ class AuthService extends BaseSingleton {
    * Resolves whether a given email is a member of the configured Google Group
    * and, if so, maps the Google Group role to an application role.
    *
-   * This private helper is named `isGroupMember` rather than `isAuthorised` to
+   * This private helper is named `_isGroupMember` rather than `isAuthorised` to
    * avoid ambiguity with `ScriptAppManager.isAuthorised()` (which checks OAuth
-   * scopes, an unrelated concern).
+   * scopes, an unrelated concern). Both `email` and `groupEmail` are required;
+   * `Validate.requireParams` enforces their presence.
    * @param {string} email - The active user's email to authorise.
    * @param {string} groupEmail - The configured Google Group email.
    * @returns {{ allowed: boolean, role?: string }} `{ allowed: true, role }` when
    *   the user is a member; `{ allowed: false }` otherwise (non-member, denied
    *   role, group lookup failure).
    */
-  isGroupMember(email, groupEmail) {
+  _isGroupMember(email, groupEmail) {
+    Validate.requireParams({ email, groupEmail }, '_isGroupMember');
     try {
       const group = GroupsApp.getGroupByEmail(groupEmail);
       if (!group.hasUser(email)) {
@@ -99,9 +100,10 @@ class AuthService extends BaseSingleton {
    * Reads the configured Google Group email from ConfigurationManager, resolves
    * the caller via Session, and (unless a cached result, a cache bypass is
    * requested, or the group is unconfigured) verifies membership through
-   * GroupsApp. Successful results are cached for six hours; denials are never
-   * cached. Every attempt is audited via ABLogger including the requested
-   * method when supplied.
+   * GroupsApp. Successful authorisations are cached for six hours under the key
+   * `auth:<groupEmail>:<email>`; denials are never cached and `bypassCache: true`
+   * skips the cache read but still writes the refreshed allowed result. Every
+   * attempt is audited via ABLogger including the requested method when supplied.
    *
    * Fail-open bootstrap: when the group email is unconfigured and
    * `requireConfigured` is falsy, access is granted as a `user` with a warning
@@ -112,14 +114,6 @@ class AuthService extends BaseSingleton {
    * @param {boolean} [options.requireConfigured=false] - Deny when the group is unconfigured.
    * @param {string} [options.method] - Requested method, recorded in the audit log.
    * @returns {{ allowed: boolean, role?: string }} The access decision.
-   * @remarks
-   * Fail-open bootstrap: when `AUTH_GROUP_EMAIL` is unconfigured and
-   * `requireConfigured` is falsy, access is granted as a `user` with a warning
-   * so the admin can reach the settings form. When `requireConfigured` is set,
-   * access fails closed (used by triggers). Successful authorisations are
-   * cached for six hours under `auth:<groupEmail>:<email>`; denials are never
-   * cached. `bypassCache: true` skips the cache read but still writes the
-   * refreshed allowed result.
    */
   checkAccess({ bypassCache = false, requireConfigured = false, method = null } = {}) {
     const groupEmail = ConfigurationManager.getInstance().getAuthGroupEmail();
@@ -171,7 +165,7 @@ class AuthService extends BaseSingleton {
       }
     }
 
-    const decision = this.isGroupMember(email, groupEmail);
+    const decision = this._isGroupMember(email, groupEmail);
     if (!decision.allowed) {
       ABLogger.getInstance().warn('AuthService: access denied.', {
         email,
@@ -184,13 +178,7 @@ class AuthService extends BaseSingleton {
 
     // Successful authorisations are always cached — even on a cache bypass — so
     // a fresh result is memoised for subsequent requests within the TTL.
-    cache.put(
-      cacheKey,
-      { allowed: true, role: decision.role },
-      AUTH_CACHE_EXPIRY_HOURS *
-        RuntimeConstants.MINUTES_PER_HOUR *
-        RuntimeConstants.SECONDS_PER_MINUTE
-    );
+    cache.put(cacheKey, { allowed: true, role: decision.role }, CacheManager.CACHE_EXPIRY_SECONDS);
 
     ABLogger.getInstance().info('AuthService: access granted.', {
       email,

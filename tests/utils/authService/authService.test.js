@@ -1,7 +1,7 @@
 /**
  * AuthService unit tests.
  *
- * Red-phase tests for ACTION_PLAN Section 4. The module under test
+ * Red-phase tests for ACTION_PLAN Section 2. The module under test
  * (src/backend/Utils/AuthService.js) does not exist yet, so the top-level
  * require below fails to load until the green implementation lands — that is
  * the intended red state. The GAS harness stubs (Session, GroupsApp,
@@ -147,6 +147,38 @@ describe('AuthService', () => {
       }).restore;
       const instance = AuthService.getInstance();
       expect(typeof instance.checkAccess).toBe('function');
+    });
+  });
+
+  describe('_isGroupMember — parameter validation', () => {
+    it('throws when email is missing', () => {
+      expect(() => AuthService.getInstance()._isGroupMember(undefined, 'grp@school.edu')).toThrow(
+        /is required/
+      );
+    });
+
+    it('throws when groupEmail is missing', () => {
+      expect(() =>
+        AuthService.getInstance()._isGroupMember('teacher@school.edu', undefined)
+      ).toThrow(/is required/);
+    });
+
+    it('throws when both parameters are missing', () => {
+      expect(() => AuthService.getInstance()._isGroupMember(undefined, undefined)).toThrow(
+        /is required/
+      );
+    });
+
+    it('throws when email is null', () => {
+      expect(() => AuthService.getInstance()._isGroupMember(null, 'grp@school.edu')).toThrow(
+        /is required/
+      );
+    });
+
+    it('throws when groupEmail is null', () => {
+      expect(() => AuthService.getInstance()._isGroupMember('teacher@school.edu', null)).toThrow(
+        /is required/
+      );
     });
   });
 
