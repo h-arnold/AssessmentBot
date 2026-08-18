@@ -276,6 +276,8 @@ Implementation / Testing Specialist / Code Reviewer mandatory docs:
 
 ## Section 3 — Backend: trigger error-handling, cleanup leak, and single log boundary
 
+**Status:** Completed — Red + Green loops reviewed clean; Regression Gate passed (Regressions: 0, New Failures: 0) on 2026-08-18.
+
 ### Objective
 
 Fix the Critical cleanup leak (auth check runs outside the `try/finally`), single-owner the
@@ -347,8 +349,23 @@ access denied.` (`AuthService.js:176-181`) — matching the API path's single-lo
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** record the chosen single log boundary.
-- **Follow-up:** the same double-logging fix is consistent with the de-sloppification finding.
+- **Implementation notes:** Single log boundary = `triggerHandler` owns the dispatch-error log
+  (`ProgressTracker.logAndThrowError`) and rethrows; `processSelectedAssignment`'s outer `catch`
+  was removed so its errors propagate unlogged. The group-membership denial is logged exactly once
+  by `AuthService.checkAccess` (`AuthService.js:170`); `triggerHandler`'s duplicate `warn` was
+  removed. `checkAccess` is now wrapped in its own `try/catch` that cleans up then rethrows; the
+  denial-path cleanup and dispatch `try/finally` are unchanged (no double cleanup).
+  `createTimeBasedTrigger` uses `functionName` in both the `removeTriggers(...)` retry call and the
+  retry log message. `@remarks` trimmed to the cleanup-ownership + single-log-boundary contract.
+- **Test updates beyond the three RED cases (in-scope consequences):** existing
+  `tests/triggers/triggerHandler.test.js` denial test now asserts `ABLogger.warn` is NOT called;
+  existing `tests/controllers/assignmentController/assignmentController.runAssignmentPipeline.test.js`
+  stale-error test now asserts `DefinitionStaleError` propagates unlogged (`toThrow`) and
+  `logAndThrowError` is NOT called. Both reflect the new boundary and were updated in GREEN.
+- **Follow-up:** the single-log-boundary / de-duplication fix is consistent with the de-sloppification
+  finding; no further action required from this section.
+- **Review outcome:** Green Review CLEAN (one non-blocking nitpick retained — the pre-existing GAS
+  load-order `@remarks` paragraph is useful documentation and kept).
 
 ---
 
