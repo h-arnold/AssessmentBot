@@ -135,6 +135,39 @@ _runCompletionPhase(requestId, method, handlerFailed, handlerError):
 
 ---
 
+## Planned changes
+
+> Planned-only entry — tracked ahead of implementation so the canonical contract is not
+> silently changed by production code. Treat the content below as **not yet implemented**
+> until the `Status` line says otherwise.
+
+### Planned: `pruneStaleEntries_` return-shape change
+
+**Status: Not implemented**
+
+Signature unchanged: `pruneStaleEntries_(store, stalenessThresholdMs, referenceTimeMs?)`.
+All validation behaviour is unchanged — `store` and `stalenessThresholdMs` via
+`Validate.requireParams`; `referenceTimeMs` validated as a finite number via
+`Validate.isNumber()`.
+
+The return value will change from the store object itself to `{ store, prunedIds }`, where:
+
+- `store` — the same mutated store object. The store is still mutated in place; `.store` is
+  the same reference as the input argument.
+- `prunedIds` — an array of the entry IDs (`string`s) that were actually removed, i.e.
+  entries whose `status` is `'started'` and whose `startedAtMs` is older than
+  `referenceTimeMs - stalenessThresholdMs`.
+
+Rationale: lets `ApiDispatcher._runAdmissionPhase` (`src/backend/z_Api/z_apiHandler.js`)
+log each pruned entry without the redundant `keysBefore`/`keysAfterSet` scan it currently
+performs (lines 256-266). The only current caller ignores the return value today, so
+changing the return shape is non-breaking.
+
+Source: `ACTION_PLAN.md` Section 4 ("Shared helper plan" — decision `extend`). This entry
+must be reconciled to implemented during the Section 4 documentation pass.
+
+---
+
 ## Transport
 
 This store has no API endpoint transport. It is an internal backend mechanism consumed
