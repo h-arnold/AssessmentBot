@@ -44,7 +44,7 @@ function getBackendConfig_() {
     jsonDbLogLevel: configManager.getJsonDbLogLevel(),
     jsonDbBackupOnInitialise: configManager.getJsonDbBackupOnInitialise(),
     jsonDbRootFolderId: jsonDatabaseRootFolderId || '',
-    authGroupEmail: configManager.getAuthGroupEmail() || '',
+    authGroupEmail: configManager.getAuthGroupEmail(),
   };
 
   return config;
@@ -64,6 +64,7 @@ function setBackendConfig_(config) {
   }
 
   const errors = [];
+  const failedErrors = [];
   const configManager = ConfigurationManager.getInstance();
   const updates = [
     {
@@ -139,11 +140,9 @@ function setBackendConfig_(config) {
       action();
       return true;
     } catch (error) {
-      ABLogger.getInstance().error('Error saving configuration value.', {
-        configKey: name,
-        errorName: error?.name ?? 'Error',
-      });
-      errors.push(`${name}: REDACTED`);
+      ABLogger.getInstance().error('Error saving configuration value.', { configKey: name, error });
+      errors.push(`${name}: ${error?.message ?? 'REDACTED'}`);
+      failedErrors.push(error);
       return false;
     }
   }
@@ -158,7 +157,7 @@ function setBackendConfig_(config) {
 
   if (errors.length > 0) {
     const message = `Failed to save some configuration values: ${errors.join('; ')}`;
-    ABLogger.getInstance().error(message, { failedSettings: [...errors] });
+    ABLogger.getInstance().error(message, { failedSettings: [...errors], errors: failedErrors });
     return { success: false, error: message };
   }
 

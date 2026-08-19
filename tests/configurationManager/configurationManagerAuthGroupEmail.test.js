@@ -34,8 +34,8 @@ describe('ConfigurationManager AUTH_GROUP_EMAIL', () => {
       );
     });
 
-    it('defines the AUTH_GROUP_EMAIL default using the all-caps snake_case key', () => {
-      expect(CONFIG_MANAGER_DEFAULTS).toHaveProperty('AUTH_GROUP_EMAIL', '');
+    it('does not define an unused AUTH_GROUP_EMAIL default', () => {
+      expect(CONFIG_MANAGER_DEFAULTS).not.toHaveProperty('AUTH_GROUP_EMAIL');
       expect(CONFIG_MANAGER_DEFAULTS).not.toHaveProperty('authGroupEmail');
     });
   });

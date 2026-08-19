@@ -39,7 +39,12 @@ class AssignmentController {
    * @param {string} courseId - Classroom course ID used for downstream processing.
    * @throws {Error} If trigger creation fails or if storing the trigger context fails
    */
-  startProcessing(assignmentId, definitionKey, courseId = '') {
+  startProcessing(assignmentId, definitionKey, courseId) {
+    Validate.requireParams(
+      { assignmentId, definitionKey, courseId },
+      'AssignmentController.startProcessing'
+    );
+
     // Lazily instantiate TriggerController
     const triggerController = new TriggerController();
     let triggerId;
@@ -51,11 +56,6 @@ class AssignmentController {
       );
     } catch (error) {
       this.progressTracker.logAndThrowError(`Error creating trigger: ${error.message}`, error);
-      this.utils.toastMessage(
-        'Failed to create trigger: ' + error.message,
-        'Error',
-        TOAST_DURATION_SECONDS
-      );
     }
 
     try {
@@ -68,11 +68,6 @@ class AssignmentController {
       this.progressTracker.logAndThrowError(
         `Error storing trigger context: ${error.message}`,
         error
-      );
-      this.utils.toastMessage(
-        'Failed to store trigger context: ' + error.message,
-        'Error',
-        TOAST_DURATION_SECONDS
       );
     }
   }

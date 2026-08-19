@@ -637,7 +637,7 @@ describe('AssignmentController - Definition Hydration', () => {
       });
 
       const controller = new AssignmentController();
-      controller.startProcessing('assignment-456', 'Essay 1_English_year-group-10');
+      controller.startProcessing('assignment-456', 'Essay 1_English_year-group-10', 'course-123');
 
       expect(mockTrigger.createTimeBasedTrigger).toHaveBeenCalledWith('triggerHandler');
       expect(mockTrigger.storeTriggerContext).toHaveBeenCalledWith('trigger-123', {
@@ -645,7 +645,7 @@ describe('AssignmentController - Definition Hydration', () => {
         params: {
           assignmentId: 'assignment-456',
           definitionKey: 'Essay 1_English_year-group-10',
-          courseId: '',
+          courseId: 'course-123',
         },
       });
     });

@@ -11,7 +11,7 @@
  * @example
  * const config = ConfigurationManager.getInstance();
  * const backendAssessorBatchSize = config.getBackendAssessorBatchSize();
- * config.setApiKey('abt_7pC98PCoGJOcjN-qz6rNlSzKkgySJF-1');
+ * config.setApiKey('example-api-key');
  */
 
 /**
@@ -51,7 +51,8 @@ function safeParseConfigObject_(serialisedConfig) {
       return {};
     }
     return parsed;
-  } catch {
+  } catch (error) {
+    ABLogger.getInstance().error('safeParseConfigObject_ failed to parse configuration.', error);
     return {};
   }
 }
@@ -274,8 +275,8 @@ class ConfigurationManager extends BaseSingleton {
     this.getAllConfigurations();
     const spec = ConfigurationManager.CONFIG_SCHEMA[key];
     const canonical = spec?.validate ? spec.validate(value, this) : value;
-    const normalizedValue = spec?.normalize ? spec.normalize(canonical) : canonical;
-    const serialisedValue = String(normalizedValue);
+    const normalisedValue = spec?.normalise ? spec.normalise(canonical) : canonical;
+    const serialisedValue = String(normalisedValue);
     const updatedConfig = {
       ...this.configCache,
       [key]: serialisedValue,

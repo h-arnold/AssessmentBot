@@ -62,7 +62,7 @@ const CONFIG_SCHEMA = Object.freeze({
   [CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET]: {
     storage: 'script',
     validate: (v) => Validate.validateBoolean('Revoke Auth Trigger Set', v),
-    normalize: toBooleanString_,
+    normalise: toBooleanString_,
   },
   [CONFIG_KEYS.JSON_DB_MASTER_INDEX_KEY]: {
     storage: 'script',
@@ -81,12 +81,12 @@ const CONFIG_SCHEMA = Object.freeze({
   [CONFIG_KEYS.JSON_DB_LOG_LEVEL]: {
     storage: 'script',
     validate: (v) => validateLogLevel_('JSON DB Log Level', v),
-    normalize: (v) => validateLogLevel_('JSON DB Log Level', v),
+    normalise: (v) => validateLogLevel_('JSON DB Log Level', v),
   },
   [CONFIG_KEYS.JSON_DB_BACKUP_ON_INITIALISE]: {
     storage: 'script',
     validate: (v) => Validate.validateBoolean('JSON DB Backup On Initialise', v),
-    normalize: toBooleanString_,
+    normalise: toBooleanString_,
   },
   [CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID]: {
     storage: 'script',
