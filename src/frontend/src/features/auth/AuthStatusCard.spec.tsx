@@ -26,7 +26,7 @@ describe('AuthStatusCard', () => {
     vi.clearAllMocks();
   });
 
-  it('renders a generic no-access message when authorisation is denied', () => {
+  it('renders the authorised surface only, leaving denial messaging to the gate', () => {
     useAuthorisationStatusMock.mockReturnValue({
       isAuthorised: false,
       isLoading: false,
@@ -35,9 +35,10 @@ describe('AuthStatusCard', () => {
 
     renderWithFrontendProviders(<AuthStatusCard />);
 
-    expect(screen.getByText('You do not have access to this application.')).toBeInTheDocument();
-    expect(screen.queryByText('Unauthorised')).not.toBeInTheDocument();
-    expect(screen.queryByRole('status', { name: 'Loading authorisation status' })).not.toBeInTheDocument();
+    expect(screen.getByText('Authorised')).toBeInTheDocument();
+    expect(
+      screen.queryByText('You do not have access to this application.')
+    ).not.toBeInTheDocument();
   });
 
   it('renders the standalone auth status card surface', () => {

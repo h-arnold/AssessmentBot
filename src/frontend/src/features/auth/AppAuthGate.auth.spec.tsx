@@ -331,7 +331,7 @@ describe('AppAuthGate', () => {
     expect(screen.queryByText('Protected content')).not.toBeInTheDocument();
   });
 
-  it('renders the loading gate surface while authorisation is pending', () => {
+  it('renders a status region with a visible spinner while authorisation is pending', () => {
     const { QueryWrapper } = createQueryWrapper();
     getAuthorisationStatusMock.mockReturnValueOnce(new Promise<boolean>(() => {}));
 
@@ -342,7 +342,14 @@ describe('AppAuthGate', () => {
       { wrapper: QueryWrapper }
     );
 
-    expect(screen.getByRole('status', { name: 'Loading authorisation status' })).toBeInTheDocument();
+    const statusRegion = screen.getByRole('status', { name: 'Loading authorisation status' });
+    expect(statusRegion).toBeInTheDocument();
+    // The loading region must pair accessible status semantics with a visible spinner
+    // (an Ant Design Spin that carries role="status", or a status element containing one).
+    expect(
+      statusRegion.classList.contains('ant-spin') ||
+        statusRegion.querySelector('.ant-spin') !== null
+    ).toBe(true);
     expect(screen.queryByText('Protected content')).not.toBeInTheDocument();
   });
 

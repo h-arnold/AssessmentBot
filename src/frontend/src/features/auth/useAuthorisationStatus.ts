@@ -17,8 +17,9 @@ export type AuthorisationStatus = Readonly<{
  * @remarks
  * The `error` field captures transport failures only and is derived by the central
  * `mapErrorToUserMessage` helper using `extractErrorCode` and `mapErrorCodeToUserMessage`
- * from `map-error-to-ui.ts`; no local mapping copy is maintained. It does not observe
- * `FORBIDDEN`, which is handled by the startup warm-up gate.
+ * from `map-error-to-ui.ts`; no local mapping copy is maintained. FORBIDDEN is
+ * intentionally out of scope for this hook; the AppAuthGate warm-up gate owns denial copy.
+ * This hook only surfaces transport failures.
  *
  * @returns {AuthorisationStatus} The current authorisation status.
  */

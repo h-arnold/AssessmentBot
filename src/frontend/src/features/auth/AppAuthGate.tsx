@@ -1,7 +1,7 @@
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
-import { Button, Result } from 'antd';
+import { Button, Result, Spin } from 'antd';
 import type { PropsWithChildren } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ApiTransportError } from '../../errors/apiTransportError';
 import { extractErrorCode, mapErrorCodeToUserMessage } from '../../errors/map-error-to-ui';
 import { normaliseUnknownError } from '../../errors/normaliseUnknownError';
@@ -189,10 +189,9 @@ export function AppAuthGate(properties: Readonly<PropsWithChildren>) {
   const { children } = properties;
   const queryClient = useQueryClient();
   const { isAuthorised, isLoading, error } = useAuthorisationStatus();
-  const [warmupCycleState, setWarmupCycleState] = useState<StartupWarmupCycle>(() => {
-    const existingCycle = startupWarmupCycles.get(queryClient);
-    return existingCycle ?? getStoredWarmupCycle(queryClient);
-  });
+  const [warmupCycleState, setWarmupCycleState] = useState<StartupWarmupCycle>(() =>
+    getStoredWarmupCycle(queryClient)
+  );
 
   useEffect(() => {
     if (isLoading || !isAuthorised || error) {
@@ -283,7 +282,10 @@ export function AppAuthGate(properties: Readonly<PropsWithChildren>) {
     };
   }, [error, isAuthorised, isLoading, queryClient]);
 
-  const warmupForbiddenMessage = getWarmupForbiddenMessage(queryClient);
+  const warmupForbiddenMessage = useMemo(
+    () => getWarmupForbiddenMessage(queryClient),
+    [queryClient, warmupCycleState]
+  );
 
   if (warmupForbiddenMessage) {
     return <Result status="error" title={warmupForbiddenMessage} />;
@@ -311,7 +313,12 @@ export function AppAuthGate(properties: Readonly<PropsWithChildren>) {
   }
 
   if (isLoading) {
-    return <output aria-label="Loading authorisation status">Loading authorisation status</output>;
+    return (
+      <div role="status" aria-label="Loading authorisation status">
+        <Spin />
+        Loading authorisation status
+      </div>
+    );
   }
 
   if (!isAuthorised) {
