@@ -371,6 +371,8 @@ access denied.` (`AuthService.js:176-181`) — matching the API path's single-lo
 
 ## Section 4 — Backend: z_apiHandler logging + admission-phase simplification + requestStore
 
+**Status:** Completed — Red + Green loops reviewed clean; Regression Gate shows no functional regressions (all tests/lint clean). One accepted `max-lines` line-count regression remains on `z_apiHandler.js` (pre-existing over-500 debt; the plan marks `max-lines` out of scope, so LOC was intentionally not reduced).
+
 ### Objective
 
 Fix the Critical unlogged auth-gate catch; fold the admission-phase prune-logging scan into
@@ -443,9 +445,16 @@ Implementation / Testing Specialist / Code Reviewer mandatory docs:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** record whether `pruneStaleEntries_` returns pruned IDs or accepts a
-  reporting callback.
-- **Follow-up:** none.
+- **Implementation notes:** `pruneStaleEntries_` now returns `{ store, prunedIds }` (the chosen
+  `extend` decision) — `_runAdmissionPhase` consumes `prunedIds` to log each pruned entry, removing
+  the redundant `keysBefore`/`keysAfterSet` scan. `compactStore_` uses `splice(0, dropCount)` instead
+  of a `shift()` loop. The auth-gate catch now logs `ABLogger.getInstance().error('Auth check failed.',
+{ requestId, method: request.method }, error)` before the INTERNAL_ERROR envelope. `_success` uses
+  `warn` (not `error`) for the defensive undefined-data message. The canonical `request-store.md`
+  planned entry was reconciled to `implemented`.
+- **Follow-up:** none. (The `z_apiHandler.js` `max-lines` warning is pre-existing baseline debt and
+  explicitly out of scope per the plan; the Section 4 edit increased its line count, which the
+  regression checker flags as a line-count regression but introduces no new warning class.)
 
 ---
 
