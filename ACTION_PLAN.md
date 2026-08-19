@@ -607,7 +607,16 @@ Implementation / Testing Specialist / Code Reviewer mandatory docs:
 
 ### Implementation notes / deviations / follow-up
 
+- **Implementation notes:** AppAuthGate loading element is now a `role="status"` region with an
+  antd `Spin`; `getWarmupForbiddenMessage` memoised; `useState` initialiser no longer double-reads
+  `startupWarmupCycles`; `AuthStatusCard` denial branch removed (gate owns denial copy);
+  `useAuthorisationStatus` `@remarks` FORBIDDEN comment corrected.
 - **Follow-up:** Section 7 handles the BackendSettingsPanel and map-error-to-ui changes.
+- **Status:** Completed. Commit `6f5cd5f` (pushed). TDD loop: RED (Testing Specialist) →
+  Red Review (CLEAN) → GREEN (Implementation) → Green Review (CLEAN). Section checks
+  (`test:frontend AppAuthGate AuthStatusCard` 14/14, `lint:frontend` 0 errors) pass. One
+  accepted `react-hooks/exhaustive-deps` warning on the mandated `useMemo` deps; a dead
+  `vi.mock` in `AuthStatusCard.spec.tsx` is deferred to the De-sloppification pass.
 
 ---
 
@@ -677,8 +686,15 @@ Implementation / Testing Specialist / Code Reviewer mandatory docs:
 
 ### Implementation notes / deviations / follow-up
 
+- **Implementation notes:** `map-error-to-ui` now uses an exhaustively-typed
+  `Record<ErrorCode, string>`; `IN_USE`/`DEFINITION_STALE` added with messages matching the spec.
+  `mapErrorToUserMessage` collapse verified. `BackendSettingsPanel` helper text moved into
+  `Form.Item extra`; negative-margin style and redundant `aria-live` removed.
 - **Follow-up:** Section 8 extracts the shared `authGroupEmail` schema; Section 10 reconciles
   docs.
+- **Status:** Completed. Commit `3217d94` (pushed). TDD loop: RED (Testing Specialist) →
+  Red Review (CLEAN) → GREEN (Implementation) → Green Review (CLEAN). Section checks
+  (`test:frontend map-error-to-ui BackendSettingsPanel` 47/47, `lint:frontend` 0 errors) pass.
 
 ---
 
@@ -738,7 +754,14 @@ Implementation / Testing Specialist / Code Reviewer mandatory docs:
 
 ### Implementation notes / deviations / follow-up
 
+- **Implementation notes:** `authGroupEmailSchema` exported from `backendConfiguration.zod.ts`
+  and reused at all three call sites; form schema keeps `authGroupEmail` required, transport
+  schemas keep it `.optional()`. No circular import.
 - **Follow-up:** none.
+- **Status:** Completed. Commit `289ac7e` (pushed). TDD loop: RED (Testing Specialist) →
+  Red Review (CLEAN) → GREEN (Implementation) → Green Review (CLEAN). Section checks
+  (`test:frontend backendConfiguration.zod backendSettingsForm.zod` 29/29, `lint:frontend`
+  0 errors) pass.
 
 ---
 
@@ -776,7 +799,11 @@ re-implement them here.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** mark this section "no additional work".
+- **Implementation notes:** mark this section "no additional work". The incidental
+  error-handling items it would have covered (`safeParseConfigObject_` empty catch and the
+  unreachable `toastMessage` after `logAndThrowError`) were already delivered in Section 5
+  (commits `f898566` / `7721fdf`).
+- **Status:** Completed (no additional work — folded into Section 5).
 
 ---
 
