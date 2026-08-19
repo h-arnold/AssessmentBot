@@ -531,10 +531,21 @@ Implementation / Testing Specialist / Code Reviewer mandatory docs:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** record that `DEFAULTS.AUTH_GROUP_EMAIL` was removed and which tests
-  were updated.
-- **Deviations:** the `normalize`→`normalise` rename may surface in additional call sites;
-  keep it contained to the config spec.
+- **Implementation notes:** `DEFAULTS.AUTH_GROUP_EMAIL` was removed from
+  `src/backend/ConfigurationManager/02_defaults.js`. Tests updated:
+  `tests/configurationManager/configurationManagerAuthGroupEmail.test.js` now asserts
+  `DEFAULTS` no longer contains `AUTH_GROUP_EMAIL`/`authGroupEmail`; the new
+  `tests/triggers/triggerController.requiredScopes.test.js` enforces `REQUIRED_SCOPES`
+  matches `appsscript.json` `oauthScopes`; `tests/controllers/assignmentController.hydration.test.js`
+  was updated to call `startProcessing` with an explicit third `courseId` argument.
+- **Deviations:** the `normalize`→`normalise` rename was contained to the config spec (both files);
+  the local `normalizedValue` variable in `setProperty` was also renamed to `normalisedValue` for
+  British-English consistency.
+- **Status:** Completed. Commit `f898566` (pushed). TDD loop: RED (Testing Specialist) →
+  Red Review (CLEAN) → GREEN (Implementation) → Green Review (CLEAN) → Regression Gate
+  (`Regressions Count: 0`, `New Failures Count: 0`; the 2 failing checks are the pre-existing
+  `max-lines` and `frontend-e2e` baseline debt, `Errors: 0`). Section checks
+  (`test:backend` 140/140, `lint:backend` 0 errors) pass.
 
 ---
 
