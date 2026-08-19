@@ -150,8 +150,13 @@ class ApiDispatcher extends BaseSingleton {
         access = AuthService.getInstance().checkAccess({ method: request.method });
       } catch (error) {
         // A thrown auth check (e.g. ConfigurationManager persistence failure) is a
-        // transport-boundary error, not a group-membership denial — map it to the
-        // INTERNAL_ERROR envelope rather than FORBIDDEN.
+        // transport-boundary error, not a group-membership denial — log it once at
+        // the boundary, then map to the INTERNAL_ERROR envelope rather than FORBIDDEN.
+        ABLogger.getInstance().error(
+          'Auth check failed.',
+          { requestId, method: request.method },
+          error
+        );
         return this._mapErrorToFailureEnvelope(requestId, error);
       }
       if (!access.allowed) {
@@ -253,16 +258,16 @@ class ApiDispatcher extends BaseSingleton {
     try {
       const store = requestStoreFns.loadStore_();
 
-      const keysBefore = Object.keys(store);
-      requestStoreFns.pruneStaleEntries_(store, staleRequestAgeMs, lockAcquiredAt);
-      const keysAfterSet = new Set(Object.keys(store));
-      for (const candidateId of keysBefore) {
-        if (!keysAfterSet.has(candidateId)) {
-          ABLogger.getInstance().warn('Pruned stale request entry during admission.', {
-            requestId,
-            prunedId: candidateId,
-          });
-        }
+      const { prunedIds } = requestStoreFns.pruneStaleEntries_(
+        store,
+        staleRequestAgeMs,
+        lockAcquiredAt
+      );
+      for (const prunedId of prunedIds) {
+        ABLogger.getInstance().warn('Pruned stale request entry during admission.', {
+          requestId,
+          prunedId,
+        });
       }
 
       // Persist pruned state immediately so stale entries don't accumulate on rate-limited paths.
@@ -390,7 +395,7 @@ class ApiDispatcher extends BaseSingleton {
     // Defensive check: log and coerce undefined to null to prevent Zod parsing errors
     // in the frontend where undefined values in response envelope cause validation failures
     if (data === undefined) {
-      ABLogger.getInstance().error('Success response with undefined data', { requestId });
+      ABLogger.getInstance().warn('Success response with undefined data', { requestId });
     }
     return {
       ok: true,

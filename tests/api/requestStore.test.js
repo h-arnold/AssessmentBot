@@ -219,6 +219,44 @@ describe('Api/requestStore', () => {
     });
   });
 
+  describe('pruneStaleEntries_ — pruned-ID reporting contract', () => {
+    it('returns { store, prunedIds } with the same store reference and the pruned entry IDs', () => {
+      const { pruneStaleEntries_ } = loadRequestStoreModule();
+
+      const store = {
+        'stale-contract-1': {
+          requestId: 'stale-contract-1',
+          method: 'getAuthorisationStatus',
+          status: 'started',
+          startedAtMs: 1000,
+        },
+        'recent-contract-1': {
+          requestId: 'recent-contract-1',
+          method: 'getAuthorisationStatus',
+          status: 'started',
+          startedAtMs: 9000,
+        },
+        'completed-contract-1': {
+          requestId: 'completed-contract-1',
+          method: 'getAuthorisationStatus',
+          status: 'success',
+          startedAtMs: 1000,
+          finishedAtMs: 2000,
+        },
+      };
+
+      const result = pruneStaleEntries_(store, 5000, 7000);
+
+      // The new contract reports the pruned IDs alongside the mutated store; the
+      // store is still the same object reference and remains mutated in place.
+      expect(result.store).toBe(store);
+      expect(result.prunedIds).toEqual(['stale-contract-1']);
+      expect(store['stale-contract-1']).toBeUndefined();
+      expect(store['recent-contract-1']).toBeDefined();
+      expect(store['completed-contract-1']).toBeDefined();
+    });
+  });
+
   describe('compactStore_', () => {
     it('removes oldest completed (success/error) entries first when count exceeds MAX_TRACKED_REQUESTS', () => {
       const { compactStore_ } = loadRequestStoreModule();
@@ -274,6 +312,44 @@ describe('Api/requestStore', () => {
       for (let i = 0; i < MAX_TRACKED_REQUESTS; i++) {
         expect(compacted[`req-active-${i}`]).toBeDefined();
       }
+    });
+
+    it('drops the oldest completed entries first across a large store while preserving the active entry', () => {
+      const { compactStore_ } = loadRequestStoreModule();
+
+      // MAX_TRACKED_REQUESTS + 5 completed entries (ascending startedAtMs) plus one
+      // active entry with a newer timestamp. The compacted store must stay at or
+      // below the limit, keep the active entry and the newest completed entries,
+      // and evict the oldest completed entries first.
+      const store = {};
+      for (let i = 0; i < MAX_TRACKED_REQUESTS + 5; i++) {
+        const id = `req-bulk-${i}`;
+        store[id] = {
+          requestId: id,
+          method: 'someMethod',
+          status: i % 2 === 0 ? 'success' : 'error',
+          startedAtMs: 1000 + i,
+          finishedAtMs: 2000 + i,
+        };
+      }
+      store['req-bulk-active'] = {
+        requestId: 'req-bulk-active',
+        method: 'someMethod',
+        status: 'started',
+        startedAtMs: 100000,
+      };
+
+      const compacted = compactStore_(store);
+
+      expect(Object.keys(compacted).length).toBeLessThanOrEqual(MAX_TRACKED_REQUESTS);
+      // The active entry always survives compaction.
+      expect(compacted['req-bulk-active']).toBeDefined();
+      // The 5 oldest completed entries are evicted first.
+      for (let i = 0; i < 5; i++) {
+        expect(compacted[`req-bulk-${i}`]).toBeUndefined();
+      }
+      // At least one of the newest completed entries survives.
+      expect(compacted[`req-bulk-${MAX_TRACKED_REQUESTS + 4}`]).toBeDefined();
     });
   });
 });

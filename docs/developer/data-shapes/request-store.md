@@ -68,8 +68,11 @@ orchestrated by `ApiDispatcher` in `z_apiHandler.js`:
 6. **`pruneStaleEntries_(store, stalenessThresholdMs, referenceTimeMs?)`** — Removes entries
    whose `status` is `'started'` and whose `startedAtMs` is older than `referenceTimeMs -
 stalenessThresholdMs`. Completed entries (`'success'` / `'error'`) are never removed by
-   this function. Mutates and returns the store. Validates `store` and `stalenessThresholdMs`
-   via `Validate.requireParams`; validates `referenceTimeMs` is a finite number.
+   this function. Mutates the store in place and returns `{ store, prunedIds }`, where
+   `store` is the (same) mutated store object and `prunedIds` is an array of the entry IDs
+   that were removed (status `'started'` and older than the threshold). Validates `store`
+   and `stalenessThresholdMs` via `Validate.requireParams`; validates `referenceTimeMs` is
+   a finite number.
 
 7. **`compactStore_(store)`** — When the total number of entries exceeds `MAX_TRACKED_REQUESTS`,
    removes the oldest completed entries (sorted by `startedAtMs` ascending) until the store
@@ -138,19 +141,20 @@ _runCompletionPhase(requestId, method, handlerFailed, handlerError):
 ## Planned changes
 
 > Planned-only entry — tracked ahead of implementation so the canonical contract is not
-> silently changed by production code. Treat the content below as **not yet implemented**
-> until the `Status` line says otherwise.
+> silently changed by production code. The entry below is now **implemented** — the
+> production change is live and the §6 record-lifecycle contract above reflects the
+> shipped return shape.
 
 ### Planned: `pruneStaleEntries_` return-shape change
 
-**Status: Not implemented**
+**Status: implemented**
 
 Signature unchanged: `pruneStaleEntries_(store, stalenessThresholdMs, referenceTimeMs?)`.
 All validation behaviour is unchanged — `store` and `stalenessThresholdMs` via
 `Validate.requireParams`; `referenceTimeMs` validated as a finite number via
 `Validate.isNumber()`.
 
-The return value will change from the store object itself to `{ store, prunedIds }`, where:
+The return value is now `{ store, prunedIds }` instead of the store object itself, where:
 
 - `store` — the same mutated store object. The store is still mutated in place; `.store` is
   the same reference as the input argument.
@@ -158,13 +162,13 @@ The return value will change from the store object itself to `{ store, prunedIds
   entries whose `status` is `'started'` and whose `startedAtMs` is older than
   `referenceTimeMs - stalenessThresholdMs`.
 
-Rationale: lets `ApiDispatcher._runAdmissionPhase` (`src/backend/z_Api/z_apiHandler.js`)
-log each pruned entry without the redundant `keysBefore`/`keysAfterSet` scan it currently
-performs (lines 256-266). The only current caller ignores the return value today, so
-changing the return shape is non-breaking.
+`ApiDispatcher._runAdmissionPhase` (`src/backend/z_Api/z_apiHandler.js`) consumes
+`prunedIds` to log each pruned entry, so the redundant `keysBefore`/`keysAfterSet` scan it
+previously performed (lines 256-266) has been removed. The only caller ignored the return
+value before, so changing the return shape was non-breaking.
 
 Source: `ACTION_PLAN.md` Section 4 ("Shared helper plan" — decision `extend`). This entry
-must be reconciled to implemented during the Section 4 documentation pass.
+was reconciled to implemented during the Section 4 documentation pass.
 
 ---
 

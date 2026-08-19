@@ -123,12 +123,14 @@ function markError_(store, requestId, errorMessage) {
  * Removes stale started entries from the store.
  * An entry is considered stale when its status is 'started' and its startedAtMs is older than the given threshold.
  * Completed entries (success or error) are never removed by this function.
- * Mutates and returns the store.
+ * The store is mutated in place and returned as `.store` (the same reference as the input);
+ * the IDs of the removed entries are reported via `prunedIds` so callers can log what was
+ * pruned without scanning the store a second time.
  *
  * @param {Object} store - The request store object.
  * @param {number} stalenessThresholdMs - Age in milliseconds beyond which a started entry is stale.
  * @param {number} [referenceTimeMs=Date.now()] - Optional pre-captured timestamp for deterministic callers.
- * @returns {Object} The mutated store object.
+ * @returns {{store: Object, prunedIds: string[]}} The mutated store (same reference) and an array of the pruned entry IDs.
  * @throws {Error} Throws if store or stalenessThresholdMs validation fails, or if referenceTimeMs is not a finite number.
  */
 function pruneStaleEntries_(store, stalenessThresholdMs, referenceTimeMs = Date.now()) {
@@ -137,12 +139,14 @@ function pruneStaleEntries_(store, stalenessThresholdMs, referenceTimeMs = Date.
     throw new TypeError('referenceTimeMs must be a finite number.');
   }
   const cutoffMs = referenceTimeMs - stalenessThresholdMs;
+  const prunedIds = [];
   for (const [id, entry] of Object.entries(store)) {
     if (entry.status === 'started' && entry.startedAtMs < cutoffMs) {
       delete store[id];
+      prunedIds.push(id);
     }
   }
-  return store;
+  return { store, prunedIds };
 }
 
 /**
@@ -175,9 +179,9 @@ function compactStore_(store) {
   // Sort ascending by startedAtMs so the oldest completed entries are dropped first.
   completed.sort((a, b) => a.startedAtMs - b.startedAtMs);
 
-  while (active.length + completed.length > maxTrackedRequests && completed.length > 0) {
-    completed.shift();
-  }
+  // Drop the oldest completed entries first; completed is sorted ascending by startedAtMs.
+  const dropCount = Math.max(0, active.length + completed.length - maxTrackedRequests);
+  completed.splice(0, dropCount);
 
   const compacted = {};
   for (const entry of active) {

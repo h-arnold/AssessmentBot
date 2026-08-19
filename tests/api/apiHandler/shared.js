@@ -425,7 +425,7 @@ function makeVmGlobals(overrides = {}) {
     },
     compactStore_: (s) => s,
     STALE_REQUEST_AGE_MS: 15 * 60 * 1000,
-    pruneStaleEntries_: (s) => s,
+    pruneStaleEntries_: (s) => ({ store: s, prunedIds: [] }),
     ApiRateLimitError: function ApiRateLimitError() {},
     ApiValidationError: function ApiValidationError() {},
     ApiDisabledError: function ApiDisabledError() {},

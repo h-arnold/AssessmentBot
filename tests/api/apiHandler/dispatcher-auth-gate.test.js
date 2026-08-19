@@ -200,6 +200,28 @@ describe('Api/apiHandler dispatcher — auth gate (FORBIDDEN)', () => {
         },
       });
     });
+
+    it('maps a thrown AuthService.checkAccess to INTERNAL_ERROR and logs it at the boundary', () => {
+      // A thrown auth check (e.g. ConfigurationManager persistence failure) is a
+      // transport-boundary error, not a group-membership denial — it must map to
+      // the INTERNAL_ERROR envelope AND be logged once at the catch boundary per
+      // backend logging policy §5.3/§6.2, mirroring the sibling handler-failure path.
+      provisionAuthEnvironment(CONFIGURED_GROUP_EMAIL);
+      globalThis.Session._setActiveUserEmail('teacher@school.edu');
+      vi.spyOn(AuthService.getInstance(), 'checkAccess').mockImplementation(() => {
+        throw new Error('auth boom');
+      });
+
+      const { ApiDispatcher } = loadApiHandlerModule();
+      const response = ApiDispatcher.getInstance().handle({ method: 'getCohorts', params: {} });
+
+      expect(response).toMatchObject({ ok: false, error: { code: 'INTERNAL_ERROR' } });
+      expect(context.errorSpy).toHaveBeenCalledWith(
+        'Auth check failed.',
+        expect.objectContaining({ requestId: expect.any(String), method: 'getCohorts' }),
+        expect.any(Error)
+      );
+    });
   });
 
   describe('auth gate method propagation', () => {

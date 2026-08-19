@@ -118,7 +118,8 @@ describe('Api/requestStore – pruneStaleEntries_', () => {
 
     const returned = pruneStaleEntries_(store, STALE_REQUEST_AGE_MS);
 
-    expect(returned).toBe(store);
+    expect(returned.store).toBe(store);
+    expect(returned.prunedIds).toEqual(['stale-req-mut']);
   });
 
   it('returns an empty store unchanged when called on an empty store', () => {
@@ -127,7 +128,8 @@ describe('Api/requestStore – pruneStaleEntries_', () => {
     const store = {};
     const returned = pruneStaleEntries_(store, STALE_REQUEST_AGE_MS);
 
-    expect(returned).toBe(store);
-    expect(Object.keys(returned)).toHaveLength(0);
+    expect(returned.store).toBe(store);
+    expect(returned.prunedIds).toEqual([]);
+    expect(Object.keys(returned.store)).toHaveLength(0);
   });
 });
