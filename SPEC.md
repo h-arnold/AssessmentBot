@@ -2,7 +2,14 @@
 
 ## Status
 
-- Draft v1.8 — post-planning-review fixes applied (see "Changes from v1.7"). Ready to build `ACTION_PLAN.md` from.
+- Draft v1.9 — auth-mode bypass increment (opt-in development/testing bypass of the group-membership gate). See "Changes from v1.8".
+
+### Changes from v1.8
+
+- **B1 (Auth-mode config key):** New `AUTH_MODE` (`authMode`) configuration key with two values — `googleGroups` (default) and `none`. The default is the secure Google Groups mode.
+- **B2 (Bypass semantics):** When `authMode` is `none`, `AuthService.checkAccess()` short-circuits to `{ allowed: true, role: 'user' }` **before** reading the group email, resolving the session identity, or applying the `requireConfigured` fail-closed branch. The bypass therefore covers both the interactive API gate and the trigger path. The OAuth scope-authorisation check is **unchanged** (confirmed user decision).
+- **B3 (Security marking):** The bypass is marked in code comments as a **temporary development measure** with an explicit security caveat, plus a settings-form helper-text warning. It remains opt-in (`googleGroups` is the default).
+- **B4 (Data shape):** `authMode` is added to the `getBackendConfig`/`setBackendConfig` transport payloads, the frontend form schema, and the form mapper.
 
 ### Changes from v1.7
 
@@ -106,6 +113,10 @@ This feature is **not** intended to:
 8. **Audit logging of all access attempts.** Every API call is logged with the user's email, method name, and outcome (allowed/denied) via `ABLogger`.
 9. **Frontend distinguishes denial types by mechanism.** OAuth denial is resolved via the gate-exempt `getAuthorisationStatus` (boolean). Group denial is communicated via the `FORBIDDEN` error code from the gate on protected methods. The frontend uses two independent mechanisms rather than a combined payload.
 10. **`AppAuthGate` must be a truly blocking gate.** The frontend auth gate must prevent rendering of protected content when the user is unauthorised. OAuth denial blocks before children render. Group denial (detected via warmup query `FORBIDDEN`) may cause a transient shell render before the gate retracts it; safety rests on all protected queries failing closed (no data reaches the client). This is a marked improvement over the current behaviour where the gate only controls startup warmup.
+11. **Auth-mode setting (development bypass).** A new `authMode` setting — `googleGroups` (default) or `none` — controls the group-membership gate. It is opt-in; the default is the secure `googleGroups` mode.
+12. **Bypass scope.** When `authMode` is `none`, `AuthService.checkAccess()` returns `{ allowed: true, role: 'user' }` immediately — before the group-email read, the session identity resolution, or the `requireConfigured` fail-closed branch — so the bypass covers both the interactive API gate and trigger execution. The OAuth scope-authorisation check (`getAuthorisationStatus` / the frontend "Permissions required" screen) is **unchanged**.
+13. **Secure-by-default getter.** `getAuthMode()` returns `none` only for the literal stored value `none`; any other value (unset, blank, unknown) resolves to `googleGroups`.
+14. **Temporary-measure marking.** The bypass is commented in code and described in the settings helper text as a temporary development measure with an explicit security caveat; it must never be used in production.
 
 ## Existing system constraints
 
@@ -386,7 +397,8 @@ This feature changes several contracts that cross persistence, transport, or val
 
 | Change                                                                                      | Canonical doc                                                 | Action                                                                                                                                                                                                           |
 | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `authGroupEmail` added to `getBackendConfig`/`setBackendConfig` payloads                    | `docs/developer/data-shapes/backend-config.md`                | Add `authGroupEmail` field to the backend config shape. Mark as `Not implemented`.                                                                                                                               |
+| `authGroupEmail` added to `getBackendConfig`/`setBackendConfig` payloads                    | `docs/developer/data-shapes/backend-config.md`                | Delivered — `authGroupEmail` is documented as row 13 of `backend-config.md`.                                                                                                                                     |
+| `authMode` added to `getBackendConfig`/`setBackendConfig` payloads                          | `docs/developer/data-shapes/backend-config.md`                | Add `authMode` field (`googleGroups` \| `none`, default `googleGroups`) to the backend config shape. Mark as `Not implemented`.                                                                                  |
 | New `FORBIDDEN` code in the shared error envelope                                           | `docs/developer/data-shapes/transport-envelope.md`            | Add `FORBIDDEN` to the documented error-code table. Mark as `Not implemented`.                                                                                                                                   |
 | `getAuthorisationStatus` remains gate-exempt (boolean return, unchanged shape)              | —                                                             | **No change needed** — the boolean return shape is unchanged.                                                                                                                                                    |
 | 7 `requestStore` functions renamed                                                          | `docs/developer/data-shapes/request-store.md`                 | Update function names to trailing-underscore versions. Mark as `Not implemented`.                                                                                                                                |
@@ -1069,3 +1081,115 @@ When role-based method filtering is implemented, it will use an **allow-list app
 - This is a security-first approach: access is denied unless explicitly permitted, rather than permitted unless explicitly denied.
 - The role information resolved during the auth check (admin/user) will be passed to the method dispatcher, which will consult the allow-list before invoking the handler.
 - If a user's role is not in the method's allow-list, the request will be denied with a `FORBIDDEN` error (same as an unauthorised user).
+
+---
+
+# Auth-mode bypass increment (v1.9)
+
+## Purpose
+
+Add an opt-in "authentication options" setting that lets a developer disable the Google Groups
+membership gate so the rest of the application can be exercised in environments where Google
+Groups cannot be administered (for example, a school account that is not permitted to create or
+manage groups). When disabled, the gate always authorises the caller as a plain `user`; the OAuth
+scope-authorisation check is **unchanged**.
+
+The feature is **not** intended to:
+
+- Replace or weaken the OAuth scope-authorisation check (`getAuthorisationStatus`).
+- Remove or rename the Google Groups membership feature itself — it remains available for others.
+- Be a production access-control model. The `none` mode is a development/testing convenience only.
+
+## Agreed decisions (increment)
+
+See `Agreed product decisions` items 11–14. Summarised here for the implementation agent:
+
+1. **New config key `AUTH_MODE`** (storage value `authMode`) with exactly two values: `googleGroups`
+   (default) and `none`.
+2. **Default is secure.** The stored default and getter fallback are `googleGroups`; only the literal
+   `none` enables the bypass. Unknown or blank stored values resolve to `googleGroups`.
+3. **Bypass scope = group-membership gate only.** `AuthService.checkAccess()` short-circuits to
+   `{ allowed: true, role: 'user' }` when `authMode === 'none'`, before reading the group email,
+   resolving the session identity, or applying the `requireConfigured` fail-closed branch. This covers
+   both the interactive API gate and the trigger path. The OAuth scope-authorisation check is unchanged.
+4. **Temporary measure + security marking.** The bypass is commented in code as a temporary development
+   measure with an explicit security caveat, and the settings field carries a helper-text warning. It is
+   opt-in and must not be used in production.
+
+## Config contract
+
+| Aspect  | Detail                                                                                                                                                           |
+| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Key     | `AUTH_MODE` (transport field `authMode`)                                                                                                                         |
+| Values  | `googleGroups` \| `none`                                                                                                                                         |
+| Default | `googleGroups`                                                                                                                                                   |
+| Getter  | `getAuthMode()` returns `none` only when the stored value is exactly `none`; otherwise `googleGroups` (secure fallback covers unset, blank, and unknown values). |
+| Setter  | `setAuthMode(value)` → validated by `CONFIG_SCHEMA` (enum); invalid values throw and surface as an aggregated `setBackendConfig` error.                          |
+| Seeding | Not seeded by `ensureDefaultConfiguration()`; the getter supplies the default (same treatment as `authGroupEmail`).                                              |
+
+## Backend changes
+
+1. **`ConfigurationManager/01_configKeysAndSchema.js`** — add `AUTH_MODE: 'authMode'` to `CONFIG_KEYS`; add a `CONFIG_SCHEMA` entry (storage `script`) with an inline enum validator accepting only `none` and `googleGroups`.
+2. **`ConfigurationManager/98_ConfigurationManagerClass.js`** — add `getAuthMode()` and `setAuthMode(value)`. `getAuthMode()` reads `getProperty(CONFIG_KEYS.AUTH_MODE)` and returns `none` only when the value is the literal `none`; any other value (unset, blank, unknown) resolves to `googleGroups`. No `02_defaults.js` entry is required — the getter enforces the default directly, matching `getAuthGroupEmail()` (which has no `DEFAULTS` entry).
+3. **`Utils/AuthService.js`** — at the very top of `checkAccess()`, before reading `groupEmail` or `email` and before the `requireConfigured` branch, add the `none` short-circuit returning `{ allowed: true, role: 'user' }`, logging a loud `ABLogger.warn`, and carrying a prominent comment marking the bypass as a **temporary development measure** with a security caveat (user requirement).
+4. **`z_Api/apiConfig.js`** — emit `authMode: configManager.getAuthMode()` in `getBackendConfig_()`; add an `authMode` entry to the `setBackendConfig_()` `updates` array calling `configManager.setAuthMode(value)`.
+
+## Frontend changes
+
+1. **`services/backendConfiguration/backendConfiguration.zod.ts`** — add `authModeSchema = z.enum(['googleGroups', 'none'])`; add `authMode: authModeSchema.optional()` to both `BackendConfigSchema` (read) and `BackendConfigWriteInputSchema` (write).
+2. **`features/settings/backend/backendSettingsForm.zod.ts`** — add `authMode: authModeSchema` (required — the dropdown always has a value) to `BackendSettingsFormSchema`.
+3. **`features/settings/backend/backendSettingsFormMapper.ts`** — read direction: `authMode: backendConfig.authMode ?? 'googleGroups'`; write direction: `authMode: formValues.authMode`.
+4. **`features/settings/backend/BackendSettingsPanel.tsx`** — add `authMode` to `backendSettingsFieldNames`; add a field descriptor (`Select`, section `Backend`, `withSchemaValidation: true`) with options `Google Groups` / `None` and the security helper text below.
+
+## Main user-facing surface (settings form)
+
+- **Field label:** "Authentication options".
+- **Options:** `Google Groups` (value `googleGroups`, default) and `None` (value `none`).
+- **Section:** Backend (adjacent to the existing "Auth group email" field).
+- **Helper text (security warning):** "Controls how access to this application is verified. 'None' disables the access gate entirely — for development and testing only; do not use in production."
+
+## Data-shape planning
+
+- `authMode` is added to the `BackendConfig` contract. Update
+  `docs/developer/data-shapes/backend-config.md` (persistence table, read/write transport tables,
+  validation notes, and the field-count notes) with the new field, marked `Not implemented` until
+  delivered, then flipped to implemented. The Data Shapes Agent performs this during implementation;
+  the planned entry is recorded in this spec's `Data-shape planning` table (earlier in this document)
+  and in the action plan.
+
+## Security caveat (rollout)
+
+- `none` removes application-level access control entirely. It must never be the production value.
+  Before any production rollout, `authMode` must be `googleGroups` (the default).
+- The bypass is a temporary development measure; the code comment and the settings helper text must
+  state this explicitly (user requirement).
+
+## Testing expectations
+
+### Backend
+
+- `AuthService.checkAccess` returns `{ allowed: true, role: 'user' }` when `authMode === 'none'`, does not call `Session` / `GroupsApp` / `CacheManager`, and logs a warning — including when `requireConfigured: true` and `bypassCache: true` are supplied.
+- `AuthService.checkAccess` with `googleGroups` (or unset) is unchanged — the existing group-check path still applies.
+- `ConfigurationManager.getAuthMode()` returns `googleGroups` by default and for unknown/blank values, and `none` only for the literal `none`; `setAuthMode` rejects invalid values.
+- `apiConfig` `getBackendConfig_` emits `authMode`; `setBackendConfig_` writes `authMode` and surfaces invalid values as an aggregated error.
+- `triggerHandler` with `none` proceeds to dispatch (no denial) and still performs its normal context resolution and cleanup.
+
+### Frontend
+
+- `authModeSchema` accepts `googleGroups` / `none` and rejects any other value.
+- The form mapper maps `authMode` in both directions with a `googleGroups` fallback on read.
+- `BackendSettingsPanel` renders the dropdown with the correct label, options, and security helper text.
+
+## Scope (increment)
+
+### Include
+
+- The `AUTH_MODE` config key, getter/setter, and secure default.
+- The `AuthService.checkAccess` `none` short-circuit with the temporary-measure/security comment.
+- The `authMode` transport + form schema + mapper + settings dropdown.
+- Backend and frontend tests, plus the `backend-config.md` data-shape update.
+
+### Defer
+
+- Removing the `groups` / `userinfo.email` scopes from `appsscript.json` while `none` is selected (separate concern — the scopes remain declared so `googleGroups` keeps working).
+- Any bypass of the OAuth scope-authorisation check (out of scope by user decision).

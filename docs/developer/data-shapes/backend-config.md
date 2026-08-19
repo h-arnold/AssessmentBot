@@ -37,21 +37,22 @@ prior configuration exists. Notable fields that are **not** seeded during initia
 explicit setters only, and the `DEFAULTS` entry supplies the getter fallback only, not a
 seeded property.
 
-| #   | Field                      | Stored type                        | Persistence                                                       | Transport                                                   | Frontend Zod                                                           | Notes                                                                                                                       |
-| --- | -------------------------- | ---------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `backendAssessorBatchSize` | `string` (number stored as string) | Always included                                                   | `number` — parsed via `getIntConfig()`                      | `z.number().int()`                                                     | Default 120. Clamped to [1, 500].                                                                                           |
-| 2   | `apiKey`                   | `string`                           | Always included                                                   | `string` — masked via `maskApiKey_()`                       | `MaskedApiKeySchema` — `z.string().refine(isMaskedBackendApiKeyValue)` | Never raw stored value in transport. Empty string when no key stored. See [$transport-masking](#transport) for mask shapes. |
-| 3   | `hasApiKey`                | `boolean\|string`                  | Not stored directly; derived at transport time from `!!rawApiKey` | `boolean` — `!!rawApiKey`                                   | `z.boolean()`                                                          | Computed at transport boundary, not persisted.                                                                              |
-| 4   | `backendUrl`               | `string`                           | Always included                                                   | `string` — may be empty                                     | `BackendUrlSchema` — `z.union([z.url(), z.literal('')])`               | Empty string when unset. Read transport allows blank; write requires valid URL.                                             |
-| 5   | `revokeAuthTriggerSet`     | `string` (`'true'` / `'false'`)    | Always included                                                   | `boolean` — via `ConfigurationManager.toBoolean()`          | `z.boolean()`                                                          | Treated as read-only by frontend (not in write input schema).                                                               |
-| 6   | `daysUntilAuthRevoke`      | `string` (number stored as string) | Always included                                                   | `number` — parsed via `getIntConfig()`                      | `z.number().int()`                                                     | Default 60. Clamped to [1, 365].                                                                                            |
-| 7   | `slidesFetchBatchSize`     | `string` (number stored as string) | Always included                                                   | `number` — parsed via `getIntConfig()`                      | `z.number().int()`                                                     | Default 30. Clamped to [1, 100].                                                                                            |
-| 8   | `jsonDbMasterIndexKey`     | `string`                           | Always included                                                   | `string` — returns default if stored value is empty         | `z.string()` (non-empty enforced)                                      | Default `'ASSESSMENT_BOT_DB_MASTER_INDEX'`.                                                                                 |
-| 9   | `jsonDbLockTimeoutMs`      | `string` (number stored as string) | Always included                                                   | `number` — parsed via `getIntConfig()`                      | `z.number().int()`                                                     | Default 15000. Clamped to [1000, 600000].                                                                                   |
-| 10  | `jsonDbLogLevel`           | `string`                           | Always included                                                   | `string` — trimmed and uppercased by getter                 | `z.string()`                                                           | Default `'INFO'`. Valid levels: `DEBUG`, `INFO`, `WARN`, `ERROR`.                                                           |
-| 11  | `jsonDbBackupOnInitialise` | `string` (`'true'` / `'false'`)    | Always included                                                   | `boolean` — via `ConfigurationManager.toBoolean()`          | `z.boolean()`                                                          | Default `false`.                                                                                                            |
-| 12  | `jsonDbRootFolderId`       | `string`                           | Always included                                                   | `string` — coerced to `''` when blank/null                  | `z.string()`                                                           | May be empty string when unset. Transport normalises `null` → `''`.                                                         |
-| 13  | `authGroupEmail`           | `string`                           | Always included                                                   | `string` — always emitted via `getAuthGroupEmail() \|\| ''` | `z.union([z.literal(''), z.email()]).optional()`                       | Blank when unset (fail-open bootstrap). Compulsory once set — clearing a stored value is rejected.                          |
+| #   | Field                      | Stored type                        | Persistence                                                       | Transport                                                   | Frontend Zod                                                           | Notes                                                                                                                         |
+| --- | -------------------------- | ---------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `backendAssessorBatchSize` | `string` (number stored as string) | Always included                                                   | `number` — parsed via `getIntConfig()`                      | `z.number().int()`                                                     | Default 120. Clamped to [1, 500].                                                                                             |
+| 2   | `apiKey`                   | `string`                           | Always included                                                   | `string` — masked via `maskApiKey_()`                       | `MaskedApiKeySchema` — `z.string().refine(isMaskedBackendApiKeyValue)` | Never raw stored value in transport. Empty string when no key stored. See [$transport-masking](#transport) for mask shapes.   |
+| 3   | `hasApiKey`                | `boolean\|string`                  | Not stored directly; derived at transport time from `!!rawApiKey` | `boolean` — `!!rawApiKey`                                   | `z.boolean()`                                                          | Computed at transport boundary, not persisted.                                                                                |
+| 4   | `backendUrl`               | `string`                           | Always included                                                   | `string` — may be empty                                     | `BackendUrlSchema` — `z.union([z.url(), z.literal('')])`               | Empty string when unset. Read transport allows blank; write requires valid URL.                                               |
+| 5   | `revokeAuthTriggerSet`     | `string` (`'true'` / `'false'`)    | Always included                                                   | `boolean` — via `ConfigurationManager.toBoolean()`          | `z.boolean()`                                                          | Treated as read-only by frontend (not in write input schema).                                                                 |
+| 6   | `daysUntilAuthRevoke`      | `string` (number stored as string) | Always included                                                   | `number` — parsed via `getIntConfig()`                      | `z.number().int()`                                                     | Default 60. Clamped to [1, 365].                                                                                              |
+| 7   | `slidesFetchBatchSize`     | `string` (number stored as string) | Always included                                                   | `number` — parsed via `getIntConfig()`                      | `z.number().int()`                                                     | Default 30. Clamped to [1, 100].                                                                                              |
+| 8   | `jsonDbMasterIndexKey`     | `string`                           | Always included                                                   | `string` — returns default if stored value is empty         | `z.string()` (non-empty enforced)                                      | Default `'ASSESSMENT_BOT_DB_MASTER_INDEX'`.                                                                                   |
+| 9   | `jsonDbLockTimeoutMs`      | `string` (number stored as string) | Always included                                                   | `number` — parsed via `getIntConfig()`                      | `z.number().int()`                                                     | Default 15000. Clamped to [1000, 600000].                                                                                     |
+| 10  | `jsonDbLogLevel`           | `string`                           | Always included                                                   | `string` — trimmed and uppercased by getter                 | `z.string()`                                                           | Default `'INFO'`. Valid levels: `DEBUG`, `INFO`, `WARN`, `ERROR`.                                                             |
+| 11  | `jsonDbBackupOnInitialise` | `string` (`'true'` / `'false'`)    | Always included                                                   | `boolean` — via `ConfigurationManager.toBoolean()`          | `z.boolean()`                                                          | Default `false`.                                                                                                              |
+| 12  | `jsonDbRootFolderId`       | `string`                           | Always included                                                   | `string` — coerced to `''` when blank/null                  | `z.string()`                                                           | May be empty string when unset. Transport normalises `null` → `''`.                                                           |
+| 13  | `authGroupEmail`           | `string`                           | Always included                                                   | `string` — always emitted via `getAuthGroupEmail() \|\| ''` | `z.union([z.literal(''), z.email()]).optional()`                       | Blank when unset (fail-open bootstrap). Compulsory once set — clearing a stored value is rejected.                            |
+| 14  | `authMode`                 | `string`                           | Always included                                                   | `string` — `googleGroups` \| `none` via `getAuthMode()`     | `z.enum(['googleGroups', 'none']).optional()`                          | Default `googleGroups`. `none` disables the group-membership gate (development/testing only). **[Not implemented — planned]** |
 
 Key notes:
 
@@ -85,21 +86,22 @@ Returns the full typed configuration object.
 
 **Response:** `BackendConfigSchema`
 
-| Field                      | Type                      | Required | Notes                                        |
-| -------------------------- | ------------------------- | -------- | -------------------------------------------- |
-| `backendAssessorBatchSize` | `number`                  | yes      | Integer. Default 120.                        |
-| `apiKey`                   | `string`                  | yes      | Masked value. See masking contract below.    |
-| `hasApiKey`                | `boolean`                 | yes      | `true` when a raw API key exists in storage. |
-| `backendUrl`               | `string` (URL \| empty)   | yes      | May be empty string when unset.              |
-| `revokeAuthTriggerSet`     | `boolean`                 | yes      |                                              |
-| `daysUntilAuthRevoke`      | `number`                  | yes      | Integer. Default 60.                         |
-| `slidesFetchBatchSize`     | `number`                  | yes      | Integer. Default 30.                         |
-| `jsonDbMasterIndexKey`     | `string`                  | yes      |                                              |
-| `jsonDbLockTimeoutMs`      | `number`                  | yes      | Integer. Default 15000.                      |
-| `jsonDbLogLevel`           | `string`                  | yes      | One of `DEBUG`, `INFO`, `WARN`, `ERROR`.     |
-| `jsonDbBackupOnInitialise` | `boolean`                 | yes      |                                              |
-| `jsonDbRootFolderId`       | `string`                  | yes      | May be empty string when unset.              |
-| `authGroupEmail`           | `string` (email \| empty) | yes      | Always emitted; `''` when unset.             |
+| Field                      | Type                      | Required | Notes                                                                      |
+| -------------------------- | ------------------------- | -------- | -------------------------------------------------------------------------- |
+| `backendAssessorBatchSize` | `number`                  | yes      | Integer. Default 120.                                                      |
+| `apiKey`                   | `string`                  | yes      | Masked value. See masking contract below.                                  |
+| `hasApiKey`                | `boolean`                 | yes      | `true` when a raw API key exists in storage.                               |
+| `backendUrl`               | `string` (URL \| empty)   | yes      | May be empty string when unset.                                            |
+| `revokeAuthTriggerSet`     | `boolean`                 | yes      |                                                                            |
+| `daysUntilAuthRevoke`      | `number`                  | yes      | Integer. Default 60.                                                       |
+| `slidesFetchBatchSize`     | `number`                  | yes      | Integer. Default 30.                                                       |
+| `jsonDbMasterIndexKey`     | `string`                  | yes      |                                                                            |
+| `jsonDbLockTimeoutMs`      | `number`                  | yes      | Integer. Default 15000.                                                    |
+| `jsonDbLogLevel`           | `string`                  | yes      | One of `DEBUG`, `INFO`, `WARN`, `ERROR`.                                   |
+| `jsonDbBackupOnInitialise` | `boolean`                 | yes      |                                                                            |
+| `jsonDbRootFolderId`       | `string`                  | yes      | May be empty string when unset.                                            |
+| `authGroupEmail`           | `string` (email \| empty) | yes      | Always emitted; `''` when unset.                                           |
+| `authMode`                 | `string`                  | yes      | Always emitted; `googleGroups` when unset. **[Not implemented — planned]** |
 
 Key contract notes:
 
@@ -152,6 +154,7 @@ Accepts a partial patch: only supplied fields are written. Omitted fields are le
 | `jsonDbBackupOnInitialise` | `boolean`                 | no       |                                                                                                                                                                                                                          |
 | `jsonDbRootFolderId`       | `string`                  | no       | Must be a valid Google Drive folder ID (alphanumeric, underscores, hyphens; minimum 10 chars) _as validated by the backend's `isValidGoogleDriveFolderId` which also verifies existence via `DriveApp.getFolderById()`_. |
 | `authGroupEmail`           | `string` (email \| empty) | no       | Blank-tolerant email (`z.union([z.literal(''), z.email()])`). Compulsory once set: a blank value is rejected when a non-blank value is already stored.                                                                   |
+| `authMode`                 | `string`                  | no       | One of `googleGroups` \| `none`. Default `googleGroups`. **[Not implemented — planned]**                                                                                                                                 |
 
 **Request validation notes:**
 
@@ -160,8 +163,8 @@ Accepts a partial patch: only supplied fields are written. Omitted fields are le
   `ConfigurationManager` setter.
 - The frontend `BackendConfigWriteInputSchema` uses `.strict()` — fields outside the schema
   are silently stripped before the request reaches the backend.
-- The writable field set in the backend is the **superset** of all 12 writable fields
-  (11 documented in the table above + `revokeAuthTriggerSet`; the frontend schema
+- The writable field set in the backend is the **superset** of all 13 writable fields
+  (12 documented in the table above + `revokeAuthTriggerSet`; the frontend schema
   intentionally excludes `revokeAuthTriggerSet`).
 
 **Response:** `BackendConfigWriteResultSchema` — a discriminated union:
@@ -230,8 +233,8 @@ None. BackendConfig is a standalone contract with no embedded sub-entities.
 **Frontend Zod:**
 
 - `src/frontend/src/services/backendConfiguration/backendConfiguration.zod.ts`:
-  - `BackendConfigSchema` — validates the `getBackendConfig` response (13 fields + optional `loadError`; `authGroupEmail` is optional). Uses `.strict()`.
-  - `BackendConfigWriteInputSchema` — validates the `setBackendConfig` request (11 writable fields, all optional, including `authGroupEmail`). Uses `.strict()`.
+  - `BackendConfigSchema` — validates the `getBackendConfig` response (14 fields + optional `loadError`; `authGroupEmail` and `authMode` are optional). Uses `.strict()`.
+  - `BackendConfigWriteInputSchema` — validates the `setBackendConfig` request (12 writable fields, all optional, including `authGroupEmail` and `authMode`). Uses `.strict()`.
   - `BackendConfigWriteResultSchema` — validates the `setBackendConfig` response. Discriminated union of `{ success: true }` and `{ success: false, error: string }`. Both branches use `.strict()`.
 - `src/frontend/src/features/settings/backend/backendSettingsForm.zod.ts`:
   - `BackendSettingsFormSchema` — form-level validation with `superRefine` for API key token check. Uses `.strict()`.
@@ -256,6 +259,7 @@ None. BackendConfig is a standalone contract with no embedded sub-entities.
   - `jsonDbLogLevel`: `validateLogLevel()` — enum check + normalise.
   - `jsonDbRootFolderId`: calls `instance.isValidGoogleDriveFolderId()` which checks format via regex and existence via `DriveApp.getFolderById()`.
   - `authGroupEmail`: blank-tolerant email validation (blank → allowed; non-blank → validated as email) plus the compulsory-once-set guard in the `CONFIG_SCHEMA` validator, using the `(value, instance)` signature (precedent: the `JSON_DB_ROOT_FOLDER_ID` validator).
+  - `authMode`: enum validation accepting only `none` and `googleGroups` (default `googleGroups`); the getter returns `googleGroups` for any value other than the literal `none` (secure-by-default). **[Not implemented — planned]**
 
 **Key domain validation rules:**
 
@@ -311,9 +315,10 @@ None. BackendConfig is a standalone contract with no embedded sub-entities.
 
 6. **`BackendConfigSchema` uses `.strict()` — backend may add unknown fields in future.**
    The read schema is `.strict()`, meaning any unexpected backend field will cause a Zod
-   validation error on the frontend. Currently the backend returns exactly the 13 documented
-   fields. If a new config field is added to the backend response without updating the frontend
-   schema, the entire `getBackendConfig` response will be rejected.
+   validation error on the frontend. Currently the backend returns exactly the 14 documented
+   fields (13 delivered + `authMode`, planned). If a new config field is added to the backend
+   response without updating the frontend schema, the entire `getBackendConfig` response will be
+   rejected.
    **Classification: Fragile** — tight coupling. The frontend will reject
    unexpected additional fields instead of silently stripping them. To add a new config field,
    both backend and frontend schemas must be updated in lockstep.
@@ -326,6 +331,14 @@ None. BackendConfig is a standalone contract with no embedded sub-entities.
    key is allowed by `.optional()`).
    **Classification: Aligned** — deliberate deploy-order tolerance so the frontend can ship
    the field before the backend emits it.
+
+8. **Backend always emits `authMode`; frontend schema marks it `.optional()`.** **[Not implemented — planned]**
+   The read transport always emits `authMode` (`getAuthMode()` returns `googleGroups` by default),
+   while `BackendConfigSchema` marks it `z.enum([...]).optional()`. Same rationale and deploy-order
+   tolerance as `authGroupEmail` in discrepancy #7: frontend-ahead-of-backend parses fine (missing
+   key allowed by `.optional()`); backend-ahead-of-frontend would reject the read under `.strict()`.
+   The form mapper defaults a missing `authMode` to `googleGroups`.
+   **Classification: Aligned** — deliberate deploy-order tolerance.
 
 ---
 

@@ -1,77 +1,58 @@
-# Review-Fix Delivery Plan (TDD-First)
+# Auth-Mode Bypass Delivery Plan (TDD-First)
 
 ## Read-First Context
 
-This plan delivers the **"Fix now" decisions** recorded in the pre-PR review of the
-`feature/auth-service` branch, except where explicitly re-scoped below (see "Decision
-reconciliation"). There is **no `SPEC.md`** for this work: the user confirmed the
-changes carry no real user-visible behaviour change (logging, dead-code removal, deduplication,
-minor layout corrections, and test coverage), so product behaviour is unchanged.
+Before writing or executing this plan:
 
-1. Read `PR_REVIEW.md` (source of truth for findings and decisions — especially the
-   **Decisions** section) before executing any section.
-2. Read the module instruction files for every component touched:
-   - Backend: `@src/backend/AGENTS.md`
-   - Frontend: `@src/frontend/AGENTS.md`
-3. Treat the review findings' `file:line` evidence as the authoritative defect list; do not
-   re-litigate them.
+1. Read `@SPEC.md` — the Auth Service specification. The v1.9 increment ("Auth-mode bypass
+   increment (v1.9)") at the end of the file is the source of truth for this feature; the v1.8
+   body documents the already-delivered Google Groups gate that this feature builds on.
+2. Read `@docs/developer/data-shapes/backend-config.md` — the BackendConfig contract, which now
+   carries planned `authMode` rows marked `[Not implemented — planned]`.
+3. Treat those documents as the source of truth for product behaviour, contracts, and layout rules.
+   Do not restate or redefine settled material.
 
 ## Scope and assumptions
 
 ### Scope
 
-Corrective cleanup across backend and frontend, plus tests and docs, for the review findings
-marked **Fix now**:
+Add an opt-in "authentication options" setting (`authMode`: `googleGroups` | `none`) that, when set
+to `none`, makes the backend group-membership gate (`AuthService.checkAccess`) always authorise the
+caller as a plain `user`. The OAuth scope-authorisation check is **unchanged**. The bypass covers
+both the interactive API gate and trigger execution, and is commented in code as a temporary,
+security-sensitive development measure.
 
-- Backend: CacheManager dead-code + dedup, AuthService cleanups, trigger error-handling +
-  cleanup-leak fix, z_apiHandler logging + admission-phase simplification, requestStore O(n²)
-  fix, apiConfig/ReferenceDataController/ConfigurationManager/AssignmentController tidy-ups.
-- Frontend: AppAuthGate/AuthStatusCard/useAuthorisationStatus/BackendSettingsPanel layout +
-  dead-code fixes, map-error-to-ui error-code additions + dedup, shared `authGroupEmail` schema.
-- Tests: fill the two coverage gaps; update specs for removed/changed code.
-- Docs: correct the minor data-shape doc discrepancies noted in the review.
+Files in scope:
 
-### Decision reconciliation (user-confirmed deviations from PR_REVIEW)
-
-Two findings recorded as **"Fix now"** in `PR_REVIEW.md` are deliberately re-scoped here, with
-the user's explicit confirmation (recorded during planning):
-
-1. **`AuthService.checkAccess` option-parameter defaults** (`PR_REVIEW.md` repo-rule decision) —
-   **retained, not changed.** `{ bypassCache = false, requireConfigured = false, method = null } = {}`
-   are per-call option overrides, not module-state defaults; core principle #12 governs module
-   field defaults, not method option parameters. The related genuine default —
-   `startProcessing(..., courseId = '')` — **is** fixed in Section 5 (made required + validated).
-
-2. **`AuthService.checkAccess` per-request full config-blob parse** (`PR_REVIEW.md` performance
-   decision) — **accepted as-is, not changed.** Config is persisted as a single JSON blob under
-   one Script Properties key, so any read parses the whole blob; with GAS's stateless
-   per-execution model this is already the minimum (one parse per request). Avoiding it would
-   require a per-key config-storage refactor, which is out of scope.
+- Backend: `src/backend/ConfigurationManager/01_configKeysAndSchema.js`,
+  `src/backend/ConfigurationManager/98_ConfigurationManagerClass.js`,
+  `src/backend/Utils/AuthService.js`, `src/backend/z_Api/apiConfig.js`.
+- Frontend: `src/frontend/src/services/backendConfiguration/backendConfiguration.zod.ts`,
+  `src/frontend/src/features/settings/backend/backendSettingsForm.zod.ts`,
+  `src/frontend/src/features/settings/backend/backendSettingsFormMapper.ts`,
+  `src/frontend/src/features/settings/backend/BackendSettingsPanel.tsx`.
+- Docs: `docs/developer/data-shapes/backend-config.md` (already seeded with planned entries),
+  `src/backend/AGENTS.md` (one-line note in §2.3).
 
 ### Out of scope
 
-- **Security bootstrap fail-open + 4 related hardening items** — deferred to GitHub issue
-  **#284** (`Security: bootstrap fail-open auth gate allows domain-member auth-group takeover`).
-  Do **not** change `AuthService.checkAccess` fail-open behaviour, `01_configKeysAndSchema.js`
-  allowlisting, cache revocation, group-email disclosure, or `role` enforcement in this plan.
-- **Decomposing files already over the 550-line backend threshold** (e.g.
-  `98_ConfigurationManagerClass.js` at 668 lines, `z_apiHandler.js` at 508 lines). The
-  pre-existing `max-lines` lint warnings are not addressed here; changes in this plan are
-  net-negative or trivial and do not add meaningful lines.
-- **`ABLogger.debug` param logging (may include `apiKey`)** — decision recorded as Wontfix
-  (debug-level only).
-- **`AuthService.checkAccess` option-parameter defaults** and **per-request full config-blob
-  parse** — see "Decision reconciliation" above (retained/accepted, not fixed).
+- Any change to the OAuth scope-authorisation check (`ScriptAppManager.isAuthorised()`,
+  `getAuthorisationStatus`, `AppAuthGate`, `useAuthorisationStatus`).
+- Removing the `groups` / `userinfo.email` scopes from `appsscript.json` while `none` is selected.
+- Decomposing `ConfigurationManager/98_ConfigurationManagerClass.js` or
+  `BackendSettingsPanel.tsx` (both already exceed the size threshold; see LOC notes — deferred as a
+  separate refactor).
+- A frontend layout spec is **not** required: this is a single `Select` field added to an existing
+  form via the existing declarative descriptor pattern (identical precedent: `authGroupEmail` and
+  `jsonDbLogLevel`). No new page/tab/modal/workflow or form restructure is introduced.
 
 ### Assumptions
 
-1. No user-visible behaviour changes; existing tests (except those explicitly updated for
-   removed/changed code) must continue to pass unchanged.
-2. British English is used in all comments and user-facing copy.
-3. Backend files use the GAS concatenation model; guarded `module.exports` blocks remain the
-   only Node test shim.
-4. The GitHub issue #284 owns all deferred security hardening; this plan must not touch those
-   code paths.
+1. `authMode` values are the exact literals `googleGroups` (default) and `none`.
+2. The getter enforces the secure default itself (`none` only for the literal `none`, otherwise
+   `googleGroups`); no `02_defaults.js` entry is added, matching `getAuthGroupEmail()`.
+3. The frontend read schema marks `authMode` `.optional()` (deploy-order tolerance, same rationale
+   as `authGroupEmail`), and the form mapper defaults a missing value to `googleGroups`.
 
 ---
 
@@ -79,668 +60,416 @@ the user's explicit confirmation (recorded during planning):
 
 ### Engineering constraints
 
+- Keep API/entry points thin; add the getter/setter to `ConfigurationManager` following the existing
+  `getAuthGroupEmail`/`setAuthGroupEmail` pattern.
+- Fail fast on invalid config values; do not add defensive guards that hide wiring issues.
 - Keep changes minimal, localised, and consistent with repository conventions.
-- Do not change method signatures that would ripple into `ALLOWLISTED_METHOD_HANDLERS` or the
-  transport contract.
-- Fail fast; never introduce empty `catch` blocks or silent error swallowing.
-- Use British English in comments and documentation.
-- Backend defaults belong in constructors (core principle #12) — when a default is removed from
-  a method signature, validate the now-required parameter instead.
+- Use British English in comments, docs, and user-facing text.
+- Backend logging via `ABLogger` only; no `console.*`.
+- The `none` bypass must carry a prominent code comment marking it as a **temporary development
+  measure** with a security caveat (user requirement).
 
 ### TDD workflow (mandatory per section)
 
-For each section:
+For each section: **Red** (write failing tests) → **Green** (smallest passing change) →
+**Refactor** (tidy, tests still green) → run section-level verification commands.
 
-1. **Red**: write failing tests for the section's acceptance criteria (delegate to
-   `Testing Specialist` for Vitest/backend tests).
-2. **Green**: implement the smallest change needed to pass (delegate to `Implementation`).
-3. **Refactor**: tidy implementation with all tests still green.
-4. Run section-level verification commands.
+### Delegation mandatory-read gate
 
-### Delegation mandatory-read gate (mandatory for sub-agent execution)
+Each delegated handoff (Testing Specialist, Implementation, Code Reviewer, Docs, Data Shapes Agent)
+must include a `Mandatory Reading` list of `@`-prefixed paths and a `Files read` evidence block.
+Block progression if any mandatory file is missing from `Files read`.
 
-Each delegated handoff must include a `Mandatory Reading` section (the `@`-prefixed paths listed
-per section below) and must return a `Files read` list containing every mandatory path. If any
-mandatory file is missing from `Files read`, return the work to the same sub-agent and block
-progression.
+### Shared-helper planning gate
 
-### Shared-helper planning gate (mandatory when helper changes are expected)
+Sections that introduce helper reuse/extension/new abstraction record a helper plan block and add
+planned entries to the relevant canonical docs with status `Not implemented` before implementation.
 
-Where a section introduces helper reuse/extraction, the helper decision is recorded in that
-section. Implementation must update the canonical docs status from `Not implemented` only if a
-canonical doc entry is involved (see each section).
+### Data-shape planning gate
 
-### LOC / file-separation note
+Any section that changes a schema/persistence/transport shape references the relevant data-shape
+doc and the planned entry (already recorded in `backend-config.md`). The Data Shapes Agent flips
+`Not implemented` → implemented as code lands.
 
-Current line counts of the materially changed backend files:
-
-| File                              | Current LOC | Projected | Action                                                      |
-| --------------------------------- | ----------- | --------- | ----------------------------------------------------------- |
-| `z_apiHandler.js`                 | 508         | ~512      | No split (net ±4; under 550 backend threshold)              |
-| `CacheManager.js`                 | 147         | ~110      | Shrinks (dedup)                                             |
-| `AuthService.js`                  | 215         | ~210      | Shrinks (JSDoc dedupe)                                      |
-| `AssignmentController.js`         | 440         | ~430      | Shrinks (dead `toastMessage` removal)                       |
-| `98_ConfigurationManagerClass.js` | 668         | ~668      | Trivial edits only; decomposition deliberately out of scope |
-
-No file is projected to cross a separation threshold as a result of this plan.
-
-### Validation commands hierarchy
+### Validation commands
 
 - Backend lint: `npm run lint:backend`
 - Frontend lint: `npm run lint:frontend`
 - Backend tests: `npm run test:backend -- <target>`
 - Frontend unit tests: `npm run test:frontend -- <target>`
-- Frontend e2e tests (only if UX changed; none expected): `npm run test:frontend:e2e -- <target>`
 
 ---
 
-## Section 1 — Backend: CacheManager dead-code removal + generic get/put dedup
+## Section 1 — Backend: `AUTH_MODE` config key, schema, getter, and setter
 
 ### Objective
 
-Remove the speculative `remove()` method and collapse `getCachedAssessment`/`setCachedAssessment`
-onto the generic `get`/`put`, eliminating duplicated cache-read/write glue.
+Add the `AUTH_MODE` (`authMode`) configuration key to `ConfigurationManager`, with a
+secure-by-default getter and an enum-validated setter, without any `02_defaults.js` change.
 
 ### Constraints
 
-- Preserve the exact observable behaviour of `getCachedAssessment`/`setCachedAssessment`
-  (best-effort writes, `null` on miss/parse error, same TTL).
-- `generateCacheKey` is unchanged.
-- Keep the guarded `module.exports` block at the end of the file.
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Implementation / Testing Specialist / Code Reviewer mandatory docs:
-
-- `@PR_REVIEW.md`
-- `@src/backend/AGENTS.md`
-- `@src/backend/RequestHandlers/CacheManager.js`
-- `@tests/requestHandlers/CacheManager.test.js`
-- `@docs/developer/backend/backend-logging-and-error-handling.md`
-
-### Shared helper plan
-
-1. Helper: cache-expiry TTL (hours → seconds).
-   - Decision: `extend` — expose a single TTL-seconds value from `CacheManager` (the sole home;
-     e.g. a module-level `CACHE_EXPIRY_SECONDS` constant or a static getter on the class),
-     replacing both `CacheManager.setCachedAssessment` (`CACHE_EXPIRY_HOURS` at line 6) and
-     `AuthService.checkAccess` (`AUTH_CACHE_EXPIRY_HOURS` at line 12 + inline
-     `HOURS * MINUTES_PER_HOUR * SECONDS_PER_MINUTE` at lines 190-193).
-   - Owning module/path: `src/backend/RequestHandlers/CacheManager.js` (decided, not optional).
-     `AuthService` already resolves `CacheManager` as a global (`new CacheManager()`), so it
-     references the `CacheManager` surface for the shared TTL.
-   - Call-site rationale: AuthService and CacheManager currently duplicate both the `6` constant
-     and the hours→seconds computation.
-   - Relevant canonical doc target: none (code-level constant, not a data shape).
-   - Planned doc status: `Not implemented` (n/a — no canonical doc entry).
-
-### Acceptance criteria
-
-- `CacheManager.remove()` and its JSDoc are deleted; no production or test code references it.
-- `getCachedAssessment`/`setCachedAssessment` delegate to `get`/`put` (no duplicated
-  `try/catch` + `JSON.parse`/`JSON.stringify` glue).
-- The auth TTL and cache TTL share one source of truth.
-
-### Required test cases (Red first)
-
-1. Remove the `remove()` unit test case (currently at `tests/requestHandlers/CacheManager.test.js:302`).
-2. Keep existing `getCachedAssessment`/`setCachedAssessment` behaviour tests green (they define
-   the contract the dedup must preserve).
-
-### Section checks
-
-- `npm run test:backend -- tests/requestHandlers/CacheManager.test.js`
-- `npm run lint:backend`
-- Mandatory-read evidence gate passed.
-
-### Optional `@remarks` JSDoc follow-through
-
-- None.
-
-### Implementation notes / deviations / follow-up
-
-- **Implementation notes:** The shared TTL source of truth is a module-level `const CACHE_EXPIRY_HOURS = 6;` derived to `const CACHE_EXPIRY_SECONDS = CACHE_EXPIRY_HOURS * RuntimeConstants.MINUTES_PER_HOUR * RuntimeConstants.SECONDS_PER_MINUTE;`, exposed as the static `CacheManager.CACHE_EXPIRY_SECONDS` for cross-module reuse (consumed by AuthService in Section 2). `remove()` and its JSDoc were deleted; `getCachedAssessment`/`setCachedAssessment` now delegate to `get`/`put` with the falsy-key early-return preserved. The three assessment-specific log-message assertions were aligned to the generic `get`/`put` messages (PR_REVIEW permits "equivalent log text"); the 25/25 CacheManager tests pass and `CacheManager.js` lints clean (0 errors, 0 warnings).
-- **Deviations:** none.
-- **Follow-up:** Section 2 (AuthService) consumes the shared TTL via `CacheManager.CACHE_EXPIRY_SECONDS`.
-
----
-
-## Section 2 — Backend: AuthService cleanups
-
-### Objective
-
-Add `Validate.requireParams` to `isGroupMember`; rename `isGroupMember` to `_isGroupMember`
-(private helper convention); fix the incorrect `/* global */` block; dedupe the `checkAccess`
-JSDoc `@remarks`; and remove the duplicated TTL constant now that Section 1 provides a shared
-source. `checkAccess`'s option-parameter defaults are deliberately retained (see Out of scope).
-
-### Constraints
-
-- Do **not** alter `checkAccess` fail-open/fail-closed behaviour (out of scope — issue #284).
-- Do **not** move `checkAccess`'s option-parameter defaults to the constructor (see Out of scope).
-- Singleton pattern (`getInstance`) and `BaseSingleton` contract unchanged.
-- Renaming `isGroupMember` → `_isGroupMember` must update the internal call in `checkAccess`
-  (line 174) and any test that references the method by name.
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Implementation / Testing Specialist / Code Reviewer mandatory docs:
-
-- `@PR_REVIEW.md`
-- `@src/backend/AGENTS.md`
-- `@src/backend/Utils/AuthService.js`
-- `@tests/utils/authService/authService.test.js`
-- `@docs/developer/backend/backend-logging-and-error-handling.md`
-
-### Shared helper plan
-
-1. Helper: cache-expiry TTL — `reuse` the shared source established in Section 1.
-   - Owning module/path: as decided in Section 1.
-   - Call-site rationale: remove `AUTH_CACHE_EXPIRY_HOURS` and the inline computation.
-
-### Acceptance criteria
-
-- `_isGroupMember` (renamed) calls `Validate.requireParams({ email, groupEmail }, '_isGroupMember')`.
-- The `/* global */` block lists only actually-used globals. Verified set for `AuthService.js`:
-  `BaseSingleton`, `ABLogger`, `ConfigurationManager`, `Session`, `GroupsApp`, `CacheManager`,
-  `Validate`, and `RuntimeConstants` (the last only if the inline TTL computation remains after
-  Section 1; drop it otherwise). The implementer must verify against final usage — do not copy a
-  stale list.
-- `checkAccess` JSDoc no longer repeats the `@remarks` content verbatim.
-- The TTL references a shared source, not a second `6`.
-
-### Required test cases (Red first)
-
-1. `_isGroupMember` throws a `TypeError` when `email` or `groupEmail` is missing/null/undefined.
-2. Existing AuthService tests remain green (behaviour unchanged); update any test that referenced
-   `isGroupMember` by name.
-
-### Section checks
-
-- `npm run test:backend -- tests/utils/authService/authService.test.js`
-- `npm run lint:backend`
-- Mandatory-read evidence gate passed.
-
-### Optional `@remarks` JSDoc follow-through
-
-- Confirm the single remaining `checkAccess` JSDoc still documents fail-open bootstrap and the
-  cache-key format (`auth:<groupEmail>:<email>`).
-
-### Implementation notes / deviations / follow-up
-
-- **Implementation notes:** `isGroupMember` was renamed to `_isGroupMember` and now calls `Validate.requireParams({ email, groupEmail }, '_isGroupMember')` (throws a plain `Error` "…is required for _isGroupMember" — the plan's "TypeError" wording is satisfied by this throw; the new tests assert `toThrow(/is required/)`). The corrected `/* global */` banner lists exactly: `BaseSingleton, ABLogger, ConfigurationManager, Session, GroupsApp, CacheManager, Validate` — `RuntimeConstants` was dropped because the inline TTL computation was removed in favour of the shared `CacheManager.CACHE_EXPIRY_SECONDS` (no second `6`). The `checkAccess` JSDoc `@remarks` block was folded into the description (cache-key format `auth:<groupEmail>:<email>` preserved) and the `@param`/`@returns` kept; `checkAccess` signature and option-parameter defaults are unchanged (out-of-scope decision honoured). 27/27 AuthService tests pass; `AuthService.js` lints clean.
-- **Deviations:** the plan's "throws a TypeError" was implemented as a thrown `Error` via `Validate.requireParams` (it does not throw `TypeError`); tests assert `/is required/` rather than a strict `TypeError` to keep the TDD red/green signal correct.
-- **Follow-up:** denial-logging single-boundary is coordinated in Section 3.
-
----
-
-## Section 3 — Backend: trigger error-handling, cleanup leak, and single log boundary
-
-**Status:** Completed — Red + Green loops reviewed clean; Regression Gate passed (Regressions: 0, New Failures: 0) on 2026-08-18.
-
-### Objective
-
-Fix the Critical cleanup leak (auth check runs outside the `try/finally`), single-owner the
-user-facing error log across the trigger boundary, log the group-membership denial exactly once,
-use `functionName` in `createTimeBasedTrigger`'s retry path, and trim duplicated `@remarks`.
-
-### Constraints
-
-- `triggerHandler()` must clean up (`clearTriggerContext` + `deleteTriggerById`) for any
-  resolved, known `triggerUid` on every path, including when `checkAccess` throws.
-- `processSelectedAssignment` remains the method dispatched via `TRIGGER_METHOD_HANDLERS`.
-- The user-facing error is logged at exactly one boundary.
-- The group-membership denial is logged exactly once (align the trigger path with the API path
-  per logging policy §5.3).
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Implementation / Testing Specialist / Code Reviewer mandatory docs:
-
-- `@PR_REVIEW.md`
-- `@src/backend/AGENTS.md`
-- `@src/backend/Triggers/triggerHandler.js`
-- `@src/backend/Triggers/TriggerController.js`
-- `@src/backend/y_controllers/AssignmentController.js`
-- `@tests/triggers/triggerHandler.test.js`
-- `@tests/triggers/triggerController.test.js`
-- `@tests/controllers/assignmentController/assignmentController.startProcessingTriggerIntegration.test.js`
-- `@docs/developer/backend/backend-logging-and-error-handling.md`
-
-### Acceptance criteria
-
-- `triggerHandler`'s `checkAccess` call is protected so `cleanupTrigger_()` runs if the auth
-  check throws. **Target structure (avoid double-cleanup):** wrap the `checkAccess` call in its
-  own `try/catch`; on `catch`, call `cleanupTrigger_(triggerController, event.triggerUid)` then
-  rethrow (or log per policy). Keep the existing explicit cleanup on the denial path
-  (`triggerHandler.js:97-103`) and the existing dispatch `try/finally` (`106-113`) unchanged, so
-  no path cleans twice. Do **not** wrap auth-check-through-dispatch in a single `finally` that
-  would also fire on the allow path.
-- Only one layer calls `ProgressTracker.logAndThrowError` for the same dispatch error
-  (recommended: `triggerHandler` owns it; `processSelectedAssignment`'s outer `catch` at
-  `AssignmentController.js:151-153` lets errors propagate unlogged).
-- The group-membership denial is logged once: remove the duplicate `triggerHandler` `warn`
-  (`triggerHandler.js:98-100`), since `AuthService.checkAccess` already logs `AuthService:
-access denied.` (`AuthService.js:176-181`) — matching the API path's single-log behaviour.
-- `createTimeBasedTrigger` uses `functionName` (not the literal `'triggerHandler'`) in its
-  `removeTriggers(...)` retry path and log message.
-- `triggerHandler` `@remarks` no longer restates the inline numbered comments verbatim.
-
-### Required test cases (Red first)
-
-1. `triggerHandler`: a thrown `checkAccess` (mock `AuthService.checkAccess` to throw) still
-   invokes cleanup (`clearTriggerContext` + `deleteTriggerById`) for a known `triggerUid`.
-2. `processSelectedAssignment` negative test: missing/incomplete params object throws
-   (`tests/controllers/assignmentController/assignmentController.processSelectedAssignmentParams.test.js`
-   currently covers only the happy path).
-3. `TriggerController.createTimeBasedTrigger`: the "too many triggers" retry path calls
-   `removeTriggers` with the same `functionName` passed in.
-
-### Section checks
-
-- `npm run test:backend -- tests/triggers tests/controllers/assignmentController/assignmentController.processSelectedAssignmentParams.test.js`
-- `npm run lint:backend`
-- Mandatory-read evidence gate passed.
-
-### Optional `@remarks` JSDoc follow-through
-
-- Update `triggerHandler` JSDoc to keep the one non-obvious contract point: cleanup ownership
-  (who cleans up on which path), now including the auth-throw path.
-
-### Implementation notes / deviations / follow-up
-
-- **Implementation notes:** Single log boundary = `triggerHandler` owns the dispatch-error log
-  (`ProgressTracker.logAndThrowError`) and rethrows; `processSelectedAssignment`'s outer `catch`
-  was removed so its errors propagate unlogged. The group-membership denial is logged exactly once
-  by `AuthService.checkAccess` (`AuthService.js:170`); `triggerHandler`'s duplicate `warn` was
-  removed. `checkAccess` is now wrapped in its own `try/catch` that cleans up then rethrows; the
-  denial-path cleanup and dispatch `try/finally` are unchanged (no double cleanup).
-  `createTimeBasedTrigger` uses `functionName` in both the `removeTriggers(...)` retry call and the
-  retry log message. `@remarks` trimmed to the cleanup-ownership + single-log-boundary contract.
-- **Test updates beyond the three RED cases (in-scope consequences):** existing
-  `tests/triggers/triggerHandler.test.js` denial test now asserts `ABLogger.warn` is NOT called;
-  existing `tests/controllers/assignmentController/assignmentController.runAssignmentPipeline.test.js`
-  stale-error test now asserts `DefinitionStaleError` propagates unlogged (`toThrow`) and
-  `logAndThrowError` is NOT called. Both reflect the new boundary and were updated in GREEN.
-- **Follow-up:** the single-log-boundary / de-duplication fix is consistent with the de-sloppification
-  finding; no further action required from this section.
-- **Review outcome:** Green Review CLEAN (one non-blocking nitpick retained — the pre-existing GAS
-  load-order `@remarks` paragraph is useful documentation and kept).
-
----
-
-## Section 4 — Backend: z_apiHandler logging + admission-phase simplification + requestStore
-
-**Status:** Completed — Red + Green loops reviewed clean; Regression Gate shows no functional regressions (all tests/lint clean). One accepted `max-lines` line-count regression remains on `z_apiHandler.js` (pre-existing over-500 debt; the plan marks `max-lines` out of scope, so LOC was intentionally not reduced).
-
-### Objective
-
-Fix the Critical unlogged auth-gate catch; fold the admission-phase prune-logging scan into
-`pruneStaleEntries_`; replace the `compactStore_` `shift()` loop with a single splice/slice; and
-correct the `_success` warning level.
-
-### Constraints
-
-- The auth-gate catch must log once at the transport boundary before returning the
-  `INTERNAL_ERROR` envelope.
-- `_runAdmissionPhase` must still log each pruned entry; just avoid the extra keys-before/after
-  scan by having `pruneStaleEntries_` report what it pruned.
-- `compactStore_` preserves oldest-completed-dropped-first ordering and active-entry preservation.
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Implementation / Testing Specialist / Code Reviewer mandatory docs:
-
-- `@PR_REVIEW.md`
-- `@src/backend/AGENTS.md`
-- `@src/backend/z_Api/z_apiHandler.js`
-- `@src/backend/z_Api/requestStore.js`
-- `@tests/api/apiHandler/dispatcher-auth-gate.test.js`
-- `@tests/api/requestStore.test.js`
-- `@docs/developer/backend/backend-logging-and-error-handling.md`
-
-### Shared helper plan
-
-1. Helper: `pruneStaleEntries_` return value.
-   - Decision: `extend` — collect and return the list of pruned entry IDs (e.g. return
-     `{ store, prunedIds }`) so `_runAdmissionPhase` logs them without a second scan.
-   - Owning module/path: `src/backend/z_Api/requestStore.js`.
-   - Call-site rationale: `_runAdmissionPhase` (`z_apiHandler.js:256-266`) currently scans
-     `keysBefore` vs `keysAfterSet`; folding reporting into `pruneStaleEntries_` removes the
-     redundant iteration. The only caller ignores the return value today (mutates in place), so
-     changing the return shape is non-breaking.
-   - Relevant canonical doc target: `docs/developer/data-shapes/request-store.md` — §6 currently
-     documents `pruneStaleEntries_` as "Mutates and returns the store". Because the return shape
-     changes, a planned-only entry marking this change `Not implemented` MUST be added to
-     `request-store.md` before code changes begin, and reconciled to implemented during the
-     documentation pass.
-   - Planned doc status: `Not implemented` (firm — not conditional).
-
-### Acceptance criteria
-
-- The auth-gate catch logs `ABLogger.getInstance().error('Auth check failed.', { requestId, method: request.method }, error)` before returning.
-- `compactStore_` no longer shifts from the front of an array in a loop.
-- `_runAdmissionPhase` no longer builds `keysBefore`/`keysAfterSet`; prune logging comes from
-  `pruneStaleEntries_`.
-- `_success` uses `warn` (not `error`) for the defensive undefined-data message.
-
-### Required test cases (Red first)
-
-1. `dispatcher-auth-gate.test.js`: a test where `AuthService.checkAccess` **throws**, asserting
-   the `INTERNAL_ERROR` envelope (covers the previously-untested fail-safe branch at
-   `z_apiHandler.js:147-160`).
-2. `requestStore.test.js`: `compactStore_` still drops the oldest completed entries (existing
-   tests) — add/confirm a case with many completed entries to exercise the non-`shift` path.
-3. `requestStore.test.js`: `pruneStaleEntries_` reports the pruned IDs (new contract).
-
-### Section checks
-
-- `npm run test:backend -- tests/api/apiHandler/dispatcher-auth-gate.test.js tests/api/requestStore.test.js`
-- `npm run lint:backend`
-- Mandatory-read evidence gate passed.
-
-### Optional `@remarks` JSDoc follow-through
-
-- Document the `pruneStaleEntries_` return-shape change in its JSDoc.
-
-### Implementation notes / deviations / follow-up
-
-- **Implementation notes:** `pruneStaleEntries_` now returns `{ store, prunedIds }` (the chosen
-  `extend` decision) — `_runAdmissionPhase` consumes `prunedIds` to log each pruned entry, removing
-  the redundant `keysBefore`/`keysAfterSet` scan. `compactStore_` uses `splice(0, dropCount)` instead
-  of a `shift()` loop. The auth-gate catch now logs `ABLogger.getInstance().error('Auth check failed.',
-{ requestId, method: request.method }, error)` before the INTERNAL_ERROR envelope. `_success` uses
-  `warn` (not `error`) for the defensive undefined-data message. The canonical `request-store.md`
-  planned entry was reconciled to `implemented`.
-- **Follow-up:** none. (The `z_apiHandler.js` `max-lines` warning is pre-existing baseline debt and
-  explicitly out of scope per the plan; the Section 4 edit increased its line count, which the
-  regression checker flags as a line-count regression but introduces no new warning class.)
-
----
-
-## Section 5 — Backend: apiConfig, ReferenceDataController, ConfigurationManager, AssignmentController tidy-ups
-
-### Objective
-
-Apply the remaining backend Improvements/Nitpicks: redundant `|| ''`, lossy logs, double
-`requireParams`, `DEFAULTS.AUTH_GROUP_EMAIL` wiring, `normalize`→`normalise`, `safeParseConfigObject_`
-empty catch, JSDoc api-key token, and `startProcessing` default/unreachable-code removal.
-
-### Constraints
-
-- No change to config persistence shape or transport contract.
-- The `normalize`→`normalise` rename touches both `01_configKeysAndSchema.js` (spec field) and
-  `98_ConfigurationManagerClass.js:277`; update together.
-- Do not change the "empty apiKey clears the stored key" backend behaviour (only fix docs in
-  Section 10).
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Implementation / Testing Specialist / Code Reviewer mandatory docs:
-
-- `@PR_REVIEW.md`
-- `@src/backend/AGENTS.md`
-- `@src/backend/z_Api/apiConfig.js`
-- `@src/backend/y_controllers/ReferenceDataController.js`
+- Add `AUTH_MODE: 'authMode'` to `CONFIG_KEYS` and a `CONFIG_SCHEMA` entry (storage `script`) with
+  an inline enum validator accepting only `none` and `googleGroups`.
+- `getAuthMode()` must be implemented exactly as the secure fallback (do **not** copy the raw-return
+  shape of `getAuthGroupEmail()`):
+
+  ```javascript
+  getAuthMode() {
+    const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.AUTH_MODE);
+    return value === 'none' ? 'none' : 'googleGroups';
+  }
+  ```
+
+  This prevents a malformed stored value (e.g. `'foo'`) from being emitted by `getBackendConfig_()`
+  and rejected by the frontend `z.enum(...)` under `.strict()`.
+
+- `setAuthMode(value)` delegates to `this.setProperty(CONFIG_KEYS.AUTH_MODE, value)`; the
+  `CONFIG_SCHEMA` validator rejects invalid values so they surface as an aggregated
+  `setBackendConfig` error via the existing `safeSet` path.
+- **LOC assessment:** `98_ConfigurationManagerClass.js` is 669 lines → ~685 after this change (the
+  550-line backend decomposition threshold is already exceeded). Decomposing it is **out of scope**
+  for this feature (a dedicated facade-pattern refactor is deferred — see §Regression follow-up).
+  `01_configKeysAndSchema.js` is 131 → ~140 (no action needed).
+
+### Delegation mandatory reads
+
+- `@SPEC.md` (v1.9 increment)
+- `@docs/developer/data-shapes/backend-config.md`
 - `@src/backend/ConfigurationManager/01_configKeysAndSchema.js`
-- `@src/backend/ConfigurationManager/02_defaults.js`
 - `@src/backend/ConfigurationManager/98_ConfigurationManagerClass.js`
-- `@src/backend/y_controllers/AssignmentController.js`
-- `@tests/configurationManager/configurationManagerAuthGroupEmail.test.js`
-- `@tests/api/backendConfigApi.test.js`
+- `@src/backend/ConfigurationManager/02_defaults.js`
+- `@src/backend/AGENTS.md`
+
+### Shared helper plan
+
+1. Helper: enum validation for `authMode`.
+   - Decision: `keep local` (inline `CONFIG_SCHEMA` validator, precedent: `AUTH_GROUP_EMAIL`).
+   - Owning module/path: `src/backend/ConfigurationManager/01_configKeysAndSchema.js`.
+   - Call-site rationale: two-value enum with a secure default; no reusable generic validator is
+     warranted yet.
+   - Relevant canonical doc target: `docs/developer/data-shapes/backend-config.md`.
+   - Planned doc status: `Not implemented` (already recorded).
+
+### Data-shape planning
+
+- `authMode` is a new BackendConfig field. The planned entries are already recorded in
+  `@docs/developer/data-shapes/backend-config.md` (persistence row 14, read/write transport rows,
+  validation note, discrepancy #8) marked `[Not implemented — planned]`. This section implements the
+  persistence side; the Data Shapes Agent reconciles in §6.
 
 ### Acceptance criteria
 
-- `apiConfig.js:47` drops the redundant `|| ''`; `safeSet` and the aggregate save log include
-  the raw error (not only `errorName`).
-- `ReferenceDataController` update methods do not call `requireParams` twice for the same params.
-- `getAuthGroupEmail()` already returns `''` when unset (via `getProperty`'s `|| ''`), so
-  `DEFAULTS.AUTH_GROUP_EMAIL` (`02_defaults.js:14`) is genuinely unused. **Decided:** remove the
-  unused `AUTH_GROUP_EMAIL` entry from `DEFAULTS` (do not wire `getAuthGroupEmail` to consult it
-  — that adds nothing). Update any test referencing `DEFAULTS.AUTH_GROUP_EMAIL`.
-- `normalize` renamed to `normalise` in the config spec (both files).
-- `safeParseConfigObject_` no longer silently swallows parse errors (log + degrade or rethrow
-  per logging policy — no empty catch).
-- The `98_ConfigurationManagerClass.js` JSDoc example no longer contains a realistic API-key
-  token.
-- `AssignmentController.startProcessing` no longer carries a `courseId = ''` default (validate
-  it instead); the unreachable `toastMessage` calls after `logAndThrowError` are removed.
-- `TriggerController.REQUIRED_SCOPES` sync is enforced: add a backend test asserting
-  `TriggerController.REQUIRED_SCOPES` matches the `oauthScopes` array in
-  `src/backend/appsscript.json` (the runtime array and the manifest are two sources of truth;
-  the test enforces their sync rather than attempting a runtime merge).
+- `getAuthMode()` returns `googleGroups` when unset, blank, or any value other than `none`.
+- `getAuthMode()` returns `none` only when the stored value is exactly `none`.
+- `setAuthMode('none')` and `setAuthMode('googleGroups')` persist; `setAuthMode('foo')` throws.
+- `CONFIG_SCHEMA[AUTH_MODE]` rejects invalid values on the `setProperty` path.
 
 ### Required test cases (Red first)
 
-1. `configurationManagerAuthGroupEmail.test.js`: assert `getAuthGroupEmail()` returns `''` when
-   unset (guards the `DEFAULTS.AUTH_GROUP_EMAIL` removal).
-2. New/existing backend test: assert `TriggerController.REQUIRED_SCOPES` equals the
-   `appsscript.json` `oauthScopes` array (scope-sync enforcement).
-3. Existing `backendConfigApi.test.js` and `validateClassInfo.test.js` remain green after the
-   `normalise` rename.
+Backend (ConfigurationManager) — extend or mirror
+`@tests/configurationManager/configurationManagerAuthGroupEmail.test.js`:
+
+1. `getAuthMode()` returns `googleGroups` when no value is stored.
+2. `getAuthMode()` returns `googleGroups` when a blank value is stored.
+3. `getAuthMode()` returns `googleGroups` when an unknown value (e.g. `'foo'`) is stored.
+4. `getAuthMode()` returns `none` when `'none'` is stored.
+5. `setAuthMode('none')` persists and round-trips through `getAuthMode()`.
+6. `setAuthMode('foo')` throws (invalid enum).
+7. `CONFIG_SCHEMA` validator returns the canonical value for valid inputs (`'none'` → `'none'`,
+   `'googleGroups'` → `'googleGroups'`) and throws on `'foo'`. (The validator's _return_ value is
+   what `setProperty` serialises — see `98_ConfigurationManagerClass.js` — so this assertion guards
+   the round-trip, not just the throw.)
 
 ### Section checks
 
-- `npm run test:backend -- tests/configurationManager tests/api/backendConfigApi.test.js`
+- `npm run test:backend -- tests/configurationManager`
+- `npm run lint:backend`
+- Shared-helper and data-shape planning entries present (above).
+- Mandatory-read evidence gate passed for delegated handoffs.
+
+### Optional `@remarks` JSDoc follow-through
+
+- Add a `@remarks` on `getAuthMode()` explaining the secure-by-default fallback and that `none` is a
+  temporary development bypass, so future maintainers do not "simplify" it into a raw getter.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** (filled during implementation)
+- **Deviations from plan:** (none yet)
+- **Follow-up implications for later sections:** §2 depends on `getAuthMode()`.
+
+---
+
+## Section 2 — Backend: `AuthService.checkAccess` `none` short-circuit
+
+### Objective
+
+Add the `none` bypass at the very top of `AuthService.checkAccess()`, before the group-email read,
+session identity resolution, and `requireConfigured` branch.
+
+### Constraints
+
+- The short-circuit must precede `const groupEmail = ...` and `const email = ...` in
+  `checkAccess()` so `Session`/`GroupsApp`/`CacheManager` are never touched in `none` mode and the
+  trigger path (`requireConfigured: true`) is bypassed identically.
+- Return `{ allowed: true, role: 'user' }`.
+- Log a loud `ABLogger.getInstance().warn(...)` including `{ method, authMode: 'none' }`.
+- Include a prominent comment marking the bypass as a **temporary development measure** with an
+  explicit security caveat ("must not be used in production").
+- **LOC assessment:** `AuthService.js` is 203 → ~222 (no separation needed).
+
+### Delegation mandatory reads
+
+- `@SPEC.md` (v1.9 increment, decisions 11–14)
+- `@src/backend/Utils/AuthService.js`
+- `@src/backend/ConfigurationManager/98_ConfigurationManagerClass.js`
+- `@src/backend/z_Api/z_apiHandler.js`
+- `@src/backend/Triggers/triggerHandler.js`
+- `@src/backend/AGENTS.md`
+
+### Shared helper plan
+
+1. Helper: none. The short-circuit is a direct control-flow change inside `checkAccess`.
+   - Decision: `keep local`.
+   - Owning module/path: `src/backend/Utils/AuthService.js`.
+
+### Data-shape planning
+
+- No new shape: the returned decision object `{ allowed, role }` is unchanged; only its derivation
+  changes. No data-shape doc edit is required beyond §1's `authMode` entry.
+
+### Test-harness prerequisites (before Green — required to keep existing suites green)
+
+Adding `getAuthMode()` to `checkAccess()` introduces a new `ConfigurationManager` dependency that
+the existing green suites' mocks do not provide. Update the harness mocks as part of this section so
+the existing suites do not break:
+
+1. `@tests/utils/authService/authService.test.js` — `provisionAuthContext` builds a
+   `ConfigurationManager` mock exposing only `getAuthGroupEmail`. Add
+   `getAuthMode: vi.fn(() => authMode.value)` with a new `authMode = { value: 'googleGroups' }`
+   default; the new `none` tests set `authMode.value = 'none'`. Assert that in `none` mode the
+   short-circuit returns **before** `getAuthGroupEmail` is consulted (to prove the bypass fires first).
+2. `@tests/triggers/triggerHandler.test.js` — the `beforeEach` `ConfigurationManager` mock exposes
+   only `getAuthGroupEmail`. Add a `const authMode = { value: 'googleGroups' }` alongside the
+   existing `authGroup` object and `getAuthMode: vi.fn(() => authMode.value)` so the existing "real
+   AuthService" tests still pass and the new `none` test can set `authMode.value = 'none'`.
+3. `@tests/setupGlobals.js` — the default global `ConfigurationManager` mock (which backs the real
+   auth gate for any dispatcher test that does not provision its own) exposes only
+   `getAuthGroupEmail`. Add `getAuthMode: vi.fn(() => 'googleGroups')` so the real `checkAccess`
+   path stays green suite-wide.
+4. `@tests/api/apiHandler/dispatcher-auth-gate.test.js` — `provisionAuthEnvironment` builds a
+   `ConfigurationManager` mock with only `getAuthGroupEmail` and drives the **real**
+   `AuthService.checkAccess`. Add `getAuthMode: vi.fn(() => 'googleGroups')`.
+
+Note: `@tests/api/apiHandler/shared.js` `makeVmGlobals` is intentionally **not** changed — it mocks
+`AuthService` directly, so `getAuthMode` is never reached there.
+
+### Acceptance criteria
+
+- With `authMode === 'none'`, `checkAccess({})` returns `{ allowed: true, role: 'user' }` and does
+  not call `Session.getActiveUser()`, `GroupsApp.getGroupByEmail()`, or `CacheManager`.
+- With `authMode === 'none'` and `requireConfigured: true` (and/or `bypassCache: true`), the result
+  is still `{ allowed: true, role: 'user' }`.
+- With `googleGroups` (or unset), behaviour is unchanged from the current group-check path.
+- A `warn` log is emitted on the bypass path.
+
+### Required test cases (Red first)
+
+Backend (`@tests/utils/authService/authService.test.js`):
+
+1. `none` → allowed, role `user`; `Session`/`GroupsApp`/`CacheManager` are not called.
+2. `none` + `requireConfigured: true` → still allowed (fail-closed branch is not reached).
+3. `none` + `bypassCache: true` → still allowed.
+4. `none` → a warning is logged via `ABLogger`.
+5. Regression: `googleGroups`/unset still denies a non-member and allows a member (existing tests
+   stay green).
+
+Backend integration (`@tests/triggers/triggerHandler.test.js`):
+
+6. With `authMode === 'none'`, `triggerHandler` proceeds to dispatch (no denial) and still performs
+   context resolution and cleanup.
+
+### Section checks
+
+- `npm run test:backend -- tests/utils/authService`
+- `npm run test:backend -- tests/triggers`
 - `npm run lint:backend`
 - Mandatory-read evidence gate passed.
 
 ### Optional `@remarks` JSDoc follow-through
 
-- None beyond the existing JSDoc edits.
+- The short-circuit comment itself doubles as the required `@remarks`: state why the bypass exists,
+  what it disables, and that it must be reverted for production.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** `DEFAULTS.AUTH_GROUP_EMAIL` was removed from
-  `src/backend/ConfigurationManager/02_defaults.js`. Tests updated:
-  `tests/configurationManager/configurationManagerAuthGroupEmail.test.js` now asserts
-  `DEFAULTS` no longer contains `AUTH_GROUP_EMAIL`/`authGroupEmail`; the new
-  `tests/triggers/triggerController.requiredScopes.test.js` enforces `REQUIRED_SCOPES`
-  matches `appsscript.json` `oauthScopes`; `tests/controllers/assignmentController.hydration.test.js`
-  was updated to call `startProcessing` with an explicit third `courseId` argument.
-- **Deviations:** the `normalize`→`normalise` rename was contained to the config spec (both files);
-  the local `normalizedValue` variable in `setProperty` was also renamed to `normalisedValue` for
-  British-English consistency.
-- **Status:** Completed. Commit `f898566` (pushed). TDD loop: RED (Testing Specialist) →
-  Red Review (CLEAN) → GREEN (Implementation) → Green Review (CLEAN) → Regression Gate
-  (`Regressions Count: 0`, `New Failures Count: 0`; the 2 failing checks are the pre-existing
-  `max-lines` and `frontend-e2e` baseline debt, `Errors: 0`). Section checks
-  (`test:backend` 140/140, `lint:backend` 0 errors) pass.
+- **Implementation notes:** (filled during implementation)
+- **Deviations from plan:** (none yet)
+- **Follow-up implications for later sections:** §3 (transport) depends on `getAuthMode()`.
 
 ---
 
-## Section 6 — Frontend: AppAuthGate + AuthStatusCard corrections
+## Section 3 — Backend: `apiConfig.js` transport (get/set `authMode`)
 
 ### Objective
 
-Fix the loading-state element semantics, memoise the warm-up forbidden-message lookup, remove
-the redundant `startupWarmupCycles` double-lookup, remove the unreachable `AuthStatusCard`
-denial branch (standardising on a single denial message owned by the gate), and correct the
-stale `FORBIDDEN` comment in `useAuthorisationStatus.ts`.
+Emit `authMode` in `getBackendConfig_()` and add an `authMode` entry to the `setBackendConfig_()`
+`updates` array.
 
 ### Constraints
 
-- Use Ant Design `Spin` (or equivalent) for the loading affordance with `role="status"`.
-- Do not alter the warm-up orchestration flow or the FORBIDDEN precedence.
-- `AuthStatusCard` retains its reachable "Authorised" state; the gate owns denial copy.
+- `getBackendConfig_()` emits `authMode: configManager.getAuthMode()` (always present; defaults to
+  `googleGroups`).
+- `setBackendConfig_()` adds `{ name: 'authMode', value: config.authMode, applySetting: (value) =>
+configManager.setAuthMode(value) }` to the `updates` array.
+- Invalid values surface through the existing `safeSet` error aggregation (`success: false, error:
+'Failed to save some configuration values: authMode: ...'`).
+- **LOC assessment:** `apiConfig.js` is 173 → ~181 (no separation needed).
 
-### Delegation mandatory reads (when sub-agents are used)
+### Delegation mandatory reads
 
-Implementation / Testing Specialist / Code Reviewer mandatory docs:
-
-- `@PR_REVIEW.md`
-- `@src/frontend/AGENTS.md`
-- `@src/frontend/src/features/auth/AppAuthGate.tsx`
-- `@src/frontend/src/features/auth/AuthStatusCard.tsx`
-- `@src/frontend/src/features/auth/useAuthorisationStatus.ts`
-- `@src/frontend/src/features/auth/AppAuthGate.auth.spec.tsx`
-- `@src/frontend/src/features/auth/AuthStatusCard.spec.tsx`
-- `@docs/developer/frontend/frontend-loading-and-width-standards.md`
-- `@docs/developer/frontend/frontend-spacing-and-padding-standards.md`
-
-### Acceptance criteria
-
-- The loading state uses a semantic status element (not `<output>`) and shows a visible spinner.
-- `getWarmupForbiddenMessage` is memoised (or otherwise not recomputed on every render).
-- The `useState` initialiser no longer double-reads `startupWarmupCycles`.
-- `AuthStatusCard` no longer renders the unreachable denial branch; the gate's denial message is
-  the single source.
-- The stale `FORBIDDEN` comment in `src/frontend/src/features/auth/useAuthorisationStatus.ts`
-  (the `@remarks` block, lines 17-24) is corrected or removed.
-
-### Required test cases (Red first)
-
-1. `AppAuthGate.auth.spec.tsx`: loading state exposes `role="status"` and renders a spinner.
-2. `AuthStatusCard.spec.tsx`: update to reflect the reduced (authorised-only) component — remove
-   or repurpose the denial-state test.
-
-### Section checks
-
-- `npm run test:frontend -- AppAuthGate AuthStatusCard`
-- `npm run lint:frontend`
-- Mandatory-read evidence gate passed.
-
-### Optional `@remarks` JSDoc follow-through
-
-- Confirm `AppAuthGate` `@remarks` still describe FORBIDDEN precedence accurately after the
-  memoisation change.
-
-### Implementation notes / deviations / follow-up
-
-- **Implementation notes:** AppAuthGate loading element is now a `role="status"` region with an
-  antd `Spin`; `getWarmupForbiddenMessage` memoised; `useState` initialiser no longer double-reads
-  `startupWarmupCycles`; `AuthStatusCard` denial branch removed (gate owns denial copy);
-  `useAuthorisationStatus` `@remarks` FORBIDDEN comment corrected.
-- **Follow-up:** Section 7 handles the BackendSettingsPanel and map-error-to-ui changes.
-- **Status:** Completed. Commit `6f5cd5f` (pushed). TDD loop: RED (Testing Specialist) →
-  Red Review (CLEAN) → GREEN (Implementation) → Green Review (CLEAN). Section checks
-  (`test:frontend AppAuthGate AuthStatusCard` 14/14, `lint:frontend` 0 errors) pass. One
-  accepted `react-hooks/exhaustive-deps` warning on the mandated `useMemo` deps; a dead
-  `vi.mock` in `AuthStatusCard.spec.tsx` is deferred to the De-sloppification pass.
-
----
-
-## Section 7 — Frontend: BackendSettingsPanel helper text + map-error-to-ui additions
-
-### Objective
-
-Move the helper text into `Form.Item extra`; remove the redundant `aria-live`; add `IN_USE` and
-`DEFINITION_STALE` to the frontend error codes; and make the error-code message map exhaustively
-typed so drift fails at compile time.
-
-### Constraints
-
-- Read `docs/developer/frontend/frontend-spacing-and-padding-standards.md` before touching the
-  helper-text spacing (the negative-margin style must be removed).
-- `IN_USE`/`DEFINITION_STALE` messages must match `transport-envelope.md` intent; no backend
-  contract change.
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Implementation / Testing Specialist / Code Reviewer mandatory docs:
-
-- `@PR_REVIEW.md`
-- `@src/frontend/AGENTS.md`
-- `@src/frontend/src/features/settings/backend/BackendSettingsPanel.tsx`
-- `@src/frontend/src/features/settings/backend/BackendSettingsPanel.spec.tsx`
-- `@src/frontend/src/errors/map-error-to-ui.ts`
-- `@src/frontend/src/errors/map-error-to-ui.spec.ts`
-- `@docs/developer/data-shapes/transport-envelope.md`
-- `@docs/developer/frontend/frontend-spacing-and-padding-standards.md`
+- `@SPEC.md` (v1.9 increment)
+- `@src/backend/z_Api/apiConfig.js`
+- `@src/backend/ConfigurationManager/98_ConfigurationManagerClass.js`
+- `@src/backend/AGENTS.md`
 
 ### Shared helper plan
 
-1. Helper: error-code → message mapping.
-   - Decision: `extend` (not `new`) — change `errorCodeToMessageMap` from a `Map` to a typed
-     `Record<ErrorCode, string>` (or add a compile-time exhaustiveness check) so adding a code to
-     `errorCodes` without a message fails type-checking, and collapse the redundant
-     `instanceof Error` fallback branch in `mapErrorToUserMessage`.
-   - Owning module/path: `src/frontend/src/errors/map-error-to-ui.ts`.
-   - Call-site rationale: two manually-synced enumerations currently drift and throw at runtime.
-   - Relevant canonical doc target: none (aligns code to `transport-envelope.md`, which is already
-     correct).
+1. Helper: none — the change follows the existing `updates` array pattern.
+   - Decision: `keep local` / reuse existing `safeSet`.
+
+### Data-shape planning
+
+- Implements the transport side of the planned `authMode` entry in
+  `@docs/developer/data-shapes/backend-config.md` (read/write transport tables). The Data Shapes
+  Agent reconciles in §6.
+
+### Test-harness prerequisites (before Green — required to keep existing suites green)
+
+`getBackendConfig_()` will now emit `authMode`, which the existing transport suite's expected
+payload does not include, and `setBackendConfig_()` will call `setAuthMode`, which the mock does not
+provide. Update `@tests/helpers/backendConfigTestHelpers.js` as part of this section:
+
+1. `buildBackendConfigResponse(overrides)` — add `authMode: 'googleGroups'` (before `...overrides`)
+   so existing `toEqual(buildBackendConfigResponse())` assertions keep matching.
+2. `createConfigurationManagerMock(...)` — add `getAuthMode: vi.fn(() => (hasPersistedConfiguration
+? values.authMode : 'googleGroups'))` and `setAuthMode: vi.fn(setterImplementations.setAuthMode ||
+(() => {}))`, and add `authMode: 'googleGroups'` to the `values` object. This lets the transport
+   read/write tests exercise `authMode` and keeps existing `getBackendConfig`/`setBackendConfig`
+   tests green.
+
+### Deployment coordination (lockstep note)
+
+The §4 frontend schema change must ship **before or atomically with** this §3 backend transport
+change. `BackendConfigSchema` uses `.strict()`, so a backend that emits `authMode` before the
+frontend schema accepts it would reject the entire `getBackendConfig` response; frontend-ahead is
+safe because `authMode` is `.optional()` (see `backend-config.md` discrepancy #8). Never deploy §3
+without §4 — rollout order is §4-first (or §4 and §3 together).
 
 ### Acceptance criteria
 
-- Helper text renders inside `Form.Item extra`; the negative-margin style is removed.
-- No redundant `aria-live` on the element already carrying `role="status"`.
-- `errorCodes` includes `IN_USE` and `DEFINITION_STALE` with messages; the mapping is
-  exhaustively typed.
-- `mapErrorToUserMessage` no longer has two identical fallback branches.
+- `getBackendConfig_()` returns `authMode` (default `googleGroups`).
+- `setBackendConfig_({ authMode: 'none' })` persists; a subsequent `getBackendConfig_()` returns
+  `none`.
+- `setBackendConfig_({ authMode: 'foo' })` returns `{ success: false }` with an aggregated error.
 
 ### Required test cases (Red first)
 
-1. `map-error-to-ui.spec.ts`: `IN_USE` and `DEFINITION_STALE` map to non-generic messages.
-2. `BackendSettingsPanel.spec.tsx`: helper text is associated with the `Form.Item` (not a
-   separately positioned block).
+Backend transport (`@tests/api/backendConfigApi.test.js`, mirroring
+`@tests/api/backendConfigAuthGroupEmail.test.js`):
+
+1. `getBackendConfig_` includes `authMode` with default `googleGroups` when unset.
+2. `setBackendConfig_({ authMode: 'none' })` returns `{ success: true }` and invokes
+   `setAuthMode('none')` (assert the setter was called, not a mock round-trip — mirrors the
+   `backendConfigAuthGroupEmail.test.js` precedent).
+3. `setBackendConfig_({ authMode: 'googleGroups' })` returns `{ success: true }` and invokes
+   `setAuthMode('googleGroups')`.
+4. `setBackendConfig_` with an invalid `authMode` returns `{ success: false }` and an aggregate
+   error mentioning `authMode`. (Pass a **validating** `setAuthMode` implementation to
+   `createConfigurationManagerMock` via `setterImplementations` — the default is a no-op `vi.fn`,
+   which would let the invalid value through and invert this assertion.)
 
 ### Section checks
 
-- `npm run test:frontend -- map-error-to-ui BackendSettingsPanel`
-- `npm run lint:frontend`
+- `npm run test:backend -- tests/api/backendConfigApi.test.js tests/api/backendConfigAuthGroupEmail.test.js`
+- `npm run lint:backend`
 - Mandatory-read evidence gate passed.
 
 ### Optional `@remarks` JSDoc follow-through
 
-- None.
+- None (the transport change is a plain field addition following existing rows).
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** `map-error-to-ui` now uses an exhaustively-typed
-  `Record<ErrorCode, string>`; `IN_USE`/`DEFINITION_STALE` added with messages matching the spec.
-  `mapErrorToUserMessage` collapse verified. `BackendSettingsPanel` helper text moved into
-  `Form.Item extra`; negative-margin style and redundant `aria-live` removed.
-- **Follow-up:** Section 8 extracts the shared `authGroupEmail` schema; Section 10 reconciles
-  docs.
-- **Status:** Completed. Commit `3217d94` (pushed). TDD loop: RED (Testing Specialist) →
-  Red Review (CLEAN) → GREEN (Implementation) → Green Review (CLEAN). Section checks
-  (`test:frontend map-error-to-ui BackendSettingsPanel` 47/47, `lint:frontend` 0 errors) pass.
+- **Implementation notes:** (filled during implementation)
+- **Deviations from plan:** (none yet)
+- **Follow-up implications for later sections:** §4 (frontend schema) depends on this transport
+  contract.
 
 ---
 
-## Section 8 — Frontend: shared `authGroupEmail` schema extraction
+## Section 4 — Frontend: Zod schemas (`authMode`)
 
 ### Objective
 
-Extract a single `authGroupEmailSchema` and reuse it in the three places it is currently
-hand-written.
+Add `authModeSchema` and wire `authMode` into the read, write, and form schemas.
 
 ### Constraints
 
-- Behaviour-identical: read/write schemas remain `.optional()`; the form schema remains required.
-- The shared schema must live where `backendSettingsForm.zod.ts` can import it without circular
-  imports.
+- Define `authModeSchema = z.enum(['googleGroups', 'none'])` in
+  `src/frontend/src/services/backendConfiguration/backendConfiguration.zod.ts` and export it.
+- `BackendConfigSchema`: `authMode: authModeSchema.optional()` (deploy-order tolerance, same as
+  `authGroupEmail`).
+- `BackendConfigWriteInputSchema`: `authMode: authModeSchema.optional()`.
+- `BackendSettingsFormSchema` (`backendSettingsForm.zod.ts`): `authMode: authModeSchema` (required —
+  the dropdown always has a value).
+- Import `authModeSchema` from the service schema file rather than redefining it (shared helper).
+- `backendConfigurationService.ts` and `useBackendSettings.ts` need **no change** — both consume
+  `BackendConfigSchema`/`BackendSettingsFormSchema` and the form mapper, and do not enumerate config
+  fields.
+- **LOC assessment:** `backendConfiguration.zod.ts` 106 → ~114; `backendSettingsForm.zod.ts` 88 →
+  ~92. No separation needed.
 
-### Delegation mandatory reads (when sub-agents are used)
+### Delegation mandatory reads
 
-Implementation / Testing Specialist / Code Reviewer mandatory docs:
-
-- `@PR_REVIEW.md`
-- `@src/frontend/AGENTS.md`
+- `@SPEC.md` (v1.9 increment)
+- `@docs/developer/data-shapes/backend-config.md`
 - `@src/frontend/src/services/backendConfiguration/backendConfiguration.zod.ts`
 - `@src/frontend/src/features/settings/backend/backendSettingsForm.zod.ts`
-- `@docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
-- `@docs/developer/data-shapes/backend-config.md`
+- `@src/frontend/AGENTS.md`
 
 ### Shared helper plan
 
-1. Helper: `authGroupEmailSchema`.
-   - Decision: `new` (small shared Zod schema) — `z.union([z.literal(''), z.email()])`.
-   - Owning module/path: `src/frontend/src/services/backendConfiguration/backendConfiguration.zod.ts`
-     (exported), consumed by `backendSettingsForm.zod.ts`.
-   - Call-site rationale: three hand-written copies of the same union at
-     `backendConfiguration.zod.ts:46`, `:72`, and `backendSettingsForm.zod.ts:72`.
-   - Relevant canonical doc target: `docs/developer/data-shapes/backend-config.md` (field 13) —
-     already correct; no doc change, but verify field name/optionality still matches.
+1. Helper: `authModeSchema` (shared Zod enum).
+   - Decision: `new` (single canonical schema in `backendConfiguration.zod.ts`).
+   - Owning module/path: `src/frontend/src/services/backendConfiguration/backendConfiguration.zod.ts`.
+   - Call-site rationale: reused by read, write, and form schemas; avoids three divergent literals
+     (precedent: `authGroupEmailSchema`).
+   - Relevant canonical doc target: `docs/developer/data-shapes/backend-config.md`.
+   - Planned doc status: `Not implemented` (recorded in §6 reconciliation).
+
+### Data-shape planning
+
+- Mirrors the BackendConfig contract; reconciles against `@docs/developer/data-shapes/backend-config.md`.
 
 ### Acceptance criteria
 
-- Exactly one definition of the `authGroupEmail` union; the three call sites reference it.
+- `authModeSchema` accepts `googleGroups` and `none`; rejects any other value.
+- `BackendConfigSchema` parses a payload with/without `authMode` (optional).
+- `BackendConfigWriteInputSchema` accepts an optional `authMode`.
+- `BackendSettingsFormSchema` requires `authMode`.
 
 ### Required test cases (Red first)
 
-1. Existing `backendConfiguration.zod.spec.ts` and `backendSettingsForm.zod.spec.ts` remain
-   green (behaviour unchanged).
+Frontend (`@src/frontend/src/services/backendConfiguration/backendConfiguration.zod.spec.ts`,
+`@src/frontend/src/features/settings/backend/backendSettingsForm.zod.spec.ts`):
+
+1. `authModeSchema` accepts `googleGroups` and `none`.
+2. `authModeSchema` rejects `foo`, `''`, `null`.
+3. `BackendConfigSchema` parses a response that includes `authMode`.
+4. `BackendConfigSchema` parses a response that omits `authMode` (optional).
+5. `BackendSettingsFormSchema` rejects a form value missing `authMode`.
 
 ### Section checks
 
@@ -750,48 +479,128 @@ Implementation / Testing Specialist / Code Reviewer mandatory docs:
 
 ### Optional `@remarks` JSDoc follow-through
 
-- None.
+- Add a `@remarks` on `authModeSchema` noting the secure default and that `none` is a development
+  bypass.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** `authGroupEmailSchema` exported from `backendConfiguration.zod.ts`
-  and reused at all three call sites; form schema keeps `authGroupEmail` required, transport
-  schemas keep it `.optional()`. No circular import.
-- **Follow-up:** none.
-- **Status:** Completed. Commit `289ac7e` (pushed). TDD loop: RED (Testing Specialist) →
-  Red Review (CLEAN) → GREEN (Implementation) → Green Review (CLEAN). Section checks
-  (`test:frontend backendConfiguration.zod backendSettingsForm.zod` 29/29, `lint:frontend`
-  0 errors) pass.
+- **Implementation notes:** (filled during implementation)
+- **Deviations from plan:** (none yet)
+- **Follow-up implications for later sections:** §5 (mapper/panel) depends on this schema.
 
 ---
 
-## Section 9 — Backend incidental slop tidy-ups (error-handling robustness)
+## Section 5 — Frontend: form mapper and `BackendSettingsPanel` dropdown
 
 ### Objective
 
-**No additional work — folded into Section 5.** This section exists to preserve section
-numbering referenced elsewhere. The incidental error-handling items it would have covered
-(`safeParseConfigObject_` empty catch and the unreachable `toastMessage` after
-`logAndThrowError`) are already specified as acceptance criteria in Section 5. Do not re-scan or
-re-implement them here.
+Map `authMode` in both directions and render the "Authentication options" dropdown.
 
 ### Constraints
 
-- If any error-handling item is discovered that is NOT already covered by Section 5, stop and
-  record it as a follow-up rather than expanding this section silently.
+- `backendSettingsFormMapper.ts`:
+  - read: `authMode: backendConfig.authMode ?? 'googleGroups'`.
+  - write: `authMode: formValues.authMode`.
+- `BackendSettingsPanel.tsx`:
+  - add `'authMode'` to `backendSettingsFieldNames`.
+  - add a field descriptor: `name: 'authMode'`, `label: 'Authentication options'`,
+    `renderInput: () => <Select options={authModeOptions} />`, `section: 'Backend'`,
+    `withSchemaValidation: true`, `helperText` (security warning, below).
+  - add `const authModeOptions = [{ label: 'Google Groups', value: 'googleGroups' }, { label:
+'None', value: 'none' }];`.
+  - helper text: "Controls how access to this application is verified. 'None' disables the access
+    gate entirely — for development and testing only; do not use in production."
+- **LOC assessment:** `backendSettingsFormMapper.ts` 77 → ~83; `BackendSettingsPanel.tsx` 525 →
+  ~545. `BackendSettingsPanel.tsx` is already large; decomposition is **out of scope** for this
+  feature (a dedicated, separately-scoped refactor — see §Regression follow-up). The addition follows
+  the existing descriptor pattern (`jsonDbLogLevel` `Select` precedent) with no new abstraction.
+
+### Delegation mandatory reads
+
+- `@SPEC.md` (v1.9 increment)
+- `@src/frontend/src/features/settings/backend/backendSettingsFormMapper.ts`
+- `@src/frontend/src/features/settings/backend/BackendSettingsPanel.tsx`
+- `@src/frontend/src/features/settings/backend/backendSettingsForm.zod.ts`
+- `@src/frontend/src/services/backendConfiguration/backendConfiguration.zod.ts`
+- `@src/frontend/AGENTS.md`
+- `@docs/developer/frontend/frontend-spacing-and-padding-standards.md` (UI change)
+
+### Shared helper plan
+
+1. Helper: `authModeOptions` (local option list).
+   - Decision: `keep local` (single-use, mirrors `jsonDatabaseLogLevelOptions`).
+   - Owning module/path: `src/frontend/src/features/settings/backend/BackendSettingsPanel.tsx`.
+
+### Data-shape planning
+
+- No new shape beyond §4; reconciles with `@docs/developer/data-shapes/backend-config.md`.
 
 ### Acceptance criteria
 
-- Section 5 acceptance criteria for `safeParseConfigObject_` and `toastMessage` removal are
-  satisfied.
+- The mapper defaults a missing `authMode` to `googleGroups` on read and passes `authMode` through on
+  write.
+- The panel renders a `Select` labelled "Authentication options" with options `Google Groups` and
+  `None`, in the Backend section, with the security helper text.
 
 ### Required test cases (Red first)
 
-1. None — covered by Section 5.
+Frontend (`@src/frontend/src/features/settings/backend/backendSettingsFormMapper.spec.ts`,
+`@src/frontend/src/features/settings/backend/BackendSettingsPanel.spec.tsx`):
+
+1. Mapper read maps `authMode` through and defaults `undefined` → `googleGroups`.
+2. Mapper write maps `authMode` through.
+3. Panel renders the dropdown with the correct label, both options, and the security helper text.
 
 ### Section checks
 
-- Confirm Section 5 checks passed.
+- `npm run test:frontend -- backendSettingsFormMapper BackendSettingsPanel`
+- `npm run lint:frontend`
+- Mandatory-read evidence gate passed.
+
+### Optional `@remarks` JSDoc follow-through
+
+- Add a `@remarks` on the `authMode` descriptor explaining the security caveat of the `None` option.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** (filled during implementation)
+- **Deviations from plan:** (none yet)
+- **Follow-up implications for later sections:** §6 reconciles the data-shape doc.
+
+---
+
+## Section 6 — Data-shape reconciliation (Data Shapes Agent)
+
+### Objective
+
+Flip the planned `authMode` entries in `docs/developer/data-shapes/backend-config.md` from
+`[Not implemented — planned]` to implemented, and verify the field counts and discrepancy note.
+
+### Constraints
+
+- Update persistence row 14, the read/write transport rows, the validation note, and discrepancy #8
+  to remove `[Not implemented — planned]`.
+- Confirm the field-count notes remain correct (14 read fields, 12 frontend-writable fields, 13
+  backend-writable superset).
+- Do not change unrelated rows.
+
+### Delegation mandatory reads
+
+- `@SPEC.md` (v1.9 increment + Data-shape planning table)
+- `@docs/developer/data-shapes/backend-config.md`
+- `@docs/developer/data-shapes/INDEX.md`
+- `@src/backend/z_Api/apiConfig.js`
+- `@src/frontend/src/services/backendConfiguration/backendConfiguration.zod.ts`
+
+### Acceptance criteria
+
+- No `[Not implemented — planned]` markers remain for `authMode`.
+- `backend-config.md` accurately describes the delivered `authMode` contract.
+
+### Section checks
+
+- Review diff of `docs/developer/data-shapes/backend-config.md` (no unrelated churn).
+- Mandatory-read evidence gate passed.
 
 ### Optional `@remarks` JSDoc follow-through
 
@@ -799,180 +608,70 @@ re-implement them here.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** mark this section "no additional work". The incidental
-  error-handling items it would have covered (`safeParseConfigObject_` empty catch and the
-  unreachable `toastMessage` after `logAndThrowError`) were already delivered in Section 5
-  (commits `f898566` / `7721fdf`).
-- **Status:** Completed (no additional work — folded into Section 5).
+- **Implementation notes:** (filled during implementation)
+- **Deviations from plan:** (none yet)
+- **Follow-up implications for later sections:** §7 (regression) confirms end-to-end.
 
 ---
 
-## Regression and contract hardening
+## Section 7 — Regression hardening and documentation/rollout
 
 ### Objective
 
-Verify no regressions across backend and frontend after the fix sections, and confirm the two
-coverage-gap tests are in place.
+Run the full touched suites and lints, add the backend AGENTS note, and record rollout caveats.
 
 ### Constraints
 
-- Prefer focused test runs before broader validation.
+- Update `@src/backend/AGENTS.md` §2.3 (AuthService singleton) with a one-line note that the
+  `authMode: 'none'` setting is a temporary development bypass of the group-membership gate.
+- No new documentation files; keep the note a signpost (policy detail lives in `SPEC.md`).
 
 ### Acceptance criteria
 
-- All touched backend suites, frontend suites, and lint commands pass.
-- No new lint/type/test failures versus the review baseline.
+- All touched backend and frontend suites pass; backend and frontend lint clean.
+- `src/backend/AGENTS.md` §2.3 mentions the `none` development bypass.
 
 ### Required test cases/checks
 
-1. `npm run test:backend -- tests/requestHandlers/CacheManager.test.js tests/utils/authService tests/triggers tests/api/apiHandler/dispatcher-auth-gate.test.js tests/api/requestStore.test.js tests/configurationManager tests/api/backendConfigApi.test.js tests/controllers/assignmentController`
-2. `npm run test:frontend -- AppAuthGate AuthStatusCard map-error-to-ui BackendSettingsPanel backendConfiguration.zod backendSettingsForm.zod`
+1. `npm run test:backend -- tests/configurationManager tests/utils/authService tests/triggers
+tests/api/backendConfigApi.test.js tests/api/backendConfigAuthGroupEmail.test.js
+tests/api/apiHandler/dispatcher-auth-gate.test.js`
+2. `npm run test:frontend -- backendConfiguration backendSettingsForm backendSettingsFormMapper
+BackendSettingsPanel useBackendSettings`
 3. `npm run lint:backend && npm run lint:frontend`
-4. `npm run test:frontend:e2e -- auth-status.spec.ts settings-backend.spec.ts` (only if any
-   user-visible copy/layout changed; otherwise skip and note why).
-5. Verify mandatory-read evidence (`Files read`) is complete for every delegated handoff.
+4. Verify mandatory-read evidence for every delegated handoff.
+5. Confirm every test that exercises `AuthService.checkAccess` (`tests/utils/authService`,
+   `tests/triggers`, `tests/api/apiHandler/dispatcher-auth-gate.test.js`, the `tests/setupGlobals.js`
+   default mock, and any other `ConfigurationManager` fake) provides a `getAuthMode` mock returning
+   `'googleGroups'` by default — this is the final confirmation that the §2 harness prerequisites
+   (items 1–4) are all present and no other `checkAccess` exerciser was missed.
 
 ### Section checks
 
-- All commands above return green.
-
-### Implementation notes / deviations / follow-up
-
-- **Implementation notes — final results (regression-checker, session `feature/auth-service`):**
-  - `Regressions Count: 0`, `New Failures Count: 0`.
-  - Focused backend suite (`test:backend` over CacheManager, authService, triggers, dispatcher-auth-gate,
-    requestStore, configurationManager, backendConfigApi, assignmentController): **25 files / 292 passed**.
-  - Focused frontend suite (`test:frontend` over AppAuthGate, AuthStatusCard, map-error-to-ui,
-    BackendSettingsPanel, backendConfiguration.zod, backendSettingsForm.zod): **6 files / 90 passed**.
-  - `lint:backend`: 0 errors, 14 `max-lines` warnings (pre-existing baseline debt, no errors).
-  - `lint:frontend`: 0 errors, 0 warnings. The `react-hooks/exhaustive-deps` warning on
-    `AppAuthGate.tsx` was resolved with a file-scoped override in `src/frontend/eslint.config.js`
-    (justified: `warmupCycleState` is a genuine indirect dependency needed to re-run the FORBIDDEN
-    denial lookup after warm-up resolves), commit `aab94f4`.
-- **Deviations:** `npm run test:frontend:e2e` was NOT run. The only e2e failure surfaced by the
-  regression-checker (`classes-crud-bulk-year-group.spec.ts`) is a **known-flaky** test that only
-  fails under elevated host load and is unrelated to the changes in this plan (it has no references
-  to auth/loading/spinner/status). Per user decision it is excluded from the gate; the e2e baseline
-  was already failing (timeouts) before this work.
-- **Status:** Completed. Regression gate satisfied (no regressions, no new failures); the two
-  remaining failing regression-checker checks are the accepted `max-lines` backend-lint debt and the
-  known-flaky e2e test.
-
----
-
-## Documentation and rollout notes
-
-### Objective
-
-Reconcile the minor data-shape doc discrepancies noted in the review (incidental docs batch,
-**Fix now**).
-
-### Constraints
-
-- Only modify documents relevant to the touched areas.
-- Data-shape docs remain the canonical source; update them to match code (not vice versa).
-
-### Acceptance criteria
-
-- `docs/developer/data-shapes/backend-config.md` clarifies that the frontend does not support
-  empty-`apiKey` clearing (backend honours it on raw calls) and that `authGroupEmail` blank is
-  only allowed when nothing is stored.
-- `docs/developer/data-shapes/transport-envelope.md` reconciles the `retriable` optionality note
-  with the frontend `.optional()` schema.
-- `PR_REVIEW.md` Decisions section is updated to reflect completion of "Fix now" items (or left
-  as-is with a completion note).
-
-### Required checks
-
-1. Cross-reference the edited docs against the implementing code.
-2. Confirm no planned shared-helper entry is left in an inconsistent `Not implemented` state.
+- All commands green.
 
 ### Optional `@remarks` JSDoc review
 
-- Confirm no non-obvious design decision from the fix sections is lost; record `None` if not
-  needed.
+- Confirm the temporary-measure/security comments and `@remarks` from §1–§5 are present in code.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** `backend-config.md` now states explicitly that the frontend cannot
-  clear a stored `apiKey` (the form omits the field when blank and `BackendApiKeyWriteSchema`
-  rejects empty strings; only a raw backend call honours an explicit empty string); the
-  `authGroupEmail` compulsory-once-set statement is verified intact. `transport-envelope.md`
-  reconciles `retriable` (backend always emits; frontend `.optional()` is defensive tolerance).
-  `PR_REVIEW.md` Decisions gained a Completion subsection recording the "Fix now" items delivered
-  across Sections 1-8 (Section 9 folded into Section 5).
-- **Follow-up:** the deferred security work remains owned by GitHub issue #284.
-- **Status:** Completed and committed (`49db5c7`).
-
----
-
-## De-sloppification pass
-
-### Objective
-
-Run the `De-Sloppification` agent over the full plan diff and apply the in-scope, behaviour-preserving
-cleanups it identifies, keeping the section loop green.
-
-### Delegation
-
-- `De-Sloppification` agent review: completed (findings returned, no edits made by the agent).
-- `Implementation` agent: applied the three fixes below; all checks green.
-
-### Findings addressed (in scope, plan-introduced)
-
-1. `src/frontend/src/features/auth/AuthStatusCard.spec.tsx` — removed dead
-   `vi.mock('./useAuthorisationStatus', ...)` + hoisted mock, `beforeEach`/`afterEach`, and the
-   `useAuthorisationStatusMock.mockReturnValue({ isAuthorised: false, ... })` call. `AuthStatusCard`
-   no longer imports the hook, so the mock was misleading dead scaffolding. (This was the deferred
-   nitpick from the section loop.)
-2. `src/backend/y_controllers/ReferenceDataController.js` — extracted the triplicated
-   `payload` guard into a single private `_requireUpdatePayload(payload)` helper used by
-   `updateCohort`, `updateYearGroup`, and `updateAssignmentTopic`. Identical guard semantics.
-3. `src/backend/ConfigurationManager/01_configKeysAndSchema.js` — removed the redundant `normalise`
-   for `JSON_DB_LOG_LEVEL`; `validate` already normalises via `validateLogLevel_` (returns
-   uppercase), so the property was a no-op.
-
-### Findings deferred (out of scope)
-
-- `__CONFIG_MANAGER_STATICS_INITIALISED__` dead flag in `99_configManagerStatics.js` — pre-existing,
-  outside the plan diff; tracked separately, not addressed here.
-- `AppAuthGate.tsx` near-duplicate warm-up handlers — optional, low-risk, left unchanged to avoid
-  behavioural churn.
-
-### Verification
-
-- `npm run lint:frontend` → 0 errors, 0 warnings.
-- `npm run test:frontend -- AuthStatusCard` → 3 tests pass.
-- `npm run test:backend -- tests/controllers/referenceDataController tests/configurationManager`
-  → 141 tests pass.
-- `npx tsc -b tsconfig.json` (frontend) → exit 0.
-
-### Final regression note (regression-checker, session `feature/auth-service`)
-
-- **New Failures Count: 0** — no passing test now fails. Substantive gate condition satisfied.
-- 2 flagged `backend-lint-check` items are `max-lines` **warnings** on
-  `98_ConfigurationManagerClass.js` (668→669) and `z_apiHandler.js` (508→513). Both files already
-  carried `max-lines` warnings at the stored baseline (14 such warnings baseline-wide); the delta is
-  a cosmetic line-count tick within an already-accepted, pre-existing warning category, and neither
-  file was touched by this change set. `max-lines` is documented accepted baseline debt, out of
-  scope for this plan.
-- `frontend-e2e-check` reports 227 fixes, **0 regressions, 0 new failures** — the known flaky
-  under-host-load suite the user authorised to ignore.
-
-- **Status:** Completed (fixes applied and committed; see De-sloppification commit).
+- **Follow-up (deferred, not this feature):** facade-decompose
+  `ConfigurationManager/98_ConfigurationManagerClass.js` (669 lines) and split
+  `BackendSettingsPanel.tsx` (525 lines) — both already exceed their size thresholds and were left
+  untouched to avoid opportunistic scope expansion.
 
 ---
 
 ## Suggested implementation order
 
-1. Section 1 (CacheManager) — foundational shared TTL.
-2. Section 2 (AuthService) — consumes shared TTL.
-3. Section 3 (trigger error-handling / cleanup leak) — Critical fix.
-4. Section 4 (z_apiHandler logging / requestStore) — Critical logging fix + coverage test.
-5. Section 5 (apiConfig / ConfigurationManager / AssignmentController tidy-ups).
-6. Section 6 (AppAuthGate / AuthStatusCard).
-7. Section 7 (BackendSettingsPanel / map-error-to-ui).
-8. Section 8 (shared `authGroupEmail` schema).
-9. Section 9 (incidental backend tidy-ups — fold into Section 5 where overlapping).
-10. Regression and contract hardening.
-11. Documentation and rollout notes.
+1. §1 (config key + getter/setter)
+2. §2 (AuthService bypass, incl. trigger integration test + harness mocks)
+3. §3 (transport get/set)
+4. §4 (frontend Zod)
+5. §5 (mapper + panel dropdown)
+6. §6 (data-shape reconciliation)
+7. §7 (regression + docs/rollout)
+
+Deployment order note: build order above is implementation-only. For rollout, the §4 frontend schema
+must be live **before or together with** the §3 backend transport (see §3 "Deployment coordination").
