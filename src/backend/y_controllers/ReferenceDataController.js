@@ -53,9 +53,7 @@ class ReferenceDataController {
    * @returns {{key: string, name: string, active: boolean, startYear: number, startMonth: number}} The updated cohort record.
    */
   updateCohort(payload) {
-    if (!payload || typeof payload !== 'object') {
-      throw new TypeError('payload is required.');
-    }
+    this._requireUpdatePayload(payload);
     const { key, record } = payload;
     Validate.requireParams({ key, record }, 'ReferenceDataController.updateCohort');
     return this._updateRecord(this._getConfig('cohort'), key, record);
@@ -95,9 +93,7 @@ class ReferenceDataController {
    * @returns {{key: string, name: string}} The updated year group record.
    */
   updateYearGroup(payload) {
-    if (!payload || typeof payload !== 'object') {
-      throw new TypeError('payload is required.');
-    }
+    this._requireUpdatePayload(payload);
     const { key, record } = payload;
     Validate.requireParams({ key, record }, 'ReferenceDataController.updateYearGroup');
     return this._updateRecord(this._getConfig('yearGroup'), key, record);
@@ -137,9 +133,7 @@ class ReferenceDataController {
    * @returns {{key: string, name: string, yearGroupKeys: string[]}} The updated assignment-topic record with yearGroupKeys.
    */
   updateAssignmentTopic(payload) {
-    if (!payload || typeof payload !== 'object') {
-      throw new TypeError('payload is required.');
-    }
+    this._requireUpdatePayload(payload);
     const { key, record } = payload;
     Validate.requireParams({ key, record }, 'ReferenceDataController.updateAssignmentTopic');
     return this._updateRecord(this._getConfig('assignmentTopic'), key, record);
@@ -193,6 +187,17 @@ class ReferenceDataController {
     }
 
     throw new Error(`Unsupported reference-data resource: ${resourceType}`);
+  }
+
+  /**
+   * Requires an update payload to be a non-null object.
+   * @param {*} payload - Incoming update payload.
+   * @throws {TypeError} If the payload is missing or not an object.
+   */
+  _requireUpdatePayload(payload) {
+    if (!payload || typeof payload !== 'object') {
+      throw new TypeError('payload is required.');
+    }
   }
 
   /**

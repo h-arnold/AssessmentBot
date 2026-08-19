@@ -81,7 +81,6 @@ const CONFIG_SCHEMA = Object.freeze({
   [CONFIG_KEYS.JSON_DB_LOG_LEVEL]: {
     storage: 'script',
     validate: (v) => validateLogLevel_('JSON DB Log Level', v),
-    normalise: (v) => validateLogLevel_('JSON DB Log Level', v),
   },
   [CONFIG_KEYS.JSON_DB_BACKUP_ON_INITIALISE]: {
     storage: 'script',
