@@ -12,7 +12,7 @@ import {
 } from 'antd';
 import type { FormInstance } from 'antd';
 import type { ReactNode } from 'react';
-import { Fragment, useEffect } from 'react';
+import { useEffect } from 'react';
 import { BackendSettingsFormSchema, type BackendSettingsForm } from './backendSettingsForm.zod';
 import { useBackendSettings } from './useBackendSettings';
 import { APP_GAP_LG } from '../../../theme/spacing';
@@ -22,16 +22,6 @@ const { Text, Title } = Typography;
 const backendSettingsRefreshStatusCopy = 'Refreshing backend settings...';
 
 const authGroupEmailClearingErrorMessage = 'The auth group email cannot be cleared once set.';
-
-const backendSettingsHelperTextStyle: Readonly<{
-  display: 'block';
-  marginBottom: number;
-  marginTop: string;
-}> = {
-  display: 'block',
-  marginBottom: APP_GAP_LG,
-  marginTop: 'calc(-1 * var(--app-spacing-md))',
-};
 
 const jsonDatabaseLogLevelOptions = [
   { label: 'DEBUG', value: 'DEBUG' },
@@ -315,6 +305,7 @@ function renderBackendSettingsField(
   }>
 ) {
   const { descriptor, form, hasApiKey } = properties;
+  const helperText = getBackendSettingsFieldHelperText(descriptor, hasApiKey);
 
   return (
     <Form.Item
@@ -335,6 +326,7 @@ function renderBackendSettingsField(
           : undefined
       }
       valuePropName={descriptor.valuePropName}
+      extra={helperText ?? undefined}
     >
       {descriptor.renderInput()}
     </Form.Item>
@@ -356,7 +348,7 @@ function renderBackendSettingsPanelStatus(
   return (
     <>
       {properties.isRefreshing ? (
-        <div aria-live="polite" role="status">
+        <div role="status">
           <Text type="secondary">{backendSettingsRefreshStatusCopy}</Text>
         </div>
       ) : null}
@@ -505,28 +497,13 @@ export function BackendSettingsPanel() {
               <SettingsSectionCard key={section} title={section}>
                 {backendSettingsFieldDescriptors
                   .filter((fieldDescriptor) => fieldDescriptor.section === section)
-                  .map((fieldDescriptor) => {
-                    const helperText = getBackendSettingsFieldHelperText(
-                      fieldDescriptor,
-                      hasApiKey
-                    );
-
-                    return (
-                      <Fragment key={fieldDescriptor.name}>
-                        {renderBackendSettingsField({
-                          descriptor: fieldDescriptor,
-                          form,
-                          hasApiKey,
-                        })}
-
-                        {helperText === null ? null : (
-                          <Text type="secondary" style={backendSettingsHelperTextStyle}>
-                            {helperText}
-                          </Text>
-                        )}
-                      </Fragment>
-                    );
-                  })}
+                  .map((fieldDescriptor) =>
+                    renderBackendSettingsField({
+                      descriptor: fieldDescriptor,
+                      form,
+                      hasApiKey,
+                    })
+                  )}
               </SettingsSectionCard>
             ))}
 

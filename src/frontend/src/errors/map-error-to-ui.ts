@@ -15,6 +15,8 @@ export const errorCodes = {
   FORBIDDEN: 'FORBIDDEN',
   NOT_FOUND: 'NOT_FOUND',
   UNTRUSTED_DATA: 'UNTRUSTED_DATA',
+  IN_USE: 'IN_USE',
+  DEFINITION_STALE: 'DEFINITION_STALE',
 } as const;
 
 /**
@@ -26,31 +28,26 @@ export type ErrorCode = keyof typeof errorCodes;
  * Message map for error codes to avoid switch complexity.
  * Groups similar error codes to share messages.
  */
-const errorCodeToMessageMap = new Map<ErrorCode, string>([
-  ['RATE_LIMITED', 'Too many requests. Please wait a moment and try again.'],
-  ['INVALID_REQUEST', 'The request contains invalid data. Please check your inputs and try again.'],
-  [
-    'UNKNOWN_METHOD',
+const errorCodeToMessageMap: Record<ErrorCode, string> = {
+  RATE_LIMITED: 'Too many requests. Please wait a moment and try again.',
+  INVALID_REQUEST: 'The request contains invalid data. Please check your inputs and try again.',
+  UNKNOWN_METHOD:
     'An internal error occurred. Please try again or contact support if the issue persists.',
-  ],
-  [
-    'INTERNAL_ERROR',
+  INTERNAL_ERROR:
     'An internal error occurred. Please try again or contact support if the issue persists.',
-  ],
-  ['VALIDATION_ERROR', 'Validation failed. Please review your inputs and try again.'],
-  [
-    'DUPLICATE_DETECTED',
+  VALIDATION_ERROR: 'Validation failed. Please review your inputs and try again.',
+  DUPLICATE_DETECTED:
     'A definition with these details already exists. Please use a different combination.',
-  ],
-  ['NETWORK_ERROR', 'Network error. Please check your connection and try again.'],
-  ['UNAUTHORISED', 'You are not authorised to perform this action. Please check your permissions.'],
-  [
-    'FORBIDDEN',
+  NETWORK_ERROR: 'Network error. Please check your connection and try again.',
+  UNAUTHORISED: 'You are not authorised to perform this action. Please check your permissions.',
+  FORBIDDEN:
     'You do not have permission to access this application. Please contact your administrator.',
-  ],
-  ['NOT_FOUND', 'The requested resource was not found. Please refresh and try again.'],
-  ['UNTRUSTED_DATA', 'Required reference data could not be trusted or loaded.'],
-]);
+  NOT_FOUND: 'The requested resource was not found. Please refresh and try again.',
+  UNTRUSTED_DATA: 'Required reference data could not be trusted or loaded.',
+  IN_USE: 'This item is currently in use and cannot be deleted.',
+  DEFINITION_STALE:
+    'This assessment definition is out of date. Please review the linked documents and try again.',
+};
 
 /**
  * Returns a user-safe error message for a given error code.
@@ -59,11 +56,10 @@ const errorCodeToMessageMap = new Map<ErrorCode, string>([
  * @returns {string} User-safe error message.
  */
 export function mapErrorCodeToUserMessage(code: ErrorCode): string {
-  const message = errorCodeToMessageMap.get(code);
-  if (message === undefined) {
+  if (!Object.hasOwn(errorCodeToMessageMap, code)) {
     throw new Error(`Missing error mapping for code: ${code}`);
   }
-  return message;
+  return errorCodeToMessageMap[code];
 }
 
 /**
@@ -156,13 +152,5 @@ export function mapErrorToUserMessage(error: unknown): string {
   if (code) {
     return mapErrorCodeToUserMessage(code);
   }
-
-  // Fallback for errors without a code
-  if (error instanceof Error) {
-    // Don't expose internal error messages directly
-    // Use a generic message to avoid leaking implementation details
-    return 'An error occurred. Please try again.';
-  }
-
   return 'An error occurred. Please try again.';
 }

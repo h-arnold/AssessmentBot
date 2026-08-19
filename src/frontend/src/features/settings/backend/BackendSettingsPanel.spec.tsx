@@ -48,6 +48,16 @@ function getField(label: string) {
 }
 
 /**
+ * Returns the Ant Design extra region for the form item labelled by the provided name.
+ *
+ * @param {string} label The visible field label.
+ * @returns {HTMLElement | null} The form item's extra region, or null when absent.
+ */
+function getFormItemExtraRegion(label: string): HTMLElement | null {
+  return getField(label).closest('.ant-form-item')?.querySelector('.ant-form-item-extra') ?? null;
+}
+
+/**
  * Builds a mocked hook state with the planned post-save refresh boundary flag.
  *
  * @param {Partial<BackendSettingsPanelHookState>} overrides Hook-state overrides.
@@ -324,8 +334,11 @@ describe('BackendSettingsPanel', () => {
 
     const { rerender } = renderBackendSettingsPanel();
 
-    expect(screen.getByText(/stored api key already exists/i)).toBeInTheDocument();
-    expect(screen.getByText(/leave this field blank to keep it/i)).toBeInTheDocument();
+    const apiKeyFormItemExtra = getFormItemExtraRegion('API key');
+
+    expect(apiKeyFormItemExtra).not.toBeNull();
+    expect(apiKeyFormItemExtra as HTMLElement).toHaveTextContent(/stored api key already exists/i);
+    expect(apiKeyFormItemExtra as HTMLElement).toHaveTextContent(/leave this field blank to keep it/i);
 
     useBackendSettingsMock.mockImplementation(() => ({
       ...backendSettingsHookState,
@@ -348,8 +361,13 @@ describe('BackendSettingsPanel', () => {
 
     rerender(<BackendSettingsPanel />);
 
-    expect(screen.queryByText(/stored api key already exists/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/enter a new api key/i)).toBeInTheDocument();
+    const refreshedApiKeyFormItemExtra = getFormItemExtraRegion('API key');
+
+    expect(refreshedApiKeyFormItemExtra).not.toBeNull();
+    expect(refreshedApiKeyFormItemExtra as HTMLElement).not.toHaveTextContent(
+      /stored api key already exists/i
+    );
+    expect(refreshedApiKeyFormItemExtra as HTMLElement).toHaveTextContent(/enter a new api key/i);
   });
 
   it('binds boolean and numeric fields through Ant Design form state', async () => {
@@ -422,7 +440,7 @@ describe('BackendSettingsPanel', () => {
     );
   });
 
-  it('renders the auth group email field with its label, email input type, and static helper text', () => {
+  it('renders the auth group email field with its label, email input type, and static helper text in the form item extra region', () => {
     useBackendSettingsMock.mockImplementation(() => ({
       ...backendSettingsHookState,
       backendSettingsFormValues: {
@@ -447,11 +465,13 @@ describe('BackendSettingsPanel', () => {
     const authGroupEmailField = getField('Auth group email');
 
     expect(authGroupEmailField).toHaveAttribute('type', 'email');
-    expect(
-      screen.getByText(
-        'Enter the email address of the Google Group whose members are allowed to access this application.'
-      )
-    ).toBeInTheDocument();
+
+    const authGroupEmailFormItemExtra = getFormItemExtraRegion('Auth group email');
+
+    expect(authGroupEmailFormItemExtra).not.toBeNull();
+    expect(authGroupEmailFormItemExtra as HTMLElement).toHaveTextContent(
+      'Enter the email address of the Google Group whose members are allowed to access this application.'
+    );
 
     const backendSectionCard = screen
       .getByRole('heading', { level: 3, name: 'Backend' })
