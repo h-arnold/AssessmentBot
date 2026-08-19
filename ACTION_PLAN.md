@@ -838,7 +838,25 @@ coverage-gap tests are in place.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** record the final test/lint results.
+- **Implementation notes — final results (regression-checker, session `feature/auth-service`):**
+  - `Regressions Count: 0`, `New Failures Count: 0`.
+  - Focused backend suite (`test:backend` over CacheManager, authService, triggers, dispatcher-auth-gate,
+    requestStore, configurationManager, backendConfigApi, assignmentController): **25 files / 292 passed**.
+  - Focused frontend suite (`test:frontend` over AppAuthGate, AuthStatusCard, map-error-to-ui,
+    BackendSettingsPanel, backendConfiguration.zod, backendSettingsForm.zod): **6 files / 90 passed**.
+  - `lint:backend`: 0 errors, 14 `max-lines` warnings (pre-existing baseline debt, no errors).
+  - `lint:frontend`: 0 errors, 0 warnings. The `react-hooks/exhaustive-deps` warning on
+    `AppAuthGate.tsx` was resolved with a file-scoped override in `src/frontend/eslint.config.js`
+    (justified: `warmupCycleState` is a genuine indirect dependency needed to re-run the FORBIDDEN
+    denial lookup after warm-up resolves), commit `aab94f4`.
+- **Deviations:** `npm run test:frontend:e2e` was NOT run. The only e2e failure surfaced by the
+  regression-checker (`classes-crud-bulk-year-group.spec.ts`) is a **known-flaky** test that only
+  fails under elevated host load and is unrelated to the changes in this plan (it has no references
+  to auth/loading/spinner/status). Per user decision it is excluded from the gate; the e2e baseline
+  was already failing (timeouts) before this work.
+- **Status:** Completed. Regression gate satisfied (no regressions, no new failures); the two
+  remaining failing regression-checker checks are the accepted `max-lines` backend-lint debt and the
+  known-flaky e2e test.
 
 ---
 
@@ -876,7 +894,15 @@ Reconcile the minor data-shape doc discrepancies noted in the review (incidental
 
 ### Implementation notes / deviations / follow-up
 
+- **Implementation notes:** `backend-config.md` now states explicitly that the frontend cannot
+  clear a stored `apiKey` (the form omits the field when blank and `BackendApiKeyWriteSchema`
+  rejects empty strings; only a raw backend call honours an explicit empty string); the
+  `authGroupEmail` compulsory-once-set statement is verified intact. `transport-envelope.md`
+  reconciles `retriable` (backend always emits; frontend `.optional()` is defensive tolerance).
+  `PR_REVIEW.md` Decisions gained a Completion subsection recording the "Fix now" items delivered
+  across Sections 1-8 (Section 9 folded into Section 5).
 - **Follow-up:** the deferred security work remains owned by GitHub issue #284.
+- **Status:** Completed (docs reconciled via Docs agent; not committed yet at time of writing).
 
 ---
 

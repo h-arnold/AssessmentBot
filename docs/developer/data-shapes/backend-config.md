@@ -195,8 +195,10 @@ Key contract notes:
   `{ success: false, error: <aggregated> }`.
 - The frontend form mapper (`mapBackendSettingsFormValuesToBackendConfigWriteInput`) only includes
   `apiKey` when the form value is non-empty, preventing accidental clearing of the stored key.
-- An explicit empty-string `apiKey` in the request **clears** the stored key (the backend
-  `setProperty` serialises `''` → `"''"` and writes it).
+- A raw backend call with an explicit empty-string `apiKey` **clears** the stored key (the backend
+  `setProperty` serialises `''` → `"''"` and writes it). This capability is **backend-only**: the
+  frontend write schema rejects empty strings, so UI users cannot clear a stored key (see
+  discrepancy #4).
 - This endpoint is wrapped by the standard `apiHandler` transport envelope
   (see [transport-envelope.md](transport-envelope.md)).
 - `authGroupEmail` write: `setBackendConfig_()` adds an
@@ -291,6 +293,11 @@ None. BackendConfig is a standalone contract with no embedded sub-entities.
    echoing the masked transport value into a password input. `mapBackendSettingsFormValuesToBackendConfigWriteInput()`
    only includes `apiKey` in the write payload when the form value is non-empty (preserving
    the stored key across a save that doesn't touch the API key field).
+   **Frontend clearing limitation:** because the form mapper omits `apiKey` when blank and
+   `BackendApiKeyWriteSchema` rejects an empty string (the API-key token pattern requires at
+   least one alphanumeric segment), the frontend UI **cannot** clear a stored key. Clearing
+   is honoured only by a raw backend call that sends an explicit empty-string `apiKey`; UI
+   users cannot invoke it.
    **Classification: Aligned** — deliberate transformation layer between transport schema
    and form state.
 

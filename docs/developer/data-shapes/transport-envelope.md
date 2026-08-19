@@ -92,6 +92,11 @@ z.object({
 });
 ```
 
+> **`retriable` optionality:** the backend always emits `retriable` on every error envelope
+> (`_failure()` in `z_apiHandler.js` includes it unconditionally; it is `true` only for
+> `RATE_LIMITED`). The frontend `z.boolean().optional()` is a defensive tolerance so a
+> missing field does not break envelope parsing. The backend contract remains authoritative.
+
 ## Key contract notes
 
 - **Date serialisation:** `google.script.run` prohibits `Date` objects in

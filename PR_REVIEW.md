@@ -229,3 +229,22 @@ _No Critical findings. Pass — docs and code are in lockstep._
 - **[Incidental] `ABLogger.debug` logs `params` (may include `apiKey`) — `z_apiHandler.js:134` / `ABLogger.js:159-162`** — Decision: Wontfix. Rationale: debug-level logging only, not enabled in production; user accepts.
 - **[Incidental] Dead-code/duplication batch** (unreachable `toastMessage` `AssignmentController.js:52-59,67-77`; redundant `mapErrorToUserMessage` conditional `map-error-to-ui.ts:160-167`; `REQUIRED_SCOPES` duplicating manifest `TriggerController.js:161-177`; two synced error enums `map-error-to-ui.ts:6-18 vs 29-53,61-67`; double `startupWarmupCycles` lookup `AppAuthGate.tsx:42-53 vs 192-195`; lossy `apiConfig.js:142,161` logs; double `requireParams` in `ReferenceDataController`; `getCachedAssessment` re-implements `get` `CacheManager.js:102-119`; `_success` error level `z_apiHandler.js:393`) — Decision: Fix now. Approach: apply each cleanup directly. Rationale: user wants these pre-existing slop items tidied as part of this PR.
 - **[Incidental] Docs/other batch** (data-shape doc discrepancies: empty-apiKey clearing unreachable, `DEFINITION_STALE`/`IN_USE` omitted from frontend error map, `retriable` optional-vs-always, `blank authGroupEmail` wording; JSDoc realistic api-key token `98_ConfigurationManagerClass.js:14`; `safeParseConfigObject_` empty catch `98:54`; `_runCompletionPhase` outside try/catch `z_apiHandler.js:200`; builder eslint widening to `.opencode/plugins`; `AuthStatusCard` Card+Result nesting) — Decision: Fix now. Approach: correct docs and code where noted, and tidy the flagged items. Rationale: user wants full alignment of docs and code on this PR.
+
+## Completion
+
+The **"Fix now"** decisions above have been delivered on `feature/auth-service` via
+`ACTION_PLAN.md` Sections 1-8, with **Section 9 folded into Section 5** (no additional work —
+the incidental error-handling items were already covered by Section 5's acceptance criteria).
+Each section completed its TDD Red/Green loop with clean reviews, and the regression gate
+reported 0 regressions / 0 new failures.
+
+Two "Fix now" findings were deliberately re-scoped with the user and are **not** changed:
+the `AuthService.checkAccess` option-parameter defaults (kept as per-call options — core
+principle #12 governs module-state defaults, not method option parameters) and the
+per-request full config-blob parse (accepted as the GAS minimum). See `ACTION_PLAN.md`
+"Decision reconciliation".
+
+Deferred security items remain owned by GitHub issue **#284**. The incidental data-shape doc
+discrepancies (empty-`apiKey` clearing unreachable, `DEFINITION_STALE`/`IN_USE` error codes,
+`retriable` optional-vs-always, `authGroupEmail` blank wording) were reconciled in the
+documentation pass per `ACTION_PLAN.md` "Documentation and rollout notes".
