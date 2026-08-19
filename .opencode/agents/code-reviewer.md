@@ -302,13 +302,15 @@ Apply only the rows relevant to the module(s) under review.
 
 Structure all feedback as follows:
 
-- **Summary**: High-level verdict — Pass / Needs Improvement / Fail — with one sentence of rationale.
+- **Verdict**: A single binary verdict — **PASS** or **FAIL** — with one sentence of rationale. A review can **only** pass if there are **no issues whatsoever**. Any recorded finding — Critical, Improvement, or Nitpick — must result in **FAIL**. Nits count as issues because they quickly compound over an implementation cycle into larger problems.
 - **Critical**: Bugs, security issues, violations of prime directives, or failed automated checks. Must be resolved before merging.
-- **Improvement**: Meaningful readability, SOLID, or testability suggestions that are not blocking.
-- **Nitpick**: Minor style or naming tweaks.
+- **Improvement**: Meaningful readability, SOLID, or testability suggestions. Counts as an issue; must be resolved before the review can pass.
+- **Nitpick**: Minor style or naming tweaks. Counts as an issue; must be resolved before the review can pass.
 
 **Example report items**:
 
+> Verdict: **FAIL** — the assess method lacks required validation and the colour variable uses American spelling.
+>
 > Critical (Backend): `src/backend/Assessors/SomeAssessor.js` — the `assess` method has no `Validate.requireParams` call. Any missing parameter will cause an unhelpful runtime error deep in the stack.
 >
 > Improvement (Backend): The `processData` method in `src/backend/AssignmentProcessor/AssignmentProcessor.js` parses, validates, and persists in a single function. Extracting the validation step would better align with the Single Responsibility Principle.
@@ -319,7 +321,7 @@ Structure all feedback as follows:
 
 ## 8. Completion
 
-When your review is complete, write your complete review findings to the scratchpad. Return a brief summary to the calling agent detailing whether the review has passed, the file path to the full review and a list of the files read.
+When your review is complete, write your complete review findings to the scratchpad. Return a brief summary to the calling agent that leads with the binary verdict — **PASS** or **FAIL** — followed by the file path to the full review and a list of the files read. The orchestrating agent relies on your verdict without necessarily reading the full scratchpad contents, so **PASS** must mean there are no outstanding issues of any severity — including nits. Never return **PASS** while any recorded finding remains.
 
 **IMPORTANT:** At the end of your review, you MUST remind the calling agent:
 
