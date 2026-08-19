@@ -902,7 +902,64 @@ Reconcile the minor data-shape doc discrepancies noted in the review (incidental
   `PR_REVIEW.md` Decisions gained a Completion subsection recording the "Fix now" items delivered
   across Sections 1-8 (Section 9 folded into Section 5).
 - **Follow-up:** the deferred security work remains owned by GitHub issue #284.
-- **Status:** Completed (docs reconciled via Docs agent; not committed yet at time of writing).
+- **Status:** Completed and committed (`49db5c7`).
+
+---
+
+## De-sloppification pass
+
+### Objective
+
+Run the `De-Sloppification` agent over the full plan diff and apply the in-scope, behaviour-preserving
+cleanups it identifies, keeping the section loop green.
+
+### Delegation
+
+- `De-Sloppification` agent review: completed (findings returned, no edits made by the agent).
+- `Implementation` agent: applied the three fixes below; all checks green.
+
+### Findings addressed (in scope, plan-introduced)
+
+1. `src/frontend/src/features/auth/AuthStatusCard.spec.tsx` — removed dead
+   `vi.mock('./useAuthorisationStatus', ...)` + hoisted mock, `beforeEach`/`afterEach`, and the
+   `useAuthorisationStatusMock.mockReturnValue({ isAuthorised: false, ... })` call. `AuthStatusCard`
+   no longer imports the hook, so the mock was misleading dead scaffolding. (This was the deferred
+   nitpick from the section loop.)
+2. `src/backend/y_controllers/ReferenceDataController.js` — extracted the triplicated
+   `payload` guard into a single private `_requireUpdatePayload(payload)` helper used by
+   `updateCohort`, `updateYearGroup`, and `updateAssignmentTopic`. Identical guard semantics.
+3. `src/backend/ConfigurationManager/01_configKeysAndSchema.js` — removed the redundant `normalise`
+   for `JSON_DB_LOG_LEVEL`; `validate` already normalises via `validateLogLevel_` (returns
+   uppercase), so the property was a no-op.
+
+### Findings deferred (out of scope)
+
+- `__CONFIG_MANAGER_STATICS_INITIALISED__` dead flag in `99_configManagerStatics.js` — pre-existing,
+  outside the plan diff; tracked separately, not addressed here.
+- `AppAuthGate.tsx` near-duplicate warm-up handlers — optional, low-risk, left unchanged to avoid
+  behavioural churn.
+
+### Verification
+
+- `npm run lint:frontend` → 0 errors, 0 warnings.
+- `npm run test:frontend -- AuthStatusCard` → 3 tests pass.
+- `npm run test:backend -- tests/controllers/referenceDataController tests/configurationManager`
+  → 141 tests pass.
+- `npx tsc -b tsconfig.json` (frontend) → exit 0.
+
+### Final regression note (regression-checker, session `feature/auth-service`)
+
+- **New Failures Count: 0** — no passing test now fails. Substantive gate condition satisfied.
+- 2 flagged `backend-lint-check` items are `max-lines` **warnings** on
+  `98_ConfigurationManagerClass.js` (668→669) and `z_apiHandler.js` (508→513). Both files already
+  carried `max-lines` warnings at the stored baseline (14 such warnings baseline-wide); the delta is
+  a cosmetic line-count tick within an already-accepted, pre-existing warning category, and neither
+  file was touched by this change set. `max-lines` is documented accepted baseline debt, out of
+  scope for this plan.
+- `frontend-e2e-check` reports 227 fixes, **0 regressions, 0 new failures** — the known flaky
+  under-host-load suite the user authorised to ignore.
+
+- **Status:** Completed (fixes applied and committed; see De-sloppification commit).
 
 ---
 
