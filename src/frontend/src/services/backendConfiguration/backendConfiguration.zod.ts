@@ -22,6 +22,13 @@ export const BackendApiKeyWriteSchema = z
 const MaskedApiKeySchema = z.string().refine(isMaskedBackendApiKeyValue);
 
 /**
+ * Shared auth-group-email transport schema: blank (allowed only when nothing is stored)
+ * or a valid email address. Reused by the read, write, and form schemas so the rule
+ * lives in exactly one place.
+ */
+export const authGroupEmailSchema = z.union([z.literal(''), z.email()]);
+
+/**
  * Transport schema for backend configuration reads.
  *
  * @remarks
@@ -43,7 +50,7 @@ export const BackendConfigSchema = z
     jsonDbLogLevel: NonEmptyStringSchema,
     jsonDbBackupOnInitialise: z.boolean(),
     jsonDbRootFolderId: z.string(),
-    authGroupEmail: z.union([z.literal(''), z.email()]).optional(),
+    authGroupEmail: authGroupEmailSchema.optional(),
     loadError: z.string().optional(),
   })
   .strict();
@@ -69,7 +76,7 @@ export const BackendConfigWriteInputSchema = z
     jsonDbLogLevel: NonEmptyStringSchema.optional(),
     jsonDbBackupOnInitialise: z.boolean().optional(),
     jsonDbRootFolderId: z.string().optional(),
-    authGroupEmail: z.union([z.literal(''), z.email()]).optional(),
+    authGroupEmail: authGroupEmailSchema.optional(),
   })
   .strict();
 
