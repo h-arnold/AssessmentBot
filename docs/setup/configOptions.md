@@ -6,6 +6,7 @@
     - [🌐 Backend Section](#-backend-section)
       - [🔑 API Key](#-api-key)
       - [🌍 URL](#-url)
+      - [📧 Auth Group Email](#-auth-group-email)
     - [🧩 Advanced Options Section](#-advanced-options-section)
       - [📦 Backend Assessor Batch Size](#-backend-assessor-batch-size)
       - [🖼️ Slides Fetch Batch Size](#-slides-fetch-batch-size)
@@ -27,7 +28,7 @@
 
 ### 🌐 Backend Section
 
-**Important:** The two Backend settings are _required_ for Assessment Bot to function.
+**Important:** The **API Key** and **URL** settings are _required_ for Assessment Bot to function. The **Auth Group Email** setting controls who can access the application (see below).
 
 #### 🔑 API Key
 
@@ -37,6 +38,20 @@ This authenticates you with the Assessment Bot LLM Service, which you should hav
 
 This is the URL of your deployed Assessment Bot LLM Service. It should look something like:
 `https://assessment-bot-backend.yourdomain.com/v1/assessor`
+
+#### 📧 Auth Group Email
+
+**Default:** empty (unset)
+
+The email address of the Google Group whose members are allowed to access this application.
+
+While this value is empty, the application is in _bootstrap mode_: anyone who can reach the app
+(within your Google Workspace domain) is granted access, which lets the first administrator reach
+this settings page. Once a group email is set, only members of that Google Group can use the
+application.
+
+The value is **compulsory once set** — you can change it to a different group email, but you
+cannot clear it back to empty from this page.
 
 ---
 
