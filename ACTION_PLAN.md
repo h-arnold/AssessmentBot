@@ -72,10 +72,27 @@ pre-existing on the branch and **out of scope** for this plan:
    (all frontend work is Vitest unit tests for Zod schemas, mapper, and panel). The E2E suite
    failure is pre-existing environment/branch debt and is not gated by this plan.
 
-**Regression-gate policy for this plan:** Because the agreed scope cannot clear these two
-pre-existing checks, the Regression Gate per section is satisfied by (a) the section's own
-`Section checks` commands passing, and (b) no _new_ lint error or test failure being introduced in
-files touched by this plan beyond the already-documented `max-lines` debt. The full
+**§4 accepted debt (user-authorised Regression Gate override):** §4 made `authMode` a **required**
+field of `BackendSettingsFormSchema`. The consumer `backendSettingsFormMapper.ts` (and the panel
+form values it feeds via `form.setFieldsValue`) do not yet populate `authMode`, so
+`BackendSettingsFormSchema.safeParse(...)` now fails inside `BackendSettingsPanel.tsx` and the
+regression checker reports **3 new failing tests** in `BackendSettingsPanel.spec.tsx`
+(`binds boolean and numeric fields through Ant Design form state`,
+`moves focus to the first invalid field after submit failure`,
+`sets a field error and skips the save when a configured auth group email is cleared on submit`).
+These failures are expected and will be cleared by §5 (mapper `authMode` mapping + dropdown control).
+By explicit user decision the §4 Regression Gate is overridden on this occasion, and these 3 panel
+test failures are recorded as accepted §4 debt rather than blocking the §4 commit.
+
+**§4 max-lines growth (extension of debt item 1):** §1 (+~28 lines to `98_ConfigurationManagerClass.js`)
+and §3 (+~107 lines to `backendConfigApi.test.js`, with `z_apiHandler.js` also rising) increased the
+already-documented `max-lines` debt. These are the same pre-existing rule firing on larger files, not a
+distinct new failure, and remain accepted debt.
+
+**Regression-gate policy for this plan:** Because the agreed scope cannot clear the pre-existing
+checks, the Regression Gate per section is satisfied by (a) the section's own `Section checks`
+commands passing, and (b) no _new_ lint error or test failure being introduced beyond the
+already-documented `max-lines` debt and the §4 accepted panel-test debt above. The full
 regression-checker is re-run at §7 for a final comparison; any newly-introduced regression there
 blocks completion.
 
@@ -540,9 +557,20 @@ Frontend (`@src/frontend/src/services/backendConfiguration/backendConfiguration.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (filled during implementation)
-- **Deviations from plan:** (none yet)
-- **Follow-up implications for later sections:** §5 (mapper/panel) depends on this schema.
+- **Implementation notes:** `authModeSchema = z.enum(['googleGroups', 'none'])` defined and exported in
+  `backendConfiguration.zod.ts` (mirrors the `jsonDatabaseLogLevelValues` pattern; `@remarks` notes the
+  enum does not default — consumers apply the secure `googleGroups` default). `authMode` wired as
+  `.optional()` into `BackendConfigSchema` and `BackendConfigWriteInputSchema`, and as **required** into
+  `BackendSettingsFormSchema` (imported, not redefined). RED: 9 new tests added across
+  `backendConfiguration.zod.spec.ts` and `backendSettingsForm.zod.spec.ts` (8 fail pre-GREEN). GREEN:
+  schema changes + `validFormValues` fixture gains `authMode: 'googleGroups'`; the "requires authMode"
+  test omits the key via `delete` to stay meaningful. All 39 §4 section tests pass; `npm run lint:frontend`
+  clean; Code Review CLEAN. Commits: `feat:` f723f7a; paired `docs(plan):` commit on `feature/auth-service`.
+- **Deviations from plan:** None in the schema itself. (See Baseline technical debt for the accepted
+  §4 panel-test Regression Gate override.)
+- **Follow-up implications for later sections:** §5 (mapper/panel) must supply `authMode` to clear the
+  3 accepted-debt panel test failures and the §5 TS2741 type errors; §6 flips the `backend-config.md`
+  `authMode` entries to implemented.
 
 ---
 
