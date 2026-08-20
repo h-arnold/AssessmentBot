@@ -445,10 +445,23 @@ Backend transport (`@tests/api/backendConfigApi.test.js`, mirroring
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (filled during implementation)
-- **Deviations from plan:** (none yet)
+- **Implementation notes:** `getBackendConfig_()` now emits `authMode: configManager.getAuthMode()`
+  (always present, secure-default `googleGroups`). `setBackendConfig_()` gained an `updates` entry
+  `{ name: 'authMode', value: config.authMode, applySetting: (v) => configManager.setAuthMode(v) }`
+  that reuses the existing `safeSet` error aggregation, so an invalid value surfaces as
+  `{ success: false, error: 'Failed to save some configuration values: authMode: ...' }`.
+- **Deviations from plan:** The `buildBackendConfigResponse(overrides)` helper addition
+  (`authMode: 'googleGroups'`) was applied in the **GREEN** phase rather than RED. The existing
+  `backendConfigApi.test.js` asserts `response.data` equals `buildBackendConfigResponse()` for many
+  cases; adding `authMode` to the helper during RED (before `getBackendConfig_` emitted it) would
+  have broken those pre-existing assertions, violating the plan's own "existing get/setBackendConfig
+  tests green" requirement. Pairing the helper change with the production change in GREEN keeps RED
+  limited to the four intended new-test failures and leaves existing suites green throughout. This is a
+  justified, plan-preserving sequencing decision.
 - **Follow-up implications for later sections:** §4 (frontend schema) depends on this transport
-  contract.
+  contract. Rollout lockstep: the §4 frontend `authMode` schema must ship **before or atomically
+  with** this §3 backend transport (frontend-ahead is safe because `authMode` is `.optional()`; see
+  §3 Deployment coordination and `backend-config.md` discrepancy #8).
 
 ---
 
