@@ -30,6 +30,11 @@ const jsonDatabaseLogLevelOptions = [
   { label: 'ERROR', value: 'ERROR' },
 ];
 
+const authModeOptions = [
+  { label: 'Google Groups', value: 'googleGroups' },
+  { label: 'None', value: 'none' },
+];
+
 type BackendSettingsFieldName = Exclude<keyof BackendSettingsForm, 'hasApiKey'>;
 type BackendSettingsFieldSection = 'Backend' | 'Advanced' | 'Database';
 
@@ -54,6 +59,7 @@ const backendSettingsFieldNames = [
   'jsonDbLogLevel',
   'jsonDbRootFolderId',
   'authGroupEmail',
+  'authMode',
 ] as const satisfies ReadonlyArray<BackendSettingsFieldName>;
 
 const backendSettingsFieldDescriptors = [
@@ -137,6 +143,16 @@ const backendSettingsFieldDescriptors = [
     withSchemaValidation: true,
     helperText:
       'Enter the email address of the Google Group whose members are allowed to access this application.',
+  },
+  // SECURITY: 'none' bypasses the access gate — development/testing only, never production.
+  {
+    name: 'authMode',
+    label: 'Authentication options',
+    renderInput: () => <Select options={authModeOptions} />,
+    section: 'Backend',
+    withSchemaValidation: true,
+    helperText:
+      "Controls how access to this application is verified. 'None' disables the access gate entirely — for development and testing only; do not use in production.",
   },
 ] as const satisfies ReadonlyArray<BackendSettingsFieldDescriptor>;
 

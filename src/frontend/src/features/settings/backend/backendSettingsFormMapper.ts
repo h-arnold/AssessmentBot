@@ -32,6 +32,7 @@ export function mapBackendConfigToBackendSettingsFormValues(
     jsonDbBackupOnInitialise: backendConfig.jsonDbBackupOnInitialise,
     jsonDbRootFolderId: backendConfig.jsonDbRootFolderId,
     authGroupEmail: backendConfig.authGroupEmail ?? '',
+    authMode: backendConfig.authMode ?? 'googleGroups',
   };
 }
 
@@ -67,6 +68,7 @@ export function mapBackendSettingsFormValuesToBackendConfigWriteInput(
     jsonDbBackupOnInitialise: formValues.jsonDbBackupOnInitialise,
     jsonDbRootFolderId: formValues.jsonDbRootFolderId,
     authGroupEmail: formValues.authGroupEmail,
+    authMode: formValues.authMode,
   } as BackendConfigWriteInput;
 
   if (formValues.apiKey !== '') {

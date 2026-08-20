@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BackendSettingsPanel } from './BackendSettingsPanel';
 import type { useBackendSettings } from './useBackendSettings';
@@ -27,6 +28,8 @@ const slowPanelInteractionTimeoutMs = 30_000;
 vi.mock('./useBackendSettings', () => ({
   useBackendSettings: useBackendSettingsMock,
 }));
+
+let user: ReturnType<typeof userEvent.setup>;
 
 /**
  * Renders the backend settings panel for one test scenario.
@@ -77,6 +80,7 @@ function buildRefreshingBackendSettingsState(
 
 describe('BackendSettingsPanel', () => {
   beforeEach(() => {
+    user = userEvent.setup();
     useBackendSettingsMock.mockImplementation(() => backendSettingsHookState);
   });
 
@@ -259,6 +263,7 @@ describe('BackendSettingsPanel', () => {
           jsonDbBackupOnInitialise: true,
           jsonDbRootFolderId: 'folder-1234',
           authGroupEmail: '',
+          authMode: 'googleGroups',
         },
         hasApiKey: true,
       })
@@ -297,6 +302,7 @@ describe('BackendSettingsPanel', () => {
           jsonDbBackupOnInitialise: true,
           jsonDbRootFolderId: 'folder-1234',
           authGroupEmail: '',
+          authMode: 'googleGroups',
         },
         hasApiKey: false,
       }));
@@ -383,10 +389,11 @@ describe('BackendSettingsPanel', () => {
         jsonDbMasterIndexKey: 'master-index',
         jsonDbLockTimeoutMs: 15_000,
         jsonDbLogLevel: 'INFO',
-        jsonDbBackupOnInitialise: false,
-        jsonDbRootFolderId: 'folder-1234',
-        authGroupEmail: '',
-      },
+          jsonDbBackupOnInitialise: false,
+          jsonDbRootFolderId: 'folder-1234',
+          authGroupEmail: '',
+          authMode: 'googleGroups',
+        },
       hasApiKey: true,
     }));
 
@@ -501,6 +508,7 @@ describe('BackendSettingsPanel', () => {
           jsonDbBackupOnInitialise: true,
           jsonDbRootFolderId: 'folder-1234',
           authGroupEmail: 'teachers@school.edu',
+          authMode: 'googleGroups',
         },
         hasApiKey: true,
       }));
@@ -520,6 +528,54 @@ describe('BackendSettingsPanel', () => {
           'ant-form-item-has-error'
         );
       });
+    },
+    slowPanelInteractionTimeoutMs
+  );
+
+  it(
+    'renders the Authentication options dropdown with both options and the security helper text',
+    async () => {
+      useBackendSettingsMock.mockImplementation(() => ({
+        ...backendSettingsHookState,
+        backendSettingsFormValues: {
+          hasApiKey: true,
+          apiKey: '',
+          backendUrl: 'https://backend.example.com',
+          backendAssessorBatchSize: 30,
+          slidesFetchBatchSize: 20,
+          daysUntilAuthRevoke: 60,
+          jsonDbMasterIndexKey: 'master-index',
+          jsonDbLockTimeoutMs: 15_000,
+          jsonDbLogLevel: 'INFO',
+          jsonDbBackupOnInitialise: true,
+          jsonDbRootFolderId: 'folder-1234',
+          authGroupEmail: '',
+        },
+        hasApiKey: true,
+      }));
+
+      renderBackendSettingsPanel();
+
+      const authenticationOptionsField = getField('Authentication options');
+
+      expect(authenticationOptionsField).toBeInTheDocument();
+      expect(authenticationOptionsField.closest('.ant-select')).not.toBeNull();
+
+      const authenticationOptionsFormItemExtra = getFormItemExtraRegion(
+        'Authentication options'
+      );
+
+      expect(authenticationOptionsFormItemExtra).not.toBeNull();
+      expect(authenticationOptionsFormItemExtra as HTMLElement).toHaveTextContent(
+        /development/i
+      );
+      expect(authenticationOptionsFormItemExtra as HTMLElement).toHaveTextContent(
+        /production/i
+      );
+
+      await user.click(authenticationOptionsField);
+      expect(await screen.findByText('Google Groups')).toBeInTheDocument();
+      expect(screen.getByText('None')).toBeInTheDocument();
     },
     slowPanelInteractionTimeoutMs
   );

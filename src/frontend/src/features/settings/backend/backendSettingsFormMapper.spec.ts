@@ -145,3 +145,39 @@ describe('backendSettingsFormMapper', () => {
     });
   });
 });
+
+describe('authMode mapping', () => {
+  it('maps authMode through from the backend payload into form values', () => {
+    const formValues = mapBackendConfigToBackendSettingsFormValues({
+      ...maskedBackendConfig,
+      authMode: 'none',
+    } as unknown as Parameters<typeof mapBackendConfigToBackendSettingsFormValues>[0]);
+
+    expect(formValues).toMatchObject({
+      authMode: 'none',
+    });
+  });
+
+  it('defaults a missing authMode to googleGroups when mapping backend payload into form values', () => {
+    const formValues = mapBackendConfigToBackendSettingsFormValues(
+      maskedBackendConfig as unknown as Parameters<
+        typeof mapBackendConfigToBackendSettingsFormValues
+      >[0]
+    );
+
+    expect(formValues).toMatchObject({
+      authMode: 'googleGroups',
+    });
+  });
+
+  it('maps authMode through from form values into the backend write payload', () => {
+    const writePayload = mapBackendSettingsFormValuesToBackendConfigWriteInput({
+      ...storedKeyFormValues,
+      authMode: 'none',
+    } as unknown as Parameters<typeof mapBackendSettingsFormValuesToBackendConfigWriteInput>[0]);
+
+    expect(writePayload).toMatchObject({
+      authMode: 'none',
+    });
+  });
+});
