@@ -45,6 +45,7 @@ function getBackendConfig_() {
     jsonDbBackupOnInitialise: configManager.getJsonDbBackupOnInitialise(),
     jsonDbRootFolderId: jsonDatabaseRootFolderId || '',
     authGroupEmail: configManager.getAuthGroupEmail(),
+    authMode: configManager.getAuthMode(),
   };
 
   return config;
@@ -126,6 +127,11 @@ function setBackendConfig_(config) {
       name: 'authGroupEmail',
       value: config.authGroupEmail,
       applySetting: (value) => configManager.setAuthGroupEmail(value),
+    },
+    {
+      name: 'authMode',
+      value: config.authMode,
+      applySetting: (value) => configManager.setAuthMode(value),
     },
   ];
 

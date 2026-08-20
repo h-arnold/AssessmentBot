@@ -17,6 +17,7 @@ function buildBackendConfigResponse(overrides = {}) {
     jsonDbBackupOnInitialise: false,
     jsonDbRootFolderId: 'folder-123',
     authGroupEmail: '',
+    authMode: 'googleGroups',
     ...overrides,
   };
 }
@@ -142,6 +143,7 @@ function createConfigurationManagerMock(
     ),
     setJsonDbRootFolderId: vi.fn(setterImplementations.setJsonDbRootFolderId || (() => {})),
     setAuthGroupEmail: vi.fn(setterImplementations.setAuthGroupEmail || (() => {})),
+    setAuthMode: vi.fn(setterImplementations.setAuthMode || (() => {})),
   };
 
   globalThis.ConfigurationManager = {

@@ -509,3 +509,110 @@ describe('backend configuration API transport', () => {
     expect(existsSync(legacyConfigurationGlobalsPath)).toBe(false);
   });
 });
+
+describe('backend configuration API transport — authMode', () => {
+  it('includes authMode defaulting to googleGroups when unset', () => {
+    const configurationManagerMock = createConfigurationManagerMock(
+      vi,
+      {},
+      {},
+      { allConfigurations: {} }
+    );
+
+    try {
+      const { ApiDispatcher } = loadApiHandlerModule();
+      const dispatcher = ApiDispatcher.getInstance();
+
+      const response = dispatcher.handle({
+        method: 'getBackendConfig',
+      });
+
+      expect(response.data.authMode).toBe('googleGroups');
+    } finally {
+      configurationManagerMock.restore();
+    }
+  });
+
+  it('calls setAuthMode with "none" when authMode is present in the setBackendConfig payload', () => {
+    const configurationManagerMock = createConfigurationManagerMock(vi);
+
+    try {
+      const { ApiDispatcher } = loadApiHandlerModule();
+      const dispatcher = ApiDispatcher.getInstance();
+
+      const response = dispatcher.handle({
+        method: 'setBackendConfig',
+        params: {
+          authMode: 'none',
+        },
+      });
+
+      expect(configurationManagerMock.manager.setAuthMode).toHaveBeenCalledWith('none');
+      expect(response).toEqual({
+        ok: true,
+        requestId: response.requestId,
+        data: { success: true },
+      });
+      expect(response.requestId).toEqual(expect.any(String));
+    } finally {
+      configurationManagerMock.restore();
+    }
+  });
+
+  it('calls setAuthMode with "googleGroups" when authMode is present in the setBackendConfig payload', () => {
+    const configurationManagerMock = createConfigurationManagerMock(vi);
+
+    try {
+      const { ApiDispatcher } = loadApiHandlerModule();
+      const dispatcher = ApiDispatcher.getInstance();
+
+      const response = dispatcher.handle({
+        method: 'setBackendConfig',
+        params: {
+          authMode: 'googleGroups',
+        },
+      });
+
+      expect(configurationManagerMock.manager.setAuthMode).toHaveBeenCalledWith('googleGroups');
+      expect(response).toEqual({
+        ok: true,
+        requestId: response.requestId,
+        data: { success: true },
+      });
+      expect(response.requestId).toEqual(expect.any(String));
+    } finally {
+      configurationManagerMock.restore();
+    }
+  });
+
+  it('returns a failed write with an aggregated authMode error for an invalid authMode value', () => {
+    const configurationManagerMock = createConfigurationManagerMock(
+      vi,
+      {},
+      {
+        setAuthMode: (value) => {
+          if (value !== 'none' && value !== 'googleGroups') {
+            throw new Error('Auth Mode must be either "googleGroups" or "none".');
+          }
+        },
+      }
+    );
+
+    try {
+      const { ApiDispatcher } = loadApiHandlerModule();
+      const dispatcher = ApiDispatcher.getInstance();
+
+      const response = dispatcher.handle({
+        method: 'setBackendConfig',
+        params: {
+          authMode: 'foo',
+        },
+      });
+
+      expect(response.data.success).toBe(false);
+      expect(response.data.error).toContain('authMode');
+    } finally {
+      configurationManagerMock.restore();
+    }
+  });
+});
