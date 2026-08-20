@@ -590,10 +590,8 @@ describe('backend configuration API transport — authMode', () => {
       vi,
       {},
       {
-        setAuthMode: (value) => {
-          if (value !== 'none' && value !== 'googleGroups') {
-            throw new Error('Auth Mode must be either "googleGroups" or "none".');
-          }
+        setAuthMode: () => {
+          throw new Error('persist failed');
         },
       }
     );

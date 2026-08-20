@@ -1,17 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Red-phase tests for ACTION_PLAN Section 5: FORBIDDEN error code + auth gate in ApiDispatcher.
+// These tests cover the API dispatcher auth gate in src/backend/z_Api/z_apiHandler.js,
+// including the authMode: 'none' bypass that the gate inherits from AuthService
+// (delivered in ACTION_PLAN Section 2). The gate runs AFTER request validation and
+// BEFORE the allowlist method lookup and `_runAdmissionPhase()`; on denial the gate
+// returns `_failure(requestId, API_ERROR_CODE_MAP.FORBIDDEN, 'Access denied.', false)`.
 //
-// The auth gate does not exist yet in src/backend/z_Api/z_apiHandler.js — the green
-// implementation agent will insert it AFTER request validation and BEFORE the allowlist
-// method lookup and `_runAdmissionPhase()`. On denial the gate returns
-// `_failure(requestId, API_ERROR_CODE_MAP.FORBIDDEN, 'Access denied.', false)`.
-//
-// These tests use the real AuthService singleton (delivered in Section 4) and mock its
-// dependencies (ConfigurationManager group email, Session active email, GroupsApp
-// registry) so the deny/fail-open/blank-email/GroupsApp-error cases fail against the
-// current un-gated dispatcher — the request proceeds to admission and dispatches instead
-// of returning FORBIDDEN. That missing-gate failure IS the intended red state.
+// The gate is exercised through the real AuthService singleton with mocked dependencies
+// (ConfigurationManager group email and authMode, Session active email, GroupsApp
+// registry), covering the authorised, deny, fail-open, blank-email and GroupsApp-error
+// cases.
 const AuthService = require('../../../src/backend/Utils/AuthService.js');
 const { withGlobalMocks } = require('../../helpers/globalMockManager.js');
 const {

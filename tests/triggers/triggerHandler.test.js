@@ -1,5 +1,5 @@
 /**
- * Tests for the triggerHandler entrypoint (ACTION_PLAN Section 8).
+ * Tests for the triggerHandler entrypoint (ACTION_PLAN Section 2).
  *
  * src/backend/Triggers/triggerHandler.js has been delivered (green phase complete); the
  * top-level require below loads the production module.
@@ -70,7 +70,7 @@ const mockProgressTracker = {
 const authGroup = { value: 'teachers@school.edu' };
 const authMode = { value: 'googleGroups' };
 
-// Module under test — created in the green phase (ACTION_PLAN Section 8).
+// Module under test — created in the green phase (ACTION_PLAN Section 2).
 const { triggerHandler } = require('../../src/backend/Triggers/triggerHandler.js');
 
 describe('triggerHandler', () => {

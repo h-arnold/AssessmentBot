@@ -1,11 +1,10 @@
 /**
  * AuthService unit tests.
  *
- * Red-phase tests for ACTION_PLAN Section 2. The module under test
- * (src/backend/Utils/AuthService.js) does not exist yet, so the top-level
- * require below fails to load until the green implementation lands — that is
- * the intended red state. The GAS harness stubs (Session, GroupsApp,
- * CacheService) are provisioned in tests/setupGlobals.js.
+ * Unit tests for the delivered AuthService (src/backend/Utils/AuthService.js);
+ * the authMode: 'none' bypass is exercised in the
+ * 'checkAccess — authMode none bypass' block. The GAS harness stubs (Session,
+ * GroupsApp, CacheService) are provisioned in tests/setupGlobals.js.
  *
  * AuthService reads AUTH_GROUP_EMAIL via ConfigurationManager.getInstance(),
  * resolves the caller email via Session.getActiveUser().getEmail(), delegates
