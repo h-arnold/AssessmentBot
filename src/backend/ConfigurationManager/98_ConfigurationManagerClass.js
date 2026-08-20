@@ -391,6 +391,34 @@ class ConfigurationManager extends BaseSingleton {
   }
 
   /**
+   * Returns the configured authentication mode.
+   *
+   * @remarks
+   * Secure-by-default: the method only returns `'none'` when the stored value is
+   * the exact literal `'none'`. Any other value (unset, blank, or unknown such as
+   * `'foo'`) resolves to `'googleGroups'`, the secure Google Groups mode. This
+   * prevents a malformed stored value from being emitted via `getBackendConfig_()`
+   * and rejected by the frontend `z.enum(...)` under `.strict()`.
+   *
+   * `'none'` is a TEMPORARY DEVELOPMENT MEASURE that bypasses the group-membership
+   * gate. It must never be used in production.
+   * @returns {'googleGroups'|'none'} The active authentication mode.
+   */
+  getAuthMode() {
+    const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.AUTH_MODE);
+    return value === 'none' ? 'none' : 'googleGroups';
+  }
+
+  /**
+   * Persists the authentication mode.
+   * @param {'googleGroups'|'none'} value - The authentication mode to store.
+   * @throws {Error} If the value is not a valid auth mode (validated by CONFIG_SCHEMA).
+   */
+  setAuthMode(value) {
+    this.setProperty(ConfigurationManager.CONFIG_KEYS.AUTH_MODE, value);
+  }
+
+  /**
    * Retrieves the configured URL for the backend service endpoint.
    * @returns {string} The backend URL, or empty string if not configured.
    */

@@ -28,6 +28,7 @@ const CONFIG_KEYS = Object.freeze({
   JSON_DB_BACKUP_ON_INITIALISE: 'jsonDbBackupOnInitialise',
   JSON_DB_ROOT_FOLDER_ID: 'jsonDbRootFolderId',
   AUTH_GROUP_EMAIL: 'authGroupEmail',
+  AUTH_MODE: 'authMode',
 });
 
 const CONFIG_SCHEMA = Object.freeze({
@@ -115,6 +116,14 @@ const CONFIG_SCHEMA = Object.freeze({
         throw new Error('Auth Group Email must be a valid email address.');
       }
       return trimmed;
+    },
+  },
+  [CONFIG_KEYS.AUTH_MODE]: {
+    storage: 'script',
+    validate: (v) => {
+      if (v === 'none') return 'none';
+      if (v === 'googleGroups') return 'googleGroups';
+      throw new Error('Auth Mode must be either "googleGroups" or "none".');
     },
   },
 });
