@@ -4,6 +4,10 @@ import {
   isBackendApiKeyToken,
   isDriveFolderId,
 } from '../../../services/backendConfiguration/backendConfigurationValidation';
+import {
+  authGroupEmailSchema,
+  authModeSchema,
+} from '../../../services/backendConfiguration/backendConfiguration.zod';
 
 const backendAssessorBatchSizeMinimum = 1;
 const backendAssessorBatchSizeMaximum = 500;
@@ -69,6 +73,8 @@ export const BackendSettingsFormSchema = z
       .refine((value) => value === '' || isDriveFolderId(value), {
         message: 'JSON DB Root Folder ID must match the backend Drive folder identifier contract.',
       }),
+    authGroupEmail: authGroupEmailSchema,
+    authMode: authModeSchema,
   })
   .superRefine((value, context) => {
     const isTokenInvalid = !isBackendApiKeyToken(value.apiKey);

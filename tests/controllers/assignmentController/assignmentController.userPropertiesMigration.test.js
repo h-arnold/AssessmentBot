@@ -1,11 +1,15 @@
 /**
- * Tests for UserProperties migration in AssignmentController.
+ * Tests for the trigger-context migration in AssignmentController.
  *
- * Verifies that startProcessing and processSelectedAssignment use
- * GASPropertiesUtils (UserProperties) instead of direct PropertiesService
- * calls (DocumentProperties), and that applyDocumentProperties,
- * clearDocumentProperties, saveStartAndShowProgress, and
- * createDefinitionFromWizardInputs have been removed.
+ * startProcessing stores task context via
+ * TriggerController.storeTriggerContext() (Script Properties keyed by
+ * triggerUid) and no longer uses GASPropertiesUtils (UserProperties) for task
+ * context, and applyDocumentProperties, clearDocumentProperties,
+ * saveStartAndShowProgress, and createDefinitionFromWizardInputs have been
+ * removed.
+ *
+ * processSelectedAssignment receives task params directly and must NOT read
+ * from or clean up UserProperties — triggerHandler() owns all cleanup.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
@@ -46,6 +50,7 @@ const mockTriggerController = {
   createTimeBasedTrigger: vi.fn(),
   deleteTriggerById: vi.fn(),
   removeTriggers: vi.fn(),
+  storeTriggerContext: vi.fn(),
 };
 globalThis.TriggerController = vi.fn().mockImplementation(function () {
   return mockTriggerController;
@@ -117,79 +122,51 @@ describe('AssignmentController - UserProperties Migration', () => {
   });
 
   // =====================================================================
-  // startProcessing — UserProperties
+  // startProcessing — trigger context via TriggerController
   // =====================================================================
 
   describe('startProcessing', () => {
-    it('stores trigger context via GASPropertiesUtils.getUserProperties()', () => {
+    it('does NOT use GASPropertiesUtils.getUserProperties() for task context', () => {
       controller.startProcessing('assignment-456', 'Essay_1_defKey', 'course-123');
 
-      // ASSERTION: This will FAIL (RED) because current code calls
-      // PropertiesService.getDocumentProperties() instead of
-      // GASPropertiesUtils.getUserProperties()
-      expect(GASPropertiesUtils.getUserProperties).toHaveBeenCalled();
-      expect(PropertiesService.getDocumentProperties).not.toHaveBeenCalled();
+      // NEW CONTRACT: task context is stored via
+      // TriggerController.storeTriggerContext() in Script Properties, so
+      // startProcessing() must not read from UserProperties at all.
+      expect(GASPropertiesUtils.getUserProperties).not.toHaveBeenCalled();
     });
 
-    it('uses GASPropertiesUtils.applyProperties() instead of this.applyDocumentProperties()', () => {
+    it('stores trigger context via TriggerController.storeTriggerContext() with the triggerUid, method and params', () => {
       controller.startProcessing('assignment-456', 'Essay_1_defKey', 'course-123');
 
-      // ASSERTION: This will FAIL (RED) because current code calls
-      // this.applyDocumentProperties() instead of GASPropertiesUtils.applyProperties()
-      expect(GASPropertiesUtils.applyProperties).toHaveBeenCalled();
-      expect(PropertiesService.getDocumentProperties).not.toHaveBeenCalled();
-    });
-
-    it('passes correct propertyMap to GASPropertiesUtils.applyProperties()', () => {
-      controller.startProcessing('assignment-456', 'Essay_1_defKey', 'course-123');
-
-      // ASSERTION: This will FAIL (RED) — same reason as above
-      expect(GASPropertiesUtils.applyProperties).toHaveBeenCalledWith(expect.anything(), {
-        assignmentId: 'assignment-456',
-        definitionKey: 'Essay_1_defKey',
-        courseId: 'course-123',
-        triggerId: 'trigger-789',
+      // NEW CONTRACT: task context is written through
+      // TriggerController.storeTriggerContext(), keyed by the triggerUid
+      // returned by createTimeBasedTrigger() and carrying method
+      // 'processSelectedAssignment' plus the direct task params.
+      expect(mockTriggerController.storeTriggerContext).toHaveBeenCalledWith('trigger-789', {
+        method: 'processSelectedAssignment',
+        params: {
+          assignmentId: 'assignment-456',
+          definitionKey: 'Essay_1_defKey',
+          courseId: 'course-123',
+        },
       });
-      expect(PropertiesService.getDocumentProperties).not.toHaveBeenCalled();
+    });
+
+    it('creates the trigger targeting triggerHandler', () => {
+      controller.startProcessing('assignment-456', 'Essay_1_defKey', 'course-123');
+
+      // NEW CONTRACT: the time-based trigger must target the single public
+      // triggerHandler() entrypoint, not triggerProcessSelectedAssignment.
+      expect(mockTriggerController.createTimeBasedTrigger).toHaveBeenCalledWith('triggerHandler');
     });
   });
 
   // =====================================================================
-  // processSelectedAssignment — UserProperties reads & cleanup
+  // processSelectedAssignment — direct-params contract (no UserProperties)
   // =====================================================================
 
   describe('processSelectedAssignment', () => {
     beforeEach(() => {
-      // Setup lock to succeed
-      const mockLock = {
-        tryLock: vi.fn().mockReturnValue(true),
-        releaseLock: vi.fn(),
-      };
-      globalThis.LockService.getDocumentLock.mockReturnValue(mockLock);
-
-      // Setup default property mocks so processSelectedAssignment doesn't
-      // throw "Missing parameters" during the try block preamble
-      mockDocProperties.getProperty.mockImplementation((key) => {
-        const defaults = {
-          assignmentId: 'assignment-456',
-          definitionKey: 'Essay_1_defKey',
-          triggerId: 'trigger-789',
-          courseId: 'course-123',
-        };
-        return defaults[key] ?? null;
-      });
-
-      // Also provide user properties mock (migrated code will read from here)
-      userPropertiesMock.getProperty.mockImplementation((key) => {
-        const defaults = {
-          assignmentId: 'assignment-456',
-          definitionKey: 'Essay_1_defKey',
-          triggerId: 'trigger-789',
-          courseId: 'course-123',
-        };
-        return defaults[key] ?? null;
-      });
-
       // Mock definition controller returns a valid definition
       const mockDefinition = {
         definitionKey: 'Essay_1_defKey',
@@ -237,35 +214,28 @@ describe('AssignmentController - UserProperties Migration', () => {
       };
     });
 
-    it('reads trigger context from GASPropertiesUtils.getUserProperties()', () => {
-      controller.processSelectedAssignment();
+    it('does not read task context from GASPropertiesUtils.getUserProperties()', () => {
+      controller.processSelectedAssignment({
+        assignmentId: 'assignment-456',
+        definitionKey: 'Essay_1_defKey',
+        courseId: 'course-123',
+      });
 
-      // ASSERTION: This will FAIL (RED) because current code reads from
-      // PropertiesService.getDocumentProperties() instead of
-      // GASPropertiesUtils.getUserProperties()
-      expect(GASPropertiesUtils.getUserProperties).toHaveBeenCalled();
+      // Under the direct-params contract the method must receive task context
+      // as arguments and must not read from UserProperties at all.
+      expect(GASPropertiesUtils.getUserProperties).not.toHaveBeenCalled();
       expect(PropertiesService.getDocumentProperties).not.toHaveBeenCalled();
     });
 
-    it('cleans up properties with GASPropertiesUtils.clearProperties()', () => {
-      controller.processSelectedAssignment();
+    it('does not clean up properties with GASPropertiesUtils.clearProperties()', () => {
+      controller.processSelectedAssignment({
+        assignmentId: 'assignment-456',
+        definitionKey: 'Essay_1_defKey',
+        courseId: 'course-123',
+      });
 
-      // ASSERTION: This will FAIL (RED) because current cleanup code calls
-      // this.clearDocumentProperties() instead of GASPropertiesUtils.clearProperties()
-      expect(GASPropertiesUtils.clearProperties).toHaveBeenCalled();
-      expect(PropertiesService.getDocumentProperties).not.toHaveBeenCalled();
-    });
-
-    it('calls clearProperties() with expected trigger-context keys', () => {
-      controller.processSelectedAssignment();
-
-      // ASSERTION: This will FAIL (RED) — same as above
-      expect(GASPropertiesUtils.clearProperties).toHaveBeenCalledWith(expect.anything(), [
-        'assignmentId',
-        'definitionKey',
-        'triggerId',
-        'courseId',
-      ]);
+      // Trigger context cleanup is owned by triggerHandler(), not this method.
+      expect(GASPropertiesUtils.clearProperties).not.toHaveBeenCalled();
       expect(PropertiesService.getDocumentProperties).not.toHaveBeenCalled();
     });
   });

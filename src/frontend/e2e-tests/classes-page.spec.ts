@@ -246,7 +246,7 @@ test.describe('Classes page navigation', () => {
   test('Classes page is in the correct position in navigation (between assignments and settings)', async ({
     page,
   }) => {
-    await mockPendingGoogleScriptRun(page);
+    await installRuntimeMock(page, createClassesScenario());
     await page.goto('/');
 
     const navigation = page.getByRole('navigation', { name: PRIMARY_NAVIGATION_LABEL });
@@ -321,7 +321,7 @@ test.describe('Classes page shell-wide integration', () => {
   });
 
   test('Classes page maintains menu count consistency', async ({ page }) => {
-    await mockPendingGoogleScriptRun(page);
+    await installRuntimeMock(page, createClassesScenario());
     await page.goto('/');
 
     const navigation = page.getByRole('navigation', { name: PRIMARY_NAVIGATION_LABEL });

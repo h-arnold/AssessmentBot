@@ -6,7 +6,7 @@ let fallbackKeyCounter = 0;
  * Generates a stable key for reference-data records.
  * @returns {string} Stable key.
  */
-function generateStableKey() {
+function generateStableKey_() {
   if (typeof Utilities !== 'undefined' && typeof Utilities.getUuid === 'function') {
     return Utilities.getUuid();
   }
@@ -53,7 +53,7 @@ class ReferenceDataController {
    * @returns {{key: string, name: string, active: boolean, startYear: number, startMonth: number}} The updated cohort record.
    */
   updateCohort(payload) {
-    Validate.requireParams({ payload }, 'ReferenceDataController.updateCohort');
+    this._requireUpdatePayload(payload);
     const { key, record } = payload;
     Validate.requireParams({ key, record }, 'ReferenceDataController.updateCohort');
     return this._updateRecord(this._getConfig('cohort'), key, record);
@@ -93,7 +93,7 @@ class ReferenceDataController {
    * @returns {{key: string, name: string}} The updated year group record.
    */
   updateYearGroup(payload) {
-    Validate.requireParams({ payload }, 'ReferenceDataController.updateYearGroup');
+    this._requireUpdatePayload(payload);
     const { key, record } = payload;
     Validate.requireParams({ key, record }, 'ReferenceDataController.updateYearGroup');
     return this._updateRecord(this._getConfig('yearGroup'), key, record);
@@ -133,7 +133,7 @@ class ReferenceDataController {
    * @returns {{key: string, name: string, yearGroupKeys: string[]}} The updated assignment-topic record with yearGroupKeys.
    */
   updateAssignmentTopic(payload) {
-    Validate.requireParams({ payload }, 'ReferenceDataController.updateAssignmentTopic');
+    this._requireUpdatePayload(payload);
     const { key, record } = payload;
     Validate.requireParams({ key, record }, 'ReferenceDataController.updateAssignmentTopic');
     return this._updateRecord(this._getConfig('assignmentTopic'), key, record);
@@ -190,6 +190,17 @@ class ReferenceDataController {
   }
 
   /**
+   * Requires an update payload to be a non-null object.
+   * @param {*} payload - Incoming update payload.
+   * @throws {TypeError} If the payload is missing or not an object.
+   */
+  _requireUpdatePayload(payload) {
+    if (!payload || typeof payload !== 'object') {
+      throw new TypeError('payload is required.');
+    }
+  }
+
+  /**
    * Lists and sorts records by name.
    * @param {{collectionName: string}} config - Resource configuration.
    * @returns {Array<Object>} Sorted plain records.
@@ -212,7 +223,7 @@ class ReferenceDataController {
     const storedRecords = collection.find({});
     const serialisedRecord = this._buildRecord(config, {
       ...record,
-      key: generateStableKey(),
+      key: generateStableKey_(),
     });
     const normalisedName = this._normaliseName(serialisedRecord.name);
 

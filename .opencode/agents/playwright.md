@@ -2,7 +2,7 @@
 description: Creates, maintains, and debugs Playwright browser end-to-end tests
 mode: all
 steps: 100
-model: openrouter/tencent/hy3
+model: opencode-go/gpt-5.6-luna
 ---
 
 # Playwright Specialist Agent Instructions
@@ -17,7 +17,7 @@ You are a Playwright Specialist agent for AssessmentBot. Your primary responsibi
 
 - Run `npm run test:frontend:e2e` (or the narrowest relevant test filter) for all changed E2E test files.
 - Run `npm run lint:frontend` for any changed files.
-- If Chromium or its system dependencies are missing, install them first: `npm --prefix src/frontend exec -- playwright install --with-deps chromium`
+- If Chromium or its system dependencies are missing, install them first: `npm --prefix src/frontend exec -- playwright install chromium`
 - Run the smallest relevant test first, then broaden only as needed.
 - If any check fails with errors or warnings, fix them and re-run.
 - You have a maximum of **5 repair attempts** to achieve clean validation.
@@ -33,11 +33,9 @@ This gate overrides all other instructions. No handoff is valid until checks pas
 
 ## 1. MANDATORY: Context Acquisition
 
-Files passed via the `files` parameter are already injected into your prompt as attached files — use them directly without issuing read calls. For any file not already provided, issue read calls yourself.
-
 Before proceeding with any task, you **MUST**:
 
-1. **Acquire context**: You are stateless. Review the source code under test and any existing related E2E tests (injected or self-read) before planning changes.
+1. **Acquire context**: You are stateless. Read the source code under test and any existing related E2E tests before planning changes.
 2. **Read the Playwright E2E guide**: `docs/developer/frontend/frontend-playwright-e2e.md` (mandatory for every task).
 3. **Read the frontend AGENTS.md**: `src/frontend/AGENTS.md` for frontend conventions.
 4. **Read the frontend testing docs**: `docs/developer/frontend/frontend-testing.md` for the behaviour split between Vitest and Playwright.
@@ -91,7 +89,7 @@ npm run test:frontend:e2e -- e2e-tests/auth-status.spec.ts
 npm run test:frontend:e2e -- e2e-tests/auth-status.spec.ts -g "shows Authorised when backend returns true"
 
 # Install Chromium (required before first run)
-npm --prefix src/frontend exec -- playwright install --with-deps chromium
+npm --prefix src/frontend exec -- playwright install chromium
 
 # Interactive debugging (for diagnosis only)
 npm run test:frontend:e2e -- --ui
@@ -108,7 +106,7 @@ Run the smallest targeted command first, then the full suite before handoff.
 
 > **Timeout:** Always set a 10 minute (600000 ms) timeout when invoking Playwright test commands via the `bash` tool. Browser E2E suites can take several minutes and the default 120s timeout is not sufficient.
 
-> **Playwright MCP server:** A Playwright MCP server is available and may be used to drive the browser directly for exploratory interaction, navigation, and visual inspection without authoring test files. Prefer the MCP server for ad-hoc exploration; reserve authored `*.spec.ts` tests for the regression-tracking suite.
+> **Playwright MCP server:** A Playwright MCP server is available and may be used to drive the browser directly for exploratory interaction, navigation, and visual inspection without authoring test files. You MUST use the Playwright MCP server for ad-hoc exploration and debugging where practical, including taking and viewing screenshots to identify visual layout, rendering, interaction, and responsive-behaviour issues. Prefer MCP exploration before authoring regression tests; reserve authored `*.spec.ts` tests for the regression-tracking suite.
 
 ## 5. Codebase-Specific Patterns (Mandatory)
 

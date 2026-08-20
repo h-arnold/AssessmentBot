@@ -26,7 +26,7 @@ if (typeof module !== 'undefined' && module.exports) {
  * @returns {Object} Started record with requestId, method, status, and timestamp.
  * @throws {Error} Throws if requestId or method validation fails, or if startedAtMs is not a finite number.
  */
-function createStartedRecord(requestId, method, startedAtMs = Date.now()) {
+function createStartedRecord_(requestId, method, startedAtMs = Date.now()) {
   Validate.requireParams({ requestId, method }, 'createStartedRecord');
   if (!Validate.isNumber(startedAtMs)) {
     throw new TypeError('startedAtMs must be a finite number.');
@@ -46,7 +46,7 @@ function createStartedRecord(requestId, method, startedAtMs = Date.now()) {
  *
  * @returns {Object} Request store object mapping requestId to record. May be empty.
  */
-function loadStore() {
+function loadStore_() {
   const raw = PropertiesService.getUserProperties().getProperty(userRequestStoreKey);
 
   if (raw === null) {
@@ -78,7 +78,7 @@ function loadStore() {
  * @param {Object} store - The request store object to persist.
  * @throws {Error} Throws if store validation fails or persistence fails.
  */
-function saveStore(store) {
+function saveStore_(store) {
   Validate.requireParams({ store }, 'saveStore');
   PropertiesService.getUserProperties().setProperty(userRequestStoreKey, JSON.stringify(store));
 }
@@ -93,7 +93,7 @@ function saveStore(store) {
  * @returns {Object} The mutated store object.
  * @throws {Error} Throws if store or requestId validation fails.
  */
-function markSuccess(store, requestId) {
+function markSuccess_(store, requestId) {
   Validate.requireParams({ store, requestId }, 'markSuccess');
   store[requestId].status = 'success';
   store[requestId].finishedAtMs = Date.now();
@@ -111,7 +111,7 @@ function markSuccess(store, requestId) {
  * @returns {Object} The mutated store object.
  * @throws {Error} Throws if store, requestId, or errorMessage validation fails.
  */
-function markError(store, requestId, errorMessage) {
+function markError_(store, requestId, errorMessage) {
   Validate.requireParams({ store, requestId, errorMessage }, 'markError');
   store[requestId].status = 'error';
   store[requestId].finishedAtMs = Date.now();
@@ -123,26 +123,30 @@ function markError(store, requestId, errorMessage) {
  * Removes stale started entries from the store.
  * An entry is considered stale when its status is 'started' and its startedAtMs is older than the given threshold.
  * Completed entries (success or error) are never removed by this function.
- * Mutates and returns the store.
+ * The store is mutated in place and returned as `.store` (the same reference as the input);
+ * the IDs of the removed entries are reported via `prunedIds` so callers can log what was
+ * pruned without scanning the store a second time.
  *
  * @param {Object} store - The request store object.
  * @param {number} stalenessThresholdMs - Age in milliseconds beyond which a started entry is stale.
  * @param {number} [referenceTimeMs=Date.now()] - Optional pre-captured timestamp for deterministic callers.
- * @returns {Object} The mutated store object.
+ * @returns {{store: Object, prunedIds: string[]}} The mutated store (same reference) and an array of the pruned entry IDs.
  * @throws {Error} Throws if store or stalenessThresholdMs validation fails, or if referenceTimeMs is not a finite number.
  */
-function pruneStaleEntries(store, stalenessThresholdMs, referenceTimeMs = Date.now()) {
+function pruneStaleEntries_(store, stalenessThresholdMs, referenceTimeMs = Date.now()) {
   Validate.requireParams({ store, stalenessThresholdMs }, 'pruneStaleEntries');
   if (!Validate.isNumber(referenceTimeMs)) {
     throw new TypeError('referenceTimeMs must be a finite number.');
   }
   const cutoffMs = referenceTimeMs - stalenessThresholdMs;
+  const prunedIds = [];
   for (const [id, entry] of Object.entries(store)) {
     if (entry.status === 'started' && entry.startedAtMs < cutoffMs) {
       delete store[id];
+      prunedIds.push(id);
     }
   }
-  return store;
+  return { store, prunedIds };
 }
 
 /**
@@ -155,7 +159,7 @@ function pruneStaleEntries(store, stalenessThresholdMs, referenceTimeMs = Date.n
  * @returns {Object} The mutated store object, potentially reduced in size.
  * @throws {Error} Throws if store validation fails.
  */
-function compactStore(store) {
+function compactStore_(store) {
   Validate.requireParams({ store }, 'compactStore');
   if (Object.keys(store).length <= maxTrackedRequests) {
     return store;
@@ -175,9 +179,9 @@ function compactStore(store) {
   // Sort ascending by startedAtMs so the oldest completed entries are dropped first.
   completed.sort((a, b) => a.startedAtMs - b.startedAtMs);
 
-  while (active.length + completed.length > maxTrackedRequests && completed.length > 0) {
-    completed.shift();
-  }
+  // Drop the oldest completed entries first; completed is sorted ascending by startedAtMs.
+  const dropCount = Math.max(0, active.length + completed.length - maxTrackedRequests);
+  completed.splice(0, dropCount);
 
   const compacted = {};
   for (const entry of active) {
@@ -192,12 +196,12 @@ function compactStore(store) {
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    createStartedRecord,
-    loadStore,
-    saveStore,
-    markSuccess,
-    markError,
-    compactStore,
-    pruneStaleEntries,
+    createStartedRecord_,
+    loadStore_,
+    saveStore_,
+    markSuccess_,
+    markError_,
+    compactStore_,
+    pruneStaleEntries_,
   };
 }

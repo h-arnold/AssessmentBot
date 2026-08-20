@@ -12,7 +12,13 @@ import {
 } from './classes-crud.shared';
 
 const backgroundRefreshReleaseSignal = 'classes-background-refresh';
-const filterableColumnHeaderNames = ['Status', 'Cohort', 'Course length', 'Year group', 'Active'] as const;
+const filterableColumnHeaderNames = [
+  'Status',
+  'Cohort',
+  'Course length',
+  'Year group',
+  'Active',
+] as const;
 
 /**
  * Boots the Classes page with a scenario that triggers a background refresh after "Set active".
@@ -23,7 +29,7 @@ const filterableColumnHeaderNames = ['Status', 'Cohort', 'Course length', 'Year 
  */
 async function setUpBackgroundRefreshScenario(
   page: Parameters<typeof mockClassesCrudRuntime>[0],
-  refreshedClassPartials: typeof matchedClassPartials,
+  refreshedClassPartials: typeof matchedClassPartials
 ) {
   await mockClassesCrudRuntime(page, {
     getAuthorisationStatus: [{ kind: 'success', data: true }],
@@ -72,7 +78,9 @@ test.describe('Classes CRUD harness journey', () => {
     await expect(page.getByText('Bulk actions')).toBeVisible();
   });
 
-  test('shows unauthorised state when startup warm-up is blocked by auth failure', async ({ page }) => {
+  test('shows unauthorised state when startup warm-up is blocked by auth failure', async ({
+    page,
+  }) => {
     await mockClassesCrudRuntime(page, {
       getAuthorisationStatus: [{ kind: 'success', data: false }],
       getABClassPartials: [],
@@ -82,7 +90,7 @@ test.describe('Classes CRUD harness journey', () => {
     });
 
     await page.goto('/');
-    await expect(page.getByText('Unauthorised')).toBeVisible();
+    await expect(page.getByText('Permissions required')).toBeVisible();
   });
 
   test('shows blocking classes state when warm-up-required dataset fails', async ({ page }) => {
@@ -106,7 +114,11 @@ test.describe('Classes CRUD harness journey', () => {
       getCohorts: [{ kind: 'success', data: baseCohorts }],
       getYearGroups: [{ kind: 'success', data: baseYearGroups }],
       getGoogleClassrooms: [
-        { kind: 'failureEnvelope', code: 'GOOGLE_API_ERROR', message: 'Google Classrooms fetch failed.' },
+        {
+          kind: 'failureEnvelope',
+          code: 'GOOGLE_API_ERROR',
+          message: 'Google Classrooms fetch failed.',
+        },
       ],
     });
 
@@ -129,7 +141,9 @@ test.describe('Classes CRUD harness journey', () => {
     await expect(page.getByText('No active Google Classrooms are available.')).toBeVisible();
   });
 
-  test('keeps the visible classes workflow on screen while a background refresh is busy', async ({ page }) => {
+  test('keeps the visible classes workflow on screen while a background refresh is busy', async ({
+    page,
+  }) => {
     const refreshedClassPartials = [
       matchedClassPartials[0],
       {
@@ -154,7 +168,9 @@ test.describe('Classes CRUD harness journey', () => {
     }
   });
 
-  test('disables conflicting class write controls while keeping adjacent reference-data launchers available', async ({ page }) => {
+  test('disables conflicting class write controls while keeping adjacent reference-data launchers available', async ({
+    page,
+  }) => {
     await setUpBackgroundRefreshScenario(page, matchedClassPartials);
 
     try {
@@ -182,7 +198,9 @@ test.describe('Classes CRUD harness journey', () => {
     }
   });
 
-  test('keeps metadata modal open with inline feedback when every selected row fails to update', async ({ page }) => {
+  test('keeps metadata modal open with inline feedback when every selected row fails to update', async ({
+    page,
+  }) => {
     await mockClassesCrudRuntime(page, {
       getAuthorisationStatus: [{ kind: 'success', data: true }],
       getABClassPartials: [{ kind: 'success', data: matchedClassPartials }],
@@ -202,14 +220,23 @@ test.describe('Classes CRUD harness journey', () => {
     await page.getByRole('button', { name: 'Set cohort' }).click();
     await page.getByRole('combobox', { name: 'Cohort' }).click();
     await page.getByRole('option', { name: 'Cohort 2024' }).click();
-    await page.getByRole('dialog', { name: 'Set cohort' }).getByRole('button', { name: 'OK' }).click();
+    await page
+      .getByRole('dialog', { name: 'Set cohort' })
+      .getByRole('button', { name: 'OK' })
+      .click();
 
     await expect(page.getByRole('dialog', { name: 'Set cohort' })).toBeVisible();
-    await expect(page.getByText('Unable to update any of the 2 selected classes. Please review the remaining selection and try again.')).toBeVisible();
+    await expect(
+      page.getByText(
+        'Unable to update any of the 2 selected classes. Please review the remaining selection and try again.'
+      )
+    ).toBeVisible();
     await expect(page.getByText('Some selected classes were not updated.')).toHaveCount(0);
   });
 
-  test('fails fast when an unexpected backend call is made outside the scenario queue', async ({ page }) => {
+  test('fails fast when an unexpected backend call is made outside the scenario queue', async ({
+    page,
+  }) => {
     await mockClassesCrudRuntime(page, {
       getAuthorisationStatus: [{ kind: 'success', data: true }],
       getABClassPartials: [],
@@ -228,10 +255,9 @@ test.describe('Classes CRUD harness journey', () => {
 
     await openClassesTab(page);
     await expect
-      .poll(
-        () => consoleMessages.some((message) => message.includes('Unexpected call')),
-        { message: 'Expected an unexpected backend call error in browser console.' }
-      )
+      .poll(() => consoleMessages.some((message) => message.includes('Unexpected call')), {
+        message: 'Expected an unexpected backend call error in browser console.',
+      })
       .toBe(true);
   });
 });

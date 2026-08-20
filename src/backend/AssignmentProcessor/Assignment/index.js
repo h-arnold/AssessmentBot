@@ -370,7 +370,7 @@ class Assignment {
  * @param {Function} Subclass - The sub-class constructor to instantiate.
  * @returns {void}
  */
-function defineLazySubclass(property, Subclass) {
+function defineLazySubclass_(property, Subclass) {
   Object.defineProperty(Assignment.prototype, property, {
     get() {
       const value = new Subclass(this);
@@ -387,11 +387,11 @@ function defineLazySubclass(property, Subclass) {
   });
 }
 
-defineLazySubclass('_serialisation', AssignmentSerialisation);
-defineLazySubclass('_timestamps', AssignmentTimestamps);
-defineLazySubclass('_submissions', AssignmentSubmissions);
-defineLazySubclass('_assessmentBase', AssignmentAssessmentBase);
-defineLazySubclass('_llmOrchestration', AssignmentLLMOrchestration);
+defineLazySubclass_('_serialisation', AssignmentSerialisation);
+defineLazySubclass_('_timestamps', AssignmentTimestamps);
+defineLazySubclass_('_submissions', AssignmentSubmissions);
+defineLazySubclass_('_assessmentBase', AssignmentAssessmentBase);
+defineLazySubclass_('_llmOrchestration', AssignmentLLMOrchestration);
 
 // Export for Node/Vitest environment (ignored in GAS runtime)
 if (typeof module !== 'undefined' && module.exports) {

@@ -16,6 +16,8 @@ const validFormValues = {
   jsonDbLogLevel: 'INFO',
   jsonDbBackupOnInitialise: true,
   jsonDbRootFolderId: 'folder-1234',
+  authGroupEmail: '',
+  authMode: 'googleGroups',
 };
 
 const lowerCaseLogLevelFormValues = {
@@ -65,6 +67,30 @@ describe('backendSettingsForm.zod schema', () => {
     });
   });
 
+  it('accepts a blank auth group email as the bootstrap state', () => {
+    const formValues = { ...validFormValues, authGroupEmail: '' };
+    expect(BackendSettingsFormSchema.parse(formValues)).toEqual({
+      ...validFormValues,
+      authGroupEmail: '',
+      backendUrl: validTrimmedBackendUrl,
+    });
+  });
+
+  it('accepts a configured auth group email', () => {
+    const formValues = { ...validFormValues, authGroupEmail: 'teachers@school.edu' };
+    expect(BackendSettingsFormSchema.parse(formValues)).toEqual({
+      ...validFormValues,
+      authGroupEmail: 'teachers@school.edu',
+      backendUrl: validTrimmedBackendUrl,
+    });
+  });
+
+  it('requires authMode (rejects a form value missing it)', () => {
+    const formValuesWithoutAuthMode = { ...validFormValues } as Partial<typeof validFormValues>;
+    delete formValuesWithoutAuthMode.authMode;
+    expect(() => BackendSettingsFormSchema.parse(formValuesWithoutAuthMode)).toThrow(ZodError);
+  });
+
   it('requires an API key when no stored key exists', () => {
     expect(() =>
       BackendSettingsFormSchema.parse({
@@ -83,6 +109,7 @@ describe('backendSettingsForm.zod schema', () => {
     ['JSON DB lock timeout', { jsonDbLockTimeoutMs: 999 }],
     ['JSON DB log level', { jsonDbLogLevel: 'TRACE' }],
     ['JSON DB root folder ID', { jsonDbRootFolderId: 'short' }],
+    ['auth group email', { authGroupEmail: 'not-an-email' }],
   ])('rejects invalid %s input', (_, patch) => {
     expect(() =>
       BackendSettingsFormSchema.parse({

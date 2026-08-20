@@ -35,6 +35,11 @@ describe('mapErrorCodeToUserMessage', () => {
     ],
     [errorCodes.NOT_FOUND, 'The requested resource was not found. Please refresh and try again.'],
     [errorCodes.UNTRUSTED_DATA, 'Required reference data could not be trusted or loaded.'],
+    [errorCodes.IN_USE, 'This item is currently in use and cannot be deleted.'],
+    [
+      errorCodes.DEFINITION_STALE,
+      'This assessment definition is out of date. Please review the linked documents and try again.',
+    ],
   ] as const)('maps %s to a stable user-safe message', (code, expectedMessage) => {
     expect(mapErrorCodeToUserMessage(code)).toBe(expectedMessage);
   });
@@ -43,6 +48,26 @@ describe('mapErrorCodeToUserMessage', () => {
     expect(() => mapErrorCodeToUserMessage('UNMAPPED_CODE' as keyof typeof errorCodes)).toThrow(
       'Missing error mapping for code: UNMAPPED_CODE'
     );
+  });
+
+  it('maps FORBIDDEN to the access-denied message', () => {
+    expect(mapErrorCodeToUserMessage('FORBIDDEN' as never)).toBe(
+      'You do not have permission to access this application. Please contact your administrator.'
+    );
+  });
+
+  it('declares IN_USE and DEFINITION_STALE as recognised transport error codes', () => {
+    expect(errorCodes.IN_USE).toBe('IN_USE');
+    expect(errorCodes.DEFINITION_STALE).toBe('DEFINITION_STALE');
+  });
+
+  it('maps IN_USE and DEFINITION_STALE to non-generic, distinct user-safe messages', () => {
+    const inUseMessage = mapErrorCodeToUserMessage(errorCodes.IN_USE);
+    const staleDefinitionMessage = mapErrorCodeToUserMessage(errorCodes.DEFINITION_STALE);
+
+    expect(inUseMessage).not.toBe('An error occurred. Please try again.');
+    expect(staleDefinitionMessage).not.toBe('An error occurred. Please try again.');
+    expect(inUseMessage).not.toBe(staleDefinitionMessage);
   });
 });
 
@@ -57,6 +82,15 @@ describe('extractErrorCode', () => {
     });
 
     expect(extractErrorCode(error)).toBe(errorCodes.RATE_LIMITED);
+  });
+
+  it('returns FORBIDDEN from an ApiTransportError instance', () => {
+    const error = new ApiTransportError({
+      requestId: 'req-forbidden',
+      error: { code: 'FORBIDDEN', message: 'Access denied.', retriable: false },
+    });
+
+    expect(extractErrorCode(error)).toBe('FORBIDDEN');
   });
 
   it('returns a valid code from a plain Error with a code property', () => {

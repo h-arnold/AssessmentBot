@@ -28,7 +28,7 @@
   },
   "devDependencies": {
     "@eslint/js": "latest",
-    "@playwright/test": "^1.60.0",
+    "@playwright/test": "latest",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "latest",
     "@testing-library/react": "latest",
@@ -37,6 +37,7 @@
     "@types/node": "^25.5.0",
     "@types/react": "latest",
     "@types/react-dom": "latest",
+    "@typescript/native": "npm:typescript@^7.0.2",
     "@vitejs/plugin-react": "latest",
     "@vitest/coverage-v8": "latest",
     "eslint": "10.7.0",
@@ -47,9 +48,8 @@
     "eslint-plugin-unicorn": "latest",
     "globals": "latest",
     "happy-dom": "^20.9.0",
-    "playwright": "^1.60.0",
+    "playwright": "latest",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "@typescript/native": "npm:typescript@^7.0.2",
     "typescript-eslint": "^8.64.0",
     "vite": "latest",
     "vitest": "latest"

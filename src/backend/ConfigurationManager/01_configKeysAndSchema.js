@@ -7,7 +7,7 @@
 // require them here to avoid duplicate declaration errors when running in
 // the GAS runtime where these are already present on the global object.
 // Tests will populate these on globalThis in `tests/setupGlobals.js`.
-/* global validateLogLevel, validateApiKey, toBooleanString, Validate */
+/* global validateLogLevel_, validateApiKey_, toBooleanString_, Validate */
 
 const BACKEND_ASSESSOR_BATCH_MAX = 500;
 const SLIDES_FETCH_BATCH_MAX = 100;
@@ -27,6 +27,8 @@ const CONFIG_KEYS = Object.freeze({
   JSON_DB_LOG_LEVEL: 'jsonDbLogLevel',
   JSON_DB_BACKUP_ON_INITIALISE: 'jsonDbBackupOnInitialise',
   JSON_DB_ROOT_FOLDER_ID: 'jsonDbRootFolderId',
+  AUTH_GROUP_EMAIL: 'authGroupEmail',
+  AUTH_MODE: 'authMode',
 });
 
 const CONFIG_SCHEMA = Object.freeze({
@@ -52,7 +54,7 @@ const CONFIG_SCHEMA = Object.freeze({
   },
   [CONFIG_KEYS.API_KEY]: {
     storage: 'script',
-    validate: validateApiKey,
+    validate: validateApiKey_,
   },
   [CONFIG_KEYS.BACKEND_URL]: {
     storage: 'script',
@@ -61,7 +63,7 @@ const CONFIG_SCHEMA = Object.freeze({
   [CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET]: {
     storage: 'script',
     validate: (v) => Validate.validateBoolean('Revoke Auth Trigger Set', v),
-    normalize: toBooleanString,
+    normalise: toBooleanString_,
   },
   [CONFIG_KEYS.JSON_DB_MASTER_INDEX_KEY]: {
     storage: 'script',
@@ -79,13 +81,12 @@ const CONFIG_SCHEMA = Object.freeze({
   },
   [CONFIG_KEYS.JSON_DB_LOG_LEVEL]: {
     storage: 'script',
-    validate: (v) => validateLogLevel('JSON DB Log Level', v),
-    normalize: (v) => validateLogLevel('JSON DB Log Level', v),
+    validate: (v) => validateLogLevel_('JSON DB Log Level', v),
   },
   [CONFIG_KEYS.JSON_DB_BACKUP_ON_INITIALISE]: {
     storage: 'script',
     validate: (v) => Validate.validateBoolean('JSON DB Backup On Initialise', v),
-    normalize: toBooleanString,
+    normalise: toBooleanString_,
   },
   [CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID]: {
     storage: 'script',
@@ -98,6 +99,31 @@ const CONFIG_SCHEMA = Object.freeze({
         throw new Error('JSON DB Root Folder ID must be a valid Google Drive Folder ID.');
       }
       return trimmed;
+    },
+  },
+  [CONFIG_KEYS.AUTH_GROUP_EMAIL]: {
+    storage: 'script',
+    validate: (v, instance) => {
+      if (v == null || String(v).trim() === '') {
+        const stored = instance.getProperty(CONFIG_KEYS.AUTH_GROUP_EMAIL);
+        if (stored && String(stored).trim() !== '') {
+          throw new Error('Auth Group Email cannot be cleared once set.');
+        }
+        return '';
+      }
+      const trimmed = String(v).trim();
+      if (!Validate.isEmail(trimmed)) {
+        throw new Error('Auth Group Email must be a valid email address.');
+      }
+      return trimmed;
+    },
+  },
+  [CONFIG_KEYS.AUTH_MODE]: {
+    storage: 'script',
+    validate: (v) => {
+      if (v === 'none') return 'none';
+      if (v === 'googleGroups') return 'googleGroups';
+      throw new Error('Auth Mode must be either "googleGroups" or "none".');
     },
   },
 });

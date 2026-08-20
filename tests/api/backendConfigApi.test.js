@@ -36,7 +36,9 @@ describe('backend configuration API transport', () => {
         method: 'getBackendConfig',
       });
 
-      expect(configurationManagerMock.configurationManager.getInstance).toHaveBeenCalledTimes(1);
+      // Called once by the ApiDispatcher auth gate's group email lookup and once by
+      // the getBackendConfig handler.
+      expect(configurationManagerMock.configurationManager.getInstance).toHaveBeenCalledTimes(2);
       expect(configurationManagerMock.manager.ensureDefaultConfiguration).toHaveBeenCalledTimes(1);
       expect(response).toEqual({
         ok: true,
@@ -95,7 +97,9 @@ describe('backend configuration API transport', () => {
         method: 'getBackendConfig',
       });
 
-      expect(configurationManagerMock.configurationManager.getInstance).toHaveBeenCalledTimes(1);
+      // Called once by the ApiDispatcher auth gate (AuthService group-email lookup)
+      // and once by the getBackendConfig handler.
+      expect(configurationManagerMock.configurationManager.getInstance).toHaveBeenCalledTimes(2);
       expect(configurationManagerMock.manager.ensureDefaultConfiguration).toHaveBeenCalledTimes(1);
       expect(configurationManagerMock.manager.setBackendAssessorBatchSize).not.toHaveBeenCalled();
       expect(configurationManagerMock.manager.setSlidesFetchBatchSize).not.toHaveBeenCalled();
@@ -160,7 +164,9 @@ describe('backend configuration API transport', () => {
         method: 'getBackendConfig',
       });
 
-      expect(configurationManagerMock.configurationManager.getInstance).toHaveBeenCalledTimes(1);
+      // Called once by the ApiDispatcher auth gate (AuthService group-email lookup)
+      // and once by the getBackendConfig handler.
+      expect(configurationManagerMock.configurationManager.getInstance).toHaveBeenCalledTimes(2);
       expect(configurationManagerMock.manager.ensureDefaultConfiguration).toHaveBeenCalledTimes(1);
       expect(configurationManagerMock.manager.setBackendAssessorBatchSize).not.toHaveBeenCalled();
       expect(configurationManagerMock.manager.setSlidesFetchBatchSize).not.toHaveBeenCalled();
@@ -403,7 +409,9 @@ describe('backend configuration API transport', () => {
           params,
         });
 
-        expect(configurationManagerMock.configurationManager.getInstance).not.toHaveBeenCalled();
+        // Called once by the ApiDispatcher auth gate's group email lookup before the
+        // handler rejects the malformed params.
+        expect(configurationManagerMock.configurationManager.getInstance).toHaveBeenCalledTimes(1);
         expect(response).toEqual({
           ok: false,
           requestId: response.requestId,
@@ -499,5 +507,110 @@ describe('backend configuration API transport', () => {
 
   it('does not retain the legacy configuration globals transport file', () => {
     expect(existsSync(legacyConfigurationGlobalsPath)).toBe(false);
+  });
+});
+
+describe('backend configuration API transport — authMode', () => {
+  it('includes authMode defaulting to googleGroups when unset', () => {
+    const configurationManagerMock = createConfigurationManagerMock(
+      vi,
+      {},
+      {},
+      { allConfigurations: {} }
+    );
+
+    try {
+      const { ApiDispatcher } = loadApiHandlerModule();
+      const dispatcher = ApiDispatcher.getInstance();
+
+      const response = dispatcher.handle({
+        method: 'getBackendConfig',
+      });
+
+      expect(response.data.authMode).toBe('googleGroups');
+    } finally {
+      configurationManagerMock.restore();
+    }
+  });
+
+  it('calls setAuthMode with "none" when authMode is present in the setBackendConfig payload', () => {
+    const configurationManagerMock = createConfigurationManagerMock(vi);
+
+    try {
+      const { ApiDispatcher } = loadApiHandlerModule();
+      const dispatcher = ApiDispatcher.getInstance();
+
+      const response = dispatcher.handle({
+        method: 'setBackendConfig',
+        params: {
+          authMode: 'none',
+        },
+      });
+
+      expect(configurationManagerMock.manager.setAuthMode).toHaveBeenCalledWith('none');
+      expect(response).toEqual({
+        ok: true,
+        requestId: response.requestId,
+        data: { success: true },
+      });
+      expect(response.requestId).toEqual(expect.any(String));
+    } finally {
+      configurationManagerMock.restore();
+    }
+  });
+
+  it('calls setAuthMode with "googleGroups" when authMode is present in the setBackendConfig payload', () => {
+    const configurationManagerMock = createConfigurationManagerMock(vi);
+
+    try {
+      const { ApiDispatcher } = loadApiHandlerModule();
+      const dispatcher = ApiDispatcher.getInstance();
+
+      const response = dispatcher.handle({
+        method: 'setBackendConfig',
+        params: {
+          authMode: 'googleGroups',
+        },
+      });
+
+      expect(configurationManagerMock.manager.setAuthMode).toHaveBeenCalledWith('googleGroups');
+      expect(response).toEqual({
+        ok: true,
+        requestId: response.requestId,
+        data: { success: true },
+      });
+      expect(response.requestId).toEqual(expect.any(String));
+    } finally {
+      configurationManagerMock.restore();
+    }
+  });
+
+  it('returns a failed write with an aggregated authMode error for an invalid authMode value', () => {
+    const configurationManagerMock = createConfigurationManagerMock(
+      vi,
+      {},
+      {
+        setAuthMode: () => {
+          throw new Error('persist failed');
+        },
+      }
+    );
+
+    try {
+      const { ApiDispatcher } = loadApiHandlerModule();
+      const dispatcher = ApiDispatcher.getInstance();
+
+      const response = dispatcher.handle({
+        method: 'setBackendConfig',
+        params: {
+          authMode: 'foo',
+        },
+      });
+
+      expect(response.data.success).toBe(false);
+      expect(response.data.error).toContain('authMode');
+    } finally {
+      configurationManagerMock.restore();
+    }
   });
 });

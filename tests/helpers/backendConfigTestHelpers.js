@@ -16,6 +16,8 @@ function buildBackendConfigResponse(overrides = {}) {
     jsonDbLogLevel: 'INFO',
     jsonDbBackupOnInitialise: false,
     jsonDbRootFolderId: 'folder-123',
+    authGroupEmail: '',
+    authMode: 'googleGroups',
     ...overrides,
   };
 }
@@ -68,6 +70,8 @@ function createConfigurationManagerMock(
     jsonDbLogLevel: 'INFO',
     jsonDbBackupOnInitialise: false,
     jsonDbRootFolderId: 'folder-123',
+    authGroupEmail: '',
+    authMode: 'googleGroups',
     ...getterValues,
   };
 
@@ -121,6 +125,8 @@ function createConfigurationManagerMock(
         ? values.jsonDbRootFolderId
         : CONFIGURATION_MANAGER_DEFAULTS.JSON_DB_ROOT_FOLDER_ID
     ),
+    getAuthGroupEmail: vi.fn(() => (hasPersistedConfiguration ? values.authGroupEmail : '')),
+    getAuthMode: vi.fn(() => (hasPersistedConfiguration ? values.authMode : 'googleGroups')),
     setBackendAssessorBatchSize: vi.fn(
       setterImplementations.setBackendAssessorBatchSize || (() => {})
     ),
@@ -136,6 +142,8 @@ function createConfigurationManagerMock(
       setterImplementations.setJsonDbBackupOnInitialise || (() => {})
     ),
     setJsonDbRootFolderId: vi.fn(setterImplementations.setJsonDbRootFolderId || (() => {})),
+    setAuthGroupEmail: vi.fn(setterImplementations.setAuthGroupEmail || (() => {})),
+    setAuthMode: vi.fn(setterImplementations.setAuthMode || (() => {})),
   };
 
   globalThis.ConfigurationManager = {

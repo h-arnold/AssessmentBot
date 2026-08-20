@@ -31,6 +31,8 @@ export function mapBackendConfigToBackendSettingsFormValues(
       backendConfig.jsonDbLogLevel.toUpperCase() as BackendSettingsForm['jsonDbLogLevel'],
     jsonDbBackupOnInitialise: backendConfig.jsonDbBackupOnInitialise,
     jsonDbRootFolderId: backendConfig.jsonDbRootFolderId,
+    authGroupEmail: backendConfig.authGroupEmail ?? '',
+    authMode: backendConfig.authMode ?? 'googleGroups',
   };
 }
 
@@ -43,6 +45,11 @@ export function mapBackendConfigToBackendSettingsFormValues(
  * string. The frontend also excludes the read-only `revokeAuthTriggerSet`, `hasApiKey`, and
  * `loadError` transport fields from writes because only editable settings belong in the save
  * payload.
+ *
+ * `authGroupEmail` is always mapped into the write payload, including a blank value — the
+ * backend rejects clearing a configured value (compulsory-once-set), so the blank pass-through
+ * is what lets the backend surface that rejection instead of silently retaining the stored
+ * value.
  *
  * @param {BackendSettingsForm} formValues The backend settings form values.
  * @returns {BackendConfigWriteInput} The backend configuration write payload.
@@ -60,6 +67,8 @@ export function mapBackendSettingsFormValuesToBackendConfigWriteInput(
     jsonDbLogLevel: formValues.jsonDbLogLevel as BackendConfigWriteInput['jsonDbLogLevel'],
     jsonDbBackupOnInitialise: formValues.jsonDbBackupOnInitialise,
     jsonDbRootFolderId: formValues.jsonDbRootFolderId,
+    authGroupEmail: formValues.authGroupEmail,
+    authMode: formValues.authMode,
   } as BackendConfigWriteInput;
 
   if (formValues.apiKey !== '') {

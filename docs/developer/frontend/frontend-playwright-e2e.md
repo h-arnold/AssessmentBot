@@ -35,15 +35,23 @@ npm run test:frontend:e2e -- e2e-tests/classes-crud-manage-cohorts.spec.ts -g "C
 Before the first Playwright run on a fresh machine, dev container, or CI image:
 
 ```bash
-npm --prefix src/frontend exec -- playwright install --with-deps chromium
+npm --prefix src/frontend exec -- playwright install chromium
 ```
 
 If Chromium or its system dependencies go missing, reinstall and rerun:
 
 ```bash
-npm --prefix src/frontend exec -- playwright install --with-deps chromium
+npm --prefix src/frontend exec -- playwright install chromium
 npm run test:frontend:e2e
 ```
+
+> **Note on `--with-deps`:** `playwright install --with-deps` installs the OS-level
+> system dependencies and requires root. It is only valid on a fresh machine,
+> dev container, or CI runner where the command runs as root. Inside the Docker
+> container the system dependencies are already installed at image build time and
+> opencode runs as a non-root user, so use the plain `playwright install chromium`
+> form above. The CI workflow and dev container post-create script install system
+> dependencies separately with `--with-deps`.
 
 ## Test File Structure
 

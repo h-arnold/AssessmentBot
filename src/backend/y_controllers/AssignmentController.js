@@ -25,50 +25,49 @@ class AssignmentController {
   }
 
   /**
-   * Initiates the Assignment Assessment Workflow by creating a time-based trigger and storing necessary properties.
-   * This method sets up `triggerProcessSelectedAssignment` by creating the trigger and storing assignment details
-   * in UserProperties for access when the trigger executes.
+   * Initiates the Assignment Assessment Workflow by creating a time-based trigger and
+   * storing the task context in Script Properties.
+   *
+   * Sets up `triggerHandler` as the scheduled entrypoint and stores assignment details via
+   * `TriggerController.storeTriggerContext()` (Script Properties keyed by the triggerUid),
+   * so the trigger handler can resolve and dispatch the task when the trigger fires. No
+   * longer uses User Properties for task context — `triggerHandler()` owns all trigger
+   * cleanup (context clear + trigger deletion).
    *
    * @param {string} assignmentId - The ID of the assignment to be processed
    * @param {string} definitionKey - The key of the assignment definition to use
    * @param {string} courseId - Classroom course ID used for downstream processing.
-   * @throws {Error} If trigger creation fails or if setting user properties fails
+   * @throws {Error} If trigger creation fails or if storing the trigger context fails
    */
-  startProcessing(assignmentId, definitionKey, courseId = '') {
+  startProcessing(assignmentId, definitionKey, courseId) {
+    Validate.requireParams(
+      { assignmentId, definitionKey, courseId },
+      'AssignmentController.startProcessing'
+    );
+
     // Lazily instantiate TriggerController
     const triggerController = new TriggerController();
-    const properties = GASPropertiesUtils.getUserProperties();
     let triggerId;
 
     try {
-      triggerId = triggerController.createTimeBasedTrigger('triggerProcessSelectedAssignment');
+      triggerId = triggerController.createTimeBasedTrigger('triggerHandler');
       ABLogger.getInstance().info(
-        `Trigger created for triggerProcessSelectedAssignment with triggerId: ${triggerId}`
+        `Trigger created for triggerHandler with triggerId: ${triggerId}`
       );
     } catch (error) {
       this.progressTracker.logAndThrowError(`Error creating trigger: ${error.message}`, error);
-      this.utils.toastMessage(
-        'Failed to create trigger: ' + error.message,
-        'Error',
-        TOAST_DURATION_SECONDS
-      );
     }
 
     try {
-      const propertyMap = {
-        assignmentId,
-        definitionKey,
-        triggerId,
-        courseId,
-      };
-      GASPropertiesUtils.applyProperties(properties, propertyMap);
-      ABLogger.getInstance().info('Properties set for processing.');
+      triggerController.storeTriggerContext(triggerId, {
+        method: 'processSelectedAssignment',
+        params: { assignmentId, definitionKey, courseId },
+      });
+      ABLogger.getInstance().info('Trigger context stored for processing.');
     } catch (error) {
-      this.progressTracker.logAndThrowError(`Error setting properties: ${error.message}`, error);
-      this.utils.toastMessage(
-        'Failed to set processing properties: ' + error.message,
-        'Error',
-        TOAST_DURATION_SECONDS
+      this.progressTracker.logAndThrowError(
+        `Error storing trigger context: ${error.message}`,
+        error
       );
     }
   }
@@ -76,7 +75,7 @@ class AssignmentController {
   /**
    * Processes and assesses a selected Google Classroom assignment.
    * This is the main orchestration method that handles the complete assessment workflow:
-   * - Retrieves and validates required parameters
+   * - Validates the direct task params
    * - Creates an Assignment instance with student data
    * - Extracts and processes student submissions
    * - Processes images from submissions (Slides only)
@@ -84,99 +83,62 @@ class AssignmentController {
    * - Persists assignment data
    *
    * The method includes progress tracking and error handling throughout the process.
-   * It cleans up resources (locks, properties) even if errors occur.
+   * It receives task params directly; it does not read from or write to UserProperties,
+   * and it does not clean up trigger context or delete the trigger (triggerHandler owns
+   * all trigger cleanup).
    *
+   * @param {Object} params - Parameters object.
+   * @param {string} params.assignmentId - The Google Classroom coursework ID.
+   * @param {string} params.definitionKey - The key of the assignment definition to use.
+   * @param {string} params.courseId - The Google Classroom course ID.
    * @throws {Error} If required parameters are missing or if processing fails
    * @returns {void}
    *
    * Dependencies:
-   * - Requires UserProperties: assignmentId, definitionKey, triggerId
-   * - Uses services: PropertiesService
-   * - Relies on controllers: triggerController, progressTracker, abClassController
+   * - Uses services: DateUtils, DriveManager (via the pipeline)
+   * - Relies on controllers: definitionController, abClassController, progressTracker
    * - Integrates with: Assignment, StudentSubmission, ABClass
    */
-  processSelectedAssignment() {
-    try {
-      const properties = GASPropertiesUtils.getUserProperties();
-      const assignmentId = properties.getProperty('assignmentId');
-      const definitionKey = properties.getProperty('definitionKey');
-      const triggerId = properties.getProperty('triggerId');
-      const storedCourseId = properties.getProperty('courseId');
+  processSelectedAssignment({ assignmentId, definitionKey, courseId }) {
+    // Validate required task params — triggerHandler dispatches with a validated params object
+    Validate.requireParams({ assignmentId, definitionKey, courseId }, 'processSelectedAssignment');
 
-      if (!assignmentId || !definitionKey || !triggerId) {
-        // Lazily instantiate TriggerController to clean up pending triggers
-        const triggerController = new TriggerController();
-        triggerController.removeTriggers('triggerProcessSelectedAssignment');
-        this.progressTracker.logAndThrowError('Missing parameters for processing.');
-      }
+    this.progressTracker.startTracking();
+    this.progressTracker.updateProgress('Assessment run starting.');
 
-      // Lazily instantiate TriggerController for trigger deletion
-      const triggerController = new TriggerController();
-      triggerController.deleteTriggerById(triggerId);
-      ABLogger.getInstance().info('Trigger deleted after processing.');
-      this.progressTracker.startTracking();
-      this.progressTracker.updateProgress('Assessment run starting.');
-
-      const definitionController = new AssignmentDefinitionController();
-      const definition = definitionController.getDefinitionByKey(definitionKey, { form: 'full' });
-      if (!definition) {
-        this.progressTracker.logAndThrowError(
-          `Assignment definition not found for key ${definitionKey}. Cannot proceed.`
-        );
-      }
-
-      const courseId = storedCourseId;
-      if (!courseId) {
-        this.progressTracker.logAndThrowError(
-          'Course ID could not be determined. It is missing from stored properties.'
-        );
-      }
-
-      ABLogger.getInstance().info('Course ID retrieved: ' + courseId);
-      this.progressTracker.updateProgress(`Course ID retrieved: ${courseId}`, false);
-
-      const abClassController = new ABClassController();
-      const abClass = abClassController.loadClass(courseId);
-
-      const assignment = this.createAssignmentInstance(definition, courseId, assignmentId);
-
-      const students = abClass.students;
-      const includeImages = definition.documentType === 'SLIDES';
-      this.runAssignmentPipeline(assignment, students, { includeImages });
-
-      // Update updatedAt value and persist assignment data
-
-      assignment.touchUpdated();
-
-      // Persist assignment using controller pattern - writes full assignment to dedicated
-      // collection and stores partial summary in ABClass
-      abClassController.persistAssignmentRun(abClass, assignment);
-
-      this.progressTracker.updateProgress(ASSESSMENT_RUN_SUCCESS_MESSAGE, false);
-      this.progressTracker.complete();
-
-      this.utils.toastMessage(ASSESSMENT_RUN_SUCCESS_MESSAGE, 'Success', TOAST_DURATION_SECONDS);
-      ABLogger.getInstance().info(ASSESSMENT_RUN_SUCCESS_MESSAGE);
-    } catch (error) {
-      this.progressTracker.logAndThrowError(error.message, error);
-    } finally {
-      try {
-        // Use the hydrated roster from the class record for processing. This data is transient
-        // and must not be persisted with the Assignment to prevent data duplication.
-        const properties = GASPropertiesUtils.getUserProperties();
-        GASPropertiesUtils.clearProperties(properties, [
-          'assignmentId',
-          'definitionKey',
-          'triggerId',
-          'courseId',
-        ]);
-        ABLogger.getInstance().info('User properties cleaned up.');
-      } catch (cleanupError) {
-        this.progressTracker.logError(`Failed to clean up properties: ${cleanupError.message}`, {
-          err: cleanupError,
-        });
-      }
+    const definitionController = new AssignmentDefinitionController();
+    const definition = definitionController.getDefinitionByKey(definitionKey, { form: 'full' });
+    if (!definition) {
+      this.progressTracker.logAndThrowError(
+        `Assignment definition not found for key ${definitionKey}. Cannot proceed.`
+      );
     }
+
+    ABLogger.getInstance().info('Course ID retrieved: ' + courseId);
+    this.progressTracker.updateProgress(`Course ID retrieved: ${courseId}`, false);
+
+    const abClassController = new ABClassController();
+    const abClass = abClassController.loadClass(courseId);
+
+    const assignment = this.createAssignmentInstance(definition, courseId, assignmentId);
+
+    const students = abClass.students;
+    const includeImages = definition.documentType === 'SLIDES';
+    this.runAssignmentPipeline(assignment, students, { includeImages });
+
+    // Update updatedAt value and persist assignment data
+
+    assignment.touchUpdated();
+
+    // Persist assignment using controller pattern - writes full assignment to dedicated
+    // collection and stores partial summary in ABClass
+    abClassController.persistAssignmentRun(abClass, assignment);
+
+    this.progressTracker.updateProgress(ASSESSMENT_RUN_SUCCESS_MESSAGE, false);
+    this.progressTracker.complete();
+
+    this.utils.toastMessage(ASSESSMENT_RUN_SUCCESS_MESSAGE, 'Success', TOAST_DURATION_SECONDS);
+    ABLogger.getInstance().info(ASSESSMENT_RUN_SUCCESS_MESSAGE);
   }
 
   /**

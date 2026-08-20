@@ -33,6 +33,7 @@ const maskedBackendConfig = {
   jsonDbLogLevel: 'INFO',
   jsonDbBackupOnInitialise: true,
   jsonDbRootFolderId: 'folder-1234',
+  authGroupEmail: '',
   loadError: 'apiKey: REDACTED',
 };
 
@@ -48,6 +49,7 @@ const storedKeyFormValues = {
   jsonDbLogLevel: 'INFO',
   jsonDbBackupOnInitialise: true,
   jsonDbRootFolderId: 'folder-1234',
+  authGroupEmail: '',
 };
 
 describe('backendSettingsFormMapper', () => {
@@ -97,5 +99,85 @@ describe('backendSettingsFormMapper', () => {
     expect(writePayload).not.toHaveProperty('revokeAuthTriggerSet');
     expect(writePayload).not.toHaveProperty('hasApiKey');
     expect(writePayload).not.toHaveProperty('loadError');
+  });
+
+  it('maps a configured auth group email from the backend payload into form values', () => {
+    const formValues = mapBackendConfigToBackendSettingsFormValues({
+      ...maskedBackendConfig,
+      authGroupEmail: 'teachers@school.edu',
+    } as unknown as Parameters<typeof mapBackendConfigToBackendSettingsFormValues>[0]);
+
+    expect(formValues).toMatchObject({
+      authGroupEmail: 'teachers@school.edu',
+    });
+  });
+
+  it('maps a configured auth group email from form values into the backend write payload', () => {
+    const writePayload = mapBackendSettingsFormValuesToBackendConfigWriteInput({
+      ...storedKeyFormValues,
+      authGroupEmail: 'teachers@school.edu',
+    } as unknown as Parameters<typeof mapBackendSettingsFormValuesToBackendConfigWriteInput>[0]);
+
+    expect(writePayload).toMatchObject({
+      authGroupEmail: 'teachers@school.edu',
+    });
+  });
+
+  it('maps a blank authGroupEmail from the backend payload into form values', () => {
+    const formValues = mapBackendConfigToBackendSettingsFormValues({
+      ...maskedBackendConfig,
+      authGroupEmail: '',
+    } as unknown as Parameters<typeof mapBackendConfigToBackendSettingsFormValues>[0]);
+
+    expect(formValues).toMatchObject({
+      authGroupEmail: '',
+    });
+  });
+
+  it('maps a blank authGroupEmail from form values into the backend write payload', () => {
+    const writePayload = mapBackendSettingsFormValuesToBackendConfigWriteInput({
+      ...storedKeyFormValues,
+      authGroupEmail: '',
+    } as unknown as Parameters<typeof mapBackendSettingsFormValuesToBackendConfigWriteInput>[0]);
+
+    expect(writePayload).toMatchObject({
+      authGroupEmail: '',
+    });
+  });
+});
+
+describe('authMode mapping', () => {
+  it('maps authMode through from the backend payload into form values', () => {
+    const formValues = mapBackendConfigToBackendSettingsFormValues({
+      ...maskedBackendConfig,
+      authMode: 'none',
+    } as unknown as Parameters<typeof mapBackendConfigToBackendSettingsFormValues>[0]);
+
+    expect(formValues).toMatchObject({
+      authMode: 'none',
+    });
+  });
+
+  it('defaults a missing authMode to googleGroups when mapping backend payload into form values', () => {
+    const formValues = mapBackendConfigToBackendSettingsFormValues(
+      maskedBackendConfig as unknown as Parameters<
+        typeof mapBackendConfigToBackendSettingsFormValues
+      >[0]
+    );
+
+    expect(formValues).toMatchObject({
+      authMode: 'googleGroups',
+    });
+  });
+
+  it('maps authMode through from form values into the backend write payload', () => {
+    const writePayload = mapBackendSettingsFormValuesToBackendConfigWriteInput({
+      ...storedKeyFormValues,
+      authMode: 'none',
+    } as unknown as Parameters<typeof mapBackendSettingsFormValuesToBackendConfigWriteInput>[0]);
+
+    expect(writePayload).toMatchObject({
+      authMode: 'none',
+    });
   });
 });

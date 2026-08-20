@@ -263,4 +263,17 @@ export default defineConfig([
       'security/detect-object-injection': 'off',
     },
   },
+  {
+    // AppAuthGate memoises getWarmupForbiddenMessage over [queryClient, warmupCycleState].
+    // The warm-up cycle snapshot is a genuine (if indirect) dependency: it is the re-render
+    // trigger that fires once warm-up resolves, without which the FORBIDDEN denial lookup
+    // would never re-run. ESLint's react-hooks/exhaustive-deps rule cannot see the reference
+    // because the lookup reads the React Query cache directly rather than the snapshot value,
+    // so the dependency is intentionally retained and the rule is disabled for this file only
+    // by explicit user authorisation.
+    files: ['src/features/auth/AppAuthGate.tsx'],
+    rules: {
+      'react-hooks/exhaustive-deps': 'off',
+    },
+  },
 ]);

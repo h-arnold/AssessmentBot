@@ -17,6 +17,7 @@ const abclassMutationsPath = '../../../src/backend/z_Api/abclass/abclassMutation
 const {
   callAuthorisationStatus,
   getApiDispatcherInstance,
+  installLockServiceMock,
   loadApiHandlerModule,
   readPersistedUserRequestStore,
   REFERENCE_DATA_API_METHOD_NAMES,
@@ -403,34 +404,47 @@ function makeVmGlobals(overrides = {}) {
     Validate:
       require('../../../src/backend/Utils/Validate.js').Validate ||
       require('../../../src/backend/Utils/Validate.js'),
-    loadStore: () => ({}),
-    saveStore: () => {},
-    createStartedRecord: (id, method) => ({
+    loadStore_: () => ({}),
+    saveStore_: () => {},
+    createStartedRecord_: (id, method) => ({
       requestId: id,
       method,
       status: 'started',
       startedAtMs: Date.now(),
     }),
-    markSuccess: (s, id) => {
+    markSuccess_: (s, id) => {
       if (s[id]) s[id].status = 'success';
       return s;
     },
-    markError: (s, id, msg) => {
+    markError_: (s, id, msg) => {
       if (s[id]) {
         s[id].status = 'error';
         s[id].errorMessage = msg;
       }
       return s;
     },
-    compactStore: (s) => s,
+    compactStore_: (s) => s,
     STALE_REQUEST_AGE_MS: 15 * 60 * 1000,
-    pruneStaleEntries: (s) => s,
+    pruneStaleEntries_: (s) => ({ store: s, prunedIds: [] }),
     ApiRateLimitError: function ApiRateLimitError() {},
     ApiValidationError: function ApiValidationError() {},
     ApiDisabledError: function ApiDisabledError() {},
     DefinitionStaleError: function DefinitionStaleError() {},
     ScriptAppManager: function ScriptAppManager() {
       this.isAuthorised = () => true;
+    },
+    // GAS globals required by the ApiDispatcher auth gate (z_apiHandler.js) in the
+    // vm-simulated concatenated runtime. Defaults fail open so non-auth dispatch
+    // tests proceed normally.
+    AuthService: {
+      getInstance() {
+        return { checkAccess: () => ({ allowed: true, role: 'user' }) };
+      },
+    },
+    ConfigurationManager: {
+      getInstance() {
+        return { getAuthGroupEmail: () => '' };
+      },
     },
     ...overrides,
   };
@@ -485,6 +499,7 @@ module.exports = {
   // Re-exports from apiHandlerTestUtils
   callAuthorisationStatus,
   getApiDispatcherInstance,
+  installLockServiceMock,
   loadApiHandlerModule,
   readPersistedUserRequestStore,
   REFERENCE_DATA_API_METHOD_NAMES,

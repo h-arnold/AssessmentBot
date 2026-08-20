@@ -31,9 +31,10 @@ payload inside this envelope.
   error: {
     code: string,         // One of: 'RATE_LIMITED' | 'INVALID_REQUEST' |
                           //         'UNKNOWN_METHOD' | 'IN_USE' |
-                          //         'DEFINITION_STALE' | 'INTERNAL_ERROR'
+                          //         'DEFINITION_STALE' | 'FORBIDDEN' |
+                          //         'INTERNAL_ERROR'
     message: string,      // Human-readable error string
-    retriable?: boolean,  // true for RATE_LIMITED; omitted otherwise
+    retriable: boolean,   // always present; true only for RATE_LIMITED
     details?: object,     // Structured metadata (e.g. for DEFINITION_STALE:
                           //   { definitionKey, referenceStale, templateStale,
                           //     referenceLastModified, templateLastModified })
@@ -43,14 +44,20 @@ payload inside this envelope.
 
 ### Error code mapping
 
-| Error type                  | Code               | retriable |
-| --------------------------- | ------------------ | --------- |
-| `ApiRateLimitError`         | `RATE_LIMITED`     | `true`    |
-| `ApiValidationError`        | `INVALID_REQUEST`  | `false`   |
-| `ApiDisabledError`          | `UNKNOWN_METHOD`   | `false`   |
-| `DefinitionStaleError`      | `DEFINITION_STALE` | `false`   |
-| `error.reason === 'IN_USE'` | `IN_USE`           | `false`   |
-| Any other error             | `INTERNAL_ERROR`   | `false`   |
+| Error type                                              | Code               | retriable |
+| ------------------------------------------------------- | ------------------ | --------- |
+| `ApiRateLimitError`                                     | `RATE_LIMITED`     | `true`    |
+| `ApiValidationError`                                    | `INVALID_REQUEST`  | `false`   |
+| `ApiDisabledError`                                      | `UNKNOWN_METHOD`   | `false`   |
+| `DefinitionStaleError`                                  | `DEFINITION_STALE` | `false`   |
+| `error.reason === 'IN_USE'`                             | `IN_USE`           | `false`   |
+| Auth gate denial (authenticated but not a group member) | `FORBIDDEN`        | `false`   |
+| Any other error                                         | `INTERNAL_ERROR`   | `false`   |
+
+`FORBIDDEN` is produced directly by the `ApiDispatcher` auth gate in
+`z_apiHandler.js` — it is not thrown by a dedicated exception type. Justification:
+"authenticated but not a group member". Denied requests never reach the admission phase, so
+no lock is consumed and the request is not counted against rate limits.
 
 For `DEFINITION_STALE`, the error envelope includes a `details` block with
 `definitionKey`, `referenceStale`, `templateStale`, `referenceLastModified`,
@@ -84,6 +91,11 @@ z.object({
   meta: z.record(z.string(), z.unknown()).optional(),
 });
 ```
+
+> **`retriable` optionality:** the backend always emits `retriable` on every error envelope
+> (`_failure()` in `z_apiHandler.js` includes it unconditionally; it is `true` only for
+> `RATE_LIMITED`). The frontend `z.boolean().optional()` is a defensive tolerance so a
+> missing field does not break envelope parsing. The backend contract remains authoritative.
 
 ## Key contract notes
 

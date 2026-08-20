@@ -24,6 +24,8 @@ const readyBackendSettingsFormValues = {
   jsonDbLogLevel: 'INFO',
   jsonDbBackupOnInitialise: true,
   jsonDbRootFolderId: 'folder-1234',
+  authGroupEmail: '',
+  authMode: 'googleGroups',
 } satisfies BackendSettingsForm;
 
 const { useBackendSettingsMock } = vi.hoisted(() => ({

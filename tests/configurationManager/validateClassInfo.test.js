@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 
-const { validateClassInfo } = require('../../src/backend/ConfigurationManager/03_validators.js');
+const { validateClassInfo_ } = require('../../src/backend/ConfigurationManager/03_validators.js');
 
-describe('validateClassInfo', () => {
+describe('validateClassInfo_', () => {
   const label = 'Class Info';
 
   it('accepts a valid JSON payload', () => {
@@ -12,34 +12,34 @@ describe('validateClassInfo', () => {
       YearGroup: 10,
     });
 
-    expect(validateClassInfo(label, payload)).toBe(payload);
+    expect(validateClassInfo_(label, payload)).toBe(payload);
   });
 
   it('rejects non-string inputs', () => {
-    expect(() => validateClassInfo(label, null)).toThrow(/Class Info must be a JSON string/);
+    expect(() => validateClassInfo_(label, null)).toThrow(/Class Info must be a JSON string/);
   });
 
   it('rejects invalid JSON', () => {
-    expect(() => validateClassInfo(label, '{bad json')).toThrow(/Class Info must be valid JSON/);
+    expect(() => validateClassInfo_(label, '{bad json')).toThrow(/Class Info must be valid JSON/);
   });
 
   it('rejects non-object JSON payloads', () => {
     const arrayPayload = JSON.stringify(['not', 'an', 'object']);
-    expect(() => validateClassInfo(label, arrayPayload)).toThrow(
+    expect(() => validateClassInfo_(label, arrayPayload)).toThrow(
       /Class Info must be a JSON object/
     );
   });
 
   it('rejects missing ClassName', () => {
     const payload = JSON.stringify({ CourseId: 'course-1' });
-    expect(() => validateClassInfo(label, payload)).toThrow(
+    expect(() => validateClassInfo_(label, payload)).toThrow(
       /Class Info must have a ClassName property/
     );
   });
 
   it('rejects missing CourseId', () => {
     const payload = JSON.stringify({ ClassName: 'History' });
-    expect(() => validateClassInfo(label, payload)).toThrow(
+    expect(() => validateClassInfo_(label, payload)).toThrow(
       /Class Info must have a CourseId property/
     );
   });
@@ -50,7 +50,7 @@ describe('validateClassInfo', () => {
       CourseId: 'invalid id',
       YearGroup: null,
     });
-    expect(() => validateClassInfo(label, payload)).toThrow(/CourseId must be alphanumeric/);
+    expect(() => validateClassInfo_(label, payload)).toThrow(/CourseId must be alphanumeric/);
   });
 
   it('rejects invalid YearGroup types', () => {
@@ -59,11 +59,11 @@ describe('validateClassInfo', () => {
       CourseId: 'valid-id',
       YearGroup: 'ten',
     });
-    expect(() => validateClassInfo(label, payload)).toThrow(/YearGroup must be a number or null/);
+    expect(() => validateClassInfo_(label, payload)).toThrow(/YearGroup must be a number or null/);
   });
 
   it('accepts null YearGroup', () => {
     const payload = JSON.stringify({ ClassName: 'History', CourseId: 'valid-id', YearGroup: null });
-    expect(validateClassInfo(label, payload)).toBe(payload);
+    expect(validateClassInfo_(label, payload)).toBe(payload);
   });
 });

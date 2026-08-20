@@ -272,7 +272,7 @@ test.describe('bulk progress modal', () => {
     await expect(progressDialog).toHaveCount(0);
   });
 
-  test('cancelling a multi-row create removes pending rows and shows cancellation message', async ({
+  test('cancelling pending rows in a multi-row create closes the progress modal and shows a cancellation message', async ({
     page,
   }) => {
     const scenario: ClassesCrudRuntimeScenario = {
@@ -311,7 +311,7 @@ test.describe('bulk progress modal', () => {
     await expect(page.getByText(/cancelled/i)).toBeVisible();
   });
 
-  test('toolbar remains disabled while queue is active and alert banner appears on drain', async ({
+  test('toolbar bulk-action buttons remain disabled while the bulk-create queue is active and re-enable after drain', async ({
     page,
   }) => {
     const scenario: ClassesCrudRuntimeScenario = {

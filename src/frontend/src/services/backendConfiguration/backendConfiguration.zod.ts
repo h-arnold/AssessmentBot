@@ -22,6 +22,24 @@ export const BackendApiKeyWriteSchema = z
 const MaskedApiKeySchema = z.string().refine(isMaskedBackendApiKeyValue);
 
 /**
+ * Shared auth-group-email transport schema: blank (allowed only when nothing is stored)
+ * or a valid email address. Reused by the read, write, and form schemas so the rule
+ * lives in exactly one place.
+ */
+export const authGroupEmailSchema = z.union([z.literal(''), z.email()]);
+
+const authModeValues = ['googleGroups', 'none'] as const;
+/**
+ * @remarks
+ * Stored authentication mode. `googleGroups` enforces Google-group membership
+ * via AuthService; `none` is a TEMPORARY DEVELOPMENT MEASURE that bypasses all
+ * access checks and must never reach production (see backend deploy gate).
+ * When unset, consumers must apply the secure `googleGroups` default
+ * (backend `getAuthMode()` / the §5 form mapper) — this enum does not default.
+ */
+export const authModeSchema = z.enum(authModeValues);
+
+/**
  * Transport schema for backend configuration reads.
  *
  * @remarks
@@ -43,6 +61,8 @@ export const BackendConfigSchema = z
     jsonDbLogLevel: NonEmptyStringSchema,
     jsonDbBackupOnInitialise: z.boolean(),
     jsonDbRootFolderId: z.string(),
+    authGroupEmail: authGroupEmailSchema.optional(),
+    authMode: authModeSchema.optional(),
     loadError: z.string().optional(),
   })
   .strict();
@@ -68,6 +88,8 @@ export const BackendConfigWriteInputSchema = z
     jsonDbLogLevel: NonEmptyStringSchema.optional(),
     jsonDbBackupOnInitialise: z.boolean().optional(),
     jsonDbRootFolderId: z.string().optional(),
+    authGroupEmail: authGroupEmailSchema.optional(),
+    authMode: authModeSchema.optional(),
   })
   .strict();
 

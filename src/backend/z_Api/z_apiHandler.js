@@ -1,6 +1,6 @@
 // z_apiHandler.js
 
-/* global BaseSingleton, Utilities, LockService, ABLogger, ScriptAppManager, ABClassController, ReferenceDataController */
+/* global BaseSingleton, Utilities, LockService, ABLogger, ScriptAppManager, ABClassController, ReferenceDataController, AuthService */
 
 let lockTimeoutMs;
 let lockWaitWarnThresholdMs;
@@ -18,6 +18,7 @@ const API_ERROR_CODE_MAP = {
   UNKNOWN_METHOD: 'UNKNOWN_METHOD',
   IN_USE: 'IN_USE',
   DEFINITION_STALE: 'DEFINITION_STALE',
+  FORBIDDEN: 'FORBIDDEN', // authenticated but not a group member
 };
 
 const ALLOWLISTED_METHOD_HANDLERS = Object.freeze({
@@ -89,13 +90,13 @@ if (typeof module !== 'undefined' && module.exports) {
   activeLimit = ACTIVE_LIMIT;
   staleRequestAgeMs = STALE_REQUEST_AGE_MS;
   requestStoreFns = {
-    loadStore,
-    saveStore,
-    createStartedRecord,
-    markSuccess,
-    markError,
-    compactStore,
-    pruneStaleEntries,
+    loadStore_,
+    saveStore_,
+    createStartedRecord_,
+    markSuccess_,
+    markError_,
+    compactStore_,
+    pruneStaleEntries_,
   };
   apiRateLimitErrorName = ApiRateLimitError.name;
   apiValidationErrorName = ApiValidationError.name;
@@ -129,14 +130,42 @@ class ApiDispatcher extends BaseSingleton {
       return this._failure(requestId, 'INVALID_REQUEST', 'Invalid API request payload.', false);
     }
 
-    // Debug logging: stringify the incoming request (after validation to avoid errors on invalid requests)
+    // Normalise the method name once; every log, the allowlist lookup, and the
+    // auth audit trail record this canonical (trimmed) value so entries correlate
+    // with registered handler names even if a caller sends stray whitespace.
+    const methodName = request.method.trim();
+
     ABLogger.getInstance().debug('API request received.', {
       requestId,
-      method: request.method,
+      method: methodName,
       params: JSON.stringify(request.params),
     });
 
-    const methodName = request.method.trim();
+    // Auth gate: runs after request validation but before the allowlist method
+    // lookup and admission phase, so non-members receive FORBIDDEN uniformly and
+    // cannot probe which API methods exist (UNKNOWN_METHOD is only observable by
+    // authorised callers). `getAuthorisationStatus` is gate-exempt — it skips the
+    // group check entirely and runs its OAuth-only handler.
+    if (methodName !== 'getAuthorisationStatus') {
+      let access;
+      try {
+        access = AuthService.getInstance().checkAccess({ method: methodName });
+      } catch (error) {
+        // A thrown auth check (e.g. ConfigurationManager persistence failure) is a
+        // transport-boundary error, not a group-membership denial — log it once at
+        // the boundary, then map to the INTERNAL_ERROR envelope rather than FORBIDDEN.
+        ABLogger.getInstance().error(
+          'Auth check failed.',
+          { requestId, method: methodName },
+          error
+        );
+        return this._mapErrorToFailureEnvelope(requestId, error);
+      }
+      if (!access.allowed) {
+        return this._failure(requestId, API_ERROR_CODE_MAP.FORBIDDEN, 'Access denied.', false);
+      }
+    }
+
     const handler = ALLOWLISTED_METHOD_HANDLERS[methodName];
 
     if (!handler) {
@@ -229,22 +258,22 @@ class ApiDispatcher extends BaseSingleton {
       });
     }
     try {
-      const store = requestStoreFns.loadStore();
+      const store = requestStoreFns.loadStore_();
 
-      const keysBefore = Object.keys(store);
-      requestStoreFns.pruneStaleEntries(store, staleRequestAgeMs, lockAcquiredAt);
-      const keysAfterSet = new Set(Object.keys(store));
-      for (const candidateId of keysBefore) {
-        if (!keysAfterSet.has(candidateId)) {
-          ABLogger.getInstance().warn('Pruned stale request entry during admission.', {
-            requestId,
-            prunedId: candidateId,
-          });
-        }
+      const { prunedIds } = requestStoreFns.pruneStaleEntries_(
+        store,
+        staleRequestAgeMs,
+        lockAcquiredAt
+      );
+      for (const prunedId of prunedIds) {
+        ABLogger.getInstance().warn('Pruned stale request entry during admission.', {
+          requestId,
+          prunedId,
+        });
       }
 
       // Persist pruned state immediately so stale entries don't accumulate on rate-limited paths.
-      requestStoreFns.saveStore(store);
+      requestStoreFns.saveStore_(store);
 
       const activeCount = Object.values(store).filter((r) => r.status === 'started').length;
       if (activeCount >= activeLimit) {
@@ -256,8 +285,8 @@ class ApiDispatcher extends BaseSingleton {
         );
       }
 
-      store[requestId] = requestStoreFns.createStartedRecord(requestId, method, lockAcquiredAt);
-      requestStoreFns.saveStore(store);
+      store[requestId] = requestStoreFns.createStartedRecord_(requestId, method, lockAcquiredAt);
+      requestStoreFns.saveStore_(store);
       const endTime = Date.now();
       const stateUpdateMs = endTime - lockAcquiredAt;
       const totalPhaseMs = endTime - phaseStart;
@@ -303,13 +332,13 @@ class ApiDispatcher extends BaseSingleton {
       });
     }
     try {
-      const store = requestStoreFns.loadStore();
+      const store = requestStoreFns.loadStore_();
       if (handlerFailed) {
-        requestStoreFns.markError(store, requestId, String(handlerError));
+        requestStoreFns.markError_(store, requestId, String(handlerError));
       } else {
-        requestStoreFns.markSuccess(store, requestId);
+        requestStoreFns.markSuccess_(store, requestId);
       }
-      requestStoreFns.saveStore(requestStoreFns.compactStore(store));
+      requestStoreFns.saveStore_(requestStoreFns.compactStore_(store));
       const endTime = Date.now();
       const stateUpdateMs = endTime - lockAcquiredAt;
       const totalPhaseMs = endTime - phaseStart;
@@ -368,7 +397,7 @@ class ApiDispatcher extends BaseSingleton {
     // Defensive check: log and coerce undefined to null to prevent Zod parsing errors
     // in the frontend where undefined values in response envelope cause validation failures
     if (data === undefined) {
-      ABLogger.getInstance().error('Success response with undefined data', { requestId });
+      ABLogger.getInstance().warn('Success response with undefined data', { requestId });
     }
     return {
       ok: true,

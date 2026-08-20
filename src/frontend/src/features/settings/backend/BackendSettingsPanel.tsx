@@ -12,7 +12,7 @@ import {
 } from 'antd';
 import type { FormInstance } from 'antd';
 import type { ReactNode } from 'react';
-import { Fragment, useEffect } from 'react';
+import { useEffect } from 'react';
 import { BackendSettingsFormSchema, type BackendSettingsForm } from './backendSettingsForm.zod';
 import { useBackendSettings } from './useBackendSettings';
 import { APP_GAP_LG } from '../../../theme/spacing';
@@ -21,11 +21,18 @@ const { Text, Title } = Typography;
 
 const backendSettingsRefreshStatusCopy = 'Refreshing backend settings...';
 
+const authGroupEmailClearingErrorMessage = 'The auth group email cannot be cleared once set.';
+
 const jsonDatabaseLogLevelOptions = [
   { label: 'DEBUG', value: 'DEBUG' },
   { label: 'INFO', value: 'INFO' },
   { label: 'WARN', value: 'WARN' },
   { label: 'ERROR', value: 'ERROR' },
+];
+
+const authModeOptions = [
+  { label: 'Google Groups', value: 'googleGroups' },
+  { label: 'None', value: 'none' },
 ];
 
 type BackendSettingsFieldName = Exclude<keyof BackendSettingsForm, 'hasApiKey'>;
@@ -38,6 +45,7 @@ type BackendSettingsFieldDescriptor = Readonly<{
   section: BackendSettingsFieldSection;
   valuePropName?: 'checked';
   withSchemaValidation?: boolean;
+  helperText?: string;
 }>;
 
 const backendSettingsFieldNames = [
@@ -50,6 +58,8 @@ const backendSettingsFieldNames = [
   'jsonDbLockTimeoutMs',
   'jsonDbLogLevel',
   'jsonDbRootFolderId',
+  'authGroupEmail',
+  'authMode',
 ] as const satisfies ReadonlyArray<BackendSettingsFieldName>;
 
 const backendSettingsFieldDescriptors = [
@@ -98,7 +108,9 @@ const backendSettingsFieldDescriptors = [
   {
     name: 'jsonDbLockTimeoutMs',
     label: 'JSON DB lock timeout',
-    renderInput: () => <InputNumber min={1000} max={600_000} precision={0} style={{ width: '100%' }} />,
+    renderInput: () => (
+      <InputNumber min={1000} max={600_000} precision={0} style={{ width: '100%' }} />
+    ),
     section: 'Database',
     withSchemaValidation: true,
   },
@@ -123,9 +135,32 @@ const backendSettingsFieldDescriptors = [
     section: 'Database',
     withSchemaValidation: true,
   },
+  {
+    name: 'authGroupEmail',
+    label: 'Auth group email',
+    renderInput: () => <Input type="email" autoComplete="email" />,
+    section: 'Backend',
+    withSchemaValidation: true,
+    helperText:
+      'Enter the email address of the Google Group whose members are allowed to access this application.',
+  },
+  // SECURITY: 'none' bypasses the access gate — development/testing only, never production.
+  {
+    name: 'authMode',
+    label: 'Authentication options',
+    renderInput: () => <Select options={authModeOptions} />,
+    section: 'Backend',
+    withSchemaValidation: true,
+    helperText:
+      "Controls how access to this application is verified. 'None' disables the access gate entirely — for development and testing only; do not use in production.",
+  },
 ] as const satisfies ReadonlyArray<BackendSettingsFieldDescriptor>;
 
-const backendSettingsSectionOrder = ['Backend', 'Advanced', 'Database'] as const satisfies ReadonlyArray<BackendSettingsFieldSection>;
+const backendSettingsSectionOrder = [
+  'Backend',
+  'Advanced',
+  'Database',
+] as const satisfies ReadonlyArray<BackendSettingsFieldSection>;
 
 type SettingsSectionCardProperties = Readonly<{
   title: string;
@@ -211,6 +246,32 @@ function getApiKeyHelperCopy(hasApiKey: boolean): string {
 }
 
 /**
+ * Resolves the helper copy for one backend settings field.
+ *
+ * @param {BackendSettingsFieldDescriptor} descriptor The field descriptor.
+ * @param {boolean} hasApiKey Whether a stored API key already exists.
+ * @returns {string | null} The static or dynamic helper copy, or null when the field has none.
+ *
+ * @remarks
+ * Declarative static helper text (descriptor `helperText`) takes precedence. Fields without it
+ * fall through to the existing dynamic API key helper case, preserving that behaviour exactly.
+ */
+function getBackendSettingsFieldHelperText(
+  descriptor: BackendSettingsFieldDescriptor,
+  hasApiKey: boolean
+): string | null {
+  if (descriptor.helperText !== undefined) {
+    return descriptor.helperText;
+  }
+
+  if (descriptor.name === 'apiKey') {
+    return getApiKeyHelperCopy(hasApiKey);
+  }
+
+  return null;
+}
+
+/**
  * Clears form validation errors for the provided backend settings fields.
  *
  * @param {FormInstance<BackendSettingsForm>} form The Ant Design form instance.
@@ -252,12 +313,15 @@ function mapBackendSettingsFieldErrorsToFormRecords(
  * @param {Readonly<{ descriptor: BackendSettingsFieldDescriptor; form: FormInstance<BackendSettingsForm>; hasApiKey: boolean; }>} properties Field-render dependencies.
  * @returns {JSX.Element} The rendered form item.
  */
-function renderBackendSettingsField(properties: Readonly<{
-  descriptor: BackendSettingsFieldDescriptor;
-  form: FormInstance<BackendSettingsForm>;
-  hasApiKey: boolean;
-}>) {
+function renderBackendSettingsField(
+  properties: Readonly<{
+    descriptor: BackendSettingsFieldDescriptor;
+    form: FormInstance<BackendSettingsForm>;
+    hasApiKey: boolean;
+  }>
+) {
   const { descriptor, form, hasApiKey } = properties;
+  const helperText = getBackendSettingsFieldHelperText(descriptor, hasApiKey);
 
   return (
     <Form.Item
@@ -278,6 +342,7 @@ function renderBackendSettingsField(properties: Readonly<{
           : undefined
       }
       valuePropName={descriptor.valuePropName}
+      extra={helperText ?? undefined}
     >
       {descriptor.renderInput()}
     </Form.Item>
@@ -299,9 +364,9 @@ function renderBackendSettingsPanelStatus(
   return (
     <>
       {properties.isRefreshing ? (
-        <div aria-live="polite" role="status">
+        <output>
           <Text type="secondary">{backendSettingsRefreshStatusCopy}</Text>
-        </div>
+        </output>
       ) : null}
       {properties.saveError === null ? null : (
         <Alert title={properties.saveError} showIcon type="error" />
@@ -320,6 +385,10 @@ function renderBackendSettingsPanelStatus(
  * The API key helper text is intentionally limited to replacement or retention guidance because
  * explicit clearing is out of scope for this feature and the backend only accepts a blank field as
  * "keep the stored key".
+ *
+ * The auth group email is compulsory once set: `handleFinish` rejects a blank submission when a
+ * non-blank baseline value is loaded from the hook, surfacing a field error before any save call.
+ * The backend independently rejects clearing (defence-in-depth).
  *
  * Submit failures rely on `scrollToFirstError={{ focus: true }}` so browser-visible validation
  * behaviour stays accessible and the first invalid field receives focus without custom scrolling
@@ -377,6 +446,21 @@ export function BackendSettingsPanel() {
       return;
     }
 
+    const submittedAuthGroupEmail = validationResult.data.authGroupEmail.trim();
+    const baselineAuthGroupEmail = (backendSettingsFormValues?.authGroupEmail ?? '').trim();
+
+    if (submittedAuthGroupEmail === '' && baselineAuthGroupEmail !== '') {
+      form.setFields(
+        mapBackendSettingsFieldErrorsToFormRecords([
+          {
+            fieldName: 'authGroupEmail',
+            message: authGroupEmailClearingErrorMessage,
+          },
+        ])
+      );
+      return;
+    }
+
     clearBackendSettingsFieldErrors(form, backendSettingsFieldNames);
     await saveBackendSettings(validationResult.data);
   };
@@ -429,24 +513,13 @@ export function BackendSettingsPanel() {
               <SettingsSectionCard key={section} title={section}>
                 {backendSettingsFieldDescriptors
                   .filter((fieldDescriptor) => fieldDescriptor.section === section)
-                  .map((fieldDescriptor) => (
-                    <Fragment key={fieldDescriptor.name}>
-                      {renderBackendSettingsField({
-                        descriptor: fieldDescriptor,
-                        form,
-                        hasApiKey,
-                      })}
-
-                      {section === 'Backend' && fieldDescriptor.name === 'apiKey' ? (
-                        <Text
-                          type="secondary"
-                          style={{ display: 'block', marginBottom: APP_GAP_LG, marginTop: 'calc(-1 * var(--app-spacing-md))' }}
-                        >
-                          {getApiKeyHelperCopy(hasApiKey)}
-                        </Text>
-                      ) : null}
-                    </Fragment>
-                  ))}
+                  .map((fieldDescriptor) =>
+                    renderBackendSettingsField({
+                      descriptor: fieldDescriptor,
+                      form,
+                      hasApiKey,
+                    })
+                  )}
               </SettingsSectionCard>
             ))}
 

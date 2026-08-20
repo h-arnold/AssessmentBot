@@ -9,7 +9,7 @@ function loadRequestStoreModule() {
   return require(requestStorePath);
 }
 
-describe('Api/requestStore – pruneStaleEntries', () => {
+describe('Api/requestStore – pruneStaleEntries_', () => {
   beforeEach(() => {
     globalThis.PropertiesService._resetUserProperties();
   });
@@ -19,7 +19,7 @@ describe('Api/requestStore – pruneStaleEntries', () => {
   });
 
   it('removes started entries whose startedAtMs is older than the staleness threshold', () => {
-    const { pruneStaleEntries } = loadRequestStoreModule();
+    const { pruneStaleEntries_ } = loadRequestStoreModule();
 
     const staleTime = Date.now() - STALE_REQUEST_AGE_MS - 1000;
     const store = {
@@ -37,14 +37,14 @@ describe('Api/requestStore – pruneStaleEntries', () => {
       },
     };
 
-    pruneStaleEntries(store, STALE_REQUEST_AGE_MS);
+    pruneStaleEntries_(store, STALE_REQUEST_AGE_MS);
 
     expect(store['stale-req-1']).toBeUndefined();
     expect(store['stale-req-2']).toBeUndefined();
   });
 
   it('leaves recent started entries untouched when startedAtMs is within the threshold', () => {
-    const { pruneStaleEntries } = loadRequestStoreModule();
+    const { pruneStaleEntries_ } = loadRequestStoreModule();
 
     const recentTime = Date.now() - 1000;
     const store = {
@@ -56,14 +56,14 @@ describe('Api/requestStore – pruneStaleEntries', () => {
       },
     };
 
-    pruneStaleEntries(store, STALE_REQUEST_AGE_MS);
+    pruneStaleEntries_(store, STALE_REQUEST_AGE_MS);
 
     expect(store['recent-req-1']).toBeDefined();
     expect(store['recent-req-1'].status).toBe('started');
   });
 
   it('never removes success entries regardless of age', () => {
-    const { pruneStaleEntries } = loadRequestStoreModule();
+    const { pruneStaleEntries_ } = loadRequestStoreModule();
 
     const veryOldTime = Date.now() - STALE_REQUEST_AGE_MS * 10;
     const store = {
@@ -76,14 +76,14 @@ describe('Api/requestStore – pruneStaleEntries', () => {
       },
     };
 
-    pruneStaleEntries(store, STALE_REQUEST_AGE_MS);
+    pruneStaleEntries_(store, STALE_REQUEST_AGE_MS);
 
     expect(store['old-success-1']).toBeDefined();
     expect(store['old-success-1'].status).toBe('success');
   });
 
   it('never removes error entries regardless of age', () => {
-    const { pruneStaleEntries } = loadRequestStoreModule();
+    const { pruneStaleEntries_ } = loadRequestStoreModule();
 
     const veryOldTime = Date.now() - STALE_REQUEST_AGE_MS * 10;
     const store = {
@@ -97,14 +97,14 @@ describe('Api/requestStore – pruneStaleEntries', () => {
       },
     };
 
-    pruneStaleEntries(store, STALE_REQUEST_AGE_MS);
+    pruneStaleEntries_(store, STALE_REQUEST_AGE_MS);
 
     expect(store['old-error-1']).toBeDefined();
     expect(store['old-error-1'].status).toBe('error');
   });
 
   it('mutates and returns the same store object', () => {
-    const { pruneStaleEntries } = loadRequestStoreModule();
+    const { pruneStaleEntries_ } = loadRequestStoreModule();
 
     const staleTime = Date.now() - STALE_REQUEST_AGE_MS - 1000;
     const store = {
@@ -116,18 +116,20 @@ describe('Api/requestStore – pruneStaleEntries', () => {
       },
     };
 
-    const returned = pruneStaleEntries(store, STALE_REQUEST_AGE_MS);
+    const returned = pruneStaleEntries_(store, STALE_REQUEST_AGE_MS);
 
-    expect(returned).toBe(store);
+    expect(returned.store).toBe(store);
+    expect(returned.prunedIds).toEqual(['stale-req-mut']);
   });
 
   it('returns an empty store unchanged when called on an empty store', () => {
-    const { pruneStaleEntries } = loadRequestStoreModule();
+    const { pruneStaleEntries_ } = loadRequestStoreModule();
 
     const store = {};
-    const returned = pruneStaleEntries(store, STALE_REQUEST_AGE_MS);
+    const returned = pruneStaleEntries_(store, STALE_REQUEST_AGE_MS);
 
-    expect(returned).toBe(store);
-    expect(Object.keys(returned)).toHaveLength(0);
+    expect(returned.store).toBe(store);
+    expect(returned.prunedIds).toEqual([]);
+    expect(Object.keys(returned.store)).toHaveLength(0);
   });
 });

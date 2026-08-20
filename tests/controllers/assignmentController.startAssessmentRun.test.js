@@ -90,6 +90,7 @@ function setupStandardMocks() {
   // Mock TriggerController (used by startProcessing which is mocked by spy)
   globalThis.TriggerController = vi.fn(function () {
     this.createTimeBasedTrigger = vi.fn(() => 'trigger-123');
+    this.storeTriggerContext = vi.fn();
   });
 
   // DateUtils.isNewer is available via setupGlobals.js

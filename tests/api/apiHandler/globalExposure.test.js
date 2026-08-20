@@ -1,46 +1,158 @@
 import { describe, expect, it } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const {
-  loadModuleGlobalsInVmContext,
-  googleClassroomsHandlerPath,
-  abclassMutationsPath,
-  assignmentDefinitionTransportPath,
-  apiConfigPath,
-} = require('./shared.js');
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-describe('Api/non-trivial transport helper global exposure', () => {
-  it('exposes only getGoogleClassrooms_ in vm context after loading googleClassrooms module', () => {
-    const context = loadModuleGlobalsInVmContext(googleClassroomsHandlerPath);
+const BACKEND_SOURCE_ROOT = path.resolve(__dirname, '../../../src/backend');
 
-    expect(context.getGoogleClassrooms).toBeUndefined();
-    expect(context.getGoogleClassrooms_).toEqual(expect.any(Function));
+/**
+ * The only legitimate top-level public functions in the backend. In Google Apps
+ * Script any top-level function not ending in `_` is exposed to google.script.run,
+ * so every other backend function must use a trailing underscore.
+ */
+const ALLOWED_PUBLIC_FUNCTIONS = Object.freeze(['apiHandler', 'doGet', 'triggerHandler']);
+
+/**
+ * Path segments that must never be scanned for exposed functions. Vendored code
+ * under `scripts/builder/vendor` and dependency directories are outside the
+ * backend's own surface; the scan rooted at `src/backend` already excludes them
+ * by construction, and this list defends the helper against an injected vendored
+ * path.
+ */
+const DEFAULT_EXCLUDED_PATH_SEGMENTS = Object.freeze(['node_modules', 'vendor']);
+
+/** @param {string} relativeFilePath @param {string[]} excludedPathSegments */
+function isExcludedPath(relativeFilePath, excludedPathSegments) {
+  return relativeFilePath.split(/[\\/]/).some((segment) => excludedPathSegments.includes(segment));
+}
+
+/**
+ * Discovers the backend source files at test time via a recursive glob over the
+ * backend source root. Relative path names are returned with forward slashes.
+ * Files that do not yet exist at scan time (e.g. `Triggers/triggerHandler.js`
+ * before the Triggers section lands) are simply not matched, and the allowlist
+ * already covers them from the start.
+ *
+ * @returns {string[]} relative source paths (forward-slash separated)
+ */
+function discoverBackendSourceFilePaths() {
+  return fs
+    .globSync('**/*.js', { cwd: BACKEND_SOURCE_ROOT })
+    .filter((relativePath) => !isExcludedPath(relativePath, DEFAULT_EXCLUDED_PATH_SEGMENTS));
+}
+
+/**
+ * Static source scan of backend files for accidental public function exposure.
+ * A file is flagged when it declares a top-level `function <name>(…)` whose name
+ * does not end in `_` and is not in the allowlist. Matches are anchored to line
+ * starts so indented nested declarations are not false-flagged.
+ *
+ * @param {Record<string, string>} files - mapping of relative file path to source text
+ * @param {object} [options]
+ * @param {string[]} [options.allowlist] - public functions that are permitted
+ * @param {string[]} [options.excludedPathSegments] - path segments whose files are skipped
+ * @returns {Array<{file: string, line: number, name: string}>} flagged functions
+ */
+function scanForExposedPublicFunctions(files, { allowlist, excludedPathSegments } = {}) {
+  const allowed = allowlist ?? ALLOWED_PUBLIC_FUNCTIONS;
+  const excluded = excludedPathSegments ?? DEFAULT_EXCLUDED_PATH_SEGMENTS;
+  const exposed = [];
+
+  for (const [file, source] of Object.entries(files)) {
+    if (isExcludedPath(file, excluded)) {
+      continue;
+    }
+
+    source.split('\n').forEach((line, index) => {
+      const declaration = line.match(/^function\s+([A-Za-z0-9_$]+)\s*\(/);
+      if (declaration && !declaration[1].endsWith('_') && !allowed.includes(declaration[1])) {
+        exposed.push({ file, line: index + 1, name: declaration[1] });
+      }
+    });
+  }
+
+  return exposed;
+}
+
+/** Builds the real source map by globbing and reading every backend source file. */
+function readAllBackendSourceFiles() {
+  const files = {};
+  for (const relativePath of discoverBackendSourceFilePaths()) {
+    const absolutePath = path.join(BACKEND_SOURCE_ROOT, relativePath);
+    files[relativePath] = fs.readFileSync(absolutePath, 'utf8');
+  }
+  return files;
+}
+
+describe('Backend global-exposure guardrail (static source scan)', () => {
+  it('requires every top-level backend function to be private or allowlisted', () => {
+    const files = readAllBackendSourceFiles();
+    expect(Object.keys(files).length).toBeGreaterThan(0);
+
+    const exposed = scanForExposedPublicFunctions(files, {
+      allowlist: ALLOWED_PUBLIC_FUNCTIONS,
+    });
+
+    expect(exposed).toEqual([]);
   });
 
-  it('exposes only trailing-underscore globals for non-trivial transport modules in vm context', () => {
-    const abclassContext = loadModuleGlobalsInVmContext(abclassMutationsPath);
-    expect(abclassContext.upsertABClass).toBeUndefined();
-    expect(abclassContext.updateABClass).toBeUndefined();
-    expect(abclassContext.deleteABClass).toBeUndefined();
-    expect(abclassContext.upsertABClass_).toEqual(expect.any(Function));
-    expect(abclassContext.updateABClass_).toEqual(expect.any(Function));
-    expect(abclassContext.deleteABClass_).toEqual(expect.any(Function));
+  it('excludes vendored code from the source scan', () => {
+    const files = {
+      'scripts/builder/vendor/jsondb/src/loadDatabase.js': 'function loadDatabase() {\n',
+      'scripts/builder/vendor/jsondb/src/createAndInitialiseDatabase.js':
+        'function createAndInitialiseDatabase() {\n',
+      'src/backend/z_Api/z_apiHandler.js': 'function apiHandler() {\n',
+    };
 
-    const assignmentDefinitionContext = loadModuleGlobalsInVmContext(
-      assignmentDefinitionTransportPath
-    );
-    expect(assignmentDefinitionContext.getAssignmentDefinitionPartials).toBeUndefined();
-    expect(assignmentDefinitionContext.getAssignmentDefinition).toBeUndefined();
-    expect(assignmentDefinitionContext.deleteAssignmentDefinition).toBeUndefined();
-    expect(assignmentDefinitionContext.getAssignmentDefinitionPartials_).toEqual(
-      expect.any(Function)
-    );
-    expect(assignmentDefinitionContext.getAssignmentDefinition_).toEqual(expect.any(Function));
-    expect(assignmentDefinitionContext.deleteAssignmentDefinition_).toEqual(expect.any(Function));
+    const exposed = scanForExposedPublicFunctions(files, {
+      allowlist: ALLOWED_PUBLIC_FUNCTIONS,
+    });
 
-    const backendConfigContext = loadModuleGlobalsInVmContext(apiConfigPath);
-    expect(backendConfigContext.getBackendConfig).toBeUndefined();
-    expect(backendConfigContext.setBackendConfig).toBeUndefined();
-    expect(backendConfigContext.getBackendConfig_).toEqual(expect.any(Function));
-    expect(backendConfigContext.setBackendConfig_).toEqual(expect.any(Function));
+    expect(exposed).toEqual([]);
+  });
+
+  it('flags an intentionally exposed function that lacks a trailing underscore', () => {
+    const files = {
+      'src/backend/SomeModule.js':
+        'function legitimatePublic_() {}\nfunction accidentallyExposedHelper() {}\n',
+    };
+
+    const exposed = scanForExposedPublicFunctions(files, {
+      allowlist: ALLOWED_PUBLIC_FUNCTIONS,
+    });
+
+    expect(exposed).toEqual([
+      { file: 'src/backend/SomeModule.js', line: 2, name: 'accidentallyExposedHelper' },
+    ]);
+  });
+
+  it('allowlists the three legitimate public entrypoints without flagging them', () => {
+    const files = {
+      'src/backend/z_Api/z_apiHandler.js': 'function apiHandler() {\n',
+      'src/backend/z_Api/WebApp.js': 'function doGet() {\n',
+      'src/backend/Triggers/triggerHandler.js': 'function triggerHandler() {\n',
+    };
+
+    const exposed = scanForExposedPublicFunctions(files, {
+      allowlist: ALLOWED_PUBLIC_FUNCTIONS,
+    });
+
+    expect(exposed).toEqual([]);
+  });
+
+  it('flags already-private trailing-underscore functions only when not allowlisted', () => {
+    const files = {
+      'src/backend/z_Api/apiConfig.js':
+        'function getBackendConfig_() {}\nfunction setBackendConfig_() {}\n  function safeSet() {}\n',
+    };
+
+    const exposed = scanForExposedPublicFunctions(files, {
+      allowlist: ALLOWED_PUBLIC_FUNCTIONS,
+    });
+
+    // `safeSet` is indented (nested) so it must not be flagged.
+    expect(exposed).toEqual([]);
   });
 });

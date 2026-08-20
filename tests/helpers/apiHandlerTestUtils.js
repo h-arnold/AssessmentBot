@@ -356,6 +356,7 @@ module.exports = {
   loadApiHandlerModule,
   getApiDispatcherInstance,
   callAuthorisationStatus,
+  installLockServiceMock,
   setupApiHandlerTestContext,
   teardownApiHandlerTestContext,
   buildStartedStore,

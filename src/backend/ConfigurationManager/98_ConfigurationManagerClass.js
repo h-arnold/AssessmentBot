@@ -11,7 +11,7 @@
  * @example
  * const config = ConfigurationManager.getInstance();
  * const backendAssessorBatchSize = config.getBackendAssessorBatchSize();
- * config.setApiKey('abt_7pC98PCoGJOcjN-qz6rNlSzKkgySJF-1');
+ * config.setApiKey('example-api-key');
  */
 
 /**
@@ -20,7 +20,7 @@
  * @param {Object} store - The property store object (or null).
  * @returns {Array<string>} Array of property keys, or empty array on failure.
  */
-function safeGetPropertyKeys(store) {
+function safeGetPropertyKeys_(store) {
   if (!store) return [];
   try {
     return store.getKeys ? store.getKeys() : [];
@@ -40,7 +40,7 @@ function safeGetPropertyKeys(store) {
  * @param {string} serialisedConfig - Serialised JSON configuration string.
  * @returns {Object} Parsed configuration object, or empty object on failure.
  */
-function safeParseConfigObject(serialisedConfig) {
+function safeParseConfigObject_(serialisedConfig) {
   if (serialisedConfig == null || serialisedConfig === '') {
     return {};
   }
@@ -51,7 +51,8 @@ function safeParseConfigObject(serialisedConfig) {
       return {};
     }
     return parsed;
-  } catch {
+  } catch (error) {
+    ABLogger.getInstance().error('safeParseConfigObject_ failed to parse configuration.', error);
     return {};
   }
 }
@@ -182,7 +183,7 @@ class ConfigurationManager extends BaseSingleton {
    */
   maybeDeserializeProperties() {
     try {
-      const hasScript = safeGetPropertyKeys(this.scriptProperties).length > 0;
+      const hasScript = safeGetPropertyKeys_(this.scriptProperties).length > 0;
       if (hasScript) return; // early return – nothing to do
 
       const propertiesCloner = new PropertiesCloner();
@@ -209,7 +210,7 @@ class ConfigurationManager extends BaseSingleton {
   getAllConfigurations() {
     this.ensureInitialized();
     if (!this.configCache) {
-      this.configCache = safeParseConfigObject(
+      this.configCache = safeParseConfigObject_(
         this.scriptProperties.getProperty(ConfigurationManager.CONFIG_STORE_KEY)
       );
     }
@@ -274,8 +275,8 @@ class ConfigurationManager extends BaseSingleton {
     this.getAllConfigurations();
     const spec = ConfigurationManager.CONFIG_SCHEMA[key];
     const canonical = spec?.validate ? spec.validate(value, this) : value;
-    const normalizedValue = spec?.normalize ? spec.normalize(canonical) : canonical;
-    const serialisedValue = String(normalizedValue);
+    const normalisedValue = spec?.normalise ? spec.normalise(canonical) : canonical;
+    const serialisedValue = String(normalisedValue);
     const updatedConfig = {
       ...this.configCache,
       [key]: serialisedValue,
@@ -369,6 +370,52 @@ class ConfigurationManager extends BaseSingleton {
    */
   getApiKey() {
     return this.getProperty(ConfigurationManager.CONFIG_KEYS.API_KEY);
+  }
+
+  /**
+   * Retrieves the configured Google Group email for auth group membership checks.
+   * Returns empty string when unset or blank (fail-open bootstrap state).
+   * @returns {string} The auth group email, or empty string if not configured.
+   */
+  getAuthGroupEmail() {
+    return this.getProperty(ConfigurationManager.CONFIG_KEYS.AUTH_GROUP_EMAIL);
+  }
+
+  /**
+   * Sets the configured Google Group email for auth group membership checks.
+   * @param {string} value - The Google Group email address to store.
+   * @returns {void}
+   */
+  setAuthGroupEmail(value) {
+    this.setProperty(ConfigurationManager.CONFIG_KEYS.AUTH_GROUP_EMAIL, value);
+  }
+
+  /**
+   * Returns the configured authentication mode.
+   *
+   * @remarks
+   * Secure-by-default: the method only returns `'none'` when the stored value is
+   * the exact literal `'none'`. Any other value (unset, blank, or unknown such as
+   * `'foo'`) resolves to `'googleGroups'`, the secure Google Groups mode. This
+   * prevents a malformed stored value from being emitted via `getBackendConfig_()`
+   * and rejected by the frontend `z.enum(...)` under `.strict()`.
+   *
+   * `'none'` is a TEMPORARY DEVELOPMENT MEASURE that bypasses the group-membership
+   * gate. It must never be used in production.
+   * @returns {'googleGroups'|'none'} The active authentication mode.
+   */
+  getAuthMode() {
+    const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.AUTH_MODE);
+    return value === 'none' ? 'none' : 'googleGroups';
+  }
+
+  /**
+   * Persists the authentication mode.
+   * @param {'googleGroups'|'none'} value - The authentication mode to store.
+   * @throws {Error} If the value is not a valid auth mode (validated by CONFIG_SCHEMA).
+   */
+  setAuthMode(value) {
+    this.setProperty(ConfigurationManager.CONFIG_KEYS.AUTH_MODE, value);
   }
 
   /**
@@ -569,7 +616,7 @@ class ConfigurationManager extends BaseSingleton {
    * @returns {boolean} The boolean representation of the input value.
    */
   static toBoolean(value) {
-    const toBooleanFunction = ConfigurationManager._toBoolean || toBoolean;
+    const toBooleanFunction = ConfigurationManager._toBoolean || toBoolean_;
     return toBooleanFunction(value);
   }
   /**
@@ -578,7 +625,7 @@ class ConfigurationManager extends BaseSingleton {
    * @returns {string} The string representation of the boolean value (e.g., 'true' or 'false').
    */
   static toBooleanString(value) {
-    const toBooleanStringFunction = ConfigurationManager._toBooleanString || toBooleanString;
+    const toBooleanStringFunction = ConfigurationManager._toBooleanString || toBooleanString_;
     return toBooleanStringFunction(value);
   }
 
@@ -632,8 +679,8 @@ if (typeof module !== 'undefined' && module.exports) {
   ConfigurationManager._DRIVE_ID_PATTERN = validators.DRIVE_ID_PATTERN;
   ConfigurationManager._JSON_DB_LOG_LEVELS = validators.JSON_DB_LOG_LEVELS;
   ConfigurationManager._CONFIG_STORE_KEY = '__CONFIG_STORE_KEY__';
-  ConfigurationManager._toBoolean = validators.toBoolean;
-  ConfigurationManager._toBooleanString = validators.toBooleanString;
+  ConfigurationManager._toBoolean = validators.toBoolean_;
+  ConfigurationManager._toBooleanString = validators.toBooleanString_;
 }
 
 if (!globalThis.__CONFIG_MANAGER_STATICS_INITIALISED__) {

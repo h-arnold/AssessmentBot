@@ -88,11 +88,11 @@ class ABLogger extends BaseSingleton {
     if (!argument) return argument;
 
     // If it's an Error, serialise
-    if (isErrorLike(argument)) return this.serialiseError(argument);
+    if (isErrorLike_(argument)) return this.serialiseError(argument);
 
     // If it's an object/array, shallow-copy and serialise any direct Error-like properties
     if (typeof argument === 'object') {
-      return this.shallowSerialiseObject(argument, isErrorLike);
+      return this.shallowSerialiseObject(argument, isErrorLike_);
     }
 
     return argument;
@@ -167,7 +167,7 @@ class ABLogger extends BaseSingleton {
  * @param {any} value - The value to check.
  * @returns {boolean} True if the value is error-like.
  */
-function isErrorLike(value) {
+function isErrorLike_(value) {
   return value instanceof Error || (value?.name && value?.message && value?.stack);
 }
 

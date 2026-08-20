@@ -872,6 +872,18 @@ Per `SPEC_CLASS_PAGE_PREPARATION.md` line 382, the canonical home for these help
 - Call-site rationale: the single projection boundary consumed by `TaskHeatmapPage`. Reads `assignment.assignmentDefinitionKey` from the class-full assignment, resolves the definition partial from the warm-up `assignmentDefinitionPartials` registry, and derives `taskKey`s and `taskColumns` from the resolved partial's `tasks` array (no longer reads tasks from an embedded `assignment.assignmentDefinition` object, which was removed from the transport shape). `assignmentName` from `primaryTitle`, `className` from `classFull.className` (fallback `'Class Overview'`). Throws `TaskTitlesUnavailableError` when the definition partial is missing, and throws on unknown `assignmentId` (fail fast).
 - Status: `Implemented` (ACTION_PLAN.md Section 2 — `adaptMetricsToHeatmap` added to `heatmapAdapter.ts`; `HeatmapResult`/`HeatmapRow`/`HeatmapCell`/`HeatmapTaskColumn` interfaces exported).
 
+### 9.21 Backend settings `helperText` descriptor extension
+
+This entry records the descriptor-type extension for the Auth Service feature (source: repository-root `SPEC.md` and `ACTION_PLAN.md`).
+
+1. Helper or contract: `helperText?: string` field on `BackendSettingsFieldDescriptor`
+
+- Decision: `extend`
+- Owning module/path: `src/frontend/src/features/settings/backend/BackendSettingsPanel.tsx`
+- Status: `Implemented`
+- Call-site rationale: supports declarative static helper text for the `authGroupEmail` field without adding special-case rendering branches. The existing `apiKey` dynamic helper case (`getApiKeyHelperCopy()`) is preserved as-is. The render logic checks `descriptor.helperText` first; if present, renders static helper; otherwise falls through to the existing `apiKey` dynamic case.
+- References: SPEC.md §Frontend changes (4); ACTION_PLAN.md §11.
+
 ## 10. Frontend utils folder convention
 
 The `src/frontend/src/utils/` folder exists for pure formatting / utility functions that are shared across the frontend. This folder is a separate convention from `src/frontend/AGENTS.md` §13, which governs only `services/` subfolder organisation.

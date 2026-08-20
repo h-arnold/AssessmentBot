@@ -183,7 +183,7 @@ Frontend E2E tests (Playwright) should be run when reviewing integration-level c
 npm run test:frontend:e2e
 ```
 
-If Chromium or its system dependencies are missing, install them first with `npm --prefix src/frontend exec -- playwright install --with-deps chromium`, then rerun `npm run test:frontend:e2e`. Do not mark the review clean until the Playwright run passes for any user-visible interaction or browser integration change.
+If Chromium or its system dependencies are missing, install them first with `npm --prefix src/frontend exec -- playwright install chromium`, then rerun `npm run test:frontend:e2e`. Do not mark the review clean until the Playwright run passes for any user-visible interaction or browser integration change.
 
 When reviewing any test code, follow the testing guidance in `docs/developer/frontend/frontend-testing.md`.
 

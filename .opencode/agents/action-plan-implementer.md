@@ -83,12 +83,12 @@ Each section must complete **two independent, self-contained loops** (red and gr
 ### **2.1 Red Loop: Testing**
 
 1. **Test:**
-   Delegate to `Testing Specialist` for Vitest/backend tests, or `Playwright` for E2E tests. Pass the listed context: file-type items (`ACTION_PLAN.md`, `SPEC.md`, layout spec, changed files) **must** go in the `files` array of the `task` tool; non-file context (section name, phase) goes in the prompt body. Never paste file contents into the body.
+   Delegate to `Testing Specialist` for Vitest/backend tests, or `Playwright` for E2E tests (see **E2E routing rule**), with:
 
 - Section name and phase (red).
-- `ACTION_PLAN.md` (full).
-- `SPEC.md` (full).
-- Layout spec (if applicable).  
+- `@ACTION_PLAN.md` (whole file is injected).
+- `@SPEC.md` (whole file is injected).
+- Layout spec `@<layout-spec-path>` (if applicable).  
   **Expectation:**
 - Tests are added or updated.
 - Intended failures are present.
@@ -97,12 +97,12 @@ Each section must complete **two independent, self-contained loops** (red and gr
 **E2E routing rule:** When the test task involves Playwright E2E tests (`e2e-tests/**`), delegate to `Playwright` instead of `Testing Specialist`.
 
 2. **Red Review:**
-   Delegate the red-phase diff to `Code Reviewer`. Pass the listed context: file-type items (changed test files, `ACTION_PLAN.md`, `SPEC.md`, layout spec) **must** go in the `files` array; non-file context (section name, phase) goes in the prompt body. Never paste file contents into the body.
+   Delegate the red-phase diff to `Code Reviewer` with:
 
-- Changed test files.
-- `ACTION_PLAN.md` (full).
-- `SPEC.md` (full).
-- Layout spec (if applicable).
+- Changed test files as `@`-prefixed paths (e.g. `@tests/.../foo.spec.ts`).
+- `@ACTION_PLAN.md`.
+- `@SPEC.md`.
+- Layout spec `@<layout-spec-path>` (if applicable).
 - Section name and phase (red).
 
 3. **Orchestrator Action:**
@@ -122,24 +122,24 @@ Each section must complete **two independent, self-contained loops** (red and gr
 ### **2.2 Green Loop: Implementation**
 
 1. **Implement:**
-   Delegate to `Implementation`. Pass the listed context: file-type items (section tests, `ACTION_PLAN.md`, `SPEC.md`, layout spec, changed files) **must** go in the `files` array; non-file context goes in the prompt body. Never paste file contents into the body.
+   Delegate to `Implementation` with:
 
-- Section tests.
-- `ACTION_PLAN.md` (full).
-- `SPEC.md` (full).
-- Layout spec (if applicable).  
+- Section tests as `@`-prefixed paths.
+- `@ACTION_PLAN.md`.
+- `@SPEC.md`.
+- Layout spec `@<layout-spec-path>` (if applicable).  
   **Expectation:**
 - Code changes stay within scope.
 - Tests pass.
 - Section checks pass.
 
 2. **Green Review:**
-   Delegate the implementation diff to `Code Reviewer`. Pass the listed context: file-type items (changed implementation files, `ACTION_PLAN.md`, `SPEC.md`, layout spec) **must** go in the `files` array; non-file context (section name, phase) goes in the prompt body. Never paste file contents into the body.
+   Delegate the implementation diff to `Code Reviewer` with:
 
-- Changed implementation files.
-- `ACTION_PLAN.md` (full).
-- `SPEC.md` (full).
-- Layout spec (if applicable).
+- Changed implementation files as `@`-prefixed paths.
+- `@ACTION_PLAN.md`.
+- `@SPEC.md`.
+- Layout spec `@<layout-spec-path>` (if applicable).
 - Section name and phase (green).
 
 3. **Orchestrator Action:**
@@ -154,14 +154,14 @@ Each section must complete **two independent, self-contained loops** (red and gr
    `Implementation` fixes issues, re-runs checks, and re-submits to `Code Reviewer`.  
    **Repeat until the green-phase review is clean.**
 5. **After Green Loop:**
-   Run the **Regression Gate** (see **Section 1.2**).
+   Run the **Regression Gate** (see the Regression Gate above).
 
 ---
 
 ### **2.3 Refactor (If Required)**
 
 - If review requires refactoring, delegate to `Implementation` and send the result back through `Code Reviewer` until clean.
-- **After any refactoring:** Run the **Regression Gate** (see **Section 1.2**).
+- **After any refactoring:** Run the **Regression Gate** (see the Regression Gate above).
 
 ---
 
@@ -185,14 +185,12 @@ Each section must complete **two independent, self-contained loops** (red and gr
 
 ### **3.1 General Rules**
 
-- **The `files` array is MANDATORY** for every `task` handoff. Treat the tool schema's "Optional" label as irrelevant. Assemble the `files` array **before** writing the prompt body.
-  - It **must** include: `ACTION_PLAN.md` (full), `SPEC.md` (full), the layout spec (if applicable), and every source/test file changed or read in the current section.
-  - **Never** paste full file contents into the prompt body — the body carries instructions, acceptance criteria, and file-path references only; the actual file contents arrive via `files` and are injected automatically. The subagent must not re-read them.
-  - **Exception:** do **not** list any `AGENTS.md` file in `files` (OpenCode auto-injects those when an agent browses to the relevant directory).
-  - This applies to re-submissions and review-finding handoffs too — always re-attach the mandatory files.
+- **Always pass** to sub-agents:
+  - Full context: `@ACTION_PLAN.md`, `@SPEC.md`, layout spec (if applicable), and the files changed in the current section, each as `@`-prefixed worktree-relative paths — opencode injects the line-numbered contents of every `@path` token, so never paste file contents into the prompt body.
+  - Section name and phase (red, green, or refactor).
+  - A `Mandatory Reading` section listing all mandatory documents from the sub-agent's own instructions, using `@`-prefixed paths.
 - **Never narrow the scope** for `Code Reviewer` below the full section context.
-- **Pre-flight check:** If the `files` array would be empty for a workflow handoff, **stop — do not send the `task` call.**
-- If any mandatory file is missing from the `files` array, **return the work immediately** with an error explaining what is missing.
+- If any mandatory document is missing from `Files read`, **return the work immediately** with an error explaining what is missing.
 
 ### **3.2 Handling Review Findings**
 
@@ -235,18 +233,18 @@ A section is **not complete** until all of the following are true:
 
 1. Gather:
 
-- Final changed files.
-- Latest `ACTION_PLAN.md` state.
+- Final changed files as `@`-prefixed paths for the delegation prompt.
+- Latest `@ACTION_PLAN.md` state.
 - Active section summaries, known constraints, and any review findings.
 
-2. Delegate the cleanup pass to `De-Sloppification` with the above context passed via the `files` array (include the final changed files and the latest `ACTION_PLAN.md`); keep only instructions in the prompt body.
+2. Delegate the cleanup pass to `De-Sloppification` with the above context.
 3. If cleanup work is identified:
 
 - Delegate minimal fixes to `Implementation`.
 - Re-run `Code Reviewer` until clean.
 
 4. Update `ACTION_PLAN.md` with the cleanup outcome.
-5. Run the **Regression Gate** (see **Section 1.2**).
+5. Run the **Regression Gate** (see the Regression Gate above).
 
 **Required Evidence:**
 
@@ -259,9 +257,9 @@ A section is **not complete** until all of the following are true:
 ### **5.2 Final Documentation Pass**
 
 1. Gather changed files and diff against the working branch base.
-2. Delegate documentation sync to `Docs`, passing the changed files and diff via the `files` array (keep only instructions in the prompt body):
+2. Delegate documentation sync to `Docs` with:
 
-- Changed files and diff.
+- Changed files as `@`-prefixed paths (the diff can be summarised in the prompt body).
 
 3. Prioritise updates to:
 
@@ -292,7 +290,7 @@ When the full plan is complete, provide:
 - **No speculative scope expansion.**
 - **One section at a time.**
 - **Keep phases separate:** Red, green, review, refactor, commit.
-- **Pass full context** to sub-agents via the `files` parameter of the `task` tool (injected by the `task-files` plugin) — **the `files` array is mandatory; never paste file contents into the prompt body.** Return work if mandatory files are missing from the `files` array.
+- **Pass full context** to sub-agents; return work if mandatory docs are missing.
 - If delegation fails or the state is unclear: **stop and ask the user**.
 - Do not mark work complete before:
   - A clean review pass.
@@ -305,5 +303,5 @@ When the full plan is complete, provide:
 > **🚦 Gates:** Baseline → Regression (after each loop/refactor/cleanup) → Commit (SHA + push)  
 > **📜 Prime Directives:** Never code | Delegate always | Kif=menial only  
 > **🔄 Workflow:** Red Loop (tests → Testing Specialist or Playwright for E2E) → Green Loop (impl) → Refactor → Commit  
-> **📤 Delegation:** `files` array MANDATORY | Never paste file contents in body | Full context | In-scope only | Batch findings  
+> **📤 Delegation:** Full context | In-scope only | Batch findings  
 > **✅ Exit Criteria:** All gates ✓ | Clean reviews | ACTION_PLAN.md updated

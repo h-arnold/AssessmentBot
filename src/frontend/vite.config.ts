@@ -3,6 +3,16 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
+  server: {
+    fs: {
+      // Allow `?raw` imports from outside the frontend package in specs (e.g.
+      // `index.css.spec.ts` reads docs/developer/frontend/*.md). Vitest's module
+      // runner derives `fs.allow` from the workspace root, which falls back to
+      // the frontend package root (nearest package.json) because the repo uses
+      // no workspace marker, so docs/ would otherwise be denied.
+      allow: ['../..'],
+    },
+  },
   test: {
     environment: 'happy-dom',
     globals: true,

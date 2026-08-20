@@ -22,6 +22,12 @@ const SOURCE_EXTENSIONS = new Set([
   '.svelte',
 ]);
 
+/**
+ * Check whether a piece of source text contains a lint/TS silencing rule.
+ *
+ * @param {string} text - The source text to inspect.
+ * @returns {string | null} The matched silencing pattern source, or null when none is found.
+ */
 function hasSilencingRule(text: string): string | null {
   for (const pattern of SILENCE_PATTERNS) {
     if (pattern.test(text)) return pattern.source;
@@ -29,6 +35,12 @@ function hasSilencingRule(text: string): string | null {
   return null;
 }
 
+/**
+ * Determine whether a file path should be checked for silencing rules.
+ *
+ * @param {string | undefined} filePath - The file path being written or edited.
+ * @returns {boolean} True when the path is a source file outside the plugin directory.
+ */
 function isSourceFile(filePath: string | undefined): boolean {
   if (!filePath) return false;
   if (filePath.includes('/.opencode/plugins/')) return false;

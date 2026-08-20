@@ -37,18 +37,6 @@ const AssignmentController = require('../../src/backend/y_controllers/Assignment
 
 const { AssignmentDefinition } = require('../../src/backend/Models/AssignmentDefinition.js');
 
-// Test Helpers for processSelectedAssignment - moved to module scope per S7721
-const createPropertyMock = function (overrides) {
-  return function (key) {
-    const defaults = {
-      assignmentId: 'assignment-456',
-      triggerId: 'trigger-789',
-      courseId: 'course-123',
-    };
-    return overrides[key] ?? defaults[key] ?? null;
-  };
-};
-
 const createFullDefinition = function (options) {
   if (options === void 0) {
     options = {};
@@ -267,13 +255,6 @@ describe('AssignmentController - Definition Hydration', () => {
 
   describe('processSelectedAssignment', () => {
     it('should fetch full definition from dedicated collection', () => {
-      // Setup properties
-      mockProperties.getProperty.mockImplementation(
-        createPropertyMock({
-          definitionKey: 'Essay 1_English_year-group-10',
-        })
-      );
-
       // Setup full definition
       const fullDefinition = createFullDefinition({
         primaryTitle: 'Essay 1',
@@ -302,7 +283,11 @@ describe('AssignmentController - Definition Hydration', () => {
 
       const controller = new AssignmentController();
 
-      controller.processSelectedAssignment();
+      controller.processSelectedAssignment({
+        assignmentId: 'assignment-1',
+        definitionKey: 'Essay 1_English_year-group-10',
+        courseId: 'course-1',
+      });
 
       // Verify full definition fetched with correct form parameter
       expect(mockDefinitionController.getDefinitionByKey).toHaveBeenCalledWith(
@@ -317,34 +302,30 @@ describe('AssignmentController - Definition Hydration', () => {
     });
 
     it('should throw error if definition not found', () => {
-      mockProperties.getProperty.mockImplementation(
-        createPropertyMock({
-          definitionKey: 'NonExistent_Topic_year-group-10',
-        })
-      );
-
       mockDefinitionController.getDefinitionByKey.mockReturnValue(null);
 
       const controller = new AssignmentController();
 
       expect(() => {
-        controller.processSelectedAssignment();
+        controller.processSelectedAssignment({
+          assignmentId: 'assignment-1',
+          definitionKey: 'NonExistent_Topic_year-group-10',
+          courseId: 'course-1',
+        });
       }).toThrow('Assignment definition not found for key NonExistent_Topic_year-group-10');
     });
 
     it('should use full definition for assignment instance creation', () => {
-      mockProperties.getProperty.mockImplementation(
-        createPropertyMock({
-          definitionKey: 'Test_Topic_year-group-10',
-        })
-      );
-
       const fullDefinition = createFullDefinition();
 
       mockDefinitionController.getDefinitionByKey.mockReturnValue(fullDefinition);
 
       const controller = new AssignmentController();
-      controller.processSelectedAssignment();
+      controller.processSelectedAssignment({
+        assignmentId: 'assignment-1',
+        definitionKey: 'Test_Topic_year-group-10',
+        courseId: 'course-1',
+      });
 
       // Verify SlidesAssignment was created (based on documentType)
       expect(globalThis.SlidesAssignment).toHaveBeenCalled();
@@ -646,37 +627,27 @@ describe('AssignmentController - Definition Hydration', () => {
   });
 
   describe('startProcessing', () => {
-    it('should store only definitionKey in properties (no doc IDs)', () => {
+    it('stores task context via TriggerController.storeTriggerContext() and targets triggerHandler', () => {
       const mockTrigger = {
         createTimeBasedTrigger: vi.fn().mockReturnValue('trigger-123'),
+        storeTriggerContext: vi.fn(),
       };
       globalThis.TriggerController.mockImplementation(function () {
         return mockTrigger;
       });
 
       const controller = new AssignmentController();
-      controller.startProcessing('assignment-456', 'Essay 1_English_year-group-10');
+      controller.startProcessing('assignment-456', 'Essay 1_English_year-group-10', 'course-123');
 
-      expect(mockProperties.setProperty).toHaveBeenCalledWith('assignmentId', 'assignment-456');
-      expect(mockProperties.setProperty).toHaveBeenCalledWith(
-        'definitionKey',
-        'Essay 1_English_year-group-10'
-      );
-      expect(mockProperties.setProperty).toHaveBeenCalledWith('triggerId', 'trigger-123');
-
-      // Should NOT store documentType, referenceDocumentId, or templateDocumentId
-      expect(mockProperties.setProperty).not.toHaveBeenCalledWith(
-        'documentType',
-        expect.anything()
-      );
-      expect(mockProperties.setProperty).not.toHaveBeenCalledWith(
-        'referenceDocumentId',
-        expect.anything()
-      );
-      expect(mockProperties.setProperty).not.toHaveBeenCalledWith(
-        'templateDocumentId',
-        expect.anything()
-      );
+      expect(mockTrigger.createTimeBasedTrigger).toHaveBeenCalledWith('triggerHandler');
+      expect(mockTrigger.storeTriggerContext).toHaveBeenCalledWith('trigger-123', {
+        method: 'processSelectedAssignment',
+        params: {
+          assignmentId: 'assignment-456',
+          definitionKey: 'Essay 1_English_year-group-10',
+          courseId: 'course-123',
+        },
+      });
     });
   });
 });
