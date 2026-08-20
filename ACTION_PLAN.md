@@ -740,6 +740,14 @@ BackendSettingsPanel useBackendSettings`
 
 ### Implementation notes / deviations / follow-up
 
+- **Implementation notes:** `src/backend/AGENTS.md` §2.3 gained a one-line signpost note that
+  `authMode: 'none'` is a temporary development bypass of the group-membership gate (secure default
+  `googleGroups`; policy detail in `SPEC.md`). Final regression gate: `New Failures Count: 0`; only the
+  two accepted baseline-debt checks fail (`backend-lint-check` max-lines, `frontend-e2e-check` playwright).
+  All touched suites green — backend 211 passed (18 files), frontend §7 scope 112 passed (7 files);
+  `npm run lint:backend && npm run lint:frontend` clean (warnings-only `max-lines` accepted debt).
+  Every `checkAccess` exerciser provides a `getAuthMode` mock returning `'googleGroups'` by default
+  (§2 harness prerequisite), confirmed by the green backend suite.
 - **Follow-up (deferred, not this feature):** facade-decompose
   `ConfigurationManager/98_ConfigurationManagerClass.js` (669 lines) and split
   `BackendSettingsPanel.tsx` (525 lines) — both already exceed their size thresholds and were left
