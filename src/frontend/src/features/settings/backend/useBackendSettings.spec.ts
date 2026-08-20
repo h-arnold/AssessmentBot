@@ -89,6 +89,7 @@ const baseStoredKeyFormValues = {
   jsonDbBackupOnInitialise: true,
   jsonDbRootFolderId: 'folder-1234',
   authGroupEmail: '',
+  authMode: 'googleGroups',
 } satisfies BackendSettingsForm;
 
 const baseReplacementFormValues = {
@@ -153,6 +154,7 @@ const refreshedFormValues = {
   jsonDbBackupOnInitialise: true,
   jsonDbRootFolderId: 'folder-5678',
   authGroupEmail: '',
+  authMode: 'googleGroups',
 } satisfies BackendSettingsForm;
 
 const blankApiKeyWriteInput = baseWriteInputWithoutApiKey;

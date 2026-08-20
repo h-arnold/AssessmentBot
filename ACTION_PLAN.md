@@ -96,6 +96,8 @@ already-documented `max-lines` debt and the §4 accepted panel-test debt above. 
 regression-checker is re-run at §7 for a final comparison; any newly-introduced regression there
 blocks completion.
 
+**§4/§5 post-hoc CI fix (`tsc -b` builder-checks):** The frontend production build (`build:production` → `npm --prefix src/frontend run build` → `tsc -b && vite build`) strict-type-checks every spec file. The `authMode`-required `BackendSettingsForm` fixtures in `useBackendSettings.spec.ts` (`baseStoredKeyFormValues`, `refreshedFormValues`) and `SettingsPage.spec.tsx` (`readyBackendSettingsFormValues`) were omitted during §4/§5, which broke CI's builder-checks job — Vitest's esbuild transpile does not catch the missing field, but `tsc -b` does. Fixed post-hoc by adding `authMode: 'googleGroups'` to those three fixtures; `tsc -b` and the full `build:production` now pass. This is a CI-correctness fix for already-delivered fixtures, not a scope change.
+
 ---
 
 ## Global constraints and quality gates
