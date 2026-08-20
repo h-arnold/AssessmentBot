@@ -335,9 +335,21 @@ Backend integration (`@tests/triggers/triggerHandler.test.js`):
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (filled during implementation)
-- **Deviations from plan:** (none yet)
-- **Follow-up implications for later sections:** §3 (transport) depends on `getAuthMode()`.
+- **Implementation notes:** Added the `none` short-circuit at the very top of `checkAccess()`,
+  before the group-email read, session identity resolution, and the `requireConfigured`
+  fail-closed branch. Returns `{ allowed: true, role: 'user' }` and logs a loud `ABLogger.warn`
+  carrying `{ method, authMode: 'none' }`; `Session`/`GroupsApp`/`CacheManager` are never touched
+  in `none` mode. A prominent comment marks the bypass as a TEMPORARY DEVELOPMENT MEASURE with an
+  explicit security caveat.
+- **Deviations from plan:** (1) The prescribed two-`getInstance()` snippet was collapsed into a
+  single hoisted `const configManager = ConfigurationManager.getInstance();` so the existing
+  `getInstance` call-count assertions in the transport suites stay green without editing tests —
+  behaviour-preserving, approved by review. (2) `getAuthMode` was also added to
+  `tests/helpers/backendConfigTestHelpers.js` (a harness helper backing the real `checkAccess` for
+  transport suites), which §2's 4-file list omitted but §7's "any other ConfigurationManager fake"
+  requirement covers; this is a correct prerequisite, not scope creep.
+- **Follow-up implications for later sections:** §3 (transport) depends on `getAuthMode()` and will
+  add `setAuthMode`/`authMode` payload to `backendConfigTestHelpers.js`.
 
 ---
 
