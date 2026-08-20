@@ -364,9 +364,9 @@ function renderBackendSettingsPanelStatus(
   return (
     <>
       {properties.isRefreshing ? (
-        <div role="status">
+        <output>
           <Text type="secondary">{backendSettingsRefreshStatusCopy}</Text>
-        </div>
+        </output>
       ) : null}
       {properties.saveError === null ? null : (
         <Alert title={properties.saveError} showIcon type="error" />

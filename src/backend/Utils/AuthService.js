@@ -174,7 +174,7 @@ class AuthService extends BaseSingleton {
 
     if (!bypassCache) {
       const cached = cache.get(cacheKey);
-      if (cached && cached.allowed) {
+      if (cached?.allowed) {
         ABLogger.getInstance().info('AuthService: access granted (cached).', {
           email,
           method,

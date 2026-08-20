@@ -314,10 +314,10 @@ export function AppAuthGate(properties: Readonly<PropsWithChildren>) {
 
   if (isLoading) {
     return (
-      <div role="status" aria-label="Loading authorisation status">
+      <output aria-label="Loading authorisation status">
         <Spin />
         Loading authorisation status
-      </div>
+      </output>
     );
   }
 

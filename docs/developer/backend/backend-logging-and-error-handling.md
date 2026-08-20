@@ -43,7 +43,7 @@ For all new backend code in active areas:
 2. Use `ABLogger` for developer diagnostics.
 3. Log at meaningful boundaries (entry/exit for non-trivial workflows, and failure boundaries).
 4. Include structured metadata objects, not only interpolated strings.
-5. Include correlation context where available (`requestId`, method name, class or workflow context).
+5. Include correlation context where available (`requestId`, method name, class or workflow context). Record the **canonical method name** — the whitespace-trimmed value that matches the allowlisted handler name — so entries correlate across every log site for a request (entry, auth gate, audit trail, failure boundary). Normalise the method once per request and reuse that value; never log the raw, untrimmed input at one site and the normalised value at another, or stray whitespace will fragment log correlation.
 
 ## 4. Existing-code policy (opportunistic refactor rule)
 
@@ -66,7 +66,7 @@ When you touch existing backend code that contains direct `console.*` calls:
 
 1. Keep frontend response envelopes stable and safe.
 2. Preserve backend diagnostics in GAS execution logs for caught downstream failures.
-3. Include `requestId` and allowlisted method context in boundary failure logs.
+3. Include `requestId` and allowlisted method context in boundary failure logs. Use the canonical (trimmed) method name so the failure log lines up with the allowlist lookup and the `AuthService` audit trail rather than a whitespace-variant of the inbound `request.method`.
 4. Do not expose stack traces or raw exception payloads in frontend envelopes.
 
 ## 7. Log levels

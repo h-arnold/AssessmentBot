@@ -130,14 +130,16 @@ class ApiDispatcher extends BaseSingleton {
       return this._failure(requestId, 'INVALID_REQUEST', 'Invalid API request payload.', false);
     }
 
-    // Debug logging: stringify the incoming request (after validation to avoid errors on invalid requests)
+    // Normalise the method name once; every log, the allowlist lookup, and the
+    // auth audit trail record this canonical (trimmed) value so entries correlate
+    // with registered handler names even if a caller sends stray whitespace.
+    const methodName = request.method.trim();
+
     ABLogger.getInstance().debug('API request received.', {
       requestId,
-      method: request.method,
+      method: methodName,
       params: JSON.stringify(request.params),
     });
-
-    const methodName = request.method.trim();
 
     // Auth gate: runs after request validation but before the allowlist method
     // lookup and admission phase, so non-members receive FORBIDDEN uniformly and
@@ -147,14 +149,14 @@ class ApiDispatcher extends BaseSingleton {
     if (methodName !== 'getAuthorisationStatus') {
       let access;
       try {
-        access = AuthService.getInstance().checkAccess({ method: request.method });
+        access = AuthService.getInstance().checkAccess({ method: methodName });
       } catch (error) {
         // A thrown auth check (e.g. ConfigurationManager persistence failure) is a
         // transport-boundary error, not a group-membership denial — log it once at
         // the boundary, then map to the INTERNAL_ERROR envelope rather than FORBIDDEN.
         ABLogger.getInstance().error(
           'Auth check failed.',
-          { requestId, method: request.method },
+          { requestId, method: methodName },
           error
         );
         return this._mapErrorToFailureEnvelope(requestId, error);

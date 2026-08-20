@@ -44,7 +44,7 @@ function cleanupTrigger_(triggerController, triggerUid) {
  */
 function triggerHandler(event) {
   // 1. Validate input — malformed input triggers no cleanup, no dispatch.
-  if (!event || !event.triggerUid) {
+  if (!event?.triggerUid) {
     ABLogger.getInstance().error(
       'triggerHandler: received a malformed trigger event (missing event or triggerUid).'
     );
