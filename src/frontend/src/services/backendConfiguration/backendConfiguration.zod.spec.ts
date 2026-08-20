@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   authGroupEmailSchema,
+  authModeSchema,
   BackendApiKeyWriteSchema,
   BackendConfigSchema,
   BackendConfigWriteInputSchema,
@@ -47,6 +48,19 @@ describe('BackendConfigSchema', () => {
     const result = BackendConfigSchema.safeParse(validBackendConfig);
     expect(result.success).toBe(true);
   });
+
+  it('accepts a response that includes authMode', () => {
+    const result = BackendConfigSchema.safeParse({
+      ...validBackendConfig,
+      authMode: 'googleGroups',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a response that omits authMode because the field is optional', () => {
+    const result = BackendConfigSchema.safeParse(validBackendConfig);
+    expect(result.success).toBe(true);
+  });
 });
 
 describe('BackendConfigWriteInputSchema', () => {
@@ -68,6 +82,16 @@ describe('BackendConfigWriteInputSchema', () => {
   });
 
   it('accepts a write patch without authGroupEmail because the field is optional', () => {
+    const result = BackendConfigWriteInputSchema.safeParse({});
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts authMode in a write patch', () => {
+    const result = BackendConfigWriteInputSchema.safeParse({ authMode: 'none' });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a write patch without authMode because the field is optional', () => {
     const result = BackendConfigWriteInputSchema.safeParse({});
     expect(result.success).toBe(true);
   });
@@ -103,6 +127,33 @@ describe('authGroupEmailSchema', () => {
 
   it('rejects an invalid auth group email', () => {
     const result = authGroupEmailSchema.safeParse('not-an-email');
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('authModeSchema', () => {
+  it('accepts the secure default googleGroups', () => {
+    const result = authModeSchema.safeParse('googleGroups');
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts the none development bypass value', () => {
+    const result = authModeSchema.safeParse('none');
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects an unknown value', () => {
+    const result = authModeSchema.safeParse('foo');
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a blank value', () => {
+    const result = authModeSchema.safeParse('');
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects null', () => {
+    const result = authModeSchema.safeParse(null);
     expect(result.success).toBe(false);
   });
 });

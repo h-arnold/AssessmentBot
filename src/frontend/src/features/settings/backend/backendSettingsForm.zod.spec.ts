@@ -17,6 +17,7 @@ const validFormValues = {
   jsonDbBackupOnInitialise: true,
   jsonDbRootFolderId: 'folder-1234',
   authGroupEmail: '',
+  authMode: 'googleGroups',
 };
 
 const lowerCaseLogLevelFormValues = {
@@ -82,6 +83,12 @@ describe('backendSettingsForm.zod schema', () => {
       authGroupEmail: 'teachers@school.edu',
       backendUrl: validTrimmedBackendUrl,
     });
+  });
+
+  it('requires authMode (rejects a form value missing it)', () => {
+    const formValuesWithoutAuthMode = { ...validFormValues } as Partial<typeof validFormValues>;
+    delete formValuesWithoutAuthMode.authMode;
+    expect(() => BackendSettingsFormSchema.parse(formValuesWithoutAuthMode)).toThrow(ZodError);
   });
 
   it('requires an API key when no stored key exists', () => {
