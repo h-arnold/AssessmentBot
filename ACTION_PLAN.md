@@ -56,6 +56,31 @@ Files in scope:
 
 ---
 
+## Baseline technical debt (accepted — recorded at plan start)
+
+The regression checker (`npm run regression-checker`, branch `feature/auth-service`) was run
+before any code change. It reported `Overall Status: FAILING` with **2 failing checks**, both
+pre-existing on the branch and **out of scope** for this plan:
+
+1. **`backend-lint-check` (eslint) — 14 `max-lines` failures.** Includes
+   `src/backend/ConfigurationManager/98_ConfigurationManagerClass.js` (669 lines) and
+   `src/backend/z_Api/z_apiHandler.js` (513 lines). This plan's §1 and §2 explicitly note these
+   files already exceed the 500-line threshold and decomposition is deferred (see §Regression
+   follow-up in §7). Adding ~16 lines to `98_ConfigurationManagerClass.js` keeps it failing on the
+   same pre-existing `max-lines` rule (no new distinct failure introduced).
+2. **`frontend-e2e-check` (playwright) — failing.** This plan makes no E2E/Playwright changes
+   (all frontend work is Vitest unit tests for Zod schemas, mapper, and panel). The E2E suite
+   failure is pre-existing environment/branch debt and is not gated by this plan.
+
+**Regression-gate policy for this plan:** Because the agreed scope cannot clear these two
+pre-existing checks, the Regression Gate per section is satisfied by (a) the section's own
+`Section checks` commands passing, and (b) no _new_ lint error or test failure being introduced in
+files touched by this plan beyond the already-documented `max-lines` debt. The full
+regression-checker is re-run at §7 for a final comparison; any newly-introduced regression there
+blocks completion.
+
+---
+
 ## Global constraints and quality gates
 
 ### Engineering constraints
@@ -195,9 +220,15 @@ Backend (ConfigurationManager) — extend or mirror
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (filled during implementation)
-- **Deviations from plan:** (none yet)
-- **Follow-up implications for later sections:** §2 depends on `getAuthMode()`.
+- **Implementation notes:** `AUTH_MODE: 'authMode'` added to `CONFIG_KEYS`; `CONFIG_SCHEMA[AUTH_MODE]`
+  added with an inline enum validator that returns the canonical literal (`'none'`/`'googleGroups'`)
+  and throws on any other value. `getAuthMode()` implemented exactly as the secure fallback
+  (`value === 'none' ? 'none' : 'googleGroups'`); `setAuthMode()` delegates to `setProperty`. No
+  `02_defaults.js` entry added (matches `AUTH_GROUP_EMAIL` precedent). `@remarks` JSDoc added to
+  `getAuthMode()` documenting the secure default and the temporary-development-measure caveat.
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** §2 depends on `getAuthMode()`; §3 transport will
+  emit `getAuthMode()` and call `setAuthMode()`.
 
 ---
 
