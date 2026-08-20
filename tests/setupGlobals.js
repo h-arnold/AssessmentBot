@@ -276,7 +276,7 @@ g.AuthService = require('../src/backend/Utils/AuthService.js');
 // returns '' so the gate fails open and non-auth dispatcher tests proceed normally.
 g.ConfigurationManager = {
   getInstance() {
-    return { getAuthGroupEmail: () => '' };
+    return { getAuthGroupEmail: () => '', getAuthMode: () => 'googleGroups' };
   },
 };
 

@@ -64,6 +64,8 @@ describe('AuthService', () => {
   let mockABLogger;
   /** Provides a mutable AUTH_GROUP_EMAIL value read by the ConfigurationManager mock. */
   const authGroup = { value: 'teachers@school.edu' };
+  /** Provides a mutable AUTH_MODE value read by the ConfigurationManager mock. */
+  const authMode = { value: 'googleGroups' };
 
   /**
    * Applies per-test global mocks (ABLogger spy + ConfigurationManager +
@@ -81,7 +83,10 @@ describe('AuthService', () => {
   } = {}) {
     const groupsAppMock = createGroupsAppMock({ members, groupExists, lookupError });
     const sessionMock = createSessionMock({ email });
-    const configManager = { getAuthGroupEmail: vi.fn(() => authGroup.value) };
+    const configManager = {
+      getAuthGroupEmail: vi.fn(() => authGroup.value),
+      getAuthMode: vi.fn(() => authMode.value),
+    };
     const globalMocks = {
       ABLogger: () => ({ getInstance: () => mockABLogger }),
       ConfigurationManager: () => ({ getInstance: () => configManager }),
@@ -95,6 +100,7 @@ describe('AuthService', () => {
     return {
       restore: mockContext.restore,
       group: groupsAppMock.group,
+      configManager,
     };
   }
 
@@ -115,6 +121,7 @@ describe('AuthService', () => {
     AuthService.resetForTests();
     globalThis.CacheService._resetScriptCache();
     authGroup.value = 'teachers@school.edu';
+    authMode.value = 'googleGroups';
     mockABLogger = {
       debug: vi.fn(),
       info: vi.fn(),
@@ -289,6 +296,66 @@ describe('AuthService', () => {
       const result = AuthService.getInstance().checkAccess({ requireConfigured: true });
       expect(result).toEqual({ allowed: false });
       expect(mockABLogger.error).toHaveBeenCalled();
+    });
+  });
+
+  describe('checkAccess — authMode none bypass', () => {
+    it('returns allowed as a plain user and never consults the group email when authMode is none', () => {
+      authMode.value = 'none';
+      authGroup.value = '';
+      const ctx = provisionAuthContext({ email: '' });
+
+      const result = AuthService.getInstance().checkAccess({});
+
+      expect(result).toEqual({ allowed: true, role: 'user' });
+      // The bypass must fire before the group-email read — this proves the
+      // short-circuit happens at the very top of checkAccess.
+      expect(ctx.configManager.getAuthGroupEmail).not.toHaveBeenCalled();
+    });
+
+    it('returns allowed as a plain user even with requireConfigured when authMode is none', () => {
+      authMode.value = 'none';
+      authGroup.value = '';
+      const ctx = provisionAuthContext({ email: '' });
+
+      const result = AuthService.getInstance().checkAccess({ requireConfigured: true });
+
+      expect(result).toEqual({ allowed: true, role: 'user' });
+      expect(ctx.configManager.getAuthGroupEmail).not.toHaveBeenCalled();
+    });
+
+    it('returns allowed as a plain user even with bypassCache when authMode is none', () => {
+      authMode.value = 'none';
+      restoreGlobals = provisionAuthContext({}).restore;
+
+      const result = AuthService.getInstance().checkAccess({ bypassCache: true });
+
+      expect(result).toEqual({ allowed: true, role: 'user' });
+    });
+
+    it('logs a warning identifying the authMode bypass when authMode is none', () => {
+      authMode.value = 'none';
+      restoreGlobals = provisionAuthContext({}).restore;
+
+      AuthService.getInstance().checkAccess({});
+
+      // The bypass is a temporary development measure — the warn must carry the
+      // authMode context so the log is distinguishable from a group denial.
+      expect(mockABLogger.warn).toHaveBeenCalled();
+      expect(flattenedLog()).toContain('authMode');
+    });
+
+    it('still denies a non-member when authMode is googleGroups', () => {
+      authMode.value = 'googleGroups';
+      authGroup.value = 'teachers@school.edu';
+      restoreGlobals = provisionAuthContext({
+        email: 'outsider@school.edu',
+        members: { 'teacher@school.edu': 'MEMBER' },
+      }).restore;
+
+      const result = AuthService.getInstance().checkAccess({});
+
+      expect(result).toEqual({ allowed: false });
     });
   });
 

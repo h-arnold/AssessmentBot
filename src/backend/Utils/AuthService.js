@@ -116,7 +116,23 @@ class AuthService extends BaseSingleton {
    * @returns {{ allowed: boolean, role?: string }} The access decision.
    */
   checkAccess({ bypassCache = false, requireConfigured = false, method = null } = {}) {
-    const groupEmail = ConfigurationManager.getInstance().getAuthGroupEmail();
+    // TEMPORARY DEVELOPMENT MEASURE — DO NOT USE IN PRODUCTION.
+    // When authMode is 'none' the entire group-membership gate is bypassed and every
+    // caller is authorised as a plain user. This exists only so the application can be
+    // exercised locally when Google Groups access cannot be reached. It MUST be removed
+    // or gated behind a build flag before any production deployment — leaving it enabled
+    // disables all application-level access control.
+    const configManager = ConfigurationManager.getInstance();
+    const authMode = configManager.getAuthMode();
+    if (authMode === 'none') {
+      ABLogger.getInstance().warn(
+        'AuthService: auth mode is "none" — bypassing the group-membership gate (TEMPORARY DEVELOPMENT MEASURE, must not be used in production).',
+        { method, authMode: 'none' }
+      );
+      return { allowed: true, role: 'user' };
+    }
+
+    const groupEmail = configManager.getAuthGroupEmail();
     const email = Session.getActiveUser().getEmail();
 
     // Bootstrap state: no auth group configured.

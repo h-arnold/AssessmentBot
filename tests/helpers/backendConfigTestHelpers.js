@@ -70,6 +70,7 @@ function createConfigurationManagerMock(
     jsonDbBackupOnInitialise: false,
     jsonDbRootFolderId: 'folder-123',
     authGroupEmail: '',
+    authMode: 'googleGroups',
     ...getterValues,
   };
 
@@ -124,6 +125,7 @@ function createConfigurationManagerMock(
         : CONFIGURATION_MANAGER_DEFAULTS.JSON_DB_ROOT_FOLDER_ID
     ),
     getAuthGroupEmail: vi.fn(() => (hasPersistedConfiguration ? values.authGroupEmail : '')),
+    getAuthMode: vi.fn(() => (hasPersistedConfiguration ? values.authMode : 'googleGroups')),
     setBackendAssessorBatchSize: vi.fn(
       setterImplementations.setBackendAssessorBatchSize || (() => {})
     ),

@@ -68,6 +68,7 @@ const mockProgressTracker = {
 };
 
 const authGroup = { value: 'teachers@school.edu' };
+const authMode = { value: 'googleGroups' };
 
 // Module under test — created in the green phase (ACTION_PLAN Section 8).
 const { triggerHandler } = require('../../src/backend/Triggers/triggerHandler.js');
@@ -82,6 +83,7 @@ describe('triggerHandler', () => {
     globalThis.Session._resetActiveUserEmail();
     globalThis.GroupsApp._resetGroups();
     authGroup.value = 'teachers@school.edu';
+    authMode.value = 'googleGroups';
     // Default baseline: no stored context for the resolved triggerUid.
     mockTriggerController.getTriggerContext.mockReturnValue(null);
 
@@ -95,7 +97,10 @@ describe('triggerHandler', () => {
         processSelectedAssignment: mockDispatchHandler,
       }),
       ConfigurationManager: () => ({
-        getInstance: vi.fn(() => ({ getAuthGroupEmail: vi.fn(() => authGroup.value) })),
+        getInstance: vi.fn(() => ({
+          getAuthGroupEmail: vi.fn(() => authGroup.value),
+          getAuthMode: vi.fn(() => authMode.value),
+        })),
       }),
       ProgressTracker: () => ({ getInstance: vi.fn(() => mockProgressTracker) }),
     });
@@ -312,6 +317,30 @@ describe('triggerHandler', () => {
       expect(mockDispatchHandler).not.toHaveBeenCalled();
       expect(mockTriggerController.clearTriggerContext).toHaveBeenCalledWith('trigger-uid-11');
       expect(mockTriggerController.deleteTriggerById).toHaveBeenCalledWith('trigger-uid-11');
+    });
+
+    it('dispatches and cleans up when authMode none bypasses the group gate', () => {
+      authMode.value = 'none';
+      // A fired trigger resolves a blank identity, so without the authMode none
+      // bypass the real AuthService fails closed (blank email → deny) and the
+      // trigger never dispatches. The bypass must still permit dispatch and the
+      // usual cleanup, warning loudly that the gate is disabled.
+      globalThis.Session._setActiveUserEmail('');
+      mockTriggerController.getTriggerContext.mockReturnValue({
+        method: 'processSelectedAssignment',
+        params: {
+          assignmentId: 'assignment-456',
+          definitionKey: 'Essay_1_defKey',
+          courseId: 'course-123',
+        },
+      });
+
+      triggerHandler({ triggerUid: 'trigger-uid-none' });
+
+      expect(mockDispatchHandler).toHaveBeenCalledTimes(1);
+      expect(mockABLogger.warn).toHaveBeenCalled();
+      expect(mockTriggerController.clearTriggerContext).toHaveBeenCalledWith('trigger-uid-none');
+      expect(mockTriggerController.deleteTriggerById).toHaveBeenCalledWith('trigger-uid-none');
     });
 
     it('passes bypassCache and the context method to AuthService.checkAccess', () => {

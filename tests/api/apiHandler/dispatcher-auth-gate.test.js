@@ -37,7 +37,10 @@ describe('Api/apiHandler dispatcher — auth gate (FORBIDDEN)', () => {
    * @returns {Function} The restore handle for the installed global mocks.
    */
   function provisionAuthEnvironment(groupEmail = CONFIGURED_GROUP_EMAIL) {
-    const configManager = { getAuthGroupEmail: vi.fn(() => groupEmail) };
+    const configManager = {
+      getAuthGroupEmail: vi.fn(() => groupEmail),
+      getAuthMode: vi.fn(() => 'googleGroups'),
+    };
     const mockContext = withGlobalMocks({
       ConfigurationManager: () => ({ getInstance: () => configManager }),
     });
