@@ -692,8 +692,8 @@ Flip the planned `authMode` entries in `docs/developer/data-shapes/backend-confi
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (filled during implementation)
-- **Deviations from plan:** (none yet)
+- **Implementation notes:** Data Shapes Agent flipped all five `[Not implemented — planned]` markers for `authMode` in `docs/developer/data-shapes/backend-config.md` (persistence row 14, read transport row, write transport row, validation note, discrepancy #8 heading) and reworded the discrepancy #6 phrase from `(13 delivered + authMode, planned)` to `including authMode (now delivered)`. `grep` confirms zero `Not implemented — planned` (and zero `planned`) remains for `authMode`; canonical counts (14 read / 12 frontend-writable / 13 backend-writable) unchanged and internally consistent. Source-code alignment re-verified against `apiConfig.js`, `98_ConfigurationManagerClass.js`, `01_configKeysAndSchema.js`, and `backendConfiguration.zod.ts`.
+- **Deviations from plan:** None.
 - **Follow-up implications for later sections:** §7 (regression) confirms end-to-end.
 
 ---
