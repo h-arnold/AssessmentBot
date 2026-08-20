@@ -97,6 +97,11 @@ class AuthService extends BaseSingleton {
   /**
    * Resolves whether the active user is authorised for the protected surface.
    *
+   * When the configured `authMode` is `'none'`, access is granted immediately as
+   * a plain `user` without reading the group email, resolving the session
+   * identity, or consulting the cache (temporary development bypass — see the
+   * inline comment). Otherwise:
+   *
    * Reads the configured Google Group email from ConfigurationManager, resolves
    * the caller via Session, and (unless a cached result, a cache bypass is
    * requested, or the group is unconfigured) verifies membership through
