@@ -647,9 +647,9 @@ Frontend (`@src/frontend/src/features/settings/backend/backendSettingsFormMapper
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (filled during implementation)
-- **Deviations from plan:** (none yet)
-- **Follow-up implications for later sections:** §6 reconciles the data-shape doc.
+- **Implementation notes:** `backendSettingsFormMapper.ts` — read `authMode: backendConfig.authMode ?? 'googleGroups'` and write `authMode: formValues.authMode`. `BackendSettingsPanel.tsx` — added `authModeOptions` (`Google Groups`/`none`), `'authMode'` to `backendSettingsFieldNames`, and a descriptor (`label: 'Authentication options'`, `Select`, `section: 'Backend'`, `withSchemaValidation: true`, security `helperText`, `SECURITY` comment). RED: 4 new tests (3 mapper + 1 panel dropdown). GREEN: production changes + `BackendSettingsPanel.spec.tsx` fixtures gained `authMode: 'googleGroups'` in 4 places (3 §4-debt tests + the `buildRefreshingBackendSettingsState` literal) to satisfy the now-required form field. Result: `npm run test:frontend -- backendSettingsFormMapper BackendSettingsPanel` = 24 passed / 0 failed; `npm run lint:frontend` clean; Code Review CLEAN. **The 3 accepted §4 panel-test failures are now CLEARED** — `frontend-test-coverage-check` passes again (regression checker: `New Failures Count: 0`, §4 debt fixed).
+- **Deviations from plan:** The plan assumed the mapper change alone would clear the 3 §4-debt panel tests, but the panel spec mocks the hook and bypasses the real mapper, so the form values lacked `authMode`. An attempted panel validator/handler default (`form.getFieldValue('authMode') ?? 'googleGroups'`) was added in GREEN, then REVERTED after Code Review flagged it as out-of-scope (violates "never set defaults unless explicitly instructed" and duplicates the mapper default). The canonical fix was updating the 4 panel test fixtures instead. **No production deviation from plan remains.**
+- **Follow-up implications for later sections:** §6 reconciles the data-shape doc; §7 final regression.
 
 ---
 
