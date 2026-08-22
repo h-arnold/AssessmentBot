@@ -12,7 +12,6 @@ import { getStudentMetric } from './classPageAdapter.zod';
 import { compareStudentNames } from '../../services/dataAnalysis/compareStudentNames';
 import { getMetricStateRank } from '../../services/dataAnalysis/metricDisplay/metricStateRank';
 import type { ClassPageAdapterResult, StudentAverageRowModel } from './classPageAdapter.zod';
-import type { HeatmapRow } from '../../services/dataAnalysis/heatmapAdapter';
 import type { MetricColumnKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 
 // ---------------------------------------------------------------------------
@@ -100,26 +99,6 @@ export function compareAssignmentUpdatedAtDesc(
   const updatedAtCmp = b.updatedAt.localeCompare(a.updatedAt);
   if (updatedAtCmp !== 0) return updatedAtCmp;
   return a.assignmentId.localeCompare(b.assignmentId);
-}
-
-/**
- * Compare two `HeatmapRow`s by student name (locale-aware, case-insensitive)
- * with a deterministic `studentId` ascending tie-break.
- *
- * @remarks
- * Thin `HeatmapRow`-compatible wrapper around the locale-aware logic of
- * `compareStudentNames`. The heatmap table must NOT import the
- * `StudentAverageRowModel`-typed `compareStudentNames` directly because the
- * row shapes differ (`HeatmapRow` carries `cells`, not `metrics`).
- *
- * @param {HeatmapRow} a - The first row.
- * @param {HeatmapRow} b - The second row.
- * @returns {number} Negative if `a < b`, positive if `a > b`, zero if equal.
- */
-export function compareHeatmapStudentName(a: HeatmapRow, b: HeatmapRow): number {
-  // Delegate directly: both row shapes share the same `studentName` and
-  // `studentId` fields, so no cast is required.
-  return compareStudentNames(a, b);
 }
 
 /**

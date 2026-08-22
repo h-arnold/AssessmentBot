@@ -52,7 +52,7 @@ vi.mock('./StudentAveragesTableCard', () => ({
   StudentAveragesTableCard: mockStudentAveragesTableCard,
 }));
 
-vi.mock('./TaskHeatmapPage', () => ({
+vi.mock('../taskHeatmap/TaskHeatmapPage', () => ({
   TaskHeatmapPage: mockTaskHeatmapPage,
 }));
 

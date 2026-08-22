@@ -7,8 +7,8 @@
 | Baseline gate                             | Complete    | Session `docs/taskheatmap-extraction-spec`; see debt log below |
 | 1 — metric-state rank helpers             | Complete    | See §Section 1 notes; commit recorded below                    |
 | 2 — `compareStudentNames` services module | Complete    | See §Section 2 notes; commit recorded below                    |
-| 3 — cluster move + `taskHeatmapModel.ts`  | In progress | Red loop (Testing Specialist)                                  |
-| Regression and contract hardening         | Not started |                                                                |
+| 3 — cluster move + `taskHeatmapModel.ts`  | Complete    | See §Section 3 notes; commit recorded below                    |
+| Regression and contract hardening         | In progress | Full unit, triple lint, 3 targeted E2E suites                  |
 | Documentation and rollout notes           | Not started |                                                                |
 
 ### Baseline record (accepted technical debt)
@@ -383,9 +383,9 @@ New coverage in this section:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** _to be filled during execution._
-- **Deviations from plan:** _to be filled._
-- **Follow-up implications for later sections:** enables the Documentation section's owning-path reconciliation.
+- **Implementation notes:** Delivered atomically as planned. Twelve files moved via `git mv` (nine byte-identical; three with only authorised deltas: `TaskHeatmapTable.tsx` sibling import swap `'./classPageModel'`→`'./taskHeatmapModel'` plus `@see` drop; `TaskHeatmapPage.tsx`/`TaskHeatmapTable.spec.tsx` `@see` drops). `taskHeatmapModel.ts` created (~30 lines) hosting the verbatim cast-free wrapper with `@remarks` referencing delegation to `services/dataAnalysis/compareStudentNames`; its five-test describe block (incl. case-insensitivity) relocated verbatim into co-located `taskHeatmapModel.spec.ts`. `classPageModel.ts` lost the comparator, its JSDoc, and the dead `HeatmapRow` import (also removed from `classPageModel.spec.ts` where it became orphaned — unused-import lint gate). Red phase first: three external reference sites repointed pre-move; suite failed purely on module resolution (incl. transitive failure of unmodified `ClassPageHeatmapView.spec.tsx`, exactly as SPEC predicted). Binding rules verified at boundary: zero classPage imports under `features/taskHeatmap/`; sole classPage import is the `ClassPageContent.tsx` composition edge. Verification: full suite 146 files / 1789 tests green; lint and `tsc -b` green; regression checker 0 regressions / 0 new failures.
+- **Deviations from plan:** None behavioural. Two interpretation notes accepted by green review: (1) the composition-only check scoped to real imports — two spec files carry red-phase-mandated `vi.mock('../taskHeatmap/…')` strings, which are not imports and are required by the plan itself; (2) orphaned `HeatmapRow` type import also removed from `classPageModel.spec.ts` under the same unused-import rationale as the production file.
+- **Follow-up implications for later sections:** Enables the Documentation section's owning-path reconciliation. Environment note: one regression-checker run hit a transient vitest worker EPIPE while the concurrent Playwright run held resources on this 4-core host; both checks pass standalone and on re-run — recorded so the hardening section does not misread a repeat as a regression.
 
 ---
 

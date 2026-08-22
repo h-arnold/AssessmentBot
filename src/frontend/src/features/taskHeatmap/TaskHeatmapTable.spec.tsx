@@ -6,7 +6,6 @@
  * score-range `filterDropdown` (via `buildMetricRangeFilter`) rather than the
  * fixed `METRIC_COLUMN_FILTERS` band list.
  *
- * @see ACTION_PLAN.md §4 — TaskHeatmapTable (grouped headers, score-range filters, sorters)
  * @see SPEC.md — §"Rendering rules", §"Sorting, filtering", §"Empty state", §"Accessibility"
  */
 

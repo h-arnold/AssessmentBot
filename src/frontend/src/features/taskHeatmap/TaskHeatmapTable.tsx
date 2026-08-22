@@ -12,7 +12,6 @@
  * DOM node count on large classes.  `sortedRows`, `hasNoSubmissions`, and
  * `columns` are memoised to avoid redundant recomputation on each render.
  *
- * @see ACTION_PLAN.md §4 — TaskHeatmapTable
  * @see SPEC.md — §"Rendering rules", §"Sorting, filtering", §"Empty state"
  */
 
@@ -28,7 +27,7 @@ import type {
   HeatmapTaskColumn,
 } from '../../services/dataAnalysis/heatmapAdapter';
 import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
-import { compareHeatmapStudentName } from './classPageModel';
+import { compareHeatmapStudentName } from './taskHeatmapModel';
 import { METRIC_STATE_RANK_ASC } from '../../services/dataAnalysis/metricDisplay/metricStateRank';
 import {
   METRIC_DISPLAY_META,

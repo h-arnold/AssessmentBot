@@ -6,7 +6,6 @@
  * wraps `adaptMetricsToHeatmap` in a `try`/`catch`; on error it logs the error
  * via the frontend logger and calls `onBack` (no in-view error UI).
  *
- * @see ACTION_PLAN.md §5 — TaskHeatmapPage
  * @see SPEC.md — §"Page composition", §"Navigation / breadcrumb", §"Error handling"
  */
 
