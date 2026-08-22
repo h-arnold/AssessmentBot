@@ -8,8 +8,8 @@
 | 1 — metric-state rank helpers             | Complete    | See §Section 1 notes; commit recorded below                    |
 | 2 — `compareStudentNames` services module | Complete    | See §Section 2 notes; commit recorded below                    |
 | 3 — cluster move + `taskHeatmapModel.ts`  | Complete    | See §Section 3 notes; commit recorded below                    |
-| Regression and contract hardening         | In progress | Full unit, triple lint, 3 targeted E2E suites                  |
-| Documentation and rollout notes           | Not started |                                                                |
+| Regression and contract hardening         | Complete    | See §hardening notes; commit recorded below                    |
+| Documentation and rollout notes           | In progress | Docs agent reconciliation                                      |
 
 ### Baseline record (accepted technical debt)
 
@@ -431,8 +431,8 @@ Code Reviewer mandatory docs:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** _to be filled._
-- **Deviations from plan:** _to be filled._
+- **Implementation notes:** All checks executed post-Section-3-final state, outputs retained here. (1) Full frontend unit suite: 146 files / 1789 tests passed (standalone re-run 09:08; corroborated by regression-checker `frontend-test-coverage-check` pass at 09:14 with coverage summary 94.38% statements / 88.29% branches). (2) Triple lint gate: `lint:frontend:check` exit 0; `lint:builder:check` exit 0; `lint:backend:check` reports **0 errors, the identical 14 pre-existing max-lines warnings documented as baseline accepted debt** — fails its own `--max-warnings 0` threshold exactly as at baseline, so zero cross-component impact is confirmed by delta, not absolute green. (3) Three targeted E2E suites unmodified and green via Playwright delegation: task-heatmap.spec.ts 9/9 passed (22.0s), task-preview-card.spec.ts 4/4 passed (11.9s), navigation-screenshots.spec.ts 2/2 passed (5.9s) — no retries consumed. (4) Binding-rule grep: zero classPage-import matches under `src/frontend/src/features/taskHeatmap/`. Known PNG snapshot churn recurred during E2E runs and was restored before commit.
+- **Deviations from plan:** Interpretive only — the hardening gate's "triple lint green" is evidenced as _zero new issues vs the accepted-debt baseline_ for backend lint (fixing pre-existing oversized backend files is explicitly out of scope per §Validation commands hierarchy "Backend/builder: untouched this cycle"). One earlier regression-checker run's vitest coverage check crashed transiently (worker EPIPE under concurrent Playwright memory pressure on a 4-core host); standalone re-run and full checker re-run both green — environmental, not a code regression.
 
 ---
 
