@@ -74,7 +74,7 @@ Changes:
 - `ClassPageHeaderActions` moved from `ClassPageContent` → `ClassPage` (rendered inside `PageNavCard` actions slot)
 - Added `onStartNewAssessment` prop to `ClassPageContent` (used by empty-state CTA in `RecentAssignmentsSection`)
 
-### 4. TaskHeatmapPage (`src/frontend/src/features/classPage/TaskHeatmapPage.tsx`)
+### 4. TaskHeatmapPage (`src/frontend/src/features/taskHeatmap/TaskHeatmapPage.tsx`)
 
 **Status: Implemented**
 
@@ -186,11 +186,11 @@ The `PageTitleCard` on ClassPage uses `titleLevel={2}`. The TaskHeatmapPage pare
 | File                                                                | Key Changes                                                                                                    |
 | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | `src/frontend/src/features/classPage/ClassPage.tsx`                 | Replaced `Typography.Title` with `PageTitleCard` + `PageNavCard`; moved `ClassPageHeaderActions` into nav card |
-| `src/frontend/src/features/classPage/TaskHeatmapPage.tsx`           | Replaced single header Card with three-card stack; added `className` to `HeaderLabels`                         |
+| `src/frontend/src/features/taskHeatmap/TaskHeatmapPage.tsx`         | Replaced single header Card with three-card stack; added `className` to `HeaderLabels`                         |
 | `src/frontend/src/features/classPage/ClassPageContent.tsx`          | Removed `ClassPageHeaderActions` from `ClassPageReady`; retained `onStartNewAssessment` for empty-state CTA    |
 | `src/frontend/src/features/classPage/ClassPageContent.spec.tsx`     | Removed `ClassPageHeaderActions` mock and assertions                                                           |
 | `src/frontend/src/features/classPage/ClassPage.spec.tsx`            | Updated modal tests to click button directly                                                                   |
-| `src/frontend/src/features/classPage/TaskHeatmapPage.spec.tsx`      | Updated assertions for parent + child title cards                                                              |
+| `src/frontend/src/features/taskHeatmap/TaskHeatmapPage.spec.tsx`    | Updated assertions for parent + child title cards                                                              |
 | `src/frontend/src/features/classPage/ClassPageHeatmapView.spec.tsx` | Removed `ClassPageHeaderActions` mock                                                                          |
 
 ## Lint Status

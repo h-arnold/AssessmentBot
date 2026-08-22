@@ -58,6 +58,7 @@ Feature state machines, hooks, modal components, and feature-scoped helpers live
 - `classes/` — Class management, assessment, bulk operations, and table
 - `referenceData/` — Cross-cutting reference data management (cohorts, year groups, topics; extracted from `features/classes/management/` and `features/settings/`)
 - `settings/` — Backend settings configuration
+- `taskHeatmap/` — Task Heatmap analytics surface (extracted from `features/classPage/`)
 
 Pages under `src/frontend/src/pages/` remain thin composition roots that compose feature
 components. No feature logic, state machines, or hooks should live in `pages/`.

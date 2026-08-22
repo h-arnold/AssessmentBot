@@ -2,14 +2,14 @@
 
 ## Execution status
 
-| Section                                   | Status      | Notes                                                          |
-| ----------------------------------------- | ----------- | -------------------------------------------------------------- |
-| Baseline gate                             | Complete    | Session `docs/taskheatmap-extraction-spec`; see debt log below |
-| 1 — metric-state rank helpers             | Complete    | See §Section 1 notes; commit recorded below                    |
-| 2 — `compareStudentNames` services module | Complete    | See §Section 2 notes; commit recorded below                    |
-| 3 — cluster move + `taskHeatmapModel.ts`  | Complete    | See §Section 3 notes; commit recorded below                    |
-| Regression and contract hardening         | Complete    | See §hardening notes; commit recorded below                    |
-| Documentation and rollout notes           | In progress | Docs agent reconciliation                                      |
+| Section                                   | Status   | Notes                                                          |
+| ----------------------------------------- | -------- | -------------------------------------------------------------- |
+| Baseline gate                             | Complete | Session `docs/taskheatmap-extraction-spec`; see debt log below |
+| 1 — metric-state rank helpers             | Complete | See §Section 1 notes; commit recorded below                    |
+| 2 — `compareStudentNames` services module | Complete | See §Section 2 notes; commit recorded below                    |
+| 3 — cluster move + `taskHeatmapModel.ts`  | Complete | See §Section 3 notes; commit recorded below                    |
+| Regression and contract hardening         | Complete | See §hardening notes; commit recorded below                    |
+| Documentation and rollout notes           | Complete | See §Documentation notes; commit recorded below                |
 
 ### Baseline record (accepted technical debt)
 
@@ -155,7 +155,7 @@ Code Reviewer mandatory docs:
    - Owning module/path: `src/frontend/src/services/dataAnalysis/metricDisplay/metricStateRank.ts`
    - Call-site rationale: generic `MetricResult['state']` ranking consumed by both the overview table (via `buildMetricComparator`) and the heatmap table; belongs to neither feature (SPEC decision 4)
    - Relevant canonical doc target: [docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md](docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md) — the metric-state sorting / rank-maps entry (~line 584 region) **reclassified into the shared-helper section (§9.17)** with owning path `metricStateRank.ts`, plus its §9.18.12 re-use note (see Documentation section)
-   - Planned doc status: `Not implemented`
+   - Planned doc status: `Implemented` — see frontend-shared-helpers-and-abstraction-standards.md §9.17 (metric-state rank module)
 
 ### Data-shape planning
 
@@ -241,7 +241,7 @@ Code Reviewer mandatory docs:
    - Owning module/path: `src/frontend/src/services/dataAnalysis/compareStudentNames.ts`
    - Call-site rationale: canonical locale-aware name comparator over `{ studentName, studentId }`; generic student-domain semantics consumed by both features, owned by neither (SPEC decision 4) — hence the neutral layer, not either feature
    - Relevant canonical doc target: shared-helpers doc ([frontend-shared-helpers-and-abstraction-standards.md](docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md)) — §9.18.10 entry **reclassified into the shared-helper section (§9.17)** with the new owning path and structural signature (not merely re-pathed; see Documentation section)
-   - Planned doc status: `Not implemented`
+   - Planned doc status: `Implemented` — see frontend-shared-helpers-and-abstraction-standards.md §9.17 (shared student-name comparator)
 
 ### Data-shape planning
 
@@ -336,7 +336,7 @@ Code Reviewer mandatory docs:
    - Owning module/path: `src/frontend/src/features/taskHeatmap/taskHeatmapModel.ts`
    - Call-site rationale: sole consumer is `TaskHeatmapTable`; keeps `HeatmapRow` typing at the call site without duplicating ordering logic
    - Relevant canonical doc target: shared-helpers doc ([frontend-shared-helpers-and-abstraction-standards.md](docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md)) §9.18.11 — stays **feature-local** (it is heatmap-specific), owning path updated to `taskHeatmapModel.ts`, delegation note repointed to the services comparator (see Documentation section)
-   - Planned doc status: `Not implemented`
+   - Planned doc status: `Implemented` — see frontend-shared-helpers-and-abstraction-standards.md §9.18.11 (feature-local heatmap comparator wrapper)
 
 ### Data-shape planning
 
@@ -480,8 +480,9 @@ Code Reviewer mandatory docs:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** _to be filled._
-- **Deviations from plan:** _to be filled._
+- **Implementation notes:** All five required checks executed via Docs delegation with a three-cycle review loop ending REVIEW CLEAN. (1) `src/frontend/AGENTS.md` §3.3 gained the `taskHeatmap/` entry, placed last per the list's alphabetical convention. (2) Shared-helpers doc RECLASSIFIED per SPEC v1.4: new §9.17 entries 5 (`metricStateRank.ts`) and 6 (flat `compareStudentNames.ts`, structural shape recorded); §9.18.10 removed; §9.18.11 repointed to `taskHeatmapModel.ts` with services delegation note; §9.18.12 re-use attribution repointed to `taskHeatmapModel.ts`/`compareStudentNames.ts`/`metricStateRank.ts`; §9.18.13 owning path updated; §9.18 numbering stable; §9.18 preamble sentence added so it no longer contradicts the promotions. (3) `navigation-consistency-status.md` lines 77/189/193 (+ table) repointed to `features/taskHeatmap/`. (4) `metric-display-precision.md` path + shifted line refs corrected against delivered `TaskHeatmapTable.tsx` — grep-surfaced extension accepted under the reconcile-all mandate. (5) ACTION_PLAN shared-helper statuses flipped to Implemented (§9.17 / §9.17 / §9.18.11). Grep hygiene: zero `classPage/TaskHeatmap` hits in docs; remaining bare-`classPageModel.ts` mentions justified as current-state or accurate history. Check 3 satisfied (all prior section fields filled); check 4 satisfied (Files read evidence on every handoff); check 5 satisfied (both `@remarks` verified present).
+- **Deviations from plan:** Three disclosed extensions judged within the reconcile-all mandate by review: §9.18.16 entries 24–26 path updates; §9.18 preamble sentence; metric-display-precision fixes. Two fix-cycle iterations were needed to reach clean (placement correction; scoped-bullet restoration after an over-scoped Fix 2). Accepted disposition: the restored §9.18.2 bullet retains two planning-era artefacts verbatim from HEAD ("in Section 4" dangling reference; pre-extraction export framing) — pre-existing, byte-identical restoration, current-state truth carried by the adjacent delegation pointer + §9.17 entry 5; recorded here as a known follow-up for a future docs pass rather than silently rewritten.
+- **Follow-up:** future docs pass may trim the stale tail of the restored §9.18.2 sentence. Non-goals respected and verified: spacing doc untouched (bare filename only), data-shapes untouched, `heatmapAdapter.ts:172` / `dataAnalysis.zod.ts:186` stale SPEC pointers deliberately left (outside moved files).
 
 ---
 
