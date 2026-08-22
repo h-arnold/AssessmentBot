@@ -10,6 +10,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { compareStudentNames } from '../../services/dataAnalysis/compareStudentNames';
 import { compareHeatmapStudentName } from './taskHeatmapModel';
 import type { HeatmapRow } from '../../services/dataAnalysis/heatmapAdapter';
 
@@ -22,7 +23,7 @@ describe('compareHeatmapStudentName', () => {
     const bob: HeatmapRow = { studentId: 's-2', studentName: 'Bob', cells: [] };
 
     const result = compareHeatmapStudentName(alice, bob);
-
+    expect(result).toBe(compareStudentNames(alice, bob));
     expect(result).toBeLessThan(0);
   });
 
@@ -53,11 +54,5 @@ describe('compareHeatmapStudentName', () => {
 
     // Case-insensitive: 'alice' (lowercase) should be considered < 'Bob'
     expect(result).toBeLessThan(0);
-  });
-
-  it('accepts HeatmapRow (not StudentAverageRowModel) — function is defined', () => {
-    // RED phase fails because compareHeatmapStudentName is not yet exported.
-    // Green phase: this call confirms the function signature accepts HeatmapRow.
-    expect(typeof compareHeatmapStudentName).toBe('function');
   });
 });

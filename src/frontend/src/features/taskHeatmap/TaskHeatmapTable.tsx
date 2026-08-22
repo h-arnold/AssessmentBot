@@ -12,7 +12,7 @@
  * DOM node count on large classes.  `sortedRows`, `hasNoSubmissions`, and
  * `columns` are memoised to avoid redundant recomputation on each render.
  *
- * @see SPEC.md — §"Rendering rules", §"Sorting, filtering", §"Empty state"
+ * @see SPEC.md
  */
 
 import type { CSSProperties, JSX } from 'react';

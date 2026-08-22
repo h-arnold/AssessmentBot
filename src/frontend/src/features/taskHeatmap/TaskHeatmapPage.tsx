@@ -6,7 +6,7 @@
  * wraps `adaptMetricsToHeatmap` in a `try`/`catch`; on error it logs the error
  * via the frontend logger and calls `onBack` (no in-view error UI).
  *
- * @see SPEC.md — §"Page composition", §"Navigation / breadcrumb", §"Error handling"
+ * @see SPEC.md
  */
 
 import { useMemo, type JSX } from 'react';

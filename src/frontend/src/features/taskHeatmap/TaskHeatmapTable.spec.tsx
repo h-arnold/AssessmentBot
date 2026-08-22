@@ -6,7 +6,7 @@
  * score-range `filterDropdown` (via `buildMetricRangeFilter`) rather than the
  * fixed `METRIC_COLUMN_FILTERS` band list.
  *
- * @see SPEC.md — §"Rendering rules", §"Sorting, filtering", §"Empty state", §"Accessibility"
+ * @see SPEC.md
  */
 
 import { describe, it, expect, afterEach, beforeEach } from 'vitest';

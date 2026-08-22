@@ -26,6 +26,29 @@ pre-existing failures, both **outside this cycle's scope** and accepted as-is:
 Regression gate for this cycle: zero regressions against this baseline; the three heatmap E2E
 suites must pass unmodified; no new failures attributable to sections 1–3.
 
+### Post-implementation de-sloppification outcome
+
+Pass completed after all sections closed. Verdict `CLEANUP IDENTIFIED: 2`; both fixed via
+Implementation, review CLEAN, behaviour-preserving:
+
+1. `taskHeatmapModel.spec.ts` — deleted tautological test ('accepts HeatmapRow … function is
+   defined' with stale RED/GREEN phase narration); strengthened the first test with a genuine
+   parity assertion against `compareStudentNames` (`toBe` equality), making the existing title
+   truthful and satisfying the §Section 3 required case literally.
+2. Three moved-file headers (`TaskHeatmapPage.tsx`, `TaskHeatmapTable.tsx`,
+   `TaskHeatmapTable.spec.tsx`) — bogus `@see SPEC.md — §"…"` section anchors trimmed to bare
+   `@see SPEC.md` (sections do not exist in SPEC v1.4; refresh authorised by SPEC line 204).
+   `taskHeatmapModel.spec.ts` header's valid `@see SPEC.md — decision 4` pointer left intact.
+
+Recorded observations, no action (SPEC-mandated): `METRIC_STATE_RANK_DESC` export has no
+production consumer today (SPEC decision 4 authorises the promotion); `compareHeatmapStudentName`
+is a single-caller pass-through wrapper by documented design ("keeps HeatmapRow typing at the
+call site"). Known follow-up carried from Documentation section: restored §9.18.2 bullet retains
+planning-era wording verbatim from HEAD ("in Section 4", pre-extraction export framing).
+
+Post-cleanup verification: targeted suites green; lint --max-warnings 0 green; full frontend unit
+suite 146 files / 1788 tests green (net −1 test from tautology removal).
+
 ## Read-First Context
 
 Before writing or executing this plan:
