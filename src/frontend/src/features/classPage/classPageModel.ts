@@ -9,8 +9,8 @@
  */
 
 import { getStudentMetric } from './classPageAdapter.zod';
+import { getMetricStateRank } from '../../services/dataAnalysis/metricDisplay/metricStateRank';
 import type { ClassPageAdapterResult, StudentAverageRowModel } from './classPageAdapter.zod';
-import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import type { HeatmapRow } from '../../services/dataAnalysis/heatmapAdapter';
 import type { MetricColumnKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 
@@ -29,43 +29,6 @@ export type ClassPageViewModel = {
   studentAverages: StudentAverageRowModel[];
   classMetrics: ClassPageAdapterResult['classMetrics'];
 };
-
-const HIGHEST_METRIC_STATE_RANK = 2;
-
-/** Rank lookup for ascending metric column sort: computed → notAttempted → error. */
-export const METRIC_STATE_RANK_ASC: ReadonlyMap<MetricResult['state'], number> = new Map([
-  ['computed', 0],
-  ['notAttempted', 1],
-  ['error', HIGHEST_METRIC_STATE_RANK],
-]);
-
-/** Rank lookup for descending metric column sort: error → notAttempted → computed. */
-const METRIC_STATE_RANK_DESC: ReadonlyMap<MetricResult['state'], number> = new Map([
-  ['error', 0],
-  ['notAttempted', 1],
-  ['computed', HIGHEST_METRIC_STATE_RANK],
-]);
-
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Return a numeric rank for a `MetricResult` state, used for state-aware
- * metric column sorting.
- *
- * The rank order flips with direction:
- * - `asc`:  computed (0) → notAttempted (1) → error (2)
- * - `desc`: error (0) → notAttempted (1) → computed (2)
- *
- * @param {MetricResult} metric - The metric result to rank.
- * @param {'asc' | 'desc'} direction - Sort direction.
- * @returns {number} A numeric rank (lower = earlier in sort order).
- */
-function getMetricStateRank(metric: MetricResult, direction: 'asc' | 'desc'): number {
-  const rankMap = direction === 'asc' ? METRIC_STATE_RANK_ASC : METRIC_STATE_RANK_DESC;
-  return rankMap.get(metric.state) ?? 0;
-}
 
 /**
  * Build a comparator function for a metric column with state-aware ordering.

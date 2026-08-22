@@ -28,10 +28,8 @@ import type {
   HeatmapTaskColumn,
 } from '../../services/dataAnalysis/heatmapAdapter';
 import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
-import {
-  compareHeatmapStudentName,
-  METRIC_STATE_RANK_ASC,
-} from './classPageModel';
+import { compareHeatmapStudentName } from './classPageModel';
+import { METRIC_STATE_RANK_ASC } from '../../services/dataAnalysis/metricDisplay/metricStateRank';
 import {
   METRIC_DISPLAY_META,
   HEATMAP_METRIC_KEYS,

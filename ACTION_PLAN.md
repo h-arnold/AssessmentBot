@@ -1,5 +1,31 @@
 # Feature Delivery Plan (TDD-First) — TaskHeatmap Feature Extraction
 
+## Execution status
+
+| Section                                   | Status      | Notes                                                          |
+| ----------------------------------------- | ----------- | -------------------------------------------------------------- |
+| Baseline gate                             | Complete    | Session `docs/taskheatmap-extraction-spec`; see debt log below |
+| 1 — metric-state rank helpers             | Complete    | See §Section 1 notes; commit recorded below                    |
+| 2 — `compareStudentNames` services module | In progress | Red loop (Testing Specialist)                                  |
+| 3 — cluster move + `taskHeatmapModel.ts`  | Not started |                                                                |
+| Regression and contract hardening         | Not started |                                                                |
+| Documentation and rollout notes           | Not started |                                                                |
+
+### Baseline record (accepted technical debt)
+
+Baseline run 2026-08-22, session `docs/taskheatmap-extraction-spec`, overall FAILING with two
+pre-existing failures, both **outside this cycle's scope** and accepted as-is:
+
+1. `backend-lint-check` — 14 pre-existing `max-lines` warnings in backend files
+   (`98_ConfigurationManagerClass.js`, `SlidesParser.js`, `DriveManager.js`,
+   `assignmentDefinitionValidation.js`, `z_apiHandler.js`, +9 more). Backend untouched this cycle.
+2. `frontend-e2e-check` — 4 failing Playwright tests, all in
+   `src/frontend/e2e-tests/settings-backend.spec.ts` (settings/API-key flows). None of the three
+   heatmap-related E2E suites gated by this plan are affected.
+
+Regression gate for this cycle: zero regressions against this baseline; the three heatmap E2E
+suites must pass unmodified; no new failures attributable to sections 1–3.
+
 ## Read-First Context
 
 Before writing or executing this plan:
@@ -169,9 +195,9 @@ Existing guards (must stay green):
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** _to be filled during execution._
-- **Deviations from plan:** _to be filled._
-- **Follow-up implications for later sections:** Section 3 will re-point `TaskHeatmapTable.tsx`'s sibling imports when the file moves; the services-layer path established here is final.
+- **Implementation notes:** Delivered as planned. `metricStateRank.ts` created (45 lines) with verbatim relocation of lines 33–68 (verified by diffing against `git show HEAD:`), only SPEC-authorised deltas: export promotions for `METRIC_STATE_RANK_DESC`/`getMetricStateRank`, added `MetricResult` type import, module-header `@remarks` naming both consumers. `classPageModel.ts` −37/+1 (rank block + orphaned `MetricResult` import removed; services import added); `TaskHeatmapTable.tsx` import repoint only. Red spec written first and confirmed red via module-resolution failure; guards (`classPageModel.spec.ts`, `TaskHeatmapTable.spec.tsx`) green throughout. Verification: targeted suite 23 files / 302 tests green; `npm run lint:frontend:check` green; `tsc -b src/frontend/tsconfig.json` green; regression checker compare run: 0 regressions, 0 new failures.
+- **Deviations from plan:** Two minimal red-spec repairs during green to satisfy the `--max-warnings 0` ESLint gate and `tsc -b` (both disclosed and accepted by green review as simplest compliant fixes): (1) hoisted `const HIGHEST_METRIC_STATE_RANK = 2` in the spec for `no-magic-numbers`; (2) fallback test cast rewritten to the codebase's `as unknown as MetricResult` idiom to fix TS2345 on a spread-over-discriminated-union. Runtime objects unchanged. No lint rules disabled.
+- **Follow-up implications for later sections:** Section 3 will re-point `TaskHeatmapTable.tsx`'s sibling imports when the file moves; the services-layer path established here is final. Environment note: Playwright runs rewrite `task-preview-card.spec.ts-snapshots/completeness-pinned.png` (binary churn, content drift vs HEAD); restored before commit — later sections must exclude/restore it before every commit.
 
 ---
 
