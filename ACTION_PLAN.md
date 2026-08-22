@@ -4,8 +4,8 @@
 
 Before writing or executing this plan:
 
-1. Read the current `@SPEC.md` v1.4 (reviewed clean through two Planner Reviewer passes; the source of truth for all product and architecture decisions — notably the narrowed decision 3, composition-only classPage→taskHeatmap imports, and decision 4's placement of `compareStudentNames` in the flat services layer).
-2. Read `@src/frontend/AGENTS.md` for frontend conventions (feature layout §3.3, export style §2, service organisation §14).
+1. Read the current [@SPEC.md](SPEC.md) v1.4 (reviewed clean through two Planner Reviewer passes; the source of truth for all product and architecture decisions — notably the narrowed decision 3, composition-only classPage→taskHeatmap imports, and decision 4's placement of `compareStudentNames` in the flat services layer).
+2. Read [@src/frontend/AGENTS.md](src/frontend/AGENTS.md) for frontend conventions (feature layout §3.3, export style §2, service organisation §14).
 3. Treat those documents as authoritative for behaviour, contracts, ownership boundaries, and the binding rules (`features/taskHeatmap/**` never imports `features/classPage/**`; classPage imports taskHeatmap for **composition only**, all logic sharing flowing through `services/dataAnalysis/`). This plan only sequences delivery and testing.
 
 ## Scope and assumptions
@@ -51,11 +51,11 @@ For each section: **Red** (failing test/spec first), **Green** (smallest change)
 
 ### Delegation mandatory-read gate (mandatory for sub-agent execution)
 
-Every delegated handoff lists its mandatory files as `@`-prefixed worktree-relative paths and includes a `Files read` evidence section; missing items block progression. Minimum sets per role:
+Every delegated handoff lists its mandatory files as `@`-prefixed worktree-relative paths and includes a `Files read` evidence section; missing items block progression. Minimum sets per role (link labels below deliberately retain the `@` prefix so the tokens remain injectable when copied into delegated prompts — preserve this form when editing):
 
-- **Testing Specialist**: `@SPEC.md`, `@ACTION_PLAN.md`, `@src/frontend/AGENTS.md`, `@docs/developer/frontend/frontend-testing.md`, plus the section's touched spec/source files.
-- **Implementation**: `@SPEC.md`, `@ACTION_PLAN.md`, `@src/frontend/AGENTS.md`, plus the section's touched source/spec files and, for Sections 1–2, `@docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`.
-- **Code Reviewer**: `@AGENTS.md`, `@src/frontend/AGENTS.md`, `@SPEC.md`, `@ACTION_PLAN.md`, plus the section diff.
+- **Testing Specialist**: [@SPEC.md](SPEC.md), [@ACTION_PLAN.md](ACTION_PLAN.md), [@src/frontend/AGENTS.md](src/frontend/AGENTS.md), [@docs/developer/frontend/frontend-testing.md](docs/developer/frontend/frontend-testing.md), plus the section's touched spec/source files.
+- **Implementation**: [@SPEC.md](SPEC.md), [@ACTION_PLAN.md](ACTION_PLAN.md), [@src/frontend/AGENTS.md](src/frontend/AGENTS.md), plus the section's touched source/spec files and, for Sections 1–2, [@docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md](docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md).
+- **Code Reviewer**: [@AGENTS.md](AGENTS.md), [@src/frontend/AGENTS.md](src/frontend/AGENTS.md), [@SPEC.md](SPEC.md), [@ACTION_PLAN.md](ACTION_PLAN.md), plus the section diff.
 
 ### Shared-helper planning gate
 
@@ -110,17 +110,17 @@ No file is projected to exceed 500 lines; **no file-separation work arises from 
 
 Testing Specialist mandatory docs:
 
-- `@SPEC.md` (decisions 3–4), `@ACTION_PLAN.md` §Section 1, `@src/frontend/AGENTS.md`, `@docs/developer/frontend/frontend-testing.md`
-- `@src/frontend/src/features/classPage/classPageModel.ts`, `@src/frontend/src/features/classPage/classPageModel.spec.ts`
+- [@SPEC.md](SPEC.md) (decisions 3–4), [@ACTION_PLAN.md](ACTION_PLAN.md) §Section 1, [@src/frontend/AGENTS.md](src/frontend/AGENTS.md), [@docs/developer/frontend/frontend-testing.md](docs/developer/frontend/frontend-testing.md)
+- [@src/frontend/src/features/classPage/classPageModel.ts](src/frontend/src/features/classPage/classPageModel.ts), [@src/frontend/src/features/classPage/classPageModel.spec.ts](src/frontend/src/features/classPage/classPageModel.spec.ts)
 
 Implementation mandatory docs:
 
-- `@SPEC.md`, `@ACTION_PLAN.md` §Section 1, `@src/frontend/AGENTS.md`, `@docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
-- `@src/frontend/src/features/classPage/classPageModel.ts`, `@src/frontend/src/features/classPage/TaskHeatmapTable.tsx`
+- [@SPEC.md](SPEC.md), [@ACTION_PLAN.md](ACTION_PLAN.md) §Section 1, [@src/frontend/AGENTS.md](src/frontend/AGENTS.md), [@docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md](docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md)
+- [@src/frontend/src/features/classPage/classPageModel.ts](src/frontend/src/features/classPage/classPageModel.ts), [@src/frontend/src/features/classPage/TaskHeatmapTable.tsx](src/frontend/src/features/classPage/TaskHeatmapTable.tsx)
 
 Code Reviewer mandatory docs:
 
-- `@AGENTS.md`, `@src/frontend/AGENTS.md`, `@SPEC.md`, `@ACTION_PLAN.md` §Section 1
+- [@AGENTS.md](AGENTS.md), [@src/frontend/AGENTS.md](src/frontend/AGENTS.md), [@SPEC.md](SPEC.md), [@ACTION_PLAN.md](ACTION_PLAN.md) §Section 1
 
 ### Shared helper plan
 
@@ -128,7 +128,7 @@ Code Reviewer mandatory docs:
    - Decision: `new` module hosting relocated logic (no semantic change)
    - Owning module/path: `src/frontend/src/services/dataAnalysis/metricDisplay/metricStateRank.ts`
    - Call-site rationale: generic `MetricResult['state']` ranking consumed by both the overview table (via `buildMetricComparator`) and the heatmap table; belongs to neither feature (SPEC decision 4)
-   - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` — the metric-state sorting / rank-maps entry (~line 584 region) **reclassified into the shared-helper section (§9.17)** with owning path `metricStateRank.ts`, plus its §9.18.12 re-use note (see Documentation section)
+   - Relevant canonical doc target: [docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md](docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md) — the metric-state sorting / rank-maps entry (~line 584 region) **reclassified into the shared-helper section (§9.17)** with owning path `metricStateRank.ts`, plus its §9.18.12 re-use note (see Documentation section)
    - Planned doc status: `Not implemented`
 
 ### Data-shape planning
@@ -196,17 +196,17 @@ Existing guards (must stay green):
 
 Testing Specialist mandatory docs:
 
-- `@SPEC.md` (decision 4), `@ACTION_PLAN.md` §Section 2, `@src/frontend/AGENTS.md`, `@docs/developer/frontend/frontend-testing.md`
-- `@src/frontend/src/features/classPage/classPageModel.ts`, `@src/frontend/src/features/classPage/classPageModel.spec.ts`
+- [@SPEC.md](SPEC.md) (decision 4), [@ACTION_PLAN.md](ACTION_PLAN.md) §Section 2, [@src/frontend/AGENTS.md](src/frontend/AGENTS.md), [@docs/developer/frontend/frontend-testing.md](docs/developer/frontend/frontend-testing.md)
+- [@src/frontend/src/features/classPage/classPageModel.ts](src/frontend/src/features/classPage/classPageModel.ts), [@src/frontend/src/features/classPage/classPageModel.spec.ts](src/frontend/src/features/classPage/classPageModel.spec.ts)
 
 Implementation mandatory docs:
 
-- `@SPEC.md`, `@ACTION_PLAN.md` §Section 2, `@src/frontend/AGENTS.md` (§14 service organisation), `@docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
-- `@src/frontend/src/features/classPage/classPageAdapter.ts`, `@src/frontend/src/features/classPage/studentAveragesTableColumns.tsx`, `@src/frontend/src/features/classPage/classPageModel.ts`
+- [@SPEC.md](SPEC.md), [@ACTION_PLAN.md](ACTION_PLAN.md) §Section 2, [@src/frontend/AGENTS.md](src/frontend/AGENTS.md) (§14 service organisation), [@docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md](docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md)
+- [@src/frontend/src/features/classPage/classPageAdapter.ts](src/frontend/src/features/classPage/classPageAdapter.ts), [@src/frontend/src/features/classPage/studentAveragesTableColumns.tsx](src/frontend/src/features/classPage/studentAveragesTableColumns.tsx), [@src/frontend/src/features/classPage/classPageModel.ts](src/frontend/src/features/classPage/classPageModel.ts)
 
 Code Reviewer mandatory docs:
 
-- `@AGENTS.md`, `@src/frontend/AGENTS.md`, `@SPEC.md`, `@ACTION_PLAN.md` §Section 2
+- [@AGENTS.md](AGENTS.md), [@src/frontend/AGENTS.md](src/frontend/AGENTS.md), [@SPEC.md](SPEC.md), [@ACTION_PLAN.md](ACTION_PLAN.md) §Section 2
 
 ### Shared helper plan
 
@@ -214,7 +214,7 @@ Code Reviewer mandatory docs:
    - Decision: `new` owning module via relocation into the neutral services layer (single source of truth preserved)
    - Owning module/path: `src/frontend/src/services/dataAnalysis/compareStudentNames.ts`
    - Call-site rationale: canonical locale-aware name comparator over `{ studentName, studentId }`; generic student-domain semantics consumed by both features, owned by neither (SPEC decision 4) — hence the neutral layer, not either feature
-   - Relevant canonical doc target: shared-helpers doc — §9.18.10 entry **reclassified into the shared-helper section (§9.17)** with the new owning path and structural signature (not merely re-pathed; see Documentation section)
+   - Relevant canonical doc target: shared-helpers doc ([frontend-shared-helpers-and-abstraction-standards.md](docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md)) — §9.18.10 entry **reclassified into the shared-helper section (§9.17)** with the new owning path and structural signature (not merely re-pathed; see Documentation section)
    - Planned doc status: `Not implemented`
 
 ### Data-shape planning
@@ -291,17 +291,17 @@ Existing guards (must stay green):
 
 Testing Specialist mandatory docs:
 
-- `@SPEC.md`, `@ACTION_PLAN.md` §Section 3, `@src/frontend/AGENTS.md`, `@docs/developer/frontend/frontend-testing.md`
-- `@src/frontend/src/features/classPage/ClassPageContent.spec.tsx`, `@src/frontend/src/features/classPage/ClassPage.spec.tsx`, `@src/frontend/src/features/classPage/ClassPageHeatmapView.spec.tsx`
+- [@SPEC.md](SPEC.md), [@ACTION_PLAN.md](ACTION_PLAN.md) §Section 3, [@src/frontend/AGENTS.md](src/frontend/AGENTS.md), [@docs/developer/frontend/frontend-testing.md](docs/developer/frontend/frontend-testing.md)
+- [@src/frontend/src/features/classPage/ClassPageContent.spec.tsx](src/frontend/src/features/classPage/ClassPageContent.spec.tsx), [@src/frontend/src/features/classPage/ClassPage.spec.tsx](src/frontend/src/features/classPage/ClassPage.spec.tsx), [@src/frontend/src/features/classPage/ClassPageHeatmapView.spec.tsx](src/frontend/src/features/classPage/ClassPageHeatmapView.spec.tsx)
 
 Implementation mandatory docs:
 
-- `@SPEC.md`, `@ACTION_PLAN.md` §Section 3, `@src/frontend/AGENTS.md`
-- `@src/frontend/src/features/classPage/ClassPageContent.tsx`, `@src/frontend/src/features/classPage/classPageModel.ts`, `@src/frontend/src/features/classPage/classPageModel.spec.ts`, plus every moved production/spec file
+- [@SPEC.md](SPEC.md), [@ACTION_PLAN.md](ACTION_PLAN.md) §Section 3, [@src/frontend/AGENTS.md](src/frontend/AGENTS.md)
+- [@src/frontend/src/features/classPage/ClassPageContent.tsx](src/frontend/src/features/classPage/ClassPageContent.tsx), [@src/frontend/src/features/classPage/classPageModel.ts](src/frontend/src/features/classPage/classPageModel.ts), [@src/frontend/src/features/classPage/classPageModel.spec.ts](src/frontend/src/features/classPage/classPageModel.spec.ts), plus every moved production/spec file
 
 Code Reviewer mandatory docs:
 
-- `@AGENTS.md`, `@src/frontend/AGENTS.md`, `@SPEC.md`, `@ACTION_PLAN.md` §Section 3
+- [@AGENTS.md](AGENTS.md), [@src/frontend/AGENTS.md](src/frontend/AGENTS.md), [@SPEC.md](SPEC.md), [@ACTION_PLAN.md](ACTION_PLAN.md) §Section 3
 
 ### Shared helper plan
 
@@ -309,7 +309,7 @@ Code Reviewer mandatory docs:
    - Decision: relocation into the new feature model module; wrapper only (delegates to the services comparator — no comparison logic of its own)
    - Owning module/path: `src/frontend/src/features/taskHeatmap/taskHeatmapModel.ts`
    - Call-site rationale: sole consumer is `TaskHeatmapTable`; keeps `HeatmapRow` typing at the call site without duplicating ordering logic
-   - Relevant canonical doc target: shared-helpers doc §9.18.11 — stays **feature-local** (it is heatmap-specific), owning path updated to `taskHeatmapModel.ts`, delegation note repointed to the services comparator (see Documentation section)
+   - Relevant canonical doc target: shared-helpers doc ([frontend-shared-helpers-and-abstraction-standards.md](docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md)) §9.18.11 — stays **feature-local** (it is heatmap-specific), owning path updated to `taskHeatmapModel.ts`, delegation note repointed to the services comparator (see Documentation section)
    - Planned doc status: `Not implemented`
 
 ### Data-shape planning
@@ -374,6 +374,17 @@ New coverage in this section:
 - Prefer focused runs first, then breadth; do not proceed to E2E until the full unit suite is green.
 - No test file outside those already enumerated may require changes; any such need indicates a missed coupling — stop and reconcile against SPEC.md before continuing.
 
+### Delegation mandatory reads
+
+Playwright (targeted E2E suites) mandatory docs:
+
+- [@ACTION_PLAN.md](ACTION_PLAN.md) §Regression and contract hardening, [@src/frontend/AGENTS.md](src/frontend/AGENTS.md), [@docs/developer/frontend/frontend-playwright-e2e.md](docs/developer/frontend/frontend-playwright-e2e.md), [@docs/developer/frontend/frontend-testing.md](docs/developer/frontend/frontend-testing.md)
+- [@src/frontend/e2e-tests/task-heatmap.spec.ts](src/frontend/e2e-tests/task-heatmap.spec.ts), [@src/frontend/e2e-tests/task-preview-card.spec.ts](src/frontend/e2e-tests/task-preview-card.spec.ts), [@src/frontend/e2e-tests/navigation-screenshots.spec.ts](src/frontend/e2e-tests/navigation-screenshots.spec.ts)
+
+Code Reviewer mandatory docs:
+
+- [@AGENTS.md](AGENTS.md), [@src/frontend/AGENTS.md](src/frontend/AGENTS.md), [@SPEC.md](SPEC.md), [@ACTION_PLAN.md](ACTION_PLAN.md) §Regression and contract hardening
+
 ### Acceptance criteria
 
 - `npm run test:frontend` fully green.
@@ -409,17 +420,27 @@ New coverage in this section:
 
 - Only documents referencing touched areas are modified.
 
+### Delegation mandatory reads
+
+Docs (documentation reconciliation) mandatory docs:
+
+- [@AGENTS.md](AGENTS.md), [@SPEC.md](SPEC.md), [@ACTION_PLAN.md](ACTION_PLAN.md) §Documentation and rollout notes, [@src/frontend/AGENTS.md](src/frontend/AGENTS.md), [@docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md](docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md), [@docs/developer/frontend/navigation-consistency-status.md](docs/developer/frontend/navigation-consistency-status.md)
+
+Code Reviewer mandatory docs:
+
+- [@AGENTS.md](AGENTS.md), [@src/frontend/AGENTS.md](src/frontend/AGENTS.md), [@SPEC.md](SPEC.md), [@ACTION_PLAN.md](ACTION_PLAN.md) §Documentation and rollout notes
+
 ### Acceptance criteria
 
 - `src/frontend/AGENTS.md` §3.3 feature-directory list includes `taskHeatmap/` with a one-line description consistent in style with existing entries.
-- `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` — **reclassification, not just re-pathing** (SPEC v1.4 documentation notes): because §9.18 is scoped to feature-local classPage helpers, the promoted helpers move into the shared-helper section (§9.17):
+- [docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md](docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md) — **reclassification, not just re-pathing** (SPEC v1.4 documentation notes): because §9.18 is scoped to feature-local classPage helpers, the promoted helpers move into the shared-helper section (§9.17):
   - §9.18.10 `compareStudentNames` → §9.17 entry with owning path `services/dataAnalysis/compareStudentNames.ts` and its new structural parameter shape.
   - The metric-state sorting / rank-maps entry → §9.17 entry with owning path `services/dataAnalysis/metricDisplay/metricStateRank.ts`.
   - §9.18.11 `compareHeatmapStudentName` stays **feature-local**: owning path → `features/taskHeatmap/taskHeatmapModel.ts`, delegation note repointed to the services comparator.
   - **§9.18.12 (`TaskHeatmapTable`: owning path → `features/taskHeatmap/TaskHeatmapTable.tsx`, re-use attribution repointed from `classPageModel.ts` to `taskHeatmapModel.ts`, `compareStudentNames.ts`, and `metricStateRank.ts`)** and **§9.18.13 (TaskHeatmapPage owning path)** updated in place; statuses reconciled against the delivered code.
   - Grep caveat for check #1 below: the stale-reference grep must also cover bare `classPageModel.ts` mentions inside helper entries (e.g. the §9.18.12 re-use note), not only full `features/classPage/...` paths — such mentions survive a path-only grep while still being stale after this cycle.
 - Note on known-stale pointers outside this cycle's scope: `src/frontend/src/services/dataAnalysis/heatmapAdapter.ts:172` (and `dataAnalysis.zod.ts:186`) reference "SPEC.md §Deferrals", a heading that no longer exists. SPEC v1.4 line 204 authorises refreshing stale `@see SPEC.md` pointers only **inside moved file headers**, so these non-moved services files are deliberately **left untouched** this cycle; recorded here so implementers do not "helpfully" widen scope.
-- `docs/developer/frontend/navigation-consistency-status.md` path references (lines ~77, ~189, ~193) updated to `features/taskHeatmap/`.
+- [docs/developer/frontend/navigation-consistency-status.md](docs/developer/frontend/navigation-consistency-status.md) path references (lines ~77, ~189, ~193) updated to `features/taskHeatmap/`.
 - `docs/developer/frontend/frontend-spacing-and-padding-standards.md`: **no edit** (bare filename only, filename unchanged) — verified during execution.
 - `docs/developer/data-shapes/`: confirmed no changes required (recorded in plan gate).
 
