@@ -7,7 +7,14 @@ import { expect, vi } from 'vitest';
 import path from 'node:path';
 
 const transportModulePath = '../../src/backend/z_Api/assignmentDefinitionTransport.js';
-const validationModulePath = '../../src/backend/z_Api/assignmentDefinitionValidation.js';
+// Assignment-definition validation is split across a three-module folder; keep
+// all paths together so cache clearing and source assertions cover each module.
+const validationModulePath =
+  '../../src/backend/z_Api/assignmentDefinition/assignmentDefinitionValidation.js';
+const upsertValidationModulePath =
+  '../../src/backend/z_Api/assignmentDefinition/assignmentDefinitionUpsertValidation.js';
+const partialRowValidationModulePath =
+  '../../src/backend/z_Api/assignmentDefinition/assignmentDefinitionPartialRowValidation.js';
 const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
 
 /**
@@ -38,13 +45,20 @@ export function loadAssignmentDefinitionPartialsModule() {
 }
 
 /**
- * Loads the assignmentDefinitionValidation module.
- * Clears require cache first to ensure fresh load.
- * @returns {Object} The module exports
+ * Loads the split assignment-definition validation modules (shared core, upsert
+ * and partial-row) and returns their exports merged into a single object.
+ * Clears require caches first to ensure a fresh load.
+ * @returns {Object} The merged exports of all three validation modules
  */
 export function loadAssignmentDefinitionValidationModule() {
   delete require.cache[require.resolve(validationModulePath)];
-  return require(validationModulePath);
+  delete require.cache[require.resolve(upsertValidationModulePath)];
+  delete require.cache[require.resolve(partialRowValidationModulePath)];
+  return {
+    ...require(validationModulePath),
+    ...require(upsertValidationModulePath),
+    ...require(partialRowValidationModulePath),
+  };
 }
 
 /**
@@ -104,6 +118,8 @@ export function createAssignmentDefinitionControllerHooks() {
   const afterEachHandler = () => {
     delete require.cache[require.resolve(transportModulePath)];
     delete require.cache[require.resolve(validationModulePath)];
+    delete require.cache[require.resolve(upsertValidationModulePath)];
+    delete require.cache[require.resolve(partialRowValidationModulePath)];
 
     if (originalAssignmentDefinitionController === undefined) {
       delete globalThis.AssignmentDefinitionController;
@@ -178,32 +194,46 @@ export function expectPatternNotInSource(pattern) {
 }
 
 /**
- * Helper to verify a function name DOES exist in the validation source file.
+ * Reads and concatenates the contents of all three assignment-definition
+ * validation source files.
+ * @returns {string} The combined validation source code
+ */
+function readAssignmentDefinitionValidationSources() {
+  return [validationModulePath, upsertValidationModulePath, partialRowValidationModulePath]
+    .map((filePath) => readSourceFile(filePath))
+    .join('\n');
+}
+
+/**
+ * Helper to verify a function name DOES exist in one of the validation source
+ * files.
  * @param {string} functionName - The function name to check for
  * @returns {void}
  */
 export function expectValidationFunctionInSource(functionName) {
-  const sourceCode = readSourceFile(validationModulePath);
+  const sourceCode = readAssignmentDefinitionValidationSources();
   expect(sourceCode).toContain(`function ${functionName}`);
 }
 
 /**
- * Helper to verify a function name does NOT exist in the validation source file.
+ * Helper to verify a function name does NOT exist in any of the validation
+ * source files.
  * @param {string} functionName - The function name to check for
  * @returns {void}
  */
 export function expectValidationFunctionNotInSource(functionName) {
-  const sourceCode = readSourceFile(validationModulePath);
+  const sourceCode = readAssignmentDefinitionValidationSources();
   expect(sourceCode).not.toContain(`function ${functionName}`);
 }
 
 /**
- * Helper to verify a string pattern exists in the validation source file.
+ * Helper to verify a string pattern exists in one of the validation source
+ * files.
  * @param {string} pattern - The pattern to search for
  * @returns {void}
  */
 export function expectValidationPatternInSource(pattern) {
-  const sourceCode = readSourceFile(validationModulePath);
+  const sourceCode = readAssignmentDefinitionValidationSources();
   expect(sourceCode).toContain(pattern);
 }
 

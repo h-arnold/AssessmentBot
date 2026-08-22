@@ -51,7 +51,8 @@ function getGoogleClassroomAssignments_(parameters) {
   }
 
   // Defence-in-depth: reject ASCII control characters (code points 0-31 and 127/DEL).
-  // Uses the shared `hasControlCharacters_()` helper from assignmentDefinitionValidation.js,
+  // Uses the shared `hasControlCharacters_()` helper from
+  // z_Api/assignmentDefinition/assignmentDefinitionValidation.js,
   // which is available as a global in the GAS concatenated runtime.
   if (hasControlCharacters_(classId)) {
     throw new ApiValidationError('classId contains unsafe characters.', {
