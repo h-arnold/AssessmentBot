@@ -9,6 +9,7 @@
  */
 
 import { getStudentMetric } from './classPageAdapter.zod';
+import { compareStudentNames } from '../../services/dataAnalysis/compareStudentNames';
 import { getMetricStateRank } from '../../services/dataAnalysis/metricDisplay/metricStateRank';
 import type { ClassPageAdapterResult, StudentAverageRowModel } from './classPageAdapter.zod';
 import type { HeatmapRow } from '../../services/dataAnalysis/heatmapAdapter';
@@ -75,26 +76,6 @@ export const DEFAULT_SORT: {
 // ---------------------------------------------------------------------------
 
 /**
- * Compare two student rows by student name (locale-aware, case-insensitive)
- * with a deterministic `studentId` ascending tie-break.
- *
- * @remarks
- * This is the single source of truth for student-name ordering in the Class
- * page. Call sites that need direction apply `direction === 'asc' ? cmp : -cmp`.
- *
- * @param {StudentAverageRowModel} a - The first row to compare.
- * @param {StudentAverageRowModel} b - The second row to compare.
- * @returns {number} Negative if `a < b`, positive if `a > b`, zero if equal.
- */
-export function compareStudentNames(a: StudentAverageRowModel, b: StudentAverageRowModel): number {
-  const nameCmp = a.studentName.localeCompare(b.studentName, undefined, {
-    sensitivity: 'base',
-  });
-  if (nameCmp !== 0) return nameCmp;
-  return a.studentId.localeCompare(b.studentId);
-}
-
-/**
  * Compare two assignments by `updatedAt` descending, with `assignmentId` ascending
  * as a deterministic tie-break when `updatedAt` values are equal.
  *
@@ -136,12 +117,9 @@ export function compareAssignmentUpdatedAtDesc(
  * @returns {number} Negative if `a < b`, positive if `a > b`, zero if equal.
  */
 export function compareHeatmapStudentName(a: HeatmapRow, b: HeatmapRow): number {
-  // Delegate to the canonical `StudentAverageRowModel` comparator via cast
-  // because both types share the same `studentName` and `studentId` shape.
-  return compareStudentNames(
-    a as unknown as StudentAverageRowModel,
-    b as unknown as StudentAverageRowModel
-  );
+  // Delegate directly: both row shapes share the same `studentName` and
+  // `studentId` fields, so no cast is required.
+  return compareStudentNames(a, b);
 }
 
 /**

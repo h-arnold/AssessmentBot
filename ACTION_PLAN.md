@@ -6,8 +6,8 @@
 | ----------------------------------------- | ----------- | -------------------------------------------------------------- |
 | Baseline gate                             | Complete    | Session `docs/taskheatmap-extraction-spec`; see debt log below |
 | 1 — metric-state rank helpers             | Complete    | See §Section 1 notes; commit recorded below                    |
-| 2 — `compareStudentNames` services module | In progress | Red loop (Testing Specialist)                                  |
-| 3 — cluster move + `taskHeatmapModel.ts`  | Not started |                                                                |
+| 2 — `compareStudentNames` services module | Complete    | See §Section 2 notes; commit recorded below                    |
+| 3 — cluster move + `taskHeatmapModel.ts`  | In progress | Red loop (Testing Specialist)                                  |
 | Regression and contract hardening         | Not started |                                                                |
 | Documentation and rollout notes           | Not started |                                                                |
 
@@ -283,9 +283,9 @@ Existing guards (must stay green):
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** _to be filled during execution._
-- **Deviations from plan:** _to be filled._
-- **Follow-up implications for later sections:** Section 3 relocates `compareHeatmapStudentName` (with its describe block, including the existing case-insensitivity assertion) into the new `features/taskHeatmap/taskHeatmapModel.ts`.
+- **Implementation notes:** Delivered as planned. Flat `compareStudentNames.ts` created (34 lines); body verified byte-identical to the original (SHA-256 match of extracted bodies) with only the authorised annotation deltas: structural re-typing onto `Readonly<{ studentName: string; studentId: string }>`, `@remarks` Class-page→app-wide wording, structural `@param` types. `classPageModel.ts` lost its local definition (−20) and gained the services import; `compareHeatmapStudentName` is cast-free but stays put with its `@remarks` untouched until Section 3 relocates it. Import split in `classPageAdapter.ts` and repoint in `studentAveragesTableColumns.tsx` applied exactly as specified; describe block + banner migrated out of `classPageModel.spec.ts` (−34) while the `compareHeatmapStudentName` block (incl. case-insensitivity) stayed. Red spec first (module-resolution red confirmed), then green. Verification: targeted suites 35 files / 448 tests green; `lint:frontend:check` green; `tsc -b` green (proves cast-free structural acceptance); regression checker: 0 regressions, 0 new failures.
+- **Deviations from plan:** One test-only repair: `sonarjs/prefer-specific-assertions` rejected the spec's arity assertion; replaced with the linter's suggested equivalent `expect(compareStudentNames).toHaveLength(COMPARATOR_DECLARED_PARAMETERS)` — identical semantics, no rule suppressed (accepted by green review).
+- **Follow-up implications for later sections:** Section 3 relocates `compareHeatmapStudentName` (with its describe block, including the existing case-insensitivity assertion) into the new `features/taskHeatmap/taskHeatmapModel.ts`, updating its `@remarks` to reference delegation to `services/dataAnalysis/compareStudentNames`.
 
 ---
 

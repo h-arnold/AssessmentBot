@@ -13,7 +13,6 @@ import { describe, expect, it } from 'vitest';
 import { createMetricResult } from '../../test/dataAnalysis/fixtures';
 import {
   buildClassPageViewModel,
-  compareStudentNames,
   compareHeatmapStudentName,
   compareAssignmentUpdatedAtDesc,
 } from './classPageModel';
@@ -474,39 +473,6 @@ describe('buildClassPageViewModel', () => {
       // Defaults to studentName ascending: Alice before Bob
       expect(result.studentAverages[0].studentId).toBe('s-1');
       expect(result.studentAverages[1].studentId).toBe('s-2');
-    });
-  });
-
-  // -----------------------------------------------------------------------
-  // compareStudentNames
-  // -----------------------------------------------------------------------
-  describe('compareStudentNames', () => {
-    it('returns negative when a.studentName < b.studentName', () => {
-      const a = buildStudentRow({ studentId: 's-1', studentName: 'Alice' });
-      const b = buildStudentRow({ studentId: 's-2', studentName: 'Bob' });
-
-      const result = compareStudentNames(a, b);
-
-      expect(result).toBeLessThan(0);
-    });
-
-    it('returns positive when a.studentName > b.studentName', () => {
-      const a = buildStudentRow({ studentId: 's-2', studentName: 'Bob' });
-      const b = buildStudentRow({ studentId: 's-1', studentName: 'Alice' });
-
-      const result = compareStudentNames(a, b);
-
-      expect(result).toBeGreaterThan(0);
-    });
-
-    it('tie-breaks by studentId ascending when names are equal', () => {
-      const a = buildStudentRow({ studentId: 's-B', studentName: 'David' });
-      const b = buildStudentRow({ studentId: 's-A', studentName: 'David' });
-
-      const result = compareStudentNames(a, b);
-
-      // s-B vs s-A → positive (s-B sorts after s-A)
-      expect(result).toBeGreaterThan(0);
     });
   });
 

@@ -26,7 +26,8 @@ import type {
   RecentAssignmentCardModel,
   StudentAverageRowModel,
 } from './classPageAdapter.zod';
-import { compareAssignmentUpdatedAtDesc, compareStudentNames } from './classPageModel';
+import { compareAssignmentUpdatedAtDesc } from './classPageModel';
+import { compareStudentNames } from '../../services/dataAnalysis/compareStudentNames';
 import { TaskTitlesUnavailableError } from '../../services/dataAnalysis/heatmapAdapter';
 import { getAssignmentDefinitionPartial } from '../../services/assignmentDefinition/assignmentDefinitionUtilities';
 
