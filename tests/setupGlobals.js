@@ -319,8 +319,20 @@ g.ClassroomManager = {
 Object.assign(g, require('../src/backend/z_Api/abclass/abclassValidation.js'));
 
 // Expose assignment-definition modules for test access
-// Load validation module first (same order as GAS concatenation), then transport module
-Object.assign(g, require('../src/backend/z_Api/assignmentDefinitionValidation.js'));
+// Load the split validation modules first (same order as GAS concatenation),
+// then the transport module last
+Object.assign(
+  g,
+  require('../src/backend/z_Api/assignmentDefinition/assignmentDefinitionValidation.js')
+);
+Object.assign(
+  g,
+  require('../src/backend/z_Api/assignmentDefinition/assignmentDefinitionUpsertValidation.js')
+);
+Object.assign(
+  g,
+  require('../src/backend/z_Api/assignmentDefinition/assignmentDefinitionPartialRowValidation.js')
+);
 Object.assign(g, require('../src/backend/z_Api/assignmentDefinitionTransport.js'));
 
 // Load AssignmentDefinition sub-classes as globals (mirroring GAS concatenation order so

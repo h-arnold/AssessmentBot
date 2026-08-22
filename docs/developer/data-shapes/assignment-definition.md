@@ -7,7 +7,7 @@ Can be shared across classes and year groups.
 
 Backend model: `src/backend/Models/AssignmentDefinition.js`
 Collections: `assignment_definitions` (registry, partial shape), `assdef_full_<definitionKey>` (full cache)
-API handlers: `src/backend/z_Api/assignmentDefinitionTransport.js`, `src/backend/z_Api/assignmentDefinitionValidation.js`
+API handlers: `src/backend/z_Api/assignmentDefinitionTransport.js`; transport-boundary validators in `src/backend/z_Api/assignmentDefinition/` (`assignmentDefinitionValidation.js`, `assignmentDefinitionUpsertValidation.js`, `assignmentDefinitionPartialRowValidation.js`)
 Response mapper: `src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionResponseMapper.js`
 Frontend service: `src/frontend/src/services/assignmentDefinition/assignmentDefinitionService.ts`, `src/frontend/src/services/assignmentDefinition/assignmentDefinitionPartialsService.ts`
 Frontend Zod: `src/frontend/src/services/assignmentDefinition/assignmentDefinition.zod.ts`, `src/frontend/src/services/assignmentDefinition/assignmentDefinitionPartials.zod.ts`, `src/frontend/src/services/assignmentDefinition/taskPartial.zod.ts`
@@ -56,7 +56,7 @@ Key notes:
   partial shape. They are only stored on full definitions.
 - `tasks` is always an array in this collection. Full definitions stored in the full cache
   have `tasks` as a keyed object.
-- The `PARTIAL_REQUIRED_FIELDS` constant in `assignmentDefinitionValidation.js` lists 18
+- The `PARTIAL_REQUIRED_FIELDS` constant in `assignmentDefinitionPartialRowValidation.js` lists 18
   required fields — including `referenceLastModified`/`templateLastModified` which the
   transport row validation accepts but `toPartialJSON()` does not emit. Transport validation
   is stricter than emission (defence-in-depth).
@@ -437,13 +437,15 @@ Key notes:
 
 **Backend transport validation:**
 
-- `src/backend/z_Api/assignmentDefinitionValidation.js`:
+- `src/backend/z_Api/assignmentDefinition/assignmentDefinitionUpsertValidation.js`:
   - `validateUpsertParameters_()` — validates upsert request: `params` is object, required fields present, `primaryTitle` is string, `primaryTopicKey` is safe trimmed identifier, `referenceDocumentId`/`templateDocumentId` are strings (ID-shape) or URL-shape via `validateWizardUpsertParameters_()`, `definitionKey` is safe trimmed identifier if provided, `taskWeightings` shape validated, `yearGroupKey` validated.
   - `validateWizardUpsertParameters_()` — validates URL-shape upsert: required URL fields, mutual exclusion, URL parsing via `extractSupportedDocumentDescriptor_()`, same-document and same-type checks.
+  - `validateRequiredYearGroupKey_()` — validates `yearGroupKey` is present, non-null, safe trimmed identifier.
+- `src/backend/z_Api/assignmentDefinition/assignmentDefinitionValidation.js`:
   - `validateReadParameters_()` — validates `getAssignmentDefinition` request: params object, `definitionKey` is safe trimmed identifier.
   - `validateDeleteParameters_()` — validates `deleteAssignmentDefinition` request: params object, `definitionKey` is safe trimmed identifier.
-  - `validatePartialRow_()` — validates each partial row in `getAssignmentDefinitionPartials` response: 18 required fields present, `definitionKey`/`primaryTopicKey` validated, `yearGroupKey`/`yearGroupLabel` validated, `createdAt`/`updatedAt` are null or strict ISO datetime strings with timezone, `tasks` is array.
-  - `validateRequiredYearGroupKey_()` — validates `yearGroupKey` is present, non-null, safe trimmed identifier.
+- `src/backend/z_Api/assignmentDefinition/assignmentDefinitionPartialRowValidation.js`:
+  - `validatePartialRow_()` — validates each partial row in `getAssignmentDefinitionPartials` response: 18 required fields present (see `PARTIAL_REQUIRED_FIELDS`), `definitionKey`/`primaryTopicKey` validated, `yearGroupKey`/`yearGroupLabel` validated, `createdAt`/`updatedAt` are null or strict ISO datetime strings with timezone, `tasks` is array.
 
 **Key domain validation rules** (controller-level business logic not visible from schemas):
 
@@ -545,12 +547,15 @@ API handlers:              src/backend/z_Api/
   ├── assignmentDefinitionTransport.js       — getAssignmentDefinitionPartials_(),
   │                                             getAssignmentDefinition_(),
   │                                             upsertAssignmentDefinition_(),
-  │                                             deleteAssignmentDefinition_()
-  └── assignmentDefinitionValidation.js      — validateUpsertParameters_(),
-                                                validateReadParameters_(),
-                                                validateDeleteParameters_(),
-                                                validatePartialRow_(),
-                                                toTransportPartialRow_()
+  │                                             deleteAssignmentDefinition_(),
+  │                                             toTransportPartialRow_()   (remains flat)
+  └── assignmentDefinition/
+        ├── assignmentDefinitionValidation.js            — validateReadParameters_(),
+        │                                                  validateDeleteParameters_()
+        ├── assignmentDefinitionUpsertValidation.js       — validateUpsertParameters_(),
+        │                                                  validateWizardUpsertParameters_(),
+        │                                                  validateRequiredYearGroupKey_()
+        └── assignmentDefinitionPartialRowValidation.js   — validatePartialRow_()
 
 Transport envelope:        src/backend/z_Api/z_apiHandler.js
   └── apiHandler(), ApiDispatcher, ALLOWLISTED_METHOD_HANDLERS
