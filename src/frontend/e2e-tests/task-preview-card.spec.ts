@@ -111,7 +111,7 @@ test.describe('Task Preview Card popover', () => {
     await expect(popover.locator('img')).toHaveCount(1);
 
     await popover.screenshot({
-      path: `${test.info().snapshotDir}/image-completeness-hover.png`,
+      path: `${test.info().outputDir}/image-completeness-hover.png`,
     });
   });
 
@@ -138,7 +138,7 @@ test.describe('Task Preview Card popover', () => {
     ).toHaveCount(1);
 
     await popover.screenshot({
-      path: `${test.info().snapshotDir}/text-accuracy-hover.png`,
+      path: `${test.info().outputDir}/text-accuracy-hover.png`,
     });
   });
 
@@ -161,7 +161,7 @@ test.describe('Task Preview Card popover', () => {
     await expect(popover.locator('table')).toHaveCount(1);
 
     await popover.screenshot({
-      path: `${test.info().snapshotDir}/table-spag-hover.png`,
+      path: `${test.info().outputDir}/table-spag-hover.png`,
     });
   });
 
@@ -190,7 +190,7 @@ test.describe('Task Preview Card popover', () => {
     await expect(popover.locator(`[aria-label^="Completeness score:"]`).first()).toHaveCount(1);
 
     await page.screenshot({
-      path: `${test.info().snapshotDir}/completeness-pinned.png`,
+      path: `${test.info().outputDir}/completeness-pinned.png`,
     });
   });
 });
