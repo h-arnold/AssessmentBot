@@ -1,7 +1,7 @@
 {
   "reportDirectory": ".ts-regression-checker/reports",
   "parallel": {
-    "enabled": true,
+    "enabled": false,
     "maxWorkers": 1
   },
   "checks": [
