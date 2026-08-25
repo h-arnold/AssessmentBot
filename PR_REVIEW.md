@@ -230,7 +230,11 @@ Recorded from the post-review decision pass (21 findings walked through one at a
 
 ### Follow-ups surfaced during remediation (not blocking)
 
-- `eslint.config.js:247` still lists the pre-extraction path `features/classPage/TaskHeatmapTable.tsx` in a globally disabled rule's override list — harmless; tidy in the next config pass.
-- Pre-existing explicit `role="status"` attributes on `<div>` elements in untouched files (`ClassesPage.tsx`, `AssignmentDefinitionWizardModalShell.tsx`, `BackendSettingsPanel.tsx`, `ClassPageContent.tsx`, `ReferenceDataManagementModalScaffold.tsx`) may warrant an accessibility-consistency pass alongside §9.16a.
-- Vitest hoisting warnings from `src/hooks/usePageDataset.spec.ts` (pre-existing) may become errors in future Vitest versions.
-- §9.18.12 prose claims "`buildHeatmapTableColumns` is internal" but no such function exists (columns built in a `useMemo` via `buildTaskMetricSubColumns`) — pre-existing drift for the next docs pass.
+> **Status: all four RESOLVED** in the follow-up remediation batch (owner-directed), reviewed clean by Code Reviewer and verified with lint/tsc/full unit suite (zero warnings) plus a full regression-checker run in which every check exited 0 (the sole failing check remains the owner-acknowledged backend-lint max-lines warnings; formal regression counts were unavailable on that run solely because removing the inert `maxWorkers` field changed the config fingerprint — raw per-check results were uniformly green).
+
+- ~~`eslint.config.js:247` still lists the pre-extraction path~~ **RESOLVED** — override repointed to `src/features/taskHeatmap/TaskHeatmapTable.tsx`; reviewer confirmed the triage comment matches the file's bracket-access pattern and no other config references the stale path.
+- ~~Pre-existing explicit `role="status"` attributes on `<div>` elements may warrant an accessibility-consistency pass~~ **RESOLVED via documentation** — new §8.1 of `frontend-loading-and-width-standards.md` records the canonical rule: `<output>` relies on its implicit status role (never add explicit `role="status"`); generic containers such as `<div>` REQUIRE explicit `role="status"`. Both existing patterns comply; no production churn.
+- ~~Vitest hoisting warnings from `src/hooks/usePageDataset.spec.ts`~~ **RESOLVED** — the nested `vi.hoisted(...)` block and three `vi.mock(...)` factories moved to module top level (source position now matches actual execution order); zero warnings, semantics unchanged.
+- ~~§9.18.12 prose claims "`buildHeatmapTableColumns` is internal"~~ **RESOLVED** — entry rewritten to match code reality (`useMemo` assembly with `buildTaskMetricSubColumns`, positional `cells[taskIndex]` access via `getCellMetric`, corrected pagination and 17-test inventory).
+
+Remaining (future cycles, owner-deferred): shared `Intl.Collator` optimisation; pagination-window sorting; `ReferenceDataInitialLoadingState.tsx:27` optional-`role` prop watch item.
