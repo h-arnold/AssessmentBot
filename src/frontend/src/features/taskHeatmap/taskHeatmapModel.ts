@@ -25,7 +25,5 @@ import { compareStudentNames } from '../../services/dataAnalysis/compareStudentN
  * @returns {number} Negative if `a < b`, positive if `a > b`, zero if equal.
  */
 export function compareHeatmapStudentName(a: HeatmapRow, b: HeatmapRow): number {
-  // Delegate directly: both row shapes share the same `studentName` and
-  // `studentId` fields, so no cast is required.
   return compareStudentNames(a, b);
 }
