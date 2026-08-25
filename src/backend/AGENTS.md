@@ -392,8 +392,9 @@ z_Api/abclass/
 └── abclassValidation.js       # Transport-boundary validation
 ```
 
-Files sharing a prefix that remain flat are candidates for future grouping (e.g.
-`assignmentDefinitionTransport.js` and `assignmentDefinitionValidation.js`).
+Domain grouping need not swallow every file sharing a prefix: the assignment-definition
+validators live in `assignmentDefinition/`, while `assignmentDefinitionTransport.js`
+deliberately remains flat as a single-file-domain exception.
 
 Rules:
 

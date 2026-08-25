@@ -38,11 +38,11 @@ against the current specification first.
   - Behaviour: shared primitive for the `abclass/` domain folder; validates that the parameters argument is a plain object (not an array). Referenced via `/* global validateParametersObject_ */` from `abclassMutations.js` and `abclassRead.js`.
 - Assignment-definition upsert request validator
   - Status: `Implemented`
-  - Location: `validateUpsertParameters_()` in `src/backend/z_Api/assignmentDefinitionValidation.js`
+  - Location: `validateUpsertParameters_()` in `src/backend/z_Api/assignmentDefinition/assignmentDefinitionUpsertValidation.js`
   - Behaviour: owns request-shape validation, optional update-key safety, and structural `taskWeightings` array validation for `upsertAssignmentDefinition` without duplicating controller business rules.
 - Assignment-definition read request validator
   - Status: `Implemented`
-  - Location: `validateReadParameters_()` in `src/backend/z_Api/assignmentDefinitionValidation.js`
+  - Location: `validateReadParameters_()` in `src/backend/z_Api/assignmentDefinition/assignmentDefinitionValidation.js`
   - Behaviour: owns safe-key validation for full-definition reads by `definitionKey`.
 - Assignment-definition full-definition response mapper
   - Status: `Removed`
@@ -160,7 +160,7 @@ Rules:
 
 Status: `Implemented`
 
-`upsertAssignmentDefinition` now uses a transport validator in `src/backend/z_Api/assignmentDefinitionValidation.js` that owns only transport-boundary checks, while `AssignmentDefinitionController.upsertDefinition()` owns the domain contract.
+`upsertAssignmentDefinition` now uses a transport validator in `src/backend/z_Api/assignmentDefinition/assignmentDefinitionUpsertValidation.js` that owns only transport-boundary checks, while `AssignmentDefinitionController.upsertDefinition()` owns the domain contract.
 
 Transport helper ownership:
 
@@ -404,7 +404,7 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
 - `getAssignment` — reads a single fully-hydrated assignment by course and assignment id.
   Source: `src/backend/z_Api/assignmentAssessment.js`, via the `getAssignment_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.readRehydrateAssignment()` in `src/backend/y_controllers/ABClassController/index.js`.
   Required request fields: `courseId` and `assignmentId` (both non-empty, already-trimmed strings with no path/control characters).
-  Validation: transport enforces `params` object shape, `courseId` and `assignmentId` presence, non-empty trimmed string, and path-character/control-character safety (using `validateSafeTrimmedIdentifier_`, which internally uses `hasControlCharacters_`, from `assignmentDefinitionValidation.js`); the controller's `readRehydrateAssignment` method owns assignment-existence validation and throws `AssignmentNotFoundError` when no document exists.
+  Validation: transport enforces `params` object shape, `courseId` and `assignmentId` presence, non-empty trimmed string, and path-character/control-character safety (using `validateSafeTrimmedIdentifier_`, which internally uses `hasControlCharacters_`, from `assignmentDefinition/assignmentDefinitionValidation.js`); the controller's `readRehydrateAssignment` method owns assignment-existence validation and throws `AssignmentNotFoundError` when no document exists.
   Handler behaviour: calls `new ABClassController().readRehydrateAssignment(courseId, assignmentId)` for a read-only load and hydration (no roster refresh, no `loadClass`, no ABClass mutation). Serialises via `assignment.toJSON()`, defensively strips `progressTracker` at the boundary, and applies `DateUtils.deepConvertDates(response)` to recursively convert all `Date` objects to ISO 8601 strings (required because `google.script.run` prohibits `Date` objects in return values). On `AssignmentNotFoundError` thrown by `readRehydrateAssignment`, returns `null` (caught via `instanceof` check); all other errors from `readRehydrateAssignment` propagate.
   Logging: `info` before loading the full assignment document (`"getAssignment: loading full assignment"` with `{ courseId, assignmentId }`), `info` after successful hydration (`"getAssignment: rehydrated assignment"`), `warn` for not-found (`"getAssignment: assignment not found"` — `warn`, not `error`, because the API returns `null` gracefully), `error` for other failures (`"getAssignment failed"` with `{ courseId, assignmentId, err }`).
   Response data: the complete `Assignment.toJSON()` shape — `courseId`, `assignmentId`, `assignmentName`, `dueDate` (ISO string or `null`), `updatedAt` (ISO string or `null`), `documentType`, `referenceDocumentId`, `templateDocumentId`, `tasks`, `submissions` (full artifacts, assessments, feedback), and `assignmentDefinition`. Or `null` when no persisted assignment document exists.

@@ -12,9 +12,9 @@ import {
   expectPatternNotInSource,
   expectValidationFunctionInSource,
 } from '../helpers/assignmentDefinitionPartialsTestHelpers.js';
-
 const transportModulePath = '../../src/backend/z_Api/assignmentDefinitionTransport.js';
-const validationModulePath = '../../src/backend/z_Api/assignmentDefinitionValidation.js';
+const validationModulePath =
+  '../../src/backend/z_Api/assignmentDefinition/assignmentDefinitionValidation.js';
 const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
 
 // Test URLs similar to but not exactly the same as the example:
