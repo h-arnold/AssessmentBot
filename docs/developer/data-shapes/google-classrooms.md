@@ -95,7 +95,7 @@ Key contract notes:
 - The backend validates `parameters` is a plain object (not null, not array, not primitive).
 - `classId` is validated defensively: must be a non-empty string, already trimmed, with no
   path-traversal characters (`/`, `\`, `..`), and no ASCII control characters (delegated to
-  the shared `hasControlCharacters_()` helper from `assignmentDefinitionValidation.js`).
+  the shared `hasControlCharacters_()` helper from `assignmentDefinition/assignmentDefinitionValidation.js`).
   The handler reuses the same error code (`INVALID_REQUEST`) via `ApiValidationError` for
   all validation failures.
 - Each coursework row is validated: `cw.id` and `cw.title` must be truthy (non-null,
@@ -222,7 +222,7 @@ Upstream API client:      src/backend/GoogleClassroom/ClassroomApiClient.js
   └── fetchTopicName(courseId, topicId)     — resolves topic display name
 
 Shared validation helper:
-  └── src/backend/z_Api/assignmentDefinitionValidation.js
+  └── src/backend/z_Api/assignmentDefinition/assignmentDefinitionValidation.js
         └── hasControlCharacters_()         — ASCII control character check
 
 Frontend:
