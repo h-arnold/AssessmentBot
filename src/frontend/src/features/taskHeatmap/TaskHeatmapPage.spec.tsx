@@ -7,8 +7,6 @@
  *   - it imports and handles `TaskTitlesUnavailableError`
  *   - it renders an in-view Ant Design Alert for TaskTitlesUnavailableError
  *   - it logs via logFrontendError on generic Error and calls onBack
- *
- * See ACTION_PLAN.md §4 — TaskHeatmapPage useQuery wiring tests.
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';

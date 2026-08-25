@@ -1,29 +1,28 @@
 /**
- * Test-only helpers for the Task Heatmap Playwright E2E suite (ACTION_PLAN §6).
+ * Test-only helpers for the Task Heatmap Playwright E2E suite.
  *
  * Owns the `ClassFull` journey fixture derived from `tests/__mocks__/data/anon-test-data.json`
  * (a backend document-store snapshot) and the `createHeatmapScenario` runtime-scenario factory
  * that mirrors `createClassesScenario`.
  *
- * @see ACTION_PLAN.md §6 — Playwright E2E: full user journey
  * @see docs/developer/frontend/frontend-playwright-e2e.md — runtime mocks, StrictMode rule
  */
 
 import type { ResponseItem, RuntimeScenario } from '../shared/endToEndRuntimeMocks';
 
-// NOTE (deviation, ACTION_PLAN §6 Implementation notes):
+// NOTE (deviation):
 // Vite's `server.fs.allow` blocks the cross-root import of
 // `tests/__mocks__/data/anon-test-data.json` from within `src/frontend/e2e-tests`.
-// Per the plan's documented fallback, the `ClassFull` journey fixture is co-located here
+// As a fallback, the `ClassFull` journey fixture is co-located here
 // as a typed literal seeded from the same anon mock data (class
 // "7C2 Digital Technology 2025-2026", 10 students, one assignment with three
 // submission tasks). The embedded `assignmentDefinition.tasks` is derived from the
 // submission item keys (`task_001`/`task_002`/`task_003`) as
 // `[{ taskId, taskWeighting: 1, taskTitle: 'Task 1' }, ...]` matching the `TaskPartial`
-// shape (`taskPartial.zod.ts`, post-ACTION_PLAN §7b). The warm-up
+// shape (`taskPartial.zod.ts`). The warm-up
 // `getAssignmentDefinitionPartials` dataset is seeded separately (see
-// `buildAssignmentDefinitionPartial`) because Section 8 sources the heatmap column
-// set and titles from that warm-up partial, located by `definitionKey`.
+// `buildAssignmentDefinitionPartial`) because the heatmap adapter sources its
+// column set and titles from that warm-up partial, located by `definitionKey`.
 
 /**
  * A single heatmap journey student (seeded from anon-test-data.json).
@@ -243,9 +242,9 @@ function buildClassFullDocument(emptySubmissions: boolean): Record<string, unkno
 
 /**
  * Builds the warm-up `getAssignmentDefinitionPartials` payload for the heatmap
- * journey (ACTION_PLAN §8 / SPEC.md heatmap column sourcing).
+ * journey (SPEC.md heatmap column sourcing).
  *
- * Section 8 sources the heatmap column set and per-task `taskTitle` from the
+ * The heatmap adapter sources the column set and per-task `taskTitle` from the
  * warm-up `assignmentDefinitionPartials` dataset, located by the assignment's
  * `definitionKey` via `getAssignmentDefinitionPartial`. The embedded
  * `classFull.assignments[].assignmentDefinition` is no longer the column source.
@@ -332,8 +331,7 @@ const HEATMAP_ARTIFACT_CONTENT: Readonly<Record<string, string>> = {
 /**
  * Builds the real-data `getAssignment` payload (an `AssignmentFull` document)
  * for the heatmap journey, seeded so the popover wires to real content instead
- * of the deleted fixture adapter (ACTION_PLAN.md §5.5 / SPEC.md §"E2E plumbing
- * updates").
+ * of the deleted fixture adapter (SPEC.md §"E2E plumbing updates").
  *
  * @returns {Record<string, unknown>} A schema-valid `AssignmentFull` document.
  */

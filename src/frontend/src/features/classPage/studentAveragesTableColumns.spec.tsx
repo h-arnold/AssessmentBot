@@ -4,7 +4,6 @@
  *
  * @see SPEC_CLASS_PAGE.md — "studentAveragesTableColumns"
  * @see CLASS_PAGE_LAYOUT.md — "4a. Column Filter Details"
- * @see ACTION_PLAN.md §5 — Required test cases 1-5
  */
 
 import { describe, it, expect } from 'vitest';

@@ -15,7 +15,7 @@ These two tiers keep the heatmap matrix compact (no unnecessary `.00` noise) whi
 
 | Constant                     | Value | File                                                                           | Role                                                                                                                                     |
 | ---------------------------- | ----- | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `INDIVIDUAL_SCORE_PRECISION` | `0`   | `src/frontend/src/features/classPage/TaskHeatmapTable.tsx` (line 44)           | Controls precision for individual student task scores in both the visible `MetricPill` and the `aria-label` produced by `renderScore()`. |
+| `INDIVIDUAL_SCORE_PRECISION` | `0`   | `src/frontend/src/features/taskHeatmap/TaskHeatmapTable.tsx` (line 62)         | Controls precision for individual student task scores in both the visible `MetricPill` and the `aria-label` produced by `renderScore()`. |
 | `DEFAULT_PRECISION`          | `2`   | `src/frontend/src/services/dataAnalysis/metricDisplay/MetricPill.tsx` (line 8) | Default precision for all `MetricPill` instances. Used by average-display components.                                                    |
 
 ## How It Works
@@ -43,7 +43,7 @@ If the data source provides sub-integer individual scores in future, this conven
 
 ## Keeping `aria-label` in Sync
 
-The heatmap builds its own `aria-label` via `renderScore()` in `TaskHeatmapTable.tsx` (line 93–101), which uses the same `INDIVIDUAL_SCORE_PRECISION` constant:
+The heatmap builds its own `aria-label` via `renderScore()` in `TaskHeatmapTable.tsx` (line 111–119), which uses the same `INDIVIDUAL_SCORE_PRECISION` constant:
 
 ```typescript
 function renderScore(metric: MetricResult): string {

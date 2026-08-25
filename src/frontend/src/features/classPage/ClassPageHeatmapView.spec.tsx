@@ -13,7 +13,6 @@
  * - On `adaptMetricsToHeatmap` throw, it logs via `logFrontendError` and calls
  *   `onBack` (no in-view error UI).
  *
- * @see ACTION_PLAN.md §5 — TaskHeatmapPage view-state wiring
  * @see SPEC.md — §"Page composition", §"Navigation / breadcrumb", §"Error handling"
  */
 

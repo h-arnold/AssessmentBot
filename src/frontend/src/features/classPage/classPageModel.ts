@@ -9,9 +9,9 @@
  */
 
 import { getStudentMetric } from './classPageAdapter.zod';
+import { compareStudentNames } from '../../services/dataAnalysis/compareStudentNames';
+import { compareMetricsByStateRank } from '../../services/dataAnalysis/metricDisplay/metricComparator';
 import type { ClassPageAdapterResult, StudentAverageRowModel } from './classPageAdapter.zod';
-import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
-import type { HeatmapRow } from '../../services/dataAnalysis/heatmapAdapter';
 import type { MetricColumnKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 
 // ---------------------------------------------------------------------------
@@ -30,45 +30,14 @@ export type ClassPageViewModel = {
   classMetrics: ClassPageAdapterResult['classMetrics'];
 };
 
-const HIGHEST_METRIC_STATE_RANK = 2;
-
-/** Rank lookup for ascending metric column sort: computed → notAttempted → error. */
-export const METRIC_STATE_RANK_ASC: ReadonlyMap<MetricResult['state'], number> = new Map([
-  ['computed', 0],
-  ['notAttempted', 1],
-  ['error', HIGHEST_METRIC_STATE_RANK],
-]);
-
-/** Rank lookup for descending metric column sort: error → notAttempted → computed. */
-const METRIC_STATE_RANK_DESC: ReadonlyMap<MetricResult['state'], number> = new Map([
-  ['error', 0],
-  ['notAttempted', 1],
-  ['computed', HIGHEST_METRIC_STATE_RANK],
-]);
-
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Return a numeric rank for a `MetricResult` state, used for state-aware
- * metric column sorting.
- *
- * The rank order flips with direction:
- * - `asc`:  computed (0) → notAttempted (1) → error (2)
- * - `desc`: error (0) → notAttempted (1) → computed (2)
- *
- * @param {MetricResult} metric - The metric result to rank.
- * @param {'asc' | 'desc'} direction - Sort direction.
- * @returns {number} A numeric rank (lower = earlier in sort order).
- */
-function getMetricStateRank(metric: MetricResult, direction: 'asc' | 'desc'): number {
-  const rankMap = direction === 'asc' ? METRIC_STATE_RANK_ASC : METRIC_STATE_RANK_DESC;
-  return rankMap.get(metric.state) ?? 0;
-}
-
 /**
  * Build a comparator function for a metric column with state-aware ordering.
+ *
+ * @remarks
+ * Delegates the ordering composition (state rank → numeric value → ascending
+ * `studentId` tie-break) to the shared services-layer comparator
+ * (`compareMetricsByStateRank`); this wrapper only resolves which metric each
+ * row is compared by.
  *
  * @param {MetricColumnKey} column - The metric column to compare by.
  * @param {'asc' | 'desc'} direction - Sort direction (`'asc'` or `'desc'`).
@@ -78,24 +47,14 @@ function buildMetricComparator(
   column: MetricColumnKey,
   direction: 'asc' | 'desc'
 ): (a: StudentAverageRowModel, b: StudentAverageRowModel) => number {
-  return (a, b) => {
-    const aMetric = getStudentMetric(a.metrics, column);
-    const bMetric = getStudentMetric(b.metrics, column);
-
-    const aRank = getMetricStateRank(aMetric, direction);
-    const bRank = getMetricStateRank(bMetric, direction);
-
-    if (aRank !== bRank) return aRank - bRank;
-
-    // Same state band — sort by numeric value when both are computed
-    if (aMetric.state === 'computed' && bMetric.state === 'computed') {
-      const diff = aMetric.value - bMetric.value;
-      if (diff !== 0) return direction === 'asc' ? diff : -diff;
-    }
-
-    // Tie-break by studentId ascending
-    return a.studentId.localeCompare(b.studentId);
-  };
+  return (a, b) =>
+    compareMetricsByStateRank(
+      getStudentMetric(a.metrics, column),
+      getStudentMetric(b.metrics, column),
+      a.studentId,
+      b.studentId,
+      direction
+    );
 }
 
 /**
@@ -110,26 +69,6 @@ export const DEFAULT_SORT: {
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
-
-/**
- * Compare two student rows by student name (locale-aware, case-insensitive)
- * with a deterministic `studentId` ascending tie-break.
- *
- * @remarks
- * This is the single source of truth for student-name ordering in the Class
- * page. Call sites that need direction apply `direction === 'asc' ? cmp : -cmp`.
- *
- * @param {StudentAverageRowModel} a - The first row to compare.
- * @param {StudentAverageRowModel} b - The second row to compare.
- * @returns {number} Negative if `a < b`, positive if `a > b`, zero if equal.
- */
-export function compareStudentNames(a: StudentAverageRowModel, b: StudentAverageRowModel): number {
-  const nameCmp = a.studentName.localeCompare(b.studentName, undefined, {
-    sensitivity: 'base',
-  });
-  if (nameCmp !== 0) return nameCmp;
-  return a.studentId.localeCompare(b.studentId);
-}
 
 /**
  * Compare two assignments by `updatedAt` descending, with `assignmentId` ascending
@@ -156,29 +95,6 @@ export function compareAssignmentUpdatedAtDesc(
   const updatedAtCmp = b.updatedAt.localeCompare(a.updatedAt);
   if (updatedAtCmp !== 0) return updatedAtCmp;
   return a.assignmentId.localeCompare(b.assignmentId);
-}
-
-/**
- * Compare two `HeatmapRow`s by student name (locale-aware, case-insensitive)
- * with a deterministic `studentId` ascending tie-break.
- *
- * @remarks
- * Thin `HeatmapRow`-compatible wrapper around the locale-aware logic of
- * `compareStudentNames`. The heatmap table must NOT import the
- * `StudentAverageRowModel`-typed `compareStudentNames` directly because the
- * row shapes differ (`HeatmapRow` carries `cells`, not `metrics`).
- *
- * @param {HeatmapRow} a - The first row.
- * @param {HeatmapRow} b - The second row.
- * @returns {number} Negative if `a < b`, positive if `a > b`, zero if equal.
- */
-export function compareHeatmapStudentName(a: HeatmapRow, b: HeatmapRow): number {
-  // Delegate to the canonical `StudentAverageRowModel` comparator via cast
-  // because both types share the same `studentName` and `studentId` shape.
-  return compareStudentNames(
-    a as unknown as StudentAverageRowModel,
-    b as unknown as StudentAverageRowModel
-  );
 }
 
 /**

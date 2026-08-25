@@ -134,12 +134,12 @@ async function setupViewportAndVerifyCards(
 // ============================================================================
 
 /**
- * Installs a deterministic `google.script.run` mock that keeps auth status pending
+ * Installs a deterministic `google.script.run` mock with authorisation resolved
  * and returns empty datasets for class partials, year groups, and other warmup data.
  *
  * @param {Page} page - The Playwright page under test.
  */
-async function mockPendingGoogleScriptRun(page: Page) {
+async function mockAuthenticatedGoogleScriptRun(page: Page) {
   await page.addInitScript(`
     (() => {
       const createGoogleScriptRunApiHandlerMock = ${googleScriptRunApiHandlerFactorySource};
@@ -163,6 +163,15 @@ async function mockPendingGoogleScriptRun(page: Page) {
                 ok: true,
                 requestId: 'req-backend-config',
                 data: backendSettingsFixture,
+              });
+              return;
+            }
+
+            if (request?.method === 'getAuthorisationStatus') {
+              callbacks.successHandler?.({
+                ok: true,
+                requestId: 'req-auth-status',
+                data: true,
               });
               return;
             }
@@ -194,7 +203,7 @@ async function mockPendingGoogleScriptRun(page: Page) {
               return;
             }
 
-            // Keep auth and other startup methods pending
+            // Keep other startup methods pending
             // No callback invoked = pending state
           }),
         },
@@ -212,7 +221,7 @@ async function mockPendingGoogleScriptRun(page: Page) {
 
 test.describe('Classes page navigation', () => {
   test('user can navigate to Classes page via top-level menu click', async ({ page }) => {
-    await mockPendingGoogleScriptRun(page);
+    await mockAuthenticatedGoogleScriptRun(page);
     await page.goto('/');
 
     await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
@@ -224,7 +233,7 @@ test.describe('Classes page navigation', () => {
   });
 
   test('Classes page breadcrumb updates correctly on navigation', async ({ page }) => {
-    await mockPendingGoogleScriptRun(page);
+    await mockAuthenticatedGoogleScriptRun(page);
     await page.goto('/');
 
     await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
@@ -233,7 +242,7 @@ test.describe('Classes page navigation', () => {
   });
 
   test('Classes page menu item becomes selected when clicked', async ({ page }) => {
-    await mockPendingGoogleScriptRun(page);
+    await mockAuthenticatedGoogleScriptRun(page);
     await page.goto('/');
 
     await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
@@ -264,7 +273,7 @@ test.describe('Classes page navigation', () => {
 
 test.describe('Classes page method call tracking', () => {
   test('opening Classes page does not call getGoogleClassrooms', async ({ page }) => {
-    await mockPendingGoogleScriptRun(page);
+    await mockAuthenticatedGoogleScriptRun(page);
     await page.goto('/');
 
     await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
@@ -286,7 +295,7 @@ test.describe('Classes page method call tracking', () => {
 
 test.describe('Classes page shell-wide integration', () => {
   test('Classes page integrates with shell-wide top-level navigation', async ({ page }) => {
-    await mockPendingGoogleScriptRun(page);
+    await mockAuthenticatedGoogleScriptRun(page);
     await page.goto('/');
 
     const allPages = [

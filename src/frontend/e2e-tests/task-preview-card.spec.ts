@@ -1,17 +1,13 @@
 /**
- * Playwright E2E tests for the Task Preview Card Popover (ACTION_PLAN.md §8).
+ * Playwright E2E tests for Task Preview Card popover rendering and pinning over
+ * the heatmap grid.
  *
  * Navigates to the heatmap table via the `createHeatmapScenario` factory, then
  * hovers over metric sub-cells (and clicks to pin) to verify the preview card
  * content with web-first, structural assertions. Screenshots are captured as
- * supplementary evidence into `task-preview-card.spec.ts-snapshots/`.
+ * supplementary evidence in Playwright's untracked per-test output directory
+ * (`test.info().outputDir`).
  *
- * This is the RED phase: the feature was already implemented in §6, so these
- * tests assert the real required contract and are expected to pass when the
- * live app wiring matches; failures here are informational.
- *
- * @see ACTION_PLAN.md §8 — Playwright E2E tests
- * @see SPEC.md — Task Preview Card contract
  * @see docs/developer/frontend/frontend-playwright-e2e.md — runtime mocks, StrictMode rule
  */
 
@@ -111,7 +107,7 @@ test.describe('Task Preview Card popover', () => {
     await expect(popover.locator('img')).toHaveCount(1);
 
     await popover.screenshot({
-      path: `${test.info().snapshotDir}/image-completeness-hover.png`,
+      path: `${test.info().outputDir}/image-completeness-hover.png`,
     });
   });
 
@@ -138,7 +134,7 @@ test.describe('Task Preview Card popover', () => {
     ).toHaveCount(1);
 
     await popover.screenshot({
-      path: `${test.info().snapshotDir}/text-accuracy-hover.png`,
+      path: `${test.info().outputDir}/text-accuracy-hover.png`,
     });
   });
 
@@ -161,7 +157,7 @@ test.describe('Task Preview Card popover', () => {
     await expect(popover.locator('table')).toHaveCount(1);
 
     await popover.screenshot({
-      path: `${test.info().snapshotDir}/table-spag-hover.png`,
+      path: `${test.info().outputDir}/table-spag-hover.png`,
     });
   });
 
@@ -190,7 +186,7 @@ test.describe('Task Preview Card popover', () => {
     await expect(popover.locator(`[aria-label^="Completeness score:"]`).first()).toHaveCount(1);
 
     await page.screenshot({
-      path: `${test.info().snapshotDir}/completeness-pinned.png`,
+      path: `${test.info().outputDir}/completeness-pinned.png`,
     });
   });
 });

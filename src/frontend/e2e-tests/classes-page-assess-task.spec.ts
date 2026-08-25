@@ -25,9 +25,8 @@ import {
 // Assess Task Modal — Playwright E2E Tests
 // ============================================================================
 //
-// Tests covering the five modal states and user interactions from
-// ACTION_PLAN §5 tests 13–21.  Each test is independently runnable with its
-// own scenario and mock install.
+// Tests covering the five modal states and user interactions.  Each test is
+// independently runnable with its own scenario and mock install.
 //
 // React 19 StrictMode double-fires effects in development, which means the
 // `useEffect` that fetches assignments runs twice per modal open.  All custom

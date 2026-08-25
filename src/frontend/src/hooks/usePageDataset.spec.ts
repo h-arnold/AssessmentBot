@@ -14,6 +14,42 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { UseQueryResult } from '@tanstack/react-query';
 
 // ---------------------------------------------------------------------------
+// Module-scope mock registration for the usePageDataset hook tests below.
+// vi.hoisted and vi.mock are compile-time hints: Vitest hoists them to the top
+// of the module before any imports run, so they must be declared at the top
+// level to reflect their actual execution order (nested declarations trigger
+// Vitest hoisting warnings).
+// ---------------------------------------------------------------------------
+
+const { mockUseQuery, mockUseStartupWarmupState, mockGetStartupWarmupQueryOptions } = vi.hoisted(
+  () => ({
+    mockUseQuery: vi.fn(),
+    mockUseStartupWarmupState: vi.fn(),
+    mockGetStartupWarmupQueryOptions: vi.fn(),
+  })
+);
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>;
+  return {
+    ...actual,
+    useQuery: mockUseQuery,
+  };
+});
+
+vi.mock('../features/auth/startupWarmupState', () => ({
+  useStartupWarmupState: mockUseStartupWarmupState,
+}));
+
+vi.mock('../query/sharedQueries', async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>;
+  return {
+    ...actual,
+    getStartupWarmupQueryOptions: mockGetStartupWarmupQueryOptions,
+  };
+});
+
+// ---------------------------------------------------------------------------
 // Shared factory helpers for warmup-state test doubles
 // ---------------------------------------------------------------------------
 
@@ -553,34 +589,6 @@ function createQueryOptionsDouble(): Record<string, unknown> {
 // ---------------------------------------------------------------------------
 
 describe('usePageDataset', () => {
-  const { mockUseQuery, mockUseStartupWarmupState, mockGetStartupWarmupQueryOptions } = vi.hoisted(
-    () => ({
-      mockUseQuery: vi.fn(),
-      mockUseStartupWarmupState: vi.fn(),
-      mockGetStartupWarmupQueryOptions: vi.fn(),
-    })
-  );
-
-  vi.mock('@tanstack/react-query', async (importOriginal) => {
-    const actual = (await importOriginal()) as Record<string, unknown>;
-    return {
-      ...actual,
-      useQuery: mockUseQuery,
-    };
-  });
-
-  vi.mock('../features/auth/startupWarmupState', () => ({
-    useStartupWarmupState: mockUseStartupWarmupState,
-  }));
-
-  vi.mock('../query/sharedQueries', async (importOriginal) => {
-    const actual = (await importOriginal()) as Record<string, unknown>;
-    return {
-      ...actual,
-      getStartupWarmupQueryOptions: mockGetStartupWarmupQueryOptions,
-    };
-  });
-
   afterEach(() => {
     vi.resetAllMocks();
   });

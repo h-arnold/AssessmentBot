@@ -155,6 +155,15 @@ const hasTrustworthyReferenceData =
 - Mutation loading and disabled states must remain programmatically exposed through the relevant control semantics.
 - Visual affordances alone are not sufficient.
 
+### 8.1 Status element choice: `<output>` versus explicit `role="status"`
+
+Two accessible-loading patterns are compliant; choose by container semantics, and do not churn existing call sites between them:
+
+- `<output>` (implicit `status` role): use when the loading indicator is a self-contained element, such as a single shape-matched skeleton (for example `AssignmentSelectSkeleton`, or `TaskPreviewSkeleton` in `TaskHeatmapTable.tsx`). Because `<output>` already exposes the `status` role implicitly, never add an explicit `role="status"` to it — the redundancy trips SonarCloud `typescript:S6822`. Pair with `aria-busy="true"` while loading and an `aria-label` where the region needs a name.
+- Explicit `role="status"` on a generic container (`<div>`): required when wrapping arbitrary content that has no implicit status semantics of its own, such as several sibling skeletons composing one loading region. An `aria-label` alone does not give a generic container status semantics. Pair with `aria-live="polite"` where announcement behaviour matters (for example `ClassPageContent`'s `ClassPageLoading`, `ClassesPage`, `ReferenceDataManagementModalScaffold`, `BackendSettingsPanel`, `AssignmentDefinitionWizardModalShell`).
+
+Both patterns yield an equivalent accessible status region; existing call sites of either pattern comply as written.
+
 ## 9. Related docs
 
 - React Query cache, freshness, and prefetch policy: `docs/developer/frontend/frontend-react-query-and-prefetch.md`

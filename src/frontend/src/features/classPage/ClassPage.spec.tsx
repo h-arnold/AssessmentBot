@@ -126,7 +126,7 @@ vi.mock('./StudentAveragesTableCard', () => ({
   StudentAveragesTableCard: mockStudentAveragesTableCard,
 }));
 
-vi.mock('./TaskHeatmapTable', () => ({
+vi.mock('../taskHeatmap/TaskHeatmapTable', () => ({
   TaskHeatmapTable: mockTaskHeatmapTable,
 }));
 

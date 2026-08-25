@@ -40,7 +40,7 @@ import type { ClassFull } from '../../services/googleClassrooms/classDetail/clas
 import type { AssignmentDefinitionPartialsResponse } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import { RecentAssignmentsSection } from './RecentAssignmentsSection';
 import { StudentAveragesTableCard } from './StudentAveragesTableCard';
-import { TaskHeatmapPage } from './TaskHeatmapPage';
+import { TaskHeatmapPage } from '../taskHeatmap/TaskHeatmapPage';
 
 // ---------------------------------------------------------------------------
 // Types

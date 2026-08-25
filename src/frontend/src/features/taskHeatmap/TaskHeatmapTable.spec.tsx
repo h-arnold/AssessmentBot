@@ -6,8 +6,7 @@
  * score-range `filterDropdown` (via `buildMetricRangeFilter`) rather than the
  * fixed `METRIC_COLUMN_FILTERS` band list.
  *
- * @see ACTION_PLAN.md §4 — TaskHeatmapTable (grouped headers, score-range filters, sorters)
- * @see SPEC.md — §"Rendering rules", §"Sorting, filtering", §"Empty state", §"Accessibility"
+ * @see SPEC.md
  */
 
 import { describe, it, expect, afterEach, beforeEach } from 'vitest';
@@ -789,7 +788,7 @@ describe('TaskHeatmapTable', () => {
 
   // -------------------------------------------------------------------------
   // 7. Metric column sorter — clicking a metric sub-column sorter reorders
-  //    rows via heatmapMetricComparator.
+  //    rows via the shared compareMetricsByStateRank comparator.
   // -------------------------------------------------------------------------
 
   it('clicking Task 1 Completeness column sorter changes row order from the default sort', async () => {

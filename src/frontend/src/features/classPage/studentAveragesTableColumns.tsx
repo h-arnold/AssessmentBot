@@ -30,7 +30,7 @@ import type { FilterValue } from 'antd/es/table/interface';
 import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import { getStudentMetric } from './classPageAdapter.zod';
 import type { StudentAverageRowModel } from './classPageAdapter.zod';
-import { compareStudentNames } from './classPageModel';
+import { compareStudentNames } from '../../services/dataAnalysis/compareStudentNames';
 import { METRIC_DISPLAY_META } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import type { MetricColumnKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import {
