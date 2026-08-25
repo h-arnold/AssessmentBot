@@ -244,7 +244,7 @@ export default defineConfig([
     // satisfies the data contract before it reaches this component. Disabling
     // at file level avoids repetitive inline suppressions while keeping the
     // rule active for genuinely untrusted input elsewhere.
-    files: ['src/features/classPage/TaskHeatmapTable.tsx'],
+    files: ['src/features/taskHeatmap/TaskHeatmapTable.tsx'],
     rules: {
       'security/detect-object-injection': 'off',
     },
