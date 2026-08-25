@@ -464,7 +464,7 @@ This section supersedes the earlier Section 9.7 defer decision for the specific 
 
 ### 9.17 Shared data analysis display helpers
 
-These entries record the shared data analysis display helpers for the Class page feature and other analytics surfaces. The Class page is the first caller; cohort, trend, and distribution analyses (per `docs/pedagogy/data-analysis-scoring.md:92-99`) are the near-term second caller, so the helpers are planned as **shared** rather than feature-local. Entries 5–6 record helpers promoted out of `features/classPage/` by the TaskHeatmap extraction; they are consumed by both features and owned by neither.
+These entries record the shared data analysis display helpers for the Class page feature and other analytics surfaces. The Class page is the first caller; cohort, trend, and distribution analyses (per `docs/pedagogy/data-analysis-scoring.md:92-99`) are the near-term second caller, so the helpers are planned as **shared** rather than feature-local. Entries 5–7 record helpers consumed by both features and owned by neither: entries 5–6 were promoted out of `features/classPage/` by the TaskHeatmap extraction, and entry 7 extracts the previously feature-private metric-column-sorting compositions into one shared comparator.
 
 1. Helper: `resolveMetricTone(metric: MetricResult, range?: MetricToneRange, errorColor?: MetricToneColor): MetricToneResolution` — pure tone resolver
 
@@ -526,11 +526,11 @@ These entries record the shared data analysis display helpers for the Class page
 
 - Decision: `new` (relocation of previously feature-local rank maps into the neutral services layer; values and ordering semantics unchanged)
 - Owning module/path: `src/frontend/src/services/dataAnalysis/metricDisplay/metricStateRank.ts`
-- Call-site rationale: ranks `MetricResult['state']` for state-aware metric column sorting — generic metric-domain semantics consumed by both features and owned by neither. Two consumers: the Class page overview table via `classPageModel.ts`'s private `buildMetricComparator`, and the Task Heatmap table (`features/taskHeatmap/TaskHeatmapTable.tsx`) directly via its `HeatmapRow`-typed comparator reading the canonical `METRIC_STATE_RANK_ASC`. Relocated from `classPageModel.ts` by the TaskHeatmap extraction; `classPageModel.ts` now consumes `getMetricStateRank` and retains no direct reference to either rank map.
+- Call-site rationale: ranks `MetricResult['state']` for state-aware metric column sorting — generic metric-domain semantics consumed by both features and owned by neither. Both call sites reach it indirectly through the shared comparator module: the Class page overview table via `classPageModel.ts`'s private `buildMetricComparator` wrapper, and the Task Heatmap table (`features/taskHeatmap/TaskHeatmapTable.tsx`) via its local `buildMetricSorter` sorters — each delegates to `compareMetricsByStateRank` in `metricDisplay/metricComparator.ts` (see entry 7), so neither feature reads the rank maps directly any more. Relocated from `classPageModel.ts` by the TaskHeatmap extraction.
 - Status: `Implemented`
 - Implementation notes:
-  - Exports: `METRIC_STATE_RANK_ASC` (`asc`: computed → notAttempted → error), `METRIC_STATE_RANK_DESC` (`desc`: error → notAttempted → computed), and `getMetricStateRank(metric, direction)` with an unknown-state fallback of rank 0. Within the computed band, value ordering and the `studentId` tie-break are applied by the consuming comparators.
-  - Module-header `@remarks` records both consumers so the module is not migrated back into a feature folder.
+  - Exports: `METRIC_STATE_RANK_ASC` (`asc`: computed → notAttempted → error), `METRIC_STATE_RANK_DESC` (`desc`: error → notAttempted → computed), and `getMetricStateRank(metric, direction)` with an unknown-state fallback of rank 0. Within the computed band, value ordering and the `studentId` tie-break are applied by the shared `compareMetricsByStateRank` comparator (see entry 7).
+  - Module-header `@remarks` records `./metricComparator` as the sole direct consumer, keeping the ranking semantics out of feature folders.
   - Co-located spec: `metricStateRank.spec.ts`.
 
 6. Helper: `compareStudentNames(a, b): number` — shared student-name comparator
@@ -543,6 +543,18 @@ These entries record the shared data analysis display helpers for the Class page
   - Signature: `export function compareStudentNames(a: Readonly<{ studentName: string; studentId: string }>, b: Readonly<{ studentName: string; studentId: string }>): number`
   - Returns `a.studentName.localeCompare(b.studentName, undefined, { sensitivity: 'base' })` tie-broken by `a.studentId.localeCompare(b.studentId)`. Direction-neutral: call sites apply direction via `direction === 'asc' ? cmp : -cmp`.
   - Co-located spec: `compareStudentNames.spec.ts` (ordering, `studentId` tie-break, case-insensitivity, structural acceptance).
+
+7. Helper: `compareMetricsByStateRank(aMetric, bMetric, aId, bId, direction): number` — shared state-aware metric comparator
+
+- Decision: `new` (extraction of the previously feature-private metric-column-sorting compositions into one services-layer module)
+- Owning module/path: `src/frontend/src/services/dataAnalysis/metricDisplay/metricComparator.ts`
+- Call-site rationale: owns the canonical state-aware metric column-sorting composition — state rank via `getMetricStateRank` honouring direction, numeric `value` ordering within the computed band, then an ascending row-id tie-break regardless of direction. Two active consumers: the Class page overview table via `classPageModel.ts`'s private `buildMetricComparator` wrapper, and the Task Heatmap table (`features/taskHeatmap/TaskHeatmapTable.tsx`) via its local `buildMetricSorter` sorters (the heatmap always sorts ascending). Neither feature declares its own rank/value ordering any more, and neither reads the rank maps or `getMetricStateRank` directly.
+- Status: `Implemented`
+- Implementation notes:
+  - Signature: `export function compareMetricsByStateRank(aMetric: MetricResult, bMetric: MetricResult, aId: string, bId: string, direction: 'asc' | 'desc'): number`
+  - Ordering precedence: state rank (`asc`: computed → notAttempted → error; `desc`: error → notAttempted → computed), then numeric value within the computed band honouring `direction`, then `aId.localeCompare(bId)` ascending as the ultimate tie-break (zero only when both metrics and identifiers are equal).
+  - Folder placement follows the existing `metricDisplay/` subfolder convention (§9.17 entry 3); consumers import directly (no barrel).
+  - Co-located spec: `metricComparator.spec.ts` (state-rank ordering in both directions, computed-band value ordering, direction-neutral row-id tie-break, unknown-state fallback).
 
 ### 9.18 Class page feature-local helpers
 
@@ -566,19 +578,6 @@ These entries record the feature-local helpers for the Class page. Per `frontend
   - Co-located spec: `classPageAdapter.spec.ts` (15 tests covering all contract behaviours).
 - Planned doc reconciliation: confirmed the rollup precedence is documented inline in the adapter JSDoc (`@remarks` blocks); `MetricResult` discriminated union is consumed via `.state` property checks (not nullable checks, consistent with the discriminated union contract).
 
-#### 9.18.11 Heatmap row comparator: `compareHeatmapStudentName`
-
-15. Helper: `compareHeatmapStudentName(a: HeatmapRow, b: HeatmapRow): number` — `HeatmapRow`-typed student-name comparator
-
-- Decision: `extract`
-- Owning module/path: `src/frontend/src/features/taskHeatmap/taskHeatmapModel.ts` (relocated from `features/classPage/classPageModel.ts` by the TaskHeatmap extraction)
-- Call-site rationale: the heatmap table must not import the overview-table row types directly, so this wrapper keeps `HeatmapRow` typing at the heatmap call site while delegating ordering to the canonical shared comparator. It provides the same locale-aware, case-insensitive name ordering with `studentId` ascending tie-break so the heatmap's student-name sort has a single source of truth that mirrors `compareStudentNames` semantics exactly.
-- Status: `Implemented`
-- Implementation notes:
-  - Signature: `export function compareHeatmapStudentName(a: HeatmapRow, b: HeatmapRow): number`
-  - Delegates directly (cast-free) to the canonical `services/dataAnalysis/compareStudentNames` comparator (locale-aware, `sensitivity: 'base'`, `studentId` ascending tie-break), avoiding `sonarjs/no-identical-functions` while preserving exact semantics. Because both comparators now operate on the same minimal structural shape `{ studentName, studentId }`, the previous type cast is no longer required.
-  - Co-located spec: `taskHeatmapModel.spec.ts` (`compareHeatmapStudentName` describe block — ordering parity with the services comparator, `studentId` tie-break, case-insensitivity).
-
 #### 9.18.2 Pure view-model builder: `classPageModel`
 
 2. Helper: `classPageModel` pure view-model builder
@@ -591,8 +590,8 @@ These entries record the feature-local helpers for the Class page. Per `frontend
   - 201 lines. Pure function — no React imports, no Ant Design imports, no I/O.
   - Search filter: case-insensitive substring on `studentName`; empty `searchTerm` → no filter.
   - Student name sort: locale-aware, case-insensitive, `studentId` tie-breaker.
-  - State-aware metric sort: rank-based with `METRIC_STATE_RANK_ASC`/`METRIC_STATE_RANK_DESC` Maps. `asc`: computed (by value) → notAttempted → error. `desc`: error → notAttempted → computed (by value). Tie-break by `studentId` ascending. `METRIC_STATE_RANK_ASC` is now exported (consumed by `TaskHeatmapTable`'s `HeatmapRow`-typed metric comparator in Section 4 — the heatmap reuses the canonical rank map instead of declaring a second copy).
-  - State-aware metric column sorting delegates to the shared rank module (`getMetricStateRank`) — see §9.17 entry 5 (`services/dataAnalysis/metricDisplay/metricStateRank.ts`).
+  - State-aware metric sort ordering: `asc`: computed (by value) → notAttempted → error. `desc`: error → notAttempted → computed (by value). Ultimate tie-break by `studentId` ascending regardless of direction.
+  - State-aware metric column sorting delegates to the shared comparator `compareMetricsByStateRank` (`services/dataAnalysis/metricDisplay/metricComparator.ts`), which composes the shared rank accessor (`getMetricStateRank`) — see §9.17 entries 5 and 7. The model's private `buildMetricComparator` wrapper only resolves which metric each row is compared by; neither rank map is referenced directly here.
   - Passes through `recentAssignments` and `classMetrics` unchanged.
   - Default sort: `studentName` ascending.
   - Co-located spec: `classPageModel.spec.ts` (12 test cases).
@@ -730,16 +729,29 @@ These entries record the feature-local helpers for the Class page. Per `frontend
   - `@remarks` documents the switch-statement rationale.
   - Exported function signature: `getStudentMetric(metrics: StudentAverageRowModel['metrics'], key: 'completeness' | 'accuracy' | 'spag' | 'average'): MetricResult`
 
+#### 9.18.11 Heatmap row comparator: `compareHeatmapStudentName`
+
+14. Helper: `compareHeatmapStudentName(a: HeatmapRow, b: HeatmapRow): number` — `HeatmapRow`-typed student-name comparator
+
+- Decision: `extract`
+- Owning module/path: `src/frontend/src/features/taskHeatmap/taskHeatmapModel.ts` (relocated from `features/classPage/classPageModel.ts` by the TaskHeatmap extraction)
+- Call-site rationale: the heatmap table must not import the overview-table row types directly, so this wrapper keeps `HeatmapRow` typing at the heatmap call site while delegating ordering to the canonical shared comparator. It provides the same locale-aware, case-insensitive name ordering with `studentId` ascending tie-break so the heatmap's student-name sort has a single source of truth that mirrors `compareStudentNames` semantics exactly.
+- Status: `Implemented`
+- Implementation notes:
+  - Signature: `export function compareHeatmapStudentName(a: HeatmapRow, b: HeatmapRow): number`
+  - Delegates directly (cast-free) to the canonical `services/dataAnalysis/compareStudentNames` comparator (locale-aware, `sensitivity: 'base'`, `studentId` ascending tie-break), avoiding `sonarjs/no-identical-functions` while preserving exact semantics. Because both comparators now operate on the same minimal structural shape `{ studentName, studentId }`, the previous type cast is no longer required.
+  - Co-located spec: `taskHeatmapModel.spec.ts` (`compareHeatmapStudentName` describe block — ordering parity with the services comparator, `studentId` tie-break, case-insensitivity).
+
 #### 9.18.12 Heatmap table component: `TaskHeatmapTable`
 
-16. Component: `TaskHeatmapTable` — presentational heatmap table (grouped headers, score-range filters, sorters)
+15. Component: `TaskHeatmapTable` — presentational heatmap table (grouped headers, score-range filters, sorters)
 
 - Decision: `keep local`
 - Owning module/path: `src/frontend/src/features/taskHeatmap/TaskHeatmapTable.tsx` (moved unchanged from `features/classPage/` by the TaskHeatmap extraction)
-- Call-site rationale: pure presentational table built from a `HeatmapResult`. Owns the Ant Design `Table<HeatmapRow>` column definitions (`buildHeatmapTableColumns` is internal): a sticky `Student Name` top-level column (`fixed: 'start'`, `width: 200`, `sorter` via the exported `compareHeatmapStudentName`, `defaultSortOrder: 'ascend'`), and one grouped column per `taskColumn` (title = `taskId`, since `taskTitle` is `null` in v1) with `Completeness`/`Accuracy`/`SPaG` children. Each metric sub-column uses `buildMetricRangeFilter` (a numeric score-range `filterDropdown` + `onFilter` over a two-thumb `Slider`), a SPEC-ordered `sorter` built on the exported `METRIC_STATE_RANK_ASC` (computed by value asc → `notAttempted` → `error`, `studentId` tie-break), and renders a `compact` `MetricPill` inside a gradient-coloured cell (`resolveMetricTone(...).cellStyle`) whose `aria-label` is `"[Student Name], [Task ID], [Metric]: [Score]"`. `pagination={false}`, `bordered`, `scroll={{ x: 'max-content' }}`, `aria-label="Task Heatmap"`.
+- Call-site rationale: pure presentational table built from a `HeatmapResult`. Owns the Ant Design `Table<HeatmapRow>` column definitions (`buildHeatmapTableColumns` is internal): a sticky `Student Name` top-level column (`fixed: 'start'`, `width: 200`, `sorter` via the exported `compareHeatmapStudentName`, `defaultSortOrder: 'ascend'`), and one grouped column per `taskColumn` (title = `taskId`, since `taskTitle` is `null` in v1) with `Completeness`/`Accuracy`/`SPaG` children. Each metric sub-column uses `buildMetricRangeFilter` (a numeric score-range `filterDropdown` + `onFilter` over a two-thumb `Slider`), a SPEC-ordered `sorter` delegating to the shared `compareMetricsByStateRank` (computed by value asc → `notAttempted` → `error`, `studentId` tie-break), and renders a `compact` `MetricPill` inside a gradient-coloured cell (`resolveMetricTone(...).cellStyle`) whose `aria-label` is `"[Student Name], [Task ID], [Metric]: [Score]"`. `pagination={false}`, `bordered`, `scroll={{ x: 'max-content' }}`, `aria-label="Task Heatmap"`.
 - Status: `Implemented`
 - Implementation notes:
-  - Reuses `compareHeatmapStudentName` from the sibling `taskHeatmapModel.ts`, `METRIC_STATE_RANK_ASC` from the shared `metricDisplay/metricStateRank.ts`, and the shared `buildMetricRangeFilter` (with its `MetricRangeFilterDropdown` UI and `metricRangeKey` encode/decode helpers) from `metricDisplay/` — no second copy of the filter predicate. The `HeatmapRow`-typed metric comparator (`heatmapMetricComparator`) reads the canonical rank map so the heatmap and averages tables share one ordering definition.
+  - Reuses `compareHeatmapStudentName` from the sibling `taskHeatmapModel.ts`, `compareMetricsByStateRank` from the shared `metricDisplay/metricComparator.ts`, and the shared `buildMetricRangeFilter` (with its `MetricRangeFilterDropdown` UI and `metricRangeKey` encode/decode helpers) from `metricDisplay/` — no second copy of the filter predicate. The local `HeatmapRow`-typed sorter builders (`buildMetricSorter`) pass each cell's metric result plus the row `studentId`s to the shared comparator so the heatmap and averages tables share one ordering definition.
   - Initial ascending student-name order is achieved by pre-sorting the `dataSource` with `.toSorted(compareHeatmapStudentName)` because `defaultSortOrder` does not auto-apply the initial sort in the installed Ant Design version; this is a non-mutating copy.
   - Empty-state: a "No submissions yet" caption renders above the table only when `taskColumns.length > 0 && rows.length > 0 &&` every cell is `notAttempted`; the guard suppresses the caption for the zero-tasks variant (`taskColumns: []` → only the Student Name column renders).
   - Cell access uses a safe `.find` by `taskKey` (not computed-index injection) plus a `switch`-based metric accessor, mirroring the `getStudentMetric` pattern to satisfy `security/detect-object-injection`.
@@ -747,7 +759,7 @@ These entries record the feature-local helpers for the Class page. Per `frontend
 
 #### 9.18.13 Heatmap page composition: `TaskHeatmapPage`
 
-17. Component: `TaskHeatmapPage` — heatmap view composition root (header, control, table regions)
+16. Component: `TaskHeatmapPage` — heatmap view composition root (header, control, table regions)
 
 - Decision: `keep local`
 - Owning module/path: `src/frontend/src/features/taskHeatmap/TaskHeatmapPage.tsx` (moved unchanged from `features/classPage/` by the TaskHeatmap extraction)
@@ -760,7 +772,7 @@ These entries record the feature-local helpers for the Class page. Per `frontend
 
 #### 9.18.14 E2E scenario helper: `task-heatmap-end-to-end-helpers`
 
-18. Helper (test-only): `createHeatmapScenario` — Playwright runtime-scenario factory for the Task Heatmap end-to-end journey
+17. Helper (test-only): `createHeatmapScenario` — Playwright runtime-scenario factory for the Task Heatmap end-to-end journey
 
 - Decision: `new` (test-only helper, co-located with the E2E spec)
 - Owning module/path: `src/frontend/e2e-tests/helpers/task-heatmap-end-to-end-helpers.ts`
@@ -774,7 +786,7 @@ These entries record the feature-local helpers for the Class page. Per `frontend
 
 These entries record the helpers introduced to support the ClassPage assignment prefetch feature (see `ACTION_PLAN.md`). All entries delivered in the ClassPage Assignment Prefetch cycle.
 
-19. Helper: `getAssignment` service function
+18. Helper: `getAssignment` service function
 
 - Decision: `new`
 - Owning module/path: `src/frontend/src/services/assignmentAssessment/assignmentAssessmentService.ts`
@@ -782,7 +794,7 @@ These entries record the helpers introduced to support the ClassPage assignment 
 - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9
 - Status: `Implemented`
 
-20. Helper: `AssignmentFullSchema` / `AssignmentFullResponseSchema` Zod schemas
+19. Helper: `AssignmentFullSchema` / `AssignmentFullResponseSchema` Zod schemas
 
 - Decision: `new`
 - Owning module/path: `src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts`
@@ -790,7 +802,7 @@ These entries record the helpers introduced to support the ClassPage assignment 
 - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9
 - Status: `Implemented`
 
-21. Helper: `queryKeys.assignment(courseId, assignmentId)` query key factory
+20. Helper: `queryKeys.assignment(courseId, assignmentId)` query key factory
 
 - Decision: `new`
 - Owning module/path: `src/frontend/src/query/queryKeys.ts`
@@ -798,7 +810,7 @@ These entries record the helpers introduced to support the ClassPage assignment 
 - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9
 - Status: `Implemented`
 
-22. Helper: `getAssignmentQueryOptions(courseId, assignmentId)` shared query options
+21. Helper: `getAssignmentQueryOptions(courseId, assignmentId)` shared query options
 
 - Decision: `new`
 - Owning module/path: `src/frontend/src/query/sharedQueries.ts`
@@ -806,7 +818,7 @@ These entries record the helpers introduced to support the ClassPage assignment 
 - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9
 - Status: `Implemented`
 
-23. Helper: `compareAssignmentUpdatedAtDesc(a, b)` shared comparator
+22. Helper: `compareAssignmentUpdatedAtDesc(a, b)` shared comparator
 
 - Decision: `new` (shared between the prefetch and the adapter's `recentAssignments` pipeline)
 - Owning module/path: `src/frontend/src/features/classPage/classPageModel.ts`
@@ -816,7 +828,7 @@ These entries record the helpers introduced to support the ClassPage assignment 
 
 #### 9.18.16 Task Preview Card real-data wiring helpers
 
-24. Helper: `buildCellPreviewLookup(assignment: AssignmentFull): CellPreviewLookup` — builds a `studentId × taskId` keyed lookup from the AssignmentFull payload
+23. Helper: `buildCellPreviewLookup(assignment: AssignmentFull): CellPreviewLookup` — builds a `studentId × taskId` keyed lookup from the AssignmentFull payload
 
 - Decision: `new`
 - Owning module/path: `src/frontend/src/features/taskHeatmap/buildCellPreviewLookup.ts`
@@ -824,7 +836,7 @@ These entries record the helpers introduced to support the ClassPage assignment 
 - Status: `Implemented`
 - Implementation notes: Builds a lookup from grid coordinate → preview datum for the class heatmap popover.
 
-25. Helper: `assembleTaskPreviewData(cellData, metricResult, metricKey, taskId): TaskPreviewData` — maps a `CellPreviewData` + analyser `MetricResult` into the `TaskPreviewCard`'s `TaskPreviewData` contract
+24. Helper: `assembleTaskPreviewData(cellData, metricResult, metricKey, taskId): TaskPreviewData` — maps a `CellPreviewData` + analyser `MetricResult` into the `TaskPreviewCard`'s `TaskPreviewData` contract
 
 - Decision: `new`
 - Owning module/path: `src/frontend/src/features/taskHeatmap/assembleTaskPreviewData.ts`
@@ -832,7 +844,7 @@ These entries record the helpers introduced to support the ClassPage assignment 
 - Status: `Implemented`
 - Implementation notes: Maps an AssignmentFull cell to TaskPreviewData (reasoning, artifact type, metric result).
 
-26. Helper: `spreadsheetToMarkdownTable(rows): string` — converts a `Array<Array<string | number | null>>` to a GitHub-flavoured markdown table string
+25. Helper: `spreadsheetToMarkdownTable(rows): string` — converts a `Array<Array<string | number | null>>` to a GitHub-flavoured markdown table string
 
 - Decision: `new`
 - Owning module/path: `src/frontend/src/features/taskHeatmap/spreadsheetToMarkdownTable.ts`

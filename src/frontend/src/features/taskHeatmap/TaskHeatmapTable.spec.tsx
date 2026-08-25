@@ -788,7 +788,7 @@ describe('TaskHeatmapTable', () => {
 
   // -------------------------------------------------------------------------
   // 7. Metric column sorter — clicking a metric sub-column sorter reorders
-  //    rows via heatmapMetricComparator.
+  //    rows via the shared compareMetricsByStateRank comparator.
   // -------------------------------------------------------------------------
 
   it('clicking Task 1 Completeness column sorter changes row order from the default sort', async () => {

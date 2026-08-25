@@ -28,7 +28,7 @@ import type {
 } from '../../services/dataAnalysis/heatmapAdapter';
 import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import { compareHeatmapStudentName } from './taskHeatmapModel';
-import { METRIC_STATE_RANK_ASC } from '../../services/dataAnalysis/metricDisplay/metricStateRank';
+import { compareMetricsByStateRank } from '../../services/dataAnalysis/metricDisplay/metricComparator';
 import {
   METRIC_DISPLAY_META,
   HEATMAP_METRIC_KEYS,
@@ -119,40 +119,13 @@ function renderScore(metric: MetricResult): string {
 }
 
 /**
- * SPEC-ordered metric comparator for heatmap table sort.
- *
- * Order: computed (numeric ascending) -> notAttempted -> error.
- * Tie-break within computed by value ascending; ultimate tie-break by
- * `studentId` ascending.
- *
- * @param {MetricResult} aMetric - First metric to compare.
- * @param {MetricResult} bMetric - Second metric to compare.
- * @param {string} aId - First row's studentId for tie-break.
- * @param {string} bId - Second row's studentId for tie-break.
- * @returns {number} Negative if `a < b`, positive if `a > b`, zero if equal.
- */
-function heatmapMetricComparator(
-  aMetric: MetricResult,
-  bMetric: MetricResult,
-  aId: string,
-  bId: string,
-): number {
-  const aRank = METRIC_STATE_RANK_ASC.get(aMetric.state) ?? 0;
-  const bRank = METRIC_STATE_RANK_ASC.get(bMetric.state) ?? 0;
-  if (aRank !== bRank) return aRank - bRank;
-
-  // Both are computed — compare by numeric value ascending
-  if (aMetric.state === 'computed' && bMetric.state === 'computed') {
-    return aMetric.value - bMetric.value;
-  }
-
-  // Tie-break by studentId ascending
-  return aId.localeCompare(bId);
-}
-
-/**
  * Build a compare function for a single metric sub-column at the given task
  * index.
+ *
+ * @remarks
+ * Delegates the ordering composition (state rank → numeric value → ascending
+ * `studentId` tie-break) to the shared services-layer comparator
+ * (`compareMetricsByStateRank`); the heatmap always sorts ascending.
  *
  * @param {number} taskIndex - The index of the task column.
  * @param {HeatmapMetricKey} metric - The metric key.
@@ -163,11 +136,12 @@ function buildMetricSorter(
   metric: HeatmapMetricKey,
 ): (a: HeatmapRow, b: HeatmapRow) => number {
   return (a: HeatmapRow, b: HeatmapRow): number =>
-    heatmapMetricComparator(
+    compareMetricsByStateRank(
       getCellMetric(a.cells[taskIndex], metric),
       getCellMetric(b.cells[taskIndex], metric),
       a.studentId,
       b.studentId,
+      'asc',
     );
 }
 

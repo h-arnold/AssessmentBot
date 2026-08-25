@@ -3,10 +3,10 @@
  *
  * @remarks
  * This module hosts the canonical rank lookups over `MetricResult['state']`
- * used by state-aware metric column sorting. Its two consumers are the Class
- * page overview table (via `classPageModel`'s `buildMetricComparator`) and the
- * Task Heatmap table directly; keep it here in the shared services layer so
- * the ranking semantics are not migrated back into a feature folder.
+ * used by state-aware metric column sorting. Its sole direct consumer is the
+ * shared comparator composition in `./metricComparator`; both features reach
+ * it indirectly through that helper, so ranking semantics stay in this shared
+ * services-layer module rather than migrating back into a feature folder.
  */
 
 import type { MetricResult } from '../dataAnalysis.zod';

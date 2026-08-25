@@ -10,7 +10,7 @@
 
 import { getStudentMetric } from './classPageAdapter.zod';
 import { compareStudentNames } from '../../services/dataAnalysis/compareStudentNames';
-import { getMetricStateRank } from '../../services/dataAnalysis/metricDisplay/metricStateRank';
+import { compareMetricsByStateRank } from '../../services/dataAnalysis/metricDisplay/metricComparator';
 import type { ClassPageAdapterResult, StudentAverageRowModel } from './classPageAdapter.zod';
 import type { MetricColumnKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 
@@ -33,6 +33,12 @@ export type ClassPageViewModel = {
 /**
  * Build a comparator function for a metric column with state-aware ordering.
  *
+ * @remarks
+ * Delegates the ordering composition (state rank → numeric value → ascending
+ * `studentId` tie-break) to the shared services-layer comparator
+ * (`compareMetricsByStateRank`); this wrapper only resolves which metric each
+ * row is compared by.
+ *
  * @param {MetricColumnKey} column - The metric column to compare by.
  * @param {'asc' | 'desc'} direction - Sort direction (`'asc'` or `'desc'`).
  * @returns {(a: StudentAverageRowModel, b: StudentAverageRowModel) => number} A comparator suitable for `Array.prototype.toSorted()`.
@@ -41,24 +47,14 @@ function buildMetricComparator(
   column: MetricColumnKey,
   direction: 'asc' | 'desc'
 ): (a: StudentAverageRowModel, b: StudentAverageRowModel) => number {
-  return (a, b) => {
-    const aMetric = getStudentMetric(a.metrics, column);
-    const bMetric = getStudentMetric(b.metrics, column);
-
-    const aRank = getMetricStateRank(aMetric, direction);
-    const bRank = getMetricStateRank(bMetric, direction);
-
-    if (aRank !== bRank) return aRank - bRank;
-
-    // Same state band — sort by numeric value when both are computed
-    if (aMetric.state === 'computed' && bMetric.state === 'computed') {
-      const diff = aMetric.value - bMetric.value;
-      if (diff !== 0) return direction === 'asc' ? diff : -diff;
-    }
-
-    // Tie-break by studentId ascending
-    return a.studentId.localeCompare(b.studentId);
-  };
+  return (a, b) =>
+    compareMetricsByStateRank(
+      getStudentMetric(a.metrics, column),
+      getStudentMetric(b.metrics, column),
+      a.studentId,
+      b.studentId,
+      direction
+    );
 }
 
 /**
