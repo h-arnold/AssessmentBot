@@ -27,3 +27,6 @@ playwright-report/
 .vibe/vibehistory
 .scratchpad/
 .opencode/scratchpad/
+
+# Clasp deploy artefacts (deploy-gas skill pty session capture)
+typescript
