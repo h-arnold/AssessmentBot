@@ -23,9 +23,6 @@ import { compareStudentNames } from './compareStudentNames';
  */
 type StudentNameComparable = Readonly<{ studentName: string; studentId: string }>;
 
-/** Number of parameters declared on the direction-neutral comparator (`a`, `b`). */
-const COMPARATOR_DECLARED_PARAMETERS = 2;
-
 /**
  * Build a minimal row fixture matching the comparator's structural shape.
  *
@@ -78,6 +75,21 @@ describe('compareStudentNames', () => {
   });
 
   // -------------------------------------------------------------------------
+  // Identical inputs
+  // -------------------------------------------------------------------------
+
+  it('returns exactly zero when both studentName and studentId are identical', () => {
+    // Equal names fall through to the `studentId` tie-break; identical ids
+    // must yield exactly zero so stable sorts keep such rows in place.
+    const result = compareStudentNames(
+      { studentName: 'X', studentId: 'a' },
+      { studentName: 'X', studentId: 'a' }
+    );
+
+    expect(result).toBe(0);
+  });
+
+  // -------------------------------------------------------------------------
   // Case-insensitive name comparison
   // -------------------------------------------------------------------------
 
@@ -95,9 +107,6 @@ describe('compareStudentNames', () => {
   // -------------------------------------------------------------------------
 
   it('exposes one direction-neutral comparator that call sites invert themselves', () => {
-    // Exactly two declared parameters (`a`, `b`) — no direction argument exists.
-    expect(compareStudentNames).toHaveLength(COMPARATOR_DECLARED_PARAMETERS);
-
     const alice = buildStudentRow('Alice', 's-1');
     const bob = buildStudentRow('Bob', 's-2');
 

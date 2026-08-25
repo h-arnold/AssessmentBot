@@ -44,6 +44,8 @@ describe('compareHeatmapStudentName', () => {
 
     // s-A vs s-B → negative (s-A sorts before s-B)
     expect(result).toBeLessThan(0);
+    // Wrapper must remain equivalent to the canonical comparator.
+    expect(result).toBe(compareStudentNames(davidA, davidB));
   });
 
   it('orders case-insensitively — lowercase "alice" sorts before "Bob"', () => {
@@ -54,5 +56,7 @@ describe('compareHeatmapStudentName', () => {
 
     // Case-insensitive: 'alice' (lowercase) should be considered < 'Bob'
     expect(result).toBeLessThan(0);
+    // Wrapper must remain equivalent to the canonical comparator.
+    expect(result).toBe(compareStudentNames(alice, bob));
   });
 });
