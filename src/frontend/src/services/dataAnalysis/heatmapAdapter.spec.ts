@@ -12,8 +12,6 @@
  *   - `getAssignmentDefinitionPartial` does not exist yet
  *   - `adaptMetricsToHeatmap` still has the old 3-arg signature
  *   - `taskPartial.zod.ts` still uses `id` not `taskId`
- *
- * See ACTION_PLAN.md §8 — Required test cases (Red first).
  */
 
 import { describe, expect, it } from 'vitest';
@@ -228,7 +226,7 @@ function minimalAveragingResult(
 // ---------------------------------------------------------------------------
 
 describe('adaptMetricsToHeatmap — 4-parameter warm-up partial sourcing', () => {
-  // ── Ported Section 2 tests ──────────────────────────────────────────
+  // ── Ported tests ────────────────────────────────────────────────────
 
   it('returns three taskColumns in task order and one row per student, each with three cells aligned by taskKey', () => {
     const aliceT1 = buildPerStudentTaskMetric('s_001', 'task_001');
@@ -377,7 +375,7 @@ describe('adaptMetricsToHeatmap — 4-parameter warm-up partial sourcing', () =>
     expect(result.className).toBe('Class Overview');
   });
 
-  // ── Section 8 new error-path tests ──────────────────────────────────
+  // ── New error-path tests ────────────────────────────────────────────
 
   it('throws TaskTitlesUnavailableError when partials has no entry for the assignment definitionKey', () => {
     const analyserResult = minimalAveragingResult([]);

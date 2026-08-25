@@ -506,7 +506,6 @@ describe('AveragingResultSchema', () => {
 
 // ---------------------------------------------------------------------------
 // StudentSubmissionItemPartialSchema.assessments — imported from classDetailService.zod.ts
-// (ACTION_PLAN.md Section 5 items 13-14)
 // ---------------------------------------------------------------------------
 
 describe('StudentSubmissionItemPartialSchema.assessments', () => {
@@ -574,7 +573,6 @@ describe('StudentSubmissionItemPartialSchema.assessments', () => {
 
 // ---------------------------------------------------------------------------
 // StudentSubmissionPartialSchema — imported from classDetailService.zod.ts
-// (ACTION_PLAN.md Section 5 items 15-16)
 // ---------------------------------------------------------------------------
 
 describe('StudentSubmissionPartialSchema', () => {

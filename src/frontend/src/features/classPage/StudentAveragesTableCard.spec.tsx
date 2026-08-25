@@ -4,7 +4,6 @@
  *
  * @see SPEC_CLASS_PAGE.md — "StudentAveragesTableCard"
  * @see CLASS_PAGE_LAYOUT.md — "4. Student Averages Table Card"
- * @see ACTION_PLAN.md §5 — Required test cases 6-14
  */
 
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
