@@ -56,10 +56,10 @@ Key notes:
   partial shape. They are only stored on full definitions.
 - `tasks` is always an array in this collection. Full definitions stored in the full cache
   have `tasks` as a keyed object.
-- The `PARTIAL_REQUIRED_FIELDS` constant in `assignmentDefinitionPartialRowValidation.js` lists 18
-  required fields — including `referenceLastModified`/`templateLastModified` which the
-  transport row validation accepts but `toPartialJSON()` does not emit. Transport validation
-  is stricter than emission (defence-in-depth).
+- The `PARTIAL_REQUIRED_FIELDS` constant in `assignmentDefinitionPartialRowValidation.js` lists 15
+  required fields. `referenceLastModified` and `templateLastModified` appear neither in the
+  constant nor in `toPartialJSON()` output: both are intentionally excluded from the partial
+  shape (see note above).
 - Backward compatibility: `fromJSON()` coerces `tasks: null` (legacy persisted partials) to `[]`.
 
 ### Collection: `assdef_full_<definitionKey>` (full cache)
@@ -142,7 +142,7 @@ Key contract notes:
 
 - The response is built by calling `toTransportPartialRow_()` on each definition, which calls
   `AssignmentDefinition.toPartialJSON()` then normalises date fields and strips `yearGroup`.
-- Transport validation (`validatePartialRow_()`) enforces strict contract: all 18 required
+- Transport validation (`validatePartialRow_()`) enforces strict contract: all 15 required
   fields must be present, `definitionKey` and `primaryTopicKey` must be non-empty already-trimmed
   strings, `yearGroupKey`/`yearGroupLabel` must be non-empty strings, `tasks` must be an array,
   and `createdAt`/`updatedAt` must be null or strict ISO datetime strings with timezone info.
@@ -445,7 +445,7 @@ Key notes:
   - `validateReadParameters_()` — validates `getAssignmentDefinition` request: params object, `definitionKey` is safe trimmed identifier.
   - `validateDeleteParameters_()` — validates `deleteAssignmentDefinition` request: params object, `definitionKey` is safe trimmed identifier.
 - `src/backend/z_Api/assignmentDefinition/assignmentDefinitionPartialRowValidation.js`:
-  - `validatePartialRow_()` — validates each partial row in `getAssignmentDefinitionPartials` response: 18 required fields present (see `PARTIAL_REQUIRED_FIELDS`), `definitionKey`/`primaryTopicKey` validated, `yearGroupKey`/`yearGroupLabel` validated, `createdAt`/`updatedAt` are null or strict ISO datetime strings with timezone, `tasks` is array.
+  - `validatePartialRow_()` — validates each partial row in `getAssignmentDefinitionPartials` response: 15 required fields present (see `PARTIAL_REQUIRED_FIELDS`), `definitionKey`/`primaryTopicKey` validated, `yearGroupKey`/`yearGroupLabel` validated, `createdAt`/`updatedAt` are null or strict ISO datetime strings with timezone, `tasks` is array.
 
 **Key domain validation rules** (controller-level business logic not visible from schemas):
 

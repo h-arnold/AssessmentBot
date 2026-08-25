@@ -47,7 +47,10 @@ export function loadAssignmentDefinitionPartialsModule() {
 /**
  * Loads the split assignment-definition validation modules (shared core, upsert
  * and partial-row) and returns their exports merged into a single object.
- * Clears require caches first to ensure a fresh load.
+ * Clears require caches so the three modules re-execute. Cross-file helpers keep
+ * resolving via the test-bootstrapped globals, mirroring GAS single-scope
+ * concatenation; all exported helpers are stateless, so stale global bindings
+ * cannot affect behaviour.
  * @returns {Object} The merged exports of all three validation modules
  */
 export function loadAssignmentDefinitionValidationModule() {
