@@ -295,6 +295,9 @@ assignmentName}`; duplicate taskKeys collapse to first occurrence; rows cover AL
   students; cells fall back to the frozen not-attempted metric when no metric matches.
 - Unknown `selectedAssignmentIds` throw; missing partial throws `TaskTitlesUnavailableError`.
 - Deterministic ordering: assignments in `classFull.assignments` order; tasks per partial order.
+  Clarified during Section 2 red review: `taskColumns` follow `classFull.assignments` order
+  (per SPEC display-resolution rules); `sourceAssignments` preserves `selectedAssignmentIds`
+  order (selection order — SPEC's shape leaves it open; red-phase tests pin this contract).
 
 ### Required test cases (Red first)
 
@@ -323,7 +326,34 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- Filled at execution.
+- **Execution status:** COMPLETED 2026-08-28. Red review: 2 Minor findings, resolved by
+  orchestrator (plan clarification below + reviewer-endorsed keep-as-is on the red technique).
+  Green review round 1: 1 Nitpick (stale red-phase comments in the spec) — fixed via
+  Implementation, plus orchestrator-directed removal of the five stale ` (RED)` describe-label
+  suffixes under the same finding. Green re-review: CLEAN. Regression gate passed (0 regressions,
+  0 new failures).
+- **Implementation notes:** `adaptMetricsToMergedHeatmap` + `MergedHeatmapTaskColumn` /
+  `MergedHeatmapResult` added to `heatmapAdapter.ts` as pure additions (existing exports
+  byte-identical, git-diff verified: 261 insertions, 0 deletions). Contract: column identity set,
+  `taskKey = ${definitionKey}::${taskId}`, dedupe-by-taskKey with first classFull-occurrence
+  identity, taskColumns in classFull order / sourceAssignments in selection order, all-student
+  rows, frozen `NOT_ATTEMPTED_METRIC` fallback (reused, not duplicated), `DEFAULT_CLASS_NAME_LABEL`
+  reused, unknown-ID throw `/not found in classFull\.assignments/`, missing partial throws the
+  existing `TaskTitlesUnavailableError`. `@remarks` JSDoc records input-shaping rationale and
+  dedupe-by-accumulator-semantics correctness. Red spec converted from namespace-guard to static
+  import with zero assertion changes. Final LOC: `heatmapAdapter.ts` 491 (split gate NOT fired;
+  9 lines of headroom), `heatmapAdapter.merged.spec.ts` 466. Verification: dataAnalysis 19 files /
+  235 tests; taskHeatmap 8 files / 87 tests; `tsc -b src/frontend` exit 0; lint clean; full
+  regression checker 7/8 (only pre-existing backend-lint debt).
+- **Deviations from plan:** none behavioural. Contract clarification recorded under acceptance
+  criteria during red review: `sourceAssignments` preserves `selectedAssignmentIds` order while
+  `taskColumns` follow `classFull.assignments` order (SPEC scopes classFull order to columns;
+  red tests pin this contract).
+- **Follow-up implications for later sections:** Section 3's `MergedHeatmapTaskColumn` satisfies
+  the table's narrowed structural prop type with the optional identity fields; the 491-LOC
+  adapter leaves only 9 lines of headroom — Sections 5/6 must NOT grow this file; if growth is
+  ever needed, use the planned `heatmapAdapter.merged.ts` sibling pattern. §9.22 entry 1 is
+  reconciled to `Implemented` in the Documentation section only (not before), per plan.
 
 ---
 
