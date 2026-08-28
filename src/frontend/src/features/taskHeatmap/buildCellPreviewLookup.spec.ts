@@ -1,10 +1,18 @@
 /**
- * Red-phase tests for `buildCellPreviewLookup` — a pure transformation
- * function that converts `AssignmentFull` into a
- * `Map<studentId, Map<taskId, CellPreviewData>>` keyed lookup.
+ * Contract tests for `buildCellPreviewLookup` — a pure transformation function
+ * that converts `AssignmentFull` into a
+ * `Map<studentId, Map<taskKey, CellPreviewData>>` keyed lookup, where `taskKey`
+ * is the composite `` `${definitionKey}::${taskId}` `` derived internally from
+ * the payload's embedded `assignmentDefinition.definitionKey`.
  *
- * These tests WILL fail at import time because the implementation module
- * does not yet exist (TDD red phase).
+ * This suite pins two behaviours:
+ *
+ * 1. the composite-key contract (every submission item is indexed under its
+ *    `${definitionKey}::${taskId}` inner key, and a payload missing the
+ *    embedded definition fails loudly rather than producing wrong keys); and
+ * 2. parity with the embedded heatmap columns (lookup keys must equal the
+ *    `taskKey`s that `adaptMetricsToHeatmap` derives), which is exercised
+ *    directly by the co-located `buildCellPreviewLookup.parity.spec.ts`.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -122,7 +130,7 @@ describe('buildCellPreviewLookup', () => {
     ]);
 
     const lookup: CellPreviewLookup = buildCellPreviewLookup(assignment);
-    const cellData: CellPreviewData | undefined = lookup.get('student-1')?.get('task-1');
+    const cellData: CellPreviewData | undefined = lookup.get('student-1')?.get('test-def::task-1');
 
     expect(cellData).toBeDefined();
     expect(cellData!.artifactType).toBe('TEXT');
@@ -164,7 +172,7 @@ describe('buildCellPreviewLookup', () => {
     ]);
 
     const lookup: CellPreviewLookup = buildCellPreviewLookup(assignment);
-    const cellData = lookup.get('student-1')?.get('task-1');
+    const cellData = lookup.get('student-1')?.get('test-def::task-1');
 
     expect(cellData).toBeDefined();
     expect(cellData!.artifactType).toBe('TABLE');
@@ -208,7 +216,7 @@ describe('buildCellPreviewLookup', () => {
     ]);
 
     const lookup: CellPreviewLookup = buildCellPreviewLookup(assignment);
-    const cellData = lookup.get('student-1')?.get('task-1');
+    const cellData = lookup.get('student-1')?.get('test-def::task-1');
 
     expect(cellData).toBeDefined();
     expect(cellData!.artifactType).toBe('IMAGE');
@@ -250,7 +258,7 @@ describe('buildCellPreviewLookup', () => {
     ]);
 
     const lookup: CellPreviewLookup = buildCellPreviewLookup(assignment);
-    const cellData = lookup.get('student-1')?.get('task-1');
+    const cellData = lookup.get('student-1')?.get('test-def::task-1');
 
     expect(cellData).toBeDefined();
     expect(cellData!.reasoning.completeness).toBe('Everything present');
@@ -291,7 +299,7 @@ describe('buildCellPreviewLookup', () => {
     ]);
 
     const lookup: CellPreviewLookup = buildCellPreviewLookup(assignment);
-    const cellData = lookup.get('student-1')?.get('task-1');
+    const cellData = lookup.get('student-1')?.get('test-def::task-1');
 
     expect(cellData).toBeDefined();
     expect(cellData!.reasoning.completeness).toBe('Some points covered');
@@ -359,8 +367,8 @@ describe('buildCellPreviewLookup', () => {
 
     expect(lookup.get('student-1')).toBeDefined();
     expect(lookup.get('student-2')).toBeDefined();
-    expect(lookup.get('student-1')!.get('task-1')!.artifactContent).toBe('Alice answer');
-    expect(lookup.get('student-2')!.get('task-2')!.artifactContent).toBe('Bob answer');
+    expect(lookup.get('student-1')!.get('test-def::task-1')!.artifactContent).toBe('Alice answer');
+    expect(lookup.get('student-2')!.get('test-def::task-2')!.artifactContent).toBe('Bob answer');
   });
 
   // -----------------------------------------------------------------------
@@ -413,8 +421,8 @@ describe('buildCellPreviewLookup', () => {
     const inner = lookup.get('student-1');
 
     expect(inner).toBeDefined();
-    expect(inner!.get('task-a')!.artifactContent).toBe('Task A response');
-    expect(inner!.get('task-b')!.artifactContent).toBe('Task B response');
+    expect(inner!.get('test-def::task-a')!.artifactContent).toBe('Task A response');
+    expect(inner!.get('test-def::task-b')!.artifactContent).toBe('Task B response');
   });
 
   // -----------------------------------------------------------------------
@@ -466,7 +474,7 @@ describe('buildCellPreviewLookup', () => {
     ]);
 
     const lookup: CellPreviewLookup = buildCellPreviewLookup(assignment);
-    const cellData = lookup.get('student-1')?.get('task-dup');
+    const cellData = lookup.get('student-1')?.get('test-def::task-dup');
 
     expect(cellData).toBeDefined();
     expect(cellData!.artifactContent).toBe('First encounter');
@@ -518,7 +526,7 @@ describe('buildCellPreviewLookup', () => {
     expect(inner).toBeDefined();
 
     // Assert the taskId resolves with the expected data
-    const cellData = inner!.get('task_001');
+    const cellData = inner!.get('test-def::task_001');
     expect(cellData).toBeDefined();
     expect(cellData!.artifactType).toBe('IMAGE');
     expect(cellData!.artifactContent).toBe('data:image/png;base64,realisticImageData');
@@ -581,7 +589,7 @@ describe('buildCellPreviewLookup', () => {
     ]);
 
     const lookup: CellPreviewLookup = buildCellPreviewLookup(assignment);
-    const cellData = lookup.get('student-1')?.get('task-sheet');
+    const cellData = lookup.get('student-1')?.get('test-def::task-sheet');
 
     expect(cellData).toBeDefined();
     expect(cellData!.artifactType).toBe('SPREADSHEET');
@@ -629,12 +637,12 @@ describe('buildCellPreviewLookup', () => {
     expect(inner).toBeDefined();
 
     // Looking up by any taskId that the heatmap expects returns undefined
-    expect(inner!.get('task_001')).toBeUndefined();
-    expect(inner!.get('task_002')).toBeUndefined();
-    expect(inner!.get('task_003')).toBeUndefined();
+    expect(inner!.get('test-def::task_001')).toBeUndefined();
+    expect(inner!.get('test-def::task_002')).toBeUndefined();
+    expect(inner!.get('test-def::task_003')).toBeUndefined();
 
     // The submission's own taskId IS present (opposite assertion)
-    expect(inner!.get('legacy-task-id')).toBeDefined();
+    expect(inner!.get('test-def::legacy-task-id')).toBeDefined();
   });
 
   // -----------------------------------------------------------------------
@@ -735,7 +743,7 @@ describe('buildCellPreviewLookup', () => {
     ]);
 
     const lookup: CellPreviewLookup = buildCellPreviewLookup(assignment);
-    const cellData = lookup.get('student-1')?.get('task-1');
+    const cellData = lookup.get('student-1')?.get('test-def::task-1');
 
     expect(cellData).toBeDefined();
     expect(cellData!.artifactContent).toBe('Second submission content');
@@ -773,6 +781,97 @@ describe('buildCellPreviewLookup', () => {
     const inner = lookup.get('student-1');
 
     expect(inner).toBeDefined();
-    expect(inner!.get('nonexistent-task')).toBeUndefined();
+    expect(inner!.get('test-def::nonexistent-task')).toBeUndefined();
+  });
+
+  // -----------------------------------------------------------------------
+  // Red-first: composite inner key shape (Section 1)
+  // -----------------------------------------------------------------------
+
+  it('keys the inner map by composite `${definitionKey}::${taskId}` for every submission item', () => {
+    const assignment = createAssignment([
+      {
+        studentId: 'student-1',
+        studentName: 'Alice',
+        assignmentId: 'assignment-1',
+        documentId: null,
+        items: {
+          'item-1': {
+            id: 'item-1',
+            taskId: 'task-1',
+            artifact: {
+              ...BASE_ARTIFACT_FIELDS,
+              type: 'TEXT' as const,
+              content: 'First task',
+              taskId: 'task-1',
+            },
+            assessments: { completeness: { score: 5, reasoning: 'Done' } },
+            feedback: {},
+          },
+          'item-2': {
+            id: 'item-2',
+            taskId: 'task-2',
+            artifact: {
+              ...BASE_ARTIFACT_FIELDS,
+              type: 'TEXT' as const,
+              content: 'Second task',
+              taskId: 'task-2',
+            },
+            assessments: { completeness: { score: 4, reasoning: 'Mostly' } },
+            feedback: {},
+          },
+        },
+        createdAt: DEFAULT_DATE,
+        updatedAt: DEFAULT_DATE,
+      },
+    ]);
+
+    const lookup: CellPreviewLookup = buildCellPreviewLookup(assignment);
+    const inner = lookup.get('student-1');
+    expect(inner).toBeDefined();
+
+    const keys = [...(inner as ReadonlyMap<string, CellPreviewData>).keys()];
+    expect(keys).toEqual(['test-def::task-1', 'test-def::task-2']);
+
+    // The bare taskId must NOT leak into the inner map (collision safety).
+    expect(inner!.has('task-1')).toBe(false);
+    expect(inner!.has('task-2')).toBe(false);
+  });
+
+  it('throws when the embedded assignmentDefinition (and its definitionKey) is absent', () => {
+    const assignment = createAssignment([
+      {
+        studentId: 'student-1',
+        studentName: 'Alice',
+        assignmentId: 'assignment-1',
+        documentId: null,
+        items: {
+          'item-1': {
+            id: 'item-1',
+            taskId: 'task-1',
+            artifact: {
+              ...BASE_ARTIFACT_FIELDS,
+              type: 'TEXT' as const,
+              content: 'Response',
+              taskId: 'task-1',
+            },
+            assessments: { completeness: { score: 5, reasoning: 'Done' } },
+            feedback: {},
+          },
+        },
+        createdAt: DEFAULT_DATE,
+        updatedAt: DEFAULT_DATE,
+      },
+    ]);
+
+    // The composite key is derived internally from the embedded
+    // assignmentDefinition.definitionKey. A payload missing that embedded
+    // definition must fail loudly rather than silently producing wrong keys.
+    const broken = {
+      ...assignment,
+      assignmentDefinition: undefined,
+    } as unknown as AssignmentFull;
+
+    expect(() => buildCellPreviewLookup(broken)).toThrow();
   });
 });

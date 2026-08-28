@@ -75,9 +75,9 @@ const TEXT_CELL_PREVIEW_DATA: CellPreviewData = {
   },
 };
 
-/** Inner map (taskId → CellPreviewData) for the populated-lookup test. */
+/** Inner map (composite taskKey → CellPreviewData) for the populated-lookup test. */
 const TASK_INNER_LOOKUP: ReadonlyMap<string, CellPreviewData> = new Map([
-  ['task_001', TEXT_CELL_PREVIEW_DATA],
+  ['definitionKey::task_001', TEXT_CELL_PREVIEW_DATA],
 ]);
 
 /** CellPreviewLookup that includes data for s-1 / task_001. */

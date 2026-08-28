@@ -288,7 +288,7 @@ function buildTaskMetricSubColumns(
       },
       render: (_: unknown, record: HeatmapRow): JSX.Element => {
         const m = getCellMetric(record.cells[taskIndex], metric);
-        const cellData = cellPreviewLookup?.get(record.studentId)?.get(taskColumn.taskId) ?? null;
+        const cellData = cellPreviewLookup?.get(record.studentId)?.get(taskColumn.taskKey) ?? null;
         const score = renderScore(m);
         const ariaLabel = `${record.studentName}, ${taskColumn.taskId}, ${getDisplayTitle(metric)}: ${score}`;
 
