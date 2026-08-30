@@ -439,7 +439,35 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- Filled at execution; record final LOC and whether the split gate fired.
+- **Execution status:** COMPLETED 2026-08-30. Red review CLEAN; green review PASS after
+  interrupted-first-pass resumption; regression gate passed (0 regressions, 0 new failures).
+- **Implementation notes:** Prop type narrowed structurally: `TaskHeatmapData`/`TaskHeatmapColumn`
+  carry `{taskKey, taskId, taskTitle}` + optional `assignmentId?/assignmentName?/definitionKey?`
+  plus optional result-level `sourceAssignments`; both `HeatmapResult` and `MergedHeatmapResult`
+  satisfy it with NO casts; prop names unchanged so `TaskHeatmapPage.tsx` compiles untouched.
+  `previewStatusByTaskKey` implements map-entry-first resolution with aggregate fallback (missing
+  entry → aggregate booleans; undefined map → legacy path). Adaptive tier: deeper `children`
+  nesting, present iff >1 `sourceAssignments`; collapsed duplicates → ONE parent labelled FIRST
+  instance's name + `" (shared definition)"`. LOC gate: split fired proactively —
+  `TaskHeatmapTable.tsx` 194 LOC + NEW sibling `taskHeatmapTableColumns.tsx` 451 LOC (plan's
+  prescribed extraction); both ≤500. `taskHeatmapModel.ts`: `compareHeatmapStudentName` parameter
+  widened to structural `NamedRow` (behaviourally neutral; avoids a forbidden cast —
+  `ReadonlyArray` cells vs mutable). `@remarks` JSDoc documents two-mode status contract and
+  no-generics decision. Verification: table spec 27/27; feature folder 97/97
+  (`TaskHeatmapPage.spec.tsx` unmodified); dataAnalysis 235/235; lint clean; tsc clean.
+- **Deviations from plan:** (1) The red-phase popover harness helpers (`openTaskPopover`,
+  `renderTable`) were authored against antd v5 DOM semantics while the repo pins antd v6.3.1; the
+  green phase corrected the helper internals (`.ant-popover-content`, fresh render per cell,
+  prefix matcher) with all `it()` assertions/fixtures/names byte-identical — green review verified
+  contract sensitivity holds. (2) Infrastructure: `.opencode/agents/code-reviewer.md` pinned the
+  dead model ID `opencode/hy3-free` (orchestrator delegated review attempts failed with
+  "Model not found"); migrated to `opencode-go/hy3` matching the planner's own migration pattern
+  in six sibling agent files. `planner-reviewer.md` still pins the dead model (unused by this
+  plan — flagged for follow-up).
+- **Follow-up implications for later sections:** Sections 5/6 consume the narrowed table prop
+  type, `previewStatusByTaskKey`, and adaptive tiers; `TaskHeatmapPage.tsx` untouched confirms
+  the embedded contract; the table's structural result type is the wiring target for
+  `useHeatmapsPageData`'s merged output.
 
 ---
 
