@@ -1,345 +1,68 @@
 /**
  * Task Heatmap table component.
  *
- * Renders a grouped-header Ant Design Table from a `HeatmapResult` view model.
- * The first column (Student Name) is sticky with locale-aware sorting and
- * default ascending order. Each task column groups three metric sub-columns
- * (Completeness, Accuracy, SPaG) with score-range filters and a SPEC-ordered metric
- * comparator.
+ * Renders a grouped-header Ant Design Table from a structurally-narrowed
+ * heatmap view model (`TaskHeatmapData`). The first column (Student Name) is
+ * sticky with locale-aware sorting and default ascending order. Each task
+ * column groups three metric sub-columns (Completeness, Accuracy, SPaG) with
+ * score-range filters and a SPEC-ordered metric comparator.
  *
- * The component owns local filter state (keyed by column key) so the score-range
- * filter dropdowns are functional.  Rows are paginated at 50 per page to bound
- * DOM node count on large classes.  `sortedRows`, `hasNoSubmissions`, and
- * `columns` are memoised to avoid redundant recomputation on each render.
+ * Column construction, popover content, per-column preview-status resolution,
+ * and the adaptive assignment-tier grouping live in the co-located
+ * `taskHeatmapTableColumns.tsx` helper module (extracted when this component
+ * breached the 500-line split gate). The component owns local filter state
+ * (keyed by column key), row sorting, the no-submissions caption, and the
+ * memoised column tree.
  *
  * @see SPEC.md
+ * @see ACTION_PLAN.md §Section 3
  */
 
-import type { CSSProperties, JSX } from 'react';
+import type { JSX } from 'react';
 import { useMemo, useState } from 'react';
-import { Alert, Popover, Skeleton, Table, Typography } from 'antd';
+import { Table, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 import type { FilterValue } from 'antd/es/table/interface';
 
-import type {
-  HeatmapResult,
-  HeatmapRow,
-  HeatmapTaskColumn,
-} from '../../services/dataAnalysis/heatmapAdapter';
-import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import { compareHeatmapStudentName } from './taskHeatmapModel';
-import { compareMetricsByStateRank } from '../../services/dataAnalysis/metricDisplay/metricComparator';
 import {
-  METRIC_DISPLAY_META,
-  HEATMAP_METRIC_KEYS,
-} from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
-import type { HeatmapMetricKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
-import {
-  resolveMetricTone,
-  type MetricToneRange,
-} from '../../services/dataAnalysis/metricDisplay/metricTone';
-import { buildMetricRangeFilter } from '../../services/dataAnalysis/metricDisplay/metricRangeFilter';
-import { decodeFilterToRange } from '../../services/dataAnalysis/metricDisplay/metricRangeKey';
-import { MetricIconLabel } from '../../components/MetricIconLabel/MetricIconLabel';
-import { TaskPreviewCard } from './TaskPreviewCard';
-import { assembleTaskPreviewData } from './assembleTaskPreviewData';
-import type { CellPreviewData, CellPreviewLookup } from './buildCellPreviewLookup';
-import {
-  APP_COL_WIDTH_STUDENT_NAME,
-  APP_COL_WIDTH_METRIC,
-  APP_GAP_MD,
-  APP_GAP_XS,
-} from '../../theme/spacing';
-
-// ---------------------------------------------------------------------------
-// Internal constants
-// ---------------------------------------------------------------------------
-
-/**
- * Number of decimal places for individual student task scores. Individual
- * task scores are always integers, so they are rendered without decimals.
- */
-const INDIVIDUAL_SCORE_PRECISION = 0;
-
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Retrieve the display label for a heatmap metric key.
- *
- * @param {HeatmapMetricKey} key - The metric key.
- * @returns {string} The display title.
- */
-function getDisplayTitle(key: HeatmapMetricKey): string {
-  return METRIC_DISPLAY_META.get(key)!.label;
-}
-
-/**
- * Extract a single cell metric by key via direct property access.
- *
- * @param {object} cell - The heatmap cell containing three metric results.
- * @param {MetricResult} cell.completeness - The completeness metric result.
- * @param {MetricResult} cell.accuracy - The accuracy metric result.
- * @param {MetricResult} cell.spag - The SPaG metric result.
- * @param {HeatmapMetricKey} key - The metric key to extract.
- * @returns {MetricResult} The matching metric result.
- */
-function getCellMetric(
-  cell: { completeness: MetricResult; accuracy: MetricResult; spag: MetricResult },
-  key: HeatmapMetricKey,
-): MetricResult {
-  switch (key) {
-    case 'completeness': {
-      return cell.completeness;
-    }
-    case 'accuracy': {
-      return cell.accuracy;
-    }
-    case 'spag': {
-      return cell.spag;
-    }
-  }
-}
-
-/**
- * Render the display score text for a metric result.
- *
- * @param {MetricResult} metric - The metric result.
- * @returns {string} The formatted score string.
- */
-function renderScore(metric: MetricResult): string {
-  if (metric.state === 'computed') {
-    return metric.value.toFixed(INDIVIDUAL_SCORE_PRECISION);
-  }
-  if (metric.state === 'notAttempted') {
-    return 'N';
-  }
-  return 'E';
-}
-
-/**
- * Build a compare function for a single metric sub-column at the given task
- * index.
- *
- * @remarks
- * Delegates the ordering composition (state rank → numeric value → ascending
- * `studentId` tie-break) to the shared services-layer comparator
- * (`compareMetricsByStateRank`); the heatmap always sorts ascending.
- *
- * @param {number} taskIndex - The index of the task column.
- * @param {HeatmapMetricKey} metric - The metric key.
- * @returns {(a: HeatmapRow, b: HeatmapRow) => number} A compare function.
- */
-function buildMetricSorter(
-  taskIndex: number,
-  metric: HeatmapMetricKey,
-): (a: HeatmapRow, b: HeatmapRow) => number {
-  return (a: HeatmapRow, b: HeatmapRow): number =>
-    compareMetricsByStateRank(
-      getCellMetric(a.cells[taskIndex], metric),
-      getCellMetric(b.cells[taskIndex], metric),
-      a.studentId,
-      b.studentId,
-      'asc',
-    );
-}
-
-/**
- * Default scoring range for heatmap metric cells (0–5).
- */
-const DEFAULT_TONE_RANGE: MetricToneRange = { lower: 0, upper: 5 };
-
-/**
- * Inline skeleton for the TaskPreviewCard popover during assignment loading.
- *
- * The width (400px) mirrors `CARD_MAX_WIDTH` from TaskPreviewCard.tsx. The
- * constant is intentionally not exported from that module because the preview
- * card differs from all other cards and is unlikely to be reused.
- *
- * @returns {JSX.Element} A skeleton placeholder matching the card shape.
- */
-function TaskPreviewSkeleton(): JSX.Element {
-  return (
-    <output
-      aria-busy="true"
-      aria-label="Loading task preview"
-      style={{ display: 'block', width: 400 }}
-    >
-      {/* Title bar — approximates TaskPreviewCard header height */}
-      <Skeleton.Input
-        active
-        size="small"
-        style={{ width: 200, height: 24, marginBottom: APP_GAP_MD }}
-      />
-      {/* Reasoning skeleton — 3 rows matching the card's reasoning section */}
-      <Skeleton
-        active
-        paragraph={{ rows: 3 }}
-        title={false}
-        style={{ marginBottom: APP_GAP_MD }}
-      />
-      {/* Artifact image placeholder — approximate height for an image block */}
-      <Skeleton.Input
-        active
-        size="small"
-        style={{ width: '100%', height: 120 }}
-      />
-    </output>
-  );
-}
-
-/**
- * Local popover content wrapper that defers `assembleTaskPreviewData` until
- * the popover is actually opened.
- *
- * When `isAssignmentLoading` or `showAssignmentError` is true, the expensive
- * conversion is short-circuited entirely.
- *
- * @param {CellPreviewData | null} cellData - The cell preview data from the lookup.
- * @param {MetricResult} metricResult - The analyser's metric result for this cell.
- * @param {HeatmapMetricKey} metricKey - Which metric column this preview is for.
- * @param {string} taskId - The heatmap column's task ID.
- * @param {boolean} isAssignmentLoading - Whether the assignment query is pending.
- * @param {boolean} showAssignmentError - Whether the assignment query errored or returned null.
- * @returns {JSX.Element} The popover content (skeleton, alert, or TaskPreviewCard).
- */
-function CellPopoverContent({
-  cellData,
-  metricResult,
-  metricKey,
-  taskId,
-  isAssignmentLoading,
-  showAssignmentError,
-}: Readonly<{
-  cellData: CellPreviewData | null;
-  metricResult: MetricResult;
-  metricKey: HeatmapMetricKey;
-  taskId: string;
-  isAssignmentLoading: boolean;
-  showAssignmentError: boolean;
-}>): JSX.Element {
-  if (isAssignmentLoading) {
-    return <TaskPreviewSkeleton />;
-  }
-
-  if (showAssignmentError) {
-    return <Alert type="error" showIcon title="Couldn't load task details" />;
-  }
-
-  // Defer the expensive assembleTaskPreviewData call until the popover opens.
-  const previewData = assembleTaskPreviewData(cellData, metricResult, metricKey, taskId);
-  return <TaskPreviewCard data={previewData} />;
-}
-
-/**
- * Build the three metric sub-columns (Completeness, Accuracy, SPaG) for a
- * single task group.
- *
- * Extracted to avoid excessive function nesting inside `useMemo`.
- *
- * @param {HeatmapTaskColumn} taskColumn - The task column descriptor.
- * @param {number} taskIndex - The index of the task within the heatmap.
- * @param {Record<string, FilterValue | null>} tableFilters - Current filter state.
- * @param {CellPreviewLookup | null} cellPreviewLookup - Assignment lookup keyed by studentId × taskId.
- * @param {boolean} isAssignmentLoading - Whether the assignment query is still pending.
- * @param {boolean} showAssignmentError - Whether the assignment query errored or returned null.
- * @returns {TableColumnsType<HeatmapRow>} Three metric sub-column definitions.
- */
-function buildTaskMetricSubColumns(
-  taskColumn: HeatmapTaskColumn,
-  taskIndex: number,
-  tableFilters: Record<string, FilterValue | null>,
-  cellPreviewLookup: CellPreviewLookup | null,
-  isAssignmentLoading: boolean,
-  showAssignmentError: boolean,
-): TableColumnsType<HeatmapRow> {
-  return HEATMAP_METRIC_KEYS.map((metric) => {
-    const meta = METRIC_DISPLAY_META.get(metric)!;
-    const columnKey = `${taskColumn.taskKey}::${metric}`;
-    const filterValue = tableFilters[columnKey];
-    const rangeFilter = buildMetricRangeFilter<HeatmapRow>({
-      range: DEFAULT_TONE_RANGE,
-      getMetric: (record): MetricResult => getCellMetric(record.cells[taskIndex], metric),
-      activeRange: decodeFilterToRange(filterValue),
-      activeFilterKey: filterValue && filterValue.length > 0 && typeof filterValue[0] === 'string'
-        ? filterValue[0]
-        : undefined,
-    });
-    return {
-      key: columnKey,
-      title: <MetricIconLabel icon={meta.icon} label={meta.label} />,
-      align: 'center' as const,
-      width: APP_COL_WIDTH_METRIC,
-      ...rangeFilter,
-      sorter: {
-        compare: buildMetricSorter(taskIndex, metric),
-        multiple: 2,
-      },
-      onCell: (record: HeatmapRow): { style: CSSProperties; 'aria-label': string } => {
-        const m = getCellMetric(record.cells[taskIndex], metric);
-        const { cellStyle } = resolveMetricTone(m);
-        const score = renderScore(m);
-        const ariaLabel = `${record.studentName}, ${taskColumn.taskId}, ${getDisplayTitle(metric)}: ${score}`;
-        return {
-          style: cellStyle,
-          'aria-label': ariaLabel,
-        };
-      },
-      render: (_: unknown, record: HeatmapRow): JSX.Element => {
-        const m = getCellMetric(record.cells[taskIndex], metric);
-        const cellData = cellPreviewLookup?.get(record.studentId)?.get(taskColumn.taskKey) ?? null;
-        const score = renderScore(m);
-        const ariaLabel = `${record.studentName}, ${taskColumn.taskId}, ${getDisplayTitle(metric)}: ${score}`;
-
-        return (
-          <Popover
-            trigger={['hover', 'click']}
-            placement="right"
-            content={
-              <CellPopoverContent
-                cellData={cellData}
-                metricResult={m}
-                metricKey={metric}
-                taskId={taskColumn.taskId}
-                isAssignmentLoading={isAssignmentLoading}
-                showAssignmentError={showAssignmentError}
-              />
-            }
-          >
-            {/* 4px padding (APP_GAP_XS, documented half-unit exception) widens the
-                Popover hover/click target around the score without covering the
-                whole cell; inline-block is required for padding to take effect. */}
-            <span
-              tabIndex={0}
-              role="button"
-              aria-label={ariaLabel}
-              aria-haspopup="dialog"
-              style={{ padding: APP_GAP_XS, display: 'inline-block' }}
-              onKeyDown={(event): void => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault();
-                  (event.currentTarget as HTMLElement).click();
-                }
-              }}
-            >
-              {renderScore(m)}
-            </span>
-          </Popover>
-        );
-      },
-    };
-  });
-}
+  buildAdaptiveTierGroups,
+  buildTaskMetricSubColumns,
+  resolveColumnPreviewStatus,
+  type TaskHeatmapColumn,
+  type TaskHeatmapData,
+  type TaskHeatmapRow,
+} from './taskHeatmapTableColumns';
+import type { CellPreviewLookup } from './buildCellPreviewLookup';
+import { APP_COL_WIDTH_STUDENT_NAME } from '../../theme/spacing';
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 /**
- * Render a heatmap table from the given `HeatmapResult`.
+ * Render a heatmap table from a structurally-narrowed heatmap view model.
  *
- * @param {Readonly<{ heatmapResult: HeatmapResult; cellPreviewLookup: CellPreviewLookup | null; isAssignmentLoading: boolean; showAssignmentError: boolean }>} props - Component properties.
+ * @remarks
+ * **Structural-subset typing (why not generics).** The prop type is a plain
+ * structural contract (`TaskHeatmapData`) rather than a generic over the two
+ * adapter output types. Both `HeatmapResult` (embedded) and
+ * `MergedHeatmapResult` (merged) satisfy it structurally with no casts: the
+ * column element requires only `{ taskKey; taskId; taskTitle }` plus optional
+ * assignment-identity fields, and the result requires only `rows` /
+ * `taskColumns` plus an optional `sourceAssignments` signal. A generic would
+ * force callers to thread the adapter type through every render path for no
+ * behavioural gain — the table reads only the subset it needs and branches on
+ * the optional `sourceAssignments` count, never on surface identity.
+ *
+ * **Two-mode preview-status contract.** Preview status resolves per
+ * `taskKey` via the optional `previewStatusByTaskKey` map when supplied
+ * (present entry wins; missing entry falls back to the aggregate booleans),
+ * and falls back entirely to the aggregate `isAssignmentLoading` /
+ * `showAssignmentError` booleans when the map is absent — keeping the embedded
+ * render byte-identical.
+ *
+ * @param {Readonly<{ heatmapResult: TaskHeatmapData; cellPreviewLookup: CellPreviewLookup | null; isAssignmentLoading: boolean; showAssignmentError: boolean; previewStatusByTaskKey?: ReadonlyMap<string, { isLoading: boolean; hasError: boolean }> }>} props - Component properties.
  * @returns {JSX.Element} The rendered table.
  */
 export function TaskHeatmapTable({
@@ -347,13 +70,15 @@ export function TaskHeatmapTable({
   cellPreviewLookup,
   isAssignmentLoading,
   showAssignmentError,
+  previewStatusByTaskKey,
 }: Readonly<{
-  heatmapResult: HeatmapResult;
+  heatmapResult: TaskHeatmapData;
   cellPreviewLookup: CellPreviewLookup | null;
   isAssignmentLoading: boolean;
   showAssignmentError: boolean;
+  previewStatusByTaskKey?: ReadonlyMap<string, { isLoading: boolean; hasError: boolean }>;
 }>): JSX.Element {
-  const { taskColumns, rows } = heatmapResult;
+  const { taskColumns, rows, sourceAssignments } = heatmapResult;
 
   // ── Table-level filter state lifted from the onChange callback ──────────
   const [tableFilters, setTableFilters] = useState<Record<string, FilterValue | null>>({});
@@ -386,23 +111,29 @@ export function TaskHeatmapTable({
     [rows, taskColumns],
   );
 
-  const columns: TableColumnsType<HeatmapRow> = useMemo(
-    () => [
-      // ── Student Name (top-level column, no children) ──────────────
-      {
-        key: 'studentName',
-        title: 'Student Name',
-        fixed: 'start',
-        width: APP_COL_WIDTH_STUDENT_NAME,
-        sorter: { compare: compareHeatmapStudentName, multiple: 1 },
-        defaultSortOrder: 'ascend',
-        render: (_: unknown, record: HeatmapRow): JSX.Element => (
-          <Typography.Text>{record.studentName}</Typography.Text>
-        ),
-      },
+  const columns: TableColumnsType<TaskHeatmapRow> = useMemo(() => {
+    // ── Student Name (top-level column, no children) ──────────────
+    const studentNameColumn = {
+      key: 'studentName',
+      title: 'Student Name',
+      fixed: 'start' as const,
+      width: APP_COL_WIDTH_STUDENT_NAME,
+      sorter: { compare: compareHeatmapStudentName, multiple: 1 },
+      defaultSortOrder: 'ascend' as const,
+      render: (_: unknown, record: TaskHeatmapRow): JSX.Element => (
+        <Typography.Text>{record.studentName}</Typography.Text>
+      ),
+    };
 
-      // ── Per-task group columns ────────────────────────────────────
-      ...taskColumns.map((taskColumn, taskIndex) => ({
+    // ── Per-task group columns (built once, indexed by task position) ─
+    const groupedTaskColumns = taskColumns.map((taskColumn: TaskHeatmapColumn, taskIndex) => {
+      const status = resolveColumnPreviewStatus(
+        taskColumn.taskKey,
+        previewStatusByTaskKey,
+        isAssignmentLoading,
+        showAssignmentError,
+      );
+      return {
         key: taskColumn.taskKey,
         title: taskColumn.taskTitle ?? taskColumn.taskId,
         children: buildTaskMetricSubColumns(
@@ -410,20 +141,42 @@ export function TaskHeatmapTable({
           taskIndex,
           tableFilters,
           cellPreviewLookup,
-          isAssignmentLoading,
-          showAssignmentError,
+          status.isLoading,
+          status.hasError,
         ),
-      })),
-    ],
-    [taskColumns, tableFilters, cellPreviewLookup, isAssignmentLoading, showAssignmentError],
-  );
+      };
+    });
+
+    // ── Adaptive assignment tier (merged mode, ≥2 sources) ────────
+    // Single source (including the embedded path, where `sourceAssignments`
+    // is absent) renders the same two-tier DOM as today: no parent group.
+    if (sourceAssignments && sourceAssignments.length > 1) {
+      const tierGroups = buildAdaptiveTierGroups(sourceAssignments, taskColumns);
+      const taskTierColumns = tierGroups.map((group) => ({
+        key: group.key,
+        title: group.title,
+        children: group.columnIndices.map((index) => groupedTaskColumns[index]!),
+      }));
+      return [studentNameColumn, ...taskTierColumns];
+    }
+
+    return [studentNameColumn, ...groupedTaskColumns];
+  }, [
+    taskColumns,
+    tableFilters,
+    cellPreviewLookup,
+    isAssignmentLoading,
+    showAssignmentError,
+    previewStatusByTaskKey,
+    sourceAssignments,
+  ]);
 
   return (
     <>
       {hasNoSubmissions && (
         <Typography.Paragraph>No submissions yet</Typography.Paragraph>
       )}
-      <Table<HeatmapRow>
+      <Table<TaskHeatmapRow>
         rowKey="studentId"
         columns={columns}
         dataSource={sortedRows}
