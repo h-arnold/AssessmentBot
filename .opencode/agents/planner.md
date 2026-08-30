@@ -1,7 +1,7 @@
 ---
 description: Creates SPEC.md, optional frontend layout specs, and ACTION_PLAN.md through clarification-driven planning
 mode: all
-model: opencode/x-preview-f-free
+model: opencode-go/hy3
 steps: 100
 permission:
   question: allow

@@ -1,7 +1,7 @@
 ---
 description: Creates and maintains canonical data-shape specifications across all persistence, transport, and validation boundaries
 mode: all
-model: opencode/x-preview-f-free
+model: opencode-go/hy3
 steps: 100
 permission:
   edit:
