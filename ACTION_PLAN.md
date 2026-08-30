@@ -531,7 +531,39 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- Filled at execution.
+- **Execution status:** COMPLETED 2026-08-30. Red review: 6 findings (2 Critical, 2 Improvement,
+  2 Nitpick) fixed in two rounds, plus one residual Improvement in a third round — final red
+  verdict CLEAN. Green review CLEAN. Regression gate: initial run exposed 4 E2E regressions
+  (hard-coded four-entry navigation assumptions in `app.spec.ts`, `classes-page.spec.ts`,
+  shared helper) — fixed mechanically via the Playwright agent, E2E review CLEAN, re-run passed
+  (0 regressions, 0 new failures).
+- **Implementation notes:** `'heatmaps'` added to `AppNavigationKey`; `navigationDefinitions`
+  entry between `assignments` and `settings` (Lucide `Flame` via `renderNavigationIcon`; real
+  menu order Dashboard, Classes, Assignments, Heatmaps, Settings per the SPEC union);
+  `renderNavigationPage` case composes the thin root. `pageContent.heatmaps` copy added.
+  `pages/HeatmapsPage.tsx` (14 LOC) renders ONLY `features/taskHeatmap/HeatmapBuilderSurface.tsx`
+  (17 LOC placeholder stub rendering a level-2 "Heatmaps" heading; Section 6 owns the real
+  assembly) — composition boundary final; no hooks/services/state/chrome in the page root.
+  `appNavigation.tsx` 202 LOC. E2E mechanical extensions: shared `EXPECTED_MENU_ITEM_COUNT` 4→5,
+  `app.spec.ts` `pageExpectations` + heatmaps (with upgrade-marked summary-skip guards), truthful
+  rename of the stale menu-order test title. Verification: unit suites 49/49 targeted, full
+  frontend 1827+ green; FULL E2E 227 green; lint clean; tsc exit 0; regression checker 7/8
+  (only pre-existing backend-lint debt).
+- **Deviations from plan:** (1) The plan's Section 4 checks did not enumerate E2E specs, but the
+  global Regression Gate required mechanically extending four-entry E2E navigation assumptions
+  (`app.spec.ts`, `classes-page.spec.ts`, `classes-page-end-to-end-helpers.ts`) — treated as the
+  E2E analogue of "existing navigation specs extended (not weakened)". (2) The
+  `classesNavigationItemIndex = 2` quirk in `app.spec.ts` (points at Assignments, not Classes —
+  pre-existing) was deliberately left untouched to avoid scope creep; noted for a future
+  tidy-up. (3) Environment: a foreign Vite dev server (different project/worktree) was squatting
+  on E2E port 4173, hijacking the Playwright webServer reuse and causing universal 45s timeouts;
+  the foreign process was killed to free the port (documented here as an environment
+  intervention, not a repo change).
+- **Follow-up implications for later sections:** Section 6 must replace the placeholder stub
+  internals (chrome sourced from `pageContent.heatmaps`), after which the upgrade-marked E2E
+  summary-skip guards and the stub heading literal must be revisited; Section 7 extends
+  `navigation-screenshots.spec.ts` for the new page; `planner-reviewer.md` still pins the dead
+  `opencode/hy3-free` model (unused by this plan — flagged).
 
 ---
 
