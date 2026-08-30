@@ -1,15 +1,16 @@
 import { HomeOutlined, SettingOutlined } from '@ant-design/icons';
 import type { BreadcrumbProps } from 'antd';
 import type { ReactElement, ReactNode } from 'react';
-import { BookA, GraduationCap } from 'lucide-react';
+import { BookA, Flame, GraduationCap } from 'lucide-react';
 import { AssignmentsPage } from '../pages/AssignmentsPage';
 import { ClassesPage } from '../pages/ClassesPage';
 import { DashboardPage } from '../pages/DashboardPage';
+import { HeatmapsPage } from '../pages/HeatmapsPage';
 import { SettingsPage } from '../pages/SettingsPage';
 import { LucideIcon } from '../components/icons/LucideIcon';
 import { pageContent } from '../pages/pageContent';
 
-export type AppNavigationKey = 'dashboard' | 'assignments' | 'classes' | 'settings';
+export type AppNavigationKey = 'dashboard' | 'assignments' | 'classes' | 'heatmaps' | 'settings';
 
 /**
  * Shared navigation item metadata stays tree-ready so later sections can add nested children
@@ -60,6 +61,11 @@ const navigationDefinitions: readonly AppNavigationDefinition[] = [
     key: 'assignments',
     label: pageContent.assignments.heading,
     icon: renderNavigationIcon(<LucideIcon icon={BookA} />),
+  },
+  {
+    key: 'heatmaps',
+    label: pageContent.heatmaps.heading,
+    icon: renderNavigationIcon(<LucideIcon icon={Flame} />),
   },
   {
     key: 'settings',
@@ -118,6 +124,9 @@ export function renderNavigationPage(key: AppNavigationKey, contentSlot?: ReactN
     }
     case 'classes': {
       return <ClassesPage />;
+    }
+    case 'heatmaps': {
+      return <HeatmapsPage />;
     }
     case 'settings': {
       return <SettingsPage />;

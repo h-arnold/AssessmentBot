@@ -252,7 +252,7 @@ test.describe('Classes page navigation', () => {
     );
   });
 
-  test('Classes page is in the correct position in navigation (between assignments and settings)', async ({
+  test('Classes page menu order is stable with the heatmaps entry between assignments and settings', async ({
     page,
   }) => {
     await installRuntimeMock(page, createClassesScenario());
@@ -267,7 +267,13 @@ test.describe('Classes page navigation', () => {
       items.map((item) => item.textContent?.trim() || '')
     );
 
-    expect(menuItemTexts).toEqual(['Dashboard', CLASSES_LABEL, 'Assignments', 'Settings']);
+    expect(menuItemTexts).toEqual([
+      'Dashboard',
+      CLASSES_LABEL,
+      'Assignments',
+      'Heatmaps',
+      'Settings',
+    ]);
   });
 });
 

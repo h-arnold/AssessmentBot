@@ -39,7 +39,7 @@ export function algebraHomeworkEntry(): ResponseItem {
 export const BREADCRUMB_NAVIGATION_NAME = 'Breadcrumb' as const;
 export const PRIMARY_NAVIGATION_LABEL = 'Primary navigation' as const;
 export const CLASSES_LABEL = 'Classes' as const;
-export const EXPECTED_MENU_ITEM_COUNT = 4;
+export const EXPECTED_MENU_ITEM_COUNT = 5;
 
 // ============================================================================
 // Backend Settings Fixture

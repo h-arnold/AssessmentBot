@@ -9,6 +9,7 @@ const pageExpectations = [
   pageContent.assignments,
   pageContent.classes,
   pageContent.settings,
+  pageContent.heatmaps,
 ] as const;
 
 const expectedNavigationItemCount = pageExpectations.length;
@@ -22,6 +23,7 @@ const collapseNavigationButtonLabel = 'Collapse navigation';
 const expandNavigationButtonLabel = 'Expand navigation';
 const classesLabel = 'Classes';
 const settingsLabel = 'Settings';
+const heatmapsPageHeading = pageContent.heatmaps.heading;
 const navigationMenuLabels = pageExpectations.map(({ heading }) => heading);
 const backendSettingsFixture = {
   backendAssessorBatchSize: 30,
@@ -413,7 +415,10 @@ test.describe('app shell', () => {
     for (const { heading, summary } of pageExpectations) {
       await page.getByRole('menuitem', { name: heading }).click();
       await expect(page.getByRole('heading', { level: 2, name: heading })).toBeVisible();
-      await expect(page.getByText(summary)).toBeVisible();
+      // Heatmaps is a placeholder stub until the builder surface assembles in the plan's Section 6; then extend this summary assertion to Heatmaps like every other page.
+      if (heading !== heatmapsPageHeading) {
+        await expect(page.getByText(summary)).toBeVisible();
+      }
     }
   });
 
@@ -423,7 +428,10 @@ test.describe('app shell', () => {
 
     for (const { heading, summary } of pageExpectations) {
       await page.getByRole('menuitem', { name: heading }).click();
-      await expect(page.getByText(summary)).toBeVisible();
+      // Heatmaps is a placeholder stub until the builder surface assembles in the plan's Section 6; then extend this summary assertion to Heatmaps like every other page.
+      if (heading !== heatmapsPageHeading) {
+        await expect(page.getByText(summary)).toBeVisible();
+      }
 
       for (const otherPage of pageExpectations) {
         if (otherPage.heading !== heading) {
@@ -448,7 +456,10 @@ test.describe('app shell', () => {
     }
 
     await expect(page.getByRole('heading', { level: 2, name: finalPage.heading })).toBeVisible();
-    await expect(page.getByText(finalPage.summary)).toBeVisible();
+    // Heatmaps is a placeholder stub until the builder surface assembles in the plan's Section 6; then extend this summary assertion to Heatmaps like every other page.
+    if (finalPage.heading !== heatmapsPageHeading) {
+      await expect(page.getByText(finalPage.summary)).toBeVisible();
+    }
 
     for (const pageExpectation of pageExpectations.slice(0, lastPageExpectationOffset)) {
       await expect(page.getByText(pageExpectation.summary)).toHaveCount(0);
