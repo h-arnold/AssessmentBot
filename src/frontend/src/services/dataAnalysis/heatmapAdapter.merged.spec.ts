@@ -4,7 +4,7 @@
  * @remarks
  * This suite pins the merged-adapter contract for the exported
  * `adaptMetricsToMergedHeatmap(analyserResult, classFull, selectedAssignmentIds,
- * assignmentDefinitionPartials)` function in `./heatmapAdapter`. The function is imported
+ * assignmentDefinitionPartials)` function in `./heatmapAdapter.merged`. The function is imported
  * statically and every behavioural assertion below passes against the implemented behaviour.
  *
  * The merged-adapter contract covered by this suite:
@@ -28,7 +28,8 @@ import { describe, expect, it } from 'vitest';
 import type { AveragingResult } from './dataAnalysis.zod';
 import type { ClassFull } from '../googleClassrooms/classDetail/classDetailService.zod';
 import type { AssignmentDefinitionPartialsResponse } from '../assignmentDefinition/assignmentDefinitionPartials.zod';
-import { adaptMetricsToMergedHeatmap, TaskTitlesUnavailableError } from './heatmapAdapter';
+import { adaptMetricsToMergedHeatmap } from './heatmapAdapter.merged';
+import { TaskTitlesUnavailableError } from './heatmapAdapter';
 import { createComputedMetricResult, createTaskPartial } from '../../test/dataAnalysis/fixtures';
 
 // ---------------------------------------------------------------------------

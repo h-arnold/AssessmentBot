@@ -14,7 +14,7 @@
  * so each test drives one discriminated surface state. The mock return shape is
  * derived from the REAL `HeatmapsPageData` contract exported by `useHeatmapsPageData.ts`
  * (surfaceState discriminator, structured errors, `mergedResult` shape via
- * `adaptMetricsToMergedHeatmap` in `services/dataAnalysis/heatmapAdapter.ts`).
+ * `adaptMetricsToMergedHeatmap` in `services/dataAnalysis/heatmapAdapter.merged.ts`).
  *
  * --- `optionRender` value-accessor pin (confirmed against INSTALLED antd typings) ---
  * The repo pins **antd v6.3.1** (the "(v5)" hint in the plan is stale). The installed
@@ -68,7 +68,7 @@ import type { SelectionState } from './selectionCascade';
 import type {
   MergedHeatmapResult,
   MergedHeatmapTaskColumn,
-} from '../../services/dataAnalysis/heatmapAdapter';
+} from '../../services/dataAnalysis/heatmapAdapter.merged';
 import type { AssignmentDefinitionPartialsResponse } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
 import type { UseQueryResult } from '@tanstack/react-query';

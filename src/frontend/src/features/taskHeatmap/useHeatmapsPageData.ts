@@ -49,6 +49,7 @@ import {
   skipToken,
   useQueries,
   useQuery,
+  type QueryKey,
   type UseQueryOptions,
   type UseQueryResult,
 } from '@tanstack/react-query';
@@ -60,7 +61,7 @@ import type { ClassFull } from '../../services/googleClassrooms/classDetail/clas
 import type { AssignmentFull } from '../../services/assignmentAssessment/assignmentAssessment.zod';
 import type { AssignmentDefinitionPartialsResponse } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import type { ClassPartial } from '../../services/googleClassrooms/classPartialsService';
-import type { MergedHeatmapResult } from '../../services/dataAnalysis/heatmapAdapter';
+import type { MergedHeatmapResult } from '../../services/dataAnalysis/heatmapAdapter.merged';
 import {
   selectionCascadeReducer,
   INITIAL_SELECTION_STATE,
@@ -118,16 +119,26 @@ export type HeatmapsPageData = Readonly<{
   refetch: () => void;
 }>;
 
-/** Fallback projected preview payload used when an index is out of range. */
-const FALLBACK_ASSIGNMENT_QUERY: AssignmentPreviewResult = {
-  assignmentId: '',
-  data: null,
-  isPending: false,
-  isError: false,
-};
-
 /** Shared empty lookup used when an assignment has no usable preview payload. */
 const EMPTY_LOOKUP: CellPreviewLookup = new Map();
+
+/**
+ * Build a disabled `UseQueryOptions` that never runs (uses `skipToken`).
+ *
+ * @param {QueryKey} queryKey - The stable query key for the disabled state.
+ * @returns {UseQueryOptions<T, Error>} A query-options object pinned to `skipToken`.
+ *
+ * @remarks
+ * Both the per-class and per-assignment query lists use this for their
+ * no-selection / no-class disabled branch so the only `skipToken` widening lives
+ * in one place.
+ */
+function buildDisabledQueryOptions<T>(queryKey: QueryKey): UseQueryOptions<T, Error> {
+  return {
+    queryKey,
+    queryFn: skipToken,
+  } as unknown as UseQueryOptions<T, Error>;
+}
 
 /**
  * Minimal per-assignment query state consumed when assembling the merged preview.
@@ -139,7 +150,7 @@ const EMPTY_LOOKUP: CellPreviewLookup = new Map();
  * query data and status are deep-equal — which is what lets the `mergedPreview` memo
  * key on it without a manual signature and without re-running on every render.
  */
-export type AssignmentPreviewResult = Readonly<{
+type AssignmentPreviewResult = Readonly<{
   /** The contributing assignment identifier. */
   assignmentId: string;
   /** Whether this assignment's full-read query is still pending. */
@@ -156,7 +167,7 @@ export type AssignmentPreviewResult = Readonly<{
  * Exposes the minimal projected preview payloads (referentially stable) plus the raw
  * per-assignment `UseQueryResult`s needed for `refetch`/`isRefreshing` wiring.
  */
-export type AssignmentPreviewCombined = Readonly<{
+type AssignmentPreviewCombined = Readonly<{
   /** Minimal projected preview payloads, one per selected assignment. */
   previewResults: ReadonlyArray<AssignmentPreviewResult>;
   /** Raw per-assignment query results (for refetch / busy derivation). */
@@ -171,20 +182,17 @@ export type AssignmentPreviewCombined = Readonly<{
  * @returns {AssignmentPreviewInput} The preview input (lookup built defensively).
  *
  * @remarks
- * The enriched `AssignmentFull` lookup is built only when the embedded
- * `assignmentDefinition` is present. A missing `assignmentDefinition` means no usable
- * preview payload for this assignment, so we degrade to an empty lookup (the popover
- * simply shows no preview) rather than throwing and blanking the whole merged surface.
+ * The enriched `AssignmentFull` lookup is built whenever `data` is present; the
+ * embedded `assignmentDefinition` is REQUIRED by `AssignmentFullSchema`, so
+ * `buildCellPreviewLookup` fail-fasts (loudly) if it is ever absent rather than
+ * silently degrading to an empty lookup.
  */
 function buildPreviewInput(
   assignmentId: string,
   queryResult: AssignmentPreviewResult
 ): AssignmentPreviewInput {
   const data = queryResult.data;
-  let lookup: CellPreviewLookup = EMPTY_LOOKUP;
-  if (data != null && (data as AssignmentFull).assignmentDefinition != null) {
-    lookup = buildCellPreviewLookup(data as AssignmentFull);
-  }
+  const lookup: CellPreviewLookup = data == null ? EMPTY_LOOKUP : buildCellPreviewLookup(data);
   return {
     assignmentId,
     lookup,
@@ -271,10 +279,7 @@ export function useHeatmapsPageData(): HeatmapsPageData {
 
   const classQueryOptions: UseQueryOptions<ClassFull | null, Error> =
     classId === null
-      ? ({
-          queryKey: queryKeys.abClass('__none__'),
-          queryFn: skipToken,
-        } as unknown as UseQueryOptions<ClassFull | null, Error>)
+      ? buildDisabledQueryOptions<ClassFull | null>(queryKeys.abClass('__none__'))
       : (getABClassQueryOptions(classId) as unknown as UseQueryOptions<ClassFull | null, Error>);
   const classFullQuery: UseQueryResult<ClassFull | null, Error> = useQuery<ClassFull | null, Error>(
     classQueryOptions
@@ -330,10 +335,9 @@ export function useHeatmapsPageData(): HeatmapsPageData {
       (assignmentId: string): UseQueryOptions<AssignmentFull | null, Error> => {
         const options: UseQueryOptions<AssignmentFull | null, Error> =
           classId === null
-            ? ({
-                ...getAssignmentQueryOptions('__none__', assignmentId),
-                queryFn: skipToken,
-              } as unknown as UseQueryOptions<AssignmentFull | null, Error>)
+            ? buildDisabledQueryOptions<AssignmentFull | null>(
+                getAssignmentQueryOptions('__none__', assignmentId).queryKey
+              )
             : (getAssignmentQueryOptions(
                 classFull?.classId ?? classId,
                 assignmentId
@@ -345,7 +349,7 @@ export function useHeatmapsPageData(): HeatmapsPageData {
       results: ReadonlyArray<UseQueryResult<AssignmentFull | null, Error>>
     ): AssignmentPreviewCombined => ({
       previewResults: results.map((result, index: number) => ({
-        assignmentId: selectedAssignmentIds[index] ?? '',
+        assignmentId: selectedAssignmentIds[index],
         isPending: result.isPending,
         isError: result.isError,
         data: result.data ?? null,
@@ -364,10 +368,7 @@ export function useHeatmapsPageData(): HeatmapsPageData {
         return null;
       }
       const inputs = selectedAssignmentIds.map((assignmentId: string, index: number) =>
-        buildPreviewInput(
-          assignmentId,
-          assignmentPreviewCombined.previewResults[index] ?? FALLBACK_ASSIGNMENT_QUERY
-        )
+        buildPreviewInput(assignmentId, assignmentPreviewCombined.previewResults[index])
       );
       return assembleMergedPreviewData(inputs, mergedResult.taskColumns);
     }, [mergedResult, selectedAssignmentIds, assignmentPreviewCombined]);

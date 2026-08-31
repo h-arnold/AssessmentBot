@@ -28,7 +28,7 @@ import type {
   AssignmentDefinitionPartial,
 } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import type { ClassPartial } from '../../services/googleClassrooms/classPartialsService';
-import type { MergedHeatmapResult } from '../../services/dataAnalysis/heatmapAdapter';
+import type { MergedHeatmapResult } from '../../services/dataAnalysis/heatmapAdapter.merged';
 import type { PageDatasetState } from '../../hooks/usePageDataset';
 import { createMetricResult } from '../../test/dataAnalysis/fixtures';
 
@@ -75,18 +75,29 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 // `combine` callback (React Query v5 semantics), invoke it with the array of
 // per-option results and return its output, mirroring the production `useQueries`
 // combine path mechanically.
-mockUseQueries.mockImplementation(
-  (options: {
-    queries: ReadonlyArray<unknown>;
-    combine?: (results: ReadonlyArray<unknown>) => unknown;
-  }) => {
-    const results = options.queries.map((query) => mockUseQuery(query));
-    if (typeof options.combine === 'function') {
-      return options.combine(results);
+/**
+ *
+ */
+/**
+ * Install the per-test `useQueries` mock implementation (re-established after
+ * `vi.resetAllMocks` clears it in `afterEach`).
+ */
+function installUseQueriesMock(): void {
+  mockUseQueries.mockImplementation(
+    (options: {
+      queries: ReadonlyArray<unknown>;
+      combine?: (results: ReadonlyArray<unknown>) => unknown;
+    }) => {
+      const results = options.queries.map((query) => mockUseQuery(query));
+      if (typeof options.combine === 'function') {
+        return options.combine(results);
+      }
+      return results;
     }
-    return results;
-  }
-);
+  );
+}
+
+installUseQueriesMock();
 
 vi.mock('../../hooks/usePageDataset', () => ({
   usePageDataset: mockUsePageDataset,
@@ -107,7 +118,7 @@ vi.mock('../../services/dataAnalysis/dataAnalysisService', () => ({
   }),
 }));
 
-vi.mock('../../services/dataAnalysis/heatmapAdapter', async (importOriginal) => {
+vi.mock('../../services/dataAnalysis/heatmapAdapter.merged', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
   return {
     ...actual,
@@ -172,80 +183,43 @@ function computeStatus(isPending: boolean, isError: boolean): QueryStatus {
 }
 
 /**
- * Builds a mock `UseQueryResult` for a generic (untyped) dataset query.
+ * Builds a mock `UseQueryResult<T>` for a dataset or per-class query.
  *
  * @param {object} overrides - Partial query result overrides.
- * @param {unknown} [overrides.data] - Query data payload.
- * @param {boolean} [overrides.isPending] - Whether the query is pending.
- * @param {boolean} [overrides.isError] - Whether the query is in error.
- * @param {Error | null} [overrides.error] - Query error object.
- * @returns {UseQueryResult<unknown>} A mock query result.
- */
-function createMockDatasetQueryResult(overrides: {
-  data?: unknown;
-  isPending?: boolean;
-  isError?: boolean;
-  error?: Error | null;
-}): UseQueryResult<unknown> {
-  const isPending = overrides.isPending ?? false;
-  const isError = overrides.isError ?? false;
-  const status = computeStatus(isPending, isError);
-  return {
-    data: overrides.data ?? null,
-    dataUpdatedAt: 0,
-    error: overrides.error ?? null,
-    errorUpdatedAt: 0,
-    failureCount: 0,
-    failureReason: null,
-    fetchStatus: isPending ? ('fetching' as const) : ('idle' as const),
-    isFetched: !isPending,
-    isFetchedAfterMount: !isPending,
-    isFetching: isPending,
-    isInitialLoading: isPending,
-    isLoading: isPending,
-    isLoadingError: false,
-    isPaused: false,
-    isPending,
-    isPlaceholderData: false,
-    isRefetchError: false,
-    isRefetching: false,
-    isStale: false,
-    isSuccess: status === 'success',
-    refetch: vi.fn(),
-    promise: Promise.resolve(overrides.data ?? null),
-    status,
-  } as unknown as UseQueryResult<unknown>;
-}
-
-/**
- * Builds a mock `UseQueryResult<ClassFull | null, Error>` for the per-class query.
- *
- * @param {object} overrides - Partial query result overrides.
- * @param {ClassFull | null} [overrides.data] - Query data payload.
+ * @param {T} [overrides.data] - Query data payload.
  * @param {boolean} [overrides.isPending] - Whether the query is pending.
  * @param {boolean} [overrides.isError] - Whether the query is in error.
  * @param {Error | null} [overrides.error] - Query error object.
  * @param {ReturnType<typeof vi.fn>} [overrides.refetch] - Refetch function mock.
- * @returns {UseQueryResult<ClassFull | null, Error>} A mock query result.
+ * @returns {UseQueryResult<T>} A mock query result.
+ *
+ * @remarks
+ * Parametrised over `T` so both the untyped warm-up dataset queries and the
+ * `ClassFull` per-class query share one factory (the only difference was the
+ * payload type and an optional `refetch` spy).
  */
-function createMockClassQueryResult(overrides: {
-  data?: ClassFull | null;
+function createMockQueryResult<T>(overrides: {
+  data?: T;
   isPending?: boolean;
   isError?: boolean;
   error?: Error | null;
   refetch?: ReturnType<typeof vi.fn>;
-}): UseQueryResult<ClassFull | null, Error> {
+}): UseQueryResult<T> {
   const isPending = overrides.isPending ?? false;
   const isError = overrides.isError ?? false;
   const status = computeStatus(isPending, isError);
+  const data = overrides.data ?? null;
+  const error = overrides.error ?? null;
+  const refetch = overrides.refetch ?? vi.fn();
+  const fetchStatus = isPending ? ('fetching' as const) : ('idle' as const);
   return {
-    data: overrides.data ?? null,
+    data: data as T,
     dataUpdatedAt: 0,
-    error: overrides.error ?? null,
+    error,
     errorUpdatedAt: 0,
     failureCount: 0,
     failureReason: null,
-    fetchStatus: isPending ? ('fetching' as const) : ('idle' as const),
+    fetchStatus,
     isFetched: !isPending,
     isFetchedAfterMount: !isPending,
     isFetching: isPending,
@@ -259,9 +233,10 @@ function createMockClassQueryResult(overrides: {
     isRefetching: false,
     isStale: false,
     isSuccess: status === 'success',
-    refetch: overrides.refetch ?? vi.fn(),
+    refetch,
+    promise: Promise.resolve(data as T),
     status,
-  } as unknown as UseQueryResult<ClassFull | null, Error>;
+  } as unknown as UseQueryResult<T>;
 }
 
 /**
@@ -362,6 +337,12 @@ function createClassFull(overrides?: Partial<ClassFull>): ClassFull {
         updatedAt: '2025-02-01T00:00:00.000Z',
       } as unknown as ClassFull['assignments'][number],
     ],
+    // The same fixture doubles as `AssignmentFull` for the per-assignment preview
+    // query mock; `buildCellPreviewLookup` requires an embedded `assignmentDefinition`
+    // (and `submissions`) so the loud fail-fast path in `useHeatmapsPageData` is not
+    // tripped by the test data.
+    assignmentDefinition: { definitionKey: 'def1' },
+    submissions: [],
     active: true,
     ...overrides,
   } as unknown as ClassFull;
@@ -439,18 +420,7 @@ beforeEach(() => {
   // When the hook supplies a `combine` callback, invoke it with the per-option
   // results and return its output (React Query v5 semantics), mirroring the
   // import-time mock.
-  mockUseQueries.mockImplementation(
-    (options: {
-      queries: ReadonlyArray<unknown>;
-      combine?: (results: ReadonlyArray<unknown>) => unknown;
-    }) => {
-      const results = options.queries.map((query) => mockUseQuery(query));
-      if (typeof options.combine === 'function') {
-        return options.combine(results);
-      }
-      return results;
-    }
-  );
+  installUseQueriesMock();
 });
 
 afterEach(() => {
@@ -467,12 +437,12 @@ function mockWarmupDatasetsReady(): void {
   mockUsePageDataset.mockImplementation((datasetKey: string) => {
     if (datasetKey === 'classPartials') {
       return {
-        query: createMockDatasetQueryResult({ data: createClassPartials() }),
+        query: createMockQueryResult<unknown>({ data: createClassPartials() }),
         datasetState: createDatasetState(),
       };
     }
     return {
-      query: createMockDatasetQueryResult({ data: createAssignmentDefinitionPartials() }),
+      query: createMockQueryResult<unknown>({ data: createAssignmentDefinitionPartials() }),
       datasetState: createDatasetState(),
     };
   });
@@ -486,7 +456,7 @@ describe('useHeatmapsPageData — initial state (no class)', () => {
   it('is surfaceState ready with null class-dependent results and no per-class fetch', () => {
     mockWarmupDatasetsReady();
     // No class selected → the hook must not request a per-class query.
-    mockUseQuery.mockReturnValue(createMockClassQueryResult({ isPending: true }));
+    mockUseQuery.mockReturnValue(createMockQueryResult<ClassFull | null>({ isPending: true }));
 
     const { result } = renderHook(() => useHeatmapsPageData(), { wrapper });
 
@@ -503,7 +473,7 @@ describe('useHeatmapsPageData — initial state (no class)', () => {
 
   it('exposes selector datasets from usePageDataset for readiness even with no class', () => {
     mockWarmupDatasetsReady();
-    mockUseQuery.mockReturnValue(createMockClassQueryResult({ isPending: true }));
+    mockUseQuery.mockReturnValue(createMockQueryResult<ClassFull | null>({ isPending: true }));
 
     const { result } = renderHook(() => useHeatmapsPageData(), { wrapper });
 
@@ -521,7 +491,7 @@ describe('useHeatmapsPageData — initial state (no class)', () => {
 describe('useHeatmapsPageData — class selection', () => {
   it('triggers getABClassQueryOptions when a class is selected', () => {
     mockWarmupDatasetsReady();
-    mockUseQuery.mockReturnValue(createMockClassQueryResult({ isPending: true }));
+    mockUseQuery.mockReturnValue(createMockQueryResult<ClassFull | null>({ isPending: true }));
 
     const { result } = renderHook(() => useHeatmapsPageData(), { wrapper });
 
@@ -533,7 +503,9 @@ describe('useHeatmapsPageData — class selection', () => {
   it('populates classFull (and topic/assignment options) on successful class fetch', () => {
     mockWarmupDatasetsReady();
     mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
-    mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: createClassFull() }));
+    mockUseQuery.mockReturnValue(
+      createMockQueryResult<ClassFull | null>({ data: createClassFull() })
+    );
 
     const { result } = renderHook(() => useHeatmapsPageData(), { wrapper });
 
@@ -553,12 +525,12 @@ describe('useHeatmapsPageData — blocking precedence', () => {
     mockUsePageDataset.mockImplementation((datasetKey: string) => {
       if (datasetKey === 'classPartials') {
         return {
-          query: createMockDatasetQueryResult({ data: createClassPartials() }),
+          query: createMockQueryResult<unknown>({ data: createClassPartials() }),
           datasetState: createDatasetState(),
         };
       }
       return {
-        query: createMockDatasetQueryResult({ isError: true }),
+        query: createMockQueryResult<unknown>({ isError: true }),
         datasetState: createDatasetState({
           isDatasetFailed: true,
           isDatasetReady: false,
@@ -570,7 +542,7 @@ describe('useHeatmapsPageData — blocking precedence', () => {
       };
     });
     mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
-    mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: null }));
+    mockUseQuery.mockReturnValue(createMockQueryResult<ClassFull | null>({ data: null }));
 
     const { result } = renderHook(() => useHeatmapsPageData(), { wrapper });
 
@@ -585,12 +557,12 @@ describe('useHeatmapsPageData — blocking precedence', () => {
     mockUsePageDataset.mockImplementation((datasetKey: string) => {
       if (datasetKey === 'classPartials') {
         return {
-          query: createMockDatasetQueryResult({ data: createClassPartials() }),
+          query: createMockQueryResult<unknown>({ data: createClassPartials() }),
           datasetState: createDatasetState(),
         };
       }
       return {
-        query: createMockDatasetQueryResult({ isError: true }),
+        query: createMockQueryResult<unknown>({ isError: true }),
         datasetState: createDatasetState({
           isDatasetFailed: true,
           isDatasetReady: false,
@@ -602,7 +574,9 @@ describe('useHeatmapsPageData — blocking precedence', () => {
       };
     });
     mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
-    mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: createClassFull() }));
+    mockUseQuery.mockReturnValue(
+      createMockQueryResult<ClassFull | null>({ data: createClassFull() })
+    );
     // Even if the analyser would also fail, dataset failure must win.
     mockAnalyse.mockImplementation(() => {
       throw new Error('Analysis failed');
@@ -625,7 +599,9 @@ describe('useHeatmapsPageData — analysis scope', () => {
   it('passes input-shaped assignments and classIds filter to the analyser (no topic/definition-key filters)', () => {
     mockWarmupDatasetsReady();
     mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
-    mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: createClassFull() }));
+    mockUseQuery.mockReturnValue(
+      createMockQueryResult<ClassFull | null>({ data: createClassFull() })
+    );
     mockAnalyse.mockReturnValue([createAveragingResult()]);
     mockAdaptMergedHeatmap.mockReturnValue(createMergedResult());
 
@@ -653,7 +629,9 @@ describe('useHeatmapsPageData — analysis scope', () => {
   it('treats an empty analyser response as a blocking error (parity with useClassPageData)', () => {
     mockWarmupDatasetsReady();
     mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
-    mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: createClassFull() }));
+    mockUseQuery.mockReturnValue(
+      createMockQueryResult<ClassFull | null>({ data: createClassFull() })
+    );
     mockAnalyse.mockReturnValue([]);
 
     const { result } = renderHook(() => useHeatmapsPageData(), { wrapper });
@@ -676,7 +654,9 @@ describe('useHeatmapsPageData — merged adapter wiring', () => {
   it('calls adaptMetricsToMergedHeatmap on ready-with-selections and exposes non-null mergedResult', () => {
     mockWarmupDatasetsReady();
     mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
-    mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: createClassFull() }));
+    mockUseQuery.mockReturnValue(
+      createMockQueryResult<ClassFull | null>({ data: createClassFull() })
+    );
     mockAnalyse.mockReturnValue([createAveragingResult()]);
     mockAdaptMergedHeatmap.mockReturnValue(createMergedResult());
 
@@ -696,7 +676,7 @@ describe('useHeatmapsPageData — merged adapter wiring', () => {
 
   it('keeps mergedResult null until surfaceState is ready', () => {
     mockWarmupDatasetsReady();
-    mockUseQuery.mockReturnValue(createMockClassQueryResult({ isPending: true }));
+    mockUseQuery.mockReturnValue(createMockQueryResult<ClassFull | null>({ isPending: true }));
 
     const { result } = renderHook(() => useHeatmapsPageData(), { wrapper });
 
@@ -717,7 +697,9 @@ describe('useHeatmapsPageData — preview queries and status map', () => {
   it('creates one getAssignmentQueryOptions per SELECTED assignment only (enablement keyed to selection)', () => {
     mockWarmupDatasetsReady();
     mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
-    mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: createClassFull() }));
+    mockUseQuery.mockReturnValue(
+      createMockQueryResult<ClassFull | null>({ data: createClassFull() })
+    );
     mockAnalyse.mockReturnValue([createAveragingResult()]);
     mockAdaptMergedHeatmap.mockReturnValue(createMergedResult());
 
@@ -759,6 +741,8 @@ describe('useHeatmapsPageData — preview queries and status map', () => {
           updatedAt: '2025-02-01T00:00:00.000Z',
         },
       ],
+      assignmentDefinition: { definitionKey: 'def1' },
+      submissions: [],
       active: true,
     } as unknown as ClassFull;
     const duplicateMergedResult: MergedHeatmapResult = {
@@ -794,7 +778,9 @@ describe('useHeatmapsPageData — preview queries and status map', () => {
     mockGetAssignmentQueryOptions.mockImplementation((classId: string, assignmentId: string) => ({
       queryKey: ['assignment', classId, assignmentId],
     }));
-    mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: duplicateClassFull }));
+    mockUseQuery.mockReturnValue(
+      createMockQueryResult<ClassFull | null>({ data: duplicateClassFull })
+    );
     mockAnalyse.mockReturnValue([createAveragingResult()]);
     mockAdaptMergedHeatmap.mockReturnValue(duplicateMergedResult);
 
@@ -850,13 +836,13 @@ describe('useHeatmapsPageData — refresh', () => {
     mockUsePageDataset.mockImplementation((datasetKey: string) => {
       if (datasetKey === 'classPartials') {
         return {
-          query: createMockDatasetQueryResult({ data: createClassPartials() }),
+          query: createMockQueryResult<unknown>({ data: createClassPartials() }),
           datasetState: createDatasetState(),
         };
       }
       return {
         query: {
-          ...createMockDatasetQueryResult({ data: createAssignmentDefinitionPartials() }),
+          ...createMockQueryResult<unknown>({ data: createAssignmentDefinitionPartials() }),
           refetch: adpRefetch,
         },
         datasetState: createDatasetState(),
@@ -873,11 +859,14 @@ describe('useHeatmapsPageData — refresh', () => {
     mockUseQuery.mockImplementation((options: { queryKey: unknown[] }) => {
       const key = options.queryKey;
       if (key[0] === 'abClass') {
-        return createMockClassQueryResult({ data: createClassFull(), refetch: classRefetch });
+        return createMockQueryResult<ClassFull | null>({
+          data: createClassFull(),
+          refetch: classRefetch,
+        });
       }
       const assignmentId = String(key[1]);
       const refetch = assignmentRefetches.get(assignmentId) ?? vi.fn();
-      return createMockClassQueryResult({ data: null, refetch });
+      return createMockQueryResult<ClassFull | null>({ data: null, refetch });
     });
 
     mockAnalyse.mockReturnValue([createAveragingResult()]);
@@ -918,7 +907,9 @@ describe('useHeatmapsPageData — class change clears cascade', () => {
   it('selectClass(null) atomically clears topics and assignments via the reducer', () => {
     mockWarmupDatasetsReady();
     mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
-    mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: createClassFull() }));
+    mockUseQuery.mockReturnValue(
+      createMockQueryResult<ClassFull | null>({ data: createClassFull() })
+    );
     mockAnalyse.mockReturnValue([createAveragingResult()]);
     mockAdaptMergedHeatmap.mockReturnValue(createMergedResult());
 

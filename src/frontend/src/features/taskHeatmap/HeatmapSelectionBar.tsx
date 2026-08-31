@@ -199,7 +199,13 @@ export function HeatmapSelectionBar({
       if (partial === undefined) {
         continue;
       }
-      if (activeTopics.size > 0 && !activeTopics.has(partial.primaryTopicKey)) {
+      // The topic key is already resolved by the memoised `assignmentTopicKeys` map
+      // (built from the same `partialsByKey` lookup); reuse it instead of re-deriving.
+      const topicKey = assignmentTopicKeys.get(assignment.assignmentId);
+      if (topicKey === undefined) {
+        continue;
+      }
+      if (activeTopics.size > 0 && !activeTopics.has(topicKey)) {
         continue;
       }
       collected.push({ value: assignment.assignmentId, label: partial.primaryTitle });
@@ -207,7 +213,7 @@ export function HeatmapSelectionBar({
     // Preserve `ClassFull.assignments` order (layout spec §8.2 forbids re-sorting by
     // title); the cascade filter above already narrows by the active topic set.
     return collected;
-  }, [classFull, partialsByKey, selection.topicKeys]);
+  }, [classFull, partialsByKey, assignmentTopicKeys, selection.topicKeys]);
 
   const handleTopicsChange = (value: string[]): void => {
     onChangeTopics(value, assignmentTopicKeys);

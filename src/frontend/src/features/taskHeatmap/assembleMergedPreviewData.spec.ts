@@ -18,7 +18,7 @@ import type {
   MergedPreviewAssemblyResult,
 } from './assembleMergedPreviewData';
 import type { CellPreviewData, CellPreviewLookup } from './buildCellPreviewLookup';
-import type { MergedHeatmapTaskColumn } from '../../services/dataAnalysis/heatmapAdapter';
+import type { MergedHeatmapTaskColumn } from '../../services/dataAnalysis/heatmapAdapter.merged';
 
 const assembleMergedPreviewData = assembleModule.assembleMergedPreviewData;
 

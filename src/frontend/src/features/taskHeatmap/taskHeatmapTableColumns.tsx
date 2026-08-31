@@ -241,8 +241,8 @@ export function resolveColumnPreviewStatus(
  * @param {MetricResult} metricResult - The analyser's metric result for this cell.
  * @param {HeatmapMetricKey} metricKey - Which metric column this preview is for.
  * @param {string} taskId - The heatmap column's task ID.
- * @param {boolean} isAssignmentLoading - Whether this column's assignment query is pending.
- * @param {boolean} showAssignmentError - Whether this column's assignment query errored or returned null.
+ * @param {boolean} isLoading - Whether this column's preview query is pending.
+ * @param {boolean} hasError - Whether this column's preview query errored or returned null.
  * @returns {JSX.Element} The popover content (skeleton, alert, or TaskPreviewCard).
  */
 function buildPopoverContent({
@@ -250,17 +250,17 @@ function buildPopoverContent({
   metricResult,
   metricKey,
   taskId,
-  isAssignmentLoading,
-  showAssignmentError,
+  isLoading,
+  hasError,
 }: Readonly<{
   cellData: CellPreviewData | null;
   metricResult: MetricResult;
   metricKey: HeatmapMetricKey;
   taskId: string;
-  isAssignmentLoading: boolean;
-  showAssignmentError: boolean;
+  isLoading: boolean;
+  hasError: boolean;
 }>): JSX.Element {
-  if (isAssignmentLoading) {
+  if (isLoading) {
     return (
       <output
         aria-busy="true"
@@ -290,7 +290,7 @@ function buildPopoverContent({
     );
   }
 
-  if (showAssignmentError) {
+  if (hasError) {
     return <Alert type="error" showIcon title="Couldn't load task details" />;
   }
 
@@ -369,8 +369,8 @@ export function buildTaskMetricSubColumns(
               metricResult: m,
               metricKey: metric,
               taskId: taskColumn.taskId,
-              isAssignmentLoading: columnIsLoading,
-              showAssignmentError: columnHasError,
+              isLoading: columnIsLoading,
+              hasError: columnHasError,
             })}
           >
             {/* 4px padding (APP_GAP_XS, documented half-unit exception) widens the

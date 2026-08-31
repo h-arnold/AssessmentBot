@@ -8,27 +8,15 @@
  * isolate the analyser/adapter orchestration (per `src/frontend/AGENTS.md` §3.3;
  * `src/backend/AGENTS.md` §11 as the behavioural analogue).
  *
- * **Analyser input shaping.** `classes` is passed as the single selected `ClassFull`
- * with its `assignments` replaced by the *selected assignment IDs* (string[]), and
- * `filter.classIds` carries only the selected class. The analyser ignores
- * `filter.classIds` and its definition-key filters would wrongly include sibling
- * instances, so input shaping owns scoping (no `topicKeys` / `assignmentDefinitionKeys`
- * filters). The analyser call is wrapped in try/catch so any schema drift fails safe
- * as a blocking error rather than rendering silently.
- *
- * **Memoisation.** The pipeline is re-run only when `shouldRunHeatmapsPipeline` holds
- * and its memo key includes `selectedAssignmentIds` (joined) as well as `classId`,
- * `classFull`, and `assignmentDefinitionPartials`. `classId` and `selectedAssignmentIds`
- * both feed the analyser input, so omitting either would reuse stale results when the
- * selection changes without `classFull` changing — this is the staleness-guard
- * analogue to `useClassPageData`'s `classId`-in-key note.
+ * The full input-shaping and memoisation rationale lives in `useHeatmapsPageData.ts`'s
+ * module JSDoc; this helper owns only the pure analyser/adapter orchestration.
  */
 
 import { DataAnalysisService } from '../../services/dataAnalysis/dataAnalysisService';
 import {
   adaptMetricsToMergedHeatmap,
   type MergedHeatmapResult,
-} from '../../services/dataAnalysis/heatmapAdapter';
+} from '../../services/dataAnalysis/heatmapAdapter.merged';
 import type {
   AveragingAnalyserInput,
   AveragingResult,

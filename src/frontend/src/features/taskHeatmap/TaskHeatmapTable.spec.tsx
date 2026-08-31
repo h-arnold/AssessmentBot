@@ -22,9 +22,11 @@ import type {
   HeatmapRow,
   HeatmapCell,
   HeatmapTaskColumn,
+} from '../../services/dataAnalysis/heatmapAdapter';
+import type {
   MergedHeatmapResult,
   MergedHeatmapTaskColumn,
-} from '../../services/dataAnalysis/heatmapAdapter';
+} from '../../services/dataAnalysis/heatmapAdapter.merged';
 import {
   createComputedMetricResult,
   createNotAttemptedMetricResult,

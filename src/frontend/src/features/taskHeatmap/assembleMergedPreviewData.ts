@@ -21,7 +21,7 @@
  */
 
 import type { CellPreviewData, CellPreviewLookup } from './buildCellPreviewLookup';
-import type { MergedHeatmapTaskColumn } from '../../services/dataAnalysis/heatmapAdapter';
+import type { MergedHeatmapTaskColumn } from '../../services/dataAnalysis/heatmapAdapter.merged';
 
 /** Per-assignment preview input: its built lookup plus its query state. */
 export type AssignmentPreviewInput = Readonly<{
