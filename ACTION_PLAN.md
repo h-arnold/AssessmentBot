@@ -870,7 +870,42 @@ passed identical to baseline (7/8; 0 regressions, 0 new failures).
 
 ### Implementation notes / deviations / follow-up
 
-- Filled at execution.
+**Status: COMPLETE** (2026-08-31). E2E suite reviewed to PASS; regression gate passed identical
+to baseline (7/8; 0 regressions, 0 new failures on the authoritative full re-run).
+
+- New suite `src/frontend/e2e-tests/heatmaps.spec.ts` — 7 tests: happy-path build flow with
+  merged adaptive tier; disabled/enabled gating; cascade clearing; empty states; blocking/retry;
+  refresh; cell previews. Copy asserted against `pageContent.heatmaps`. Sensitivity evidence:
+  wrong menu key → timeout failure → restored (not committed).
+- `navigation-screenshots.spec.ts` extended (+12 lines) with a committed Chromium baseline.
+- `task-heatmap-end-to-end-helpers.ts` fixture builders extended (+99 lines) within the existing
+  factory — adjudicated additive-only, no new abstractions.
+- Shared helper `selectVisibleOption` gained a backwards-compatible `occurrence = 0` parameter
+  (reviewer-prescribed deduplication of a local helper; all six pre-existing call sites
+  untouched, proven by the full 235-test E2E run).
+- **Production fix (deviation, review-adjudicated):** `heatmapsPipeline.ts` `runAnalyserStep`
+  previously passed raw assignment ID strings where the analyser input Zod schema
+  (`ClassFullSchema.assignments: z.array(AssignmentPartialSchema)`) requires assignment
+  OBJECTS — the real analyser would throw `ZodError` at runtime (blocking state, no table).
+  The self-consistent bug originated in the Section 5 red spec (`toEqual(['a1'])` codified the
+  wrong shape) and only surfaced in E2E where the real analyser runs. Fixed to
+  `classFull.assignments.filter(...)` (preserves `ClassFull.assignments` order, consistent with
+  Section 6 C1); the paired unit expectation corrected to
+  `expect.objectContaining({ assignmentId: 'a1' })` (contract correction, not weakening —
+  verified no other spec pinned the string shape; `runAnalyserStep` is private, no other
+  callers).
+- Verification (final): `heatmaps.spec.ts` 7/7; existing three suites 16/16 unmodified; full
+  E2E 235/235; full unit suite 1872/1872 (153 files); `lint:frontend` exit 0 zero warnings;
+  `tsc -b` exit 0.
+- Transient observation: one E2E run showed a flake in the UNRELATED
+  `select-with-add-new-workflow.spec.ts` ("Full workflow: Create cohort via Add new and
+  auto-select"); the immediate full re-run passed cleanly (suite untouched by this section).
+  Recorded as a known flake, not a regression.
+- Follow-up (separate ticket, pre-existing, out of scope): `src/frontend/tsconfig.e2e.json`
+  carries ~157 pre-existing type errors and is wired into no build script (ESLint typed-lint
+  program only); verified this section does not aggravate it. E2E helper file now 574 LOC vs
+  the 500 advisory — splitting was rejected as it would create a forbidden new abstraction;
+  directory precedent runs to 1047 LOC.
 
 ---
 
