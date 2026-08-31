@@ -784,7 +784,42 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- Filled at execution.
+**Status: COMPLETE** (2026-08-31). Red and green loops both reviewed to CLEAN; regression gate
+passed identical to baseline (7/8; 0 regressions, 0 new failures).
+
+- Red loop: `HeatmapBuilderSurface.spec.tsx` — 16 contract tests (all 5 required cases) failing
+  for the right reason against the placeholder stub. Red review CLEAN after one fix round:
+  C1 (checkbox/search fixtures must resolve option labels via `assignmentDefinitionPartials`
+  and locate by resolved `primaryTitle` — raw assignmentId queries were unsatisfiable by a
+  SPEC-conformant implementation), I1 (combobox location by accessible name, not
+  `aria-label` attribute), N1 (ready fixtures set `classFullQuery.isSuccess: true`), plus the
+  I3 red-half handoff note (empty-state literals → `pageContent.heatmaps.*` imports in green).
+  Key discovery: the repo pins antd v6.3.1 (not v5) — `optionRender` exposes no `selected`
+  flag, so checkbox `checked` is contract-pinned to controlled-value membership.
+- Green loop: `HeatmapBuilderSurface.tsx` (225 LOC; consumes the real hook; ranked single-source
+  content precedence with six branches documented in `@remarks`; title derivation;
+  `titleLevel={2}` preserving the Section-4 E2E heading contract) + `HeatmapSelectionBar.tsx`
+  (305 LOC internal component; three labelled Selects, resolved-title options, membership-derived
+  checkboxes, client-side search, disabled-until-class with Tooltip + sr-only `aria-describedby`
+  reason). I3 applied: `noClassEmpty`/`noAssignmentsEmpty` added to `pageContent.heatmaps`, spec
+  literals switched to content-module imports (single source of truth).
+- Review-accepted deviations: antd-6 searchable Select search surface located as the combobox
+  (no `role="searchbox"` node exists); `titleLevel={2}`; `pageContent` copy import in the
+  feature (copy only — no logic dependency); Tooltip + sr-only node coexistence (sighted hover
+  affordance AND AT binding; antd `cloneElement` workaround via intermediate `<span>`).
+- Green review fix round (final re-review CLEAN): C1 — alphabetical `localeCompare` sort of
+  assignment options violated layout-spec §8.2 (`ClassFull.assignments` order preserved); sort
+  removed, ADDITIVE order assertion added to the red spec (fixture reversed vs alphabetical).
+  C2 — sighted Tooltip affordance restored alongside the sr-only node. I1 — feature-local
+  `SELECT_MIN_WIDTH` literal replaced with responsive growth (`flex:1, minWidth:0` +
+  `width:'100%'`). Seven nitpicks resolved (single `aria-labelledby` name source, unified
+  `aria-checked`, six-branch `@remarks`, `role="status"` + label on skeleton regions, canonical
+  `.sr-only` utility class in `src/frontend/src/index.css`; `String(oriOption.value)` verified
+  REQUIRED for the `string | number` value union; `isRefreshing` typing verified already tight).
+- Verification (final): `test:frontend -- src/features/taskHeatmap` 142/142 (12 files);
+  full suite 153 files / 1872 tests; `lint:frontend` exit 0 zero warnings; `tsc -b` exit 0;
+  regression checker 7/8, 0 regressions, 0 new failures.
+- Follow-up: none outstanding for this section.
 
 ---
 
