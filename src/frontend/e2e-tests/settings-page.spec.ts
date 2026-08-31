@@ -58,6 +58,16 @@ async function mockSettingsPageRuntime(page: Page) {
               return;
             }
 
+            if (
+              method === 'getCohorts' ||
+              method === 'getYearGroups' ||
+              method === 'getAssignmentTopics' ||
+              method === 'getAssignmentDefinitionPartials'
+            ) {
+              sendSuccess(callbacks.successHandler, [], 'req-' + method);
+              return;
+            }
+
             if (method === 'getBackendConfig') {
               sendSuccess(callbacks.successHandler, backendConfig, 'req-backend-config');
               return;

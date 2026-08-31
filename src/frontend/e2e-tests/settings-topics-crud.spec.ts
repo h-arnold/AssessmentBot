@@ -66,6 +66,11 @@ async function mockTopicsCrudRuntime(page: Page) {
               return;
             }
 
+            if (method === 'getCohorts' || method === 'getAssignmentDefinitionPartials') {
+              sendSuccess(callbacks.successHandler, [], 'req-' + method);
+              return;
+            }
+
             if (method === 'getBackendConfig') {
               sendSuccess(callbacks.successHandler, {}, 'req-backend-config');
               return;

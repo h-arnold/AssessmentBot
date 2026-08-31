@@ -42,6 +42,11 @@ export type ResponseItem = Readonly<
       kind: 'deferredSuccess';
       data: unknown;
     }
+  | {
+      kind: 'deferredFailure';
+      code?: string;
+      message: string;
+    }
 >;
 
 /**
@@ -366,41 +371,6 @@ export function createWizardScenario(options: CreateWizardScenarioOptions = {}):
 }
 
 /**
- * Creates a failed reference data scenario.
- *
- * @param {object} options Failure customization options.
- * @param {string} options.yearGroupsMessage Year groups failure message.
- * @param {string} options.topicsMessage Topics failure message.
- * @param {string} options.yearGroupsCode Year groups failure code.
- * @param {string} options.topicsCode Topics failure code.
- * @returns {RuntimeScenario} Runtime scenario with failed reference data.
- */
-export function createFailedReferenceDataScenario(
-  options: {
-    yearGroupsMessage?: string;
-    topicsMessage?: string;
-    yearGroupsCode?: string;
-    topicsCode?: string;
-  } = {}
-): RuntimeScenario {
-  const {
-    yearGroupsMessage = 'Could not load year groups',
-    topicsMessage = 'Could not load topics',
-    yearGroupsCode = 'LOAD_FAILED',
-    topicsCode = 'LOAD_FAILED',
-  } = options;
-
-  return {
-    getAuthorisationStatus: [{ kind: 'success', data: true }],
-    getABClassPartials: [{ kind: 'success', data: [] }],
-    getCohorts: [{ kind: 'success', data: [] }],
-    getYearGroups: [{ kind: 'failureEnvelope', code: yearGroupsCode, message: yearGroupsMessage }],
-    getAssignmentTopics: [{ kind: 'failureEnvelope', code: topicsCode, message: topicsMessage }],
-    getAssignmentDefinitionPartials: [{ kind: 'success', data: mockPartialRows }],
-  };
-}
-
-/**
  * Creates a failed refresh scenario.
  *
  * @param {object} options Failure customization options.
@@ -577,6 +547,13 @@ export async function installRuntimeMock(
               return;
             }
 
+            if (response.kind === 'deferredFailure') {
+              globalThis.${deferredQueueTrackerName}.push(() => {
+                sendFailureEnvelope(callbacks, method, responseIndex, response);
+              });
+              return;
+            }
+
             sendSuccess(callbacks, method, responseIndex, response.data);
           }),
         },
@@ -586,7 +563,7 @@ export async function installRuntimeMock(
 }
 
 /**
- * Releases the next deferred success response in the queue.
+ * Releases the next deferred response in the queue, whatever its kind.
  *
  * @param {Page} page The Playwright page under test.
  * @param {string} releaseFunctionName Name for the release function (default: '__releaseNextDeferredSuccess').
@@ -596,6 +573,15 @@ export async function releaseNextDeferredSuccess(
   page: Page,
   releaseFunctionName: string = RELEASE_DEFERRED_FUNCTION
 ): Promise<void> {
+  await page.waitForFunction(
+    (queueName) => {
+      const queue = Reflect.get(globalThis, queueName);
+      return Array.isArray(queue) && queue.length > 0;
+    },
+    DEFERRED_SUCCESS_QUEUE,
+    { timeout: 5000 }
+  );
+
   await page.evaluate((currentReleaseFunctionName) => {
     const releaseFunction = Reflect.get(globalThis, currentReleaseFunctionName);
 

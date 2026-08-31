@@ -13,7 +13,10 @@ import {
   getNavigationLabel,
   type AppNavigationKey,
 } from './navigation/appNavigation';
-import { createGoogleScriptRunApiHandlerMock } from './test/googleScriptRunHarness';
+import {
+  createGoogleScriptRunApiHandlerMock,
+  type GoogleScriptRunApiHandlerCallbacks,
+} from './test/googleScriptRunHarness';
 
 const loadingAuthorisationStatusLabel = 'Loading authorisation status';
 const applicationTitleText = appBreadcrumbBaseLabel;
@@ -130,30 +133,120 @@ function installApiHandlerMock(responsesByMethod: ApiMethodResponseMap) {
 }
 
 /**
- * Installs a `google.script.run.apiHandler` mock that resolves auth and leaves all startup warmup
- * queries pending, including class partials, assignment topics,
- * assignment definition partials, cohorts, year groups, and Google Classrooms.
+ * Installs a `google.script.run.apiHandler` mock that resolves auth and completes the five
+ * startup warm-up datasets with valid, schema-shaped (empty-array) payloads. Google Classrooms
+ * is left pending because it is not part of the fail-closed warm-up surface.
  *
- * Mocking these as pending suppresses noisy transport errors that would otherwise
- * fire when the app loads and triggers the startup warmup through AppAuthGate.
- * The call counts for non-navigated features remain 0 in tests that do not access them.
+ * Under the fail-closed contract the protected shell only renders once every warm-up dataset
+ * has succeeded, so the shared plumbing must let the warm-up settle before the children appear.
  *
  * @returns {{ getCallCount(method: string): number }} A transport harness that exposes per-method call counts.
  */
-function installPendingApiHandlerMock() {
+function installResolvedWarmupApiHandlerMock() {
   return installApiHandlerMock({
     [authStatusMethodName]: {
       ok: true,
-      requestId: 'req-auth-pending-warmup',
+      requestId: 'req-auth-resolved-warmup',
       data: true,
     },
-    [classPartialsMethodName]: 'pending',
-    [assignmentTopicsMethodName]: 'pending',
-    [assignmentDefinitionPartialsMethodName]: 'pending',
-    [cohortsMethodName]: 'pending',
-    [yearGroupsMethodName]: 'pending',
+    [classPartialsMethodName]: {
+      ok: true,
+      requestId: 'req-class-partials-warmup',
+      data: [],
+    },
+    [assignmentTopicsMethodName]: {
+      ok: true,
+      requestId: 'req-topics-warmup',
+      data: [],
+    },
+    [assignmentDefinitionPartialsMethodName]: {
+      ok: true,
+      requestId: 'req-def-partials-warmup',
+      data: [],
+    },
+    [cohortsMethodName]: {
+      ok: true,
+      requestId: 'req-cohorts-warmup',
+      data: [],
+    },
+    [yearGroupsMethodName]: {
+      ok: true,
+      requestId: 'req-yeargroups-warmup',
+      data: [],
+    },
     [googleClassroomsMethodName]: 'pending',
   });
+}
+
+/**
+ * Installs a `google.script.run.apiHandler` mock that holds the supplied methods pending until
+ * `release` is called, at which point the stored success/failure callbacks are invoked.
+ *
+ * Used to exercise the fail-closed render chain: OAuth authorisation resolves (so the gate is
+ * authorised) while the warm-up datasets remain pending, then the warm-up is released so the
+ * protected children appear. Pending methods never call their callbacks until released, which
+ * keeps the warm-up in its loading phase for the duration of the assertion.
+ *
+ * @param {ApiMethodResponseMap} responsesByMethod The mocked responses keyed by API method.
+ * @returns {{ getCallCount(method: string): number; release(method: string, response: Exclude<ApiMethodResponse, 'pending'>): void }} A transport harness with a release trigger.
+ */
+function installDeferredApiHandlerMock(responsesByMethod: ApiMethodResponseMap) {
+  const methodCallCounts = new Map<string, number>();
+  const pendingCallbacksByMethod = new Map<string, GoogleScriptRunApiHandlerCallbacks>();
+
+  const runMock = createGoogleScriptRunApiHandlerMock((request, callbacks) => {
+    const { failureHandler, successHandler } = callbacks;
+
+    const method = (request as { method?: unknown })?.method;
+
+    if (typeof method !== 'string') {
+      dispatchMockTransportResponse(
+        { transportFailure: new Error('Invalid transport request payload.') },
+        failureHandler,
+        successHandler
+      );
+      return;
+    }
+
+    methodCallCounts.set(method, (methodCallCounts.get(method) ?? 0) + 1);
+    const response = responsesByMethod[method];
+
+    if (response === undefined) {
+      dispatchMockTransportResponse(
+        { transportFailure: new Error(`No mocked response configured for method: ${method}`) },
+        failureHandler,
+        successHandler
+      );
+      return;
+    }
+
+    if (response === 'pending') {
+      pendingCallbacksByMethod.set(method, callbacks);
+      return;
+    }
+
+    dispatchMockTransportResponse(response, failureHandler, successHandler);
+  });
+
+  (globalThis as { google?: unknown }).google = {
+    script: {
+      run: runMock,
+    },
+  };
+
+  return {
+    getCallCount(method: string) {
+      return methodCallCounts.get(method) ?? 0;
+    },
+    release(method: string, response: Exclude<ApiMethodResponse, 'pending'>) {
+      const callbacks = pendingCallbacksByMethod.get(method);
+      pendingCallbacksByMethod.delete(method);
+
+      if (callbacks) {
+        dispatchMockTransportResponse(response, callbacks.failureHandler, callbacks.successHandler);
+      }
+    },
+  };
 }
 
 /**
@@ -173,11 +266,15 @@ function renderApp(queryClient = createAppQueryClient()) {
 }
 
 /**
- * Renders the app while keeping the pending auth state stable for layout-only assertions.
+ * Renders the app and waits for the shell to appear after the startup warm-up settles.
  *
- * @returns {Promise<void>} A promise that resolves after the pending render has settled.
+ * Under the fail-closed contract the protected shell only renders once every warm-up dataset
+ * has succeeded, so settling warm-up is a prerequisite for shell-layout assertions rather than
+ * a change to their purpose.
+ *
+ * @returns {Promise<void>} A promise that resolves after the shell render has settled.
  */
-async function renderPendingApp() {
+async function renderReadyApp() {
   await act(async () => {
     renderApp();
   });
@@ -263,9 +360,9 @@ describe('App', () => {
   });
 
   it('menu renders all four entries in expanded mode with expected labels', async () => {
-    installPendingApiHandlerMock();
+    installResolvedWarmupApiHandlerMock();
 
-    await renderPendingApp();
+    await renderReadyApp();
 
     const navigation = screen.getByRole('navigation', { name: primaryNavigationLabel });
 
@@ -275,9 +372,9 @@ describe('App', () => {
   });
 
   it('menu renders icon-only affordance in collapsed mode', async () => {
-    installPendingApiHandlerMock();
+    installResolvedWarmupApiHandlerMock();
 
-    await renderPendingApp();
+    await renderReadyApp();
 
     act(() => {
       fireEvent.click(screen.getByRole('button', { name: collapseNavigationButtonLabel }));
@@ -294,9 +391,9 @@ describe('App', () => {
   });
 
   it('clicking each menu item updates selected key in component state', async () => {
-    installPendingApiHandlerMock();
+    installResolvedWarmupApiHandlerMock();
 
-    await renderPendingApp();
+    await renderReadyApp();
 
     const navigation = screen.getByRole('navigation', { name: primaryNavigationLabel });
 
@@ -323,17 +420,17 @@ describe('App', () => {
   });
 
   it('breadcrumb renders the active page crumb on default load', async () => {
-    installPendingApiHandlerMock();
+    installResolvedWarmupApiHandlerMock();
 
-    await renderPendingApp();
+    await renderReadyApp();
 
     expectBreadcrumbLabels([getNavigationLabel(defaultNavigationKey)]);
   });
 
   it('changing selected page updates breadcrumb text immediately', async () => {
-    installPendingApiHandlerMock();
+    installResolvedWarmupApiHandlerMock();
 
-    await renderPendingApp();
+    await renderReadyApp();
 
     const navigation = screen.getByRole('navigation', { name: primaryNavigationLabel });
     const assignmentsLabel = getNavigationLabel('assignments');
@@ -346,9 +443,9 @@ describe('App', () => {
   });
 
   it('breadcrumb labels are sourced from shared metadata (single source of truth)', async () => {
-    installPendingApiHandlerMock();
+    installResolvedWarmupApiHandlerMock();
 
-    await renderPendingApp();
+    await renderReadyApp();
 
     const navigation = screen.getByRole('navigation', { name: primaryNavigationLabel });
 
@@ -434,9 +531,9 @@ describe('App', () => {
   });
 
   it('no stale breadcrumb state after rapid page switching', async () => {
-    installPendingApiHandlerMock();
+    installResolvedWarmupApiHandlerMock();
 
-    await renderPendingApp();
+    await renderReadyApp();
 
     const navigation = screen.getByRole('navigation', { name: primaryNavigationLabel });
     const rapidSelectionKeys: AppNavigationKey[] = ['assignments', 'classes', 'settings'];
@@ -481,9 +578,9 @@ describe('App', () => {
   });
 
   it('Dashboard default selection renders expected default page content', async () => {
-    installPendingApiHandlerMock();
+    installResolvedWarmupApiHandlerMock();
 
-    await renderPendingApp();
+    await renderReadyApp();
 
     const mainRegion = screen.getByRole('main');
 
@@ -494,9 +591,9 @@ describe('App', () => {
   });
 
   it('renders shell landmarks', async () => {
-    installPendingApiHandlerMock();
+    installResolvedWarmupApiHandlerMock();
 
-    await renderPendingApp();
+    await renderReadyApp();
 
     expect(screen.getByRole('banner')).toHaveTextContent(applicationTitleText);
     expect(screen.getByRole('navigation', { name: primaryNavigationLabel })).toBeInTheDocument();
@@ -504,9 +601,9 @@ describe('App', () => {
   });
 
   it('toggles collapsed state via hamburger', async () => {
-    installPendingApiHandlerMock();
+    installResolvedWarmupApiHandlerMock();
 
-    await renderPendingApp();
+    await renderReadyApp();
 
     const toggleButton = screen.getByRole('button', { name: collapseNavigationButtonLabel });
 
@@ -522,9 +619,9 @@ describe('App', () => {
   });
 
   it('updates accessible control label and state when toggled', async () => {
-    installPendingApiHandlerMock();
+    installResolvedWarmupApiHandlerMock();
 
-    await renderPendingApp();
+    await renderReadyApp();
 
     const toggleButton = screen.getByRole('button', { name: collapseNavigationButtonLabel });
 
@@ -540,9 +637,9 @@ describe('App', () => {
   });
 
   it('does not regress existing auth card mounting path', async () => {
-    installPendingApiHandlerMock();
+    installResolvedWarmupApiHandlerMock();
 
-    await renderPendingApp();
+    await renderReadyApp();
 
     const mainRegion = screen.getByRole('main');
 
@@ -550,17 +647,17 @@ describe('App', () => {
   });
 
   it('toggle control renders with accessible label', async () => {
-    installPendingApiHandlerMock();
+    installResolvedWarmupApiHandlerMock();
 
-    await renderPendingApp();
+    await renderReadyApp();
 
     expect(getThemeModeSwitch()).toBeInTheDocument();
   });
 
   it('toggle callback flips theme state between light and dark', async () => {
-    installPendingApiHandlerMock();
+    installResolvedWarmupApiHandlerMock();
 
-    await renderPendingApp();
+    await renderReadyApp();
 
     const themeModeSwitch = getThemeModeSwitch();
 
@@ -606,9 +703,9 @@ describe('App', () => {
 
 
   it('theme toggle state persists during in-app page navigation', async () => {
-    installPendingApiHandlerMock();
+    installResolvedWarmupApiHandlerMock();
 
-    await renderPendingApp();
+    await renderReadyApp();
 
     const themeModeSwitch = getThemeModeSwitch();
     const navigation = screen.getByRole('navigation', { name: primaryNavigationLabel });
@@ -635,17 +732,13 @@ describe('App', () => {
   });
 
   it('shows loading then authorised status when backend returns true', async () => {
-    const transport = installApiHandlerMock({
+    const transport = installDeferredApiHandlerMock({
       [authStatusMethodName]: {
         ok: true,
         requestId: 'req-1',
         data: true,
       },
-      [classPartialsMethodName]: {
-        ok: true,
-        requestId: 'req-class-partials-1',
-        data: [],
-      },
+      [classPartialsMethodName]: 'pending',
       [assignmentTopicsMethodName]: 'pending',
       [assignmentDefinitionPartialsMethodName]: 'pending',
       [cohortsMethodName]: 'pending',
@@ -655,12 +748,46 @@ describe('App', () => {
 
     renderApp();
 
+    // OAuth status is still resolving: the loading surface is shown.
     expect(screen.getByRole('status', { name: loadingAuthorisationStatusLabel })).toBeInTheDocument();
+
+    // OAuth has resolved (authorised) but the warm-up datasets are still pending, so the gate
+    // fails closed: the verifying surface is shown and the dashboard remains hidden.
+    await screen.findByRole('status', { name: 'Verifying access' });
+    expect(screen.queryByText('Authorised')).not.toBeInTheDocument();
+
+    // Release every warm-up dataset so the startup warm-up settles to ready.
+    await act(async () => {
+      transport.release(classPartialsMethodName, {
+        ok: true,
+        requestId: 'req-class-partials-1',
+        data: [],
+      });
+      transport.release(assignmentTopicsMethodName, {
+        ok: true,
+        requestId: 'req-topics-1',
+        data: [],
+      });
+      transport.release(assignmentDefinitionPartialsMethodName, {
+        ok: true,
+        requestId: 'req-def-partials-1',
+        data: [],
+      });
+      transport.release(cohortsMethodName, {
+        ok: true,
+        requestId: 'req-cohorts-1',
+        data: [],
+      });
+      transport.release(yearGroupsMethodName, {
+        ok: true,
+        requestId: 'req-yeargroups-1',
+        data: [],
+      });
+    });
+
+    // Warm-up ready: the protected dashboard is revealed.
     expect(await screen.findByText('Authorised')).toBeInTheDocument();
     expect(transport.getCallCount(authStatusMethodName)).toBe(1);
-    await waitFor(() => {
-      expect(transport.getCallCount(classPartialsMethodName)).toBe(1);
-    });
   });
 
   it('shows unauthorised status when backend returns false', async () => {
@@ -759,23 +886,44 @@ describe('App', () => {
     expect(transport.getCallCount(classPartialsMethodName)).toBe(0);
   });
 
-  it('keeps navigation ready while startup warm-up runs in the background', async () => {
+  it('keeps navigation ready once startup warm-up has settled', async () => {
     const transport = installApiHandlerMock({
       [authStatusMethodName]: {
         ok: true,
         requestId: 'req-auth-1',
         data: true,
       },
-      [classPartialsMethodName]: 'pending',
-      [assignmentTopicsMethodName]: 'pending',
-      [assignmentDefinitionPartialsMethodName]: 'pending',
-      [cohortsMethodName]: 'pending',
-      [yearGroupsMethodName]: 'pending',
+      [classPartialsMethodName]: {
+        ok: true,
+        requestId: 'req-class-partials-1',
+        data: [],
+      },
+      [assignmentTopicsMethodName]: {
+        ok: true,
+        requestId: 'req-topics-1',
+        data: [],
+      },
+      [assignmentDefinitionPartialsMethodName]: {
+        ok: true,
+        requestId: 'req-def-partials-1',
+        data: [],
+      },
+      [cohortsMethodName]: {
+        ok: true,
+        requestId: 'req-cohorts-1',
+        data: [],
+      },
+      [yearGroupsMethodName]: {
+        ok: true,
+        requestId: 'req-yeargroups-1',
+        data: [],
+      },
       [googleClassroomsMethodName]: 'pending',
     });
 
     renderApp();
 
+    // The fail-closed gate only reveals the shell after the warm-up settles.
     expect(await screen.findByRole('navigation', { name: primaryNavigationLabel })).toBeInTheDocument();
     expect(await screen.findByText('Authorised')).toBeInTheDocument();
     expect(transport.getCallCount(authStatusMethodName)).toBe(1);
@@ -789,11 +937,31 @@ describe('App', () => {
         requestId: 'req-auth-3',
         data: true,
       },
-      [classPartialsMethodName]: 'pending',
-      [assignmentTopicsMethodName]: 'pending',
-      [assignmentDefinitionPartialsMethodName]: 'pending',
-      [cohortsMethodName]: 'pending',
-      [yearGroupsMethodName]: 'pending',
+      [classPartialsMethodName]: {
+        ok: true,
+        requestId: 'req-class-partials-3',
+        data: [],
+      },
+      [assignmentTopicsMethodName]: {
+        ok: true,
+        requestId: 'req-topics-3',
+        data: [],
+      },
+      [assignmentDefinitionPartialsMethodName]: {
+        ok: true,
+        requestId: 'req-def-partials-3',
+        data: [],
+      },
+      [cohortsMethodName]: {
+        ok: true,
+        requestId: 'req-cohorts-3',
+        data: [],
+      },
+      [yearGroupsMethodName]: {
+        ok: true,
+        requestId: 'req-yeargroups-3',
+        data: [],
+      },
       [googleClassroomsMethodName]: 'pending',
     });
     const queryClient = createAppQueryClient();
@@ -817,11 +985,31 @@ describe('App', () => {
         requestId: 'req-auth-4',
         data: true,
       },
-      [classPartialsMethodName]: 'pending',
-      [assignmentTopicsMethodName]: 'pending',
-      [assignmentDefinitionPartialsMethodName]: 'pending',
-      [cohortsMethodName]: 'pending',
-      [yearGroupsMethodName]: 'pending',
+      [classPartialsMethodName]: {
+        ok: true,
+        requestId: 'req-class-partials-4',
+        data: [],
+      },
+      [assignmentTopicsMethodName]: {
+        ok: true,
+        requestId: 'req-topics-4',
+        data: [],
+      },
+      [assignmentDefinitionPartialsMethodName]: {
+        ok: true,
+        requestId: 'req-def-partials-4',
+        data: [],
+      },
+      [cohortsMethodName]: {
+        ok: true,
+        requestId: 'req-cohorts-4',
+        data: [],
+      },
+      [yearGroupsMethodName]: {
+        ok: true,
+        requestId: 'req-yeargroups-4',
+        data: [],
+      },
       [googleClassroomsMethodName]: 'pending',
     });
 
@@ -846,7 +1034,7 @@ describe('App', () => {
     expect(transport.getCallCount(classPartialsMethodName)).toBe(1);
   });
 
-  it('logs error events when startup warm-up fails without breaking render', async () => {
+  it('shows fail-closed error result when startup warm-up fails and logs the failure once', async () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     installApiHandlerMock({
@@ -887,14 +1075,18 @@ describe('App', () => {
 
     renderApp();
 
-    expect(await screen.findByText('Authorised')).toBeInTheDocument();
+    // A failed warm-up blocks the dashboard with a fail-closed error Result rather than flashing
+    // the authorised surface. The failure carries no error code, so the generic copy is shown.
+    expect(await screen.findByText('An error occurred. Please try again.')).toBeInTheDocument();
+    expect(screen.queryByText('Authorised')).not.toBeInTheDocument();
+
+    // The startup warm-up failure is still logged exactly once.
     await waitFor(() => {
-      // Both the API service error and the startup warmup error are logged
-      expect(consoleErrorSpy).toHaveBeenCalled();
-      // Verify the startup warmup error context is present in at least one of the calls
-      expect(consoleErrorSpy.mock.calls.some(
-        (call) => call[0] === 'features/auth/AppAuthGate.startupWarmup'
-      )).toBe(true);
+      expect(
+        consoleErrorSpy.mock.calls.filter(
+          (call) => call[0] === 'features/auth/AppAuthGate.startupWarmup'
+        )
+      ).toHaveLength(1);
     });
   });
 });

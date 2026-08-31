@@ -180,6 +180,16 @@ async function mockBackendSettingsRuntime(page: Page, scenario: BackendSettingsR
           return true;
         }
 
+        if (
+          method === 'getCohorts' ||
+          method === 'getYearGroups' ||
+          method === 'getAssignmentTopics' ||
+          method === 'getAssignmentDefinitionPartials'
+        ) {
+          sendSuccess(handler, [], 'req-' + method);
+          return true;
+        }
+
         return false;
       }
 

@@ -83,9 +83,11 @@ test.describe('Classes CRUD harness journey', () => {
   }) => {
     await mockClassesCrudRuntime(page, {
       getAuthorisationStatus: [{ kind: 'success', data: false }],
-      getABClassPartials: [],
-      getCohorts: [],
-      getYearGroups: [],
+      getABClassPartials: [{ kind: 'success', data: [] }],
+      getCohorts: [{ kind: 'success', data: [] }],
+      getYearGroups: [{ kind: 'success', data: [] }],
+      getAssignmentTopics: [{ kind: 'success', data: [] }],
+      getAssignmentDefinitionPartials: [{ kind: 'success', data: [] }],
       getGoogleClassrooms: [],
     });
 
@@ -93,7 +95,7 @@ test.describe('Classes CRUD harness journey', () => {
     await expect(page.getByText('Permissions required')).toBeVisible();
   });
 
-  test('shows blocking classes state when warm-up-required dataset fails', async ({ page }) => {
+  test('blocks the application when a warm-up-required dataset fails', async ({ page }) => {
     await mockClassesCrudRuntime(page, {
       getAuthorisationStatus: [{ kind: 'success', data: true }],
       getABClassPartials: [{ kind: 'transportFailure', message: 'Class partials fetch failed.' }],
@@ -103,8 +105,8 @@ test.describe('Classes CRUD harness journey', () => {
     });
 
     await page.goto('/');
-    await openClassesTab(page);
-    await expect(page.getByText('Classes feature is unavailable.')).toBeVisible();
+    await expect(page.getByText('An error occurred. Please try again.')).toBeVisible();
+    await expect(page.getByText('Classes feature is unavailable.')).toHaveCount(0);
   });
 
   test('shows blocking classes state when Google Classrooms fetch fails', async ({ page }) => {
@@ -239,9 +241,9 @@ test.describe('Classes CRUD harness journey', () => {
   }) => {
     await mockClassesCrudRuntime(page, {
       getAuthorisationStatus: [{ kind: 'success', data: true }],
-      getABClassPartials: [],
-      getCohorts: [],
-      getYearGroups: [],
+      getABClassPartials: [{ kind: 'success', data: [] }],
+      getCohorts: [{ kind: 'success', data: [] }],
+      getYearGroups: [{ kind: 'success', data: [] }],
       getGoogleClassrooms: [],
     });
 

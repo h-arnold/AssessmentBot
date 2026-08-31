@@ -1,5 +1,6 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { PropsWithChildren } from 'react';
 import type * as AssignmentDefinitionPartialsServiceModule from '../../services/assignmentDefinition/assignmentDefinitionPartialsService';
 import type * as SharedQueriesModule from '../../query/sharedQueries';
@@ -13,7 +14,11 @@ import {
 import { createAppQueryClient } from '../../query/queryClient';
 import { AuthStatusCard } from './AuthStatusCard';
 import { AppAuthGate } from './AppAuthGate';
-import { useStartupWarmupState, type StartupWarmupSnapshot } from './startupWarmupState';
+import {
+  StartupWarmupStateProvider,
+  useStartupWarmupState,
+  type StartupWarmupSnapshot,
+} from './startupWarmupState';
 
 const {
   getAuthorisationStatusMock,
@@ -235,18 +240,19 @@ describe('AppAuthGate', () => {
       }
     );
 
+    // OAuth still pending: the OAuth authorisation status surface is shown and the
+    // protected children are not yet rendered.
     expect(screen.getByRole('status', { name: 'Loading authorisation status' })).toBeInTheDocument();
+    expect(screen.queryByText('Authorised')).not.toBeInTheDocument();
     expect(screen.queryByTestId('startup-warmup-probe')).not.toBeInTheDocument();
 
-    expect(await screen.findByText('Authorised')).toBeInTheDocument();
-    expect(screen.getByTestId('startup-warmup-probe')).toHaveTextContent(
-      JSON.stringify({
-        warmupState: 'loading',
-        isLoading: true,
-        isReady: false,
-        isFailed: false,
-      })
-    );
+    // OAuth has resolved but warm-up is still loading: fail-closed "Verifying access"
+    // surface is shown and the protected children remain hidden.
+    const verifyingSurface = await screen.findByRole('status', { name: 'Verifying access' });
+    expect(verifyingSurface).toBeInTheDocument();
+    expect(verifyingSurface).toHaveTextContent('Verifying access');
+    expect(screen.queryByText('Authorised')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('startup-warmup-probe')).not.toBeInTheDocument();
 
     await waitFor(() => {
       expect(warmStartupQueriesMock).toHaveBeenCalledWith(queryClient);
@@ -254,16 +260,19 @@ describe('AppAuthGate', () => {
 
     deferredWarmup.resolvePromise();
 
+    // Warm-up reaches ready: children render inside the warm-up provider and the
+    // warm-up state publishes `ready`.
     await waitFor(() => {
-      expect(screen.getByTestId('startup-warmup-probe')).toHaveTextContent(
-        JSON.stringify({
-          warmupState: 'ready',
-          isLoading: false,
-          isReady: true,
-          isFailed: false,
-        })
-      );
+      expect(screen.getByText('Authorised')).toBeInTheDocument();
     });
+    expect(screen.getByTestId('startup-warmup-probe')).toHaveTextContent(
+      JSON.stringify({
+        warmupState: 'ready',
+        isLoading: false,
+        isReady: true,
+        isFailed: false,
+      })
+    );
 
     expect(getAuthorisationStatusMock).toHaveBeenCalledTimes(1);
   });
@@ -399,20 +408,21 @@ describe('AppAuthGate', () => {
       }
     );
 
-    expect(await screen.findByText('Authorised')).toBeInTheDocument();
+    // Fail-closed: a non-FORBIDDEN warm-up failure blocks the dashboard with the
+    // error Result whose title is the mapped code message; children are not revealed.
+    expect(
+      await screen.findByText(
+        'An internal error occurred. Please try again or contact support if the issue persists.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Authorised')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('startup-warmup-probe')).not.toBeInTheDocument();
+    // Fail-closed recovery affordance: the blocked surface exposes a primary "Reload"
+    // button (a full page reload re-runs warm-up from a fresh QueryClient).
+    expect(screen.getByRole('button', { name: 'Reload' })).toBeInTheDocument();
 
     await waitFor(() => {
       expect(warmStartupQueriesMock).toHaveBeenCalledWith(queryClient);
-    });
-    await waitFor(() => {
-      expect(screen.getByTestId('startup-warmup-probe')).toHaveTextContent(
-        JSON.stringify({
-          warmupState: 'failed',
-          isLoading: false,
-          isReady: false,
-          isFailed: true,
-        })
-      );
     });
     expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
     expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -429,6 +439,40 @@ describe('AppAuthGate', () => {
     );
   });
 
+  it('reloads the page when the Reload button is clicked in the failed warm-up surface', async () => {
+    // Stub the reload so the test environment is not navigated. The production branch calls
+    // `globalThis.location.reload()`; happy-dom exposes `location.reload` as a spyable method.
+    const reloadSpy = vi.spyOn(globalThis.location, 'reload').mockImplementation(() => {});
+    const user = userEvent.setup();
+    const { QueryWrapper } = createQueryWrapper();
+    const warmupError = new ApiTransportError({
+      requestId: 'req-warmup-reload',
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Warm-up failed.',
+      },
+    });
+    getAuthorisationStatusMock.mockResolvedValueOnce(true);
+    warmStartupQueriesMock.mockRejectedValueOnce(warmupError);
+
+    render(
+      <AppAuthGate>
+        <output>Protected content</output>
+      </AppAuthGate>,
+      {
+        wrapper: QueryWrapper,
+      }
+    );
+
+    const reloadButton = await screen.findByRole('button', { name: 'Reload' });
+    expect(reloadButton).toBeInTheDocument();
+    expect(screen.queryByText('Protected content')).not.toBeInTheDocument();
+
+    await user.click(reloadButton);
+
+    expect(reloadSpy).toHaveBeenCalledTimes(1);
+  });
+
   it('publishes mixed dataset warm-up outcomes through AppAuthGate when assignment definitions fail', async () => {
     await configureAssignmentDefinitionWarmupFailure();
     const { QueryWrapper } = createQueryWrapper();
@@ -436,14 +480,19 @@ describe('AppAuthGate', () => {
     render(
       <AppAuthGate>
         <AuthStatusCard />
-        <StartupWarmupDatasetProbe />
       </AppAuthGate>,
       {
         wrapper: QueryWrapper,
       }
     );
 
-    expect(await screen.findByText('Authorised')).toBeInTheDocument();
+    // A partial warm-up failure (assignment definitions reject, class datasets would
+    // succeed) still fails the cycle. Fail-closed rendering blocks the dashboard with
+    // the generic error Result because the rejection carries no error code.
+    expect(await screen.findByText('An error occurred. Please try again.')).toBeInTheDocument();
+    expect(screen.queryByText('Authorised')).not.toBeInTheDocument();
+    // The blocked surface exposes the primary "Reload" recovery affordance.
+    expect(screen.getByRole('button', { name: 'Reload' })).toBeInTheDocument();
 
     await waitFor(() => {
       expect(warmStartupQueriesMock).toHaveBeenCalledTimes(1);
@@ -455,38 +504,29 @@ describe('AppAuthGate', () => {
       expect(getAssignmentTopicsMock).toHaveBeenCalledTimes(1);
       expect(getAssignmentDefinitionPartialsMock).toHaveBeenCalledTimes(1);
     });
-
-    expect(readStartupWarmupDatasetProbeSnapshot()).toMatchObject({
-      warmupState: 'failed',
-      snapshot: {
-        datasets: {
-          classPartials: { status: 'ready', isTrustworthy: true },
-          assignmentDefinitionPartials: { status: 'failed', isTrustworthy: false },
-          assignmentTopics: { status: 'ready', isTrustworthy: true },
-          cohorts: { status: 'ready', isTrustworthy: true },
-          yearGroups: { status: 'ready', isTrustworthy: true },
-        },
-      },
-    });
   });
 
-  it('keeps class datasets ready in helper semantics when assignment definitions fail in warm-up', async () => {
-    await configureAssignmentDefinitionWarmupFailure();
-    const { QueryWrapper } = createQueryWrapper();
+  it('keeps class datasets ready in helper semantics when assignment definitions fail in warm-up', () => {
+    // Under fail-closed rendering the warm-up snapshot is only published to children via
+    // the StartupWarmupStateProvider, which is not rendered while the cycle is unresolved.
+    // The mixed dataset semantics (class datasets ready while assignment definitions fail)
+    // remain covered here by mounting the provider directly with a representative snapshot,
+    // complementing the uniform-state coverage in startupWarmupState.spec.tsx.
+    const mixedSnapshot: StartupWarmupSnapshot = {
+      datasets: {
+        classPartials: { status: 'ready', isTrustworthy: true },
+        assignmentDefinitionPartials: { status: 'failed', isTrustworthy: false },
+        assignmentTopics: { status: 'ready', isTrustworthy: true },
+        cohorts: { status: 'ready', isTrustworthy: true },
+        yearGroups: { status: 'ready', isTrustworthy: true },
+      },
+    };
 
     render(
-      <AppAuthGate>
+      <StartupWarmupStateProvider warmupState="failed" snapshot={mixedSnapshot}>
         <StartupWarmupDatasetProbe />
-      </AppAuthGate>,
-      {
-        wrapper: QueryWrapper,
-      }
+      </StartupWarmupStateProvider>
     );
-
-    await waitFor(() => {
-      expect(warmStartupQueriesMock).toHaveBeenCalledTimes(1);
-      expect(getAssignmentDefinitionPartialsMock).toHaveBeenCalledTimes(1);
-    });
 
     expect(readStartupWarmupDatasetProbeSnapshot()).toMatchObject({
       classPartialsReady: true,
@@ -588,16 +628,12 @@ describe('AppAuthGate', () => {
 
     deferredWarmup.rejectPromise(new Error('Warm-up remount failure.'));
 
-    await waitFor(() => {
-      expect(screen.getByTestId('startup-warmup-probe')).toHaveTextContent(
-        JSON.stringify({
-          warmupState: 'failed',
-          isLoading: false,
-          isReady: false,
-          isFailed: true,
-        })
-      );
-    });
+    // Fail-closed: the shared rejected cycle blocks the dashboard with the generic error
+    // Result (the rejection carries no error code); children are not revealed.
+    expect(await screen.findByText('An error occurred. Please try again.')).toBeInTheDocument();
+    expect(screen.queryByText('Authorised')).not.toBeInTheDocument();
+    // The blocked surface exposes the primary "Reload" recovery affordance.
+    expect(screen.getByRole('button', { name: 'Reload' })).toBeInTheDocument();
 
     expect(warmStartupQueriesMock).toHaveBeenCalledTimes(1);
     expect(consoleErrorSpy).toHaveBeenCalledTimes(1);

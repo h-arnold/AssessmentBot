@@ -231,14 +231,26 @@ secrets in log output and mandates `ABLogger` for all backend code — see
 ## Frontend auth surfaces
 
 - **`AppAuthGate`** (`src/frontend/src/features/auth/AppAuthGate.tsx`) is a truly
-  blocking gate: it renders its children only when the user is authorised. The possible
+  blocking, fail-closed gate: it renders its protected children (the dashboard, including
+  `AuthStatusCard`) only once the startup warm-up confirms Google Group membership. It no
+  longer reveals the dashboard merely because OAuth resolved authorised. The possible
   blocking states are, in order of precedence:
   1. a `FORBIDDEN` access-denied result, detected by scanning the startup warm-up query
      errors for the `FORBIDDEN` error code (`getWarmupForbiddenMessage`);
   2. a transport error result with a Retry button that invalidates and re-runs the
      authorisation query;
   3. a loading state while the authorisation query is pending;
-  4. a `'Permissions required'` result when the OAuth scope check resolves to false.
+  4. a `'Permissions required'` result when the OAuth scope check resolves to false;
+  5. a fail-closed warm-up `failed` (non-`FORBIDDEN`) error `Result` with a user-safe
+     mapped message and a `Reload` button — the `QueryClient` uses `retry: false` and the
+     warm-up cycle registry is per-client, so a full page reload is the recovery path;
+  6. a warm-up `loading` "Verifying access" surface (accessible `output`, implicit status
+     role) with no children — the dashboard is withheld until warm-up resolves.
+
+  The bootstrap fail-open path (unconfigured `AUTH_GROUP_EMAIL`) and the gate-exempt
+  `getAuthorisationStatus` OAuth-only check are unaffected: warm-up runs only after
+  `useAuthorisationStatus` reports authorised.
+
 - **`useAuthorisationStatus`** (`src/frontend/src/features/auth/useAuthorisationStatus.ts`)
   returns `{ isAuthorised, isLoading, error }`. It resolves OAuth scope status through
   the gate-exempt `getAuthorisationStatus` method (query definition in

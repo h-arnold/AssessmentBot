@@ -5,14 +5,13 @@ import {
   baseGoogleClassrooms,
   baseYearGroups,
   createSuccessfulClassesScenario,
+  mockClassesCrudRuntime,
   openClassesTabWithScenario,
 } from './classes-crud.shared';
 
 test.describe('Classes CRUD load states', () => {
-  test('shows blocking classes error when startup warm-up datasets fail', async ({
-    page,
-  }) => {
-    await openClassesTabWithScenario(page, {
+  test('blocks the application when a startup warm-up dataset fails', async ({ page }) => {
+    await mockClassesCrudRuntime(page, {
       ...createSuccessfulClassesScenario({
         classPartials: baseClassPartials,
         cohorts: baseCohorts,
@@ -21,14 +20,13 @@ test.describe('Classes CRUD load states', () => {
       }),
       getABClassPartials: [{ kind: 'transportFailure', message: 'class partials failed' }],
     });
+    await page.goto('/');
 
-    await expect(page.getByText('Classes feature is unavailable.')).toBeVisible();
-    await expect(page.getByText('Unable to load active Google Classrooms right now.')).toBeVisible();
+    await expect(page.getByText('An error occurred. Please try again.')).toBeVisible();
+    await expect(page.getByText('Classes feature is unavailable.')).toHaveCount(0);
   });
 
-  test('shows no-active-classrooms empty state when all datasets are empty', async ({
-    page,
-  }) => {
+  test('shows no-active-classrooms empty state when all datasets are empty', async ({ page }) => {
     await openClassesTabWithScenario(
       page,
       createSuccessfulClassesScenario({
@@ -58,9 +56,7 @@ test.describe('Classes CRUD load states', () => {
     await expect(page.getByRole('table', { name: 'Classes table' })).toBeVisible();
   });
 
-  test('shows blocking classes error when Google Classrooms query fails', async ({
-    page,
-  }) => {
+  test('shows blocking classes error when Google Classrooms query fails', async ({ page }) => {
     await openClassesTabWithScenario(page, {
       ...createSuccessfulClassesScenario({
         classPartials: baseClassPartials,
@@ -73,6 +69,8 @@ test.describe('Classes CRUD load states', () => {
       ],
     });
     await expect(page.getByText('Classes feature is unavailable.')).toBeVisible();
-    await expect(page.getByText('Unable to load active Google Classrooms right now.')).toBeVisible();
+    await expect(
+      page.getByText('Unable to load active Google Classrooms right now.')
+    ).toBeVisible();
   });
 });
