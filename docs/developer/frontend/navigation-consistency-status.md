@@ -122,6 +122,21 @@ Snapshots saved at:
 - `e2e-tests/navigation-screenshots.spec.ts-snapshots/class-page-overview-chromium-linux.png`
 - `e2e-tests/navigation-screenshots.spec.ts-snapshots/task-heatmap-chromium-linux.png`
 
+### 8. Heatmaps standalone top-level entry (`src/frontend/src/pages/HeatmapsPage.tsx`)
+
+**Status: Implemented**
+
+Adds a new top-level navigation key `heatmaps` to the shared navigation contract, giving direct access to a standalone Heatmaps page built from the same two-card navigation pattern.
+
+Changes:
+
+- `AppNavigationKey` union gains `'heatmaps'`; `navigationDefinitions` places it between `assignments` and `settings` (menu order: dashboard, classes, assignments, heatmaps, settings).
+- Menu label sourced from `pageContent.heatmaps.heading`; icon is the Lucide `Flame` wrapped by `renderNavigationIcon` (decorative, `aria-hidden`), consistent with the other Lucide navigation icons.
+- `renderNavigationPage('heatmaps')` returns `<HeatmapsPage />`, so the entry is directly navigable and does not route through Class Page `selectedView` state (no second page-selection source of truth).
+- `pages/HeatmapsPage.tsx` (14 LOC) is a thin composition root that renders ONLY `features/taskHeatmap/HeatmapBuilderSurface` — no hooks, services, or state machines — matching the thinness of `ClassesPage.tsx`.
+- The builder surface composes the documented two-card stack (`PageTitleCard` level 2 + `PageNavCard` actions-only with Refresh), keeping the new entry consistent with the navigation pattern recorded here.
+- Existing navigation specs extended (not weakened) for the new key; `navigation-screenshots.spec.ts` gained a committed Heatmaps baseline.
+
 ## Outstanding Work
 
 ### 1. Full Test Suite Run
@@ -175,11 +190,12 @@ The `PageTitleCard` on ClassPage uses `titleLevel={2}`. The TaskHeatmapPage pare
 
 ### New Files
 
-| File                                                    | Lines | Purpose                                           |
-| ------------------------------------------------------- | ----- | ------------------------------------------------- |
-| `src/frontend/src/components/PageHeader.tsx`            | 116   | Shared `PageTitleCard` + `PageNavCard` components |
-| `src/frontend/src/components/PageHeader.spec.tsx`       | 86    | Unit tests (10 tests)                             |
-| `src/frontend/e2e-tests/navigation-screenshots.spec.ts` | 74    | Playwright screenshot tests                       |
+| File                                                    | Lines | Purpose                                                |
+| ------------------------------------------------------- | ----- | ------------------------------------------------------ |
+| `src/frontend/src/components/PageHeader.tsx`            | 116   | Shared `PageTitleCard` + `PageNavCard` components      |
+| `src/frontend/src/components/PageHeader.spec.tsx`       | 86    | Unit tests (10 tests)                                  |
+| `src/frontend/e2e-tests/navigation-screenshots.spec.ts` | 74    | Playwright screenshot tests                            |
+| `src/frontend/src/pages/HeatmapsPage.tsx`               | 14    | Thin composition root for the standalone Heatmaps page |
 
 ### Modified Files
 
@@ -192,6 +208,7 @@ The `PageTitleCard` on ClassPage uses `titleLevel={2}`. The TaskHeatmapPage pare
 | `src/frontend/src/features/classPage/ClassPage.spec.tsx`            | Updated modal tests to click button directly                                                                   |
 | `src/frontend/src/features/taskHeatmap/TaskHeatmapPage.spec.tsx`    | Updated assertions for parent + child title cards                                                              |
 | `src/frontend/src/features/classPage/ClassPageHeatmapView.spec.tsx` | Removed `ClassPageHeaderActions` mock                                                                          |
+| `src/frontend/src/navigation/appNavigation.tsx`                     | Added `heatmaps` navigation key (Flame icon, between assignments and settings) and `renderNavigationPage` case |
 
 ## Lint Status
 

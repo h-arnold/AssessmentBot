@@ -987,7 +987,27 @@ to baseline (7/8; 0 regressions, 0 new failures on the authoritative full re-run
 
 ### Implementation notes / deviations / follow-up
 
-- Filled at execution.
+**Status: COMPLETE** (2026-08-31). All acceptance criteria met.
+
+1. `docs/developer/frontend/navigation-consistency-status.md` — new "Completed Work entry 8"
+   records the standalone Heatmaps entry (menu key `'heatmaps'`, position, Flame icon, thin
+   14-LOC page root, two-card chrome pattern); New/Modified Files inventories extended.
+2. `frontend-shared-helpers-and-abstraction-standards.md` §9.22 — all three entries reconciled
+   from `Not implemented` to `Implemented` with materialised owning paths recorded (entry 1 →
+   `heatmapAdapter.merged.ts` sibling; entry 2 → `assembleMergedPreviewData.ts`; entry 3 →
+   `selectionCascade.ts`), plus an "antd v6 UI implementation notes" block covering the two
+   user-visible patterns (membership-derived checkbox `checked`; Tooltip + sr-only
+   `aria-describedby` disabled-reason).
+3. `src/frontend/AGENTS.md` §3.3 — `taskHeatmap/` signpost now names the standalone builder
+   surface modules and restates the permanent dependency rule (brief signpost per AGENTS §5.1).
+4. JSDoc spot-check: `useHeatmapsPageData.ts` (memoisation `@remarks`), `selectionCascade.ts`
+   (cascade rationale), `HeatmapBuilderSurface.tsx` (six-branch precedence ownership) — all
+   accurate; no production edits needed.
+5. `@remarks` confirmation (plan required check 4): Sections 1/2/5 `@remarks` items verified
+   present in code — `buildCellPreviewLookup` composite-key rationale; merged adapter composite
+   `taskKey`/identity remarks (now in `heatmapAdapter.merged.ts`); hook memoisation note;
+   reducer cascade rationale. CONFIRMED.
+6. Verification: `lint:frontend` exit 0; docs-only change (no production code touched).
 
 ---
 
