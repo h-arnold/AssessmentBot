@@ -662,15 +662,21 @@ export async function applyColumnFilterOption(
  *
  * @param {Page} page The Playwright page under test.
  * @param {string} optionName The visible option label to choose.
+ * @param {number} occurrence Which matching option to select (default: 0).
  * @returns {Promise<void>} Resolves once the option is selected.
  */
-export async function selectVisibleOption(page: Page, optionName: string): Promise<void> {
+export async function selectVisibleOption(
+  page: Page,
+  optionName: string,
+  occurrence = 0
+): Promise<void> {
   // antd v6 dropdown options render as `.ant-select-item-option-content` inside
   // the visible dropdown. Scope to the visible (non-hidden) dropdown so we
   // don't pick up stale closed dropdowns that may still be in the DOM.
   await page
     .locator('.ant-select-dropdown:not(.ant-select-dropdown-hidden)')
     .getByText(optionName, { exact: true })
+    .nth(occurrence)
     .click();
 }
 

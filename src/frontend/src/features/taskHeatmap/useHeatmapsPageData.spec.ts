@@ -644,7 +644,9 @@ describe('useHeatmapsPageData — analysis scope', () => {
     expect(callArgument.classes).toHaveLength(1);
     expect(callArgument.classes[0].classId).toBe(DEFAULT_CLASS_ID);
     // Selected assignments are input-shaped onto the class.
-    expect(callArgument.classes[0].assignments).toEqual(['a1']);
+    expect(callArgument.classes[0].assignments).toEqual([
+      expect.objectContaining({ assignmentId: 'a1' }),
+    ]);
     expect(callArgument.assignmentDefinitionPartials).not.toBeNull();
   });
 

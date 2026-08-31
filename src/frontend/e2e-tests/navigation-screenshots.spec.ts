@@ -71,4 +71,16 @@ test.describe('Navigation screenshot tests', () => {
       maxDiffPixelRatio: 0.1,
     });
   });
+
+  test('Heatmaps builder with PageHeader', async ({ page }) => {
+    await installRuntimeMock(page, createHeatmapScenario());
+    await page.goto('/');
+    await page.getByRole('menuitem', { name: 'Heatmaps' }).click();
+
+    await expect(page.getByRole('heading', { level: 2, name: 'Heatmaps' })).toBeVisible();
+    await expect(page.getByText('Select a class to build a heatmap.')).toHaveCount(1);
+    await expect(page).toHaveScreenshot('heatmaps-builder.png', {
+      maxDiffPixelRatio: 0.1,
+    });
+  });
 });

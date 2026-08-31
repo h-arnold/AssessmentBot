@@ -76,7 +76,14 @@ function runAnalyserStep(
     const analyserInput = {
       filter: { classIds: [classId] },
       // Input shaping: scope analysis to exactly the selected assignment instances.
-      classes: [{ ...classFull, assignments: selectedAssignmentIds }],
+      classes: [
+        {
+          ...classFull,
+          assignments: classFull.assignments.filter((assignment) =>
+            selectedAssignmentIds.includes(assignment.assignmentId)
+          ),
+        },
+      ],
       assignmentDefinitionPartials,
     };
 

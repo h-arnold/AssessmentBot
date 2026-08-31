@@ -138,6 +138,78 @@ export interface CreateHeatmapScenarioOptions {
   emptySubmissions?: boolean;
   /** When true, build the zero-tasks fixture variant. */
   zeroTasks?: boolean;
+  /** When true, include a second assignment sharing the fixture definition. */
+  multipleAssignments?: boolean;
+  /** When true, selecting the fixture class returns a retryable query failure. */
+  classFailure?: boolean;
+}
+
+/**
+ * Adds a second assignment to exercise merged-table grouping.
+ *
+ * @param {Record<string, unknown>} classDocument The class fixture to extend.
+ */
+function addSecondAssignment(classDocument: Record<string, unknown>): void {
+  const assignments = classDocument.assignments as Array<Record<string, unknown>>;
+  const firstAssignment = assignments[0];
+  if (!firstAssignment) {
+    throw new Error('Expected the heatmap fixture to contain an assignment.');
+  }
+  const secondAssignmentId = `${HEATMAP_ASSIGNMENT_ID}-2`;
+  assignments.push({
+    ...firstAssignment,
+    assignmentId: secondAssignmentId,
+    submissions: (firstAssignment.submissions as Array<Record<string, unknown>>).map(
+      (submission) => ({ ...submission, assignmentId: secondAssignmentId })
+    ),
+  });
+}
+
+/**
+ * Creates the class response queue for the requested loading state.
+ *
+ * @param {Record<string, unknown>} classDocument The class fixture.
+ * @param {Pick<CreateHeatmapScenarioOptions, 'classFailure' | 'deferredClass'>} options Queue options.
+ * @returns {ReadonlyArray<ResponseItem>} The class response queue.
+ */
+function createClassEntries(
+  classDocument: Record<string, unknown>,
+  options: Pick<CreateHeatmapScenarioOptions, 'classFailure' | 'deferredClass'>
+): ReadonlyArray<ResponseItem> {
+  if (options.classFailure) {
+    return [
+      { kind: 'failureEnvelope', code: 'INTERNAL_ERROR', message: 'Class load failed' },
+      { kind: 'failureEnvelope', code: 'INTERNAL_ERROR', message: 'Class load failed' },
+    ];
+  }
+  if (options.deferredClass) {
+    return [
+      { kind: 'deferredSuccess', data: classDocument },
+      { kind: 'deferredSuccess', data: classDocument },
+    ];
+  }
+  return [
+    { kind: 'success', data: classDocument },
+    { kind: 'success', data: classDocument },
+  ];
+}
+
+/**
+ * Builds the class fixture used by the scenario factory.
+ *
+ * @param {boolean} emptySubmissions Whether submissions should be omitted.
+ * @param {boolean} multipleAssignments Whether to include a second assignment.
+ * @returns {Record<string, unknown>} The class fixture.
+ */
+function createScenarioClassDocument(
+  emptySubmissions: boolean,
+  multipleAssignments: boolean
+): Record<string, unknown> {
+  const classDocument = buildClassFullDocument(emptySubmissions);
+  if (multipleAssignments) {
+    addSecondAssignment(classDocument);
+  }
+  return classDocument;
 }
 
 /**
@@ -436,19 +508,17 @@ function buildAssignmentFullDocument(): Record<string, unknown> {
  * @returns {RuntimeScenario} The configured runtime scenario.
  */
 export function createHeatmapScenario(options: CreateHeatmapScenarioOptions = {}): RuntimeScenario {
-  const { deferredClass = false, emptySubmissions = false, zeroTasks = false } = options;
+  const {
+    deferredClass = false,
+    emptySubmissions = false,
+    zeroTasks = false,
+    multipleAssignments = false,
+    classFailure = false,
+  } = options;
 
-  const classDocument = buildClassFullDocument(emptySubmissions);
+  const classDocument = createScenarioClassDocument(emptySubmissions, multipleAssignments);
 
-  const classEntries: ReadonlyArray<ResponseItem> = deferredClass
-    ? [
-        { kind: 'deferredSuccess', data: classDocument },
-        { kind: 'deferredSuccess', data: classDocument },
-      ]
-    : [
-        { kind: 'success', data: classDocument },
-        { kind: 'success', data: classDocument },
-      ];
+  const classEntries = createClassEntries(classDocument, { classFailure, deferredClass });
 
   return {
     getAuthorisationStatus: [{ kind: 'success', data: true }],
@@ -486,7 +556,10 @@ export function createHeatmapScenario(options: CreateHeatmapScenarioOptions = {}
     ],
     getAssignmentTopics: [{ kind: 'success', data: [] }],
     getAssignmentDefinitionPartials: [
-      { kind: 'success', data: [buildAssignmentDefinitionPartial(zeroTasks)] },
+      {
+        kind: 'success',
+        data: [buildAssignmentDefinitionPartial(zeroTasks)],
+      },
     ],
     // Two identical entries — React 19 StrictMode double-effect must not
     // exhaust the queue (same rationale as getABClass two-entry pattern).
