@@ -906,6 +906,35 @@ This entry records the descriptor-type extension for the Auth Service feature (s
 - Call-site rationale: supports declarative static helper text for the `authGroupEmail` field without adding special-case rendering branches. The existing `apiKey` dynamic helper case (`getApiKeyHelperCopy()`) is preserved as-is. The render logic checks `descriptor.helperText` first; if present, renders static helper; otherwise falls through to the existing `apiKey` dynamic case.
 - References: SPEC.md §Frontend changes (4); ACTION_PLAN.md §11.
 
+## 9.22 Heatmaps builder surface helpers (planned — Heatmaps query-builder cycle)
+
+Planned-only entries for the standalone Heatmaps page (source: repository-root `SPEC.md` and
+`HEATMAPS_PAGE_LAYOUT.md`). Statuses are reconciled during that cycle's documentation pass.
+
+1. Helper: `adaptMetricsToMergedHeatmap(analyserResult, classFull, selectedAssignmentIds, assignmentDefinitionPartials)` plus `MergedHeatmapResult` / `MergedHeatmapTaskColumn` types
+
+- Decision: `new` (added inside the existing heatmap-domain module)
+- Owning module/path: `src/frontend/src/services/dataAnalysis/heatmapAdapter.ts`
+- Call-site rationale: single projection boundary for the builder surface's merged table. Derives the `taskKey → assignment identity` mapping from `classFull.assignments` restricted to `selectedAssignmentIds`, resolves titles/topics from the warm-up partials registry, de-duplicates columns by `taskKey` (first occurrence owns collapsed duplicate-definition groups), and orders columns by stable class-assignment order then partial task order. Existing exports (`adaptMetricsToHeatmap`, `HeatmapResult`, `HeatmapTaskColumn`) remain untouched.
+- Relevant canonical doc target: this section (§9.22); companion spec `SPEC.md` §"Merged adapter and type contract".
+- Planned doc status: `Not implemented`
+
+2. Helper: merged cell-preview lookup assembly (indicative name `mergeCellPreviewLookups`)
+
+- Decision: `new` (feature-local; promote to shared only if a second consumer surface emerges)
+- Owning module/path: `src/frontend/src/features/taskHeatmap/` (beside `buildCellPreviewLookup.ts`; exact filename settled at implementation)
+- Call-site rationale: combines N per-assignment lookups into one `studentId → taskKey → CellPreviewData` map (first-wins in stable column order for duplicate keys) and produces the per-task-key preview-status map (`{ isLoading, hasError }`) consumed by `TaskHeatmapTable`'s `previewStatusByTaskKey` prop. Depends on `buildCellPreviewLookup`'s planned composite-key widening.
+- Relevant canonical doc target: this section (§9.22).
+- Planned doc status: `Not implemented`
+
+3. Helper: selection-cascade reducer (pure functions for topic→assignment narrowing and invalidation clearing)
+
+- Decision: `new` (feature-local pure module, test-first)
+- Owning module/path: `src/frontend/src/features/taskHeatmap/` (exact filename settled at implementation)
+- Call-site rationale: keeps the cascade rules in `SPEC.md` decisions 2–4 (class change clears selections; topic change clears no-longer-matching assignments) as pure, deterministically testable functions consumed by `useHeatmapsPageData`, instead of inline reducer logic in the hook or component.
+- Relevant canonical doc target: this section (§9.22).
+- Planned doc status: `Not implemented`
+
 ## 10. Frontend utils folder convention
 
 The `src/frontend/src/utils/` folder exists for pure formatting / utility functions that are shared across the frontend. This folder is a separate convention from `src/frontend/AGENTS.md` §13, which governs only `services/` subfolder organisation.
