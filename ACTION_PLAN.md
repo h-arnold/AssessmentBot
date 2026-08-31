@@ -940,7 +940,21 @@ to baseline (7/8; 0 regressions, 0 new failures on the authoritative full re-run
 
 ### Implementation notes / deviations / follow-up
 
-- Filled at execution.
+**Status: COMPLETE** (2026-08-31). All checks green.
+
+1. `npm run test:frontend` — 1872/1872 (153 files).
+2. `npm run lint:frontend` — exit 0, zero warnings.
+3. Section 7 E2E set — 23/23 (`task-heatmap` + `task-preview-card` + `navigation-screenshots` +
+   `heatmaps`).
+4. Byte-stability evidence: `git log ab54e3d..HEAD` touches NONE of `ClassPage.spec.tsx`,
+   `ClassPageContent.spec.tsx`, `ClassPageHeatmapView.spec.tsx`, `TaskHeatmapPage.spec.tsx` —
+   all four pass unmodified.
+5. Regression checker: no unexpected health drift (7/8 stable across all section gates; sole
+   failure remains the accepted pre-existing backend `max-lines` debt).
+6. `Files read` evidence: verified present for every delegated handoff in Sections 1–7 (each
+   sub-agent response carried a `Files read` section; handoffs omitting mandatory documents
+   were returned for correction during Sections 5–7; Sections 1–4 evidence recorded in their
+   plan notes).
 
 ---
 
