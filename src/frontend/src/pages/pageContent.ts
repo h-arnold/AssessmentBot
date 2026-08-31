@@ -19,6 +19,8 @@ export const pageContent = {
   heatmaps: {
     heading: 'Heatmaps',
     summary: 'Build task heatmaps by selecting a class, topics, and assignments.',
+    noClassEmpty: 'Select a class to build a heatmap.',
+    noAssignmentsEmpty: 'Select one or more assignments to build a heatmap.',
   },
   settings: {
     heading: 'Settings',

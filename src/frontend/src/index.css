@@ -138,3 +138,18 @@ body {
     transition-delay: 0ms;
   }
 }
+
+/* Visually-hidden but accessibility-tree-present utility (canonical sr-only pattern).
+   Reused everywhere a node must stay discoverable to assistive tech without being
+   visible (e.g. the heatmap selection-bar disabled-reason description). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
