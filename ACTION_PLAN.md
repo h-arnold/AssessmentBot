@@ -661,7 +661,56 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- Filled at execution.
+**Status: COMPLETE** (2026-08-31). Red loop and green loop both reviewed to CLEAN; regression
+gate passed identical to baseline (7/8; 0 regressions, 0 new failures; sole failure is the
+accepted pre-existing backend `max-lines` debt).
+
+- Red loop: 28 contract-pinning tests across `selectionCascade.spec.ts` (200 LOC),
+  `assembleMergedPreviewData.spec.ts` (184 LOC), `useHeatmapsPageData.spec.ts` (898 LOC) with
+  zero-behaviour throwing stubs (stub modules required by the lint/tsc gates for the
+  namespace-guard seam). Red review CLEAN after one fix round (3 Improvements: refresh test
+  pinned only one of three refetch families; status-map test not mechanism-sensitive; wholesale
+  `./selectionCascade` mock prevented real-reducer cascade coverage — all resolved,
+  re-review CLEAN).
+- Green loop: delivered via `selectionCascade.ts` (113 LOC pure reducer),
+  `assembleMergedPreviewData.ts` (116 LOC first-wins merged lookup + status map),
+  `useHeatmapsPageData.ts` (public hook) with feature-local helpers `heatmapsPipeline.ts`
+  (204 LOC analyser/adapter pipeline) and `heatmapsSurfaceState.ts` (182 LOC surface-state/
+  error derivation) after an LOC-gate split (see deviations).
+- Deviations accepted by green review:
+  1. `useQueries` migration: the interrupted first pass called `useQuery` inside `.map()`
+     (rules-of-hooks violation; the real lint failure). Production now drives per-assignment
+     preview queries through React Query v5 `useQueries` with a `combine` projection; the spec's
+     `@tanstack/react-query` mock gained a mechanical `useQueries`/`combine` implementation
+     (re-established in `beforeEach` after `vi.resetAllMocks`). Per-assignment behavioural
+     contract unchanged (one query per selected assignment, factories-only keys, refetch spies).
+  2. Red-spec contradiction fix: the red hook spec contained two tests with an identical
+     no-class setup but opposite `surfaceState` expectations; per SPEC ("no class → ready"),
+     `selectClass(DEFAULT_CLASS_ID)` was added to the `keeps mergedResult null until
+surfaceState is ready` setup so the test genuinely enters class-selected-pending. Both
+     assertions byte-identical; review adjudicated this as strengthening the red contract.
+- Review fix rounds (final re-review CLEAN):
+  1. Ad-hoc query-key literals removed: disabled branches now use `queryKeys.abClass('__none__')`
+     / `getAssignmentQueryOptions('__none__', assignmentId)` with `queryFn: skipToken`
+     (`getABClassQueryOptions` deliberately NOT called in the no-class branch — the spec asserts
+     it is not called there).
+  2. Defeated `mergedPreview` memo fixed via `useQueries` `combine` (`AssignmentPreviewCombined`
+     with structural sharing; memo keys on the combined value which the body consumes) —
+     stability adjudicated genuine against `@tanstack/query-core@5.90` source (`replaceEqualDeep`
+     returns the prior reference when deep-equal; observer-bound `refetch` stable). Zero lint
+     warnings; no lint suppressions anywhere.
+- Delegation outage: the `implementation` sub-agent returned empty responses twice (second made
+  no changes); a user-directed retry then completed the pass. Interrupted-pass residue (694-LOC
+  hook, 1 failing test, lint failures) was repaired in the successful retry.
+- Verification (final): `test:frontend -- src/features/taskHeatmap` 125/125 (11 files);
+  `test:frontend -- src/services/dataAnalysis` 235/235; full `test:frontend` 152 files /
+  1855 tests; `lint:frontend` exit 0 with zero warnings; `tsc -b src/frontend/tsconfig.json`
+  exit 0; regression checker 7/8, 0 regressions, 0 new failures.
+- `@remarks` follow-through delivered: hook memoisation note (key includes
+  `selectedAssignmentIds` join); reducer cascade-clearing rationale.
+- Follow-up: hook is ≈445 LOC (projected ≈250–320; within the 500 gate — the wiring is cohesive
+  and resisted further splitting without harming readability). §9.22 entries 2–3 doc-status
+  reconciliation deferred to the cycle documentation pass per that doc's own note.
 
 ---
 
