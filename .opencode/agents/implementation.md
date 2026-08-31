@@ -1,7 +1,7 @@
 ---
 description: Implements code changes in an idiomatic and type-safe manner with validated results
 mode: all
-model: opencode/x-preview-f-free
+model: opencode-go/hy3
 steps: 100
 ---
 

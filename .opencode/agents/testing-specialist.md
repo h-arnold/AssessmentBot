@@ -1,7 +1,7 @@
 ---
 description: Creates, maintains, and debugs Vitest unit/component tests and backend tests
 mode: all
-model: opencode/x-preview-f-free
+model: opencode-go/hy3
 steps: 100
 ---
 
