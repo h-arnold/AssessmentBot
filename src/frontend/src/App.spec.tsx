@@ -78,119 +78,23 @@ function dispatchMockTransportResponse(
 }
 
 /**
- * Installs a `google.script.run.apiHandler` mock for app-level tests.
+ * Installs the shared `google.script.run.apiHandler` mock core used by both the immediate and
+ * deferred installers.
+ *
+ * The core performs method extraction, per-method call counting, invalid-payload handling,
+ * unmocked-method handling, and response dispatch. The only behavioural difference between the
+ * two installers is what happens when a configured response is `'pending'`: that is delegated to
+ * `onPending` so the immediate installer can drop the request while the deferred installer can
+ * stash the callbacks until `release` is invoked.
  *
  * @param {ApiMethodResponseMap} responsesByMethod - The mocked responses keyed by API method.
- * @returns {{ getCallCount(method: string): number }} A transport harness that exposes per-method call counts.
+ * @param {(method: string, callbacks: GoogleScriptRunApiHandlerCallbacks) => void} onPending - Hook invoked when a configured response is `'pending'`.
+ * @returns {{ methodCallCounts: Map<string, number>; pendingCallbacksByMethod: Map<string, GoogleScriptRunApiHandlerCallbacks> }} The shared harness state.
  */
-function installApiHandlerMock(responsesByMethod: ApiMethodResponseMap) {
-  const methodCallCounts = new Map<string, number>();
-
-  const runMock = createGoogleScriptRunApiHandlerMock((request, callbacks) => {
-    const { failureHandler, successHandler } = callbacks;
-
-    const method = (request as { method?: unknown })?.method;
-
-    if (typeof method !== 'string') {
-      dispatchMockTransportResponse(
-        { transportFailure: new Error('Invalid transport request payload.') },
-        failureHandler,
-        successHandler
-      );
-      return;
-    }
-
-    methodCallCounts.set(method, (methodCallCounts.get(method) ?? 0) + 1);
-    const response = responsesByMethod[method];
-
-    if (response === undefined) {
-      dispatchMockTransportResponse(
-        { transportFailure: new Error(`No mocked response configured for method: ${method}`) },
-        failureHandler,
-        successHandler
-      );
-      return;
-    }
-
-    if (response === 'pending') {
-      return;
-    }
-
-    dispatchMockTransportResponse(response, failureHandler, successHandler);
-  });
-
-  (globalThis as { google?: unknown }).google = {
-    script: {
-      run: runMock,
-    },
-  };
-
-  return {
-    getCallCount(method: string) {
-      return methodCallCounts.get(method) ?? 0;
-    },
-  };
-}
-
-/**
- * Installs a `google.script.run.apiHandler` mock that resolves auth and completes the five
- * startup warm-up datasets with valid, schema-shaped (empty-array) payloads. Google Classrooms
- * is left pending because it is not part of the fail-closed warm-up surface.
- *
- * Under the fail-closed contract the protected shell only renders once every warm-up dataset
- * has succeeded, so the shared plumbing must let the warm-up settle before the children appear.
- *
- * @returns {{ getCallCount(method: string): number }} A transport harness that exposes per-method call counts.
- */
-function installResolvedWarmupApiHandlerMock() {
-  return installApiHandlerMock({
-    [authStatusMethodName]: {
-      ok: true,
-      requestId: 'req-auth-resolved-warmup',
-      data: true,
-    },
-    [classPartialsMethodName]: {
-      ok: true,
-      requestId: 'req-class-partials-warmup',
-      data: [],
-    },
-    [assignmentTopicsMethodName]: {
-      ok: true,
-      requestId: 'req-topics-warmup',
-      data: [],
-    },
-    [assignmentDefinitionPartialsMethodName]: {
-      ok: true,
-      requestId: 'req-def-partials-warmup',
-      data: [],
-    },
-    [cohortsMethodName]: {
-      ok: true,
-      requestId: 'req-cohorts-warmup',
-      data: [],
-    },
-    [yearGroupsMethodName]: {
-      ok: true,
-      requestId: 'req-yeargroups-warmup',
-      data: [],
-    },
-    [googleClassroomsMethodName]: 'pending',
-  });
-}
-
-/**
- * Installs a `google.script.run.apiHandler` mock that holds the supplied methods pending until
- * `release` is called, at which point the stored success/failure callbacks are invoked.
- *
- * Used to exercise the fail-closed render chain: OAuth authorisation resolves (so the gate is
- * authorised) while the warm-up datasets remain pending, then the warm-up is released so the
- * protected children appear. Pending methods never call their callbacks until released, which
- * keeps the warm-up in its loading phase for the duration of the assertion.
- *
- * @param {ApiMethodResponseMap} responsesByMethod The mocked responses keyed by API method.
- * @returns {{ getCallCount(method: string): number; release(method: string, response: Exclude<ApiMethodResponse, 'pending'>): void }} A transport harness with a release trigger.
- */
-function installDeferredApiHandlerMock(responsesByMethod: ApiMethodResponseMap) {
+function createApiHandlerInstaller(
+  responsesByMethod: ApiMethodResponseMap,
+  onPending: (method: string, callbacks: GoogleScriptRunApiHandlerCallbacks) => void
+) {
   const methodCallCounts = new Map<string, number>();
   const pendingCallbacksByMethod = new Map<string, GoogleScriptRunApiHandlerCallbacks>();
 
@@ -221,7 +125,7 @@ function installDeferredApiHandlerMock(responsesByMethod: ApiMethodResponseMap) 
     }
 
     if (response === 'pending') {
-      pendingCallbacksByMethod.set(method, callbacks);
+      onPending(method, callbacks);
       return;
     }
 
@@ -233,6 +137,111 @@ function installDeferredApiHandlerMock(responsesByMethod: ApiMethodResponseMap) 
       run: runMock,
     },
   };
+
+  return {
+    methodCallCounts,
+    pendingCallbacksByMethod,
+  };
+}
+
+/**
+ * Installs a `google.script.run.apiHandler` mock for app-level tests.
+ *
+ * @param {ApiMethodResponseMap} responsesByMethod - The mocked responses keyed by API method.
+ * @returns {{ getCallCount(method: string): number }} A transport harness that exposes per-method call counts.
+ */
+function installApiHandlerMock(responsesByMethod: ApiMethodResponseMap) {
+  const { methodCallCounts } = createApiHandlerInstaller(responsesByMethod, () => {
+    // Pending responses never dispatch: the immediate installer drops them silently.
+  });
+
+  return {
+    getCallCount(method: string) {
+      return methodCallCounts.get(method) ?? 0;
+    },
+  };
+}
+
+/**
+ * Builds the resolved warm-up response map used by the startup warm-up tests.
+ *
+ * Every warm-up dataset resolves with a valid, schema-shaped (empty-array) payload except
+ * Google Classrooms, which is intentionally left pending because it is not part of the
+ * fail-closed warm-up surface. The `requestId` suffixes mirror the production transport
+ * contract so the assertions stay faithful to real responses.
+ *
+ * @param {string} requestIdSuffix - The suffix appended to every warm-up `requestId`.
+ * @returns {ApiMethodResponseMap} The mocked warm-up responses keyed by API method.
+ */
+function buildResolvedWarmupResponses(requestIdSuffix: string): ApiMethodResponseMap {
+  return {
+    [authStatusMethodName]: {
+      ok: true,
+      requestId: `req-auth-${requestIdSuffix}`,
+      data: true,
+    },
+    [classPartialsMethodName]: {
+      ok: true,
+      requestId: `req-class-partials-${requestIdSuffix}`,
+      data: [],
+    },
+    [assignmentTopicsMethodName]: {
+      ok: true,
+      requestId: `req-topics-${requestIdSuffix}`,
+      data: [],
+    },
+    [assignmentDefinitionPartialsMethodName]: {
+      ok: true,
+      requestId: `req-def-partials-${requestIdSuffix}`,
+      data: [],
+    },
+    [cohortsMethodName]: {
+      ok: true,
+      requestId: `req-cohorts-${requestIdSuffix}`,
+      data: [],
+    },
+    [yearGroupsMethodName]: {
+      ok: true,
+      requestId: `req-yeargroups-${requestIdSuffix}`,
+      data: [],
+    },
+    [googleClassroomsMethodName]: 'pending',
+  };
+}
+
+/**
+ * Installs a `google.script.run.apiHandler` mock that resolves auth and completes the five
+ * startup warm-up datasets with valid, schema-shaped (empty-array) payloads. Google Classrooms
+ * is left pending because it is not part of the fail-closed warm-up surface.
+ *
+ * Under the fail-closed contract the protected shell only renders once every warm-up dataset
+ * has succeeded, so the shared plumbing must let the warm-up settle before the children appear.
+ *
+ * @returns {{ getCallCount(method: string): number }} A transport harness that exposes per-method call counts.
+ */
+function installResolvedWarmupApiHandlerMock() {
+  return installApiHandlerMock(buildResolvedWarmupResponses('resolved-warmup'));
+}
+
+/**
+ * Installs a `google.script.run.apiHandler` mock that holds the supplied methods pending until
+ * `release` is called, at which point the stored success/failure callbacks are invoked.
+ *
+ * Used to exercise the fail-closed render chain: OAuth authorisation resolves (so the gate is
+ * authorised) while the warm-up datasets remain pending, then the warm-up is released so the
+ * protected children appear. Pending methods never call their callbacks until released, which
+ * keeps the warm-up in its loading phase for the duration of the assertion.
+ *
+ * @param {ApiMethodResponseMap} responsesByMethod The mocked responses keyed by API method.
+ * @returns {{ getCallCount(method: string): number; release(method: string, response: Exclude<ApiMethodResponse, 'pending'>): void }} A transport harness with a release trigger.
+ */
+function installDeferredApiHandlerMock(responsesByMethod: ApiMethodResponseMap) {
+  const { methodCallCounts, pendingCallbacksByMethod } = createApiHandlerInstaller(
+    responsesByMethod,
+    (method, callbacks) => {
+      pendingCallbacksByMethod.set(method, callbacks);
+    }
+  );
 
   return {
     getCallCount(method: string) {
@@ -887,39 +896,7 @@ describe('App', () => {
   });
 
   it('keeps navigation ready once startup warm-up has settled', async () => {
-    const transport = installApiHandlerMock({
-      [authStatusMethodName]: {
-        ok: true,
-        requestId: 'req-auth-1',
-        data: true,
-      },
-      [classPartialsMethodName]: {
-        ok: true,
-        requestId: 'req-class-partials-1',
-        data: [],
-      },
-      [assignmentTopicsMethodName]: {
-        ok: true,
-        requestId: 'req-topics-1',
-        data: [],
-      },
-      [assignmentDefinitionPartialsMethodName]: {
-        ok: true,
-        requestId: 'req-def-partials-1',
-        data: [],
-      },
-      [cohortsMethodName]: {
-        ok: true,
-        requestId: 'req-cohorts-1',
-        data: [],
-      },
-      [yearGroupsMethodName]: {
-        ok: true,
-        requestId: 'req-yeargroups-1',
-        data: [],
-      },
-      [googleClassroomsMethodName]: 'pending',
-    });
+    const transport = installApiHandlerMock(buildResolvedWarmupResponses('1'));
 
     renderApp();
 
@@ -931,39 +908,7 @@ describe('App', () => {
   });
 
   it('keeps startup warm-up idempotent across remounts with the same query client', async () => {
-    const transport = installApiHandlerMock({
-      [authStatusMethodName]: {
-        ok: true,
-        requestId: 'req-auth-3',
-        data: true,
-      },
-      [classPartialsMethodName]: {
-        ok: true,
-        requestId: 'req-class-partials-3',
-        data: [],
-      },
-      [assignmentTopicsMethodName]: {
-        ok: true,
-        requestId: 'req-topics-3',
-        data: [],
-      },
-      [assignmentDefinitionPartialsMethodName]: {
-        ok: true,
-        requestId: 'req-def-partials-3',
-        data: [],
-      },
-      [cohortsMethodName]: {
-        ok: true,
-        requestId: 'req-cohorts-3',
-        data: [],
-      },
-      [yearGroupsMethodName]: {
-        ok: true,
-        requestId: 'req-yeargroups-3',
-        data: [],
-      },
-      [googleClassroomsMethodName]: 'pending',
-    });
+    const transport = installApiHandlerMock(buildResolvedWarmupResponses('3'));
     const queryClient = createAppQueryClient();
 
     const firstRender = renderApp(queryClient);
@@ -979,39 +924,7 @@ describe('App', () => {
   });
 
   it('does not trigger extra class-partials warm-up during in-app navigation', async () => {
-    const transport = installApiHandlerMock({
-      [authStatusMethodName]: {
-        ok: true,
-        requestId: 'req-auth-4',
-        data: true,
-      },
-      [classPartialsMethodName]: {
-        ok: true,
-        requestId: 'req-class-partials-4',
-        data: [],
-      },
-      [assignmentTopicsMethodName]: {
-        ok: true,
-        requestId: 'req-topics-4',
-        data: [],
-      },
-      [assignmentDefinitionPartialsMethodName]: {
-        ok: true,
-        requestId: 'req-def-partials-4',
-        data: [],
-      },
-      [cohortsMethodName]: {
-        ok: true,
-        requestId: 'req-cohorts-4',
-        data: [],
-      },
-      [yearGroupsMethodName]: {
-        ok: true,
-        requestId: 'req-yeargroups-4',
-        data: [],
-      },
-      [googleClassroomsMethodName]: 'pending',
-    });
+    const transport = installApiHandlerMock(buildResolvedWarmupResponses('4'));
 
     renderApp();
 
