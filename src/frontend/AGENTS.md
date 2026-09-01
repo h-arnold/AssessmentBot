@@ -58,7 +58,7 @@ Feature state machines, hooks, modal components, and feature-scoped helpers live
 - `classes/` — Class management, assessment, bulk operations, and table
 - `referenceData/` — Cross-cutting reference data management (cohorts, year groups, topics; extracted from `features/classes/management/` and `features/settings/`)
 - `settings/` — Backend settings configuration
-- `taskHeatmap/` — Task Heatmap analytics surface (extracted from `features/classPage/`)
+- `taskHeatmap/` — Task Heatmap analytics surface (extracted from `features/classPage/`) and the standalone Heatmaps builder surface (`HeatmapBuilderSurface`, `HeatmapSelectionBar`, `useHeatmapsPageData`, plus feature-local pipeline/surface-state helpers). Never imports `features/classPage/**` (permanent dependency rule; shared heatmap logic lives in `services/dataAnalysis/`).
 
 Pages under `src/frontend/src/pages/` remain thin composition roots that compose feature
 components. No feature logic, state machines, or hooks should live in `pages/`.

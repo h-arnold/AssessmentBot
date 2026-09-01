@@ -20,7 +20,7 @@ import {
 
 const loadingAuthorisationStatusLabel = 'Loading authorisation status';
 const applicationTitleText = appBreadcrumbBaseLabel;
-const expectedNavigationLabels = ['Dashboard', 'Assignments', 'Classes', 'Settings'] as const;
+const expectedNavigationLabels = ['Dashboard', 'Assignments', 'Classes', 'Heatmaps', 'Settings'] as const;
 const noBreadcrumbLabelPosition = -1;
 const primaryNavigationLabel = 'Primary navigation';
 const collapseNavigationButtonLabel = 'Collapse navigation';

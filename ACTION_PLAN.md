@@ -439,7 +439,35 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- Filled at execution; record final LOC and whether the split gate fired.
+- **Execution status:** COMPLETED 2026-08-30. Red review CLEAN; green review PASS after
+  interrupted-first-pass resumption; regression gate passed (0 regressions, 0 new failures).
+- **Implementation notes:** Prop type narrowed structurally: `TaskHeatmapData`/`TaskHeatmapColumn`
+  carry `{taskKey, taskId, taskTitle}` + optional `assignmentId?/assignmentName?/definitionKey?`
+  plus optional result-level `sourceAssignments`; both `HeatmapResult` and `MergedHeatmapResult`
+  satisfy it with NO casts; prop names unchanged so `TaskHeatmapPage.tsx` compiles untouched.
+  `previewStatusByTaskKey` implements map-entry-first resolution with aggregate fallback (missing
+  entry → aggregate booleans; undefined map → legacy path). Adaptive tier: deeper `children`
+  nesting, present iff >1 `sourceAssignments`; collapsed duplicates → ONE parent labelled FIRST
+  instance's name + `" (shared definition)"`. LOC gate: split fired proactively —
+  `TaskHeatmapTable.tsx` 194 LOC + NEW sibling `taskHeatmapTableColumns.tsx` 451 LOC (plan's
+  prescribed extraction); both ≤500. `taskHeatmapModel.ts`: `compareHeatmapStudentName` parameter
+  widened to structural `NamedRow` (behaviourally neutral; avoids a forbidden cast —
+  `ReadonlyArray` cells vs mutable). `@remarks` JSDoc documents two-mode status contract and
+  no-generics decision. Verification: table spec 27/27; feature folder 97/97
+  (`TaskHeatmapPage.spec.tsx` unmodified); dataAnalysis 235/235; lint clean; tsc clean.
+- **Deviations from plan:** (1) The red-phase popover harness helpers (`openTaskPopover`,
+  `renderTable`) were authored against antd v5 DOM semantics while the repo pins antd v6.3.1; the
+  green phase corrected the helper internals (`.ant-popover-content`, fresh render per cell,
+  prefix matcher) with all `it()` assertions/fixtures/names byte-identical — green review verified
+  contract sensitivity holds. (2) Infrastructure: `.opencode/agents/code-reviewer.md` pinned the
+  dead model ID `opencode/hy3-free` (orchestrator delegated review attempts failed with
+  "Model not found"); migrated to `opencode-go/hy3` matching the planner's own migration pattern
+  in six sibling agent files. `planner-reviewer.md` still pins the dead model (unused by this
+  plan — flagged for follow-up).
+- **Follow-up implications for later sections:** Sections 5/6 consume the narrowed table prop
+  type, `previewStatusByTaskKey`, and adaptive tiers; `TaskHeatmapPage.tsx` untouched confirms
+  the embedded contract; the table's structural result type is the wiring target for
+  `useHeatmapsPageData`'s merged output.
 
 ---
 
@@ -503,7 +531,39 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- Filled at execution.
+- **Execution status:** COMPLETED 2026-08-30. Red review: 6 findings (2 Critical, 2 Improvement,
+  2 Nitpick) fixed in two rounds, plus one residual Improvement in a third round — final red
+  verdict CLEAN. Green review CLEAN. Regression gate: initial run exposed 4 E2E regressions
+  (hard-coded four-entry navigation assumptions in `app.spec.ts`, `classes-page.spec.ts`,
+  shared helper) — fixed mechanically via the Playwright agent, E2E review CLEAN, re-run passed
+  (0 regressions, 0 new failures).
+- **Implementation notes:** `'heatmaps'` added to `AppNavigationKey`; `navigationDefinitions`
+  entry between `assignments` and `settings` (Lucide `Flame` via `renderNavigationIcon`; real
+  menu order Dashboard, Classes, Assignments, Heatmaps, Settings per the SPEC union);
+  `renderNavigationPage` case composes the thin root. `pageContent.heatmaps` copy added.
+  `pages/HeatmapsPage.tsx` (14 LOC) renders ONLY `features/taskHeatmap/HeatmapBuilderSurface.tsx`
+  (17 LOC placeholder stub rendering a level-2 "Heatmaps" heading; Section 6 owns the real
+  assembly) — composition boundary final; no hooks/services/state/chrome in the page root.
+  `appNavigation.tsx` 202 LOC. E2E mechanical extensions: shared `EXPECTED_MENU_ITEM_COUNT` 4→5,
+  `app.spec.ts` `pageExpectations` + heatmaps (with upgrade-marked summary-skip guards), truthful
+  rename of the stale menu-order test title. Verification: unit suites 49/49 targeted, full
+  frontend 1827+ green; FULL E2E 227 green; lint clean; tsc exit 0; regression checker 7/8
+  (only pre-existing backend-lint debt).
+- **Deviations from plan:** (1) The plan's Section 4 checks did not enumerate E2E specs, but the
+  global Regression Gate required mechanically extending four-entry E2E navigation assumptions
+  (`app.spec.ts`, `classes-page.spec.ts`, `classes-page-end-to-end-helpers.ts`) — treated as the
+  E2E analogue of "existing navigation specs extended (not weakened)". (2) The
+  `classesNavigationItemIndex = 2` quirk in `app.spec.ts` (points at Assignments, not Classes —
+  pre-existing) was deliberately left untouched to avoid scope creep; noted for a future
+  tidy-up. (3) Environment: a foreign Vite dev server (different project/worktree) was squatting
+  on E2E port 4173, hijacking the Playwright webServer reuse and causing universal 45s timeouts;
+  the foreign process was killed to free the port (documented here as an environment
+  intervention, not a repo change).
+- **Follow-up implications for later sections:** Section 6 must replace the placeholder stub
+  internals (chrome sourced from `pageContent.heatmaps`), after which the upgrade-marked E2E
+  summary-skip guards and the stub heading literal must be revisited; Section 7 extends
+  `navigation-screenshots.spec.ts` for the new page; `planner-reviewer.md` still pins the dead
+  `opencode/hy3-free` model (unused by this plan — flagged).
 
 ---
 
@@ -601,7 +661,56 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- Filled at execution.
+**Status: COMPLETE** (2026-08-31). Red loop and green loop both reviewed to CLEAN; regression
+gate passed identical to baseline (7/8; 0 regressions, 0 new failures; sole failure is the
+accepted pre-existing backend `max-lines` debt).
+
+- Red loop: 28 contract-pinning tests across `selectionCascade.spec.ts` (200 LOC),
+  `assembleMergedPreviewData.spec.ts` (184 LOC), `useHeatmapsPageData.spec.ts` (898 LOC) with
+  zero-behaviour throwing stubs (stub modules required by the lint/tsc gates for the
+  namespace-guard seam). Red review CLEAN after one fix round (3 Improvements: refresh test
+  pinned only one of three refetch families; status-map test not mechanism-sensitive; wholesale
+  `./selectionCascade` mock prevented real-reducer cascade coverage — all resolved,
+  re-review CLEAN).
+- Green loop: delivered via `selectionCascade.ts` (113 LOC pure reducer),
+  `assembleMergedPreviewData.ts` (116 LOC first-wins merged lookup + status map),
+  `useHeatmapsPageData.ts` (public hook) with feature-local helpers `heatmapsPipeline.ts`
+  (204 LOC analyser/adapter pipeline) and `heatmapsSurfaceState.ts` (182 LOC surface-state/
+  error derivation) after an LOC-gate split (see deviations).
+- Deviations accepted by green review:
+  1. `useQueries` migration: the interrupted first pass called `useQuery` inside `.map()`
+     (rules-of-hooks violation; the real lint failure). Production now drives per-assignment
+     preview queries through React Query v5 `useQueries` with a `combine` projection; the spec's
+     `@tanstack/react-query` mock gained a mechanical `useQueries`/`combine` implementation
+     (re-established in `beforeEach` after `vi.resetAllMocks`). Per-assignment behavioural
+     contract unchanged (one query per selected assignment, factories-only keys, refetch spies).
+  2. Red-spec contradiction fix: the red hook spec contained two tests with an identical
+     no-class setup but opposite `surfaceState` expectations; per SPEC ("no class → ready"),
+     `selectClass(DEFAULT_CLASS_ID)` was added to the `keeps mergedResult null until
+surfaceState is ready` setup so the test genuinely enters class-selected-pending. Both
+     assertions byte-identical; review adjudicated this as strengthening the red contract.
+- Review fix rounds (final re-review CLEAN):
+  1. Ad-hoc query-key literals removed: disabled branches now use `queryKeys.abClass('__none__')`
+     / `getAssignmentQueryOptions('__none__', assignmentId)` with `queryFn: skipToken`
+     (`getABClassQueryOptions` deliberately NOT called in the no-class branch — the spec asserts
+     it is not called there).
+  2. Defeated `mergedPreview` memo fixed via `useQueries` `combine` (`AssignmentPreviewCombined`
+     with structural sharing; memo keys on the combined value which the body consumes) —
+     stability adjudicated genuine against `@tanstack/query-core@5.90` source (`replaceEqualDeep`
+     returns the prior reference when deep-equal; observer-bound `refetch` stable). Zero lint
+     warnings; no lint suppressions anywhere.
+- Delegation outage: the `implementation` sub-agent returned empty responses twice (second made
+  no changes); a user-directed retry then completed the pass. Interrupted-pass residue (694-LOC
+  hook, 1 failing test, lint failures) was repaired in the successful retry.
+- Verification (final): `test:frontend -- src/features/taskHeatmap` 125/125 (11 files);
+  `test:frontend -- src/services/dataAnalysis` 235/235; full `test:frontend` 152 files /
+  1855 tests; `lint:frontend` exit 0 with zero warnings; `tsc -b src/frontend/tsconfig.json`
+  exit 0; regression checker 7/8, 0 regressions, 0 new failures.
+- `@remarks` follow-through delivered: hook memoisation note (key includes
+  `selectedAssignmentIds` join); reducer cascade-clearing rationale.
+- Follow-up: hook is ≈445 LOC (projected ≈250–320; within the 500 gate — the wiring is cohesive
+  and resisted further splitting without harming readability). §9.22 entries 2–3 doc-status
+  reconciliation deferred to the cycle documentation pass per that doc's own note.
 
 ---
 
@@ -675,7 +784,42 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- Filled at execution.
+**Status: COMPLETE** (2026-08-31). Red and green loops both reviewed to CLEAN; regression gate
+passed identical to baseline (7/8; 0 regressions, 0 new failures).
+
+- Red loop: `HeatmapBuilderSurface.spec.tsx` — 16 contract tests (all 5 required cases) failing
+  for the right reason against the placeholder stub. Red review CLEAN after one fix round:
+  C1 (checkbox/search fixtures must resolve option labels via `assignmentDefinitionPartials`
+  and locate by resolved `primaryTitle` — raw assignmentId queries were unsatisfiable by a
+  SPEC-conformant implementation), I1 (combobox location by accessible name, not
+  `aria-label` attribute), N1 (ready fixtures set `classFullQuery.isSuccess: true`), plus the
+  I3 red-half handoff note (empty-state literals → `pageContent.heatmaps.*` imports in green).
+  Key discovery: the repo pins antd v6.3.1 (not v5) — `optionRender` exposes no `selected`
+  flag, so checkbox `checked` is contract-pinned to controlled-value membership.
+- Green loop: `HeatmapBuilderSurface.tsx` (225 LOC; consumes the real hook; ranked single-source
+  content precedence with six branches documented in `@remarks`; title derivation;
+  `titleLevel={2}` preserving the Section-4 E2E heading contract) + `HeatmapSelectionBar.tsx`
+  (305 LOC internal component; three labelled Selects, resolved-title options, membership-derived
+  checkboxes, client-side search, disabled-until-class with Tooltip + sr-only `aria-describedby`
+  reason). I3 applied: `noClassEmpty`/`noAssignmentsEmpty` added to `pageContent.heatmaps`, spec
+  literals switched to content-module imports (single source of truth).
+- Review-accepted deviations: antd-6 searchable Select search surface located as the combobox
+  (no `role="searchbox"` node exists); `titleLevel={2}`; `pageContent` copy import in the
+  feature (copy only — no logic dependency); Tooltip + sr-only node coexistence (sighted hover
+  affordance AND AT binding; antd `cloneElement` workaround via intermediate `<span>`).
+- Green review fix round (final re-review CLEAN): C1 — alphabetical `localeCompare` sort of
+  assignment options violated layout-spec §8.2 (`ClassFull.assignments` order preserved); sort
+  removed, ADDITIVE order assertion added to the red spec (fixture reversed vs alphabetical).
+  C2 — sighted Tooltip affordance restored alongside the sr-only node. I1 — feature-local
+  `SELECT_MIN_WIDTH` literal replaced with responsive growth (`flex:1, minWidth:0` +
+  `width:'100%'`). Seven nitpicks resolved (single `aria-labelledby` name source, unified
+  `aria-checked`, six-branch `@remarks`, `role="status"` + label on skeleton regions, canonical
+  `.sr-only` utility class in `src/frontend/src/index.css`; `String(oriOption.value)` verified
+  REQUIRED for the `string | number` value union; `isRefreshing` typing verified already tight).
+- Verification (final): `test:frontend -- src/features/taskHeatmap` 142/142 (12 files);
+  full suite 153 files / 1872 tests; `lint:frontend` exit 0 zero warnings; `tsc -b` exit 0;
+  regression checker 7/8, 0 regressions, 0 new failures.
+- Follow-up: none outstanding for this section.
 
 ---
 
@@ -726,7 +870,42 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- Filled at execution.
+**Status: COMPLETE** (2026-08-31). E2E suite reviewed to PASS; regression gate passed identical
+to baseline (7/8; 0 regressions, 0 new failures on the authoritative full re-run).
+
+- New suite `src/frontend/e2e-tests/heatmaps.spec.ts` — 7 tests: happy-path build flow with
+  merged adaptive tier; disabled/enabled gating; cascade clearing; empty states; blocking/retry;
+  refresh; cell previews. Copy asserted against `pageContent.heatmaps`. Sensitivity evidence:
+  wrong menu key → timeout failure → restored (not committed).
+- `navigation-screenshots.spec.ts` extended (+12 lines) with a committed Chromium baseline.
+- `task-heatmap-end-to-end-helpers.ts` fixture builders extended (+99 lines) within the existing
+  factory — adjudicated additive-only, no new abstractions.
+- Shared helper `selectVisibleOption` gained a backwards-compatible `occurrence = 0` parameter
+  (reviewer-prescribed deduplication of a local helper; all six pre-existing call sites
+  untouched, proven by the full 235-test E2E run).
+- **Production fix (deviation, review-adjudicated):** `heatmapsPipeline.ts` `runAnalyserStep`
+  previously passed raw assignment ID strings where the analyser input Zod schema
+  (`ClassFullSchema.assignments: z.array(AssignmentPartialSchema)`) requires assignment
+  OBJECTS — the real analyser would throw `ZodError` at runtime (blocking state, no table).
+  The self-consistent bug originated in the Section 5 red spec (`toEqual(['a1'])` codified the
+  wrong shape) and only surfaced in E2E where the real analyser runs. Fixed to
+  `classFull.assignments.filter(...)` (preserves `ClassFull.assignments` order, consistent with
+  Section 6 C1); the paired unit expectation corrected to
+  `expect.objectContaining({ assignmentId: 'a1' })` (contract correction, not weakening —
+  verified no other spec pinned the string shape; `runAnalyserStep` is private, no other
+  callers).
+- Verification (final): `heatmaps.spec.ts` 7/7; existing three suites 16/16 unmodified; full
+  E2E 235/235; full unit suite 1872/1872 (153 files); `lint:frontend` exit 0 zero warnings;
+  `tsc -b` exit 0.
+- Transient observation: one E2E run showed a flake in the UNRELATED
+  `select-with-add-new-workflow.spec.ts` ("Full workflow: Create cohort via Add new and
+  auto-select"); the immediate full re-run passed cleanly (suite untouched by this section).
+  Recorded as a known flake, not a regression.
+- Follow-up (separate ticket, pre-existing, out of scope): `src/frontend/tsconfig.e2e.json`
+  carries ~157 pre-existing type errors and is wired into no build script (ESLint typed-lint
+  program only); verified this section does not aggravate it. E2E helper file now 574 LOC vs
+  the 500 advisory — splitting was rejected as it would create a forbidden new abstraction;
+  directory precedent runs to 1047 LOC.
 
 ---
 
@@ -761,7 +940,21 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- Filled at execution.
+**Status: COMPLETE** (2026-08-31). All checks green.
+
+1. `npm run test:frontend` — 1872/1872 (153 files).
+2. `npm run lint:frontend` — exit 0, zero warnings.
+3. Section 7 E2E set — 23/23 (`task-heatmap` + `task-preview-card` + `navigation-screenshots` +
+   `heatmaps`).
+4. Byte-stability evidence: `git log ab54e3d..HEAD` touches NONE of `ClassPage.spec.tsx`,
+   `ClassPageContent.spec.tsx`, `ClassPageHeatmapView.spec.tsx`, `TaskHeatmapPage.spec.tsx` —
+   all four pass unmodified.
+5. Regression checker: no unexpected health drift (7/8 stable across all section gates; sole
+   failure remains the accepted pre-existing backend `max-lines` debt).
+6. `Files read` evidence: verified present for every delegated handoff in Sections 1–7 (each
+   sub-agent response carried a `Files read` section; handoffs omitting mandatory documents
+   were returned for correction during Sections 5–7; Sections 1–4 evidence recorded in their
+   plan notes).
 
 ---
 
@@ -794,7 +987,27 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- Filled at execution.
+**Status: COMPLETE** (2026-08-31). All acceptance criteria met.
+
+1. `docs/developer/frontend/navigation-consistency-status.md` — new "Completed Work entry 8"
+   records the standalone Heatmaps entry (menu key `'heatmaps'`, position, Flame icon, thin
+   14-LOC page root, two-card chrome pattern); New/Modified Files inventories extended.
+2. `frontend-shared-helpers-and-abstraction-standards.md` §9.22 — all three entries reconciled
+   from `Not implemented` to `Implemented` with materialised owning paths recorded (entry 1 →
+   `heatmapAdapter.merged.ts` sibling; entry 2 → `assembleMergedPreviewData.ts`; entry 3 →
+   `selectionCascade.ts`), plus an "antd v6 UI implementation notes" block covering the two
+   user-visible patterns (membership-derived checkbox `checked`; Tooltip + sr-only
+   `aria-describedby` disabled-reason).
+3. `src/frontend/AGENTS.md` §3.3 — `taskHeatmap/` signpost now names the standalone builder
+   surface modules and restates the permanent dependency rule (brief signpost per AGENTS §5.1).
+4. JSDoc spot-check: `useHeatmapsPageData.ts` (memoisation `@remarks`), `selectionCascade.ts`
+   (cascade rationale), `HeatmapBuilderSurface.tsx` (six-branch precedence ownership) — all
+   accurate; no production edits needed.
+5. `@remarks` confirmation (plan required check 4): Sections 1/2/5 `@remarks` items verified
+   present in code — `buildCellPreviewLookup` composite-key rationale; merged adapter composite
+   `taskKey`/identity remarks (now in `heatmapAdapter.merged.ts`); hook memoisation note;
+   reducer cascade rationale. CONFIRMED.
+6. Verification: `lint:frontend` exit 0; docs-only change (no production code touched).
 
 ---
 

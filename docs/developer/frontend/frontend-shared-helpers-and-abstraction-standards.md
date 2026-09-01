@@ -906,6 +906,42 @@ This entry records the descriptor-type extension for the Auth Service feature (s
 - Call-site rationale: supports declarative static helper text for the `authGroupEmail` field without adding special-case rendering branches. The existing `apiKey` dynamic helper case (`getApiKeyHelperCopy()`) is preserved as-is. The render logic checks `descriptor.helperText` first; if present, renders static helper; otherwise falls through to the existing `apiKey` dynamic case.
 - References: SPEC.md §Frontend changes (4); ACTION_PLAN.md §11.
 
+## 9.22 Heatmaps builder surface helpers
+
+Delivered helpers for the standalone Heatmaps page (source: repository-root `SPEC.md` and
+`HEATMAPS_PAGE_LAYOUT.md`). All three planned entries are now reconciled to `Implemented`.
+
+1. Helper: `adaptMetricsToMergedHeatmap(analyserResult, classFull, selectedAssignmentIds, assignmentDefinitionPartials)` plus `MergedHeatmapResult` / `MergedHeatmapTaskColumn` types
+
+- Decision: `new` (sibling module split from the existing heatmap-domain module)
+- Owning module/path: `src/frontend/src/services/dataAnalysis/heatmapAdapter.merged.ts`
+- Call-site rationale: single projection boundary for the builder surface's merged table. Derives the `taskKey → assignment identity` mapping from `classFull.assignments` restricted to `selectedAssignmentIds`, resolves titles/topics from the warm-up partials registry, de-duplicates columns by `taskKey` (first occurrence owns collapsed duplicate-definition groups), and orders columns by stable class-assignment order then partial task order. Existing exports (`adaptMetricsToHeatmap`, `HeatmapResult`, `HeatmapTaskColumn`) in `heatmapAdapter.ts` remain untouched; the merged module re-uses the shared internals `buildCellsForStudent` / `groupMetricsByStudent` from `heatmapAdapter.ts` so the two adapters stay behaviour-consistent. The split happened once `heatmapAdapter.ts` approached the 500-LOC gate.
+- Relevant canonical doc target: this section (§9.22); companion spec `SPEC.md` §"Merged adapter and type contract".
+- Planned doc status: `Implemented`
+
+2. Helper: merged cell-preview lookup assembly — materialised as `assembleMergedPreviewData`
+
+- Decision: `new` (feature-local; promote to shared only if a second consumer surface emerges)
+- Owning module/path: `src/frontend/src/features/taskHeatmap/assembleMergedPreviewData.ts`
+- Call-site rationale: combines N per-assignment lookups into one `studentId → taskKey → CellPreviewData` map (first-wins in stable column order for duplicate keys) and produces the complete per-task-key preview-status map (`{ isLoading, hasError }`) consumed by `TaskHeatmapTable`'s `previewStatusByTaskKey` prop. Depends on `buildCellPreviewLookup`'s composite-key widening (Section 1 of the action plan).
+- Relevant canonical doc target: this section (§9.22).
+- Planned doc status: `Implemented`
+
+3. Helper: selection-cascade reducer — materialised as `selectionCascade` (pure functions for topic→assignment narrowing and invalidation clearing)
+
+- Decision: `new` (feature-local pure module, test-first)
+- Owning module/path: `src/frontend/src/features/taskHeatmap/selectionCascade.ts`
+- Call-site rationale: keeps the cascade rules in `SPEC.md` decisions 2–4 (class change atomically clears topic+assignment selections; topic change clears no-longer-matching assignments; widening never restores cleared assignments) as pure, deterministically testable functions consumed by `useHeatmapsPageData`, instead of inline reducer logic in the hook or component.
+- Relevant canonical doc target: this section (§9.22).
+- Planned doc status: `Implemented`
+
+#### UI implementation notes (antd v6)
+
+The builder surface surfaced two antd v6 behaviours worth recording for future selector work:
+
+- **Checkbox options via `optionRender`.** antd v6's `Select` `optionRender` callback exposes no `selected` flag (older v5 examples show one). The checked state of each checkbox option must be derived from controlled-value membership (`value` ∈ current selection), not from a `selected` argument. Search narrows options client-side only.
+- **Disabled-reason accessibility.** Dependent selectors disabled until a class is chosen expose their reason both as a sighted hover `Tooltip` and as an sr-only `aria-describedby` node bound to the control, so the reason is discoverable by assistive technology and not conveyed by colour alone. The antd `Tooltip` `cloneElement` wrapper is mediated via an intermediate `<span>` to avoid clobbering the described-by binding.
+
 ## 10. Frontend utils folder convention
 
 The `src/frontend/src/utils/` folder exists for pure formatting / utility functions that are shared across the frontend. This folder is a separate convention from `src/frontend/AGENTS.md` §13, which governs only `services/` subfolder organisation.
