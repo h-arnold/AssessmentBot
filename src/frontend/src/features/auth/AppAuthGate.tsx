@@ -3,7 +3,11 @@ import { Button, Result, Spin } from 'antd';
 import type { PropsWithChildren } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { ApiTransportError } from '../../errors/apiTransportError';
-import { extractErrorCode, mapErrorCodeToUserMessage } from '../../errors/map-error-to-ui';
+import {
+  extractErrorCode,
+  mapErrorCodeToUserMessage,
+  mapErrorToUserMessage,
+} from '../../errors/map-error-to-ui';
 import { normaliseUnknownError } from '../../errors/normaliseUnknownError';
 import { logFrontendError } from '../../logging/frontendLogger';
 import {
@@ -26,6 +30,7 @@ type StartupWarmupCycle = {
   status: StartupWarmupStatus;
   snapshot: StartupWarmupSnapshot;
   promise?: Promise<unknown>;
+  failureError?: unknown;
 };
 
 /**
@@ -174,13 +179,22 @@ function getWarmupForbiddenMessage(queryClient: QueryClient): string | null {
 }
 
 /**
- * Provides an auth-aware boundary for startup warm-up orchestration.
+ * Provides an auth-aware, fail-closed boundary for startup warm-up orchestration.
  *
  * @remarks
- * FORBIDDEN is detected by reading each startup warm-up query's error directly from the
- * React Query cache via `queryClient.getQueryState(getStartupWarmupQueryKey(dataset))?.error`
- * and `extractErrorCode`. An access-denied message is rendered for code `FORBIDDEN` with
- * highest precedence, before transport error, loading, or authorisation states.
+ * The gate renders protected children (the dashboard, including `AuthStatusCard`) only
+ * once the startup warm-up confirms Google Group membership; it does not reveal them merely
+ * because OAuth resolved authorised. `FORBIDDEN` is detected by reading each startup
+ * warm-up query's error directly from the React Query cache via
+ * `queryClient.getQueryState(getStartupWarmupQueryKey(dataset))?.error` and
+ * `extractErrorCode`, and is rendered with highest precedence. Below it, in order: a
+ * transport error from the authorisation query (with Retry); the authorisation loading
+ * surface; a `'Permissions required'` result for an OAuth scope denial; a fail-closed
+ * warm-up `failed` error `Result` with a `Reload` button (the `QueryClient` uses
+ * `retry: false` and the warm-up cycle registry is per-client, so a full reload is the
+ * recovery path); and a warm-up `loading` "Verifying access" surface that withholds
+ * children. Successful warm-up is the frontend's proof of group membership;
+ * `getAuthorisationStatus` remains OAuth-only and gate-exempt.
  *
  * @param {Readonly<PropsWithChildren>} properties Wrapper properties.
  * @returns {JSX.Element} The auth gate wrapper.
@@ -219,16 +233,18 @@ export function AppAuthGate(properties: Readonly<PropsWithChildren>) {
               });
             }
           },
-          () => {
+          (error: unknown) => {
             const nextSnapshot = resolveNextWarmupSnapshot(queryClient, 'failed');
             const nextStatus = deriveWarmupStatus(nextSnapshot);
             existingCycle.status = nextStatus;
             existingCycle.snapshot = nextSnapshot;
+            existingCycle.failureError = error;
 
             if (isMounted) {
               setWarmupCycleState({
                 status: nextStatus,
                 snapshot: nextSnapshot,
+                failureError: error,
               });
             }
           }
@@ -268,11 +284,12 @@ export function AppAuthGate(properties: Readonly<PropsWithChildren>) {
         const nextStatus = deriveWarmupStatus(nextSnapshot);
         cycle.status = nextStatus;
         cycle.snapshot = nextSnapshot;
+        cycle.failureError = error;
         cycle.promise = undefined;
         logStartupWarmupFailure(error);
 
         if (isMounted) {
-          setWarmupCycleState({ status: nextStatus, snapshot: nextSnapshot });
+          setWarmupCycleState({ status: nextStatus, snapshot: nextSnapshot, failureError: error });
         }
       }
     );
@@ -323,6 +340,41 @@ export function AppAuthGate(properties: Readonly<PropsWithChildren>) {
 
   if (!isAuthorised) {
     return <Result status="warning" title="Permissions required" />;
+  }
+
+  // A rejected warm-up cycle (non-FORBIDDEN) blocks the dashboard with a fail-closed error
+  // Result. The title is the user-safe message mapped from the cycle's failure error code,
+  // falling back to the generic copy when the rejection carries no mapped code.
+  //
+  // Recovery: the QueryClient is configured with `retry: false` (queryClient.ts), so a
+  // transient warm-up failure cannot self-heal. A full page reload is the documented recovery
+  // path — it starts a fresh QueryClient, which clears the per-client warm-up cycle registry
+  // (a WeakMap keyed by query client) and re-runs the warm-up from scratch. Do NOT attempt to
+  // re-run `warmStartupQueries` in place, as the current cycle is terminal for this client.
+  if (warmupCycleState.status === 'failed') {
+    return (
+      <Result
+        status="error"
+        title={mapErrorToUserMessage(warmupCycleState.failureError)}
+        extra={
+          <Button type="primary" onClick={() => globalThis.location.reload()}>
+            Reload
+          </Button>
+        }
+      />
+    );
+  }
+
+  // Warm-up has not yet confirmed access: fail closed with a verifying surface rather than
+  // revealing protected children. Mirrors the implicit status-role pattern used by the OAuth
+  // authorisation loading surface above.
+  if (warmupCycleState.status === 'loading') {
+    return (
+      <output aria-label="Verifying access">
+        <Spin />
+        Verifying access
+      </output>
+    );
   }
 
   return (

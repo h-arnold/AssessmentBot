@@ -194,6 +194,19 @@ async function mockAuthenticatedGoogleScriptRun(page: Page) {
               return;
             }
 
+            if (
+              request?.method === 'getCohorts' ||
+              request?.method === 'getAssignmentTopics' ||
+              request?.method === 'getAssignmentDefinitionPartials'
+            ) {
+              callbacks.successHandler?.({
+                ok: true,
+                requestId: 'req-' + request.method,
+                data: [],
+              });
+              return;
+            }
+
             if (request?.method === 'getGoogleClassrooms') {
               callbacks.successHandler?.({
                 ok: true,
@@ -203,8 +216,6 @@ async function mockAuthenticatedGoogleScriptRun(page: Page) {
               return;
             }
 
-            // Keep other startup methods pending
-            // No callback invoked = pending state
           }),
         },
       };

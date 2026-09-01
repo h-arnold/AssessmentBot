@@ -2,7 +2,6 @@ import { expect, test, type Page } from '@playwright/test';
 import {
   installRuntimeMock,
   createWizardScenario,
-  createFailedReferenceDataScenario,
   createFailedRefreshScenario,
   selectVisibleOption,
   mockFullDefinition,
@@ -143,16 +142,6 @@ async function assertEnabled(page: Page, role: string, name: string | RegExp): P
   await expect(page.getByRole(role, { name })).toBeEnabled();
 }
 
-/**
- * Navigates to Assignments page.
- * @param {Page} page - Playwright page instance
- */
-async function navigateToAssignments(page: Page): Promise<void> {
-  await page.goto('/');
-  await page.getByRole('menuitem', { name: 'Assignments' }).click();
-  await expect(page.getByText('Assignment definitions')).toBeVisible();
-}
-
 // Test data
 const reParsedDefinition = {
   ...mockFullDefinition,
@@ -199,6 +188,7 @@ test.describe('Assignment Definition Wizard - Shared edit surface, re-parse gati
   test('create flow: parse and continue, then save', async ({ page }) => {
     await openCreateModal(page);
     await fillForm(page);
+    await assertEnabled(page, 'button', 'Parse and continue');
     await parseAndContinue(page);
     await expect(page.locator('text="Solve quadratic equations"')).toBeVisible();
     await saveAndClose(page);
@@ -248,15 +238,6 @@ test.describe('Assignment Definition Wizard - Shared edit surface, re-parse gati
     await openCreateModal(page);
     await fillForm(page, { noYearGroup: true });
     await assertDisabled(page, 'button', 'Parse and continue');
-  });
-
-  test('create mode fails closed locally when required topic or year-group reference data cannot be trusted or loaded', async ({
-    page,
-  }) => {
-    await installRuntimeMock(page, createFailedReferenceDataScenario());
-    await page.goto('/');
-    await navigateToAssignments(page);
-    await expect(page.getByRole('button', { name: 'Create assignment' })).toBeDisabled();
   });
 
   test('failed post-mutation refresh fails closed on affected surface', async ({ page }) => {

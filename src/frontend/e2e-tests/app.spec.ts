@@ -112,10 +112,9 @@ async function mockPendingGoogleScriptRun(page: Page) {
             }
 
             if (request?.method === 'getAuthorisationStatus') {
-              // §12: AppAuthGate (wrapping the whole app in main.tsx) blocks the shell until
-              // authorisation resolves, so the pending mock must answer the auth call. Warm-up
-              // queries are intentionally left pending — the gate's warm-up provider renders
-              // children without blocking on them.
+               // AppAuthGate (wrapping the whole app in main.tsx) blocks the shell until
+               // authorisation and startup warm-up have resolved, so this shell fixture supplies
+               // valid empty responses for every warm-up dataset.
               callbacks.successHandler?.({
                 ok: true,
                 requestId: 'req-authorisation-status',
@@ -128,6 +127,20 @@ async function mockPendingGoogleScriptRun(page: Page) {
               callbacks.successHandler?.({
                 ok: true,
                 requestId: 'req-class-partials',
+                data: [],
+              });
+              return;
+            }
+
+            if (
+              request?.method === 'getAssignmentDefinitionPartials' ||
+              request?.method === 'getAssignmentTopics' ||
+              request?.method === 'getCohorts' ||
+              request?.method === 'getYearGroups'
+            ) {
+              callbacks.successHandler?.({
+                ok: true,
+                requestId: 'req-' + request.method,
                 data: [],
               });
             }

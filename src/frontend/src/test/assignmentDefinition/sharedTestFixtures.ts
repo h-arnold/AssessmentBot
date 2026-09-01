@@ -30,8 +30,8 @@ export const mockYearGroups: YearGroup[] = [
  * Used in both unit tests and E2E tests.
  */
 export const mockCohorts = [
-  { key: 'cohort-2026', name: 'Cohort 2026', active: true },
-  { key: 'cohort-2025', name: 'Cohort 2025', active: false },
+  { key: 'cohort-2026', name: 'Cohort 2026', active: true, startYear: 2026, startMonth: 1 },
+  { key: 'cohort-2025', name: 'Cohort 2025', active: false, startYear: 2025, startMonth: 1 },
 ] as const;
 
 /**

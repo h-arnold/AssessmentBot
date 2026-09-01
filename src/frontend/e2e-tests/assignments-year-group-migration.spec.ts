@@ -51,17 +51,19 @@ async function mockAssignmentsRuntime(page: Page) {
       const responseQueues = {
         getAuthorisationStatus: [{ kind: 'success', data: true }],
         getABClassPartials: [{ kind: 'success', data: [] }],
-        getCohorts: [{ kind: 'success', data: [] }],
-        getYearGroups: [{ kind: 'success', data: [] }],
+         getCohorts: [{ kind: 'success', data: [] }],
+         getYearGroups: [{ kind: 'success', data: [] }],
+         getAssignmentTopics: [{ kind: 'success', data: [] }],
         getAssignmentDefinitionPartials: [{ kind: 'success', data: ${JSON.stringify(migratedAssignmentRows)} }],
         deleteAssignmentDefinition: [],
       };
       const callCounts = {
         getAuthorisationStatus: 0,
         getABClassPartials: 0,
-        getCohorts: 0,
-        getYearGroups: 0,
-        getAssignmentDefinitionPartials: 0,
+         getCohorts: 0,
+         getYearGroups: 0,
+         getAssignmentTopics: 0,
+         getAssignmentDefinitionPartials: 0,
         deleteAssignmentDefinition: 0,
       };
 
@@ -140,7 +142,7 @@ function getAssignmentsRowByTitle(page: Page, assignmentTitle: string) {
   return titleCell.locator('xpath=ancestor::tr');
 }
 
-test('assignments year-group label migration keeps delete available while create/update remain unavailable', async ({
+test('assignments year-group label migration keeps delete, create, and update actions available', async ({
   page,
 }) => {
   await mockAssignmentsRuntime(page);
@@ -156,6 +158,6 @@ test('assignments year-group label migration keeps delete available while create
   await expect(getAssignmentsRowByTitle(page, 'Unsafe legacy row')).toHaveCount(0);
 
   await expect(row.getByRole('button', { name: /delete/i })).toBeEnabled();
-  await expect(row.getByRole('button', { name: /update/i })).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Create assignment' })).toBeDisabled();
+  await expect(row.getByRole('button', { name: /update/i })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Create assignment' })).toBeEnabled();
 });

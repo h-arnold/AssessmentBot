@@ -1,112 +1,111 @@
-import { expect, test, type Page } from '@playwright/test';
-import { googleScriptRunApiHandlerFactorySource } from '../src/test/googleScriptRunHarness';
+import { expect, test } from '@playwright/test';
+import {
+  createAssignmentsScenario,
+  installRuntimeMock,
+  releaseNextDeferredSuccess,
+  type ResponseItem,
+  type RuntimeScenario,
+} from './shared/endToEndRuntimeMocks';
 
-type AuthServiceMockScenario =
-  | {
-      kind: 'success';
-      result: boolean;
-      delayMs?: number;
-    }
-  | {
-      kind: 'apiFailure';
-      message: string;
-      delayMs?: number;
-    }
-  | {
-      kind: 'transportFailure';
-      message: string;
-      delayMs?: number;
-    };
+const WARMUP_METHODS = [
+  'getABClassPartials',
+  'getAssignmentDefinitionPartials',
+  'getAssignmentTopics',
+  'getCohorts',
+  'getYearGroups',
+] as const;
+
+type WarmupMethod = (typeof WARMUP_METHODS)[number];
 
 /**
- * Installs a `google.script.run` mock before page scripts execute.
+ * Creates queues for the five startup warm-up methods.
  *
- * @param {Page} page - The Playwright page under test.
- * @param {AuthServiceMockScenario} scenario - The scenario that should be simulated.
- * @returns {Promise<void>} A promise that resolves once the init script is installed.
+ * @param {(data: unknown) => ResponseItem} responseFactory Response entry factory.
+ * @returns {Pick<RuntimeScenario, WarmupMethod>} Warm-up method queues.
  */
-async function mockGoogleScriptRun(page: Page, scenario: AuthServiceMockScenario) {
-  await page.addInitScript(
-    `
-      (() => {
-        const createGoogleScriptRunApiHandlerMock = ${googleScriptRunApiHandlerFactorySource};
-        const mockScenario = ${JSON.stringify(scenario)};
-        const delayMs = mockScenario.delayMs ?? 0;
+function createWarmupScenario(
+  responseFactory: (data: unknown) => ResponseItem
+): Pick<RuntimeScenario, WarmupMethod> {
+  const validScenario = createAssignmentsScenario();
 
-        function dispatchScenarioResponse(callbacks, activeScenario) {
-          if (activeScenario.kind === 'success') {
-            callbacks.successHandler?.({
-              ok: true,
-              requestId: 'req-e2e-success',
-              data: activeScenario.result,
-            });
-            return;
-          }
+  /**
+   * Extracts the fixture data for one warm-up method.
+   *
+   * @param {WarmupMethod} method Warm-up method name.
+   * @returns {unknown} Fixture data, or undefined when the queue has no data entry.
+   */
+  function getWarmupData(method: WarmupMethod): unknown {
+    const response = validScenario[method]?.[0];
+    return response && 'data' in response ? response.data : undefined;
+  }
 
-          if (activeScenario.kind === 'apiFailure') {
-            callbacks.successHandler?.({
-              ok: false,
-              requestId: 'req-e2e-failure',
-              error: {
-                code: 'INTERNAL_ERROR',
-                message: activeScenario.message,
-              },
-            });
-            return;
-          }
+  return Object.fromEntries(
+    WARMUP_METHODS.map((method) => [
+      method,
+      [responseFactory(getWarmupData(method)), responseFactory(getWarmupData(method))],
+    ])
+  ) as Pick<RuntimeScenario, WarmupMethod>;
+}
 
-          callbacks.failureHandler?.(new Error(activeScenario.message));
-        }
-
-        globalThis.google = {
-          script: {
-            run: createGoogleScriptRunApiHandlerMock((request, callbacks) => {
-              setTimeout(() => {
-                if (typeof request?.method !== 'string') {
-                  callbacks.failureHandler?.(new Error('Invalid transport request payload.'));
-                  return;
-                }
-
-                dispatchScenarioResponse(callbacks, mockScenario);
-              }, delayMs);
-            }),
-          },
-        };
-      })();
-    `
-  );
+/**
+ * Creates an authorised runtime scenario with the supplied startup warm-up responses.
+ *
+ * @param {Pick<RuntimeScenario, WarmupMethod>} warmupResponses Warm-up method response queues.
+ * @returns {RuntimeScenario} Authorised scenario with warm-up queues.
+ */
+function createAuthorisedScenario(warmupResponses: Pick<RuntimeScenario, WarmupMethod>) {
+  return {
+    getAuthorisationStatus: [
+      { kind: 'success' as const, data: true },
+      { kind: 'success' as const, data: true },
+    ],
+    ...warmupResponses,
+  };
 }
 
 test.describe('auth status flow', () => {
   test('shows a loading status region while authorisation is still loading', async ({ page }) => {
-    await mockGoogleScriptRun(page, {
-      kind: 'success',
-      result: true,
-      delayMs: 1000,
+    const warmupResponses = createWarmupScenario((data) => ({
+      kind: 'deferredSuccess',
+      data,
+    }));
+    await installRuntimeMock(page, {
+      getAuthorisationStatus: [
+        { kind: 'deferredSuccess', data: true },
+        { kind: 'deferredSuccess', data: true },
+      ],
+      ...warmupResponses,
     });
 
     await page.goto('/');
 
-    // §12: the loading surface is owned by AppAuthGate (the gate blocks children until
-    // authorisation resolves), not by AuthStatusCard. The gate renders a status region with
-    // an accessible name of "Loading authorisation status" and no skeleton.
     const loadingStatus = page.getByRole('status', { name: 'Loading authorisation status' });
-
     await expect(loadingStatus).toBeVisible();
     await expect(page.getByText('Authorised')).toHaveCount(0);
     await expect(page.getByText('Permissions required')).toHaveCount(0);
 
+    await releaseNextDeferredSuccess(page);
+    await expect(page.getByRole('status', { name: 'Verifying access' })).toBeVisible();
+    await expect(page.getByText('Authorised')).toHaveCount(0);
+
+    for (let index = 0; index < WARMUP_METHODS.length; index += 1) {
+      await releaseNextDeferredSuccess(page);
+    }
+
     await expect(loadingStatus).toHaveCount(0);
-    // Once authorisation resolves to authorised, the gate renders its children and the
-    // AuthStatusCard shows the authorised content.
     await expect(page.getByText('Authorised')).toBeVisible();
   });
 
   test('shows Authorised when backend returns true', async ({ page }) => {
-    await mockGoogleScriptRun(page, {
-      kind: 'success',
-      result: true,
-    });
+    await installRuntimeMock(
+      page,
+      createAuthorisedScenario(
+        createWarmupScenario((data) => ({
+          kind: 'success',
+          data,
+        }))
+      )
+    );
 
     await page.goto('/');
 
@@ -114,15 +113,12 @@ test.describe('auth status flow', () => {
   });
 
   test('shows "Permissions required" when backend returns false', async ({ page }) => {
-    await mockGoogleScriptRun(page, {
-      kind: 'success',
-      result: false,
+    await installRuntimeMock(page, {
+      getAuthorisationStatus: [{ kind: 'success', data: false }],
     });
 
     await page.goto('/');
 
-    // §12: a denied (OAuth) state is owned by AppAuthGate. The gate renders "Permissions required"
-    // and does NOT render the AuthStatusCard children, so the card's content is absent.
     await expect(page.getByText('Permissions required')).toBeVisible();
     await expect(page.getByText('Authorised')).toHaveCount(0);
     await expect(page.getByText('You do not have access to this application.')).toHaveCount(0);
@@ -131,15 +127,18 @@ test.describe('auth status flow', () => {
   test('shows transport error with retry when backend returns a failure envelope', async ({
     page,
   }) => {
-    await mockGoogleScriptRun(page, {
-      kind: 'apiFailure',
-      message: 'Backend authorisation check failed.',
+    await installRuntimeMock(page, {
+      getAuthorisationStatus: [
+        {
+          kind: 'failureEnvelope',
+          code: 'INTERNAL_ERROR',
+          message: 'Backend authorisation check failed.',
+        },
+      ],
     });
 
     await page.goto('/');
 
-    // §12: transport errors are owned by AppAuthGate. The gate renders the derived user message
-    // (an INTERNAL_ERROR envelope maps to the central map message) with a Retry affordance.
     await expect(
       page.getByText(
         'An internal error occurred. Please try again or contact support if the issue persists.'
@@ -154,9 +153,72 @@ test.describe('auth status flow', () => {
   }) => {
     await page.goto('/');
 
-    // §12: transport errors are owned by AppAuthGate. With google.script.run unavailable the
-    // request throws before any envelope, so the hook derives the generic fallback message.
     await expect(page.getByText('An error occurred. Please try again.')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible();
+  });
+});
+
+test.describe('fail-closed authorisation rendering', () => {
+  test('keeps OAuth loading separate from the access-verification prerequisite', async ({
+    page,
+  }) => {
+    await installRuntimeMock(
+      page,
+      createAuthorisedScenario(createWarmupScenario((data) => ({ kind: 'deferredSuccess', data })))
+    );
+
+    await page.goto('/');
+
+    await expect(page.getByText('Authorised')).toHaveCount(0);
+    await expect(page.getByRole('status', { name: 'Verifying access' })).toBeVisible();
+    await expect(page.getByText('Authorised')).toHaveCount(0);
+  });
+
+  test('a non-member only ever sees the blocking no-permission surface', async ({ page }) => {
+    await installRuntimeMock(
+      page,
+      createAuthorisedScenario(
+        createWarmupScenario(() => ({
+          kind: 'deferredFailure',
+          code: 'FORBIDDEN',
+          message: 'Group membership is required.',
+        }))
+      )
+    );
+
+    await page.goto('/');
+
+    await expect(page.getByText('Authorised')).toHaveCount(0);
+    await expect(page.getByRole('status', { name: 'Verifying access' })).toBeVisible();
+
+    for (let index = 0; index < WARMUP_METHODS.length; index += 1) {
+      await releaseNextDeferredSuccess(page);
+    }
+
+    await expect(
+      page.getByText('You do not have permission to access this application')
+    ).toBeVisible();
+    await expect(page.getByText('Authorised')).toHaveCount(0);
+    await expect(page.getByText('Permissions required')).toHaveCount(0);
+  });
+
+  test('a confirmed member reaches the dashboard only once warm-up is ready', async ({ page }) => {
+    await installRuntimeMock(
+      page,
+      createAuthorisedScenario(createWarmupScenario((data) => ({ kind: 'deferredSuccess', data })))
+    );
+
+    await page.goto('/');
+
+    await expect(page.getByRole('status', { name: 'Loading authorisation status' })).toHaveCount(0);
+    await expect(page.getByText('Authorised')).toHaveCount(0);
+    await expect(page.getByRole('status', { name: 'Verifying access' })).toBeVisible();
+
+    for (let index = 0; index < WARMUP_METHODS.length; index += 1) {
+      await releaseNextDeferredSuccess(page);
+    }
+
+    await expect(page.getByRole('status', { name: 'Verifying access' })).toHaveCount(0);
+    await expect(page.getByText('Authorised')).toBeVisible();
   });
 });

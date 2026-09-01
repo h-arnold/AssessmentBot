@@ -292,7 +292,7 @@ test.describe('assignments page browser journeys', () => {
         initialPartials: assignmentRows,
       }),
       getAssignmentDefinitionPartials: [
-        { kind: 'transportFailure', message: 'assignment fetch failed' },
+        { kind: 'success', data: assignmentRows },
         { kind: 'transportFailure', message: 'assignment fetch failed' },
         { kind: 'success', data: assignmentRows },
       ],
@@ -305,15 +305,16 @@ test.describe('assignments page browser journeys', () => {
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
+    await waitForAssignmentsPageReady(page);
+    await page.getByRole('button', { name: 'Refresh assignments data' }).click();
+
     /*
      * Wait for blocking state to appear.
      *
-     * The startup warmup consumes the first transportFailure, which sets
-     * isAssignmentsDatasetFailed = true and enables the query.
+     * The startup warmup consumes the first successful response. The explicit page refresh
+     * consumes the transport failure and keeps the local assignments surface blocked.
      *
-     * The query auto-fetches on the disabled→enabled transition (React Query v5
-     * behaviour) and consumes the second transportFailure, keeping the query
-     * in error state so the blocking Alert stays visible.
+     * The failed local refetch keeps the query in error state so the blocking Alert stays visible.
      */
     await expect(
       page.getByText('Assignment definitions could not be trusted or loaded.')

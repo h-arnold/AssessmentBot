@@ -31,6 +31,8 @@ export type ClassesCrudRuntimeScenario = Readonly<{
   getABClassPartials: ReadonlyArray<ClassesCrudApiResponseScenario>;
   getCohorts: ReadonlyArray<ClassesCrudApiResponseScenario>;
   getYearGroups: ReadonlyArray<ClassesCrudApiResponseScenario>;
+  getAssignmentTopics?: ReadonlyArray<ClassesCrudApiResponseScenario>;
+  getAssignmentDefinitionPartials?: ReadonlyArray<ClassesCrudApiResponseScenario>;
   getGoogleClassrooms: ReadonlyArray<ClassesCrudApiResponseScenario>;
   updateABClass?: ReadonlyArray<ClassesCrudApiResponseScenario>;
   deleteABClass?: ReadonlyArray<ClassesCrudApiResponseScenario>;
@@ -236,6 +238,8 @@ export function createSuccessfulClassesScenario(
     ]),
     getCohorts: strictModeSafeReadQueue([{ kind: 'success', data: [...data.cohorts] }]),
     getYearGroups: strictModeSafeReadQueue([{ kind: 'success', data: [...data.yearGroups] }]),
+    getAssignmentTopics: strictModeSafeReadQueue([{ kind: 'success', data: [] }]),
+    getAssignmentDefinitionPartials: strictModeSafeReadQueue([{ kind: 'success', data: [] }]),
     getGoogleClassrooms: strictModeSafeReadQueue([
       { kind: 'success', data: [...data.googleClassrooms] },
     ]),
@@ -260,6 +264,8 @@ export async function mockClassesCrudRuntime(page: Page, scenario: ClassesCrudRu
         getABClassPartials: 0,
         getCohorts: 0,
         getYearGroups: 0,
+        getAssignmentTopics: 0,
+        getAssignmentDefinitionPartials: 0,
         getGoogleClassrooms: 0,
         updateABClass: 0,
         deleteABClass: 0,
@@ -276,6 +282,10 @@ export async function mockClassesCrudRuntime(page: Page, scenario: ClassesCrudRu
         getABClassPartials: mockScenario.getABClassPartials,
         getCohorts: mockScenario.getCohorts,
         getYearGroups: mockScenario.getYearGroups,
+        getAssignmentTopics: mockScenario.getAssignmentTopics ?? [{ kind: 'success', data: [] }],
+        getAssignmentDefinitionPartials: mockScenario.getAssignmentDefinitionPartials ?? [
+          { kind: 'success', data: [] },
+        ],
         getGoogleClassrooms: mockScenario.getGoogleClassrooms,
         updateABClass: mockScenario.updateABClass ?? [],
         deleteABClass: mockScenario.deleteABClass ?? [],
@@ -387,9 +397,11 @@ export async function mockClassesCrudRuntime(page: Page, scenario: ClassesCrudRu
         if (
           method !== 'getAuthorisationStatus' &&
           method !== 'getABClassPartials' &&
-          method !== 'getCohorts' &&
-          method !== 'getYearGroups' &&
-          method !== "getGoogleClassrooms" &&
+           method !== 'getCohorts' &&
+           method !== 'getYearGroups' &&
+           method !== 'getAssignmentTopics' &&
+           method !== 'getAssignmentDefinitionPartials' &&
+           method !== "getGoogleClassrooms" &&
           method !== "updateABClass" &&
           method !== "deleteABClass" &&
           method !== "upsertABClass" &&

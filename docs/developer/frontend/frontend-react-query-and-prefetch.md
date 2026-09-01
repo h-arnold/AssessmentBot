@@ -80,7 +80,11 @@ Current policy:
 - readiness rule: startup is considered warmed only after all five shared datasets succeed
 - logging: debug-only orchestration context if warm-up fails
 
-Warm-up must not block initial render, shell paint, or navigation readiness.
+Warm-up must not block the app shell's initial render or paint: the auth gate always
+paints an accessible surface (the authorisation loading state, or a "Verifying access"
+warm-up state). The protected dashboard is, however, intentionally deferred behind a
+fail-closed warm-up gate — it does not render until warm-up confirms group membership, and
+a warm-up failure blocks it behind a recoverable error surface rather than revealing it.
 
 `assignmentTopics` is now part of the startup warm-up surface because the same reference-data set supports the assignment-definition wizard modal workflow. The `yearGroupKey` and `yearGroupLabel` contract is used throughout, with resolved labels provided for display while authoritative keys are persisted.
 
