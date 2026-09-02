@@ -11,14 +11,14 @@
  * the selector datasets are usable (selector-only readiness); the disabled class query
  * is inert, so it never forces a `loading` state on its own.
  *
- * These helpers are extracted from `useHeatmapsPageData.ts` to keep that module under
- * the 500-LOC split gate and to isolate the pure surface-state derivation (per
- * `src/frontend/AGENTS.md` §3.3 folder conventions; `src/backend/AGENTS.md` §11 as the
- * behavioural analogue).
+ * These helpers are extracted from `useHeatmapsPageData.ts` to keep that module under the
+ * 500-LOC module-size gate, and to isolate the pure
+ * surface-state derivation (per `src/frontend/AGENTS.md` §3.3 folder conventions).
  */
 
 import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
-import type { PageDatasetState } from '../../hooks/usePageDataset';
+import { computeDatasetBlockingReason, type PageDatasetState } from '../../hooks/usePageDataset';
+import { toError } from '../../errors/normaliseUnknownError';
 
 /**
  * Structured error for the Heatmaps surface, per the Class Page error taxonomy
@@ -66,7 +66,7 @@ export function computeQueryBlockingError(
   if (isError) {
     return {
       type: 'classQueryError',
-      cause: error instanceof Error ? error : new Error(String(error)),
+      cause: toError(error),
     };
   }
   return null;
@@ -75,34 +75,33 @@ export function computeQueryBlockingError(
 /**
  * Derive a blocking error from the assignment-definition-partials dataset state.
  *
+ * Delegates the precedence decision to the shared {@link computeDatasetBlockingReason}
+ * (kept in `hooks/usePageDataset` so classPage and heatmaps cannot drift), then maps
+ * the neutral reason onto the heatmaps error union:
+ * - `failed` / `queryError` → `assignmentDefinitionPartialsFailed`
+ * - `untrustworthy` → `assignmentDefinitionPartialsUntrustworthy`
+ * - `none` → `null`
+ *
  * @param {PageDatasetState} datasetState - The ADP dataset state.
  * @returns {HeatmapsPageError | null} A blocking error, or `null`.
  */
 export function computeDatasetBlockingError(
   datasetState: PageDatasetState
 ): HeatmapsPageError | null {
-  const { hasQueryData, isQueryError, isDatasetFailed, isDatasetReady, isDatasetTrustworthy } =
-    datasetState;
+  const reason = computeDatasetBlockingReason(datasetState);
 
-  // A ready dataset blocks only when untrustworthy or carrying a query error. The
-  // untrustworthy check takes precedence so a query error on an already-untrustworthy
-  // dataset surfaces as untrustworthy, not failed.
-  if (isDatasetReady) {
-    if (!isDatasetTrustworthy) {
-      return { type: 'assignmentDefinitionPartialsUntrustworthy' };
-    }
-    if (isQueryError) {
+  switch (reason.kind) {
+    case 'failed':
+    case 'queryError': {
       return { type: 'assignmentDefinitionPartialsFailed' };
     }
+    case 'untrustworthy': {
+      return { type: 'assignmentDefinitionPartialsUntrustworthy' };
+    }
+    case 'none': {
+      return null;
+    }
   }
-
-  // A failed dataset blocks when it has no recoverable data or a query error. A failed
-  // dataset that still has trustworthy data (recovered after warm-up failure) does not
-  // block — parity with `usePageDataset.computeDatasetRenderable`.
-  if (isDatasetFailed && (!hasQueryData || isQueryError)) {
-    return { type: 'assignmentDefinitionPartialsFailed' };
-  }
-  return null;
 }
 
 /**

@@ -2,8 +2,9 @@
  * Selection-cascade reducer for the standalone Heatmaps surface.
  *
  * @remarks
- * Pure, deterministic, idempotent reducer owning the builder's cascade rules per
- * SPEC.md decisions 2–4:
+ * Pure, deterministic, idempotent reducer owning the builder's cascade rules (a class change
+ * atomically clears topic and assignment selections; a topic change clears assignments whose
+ * topic no longer matches; widening the topic set never restores cleared assignments):
  *
  * - **`selectClass`** atomically clears `topicKeys` and `assignmentIds` in a single
  *   state update (no intermediate inconsistent frame), so dependent selectors never
@@ -25,7 +26,7 @@
 /**
  * Feature-owned selection state for the Heatmaps builder surface.
  *
- * Mirrors the shape documented in `SPEC.md` §"Recommended data shapes".
+ * Mirrors the shape consumed by `useHeatmapsPageData` and `HeatmapSelectionBar`.
  */
 export type SelectionState = Readonly<{
   /** Selected class ID, or `null` when no class has been chosen yet. */

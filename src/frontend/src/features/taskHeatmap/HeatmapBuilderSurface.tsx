@@ -2,7 +2,7 @@
  * Feature-owned entry component for the standalone Heatmaps builder surface.
  *
  * @remarks
- * Assembles the full builder surface per `HEATMAPS_PAGE_LAYOUT.md`:
+ * Assembles the full builder surface:
  * chrome region (`PageTitleCard` + `PageNavCard` actions-only with Refresh),
  * the co-located `HeatmapSelectionBar`, and the content region.
  *
@@ -11,7 +11,7 @@
  * `renderContent` (not scattered conditionals across the component):
  *
  *   1. `loading`           → shape-matched `Skeleton`
- *   2. `blocking`          → `Result` (layout-spec documented deviation from `Alert`)
+ *   2. `blocking`          → `Result` (documented deviation from `Alert`; see `docs/developer/frontend/frontend-logging-and-error-handling.md` §4)
  *   3. no class selected   → `Empty` (no-class copy)
  *   4. no assignments      → `Empty` (no-assignments copy)
  *   5. ready w/ selections → merged-table `Card`
@@ -27,8 +27,7 @@
  * The component consumes the REAL `useHeatmapsPageData` hook (no data logic is
  * duplicated in the surface) and never imports from `pages/` for feature logic.
  *
- * @see HEATMAPS_PAGE_LAYOUT.md
- * @see ACTION_PLAN.md §Section 6
+ * @see docs/developer/frontend/frontend-logging-and-error-handling.md
  */
 
 import type { JSX } from 'react';
@@ -41,57 +40,37 @@ import { TaskHeatmapTable } from './TaskHeatmapTable';
 import { HeatmapSelectionBar } from './HeatmapSelectionBar';
 import { useHeatmapsPageData } from './useHeatmapsPageData';
 import type { HeatmapsPageError } from './heatmapsSurfaceState';
-
-/** User-safe configuration for a blocking `Result` per the Class Page taxonomy. */
-type BlockingConfig = Readonly<{
-  /** Ant Design `Result` status. */
-  status: 'error' | 'warning';
-  /** User-facing title. */
-  title: string;
-  /** Whether a Retry action should be offered (retryable errors). */
-  retryable: boolean;
-}>;
+import type { BlockingConfig } from '../../errors/blockingConfig';
+import { resolveBlockingResultConfig } from '../../errors/blockingConfig';
 
 /**
- * Map a structured surface error to a user-safe `Result` configuration.
+ * User-safe `Result` configuration per `HeatmapsPageError.type`.
  *
- * @param {HeatmapsPageError} error - The structured blocking error.
- * @returns {BlockingConfig} The user-safe result configuration.
+ * @remarks
+ * The mapping *mechanism* is shared (`resolveBlockingResultConfig`); only this
+ * feature-specific copy is owned here. Titles/status/retryable match the prior
+ * per-feature switch exactly.
  */
-function resolveBlockingConfig(error: HeatmapsPageError): BlockingConfig {
-  switch (error.type) {
-    case 'classNotFound': {
-      return { status: 'error', title: 'Class not found', retryable: false };
-    }
-    case 'adapterError': {
-      return { status: 'error', title: 'The heatmap could not be built', retryable: false };
-    }
-    case 'classQueryError': {
-      return {
-        status: 'warning',
-        title: 'We could not load this class',
-        retryable: true,
-      };
-    }
-    case 'assignmentDefinitionPartialsFailed': {
-      return {
-        status: 'warning',
-        title: 'Assignment definitions failed to load',
-        retryable: true,
-      };
-    }
-    case 'assignmentDefinitionPartialsUntrustworthy': {
-      return {
-        status: 'warning',
-        title: 'Assignment definitions are not trustworthy',
-        retryable: true,
-      };
-    }
-    case 'analyserError': {
-      return { status: 'warning', title: 'Analysis failed', retryable: true };
-    }
-  }
-}
+const HEATMAPS_BLOCKING_CONFIG: Record<HeatmapsPageError['type'], BlockingConfig> = {
+  classNotFound: { status: 'error', title: 'Class not found', retryable: false },
+  adapterError: { status: 'error', title: 'The heatmap could not be built', retryable: false },
+  classQueryError: {
+    status: 'warning',
+    title: 'We could not load this class',
+    retryable: true,
+  },
+  assignmentDefinitionPartialsFailed: {
+    status: 'warning',
+    title: 'Assignment definitions failed to load',
+    retryable: true,
+  },
+  assignmentDefinitionPartialsUntrustworthy: {
+    status: 'warning',
+    title: 'Assignment definitions are not trustworthy',
+    retryable: true,
+  },
+  analyserError: { status: 'warning', title: 'Analysis failed', retryable: true },
+};
 
 /**
  * Render the content region for a blocking surface error.
@@ -104,7 +83,7 @@ function BlockingResult({
   error,
   onRetry,
 }: Readonly<{ error: HeatmapsPageError; onRetry: () => void }>): JSX.Element {
-  const config = resolveBlockingConfig(error);
+  const config = resolveBlockingResultConfig(error, HEATMAPS_BLOCKING_CONFIG);
   return (
     <Result
       status={config.status}
@@ -117,6 +96,34 @@ function BlockingResult({
         ) : undefined
       }
     />
+  );
+}
+
+/**
+ * Persistent content region for the builder surface.
+ *
+ * @remarks
+ * Wraps the rendered content in a container that carries the background-refresh
+ * busy signal. A disabled Refresh button is removed from the accessibility
+ * tree, so its `aria-busy` would never be announced; the busy signal therefore
+ * lives on this persistent container, paired with a visually-hidden live status.
+ *
+ * @param {Readonly<{ isRefreshing: boolean; children: JSX.Element }>} properties - Region properties.
+ * @param {boolean} properties.isRefreshing - Whether a background refresh is in flight.
+ * @param {JSX.Element} properties.children - The rendered content region.
+ * @returns {JSX.Element} The busy-aware content region.
+ */
+function ContentRegion({
+  isRefreshing,
+  children,
+}: Readonly<{ isRefreshing: boolean; children: JSX.Element }>): JSX.Element {
+  return (
+    <div aria-busy={isRefreshing}>
+      <span className="sr-only" aria-live="polite">
+        {isRefreshing ? 'Refreshing heatmap…' : ''}
+      </span>
+      {children}
+    </div>
   );
 }
 
@@ -143,7 +150,7 @@ export function HeatmapBuilderSurface(): JSX.Element {
 
   const title =
     selection.classId !== null && classFull !== null
-      ? classFull.className ?? pageContent.heatmaps.heading
+      ? (classFull.className ?? pageContent.heatmaps.heading)
       : pageContent.heatmaps.heading;
 
   const cellPreviewLookup = mergedPreview?.mergedLookup ?? null;
@@ -203,7 +210,6 @@ export function HeatmapBuilderSurface(): JSX.Element {
             onClick={() => {
               refetch();
             }}
-            aria-busy={isRefreshing}
             disabled={isRefreshing}
           >
             Refresh
@@ -221,7 +227,7 @@ export function HeatmapBuilderSurface(): JSX.Element {
           onChangeAssignments={changeAssignments}
         />
       </Card>
-      {renderContent()}
+      <ContentRegion isRefreshing={isRefreshing}>{renderContent()}</ContentRegion>
     </Flex>
   );
 }

@@ -6,7 +6,7 @@
  * score-range `filterDropdown` (via `buildMetricRangeFilter`) rather than the
  * fixed `METRIC_COLUMN_FILTERS` band list.
  *
- * @see SPEC.md
+ * @see docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md §9.18
  */
 
 import { describe, it, expect, afterEach, beforeEach } from 'vitest';
@@ -34,6 +34,7 @@ import {
 } from '../../test/dataAnalysis/fixtures';
 
 import type { CellPreviewLookup, CellPreviewData } from './buildCellPreviewLookup';
+import type { PreviewStatus } from './assembleMergedPreviewData';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -87,9 +88,7 @@ const TASK_INNER_LOOKUP: ReadonlyMap<string, CellPreviewData> = new Map([
 ]);
 
 /** CellPreviewLookup that includes data for s-1 / task_001. */
-const POPULATED_LOOKUP: CellPreviewLookup = new Map([
-  ['s-1', TASK_INNER_LOOKUP],
-]);
+const POPULATED_LOOKUP: CellPreviewLookup = new Map([['s-1', TASK_INNER_LOOKUP]]);
 
 /** Empty CellPreviewLookup — no entries at all (simulates absent lookup data). */
 const EMPTY_LOOKUP: CellPreviewLookup = new Map();
@@ -164,24 +163,24 @@ function buildHeatmapResult(overrides: Partial<HeatmapResult> = {}): HeatmapResu
       studentId: 's-1',
       studentName: 'Student One',
       cells: [
-        buildCell({ completenessValue: 5 }),           // Task 1: green
-        buildCell({ accuracyValue: 'N' }),              // Task 2: notAttempted accuracy
+        buildCell({ completenessValue: 5 }), // Task 1: green
+        buildCell({ accuracyValue: 'N' }), // Task 2: notAttempted accuracy
       ],
     },
     {
       studentId: 's-2',
       studentName: 'Student Two',
       cells: [
-        buildCell({ completenessValue: 3 }),            // Task 1: amber/gold
-        buildCell({ completenessValue: 'E' }),          // Task 2: error
+        buildCell({ completenessValue: 3 }), // Task 1: amber/gold
+        buildCell({ completenessValue: 'E' }), // Task 2: error
       ],
     },
     {
       studentId: 's-3',
       studentName: 'Student Three',
       cells: [
-        buildCell({ completenessValue: 'N' }),          // Task 1: notAttempted
-        buildCell({ completenessValue: 4 }),            // Task 2: green
+        buildCell({ completenessValue: 'N' }), // Task 1: notAttempted
+        buildCell({ completenessValue: 4 }), // Task 2: green
       ],
     },
   ];
@@ -289,7 +288,7 @@ function buildZeroTasksResult(): HeatmapResult {
  */
 function getRenderedRowKeys(container: HTMLElement): string[] {
   return [...container.querySelectorAll('tbody tr[data-row-key]')].map(
-    (row) => (row as HTMLElement).dataset.rowKey ?? '',
+    (row) => (row as HTMLElement).dataset.rowKey ?? ''
   );
 }
 
@@ -332,20 +331,21 @@ describe('TaskHeatmapTable', () => {
   // -------------------------------------------------------------------------
   it('renders a grouped header with one group per taskColumn and Completeness / Accuracy / SPaG sub-columns', () => {
     const result = buildHeatmapResult();
-    render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
+    render(
+      <TaskHeatmapTable
+        heatmapResult={result}
+        cellPreviewLookup={null}
+        isAssignmentLoading={false}
+        showAssignmentError={false}
+      />
+    );
 
     // Assert Student Name top-level column header
-    expect(
-      screen.getByRole('columnheader', { name: /student name/i })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /student name/i })).toBeInTheDocument();
 
     // Assert task group headers
-    expect(
-      screen.getByRole('columnheader', { name: TASK_1_TITLE })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('columnheader', { name: TASK_2_TITLE })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: TASK_1_TITLE })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: TASK_2_TITLE })).toBeInTheDocument();
 
     // Find the three metric sub-column headers by their text
     const completenessHeaders = screen.getAllByRole('columnheader', {
@@ -372,7 +372,14 @@ describe('TaskHeatmapTable', () => {
   // -------------------------------------------------------------------------
   it('exposes a score-range filter dropdown (slider + reset) on Task 1 Completeness', async () => {
     const result = buildHeatmapResult();
-    render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
+    render(
+      <TaskHeatmapTable
+        heatmapResult={result}
+        cellPreviewLookup={null}
+        isAssignmentLoading={false}
+        showAssignmentError={false}
+      />
+    );
 
     // Locate the "Completeness" columnheader that belongs to Task 1.
     const completenessHeaders = screen.getAllByRole('columnheader', {
@@ -411,15 +418,22 @@ describe('TaskHeatmapTable', () => {
 
   // -------------------------------------------------------------------------
   // 3. Student Name sort — click the Student Name column sorter and assert
-  //    the row order changes to compareHeatmapStudentName order.
+  //    the row order changes to compareStudentNames order.
   // -------------------------------------------------------------------------
-  it('clicking Student Name column sorter reorders rows via compareHeatmapStudentName', async () => {
+  it('clicking Student Name column sorter reorders rows via compareStudentNames', async () => {
     const result = buildHeatmapResult();
-    const { container } = render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
+    const { container } = render(
+      <TaskHeatmapTable
+        heatmapResult={result}
+        cellPreviewLookup={null}
+        isAssignmentLoading={false}
+        showAssignmentError={false}
+      />
+    );
 
     // Default sort should be ascending by student name.
     // Fixture students: Student One, Student Two, Student Three
-    // compareHeatmapStudentName (locale-aware, case-insensitive):
+    // compareStudentNames (locale-aware, case-insensitive):
     //   "Student One" < "Student Three" < "Student Two"
     // Expected initial order: s-1, s-3, s-2
     const initialRowKeys = getRenderedRowKeys(container);
@@ -452,34 +466,33 @@ describe('TaskHeatmapTable', () => {
   // -------------------------------------------------------------------------
   it('renders per-cell aria-labels matching "[Student Name], [Task ID], [Metric]: [Score]"', () => {
     const result = buildHeatmapResult();
-    render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
+    render(
+      <TaskHeatmapTable
+        heatmapResult={result}
+        cellPreviewLookup={null}
+        isAssignmentLoading={false}
+        showAssignmentError={false}
+      />
+    );
 
     // Student One (s-1), Task 1 (task_001), Completeness: 5 (green / computed)
     // Expected aria-label: "Student One, task_001, Completeness: 5"
-    const cellAriaComputed = getHeatmapCellByLabel(
-      'Student One, task_001, Completeness: 5'
-    );
+    const cellAriaComputed = getHeatmapCellByLabel('Student One, task_001, Completeness: 5');
     expect(cellAriaComputed).toBeInTheDocument();
 
     // Student Three (s-3), Task 1 (task_001), Completeness: notAttempted ('N')
     // Expected aria-label: "Student Three, task_001, Completeness: N"
-    const cellAriaNotAttempted = getHeatmapCellByLabel(
-      'Student Three, task_001, Completeness: N'
-    );
+    const cellAriaNotAttempted = getHeatmapCellByLabel('Student Three, task_001, Completeness: N');
     expect(cellAriaNotAttempted).toBeInTheDocument();
 
     // Student One (s-1), Task 1 (task_001), Accuracy: 3 (computed, default)
     // Expected aria-label: "Student One, task_001, Accuracy: 3"
-    const cellAriaAccuracy = getHeatmapCellByLabel(
-      'Student One, task_001, Accuracy: 3'
-    );
+    const cellAriaAccuracy = getHeatmapCellByLabel('Student One, task_001, Accuracy: 3');
     expect(cellAriaAccuracy).toBeInTheDocument();
 
     // Student Two (s-2), Task 2 (task_002), Completeness: E (error)
     // Expected aria-label: "Student Two, task_002, Completeness: E"
-    const cellAriaError = getHeatmapCellByLabel(
-      'Student Two, task_002, Completeness: E'
-    );
+    const cellAriaError = getHeatmapCellByLabel('Student Two, task_002, Completeness: E');
     expect(cellAriaError).toBeInTheDocument();
   });
 
@@ -491,7 +504,14 @@ describe('TaskHeatmapTable', () => {
   describe('empty state', () => {
     it('renders all rows with N cells and a "No submissions yet" caption when every cell is notAttempted', () => {
       const result = buildNoSubmissionsResult();
-      render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
+      render(
+        <TaskHeatmapTable
+          heatmapResult={result}
+          cellPreviewLookup={null}
+          isAssignmentLoading={false}
+          showAssignmentError={false}
+        />
+      );
 
       // Assert "No submissions yet" caption is present above the table
       expect(screen.getByText('No submissions yet')).toBeInTheDocument();
@@ -502,12 +522,8 @@ describe('TaskHeatmapTable', () => {
       expect(screen.getByText('Student Three')).toBeInTheDocument();
 
       // Assert every task column renders with the expected group headers
-      expect(
-        screen.getByRole('columnheader', { name: TASK_1_TITLE })
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole('columnheader', { name: TASK_2_TITLE })
-      ).toBeInTheDocument();
+      expect(screen.getByRole('columnheader', { name: TASK_1_TITLE })).toBeInTheDocument();
+      expect(screen.getByRole('columnheader', { name: TASK_2_TITLE })).toBeInTheDocument();
 
       // Each cell should show 'N' (rendered by MetricPill compact)
       // Count N occurrences — there are 3 students × 2 tasks × 3 metrics = 18 'N's
@@ -519,20 +535,21 @@ describe('TaskHeatmapTable', () => {
 
     it('renders only the Student Name column header when taskColumns is empty', () => {
       const result = buildZeroTasksResult();
-      render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
+      render(
+        <TaskHeatmapTable
+          heatmapResult={result}
+          cellPreviewLookup={null}
+          isAssignmentLoading={false}
+          showAssignmentError={false}
+        />
+      );
 
       // Student Name column should render
-      expect(
-        screen.getByRole('columnheader', { name: /student name/i })
-      ).toBeInTheDocument();
+      expect(screen.getByRole('columnheader', { name: /student name/i })).toBeInTheDocument();
 
       // No task group headers
-      expect(
-        screen.queryByRole('columnheader', { name: TASK_1_ID })
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole('columnheader', { name: TASK_2_ID })
-      ).not.toBeInTheDocument();
+      expect(screen.queryByRole('columnheader', { name: TASK_1_ID })).not.toBeInTheDocument();
+      expect(screen.queryByRole('columnheader', { name: TASK_2_ID })).not.toBeInTheDocument();
 
       // No metric sub-column headers
       expect(screen.queryByRole('columnheader', { name: /completeness/i })).not.toBeInTheDocument();
@@ -552,12 +569,17 @@ describe('TaskHeatmapTable', () => {
 
   it('wraps each metric sub-cell render output in an Ant Design Popover', async () => {
     const result = buildHeatmapResult();
-    render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
+    render(
+      <TaskHeatmapTable
+        heatmapResult={result}
+        cellPreviewLookup={null}
+        isAssignmentLoading={false}
+        showAssignmentError={false}
+      />
+    );
 
     // Find a computed cell's score span via its aria-label
-    const cell = getHeatmapCellByLabel(
-      'Student One, task_001, Completeness: 5'
-    );
+    const cell = getHeatmapCellByLabel('Student One, task_001, Completeness: 5');
     const trigger = cell.querySelector('span');
     expect(trigger).toBeInTheDocument();
 
@@ -572,11 +594,16 @@ describe('TaskHeatmapTable', () => {
 
   it('popover content renders the TaskPreviewCard with metric label, reasoning, and student response sections', async () => {
     const result = buildHeatmapResult();
-    render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
-
-    const cell = getHeatmapCellByLabel(
-      'Student One, task_001, Completeness: 5'
+    render(
+      <TaskHeatmapTable
+        heatmapResult={result}
+        cellPreviewLookup={null}
+        isAssignmentLoading={false}
+        showAssignmentError={false}
+      />
     );
+
+    const cell = getHeatmapCellByLabel('Student One, task_001, Completeness: 5');
     const trigger = cell.querySelector('span')!;
     expect(trigger).toBeInTheDocument();
 
@@ -594,30 +621,36 @@ describe('TaskHeatmapTable', () => {
 
   it('preserves the existing aria-label on metric sub-cells after popover integration', () => {
     const result = buildHeatmapResult();
-    render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
+    render(
+      <TaskHeatmapTable
+        heatmapResult={result}
+        cellPreviewLookup={null}
+        isAssignmentLoading={false}
+        showAssignmentError={false}
+      />
+    );
 
     // The aria-label comes from onCell, not from render — Popover does not
     // change onCell, so the label should be unchanged.
-    expect(
-      getHeatmapCellByLabel('Student One, task_001, Completeness: 5')
-    ).toBeInTheDocument();
-    expect(
-      getHeatmapCellByLabel('Student One, task_001, Accuracy: 3')
-    ).toBeInTheDocument();
-    expect(
-      getHeatmapCellByLabel('Student Two, task_002, Completeness: E')
-    ).toBeInTheDocument();
+    expect(getHeatmapCellByLabel('Student One, task_001, Completeness: 5')).toBeInTheDocument();
+    expect(getHeatmapCellByLabel('Student One, task_001, Accuracy: 3')).toBeInTheDocument();
+    expect(getHeatmapCellByLabel('Student Two, task_002, Completeness: E')).toBeInTheDocument();
   });
 
   it('preserves the existing cell tone style (background colour) after popover integration', () => {
     const result = buildHeatmapResult();
-    render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
+    render(
+      <TaskHeatmapTable
+        heatmapResult={result}
+        cellPreviewLookup={null}
+        isAssignmentLoading={false}
+        showAssignmentError={false}
+      />
+    );
 
     // Student One, Task 1, Completeness: 5 is a computed score at the ceiling
     // of the range — the cell should carry a green/gradient background colour.
-    const cell = getHeatmapCellByLabel(
-      'Student One, task_001, Completeness: 5'
-    );
+    const cell = getHeatmapCellByLabel('Student One, task_001, Completeness: 5');
     // resolveMetricTone sets backgroundColor (camelCase) on the <td> via onCell
     expect(cell.style.backgroundColor).toBeTruthy();
     expect(cell.style.backgroundColor).not.toBe('');
@@ -625,23 +658,22 @@ describe('TaskHeatmapTable', () => {
 
   it('renders the heatmap with interactive metric sub-cells that open a popover on hover', async () => {
     const result = buildHeatmapResult();
-    render(<TaskHeatmapTable heatmapResult={result} cellPreviewLookup={null} isAssignmentLoading={false} showAssignmentError={false} />);
+    render(
+      <TaskHeatmapTable
+        heatmapResult={result}
+        cellPreviewLookup={null}
+        isAssignmentLoading={false}
+        showAssignmentError={false}
+      />
+    );
 
     // Assert metric sub-cells are present and labelled
-    expect(
-      getHeatmapCellByLabel('Student One, task_001, Completeness: 5')
-    ).toBeInTheDocument();
-    expect(
-      getHeatmapCellByLabel('Student Two, task_001, Completeness: 3')
-    ).toBeInTheDocument();
-    expect(
-      getHeatmapCellByLabel('Student Three, task_001, Completeness: N')
-    ).toBeInTheDocument();
+    expect(getHeatmapCellByLabel('Student One, task_001, Completeness: 5')).toBeInTheDocument();
+    expect(getHeatmapCellByLabel('Student Two, task_001, Completeness: 3')).toBeInTheDocument();
+    expect(getHeatmapCellByLabel('Student Three, task_001, Completeness: N')).toBeInTheDocument();
 
     // Hover a computed cell and assert the popover opens
-    const cell = getHeatmapCellByLabel(
-      'Student One, task_001, Completeness: 5'
-    );
+    const cell = getHeatmapCellByLabel('Student One, task_001, Completeness: 5');
     const trigger = cell.querySelector('span')!;
     expect(trigger).toBeInTheDocument();
 
@@ -668,9 +700,7 @@ describe('TaskHeatmapTable', () => {
       />
     );
 
-    const cell = getHeatmapCellByLabel(
-      'Student One, task_001, Completeness: 5'
-    );
+    const cell = getHeatmapCellByLabel('Student One, task_001, Completeness: 5');
     const trigger = cell.querySelector('span')!;
     expect(trigger).toBeInTheDocument();
 
@@ -680,9 +710,7 @@ describe('TaskHeatmapTable', () => {
       const popover = document.querySelector('.ant-popover');
       expect(popover).toBeInTheDocument();
       // The skeleton must use an <output> element (implicit role="status") with aria-busy="true"
-      const skeleton = popover!.querySelector(
-        'output[aria-busy="true"]'
-      );
+      const skeleton = popover!.querySelector('output[aria-busy="true"]');
       expect(skeleton).toBeInTheDocument();
     });
   });
@@ -698,9 +726,7 @@ describe('TaskHeatmapTable', () => {
       />
     );
 
-    const cell = getHeatmapCellByLabel(
-      'Student One, task_001, Completeness: 5'
-    );
+    const cell = getHeatmapCellByLabel('Student One, task_001, Completeness: 5');
     const trigger = cell.querySelector('span')!;
     expect(trigger).toBeInTheDocument();
 
@@ -724,9 +750,7 @@ describe('TaskHeatmapTable', () => {
       />
     );
 
-    const cell = getHeatmapCellByLabel(
-      'Student One, task_001, Completeness: 5'
-    );
+    const cell = getHeatmapCellByLabel('Student One, task_001, Completeness: 5');
     const trigger = cell.querySelector('span')!;
     expect(trigger).toBeInTheDocument();
 
@@ -736,9 +760,7 @@ describe('TaskHeatmapTable', () => {
       const popover = document.querySelector('.ant-popover');
       expect(popover).toBeInTheDocument();
       // The lookup provides TEXT artifact content — assert the reasoning text
-      expect(popover!.textContent).toContain(
-        'Student answered the question correctly.'
-      );
+      expect(popover!.textContent).toContain('Student answered the question correctly.');
     });
   });
 
@@ -753,9 +775,7 @@ describe('TaskHeatmapTable', () => {
       />
     );
 
-    const cell = getHeatmapCellByLabel(
-      'Student One, task_001, Completeness: 5'
-    );
+    const cell = getHeatmapCellByLabel('Student One, task_001, Completeness: 5');
     const trigger = cell.querySelector('span')!;
     expect(trigger).toBeInTheDocument();
 
@@ -781,15 +801,9 @@ describe('TaskHeatmapTable', () => {
       />
     );
 
-    expect(
-      getHeatmapCellByLabel('Student One, task_001, Completeness: 5')
-    ).toBeInTheDocument();
-    expect(
-      getHeatmapCellByLabel('Student One, task_001, Accuracy: 3')
-    ).toBeInTheDocument();
-    expect(
-      getHeatmapCellByLabel('Student Two, task_002, Completeness: E')
-    ).toBeInTheDocument();
+    expect(getHeatmapCellByLabel('Student One, task_001, Completeness: 5')).toBeInTheDocument();
+    expect(getHeatmapCellByLabel('Student One, task_001, Accuracy: 3')).toBeInTheDocument();
+    expect(getHeatmapCellByLabel('Student Two, task_002, Completeness: E')).toBeInTheDocument();
   });
 
   // -------------------------------------------------------------------------
@@ -836,11 +850,8 @@ describe('TaskHeatmapTable', () => {
 // Preview-status resolution order, merged wiring, and adaptive assignment tiers
 // ===========================================================================
 
-/** Per-taskKey preview status entry shape (matches the planned prop contract). */
-type PreviewStatusEntry = { isLoading: boolean; hasError: boolean };
-
 /** Readonly per-taskKey preview-status map (matches the planned prop contract). */
-type PreviewStatusMap = ReadonlyMap<string, PreviewStatusEntry>;
+type PreviewStatusMap = ReadonlyMap<string, PreviewStatus>;
 
 let lastRenderProperties: ComponentProps<typeof TaskHeatmapTable> | null = null;
 
@@ -850,7 +861,9 @@ let lastRenderProperties: ComponentProps<typeof TaskHeatmapTable> | null = null;
  * @param {ComponentProps<typeof TaskHeatmapTable>} properties - Component props.
  * @returns {ReturnType<typeof render>} The Testing Library render result.
  */
-function renderTable(properties: ComponentProps<typeof TaskHeatmapTable>): ReturnType<typeof render> {
+function renderTable(
+  properties: ComponentProps<typeof TaskHeatmapTable>
+): ReturnType<typeof render> {
   lastRenderProperties = properties;
   return render(<TaskHeatmapTable {...properties} />);
 }
@@ -894,8 +907,9 @@ function buildMergedRows(taskCount: number): MergedHeatmapResult['rows'] {
     studentName: studentNames[index]!,
     cells: Array.from({ length: taskCount }, (_, taskIndex) =>
       buildCell({
-        completenessValue: taskIndex === 0 ? MERGED_PRIMARY_TASK_SCORE : MERGED_SECONDARY_TASK_SCORE,
-      }),
+        completenessValue:
+          taskIndex === 0 ? MERGED_PRIMARY_TASK_SCORE : MERGED_SECONDARY_TASK_SCORE,
+      })
     ),
   }));
 }
@@ -907,14 +921,37 @@ function buildMergedRows(taskCount: number): MergedHeatmapResult['rows'] {
  */
 function buildSingleSourceMergedResult(): MergedHeatmapResult {
   const taskColumns: MergedHeatmapTaskColumn[] = [
-    { taskKey: `${MERGED_DEF_1}::t1`, taskId: 't1', taskTitle: 'A1 Task 1', assignmentId: A1_ID, definitionKey: MERGED_DEF_1, assignmentName: A1_NAME },
-    { taskKey: `${MERGED_DEF_1}::t2`, taskId: 't2', taskTitle: 'A1 Task 2', assignmentId: A1_ID, definitionKey: MERGED_DEF_1, assignmentName: A1_NAME },
-    { taskKey: `${MERGED_DEF_1}::t3`, taskId: 't3', taskTitle: 'A1 Task 3', assignmentId: A1_ID, definitionKey: MERGED_DEF_1, assignmentName: A1_NAME },
+    {
+      taskKey: `${MERGED_DEF_1}::t1`,
+      taskId: 't1',
+      taskTitle: 'A1 Task 1',
+      assignmentId: A1_ID,
+      definitionKey: MERGED_DEF_1,
+      assignmentName: A1_NAME,
+    },
+    {
+      taskKey: `${MERGED_DEF_1}::t2`,
+      taskId: 't2',
+      taskTitle: 'A1 Task 2',
+      assignmentId: A1_ID,
+      definitionKey: MERGED_DEF_1,
+      assignmentName: A1_NAME,
+    },
+    {
+      taskKey: `${MERGED_DEF_1}::t3`,
+      taskId: 't3',
+      taskTitle: 'A1 Task 3',
+      assignmentId: A1_ID,
+      definitionKey: MERGED_DEF_1,
+      assignmentName: A1_NAME,
+    },
   ];
   return {
     classId: 'class-1',
     className: 'Class A',
-    sourceAssignments: [{ assignmentId: A1_ID, definitionKey: MERGED_DEF_1, assignmentName: A1_NAME }],
+    sourceAssignments: [
+      { assignmentId: A1_ID, definitionKey: MERGED_DEF_1, assignmentName: A1_NAME },
+    ],
     taskColumns,
     rows: buildMergedRows(taskColumns.length),
   };
@@ -927,10 +964,38 @@ function buildSingleSourceMergedResult(): MergedHeatmapResult {
  */
 function buildTwoSourceMergedResult(): MergedHeatmapResult {
   const taskColumns: MergedHeatmapTaskColumn[] = [
-    { taskKey: `${MERGED_DEF_1}::t1`, taskId: 't1', taskTitle: 'A1 Task 1', assignmentId: A1_ID, definitionKey: MERGED_DEF_1, assignmentName: A1_NAME },
-    { taskKey: `${MERGED_DEF_1}::t2`, taskId: 't2', taskTitle: 'A1 Task 2', assignmentId: A1_ID, definitionKey: MERGED_DEF_1, assignmentName: A1_NAME },
-    { taskKey: `${MERGED_DEF_2}::t3`, taskId: 't3', taskTitle: 'A2 Task 1', assignmentId: A2_ID, definitionKey: MERGED_DEF_2, assignmentName: A2_NAME },
-    { taskKey: `${MERGED_DEF_2}::t4`, taskId: 't4', taskTitle: 'A2 Task 2', assignmentId: A2_ID, definitionKey: MERGED_DEF_2, assignmentName: A2_NAME },
+    {
+      taskKey: `${MERGED_DEF_1}::t1`,
+      taskId: 't1',
+      taskTitle: 'A1 Task 1',
+      assignmentId: A1_ID,
+      definitionKey: MERGED_DEF_1,
+      assignmentName: A1_NAME,
+    },
+    {
+      taskKey: `${MERGED_DEF_1}::t2`,
+      taskId: 't2',
+      taskTitle: 'A1 Task 2',
+      assignmentId: A1_ID,
+      definitionKey: MERGED_DEF_1,
+      assignmentName: A1_NAME,
+    },
+    {
+      taskKey: `${MERGED_DEF_2}::t3`,
+      taskId: 't3',
+      taskTitle: 'A2 Task 1',
+      assignmentId: A2_ID,
+      definitionKey: MERGED_DEF_2,
+      assignmentName: A2_NAME,
+    },
+    {
+      taskKey: `${MERGED_DEF_2}::t4`,
+      taskId: 't4',
+      taskTitle: 'A2 Task 2',
+      assignmentId: A2_ID,
+      definitionKey: MERGED_DEF_2,
+      assignmentName: A2_NAME,
+    },
   ];
   return {
     classId: 'class-1',
@@ -952,8 +1017,22 @@ function buildTwoSourceMergedResult(): MergedHeatmapResult {
  */
 function buildCollapsedMergedResult(): MergedHeatmapResult {
   const taskColumns: MergedHeatmapTaskColumn[] = [
-    { taskKey: `${MERGED_DEF_SHARED}::t1`, taskId: 't1', taskTitle: 'Shared Task 1', assignmentId: A1_ID, definitionKey: MERGED_DEF_SHARED, assignmentName: A1_NAME },
-    { taskKey: `${MERGED_DEF_SHARED}::t2`, taskId: 't2', taskTitle: 'Shared Task 2', assignmentId: A1_ID, definitionKey: MERGED_DEF_SHARED, assignmentName: A1_NAME },
+    {
+      taskKey: `${MERGED_DEF_SHARED}::t1`,
+      taskId: 't1',
+      taskTitle: 'Shared Task 1',
+      assignmentId: A1_ID,
+      definitionKey: MERGED_DEF_SHARED,
+      assignmentName: A1_NAME,
+    },
+    {
+      taskKey: `${MERGED_DEF_SHARED}::t2`,
+      taskId: 't2',
+      taskTitle: 'Shared Task 2',
+      assignmentId: A1_ID,
+      definitionKey: MERGED_DEF_SHARED,
+      assignmentName: A1_NAME,
+    },
   ];
   return {
     classId: 'class-1',
@@ -993,8 +1072,8 @@ async function openTaskPopover(taskId: string): Promise<HTMLElement> {
   // The merged fixtures vary the completeness score per task, so match by the
   // stable "Student One, <taskId>, Completeness:" label prefix rather than a
   // non-literal RegExp (lint-forbidden) or a hard-coded score.
-  const cell = screen.getAllByLabelText(
-    (content): boolean => content.startsWith(`Student One, ${taskId}, Completeness:`),
+  const cell = screen.getAllByLabelText((content): boolean =>
+    content.startsWith(`Student One, ${taskId}, Completeness:`)
   )[0];
   const trigger = cell.querySelector('span');
   expect(trigger).toBeInTheDocument();
@@ -1020,7 +1099,7 @@ describe('TaskHeatmapTable preview-status resolution and adaptive assignment tie
 
   it('renders a skeleton when the per-taskKey map entry is loading, overriding the false aggregate booleans', async () => {
     const result = buildSingleSourceMergedResult();
-    const previewStatusByTaskKey: PreviewStatusMap = new Map<string, PreviewStatusEntry>([
+    const previewStatusByTaskKey: PreviewStatusMap = new Map<string, PreviewStatus>([
       [`${MERGED_DEF_1}::t1`, { isLoading: true, hasError: false }],
     ]);
     renderTable({
@@ -1037,7 +1116,7 @@ describe('TaskHeatmapTable preview-status resolution and adaptive assignment tie
 
   it('treats the aggregate loading flag as inert when the map supplies a healthy entry (normal card, not a skeleton)', async () => {
     const result = buildSingleSourceMergedResult();
-    const previewStatusByTaskKey: PreviewStatusMap = new Map<string, PreviewStatusEntry>([
+    const previewStatusByTaskKey: PreviewStatusMap = new Map<string, PreviewStatus>([
       [`${MERGED_DEF_1}::t1`, { isLoading: false, hasError: false }],
     ]);
     renderTable({
@@ -1056,7 +1135,7 @@ describe('TaskHeatmapTable preview-status resolution and adaptive assignment tie
 
   it('renders an error Alert when the per-taskKey map entry has an error, overriding the false aggregate booleans', async () => {
     const result = buildSingleSourceMergedResult();
-    const previewStatusByTaskKey: PreviewStatusMap = new Map<string, PreviewStatusEntry>([
+    const previewStatusByTaskKey: PreviewStatusMap = new Map<string, PreviewStatus>([
       [`${MERGED_DEF_1}::t1`, { isLoading: false, hasError: true }],
     ]);
     renderTable({
@@ -1073,7 +1152,7 @@ describe('TaskHeatmapTable preview-status resolution and adaptive assignment tie
 
   it('owns status entirely via the map when aggregates are passed as false (loading → skeleton, error → alert, healthy → card)', async () => {
     const result = buildSingleSourceMergedResult();
-    const previewStatusByTaskKey: PreviewStatusMap = new Map<string, PreviewStatusEntry>([
+    const previewStatusByTaskKey: PreviewStatusMap = new Map<string, PreviewStatus>([
       [`${MERGED_DEF_1}::t1`, { isLoading: true, hasError: false }],
       [`${MERGED_DEF_1}::t2`, { isLoading: false, hasError: true }],
       [`${MERGED_DEF_1}::t3`, { isLoading: false, hasError: false }],
@@ -1125,7 +1204,7 @@ describe('TaskHeatmapTable preview-status resolution and adaptive assignment tie
   it('falls back to the aggregate booleans for a column with no map entry (not a default healthy state)', async () => {
     const result = buildSingleSourceMergedResult();
     // Map present but healthy for t1 only; t2 has NO map entry. Aggregate is loading.
-    const previewStatusByTaskKey: PreviewStatusMap = new Map<string, PreviewStatusEntry>([
+    const previewStatusByTaskKey: PreviewStatusMap = new Map<string, PreviewStatus>([
       [`${MERGED_DEF_1}::t1`, { isLoading: false, hasError: false }],
     ]);
     renderTable({
@@ -1160,9 +1239,7 @@ describe('TaskHeatmapTable preview-status resolution and adaptive assignment tie
     });
 
     // No assignment parent group header titled by the assignment name.
-    expect(
-      screen.queryByRole('columnheader', { name: A1_NAME }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: A1_NAME })).not.toBeInTheDocument();
 
     // Task group headers are still present (two-tier as today).
     expect(screen.getByRole('columnheader', { name: 'A1 Task 1' })).toBeInTheDocument();
@@ -1208,13 +1285,9 @@ describe('TaskHeatmapTable preview-status resolution and adaptive assignment tie
     expect(collapsedParent).toBeInTheDocument();
 
     // No second parent group for the second (sharing) assignment instance.
-    expect(
-      screen.queryByRole('columnheader', { name: A2_NAME }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: A2_NAME })).not.toBeInTheDocument();
 
     // The shared definition produces ONE collapsed column set.
-    expect(
-      screen.getAllByRole('columnheader', { name: 'Shared Task 1' }),
-    ).toHaveLength(1);
+    expect(screen.getAllByRole('columnheader', { name: 'Shared Task 1' })).toHaveLength(1);
   });
 });

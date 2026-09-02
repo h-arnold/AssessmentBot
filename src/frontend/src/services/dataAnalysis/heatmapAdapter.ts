@@ -101,7 +101,7 @@ const NOT_ATTEMPTED_METRIC: Readonly<MetricResult> = Object.freeze({
  * @returns {HeatmapTaskColumn[]} Ordered task-column descriptors with `taskKey`,
  *   `taskId`, and `taskTitle` read directly from the partial.
  */
-function buildTaskColumns(partial: AssignmentDefinitionPartial): HeatmapTaskColumn[] {
+export function buildTaskColumns(partial: AssignmentDefinitionPartial): HeatmapTaskColumn[] {
   return partial.tasks.map((task) => ({
     taskKey: `${partial.definitionKey}::${task.taskId}`,
     taskId: task.taskId,
@@ -176,6 +176,50 @@ export function groupMetricsByStudent(
 }
 
 /**
+ * Resolve a single assignment's warm-up definition partial, validating its
+ * presence in `classFull.assignments` and the availability of its partial.
+ *
+ * @param {ClassFull} classFull - The full class data.
+ * @param {string} assignmentId - The assignment identifier to resolve.
+ * @param {AssignmentDefinitionPartialsResponse} assignmentDefinitionPartials -
+ *   The warm-up partials dataset.
+ * @param {ReadonlyMap<string, ClassFull['assignments'][number]>} [assignmentById] -
+ *   Optional prebuilt `assignmentId → assignment` map. When supplied, it is used
+ *   instead of a linear `.find` over `classFull.assignments` so callers in a
+ *   loop over many assignment IDs avoid a repeated O(A) scan.
+ * @returns {{ definitionKey: string; partial: AssignmentDefinitionPartial }}
+ *   The resolved definition key and warm-up partial.
+ * @throws {Error} If `assignmentId` is not present in `classFull.assignments`.
+ * @throws {TaskTitlesUnavailableError} If no partial exists for the definition key.
+ *
+ * @remarks
+ * This is the single source of truth for the "find assignment → resolve
+ * definition key → resolve partial → throw on absence" sequence shared by the
+ * embedded and merged adapters, keeping the error contract in one place.
+ */
+export function resolveAssignmentPartial(
+  classFull: ClassFull,
+  assignmentId: string,
+  assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse,
+  assignmentById?: ReadonlyMap<string, ClassFull['assignments'][number]>
+): { definitionKey: string; partial: AssignmentDefinitionPartial } {
+  const assignment =
+    assignmentById?.get(assignmentId) ??
+    classFull.assignments.find((a) => a.assignmentId === assignmentId);
+  if (!assignment) {
+    throw new Error(
+      `resolveAssignmentPartial: assignmentId "${assignmentId}" not found in classFull.assignments`
+    );
+  }
+  const definitionKey = assignment.assignmentDefinitionKey;
+  const partial = getAssignmentDefinitionPartial(assignmentDefinitionPartials, definitionKey);
+  if (!partial) {
+    throw new TaskTitlesUnavailableError(definitionKey);
+  }
+  return { definitionKey, partial };
+}
+
+/**
  * Project an `AveragingResult` (with per-student-task metrics), a `ClassFull`,
  * an `assignmentId`, and the warm-up `assignmentDefinitionPartials` into a
  * `HeatmapResult` view model for a single assignment.
@@ -210,7 +254,7 @@ export function groupMetricsByStudent(
  *
  * v1 uses single-assignment selection at the adapter boundary by deriving
  * `taskKey`s (`${definitionKey}::${taskId}`) from the warm-up partial.
- * Multi-assignment selection is deferred — see SPEC.md §Deferrals.
+ * Multi-assignment selection is handled by the merged adapter (`heatmapAdapter.merged.ts`); this adapter remains single-assignment.
  */
 export function adaptMetricsToHeatmap(
   analyserResult: AveragingResult,
@@ -218,21 +262,12 @@ export function adaptMetricsToHeatmap(
   assignmentId: string,
   assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse
 ): HeatmapResult {
-  const assignment = classFull.assignments.find((a) => a.assignmentId === assignmentId);
-  if (!assignment) {
-    throw new Error(
-      `adaptMetricsToHeatmap: assignmentId "${assignmentId}" not found in classFull.assignments`
-    );
-  }
-
-  const definitionKey = assignment.assignmentDefinitionKey;
+  const { partial } = resolveAssignmentPartial(
+    classFull,
+    assignmentId,
+    assignmentDefinitionPartials
+  );
   const className: string = classFull.className ?? DEFAULT_CLASS_NAME_LABEL;
-
-  // Source task columns from the warm-up partial, not the embedded definition.
-  const partial = getAssignmentDefinitionPartial(assignmentDefinitionPartials, definitionKey);
-  if (!partial) {
-    throw new TaskTitlesUnavailableError(definitionKey);
-  }
 
   const taskColumns = buildTaskColumns(partial);
 

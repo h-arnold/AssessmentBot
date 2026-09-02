@@ -1,14 +1,14 @@
 /**
- * RED-phase component tests for the Heatmaps builder surface
+ * Component tests for the Heatmaps builder surface
  * (`HeatmapBuilderSurface`).
  *
  * @remarks
- * This is the RED phase of ACTION_PLAN.md §Section 6. The surface is currently a
- * placeholder stub that renders only `<Typography.Title>Heatmaps</Typography.Title>`,
- * so EVERY test below must FAIL against the current code — but for the *right* reason
- * (the expected regions/controls are absent), not because of a typo or a broken
- * harness. Once the green phase assembles the surface, these tests become the
- * acceptance gate.
+ * These tests pin the assembled surface's behaviour: the selection bar (three
+ * labelled controls, disabled-dependent affordances, option ordering and checkbox
+ * membership), the content-region precedence matrix (loading skeleton, blocking
+ * Result, no-class / no-assignments Empty guidance, ready-with-selections table),
+ * and the refresh affordances. They serve as the acceptance gate for the standalone
+ * Heatmaps builder surface.
  *
  * The hook `useHeatmapsPageData` is mocked at the module seam (`vi.mock('./useHeatmapsPageData')`)
  * so each test drives one discriminated surface state. The mock return shape is
@@ -44,14 +44,11 @@
  * membership ...") so a green implementation cannot read a non-existent
  * `option.selected` prop.
  *
- * --- GREEN-PHASE HANDOFF (I3, red-side half) ---
+ * --- EMPTY-STATE COPY (I3) ---
  * The empty-state guidance copy constants (`NO_CLASS_EMPTY_COPY`,
- * `NO_ASSIGNMENTS_EMPTY_COPY`) are currently hard-coded literals copied verbatim from
- * `HEATMAPS_PAGE_LAYOUT.md` (lines 279 and 280). When the green phase adds the matching
- * `pageContent.heatmaps` keys, these tests MUST be switched to import the copy from
- * `pageContent.heatmaps.*` (single source of truth) rather than asserting literals. This
- * note is recorded here so the green phase cannot miss the swap. Until then the literals
- * remain the authoritative contract for the red phase.
+ * `NO_ASSIGNMENTS_EMPTY_COPY`) are sourced from `pageContent.heatmaps` (single source of
+ * truth), per the green-phase handoff; the tests assert against that imported copy rather
+ * than hard-coded literals.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -80,7 +77,7 @@ vi.mock('./useHeatmapsPageData', () => ({
 }));
 
 // ===========================================================================
-// Verbatim copy (sourced from pageContent.heatmaps / HEATMAPS_PAGE_LAYOUT.md)
+// Verbatim copy (sourced from pageContent.heatmaps)
 // ===========================================================================
 
 /** Chrome title when no class is selected — `pageContent.heatmaps.heading`. */
@@ -109,9 +106,27 @@ const ASSIGNMENTS_PLACEHOLDER = 'Select assignments';
 
 /** Frozen not-attempted metric cell, reused for the merged-result fixture. */
 const NOT_ATTEMPTED_CELL = {
-  completeness: { state: 'notAttempted', value: 'N', totalWeight: 0, applicableDataPoints: 0, totalDataPoints: 1 },
-  accuracy: { state: 'notAttempted', value: 'N', totalWeight: 0, applicableDataPoints: 0, totalDataPoints: 1 },
-  spag: { state: 'notAttempted', value: 'N', totalWeight: 0, applicableDataPoints: 0, totalDataPoints: 1 },
+  completeness: {
+    state: 'notAttempted',
+    value: 'N',
+    totalWeight: 0,
+    applicableDataPoints: 0,
+    totalDataPoints: 1,
+  },
+  accuracy: {
+    state: 'notAttempted',
+    value: 'N',
+    totalWeight: 0,
+    applicableDataPoints: 0,
+    totalDataPoints: 1,
+  },
+  spag: {
+    state: 'notAttempted',
+    value: 'N',
+    totalWeight: 0,
+    applicableDataPoints: 0,
+    totalDataPoints: 1,
+  },
 } as const;
 
 /**
@@ -133,7 +148,9 @@ function buildMergedResult(): MergedHeatmapResult {
   return {
     classId: 'class-1',
     className: 'Test Class 7A',
-    sourceAssignments: [{ assignmentId: 'a1', definitionKey: 'def1', assignmentName: 'Title def1' }],
+    sourceAssignments: [
+      { assignmentId: 'a1', definitionKey: 'def1', assignmentName: 'Title def1' },
+    ],
     taskColumns,
     rows: [{ studentId: 's-1', studentName: 'Student One', cells: [NOT_ATTEMPTED_CELL] }],
   } as MergedHeatmapResult;
@@ -336,7 +353,7 @@ describe('HeatmapBuilderSurface — selection bar', () => {
     // resolved titles are "Zebra Task" then "Apple Task" — alphabetically
     // reversed. A re-sort by title would flip the order, so asserting the
     // observed order proves the surface preserves `ClassFull.assignments` order
-    // per `HEATMAPS_PAGE_LAYOUT.md` §8.2 (which forbids re-sorting by title).
+    // (assignment options preserve `ClassFull.assignments` order; re-sorting by title is forbidden).
     const orderedClassFull: ClassFull = {
       classId: 'class-1',
       className: 'Test Class 7A',
@@ -347,8 +364,16 @@ describe('HeatmapBuilderSurface — selection bar', () => {
       teachers: [],
       students: [{ id: 's-1', name: 'Student One', email: 's1@test.com' }],
       assignments: [
-        { assignmentId: 'a1', assignmentDefinitionKey: 'def-z', updatedAt: '2025-01-01T00:00:00.000Z' },
-        { assignmentId: 'a2', assignmentDefinitionKey: 'def-a', updatedAt: '2025-02-01T00:00:00.000Z' },
+        {
+          assignmentId: 'a1',
+          assignmentDefinitionKey: 'def-z',
+          updatedAt: '2025-01-01T00:00:00.000Z',
+        },
+        {
+          assignmentId: 'a2',
+          assignmentDefinitionKey: 'def-a',
+          updatedAt: '2025-02-01T00:00:00.000Z',
+        },
       ],
       active: true,
     } as unknown as ClassFull;
@@ -399,9 +424,7 @@ describe('HeatmapBuilderSurface — selection bar', () => {
     const assignments = screen.getByRole('combobox', { name: /assignments/i });
     await user.click(assignments);
 
-    const optionNames = screen
-      .getAllByRole('option')
-      .map((option) => option.textContent?.trim());
+    const optionNames = screen.getAllByRole('option').map((option) => option.textContent?.trim());
     expect(optionNames).toEqual(['Zebra Task', 'Apple Task']);
   });
 });
@@ -431,8 +454,10 @@ describe('HeatmapBuilderSurface — checkbox options', () => {
     const selectedAssignmentCheckbox = within(selectedAssignmentOption).getByRole('checkbox');
     const unselectedAssignmentCheckbox = within(unselectedAssignmentOption).getByRole('checkbox');
 
-    expect(selectedAssignmentCheckbox).toHaveAttribute('aria-checked', 'true');
-    expect(unselectedAssignmentCheckbox).toHaveAttribute('aria-checked', 'false');
+    // A-N1 removed the redundant explicit `aria-checked` prop; Ant Design's Checkbox
+    // derives checked state on the native input, so assert the `checked` state instead.
+    expect(selectedAssignmentCheckbox).toBeChecked();
+    expect(unselectedAssignmentCheckbox).not.toBeChecked();
   });
 
   it('narrows options client-side via the search box', async () => {
@@ -546,7 +571,7 @@ describe('HeatmapBuilderSurface — refresh', () => {
     expect(refetch).toHaveBeenCalledTimes(1);
   });
 
-  it('exposes a busy affordance (disabled/spinning) while isRefreshing is true', () => {
+  it('exposes a busy affordance on the content region (not the disabled button) while isRefreshing is true', () => {
     renderSurface({
       selection: { classId: 'class-1', topicKeys: [], assignmentIds: ['a1'] } as SelectionState,
       classFull: CLASS_FULL,
@@ -557,8 +582,17 @@ describe('HeatmapBuilderSurface — refresh', () => {
     });
 
     const refreshButton = screen.getByRole('button', { name: /refresh/i });
-    expect(refreshButton).toHaveAttribute('aria-busy', 'true');
+    // The Refresh button is disabled for the affordance, but NOT aria-busy: a
+    // disabled native button is removed from the accessibility tree, so its
+    // aria-busy would never be announced (per the background-refresh standard).
     expect(refreshButton).toBeDisabled();
+    expect(refreshButton).not.toHaveAttribute('aria-busy');
+
+    // The persistent content region carries the busy signal instead.
+    expect(document.querySelector('[aria-busy="true"]')).toBeInTheDocument();
+
+    // A visually-hidden live status announces the background refresh.
+    expect(screen.getByText(/refreshing heatmap/i)).toBeInTheDocument();
   });
 
   it('keeps the merged table visible across a background refresh', () => {

@@ -2,8 +2,7 @@
  * Selection bar for the standalone Heatmaps builder surface.
  *
  * @remarks
- * Renders the three labelled, controlled selector controls per
- * `HEATMAPS_PAGE_LAYOUT.md` (class → topics → assignments, fixed order):
+ * Renders the three labelled, controlled selector controls (class → topics → assignments, fixed order):
  *
  * - **Class** — single-select, searchable, `allowClear`, populated from the
  *   warm-up class-partials dataset. Choosing (or clearing) the class is the only
@@ -26,19 +25,17 @@
  * The component is declarative and fully controlled by the owning hook
  * (`useHeatmapsPageData`); it holds no selection state of its own.
  *
- * @see HEATMAPS_PAGE_LAYOUT.md
- * @see ACTION_PLAN.md §Section 6
+ * @see docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md §9.22
  */
 
 import type { JSX } from 'react';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Checkbox, Flex, Select, Space, Tooltip, Typography } from 'antd';
 import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
 import type { ClassPartial } from '../../services/googleClassrooms/classPartialsService';
-import type {
-  AssignmentDefinitionPartial,
-  AssignmentDefinitionPartialsResponse,
-} from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import type { AssignmentDefinitionPartialsResponse } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import { getAssignmentDefinitionPartial } from '../../services/assignmentDefinition/assignmentDefinitionUtilities';
+import { logFrontendEvent } from '../../logging/frontendLogger';
 import type { SelectionState } from './selectionCascade';
 import { APP_GAP_MD, APP_GAP_SM } from '../../theme/spacing';
 
@@ -52,14 +49,6 @@ const DISABLED_REASON_ID = 'heatmap-selection-disabled-reason';
 const CLASS_PLACEHOLDER = 'Select a class';
 const TOPICS_PLACEHOLDER = 'Select topics';
 const ASSIGNMENTS_PLACEHOLDER = 'Select assignments';
-
-/**
- * Visually-hidden but accessibility-tree-present reason node.
- *
- * Uses the canonical `.sr-only` utility class (centralised in `index.css`) rather
- * than a hand-rolled inline style, so the pattern stays consistent across the app.
- */
-const SR_ONLY_CLASS = 'sr-only';
 
 /** Properties for {@link HeatmapSelectionBar}. */
 export type HeatmapSelectionBarProperties = Readonly<{
@@ -83,46 +72,56 @@ export type HeatmapSelectionBarProperties = Readonly<{
 }>;
 
 /**
- * Build a key → partial lookup from the warm-up partials dataset.
+ * Build a map of assignmentId → resolved primaryTopicKey for cascade clearing.
  *
- * @param {AssignmentDefinitionPartialsResponse | null} partials - The dataset.
- * @returns {Map<string, AssignmentDefinitionPartial>} definitionKey → partial.
+ * @param {ClassFull | null} classFull - The loaded class.
+ * @param {AssignmentDefinitionPartialsResponse | null} assignmentDefinitionPartials - The
+ *   warm-up partials dataset (label + topic resolution).
+ * @returns {Map<string, string>} assignmentId → primaryTopicKey (present entries only).
  */
-function buildPartialsByKey(
-  partials: AssignmentDefinitionPartialsResponse | null
-): Map<string, AssignmentDefinitionPartial> {
-  const map = new Map<string, AssignmentDefinitionPartial>();
-  if (partials === null) {
+function buildAssignmentTopicKeys(
+  classFull: ClassFull | null,
+  assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse | null
+): Map<string, string> {
+  const map = new Map<string, string>();
+  if (classFull === null || assignmentDefinitionPartials === null) {
     return map;
   }
-  for (const partial of partials) {
-    map.set(partial.definitionKey, partial);
+  for (const assignment of classFull.assignments) {
+    const partial = getAssignmentDefinitionPartial(
+      assignmentDefinitionPartials,
+      assignment.assignmentDefinitionKey
+    );
+    if (partial !== null) {
+      map.set(assignment.assignmentId, partial.primaryTopicKey);
+    }
   }
   return map;
 }
 
 /**
- * Build a map of assignmentId → resolved primaryTopicKey for cascade clearing.
+ * Resolve a single assignment to an option entry, or `null` when it must be omitted.
  *
- * @param {ClassFull | null} classFull - The loaded class.
- * @param {Map<string, AssignmentDefinitionPartial>} partialsByKey - Partial lookup.
- * @returns {Map<string, string>} assignmentId → primaryTopicKey (present entries only).
+ * @param {ClassFull['assignments'][number]} assignment - The assignment to resolve.
+ * @param {ReturnType<typeof getAssignmentDefinitionPartial>} partial - Resolved partial
+ *   (or `null` when the `definitionKey` has no resolvable partial).
+ * @param {string | undefined} topicKey - Resolved primary topic key (or `undefined`).
+ * @param {Set<string>} activeTopics - Currently active topic keys (empty = no filter).
+ * @returns {{ value: string; label: string } | null} The option entry, or `null` to omit.
  */
-function buildAssignmentTopicKeys(
-  classFull: ClassFull | null,
-  partialsByKey: Map<string, AssignmentDefinitionPartial>
-): Map<string, string> {
-  const map = new Map<string, string>();
-  if (classFull === null) {
-    return map;
+function resolveAssignmentOption(
+  assignment: ClassFull['assignments'][number],
+  partial: ReturnType<typeof getAssignmentDefinitionPartial>,
+  topicKey: string | undefined,
+  activeTopics: Set<string>
+): { value: string; label: string } | null {
+  if (partial === null || topicKey === undefined) {
+    return null;
   }
-  for (const assignment of classFull.assignments) {
-    const partial = partialsByKey.get(assignment.assignmentDefinitionKey);
-    if (partial !== undefined) {
-      map.set(assignment.assignmentId, partial.primaryTopicKey);
-    }
+  if (activeTopics.size > 0 && !activeTopics.has(topicKey)) {
+    return null;
   }
-  return map;
+  return { value: assignment.assignmentId, label: partial.primaryTitle };
 }
 
 /**
@@ -140,21 +139,61 @@ export function HeatmapSelectionBar({
   onChangeTopics,
   onChangeAssignments,
 }: HeatmapSelectionBarProperties): JSX.Element {
-  const partialsByKey = useMemo(
-    () => buildPartialsByKey(assignmentDefinitionPartials),
-    [assignmentDefinitionPartials]
+  const assignmentTopicKeys = useMemo(
+    () => buildAssignmentTopicKeys(classFull, assignmentDefinitionPartials),
+    [classFull, assignmentDefinitionPartials]
   );
 
-  const assignmentTopicKeys = useMemo(
-    () => buildAssignmentTopicKeys(classFull, partialsByKey),
-    [classFull, partialsByKey]
-  );
+  // Assignments whose `definitionKey` has no resolvable partial are omitted from the
+  // topic/assignment selectors; SPEC requires these omissions to be logged as warnings.
+  // Guarded on `assignmentDefinitionPartials` being present so we only warn once the
+  // warm-up data has resolved (not during the still-loading phase).
+  const omittedAssignmentIds = useMemo(() => {
+    const ids: string[] = [];
+    if (classFull !== null && assignmentDefinitionPartials !== null) {
+      for (const assignment of classFull.assignments) {
+        const partial = getAssignmentDefinitionPartial(
+          assignmentDefinitionPartials,
+          assignment.assignmentDefinitionKey
+        );
+        if (partial === null) {
+          ids.push(assignment.assignmentId);
+        }
+      }
+    }
+    return ids;
+  }, [classFull, assignmentDefinitionPartials]);
+
+  // Idempotency guard: warn for each omitted id only once, even if the memo above
+  // recomputes (e.g. on unrelated re-renders), per logging policy §3 (no double-logging).
+  const warnedOmittedAssignmentIds = useRef<Set<string>>(new Set<string>());
+
+  useEffect(() => {
+    for (const assignmentId of omittedAssignmentIds) {
+      if (!warnedOmittedAssignmentIds.current.has(assignmentId)) {
+        warnedOmittedAssignmentIds.current.add(assignmentId);
+        logFrontendEvent('warn', {
+          context: 'HeatmapSelectionBar',
+          errorMessage: `Assignment "${assignmentId}" omitted from Heatmaps selectors: no resolvable assignment-definition partial`,
+          metadata: { assignmentId },
+        });
+      }
+    }
+  }, [omittedAssignmentIds]);
 
   const dependentsDisabled = classFull === null;
 
   // Disabled-state affordances derived once to keep the JSX branch-free (complexity rule).
   const disabledTooltipTitle = dependentsDisabled ? DISABLED_REASON : undefined;
   const disabledDescribedBy = dependentsDisabled ? DISABLED_REASON_ID : undefined;
+
+  // Memoised membership sets (P-N4): O(1) `has` lookups in option renders and the
+  // class-value selector instead of O(n) `includes`/`some` rescans on every repaint.
+  const selectedTopicKeys = useMemo(() => new Set(selection.topicKeys), [selection.topicKeys]);
+  const selectedAssignmentIds = useMemo(
+    () => new Set(selection.assignmentIds),
+    [selection.assignmentIds]
+  );
 
   const classOptions = useMemo(() => {
     if (classPartials === null) {
@@ -168,15 +207,26 @@ export function HeatmapSelectionBar({
       .toSorted((left, right) => left.label.localeCompare(right.label));
   }, [classPartials]);
 
+  // Memoised membership set (P-N4): O(1) `has` lookup for the class-value selector
+  // instead of an O(n) `some` rescan on every repaint. Declared after `classOptions`
+  // to satisfy the React Compiler's no-use-before-declaration analysis.
+  const classOptionIds = useMemo(
+    () => new Set(classOptions.map((option) => option.value)),
+    [classOptions]
+  );
+
   const topicOptions = useMemo(() => {
-    if (classFull === null) {
+    if (classFull === null || assignmentDefinitionPartials === null) {
       return [];
     }
     const seen = new Set<string>();
     const collected: { value: string; label: string }[] = [];
     for (const assignment of classFull.assignments) {
-      const partial = partialsByKey.get(assignment.assignmentDefinitionKey);
-      if (partial === undefined) {
+      const partial = getAssignmentDefinitionPartial(
+        assignmentDefinitionPartials,
+        assignment.assignmentDefinitionKey
+      );
+      if (partial === null) {
         continue;
       }
       if (seen.has(partial.primaryTopicKey)) {
@@ -186,34 +236,31 @@ export function HeatmapSelectionBar({
       collected.push({ value: partial.primaryTopicKey, label: partial.primaryTopic });
     }
     return collected.toSorted((left, right) => left.label.localeCompare(right.label));
-  }, [classFull, partialsByKey]);
+  }, [classFull, assignmentDefinitionPartials]);
 
   const assignmentOptions = useMemo(() => {
-    if (classFull === null) {
+    if (classFull === null || assignmentDefinitionPartials === null) {
       return [];
     }
     const activeTopics = new Set(selection.topicKeys);
     const collected: { value: string; label: string }[] = [];
     for (const assignment of classFull.assignments) {
-      const partial = partialsByKey.get(assignment.assignmentDefinitionKey);
-      if (partial === undefined) {
-        continue;
-      }
+      const partial = getAssignmentDefinitionPartial(
+        assignmentDefinitionPartials,
+        assignment.assignmentDefinitionKey
+      );
       // The topic key is already resolved by the memoised `assignmentTopicKeys` map
-      // (built from the same `partialsByKey` lookup); reuse it instead of re-deriving.
+      // (built from the same `getAssignmentDefinitionPartial` lookup); reuse it instead of re-deriving.
       const topicKey = assignmentTopicKeys.get(assignment.assignmentId);
-      if (topicKey === undefined) {
-        continue;
+      const option = resolveAssignmentOption(assignment, partial, topicKey, activeTopics);
+      if (option !== null) {
+        collected.push(option);
       }
-      if (activeTopics.size > 0 && !activeTopics.has(topicKey)) {
-        continue;
-      }
-      collected.push({ value: assignment.assignmentId, label: partial.primaryTitle });
     }
     // Preserve `ClassFull.assignments` order (layout spec §8.2 forbids re-sorting by
     // title); the cascade filter above already narrows by the active topic set.
     return collected;
-  }, [classFull, partialsByKey, assignmentTopicKeys, selection.topicKeys]);
+  }, [classFull, assignmentDefinitionPartials, assignmentTopicKeys, selection.topicKeys]);
 
   const handleTopicsChange = (value: string[]): void => {
     onChangeTopics(value, assignmentTopicKeys);
@@ -221,11 +268,11 @@ export function HeatmapSelectionBar({
 
   return (
     <Flex vertical gap={APP_GAP_MD}>
-      {dependentsDisabled && (
-        <span id={DISABLED_REASON_ID} className={SR_ONLY_CLASS}>
-          {DISABLED_REASON}
-        </span>
-      )}
+      {/* Always present in the DOM so the `aria-describedby` target is robustly
+          reachable when the dependent controls are disabled (A-N2). */}
+      <span id={DISABLED_REASON_ID} className="sr-only">
+        {DISABLED_REASON}
+      </span>
       <Flex wrap gap={APP_GAP_MD} align="end">
         <Flex vertical gap={APP_GAP_SM} style={{ flex: 1, minWidth: 0 }}>
           <Typography.Text id="heatmap-class-label">Class</Typography.Text>
@@ -235,7 +282,7 @@ export function HeatmapSelectionBar({
             allowClear
             placeholder={CLASS_PLACEHOLDER}
             value={
-              classOptions.some((option) => option.value === selection.classId)
+              selection.classId !== null && classOptionIds.has(selection.classId)
                 ? selection.classId
                 : undefined
             }
@@ -265,10 +312,10 @@ export function HeatmapSelectionBar({
                 onChange={(value: string[]) => handleTopicsChange(value)}
                 notFoundContent="No topics available"
                 optionRender={(oriOption): JSX.Element => {
-                  const checked = selection.topicKeys.includes(String(oriOption.value));
+                  const checked = selectedTopicKeys.has(String(oriOption.value));
                   return (
                     <Space>
-                      <Checkbox checked={checked} aria-checked={checked} />
+                      <Checkbox checked={checked} />
                       <span>{oriOption.label}</span>
                     </Space>
                   );
@@ -298,10 +345,10 @@ export function HeatmapSelectionBar({
                 onChange={(value: string[]) => onChangeAssignments(value)}
                 notFoundContent="No assignments available"
                 optionRender={(oriOption): JSX.Element => {
-                  const checked = selection.assignmentIds.includes(String(oriOption.value));
+                  const checked = selectedAssignmentIds.has(String(oriOption.value));
                   return (
                     <Space>
-                      <Checkbox checked={checked} aria-checked={checked} />
+                      <Checkbox checked={checked} />
                       <span>{oriOption.label}</span>
                     </Space>
                   );

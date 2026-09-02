@@ -8,13 +8,15 @@
  *
  * The two fixtures are INDEPENDENT payloads (different shapes, different
  * endpoints) and must not be the same object — this exercises the real
- * cross-fetch contract (see SPEC.md §"Current data-shape constraints" and
- * ABClassResponseMapper.js:88), not a single-payload self-comparison.
+ * cross-fetch contract (see ABClassResponseMapper.js:88), not a single-payload
+ * self-comparison.
  */
 
 import { describe, it, expect } from 'vitest';
 import { buildCellPreviewLookup } from './buildCellPreviewLookup';
 import { adaptMetricsToHeatmap } from '../../services/dataAnalysis/heatmapAdapter';
+import { adaptMetricsToMergedHeatmap } from '../../services/dataAnalysis/heatmapAdapter.merged';
+import type { MergedHeatmapResult } from '../../services/dataAnalysis/heatmapAdapter.merged';
 import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
 import type { AssignmentFull } from '../../services/assignmentAssessment/assignmentAssessment.zod';
 import type { AssignmentDefinitionPartialsResponse } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
@@ -213,6 +215,187 @@ describe('buildCellPreviewLookup cross-fetch parity', () => {
     expect([...expectedTaskKeys]).toEqual([
       `${DEFINITION_KEY}::${TASK_A}`,
       `${DEFINITION_KEY}::${TASK_B}`,
+    ]);
+  });
+});
+
+// ===========================================================================
+// Merged-path taskKey parity (T-9)
+// ===========================================================================
+
+describe('buildCellPreviewLookup merged-path taskKey parity (T-9)', () => {
+  const MERGED_DEF = 'def-merged-parity';
+  const MERGED_ASSIGNMENT_ID = 'a-merged';
+  const MERGED_CLASS_ID = 'class-merged';
+  const MERGED_STUDENT_ID = 's-merged';
+  const MERGED_TASK_A = 't-parity-a';
+  const MERGED_TASK_B = 't-parity-b';
+
+  // Independent fixture 1: a ClassFull for the merged adapter (separate shape/endpoint).
+  const mergedClassFull: ClassFull = {
+    classId: MERGED_CLASS_ID,
+    className: 'Merged Class',
+    cohortKey: null,
+    courseLength: 1,
+    yearGroupKey: null,
+    classOwner: null,
+    teachers: [],
+    students: [{ id: MERGED_STUDENT_ID, name: 'Student M', email: 'm@test.com' }],
+    assignments: [
+      {
+        assignmentId: MERGED_ASSIGNMENT_ID,
+        assignmentDefinitionKey: MERGED_DEF,
+        updatedAt: null,
+      },
+    ],
+    active: null,
+  } as unknown as ClassFull;
+
+  // Independent fixture 2: the warm-up partials registry consumed by the merged adapter.
+  const mergedPartials: AssignmentDefinitionPartialsResponse = [
+    {
+      primaryTitle: 'Merged Assignment',
+      primaryTopic: 'Algebra',
+      primaryTopicKey: 'algebra',
+      yearGroupKey: 'yg-10',
+      yearGroupLabel: 'Year 10',
+      alternateTitles: [],
+      alternateTopics: [],
+      documentType: 'assignment',
+      referenceDocumentId: null,
+      templateDocumentId: null,
+      assignmentWeighting: 1,
+      definitionKey: MERGED_DEF,
+      tasks: [
+        { taskId: MERGED_TASK_A, taskWeighting: 1, taskTitle: 'Task A' },
+        { taskId: MERGED_TASK_B, taskWeighting: 1, taskTitle: 'Task B' },
+      ],
+      createdAt: DEFAULT_DATE,
+      updatedAt: null,
+    },
+  ];
+
+  // Analyser result carrying per-(student, task) metrics keyed by composite taskKey.
+  const mergedAnalyserResult: AveragingResult = {
+    classId: MERGED_CLASS_ID,
+    className: 'Merged Class',
+    perStudent: [],
+    perTask: [],
+    perClass: {
+      completeness: createComputedMetricResult({ value: 5 }),
+      accuracy: createComputedMetricResult({ value: 4 }),
+      spag: createComputedMetricResult({ value: 3 }),
+      overall: createComputedMetricResult({ value: 4 }),
+    },
+    appliedCriterionWeightings: { completeness: 0.4, accuracy: 0.4, spag: 0.2 },
+    perStudentTaskMetrics: [
+      {
+        classId: MERGED_CLASS_ID,
+        studentId: MERGED_STUDENT_ID,
+        taskKey: `${MERGED_DEF}::${MERGED_TASK_A}`,
+        completeness: createComputedMetricResult({ value: 5 }),
+        accuracy: createComputedMetricResult({ value: 4 }),
+        spag: createComputedMetricResult({ value: 3 }),
+        overall: createComputedMetricResult({ value: 4 }),
+      },
+      {
+        classId: MERGED_CLASS_ID,
+        studentId: MERGED_STUDENT_ID,
+        taskKey: `${MERGED_DEF}::${MERGED_TASK_B}`,
+        completeness: createComputedMetricResult({ value: 5 }),
+        accuracy: createComputedMetricResult({ value: 4 }),
+        spag: createComputedMetricResult({ value: 3 }),
+        overall: createComputedMetricResult({ value: 4 }),
+      },
+    ],
+  } as unknown as AveragingResult;
+
+  // Independent fixture 3: a getAssignment-shaped AssignmentFull for the SAME assignment.
+  const mergedAssignmentFull: AssignmentFull = {
+    courseId: MERGED_CLASS_ID,
+    assignmentId: MERGED_ASSIGNMENT_ID,
+    assignmentName: 'Merged Assignment',
+    dueDate: null,
+    updatedAt: null,
+    createdAt: DEFAULT_DATE,
+    documentType: null,
+    referenceDocumentId: null,
+    templateDocumentId: null,
+    tasks: null,
+    submissions: [
+      {
+        studentId: MERGED_STUDENT_ID,
+        studentName: 'Student M',
+        assignmentId: MERGED_ASSIGNMENT_ID,
+        documentId: null,
+        items: {
+          'item-a': {
+            id: 'item-a',
+            taskId: MERGED_TASK_A,
+            artifact: {
+              ...BASE_ARTIFACT_FIELDS,
+              type: 'TEXT' as const,
+              content: 'Response A',
+              taskId: MERGED_TASK_A,
+            },
+            assessments: { completeness: { score: 5, reasoning: 'A reasoning' } },
+            feedback: {},
+          },
+          'item-b': {
+            id: 'item-b',
+            taskId: MERGED_TASK_B,
+            artifact: {
+              ...BASE_ARTIFACT_FIELDS,
+              type: 'TEXT' as const,
+              content: 'Response B',
+              taskId: MERGED_TASK_B,
+            },
+            assessments: { completeness: { score: 4, reasoning: 'B reasoning' } },
+            feedback: {},
+          },
+        },
+        createdAt: DEFAULT_DATE,
+        updatedAt: DEFAULT_DATE,
+      },
+    ],
+    assignmentDefinition: {
+      primaryTitle: 'Merged Assignment',
+      primaryTopic: null,
+      primaryTopicKey: null,
+      yearGroupKey: 'yg-10',
+      yearGroupLabel: null,
+      alternateTitles: [],
+      alternateTopics: [],
+      documentType: 'assessment',
+      referenceDocumentId: null,
+      templateDocumentId: null,
+      assignmentWeighting: 1,
+      definitionKey: MERGED_DEF,
+      tasks: {},
+      createdAt: DEFAULT_DATE,
+      updatedAt: DEFAULT_DATE,
+    },
+  } as unknown as AssignmentFull;
+
+  it('produces merged-adapter taskKeys identical to the lookup inner keys built by buildCellPreviewLookup', () => {
+    const merged: MergedHeatmapResult = adaptMetricsToMergedHeatmap(
+      mergedAnalyserResult,
+      mergedClassFull,
+      [MERGED_ASSIGNMENT_ID],
+      mergedPartials
+    );
+
+    const lookup = buildCellPreviewLookup(mergedAssignmentFull);
+
+    const expectedTaskKeys = new Set(merged.taskColumns.map((column) => column.taskKey));
+    const actualTaskKeys = new Set(lookup.get(MERGED_STUDENT_ID)?.keys());
+
+    // A drift between the merged adapter's key formula and the lookup's would fail CI:
+    // the two INDEPENDENT fixtures must agree on the composite key set.
+    expect(actualTaskKeys).toEqual(expectedTaskKeys);
+    expect([...expectedTaskKeys]).toEqual([
+      `${MERGED_DEF}::${MERGED_TASK_A}`,
+      `${MERGED_DEF}::${MERGED_TASK_B}`,
     ]);
   });
 });

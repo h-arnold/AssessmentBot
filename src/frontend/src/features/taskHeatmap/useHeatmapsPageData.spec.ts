@@ -1,21 +1,19 @@
 /**
  * Tests for the Heatmaps orchestration hook (`useHeatmapsPageData`).
  *
- * @see SPEC.md — §"Data loading and orchestration", §"Core view model or
- *   behavioural model", and §"Error, loading, and empty-state rules"; mirrors
- *   `useClassPageData`'s nullability contract (derived results non-null only in
- *   ready states).
+ * @see docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md §9.22
+ *   — the standalone Heatmaps cascade/selection contract; mirrors `useClassPageData`'s
+ *   nullability contract (derived results non-null only in ready states).
  *
- * RED-PHASE: the hook module is a throwing stub, so every test below fails at
- * runtime for the intended reason (implementation absent).  The assertions pin the
- * exact surface-state machine, analyser scope, merged-adapter call, preview-query
- * enablement, status-map completeness, refresh, and cascade-clearing contracts the
- * green-phase implementer must satisfy.  Harness patterns follow
+ * GREEN: the hook module is fully implemented and these tests pass.  The
+ * assertions pin the exact surface-state machine, analyser scope, merged-adapter
+ * call, preview-query enablement, status-map completeness, refresh-busy
+ * derivation, and cascade-clearing contracts.  Harness patterns follow
  * `useClassPageData.spec.ts` (QueryClient wrapper, service mocks, renderHook).
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { renderHook } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createElement, type ReactNode } from 'react';
 import type { UseQueryResult } from '@tanstack/react-query';
@@ -99,9 +97,13 @@ function installUseQueriesMock(): void {
 
 installUseQueriesMock();
 
-vi.mock('../../hooks/usePageDataset', () => ({
-  usePageDataset: mockUsePageDataset,
-}));
+vi.mock('../../hooks/usePageDataset', async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>;
+  return {
+    ...actual,
+    usePageDataset: mockUsePageDataset,
+  };
+});
 
 vi.mock('../../query/sharedQueries', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
@@ -495,7 +497,9 @@ describe('useHeatmapsPageData — class selection', () => {
 
     const { result } = renderHook(() => useHeatmapsPageData(), { wrapper });
 
-    result.current.selectClass(DEFAULT_CLASS_ID);
+    act(() => {
+      result.current.selectClass(DEFAULT_CLASS_ID);
+    });
 
     expect(mockGetABClassQueryOptions).toHaveBeenCalledWith(DEFAULT_CLASS_ID);
   });
@@ -509,7 +513,9 @@ describe('useHeatmapsPageData — class selection', () => {
 
     const { result } = renderHook(() => useHeatmapsPageData(), { wrapper });
 
-    result.current.selectClass(DEFAULT_CLASS_ID);
+    act(() => {
+      result.current.selectClass(DEFAULT_CLASS_ID);
+    });
 
     expect(result.current.classFull).not.toBeNull();
     expect(result.current.classFull?.classId).toBe(DEFAULT_CLASS_ID);
@@ -546,7 +552,9 @@ describe('useHeatmapsPageData — blocking precedence', () => {
 
     const { result } = renderHook(() => useHeatmapsPageData(), { wrapper });
 
-    result.current.selectClass(DEFAULT_CLASS_ID);
+    act(() => {
+      result.current.selectClass(DEFAULT_CLASS_ID);
+    });
 
     const error = result.current.error as HeatmapsPageError | null;
     expect(result.current.surfaceState.status).toBe('blocking');
@@ -584,7 +592,9 @@ describe('useHeatmapsPageData — blocking precedence', () => {
 
     const { result } = renderHook(() => useHeatmapsPageData(), { wrapper });
 
-    result.current.selectClass(DEFAULT_CLASS_ID);
+    act(() => {
+      result.current.selectClass(DEFAULT_CLASS_ID);
+    });
 
     const error = result.current.error as HeatmapsPageError | null;
     expect(error?.type).toBe('assignmentDefinitionPartialsFailed');
@@ -607,8 +617,12 @@ describe('useHeatmapsPageData — analysis scope', () => {
 
     const { result } = renderHook(() => useHeatmapsPageData(), { wrapper });
 
-    result.current.selectClass(DEFAULT_CLASS_ID);
-    result.current.changeAssignments(['a1']);
+    act(() => {
+      result.current.selectClass(DEFAULT_CLASS_ID);
+    });
+    act(() => {
+      result.current.changeAssignments(['a1']);
+    });
 
     expect(mockAnalyse).toHaveBeenCalledTimes(1);
     const callArgument = mockAnalyse.mock.calls[0][0] as {
@@ -636,8 +650,12 @@ describe('useHeatmapsPageData — analysis scope', () => {
 
     const { result } = renderHook(() => useHeatmapsPageData(), { wrapper });
 
-    result.current.selectClass(DEFAULT_CLASS_ID);
-    result.current.changeAssignments(['a1']);
+    act(() => {
+      result.current.selectClass(DEFAULT_CLASS_ID);
+    });
+    act(() => {
+      result.current.changeAssignments(['a1']);
+    });
 
     const error = result.current.error as HeatmapsPageError | null;
     expect(result.current.surfaceState.status).toBe('blocking');
@@ -662,8 +680,12 @@ describe('useHeatmapsPageData — merged adapter wiring', () => {
 
     const { result } = renderHook(() => useHeatmapsPageData(), { wrapper });
 
-    result.current.selectClass(DEFAULT_CLASS_ID);
-    result.current.changeAssignments(['a1']);
+    act(() => {
+      result.current.selectClass(DEFAULT_CLASS_ID);
+    });
+    act(() => {
+      result.current.changeAssignments(['a1']);
+    });
 
     expect(mockAdaptMergedHeatmap).toHaveBeenCalledWith(
       expect.anything(),
@@ -682,7 +704,9 @@ describe('useHeatmapsPageData — merged adapter wiring', () => {
 
     // Enter a class-selected-but-pending state: the surface is `loading` and the
     // analyser/merged-adapter pipeline must not have produced results yet.
-    result.current.selectClass(DEFAULT_CLASS_ID);
+    act(() => {
+      result.current.selectClass(DEFAULT_CLASS_ID);
+    });
 
     expect(result.current.surfaceState.status).toBe('loading');
     expect(result.current.mergedResult).toBeNull();
@@ -705,8 +729,12 @@ describe('useHeatmapsPageData — preview queries and status map', () => {
 
     const { result } = renderHook(() => useHeatmapsPageData(), { wrapper });
 
-    result.current.selectClass(DEFAULT_CLASS_ID);
-    result.current.changeAssignments(['a1', 'a2']);
+    act(() => {
+      result.current.selectClass(DEFAULT_CLASS_ID);
+    });
+    act(() => {
+      result.current.changeAssignments(['a1', 'a2']);
+    });
 
     // One query key per selected assignment.
     const queriedIds = mockGetAssignmentQueryOptions.mock.calls.map((c) => c[1]);
@@ -786,8 +814,12 @@ describe('useHeatmapsPageData — preview queries and status map', () => {
 
     const { result } = renderHook(() => useHeatmapsPageData(), { wrapper });
 
-    result.current.selectClass(DEFAULT_CLASS_ID);
-    result.current.changeAssignments(['a1', 'a3']);
+    act(() => {
+      result.current.selectClass(DEFAULT_CLASS_ID);
+    });
+    act(() => {
+      result.current.changeAssignments(['a1', 'a3']);
+    });
 
     expect(result.current.mergedPreview).not.toBeNull();
 
@@ -874,8 +906,12 @@ describe('useHeatmapsPageData — refresh', () => {
 
     const { result } = renderHook(() => useHeatmapsPageData(), { wrapper });
 
-    result.current.selectClass(DEFAULT_CLASS_ID);
-    result.current.changeAssignments(['a1', 'a2']);
+    act(() => {
+      result.current.selectClass(DEFAULT_CLASS_ID);
+    });
+    act(() => {
+      result.current.changeAssignments(['a1', 'a2']);
+    });
 
     classRefetch.mockClear();
     adpRefetch.mockClear();
@@ -915,15 +951,124 @@ describe('useHeatmapsPageData — class change clears cascade', () => {
 
     const { result } = renderHook(() => useHeatmapsPageData(), { wrapper });
 
-    result.current.selectClass(DEFAULT_CLASS_ID);
-    result.current.changeTopics(['t1'], new Map([['a1', 't1']]));
-    result.current.changeAssignments(['a1']);
+    act(() => {
+      result.current.selectClass(DEFAULT_CLASS_ID);
+    });
+    act(() => {
+      result.current.changeTopics(['t1'], new Map([['a1', 't1']]));
+    });
+    act(() => {
+      result.current.changeAssignments(['a1']);
+    });
     expect(result.current.selection.assignmentIds).toEqual(['a1']);
 
-    result.current.selectClass(null);
+    act(() => {
+      result.current.selectClass(null);
+    });
 
     expect(result.current.selection.classId).toBeNull();
     expect(result.current.selection.topicKeys).toEqual([]);
     expect(result.current.selection.assignmentIds).toEqual([]);
+  });
+});
+
+// ===========================================================================
+// Refresh-busy derivation (T-7)
+// ===========================================================================
+
+describe('useHeatmapsPageData — isRefreshing real derivation (T-7)', () => {
+  it('reports isRefreshing true while the per-class query is fetching', () => {
+    mockWarmupDatasetsReady();
+    mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
+    mockUseQuery.mockImplementation((options: { queryKey: unknown[] }) => {
+      const key = options.queryKey;
+      if (key[0] === 'abClass') {
+        return createMockQueryResult<ClassFull | null>({
+          data: createClassFull(),
+          isPending: true,
+        });
+      }
+      return createMockQueryResult<ClassFull | null>({ data: null });
+    });
+
+    const { result } = renderHook(() => useHeatmapsPageData(), { wrapper });
+    act(() => result.current.selectClass(DEFAULT_CLASS_ID));
+
+    // The derived `isRefreshing` reflects real `isFetching` on the owned class query.
+    expect(result.current.isRefreshing).toBe(true);
+  });
+
+  it('reports isRefreshing true while the ADP dataset query is fetching', () => {
+    mockUsePageDataset.mockImplementation((datasetKey: string) => {
+      if (datasetKey === 'classPartials') {
+        return {
+          query: createMockQueryResult<unknown>({ data: createClassPartials() }),
+          datasetState: createDatasetState(),
+        };
+      }
+      return {
+        query: createMockQueryResult<unknown>({
+          data: createAssignmentDefinitionPartials(),
+          isPending: true,
+        }),
+        datasetState: createDatasetState(),
+      };
+    });
+    mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
+    mockUseQuery.mockReturnValue(
+      createMockQueryResult<ClassFull | null>({ data: createClassFull() })
+    );
+    mockAnalyse.mockReturnValue([createAveragingResult()]);
+    mockAdaptMergedHeatmap.mockReturnValue(createMergedResult());
+
+    const { result } = renderHook(() => useHeatmapsPageData(), { wrapper });
+    act(() => result.current.selectClass(DEFAULT_CLASS_ID));
+
+    // The derived `isRefreshing` reflects real `isFetching` on the owned ADP dataset query.
+    expect(result.current.isRefreshing).toBe(true);
+  });
+
+  it('reports isRefreshing true while a selected-assignment preview query is fetching', () => {
+    mockWarmupDatasetsReady();
+    mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
+    mockGetAssignmentQueryOptions.mockImplementation((_classId: string, assignmentId: string) => ({
+      queryKey: ['assignment', assignmentId],
+    }));
+    mockUseQuery.mockImplementation((options: { queryKey: unknown[] }) => {
+      const key = options.queryKey;
+      if (key[0] === 'abClass') {
+        return createMockQueryResult<ClassFull | null>({ data: createClassFull() });
+      }
+      return createMockQueryResult<ClassFull | null>({ data: null, isPending: true });
+    });
+    mockAnalyse.mockReturnValue([createAveragingResult()]);
+    mockAdaptMergedHeatmap.mockReturnValue(createMergedResult());
+
+    const { result } = renderHook(() => useHeatmapsPageData(), { wrapper });
+    act(() => result.current.selectClass(DEFAULT_CLASS_ID));
+    act(() => result.current.changeAssignments(['a1']));
+
+    // The derived `isRefreshing` reflects real `isFetching` on the owned assignment queries.
+    expect(result.current.isRefreshing).toBe(true);
+  });
+
+  it('reports isRefreshing false when no owned query is fetching', () => {
+    mockWarmupDatasetsReady();
+    mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
+    mockUseQuery.mockImplementation((options: { queryKey: unknown[] }) => {
+      const key = options.queryKey;
+      if (key[0] === 'abClass') {
+        return createMockQueryResult<ClassFull | null>({ data: createClassFull() });
+      }
+      return createMockQueryResult<ClassFull | null>({ data: null });
+    });
+    mockAnalyse.mockReturnValue([createAveragingResult()]);
+    mockAdaptMergedHeatmap.mockReturnValue(createMergedResult());
+
+    const { result } = renderHook(() => useHeatmapsPageData(), { wrapper });
+    act(() => result.current.selectClass(DEFAULT_CLASS_ID));
+
+    // No owned query is fetching → the derived `isRefreshing` is false.
+    expect(result.current.isRefreshing).toBe(false);
   });
 });

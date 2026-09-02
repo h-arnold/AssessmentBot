@@ -45,13 +45,15 @@ Do not create a new helper only to move code out of a large file.
 
 ### 3.1a Hooks and derivation helpers
 
-- Page dataset-state hook and pure helpers: `src/frontend/src/hooks/usePageDataset.ts`
+- Page dataset-state hook and pure helpers: `src/frontend/src/hooks/usePageDataset.ts` — also hosts the shared neutral `computeDatasetBlockingReason` / `DatasetBlockingReason` resolver (a discriminated reason: `none` | `failed` | `untrustworthy` | `queryError`) used by both `classPage` (`useClassPageData.helpers`) and the standalone Heatmaps surface (`heatmapsSurfaceState`) to derive their feature-specific blocking errors from a single precedence decision; this resolved a three-way drift
 - Once-only conditional callback hook (React 19 StrictMode-safe): `src/frontend/src/hooks/useLogOnce.ts`
 
 ### 3.2 Error and transport helpers
 
 - Unknown-error normalisation: `src/frontend/src/errors/normaliseUnknownError.ts`
+- Unknown → `Error` normalisation: `toError(unknown): Error` in `src/frontend/src/errors/normaliseUnknownError.ts` — the canonical `unknown → Error` helper (S-N4) used across features; complements `normaliseUnknownError` (which returns a plain payload) when a caller needs a concrete `Error` instance
 - Blocking-load trust-boundary helper: `src/frontend/src/errors/blockingLoadError.ts`
+- Shared blocking-error → `Result` config resolver and `BlockingConfig` type: `src/frontend/src/errors/blockingConfig.ts` (per-feature copy maps supply the error-specific titles; the resolver mechanism is shared)
 - Transport error contract: `src/frontend/src/errors/apiTransportError.ts`
 - Frontend logger and redaction/normalisation flow: `src/frontend/src/logging/frontendLogger.ts`
 
@@ -537,7 +539,7 @@ These entries record the shared data analysis display helpers for the Class page
 
 - Decision: `new` (relocation of the previously feature-local comparator into the neutral services layer; single source of truth preserved)
 - Owning module/path: `src/frontend/src/services/dataAnalysis/compareStudentNames.ts`
-- Call-site rationale: single source of truth for app-wide locale-aware student-name ordering, structurally re-typed onto `Readonly<{ studentName: string; studentId: string }>` so no feature-owned type enters the services layer and every consumer row shape satisfies it without casts. Consumers: the Class page adapter, columns, and view-model builder (`classPageAdapter.ts`, `studentAveragesTableColumns.tsx`, `classPageModel.ts`) and the Task Heatmap's `compareHeatmapStudentName` wrapper in `features/taskHeatmap/taskHeatmapModel.ts`. Flat placement follows `src/frontend/AGENTS.md` §14 (single-file services stay flat).
+- Call-site rationale: single source of truth for app-wide locale-aware student-name ordering, structurally re-typed onto `Readonly<{ studentName: string; studentId: string }>` so no feature-owned type enters the services layer and every consumer row shape satisfies it without casts. Consumers: the Class page adapter, columns, and view-model builder (`classPageAdapter.ts`, `studentAveragesTableColumns.tsx`, `classPageModel.ts`) and the Task Heatmap table (`TaskHeatmapTable.tsx`), which now consumes `compareStudentNames` directly. The previous `compareHeatmapStudentName` wrapper (and `features/taskHeatmap/taskHeatmapModel.ts`) was removed during the Heatmaps review as a zero-value pass-through. Flat placement follows `src/frontend/AGENTS.md` §14 (single-file services stay flat).
 - Status: `Implemented`
 - Implementation notes:
   - Signature: `export function compareStudentNames(a: Readonly<{ studentName: string; studentId: string }>, b: Readonly<{ studentName: string; studentId: string }>): number`
@@ -729,18 +731,18 @@ These entries record the feature-local helpers for the Class page. Per `frontend
   - `@remarks` documents the switch-statement rationale.
   - Exported function signature: `getStudentMetric(metrics: StudentAverageRowModel['metrics'], key: 'completeness' | 'accuracy' | 'spag' | 'average'): MetricResult`
 
-#### 9.18.11 Heatmap row comparator: `compareHeatmapStudentName`
+#### 9.18.11 Heatmap student-name ordering (consumes `compareStudentNames`)
 
-14. Helper: `compareHeatmapStudentName(a: HeatmapRow, b: HeatmapRow): number` — `HeatmapRow`-typed student-name comparator
+14. Helper: `TaskHeatmapTable` consumes `compareStudentNames` directly — no feature-local wrapper
 
-- Decision: `extract`
-- Owning module/path: `src/frontend/src/features/taskHeatmap/taskHeatmapModel.ts` (relocated from `features/classPage/classPageModel.ts` by the TaskHeatmap extraction)
-- Call-site rationale: the heatmap table must not import the overview-table row types directly, so this wrapper keeps `HeatmapRow` typing at the heatmap call site while delegating ordering to the canonical shared comparator. It provides the same locale-aware, case-insensitive name ordering with `studentId` ascending tie-break so the heatmap's student-name sort has a single source of truth that mirrors `compareStudentNames` semantics exactly.
+- Decision: `reuse`
+- Owning module/path: `src/frontend/src/features/taskHeatmap/TaskHeatmapTable.tsx` (consumes `services/dataAnalysis/compareStudentNames.ts` directly; the previous `compareHeatmapStudentName` wrapper in `features/taskHeatmap/taskHeatmapModel.ts` was deleted during the Heatmaps review as a zero-value pass-through)
+- Call-site rationale: the heatmap table now calls the canonical shared `compareStudentNames` comparator directly for its student-name ordering, with no intermediate wrapper. Both the `Student Name` column `sorter` and the initial `rows.toSorted` pre-sort use it, so the heatmap's locale-aware, case-insensitive name ordering (with `studentId` ascending tie-break) shares the single source of truth with the Class page.
 - Status: `Implemented`
 - Implementation notes:
-  - Signature: `export function compareHeatmapStudentName(a: HeatmapRow, b: HeatmapRow): number`
-  - Delegates directly (cast-free) to the canonical `services/dataAnalysis/compareStudentNames` comparator (locale-aware, `sensitivity: 'base'`, `studentId` ascending tie-break), avoiding `sonarjs/no-identical-functions` while preserving exact semantics. Because both comparators now operate on the same minimal structural shape `{ studentName, studentId }`, the previous type cast is no longer required.
-  - Co-located spec: `taskHeatmapModel.spec.ts` (`compareHeatmapStudentName` describe block — ordering parity with the services comparator, `studentId` tie-break, case-insensitivity).
+  - Signature consumed: `compareStudentNames(a: Readonly<{ studentName: string; studentId: string }>, b: Readonly<{ studentName: string; studentId: string }>): number` from `services/dataAnalysis/compareStudentNames.ts`.
+  - The table's `sorter.compare` for the `Student Name` column and its `dataSource` pre-sort via `rows.toSorted(compareStudentNames)` both use the shared comparator directly (direction-neutral; the heatmap always sorts ascending).
+  - No `taskHeatmapModel.spec.ts` `compareHeatmapStudentName` describe block remains; the shared comparator's `compareStudentNames.spec.ts` covers ordering parity, `studentId` tie-break, and case-insensitivity.
 
 #### 9.18.12 Heatmap table component: `TaskHeatmapTable`
 
@@ -748,14 +750,14 @@ These entries record the feature-local helpers for the Class page. Per `frontend
 
 - Decision: `keep local`
 - Owning module/path: `src/frontend/src/features/taskHeatmap/TaskHeatmapTable.tsx` (moved unchanged from `features/classPage/` by the TaskHeatmap extraction)
-- Call-site rationale: pure presentational table built from a `HeatmapResult`. The Ant Design `Table<HeatmapRow>` column tree is assembled inside a component-level `useMemo`: a sticky `Student Name` top-level column (`fixed: 'start'`, `width: APP_COL_WIDTH_STUDENT_NAME` (= 200), `sorter` via the exported `compareHeatmapStudentName`, `defaultSortOrder: 'ascend'`), then one grouped column per `taskColumn` (title = `taskColumn.taskTitle ?? taskColumn.taskId`) with `Completeness`/`Accuracy`/`SPaG` children produced by the module-local internal helper `buildTaskMetricSubColumns`. Each metric sub-column uses `buildMetricRangeFilter` (a numeric score-range `filterDropdown` + `onFilter` over a two-thumb `Slider` bounded by the fixed default tone range `0–5`), a SPEC-ordered `sorter` delegating through the local `buildMetricSorter` wrappers to the shared `compareMetricsByStateRank` (state rank computed → `notAttempted` → `error`, numeric value ascending within the computed band, ascending `studentId` tie-break; the heatmap always sorts ascending), and renders the formatted score (`renderScore`: integer for computed scores, `N` for `notAttempted`, `E` for `error`) inside a gradient-coloured cell (`resolveMetricTone(...).cellStyle` applied via `onCell`) whose `aria-label` is `"[Student Name], [Task ID], [Metric]: [Score]"`. Each score sits in a keyboard-operable `role="button"` span (`aria-haspopup="dialog"`, Enter/Space activation) that opens a `Popover` whose content is deferred to `CellPopoverContent` (loading `<output>` skeleton while the assignment query is pending → error `Alert` → `TaskPreviewCard`). `pagination={{ pageSize: 50, showSizeChanger: true }}`, `bordered`, `scroll={{ x: 'max-content' }}`, `aria-label="Task Heatmap"`.
+- Call-site rationale: pure presentational table built from a `HeatmapResult`. The Ant Design `Table<HeatmapRow>` column tree is assembled inside a component-level `useMemo`: a sticky `Student Name` top-level column (`fixed: 'start'`, `width: APP_COL_WIDTH_STUDENT_NAME` (= 200), `sorter` via the shared `compareStudentNames` from `services/dataAnalysis/compareStudentNames.ts`, `defaultSortOrder: 'ascend'`), then one grouped column per `taskColumn` (title = `taskColumn.taskTitle ?? taskColumn.taskId`) with `Completeness`/`Accuracy`/`SPaG` children produced by the module-local internal helper `buildTaskMetricSubColumns`. Each metric sub-column uses `buildMetricRangeFilter` (a numeric score-range `filterDropdown` + `onFilter` over a two-thumb `Slider` bounded by the fixed default tone range `0–5`), a SPEC-ordered `sorter` delegating through the local `buildMetricSorter` wrappers to the shared `compareMetricsByStateRank` (state rank computed → `notAttempted` → `error`, numeric value ascending within the computed band, ascending `studentId` tie-break; the heatmap always sorts ascending), and renders the formatted score (`renderScore`: integer for computed scores, `N` for `notAttempted`, `E` for `error`) inside a gradient-coloured cell (`resolveMetricTone(...).cellStyle` applied via `onCell`) whose `aria-label` is `"[Student Name], [Task ID], [Metric]: [Score]"`. Each score sits in a keyboard-operable `role="button"` span (`aria-haspopup="dialog"`, Enter/Space activation) that opens a `Popover` whose content is deferred to `CellPopoverContent` (loading `<output>` skeleton while the assignment query is pending → error `Alert` → `TaskPreviewCard`). `pagination={{ pageSize: 50, showSizeChanger: true }}`, `bordered`, `scroll={{ x: 'max-content' }}`, `aria-label="Task Heatmap"`.
 - Status: `Implemented`
 - Implementation notes:
-  - Reuses `compareHeatmapStudentName` from the sibling `taskHeatmapModel.ts`, `compareMetricsByStateRank` from the shared `metricDisplay/metricComparator.ts`, and the shared `buildMetricRangeFilter` (with its `MetricRangeFilterDropdown` UI and `metricRangeKey` encode/decode helpers) from `metricDisplay/` — no second copy of the filter predicate. The local `HeatmapRow`-typed sorter builders (`buildMetricSorter`) pass each cell's metric result plus the row `studentId`s to the shared comparator so the heatmap and averages tables share one ordering definition.
-  - Initial ascending student-name order is achieved by pre-sorting the `dataSource` with `.toSorted(compareHeatmapStudentName)` because `defaultSortOrder` does not auto-apply the initial sort in the installed Ant Design version; this is a non-mutating copy.
+  - Reuses `compareStudentNames` directly from `services/dataAnalysis/compareStudentNames.ts`, `compareMetricsByStateRank` from the shared `metricDisplay/metricComparator.ts`, and the shared `buildMetricRangeFilter` (with its `MetricRangeFilterDropdown` UI and `metricRangeKey` encode/decode helpers) from `metricDisplay/` — no second copy of the filter predicate. The local `HeatmapRow`-typed sorter builders (`buildMetricSorter`) pass each cell's metric result plus the row `studentId`s to the shared comparator so the heatmap and averages tables share one ordering definition.
+  - Initial ascending student-name order is achieved by pre-sorting the `dataSource` with `.toSorted(compareStudentNames)` because `defaultSortOrder` does not auto-apply the initial sort in the installed Ant Design version; this is a non-mutating copy.
   - Empty-state: a "No submissions yet" caption renders above the table only when `taskColumns.length > 0 && rows.length > 0 &&` every cell is `notAttempted`; the guard suppresses the caption for the zero-tasks variant (`taskColumns: []` → only the Student Name column renders).
   - Cell access uses positional indexing (`record.cells[taskIndex]`) plus a `switch`-based direct-property metric accessor (module-local `getCellMetric`), mirroring the `getStudentMetric` pattern to satisfy `security/detect-object-injection`.
-  - Co-located spec: `TaskHeatmapTable.spec.tsx` (17 tests covering grouped headers, the score-range filter dropdown, Student Name sorting via `compareHeatmapStudentName`, per-cell `aria-label` format, no-submissions caption, zero-tasks variant, and the cell-popover suite — popover wrapping, `TaskPreviewCard` content, preserved cell tone and aria-labels after popover integration, loading skeleton vs error `Alert` states, and populated/empty cell-preview lookup cases).
+  - Co-located spec: `TaskHeatmapTable.spec.tsx` (17 tests covering grouped headers, the score-range filter dropdown, Student Name sorting via `compareStudentNames`, per-cell `aria-label` format, no-submissions caption, zero-tasks variant, and the cell-popover suite — popover wrapping, `TaskPreviewCard` content, preserved cell tone and aria-labels after popover integration, loading skeleton vs error `Alert` states, and populated/empty cell-preview lookup cases).
 
 #### 9.18.13 Heatmap page composition: `TaskHeatmapPage`
 
@@ -908,15 +910,14 @@ This entry records the descriptor-type extension for the Auth Service feature (s
 
 ## 9.22 Heatmaps builder surface helpers
 
-Delivered helpers for the standalone Heatmaps page (source: repository-root `SPEC.md` and
-`HEATMAPS_PAGE_LAYOUT.md`). All three planned entries are now reconciled to `Implemented`.
+Delivered helpers for the standalone Heatmaps page. All three planned entries are now reconciled to `Implemented`.
 
 1. Helper: `adaptMetricsToMergedHeatmap(analyserResult, classFull, selectedAssignmentIds, assignmentDefinitionPartials)` plus `MergedHeatmapResult` / `MergedHeatmapTaskColumn` types
 
 - Decision: `new` (sibling module split from the existing heatmap-domain module)
 - Owning module/path: `src/frontend/src/services/dataAnalysis/heatmapAdapter.merged.ts`
 - Call-site rationale: single projection boundary for the builder surface's merged table. Derives the `taskKey → assignment identity` mapping from `classFull.assignments` restricted to `selectedAssignmentIds`, resolves titles/topics from the warm-up partials registry, de-duplicates columns by `taskKey` (first occurrence owns collapsed duplicate-definition groups), and orders columns by stable class-assignment order then partial task order. Existing exports (`adaptMetricsToHeatmap`, `HeatmapResult`, `HeatmapTaskColumn`) in `heatmapAdapter.ts` remain untouched; the merged module re-uses the shared internals `buildCellsForStudent` / `groupMetricsByStudent` from `heatmapAdapter.ts` so the two adapters stay behaviour-consistent. The split happened once `heatmapAdapter.ts` approached the 500-LOC gate.
-- Relevant canonical doc target: this section (§9.22); companion spec `SPEC.md` §"Merged adapter and type contract".
+- Relevant canonical doc target: this section (§9.22).
 - Planned doc status: `Implemented`
 
 2. Helper: merged cell-preview lookup assembly — materialised as `assembleMergedPreviewData`
@@ -931,7 +932,7 @@ Delivered helpers for the standalone Heatmaps page (source: repository-root `SPE
 
 - Decision: `new` (feature-local pure module, test-first)
 - Owning module/path: `src/frontend/src/features/taskHeatmap/selectionCascade.ts`
-- Call-site rationale: keeps the cascade rules in `SPEC.md` decisions 2–4 (class change atomically clears topic+assignment selections; topic change clears no-longer-matching assignments; widening never restores cleared assignments) as pure, deterministically testable functions consumed by `useHeatmapsPageData`, instead of inline reducer logic in the hook or component.
+- Call-site rationale: keeps the cascade rules (class change atomically clears topic+assignment selections; topic change clears no-longer-matching assignments; widening never restores cleared assignments) as pure, deterministically testable functions consumed by `useHeatmapsPageData`, instead of inline reducer logic in the hook or component.
 - Relevant canonical doc target: this section (§9.22).
 - Planned doc status: `Implemented`
 

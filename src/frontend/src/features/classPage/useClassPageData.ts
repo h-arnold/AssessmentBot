@@ -348,12 +348,8 @@ export function useClassPageData(classId: string): ClassPageData {
       return { status: 'blocking', error: queryError };
     }
 
-    // 3-4. Dataset errors (failed, untrustworthy)
-    const datasetError = computeDatasetBlockingError(
-      isDatasetFailed,
-      isDatasetReady,
-      isDatasetTrustworthy
-    );
+    // 3-4. Dataset errors (failed, queryError, untrustworthy)
+    const datasetError = computeDatasetBlockingError(datasetState);
     if (datasetError !== null) {
       return { status: 'blocking', error: datasetError };
     }
@@ -380,9 +376,9 @@ export function useClassPageData(classId: string): ClassPageData {
     classFullQuery.isError,
     classFullQuery.error,
     classFullQuery.isPending,
-    isDatasetFailed,
+    datasetState,
     isDatasetReady,
-    isDatasetTrustworthy,
+    isDatasetFailed,
     analyserError,
     adapterError,
     adapterResult,

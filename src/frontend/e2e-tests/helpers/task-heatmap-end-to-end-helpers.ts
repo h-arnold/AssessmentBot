@@ -314,7 +314,7 @@ function buildClassFullDocument(emptySubmissions: boolean): Record<string, unkno
 
 /**
  * Builds the warm-up `getAssignmentDefinitionPartials` payload for the heatmap
- * journey (SPEC.md heatmap column sourcing).
+ * journey (merged-adapter heatmap column sourcing).
  *
  * The heatmap adapter sources the column set and per-task `taskTitle` from the
  * warm-up `assignmentDefinitionPartials` dataset, located by the assignment's
@@ -403,7 +403,7 @@ const HEATMAP_ARTIFACT_CONTENT: Readonly<Record<string, string>> = {
 /**
  * Builds the real-data `getAssignment` payload (an `AssignmentFull` document)
  * for the heatmap journey, seeded so the popover wires to real content instead
- * of the deleted fixture adapter (SPEC.md §"E2E plumbing updates").
+ * of the deleted fixture adapter (E2E plumbing updates).
  *
  * @returns {Record<string, unknown>} A schema-valid `AssignmentFull` document.
  */

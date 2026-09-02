@@ -4,9 +4,9 @@
  * @remarks
  * Pure, deterministic helpers that run the synchronous averaging analysis over
  * input-shaped assignments and the merged-adapter projection. Extracted from
- * `useHeatmapsPageData.ts` to keep that module under the 500-LOC split gate and to
- * isolate the analyser/adapter orchestration (per `src/frontend/AGENTS.md` §3.3;
- * `src/backend/AGENTS.md` §11 as the behavioural analogue).
+ * `useHeatmapsPageData.ts` to keep that module under the 500-LOC module-size gate, and to
+ * isolate the analyser/adapter orchestration (per
+ * `src/frontend/AGENTS.md` §3.3).
  *
  * The full input-shaping and memoisation rationale lives in `useHeatmapsPageData.ts`'s
  * module JSDoc; this helper owns only the pure analyser/adapter orchestration.
@@ -24,6 +24,7 @@ import type {
 import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
 import type { AssignmentDefinitionPartialsResponse } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import { logFrontendError } from '../../logging/frontendLogger';
+import { toError } from '../../errors/normaliseUnknownError';
 import type { PageDatasetState } from '../../hooks/usePageDataset';
 
 /**
@@ -42,78 +43,105 @@ function createAnalysisService(): DataAnalysisService {
 const _analysisService: DataAnalysisService = createAnalysisService();
 
 /**
+ * Module-global set of already-logged pipeline error keys, keyed by
+ * `context + '|' + normalised message + '|' + serialised metadata`.
+ *
+ * This set is deliberately module-global and is intentionally NOT reset per run.
+ * `runHeatmapsPipeline` is recomputed by `useMemo` on every dependent render, so identical
+ * `logFrontendError` calls across those recomputations must be suppressed to dedupe identical
+ * calls across `useMemo` recomputations of `runHeatmapsPipeline`, honouring the agreed L-4
+ * review decision (no-double-logging of identical diagnostics). The original `TaskHeatmapPage`
+ * used a `useLogOnce`-style guard for the same intent, but `useLogOnce` is per-mount (useRef),
+ * whereas the pipeline runs on every recomputation; a module-global Set is therefore used here
+ * so the dedupe survives across recomputations rather than being reset on each mount.
+ */
+const _loggedPipelineErrorKeys = new Set<string>();
+
+/**
+ * Logs a pipeline error exactly once per distinct `(context, message, metadata)` tuple.
+ *
+ * Identical errors raised on subsequent memo recomputations are suppressed to honour the
+ * agreed L-4 review decision (no-double-logging of identical diagnostics), while the
+ * underlying sink (`logFrontendError`) still emits every distinct diagnostic. The returned
+ * error tuple is unaffected, so callers keep their behaviour regardless of dedupe.
+ *
+ * @param {string} context Log context for the emitting step.
+ * @param {unknown} error The error to normalise and log.
+ * @param {Record<string, unknown> | undefined} metadata Additional log metadata.
+ * @returns {void} Nothing.
+ */
+function logPipelineError(
+  context: string,
+  error: unknown,
+  metadata?: Record<string, unknown>
+): void {
+  const key = `${context}|${toError(error).message}|${JSON.stringify(metadata ?? {})}`;
+  if (_loggedPipelineErrorKeys.has(key)) {
+    return;
+  }
+  _loggedPipelineErrorKeys.add(key);
+  logFrontendError(context, error, metadata);
+}
+
+/**
  * Run the analyser step of the pipeline.
  *
- * @param {ClassFull | null} classFull - The class data (null skips analysis).
- * @param {AssignmentDefinitionPartialsResponse | null} assignmentDefinitionPartials - Reference data.
- * @param {string | null} classId - The selected class ID.
+ * @param {ClassFull} classFull - The class data (non-null, guaranteed by caller).
+ * @param {AssignmentDefinitionPartialsResponse} assignmentDefinitionPartials - Reference data (non-null).
+ * @param {string} classId - The selected class ID (non-null, guaranteed by caller).
  * @param {readonly string[]} selectedAssignmentIds - The selected assignment IDs.
  * @returns {readonly [AveragingResult | null, Error | null]} The result and optional error.
  */
 function runAnalyserStep(
-  classFull: ClassFull | null,
-  assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse | null,
-  classId: string | null,
+  classFull: ClassFull,
+  assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse,
+  classId: string,
   selectedAssignmentIds: readonly string[]
 ): readonly [AveragingResult | null, Error | null] {
-  if (classFull === null || classId === null) {
-    return [null, null];
-  }
-
   try {
-    const analyserInput = {
+    const selectedIds = new Set(selectedAssignmentIds);
+    const analyserInput: AveragingAnalyserInput = {
       filter: { classIds: [classId] },
       // Input shaping: scope analysis to exactly the selected assignment instances.
       classes: [
         {
           ...classFull,
           assignments: classFull.assignments.filter((assignment) =>
-            selectedAssignmentIds.includes(assignment.assignmentId)
+            selectedIds.has(assignment.assignmentId)
           ),
         },
       ],
       assignmentDefinitionPartials,
     };
 
-    const response = _analysisService.analyse(
-      analyserInput as unknown as AveragingAnalyserInput,
-      'averaging'
-    );
+    const response = _analysisService.analyse(analyserInput, 'averaging');
     if (response.length === 0) {
-      return [null, new Error('Analyser returned empty result')];
+      const error = new Error('Analyser returned empty result');
+      logPipelineError('heatmapsPipeline.runAnalyserStep', error, { classId });
+      return [null, error];
     }
     return [response[0] ?? null, null];
   } catch (error_: unknown) {
-    logFrontendError('useHeatmapsPageData.runAnalyserStep', error_, { classId });
-    return [null, error_ instanceof Error ? error_ : new Error(String(error_))];
+    logPipelineError('heatmapsPipeline.runAnalyserStep', error_, { classId });
+    return [null, toError(error_)];
   }
 }
 
 /**
  * Run the merged-adapter step of the pipeline.
  *
- * @param {AveragingResult | null} analyserResult - The analyser result (null skips adapter).
+ * @param {AveragingResult} analyserResult - The analyser result (non-null, guaranteed by caller).
  * @param {ClassFull} classFull - The class data (non-null, guaranteed by caller).
- * @param {AssignmentDefinitionPartialsResponse | null} assignmentDefinitionPartials - The definition registry.
+ * @param {AssignmentDefinitionPartialsResponse} assignmentDefinitionPartials - The definition registry.
  * @param {readonly string[]} selectedAssignmentIds - The selected assignment IDs.
  * @returns {readonly [MergedHeatmapResult | null, Error | null]} The adapter result and optional error.
  */
 function runAdapterStep(
-  analyserResult: AveragingResult | null,
+  analyserResult: AveragingResult,
   classFull: ClassFull,
-  assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse | null,
+  assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse,
   selectedAssignmentIds: readonly string[]
 ): readonly [MergedHeatmapResult | null, Error | null] {
-  if (analyserResult === null) {
-    return [null, new Error('useHeatmapsPageData.runAdapterStep: analyserResult is null')];
-  }
-  if (assignmentDefinitionPartials === null) {
-    return [
-      null,
-      new Error('useHeatmapsPageData.runAdapterStep: assignmentDefinitionPartials is null'),
-    ];
-  }
-
   try {
     const result = adaptMetricsToMergedHeatmap(
       analyserResult,
@@ -123,8 +151,8 @@ function runAdapterStep(
     );
     return [result, null];
   } catch (error_: unknown) {
-    logFrontendError('useHeatmapsPageData.runAdapterStep', error_, { classId: classFull.classId });
-    return [null, error_ instanceof Error ? error_ : new Error(String(error_))];
+    logPipelineError('heatmapsPipeline.runAdapterStep', error_, { classId: classFull.classId });
+    return [null, toError(error_)];
   }
 }
 
@@ -176,6 +204,14 @@ export function runHeatmapsPipeline(
   classId: string | null,
   selectedAssignmentIds: readonly string[]
 ): readonly [AveragingResult | null, Error | null, MergedHeatmapResult | null, Error | null] {
+  // Do not run the analyser with null partials or a missing class/ID; `shouldRunHeatmapsPipeline`
+  // gates on class/selection/ADP state, not on partials, so the null-partials guard lives in
+  // `runHeatmapsPipeline` itself (this function), returning the all-null tuple when partials are
+  // unavailable — behaviour equivalent to the `shouldRunHeatmapsPipeline` gate.
+  if (classFull === null || classId === null || assignmentDefinitionPartials === null) {
+    return [null, null, null, null];
+  }
+
   const [aResult, aError] = runAnalyserStep(
     classFull,
     assignmentDefinitionPartials,
@@ -185,10 +221,15 @@ export function runHeatmapsPipeline(
   if (aError !== null) {
     return [null, aError, null, null];
   }
+  if (aResult === null) {
+    const error = new Error('heatmapsPipeline.runHeatmapsPipeline: analyser returned no result');
+    logPipelineError('heatmapsPipeline.runHeatmapsPipeline', error, { classId });
+    return [null, error, null, null];
+  }
 
   const [adResult, adError] = runAdapterStep(
     aResult,
-    classFull as ClassFull,
+    classFull,
     assignmentDefinitionPartials,
     selectedAssignmentIds
   );

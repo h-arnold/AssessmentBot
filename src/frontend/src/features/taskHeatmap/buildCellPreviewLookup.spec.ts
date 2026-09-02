@@ -683,10 +683,6 @@ describe('buildCellPreviewLookup', () => {
   });
 
   // -----------------------------------------------------------------------
-  // Additional acceptance: missing task returns undefined
-  // -----------------------------------------------------------------------
-
-  // -----------------------------------------------------------------------
   // Test 10 — duplicate student submissions: last-wins
   // -----------------------------------------------------------------------
 
@@ -748,6 +744,10 @@ describe('buildCellPreviewLookup', () => {
     expect(cellData).toBeDefined();
     expect(cellData!.artifactContent).toBe('Second submission content');
   });
+
+  // -----------------------------------------------------------------------
+  // Additional acceptance: missing task returns undefined
+  // -----------------------------------------------------------------------
 
   it('returns undefined for a taskId not present in the submission', () => {
     const assignment = createAssignment([

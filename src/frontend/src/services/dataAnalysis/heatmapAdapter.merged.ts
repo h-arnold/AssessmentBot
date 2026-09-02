@@ -4,23 +4,25 @@ import type {
   AssignmentDefinitionPartial,
   AssignmentDefinitionPartialsResponse,
 } from '../assignmentDefinition/assignmentDefinitionPartials.zod';
-import { getAssignmentDefinitionPartial } from '../assignmentDefinition/assignmentDefinitionUtilities';
 import {
   buildCellsForStudent,
+  buildTaskColumns,
   groupMetricsByStudent,
   DEFAULT_CLASS_NAME_LABEL,
-  TaskTitlesUnavailableError,
+  resolveAssignmentPartial,
 } from './heatmapAdapter';
 
 /**
  * A column descriptor for a single task in the merged heatmap table, carrying
- * the full identity needed for future per-task column filtering.
+ * the full assignment identity consumed by the standalone Heatmaps surface's
+ * adaptive tier grouping and selection bar.
  *
  * @remarks
  * Unlike {@link HeatmapTaskColumn}, every merged column carries its full
- * assignment identity (`assignmentId`, `definitionKey`, `assignmentName`) so a
- * future filter can slice columns without reshaping the view model. `taskKey`
- * is the composite `${definitionKey}::${taskId}` shared with the analyser's
+ * assignment identity (`assignmentId`, `definitionKey`, `assignmentName`) so
+ * the standalone Heatmaps surface can group columns into adaptive tiers and
+ * render the selection bar without reshaping the view model. `taskKey` is the
+ * composite `${definitionKey}::${taskId}` shared with the analyser's
  * per-student-task accumulators.
  */
 export interface MergedHeatmapTaskColumn {
@@ -79,10 +81,12 @@ function buildMergedTaskColumns(
   assignmentId: string,
   assignmentName: string
 ): MergedHeatmapTaskColumn[] {
-  return partial.tasks.map((task) => ({
-    taskKey: `${partial.definitionKey}::${task.taskId}`,
-    taskId: task.taskId,
-    taskTitle: task.taskTitle,
+  // Reuse the shared base projection for the `{ taskKey, taskId, taskTitle }`
+  // mapping, then augment each entry with the full assignment identity.
+  return buildTaskColumns(partial).map((column) => ({
+    taskKey: column.taskKey,
+    taskId: column.taskId,
+    taskTitle: column.taskTitle,
     assignmentId,
     definitionKey: partial.definitionKey,
     assignmentName,
@@ -205,19 +209,17 @@ function resolveSelectedAssignmentMeta(
   selectedAssignmentIds: ReadonlyArray<string>,
   assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse
 ): SelectedAssignmentMeta[] {
+  // Build the assignment lookup once (O(A)) so resolving each selected ID is a
+  // single O(1) map read rather than a repeated linear `.find` over assignments.
+  const assignmentById = new Map(classFull.assignments.map((a) => [a.assignmentId, a] as const));
   const meta: SelectedAssignmentMeta[] = [];
   for (const assignmentId of selectedAssignmentIds) {
-    const assignment = classFull.assignments.find((a) => a.assignmentId === assignmentId);
-    if (!assignment) {
-      throw new Error(
-        `adaptMetricsToMergedHeatmap: assignmentId "${assignmentId}" not found in classFull.assignments`
-      );
-    }
-    const definitionKey = assignment.assignmentDefinitionKey;
-    const partial = getAssignmentDefinitionPartial(assignmentDefinitionPartials, definitionKey);
-    if (!partial) {
-      throw new TaskTitlesUnavailableError(definitionKey);
-    }
+    const { definitionKey, partial } = resolveAssignmentPartial(
+      classFull,
+      assignmentId,
+      assignmentDefinitionPartials,
+      assignmentById
+    );
     meta.push({
       assignmentId,
       definitionKey,

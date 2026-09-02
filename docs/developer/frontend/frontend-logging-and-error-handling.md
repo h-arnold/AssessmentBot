@@ -122,6 +122,8 @@ Use Ant Design feedback components according to UI persistence and user intent:
 
 Use context-aware APIs (`App.useApp`, `message.useMessage`, `notification.useNotification`) rather than static methods, so ConfigProvider tokens and context are respected.
 
+**Documented deviation — Heatmaps blocking state:** the standalone Heatmaps builder surface (`HeatmapBuilderSurface.tsx`) intentionally renders an Ant Design `Result` (rather than the default `Alert`) for its blocking state. This is a documented deviation recorded in the `@remarks` at `HeatmapBuilderSurface.tsx:14`; it satisfies the `src/frontend/AGENTS.md` §6.1 escape clause and is not a violation of this policy. Future reviewers should treat it as an accepted exception rather than a missing `Alert`.
+
 ## 5. Mapping rules (developer detail vs user-safe copy)
 
 Treat backend `error.code` as the source for user-safe messaging logic. Avoid showing raw thrown messages directly in production UI.

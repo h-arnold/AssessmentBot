@@ -52,7 +52,7 @@ const navigationDefinitions: readonly AppNavigationDefinition[] = [
     label: pageContent.dashboard.heading,
     icon: renderNavigationIcon(<HomeOutlined aria-hidden />),
   },
-    {
+  {
     key: 'classes',
     label: pageContent.classes.heading,
     icon: renderNavigationIcon(<LucideIcon icon={GraduationCap} />),
