@@ -2,7 +2,8 @@
  * Tests for the Heatmaps analyser + merged-adapter pipeline (`heatmapsPipeline`).
  *
  * GREEN: the pipeline is fully implemented. These tests pin the review branches
- * (T-4, T-5, T-6) that were previously untested:
+ * (T-4, T-5, T-6) that were previously untested, plus the L-4 log-dedupe and
+ * bounded-memory contract (T-7, T-8, T-9):
  *  - T-4: `runHeatmapsPipeline` short-circuits to `[null, null, null, null]`
  *    when classFull / classId / assignmentDefinitionPartials are null; the
  *    analyser step's catch path returns `[null, error]` and logs (asserted
@@ -14,6 +15,18 @@
  *    adapter is caught and returned as `[null, error]` with a logged error.
  *  - T-6: `shouldRunHeatmapsPipeline` guard branches (null class, empty
  *    selection, untrustworthy / failed dataset → false; valid → true).
+ *  - T-7: dedupe within the cap — an identical `(context, message, metadata)`
+ *    tuple raised on repeated `runHeatmapsPipeline` calls is logged exactly once
+ *    (the agreed L-4 no-double-logging behaviour).
+ *  - T-8: dedupe is per-tuple, not per-context — repeated calls with *varying*
+ *    metadata (different `classId`) each log, pinning that distinct tuples are
+ *    not suppressed.
+ *  - T-9: bounded-memory eviction — driving more than `LOGGED_ERROR_KEYS_MAX`
+ *    distinct keys evicts the oldest (first-inserted) key, so a re-invoked
+ *    evicted tuple can log again (FIFO eviction). Inserting 257 distinct keys
+ *    pushes the first-inserted key outside the retained last-256 window
+ *    regardless of keys accumulated by earlier cases, so `evict-1` is
+ *    deterministically evicted without resetting the module.
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -80,6 +93,22 @@ function makeClassFull(): ClassFull {
       },
     ],
     active: true,
+  } as unknown as ClassFull;
+}
+
+/**
+ * Build a minimal `ClassFull` fixture with a caller-supplied class ID.
+ *
+ * Used by the dedupe/cap cases (T-7/T-8/T-9) so each call can vary the
+ * `classId` metadata that forms part of the dedupe key.
+ *
+ * @param {string} classId - The class ID to stamp on the fixture.
+ * @returns {ClassFull} A class-full fixture.
+ */
+function makeClassFullWithId(classId: string): ClassFull {
+  return {
+    ...makeClassFull(),
+    classId,
   } as unknown as ClassFull;
 }
 
@@ -293,5 +322,60 @@ describe('heatmapsPipeline — shouldRunHeatmapsPipeline guard branches (T-6)', 
 
   it('returns true for a valid class + non-empty selection + trustworthy dataset', () => {
     expect(shouldRunHeatmapsPipeline(classFull, selected, ready)).toBe(true);
+  });
+});
+
+describe('heatmapsPipeline — log dedupe within the cap (T-7, L-4)', () => {
+  it('logs an identical analyser failure only once across repeated pipeline runs', () => {
+    // Same (context, message, metadata) tuple every call: the module-global
+    // dedupe Set must suppress the second log (L-4 no-double-logging).
+    mockAnalyse.mockImplementation(() => {
+      throw new Error('analyser-dedupe-same-T7');
+    });
+    const classFull = makeClassFull();
+    const partials = makePartials();
+    runHeatmapsPipeline(classFull, partials, 'c1', ['a1']);
+    runHeatmapsPipeline(classFull, partials, 'c1', ['a1']);
+    expect(mockLogFrontendError).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('heatmapsPipeline — dedupe is per-tuple, not per-context (T-8)', () => {
+  it('logs each distinct metadata tuple even when the error message is identical', () => {
+    // Varying `classId` yields a distinct metadata key, so dedupe must NOT
+    // suppress the distinct calls — each distinct tuple logs once.
+    mockAnalyse.mockImplementation(() => {
+      throw new Error('analyser-distinct-T8');
+    });
+    const partials = makePartials();
+    const classIds = ['c1', 'c2', 'c3'];
+    for (const id of classIds) {
+      runHeatmapsPipeline(makeClassFullWithId(id), partials, id, ['a1']);
+    }
+    expect(mockLogFrontendError).toHaveBeenCalledTimes(classIds.length);
+  });
+});
+
+describe('heatmapsPipeline — bounded dedupe set evicts oldest key (T-9)', () => {
+  it('re-logs an oldest-evicted tuple once the cap is exceeded (FIFO eviction)', () => {
+    // Inserting 257 distinct (context, message, metadata) tuples exceeds
+    // LOGGED_ERROR_KEYS_MAX (256). On the 257th add the Set exceeds the cap and
+    // drops its oldest (first-inserted) key, so the `evict-1` tuple — pushed
+    // outside the retained last-256 window regardless of keys from earlier cases
+    // — is evicted. The 257 loop iterations each log exactly once (257 calls);
+    // re-invoking `evict-1` afterwards can therefore only reach 258 calls if the
+    // evicted tuple is logged again, which is the bounded-memory contract under test.
+    mockAnalyse.mockImplementation(() => {
+      throw new Error('analyser-evict-T9');
+    });
+    const partials = makePartials();
+    const distinctCount = 257;
+    for (let index = 1; index <= distinctCount; index++) {
+      const id = `evict-${index}`;
+      runHeatmapsPipeline(makeClassFullWithId(id), partials, id, ['a1']);
+    }
+    // The first key (evict-1) has been evicted; re-invoking it must log again.
+    runHeatmapsPipeline(makeClassFullWithId('evict-1'), partials, 'evict-1', ['a1']);
+    expect(mockLogFrontendError).toHaveBeenCalledTimes(distinctCount + 1);
   });
 });

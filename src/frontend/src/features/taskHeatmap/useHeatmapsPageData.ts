@@ -120,8 +120,18 @@ export type HeatmapsPageData = Readonly<{
   refetch: () => void;
 }>;
 
-/** Shared empty lookup used when an assignment has no usable preview payload. Frozen to match the frozen-metric precedent in `heatmapAdapter.ts`. */
-const EMPTY_LOOKUP: CellPreviewLookup = Object.freeze(new Map());
+/**
+ * Shared empty lookup used when an assignment has no usable preview payload.
+ *
+ * `CellPreviewLookup` is a `ReadonlyMap`, so the compile-time type already
+ * forbids mutation; this module-level `EMPTY_LOOKUP` is never written to by
+ * production code, so `Object.freeze` is unnecessary. (Note the frozen
+ * `NOT_ATTEMPTED_METRIC` precedent in `heatmapAdapter.ts` freezes a plain
+ * object, where freeze genuinely protects the fields — unlike a Map, whose
+ * `set`/`delete` internal slots ignore `Object.freeze`.) Keeping the shared
+ * constant preserves referential stability for the no-preview branch.
+ */
+const EMPTY_LOOKUP: CellPreviewLookup = new Map();
 
 /**
  * Build a disabled `UseQueryOptions` that never runs (uses `skipToken`).

@@ -54,7 +54,18 @@ const _analysisService: DataAnalysisService = createAnalysisService();
  * used a `useLogOnce`-style guard for the same intent, but `useLogOnce` is per-mount (useRef),
  * whereas the pipeline runs on every recomputation; a module-global Set is therefore used here
  * so the dedupe survives across recomputations rather than being reset on each mount.
+ *
+ * To avoid an unbounded memory leak in a long-lived SPA session (the Set would otherwise
+ * grow monotonically with every distinct `(context, message, metadata)` tuple, and would
+ * become effectively unbounded if the metadata varies), it is capped at
+ * {@link LOGGED_ERROR_KEYS_MAX} entries. Once the cap is exceeded the oldest
+ * (first-inserted) key is dropped first, exploiting the fact that Set iteration order follows
+ * insertion order, so the dedupe set remains bounded while still suppressing identical keys
+ * logged in hot-loop recomputations well below the cap.
+ * Only the dedupe state is affected; the underlying sink still emits every distinct diagnostic
+ * the first time it is seen.
  */
+const LOGGED_ERROR_KEYS_MAX = 256;
 const _loggedPipelineErrorKeys = new Set<string>();
 
 /**
@@ -80,6 +91,15 @@ function logPipelineError(
     return;
   }
   _loggedPipelineErrorKeys.add(key);
+  // Bound the dedupe set: once the cap is exceeded, drop the oldest (first-inserted)
+  // key. This keeps memory finite in a long-lived session while preserving the L-4
+  // dedupe intent for keys seen below the cap.
+  if (_loggedPipelineErrorKeys.size > LOGGED_ERROR_KEYS_MAX) {
+    const oldestKey = _loggedPipelineErrorKeys.values().next().value;
+    if (oldestKey !== undefined) {
+      _loggedPipelineErrorKeys.delete(oldestKey);
+    }
+  }
   logFrontendError(context, error, metadata);
 }
 
