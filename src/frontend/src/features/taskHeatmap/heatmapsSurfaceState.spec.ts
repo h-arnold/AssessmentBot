@@ -77,7 +77,12 @@ describe('heatmapsSurfaceState — computeQueryBlockingError (T-2, T-N3)', () =>
     const originalError = new Error('transport down');
     const error = computeQueryBlockingError(null, false, true, originalError);
     expect(error).toEqual({ type: 'classQueryError', cause: originalError });
-    expect(error?.cause).toBeInstanceOf(Error);
+    expect(error?.type).toBe('classQueryError');
+    // Narrow to the classQueryError variant before touching `cause`, since not
+    // every member of the HeatmapsPageError union carries a `cause`.
+    if (error?.type === 'classQueryError') {
+      expect(error.cause).toBeInstanceOf(Error);
+    }
   });
 
   it('normalises a non-Error cause to an Error via toError', () => {
@@ -87,9 +92,14 @@ describe('heatmapsSurfaceState — computeQueryBlockingError (T-2, T-N3)', () =>
       true,
       'string failure' as unknown as Error
     );
+    expect(error).toEqual({ type: 'classQueryError', cause: new Error('string failure') });
     expect(error?.type).toBe('classQueryError');
-    expect(error?.cause).toBeInstanceOf(Error);
-    expect(error?.cause.message).toBe('string failure');
+    // Narrow to the classQueryError variant before touching `cause`, since not
+    // every member of the HeatmapsPageError union carries a `cause`.
+    if (error?.type === 'classQueryError') {
+      expect(error.cause).toBeInstanceOf(Error);
+      expect(error.cause.message).toBe('string failure');
+    }
   });
 });
 
