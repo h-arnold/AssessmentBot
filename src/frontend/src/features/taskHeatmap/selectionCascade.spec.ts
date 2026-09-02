@@ -1,8 +1,10 @@
 /**
  * Tests for the selection-cascade reducer (`selectionCascade`).
  *
- * @see SPEC.md — decisions 2–4 (cascading topic → assignment selection) and
- *   §"Recommended data shapes" (selection state shape).
+ * @see docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md §9.22
+ *   — cascade rules (a class change atomically clears topic and assignment selections; a topic
+ *   change clears assignments whose topic no longer matches; widening the topic set never
+ *   restores cleared assignments) and the selection state shape.
  *
  * RED-PHASE: the reducer module is a throwing stub, so every test below fails at
  * runtime for the intended reason (implementation absent).  The assertions pin
@@ -18,7 +20,7 @@ const INITIAL_SELECTION_STATE = selectionCascadeModule.INITIAL_SELECTION_STATE;
 
 if (typeof selectionCascadeReducer !== 'function') {
   throw new TypeError(
-    'RED-PHASE: selectionCascade.ts has not been implemented (selectionCascadeReducer export missing)'
+    'selectionCascade.ts has not been implemented (selectionCascadeReducer export missing)'
   );
 }
 

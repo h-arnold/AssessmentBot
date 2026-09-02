@@ -65,6 +65,59 @@ export function computePageDatasetState(
 }
 
 /**
+ * Neutral, feature-agnostic reason a dataset blocks the page surface.
+ *
+ * Each feature maps this shared reason onto its own error union (see
+ * `useClassPageData.helpers` and `heatmapsSurfaceState`), keeping the
+ * precedence decision in one place so the implementations cannot drift.
+ */
+export type DatasetBlockingReason =
+  | { readonly kind: 'none' }
+  | { readonly kind: 'failed' }
+  | { readonly kind: 'untrustworthy' }
+  | { readonly kind: 'queryError' };
+
+/**
+ * Derive the neutral dataset-blocking reason from a dataset state.
+ *
+ * Precedence (first applicable wins):
+ * 1. `failed` — dataset failed with no recoverable data or a query error.
+ * 2. `untrustworthy` — dataset marked ready by warm-up but untrustworthy.
+ * 3. `queryError` — dataset ready with a query error.
+ * 4. `none` — no blocking condition applies.
+ *
+ * @param {PageDatasetState} state - Per-dataset state from {@link computePageDatasetState}.
+ * @returns {DatasetBlockingReason} The neutral blocking reason.
+ */
+export function computeDatasetBlockingReason(state: PageDatasetState): DatasetBlockingReason {
+  const { hasQueryData, isQueryError, isDatasetFailed, isDatasetReady, isDatasetTrustworthy } =
+    state;
+
+  // A failed dataset with no recoverable data, or any query error on a failed
+  // dataset, blocks as `failed`.
+  if (isDatasetFailed && (!hasQueryData || isQueryError)) {
+    return { kind: 'failed' };
+  }
+
+  // A not-ready dataset that is neither failed nor untrustworthy cannot block.
+  if (!isDatasetReady) {
+    return { kind: 'none' };
+  }
+
+  // The dataset is ready: an untrustworthy one blocks as `untrustworthy`.
+  if (!isDatasetTrustworthy) {
+    return { kind: 'untrustworthy' };
+  }
+
+  // A ready, trustworthy dataset blocks only when carrying a query error.
+  if (isQueryError) {
+    return { kind: 'queryError' };
+  }
+
+  return { kind: 'none' };
+}
+
+/**
  * Decides whether a single dataset should block the page surface.
  *
  * Blocks when: (1) dataset failed with no data or query error; (2) dataset is
@@ -75,18 +128,7 @@ export function computePageDatasetState(
  * @returns {boolean} `true` if the dataset should block.
  */
 export function computePageSurfaceBlocking(datasetState: PageDatasetState): boolean {
-  const { hasQueryData, isQueryError, isDatasetFailed, isDatasetReady, isDatasetTrustworthy } =
-    datasetState;
-
-  if (isDatasetFailed && (!hasQueryData || isQueryError)) {
-    return true;
-  }
-
-  if (!isDatasetTrustworthy && isDatasetReady) {
-    return true;
-  }
-
-  return isDatasetReady && isQueryError;
+  return computeDatasetBlockingReason(datasetState).kind !== 'none';
 }
 
 /**

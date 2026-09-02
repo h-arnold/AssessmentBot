@@ -1,5 +1,11 @@
 :root {
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
   --app-header-height: 64px;
   --app-page-width-default: 720px;
   --app-page-width-wide-data: 1280px;
@@ -140,8 +146,8 @@ body {
 }
 
 /* Visually-hidden but accessibility-tree-present utility (canonical sr-only pattern).
-   Reused everywhere a node must stay discoverable to assistive tech without being
-   visible (e.g. the heatmap selection-bar disabled-reason description). */
+   This is the canonical screen-reader-only utility used where a visually-hidden but
+   a11y-tree-present node is needed (currently the Heatmaps selection-bar disabled reason). */
 .sr-only {
   position: absolute;
   width: 1px;

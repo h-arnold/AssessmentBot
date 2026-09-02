@@ -9,8 +9,8 @@
  * point — WITHOUT importing `features/classPage/**` (permanent dependency rule).
  *
  * The heavy lifting is delegated to feature-local helpers (kept in separate modules
- * to honour the 500-LOC split gate per `src/frontend/AGENTS.md` §3.3 and
- * `src/backend/AGENTS.md` §11):
+ * to honour the 500-LOC module-size gate
+ * (per `src/frontend/AGENTS.md` §3.3)):
  *
  * - `heatmapsSurfaceState.ts` — pure surface-state / blocking-error derivation.
  * - `heatmapsPipeline.ts` — pure analyser + merged-adapter pipeline.
@@ -44,7 +44,6 @@
  */
 
 import { useCallback, useMemo, useReducer } from 'react';
-import { flushSync } from 'react-dom';
 import {
   skipToken,
   useQueries,
@@ -56,6 +55,8 @@ import {
 import { getABClassQueryOptions, getAssignmentQueryOptions } from '../../query/sharedQueries';
 import { queryKeys } from '../../query/queryKeys';
 import { usePageDataset } from '../../hooks/usePageDataset';
+import { logFrontendError } from '../../logging/frontendLogger';
+import { toError } from '../../errors/normaliseUnknownError';
 import type { AveragingResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
 import type { AssignmentFull } from '../../services/assignmentAssessment/assignmentAssessment.zod';
@@ -119,7 +120,17 @@ export type HeatmapsPageData = Readonly<{
   refetch: () => void;
 }>;
 
-/** Shared empty lookup used when an assignment has no usable preview payload. */
+/**
+ * Shared empty lookup used when an assignment has no usable preview payload.
+ *
+ * `CellPreviewLookup` is a `ReadonlyMap`, so the compile-time type already
+ * forbids mutation; this module-level `EMPTY_LOOKUP` is never written to by
+ * production code, so `Object.freeze` is unnecessary. (Note the frozen
+ * `NOT_ATTEMPTED_METRIC` precedent in `heatmapAdapter.ts` freezes a plain
+ * object, where freeze genuinely protects the fields — unlike a Map, whose
+ * `set`/`delete` internal slots ignore `Object.freeze`.) Keeping the shared
+ * constant preserves referential stability for the no-preview branch.
+ */
 const EMPTY_LOOKUP: CellPreviewLookup = new Map();
 
 /**
@@ -233,30 +244,24 @@ export function useHeatmapsPageData(): HeatmapsPageData {
 
   const [selection, dispatch] = useReducer(selectionCascadeReducer, INITIAL_SELECTION_STATE);
 
-  // Selection actions wrap the reducer dispatch in `flushSync` so the selection
-  // state is applied synchronously. This keeps the surface consistent for
-  // programmatic/hook-driven callers (and avoids React's deferred-update behaviour
-  // outside an event-handler act boundary) — in the browser, user events already
-  // flush, so this is a no-op cost there but guarantees immediate consistency.
+  // Selection actions dispatch directly. React 18+ automatic batching already
+  // covers both event-handler and programmatic callers, so an unconditional
+  // `flushSync` is unnecessary and would risk act-boundary warnings in tests.
+  // The reducer update is flushed by React's batching before the next render,
+  // keeping the surface consistent for all callers.
   const selectClass = useCallback((classId: string | null): void => {
-    flushSync(() => {
-      dispatch({ type: 'selectClass', classId });
-    });
+    dispatch({ type: 'selectClass', classId });
   }, []);
 
   const changeTopics = useCallback(
     (topicKeys: readonly string[], assignmentTopicKeys: ReadonlyMap<string, string>): void => {
-      flushSync(() => {
-        dispatch({ type: 'changeTopics', topicKeys, assignmentTopicKeys });
-      });
+      dispatch({ type: 'changeTopics', topicKeys, assignmentTopicKeys });
     },
     []
   );
 
   const changeAssignments = useCallback((assignmentIds: readonly string[]): void => {
-    flushSync(() => {
-      dispatch({ type: 'changeAssignments', assignmentIds });
-    });
+    dispatch({ type: 'changeAssignments', assignmentIds });
   }, []);
 
   const { classId, assignmentIds: selectedAssignmentIds } = selection;
@@ -362,20 +367,39 @@ export function useHeatmapsPageData(): HeatmapsPageData {
   // 7. Merged preview lookup + status assembly
   // -----------------------------------------------------------------------
 
-  const mergedPreview: MergedPreviewAssemblyResult | null =
-    useMemo<MergedPreviewAssemblyResult | null>(() => {
-      if (mergedResult === null) {
-        return null;
-      }
+  // Assemble the merged preview lookup + status map. `buildCellPreviewLookup` fails
+  // fast (throws) when an `AssignmentFull` is missing `assignmentDefinition`; that
+  // throw is caught here, logged, and surfaced as the feature's `adapterError` branch
+  // rather than escaping to the app-level error boundary. `buildCellPreviewLookup`'s
+  // throw is intentionally preserved (fail-fast discipline); only the boundary catches.
+  const { mergedPreview, assemblyError } = useMemo<{
+    mergedPreview: MergedPreviewAssemblyResult | null;
+    assemblyError: Error | null;
+  }>(() => {
+    if (mergedResult === null) {
+      return { mergedPreview: null, assemblyError: null };
+    }
+    try {
       const inputs = selectedAssignmentIds.map((assignmentId: string, index: number) =>
         buildPreviewInput(assignmentId, assignmentPreviewCombined.previewResults[index])
       );
-      return assembleMergedPreviewData(inputs, mergedResult.taskColumns);
-    }, [mergedResult, selectedAssignmentIds, assignmentPreviewCombined]);
+      return {
+        mergedPreview: assembleMergedPreviewData(inputs, mergedResult.taskColumns),
+        assemblyError: null,
+      };
+    } catch (error: unknown) {
+      logFrontendError('useHeatmapsPageData.assembleMergedPreviewData', error, { classId });
+      return { mergedPreview: null, assemblyError: toError(error) };
+    }
+  }, [mergedResult, selectedAssignmentIds, assignmentPreviewCombined, classId]);
 
   // -----------------------------------------------------------------------
   // 8. Surface state — error precedence, then loading, then ready
   // -----------------------------------------------------------------------
+
+  // The assembly invariant throw is surfaced as the feature's `adapterError` blocking
+  // branch, taking precedence over any empty analyser error when both are absent.
+  const effectiveAdapterError: Error | null = assemblyError ?? adapterError;
 
   const surfaceState: HeatmapsSurfaceState = useMemo<HeatmapsSurfaceState>(
     () =>
@@ -388,7 +412,7 @@ export function useHeatmapsPageData(): HeatmapsPageData {
         classFullQuery.isPending,
         adpDatasetState,
         analyserError,
-        adapterError
+        effectiveAdapterError
       ),
     [
       classId,
@@ -399,7 +423,7 @@ export function useHeatmapsPageData(): HeatmapsPageData {
       classFullQuery.isPending,
       adpDatasetState,
       analyserError,
-      adapterError,
+      effectiveAdapterError,
     ]
   );
 
@@ -416,6 +440,11 @@ export function useHeatmapsPageData(): HeatmapsPageData {
     assignmentPreviewCombined.rawResults
   );
 
+  // Retry handler: unconditionally re-runs all three owned query families. This is
+  // an intentional simplicity/precision trade-off — retrying all families is always
+  // sufficient to recover the failed input, and scoping the refetch to only the
+  // failed family was considered but rejected as not worth the added state-mapping
+  // complexity (the failed input is always included by the broader retry).
   const refetch = useCallback((): void => {
     classFullQuery.refetch();
     adpQuery.refetch();

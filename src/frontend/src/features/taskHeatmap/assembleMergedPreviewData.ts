@@ -41,12 +41,9 @@ export type PreviewStatus = Readonly<{
   hasError: boolean;
 }>;
 
-/** Merged per-student → taskKey → cell-preview lookup. */
-export type MergedCellPreviewLookup = ReadonlyMap<string, ReadonlyMap<string, CellPreviewData>>;
-
 /** Assembly result: merged lookup plus the complete per-taskKey status map. */
 export type MergedPreviewAssemblyResult = Readonly<{
-  mergedLookup: MergedCellPreviewLookup;
+  mergedLookup: CellPreviewLookup;
   previewStatusByTaskKey: ReadonlyMap<string, PreviewStatus>;
 }>;
 
@@ -76,11 +73,103 @@ function mergeLookupInto(
 }
 
 /**
+ * Derive the ordered, de-duplicated list of `assignmentId`s from `columnOrder`,
+ * recording the first-occurrence order and the set of seen IDs.
+ *
+ * @param {ReadonlyArray<MergedHeatmapTaskColumn>} columnOrder - Stable merged column order.
+ * @returns {{ ordered: string[]; seen: Set<string> }} The ordered IDs and the seen set.
+ */
+function deriveOrderedAssignmentIds(columnOrder: ReadonlyArray<MergedHeatmapTaskColumn>): {
+  ordered: string[];
+  seen: Set<string>;
+} {
+  const ordered: string[] = [];
+  const seen = new Set<string>();
+  for (const column of columnOrder) {
+    if (!seen.has(column.assignmentId)) {
+      seen.add(column.assignmentId);
+      ordered.push(column.assignmentId);
+    }
+  }
+  return { ordered, seen };
+}
+
+/**
+ * Merge per-assignment lookups in `columnOrder` order (first-wins per
+ * (student, taskKey)), then apply a defensive secondary pass for any input whose
+ * `assignmentId` is not represented in `columnOrder` so no cells are dropped.
+ *
+ * @param {ReadonlyArray<AssignmentPreviewInput>} inputs - Per-assignment lookups and query state.
+ * @param {ReadonlyArray<MergedHeatmapTaskColumn>} columnOrder - Stable merged column order.
+ * @param {ReadonlyMap<string, AssignmentPreviewInput>} inputById - Lookup of input by assignmentId.
+ * @returns {Map<string, Map<string, CellPreviewData>>} The merged lookup.
+ */
+function mergeLookupsInColumnOrder(
+  inputs: ReadonlyArray<AssignmentPreviewInput>,
+  columnOrder: ReadonlyArray<MergedHeatmapTaskColumn>,
+  inputById: ReadonlyMap<string, AssignmentPreviewInput>
+): Map<string, Map<string, CellPreviewData>> {
+  const { ordered, seen } = deriveOrderedAssignmentIds(columnOrder);
+  const mergedLookup = new Map<string, Map<string, CellPreviewData>>();
+  for (const assignmentId of ordered) {
+    const input = inputById.get(assignmentId);
+    if (input) {
+      mergeLookupInto(mergedLookup, input.lookup);
+    }
+  }
+  for (const input of inputs) {
+    if (!seen.has(input.assignmentId)) {
+      mergeLookupInto(mergedLookup, input.lookup);
+    }
+  }
+  return mergedLookup;
+}
+
+/**
+ * Build the per-taskKey preview-status map from `columnOrder` (every column
+ * represented; first occurrence wins for a shared taskKey).
+ *
+ * @param {ReadonlyArray<MergedHeatmapTaskColumn>} columnOrder - Stable merged column order.
+ * @param {ReadonlyMap<string, AssignmentPreviewInput>} inputById - Lookup of input by assignmentId.
+ * @returns {Map<string, PreviewStatus>} The per-taskKey status map.
+ */
+function buildPreviewStatusByTaskKey(
+  columnOrder: ReadonlyArray<MergedHeatmapTaskColumn>,
+  inputById: ReadonlyMap<string, AssignmentPreviewInput>
+): Map<string, PreviewStatus> {
+  const statusByTaskKey = new Map<string, PreviewStatus>();
+  for (const column of columnOrder) {
+    if (statusByTaskKey.has(column.taskKey)) {
+      continue;
+    }
+    const input = inputById.get(column.assignmentId);
+    if (input === undefined) {
+      throw new Error(
+        `assembleMergedPreviewData: no preview input for assignmentId "${column.assignmentId}" (taskKey "${column.taskKey}")`
+      );
+    }
+    statusByTaskKey.set(column.taskKey, {
+      isLoading: input.isLoading,
+      hasError: input.hasError,
+    });
+  }
+  return statusByTaskKey;
+}
+
+/**
  * Merge per-selected-assignment cell-preview lookups into one
- * `studentId → taskKey → CellPreviewData` map (first-wins in input/selection order)
+ * `studentId → taskKey → CellPreviewData` map (first-wins in `columnOrder` order)
  * and build `previewStatusByTaskKey` covering EVERY selected assignment's taskKeys
  * (including duplicates' first occurrences), with a shared taskKey taking the FIRST
  * occurrence's status in `columnOrder`.
+ *
+ * @remarks
+ * Driving the lookup merge by `columnOrder` guarantees the merged cell and the
+ * per-taskKey status are sourced from the SAME assignment instance (the first
+ * occurrence in stable column order), matching the merged adapter's documented
+ * merge-parity contract. A defensive secondary pass then merges any input whose
+ * `assignmentId` is not represented in `columnOrder` so no cells are silently
+ * dropped.
  *
  * @param {ReadonlyArray<AssignmentPreviewInput>} inputs - Per-assignment lookups and query state.
  * @param {ReadonlyArray<MergedHeatmapTaskColumn>} columnOrder - Stable merged column order
@@ -92,25 +181,14 @@ export function assembleMergedPreviewData(
   inputs: ReadonlyArray<AssignmentPreviewInput>,
   columnOrder: ReadonlyArray<MergedHeatmapTaskColumn>
 ): MergedPreviewAssemblyResult {
-  // Merge each assignment's lookup into the combined map (first-wins per (student, taskKey)).
-  const mergedLookup = new Map<string, Map<string, CellPreviewData>>();
-  for (const input of inputs) {
-    mergeLookupInto(mergedLookup, input.lookup);
-  }
+  const inputById = new Map(inputs.map((input) => [input.assignmentId, input]));
+
+  // Merge lookups in columnOrder order (first occurrence wins) so the merged cell
+  // and the per-taskKey status are sourced from the SAME assignment instance.
+  const mergedLookup = mergeLookupsInColumnOrder(inputs, columnOrder, inputById);
 
   // Build the per-taskKey status map: every column represented, first occurrence wins.
-  const previewStatusByTaskKey = new Map<string, PreviewStatus>();
-  const inputById = new Map(inputs.map((input) => [input.assignmentId, input]));
-  for (const column of columnOrder) {
-    if (previewStatusByTaskKey.has(column.taskKey)) {
-      continue;
-    }
-    const input = inputById.get(column.assignmentId);
-    previewStatusByTaskKey.set(column.taskKey, {
-      isLoading: input ? input.isLoading : false,
-      hasError: input ? input.hasError : false,
-    });
-  }
+  const previewStatusByTaskKey = buildPreviewStatusByTaskKey(columnOrder, inputById);
 
   return { mergedLookup, previewStatusByTaskKey };
 }

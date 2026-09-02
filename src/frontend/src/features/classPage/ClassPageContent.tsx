@@ -30,10 +30,7 @@
 
 import type { JSX } from 'react';
 import { Space, Skeleton, Button, Result } from 'antd';
-import type {
-  ClassPageSurfaceState,
-  ClassPageError,
-} from './useClassPageData';
+import type { ClassPageSurfaceState, ClassPageError } from './useClassPageData';
 import type { ClassPageAdapterResult } from './classPageAdapter.zod';
 import type { AveragingResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
@@ -41,6 +38,8 @@ import type { AssignmentDefinitionPartialsResponse } from '../../services/assign
 import { RecentAssignmentsSection } from './RecentAssignmentsSection';
 import { StudentAveragesTableCard } from './StudentAveragesTableCard';
 import { TaskHeatmapPage } from '../taskHeatmap/TaskHeatmapPage';
+import type { BlockingConfig } from '../../errors/blockingConfig';
+import { resolveBlockingResultConfig } from '../../errors/blockingConfig';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -97,14 +96,9 @@ type ClassPageReadyProperties = Readonly<{
 // Error configuration
 // ---------------------------------------------------------------------------
 
-type ErrorConfig = Readonly<{
-  /** The Ant Design Result status variant. */
-  status: 'error' | 'warning';
-  /** The user-facing title for the Result. */
-  title: string;
-  /** Whether the error is retryable (shows a Retry button). */
-  retryable: boolean;
-}>;
+// The shared blocking-config value type (promoted from the local ErrorConfig as
+// part of the pre-PR-review S-3 deduplication). Behaviour is unchanged.
+type ErrorConfig = BlockingConfig;
 
 /**
  * Maps each `ClassPageError.type` to its Result configuration.
@@ -259,7 +253,7 @@ function ClassPageBlocking({
   onRetry,
   onNavigateToClasses,
 }: ClassPageBlockingProperties): JSX.Element {
-  const config: ErrorConfig = ERROR_CONFIG_MAP[error.type];
+  const config: ErrorConfig = resolveBlockingResultConfig(error, ERROR_CONFIG_MAP);
 
   return (
     <Result
@@ -369,9 +363,7 @@ function ClassPageReady({
         onStartNewAssessment={onStartNewAssessment}
         onOpenHeatmap={onOpenHeatmap}
       />
-      <StudentAveragesTableCard
-        adapterResult={adapterResult}
-      />
+      <StudentAveragesTableCard adapterResult={adapterResult} />
     </>
   );
 }

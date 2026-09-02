@@ -14,8 +14,7 @@
  * (keyed by column key), row sorting, the no-submissions caption, and the
  * memoised column tree.
  *
- * @see SPEC.md
- * @see ACTION_PLAN.md §Section 3
+ * @see docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md §9.18
  */
 
 import type { JSX } from 'react';
@@ -24,7 +23,7 @@ import { Table, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 import type { FilterValue } from 'antd/es/table/interface';
 
-import { compareHeatmapStudentName } from './taskHeatmapModel';
+import { compareStudentNames } from '../../services/dataAnalysis/compareStudentNames';
 import {
   buildAdaptiveTierGroups,
   buildTaskMetricSubColumns,
@@ -34,6 +33,7 @@ import {
   type TaskHeatmapRow,
 } from './taskHeatmapTableColumns';
 import type { CellPreviewLookup } from './buildCellPreviewLookup';
+import type { PreviewStatus } from './assembleMergedPreviewData';
 import { APP_COL_WIDTH_STUDENT_NAME } from '../../theme/spacing';
 
 // ---------------------------------------------------------------------------
@@ -62,7 +62,7 @@ import { APP_COL_WIDTH_STUDENT_NAME } from '../../theme/spacing';
  * `showAssignmentError` booleans when the map is absent — keeping the embedded
  * render byte-identical.
  *
- * @param {Readonly<{ heatmapResult: TaskHeatmapData; cellPreviewLookup: CellPreviewLookup | null; isAssignmentLoading: boolean; showAssignmentError: boolean; previewStatusByTaskKey?: ReadonlyMap<string, { isLoading: boolean; hasError: boolean }> }>} props - Component properties.
+ * @param {Readonly<{ heatmapResult: TaskHeatmapData; cellPreviewLookup: CellPreviewLookup | null; isAssignmentLoading: boolean; showAssignmentError: boolean; previewStatusByTaskKey?: ReadonlyMap<string, PreviewStatus> }>} props - Component properties.
  * @returns {JSX.Element} The rendered table.
  */
 export function TaskHeatmapTable({
@@ -76,7 +76,7 @@ export function TaskHeatmapTable({
   cellPreviewLookup: CellPreviewLookup | null;
   isAssignmentLoading: boolean;
   showAssignmentError: boolean;
-  previewStatusByTaskKey?: ReadonlyMap<string, { isLoading: boolean; hasError: boolean }>;
+  previewStatusByTaskKey?: ReadonlyMap<string, PreviewStatus>;
 }>): JSX.Element {
   const { taskColumns, rows, sourceAssignments } = heatmapResult;
 
@@ -88,10 +88,7 @@ export function TaskHeatmapTable({
   // Pre-sort by student name ascending so the default sort order is applied
   // to the initial render. Ant Design Table applies subsequent sorter changes
   // over the dataSource prop.
-  const sortedRows = useMemo(
-    () => rows.toSorted(compareHeatmapStudentName),
-    [rows],
-  );
+  const sortedRows = useMemo(() => rows.toSorted(compareStudentNames), [rows]);
 
   // Determine whether every cell across every row is not-attempted (the "no
   // submissions" empty-state variant). The guard includes `taskColumns.length > 0`
@@ -105,10 +102,21 @@ export function TaskHeatmapTable({
           (cell) =>
             cell.completeness.state === 'notAttempted' &&
             cell.accuracy.state === 'notAttempted' &&
-            cell.spag.state === 'notAttempted',
-        ),
+            cell.spag.state === 'notAttempted'
+        )
       ),
-    [rows, taskColumns],
+    [rows, taskColumns]
+  );
+
+  // Adaptive assignment-tier grouping (merged mode, ≥2 sources). Hoisted into
+  // its own memo keyed on `[sourceAssignments, taskColumns]` so filter and
+  // cell state changes recompute only the column tree, not the grouping.
+  const tierGroups = useMemo(
+    () =>
+      sourceAssignments && sourceAssignments.length > 1
+        ? buildAdaptiveTierGroups(sourceAssignments, taskColumns)
+        : null,
+    [sourceAssignments, taskColumns]
   );
 
   const columns: TableColumnsType<TaskHeatmapRow> = useMemo(() => {
@@ -118,7 +126,7 @@ export function TaskHeatmapTable({
       title: 'Student Name',
       fixed: 'start' as const,
       width: APP_COL_WIDTH_STUDENT_NAME,
-      sorter: { compare: compareHeatmapStudentName, multiple: 1 },
+      sorter: { compare: compareStudentNames, multiple: 1 },
       defaultSortOrder: 'ascend' as const,
       render: (_: unknown, record: TaskHeatmapRow): JSX.Element => (
         <Typography.Text>{record.studentName}</Typography.Text>
@@ -131,7 +139,7 @@ export function TaskHeatmapTable({
         taskColumn.taskKey,
         previewStatusByTaskKey,
         isAssignmentLoading,
-        showAssignmentError,
+        showAssignmentError
       );
       return {
         key: taskColumn.taskKey,
@@ -142,7 +150,7 @@ export function TaskHeatmapTable({
           tableFilters,
           cellPreviewLookup,
           status.isLoading,
-          status.hasError,
+          status.hasError
         ),
       };
     });
@@ -150,8 +158,7 @@ export function TaskHeatmapTable({
     // ── Adaptive assignment tier (merged mode, ≥2 sources) ────────
     // Single source (including the embedded path, where `sourceAssignments`
     // is absent) renders the same two-tier DOM as today: no parent group.
-    if (sourceAssignments && sourceAssignments.length > 1) {
-      const tierGroups = buildAdaptiveTierGroups(sourceAssignments, taskColumns);
+    if (tierGroups) {
       const taskTierColumns = tierGroups.map((group) => ({
         key: group.key,
         title: group.title,
@@ -168,14 +175,12 @@ export function TaskHeatmapTable({
     isAssignmentLoading,
     showAssignmentError,
     previewStatusByTaskKey,
-    sourceAssignments,
+    tierGroups,
   ]);
 
   return (
     <>
-      {hasNoSubmissions && (
-        <Typography.Paragraph>No submissions yet</Typography.Paragraph>
-      )}
+      {hasNoSubmissions && <Typography.Paragraph>No submissions yet</Typography.Paragraph>}
       <Table<TaskHeatmapRow>
         rowKey="studentId"
         columns={columns}

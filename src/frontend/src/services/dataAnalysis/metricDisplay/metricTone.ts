@@ -57,7 +57,7 @@ export type MetricToneResolution = {
 };
 
 /** Default scoring range: 0 to 5. */
-const DEFAULT_RANGE: MetricToneRange = { lower: 0, upper: 5 };
+export const DEFAULT_TONE_RANGE: MetricToneRange = { lower: 0, upper: 5 };
 
 /**
  * Spreadsheet-style cell styling keyed by resolved tone colour.
@@ -217,7 +217,7 @@ function resolveGradientCellStyle(t: number): CSSProperties {
  */
 export function resolveMetricTone(
   metric: MetricResult,
-  range: MetricToneRange = DEFAULT_RANGE,
+  range: MetricToneRange = DEFAULT_TONE_RANGE,
   errorColor: MetricToneColor = 'volcano'
 ): MetricToneResolution {
   if (range.upper <= range.lower) {

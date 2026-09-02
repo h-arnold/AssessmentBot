@@ -2,13 +2,11 @@
  * Tests for the merged cell-preview lookup / status assembly
  * (`assembleMergedPreviewData`).
  *
- * @see SPEC.md — §"Current data-shape constraints" (composite-key lookup merge,
- *   first-wins in stable column order) and §"Domain and contract recommendations"
- *   (per-column preview status, first occurrence wins for shared taskKeys).
+ * Composite-key lookup merge (first-wins in stable column order) and per-column preview
+ * status (first occurrence wins for shared taskKeys).
  *
- * RED-PHASE: the assembly module is a throwing stub, so every test below fails at
- * runtime for the intended reason (implementation absent).  The assertions pin the
- * exact merge + status-map contract the green-phase implementer must satisfy.
+ * GREEN: the assembly module is fully implemented and its tests pass.  The
+ * assertions below pin the exact merge + status-map contract.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -24,7 +22,7 @@ const assembleMergedPreviewData = assembleModule.assembleMergedPreviewData;
 
 if (typeof assembleMergedPreviewData !== 'function') {
   throw new TypeError(
-    'RED-PHASE: assembleMergedPreviewData.ts has not been implemented (assembleMergedPreviewData export missing)'
+    'GREEN: assembleMergedPreviewData.ts is implemented; export missing unexpectedly'
   );
 }
 
@@ -92,9 +90,11 @@ describe('assembleMergedPreviewData — merged lookup', () => {
     const a1Lookup = buildLookup({ s1: { [taskKey]: makeCell('a1') } });
     const a2Lookup = buildLookup({ s1: { [taskKey]: makeCell('a2') } });
 
+    // Inputs arrive in the opposite order from columnOrder on purpose: the merge
+    // must follow columnOrder (first occurrence wins), not the input/selection order.
     const inputs: ReadonlyArray<AssignmentPreviewInput> = [
-      { assignmentId: 'a1', lookup: a1Lookup, isLoading: false, hasError: false },
       { assignmentId: 'a2', lookup: a2Lookup, isLoading: false, hasError: false },
+      { assignmentId: 'a1', lookup: a1Lookup, isLoading: false, hasError: false },
     ];
     const columnOrder: ReadonlyArray<MergedHeatmapTaskColumn> = [
       col('a1', 'def1', 'tA', null),
@@ -103,7 +103,8 @@ describe('assembleMergedPreviewData — merged lookup', () => {
 
     const result: MergedPreviewAssemblyResult = assembleMergedPreviewData(inputs, columnOrder);
 
-    // a1 appears first in columnOrder, so its cell wins for the shared taskKey.
+    // a1 appears first in columnOrder, so its cell wins for the shared taskKey
+    // even though a2 is earlier in the inputs array.
     expect(result.mergedLookup.get('s1')?.get(taskKey)?.artifactContent).toBe('a1');
   });
 
@@ -194,6 +195,48 @@ describe('assembleMergedPreviewData — previewStatusByTaskKey', () => {
     expect(result.previewStatusByTaskKey.get('def2::tB')).toEqual({
       isLoading: false,
       hasError: true,
+    });
+  });
+});
+
+describe('assembleMergedPreviewData — fail-fast on missing preview input (T-8 / E-1)', () => {
+  it('throws when a column assignmentId has no matching preview input (never silently falls back to healthy)', () => {
+    const columnOrder: ReadonlyArray<MergedHeatmapTaskColumn> = [
+      col('a1', 'def1', 'tA', null),
+      col('a2', 'def1', 'tB', null),
+    ];
+    // inputs omit the preview for 'a2' — a wiring regression that previously
+    // silently yielded { isLoading: false, hasError: false } for the column.
+    const inputs: ReadonlyArray<AssignmentPreviewInput> = [
+      { assignmentId: 'a1', lookup: buildLookup({}), isLoading: false, hasError: false },
+    ];
+
+    expect(() => assembleMergedPreviewData(inputs, columnOrder)).toThrow(
+      /no preview input for assignmentId "a2" \(taskKey "def1::tB"\)/
+    );
+  });
+
+  it('does not throw when every column assignmentId has a matching input (status map populated)', () => {
+    const columnOrder: ReadonlyArray<MergedHeatmapTaskColumn> = [
+      col('a1', 'def1', 'tA', null),
+      col('a2', 'def1', 'tB', null),
+    ];
+    const inputs: ReadonlyArray<AssignmentPreviewInput> = [
+      { assignmentId: 'a1', lookup: buildLookup({}), isLoading: false, hasError: false },
+      { assignmentId: 'a2', lookup: buildLookup({}), isLoading: true, hasError: false },
+    ];
+
+    expect(() => assembleMergedPreviewData(inputs, columnOrder)).not.toThrow();
+    const result: MergedPreviewAssemblyResult = assembleMergedPreviewData(inputs, columnOrder);
+
+    expect(result.previewStatusByTaskKey.size).toBe(columnOrder.length);
+    expect(result.previewStatusByTaskKey.get('def1::tA')).toEqual({
+      isLoading: false,
+      hasError: false,
+    });
+    expect(result.previewStatusByTaskKey.get('def1::tB')).toEqual({
+      isLoading: true,
+      hasError: false,
     });
   });
 });

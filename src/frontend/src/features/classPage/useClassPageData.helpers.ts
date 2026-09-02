@@ -9,6 +9,7 @@
  */
 
 import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
+import { computeDatasetBlockingReason, type PageDatasetState } from '../../hooks/usePageDataset';
 import type { ClassPageAdapterResult } from './classPageAdapter.zod';
 
 // ---------------------------------------------------------------------------
@@ -68,27 +69,33 @@ export function computeQueryBlockingError(
 }
 
 /**
- * Check dataset state for blocking errors (failed or untrustworthy).
+ * Check dataset state for blocking errors (failed, queryError, or untrustworthy).
  *
- * @param {boolean} isDatasetFailed - Whether the dataset has failed.
- * @param {boolean} isDatasetReady - Whether the dataset is ready.
- * @param {boolean} isDatasetTrustworthy - Whether the dataset is trustworthy.
+ * Delegates the precedence decision to the shared {@link computeDatasetBlockingReason}
+ * (kept in `hooks/usePageDataset` so classPage and heatmaps cannot drift), then maps
+ * the neutral reason onto the class-page error union:
+ * - `failed` / `queryError` → `assignmentDefinitionPartialsFailed`
+ * - `untrustworthy` → `assignmentDefinitionPartialsUntrustworthy`
+ * - `none` → `null`
+ *
+ * @param {PageDatasetState} datasetState - The warm-up dataset state.
  * @returns {ClassPageError | null} A blocking error, or null if none.
  */
-export function computeDatasetBlockingError(
-  isDatasetFailed: boolean,
-  isDatasetReady: boolean,
-  isDatasetTrustworthy: boolean
-): ClassPageError | null {
-  if (isDatasetFailed) {
-    return { type: 'assignmentDefinitionPartialsFailed' };
-  }
+export function computeDatasetBlockingError(datasetState: PageDatasetState): ClassPageError | null {
+  const reason = computeDatasetBlockingReason(datasetState);
 
-  if (!isDatasetTrustworthy && isDatasetReady) {
-    return { type: 'assignmentDefinitionPartialsUntrustworthy' };
+  switch (reason.kind) {
+    case 'failed':
+    case 'queryError': {
+      return { type: 'assignmentDefinitionPartialsFailed' };
+    }
+    case 'untrustworthy': {
+      return { type: 'assignmentDefinitionPartialsUntrustworthy' };
+    }
+    case 'none': {
+      return null;
+    }
   }
-
-  return null;
 }
 
 /**

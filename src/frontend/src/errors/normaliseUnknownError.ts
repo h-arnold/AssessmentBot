@@ -22,3 +22,16 @@ export function normaliseUnknownError(error: unknown): NormalisedError {
   };
 }
 
+/**
+ * Returns an `Error` instance for an unknown thrown value.
+ *
+ * Already-normalised errors are returned unchanged; everything else is wrapped in a
+ * fresh `Error` carrying its string representation. Complements `normaliseUnknownError`
+ * (which returns a plain payload) when a caller needs a concrete `Error` object.
+ *
+ * @param {unknown} error The thrown value to coerce.
+ * @returns {Error} A guaranteed `Error` instance.
+ */
+export function toError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error));
+}

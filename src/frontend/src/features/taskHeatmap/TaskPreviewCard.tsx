@@ -61,9 +61,10 @@ const CARD_BODY_MAX_HEIGHT = 480;
  * Maximum width of the preview card.
  *
  * Exempt from the 8px grid as it is a max-width constraint, not a spacing
- * value.
+ * value. Exported so the heatmap table's loading skeleton can mirror the same
+ * width token (the popover skeleton is sized to match the rendered card).
  */
-const CARD_MAX_WIDTH = 400;
+export const CARD_MAX_WIDTH = 400;
 
 // ---------------------------------------------------------------------------
 // MetricResult reassembly (local concern)
@@ -79,7 +80,7 @@ const CARD_MAX_WIDTH = 400;
  */
 function buildMetricResult(
   state: TaskPreviewData['metricState'],
-  score: TaskPreviewData['metricScore'],
+  score: TaskPreviewData['metricScore']
 ): MetricResult {
   switch (state) {
     case 'computed': {
@@ -131,7 +132,7 @@ function buildMetricResult(
 function renderArtifact(
   artifactType: TaskPreviewData['artifactType'],
   artifactContent: string,
-  metricState: TaskPreviewData['metricState'],
+  metricState: TaskPreviewData['metricState']
 ): JSX.Element {
   if (artifactContent === '') {
     if (metricState === 'notAttempted') {
@@ -173,20 +174,8 @@ function renderArtifact(
  * @param {TaskPreviewData} props.data - Preview data to display.
  * @returns {JSX.Element} The rendered card.
  */
-export function TaskPreviewCard({
-  data,
-}: {
-  readonly data: TaskPreviewData;
-}): JSX.Element {
-
-  const {
-    artifactType,
-    artifactContent,
-    metricKey,
-    metricScore,
-    metricState,
-    reasoning,
-  } = data;
+export function TaskPreviewCard({ data }: { readonly data: TaskPreviewData }): JSX.Element {
+  const { artifactType, artifactContent, metricKey, metricScore, metricState, reasoning } = data;
 
   const meta = METRIC_DISPLAY_META.get(metricKey)!;
   const label = meta.label;
@@ -209,17 +198,11 @@ export function TaskPreviewCard({
         </Flex>
       }
     >
-      <Flex
-        vertical
-        gap={APP_GAP_SM}
-        style={{ maxHeight: CARD_BODY_MAX_HEIGHT, overflow: 'auto' }}
-      >
+      <Flex vertical gap={APP_GAP_SM} style={{ maxHeight: CARD_BODY_MAX_HEIGHT, overflow: 'auto' }}>
         {/* Reasoning section */}
         <Flex vertical gap={APP_GAP_SM}>
           <Typography.Text strong>Reasoning</Typography.Text>
-          <Typography.Text>
-            {reasoning || 'No reasoning available'}
-          </Typography.Text>
+          <Typography.Text>{reasoning || 'No reasoning available'}</Typography.Text>
         </Flex>
 
         <Divider />

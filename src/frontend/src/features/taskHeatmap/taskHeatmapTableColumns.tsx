@@ -2,14 +2,13 @@
  * Column-construction and popover-support helpers for `TaskHeatmapTable`.
  *
  * Co-located sibling of `TaskHeatmapTable.tsx`. Extracted from the table
- * component when the component breached the 500-line split gate (ACTION_PLAN.md
- * §Section 3): these pure helpers own the metric sub-column shape, the
+ * component when the component breached the 500-LOC module-size gate: these pure
+ * helpers own the metric sub-column shape, the
  * per-column preview-status resolution, the popover content, and the adaptive
  * assignment-tier grouping. They carry no React state and no side effects
  * beyond the deferred `assembleTaskPreviewData` call inside the popover.
  *
- * @see SPEC.md
- * @see ACTION_PLAN.md §Section 3
+ * @see docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md §9.18
  */
 
 import type { CSSProperties, JSX } from 'react';
@@ -26,19 +25,16 @@ import {
 import type { HeatmapMetricKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import {
   resolveMetricTone,
-  type MetricToneRange,
+  DEFAULT_TONE_RANGE,
 } from '../../services/dataAnalysis/metricDisplay/metricTone';
 import { buildMetricRangeFilter } from '../../services/dataAnalysis/metricDisplay/metricRangeFilter';
 import { decodeFilterToRange } from '../../services/dataAnalysis/metricDisplay/metricRangeKey';
 import { MetricIconLabel } from '../../components/MetricIconLabel/MetricIconLabel';
-import { TaskPreviewCard } from './TaskPreviewCard';
+import { TaskPreviewCard, CARD_MAX_WIDTH } from './TaskPreviewCard';
 import { assembleTaskPreviewData } from './assembleTaskPreviewData';
 import type { CellPreviewData, CellPreviewLookup } from './buildCellPreviewLookup';
-import {
-  APP_COL_WIDTH_METRIC,
-  APP_GAP_MD,
-  APP_GAP_XS,
-} from '../../theme/spacing';
+import type { PreviewStatus } from './assembleMergedPreviewData';
+import { APP_COL_WIDTH_METRIC, APP_GAP_MD, APP_GAP_XS } from '../../theme/spacing';
 
 // ---------------------------------------------------------------------------
 // Structural view-model contract (read, never asserted)
@@ -134,7 +130,7 @@ function getDisplayTitle(key: HeatmapMetricKey): string {
  */
 function getCellMetric(
   cell: { completeness: MetricResult; accuracy: MetricResult; spag: MetricResult },
-  key: HeatmapMetricKey,
+  key: HeatmapMetricKey
 ): MetricResult {
   switch (key) {
     case 'completeness': {
@@ -180,7 +176,7 @@ function renderScore(metric: MetricResult): string {
  */
 function buildMetricSorter(
   taskIndex: number,
-  metric: HeatmapMetricKey,
+  metric: HeatmapMetricKey
 ): (a: TaskHeatmapRow, b: TaskHeatmapRow) => number {
   return (a: TaskHeatmapRow, b: TaskHeatmapRow): number =>
     compareMetricsByStateRank(
@@ -188,14 +184,9 @@ function buildMetricSorter(
       getCellMetric(b.cells[taskIndex], metric),
       a.studentId,
       b.studentId,
-      'asc',
+      'asc'
     );
 }
-
-/**
- * Default scoring range for heatmap metric cells (0–5).
- */
-const DEFAULT_TONE_RANGE: MetricToneRange = { lower: 0, upper: 5 };
 
 /**
  * Per-column preview-status resolution for a single task column.
@@ -210,20 +201,20 @@ const DEFAULT_TONE_RANGE: MetricToneRange = { lower: 0, upper: 5 };
  * byte-identical to the embedded behaviour.
  *
  * @param {string} taskKey - The task column's composite task key.
- * @param {ReadonlyMap<string, { isLoading: boolean; hasError: boolean }> | undefined} previewStatusByTaskKey - Per-task-key status map (optional).
+ * @param {ReadonlyMap<string, PreviewStatus> | undefined} previewStatusByTaskKey - Per-task-key status map (optional).
  * @param {boolean} aggregateLoading - Aggregate loading boolean (embedded path).
  * @param {boolean} aggregateError - Aggregate error boolean (embedded path).
- * @returns {{ isLoading: boolean; hasError: boolean }} The resolved per-column status.
+ * @returns {PreviewStatus} The resolved per-column status.
  */
 export function resolveColumnPreviewStatus(
   taskKey: string,
-  previewStatusByTaskKey: ReadonlyMap<string, { isLoading: boolean; hasError: boolean }> | undefined,
+  previewStatusByTaskKey: ReadonlyMap<string, PreviewStatus> | undefined,
   aggregateLoading: boolean,
-  aggregateError: boolean,
-): { isLoading: boolean; hasError: boolean } {
+  aggregateError: boolean
+): PreviewStatus {
   const entry = previewStatusByTaskKey?.get(taskKey);
   if (entry) {
-    return { isLoading: entry.isLoading, hasError: entry.hasError };
+    return entry;
   }
   return { isLoading: aggregateLoading, hasError: aggregateError };
 }
@@ -265,7 +256,7 @@ function buildPopoverContent({
       <output
         aria-busy="true"
         aria-label="Loading task preview"
-        style={{ display: 'block', width: 400 }}
+        style={{ display: 'block', width: CARD_MAX_WIDTH }}
       >
         {/* Title bar — approximates TaskPreviewCard header height */}
         <Skeleton.Input
@@ -281,11 +272,7 @@ function buildPopoverContent({
           style={{ marginBottom: APP_GAP_MD }}
         />
         {/* Artifact image placeholder — approximate height for an image block */}
-        <Skeleton.Input
-          active
-          size="small"
-          style={{ width: '100%', height: 120 }}
-        />
+        <Skeleton.Input active size="small" style={{ width: '100%', height: 120 }} />
       </output>
     );
   }
@@ -319,7 +306,7 @@ export function buildTaskMetricSubColumns(
   tableFilters: Record<string, FilterValue | null>,
   cellPreviewLookup: CellPreviewLookup | null,
   columnIsLoading: boolean,
-  columnHasError: boolean,
+  columnHasError: boolean
 ): TableColumnsType<TaskHeatmapRow> {
   return HEATMAP_METRIC_KEYS.map((metric) => {
     const meta = METRIC_DISPLAY_META.get(metric)!;
@@ -329,9 +316,10 @@ export function buildTaskMetricSubColumns(
       range: DEFAULT_TONE_RANGE,
       getMetric: (record): MetricResult => getCellMetric(record.cells[taskIndex], metric),
       activeRange: decodeFilterToRange(filterValue),
-      activeFilterKey: filterValue && filterValue.length > 0 && typeof filterValue[0] === 'string'
-        ? filterValue[0]
-        : undefined,
+      activeFilterKey:
+        filterValue && filterValue.length > 0 && typeof filterValue[0] === 'string'
+          ? filterValue[0]
+          : undefined,
     });
     return {
       key: columnKey,
@@ -421,7 +409,7 @@ export function buildAdaptiveTierGroups(
     definitionKey: string;
     assignmentName: string;
   }>,
-  taskColumns: ReadonlyArray<TaskHeatmapColumn>,
+  taskColumns: ReadonlyArray<TaskHeatmapColumn>
 ): ReadonlyArray<{ key: string; title: string; columnIndices: number[] }> {
   const groups: { definitionKey: string; firstName: string; count: number }[] = [];
   const indexByDefinitionKey = new Map<string, number>();

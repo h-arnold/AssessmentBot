@@ -35,15 +35,12 @@ import { METRIC_DISPLAY_META } from '../../services/dataAnalysis/metricDisplay/m
 import type { MetricColumnKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import {
   resolveMetricTone,
-  type MetricToneRange,
+  DEFAULT_TONE_RANGE,
 } from '../../services/dataAnalysis/metricDisplay/metricTone';
 import { buildMetricRangeFilter } from '../../services/dataAnalysis/metricDisplay/metricRangeFilter';
 import { decodeFilterToRange } from '../../services/dataAnalysis/metricDisplay/metricRangeKey';
 import { MetricIconLabel } from '../../components/MetricIconLabel/MetricIconLabel';
-import {
-  APP_COL_WIDTH_STUDENT_NAME,
-  APP_COL_WIDTH_METRIC_PILL,
-} from '../../theme/spacing';
+import { APP_COL_WIDTH_STUDENT_NAME, APP_COL_WIDTH_METRIC_PILL } from '../../theme/spacing';
 
 // ---------------------------------------------------------------------------
 // Exported types
@@ -62,13 +59,6 @@ export type StudentAveragesTableFilters = Readonly<{
   spag: readonly string[];
   average: readonly string[];
 }>;
-
-// ---------------------------------------------------------------------------
-// Internal constants
-// ---------------------------------------------------------------------------
-
-/** Default scoring range for metric columns (0–5). */
-const DEFAULT_TONE_RANGE: MetricToneRange = { lower: 0, upper: 5 };
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -114,9 +104,8 @@ function buildMetricColumn(
   columnFilters: readonly string[]
 ): TableColumnType<StudentAverageRowModel> {
   const meta = METRIC_DISPLAY_META.get(key)!;
-  const activeRange: readonly number[] = columnFilters.length > 0
-    ? decodeFilterToRange([columnFilters[0]!] as FilterValue)
-    : [];
+  const activeRange: readonly number[] =
+    columnFilters.length > 0 ? decodeFilterToRange([columnFilters[0]!] as FilterValue) : [];
   const activeFilterKey: string | undefined = activeRange.length > 0 ? columnFilters[0] : undefined;
   const rangeFilter = buildMetricRangeFilter<StudentAverageRowModel>({
     range: DEFAULT_TONE_RANGE,
@@ -159,7 +148,7 @@ function buildMetricColumn(
  * case-insensitive comparison and a `studentId` tie-breaker. The four metric
  * columns each have a numeric score-range filter (via `buildMetricRangeFilter`)
  * and a `resolveMetricTone`-based gradient `cellStyle`.
- * 
+ *
  * @param {StudentAveragesTableFilters} filters - The current filter state for
  *   each metric column. Empty arrays mean no filter.
  * @returns {TableColumnsType<StudentAverageRowModel>} Five column definitions.

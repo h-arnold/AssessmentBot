@@ -1,62 +1,59 @@
 /**
- * Tests for `compareHeatmapStudentName` (`taskHeatmapModel.ts`).
+ * Tests for `compareStudentNames` (canonical student-name comparator).
  *
  * @remarks
- * The comparator is a thin `HeatmapRow`-typed wrapper delegating to the
- * canonical services comparator `compareStudentNames`; these tests lock its
- * ordering contract at the heatmap call site.
+ * `compareStudentNames` (in `services/dataAnalysis/compareStudentNames`) was
+ * previously wrapped by the now-removed `compareHeatmapStudentName`
+ * (`taskHeatmapModel.ts`). These tests lock the app-wide ordering contract at
+ * the heatmap call site, exercising locale-aware, case-insensitive name
+ * ordering with a deterministic `studentId` ascending tie-break.
  *
- * @see SPEC.md — decision 4 ("Shared helper placement")
+ * @see docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md §9.17 (entry 6 — `compareStudentNames` shared helper placement)
  */
 
 import { describe, expect, it } from 'vitest';
 import { compareStudentNames } from '../../services/dataAnalysis/compareStudentNames';
-import { compareHeatmapStudentName } from './taskHeatmapModel';
-import type { HeatmapRow } from '../../services/dataAnalysis/heatmapAdapter';
 
 // -----------------------------------------------------------------------
-// compareHeatmapStudentName
+// compareStudentNames
 // -----------------------------------------------------------------------
-describe('compareHeatmapStudentName', () => {
-  it('orders two HeatmapRows identically to compareStudentNames on the same names', () => {
-    const alice: HeatmapRow = { studentId: 's-1', studentName: 'Alice', cells: [] };
-    const bob: HeatmapRow = { studentId: 's-2', studentName: 'Bob', cells: [] };
+describe('compareStudentNames', () => {
+  it('orders two rows identically to itself on the same names (sanity)', () => {
+    const alice = { studentId: 's-1', studentName: 'Alice' };
+    const bob = { studentId: 's-2', studentName: 'Bob' };
 
-    const result = compareHeatmapStudentName(alice, bob);
-    expect(result).toBe(compareStudentNames(alice, bob));
+    const result = compareStudentNames(alice, bob);
     expect(result).toBeLessThan(0);
+    // Symmetric inverse.
+    expect(compareStudentNames(bob, alice)).toBeGreaterThan(0);
   });
 
   it('returns positive when a.studentName > b.studentName', () => {
-    const bob: HeatmapRow = { studentId: 's-2', studentName: 'Bob', cells: [] };
-    const alice: HeatmapRow = { studentId: 's-1', studentName: 'Alice', cells: [] };
+    const bob = { studentId: 's-2', studentName: 'Bob' };
+    const alice = { studentId: 's-1', studentName: 'Alice' };
 
-    const result = compareHeatmapStudentName(bob, alice);
+    const result = compareStudentNames(bob, alice);
 
     expect(result).toBeGreaterThan(0);
   });
 
   it('tie-breaks by studentId ascending when names are equal', () => {
-    const davidB: HeatmapRow = { studentId: 's-B', studentName: 'David', cells: [] };
-    const davidA: HeatmapRow = { studentId: 's-A', studentName: 'David', cells: [] };
+    const davidB = { studentId: 's-B', studentName: 'David' };
+    const davidA = { studentId: 's-A', studentName: 'David' };
 
-    const result = compareHeatmapStudentName(davidA, davidB);
+    const result = compareStudentNames(davidA, davidB);
 
     // s-A vs s-B → negative (s-A sorts before s-B)
     expect(result).toBeLessThan(0);
-    // Wrapper must remain equivalent to the canonical comparator.
-    expect(result).toBe(compareStudentNames(davidA, davidB));
   });
 
   it('orders case-insensitively — lowercase "alice" sorts before "Bob"', () => {
-    const alice: HeatmapRow = { studentId: 's-1', studentName: 'alice', cells: [] };
-    const bob: HeatmapRow = { studentId: 's-2', studentName: 'Bob', cells: [] };
+    const alice = { studentId: 's-1', studentName: 'alice' };
+    const bob = { studentId: 's-2', studentName: 'Bob' };
 
-    const result = compareHeatmapStudentName(alice, bob);
+    const result = compareStudentNames(alice, bob);
 
     // Case-insensitive: 'alice' (lowercase) should be considered < 'Bob'
     expect(result).toBeLessThan(0);
-    // Wrapper must remain equivalent to the canonical comparator.
-    expect(result).toBe(compareStudentNames(alice, bob));
   });
 });
