@@ -199,18 +199,18 @@ describe('ConfigurationManager setProperty', () => {
 
     it('should accept valid lock timeout within range', () => {
       expect(() => {
-        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS, 2000);
+        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS, 35000);
       }).not.toThrow();
 
       expectPersistedConfig(mocks, {
-        [ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS]: '2000',
+        [ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS]: '35000',
       });
     });
 
     it('should reject lock timeout below minimum', () => {
       expect(() => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS, 500);
-      }).toThrow('JSON DB Lock Timeout (ms) must be an integer between 1000 and 600000.');
+      }).toThrow('JSON DB Lock Timeout (ms) must be an integer between 30000 and 600000.');
     });
 
     it('should normalise log level to uppercase', () => {

@@ -16,6 +16,7 @@ const slidesFetchBatchSizeMaximum = 100;
 const daysUntilAuthRevokeMinimum = 1;
 const daysUntilAuthRevokeMaximum = 365;
 const millisecondsPerSecond = 1000;
+const jsonDatabaseLockTimeoutMsMinimum = 30000;
 const maximumJsonDatabaseLockTimeoutSeconds = 600;
 const backendAssessorBatchSizeSchema = z
   .number()
@@ -35,7 +36,7 @@ const daysUntilAuthRevokeSchema = z
 const jsonDatabaseLockTimeoutMsSchema = z
   .number()
   .int()
-  .min(millisecondsPerSecond)
+  .min(jsonDatabaseLockTimeoutMsMinimum)
   .max(maximumJsonDatabaseLockTimeoutSeconds * millisecondsPerSecond);
 const jsonDatabaseLogLevelValues = ['DEBUG', 'INFO', 'WARN', 'ERROR'] as const;
 const jsonDatabaseLogLevelSchema = z

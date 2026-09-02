@@ -17,7 +17,7 @@ const backendConfig = {
   daysUntilAuthRevoke: 60,
   slidesFetchBatchSize: 20,
   jsonDbMasterIndexKey: 'master-index',
-  jsonDbLockTimeoutMs: 15_000,
+  jsonDbLockTimeoutMs: 30_000,
   jsonDbLogLevel: 'INFO',
   jsonDbBackupOnInitialise: true,
   jsonDbRootFolderId: 'folder-1234',

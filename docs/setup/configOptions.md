@@ -91,7 +91,7 @@ The script property key used by JsonDbApp to locate the database index.
 
 #### ⏱️ JSON DB Lock Timeout (ms)
 
-**Default:** 15000
+**Default:** 30000
 
 Timeout used when acquiring database locks.
 
