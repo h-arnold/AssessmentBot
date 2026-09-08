@@ -315,7 +315,9 @@ Backend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation and review complete; commit gate in progress.**
+- **Completed and pushed.** Implementation commit `d6101a8`
+  (`refactor(config): serialize configuration writes`) on branch
+  `feat/ScriptPropertiesAuthService`; push to `origin` confirmed on 2026-09-08.
 - Added `96_ConfigurationManagerStorage.js` (81 lines),
   `97_ConfigurationManagerDefaults.js` (57 lines), and
   `97_ConfigurationManagerLockedWrite.js` (118 lines). The facade remains at the
