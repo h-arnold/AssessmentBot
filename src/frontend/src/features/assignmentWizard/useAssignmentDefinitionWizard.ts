@@ -15,6 +15,7 @@ import {
   getYearGroupsQueryOptions,
 } from '../../query/sharedQueries';
 import { DEFAULT_WEIGHTING_VALUE } from '../../services/assignmentDefinition/assignmentDefinition.zod';
+import { sortYearGroups } from '../referenceData/yearGroupSorting';
 import {
   type AssignmentDefinition,
   type UpsertAssignmentDefinitionResponse,
@@ -465,7 +466,7 @@ function buildYearGroupOptions(
   yearGroups: Array<{ key: string; name: string }> | null | undefined
 ): Array<{ value: string; label: string }> {
   if (!Array.isArray(yearGroups)) return [];
-  return yearGroups.map((yg) => ({ value: yg.key, label: yg.name }));
+  return sortYearGroups(yearGroups).map((yg) => ({ value: yg.key, label: yg.name }));
 }
 
 /**

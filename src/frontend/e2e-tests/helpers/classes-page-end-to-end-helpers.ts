@@ -391,9 +391,17 @@ export async function expectBreadcrumbLabels(page: Page, labels: string[]): Prom
 export async function openAssessTaskModal(page: Page): Promise<ReturnType<typeof page.getByRole>> {
   await page.goto('/');
   await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
+  await expect(page.locator('#panel-content-year-group-9')).toBeVisible();
+  await page.getByRole('heading', { level: 3, name: 'Year 10' }).click();
   await expect(page.locator('#panel-content-year-group-10')).toBeVisible();
+  await page.getByRole('heading', { level: 3, name: 'Year 9' }).click();
+  await expect(page.locator('#panel-content-year-group-9')).not.toBeVisible();
 
-  await page.getByRole('button', { name: 'Assess Task' }).first().click();
+  await page
+    .locator('#panel-content-year-group-10')
+    .getByRole('button', { name: 'Assess Task' })
+    .first()
+    .click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
 
@@ -600,10 +608,9 @@ export async function assertCardButtonStates(page: Page): Promise<void> {
  * @returns {Promise<void>}
  */
 export async function expandAllYearGroupPanels(page: Page): Promise<void> {
-  // Click Year 11 header
+  // Year 9 is expanded by default; click the remaining headers.
+  await page.getByRole('heading', { level: 3, name: 'Year 10' }).click();
   await page.getByRole('heading', { level: 3, name: 'Year 11' }).click();
-  // Click Year 9 header
-  await page.getByRole('heading', { level: 3, name: 'Year 9' }).click();
 }
 
 /**

@@ -722,7 +722,7 @@ describe('ClassesPage', () => {
           yearGroups: MIXED_ORDER_YEAR_GROUPS,
         });
 
-        // The view model should sort year groups alphabetically by name
+        // The view model should use natural year-group presentation order.
         const { modelResult, isInvalid } = verifyClassesPageModel(
           MIXED_ORDER_CLASS_PARTIALS,
           MIXED_ORDER_YEAR_GROUPS
@@ -731,34 +731,34 @@ describe('ClassesPage', () => {
         if (!isInvalid && 'panels' in modelResult) {
           expect((modelResult as { panels: unknown[] }).panels).toHaveLength(EXPECTED_PANEL_COUNT);
           
-          // Expected alphabetical order: Year 10, Year 11, Year 9
+          // Expected natural order: Year 9, Year 10, Year 11
           const panels = modelResult as { panels: { yearGroupKey: string; yearGroupLabel: string }[] };
-          expect(panels.panels[0].yearGroupLabel).toBe('Year 10');
-          expect(panels.panels[1].yearGroupLabel).toBe('Year 11');
-          expect(panels.panels[2].yearGroupLabel).toBe('Year 9');
+          expect(panels.panels[0].yearGroupLabel).toBe('Year 9');
+          expect(panels.panels[1].yearGroupLabel).toBe('Year 10');
+          expect(panels.panels[2].yearGroupLabel).toBe('Year 11');
         }
 
         // These tests will fail until the collapse implementation is complete
-        // Assert that collapse headers render in the correct alphabetical order
+        // Assert that collapse headers render in the natural order.
         assertCollapseRegion();
 
-        // Find all collapse panel headers - they should be in alphabetical order
+        // Find all collapse panel headers in presentation order.
         // This will fail until Ant Design Collapse is implemented with proper panel headers
         const panelHeaders = screen.getAllByRole('heading', { level: 3 });
         expect(panelHeaders).toHaveLength(EXPECTED_PANEL_COUNT);
-        expect(panelHeaders[0]).toHaveTextContent('Year 10');
-        expect(panelHeaders[1]).toHaveTextContent('Year 11');
-        expect(panelHeaders[2]).toHaveTextContent('Year 9');
+        expect(panelHeaders[0]).toHaveTextContent('Year 9');
+        expect(panelHeaders[1]).toHaveTextContent('Year 10');
+        expect(panelHeaders[2]).toHaveTextContent('Year 11');
       });
 
-      it('verifies the first alphabetical panel is open on first ready render', () => {
+      it('verifies the first naturally ordered panel is open on first ready render', () => {
         // Use shared helper for rendering with mixed order data
         renderClassesPage({
           classPartials: MIXED_ORDER_CLASS_PARTIALS,
           yearGroups: MIXED_ORDER_YEAR_GROUPS,
         });
 
-        // The view model should have the first alphabetical panel as default expanded
+        // The view model should have the first naturally ordered panel expanded by default.
         const { modelResult, isInvalid } = verifyClassesPageModel(
           MIXED_ORDER_CLASS_PARTIALS,
           MIXED_ORDER_YEAR_GROUPS
@@ -768,19 +768,18 @@ describe('ClassesPage', () => {
         if (!isInvalid && 'defaultExpandedPanelKeys' in modelResult) {
           const viewModel = modelResult as { panels: unknown[]; defaultExpandedPanelKeys: string[] };
           expect(viewModel.defaultExpandedPanelKeys).toHaveLength(EXPECTED_DEFAULT_EXPANDED_COUNT);
-          // First alphabetical is Year 10
-          expect(viewModel.defaultExpandedPanelKeys[0]).toBe('year-group-10');
+          expect(viewModel.defaultExpandedPanelKeys[0]).toBe('year-group-9');
         }
 
         // This will fail until the collapse implementation uses defaultActiveKey
         // Assert that the first panel body is visible (expanded)
         assertCollapseRegion();
 
-        // The first panel (Year 10) should have its content visible
-        const year10Panel = screen.getByRole('region', { name: /year 10/i });
-        expect(year10Panel).toBeInTheDocument();
+        // The first panel (Year 9) should have its content visible.
+        const year9Panel = screen.getByRole('region', { name: /year 9/i });
+        expect(year9Panel).toBeInTheDocument();
         // Ant Design's Collapse.Panel header button manages aria-expanded
-        assertPanelHeaderExpanded(/year 10/i, true);
+        assertPanelHeaderExpanded(/year 9/i, true);
       });
 
       it('verifies an empty year-group panel shows its own empty presentation', () => {

@@ -18,6 +18,7 @@
 
 import type { ClassPartial } from '../services/googleClassrooms/classPartials.zod';
 import type { YearGroup } from '../services/referenceData/referenceData.zod';
+import { sortYearGroups } from '../features/referenceData/yearGroupSorting';
 
 /**
  * Card model for a single class in the Classes page.
@@ -86,22 +87,6 @@ function validateClassTrust(
     return classPartial.classId;
   }
   return null;
-}
-
-/**
- * Sorts year groups by name ascending, then by key ascending for deterministic tie-break.
- *
- * @param {YearGroup[]} yearGroups - Year groups to sort.
- * @returns {YearGroup[]} Sorted year groups.
- */
-function sortYearGroups(yearGroups: YearGroup[]): YearGroup[] {
-  return yearGroups.toSorted((a, b) => {
-    const nameComparison = compareStringsLocally(a.name, b.name);
-    if (nameComparison !== 0) {
-      return nameComparison;
-    }
-    return compareStringsLocally(a.key, b.key);
-  });
 }
 
 /**
@@ -213,12 +198,12 @@ function buildPanels(
  *
  * Panel generation:
  * - Every `yearGroup` in the input produces ONE panel, even if no classes match it
- * - Panels are sorted by `YearGroup.name` ascending, then `YearGroup.key` ascending
+ * - Panels use the shared natural year-group presentation order
  * - Classes within each panel are sorted by `className` ascending, then `classId` ascending
  * - Only includes classes that have a matching `yearGroupKey` in the yearGroups array AND pass trust validation
  *
  * Default expanded panel:
- * - `defaultExpandedPanelKeys`: Array with the `yearGroupKey` of the first alphabetical panel
+ * - `defaultExpandedPanelKeys`: Array with the `yearGroupKey` of the first presented panel
  * - If panels array is empty, returns empty array
  * - Only one panel is in the defaultExpandedPanelKeys array
  *
@@ -274,7 +259,7 @@ export function buildClassesPageModel(
   // Build panels
   const panels = buildPanels(sortedYearGroups, classesByYearGroupKey);
 
-  // Determine default expanded panel keys - first alphabetical panel (already sorted)
+  // Determine default expanded panel keys from the presentation order.
   const defaultExpandedPanelKeys: string[] = panels.length > 0 ? [panels[0].yearGroupKey] : [];
 
   return {

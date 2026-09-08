@@ -443,7 +443,7 @@ export function assertPanelEmpty(panelLabelPattern: string | RegExp): void {
 // ============================================================================
 
 /**
- * Mixed order year groups for alphabetical sorting tests.
+ * Mixed input order used to verify natural year-group presentation ordering.
  */
 export const MIXED_ORDER_YEAR_GROUPS: YearGroup[] = [
   createFixtureYearGroup('year-group-11', 'Year 11'),

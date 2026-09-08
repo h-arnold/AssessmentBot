@@ -65,13 +65,13 @@ async function navigateAndExpandAllPanels(
 ): Promise<void> {
   await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
 
-  // Expand Year 11 and Year 9 (Year 10 is expanded by default)
+  // Year 9 is expanded by default; expand the remaining panels.
+  await page.getByRole('heading', { level: 3, name: 'Year 10' }).click();
   await page.getByRole('heading', { level: 3, name: 'Year 11' }).click();
-  await page.getByRole('heading', { level: 3, name: 'Year 9' }).click();
 
   // Verify all panels are visible
+  await expect(page.locator('#panel-content-year-group-10')).toBeVisible();
   await expect(page.locator('#panel-content-year-group-11')).toBeVisible();
-  await expect(page.locator('#panel-content-year-group-9')).toBeVisible();
 
   // Verify total card count
   const articles = page.locator('[role="article"]');
@@ -365,7 +365,7 @@ test.describe('Classes page shell-wide integration', () => {
 // ============================================================================
 
 test.describe('Year-group collapse behaviour', () => {
-  test('collapse headers should render in alphabetical order', async ({ page }) => {
+  test('collapse headers should render in natural year-group order', async ({ page }) => {
     const scenario = createClassesScenario();
     await installRuntimeMock(page, scenario);
     await page.goto('/');
@@ -383,20 +383,20 @@ test.describe('Year-group collapse behaviour', () => {
     const headerTexts = await allHeaders.evaluateAll((headers) =>
       headers.map((h) => h.textContent?.trim() || '')
     );
-    expect(headerTexts).toEqual(['Year 10', 'Year 11', 'Year 9']);
+    expect(headerTexts).toEqual(['Year 9', 'Year 10', 'Year 11']);
   });
 
-  test('first alphabetical panel should be expanded by default', async ({ page }) => {
+  test('first naturally ordered panel should be expanded by default', async ({ page }) => {
     const scenario = createClassesScenario();
     await installRuntimeMock(page, scenario);
     await page.goto('/');
     await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
 
-    const year10PanelContent = page.locator('#panel-content-year-group-10');
-    await expect(year10PanelContent).toBeVisible();
+    const year9PanelContent = page.locator('#panel-content-year-group-9');
+    await expect(year9PanelContent).toBeVisible();
 
-    const year10Panel = page.getByRole('region', { name: /year 10/i });
-    await expect(year10Panel).toBeVisible();
+    const year9Panel = page.getByRole('region', { name: /year 9/i });
+    await expect(year9Panel).toBeVisible();
   });
 
   test('multi-expand - expanding second panel keeps first expanded', async ({ page }) => {
@@ -406,12 +406,12 @@ test.describe('Year-group collapse behaviour', () => {
     await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
 
     const year11Header = page.getByRole('heading', { level: 3, name: 'Year 11' });
-    const year10PanelContent = page.locator('#panel-content-year-group-10');
-    await expect(year10PanelContent).toBeVisible();
+    const year9PanelContent = page.locator('#panel-content-year-group-9');
+    await expect(year9PanelContent).toBeVisible();
 
     await year11Header.click();
 
-    await expect(year10PanelContent).toBeVisible();
+    await expect(year9PanelContent).toBeVisible();
     const year11PanelContent = page.locator('#panel-content-year-group-11');
     await expect(year11PanelContent).toBeVisible();
   });
@@ -422,14 +422,14 @@ test.describe('Year-group collapse behaviour', () => {
     await page.goto('/');
     await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
 
-    const year10Header = page.getByRole('heading', { level: 3, name: 'Year 10' });
-    const year10PanelContent = page.locator('#panel-content-year-group-10');
+    const year9Header = page.getByRole('heading', { level: 3, name: 'Year 9' });
+    const year9PanelContent = page.locator('#panel-content-year-group-9');
 
-    await expect(year10PanelContent).toBeVisible();
-    await year10Header.click();
-    await expect(year10PanelContent).not.toBeVisible();
-    await year10Header.click();
-    await expect(year10PanelContent).toBeVisible();
+    await expect(year9PanelContent).toBeVisible();
+    await year9Header.click();
+    await expect(year9PanelContent).not.toBeVisible();
+    await year9Header.click();
+    await expect(year9PanelContent).toBeVisible();
   });
 
   test('empty year-group panel shows in-panel empty message', async ({ page }) => {
@@ -439,10 +439,6 @@ test.describe('Year-group collapse behaviour', () => {
     await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
 
     const year9PanelContent = page.locator('#panel-content-year-group-9');
-    await expect(year9PanelContent).not.toBeVisible();
-
-    const year9Header = page.getByRole('heading', { level: 3, name: 'Year 9' });
-    await year9Header.click();
     await expect(year9PanelContent).toBeVisible();
     await expect(year9PanelContent).toContainText('No classes');
   });
@@ -523,14 +519,14 @@ test.describe('Class cards and placeholder action affordances', () => {
     await page.goto('/');
     await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
 
-    await expect(page.locator('#panel-content-year-group-10')).toBeVisible();
+    await expect(page.locator('#panel-content-year-group-9')).toBeVisible();
 
     // Expand remaining panels
+    await page.getByRole('heading', { level: 3, name: 'Year 10' }).click();
     await page.getByRole('heading', { level: 3, name: 'Year 11' }).click();
-    await page.getByRole('heading', { level: 3, name: 'Year 9' }).click();
 
+    await expect(page.locator('#panel-content-year-group-10')).toBeVisible();
     await expect(page.locator('#panel-content-year-group-11')).toBeVisible();
-    await expect(page.locator('#panel-content-year-group-9')).toBeVisible();
 
     const viewButtons = page.getByRole('button', { name: /view/i });
     await expect(viewButtons).toHaveCount(EXPECTED_TOTAL_CARDS_COUNT);
@@ -547,8 +543,8 @@ test.describe('Class cards and placeholder action affordances', () => {
     await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
 
     // Expand all panels
+    await page.getByRole('heading', { level: 3, name: 'Year 10' }).click();
     await page.getByRole('heading', { level: 3, name: 'Year 11' }).click();
-    await page.getByRole('heading', { level: 3, name: 'Year 9' }).click();
 
     const viewLinks = page.getByRole('link', { name: /view/i });
     await expect(viewLinks).toHaveCount(0);
@@ -612,10 +608,12 @@ test.describe('Keyboard interaction for collapse headers', () => {
     await page.goto('/');
     await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
 
-    await expect(page.getByRole('heading', { level: 3, name: 'Year 10' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 3, name: 'Year 9' })).toBeVisible();
 
     const year10PanelContent = page.locator('#panel-content-year-group-10');
-    await expect(year10PanelContent).toBeVisible();
+    const year9PanelContent = page.locator('#panel-content-year-group-9');
+    await expect(year9PanelContent).toBeVisible();
+    await expect(year10PanelContent).not.toBeVisible();
 
     const collapseHeaders = page.locator('.ant-collapse-header');
     await expect(collapseHeaders).toHaveCount(NUMBER_OF_YEAR_GROUP_PANELS);
@@ -631,25 +629,21 @@ test.describe('Keyboard interaction for collapse headers', () => {
 
     const year11PanelContent = page.locator('#panel-content-year-group-11');
     await expect(year11PanelContent).toBeVisible();
-    await expect(year10PanelContent).toBeVisible();
+    await expect(year10PanelContent).not.toBeVisible();
 
     await year11Panel.press('Enter');
     await expect(year11PanelContent).not.toBeVisible();
-    await expect(year10PanelContent).toBeVisible();
-
-    await page.keyboard.press('Tab');
+    await expect(year10PanelContent).not.toBeVisible();
 
     const year9Panel = page.locator('.ant-collapse-header').filter({ hasText: 'Year 9' });
+    await year9Panel.focus();
     await expect(year9Panel).toBeFocused();
 
     await year9Panel.press('Enter');
 
-    const year9PanelContent = page.locator('#panel-content-year-group-9');
-    await expect(year9PanelContent).toBeVisible();
-
-    await expect(year10PanelContent).toBeVisible();
+    await expect(year10PanelContent).not.toBeVisible();
     await expect(year11PanelContent).not.toBeVisible();
-    await expect(year9PanelContent).toBeVisible();
+    await expect(year9PanelContent).not.toBeVisible();
   });
 
   test('can navigate collapse headers using arrow keys when focused', async ({ page }) => {

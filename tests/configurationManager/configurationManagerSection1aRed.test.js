@@ -1,22 +1,22 @@
 /**
- * RED-phase tests for ConfigurationManager documentProperties removal.
+ * Regression tests for the completed ConfigurationManager documentProperties removal.
  *
- * These tests are expected to FAIL because the production code still:
- * 1. Initialises `documentProperties` in ensureInitialized()
- * 2. Checks `documentProperties` key count in maybeDeserializeProperties()
+ * The production code (98_ConfigurationManagerClass.js) no longer supports
+ * documentProperties:
+ * - `this.documentProperties` is absent from the constructor and ensureInitialized().
+ * - ensureInitialized() lazily acquires only the scriptProperties handle, then sets
+ *   `_initialized` and optionally freezes.
  *
- * Production changes required (in 98_ConfigurationManagerClass.js):
- * - Remove `this.documentProperties` field and its lazy initialisation
- * - ensureInitialized() should not reference documentProperties
- * - maybeDeserializeProperties() should check only scriptProperties key count
- * - JSDoc: remove @property {Object} documentProperties
+ * These tests lock in that behaviour so a regression which reintroduces
+ * documentProperties would fail. The get/set regression block confirms configuration
+ * reads and writes still operate against scriptProperties after the removal.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { setupGlobalGASMocks } from '../helpers/mockFactories.js';
 
 const ConfigurationManager = require('../../src/backend/ConfigurationManager/98_ConfigurationManagerClass.js');
 
-describe('ConfigurationManager Section 1a red contract — documentProperties removal', () => {
+describe('ConfigurationManager documentProperties removal regression', () => {
   let mocks;
 
   /**
@@ -50,25 +50,6 @@ describe('ConfigurationManager Section 1a red contract — documentProperties re
 
       // After the change, ensureInitialized should not touch documentProperties.
       expect(config.documentProperties).toBeUndefined();
-    });
-
-    it('maybeDeserializeProperties does not check documentProperties key count', () => {
-      const config = createFreshManager();
-
-      // Set up: scriptProperties has NO keys, documentProperties HAS keys
-      mocks.PropertiesService.scriptProperties.getKeys.mockReturnValue([]);
-      mocks.PropertiesService.documentProperties.getKeys.mockReturnValue(['some-key']);
-      config.scriptProperties = mocks.PropertiesService.scriptProperties;
-      config.documentProperties = mocks.PropertiesService.documentProperties;
-
-      config.maybeDeserializeProperties();
-
-      // RED: current code returns early because hasDocument is truthy.
-      // After the change, only scriptProperties is checked, so the method
-      // should continue and construct PropertiesCloner when script keys are empty.
-      // This assertion FAILS now (PropertiesCloner is NOT called because
-      // the early return happens before reaching the PropertiesCloner branch).
-      expect(mocks.PropertiesCloner).toHaveBeenCalledTimes(1);
     });
   });
 

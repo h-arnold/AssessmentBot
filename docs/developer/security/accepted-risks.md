@@ -76,21 +76,7 @@ feature: it prevents accidental removal of the gate by a later misconfiguration.
 persisting the group email would turn lockout from a recovery procedure into an
 impossibility. This is tracked as a future iteration.
 
-### 5. `maybeDeserializeProperties` interacts awkwardly with trigger context keys
-
-`ConfigurationManager.maybeDeserializeProperties()` early-returns when **any** Script
-Property key exists. Writing `trigger:<uid>:*` keys can therefore suppress legacy config
-deserialisation on a store that has trigger context but no config blob. The data-shape
-contract classifies this as **Fragile / accepted risk**.
-
-**Why accepted:** the method is likely dead code from a Sheets-based era; removing it is a
-separate scope item and the interaction only manifests in a store state that should not
-occur in normal operation.
-
-**Change trigger:** removal of `maybeDeserializeProperties()` (tracked separately) would
-eliminate the interaction.
-
-### 6. All API methods are accessible to both `admin` and `user` roles
+### 5. All API methods are accessible to both `admin` and `user` roles
 
 The auth layer resolves a role (`admin` or `user`) but v1 does not restrict methods by
 role. Every authenticated group member can call every allowlisted method.
@@ -126,4 +112,3 @@ information is already resolved and audited, so the foundation is in place.
 - **Admin UI for group membership.** Group membership management currently lives in the
   Google Groups admin console; a frontend management surface is possible once role-based
   filtering lands.
-- **Removal of `maybeDeserializeProperties()`.** Eliminates risk 5 and related dead code.
