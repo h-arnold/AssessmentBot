@@ -122,8 +122,8 @@ None — TriggerContext is a pair of flat key-value properties with no embedded 
 
 None — the contract is implemented and there is no drift. The previously documented concern
 that writing `trigger:<uid>:*` keys could suppress legacy config deserialisation no longer
-applies: the early-return interaction that enumerated other Script Property keys was removed in
-the `refactor/remove-config-deserialise-dead-code` branch (GitHub issue #296), and
+applies: the early-return interaction that enumerated other Script Property keys was removed
+(GitHub issue #296), and
 `ConfigurationManager.ensureInitialized()` now only lazily acquires the `scriptProperties`
 handle and reads/writes the single `__CONFIG_STORE_KEY__` blob. It never enumerates or reacts
 to other Script Property keys, so trigger context storage cannot collide with config
