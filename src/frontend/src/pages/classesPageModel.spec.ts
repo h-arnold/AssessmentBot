@@ -82,6 +82,33 @@ function buildValidDataset(
 }
 
 /**
+ * Builds the shared Alice/Bob/Charlie year-group and class-partial fixture used by the
+ * panel-sorting and default-expanded-panel tests.
+ *
+ * The fixture is deliberately unsorted: `yg-c` (Charlie) precedes `yg-a` (Alice) and
+ * `yg-b` (Bob) so the tests can assert that presentation order is derived, not input
+ * order. The default-expanded-panel test uses this fixture as-is; the panel-sorting
+ * test appends two same-named year groups (`yg-y`, `yg-z`) and their classes so the
+ * key tie-break can be exercised.
+ *
+ * @returns {{ yearGroups: YearGroup[]; classPartials: ClassPartial[] }} The Alice/Bob/Charlie fixture.
+ */
+function buildAliceBobCharlieFixture(): { yearGroups: YearGroup[]; classPartials: ClassPartial[] } {
+  return {
+    yearGroups: [
+      createYearGroup('yg-c', 'Charlie'),
+      createYearGroup('yg-a', 'Alice'),
+      createYearGroup('yg-b', 'Bob'),
+    ],
+    classPartials: [
+      createClassPartial('c1', { className: 'Class 1', yearGroupKey: 'yg-a' }),
+      createClassPartial('c2', { className: 'Class 2', yearGroupKey: 'yg-b' }),
+      createClassPartial('c3', { className: 'Class 3', yearGroupKey: 'yg-c' }),
+    ],
+  };
+}
+
+/**
  * Test fixture builder for invalid data view model assertions.
  * Returns a valid ClassPartial and an invalid ClassPartial to test fail-closed behaviour.
  *
@@ -286,23 +313,30 @@ describe('Classes page grouped view model - buildClassesPageModel', () => {
   // --------------------------------------------------------------------------
 
   describe('Panel sorting', () => {
-    it('should sort panels by YearGroup.name ascending, using YearGroup.key as deterministic tie-break', () => {
+    it('should naturally order numbered year-group names', () => {
       const yearGroups = [
-        createYearGroup('yg-c', 'Charlie'),
-        createYearGroup('yg-a', 'Alice'),
-        createYearGroup('yg-b', 'Bob'),
-        // Same name, different keys - should use key as tie-break
-        createYearGroup('yg-z', 'Alice'),
-        createYearGroup('yg-y', 'Alice'),
+        createYearGroup('yg-11', 'Year 11'),
+        createYearGroup('yg-9', 'Year 9'),
+        createYearGroup('yg-10', 'Year 10'),
       ];
 
-      const classPartials: ClassPartial[] = [
-        createClassPartial('c1', { className: 'Class 1', yearGroupKey: 'yg-a' }),
-        createClassPartial('c2', { className: 'Class 2', yearGroupKey: 'yg-b' }),
-        createClassPartial('c3', { className: 'Class 3', yearGroupKey: 'yg-c' }),
+      buildAndAssertValidModel([], yearGroups, (result) => {
+        expect(result.panels.map((panel) => panel.yearGroupKey)).toEqual([
+          'yg-9',
+          'yg-10',
+          'yg-11',
+        ]);
+      });
+    });
+
+    it('should sort panels by YearGroup.name ascending, using YearGroup.key as deterministic tie-break', () => {
+      const { yearGroups, classPartials } = buildAliceBobCharlieFixture();
+      // Same name, different keys - should use the strict key tie-break.
+      yearGroups.push(createYearGroup('yg-z', 'Alice'), createYearGroup('yg-y', 'Alice'));
+      classPartials.push(
         createClassPartial('c4', { className: 'Class 4', yearGroupKey: 'yg-y' }),
-        createClassPartial('c5', { className: 'Class 5', yearGroupKey: 'yg-z' }),
-      ];
+        createClassPartial('c5', { className: 'Class 5', yearGroupKey: 'yg-z' })
+      );
 
       buildAndAssertValidModel(classPartials, yearGroups, (result) => {
         // Sorted by name ascending, then by key ascending for ties
@@ -441,23 +475,11 @@ describe('Classes page grouped view model - buildClassesPageModel', () => {
   // Default expanded panel
   // --------------------------------------------------------------------------
 
-  describe('Default-expanded first alphabetical panel key', () => {
-    it('should return the first alphabetical panel key as default-expanded when panels exist', () => {
-      const yearGroups = [
-        createYearGroup('yg-c', 'Charlie'),
-        createYearGroup('yg-a', 'Alice'),
-        createYearGroup('yg-b', 'Bob'),
-      ];
-
-      const classPartials: ClassPartial[] = [
-        createClassPartial('c1', { className: 'Class 1', yearGroupKey: 'yg-a' }),
-        createClassPartial('c2', { className: 'Class 2', yearGroupKey: 'yg-b' }),
-        createClassPartial('c3', { className: 'Class 3', yearGroupKey: 'yg-c' }),
-      ];
+  describe('Default-expanded first presented panel key', () => {
+    it('should retain alphabetical fallback and key tie-breaking when selecting the first panel', () => {
+      const { yearGroups, classPartials } = buildAliceBobCharlieFixture();
 
       buildAndAssertValidModel(classPartials, yearGroups, (result) => {
-        // Panels sorted alphabetically: Alice (yg-a), Bob (yg-b), Charlie (yg-c)
-        // First alphabetical panel key should be yg-a
         expect(result.defaultExpandedPanelKeys).toHaveLength(1);
         expect(result.defaultExpandedPanelKeys[0]).toBe('yg-a');
       });
@@ -518,7 +540,7 @@ describe('Classes page grouped view model - buildClassesPageModel', () => {
 
         expect(result.panels[2].classes).toHaveLength(1);
 
-        // Default expanded should be first alphabetical panel (Year 10 / yg-10)
+        // Default expanded should be the first naturally ordered panel (Year 10 / yg-10)
         expect(result.defaultExpandedPanelKeys).toEqual(['yg-10']);
       });
     });

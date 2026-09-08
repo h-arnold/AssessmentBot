@@ -33,7 +33,7 @@ import {
 // `getGoogleClassroomAssignments` queues below provide enough entries to cover
 // both StrictMode replays.
 //
-// Card layout (Year 10 panel, expanded by default):
+// Card layout (Year 10 panel is expanded by the shared modal setup helper):
 //   Card 0: English 10       (class-english-10)
 //   Card 1: Mathematics 10A  (class-math-10a)
 

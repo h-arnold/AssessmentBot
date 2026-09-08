@@ -5,10 +5,15 @@
  * bulkMetadataUpdate, onProgress forwarding, and empty-list short-circuit.
  */
 
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { YearGroup } from '../../../services/referenceData/referenceData.zod';
 import type { ClassesManagementRow } from '../classesManagementViewModel';
 import type { BatchProgressSnapshot } from './runQueuedBatchMutation';
+import {
+  assertQueuedBatchMutationCalledOnce,
+  assertSingleSelectedRowEdit,
+  makeRow,
+} from '../../../test/classes/bulkFlowTestHelpers';
 
 const runQueuedBatchMutationMock = vi.hoisted(() => vi.fn());
 
@@ -27,40 +32,21 @@ function loadBulkSetYearGroupFlow(): Promise<typeof BulkSetYearGroupFlowModule> 
   return import('./bulkSetYearGroupFlow');
 }
 
-/**
- * Builds a canonical classes-management row for year-group flow tests.
- *
- * @param {Partial<ClassesManagementRow>} overrides Field overrides for the returned row.
- * @returns {ClassesManagementRow} The composed test row.
- */
-function makeRow(overrides: Partial<ClassesManagementRow> = {}): ClassesManagementRow {
-  return {
-    classId: 'class-001',
-    className: 'Year 10 Maths',
-    status: 'active',
-    cohortKey: 'cohort-current',
-    cohortLabel: 'Cohort Current',
-    yearGroupKey: 'year-10',
-    yearGroupLabel: 'Year 10',
-    courseLength: 2,
-    active: true,
-    ...overrides,
-  };
-}
-
 describe('bulkSetYearGroupFlow', () => {
-  afterEach(() => {
-    vi.clearAllMocks();
+  beforeEach(() => {
+    vi.resetAllMocks();
   });
 
   it('builds year-group selector options with stable keys as option values', async () => {
     const { getYearGroupOptions } = await loadBulkSetYearGroupFlow();
     const yearGroups: YearGroup[] = [
-      { key: 'year-10', name: 'Year 10' },
       { key: 'year-11', name: 'Year 11' },
+      { key: 'year-10', name: 'Year 10' },
+      { key: 'year-9', name: 'Year 9' },
     ];
 
     expect(getYearGroupOptions(yearGroups)).toEqual([
+      { label: 'Year 9', value: 'year-9' },
       { label: 'Year 10', value: 'year-10' },
       { label: 'Year 11', value: 'year-11' },
     ]);
@@ -80,27 +66,13 @@ describe('bulkSetYearGroupFlow', () => {
 
     const results = await bulkSetYearGroup(rows, 'year-11');
 
-    expect(runQueuedBatchMutationMock).toHaveBeenCalledTimes(1);
-    const [items] = runQueuedBatchMutationMock.mock.calls[0] as [unknown[]];
-    const firstItem = items[0] as Record<string, unknown>;
-    expect(firstItem.method).toBe('updateABClass');
-    expect(firstItem.verb).toBe('Setting year group for');
+    assertQueuedBatchMutationCalledOnce(runQueuedBatchMutationMock, 'updateABClass', 'Setting year group for');
     expect(results.map((result) => result.row.classId)).toEqual(['class-001', 'class-002']);
   });
 
   it('uses the same batch path for a single selected row edit', async () => {
-    runQueuedBatchMutationMock.mockResolvedValue([
-      { status: 'fulfilled', row: makeRow({ classId: 'class-single', status: 'inactive', active: false }), data: { ok: true } },
-    ]);
-
     const { bulkSetYearGroup } = await loadBulkSetYearGroupFlow();
-    const row = makeRow({ classId: 'class-single', status: 'inactive', active: false });
-
-    const results = await bulkSetYearGroup([row], 'year-12');
-
-    expect(runQueuedBatchMutationMock).toHaveBeenCalledTimes(1);
-    expect(results).toHaveLength(1);
-    expect(results[0]).toMatchObject({ status: 'fulfilled', row });
+    await assertSingleSelectedRowEdit(runQueuedBatchMutationMock, bulkSetYearGroup, 'year-12');
   });
 
   it('forwards onProgress to runQueuedBatchMutation via bulkMetadataUpdate', async () => {

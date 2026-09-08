@@ -32,6 +32,7 @@ import { getAssignmentTopicsQueryOptions, getYearGroupsQueryOptions } from '../.
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ReferenceDataInitialLoadingState } from './ReferenceDataInitialLoadingState';
 import { ReferenceDataManagementModalScaffold } from './ReferenceDataManagementModalScaffold';
+import { sortYearGroups } from './yearGroupSorting';
 import {
   getPersistedBlockingLoadError,
   getReferenceDataBlockingLoadErrorQueryKey,
@@ -134,7 +135,7 @@ function YearGroupsFormField(properties: Readonly<{
   yearGroups: YearGroup[];
   disabled?: boolean;
 }>): ReactElement {
-  const yearGroupOptions = properties.yearGroups.map((yearGroup) => ({
+  const yearGroupOptions = sortYearGroups(properties.yearGroups).map((yearGroup) => ({
     value: yearGroup.key,
     label: yearGroup.name,
   }));

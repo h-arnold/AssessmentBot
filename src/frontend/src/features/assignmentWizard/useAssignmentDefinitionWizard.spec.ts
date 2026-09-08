@@ -1,10 +1,11 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { QueryClientProvider } from '@tanstack/react-query';
 import type { PropsWithChildren } from 'react';
 import type { RenderHookResult } from '@testing-library/react';
 import { createAppQueryClient } from '../../query/queryClient';
+import { queryKeys } from '../../query/queryKeys';
 import type { UseAssignmentDefinitionWizardReturn } from './useAssignmentDefinitionWizard';
 
 // Mock dependencies
@@ -57,10 +58,12 @@ vi.mock('../../services/assignmentDefinition/assignmentDefinitionService', () =>
 /**
  * Creates a fresh React Query wrapper for each test.
  *
+ * @param {Array<{ key: string; name: string }>} yearGroups Year groups to seed in the query cache.
  * @returns {(properties: Readonly<PropsWithChildren>) => JSX.Element} The query client wrapper used by the tests.
  */
-function createQueryWrapper() {
+function createQueryWrapper(yearGroups: Array<{ key: string; name: string }> = []) {
   const queryClient = createAppQueryClient();
+  queryClient.setQueryData(queryKeys.yearGroups(), yearGroups);
 
   return function QueryWrapper({ children }: Readonly<PropsWithChildren>) {
     return React.createElement(QueryClientProvider, { client: queryClient }, children);
@@ -131,10 +134,12 @@ async function getUpsertDefinitionMock(): Promise<ReturnType<typeof vi.fn>> {
  * Loads the module and wraps the hook with a fresh QueryClient.
  *
  * @param {Record<string, unknown>} properties - Hook properties to pass.
+ * @param {Array<{ key: string; name: string }>} yearGroups Year groups to seed in the query cache.
  * @returns {Promise<RenderHookResult<UseAssignmentDefinitionWizardReturn, Record<string, unknown>>>} Render result.
  */
 async function renderWizardHook(
-  properties: Record<string, unknown>
+  properties: Record<string, unknown>,
+  yearGroups: Array<{ key: string; name: string }> = []
 ): Promise<RenderHookResult<UseAssignmentDefinitionWizardReturn, Record<string, unknown>>> {
   const module = await loadUseAssignmentDefinitionWizard();
   const useAssignmentDefinitionWizard = module.useAssignmentDefinitionWizard as (
@@ -142,7 +147,7 @@ async function renderWizardHook(
   ) => UseAssignmentDefinitionWizardReturn;
 
   return renderHook(() => useAssignmentDefinitionWizard(properties), {
-    wrapper: createQueryWrapper(),
+    wrapper: createQueryWrapper(yearGroups),
   });
 }
 
@@ -186,7 +191,28 @@ async function triggerParseAndWait(wizardReference: {
   });
 }
 
+beforeEach(() => {
+  vi.resetAllMocks();
+});
+
 describe('useAssignmentDefinitionWizard', () => {
+  it('derives naturally sorted year-group options with stable key values', async () => {
+    const { result } = await renderWizardHook(
+      { open: true, mode: 'create', definitionKey: null, onClose: vi.fn() },
+      [
+        { key: 'year-11', name: 'Year 11' },
+        { key: 'year-9', name: 'Year 9' },
+        { key: 'year-10', name: 'Year 10' },
+      ]
+    );
+
+    expect(result.current.yearGroupOptions).toEqual([
+      { value: 'year-9', label: 'Year 9' },
+      { value: 'year-10', label: 'Year 10' },
+      { value: 'year-11', label: 'Year 11' },
+    ]);
+  });
+
   it('initialValues set selectedTopicKey and selectedYearGroupKey state', async () => {
     const { result } = await renderWizardHook({
       open: true,
