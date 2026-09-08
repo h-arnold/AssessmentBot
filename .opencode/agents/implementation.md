@@ -1,7 +1,7 @@
 ---
 description: Implements code changes in an idiomatic and type-safe manner with validated results
 mode: all
-model: opencode-go/hy3
+model: opencode-go/deepseek-v4-flash
 steps: 100
 ---
 

@@ -17,10 +17,12 @@ Sibling contracts:
 - [Contract: Assignment](assignment.md) — No direct relationship.
 - [Contract: Reference Data](reference-data.md) — No direct relationship.
 
-> **Planned changes — Not implemented** (SPEC.md v1.3, Application Authentication &
+> **Planned changes — partially implemented** (SPEC.md v1.3, Application Authentication &
 > Minimal Role Administration). The contract below documents current behaviour; the
 > following changes are planned and must be applied in lockstep across backend
-> transport, frontend Zod schemas, form schema/mapper, and settings panel:
+> transport, frontend Zod schemas, form schema/mapper, and settings panel. Items 1–3
+> (transport/frontend) remain unimplemented; item 4 (locked write path + 8KB cap) is
+> now implemented — see the [Persistence](#persistence) prose and key notes.
 >
 > 1. **Read transport:** `getBackendConfig` stops emitting `authGroupEmail` and
 >    `authMode` (persistence table rows 13–14 leave the read transport). Auth state is
@@ -34,12 +36,17 @@ Sibling contracts:
 >    drop both fields; `BackendSettingsFormSchema`, the form mapper, the
 >    `handleFinish` compulsory-once-set clearing guard, and `BackendSettingsPanel`
 >    auth-mode options (including `'none'`) are removed with them.
-> 4. **All configuration writes** (this endpoint included) serialise through the
->    script-wide `LockService.getScriptLock()` shared with `DbLockService`, re-read
->    the blob from storage under the lock, merge, and write once; the conservative
->    8KB blob cap is enforced on every write.
+> 4. **All configuration writes — IMPLEMENTED (ACTION_PLAN.md Section 2).** Every
+>    persistent configuration write serialises through the script-wide
+>    `LockService.getScriptLock()` shared with `DbLockService`; under the lock the raw
+>    blob is re-read from storage, merged by a mutator, and committed in a single write;
+>    the conservative 8KB blob cap is enforced before that write. This replaces the
+>    former per-field unlocked write loop inside `ConfigurationManager`. Note that
+>    `setBackendConfig_()` still calls one setter per supplied field, so a multi-field
+>    save takes the lock once per field — see the [Persistence](#persistence) key notes.
+>    Migrating that transport loop to a single locked write is Section 6 work.
 >
-> Remove this block and update the tables as each change lands.
+> Remove this block and update the tables as each remaining change lands.
 
 ---
 
@@ -53,6 +60,20 @@ All stored values are serialised as strings via `String(normalizedValue)` before
 written into the JSON blob. When read back, typed getter methods (e.g.
 `getBackendAssessorBatchSize()`) convert from strings to the expected types. The transport
 layer calls these typed getters and returns properly-typed values.
+
+All persistent writes now serialise through `ConfigurationManager.writeConfigurationLocked(mutator)`
+(implemented in ACTION_PLAN.md Section 2; see the planned-changes block, item 4). The facade's
+`setProperty()` and every typed `set*` method delegate to this single path. Under the shared
+script-wide `LockService.getScriptLock()` — the **same** lock the vendored JsonDbApp
+`DbLockService` uses (GAS script locks are **not reentrant**) — the path re-reads the raw
+`__CONFIG_STORE_KEY__` blob from storage (never the in-memory `configCache`), runs the mutator to
+produce the next config and merges it, checks the serialised blob against `MAX_CONFIG_BLOB_BYTES`
+(8192) **before** the single `setProperty` write, and releases the lock in a `finally` block.
+Contention throws an error with `code: 'CONFIG_LOCK_CONTENTION'` and `retriable: true`; an over-cap
+blob throws `code: 'CONFIG_BLOB_TOO_LARGE'` and `retriable: false`. Callers must never invoke a
+configuration write while a DB operation already holds the script lock (a caller-discipline rule the
+write path does not detect). The freshness probe `isFreshInstall()` runs `ensureInitialized()` then
+reads raw Script Properties for `__CONFIG_STORE_KEY__` absence (never the forgiving cache).
 
 The `ensureDefaultConfiguration()` method seeds defaultable fields on first boot if no
 prior configuration exists. Notable fields that are **not** seeded during initialisation:
@@ -80,7 +101,20 @@ seeded property.
 
 Key notes:
 
+- All configuration writes route through `writeConfigurationLocked(mutator)`; the shared script-wide
+  lock, raw re-read/merge/single write, and the 8KB cap (`MAX_CONFIG_BLOB_BYTES`, 8192) are enforced
+  on every write. Contention yields `CONFIG_LOCK_CONTENTION` (retriable); an over-cap blob yields
+  `CONFIG_BLOB_TOO_LARGE` (non-retriable). See the planned-changes block (item 4, implemented).
 - All values are stored as strings in the JSON blob. Typed getters convert on read.
+- The locked write path is a **persistence-layer** contract only. `setBackendConfig_()` still calls
+  one typed setter per supplied field, so each field takes and releases the lock independently and a
+  multi-field save is not yet a single atomic commit. Collapsing that loop into one locked write is
+  Section 6 work.
+- Mapping the `CONFIG_LOCK_CONTENTION` / `CONFIG_BLOB_TOO_LARGE` errors onto a retriable validation
+  failure envelope at the transport boundary is **not implemented**; it is later work (Sections 5–6).
+  Today they are caught by the `setBackendConfig_()` per-field `safeSet` and folded into the existing
+  aggregate `{ success: false, error }` string, which carries neither the `code` nor the `retriable`
+  flag to the caller (see discrepancy #10).
 - `hasApiKey` is not a stored field; it is derived at transport time from `!!rawApiKey`.
 - `apiKey`, `backendUrl`, `jsonDbRootFolderId`, and `authGroupEmail` are excluded from `ensureDefaultConfiguration()` seeding. Adding
   `AUTH_GROUP_EMAIL: ''` to `02_defaults.js` does **not** seed it — seeding runs via eight
@@ -364,16 +398,55 @@ None. BackendConfig is a standalone contract with no embedded sub-entities.
    The form mapper defaults a missing `authMode` to `googleGroups`.
    **Classification: Aligned** — deliberate deploy-order tolerance.
 
+9. **Persistence-table `authMode` row is stale after the Section 1 schema change.**
+   Row 14 still documents `googleGroups \| none` and "Default `googleGroups`", but
+   `01_configKeysAndSchema.js` now accepts only `googleGroups`/`scriptProperties` (`'none'` removed),
+   and `getAuthMode()` returns `null` when nothing resolves rather than defaulting to
+   `googleGroups`. The read transport therefore can now emit `authMode: null`, which
+   `BackendConfigSchema`'s `z.enum(['googleGroups', 'none']).optional()` would reject.
+   **Classification: Misaligned** — the row and the frontend enum are corrected in Sections 6–8, when
+   the auth fields leave this transport entirely. Rows left unchanged here deliberately, per the
+   Section 2 gate scope.
+
+   > Previously undocumented — surfaced during the Section 2 data-shapes gate.
+   > Origin: Section 1 (config schema and storage foundations).
+
+10. **Locked-write error codes are flattened by the `setBackendConfig` aggregate.**
+    `writeConfigurationLocked` throws errors carrying `code`
+    (`CONFIG_LOCK_CONTENTION` / `CONFIG_BLOB_TOO_LARGE`) and a `retriable` boolean, but
+    `setBackendConfig_()`'s `safeSet` catches them per field and appends only
+    `` `${name}: ${error?.message ?? 'REDACTED'}` `` to the aggregate string. Neither the code nor the
+    retriable flag reaches the frontend, so a client cannot distinguish a retriable contention from a
+    permanent validation rejection.
+    **Classification: Misaligned** — SPEC decision 12 requires contention to yield a _retriable_
+    validation error envelope. Delivering that envelope is Section 6 work.
+    → Recommended fix (code, not doc): map these codes at the transport boundary in Section 6.
+
+11. **Documented aggregate-error redaction does not match the implementation.**
+    This contract states each failed field appends `"${name}: REDACTED"`, but
+    `apiConfig.js` appends `` `${name}: ${error?.message ?? 'REDACTED'}` `` — the real validator
+    message is emitted, and `REDACTED` appears only when the error has no message. Validator messages
+    (e.g. "Auth Group Email cannot be cleared once set.") are not secrets, but the doc overstates the
+    guarantee, and the `apiKey` validator message would be the value carrier if it ever echoed input.
+    **Classification: Fragile** — the redaction promise is documentation-only. Left as-is here because
+    correcting the write-transport prose is Section 6 scope.
+
+    > Previously undocumented — surfaced during the Section 2 data-shapes gate.
+    > Origin: pre-existing, not introduced by this cycle.
+
 ---
 
 ## File Index
 
 ```
 Persistence:                 src/backend/ConfigurationManager/
-  ├── 01_configKeysAndSchema.js     — CONFIG_KEYS, CONFIG_SCHEMA
+  ├── 01_configKeysAndSchema.js     — CONFIG_KEYS, CONFIG_SCHEMA, MAX_CONFIG_BLOB_BYTES
   ├── 02_defaults.js               — DEFAULTS
-  ├── 98_ConfigurationManagerClass.js  — ConfigurationManager singleton
-  └── 03_validators.js             — Shared validators (API_KEY_PATTERN, etc.)
+  ├── 03_validators.js             — Shared validators (API_KEY_PATTERN, etc.)
+  ├── 96_ConfigurationManagerStorage.js — raw blob read/parse (safeParseConfigObject_)
+  ├── 97_ConfigurationManagerDefaults.js — ensureDefaultConfiguration() seeding
+  ├── 97_ConfigurationManagerLockedWrite.js — writeConfigurationLocked(), isFreshInstall()
+  └── 98_ConfigurationManagerClass.js  — ConfigurationManager singleton facade
 
 API handlers:                src/backend/z_Api/
   ├── apiConfig.js                 — getBackendConfig_(), setBackendConfig_()

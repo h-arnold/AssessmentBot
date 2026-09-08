@@ -347,6 +347,15 @@ describe('ConfigurationManager default backend configuration bootstrap', () => {
 
   it('seeds the default backend configuration once when the config store is empty', () => {
     const expectedDefaultStore = buildDefaultBackendConfigStore(ConfigurationManager);
+    // Back the raw store so each seeded write is visible to the locked write path's
+    // re-read of the next write (GAS persistence semantics).
+    const store = {};
+    mocks.PropertiesService.scriptProperties.getProperty.mockImplementation((key) =>
+      Object.hasOwn(store, key) ? store[key] : null
+    );
+    mocks.PropertiesService.scriptProperties.setProperty.mockImplementation((key, value) => {
+      store[key] = value;
+    });
     const result = configManager.ensureDefaultConfiguration();
 
     expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledTimes(8);

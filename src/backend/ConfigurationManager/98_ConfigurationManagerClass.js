@@ -1,124 +1,35 @@
+/* global ABLogger, BaseSingleton, ConfigurationManagerStorage, ConfigurationManagerDefaults,
+   ConfigurationManagerLockedWrite, DriveApp, GASPropertiesUtils, LockService, MAX_CONFIG_BLOB_BYTES,
+   PropertiesService, safeParseConfigObject_, Validate */
+
 /**
  * @class ConfigurationManager
- * @description A singleton class that manages configuration properties for the Google Slides Assessor application.
- * It provides methods to get and set various configuration properties that control the behavior of the application.
- * The class handles property validation, storage (using script properties), and provides convenient
- * accessor methods for all configuration values.
- *
- * @property {Object} scriptProperties - Reference to PropertiesService.getScriptProperties()
- * @property {Object|null} configCache - Cache of configuration properties
- *
- * @example
- * const config = ConfigurationManager.getInstance();
- * const backendAssessorBatchSize = config.getBackendAssessorBatchSize();
- * config.setApiKey('example-api-key');
- */
-
-/**
- * Safely parses a serialised configuration object from JSON.
- * Returns an empty object if parsing fails or input is invalid.
- * @param {string} serialisedConfig - Serialised JSON configuration string.
- * @returns {Object} Parsed configuration object, or empty object on failure.
- */
-function safeParseConfigObject_(serialisedConfig) {
-  if (serialisedConfig == null || serialisedConfig === '') {
-    return {};
-  }
-
-  try {
-    const parsed = JSON.parse(serialisedConfig);
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      return {};
-    }
-    return parsed;
-  } catch (error) {
-    ABLogger.getInstance().error('safeParseConfigObject_ failed to parse configuration.', error);
-    return {};
-  }
-}
-
-/**
- *
+ * @description Facade for application configuration. Preserves the full public surface and delegates storage,
+ *   default seeding, and the locked write path to numbered sub-classes (96_ConfigurationManagerStorage.js,
+ *   97_ConfigurationManagerDefaults.js, 97_ConfigurationManagerLockedWrite.js). Every write serialises through
+ *   writeConfigurationLocked, which acquires the script-wide LockService.getScriptLock() (the same lock the vendored
+ *   JsonDbApp DbLockService uses), re-reads the RAW blob under the lock, runs the mutator, enforces the 8KB cap, and
+ *   commits once. The lock is not reentrant; callers must never write config while a DB operation already holds it.
  */
 class ConfigurationManager extends BaseSingleton {
   /**
-   * Initialises the ConfigurationManager singleton.
-   * NOTE: Do NOT perform any heavy work (PropertiesService access)
-   * in the constructor. Use ConfigurationManager.getInstance() to obtain the singleton.
-   * All getters/setters will transparently call ensureInitialized() before touching persisted state.
-   * The constructor is intentionally lightweight so tests can assert no side-effects before first real use.
-   * @param {boolean} isSingletonCreator - Indicates if this is the initial singleton creation.
+   * Constructs the ConfigurationManager facade, wiring the delegated sub-classes.
+   * @param {boolean} [isSingletonCreator=false] - Whether this instance is the singleton creator.
+   * @param {Object} [options={}] - Dependency-injection overrides for testing (storage/defaults/lock sub-classes).
+   * @returns {void} No return value.
    */
-  constructor(isSingletonCreator = false) {
-    super();
-    /**
-     * JSDoc Singleton Banner
-     * Use ConfigurationManager.getInstance(); do not call constructor directly.
-     */
-    // Defer PropertiesService access
-    this.scriptProperties = null;
-    this.configCache = null;
+  constructor(isSingletonCreator = false, options = {}) {
+    super(isSingletonCreator);
     this._initialized = false;
-    if (!ConfigurationManager._instance) {
-      ConfigurationManager._instance = this;
-    }
+    this.configCache = null;
+    this._storage = options.storage ?? new ConfigurationManagerStorage(this);
+    this._defaults = options.defaults ?? new ConfigurationManagerDefaults(this);
+    this._lockedWrite = options.lock ?? new ConfigurationManagerLockedWrite(this);
   }
-
-  /**
-   * Resets the singleton cache for tests.
-   * @returns {void}
-   */
-  static resetForTests() {
-    super.resetForTests();
-    ConfigurationManager._instance = null;
-  }
-
-  /**
-   * Gets the API key pattern regex.
-   * An alphanumeric prefix followed by an underscore and exactly 32 base64url characters (A-Z, a-z, 0-9, hyphen, underscore).
-   * @returns {RegExp} Pattern for validating API keys.
-   */
-  static get API_KEY_PATTERN() {
-    // An alphanumeric prefix followed by an underscore and exactly 32 base64url characters
-    return ConfigurationManager._API_KEY_PATTERN || API_KEY_PATTERN;
-  }
-  /**
-   * Gets the Google Drive folder/file ID pattern regex.
-   * @returns {RegExp} Pattern for validating Google Drive folder/file IDs.
-   */
-  static get DRIVE_ID_PATTERN() {
-    // Basic Google drive file/folder id heuristic
-    return ConfigurationManager._DRIVE_ID_PATTERN || DRIVE_ID_PATTERN;
-  }
-
-  /**
-   * Gets the supported JSON database log levels.
-   * @returns {Array<string>} Array of valid log level strings.
-   */
-  static get JSON_DB_LOG_LEVELS() {
-    return ConfigurationManager._JSON_DB_LOG_LEVELS || JSON_DB_LOG_LEVELS;
-  }
-
-  /**
-   * Gets the configuration store key used for persisting all settings.
-   * @returns {string} The key for retrieving stored configuration data.
-   */
-  static get CONFIG_STORE_KEY() {
-    return ConfigurationManager._CONFIG_STORE_KEY || '__CONFIG_STORE_KEY__';
-  }
-
-  /**
-   * Canonical accessor – always use this instead of `new`.
-   */
-
-  /**
-   * Initialises the ConfigurationManager on first access to Apps Script services.
-   * Safe to call multiple times; performs lazy initialisation of PropertiesService handles only once.
-   * @returns {void}
-   */
+  /** Initialises handles on first access; safe to call multiple times.
+   * @returns {void} No return value. */
   ensureInitialized() {
     if (this._initialized) return;
-    // Acquire handles lazily
     this.scriptProperties = this.scriptProperties || GASPropertiesUtils.getScriptProperties();
     if (globalThis.__TRACE_SINGLETON__)
       ABLogger.getInstance().debug('[TRACE][HeavyInit] ConfigurationManager.ensureInitialized');
@@ -136,27 +47,38 @@ class ConfigurationManager extends BaseSingleton {
       }
     }
   }
-
-  /**
-   * Gets the configuration keys constant.
-   * @returns {Object} Object mapping configuration key names to their identifiers.
-   */
+  /** Gets the configuration keys constant.
+   * @returns {Object} The config keys. */
   static get CONFIG_KEYS() {
     return ConfigurationManager._CONFIG_KEYS || CONFIG_KEYS;
   }
-  /**
-   * Gets the configuration schema constant.
-   * @returns {Object} Object defining validation and normalisation rules for each configuration key.
-   */
+  /** Gets the configuration schema constant.
+   * @returns {Object} The config schema. */
   static get CONFIG_SCHEMA() {
     return ConfigurationManager._CONFIG_SCHEMA || CONFIG_SCHEMA;
   }
-
-  /**
-   * Retrieves all cached configuration properties, deserialising from storage if necessary.
-   * Lazy-loads the configuration cache on first access.
-   * @returns {Object} The complete configuration object mapping all configuration keys to their current values.
-   */
+  /** Gets the API key validation pattern.
+   * @returns {RegExp} The API key pattern. */
+  static get API_KEY_PATTERN() {
+    return ConfigurationManager._API_KEY_PATTERN || API_KEY_PATTERN;
+  }
+  /** Gets the Google Drive folder ID validation pattern.
+   * @returns {RegExp} The folder ID pattern. */
+  static get DRIVE_ID_PATTERN() {
+    return ConfigurationManager._DRIVE_ID_PATTERN || DRIVE_ID_PATTERN;
+  }
+  /** Gets the JSON DB log levels constant.
+   * @returns {Object} The log levels. */
+  static get JSON_DB_LOG_LEVELS() {
+    return ConfigurationManager._JSON_DB_LOG_LEVELS || JSON_DB_LOG_LEVELS;
+  }
+  /** Gets the Script Properties key for the config blob.
+   * @returns {string} The store key. */
+  static get CONFIG_STORE_KEY() {
+    return ConfigurationManager._CONFIG_STORE_KEY || '__CONFIG_STORE_KEY__';
+  }
+  /** Returns the cached config, deserialising from storage on first access.
+   * @returns {Object} The config object. */
   getAllConfigurations() {
     this.ensureInitialized();
     if (!this.configCache) {
@@ -166,60 +88,43 @@ class ConfigurationManager extends BaseSingleton {
     }
     return this.configCache;
   }
-
-  /**
-   * Persists the default backend configuration the first time it is needed.
-   * Returns immediately when any configuration has already been stored.
-   * @returns {Object} The current configuration cache.
-   */
+  /** Seeds default backend configuration once, then returns the cache.
+   * @returns {Object} The config cache. */
   ensureDefaultConfiguration() {
-    const config = this.getAllConfigurations();
-    if (Object.keys(config).length > 0) {
-      return config;
-    }
-
-    this.setBackendAssessorBatchSize(this.getBackendAssessorBatchSize());
-    this.setSlidesFetchBatchSize(this.getSlidesFetchBatchSize());
-    this.setRevokeAuthTriggerSet(this.getRevokeAuthTriggerSet());
-    this.setDaysUntilAuthRevoke(this.getDaysUntilAuthRevoke());
-    this.setJsonDbMasterIndexKey(this.getJsonDbMasterIndexKey());
-    this.setJsonDbLockTimeoutMs(this.getJsonDbLockTimeoutMs());
-    this.setJsonDbLogLevel(this.getJsonDbLogLevel());
-    this.setJsonDbBackupOnInitialise(this.getJsonDbBackupOnInitialise());
-
-    return this.configCache;
+    return this._defaults.ensureDefaultConfiguration();
   }
-
-  /**
-   * Checks whether a configuration property exists in the cache.
+  /** The single serialisation point for all configuration writes.
+   * @param {function(Object):Object} mutator - Produces next config from current.
+   * @returns {void} No return value. */
+  writeConfigurationLocked(mutator) {
+    this._lockedWrite.writeConfigurationLocked(mutator);
+  }
+  /** Freshness probe; reads RAW storage, never the cache.
+   * @returns {boolean} True when the key is absent. */
+  isFreshInstall() {
+    return this._lockedWrite.isFreshInstall();
+  }
+  /** Checks whether a property exists.
    * @param {string} key - The configuration property key to check.
-   * @returns {boolean} True if the property exists; false otherwise.
-   */
+   * @returns {boolean} True if present. */
   hasProperty(key) {
     this.getAllConfigurations();
     return Object.hasOwn(this.configCache, key);
   }
-
-  /**
-   * Retrieves a configuration property value as a string.
-   * Returns an empty string if the property does not exist.
+  /** Retrieves a property value as a string.
    * @param {string} key - The configuration property key to retrieve.
-   * @returns {string} The property value, or empty string if not found.
-   */
+   * @returns {string} The value, or empty string. */
   getProperty(key) {
     this.ensureInitialized();
     this.getAllConfigurations();
     return this.configCache[key] || '';
   }
-
   /**
-   * Sets a configuration property value, with validation and normalisation according to the configuration schema.
-   * Persists the updated configuration to script properties and updates the local cache.
-   * @param {string} key - The configuration property key to set.
-   * @param {*} value - The value to set. Will be validated and normalised according to the schema definition.
-   * @returns {void}
-   * @throws {Error} If persistence to script properties fails.
-   */
+   * Sets a property via schema validation then the locked write path.
+   * @param {string} key - The configuration property key.
+   * @param {*} value - The value to set.
+   * @returns {void} No return value.
+   * @throws {Error} If persistence to script properties fails. */
   setProperty(key, value) {
     this.ensureInitialized();
     this.getAllConfigurations();
@@ -227,41 +132,20 @@ class ConfigurationManager extends BaseSingleton {
     const canonical = spec?.validate ? spec.validate(value, this) : value;
     const normalisedValue = spec?.normalise ? spec.normalise(canonical) : canonical;
     const serialisedValue = String(normalisedValue);
-    const updatedConfig = {
-      ...this.configCache,
-      [key]: serialisedValue,
-    };
-
-    try {
-      this.scriptProperties.setProperty(
-        ConfigurationManager.CONFIG_STORE_KEY,
-        JSON.stringify(updatedConfig)
-      );
-      this.configCache[key] = serialisedValue;
-    } catch (persistError) {
-      ABLogger.getInstance().error(
-        `ConfigurationManager: Failed to persist configuration key "${key}".`,
-        { key, cause: persistError }
-      );
-      throw persistError;
-    }
+    // The locked write path re-reads the RAW blob under the lock; use that fresh
+    // snapshot as the merge base so a concurrent writer's changes are never clobbered.
+    this.writeConfigurationLocked((current) => ({ ...current, [key]: serialisedValue }));
   }
-
-  /**
-   * Validates an API key against the configured API key pattern.
-   * @param {string} apiKey - The API key string to validate.
-   * @returns {boolean} True if the API key matches the validation pattern; false otherwise.
-   */
+  /** Validates an API key against the configured pattern.
+   * @param {string} apiKey - The API key to validate.
+   * @returns {boolean} True if valid. */
   isValidApiKey(apiKey) {
     const pattern = ConfigurationManager.API_KEY_PATTERN;
     return Validate.isString(apiKey) && pattern.test(apiKey.trim());
   }
-
-  /**
-   * Validates a Google Drive folder ID by checking its format and verifying it exists via DriveApp.
+  /** Validates a Google Drive folder ID by format and DriveApp access.
    * @param {string} folderId - The Google Drive folder ID to validate.
-   * @returns {boolean} True if the folder ID is valid and accessible; false otherwise.
-   */
+   * @returns {boolean} True if valid and accessible. */
   isValidGoogleDriveFolderId(folderId) {
     if (!folderId || !Validate.isString(folderId)) return false;
     const trimmed = folderId.trim();
@@ -281,11 +165,8 @@ class ConfigurationManager extends BaseSingleton {
       return false;
     }
   }
-
-  /**
-   * Retrieves the configured batch size for backend assessor operations.
-   * @returns {number} The batch size, constrained between 1 and 500.
-   */
+  /** Gets the backend assessor batch size.
+   * @returns {number} Backend assessor batch size (1–500). */
   getBackendAssessorBatchSize() {
     return this.getIntConfig(
       ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE,
@@ -293,19 +174,13 @@ class ConfigurationManager extends BaseSingleton {
       { min: 1, max: 500 }
     );
   }
-
-  /**
-   * Gets the default configuration values across all configuration keys.
-   * @returns {Object} Object containing default values for all configuration keys.
-   */
+  /** Gets the default configuration values.
+   * @returns {Object} The default values. */
   static get DEFAULTS() {
     return ConfigurationManager._DEFAULTS || DEFAULTS;
   }
-
-  /**
-   * Retrieves the configured batch size for Slides fetch operations.
-   * @returns {number} The batch size, constrained between 1 and 100.
-   */
+  /** Gets the Slides fetch batch size.
+   * @returns {number} Slides fetch batch size (1–100). */
   getSlidesFetchBatchSize() {
     return this.getIntConfig(
       ConfigurationManager.CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE,
@@ -313,104 +188,56 @@ class ConfigurationManager extends BaseSingleton {
       { min: 1, max: 100 }
     );
   }
-
-  /**
-   * Retrieves the configured API key for external service authentication.
-   * @returns {string} The API key, or empty string if not configured.
-   */
+  /** Gets the configured API key.
+   * @returns {string} The API key. */
   getApiKey() {
     return this.getProperty(ConfigurationManager.CONFIG_KEYS.API_KEY);
   }
-
-  /**
-   * Retrieves the configured Google Group email for auth group membership checks.
-   * Returns empty string when unset or blank (fail-open bootstrap state).
-   * @returns {string} The auth group email, or empty string if not configured.
-   */
+  /** Gets the auth group email (empty when unset).
+   * @returns {string} The auth group email. */
   getAuthGroupEmail() {
     return this.getProperty(ConfigurationManager.CONFIG_KEYS.AUTH_GROUP_EMAIL);
   }
-
-  /**
-   * Sets the configured Google Group email for auth group membership checks.
-   * @param {string} value - The Google Group email address to store.
-   * @returns {void}
-   */
+  /** Stores the Google Group email.
+   * @param {string} value - The Google Group email to store.
+   * @returns {void} No return value. */
   setAuthGroupEmail(value) {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.AUTH_GROUP_EMAIL, value);
   }
-
   /**
-   * Returns the configured authentication mode.
-   *
-   * @remarks
-   * Forgiving transport getter: this method must never throw. It returns the stored
-   * valid mode (`'googleGroups'` or `'scriptProperties'`), or applies the single
-   * documented leniency — an absent (or blank, which `getProperty` cannot distinguish
-   * from absent) mode paired with a non-blank group email reads as `'googleGroups'`,
-   * matching legacy blobs and `validateAuthStateStrict_`. Every other state resolves to
-   * `null`: stored `'none'`, any unrecognised value (even alongside a non-blank group
-   * email), and an absent/blank mode without a group. The strict, fail-closed security
-   * read (`validateAuthStateStrict_`) then denies access in the access-resolution path.
-   * Deny decisions therefore never live here; this getter is best-effort transport only.
-   *
-   * @returns {'googleGroups'|'scriptProperties'|null} The active authentication mode, or `null` when unresolved.
-   */
+   * Forgiving transport getter; never throws. Returns a valid stored mode (`googleGroups`/`scriptProperties`),
+   * or applies the single leniency (absent/blank mode paired with a non-blank group email reads as `googleGroups`);
+   * otherwise `null`.
+   * @returns {'googleGroups'|'scriptProperties'|null} The active auth mode, or null when unresolved. */
   getAuthMode() {
     const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.AUTH_MODE);
-    if (value === 'googleGroups' || value === 'scriptProperties') {
-      return value;
-    }
-    // Stored 'none' and unrecognised modes never benefit from the leniency; only a
-    // genuinely absent or blank stored mode does (getProperty yields '' for both).
-    if (value !== '') {
-      return null;
-    }
-    // Forgiving: never throw. Apply the single leniency for an absent/blank mode that
-    // is paired with a non-blank group email (legacy groups install).
+    if (value === 'googleGroups' || value === 'scriptProperties') return value;
+    if (value !== '') return null;
     const group = this.getProperty(ConfigurationManager.CONFIG_KEYS.AUTH_GROUP_EMAIL);
-    if (String(group).trim() !== '') {
-      return 'googleGroups';
-    }
+    if (String(group).trim() !== '') return 'googleGroups';
     return null;
   }
-
-  /**
-   * Persists the authentication mode.
-   *
-   * @remarks
-   * Routes through the `CONFIG_SCHEMA` validator, so only `'googleGroups'` and
-   * `'scriptProperties'` are accepted; the removed `'none'` mode and any unrecognised
-   * value are rejected by the schema.
-   * @param {'googleGroups'|'scriptProperties'} value - The authentication mode to store.
-   * @throws {Error} If the value is not a valid auth mode (validated by CONFIG_SCHEMA).
-   */
+  /** Stores the authentication mode.
+   * @param {'googleGroups'|'scriptProperties'} value - The auth mode to store.
+   * @returns {void} No return value.
+   * @throws {Error} If invalid. */
   setAuthMode(value) {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.AUTH_MODE, value);
   }
-
-  /**
-   * Retrieves the configured URL for the backend service endpoint.
-   * @returns {string} The backend URL, or empty string if not configured.
-   */
+  /** Gets the backend URL.
+   * @returns {string} The backend URL. */
   getBackendUrl() {
     return this.getProperty(ConfigurationManager.CONFIG_KEYS.BACKEND_URL);
   }
-
-  /**
-   * Retrieves whether the authentication revocation trigger is currently active.
-   * @returns {boolean} True if the revoke auth trigger is set; false otherwise.
-   */
+  /** Tells whether the revoke-auth trigger is set.
+   * @returns {boolean} True if set. */
   getRevokeAuthTriggerSet() {
     return ConfigurationManager.toBoolean(
       this.getProperty(ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET)
     );
   }
-
-  /**
-   * Retrieves the number of days until authentication credentials are automatically revoked.
-   * @returns {number} The number of days, constrained between 1 and 365.
-   */
+  /** Gets days until auth revoke.
+   * @returns {number} Days until auth revoke (1–365). */
   getDaysUntilAuthRevoke() {
     return this.getIntConfig(
       ConfigurationManager.CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE,
@@ -418,20 +245,14 @@ class ConfigurationManager extends BaseSingleton {
       { min: 1, max: 365 }
     );
   }
-
-  /**
-   * Retrieves the master index key for the JSON database.
-   * @returns {string} The master index key, or the default if not configured.
-   */
+  /** Gets the JSON DB master index key (or default).
+   * @returns {string} The master index key. */
   getJsonDbMasterIndexKey() {
     const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_MASTER_INDEX_KEY);
     return value || ConfigurationManager.DEFAULTS.JSON_DB_MASTER_INDEX_KEY;
   }
-
-  /**
-   * Retrieves the lock acquisition timeout for JSON database operations in milliseconds.
-   * @returns {number} The timeout in milliseconds, constrained between 1000 and 600000.
-   */
+  /** Gets the JSON DB lock timeout in ms.
+   * @returns {number} Timeout in ms (1000–600000). */
   getJsonDbLockTimeoutMs() {
     return this.getIntConfig(
       ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS,
@@ -439,177 +260,123 @@ class ConfigurationManager extends BaseSingleton {
       { min: 1000, max: 600000 }
     );
   }
-
-  /**
-   * Retrieves the log level for JSON database operations.
-   * @returns {string} The log level in uppercase (INFO, DEBUG, WARN, ERROR), or the default if not configured.
-   */
+  /** Gets the JSON DB log level in uppercase (or default).
+   * @returns {string} The log level. */
   getJsonDbLogLevel() {
     const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_LOG_LEVEL);
-    if (!value) {
-      return ConfigurationManager.DEFAULTS.JSON_DB_LOG_LEVEL;
-    }
+    if (!value) return ConfigurationManager.DEFAULTS.JSON_DB_LOG_LEVEL;
     return String(value).trim().toUpperCase();
   }
-
-  /**
-   * Retrieves whether the JSON database performs automatic backup on initialisation.
-   * @returns {boolean} True if backup on initialisation is enabled; false otherwise.
-   */
+  /** Tells whether JSON DB backups on initialise.
+   * @returns {boolean} True if enabled. */
   getJsonDbBackupOnInitialise() {
     const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_BACKUP_ON_INITIALISE);
-    if (value == null || value === '') {
+    if (value == null || value === '')
       return ConfigurationManager.DEFAULTS.JSON_DB_BACKUP_ON_INITIALISE;
-    }
     return ConfigurationManager.toBoolean(value);
   }
-
-  /**
-   * Retrieves the Google Drive folder ID where JSON database files are stored.
-   * @returns {string} The folder ID, or the default if not configured.
-   */
+  /** Gets the JSON DB root folder ID (or default).
+   * @returns {string} The folder ID. */
   getJsonDbRootFolderId() {
     const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID);
-    if (value == null || String(value).trim() === '') {
+    if (value == null || String(value).trim() === '')
       return ConfigurationManager.DEFAULTS.JSON_DB_ROOT_FOLDER_ID;
-    }
     return String(value).trim();
   }
-
-  /**
-   * Sets the batch size for backend assessor operations.
-   * @param {number} batchSize - The batch size to configure, typically between 1 and 500.
-   * @returns {void}
-   */
+  /** Stores the backend assessor batch size.
+   * @param {number} batchSize - Backend assessor batch size.
+   * @returns {void} No return value. */
   setBackendAssessorBatchSize(batchSize) {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE, batchSize);
   }
-
-  /**
-   * Sets the batch size for Slides fetch operations.
-   * @param {number} batchSize - The batch size to configure, typically between 1 and 100.
-   * @returns {void}
-   */
+  /** Stores the Slides fetch batch size.
+   * @param {number} batchSize - Slides fetch batch size.
+   * @returns {void} No return value. */
   setSlidesFetchBatchSize(batchSize) {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE, batchSize);
   }
-
-  /**
-   * Sets the API key for external service authentication.
+  /** Stores the API key.
    * @param {string} apiKey - The API key to store.
-   * @returns {void}
-   */
+   * @returns {void} No return value. */
   setApiKey(apiKey) {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.API_KEY, apiKey);
   }
-
-  /**
-   * Sets the URL for the backend service endpoint.
+  /** Stores the backend URL.
    * @param {string} url - The backend URL to store.
-   * @returns {void}
-   */
+   * @returns {void} No return value. */
   setBackendUrl(url) {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.BACKEND_URL, url);
   }
-
-  /**
-   * Sets the master index key for the JSON database.
-   * @param {string} masterIndexKey - The master index key to store.
-   * @returns {void}
-   */
+  /** Stores the JSON DB master index key.
+   * @param {string} masterIndexKey - The master index key.
+   * @returns {void} No return value. */
   setJsonDbMasterIndexKey(masterIndexKey) {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_MASTER_INDEX_KEY, masterIndexKey);
   }
-
-  /**
-   * Sets the lock acquisition timeout for JSON database operations in milliseconds.
-   * @param {number} timeoutMs - The timeout duration in milliseconds.
-   * @returns {void}
-   */
+  /** Stores the JSON DB lock timeout in ms.
+   * @param {number} timeoutMs - JSON DB lock timeout in ms.
+   * @returns {void} No return value. */
   setJsonDbLockTimeoutMs(timeoutMs) {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS, timeoutMs);
   }
-
-  /**
-   * Sets the log level for JSON database operations.
-   * @param {string} logLevel - The log level to configure (INFO, DEBUG, WARN, ERROR).
-   * @returns {void}
-   */
+  /** Stores the JSON DB log level.
+   * @param {string} logLevel - JSON DB log level (INFO/DEBUG/WARN/ERROR).
+   * @returns {void} No return value. */
   setJsonDbLogLevel(logLevel) {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_LOG_LEVEL, logLevel);
   }
-
-  /**
-   * Configures whether the JSON database performs automatic backup on initialisation.
-   * @param {boolean} flag - True to enable backup on initialisation; false to disable.
-   * @returns {void}
-   */
+  /** Enables or disables JSON DB backup on initialise.
+   * @param {boolean} flag - Enable backup on initialise.
+   * @returns {void} No return value. */
   setJsonDbBackupOnInitialise(flag) {
     this.setProperty(
       ConfigurationManager.CONFIG_KEYS.JSON_DB_BACKUP_ON_INITIALISE,
       ConfigurationManager.toBoolean(flag)
     );
   }
-
-  /**
-   * Sets the Google Drive folder ID where JSON database files are stored.
-   * @param {string} folderId - The folder ID to store.
-   * @returns {void}
-   */
+  /** Stores the JSON DB root folder ID.
+   * @param {string} folderId - The JSON DB root folder ID.
+   * @returns {void} No return value. */
   setJsonDbRootFolderId(folderId) {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID, folderId);
   }
-
-  /**
-   * Configures whether the authentication revocation trigger is active.
-   * @param {boolean} flag - True to activate the revoke auth trigger; false to deactivate.
-   * @returns {void}
-   */
+  /** Activates or deactivates the revoke-auth trigger.
+   * @param {boolean} flag - Activate the revoke-auth trigger.
+   * @returns {void} No return value. */
   setRevokeAuthTriggerSet(flag) {
     this.setProperty(
       ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET,
       ConfigurationManager.toBoolean(flag)
     );
   }
-
-  /**
-   * Sets the number of days until authentication credentials are automatically revoked.
-   * @param {number} days - The number of days until revocation, typically between 1 and 365.
-   * @returns {void}
-   */
+  /** Stores days until auth revoke.
+   * @param {number} days - Days until auth revoke.
+   * @returns {void} No return value. */
   setDaysUntilAuthRevoke(days) {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE, days);
   }
-
-  /**
-   * Converts a value to a strict boolean, treating truthy/falsy values according to conversion rules.
-   * @param {*} value - The value to convert to a boolean.
-   * @returns {boolean} The boolean representation of the input value.
-   */
+  /** Converts a value to a strict boolean.
+   * @param {*} value - The value to convert.
+   * @returns {boolean} The boolean representation. */
   static toBoolean(value) {
     const toBooleanFunction = ConfigurationManager._toBoolean || toBoolean_;
     return toBooleanFunction(value);
   }
-  /**
-   * Converts a value to a string representation of a boolean.
+  /** Converts a value to its boolean string form.
    * @param {*} value - The value to convert.
-   * @returns {string} The string representation of the boolean value (e.g., 'true' or 'false').
-   */
+   * @returns {string} The string representation ('true'/'false'). */
   static toBooleanString(value) {
     const toBooleanStringFunction = ConfigurationManager._toBooleanString || toBooleanString_;
     return toBooleanStringFunction(value);
   }
-
   /**
-   * Retrieves an integer configuration value with validation and fallback to a default.
-   * Parses the property value as an integer and validates it falls within the specified range.
-   * @param {string} key - The configuration property key to retrieve.
-   * @param {number} fallback - The default value to return if parsing fails or value is out of range.
-   * @param {Object} options - Range validation options.
+   * Retrieves an integer config with range validation and default fallback.
+   * @param {string} key - The config key.
+   * @param {number} fallback - The default when parsing fails or value is out of range.
+   * @param {Object} [options={}] - Range validation options.
    * @param {number} [options.min=Number.MIN_SAFE_INTEGER] - Minimum allowed value (inclusive).
    * @param {number} [options.max=Number.MAX_SAFE_INTEGER] - Maximum allowed value (inclusive).
-   * @returns {number} The parsed integer value if valid; otherwise the fallback value.
-   */
+   * @returns {number} The parsed integer, or the fallback. */
   getIntConfig(
     key,
     fallback,
@@ -627,40 +394,44 @@ const ConfigurationManagerProxy = new Proxy(ConfigurationManager, {
     if (target._instance) {
       return target._instance;
     }
-
     const instance = Reflect.construct(target, arguments_, newTarget);
     target._instance = instance;
     return instance;
   },
 });
 
-// When running under Node (tests) bring in the supporting constants and helpers
-// from sibling modules. In Apps Script these are expected to be available on
-// the global scope so we only require them for the test environment to avoid
-// changing runtime behaviour.
+// Node/Vitest wiring: constants, helpers and sub-classes come from the global scope via numeric-prefix load
+// order in GAS; this block only runs under Node and attaches them to globalThis.
 if (typeof module !== 'undefined' && module.exports) {
-  const { CONFIG_KEYS: _CK, CONFIG_SCHEMA: _CS } = require('./01_configKeysAndSchema');
+  const schema = require('./01_configKeysAndSchema');
   const { DEFAULTS: _DEF } = require('./02_defaults');
   const validators = require('./03_validators');
-
-  ConfigurationManager._CONFIG_KEYS = _CK;
-  ConfigurationManager._CONFIG_SCHEMA = _CS;
-  ConfigurationManager._DEFAULTS = _DEF;
-  ConfigurationManager._API_KEY_PATTERN = validators.API_KEY_PATTERN;
-  ConfigurationManager._DRIVE_ID_PATTERN = validators.DRIVE_ID_PATTERN;
-  ConfigurationManager._JSON_DB_LOG_LEVELS = validators.JSON_DB_LOG_LEVELS;
-  ConfigurationManager._CONFIG_STORE_KEY = '__CONFIG_STORE_KEY__';
-  ConfigurationManager._toBoolean = validators.toBoolean_;
-  ConfigurationManager._toBooleanString = validators.toBooleanString_;
+  const storage = require('./96_ConfigurationManagerStorage');
+  const defaultsConcern = require('./97_ConfigurationManagerDefaults');
+  const lockedWrite = require('./97_ConfigurationManagerLockedWrite');
+  Object.assign(ConfigurationManager, {
+    _CONFIG_KEYS: schema.CONFIG_KEYS,
+    _CONFIG_SCHEMA: schema.CONFIG_SCHEMA,
+    _DEFAULTS: _DEF,
+    _API_KEY_PATTERN: validators.API_KEY_PATTERN,
+    _DRIVE_ID_PATTERN: validators.DRIVE_ID_PATTERN,
+    _JSON_DB_LOG_LEVELS: validators.JSON_DB_LOG_LEVELS,
+    _CONFIG_STORE_KEY: '__CONFIG_STORE_KEY__',
+    _toBoolean: validators.toBoolean_,
+    _toBooleanString: validators.toBooleanString_,
+  });
+  Object.assign(globalThis, {
+    ConfigurationManagerStorage: storage.ConfigurationManagerStorage,
+    ConfigurationManagerDefaults: defaultsConcern.ConfigurationManagerDefaults,
+    ConfigurationManagerLockedWrite: lockedWrite.ConfigurationManagerLockedWrite,
+    safeParseConfigObject_: storage.safeParseConfigObject_,
+    MAX_CONFIG_BLOB_BYTES: schema.MAX_CONFIG_BLOB_BYTES,
+  });
+  module.exports = ConfigurationManagerProxy;
 }
 
 if (!globalThis.__CONFIG_MANAGER_STATICS_INITIALISED__) {
   globalThis.__CONFIG_MANAGER_STATICS_INITIALISED__ = true;
-}
-
-// For module exports (testing)
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = ConfigurationManagerProxy;
 }
 
 if (typeof globalThis !== 'undefined') {

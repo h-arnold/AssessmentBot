@@ -204,7 +204,16 @@ Backend config schema tests:
 
 ### Implementation notes / deviations / follow-up
 
-- To be completed during implementation.
+- **Completed (commit `69069d6`, pushed to `feat/ScriptPropertiesAuthService`):**
+  schema validators, strict security read, forgiving getter, and 8KB cap constant
+  landed with 2,017 backend tests passing and a clean Code Reviewer re-review.
+- The Section 1 regression check identified a transient warning delta because
+  `98_ConfigurationManagerClass.js` grew from 647 to 668 lines. This was resolved by
+  the mandatory Section 2 decomposition; no `ConfigurationManager` max-lines warning
+  remains.
+- Shared-helper decision: the auth validators remain local to
+  `01_configKeysAndSchema.js`; no existing generic helper covered positive-integer
+  strings without weakening the domain contract.
 
 ---
 
@@ -306,7 +315,32 @@ Backend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- To be completed during implementation.
+- **Implementation and review complete; commit gate in progress.**
+- Added `96_ConfigurationManagerStorage.js` (81 lines),
+  `97_ConfigurationManagerDefaults.js` (57 lines), and
+  `97_ConfigurationManagerLockedWrite.js` (118 lines). The facade remains at the
+  import-compatible `98_ConfigurationManagerClass.js` path and is 424 lines; this is
+  above the approximate 150-line target because it preserves and delegates the full
+  existing public method surface, but is below both the 500-line lint threshold and
+  the mandatory 550-line section limit.
+- Builder ordering was verified from the locale-sorted backend-copy step: `96_` and
+  both `97_` siblings evaluate before the `98_` facade.
+- The first Green review found that real setters merged from stale `configCache`.
+  A failing real-setter concurrency test was added, then `setProperty` was corrected
+  to merge from the locked callback's fresh `current` snapshot. Re-review: **CLEAN**.
+- Section checks before the regression gate: focused suite 11/11; ConfigurationManager
+  suites 168/168; full backend suite 2,028/2,028; backend lint has zero errors and only
+  12 accepted unrelated max-lines warnings. The Section 1 `ConfigurationManager`
+  max-lines warning is cleared.
+- Data-shape gate complete: `backend-config.md` marks locked persistence and the 8KB
+  cap implemented while retaining planned markers for transport/frontend work.
+- Regression gate passed against the original branch baseline on 2026-09-08:
+  **0 regressions, 0 new failures, 1 fix**. All eight checks are unchanged or
+  improved; `backend-lint-check` retains 12 accepted pre-existing unrelated
+  max-lines warnings, and the `ConfigurationManager` warning is removed.
+- Shared-helper decision implemented as planned: `writeConfigurationLocked(mutator)`
+  is owned by `ConfigurationManagerLockedWrite` and exposed through the facade as the
+  single serialisation point for persistent configuration setters.
 
 ---
 
