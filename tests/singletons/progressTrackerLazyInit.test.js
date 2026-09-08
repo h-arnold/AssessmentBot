@@ -16,7 +16,6 @@ const _vi =
 const mockSetProperty = _vi.fn();
 const mockGetProperty = _vi.fn();
 const mockDeleteProperty = _vi.fn();
-const mockSerialiseProperties = _vi.fn();
 
 const FakeConfigurationManager = {};
 
@@ -32,10 +31,6 @@ beforeEach(() => {
     })),
   };
 
-  globalThis.PropertiesCloner = function () {
-    return { serialiseProperties: mockSerialiseProperties };
-  };
-
   // Set up ConfigurationManager mock
   origConfigMgr = globalThis.ConfigurationManager;
   FakeConfigurationManager.getInstance = _vi.fn(() => ({}));
@@ -44,7 +39,6 @@ beforeEach(() => {
   mockSetProperty.mockReset();
   mockGetProperty.mockReset();
   mockDeleteProperty.mockReset();
-  mockSerialiseProperties.mockReset();
 });
 
 afterEach(() => {
@@ -75,8 +69,5 @@ describe('ProgressTracker lazy initialization', () => {
     const pt = ProgressTracker.getInstance();
 
     expect(() => pt.complete()).not.toThrow();
-    // Note: serialiseProperties is no longer called in standalone webapp mode
-    // (it was only relevant for bound scripts with DocumentProperties)
-    expect(mockSerialiseProperties).not.toHaveBeenCalled();
   });
 });

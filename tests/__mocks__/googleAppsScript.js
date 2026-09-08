@@ -210,18 +210,6 @@ const mockGoogleClassroomManager = function () {
 };
 mockGoogleClassroomManager._constructorCalls = 0;
 
-// Mock PropertiesCloner
-const mockPropertiesCloner = function () {
-  mockPropertiesCloner._constructorCalls = (mockPropertiesCloner._constructorCalls || 0) + 1;
-  this.sheet = null; // Default to no sheet found
-  this.deserialiseProperties = () => {
-    mockPropertiesCloner._calls = mockPropertiesCloner._calls || [];
-    mockPropertiesCloner._calls.push('deserialiseProperties');
-  };
-};
-mockPropertiesCloner._constructorCalls = 0;
-mockPropertiesCloner._calls = [];
-
 // Mock ConfigurationManager for UIManager tests
 const mockConfigurationManager = {
   _instance: null,
@@ -243,7 +231,6 @@ module.exports = {
   HtmlService: mockHtmlService,
   DriveApp: mockDriveApp,
   GoogleClassroomManager: mockGoogleClassroomManager,
-  PropertiesCloner: mockPropertiesCloner,
   ConfigurationManager: mockConfigurationManager,
   Utils: { isValidUrl: (u) => typeof u === 'string' && /^https?:\/\//.test(u) },
 };

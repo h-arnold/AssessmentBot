@@ -59,7 +59,7 @@ two boundaries: the API transport gate in `ApiDispatcher.handle()`
 
   The role value is returned alongside the decision so future iterations can restrict
   methods by role; v1 grants both roles the same surface (an accepted risk, see
-  [accepted-risks.md](./accepted-risks.md) risk 6).
+  [accepted-risks.md](./accepted-risks.md) risk 5).
 
 - **Fail-closed on error.** Any `GroupsApp` failure — group not found, permission
   problem, transient service error — is caught, logged as an error with email, group
