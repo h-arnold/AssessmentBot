@@ -1,7 +1,7 @@
 ---
 description: Inspects code for AI-slop, duplication, unnecessary complexity, and stale code
 mode: all
-model: opencode-go/deepseek-v4-pro
+model: opencode-go/glm-5.3-flash
 steps: 100
 ---
 

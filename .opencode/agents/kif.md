@@ -1,7 +1,7 @@
 ---
 description: Performs simple, straightforward menial tasks with minimal judgement required
 mode: all
-model: opencode/laguna-s-2.1-free
+model: opencode/mimo-2.5-free
 steps: 50
 permission:
   bash:
