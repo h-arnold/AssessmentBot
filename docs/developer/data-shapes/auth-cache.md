@@ -25,6 +25,22 @@ Sibling contracts:
 - No other sibling contracts — AuthCache is an internal backend cache entry with no
   frontend-facing transport.
 
+> **Planned changes — Not implemented** (SPEC.md v1.3, Application Authentication &
+> Minimal Role Administration):
+>
+> 1. The Google Groups cache entry and key format `auth:<groupEmail>:<email>` are
+>    unchanged (provider and group are already embedded, so an `authMode` flip can
+>    never reuse stale entries).
+> 2. The new `ScriptPropertiesAuthService` provider has **no** success cache: user
+>    list reads are fresh per request, so nothing is written to the cache under that
+>    provider.
+> 3. Management endpoints, provider-switch validation, and the trigger path bypass
+>    cache reads on **both** providers (`bypassCache: true` semantics; the defunct
+>    `requireConfigured` option is dropped in favour of an explicit never-claim
+>    trigger execution context).
+>
+> Remove this block and update the contract as the changes land.
+
 ---
 
 ## Persistence

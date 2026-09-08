@@ -17,6 +17,30 @@ Sibling contracts:
 - [Contract: Assignment](assignment.md) — No direct relationship.
 - [Contract: Reference Data](reference-data.md) — No direct relationship.
 
+> **Planned changes — Not implemented** (SPEC.md v1.3, Application Authentication &
+> Minimal Role Administration). The contract below documents current behaviour; the
+> following changes are planned and must be applied in lockstep across backend
+> transport, frontend Zod schemas, form schema/mapper, and settings panel:
+>
+> 1. **Read transport:** `getBackendConfig` stops emitting `authGroupEmail` and
+>    `authMode` (persistence table rows 13–14 leave the read transport). Auth state is
+>    read exclusively through the new auth endpoints — see
+>    [Contract: AuthUsers](auth-users.md).
+> 2. **Write transport:** `setBackendConfig` rejects every auth field (`authMode`,
+>    `authGroupEmail`, `authUsers`, `authRevision`) for all callers, including admins,
+>    as an `ApiValidationError` (`INVALID_REQUEST` envelope) — a request-shape
+>    violation, not an aggregate per-field failure.
+> 3. **Frontend lockstep:** `BackendConfigSchema` and `BackendConfigWriteInputSchema`
+>    drop both fields; `BackendSettingsFormSchema`, the form mapper, the
+>    `handleFinish` compulsory-once-set clearing guard, and `BackendSettingsPanel`
+>    auth-mode options (including `'none'`) are removed with them.
+> 4. **All configuration writes** (this endpoint included) serialise through the
+>    script-wide `LockService.getScriptLock()` shared with `DbLockService`, re-read
+>    the blob from storage under the lock, merge, and write once; the conservative
+>    8KB blob cap is enforced on every write.
+>
+> Remove this block and update the tables as each change lands.
+
 ---
 
 ## Persistence
