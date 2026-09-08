@@ -75,6 +75,7 @@ Feature-scoped helpers should stay feature-scoped unless there is proven cross-f
 - `google.script.run` harness: `src/frontend/src/test/googleScriptRunHarness.ts`
 - Shared classes test fixtures/builders: `src/frontend/src/test/classes/classesTestHelpers.ts`
 - Classes Page test fixtures and rendering helpers (including `createFixtureClassPartial`, `createFixtureYearGroup`, `renderClassesPage`, `toPlainClassPartials`, and shared fixture constants): `src/frontend/src/test/classes/classesPageTestHelpers.tsx`
+- Classes bulk-set flow test helpers (exports `makeRow`, `assertQueuedBatchMutationCalledOnce`, `assertSingleSelectedRowEdit`): `src/frontend/src/test/classes/bulkFlowTestHelpers.ts` — shared by the `bulkSetYearGroup` and `bulkSetCohort` specs to keep the row-fixture and queued-batch-call assertion logic DRY.
 
 - Shared data-analysis test fixtures and assertion helpers: `src/frontend/src/test/dataAnalysis/` (fixtures, averaging analyser assertions). Placement follows the shared test helpers convention; cross-referenced from `docs/developer/frontend/frontend-testing.md`.
 

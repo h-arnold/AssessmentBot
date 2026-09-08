@@ -713,11 +713,18 @@ describe('ManageTopicsModal', () => {
       const formDialog = await screen.findByRole('dialog', { name: /create topic/i });
 
       await user.click(within(formDialog).getByRole('combobox'));
-      const year9Option = await screen.findByText('Year 9');
-      const year10Option = screen.getByText('Year 10');
-      const year11Option = screen.getByText('Year 11');
-      expect(year9Option.compareDocumentPosition(year10Option)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-      expect(year10Option.compareDocumentPosition(year11Option)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      // In Ant Design v6 the visible dropdown popup (`.ant-select-dropdown`) renders each
+      // option as a `.ant-select-item-option` element whose text content is the year-group
+      // label; the antd measurement listbox carries `role="option"` but only with the key as
+      // text, so the ordering assertion is scoped to the visible option labels instead.
+      const firstOption = await screen.findByText('Year 9');
+      const dropdown = firstOption.closest('.ant-select-dropdown') as HTMLElement;
+      const optionLabels = within(dropdown)
+        .getAllByText(/^Year \d+$/)
+        .map((option) => option.textContent?.trim() ?? '');
+      // The fixture is deliberately unsorted (Year 11, Year 9, Year 10); the multi-select
+      // must present options in natural year-group order regardless of input ordering.
+      expect(optionLabels).toEqual(['Year 9', 'Year 10', 'Year 11']);
     });
 
     it('Create form year group multi-select allows multiple selection', async () => {
