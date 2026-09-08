@@ -7,6 +7,7 @@
  */
 
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { QueryClientProvider } from '@tanstack/react-query';
 import type { AssignmentTopic, YearGroup } from '../../services/referenceData/referenceData.zod';
@@ -22,6 +23,7 @@ const updateAssignmentTopicMock = vi.hoisted(() => vi.fn());
 const deleteAssignmentTopicMock = vi.hoisted(() => vi.fn());
 const getAssignmentTopicsMock = vi.hoisted(() => vi.fn());
 const getYearGroupsMock = vi.hoisted(() => vi.fn());
+let user: ReturnType<typeof userEvent.setup>;
 
 vi.mock('../../services/assignmentDefinition/assignmentTopicsService', () => ({
   getAssignmentTopics: getAssignmentTopicsMock,
@@ -426,7 +428,8 @@ async function setupYearGroupsFailureWithTopicsSeeded(error: Error): Promise<HTM
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
+  user = userEvent.setup();
   getAssignmentTopicsMock.mockResolvedValue(seedTopics);
   getYearGroupsMock.mockResolvedValue(seedYearGroups);
 });
@@ -698,8 +701,23 @@ describe('ManageTopicsModal', () => {
     });
 
     it('Create form includes year group multi-select field with all available year groups as options', async () => {
-      const { formDialog } = await openCreateTopicForm();
-      assertFormHasNameTextbox(formDialog);
+      const yearGroups = [
+        { key: 'year-11', name: 'Year 11' },
+        { key: 'year-9', name: 'Year 9' },
+        { key: 'year-10', name: 'Year 10' },
+      ];
+      renderManageTopicsModal({ yearGroups });
+      const dialog = await findManageTopicsModalDialog();
+      await within(dialog).findByRole('table', { name: /topics/i });
+      await user.click(within(dialog).getByRole('button', { name: /create topic/i }));
+      const formDialog = await screen.findByRole('dialog', { name: /create topic/i });
+
+      await user.click(within(formDialog).getByRole('combobox'));
+      const year9Option = await screen.findByText('Year 9');
+      const year10Option = screen.getByText('Year 10');
+      const year11Option = screen.getByText('Year 11');
+      expect(year9Option.compareDocumentPosition(year10Option)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      expect(year10Option.compareDocumentPosition(year11Option)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     });
 
     it('Create form year group multi-select allows multiple selection', async () => {

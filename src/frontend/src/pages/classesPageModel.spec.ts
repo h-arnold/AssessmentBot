@@ -286,6 +286,22 @@ describe('Classes page grouped view model - buildClassesPageModel', () => {
   // --------------------------------------------------------------------------
 
   describe('Panel sorting', () => {
+    it('should naturally order numbered year-group names', () => {
+      const yearGroups = [
+        createYearGroup('yg-11', 'Year 11'),
+        createYearGroup('yg-9', 'Year 9'),
+        createYearGroup('yg-10', 'Year 10'),
+      ];
+
+      buildAndAssertValidModel([], yearGroups, (result) => {
+        expect(result.panels.map((panel) => panel.yearGroupKey)).toEqual([
+          'yg-9',
+          'yg-10',
+          'yg-11',
+        ]);
+      });
+    });
+
     it('should sort panels by YearGroup.name ascending, using YearGroup.key as deterministic tie-break', () => {
       const yearGroups = [
         createYearGroup('yg-c', 'Charlie'),
@@ -441,8 +457,8 @@ describe('Classes page grouped view model - buildClassesPageModel', () => {
   // Default expanded panel
   // --------------------------------------------------------------------------
 
-  describe('Default-expanded first alphabetical panel key', () => {
-    it('should return the first alphabetical panel key as default-expanded when panels exist', () => {
+  describe('Default-expanded first presented panel key', () => {
+    it('should retain alphabetical fallback and key tie-breaking when selecting the first panel', () => {
       const yearGroups = [
         createYearGroup('yg-c', 'Charlie'),
         createYearGroup('yg-a', 'Alice'),
@@ -456,8 +472,6 @@ describe('Classes page grouped view model - buildClassesPageModel', () => {
       ];
 
       buildAndAssertValidModel(classPartials, yearGroups, (result) => {
-        // Panels sorted alphabetically: Alice (yg-a), Bob (yg-b), Charlie (yg-c)
-        // First alphabetical panel key should be yg-a
         expect(result.defaultExpandedPanelKeys).toHaveLength(1);
         expect(result.defaultExpandedPanelKeys[0]).toBe('yg-a');
       });
@@ -518,7 +532,7 @@ describe('Classes page grouped view model - buildClassesPageModel', () => {
 
         expect(result.panels[2].classes).toHaveLength(1);
 
-        // Default expanded should be first alphabetical panel (Year 10 / yg-10)
+        // Default expanded should be the first naturally ordered panel (Year 10 / yg-10)
         expect(result.defaultExpandedPanelKeys).toEqual(['yg-10']);
       });
     });

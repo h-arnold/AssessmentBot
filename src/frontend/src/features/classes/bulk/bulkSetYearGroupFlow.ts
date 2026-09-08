@@ -3,6 +3,7 @@ import type { RowMutationResult } from './batchMutationEngine';
 import type { BatchProgressSnapshot } from './runQueuedBatchMutation';
 import { bulkMetadataUpdate } from './bulkMetadataUpdateFlow';
 import type { ClassesManagementRow } from '../classesManagementViewModel';
+import { sortYearGroups } from '../../referenceData/yearGroupSorting';
 
 /**
  * Builds select options using stable year-group keys as option values.
@@ -13,7 +14,7 @@ import type { ClassesManagementRow } from '../classesManagementViewModel';
 export function getYearGroupOptions(
   yearGroups: YearGroup[]
 ): Array<{ label: string; value: string }> {
-  return yearGroups.map((yearGroup) => ({
+  return sortYearGroups(yearGroups).map((yearGroup) => ({
     label: yearGroup.name,
     value: yearGroup.key,
   }));

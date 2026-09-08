@@ -5,7 +5,7 @@
  * bulkMetadataUpdate, onProgress forwarding, and empty-list short-circuit.
  */
 
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { YearGroup } from '../../../services/referenceData/referenceData.zod';
 import type { ClassesManagementRow } from '../classesManagementViewModel';
 import type { BatchProgressSnapshot } from './runQueuedBatchMutation';
@@ -49,18 +49,20 @@ function makeRow(overrides: Partial<ClassesManagementRow> = {}): ClassesManageme
 }
 
 describe('bulkSetYearGroupFlow', () => {
-  afterEach(() => {
-    vi.clearAllMocks();
+  beforeEach(() => {
+    vi.resetAllMocks();
   });
 
   it('builds year-group selector options with stable keys as option values', async () => {
     const { getYearGroupOptions } = await loadBulkSetYearGroupFlow();
     const yearGroups: YearGroup[] = [
-      { key: 'year-10', name: 'Year 10' },
       { key: 'year-11', name: 'Year 11' },
+      { key: 'year-10', name: 'Year 10' },
+      { key: 'year-9', name: 'Year 9' },
     ];
 
     expect(getYearGroupOptions(yearGroups)).toEqual([
+      { label: 'Year 9', value: 'year-9' },
       { label: 'Year 10', value: 'year-10' },
       { label: 'Year 11', value: 'year-11' },
     ]);
