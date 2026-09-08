@@ -344,24 +344,45 @@ class ConfigurationManager extends BaseSingleton {
    * Returns the configured authentication mode.
    *
    * @remarks
-   * Secure-by-default: the method only returns `'none'` when the stored value is
-   * the exact literal `'none'`. Any other value (unset, blank, or unknown such as
-   * `'foo'`) resolves to `'googleGroups'`, the secure Google Groups mode. This
-   * prevents a malformed stored value from being emitted via `getBackendConfig_()`
-   * and rejected by the frontend `z.enum(...)` under `.strict()`.
+   * Forgiving transport getter: this method must never throw. It returns the stored
+   * valid mode (`'googleGroups'` or `'scriptProperties'`), or applies the single
+   * documented leniency — an absent (or blank, which `getProperty` cannot distinguish
+   * from absent) mode paired with a non-blank group email reads as `'googleGroups'`,
+   * matching legacy blobs and `validateAuthStateStrict_`. Every other state resolves to
+   * `null`: stored `'none'`, any unrecognised value (even alongside a non-blank group
+   * email), and an absent/blank mode without a group. The strict, fail-closed security
+   * read (`validateAuthStateStrict_`) then denies access in the access-resolution path.
+   * Deny decisions therefore never live here; this getter is best-effort transport only.
    *
-   * `'none'` is a TEMPORARY DEVELOPMENT MEASURE that bypasses the group-membership
-   * gate. It must never be used in production.
-   * @returns {'googleGroups'|'none'} The active authentication mode.
+   * @returns {'googleGroups'|'scriptProperties'|null} The active authentication mode, or `null` when unresolved.
    */
   getAuthMode() {
     const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.AUTH_MODE);
-    return value === 'none' ? 'none' : 'googleGroups';
+    if (value === 'googleGroups' || value === 'scriptProperties') {
+      return value;
+    }
+    // Stored 'none' and unrecognised modes never benefit from the leniency; only a
+    // genuinely absent or blank stored mode does (getProperty yields '' for both).
+    if (value !== '') {
+      return null;
+    }
+    // Forgiving: never throw. Apply the single leniency for an absent/blank mode that
+    // is paired with a non-blank group email (legacy groups install).
+    const group = this.getProperty(ConfigurationManager.CONFIG_KEYS.AUTH_GROUP_EMAIL);
+    if (String(group).trim() !== '') {
+      return 'googleGroups';
+    }
+    return null;
   }
 
   /**
    * Persists the authentication mode.
-   * @param {'googleGroups'|'none'} value - The authentication mode to store.
+   *
+   * @remarks
+   * Routes through the `CONFIG_SCHEMA` validator, so only `'googleGroups'` and
+   * `'scriptProperties'` are accepted; the removed `'none'` mode and any unrecognised
+   * value are rejected by the schema.
+   * @param {'googleGroups'|'scriptProperties'} value - The authentication mode to store.
    * @throws {Error} If the value is not a valid auth mode (validated by CONFIG_SCHEMA).
    */
   setAuthMode(value) {

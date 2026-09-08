@@ -160,16 +160,28 @@ registry.
 
 ## Validation
 
-**Backend (planned):**
+**Backend:**
 
-- `src/backend/ConfigurationManager/01_configKeysAndSchema.js` — `authMode` enum
-  loses `'none'`; `authUsers`/`authRevision` validators added with strict
-  security-read semantics distinct from the forgiving general parser.
-- `src/backend/Utils/AuthService.js` — provider resolution, bootstrap claim, strict
-  deny paths, never-claim trigger execution context (`requireConfigured` dropped,
-  `bypassCache` retained).
-- `src/backend/z_Api/apiConfig.js` — `setBackendConfig_` rejects all auth fields as
-  `ApiValidationError` (`INVALID_REQUEST`).
+- `src/backend/ConfigurationManager/01_configKeysAndSchema.js` — **implemented**:
+  `authMode` enum accepts only `googleGroups`/`scriptProperties` (`'none'` removed);
+  `authUsers` validator (`validateAuthUsersJson_`) accepts only a JSON string array
+  of `{ email, role }` entries with trimmed, lowercased, unique emails, roles limited
+  to `admin`|`user`, no unknown keys per entry, at least one entry and at least one
+  admin; normalisation is not applied (unnormalised input is rejected) and the
+  canonical JSON string is returned; `authRevision` validator
+  (`validateAuthRevision_`) accepts only positive-integer strings (`'1'`, `'42'`)
+  and rejects `'0'`, `'abc'`, `''`, negatives, fractions, and non-string types; the
+  strict security read (`validateAuthStateStrict_`) applies the single
+  absent/blank-`authMode`-with-non-blank-group leniency and throws on every other
+  broken auth state; the forgiving transport getter (`getAuthMode()`) never throws,
+  resolves absent/blank+group to `googleGroups`, and resolves to `null` otherwise;
+  the 8KB blob cap constant (`MAX_CONFIG_BLOB_BYTES`, 8192) is exported for the
+  locked write path.
+- `src/backend/Utils/AuthService.js` — **planned**: provider resolution, bootstrap
+  claim, strict deny paths, never-claim trigger execution context
+  (`requireConfigured` dropped, `bypassCache` retained).
+- `src/backend/z_Api/apiConfig.js` — **planned**: `setBackendConfig_` rejects all
+  auth fields as `ApiValidationError` (`INVALID_REQUEST`).
 
 **Frontend (planned):**
 
