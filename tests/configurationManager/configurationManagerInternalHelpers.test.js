@@ -51,64 +51,6 @@ describe('ConfigurationManager internal helper branches', () => {
     expect(second).toBe(first);
   });
 
-  it('skips propertyStore deserialisation when script properties already exist', () => {
-    mocks.PropertiesService.scriptProperties.getKeys.mockReturnValue(['existing']);
-
-    configManager.maybeDeserializeProperties();
-
-    expect(mocks.PropertiesCloner).not.toHaveBeenCalled();
-  });
-
-  it('continues when property key lookup throws during deserialisation bootstrap', () => {
-    mocks.PropertiesService.scriptProperties.getKeys.mockImplementation(() => {
-      throw new Error('script keys failed');
-    });
-
-    configManager.maybeDeserializeProperties();
-
-    expect(mocks.PropertiesCloner).toHaveBeenCalledTimes(1);
-  });
-
-  it('constructs PropertiesCloner when propertyStore deserialisation is unavailable', () => {
-    configManager.maybeDeserializeProperties();
-
-    expect(mocks.PropertiesCloner).toHaveBeenCalledTimes(1);
-  });
-
-  it('treats null property stores as absent during deserialisation bootstrap', () => {
-    configManager.scriptProperties = null;
-    configManager.documentProperties = null;
-
-    expect(() => configManager.maybeDeserializeProperties()).not.toThrow();
-    expect(mocks.PropertiesCloner).toHaveBeenCalledTimes(1);
-  });
-
-  it('treats property stores without getKeys as empty during deserialisation bootstrap', () => {
-    configManager.scriptProperties = {};
-    configManager.documentProperties = {};
-
-    expect(() => configManager.maybeDeserializeProperties()).not.toThrow();
-    expect(mocks.PropertiesCloner).toHaveBeenCalledTimes(1);
-  });
-
-  it('deserialises properties when a propertiesStore sheet is available', () => {
-    const deserialiseProperties = vi.fn();
-    const originalPropertiesCloner = globalThis.PropertiesCloner;
-    globalThis.PropertiesCloner = function PropertiesCloner() {
-      this.sheet = { name: 'propertiesStore' };
-      this.deserialiseProperties = deserialiseProperties;
-      this.serialiseProperties = vi.fn();
-    };
-
-    try {
-      configManager.maybeDeserializeProperties();
-
-      expect(deserialiseProperties).toHaveBeenCalledTimes(1);
-    } finally {
-      globalThis.PropertiesCloner = originalPropertiesCloner;
-    }
-  });
-
   it('initialises lazily on the first access to persisted configuration', () => {
     configManager._initialized = false;
     configManager.scriptProperties = null;
@@ -126,19 +68,6 @@ describe('ConfigurationManager internal helper branches', () => {
     expect(() => configManager.ensureInitialized()).not.toThrow();
     expect(mocks.PropertiesService.getScriptProperties).not.toHaveBeenCalled();
     expect(mocks.PropertiesService.getDocumentProperties).not.toHaveBeenCalled();
-  });
-
-  it('logs and continues when PropertiesCloner construction fails during bootstrap', () => {
-    const originalPropertiesCloner = globalThis.PropertiesCloner;
-    globalThis.PropertiesCloner = function PropertiesCloner() {
-      throw new Error('properties cloner unavailable');
-    };
-
-    try {
-      expect(() => configManager.maybeDeserializeProperties()).not.toThrow();
-    } finally {
-      globalThis.PropertiesCloner = originalPropertiesCloner;
-    }
   });
 
   it.each([

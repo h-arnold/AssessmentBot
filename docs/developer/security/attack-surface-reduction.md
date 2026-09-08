@@ -55,7 +55,7 @@ auth-service plan), which removed every accidental public function then present:
   - configuration validators in `src/backend/ConfigurationManager/03_validators.js`
     (`validateLogLevel_`, `validateApiKey_`) and
     `src/backend/ConfigurationManager/98_ConfigurationManagerClass.js`
-    (`safeGetPropertyKeys_`, `safeParseConfigObject_`);
+    (`safeParseConfigObject_`);
   - error-shaped-value detection `isErrorLike_` in `src/backend/Utils/ABLogger.js`;
   - reference-data key generation `generateStableKey_` in
     `src/backend/y_controllers/ReferenceDataController.js`.

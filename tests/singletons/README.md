@@ -109,7 +109,6 @@ The mock system provides lightweight implementations of Google Apps Script globa
 - `SpreadsheetApp` - Tracks UI operations
 - `HtmlService` - Tracks HTML file creation
 - `GoogleClassroomManager` - Counts instantiations
-- `PropertiesCloner` - Tracks property deserialization
 
 All mocks track when they are called, allowing tests to verify lazy behavior.
 

@@ -59,8 +59,6 @@ class SingletonTestHarness {
     if (gasMocks.HtmlService._calls) gasMocks.HtmlService._calls.length = 0;
     if (gasMocks.DriveApp._calls) gasMocks.DriveApp._calls.length = 0;
     gasMocks.GoogleClassroomManager._constructorCalls = 0;
-    gasMocks.PropertiesCloner._constructorCalls = 0;
-    if (gasMocks.PropertiesCloner._calls) gasMocks.PropertiesCloner._calls.length = 0;
   }
 
   /**
@@ -72,7 +70,6 @@ class SingletonTestHarness {
     globalThis.HtmlService = gasMocks.HtmlService;
     globalThis.DriveApp = gasMocks.DriveApp;
     globalThis.GoogleClassroomManager = gasMocks.GoogleClassroomManager;
-    globalThis.PropertiesCloner = gasMocks.PropertiesCloner;
     globalThis.ConfigurationManager = gasMocks.ConfigurationManager;
     if (!globalThis.Utils && gasMocks.Utils) {
       globalThis.Utils = gasMocks.Utils;

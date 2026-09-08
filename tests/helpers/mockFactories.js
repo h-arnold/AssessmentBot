@@ -124,19 +124,6 @@ function createMockDriveManager(vi) {
 }
 
 /**
- * Create a mock PropertiesCloner
- * @param {Object} vi - Vitest vi object for creating mocks
- * @returns {Function} Mock PropertiesCloner constructor
- */
-function createMockPropertiesCloner(vi) {
-  return vi.fn().mockImplementation(() => ({
-    sheet: null,
-    deserialiseProperties: vi.fn(),
-    serialiseProperties: vi.fn(),
-  }));
-}
-
-/**
  * Create a mock ClassroomApiClient for testing
  * This mock wraps the globalThis.Classroom API and converts responses to model instances.
  * Requires Teacher and Student constructors to be available globally.
@@ -291,7 +278,6 @@ function setupGlobalGASMocks(vi, options = {}) {
     DriveApp: createMockDriveApp(vi),
     SpreadsheetApp: createMockSpreadsheetApp(vi, options),
     DriveManager: createMockDriveManager(vi),
-    PropertiesCloner: createMockPropertiesCloner(vi),
     console: { log: vi.fn(), error: vi.fn(), warn: vi.fn() },
   };
 
@@ -301,7 +287,6 @@ function setupGlobalGASMocks(vi, options = {}) {
   globalThis.DriveApp = mocks.DriveApp;
   globalThis.SpreadsheetApp = mocks.SpreadsheetApp;
   globalThis.DriveManager = mocks.DriveManager;
-  globalThis.PropertiesCloner = mocks.PropertiesCloner;
   if (options.mockConsole) {
     globalThis.console = mocks.console;
   }
@@ -447,7 +432,6 @@ module.exports = {
   createMockSpreadsheetApp,
   createMockMimeType,
   createMockDriveManager,
-  createMockPropertiesCloner,
   createMockClassroomApiClient,
   createMockABLogger,
   createMockDbManager,

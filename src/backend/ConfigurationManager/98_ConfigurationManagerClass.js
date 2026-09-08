@@ -15,26 +15,6 @@
  */
 
 /**
- * Safely retrieves property keys from a given property store.
- * Returns an empty array if the store is invalid or retrieval fails.
- * @param {Object} store - The property store object (or null).
- * @returns {Array<string>} Array of property keys, or empty array on failure.
- */
-function safeGetPropertyKeys_(store) {
-  if (!store) return [];
-  try {
-    return store.getKeys ? store.getKeys() : [];
-  } catch (error) {
-    if (globalThis.__TRACE_SINGLETON__)
-      ABLogger.getInstance().debug(
-        '[TRACE_SINGLETON][ConfigurationManager.safeGetPropertyKeys] safeGetPropertyKeys error:',
-        error?.message ?? error
-      );
-    return [];
-  }
-}
-
-/**
  * Safely parses a serialised configuration object from JSON.
  * Returns an empty object if parsing fails or input is invalid.
  * @param {string} serialisedConfig - Serialised JSON configuration string.
@@ -63,7 +43,7 @@ function safeParseConfigObject_(serialisedConfig) {
 class ConfigurationManager extends BaseSingleton {
   /**
    * Initialises the ConfigurationManager singleton.
-   * NOTE: Do NOT perform any heavy work (PropertiesService access, deserialisation)
+   * NOTE: Do NOT perform any heavy work (PropertiesService access)
    * in the constructor. Use ConfigurationManager.getInstance() to obtain the singleton.
    * All getters/setters will transparently call ensureInitialized() before touching persisted state.
    * The constructor is intentionally lightweight so tests can assert no side-effects before first real use.
@@ -75,7 +55,7 @@ class ConfigurationManager extends BaseSingleton {
      * JSDoc Singleton Banner
      * Use ConfigurationManager.getInstance(); do not call constructor directly.
      */
-    // Defer PropertiesService access & deserialisation
+    // Defer PropertiesService access
     this.scriptProperties = null;
     this.configCache = null;
     this._initialized = false;
@@ -133,17 +113,15 @@ class ConfigurationManager extends BaseSingleton {
 
   /**
    * Initialises the ConfigurationManager on first access to Apps Script services.
-   * Safe to call multiple times; performs lazy initialisation of PropertiesService handles and property deserialisation only once.
+   * Safe to call multiple times; performs lazy initialisation of PropertiesService handles only once.
    * @returns {void}
    */
   ensureInitialized() {
     if (this._initialized) return;
     // Acquire handles lazily
     this.scriptProperties = this.scriptProperties || GASPropertiesUtils.getScriptProperties();
-    // Perform potential deserialisation only once
     if (globalThis.__TRACE_SINGLETON__)
       ABLogger.getInstance().debug('[TRACE][HeavyInit] ConfigurationManager.ensureInitialized');
-    this.maybeDeserializeProperties();
     this._initialized = true;
     if (globalThis.FREEZE_SINGLETONS) {
       try {
@@ -172,34 +150,6 @@ class ConfigurationManager extends BaseSingleton {
    */
   static get CONFIG_SCHEMA() {
     return ConfigurationManager._CONFIG_SCHEMA || CONFIG_SCHEMA;
-  }
-
-  /**
-   * Attempts to deserialize properties from a propertiesStore sheet if no script properties are found.
-   * This method checks if there are existing script properties. If none are found, it attempts to
-   * initialize properties from a 'propertiesStore' sheet using the PropertiesCloner. If the sheet exists and the
-   * deserialization is successful, it logs a success message. If the 'propertiesStore' sheet is not found, it
-   * logs an appropriate message. Any errors during the process are caught and logged.
-   */
-  maybeDeserializeProperties() {
-    try {
-      const hasScript = safeGetPropertyKeys_(this.scriptProperties).length > 0;
-      if (hasScript) return; // early return – nothing to do
-
-      const propertiesCloner = new PropertiesCloner();
-      if (propertiesCloner.sheet) {
-        propertiesCloner.deserialiseProperties();
-        ABLogger.getInstance().log('Successfully copied properties from propertiesStore');
-      } else {
-        ABLogger.getInstance().log('No propertiesStore sheet found');
-      }
-    } catch (error) {
-      // Log error via ABLogger
-      ABLogger.getInstance().error(
-        'ConfigurationManager.maybeDeserializeProperties failed.',
-        error
-      );
-    }
   }
 
   /**

@@ -122,10 +122,8 @@ class ConfigurationManager extends BaseSingleton {
   ensureInitialized() {
     if (this._initialized) return;
 
-    // Heavy operations only happen here
-    this.scriptProperties = PropertiesService.getScriptProperties();
-    this.documentProperties = PropertiesService.getDocumentProperties();
-    this.maybeDeserializeProperties();
+    // Heavy operations only happen here — lazily acquire the script properties handle
+    this.scriptProperties = this.scriptProperties || GASPropertiesUtils.getScriptProperties();
 
     this._initialized = true;
   }
