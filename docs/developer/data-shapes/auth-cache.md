@@ -40,11 +40,14 @@ Sibling contracts:
 > 4. The trigger execution path calls `checkAccess({ bypassCache: true, neverClaim: true })`
 >    — it bypasses the cache read and never bootstraps an admin; the defunct
 >    `requireConfigured` option is dropped in favour of the explicit never-claim flag.
->    The management/provider-switch endpoints reuse the same `bypassCache: true` option
->    and land with the Section 5 transport (`Not implemented`).
+>    The management/provider-switch endpoints (`getAuthenticationSettings` /
+>    `setAuthenticationSettings`) reuse the same `bypassCache: true` option: the dispatcher's
+>    `ADMIN_REQUIRED_METHOD_NAMES` admission phase resolves access fresh (cache bypassed) for
+>    those methods (Section 5 transport is now delivered — ACTION_PLAN §5).
 >
-> Remove this block only when the Section 5 transport reconfirms the shared `bypassCache`
-> semantics; the cache policy itself is delivered.
+> The cache policy above is delivered, and the Section 5 transport has confirmed the shared
+> `bypassCache` semantics for management endpoints; this restatement block is retained for
+> traceability.
 
 ---
 

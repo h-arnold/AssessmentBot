@@ -122,6 +122,7 @@ g.DateUtils = require('../src/backend/Utils/DateUtils.js');
 g.GASPropertiesUtils = require('../src/backend/Utils/00_GASPropertiesUtils.js');
 
 g.ApiValidationError = require('../src/backend/Utils/ErrorTypes/ApiValidationError.js');
+g.ApiRateLimitError = require('../src/backend/Utils/ErrorTypes/ApiRateLimitError.js');
 g.DefinitionStaleError = require('../src/backend/Utils/ErrorTypes/DefinitionStaleError.js');
 g.AssignmentNotFoundError = require('../src/backend/Utils/ErrorTypes/AssignmentNotFoundError.js');
 g.ClassNotFoundError = require('../src/backend/Utils/ErrorTypes/ClassNotFoundError.js');
@@ -277,6 +278,14 @@ g.CacheManager = require('../src/backend/RequestHandlers/CacheManager.js').Cache
 // environment, where AuthService resolves as a global). The ApiDispatcher auth gate
 // (`z_apiHandler.js`) calls AuthService.getInstance().checkAccess() before dispatch.
 g.AuthService = require('../src/backend/Utils/AuthService.js');
+
+// Register the real AuthSettingsDomain delegate as a global (mirrors the GAS
+// concatenated runtime, where the top-level object in AuthSettingsDomain.js
+// becomes a script-scope global after AuthService.js evaluates). AuthService's
+// delegators resolve it lazily inside method bodies, so this must be attached
+// before any auth access/settings resolution executes in Node; the production
+// file performs no Node global wiring of its own.
+g.AuthSettingsDomain = require('../src/backend/Utils/AuthSettingsDomain.js').AuthSettingsDomain;
 
 // Attach the canonical strict auth-state resolver as a global so the AuthService
 // base can read it in Node (mirrors the GAS concatenated runtime where the

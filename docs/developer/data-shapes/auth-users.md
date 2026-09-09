@@ -4,19 +4,20 @@ Application authentication state and the managed user list: two-provider members
 resolution (`googleGroups` | `scriptProperties`), the persistent authorised-user list
 with roles, and the auth management/access endpoints.
 
-> **Status: Partially implemented** — recorded from `SPEC.md` v1.3 (Application
-> Authentication & Minimal Role Administration). The persistence/validation layer
-> (Section 1 config schema), the AuthService provider resolution, strict deny
-> paths, Groups/Script Properties cache policy, never-claim trigger execution
-> context (Section 3), and the fresh-install bootstrap claim (Section 4) have
-> landed. The transport endpoints in `apiAuth.js` (Section 5) remain `Not implemented`.
-> Remove this marker only when Section 5 is delivered.
+> **Status: Auth transport implemented (ACTION_PLAN §5 landed)** — recorded from `SPEC.md`
+> v1.3 (Application Authentication & Minimal Role Administration). The persistence/validation
+> layer (Section 1 config schema), the AuthService provider resolution, strict deny paths,
+> Groups/Script Properties cache policy, never-claim trigger execution context (Section 3),
+> the fresh-install bootstrap claim (Section 4), and the three `apiAuth.js` transport
+> endpoints (Section 5) have all landed and match this contract. The frontend Zod/service
+> layer (Section 7) and the `BackendConfig` read/write transport auth-field removal
+> (Sections 6–8) remain planned and are tracked as `Not implemented` markers in their
+> respective contract files.
 
 Backend implementation: `src/backend/Utils/AuthService.js` (base) +
 `GoogleGroupsAuthService` + `ScriptPropertiesAuthService` subclasses (landed,
 ACTION_PLAN §3); `AuthService._attemptBootstrapClaim()` fresh-install claim
-(landed, ACTION_PLAN §4); `src/backend/z_Api/apiAuth.js` (new transport file,
-**Not implemented**, ACTION_PLAN §5)
+(landed, ACTION_PLAN §4); `src/backend/z_Api/apiAuth.js` (transport file, landed, ACTION_PLAN §5)
 Persistence: inside the existing single JSON blob in `PropertiesService.getScriptProperties()` under key `__CONFIG_STORE_KEY__` (see [Contract: BackendConfig](backend-config.md))
 API handlers: `getApplicationAccess`, `getAuthenticationSettings`, `setAuthenticationSettings` (registered in `ALLOWLISTED_METHOD_HANDLERS`)
 Response mapper: None — handlers shape data from `AuthService`/`ConfigurationManager` methods
@@ -127,8 +128,9 @@ are denied without claiming or writing; the next eligible caller retries the cla
 
 ## Transport
 
-> **Status: Not implemented** (ACTION_PLAN §5) — the `apiAuth.js` endpoints below are the
-> target transport contract; code must conform to this spec as it lands.
+> **Status: Implemented** (ACTION_PLAN §5) — the `apiAuth.js` endpoints below are delivered
+> and conform to this contract. The frontend Zod/service layer that consumes them remains
+> planned (Section 7).
 
 ### `getApplicationAccess` (gate-exempt, all callers)
 
@@ -166,6 +168,11 @@ envelope.
 | `authUsers`      | `AuthUserEntry[]`                      | Parsed stored list; `[]` when absent (groups/legacy). |
 | `authRevision`   | `string \| null`                       | `null` when not applicable (groups mode).             |
 
+- The handler returns the raw `getAuthMode()` value, typed as `'googleGroups' | 'scriptProperties' | null`.
+  The dispatcher's admin-admission gate (see the admin-enforcement mechanism below) resolves access
+  fresh and denies a broken configuration with the `FORBIDDEN` envelope before the handler runs, so
+  in practice `authMode` is always one of the two valid modes.
+
 ### `setAuthenticationSettings` (admin-only)
 
 **Request:**
@@ -180,6 +187,8 @@ envelope.
 **Response:** `{ success: true, authRevision }` on commit, or a validation failure
 envelope (stale revision, last-admin violation, invalid entry, candidate-check
 failure, quota cap). Stored config is unchanged on any failure — no partial writes.
+`authRevision` is the new positive-integer-string revision in `scriptProperties` mode
+and `null` in `googleGroups` mode (no revision is maintained there).
 
 - Provider-switch validation checks the saving admin against the **candidate**
   configuration with fresh lookups (never cache): target `scriptProperties` requires
@@ -263,8 +272,23 @@ registry.
   and the bootstrap claim (auth-only blob, in-lock freshness re-check, one atomic write,
   safe deny/retry on contention/cap/write failure, never-claim for blank/trigger callers)
   all match the shapes above.
-- Section 5 (transport endpoints in `apiAuth.js`) is still `Not implemented`; its planned
-  marker is retained and no discrepancies are asserted for unbuilt code.
+- Section 5 (transport endpoints in `apiAuth.js`) has landed and matches this contract:
+  `getApplicationAccess` is gate-exempt (joins `getAuthorisationStatus` in
+  `GATE_EXEMPT_METHOD_NAMES`) and routes through the shared access-resolution path,
+  performing the bootstrap claim and returning the four-value `reason` enum with no
+  `'unconfigured'` and no `provider` field; `getAuthenticationSettings` /
+  `setAuthenticationSettings` are admin-only via the dispatcher's `ADMIN_REQUIRED_METHOD_NAMES`
+  set, which resolves access fresh with `bypassCache: true` and rejects non-admins with the
+  standard `FORBIDDEN` envelope (no handler-side admin guard, no new error type);
+  `setAuthenticationSettings` enforces the revision guard (seeds `'1'` on first switch,
+  requires `expectedAuthRevision` when a stored revision exists, increments on commit,
+  returns `authRevision: null` in groups mode) and maps lock contention to a retriable
+  `RATE_LIMITED` envelope and an over-cap blob to `INVALID_REQUEST`. No drift against the
+  shapes above.
+- Frontend Zod/service layer (Section 7) and the `BackendConfig` read/write transport
+  auth-field removal (Sections 6–8) remain `Not implemented`; their planned markers are
+  tracked in the respective contract files and no discrepancies are asserted for that
+  unbuilt code.
 
 ---
 
@@ -281,7 +305,7 @@ Auth services:               src/backend/Utils/
   └── ScriptPropertiesAuthService.js — user-list membership, no cache (implemented §3)
 
 API handlers:                src/backend/z_Api/
-  ├── apiAuth.js                    — (planned) getApplicationAccess, get/get-setAuthenticationSettings
+  ├── apiAuth.js                    — (implemented §5) getApplicationAccess, get/get-setAuthenticationSettings
   └── z_apiHandler.js               — ALLOWLISTED_METHOD_HANDLERS registration; gate exemption
 
 Frontend:                    src/frontend/src/services/authService/ (planned)

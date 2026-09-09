@@ -544,6 +544,8 @@ Backend tests:
 
 ## Section 5 — Auth endpoints (`z_Api/apiAuth.js`) and gate wiring
 
+> **Current phase: Complete — authentication endpoints and dispatcher-gate wiring.**
+
 ### Objective
 
 - Add `getApplicationAccess` (gate-exempt), `getAuthenticationSettings` and
@@ -645,7 +647,29 @@ Backend API tests:
 
 ### Implementation notes / deviations / follow-up
 
-- To be completed during implementation.
+- **Completed.** Red tests were reviewed cleanly after removing an over-constrained
+  stale-revision message assertion. Green implementation added `apiAuth.js`, the
+  auth-management domain delegate, three registry entries, the access gate
+  exemption, and fresh admin admission for the settings pair.
+- The settings save is atomic and lock-serialised, enforces revision and candidate
+  invariants, maps lock contention to the existing retriable `RATE_LIMITED`
+  envelope, and preserves storage on validation failure. Production Node wiring was
+  removed; the Node test harness registers the domain delegate explicitly.
+- A required regression fix compacted `z_apiHandler.js` in place from 553 to 499
+  lines. The registry remains a single file as required by Assumption 4; no lint
+  suppression or registry split was introduced.
+- Section 5 data-shape documentation is reconciled in `auth-users.md`,
+  `auth-cache.md`, and `data-shapes/INDEX.md`. Section 6–8 planned markers remain
+  unchanged.
+- Section 5 focused tests: **31/31 passing**. Full backend suite: **2,104/2,104**.
+  Backend lint has zero errors with 11 accepted pre-existing unrelated max-lines
+  warnings; builder compile/bundle checks pass. The regression gate comparison on
+  2026-09-09 reports **0 regressions, 0 new failures, 2 fixes**; the checker still
+  exits non-zero because the accepted baseline lint debt remains. Full frontend
+  unit/E2E, builder lint/tests, and compilation also passed in that comparison.
+- Red and Green Code Reviewer verdicts are clean, including the contention,
+  Node-wiring, and registry-regression follow-up reviews. Section 6 `apiConfig.js`
+  migration and all frontend work remain deferred.
 
 ---
 

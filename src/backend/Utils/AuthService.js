@@ -1,5 +1,5 @@
-/* global BaseSingleton, ABLogger, ConfigurationManager, Session, validateAuthStateStrict_,
-   GoogleGroupsAuthService, ScriptPropertiesAuthService */
+/* global BaseSingleton, ABLogger, ApiValidationError, AuthSettingsDomain, ConfigurationManager,
+   Session, validateAuthStateStrict_, GoogleGroupsAuthService, ScriptPropertiesAuthService */
 /**
  * AuthService
  *
@@ -7,10 +7,15 @@
  * provider-resolution state machine (fresh install / legacy groups / configured
  * providers / broken config), identity resolution, audit logging, cache-policy
  * coordination, and the atomic fresh-install bootstrap claim (ACTION_PLAN
- * Section 4). Provider-specific membership decisions are delegated to the
- * concrete provider subclasses (`GoogleGroupsAuthService`,
- * `ScriptPropertiesAuthService`); callers always use
- * `AuthService.getInstance()` and never construct a provider directly.
+ * Section 4). Since Section 5 it also exposes the auth-management domain
+ * operations consumed by the `z_Api/apiAuth.js` transport endpoints: the
+ * gate-exempt access-status resolution (`resolveApplicationAccess`) and the
+ * atomic settings save (`saveAuthenticationSettings`). Both delegate to the
+ * `AuthSettingsDomain` module so the class stays a thin singleton facade;
+ * provider-specific membership decisions are delegated to the concrete provider
+ * subclasses (`GoogleGroupsAuthService`, `ScriptPropertiesAuthService`);
+ * callers always use `AuthService.getInstance()` and never construct a provider
+ * directly.
  *
  * @remarks
  * Provider-resolution order is: (1) freshness — a genuinely fresh install has no
@@ -135,6 +140,49 @@ class AuthService extends BaseSingleton {
       neverClaim,
       method,
     });
+  }
+
+  /**
+   * Resolves the caller's application-access status for the gate-exempt
+   * `getApplicationAccess` endpoint.
+   *
+   * @remarks
+   * Delegates to the shared access-resolution domain logic in
+   * `AuthSettingsDomain`. The same path as `checkAccess` performs the Section 4
+   * bootstrap claim on a fresh install and classifies the outcome with the
+   * `auth-users.md` reason enum, without exposing provider details.
+   *
+   * @param {Object} [options] - Optional overrides.
+   * @param {string} [options.method] - Requested method, recorded in the audit log.
+   * @returns {{
+   *   allowed: boolean,
+   *   role: string|null,
+   *   email: string,
+   *   reason: 'ok'|'freshInstall'|'brokenConfig'|'denied'
+   * }} The access status; `role` is the application role when allowed and `null`
+   *   otherwise, and `reason` follows the `auth-users.md` enum.
+   */
+  resolveApplicationAccess(options = {}) {
+    return AuthSettingsDomain.resolveApplicationAccess(this, options);
+  }
+
+  /**
+   * Commits a complete authentication-settings save atomically or not at all.
+   *
+   * @remarks
+   * Domain-invariant enforcement (candidate validity, revision guard,
+   * provider-switch saving-admin checks, mode-shape rules and the 8KB cap)
+   * lives in `AuthSettingsDomain`; this is the AuthService-owned entry point
+   * consumed by the `apiAuth.js` transport helper.
+   *
+   * @param {Object} settings - Candidate settings from the transport.
+   * @returns {{ success: true, authRevision: string|null }} The commit result;
+   *   the new revision in scriptProperties mode and `null` in googleGroups mode.
+   * @throws {ApiValidationError} When any domain invariant is violated or the
+   *   blob exceeds the 8KB cap; storage is unchanged.
+   */
+  saveAuthenticationSettings(settings) {
+    return AuthSettingsDomain.saveAuthenticationSettings(this, settings);
   }
 
   /**
@@ -283,7 +331,9 @@ class AuthService extends BaseSingleton {
 
 // Export for Node/Vitest. The production GAS bundle resolves dependencies as
 // pre-existing globals via concatenation; the test harness registers the real
-// providers on globalThis in tests/setupGlobals.js.
+// providers and the AuthSettingsDomain delegate on globalThis in
+// tests/setupGlobals.js so AuthService's delegators resolve them the same way
+// the concatenated GAS runtime does.
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = AuthService;
 }

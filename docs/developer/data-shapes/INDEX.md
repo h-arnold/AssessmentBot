@@ -28,18 +28,17 @@ reference.
 | **TriggerContext**       | [`trigger-context.md`](trigger-context.md)             | Script Properties (`trigger:<uid>:method`, `trigger:<uid>:params`) | None — internal trigger context storage                                                                                                                                                                                                  | —                                                                                                                             |
 | **AuthUsers**            | [`auth-users.md`](auth-users.md)                       | Auth fields inside the `__CONFIG_STORE_KEY__` blob                 | `getApplicationAccess`, `getAuthenticationSettings`, `setAuthenticationSettings`                                                                                                                                                         | AuthUserEntry (embedded)                                                                                                      |
 
-> **Status: Implemented** — the `AuthCache` and `TriggerContext` contracts are delivered and
-> documented above.
+> **Status: Implemented** — the `AuthCache`, `TriggerContext`, and the `AuthUsers` backend
+> transport contracts are delivered and documented above.
 >
-> **Status: Partially implemented** — the `AuthUsers` contract is recorded from `SPEC.md`
-> v1.3 (Application Authentication & Minimal Role Administration). The persistence/validation
-> layer (Section 1), the AuthService provider resolution, strict deny, cache policy, and
-> never-claim trigger context (Section 3), and the fresh-install bootstrap claim (Section 4)
-> have landed. The transport endpoints in `apiAuth.js` (Section 5) remain `Not implemented` —
-> the endpoint shapes are recorded as the target contract but no code conforms to them yet.
-> The contract also documents planned changes to `BackendConfig` (auth fields leave its
-> transport) and `AuthCache` (no success cache for the Script Properties provider). Remove the
-> marker when Section 5 lands.
+> **Status: AuthUsers — backend transport implemented; frontend pending** — recorded from
+> `SPEC.md` v1.3 (Application Authentication & Minimal Role Administration). The
+> persistence/validation layer (Section 1), the AuthService provider resolution, strict deny,
+> cache policy, and never-claim trigger context (Section 3), the fresh-install bootstrap claim
+> (Section 4), and the three `apiAuth.js` transport endpoints (Section 5) have all landed and
+> conform to this contract. The frontend Zod/service layer (Section 7) and the `BackendConfig`
+> read/write transport auth-field removal (Sections 6–8) remain `Not implemented` and are
+> tracked as planned markers in their respective contract files.
 
 ## Containment Hierarchy
 
