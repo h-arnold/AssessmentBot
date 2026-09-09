@@ -142,6 +142,19 @@ Purpose:
 - keep `getBackendConfig_` / `setBackendConfig_` out of this helper because `z_apiHandler.js` wires
   those through its own guarded Node bridge
 
+### Synthetic analysis corpus and dispatcher bridge
+
+> **Not implemented**
+
+Planned locations: `scripts/synthetic-test-data/` (deterministic corpus, validators, loader, and Node-side dispatcher bridge) and `tests/__mocks__/data/synthetic-analysis/` (committed compact profiles and manifests).
+
+Purpose:
+
+- provide schema-valid, deterministic analysis-domain fixture graphs without adding a test-data dependency to GAS runtime source;
+- supply an explicit generated **transport** view through the existing `apiHandlerTestUtils.js` handler seams, then dispatch through the actual `apiHandler`;
+- compose with the frontend's existing `googleScriptRunHarness` through its thin frontend test adapter, rather than recreating API envelopes or GAS callback behaviour;
+- retain `apiHandlerTestUtils.js` and `mockFactories.js` as composition-only dependencies: synthetic graph, fixture, and bridge code must remain in the dedicated synthetic-test-data domain.
+
 ### Global Mock Management with `globalMockManager`
 
 > **Recommended for new tests**
