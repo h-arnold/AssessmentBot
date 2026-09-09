@@ -76,7 +76,23 @@ function createConfigurationManagerMock(
   };
 
   const manager = {
-    getAllConfigurations: vi.fn(() => options.allConfigurations ?? {}),
+    // The stored auth configuration is exposed to the AuthService gate. These
+    // transport tests are not auth-focused, so unless a test supplies auth
+    // fields explicitly, the stored state models a valid configured googleGroups
+    // install (the default group email) and the fail-closed gate allows the
+    // default teacher member.
+    getAllConfigurations: vi.fn(() => {
+      const supplied = options.allConfigurations ?? {};
+      const hasAuthFields =
+        Object.hasOwn(supplied, 'authMode') || Object.hasOwn(supplied, 'authGroupEmail');
+      return {
+        ...supplied,
+        ...(hasAuthFields
+          ? {}
+          : { authMode: 'googleGroups', authGroupEmail: 'teachers@school.edu' }),
+      };
+    }),
+    isFreshInstall: vi.fn(() => false),
     ensureDefaultConfiguration: vi.fn(
       setterImplementations.ensureDefaultConfiguration || (() => {})
     ),

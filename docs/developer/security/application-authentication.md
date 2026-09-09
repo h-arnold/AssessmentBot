@@ -121,7 +121,7 @@ parameters:
   unregistered trigger methods with fail-loud `ABLogger` errors and no dispatch. Only a
   fully resolved, registered trigger proceeds to authorisation.
 - **The auth call.** Authorisation runs as
-  `AuthService.checkAccess({ bypassCache: true, requireConfigured: true, method: context.method })`.
+  `AuthService.checkAccess({ bypassCache: true, neverClaim: true, method: context.method })`.
 - **Why `bypassCache: true`.** A revoked user's scheduled triggers must stop
   _immediately_ on the next fire, not after the cache TTL. Bypassing the read forces a
   fresh `GroupsApp` lookup on every trigger execution, closing the revocation window for
@@ -129,11 +129,7 @@ parameters:
   see [accepted-risks.md](./accepted-risks.md) risk 2). The refreshed allowed result is
   still written back to the cache, so a trigger execution refreshes the user's
   authorisation for subsequent API calls.
-- **Why `requireConfigured: true`.** Triggers are stricter than the API gate: when the
-  group is unconfigured they fail closed rather than open, because there is no settings
-  form to bootstrap through — a scheduled run with no group configured should simply not
-  execute. This means the bootstrap fail-open window applies only to the interactive API
-  surface.
+- **Why `neverClaim: true`.** Triggers are stricter than the interactive API surface: they pass an explicit never-claim flag so a scheduled run never bootstraps a first admin. First-admin claiming is the responsibility of the Section 4 bootstrap claim, not of trigger execution; trigger execution therefore fails closed whenever a claim would otherwise be required — a scheduled run with no configuration simply does not execute. This keeps the bootstrap claim restricted to interactive callers.
 - **Cleanup ownership.** `triggerHandler` owns all cleanup — clearing the stored trigger
   context and deleting the fired trigger via `TriggerController` — in a `finally` block
   and on every resolved, known `triggerUid` path, including auth denial and auth

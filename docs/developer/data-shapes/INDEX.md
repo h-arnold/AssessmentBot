@@ -31,11 +31,13 @@ reference.
 > **Status: Implemented** — the `AuthCache` and `TriggerContext` contracts are delivered and
 > documented above.
 >
-> **Status: Not implemented** — the `AuthUsers` contract is a planned contract recorded
-> from `SPEC.md` v1.3 (Application Authentication & Minimal Role Administration); it
-> also documents planned changes to `BackendConfig` (auth fields leave its transport)
-> and `AuthCache` (no success cache for the Script Properties provider). Remove the
-> markers as each shape lands.
+> **Status: Partially implemented** — the `AuthUsers` contract is recorded from `SPEC.md`
+> v1.3 (Application Authentication & Minimal Role Administration). The persistence/validation
+> layer (Section 1) and the AuthService provider resolution, strict deny, cache policy, and
+> never-claim trigger context (Section 3) have landed; the bootstrap claim (Section 4) and
+> the `apiAuth.js` transport endpoints (Section 5) remain `Not implemented`. It also documents
+> planned changes to `BackendConfig` (auth fields leave its transport) and `AuthCache` (no
+> success cache for the Script Properties provider). Remove the marker when Sections 4–5 land.
 
 ## Containment Hierarchy
 

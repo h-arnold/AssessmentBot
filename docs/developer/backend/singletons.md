@@ -403,7 +403,7 @@ repository-root `SPEC.md` and `ACTION_PLAN.md`).
 - Status: `Implemented`
 - Owning path: `src/backend/Utils/AuthService.js`
 - Decision: new singleton extending `BaseSingleton`.
-- Contract: `checkAccess({ bypassCache?, requireConfigured?, method? })` resolves the caller's email via `Session.getActiveUser().getEmail()`, verifies Google Group membership via `GroupsApp.getGroupByEmail(groupEmail).hasUser(email)`, maps roles (`OWNER`/`MANAGER` → `admin`, `MEMBER` → `user`, others → deny), caches successful results via `CacheManager` (6-hour TTL, key `auth:<groupEmail>:<email>`), and audits all attempts via `ABLogger` (including the provided `method` when supplied). Fail-open when `AUTH_GROUP_EMAIL` is unconfigured unless `requireConfigured` is set (fail-closed for triggers). Denials are never cached.
+- Contract: `checkAccess({ bypassCache?, neverClaim?, method? })` resolves the caller's email via `Session.getActiveUser().getEmail()`, verifies Google Group membership via `GroupsApp.getGroupByEmail(groupEmail).hasUser(email)`, maps roles (`OWNER`/`MANAGER` → `admin`, `MEMBER` → `user`, others → deny), caches successful results via `CacheManager` (6-hour TTL, key `auth:<groupEmail>:<email>`), and audits all attempts via `ABLogger` (including the provided `method` when supplied). Fail-open when `AUTH_GROUP_EMAIL` is unconfigured; trigger execution passes `neverClaim: true` (and `bypassCache: true`) so it never bootstraps an admin and fails closed. Denials are never cached.
 - References: SPEC.md §Backend changes (1); ACTION_PLAN.md §4.
 
 ### CacheManager generic methods (extended)

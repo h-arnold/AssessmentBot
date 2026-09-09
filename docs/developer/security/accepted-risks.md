@@ -49,7 +49,7 @@ be shortened or the cache removed.
 When `AUTH_GROUP_EMAIL` is unconfigured, the API gate fails open: any signed-in domain
 user is allowed in with a warning logged per request. The intent is that an administrator
 can reach the settings form and configure the group. Trigger execution is deliberately
-stricter — it fails closed even in bootstrap (`requireConfigured: true`).
+stricter — it passes `neverClaim: true` and fails closed, so it never bootstraps an admin even during bootstrap.
 
 **Why accepted:** without the fail-open window the first administrator could not configure
 the application at all. The window is loud (a warning is logged on every request) and

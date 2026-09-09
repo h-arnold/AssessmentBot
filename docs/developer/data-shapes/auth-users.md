@@ -4,13 +4,18 @@ Application authentication state and the managed user list: two-provider members
 resolution (`googleGroups` | `scriptProperties`), the persistent authorised-user list
 with roles, and the auth management/access endpoints.
 
-> **Status: Not implemented** — planned contract recorded from
-> `SPEC.md` v1.3 (Application Authentication & Minimal Role Administration) before
-> implementation starts. Shapes below are the target contract; code must conform to
-> this spec as it lands. Remove this marker when the contract is delivered.
+> **Status: Partially implemented** — recorded from `SPEC.md` v1.3 (Application
+> Authentication & Minimal Role Administration). The persistence/validation layer
+> (Section 1 config schema) and the AuthService provider resolution, strict deny
+> paths, Groups/Script Properties cache policy, and never-claim trigger execution
+> context (Section 3) have landed. The bootstrap claim (Section 4) and the transport
+> endpoints in `apiAuth.js` (Section 5) remain `Not implemented`. Remove this marker
+> only when Sections 4–5 are delivered.
 
-Planned backend implementation: `src/backend/Utils/AuthService.js` (base) +
-`GoogleGroupsAuthService` + `ScriptPropertiesAuthService` subclasses; `src/backend/z_Api/apiAuth.js` (new transport file)
+Backend implementation: `src/backend/Utils/AuthService.js` (base) +
+`GoogleGroupsAuthService` + `ScriptPropertiesAuthService` subclasses (landed,
+ACTION_PLAN §3); `src/backend/z_Api/apiAuth.js` (new transport file, **Not
+implemented**, ACTION_PLAN §5)
 Persistence: inside the existing single JSON blob in `PropertiesService.getScriptProperties()` under key `__CONFIG_STORE_KEY__` (see [Contract: BackendConfig](backend-config.md))
 API handlers: `getApplicationAccess`, `getAuthenticationSettings`, `setAuthenticationSettings` (registered in `ALLOWLISTED_METHOD_HANDLERS`)
 Response mapper: None — handlers shape data from `AuthService`/`ConfigurationManager` methods
@@ -68,6 +73,9 @@ values are strings, consistent with the BackendConfig blob conventions.
 
 ### Bootstrap (fresh install)
 
+> **Status: Not implemented** (ACTION_PLAN §4) — the bootstrap claim is not yet landed;
+> `AuthService._attemptBootstrapClaim()` currently denies a fresh install without mutation.
+
 - Freshness detection is a `ConfigurationManager` method: run `ConfigurationManager`
   initialisation first, then read raw Script Properties for `__CONFIG_STORE_KEY__`
   absence (never the forgiving config cache). `AuthService` must not read
@@ -83,6 +91,9 @@ values are strings, consistent with the BackendConfig blob conventions.
 ---
 
 ## Transport
+
+> **Status: Not implemented** (ACTION_PLAN §5) — the `apiAuth.js` endpoints below are the
+> target transport contract; code must conform to this spec as it lands.
 
 ### `getApplicationAccess` (gate-exempt, all callers)
 
@@ -177,9 +188,21 @@ registry.
   resolves absent/blank+group to `googleGroups`, and resolves to `null` otherwise;
   the 8KB blob cap constant (`MAX_CONFIG_BLOB_BYTES`, 8192) is exported for the
   locked write path.
-- `src/backend/Utils/AuthService.js` — **planned**: provider resolution, bootstrap
-  claim, strict deny paths, never-claim trigger execution context
-  (`requireConfigured` dropped, `bypassCache` retained).
+- `src/backend/Utils/AuthService.js` — **implemented (ACTION_PLAN §3)**: provider
+  resolution runs the state machine (`freshInstall` → `legacyGroups` leniency →
+  `configured` provider → `broken` deny) via `AuthService.getInstance()`; identity
+  resolution denies a blank server-resolved email (no claim, no cache write); strict
+  deny paths fail closed with an error-level audit; the single legacy leniency
+  (absent/blank `authMode` + non-blank `authGroupEmail` → `googleGroups`) is the only
+  fallback and every other broken state denies; the removed `'none'` bypass is gone
+  (stored `'none'` is an unrecognised mode → deny); cache policy splits by provider —
+  `GoogleGroupsAuthService` uses the `auth:<groupEmail>:<email>` key with a 21600-second
+  TTL, `OWNER`/`MANAGER` → `admin`, `MEMBER` → `user`, denials never cached,
+  `bypassCache: true` forces a fresh `GroupsApp` lookup, while `ScriptPropertiesAuthService`
+  has no success cache and reads the list fresh per request; the trigger execution
+  context passes `neverClaim: true` and `bypassCache: true` (the defunct
+  `requireConfigured` option is dropped). The bootstrap claim itself is **Not
+  implemented** and belongs to ACTION_PLAN §4.
 - `src/backend/z_Api/apiConfig.js` — **planned**: `setBackendConfig_` rejects all
   auth fields as `ApiValidationError` (`INVALID_REQUEST`).
 
@@ -192,7 +215,12 @@ registry.
 
 ### Known discrepancies
 
-None yet — contract not implemented. Add discrepancies as the implementation lands.
+- Section 3 (AuthService provider/cache/trigger context) has landed with no drift against
+  this contract: provider resolution, strict deny, blank-identity deny, the single legacy
+  leniency, the removed `'none'` bypass, the Groups/Script Properties cache split, and the
+  `neverClaim`/`bypassCache` trigger context all match the shapes above.
+- Sections 4 (bootstrap claim) and 5 (transport endpoints) are still `Not implemented`;
+  their planned markers are retained and no discrepancies are asserted for unbuilt code.
 
 ---
 

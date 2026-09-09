@@ -428,7 +428,25 @@ Backend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- To be completed during implementation.
+- **Completed and review clean; regression/commit gate in progress.**
+- Section 3 implementation splits `AuthService` into the base service plus
+  `GoogleGroupsAuthService` and `ScriptPropertiesAuthService`, preserving
+  `AuthService.getInstance()` as the sole entrypoint. Provider resolution now
+  follows the strict state machine: the sole legacy leniency is absent/blank mode
+  with a non-blank group; stored `'none'` and all other broken states fail closed.
+- Groups cache behaviour remains compatible (`auth:<groupEmail>:<email>`, 21600-second
+  TTL, role mapping, no denial caching, and `bypassCache` freshness). Script Properties
+  reads fresh per request and does not cache successful decisions. Trigger execution
+  now passes `bypassCache: true` and `neverClaim: true`; the Section 4 claim remains
+  an explicit no-mutation wiring point.
+- Data-shape and documentation gates are complete. The Section 3 review found and
+  the Docs agent corrected stale `requireConfigured`/`'none'` current-behaviour
+  references; Section 4 bootstrap and Section 5 transport remain marked planned.
+- Pre-commit validation before the final regression gate: focused auth/trigger/
+  dispatcher tests 85 passed; full backend 2,058 passed; backend lint has zero
+  errors and only the 12 accepted baseline max-lines warnings; GAS bundle build
+  passed all steps. The user-authorised model-only changes under `.opencode/agents/`
+  will be included in the Section 3 delivery commit.
 
 ---
 

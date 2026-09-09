@@ -150,12 +150,15 @@ Rules:
 - It centralises Google Group membership checks, role mapping, successful-result caching, and
   access-attempt audit logging.
 - The API gate fails open during bootstrap when `AUTH_GROUP_EMAIL` is empty so an administrator can
-  configure the application. Trigger execution passes `requireConfigured: true` and fails closed.
+  configure the application. Trigger execution passes `bypassCache: true` and an explicit
+  `neverClaim: true` context, so it fails closed and never bootstraps an admin (first-admin
+  claiming is a Section 4 concern).
 - Access the service with `AuthService.getInstance()`; do not instantiate it directly.
-- **Temporary development bypass:** the `authMode` configuration value `'none'` disables the
-  group-membership access gate entirely. This is a **temporary development/testing measure only**
-  and must never be used in production; the secure default is `'googleGroups'`. Policy detail lives in
-  `SPEC.md` (Auth-Mode Bypass).
+- **Removed mode:** the `authMode` value `'none'` has been removed entirely. The strict
+  auth-state resolver (`validateAuthStateStrict_`) rejects a stored or requested `'none'` as an
+  unrecognised mode, so the access gate fails closed rather than disabling it. The stored valid
+  modes are `'googleGroups'` and `'scriptProperties'`; the secure default is `'googleGroups'`.
+  See `docs/developer/data-shapes/auth-users.md` for the auth-mode contract.
 
 ### 2.4 Backend function exposure and security audit
 
