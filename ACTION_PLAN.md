@@ -517,7 +517,9 @@ Backend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Completed and review clean; regression/commit gate in progress.**
+- **Completed and pushed.** Implementation commit `b8dde65`
+  (`feat(auth): claim first administrator on fresh install`) on branch
+  `feat/ScriptPropertiesAuthService`; push to `origin` confirmed on 2026-09-09.
 - Implemented the atomic fresh-install claim in `AuthService._attemptBootstrapClaim`.
   A genuinely absent raw store, interactive caller, and non-blank canonical identity
   produce `{ allowed: true, role: 'admin' }` in the same resolution and persist only
@@ -534,6 +536,9 @@ Backend tests:
   remain explicitly not implemented. Red/Green/review checks were clean: bootstrap
   and provider focus 41/41, auth/trigger 92/92, full backend 2,074/2,074, lint zero
   errors with 12 accepted baseline warnings, and the production bundle build passed.
+  The final regression gate reported **0 regressions, 0 new failures, and 1 fix**
+  against the original branch baseline; the two transient parallel E2E flakes were
+  reproduced as passing in isolated runs and the final full comparison passed E2E.
 
 ---
 
