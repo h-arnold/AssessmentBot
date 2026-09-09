@@ -120,18 +120,35 @@ class ConfigurationManager extends BaseSingleton {
     return this.configCache[key] || '';
   }
   /**
+   * Validates and normalises a property value through CONFIG_SCHEMA, returning the
+   * exact serialised value that `setProperty` persists.
+   *
+   * @remarks
+   * Manager-owned seam exposed so transport callers (e.g. `setBackendConfig_` in
+   * apiConfig.js) can validate/normalise every staged field up front and then commit
+   * the whole patch through a single `writeConfigurationLocked` call. This keeps
+   * domain validation inside ConfigurationManager rather than duplicating the
+   * CONFIG_SCHEMA rules at the API layer.
+   * @param {string} key - The configuration property key.
+   * @param {*} value - The value to validate and normalise.
+   * @returns {string} The serialised value to persist.
+   * @throws {Error} When the value fails CONFIG_SCHEMA validation. */
+  preparePropertyValue(key, value) {
+    this.ensureInitialized();
+    this.getAllConfigurations();
+    const spec = ConfigurationManager.CONFIG_SCHEMA[key];
+    const canonical = spec?.validate ? spec.validate(value, this) : value;
+    const normalisedValue = spec?.normalise ? spec.normalise(canonical) : canonical;
+    return String(normalisedValue);
+  }
+  /**
    * Sets a property via schema validation then the locked write path.
    * @param {string} key - The configuration property key.
    * @param {*} value - The value to set.
    * @returns {void} No return value.
    * @throws {Error} If persistence to script properties fails. */
   setProperty(key, value) {
-    this.ensureInitialized();
-    this.getAllConfigurations();
-    const spec = ConfigurationManager.CONFIG_SCHEMA[key];
-    const canonical = spec?.validate ? spec.validate(value, this) : value;
-    const normalisedValue = spec?.normalise ? spec.normalise(canonical) : canonical;
-    const serialisedValue = String(normalisedValue);
+    const serialisedValue = this.preparePropertyValue(key, value);
     // The locked write path re-reads the RAW blob under the lock; use that fresh
     // snapshot as the merge base so a concurrent writer's changes are never clobbered.
     this.writeConfigurationLocked((current) => ({ ...current, [key]: serialisedValue }));

@@ -3,6 +3,8 @@ const {
 } = require('../../src/backend/ConfigurationManager/02_defaults.js');
 
 function buildBackendConfigResponse(overrides = {}) {
+  // Settled 12 non-auth field read contract (SPEC Section 6): auth fields are
+  // read exclusively through the dedicated auth endpoints.
   return {
     backendAssessorBatchSize: 30,
     apiKey: '****7890',
@@ -16,8 +18,6 @@ function buildBackendConfigResponse(overrides = {}) {
     jsonDbLogLevel: 'INFO',
     jsonDbBackupOnInitialise: false,
     jsonDbRootFolderId: 'folder-123',
-    authGroupEmail: '',
-    authMode: 'googleGroups',
     ...overrides,
   };
 }
@@ -160,6 +160,19 @@ function createConfigurationManagerMock(
     setJsonDbRootFolderId: vi.fn(setterImplementations.setJsonDbRootFolderId || (() => {})),
     setAuthGroupEmail: vi.fn(setterImplementations.setAuthGroupEmail || (() => {})),
     setAuthMode: vi.fn(setterImplementations.setAuthMode || (() => {})),
+    // Section 6 locked-write seam: setBackendConfig_ collapses every ordinary
+    // multi-field save into ONE atomic writeConfigurationLocked(mutator) call,
+    // so write-path tests assert against this mock instead of per-field setters.
+    // Override via setterImplementations.writeConfigurationLocked to inject
+    // persistence/validation failures at the seam.
+    writeConfigurationLocked: vi.fn(setterImplementations.writeConfigurationLocked || (() => {})),
+    // Section 6 validation seam: setBackendConfig_ stages each supplied field
+    // through the manager-owned preparePropertyValue(key, value) seam before the
+    // single locked write. This mock passes values through unchanged (mirroring
+    // the mock manager's role as a transport-level contract stub); CONFIG_SCHEMA
+    // validation/normalisation is exercised by the real ConfigurationManager
+    // suites, not duplicated here.
+    preparePropertyValue: vi.fn((_configKey, value) => value),
   };
 
   globalThis.ConfigurationManager = {

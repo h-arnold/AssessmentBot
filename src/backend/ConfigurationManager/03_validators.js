@@ -41,11 +41,22 @@ function validateRequiredClassInfoStringProperty_(keyLabel, propertyName, proper
 
 /**
  * Validates an API key token used by external integrations.
+ *
+ * The established backend-config clearing contract permits ONE explicit empty-string
+ * value: `setBackendConfig({ apiKey: '' })` must clear the stored key, so the write
+ * validation seam accepts `''` and returns it unchanged. Every other value must be a
+ * non-empty string matching the strict token pattern (whitespace-only strings and
+ * `null`/numbers remain rejected).
  * @param {*} value - Candidate API key.
- * @returns {string} Canonical (trimmed) API key value when valid.
- * @throws {Error} If the value is missing or has an invalid token format.
+ * @returns {string} Canonical (trimmed) API key value when valid, or `''` when the
+ *   explicit empty-string clearing value is supplied.
+ * @throws {Error} If the value is neither the empty-string clear value nor a valid
+ *   token format.
  */
 function validateApiKey_(value) {
+  if (value === '') {
+    return '';
+  }
   if (!Validate.isNonEmptyString(value) || !API_KEY_PATTERN.test(value.trim())) {
     throw new Error(
       'API Key must be an alphanumeric prefix followed by an underscore and exactly 32 base64url characters (A-Z, a-z, 0-9, hyphen, underscore).'

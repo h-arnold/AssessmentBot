@@ -724,8 +724,8 @@ Backend API tests:
 
 ### Required test cases (Red first)
 
-Backend transport tests (dedicated suite per `src/frontend/AGENTS.md` §8:
-`tests/api/backendConfigApi.test.js`):
+Backend transport tests (dedicated suites per `src/frontend/AGENTS.md` §8:
+`tests/api/backendConfigApi.test.js` and its auth/regression companion):
 
 1. Each auth field in the write payload → `INVALID_REQUEST`.
 2. Read response no longer contains `authGroupEmail`/`authMode`.
@@ -734,7 +734,7 @@ Backend transport tests (dedicated suite per `src/frontend/AGENTS.md` §8:
 
 ### Section checks
 
-- `npm run test:backend -- tests/api/backendConfigApi.test.js`
+- `npm run test:backend -- tests/api/backendConfigApi.test.js tests/api/backendConfigApi.authAndRegression.test.js`
 - `npm run lint:backend`
 - Mandatory-read evidence gate passed.
 
@@ -745,7 +745,36 @@ Backend transport tests (dedicated suite per `src/frontend/AGENTS.md` §8:
 
 ### Implementation notes / deviations / follow-up
 
-- To be completed during implementation.
+- **Completed.** `getBackendConfig_` now emits exactly the 12 non-auth fields,
+  including derived `hasApiKey`; `setBackendConfig_` rejects all four auth fields
+  for every caller as `ApiValidationError` / `INVALID_REQUEST` before staging.
+- Ordinary fields are validated and normalised through the manager-owned
+  `preparePropertyValue` seam, then committed with one fresh-merge
+  `writeConfigurationLocked` mutation. The 8KB cap, no-clobber semantics, and
+  redacted aggregate failure shape are preserved.
+- Empty-string API-key clearing is an explicit supported case; malformed,
+  whitespace-only, null, and invalid non-empty keys remain rejected. Real
+  ConfigurationManager tests cover the validator and locked persistence path.
+- The obsolete `backendConfigAuthGroupEmail.test.js` was removed because it
+  asserted the pre-Section 6 contract; its coverage is replaced by auth-field
+  read-removal and write-rejection tests. The dedicated suite was split into
+  `backendConfigApi.test.js` and
+  `backendConfigApi.authAndRegression.test.js` to avoid a new max-lines
+  regression while retaining all coverage; both files remain under 500 lines.
+- Canonical `backend-config.md` and backend `api-layer.md` documentation now
+  describe the 12-field read, 11-field ordinary write, auth-field rejection,
+  and locked-write path. Frontend lockstep markers remain planned for Sections
+  7–8.
+- Focused Section 6 suites: **28/28 passing**. Full backend suite:
+  **2,114/2,114**. Backend lint has zero errors with 10 accepted pre-existing
+  unrelated max-lines warnings; builder compile and GAS bundle checks pass.
+  The regression gate comparison on 2026-09-09 reports **0 regressions, 0 new
+  failures, 3 fixes**; the checker exits non-zero only because accepted baseline
+  lint debt remains. Full frontend unit/E2E, builder lint/tests, and compilation
+  also passed in that comparison.
+- Red and Green Code Reviewer verdicts are clean, including the data-shape,
+  API-layer, API-key-clearing, and test-split follow-up reviews. Section 7
+  frontend services/Zod work remains deferred.
 
 ---
 
