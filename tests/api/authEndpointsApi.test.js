@@ -1,37 +1,22 @@
 /**
- * Contract tests for the auth endpoints (`getApplicationAccess`,
+ * Contract tests for the Section 5 auth endpoints (`getApplicationAccess`,
  * `getAuthenticationSettings`, `setAuthenticationSettings`) registered in
- * `ALLOWLISTED_METHOD_HANDLERS` (ACTION_PLAN §5 / `auth-users.md` transport
- * block). The endpoints are exercised through the real `ApiDispatcher` against
- * the real `AuthService` singleton with store-backed runtime mocks, so the tests
- * fail at the current RED phase because the endpoints are not yet registered
- * (dispatch returns `UNKNOWN_METHOD`) and will pass once `z_Api/apiAuth.js` and
- * the dispatcher gate wiring land.
+ * `ALLOWLISTED_METHOD_HANDLERS` and exercised through the real `ApiDispatcher`
+ * and `AuthService` singleton with store-backed runtime mocks (see `auth-users.md`).
  *
- * Contract encoded:
- *   - `getApplicationAccess` is gate-exempt, routes through the shared
- *     access-resolution path (performing the bootstrap claim), and returns the
- *     exact `auth-users.md` shape for `ok` post-claim, `freshInstall` for a
- *     non-claimable caller, `brokenConfig`, and `denied` — with no `provider`
- *     field and no `'unconfigured'` reason.
- *   - `getAuthenticationSettings` is admin-only and returns fresh settings data
- *     (`authMode`, `authGroupEmail`, parsed `authUsers` where applicable,
- *     `authRevision` per mode) with no secrets/provider leakage.
- *   - `setAuthenticationSettings` commits atomically or not at all: one locked
- *     write, revision increment, exact persisted fields, `{ success: true,
- *     authRevision }` on success, and a validation failure envelope with
- *     unchanged storage on stale revision, last-admin removal/demotion, invalid
- *     candidate lists, failed candidate-provider checks, groups-mode
- *     request-shape violations, and quota-cap excess.
- *   - First switch groups/legacy → scriptProperties seeds `authRevision: '1'`
- *     without requiring `expectedAuthRevision`; the saving admin must pass the
- *     candidate-provider check.
- *   - Error envelopes use the existing standard `ApiValidationError` /
- *     `INVALID_REQUEST` convention; no raw stored authUsers list (PII) leaks in
- *     a validation message. A contract-compliant SET stale-revision diagnostic
- *     MAY reference the stored revision (auth-users.md restricts revision-value
- *     leakage to the bootstrap-claim audit only), so no revision-value assertion
- *     is encoded here.
+ * Contract encoded: `getApplicationAccess` is gate-exempt, routes through the
+ * shared access-resolution path (performing the bootstrap claim) and returns the
+ * exact reason enum (`ok`/`freshInstall`/`brokenConfig`/`denied`, no `provider`
+ * field, no `'unconfigured'` reason); the settings pair are admin-only with the
+ * documented read/write shapes; saves commit atomically or not at all with the
+ * standard `ApiValidationError`/`INVALID_REQUEST` failure envelope and unchanged
+ * storage on stale revision, last-admin removal/demotion, invalid candidates,
+ * failed candidate-provider checks, groups-mode request-shape violations, and
+ * quota-cap excess. The first switch from groups/legacy seeds `authRevision: '1'`
+ * without requiring `expectedAuthRevision`. Validation messages never leak the
+ * raw stored users list (PII); a contract-compliant SET stale-revision
+ * diagnostic may reference the stored revision, so no revision-value assertion
+ * is encoded here.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadApiHandlerModule } from '../helpers/apiHandlerTestUtils.js';
@@ -46,13 +31,7 @@ const USER = 'user@school.edu';
 const OUTSIDER = 'outsider@school.edu';
 const GROUP_EMAIL = 'teachers@school.edu';
 
-/**
- * Builds a stored scriptProperties auth state.
- * @param {Array<{email: string, role: string}>} users - The stored user list.
- * @param {string} revision - The stored auth revision.
- * @param {Object} [extra={}] - Extra stored fields (e.g. authGroupEmail).
- * @returns {Object} The stored config object.
- */
+// Builds a stored scriptProperties auth state.
 function scriptPropertiesState(users, revision, extra = {}) {
   return {
     authMode: 'scriptProperties',
@@ -62,12 +41,7 @@ function scriptPropertiesState(users, revision, extra = {}) {
   };
 }
 
-/**
- * Dispatches a request through the real ApiDispatcher singleton.
- * @param {string} method - The allowlisted method name.
- * @param {Object} [params] - Optional method payload.
- * @returns {Object} The response envelope.
- */
+// Dispatches a request through the real ApiDispatcher singleton.
 function dispatch(method, params) {
   const { ApiDispatcher } = loadApiHandlerModule();
   return ApiDispatcher.getInstance().handle({

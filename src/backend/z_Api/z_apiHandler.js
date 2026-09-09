@@ -7,10 +7,10 @@ let lockWaitWarnThresholdMs;
 let activeLimit;
 let staleRequestAgeMs;
 let requestStoreFns;
-let apiRateLimitErrorName;
-let apiValidationErrorName;
-let apiDisabledErrorName;
-let apiDefinitionStaleErrorName;
+let apiRateLimitErrorName,
+  apiValidationErrorName,
+  apiDisabledErrorName,
+  apiDefinitionStaleErrorName;
 
 const API_ERROR_CODE_MAP = {
   RATE_LIMITED: 'RATE_LIMITED',
@@ -21,17 +21,10 @@ const API_ERROR_CODE_MAP = {
   FORBIDDEN: 'FORBIDDEN', // authenticated but not a group member
 };
 
-/**
- * Methods that skip the auth gate and run their own handler. `getApplicationAccess` joins
- * `getAuthorisationStatus` (the OAuth precedent) so the frontend can observe its own access state.
- */
+// Gate-exempt methods skip the auth gate and run their own handlers (OAuth status precedent).
 const GATE_EXEMPT_METHOD_NAMES = Object.freeze(['getAuthorisationStatus', 'getApplicationAccess']);
 
-/**
- * Methods admitted only for the admin role, enforced in the dispatcher's FORBIDDEN gate:
- * access is resolved FRESH with the provider cache bypassed (never a stale membership cache
- * entry); a non-admin role gets FORBIDDEN. Handler-level admin guards are not duplicated.
- */
+// Admin-only methods resolve access FRESH (provider cache bypassed); non-admin roles get FORBIDDEN.
 const ADMIN_REQUIRED_METHOD_NAMES = Object.freeze([
   'getAuthenticationSettings',
   'setAuthenticationSettings',
@@ -127,17 +120,10 @@ if (typeof module !== 'undefined' && module.exports) {
   apiDefinitionStaleErrorName = DefinitionStaleError.name;
 }
 
-/**
- * Dispatches incoming API requests to allowlisted handlers, managing request lifecycle
- * phases (admission, handler invocation, completion) with rate limiting and state tracking.
- */
+/** Dispatches allowlisted API requests with rate limiting and lifecycle state tracking. */
 class ApiDispatcher extends BaseSingleton {
   /**
-   * Validates, resolves, and dispatches the request, returning a structured response envelope.
-   * As the API boundary entry point it never throws and always wraps errors in a structured response.
-   *
-   * @remarks Handler failures are logged once at the boundary with the original thrown value, then
-   * mapped to the frontend-safe envelope without exposing raw exception details to callers.
+   * Validates, resolves, and dispatches a request, returning a structured envelope; never throws.
    *
    * @param {Object} request - Request object with method and optional params.
    * @param {string} request.method - The API method name to dispatch.
@@ -151,8 +137,7 @@ class ApiDispatcher extends BaseSingleton {
       return this._failure(requestId, 'INVALID_REQUEST', 'Invalid API request payload.', false);
     }
 
-    // Normalise the method name once; every log, the allowlist lookup, and the
-    // auth audit trail record this canonical (trimmed) value.
+    // Every log, the allowlist lookup, and the auth audit trail use this canonical (trimmed) method name.
     const methodName = request.method.trim();
 
     ABLogger.getInstance().debug('API request received.', {
@@ -161,14 +146,10 @@ class ApiDispatcher extends BaseSingleton {
       params: JSON.stringify(request.params),
     });
 
-    // Auth gate: runs after request validation but before allowlist lookup and admission,
-    // so non-members receive FORBIDDEN uniformly and cannot probe which methods exist
-    // (UNKNOWN_METHOD is only observable by authorised callers). The gate-exempt methods
-    // skip the group check and run their own handlers (the access endpoint routes through
-    // the shared access-resolution path, performing the bootstrap claim itself).
+    // Auth gate: runs before the allowlist lookup so non-members get FORBIDDEN uniformly and
+    // cannot probe the method surface; gate-exempt methods skip the group check and run handlers.
     if (!GATE_EXEMPT_METHOD_NAMES.includes(methodName)) {
-      // Admin-required methods resolve access FRESH (provider cache bypassed) so groups-mode
-      // admins are admitted via a fresh GroupsApp lookup; the fresh `role` feeds the check below.
+      // Admin-required methods resolve access FRESH (provider cache bypassed); the fresh role gates below.
       const isAdminRequired = ADMIN_REQUIRED_METHOD_NAMES.includes(methodName);
       let access;
       try {
@@ -177,8 +158,7 @@ class ApiDispatcher extends BaseSingleton {
           ...(isAdminRequired ? { bypassCache: true } : {}),
         });
       } catch (error) {
-        // A thrown auth check (e.g. ConfigurationManager persistence failure) is a transport-boundary
-        // error, not a group-membership denial — map it to the INTERNAL_ERROR envelope, not FORBIDDEN.
+        // A thrown auth check is a transport-boundary failure, not a denial: map it to INTERNAL_ERROR.
         ABLogger.getInstance().error(
           'Auth check failed.',
           { requestId, method: methodName },
@@ -240,7 +220,6 @@ class ApiDispatcher extends BaseSingleton {
    * @param {string} requestId - Unique identifier for this request.
    * @param {string} method - The canonical allowlisted method name.
    * @param {Object} response - The response envelope to log.
-   * @private
    */
   _logResponseSent(requestId, method, response) {
     ABLogger.getInstance().debug('API response sent.', {
@@ -251,14 +230,10 @@ class ApiDispatcher extends BaseSingleton {
   }
 
   /**
-   * Acquires the user lock, prunes stale entries, registers a started entry, and releases the lock.
-   * Returns a failure envelope on lock failure or active-limit; reuses lockAcquiredAt to minimise
-   * Date.now() calls (required by lock-timing observability tests).
-   *
+   * Acquires the lock, prunes stale entries, registers the started entry, then releases it.
    * @param {string} requestId - Unique identifier for this request.
    * @param {string} method - The API method name.
    * @returns {Object} Success envelope { ok: true } or failure envelope on admission error.
-   * @private
    */
   _runAdmissionPhase(requestId, method) {
     const acquired = this._acquireLock(requestId, method, 'admission');
@@ -316,14 +291,11 @@ class ApiDispatcher extends BaseSingleton {
   }
 
   /**
-   * Acquires the user lock, marks the request success/error, compacts the store, and releases the lock.
-   * Warns (but does not fail) when the completion lock cannot be acquired.
-   *
+   * Acquires the lock, marks the request success/error, compacts the store, and releases it.
    * @param {string} requestId - Unique identifier for this request.
    * @param {string} method - The API method name.
    * @param {boolean} handlerFailed - Whether the handler threw an error.
    * @param {*} [handlerError] - The value thrown by the handler, if any.
-   * @private
    */
   _runCompletionPhase(requestId, method, handlerFailed, handlerError) {
     const acquired = this._acquireLock(requestId, method, 'completion');
@@ -354,13 +326,12 @@ class ApiDispatcher extends BaseSingleton {
   }
 
   /**
-   * Acquires the user lock, warning if the wait exceeds the threshold.
+   * Acquires the user lock, warning when the wait exceeds the threshold.
    * @param {string} requestId - Unique identifier for this request.
    * @param {string} method - The API method name.
    * @param {string} phase - The lifecycle phase ('admission' or 'completion').
    * @returns {{ lock: Object|null, phaseStart?: number, lockAcquiredAt?: number, lockWaitMs?: number }}
    *   `lock: null` when the lock could not be acquired.
-   * @private
    */
   _acquireLock(requestId, method, phase) {
     const phaseStart = Date.now();
@@ -382,14 +353,13 @@ class ApiDispatcher extends BaseSingleton {
   }
 
   /**
-   * Logs the completion of an admission/completion lifecycle phase with timing metadata.
-   * @param {string} phase - The lifecycle phase ('admission' or 'completion').
+   * Logs an admission/completion lifecycle phase with timing metadata.
+   * @param {string} phase - Lifecycle phase ('admission' or 'completion').
    * @param {string} requestId - Unique identifier for this request.
    * @param {string} method - The API method name.
    * @param {number} phaseStart - Timestamp when the phase started.
    * @param {number} lockAcquiredAt - Timestamp when the lock was acquired.
    * @param {number} lockWaitMs - Lock wait duration.
-   * @private
    */
   _logPhaseComplete(phase, requestId, method, phaseStart, lockAcquiredAt, lockWaitMs) {
     const endTime = Date.now();
@@ -409,12 +379,9 @@ class ApiDispatcher extends BaseSingleton {
   }
 
   /**
-   * Determines whether the request object is valid.
-   * A valid request is a non-array object with a non-empty method string.
-   *
+   * Determines whether the request object is valid (a non-array object with a non-empty method string).
    * @param {*} request - The request object to validate.
    * @returns {boolean} True if the request is valid.
-   * @private
    */
   _isValidRequest(request) {
     if (!request || typeof request !== 'object' || Array.isArray(request)) {
@@ -426,24 +393,17 @@ class ApiDispatcher extends BaseSingleton {
 
   /**
    * Generates a backend-owned request ID for transport and tracking purposes.
-   *
    * @returns {string} A unique request ID.
-   * @private
    */
   _resolveRequestId() {
     return Utilities.getUuid();
   }
 
   /**
-   * Builds a successful response envelope.
-   *
-   * @remarks This transport layer must not reshape handler payload contracts; it wraps method
-   * data in the stable envelope only, keeping domain-field derivation outside the API boundary.
-   *
+   * Builds a successful response envelope without reshaping the handler payload contract.
    * @param {string} requestId - Unique request identifier.
    * @param {*} data - Response data from the handler.
    * @returns {Object} Response envelope with ok=true, requestId, and data.
-   * @private
    */
   _success(requestId, data) {
     // Defensive check: log and coerce undefined to null (frontend Zod rejects undefined envelope data).
@@ -459,14 +419,12 @@ class ApiDispatcher extends BaseSingleton {
 
   /**
    * Builds a failure response envelope.
-   *
    * @param {string} requestId - Unique request identifier.
    * @param {string} code - Error code (e.g. RATE_LIMITED, INVALID_REQUEST, DEFINITION_STALE).
    * @param {string} message - Human-readable error message.
    * @param {boolean} retriable - Whether the operation can be safely retried.
    * @param {Object} [details] - Optional structured metadata to include in the error block.
-   * @returns {Object} Response envelope with ok=false, error details.
-   * @private
+   * @returns {Object} Response envelope with ok=false and error details.
    */
   _failure(requestId, code, message, retriable, details) {
     const error = { code, message, retriable };
@@ -481,15 +439,11 @@ class ApiDispatcher extends BaseSingleton {
   }
 
   /**
-   * Maps runtime errors to API failure envelopes: known error types (ApiRateLimitError,
-   * ApiValidationError, ApiDisabledError, DefinitionStaleError) map to their codes, else INTERNAL_ERROR.
-   * A DefinitionStaleError sets DEFINITION_STALE and adds a details block
-   * (definitionKey, referenceStale, templateStale, referenceLastModified, templateLastModified).
-   *
+   * Maps known runtime errors to failure envelopes, else INTERNAL_ERROR; a DefinitionStaleError
+   * maps to DEFINITION_STALE and adds the structured details block.
    * @param {string} requestId - Unique request identifier.
    * @param {*} error - The runtime error value to map.
    * @returns {Object} Failure response envelope.
-   * @private
    */
   _mapErrorToFailureEnvelope(requestId, error) {
     const errorName = error?.name;
@@ -525,8 +479,7 @@ class ApiDispatcher extends BaseSingleton {
 }
 
 /**
- * Entry point for the API handler; delegates to the ApiDispatcher singleton, which manages request lifecycle and validation.
- *
+ * Entry point for the API handler; delegates to the ApiDispatcher singleton.
  * @param {Object} request - Request object with method and optional params.
  * @param {string} request.method - The API method name to dispatch.
  * @param {*} [request.params] - Optional parameters for the handler.
