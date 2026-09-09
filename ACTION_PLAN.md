@@ -428,7 +428,9 @@ Backend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Completed and review clean; regression/commit gate in progress.**
+- **Completed and pushed.** Implementation commit `97bb52a`
+  (`feat(auth): split providers and enforce strict access state`) on branch
+  `feat/ScriptPropertiesAuthService`; push to `origin` confirmed on 2026-09-09.
 - Section 3 implementation splits `AuthService` into the base service plus
   `GoogleGroupsAuthService` and `ScriptPropertiesAuthService`, preserving
   `AuthService.getInstance()` as the sole entrypoint. Provider resolution now
@@ -445,8 +447,10 @@ Backend tests:
 - Pre-commit validation before the final regression gate: focused auth/trigger/
   dispatcher tests 85 passed; full backend 2,058 passed; backend lint has zero
   errors and only the 12 accepted baseline max-lines warnings; GAS bundle build
-  passed all steps. The user-authorised model-only changes under `.opencode/agents/`
-  will be included in the Section 3 delivery commit.
+  passed all steps. The final regression gate reported **0 regressions, 0 new
+  failures, and 1 fix** against the original branch baseline; all eight checks
+  passed or improved, with only the 12 accepted unrelated max-lines warnings
+  remaining in the backend lint check.
 
 ---
 
