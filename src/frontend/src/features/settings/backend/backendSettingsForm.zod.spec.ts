@@ -16,8 +16,6 @@ const validFormValues = {
   jsonDbLogLevel: 'INFO',
   jsonDbBackupOnInitialise: true,
   jsonDbRootFolderId: 'folder-1234',
-  authGroupEmail: '',
-  authMode: 'googleGroups',
 };
 
 const lowerCaseLogLevelFormValues = {
@@ -67,30 +65,6 @@ describe('backendSettingsForm.zod schema', () => {
     });
   });
 
-  it('accepts a blank auth group email as the bootstrap state', () => {
-    const formValues = { ...validFormValues, authGroupEmail: '' };
-    expect(BackendSettingsFormSchema.parse(formValues)).toEqual({
-      ...validFormValues,
-      authGroupEmail: '',
-      backendUrl: validTrimmedBackendUrl,
-    });
-  });
-
-  it('accepts a configured auth group email', () => {
-    const formValues = { ...validFormValues, authGroupEmail: 'teachers@school.edu' };
-    expect(BackendSettingsFormSchema.parse(formValues)).toEqual({
-      ...validFormValues,
-      authGroupEmail: 'teachers@school.edu',
-      backendUrl: validTrimmedBackendUrl,
-    });
-  });
-
-  it('requires authMode (rejects a form value missing it)', () => {
-    const formValuesWithoutAuthMode = { ...validFormValues } as Partial<typeof validFormValues>;
-    delete formValuesWithoutAuthMode.authMode;
-    expect(() => BackendSettingsFormSchema.parse(formValuesWithoutAuthMode)).toThrow(ZodError);
-  });
-
   it('requires an API key when no stored key exists', () => {
     expect(() =>
       BackendSettingsFormSchema.parse({
@@ -101,6 +75,28 @@ describe('backendSettingsForm.zod schema', () => {
     ).toThrow(ZodError);
   });
 
+  // Lockstep contract: the form schema no longer declares `authGroupEmail`/`authMode`, so
+  // strict parsing must reject any payload that still carries either auth key. Each test
+  // mutates exactly one auth field on the otherwise-valid baseline, so the rejection proves
+  // the schema dropped the auth key rather than failing on a missing required field.
+  it('rejects a payload that still carries the authGroupEmail key under the strict schema', () => {
+    const result = BackendSettingsFormSchema.safeParse({
+      ...validFormValues,
+      authGroupEmail: 'teachers@school.edu',
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a payload that still carries the authMode key under the strict schema', () => {
+    const result = BackendSettingsFormSchema.safeParse({
+      ...validFormValues,
+      authMode: 'scriptProperties',
+    });
+
+    expect(result.success).toBe(false);
+  });
+
   it.each([
     ['backend URL', { backendUrl: 'not-a-url' }],
     ['backend assessor batch size', { backendAssessorBatchSize: 0 }],
@@ -109,7 +105,6 @@ describe('backendSettingsForm.zod schema', () => {
     ['JSON DB lock timeout', { jsonDbLockTimeoutMs: 999 }],
     ['JSON DB log level', { jsonDbLogLevel: 'TRACE' }],
     ['JSON DB root folder ID', { jsonDbRootFolderId: 'short' }],
-    ['auth group email', { authGroupEmail: 'not-an-email' }],
   ])('rejects invalid %s input', (_, patch) => {
     expect(() =>
       BackendSettingsFormSchema.parse({

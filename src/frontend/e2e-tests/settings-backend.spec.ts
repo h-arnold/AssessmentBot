@@ -41,9 +41,6 @@ const loadingBackendSettingsLabel = 'Loading backend settings';
 const saveButtonLabel = 'Save';
 const apiKeyLabel = 'API key';
 const backendUrlLabel = 'Backend URL';
-const authGroupEmailLabel = 'Auth group email';
-const authenticationOptionsLabel = 'Authentication options';
-const authGroupEmailTestValue = 'teachers@school.edu';
 const backendAssessorBatchSizeLabel = 'Backend assessor batch size';
 const storedApiKeyHelperCopy = 'Stored API key already exists. Leave this field blank to keep it.';
 const emptyApiKeyHelperCopy = 'Enter a new API key.';
@@ -300,15 +297,15 @@ async function releaseBackendSettingsSignal(page: Page, signal: string) {
 }
 
 /**
- * Edits the auth group email and assessor batch size using keyboard navigation.
+ * Edits the backend assessor batch size using keyboard navigation.
  *
  * @param {Page} page The Playwright page under test.
  * @param {object} options Keyboard navigation and batch size options.
- * @param {number} options.tabCount Number of tabs needed to reach the auth group email field.
+ * @param {number} options.tabCount Number of tabs needed to reach the assessor batch size field.
  * @param {string} options.batchSizeValue Batch size value to enter.
  * @returns {Promise<void>} A promise that resolves once both fields are edited.
  */
-async function editAuthGroupEmailAndBatchSizeViaKeyboard(
+async function editBackendAssessorBatchSizeViaKeyboard(
   page: Page,
   options: { tabCount: number; batchSizeValue: string }
 ) {
@@ -316,12 +313,6 @@ async function editAuthGroupEmailAndBatchSizeViaKeyboard(
     await page.keyboard.press('Tab');
   }
 
-  await expect(getField(page, authGroupEmailLabel)).toBeFocused();
-  await page.keyboard.press('Control+A');
-  await page.keyboard.type(authGroupEmailTestValue);
-  await page.keyboard.press('Tab');
-  await expect(getField(page, authenticationOptionsLabel)).toBeFocused();
-  await page.keyboard.press('Tab');
   await expect(getField(page, backendAssessorBatchSizeLabel)).toBeFocused();
   await page.keyboard.press('Control+A');
   await page.keyboard.type(options.batchSizeValue);
@@ -403,7 +394,7 @@ test.describe('backend settings journey', () => {
     await page.keyboard.press('Control+A');
     await page.keyboard.type('https://backend-settings.example.com');
 
-    await editAuthGroupEmailAndBatchSizeViaKeyboard(page, {
+    await editBackendAssessorBatchSizeViaKeyboard(page, {
       tabCount: 1,
       batchSizeValue: '45',
     });
@@ -461,7 +452,7 @@ test.describe('backend settings journey', () => {
 
     await expect(page.getByText(storedApiKeyHelperCopy)).toBeVisible();
 
-    await editAuthGroupEmailAndBatchSizeViaKeyboard(page, {
+    await editBackendAssessorBatchSizeViaKeyboard(page, {
       tabCount: 4,
       batchSizeValue: '45',
     });
@@ -508,7 +499,7 @@ test.describe('backend settings journey', () => {
 
     await expect(page.getByText(storedApiKeyHelperCopy)).toBeVisible();
 
-    await editAuthGroupEmailAndBatchSizeViaKeyboard(page, {
+    await editBackendAssessorBatchSizeViaKeyboard(page, {
       tabCount: 4,
       batchSizeValue: '45',
     });
@@ -551,7 +542,7 @@ test.describe('backend settings journey', () => {
     await page.goto('/');
     await openBackendSettings(page);
 
-    await editAuthGroupEmailAndBatchSizeViaKeyboard(page, {
+    await editBackendAssessorBatchSizeViaKeyboard(page, {
       tabCount: 4,
       batchSizeValue: '46',
     });

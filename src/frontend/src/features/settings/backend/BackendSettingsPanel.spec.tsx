@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BackendSettingsPanel } from './BackendSettingsPanel';
+import type { BackendSettingsForm } from './backendSettingsForm.zod';
 import type { useBackendSettings } from './useBackendSettings';
 
 type BackendSettingsPanelHookState = ReturnType<typeof useBackendSettings>;
@@ -19,6 +20,31 @@ const backendSettingsHookState: BackendSettingsPanelHookState = {
   saveBackendSettings: saveBackendSettingsMock,
   saveError: null,
 } satisfies BackendSettingsPanelHookState;
+
+const readyBackendSettingsFormValues = {
+  hasApiKey: true,
+  apiKey: '',
+  backendUrl: 'https://backend.example.com',
+  backendAssessorBatchSize: 30,
+  slidesFetchBatchSize: 20,
+  daysUntilAuthRevoke: 60,
+  jsonDbMasterIndexKey: 'master-index',
+  jsonDbLockTimeoutMs: 30_000,
+  jsonDbLogLevel: 'INFO',
+  jsonDbBackupOnInitialise: true,
+  jsonDbRootFolderId: 'folder-1234',
+} satisfies BackendSettingsForm;
+
+const noStoredKeyBackendSettingsFormValues = {
+  ...readyBackendSettingsFormValues,
+  hasApiKey: false,
+  apiKey: '',
+};
+
+const booleanBindingBackendSettingsFormValues = {
+  ...readyBackendSettingsFormValues,
+  jsonDbBackupOnInitialise: false,
+};
 
 const { useBackendSettingsMock } = vi.hoisted(() => ({
   useBackendSettingsMock: vi.fn(),
@@ -151,20 +177,7 @@ describe('BackendSettingsPanel', () => {
   it('renders the planned section cards and visible field labels', () => {
     useBackendSettingsMock.mockImplementation(() => ({
       ...backendSettingsHookState,
-      backendSettingsFormValues: {
-        hasApiKey: true,
-        apiKey: '',
-        backendUrl: 'https://backend.example.com',
-        backendAssessorBatchSize: 30,
-        slidesFetchBatchSize: 20,
-        daysUntilAuthRevoke: 60,
-        jsonDbMasterIndexKey: 'master-index',
-        jsonDbLockTimeoutMs: 30_000,
-        jsonDbLogLevel: 'INFO',
-        jsonDbBackupOnInitialise: true,
-        jsonDbRootFolderId: 'folder-1234',
-        authGroupEmail: '',
-      },
+      backendSettingsFormValues: readyBackendSettingsFormValues,
       hasApiKey: true,
     }));
 
@@ -191,20 +204,7 @@ describe('BackendSettingsPanel', () => {
   it('disables the save button while saving is blocked', () => {
     useBackendSettingsMock.mockImplementation(() => ({
       ...backendSettingsHookState,
-      backendSettingsFormValues: {
-        hasApiKey: true,
-        apiKey: '',
-        backendUrl: 'https://backend.example.com',
-        backendAssessorBatchSize: 30,
-        slidesFetchBatchSize: 20,
-        daysUntilAuthRevoke: 60,
-        jsonDbMasterIndexKey: 'master-index',
-        jsonDbLockTimeoutMs: 30_000,
-        jsonDbLogLevel: 'INFO',
-        jsonDbBackupOnInitialise: true,
-        jsonDbRootFolderId: 'folder-1234',
-        authGroupEmail: '',
-      },
+      backendSettingsFormValues: readyBackendSettingsFormValues,
       isSaveBlocked: true,
       hasApiKey: true,
     }));
@@ -217,20 +217,7 @@ describe('BackendSettingsPanel', () => {
   it('shows save-button loading while a save is in flight without publishing post-save refresh busy state yet', () => {
     useBackendSettingsMock.mockImplementation(() => ({
       ...backendSettingsHookState,
-      backendSettingsFormValues: {
-        hasApiKey: true,
-        apiKey: '',
-        backendUrl: 'https://backend.example.com',
-        backendAssessorBatchSize: 30,
-        slidesFetchBatchSize: 20,
-        daysUntilAuthRevoke: 60,
-        jsonDbMasterIndexKey: 'master-index',
-        jsonDbLockTimeoutMs: 30_000,
-        jsonDbLogLevel: 'INFO',
-        jsonDbBackupOnInitialise: true,
-        jsonDbRootFolderId: 'folder-1234',
-        authGroupEmail: '',
-      },
+      backendSettingsFormValues: readyBackendSettingsFormValues,
       isSaving: true,
       hasApiKey: true,
     }));
@@ -250,21 +237,7 @@ describe('BackendSettingsPanel', () => {
   it('keeps populated settings visible while publishing panel busy state during a post-save refresh', () => {
     useBackendSettingsMock.mockImplementation(() =>
       buildRefreshingBackendSettingsState({
-        backendSettingsFormValues: {
-          hasApiKey: true,
-          apiKey: '',
-          backendUrl: 'https://backend.example.com',
-          backendAssessorBatchSize: 30,
-          slidesFetchBatchSize: 20,
-          daysUntilAuthRevoke: 60,
-          jsonDbMasterIndexKey: 'master-index',
-          jsonDbLockTimeoutMs: 30_000,
-          jsonDbLogLevel: 'INFO',
-          jsonDbBackupOnInitialise: true,
-          jsonDbRootFolderId: 'folder-1234',
-          authGroupEmail: '',
-          authMode: 'googleGroups',
-        },
+        backendSettingsFormValues: readyBackendSettingsFormValues,
         hasApiKey: true,
       })
     );
@@ -289,21 +262,7 @@ describe('BackendSettingsPanel', () => {
     async () => {
       useBackendSettingsMock.mockImplementation(() => ({
         ...backendSettingsHookState,
-        backendSettingsFormValues: {
-          hasApiKey: false,
-          apiKey: '',
-          backendUrl: 'https://backend.example.com',
-          backendAssessorBatchSize: 30,
-          slidesFetchBatchSize: 20,
-          daysUntilAuthRevoke: 60,
-          jsonDbMasterIndexKey: 'master-index',
-          jsonDbLockTimeoutMs: 30_000,
-          jsonDbLogLevel: 'INFO',
-          jsonDbBackupOnInitialise: true,
-          jsonDbRootFolderId: 'folder-1234',
-          authGroupEmail: '',
-          authMode: 'googleGroups',
-        },
+        backendSettingsFormValues: noStoredKeyBackendSettingsFormValues,
         hasApiKey: false,
       }));
 
@@ -321,20 +280,7 @@ describe('BackendSettingsPanel', () => {
   it('shows stored-key helper text when an API key already exists', () => {
     useBackendSettingsMock.mockImplementation(() => ({
       ...backendSettingsHookState,
-      backendSettingsFormValues: {
-        hasApiKey: true,
-        apiKey: '',
-        backendUrl: 'https://backend.example.com',
-        backendAssessorBatchSize: 30,
-        slidesFetchBatchSize: 20,
-        daysUntilAuthRevoke: 60,
-        jsonDbMasterIndexKey: 'master-index',
-        jsonDbLockTimeoutMs: 30_000,
-        jsonDbLogLevel: 'INFO',
-        jsonDbBackupOnInitialise: true,
-        jsonDbRootFolderId: 'folder-1234',
-        authGroupEmail: '',
-      },
+      backendSettingsFormValues: readyBackendSettingsFormValues,
       hasApiKey: true,
     }));
 
@@ -348,20 +294,7 @@ describe('BackendSettingsPanel', () => {
 
     useBackendSettingsMock.mockImplementation(() => ({
       ...backendSettingsHookState,
-      backendSettingsFormValues: {
-        hasApiKey: false,
-        apiKey: '',
-        backendUrl: 'https://backend.example.com',
-        backendAssessorBatchSize: 30,
-        slidesFetchBatchSize: 20,
-        daysUntilAuthRevoke: 60,
-        jsonDbMasterIndexKey: 'master-index',
-        jsonDbLockTimeoutMs: 30_000,
-        jsonDbLogLevel: 'INFO',
-        jsonDbBackupOnInitialise: true,
-        jsonDbRootFolderId: 'folder-1234',
-        authGroupEmail: '',
-      },
+      backendSettingsFormValues: noStoredKeyBackendSettingsFormValues,
       hasApiKey: false,
     }));
 
@@ -379,21 +312,7 @@ describe('BackendSettingsPanel', () => {
   it('binds boolean and numeric fields through Ant Design form state', async () => {
     useBackendSettingsMock.mockImplementation(() => ({
       ...backendSettingsHookState,
-      backendSettingsFormValues: {
-        hasApiKey: true,
-        apiKey: '',
-        backendUrl: 'https://backend.example.com',
-        backendAssessorBatchSize: 30,
-        slidesFetchBatchSize: 20,
-        daysUntilAuthRevoke: 60,
-        jsonDbMasterIndexKey: 'master-index',
-        jsonDbLockTimeoutMs: 30_000,
-        jsonDbLogLevel: 'INFO',
-          jsonDbBackupOnInitialise: false,
-          jsonDbRootFolderId: 'folder-1234',
-          authGroupEmail: '',
-          authMode: 'googleGroups',
-        },
+      backendSettingsFormValues: booleanBindingBackendSettingsFormValues,
       hasApiKey: true,
     }));
 
@@ -422,20 +341,7 @@ describe('BackendSettingsPanel', () => {
   it('renders persistent inline feedback for save failures', () => {
     useBackendSettingsMock.mockImplementation(() => ({
       ...backendSettingsHookState,
-      backendSettingsFormValues: {
-        hasApiKey: true,
-        apiKey: '',
-        backendUrl: 'https://backend.example.com',
-        backendAssessorBatchSize: 30,
-        slidesFetchBatchSize: 20,
-        daysUntilAuthRevoke: 60,
-        jsonDbMasterIndexKey: 'master-index',
-        jsonDbLockTimeoutMs: 30_000,
-        jsonDbLogLevel: 'INFO',
-        jsonDbBackupOnInitialise: true,
-        jsonDbRootFolderId: 'folder-1234',
-        authGroupEmail: '',
-      },
+      backendSettingsFormValues: readyBackendSettingsFormValues,
       hasApiKey: true,
       saveError: 'Unable to save backend settings right now.',
     }));
@@ -447,135 +353,42 @@ describe('BackendSettingsPanel', () => {
     );
   });
 
-  it('renders the auth group email field with its label, email input type, and static helper text in the form item extra region', () => {
+  // Contract: the auth surface moved out of the backend settings panel entirely, so neither
+  // the auth fields render nor the auth form values reach the save payload.
+  it('renders the panel without the authentication fields', () => {
     useBackendSettingsMock.mockImplementation(() => ({
       ...backendSettingsHookState,
-      backendSettingsFormValues: {
-        hasApiKey: true,
-        apiKey: '',
-        backendUrl: 'https://backend.example.com',
-        backendAssessorBatchSize: 30,
-        slidesFetchBatchSize: 20,
-        daysUntilAuthRevoke: 60,
-        jsonDbMasterIndexKey: 'master-index',
-        jsonDbLockTimeoutMs: 30_000,
-        jsonDbLogLevel: 'INFO',
-        jsonDbBackupOnInitialise: true,
-        jsonDbRootFolderId: 'folder-1234',
-        authGroupEmail: 'teachers@school.edu',
-      },
+      backendSettingsFormValues: readyBackendSettingsFormValues,
       hasApiKey: true,
     }));
 
     renderBackendSettingsPanel();
 
-    const authGroupEmailField = getField('Auth group email');
-
-    expect(authGroupEmailField).toHaveAttribute('type', 'email');
-
-    const authGroupEmailFormItemExtra = getFormItemExtraRegion('Auth group email');
-
-    expect(authGroupEmailFormItemExtra).not.toBeNull();
-    expect(authGroupEmailFormItemExtra as HTMLElement).toHaveTextContent(
-      'Enter the email address of the Google Group whose members are allowed to access this application.'
-    );
-
-    const backendSectionCard = screen
-      .getByRole('heading', { level: 3, name: 'Backend' })
-      .closest('.settings-section-card');
-
-    expect(backendSectionCard).not.toBeNull();
-    expect(
-      within(backendSectionCard as HTMLElement).getByLabelText('Auth group email')
-    ).toBeInTheDocument();
+    expect(screen.queryByLabelText('Auth group email')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Authentication options')).not.toBeInTheDocument();
   });
 
   it(
-    'sets a field error and skips the save when a configured auth group email is cleared on submit',
+    'sends a save payload that excludes the authentication fields',
     async () => {
       useBackendSettingsMock.mockImplementation(() => ({
         ...backendSettingsHookState,
-        backendSettingsFormValues: {
-          hasApiKey: true,
-          apiKey: '',
-          backendUrl: 'https://backend.example.com',
-          backendAssessorBatchSize: 30,
-          slidesFetchBatchSize: 20,
-          daysUntilAuthRevoke: 60,
-          jsonDbMasterIndexKey: 'master-index',
-          jsonDbLockTimeoutMs: 30_000,
-          jsonDbLogLevel: 'INFO',
-          jsonDbBackupOnInitialise: true,
-          jsonDbRootFolderId: 'folder-1234',
-          authGroupEmail: 'teachers@school.edu',
-          authMode: 'googleGroups',
-        },
+        backendSettingsFormValues: readyBackendSettingsFormValues,
         hasApiKey: true,
       }));
 
       renderBackendSettingsPanel();
 
-      await waitFor(() => {
-        expect(getField('Auth group email')).toHaveDisplayValue('teachers@school.edu');
-      });
-
-      fireEvent.change(getField('Auth group email'), { target: { value: '' } });
-      fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+      await user.click(screen.getByRole('button', { name: 'Save' }));
 
       await waitFor(() => {
-        expect(saveBackendSettingsMock).not.toHaveBeenCalled();
-        expect(getField('Auth group email').closest('.ant-form-item')).toHaveClass(
-          'ant-form-item-has-error'
-        );
+        expect(saveBackendSettingsMock).toHaveBeenCalledTimes(1);
       });
-    },
-    slowPanelInteractionTimeoutMs
-  );
 
-  it(
-    'renders the Authentication options dropdown with both options and the security helper text',
-    async () => {
-      useBackendSettingsMock.mockImplementation(() => ({
-        ...backendSettingsHookState,
-        backendSettingsFormValues: {
-          hasApiKey: true,
-          apiKey: '',
-          backendUrl: 'https://backend.example.com',
-          backendAssessorBatchSize: 30,
-          slidesFetchBatchSize: 20,
-          daysUntilAuthRevoke: 60,
-          jsonDbMasterIndexKey: 'master-index',
-          jsonDbLockTimeoutMs: 30_000,
-          jsonDbLogLevel: 'INFO',
-          jsonDbBackupOnInitialise: true,
-          jsonDbRootFolderId: 'folder-1234',
-          authGroupEmail: '',
-        },
-        hasApiKey: true,
-      }));
+      const savePayload = saveBackendSettingsMock.mock.calls[0][0];
 
-      renderBackendSettingsPanel();
-
-      const authenticationOptionsField = getField('Authentication options');
-
-      expect(authenticationOptionsField).toBeInTheDocument();
-      expect(authenticationOptionsField.closest('.ant-select')).not.toBeNull();
-
-      const authenticationOptionsFormItemExtra = getFormItemExtraRegion(
-        'Authentication options'
-      );
-
-      expect(authenticationOptionsFormItemExtra).not.toBeNull();
-      expect(authenticationOptionsFormItemExtra as HTMLElement).toHaveTextContent(
-        /development/i
-      );
-      expect(authenticationOptionsFormItemExtra as HTMLElement).toHaveTextContent(
-        /production/i
-      );
-
-      await user.click(authenticationOptionsField);
-      expect(await screen.findByText('Google Groups')).toBeInTheDocument();
-      expect(screen.getByText('None')).toBeInTheDocument();
+      expect(savePayload).not.toHaveProperty('authGroupEmail');
+      expect(savePayload).not.toHaveProperty('authMode');
     },
     slowPanelInteractionTimeoutMs
   );

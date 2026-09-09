@@ -22,25 +22,6 @@ export const BackendApiKeyWriteSchema = z
 const MaskedApiKeySchema = z.string().refine(isMaskedBackendApiKeyValue);
 
 /**
- * Shared auth-group-email transport schema: blank (allowed only when nothing is stored)
- * or a valid email address. Reused by the read, write, and form schemas so the rule
- * lives in exactly one place.
- */
-export const authGroupEmailSchema = z.union([z.literal(''), z.email()]);
-
-const authModeValues = ['googleGroups', 'scriptProperties'] as const;
-/**
- * @remarks
- * Shared authentication-mode enum for the auth transport and the settings UI:
- * `googleGroups` enforces Google-group membership via AuthService;
- * `scriptProperties` resolves access against the stored authorised-user list.
- * The removed `'none'` development bypass is not accepted anywhere. When unset,
- * consumers must apply the secure `googleGroups` default — this enum does not
- * default.
- */
-export const authModeSchema = z.enum(authModeValues);
-
-/**
  * Transport schema for backend configuration reads.
  *
  * @remarks

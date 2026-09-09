@@ -17,38 +17,12 @@ Sibling contracts:
 - [Contract: Assignment](assignment.md) — No direct relationship.
 - [Contract: Reference Data](reference-data.md) — No direct relationship.
 
-> **Planned changes — partially implemented** (SPEC.md v1.3, Application Authentication &
-> Minimal Role Administration). The contract below documents current behaviour; the
-> following changes are planned and must be applied in lockstep across backend
-> transport, frontend Zod schemas, form schema/mapper, and settings panel. Items 1, 2
-> and 4 are now implemented (ACTION_PLAN.md Section 6 landed); item 3 (frontend
-> lockstep) remains planned — see the [Validation](#validation) frontend markers and the
-> [Transport](#transport) sections for the reconciled 12 non-auth field contract.
->
-> 1. **Read transport — IMPLEMENTED (ACTION_PLAN.md Section 6).** `getBackendConfig`
->    stops emitting `authGroupEmail` and `authMode` (persistence table rows 13–14 leave
->    the read transport). Auth state is read exclusively through the dedicated auth
->    endpoints — see [Contract: AuthUsers](auth-users.md).
-> 2. **Write transport — IMPLEMENTED (ACTION_PLAN.md Section 6).** `setBackendConfig`
->    rejects every auth field (`authMode`, `authGroupEmail`, `authUsers`,
->    `authRevision`) for all callers, including admins, as an `ApiValidationError`
->    (`INVALID_REQUEST` envelope) — a request-shape violation, not an aggregate
->    per-field failure.
-> 3. **Frontend lockstep:** `BackendConfigSchema` and `BackendConfigWriteInputSchema`
->    drop both fields; `BackendSettingsFormSchema`, the form mapper, the
->    `handleFinish` compulsory-once-set clearing guard, and `BackendSettingsPanel`
->    auth-mode options (including `'none'`) are removed with them. **Planned (Sections
->    7–8) — not yet implemented.**
-> 4. **All configuration writes — IMPLEMENTED (ACTION_PLAN.md Section 2), now a single
->    locked write in transport (ACTION_PLAN.md Section 6).** Every persistent
->    configuration write serialises through the script-wide `LockService.getScriptLock()`
->    shared with `DbLockService`; under the lock the raw blob is re-read from storage,
->    merged by a mutator, and committed in a single write; the conservative 8KB blob cap
->    is enforced before that write. `setBackendConfig_()` now stages every supplied
->    ordinary field and commits the whole patch through one `writeConfigurationLocked`
->    call (fresh merge, no clobber) — the former per-field unlocked write loop is gone.
->
-> Remove this block and update the tables as each remaining change lands.
+> **Planned changes — all implemented** (SPEC.md v1.3, Application Authentication &
+> Minimal Role Administration). The auth fields left the BackendConfig contract in
+> lockstep across backend transport (Sections 2/6), frontend Zod schemas (Section 7),
+> and the form schema/mapper/settings panel (Section 8). The contract below documents
+> the reconciled 12 non-auth field shape; auth state is owned by the dedicated auth
+> endpoints — see [Contract: AuthUsers](auth-users.md).
 
 ---
 
@@ -64,7 +38,7 @@ written into the JSON blob. When read back, typed getter methods (e.g.
 layer calls these typed getters and returns properly-typed values.
 
 All persistent writes now serialise through `ConfigurationManager.writeConfigurationLocked(mutator)`
-(implemented in ACTION_PLAN.md Section 2; see the planned-changes block, item 4). The facade's
+(implemented in ACTION_PLAN.md Section 2). The facade's
 `setProperty()` and every typed `set*` method delegate to this single path. Under the shared
 script-wide `LockService.getScriptLock()` — the **same** lock the vendored JsonDbApp
 `DbLockService` uses (GAS script locks are **not reentrant**) — the path re-reads the raw
@@ -84,29 +58,29 @@ prior configuration exists. Notable fields that are **not** seeded during initia
 explicit setters only, and the `DEFAULTS` entry supplies the getter fallback only, not a
 seeded property.
 
-| #   | Field                      | Stored type                        | Persistence                                                       | Transport                                                                                                                                                 | Frontend Zod                                                                               | Notes                                                                                                                                                                                                                                |
-| --- | -------------------------- | ---------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | `backendAssessorBatchSize` | `string` (number stored as string) | Always included                                                   | `number` — parsed via `getIntConfig()`                                                                                                                    | `z.number().int()`                                                                         | Default 120. Clamped to [1, 500].                                                                                                                                                                                                    |
-| 2   | `apiKey`                   | `string`                           | Always included                                                   | `string` — masked via `maskApiKey_()`                                                                                                                     | `MaskedApiKeySchema` — `z.string().refine(isMaskedBackendApiKeyValue)`                     | Never raw stored value in transport. Empty string when no key stored. See [$transport-masking](#transport) for mask shapes.                                                                                                          |
-| 3   | `hasApiKey`                | `boolean\|string`                  | Not stored directly; derived at transport time from `!!rawApiKey` | `boolean` — `!!rawApiKey`                                                                                                                                 | `z.boolean()`                                                                              | Computed at transport boundary, not persisted.                                                                                                                                                                                       |
-| 4   | `backendUrl`               | `string`                           | Always included                                                   | `string` — may be empty                                                                                                                                   | `BackendUrlSchema` — `z.union([z.url(), z.literal('')])`                                   | Empty string when unset. Read transport allows blank; write requires valid URL.                                                                                                                                                      |
-| 5   | `revokeAuthTriggerSet`     | `string` (`'true'` / `'false'`)    | Always included                                                   | `boolean` — via `ConfigurationManager.toBoolean()`                                                                                                        | `z.boolean()`                                                                              | Treated as read-only by frontend (not in write input schema).                                                                                                                                                                        |
-| 6   | `daysUntilAuthRevoke`      | `string` (number stored as string) | Always included                                                   | `number` — parsed via `getIntConfig()`                                                                                                                    | `z.number().int()`                                                                         | Default 60. Clamped to [1, 365].                                                                                                                                                                                                     |
-| 7   | `slidesFetchBatchSize`     | `string` (number stored as string) | Always included                                                   | `number` — parsed via `getIntConfig()`                                                                                                                    | `z.number().int()`                                                                         | Default 30. Clamped to [1, 100].                                                                                                                                                                                                     |
-| 8   | `jsonDbMasterIndexKey`     | `string`                           | Always included                                                   | `string` — returns default if stored value is empty                                                                                                       | `z.string()` (non-empty enforced)                                                          | Default `'ASSESSMENT_BOT_DB_MASTER_INDEX'`.                                                                                                                                                                                          |
-| 9   | `jsonDbLockTimeoutMs`      | `string` (number stored as string) | Always included                                                   | `number` — parsed via `getIntConfig()`                                                                                                                    | `z.number().int()`                                                                         | Default 30000. Clamped to [30000, 600000].                                                                                                                                                                                           |
-| 10  | `jsonDbLogLevel`           | `string`                           | Always included                                                   | `string` — trimmed and uppercased by getter                                                                                                               | `z.string()`                                                                               | Default `'INFO'`. Valid levels: `DEBUG`, `INFO`, `WARN`, `ERROR`.                                                                                                                                                                    |
-| 11  | `jsonDbBackupOnInitialise` | `string` (`'true'` / `'false'`)    | Always included                                                   | `boolean` — via `ConfigurationManager.toBoolean()`                                                                                                        | `z.boolean()`                                                                              | Default `false`.                                                                                                                                                                                                                     |
-| 12  | `jsonDbRootFolderId`       | `string`                           | Always included                                                   | `string` — coerced to `''` when blank/null                                                                                                                | `z.string()`                                                                               | May be empty string when unset. Transport normalises `null` → `''`.                                                                                                                                                                  |
-| 13  | `authGroupEmail`           | `string`                           | Always included                                                   | Omitted — managed via dedicated auth endpoints (see [Contract: AuthUsers](auth-users.md)); `getAuthGroupEmail()` still exists for the auth gate/bootstrap | `z.union([z.literal(''), z.email()]).optional()` (frontend planned, Sections 7–8)          | Stored in the blob but absent from the BackendConfig transport. Blank when unset (fail-open bootstrap). Compulsory once set — clearing a stored value is rejected (enforced via the dedicated auth endpoints).                       |
-| 14  | `authMode`                 | `string`                           | Always included                                                   | Omitted — managed via dedicated auth endpoints (see [Contract: AuthUsers](auth-users.md))                                                                 | `z.enum(['googleGroups', 'scriptProperties']).optional()` (frontend planned, Sections 7–8) | `'none'` is removed and rejected (unrecognised mode → fail closed). Absent `authMode` with a non-blank `authGroupEmail` reads as `googleGroups` (legacy leniency). Auth fields leave the BackendConfig transport (Section 6 landed). |
+| #   | Field                      | Stored type                        | Persistence                                                       | Transport                                                                                                                                                 | Frontend Zod                                                                                             | Notes                                                                                                                                                                                                                                |
+| --- | -------------------------- | ---------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | `backendAssessorBatchSize` | `string` (number stored as string) | Always included                                                   | `number` — parsed via `getIntConfig()`                                                                                                                    | `z.number().int()`                                                                                       | Default 120. Clamped to [1, 500].                                                                                                                                                                                                    |
+| 2   | `apiKey`                   | `string`                           | Always included                                                   | `string` — masked via `maskApiKey_()`                                                                                                                     | `MaskedApiKeySchema` — `z.string().refine(isMaskedBackendApiKeyValue)`                                   | Never raw stored value in transport. Empty string when no key stored. See [$transport-masking](#transport) for mask shapes.                                                                                                          |
+| 3   | `hasApiKey`                | `boolean\|string`                  | Not stored directly; derived at transport time from `!!rawApiKey` | `boolean` — `!!rawApiKey`                                                                                                                                 | `z.boolean()`                                                                                            | Computed at transport boundary, not persisted.                                                                                                                                                                                       |
+| 4   | `backendUrl`               | `string`                           | Always included                                                   | `string` — may be empty                                                                                                                                   | `BackendUrlSchema` — `z.union([z.url(), z.literal('')])`                                                 | Empty string when unset. Read transport allows blank; write requires valid URL.                                                                                                                                                      |
+| 5   | `revokeAuthTriggerSet`     | `string` (`'true'` / `'false'`)    | Always included                                                   | `boolean` — via `ConfigurationManager.toBoolean()`                                                                                                        | `z.boolean()`                                                                                            | Treated as read-only by frontend (not in write input schema).                                                                                                                                                                        |
+| 6   | `daysUntilAuthRevoke`      | `string` (number stored as string) | Always included                                                   | `number` — parsed via `getIntConfig()`                                                                                                                    | `z.number().int()`                                                                                       | Default 60. Clamped to [1, 365].                                                                                                                                                                                                     |
+| 7   | `slidesFetchBatchSize`     | `string` (number stored as string) | Always included                                                   | `number` — parsed via `getIntConfig()`                                                                                                                    | `z.number().int()`                                                                                       | Default 30. Clamped to [1, 100].                                                                                                                                                                                                     |
+| 8   | `jsonDbMasterIndexKey`     | `string`                           | Always included                                                   | `string` — returns default if stored value is empty                                                                                                       | `z.string()` (non-empty enforced)                                                                        | Default `'ASSESSMENT_BOT_DB_MASTER_INDEX'`.                                                                                                                                                                                          |
+| 9   | `jsonDbLockTimeoutMs`      | `string` (number stored as string) | Always included                                                   | `number` — parsed via `getIntConfig()`                                                                                                                    | `z.number().int()`                                                                                       | Default 30000. Clamped to [30000, 600000].                                                                                                                                                                                           |
+| 10  | `jsonDbLogLevel`           | `string`                           | Always included                                                   | `string` — trimmed and uppercased by getter                                                                                                               | `z.string()`                                                                                             | Default `'INFO'`. Valid levels: `DEBUG`, `INFO`, `WARN`, `ERROR`.                                                                                                                                                                    |
+| 11  | `jsonDbBackupOnInitialise` | `string` (`'true'` / `'false'`)    | Always included                                                   | `boolean` — via `ConfigurationManager.toBoolean()`                                                                                                        | `z.boolean()`                                                                                            | Default `false`.                                                                                                                                                                                                                     |
+| 12  | `jsonDbRootFolderId`       | `string`                           | Always included                                                   | `string` — coerced to `''` when blank/null                                                                                                                | `z.string()`                                                                                             | May be empty string when unset. Transport normalises `null` → `''`.                                                                                                                                                                  |
+| 13  | `authGroupEmail`           | `string`                           | Always included                                                   | Omitted — managed via dedicated auth endpoints (see [Contract: AuthUsers](auth-users.md)); `getAuthGroupEmail()` still exists for the auth gate/bootstrap | Absent from the BackendConfig Zod schemas and the settings form (frontend lockstep landed, Sections 7–8) | Stored in the blob but absent from the BackendConfig transport. Blank when unset (fail-open bootstrap). Compulsory once set — clearing a stored value is rejected (enforced via the dedicated auth endpoints).                       |
+| 14  | `authMode`                 | `string`                           | Always included                                                   | Omitted — managed via dedicated auth endpoints (see [Contract: AuthUsers](auth-users.md))                                                                 | Absent from the BackendConfig Zod schemas and the settings form (frontend lockstep landed, Sections 7–8) | `'none'` is removed and rejected (unrecognised mode → fail closed). Absent `authMode` with a non-blank `authGroupEmail` reads as `googleGroups` (legacy leniency). Auth fields leave the BackendConfig transport (Section 6 landed). |
 
 Key notes:
 
 - All configuration writes route through `writeConfigurationLocked(mutator)`; the shared script-wide
   lock, raw re-read/merge/single write, and the 8KB cap (`MAX_CONFIG_BLOB_BYTES`, 8192) are enforced
   on every write. Contention yields `CONFIG_LOCK_CONTENTION` (retriable); an over-cap blob yields
-  `CONFIG_BLOB_TOO_LARGE` (non-retriable). See the planned-changes block (items 2 & 4, now implemented).
+  `CONFIG_BLOB_TOO_LARGE` (non-retriable).
 - All values are stored as strings in the JSON blob. Typed getters convert on read.
 - The locked write path is a **persistence-layer** contract. `setBackendConfig_()` stages every
   supplied ordinary field through the manager-owned `preparePropertyValue` seam and commits the whole
@@ -283,11 +257,11 @@ Key contract notes:
   validation failure with a clear "clearing is not allowed" message. Changing to a different
   non-blank email remains allowed. Recovery stays via hand-editing Script Properties (SPEC Admin
   lockout recovery).
-- **Form-schema reconciliation (planned, Sections 7–8):** the frontend
-  `BackendSettingsFormSchema` currently still mirrors the transport contract with
-  `z.union([z.literal(''), z.email()])` (blank-tolerant) plus a form-level compulsory-once-set
-  guard in `BackendSettingsPanel.handleFinish`; dropping these is Section 8 work and remains
-  `Not implemented`.
+- **Form-schema reconciliation (implemented, Section 8):** the frontend
+  `BackendSettingsFormSchema` no longer declares `authGroupEmail`/`authMode`, and the
+  form-level compulsory-once-set guard was removed from
+  `BackendSettingsPanel.handleFinish`. Auth state is owned by the dedicated
+  Authentication tab via the auth endpoints (see [Contract: AuthUsers](auth-users.md)).
 
 ---
 
@@ -302,15 +276,11 @@ None. BackendConfig is a standalone contract with no embedded sub-entities.
 **Frontend Zod:**
 
 - `src/frontend/src/services/backendConfiguration/backendConfiguration.zod.ts`:
-  - `BackendConfigSchema` — validates the `getBackendConfig` response (12 non-auth fields + optional `loadError`). Uses `.strict()`. **Planned (Sections 7–8):** drop `authGroupEmail`/`authMode` from this schema; today they remain `.optional()` only because the frontend has not yet been migrated.
-  - `BackendConfigWriteInputSchema` — validates the `setBackendConfig` request (11 ordinary writable fields, all optional; `authGroupEmail`/`authMode` are **not** accepted and are rejected by the backend). Uses `.strict()`. **Planned (Sections 7–8):** the schema must also reject the four auth fields (strict lockstep), matching the backend's `INVALID_REQUEST` rejection.
+  - `BackendConfigSchema` — validates the `getBackendConfig` response (12 non-auth fields + optional `loadError`). Uses `.strict()`. `authGroupEmail`/`authMode` are **not** part of the schema (frontend lockstep landed, Section 7).
+  - `BackendConfigWriteInputSchema` — validates the `setBackendConfig` request (11 ordinary writable fields, all optional; `authGroupEmail`/`authMode` are **not** accepted and are rejected by the backend). Uses `.strict()` — the strict lockstep matches the backend's `INVALID_REQUEST` rejection of every auth field (Section 7).
   - `BackendConfigWriteResultSchema` — validates the `setBackendConfig` response. Discriminated union of `{ success: true }` and `{ success: false, error: string }`. Both branches use `.strict()`.
 - `src/frontend/src/features/settings/backend/backendSettingsForm.zod.ts`:
-  - `BackendSettingsFormSchema` — form-level validation with `superRefine` for API key token check. Uses `.strict()`.
-  - `authGroupEmail` form field: `z.union([z.literal(''), z.email()])`
-    — blank-tolerant, following the transport idiom; form-level compulsory-once-set is enforced
-    in `BackendSettingsPanel.handleFinish` (submitting blank while a non-blank baseline is loaded
-    sets a field error and skips the save). **Planned (Sections 7–8):** this field and its guard are removed when the frontend auth surface moves to the dedicated Authentication tab.
+  - `BackendSettingsFormSchema` — form-level validation with `superRefine` for API key token check. Uses `.strict()`. The form schema no longer declares `authGroupEmail`/`authMode` (Section 8); the auth surface moves to the dedicated Authentication tab.
 - `src/frontend/src/services/backendConfiguration/backendConfigurationValidation.ts`:
   - `isBackendApiKeyToken(value)` — validates API key token shape (alphanumeric + hyphens, no leading/trailing/consecutive hyphens).
   - `isMaskedBackendApiKeyValue(value)` — validates masked API key value matches the backend masking contract (`''` \| `'****'` \| `'****'` + 4 characters).
@@ -397,21 +367,20 @@ None. BackendConfig is a standalone contract with no embedded sub-entities.
 
 7. **Resolved — `authGroupEmail` no longer appears in the BackendConfig read transport (Section 6 landed).**
    `getBackendConfig_()` no longer reads `getAuthGroupEmail()` into the payload, so the
-   backend emits exactly the 12 non-auth fields. The frontend `BackendConfigSchema` still marks
-   the field `.optional()` only because the frontend has not yet been migrated (Sections 7–8);
-   once that migration ships, the field is dropped from the schema entirely. The earlier
-   backend-ahead-of-frontend `.strict()` rejection risk is therefore moot for this field.
+   backend emits exactly the 12 non-auth fields. The frontend `BackendConfigSchema` dropped
+   the field in lockstep (Section 7), and the settings form/panel no longer expose it
+   (Section 8). The earlier backend-ahead-of-frontend `.strict()` rejection risk is therefore
+   moot for this field.
    **Classification: Aligned (historical)** — the deploy-order tolerance is no longer needed now
-   that the backend does not emit the field.
+   that neither side carries the field.
 
 8. **Resolved — `authMode` no longer appears in the BackendConfig read transport (Section 6 landed).**
    `getBackendConfig_()` no longer reads `getAuthMode()` into the payload; auth mode is read only
-   through the dedicated auth endpoints. The frontend `BackendConfigSchema` still marks the field
-   `.optional()` only because the frontend has not yet been migrated (Sections 7–8); once that
-   migration ships, the field is dropped from the schema. The earlier backend-ahead-of-frontend
-   `.strict()` rejection risk is moot for this field.
+   through the dedicated auth endpoints. The frontend `BackendConfigSchema` dropped the field in
+   lockstep (Section 7), and the settings form/panel no longer expose it (Section 8). The earlier
+   backend-ahead-of-frontend `.strict()` rejection risk is moot for this field.
    **Classification: Aligned (historical)** — the deploy-order tolerance is no longer needed now
-   that the backend does not emit the field.
+   that neither side carries the field.
 
 9. **Persistence-table `authMode` row documents the storage contract only; the removed `'none'` mode is gone (Section 1 schema change).**
    Row 14 documents `googleGroups \| scriptProperties` (the `'none'` bypass removed) and is
@@ -420,10 +389,9 @@ None. BackendConfig is a standalone contract with no embedded sub-entities.
    `googleGroups` (legacy leniency) and resolves to `null` otherwise. The read transport no longer
    emits `authMode` at all (Section 6 landed), so the historical frontend `z.enum(['googleGroups', 'none'])`
    rejection risk is moot; the frontend schema correction to `['googleGroups', 'scriptProperties']`
-   (and dropping the field) is Section 7–8 work and remains `Not implemented`.
+   and the dropping of the field shipped in Section 7, with the form/panel removal in Section 8.
    **Classification: Aligned (storage-only)** — the persistence row is correct; the field's absence
-   from the BackendConfig transport is implemented, and the frontend schema cleanup is tracked as
-   planned work in discrepancies #7/#8 above.
+   from the BackendConfig transport and the frontend lockstep are both implemented.
 
    > Surfaced during the Section 2 data-shapes gate; transport removal confirmed landed in Section 6.
    > Origin: Section 1 (config schema and storage foundations).
@@ -486,6 +454,9 @@ Frontend:
   └── src/frontend/src/features/settings/backend/
       ├── backendSettingsForm.zod.ts
       │     → BackendSettingsFormSchema
+      ├── backendSettingsFieldDescriptors.tsx
+      │     → backendSettingsFieldDescriptors, backendSettingsFieldNames,
+      │       backendSettingsSectionOrder, createBackendSettingsFieldValidator
       └── backendSettingsFormMapper.ts
             → mapBackendConfigToBackendSettingsFormValues(),
               mapBackendSettingsFormValuesToBackendConfigWriteInput()

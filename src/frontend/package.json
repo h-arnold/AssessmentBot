@@ -28,7 +28,7 @@
   },
   "devDependencies": {
     "@eslint/js": "latest",
-    "@playwright/test": "latest",
+    "@playwright/test": "1.62.1",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "latest",
     "@testing-library/react": "latest",
@@ -48,7 +48,7 @@
     "eslint-plugin-unicorn": "latest",
     "globals": "latest",
     "happy-dom": "^20.9.0",
-    "playwright": "latest",
+    "playwright": "1.62.1",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "typescript-eslint": "^8.64.0",
     "vite": "latest",

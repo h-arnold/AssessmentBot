@@ -879,6 +879,8 @@ Frontend tests:
 
 ## Section 8 — Backend settings panel slimming
 
+> **Current phase: Commit gate — auth-field removal and descriptor extraction landed; regression gate passed.**
+
 ### Objective
 
 - Remove auth fields from `BackendSettingsPanel`, the form schema, the mapper, and the
@@ -910,7 +912,14 @@ Frontend tests:
 ### Shared helper plan
 
 - Descriptor extraction is a `keep local` move (no new abstraction); validator helper
-  moves with it. Record in the section during implementation.
+  moves with it.
+- **Recorded during green:** the descriptor table, field-name list, section order, and
+  `createBackendSettingsFieldValidator` moved to
+  `src/frontend/src/features/settings/backend/backendSettingsFieldDescriptors.tsx`
+  (feature-local `keep local` move, no new cross-feature abstraction). The file uses the
+  `.tsx` extension because the descriptors carry JSX `renderInput` functions; the plan's
+  `.ts` shorthand is not parseable by `tsc` for JSX. The panel keeps the presentational
+  render/status helpers and stays declarative.
 
 ### Acceptance criteria
 
@@ -943,7 +952,37 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- To be completed during implementation.
+- **Completed.** `authGroupEmail`/`authMode` are removed from `backendSettingsForm.zod.ts`
+  (schema and inferred form type), from `backendSettingsFormMapper.ts` (the transitional
+  `BackendSettingsReadSource` tolerance and its auth defaults are gone), and from
+  `BackendSettingsPanel.tsx` (auth descriptors, the `'none'` option, its security comment,
+  and the `handleFinish` compulsory-once-set guard). The write payload never carries auth
+  fields because the form schema no longer declares them.
+- The descriptor table, field-name list, section order, and the schema-backed validator
+  helper were extracted to `backendSettingsFieldDescriptors.tsx` (153 lines);
+  `BackendSettingsPanel.tsx` is 345 lines, under the 500-line gate. The presentational/
+  declarative pattern, helper text, loading/error/focus/save behaviour, and the
+  schema-validation helper are preserved unchanged for non-auth fields.
+- The RED-PHASE fixture comments/casts were removed from all five touched specs as the
+  green implementation makes them unnecessary; the auth-strict-rejection and auth-free
+  mapper contract tests remain as permanent contract coverage.
+- Data-shape gate complete: `backend-config.md` frontend-lockstep markers reconciled to
+  implemented (schema drop Section 7, form/panel removal Section 8), including the
+  planned-changes block, persistence rows 13–14, validation bullets, discrepancies
+  #7/#8/#9, and the file index (new descriptor module added).
+- The four pre-existing `settings-backend.spec.ts` E2E regressions caused by removed auth
+  field interactions were updated to preserve the non-auth scenarios; focused settings E2E
+  passed 7/7 and the full frontend E2E suite passed 237/237. The project pins both
+  `@playwright/test` and `playwright` to **1.62.1**, matching the installed browser tooling.
+- Final regression comparison on 2026-09-09 reports **0 regressions, 0 new failures, 3 fixes**;
+  frontend lint/unit/E2E, backend tests, builder lint/tests/compile pass. The only failing
+  check is the accepted baseline backend ESLint max-lines debt (10 warnings). Section 8 is
+  ready for the commit gate; Sections 9–10 remain deferred.
+- Section checks: focused Section 8 settings tests **61/61 passing**; full frontend unit
+  suite **1,941/1,941**; `npm run lint:frontend` clean (zero errors/warnings on changed
+  files); `tsc -b src/frontend/tsconfig.json` and `npm run build:frontend` pass. The
+  `settings-backend.spec.ts` Playwright spec still asserts the removed auth fields and is
+  intentionally left for the Sections 10–11 E2E phase (out of Section 8 scope).
 
 ---
 

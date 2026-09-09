@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  authGroupEmailSchema,
-  authModeSchema,
   BackendApiKeyWriteSchema,
   BackendConfigSchema,
   BackendConfigWriteInputSchema,
@@ -111,50 +109,6 @@ describe('BackendApiKeyWriteSchema', () => {
 
   it('rejects a key that is only whitespace', () => {
     const result = BackendApiKeyWriteSchema.safeParse('     ');
-    expect(result.success).toBe(false);
-  });
-});
-
-describe('authGroupEmailSchema', () => {
-  it('accepts a blank auth group email', () => {
-    const result = authGroupEmailSchema.safeParse('');
-    expect(result.success).toBe(true);
-  });
-
-  it('accepts a valid auth group email', () => {
-    const result = authGroupEmailSchema.safeParse('user@example.com');
-    expect(result.success).toBe(true);
-  });
-
-  it('rejects an invalid auth group email', () => {
-    const result = authGroupEmailSchema.safeParse('not-an-email');
-    expect(result.success).toBe(false);
-  });
-});
-
-describe('authModeSchema', () => {
-  it('accepts the secure default googleGroups', () => {
-    const result = authModeSchema.safeParse('googleGroups');
-    expect(result.success).toBe(true);
-  });
-
-  it('rejects the removed none development bypass value', () => {
-    const result = authModeSchema.safeParse('none');
-    expect(result.success).toBe(false);
-  });
-
-  it('rejects an unknown value', () => {
-    const result = authModeSchema.safeParse('foo');
-    expect(result.success).toBe(false);
-  });
-
-  it('rejects a blank value', () => {
-    const result = authModeSchema.safeParse('');
-    expect(result.success).toBe(false);
-  });
-
-  it('rejects null', () => {
-    const result = authModeSchema.safeParse(null);
     expect(result.success).toBe(false);
   });
 });
