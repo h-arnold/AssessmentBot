@@ -11,22 +11,16 @@ risk, why it is accepted, and what would change the decision.
 
 ## Accepted risks
 
-### 1. Vendored `JsonDbApp` code is exposed to `google.script.run`
+### 1. Vendored `JsonDbApp` code is isolated from `google.script.run`
 
-The vendored code in `scripts/builder/vendor/jsondbapp/src/**` contains ten top-level
-non-underscore function declarations (including `loadDatabase` and
-`createAndInitialiseDatabase`). In the deployed bundle these are exposed to
-`google.script.run` and bypass the auth gate, exactly like any other accidentally public
-backend function.
+The builder wraps the vendored source in an IIFE and assigns only the returned namespace
+object to the top-level `JsonDbApp` constant. Functions such as `loadDatabase` and
+`createAndInitialiseDatabase` therefore remain local to the IIFE; they are not top-level
+Apps Script functions and cannot be called directly through `google.script.run`.
 
-**Why accepted:** the code is third-party and inlined into the deployed bundle as a
-vendored asset; refactoring it to the private-by-default convention is not feasible in
-the current scope. The backend global-exposure guard test excludes vendored paths by
-construction (see [attack-surface-reduction.md](./attack-surface-reduction.md)), so the
-exposure will not spread, but the existing surface remains.
-
-**Change trigger:** a GitHub issue tracks remediation. If the vendored dependency is
-updated or replaced, the replacement should be checked against the same convention.
+The application uses `apiHandler` as its sole frontend-callable backend function. Calls to
+the vendored API are made internally through the namespace object and consequently remain
+behind the application auth gate.
 
 ### 2. Auth revocation latency is bounded by the six-hour cache TTL
 
@@ -115,7 +109,6 @@ information is already resolved and audited, so the foundation is in place.
   all roles unless explicitly granted. Denials reuse the `FORBIDDEN` error code.
 - **Self-membership verification guard.** Prevent the admin-lockout scenario in risk 4
   by verifying the caller's own membership before persisting `authGroupEmail`.
-- **Vendored exposure remediation.** Address risk 1 (tracked in a GitHub issue).
 - **Admin UI for group membership.** Group membership management currently lives in the
   Google Groups admin console; a frontend management surface is possible once role-based
   filtering lands.
