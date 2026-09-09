@@ -10,6 +10,7 @@
     "prepare": "husky",
     "lint:backend": "eslint --config eslint.config.js --fix src/backend/**/*.js tests/**/*.js",
     "lint:backend:check": "eslint --max-warnings 0 --config eslint.config.js src/backend/**/*.js tests/**/*.js",
+    "lint:backend:errors-only": "eslint --config eslint.config.js src/backend/**/*.js tests/**/*.js",
     "lint:frontend": "npm --prefix src/frontend run lint -- --fix",
     "lint:frontend:check": "npm --prefix src/frontend run lint -- --max-warnings 0",
     "lint:builder": "eslint --config scripts/builder/eslint.config.js --fix scripts/builder/src/**/*.ts .opencode/plugins",

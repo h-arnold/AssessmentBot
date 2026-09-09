@@ -64,7 +64,8 @@ This project uses a shared configuration tree so TypeScript and linting standard
   - Imports shared TS base rules.
   - Applies `unicorn.configs.all` as the frontend baseline.
   - Adds frontend-only rules/plugins (React hooks, Vite React refresh, browser globals).
-  - Applies shared Unicode hardening rules as errors for frontend test files, with scoped test-only suppressions for `require-unicode-regexp` and `security/detect-object-injection` after false-positive triage.
+  - Applies shared Unicode hardening rules as errors for frontend test files, with a test-only suppression for `require-unicode-regexp` after false-positive triage.
+  - Globally disables `security/detect-object-injection` because its heuristic produced harmful workarounds; input sanitisation and validation are the preferred security controls.
   - Uses targeted `unicorn/*` overrides only where current frontend conventions intentionally differ.
 - `scripts/builder/eslint.config.js`
   - Imports shared TS base rules.
