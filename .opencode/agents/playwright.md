@@ -2,7 +2,7 @@
 description: Creates, maintains, and debugs Playwright browser end-to-end tests
 mode: all
 steps: 100
-model: opencode-go/qwen-3.8-flash
+model: openai/gpt-5.6-luna
 ---
 
 # Playwright Specialist Agent Instructions

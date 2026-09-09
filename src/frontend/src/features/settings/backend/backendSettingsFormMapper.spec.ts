@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { BackendConfigWriteInputSchema } from '../../../services/backendConfiguration/backendConfiguration.zod';
 import {
   mapBackendConfigToBackendSettingsFormValues,
   mapBackendSettingsFormValuesToBackendConfigWriteInput,
@@ -112,14 +113,16 @@ describe('backendSettingsFormMapper', () => {
     });
   });
 
-  it('maps a configured auth group email from form values into the backend write payload', () => {
+  it('omits authGroupEmail from the backend write payload even when the form carries a configured group email', () => {
     const writePayload = mapBackendSettingsFormValuesToBackendConfigWriteInput({
       ...storedKeyFormValues,
       authGroupEmail: 'teachers@school.edu',
     } as unknown as Parameters<typeof mapBackendSettingsFormValuesToBackendConfigWriteInput>[0]);
 
+    expect(writePayload).not.toHaveProperty('authGroupEmail');
     expect(writePayload).toMatchObject({
-      authGroupEmail: 'teachers@school.edu',
+      backendAssessorBatchSize: 30,
+      backendUrl: validTrimmedBackendUrl,
     });
   });
 
@@ -134,15 +137,24 @@ describe('backendSettingsFormMapper', () => {
     });
   });
 
-  it('maps a blank authGroupEmail from form values into the backend write payload', () => {
+  it('omits a blank authGroupEmail from the backend write payload', () => {
     const writePayload = mapBackendSettingsFormValuesToBackendConfigWriteInput({
       ...storedKeyFormValues,
       authGroupEmail: '',
     } as unknown as Parameters<typeof mapBackendSettingsFormValuesToBackendConfigWriteInput>[0]);
 
-    expect(writePayload).toMatchObject({
-      authGroupEmail: '',
-    });
+    expect(writePayload).not.toHaveProperty('authGroupEmail');
+  });
+
+  it('produces a backend write payload that parses with the strict BackendConfigWriteInputSchema', () => {
+    const writePayload = mapBackendSettingsFormValuesToBackendConfigWriteInput({
+      ...storedKeyFormValues,
+      authGroupEmail: 'teachers@school.edu',
+      authMode: 'scriptProperties',
+    } as unknown as Parameters<typeof mapBackendSettingsFormValuesToBackendConfigWriteInput>[0]);
+
+    const parseResult = BackendConfigWriteInputSchema.safeParse(writePayload);
+    expect(parseResult.success).toBe(true);
   });
 });
 
@@ -150,11 +162,11 @@ describe('authMode mapping', () => {
   it('maps authMode through from the backend payload into form values', () => {
     const formValues = mapBackendConfigToBackendSettingsFormValues({
       ...maskedBackendConfig,
-      authMode: 'none',
+      authMode: 'scriptProperties',
     } as unknown as Parameters<typeof mapBackendConfigToBackendSettingsFormValues>[0]);
 
     expect(formValues).toMatchObject({
-      authMode: 'none',
+      authMode: 'scriptProperties',
     });
   });
 
@@ -170,14 +182,12 @@ describe('authMode mapping', () => {
     });
   });
 
-  it('maps authMode through from form values into the backend write payload', () => {
+  it('omits authMode from the backend write payload even when a mode is selected', () => {
     const writePayload = mapBackendSettingsFormValuesToBackendConfigWriteInput({
       ...storedKeyFormValues,
-      authMode: 'none',
+      authMode: 'scriptProperties',
     } as unknown as Parameters<typeof mapBackendSettingsFormValuesToBackendConfigWriteInput>[0]);
 
-    expect(writePayload).toMatchObject({
-      authMode: 'none',
-    });
+    expect(writePayload).not.toHaveProperty('authMode');
   });
 });

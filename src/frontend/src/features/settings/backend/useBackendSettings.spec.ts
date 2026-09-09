@@ -73,7 +73,6 @@ const baseBackendConfig = {
   jsonDbLogLevel: 'INFO',
   jsonDbBackupOnInitialise: true,
   jsonDbRootFolderId: 'folder-1234',
-  authGroupEmail: '',
 } satisfies BackendConfig;
 
 const baseStoredKeyFormValues = {

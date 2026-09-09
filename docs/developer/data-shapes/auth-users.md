@@ -4,15 +4,20 @@ Application authentication state and the managed user list: two-provider members
 resolution (`googleGroups` | `scriptProperties`), the persistent authorised-user list
 with roles, and the auth management/access endpoints.
 
-> **Status: Auth transport implemented (ACTION_PLAN §5 landed)** — recorded from `SPEC.md`
-> v1.3 (Application Authentication & Minimal Role Administration). The persistence/validation
-> layer (Section 1 config schema), the AuthService provider resolution, strict deny paths,
-> Groups/Script Properties cache policy, never-claim trigger execution context (Section 3),
-> the fresh-install bootstrap claim (Section 4), and the three `apiAuth.js` transport
-> endpoints (Section 5) have all landed and match this contract. The frontend Zod/service
-> layer (Section 7) and the `BackendConfig` read/write transport auth-field removal
-> (Sections 6–8) remain planned and are tracked as `Not implemented` markers in their
-> respective contract files.
+> **Status: Auth transport + frontend Zod/services implemented (ACTION_PLAN §5 and §7 landed)** —
+> recorded from `SPEC.md` v1.3 (Application Authentication & Minimal Role Administration). The
+> persistence/validation layer (Section 1 config schema), the AuthService provider resolution,
+> strict deny paths, Groups/Script Properties cache policy, never-claim trigger execution
+> context (Section 3), the fresh-install bootstrap claim (Section 4), and the three `apiAuth.js`
+> transport endpoints (Section 5) have all landed and match this contract. The frontend
+> Zod/service layer (Section 7) has now landed and matches this contract — the four strict
+> `.strict()` schemas in `src/frontend/src/services/authService/authService.zod.ts` and the
+> three typed `callApi` services validate every canonical fixture (all four `reason` values, both
+> settings request/response variants, and first-switch `expectedAuthRevision` omission). The
+> `BackendConfig` frontend schema/transport lockstep (Section 7) has now landed — `backendConfiguration.zod.ts`
+> drops `authMode`/`authGroupEmail` from its read and write schemas — but the Section 8 UI/form/panel
+> slimming (panel fields, form schema/mapper, `handleFinish` guard) remains pending and is tracked in
+> `backend-config.md`.
 
 Backend implementation: `src/backend/Utils/AuthService.js` (base) +
 `GoogleGroupsAuthService` + `ScriptPropertiesAuthService` subclasses (landed,
@@ -21,8 +26,8 @@ ACTION_PLAN §3); `AuthService._attemptBootstrapClaim()` fresh-install claim
 Persistence: inside the existing single JSON blob in `PropertiesService.getScriptProperties()` under key `__CONFIG_STORE_KEY__` (see [Contract: BackendConfig](backend-config.md))
 API handlers: `getApplicationAccess`, `getAuthenticationSettings`, `setAuthenticationSettings` (registered in `ALLOWLISTED_METHOD_HANDLERS`)
 Response mapper: None — handlers shape data from `AuthService`/`ConfigurationManager` methods
-Frontend service: `src/frontend/src/services/authService/` (planned typed access)
-Frontend Zod: planned schemas matching the shapes below (`.strict()` lockstep)
+Frontend service: `src/frontend/src/services/authService/authService.ts` — `getApplicationAccess()`, `getAuthenticationSettings()`, `setAuthenticationSettings()` (all via `callApi`)
+Frontend Zod: `src/frontend/src/services/authService/authService.zod.ts` — `ApplicationAccessSchema`, `AuthenticationSettingsSchema`, `AuthUserEntrySchema`, `SetAuthenticationSettingsRequestSchema`, `SetAuthenticationSettingsResultSchema` (all `.strict()`)
 
 Sibling contracts:
 
@@ -128,9 +133,10 @@ are denied without claiming or writing; the next eligible caller retries the cla
 
 ## Transport
 
-> **Status: Implemented** (ACTION_PLAN §5) — the `apiAuth.js` endpoints below are delivered
-> and conform to this contract. The frontend Zod/service layer that consumes them remains
-> planned (Section 7).
+> **Status: Implemented** (ACTION_PLAN §5; frontend Zod/services landed in §7) — the
+> `apiAuth.js` endpoints below are delivered and conform to this contract, and the frontend
+> `authService.zod.ts` / `authService.ts` now consume them (see the [Validation](#validation)
+> frontend block).
 
 ### `getApplicationAccess` (gate-exempt, all callers)
 
@@ -253,15 +259,54 @@ registry.
   aborts without overwrite when a blob appears, denies fail-closed with a safe audit on
   contention/cap/write failure (allowing a retry), and never claims for blank-email or
   trigger (`neverClaim: true`) callers.
-- `src/backend/z_Api/apiConfig.js` — **planned**: `setBackendConfig_` rejects all
-  auth fields as `ApiValidationError` (`INVALID_REQUEST`).
+- `src/backend/z_Api/apiConfig.js` — **implemented** (ACTION_PLAN §6): `setBackendConfig_`
+  rejects all auth fields as `ApiValidationError` (`INVALID_REQUEST`) for every caller, including
+  admins (see [Contract: BackendConfig](backend-config.md) for the reconciled transport contract).
 
-**Frontend (planned):**
+**Frontend Zod** (`src/frontend/src/services/authService/authService.zod.ts`):
 
-- Zod schemas mirroring the three response/request shapes (`.strict()` lockstep,
-  respecting the deploy-order tolerance conventions used by BackendConfig).
-- Auth surface sourced exclusively from these endpoints; `BackendSettingsPanel`
-  no longer transports `authMode`/`authGroupEmail`.
+- `ApplicationAccessSchema` — validates the `getApplicationAccess` response:
+  `allowed: z.boolean()`, `role: z.enum(['admin','user']).nullable()`,
+  `email: z.string()`, `reason: z.enum(['ok','freshInstall','brokenConfig','denied'])`; `.strict()`.
+- `AuthenticationSettingsSchema` — validates the `getAuthenticationSettings` response:
+  `authMode: z.enum(['googleGroups','scriptProperties'])`, `authGroupEmail: z.string()`,
+  `authUsers: z.array(AuthUserEntrySchema)`, `authRevision: z.string().nullable()`; `.strict()`.
+- `AuthUserEntrySchema` — validates one `authUsers` element: `email: z.string()`,
+  `role: z.enum(['admin','user'])`; `.strict()` (no extra keys, only the two roles).
+- `SetAuthenticationSettingsRequestSchema` — `z.discriminatedUnion('authMode', ...)`:
+  - `ScriptPropertiesSaveRequestSchema`: `authMode: z.literal('scriptProperties')`,
+    `authUsers: z.array(AuthUserEntrySchema)`, `expectedAuthRevision: z.string().optional()`;
+    `.strict()` (omits `authGroupEmail`).
+  - `GoogleGroupsSaveRequestSchema`: `authMode: z.literal('googleGroups')`,
+    `authGroupEmail: z.string().trim().min(1)`; `.strict()` (omits `authUsers`/`expectedAuthRevision`).
+  - The `googleGroups` variant must omit `authUsers`/`expectedAuthRevision` entirely; the
+    `scriptProperties` variant carries the full candidate list and supplies `expectedAuthRevision`
+    only when a stored revision exists (omitted on the first switch, which seeds `'1'`).
+- `SetAuthenticationSettingsResultSchema` — validates the commit result:
+  `success: z.literal(true)`, `authRevision: z.string().nullable()`; `.strict()` (new revision in
+  `scriptProperties` mode, `null` in `googleGroups` mode).
+
+**Frontend service** (`src/frontend/src/services/authService/authService.ts`):
+
+- `getApplicationAccess()` — `callApi('getApplicationAccess')`, parsed with `ApplicationAccessSchema`.
+- `getAuthenticationSettings()` — `callApi('getAuthenticationSettings')`, parsed with `AuthenticationSettingsSchema`.
+- `setAuthenticationSettings(request)` — validates the raw request against
+  `SetAuthenticationSettingsRequestSchema` before `callApi('setAuthenticationSettings', parsedRequest)`,
+  then parses the result with `SetAuthenticationSettingsResultSchema`.
+- `getAuthorisationStatus()` — `callApi('getAuthorisationStatus')` (OAuth gate, unchanged).
+- All method names match `ALLOWLISTED_METHOD_HANDLERS` in the backend `z_apiHandler.js`.
+
+**Key domain validation rules (frontend):**
+
+- `.strict()` lockstep: every schema rejects an undeclared key, so the backend must never emit a
+  field absent from the schema (and vice versa). This matches the BackendConfig `.strict()`
+  deploy-order tolerance convention.
+- The `setAuthenticationSettings` request is validated client-side before transport, so an invalid
+  per-mode field set (e.g. supplying `authUsers` in groups mode, or `authGroupEmail` in
+  scriptProperties mode) is rejected before `callApi` is called.
+- Auth surface is sourced exclusively from these endpoints; `BackendSettingsPanel` no longer
+  transports `authMode`/`authGroupEmail` (the form/panel slimming is Section 8 work, tracked in
+  `backend-config.md`).
 
 ### Known discrepancies
 
@@ -285,10 +330,22 @@ registry.
   returns `authRevision: null` in groups mode) and maps lock contention to a retriable
   `RATE_LIMITED` envelope and an over-cap blob to `INVALID_REQUEST`. No drift against the
   shapes above.
-- Frontend Zod/service layer (Section 7) and the `BackendConfig` read/write transport
-  auth-field removal (Sections 6–8) remain `Not implemented`; their planned markers are
-  tracked in the respective contract files and no discrepancies are asserted for that
-  unbuilt code.
+- Frontend Zod/service layer (Section 7) has landed and matches this contract: the four
+  `.strict()` schemas in `authService.zod.ts` validate every canonical fixture — all four
+  `getApplicationAccess` `reason` values (`ok` / `freshInstall` / `brokenConfig` / `denied`),
+  both `getAuthenticationSettings` modes, the `setAuthenticationSettings` discriminated-union
+  request (the `googleGroups` variant omits `authUsers`/`expectedAuthRevision`; the
+  `scriptProperties` variant carries them and omits `expectedAuthRevision` only on the first
+  switch), and the `SetAuthenticationSettingsResultSchema` commit shape with
+  `authRevision: null` in groups mode. The three `authService.ts` functions call `callApi` with
+  method names that match `ALLOWLISTED_METHOD_HANDLERS` (`getApplicationAccess`,
+  `getAuthenticationSettings`, `setAuthenticationSettings`). No drift against the shapes above.
+- The `BackendConfig` frontend schema/transport lockstep (Section 7) has landed: `backendConfiguration.zod.ts`
+  drops `authMode`/`authGroupEmail` from `BackendConfigSchema` and `BackendConfigWriteInputSchema`, so the
+  frontend no longer accepts or requires those fields. The Section 8 UI/form/panel slimming (panel
+  fields, form schema/mapper, `handleFinish` guard) remains pending and is tracked in `backend-config.md`.
+  This contract never emitted those fields, so no discrepancy is asserted for that unbuilt code from this
+  contract's perspective.
 
 ---
 
@@ -308,7 +365,7 @@ API handlers:                src/backend/z_Api/
   ├── apiAuth.js                    — (implemented §5) getApplicationAccess, get/get-setAuthenticationSettings
   └── z_apiHandler.js               — ALLOWLISTED_METHOD_HANDLERS registration; gate exemption
 
-Frontend:                    src/frontend/src/services/authService/ (planned)
-  ├── authService.zod.ts            — response/request schemas
-  └── authService.ts                — typed endpoint access
+Frontend:                    src/frontend/src/services/authService/
+  ├── authService.zod.ts            — ApplicationAccessSchema, AuthenticationSettingsSchema, AuthUserEntrySchema, SetAuthenticationSettingsRequestSchema, SetAuthenticationSettingsResultSchema
+  └── authService.ts                — getApplicationAccess(), getAuthenticationSettings(), setAuthenticationSettings(), getAuthorisationStatus()
 ```

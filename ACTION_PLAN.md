@@ -780,6 +780,8 @@ Backend transport tests (dedicated suites per `src/frontend/AGENTS.md` §8:
 
 ## Section 7 — Frontend services and Zod contracts
 
+> **Current phase: Commit gate — regression gate passed with accepted baseline lint debt.**
+
 ### Objective
 
 - Add typed services + Zod schemas for `getApplicationAccess`,
@@ -846,7 +848,32 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- To be completed during implementation.
+- **Red and Green implementation complete; section checks and the regression gate pass.**
+  Red tests were reviewed cleanly. Green delivery added the four strict auth Zod schemas,
+  three typed `callApi` services, backend-config schema lockstep, removal of the frontend
+  `'none'` mode, and the minimal transitional backend-settings mapper/type-fixture updates
+  needed to keep the existing form compiling. The mapper now omits auth fields so its output
+  parses against the strict write schema; Section 8 still owns removal of the form/panel
+  fields themselves.
+- Section 7 focused services/schema tests: **57/57 passing**; relevant settings/backend
+  tests: **147/147 passing**; full frontend unit suite: **1,948/1,948**; frontend lint and
+  TypeScript build pass. Red and Green Code Reviewer verdicts are clean after the mapper
+  correction and stale Red-comment cleanup.
+- The Playwright agent model was corrected from `opencode-go/qwen-3.8-flash` to
+  `openai/gpt-5.6-luna` in `.opencode/agents/playwright.md`. The previously reported
+  cancellation-flow and rapid-click E2E failures were each reproduced as transient only:
+  isolated runs, 10-repeat runs, the relevant files, and the full frontend E2E suite passed;
+  no E2E source changes were justified.
+- The final regression checker comparison on 2026-09-09 reports **0 regressions, 0 new
+  failures, 3 fixes**. All checks pass except the 10 accepted pre-existing backend ESLint
+  max-lines warnings; frontend lint, frontend unit tests, frontend E2E (237/237), builder
+  lint/tests/compile, and backend tests pass. The regression gate is therefore accepted.
+- `auth-users.md` and its index entry now document the landed Section 7 frontend Zod/service
+  contracts and distinguish completed backend-config schema lockstep from pending Section 8
+  panel/form slimming. Data Shapes review is clean. Section 8 backend-config documentation
+  reconciliation remains a follow-up for that section.
+- Section 7 is ready for the commit gate. Section 8 backend-settings panel slimming and
+  Sections 9–10 remain deferred.
 
 ---
 

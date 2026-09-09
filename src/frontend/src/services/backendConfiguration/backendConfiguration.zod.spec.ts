@@ -22,78 +22,79 @@ const validBackendConfig = {
   jsonDbRootFolderId: 'folder-1234',
 };
 
+const validOrdinaryWritePatch = {
+  backendAssessorBatchSize: 30,
+  backendUrl: 'https://backend.example.com',
+  daysUntilAuthRevoke: 60,
+  slidesFetchBatchSize: 20,
+  jsonDbMasterIndexKey: 'master-index',
+  jsonDbLockTimeoutMs: 30_000,
+  jsonDbLogLevel: 'INFO',
+  jsonDbBackupOnInitialise: true,
+  jsonDbRootFolderId: 'folder-1234',
+};
+
 describe('BackendConfigSchema', () => {
-  it('accepts a blank authGroupEmail when the group is unset', () => {
-    const result = BackendConfigSchema.safeParse({ ...validBackendConfig, authGroupEmail: '' });
-    expect(result.success).toBe(true);
-  });
-
-  it('accepts a configured authGroupEmail', () => {
-    const result = BackendConfigSchema.safeParse({
-      ...validBackendConfig,
-      authGroupEmail: 'teachers@school.edu',
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it('rejects an invalid email when authGroupEmail is non-empty', () => {
-    const result = BackendConfigSchema.safeParse({
-      ...validBackendConfig,
-      authGroupEmail: 'not-an-email',
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it('accepts an absent authGroupEmail because the field is optional', () => {
+  it('accepts the canonical 12 non-auth field read response', () => {
     const result = BackendConfigSchema.safeParse(validBackendConfig);
     expect(result.success).toBe(true);
   });
 
-  it('accepts a response that includes authMode', () => {
+  it('rejects a read response that includes authGroupEmail (strict lockstep)', () => {
+    const result = BackendConfigSchema.safeParse({
+      ...validBackendConfig,
+      authGroupEmail: '',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a read response that includes authMode (strict lockstep)', () => {
     const result = BackendConfigSchema.safeParse({
       ...validBackendConfig,
       authMode: 'googleGroups',
     });
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
   });
 
-  it('accepts a response that omits authMode because the field is optional', () => {
-    const result = BackendConfigSchema.safeParse(validBackendConfig);
-    expect(result.success).toBe(true);
+  it('rejects a read response that reintroduces the stored auth fields', () => {
+    const withAuthUsers = BackendConfigSchema.safeParse({
+      ...validBackendConfig,
+      authUsers: '[]',
+    });
+    const withAuthRevision = BackendConfigSchema.safeParse({
+      ...validBackendConfig,
+      authRevision: '1',
+    });
+    expect(withAuthUsers.success).toBe(false);
+    expect(withAuthRevision.success).toBe(false);
   });
 });
 
 describe('BackendConfigWriteInputSchema', () => {
-  it('accepts a blank authGroupEmail in a write patch', () => {
-    const result = BackendConfigWriteInputSchema.safeParse({ authGroupEmail: '' });
+  it('accepts an ordinary write patch with no auth fields', () => {
+    const result = BackendConfigWriteInputSchema.safeParse(validOrdinaryWritePatch);
     expect(result.success).toBe(true);
   });
 
-  it('accepts a configured authGroupEmail in a write patch', () => {
+  it('rejects a write patch that includes authGroupEmail (strict lockstep)', () => {
     const result = BackendConfigWriteInputSchema.safeParse({
       authGroupEmail: 'teachers@school.edu',
     });
-    expect(result.success).toBe(true);
-  });
-
-  it('rejects an invalid email in a write patch when non-empty', () => {
-    const result = BackendConfigWriteInputSchema.safeParse({ authGroupEmail: 'not-an-email' });
     expect(result.success).toBe(false);
   });
 
-  it('accepts a write patch without authGroupEmail because the field is optional', () => {
-    const result = BackendConfigWriteInputSchema.safeParse({});
-    expect(result.success).toBe(true);
+  it('rejects a write patch that includes authMode (strict lockstep)', () => {
+    const result = BackendConfigWriteInputSchema.safeParse({ authMode: 'scriptProperties' });
+    expect(result.success).toBe(false);
   });
 
-  it('accepts authMode in a write patch', () => {
-    const result = BackendConfigWriteInputSchema.safeParse({ authMode: 'none' });
-    expect(result.success).toBe(true);
-  });
-
-  it('accepts a write patch without authMode because the field is optional', () => {
-    const result = BackendConfigWriteInputSchema.safeParse({});
-    expect(result.success).toBe(true);
+  it('rejects a write patch that reintroduces the stored auth fields', () => {
+    const withAuthUsers = BackendConfigWriteInputSchema.safeParse({
+      authUsers: [{ email: 'teacher@school.edu', role: 'admin' }],
+    });
+    const withAuthRevision = BackendConfigWriteInputSchema.safeParse({ authRevision: '1' });
+    expect(withAuthUsers.success).toBe(false);
+    expect(withAuthRevision.success).toBe(false);
   });
 });
 
@@ -137,9 +138,9 @@ describe('authModeSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('accepts the none development bypass value', () => {
+  it('rejects the removed none development bypass value', () => {
     const result = authModeSchema.safeParse('none');
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
   });
 
   it('rejects an unknown value', () => {

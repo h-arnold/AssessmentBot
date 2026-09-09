@@ -5,6 +5,23 @@ import type {
 import type { BackendSettingsForm } from './backendSettingsForm.zod';
 
 /**
+ * Read payload consumed by the backend-settings form mapper.
+ *
+ * @remarks
+ * The `BackendConfig` transport read no longer carries `authGroupEmail`/`authMode`
+ * (auth fields leave the backend-config transport in lockstep with the dedicated
+ * auth endpoints). The settings form still exposes those fields until the
+ * Authentication tab lands, so the mapper retains them as optional legacy inputs
+ * and falls back to the existing defaults (`''` group, `'googleGroups'` mode)
+ * when they are absent. This transitional tolerance is removed when the form
+ * fields themselves are dropped.
+ */
+type BackendSettingsReadSource = BackendConfig & {
+  authGroupEmail?: BackendSettingsForm['authGroupEmail'];
+  authMode?: BackendSettingsForm['authMode'];
+};
+
+/**
  * Maps the backend configuration payload into form values.
  *
  * @remarks
@@ -12,11 +29,11 @@ import type { BackendSettingsForm } from './backendSettingsForm.zod';
  * that masked transport value back into the password input. The field stays blank and the
  * `hasApiKey` flag carries the stored-key state instead.
  *
- * @param {BackendConfig} backendConfig The backend configuration payload.
+ * @param {BackendSettingsReadSource} backendConfig The backend configuration payload.
  * @returns {BackendSettingsForm} The backend settings form values.
  */
 export function mapBackendConfigToBackendSettingsFormValues(
-  backendConfig: BackendConfig
+  backendConfig: BackendSettingsReadSource
 ): BackendSettingsForm {
   return {
     hasApiKey: backendConfig.hasApiKey,
@@ -46,10 +63,11 @@ export function mapBackendConfigToBackendSettingsFormValues(
  * `loadError` transport fields from writes because only editable settings belong in the save
  * payload.
  *
- * `authGroupEmail` is always mapped into the write payload, including a blank value — the
- * backend rejects clearing a configured value (compulsory-once-set), so the blank pass-through
- * is what lets the backend surface that rejection instead of silently retaining the stored
- * value.
+ * `authGroupEmail` and `authMode` are never written through `setBackendConfig`: the backend
+ * rejects every auth field on that endpoint, and the strict `BackendConfigWriteInputSchema`
+ * drops them, so including them would fail every save. The form still exposes those fields until
+ * the Authentication tab lands, but they are read-only legacy values there — auth state is owned
+ * by the dedicated authentication endpoints.
  *
  * @param {BackendSettingsForm} formValues The backend settings form values.
  * @returns {BackendConfigWriteInput} The backend configuration write payload.
@@ -67,8 +85,6 @@ export function mapBackendSettingsFormValuesToBackendConfigWriteInput(
     jsonDbLogLevel: formValues.jsonDbLogLevel as BackendConfigWriteInput['jsonDbLogLevel'],
     jsonDbBackupOnInitialise: formValues.jsonDbBackupOnInitialise,
     jsonDbRootFolderId: formValues.jsonDbRootFolderId,
-    authGroupEmail: formValues.authGroupEmail,
-    authMode: formValues.authMode,
   } as BackendConfigWriteInput;
 
   if (formValues.apiKey !== '') {
