@@ -28,9 +28,9 @@ two boundaries: the API transport gate in `ApiDispatcher.handle()`
 - **Blank-email defence-in-depth.** If the resolved email is blank — which should not
   occur under the correct deployment mode, but is cheap to guard against — access is
   denied with a warn-level audit log (`AuthService.js`:
-  `'AuthService: failed to resolve the active user email.'`). This check runs _after_ the
-  unconfigured-group bootstrap branch (see below), so it only applies once a group has
-  been configured; a blank identity is never authorised against a configured gate.
+  `'AuthService: failed to resolve the active user email.'`). This check runs first, before
+  any bootstrap or membership resolution, so a blank identity is never authorised, claimed,
+  or cached.
 - The gate never falls back to `Session.getEffectiveUser()` or any other identity source,
   so the authorisation decision is always anchored to the caller's signed-in identity.
 
@@ -96,12 +96,18 @@ placement is deliberate:
 - **Error envelope.** `FORBIDDEN` is one of the documented transport error codes
   (see the [transport envelope](../data-shapes/transport-envelope.md)); it is produced
   directly by the gate rather than thrown by a dedicated exception type.
-- **Fail-open bootstrap.** When `AUTH_GROUP_EMAIL` is unconfigured,
-  `checkAccess()` returns `{ allowed: true, role: 'user' }` with a warn-level audit log
-  ('Auth group email not configured — failing open.'). The API gate therefore admits any
-  signed-in domain user so that the first administrator can reach the settings form and
-  configure the group. Trigger execution is deliberately stricter and fails closed in the
-  same state (see below). The window is an accepted risk — see
+- **First-admin bootstrap claim (fresh install only).** When the configuration store is
+  genuinely absent (`__CONFIG_STORE_KEY__` not present in raw Script Properties),
+  `checkAccess()` performs the Section 4 atomic bootstrap claim: the first eligible
+  interactive caller — one whose server-resolved email is non-blank — is committed as the
+  sole admin in a single locked write that stores only auth fields (`authMode:
+'scriptProperties'`, the caller as the sole `admin`, `authRevision: '1'`); default
+  seeding is deliberately skipped so non-auth getters fall back to `DEFAULTS`. The claim
+  re-checks freshness inside the lock, so a concurrent writer wins and the loser retries
+  fail-closed. A blank-identity caller or a trigger-execution caller (`neverClaim: true`)
+  is denied without claiming. Any existing configuration — however empty, blank or
+  malformed — is **not** a fresh install and never bootstraps; invalid or present
+  configuration denies access fail-closed. The bounded claim is an accepted trade-off — see
   [accepted-risks.md](./accepted-risks.md) risk 3.
 - **Thrown auth errors are not denials.** If `checkAccess()` throws (for example a
   `ConfigurationManager` persistence failure when reading configuration), the gate logs
@@ -176,15 +182,16 @@ every call:
 Every access attempt is audited through `ABLogger` with structured metadata — the caller
 email, the requested method (when supplied) and the group email:
 
-| Event                             | Level | Log message (`AuthService.js`)                            |
-| --------------------------------- | ----- | --------------------------------------------------------- |
-| Grant from cache                  | info  | `'AuthService: access granted (cached).'`                 |
-| Fresh grant                       | info  | `'AuthService: access granted.'`                          |
-| Denial (non-member / denied role) | warn  | `'AuthService: access denied.'`                           |
-| Blank identity                    | warn  | `'AuthService: failed to resolve the active user email.'` |
-| Fail-open bootstrap               | warn  | `'Auth group email not configured — failing open.'`       |
-| Fail-closed bootstrap (triggers)  | error | `'AuthService: auth group email is not configured.'`      |
-| Group lookup failure              | error | `'AuthService: group lookup failed.'`                     |
+| Event                                   | Level | Log message (`AuthService.js`)                                                       |
+| --------------------------------------- | ----- | ------------------------------------------------------------------------------------ |
+| Grant from cache                        | info  | `'AuthService: access granted (cached).'`                                            |
+| Fresh grant                             | info  | `'AuthService: access granted.'`                                                     |
+| Denial (non-member / denied role)       | warn  | `'AuthService: access denied.'`                                                      |
+| Blank identity                          | warn  | `'AuthService: failed to resolve the active user email.'`                            |
+| Fresh-install claim (interactive)       | info  | `'AuthService: fresh install claimed; caller granted admin.'`                        |
+| Fresh-install, no claim (trigger/blank) | info  | `'AuthService: fresh install detected but trigger execution never claims an admin.'` |
+| Broken configuration                    | error | `'AuthService: broken authentication configuration denies access.'`                  |
+| Group lookup failure                    | error | `'AuthService: group lookup failed.'`                                                |
 
 The audit trail is the primary operational signal for the threat model's
 "Workspace-domain users outside the group" actor: repeated warn-level denials from a
@@ -206,7 +213,9 @@ secrets in log output and mandates `ABLogger` for all backend code — see
   [Contract: BackendConfig](../data-shapes/backend-config.md).
 - **Transport always emits the field.** The read transport always emits `authGroupEmail`
   (`getAuthGroupEmail() || ''`), so the frontend can always distinguish "unconfigured"
-  (`''`) from "configured", and the fail-open bootstrap state is observable.
+  (`''`) from "configured". On a genuinely fresh install the first-admin claim resolves
+  the state, so an unconfigured group email is only observable before the first eligible
+  interactive caller claims the install.
 - **Admin lockout recovery.** Because there is no self-membership verification on save,
   an administrator can save a group they are not themselves a member of, locking everyone
   out of the UI. Because the value is compulsory once set, the recovery path is
@@ -215,9 +224,9 @@ secrets in log output and mandates `ABLogger` for all backend code — see
   [Contract: BackendConfig](../data-shapes/backend-config.md)); a deferred self-membership
   guard is tracked as future work.
 
-> **Recommended operational practice:** configure the auth group immediately after
-> deployment so the bootstrap fail-open window is as narrow as possible — while the
-> window is open, any signed-in domain user can reach the application.
+> **Recommended operational practice:** on a genuinely fresh install the first interactive
+> caller with a resolvable identity becomes administrator automatically. Configure the
+> application promptly after deployment so an unintended first caller cannot claim admin.
 
 > **Recommended operational practice:** before saving an `authGroupEmail`, verify that
 > the group is the intended one and that the saving administrator is a member of it
@@ -243,9 +252,9 @@ secrets in log output and mandates `ABLogger` for all backend code — see
   6. a warm-up `loading` "Verifying access" surface (accessible `output`, implicit status
      role) with no children — the dashboard is withheld until warm-up resolves.
 
-  The bootstrap fail-open path (unconfigured `AUTH_GROUP_EMAIL`) and the gate-exempt
-  `getAuthorisationStatus` OAuth-only check are unaffected: warm-up runs only after
-  `useAuthorisationStatus` reports authorised.
+  The first-admin bootstrap claim (a fresh install with no stored configuration) and the
+  gate-exempt `getAuthorisationStatus` OAuth-only check are distinct concerns: warm-up runs
+  only after `useAuthorisationStatus` reports authorised.
 
 - **`useAuthorisationStatus`** (`src/frontend/src/features/auth/useAuthorisationStatus.ts`)
   returns `{ isAuthorised, isLoading, error }`. It resolves OAuth scope status through
@@ -270,7 +279,7 @@ secrets in log output and mandates `ABLogger` for all backend code — see
 - [Layer 1 — platform security](./platform-security.md) — the deployment-mode and
   identity controls this layer builds on
 - [Accepted risks, trade-offs and future direction](./accepted-risks.md) — revocation
-  latency, bootstrap fail-open, self-membership verification, role-based filtering
+  latency, first-admin bootstrap claim, self-membership verification, role-based filtering
 - [Contract: AuthCache](../data-shapes/auth-cache.md) — the cached authorisation entry
 - [Contract: TriggerContext](../data-shapes/trigger-context.md) — the stored trigger
   execution context

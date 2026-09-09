@@ -456,6 +456,8 @@ Backend tests:
 
 ## Section 4 — Bootstrap claim
 
+> **Current phase: Red — bootstrap claim contract tests.**
+
 ### Objective
 
 - Implement the fresh-install bootstrap claim inside the shared access-resolution path.
@@ -515,7 +517,23 @@ Backend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- To be completed during implementation.
+- **Completed and review clean; regression/commit gate in progress.**
+- Implemented the atomic fresh-install claim in `AuthService._attemptBootstrapClaim`.
+  A genuinely absent raw store, interactive caller, and non-blank canonical identity
+  produce `{ allowed: true, role: 'admin' }` in the same resolution and persist only
+  `authMode: 'scriptProperties'`, the caller as sole-admin `authUsers`, and
+  `authRevision: '1'`.
+- The claim uses the shared script lock and one locked write, with an authoritative
+  in-lock freshness re-check that aborts without overwriting an appearing blob.
+  Contention/cap/write failure denies safely and permits later retry; blank identities
+  and `neverClaim` trigger calls never claim. Default seeding remains skipped and
+  non-auth getters retain their `DEFAULTS` fallback.
+- Canonical Session identity normalisation (trim/lowercase) is applied once before
+  both claim and provider resolution, preserving later Script Properties access.
+- Data-shape and documentation gates are complete; Section 5 transport endpoints
+  remain explicitly not implemented. Red/Green/review checks were clean: bootstrap
+  and provider focus 41/41, auth/trigger 92/92, full backend 2,074/2,074, lint zero
+  errors with 12 accepted baseline warnings, and the production bundle build passed.
 
 ---
 

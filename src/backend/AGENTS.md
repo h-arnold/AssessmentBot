@@ -149,10 +149,11 @@ Rules:
 - `src/backend/Utils/AuthService.js` is the singleton for application-level authorisation.
 - It centralises Google Group membership checks, role mapping, successful-result caching, and
   access-attempt audit logging.
-- The API gate fails open during bootstrap when `AUTH_GROUP_EMAIL` is empty so an administrator can
-  configure the application. Trigger execution passes `bypassCache: true` and an explicit
-  `neverClaim: true` context, so it fails closed and never bootstraps an admin (first-admin
-  claiming is a Section 4 concern).
+- Access resolution fails closed for empty or broken configuration. A genuinely fresh
+  install (no `__CONFIG_STORE_KEY__` blob) is claimed by the first eligible interactive
+  caller with a non-blank resolved identity through the Section 4 atomic bootstrap claim;
+  trigger execution passes `bypassCache: true` and an explicit `neverClaim: true` context,
+  so it fails closed and never bootstraps an admin.
 - Access the service with `AuthService.getInstance()`; do not instantiate it directly.
 - **Removed mode:** the `authMode` value `'none'` has been removed entirely. The strict
   auth-state resolver (`validateAuthStateStrict_`) rejects a stored or requested `'none'` as an

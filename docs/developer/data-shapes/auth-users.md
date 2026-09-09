@@ -6,16 +6,17 @@ with roles, and the auth management/access endpoints.
 
 > **Status: Partially implemented** — recorded from `SPEC.md` v1.3 (Application
 > Authentication & Minimal Role Administration). The persistence/validation layer
-> (Section 1 config schema) and the AuthService provider resolution, strict deny
-> paths, Groups/Script Properties cache policy, and never-claim trigger execution
-> context (Section 3) have landed. The bootstrap claim (Section 4) and the transport
-> endpoints in `apiAuth.js` (Section 5) remain `Not implemented`. Remove this marker
-> only when Sections 4–5 are delivered.
+> (Section 1 config schema), the AuthService provider resolution, strict deny
+> paths, Groups/Script Properties cache policy, never-claim trigger execution
+> context (Section 3), and the fresh-install bootstrap claim (Section 4) have
+> landed. The transport endpoints in `apiAuth.js` (Section 5) remain `Not implemented`.
+> Remove this marker only when Section 5 is delivered.
 
 Backend implementation: `src/backend/Utils/AuthService.js` (base) +
 `GoogleGroupsAuthService` + `ScriptPropertiesAuthService` subclasses (landed,
-ACTION_PLAN §3); `src/backend/z_Api/apiAuth.js` (new transport file, **Not
-implemented**, ACTION_PLAN §5)
+ACTION_PLAN §3); `AuthService._attemptBootstrapClaim()` fresh-install claim
+(landed, ACTION_PLAN §4); `src/backend/z_Api/apiAuth.js` (new transport file,
+**Not implemented**, ACTION_PLAN §5)
 Persistence: inside the existing single JSON blob in `PropertiesService.getScriptProperties()` under key `__CONFIG_STORE_KEY__` (see [Contract: BackendConfig](backend-config.md))
 API handlers: `getApplicationAccess`, `getAuthenticationSettings`, `setAuthenticationSettings` (registered in `ALLOWLISTED_METHOD_HANDLERS`)
 Response mapper: None — handlers shape data from `AuthService`/`ConfigurationManager` methods
@@ -73,20 +74,54 @@ values are strings, consistent with the BackendConfig blob conventions.
 
 ### Bootstrap (fresh install)
 
-> **Status: Not implemented** (ACTION_PLAN §4) — the bootstrap claim is not yet landed;
-> `AuthService._attemptBootstrapClaim()` currently denies a fresh install without mutation.
+> **Status: Implemented** (ACTION_PLAN §4) — `AuthService._attemptBootstrapClaim()`
+> is delivered and reached through `AuthService.checkAccess()` / `getApplicationAccess`.
 
-- Freshness detection is a `ConfigurationManager` method: run `ConfigurationManager`
-  initialisation first, then read raw Script Properties for `__CONFIG_STORE_KEY__`
-  absence (never the forgiving config cache). `AuthService` must not read
-  configuration getters before it.
-- The first interactive caller with a non-blank server-resolved email atomically
-  becomes admin through the shared access-resolution path (single write commits
-  `authMode: 'scriptProperties'`, caller as sole admin, `authRevision: '1'`).
-  Existing config — however empty or malformed — never bootstraps; blank-email
-  callers and trigger execution never claim.
-- The claim writes a blob containing only auth fields; default seeding is then
-  skipped and non-auth getters fall back to `DEFAULTS` (intended behaviour).
+**Preconditions (all three required for a claim):**
+
+- Raw store fresh/absent: `ConfigurationManager.isFreshInstall()` returns true —
+  `__CONFIG_STORE_KEY__` is absent from raw Script Properties (never the forgiving
+  config cache). `AuthService` must not read configuration getters before this method
+  runs (deterministic regardless of execution order).
+- Interactive caller: resolution options carry `neverClaim: false` (default). Trigger
+  execution passes `neverClaim: true` and never claims.
+- Non-blank server-resolved identity: `Session.getActiveUser().getEmail()` is non-blank;
+  `checkAccess` normalises it to trimmed/lowercase so the stored canonical email matches
+  later membership resolution. A blank resolved email denies without claiming.
+
+**Successful same-resolution result:** `{ allowed: true, role: 'admin' }` returned
+within the same access-resolution call (no client invalidation step). The single atomic
+locked write commits exactly the auth-only blob:
+
+| Field          | Persisted value                             | Notes                                                             |
+| -------------- | ------------------------------------------- | ----------------------------------------------------------------- |
+| `authMode`     | `'scriptProperties'`                        | Written by the claim; no silent getter fallback.                  |
+| `authUsers`    | JSON string of `[{ email, role: 'admin' }]` | Canonical sole-admin entry; `email` normalised trimmed/lowercase. |
+| `authRevision` | `'1'`                                       | Seeded by the claim.                                              |
+
+No default/non-auth seeding: the claim writes only those three auth fields;
+`ensureDefaultConfiguration()` is deliberately not invoked, so non-auth getters fall
+back to `DEFAULTS` (intended behaviour — reconciled in the action plan rather than
+"fixed").
+
+**Freshness re-check and atomicity:**
+
+- The claim re-checks freshness before entering the shared locked write
+  (`ConfigurationManager.writeConfigurationLocked`, the Section 2 path) and again
+  **inside** the lock; the in-lock probe re-reads the RAW blob, so a blob that appears
+  between the pre-lock probe and the lock aborts the claim rather than overwriting it.
+- Exactly **one** atomic write: a single `LockService.getScriptLock()` acquisition, raw
+  re-read, merge, and one `setProperty` of `__CONFIG_STORE_KEY__`.
+- When a blob appears after the probe, the claim is skipped and the existing blob is
+  preserved byte-for-byte — no overwrite.
+
+**Failure handling:** lock contention (`CONFIG_LOCK_CONTENTION`), blob-cap excess
+(`CONFIG_BLOB_TOO_LARGE`), or any persistence/write failure denies fail-closed
+(`{ allowed: false }`) with a safe audit that never echoes the serialised admin list or
+the `authRevision` value; no partial auth state is written and a later request may retry.
+
+**Never-claim contexts:** blank-email callers and trigger execution (`neverClaim: true`)
+are denied without claiming or writing; the next eligible caller retries the claim.
 
 ---
 
@@ -188,7 +223,7 @@ registry.
   resolves absent/blank+group to `googleGroups`, and resolves to `null` otherwise;
   the 8KB blob cap constant (`MAX_CONFIG_BLOB_BYTES`, 8192) is exported for the
   locked write path.
-- `src/backend/Utils/AuthService.js` — **implemented (ACTION_PLAN §3)**: provider
+- `src/backend/Utils/AuthService.js` — **implemented (ACTION_PLAN §3–§4)**: provider
   resolution runs the state machine (`freshInstall` → `legacyGroups` leniency →
   `configured` provider → `broken` deny) via `AuthService.getInstance()`; identity
   resolution denies a blank server-resolved email (no claim, no cache write); strict
@@ -201,8 +236,14 @@ registry.
   `bypassCache: true` forces a fresh `GroupsApp` lookup, while `ScriptPropertiesAuthService`
   has no success cache and reads the list fresh per request; the trigger execution
   context passes `neverClaim: true` and `bypassCache: true` (the defunct
-  `requireConfigured` option is dropped). The bootstrap claim itself is **Not
-  implemented** and belongs to ACTION_PLAN §4.
+  `requireConfigured` option is dropped). The fresh-install bootstrap claim
+  (`AuthService._attemptBootstrapClaim()`) is **implemented** (ACTION_PLAN §4): it
+  re-checks freshness before and inside the Section 2 `writeConfigurationLocked` lock,
+  commits exactly the auth-only blob (`authMode: 'scriptProperties'`, the caller as sole
+  admin in `authUsers`, `authRevision: '1'`), performs one atomic locked write, skips or
+  aborts without overwrite when a blob appears, denies fail-closed with a safe audit on
+  contention/cap/write failure (allowing a retry), and never claims for blank-email or
+  trigger (`neverClaim: true`) callers.
 - `src/backend/z_Api/apiConfig.js` — **planned**: `setBackendConfig_` rejects all
   auth fields as `ApiValidationError` (`INVALID_REQUEST`).
 
@@ -215,12 +256,15 @@ registry.
 
 ### Known discrepancies
 
-- Section 3 (AuthService provider/cache/trigger context) has landed with no drift against
-  this contract: provider resolution, strict deny, blank-identity deny, the single legacy
-  leniency, the removed `'none'` bypass, the Groups/Script Properties cache split, and the
-  `neverClaim`/`bypassCache` trigger context all match the shapes above.
-- Sections 4 (bootstrap claim) and 5 (transport endpoints) are still `Not implemented`;
-  their planned markers are retained and no discrepancies are asserted for unbuilt code.
+- Section 3 (AuthService provider/cache/trigger context) and Section 4 (bootstrap claim)
+  have landed with no drift against this contract: provider resolution, strict deny,
+  blank-identity deny, the single legacy leniency, the removed `'none'` bypass, the
+  Groups/Script Properties cache split, the `neverClaim`/`bypassCache` trigger context,
+  and the bootstrap claim (auth-only blob, in-lock freshness re-check, one atomic write,
+  safe deny/retry on contention/cap/write failure, never-claim for blank/trigger callers)
+  all match the shapes above.
+- Section 5 (transport endpoints in `apiAuth.js`) is still `Not implemented`; its planned
+  marker is retained and no discrepancies are asserted for unbuilt code.
 
 ---
 
@@ -232,9 +276,9 @@ Persistence:                 src/backend/ConfigurationManager/
   └── 98_ConfigurationManagerClass.js  — freshness detection method; locked write path
 
 Auth services:               src/backend/Utils/
-  ├── AuthService.js                — base: resolution, identity, audit, claim
-  ├── GoogleGroupsAuthService.js    — (planned) GroupsApp membership + role mapping
-  └── ScriptPropertiesAuthService.js — (planned) user-list membership, no cache
+  ├── AuthService.js                — base: resolution, identity, audit, claim (implemented §3–§4)
+  ├── GoogleGroupsAuthService.js    — GroupsApp membership + role mapping (implemented §3)
+  └── ScriptPropertiesAuthService.js — user-list membership, no cache (implemented §3)
 
 API handlers:                src/backend/z_Api/
   ├── apiAuth.js                    — (planned) getApplicationAccess, get/get-setAuthenticationSettings

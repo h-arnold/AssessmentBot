@@ -44,21 +44,26 @@ frontend responsive. The impact is deliberately bounded:
 **Change trigger:** if revocation latency becomes operationally unacceptable, the TTL can
 be shortened or the cache removed.
 
-### 3. Bootstrap fail-open window before the auth group is configured
+### 3. First interactive caller claims admin on a fresh install
 
-When `AUTH_GROUP_EMAIL` is unconfigured, the API gate fails open: any signed-in domain
-user is allowed in with a warning logged per request. The intent is that an administrator
-can reach the settings form and configure the group. Trigger execution is deliberately
-stricter — it passes `neverClaim: true` and fails closed, so it never bootstraps an admin even during bootstrap.
+On a genuinely fresh install (no `__CONFIG_STORE_KEY__` blob present), the first eligible
+interactive caller — one whose server-resolved email is non-blank — is committed as the
+sole administrator through the Section 4 atomic bootstrap claim. The claim writes only
+auth fields and cannot be performed by trigger execution (`neverClaim: true`) or by a
+blank-identity caller, both of whom are denied fail-closed. Any existing configuration —
+however empty, blank or malformed — is not a fresh install and never bootstraps; broken
+configuration denies access fail-closed.
 
-**Why accepted:** without the fail-open window the first administrator could not configure
-the application at all. The window is loud (a warning is logged on every request) and
-narrow (only until configuration is saved). The rollout sequence documented in the auth
-service specification says the group email should be set immediately after deployment.
+**Why accepted:** without a first-admin bootstrap the application could not be configured
+at all on a new deployment. The claim is bounded: it fires only on a genuinely absent
+store, only for an interactive caller with a verifiable non-blank identity, and re-checks
+freshness inside the script lock so a concurrent writer wins and the loser retries
+fail-closed. Configuration that is present but invalid or incomplete never opens a claim
+window.
 
-**Change trigger:** the window exists only while the group is unconfigured; once set, the
-gate is fail-closed permanently. A future iteration could gate the settings form itself
-on a pre-shared bootstrap secret, removing the window entirely.
+**Change trigger:** if the unauthenticated first-claim risk becomes unacceptable, a
+pre-shared bootstrap secret could gate the claim, or the claim could require an explicit
+out-of-band confirmation before granting admin.
 
 ### 4. No self-membership verification when saving the auth group email
 
@@ -97,9 +102,11 @@ information is already resolved and audited, so the foundation is in place.
   durable client-side storage (see [data-handling.md](./data-handling.md)). This costs
   performance (no offline cache, re-fetch on reload) in exchange for reducing the value
   of a compromised device.
-- **Fail closed, except where bootstrap requires otherwise.** Errors in identity
-  resolution, group lookup and role mapping deny access. The only deliberate fail-open
-  path is the unconfigured-group bootstrap window described above.
+- **Fail closed by default; bootstrap is a bounded claim, not a fail-open window.**
+  Errors in identity resolution, group lookup, role mapping and broken configuration deny
+  access. The only deviation from pure fail-closed is the Section 4 first-admin claim,
+  which fires solely on a genuinely absent configuration store for an interactive caller
+  with a non-blank identity — it grants, rather than failing open to all users.
 
 ## Future direction
 

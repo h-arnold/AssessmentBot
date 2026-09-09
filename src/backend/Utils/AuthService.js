@@ -6,7 +6,7 @@
  * Application-level access control singleton. This base class owns the
  * provider-resolution state machine (fresh install / legacy groups / configured
  * providers / broken config), identity resolution, audit logging, cache-policy
- * coordination, and the bootstrap detection/claim wiring point (ACTION_PLAN
+ * coordination, and the atomic fresh-install bootstrap claim (ACTION_PLAN
  * Section 4). Provider-specific membership decisions are delegated to the
  * concrete provider subclasses (`GoogleGroupsAuthService`,
  * `ScriptPropertiesAuthService`); callers always use
@@ -14,8 +14,8 @@
  *
  * @remarks
  * Provider-resolution order is: (1) freshness — a genuinely fresh install has no
- * `__CONFIG_STORE_KEY__` blob and is classified/denied without mutation until the
- * Section 4 bootstrap claim lands; (2) mode — the stored `authMode` is resolved
+ * `__CONFIG_STORE_KEY__` blob and is claimed by the first eligible interactive
+ * caller (Section 4); (2) mode — the stored `authMode` is resolved
  * through the strict security read with the single documented leniency (an
  * absent/blank `authMode` paired with a non-blank `authGroupEmail` reads as
  * `googleGroups`, matching legacy hand-edited/cloned blobs); (3) provider — the
@@ -69,14 +69,16 @@ class AuthService extends BaseSingleton {
   /**
    * Resolves whether the active user is authorised for the protected surface.
    *
-   * The decision pipeline is: resolve the caller identity (blank identity always
-   * denies and never claims or caches), detect a genuinely fresh install (denied
-   * and classified without mutation until the Section 4 bootstrap claim), run the
-   * strict auth-state resolver (broken configuration denies fail-closed with an
-   * error-level audit), and delegate the membership decision to the resolved
-   * provider subclass. The provider is resolved from stored state on every call;
-   * the `bypassCache` and `neverClaim` options are passed through for the trigger
-   * execution context.
+   * The decision pipeline is: resolve and normalise the caller identity
+   * (trimmed and lowercased — the AuthUserEntry storage contract; blank
+   * identity always denies and never claims or caches), detect a genuinely
+   * fresh install (the first eligible interactive caller is claimed as the
+   * sole admin through the Section 4 bootstrap claim, which then proceeds
+   * under the new provider), run the strict auth-state resolver (broken
+   * configuration denies fail-closed with an error-level audit), and delegate
+   * the membership decision to the resolved provider subclass. The provider is
+   * resolved from stored state on every call; the `bypassCache` and
+   * `neverClaim` options are passed through for the trigger execution context.
    *
    * @param {Object} [options] - Optional overrides.
    * @param {boolean} [options.bypassCache=false] - Bypass the provider cache read (Google Groups only).
@@ -85,10 +87,16 @@ class AuthService extends BaseSingleton {
    * @returns {{ allowed: boolean, role?: string }} The access decision.
    */
   checkAccess({ bypassCache = false, neverClaim = false, method = null } = {}) {
-    const email = Session.getActiveUser().getEmail();
+    // Resolve and normalise the server-resolved identity ONCE so every
+    // downstream consumer (audit logs, provider membership checks, the
+    // bootstrap claim) compares the same canonical form. Stored AuthUserEntry
+    // emails are trimmed and lowercased by contract, so a raw identity with
+    // mixed case or surrounding whitespace must be normalised before any
+    // membership lookup or claim write.
+    const email = Session.getActiveUser().getEmail().trim().toLowerCase();
 
-    // Defence-in-depth: a blank server-resolved identity can never be authorised,
-    // claimed, or cached.
+    // Defence-in-depth: a blank server-resolved identity can never be
+    // authorised, claimed, or cached.
     if (!email) {
       ABLogger.getInstance().warn('AuthService: failed to resolve the active user email.', {
         email,
@@ -99,8 +107,9 @@ class AuthService extends BaseSingleton {
 
     const configManager = ConfigurationManager.getInstance();
     if (configManager.isFreshInstall()) {
-      // A genuinely fresh install is classified and denied without mutation in
-      // this section; the Section 4 bootstrap claim wiring point owns the deny.
+      // A genuinely fresh install is claimed by the first eligible interactive
+      // caller through the Section 4 atomic bootstrap claim; trigger execution
+      // (neverClaim) and blank-identity callers are denied without claiming.
       return this._attemptBootstrapClaim(email, { neverClaim, method });
     }
 
@@ -153,26 +162,108 @@ class AuthService extends BaseSingleton {
   }
 
   /**
-   * Bootstrap detection/claim wiring point (ACTION_PLAN Section 4).
+   * Atomic first-admin bootstrap claim (ACTION_PLAN Section 4).
    *
-   * A genuinely fresh install (no `__CONFIG_STORE_KEY__` blob) is denied and
-   * classified WITHOUT mutation in this section. Section 4 will replace this
-   * deny with the atomic first-admin claim (script lock, in-lock freshness
-   * re-check, single auth-only write of `authMode`, caller as sole admin and
-   * `authRevision: '1'`) for claimable interactive callers. `neverClaim` is
-   * reserved for the trigger context so triggers never bootstrap an admin.
-   * @param {string} email - The resolved active-user email (non-blank).
+   * A genuinely fresh install (no `__CONFIG_STORE_KEY__` blob) is claimed by the
+   * first eligible interactive caller: the caller's server-resolved email
+   * (already normalised to trimmed/lowercase and proven non-blank in
+   * `checkAccess`) is committed as the sole admin. The claim re-checks
+   * freshness before entering the shared locked write and again INSIDE the
+   * lock, so a concurrent writer that committed a blob between the two probes
+   * is never overwritten. The write goes through
+   * `ConfigurationManager.writeConfigurationLocked` — the same script-wide
+   * `LockService.getScriptLock()` shared with the vendored `DbLockService` —
+   * as a single atomic lock/write operation, never nested inside a DB lock.
+   *
+   * @remarks
+   * The in-lock re-check is the authoritative race guard: the Section 2 locked
+   * write re-reads the RAW blob under the lock, so the mutator observes any blob
+   * that appeared since the pre-lock probe and aborts the claim rather than
+   * overwriting it. The claim writes ONLY auth fields; default seeding
+   * (`ensureDefaultConfiguration`) is deliberately NOT invoked, so non-auth
+   * getters continue to fall back to `DEFAULTS` on a claimed install (intended
+   * behaviour — see SPEC.md "Bootstrap claim"). Contention, cap-excess or any
+   * other write failure denies the request (fail closed) with a safe audit (no
+   * raw auth values) and leaves a later request able to retry the claim.
+   * @param {string} email - The resolved active-user email (normalised to
+   *   trimmed/lowercase by `checkAccess`; non-blank).
    * @param {Object} [options] - Resolution options.
    * @param {boolean} [options.neverClaim=false] - True in the trigger execution context.
    * @param {string} [options.method] - Requested method, recorded in the audit log.
-   * @returns {{ allowed: boolean }} The access decision (always denied in this section).
+   * @returns {{ allowed: boolean, role?: string }} The access decision.
    */
   _attemptBootstrapClaim(email, { neverClaim = false, method = null } = {}) {
-    ABLogger.getInstance().info(
-      'AuthService: fresh install detected — no application configuration exists; access denied pending bootstrap.',
-      { email, method, neverClaim }
-    );
-    return { allowed: false };
+    if (neverClaim) {
+      ABLogger.getInstance().info(
+        'AuthService: fresh install detected but trigger execution never claims an admin.',
+        { email, method, neverClaim }
+      );
+      return { allowed: false };
+    }
+
+    const configManager = ConfigurationManager.getInstance();
+
+    // Freshness re-check before entering the locked write: a competing writer
+    // may have committed a blob since the pre-lock probe in checkAccess. If one
+    // appeared, the claim is skipped and access resolves from the stored state.
+    if (!configManager.isFreshInstall()) {
+      ABLogger.getInstance().info(
+        'AuthService: bootstrap claim skipped — configuration appeared before the claim.',
+        { email, method }
+      );
+      return { allowed: false };
+    }
+
+    // The caller becomes the sole admin. `checkAccess` has already normalised
+    // the email (trimmed, lowercased), matching the AuthUserEntry storage
+    // contract; writing it verbatim keeps the stored canonical form identical
+    // to the identity used for later membership resolution.
+    const serialisedUsers = JSON.stringify([{ email, role: 'admin' }]);
+
+    try {
+      // The shared locked write performs the single script-lock acquisition,
+      // raw re-read, merge and write. The mutator deliberately ignores the
+      // parsed snapshot and re-probes RAW storage via isFreshInstall(), because
+      // the parsed snapshot cannot distinguish an absent key from a present
+      // empty blob — only raw absence is genuinely fresh.
+      configManager.writeConfigurationLocked(() => {
+        if (!configManager.isFreshInstall()) {
+          const abort = new Error(
+            'Bootstrap claim aborted: configuration appeared while the script lock was held.'
+          );
+          abort.code = 'CONFIG_BOOTSTRAP_ABORT';
+          throw abort;
+        }
+        return {
+          authMode: 'scriptProperties',
+          authUsers: serialisedUsers,
+          authRevision: '1',
+        };
+      });
+    } catch (error) {
+      if (error.code === 'CONFIG_BOOTSTRAP_ABORT') {
+        ABLogger.getInstance().warn(
+          'AuthService: bootstrap claim skipped — a competing writer committed configuration first.',
+          { email, method }
+        );
+        return { allowed: false };
+      }
+      // Lock contention, cap excess or a persistence failure: deny fail-closed
+      // with a safe audit that never echoes the serialised admin list or the
+      // revision value. A later request may retry the claim.
+      ABLogger.getInstance().warn(
+        'AuthService: bootstrap claim failed — access denied; a later request may retry.',
+        { email, method, code: error.code }
+      );
+      return { allowed: false };
+    }
+
+    ABLogger.getInstance().info('AuthService: fresh install claimed; caller granted admin.', {
+      email,
+      method,
+      role: 'admin',
+    });
+    return { allowed: true, role: 'admin' };
   }
 
   /**

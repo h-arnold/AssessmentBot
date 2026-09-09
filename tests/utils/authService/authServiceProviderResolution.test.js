@@ -13,9 +13,10 @@
  *   { bypassCache?: boolean, neverClaim?: boolean, method?: string }
  * The removed `requireConfigured` option must not appear anywhere.
  *
- * Fresh-install rows assert resolver classification/deny/no-provider behaviour
- * only; the Section 4 bootstrap claim (atomic write of the caller as sole
- * admin) is deliberately not expected or asserted here.
+ * Fresh-install rows assert the Section 4 bootstrap claim: a claimable
+ * interactive caller is granted admin through the shared access-resolution path
+ * and routes the write through the Section 2 locked write, while trigger
+ * (never-claim) and blank-email callers are denied without claiming.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { provisionAuthContext, buildUsersJson, createCacheSpy } from './authServiceTestHarness.js';
@@ -40,18 +41,23 @@ describe('AuthService provider resolution', () => {
   });
 
   describe('fresh install', () => {
-    it('denies a claimable interactive caller without resolving a provider or claiming', () => {
+    it('claims a claimable interactive caller as the sole admin through the bootstrap claim', () => {
       ctx = provisionAuthContext({ config: {}, fresh: true });
 
       const result = AuthService.getInstance().checkAccess();
 
-      expect(result.allowed).toBe(false);
-      // No provider is consulted for a genuinely fresh install.
+      // The first interactive caller with a non-blank email becomes admin within
+      // the same resolution through the Section 4 bootstrap claim.
+      expect(result).toEqual({ allowed: true, role: 'admin' });
+      // No provider is consulted for a genuinely fresh install — the claim
+      // precedes provider resolution.
       expect(ctx.groupsApp.getGroupByEmail).not.toHaveBeenCalled();
-      // No bootstrap claim write — the Section 4 claim is not in scope here.
-      expect(ctx.configManager.writeConfigurationLocked).not.toHaveBeenCalled();
+      // The claim routes through the Section 2 shared locked write path.
+      expect(ctx.configManager.writeConfigurationLocked).toHaveBeenCalledTimes(1);
+      // The claim performs its write via the locked path — the legacy per-field
+      // setter surface is not used.
       expect(ctx.configManager.setProperty).not.toHaveBeenCalled();
-      // A fresh install is classified, not a broken-config deny: no error audit.
+      // A successful claim is not a broken-config deny: no error audit.
       expect(ctx.logger.error).not.toHaveBeenCalled();
     });
 

@@ -24,7 +24,9 @@ class ScriptPropertiesAuthService extends AuthService {
    * role; an unlisted caller is denied. The list is never memoised and no cache
    * entry is written under this provider.
    * @param {Object} options - Internal delegation options from the base.
-   * @param {string} options.email - The resolved active-user email.
+   * @param {string} options.email - The resolved active-user email, normalised to
+   *   trimmed/lowercase by the base before delegation so it matches the canonical
+   *   stored `AuthUserEntry` emails.
    * @param {Object} options.authState - The validated auth state (contains `authUsers`).
    * @param {string} [options.method] - Requested method, recorded in the audit log.
    * @returns {{ allowed: boolean, role?: string }} The access decision.
