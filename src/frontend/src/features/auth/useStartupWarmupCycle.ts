@@ -26,10 +26,6 @@ type StartupWarmupCycle = {
 const startupWarmupCycles = new WeakMap<QueryClient, StartupWarmupCycle>();
 
 /**
- *
- * @param queryClient
- */
-/**
  * Returns the current shared warm-up cycle for the provided query client.
  *
  * @param {QueryClient} queryClient Query client to inspect.
@@ -48,11 +44,6 @@ function getStoredWarmupCycle(queryClient: QueryClient): StartupWarmupCycle {
   };
 }
 
-/**
- *
- * @param queryClient
- * @param datasetKey
- */
 /**
  * Maps a query status to startup warm-up dataset status.
  *
@@ -78,10 +69,6 @@ function getDatasetWarmupState(
 }
 
 /**
- *
- * @param queryClient
- */
-/**
  * Builds the current dataset-level warm-up snapshot from shared query states.
  *
  * @param {QueryClient} queryClient Query client to inspect.
@@ -98,10 +85,6 @@ function createWarmupSnapshotFromQueryClient(queryClient: QueryClient): StartupW
   };
 }
 
-/**
- *
- * @param snapshot
- */
 /**
  * Derives scalar warm-up status from the dataset-level snapshot.
  *
@@ -127,11 +110,6 @@ function deriveWarmupStatus(snapshot: StartupWarmupSnapshot): StartupWarmupStatu
 }
 
 /**
- *
- * @param queryClient
- * @param fallbackStatus
- */
-/**
  * Resolves the next warm-up snapshot from query cache, with a scalar-status fallback.
  *
  * @param {QueryClient} queryClient Query client to inspect.
@@ -154,10 +132,6 @@ function resolveNextWarmupSnapshot(
 }
 
 /**
- *
- * @param error
- */
-/**
  * Logs startup warm-up failures with debug-only orchestration context.
  *
  * @param {unknown} error The warm-up failure to log.
@@ -167,13 +141,76 @@ function logStartupWarmupFailure(error: unknown) {
   const normalisedError = normaliseUnknownError(error);
   const apiTransportError = error instanceof ApiTransportError ? error : undefined;
 
-  logFrontendError('features/auth/AppAuthGate.startupWarmup', error, {
+  logFrontendError('features/auth/useStartupWarmupCycle', error, {
     errorMessage: normalisedError.errorMessage,
     errorCode: apiTransportError?.code,
     requestId: apiTransportError?.requestId,
     datasets: startupWarmupDatasetKeys,
     queryKeys: startupWarmupQueryKeys,
   });
+}
+
+/**
+ * Adopts the resolve/reject outcome of a warm-up cycle promise onto the cycle object and
+ * republishes the result to React state while the subscriber remains mounted.
+ *
+ * @param {StartupWarmupCycle} cycle The cycle object mutated in place on settle.
+ * @param {Promise<unknown>} promise The warm-up promise to observe.
+ * @param {QueryClient} queryClient Query client used to resolve the next snapshot.
+ * @param {() => boolean} getIsMounted Returns whether the subscriber is still mounted.
+ * @param {(state: StartupWarmupCycle) => void} setWarmupCycleState React state setter.
+ * @param {boolean} clearPromise Whether to clear the cycle promise on settle.
+ * @param {boolean} logFailure Whether to log warm-up failures on rejection.
+ * @returns {void} Nothing.
+ */
+function adoptWarmupCycleOutcome(
+  cycle: StartupWarmupCycle,
+  promise: Promise<unknown>,
+  queryClient: QueryClient,
+  getIsMounted: () => boolean,
+  setWarmupCycleState: (state: StartupWarmupCycle) => void,
+  clearPromise: boolean,
+  logFailure: boolean
+): void {
+  void promise.then(
+    () => {
+      const nextSnapshot = resolveNextWarmupSnapshot(queryClient, 'ready');
+      const nextStatus = deriveWarmupStatus(nextSnapshot);
+      cycle.status = nextStatus;
+      cycle.snapshot = nextSnapshot;
+
+      if (clearPromise) {
+        cycle.promise = undefined;
+      }
+
+      if (getIsMounted()) {
+        setWarmupCycleState({ status: nextStatus, snapshot: nextSnapshot });
+      }
+    },
+    (error: unknown) => {
+      const nextSnapshot = resolveNextWarmupSnapshot(queryClient, 'failed');
+      const nextStatus = deriveWarmupStatus(nextSnapshot);
+      cycle.status = nextStatus;
+      cycle.snapshot = nextSnapshot;
+      cycle.failureError = error;
+
+      if (clearPromise) {
+        cycle.promise = undefined;
+      }
+
+      if (logFailure) {
+        logStartupWarmupFailure(error);
+      }
+
+      if (getIsMounted()) {
+        setWarmupCycleState({
+          status: nextStatus,
+          snapshot: nextSnapshot,
+          failureError: error,
+        });
+      }
+    }
+  );
 }
 
 /**
@@ -213,35 +250,14 @@ export function useStartupWarmupCycle(
       // The lazy state initialiser already adopted the existing cycle from the registry.
       // Subscribe to its promise so the provider updates when warm-up resolves.
       if (existingCycle.promise) {
-        void existingCycle.promise.then(
-          () => {
-            const nextSnapshot = resolveNextWarmupSnapshot(queryClient, 'ready');
-            const nextStatus = deriveWarmupStatus(nextSnapshot);
-            existingCycle.status = nextStatus;
-            existingCycle.snapshot = nextSnapshot;
-
-            if (isMounted) {
-              setWarmupCycleState({
-                status: nextStatus,
-                snapshot: nextSnapshot,
-              });
-            }
-          },
-          (error: unknown) => {
-            const nextSnapshot = resolveNextWarmupSnapshot(queryClient, 'failed');
-            const nextStatus = deriveWarmupStatus(nextSnapshot);
-            existingCycle.status = nextStatus;
-            existingCycle.snapshot = nextSnapshot;
-            existingCycle.failureError = error;
-
-            if (isMounted) {
-              setWarmupCycleState({
-                status: nextStatus,
-                snapshot: nextSnapshot,
-                failureError: error,
-              });
-            }
-          }
+        adoptWarmupCycleOutcome(
+          existingCycle,
+          existingCycle.promise,
+          queryClient,
+          () => isMounted,
+          setWarmupCycleState,
+          false,
+          false
         );
       }
 
@@ -259,33 +275,16 @@ export function useStartupWarmupCycle(
     startupWarmupCycles.set(queryClient, cycle);
 
     // The lazy state initialiser already published a matching 'loading' cycle, so the
-    // provider shows the correct initial state. The promise handlers below republish on
+    // provider shows the correct initial state. The promise handler below republishes on
     // resolution. Avoids a synchronous setState within the effect.
-    void cyclePromise.then(
-      () => {
-        const nextSnapshot = resolveNextWarmupSnapshot(queryClient, 'ready');
-        const nextStatus = deriveWarmupStatus(nextSnapshot);
-        cycle.status = nextStatus;
-        cycle.snapshot = nextSnapshot;
-        cycle.promise = undefined;
-
-        if (isMounted) {
-          setWarmupCycleState({ status: nextStatus, snapshot: nextSnapshot });
-        }
-      },
-      (error: unknown) => {
-        const nextSnapshot = resolveNextWarmupSnapshot(queryClient, 'failed');
-        const nextStatus = deriveWarmupStatus(nextSnapshot);
-        cycle.status = nextStatus;
-        cycle.snapshot = nextSnapshot;
-        cycle.failureError = error;
-        cycle.promise = undefined;
-        logStartupWarmupFailure(error);
-
-        if (isMounted) {
-          setWarmupCycleState({ status: nextStatus, snapshot: nextSnapshot, failureError: error });
-        }
-      }
+    adoptWarmupCycleOutcome(
+      cycle,
+      cyclePromise,
+      queryClient,
+      () => isMounted,
+      setWarmupCycleState,
+      true,
+      true
     );
 
     return () => {

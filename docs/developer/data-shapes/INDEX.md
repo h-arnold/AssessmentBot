@@ -38,7 +38,7 @@ reference.
 > (Section 4), the three `apiAuth.js` transport endpoints (Section 5), and the frontend
 > Zod/service layer (Section 7 — including the `BackendConfig` frontend schema/transport lockstep
 > that drops `authMode`/`authGroupEmail`) have all landed and conform to this contract. The
-> Section 8 UI/form/panel slimming remains pending and is tracked as a planned marker in
+> Section 8 UI/form/panel slimming has also landed, consistent with `auth-users.md` and
 > `backend-config.md`.
 
 ## Containment Hierarchy

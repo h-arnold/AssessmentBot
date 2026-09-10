@@ -190,8 +190,9 @@ Three transport endpoints manage and report authentication state. They are regis
 
 - **`getApplicationAccess`** (gate-exempt) — resolves and shapes the caller's own access
   status. It performs the fresh-install bootstrap claim and returns the `reason` enum
-  described above. The frontend warm-up uses this to decide whether to render the
-  application.
+  described above. The frontend auth gate (`AppAuthGate`) consumes this `reason` to admit the
+  caller and render the application; the startup warm-up is a post-admission prefetch that does
+  not gate admission.
 - **`getAuthenticationSettings`** (admin-only) — returns `authMode`, `authGroupEmail`,
   `authUsers` and `authRevision`. In `scriptProperties` mode the stored user list and revision
   are returned; in `googleGroups` mode `authUsers` is `[]` and `authRevision` is `null`
@@ -343,37 +344,40 @@ secrets in log output and mandates `ABLogger` for all backend code — see
 
 ## Frontend auth surfaces
 
-- **`AppAuthGate`** (`src/frontend/src/features/auth/AppAuthGate.tsx`) is a truly
-  blocking, fail-closed gate: it renders its protected children (the dashboard, including
-  `AuthStatusCard`) only once the startup warm-up confirms application access. Warm-up calls
-  `getApplicationAccess` and treats `reason: 'ok'` as the grant; any other reason (or a
-  transport error) renders a blocking state. It no longer reveals the dashboard merely
-  because OAuth resolved authorised. The possible blocking states are, in order of precedence:
-  1. a `FORBIDDEN` access-denied result, detected by scanning the startup warm-up query
-     errors for the `FORBIDDEN` error code (`getWarmupForbiddenMessage`);
-  2. a `brokenConfig`/`freshInstall`/`denied` reason rendered as a clear, non-blaming
-     blocking `Result` with the appropriate remediation message;
-  3. a transport error result with a Retry button that invalidates and re-runs the
-     authorisation query;
-  4. a loading state while the authorisation query is pending;
-  5. a `'Permissions required'` result when the OAuth scope check resolves to false;
-  6. a fail-closed warm-up `failed` (non-`FORBIDDEN`) error `Result` with a user-safe
-     mapped message and a `Reload` button — the `QueryClient` uses `retry: false` and the
-     warm-up cycle registry is per-client, so a full page reload is the recovery path;
-  7. a warm-up `loading` "Verifying access" surface (accessible `output`, implicit status
-     role) with no children — the dashboard is withheld until warm-up resolves.
+- **`AppAuthGate`** (`src/frontend/src/features/auth/AppAuthGate.tsx`) is a blocking,
+  fail-closed gate that resolves access in two ordered stages before rendering its protected
+  children (the dashboard, including `AuthStatusCard`):
 
-  The first-admin bootstrap claim (a fresh install with no stored configuration) and the
-  gate-exempt `getAuthorisationStatus` OAuth-only check are distinct concerns: warm-up runs
-  only after `useAuthorisationStatus` reports authorised.
+  1. **OAuth admission first.** `useAuthorisationStatus` runs the gate-exempt
+     `getAuthorisationStatus` OAuth-only check. While it resolves, the gate paints an
+     accessible "Loading authorisation status" surface. An OAuth transport error renders a
+     retryable `Result`, and an unresolved OAuth scope (`isAuthorised === false`) renders the
+     "Permissions required" result. The dashboard is never revealed solely because the OAuth
+     scope check resolved authorised.
+  2. **Application-access admission.** Only once OAuth is authorised does the gate call
+     `getApplicationAccess` (via `useApplicationAccess`). While that query is pending the gate
+     shows a "Verifying access" surface. A transport error renders a retryable `Result`; a
+     resolved `reason` of `freshInstall`, `brokenConfig`, or `denied` renders a clear,
+     non-blaming blocking `Result`, and only `reason: 'ok'` admits the caller. Admission is
+     driven solely by the `getApplicationAccess` `reason` — not by warm-up.
+  3. **Post-admission warm-up prefetch.** After admission, the gate mounts
+     `ApplicationAccessContext.Provider` (delivering `{ allowed, role, email, reason }` to
+     descendants such as `SettingsPage`) and wraps the children in `StartupWarmupStateProvider`.
+     The startup warm-up then prefetches the shared lookup datasets in the background. A warm-up
+     failure is logged and its status published to the provider, but it does **not** fail the
+     shell closed or block admission — the protected children render regardless.
+
+  The first-admin bootstrap claim (a fresh install with no stored configuration) fires through
+  the gate-exempt `getApplicationAccess` path, and is distinct from the OAuth-only
+  `getAuthorisationStatus` check.
 
 - **`useAuthorisationStatus`** (`src/frontend/src/features/auth/useAuthorisationStatus.ts`)
   returns `{ isAuthorised, isLoading, error }`. It resolves OAuth scope status through
   the gate-exempt `getAuthorisationStatus` method (query definition in
   `src/frontend/src/query/sharedQueries.ts`, service call in
   `src/frontend/src/services/authService/authService.ts`) and deliberately does **not**
-  observe `FORBIDDEN` — the group/user-denial case is owned by the warm-up gate, so the two
-  mechanisms stay disjoint.
+  observe `FORBIDDEN` — the group/user-denial case is owned by the application-access gate, so
+  the two mechanisms stay disjoint.
 - **Role delivery.** `getApplicationAccess` returns the caller's `role`. `AppAuthGate` lifts
   it into an `ApplicationAccessContext` (`src/frontend/src/features/auth/AppAuthGate.tsx`)
   so descendants — most notably `SettingsPage` — can gate admin-only surfaces on `role:

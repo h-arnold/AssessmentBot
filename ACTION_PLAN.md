@@ -1259,7 +1259,7 @@ E2E (Playwright):
 
 ## Documentation and rollout notes
 
-> **Current phase: Complete — canonical security, data-shape, API, and rollout docs reviewed.**
+> **Current phase: Complete — implementation, regression, de-sloppification, and documentation sync reviewed.**
 
 ### Objective
 
@@ -1327,6 +1327,12 @@ E2E (Playwright):
   `__CONFIG_STORE_KEY__` blob with `authUsers` double-serialised as a JSON string; README scope
   was checked and no stale Layer 2 authentication wording was present. No documentation
   follow-ups remain for this plan.
+- Post-implementation de-sloppification is complete. The obsolete `AppAuthGate.tsx`
+  `react-hooks/exhaustive-deps` override was removed with explicit approval; warm-up-cycle
+  outcome handling was deduplicated, malformed JSDoc and the stale logger tag were corrected,
+  and the shared E2E authentication fixture was deduplicated without changing its StrictMode
+  double queue. Cleanup review is clean, and the affected frontend unit/E2E, lint, and type
+  checks remain green.
 
 ---
 

@@ -446,9 +446,9 @@ describe('AppAuthGate', () => {
     });
     expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      'features/auth/AppAuthGate.startupWarmup',
+      'features/auth/useStartupWarmupCycle',
       expect.objectContaining({
-        context: 'features/auth/AppAuthGate.startupWarmup',
+        context: 'features/auth/useStartupWarmupCycle',
         metadata: expect.objectContaining({
           requestId: 'req-warmup-1',
           errorCode: 'INTERNAL_ERROR',

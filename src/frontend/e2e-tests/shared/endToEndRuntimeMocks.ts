@@ -171,6 +171,23 @@ export interface CreateAuthenticationSettingsScenarioOptions {
 }
 
 /**
+ * Default `getAuthenticationSettings` response for admin authentication scenarios.
+ *
+ * The dev server runs under React 19 StrictMode, which double-fires effects, so the
+ * response queue deliberately carries two identical entries to satisfy both replays.
+ * Callers that need different pre/post-save responses should override `authenticationSettings`.
+ */
+const defaultAuthenticationSettingsResponse: ResponseItem = {
+  kind: 'success',
+  data: {
+    authMode: 'scriptProperties',
+    authGroupEmail: '',
+    authUsers: [{ email: 'admin@example.com', role: 'admin' }],
+    authRevision: '1',
+  },
+};
+
+/**
  * Creates a standard admin runtime scenario for Authentication settings journeys.
  *
  * @param {CreateAuthenticationSettingsScenarioOptions} options Scenario customisation.
@@ -181,24 +198,8 @@ export function createAuthenticationSettingsScenario(
 ): RuntimeScenario {
   const {
     authenticationSettings = [
-      {
-        kind: 'success',
-        data: {
-          authMode: 'scriptProperties',
-          authGroupEmail: '',
-          authUsers: [{ email: 'admin@example.com', role: 'admin' }],
-          authRevision: '1',
-        },
-      },
-      {
-        kind: 'success',
-        data: {
-          authMode: 'scriptProperties',
-          authGroupEmail: '',
-          authUsers: [{ email: 'admin@example.com', role: 'admin' }],
-          authRevision: '1',
-        },
-      },
+      defaultAuthenticationSettingsResponse,
+      defaultAuthenticationSettingsResponse,
     ],
     saveResponses = [{ kind: 'success', data: { success: true, authRevision: '2' } }],
   } = options;

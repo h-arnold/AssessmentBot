@@ -4,7 +4,7 @@ Application authentication state and the managed user list: two-provider members
 resolution (`googleGroups` | `scriptProperties`), the persistent authorised-user list
 with roles, and the auth management/access endpoints.
 
-> **Status: Auth transport + frontend Zod/services implemented (ACTION_PLAN §5 and §7 landed)** —
+> **Status: Auth transport + frontend Zod/services implemented (ACTION_PLAN §5, §7 and §8 landed)** —
 > recorded from `SPEC.md` v1.3 (Application Authentication & Minimal Role Administration). The
 > persistence/validation layer (Section 1 config schema), the AuthService provider resolution,
 > strict deny paths, Groups/Script Properties cache policy, never-claim trigger execution
@@ -15,9 +15,9 @@ with roles, and the auth management/access endpoints.
 > three typed `callApi` services validate every canonical fixture (all four `reason` values, both
 > settings request/response variants, and first-switch `expectedAuthRevision` omission). The
 > `BackendConfig` frontend schema/transport lockstep (Section 7) has now landed — `backendConfiguration.zod.ts`
-> drops `authMode`/`authGroupEmail` from its read and write schemas — but the Section 8 UI/form/panel
-> slimming (panel fields, form schema/mapper, `handleFinish` guard) remains pending and is tracked in
-> `backend-config.md`.
+> drops `authMode`/`authGroupEmail` from its read and write schemas — and the Section 8 UI/form/panel
+> slimming (panel fields, form schema/mapper, `handleFinish` guard) has also landed: the Authentication
+> settings surface no longer transports those fields. No auth-shape work remains pending.
 
 Backend implementation: `src/backend/Utils/AuthService.js` (base) +
 `GoogleGroupsAuthService` + `ScriptPropertiesAuthService` subclasses (landed,
@@ -343,9 +343,8 @@ registry.
 - The `BackendConfig` frontend schema/transport lockstep (Section 7) has landed: `backendConfiguration.zod.ts`
   drops `authMode`/`authGroupEmail` from `BackendConfigSchema` and `BackendConfigWriteInputSchema`, so the
   frontend no longer accepts or requires those fields. The Section 8 UI/form/panel slimming (panel
-  fields, form schema/mapper, `handleFinish` guard) remains pending and is tracked in `backend-config.md`.
-  This contract never emitted those fields, so no discrepancy is asserted for that unbuilt code from this
-  contract's perspective.
+  fields, form schema/mapper, `handleFinish` guard) has also landed: the Authentication settings surface
+  no longer transports those fields. No auth-shape discrepancy remains from this contract's perspective.
 
 ---
 

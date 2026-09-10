@@ -1029,7 +1029,7 @@ describe('App', () => {
     await waitFor(() => {
       expect(
         consoleErrorSpy.mock.calls.filter(
-          (call) => call[0] === 'features/auth/AppAuthGate.startupWarmup'
+          (call) => call[0] === 'features/auth/useStartupWarmupCycle'
         )
       ).toHaveLength(1);
     });
