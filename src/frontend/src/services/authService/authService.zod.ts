@@ -27,6 +27,16 @@ export const ApplicationAccessSchema = z
 
 export type ApplicationAccess = z.infer<typeof ApplicationAccessSchema>;
 
+/**
+ * Transport type for one authorised user entry inside the parsed `authUsers` list.
+ */
+export type AuthUserEntry = z.infer<typeof AuthUserEntrySchema>;
+
+/**
+ * Transport type for the role assigned to an authorised user entry.
+ */
+export type AuthUserRole = AuthUserEntry['role'];
+
 const AuthModeValues = ['googleGroups', 'scriptProperties'] as const;
 const AuthUserRoleValues = ['admin', 'user'] as const;
 

@@ -55,6 +55,8 @@ export type ResponseItem = Readonly<
 export type RuntimeScenario = Readonly<{
   getAuthorisationStatus?: ReadonlyArray<ResponseItem>;
   getApplicationAccess?: ReadonlyArray<ResponseItem>;
+  getAuthenticationSettings?: ReadonlyArray<ResponseItem>;
+  setAuthenticationSettings?: ReadonlyArray<ResponseItem>;
   getABClassPartials?: ReadonlyArray<ResponseItem>;
   getABClass?: ReadonlyArray<ResponseItem>;
   getCohorts?: ReadonlyArray<ResponseItem>;
@@ -156,6 +158,73 @@ export interface CreateAssignmentsScenarioOptions {
   includeYearGroups?: boolean;
   /** Whether to include standard assignment topics response. */
   includeAssignmentTopics?: boolean;
+}
+
+/**
+ * Options for creating a runtime scenario for the Authentication settings tab.
+ */
+export interface CreateAuthenticationSettingsScenarioOptions {
+  /** Authentication settings responses, including any post-save refreshes. */
+  authenticationSettings?: ReadonlyArray<ResponseItem>;
+  /** Authentication settings save responses. */
+  saveResponses?: ReadonlyArray<ResponseItem>;
+}
+
+/**
+ * Creates a standard admin runtime scenario for Authentication settings journeys.
+ *
+ * @param {CreateAuthenticationSettingsScenarioOptions} options Scenario customisation.
+ * @returns {RuntimeScenario} Configured runtime scenario.
+ */
+export function createAuthenticationSettingsScenario(
+  options: CreateAuthenticationSettingsScenarioOptions = {}
+): RuntimeScenario {
+  const {
+    authenticationSettings = [
+      {
+        kind: 'success',
+        data: {
+          authMode: 'scriptProperties',
+          authGroupEmail: '',
+          authUsers: [{ email: 'admin@example.com', role: 'admin' }],
+          authRevision: '1',
+        },
+      },
+      {
+        kind: 'success',
+        data: {
+          authMode: 'scriptProperties',
+          authGroupEmail: '',
+          authUsers: [{ email: 'admin@example.com', role: 'admin' }],
+          authRevision: '1',
+        },
+      },
+    ],
+    saveResponses = [{ kind: 'success', data: { success: true, authRevision: '2' } }],
+  } = options;
+
+  const scenario = createAssignmentsScenario({
+    initialPartials: [],
+    includeAuth: true,
+    includeClassPartials: true,
+    includeCohorts: true,
+    includeYearGroups: true,
+    includeAssignmentTopics: true,
+  });
+
+  return {
+    ...scenario,
+    getAuthorisationStatus: [
+      { kind: 'success', data: true },
+      { kind: 'success', data: true },
+    ],
+    getGoogleClassrooms: [
+      { kind: 'success', data: [] },
+      { kind: 'success', data: [] },
+    ],
+    getAuthenticationSettings: authenticationSettings,
+    setAuthenticationSettings: saveResponses,
+  };
 }
 
 /**
@@ -449,6 +518,8 @@ export async function installRuntimeMock(
   const allMethods = [
     'getAuthorisationStatus',
     'getApplicationAccess',
+    'getAuthenticationSettings',
+    'setAuthenticationSettings',
     'getABClassPartials',
     'getABClass',
     'getCohorts',

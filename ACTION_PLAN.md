@@ -1094,6 +1094,8 @@ Frontend tests:
 
 ## Section 10 — Authentication settings tab
 
+> **Current phase: Commit gate — authentication-tab implementation and Option A test alignment complete.**
+
 ### Objective
 
 - Build the admin-only Authentication tab: provider configuration card, staged user
@@ -1185,7 +1187,26 @@ E2E (Playwright):
 
 ### Implementation notes / deviations / follow-up
 
-- To be completed during implementation.
+- **Completed.** The admin-only Authentication tab is integrated at the SettingsPage role
+  boundary. It uses Ant Design `Select` controls and `Popconfirm` row removal per the layout
+  contract, with one provider Form and atomic revision-guarded Save. Groups mode renders the
+  compulsory-once-set group email and membership note; Script Properties mode renders the
+  staged user table. Loading skeleton, Card + Alert load error, refresh, stale-revision,
+  last-admin, candidate-check, mode-switch, and context-aware success states are implemented.
+- The staged-user hook is feature-local (404 lines); the tab is 318 lines, the user table is
+  115 lines, and all other new feature files remain below 500 lines. Ant Design-compatible
+  component assertions cover Select popup interaction, Popconfirm confirmation/cancellation,
+  mode-specific payload/copy, helper text, the compulsory-once-set guard, and empty-list
+  administrator guidance. The E2E journeys cover admin save/persistence and stale revision.
+- Section 10 component tests: **21/21 passing**; full frontend unit suite: **1,968/1,968**;
+  auth-settings E2E: **2/2**; full frontend E2E: **239/239**; frontend lint and TypeScript
+  build pass. Option A was selected after official Ant Design Select/Popconfirm documentation
+  review; native-select assertions were replaced with custom-control interactions.
+- Final regression comparison on 2026-09-10 reports **0 regressions, 0 new failures, 3 fixes**;
+  frontend lint/unit/E2E, backend tests, builder lint/tests/compile pass. The only failing
+  check is the accepted baseline backend ESLint max-lines debt (10 warnings). A transient
+  unrelated SelectWithAddNew E2E failure was reproduced as flaky and passed repeated runs.
+  Section 10 is ready for the commit gate; Sections 11 and regression hardening remain deferred.
 
 ---
 
