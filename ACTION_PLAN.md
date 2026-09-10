@@ -1212,6 +1212,8 @@ E2E (Playwright):
 
 ## Regression and contract hardening
 
+> **Current phase: Complete — full backend/frontend suites, lint, and E2E validation passed.**
+
 ### Objective
 
 - Prove the whole feature against the full suites and the canonical contracts.
@@ -1240,7 +1242,19 @@ E2E (Playwright):
 
 ### Implementation notes / deviations / follow-up
 
-- To be completed during implementation.
+- **Completed.** Focused auth/config backend suites passed **214/214**; full backend suite passed
+  **2,114/2,114**. Focused frontend auth/settings suites passed **110/110**; full frontend
+  unit suite passed **1,968/1,968**. Frontend type-check, lint, builder compile/lint/tests,
+  and full E2E passed; the full E2E suite passed **239/239** with no skipped tests, and a
+  repeated focused settings/auth run passed **54/54** without flakes.
+- Backend lint has **0 errors and 10 warnings**, matching the accepted baseline max-lines debt
+  exactly; no new warnings or failures were introduced. Frontend lint has **0 errors and 0
+  warnings**. The canonical auth-users/backend-config contracts and strict frontend schemas
+  are exercised by the passing focused suites.
+- The regression checker comparisons throughout Sections 7–10 report **0 regressions and 0
+  new failures** after transient E2E failures were isolated and verified as flaky. No files
+  were changed by the regression handoffs. This section is complete; documentation and rollout
+  notes remain.
 
 ---
 
