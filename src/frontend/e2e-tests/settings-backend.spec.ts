@@ -172,6 +172,15 @@ async function mockBackendSettingsRuntime(page: Page, scenario: BackendSettingsR
           return true;
         }
 
+        if (method === 'getApplicationAccess') {
+          sendSuccess(
+            handler,
+            { allowed: true, role: 'admin', email: 'owner@example.com', reason: 'ok' },
+            'req-application-access'
+          );
+          return true;
+        }
+
         if (method === 'getABClassPartials') {
           sendSuccess(handler, [], 'req-class-partials');
           return true;

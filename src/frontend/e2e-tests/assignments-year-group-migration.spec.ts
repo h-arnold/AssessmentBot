@@ -50,6 +50,10 @@ async function mockAssignmentsRuntime(page: Page) {
       const createGoogleScriptRunApiHandlerMock = ${googleScriptRunApiHandlerFactorySource};
       const responseQueues = {
         getAuthorisationStatus: [{ kind: 'success', data: true }],
+        getApplicationAccess: [
+          { kind: 'success', data: { allowed: true, role: 'admin', email: 'owner@example.com', reason: 'ok' } },
+          { kind: 'success', data: { allowed: true, role: 'admin', email: 'owner@example.com', reason: 'ok' } },
+        ],
         getABClassPartials: [{ kind: 'success', data: [] }],
          getCohorts: [{ kind: 'success', data: [] }],
          getYearGroups: [{ kind: 'success', data: [] }],
@@ -59,6 +63,7 @@ async function mockAssignmentsRuntime(page: Page) {
       };
       const callCounts = {
         getAuthorisationStatus: 0,
+        getApplicationAccess: 0,
         getABClassPartials: 0,
          getCohorts: 0,
          getYearGroups: 0,

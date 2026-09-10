@@ -54,6 +54,7 @@ export type ResponseItem = Readonly<
  */
 export type RuntimeScenario = Readonly<{
   getAuthorisationStatus?: ReadonlyArray<ResponseItem>;
+  getApplicationAccess?: ReadonlyArray<ResponseItem>;
   getABClassPartials?: ReadonlyArray<ResponseItem>;
   getABClass?: ReadonlyArray<ResponseItem>;
   getCohorts?: ReadonlyArray<ResponseItem>;
@@ -447,6 +448,7 @@ export async function installRuntimeMock(
   const responseQueues: Record<string, ResponseItem[]> = {};
   const allMethods = [
     'getAuthorisationStatus',
+    'getApplicationAccess',
     'getABClassPartials',
     'getABClass',
     'getCohorts',
@@ -466,6 +468,30 @@ export async function installRuntimeMock(
   for (const method of allMethods) {
     responseQueues[method] = scenario[method] ?? [];
   }
+
+  // AppAuthGate now performs application-access admission after OAuth. Preserve the
+  // existing authorised fixtures by supplying the normal admitted response when a
+  // scenario does not need to exercise access states explicitly.
+  responseQueues.getApplicationAccess = scenario.getApplicationAccess ?? [
+    {
+      kind: 'success',
+      data: {
+        allowed: true,
+        role: 'admin',
+        email: 'owner@example.com',
+        reason: 'ok',
+      },
+    },
+    {
+      kind: 'success',
+      data: {
+        allowed: true,
+        role: 'admin',
+        email: 'owner@example.com',
+        reason: 'ok',
+      },
+    },
+  ];
 
   // Build the call counts object
   const callCountsEntries = allMethods.map((method) => `${method}: 0`).join(', ');

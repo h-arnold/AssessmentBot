@@ -74,6 +74,16 @@ test.describe('auth status flow', () => {
         { kind: 'deferredSuccess', data: true },
         { kind: 'deferredSuccess', data: true },
       ],
+      getApplicationAccess: [
+        {
+          kind: 'deferredSuccess',
+          data: { allowed: true, role: 'admin', email: 'owner@example.com', reason: 'ok' },
+        },
+        {
+          kind: 'deferredSuccess',
+          data: { allowed: true, role: 'admin', email: 'owner@example.com', reason: 'ok' },
+        },
+      ],
       ...warmupResponses,
     });
 
@@ -81,12 +91,15 @@ test.describe('auth status flow', () => {
 
     const loadingStatus = page.getByRole('status', { name: 'Loading authorisation status' });
     await expect(loadingStatus).toBeVisible();
-    await expect(page.getByText('Authorised')).toHaveCount(0);
+    await expect(page.getByText('Authorised', { exact: true })).toHaveCount(0);
     await expect(page.getByText('Permissions required')).toHaveCount(0);
 
     await releaseNextDeferredSuccess(page);
     await expect(page.getByRole('status', { name: 'Verifying access' })).toBeVisible();
     await expect(page.getByText('Authorised')).toHaveCount(0);
+
+    await releaseNextDeferredSuccess(page);
+    await expect(page.getByText('Authorised')).toBeVisible();
 
     for (let index = 0; index < WARMUP_METHODS.length; index += 1) {
       await releaseNextDeferredSuccess(page);
@@ -162,10 +175,21 @@ test.describe('fail-closed authorisation rendering', () => {
   test('keeps OAuth loading separate from the access-verification prerequisite', async ({
     page,
   }) => {
-    await installRuntimeMock(
-      page,
-      createAuthorisedScenario(createWarmupScenario((data) => ({ kind: 'deferredSuccess', data })))
-    );
+    await installRuntimeMock(page, {
+      ...createAuthorisedScenario(
+        createWarmupScenario((data) => ({ kind: 'deferredSuccess', data }))
+      ),
+      getApplicationAccess: [
+        {
+          kind: 'deferredSuccess',
+          data: { allowed: true, role: 'admin', email: 'owner@example.com', reason: 'ok' },
+        },
+        {
+          kind: 'deferredSuccess',
+          data: { allowed: true, role: 'admin', email: 'owner@example.com', reason: 'ok' },
+        },
+      ],
+    });
 
     await page.goto('/');
 
@@ -175,38 +199,50 @@ test.describe('fail-closed authorisation rendering', () => {
   });
 
   test('a non-member only ever sees the blocking no-permission surface', async ({ page }) => {
-    await installRuntimeMock(
-      page,
-      createAuthorisedScenario(
-        createWarmupScenario(() => ({
-          kind: 'deferredFailure',
-          code: 'FORBIDDEN',
-          message: 'Group membership is required.',
-        }))
-      )
-    );
+    await installRuntimeMock(page, {
+      ...createAuthorisedScenario(
+        createWarmupScenario((data) => ({ kind: 'deferredSuccess', data }))
+      ),
+      getApplicationAccess: [
+        {
+          kind: 'success',
+          data: { allowed: false, role: null, email: 'member@example.com', reason: 'denied' },
+        },
+        {
+          kind: 'success',
+          data: { allowed: false, role: null, email: 'member@example.com', reason: 'denied' },
+        },
+      ],
+    });
 
     await page.goto('/');
 
-    await expect(page.getByText('Authorised')).toHaveCount(0);
-    await expect(page.getByRole('status', { name: 'Verifying access' })).toBeVisible();
+    await expect(page.getByText('Authorised', { exact: true })).toHaveCount(0);
 
-    for (let index = 0; index < WARMUP_METHODS.length; index += 1) {
-      await releaseNextDeferredSuccess(page);
-    }
-
-    await expect(
-      page.getByText('You do not have permission to access this application')
-    ).toBeVisible();
-    await expect(page.getByText('Authorised')).toHaveCount(0);
+    await expect(page.getByText('Access denied')).toBeVisible();
+    await expect(page.getByText('You are not authorised to use this application.')).toBeVisible();
+    await expect(page.getByText('Authorised', { exact: true })).toHaveCount(0);
     await expect(page.getByText('Permissions required')).toHaveCount(0);
   });
 
-  test('a confirmed member reaches the dashboard only once warm-up is ready', async ({ page }) => {
-    await installRuntimeMock(
-      page,
-      createAuthorisedScenario(createWarmupScenario((data) => ({ kind: 'deferredSuccess', data })))
-    );
+  test('a confirmed member reaches the dashboard once application access is ready', async ({
+    page,
+  }) => {
+    await installRuntimeMock(page, {
+      ...createAuthorisedScenario(
+        createWarmupScenario((data) => ({ kind: 'deferredSuccess', data }))
+      ),
+      getApplicationAccess: [
+        {
+          kind: 'deferredSuccess',
+          data: { allowed: true, role: 'admin', email: 'owner@example.com', reason: 'ok' },
+        },
+        {
+          kind: 'deferredSuccess',
+          data: { allowed: true, role: 'admin', email: 'owner@example.com', reason: 'ok' },
+        },
+      ],
+    });
 
     await page.goto('/');
 
@@ -214,11 +250,14 @@ test.describe('fail-closed authorisation rendering', () => {
     await expect(page.getByText('Authorised')).toHaveCount(0);
     await expect(page.getByRole('status', { name: 'Verifying access' })).toBeVisible();
 
+    await releaseNextDeferredSuccess(page);
+    await expect(page.getByRole('status', { name: 'Verifying access' })).toHaveCount(0);
+    await expect(page.getByText('Authorised')).toBeVisible();
+
     for (let index = 0; index < WARMUP_METHODS.length; index += 1) {
       await releaseNextDeferredSuccess(page);
     }
 
-    await expect(page.getByRole('status', { name: 'Verifying access' })).toHaveCount(0);
     await expect(page.getByText('Authorised')).toBeVisible();
   });
 });

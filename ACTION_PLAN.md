@@ -988,6 +988,8 @@ Frontend tests:
 
 ## Section 9 — Auth gate rework (`AppAuthGate`, role delivery)
 
+> **Current phase: Commit gate — access hook, context, reason-state, and dual-gate implementation complete.**
+
 ### Objective
 
 - Add `useApplicationAccess` (React Query) and `ApplicationAccessContext`; render the
@@ -1070,7 +1072,23 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- To be completed during implementation.
+- **Completed.** `useApplicationAccess` now owns the typed React Query access request via
+  `getApplicationAccessQueryOptions()` and the shared `queryKeys.applicationAccess()` factory.
+  `ApplicationAccessContext` exposes `{ allowed, role, email, reason }` and fails loudly when
+  consumed outside its provider. `AppAuthGate` owns the single access query, mounts the context,
+  preserves OAuth-first gating, and admits children only for `reason === 'ok'`.
+- Warm-up membership gating and the old “Verifying access” withhold were removed. Warm-up is
+  now a post-admission prefetch and its failure no longer blocks the shell. Blocking Result
+  variants were extracted to `AuthGateStates.tsx`; `AppAuthGate.tsx` is **131 lines** (≤380).
+  Fresh-install, broken-config, denied, and access-query error/Retry copy and behaviour are
+  covered against the layout specification.
+- Section 9 focused auth tests: **40/40 passing**; full frontend unit suite: **1,946/1,946**;
+  frontend lint and TypeScript build pass. The Playwright agent aligned all affected runtime
+  mocks/specs with the new access-admission contract: full frontend E2E passes **237/237**.
+- Final regression comparison on 2026-09-10 reports **0 regressions, 0 new failures, 3 fixes**;
+  frontend lint/unit/E2E, backend tests, builder lint/tests/compile pass. The only failing
+  check is the accepted baseline backend ESLint max-lines debt (10 warnings). Section 9 is
+  ready for the commit gate; Sections 10–11 remain deferred.
 
 ---
 
