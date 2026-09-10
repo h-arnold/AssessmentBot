@@ -158,7 +158,12 @@ Rules:
 - **Removed mode:** the `authMode` value `'none'` has been removed entirely. The strict
   auth-state resolver (`validateAuthStateStrict_`) rejects a stored or requested `'none'` as an
   unrecognised mode, so the access gate fails closed rather than disabling it. The stored valid
-  modes are `'googleGroups'` and `'scriptProperties'`; the secure default is `'googleGroups'`.
+  modes are `'googleGroups'` and `'scriptProperties'`. A genuinely fresh install bootstraps to
+  `'scriptProperties'` (the first eligible interactive caller becomes the sole admin via the
+  Section 4 claim). The single documented leniency reads an absent or blank `authMode` paired
+  with a non-blank `authGroupEmail` as `'googleGroups'`, preserving legacy hand-edited or cloned
+  blobs; every other broken configuration denies fail-closed and never falls back to Google
+  Groups.
   See `docs/developer/data-shapes/auth-users.md` for the auth-mode contract.
 
 ### 2.4 Backend function exposure and security audit

@@ -86,6 +86,51 @@ information is already resolved and audited, so the foundation is in place.
 
 **Change trigger:** see "Role-based method filtering" under Future direction below.
 
+### 6. The Script Properties provider relies on manual seeding
+
+In `scriptProperties` mode the authorised user list lives entirely in Script Properties
+(`authUsers`, a JSON-encoded array) with no discovery mechanism such as a Google Group
+directory. The first admin is established either by the fresh-install bootstrap claim (risk 3)
+or by an administrator persisting a valid `authUsers` list through `setAuthenticationSettings`;
+when the UI is unreachable, the list can only be seeded or repaired by hand-editing Script
+Properties. A malformed seed — invalid JSON, a list that parses but contains zero admins, or a
+missing/invalid `authRevision` — is rejected by the strict resolver
+(`validateAuthStateStrict_`) and surfaces as a `brokenConfig` denial (an error-level audit),
+not as a partially granted access.
+
+**Why accepted:** removing the Google Groups dependency is the whole point of the provider; it
+supports domains and cohorts that cannot be modelled as a single Workspace group and avoids a
+`GroupsApp` round-trip on every call. The strict resolver is the safety net: a half-written or
+corrupt seed can never grant access, and the recovery path (correct the Script Properties value
+or clear the config blob to re-bootstrap) is well defined.
+
+**Change trigger:** a guided admin-recovery UI (for example a verified out-of-band token or a
+script-property repair wizard) would remove the need to hand-edit Script Properties.
+
+### 7. The apiAuth transport and the dispatcher admission phase ship as one locked contract
+
+The `apiAuth.js` request/response shapes (ACTION_PLAN Section 5) and the dispatcher's admin-status
+admission payload — which resolves access fresh from a `getApplicationAccess` call (also Section 5)
+— form one locked contract: the transport handlers shape the response exactly as the frontend Zod
+schemas expect, and the admin-required gate consumes the fresh role. A partial deploy that updates
+one without the other breaks the transport contract — clients would send or receive mismatched
+shapes and the auth gate could admit or deny incorrectly.
+
+The backend-configuration `.strict()` lockstep is a separate, later deploy-order dependency:
+Section 6 drops the auth fields from the `getBackendConfig` read transport and Section 7 drops
+them from the frontend `BackendConfig` Zod schemas. Because both schemas use `.strict()`, the
+backend must never emit a field the frontend schema does not yet accept, so those two surfaces must
+ship together in the same release.
+
+**Why accepted:** the builder ships the whole backend bundle (and the frontend alongside it)
+through a single `clasp` push, so the auth transport, the dispatcher admission phase, and the
+backend-configuration transport are always deployed atomically with their matching frontend
+schemas. There is no staged or canary backend rollout path that could split them.
+
+**Change trigger:** if the backend or frontend ever gains a staged or canary deploy path, the
+contract should be versioned (for example a negotiated schema version) so a half-deployed surface
+fails safe rather than silently mismatching.
+
 ## Design decisions worth restating
 
 - **Defence in depth, not replacement.** The application auth gate supplements the

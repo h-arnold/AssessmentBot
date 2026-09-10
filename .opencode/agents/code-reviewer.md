@@ -102,6 +102,7 @@ Consult these resources before and during review. Local docs contain project-spe
 - [Contract: AssignmentDefinition](../../docs/developer/data-shapes/assignment-definition.md)
 - [Contract: Assignment](../../docs/developer/data-shapes/assignment.md)
 - [Contract: BackendConfig](../../docs/developer/data-shapes/backend-config.md)
+- [Contract: AuthUsers](../../docs/developer/data-shapes/auth-users.md)
 - [Contract: GoogleClassrooms](../../docs/developer/data-shapes/google-classrooms.md)
 - [Contract: Reference Data](../../docs/developer/data-shapes/reference-data.md)
 - [Contract: RequestStore](../../docs/developer/data-shapes/request-store.md)
@@ -112,7 +113,7 @@ Consult these resources before and during review. Local docs contain project-spe
 
 - [Security Approach Overview](../../docs/developer/security/README.md) — layering model, threat model, layer summaries
 - [Platform Security](../../docs/developer/security/platform-security.md) — Layer 1: deployment mode, OAuth scopes, Drive permissions, triggers
-- [Application Authentication](../../docs/developer/security/application-authentication.md) — Layer 2: AuthService group gate, caching, audit logging
+- [Application Authentication](../../docs/developer/security/application-authentication.md) — Layer 2: AuthService two-provider gate (googleGroups/scriptProperties), bootstrap claim, role delivery, management endpoints
 - [Attack-Surface Reduction](../../docs/developer/security/attack-surface-reduction.md) — Layer 3: private-by-default functions, sole transport, envelope hygiene
 - [Data-Handling Discipline](../../docs/developer/security/data-handling.md) — Layer 4: no durable client storage, server-side persistence, logging hygiene
 - [Accepted Risks and Trade-offs](../../docs/developer/security/accepted-risks.md) — accepted risks, justifications, future direction

@@ -1253,12 +1253,13 @@ E2E (Playwright):
   are exercised by the passing focused suites.
 - The regression checker comparisons throughout Sections 7–10 report **0 regressions and 0
   new failures** after transient E2E failures were isolated and verified as flaky. No files
-  were changed by the regression handoffs. This section is complete; documentation and rollout
-  notes remain.
+  were changed by the regression handoffs. This section is complete.
 
 ---
 
 ## Documentation and rollout notes
+
+> **Current phase: Complete — canonical security, data-shape, API, and rollout docs reviewed.**
 
 ### Objective
 
@@ -1293,7 +1294,39 @@ E2E (Playwright):
 
 ### Implementation notes / deviations / follow-up
 
-- To be completed during implementation.
+- **Completed.** Canonical security and data-shape docs were reconciled to the delivered
+  two-provider model. `docs/developer/security/application-authentication.md` was rewritten to
+  describe the `googleGroups` / `scriptProperties` providers, the removed `'none'` mode, the
+  single absent-mode-with-group leniency, the fresh-install bootstrap claim, role delivery
+  (`reason` enum + `role`), the API gate (gate-exempt `getApplicationAccess`, admin-required
+  settings pair), the three management endpoints, the transport defence-in-depth rejection in
+  `setBackendConfig`, and the admin-only Authentication tab. The frontend narrative now reflects
+  `getApplicationAccess`-driven warm-up and context role delivery.
+- `docs/developer/security/accepted-risks.md` gained risk 6 (Script Properties manual seeding and
+  malformed-seed → broken-config deny) and risk 7 (apiHandler admission payload and apiAuth
+  transport ship together for `.strict()` lockstep).
+- `src/backend/AGENTS.md` §2.3 corrected: removed the inaccurate "secure default is
+  `'googleGroups'`" claim; it now states the fresh-install bootstrap defaults to
+  `'scriptProperties'`, documents the leniency, and preserves the removed-`'none'` guidance.
+- Release notes added at `docs/releaseNotes/v0.7.9_release_notes.md`: manual-seed procedure with
+  the exact literal escaped JSON, the double-serialisation warning, the malformed-seed →
+  broken-config behaviour, and the Sections 6+7 ship-together deploy-order note.
+- Data-shape reconciliation: `auth-users.md` (Implemented), `backend-config.md` (12-field read,
+  auth-field rejection, Implemented) and `INDEX.md` (AuthUsers entry, status Implemented) already
+  reflect the landed contracts; a grep for `Not implemented` across `docs/developer/data-shapes/`
+  shows no auth-related outstanding markers (remaining hits are the unrelated assignment
+  cancellation failure envelope and the homework-tracker note).
+- `@remarks` follow-through confirmed for Sections 1–5 and 9–10: `AuthService.js`,
+  `GoogleGroupsAuthService.js`, `ScriptPropertiesAuthService.js`, `apiAuth.js`, `apiConfig.js`,
+  `AppAuthGate.tsx`, `AuthGateStates.tsx` and `useAuthenticationSettings.ts` all carry the planned
+  `@remarks`.
+- `docs/developer/security/application-authentication.md` already existed, so `.opencode/agents/docs.md`
+  required no new-file update; `.opencode/agents/code-reviewer.md` Key Documentation References was
+  updated to describe the two-provider model accurately.
+- Documentation review is clean. The manual-seed example was independently checked as one
+  `__CONFIG_STORE_KEY__` blob with `authUsers` double-serialised as a JSON string; README scope
+  was checked and no stale Layer 2 authentication wording was present. No documentation
+  follow-ups remain for this plan.
 
 ---
 
