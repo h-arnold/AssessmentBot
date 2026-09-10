@@ -21,7 +21,7 @@ class LLMRequestManager extends BaseRequestManager {
     this.retryAttempts = {}; // Tracks retry attempts for each UID
     this.maxValidationRetries = 1; // Maximum retries for data validation
     this.cacheManager = new CacheManager(); // Use the CacheManager
-    this.componentBuildErrorCount = 0; // Track repeated Langflow component build errors
+    this.componentBuildErrorCount = 0; // Track repeated backend component build errors
     this.maxComponentBuildErrors = 2; // Threshold for aborting on backend errors
     this.abortOnComponentBuildError = false; // Flag to abort further processing
   }
@@ -179,7 +179,7 @@ class LLMRequestManager extends BaseRequestManager {
   }
 
   /**
-   * Sends requests to Langflow and processes the responses, adding assessment data to the assignment object.
+   * Sends requests to the LLM service and processes the responses, adding assessment data to the assignment object.
    * @param {Object[]} requests - An array of request objects to send.
    * @param {Object} assignment - The Assignment instance containing StudentTasks.
    * @returns {void}

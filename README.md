@@ -128,7 +128,8 @@ Build a cross-assignment heatmap by picking a class, a topic, and the assignment
    - Provide a **blank template** for students to complete.
 2. **Marking Tasks**: Use Alt Text markers (e.g. `Task 1 – Do this thing`) to identify the parts to assess.
 3. **Assessment**:  
-   The tool pulls student submissions from Google Classroom and uses `Gemini Flash 2.5` to:
+   The tool pulls student submissions from Google Classroom and uses Mistral's
+   `mistral-small-latest` model to:
    - Compare submissions to the reference
    - Score based on Completeness, Accuracy, and SPaG
    - Validate spreadsheet formulae and provide visual feedback
@@ -144,11 +145,16 @@ Build a cross-assignment heatmap by picking a class, a topic, and the assignment
 
 Your students’ privacy is a top priority. Here's how their data is protected:
 
-- **No intentional sharing of PII**: The tool only processes data within the user’s Google Workspace account, managed by the educational institution.
-- **Mitigations against accidental PII submission**:
+- **Controlled data sharing**: The tool retrieves data from Google Workspace and sends only
+  the assessment payload to the configured LLM service. The educational institution controls
+  that service. Mistral's Zero Data Retention (ZDR) option is easy to obtain and supports the
+  institution's data-handling policy.
+- **Mitigations against accidental PII exposure**:
   - **Ephemeral image storage**: The AssessmentBot LLM Service is stateless when deployed to a serverless platform, ensuring uploaded images exist only temporarily during processing.
-  - **GDPR compliance**: The tool integrates with the GDPR-compliant version of the Gemini Flash API. While this comes with a small cost, it ensures adherence to strict privacy standards.
-- **FOSS Transparency**: The entire tool, including the Langflow backend, is **free and open-source software (FOSS)**. If you don’t trust my word, you can inspect the source code yourself!
+  - **Provider data retention**: The LLM service uses Mistral's `mistral-small-latest` model.
+    Mistral offers a very good price/performance ratio and makes Zero Data Retention (ZDR)
+    easy to obtain for sensitive student work.
+- **FOSS Transparency**: The entire tool, including the AssessmentBot-LLM-Service, is **free and open-source software (FOSS)**. If you don’t trust my word, you can inspect the source code yourself!
 - **HWB Ready**: The tool works seamlessly with HWB accounts! 🏴‍☠️
 
 By design, this tool minimises any long-term storage of student data and maintains a secure, private workflow.
@@ -187,7 +193,7 @@ It’s still up to you to address misconceptions, motivate students, and do all 
 
 ## 💸 Cost?
 
-**Surprisingly low.** Google Gemini Flash costs around **£2–3 per month**, which easily covers monitoring ~25 classes. Hosting the Langflow backend on Google Cloud Run is similarly affordable.
+**Mistral Small has a very good price/performance ratio.**
 
 ---
 

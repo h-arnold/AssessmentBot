@@ -105,6 +105,10 @@ domain**. It is a documented trust boundary in the [overview](./README.md); the 
 protecting that boundary is itself a stored asset (Script Properties above), so key
 hygiene is not optional.
 
+The deployed service currently uses Mistral's `mistral-small-latest` model. It offers a very
+good price/performance ratio, and Zero Data Retention (ZDR) is easy to obtain with Mistral.
+This reduces retention risk but does not remove the external-service trust boundary.
+
 ## Logging hygiene
 
 ### Policy
