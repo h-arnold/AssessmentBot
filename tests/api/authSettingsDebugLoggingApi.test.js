@@ -1,11 +1,10 @@
 /**
- * Transport debug-logging tests for `setAuthenticationSettings`.
+ * Transport debug-logging tests for the authentication-settings pair.
  *
- * The authentication-settings save payload is an authorised-user email list
- * (PII). The dispatcher must omit both the request and response bodies for this
- * method from its debug logs while retaining the method name for traceability.
- * The read endpoint (`getAuthenticationSettings`) is intentionally out of scope
- * for this control.
+ * The authentication-settings payloads are authorised-user email lists (PII).
+ * The dispatcher must omit both the request and response bodies for
+ * `setAuthenticationSettings` and `getAuthenticationSettings` from its debug
+ * logs while retaining the method name for traceability.
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -59,6 +58,36 @@ describe('setAuthenticationSettings — debug-log payload omission', () => {
     // Traceability is retained: the method is still recorded.
     expect(
       ctx.logger.debug.mock.calls.some((args) => args[1]?.method === 'setAuthenticationSettings')
+    ).toBe(true);
+  });
+
+  it('omits the getAuthenticationSettings response body (auth user emails) from debug logs', () => {
+    ctx = provisionAuthApiContext({
+      seed: {
+        authMode: 'scriptProperties',
+        authUsers: buildUsersJson([
+          { email: ADMIN, role: 'admin' },
+          { email: USER, role: 'user' },
+        ]),
+        authRevision: '1',
+      },
+      email: ADMIN,
+    });
+
+    const response = dispatchAuthApi('getAuthenticationSettings');
+
+    expect(response.ok).toBe(true);
+    expect(response.data.authUsers).toEqual([
+      { email: ADMIN, role: 'admin' },
+      { email: USER, role: 'user' },
+    ]);
+    const debugPayload = ctx.logger.debug.mock.calls.map((args) => JSON.stringify(args)).join('\n');
+    // The auth user email addresses must never reach the debug logs while the
+    // method name is still recorded for correlation.
+    expect(debugPayload).not.toContain(USER);
+    expect(debugPayload).not.toContain('authUsers');
+    expect(
+      ctx.logger.debug.mock.calls.some((args) => args[1]?.method === 'getAuthenticationSettings')
     ).toBe(true);
   });
 });

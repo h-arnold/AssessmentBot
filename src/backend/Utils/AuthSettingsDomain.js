@@ -48,6 +48,30 @@ const AUTH_SETTINGS_ERROR_CODES = Object.freeze({
   SAVING_ADMIN_DENIED: 'AUTH_SETTINGS_SAVING_ADMIN_DENIED',
 });
 
+/**
+ * Increments a canonical positive-integer decimal string by one.
+ *
+ * Uses decimal string arithmetic instead of `Number`/`Number.parseInt` so the
+ * revision stays exact for arbitrarily long values (beyond
+ * `Number.MAX_SAFE_INTEGER`) and never loses precision by round-tripping
+ * through a floating-point number.
+ *
+ * @param {string} value - Canonical positive-integer string to increment.
+ * @returns {string} The incremented positive-integer string.
+ */
+function incrementAuthRevision_(value) {
+  const zeroDigitCodePoint = 48;
+  const decimalRadix = 10;
+  let result = '';
+  let carry = 1;
+  for (let index = value.length - 1; index >= 0; index -= 1) {
+    const digit = value.codePointAt(index) - zeroDigitCodePoint + carry;
+    result = String(digit % decimalRadix) + result;
+    carry = digit >= decimalRadix ? 1 : 0;
+  }
+  return carry === 1 ? '1' + result : result;
+}
+
 const AuthSettingsDomain = {
   /**
    * Resolves the caller's application-access status for `getApplicationAccess`.
@@ -290,13 +314,18 @@ const AuthSettingsDomain = {
     try {
       configManager.writeConfigurationLocked((current) => {
         if (targetMode === 'googleGroups') {
-          // Groups mode: revision not applicable; a stored (legacy) user list /
-          // revision is retained but not used (auth-users.md persistence rules).
-          return {
+          // Groups mode: revision not applicable. A stored (legacy) user list is
+          // retained but not used (auth-users.md persistence rules). The retained
+          // revision is cleared so a later switch back to scriptProperties seeds a
+          // fresh revision instead of demanding an expectedAuthRevision the
+          // groups-mode read never returned.
+          const next = {
             ...current,
             authMode: 'googleGroups',
             authGroupEmail: candidate.candidateGroupEmail,
           };
+          delete next.authRevision;
+          return next;
         }
         committedRevision = this.nextAuthRevision(expectedAuthRevision, current, methodName);
         return {
@@ -345,9 +374,20 @@ const AuthSettingsDomain = {
    * @param {Object} current - The fresh config snapshot re-read under the lock.
    * @param {string} methodName - Canonical method name for validation errors.
    * @returns {string} The next revision string (`'1'` seed or incremented value).
-   * @throws {ApiValidationError} When a stored revision exists but the expected revision is missing or stale.
+   * @throws {ApiValidationError} When the expected revision is not a string, or
+   *   a stored revision exists but the expected revision is missing or stale.
    */
   nextAuthRevision(expectedAuthRevision, current, methodName) {
+    // Defence-in-depth: the transport boundary already rejects a non-string
+    // expected revision. Reject it here too so a direct domain caller can never
+    // force a coercion-based match against the stored revision.
+    if (expectedAuthRevision !== undefined && typeof expectedAuthRevision !== 'string') {
+      throw this.settingsValidationError(
+        'expectedAuthRevision must be a string.',
+        methodName,
+        'expectedAuthRevision'
+      );
+    }
     const storedRevision =
       current.authRevision == null || String(current.authRevision).trim() === ''
         ? null
@@ -366,7 +406,7 @@ const AuthSettingsDomain = {
         AUTH_SETTINGS_ERROR_CODES.REVISION_REQUIRED
       );
     }
-    if (String(expectedAuthRevision) !== storedRevision) {
+    if (expectedAuthRevision !== storedRevision) {
       throw this.settingsValidationError(
         'Stale auth revision: the stored settings changed since this save was prepared.',
         methodName,
@@ -375,7 +415,7 @@ const AuthSettingsDomain = {
         AUTH_SETTINGS_ERROR_CODES.STALE_REVISION
       );
     }
-    return String(Number.parseInt(storedRevision, 10) + 1);
+    return incrementAuthRevision_(storedRevision);
   },
 
   /**

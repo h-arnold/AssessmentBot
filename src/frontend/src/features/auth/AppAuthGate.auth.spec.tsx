@@ -334,8 +334,10 @@ describe('AppAuthGate', () => {
     const { QueryWrapper } = createQueryWrapper();
     getAuthorisationStatusMock.mockReturnValueOnce(deferredAuth.promise);
     getApplicationAccessMock.mockImplementationOnce(() => new Promise(() => {}));
-    // The warm-up prefetch starts as soon as OAuth authorisation resolves, so it needs a
-    // promise double here even though this test only observes the loading surfaces.
+    // This test only observes the loading surfaces and does not assert warm-up gating.
+    // The never-resolving double is a defensive stub so an unexpected warm-up start
+    // cannot disturb those assertions; warm-up gating is covered by
+    // AppAuthGate.applicationAccess.spec.tsx.
     warmStartupQueriesMock.mockReturnValueOnce(new Promise(() => {}));
 
     render(

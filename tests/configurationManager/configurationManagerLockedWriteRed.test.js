@@ -72,6 +72,38 @@ describe('ConfigurationManager Section 2 — locked write path, freshness, facad
     });
   }
 
+  /**
+   * Attempts one locked write carrying an oversized value and asserts the
+   * non-retriable cap failure leaves the original blob untouched (no partial
+   * write). Shared by the UTF-8 measurement cases so their assertions stay
+   * identical across one-, two-, three-, and four-byte code points.
+   * @param {*} oversizedValue - The value guaranteed to exceed the 8KB cap.
+   * @returns {void}
+   */
+  function expectOverCapRejection(oversizedValue) {
+    expect(typeof configManager.writeConfigurationLocked).toBe('function');
+
+    const store = installInMemoryStore({ apiKey: 'original' });
+
+    let thrown;
+    try {
+      configManager.writeConfigurationLocked((current) => ({
+        ...current,
+        big: oversizedValue,
+      }));
+    } catch (err) {
+      thrown = err;
+    }
+
+    expect(thrown).toBeInstanceOf(Error);
+    expect(thrown.code).toBe('CONFIG_BLOB_TOO_LARGE');
+    expect(thrown.retriable).toBe(false);
+
+    // No partial write; the original blob persists.
+    expect(mocks.PropertiesService.scriptProperties.setProperty).not.toHaveBeenCalled();
+    expect(store[CONFIG_STORE_KEY]).toBe(JSON.stringify({ apiKey: 'original' }));
+  }
+
   describe('facade preservation — existing public surface survives the split', () => {
     it('loads the facade from the existing file path 98_ConfigurationManagerClass.js', () => {
       // The module path must remain stable so existing test imports keep working.
@@ -242,28 +274,53 @@ describe('ConfigurationManager Section 2 — locked write path, freshness, facad
 
   describe('cap — 8KB blob cap enforced on every write', () => {
     it('rejects an over-cap write with the blob unchanged and no partial write', () => {
+      // An ASCII value guaranteed to exceed the 8KB serialisation cap.
+      expectOverCapRejection('x'.repeat(MAX_CONFIG_BLOB_BYTES + 1024));
+    });
+
+    it('measures the cap in UTF-8 bytes rather than UTF-16 string length', () => {
+      // 5000 two-byte characters: ~5000 UTF-16 code units but ~10000 UTF-8 bytes,
+      // so a string-length check would wrongly admit this over-cap blob.
+      const multibyteValue = 'é'.repeat(5000);
+      expect(JSON.stringify(multibyteValue).length).toBeLessThan(MAX_CONFIG_BLOB_BYTES);
+
+      expectOverCapRejection(multibyteValue);
+    });
+
+    it.each([
+      ['a three-byte BMP code point', '€', 3000],
+      ['a four-byte astral code point', '😀', 2200],
+    ])(
+      'measures %s in UTF-8 bytes and rejects the over-cap blob',
+      (_label, character, repeatCount) => {
+        const multibyteValue = character.repeat(repeatCount);
+        // Each value is under the cap when measured as UTF-16 code units, so a
+        // string-length check would wrongly admit these over-cap blobs regardless
+        // of whether the code point encodes to three or four UTF-8 bytes.
+        expect(JSON.stringify(multibyteValue).length).toBeLessThan(MAX_CONFIG_BLOB_BYTES);
+
+        expectOverCapRejection(multibyteValue);
+      }
+    );
+
+    it('counts an astral code point as four bytes without double-counting its surrogate pair', () => {
       expect(typeof configManager.writeConfigurationLocked).toBe('function');
 
       const store = installInMemoryStore({ apiKey: 'original' });
+      // 1500 astral code points encode to 6000 UTF-8 bytes, which is within the
+      // cap. Counting each half of the surrogate pair as a separate three-byte
+      // code point would inflate the total past the cap and wrongly reject this
+      // valid write.
+      const astralValue = '😀'.repeat(1500);
+      expect(JSON.stringify(astralValue).length).toBeLessThan(MAX_CONFIG_BLOB_BYTES);
 
-      let thrown;
-      try {
-        configManager.writeConfigurationLocked((current) => ({
-          ...current,
-          // A value guaranteed to exceed the 8KB serialisation cap.
-          big: 'x'.repeat(MAX_CONFIG_BLOB_BYTES + 1024),
-        }));
-      } catch (err) {
-        thrown = err;
-      }
+      configManager.writeConfigurationLocked((current) => ({
+        ...current,
+        big: astralValue,
+      }));
 
-      expect(thrown).toBeInstanceOf(Error);
-      expect(thrown.code).toBe('CONFIG_BLOB_TOO_LARGE');
-      expect(thrown.retriable).toBe(false);
-
-      // No partial write; the original blob persists.
-      expect(mocks.PropertiesService.scriptProperties.setProperty).not.toHaveBeenCalled();
-      expect(store[CONFIG_STORE_KEY]).toBe(JSON.stringify({ apiKey: 'original' }));
+      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledTimes(1);
+      expect(JSON.parse(store[CONFIG_STORE_KEY]).big).toBe(astralValue);
     });
   });
 

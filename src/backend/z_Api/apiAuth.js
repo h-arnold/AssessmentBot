@@ -97,13 +97,16 @@ function getAuthenticationSettings_() {
  * Transport handler for `setAuthenticationSettings`.
  *
  * Validates the transport request shape (a plain object payload with only the
- * documented fields) and delegates the atomic, revision-guarded save to the
+ * documented fields, a strict per-mode field set, and a string
+ * `expectedAuthRevision`) and delegates the atomic, revision-guarded save to the
  * `AuthService` domain operation.
  *
  * @param {*} parameters - Candidate settings payload.
  * @returns {{ success: true, authRevision: string|null }} The commit result.
- * @throws {ApiValidationError} When `parameters` is not a plain object or
- *   contains an unknown field.
+ * @throws {ApiValidationError} When `parameters` is not a plain object, contains
+ *   an unknown field, supplies `authGroupEmail` in scriptProperties mode,
+ *   supplies `expectedAuthRevision` in googleGroups mode, or supplies a
+ *   non-string `expectedAuthRevision`.
  */
 function setAuthenticationSettings_(parameters) {
   if (!parameters || typeof parameters !== 'object' || Array.isArray(parameters)) {
@@ -117,6 +120,27 @@ function setAuthenticationSettings_(parameters) {
   if (hasUnknownField) {
     throw new ApiValidationError('setAuthenticationSettings received an unknown field.', {
       method: 'setAuthenticationSettings',
+    });
+  }
+  if (parameters.authMode === 'scriptProperties' && Object.hasOwn(parameters, 'authGroupEmail')) {
+    throw new ApiValidationError('scriptProperties requests must omit authGroupEmail.', {
+      method: 'setAuthenticationSettings',
+      fieldName: 'authGroupEmail',
+    });
+  }
+  if (parameters.authMode === 'googleGroups' && Object.hasOwn(parameters, 'expectedAuthRevision')) {
+    throw new ApiValidationError('googleGroups requests must omit expectedAuthRevision.', {
+      method: 'setAuthenticationSettings',
+      fieldName: 'expectedAuthRevision',
+    });
+  }
+  if (
+    Object.hasOwn(parameters, 'expectedAuthRevision') &&
+    typeof parameters.expectedAuthRevision !== 'string'
+  ) {
+    throw new ApiValidationError('expectedAuthRevision must be a string.', {
+      method: 'setAuthenticationSettings',
+      fieldName: 'expectedAuthRevision',
     });
   }
   return AuthService.getInstance().saveAuthenticationSettings(parameters);

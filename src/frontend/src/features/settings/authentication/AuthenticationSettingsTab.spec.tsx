@@ -294,6 +294,37 @@ describe('Authentication mode region rendering', () => {
     expect(setAuthenticationSettingsMock).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: /save/i })).toBeEnabled();
   });
+
+  it('blocks clearing a group email that was set and saved earlier in the session', async () => {
+    setAuthenticationSettingsMock.mockImplementationOnce(() => Promise.resolve(successfulSaveResult));
+    getAuthenticationSettingsMock.mockImplementationOnce(() =>
+      Promise.resolve(scriptPropertiesModeSettings)
+    );
+
+    renderAuthenticationSettingsTab(administratorAccessContextValue);
+
+    const modeSelect = await screen.findByRole('combobox', { name: /authentication mode/i });
+    await user.click(modeSelect);
+    await user.click(
+      await screen.findByText('Google Groups', { selector: '.ant-select-item-option-content' })
+    );
+    await user.click(await screen.findByRole('button', { name: /confirm switch/i }));
+
+    const groupEmailInput = await screen.findByLabelText(/auth group email/i);
+    await user.type(groupEmailInput, 'newgroup@example.com');
+    expect(groupEmailInput).toHaveValue('newgroup@example.com');
+
+    await user.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => {
+      expect(setAuthenticationSettingsMock).toHaveBeenCalledTimes(1);
+    });
+
+    await user.clear(groupEmailInput);
+
+    expect(groupEmailInput).toHaveValue('newgroup@example.com');
+    expect(screen.getByText(/cannot be cleared once set/i)).toBeInTheDocument();
+  });
 });
 
 describe('Script Properties staged user-list editing', () => {

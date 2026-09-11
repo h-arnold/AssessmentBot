@@ -3,6 +3,7 @@ import { Button, Result, Spin } from 'antd';
 import type { PropsWithChildren } from 'react';
 import { mapErrorToUserMessage } from '../../errors/map-error-to-ui';
 import { getAuthorisationStatusQueryOptions } from '../../query/sharedQueries';
+import type { ApplicationAccess } from '../../services/authService/authService.zod';
 import { StartupWarmupStateProvider } from './startupWarmupState';
 import { useAuthorisationStatus } from './useAuthorisationStatus';
 import { useApplicationAccess } from './useApplicationAccess';
@@ -23,6 +24,16 @@ import {
  */
 function isApplicationAccessEnabled(isAuthorised: boolean, oauthError: string | null): boolean {
   return isAuthorised && !oauthError;
+}
+
+/**
+ * Derives whether the resolved application access admits the caller.
+ *
+ * @param {ApplicationAccess | undefined} access The resolved access payload, if any.
+ * @returns {boolean} True only when access resolved with `reason: 'ok'`.
+ */
+function isApplicationAccessGranted(access: ApplicationAccess | undefined): boolean {
+  return access?.reason === 'ok';
 }
 
 /**
@@ -51,7 +62,16 @@ export function AppAuthGate(properties: Readonly<PropsWithChildren>) {
   const queryClient = useQueryClient();
   const { isAuthorised, isLoading: isAuthorising, error: oauthError } = useAuthorisationStatus();
   const accessQuery = useApplicationAccess(isApplicationAccessEnabled(isAuthorised, oauthError));
-  const warmupCycleState = useStartupWarmupCycle(queryClient, isAuthorised, oauthError, isAuthorising);
+  // Warm-up is gated on admitted access (`reason: 'ok'`), not merely resolved OAuth:
+  // denied, broken-config, pending, and failed access outcomes must not prefetch.
+  const isAccessGranted = isApplicationAccessGranted(accessQuery.data);
+  const warmupCycleState = useStartupWarmupCycle(
+    queryClient,
+    isAuthorised,
+    oauthError,
+    isAuthorising,
+    isAccessGranted
+  );
 
   // OAuth gating runs first and unchanged.
   if (isAuthorising) {

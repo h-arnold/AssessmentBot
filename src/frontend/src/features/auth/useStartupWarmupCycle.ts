@@ -223,29 +223,33 @@ function adoptWarmupCycleOutcome(options: AdoptWarmupCycleOutcomeOptions): void 
  * Owns the startup warm-up cycle for a given query client and publishes its current state.
  *
  * @remarks
- * The warm-up runs only once OAuth admission is confirmed; an in-flight cycle is reused
- * across remounts via the module-scoped `startupWarmupCycles` registry so StrictMode
- * double-invocation does not reschedule it. A failed warm-up is logged and its failure
- * status published; it does not fail the shell closed.
+ * The warm-up runs only after OAuth admission is confirmed AND application access
+ * resolves with `reason: 'ok'`; denied, broken-config, pending, and failed access
+ * outcomes never start it. An in-flight cycle is reused across remounts via the
+ * module-scoped `startupWarmupCycles` registry so StrictMode double-invocation does
+ * not reschedule it. A failed warm-up is logged and its failure status published; it
+ * does not fail the shell closed.
  *
  * @param {QueryClient} queryClient The active query client.
  * @param {boolean} isAuthorised Whether OAuth authorisation resolved as authorised.
  * @param {string | null} oauthError The OAuth transport error, or null when healthy.
  * @param {boolean} isAuthorising Whether OAuth authorisation is still resolving.
+ * @param {boolean} isAccessGranted Whether application access resolved with reason 'ok'.
  * @returns {StartupWarmupCycle} The current warm-up cycle state.
  */
 export function useStartupWarmupCycle(
   queryClient: QueryClient,
   isAuthorised: boolean,
   oauthError: string | null,
-  isAuthorising: boolean
+  isAuthorising: boolean,
+  isAccessGranted: boolean
 ): StartupWarmupCycle {
   const [warmupCycleState, setWarmupCycleState] = useState<StartupWarmupCycle>(() =>
     getStoredWarmupCycle(queryClient)
   );
 
   useEffect(() => {
-    if (!isAuthorised || oauthError || isAuthorising) {
+    if (!isAuthorised || oauthError || isAuthorising || !isAccessGranted) {
       return;
     }
 
@@ -296,7 +300,7 @@ export function useStartupWarmupCycle(
     return () => {
       isMounted = false;
     };
-  }, [isAuthorised, oauthError, isAuthorising, queryClient]);
+  }, [isAuthorised, oauthError, isAuthorising, isAccessGranted, queryClient]);
 
   return warmupCycleState;
 }

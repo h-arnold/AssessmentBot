@@ -31,6 +31,43 @@
 const CONFIG_LOCK_TIMEOUT_MS = 30000;
 
 /**
+ * Computes the UTF-8 encoded byte length of a string.
+ *
+ * Uses a code-point walk rather than `string.length` so the 8KB cap measures the
+ * bytes Script Properties actually stores, not UTF-16 code units. Portable across
+ * the GAS V8 runtime and Node (no `Buffer`/`TextEncoder` dependency).
+ *
+ * @param {string} value - The string to measure.
+ * @returns {number} The UTF-8 encoded byte length.
+ */
+function utf8ByteLength_(value) {
+  // UTF-8 encoding bounds per RFC 3629, expressed as inclusive code-point maxima.
+  const singleByteMaxCodePoint = 127;
+  const twoByteMaxCodePoint = 2047;
+  const threeByteMaxCodePoint = 65535;
+  const singleByteLength = 1;
+  const twoByteLength = 2;
+  const threeByteLength = 3;
+  const fourByteLength = 4;
+  let bytes = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    const codePoint = value.codePointAt(index);
+    if (codePoint <= singleByteMaxCodePoint) {
+      bytes += singleByteLength;
+    } else if (codePoint <= twoByteMaxCodePoint) {
+      bytes += twoByteLength;
+    } else if (codePoint <= threeByteMaxCodePoint) {
+      bytes += threeByteLength;
+    } else {
+      bytes += fourByteLength;
+      // Astral code points occupy a surrogate pair; skip the trailing code unit.
+      index += 1;
+    }
+  }
+  return bytes;
+}
+
+/**
  * Locked-write and freshness sub-class for the ConfigurationManager facade.
  * @class ConfigurationManagerLockedWrite
  */
@@ -79,7 +116,7 @@ class ConfigurationManagerLockedWrite {
       const current = safeParseConfigObject_(raw);
       const next = mutator(current);
       const serialised = JSON.stringify(next);
-      if (serialised.length > MAX_CONFIG_BLOB_BYTES) {
+      if (utf8ByteLength_(serialised) > MAX_CONFIG_BLOB_BYTES) {
         const capError = new Error('Configuration blob exceeds the 8KB cap and was not written.');
         capError.code = 'CONFIG_BLOB_TOO_LARGE';
         capError.retriable = false;

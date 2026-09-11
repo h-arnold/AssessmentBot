@@ -73,7 +73,7 @@ Startup warm-up uses the shared lookup datasets needed across the growing interf
 Current policy:
 
 - startup-prefetched datasets: `classPartials`, `assignmentDefinitionPartials`, `assignmentTopics`, `cohorts`, and `yearGroups`
-- trigger point: after OAuth admission is confirmed (the `useAuthorisationStatus` scope check resolves authorised); warm-up runs in parallel with application-access resolution and continues as a post-admission prefetch once the caller is admitted
+- trigger point: after OAuth admission is confirmed (the `useAuthorisationStatus` scope check resolves authorised) **and** `getApplicationAccess` resolves with `reason: 'ok'`; warm-up starts only once the caller is admitted. Pending, failed, `denied`, and `brokenConfig` access outcomes do not prefetch
 - ownership: the app-level auth / warm-up boundary owns startup readiness
 - scheduling: fire-and-forget from an app-level boundary outside `App.tsx`
 - query API: `fetchQuery`, so orchestration can observe failures

@@ -73,7 +73,7 @@ describe('ApplicationAccessContext', () => {
     await waitFor(() => {
       expect(getApplicationAccessMock).toHaveBeenCalledTimes(1);
     });
-    expect(screen.getByTestId('access-context')).toHaveTextContent('"role":"admin"');
+    expect(await screen.findByTestId('access-context')).toHaveTextContent('"role":"admin"');
   });
 
   it('exposes the full access context value (role, reason, allowed, email) to consumers', async () => {
@@ -89,6 +89,8 @@ describe('ApplicationAccessContext', () => {
     await waitFor(() => {
       expect(getApplicationAccessMock).toHaveBeenCalledTimes(1);
     });
-    expect(screen.getByTestId('access-context')).toHaveTextContent(JSON.stringify(memberAccess));
+    expect(await screen.findByTestId('access-context')).toHaveTextContent(
+      JSON.stringify(memberAccess)
+    );
   });
 });

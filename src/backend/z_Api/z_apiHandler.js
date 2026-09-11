@@ -30,7 +30,7 @@ const ADMIN_REQUIRED_METHOD_NAMES = Object.freeze([
   'setAuthenticationSettings',
 ]);
 
-const PII_LOG_METHODS = Object.freeze(['setAuthenticationSettings']);
+const PII_LOG_METHODS = Object.freeze(['getAuthenticationSettings', 'setAuthenticationSettings']);
 const ALLOWLISTED_METHOD_HANDLERS = Object.freeze({
   getAuthorisationStatus: () => new ScriptAppManager().isAuthorised(),
   getApplicationAccess: () => getApplicationAccess_(),

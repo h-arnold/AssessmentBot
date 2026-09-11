@@ -4,7 +4,10 @@ import userEvent from '@testing-library/user-event';
 import type * as SharedQueriesModule from '../../query/sharedQueries';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiTransportError } from '../../errors/apiTransportError';
-import { getStartupWarmupQueryKey } from '../../query/sharedQueries';
+import {
+  getStartupWarmupQueryKey,
+  startupWarmupDatasetKeys,
+} from '../../query/sharedQueries';
 import type { ApplicationAccess } from '../../services/authService/authService.zod';
 import {
   brokenConfigAccess,
@@ -88,9 +91,23 @@ function seedForbiddenWarmupError(queryClient: QueryClient, error: ApiTransportE
     });
 }
 
+/**
+ * Seeds every startup warm-up dataset with a successful cache entry so the
+ * datasets read as ready before the gate resolves access.
+ *
+ * @param {QueryClient} queryClient The test query client to seed.
+ * @returns {void}
+ */
+function seedReadyWarmupData(queryClient: QueryClient): void {
+  for (const datasetKey of startupWarmupDatasetKeys) {
+    queryClient.setQueryData(getStartupWarmupQueryKey(datasetKey), []);
+  }
+}
+
 type ResolvedAccessGateOptions = Readonly<{
   warmupPromise?: Promise<unknown>;
   forbiddenWarmupError?: ApiTransportError;
+  seedReadyWarmup?: boolean;
 }>;
 
 /**
@@ -105,6 +122,10 @@ function renderResolvedAccessGate(
   options: ResolvedAccessGateOptions = {}
 ) {
   const { queryClient, QueryWrapper } = createQueryWrapper();
+
+  if (options.seedReadyWarmup) {
+    seedReadyWarmupData(queryClient);
+  }
 
   if (options.forbiddenWarmupError) {
     seedForbiddenWarmupError(queryClient, options.forbiddenWarmupError);
@@ -150,9 +171,11 @@ describe('AppAuthGate application access', () => {
     await waitFor(() => {
       expect(getApplicationAccessMock).toHaveBeenCalledTimes(1);
     });
+    expect(await screen.findByText('Application not configured')).toBeInTheDocument();
     expect(screen.queryByTestId('protected-child')).not.toBeInTheDocument();
-    expect(screen.getByText('Application not configured')).toBeInTheDocument();
     expect(screen.getByText(/identity could not be resolved/i)).toBeInTheDocument();
+    // Non-ok access must not prefetch the startup warm-up datasets.
+    expect(warmStartupQueriesMock).not.toHaveBeenCalled();
   });
 
   it('blocks the application with a broken-configuration result when the access reason is brokenConfig', async () => {
@@ -161,9 +184,10 @@ describe('AppAuthGate application access', () => {
     await waitFor(() => {
       expect(getApplicationAccessMock).toHaveBeenCalledTimes(1);
     });
+    expect(await screen.findByText('Authentication configuration invalid')).toBeInTheDocument();
     expect(screen.queryByTestId('protected-child')).not.toBeInTheDocument();
-    expect(screen.getByText('Authentication configuration invalid')).toBeInTheDocument();
     expect(screen.getByText(/must be repaired by a script editor/i)).toBeInTheDocument();
+    expect(warmStartupQueriesMock).not.toHaveBeenCalled();
   });
 
   it('blocks the application with an access-denied result when the access reason is denied', async () => {
@@ -172,9 +196,10 @@ describe('AppAuthGate application access', () => {
     await waitFor(() => {
       expect(getApplicationAccessMock).toHaveBeenCalledTimes(1);
     });
+    expect(await screen.findByText('Access denied')).toBeInTheDocument();
     expect(screen.queryByTestId('protected-child')).not.toBeInTheDocument();
-    expect(screen.getByText('Access denied')).toBeInTheDocument();
     expect(screen.getByText(/not authorised to use this application/i)).toBeInTheDocument();
+    expect(warmStartupQueriesMock).not.toHaveBeenCalled();
   });
 
   it('no longer blocks on a warm-up FORBIDDEN error once the access reason is ok', async () => {
@@ -199,13 +224,37 @@ describe('AppAuthGate application access', () => {
     expect(screen.queryByText('Verifying access')).not.toBeInTheDocument();
   });
 
-  it('admits only when the access reason is ok, ignoring a ready warm-up for non-ok reasons', async () => {
-    renderResolvedAccessGate(deniedAccess);
+  it('blocks a non-ok caller even when the startup warm-up datasets are already ready', async () => {
+    renderResolvedAccessGate(deniedAccess, { seedReadyWarmup: true });
 
-    await waitFor(() => {
-      expect(getApplicationAccessMock).toHaveBeenCalledTimes(1);
-    });
+    expect(await screen.findByText('Access denied')).toBeInTheDocument();
     expect(screen.queryByTestId('protected-child')).not.toBeInTheDocument();
+    expect(warmStartupQueriesMock).not.toHaveBeenCalled();
+  });
+
+  it('does not start the warm-up prefetch while application access is still pending', async () => {
+    const deferredAccess = createDeferredPromise<ApplicationAccess>();
+    getAuthorisationStatusMock.mockResolvedValueOnce(true);
+    warmStartupQueriesMock.mockResolvedValueOnce({});
+    getApplicationAccessMock.mockReturnValueOnce(deferredAccess.promise);
+    const { QueryWrapper } = createQueryWrapper();
+
+    render(
+      <AppAuthGate>
+        <AccessGateProbe />
+      </AppAuthGate>,
+      { wrapper: QueryWrapper }
+    );
+
+    expect(await screen.findByRole('status', { name: 'Verifying access' })).toBeInTheDocument();
+    expect(warmStartupQueriesMock).not.toHaveBeenCalled();
+
+    deferredAccess.resolvePromise(grantedAdminAccess);
+
+    expect(await screen.findByTestId('protected-child')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(warmStartupQueriesMock).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('still fires the warm-up prefetch after admission and takes role from the access call, not the warm-up', async () => {
@@ -250,6 +299,8 @@ describe('AppAuthGate application access', () => {
     await waitFor(() => {
       expect(getApplicationAccessMock).toHaveBeenCalledTimes(1);
     });
+    // A failed access resolution must not trigger the warm-up prefetch.
+    expect(warmStartupQueriesMock).not.toHaveBeenCalled();
 
     await user.click(retryButton);
 
@@ -258,5 +309,8 @@ describe('AppAuthGate application access', () => {
     });
     expect(await screen.findByTestId('protected-child')).toBeInTheDocument();
     expect(screen.getByTestId('access-context')).toHaveTextContent('"role":"admin"');
+    await waitFor(() => {
+      expect(warmStartupQueriesMock).toHaveBeenCalledTimes(1);
+    });
   });
 });

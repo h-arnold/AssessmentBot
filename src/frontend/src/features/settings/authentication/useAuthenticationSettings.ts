@@ -276,6 +276,9 @@ export function useAuthenticationSettings(): AuthenticationSettingsHookValue {
         authUsers,
         authRevision: result.authRevision,
       };
+      // Rebase the compulsory-once-set guard from the committed group email so a
+      // group email set and saved in this session cannot be cleared before reload.
+      isGroupEmailCompulsoryReference.current = authGroupEmail.trim() !== '';
       message.success(saveSuccessMessage);
     } catch (error: unknown) {
       const mappedError = mapAuthenticationSettingsSaveError(error, stagedAuthMode);

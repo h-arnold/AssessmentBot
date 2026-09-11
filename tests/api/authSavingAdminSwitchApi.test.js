@@ -1,7 +1,8 @@
 /**
- * Contract tests for the provider-switch saving-admin verification and
- * groups-mode group-email validation in `setAuthenticationSettings`
- * (`AuthSettingsDomain.verifySavingAdminForSwitch` / `validatedSaveCandidate`).
+ * Contract tests for the provider-switch saving-admin verification, groups-mode
+ * group-email validation, and the auth-revision lifecycle in
+ * `setAuthenticationSettings` (`AuthSettingsDomain.verifySavingAdminForSwitch` /
+ * `validatedSaveCandidate` / `nextAuthRevision`).
  *
  * A switch from `scriptProperties` to `googleGroups` must validate the saving
  * administrator against the CANDIDATE group with a FRESH GroupsApp lookup:
@@ -10,7 +11,11 @@
  * storage (the warm membership cache must never satisfy the check). An external
  * GroupsApp lookup failure is distinguished from a genuine role denial and maps
  * to the retriable `RATE_LIMITED` service envelope. A groups-mode save with a
- * missing or blank group email is rejected before any write.
+ * missing or blank group email is rejected before any write. The revision cases
+ * cover the exact arbitrary-length increment, the cleared-on-switch groups
+ * revision that allows a later switch back, and the domain-boundary rejection of
+ * a non-string expected revision that would otherwise coerce onto the stored
+ * value (the transport rejects it first; this is the defence-in-depth guard).
  *
  * These cases live in a dedicated file (rather than growing
  * `authEndpointsApi.test.js`) so both suites stay within the backend lint
@@ -25,6 +30,9 @@ import {
   storedScriptPropertiesState,
   teardownAuthApiTestContext,
 } from './authApiTestHarness.js';
+
+const AuthService = require('../../src/backend/Utils/AuthService.js');
+const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
 
 const ADMIN = 'admin@school.edu';
 const GROUP_EMAIL = 'teachers@school.edu';
@@ -208,6 +216,102 @@ describe('setAuthenticationSettings — groups-mode group email validation', () 
 
     expect(response.ok).toBe(false);
     expect(response.error).toMatchObject({ code: 'INVALID_REQUEST', retriable: false });
+    expect(rawStoreBlob(ctx.store)).toBe(before);
+  });
+});
+
+describe('setAuthenticationSettings — auth revision lifecycle', () => {
+  let ctx;
+
+  beforeEach(() => {
+    ctx = undefined;
+    resetAuthApiTestState();
+  });
+
+  afterEach(() => {
+    teardownAuthApiTestContext(ctx);
+    ctx = undefined;
+  });
+
+  it('increments an arbitrarily long revision exactly without floating-point loss', () => {
+    const storedRevision = '999999999999999999999999999999';
+    ctx = provisionAuthApiContext({
+      seed: storedScriptPropertiesState([{ email: ADMIN, role: 'admin' }], storedRevision),
+      email: ADMIN,
+    });
+
+    const response = dispatchAuthApi('setAuthenticationSettings', {
+      authMode: 'scriptProperties',
+      authUsers: [{ email: ADMIN, role: 'admin' }],
+      expectedAuthRevision: storedRevision,
+    });
+
+    expect(response.ok).toBe(true);
+    expect(response.data).toEqual({
+      success: true,
+      authRevision: '1000000000000000000000000000000',
+    });
+    const parsed = JSON.parse(rawStoreBlob(ctx.store));
+    expect(parsed.authRevision).toBe('1000000000000000000000000000000');
+  });
+
+  it('clears the non-applicable revision on a switch to googleGroups so a later switch back is possible', () => {
+    ctx = provisionAuthApiContext({
+      seed: storedScriptPropertiesState([{ email: ADMIN, role: 'admin' }], '1'),
+      email: ADMIN,
+      members: { [ADMIN]: 'OWNER' },
+    });
+
+    const switchedToGroups = dispatchAuthApi('setAuthenticationSettings', {
+      authMode: 'googleGroups',
+      authGroupEmail: GROUP_EMAIL,
+    });
+    expect(switchedToGroups.ok).toBe(true);
+    const groupsBlob = JSON.parse(rawStoreBlob(ctx.store));
+    expect(groupsBlob.authMode).toBe('googleGroups');
+    expect(Object.hasOwn(groupsBlob, 'authRevision')).toBe(false);
+
+    // Groups mode reports a null revision, so switching back must seed a fresh
+    // revision rather than demanding an expected revision the UI never received.
+    const read = dispatchAuthApi('getAuthenticationSettings');
+    expect(read.data.authRevision).toBeNull();
+
+    const switchedBack = dispatchAuthApi('setAuthenticationSettings', {
+      authMode: 'scriptProperties',
+      authUsers: [{ email: ADMIN, role: 'admin' }],
+    });
+    expect(switchedBack.ok).toBe(true);
+    expect(switchedBack.data).toEqual({ success: true, authRevision: '1' });
+    const backBlob = JSON.parse(rawStoreBlob(ctx.store));
+    expect(backBlob.authMode).toBe('scriptProperties');
+    expect(backBlob.authRevision).toBe('1');
+  });
+
+  it('rejects a non-string expected revision at the domain boundary without coercing it onto the stored value', () => {
+    ctx = provisionAuthApiContext({
+      seed: storedScriptPropertiesState([{ email: ADMIN, role: 'admin' }], '1'),
+      email: ADMIN,
+    });
+    const before = rawStoreBlob(ctx.store);
+
+    // A direct domain caller bypasses the transport guard; the number 1 must not
+    // coerce onto the stored '1' revision and be admitted. The exact guard
+    // message and field are asserted so the defence-in-depth check cannot be
+    // satisfied by the stale-revision fallback that would otherwise also throw.
+    let thrown;
+    try {
+      AuthService.getInstance().saveAuthenticationSettings({
+        authMode: 'scriptProperties',
+        authUsers: [{ email: ADMIN, role: 'admin' }],
+        expectedAuthRevision: 1,
+      });
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(ApiValidationError);
+    expect(thrown.message).toBe('expectedAuthRevision must be a string.');
+    expect(thrown.fieldName).toBe('expectedAuthRevision');
     expect(rawStoreBlob(ctx.store)).toBe(before);
   });
 });
