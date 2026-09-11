@@ -10,7 +10,7 @@
  */
 
 import { screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   ApplicationAccessContext,
   type ApplicationAccessContextValue,
@@ -48,6 +48,20 @@ function renderSettingsPage(accessContextValue: ApplicationAccessContextValue) {
 }
 
 describe('Authentication tab visibility gating at the Settings page', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('fails loudly when the application access context provider is missing', () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    expect(() => renderWithFrontendProviders(<SettingsPage />)).toThrow(
+      /useApplicationAccessContext must be used within an ApplicationAccessContext\.Provider/
+    );
+
+    consoleErrorSpy.mockRestore();
+  });
+
   it('shows the Authentication tab for an admin user', () => {
     renderSettingsPage(administratorAccessContextValue);
 

@@ -305,7 +305,11 @@ describe('ConfigurationManager setProperty', () => {
     });
 
     it('should update cache for unknown properties', () => {
-      configManager.configCache = { some: 'cache' };
+      // The unrelated key is persisted so it survives the locked write's
+      // cache-replacement semantics (the cache mirrors the stored blob exactly).
+      mocks.PropertiesService.scriptProperties.getProperty.mockReturnValue(
+        JSON.stringify({ some: 'cache' })
+      );
 
       configManager.setProperty('unknown_property', 'value');
 
@@ -315,7 +319,9 @@ describe('ConfigurationManager setProperty', () => {
 
   describe('Cache updates', () => {
     it('should update the in-memory cache after setting any script property', () => {
-      configManager.configCache = { some: 'cache' };
+      mocks.PropertiesService.scriptProperties.getProperty.mockReturnValue(
+        JSON.stringify({ some: 'cache' })
+      );
 
       configManager.setProperty(ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE, 120);
 
@@ -326,7 +332,9 @@ describe('ConfigurationManager setProperty', () => {
     });
 
     it('should update the in-memory cache for REVOKE_AUTH_TRIGGER_SET', () => {
-      configManager.configCache = { some: 'cache' };
+      mocks.PropertiesService.scriptProperties.getProperty.mockReturnValue(
+        JSON.stringify({ some: 'cache' })
+      );
 
       configManager.setProperty(ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET, true);
 
@@ -347,8 +355,8 @@ describe('ConfigurationManager default backend configuration bootstrap', () => {
 
   it('seeds the default backend configuration once when the config store is empty', () => {
     const expectedDefaultStore = buildDefaultBackendConfigStore(ConfigurationManager);
-    // Back the raw store so each seeded write is visible to the locked write path's
-    // re-read of the next write (GAS persistence semantics).
+    // Back the raw store so the single staged write is visible to the locked
+    // write path's re-read (GAS persistence semantics).
     const store = {};
     mocks.PropertiesService.scriptProperties.getProperty.mockImplementation((key) =>
       Object.hasOwn(store, key) ? store[key] : null
@@ -358,9 +366,11 @@ describe('ConfigurationManager default backend configuration bootstrap', () => {
     });
     const result = configManager.ensureDefaultConfiguration();
 
-    expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledTimes(8);
+    // Fresh-install seeding stages the complete default configuration and commits
+    // it through ONE locked write (one underlying Script Properties write).
+    expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledTimes(1);
     expect(
-      JSON.parse(mocks.PropertiesService.scriptProperties.setProperty.mock.calls.at(-1)[1])
+      JSON.parse(mocks.PropertiesService.scriptProperties.setProperty.mock.calls[0][1])
     ).toEqual(expectedDefaultStore);
     expect(result).toEqual(expectedDefaultStore);
     expect(configManager.getJsonDbRootFolderId()).toBe(
@@ -405,7 +415,8 @@ describe('ConfigurationManager getter and helper behaviour', () => {
       [ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET]: 'true',
       [ConfigurationManager.CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE]: '15',
       [ConfigurationManager.CONFIG_KEYS.JSON_DB_MASTER_INDEX_KEY]: 'MASTER_INDEX_X',
-      [ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS]: '20000',
+      // Canonical JSON DB lock timeout minimum (CONFIG_SCHEMA): 30000.
+      [ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS]: '30000',
       [ConfigurationManager.CONFIG_KEYS.JSON_DB_LOG_LEVEL]: 'warn',
       [ConfigurationManager.CONFIG_KEYS.JSON_DB_BACKUP_ON_INITIALISE]: 'true',
       [ConfigurationManager.CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID]: ' folder-123 ',
@@ -422,12 +433,15 @@ describe('ConfigurationManager getter and helper behaviour', () => {
     expect(configManager.getRevokeAuthTriggerSet()).toBe(true);
     expect(configManager.getDaysUntilAuthRevoke()).toBe(15);
     expect(configManager.getJsonDbMasterIndexKey()).toBe('MASTER_INDEX_X');
-    expect(configManager.getJsonDbLockTimeoutMs()).toBe(20000);
+    expect(configManager.getJsonDbLockTimeoutMs()).toBe(30000);
     expect(configManager.getJsonDbLogLevel()).toBe('WARN');
     expect(configManager.getJsonDbBackupOnInitialise()).toBe(true);
     expect(configManager.getJsonDbRootFolderId()).toBe('folder-123');
     expect(configManager.hasProperty(ConfigurationManager.CONFIG_KEYS.API_KEY)).toBe(true);
-    expect(configManager.hasProperty('missing')).toBe(false);
+    // Unknown keys are rejected by the hardened presence check (see
+    // configurationManagerAccessorHardening.test.js); a valid-but-absent
+    // schema key still reports false.
+    expect(configManager.hasProperty(ConfigurationManager.CONFIG_KEYS.AUTH_MODE)).toBe(false);
   });
 
   it('falls back to defaults for blank or invalid stored values', () => {
@@ -439,7 +453,8 @@ describe('ConfigurationManager getter and helper behaviour', () => {
       [ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET]: '',
       [ConfigurationManager.CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE]: '999',
       [ConfigurationManager.CONFIG_KEYS.JSON_DB_MASTER_INDEX_KEY]: '',
-      [ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS]: '999',
+      // 20000 is below the canonical CONFIG_SCHEMA minimum (30000); expect the default.
+      [ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS]: '20000',
       [ConfigurationManager.CONFIG_KEYS.JSON_DB_LOG_LEVEL]: '',
       [ConfigurationManager.CONFIG_KEYS.JSON_DB_BACKUP_ON_INITIALISE]: '',
       [ConfigurationManager.CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID]: '   ',

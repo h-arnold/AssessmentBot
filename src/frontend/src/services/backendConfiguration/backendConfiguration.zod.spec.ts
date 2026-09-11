@@ -112,3 +112,33 @@ describe('BackendApiKeyWriteSchema', () => {
     expect(result.success).toBe(false);
   });
 });
+
+describe('BackendConfigSchema non-empty string fields', () => {
+  it('rejects a blank jsonDbMasterIndexKey in the read response', () => {
+    const result = BackendConfigSchema.safeParse({
+      ...validBackendConfig,
+      jsonDbMasterIndexKey: '',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a blank jsonDbLogLevel in the read response', () => {
+    const result = BackendConfigSchema.safeParse({
+      ...validBackendConfig,
+      jsonDbLogLevel: '',
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('BackendConfigWriteInputSchema non-empty string fields', () => {
+  it('rejects a blank jsonDbMasterIndexKey in a write patch', () => {
+    const result = BackendConfigWriteInputSchema.safeParse({ jsonDbMasterIndexKey: '' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a blank jsonDbLogLevel in a write patch', () => {
+    const result = BackendConfigWriteInputSchema.safeParse({ jsonDbLogLevel: '' });
+    expect(result.success).toBe(false);
+  });
+});

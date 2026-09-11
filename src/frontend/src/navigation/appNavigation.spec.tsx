@@ -8,8 +8,19 @@ import {
   navigationItems,
   renderNavigationPage,
 } from './appNavigation';
+import {
+  ApplicationAccessContext,
+  type ApplicationAccessContextValue,
+} from '../features/auth/ApplicationAccessContext';
 import { pageContent } from '../pages/pageContent';
 import { renderWithFrontendProviders } from '../test/renderWithFrontendProviders';
+
+const settingsPageAccessContext: ApplicationAccessContextValue = {
+  role: 'user',
+  reason: 'ok',
+  allowed: true,
+  email: 'user@example.com',
+};
 
 type NavigationIconShape = {
   wrapperClassName: string | undefined;
@@ -92,7 +103,11 @@ describe('app navigation config', () => {
     ] satisfies Array<{ key: AppNavigationKey; heading: string; summary: string }>;
 
     for (const { heading, key, summary } of pageExpectations) {
-      const { unmount } = renderWithFrontendProviders(<>{renderNavigationPage(key)}</>);
+      const { unmount } = renderWithFrontendProviders(
+        <ApplicationAccessContext.Provider value={settingsPageAccessContext}>
+          {renderNavigationPage(key)}
+        </ApplicationAccessContext.Provider>
+      );
 
       expect(screen.getByRole('heading', { level: 2, name: heading })).toBeInTheDocument();
       expect(screen.getByText(summary)).toBeInTheDocument();

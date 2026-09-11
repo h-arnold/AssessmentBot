@@ -67,7 +67,7 @@ export function AuthenticationSettingsUserTable(
       </Flex>
 
       <Table<AuthUserEntry>
-        dataSource={users.map((user) => ({ ...user }))}
+        dataSource={users}
         locale={{ emptyText: <Text type="secondary">{emptyUserListExplanation}</Text> }}
         pagination={false}
         rowKey="email"

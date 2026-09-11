@@ -44,7 +44,7 @@ const CONFIG_KEYS = Object.freeze({
 });
 
 const AUTH_USER_ALLOWED_ROLES = new Set(['admin', 'user']);
-const AUTH_USER_ALLOWED_KEYS = ['email', 'role'];
+const AUTH_USER_ALLOWED_KEYS = Object.freeze(['email', 'role']);
 
 /**
  * Validates a single `AuthUserEntry` and records its (normalised) email as seen.
@@ -91,7 +91,7 @@ function validateAuthUserEntry_(entry, seenEmails) {
 }
 
 /**
- * Validates a stored `authUsers` value: a JSON string array of `{ email, role }` entries.
+ * Parses and validates a stored `authUsers` value into its entry array.
  *
  * Rules:
  * - Must be a JSON string.
@@ -101,13 +101,15 @@ function validateAuthUserEntry_(entry, seenEmails) {
  *   unnormalised email is rejected); blank emails are rejected.
  * - `role` must be `'admin'` or `'user'`.
  * - Emails must be unique (compared after the same normalisation used for the per-entry check).
- * - At least one entry must have role `'admin'`.
+ * - At least one entry must have role `'admin'`; that specific violation is tagged with
+ *   `error.reason === 'ZERO_ADMINS'` so callers can distinguish a last-admin conflict from
+ *   any other invalid candidate.
  *
  * @param {*} value - Candidate `authUsers` string.
- * @returns {string} The canonical stored JSON string (re-serialised entry array).
+ * @returns {Array<{email: string, role: string}>} The validated entry array.
  * @throws {Error} When the value violates any rule above.
  */
-function validateAuthUsersJson_(value) {
+function parseAuthUsersJson_(value) {
   if (typeof value !== 'string') {
     throw new TypeError('Auth Users must be a JSON string array.');
   }
@@ -133,20 +135,37 @@ function validateAuthUsersJson_(value) {
   }
 
   if (adminCount < 1) {
-    throw new Error('Auth Users must contain at least one admin.');
+    const error = new Error('Auth Users must contain at least one admin.');
+    error.reason = 'ZERO_ADMINS';
+    throw error;
   }
 
-  return JSON.stringify(parsed);
+  return parsed;
+}
+
+/**
+ * Validates a stored `authUsers` value: a JSON string array of `{ email, role }` entries.
+ *
+ * Thin canonical-string wrapper over `parseAuthUsersJson_`; keeps the single validation
+ * authority while returning the exact serialised value the schema `validate` seam persists.
+ *
+ * @param {*} value - Candidate `authUsers` string.
+ * @returns {string} The canonical stored JSON string (re-serialised entry array).
+ * @throws {Error} When the value violates any rule in `parseAuthUsersJson_`.
+ */
+function validateAuthUsersJson_(value) {
+  return JSON.stringify(parseAuthUsersJson_(value));
 }
 
 /**
  * Validates a stored `authRevision` value: a positive-integer string (`'1'`, `'42'`).
  *
  * Rejects `'0'`, negatives, fractions, non-digit strings, the empty string, and any
- * non-string type (e.g. the numeric `1`). Returns the canonical string.
+ * non-string type (e.g. the numeric `1`). Returns the canonical serialisation, so
+ * equivalent values cannot persist in multiple textual forms (`'007'` → `'7'`).
  *
  * @param {*} value - Candidate `authRevision` string.
- * @returns {string} The canonical positive-integer string.
+ * @returns {string} The canonical positive-integer string (no leading zeros).
  * @throws {Error} When the value is not a positive-integer string.
  */
 function validateAuthRevision_(value) {
@@ -156,11 +175,13 @@ function validateAuthRevision_(value) {
   if (!/^\d+$/u.test(value)) {
     throw new Error('Auth Revision must be a positive integer string.');
   }
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isInteger(parsed) || parsed < 1) {
+  // Strip leading zeros without a numeric round-trip so arbitrarily large revisions
+  // stay exact. `'0'`/`'00'` strip to `'0'` and fail the positive check below.
+  const canonical = value.replace(/^0+(?=\d)/u, '');
+  if (canonical === '0') {
     throw new Error('Auth Revision must be a positive integer string.');
   }
-  return value;
+  return canonical;
 }
 
 const CONFIG_SCHEMA = Object.freeze({
@@ -308,7 +329,9 @@ function validateAuthStateStrict_(authConfig) {
   } else if (authMode === 'none') {
     throw new Error('Auth Mode "none" is no longer supported.');
   } else if (authMode !== undefined && authMode !== null && authMode !== '') {
-    throw new Error(`Unrecognised Auth Mode: ${String(authMode)}.`);
+    // Constant message: the raw stored value is not needed for diagnosis and must
+    // never be interpolated into the error-level audit trail.
+    throw new Error('Unrecognised stored authentication mode.');
   } else if (groupEmailBlank) {
     throw new Error('Auth configuration is incomplete: missing auth mode or group email.');
   } else {
@@ -335,20 +358,20 @@ function validateAuthStateStrict_(authConfig) {
   if (config.authRevision == null || String(config.authRevision).trim() === '') {
     throw new Error('Script Properties auth mode requires a valid auth revision.');
   }
-  // Reuse the schema validators so validation logic is not duplicated.
-  const validatedUsers = validateAuthUsersJson_(config.authUsers);
+  // Reuse the schema validators so validation logic is not duplicated. Parse
+  // once and expose both the canonical stored string and the parsed list so
+  // downstream consumers (the Script Properties provider and the save-switch
+  // checks) never re-parse the same bytes.
+  const parsedUsers = parseAuthUsersJson_(config.authUsers);
   const validatedRevision = validateAuthRevision_(config.authRevision);
 
   return {
     authMode: 'scriptProperties',
     authGroupEmail: config.authGroupEmail,
-    authUsers: validatedUsers,
+    authUsers: JSON.stringify(parsedUsers),
+    authUsersParsed: parsedUsers,
     authRevision: validatedRevision,
   };
-}
-
-if (!globalThis.__CONFIG_MANAGER_STATICS_INITIALISED__) {
-  globalThis.__CONFIG_MANAGER_STATICS_INITIALISED__ = true;
 }
 
 if (typeof module !== 'undefined' && module.exports) {

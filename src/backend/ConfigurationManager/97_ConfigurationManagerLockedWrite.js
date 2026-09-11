@@ -59,21 +59,23 @@ class ConfigurationManagerLockedWrite {
     const lock = LockService.getScriptLock();
     try {
       lock.waitLock(CONFIG_LOCK_TIMEOUT_MS);
-    } catch {
+    } catch (lockError) {
       ABLogger.getInstance().warn(
         'ConfigurationManager: script lock contention during configuration write.',
-        { code: 'CONFIG_LOCK_CONTENTION' }
+        { code: 'CONFIG_LOCK_CONTENTION', cause: lockError }
       );
       const contention = new Error(
         'Configuration write could not acquire the script lock within the timeout.'
       );
       contention.code = 'CONFIG_LOCK_CONTENTION';
       contention.retriable = true;
+      // Preserve the original waitLock failure as typed context for diagnostics.
+      contention.cause = lockError;
       throw contention;
     }
 
     try {
-      const raw = host.scriptProperties.getProperty(ConfigurationManager.CONFIG_STORE_KEY);
+      const raw = host._storage.readRawConfigString();
       const current = safeParseConfigObject_(raw);
       const next = mutator(current);
       const serialised = JSON.stringify(next);
@@ -91,7 +93,10 @@ class ConfigurationManagerLockedWrite {
         });
         throw persistError;
       }
-      host.configCache = { ...host.configCache, ...next };
+      // `next` is the authoritative post-lock state derived from the fresh raw
+      // re-read; replacing (not merging) mirrors the stored blob exactly and
+      // cannot resurrect keys deleted by a concurrent mutation.
+      host.configCache = next;
     } finally {
       lock.releaseLock();
     }
@@ -100,12 +105,20 @@ class ConfigurationManagerLockedWrite {
   /**
    * Detects a genuinely fresh install.
    * Lets initialisation run first, then reads RAW Script Properties for
-   * `__CONFIG_STORE_KEY__` absence (never the forgiving config cache).
+   * `__CONFIG_STORE_KEY__` absence (never the forgiving config cache) — unless a
+   * populated in-memory cache already proves a stored blob exists, in which case
+   * the raw PropertiesService round-trip is skipped.
    * @returns {boolean} True only when the key is absent from raw storage.
    */
   isFreshInstall() {
     const host = this.host;
     host.ensureInitialized();
+    // A populated cache (at least one own key) can only have been derived from a
+    // present, non-empty stored blob, so the install cannot be fresh. An empty
+    // cache (`null` or `{}`) does not prove absence, so the RAW probe still runs.
+    if (host.configCache && Object.keys(host.configCache).length > 0) {
+      return false;
+    }
     const raw = host.scriptProperties.getProperty(ConfigurationManager.CONFIG_STORE_KEY);
     return raw == null;
   }

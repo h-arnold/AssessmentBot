@@ -80,8 +80,8 @@ test.describe('Authentication settings journeys', () => {
         { kind: 'success', data: { success: true, authRevision: '2' } },
         {
           kind: 'failureEnvelope',
-          code: 'INVALID_REQUEST',
-          message: 'Another administrator saved first. Review and re-save your changes.',
+          code: 'AUTH_SETTINGS_STALE_REVISION',
+          message: 'Stale auth revision: the stored settings changed since this save was prepared.',
         },
       ],
     });

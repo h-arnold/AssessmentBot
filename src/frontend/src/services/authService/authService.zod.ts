@@ -82,10 +82,16 @@ const GoogleGroupsSaveRequestSchema = z
   })
   .strict();
 
+const ScriptPropertiesCandidateUsersSchema = z
+  .array(AuthUserEntrySchema)
+  .refine((users) => users.some((user) => user.role === 'admin'), {
+    message: 'At least one administrator is required.',
+  });
+
 const ScriptPropertiesSaveRequestSchema = z
   .object({
     authMode: z.literal('scriptProperties'),
-    authUsers: z.array(AuthUserEntrySchema),
+    authUsers: ScriptPropertiesCandidateUsersSchema,
     expectedAuthRevision: z.string().optional(),
   })
   .strict();
@@ -98,8 +104,10 @@ const ScriptPropertiesSaveRequestSchema = z
  * must omit `authUsers`/`expectedAuthRevision` entirely (the list is not
  * editable there); the scriptProperties variant carries the full candidate
  * `authUsers` list and only supplies `expectedAuthRevision` when a stored
- * revision exists (omitted on the first switch, which seeds `'1'`). `.strict()`
- * on each branch rejects keys that belong to the other mode.
+ * revision exists (omitted on the first switch, which seeds `'1'`). The
+ * scriptProperties candidate list must contain at least one administrator,
+ * mirroring the backend last-admin invariant. `.strict()` on each branch
+ * rejects keys that belong to the other mode.
  */
 export const SetAuthenticationSettingsRequestSchema = z.discriminatedUnion('authMode', [
   ScriptPropertiesSaveRequestSchema,

@@ -34,18 +34,6 @@ class ConfigurationManager extends BaseSingleton {
     if (globalThis.__TRACE_SINGLETON__)
       ABLogger.getInstance().debug('[TRACE][HeavyInit] ConfigurationManager.ensureInitialized');
     this._initialized = true;
-    if (globalThis.FREEZE_SINGLETONS) {
-      try {
-        Object.freeze(this);
-      } catch (error_) {
-        if (globalThis.__TRACE_SINGLETON__) {
-          ABLogger.getInstance().debug(
-            'Freeze failed ConfigurationManager:',
-            error_?.message || error_
-          );
-        }
-      }
-    }
   }
   /** Gets the configuration keys constant.
    * @returns {Object} The config keys. */
@@ -82,9 +70,7 @@ class ConfigurationManager extends BaseSingleton {
   getAllConfigurations() {
     this.ensureInitialized();
     if (!this.configCache) {
-      this.configCache = safeParseConfigObject_(
-        this.scriptProperties.getProperty(ConfigurationManager.CONFIG_STORE_KEY)
-      );
+      this.configCache = this._storage.readConfig();
     }
     return this.configCache;
   }
@@ -109,15 +95,31 @@ class ConfigurationManager extends BaseSingleton {
    * @returns {boolean} True if present. */
   hasProperty(key) {
     this.getAllConfigurations();
+    this._assertKnownConfigKey(key);
     return Object.hasOwn(this.configCache, key);
   }
   /** Retrieves a property value as a string.
    * @param {string} key - The configuration property key to retrieve.
-   * @returns {string} The value, or empty string. */
+   * @returns {string} The value, or empty string.
+   * @throws {Error} When the key is not a known configuration key. */
   getProperty(key) {
     this.ensureInitialized();
     this.getAllConfigurations();
-    return this.configCache[key] || '';
+    this._assertKnownConfigKey(key);
+    return Object.hasOwn(this.configCache, key) ? this.configCache[key] || '' : '';
+  }
+  /**
+   * Rejects unknown configuration keys and inherited property names.
+   *
+   * @remarks Reads only own properties so prototype pollution on the config cache
+   * can never expose an inherited value through the generic accessors.
+   * @param {string} key - The candidate configuration key.
+   * @returns {void} No return value.
+   * @throws {Error} When the key is not an own key of CONFIG_SCHEMA. */
+  _assertKnownConfigKey(key) {
+    if (!Object.hasOwn(ConfigurationManager.CONFIG_SCHEMA, key)) {
+      throw new Error('Unknown configuration key.');
+    }
   }
   /**
    * Validates and normalises a property value through CONFIG_SCHEMA, returning the
@@ -132,10 +134,11 @@ class ConfigurationManager extends BaseSingleton {
    * @param {string} key - The configuration property key.
    * @param {*} value - The value to validate and normalise.
    * @returns {string} The serialised value to persist.
-   * @throws {Error} When the value fails CONFIG_SCHEMA validation. */
+   * @throws {Error} When the key is unknown or the value fails CONFIG_SCHEMA validation. */
   preparePropertyValue(key, value) {
     this.ensureInitialized();
     this.getAllConfigurations();
+    this._assertKnownConfigKey(key);
     const spec = ConfigurationManager.CONFIG_SCHEMA[key];
     const canonical = spec?.validate ? spec.validate(value, this) : value;
     const normalisedValue = spec?.normalise ? spec.normalise(canonical) : canonical;
@@ -148,7 +151,12 @@ class ConfigurationManager extends BaseSingleton {
    * @returns {void} No return value.
    * @throws {Error} If persistence to script properties fails. */
   setProperty(key, value) {
-    const serialisedValue = this.preparePropertyValue(key, value);
+    this.ensureInitialized();
+    // Legacy generic setter: unknown keys remain permissible (the pre-existing
+    // behaviour), so it must not route through the hardened `preparePropertyValue`
+    // accessor. Known keys still validate/normalise through the schema seam.
+    const isKnownKey = Object.hasOwn(ConfigurationManager.CONFIG_SCHEMA, key);
+    const serialisedValue = isKnownKey ? this.preparePropertyValue(key, value) : String(value);
     // The locked write path re-reads the RAW blob under the lock; use that fresh
     // snapshot as the merge base so a concurrent writer's changes are never clobbered.
     this.writeConfigurationLocked((current) => ({ ...current, [key]: serialisedValue }));
@@ -241,6 +249,16 @@ class ConfigurationManager extends BaseSingleton {
   setAuthMode(value) {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.AUTH_MODE, value);
   }
+  /** Gets the stored scriptProperties user list JSON (empty when unset/not applicable).
+   * @returns {string} The serialised `authUsers` JSON string. */
+  getAuthUsers() {
+    return this.getProperty(ConfigurationManager.CONFIG_KEYS.AUTH_USERS);
+  }
+  /** Gets the stored scriptProperties revision (empty when unset/not applicable).
+   * @returns {string} The `authRevision` string. */
+  getAuthRevision() {
+    return this.getProperty(ConfigurationManager.CONFIG_KEYS.AUTH_REVISION);
+  }
   /** Gets the backend URL.
    * @returns {string} The backend URL. */
   getBackendUrl() {
@@ -269,12 +287,12 @@ class ConfigurationManager extends BaseSingleton {
     return value || ConfigurationManager.DEFAULTS.JSON_DB_MASTER_INDEX_KEY;
   }
   /** Gets the JSON DB lock timeout in ms.
-   * @returns {number} Timeout in ms (1000–600000). */
+   * @returns {number} Timeout in ms (30000–600000). */
   getJsonDbLockTimeoutMs() {
     return this.getIntConfig(
       ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS,
       ConfigurationManager.DEFAULTS.JSON_DB_LOCK_TIMEOUT_MS,
-      { min: 1000, max: 600000 }
+      { min: 30000, max: 600000 }
     );
   }
   /** Gets the JSON DB log level in uppercase (or default).
@@ -445,10 +463,6 @@ if (typeof module !== 'undefined' && module.exports) {
     MAX_CONFIG_BLOB_BYTES: schema.MAX_CONFIG_BLOB_BYTES,
   });
   module.exports = ConfigurationManagerProxy;
-}
-
-if (!globalThis.__CONFIG_MANAGER_STATICS_INITIALISED__) {
-  globalThis.__CONFIG_MANAGER_STATICS_INITIALISED__ = true;
 }
 
 if (typeof globalThis !== 'undefined') {

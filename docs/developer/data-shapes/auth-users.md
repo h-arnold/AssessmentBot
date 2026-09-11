@@ -17,7 +17,12 @@ with roles, and the auth management/access endpoints.
 > `BackendConfig` frontend schema/transport lockstep (Section 7) has now landed — `backendConfiguration.zod.ts`
 > drops `authMode`/`authGroupEmail` from its read and write schemas — and the Section 8 UI/form/panel
 > slimming (panel fields, form schema/mapper, `handleFinish` guard) has also landed: the Authentication
-> settings surface no longer transports those fields. No auth-shape work remains pending.
+> settings surface no longer transports those fields. The backend remediation batch added stable
+> authentication-settings save error codes, a single-parse resolved auth state (`authUsersParsed`),
+> and distinct GroupsApp candidate-admin failure semantics; the frontend auth remediation batch now
+> consumes those stable codes (`ApiTransportError.code` → user-safe copy) and enforces the
+> minimum-admin candidate invariant client-side (see
+> [Known discrepancies](#known-discrepancies)).
 
 Backend implementation: `src/backend/Utils/AuthService.js` (base) +
 `GoogleGroupsAuthService` + `ScriptPropertiesAuthService` subclasses (landed,
@@ -71,7 +76,7 @@ values are strings, consistent with the BackendConfig blob conventions.
   closed, loud audit log, no secrets in output). Deny decisions are made in the
   access-resolution path, not by making the forgiving transport getter throw.
 - The whole config blob stays under a conservative **8KB cap**, enforced on all
-  configuration writes (auth and ordinary) — see BackendConfig planned notes.
+  configuration writes (auth and ordinary) — see [Contract: BackendConfig](backend-config.md).
 - All configuration writes serialise through the script-wide
   `LockService.getScriptLock()` shared with `DbLockService` (non-reentrant): under
   the lock the writer re-reads the blob from storage, merges, and writes once.
@@ -167,12 +172,12 @@ envelope.
 
 **Response:**
 
-| Field            | Type                                   | Notes                                                 |
-| ---------------- | -------------------------------------- | ----------------------------------------------------- |
-| `authMode`       | `'googleGroups' \| 'scriptProperties'` |                                                       |
-| `authGroupEmail` | `string`                               |                                                       |
-| `authUsers`      | `AuthUserEntry[]`                      | Parsed stored list; `[]` when absent (groups/legacy). |
-| `authRevision`   | `string \| null`                       | `null` when not applicable (groups mode).             |
+| Field            | Type                                   | Notes                                                                                        |
+| ---------------- | -------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `authMode`       | `'googleGroups' \| 'scriptProperties'` |                                                                                              |
+| `authGroupEmail` | `string`                               |                                                                                              |
+| `authUsers`      | `AuthUserEntry[]`                      | Always `[]` in `googleGroups` mode; a retained legacy stored list is not parsed or returned. |
+| `authRevision`   | `string \| null`                       | `null` when not applicable (groups mode).                                                    |
 
 - The handler returns the raw `getAuthMode()` value, typed as `'googleGroups' | 'scriptProperties' | null`.
   The dispatcher's admin-admission gate (see the admin-enforcement mechanism below) resolves access
@@ -195,6 +200,21 @@ envelope (stale revision, last-admin violation, invalid entry, candidate-check
 failure, quota cap). Stored config is unchanged on any failure — no partial writes.
 `authRevision` is the new positive-integer-string revision in `scriptProperties` mode
 and `null` in `googleGroups` mode (no revision is maintained there).
+
+The following save failures carry a stable, safe `error.code` (owned by
+`AUTH_SETTINGS_ERROR_CODES` in `AuthSettingsDomain` and emitted via
+`ApiValidationError.code`; see
+[Transport Envelope](transport-envelope.md#stable-authentication-settings-save-codes)):
+`AUTH_SETTINGS_STALE_REVISION`, `AUTH_SETTINGS_REVISION_REQUIRED`,
+`AUTH_SETTINGS_LAST_ADMIN`, `AUTH_SETTINGS_INVALID_CANDIDATE`, or
+`AUTH_SETTINGS_SAVING_ADMIN_DENIED`. A candidate Google Group lookup that fails at
+the external Groups service — and configuration-lock contention — is instead a
+retriable `RATE_LIMITED` envelope, distinguishing a transient service failure from
+a genuine saving-admin role denial. Save-failure paths outside that list — a broken
+stored configuration, `authUsers` supplied in `googleGroups` mode, an invalid/blank
+candidate group email, an over-cap blob, and the transport-level request-shape
+rejections (non-object payload or unknown field) — still map to the generic
+non-retriable `INVALID_REQUEST` code.
 
 - Provider-switch validation checks the saving admin against the **candidate**
   configuration with fresh lookups (never cache): target `scriptProperties` requires
@@ -225,16 +245,23 @@ registry.
 
 - `src/backend/ConfigurationManager/01_configKeysAndSchema.js` — **implemented**:
   `authMode` enum accepts only `googleGroups`/`scriptProperties` (`'none'` removed);
-  `authUsers` validator (`validateAuthUsersJson_`) accepts only a JSON string array
-  of `{ email, role }` entries with trimmed, lowercased, unique emails, roles limited
-  to `admin`|`user`, no unknown keys per entry, at least one entry and at least one
-  admin; normalisation is not applied (unnormalised input is rejected) and the
-  canonical JSON string is returned; `authRevision` validator
-  (`validateAuthRevision_`) accepts only positive-integer strings (`'1'`, `'42'`)
-  and rejects `'0'`, `'abc'`, `''`, negatives, fractions, and non-string types; the
-  strict security read (`validateAuthStateStrict_`) applies the single
+  `authUsers` validator (`validateAuthUsersJson_`, a thin canonical-JSON wrapper over
+  `parseAuthUsersJson_`) accepts only a JSON string array of `{ email, role }` entries
+  with trimmed, lowercased, unique emails, roles limited to `admin`|`user`, no unknown
+  keys per entry, at least one entry and at least one admin; normalisation is not applied
+  (unnormalised input is rejected) and the canonical JSON string is returned; the
+  zero-admin violation is tagged `error.reason === 'ZERO_ADMINS'` so callers can
+  distinguish a last-admin conflict from any other invalid candidate; `authRevision`
+  validator (`validateAuthRevision_`) accepts only positive-integer strings (`'1'`,
+  `'42'`) and rejects `'0'`, `'abc'`, `''`, negatives, fractions, and non-string types;
+  the strict security read (`validateAuthStateStrict_`) applies the single
   absent/blank-`authMode`-with-non-blank-group leniency and throws on every other
-  broken auth state; the forgiving transport getter (`getAuthMode()`) never throws,
+  broken auth state; the resolved `scriptProperties` state additionally carries
+  `authUsersParsed` — the entry array produced by the single `parseAuthUsersJson_` pass —
+  alongside the canonical `authUsers` JSON string, so downstream consumers reuse the
+  parsed list instead of re-parsing the same bytes (the `googleGroups` state returns the
+  raw stored `authUsers`/`authRevision` unchanged, which may be `undefined` on legacy
+  installs); the forgiving transport getter (`getAuthMode()`) never throws,
   resolves absent/blank+group to `googleGroups`, and resolves to `null` otherwise;
   the 8KB blob cap constant (`MAX_CONFIG_BLOB_BYTES`, 8192) is exported for the
   locked write path.
@@ -251,7 +278,14 @@ registry.
   `bypassCache: true` forces a fresh `GroupsApp` lookup, while `ScriptPropertiesAuthService`
   has no success cache and reads the list fresh per request; the trigger execution
   context passes `neverClaim: true` and `bypassCache: true` (the defunct
-  `requireConfigured` option is dropped). The fresh-install bootstrap claim
+  `requireConfigured` option is dropped). Since the remediation batch, `checkAccess()` is a
+  thin caller-facing wrapper over the single shared `_resolveAccessDecision()` pipeline
+  (identity normalisation → fresh-install claim → strict state resolution → provider
+  membership); `getApplicationAccess` consumes that same pipeline through
+  `AuthSettingsDomain.resolveApplicationAccess()`, with `fallThroughOnClaimFailure: true` as
+  the only endpoint-specific branch (the protected path denies fail-closed when a competing
+  writer wins the bootstrap race; the gate-exempt path classifies the newly committed state).
+  The fresh-install bootstrap claim
   (`AuthService._attemptBootstrapClaim()`) is **implemented** (ACTION_PLAN §4): it
   re-checks freshness before and inside the Section 2 `writeConfigurationLocked` lock,
   commits exactly the auth-only blob (`authMode: 'scriptProperties'`, the caller as sole
@@ -259,6 +293,20 @@ registry.
   aborts without overwrite when a blob appears, denies fail-closed with a safe audit on
   contention/cap/write failure (allowing a retry), and never claims for blank-email or
   trigger (`neverClaim: true`) callers.
+- `src/backend/Utils/GoogleGroupsAuthService.js` — **implemented** (ACTION_PLAN §3;
+  candidate-admin semantics reconciled in the remediation batch): `_isGroupMember()` remains
+  the access-path guard and collapses an external GroupsApp failure into a denial
+  (fail-closed, logged at error level); `_resolveGroupRole()` performs the fresh role lookup
+  and `_mapGroupDecision()` owns the `OWNER`/`MANAGER → admin` / `MEMBER → user` mapping;
+  `_resolveCandidateAdmin()` is the provider-switch saving-admin check and deliberately lets
+  an external GroupsApp failure propagate so the save path can return a retriable
+  `RATE_LIMITED` envelope, while a genuine non-owner/manager resolves to `false` and becomes
+  a non-retriable `AUTH_SETTINGS_SAVING_ADMIN_DENIED`.
+- `src/backend/Utils/ScriptPropertiesAuthService.js` — **implemented** (ACTION_PLAN §3;
+  parsed-state reuse reconciled in the remediation batch): reads
+  `authState.authUsersParsed` directly (the strict resolver validates first), so the stored
+  list is parsed exactly once per resolution; the previously defensive `JSON.parse` failure
+  catch was removed as unreachable; no success cache.
 - `src/backend/z_Api/apiConfig.js` — **implemented** (ACTION_PLAN §6): `setBackendConfig_`
   rejects all auth fields as `ApiValidationError` (`INVALID_REQUEST`) for every caller, including
   admins (see [Contract: BackendConfig](backend-config.md) for the reconciled transport contract).
@@ -275,8 +323,9 @@ registry.
   `role: z.enum(['admin','user'])`; `.strict()` (no extra keys, only the two roles).
 - `SetAuthenticationSettingsRequestSchema` — `z.discriminatedUnion('authMode', ...)`:
   - `ScriptPropertiesSaveRequestSchema`: `authMode: z.literal('scriptProperties')`,
-    `authUsers: z.array(AuthUserEntrySchema)`, `expectedAuthRevision: z.string().optional()`;
-    `.strict()` (omits `authGroupEmail`).
+    `authUsers: ScriptPropertiesCandidateUsersSchema` (an `AuthUserEntrySchema[]` refined to
+    require at least one `admin`, mirroring the backend last-admin invariant),
+    `expectedAuthRevision: z.string().optional()`; `.strict()` (omits `authGroupEmail`).
   - `GoogleGroupsSaveRequestSchema`: `authMode: z.literal('googleGroups')`,
     `authGroupEmail: z.string().trim().min(1)`; `.strict()` (omits `authUsers`/`expectedAuthRevision`).
   - The `googleGroups` variant must omit `authUsers`/`expectedAuthRevision` entirely; the
@@ -303,7 +352,9 @@ registry.
   deploy-order tolerance convention.
 - The `setAuthenticationSettings` request is validated client-side before transport, so an invalid
   per-mode field set (e.g. supplying `authUsers` in groups mode, or `authGroupEmail` in
-  scriptProperties mode) is rejected before `callApi` is called.
+  scriptProperties mode) is rejected before `callApi` is called. The `scriptProperties` candidate
+  list must also contain at least one `admin`, so the backend `AUTH_SETTINGS_LAST_ADMIN` rejection
+  is a defence-in-depth fallback rather than the primary guard.
 - Auth surface is sourced exclusively from these endpoints; `BackendSettingsPanel` no longer
   transports `authMode`/`authGroupEmail` (the form/panel slimming is Section 8 work, tracked in
   `backend-config.md`).
@@ -344,7 +395,37 @@ registry.
   drops `authMode`/`authGroupEmail` from `BackendConfigSchema` and `BackendConfigWriteInputSchema`, so the
   frontend no longer accepts or requires those fields. The Section 8 UI/form/panel slimming (panel
   fields, form schema/mapper, `handleFinish` guard) has also landed: the Authentication settings surface
-  no longer transports those fields. No auth-shape discrepancy remains from this contract's perspective.
+  no longer transports those fields. The two frontend-consumption discrepancies previously tracked here
+  were reconciled by the frontend auth remediation batch (below).
+- **Resolved (frontend auth remediation batch, 2026-09-10) — the frontend maps save-error copy from
+  `error.code`, not prose.** `mapAuthenticationSettingsSaveError()` now lives in
+  `src/frontend/src/features/settings/authentication/useAuthenticationSettings.helpers.ts` (extracted
+  from the hook to keep `useAuthenticationSettings.ts` under the file threshold) and is consumed by
+  the hook's `save()` call site, which threads the staged `authMode` as the mode context. It selects
+  user-safe copy exclusively from `ApiTransportError.code` via `authSettingsSaveErrorMappings`:
+  `AUTH_SETTINGS_STALE_REVISION`/`AUTH_SETTINGS_REVISION_REQUIRED` → the persistent
+  stale-revision warning (`staleRevisionWarningMessage`),
+  `AUTH_SETTINGS_LAST_ADMIN` → `lastAdminErrorMessage`,
+  `AUTH_SETTINGS_INVALID_CANDIDATE` → the neutral malformed-candidate copy
+  (`invalidCandidateErrorMessage`, "The candidate list is invalid. …"),
+  `RATE_LIMITED` → `rateLimitedErrorMessage`, and any unmapped transport code → generic save copy.
+  `AUTH_SETTINGS_SAVING_ADMIN_DENIED` is mode-dependent: the mapper resolves it via
+  `resolveSavingAdminDeniedMapping(targetMode)`, selecting `googleGroupsSavingAdminDeniedMessage`
+  (group-role/OWNER-or-MANAGER recovery guidance) for `googleGroups` and
+  `scriptPropertiesSavingAdminDeniedMessage` (candidate-list/self-admin recovery guidance) for
+  `scriptProperties`, mirroring the two distinct backend emitters in
+  `AuthSettingsDomain.verifySavingAdminForSwitch()`. Raw backend `error.message` is never rendered.
+  A local request-schema `ZodError` carries no transport code, so the two locally authored
+  candidate-field messages (`authGroupEmail`, `authUsers`) are resolved from the Zod issue before
+  falling back to generic copy.
+  **Classification: Aligned** — the backend `ApiValidationError.code` contract, its mode-dependent
+  `AUTH_SETTINGS_SAVING_ADMIN_DENIED` semantics, and the frontend mapping are in lockstep.
+- **Resolved (frontend auth remediation batch, 2026-09-10) — the frontend `scriptProperties` request
+  schema enforces the minimum-admin invariant.** `ScriptPropertiesCandidateUsersSchema` in
+  `authService.zod.ts` refines the candidate `authUsers` array to require at least one `admin` entry
+  (`'At least one administrator is required.'`), so a zero-admin candidate is rejected before
+  `callApi` is invoked rather than relying on the backend `AUTH_SETTINGS_LAST_ADMIN` rejection.
+  **Classification: Aligned** — the client-side and backend candidate invariants now agree.
 
 ---
 
@@ -367,4 +448,8 @@ API handlers:                src/backend/z_Api/
 Frontend:                    src/frontend/src/services/authService/
   ├── authService.zod.ts            — ApplicationAccessSchema, AuthenticationSettingsSchema, AuthUserEntrySchema, SetAuthenticationSettingsRequestSchema, SetAuthenticationSettingsResultSchema
   └── authService.ts                — getApplicationAccess(), getAuthenticationSettings(), setAuthenticationSettings(), getAuthorisationStatus()
+
+Feature:                     src/frontend/src/features/settings/authentication/
+  ├── useAuthenticationSettings.helpers.ts — save-error code→copy mapping (mode-aware) + failure logging
+  └── useAuthenticationSettings.ts         — orchestration; threads the staged authMode to the mapper
 ```

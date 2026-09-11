@@ -1,8 +1,8 @@
 import { Tabs } from 'antd';
 import type { TabsProps } from 'antd';
-import { useContext, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ClassesManagementPanel } from '../features/classes/ClassesManagementPanel';
-import { ApplicationAccessContext } from '../features/auth/ApplicationAccessContext';
+import { useApplicationAccessContext } from '../features/auth/ApplicationAccessContext';
 import { BackendSettingsPanel } from '../features/settings/backend/BackendSettingsPanel';
 import { AuthenticationSettingsTab } from '../features/settings/authentication/AuthenticationSettingsTab';
 import { ReferenceDataSettingsPanel } from '../features/referenceData/ReferenceDataSettingsPanel';
@@ -20,8 +20,8 @@ type SettingsTabKey = 'classes' | 'backend-settings' | 'authentication' | 'refer
 export function SettingsPage() {
   const [activeTabKey, setActiveTabKey] = useState<SettingsTabKey>('classes');
   const [classesPanelInstanceKey, setClassesPanelInstanceKey] = useState(0);
-  const applicationAccessContext = useContext(ApplicationAccessContext);
-  const isAuthenticationTabVisible = applicationAccessContext?.role === 'admin';
+  const applicationAccessContext = useApplicationAccessContext();
+  const isAuthenticationTabVisible = applicationAccessContext.role === 'admin';
 
   const settingsTabs = useMemo<NonNullable<TabsProps['items']>>(
     () => [

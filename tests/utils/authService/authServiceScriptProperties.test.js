@@ -83,6 +83,27 @@ describe('ScriptPropertiesAuthService contract', () => {
     expect(service.checkAccess()).toEqual({ allowed: true, role: 'user' });
   });
 
+  it('parses the stored user list exactly once per resolution (strict parsed result reused)', () => {
+    const parseSpy = vi.spyOn(JSON, 'parse');
+    ctx = provisionAuthContext({
+      config: {
+        authMode: 'scriptProperties',
+        authUsers: buildUsersJson([{ email: 'admin@school.edu', role: 'admin' }]),
+        authRevision: '1',
+      },
+      email: 'admin@school.edu',
+    });
+
+    expect(AuthService.getInstance().checkAccess()).toEqual({ allowed: true, role: 'admin' });
+
+    const authUsersParses = parseSpy.mock.calls.filter(
+      ([value]) => typeof value === 'string' && value.includes('admin@school.edu')
+    );
+    // The strict resolver parses the stored list once; the provider reuses that
+    // parsed result rather than re-parsing the canonical JSON.
+    expect(authUsersParses).toHaveLength(1);
+  });
+
   it('maps a stored admin entry to the admin role', () => {
     ctx = provisionAuthContext({
       config: {

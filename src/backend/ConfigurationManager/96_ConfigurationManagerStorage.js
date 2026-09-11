@@ -54,14 +54,13 @@ class ConfigurationManagerStorage {
 
   /**
    * Reads the raw serialised configuration blob from Script Properties.
+   * @remarks Fails loudly when the host has no Script Properties handle; a
+   *   missing handle is an internal wiring error and must not be masked as an
+   *   absent blob.
    * @returns {string|null} The raw blob string, or null when no value is stored.
    */
   readRawConfigString() {
-    const store = this.host.scriptProperties;
-    if (!store) {
-      return null;
-    }
-    return store.getProperty(ConfigurationManager.CONFIG_STORE_KEY);
+    return this.host.scriptProperties.getProperty(ConfigurationManager.CONFIG_STORE_KEY);
   }
 
   /**

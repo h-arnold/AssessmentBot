@@ -56,9 +56,9 @@ export function AppAuthGate(properties: Readonly<PropsWithChildren>) {
   // OAuth gating runs first and unchanged.
   if (isAuthorising) {
     return (
-      <output aria-label="Loading authorisation status">
+      <output aria-busy="true" aria-label="Loading authorisation status">
         <Spin />
-        Loading authorisation status
+        <span aria-hidden="true">Loading authorisation status</span>
       </output>
     );
   }
@@ -83,9 +83,9 @@ export function AppAuthGate(properties: Readonly<PropsWithChildren>) {
   // Application-access gating: admission is based solely on the resolved access reason.
   if (accessQuery.isPending) {
     return (
-      <output aria-label="Verifying access">
+      <output aria-busy="true" aria-label="Verifying access">
         <Spin />
-        Verifying access
+        <span aria-hidden="true">Verifying access</span>
       </output>
     );
   }

@@ -13,6 +13,8 @@
  * block below enables Node/Vitest usage.
  */
 
+/* global ConfigurationManager */
+
 /**
  * Default-seeding sub-class for the ConfigurationManager facade.
  * @class ConfigurationManagerDefaults
@@ -30,6 +32,9 @@ class ConfigurationManagerDefaults {
   /**
    * Persists the default backend configuration the first time it is needed.
    * Returns immediately when any configuration has already been stored.
+   * @remarks Stages the complete default configuration and commits it through
+   *   ONE `writeConfigurationLocked` mutation, mirroring the atomic settings-save
+   *   pattern, rather than performing one serial full-blob write per field.
    * @returns {Object} The current configuration cache.
    */
   ensureDefaultConfiguration() {
@@ -39,14 +44,22 @@ class ConfigurationManagerDefaults {
       return config;
     }
 
-    host.setBackendAssessorBatchSize(host.getBackendAssessorBatchSize());
-    host.setSlidesFetchBatchSize(host.getSlidesFetchBatchSize());
-    host.setRevokeAuthTriggerSet(host.getRevokeAuthTriggerSet());
-    host.setDaysUntilAuthRevoke(host.getDaysUntilAuthRevoke());
-    host.setJsonDbMasterIndexKey(host.getJsonDbMasterIndexKey());
-    host.setJsonDbLockTimeoutMs(host.getJsonDbLockTimeoutMs());
-    host.setJsonDbLogLevel(host.getJsonDbLogLevel());
-    host.setJsonDbBackupOnInitialise(host.getJsonDbBackupOnInitialise());
+    const configKeys = ConfigurationManager.CONFIG_KEYS;
+    const seedEntries = [
+      [configKeys.BACKEND_ASSESSOR_BATCH_SIZE, host.getBackendAssessorBatchSize()],
+      [configKeys.SLIDES_FETCH_BATCH_SIZE, host.getSlidesFetchBatchSize()],
+      [configKeys.REVOKE_AUTH_TRIGGER_SET, host.getRevokeAuthTriggerSet()],
+      [configKeys.DAYS_UNTIL_AUTH_REVOKE, host.getDaysUntilAuthRevoke()],
+      [configKeys.JSON_DB_MASTER_INDEX_KEY, host.getJsonDbMasterIndexKey()],
+      [configKeys.JSON_DB_LOCK_TIMEOUT_MS, host.getJsonDbLockTimeoutMs()],
+      [configKeys.JSON_DB_LOG_LEVEL, host.getJsonDbLogLevel()],
+      [configKeys.JSON_DB_BACKUP_ON_INITIALISE, host.getJsonDbBackupOnInitialise()],
+    ];
+    const patch = Object.fromEntries(
+      seedEntries.map(([key, value]) => [key, host.preparePropertyValue(key, value)])
+    );
+
+    host.writeConfigurationLocked((current) => ({ ...current, ...patch }));
 
     return host.configCache;
   }

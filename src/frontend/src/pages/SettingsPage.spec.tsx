@@ -2,11 +2,22 @@ import * as React from 'react';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BackendSettingsForm } from '../features/settings/backend/backendSettingsForm.zod';
+import {
+  ApplicationAccessContext,
+  type ApplicationAccessContextValue,
+} from '../features/auth/ApplicationAccessContext';
 import { createAppQueryClient } from '../query/queryClient';
 import { getCssRuleBlock } from '../test/appStylesRaw';
 import { renderWithFrontendProviders } from '../test/renderWithFrontendProviders';
 import { SettingsPage } from './SettingsPage';
 import { pageContent } from './pageContent';
+
+const standardUserAccessContextValue: ApplicationAccessContextValue = {
+  role: 'user',
+  reason: 'ok',
+  allowed: true,
+  email: 'user@example.com',
+};
 
 const referenceDataPanelLabel = 'Reference Data panel';
 
@@ -119,7 +130,12 @@ describe('SettingsPage', () => {
 
     return {
       prefetchQuerySpy,
-      ...renderWithFrontendProviders(<SettingsPage />, { queryClient }),
+      ...renderWithFrontendProviders(
+        <ApplicationAccessContext.Provider value={standardUserAccessContextValue}>
+          <SettingsPage />
+        </ApplicationAccessContext.Provider>,
+        { queryClient }
+      ),
     };
   };
 
@@ -186,6 +202,14 @@ describe('SettingsPage', () => {
     expect(backendPanelRuleBlock).toMatch(/width:\s*min\([^)]*var\(--app-panel-width-default\)/);
     expect(backendPanelRuleBlock).toMatch(/margin-inline:\s*auto/);
     expect(backendPanelRuleBlock).not.toMatch(/\b720px\b/);
+  });
+
+  it('routes the authentication settings panel through the shared default-panel token and keeps it centred', () => {
+    const authenticationPanelRuleBlock = getCssRuleBlock('.settings-tab-panel--authentication');
+
+    expect(authenticationPanelRuleBlock).toMatch(/width:\s*min\([^)]*var\(--app-panel-width-default\)/);
+    expect(authenticationPanelRuleBlock).toMatch(/margin-inline:\s*auto/);
+    expect(authenticationPanelRuleBlock).not.toMatch(/\b720px\b/);
   });
 
   it('keeps backend settings form edits mounted when switching away and back', async () => {

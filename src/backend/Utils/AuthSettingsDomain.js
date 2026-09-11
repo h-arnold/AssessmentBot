@@ -27,6 +27,27 @@
  * does not matter at load time; Node tests register the same global in
  * `tests/setupGlobals.js` before any auth resolution executes.
  */
+
+/**
+ * Stable, safe API error codes for authentication-settings save failures.
+ *
+ * These are emitted as the transport envelope `error.code` (never as raw prose)
+ * so the frontend can map user-safe copy exclusively from `error.code`, as
+ * required by the frontend logging/error-handling policy. They are deliberately
+ * distinct from the generic `INVALID_REQUEST` code because each represents a
+ * different recovery path (stale revision, last-admin conflict, invalid
+ * candidate list, saving-admin denial). Lock contention and GroupsApp
+ * service-unavailable failures keep the retriable `RATE_LIMITED` envelope.
+ * @type {Readonly<Object>}
+ */
+const AUTH_SETTINGS_ERROR_CODES = Object.freeze({
+  STALE_REVISION: 'AUTH_SETTINGS_STALE_REVISION',
+  REVISION_REQUIRED: 'AUTH_SETTINGS_REVISION_REQUIRED',
+  LAST_ADMIN: 'AUTH_SETTINGS_LAST_ADMIN',
+  INVALID_CANDIDATE: 'AUTH_SETTINGS_INVALID_CANDIDATE',
+  SAVING_ADMIN_DENIED: 'AUTH_SETTINGS_SAVING_ADMIN_DENIED',
+});
+
 const AuthSettingsDomain = {
   /**
    * Resolves the caller's application-access status for `getApplicationAccess`.
@@ -43,58 +64,13 @@ const AuthSettingsDomain = {
    *   otherwise, and `reason` follows the `auth-users.md` enum.
    */
   resolveApplicationAccess(authService, { method = null } = {}) {
-    const configManager = ConfigurationManager.getInstance();
-    const email = Session.getActiveUser().getEmail().trim().toLowerCase();
-
-    // A blank server-resolved identity is never claimable or authorised: on a
-    // genuinely fresh store the caller cannot claim (`freshInstall`), and on
-    // any existing store it is an ordinary denial.
-    if (!email) {
-      ABLogger.getInstance().warn('AuthService: failed to resolve the active user email.', {
-        email,
-        method,
-      });
-      return {
-        allowed: false,
-        role: null,
-        email,
-        reason: configManager.isFreshInstall() ? 'freshInstall' : 'denied',
-      };
-    }
-
-    if (configManager.isFreshInstall()) {
-      const claim = authService._attemptBootstrapClaim(email, { neverClaim: false, method });
-      if (claim.allowed) {
-        return { allowed: true, role: 'admin', email, reason: 'ok' };
-      }
-      // A failed claim on a still-fresh store (contention/cap/write failure) is
-      // a transient denial; a later request may retry. When a competing writer
-      // committed configuration, fall through and resolve the new state below.
-      if (configManager.isFreshInstall()) {
-        return { allowed: false, role: null, email, reason: 'denied' };
-      }
-    }
-
-    const resolution = authService._resolveAuthState(configManager);
-    if (resolution.state === 'broken') {
-      ABLogger.getInstance().error(
-        'AuthService: broken authentication configuration denies access.',
-        { email, method, reason: resolution.error.message }
-      );
-      return { allowed: false, role: null, email, reason: 'brokenConfig' };
-    }
-
-    const { authState } = resolution;
-    const provider =
-      authState.authMode === 'googleGroups'
-        ? GoogleGroupsAuthService.getInstance()
-        : ScriptPropertiesAuthService.getInstance();
-    const decision = provider._resolveAccess({ email, authState, method });
-
-    if (decision.allowed) {
-      return { allowed: true, role: decision.role, email, reason: 'ok' };
-    }
-    return { allowed: false, role: null, email, reason: 'denied' };
+    // Consume the ONE shared access-resolution pipeline owned by AuthService;
+    // this endpoint shapes its result only. `fallThroughOnClaimFailure` is the
+    // one endpoint-specific difference: the gate-exempt access read classifies
+    // the state a competing writer committed during the bootstrap claim, while
+    // the protected `checkAccess` path denies fail-closed without falling
+    // through.
+    return authService._resolveAccessDecision({ method, fallThroughOnClaimFailure: true });
   },
 
   /**
@@ -117,7 +93,13 @@ const AuthSettingsDomain = {
     const methodName = 'setAuthenticationSettings';
     const targetMode = settings.authMode;
     if (targetMode !== 'googleGroups' && targetMode !== 'scriptProperties') {
-      throw this.settingsValidationError('Invalid authentication mode.', methodName, 'authMode');
+      throw this.settingsValidationError(
+        'Invalid authentication mode.',
+        methodName,
+        'authMode',
+        undefined,
+        AUTH_SETTINGS_ERROR_CODES.INVALID_CANDIDATE
+      );
     }
 
     const configManager = ConfigurationManager.getInstance();
@@ -154,9 +136,13 @@ const AuthSettingsDomain = {
    * @param {string} methodName - Canonical method name for validation errors.
    * @param {'googleGroups'|'scriptProperties'} targetMode - Candidate mode.
    * @param {Object} settings - Candidate settings from the transport.
-   * @returns {{ candidateUsersJson: string|null, candidateGroupEmail: string|null }}
-   *   The canonical serialised candidate list (scriptProperties mode) and the
-   *   trimmed candidate group email (googleGroups mode).
+   * @returns {{
+   *   candidateUsersJson: string|null,
+   *   candidateUsers: Array<{email: string, role: string}>|null,
+   *   candidateGroupEmail: string|null
+   * }} The canonical serialised candidate list and its parsed form
+   *   (scriptProperties mode), or the trimmed candidate group email
+   *   (googleGroups mode).
    * @throws {ApiValidationError} When the candidate configuration is invalid.
    */
   validatedSaveCandidate(methodName, targetMode, settings) {
@@ -165,7 +151,9 @@ const AuthSettingsDomain = {
         throw this.settingsValidationError(
           'A full candidate auth users list is required in scriptProperties mode.',
           methodName,
-          'authUsers'
+          'authUsers',
+          undefined,
+          AUTH_SETTINGS_ERROR_CODES.INVALID_CANDIDATE
         );
       }
       try {
@@ -174,9 +162,22 @@ const AuthSettingsDomain = {
           authUsers: JSON.stringify(settings.authUsers),
           authRevision: '1',
         });
-        return { candidateUsersJson: validated.authUsers, candidateGroupEmail: null };
+        return {
+          candidateUsersJson: validated.authUsers,
+          // Reuse the parsed list the strict resolver already produced rather
+          // than re-parsing the canonical JSON in the switch check.
+          candidateUsers: validated.authUsersParsed,
+          candidateGroupEmail: null,
+        };
       } catch (error) {
-        throw this.settingsValidationError(error.message, methodName, 'authUsers', error);
+        // The strict resolver is the single validation authority: it tags the
+        // zero-admin case so the domain can distinguish a last-admin conflict
+        // from any other invalid candidate without matching prose.
+        const code =
+          error?.reason === 'ZERO_ADMINS'
+            ? AUTH_SETTINGS_ERROR_CODES.LAST_ADMIN
+            : AUTH_SETTINGS_ERROR_CODES.INVALID_CANDIDATE;
+        throw this.settingsValidationError(error.message, methodName, 'authUsers', error, code);
       }
     }
 
@@ -192,7 +193,11 @@ const AuthSettingsDomain = {
         authMode: 'googleGroups',
         authGroupEmail: settings.authGroupEmail,
       });
-      return { candidateUsersJson: null, candidateGroupEmail: validated.authGroupEmail };
+      return {
+        candidateUsersJson: null,
+        candidateUsers: null,
+        candidateGroupEmail: validated.authGroupEmail,
+      };
     } catch (error) {
       throw this.settingsValidationError(error.message, methodName, 'authGroupEmail', error);
     }
@@ -208,35 +213,59 @@ const AuthSettingsDomain = {
    * cache). Same-mode saves are user add/remove/role-change and are exempt.
    * @param {string} methodName - Canonical method name for validation errors.
    * @param {'googleGroups'|'scriptProperties'} targetMode - Candidate mode.
-   * @param {{ candidateUsersJson: string|null, candidateGroupEmail: string|null }} candidate - Validated candidate config.
+   * @param {{ candidateUsersJson: string|null, candidateUsers: Array<{email: string, role: string}>|null, candidateGroupEmail: string|null }} candidate - Validated candidate config.
    * @returns {void}
    * @throws {ApiValidationError} When the saving admin is not valid under the candidate config.
+   * @throws {ApiRateLimitError} When the candidate Google Group lookup fails at
+   *   the external service (retriable); a genuine non-admin role is instead an
+   *   `ApiValidationError` so operators can tell the two apart.
    */
   verifySavingAdminForSwitch(methodName, targetMode, candidate) {
     const email = Session.getActiveUser().getEmail().trim().toLowerCase();
     if (targetMode === 'scriptProperties') {
-      const candidateUsers = JSON.parse(candidate.candidateUsersJson);
-      const adminRetained = candidateUsers.some(
+      const adminRetained = candidate.candidateUsers.some(
         (entry) => entry.email === email && entry.role === 'admin'
       );
       if (!adminRetained) {
         throw this.settingsValidationError(
           'The saving administrator must be an admin in the candidate list when switching to scriptProperties mode.',
           methodName,
-          'authUsers'
+          'authUsers',
+          undefined,
+          AUTH_SETTINGS_ERROR_CODES.SAVING_ADMIN_DENIED
         );
       }
       return;
     }
-    const decision = GoogleGroupsAuthService.getInstance()._isGroupMember(
-      email,
-      candidate.candidateGroupEmail
-    );
-    if (!decision.allowed || decision.role !== 'admin') {
+
+    // Distinguish an external GroupsApp lookup failure (transient, retriable)
+    // from a genuine non-admin result (a validation failure). `_isGroupMember`
+    // swallows lookup errors for the access path, so use the candidate-specific
+    // resolver that lets the external failure propagate.
+    let isCandidateAdmin;
+    try {
+      isCandidateAdmin = GoogleGroupsAuthService.getInstance()._resolveCandidateAdmin(
+        email,
+        candidate.candidateGroupEmail
+      );
+    } catch (error) {
+      ABLogger.getInstance().warn(
+        'AuthService: candidate group lookup failed during a provider switch; save aborted.',
+        { method: methodName, err: error }
+      );
+      throw new ApiRateLimitError(
+        'The candidate Google Group could not be checked because the Groups service is unavailable. Please retry.',
+        { method: methodName, cause: error }
+      );
+    }
+
+    if (!isCandidateAdmin) {
       throw this.settingsValidationError(
         'The saving administrator must be an OWNER or MANAGER of the candidate group when switching to googleGroups mode.',
         methodName,
-        'authGroupEmail'
+        'authGroupEmail',
+        undefined,
+        AUTH_SETTINGS_ERROR_CODES.SAVING_ADMIN_DENIED
       );
     }
   },
@@ -332,14 +361,18 @@ const AuthSettingsDomain = {
       throw this.settingsValidationError(
         'expectedAuthRevision is required when a stored auth revision exists.',
         methodName,
-        'expectedAuthRevision'
+        'expectedAuthRevision',
+        undefined,
+        AUTH_SETTINGS_ERROR_CODES.REVISION_REQUIRED
       );
     }
     if (String(expectedAuthRevision) !== storedRevision) {
       throw this.settingsValidationError(
         'Stale auth revision: the stored settings changed since this save was prepared.',
         methodName,
-        'expectedAuthRevision'
+        'expectedAuthRevision',
+        undefined,
+        AUTH_SETTINGS_ERROR_CODES.STALE_REVISION
       );
     }
     return String(Number.parseInt(storedRevision, 10) + 1);
@@ -351,13 +384,16 @@ const AuthSettingsDomain = {
    * @param {string} method - Canonical method name.
    * @param {string|null} [fieldName] - Related request field, when applicable.
    * @param {Error} [cause] - The underlying error, when wrapping one.
+   * @param {string|null} [code] - Stable API error code surfaced as the
+   *   transport envelope `error.code`; `null` keeps the generic
+   *   `INVALID_REQUEST` mapping.
    * @returns {ApiValidationError} The constructed validation error.
    */
-  settingsValidationError(message, method, fieldName = null, cause) {
-    return new ApiValidationError(message, { method, fieldName, cause });
+  settingsValidationError(message, method, fieldName = null, cause, code = null) {
+    return new ApiValidationError(message, { method, fieldName, cause, code });
   },
 };
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { AuthSettingsDomain };
+  module.exports = { AuthSettingsDomain, AUTH_SETTINGS_ERROR_CODES };
 }

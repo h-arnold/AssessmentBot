@@ -371,6 +371,29 @@ describe('AuthService fresh-install bootstrap claim', () => {
       );
       expect(failureAudit).not.toContain(JSON.stringify({ authRevision: '1' }));
     });
+
+    it('preserves the original thrown error as developer-only logging context', () => {
+      ctx = provisionBootstrapContext({ email: 'teacher@school.edu' });
+
+      const persistenceError = new Error('Script Properties write rejected.');
+      persistenceError.code = 'CONFIG_WRITE_FAILED';
+      ctx.configManager.writeConfigurationLocked.mockImplementation(() => {
+        throw persistenceError;
+      });
+
+      const result = AuthService.getInstance().checkAccess();
+
+      expect(result.allowed).toBe(false);
+      const failureCall = ctx.logger.warn.mock.calls.find((args) =>
+        JSON.stringify(args).includes('bootstrap claim failed')
+      );
+      expect(failureCall).toBeDefined();
+      // The raw error is retained as developer-only context (never in the envelope).
+      expect(failureCall[1]).toMatchObject({
+        code: 'CONFIG_WRITE_FAILED',
+        err: persistenceError,
+      });
+    });
   });
 
   describe('default seeding is skipped after a successful claim', () => {

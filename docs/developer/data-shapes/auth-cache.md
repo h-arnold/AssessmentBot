@@ -1,17 +1,17 @@
 # Contract: AuthCache
 
-In-memory CacheService cache entry used by `AuthService.checkAccess()` to memoise Google
-Group membership results between API requests. Stored via the generic `CacheManager`
-methods (extended with `get`/`put`).
+In-memory CacheService cache entry used by `GoogleGroupsAuthService._resolveAccess()` (reached
+through `AuthService.checkAccess()`) to memoise Google Group membership results between API
+requests. Stored via the generic `CacheManager` methods (extended with `get`/`put`).
 
 > **Status: Implemented** — the generic `CacheManager` methods and the `AuthService`
 > provider hierarchy (ACTION_PLAN §3) have landed, so both the cache access and its
 > sole producer/consumer (`GoogleGroupsAuthService`) exist.
 
-Backend implementation: `src/backend/Utils/AuthService.js`
+Backend implementation: `src/backend/Utils/GoogleGroupsAuthService.js` (`_resolveAccess()`)
 Cache access: `src/backend/RequestHandlers/CacheManager.js` → generic `get(key)`, `put(key, value, ttlSeconds)`
 Persistence: `CacheService.getScriptCache()` — in-memory cache with TTL, not durable storage
-API handlers: Not directly callable — consumed internally by `AuthService.checkAccess()`
+API handlers: Not directly callable — consumed internally by `GoogleGroupsAuthService._resolveAccess()` via `AuthService.checkAccess()`
 Frontend service: None — internal backend mechanism
 Frontend Zod: None
 
@@ -26,7 +26,7 @@ Sibling contracts:
   frontend-facing transport.
 
 > **Implemented (ACTION_PLAN §3)** — the cache policy recorded below previously as
-> `Not implemented` has now landed; the points restate the delivered contract:
+> The previously pending cache policy has now landed; the points restate the delivered contract:
 >
 > 1. The Google Groups cache entry keeps the unchanged key format
 >    `auth:<groupEmail>:<email>` with a 21600-second (6-hour) TTL. The provider and
@@ -102,10 +102,10 @@ None — AuthCache is a single flat key-value entry with no embedded sub-entitie
 
 ## Validation
 
-**Backend validation** (in `src/backend/Utils/AuthService.js`):
+**Backend validation** (in `src/backend/Utils/GoogleGroupsAuthService.js`):
 
-- `AuthService.checkAccess()` derives the cache key as `auth:<groupEmail>:<email>` and
-  reads/writes via `CacheManager`.
+- `GoogleGroupsAuthService._resolveAccess()` derives the cache key as
+  `auth:<groupEmail>:<email>` and reads/writes via `CacheManager`.
 - Values written to the cache are always the success shape `{ allowed: true, role }`;
   denials short-circuit before the cache write.
 
@@ -133,9 +133,10 @@ Cache access:         src/backend/RequestHandlers/CacheManager.js
   └── put(key, value, ttlSeconds) — serialise + write with explicit TTL
                                   (no `remove` method — entries expire via TTL)
 
-Producer/consumer:    src/backend/Utils/AuthService.js
-  ├── checkAccess(options?)       — cache read → GroupsApp check → cache write (allowed only)
-  └── _isGroupMember(email, groupEmail) — private group membership + role resolution
+Producer/consumer:    src/backend/Utils/GoogleGroupsAuthService.js
+  ├── _resolveAccess(options?)    — cache read → GroupsApp check → cache write (allowed only)
+  ├── _isGroupMember(email, groupEmail) — access-path membership (lookup failure → deny)
+  └── _resolveGroupRole(email, groupEmail) — fresh GroupsApp role lookup (failure propagates)
 
 Consumers:            src/backend/z_Api/z_apiHandler.js (auth gate, via AuthService)
                       src/backend/Triggers/triggerHandler.js (cache bypass, via AuthService)

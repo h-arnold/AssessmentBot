@@ -150,28 +150,34 @@ function logStartupWarmupFailure(error: unknown) {
   });
 }
 
+type AdoptWarmupCycleOutcomeOptions = Readonly<{
+  cycle: StartupWarmupCycle;
+  promise: Promise<unknown>;
+  queryClient: QueryClient;
+  getIsMounted: () => boolean;
+  setWarmupCycleState: (state: StartupWarmupCycle) => void;
+  clearPromise: boolean;
+  logFailure: boolean;
+}>;
+
 /**
  * Adopts the resolve/reject outcome of a warm-up cycle promise onto the cycle object and
  * republishes the result to React state while the subscriber remains mounted.
  *
- * @param {StartupWarmupCycle} cycle The cycle object mutated in place on settle.
- * @param {Promise<unknown>} promise The warm-up promise to observe.
- * @param {QueryClient} queryClient Query client used to resolve the next snapshot.
- * @param {() => boolean} getIsMounted Returns whether the subscriber is still mounted.
- * @param {(state: StartupWarmupCycle) => void} setWarmupCycleState React state setter.
- * @param {boolean} clearPromise Whether to clear the cycle promise on settle.
- * @param {boolean} logFailure Whether to log warm-up failures on rejection.
+ * @param {AdoptWarmupCycleOutcomeOptions} options Named outcome-handling options.
  * @returns {void} Nothing.
  */
-function adoptWarmupCycleOutcome(
-  cycle: StartupWarmupCycle,
-  promise: Promise<unknown>,
-  queryClient: QueryClient,
-  getIsMounted: () => boolean,
-  setWarmupCycleState: (state: StartupWarmupCycle) => void,
-  clearPromise: boolean,
-  logFailure: boolean
-): void {
+function adoptWarmupCycleOutcome(options: AdoptWarmupCycleOutcomeOptions): void {
+  const {
+    cycle,
+    promise,
+    queryClient,
+    getIsMounted,
+    setWarmupCycleState,
+    clearPromise,
+    logFailure,
+  } = options;
+
   void promise.then(
     () => {
       const nextSnapshot = resolveNextWarmupSnapshot(queryClient, 'ready');
@@ -250,15 +256,15 @@ export function useStartupWarmupCycle(
       // The lazy state initialiser already adopted the existing cycle from the registry.
       // Subscribe to its promise so the provider updates when warm-up resolves.
       if (existingCycle.promise) {
-        adoptWarmupCycleOutcome(
-          existingCycle,
-          existingCycle.promise,
+        adoptWarmupCycleOutcome({
+          cycle: existingCycle,
+          promise: existingCycle.promise,
           queryClient,
-          () => isMounted,
+          getIsMounted: () => isMounted,
           setWarmupCycleState,
-          false,
-          false
-        );
+          clearPromise: false,
+          logFailure: false,
+        });
       }
 
       return () => {
@@ -277,15 +283,15 @@ export function useStartupWarmupCycle(
     // The lazy state initialiser already published a matching 'loading' cycle, so the
     // provider shows the correct initial state. The promise handler below republishes on
     // resolution. Avoids a synchronous setState within the effect.
-    adoptWarmupCycleOutcome(
+    adoptWarmupCycleOutcome({
       cycle,
-      cyclePromise,
+      promise: cyclePromise,
       queryClient,
-      () => isMounted,
+      getIsMounted: () => isMounted,
       setWarmupCycleState,
-      true,
-      true
-    );
+      clearPromise: true,
+      logFailure: true,
+    });
 
     return () => {
       isMounted = false;

@@ -9,26 +9,21 @@ import {
   useRef,
   useState,
 } from 'react';
-import { ApiTransportError } from '../../../errors/apiTransportError';
 import { setAuthenticationSettings } from '../../../services/authService/authService';
 import type {
   AuthenticationSettings,
   AuthUserEntry,
+  AuthUserRole,
 } from '../../../services/authService/authService.zod';
 import { getAuthenticationSettingsQueryOptions } from '../../../query/sharedQueries';
+import {
+  logAuthenticationSettingsSaveFailure,
+  mapAuthenticationSettingsSaveError,
+  type AuthMode,
+} from './useAuthenticationSettings.helpers';
 
 const genericLoadErrorMessage = 'Unable to load authentication settings right now.';
-const genericSaveErrorMessage = 'Unable to save authentication settings right now.';
-const rateLimitedErrorMessage = 'The service is busy. Please try again shortly.';
-const staleRevisionWarningMessage =
-  'Another administrator saved first. Review and re-save your changes.';
-const lastAdminErrorMessage = 'At least one admin must remain. Review the user list and try again.';
-const candidateCheckErrorMessage =
-  'Your admin access is missing from the candidate list. Add yourself as an admin and try again.';
 const saveSuccessMessage = 'Authentication settings saved.';
-
-export type AuthMode = AuthenticationSettings['authMode'];
-export type AuthUserRole = AuthUserEntry['role'];
 
 type StagedUserListAction =
   | Readonly<{ type: 'add'; email: string; role: AuthUserRole }>
@@ -97,36 +92,6 @@ function authenticationUserListReducer(
       return state;
     }
   }
-}
-
-/**
- * Maps an authentication-settings save failure into user-safe copy.
- *
- * @param {unknown} error The failure to map.
- * @returns {Readonly<{ message: string; isStaleRevision: boolean }>} User copy and stale flag.
- */
-function mapAuthenticationSettingsSaveError(
-  error: unknown
-): Readonly<{ message: string; isStaleRevision: boolean }> {
-  const rawMessage = error instanceof Error ? error.message : genericSaveErrorMessage;
-
-  if (/stale|saved first/i.test(rawMessage)) {
-    return { message: staleRevisionWarningMessage, isStaleRevision: true };
-  }
-
-  if (/last.?admin|admin must remain/i.test(rawMessage)) {
-    return { message: lastAdminErrorMessage, isStaleRevision: false };
-  }
-
-  if (/candidate list/i.test(rawMessage)) {
-    return { message: candidateCheckErrorMessage, isStaleRevision: false };
-  }
-
-  if (error instanceof ApiTransportError && error.code === 'RATE_LIMITED') {
-    return { message: rateLimitedErrorMessage, isStaleRevision: false };
-  }
-
-  return { message: genericSaveErrorMessage, isStaleRevision: false };
 }
 
 /**
@@ -313,7 +278,9 @@ export function useAuthenticationSettings(): AuthenticationSettingsHookValue {
       };
       message.success(saveSuccessMessage);
     } catch (error: unknown) {
-      const mappedError = mapAuthenticationSettingsSaveError(error);
+      const mappedError = mapAuthenticationSettingsSaveError(error, stagedAuthMode);
+
+      logAuthenticationSettingsSaveFailure(error);
 
       if (mappedError.isStaleRevision) {
         setStaleRevisionWarning(mappedError.message);

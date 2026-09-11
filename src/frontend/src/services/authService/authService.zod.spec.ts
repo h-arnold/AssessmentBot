@@ -257,6 +257,22 @@ describe('authService.zod schemas', () => {
       expect(result.success).toBe(false);
     });
 
+    it('rejects a scriptProperties save request whose candidate list has no administrator', () => {
+      const result = SetAuthenticationSettingsRequestSchema.safeParse({
+        authMode: 'scriptProperties',
+        authUsers: [{ email: learnerEmail, role: 'user' }],
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects a scriptProperties save request with an empty candidate list', () => {
+      const result = SetAuthenticationSettingsRequestSchema.safeParse({
+        authMode: 'scriptProperties',
+        authUsers: [],
+      });
+      expect(result.success).toBe(false);
+    });
+
     it('rejects a scriptProperties save request whose candidate entry has an unknown role', () => {
       const result = SetAuthenticationSettingsRequestSchema.safeParse({
         authMode: 'scriptProperties',

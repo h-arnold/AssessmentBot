@@ -64,8 +64,8 @@ reference.
 
 ## Documented Contracts
 
-All ten contracts are documented in this directory (`AuthUsers` is recorded as a
-planned, not-yet-implemented contract). The legacy
+All ten contracts are documented in this directory; `AuthUsers` is implemented and
+conforms to its contract. The legacy
 `docs/developer/backend/DATA_SHAPES.md` has been deleted; all content has been
 migrated to the individual contract files listed below.
 

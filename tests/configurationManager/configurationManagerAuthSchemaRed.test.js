@@ -26,6 +26,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { setupGlobalGASMocks } from '../helpers/mockFactories.js';
 
+const fs = require('node:fs');
+
 const {
   CONFIG_KEYS,
   CONFIG_SCHEMA,
@@ -217,6 +219,13 @@ describe('Backend configuration auth schema — authUsers, authRevision, size ca
 
       expect(validator('42', configManager)).toBe('42');
     });
+
+    it('canonicalises a non-canonical positive-integer revision (no leading zeros)', () => {
+      const validator = getValidator();
+
+      expect(validator('007', configManager)).toBe('7');
+      expect(validator('0001', configManager)).toBe('1');
+    });
   });
 
   describe('8KB configuration blob cap constant', () => {
@@ -306,6 +315,16 @@ describe('Backend configuration auth schema — authUsers, authRevision, size ca
       expect(result).toEqual(expect.objectContaining({ authMode: 'scriptProperties' }));
     });
 
+    it('canonicalises the stored revision in the resolved scriptProperties state', () => {
+      const result = validateAuthStateStrict_({
+        authMode: 'scriptProperties',
+        authUsers: buildUsersJson([{ email: 'admin@school.edu', role: 'admin' }]),
+        authRevision: '007',
+      });
+
+      expect(result.authRevision).toBe('7');
+    });
+
     it('marks a scriptProperties mode with zero admins as broken (throws)', () => {
       expect(() =>
         validateAuthStateStrict_({
@@ -334,6 +353,21 @@ describe('Backend configuration auth schema — authUsers, authRevision, size ca
           authRevision: '1',
         })
       ).toThrow();
+    });
+  });
+
+  describe('auth-user key allowlist', () => {
+    it('declares the fixed email/role allowlist as an immutable frozen constant', () => {
+      const schemaSource = fs.readFileSync(
+        require.resolve('../../src/backend/ConfigurationManager/01_configKeysAndSchema.js'),
+        'utf8'
+      );
+      const declaration = schemaSource.match(/AUTH_USER_ALLOWED_KEYS\s*=\s*([^;]+);/u);
+
+      expect(declaration).not.toBeNull();
+      expect(declaration[1]).toContain('Object.freeze');
+      expect(declaration[1]).toContain("'email'");
+      expect(declaration[1]).toContain("'role'");
     });
   });
 });

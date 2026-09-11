@@ -277,12 +277,29 @@ describe('ConfigurationManager Section 2 — locked write path, freshness, facad
   });
 
   describe('freshness — raw Script Properties consulted, never the cache', () => {
-    it('returns true when __CONFIG_STORE_KEY__ is absent from raw storage', () => {
+    it('short-circuits to false when a populated cache proves a stored blob exists', () => {
       expect(typeof configManager.isFreshInstall).toBe('function');
 
-      const store = installInMemoryStore(undefined); // key absent
-      // Populate the in-memory cache to prove freshness does NOT consult it.
-      configManager.configCache = { apiKey: 'cached-but-irrelevant' };
+      installInMemoryStore(undefined); // key absent
+      // A populated cache (at least one own key) can only have been derived from
+      // a present stored blob, so the fresh-install probe must skip the raw
+      // PropertiesService round-trip.
+      configManager.configCache = { apiKey: 'cached-proves-blob-present' };
+      const getProperty = mocks.PropertiesService.scriptProperties.getProperty;
+      getProperty.mockClear();
+
+      configManager.ensureInitialized();
+      expect(configManager.isFreshInstall()).toBe(false);
+      expect(getProperty).not.toHaveBeenCalled();
+    });
+
+    it('returns true when __CONFIG_STORE_KEY__ is absent from raw storage and the cache is empty', () => {
+      expect(typeof configManager.isFreshInstall).toBe('function');
+
+      installInMemoryStore(undefined); // key absent
+      // An empty cache does not prove the blob exists, so freshness must consult
+      // RAW storage (and must not read through getAllConfigurations).
+      configManager.configCache = {};
       const getAllConfigurationsSpy = vi
         .spyOn(configManager, 'getAllConfigurations')
         .mockImplementation(() => configManager.configCache);

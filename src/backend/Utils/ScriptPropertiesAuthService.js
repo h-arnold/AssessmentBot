@@ -27,24 +27,15 @@ class ScriptPropertiesAuthService extends AuthService {
    * @param {string} options.email - The resolved active-user email, normalised to
    *   trimmed/lowercase by the base before delegation so it matches the canonical
    *   stored `AuthUserEntry` emails.
-   * @param {Object} options.authState - The validated auth state (contains `authUsers`).
+   * @param {Object} options.authState - The validated auth state (contains the
+   *   parsed `authUsersParsed` list produced by the strict resolver).
    * @param {string} [options.method] - Requested method, recorded in the audit log.
    * @returns {{ allowed: boolean, role?: string }} The access decision.
    */
   _resolveAccess({ email, authState, method = null }) {
-    // The strict resolver has already validated `authUsers`, so parsing cannot
-    // fail under normal operation; fail closed loudly if it ever does.
-    let users;
-    try {
-      users = JSON.parse(authState.authUsers);
-    } catch {
-      ABLogger.getInstance().error(
-        'AuthService: stored authentication user list could not be parsed.',
-        { email, method }
-      );
-      return { allowed: false };
-    }
-
+    // The strict resolver already parsed and validated the stored list, so
+    // reuse that canonical result directly rather than re-parsing the JSON.
+    const users = authState.authUsersParsed;
     const entry = users.find((user) => user.email === email);
     if (!entry) {
       ABLogger.getInstance().warn('AuthService: access denied.', {

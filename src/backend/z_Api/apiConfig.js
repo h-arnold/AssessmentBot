@@ -1,4 +1,4 @@
-/* global ABLogger, ConfigurationManager, ApiValidationError */
+/* global ABLogger, ConfigurationManager, ApiValidationError, ApiRateLimitError */
 
 const API_KEY_MASK_VISIBLE_SUFFIX_LENGTH = 4;
 const API_KEY_MASK_PREFIX = '****';
@@ -13,54 +13,76 @@ const AUTH_MANAGED_CONFIG_FIELDS = ['authMode', 'authGroupEmail', 'authUsers', '
 
 /**
  * Ordinary (non-auth) writable backend configuration fields, in canonical order.
- * Each descriptor reads its value via a static property access so the security
- * object-injection lint rule is not needed for this transport allowlist.
+ * Each descriptor carries the field name ONCE; the read behaviour is derived from
+ * that single `field` value so the name can never drift from the read closure.
  * @type {Array<{ field: string, read: function(Object): * }>}
  */
 const BACKEND_CONFIG_WRITABLE_FIELDS = Object.freeze([
   {
     field: 'backendAssessorBatchSize',
-    read: (config) => config.backendAssessorBatchSize,
+    read(config) {
+      return config[this.field];
+    },
   },
   {
     field: 'slidesFetchBatchSize',
-    read: (config) => config.slidesFetchBatchSize,
+    read(config) {
+      return config[this.field];
+    },
   },
   {
     field: 'apiKey',
-    read: (config) => config.apiKey,
+    read(config) {
+      return config[this.field];
+    },
   },
   {
     field: 'backendUrl',
-    read: (config) => config.backendUrl,
+    read(config) {
+      return config[this.field];
+    },
   },
   {
     field: 'revokeAuthTriggerSet',
-    read: (config) => config.revokeAuthTriggerSet,
+    read(config) {
+      return config[this.field];
+    },
   },
   {
     field: 'daysUntilAuthRevoke',
-    read: (config) => config.daysUntilAuthRevoke,
+    read(config) {
+      return config[this.field];
+    },
   },
   {
     field: 'jsonDbMasterIndexKey',
-    read: (config) => config.jsonDbMasterIndexKey,
+    read(config) {
+      return config[this.field];
+    },
   },
   {
     field: 'jsonDbLockTimeoutMs',
-    read: (config) => config.jsonDbLockTimeoutMs,
+    read(config) {
+      return config[this.field];
+    },
   },
   {
     field: 'jsonDbLogLevel',
-    read: (config) => config.jsonDbLogLevel,
+    read(config) {
+      return config[this.field];
+    },
   },
   {
     field: 'jsonDbBackupOnInitialise',
-    read: (config) => config.jsonDbBackupOnInitialise,
+    read(config) {
+      return config[this.field];
+    },
   },
   {
     field: 'jsonDbRootFolderId',
-    read: (config) => config.jsonDbRootFolderId,
+    read(config) {
+      return config[this.field];
+    },
   },
 ]);
 
@@ -111,6 +133,81 @@ function getBackendConfig_() {
 }
 
 /**
+ * Stages each supplied ordinary field through the manager-owned validate/normalise
+ * seam, collecting a redacted aggregate error list for any failures.
+ * @param {Object} configManager - The ConfigurationManager instance.
+ * @param {Object} config - Partial configuration payload.
+ * @returns {{ patch: Object, errors: string[], failedErrors: Error[] }} Staged
+ *   patch entries plus the redacted aggregate errors and their causes.
+ */
+function stageBackendConfigPatch_(configManager, config) {
+  const errors = [];
+  const failedErrors = [];
+  const stagedEntries = [];
+
+  for (const descriptor of BACKEND_CONFIG_WRITABLE_FIELDS) {
+    const { field } = descriptor;
+    const value = descriptor.read(config);
+    if (value === undefined) {
+      continue;
+    }
+
+    try {
+      stagedEntries.push([field, configManager.preparePropertyValue(field, value)]);
+    } catch (error) {
+      errors.push(`${field}: ${error?.message ?? 'REDACTED'}`);
+      failedErrors.push(error);
+    }
+  }
+
+  return { patch: Object.fromEntries(stagedEntries), errors, failedErrors };
+}
+
+/**
+ * Commits a staged ordinary-configuration patch as ONE atomic locked write.
+ * @remarks Lock contention is transient and is rethrown as a retriable
+ *   `ApiRateLimitError` (mapped to the RATE_LIMITED envelope by the dispatcher)
+ *   rather than being flattened into the domain failure result.
+ * @param {Object} configManager - The ConfigurationManager instance.
+ * @param {Object} patch - Staged serialised field values keyed by field name.
+ * @returns {string|null} A redacted aggregate failure message, or null on success.
+ * @throws {ApiRateLimitError} On configuration-lock contention.
+ */
+function commitBackendConfigPatch_(configManager, patch) {
+  if (Object.keys(patch).length === 0) {
+    return null;
+  }
+
+  try {
+    configManager.writeConfigurationLocked((current) => ({ ...current, ...patch }));
+    return null;
+  } catch (error) {
+    if (error?.code === 'CONFIG_LOCK_CONTENTION') {
+      // SPEC decision 12: configuration-lock contention is transient and must
+      // surface as the retriable RATE_LIMITED envelope (ApiRateLimitError →
+      // RATE_LIMITED), never as a non-retriable INTERNAL_ERROR or a domain-level
+      // `{ success: false }` result. The raw lock signal is not frontend-safe.
+      ABLogger.getInstance().warn('setBackendConfig: configuration lock contention during save.', {
+        method: 'setBackendConfig',
+        cause: error,
+      });
+      throw new ApiRateLimitError(
+        'Configuration could not be saved because the configuration lock is busy. Please retry.',
+        { method: 'setBackendConfig', cause: error }
+      );
+    }
+    const message = `Failed to save some configuration values: ${Object.keys(patch)
+      .map((name) => `${name}: ${error?.message ?? 'REDACTED'}`)
+      .join('; ')}`;
+    ABLogger.getInstance().error('Error saving configuration values.', {
+      configKeys: Object.keys(patch),
+      error,
+    });
+    return message;
+  }
+}
+
+/**
  * Applies supported backend configuration updates as ONE atomic locked write.
  * @remarks Rejecting the auth fields (authMode, authGroupEmail, authUsers,
  * authRevision) for every caller — including admins — is deliberate transport
@@ -142,29 +239,7 @@ function setBackendConfig_(config) {
   }
 
   const configManager = ConfigurationManager.getInstance();
-  const errors = [];
-  const failedErrors = [];
-  const stagedEntries = [];
-
-  for (const { field, read } of BACKEND_CONFIG_WRITABLE_FIELDS) {
-    const value = read(config);
-    if (value === undefined) {
-      continue;
-    }
-
-    // Stage every supplied field through the manager-owned validate/normalise
-    // seam; per-field failures keep the existing redacted aggregate format.
-    try {
-      stagedEntries.push([field, configManager.preparePropertyValue(field, value)]);
-    } catch (error) {
-      ABLogger.getInstance().error('Error saving configuration value.', {
-        configKey: field,
-        error,
-      });
-      errors.push(`${field}: ${error?.message ?? 'REDACTED'}`);
-      failedErrors.push(error);
-    }
-  }
+  const { patch, errors, failedErrors } = stageBackendConfigPatch_(configManager, config);
 
   if (errors.length > 0) {
     const message = `Failed to save some configuration values: ${errors.join('; ')}`;
@@ -172,23 +247,9 @@ function setBackendConfig_(config) {
     return { success: false, error: message };
   }
 
-  const patch = Object.fromEntries(stagedEntries);
-  if (Object.keys(patch).length > 0) {
-    // One atomic locked mutation for the whole save: the locked path re-reads
-    // the fresh blob under the lock and merges, so a concurrent writer's changes
-    // are preserved and no per-field lock is taken.
-    try {
-      configManager.writeConfigurationLocked((current) => ({ ...current, ...patch }));
-    } catch (error) {
-      const message = `Failed to save some configuration values: ${Object.keys(patch)
-        .map((name) => `${name}: ${error?.message ?? 'REDACTED'}`)
-        .join('; ')}`;
-      ABLogger.getInstance().error('Error saving configuration values.', {
-        configKeys: Object.keys(patch),
-        error,
-      });
-      return { success: false, error: message };
-    }
+  const writeFailure = commitBackendConfigPatch_(configManager, patch);
+  if (writeFailure) {
+    return { success: false, error: writeFailure };
   }
 
   ABLogger.getInstance().info('Configuration saved successfully.');

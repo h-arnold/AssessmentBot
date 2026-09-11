@@ -91,19 +91,7 @@ class GoogleGroupsAuthService extends AuthService {
   _isGroupMember(email, groupEmail) {
     Validate.requireParams({ email, groupEmail }, '_isGroupMember');
     try {
-      const group = GroupsApp.getGroupByEmail(groupEmail);
-      if (!group.hasUser(email)) {
-        return { allowed: false };
-      }
-
-      const groupRole = group.getRole(email);
-      if (groupRole === 'OWNER' || groupRole === 'MANAGER') {
-        return { allowed: true, role: 'admin' };
-      }
-      if (groupRole === 'MEMBER') {
-        return { allowed: true, role: 'user' };
-      }
-      return { allowed: false };
+      return this._mapGroupDecision(this._resolveGroupRole(email, groupEmail));
     } catch (error) {
       // Group lookup failure (group not found / GroupsApp error) → deny.
       ABLogger.getInstance().error('AuthService: group lookup failed.', {
@@ -113,6 +101,60 @@ class GoogleGroupsAuthService extends AuthService {
       });
       return { allowed: false };
     }
+  }
+
+  /**
+   * Resolves a caller's Google Group role via a FRESH GroupsApp lookup.
+   *
+   * Unlike `_isGroupMember`, this lets an external GroupsApp failure propagate
+   * so callers that must distinguish "lookup failed" from "not a member" (the
+   * provider-switch saving-admin check) can do so. A non-member resolves to
+   * `null`.
+   * @param {string} email - The active user's email to resolve.
+   * @param {string} groupEmail - The Google Group email.
+   * @returns {string|null} The group role (`OWNER`/`MANAGER`/`MEMBER`/…), or
+   *   `null` when the user is not a member.
+   * @throws {Error} When the GroupsApp lookup itself fails.
+   */
+  _resolveGroupRole(email, groupEmail) {
+    const group = GroupsApp.getGroupByEmail(groupEmail);
+    if (!group.hasUser(email)) {
+      return null;
+    }
+    return group.getRole(email);
+  }
+
+  /**
+   * Maps a Google Group role to an application-access decision.
+   * @param {string|null} groupRole - The resolved group role, or null for a non-member.
+   * @returns {{ allowed: boolean, role?: string }} The access decision.
+   */
+  _mapGroupDecision(groupRole) {
+    if (groupRole === 'OWNER' || groupRole === 'MANAGER') {
+      return { allowed: true, role: 'admin' };
+    }
+    if (groupRole === 'MEMBER') {
+      return { allowed: true, role: 'user' };
+    }
+    return { allowed: false };
+  }
+
+  /**
+   * Resolves whether a caller is a fresh OWNER/MANAGER of the given group.
+   *
+   * Used by the provider-switch saving-admin check. An external GroupsApp
+   * failure is NOT collapsed into a role denial: it propagates so the caller can
+   * surface a retriable service failure, while a genuine non-admin resolves to
+   * `false`.
+   * @param {string} email - The saving administrator's email.
+   * @param {string} groupEmail - The candidate Google Group email.
+   * @returns {boolean} True only when the fresh lookup resolves OWNER/MANAGER.
+   * @throws {Error} When the GroupsApp lookup fails.
+   */
+  _resolveCandidateAdmin(email, groupEmail) {
+    Validate.requireParams({ email, groupEmail }, '_resolveCandidateAdmin');
+    const groupRole = this._resolveGroupRole(email, groupEmail);
+    return groupRole === 'OWNER' || groupRole === 'MANAGER';
   }
 }
 

@@ -18,7 +18,7 @@ const API_ERROR_CODE_MAP = {
   UNKNOWN_METHOD: 'UNKNOWN_METHOD',
   IN_USE: 'IN_USE',
   DEFINITION_STALE: 'DEFINITION_STALE',
-  FORBIDDEN: 'FORBIDDEN', // authenticated but not a group member
+  FORBIDDEN: 'FORBIDDEN', // authenticated but denied access (non-member or non-admin)
 };
 
 // Gate-exempt methods skip the auth gate and run their own handlers (OAuth status precedent).
@@ -30,6 +30,7 @@ const ADMIN_REQUIRED_METHOD_NAMES = Object.freeze([
   'setAuthenticationSettings',
 ]);
 
+const PII_LOG_METHODS = Object.freeze(['setAuthenticationSettings']);
 const ALLOWLISTED_METHOD_HANDLERS = Object.freeze({
   getAuthorisationStatus: () => new ScriptAppManager().isAuthorised(),
   getApplicationAccess: () => getApplicationAccess_(),
@@ -143,7 +144,7 @@ class ApiDispatcher extends BaseSingleton {
     ABLogger.getInstance().debug('API request received.', {
       requestId,
       method: methodName,
-      params: JSON.stringify(request.params),
+      ...(PII_LOG_METHODS.includes(methodName) ? {} : { params: JSON.stringify(request.params) }),
     });
 
     // Auth gate: runs before the allowlist lookup so non-members get FORBIDDEN uniformly and
@@ -155,7 +156,7 @@ class ApiDispatcher extends BaseSingleton {
       try {
         access = AuthService.getInstance().checkAccess({
           method: methodName,
-          ...(isAdminRequired ? { bypassCache: true } : {}),
+          bypassCache: isAdminRequired,
         });
       } catch (error) {
         // A thrown auth check is a transport-boundary failure, not a denial: map it to INTERNAL_ERROR.
@@ -225,7 +226,7 @@ class ApiDispatcher extends BaseSingleton {
     ABLogger.getInstance().debug('API response sent.', {
       requestId,
       method,
-      response: JSON.stringify(response),
+      ...(PII_LOG_METHODS.includes(method) ? {} : { response: JSON.stringify(response) }),
     });
   }
 
@@ -453,7 +454,8 @@ class ApiDispatcher extends BaseSingleton {
       [apiDisabledErrorName]: API_ERROR_CODE_MAP.UNKNOWN_METHOD,
       [apiDefinitionStaleErrorName]: API_ERROR_CODE_MAP.DEFINITION_STALE,
     };
-    let candidateCode = codeByErrorName[errorName];
+    let candidateCode =
+      errorName === apiValidationErrorName && error.code ? error.code : codeByErrorName[errorName];
     const isDefinitionStale = errorName === apiDefinitionStaleErrorName;
     if (!candidateCode && error?.reason === 'IN_USE') {
       candidateCode = API_ERROR_CODE_MAP.IN_USE;

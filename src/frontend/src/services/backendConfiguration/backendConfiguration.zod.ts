@@ -6,7 +6,7 @@ import {
 } from './backendConfigurationValidation';
 
 const IntegerSchema = z.number().int();
-const NonEmptyStringSchema = z.string();
+const NonEmptyStringSchema = z.string().min(1);
 const BackendUrlSchema = z.union([z.url(), z.literal('')]);
 
 /**

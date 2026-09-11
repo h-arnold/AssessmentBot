@@ -1,6 +1,20 @@
 /* global AuthService, ConfigurationManager, ApiValidationError */
 
 /**
+ * The exact request fields accepted by `setAuthenticationSettings`, matching the
+ * strict frontend `SetAuthenticationSettingsRequestSchema`. Unknown fields are
+ * rejected at the transport boundary so the backend and frontend request
+ * contracts agree.
+ * @type {ReadonlyArray<string>}
+ */
+const SET_AUTHENTICATION_SETTINGS_ALLOWED_FIELDS = Object.freeze([
+  'authMode',
+  'authGroupEmail',
+  'authUsers',
+  'expectedAuthRevision',
+]);
+
+/**
  * Auth transport endpoints (ACTION_PLAN Section 5).
  *
  * Owns the three authentication endpoints registered in
@@ -59,7 +73,6 @@ function getApplicationAccess_() {
  */
 function getAuthenticationSettings_() {
   const configManager = ConfigurationManager.getInstance();
-  const stored = configManager.getAllConfigurations();
   const authGroupEmail = configManager.getAuthGroupEmail();
   const authMode = configManager.getAuthMode();
 
@@ -67,8 +80,8 @@ function getAuthenticationSettings_() {
     return {
       authMode,
       authGroupEmail,
-      authUsers: JSON.parse(stored.authUsers),
-      authRevision: stored.authRevision ?? null,
+      authUsers: JSON.parse(configManager.getAuthUsers()),
+      authRevision: configManager.getAuthRevision() || null,
     };
   }
 
@@ -83,16 +96,26 @@ function getAuthenticationSettings_() {
 /**
  * Transport handler for `setAuthenticationSettings`.
  *
- * Validates the transport request shape (a plain object payload) and delegates
- * the atomic, revision-guarded save to the `AuthService` domain operation.
+ * Validates the transport request shape (a plain object payload with only the
+ * documented fields) and delegates the atomic, revision-guarded save to the
+ * `AuthService` domain operation.
  *
  * @param {*} parameters - Candidate settings payload.
  * @returns {{ success: true, authRevision: string|null }} The commit result.
- * @throws {ApiValidationError} When `parameters` is not a plain object.
+ * @throws {ApiValidationError} When `parameters` is not a plain object or
+ *   contains an unknown field.
  */
 function setAuthenticationSettings_(parameters) {
   if (!parameters || typeof parameters !== 'object' || Array.isArray(parameters)) {
     throw new ApiValidationError('setAuthenticationSettings requires a parameters object', {
+      method: 'setAuthenticationSettings',
+    });
+  }
+  const hasUnknownField = Object.keys(parameters).some(
+    (field) => !SET_AUTHENTICATION_SETTINGS_ALLOWED_FIELDS.includes(field)
+  );
+  if (hasUnknownField) {
+    throw new ApiValidationError('setAuthenticationSettings received an unknown field.', {
       method: 'setAuthenticationSettings',
     });
   }

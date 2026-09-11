@@ -74,24 +74,69 @@ class AuthService extends BaseSingleton {
   /**
    * Resolves whether the active user is authorised for the protected surface.
    *
-   * The decision pipeline is: resolve and normalise the caller identity
-   * (trimmed and lowercased — the AuthUserEntry storage contract; blank
-   * identity always denies and never claims or caches), detect a genuinely
-   * fresh install (the first eligible interactive caller is claimed as the
-   * sole admin through the Section 4 bootstrap claim, which then proceeds
-   * under the new provider), run the strict auth-state resolver (broken
-   * configuration denies fail-closed with an error-level audit), and delegate
-   * the membership decision to the resolved provider subclass. The provider is
-   * resolved from stored state on every call; the `bypassCache` and
-   * `neverClaim` options are passed through for the trigger execution context.
+   * Thin caller-facing wrapper over the shared internal access-resolution
+   * pipeline (`_resolveAccessDecision`): the same pipeline also backs the
+   * gate-exempt `getApplicationAccess` endpoint, so the two paths can never
+   * drift. `checkAccess` deliberately does NOT fall through to the new stored
+   * state when a competing writer commits configuration during the bootstrap
+   * claim — a claim-failure on the protected path denies fail-closed and the
+   * next request resolves normally from the committed state. The gate-exempt
+   * endpoint retains the fall-through (documented on `_resolveAccessDecision`).
    *
    * @param {Object} [options] - Optional overrides.
    * @param {boolean} [options.bypassCache=false] - Bypass the provider cache read (Google Groups only).
    * @param {boolean} [options.neverClaim=false] - Never bootstrap a fresh install (trigger context).
    * @param {string} [options.method] - Requested method, recorded in the audit log.
-   * @returns {{ allowed: boolean, role?: string }} The access decision.
+   * @returns {{ allowed: boolean, role?: string }} The access decision; `role`
+   *   is present only when access is allowed.
    */
   checkAccess({ bypassCache = false, neverClaim = false, method = null } = {}) {
+    const resolution = this._resolveAccessDecision({ bypassCache, neverClaim, method });
+    return resolution.allowed ? { allowed: true, role: resolution.role } : { allowed: false };
+  }
+
+  /**
+   * The single shared access-resolution pipeline for every caller path.
+   *
+   * The decision pipeline is: resolve and normalise the caller identity
+   * (trimmed and lowercased — the AuthUserEntry storage contract; blank
+   * identity always denies and never claims or caches), detect a genuinely
+   * fresh install (the first eligible interactive caller is claimed as the
+   * sole admin through the Section 4 bootstrap claim), run the strict
+   * auth-state resolver (broken configuration denies fail-closed with an
+   * error-level audit), and delegate the membership decision to the resolved
+   * provider subclass. The provider is resolved from stored state on every
+   * call; `bypassCache` and `neverClaim` are forwarded to the bootstrap claim
+   * and provider selection.
+   *
+   * @remarks
+   * Endpoint-specific claim-failure behaviour is the only intentional branch:
+   * `checkAccess` (the protected path) always denies when the claim cannot
+   * complete, while `AuthSettingsDomain.resolveApplicationAccess` passes
+   * `fallThroughOnClaimFailure: true` so that a competing writer that already
+   * committed a blob is resolved from that new state instead of being reported
+   * as a transient denial. The identity, freshness, broken-state and
+   * provider-selection steps are shared and must not be duplicated.
+   *
+   * @param {Object} [options] - Optional overrides.
+   * @param {boolean} [options.bypassCache=false] - Bypass the provider cache read (Google Groups only).
+   * @param {boolean} [options.neverClaim=false] - Never bootstrap a fresh install (trigger context).
+   * @param {string} [options.method] - Requested method, recorded in the audit log.
+   * @param {boolean} [options.fallThroughOnClaimFailure=false] - Resolve the
+   *   newly committed state when a competing writer wins the bootstrap race.
+   * @returns {{
+   *   allowed: boolean,
+   *   role: string|null,
+   *   email: string,
+   *   reason: 'ok'|'freshInstall'|'brokenConfig'|'denied'
+   * }} The access decision; `role` is `null` unless allowed.
+   */
+  _resolveAccessDecision({
+    bypassCache = false,
+    neverClaim = false,
+    method = null,
+    fallThroughOnClaimFailure = false,
+  } = {}) {
     // Resolve and normalise the server-resolved identity ONCE so every
     // downstream consumer (audit logs, provider membership checks, the
     // bootstrap claim) compares the same canonical form. Stored AuthUserEntry
@@ -99,6 +144,7 @@ class AuthService extends BaseSingleton {
     // mixed case or surrounding whitespace must be normalised before any
     // membership lookup or claim write.
     const email = Session.getActiveUser().getEmail().trim().toLowerCase();
+    const configManager = ConfigurationManager.getInstance();
 
     // Defence-in-depth: a blank server-resolved identity can never be
     // authorised, claimed, or cached.
@@ -107,24 +153,60 @@ class AuthService extends BaseSingleton {
         email,
         method,
       });
-      return { allowed: false };
+      return {
+        allowed: false,
+        role: null,
+        email,
+        reason: configManager.isFreshInstall() ? 'freshInstall' : 'denied',
+      };
     }
 
-    const configManager = ConfigurationManager.getInstance();
     if (configManager.isFreshInstall()) {
       // A genuinely fresh install is claimed by the first eligible interactive
       // caller through the Section 4 atomic bootstrap claim; trigger execution
       // (neverClaim) and blank-identity callers are denied without claiming.
-      return this._attemptBootstrapClaim(email, { neverClaim, method });
+      const claim = this._attemptBootstrapClaim(email, { neverClaim, method });
+      if (claim.allowed) {
+        return { allowed: true, role: claim.role, email, reason: 'ok' };
+      }
+      // A still-fresh store means the claim failed transiently (contention/cap/
+      // write failure) or no claim was permitted; both deny without a write. A
+      // non-fresh store means a competing writer committed configuration — only
+      // the gate-exempt endpoint falls through to classify that new state.
+      if (!fallThroughOnClaimFailure || configManager.isFreshInstall()) {
+        return { allowed: false, role: null, email, reason: 'denied' };
+      }
     }
 
+    return this._resolveStoredAccess(configManager, email, bypassCache, method);
+  }
+
+  /**
+   * Resolves access from the stored (non-fresh) auth state.
+   *
+   * Runs the strict auth-state resolver and delegates the membership decision
+   * to the provider resolved from the stored mode. Broken configuration denies
+   * fail-closed with an error-level audit.
+   *
+   * @param {ConfigurationManager} configManager - The configuration manager instance.
+   * @param {string} email - The normalised, non-blank caller email.
+   * @param {boolean} bypassCache - Bypass the provider cache read (Google Groups only).
+   * @param {string|null} method - Requested method, recorded in the audit log.
+   * @returns {{
+   *   allowed: boolean,
+   *   role: string|null,
+   *   email: string,
+   *   reason: 'ok'|'brokenConfig'|'denied'
+   * }} The stored-state access decision.
+   */
+  _resolveStoredAccess(configManager, email, bypassCache, method) {
     const resolution = this._resolveAuthState(configManager);
     if (resolution.state === 'broken') {
       ABLogger.getInstance().error(
         'AuthService: broken authentication configuration denies access.',
         { email, method, reason: resolution.error.message }
       );
-      return { allowed: false };
+      return { allowed: false, role: null, email, reason: 'brokenConfig' };
     }
 
     const { authState } = resolution;
@@ -133,13 +215,13 @@ class AuthService extends BaseSingleton {
         ? GoogleGroupsAuthService.getInstance()
         : ScriptPropertiesAuthService.getInstance();
 
-    return provider._resolveAccess({
+    const decision = provider._resolveAccess({ email, authState, bypassCache, method });
+    return {
+      allowed: decision.allowed,
+      role: decision.allowed ? decision.role : null,
       email,
-      authState,
-      bypassCache,
-      neverClaim,
-      method,
-    });
+      reason: decision.allowed ? 'ok' : 'denied',
+    };
   }
 
   /**
@@ -298,10 +380,12 @@ class AuthService extends BaseSingleton {
       }
       // Lock contention, cap excess or a persistence failure: deny fail-closed
       // with a safe audit that never echoes the serialised admin list or the
-      // revision value. A later request may retry the claim.
+      // revision value. The original thrown error is retained as developer-only
+      // context (never exposed in the user-facing envelope) so the failure is
+      // diagnosable. A later request may retry the claim.
       ABLogger.getInstance().warn(
         'AuthService: bootstrap claim failed — access denied; a later request may retry.',
-        { email, method, code: error.code }
+        { email, method, code: error.code, err: error }
       );
       return { allowed: false };
     }

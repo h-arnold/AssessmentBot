@@ -8,10 +8,14 @@
  * shared access-resolution path (performing the bootstrap claim) and returns the
  * exact reason enum (`ok`/`freshInstall`/`brokenConfig`/`denied`, no `provider`
  * field, no `'unconfigured'` reason); the settings pair are admin-only with the
- * documented read/write shapes; saves commit atomically or not at all with the
- * standard `ApiValidationError`/`INVALID_REQUEST` failure envelope and unchanged
- * storage on stale revision, last-admin removal/demotion, invalid candidates,
- * failed candidate-provider checks, groups-mode request-shape violations, and
+ * documented read/write shapes; saves commit atomically or not at all with a
+ * stable `ApiValidationError` code and unchanged storage on stale revision
+ * (`AUTH_SETTINGS_STALE_REVISION`), missing revision
+ * (`AUTH_SETTINGS_REVISION_REQUIRED`), last-admin removal/demotion
+ * (`AUTH_SETTINGS_LAST_ADMIN`), invalid candidates
+ * (`AUTH_SETTINGS_INVALID_CANDIDATE`), failed candidate-provider checks
+ * (`AUTH_SETTINGS_SAVING_ADMIN_DENIED`), retriable group-lookup service
+ * failures (`RATE_LIMITED`), groups-mode request-shape violations, and
  * quota-cap excess. The first switch from groups/legacy seeds `authRevision: '1'`
  * without requiring `expectedAuthRevision`. Validation messages never leak the
  * raw stored users list (PII); a contract-compliant SET stale-revision
@@ -273,7 +277,10 @@ describe('Auth endpoints — setAuthenticationSettings transport', () => {
     });
 
     expect(response.ok).toBe(false);
-    expect(response.error).toMatchObject({ code: 'INVALID_REQUEST', retriable: false });
+    expect(response.error).toMatchObject({
+      code: 'AUTH_SETTINGS_STALE_REVISION',
+      retriable: false,
+    });
     expect(rawStoreBlob(ctx.store)).toBe(before);
     // The validation envelope never leaks the stored users list (PII). The
     // revision-value restriction in auth-users.md applies to the bootstrap-claim
@@ -299,7 +306,10 @@ describe('Auth endpoints — setAuthenticationSettings transport', () => {
     });
 
     expect(response.ok).toBe(false);
-    expect(response.error).toMatchObject({ code: 'INVALID_REQUEST', retriable: false });
+    expect(response.error).toMatchObject({
+      code: 'AUTH_SETTINGS_REVISION_REQUIRED',
+      retriable: false,
+    });
     expect(rawStoreBlob(ctx.store)).toBe(before);
   });
 
@@ -330,7 +340,10 @@ describe('Auth endpoints — setAuthenticationSettings transport', () => {
     const response = dispatch('setAuthenticationSettings', params);
 
     expect(response.ok).toBe(false);
-    expect(response.error).toMatchObject({ code: 'INVALID_REQUEST', retriable: false });
+    expect(response.error).toMatchObject({
+      code: 'AUTH_SETTINGS_LAST_ADMIN',
+      retriable: false,
+    });
     expect(rawStoreBlob(ctx.store)).toBe(before);
   });
 
@@ -345,7 +358,6 @@ describe('Auth endpoints — setAuthenticationSettings transport', () => {
     ],
     ['an unknown role', [{ email: ADMIN, role: 'owner' }]],
     ['an unknown key', [{ email: ADMIN, role: 'admin', extra: true }]],
-    ['zero admins', [{ email: USER, role: 'user' }]],
   ])(
     'rejects %s in the candidate list with a validation envelope and unchanged storage',
     (_label, authUsers) => {
@@ -362,7 +374,10 @@ describe('Auth endpoints — setAuthenticationSettings transport', () => {
       });
 
       expect(response.ok).toBe(false);
-      expect(response.error).toMatchObject({ code: 'INVALID_REQUEST', retriable: false });
+      expect(response.error).toMatchObject({
+        code: 'AUTH_SETTINGS_INVALID_CANDIDATE',
+        retriable: false,
+      });
       expect(rawStoreBlob(ctx.store)).toBe(before);
     }
   );
@@ -401,7 +416,10 @@ describe('Auth endpoints — setAuthenticationSettings transport', () => {
     });
 
     expect(response.ok).toBe(false);
-    expect(response.error).toMatchObject({ code: 'INVALID_REQUEST', retriable: false });
+    expect(response.error).toMatchObject({
+      code: 'AUTH_SETTINGS_SAVING_ADMIN_DENIED',
+      retriable: false,
+    });
     expect(rawStoreBlob(ctx.store)).toBe(before);
   });
 

@@ -380,6 +380,33 @@ describe('AppAuthGate', () => {
     expect(screen.queryByText('Protected content')).not.toBeInTheDocument();
   });
 
+  it('marks the authorisation and access loading status regions busy for assistive technology', async () => {
+    const deferredAuth = createDeferredPromise<boolean>();
+    const { QueryWrapper } = createQueryWrapper();
+    getAuthorisationStatusMock.mockReturnValueOnce(deferredAuth.promise);
+    getApplicationAccessMock.mockImplementationOnce(() => new Promise(() => {}));
+    // The warm-up prefetch starts as soon as OAuth authorisation resolves, so it needs a
+    // promise double here even though this test only observes the loading surfaces.
+    warmStartupQueriesMock.mockReturnValueOnce(new Promise(() => {}));
+
+    render(
+      <AppAuthGate>
+        <output>Protected content</output>
+      </AppAuthGate>,
+      { wrapper: QueryWrapper }
+    );
+
+    const authorisationStatus = screen.getByRole('status', {
+      name: 'Loading authorisation status',
+    });
+    expect(authorisationStatus).toHaveAttribute('aria-busy', 'true');
+
+    deferredAuth.resolvePromise(true);
+
+    const accessStatus = await screen.findByRole('status', { name: 'Verifying access' });
+    expect(accessStatus).toHaveAttribute('aria-busy', 'true');
+  });
+
   it('renders the transport error and retry surface without protected children', async () => {
     const { QueryWrapper } = createQueryWrapper();
     getAuthorisationStatusMock.mockRejectedValueOnce(

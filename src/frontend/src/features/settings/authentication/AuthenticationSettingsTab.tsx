@@ -1,9 +1,13 @@
 import { Alert, Button, Card, Flex, Form, Input, Modal, Select, Skeleton, Typography } from 'antd';
 import { useMemo, type ReactElement } from 'react';
 import { APP_GAP_LG } from '../../../theme/spacing';
-import { useAuthenticationSettings, type AuthMode, type AuthUserRole } from './useAuthenticationSettings';
+import { useAuthenticationSettings } from './useAuthenticationSettings';
+import type { AuthMode } from './useAuthenticationSettings.helpers';
 import { AuthenticationSettingsUserTable } from './AuthenticationSettingsUserTable';
-import type { AuthUserEntry } from '../../../services/authService/authService.zod';
+import type {
+  AuthUserEntry,
+  AuthUserRole,
+} from '../../../services/authService/authService.zod';
 
 const { Text, Title } = Typography;
 
@@ -89,9 +93,6 @@ export function AuthenticationSettingsTab() {
     [pendingModeSwitch]
   );
 
-  const selectedAuthMode = stagedAuthMode ?? 'scriptProperties';
-  const authenticationModeHelperCopy = getAuthenticationModeHelperCopy(selectedAuthMode);
-
   if (loadError !== null) {
     return (
       <Card
@@ -105,10 +106,10 @@ export function AuthenticationSettingsTab() {
   }
 
   // Gate ready-state content on the seeded mode: until the query seed has populated the
-  // staged state, the Select would transiently fall back to scriptProperties, so keep the
-  // skeleton visible instead of painting the wrong region.
-  const isContentReady = !isInitialLoading && stagedAuthMode !== null;
-  if (!isContentReady) {
+  // staged state, the Select would transiently render the wrong region, so keep the
+  // skeleton visible instead. The explicit null check narrows `stagedAuthMode` to a
+  // concrete `AuthMode` for the ready-state content below.
+  if (isInitialLoading || stagedAuthMode === null) {
     return (
       <Card
         className="settings-tab-panel settings-tab-panel--authentication"
@@ -121,6 +122,8 @@ export function AuthenticationSettingsTab() {
       </Card>
     );
   }
+
+  const authenticationModeHelperCopy = getAuthenticationModeHelperCopy(stagedAuthMode);
 
   return (
     <Card
@@ -154,7 +157,7 @@ export function AuthenticationSettingsTab() {
                   aria-label="Authentication mode"
                   disabled={isSaving}
                   options={[...authModeOptions]}
-                  value={selectedAuthMode}
+                  value={stagedAuthMode}
                   onChange={(value) => requestModeSwitch(value)}
                 />
               </Form.Item>
@@ -242,11 +245,11 @@ type AuthenticationStatusStackProperties = Readonly<{
  * persistent stale-revision or save-error alerts.
  *
  * @param {AuthenticationStatusStackProperties} properties Status-stack properties.
- * @returns {ReactElement | null} The status stack nodes.
+ * @returns {ReactElement} The status stack nodes.
  */
 function AuthenticationStatusStack(
   properties: AuthenticationStatusStackProperties
-): ReactElement | null {
+): ReactElement {
   return (
     <>
       {properties.isRefreshing ? (
