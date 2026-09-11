@@ -122,6 +122,7 @@ g.DateUtils = require('../src/backend/Utils/DateUtils.js');
 g.GASPropertiesUtils = require('../src/backend/Utils/00_GASPropertiesUtils.js');
 
 g.ApiValidationError = require('../src/backend/Utils/ErrorTypes/ApiValidationError.js');
+g.ApiRateLimitError = require('../src/backend/Utils/ErrorTypes/ApiRateLimitError.js');
 g.DefinitionStaleError = require('../src/backend/Utils/ErrorTypes/DefinitionStaleError.js');
 g.AssignmentNotFoundError = require('../src/backend/Utils/ErrorTypes/AssignmentNotFoundError.js');
 g.ClassNotFoundError = require('../src/backend/Utils/ErrorTypes/ClassNotFoundError.js');
@@ -158,11 +159,19 @@ g.toReadableKey_ = validators.toReadableKey_;
 
 // Default LockService mock — always acquires the lock successfully.
 // Individual tests that need to control lock behaviour should override
-// globalThis.LockService in their own beforeEach/afterEach.
+// globalThis.LockService in their own beforeEach/afterEach. The script lock is the
+// single serialisation point for ALL configuration writes (ACTION_PLAN.md Section 2),
+// so it must always be present so setters serialise through the locked write path.
 g.LockService = {
   getUserLock() {
     return {
       tryLock: () => true,
+      releaseLock: () => {},
+    };
+  },
+  getScriptLock() {
+    return {
+      waitLock: () => {},
       releaseLock: () => {},
     };
   },
@@ -270,13 +279,51 @@ g.CacheManager = require('../src/backend/RequestHandlers/CacheManager.js').Cache
 // (`z_apiHandler.js`) calls AuthService.getInstance().checkAccess() before dispatch.
 g.AuthService = require('../src/backend/Utils/AuthService.js');
 
-// Default ConfigurationManager global used by the auth gate's fail-open bootstrap.
-// Any test focused on auth overrides globalThis.ConfigurationManager with a
-// getAuthGroupEmail mock (mirroring dispatcher-auth-gate.test.js). The default
-// returns '' so the gate fails open and non-auth dispatcher tests proceed normally.
+// Register the real AuthSettingsDomain delegate as a global (mirrors the GAS
+// concatenated runtime, where the top-level object in AuthSettingsDomain.js
+// becomes a script-scope global after AuthService.js evaluates). AuthService's
+// delegators resolve it lazily inside method bodies, so this must be attached
+// before any auth access/settings resolution executes in Node; the production
+// file performs no Node global wiring of its own.
+g.AuthSettingsDomain = require('../src/backend/Utils/AuthSettingsDomain.js').AuthSettingsDomain;
+
+// Attach the canonical strict auth-state resolver as a global so the AuthService
+// base can read it in Node (mirrors the GAS concatenated runtime where the
+// top-level function in 01_configKeysAndSchema.js is a global).
+g.validateAuthStateStrict_ =
+  require('../src/backend/ConfigurationManager/01_configKeysAndSchema.js').validateAuthStateStrict_;
+
+// Load the AuthService provider sub-classes as globals AFTER the base (mirroring
+// GAS concatenation order: AuthService.js evaluates before the provider files).
+g.GoogleGroupsAuthService = require('../src/backend/Utils/GoogleGroupsAuthService.js');
+g.ScriptPropertiesAuthService = require('../src/backend/Utils/ScriptPropertiesAuthService.js');
+
+// Default ConfigurationManager global used by the auth gate. Any test focused on
+// auth overrides globalThis.ConfigurationManager with a full resolver mock
+// (mirroring dispatcher-auth-gate.test.js and tests/utils/authService/). The
+// default models a CONFIGURED googleGroups install (authMode googleGroups + the
+// default group email), so the fail-closed gate allows the default teacher member
+// and non-auth dispatcher tests proceed normally.
 g.ConfigurationManager = {
   getInstance() {
-    return { getAuthGroupEmail: () => '', getAuthMode: () => 'googleGroups' };
+    return {
+      getAuthGroupEmail: () => 'teachers@school.edu',
+      getAuthMode: () => 'googleGroups',
+      getAuthUsers: () => '',
+      getAuthRevision: () => '',
+      getProperty: (key) => {
+        if (key === 'authMode') return 'googleGroups';
+        if (key === 'authGroupEmail') return 'teachers@school.edu';
+        return '';
+      },
+      getAllConfigurations: () => ({
+        authMode: 'googleGroups',
+        authGroupEmail: 'teachers@school.edu',
+      }),
+      isFreshInstall: () => false,
+      writeConfigurationLocked: () => {},
+      setProperty: () => {},
+    };
   },
 };
 

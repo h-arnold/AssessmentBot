@@ -48,6 +48,7 @@ type ApiMethodResponse = ApiResponseEnvelope | { transportFailure: unknown } | '
 type ApiMethodResponseMap = Partial<Record<string, ApiMethodResponse>>;
 
 const authStatusMethodName = 'getAuthorisationStatus';
+const applicationAccessMethodName = 'getApplicationAccess';
 const classPartialsMethodName = 'getABClassPartials';
 const assignmentTopicsMethodName = 'getAssignmentTopics';
 const assignmentDefinitionPartialsMethodName = 'getAssignmentDefinitionPartials';
@@ -179,6 +180,16 @@ function buildResolvedWarmupResponses(requestIdSuffix: string): ApiMethodRespons
       ok: true,
       requestId: `req-auth-${requestIdSuffix}`,
       data: true,
+    },
+    [applicationAccessMethodName]: {
+      ok: true,
+      requestId: `req-app-access-${requestIdSuffix}`,
+      data: {
+        allowed: true,
+        role: 'admin',
+        email: 'owner@example.com',
+        reason: 'ok',
+      },
     },
     [classPartialsMethodName]: {
       ok: true,
@@ -747,6 +758,16 @@ describe('App', () => {
         requestId: 'req-1',
         data: true,
       },
+      [applicationAccessMethodName]: {
+        ok: true,
+        requestId: 'req-app-access-1',
+        data: {
+          allowed: true,
+          role: 'admin',
+          email: 'owner@example.com',
+          reason: 'ok',
+        },
+      },
       [classPartialsMethodName]: 'pending',
       [assignmentTopicsMethodName]: 'pending',
       [assignmentDefinitionPartialsMethodName]: 'pending',
@@ -760,10 +781,10 @@ describe('App', () => {
     // OAuth status is still resolving: the loading surface is shown.
     expect(screen.getByRole('status', { name: loadingAuthorisationStatusLabel })).toBeInTheDocument();
 
-    // OAuth has resolved (authorised) but the warm-up datasets are still pending, so the gate
-    // fails closed: the verifying surface is shown and the dashboard remains hidden.
-    await screen.findByRole('status', { name: 'Verifying access' });
-    expect(screen.queryByText('Authorised')).not.toBeInTheDocument();
+    // OAuth resolves authorised and application access is granted, so the gate admits the shell.
+    // The warm-up prefetch runs after admission, so the dashboard is revealed while warm-up is
+    // still pending rather than being held behind it.
+    expect(await screen.findByText('Authorised')).toBeInTheDocument();
 
     // Release every warm-up dataset so the startup warm-up settles to ready.
     await act(async () => {
@@ -794,9 +815,10 @@ describe('App', () => {
       });
     });
 
-    // Warm-up ready: the protected dashboard is revealed.
+    // Warm-up ready: the shell remains revealed.
     expect(await screen.findByText('Authorised')).toBeInTheDocument();
     expect(transport.getCallCount(authStatusMethodName)).toBe(1);
+    expect(transport.getCallCount(applicationAccessMethodName)).toBe(1);
   });
 
   it('shows unauthorised status when backend returns false', async () => {
@@ -947,7 +969,7 @@ describe('App', () => {
     expect(transport.getCallCount(classPartialsMethodName)).toBe(1);
   });
 
-  it('shows fail-closed error result when startup warm-up fails and logs the failure once', async () => {
+  it('logs one warm-up failure and still reveals the shell when startup warm-up fails', async () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     installApiHandlerMock({
@@ -955,6 +977,16 @@ describe('App', () => {
         ok: true,
         requestId: 'req-auth-2',
         data: true,
+      },
+      [applicationAccessMethodName]: {
+        ok: true,
+        requestId: 'req-app-access-2',
+        data: {
+          allowed: true,
+          role: 'admin',
+          email: 'owner@example.com',
+          reason: 'ok',
+        },
       },
       [classPartialsMethodName]: {
         transportFailure: new Error('Class partial warm-up failed.'),
@@ -988,16 +1020,16 @@ describe('App', () => {
 
     renderApp();
 
-    // A failed warm-up blocks the dashboard with a fail-closed error Result rather than flashing
-    // the authorised surface. The failure carries no error code, so the generic copy is shown.
-    expect(await screen.findByText('An error occurred. Please try again.')).toBeInTheDocument();
-    expect(screen.queryByText('Authorised')).not.toBeInTheDocument();
+    // A failed warm-up no longer blocks the shell: admission is based on application access, so
+    // the dashboard is revealed and the failure is logged for operator visibility.
+    expect(await screen.findByText('Authorised')).toBeInTheDocument();
+    expect(screen.queryByText('An error occurred. Please try again.')).not.toBeInTheDocument();
 
     // The startup warm-up failure is still logged exactly once.
     await waitFor(() => {
       expect(
         consoleErrorSpy.mock.calls.filter(
-          (call) => call[0] === 'features/auth/AppAuthGate.startupWarmup'
+          (call) => call[0] === 'features/auth/useStartupWarmupCycle'
         )
       ).toHaveLength(1);
     });

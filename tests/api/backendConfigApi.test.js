@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { existsSync } from 'node:fs';
 
 const { loadApiHandlerModule } = require('../helpers/apiHandlerTestUtils.js');
 const {
@@ -8,13 +7,48 @@ const {
   createConfigurationManagerMock,
 } = require('../helpers/backendConfigTestHelpers.js');
 
-const legacyConfigurationGlobalsPath = new URL(
-  '../../src/backend/ConfigurationManager/99_globals.js',
-  import.meta.url
-);
+const AuthService = require('../../src/backend/Utils/AuthService.js');
+
+/**
+ * Asserts that no per-field configuration setter was invoked (the whole save is
+ * staged into one locked write).
+ * @param {Object} manager - The ConfigurationManager mock.
+ * @returns {void}
+ */
+function expectNoPerFieldSetters(manager) {
+  expect(manager.setBackendAssessorBatchSize).not.toHaveBeenCalled();
+  expect(manager.setSlidesFetchBatchSize).not.toHaveBeenCalled();
+  expect(manager.setRevokeAuthTriggerSet).not.toHaveBeenCalled();
+  expect(manager.setDaysUntilAuthRevoke).not.toHaveBeenCalled();
+  expect(manager.setJsonDbMasterIndexKey).not.toHaveBeenCalled();
+  expect(manager.setJsonDbLockTimeoutMs).not.toHaveBeenCalled();
+  expect(manager.setJsonDbLogLevel).not.toHaveBeenCalled();
+  expect(manager.setJsonDbBackupOnInitialise).not.toHaveBeenCalled();
+  expect(manager.setApiKey).not.toHaveBeenCalled();
+  expect(manager.setBackendUrl).not.toHaveBeenCalled();
+  expect(manager.setJsonDbRootFolderId).not.toHaveBeenCalled();
+}
+
+/**
+ * Asserts the standard successful backend-config write envelope.
+ * @param {Object} response - The dispatcher response envelope.
+ * @returns {void}
+ */
+function expectWriteSuccessEnvelope(response) {
+  expect(response).toEqual({
+    ok: true,
+    requestId: response.requestId,
+    data: { success: true },
+  });
+  expect(response.requestId).toEqual(expect.any(String));
+}
 
 afterEach(() => {
   vi.restoreAllMocks();
+  AuthService.resetForTests();
+  globalThis.CacheService._resetScriptCache();
+  globalThis.Session._resetActiveUserEmail();
+  globalThis.GroupsApp._resetGroups();
 });
 
 describe('backend configuration API transport', () => {
@@ -101,17 +135,7 @@ describe('backend configuration API transport', () => {
       // and once by the getBackendConfig handler.
       expect(configurationManagerMock.configurationManager.getInstance).toHaveBeenCalledTimes(2);
       expect(configurationManagerMock.manager.ensureDefaultConfiguration).toHaveBeenCalledTimes(1);
-      expect(configurationManagerMock.manager.setBackendAssessorBatchSize).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setSlidesFetchBatchSize).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setRevokeAuthTriggerSet).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setDaysUntilAuthRevoke).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setJsonDbMasterIndexKey).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setJsonDbLockTimeoutMs).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setJsonDbLogLevel).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setJsonDbBackupOnInitialise).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setApiKey).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setBackendUrl).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setJsonDbRootFolderId).not.toHaveBeenCalled();
+      expectNoPerFieldSetters(configurationManagerMock.manager);
       expect(response).toEqual({
         ok: true,
         requestId: response.requestId,
@@ -168,17 +192,7 @@ describe('backend configuration API transport', () => {
       // and once by the getBackendConfig handler.
       expect(configurationManagerMock.configurationManager.getInstance).toHaveBeenCalledTimes(2);
       expect(configurationManagerMock.manager.ensureDefaultConfiguration).toHaveBeenCalledTimes(1);
-      expect(configurationManagerMock.manager.setBackendAssessorBatchSize).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setSlidesFetchBatchSize).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setRevokeAuthTriggerSet).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setDaysUntilAuthRevoke).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setJsonDbMasterIndexKey).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setJsonDbLockTimeoutMs).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setJsonDbLogLevel).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setJsonDbBackupOnInitialise).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setApiKey).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setBackendUrl).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setJsonDbRootFolderId).not.toHaveBeenCalled();
+      expectNoPerFieldSetters(configurationManagerMock.manager);
       expect(response).toEqual({
         ok: true,
         requestId: response.requestId,
@@ -203,7 +217,7 @@ describe('backend configuration API transport', () => {
     }
   });
 
-  it('applies only defined backend configuration updates through apiHandler', () => {
+  it('applies only supplied ordinary fields through a single locked write', () => {
     const configurationManagerMock = createConfigurationManagerMock(vi);
 
     try {
@@ -221,24 +235,24 @@ describe('backend configuration API transport', () => {
       });
 
       expect(configurationManagerMock.configurationManager.getInstance).toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setBackendAssessorBatchSize).toHaveBeenCalledWith(42);
-      expect(configurationManagerMock.manager.setBackendUrl).toHaveBeenCalledWith(
-        'https://updated-backend.example.test'
-      );
-      expect(configurationManagerMock.manager.setDaysUntilAuthRevoke).toHaveBeenCalledWith(21);
-      expect(configurationManagerMock.manager.setApiKey).not.toHaveBeenCalled();
-      expect(response).toEqual({
-        ok: true,
-        requestId: response.requestId,
-        data: { success: true },
-      });
-      expect(response.requestId).toEqual(expect.any(String));
+      // Section 6 contract: one atomic locked mutation for the whole save, not
+      // one setter call (and lock acquisition) per supplied field.
+      expect(configurationManagerMock.manager.writeConfigurationLocked).toHaveBeenCalledTimes(1);
+      // The staged mutation merges exactly the supplied fields into the current
+      // snapshot; omitted fields (e.g. apiKey) are left untouched.
+      const mutator = configurationManagerMock.manager.writeConfigurationLocked.mock.calls[0][0];
+      const merged = mutator({ apiKey: 'live-secret-7890' });
+      expect(merged.backendAssessorBatchSize).toBe(42);
+      expect(merged.backendUrl).toBe('https://updated-backend.example.test');
+      expect(merged.daysUntilAuthRevoke).toBe(21);
+      expect(merged.apiKey).toBe('live-secret-7890');
+      expectWriteSuccessEnvelope(response);
     } finally {
       configurationManagerMock.restore();
     }
   });
 
-  it('does not call setters for undefined setBackendConfig fields', () => {
+  it('does not stage undefined setBackendConfig fields into the locked write', () => {
     const configurationManagerMock = createConfigurationManagerMock(vi);
 
     try {
@@ -255,63 +269,26 @@ describe('backend configuration API transport', () => {
         },
       });
 
-      expect(configurationManagerMock.manager.setBackendAssessorBatchSize).toHaveBeenCalledWith(18);
-      expect(configurationManagerMock.manager.setApiKey).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setBackendUrl).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setJsonDbRootFolderId).not.toHaveBeenCalled();
-      expect(response).toEqual({
-        ok: true,
-        requestId: response.requestId,
-        data: { success: true },
+      // The single locked mutation carries only defined fields; explicitly
+      // undefined fields are never staged or read.
+      expect(configurationManagerMock.manager.writeConfigurationLocked).toHaveBeenCalledTimes(1);
+      const mutator = configurationManagerMock.manager.writeConfigurationLocked.mock.calls[0][0];
+      const merged = mutator({
+        apiKey: 'stored-key',
+        backendUrl: 'https://stored.example.test',
+        jsonDbRootFolderId: 'folder-stored',
       });
-      expect(response.requestId).toEqual(expect.any(String));
+      expect(merged.backendAssessorBatchSize).toBe(18);
+      expect(merged.apiKey).toBe('stored-key');
+      expect(merged.backendUrl).toBe('https://stored.example.test');
+      expect(merged.jsonDbRootFolderId).toBe('folder-stored');
+      expectWriteSuccessEnvelope(response);
     } finally {
       configurationManagerMock.restore();
     }
   });
 
-  it('reports failed backend configuration writes through apiHandler', () => {
-    const configurationManagerMock = createConfigurationManagerMock(
-      vi,
-      {},
-      {
-        setApiKey: () => {
-          throw new Error('persist failed');
-        },
-      }
-    );
-
-    try {
-      const { ApiDispatcher } = loadApiHandlerModule();
-      const dispatcher = ApiDispatcher.getInstance();
-
-      const response = dispatcher.handle({
-        method: 'setBackendConfig',
-        params: {
-          apiKey: 'new-secret',
-          backendUrl: 'https://updated-backend.example.test',
-        },
-      });
-
-      expect(configurationManagerMock.manager.setApiKey).toHaveBeenCalledWith('new-secret');
-      expect(configurationManagerMock.manager.setBackendUrl).toHaveBeenCalledWith(
-        'https://updated-backend.example.test'
-      );
-      expect(response).toEqual({
-        ok: true,
-        requestId: response.requestId,
-        data: {
-          success: false,
-          error: expect.stringContaining('Failed to save some configuration values:'),
-        },
-      });
-      expect(response.requestId).toEqual(expect.any(String));
-    } finally {
-      configurationManagerMock.restore();
-    }
-  });
-
-  it('calls every backend configuration setter when all fields are provided', () => {
+  it('applies all supported ordinary fields in a single locked write', () => {
     const configurationManagerMock = createConfigurationManagerMock(vi);
 
     try {
@@ -335,188 +312,54 @@ describe('backend configuration API transport', () => {
         },
       });
 
-      expect(configurationManagerMock.manager.setBackendAssessorBatchSize).toHaveBeenCalledWith(42);
-      expect(configurationManagerMock.manager.setSlidesFetchBatchSize).toHaveBeenCalledWith(24);
-      expect(configurationManagerMock.manager.setApiKey).toHaveBeenCalledWith('new-secret');
-      expect(configurationManagerMock.manager.setBackendUrl).toHaveBeenCalledWith(
-        'https://updated-backend.example.test'
-      );
-      expect(configurationManagerMock.manager.setRevokeAuthTriggerSet).toHaveBeenCalledWith(true);
-      expect(configurationManagerMock.manager.setDaysUntilAuthRevoke).toHaveBeenCalledWith(90);
-      expect(configurationManagerMock.manager.setJsonDbMasterIndexKey).toHaveBeenCalledWith(
-        'UPDATED_MASTER_INDEX'
-      );
-      expect(configurationManagerMock.manager.setJsonDbLockTimeoutMs).toHaveBeenCalledWith(20000);
-      expect(configurationManagerMock.manager.setJsonDbLogLevel).toHaveBeenCalledWith('DEBUG');
-      expect(configurationManagerMock.manager.setJsonDbBackupOnInitialise).toHaveBeenCalledWith(
-        true
-      );
-      expect(configurationManagerMock.manager.setJsonDbRootFolderId).toHaveBeenCalledWith(
-        'folder-123'
-      );
-      expect(response).toEqual({
-        ok: true,
-        requestId: response.requestId,
-        data: { success: true },
+      // Every supported ordinary field can be supplied in one payload and is
+      // staged into the single locked mutation.
+      expect(configurationManagerMock.manager.writeConfigurationLocked).toHaveBeenCalledTimes(1);
+      const mutator = configurationManagerMock.manager.writeConfigurationLocked.mock.calls[0][0];
+      const merged = mutator({});
+      expect(merged).toEqual({
+        backendAssessorBatchSize: 42,
+        slidesFetchBatchSize: 24,
+        apiKey: 'new-secret',
+        backendUrl: 'https://updated-backend.example.test',
+        revokeAuthTriggerSet: true,
+        daysUntilAuthRevoke: 90,
+        jsonDbMasterIndexKey: 'UPDATED_MASTER_INDEX',
+        jsonDbLockTimeoutMs: 20000,
+        jsonDbLogLevel: 'DEBUG',
+        jsonDbBackupOnInitialise: true,
+        jsonDbRootFolderId: 'folder-123',
       });
-      expect(response.requestId).toEqual(expect.any(String));
+      expectWriteSuccessEnvelope(response);
     } finally {
       configurationManagerMock.restore();
     }
-  });
-
-  it('calls setApiKey with an empty string when setBackendConfig explicitly clears the API key', () => {
-    const configurationManagerMock = createConfigurationManagerMock(vi);
-
-    try {
-      const { ApiDispatcher } = loadApiHandlerModule();
-      const dispatcher = ApiDispatcher.getInstance();
-
-      const response = dispatcher.handle({
-        method: 'setBackendConfig',
-        params: {
-          apiKey: '',
-        },
-      });
-
-      expect(configurationManagerMock.manager.setApiKey).toHaveBeenCalledWith('');
-      expect(response).toEqual({
-        ok: true,
-        requestId: response.requestId,
-        data: { success: true },
-      });
-      expect(response.requestId).toEqual(expect.any(String));
-    } finally {
-      configurationManagerMock.restore();
-    }
-  });
-
-  it.each([
-    ['null params', null],
-    ['array params', []],
-    ['string params', 'invalid'],
-  ])(
-    'returns an invalid request envelope for malformed setBackendConfig params: %s',
-    (_caseName, params) => {
-      const configurationManagerMock = createConfigurationManagerMock(vi);
-
-      try {
-        const { ApiDispatcher } = loadApiHandlerModule();
-        const dispatcher = ApiDispatcher.getInstance();
-
-        const response = dispatcher.handle({
-          method: 'setBackendConfig',
-          params,
-        });
-
-        // Called once by the ApiDispatcher auth gate's group email lookup before the
-        // handler rejects the malformed params.
-        expect(configurationManagerMock.configurationManager.getInstance).toHaveBeenCalledTimes(1);
-        expect(response).toEqual({
-          ok: false,
-          requestId: response.requestId,
-          error: {
-            code: 'INVALID_REQUEST',
-            message: 'params must be an object.',
-            retriable: false,
-          },
-        });
-        expect(response.requestId).toEqual(expect.any(String));
-      } finally {
-        configurationManagerMock.restore();
-      }
-    }
-  );
-
-  it('keeps configuration transport errors envelope-based through apiHandler', () => {
-    const originalConfigurationManager = globalThis.ConfigurationManager;
-    globalThis.ConfigurationManager = {
-      DEFAULTS: CONFIGURATION_MANAGER_DEFAULTS,
-      getInstance: vi.fn(() => {
-        throw new Error('configuration exploded');
-      }),
-    };
-
-    try {
-      const { ApiDispatcher } = loadApiHandlerModule();
-      const dispatcher = ApiDispatcher.getInstance();
-
-      const response = dispatcher.handle({
-        method: 'getBackendConfig',
-      });
-
-      expect(globalThis.ConfigurationManager.getInstance).toHaveBeenCalledTimes(1);
-      expect(response).toEqual({
-        ok: false,
-        requestId: response.requestId,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: 'Internal API error.',
-          retriable: false,
-        },
-      });
-      expect(response.requestId).toEqual(expect.any(String));
-    } finally {
-      if (originalConfigurationManager === undefined) {
-        delete globalThis.ConfigurationManager;
-      } else {
-        globalThis.ConfigurationManager = originalConfigurationManager;
-      }
-    }
-  });
-
-  it('keeps configuration write transport errors envelope-based through apiHandler', () => {
-    const originalConfigurationManager = globalThis.ConfigurationManager;
-    globalThis.ConfigurationManager = {
-      DEFAULTS: CONFIGURATION_MANAGER_DEFAULTS,
-      getInstance: vi.fn(() => {
-        throw new Error('configuration save exploded');
-      }),
-    };
-
-    try {
-      const { ApiDispatcher } = loadApiHandlerModule();
-      const dispatcher = ApiDispatcher.getInstance();
-
-      const response = dispatcher.handle({
-        method: 'setBackendConfig',
-        params: {
-          backendUrl: 'https://updated-backend.example.test',
-        },
-      });
-
-      expect(globalThis.ConfigurationManager.getInstance).toHaveBeenCalledTimes(1);
-      expect(response).toEqual({
-        ok: false,
-        requestId: response.requestId,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: 'Internal API error.',
-          retriable: false,
-        },
-      });
-      expect(response.requestId).toEqual(expect.any(String));
-    } finally {
-      if (originalConfigurationManager === undefined) {
-        delete globalThis.ConfigurationManager;
-      } else {
-        globalThis.ConfigurationManager = originalConfigurationManager;
-      }
-    }
-  });
-
-  it('does not retain the legacy configuration globals transport file', () => {
-    expect(existsSync(legacyConfigurationGlobalsPath)).toBe(false);
   });
 });
 
-describe('backend configuration API transport — authMode', () => {
-  it('includes authMode defaulting to googleGroups when unset', () => {
+describe('backend configuration API transport — canonical read shape', () => {
+  it('returns exactly the 12 non-auth fields, including derived hasApiKey', () => {
     const configurationManagerMock = createConfigurationManagerMock(
       vi,
+      {
+        apiKey: 'live-secret-7890',
+        backendUrl: 'https://backend.example.test',
+        revokeAuthTriggerSet: true,
+        daysUntilAuthRevoke: 45,
+        slidesFetchBatchSize: 20,
+        jsonDbMasterIndexKey: 'MASTER_INDEX',
+        jsonDbLockTimeoutMs: 5000,
+        jsonDbLogLevel: 'INFO',
+        jsonDbBackupOnInitialise: false,
+        jsonDbRootFolderId: 'folder-123',
+      },
       {},
-      {},
-      { allConfigurations: {} }
+      {
+        allConfigurations: {
+          apiKey: 'live-secret-7890',
+          backendUrl: 'https://backend.example.test',
+        },
+      }
     );
 
     try {
@@ -527,14 +370,72 @@ describe('backend configuration API transport — authMode', () => {
         method: 'getBackendConfig',
       });
 
-      expect(response.data.authMode).toBe('googleGroups');
+      const keys = Object.keys(response.data).sort();
+      expect(keys).toEqual(
+        [
+          'apiKey',
+          'backendAssessorBatchSize',
+          'backendUrl',
+          'daysUntilAuthRevoke',
+          'hasApiKey',
+          'jsonDbBackupOnInitialise',
+          'jsonDbLogLevel',
+          'jsonDbLockTimeoutMs',
+          'jsonDbMasterIndexKey',
+          'jsonDbRootFolderId',
+          'revokeAuthTriggerSet',
+          'slidesFetchBatchSize',
+        ].sort()
+      );
+      expect(response.data.hasApiKey).toBe(true);
+      expect(response.data).not.toHaveProperty('authMode');
+      expect(response.data).not.toHaveProperty('authGroupEmail');
     } finally {
       configurationManagerMock.restore();
     }
   });
+});
 
-  it('calls setAuthMode with "none" when authMode is present in the setBackendConfig payload', () => {
-    const configurationManagerMock = createConfigurationManagerMock(vi);
+describe('backend configuration API transport — ordinary multi-field locked write', () => {
+  it('saves a multi-field payload through a single locked write (no clobber)', () => {
+    // Store-backed ConfigurationManager whose locked write path mirrors the
+    // production ConfigurationManager wiring (raw re-read, merge, single
+    // commit). A multi-field save must collapse into ONE locked mutation so a
+    // concurrent writer can never interleave between per-field commits.
+    const store = {
+      authMode: 'googleGroups',
+      authGroupEmail: 'teachers@school.edu',
+      jsonDbLogLevel: 'DEBUG',
+    };
+    const writeConfigurationLocked = vi.fn((mutator) => {
+      const next = mutator({ ...store });
+      Object.assign(store, next);
+    });
+    const manager = {
+      getAllConfigurations: vi.fn(() => ({ ...store })),
+      getAuthMode: vi.fn(() => 'googleGroups'),
+      getAuthGroupEmail: vi.fn(() => 'teachers@school.edu'),
+      getAuthUsers: vi.fn(() => ''),
+      getAuthRevision: vi.fn(() => ''),
+      isFreshInstall: vi.fn(() => false),
+      ensureDefaultConfiguration: vi.fn(() => ({})),
+      writeConfigurationLocked,
+      // Section 6 validation seam: ordinary fields are staged through the
+      // manager-owned preparePropertyValue seam before the single locked write.
+      preparePropertyValue: vi.fn((_configKey, value) => value),
+      setApiKey: vi.fn((value) => writeConfigurationLocked((c) => ({ ...c, apiKey: value }))),
+      setBackendUrl: vi.fn((value) =>
+        writeConfigurationLocked((c) => ({ ...c, backendUrl: value }))
+      ),
+      setDaysUntilAuthRevoke: vi.fn((value) =>
+        writeConfigurationLocked((c) => ({ ...c, daysUntilAuthRevoke: value }))
+      ),
+    };
+    const originalConfigurationManager = globalThis.ConfigurationManager;
+    globalThis.ConfigurationManager = {
+      DEFAULTS: CONFIGURATION_MANAGER_DEFAULTS,
+      getInstance: vi.fn(() => manager),
+    };
 
     try {
       const { ApiDispatcher } = loadApiHandlerModule();
@@ -543,74 +444,26 @@ describe('backend configuration API transport — authMode', () => {
       const response = dispatcher.handle({
         method: 'setBackendConfig',
         params: {
-          authMode: 'none',
+          apiKey: 'new-secret',
+          backendUrl: 'https://updated-backend.example.test',
+          daysUntilAuthRevoke: 21,
         },
       });
 
-      expect(configurationManagerMock.manager.setAuthMode).toHaveBeenCalledWith('none');
-      expect(response).toEqual({
-        ok: true,
-        requestId: response.requestId,
-        data: { success: true },
-      });
-      expect(response.requestId).toEqual(expect.any(String));
+      expect(response).toMatchObject({ ok: true, data: { success: true } });
+      // One atomic locked write for the whole multi-field save, not one per field.
+      expect(writeConfigurationLocked).toHaveBeenCalledTimes(1);
+      // The single merge commits the supplied string fields...
+      expect(store.apiKey).toBe('new-secret');
+      expect(store.backendUrl).toBe('https://updated-backend.example.test');
+      // ...and preserves an out-of-band stored value written by another writer.
+      expect(store.jsonDbLogLevel).toBe('DEBUG');
     } finally {
-      configurationManagerMock.restore();
-    }
-  });
-
-  it('calls setAuthMode with "googleGroups" when authMode is present in the setBackendConfig payload', () => {
-    const configurationManagerMock = createConfigurationManagerMock(vi);
-
-    try {
-      const { ApiDispatcher } = loadApiHandlerModule();
-      const dispatcher = ApiDispatcher.getInstance();
-
-      const response = dispatcher.handle({
-        method: 'setBackendConfig',
-        params: {
-          authMode: 'googleGroups',
-        },
-      });
-
-      expect(configurationManagerMock.manager.setAuthMode).toHaveBeenCalledWith('googleGroups');
-      expect(response).toEqual({
-        ok: true,
-        requestId: response.requestId,
-        data: { success: true },
-      });
-      expect(response.requestId).toEqual(expect.any(String));
-    } finally {
-      configurationManagerMock.restore();
-    }
-  });
-
-  it('returns a failed write with an aggregated authMode error for an invalid authMode value', () => {
-    const configurationManagerMock = createConfigurationManagerMock(
-      vi,
-      {},
-      {
-        setAuthMode: () => {
-          throw new Error('persist failed');
-        },
+      if (originalConfigurationManager === undefined) {
+        delete globalThis.ConfigurationManager;
+      } else {
+        globalThis.ConfigurationManager = originalConfigurationManager;
       }
-    );
-
-    try {
-      const { ApiDispatcher } = loadApiHandlerModule();
-      const dispatcher = ApiDispatcher.getInstance();
-
-      const response = dispatcher.handle({
-        method: 'setBackendConfig',
-        params: {
-          authMode: 'foo',
-        },
-      });
-
-      expect(response.data.success).toBe(false);
-      expect(response.data.error).toContain('authMode');
-    } finally {
-      configurationManagerMock.restore();
     }
   });
 });

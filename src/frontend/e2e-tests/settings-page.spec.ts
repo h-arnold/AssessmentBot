@@ -53,6 +53,15 @@ async function mockSettingsPageRuntime(page: Page) {
               return;
             }
 
+            if (method === 'getApplicationAccess') {
+              sendSuccess(
+                callbacks.successHandler,
+                { allowed: true, role: 'admin', email: 'owner@example.com', reason: 'ok' },
+                'req-application-access'
+              );
+              return;
+            }
+
             if (method === 'getABClassPartials') {
               sendSuccess(callbacks.successHandler, [], 'req-class-partials');
               return;

@@ -7,10 +7,10 @@ let lockWaitWarnThresholdMs;
 let activeLimit;
 let staleRequestAgeMs;
 let requestStoreFns;
-let apiRateLimitErrorName;
-let apiValidationErrorName;
-let apiDisabledErrorName;
-let apiDefinitionStaleErrorName;
+let apiRateLimitErrorName,
+  apiValidationErrorName,
+  apiDisabledErrorName,
+  apiDefinitionStaleErrorName;
 
 const API_ERROR_CODE_MAP = {
   RATE_LIMITED: 'RATE_LIMITED',
@@ -18,11 +18,24 @@ const API_ERROR_CODE_MAP = {
   UNKNOWN_METHOD: 'UNKNOWN_METHOD',
   IN_USE: 'IN_USE',
   DEFINITION_STALE: 'DEFINITION_STALE',
-  FORBIDDEN: 'FORBIDDEN', // authenticated but not a group member
+  FORBIDDEN: 'FORBIDDEN', // authenticated but denied access (non-member or non-admin)
 };
 
+// Gate-exempt methods skip the auth gate and run their own handlers (OAuth status precedent).
+const GATE_EXEMPT_METHOD_NAMES = Object.freeze(['getAuthorisationStatus', 'getApplicationAccess']);
+
+// Admin-only methods resolve access FRESH (provider cache bypassed); non-admin roles get FORBIDDEN.
+const ADMIN_REQUIRED_METHOD_NAMES = Object.freeze([
+  'getAuthenticationSettings',
+  'setAuthenticationSettings',
+]);
+
+const PII_LOG_METHODS = Object.freeze(['getAuthenticationSettings', 'setAuthenticationSettings']);
 const ALLOWLISTED_METHOD_HANDLERS = Object.freeze({
   getAuthorisationStatus: () => new ScriptAppManager().isAuthorised(),
+  getApplicationAccess: () => getApplicationAccess_(),
+  getAuthenticationSettings: () => getAuthenticationSettings_(),
+  setAuthenticationSettings: (parameters) => setAuthenticationSettings_(parameters),
   getABClassPartials: () => new ABClassController().getAllClassPartials(),
   getAssignmentDefinitionPartials: (parameters) => getAssignmentDefinitionPartials_(parameters),
   getAssignmentDefinition: (parameters) => getAssignmentDefinition_(parameters),
@@ -72,6 +85,10 @@ if (typeof module !== 'undefined' && module.exports) {
   apiDefinitionStaleErrorName = require('../Utils/ErrorTypes/DefinitionStaleError.js').name;
   globalThis.startAssessmentRun_ = require('./assignmentAssessment.js').startAssessmentRun_;
   globalThis.getAssignment_ = require('./assignmentAssessment.js').getAssignment_;
+  const apiAuthFns = require('./apiAuth.js');
+  globalThis.getApplicationAccess_ = apiAuthFns.getApplicationAccess_;
+  globalThis.getAuthenticationSettings_ = apiAuthFns.getAuthenticationSettings_;
+  globalThis.setAuthenticationSettings_ = apiAuthFns.setAuthenticationSettings_;
   // Wire only if not already set (allows test harness to install mocks before this module loads).
   if (globalThis.upsertABClass_ === undefined) {
     const abclassMutationsFns = require('./abclass/abclassMutations.js');
@@ -104,19 +121,10 @@ if (typeof module !== 'undefined' && module.exports) {
   apiDefinitionStaleErrorName = DefinitionStaleError.name;
 }
 
-/**
- * Dispatches incoming API requests to allowlisted handlers.
- * Manages request lifecycle phases (admission, handler invocation, completion) with rate limiting and state tracking.
- */
+/** Dispatches allowlisted API requests with rate limiting and lifecycle state tracking. */
 class ApiDispatcher extends BaseSingleton {
   /**
-   * Validates, resolves, and dispatches the request, returning a structured response envelope.
-   * As the API boundary entry point, this method always returns an envelope and never throws.
-   * Always wraps errors in a structured response.
-   *
-   * @remarks Downstream handler failures are logged once at the transport boundary with the original thrown value
-   * for execution-log diagnostics, then mapped to the frontend-safe envelope contract without exposing raw
-   * exception details to callers.
+   * Validates, resolves, and dispatches a request, returning a structured envelope; never throws.
    *
    * @param {Object} request - Request object with method and optional params.
    * @param {string} request.method - The API method name to dispatch.
@@ -130,30 +138,28 @@ class ApiDispatcher extends BaseSingleton {
       return this._failure(requestId, 'INVALID_REQUEST', 'Invalid API request payload.', false);
     }
 
-    // Normalise the method name once; every log, the allowlist lookup, and the
-    // auth audit trail record this canonical (trimmed) value so entries correlate
-    // with registered handler names even if a caller sends stray whitespace.
+    // Every log, the allowlist lookup, and the auth audit trail use this canonical (trimmed) method name.
     const methodName = request.method.trim();
 
     ABLogger.getInstance().debug('API request received.', {
       requestId,
       method: methodName,
-      params: JSON.stringify(request.params),
+      ...(PII_LOG_METHODS.includes(methodName) ? {} : { params: JSON.stringify(request.params) }),
     });
 
-    // Auth gate: runs after request validation but before the allowlist method
-    // lookup and admission phase, so non-members receive FORBIDDEN uniformly and
-    // cannot probe which API methods exist (UNKNOWN_METHOD is only observable by
-    // authorised callers). `getAuthorisationStatus` is gate-exempt — it skips the
-    // group check entirely and runs its OAuth-only handler.
-    if (methodName !== 'getAuthorisationStatus') {
+    // Auth gate: runs before the allowlist lookup so non-members get FORBIDDEN uniformly and
+    // cannot probe the method surface; gate-exempt methods skip the group check and run handlers.
+    if (!GATE_EXEMPT_METHOD_NAMES.includes(methodName)) {
+      // Admin-required methods resolve access FRESH (provider cache bypassed); the fresh role gates below.
+      const isAdminRequired = ADMIN_REQUIRED_METHOD_NAMES.includes(methodName);
       let access;
       try {
-        access = AuthService.getInstance().checkAccess({ method: methodName });
+        access = AuthService.getInstance().checkAccess({
+          method: methodName,
+          bypassCache: isAdminRequired,
+        });
       } catch (error) {
-        // A thrown auth check (e.g. ConfigurationManager persistence failure) is a
-        // transport-boundary error, not a group-membership denial — log it once at
-        // the boundary, then map to the INTERNAL_ERROR envelope rather than FORBIDDEN.
+        // A thrown auth check is a transport-boundary failure, not a denial: map it to INTERNAL_ERROR.
         ABLogger.getInstance().error(
           'Auth check failed.',
           { requestId, method: methodName },
@@ -161,7 +167,7 @@ class ApiDispatcher extends BaseSingleton {
         );
         return this._mapErrorToFailureEnvelope(requestId, error);
       }
-      if (!access.allowed) {
+      if (!access.allowed || (isAdminRequired && access.role !== 'admin')) {
         return this._failure(requestId, API_ERROR_CODE_MAP.FORBIDDEN, 'Access denied.', false);
       }
     }
@@ -175,11 +181,7 @@ class ApiDispatcher extends BaseSingleton {
     const admissionResult = this._runAdmissionPhase(requestId, methodName);
     if (!admissionResult.ok) {
       const response = admissionResult;
-      ABLogger.getInstance().debug('API response sent.', {
-        requestId,
-        method: methodName,
-        response: JSON.stringify(response),
-      });
+      this._logResponseSent(requestId, methodName, response);
       return response;
     }
 
@@ -196,10 +198,7 @@ class ApiDispatcher extends BaseSingleton {
     if (handlerFailed) {
       ABLogger.getInstance().error(
         'API request failed.',
-        {
-          requestId,
-          method: methodName,
-        },
+        { requestId, method: methodName },
         handlerError
       );
     }
@@ -208,38 +207,38 @@ class ApiDispatcher extends BaseSingleton {
 
     if (handlerFailed) {
       const response = this._mapErrorToFailureEnvelope(requestId, handlerError);
-      ABLogger.getInstance().debug('API response sent.', {
-        requestId,
-        method: methodName,
-        response: JSON.stringify(response),
-      });
+      this._logResponseSent(requestId, methodName, response);
       return response;
     }
 
     const response = this._success(requestId, data);
-    ABLogger.getInstance().debug('API response sent.', {
-      requestId,
-      method: methodName,
-      response: JSON.stringify(response),
-    });
+    this._logResponseSent(requestId, methodName, response);
     return response;
   }
 
   /**
-   * Acquires the user lock, prunes stale started entries, registers a started entry in the request store,
-   * and releases the lock. Returns a failure envelope if the lock cannot be acquired or active limit is reached.
-   * Request-store helpers reuse the pre-captured lockAcquiredAt timestamp to minimise Date.now() calls,
-   * which is required for reliable lock-timing observability tests.
-   *
+   * Logs the transport response envelope at debug level with request correlation.
+   * @param {string} requestId - Unique identifier for this request.
+   * @param {string} method - The canonical allowlisted method name.
+   * @param {Object} response - The response envelope to log.
+   */
+  _logResponseSent(requestId, method, response) {
+    ABLogger.getInstance().debug('API response sent.', {
+      requestId,
+      method,
+      ...(PII_LOG_METHODS.includes(method) ? {} : { response: JSON.stringify(response) }),
+    });
+  }
+
+  /**
+   * Acquires the lock, prunes stale entries, registers the started entry, then releases it.
    * @param {string} requestId - Unique identifier for this request.
    * @param {string} method - The API method name.
    * @returns {Object} Success envelope { ok: true } or failure envelope on admission error.
-   * @private
    */
   _runAdmissionPhase(requestId, method) {
-    const phaseStart = Date.now();
-    const lock = LockService.getUserLock();
-    if (!lock.tryLock(lockTimeoutMs)) {
+    const acquired = this._acquireLock(requestId, method, 'admission');
+    if (!acquired.lock) {
       return this._failure(
         requestId,
         'RATE_LIMITED',
@@ -247,16 +246,7 @@ class ApiDispatcher extends BaseSingleton {
         true
       );
     }
-    const lockAcquiredAt = Date.now();
-    const lockWaitMs = lockAcquiredAt - phaseStart;
-    if (lockWaitMs > lockWaitWarnThresholdMs) {
-      ABLogger.getInstance().warn('Lock wait exceeded threshold during admission.', {
-        phase: 'admission',
-        requestId,
-        method,
-        lockWaitMs,
-      });
-    }
+    const { lock, phaseStart, lockAcquiredAt, lockWaitMs } = acquired;
     try {
       const store = requestStoreFns.loadStore_();
 
@@ -287,17 +277,14 @@ class ApiDispatcher extends BaseSingleton {
 
       store[requestId] = requestStoreFns.createStartedRecord_(requestId, method, lockAcquiredAt);
       requestStoreFns.saveStore_(store);
-      const endTime = Date.now();
-      const stateUpdateMs = endTime - lockAcquiredAt;
-      const totalPhaseMs = endTime - phaseStart;
-      ABLogger.getInstance().info('Admission phase complete.', {
-        phase: 'admission',
+      this._logPhaseComplete(
+        'admission',
         requestId,
         method,
-        lockWaitMs,
-        stateUpdateMs,
-        totalPhaseMs,
-      });
+        phaseStart,
+        lockAcquiredAt,
+        lockWaitMs
+      );
       return { ok: true };
     } finally {
       lock.releaseLock();
@@ -305,32 +292,19 @@ class ApiDispatcher extends BaseSingleton {
   }
 
   /**
-   * Acquires the user lock, marks the request as success or error, compacts the store, and releases the lock.
-   * Logs a warning if the completion lock cannot be acquired but does not fail the overall request.
-   *
+   * Acquires the lock, marks the request success/error, compacts the store, and releases it.
    * @param {string} requestId - Unique identifier for this request.
    * @param {string} method - The API method name.
    * @param {boolean} handlerFailed - Whether the handler threw an error.
    * @param {*} [handlerError] - The value thrown by the handler, if any.
-   * @private
    */
   _runCompletionPhase(requestId, method, handlerFailed, handlerError) {
-    const phaseStart = Date.now();
-    const lock = LockService.getUserLock();
-    if (!lock.tryLock(lockTimeoutMs)) {
+    const acquired = this._acquireLock(requestId, method, 'completion');
+    if (!acquired.lock) {
       ABLogger.getInstance().warn('Could not acquire completion lock for request.', { requestId });
       return;
     }
-    const lockAcquiredAt = Date.now();
-    const lockWaitMs = lockAcquiredAt - phaseStart;
-    if (lockWaitMs > lockWaitWarnThresholdMs) {
-      ABLogger.getInstance().warn('Lock wait exceeded threshold during completion.', {
-        phase: 'completion',
-        requestId,
-        method,
-        lockWaitMs,
-      });
-    }
+    const { lock, phaseStart, lockAcquiredAt, lockWaitMs } = acquired;
     try {
       const store = requestStoreFns.loadStore_();
       if (handlerFailed) {
@@ -339,29 +313,76 @@ class ApiDispatcher extends BaseSingleton {
         requestStoreFns.markSuccess_(store, requestId);
       }
       requestStoreFns.saveStore_(requestStoreFns.compactStore_(store));
-      const endTime = Date.now();
-      const stateUpdateMs = endTime - lockAcquiredAt;
-      const totalPhaseMs = endTime - phaseStart;
-      ABLogger.getInstance().info('Completion phase complete.', {
-        phase: 'completion',
+      this._logPhaseComplete(
+        'completion',
         requestId,
         method,
-        lockWaitMs,
-        stateUpdateMs,
-        totalPhaseMs,
-      });
+        phaseStart,
+        lockAcquiredAt,
+        lockWaitMs
+      );
     } finally {
       lock.releaseLock();
     }
   }
 
   /**
-   * Determines whether the request object is valid.
-   * A valid request is a non-array object with a non-empty method string.
-   *
+   * Acquires the user lock, warning when the wait exceeds the threshold.
+   * @param {string} requestId - Unique identifier for this request.
+   * @param {string} method - The API method name.
+   * @param {string} phase - The lifecycle phase ('admission' or 'completion').
+   * @returns {{ lock: Object|null, phaseStart?: number, lockAcquiredAt?: number, lockWaitMs?: number }}
+   *   `lock: null` when the lock could not be acquired.
+   */
+  _acquireLock(requestId, method, phase) {
+    const phaseStart = Date.now();
+    const lock = LockService.getUserLock();
+    if (!lock.tryLock(lockTimeoutMs)) {
+      return { lock: null };
+    }
+    const lockAcquiredAt = Date.now();
+    const lockWaitMs = lockAcquiredAt - phaseStart;
+    if (lockWaitMs > lockWaitWarnThresholdMs) {
+      ABLogger.getInstance().warn(`Lock wait exceeded threshold during ${phase}.`, {
+        phase,
+        requestId,
+        method,
+        lockWaitMs,
+      });
+    }
+    return { lock, phaseStart, lockAcquiredAt, lockWaitMs };
+  }
+
+  /**
+   * Logs an admission/completion lifecycle phase with timing metadata.
+   * @param {string} phase - Lifecycle phase ('admission' or 'completion').
+   * @param {string} requestId - Unique identifier for this request.
+   * @param {string} method - The API method name.
+   * @param {number} phaseStart - Timestamp when the phase started.
+   * @param {number} lockAcquiredAt - Timestamp when the lock was acquired.
+   * @param {number} lockWaitMs - Lock wait duration.
+   */
+  _logPhaseComplete(phase, requestId, method, phaseStart, lockAcquiredAt, lockWaitMs) {
+    const endTime = Date.now();
+    const stateUpdateMs = endTime - lockAcquiredAt;
+    const totalPhaseMs = endTime - phaseStart;
+    ABLogger.getInstance().info(
+      `${phase === 'admission' ? 'Admission' : 'Completion'} phase complete.`,
+      {
+        phase,
+        requestId,
+        method,
+        lockWaitMs,
+        stateUpdateMs,
+        totalPhaseMs,
+      }
+    );
+  }
+
+  /**
+   * Determines whether the request object is valid (a non-array object with a non-empty method string).
    * @param {*} request - The request object to validate.
    * @returns {boolean} True if the request is valid.
-   * @private
    */
   _isValidRequest(request) {
     if (!request || typeof request !== 'object' || Array.isArray(request)) {
@@ -373,29 +394,20 @@ class ApiDispatcher extends BaseSingleton {
 
   /**
    * Generates a backend-owned request ID for transport and tracking purposes.
-   *
    * @returns {string} A unique request ID.
-   * @private
    */
   _resolveRequestId() {
     return Utilities.getUuid();
   }
 
   /**
-   * Builds a successful response envelope.
-   *
-   * @remarks This transport layer must not reshape handler payload contracts.
-   * It wraps method data in the stable envelope only; domain-field derivation
-   * (for example class label enrichment) must remain outside the backend API boundary.
-   *
+   * Builds a successful response envelope without reshaping the handler payload contract.
    * @param {string} requestId - Unique request identifier.
    * @param {*} data - Response data from the handler.
    * @returns {Object} Response envelope with ok=true, requestId, and data.
-   * @private
    */
   _success(requestId, data) {
-    // Defensive check: log and coerce undefined to null to prevent Zod parsing errors
-    // in the frontend where undefined values in response envelope cause validation failures
+    // Defensive check: log and coerce undefined to null (frontend Zod rejects undefined envelope data).
     if (data === undefined) {
       ABLogger.getInstance().warn('Success response with undefined data', { requestId });
     }
@@ -408,14 +420,12 @@ class ApiDispatcher extends BaseSingleton {
 
   /**
    * Builds a failure response envelope.
-   *
    * @param {string} requestId - Unique request identifier.
    * @param {string} code - Error code (e.g. RATE_LIMITED, INVALID_REQUEST, DEFINITION_STALE).
    * @param {string} message - Human-readable error message.
    * @param {boolean} retriable - Whether the operation can be safely retried.
    * @param {Object} [details] - Optional structured metadata to include in the error block.
-   * @returns {Object} Response envelope with ok=false, error details.
-   * @private
+   * @returns {Object} Response envelope with ok=false and error details.
    */
   _failure(requestId, code, message, retriable, details) {
     const error = { code, message, retriable };
@@ -430,46 +440,23 @@ class ApiDispatcher extends BaseSingleton {
   }
 
   /**
-   * Maps runtime errors to API failure envelopes.
-   * Recognises specific error types (ApiRateLimitError, ApiValidationError, ApiDisabledError,
-   * DefinitionStaleError) and maps them to appropriate error codes. Falls back to INTERNAL_ERROR
-   * for unknown error types.
-   *
-   * When mapping a DefinitionStaleError, the error code is set to DEFINITION_STALE regardless of
-   * the message content, and the error envelope includes a details block with structured metadata
-   * (definitionKey, referenceStale, templateStale, referenceLastModified, templateLastModified).
-   *
+   * Maps known runtime errors to failure envelopes, else INTERNAL_ERROR; a DefinitionStaleError
+   * maps to DEFINITION_STALE and adds the structured details block.
    * @param {string} requestId - Unique request identifier.
    * @param {*} error - The runtime error value to map.
    * @returns {Object} Failure response envelope.
-   * @private
    */
   _mapErrorToFailureEnvelope(requestId, error) {
     const errorName = error?.name;
-    let candidateCode;
-    let isDefinitionStale = false;
-    switch (errorName) {
-      case apiRateLimitErrorName: {
-        candidateCode = API_ERROR_CODE_MAP.RATE_LIMITED;
-        break;
-      }
-      case apiValidationErrorName: {
-        candidateCode = API_ERROR_CODE_MAP.INVALID_REQUEST;
-        break;
-      }
-      case apiDisabledErrorName: {
-        candidateCode = API_ERROR_CODE_MAP.UNKNOWN_METHOD;
-        break;
-      }
-      case apiDefinitionStaleErrorName: {
-        candidateCode = API_ERROR_CODE_MAP.DEFINITION_STALE;
-        isDefinitionStale = true;
-        break;
-      }
-      default: {
-        break;
-      }
-    }
+    const codeByErrorName = {
+      [apiRateLimitErrorName]: API_ERROR_CODE_MAP.RATE_LIMITED,
+      [apiValidationErrorName]: API_ERROR_CODE_MAP.INVALID_REQUEST,
+      [apiDisabledErrorName]: API_ERROR_CODE_MAP.UNKNOWN_METHOD,
+      [apiDefinitionStaleErrorName]: API_ERROR_CODE_MAP.DEFINITION_STALE,
+    };
+    let candidateCode =
+      errorName === apiValidationErrorName && error.code ? error.code : codeByErrorName[errorName];
+    const isDefinitionStale = errorName === apiDefinitionStaleErrorName;
     if (!candidateCode && error?.reason === 'IN_USE') {
       candidateCode = API_ERROR_CODE_MAP.IN_USE;
     }
@@ -494,9 +481,7 @@ class ApiDispatcher extends BaseSingleton {
 }
 
 /**
- * Entry point for the API handler.
- * Delegates the request to the ApiDispatcher singleton, which manages all request lifecycle and validation.
- *
+ * Entry point for the API handler; delegates to the ApiDispatcher singleton.
  * @param {Object} request - Request object with method and optional params.
  * @param {string} request.method - The API method name to dispatch.
  * @param {*} [request.params] - Optional parameters for the handler.

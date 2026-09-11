@@ -62,6 +62,15 @@ describe('ConfigurationManager Section 1 red contract', () => {
       [CONFIG_KEYS.API_KEY]: 'sk-old',
       [CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET]: 'false',
     };
+    // Mirror the raw store the cache was derived from so the locked write path's
+    // raw re-read observes the pre-existing fields (GAS cache == raw storage).
+    mocks.PropertiesService.scriptProperties.getProperty.mockReturnValue(
+      JSON.stringify({
+        [CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE]: '25',
+        [CONFIG_KEYS.API_KEY]: 'sk-old',
+        [CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET]: 'false',
+      })
+    );
 
     configManager.setProperty(CONFIG_KEYS.API_KEY, 'abt_7pC98PCoGJOcjN-qz6rNlSzKkgySJF-2');
 
@@ -127,6 +136,14 @@ describe('ConfigurationManager Section 1 red contract', () => {
       [CONFIG_KEYS.API_KEY]: 'sk-live',
       [CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET]: 'false',
     };
+    // Mirror the raw store the cache was derived from so the locked write path's
+    // raw re-read observes the pre-existing fields (GAS cache == raw storage).
+    mocks.PropertiesService.scriptProperties.getProperty.mockReturnValue(
+      JSON.stringify({
+        [CONFIG_KEYS.API_KEY]: 'sk-live',
+        [CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET]: 'false',
+      })
+    );
 
     configManager.setProperty(CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET, 'TRUE');
 

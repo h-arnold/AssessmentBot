@@ -1,7 +1,80 @@
-/* global ABLogger, ConfigurationManager, ApiValidationError */
+/* global ABLogger, ConfigurationManager, ApiValidationError, ApiRateLimitError */
 
 const API_KEY_MASK_VISIBLE_SUFFIX_LENGTH = 4;
 const API_KEY_MASK_PREFIX = '****';
+
+/**
+ * Auth fields that are read and managed exclusively through the dedicated auth
+ * endpoints (getApplicationAccess / getAuthenticationSettings). They must never
+ * reach the ordinary backend-configuration read or write transport.
+ * @type {string[]}
+ */
+const AUTH_MANAGED_CONFIG_FIELDS = ['authMode', 'authGroupEmail', 'authUsers', 'authRevision'];
+
+/**
+ * Shared descriptor read callback for every ordinary writable configuration field.
+ * Resolves the value from the `field` name bound on the descriptor, so that name is
+ * declared once per descriptor and can never drift from the read behaviour.
+ * @this {{ field: string }}
+ * @param {Object} config - Partial configuration payload.
+ * @returns {*} Raw value for the descriptor's field.
+ */
+function readBackendConfigField_(config) {
+  return config[this.field];
+}
+
+/**
+ * Ordinary (non-auth) writable backend configuration fields, in canonical order.
+ * Each descriptor carries the field name ONCE; the read behaviour is derived from
+ * that single `field` value so the name can never drift from the read callback.
+ * @type {Array<{ field: string, read: function(Object): * }>}
+ */
+const BACKEND_CONFIG_WRITABLE_FIELDS = Object.freeze([
+  {
+    field: 'backendAssessorBatchSize',
+    read: readBackendConfigField_,
+  },
+  {
+    field: 'slidesFetchBatchSize',
+    read: readBackendConfigField_,
+  },
+  {
+    field: 'apiKey',
+    read: readBackendConfigField_,
+  },
+  {
+    field: 'backendUrl',
+    read: readBackendConfigField_,
+  },
+  {
+    field: 'revokeAuthTriggerSet',
+    read: readBackendConfigField_,
+  },
+  {
+    field: 'daysUntilAuthRevoke',
+    read: readBackendConfigField_,
+  },
+  {
+    field: 'jsonDbMasterIndexKey',
+    read: readBackendConfigField_,
+  },
+  {
+    field: 'jsonDbLockTimeoutMs',
+    read: readBackendConfigField_,
+  },
+  {
+    field: 'jsonDbLogLevel',
+    read: readBackendConfigField_,
+  },
+  {
+    field: 'jsonDbBackupOnInitialise',
+    read: readBackendConfigField_,
+  },
+  {
+    field: 'jsonDbRootFolderId',
+    read: readBackendConfigField_,
+  },
+]);
 
 /**
  * Masks an API key while preserving the visible suffix used by the legacy config payload.
@@ -44,15 +117,93 @@ function getBackendConfig_() {
     jsonDbLogLevel: configManager.getJsonDbLogLevel(),
     jsonDbBackupOnInitialise: configManager.getJsonDbBackupOnInitialise(),
     jsonDbRootFolderId: jsonDatabaseRootFolderId || '',
-    authGroupEmail: configManager.getAuthGroupEmail(),
-    authMode: configManager.getAuthMode(),
   };
 
   return config;
 }
 
 /**
- * Applies supported backend configuration updates using ConfigurationManager setters.
+ * Stages each supplied ordinary field through the manager-owned validate/normalise
+ * seam, collecting a redacted aggregate error list for any failures.
+ * @param {Object} configManager - The ConfigurationManager instance.
+ * @param {Object} config - Partial configuration payload.
+ * @returns {{ patch: Object, errors: string[], failedErrors: Error[] }} Staged
+ *   patch entries plus the redacted aggregate errors and their causes.
+ */
+function stageBackendConfigPatch_(configManager, config) {
+  const errors = [];
+  const failedErrors = [];
+  const stagedEntries = [];
+
+  for (const descriptor of BACKEND_CONFIG_WRITABLE_FIELDS) {
+    const { field } = descriptor;
+    const value = descriptor.read(config);
+    if (value === undefined) {
+      continue;
+    }
+
+    try {
+      stagedEntries.push([field, configManager.preparePropertyValue(field, value)]);
+    } catch (error) {
+      errors.push(`${field}: ${error?.message ?? 'REDACTED'}`);
+      failedErrors.push(error);
+    }
+  }
+
+  return { patch: Object.fromEntries(stagedEntries), errors, failedErrors };
+}
+
+/**
+ * Commits a staged ordinary-configuration patch as ONE atomic locked write.
+ * @remarks Lock contention is transient and is rethrown as a retriable
+ *   `ApiRateLimitError` (mapped to the RATE_LIMITED envelope by the dispatcher)
+ *   rather than being flattened into the domain failure result.
+ * @param {Object} configManager - The ConfigurationManager instance.
+ * @param {Object} patch - Staged serialised field values keyed by field name.
+ * @returns {string|null} A redacted aggregate failure message, or null on success.
+ * @throws {ApiRateLimitError} On configuration-lock contention.
+ */
+function commitBackendConfigPatch_(configManager, patch) {
+  if (Object.keys(patch).length === 0) {
+    return null;
+  }
+
+  try {
+    configManager.writeConfigurationLocked((current) => ({ ...current, ...patch }));
+    return null;
+  } catch (error) {
+    if (error?.code === 'CONFIG_LOCK_CONTENTION') {
+      // SPEC decision 12: configuration-lock contention is transient and must
+      // surface as the retriable RATE_LIMITED envelope (ApiRateLimitError →
+      // RATE_LIMITED), never as a non-retriable INTERNAL_ERROR or a domain-level
+      // `{ success: false }` result. The raw lock signal is not frontend-safe.
+      ABLogger.getInstance().warn('setBackendConfig: configuration lock contention during save.', {
+        method: 'setBackendConfig',
+        cause: error,
+      });
+      throw new ApiRateLimitError(
+        'Configuration could not be saved because the configuration lock is busy. Please retry.',
+        { method: 'setBackendConfig', cause: error }
+      );
+    }
+    const message = `Failed to save some configuration values: ${Object.keys(patch)
+      .map((name) => `${name}: ${error?.message ?? 'REDACTED'}`)
+      .join('; ')}`;
+    ABLogger.getInstance().error('Error saving configuration values.', {
+      configKeys: Object.keys(patch),
+      error,
+    });
+    return message;
+  }
+}
+
+/**
+ * Applies supported backend configuration updates as ONE atomic locked write.
+ * @remarks Rejecting the auth fields (authMode, authGroupEmail, authUsers,
+ * authRevision) for every caller — including admins — is deliberate transport
+ * defence-in-depth: auth settings are managed only through the dedicated
+ * authentication endpoints (getApplicationAccess / getAuthenticationSettings),
+ * never through the ordinary backend-configuration write transport.
  * @param {Object} config - Partial configuration payload.
  * @returns {{ success: boolean, error?: string }} Result payload.
  */
@@ -64,107 +215,31 @@ function setBackendConfig_(config) {
     });
   }
 
-  const errors = [];
-  const failedErrors = [];
+  for (const field of AUTH_MANAGED_CONFIG_FIELDS) {
+    if (Object.hasOwn(config, field)) {
+      // Auth state is read and managed exclusively through the dedicated auth
+      // endpoints for every caller, including admins. Rejecting the auth fields
+      // here is transport defence-in-depth so no authMode/authGroupEmail/
+      // authUsers/authRevision can reach an ordinary config write.
+      throw new ApiValidationError(
+        `${field} is managed through the dedicated authentication endpoints and cannot be set through setBackendConfig.`,
+        { method: 'setBackendConfig', fieldName: field }
+      );
+    }
+  }
+
   const configManager = ConfigurationManager.getInstance();
-  const updates = [
-    {
-      name: 'backendAssessorBatchSize',
-      value: config.backendAssessorBatchSize,
-      applySetting: (value) => configManager.setBackendAssessorBatchSize(value),
-    },
-    {
-      name: 'slidesFetchBatchSize',
-      value: config.slidesFetchBatchSize,
-      applySetting: (value) => configManager.setSlidesFetchBatchSize(value),
-    },
-    {
-      name: 'apiKey',
-      value: config.apiKey,
-      applySetting: (value) => configManager.setApiKey(value),
-    },
-    {
-      name: 'backendUrl',
-      value: config.backendUrl,
-      applySetting: (value) => configManager.setBackendUrl(value),
-    },
-    {
-      name: 'revokeAuthTriggerSet',
-      value: config.revokeAuthTriggerSet,
-      applySetting: (value) => configManager.setRevokeAuthTriggerSet(value),
-    },
-    {
-      name: 'daysUntilAuthRevoke',
-      value: config.daysUntilAuthRevoke,
-      applySetting: (value) => configManager.setDaysUntilAuthRevoke(value),
-    },
-    {
-      name: 'jsonDbMasterIndexKey',
-      value: config.jsonDbMasterIndexKey,
-      applySetting: (value) => configManager.setJsonDbMasterIndexKey(value),
-    },
-    {
-      name: 'jsonDbLockTimeoutMs',
-      value: config.jsonDbLockTimeoutMs,
-      applySetting: (value) => configManager.setJsonDbLockTimeoutMs(value),
-    },
-    {
-      name: 'jsonDbLogLevel',
-      value: config.jsonDbLogLevel,
-      applySetting: (value) => configManager.setJsonDbLogLevel(value),
-    },
-    {
-      name: 'jsonDbBackupOnInitialise',
-      value: config.jsonDbBackupOnInitialise,
-      applySetting: (value) => configManager.setJsonDbBackupOnInitialise(value),
-    },
-    {
-      name: 'jsonDbRootFolderId',
-      value: config.jsonDbRootFolderId,
-      applySetting: (value) => configManager.setJsonDbRootFolderId(value),
-    },
-    {
-      name: 'authGroupEmail',
-      value: config.authGroupEmail,
-      applySetting: (value) => configManager.setAuthGroupEmail(value),
-    },
-    {
-      name: 'authMode',
-      value: config.authMode,
-      applySetting: (value) => configManager.setAuthMode(value),
-    },
-  ];
-
-  /**
-   * Persists a single configuration update while preserving legacy error aggregation.
-   * @param {Function} action - Setter callback.
-   * @param {string} name - Public config field name.
-   * @returns {boolean} True when the update succeeds.
-   */
-  function safeSet(action, name) {
-    try {
-      action();
-      return true;
-    } catch (error) {
-      ABLogger.getInstance().error('Error saving configuration value.', { configKey: name, error });
-      errors.push(`${name}: ${error?.message ?? 'REDACTED'}`);
-      failedErrors.push(error);
-      return false;
-    }
-  }
-
-  for (const { name, value, applySetting } of updates) {
-    if (value === undefined) {
-      continue;
-    }
-
-    safeSet(() => applySetting(value), name);
-  }
+  const { patch, errors, failedErrors } = stageBackendConfigPatch_(configManager, config);
 
   if (errors.length > 0) {
     const message = `Failed to save some configuration values: ${errors.join('; ')}`;
     ABLogger.getInstance().error(message, { failedSettings: [...errors], errors: failedErrors });
     return { success: false, error: message };
+  }
+
+  const writeFailure = commitBackendConfigPatch_(configManager, patch);
+  if (writeFailure) {
+    return { success: false, error: writeFailure };
   }
 
   ABLogger.getInstance().info('Configuration saved successfully.');

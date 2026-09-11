@@ -1,10 +1,17 @@
 /**
- * AuthService unit tests.
+ * AuthService unit tests — legacy Google Groups provider compatibility.
  *
- * Unit tests for the delivered AuthService (src/backend/Utils/AuthService.js);
- * the authMode: 'none' bypass is exercised in the
- * 'checkAccess — authMode none bypass' block. The GAS harness stubs (Session,
- * GroupsApp, CacheService) are provisioned in tests/setupGlobals.js.
+ * These tests pin the byte-for-byte-compatible Google Groups provider surface
+ * of the refactored AuthService (src/backend/Utils/AuthService.js): membership
+ * and role mapping, the unchanged cache key format and six-hour TTL, denial
+ * never being cached, and bypassCache forcing a fresh lookup. The GAS harness
+ * stubs (Session, GroupsApp, CacheService) are provisioned in
+ * tests/setupGlobals.js.
+ *
+ * The removed temporary development bypass ('none') and the removed fail-open
+ * bootstrap are no longer exercised here; the target deny behaviour for those
+ * rows lives in authServiceProviderResolution.test.js and
+ * authServiceTriggerContext.test.js.
  *
  * AuthService reads AUTH_GROUP_EMAIL via ConfigurationManager.getInstance(),
  * resolves the caller email via Session.getActiveUser().getEmail(), delegates
@@ -14,49 +21,10 @@
  */
 const AuthService = require('../../../src/backend/Utils/AuthService.js');
 const { withGlobalMocks } = require('../../helpers/globalMockManager.js');
+const { createGroupsAppMock, createSessionMock } = require('./authServiceTestHarness.js');
 
 /** The 6-hour TTL (in seconds) AuthService passes to CacheManager.put(). */
 const SIX_HOURS_SECONDS = 6 * 60 * 60;
-
-/**
- * Builds a per-test Session mock exposing getActiveUser().getEmail().
- * @param {string} email - The email to return, or '' for a blank identity.
- * @returns {{ session: { getActiveUser: import('vitest').Mock },
- *            getEmail: () => string }}
- */
-function createSessionMock({ email }) {
-  return {
-    session: {
-      getActiveUser: () => ({ getEmail: () => email }),
-    },
-  };
-}
-
-/**
- * Builds a per-test GroupsApp mock. Members are a map of user email → role.
- * When `groupExists` is false, group membership lookup fulfils to an error;
- * when `lookupError` is supplied, it is thrown on lookup regardless. Both
- * paths model the "group not found / GroupsApp error → deny" contract.
- * @param {Record<string,string>} members - email → Group role map.
- * @returns {{ group: { hasUser: import('vitest').Mock,
- *   getRole: import('vitest').Mock } | null, getGroupByEmail: import('vitest').Mock }}
- */
-function createGroupsAppMock({ members = {}, groupExists = true, lookupError = null }) {
-  const group = groupExists
-    ? {
-        hasUser: vi.fn((email) => Object.hasOwn(members, email)),
-        getRole: vi.fn((email) => (Object.hasOwn(members, email) ? members[email] : null)),
-      }
-    : null;
-  return {
-    group,
-    getGroupByEmail: vi.fn((groupEmail) => {
-      if (lookupError) throw lookupError;
-      if (!groupExists) throw new Error(`Group not found: ${groupEmail}`);
-      return group;
-    }),
-  };
-}
 
 describe('AuthService', () => {
   let restoreGlobals;
@@ -85,6 +53,23 @@ describe('AuthService', () => {
     const configManager = {
       getAuthGroupEmail: vi.fn(() => authGroup.value),
       getAuthMode: vi.fn(() => authMode.value),
+      // Forward-compatible accessors for the refactored AuthService resolver:
+      // this suite models an existing-config googleGroups install, so the
+      // freshness probe is false and the raw auth fields are exposed.
+      getAuthUsers: vi.fn(() => ''),
+      getAuthRevision: vi.fn(() => ''),
+      getProperty: vi.fn((key) => {
+        if (key === 'authGroupEmail') return authGroup.value;
+        if (key === 'authMode') return authMode.value;
+        return '';
+      }),
+      getAllConfigurations: vi.fn(() => ({
+        authGroupEmail: authGroup.value,
+        authMode: authMode.value,
+      })),
+      isFreshInstall: vi.fn(() => false),
+      writeConfigurationLocked: vi.fn(),
+      setProperty: vi.fn(),
     };
     const globalMocks = {
       ABLogger: () => ({ getInstance: () => mockABLogger }),
@@ -153,38 +138,6 @@ describe('AuthService', () => {
       }).restore;
       const instance = AuthService.getInstance();
       expect(typeof instance.checkAccess).toBe('function');
-    });
-  });
-
-  describe('_isGroupMember — parameter validation', () => {
-    it('throws when email is missing', () => {
-      expect(() => AuthService.getInstance()._isGroupMember(undefined, 'grp@school.edu')).toThrow(
-        /is required/
-      );
-    });
-
-    it('throws when groupEmail is missing', () => {
-      expect(() =>
-        AuthService.getInstance()._isGroupMember('teacher@school.edu', undefined)
-      ).toThrow(/is required/);
-    });
-
-    it('throws when both parameters are missing', () => {
-      expect(() => AuthService.getInstance()._isGroupMember(undefined, undefined)).toThrow(
-        /is required/
-      );
-    });
-
-    it('throws when email is null', () => {
-      expect(() => AuthService.getInstance()._isGroupMember(null, 'grp@school.edu')).toThrow(
-        /is required/
-      );
-    });
-
-    it('throws when groupEmail is null', () => {
-      expect(() => AuthService.getInstance()._isGroupMember('teacher@school.edu', null)).toThrow(
-        /is required/
-      );
     });
   });
 
@@ -274,86 +227,6 @@ describe('AuthService', () => {
         groupExists: false,
       }).restore;
       const result = AuthService.getInstance().checkAccess();
-      expect(result).toEqual({ allowed: false });
-    });
-  });
-
-  describe('checkAccess — configuration dependent', () => {
-    it('fails open with role user when AUTH_GROUP_EMAIL is unset and requireConfigured is falsy', () => {
-      authGroup.value = '';
-      restoreGlobals = provisionAuthContext({ email: 'teacher@school.edu', members: {} }).restore;
-
-      const result = AuthService.getInstance().checkAccess();
-      expect(result).toEqual({ allowed: true, role: 'user' });
-      expect(mockABLogger.warn).toHaveBeenCalled();
-    });
-
-    it('fails closed when AUTH_GROUP_EMAIL is unset and requireConfigured is true', () => {
-      authGroup.value = '';
-      restoreGlobals = provisionAuthContext({ email: 'teacher@school.edu', members: {} }).restore;
-
-      const result = AuthService.getInstance().checkAccess({ requireConfigured: true });
-      expect(result).toEqual({ allowed: false });
-      expect(mockABLogger.error).toHaveBeenCalled();
-    });
-  });
-
-  describe('checkAccess — authMode none bypass', () => {
-    it('returns allowed as a plain user and never consults the group email when authMode is none', () => {
-      authMode.value = 'none';
-      authGroup.value = '';
-      const ctx = provisionAuthContext({ email: '' });
-
-      const result = AuthService.getInstance().checkAccess({});
-
-      expect(result).toEqual({ allowed: true, role: 'user' });
-      // The bypass must fire before the group-email read — this proves the
-      // short-circuit happens at the very top of checkAccess.
-      expect(ctx.configManager.getAuthGroupEmail).not.toHaveBeenCalled();
-    });
-
-    it('returns allowed as a plain user even with requireConfigured when authMode is none', () => {
-      authMode.value = 'none';
-      authGroup.value = '';
-      const ctx = provisionAuthContext({ email: '' });
-
-      const result = AuthService.getInstance().checkAccess({ requireConfigured: true });
-
-      expect(result).toEqual({ allowed: true, role: 'user' });
-      expect(ctx.configManager.getAuthGroupEmail).not.toHaveBeenCalled();
-    });
-
-    it('returns allowed as a plain user even with bypassCache when authMode is none', () => {
-      authMode.value = 'none';
-      restoreGlobals = provisionAuthContext({}).restore;
-
-      const result = AuthService.getInstance().checkAccess({ bypassCache: true });
-
-      expect(result).toEqual({ allowed: true, role: 'user' });
-    });
-
-    it('logs a warning identifying the authMode bypass when authMode is none', () => {
-      authMode.value = 'none';
-      restoreGlobals = provisionAuthContext({}).restore;
-
-      AuthService.getInstance().checkAccess({});
-
-      // The bypass is a temporary development measure — the warn must carry the
-      // authMode context so the log is distinguishable from a group denial.
-      expect(mockABLogger.warn).toHaveBeenCalled();
-      expect(flattenedLog()).toContain('authMode');
-    });
-
-    it('still denies a non-member when authMode is googleGroups', () => {
-      authMode.value = 'googleGroups';
-      authGroup.value = 'teachers@school.edu';
-      restoreGlobals = provisionAuthContext({
-        email: 'outsider@school.edu',
-        members: { 'teacher@school.edu': 'MEMBER' },
-      }).restore;
-
-      const result = AuthService.getInstance().checkAccess({});
-
       expect(result).toEqual({ allowed: false });
     });
   });

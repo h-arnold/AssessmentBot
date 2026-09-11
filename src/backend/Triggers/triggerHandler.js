@@ -86,7 +86,7 @@ function triggerHandler(event) {
   try {
     result = AuthService.getInstance().checkAccess({
       bypassCache: true,
-      requireConfigured: true,
+      neverClaim: true,
       method: context.method,
     });
   } catch (accessError) {

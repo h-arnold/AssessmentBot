@@ -59,6 +59,12 @@ module.exports = [
     },
     plugins: { googleappsscript, jsdoc, security, unicorn, sonarjs },
     rules: {
+      // Google Apps Script evaluates backend files as one concatenated script rather than
+      // as modules. A declaration can therefore be consumed by a later file, and a reference
+      // can resolve to a symbol declared by an earlier file. ESLint analyses each file in
+      // isolation, so these rules would report valid cross-file GAS symbols as false positives.
+      'no-undef': 'off',
+      'no-unused-vars': 'off',
       'no-unreachable': 'error',
       ...securityRecommendedErrorRules,
       ...unicodeSecurityRules,
@@ -166,26 +172,6 @@ module.exports = [
       'prefer-object-has-own': 'warn',
       'no-negated-condition': 'warn',
       'require-unicode-regexp': 'off',
-      'max-lines': ['warn', 500],
-    },
-  },
-  {
-    files: ['src/frontend/**/*.{ts,tsx}'],
-    languageOptions: {
-      ecmaVersion: 'latest',
-      sourceType: 'module',
-    },
-    rules: {
-      'max-lines': ['warn', 500],
-    },
-  },
-  {
-    files: ['scripts/builder/**/*.{js,ts}'],
-    languageOptions: {
-      ecmaVersion: 'latest',
-      sourceType: 'module',
-    },
-    rules: {
       'max-lines': ['warn', 500],
     },
   },

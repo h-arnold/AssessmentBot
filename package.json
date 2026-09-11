@@ -10,6 +10,7 @@
     "prepare": "husky",
     "lint:backend": "eslint --config eslint.config.js --fix src/backend/**/*.js tests/**/*.js",
     "lint:backend:check": "eslint --max-warnings 0 --config eslint.config.js src/backend/**/*.js tests/**/*.js",
+    "lint:backend:errors-only": "eslint --config eslint.config.js src/backend/**/*.js tests/**/*.js",
     "lint:frontend": "npm --prefix src/frontend run lint -- --fix",
     "lint:frontend:check": "npm --prefix src/frontend run lint -- --max-warnings 0",
     "lint:builder": "eslint --config scripts/builder/eslint.config.js --fix scripts/builder/src/**/*.ts .opencode/plugins",
@@ -48,7 +49,7 @@
     "@types/node": "^24.3.1",
     "@typescript-eslint/eslint-plugin": "^8.64.0",
     "@typescript-eslint/parser": "^8.64.0",
-    "@vitest/coverage-v8": "^4.0.18",
+    "@vitest/coverage-v8": "^4.1.11",
     "eslint": "10.7.0",
     "eslint-plugin-googleappsscript": "^1.0.5",
     "eslint-plugin-jsdoc": "63.0.0",
@@ -60,7 +61,7 @@
     "prettier": "^3.8.1",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "@typescript/native": "npm:typescript@^7.0.2",
-    "vitest": "^4.0.18",
+    "vitest": "^4.1.11",
     "zod": "^4.3.6"
   },
   "dependencies": {

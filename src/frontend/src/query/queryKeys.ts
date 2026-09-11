@@ -6,6 +6,8 @@ export const queryKeys = {
     ['assignmentDefinitionByKey', definitionKey] as const,
   assignmentDefinitionPartials: () => ['assignmentDefinitionPartials'] as const,
   assignmentTopics: () => ['assignmentTopics'] as const,
+  applicationAccess: () => ['applicationAccess'] as const,
+  authenticationSettings: () => ['authenticationSettings'] as const,
   authorisationStatus: () => ['authorisationStatus'] as const,
   backendConfig: () => ['backendConfig'] as const,
   classPartials: () => ['classPartials'] as const,

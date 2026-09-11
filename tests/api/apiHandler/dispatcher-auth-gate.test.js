@@ -1,23 +1,23 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // These tests cover the API dispatcher auth gate in src/backend/z_Api/z_apiHandler.js,
-// including the authMode: 'none' bypass that the gate inherits from AuthService
-// (delivered in ACTION_PLAN Section 2). The gate runs AFTER request validation and
-// BEFORE the allowlist method lookup and `_runAdmissionPhase()`; on denial the gate
-// returns `_failure(requestId, API_ERROR_CODE_MAP.FORBIDDEN, 'Access denied.', false)`.
+// which runs the real AuthService singleton against the fail-closed state machine
+// (ACTION_PLAN Section 3): configured googleGroups allows members, blank group or
+// broken auth state denies with FORBIDDEN, and the removed fail-open bootstrap
+// window no longer exists. The gate runs AFTER request validation and BEFORE the
+// allowlist method lookup and `_runAdmissionPhase()`; on denial the gate returns
+// `_failure(requestId, API_ERROR_CODE_MAP.FORBIDDEN, 'Access denied.', false)`.
 //
 // The gate is exercised through the real AuthService singleton with mocked dependencies
-// (ConfigurationManager group email and authMode, Session active email, GroupsApp
-// registry), covering the authorised, deny, fail-open, blank-email and GroupsApp-error
-// cases.
+// (ConfigurationManager auth state, Session active email, GroupsApp registry),
+// covering the authorised, deny, broken-config, blank-email and GroupsApp-error cases.
 const AuthService = require('../../../src/backend/Utils/AuthService.js');
-const { withGlobalMocks } = require('../../helpers/globalMockManager.js');
 const {
   installLockServiceMock,
   loadApiHandlerModule,
-  getApiDispatcherInstance,
-  setupDispatcherTest,
-  teardownDispatcherTest,
+  createDispatcherAuthEnvironment,
+  setupDispatcherAuthTest,
+  teardownDispatcherAuthTest,
 } = require('./shared.js');
 
 const CONFIGURED_GROUP_EMAIL = 'teachers@school.edu';
@@ -25,44 +25,40 @@ const UNREGISTERED_GROUP_EMAIL = 'unregistered-owners@school.edu';
 
 describe('Api/apiHandler dispatcher — auth gate (FORBIDDEN)', () => {
   let context;
-  let restoreMocks;
 
   /**
-   * Provisions a mocked ConfigurationManager whose getAuthGroupEmail() returns the
-   * supplied group email. This is what AuthService.checkAccess reads to decide the
-   * bootstrap (empty) state and the membership lookup target.
-   * @param {string} groupEmail - The value getAuthGroupEmail() should return.
-   * @returns {Function} The restore handle for the installed global mocks.
+   * Provisions a mocked ConfigurationManager whose stored auth state is a
+   * googleGroups install with the supplied group email.
+   * @param {string} [groupEmail=CONFIGURED_GROUP_EMAIL] - The stored group email.
+   * @returns {Object} The installed ConfigurationManager mock.
    */
   function provisionAuthEnvironment(groupEmail = CONFIGURED_GROUP_EMAIL) {
-    const configManager = {
-      getAuthGroupEmail: vi.fn(() => groupEmail),
-      getAuthMode: vi.fn(() => 'googleGroups'),
-    };
-    const mockContext = withGlobalMocks({
-      ConfigurationManager: () => ({ getInstance: () => configManager }),
+    context.authEnvironment = createDispatcherAuthEnvironment(vi, { groupEmail });
+    return context.authEnvironment.configManager;
+  }
+
+  /**
+   * Asserts the standard non-retriable FORBIDDEN access-denied envelope.
+   * @param {Object} response - The dispatcher response envelope.
+   * @returns {void}
+   */
+  function expectForbiddenEnvelope(response) {
+    expect(response).toMatchObject({
+      ok: false,
+      error: {
+        code: 'FORBIDDEN',
+        message: 'Access denied.',
+        retriable: false,
+      },
     });
-    restoreMocks = mockContext.restore;
-    return configManager;
   }
 
   beforeEach(() => {
-    context = setupDispatcherTest(vi);
-    AuthService.resetForTests();
-    globalThis.CacheService._resetScriptCache();
-    globalThis.Session._resetActiveUserEmail?.();
-    globalThis.GroupsApp._resetGroups?.();
+    context = setupDispatcherAuthTest(vi);
   });
 
   afterEach(() => {
-    if (restoreMocks) {
-      restoreMocks();
-      restoreMocks = undefined;
-    }
-    teardownDispatcherTest(vi, context);
-    AuthService.resetForTests();
-    globalThis.Session._resetActiveUserEmail?.();
-    globalThis.GroupsApp._resetGroups?.();
+    teardownDispatcherAuthTest(vi, context);
   });
 
   describe('auth gate authorisation', () => {
@@ -100,14 +96,7 @@ describe('Api/apiHandler dispatcher — auth gate (FORBIDDEN)', () => {
 
         const response = dispatcher.handle({ method: 'getCohorts', params: {} });
 
-        expect(response).toMatchObject({
-          ok: false,
-          error: {
-            code: 'FORBIDDEN',
-            message: 'Access denied.',
-            retriable: false,
-          },
-        });
+        expectForbiddenEnvelope(response);
         // Denied requests never reach the admission phase — no lock is consumed.
         expect(mockLock.tryLock).not.toHaveBeenCalled();
       } finally {
@@ -131,7 +120,7 @@ describe('Api/apiHandler dispatcher — auth gate (FORBIDDEN)', () => {
       expect(checkAccessSpy).not.toHaveBeenCalled();
     });
 
-    it('fails open with a warning when AUTH_GROUP_EMAIL is empty', () => {
+    it('denies with FORBIDDEN when AUTH_GROUP_EMAIL is empty (removed fail-open bootstrap)', () => {
       provisionAuthEnvironment('');
 
       const { ApiDispatcher } = loadApiHandlerModule();
@@ -139,9 +128,10 @@ describe('Api/apiHandler dispatcher — auth gate (FORBIDDEN)', () => {
 
       const response = dispatcher.handle({ method: 'getCohorts', params: {} });
 
-      expect(response.ok).toBe(true);
-      // The bootstrap fail-open path is surfaced with a loud warning log.
-      expect(context.warnSpy).toHaveBeenCalled();
+      // The old fail-open bootstrap window (groups mode with a blank group) is
+      // removed: a blank group in googleGroups mode is a broken-config deny, so
+      // the gate fails closed with FORBIDDEN.
+      expectForbiddenEnvelope(response);
     });
 
     it('returns FORBIDDEN when the active user email resolves to blank', () => {
@@ -153,14 +143,7 @@ describe('Api/apiHandler dispatcher — auth gate (FORBIDDEN)', () => {
 
       const response = dispatcher.handle({ method: 'getCohorts', params: {} });
 
-      expect(response).toMatchObject({
-        ok: false,
-        error: {
-          code: 'FORBIDDEN',
-          message: 'Access denied.',
-          retriable: false,
-        },
-      });
+      expectForbiddenEnvelope(response);
     });
 
     it('returns FORBIDDEN when the configured group cannot be resolved by GroupsApp', () => {
@@ -172,14 +155,7 @@ describe('Api/apiHandler dispatcher — auth gate (FORBIDDEN)', () => {
 
       const response = dispatcher.handle({ method: 'getCohorts', params: {} });
 
-      expect(response).toMatchObject({
-        ok: false,
-        error: {
-          code: 'FORBIDDEN',
-          message: 'Access denied.',
-          retriable: false,
-        },
-      });
+      expectForbiddenEnvelope(response);
     });
 
     it('returns FORBIDDEN (not UNKNOWN_METHOD) for a non-member calling an unknown method', () => {
@@ -192,14 +168,7 @@ describe('Api/apiHandler dispatcher — auth gate (FORBIDDEN)', () => {
       const { ApiDispatcher } = loadApiHandlerModule();
       const response = ApiDispatcher.getInstance().handle({ method: 'noSuchMethod' });
 
-      expect(response).toMatchObject({
-        ok: false,
-        error: {
-          code: 'FORBIDDEN',
-          message: 'Access denied.',
-          retriable: false,
-        },
-      });
+      expectForbiddenEnvelope(response);
     });
 
     it('maps a thrown AuthService.checkAccess to INTERNAL_ERROR and logs it at the boundary', () => {

@@ -32,7 +32,8 @@ payload inside this envelope.
     code: string,         // One of: 'RATE_LIMITED' | 'INVALID_REQUEST' |
                           //         'UNKNOWN_METHOD' | 'IN_USE' |
                           //         'DEFINITION_STALE' | 'FORBIDDEN' |
-                          //         'INTERNAL_ERROR'
+                          //         'INTERNAL_ERROR', or a stable
+                          //         authentication-settings save code (see below)
     message: string,      // Human-readable error string
     retriable: boolean,   // always present; true only for RATE_LIMITED
     details?: object,     // Structured metadata (e.g. for DEFINITION_STALE:
@@ -44,19 +45,46 @@ payload inside this envelope.
 
 ### Error code mapping
 
-| Error type                                              | Code               | retriable |
-| ------------------------------------------------------- | ------------------ | --------- |
-| `ApiRateLimitError`                                     | `RATE_LIMITED`     | `true`    |
-| `ApiValidationError`                                    | `INVALID_REQUEST`  | `false`   |
-| `ApiDisabledError`                                      | `UNKNOWN_METHOD`   | `false`   |
-| `DefinitionStaleError`                                  | `DEFINITION_STALE` | `false`   |
-| `error.reason === 'IN_USE'`                             | `IN_USE`           | `false`   |
-| Auth gate denial (authenticated but not a group member) | `FORBIDDEN`        | `false`   |
-| Any other error                                         | `INTERNAL_ERROR`   | `false`   |
+| Error type                                         | Code                  | retriable |
+| -------------------------------------------------- | --------------------- | --------- |
+| `ApiRateLimitError`                                | `RATE_LIMITED`        | `true`    |
+| `ApiValidationError`                               | `INVALID_REQUEST`     | `false`   |
+| `ApiValidationError` carrying a stable `code`      | that code (see below) | `false`   |
+| `ApiDisabledError`                                 | `UNKNOWN_METHOD`      | `false`   |
+| `DefinitionStaleError`                             | `DEFINITION_STALE`    | `false`   |
+| `error.reason === 'IN_USE'`                        | `IN_USE`              | `false`   |
+| Auth gate denial (authenticated but not permitted) | `FORBIDDEN`           | `false`   |
+| Any other error                                    | `INTERNAL_ERROR`      | `false`   |
+
+### Stable authentication-settings save codes
+
+`setAuthenticationSettings` save failures carry a stable, documented `error.code`
+so the frontend maps user-safe copy from `error.code` rather than prose
+(`AuthSettingsDomain` owns the constants). These are non-retriable
+`ApiValidationError` codes:
+
+| Code                                | Meaning                                                                  |
+| ----------------------------------- | ------------------------------------------------------------------------ |
+| `AUTH_SETTINGS_STALE_REVISION`      | `expectedAuthRevision` did not match the stored revision.                |
+| `AUTH_SETTINGS_REVISION_REQUIRED`   | A stored revision exists but `expectedAuthRevision` was omitted.         |
+| `AUTH_SETTINGS_LAST_ADMIN`          | The candidate list would leave zero administrators.                      |
+| `AUTH_SETTINGS_INVALID_CANDIDATE`   | The candidate list/mode shape is invalid (malformed entry, bad role, …). |
+| `AUTH_SETTINGS_SAVING_ADMIN_DENIED` | The saving admin is not an admin under the candidate configuration.      |
+
+A candidate Google Group lookup that fails at the external service is instead a
+retriable `RATE_LIMITED` envelope (distinct from a genuine saving-admin role
+denial); configuration-lock contention also maps to retriable `RATE_LIMITED`.
+Save-failure paths outside the table above — a broken stored configuration,
+`authUsers` supplied in `googleGroups` mode, an invalid/blank candidate group
+email, an over-cap blob, and the transport request-shape rejections (non-object
+payload or unknown field) — remain generic non-retriable `INVALID_REQUEST` codes.
+The envelope mapper uses `ApiValidationError.code` when present and otherwise falls
+back to the generic `INVALID_REQUEST` mapping.
 
 `FORBIDDEN` is produced directly by the `ApiDispatcher` auth gate in
-`z_apiHandler.js` — it is not thrown by a dedicated exception type. Justification:
-"authenticated but not a group member". Denied requests never reach the admission phase, so
+`z_apiHandler.js` — it is not thrown by a dedicated exception type. It covers both
+authenticated callers who are not a group/list member and authenticated non-admins denied by
+the admin-required method set. Denied requests never reach the admission phase, so
 no lock is consumed and the request is not counted against rate limits.
 
 For `DEFINITION_STALE`, the error envelope includes a `details` block with

@@ -1,7 +1,7 @@
 ---
 description: Performs simple, straightforward menial tasks with minimal judgement required
 mode: all
-model: opencode/mimo-2.5-free
+model: opencode/mimo-v2.5-free
 steps: 50
 permission:
   bash:

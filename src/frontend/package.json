@@ -28,7 +28,7 @@
   },
   "devDependencies": {
     "@eslint/js": "latest",
-    "@playwright/test": "latest",
+    "@playwright/test": "1.62.1",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "latest",
     "@testing-library/react": "latest",
@@ -39,7 +39,7 @@
     "@types/react-dom": "latest",
     "@typescript/native": "npm:typescript@^7.0.2",
     "@vitejs/plugin-react": "latest",
-    "@vitest/coverage-v8": "latest",
+    "@vitest/coverage-v8": "^4.1.11",
     "eslint": "10.7.0",
     "eslint-plugin-jsdoc": "63.0.0",
     "eslint-plugin-react-hooks": "^7.1.1",
@@ -48,11 +48,11 @@
     "eslint-plugin-unicorn": "latest",
     "globals": "latest",
     "happy-dom": "^20.9.0",
-    "playwright": "latest",
+    "playwright": "1.62.1",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "typescript-eslint": "^8.64.0",
     "vite": "latest",
-    "vitest": "latest"
+    "vitest": "^4.1.11"
   },
   "allowScripts": {
     "esbuild@0.28.2": true

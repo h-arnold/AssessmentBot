@@ -149,13 +149,22 @@ Rules:
 - `src/backend/Utils/AuthService.js` is the singleton for application-level authorisation.
 - It centralises Google Group membership checks, role mapping, successful-result caching, and
   access-attempt audit logging.
-- The API gate fails open during bootstrap when `AUTH_GROUP_EMAIL` is empty so an administrator can
-  configure the application. Trigger execution passes `requireConfigured: true` and fails closed.
+- Access resolution fails closed for empty or broken configuration. A genuinely fresh
+  install (no `__CONFIG_STORE_KEY__` blob) is claimed by the first eligible interactive
+  caller with a non-blank resolved identity through the Section 4 atomic bootstrap claim;
+  trigger execution passes `bypassCache: true` and an explicit `neverClaim: true` context,
+  so it fails closed and never bootstraps an admin.
 - Access the service with `AuthService.getInstance()`; do not instantiate it directly.
-- **Temporary development bypass:** the `authMode` configuration value `'none'` disables the
-  group-membership access gate entirely. This is a **temporary development/testing measure only**
-  and must never be used in production; the secure default is `'googleGroups'`. Policy detail lives in
-  `SPEC.md` (Auth-Mode Bypass).
+- **Removed mode:** the `authMode` value `'none'` has been removed entirely. The strict
+  auth-state resolver (`validateAuthStateStrict_`) rejects a stored or requested `'none'` as an
+  unrecognised mode, so the access gate fails closed rather than disabling it. The stored valid
+  modes are `'googleGroups'` and `'scriptProperties'`. A genuinely fresh install bootstraps to
+  `'scriptProperties'` (the first eligible interactive caller becomes the sole admin via the
+  Section 4 claim). The single documented leniency reads an absent or blank `authMode` paired
+  with a non-blank `authGroupEmail` as `'googleGroups'`, preserving legacy hand-edited or cloned
+  blobs; every other broken configuration denies fail-closed and never falls back to Google
+  Groups.
+  See `docs/developer/data-shapes/auth-users.md` for the auth-mode contract.
 
 ### 2.4 Backend function exposure and security audit
 
