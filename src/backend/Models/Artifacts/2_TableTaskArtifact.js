@@ -211,7 +211,7 @@ class TableTaskArtifact extends BaseTaskArtifact {
    * Select the rows to render as Markdown.
    *
    * @private
-   * @param {Array<Array<any>>} rowsOverride - Optional explicit rows.
+   * @param {Array<Array<any>>} [rowsOverride] - Optional explicit rows.
    * @returns {Array<Array<any>>|string|null} Rows or content to render.
    */
   _getMarkdownSource(rowsOverride) {

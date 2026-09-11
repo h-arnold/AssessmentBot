@@ -96,6 +96,33 @@ describe('TaskDefinition, task artifacts and student submissions', () => {
     ).toThrow(/Failed to normalise table content/);
   });
 
+  it('TableTaskArtifact toMarkdown uses provided rows, otherwise falls back to stored rows or content', () => {
+    const table = ArtifactFactory.table({
+      taskId: 'tSource',
+      role: 'reference',
+      content: [
+        ['H', 'V'],
+        ['a', 'b'],
+      ],
+    });
+
+    // A provided (non-undefined) override wins over stored rows and content.
+    expect(table.toMarkdown([['X'], ['1']])).toBe('| X |\n| --- |\n| 1 |');
+
+    // An omitted argument falls back to the stored rows.
+    expect(table.toMarkdown()).toBe(table.content);
+    // An explicit undefined argument behaves the same as an omitted one.
+    expect(table.toMarkdown(undefined)).toBe(table.content);
+
+    // With no stored rows, the omitted argument falls back to string content.
+    const textOnly = ArtifactFactory.table({
+      taskId: 'tFallback',
+      role: 'reference',
+      content: '  hello | world  ',
+    });
+    expect(textOnly.toMarkdown()).toBe('hello | world');
+  });
+
   it('SpreadsheetTaskArtifact canonicalisation intentionally strips spaces outside quotes and remains idempotent with immediate hash', () => {
     const ss = ArtifactFactory.spreadsheet({
       taskId: 'tSS',
