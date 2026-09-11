@@ -2,11 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ZodError } from 'zod';
 import { ApiTransportError } from '../../errors/apiTransportError';
 
-const callApiMock = vi.fn();
-const parseApiResponseMock = vi.fn(
-  (schema: { parse: (data: unknown) => unknown }, _method: string, data: unknown) =>
-    schema.parse(data)
-);
+const { callApiMock, parseApiResponseMock } = await vi.hoisted(async () => {
+  const { createApiServiceMockScaffold } = await import('../../test/api/apiServiceTestMocks');
+  return createApiServiceMockScaffold();
+});
 
 vi.mock('../apiService', () => ({
   callApi: callApiMock,

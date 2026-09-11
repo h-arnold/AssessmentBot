@@ -16,60 +16,30 @@
  * `authEndpointsApi.test.js`) so both suites stay within the backend lint
  * `max-lines` threshold.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { loadApiHandlerModule } from '../helpers/apiHandlerTestUtils.js';
-import { provisionAuthApiContext, rawStoreBlob } from './authApiTestHarness.js';
-import { buildUsersJson } from '../utils/authService/authServiceTestHarness.js';
-
-const AuthService = require('../../src/backend/Utils/AuthService.js');
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+  dispatchAuthApi,
+  provisionAuthApiContext,
+  rawStoreBlob,
+  resetAuthApiTestState,
+  storedScriptPropertiesState,
+  teardownAuthApiTestContext,
+} from './authApiTestHarness.js';
 
 const ADMIN = 'admin@school.edu';
 const GROUP_EMAIL = 'teachers@school.edu';
-
-/**
- * Builds a stored scriptProperties auth state.
- * @param {Array<{email: string, role: string}>} users - The stored user list.
- * @param {string} revision - The stored auth revision.
- * @returns {Object} The stored config object.
- */
-function storedScriptPropertiesState(users, revision) {
-  return {
-    authMode: 'scriptProperties',
-    authUsers: buildUsersJson(users),
-    authRevision: revision,
-  };
-}
-
-/**
- * Dispatches a request through the real ApiDispatcher singleton.
- * @param {string} method - The allowlisted method name.
- * @param {Object} [params] - Optional method payload.
- * @returns {Object} The response envelope.
- */
-function dispatch(method, params) {
-  const { ApiDispatcher } = loadApiHandlerModule();
-  return ApiDispatcher.getInstance().handle({
-    method,
-    ...(params === undefined ? {} : { params }),
-  });
-}
 
 describe('setAuthenticationSettings — scriptProperties to googleGroups saving-admin check', () => {
   let ctx;
 
   beforeEach(() => {
-    AuthService.resetForTests();
-    globalThis.PropertiesService._resetUserProperties();
-    globalThis.CacheService._resetScriptCache();
+    ctx = undefined;
+    resetAuthApiTestState();
   });
 
   afterEach(() => {
-    if (ctx) {
-      ctx.restore();
-      ctx = undefined;
-    }
-    AuthService.resetForTests();
-    vi.restoreAllMocks();
+    teardownAuthApiTestContext(ctx);
+    ctx = undefined;
   });
 
   /**
@@ -92,7 +62,7 @@ describe('setAuthenticationSettings — scriptProperties to googleGroups saving-
     (groupRole) => {
       ctx = provisionSwitchContext({ members: { [ADMIN]: groupRole } });
 
-      const response = dispatch('setAuthenticationSettings', {
+      const response = dispatchAuthApi('setAuthenticationSettings', {
         authMode: 'googleGroups',
         authGroupEmail: GROUP_EMAIL,
       });
@@ -112,7 +82,7 @@ describe('setAuthenticationSettings — scriptProperties to googleGroups saving-
     ctx = provisionSwitchContext({ members: { [ADMIN]: 'MEMBER' } });
     const before = rawStoreBlob(ctx.store);
 
-    const response = dispatch('setAuthenticationSettings', {
+    const response = dispatchAuthApi('setAuthenticationSettings', {
       authMode: 'googleGroups',
       authGroupEmail: GROUP_EMAIL,
     });
@@ -130,7 +100,7 @@ describe('setAuthenticationSettings — scriptProperties to googleGroups saving-
     ctx = provisionSwitchContext({ members: {} });
     const before = rawStoreBlob(ctx.store);
 
-    const response = dispatch('setAuthenticationSettings', {
+    const response = dispatchAuthApi('setAuthenticationSettings', {
       authMode: 'googleGroups',
       authGroupEmail: GROUP_EMAIL,
     });
@@ -151,7 +121,7 @@ describe('setAuthenticationSettings — scriptProperties to googleGroups saving-
     });
     const before = rawStoreBlob(ctx.store);
 
-    const response = dispatch('setAuthenticationSettings', {
+    const response = dispatchAuthApi('setAuthenticationSettings', {
       authMode: 'googleGroups',
       authGroupEmail: GROUP_EMAIL,
     });
@@ -176,7 +146,7 @@ describe('setAuthenticationSettings — scriptProperties to googleGroups saving-
     );
     const before = rawStoreBlob(ctx.store);
 
-    const response = dispatch('setAuthenticationSettings', {
+    const response = dispatchAuthApi('setAuthenticationSettings', {
       authMode: 'googleGroups',
       authGroupEmail: GROUP_EMAIL,
     });
@@ -195,18 +165,13 @@ describe('setAuthenticationSettings — groups-mode group email validation', () 
   let ctx;
 
   beforeEach(() => {
-    AuthService.resetForTests();
-    globalThis.PropertiesService._resetUserProperties();
-    globalThis.CacheService._resetScriptCache();
+    ctx = undefined;
+    resetAuthApiTestState();
   });
 
   afterEach(() => {
-    if (ctx) {
-      ctx.restore();
-      ctx = undefined;
-    }
-    AuthService.resetForTests();
-    vi.restoreAllMocks();
+    teardownAuthApiTestContext(ctx);
+    ctx = undefined;
   });
 
   /**
@@ -225,7 +190,7 @@ describe('setAuthenticationSettings — groups-mode group email validation', () 
     ctx = provisionGroupsContext();
     const before = rawStoreBlob(ctx.store);
 
-    const response = dispatch('setAuthenticationSettings', { authMode: 'googleGroups' });
+    const response = dispatchAuthApi('setAuthenticationSettings', { authMode: 'googleGroups' });
 
     expect(response.ok).toBe(false);
     expect(response.error).toMatchObject({ code: 'INVALID_REQUEST', retriable: false });
@@ -236,7 +201,7 @@ describe('setAuthenticationSettings — groups-mode group email validation', () 
     ctx = provisionGroupsContext();
     const before = rawStoreBlob(ctx.store);
 
-    const response = dispatch('setAuthenticationSettings', {
+    const response = dispatchAuthApi('setAuthenticationSettings', {
       authMode: 'googleGroups',
       authGroupEmail: '   ',
     });

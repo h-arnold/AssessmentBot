@@ -27,19 +27,78 @@
  */
 import { vi } from 'vitest';
 import { withGlobalMocks } from '../helpers/globalMockManager.js';
+import { loadApiHandlerModule } from '../helpers/apiHandlerTestUtils.js';
 import {
   createAbLoggerSpy,
   createSessionMock,
   createGroupsAppMock,
+  buildUsersJson,
   DEFAULT_ACTIVE_EMAIL,
 } from '../utils/authService/authServiceTestHarness.js';
 import {
   createBootstrapRawStore,
   CONFIG_STORE_KEY,
+  createStoreBackedScriptProperties,
+  parseRawConfigBlob,
 } from '../utils/authService/authServiceBootstrapHarness.js';
+
+const AuthService = require('../../src/backend/Utils/AuthService.js');
 
 /** The conservative Script Properties blob cap enforced on every config write. */
 export const MAX_CONFIG_BLOB_BYTES = 8192;
+
+/**
+ * Builds a stored scriptProperties auth state for seeding the raw config blob.
+ * @param {Array<{email: string, role: string}>} users - The stored user entries.
+ * @param {string} revision - The stored auth revision.
+ * @param {Object} [extra] - Additional stored config fields.
+ * @returns {Object} The stored config object.
+ */
+export function storedScriptPropertiesState(users, revision, extra = {}) {
+  return {
+    authMode: 'scriptProperties',
+    authUsers: buildUsersJson(users),
+    authRevision: revision,
+    ...extra,
+  };
+}
+
+/**
+ * Dispatches a request through the real ApiDispatcher singleton.
+ * @param {string} method - The allowlisted method name.
+ * @param {Object} [params] - Optional method payload.
+ * @returns {Object} The response envelope.
+ */
+export function dispatchAuthApi(method, params) {
+  const { ApiDispatcher } = loadApiHandlerModule();
+  return ApiDispatcher.getInstance().handle({
+    method,
+    ...(params === undefined ? {} : { params }),
+  });
+}
+
+/**
+ * Resets the shared AuthService and GAS service state before each auth
+ * transport test.
+ * @returns {void}
+ */
+export function resetAuthApiTestState() {
+  AuthService.resetForTests();
+  globalThis.PropertiesService._resetUserProperties();
+  globalThis.CacheService._resetScriptCache();
+}
+
+/**
+ * Restores the provisioned auth API context and shared AuthService state after
+ * each auth transport test.
+ * @param {Object|undefined} ctx - Result of provisionAuthApiContext, if any.
+ * @returns {void}
+ */
+export function teardownAuthApiTestContext(ctx) {
+  if (ctx) ctx.restore();
+  AuthService.resetForTests();
+  vi.restoreAllMocks();
+}
 
 /**
  * Builds a store-backed ConfigurationManager mock for the auth endpoints.
@@ -49,27 +108,9 @@ export const MAX_CONFIG_BLOB_BYTES = 8192;
  * @returns {Object} `{ configManager, scriptProperties, defaultWriteConfigurationLocked, readConfig }`.
  */
 export function createAuthApiConfigurationManager({ store, lockMock }) {
-  const scriptProperties = {
-    getProperty: vi.fn((key) => (Object.hasOwn(store, key) ? store[key] : null)),
-    setProperty: vi.fn((key, value) => {
-      store[key] = value;
-    }),
-    deleteProperty: vi.fn((key) => {
-      delete store[key];
-    }),
-  };
+  const scriptProperties = createStoreBackedScriptProperties(store);
 
-  const parseRaw = (raw) => {
-    if (raw == null || raw === '') return {};
-    try {
-      const parsed = JSON.parse(raw);
-      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
-    } catch {
-      return {};
-    }
-  };
-
-  const readConfig = () => parseRaw(scriptProperties.getProperty(CONFIG_STORE_KEY));
+  const readConfig = () => parseRawConfigBlob(scriptProperties.getProperty(CONFIG_STORE_KEY));
 
   const defaultWriteConfigurationLocked = (mutator) => {
     lockMock.waitLock();

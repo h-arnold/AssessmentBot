@@ -12,7 +12,11 @@
  * Both encode the target contract for `97_ConfigurationManagerLockedWrite.js`.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createConfiguredConfigurationManager } from '../helpers/backendConfigTestHelpers.js';
+import {
+  createConfiguredConfigurationManager,
+  installInMemoryScriptProperties,
+  installScriptLockMock,
+} from '../helpers/backendConfigTestHelpers.js';
 
 const ConfigurationManager = require('../../src/backend/ConfigurationManager/98_ConfigurationManagerClass.js');
 
@@ -21,7 +25,7 @@ const CONFIG_STORE_KEY = ConfigurationManager.CONFIG_STORE_KEY || '__CONFIG_STOR
 describe('ConfigurationManager locked write — cache replacement and contention cause', () => {
   let mocks;
   let configManager;
-  let originalLockService;
+  let restoreLockService;
   let scriptLockFactory;
   let lockMock;
 
@@ -29,33 +33,20 @@ describe('ConfigurationManager locked write — cache replacement and contention
     vi.clearAllMocks();
     ({ mocks, configManager } = createConfiguredConfigurationManager(vi, ConfigurationManager));
 
-    lockMock = {
-      waitLock: vi.fn(() => {}),
-      releaseLock: vi.fn(() => {}),
-    };
-    scriptLockFactory = vi.fn(() => lockMock);
-    originalLockService = globalThis.LockService;
-    globalThis.LockService = { ...originalLockService, getScriptLock: scriptLockFactory };
+    ({ lockMock, scriptLockFactory, restore: restoreLockService } = installScriptLockMock(vi));
   });
 
   afterEach(() => {
-    globalThis.LockService = originalLockService;
+    restoreLockService();
     ConfigurationManager.resetForTests();
   });
 
   /** Builds an in-memory backing store for the serialised config blob. */
   function installInMemoryStore(initialConfig) {
-    const store = {};
-    if (initialConfig !== undefined) {
-      store[CONFIG_STORE_KEY] = JSON.stringify(initialConfig);
-    }
-    mocks.PropertiesService.scriptProperties.getProperty.mockImplementation((key) =>
-      Object.hasOwn(store, key) ? store[key] : null
-    );
-    mocks.PropertiesService.scriptProperties.setProperty.mockImplementation((key, value) => {
-      store[key] = value;
+    return installInMemoryScriptProperties(mocks.PropertiesService.scriptProperties, {
+      configStoreKey: CONFIG_STORE_KEY,
+      initialConfig,
     });
-    return store;
   }
 
   describe('cache replacement — deleted keys do not survive the locked write', () => {

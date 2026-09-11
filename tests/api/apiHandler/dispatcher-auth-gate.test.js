@@ -12,13 +12,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // (ConfigurationManager auth state, Session active email, GroupsApp registry),
 // covering the authorised, deny, broken-config, blank-email and GroupsApp-error cases.
 const AuthService = require('../../../src/backend/Utils/AuthService.js');
-const { withGlobalMocks } = require('../../helpers/globalMockManager.js');
 const {
   installLockServiceMock,
   loadApiHandlerModule,
-  getApiDispatcherInstance,
-  setupDispatcherTest,
-  teardownDispatcherTest,
+  createDispatcherAuthEnvironment,
+  setupDispatcherAuthTest,
+  teardownDispatcherAuthTest,
 } = require('./shared.js');
 
 const CONFIGURED_GROUP_EMAIL = 'teachers@school.edu';
@@ -26,59 +25,40 @@ const UNREGISTERED_GROUP_EMAIL = 'unregistered-owners@school.edu';
 
 describe('Api/apiHandler dispatcher — auth gate (FORBIDDEN)', () => {
   let context;
-  let restoreMocks;
 
   /**
    * Provisions a mocked ConfigurationManager whose stored auth state is a
-   * googleGroups install with the supplied group email. This is what the
-   * AuthService resolver reads to decide the membership lookup target and to
-   * detect broken configuration.
-   * @param {string} groupEmail - The value the stored authGroupEmail should hold.
-   * @returns {Function} The restore handle for the installed global mocks.
+   * googleGroups install with the supplied group email.
+   * @param {string} [groupEmail=CONFIGURED_GROUP_EMAIL] - The stored group email.
+   * @returns {Object} The installed ConfigurationManager mock.
    */
   function provisionAuthEnvironment(groupEmail = CONFIGURED_GROUP_EMAIL) {
-    const configManager = {
-      getAuthGroupEmail: vi.fn(() => groupEmail),
-      getAuthMode: vi.fn(() => 'googleGroups'),
-      getAuthUsers: vi.fn(() => ''),
-      getAuthRevision: vi.fn(() => ''),
-      getProperty: vi.fn((key) => {
-        if (key === 'authGroupEmail') return groupEmail;
-        if (key === 'authMode') return 'googleGroups';
-        return '';
-      }),
-      getAllConfigurations: vi.fn(() => ({
-        authMode: 'googleGroups',
-        authGroupEmail: groupEmail,
-      })),
-      isFreshInstall: vi.fn(() => false),
-      writeConfigurationLocked: vi.fn(),
-      setProperty: vi.fn(),
-    };
-    const mockContext = withGlobalMocks({
-      ConfigurationManager: () => ({ getInstance: () => configManager }),
+    context.authEnvironment = createDispatcherAuthEnvironment(vi, { groupEmail });
+    return context.authEnvironment.configManager;
+  }
+
+  /**
+   * Asserts the standard non-retriable FORBIDDEN access-denied envelope.
+   * @param {Object} response - The dispatcher response envelope.
+   * @returns {void}
+   */
+  function expectForbiddenEnvelope(response) {
+    expect(response).toMatchObject({
+      ok: false,
+      error: {
+        code: 'FORBIDDEN',
+        message: 'Access denied.',
+        retriable: false,
+      },
     });
-    restoreMocks = mockContext.restore;
-    return configManager;
   }
 
   beforeEach(() => {
-    context = setupDispatcherTest(vi);
-    AuthService.resetForTests();
-    globalThis.CacheService._resetScriptCache();
-    globalThis.Session._resetActiveUserEmail?.();
-    globalThis.GroupsApp._resetGroups?.();
+    context = setupDispatcherAuthTest(vi);
   });
 
   afterEach(() => {
-    if (restoreMocks) {
-      restoreMocks();
-      restoreMocks = undefined;
-    }
-    teardownDispatcherTest(vi, context);
-    AuthService.resetForTests();
-    globalThis.Session._resetActiveUserEmail?.();
-    globalThis.GroupsApp._resetGroups?.();
+    teardownDispatcherAuthTest(vi, context);
   });
 
   describe('auth gate authorisation', () => {
@@ -116,14 +96,7 @@ describe('Api/apiHandler dispatcher — auth gate (FORBIDDEN)', () => {
 
         const response = dispatcher.handle({ method: 'getCohorts', params: {} });
 
-        expect(response).toMatchObject({
-          ok: false,
-          error: {
-            code: 'FORBIDDEN',
-            message: 'Access denied.',
-            retriable: false,
-          },
-        });
+        expectForbiddenEnvelope(response);
         // Denied requests never reach the admission phase — no lock is consumed.
         expect(mockLock.tryLock).not.toHaveBeenCalled();
       } finally {
@@ -158,14 +131,7 @@ describe('Api/apiHandler dispatcher — auth gate (FORBIDDEN)', () => {
       // The old fail-open bootstrap window (groups mode with a blank group) is
       // removed: a blank group in googleGroups mode is a broken-config deny, so
       // the gate fails closed with FORBIDDEN.
-      expect(response).toMatchObject({
-        ok: false,
-        error: {
-          code: 'FORBIDDEN',
-          message: 'Access denied.',
-          retriable: false,
-        },
-      });
+      expectForbiddenEnvelope(response);
     });
 
     it('returns FORBIDDEN when the active user email resolves to blank', () => {
@@ -177,14 +143,7 @@ describe('Api/apiHandler dispatcher — auth gate (FORBIDDEN)', () => {
 
       const response = dispatcher.handle({ method: 'getCohorts', params: {} });
 
-      expect(response).toMatchObject({
-        ok: false,
-        error: {
-          code: 'FORBIDDEN',
-          message: 'Access denied.',
-          retriable: false,
-        },
-      });
+      expectForbiddenEnvelope(response);
     });
 
     it('returns FORBIDDEN when the configured group cannot be resolved by GroupsApp', () => {
@@ -196,14 +155,7 @@ describe('Api/apiHandler dispatcher — auth gate (FORBIDDEN)', () => {
 
       const response = dispatcher.handle({ method: 'getCohorts', params: {} });
 
-      expect(response).toMatchObject({
-        ok: false,
-        error: {
-          code: 'FORBIDDEN',
-          message: 'Access denied.',
-          retriable: false,
-        },
-      });
+      expectForbiddenEnvelope(response);
     });
 
     it('returns FORBIDDEN (not UNKNOWN_METHOD) for a non-member calling an unknown method', () => {
@@ -216,14 +168,7 @@ describe('Api/apiHandler dispatcher — auth gate (FORBIDDEN)', () => {
       const { ApiDispatcher } = loadApiHandlerModule();
       const response = ApiDispatcher.getInstance().handle({ method: 'noSuchMethod' });
 
-      expect(response).toMatchObject({
-        ok: false,
-        error: {
-          code: 'FORBIDDEN',
-          message: 'Access denied.',
-          retriable: false,
-        },
-      });
+      expectForbiddenEnvelope(response);
     });
 
     it('maps a thrown AuthService.checkAccess to INTERNAL_ERROR and logs it at the boundary', () => {

@@ -52,15 +52,14 @@ export function createBootstrapRawStore(initialConfig) {
 }
 
 /**
- * Builds a ConfigurationManager mock that backs raw Script Properties with the
- * supplied store and routes every write through the shared locked-write path.
- * @param {Object} options - Mock configuration.
- * @param {Object} options.store - The mutable raw store.
- * @param {Object} options.lockMock - The script-lock mock (`waitLock`/`releaseLock` spies).
- * @returns {Object} `{ configManager, scriptProperties, defaultWriteConfigurationLocked }`.
+ * Builds the mock Script Properties surface backed by an in-memory store. The
+ * same surface is reused by the bootstrap harness and the auth API transport
+ * harness so both read and write the identical raw blob.
+ * @param {Object} store - The mutable raw store.
+ * @returns {Object} Mock scriptProperties with get/set/delete spies.
  */
-export function createBootstrapConfigurationManager({ store, lockMock }) {
-  const scriptProperties = {
+export function createStoreBackedScriptProperties(store) {
+  return {
     getProperty: vi.fn((key) => (Object.hasOwn(store, key) ? store[key] : null)),
     setProperty: vi.fn((key, value) => {
       store[key] = value;
@@ -69,16 +68,34 @@ export function createBootstrapConfigurationManager({ store, lockMock }) {
       delete store[key];
     }),
   };
+}
 
-  const parseRaw = (raw) => {
-    if (raw == null || raw === '') return {};
-    try {
-      const parsed = JSON.parse(raw);
-      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
-    } catch {
-      return {};
-    }
-  };
+/**
+ * Parses a raw config blob into a plain object, tolerating absent or malformed
+ * input by returning an empty object.
+ * @param {string|undefined|null} raw - The raw serialised blob.
+ * @returns {Object} The parsed config, or an empty object.
+ */
+export function parseRawConfigBlob(raw) {
+  if (raw == null || raw === '') return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Builds a ConfigurationManager mock that backs raw Script Properties with the
+ * supplied store and routes every write through the shared locked-write path.
+ * @param {Object} options - Mock configuration.
+ * @param {Object} options.store - The mutable raw store.
+ * @param {Object} options.lockMock - The script-lock mock (`waitLock`/`releaseLock` spies).
+ * @returns {Object} `{ configManager, scriptProperties, defaultWriteConfigurationLocked }`.
+ */
+export function createBootstrapConfigurationManager({ store, lockMock }) {
+  const scriptProperties = createStoreBackedScriptProperties(store);
 
   const isFreshInstall = vi.fn(() => store[CONFIG_STORE_KEY] == null);
 
@@ -88,7 +105,7 @@ export function createBootstrapConfigurationManager({ store, lockMock }) {
     lockMock.waitLock();
     try {
       const raw = scriptProperties.getProperty(CONFIG_STORE_KEY);
-      const current = parseRaw(raw);
+      const current = parseRawConfigBlob(raw);
       const next = mutator(current);
       scriptProperties.setProperty(CONFIG_STORE_KEY, JSON.stringify(next));
     } finally {
@@ -98,7 +115,7 @@ export function createBootstrapConfigurationManager({ store, lockMock }) {
   const writeConfigurationLocked = vi.fn(defaultWriteConfigurationLocked);
 
   const getAllConfigurations = vi.fn(() =>
-    parseRaw(scriptProperties.getProperty(CONFIG_STORE_KEY))
+    parseRawConfigBlob(scriptProperties.getProperty(CONFIG_STORE_KEY))
   );
 
   const getProperty = vi.fn((key) => {

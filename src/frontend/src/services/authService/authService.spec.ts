@@ -1,26 +1,34 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ZodError } from 'zod';
 
-const callApiMock = vi.fn();
-const parseApiResponseMock = vi.fn(
-  (schema: { parse: (data: unknown) => unknown }, _method: string, data: unknown) =>
-    schema.parse(data)
-);
+const { callApiMock, parseApiResponseMock } = await vi.hoisted(async () => {
+  const { createApiServiceMockScaffold } = await import('../../test/api/apiServiceTestMocks');
+  return createApiServiceMockScaffold();
+});
 
 vi.mock('../apiService', () => ({
   callApi: callApiMock,
   parseApiResponse: parseApiResponseMock,
 }));
 
-describe('authService.getAuthorisationStatus', () => {
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
+/**
+ * Loads the auth service module under test.
+ *
+ * @returns {Promise<typeof import('./authService')>} The imported auth service module.
+ */
+async function loadAuthService() {
+  return import('./authService');
+}
 
+afterEach(() => {
+  vi.clearAllMocks();
+});
+
+describe('authService.getAuthorisationStatus', () => {
   it('rejects when backend returns a non-boolean value', async () => {
     callApiMock.mockResolvedValueOnce('yes');
 
-    const { getAuthorisationStatus } = await import('./authService');
+    const { getAuthorisationStatus } = await loadAuthService();
 
     const authorisationStatusPromise = getAuthorisationStatus();
 
@@ -33,7 +41,7 @@ describe('authService.getAuthorisationStatus', () => {
   it('rejects when backend returns null', async () => {
     callApiMock.mockResolvedValueOnce(null);
 
-    const { getAuthorisationStatus } = await import('./authService');
+    const { getAuthorisationStatus } = await loadAuthService();
 
     const authorisationStatusPromise = getAuthorisationStatus();
 
@@ -46,7 +54,7 @@ describe('authService.getAuthorisationStatus', () => {
   it('calls callApi with getAuthorisationStatus and returns the backend value', async () => {
     callApiMock.mockResolvedValueOnce(true);
 
-    const { getAuthorisationStatus } = await import('./authService');
+    const { getAuthorisationStatus } = await loadAuthService();
 
     await expect(getAuthorisationStatus()).resolves.toBe(true);
     expect(callApiMock).toHaveBeenCalledWith('getAuthorisationStatus');
@@ -60,10 +68,6 @@ describe('authService.getAuthorisationStatus', () => {
 // Zod schemas, surfacing transport envelope rejections unchanged. The
 // getAuthorisationStatus coverage above stays unchanged.
 describe('authService.getApplicationAccess', () => {
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
-
   it('calls callApi with getApplicationAccess and returns the parsed access status', async () => {
     const okApplicationAccess = {
       allowed: true,
@@ -73,7 +77,7 @@ describe('authService.getApplicationAccess', () => {
     };
     callApiMock.mockResolvedValueOnce(okApplicationAccess);
 
-    const { getApplicationAccess } = await import('./authService');
+    const { getApplicationAccess } = await loadAuthService();
 
     await expect(getApplicationAccess()).resolves.toEqual(okApplicationAccess);
     expect(callApiMock).toHaveBeenCalledWith('getApplicationAccess');
@@ -88,7 +92,7 @@ describe('authService.getApplicationAccess', () => {
       reason: 'unconfigured',
     });
 
-    const { getApplicationAccess } = await import('./authService');
+    const { getApplicationAccess } = await loadAuthService();
 
     await expect(getApplicationAccess()).rejects.toThrow(ZodError);
     expect(callApiMock).toHaveBeenCalledWith('getApplicationAccess');
@@ -99,7 +103,7 @@ describe('authService.getApplicationAccess', () => {
     const transportError = new Error('FORBIDDEN: access denied');
     callApiMock.mockRejectedValueOnce(transportError);
 
-    const { getApplicationAccess } = await import('./authService');
+    const { getApplicationAccess } = await loadAuthService();
 
     await expect(getApplicationAccess()).rejects.toBe(transportError);
     expect(callApiMock).toHaveBeenCalledWith('getApplicationAccess');
@@ -108,10 +112,6 @@ describe('authService.getApplicationAccess', () => {
 });
 
 describe('authService.getAuthenticationSettings', () => {
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
-
   it('calls callApi with getAuthenticationSettings and returns the parsed scriptProperties settings', async () => {
     const scriptPropertiesSettings = {
       authMode: 'scriptProperties',
@@ -124,7 +124,7 @@ describe('authService.getAuthenticationSettings', () => {
     };
     callApiMock.mockResolvedValueOnce(scriptPropertiesSettings);
 
-    const { getAuthenticationSettings } = await import('./authService');
+    const { getAuthenticationSettings } = await loadAuthService();
 
     await expect(getAuthenticationSettings()).resolves.toEqual(scriptPropertiesSettings);
     expect(callApiMock).toHaveBeenCalledWith('getAuthenticationSettings');
@@ -140,7 +140,7 @@ describe('authService.getAuthenticationSettings', () => {
     };
     callApiMock.mockResolvedValueOnce(googleGroupsSettings);
 
-    const { getAuthenticationSettings } = await import('./authService');
+    const { getAuthenticationSettings } = await loadAuthService();
 
     await expect(getAuthenticationSettings()).resolves.toEqual(googleGroupsSettings);
     expect(callApiMock).toHaveBeenCalledWith('getAuthenticationSettings');
@@ -151,7 +151,7 @@ describe('authService.getAuthenticationSettings', () => {
     const transportError = new Error('FORBIDDEN: admin only');
     callApiMock.mockRejectedValueOnce(transportError);
 
-    const { getAuthenticationSettings } = await import('./authService');
+    const { getAuthenticationSettings } = await loadAuthService();
 
     await expect(getAuthenticationSettings()).rejects.toBe(transportError);
     expect(callApiMock).toHaveBeenCalledWith('getAuthenticationSettings');
@@ -160,10 +160,6 @@ describe('authService.getAuthenticationSettings', () => {
 });
 
 describe('authService.setAuthenticationSettings', () => {
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
-
   it('calls callApi with setAuthenticationSettings and the parsed request', async () => {
     const scriptPropertiesSaveRequest = {
       authMode: 'scriptProperties',
@@ -175,7 +171,7 @@ describe('authService.setAuthenticationSettings', () => {
     };
     callApiMock.mockResolvedValueOnce({ success: true, authRevision: '4' });
 
-    const { setAuthenticationSettings } = await import('./authService');
+    const { setAuthenticationSettings } = await loadAuthService();
 
     await expect(setAuthenticationSettings(scriptPropertiesSaveRequest)).resolves.toEqual({
       success: true,
@@ -189,7 +185,7 @@ describe('authService.setAuthenticationSettings', () => {
   });
 
   it('rejects an invalid request shape before transport', async () => {
-    const { setAuthenticationSettings } = await import('./authService');
+    const { setAuthenticationSettings } = await loadAuthService();
 
     await expect(
       setAuthenticationSettings({
@@ -205,7 +201,7 @@ describe('authService.setAuthenticationSettings', () => {
     const transportError = new Error('INVALID_REQUEST: stale auth revision');
     callApiMock.mockRejectedValueOnce(transportError);
 
-    const { setAuthenticationSettings } = await import('./authService');
+    const { setAuthenticationSettings } = await loadAuthService();
 
     await expect(
       setAuthenticationSettings({

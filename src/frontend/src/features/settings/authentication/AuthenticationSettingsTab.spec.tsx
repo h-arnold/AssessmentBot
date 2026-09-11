@@ -141,6 +141,99 @@ function renderAuthenticationSettingsTab(accessContextValue: ApplicationAccessCo
   );
 }
 
+/**
+ * Renders the tab with the given settings loaded and activates the save action.
+ *
+ * @param {AuthenticationSettings} settings The settings the mocked read resolves with.
+ * @returns {Promise<void>} Resolves once the save trigger has been activated.
+ */
+async function renderTabAndClickSave(settings: AuthenticationSettings): Promise<void> {
+  getAuthenticationSettingsMock.mockImplementationOnce(() => Promise.resolve(settings));
+  renderAuthenticationSettingsTab(administratorAccessContextValue);
+
+  await waitFor(() => {
+    expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
+  });
+
+  await user.click(screen.getByRole('button', { name: /save/i }));
+}
+
+type SaveFailureCase = Readonly<{
+  name: string;
+  settings: AuthenticationSettings;
+  error: unknown;
+  expectedAlert: string | RegExp;
+  unexpectedInAlert?: readonly RegExp[];
+  unexpectedInDocument?: RegExp;
+  expectSaveEnabled?: boolean;
+  expectReadCalledOnce?: boolean;
+}>;
+
+const saveFailureCases: readonly SaveFailureCase[] = [
+  {
+    name: 'a last-admin removal error',
+    settings: scriptPropertiesModeSettings,
+    error: createAuthSettingsSaveError(
+      'AUTH_SETTINGS_LAST_ADMIN',
+      'Auth Users must contain at least one admin.'
+    ),
+    expectedAlert: /at least one admin must remain/i,
+    expectSaveEnabled: true,
+    expectReadCalledOnce: true,
+  },
+  {
+    name: 'a candidate-check failure',
+    settings: scriptPropertiesModeSettings,
+    error: createAuthSettingsSaveError(
+      'AUTH_SETTINGS_INVALID_CANDIDATE',
+      'The candidate authentication configuration was rejected.'
+    ),
+    expectedAlert: /the candidate list is invalid\. review the authorised users and try again\./i,
+    unexpectedInAlert: [/missing from the candidate list/i],
+    expectSaveEnabled: true,
+  },
+  {
+    name: 'a googleGroups saving-admin denial',
+    settings: groupsModeSettings,
+    error: createAuthSettingsSaveError(
+      'AUTH_SETTINGS_SAVING_ADMIN_DENIED',
+      'The saving administrator must be an OWNER or MANAGER of the candidate group when switching to googleGroups mode.'
+    ),
+    expectedAlert: /group role|owner|manager|group membership|group admin/i,
+    unexpectedInAlert: [/candidate list/i, /add yourself as an admin/i],
+    expectSaveEnabled: true,
+  },
+  {
+    name: 'a scriptProperties saving-admin denial',
+    settings: scriptPropertiesModeSettings,
+    error: createAuthSettingsSaveError(
+      'AUTH_SETTINGS_SAVING_ADMIN_DENIED',
+      'The saving administrator is missing from the candidate list.'
+    ),
+    expectedAlert:
+      /your admin access is missing from the candidate list\. add yourself as an admin and try again\./i,
+    unexpectedInAlert: [/group role|owner|manager|group membership/i],
+    expectSaveEnabled: true,
+  },
+  {
+    name: 'a RATE_LIMITED transport code',
+    settings: scriptPropertiesModeSettings,
+    error: createAuthSettingsSaveError(
+      'RATE_LIMITED',
+      'Authentication settings could not be saved because the configuration lock is busy. Please retry.'
+    ),
+    expectedAlert: /the service is busy\. please try again shortly\./i,
+    expectSaveEnabled: true,
+  },
+  {
+    name: 'a prose-only failure that carries no transport code',
+    settings: scriptPropertiesModeSettings,
+    error: new Error('Another administrator saved first. Review and re-save your changes.'),
+    expectedAlert: genericSaveErrorMessage,
+    unexpectedInDocument: /another administrator saved first/i,
+  },
+];
+
 beforeEach(() => {
   user = userEvent.setup();
 });
@@ -392,16 +485,9 @@ describe('Authentication mode-switch confirmation modal', () => {
 describe('Authentication settings save success payload and feedback', () => {
 
   it('sends one atomic save payload with the expected revision and announces success via the App message instance', async () => {
-    getAuthenticationSettingsMock.mockImplementationOnce(() => Promise.resolve(scriptPropertiesModeSettings));
     setAuthenticationSettingsMock.mockImplementationOnce(() => Promise.resolve(successfulSaveResult));
 
-    renderAuthenticationSettingsTab(administratorAccessContextValue);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole('button', { name: /save/i }));
+    await renderTabAndClickSave(scriptPropertiesModeSettings);
 
     await waitFor(() => {
       expect(setAuthenticationSettingsMock).toHaveBeenCalledTimes(1);
@@ -417,16 +503,9 @@ describe('Authentication settings save success payload and feedback', () => {
   });
 
   it('omits the user list and expected revision from the groups-mode save payload', async () => {
-    getAuthenticationSettingsMock.mockImplementationOnce(() => Promise.resolve(groupsModeSettings));
     setAuthenticationSettingsMock.mockImplementationOnce(() => Promise.resolve(successfulSaveResult));
 
-    renderAuthenticationSettingsTab(administratorAccessContextValue);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole('button', { name: /save/i }));
+    await renderTabAndClickSave(groupsModeSettings);
 
     await waitFor(() => {
       expect(setAuthenticationSettingsMock).toHaveBeenCalledTimes(1);
@@ -442,18 +521,12 @@ describe('Authentication settings save success payload and feedback', () => {
   });
 
   it('rebases the expected revision after a successful save so a second save sends the committed revision', async () => {
-    getAuthenticationSettingsMock.mockImplementationOnce(() => Promise.resolve(scriptPropertiesModeSettings));
     setAuthenticationSettingsMock
       .mockImplementationOnce(() => Promise.resolve({ success: true as const, authRevision: '2' }))
       .mockImplementationOnce(() => Promise.resolve({ success: true as const, authRevision: '3' }));
 
-    renderAuthenticationSettingsTab(administratorAccessContextValue);
+    await renderTabAndClickSave(scriptPropertiesModeSettings);
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole('button', { name: /save/i }));
     await waitFor(() => expect(setAuthenticationSettingsMock).toHaveBeenCalledTimes(1));
     expect(setAuthenticationSettingsMock.mock.calls[0][0]).toMatchObject({
       authMode: 'scriptProperties',
@@ -476,7 +549,6 @@ describe('Authentication settings save success payload and feedback', () => {
 describe('Stale revision conflict handling', () => {
 
   it('keeps a persistent warning, preserves the staged list, and leaves storage untouched on a stale revision', async () => {
-    getAuthenticationSettingsMock.mockImplementationOnce(() => Promise.resolve(scriptPropertiesModeSettings));
     setAuthenticationSettingsMock.mockRejectedValueOnce(
       createAuthSettingsSaveError(
         'AUTH_SETTINGS_STALE_REVISION',
@@ -484,13 +556,7 @@ describe('Stale revision conflict handling', () => {
       )
     );
 
-    renderAuthenticationSettingsTab(administratorAccessContextValue);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole('button', { name: /save/i }));
+    await renderTabAndClickSave(scriptPropertiesModeSettings);
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent(/another administrator saved first/i);
@@ -500,165 +566,44 @@ describe('Stale revision conflict handling', () => {
   });
 });
 
-describe('Last-admin and candidate-check save failures', () => {
+describe('Authentication settings save failure mapping', () => {
 
-  it('surfaces a last-admin removal error in the status stack while keeping the form usable', async () => {
-    getAuthenticationSettingsMock.mockImplementationOnce(() => Promise.resolve(scriptPropertiesModeSettings));
-    setAuthenticationSettingsMock.mockRejectedValueOnce(
-      createAuthSettingsSaveError(
-        'AUTH_SETTINGS_LAST_ADMIN',
-        'Auth Users must contain at least one admin.'
-      )
-    );
+  it.each(saveFailureCases)(
+    'maps $name to the expected status copy',
+    async ({
+      settings,
+      error,
+      expectedAlert,
+      unexpectedInAlert,
+      unexpectedInDocument,
+      expectSaveEnabled,
+      expectReadCalledOnce,
+    }) => {
+      setAuthenticationSettingsMock.mockRejectedValueOnce(error);
 
-    renderAuthenticationSettingsTab(administratorAccessContextValue);
+      await renderTabAndClickSave(settings);
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole('button', { name: /save/i }));
-
-    await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent(/at least one admin must remain/i);
-    });
-    expect(screen.getByRole('button', { name: /save/i })).toBeEnabled();
-    expect(getAuthenticationSettingsMock).toHaveBeenCalledTimes(1);
-  });
-
-  it('surfaces a candidate-check failure in the status stack while keeping the form usable', async () => {
-    getAuthenticationSettingsMock.mockImplementationOnce(() => Promise.resolve(scriptPropertiesModeSettings));
-    setAuthenticationSettingsMock.mockRejectedValueOnce(
-      createAuthSettingsSaveError(
-        'AUTH_SETTINGS_INVALID_CANDIDATE',
-        'The candidate authentication configuration was rejected.'
-      )
-    );
-
-    renderAuthenticationSettingsTab(administratorAccessContextValue);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole('button', { name: /save/i }));
-
-    const candidateFailureAlert = await screen.findByRole('alert');
-    expect(candidateFailureAlert).toHaveTextContent(
-      /the candidate list is invalid\. review the authorised users and try again\./i
-    );
-    expect(candidateFailureAlert).not.toHaveTextContent(/missing from the candidate list/i);
-    expect(screen.getByRole('button', { name: /save/i })).toBeEnabled();
-  });
-});
-
-describe('Mode-appropriate saving-admin denial copy', () => {
-
-  it('surfaces group-role recovery guidance rather than candidate-list copy for a googleGroups saving-admin denial', async () => {
-    getAuthenticationSettingsMock.mockImplementationOnce(() => Promise.resolve(groupsModeSettings));
-    setAuthenticationSettingsMock.mockRejectedValueOnce(
-      createAuthSettingsSaveError(
-        'AUTH_SETTINGS_SAVING_ADMIN_DENIED',
-        'The saving administrator must be an OWNER or MANAGER of the candidate group when switching to googleGroups mode.'
-      )
-    );
-
-    renderAuthenticationSettingsTab(administratorAccessContextValue);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole('button', { name: /save/i }));
-
-    const saveFailureAlert = await screen.findByRole('alert');
-    expect(saveFailureAlert).toHaveTextContent(/group role|owner|manager|group membership|group admin/i);
-    expect(saveFailureAlert).not.toHaveTextContent(/candidate list/i);
-    expect(saveFailureAlert).not.toHaveTextContent(/add yourself as an admin/i);
-    expect(screen.getByRole('button', { name: /save/i })).toBeEnabled();
-  });
-
-  it('surfaces candidate-list recovery guidance rather than group-role copy for a scriptProperties saving-admin denial', async () => {
-    getAuthenticationSettingsMock.mockImplementationOnce(() => Promise.resolve(scriptPropertiesModeSettings));
-    setAuthenticationSettingsMock.mockRejectedValueOnce(
-      createAuthSettingsSaveError(
-        'AUTH_SETTINGS_SAVING_ADMIN_DENIED',
-        'The saving administrator is missing from the candidate list.'
-      )
-    );
-
-    renderAuthenticationSettingsTab(administratorAccessContextValue);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole('button', { name: /save/i }));
-
-    const saveFailureAlert = await screen.findByRole('alert');
-    expect(saveFailureAlert).toHaveTextContent(
-      /your admin access is missing from the candidate list\. add yourself as an admin and try again\./i
-    );
-    expect(saveFailureAlert).not.toHaveTextContent(/group role|owner|manager|group membership/i);
-    expect(screen.getByRole('button', { name: /save/i })).toBeEnabled();
-  });
-});
-
-describe('Rate-limited and code-exclusive save failure mapping', () => {
-
-  it('surfaces the busy/service copy from a RATE_LIMITED transport code in the status stack', async () => {
-    getAuthenticationSettingsMock.mockImplementationOnce(() => Promise.resolve(scriptPropertiesModeSettings));
-    setAuthenticationSettingsMock.mockRejectedValueOnce(
-      createAuthSettingsSaveError(
-        'RATE_LIMITED',
-        'Authentication settings could not be saved because the configuration lock is busy. Please retry.'
-      )
-    );
-
-    renderAuthenticationSettingsTab(administratorAccessContextValue);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole('button', { name: /save/i }));
-
-    await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent(
-        /the service is busy\. please try again shortly\./i
-      );
-    });
-    expect(screen.getByRole('button', { name: /save/i })).toBeEnabled();
-  });
-
-  it('maps a prose-only failure that carries no transport code to the generic save copy', async () => {
-    getAuthenticationSettingsMock.mockImplementationOnce(() => Promise.resolve(scriptPropertiesModeSettings));
-    setAuthenticationSettingsMock.mockRejectedValueOnce(
-      new Error('Another administrator saved first. Review and re-save your changes.')
-    );
-
-    renderAuthenticationSettingsTab(administratorAccessContextValue);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole('button', { name: /save/i }));
-
-    await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent(genericSaveErrorMessage);
-    });
-    expect(screen.queryByText(/another administrator saved first/i)).not.toBeInTheDocument();
-  });
+      const alert = await screen.findByRole('alert');
+      expect(alert).toHaveTextContent(expectedAlert);
+      for (const pattern of unexpectedInAlert ?? []) {
+        expect(alert).not.toHaveTextContent(pattern);
+      }
+      if (unexpectedInDocument) {
+        expect(screen.queryByText(unexpectedInDocument)).not.toBeInTheDocument();
+      }
+      if (expectSaveEnabled) {
+        expect(screen.getByRole('button', { name: /save/i })).toBeEnabled();
+      }
+      if (expectReadCalledOnce) {
+        expect(getAuthenticationSettingsMock).toHaveBeenCalledTimes(1);
+      }
+    }
+  );
 });
 
 describe('Blank group-email local validation', () => {
 
   it('surfaces the targeted blank group-email validation copy instead of the generic save copy', async () => {
-    getAuthenticationSettingsMock.mockImplementationOnce(() =>
-      Promise.resolve(blankGroupGroupsModeSettings)
-    );
-
     const blankGroupValidation = SetAuthenticationSettingsRequestSchema.safeParse({
       authMode: 'googleGroups',
       authGroupEmail: '',
@@ -668,13 +613,7 @@ describe('Blank group-email local validation', () => {
     }
     setAuthenticationSettingsMock.mockRejectedValueOnce(blankGroupValidation.error);
 
-    renderAuthenticationSettingsTab(administratorAccessContextValue);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole('button', { name: /save/i }));
+    await renderTabAndClickSave(blankGroupGroupsModeSettings);
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent(/auth group email must be non-blank/i);

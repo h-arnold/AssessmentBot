@@ -181,82 +181,53 @@ describe('backend configuration API transport — request-shape and legacy regre
     }
   );
 
-  it('keeps configuration transport errors envelope-based through apiHandler', () => {
-    const originalConfigurationManager = globalThis.ConfigurationManager;
-    globalThis.ConfigurationManager = {
-      DEFAULTS: CONFIGURATION_MANAGER_DEFAULTS,
-      getInstance: vi.fn(() => {
-        throw new Error('configuration exploded');
-      }),
-    };
-
-    try {
-      const { ApiDispatcher } = loadApiHandlerModule();
-      const dispatcher = ApiDispatcher.getInstance();
-
-      const response = dispatcher.handle({
-        method: 'getBackendConfig',
-      });
-
-      expect(globalThis.ConfigurationManager.getInstance).toHaveBeenCalledTimes(1);
-      expect(response).toEqual({
-        ok: false,
-        requestId: response.requestId,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: 'Internal API error.',
-          retriable: false,
-        },
-      });
-      expect(response.requestId).toEqual(expect.any(String));
-    } finally {
-      if (originalConfigurationManager === undefined) {
-        delete globalThis.ConfigurationManager;
-      } else {
-        globalThis.ConfigurationManager = originalConfigurationManager;
-      }
-    }
-  });
-
-  it('keeps configuration write transport errors envelope-based through apiHandler', () => {
-    const originalConfigurationManager = globalThis.ConfigurationManager;
-    globalThis.ConfigurationManager = {
-      DEFAULTS: CONFIGURATION_MANAGER_DEFAULTS,
-      getInstance: vi.fn(() => {
-        throw new Error('configuration save exploded');
-      }),
-    };
-
-    try {
-      const { ApiDispatcher } = loadApiHandlerModule();
-      const dispatcher = ApiDispatcher.getInstance();
-
-      const response = dispatcher.handle({
+  it.each([
+    ['getBackendConfig', 'configuration exploded', { method: 'getBackendConfig' }],
+    [
+      'setBackendConfig',
+      'configuration save exploded',
+      {
         method: 'setBackendConfig',
-        params: {
-          backendUrl: 'https://updated-backend.example.test',
-        },
-      });
+        params: { backendUrl: 'https://updated-backend.example.test' },
+      },
+    ],
+  ])(
+    'keeps %s transport errors envelope-based through apiHandler',
+    (_methodName, thrownMessage, request) => {
+      const originalConfigurationManager = globalThis.ConfigurationManager;
+      globalThis.ConfigurationManager = {
+        DEFAULTS: CONFIGURATION_MANAGER_DEFAULTS,
+        getInstance: vi.fn(() => {
+          throw new Error(thrownMessage);
+        }),
+      };
 
-      expect(globalThis.ConfigurationManager.getInstance).toHaveBeenCalledTimes(1);
-      expect(response).toEqual({
-        ok: false,
-        requestId: response.requestId,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: 'Internal API error.',
-          retriable: false,
-        },
-      });
-      expect(response.requestId).toEqual(expect.any(String));
-    } finally {
-      if (originalConfigurationManager === undefined) {
-        delete globalThis.ConfigurationManager;
-      } else {
-        globalThis.ConfigurationManager = originalConfigurationManager;
+      try {
+        const { ApiDispatcher } = loadApiHandlerModule();
+        const dispatcher = ApiDispatcher.getInstance();
+
+        const response = dispatcher.handle(request);
+
+        expect(globalThis.ConfigurationManager.getInstance).toHaveBeenCalledTimes(1);
+        expect(response).toEqual({
+          ok: false,
+          requestId: response.requestId,
+          error: {
+            code: 'INTERNAL_ERROR',
+            message: 'Internal API error.',
+            retriable: false,
+          },
+        });
+        expect(response.requestId).toEqual(expect.any(String));
+      } finally {
+        if (originalConfigurationManager === undefined) {
+          delete globalThis.ConfigurationManager;
+        } else {
+          globalThis.ConfigurationManager = originalConfigurationManager;
+        }
       }
     }
-  });
+  );
 
   it('does not retain the legacy configuration globals transport file', () => {
     expect(existsSync(legacyConfigurationGlobalsPath)).toBe(false);

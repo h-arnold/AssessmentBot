@@ -71,83 +71,43 @@ describe('ConfigurationManager AUTH_MODE', () => {
   });
 
   describe('getAuthMode (forgiving transport getter)', () => {
-    it('returns googleGroups when the stored value is googleGroups', () => {
-      configManager.configCache = {
-        [ConfigurationManager.CONFIG_KEYS.AUTH_MODE]: 'googleGroups',
-      };
+    const AUTH_MODE = ConfigurationManager.CONFIG_KEYS.AUTH_MODE;
+    const AUTH_GROUP_EMAIL = ConfigurationManager.CONFIG_KEYS.AUTH_GROUP_EMAIL;
 
-      expect(configManager.getAuthMode()).toBe('googleGroups');
+    it.each([
+      ['a stored googleGroups mode', { [AUTH_MODE]: 'googleGroups' }, 'googleGroups'],
+      ['a stored scriptProperties mode', { [AUTH_MODE]: 'scriptProperties' }, 'scriptProperties'],
+      [
+        'an absent mode with a non-blank group (single leniency)',
+        { [AUTH_GROUP_EMAIL]: 'teachers@school.edu' },
+        'googleGroups',
+      ],
+      [
+        'a stored blank mode with a non-blank group (single leniency)',
+        { [AUTH_MODE]: '', [AUTH_GROUP_EMAIL]: 'teachers@school.edu' },
+        'googleGroups',
+      ],
+    ])('returns %s as the resolved mode', (_label, cache, expectedMode) => {
+      configManager.configCache = cache;
+
+      expect(configManager.getAuthMode()).toBe(expectedMode);
     });
 
-    it('returns scriptProperties when the stored value is scriptProperties', () => {
-      configManager.configCache = {
-        [ConfigurationManager.CONFIG_KEYS.AUTH_MODE]: 'scriptProperties',
-      };
-
-      expect(configManager.getAuthMode()).toBe('scriptProperties');
-    });
-
-    it('applies the single leniency: absent mode with a non-blank group reads as googleGroups', () => {
-      configManager.configCache = {
-        [ConfigurationManager.CONFIG_KEYS.AUTH_GROUP_EMAIL]: 'teachers@school.edu',
-      };
-
-      expect(configManager.getAuthMode()).toBe('googleGroups');
-    });
-
-    it('does NOT blanket-default to googleGroups when the mode is absent without a group', () => {
-      configManager.configCache = {};
-
-      expect(configManager.getAuthMode()).toBeNull();
-    });
-
-    it('does NOT blanket-default to googleGroups for a stored blank mode', () => {
-      configManager.configCache = {
-        [ConfigurationManager.CONFIG_KEYS.AUTH_MODE]: '',
-      };
-
-      expect(configManager.getAuthMode()).toBeNull();
-    });
-
-    it('does NOT return the removed none mode (resolves to no mode)', () => {
-      configManager.configCache = {
-        [ConfigurationManager.CONFIG_KEYS.AUTH_MODE]: 'none',
-      };
-
-      expect(configManager.getAuthMode()).toBeNull();
-    });
-
-    it('does NOT return googleGroups for an unrecognised stored value without a group', () => {
-      configManager.configCache = {
-        [ConfigurationManager.CONFIG_KEYS.AUTH_MODE]: 'foo',
-      };
-
-      expect(configManager.getAuthMode()).toBeNull();
-    });
-
-    it('treats a stored blank mode as absent, so a non-blank group reads as googleGroups', () => {
-      configManager.configCache = {
-        [ConfigurationManager.CONFIG_KEYS.AUTH_MODE]: '',
-        [ConfigurationManager.CONFIG_KEYS.AUTH_GROUP_EMAIL]: 'teachers@school.edu',
-      };
-
-      expect(configManager.getAuthMode()).toBe('googleGroups');
-    });
-
-    it('does NOT apply the leniency to the removed none mode paired with a group', () => {
-      configManager.configCache = {
-        [ConfigurationManager.CONFIG_KEYS.AUTH_MODE]: 'none',
-        [ConfigurationManager.CONFIG_KEYS.AUTH_GROUP_EMAIL]: 'teachers@school.edu',
-      };
-
-      expect(configManager.getAuthMode()).toBeNull();
-    });
-
-    it('does NOT apply the leniency to an unrecognised mode paired with a group', () => {
-      configManager.configCache = {
-        [ConfigurationManager.CONFIG_KEYS.AUTH_MODE]: 'foo',
-        [ConfigurationManager.CONFIG_KEYS.AUTH_GROUP_EMAIL]: 'teachers@school.edu',
-      };
+    it.each([
+      ['an absent mode without a group', {}],
+      ['a stored blank mode', { [AUTH_MODE]: '' }],
+      ['the removed none mode', { [AUTH_MODE]: 'none' }],
+      ['an unrecognised stored value without a group', { [AUTH_MODE]: 'foo' }],
+      [
+        'the removed none mode paired with a group',
+        { [AUTH_MODE]: 'none', [AUTH_GROUP_EMAIL]: 'teachers@school.edu' },
+      ],
+      [
+        'an unrecognised mode paired with a group',
+        { [AUTH_MODE]: 'foo', [AUTH_GROUP_EMAIL]: 'teachers@school.edu' },
+      ],
+    ])('does NOT resolve %s to a mode (returns null)', (_label, cache) => {
+      configManager.configCache = cache;
 
       expect(configManager.getAuthMode()).toBeNull();
     });
@@ -155,22 +115,14 @@ describe('ConfigurationManager AUTH_MODE', () => {
     it('never throws across any stored/absent scenario', () => {
       const scenarios = [
         {},
-        { [ConfigurationManager.CONFIG_KEYS.AUTH_MODE]: 'googleGroups' },
-        { [ConfigurationManager.CONFIG_KEYS.AUTH_MODE]: 'scriptProperties' },
-        { [ConfigurationManager.CONFIG_KEYS.AUTH_MODE]: '' },
-        { [ConfigurationManager.CONFIG_KEYS.AUTH_MODE]: 'none' },
-        { [ConfigurationManager.CONFIG_KEYS.AUTH_MODE]: 'foo' },
-        {
-          [ConfigurationManager.CONFIG_KEYS.AUTH_GROUP_EMAIL]: 'teachers@school.edu',
-        },
-        {
-          [ConfigurationManager.CONFIG_KEYS.AUTH_MODE]: 'none',
-          [ConfigurationManager.CONFIG_KEYS.AUTH_GROUP_EMAIL]: 'teachers@school.edu',
-        },
-        {
-          [ConfigurationManager.CONFIG_KEYS.AUTH_MODE]: 'foo',
-          [ConfigurationManager.CONFIG_KEYS.AUTH_GROUP_EMAIL]: 'teachers@school.edu',
-        },
+        { [AUTH_MODE]: 'googleGroups' },
+        { [AUTH_MODE]: 'scriptProperties' },
+        { [AUTH_MODE]: '' },
+        { [AUTH_MODE]: 'none' },
+        { [AUTH_MODE]: 'foo' },
+        { [AUTH_GROUP_EMAIL]: 'teachers@school.edu' },
+        { [AUTH_MODE]: 'none', [AUTH_GROUP_EMAIL]: 'teachers@school.edu' },
+        { [AUTH_MODE]: 'foo', [AUTH_GROUP_EMAIL]: 'teachers@school.edu' },
       ];
 
       for (const cache of scenarios) {

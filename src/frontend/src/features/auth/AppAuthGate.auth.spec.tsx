@@ -1,6 +1,4 @@
-import { QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
-import type { PropsWithChildren } from 'react';
 import type * as AssignmentDefinitionPartialsServiceModule from '../../services/assignmentDefinition/assignmentDefinitionPartialsService';
 import type * as SharedQueriesModule from '../../query/sharedQueries';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -10,7 +8,8 @@ import {
   startupWarmupDatasetKeys,
   startupWarmupQueryKeys,
 } from '../../query/sharedQueries';
-import { createAppQueryClient } from '../../query/queryClient';
+import { createQueryWrapper, grantedAdminAccess } from '../../test/auth/appAuthGateTestHelpers';
+import { createDeferredPromise } from '../../test/shared/testDeferredPromise';
 import { AuthStatusCard } from './AuthStatusCard';
 import { AppAuthGate } from './AppAuthGate';
 import {
@@ -76,12 +75,7 @@ vi.mock('../../query/sharedQueries', async () => {
   };
 });
 
-const GRANTED_ACCESS = {
-  allowed: true,
-  role: 'admin',
-  email: 'owner@example.com',
-  reason: 'ok' as const,
-};
+const GRANTED_ACCESS = grantedAdminAccess;
 
 type StartupWarmupDatasetProbeSnapshot = Readonly<{
   warmupState?: string;
@@ -89,27 +83,6 @@ type StartupWarmupDatasetProbeSnapshot = Readonly<{
   classPartialsReady?: boolean | null;
   assignmentDefinitionPartialsFailed?: boolean | null;
 }>;
-
-/**
- * Creates a deferred promise for async test control.
- *
- * @template T
- * @returns {{ promise: Promise<T>; resolvePromise: (value: T) => void; rejectPromise: (error: unknown) => void }} Deferred promise helpers.
- */
-function createDeferredPromise<T>() {
-  let resolvePromise!: (value: T) => void;
-  let rejectPromise!: (error: unknown) => void;
-  const promise = new Promise<T>((resolve, reject) => {
-    resolvePromise = resolve;
-    rejectPromise = reject;
-  });
-
-  return {
-    promise,
-    resolvePromise,
-    rejectPromise,
-  };
-}
 
 /**
  * Probes the startup warm-up hook state for assertions.
@@ -160,30 +133,6 @@ function StartupWarmupDatasetProbe() {
  */
 function readStartupWarmupDatasetProbeSnapshot(): StartupWarmupDatasetProbeSnapshot {
   return JSON.parse(screen.getByTestId('startup-warmup-dataset-probe').textContent ?? '{}');
-}
-
-/**
- * Creates a query-client wrapper for React Query tests.
- *
- * @returns {{ queryClient: ReturnType<typeof createAppQueryClient>; QueryWrapper(properties: Readonly<PropsWithChildren>): JSX.Element }} Query wrapper helpers.
- */
-function createQueryWrapper() {
-  const queryClient = createAppQueryClient();
-
-  /**
-   * Wraps children in the shared test query client.
-   *
-   * @param {Readonly<PropsWithChildren>} properties Wrapper properties.
-   * @returns {JSX.Element} Wrapped children.
-   */
-  function QueryWrapper({ children }: Readonly<PropsWithChildren>) {
-    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
-  }
-
-  return {
-    queryClient,
-    QueryWrapper,
-  };
 }
 
 /**

@@ -67,80 +67,34 @@ describe('Backend configuration auth schema — authUsers, authRevision, size ca
       );
     });
 
-    it('rejects malformed JSON', () => {
+    it.each([
+      ['malformed JSON', '{not-json'],
+      ['a non-array JSON value (object)', '{"email":"admin@school.edu"}'],
+      ['a non-array JSON value (scalar)', '42'],
+      [
+        'duplicate emails after normalisation',
+        buildUsersJson([
+          { email: 'admin@school.edu', role: 'admin' },
+          { email: 'ADMIN@school.edu', role: 'user' },
+        ]),
+      ],
+      ['an unknown role', buildUsersJson([{ email: 'admin@school.edu', role: 'super' }])],
+      [
+        'an unknown key per entry',
+        buildUsersJson([{ email: 'admin@school.edu', role: 'admin', extra: 'x' }]),
+      ],
+      ['a blank email', buildUsersJson([{ email: '   ', role: 'admin' }])],
+      [
+        'an unnormalised (uppercase) email',
+        buildUsersJson([{ email: 'Admin@School.Edu', role: 'admin' }]),
+      ],
+      ['an untrimmed email', buildUsersJson([{ email: ' admin@school.edu ', role: 'admin' }])],
+      ['a list with zero admins', buildUsersJson([{ email: 'user@school.edu', role: 'user' }])],
+      ['an empty list', '[]'],
+    ])('rejects %s', (_label, payload) => {
       const validator = getValidator();
-
-      expect(() => validator('{not-json', configManager)).toThrow();
-    });
-
-    it('rejects a non-array JSON value (object)', () => {
-      const validator = getValidator();
-
-      expect(() => validator('{"email":"admin@school.edu"}', configManager)).toThrow();
-    });
-
-    it('rejects a non-array JSON value (scalar)', () => {
-      const validator = getValidator();
-
-      expect(() => validator('42', configManager)).toThrow();
-    });
-
-    it('rejects duplicate emails after normalisation', () => {
-      const validator = getValidator();
-      const payload = buildUsersJson([
-        { email: 'admin@school.edu', role: 'admin' },
-        { email: 'ADMIN@school.edu', role: 'user' },
-      ]);
 
       expect(() => validator(payload, configManager)).toThrow();
-    });
-
-    it('rejects an unknown role', () => {
-      const validator = getValidator();
-      const payload = buildUsersJson([{ email: 'admin@school.edu', role: 'super' }]);
-
-      expect(() => validator(payload, configManager)).toThrow();
-    });
-
-    it('rejects an unknown key per entry', () => {
-      const validator = getValidator();
-      const payload = buildUsersJson([{ email: 'admin@school.edu', role: 'admin', extra: 'x' }]);
-
-      expect(() => validator(payload, configManager)).toThrow();
-    });
-
-    it('rejects a blank email', () => {
-      const validator = getValidator();
-      const payload = buildUsersJson([{ email: '   ', role: 'admin' }]);
-
-      expect(() => validator(payload, configManager)).toThrow();
-    });
-
-    it('rejects an unnormalised (uppercase) email', () => {
-      const validator = getValidator();
-      const payload = buildUsersJson([{ email: 'Admin@School.Edu', role: 'admin' }]);
-
-      expect(() => validator(payload, configManager)).toThrow();
-    });
-
-    it('rejects an untrimmed email', () => {
-      const validator = getValidator();
-      const payload = buildUsersJson([{ email: ' admin@school.edu ', role: 'admin' }]);
-
-      expect(() => validator(payload, configManager)).toThrow();
-    });
-
-    it('rejects a list with zero admins', () => {
-      const validator = getValidator();
-      const payload = buildUsersJson([{ email: 'user@school.edu', role: 'user' }]);
-
-      expect(() => validator(payload, configManager)).toThrow();
-    });
-
-    it('rejects an empty list', () => {
-      const validator = getValidator();
-
-      expect(() => validator('[]', configManager)).toThrow();
     });
 
     it('accepts a valid, already-normalised list and returns a canonical JSON string', () => {
@@ -172,40 +126,17 @@ describe('Backend configuration auth schema — authUsers, authRevision, size ca
       );
     });
 
-    it('rejects the zero revision', () => {
+    it.each([
+      ['the zero revision', '0'],
+      ['a non-integer string', 'abc'],
+      ['an empty string', ''],
+      ['a non-string (numeric) type', 1],
+      ['a negative revision', '-1'],
+      ['a fractional revision', '1.5'],
+    ])('rejects %s', (_label, payload) => {
       const validator = getValidator();
 
-      expect(() => validator('0', configManager)).toThrow();
-    });
-
-    it('rejects a non-integer string', () => {
-      const validator = getValidator();
-
-      expect(() => validator('abc', configManager)).toThrow();
-    });
-
-    it('rejects an empty string', () => {
-      const validator = getValidator();
-
-      expect(() => validator('', configManager)).toThrow();
-    });
-
-    it('rejects a non-string (numeric) type', () => {
-      const validator = getValidator();
-
-      expect(() => validator(1, configManager)).toThrow();
-    });
-
-    it('rejects a negative revision', () => {
-      const validator = getValidator();
-
-      expect(() => validator('-1', configManager)).toThrow();
-    });
-
-    it('rejects a fractional revision', () => {
-      const validator = getValidator();
-
-      expect(() => validator('1.5', configManager)).toThrow();
+      expect(() => validator(payload, configManager)).toThrow();
     });
 
     it('accepts the initial revision', () => {

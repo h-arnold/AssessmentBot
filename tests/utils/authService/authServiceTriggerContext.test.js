@@ -13,7 +13,11 @@
  *   { bypassCache?: boolean, neverClaim?: boolean, method?: string }
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { provisionAuthContext, createAbLoggerSpy } from './authServiceTestHarness.js';
+import {
+  provisionAuthContext,
+  createAbLoggerSpy,
+  expectNeverClaimCheckAccess,
+} from './authServiceTestHarness.js';
 
 const AuthService = require('../../../src/backend/Utils/AuthService.js');
 const { triggerHandler } = require('../../../src/backend/Triggers/triggerHandler.js');
@@ -95,13 +99,7 @@ describe('AuthService trigger execution context', () => {
 
     triggerHandler({ triggerUid: 'trigger-uid-1' });
 
-    expect(checkAccessSpy).toHaveBeenCalledTimes(1);
-    expect(checkAccessSpy).toHaveBeenCalledWith({
-      bypassCache: true,
-      neverClaim: true,
-      method: 'processSelectedAssignment',
-    });
-    expect(checkAccessSpy.mock.calls[0][0]).not.toHaveProperty('requireConfigured');
+    expectNeverClaimCheckAccess(checkAccessSpy, 'processSelectedAssignment');
     expect(mockDispatchHandler).toHaveBeenCalledTimes(1);
   });
 

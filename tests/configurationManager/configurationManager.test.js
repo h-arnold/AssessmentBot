@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   buildDefaultBackendConfigStore,
   createConfiguredConfigurationManager,
+  installInMemoryScriptProperties,
+  installStoredConfig,
 } from '../helpers/backendConfigTestHelpers.js';
 const {
   CONFIG_KEYS: CONFIG_MANAGER_CONFIG_KEYS,
@@ -357,12 +359,8 @@ describe('ConfigurationManager default backend configuration bootstrap', () => {
     const expectedDefaultStore = buildDefaultBackendConfigStore(ConfigurationManager);
     // Back the raw store so the single staged write is visible to the locked
     // write path's re-read (GAS persistence semantics).
-    const store = {};
-    mocks.PropertiesService.scriptProperties.getProperty.mockImplementation((key) =>
-      Object.hasOwn(store, key) ? store[key] : null
-    );
-    mocks.PropertiesService.scriptProperties.setProperty.mockImplementation((key, value) => {
-      store[key] = value;
+    installInMemoryScriptProperties(mocks.PropertiesService.scriptProperties, {
+      configStoreKey: ConfigurationManager.CONFIG_STORE_KEY,
     });
     const result = configManager.ensureDefaultConfiguration();
 
@@ -407,24 +405,8 @@ describe('ConfigurationManager getter and helper behaviour', () => {
   });
 
   it('reads typed configuration values from the persisted store', () => {
-    const storedConfig = {
-      [ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE]: '42',
-      [ConfigurationManager.CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE]: '24',
-      [ConfigurationManager.CONFIG_KEYS.API_KEY]: 'live-secret-7890',
-      [ConfigurationManager.CONFIG_KEYS.BACKEND_URL]: 'https://backend.example.test',
-      [ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET]: 'true',
-      [ConfigurationManager.CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE]: '15',
-      [ConfigurationManager.CONFIG_KEYS.JSON_DB_MASTER_INDEX_KEY]: 'MASTER_INDEX_X',
-      // Canonical JSON DB lock timeout minimum (CONFIG_SCHEMA): 30000.
-      [ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS]: '30000',
-      [ConfigurationManager.CONFIG_KEYS.JSON_DB_LOG_LEVEL]: 'warn',
-      [ConfigurationManager.CONFIG_KEYS.JSON_DB_BACKUP_ON_INITIALISE]: 'true',
-      [ConfigurationManager.CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID]: ' folder-123 ',
-    };
-
-    mocks.PropertiesService.scriptProperties.getProperty.mockReturnValue(
-      JSON.stringify(storedConfig)
-    );
+    // The canonical JSON DB lock timeout minimum (CONFIG_SCHEMA) is 30000.
+    installStoredConfig(mocks.PropertiesService.scriptProperties, ConfigurationManager);
 
     expect(configManager.getBackendAssessorBatchSize()).toBe(42);
     expect(configManager.getSlidesFetchBatchSize()).toBe(24);
@@ -445,7 +427,8 @@ describe('ConfigurationManager getter and helper behaviour', () => {
   });
 
   it('falls back to defaults for blank or invalid stored values', () => {
-    const storedConfig = {
+    // 20000 is below the canonical CONFIG_SCHEMA minimum (30000); expect the default.
+    installStoredConfig(mocks.PropertiesService.scriptProperties, ConfigurationManager, {
       [ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE]: 'abc',
       [ConfigurationManager.CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE]: '0',
       [ConfigurationManager.CONFIG_KEYS.API_KEY]: '',
@@ -453,16 +436,11 @@ describe('ConfigurationManager getter and helper behaviour', () => {
       [ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET]: '',
       [ConfigurationManager.CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE]: '999',
       [ConfigurationManager.CONFIG_KEYS.JSON_DB_MASTER_INDEX_KEY]: '',
-      // 20000 is below the canonical CONFIG_SCHEMA minimum (30000); expect the default.
       [ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS]: '20000',
       [ConfigurationManager.CONFIG_KEYS.JSON_DB_LOG_LEVEL]: '',
       [ConfigurationManager.CONFIG_KEYS.JSON_DB_BACKUP_ON_INITIALISE]: '',
       [ConfigurationManager.CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID]: '   ',
-    };
-
-    mocks.PropertiesService.scriptProperties.getProperty.mockReturnValue(
-      JSON.stringify(storedConfig)
-    );
+    });
 
     expect(configManager.getBackendAssessorBatchSize()).toBe(
       ConfigurationManager.DEFAULTS.BACKEND_ASSESSOR_BATCH_SIZE

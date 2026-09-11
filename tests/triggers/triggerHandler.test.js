@@ -32,6 +32,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { withGlobalMocks } from '../helpers/globalMockManager.js';
+import { expectNeverClaimCheckAccess } from '../utils/authService/authServiceTestHarness.js';
 
 const AuthService = require('../../src/backend/Utils/AuthService.js');
 
@@ -386,14 +387,7 @@ describe('triggerHandler', () => {
 
       triggerHandler({ triggerUid: 'trigger-uid-12' });
 
-      expect(checkAccessSpy).toHaveBeenCalledTimes(1);
-      expect(checkAccessSpy).toHaveBeenCalledWith({
-        bypassCache: true,
-        neverClaim: true,
-        method: 'processSelectedAssignment',
-      });
-      // The removed requireConfigured option must not appear anywhere in the call.
-      expect(checkAccessSpy.mock.calls[0][0]).not.toHaveProperty('requireConfigured');
+      expectNeverClaimCheckAccess(checkAccessSpy, 'processSelectedAssignment');
       expect(mockDispatchHandler).toHaveBeenCalledTimes(1);
     });
 

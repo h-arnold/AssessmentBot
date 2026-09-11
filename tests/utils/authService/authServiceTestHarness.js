@@ -12,7 +12,7 @@
  * else null) so the tests exercise the resolver regardless of whether it reads
  * through the getter surface or the raw property surface.
  */
-import { vi } from 'vitest';
+import { expect, vi } from 'vitest';
 import { withGlobalMocks } from '../../helpers/globalMockManager.js';
 
 /** The Google Groups cache TTL in seconds (six hours). */
@@ -215,4 +215,22 @@ export function flattenedLog(logger) {
       args.map((arg) => (typeof arg === 'string' ? arg : JSON.stringify(arg))).join(' ')
     )
     .join('\n');
+}
+
+/**
+ * Asserts that a trigger-context `AuthService.checkAccess` call used the
+ * explicit never-claim options and never passed the removed
+ * `requireConfigured` option.
+ * @param {import('vitest').Mock} checkAccessSpy - Spy on `AuthService.checkAccess`.
+ * @param {string} method - The dispatched trigger method name.
+ * @returns {void}
+ */
+export function expectNeverClaimCheckAccess(checkAccessSpy, method) {
+  expect(checkAccessSpy).toHaveBeenCalledTimes(1);
+  expect(checkAccessSpy).toHaveBeenCalledWith({
+    bypassCache: true,
+    neverClaim: true,
+    method,
+  });
+  expect(checkAccessSpy.mock.calls[0][0]).not.toHaveProperty('requireConfigured');
 }

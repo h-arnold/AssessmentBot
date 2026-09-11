@@ -12,77 +12,67 @@ const API_KEY_MASK_PREFIX = '****';
 const AUTH_MANAGED_CONFIG_FIELDS = ['authMode', 'authGroupEmail', 'authUsers', 'authRevision'];
 
 /**
+ * Shared descriptor read callback for every ordinary writable configuration field.
+ * Resolves the value from the `field` name bound on the descriptor, so that name is
+ * declared once per descriptor and can never drift from the read behaviour.
+ * @this {{ field: string }}
+ * @param {Object} config - Partial configuration payload.
+ * @returns {*} Raw value for the descriptor's field.
+ */
+function readBackendConfigField_(config) {
+  return config[this.field];
+}
+
+/**
  * Ordinary (non-auth) writable backend configuration fields, in canonical order.
  * Each descriptor carries the field name ONCE; the read behaviour is derived from
- * that single `field` value so the name can never drift from the read closure.
+ * that single `field` value so the name can never drift from the read callback.
  * @type {Array<{ field: string, read: function(Object): * }>}
  */
 const BACKEND_CONFIG_WRITABLE_FIELDS = Object.freeze([
   {
     field: 'backendAssessorBatchSize',
-    read(config) {
-      return config[this.field];
-    },
+    read: readBackendConfigField_,
   },
   {
     field: 'slidesFetchBatchSize',
-    read(config) {
-      return config[this.field];
-    },
+    read: readBackendConfigField_,
   },
   {
     field: 'apiKey',
-    read(config) {
-      return config[this.field];
-    },
+    read: readBackendConfigField_,
   },
   {
     field: 'backendUrl',
-    read(config) {
-      return config[this.field];
-    },
+    read: readBackendConfigField_,
   },
   {
     field: 'revokeAuthTriggerSet',
-    read(config) {
-      return config[this.field];
-    },
+    read: readBackendConfigField_,
   },
   {
     field: 'daysUntilAuthRevoke',
-    read(config) {
-      return config[this.field];
-    },
+    read: readBackendConfigField_,
   },
   {
     field: 'jsonDbMasterIndexKey',
-    read(config) {
-      return config[this.field];
-    },
+    read: readBackendConfigField_,
   },
   {
     field: 'jsonDbLockTimeoutMs',
-    read(config) {
-      return config[this.field];
-    },
+    read: readBackendConfigField_,
   },
   {
     field: 'jsonDbLogLevel',
-    read(config) {
-      return config[this.field];
-    },
+    read: readBackendConfigField_,
   },
   {
     field: 'jsonDbBackupOnInitialise',
-    read(config) {
-      return config[this.field];
-    },
+    read: readBackendConfigField_,
   },
   {
     field: 'jsonDbRootFolderId',
-    read(config) {
-      return config[this.field];
-    },
+    read: readBackendConfigField_,
   },
 ]);
 

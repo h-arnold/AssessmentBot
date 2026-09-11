@@ -222,10 +222,90 @@ function createConfiguredConfigurationManager(vi, ConfigurationManager, options 
   return { mocks, configManager };
 }
 
+/**
+ * Backs the mocked Script Properties with an in-memory store so the serialised
+ * config blob is visible to the locked-write re-read (GAS persistence
+ * semantics).
+ * @param {Object} scriptPropertiesMocks - Mocked scriptProperties get/set spies.
+ * @param {Object} options - Fixture configuration.
+ * @param {string} options.configStoreKey - The single blob key (`CONFIG_STORE_KEY`).
+ * @param {Object} [options.initialConfig] - Optional seed config; omit for a fresh install.
+ * @returns {Object} The mutable store keyed by `configStoreKey`.
+ */
+function installInMemoryScriptProperties(
+  scriptPropertiesMocks,
+  { configStoreKey, initialConfig } = {}
+) {
+  const store = {};
+  if (initialConfig !== undefined) {
+    store[configStoreKey] = JSON.stringify(initialConfig);
+  }
+  scriptPropertiesMocks.getProperty.mockImplementation((key) =>
+    Object.hasOwn(store, key) ? store[key] : null
+  );
+  scriptPropertiesMocks.setProperty.mockImplementation((key, value) => {
+    store[key] = value;
+  });
+  return store;
+}
+
+/**
+ * Seeds mocked Script Properties with a complete serialised configuration blob,
+ * overridable per test.
+ * @param {Object} scriptPropertiesMocks - Mocked scriptProperties get/set spies.
+ * @param {Object} ConfigurationManager - The ConfigurationManager class (for CONFIG_KEYS).
+ * @param {Object} [overrides] - Stored value overrides.
+ * @returns {Object} The stored config object.
+ */
+function installStoredConfig(scriptPropertiesMocks, ConfigurationManager, overrides = {}) {
+  const storedConfig = {
+    [ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE]: '42',
+    [ConfigurationManager.CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE]: '24',
+    [ConfigurationManager.CONFIG_KEYS.API_KEY]: 'live-secret-7890',
+    [ConfigurationManager.CONFIG_KEYS.BACKEND_URL]: 'https://backend.example.test',
+    [ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET]: 'true',
+    [ConfigurationManager.CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE]: '15',
+    [ConfigurationManager.CONFIG_KEYS.JSON_DB_MASTER_INDEX_KEY]: 'MASTER_INDEX_X',
+    [ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS]: '30000',
+    [ConfigurationManager.CONFIG_KEYS.JSON_DB_LOG_LEVEL]: 'warn',
+    [ConfigurationManager.CONFIG_KEYS.JSON_DB_BACKUP_ON_INITIALISE]: 'true',
+    [ConfigurationManager.CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID]: ' folder-123 ',
+    ...overrides,
+  };
+  scriptPropertiesMocks.getProperty.mockReturnValue(JSON.stringify(storedConfig));
+  return storedConfig;
+}
+
+/**
+ * Installs a script-wide lock mock whose default `waitLock` succeeds. Individual
+ * tests may make `waitLock` throw to simulate contention.
+ * @param {typeof import('vitest')} vi - Vitest instance.
+ * @returns {Object} `{ lockMock, scriptLockFactory, restore }`.
+ */
+function installScriptLockMock(vi) {
+  const lockMock = {
+    waitLock: vi.fn(() => {}),
+    releaseLock: vi.fn(() => {}),
+  };
+  const scriptLockFactory = vi.fn(() => lockMock);
+  const originalLockService = globalThis.LockService;
+  globalThis.LockService = { ...originalLockService, getScriptLock: scriptLockFactory };
+  return {
+    lockMock,
+    scriptLockFactory,
+    restore() {
+      globalThis.LockService = originalLockService;
+    },
+  };
+}
+
 module.exports = {
   CONFIGURATION_MANAGER_DEFAULTS,
   buildBackendConfigResponse,
   buildDefaultBackendConfigStore,
   createConfigurationManagerMock,
   createConfiguredConfigurationManager,
+  installInMemoryScriptProperties,
+  installScriptLockMock,
+  installStoredConfig,
 };

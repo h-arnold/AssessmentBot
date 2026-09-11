@@ -30,7 +30,11 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createConfiguredConfigurationManager } from '../helpers/backendConfigTestHelpers.js';
+import {
+  createConfiguredConfigurationManager,
+  installInMemoryScriptProperties,
+  installScriptLockMock,
+} from '../helpers/backendConfigTestHelpers.js';
 
 const ConfigurationManager = require('../../src/backend/ConfigurationManager/98_ConfigurationManagerClass.js');
 const {
@@ -42,7 +46,7 @@ const CONFIG_STORE_KEY = ConfigurationManager.CONFIG_STORE_KEY || '__CONFIG_STOR
 describe('ConfigurationManager Section 2 — locked write path, freshness, facade (RED contract)', () => {
   let mocks;
   let configManager;
-  let originalLockService;
+  let restoreLockService;
   let scriptLockFactory;
   let lockMock;
 
@@ -52,33 +56,20 @@ describe('ConfigurationManager Section 2 — locked write path, freshness, facad
 
     // Install a script-wide lock mock. The default lock acquires successfully.
     // Individual tests may make `waitLock` throw to simulate contention.
-    lockMock = {
-      waitLock: vi.fn(() => {}),
-      releaseLock: vi.fn(() => {}),
-    };
-    scriptLockFactory = vi.fn(() => lockMock);
-    originalLockService = globalThis.LockService;
-    globalThis.LockService = { ...originalLockService, getScriptLock: scriptLockFactory };
+    ({ lockMock, scriptLockFactory, restore: restoreLockService } = installScriptLockMock(vi));
   });
 
   afterEach(() => {
-    globalThis.LockService = originalLockService;
+    restoreLockService();
     ConfigurationManager.resetForTests();
   });
 
   /** Builds an in-memory backing store for the serialised config blob. */
   function installInMemoryStore(initialConfig) {
-    const store = {};
-    if (initialConfig !== undefined) {
-      store[CONFIG_STORE_KEY] = JSON.stringify(initialConfig);
-    }
-    mocks.PropertiesService.scriptProperties.getProperty.mockImplementation((key) =>
-      Object.hasOwn(store, key) ? store[key] : null
-    );
-    mocks.PropertiesService.scriptProperties.setProperty.mockImplementation((key, value) => {
-      store[key] = value;
+    return installInMemoryScriptProperties(mocks.PropertiesService.scriptProperties, {
+      configStoreKey: CONFIG_STORE_KEY,
+      initialConfig,
     });
-    return store;
   }
 
   describe('facade preservation — existing public surface survives the split', () => {

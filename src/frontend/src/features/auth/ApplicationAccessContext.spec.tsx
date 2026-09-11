@@ -1,21 +1,16 @@
-import { QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
-import type { PropsWithChildren } from 'react';
 import type * as SharedQueriesModule from '../../query/sharedQueries';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createAppQueryClient } from '../../query/queryClient';
+import type { ApplicationAccess } from '../../services/authService/authService.zod';
+import { createQueryWrapper, grantedAdminAccess } from '../../test/auth/appAuthGateTestHelpers';
 import { useApplicationAccessContext } from './ApplicationAccessContext';
 import { AppAuthGate } from './AppAuthGate';
 
-const {
-  getAuthorisationStatusMock,
-  warmStartupQueriesMock,
-  getApplicationAccessMock,
-} = vi.hoisted(() => ({
-  getAuthorisationStatusMock: vi.fn(),
-  warmStartupQueriesMock: vi.fn(),
-  getApplicationAccessMock: vi.fn(),
-}));
+const { getAuthorisationStatusMock, warmStartupQueriesMock, getApplicationAccessMock } =
+  await vi.hoisted(async () => {
+    const { createAppAuthGateMocks } = await import('../../test/auth/appAuthGateTestHelpers');
+    return createAppAuthGateMocks();
+  });
 
 vi.mock('../../services/authService/authService', () => ({
   getAuthorisationStatus: getAuthorisationStatusMock,
@@ -46,24 +41,23 @@ function AccessGateContextProbe() {
 }
 
 /**
- * Creates a React Query client wrapper for application access context tests.
+ * Renders the auth gate with an authorised caller and a resolved access result.
  *
- * @returns {{ queryClient: ReturnType<typeof createAppQueryClient>; QueryWrapper(properties: Readonly<PropsWithChildren>): JSX.Element }} The query client and provider wrapper.
+ * @param {ApplicationAccess} access The access result the mocked service resolves with.
+ * @returns {ReturnType<typeof render>} The render result.
  */
-function createQueryWrapper() {
-  const queryClient = createAppQueryClient();
+function renderGateWithResolvedAccess(access: ApplicationAccess) {
+  getAuthorisationStatusMock.mockResolvedValueOnce(true);
+  warmStartupQueriesMock.mockResolvedValueOnce({});
+  getApplicationAccessMock.mockResolvedValueOnce(access);
+  const { QueryWrapper } = createQueryWrapper();
 
-  /**
-   * Wraps children in the shared test query client.
-   *
-   * @param {Readonly<PropsWithChildren>} properties Wrapper properties.
-   * @returns {JSX.Element} The wrapped children.
-   */
-  function QueryWrapper({ children }: Readonly<PropsWithChildren>) {
-    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
-  }
-
-  return { queryClient, QueryWrapper };
+  return render(
+    <AppAuthGate>
+      <AccessGateContextProbe />
+    </AppAuthGate>,
+    { wrapper: QueryWrapper }
+  );
 }
 
 describe('ApplicationAccessContext', () => {
@@ -74,22 +68,7 @@ describe('ApplicationAccessContext', () => {
   });
 
   it('delivers the resolved role and reason to consumers through the gate-mounted context', async () => {
-    getAuthorisationStatusMock.mockResolvedValueOnce(true);
-    warmStartupQueriesMock.mockResolvedValueOnce({});
-    getApplicationAccessMock.mockResolvedValueOnce({
-      allowed: true,
-      role: 'admin',
-      email: 'owner@example.com',
-      reason: 'ok',
-    });
-    const { QueryWrapper } = createQueryWrapper();
-
-    render(
-      <AppAuthGate>
-        <AccessGateContextProbe />
-      </AppAuthGate>,
-      { wrapper: QueryWrapper }
-    );
+    renderGateWithResolvedAccess(grantedAdminAccess);
 
     await waitFor(() => {
       expect(getApplicationAccessMock).toHaveBeenCalledTimes(1);
@@ -98,33 +77,18 @@ describe('ApplicationAccessContext', () => {
   });
 
   it('exposes the full access context value (role, reason, allowed, email) to consumers', async () => {
-    getAuthorisationStatusMock.mockResolvedValueOnce(true);
-    warmStartupQueriesMock.mockResolvedValueOnce({});
-    getApplicationAccessMock.mockResolvedValueOnce({
+    const memberAccess: ApplicationAccess = {
       allowed: false,
       role: 'user',
       email: 'member@example.com',
       reason: 'ok',
-    });
-    const { QueryWrapper } = createQueryWrapper();
+    };
 
-    render(
-      <AppAuthGate>
-        <AccessGateContextProbe />
-      </AppAuthGate>,
-      { wrapper: QueryWrapper }
-    );
+    renderGateWithResolvedAccess(memberAccess);
 
     await waitFor(() => {
       expect(getApplicationAccessMock).toHaveBeenCalledTimes(1);
     });
-    expect(screen.getByTestId('access-context')).toHaveTextContent(
-      JSON.stringify({
-        allowed: false,
-        role: 'user',
-        email: 'member@example.com',
-        reason: 'ok',
-      })
-    );
+    expect(screen.getByTestId('access-context')).toHaveTextContent(JSON.stringify(memberAccess));
   });
 });

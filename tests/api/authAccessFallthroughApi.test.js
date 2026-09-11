@@ -14,31 +14,20 @@
  * pins the distinct `resolveApplicationAccess` fall-through path, which the
  * equivalent `checkAccess` bootstrap-claim coverage does not reach.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { loadApiHandlerModule } from '../helpers/apiHandlerTestUtils.js';
-import { provisionAuthApiContext, rawStoreBlob } from './authApiTestHarness.js';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+  dispatchAuthApi,
+  provisionAuthApiContext,
+  rawStoreBlob,
+  resetAuthApiTestState,
+  teardownAuthApiTestContext,
+} from './authApiTestHarness.js';
 import { buildUsersJson } from '../utils/authService/authServiceTestHarness.js';
 import { CONFIG_STORE_KEY } from '../utils/authService/authServiceBootstrapHarness.js';
-
-const AuthService = require('../../src/backend/Utils/AuthService.js');
 
 const ADMIN = 'admin@school.edu';
 const OUTSIDER = 'outsider@school.edu';
 const GROUP_EMAIL = 'teachers@school.edu';
-
-/**
- * Dispatches a request through the real ApiDispatcher singleton.
- * @param {string} method - The allowlisted method name.
- * @param {Object} [params] - Optional method payload.
- * @returns {Object} The response envelope.
- */
-function dispatch(method, params) {
-  const { ApiDispatcher } = loadApiHandlerModule();
-  return ApiDispatcher.getInstance().handle({
-    method,
-    ...(params === undefined ? {} : { params }),
-  });
-}
 
 /**
  * Simulates a competing writer committing a blob between the pre-lock freshness
@@ -60,18 +49,13 @@ describe('getApplicationAccess — competing-writer claim fall-through', () => {
   let ctx;
 
   beforeEach(() => {
-    AuthService.resetForTests();
-    globalThis.PropertiesService._resetUserProperties();
-    globalThis.CacheService._resetScriptCache();
+    ctx = undefined;
+    resetAuthApiTestState();
   });
 
   afterEach(() => {
-    if (ctx) {
-      ctx.restore();
-      ctx = undefined;
-    }
-    AuthService.resetForTests();
-    vi.restoreAllMocks();
+    teardownAuthApiTestContext(ctx);
+    ctx = undefined;
   });
 
   it('falls through to ok when the competing blob authorises the caller as admin', () => {
@@ -82,7 +66,7 @@ describe('getApplicationAccess — competing-writer claim fall-through', () => {
       authRevision: '1',
     });
 
-    const response = dispatch('getApplicationAccess');
+    const response = dispatchAuthApi('getApplicationAccess');
 
     expect(response.ok).toBe(true);
     expect(response.data).toEqual({
@@ -105,7 +89,7 @@ describe('getApplicationAccess — competing-writer claim fall-through', () => {
       authRevision: '1',
     });
 
-    const response = dispatch('getApplicationAccess');
+    const response = dispatchAuthApi('getApplicationAccess');
 
     expect(response.ok).toBe(true);
     expect(response.data).toEqual({
@@ -124,7 +108,7 @@ describe('getApplicationAccess — competing-writer claim fall-through', () => {
       authGroupEmail: GROUP_EMAIL,
     });
 
-    const response = dispatch('getApplicationAccess');
+    const response = dispatchAuthApi('getApplicationAccess');
 
     expect(response.ok).toBe(true);
     expect(response.data).toEqual({

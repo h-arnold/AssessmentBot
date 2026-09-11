@@ -22,60 +22,40 @@
  * diagnostic may reference the stored revision, so no revision-value assertion
  * is encoded here.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { loadApiHandlerModule } from '../helpers/apiHandlerTestUtils.js';
-import { provisionAuthApiContext, rawStoreBlob } from './authApiTestHarness.js';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+  dispatchAuthApi,
+  provisionAuthApiContext,
+  rawStoreBlob,
+  resetAuthApiTestState,
+  storedScriptPropertiesState,
+  teardownAuthApiTestContext,
+} from './authApiTestHarness.js';
 import { buildUsersJson } from '../utils/authService/authServiceTestHarness.js';
 import { CONFIG_STORE_KEY } from '../utils/authService/authServiceBootstrapHarness.js';
-
-const AuthService = require('../../src/backend/Utils/AuthService.js');
 
 const ADMIN = 'admin@school.edu';
 const USER = 'user@school.edu';
 const OUTSIDER = 'outsider@school.edu';
 const GROUP_EMAIL = 'teachers@school.edu';
 
-// Builds a stored scriptProperties auth state.
-function scriptPropertiesState(users, revision, extra = {}) {
-  return {
-    authMode: 'scriptProperties',
-    authUsers: buildUsersJson(users),
-    authRevision: revision,
-    ...extra,
-  };
-}
-
-// Dispatches a request through the real ApiDispatcher singleton.
-function dispatch(method, params) {
-  const { ApiDispatcher } = loadApiHandlerModule();
-  return ApiDispatcher.getInstance().handle({
-    method,
-    ...(params === undefined ? {} : { params }),
-  });
-}
-
 describe('Auth endpoints — getApplicationAccess transport', () => {
   let ctx;
 
   beforeEach(() => {
-    AuthService.resetForTests();
-    globalThis.PropertiesService._resetUserProperties();
-    globalThis.CacheService._resetScriptCache();
+    ctx = undefined;
+    resetAuthApiTestState();
   });
 
   afterEach(() => {
-    if (ctx) {
-      ctx.restore();
-      ctx = undefined;
-    }
-    AuthService.resetForTests();
-    vi.restoreAllMocks();
+    teardownAuthApiTestContext(ctx);
+    ctx = undefined;
   });
 
   it('returns reason ok with the claimed admin role when a claimable caller invokes it on a fresh install', () => {
     ctx = provisionAuthApiContext({ email: 'teacher@school.edu' });
 
-    const response = dispatch('getApplicationAccess');
+    const response = dispatchAuthApi('getApplicationAccess');
 
     expect(response.ok).toBe(true);
     expect(response.data).toEqual({
@@ -98,7 +78,7 @@ describe('Auth endpoints — getApplicationAccess transport', () => {
   it('returns reason freshInstall without claiming for a non-claimable (blank) caller', () => {
     ctx = provisionAuthApiContext({ email: '' });
 
-    const response = dispatch('getApplicationAccess');
+    const response = dispatchAuthApi('getApplicationAccess');
 
     expect(response.ok).toBe(true);
     expect(response.data).toEqual({
@@ -118,7 +98,7 @@ describe('Auth endpoints — getApplicationAccess transport', () => {
       email: 'teacher@school.edu',
     });
 
-    const response = dispatch('getApplicationAccess');
+    const response = dispatchAuthApi('getApplicationAccess');
 
     expect(response.ok).toBe(true);
     expect(response.data).toEqual({
@@ -133,11 +113,11 @@ describe('Auth endpoints — getApplicationAccess transport', () => {
 
   it('returns reason denied for a valid configuration where the caller is not authorised', () => {
     ctx = provisionAuthApiContext({
-      seed: scriptPropertiesState([{ email: ADMIN, role: 'admin' }], '1'),
+      seed: storedScriptPropertiesState([{ email: ADMIN, role: 'admin' }], '1'),
       email: OUTSIDER,
     });
 
-    const response = dispatch('getApplicationAccess');
+    const response = dispatchAuthApi('getApplicationAccess');
 
     expect(response.ok).toBe(true);
     expect(response.data).toEqual({
@@ -155,23 +135,18 @@ describe('Auth endpoints — getAuthenticationSettings transport', () => {
   let ctx;
 
   beforeEach(() => {
-    AuthService.resetForTests();
-    globalThis.PropertiesService._resetUserProperties();
-    globalThis.CacheService._resetScriptCache();
+    ctx = undefined;
+    resetAuthApiTestState();
   });
 
   afterEach(() => {
-    if (ctx) {
-      ctx.restore();
-      ctx = undefined;
-    }
-    AuthService.resetForTests();
-    vi.restoreAllMocks();
+    teardownAuthApiTestContext(ctx);
+    ctx = undefined;
   });
 
   it('returns the scriptProperties settings shape with parsed users and the revision for an admin', () => {
     ctx = provisionAuthApiContext({
-      seed: scriptPropertiesState(
+      seed: storedScriptPropertiesState(
         [
           { email: ADMIN, role: 'admin' },
           { email: USER, role: 'user' },
@@ -182,7 +157,7 @@ describe('Auth endpoints — getAuthenticationSettings transport', () => {
       email: ADMIN,
     });
 
-    const response = dispatch('getAuthenticationSettings');
+    const response = dispatchAuthApi('getAuthenticationSettings');
 
     expect(response.ok).toBe(true);
     expect(response.data).toEqual({
@@ -204,7 +179,7 @@ describe('Auth endpoints — getAuthenticationSettings transport', () => {
       members: { [ADMIN]: 'OWNER' },
     });
 
-    const response = dispatch('getAuthenticationSettings');
+    const response = dispatchAuthApi('getAuthenticationSettings');
 
     expect(response.ok).toBe(true);
     expect(response.data).toEqual({
@@ -221,27 +196,22 @@ describe('Auth endpoints — setAuthenticationSettings transport', () => {
   let ctx;
 
   beforeEach(() => {
-    AuthService.resetForTests();
-    globalThis.PropertiesService._resetUserProperties();
-    globalThis.CacheService._resetScriptCache();
+    ctx = undefined;
+    resetAuthApiTestState();
   });
 
   afterEach(() => {
-    if (ctx) {
-      ctx.restore();
-      ctx = undefined;
-    }
-    AuthService.resetForTests();
-    vi.restoreAllMocks();
+    teardownAuthApiTestContext(ctx);
+    ctx = undefined;
   });
 
   it('commits a valid scriptProperties save atomically with one locked write and returns the incremented revision', () => {
     ctx = provisionAuthApiContext({
-      seed: scriptPropertiesState([{ email: ADMIN, role: 'admin' }], '3'),
+      seed: storedScriptPropertiesState([{ email: ADMIN, role: 'admin' }], '3'),
       email: ADMIN,
     });
 
-    const response = dispatch('setAuthenticationSettings', {
+    const response = dispatchAuthApi('setAuthenticationSettings', {
       authMode: 'scriptProperties',
       authUsers: [
         { email: ADMIN, role: 'admin' },
@@ -264,10 +234,10 @@ describe('Auth endpoints — setAuthenticationSettings transport', () => {
 
   it('rejects a stale expectedAuthRevision with a validation envelope, unchanged storage and no raw user-list leakage', () => {
     const users = [{ email: ADMIN, role: 'admin' }];
-    ctx = provisionAuthApiContext({ seed: scriptPropertiesState(users, '42'), email: ADMIN });
+    ctx = provisionAuthApiContext({ seed: storedScriptPropertiesState(users, '42'), email: ADMIN });
     const before = rawStoreBlob(ctx.store);
 
-    const response = dispatch('setAuthenticationSettings', {
+    const response = dispatchAuthApi('setAuthenticationSettings', {
       authMode: 'scriptProperties',
       authUsers: [
         { email: ADMIN, role: 'admin' },
@@ -292,12 +262,12 @@ describe('Auth endpoints — setAuthenticationSettings transport', () => {
 
   it('rejects an omitted expectedAuthRevision when a stored revision exists, leaving storage unchanged', () => {
     ctx = provisionAuthApiContext({
-      seed: scriptPropertiesState([{ email: ADMIN, role: 'admin' }], '4'),
+      seed: storedScriptPropertiesState([{ email: ADMIN, role: 'admin' }], '4'),
       email: ADMIN,
     });
     const before = rawStoreBlob(ctx.store);
 
-    const response = dispatch('setAuthenticationSettings', {
+    const response = dispatchAuthApi('setAuthenticationSettings', {
       authMode: 'scriptProperties',
       authUsers: [
         { email: ADMIN, role: 'admin' },
@@ -332,12 +302,12 @@ describe('Auth endpoints — setAuthenticationSettings transport', () => {
     ],
   ])('rejects last-admin %s with a validation envelope and unchanged storage', (_label, params) => {
     ctx = provisionAuthApiContext({
-      seed: scriptPropertiesState([{ email: ADMIN, role: 'admin' }], '1'),
+      seed: storedScriptPropertiesState([{ email: ADMIN, role: 'admin' }], '1'),
       email: ADMIN,
     });
     const before = rawStoreBlob(ctx.store);
 
-    const response = dispatch('setAuthenticationSettings', params);
+    const response = dispatchAuthApi('setAuthenticationSettings', params);
 
     expect(response.ok).toBe(false);
     expect(response.error).toMatchObject({
@@ -362,12 +332,12 @@ describe('Auth endpoints — setAuthenticationSettings transport', () => {
     'rejects %s in the candidate list with a validation envelope and unchanged storage',
     (_label, authUsers) => {
       ctx = provisionAuthApiContext({
-        seed: scriptPropertiesState([{ email: ADMIN, role: 'admin' }], '1'),
+        seed: storedScriptPropertiesState([{ email: ADMIN, role: 'admin' }], '1'),
         email: ADMIN,
       });
       const before = rawStoreBlob(ctx.store);
 
-      const response = dispatch('setAuthenticationSettings', {
+      const response = dispatchAuthApi('setAuthenticationSettings', {
         authMode: 'scriptProperties',
         authUsers,
         expectedAuthRevision: '1',
@@ -389,7 +359,7 @@ describe('Auth endpoints — setAuthenticationSettings transport', () => {
       members: { [ADMIN]: 'OWNER' },
     });
 
-    const response = dispatch('setAuthenticationSettings', {
+    const response = dispatchAuthApi('setAuthenticationSettings', {
       authMode: 'scriptProperties',
       authUsers: [{ email: ADMIN, role: 'admin' }],
     });
@@ -410,7 +380,7 @@ describe('Auth endpoints — setAuthenticationSettings transport', () => {
     });
     const before = rawStoreBlob(ctx.store);
 
-    const response = dispatch('setAuthenticationSettings', {
+    const response = dispatchAuthApi('setAuthenticationSettings', {
       authMode: 'scriptProperties',
       authUsers: [{ email: USER, role: 'admin' }],
     });
@@ -431,7 +401,7 @@ describe('Auth endpoints — setAuthenticationSettings transport', () => {
     });
     const before = rawStoreBlob(ctx.store);
 
-    const response = dispatch('setAuthenticationSettings', {
+    const response = dispatchAuthApi('setAuthenticationSettings', {
       authMode: 'googleGroups',
       authGroupEmail: GROUP_EMAIL,
       authUsers: [{ email: ADMIN, role: 'admin' }],
@@ -449,7 +419,7 @@ describe('Auth endpoints — setAuthenticationSettings transport', () => {
       members: { [ADMIN]: 'OWNER' },
     });
 
-    const response = dispatch('setAuthenticationSettings', {
+    const response = dispatchAuthApi('setAuthenticationSettings', {
       authMode: 'googleGroups',
       authGroupEmail: GROUP_EMAIL,
     });
@@ -462,7 +432,7 @@ describe('Auth endpoints — setAuthenticationSettings transport', () => {
     expect(Object.hasOwn(parsed, 'authUsers')).toBe(false);
     expect(Object.hasOwn(parsed, 'authRevision')).toBe(false);
 
-    const read = dispatch('getAuthenticationSettings');
+    const read = dispatchAuthApi('getAuthenticationSettings');
     expect(read.data).toEqual({
       authMode: 'googleGroups',
       authGroupEmail: GROUP_EMAIL,
@@ -477,12 +447,12 @@ describe('Auth endpoints — setAuthenticationSettings transport', () => {
       role: index === 0 ? 'admin' : 'user',
     }));
     ctx = provisionAuthApiContext({
-      seed: scriptPropertiesState([{ email: ADMIN, role: 'admin' }], '1'),
+      seed: storedScriptPropertiesState([{ email: ADMIN, role: 'admin' }], '1'),
       email: ADMIN,
     });
     const before = rawStoreBlob(ctx.store);
 
-    const response = dispatch('setAuthenticationSettings', {
+    const response = dispatchAuthApi('setAuthenticationSettings', {
       authMode: 'scriptProperties',
       authUsers: bigList,
       expectedAuthRevision: '1',

@@ -15,64 +15,34 @@
  * `authEndpointsApi.test.js`) so both suites stay within the backend lint
  * `max-lines` threshold.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { loadApiHandlerModule } from '../helpers/apiHandlerTestUtils.js';
-import { provisionAuthApiContext, rawStoreBlob } from './authApiTestHarness.js';
-import { buildUsersJson } from '../utils/authService/authServiceTestHarness.js';
-
-const AuthService = require('../../src/backend/Utils/AuthService.js');
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+  dispatchAuthApi,
+  provisionAuthApiContext,
+  rawStoreBlob,
+  resetAuthApiTestState,
+  storedScriptPropertiesState,
+  teardownAuthApiTestContext,
+} from './authApiTestHarness.js';
 
 const ADMIN = 'admin@school.edu';
-
-/**
- * Builds a stored scriptProperties auth state.
- * @param {Array<{email: string, role: string}>} users - The stored user list.
- * @param {string} revision - The stored auth revision.
- * @returns {Object} The stored config object.
- */
-function scriptPropertiesState(users, revision) {
-  return {
-    authMode: 'scriptProperties',
-    authUsers: buildUsersJson(users),
-    authRevision: revision,
-  };
-}
-
-/**
- * Dispatches a request through the real ApiDispatcher singleton.
- * @param {string} method - The allowlisted method name.
- * @param {Object} [params] - Optional method payload.
- * @returns {Object} The response envelope.
- */
-function dispatch(method, params) {
-  const { ApiDispatcher } = loadApiHandlerModule();
-  return ApiDispatcher.getInstance().handle({
-    method,
-    ...(params === undefined ? {} : { params }),
-  });
-}
 
 describe('setAuthenticationSettings — configuration-lock contention envelope', () => {
   let ctx;
 
   beforeEach(() => {
-    AuthService.resetForTests();
-    globalThis.PropertiesService._resetUserProperties();
-    globalThis.CacheService._resetScriptCache();
+    ctx = undefined;
+    resetAuthApiTestState();
   });
 
   afterEach(() => {
-    if (ctx) {
-      ctx.restore();
-      ctx = undefined;
-    }
-    AuthService.resetForTests();
-    vi.restoreAllMocks();
+    teardownAuthApiTestContext(ctx);
+    ctx = undefined;
   });
 
   it('maps the configured contention condition to a retriable RATE_LIMITED envelope with unchanged storage', () => {
     ctx = provisionAuthApiContext({
-      seed: scriptPropertiesState([{ email: ADMIN, role: 'admin' }], '1'),
+      seed: storedScriptPropertiesState([{ email: ADMIN, role: 'admin' }], '1'),
       email: ADMIN,
     });
     const before = rawStoreBlob(ctx.store);
@@ -85,7 +55,7 @@ describe('setAuthenticationSettings — configuration-lock contention envelope',
       throw contention;
     });
 
-    const response = dispatch('setAuthenticationSettings', {
+    const response = dispatchAuthApi('setAuthenticationSettings', {
       authMode: 'scriptProperties',
       authUsers: [{ email: ADMIN, role: 'admin' }],
       expectedAuthRevision: '1',

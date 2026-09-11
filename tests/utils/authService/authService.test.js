@@ -21,49 +21,10 @@
  */
 const AuthService = require('../../../src/backend/Utils/AuthService.js');
 const { withGlobalMocks } = require('../../helpers/globalMockManager.js');
+const { createGroupsAppMock, createSessionMock } = require('./authServiceTestHarness.js');
 
 /** The 6-hour TTL (in seconds) AuthService passes to CacheManager.put(). */
 const SIX_HOURS_SECONDS = 6 * 60 * 60;
-
-/**
- * Builds a per-test Session mock exposing getActiveUser().getEmail().
- * @param {string} email - The email to return, or '' for a blank identity.
- * @returns {{ session: { getActiveUser: import('vitest').Mock },
- *            getEmail: () => string }}
- */
-function createSessionMock({ email }) {
-  return {
-    session: {
-      getActiveUser: () => ({ getEmail: () => email }),
-    },
-  };
-}
-
-/**
- * Builds a per-test GroupsApp mock. Members are a map of user email → role.
- * When `groupExists` is false, group membership lookup fulfils to an error;
- * when `lookupError` is supplied, it is thrown on lookup regardless. Both
- * paths model the "group not found / GroupsApp error → deny" contract.
- * @param {Record<string,string>} members - email → Group role map.
- * @returns {{ group: { hasUser: import('vitest').Mock,
- *   getRole: import('vitest').Mock } | null, getGroupByEmail: import('vitest').Mock }}
- */
-function createGroupsAppMock({ members = {}, groupExists = true, lookupError = null }) {
-  const group = groupExists
-    ? {
-        hasUser: vi.fn((email) => Object.hasOwn(members, email)),
-        getRole: vi.fn((email) => (Object.hasOwn(members, email) ? members[email] : null)),
-      }
-    : null;
-  return {
-    group,
-    getGroupByEmail: vi.fn((groupEmail) => {
-      if (lookupError) throw lookupError;
-      if (!groupExists) throw new Error(`Group not found: ${groupEmail}`);
-      return group;
-    }),
-  };
-}
 
 describe('AuthService', () => {
   let restoreGlobals;

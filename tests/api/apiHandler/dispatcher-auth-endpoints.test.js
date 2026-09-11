@@ -33,11 +33,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const AuthService = require('../../../src/backend/Utils/AuthService.js');
-const { withGlobalMocks } = require('../../helpers/globalMockManager.js');
 const {
   loadApiHandlerModule,
-  setupDispatcherTest,
-  teardownDispatcherTest,
+  createDispatcherAuthEnvironment,
+  setupDispatcherAuthTest,
+  teardownDispatcherAuthTest,
   ApiValidationError,
 } = require('./shared.js');
 
@@ -45,38 +45,16 @@ const CONFIGURED_GROUP_EMAIL = 'teachers@school.edu';
 
 describe('Api/apiHandler dispatcher — auth endpoint gate wiring', () => {
   let context;
-  let restoreMocks;
 
   /**
    * Provisions a mocked ConfigurationManager whose stored auth state is a
    * googleGroups install, matching the dispatcher-auth-gate suite convention.
-   * @param {Object} [options] - Mock configuration.
-   * @param {string} [options.groupEmail=CONFIGURED_GROUP_EMAIL] - The stored group email.
-   * @returns {void}
+   * @param {string} [groupEmail=CONFIGURED_GROUP_EMAIL] - The stored group email.
+   * @returns {Object} The installed ConfigurationManager mock.
    */
-  function provisionAuthEnvironment({ groupEmail = CONFIGURED_GROUP_EMAIL } = {}) {
-    const configManager = {
-      getAuthGroupEmail: vi.fn(() => groupEmail),
-      getAuthMode: vi.fn(() => 'googleGroups'),
-      getAuthUsers: vi.fn(() => ''),
-      getAuthRevision: vi.fn(() => ''),
-      getProperty: vi.fn((key) => {
-        if (key === 'authGroupEmail') return groupEmail;
-        if (key === 'authMode') return 'googleGroups';
-        return '';
-      }),
-      getAllConfigurations: vi.fn(() => ({
-        authMode: 'googleGroups',
-        authGroupEmail: groupEmail,
-      })),
-      isFreshInstall: vi.fn(() => false),
-      writeConfigurationLocked: vi.fn(),
-      setProperty: vi.fn(),
-    };
-    const mockContext = withGlobalMocks({
-      ConfigurationManager: () => ({ getInstance: () => configManager }),
-    });
-    restoreMocks = mockContext.restore;
+  function provisionAuthEnvironment(groupEmail = CONFIGURED_GROUP_EMAIL) {
+    context.authEnvironment = createDispatcherAuthEnvironment(vi, { groupEmail });
+    return context.authEnvironment.configManager;
   }
 
   /**
@@ -94,23 +72,46 @@ describe('Api/apiHandler dispatcher — auth endpoint gate wiring', () => {
     globalThis[globalName] = originalValue;
   }
 
+  /**
+   * Builds a stubbed `getAuthenticationSettings_` handler returning the
+   * canonical googleGroups settings shape.
+   * @returns {import('vitest').Mock} The handler stub.
+   */
+  function buildAuthenticationSettingsHandlerStub() {
+    return vi.fn(() => ({
+      authMode: 'googleGroups',
+      authGroupEmail: CONFIGURED_GROUP_EMAIL,
+      authUsers: [],
+      authRevision: null,
+    }));
+  }
+
+  /**
+   * Dispatches a request through the real dispatcher with a temporary
+   * trailing-underscore handler stub, restoring the pre-dispatch global after.
+   * @param {string} handlerName - The trailing-underscore global name.
+   * @param {import('vitest').Mock} handler - The handler stub.
+   * @param {Object} request - The dispatcher request.
+   * @returns {Object} The response envelope.
+   */
+  function dispatchWithHandlerStub(handlerName, handler, request) {
+    let originalHandler;
+    try {
+      const { ApiDispatcher } = loadApiHandlerModule();
+      originalHandler = globalThis[handlerName];
+      globalThis[handlerName] = handler;
+      return ApiDispatcher.getInstance().handle(request);
+    } finally {
+      restoreHandlerGlobal(handlerName, originalHandler);
+    }
+  }
+
   beforeEach(() => {
-    context = setupDispatcherTest(vi);
-    AuthService.resetForTests();
-    globalThis.CacheService._resetScriptCache();
-    globalThis.Session._resetActiveUserEmail?.();
-    globalThis.GroupsApp._resetGroups?.();
+    context = setupDispatcherAuthTest(vi);
   });
 
   afterEach(() => {
-    if (restoreMocks) {
-      restoreMocks();
-      restoreMocks = undefined;
-    }
-    teardownDispatcherTest(vi, context);
-    AuthService.resetForTests();
-    globalThis.Session._resetActiveUserEmail?.();
-    globalThis.GroupsApp._resetGroups?.();
+    teardownDispatcherAuthTest(vi, context);
   });
 
   describe('getApplicationAccess gate exemption', () => {
@@ -125,21 +126,15 @@ describe('Api/apiHandler dispatcher — auth endpoint gate wiring', () => {
         email: 'outsider@school.edu',
         reason: 'denied',
       }));
-      let originalHandler;
 
-      try {
-        const { ApiDispatcher } = loadApiHandlerModule();
-        originalHandler = globalThis.getApplicationAccess_;
-        globalThis.getApplicationAccess_ = getApplicationAccess_;
-        const response = ApiDispatcher.getInstance().handle({ method: 'getApplicationAccess' });
+      const response = dispatchWithHandlerStub('getApplicationAccess_', getApplicationAccess_, {
+        method: 'getApplicationAccess',
+      });
 
-        expect(response.ok).toBe(true);
-        expect(response.error).toBeUndefined();
-        expect(getApplicationAccess_).toHaveBeenCalledTimes(1);
-        expect(response.data).toMatchObject({ allowed: false, reason: 'denied' });
-      } finally {
-        restoreHandlerGlobal('getApplicationAccess_', originalHandler);
-      }
+      expect(response.ok).toBe(true);
+      expect(response.error).toBeUndefined();
+      expect(getApplicationAccess_).toHaveBeenCalledTimes(1);
+      expect(response.data).toMatchObject({ allowed: false, reason: 'denied' });
     });
   });
 
@@ -150,39 +145,28 @@ describe('Api/apiHandler dispatcher — auth endpoint gate wiring', () => {
       const checkAccessSpy = vi
         .spyOn(AuthService.getInstance(), 'checkAccess')
         .mockReturnValue({ allowed: true, role: 'user' });
-      const getAuthenticationSettings_ = vi.fn(() => ({
-        authMode: 'googleGroups',
-        authGroupEmail: CONFIGURED_GROUP_EMAIL,
-        authUsers: [],
-        authRevision: null,
-      }));
-      let originalHandler;
+      const getAuthenticationSettings_ = buildAuthenticationSettingsHandlerStub();
 
-      try {
-        const { ApiDispatcher } = loadApiHandlerModule();
-        originalHandler = globalThis.getAuthenticationSettings_;
-        globalThis.getAuthenticationSettings_ = getAuthenticationSettings_;
-        const response = ApiDispatcher.getInstance().handle({
-          method: 'getAuthenticationSettings',
-        });
+      const response = dispatchWithHandlerStub(
+        'getAuthenticationSettings_',
+        getAuthenticationSettings_,
+        { method: 'getAuthenticationSettings' }
+      );
 
-        expect(response).toMatchObject({
-          ok: false,
-          error: {
-            code: 'FORBIDDEN',
-            message: 'Access denied.',
-            retriable: false,
-          },
-        });
-        // The admission-phase admin check must use a fresh access resolution
-        // with the cache bypassed, never a cached role.
-        expect(checkAccessSpy).toHaveBeenCalledWith(
-          expect.objectContaining({ method: 'getAuthenticationSettings', bypassCache: true })
-        );
-        expect(getAuthenticationSettings_).not.toHaveBeenCalled();
-      } finally {
-        restoreHandlerGlobal('getAuthenticationSettings_', originalHandler);
-      }
+      expect(response).toMatchObject({
+        ok: false,
+        error: {
+          code: 'FORBIDDEN',
+          message: 'Access denied.',
+          retriable: false,
+        },
+      });
+      // The admission-phase admin check must use a fresh access resolution
+      // with the cache bypassed, never a cached role.
+      expect(checkAccessSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ method: 'getAuthenticationSettings', bypassCache: true })
+      );
+      expect(getAuthenticationSettings_).not.toHaveBeenCalled();
     });
 
     it('rejects setAuthenticationSettings for a user role with FORBIDDEN from a fresh cache-bypassing resolution', () => {
@@ -192,32 +176,28 @@ describe('Api/apiHandler dispatcher — auth endpoint gate wiring', () => {
         .spyOn(AuthService.getInstance(), 'checkAccess')
         .mockReturnValue({ allowed: true, role: 'user' });
       const setAuthenticationSettings_ = vi.fn(() => ({ success: true, authRevision: null }));
-      let originalHandler;
 
-      try {
-        const { ApiDispatcher } = loadApiHandlerModule();
-        originalHandler = globalThis.setAuthenticationSettings_;
-        globalThis.setAuthenticationSettings_ = setAuthenticationSettings_;
-        const response = ApiDispatcher.getInstance().handle({
+      const response = dispatchWithHandlerStub(
+        'setAuthenticationSettings_',
+        setAuthenticationSettings_,
+        {
           method: 'setAuthenticationSettings',
           params: { authMode: 'googleGroups', authGroupEmail: CONFIGURED_GROUP_EMAIL },
-        });
+        }
+      );
 
-        expect(response).toMatchObject({
-          ok: false,
-          error: {
-            code: 'FORBIDDEN',
-            message: 'Access denied.',
-            retriable: false,
-          },
-        });
-        expect(checkAccessSpy).toHaveBeenCalledWith(
-          expect.objectContaining({ method: 'setAuthenticationSettings', bypassCache: true })
-        );
-        expect(setAuthenticationSettings_).not.toHaveBeenCalled();
-      } finally {
-        restoreHandlerGlobal('setAuthenticationSettings_', originalHandler);
-      }
+      expect(response).toMatchObject({
+        ok: false,
+        error: {
+          code: 'FORBIDDEN',
+          message: 'Access denied.',
+          retriable: false,
+        },
+      });
+      expect(checkAccessSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ method: 'setAuthenticationSettings', bypassCache: true })
+      );
+      expect(setAuthenticationSettings_).not.toHaveBeenCalled();
     });
 
     it('allows an admin caller through to the settings handler (enforcement stays in the dispatcher)', () => {
@@ -227,27 +207,16 @@ describe('Api/apiHandler dispatcher — auth endpoint gate wiring', () => {
         allowed: true,
         role: 'admin',
       });
-      const getAuthenticationSettings_ = vi.fn(() => ({
-        authMode: 'googleGroups',
-        authGroupEmail: CONFIGURED_GROUP_EMAIL,
-        authUsers: [],
-        authRevision: null,
-      }));
-      let originalHandler;
+      const getAuthenticationSettings_ = buildAuthenticationSettingsHandlerStub();
 
-      try {
-        const { ApiDispatcher } = loadApiHandlerModule();
-        originalHandler = globalThis.getAuthenticationSettings_;
-        globalThis.getAuthenticationSettings_ = getAuthenticationSettings_;
-        const response = ApiDispatcher.getInstance().handle({
-          method: 'getAuthenticationSettings',
-        });
+      const response = dispatchWithHandlerStub(
+        'getAuthenticationSettings_',
+        getAuthenticationSettings_,
+        { method: 'getAuthenticationSettings' }
+      );
 
-        expect(response.ok).toBe(true);
-        expect(getAuthenticationSettings_).toHaveBeenCalledTimes(1);
-      } finally {
-        restoreHandlerGlobal('getAuthenticationSettings_', originalHandler);
-      }
+      expect(response.ok).toBe(true);
+      expect(getAuthenticationSettings_).toHaveBeenCalledTimes(1);
     });
 
     it('admits a groups-mode admin through a fresh GroupsApp role lookup, not the stale membership cache', () => {
@@ -267,104 +236,67 @@ describe('Api/apiHandler dispatcher — auth endpoint gate wiring', () => {
       // consulted fresh (cache bypassed) for the admin-required method, proving
       // the stale cache entry never drove the decision.
       const checkAccessSpy = vi.spyOn(AuthService.getInstance(), 'checkAccess');
-      const getAuthenticationSettings_ = vi.fn(() => ({
-        authMode: 'googleGroups',
-        authGroupEmail: CONFIGURED_GROUP_EMAIL,
-        authUsers: [],
-        authRevision: null,
-      }));
-      let originalHandler;
+      const getAuthenticationSettings_ = buildAuthenticationSettingsHandlerStub();
 
-      try {
-        const { ApiDispatcher } = loadApiHandlerModule();
-        originalHandler = globalThis.getAuthenticationSettings_;
-        globalThis.getAuthenticationSettings_ = getAuthenticationSettings_;
-        const response = ApiDispatcher.getInstance().handle({
-          method: 'getAuthenticationSettings',
-        });
+      const response = dispatchWithHandlerStub(
+        'getAuthenticationSettings_',
+        getAuthenticationSettings_,
+        { method: 'getAuthenticationSettings' }
+      );
 
-        // The behavioural assertion: despite the stale cached 'user' role, the
-        // groups-mode admin reaches the settings handler.
-        expect(response.ok).toBe(true);
-        expect(getAuthenticationSettings_).toHaveBeenCalledTimes(1);
-        // The mechanism assertion: admission resolved access fresh with the
-        // cache bypassed for this admin-required method.
-        expect(checkAccessSpy).toHaveBeenCalledWith(
-          expect.objectContaining({ method: 'getAuthenticationSettings', bypassCache: true })
-        );
-      } finally {
-        restoreHandlerGlobal('getAuthenticationSettings_', originalHandler);
-      }
+      // The behavioural assertion: despite the stale cached 'user' role, the
+      // groups-mode admin reaches the settings handler.
+      expect(response.ok).toBe(true);
+      expect(getAuthenticationSettings_).toHaveBeenCalledTimes(1);
+      // The mechanism assertion: admission resolved access fresh with the
+      // cache bypassed for this admin-required method.
+      expect(checkAccessSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ method: 'getAuthenticationSettings', bypassCache: true })
+      );
     });
   });
 
   describe('auth-handler error envelopes reuse the existing conventions', () => {
-    it('maps an auth-handler ApiValidationError to the standard INVALID_REQUEST envelope', () => {
-      provisionAuthEnvironment();
-      globalThis.Session._setActiveUserEmail('admin@school.edu');
-      vi.spyOn(AuthService.getInstance(), 'checkAccess').mockReturnValue({
-        allowed: true,
-        role: 'admin',
-      });
-      const setAuthenticationSettings_ = vi.fn(() => {
-        throw new ApiValidationError('Stale auth revision.');
-      });
-      let originalHandler;
-
-      try {
-        const { ApiDispatcher } = loadApiHandlerModule();
-        originalHandler = globalThis.setAuthenticationSettings_;
-        globalThis.setAuthenticationSettings_ = setAuthenticationSettings_;
-        const response = ApiDispatcher.getInstance().handle({
-          method: 'setAuthenticationSettings',
-          params: { authMode: 'scriptProperties' },
+    it.each([
+      [
+        'an ApiValidationError',
+        () => new ApiValidationError('Stale auth revision.'),
+        {
+          code: 'INVALID_REQUEST',
+          message: 'Stale auth revision.',
+          retriable: false,
+        },
+      ],
+      [
+        'an unexpected failure',
+        () => new Error('boom'),
+        {
+          code: 'INTERNAL_ERROR',
+          message: 'Internal API error.',
+          retriable: false,
+        },
+      ],
+    ])(
+      'maps %s from an auth handler to the standard failure envelope (no invented auth error type)',
+      (_label, makeError, expectedError) => {
+        provisionAuthEnvironment();
+        globalThis.Session._setActiveUserEmail('admin@school.edu');
+        vi.spyOn(AuthService.getInstance(), 'checkAccess').mockReturnValue({
+          allowed: true,
+          role: 'admin',
+        });
+        const setAuthenticationSettings_ = vi.fn(() => {
+          throw makeError();
         });
 
-        expect(response).toMatchObject({
-          ok: false,
-          error: {
-            code: 'INVALID_REQUEST',
-            message: 'Stale auth revision.',
-            retriable: false,
-          },
-        });
-      } finally {
-        restoreHandlerGlobal('setAuthenticationSettings_', originalHandler);
+        const response = dispatchWithHandlerStub(
+          'setAuthenticationSettings_',
+          setAuthenticationSettings_,
+          { method: 'setAuthenticationSettings', params: { authMode: 'scriptProperties' } }
+        );
+
+        expect(response).toMatchObject({ ok: false, error: expectedError });
       }
-    });
-
-    it('maps an unexpected auth-handler failure to the generic INTERNAL_ERROR envelope (no invented auth error type)', () => {
-      provisionAuthEnvironment();
-      globalThis.Session._setActiveUserEmail('admin@school.edu');
-      vi.spyOn(AuthService.getInstance(), 'checkAccess').mockReturnValue({
-        allowed: true,
-        role: 'admin',
-      });
-      const setAuthenticationSettings_ = vi.fn(() => {
-        throw new Error('boom');
-      });
-      let originalHandler;
-
-      try {
-        const { ApiDispatcher } = loadApiHandlerModule();
-        originalHandler = globalThis.setAuthenticationSettings_;
-        globalThis.setAuthenticationSettings_ = setAuthenticationSettings_;
-        const response = ApiDispatcher.getInstance().handle({
-          method: 'setAuthenticationSettings',
-          params: { authMode: 'scriptProperties' },
-        });
-
-        expect(response).toMatchObject({
-          ok: false,
-          error: {
-            code: 'INTERNAL_ERROR',
-            message: 'Internal API error.',
-            retriable: false,
-          },
-        });
-      } finally {
-        restoreHandlerGlobal('setAuthenticationSettings_', originalHandler);
-      }
-    });
+    );
   });
 });

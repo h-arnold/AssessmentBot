@@ -2,11 +2,9 @@ import { ZodError } from 'zod';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { StartAssessmentRunResponseSchema } from './assignmentAssessment.zod';
 
-const callApiMock = vi.fn();
-const parseApiResponseMock = vi.fn((schema: unknown, _method: string, data: unknown) => {
-  // Default behaviour mirrors schema.parse so valid responses pass through and
-  // invalid ones surface as ZodError (delegated to the real schema in tests).
-  return (schema as { parse: (value: unknown) => unknown }).parse(data);
+const { callApiMock, parseApiResponseMock } = await vi.hoisted(async () => {
+  const { createApiServiceMockScaffold } = await import('../../test/api/apiServiceTestMocks');
+  return createApiServiceMockScaffold();
 });
 
 vi.mock('../apiService', () => ({

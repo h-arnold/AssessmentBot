@@ -170,6 +170,27 @@ export interface CreateAuthenticationSettingsScenarioOptions {
   saveResponses?: ReadonlyArray<ResponseItem>;
 }
 
+/** Startup methods used by the authorisation gate before the application is ready. */
+export const AUTHORISATION_WARMUP_METHODS = [
+  'getABClassPartials',
+  'getAssignmentDefinitionPartials',
+  'getAssignmentTopics',
+  'getCohorts',
+  'getYearGroups',
+] as const;
+
+type AuthorisationWarmupMethod = (typeof AUTHORISATION_WARMUP_METHODS)[number];
+
+/** Options for creating an authorised application-access scenario. */
+export interface CreateAuthorisationScenarioOptions {
+  /** Response returned by the authorisation status check. */
+  authorisationStatus?: ResponseItem;
+  /** Response returned by the application-access check. */
+  applicationAccess?: ResponseItem;
+  /** Factory for each startup warm-up response. */
+  warmupResponseFactory?: (data: unknown) => ResponseItem;
+}
+
 /**
  * Default `getAuthenticationSettings` response for admin authentication scenarios.
  *
@@ -225,6 +246,39 @@ export function createAuthenticationSettingsScenario(
     ],
     getAuthenticationSettings: authenticationSettings,
     setAuthenticationSettings: saveResponses,
+  };
+}
+
+/**
+ * Creates a StrictMode-safe authorised scenario, including startup warm-up queues.
+ *
+ * @param {CreateAuthorisationScenarioOptions} options Scenario customisation.
+ * @returns {RuntimeScenario} Authorised scenario with warm-up and access queues.
+ */
+export function createAuthorisationScenario(
+  options: CreateAuthorisationScenarioOptions = {}
+): RuntimeScenario {
+  const {
+    authorisationStatus = { kind: 'success', data: true },
+    applicationAccess = {
+      kind: 'success',
+      data: { allowed: true, role: 'admin', email: 'owner@example.com', reason: 'ok' },
+    },
+    warmupResponseFactory = (data) => ({ kind: 'success', data }),
+  } = options;
+  const assignmentsScenario = createAssignmentsScenario();
+  const warmupResponses = Object.fromEntries(
+    AUTHORISATION_WARMUP_METHODS.map((method: AuthorisationWarmupMethod) => {
+      const response = assignmentsScenario[method]?.[0];
+      const data = response && 'data' in response ? response.data : undefined;
+      return [method, [warmupResponseFactory(data), warmupResponseFactory(data)]];
+    })
+  ) as Pick<RuntimeScenario, AuthorisationWarmupMethod>;
+
+  return {
+    getAuthorisationStatus: [authorisationStatus, authorisationStatus],
+    getApplicationAccess: [applicationAccess, applicationAccess],
+    ...warmupResponses,
   };
 }
 

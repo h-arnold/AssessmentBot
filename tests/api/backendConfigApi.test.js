@@ -9,6 +9,40 @@ const {
 
 const AuthService = require('../../src/backend/Utils/AuthService.js');
 
+/**
+ * Asserts that no per-field configuration setter was invoked (the whole save is
+ * staged into one locked write).
+ * @param {Object} manager - The ConfigurationManager mock.
+ * @returns {void}
+ */
+function expectNoPerFieldSetters(manager) {
+  expect(manager.setBackendAssessorBatchSize).not.toHaveBeenCalled();
+  expect(manager.setSlidesFetchBatchSize).not.toHaveBeenCalled();
+  expect(manager.setRevokeAuthTriggerSet).not.toHaveBeenCalled();
+  expect(manager.setDaysUntilAuthRevoke).not.toHaveBeenCalled();
+  expect(manager.setJsonDbMasterIndexKey).not.toHaveBeenCalled();
+  expect(manager.setJsonDbLockTimeoutMs).not.toHaveBeenCalled();
+  expect(manager.setJsonDbLogLevel).not.toHaveBeenCalled();
+  expect(manager.setJsonDbBackupOnInitialise).not.toHaveBeenCalled();
+  expect(manager.setApiKey).not.toHaveBeenCalled();
+  expect(manager.setBackendUrl).not.toHaveBeenCalled();
+  expect(manager.setJsonDbRootFolderId).not.toHaveBeenCalled();
+}
+
+/**
+ * Asserts the standard successful backend-config write envelope.
+ * @param {Object} response - The dispatcher response envelope.
+ * @returns {void}
+ */
+function expectWriteSuccessEnvelope(response) {
+  expect(response).toEqual({
+    ok: true,
+    requestId: response.requestId,
+    data: { success: true },
+  });
+  expect(response.requestId).toEqual(expect.any(String));
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
   AuthService.resetForTests();
@@ -101,17 +135,7 @@ describe('backend configuration API transport', () => {
       // and once by the getBackendConfig handler.
       expect(configurationManagerMock.configurationManager.getInstance).toHaveBeenCalledTimes(2);
       expect(configurationManagerMock.manager.ensureDefaultConfiguration).toHaveBeenCalledTimes(1);
-      expect(configurationManagerMock.manager.setBackendAssessorBatchSize).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setSlidesFetchBatchSize).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setRevokeAuthTriggerSet).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setDaysUntilAuthRevoke).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setJsonDbMasterIndexKey).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setJsonDbLockTimeoutMs).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setJsonDbLogLevel).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setJsonDbBackupOnInitialise).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setApiKey).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setBackendUrl).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setJsonDbRootFolderId).not.toHaveBeenCalled();
+      expectNoPerFieldSetters(configurationManagerMock.manager);
       expect(response).toEqual({
         ok: true,
         requestId: response.requestId,
@@ -168,17 +192,7 @@ describe('backend configuration API transport', () => {
       // and once by the getBackendConfig handler.
       expect(configurationManagerMock.configurationManager.getInstance).toHaveBeenCalledTimes(2);
       expect(configurationManagerMock.manager.ensureDefaultConfiguration).toHaveBeenCalledTimes(1);
-      expect(configurationManagerMock.manager.setBackendAssessorBatchSize).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setSlidesFetchBatchSize).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setRevokeAuthTriggerSet).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setDaysUntilAuthRevoke).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setJsonDbMasterIndexKey).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setJsonDbLockTimeoutMs).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setJsonDbLogLevel).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setJsonDbBackupOnInitialise).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setApiKey).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setBackendUrl).not.toHaveBeenCalled();
-      expect(configurationManagerMock.manager.setJsonDbRootFolderId).not.toHaveBeenCalled();
+      expectNoPerFieldSetters(configurationManagerMock.manager);
       expect(response).toEqual({
         ok: true,
         requestId: response.requestId,
@@ -232,12 +246,7 @@ describe('backend configuration API transport', () => {
       expect(merged.backendUrl).toBe('https://updated-backend.example.test');
       expect(merged.daysUntilAuthRevoke).toBe(21);
       expect(merged.apiKey).toBe('live-secret-7890');
-      expect(response).toEqual({
-        ok: true,
-        requestId: response.requestId,
-        data: { success: true },
-      });
-      expect(response.requestId).toEqual(expect.any(String));
+      expectWriteSuccessEnvelope(response);
     } finally {
       configurationManagerMock.restore();
     }
@@ -273,12 +282,7 @@ describe('backend configuration API transport', () => {
       expect(merged.apiKey).toBe('stored-key');
       expect(merged.backendUrl).toBe('https://stored.example.test');
       expect(merged.jsonDbRootFolderId).toBe('folder-stored');
-      expect(response).toEqual({
-        ok: true,
-        requestId: response.requestId,
-        data: { success: true },
-      });
-      expect(response.requestId).toEqual(expect.any(String));
+      expectWriteSuccessEnvelope(response);
     } finally {
       configurationManagerMock.restore();
     }
@@ -326,12 +330,7 @@ describe('backend configuration API transport', () => {
         jsonDbBackupOnInitialise: true,
         jsonDbRootFolderId: 'folder-123',
       });
-      expect(response).toEqual({
-        ok: true,
-        requestId: response.requestId,
-        data: { success: true },
-      });
-      expect(response.requestId).toEqual(expect.any(String));
+      expectWriteSuccessEnvelope(response);
     } finally {
       configurationManagerMock.restore();
     }

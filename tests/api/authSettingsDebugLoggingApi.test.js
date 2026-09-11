@@ -7,46 +7,29 @@
  * The read endpoint (`getAuthenticationSettings`) is intentionally out of scope
  * for this control.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { loadApiHandlerModule } from '../helpers/apiHandlerTestUtils.js';
-import { provisionAuthApiContext } from './authApiTestHarness.js';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+  dispatchAuthApi,
+  provisionAuthApiContext,
+  resetAuthApiTestState,
+  teardownAuthApiTestContext,
+} from './authApiTestHarness.js';
 import { buildUsersJson } from '../utils/authService/authServiceTestHarness.js';
-
-const AuthService = require('../../src/backend/Utils/AuthService.js');
 
 const ADMIN = 'admin@school.edu';
 const USER = 'user@school.edu';
-
-/**
- * Dispatches a request through the real ApiDispatcher singleton.
- * @param {string} method - The allowlisted method name.
- * @param {Object} [params] - Optional method payload.
- * @returns {Object} The response envelope.
- */
-function dispatch(method, params) {
-  const { ApiDispatcher } = loadApiHandlerModule();
-  return ApiDispatcher.getInstance().handle({
-    method,
-    ...(params === undefined ? {} : { params }),
-  });
-}
 
 describe('setAuthenticationSettings — debug-log payload omission', () => {
   let ctx;
 
   beforeEach(() => {
-    AuthService.resetForTests();
-    globalThis.PropertiesService._resetUserProperties();
-    globalThis.CacheService._resetScriptCache();
+    ctx = undefined;
+    resetAuthApiTestState();
   });
 
   afterEach(() => {
-    if (ctx) {
-      ctx.restore();
-      ctx = undefined;
-    }
-    AuthService.resetForTests();
-    vi.restoreAllMocks();
+    teardownAuthApiTestContext(ctx);
+    ctx = undefined;
   });
 
   it('omits the request and response bodies from transport debug logs (PII safety)', () => {
@@ -59,7 +42,7 @@ describe('setAuthenticationSettings — debug-log payload omission', () => {
       email: ADMIN,
     });
 
-    const response = dispatch('setAuthenticationSettings', {
+    const response = dispatchAuthApi('setAuthenticationSettings', {
       authMode: 'scriptProperties',
       authUsers: [
         { email: ADMIN, role: 'admin' },
