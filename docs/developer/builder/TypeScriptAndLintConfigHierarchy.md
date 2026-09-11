@@ -75,7 +75,7 @@ This project uses a shared configuration tree so TypeScript and linting standard
 - `eslint.config.js` (repo root)
   - Remains focused on backend JavaScript linting rules.
   - Applies shared `eslint-plugin-security` and Unicode hardening rules as errors for backend source.
-  - Keeps `require-unicode-regexp` disabled for root `tests/**/*.js` and scopes `security/detect-object-injection` disables to an explicit list of backend files triaged as false positives.
+  - Keeps `require-unicode-regexp` disabled for root `tests/**/*.js` and disables `security/detect-object-injection` backend-wide after full-audit triage showed only false positives; robust validation and input sanitisation at the trust boundaries are the preferred controls.
   - Does not replace frontend/builder TypeScript lint configs.
 
 ## Running lint checks

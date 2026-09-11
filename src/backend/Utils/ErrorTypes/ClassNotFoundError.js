@@ -27,10 +27,6 @@ class ClassNotFoundError extends Error {
     super(message);
     this.name = 'ClassNotFoundError';
     this.courseId = options.courseId;
-
-    // Maintain proper stack trace (V8)
-    if (Error.captureStackTrace) {
-    }
   }
 }
 

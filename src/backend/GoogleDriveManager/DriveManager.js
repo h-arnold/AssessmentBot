@@ -1,5 +1,35 @@
-const RETRY_BACKOFF_BASE_MS = 500;
-const RETRY_BACKOFF_MULTIPLIER = 2;
+/**
+ * DriveManager — Facade
+ *
+ * Handles Drive-related operations. Delegates to focused sub-classes for folder
+ * validation, file operations, folder operations, file ID parsing, and modified
+ * time retrieval.
+ *
+ * Public API contract is preserved from the original monolithic module.
+ */
+/* global DriveManagerFolderValidator, DriveManagerFileOperations, DriveManagerFolderOperations */
+/* global DriveManagerFileId, DriveManagerModifiedTime */
+
+const DRIVE_MANAGER_RETRY_ATTEMPTS = 3;
+const DRIVE_MANAGER_RETRY_BACKOFF_BASE_MS = 500;
+const DRIVE_MANAGER_RETRY_BACKOFF_MULTIPLIER = 2;
+
+const driveManagerFolderValidator = new DriveManagerFolderValidator();
+const driveManagerFileOperations = new DriveManagerFileOperations({
+  folderValidator: driveManagerFolderValidator,
+});
+const driveManagerFolderOperations = new DriveManagerFolderOperations({
+  folderValidator: driveManagerFolderValidator,
+  retries: DRIVE_MANAGER_RETRY_ATTEMPTS,
+  backoffBaseMs: DRIVE_MANAGER_RETRY_BACKOFF_BASE_MS,
+  backoffMultiplier: DRIVE_MANAGER_RETRY_BACKOFF_MULTIPLIER,
+});
+const driveManagerFileId = new DriveManagerFileId();
+const driveManagerModifiedTime = new DriveManagerModifiedTime({
+  retries: DRIVE_MANAGER_RETRY_ATTEMPTS,
+  defaultWaitMs: DRIVE_MANAGER_RETRY_BACKOFF_BASE_MS,
+  backoffMultiplier: DRIVE_MANAGER_RETRY_BACKOFF_MULTIPLIER,
+});
 
 /**
  * Handles Drive-related operations.
@@ -18,96 +48,7 @@ const DriveManager = {
    * @throws {Error} If `destinationFolderId` is not provided or the destination folder cannot be accessed.
    */
   moveFiles(destinationFolderId, fileIds, appendString = '') {
-    Validate.requireParams({ destinationFolderId }, 'moveFiles');
-
-    const details = [];
-    let successCount = 0;
-    let failCount = 0;
-
-    // If no files are provided
-    if (!fileIds || fileIds.length === 0) {
-      const noFilesMessage = 'No file IDs provided; nothing to move.';
-      ABLogger.getInstance().info(noFilesMessage);
-      return {
-        status: 'none',
-        message: noFilesMessage,
-        details,
-      };
-    }
-
-    // Validate the destination folder exists (fail fast).
-    this._validateFolderExists(destinationFolderId);
-
-    // Use the Advanced Drive API for moving so this works on Shared Drives as well.
-    // DriveApp parent manipulation (removeFile/addFile) is unreliable for Shared Drives.
-    fileIds.forEach((fileId) => {
-      try {
-        const file = Drive.Files.get(fileId, {
-          supportsAllDrives: true,
-          fields: 'name,parents',
-        });
-
-        const currentName = file?.name || '';
-
-        // Optionally append a string to the file name.
-        if (appendString) {
-          Drive.Files.update({ name: `${currentName}${appendString}` }, fileId, null, {
-            supportsAllDrives: true,
-          });
-        }
-
-        const parentIds = Array.isArray(file?.parents) ? file.parents : [];
-        const normalisedParentIds = parentIds.filter((id) => Validate.isString(id) && id);
-        const alreadyInDestination = normalisedParentIds.includes(destinationFolderId);
-        const parentsToRemove = normalisedParentIds.filter((id) => id !== destinationFolderId);
-
-        // Only attempt a parent update if needed.
-        if (!alreadyInDestination || parentsToRemove.length > 0) {
-          const updateArguments = {
-            supportsAllDrives: true,
-          };
-
-          if (!alreadyInDestination) {
-            updateArguments.addParents = destinationFolderId;
-          }
-          if (parentsToRemove.length > 0) {
-            updateArguments.removeParents = parentsToRemove.join(',');
-          }
-
-          Drive.Files.update({}, fileId, null, updateArguments);
-        }
-
-        const successMessage = `File ${fileId} moved to folder ${destinationFolderId} successfully.`;
-        ABLogger.getInstance().info(successMessage);
-        details.push({
-          fileId,
-          status: 'moved',
-          message: successMessage,
-        });
-        successCount++;
-      } catch (error) {
-        const failMessage = `Failed to move file ${fileId}: ${error.message}`;
-        ABLogger.getInstance().error(failMessage, error);
-        details.push({
-          fileId,
-          status: 'failed',
-          message: failMessage,
-        });
-        failCount++;
-      }
-    });
-
-    // Determine final overall status
-    const overallStatus = failCount === 0 ? 'complete' : 'partial';
-
-    const overallMessage = `Moved ${successCount} file(s) successfully, ${failCount} failed.`;
-    ABLogger.getInstance().info(overallMessage);
-
-    return {
-      status: overallStatus, // 'complete', 'partial', or 'none'
-      message: overallMessage,
-      details,
-    };
+    return driveManagerFileOperations.moveFiles(destinationFolderId, fileIds, appendString);
   },
   /**
    * Copy a template sheet to a destination folder, optionally checking for existing files.
@@ -119,75 +60,11 @@ const DriveManager = {
    * @throws {Error} If templateSheetId or newSheetName is not provided, or destination folder cannot be accessed.
    */
   copyTemplateSheet(templateSheetId, destinationFolderId, newSheetName) {
-    Validate.requireParams({ templateSheetId, newSheetName }, 'copyTemplateSheet');
-
-    try {
-      // Use Advanced Drive API for Shared Drive compatibility.
-      // DriveApp.getFolderById / folder iterators can fail in Shared Drive contexts.
-      if (!destinationFolderId) {
-        const templateMeta = Drive.Files.get(templateSheetId, {
-          supportsAllDrives: true,
-          fields: 'parents',
-        });
-        destinationFolderId = Array.isArray(templateMeta?.parents) ? templateMeta.parents[0] : null;
-      }
-
-      Validate.requireParams({ destinationFolderId }, 'copyTemplateSheet');
-
-      // Validate the destination folder exists (fail fast).
-      this._validateFolderExists(destinationFolderId);
-
-      const escapedName = String(newSheetName).replaceAll("'", String.raw`\\'`);
-      const query =
-        `'${destinationFolderId}' in parents and trashed = false ` + `and name = '${escapedName}'`;
-
-      const existing = Drive.Files.list({
-        q: query,
-        supportsAllDrives: true,
-        includeItemsFromAllDrives: true,
-        fields: 'files(id,name)',
-        pageSize: 1,
-      });
-
-      if (existing?.files?.length > 0) {
-        const existingFileId = existing.files[0].id;
-        const message = `File with the name "${newSheetName}" already exists. Skipping copy.`;
-        ABLogger.getInstance().info(message);
-        return {
-          status: 'skipped',
-          file: null,
-          fileId: existingFileId,
-          message,
-        };
-      }
-
-      const copied = Drive.Files.copy(
-        {
-          name: newSheetName,
-          parents: [destinationFolderId],
-        },
-        templateSheetId,
-        { supportsAllDrives: true }
-      );
-
-      const successMessage = `Template sheet copied successfully. Copied sheet ID: ${copied.id}`;
-      ABLogger.getInstance().info(successMessage);
-
-      return {
-        status: 'copied',
-        file: null,
-        fileId: copied.id,
-        message: successMessage,
-      };
-    } catch (error) {
-      ABLogger.getInstance().error('Failed to copy template sheet', {
-        templateSheetId,
-        destinationFolderId,
-        newSheetName,
-        err: error,
-      });
-      throw error;
-    }
+    return driveManagerFileOperations.copyTemplateSheet(
+      templateSheetId,
+      destinationFolderId,
+      newSheetName
+    );
   },
 
   /**
@@ -197,15 +74,7 @@ const DriveManager = {
    * @private
    */
   _validateFolderExists(folderId) {
-    try {
-      Drive.Files.get(folderId, { supportsAllDrives: true, fields: 'id' });
-    } catch (error) {
-      const failMessage = `Failed to access folder with ID "${folderId}".`;
-      ProgressTracker.getInstance().logError(failMessage, { folderId, err: error });
-      const error_ = new Error(failMessage);
-      error_.cause = error;
-      throw error_;
-    }
+    driveManagerFolderValidator.validateFolderExists(folderId);
   },
 
   /**
@@ -229,65 +98,7 @@ const DriveManager = {
    *   - 'none': No emails were processed (e.g., if the set is empty).
    */
   shareFolder(destinationFolderId, emails) {
-    Validate.requireParams({ destinationFolderId }, 'shareFolder');
-
-    const details = [];
-    let successCount = 0;
-    let failCount = 0;
-
-    if (!emails || emails.size === 0) {
-      const noEmailsMessage = 'No emails provided; nothing to share.';
-      ABLogger.getInstance().info(noEmailsMessage);
-      return {
-        status: 'none',
-        message: noEmailsMessage,
-        details,
-      };
-    }
-
-    // Validate the folder exists (fail fast).
-    this._validateFolderExists(destinationFolderId);
-
-    try {
-      const destinationFolder = DriveApp.getFolderById(destinationFolderId);
-
-      emails.forEach((email) => {
-        try {
-          destinationFolder.addEditor(email);
-          ABLogger.getInstance().info(`Shared destination folder with: ${email}`);
-
-          details.push({
-            email,
-            status: 'shared',
-            message: `Successfully shared with ${email}`,
-          });
-          successCount++;
-        } catch (error) {
-          const failMessage = `Failed to share folder with ${email}: ${error.message}`;
-          ABLogger.getInstance().error(failMessage, error);
-
-          details.push({
-            email,
-            status: 'failed',
-            message: failMessage,
-          });
-          failCount++;
-        }
-      });
-    } catch (error) {
-      ABLogger.getInstance().error('Failed to get folder or share with emails', error);
-      throw error;
-    }
-
-    const overallStatus = failCount === 0 ? 'complete' : 'partial';
-    const overallMessage = `Shared folder with ${successCount} email(s) successfully, ${failCount} failed.`;
-    ABLogger.getInstance().info(overallMessage);
-
-    return {
-      status: overallStatus,
-      message: overallMessage,
-      details,
-    };
+    return driveManagerFolderOperations.shareFolder(destinationFolderId, emails);
   },
 
   /**
@@ -297,14 +108,7 @@ const DriveManager = {
    * @throws {Error} If fileId is not provided.
    */
   getParentFolderId(fileId) {
-    Validate.requireParams({ fileId }, 'getParentFolderId');
-
-    const driveAppParent = this._getParentViaDriveApp(fileId);
-    if (driveAppParent) {
-      return driveAppParent;
-    }
-
-    return this._getParentViaDriveApi(fileId);
+    return driveManagerFolderOperations.getParentFolderId(fileId);
   },
 
   /**
@@ -315,37 +119,7 @@ const DriveManager = {
    * @private
    */
   _getParentViaDriveApp(fileId) {
-    const retries = 3;
-    for (let attempt = 0; attempt < retries; attempt++) {
-      try {
-        const file = DriveApp.getFileById(fileId);
-        const parentIterator = file.getParents();
-
-        if (parentIterator.hasNext()) {
-          const parentFolder = parentIterator.next();
-          const parentId = parentFolder.getId();
-          ABLogger.getInstance().info(`Parent folder ID for file ${fileId}: ${parentId}`);
-          return parentId;
-        }
-        ABLogger.getInstance().info(
-          `No parents found via DriveApp for ${fileId}; attempting Advanced Drive API...`
-        );
-        return null;
-      } catch (error) {
-        const waitMs = RETRY_BACKOFF_BASE_MS * Math.pow(RETRY_BACKOFF_MULTIPLIER, attempt);
-        ABLogger.getInstance().warn(
-          `DriveApp.getParents() attempt ${attempt + 1} failed for ${fileId}: ${error.message}${
-            attempt < retries - 1 ? `; retrying in ${waitMs}ms` : ''
-          }`,
-          error
-        );
-        if (attempt < retries - 1) {
-          Utilities.sleep(waitMs);
-        }
-      }
-    }
-
-    return null;
+    return driveManagerFolderOperations._getParentViaDriveApp(fileId);
   },
 
   /**
@@ -357,43 +131,7 @@ const DriveManager = {
    * @private
    */
   _getParentViaDriveApi(fileId) {
-    const fields = 'parents,driveId';
-    try {
-      const response = Drive.Files.get(fileId, { supportsAllDrives: true, fields });
-
-      if (response?.parents?.length > 0) {
-        const parentId = response.parents[0];
-        ABLogger.getInstance().info(
-          `Parent folder ID retrieved via Drive API for file ${fileId}: ${parentId}`
-        );
-        return parentId;
-      }
-
-      if (response?.driveId) {
-        ABLogger.getInstance().info(
-          `File ${fileId} appears to be in Shared Drive root. Using driveId as parent: ${response.driveId}`
-        );
-        return response.driveId;
-      }
-
-      const rootId = DriveApp.getRootFolder().getId();
-      ABLogger.getInstance().info(
-        `Falling back to My Drive root as parent for ${fileId}: ${rootId}`
-      );
-      return rootId;
-    } catch (apiError) {
-      ABLogger.getInstance().error('Advanced Drive API fallback failed', { fileId, err: apiError });
-      try {
-        const rootId = DriveApp.getRootFolder().getId();
-        ABLogger.getInstance().info(
-          `Returning My Drive root as last-resort parent for ${fileId}: ${rootId}`
-        );
-        return rootId;
-      } catch (rootError) {
-        ABLogger.getInstance().error('Failed to obtain My Drive root folder ID', rootError);
-        throw apiError;
-      }
-    }
+    return driveManagerFolderOperations._getParentViaDriveApi(fileId);
   },
 
   /**
@@ -406,88 +144,7 @@ const DriveManager = {
    * @throws {Error} If parentFolderId or folderName is not provided.
    */
   createFolder(parentFolderId, folderName) {
-    Validate.requireParams({ parentFolderId, folderName }, 'createFolder');
-
-    // Validate the parent folder exists (fail fast).
-    this._validateFolderExists(parentFolderId);
-
-    try {
-      const parentFolder = DriveApp.getFolderById(parentFolderId);
-      const folders = parentFolder.getFoldersByName(folderName);
-
-      if (folders.hasNext()) {
-        const existingFolder = folders.next();
-        ABLogger.getInstance().info(
-          `Folder "${folderName}" already exists under parent folder ID ${parentFolderId}. Returning existing folder ID.`
-        );
-        return {
-          parentFolderId,
-          newFolderId: existingFolder.getId(),
-        };
-      }
-
-      const newFolder = parentFolder.createFolder(folderName);
-      ABLogger.getInstance().info(
-        `Folder "${folderName}" created under parent folder ID ${parentFolderId}.`
-      );
-      return {
-        parentFolderId,
-        newFolderId: newFolder.getId(),
-      };
-    } catch (error) {
-      // DriveApp folder operations can fail for Shared Drives (notably when parentFolderId is a Shared Drive root).
-      // Fall back to the Advanced Drive API which supports Shared Drives when supportsAllDrives is enabled.
-      ABLogger.getInstance().warn('DriveApp createFolder failed; falling back to Drive API', {
-        parentFolderId,
-        folderName,
-        err: error,
-      });
-
-      const escapedFolderName = String(folderName).replaceAll("'", String.raw`\\'`);
-      const query =
-        `'${parentFolderId}' in parents and trashed = false ` +
-        `and mimeType = 'application/vnd.google-apps.folder' ` +
-        `and name = '${escapedFolderName}'`;
-
-      try {
-        const existing = Drive.Files.list({
-          q: query,
-          supportsAllDrives: true,
-          includeItemsFromAllDrives: true,
-          fields: 'files(id,name)',
-          pageSize: 1,
-        });
-
-        if (existing?.files?.length > 0) {
-          return {
-            parentFolderId,
-            newFolderId: existing.files[0].id,
-          };
-        }
-
-        const created = Drive.Files.create(
-          {
-            name: folderName,
-            mimeType: 'application/vnd.google-apps.folder',
-            parents: [parentFolderId],
-          },
-          null,
-          { supportsAllDrives: true }
-        );
-
-        return {
-          parentFolderId,
-          newFolderId: created.id,
-        };
-      } catch (apiError) {
-        ABLogger.getInstance().error('Drive API createFolder fallback failed', {
-          parentFolderId,
-          folderName,
-          err: apiError,
-        });
-        throw apiError;
-      }
-    }
+    return driveManagerFolderOperations.createFolder(parentFolderId, folderName);
   },
 
   /**
@@ -496,10 +153,7 @@ const DriveManager = {
    * @returns {boolean} True if the format is valid, false otherwise.
    */
   isValidGoogleDriveFileId(fileId) {
-    // Define the regex for a valid google drive file id.
-    const fileIdRegex = /^[\w-]{33,44}$/u;
-    // Test if the passed string matches the regex and return the result.
-    return fileIdRegex.test(fileId);
+    return driveManagerFileId.isValidGoogleDriveFileId(fileId);
   },
 
   /**
@@ -521,41 +175,7 @@ const DriveManager = {
    * @throws {Error} If the input is not a valid URL or file ID.
    */
   normaliseToFileId(urlOrId) {
-    Validate.requireParams({ urlOrId }, 'normaliseToFileId');
-
-    const input = String(urlOrId).trim();
-
-    // Fast path: if it's already a valid file ID, return it unchanged.
-    if (this.isValidGoogleDriveFileId(input)) {
-      return input;
-    }
-
-    // Attempt to extract ID from URL patterns.
-    // Pattern 1: /d/{id}/ or /d/{id}/edit or /d/{id}/view etc.
-    const pathMatch = /\/d\/([\w-]{33,44})/u.exec(input);
-    if (pathMatch?.[1]) {
-      const extractedId = pathMatch[1];
-      if (this.isValidGoogleDriveFileId(extractedId)) {
-        return extractedId;
-      }
-    }
-
-    // Pattern 2: ?id={id} or open?id={id}
-    const queryMatch = /[&?]id=([\w-]{33,44})/u.exec(input);
-    if (queryMatch?.[1]) {
-      const extractedId = queryMatch[1];
-      if (this.isValidGoogleDriveFileId(extractedId)) {
-        return extractedId;
-      }
-    }
-
-    // If we reach here, the input is neither a valid ID nor a recognised URL.
-    ProgressTracker.getInstance().logError('Invalid Google Drive URL or file ID provided.', {
-      input: urlOrId,
-    });
-    throw new Error(
-      `Invalid Google Drive URL or file ID: "${urlOrId}". Please provide a valid URL or file ID.`
-    );
+    return driveManagerFileId.normaliseToFileId(urlOrId);
   },
 
   /**
@@ -565,27 +185,7 @@ const DriveManager = {
    * @throws {Error} If fileId is not provided or file cannot be accessed.
    */
   getFileModifiedTime(fileId) {
-    const progressTracker = ProgressTracker.getInstance();
-
-    Validate.requireParams({ fileId }, 'getFileModifiedTime');
-
-    const baseWaitMs = 500;
-    const retries = 3;
-
-    try {
-      return this._fetchModifiedTimeViaDriveApp(fileId, retries, baseWaitMs);
-    } catch (appError) {
-      ABLogger.getInstance().debug('DriveApp failed, trying Drive API', appError);
-      try {
-        return this._fetchModifiedTimeViaDriveApi(fileId, retries, baseWaitMs);
-      } catch (apiError) {
-        progressTracker.logError('Failed to fetch file modified time', {
-          fileId,
-          err: apiError,
-        });
-        throw apiError;
-      }
-    }
+    return driveManagerModifiedTime.getFileModifiedTime(fileId);
   },
 
   /**
@@ -598,24 +198,7 @@ const DriveManager = {
    * @private
    */
   _fetchModifiedTimeViaDriveApp(fileId, retries, baseWaitMs) {
-    for (let attempt = 0; attempt < retries; attempt++) {
-      try {
-        const file = DriveApp.getFileById(fileId);
-        const date = file.getLastUpdated();
-        if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
-          throw new TypeError('DriveApp.getLastUpdated returned an invalid Date');
-        }
-        return date.toISOString();
-      } catch (error) {
-        if (attempt < retries - 1) {
-          const wait = baseWaitMs * Math.pow(RETRY_BACKOFF_MULTIPLIER, attempt);
-          Utilities.sleep(wait);
-          continue;
-        }
-        throw error;
-      }
-    }
-    throw new Error('Unable to fetch modified time via DriveApp');
+    return driveManagerModifiedTime._fetchModifiedTimeViaDriveApp(fileId, retries, baseWaitMs);
   },
 
   /**
@@ -628,30 +211,7 @@ const DriveManager = {
    * @private
    */
   _fetchModifiedTimeViaDriveApi(fileId, retries, baseWaitMs) {
-    for (let attempt = 0; attempt < retries; attempt++) {
-      try {
-        const response = Drive.Files.get(fileId, {
-          supportsAllDrives: true,
-          fields: 'modifiedTime',
-        });
-        if (!response?.modifiedTime) {
-          throw new TypeError('Advanced Drive API did not return modifiedTime');
-        }
-        const parsed = new Date(response.modifiedTime);
-        if (Number.isNaN(parsed.getTime())) {
-          throw new TypeError(`Invalid modifiedTime format for file ${fileId}`);
-        }
-        return parsed.toISOString();
-      } catch (error) {
-        if (attempt < retries - 1) {
-          const wait = baseWaitMs * Math.pow(RETRY_BACKOFF_MULTIPLIER, attempt);
-          Utilities.sleep(wait);
-          continue;
-        }
-        throw error;
-      }
-    }
-    throw new Error('Unable to fetch modified time via Drive API');
+    return driveManagerModifiedTime._fetchModifiedTimeViaDriveApi(fileId, retries, baseWaitMs);
   },
 };
 

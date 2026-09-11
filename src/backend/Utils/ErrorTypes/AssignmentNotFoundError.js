@@ -30,11 +30,6 @@ class AssignmentNotFoundError extends Error {
     this.courseId = options.courseId;
     this.assignmentId = options.assignmentId;
     this.collectionName = options.collectionName;
-
-    // Maintain proper stack trace (V8)
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, AssignmentNotFoundError);
-    }
   }
 }
 

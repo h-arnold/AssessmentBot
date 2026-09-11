@@ -22,11 +22,6 @@ class AbortRequestError extends Error {
     this.statusCode = statusCode;
     this.url = url;
     this.responseText = responseText;
-
-    // Maintains proper stack trace for where error was thrown (V8 only)
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, AbortRequestError);
-    }
   }
 }
 

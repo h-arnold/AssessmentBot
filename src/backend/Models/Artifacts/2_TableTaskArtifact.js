@@ -82,7 +82,8 @@ const TABLE_MAX_COLUMNS = 50;
 class TableTaskArtifact extends BaseTaskArtifact {
   /**
    * Return the artifact type identifier.
-   * @returns {string}
+   *
+   * @returns {string} The artifact type identifier.
    */
   getType() {
     return 'TABLE';
@@ -90,8 +91,9 @@ class TableTaskArtifact extends BaseTaskArtifact {
   /**
    * Normalize table-like content into internal rows and return a Markdown
    * string representation. Accepts null, string, or 2D array input.
-   * @param {null|string|Array<Array<any>>} content
-   * @returns {string}
+   *
+   * @param {null|string|Array<Array<any>>} content - Content to normalise.
+   * @returns {string} Normalised Markdown string.
    */
   normalizeContent(content) {
     if (content == null) {
@@ -113,14 +115,14 @@ class TableTaskArtifact extends BaseTaskArtifact {
     }
 
     if (content.length > TABLE_MAX_ROWS) {
-      const err = new Error(
+      const error = new Error(
         `TableTaskArtifact.normalizeContent row limit exceeded: ${content.length} > ${TABLE_MAX_ROWS}`
       );
       ProgressTracker.getInstance().logAndThrowError('Failed to normalise table content', {
         reason: 'row_limit_exceeded',
         rowCount: content.length,
         maxRows: TABLE_MAX_ROWS,
-        err,
+        err: error,
       });
     }
 
@@ -130,7 +132,7 @@ class TableTaskArtifact extends BaseTaskArtifact {
       const rawRow = Array.isArray(element) ? element : [];
       const normalisedRow = rawRow.map((cell) => this._normCell(cell));
       if (normalisedRow.length > TABLE_MAX_COLUMNS) {
-        const err = new Error(
+        const error = new Error(
           `TableTaskArtifact.normalizeContent column limit exceeded on row ${r}: ${normalisedRow.length} > ${TABLE_MAX_COLUMNS}`
         );
         ProgressTracker.getInstance().logAndThrowError('Failed to normalise table content', {
@@ -138,7 +140,7 @@ class TableTaskArtifact extends BaseTaskArtifact {
           rowIndex: r,
           columnCount: normalisedRow.length,
           maxColumns: TABLE_MAX_COLUMNS,
-          err,
+          err: error,
         });
       }
       widestRow = Math.max(widestRow, normalisedRow.length);
@@ -147,7 +149,7 @@ class TableTaskArtifact extends BaseTaskArtifact {
 
     const targetWidth = Math.max(1, widestRow);
     if (normalisedRows.length === 0) {
-      normalisedRows.push(new Array(targetWidth).fill(''));
+      normalisedRows.push(Array.from({ length: targetWidth }, () => ''));
     }
 
     const paddedRows = normalisedRows.map((row) => {
@@ -162,7 +164,8 @@ class TableTaskArtifact extends BaseTaskArtifact {
   }
   /**
    * Return a shallow copy of the normalized rows.
-   * @returns {Array<Array<string|number>>}
+   *
+   * @returns {Array<Array<string|number>>} Copy of the internal rows.
    */
   getRows() {
     if (this._rows && Array.isArray(this._rows)) return this._rows.map((r) => [...r]);
@@ -170,9 +173,10 @@ class TableTaskArtifact extends BaseTaskArtifact {
   }
   /**
    * Normalize an individual cell value.
+   *
    * @private
-   * @param {*} cell
-   * @returns {string|number}
+   * @param {*} cell - Cell value to normalise.
+   * @returns {string|number} Normalised cell value.
    */
   _normCell(cell) {
     if (cell == null) return '';
@@ -181,44 +185,54 @@ class TableTaskArtifact extends BaseTaskArtifact {
   }
   /**
    * Convert rows (or current content) into a Markdown table string.
-   * @param {Array<Array<any>>} [rowsOverride]
-   * @returns {string}
+   *
+   * @param {Array<Array<any>>} [rowsOverride] - Optional rows to convert.
+   * @returns {string} Markdown table string.
    */
   toMarkdown(rowsOverride) {
-    const candidate =
-      rowsOverride === undefined
-        ? this._rows && this._rows.length > 0
-          ? this._rows
-          : this.content
-        : rowsOverride;
-    let src = candidate;
-    if (!src) return '';
-    if (Validate.isString(src)) return src.trim();
-    if (!Array.isArray(src) || src.length === 0) return '';
-    const header = src[0] || [];
+    const candidate = this._getMarkdownSource(rowsOverride);
+    let source = candidate;
+    if (!source) return '';
+    if (Validate.isString(source)) return source.trim();
+    if (!Array.isArray(source) || source.length === 0) return '';
+    const header = source[0] || [];
     if (!Array.isArray(header)) return '';
-    const lines = [];
-    lines.push('| ' + header.map((c) => (c == null ? '' : String(c))).join(' | ') + ' |');
-    lines.push('| ' + header.map(() => '---').join(' | ') + ' |');
-    for (let i = 1; i < src.length; i++) {
-      const row = Array.isArray(src[i]) ? src[i] : [];
+    const lines = [
+      '| ' + header.map((c) => (c == null ? '' : String(c))).join(' | ') + ' |',
+      '| ' + header.map(() => '---').join(' | ') + ' |',
+    ];
+    for (let index = 1; index < source.length; index++) {
+      const row = Array.isArray(source[index]) ? source[index] : [];
       lines.push('| ' + row.map((c) => (c == null ? '' : String(c))).join(' | ') + ' |');
     }
     return lines.join('\n');
   }
   /**
-   * Create a TableTaskArtifact from raw 2D cells.
-   * @param {Array<Array<any>>} rawCells
-   * @param {Object} params
-   * @returns {TableTaskArtifact}
+   * Select the rows to render as Markdown.
+   *
+   * @private
+   * @param {Array<Array<any>>} rowsOverride - Optional explicit rows.
+   * @returns {Array<Array<any>>|string|null} Rows or content to render.
    */
-  static fromRawCells(rawCells, params) {
-    return new TableTaskArtifact({ ...params, content: rawCells });
+  _getMarkdownSource(rowsOverride) {
+    if (rowsOverride !== undefined) return rowsOverride;
+    if (this._rows && this._rows.length > 0) return this._rows;
+    return this.content;
+  }
+  /**
+   * Create a TableTaskArtifact from raw 2D cells.
+   *
+   * @param {Array<Array<any>>} rawCells - Raw 2D array of cells.
+   * @param {Object} parameters - Additional params to pass to the constructor.
+   * @returns {TableTaskArtifact} New artifact instance.
+   */
+  static fromRawCells(rawCells, parameters) {
+    return new TableTaskArtifact({ ...parameters, content: rawCells });
   }
 }
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = TableTaskArtifact;
 } else {
-  this.TableTaskArtifact = TableTaskArtifact;
+  globalThis.TableTaskArtifact = TableTaskArtifact;
 }

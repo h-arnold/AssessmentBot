@@ -3,13 +3,16 @@ if (typeof module !== 'undefined') {
   BaseTaskArtifact = require('./0_BaseTaskArtifact.js');
 }
 
+const LAST_ROW_INDEX = -1;
+
 /**
  *
  */
 class SpreadsheetTaskArtifact extends BaseTaskArtifact {
   /**
    * Return the artifact type identifier.
-   * @returns {string}
+   *
+   * @returns {string} The artifact type identifier.
    */
   getType() {
     return 'SPREADSHEET';
@@ -20,8 +23,9 @@ class SpreadsheetTaskArtifact extends BaseTaskArtifact {
    * are canonicalised at artifact-creation time so later comparison logic can
    * rely on a stable stored representation instead of re-normalising during
    * assessment.
-   * @param {Array<Array<any>>|null} content
-   * @returns {Array<Array<any>>|null}
+   *
+   * @param {Array<Array<any>>|null} content - Spreadsheet content to normalise.
+   * @returns {Array<Array<any>>|null} Normalised rows.
    */
   normalizeContent(content) {
     if (content == null) return null;
@@ -44,9 +48,10 @@ class SpreadsheetTaskArtifact extends BaseTaskArtifact {
   }
   /**
    * Normalize an individual spreadsheet cell.
+   *
    * @private
-   * @param {*} cell
-   * @returns {string|number|null}
+   * @param {*} cell - Cell value to normalise.
+   * @returns {string|number|null} Normalised cell value.
    */
   _normCell(cell) {
     if (cell == null) return null;
@@ -55,36 +60,37 @@ class SpreadsheetTaskArtifact extends BaseTaskArtifact {
     return s === '' ? null : s;
   }
   /**
-   * Trim trailing empty rows and fully-empty trailing columns.
+   * Trim trailing empty rows and fully-empty columns.
+   *
    * @private
-   * @param {Array<Array<any>>} rows
-   * @returns {Array<Array<any>>}
+   * @param {Array<Array<any>>} rows - Rows to trim.
+   * @returns {Array<Array<any>>} Trimmed rows.
    */
   _trimEmpty(rows) {
-    while (rows.length > 0 && this._rowEmpty(rows.at(-1))) rows.pop();
-    if (rows.length > 0) {
-      let colCount = Math.max(...rows.map((r) => r.length));
-      for (let c = colCount - 1; c >= 0; c--) {
-        let allEmpty = true;
-        for (const row of rows) {
-          const v = row[c];
-          if (!(v == null || v === '')) {
-            allEmpty = false;
-            break;
-          }
-        }
-        if (allEmpty) {
-          for (const row of rows) row.splice(c, 1);
-        }
-      }
-    }
+    while (rows.length > 0 && this._rowEmpty(rows.at(LAST_ROW_INDEX))) rows.pop();
+    if (rows.length > 0) this._trimEmptyColumns(rows);
     return rows;
   }
   /**
-   * Predicate: is the row empty?
+   * Remove columns whose cells are empty in every remaining row.
+   *
    * @private
-   * @param {Array<any>} row
-   * @returns {boolean}
+   * @param {Array<Array<any>>} rows - Rows whose columns may be empty.
+   */
+  _trimEmptyColumns(rows) {
+    const colCount = Math.max(...rows.map((row) => row.length));
+    for (let column = colCount - 1; column >= 0; column--) {
+      if (rows.every((row) => row[column] == null || row[column] === '')) {
+        for (const row of rows) row.splice(column, 1);
+      }
+    }
+  }
+  /**
+   * Predicate: is the row empty?
+   *
+   * @private
+   * @param {Array<any>} row - Row to check.
+   * @returns {boolean} True when the row is empty.
    */
   _rowEmpty(row) {
     return !row.some((c) => !(c == null || c === ''));
@@ -97,52 +103,76 @@ class SpreadsheetTaskArtifact extends BaseTaskArtifact {
    * entries like `=SUM (A1:C10)` and `=SUM(A1:C10)` are treated the same.
    * This is the single normalisation point for spreadsheet formula content,
    * including formulae that may later be checked for supported equivalence.
+   *
    * @private
-   * @param {string} f
-   * @returns {string}
+   * @param {string} formula - Formula string to canonicalise.
+   * @returns {string} Canonicalised formula.
    */
-  _canonicaliseFormula(f) {
-    if (!f) return f;
+  _canonicaliseFormula(formula) {
+    if (!formula) return formula;
 
-    const formula = String(f);
-
-    let result = '';
-    let inDoubleQuote = false;
-    let inSingleQuote = false;
-    for (let i = 0; i < formula.length; i++) {
-      const ch = formula.charAt(i);
-      if (ch === '"') {
-        if (inDoubleQuote && i + 1 < formula.length && formula.charAt(i + 1) === '"') {
-          result += '""';
-          i++;
-          continue;
-        }
-        if (!inSingleQuote) inDoubleQuote = !inDoubleQuote;
-        result += ch;
+    const formulaText = String(formula);
+    const state = { result: '', inDoubleQuote: false, inSingleQuote: false, skipNext: false };
+    for (let index = 0; index < formulaText.length; index++) {
+      if (state.skipNext) {
+        state.skipNext = false;
         continue;
       }
-
-      if (ch === "'") {
-        if (!inDoubleQuote) inSingleQuote = !inSingleQuote;
-        result += ch;
-        continue;
-      }
-
-      if (inDoubleQuote || inSingleQuote) {
-        result += ch;
-        continue;
-      }
-
-      if (ch !== ' ') {
-        result += ch.toUpperCase();
-      }
+      this._canonicaliseFormulaCharacter(formulaText, index, state);
     }
-    return result;
+    return state.result;
+  }
+  /**
+   * Process one character while canonicalising a formula.
+   *
+   * @private
+   * @param {string} formula - Full formula text.
+   * @param {number} index - Current character index.
+   * @param {{result: string, inDoubleQuote: boolean, inSingleQuote: boolean, skipNext: boolean}} state - Mutable parsing state.
+   * @returns {void}
+   */
+  _canonicaliseFormulaCharacter(formula, index, state) {
+    const character = formula.charAt(index);
+    if (character === '"') return this._canonicaliseDoubleQuote(formula, index, state);
+    if (character === "'") return this._canonicaliseSingleQuote(character, state);
+    if (state.inDoubleQuote || state.inSingleQuote) {
+      state.result += character;
+      return;
+    }
+    if (character !== ' ') state.result += character.toUpperCase();
+  }
+  /**
+   * Preserve a double quote, including escaped quotes within a quoted literal.
+   *
+   * @private
+   * @param {string} formula - Full formula text.
+   * @param {number} index - Current character index.
+   * @param {{result: string, inDoubleQuote: boolean, inSingleQuote: boolean, skipNext: boolean}} state - Mutable parsing state.
+   */
+  _canonicaliseDoubleQuote(formula, index, state) {
+    if (state.inDoubleQuote && formula.charAt(index + 1) === '"') {
+      state.result += '""';
+      state.skipNext = true;
+      return;
+    }
+    if (!state.inSingleQuote) state.inDoubleQuote = !state.inDoubleQuote;
+    state.result += '"';
+  }
+  /**
+   * Preserve a single quote and track its quoted literal.
+   *
+   * @private
+   * @param {string} character - Single quote character.
+   * @param {{result: string, inDoubleQuote: boolean, inSingleQuote: boolean, skipNext: boolean}} state - Mutable parsing state.
+   */
+  _canonicaliseSingleQuote(character, state) {
+    if (!state.inDoubleQuote) state.inSingleQuote = !state.inSingleQuote;
+    state.result += character;
   }
 }
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = SpreadsheetTaskArtifact;
 } else {
-  this.SpreadsheetTaskArtifact = SpreadsheetTaskArtifact;
+  globalThis.SpreadsheetTaskArtifact = SpreadsheetTaskArtifact;
 }

@@ -32,17 +32,12 @@ if (typeof module !== 'undefined') {
 class TextTaskArtifact extends BaseTaskArtifact {
   /**
    * Return the artifact type identifier.
-   * @returns {string}
+   *
+   * @returns {string} The artifact type identifier.
    */
   getType() {
     return 'TEXT';
   }
-  /**
-   * Normalize raw content to a trimmed LF-only string.
-   * Non-string inputs are coerced to string. Empty strings become null.
-   * @param {*} content
-   * @returns {string|null}
-   */
   /**
    * Normalize content by coercing non-string values to string, normalizing line endings, and trimming.
    *
@@ -57,22 +52,23 @@ class TextTaskArtifact extends BaseTaskArtifact {
   normalizeContent(content) {
     if (content == null) return null;
     if (typeof content !== 'string') content = String(content);
-    const normalised = content.replaceAll(/\r\n?/g, '\n').trim();
+    const normalised = content.replaceAll(/\r\n?/gu, '\n').trim();
     return normalised;
   }
   /**
    * Helper to create a TextTaskArtifact from raw text.
+   *
    * @param {*} raw - raw text to use as content
-   * @param {Object} params - additional constructor params
-   * @returns {TextTaskArtifact}
+   * @param {Object} parameters - additional constructor params
+   * @returns {TextTaskArtifact} New artifact instance.
    */
-  static fromRawText(raw, params) {
-    return new TextTaskArtifact({ ...params, content: raw });
+  static fromRawText(raw, parameters) {
+    return new TextTaskArtifact({ ...parameters, content: raw });
   }
 }
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = TextTaskArtifact;
 } else {
-  this.TextTaskArtifact = TextTaskArtifact;
+  globalThis.TextTaskArtifact = TextTaskArtifact;
 }

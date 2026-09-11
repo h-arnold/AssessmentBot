@@ -10,7 +10,7 @@ import {
 import { StudentSubmission } from '../../src/backend/Models/StudentSubmission.js';
 import { createTaskDefinition } from '../helpers/modelFactories.js';
 
-describe('Phase1 Model Requirements', () => {
+describe('TaskDefinition, task artifacts and student submissions', () => {
   it('TaskDefinition stable id after title/page mutation', () => {
     const td = new TaskDefinition({ taskTitle: 'Original', pageId: 'pg1', index: 0 });
     const id = td.getId();
@@ -130,6 +130,20 @@ describe('Phase1 Model Requirements', () => {
       content: ss.content,
     });
     expect(JSON.stringify(ss2.content)).toBe(before);
+  });
+
+  it('SpreadsheetTaskArtifact removes empty trailing rows and columns', () => {
+    const spreadsheet = ArtifactFactory.spreadsheet({
+      taskId: 'tTrim',
+      role: 'reference',
+      content: [
+        ['Header', '', null],
+        ['Value', ' ', ''],
+        ['', '', ''],
+      ],
+    });
+
+    expect(spreadsheet.content).toEqual([['Header'], ['Value']]);
   });
 
   it('ImageTaskArtifact setContentFromBlob hashing', () => {
