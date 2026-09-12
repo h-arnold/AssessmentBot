@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   buildDefaultBackendConfigStore,
   createConfiguredConfigurationManager,
+  installInMemoryScriptProperties,
+  installStoredConfig,
 } from '../helpers/backendConfigTestHelpers.js';
 const {
   CONFIG_KEYS: CONFIG_MANAGER_CONFIG_KEYS,
@@ -305,7 +307,11 @@ describe('ConfigurationManager setProperty', () => {
     });
 
     it('should update cache for unknown properties', () => {
-      configManager.configCache = { some: 'cache' };
+      // The unrelated key is persisted so it survives the locked write's
+      // cache-replacement semantics (the cache mirrors the stored blob exactly).
+      mocks.PropertiesService.scriptProperties.getProperty.mockReturnValue(
+        JSON.stringify({ some: 'cache' })
+      );
 
       configManager.setProperty('unknown_property', 'value');
 
@@ -315,7 +321,9 @@ describe('ConfigurationManager setProperty', () => {
 
   describe('Cache updates', () => {
     it('should update the in-memory cache after setting any script property', () => {
-      configManager.configCache = { some: 'cache' };
+      mocks.PropertiesService.scriptProperties.getProperty.mockReturnValue(
+        JSON.stringify({ some: 'cache' })
+      );
 
       configManager.setProperty(ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE, 120);
 
@@ -326,7 +334,9 @@ describe('ConfigurationManager setProperty', () => {
     });
 
     it('should update the in-memory cache for REVOKE_AUTH_TRIGGER_SET', () => {
-      configManager.configCache = { some: 'cache' };
+      mocks.PropertiesService.scriptProperties.getProperty.mockReturnValue(
+        JSON.stringify({ some: 'cache' })
+      );
 
       configManager.setProperty(ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET, true);
 
@@ -347,11 +357,18 @@ describe('ConfigurationManager default backend configuration bootstrap', () => {
 
   it('seeds the default backend configuration once when the config store is empty', () => {
     const expectedDefaultStore = buildDefaultBackendConfigStore(ConfigurationManager);
+    // Back the raw store so the single staged write is visible to the locked
+    // write path's re-read (GAS persistence semantics).
+    installInMemoryScriptProperties(mocks.PropertiesService.scriptProperties, {
+      configStoreKey: ConfigurationManager.CONFIG_STORE_KEY,
+    });
     const result = configManager.ensureDefaultConfiguration();
 
-    expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledTimes(8);
+    // Fresh-install seeding stages the complete default configuration and commits
+    // it through ONE locked write (one underlying Script Properties write).
+    expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledTimes(1);
     expect(
-      JSON.parse(mocks.PropertiesService.scriptProperties.setProperty.mock.calls.at(-1)[1])
+      JSON.parse(mocks.PropertiesService.scriptProperties.setProperty.mock.calls[0][1])
     ).toEqual(expectedDefaultStore);
     expect(result).toEqual(expectedDefaultStore);
     expect(configManager.getJsonDbRootFolderId()).toBe(
@@ -388,23 +405,8 @@ describe('ConfigurationManager getter and helper behaviour', () => {
   });
 
   it('reads typed configuration values from the persisted store', () => {
-    const storedConfig = {
-      [ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE]: '42',
-      [ConfigurationManager.CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE]: '24',
-      [ConfigurationManager.CONFIG_KEYS.API_KEY]: 'live-secret-7890',
-      [ConfigurationManager.CONFIG_KEYS.BACKEND_URL]: 'https://backend.example.test',
-      [ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET]: 'true',
-      [ConfigurationManager.CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE]: '15',
-      [ConfigurationManager.CONFIG_KEYS.JSON_DB_MASTER_INDEX_KEY]: 'MASTER_INDEX_X',
-      [ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS]: '20000',
-      [ConfigurationManager.CONFIG_KEYS.JSON_DB_LOG_LEVEL]: 'warn',
-      [ConfigurationManager.CONFIG_KEYS.JSON_DB_BACKUP_ON_INITIALISE]: 'true',
-      [ConfigurationManager.CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID]: ' folder-123 ',
-    };
-
-    mocks.PropertiesService.scriptProperties.getProperty.mockReturnValue(
-      JSON.stringify(storedConfig)
-    );
+    // The canonical JSON DB lock timeout minimum (CONFIG_SCHEMA) is 30000.
+    installStoredConfig(mocks.PropertiesService.scriptProperties, ConfigurationManager);
 
     expect(configManager.getBackendAssessorBatchSize()).toBe(42);
     expect(configManager.getSlidesFetchBatchSize()).toBe(24);
@@ -413,16 +415,20 @@ describe('ConfigurationManager getter and helper behaviour', () => {
     expect(configManager.getRevokeAuthTriggerSet()).toBe(true);
     expect(configManager.getDaysUntilAuthRevoke()).toBe(15);
     expect(configManager.getJsonDbMasterIndexKey()).toBe('MASTER_INDEX_X');
-    expect(configManager.getJsonDbLockTimeoutMs()).toBe(20000);
+    expect(configManager.getJsonDbLockTimeoutMs()).toBe(30000);
     expect(configManager.getJsonDbLogLevel()).toBe('WARN');
     expect(configManager.getJsonDbBackupOnInitialise()).toBe(true);
     expect(configManager.getJsonDbRootFolderId()).toBe('folder-123');
     expect(configManager.hasProperty(ConfigurationManager.CONFIG_KEYS.API_KEY)).toBe(true);
-    expect(configManager.hasProperty('missing')).toBe(false);
+    // Unknown keys are rejected by the hardened presence check (see
+    // configurationManagerAccessorHardening.test.js); a valid-but-absent
+    // schema key still reports false.
+    expect(configManager.hasProperty(ConfigurationManager.CONFIG_KEYS.AUTH_MODE)).toBe(false);
   });
 
   it('falls back to defaults for blank or invalid stored values', () => {
-    const storedConfig = {
+    // 20000 is below the canonical CONFIG_SCHEMA minimum (30000); expect the default.
+    installStoredConfig(mocks.PropertiesService.scriptProperties, ConfigurationManager, {
       [ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE]: 'abc',
       [ConfigurationManager.CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE]: '0',
       [ConfigurationManager.CONFIG_KEYS.API_KEY]: '',
@@ -430,15 +436,11 @@ describe('ConfigurationManager getter and helper behaviour', () => {
       [ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET]: '',
       [ConfigurationManager.CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE]: '999',
       [ConfigurationManager.CONFIG_KEYS.JSON_DB_MASTER_INDEX_KEY]: '',
-      [ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS]: '999',
+      [ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS]: '20000',
       [ConfigurationManager.CONFIG_KEYS.JSON_DB_LOG_LEVEL]: '',
       [ConfigurationManager.CONFIG_KEYS.JSON_DB_BACKUP_ON_INITIALISE]: '',
       [ConfigurationManager.CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID]: '   ',
-    };
-
-    mocks.PropertiesService.scriptProperties.getProperty.mockReturnValue(
-      JSON.stringify(storedConfig)
-    );
+    });
 
     expect(configManager.getBackendAssessorBatchSize()).toBe(
       ConfigurationManager.DEFAULTS.BACKEND_ASSESSOR_BATCH_SIZE

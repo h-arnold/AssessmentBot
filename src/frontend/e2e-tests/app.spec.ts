@@ -123,6 +123,15 @@ async function mockPendingGoogleScriptRun(page: Page) {
               return;
             }
 
+            if (request?.method === 'getApplicationAccess') {
+              callbacks.successHandler?.({
+                ok: true,
+                requestId: 'req-application-access',
+                data: { allowed: true, role: 'admin', email: 'owner@example.com', reason: 'ok' },
+              });
+              return;
+            }
+
             if (request?.method === 'getABClassPartials') {
               callbacks.successHandler?.({
                 ok: true,

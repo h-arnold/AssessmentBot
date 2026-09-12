@@ -19,7 +19,11 @@ This guide will walk you through setting up the Google Slides Assessor, a tool d
 
 Before starting, ensure you have the following:
 
-- **🔑 A Google Gemini API Key:** Respect your students' privacy by using the PAYG option, which does not use API responses to train future models.
+- **🔑 Mistral API access:** The LLM service uses Mistral's `mistral-small-latest` model.
+  It offers a very good price/performance ratio, and Zero Data Retention (ZDR) is easy to
+  obtain with Mistral for sensitive student work.
+- **🔐 An Assessment Bot LLM Service API key:** This is the key configured in the service's
+  `API_KEYS` environment variable and entered in Assessment Bot's backend settings.
 - **🏫 A Google Workspace for Education Account:** Ensure you have active Google Classrooms to pull your students' Google Slides documents from.
 
 ---

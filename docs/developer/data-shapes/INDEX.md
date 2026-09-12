@@ -26,9 +26,20 @@ reference.
 | **GoogleClassrooms**     | [`google-classrooms.md`](google-classrooms.md)         | None (upstream API passthrough)                                    | `getGoogleClassrooms`, `getGoogleClassroomAssignments`                                                                                                                                                                                   | —                                                                                                                             |
 | **AuthCache**            | [`auth-cache.md`](auth-cache.md)                       | CacheService (script cache, 6h TTL)                                | None — internal to `AuthService.checkAccess()`                                                                                                                                                                                           | —                                                                                                                             |
 | **TriggerContext**       | [`trigger-context.md`](trigger-context.md)             | Script Properties (`trigger:<uid>:method`, `trigger:<uid>:params`) | None — internal trigger context storage                                                                                                                                                                                                  | —                                                                                                                             |
+| **AuthUsers**            | [`auth-users.md`](auth-users.md)                       | Auth fields inside the `__CONFIG_STORE_KEY__` blob                 | `getApplicationAccess`, `getAuthenticationSettings`, `setAuthenticationSettings`                                                                                                                                                         | AuthUserEntry (embedded)                                                                                                      |
 
-> **Status: Implemented** — the `AuthCache` and `TriggerContext` contracts are delivered and
-> documented above.
+> **Status: Implemented** — the `AuthCache`, `TriggerContext`, and the `AuthUsers` backend
+> transport contracts are delivered and documented above.
+>
+> **Status: AuthUsers — backend transport + frontend Zod/services implemented** — recorded from
+> `SPEC.md` v1.3 (Application Authentication & Minimal Role Administration). The
+> persistence/validation layer (Section 1), the AuthService provider resolution, strict deny,
+> cache policy, and never-claim trigger context (Section 3), the fresh-install bootstrap claim
+> (Section 4), the three `apiAuth.js` transport endpoints (Section 5), and the frontend
+> Zod/service layer (Section 7 — including the `BackendConfig` frontend schema/transport lockstep
+> that drops `authMode`/`authGroupEmail`) have all landed and conform to this contract. The
+> Section 8 UI/form/panel slimming has also landed, consistent with `auth-users.md` and
+> `backend-config.md`.
 
 ## Containment Hierarchy
 
@@ -43,6 +54,8 @@ reference.
   persistence, no embedded sub-entities.
 - **TriggerContext** is standalone — internal Script Properties trigger-context store keyed
   by triggerUid, no embedded sub-entities.
+- **AuthUsers** is standalone — auth fields embedded in the shared `__CONFIG_STORE_KEY__`
+  blob with `AuthUserEntry` as an embedded sub-entity of the `authUsers` JSON array.
 
 ### Cross-reference rules
 
@@ -51,7 +64,8 @@ reference.
 
 ## Documented Contracts
 
-All nine contracts are now fully documented in this directory. The legacy
+All ten contracts are documented in this directory; `AuthUsers` is implemented and
+conforms to its contract. The legacy
 `docs/developer/backend/DATA_SHAPES.md` has been deleted; all content has been
 migrated to the individual contract files listed below.
 

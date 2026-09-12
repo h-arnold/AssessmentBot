@@ -10,7 +10,9 @@ import {
 } from './classes-crud.shared';
 
 test.describe('Classes CRUD load states', () => {
-  test('blocks the application when a startup warm-up dataset fails', async ({ page }) => {
+  test('keeps the application shell available when a startup warm-up dataset fails', async ({
+    page,
+  }) => {
     await mockClassesCrudRuntime(page, {
       ...createSuccessfulClassesScenario({
         classPartials: baseClassPartials,
@@ -22,8 +24,8 @@ test.describe('Classes CRUD load states', () => {
     });
     await page.goto('/');
 
-    await expect(page.getByText('An error occurred. Please try again.')).toBeVisible();
-    await expect(page.getByText('Classes feature is unavailable.')).toHaveCount(0);
+    await expect(page.getByRole('menuitem', { name: 'Settings' })).toBeVisible();
+    await expect(page.getByText('An error occurred. Please try again.')).toHaveCount(0);
   });
 
   test('shows no-active-classrooms empty state when all datasets are empty', async ({ page }) => {

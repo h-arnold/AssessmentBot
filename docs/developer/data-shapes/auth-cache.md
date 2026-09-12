@@ -1,17 +1,17 @@
 # Contract: AuthCache
 
-In-memory CacheService cache entry used by `AuthService.checkAccess()` to memoise Google
-Group membership results between API requests. Stored via the generic `CacheManager`
-methods (extended with `get`/`put`).
+In-memory CacheService cache entry used by `GoogleGroupsAuthService._resolveAccess()` (reached
+through `AuthService.checkAccess()`) to memoise Google Group membership results between API
+requests. Stored via the generic `CacheManager` methods (extended with `get`/`put`).
 
-> **Status: Implemented** — the generic `CacheManager` methods (ACTION_PLAN §3) and the
-> `AuthService` singleton (ACTION_PLAN §4) have landed, so both the cache access and its
-> sole producer/consumer exist.
+> **Status: Implemented** — the generic `CacheManager` methods and the `AuthService`
+> provider hierarchy (ACTION_PLAN §3) have landed, so both the cache access and its
+> sole producer/consumer (`GoogleGroupsAuthService`) exist.
 
-Backend implementation: `src/backend/Utils/AuthService.js`
+Backend implementation: `src/backend/Utils/GoogleGroupsAuthService.js` (`_resolveAccess()`)
 Cache access: `src/backend/RequestHandlers/CacheManager.js` → generic `get(key)`, `put(key, value, ttlSeconds)`
 Persistence: `CacheService.getScriptCache()` — in-memory cache with TTL, not durable storage
-API handlers: Not directly callable — consumed internally by `AuthService.checkAccess()`
+API handlers: Not directly callable — consumed internally by `GoogleGroupsAuthService._resolveAccess()` via `AuthService.checkAccess()`
 Frontend service: None — internal backend mechanism
 Frontend Zod: None
 
@@ -20,10 +20,34 @@ Sibling contracts:
 - [Contract: BackendConfig](backend-config.md) — The cache key embeds the configured
   `AUTH_GROUP_EMAIL`, so changing the group invalidates cached entries by construction.
 - [Contract: TriggerContext](trigger-context.md) — Both stores are consumed by
-  `triggerHandler()`: AuthCache via `AuthService.checkAccess({ bypassCache: true })` and
-  TriggerContext as the trigger execution context.
+  `triggerHandler()`: AuthCache via `AuthService.checkAccess({ bypassCache: true, neverClaim: true })`
+  and TriggerContext as the trigger execution context.
 - No other sibling contracts — AuthCache is an internal backend cache entry with no
   frontend-facing transport.
+
+> **Implemented (ACTION_PLAN §3)** — the cache policy recorded below previously as
+> The previously pending cache policy has now landed; the points restate the delivered contract:
+>
+> 1. The Google Groups cache entry keeps the unchanged key format
+>    `auth:<groupEmail>:<email>` with a 21600-second (6-hour) TTL. The provider and
+>    group are embedded in the key, so an `authMode` flip can never reuse stale entries.
+> 2. `GoogleGroupsAuthService` maps `OWNER`/`MANAGER` → `admin` and `MEMBER` → `user`;
+>    only successful authorisations are cached, denials are never cached, and
+>    `bypassCache: true` forces a fresh `GroupsApp` lookup (the refreshed success is
+>    still memoised within the TTL).
+> 3. `ScriptPropertiesAuthService` has **no** success cache: the user list is read
+>    fresh on every request and nothing is written to the cache under that provider.
+> 4. The trigger execution path calls `checkAccess({ bypassCache: true, neverClaim: true })`
+>    — it bypasses the cache read and never bootstraps an admin; the defunct
+>    `requireConfigured` option is dropped in favour of the explicit never-claim flag.
+>    The management/provider-switch endpoints (`getAuthenticationSettings` /
+>    `setAuthenticationSettings`) reuse the same `bypassCache: true` option: the dispatcher's
+>    `ADMIN_REQUIRED_METHOD_NAMES` admission phase resolves access fresh (cache bypassed) for
+>    those methods (Section 5 transport is now delivered — ACTION_PLAN §5).
+>
+> The cache policy above is delivered, and the Section 5 transport has confirmed the shared
+> `bypassCache` semantics for management endpoints; this restatement block is retained for
+> traceability.
 
 ---
 
@@ -34,9 +58,9 @@ Sibling contracts:
 Each entry is a JSON-serialised string stored under a composite key. The key embeds both
 the configured group email and the caller email:
 
-| Key                         | Value (JSON string)                              | TTL     |
-| --------------------------- | ------------------------------------------------ | ------- |
-| `auth:<groupEmail>:<email>` | `{ "allowed": true, "role": "admin" \| "user" }` | 6 hours |
+| Key                         | Value (JSON string)                              | TTL                     |
+| --------------------------- | ------------------------------------------------ | ----------------------- |
+| `auth:<groupEmail>:<email>` | `{ "allowed": true, "role": "admin" \| "user" }` | 21600 seconds (6 hours) |
 
 ### Key persistence notes
 
@@ -48,8 +72,9 @@ the configured group email and the caller email:
 - The cache key includes the configured group email, so changing the group invalidates
   all cached entries by construction (no explicit cache invalidation on config change is
   required).
-- Entries naturally expire after the 6-hour TTL; `AuthService` passes the TTL explicitly
-  at the call site (`CacheManager.put(key, value, ttlSeconds)` has no default TTL).
+- Entries naturally expire after the 21600-second (6-hour) TTL; `AuthService` passes
+  `CacheManager.CACHE_EXPIRY_SECONDS` (= 21600) explicitly at the call site
+  (`CacheManager.put(key, value, ttlSeconds)` has no default TTL).
 - `CacheManager` handles JSON serialisation/deserialisation internally; `get()` returns
   `null` on cache miss or parse error (graceful degradation).
 - `CacheManager` is a **plain instantiable class** obtained via `new CacheManager()`
@@ -77,10 +102,10 @@ None — AuthCache is a single flat key-value entry with no embedded sub-entitie
 
 ## Validation
 
-**Backend validation** (in `src/backend/Utils/AuthService.js`):
+**Backend validation** (in `src/backend/Utils/GoogleGroupsAuthService.js`):
 
-- `AuthService.checkAccess()` derives the cache key as `auth:<groupEmail>:<email>` and
-  reads/writes via `CacheManager`.
+- `GoogleGroupsAuthService._resolveAccess()` derives the cache key as
+  `auth:<groupEmail>:<email>` and reads/writes via `CacheManager`.
 - Values written to the cache are always the success shape `{ allowed: true, role }`;
   denials short-circuit before the cache write.
 
@@ -93,8 +118,10 @@ None — AuthCache is a single flat key-value entry with no embedded sub-entitie
 
 ### Known discrepancies
 
-None — the contract is implemented. `AuthService.checkAccess()` derives the cache key
-`auth:<groupEmail>:<email>` and reads/writes via the `CacheManager` generic methods.
+None — the contract is implemented. `GoogleGroupsAuthService._resolveAccess()` derives the
+cache key `auth:<groupEmail>:<email>` and reads/writes via the `CacheManager` generic
+methods; `ScriptPropertiesAuthService._resolveAccess()` reads the stored list fresh and
+writes no cache entry. The trigger path passes `bypassCache: true, neverClaim: true`.
 
 ---
 
@@ -106,9 +133,10 @@ Cache access:         src/backend/RequestHandlers/CacheManager.js
   └── put(key, value, ttlSeconds) — serialise + write with explicit TTL
                                   (no `remove` method — entries expire via TTL)
 
-Producer/consumer:    src/backend/Utils/AuthService.js
-  ├── checkAccess(options?)       — cache read → GroupsApp check → cache write (allowed only)
-  └── _isGroupMember(email, groupEmail) — private group membership + role resolution
+Producer/consumer:    src/backend/Utils/GoogleGroupsAuthService.js
+  ├── _resolveAccess(options?)    — cache read → GroupsApp check → cache write (allowed only)
+  ├── _isGroupMember(email, groupEmail) — access-path membership (lookup failure → deny)
+  └── _resolveGroupRole(email, groupEmail) — fresh GroupsApp role lookup (failure propagates)
 
 Consumers:            src/backend/z_Api/z_apiHandler.js (auth gate, via AuthService)
                       src/backend/Triggers/triggerHandler.js (cache bypass, via AuthService)

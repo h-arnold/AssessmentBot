@@ -45,16 +45,22 @@ describe('ConfigurationManager AUTH_MODE', () => {
       return CONFIG_SCHEMA[CONFIG_KEYS.AUTH_MODE].validate;
     }
 
-    it('returns the canonical value for the none mode', () => {
+    it('rejects the removed none mode', () => {
       const validator = getAuthModeValidator();
 
-      expect(validator('none', configManager)).toBe('none');
+      expect(() => validator('none', configManager)).toThrow();
     });
 
-    it('returns the canonical value for the googleGroups mode', () => {
+    it('accepts the googleGroups mode', () => {
       const validator = getAuthModeValidator();
 
       expect(validator('googleGroups', configManager)).toBe('googleGroups');
+    });
+
+    it('accepts the scriptProperties mode', () => {
+      const validator = getAuthModeValidator();
+
+      expect(validator('scriptProperties', configManager)).toBe('scriptProperties');
     });
 
     it('rejects an unknown auth mode value', () => {
@@ -64,44 +70,89 @@ describe('ConfigurationManager AUTH_MODE', () => {
     });
   });
 
-  describe('getAuthMode', () => {
-    it('returns googleGroups when no value is stored', () => {
-      expect(configManager.getAuthMode()).toBe('googleGroups');
+  describe('getAuthMode (forgiving transport getter)', () => {
+    const AUTH_MODE = ConfigurationManager.CONFIG_KEYS.AUTH_MODE;
+    const AUTH_GROUP_EMAIL = ConfigurationManager.CONFIG_KEYS.AUTH_GROUP_EMAIL;
+
+    it.each([
+      ['a stored googleGroups mode', { [AUTH_MODE]: 'googleGroups' }, 'googleGroups'],
+      ['a stored scriptProperties mode', { [AUTH_MODE]: 'scriptProperties' }, 'scriptProperties'],
+      [
+        'an absent mode with a non-blank group (single leniency)',
+        { [AUTH_GROUP_EMAIL]: 'teachers@school.edu' },
+        'googleGroups',
+      ],
+      [
+        'a stored blank mode with a non-blank group (single leniency)',
+        { [AUTH_MODE]: '', [AUTH_GROUP_EMAIL]: 'teachers@school.edu' },
+        'googleGroups',
+      ],
+    ])('returns %s as the resolved mode', (_label, cache, expectedMode) => {
+      configManager.configCache = cache;
+
+      expect(configManager.getAuthMode()).toBe(expectedMode);
     });
 
-    it('returns googleGroups when the stored value is blank', () => {
-      configManager.configCache = {
-        [ConfigurationManager.CONFIG_KEYS.AUTH_MODE]: '',
-      };
+    it.each([
+      ['an absent mode without a group', {}],
+      ['a stored blank mode', { [AUTH_MODE]: '' }],
+      ['the removed none mode', { [AUTH_MODE]: 'none' }],
+      ['an unrecognised stored value without a group', { [AUTH_MODE]: 'foo' }],
+      [
+        'the removed none mode paired with a group',
+        { [AUTH_MODE]: 'none', [AUTH_GROUP_EMAIL]: 'teachers@school.edu' },
+      ],
+      [
+        'an unrecognised mode paired with a group',
+        { [AUTH_MODE]: 'foo', [AUTH_GROUP_EMAIL]: 'teachers@school.edu' },
+      ],
+    ])('does NOT resolve %s to a mode (returns null)', (_label, cache) => {
+      configManager.configCache = cache;
 
-      expect(configManager.getAuthMode()).toBe('googleGroups');
+      expect(configManager.getAuthMode()).toBeNull();
     });
 
-    it('returns googleGroups when an unknown value is stored', () => {
-      configManager.configCache = {
-        [ConfigurationManager.CONFIG_KEYS.AUTH_MODE]: 'foo',
-      };
+    it('never throws across any stored/absent scenario', () => {
+      const scenarios = [
+        {},
+        { [AUTH_MODE]: 'googleGroups' },
+        { [AUTH_MODE]: 'scriptProperties' },
+        { [AUTH_MODE]: '' },
+        { [AUTH_MODE]: 'none' },
+        { [AUTH_MODE]: 'foo' },
+        { [AUTH_GROUP_EMAIL]: 'teachers@school.edu' },
+        { [AUTH_MODE]: 'none', [AUTH_GROUP_EMAIL]: 'teachers@school.edu' },
+        { [AUTH_MODE]: 'foo', [AUTH_GROUP_EMAIL]: 'teachers@school.edu' },
+      ];
 
-      expect(configManager.getAuthMode()).toBe('googleGroups');
-    });
-
-    it('returns none when the literal none value is stored', () => {
-      configManager.configCache = {
-        [ConfigurationManager.CONFIG_KEYS.AUTH_MODE]: 'none',
-      };
-
-      expect(configManager.getAuthMode()).toBe('none');
+      for (const cache of scenarios) {
+        configManager.configCache = cache;
+        expect(() => configManager.getAuthMode()).not.toThrow();
+      }
     });
   });
 
   describe('setAuthMode', () => {
-    it('persists the none mode and reads it back', () => {
-      configManager.setAuthMode('none');
+    it('persists the scriptProperties mode and reads it back', () => {
+      configManager.setAuthMode('scriptProperties');
 
-      expect(configManager.getAuthMode()).toBe('none');
+      expect(configManager.getAuthMode()).toBe('scriptProperties');
       expectPersistedConfig(mocks, {
-        [ConfigurationManager.CONFIG_KEYS.AUTH_MODE]: 'none',
+        [ConfigurationManager.CONFIG_KEYS.AUTH_MODE]: 'scriptProperties',
       });
+    });
+
+    it('persists the googleGroups mode and reads it back', () => {
+      configManager.setAuthMode('googleGroups');
+
+      expect(configManager.getAuthMode()).toBe('googleGroups');
+      expectPersistedConfig(mocks, {
+        [ConfigurationManager.CONFIG_KEYS.AUTH_MODE]: 'googleGroups',
+      });
+    });
+
+    it('rejects the removed none mode', () => {
+      expect(() => configManager.setAuthMode('none')).toThrow();
     });
 
     it('rejects an invalid auth mode value', () => {

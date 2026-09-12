@@ -17,7 +17,7 @@ import AssignmentDefinitionController from '../../src/backend/y_controllers/Assi
 import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
 import { TaskDefinition } from '../../src/backend/Models/TaskDefinition.js';
 import DbManager from '../../src/backend/DbManager/DbManager.js';
-import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager.js';
+import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager/index.js';
 import SlidesParser from '../../src/backend/DocumentParsers/SlidesParser.js';
 import { SheetsParser } from '../../src/backend/DocumentParsers/SheetsParser.js';
 

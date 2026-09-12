@@ -23,14 +23,16 @@ async function selectDataRow(page: Page, className: string) {
 }
 
 test.describe('mutation summary and refresh failure', () => {
-  test('hands off a partial cohort update to the persistent summary alert and closes the modal', async ({ page }) => {
+  test('hands off a partial cohort update to the persistent summary alert and closes the modal', async ({
+    page,
+  }) => {
     const refreshedClassPartials = matchedClassPartials.map((classPartial, index) =>
       index === 0
         ? {
             ...classPartial,
             cohortKey: 'cohort-2025',
           }
-        : classPartial,
+        : classPartial
     );
     const cohortOptions = [
       ...baseCohorts,
@@ -64,26 +66,48 @@ test.describe('mutation summary and refresh failure', () => {
     await page.getByRole('button', { name: 'Set cohort' }).click();
     await page.getByRole('combobox', { name: 'Cohort' }).click();
     await page.getByRole('option', { name: 'Cohort 2025' }).click();
-    await page.getByRole('dialog', { name: 'Set cohort' }).getByRole('button', { name: 'OK' }).click();
+    await page
+      .getByRole('dialog', { name: 'Set cohort' })
+      .getByRole('button', { name: 'OK' })
+      .click();
 
     await expect(page.getByRole('dialog', { name: 'Set cohort' })).toHaveCount(0);
     await expect(page.getByText('Some selected classes were not updated.')).toBeVisible();
     await expect(page.getByText(/selected classes could not be updated/i)).toBeVisible();
-    await expect(page.getByRole('row').filter({ hasText: 'English Year 7C' })).toContainText('Cohort 2025');
-    await expect(page.getByRole('row').filter({ hasText: 'History Year 8D' }).getByRole('checkbox')).toBeChecked();
+    await expect(page.getByRole('row').filter({ hasText: 'English Year 7C' })).toContainText(
+      'Cohort 2025'
+    );
+    await expect(
+      page.getByRole('row').filter({ hasText: 'History Year 8D' }).getByRole('checkbox')
+    ).toBeChecked();
   });
-  test('suppresses stale classes after a delete refresh failure and keeps the summary visible', async ({ page }) => {
+  test('suppresses stale classes after a delete refresh failure and keeps the summary visible', async ({
+    page,
+  }) => {
     await openClassesTabWithScenario(page, {
       getAuthorisationStatus: [{ kind: 'success', data: true }],
       getABClassPartials: [
         { kind: 'success', data: matchedClassPartials },
-        { kind: 'failureEnvelope', code: 'INTERNAL_ERROR', message: 'Class partials refresh failed after delete.' },
+        {
+          kind: 'failureEnvelope',
+          code: 'INTERNAL_ERROR',
+          message: 'Class partials refresh failed after delete.',
+        },
       ],
       getCohorts: [{ kind: 'success', data: baseCohorts }],
       getYearGroups: [{ kind: 'success', data: baseYearGroups }],
       // Only the initial Google Classroom load is queued; the post-mutation refresh path must not refetch it.
       getGoogleClassrooms: [{ kind: 'success', data: matchedGoogleClassrooms }],
-      deleteABClass: [{ kind: 'success', data: { ok: true } }],
+      deleteABClass: [
+        {
+          kind: 'success',
+          data: {
+            classId: 'gc-class-201',
+            fullClassDeleted: true,
+            partialDeleted: true,
+          },
+        },
+      ],
     });
 
     await selectDataRow(page, classNameUnderTest);
@@ -93,6 +117,10 @@ test.describe('mutation summary and refresh failure', () => {
 
     await expect(page.getByRole('row').filter({ hasText: classNameUnderTest })).toHaveCount(0);
     await expect(page.getByText('Update succeeded but refresh is required.')).toBeVisible();
-    await expect(page.getByText('The classes could not be refreshed right now. Please reload the page and try again.')).toBeVisible();
+    await expect(
+      page.getByText(
+        'The classes could not be refreshed right now. Please reload the page and try again.'
+      )
+    ).toBeVisible();
   });
 });

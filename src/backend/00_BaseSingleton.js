@@ -10,6 +10,7 @@
  */
 class BaseSingleton {
   /**
+   * Creates a BaseSingleton instance.
    *
    */
   constructor() {
@@ -20,6 +21,8 @@ class BaseSingleton {
 
   /**
    * Generic getter; subclasses override _createInstance if special construction needed.
+   *
+   * @returns {BaseSingleton} The shared singleton instance.
    */
   static getInstance() {
     if (!this._instance) {
@@ -31,6 +34,8 @@ class BaseSingleton {
 
   /**
    * Factory hook; subclasses may override to pass a flag (e.g. new ThisClass(true)).
+   *
+   * @returns {BaseSingleton} A new singleton instance.
    */
   static _createInstance() {
     return new this(true); // convention: flag indicates legitimate singleton construction
@@ -43,6 +48,8 @@ class BaseSingleton {
 
   /**
    * Helper invoked by subclasses inside ensureInitialized() once heavy init completes.
+   *
+   * @param {BaseSingleton} instance - The initialised singleton instance to freeze.
    */
   static _maybeFreeze(instance) {
     if (this.FREEZE_AFTER_INIT && instance && !Object.isFrozen(instance)) {

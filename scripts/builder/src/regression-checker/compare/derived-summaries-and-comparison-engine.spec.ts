@@ -68,6 +68,7 @@ const EXPECTED_NEW_FAILURES_TOTAL = 0;
 const EXPECTED_FIXES_TOTAL = 1;
 const EXPECTED_FAILING_CHECKS_TOTAL = 2;
 const EXPECTED_PASSING_CHECKS_TOTAL = 1;
+const EXPECTED_REGRESSIONS_WITH_ESLINT = 3;
 const ALERT_FAILURE_LINE = 3;
 const ALERT_FAILURE_COLUMN = 2;
 
@@ -835,7 +836,7 @@ describe('derived summaries and comparison engine', () => {
 
     // Aggregate totals must reflect the distinction (no double-counting):
     // 3 regressions (2 vitest + 1 eslint) and 1 new failure (the passed -> failed test).
-    expect(result.totals.regressionsCount).toBe(3);
+    expect(result.totals.regressionsCount).toBe(EXPECTED_REGRESSIONS_WITH_ESLINT);
     expect(result.totals.newFailuresCount).toBe(1);
   });
 });

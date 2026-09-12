@@ -11,7 +11,18 @@
 class BaseTaskArtifact {
   /**
    * Construct a BaseTaskArtifact.
+   *
    * @param {Object} opts - Initialization options for the artifact.
+   * @param {string} opts.taskId - Identifier of the parent task.
+   * @param {string} opts.role - Artifact role within the task.
+   * @param {string|null} opts.pageId - Identifier of the source page.
+   * @param {string|null} opts.documentId - Identifier of the source document.
+   * @param {*} opts.content - Raw artifact content to normalise.
+   * @param {string|null} opts.contentHash - Precomputed content hash.
+   * @param {Object} opts.metadata - Additional artifact metadata.
+   * @param {string|null} opts.uid - Precomputed unique identifier.
+   * @param {number|null} opts.taskIndex - Index of the parent task.
+   * @param {number} opts.artifactIndex - Index of this artifact within the task.
    */
   constructor({
     taskId,
@@ -55,7 +66,8 @@ class BaseTaskArtifact {
 
   /**
    * Return the artifact's unique id.
-   * @returns {string}
+   *
+   * @returns {string} The artifact unique identifier.
    */
   getUid() {
     return this._uid;
@@ -63,7 +75,8 @@ class BaseTaskArtifact {
   /**
    * Return the artifact type identifier.
    * Subclasses should override this.
-   * @returns {string}
+   *
+   * @returns {string} The artifact type identifier.
    */
   getType() {
     return 'base';
@@ -71,8 +84,9 @@ class BaseTaskArtifact {
   /**
    * Normalize provided content into the internal representation.
    * Base implementation returns content unchanged; subclasses may coerce.
-   * @param {*} content
-   * @returns {*}
+   *
+   * @param {*} content - Raw content to normalise.
+   * @returns {*} The normalised content.
    */
   normalizeContent(content) {
     return content;
@@ -80,7 +94,8 @@ class BaseTaskArtifact {
 
   /**
    * Validate that the artifact has non-empty content.
-   * @returns {{status: string, errors?: string[]}}
+   *
+   * @returns {{status: string, errors?: string[]}} Validation result with status.
    */
   validate() {
     if (
@@ -98,28 +113,33 @@ class BaseTaskArtifact {
    * @returns {string|null} The generated content hash.
    */
   ensureHash() {
-    const str = this._stableStringify(this.content);
-    this.contentHash = Utils.generateHash(str);
+    const string_ = this._stableStringify(this.content);
+    this.contentHash = Utils.generateHash(string_);
     return this.contentHash;
   }
 
   /**
    * Deterministically stringify an object so hashing is stable.
-   * @param {*} obj
-   * @returns {string}
+   *
+   * @param {*} object - Value to stringify deterministically.
+   * @returns {string} Stable JSON representation.
    */
-  _stableStringify(obj) {
-    if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
-    if (Array.isArray(obj)) return '[' + obj.map((i) => this._stableStringify(i)).join(',') + ']';
-    const keys = Object.keys(obj).sort((a, b) => a.localeCompare(b));
+  _stableStringify(object) {
+    if (object === null || typeof object !== 'object') return JSON.stringify(object);
+    if (Array.isArray(object))
+      return '[' + object.map((index) => this._stableStringify(index)).join(',') + ']';
+    const keys = Object.keys(object).toSorted((a, b) => a.localeCompare(b));
     return (
-      '{' + keys.map((k) => JSON.stringify(k) + ':' + this._stableStringify(obj[k])).join(',') + '}'
+      '{' +
+      keys.map((k) => JSON.stringify(k) + ':' + this._stableStringify(object[k])).join(',') +
+      '}'
     );
   }
 
   /**
    * Return a plain object suitable for JSON serialization.
-   * @returns {Object}
+   *
+   * @returns {Object} Plain object representation.
    */
   toJSON() {
     return {
@@ -137,7 +157,8 @@ class BaseTaskArtifact {
 
   /**
    * Return a partial JSON representation with heavy fields redacted.
-   * @return {Object}
+   *
+   * @returns {Object} Partial representation with heavy fields redacted.
    */
   toPartialJSON() {
     const json = this.toJSON();
@@ -148,8 +169,9 @@ class BaseTaskArtifact {
 
   /**
    * Construct a BaseTaskArtifact directly from a plain JSON-like object.
-   * @param {Object} json
-   * @returns {BaseTaskArtifact}
+   *
+   * @param {Object} json - Plain JSON-like object to construct from.
+   * @returns {BaseTaskArtifact} New artifact instance.
    */
   static baseFromJSON(json) {
     return new BaseTaskArtifact(json);

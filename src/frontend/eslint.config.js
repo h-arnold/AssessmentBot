@@ -54,11 +54,14 @@ export default defineConfig([
       'unicorn/prevent-abbreviations': 'warn',
       'unicorn/no-keyword-prefix': 'off',
       'unicorn/filename-case': 'off',
-      // Disabled by explicit user authorisation: this rule produces spaghetti
-      // workarounds (switch statements / indexed-union lookups) without improving
-      // security for the controlled, compile-time-checked property access used here.
+      // Disabled by explicit user authorisation: this rule produces hideous workarounds
+      // that are no better, and can be worse, than the flagged access. Frontend security
+      // relies on sanitising and validating inputs at the relevant boundaries instead.
       'security/detect-object-injection': 'off',
       'no-console': 'error',
+      // Warn on oversized files so they are picked up for refactoring when touched.
+      // Matches the backend 500-line threshold; currently flags several large specs.
+      'max-lines': ['warn', 500],
       'no-restricted-properties': [
         'error',
         {
@@ -67,6 +70,15 @@ export default defineConfig([
           message: 'Use the frontend logger module as the only browser console emission boundary.',
         },
       ],
+    },
+  },
+  {
+    // Playwright CSS-loader shims. `e2e` is the standard Playwright abbreviation,
+    // so the filename finding is a false positive; keep in-file abbreviation
+    // checks and silence the filename check only.
+    files: ['e2e-css-loader.mjs', 'e2e-css-loader-bootstrap.mjs'],
+    rules: {
+      'unicorn/prevent-abbreviations': ['warn', { checkFilenames: false }],
     },
   },
   {
@@ -204,7 +216,6 @@ export default defineConfig([
     rules: {
       ...unicodeSecurityRules,
       'require-unicode-regexp': 'off',
-      'security/detect-object-injection': 'off',
     },
   },
   {
@@ -233,47 +244,6 @@ export default defineConfig([
     ],
     rules: {
       '@typescript-eslint/no-magic-numbers': 'off',
-    },
-  },
-  {
-    // TaskHeatmapTable accesses heatmap cells by numeric index (`cells[index]`)
-    // where the index is a bounded loop variable or a pre-computed task index
-    // that has been validated upstream by the heatmap adapter (Zod schema). The
-    // `security/detect-object-injection` rule flags all bracket access with a
-    // variable index, but in this case the index is thoroughly validated and
-    // satisfies the data contract before it reaches this component. Disabling
-    // at file level avoids repetitive inline suppressions while keeping the
-    // rule active for genuinely untrusted input elsewhere.
-    files: ['src/features/taskHeatmap/TaskHeatmapTable.tsx'],
-    rules: {
-      'security/detect-object-injection': 'off',
-    },
-  },
-  {
-    // `studentAveragesTableColumns` colours each metric cell via
-    // `METRIC_TONE_CELL_STYLE[color]`, where `color` is the bounded
-    // `MetricToneColor` union (resolved by `resolveMetricTone` against a fixed
-    // scoring range). The lookup is therefore type-safe and cannot address an
-    // arbitrary property; the `security/detect-object-injection` heuristic
-    // cannot see the union narrowing and would otherwise flag it. Mirror the
-    // TaskHeatmapTable exception so the band-colour pattern stays consistent
-    // across both class-page tables.
-    files: ['src/features/classPage/studentAveragesTableColumns.tsx'],
-    rules: {
-      'security/detect-object-injection': 'off',
-    },
-  },
-  {
-    // AppAuthGate memoises getWarmupForbiddenMessage over [queryClient, warmupCycleState].
-    // The warm-up cycle snapshot is a genuine (if indirect) dependency: it is the re-render
-    // trigger that fires once warm-up resolves, without which the FORBIDDEN denial lookup
-    // would never re-run. ESLint's react-hooks/exhaustive-deps rule cannot see the reference
-    // because the lookup reads the React Query cache directly rather than the snapshot value,
-    // so the dependency is intentionally retained and the rule is disabled for this file only
-    // by explicit user authorisation.
-    files: ['src/features/auth/AppAuthGate.tsx'],
-    rules: {
-      'react-hooks/exhaustive-deps': 'off',
     },
   },
 ]);

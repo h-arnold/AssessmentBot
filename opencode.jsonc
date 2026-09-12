@@ -6,6 +6,17 @@
     "bashDefaultTimeoutMs": 450000
   },
   "permission": {
+    "edit": {
+      "*": "allow",
+      "eslint.config.*": "ask",
+      "**/eslint.config.*": "ask",
+      ".eslint*": "ask",
+      "**/.eslint*": "ask",
+      "config/eslint/**": "ask",
+      "**/config/eslint/**": "ask",
+      "tsconfig*.json*": "ask",
+      "**/tsconfig*.json*": "ask"
+    },
     "bash": {
       "*": "allow",
       "git reset*": "ask",

@@ -2,13 +2,15 @@ import { Tabs } from 'antd';
 import type { TabsProps } from 'antd';
 import { useMemo, useState } from 'react';
 import { ClassesManagementPanel } from '../features/classes/ClassesManagementPanel';
+import { useApplicationAccessContext } from '../features/auth/ApplicationAccessContext';
 import { BackendSettingsPanel } from '../features/settings/backend/BackendSettingsPanel';
+import { AuthenticationSettingsTab } from '../features/settings/authentication/AuthenticationSettingsTab';
 import { ReferenceDataSettingsPanel } from '../features/referenceData/ReferenceDataSettingsPanel';
 import { PageSection } from './PageSection';
 import { SettingsPageGoogleClassroomsPrefetch } from '../features/settings/SettingsPageGoogleClassroomsPrefetch';
 import { pageContent } from './pageContent';
 
-type SettingsTabKey = 'classes' | 'backend-settings' | 'reference-data';
+type SettingsTabKey = 'classes' | 'backend-settings' | 'authentication' | 'reference-data';
 
 /**
  * Renders the settings page with fixed tabs for classes and backend settings.
@@ -18,6 +20,8 @@ type SettingsTabKey = 'classes' | 'backend-settings' | 'reference-data';
 export function SettingsPage() {
   const [activeTabKey, setActiveTabKey] = useState<SettingsTabKey>('classes');
   const [classesPanelInstanceKey, setClassesPanelInstanceKey] = useState(0);
+  const applicationAccessContext = useApplicationAccessContext();
+  const isAuthenticationTabVisible = applicationAccessContext.role === 'admin';
 
   const settingsTabs = useMemo<NonNullable<TabsProps['items']>>(
     () => [
@@ -31,13 +35,22 @@ export function SettingsPage() {
         label: 'Backend settings',
         children: <BackendSettingsPanel />,
       },
+      ...(isAuthenticationTabVisible
+        ? [
+            {
+              key: 'authentication' as const,
+              label: 'Authentication',
+              children: <AuthenticationSettingsTab />,
+            },
+          ]
+        : []),
       {
         key: 'reference-data',
         label: 'Reference Data',
         children: <ReferenceDataSettingsPanel />,
       },
     ],
-    [classesPanelInstanceKey]
+    [classesPanelInstanceKey, isAuthenticationTabVisible]
   );
 
   const handleTabChange: NonNullable<TabsProps['onChange']> = (nextActiveKey) => {

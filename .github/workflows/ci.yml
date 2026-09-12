@@ -16,7 +16,8 @@ on:
       - 'scripts/builder/vitest.config.ts'
       - 'src/frontend/vite.config.ts'
       - 'tsconfig.base.json'
-      - 'config/eslint/ts-base-rules.cjs'
+      - 'eslint.config.js'
+      - 'config/eslint/**'
   workflow_dispatch:
 
 permissions:
@@ -45,6 +46,9 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm --prefix src/frontend ci
+
+      - name: Run frontend lint
+        run: npm run lint:frontend:check
 
       - name: Run frontend tests
         run: npm run test:frontend
@@ -107,6 +111,10 @@ jobs:
 
       - name: Install root dependencies
         run: npm ci
+
+      - name: Run backend lint
+        run: npm run lint:backend:errors-only
+
 # We don't check for backend coverage because there are aspects of the code that are very difficult to sensibly test outside of a GAS environment
       - name: Run backend tests
         run: npm run test:backend

@@ -8,6 +8,8 @@
  */
 class PersistError extends Error {
   /**
+   * Creates a PersistError.
+   *
    * @param {string} message - Human readable message describing the failure
    * @param {Object} [opts] - Optional metadata
    * @param {Error} [opts.cause] - Original error that triggered this persist failure
@@ -18,15 +20,12 @@ class PersistError extends Error {
     this.name = 'PersistError';
     this.cause = cause;
     this.key = key;
-
-    // Maintain proper stack trace (V8)
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, PersistError);
-    }
   }
 
   /**
+   * Returns a plain JSON representation of the error.
    *
+   * @returns {Object} Plain object with error details.
    */
   toJSON() {
     return {

@@ -10,6 +10,9 @@
 
 const INFO_TOAST_DURATION_SECONDS = 3;
 
+/**
+ * Orchestrates LLM request generation and response assessment for an assignment.
+ */
 class AssignmentLLMOrchestration {
   /**
    * Constructor.

@@ -6,6 +6,8 @@
  */
 class ApiDisabledError extends Error {
   /**
+   * Creates an ApiDisabledError.
+   *
    * @param {string} message - Human-readable message describing the failure
    * @param {Object} [opts] - Optional metadata
    * @param {string} [opts.requestId] - Unique identifier for the triggering request
@@ -18,11 +20,6 @@ class ApiDisabledError extends Error {
     this.requestId = requestId;
     this.method = method;
     this.cause = cause;
-
-    // Maintain proper stack trace (V8)
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, ApiDisabledError);
-    }
   }
 }
 

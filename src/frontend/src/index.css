@@ -126,6 +126,11 @@ body {
   margin-inline: auto;
 }
 
+.settings-tab-panel--authentication {
+  width: min(100%, var(--app-panel-width-default));
+  margin-inline: auto;
+}
+
 .auth-card {
   width: min(100%, var(--app-panel-width-default));
   text-align: center;

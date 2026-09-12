@@ -110,7 +110,6 @@ class AssignmentDefinitionTaskWeighting {
    * @private
    */
   _findTaskById(tasks, taskId) {
-    /* eslint-disable-next-line security/detect-object-injection -- taskId is a validated string from the task map keys */
     return tasks ? tasks[taskId] || null : null;
   }
 }

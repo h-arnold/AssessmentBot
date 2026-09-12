@@ -12,13 +12,15 @@ import { runPreflightClean } from './steps/preflight-clean.js';
 import { runResolveJsonDbSource } from './steps/resolve-jsondb-source.js';
 import { runValidateOutput } from './steps/validate-output.js';
 
+const CLI_ARGS_OFFSET = 2;
+
 /**
  * Runs the builder pipeline entrypoint.
  *
- * @return {Promise<void>} Resolves when the configured build steps complete.
+ * @returns {Promise<void>} Resolves when the configured build steps complete.
  */
 async function run(): Promise<void> {
-  const options = parseCliOptions(process.argv.slice(2));
+  const options = parseCliOptions(process.argv.slice(CLI_ARGS_OFFSET));
   const paths = await resolveBuilderPaths();
   await runPreflightClean(paths);
   logInfo('Step 1 complete: preflight checks passed and build directories prepared.');

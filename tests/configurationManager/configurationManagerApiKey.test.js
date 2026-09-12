@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
-  buildDefaultBackendConfigStore,
   createConfiguredConfigurationManager,
+  installInMemoryScriptProperties,
 } from '../helpers/backendConfigTestHelpers.js';
 const {
   CONFIG_KEYS: CONFIG_MANAGER_CONFIG_KEYS,
@@ -42,76 +42,20 @@ describe('ConfigurationManager API key validation', () => {
       });
     });
 
-    it('should reject an API key with an invalid token format', () => {
+    it.each([
+      ['an invalid token format', 'invalid-key-'],
+      ['a non-string value', 123],
+      ['a 31-character token (one too short)', 'abt_7pC98PCoGJOcjN-qz6rNlSzKkgySJF'],
+      ['a 33-character token (one too long)', 'abt_7pC98PCoGJOcjN-qz6rNlSzKkgySJF-1X'],
+      ['an illegal "+" character', 'abt_7pC98PCoGJOcjN+qz6rNlSzKkgySJF-1'],
+      ['a missing underscore separator', 'abt7pC98PCoGJOcjN-qz6rNlSzKkgySJF-1'],
+      ['a leading hyphen in the prefix', '-abt_7pC98PCoGJOcjN-qz6rNlSzKkgySJF-1'],
+      ['a legacy hyphen-separated key (no underscore)', 'abt-7pC98PCoGJOcjN-qz6rNlSzKkgySJF-1'],
+    ])('should reject an API key with %s', (_label, candidateKey) => {
       expect(() => {
-        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.API_KEY, 'invalid-key-');
+        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.API_KEY, candidateKey);
       }).toThrow('API Key must be an alphanumeric prefix');
     });
-
-    it('should reject a non-string API key', () => {
-      expect(() => {
-        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.API_KEY, 123);
-      }).toThrow('API Key must be an alphanumeric prefix');
-    });
-
-    // --- Boundary case tests mirroring frontend backendConfigurationValidation.spec.ts ---
-
-    it('should reject API key with 31-character token (one too short)', () => {
-      expect(() => {
-        configManager.setProperty(
-          ConfigurationManager.CONFIG_KEYS.API_KEY,
-          'abt_7pC98PCoGJOcjN-qz6rNlSzKkgySJF'
-        );
-      }).toThrow('API Key must be an alphanumeric prefix');
-    });
-
-    it('should reject API key with 33-character token (one too long)', () => {
-      expect(() => {
-        configManager.setProperty(
-          ConfigurationManager.CONFIG_KEYS.API_KEY,
-          'abt_7pC98PCoGJOcjN-qz6rNlSzKkgySJF-1X'
-        );
-      }).toThrow('API Key must be an alphanumeric prefix');
-    });
-
-    it('should reject API key containing illegal "+" character', () => {
-      expect(() => {
-        configManager.setProperty(
-          ConfigurationManager.CONFIG_KEYS.API_KEY,
-          'abt_7pC98PCoGJOcjN+qz6rNlSzKkgySJF-1'
-        );
-      }).toThrow('API Key must be an alphanumeric prefix');
-    });
-
-    it('should reject API key missing underscore separator', () => {
-      expect(() => {
-        configManager.setProperty(
-          ConfigurationManager.CONFIG_KEYS.API_KEY,
-          'abt7pC98PCoGJOcjN-qz6rNlSzKkgySJF-1'
-        );
-      }).toThrow('API Key must be an alphanumeric prefix');
-    });
-
-    it('should reject API key with leading hyphen in prefix', () => {
-      expect(() => {
-        configManager.setProperty(
-          ConfigurationManager.CONFIG_KEYS.API_KEY,
-          '-abt_7pC98PCoGJOcjN-qz6rNlSzKkgySJF-1'
-        );
-      }).toThrow('API Key must be an alphanumeric prefix');
-    });
-
-    // --- Legacy format regression ---
-
-    it('should reject legacy hyphen-separated API key (no underscore)', () => {
-      expect(() => {
-        configManager.setProperty(
-          ConfigurationManager.CONFIG_KEYS.API_KEY,
-          'abt-7pC98PCoGJOcjN-qz6rNlSzKkgySJF-1'
-        );
-      }).toThrow('API Key must be an alphanumeric prefix');
-    });
-
     // --- Trim behaviour ---
 
     it('should trim surrounding whitespace from the API key before storing', () => {
@@ -148,6 +92,58 @@ describe('ConfigurationManager API key validation', () => {
         ConfigurationManager.CONFIG_KEYS.API_KEY,
         'abt_7pC98PCoGJOcjN-qz6rNlSzKkgySJF-1'
       );
+    });
+  });
+
+  describe('API key clearing via explicit empty string (real validation seam + locked write)', () => {
+    /** Backs the serialised config blob with an in-memory store for a single test. */
+    function installInMemoryConfigStore(initialConfig) {
+      return installInMemoryScriptProperties(mocks.PropertiesService.scriptProperties, {
+        configStoreKey: ConfigurationManager.CONFIG_STORE_KEY,
+        initialConfig,
+      });
+    }
+
+    it('accepts the explicit empty-string clear value through preparePropertyValue', () => {
+      // preparePropertyValue is the manager-owned seam `setBackendConfig_` stages
+      // every supplied field through; it must return '' so the clearing patch can
+      // reach the locked write instead of throwing like any invalid key.
+      expect(configManager.preparePropertyValue(ConfigurationManager.CONFIG_KEYS.API_KEY, '')).toBe(
+        ''
+      );
+    });
+
+    it('clears a stored API key through the real validation seam and the locked write path', () => {
+      const store = installInMemoryConfigStore({
+        [ConfigurationManager.CONFIG_KEYS.API_KEY]: 'abt_7pC98PCoGJOcjN-qz6rNlSzKkgySJF-1',
+        [ConfigurationManager.CONFIG_KEYS.JSON_DB_LOG_LEVEL]: 'INFO',
+      });
+
+      // setProperty routes through CONFIG_SCHEMA.apiKey validation (validateApiKey_)
+      // then the single locked write; the stored key must be replaced with ''.
+      expect(() =>
+        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.API_KEY, '')
+      ).not.toThrow();
+
+      expect(JSON.parse(store[ConfigurationManager.CONFIG_STORE_KEY])).toEqual({
+        [ConfigurationManager.CONFIG_KEYS.API_KEY]: '',
+        [ConfigurationManager.CONFIG_KEYS.JSON_DB_LOG_LEVEL]: 'INFO',
+      });
+    });
+
+    it('still rejects invalid non-empty API keys through the real validation seam', () => {
+      expect(() =>
+        configManager.preparePropertyValue(ConfigurationManager.CONFIG_KEYS.API_KEY, 'invalid-key-')
+      ).toThrow('API Key must be an alphanumeric prefix');
+    });
+
+    it('rejects whitespace-only and null clearing values, keeping the clear case explicit', () => {
+      expect(() =>
+        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.API_KEY, '   ')
+      ).toThrow('API Key must be an alphanumeric prefix');
+      expect(() =>
+        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.API_KEY, null)
+      ).toThrow('API Key must be an alphanumeric prefix');
     });
   });
 });

@@ -8,7 +8,11 @@ import {
   getAssignmentTopics,
   type AssignmentTopicListResponse,
 } from '../services/assignmentDefinition/assignmentTopicsService';
-import { getAuthorisationStatus } from '../services/authService/authService';
+import {
+  getApplicationAccess,
+  getAuthenticationSettings,
+  getAuthorisationStatus,
+} from '../services/authService/authService';
 import { getBackendConfig } from '../services/backendConfiguration/backendConfigurationService';
 import {
   getABClassPartials,
@@ -54,6 +58,42 @@ export function getAuthorisationStatusQueryOptions() {
   return queryOptions({
     queryKey: queryKeys.authorisationStatus(),
     queryFn: getAuthorisationStatus,
+  });
+}
+
+/**
+ * Returns the shared application-access query definition for the current session.
+ *
+ * @remarks
+ * Wraps the gate-exempt `getApplicationAccess` endpoint so the auth gate owns a single
+ * shared query instance. The gate uses the resolved `reason` to decide admission; warm-up
+ * is a separate post-admission prefetch and does not consume this query.
+ *
+ * @returns {ReturnType<typeof queryOptions>} Shared application-access query options.
+ */
+export function getApplicationAccessQueryOptions() {
+  return queryOptions({
+    queryKey: queryKeys.applicationAccess(),
+    queryFn: getApplicationAccess,
+  });
+}
+
+/**
+ * Returns the shared authentication-settings query definition.
+ *
+ * @remarks
+ * Wraps the admin-only `getAuthenticationSettings` endpoint so the Authentication settings tab
+ * owns a single shared read instance. The hook keeps staged edits in local state and does not
+ * write the result back into this query, so a stale revision conflict leaves the cached read
+ * untouched while the tab surfaces the warning.
+ *
+ * @returns {ReturnType<typeof queryOptions>} Shared authentication-settings query options.
+ */
+export function getAuthenticationSettingsQueryOptions() {
+  return queryOptions({
+    queryKey: queryKeys.authenticationSettings(),
+    queryFn: getAuthenticationSettings,
+    retry: false,
   });
 }
 

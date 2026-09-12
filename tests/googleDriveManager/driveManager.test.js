@@ -1,22 +1,20 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager.js';
-
-// Mock global DriveApp and Drive (Advanced Service)
-globalThis.DriveApp = {
-  getFileById: vi.fn(),
-};
-globalThis.Drive = {
-  Files: {
-    get: vi.fn(),
-  },
-};
-globalThis.Utilities = {
-  sleep: vi.fn(),
-};
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager/index.js';
+import { createDriveManagerMocks } from '../helpers/driveManagerFacadeMocks.js';
 
 describe('DriveManager.getFileModifiedTime', () => {
+  let mocks;
+  let restoreGlobals;
+
   beforeEach(() => {
-    vi.clearAllMocks();
+    // Install GAS service mocks per test and restore the originals afterwards.
+    mocks = createDriveManagerMocks(vi);
+    restoreGlobals = mocks.install();
+  });
+
+  afterEach(() => {
+    restoreGlobals();
+    vi.restoreAllMocks();
   });
 
   it('should return ISO string from DriveApp.getLastUpdated', () => {
@@ -24,25 +22,25 @@ describe('DriveManager.getFileModifiedTime', () => {
     const mockFile = {
       getLastUpdated: vi.fn().mockReturnValue(mockDate),
     };
-    globalThis.DriveApp.getFileById.mockReturnValue(mockFile);
+    mocks.mockDriveApp.getFileById.mockReturnValue(mockFile);
 
     const result = DriveManager.getFileModifiedTime('file-123');
     expect(result).toBe('2025-01-01T10:00:00.000Z');
-    expect(globalThis.DriveApp.getFileById).toHaveBeenCalledWith('file-123');
+    expect(mocks.mockDriveApp.getFileById).toHaveBeenCalledWith('file-123');
   });
 
   it('should fallback to Advanced Drive API if DriveApp fails', () => {
-    globalThis.DriveApp.getFileById.mockImplementation(() => {
+    mocks.mockDriveApp.getFileById.mockImplementation(() => {
       throw new Error('DriveApp failed');
     });
 
-    globalThis.Drive.Files.get.mockReturnValue({
+    mocks.mockDrive.Files.get.mockReturnValue({
       modifiedTime: '2025-01-02T10:00:00Z',
     });
 
     const result = DriveManager.getFileModifiedTime('file-456');
     expect(result).toBe('2025-01-02T10:00:00.000Z');
-    expect(globalThis.Drive.Files.get).toHaveBeenCalledWith(
+    expect(mocks.mockDrive.Files.get).toHaveBeenCalledWith(
       'file-456',
       expect.objectContaining({ fields: 'modifiedTime' })
     );
@@ -55,7 +53,7 @@ describe('DriveManager.getFileModifiedTime', () => {
     };
 
     // Fail twice, succeed on third
-    globalThis.DriveApp.getFileById
+    mocks.mockDriveApp.getFileById
       .mockImplementationOnce(() => {
         throw new Error('Fail 1');
       })
@@ -66,15 +64,15 @@ describe('DriveManager.getFileModifiedTime', () => {
 
     const result = DriveManager.getFileModifiedTime('file-retry');
     expect(result).toBe('2025-01-01T10:00:00.000Z');
-    expect(globalThis.DriveApp.getFileById).toHaveBeenCalledTimes(3);
-    expect(globalThis.Utilities.sleep).toHaveBeenCalledTimes(2);
+    expect(mocks.mockDriveApp.getFileById).toHaveBeenCalledTimes(3);
+    expect(mocks.mockUtilities.sleep).toHaveBeenCalledTimes(2);
   });
 
   it('should throw error if all attempts fail', () => {
-    globalThis.DriveApp.getFileById.mockImplementation(() => {
+    mocks.mockDriveApp.getFileById.mockImplementation(() => {
       throw new Error('DriveApp Fail');
     });
-    globalThis.Drive.Files.get.mockImplementation(() => {
+    mocks.mockDrive.Files.get.mockImplementation(() => {
       throw new Error('Advanced API Fail');
     });
 

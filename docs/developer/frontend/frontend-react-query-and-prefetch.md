@@ -73,18 +73,20 @@ Startup warm-up uses the shared lookup datasets needed across the growing interf
 Current policy:
 
 - startup-prefetched datasets: `classPartials`, `assignmentDefinitionPartials`, `assignmentTopics`, `cohorts`, and `yearGroups`
-- trigger point: after the shared auth query resolves to authorised
+- trigger point: after OAuth admission is confirmed (the `useAuthorisationStatus` scope check resolves authorised) **and** `getApplicationAccess` resolves with `reason: 'ok'`; warm-up starts only once the caller is admitted. Pending, failed, `denied`, and `brokenConfig` access outcomes do not prefetch
 - ownership: the app-level auth / warm-up boundary owns startup readiness
 - scheduling: fire-and-forget from an app-level boundary outside `App.tsx`
 - query API: `fetchQuery`, so orchestration can observe failures
 - readiness rule: startup is considered warmed only after all five shared datasets succeed
 - logging: debug-only orchestration context if warm-up fails
 
-Warm-up must not block the app shell's initial render or paint: the auth gate always
-paints an accessible surface (the authorisation loading state, or a "Verifying access"
-warm-up state). The protected dashboard is, however, intentionally deferred behind a
-fail-closed warm-up gate — it does not render until warm-up confirms group membership, and
-a warm-up failure blocks it behind a recoverable error surface rather than revealing it.
+Warm-up must not block the app shell's initial render, paint, or admission. The auth gate
+always paints an accessible surface while resolving OAuth and application access (the OAuth
+loading state, or the "Verifying access" application-access state), and renders the protected
+dashboard once `getApplicationAccess` admits the caller (`reason: 'ok'`). Warm-up is a
+post-admission prefetch: a warm-up failure is logged and its status published through
+`StartupWarmupStateProvider`, but it does **not** fail the shell closed or withhold the
+admitted dashboard.
 
 `assignmentTopics` is now part of the startup warm-up surface because the same reference-data set supports the assignment-definition wizard modal workflow. The `yearGroupKey` and `yearGroupLabel` contract is used throughout, with resolved labels provided for display while authoritative keys are persisted.
 

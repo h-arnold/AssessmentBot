@@ -3,164 +3,27 @@ import {
   Button,
   Card,
   Form,
-  Input,
-  InputNumber,
-  Select,
   Skeleton,
-  Switch,
   Typography,
 } from 'antd';
 import type { FormInstance } from 'antd';
 import type { ReactNode } from 'react';
 import { useEffect } from 'react';
 import { BackendSettingsFormSchema, type BackendSettingsForm } from './backendSettingsForm.zod';
+import {
+  backendSettingsFieldDescriptors,
+  backendSettingsFieldNames,
+  backendSettingsSectionOrder,
+  createBackendSettingsFieldValidator,
+  type BackendSettingsFieldDescriptor,
+  type BackendSettingsFieldName,
+} from './backendSettingsFieldDescriptors';
 import { useBackendSettings } from './useBackendSettings';
 import { APP_GAP_LG } from '../../../theme/spacing';
 
 const { Text, Title } = Typography;
 
 const backendSettingsRefreshStatusCopy = 'Refreshing backend settings...';
-
-const authGroupEmailClearingErrorMessage = 'The auth group email cannot be cleared once set.';
-
-const jsonDatabaseLogLevelOptions = [
-  { label: 'DEBUG', value: 'DEBUG' },
-  { label: 'INFO', value: 'INFO' },
-  { label: 'WARN', value: 'WARN' },
-  { label: 'ERROR', value: 'ERROR' },
-];
-
-const authModeOptions = [
-  { label: 'Google Groups', value: 'googleGroups' },
-  { label: 'None', value: 'none' },
-];
-
-type BackendSettingsFieldName = Exclude<keyof BackendSettingsForm, 'hasApiKey'>;
-type BackendSettingsFieldSection = 'Backend' | 'Advanced' | 'Database';
-
-type BackendSettingsFieldDescriptor = Readonly<{
-  name: BackendSettingsFieldName | 'jsonDbBackupOnInitialise';
-  label: string;
-  renderInput: () => ReactNode;
-  section: BackendSettingsFieldSection;
-  valuePropName?: 'checked';
-  withSchemaValidation?: boolean;
-  helperText?: string;
-}>;
-
-const backendSettingsFieldNames = [
-  'apiKey',
-  'backendUrl',
-  'backendAssessorBatchSize',
-  'slidesFetchBatchSize',
-  'daysUntilAuthRevoke',
-  'jsonDbMasterIndexKey',
-  'jsonDbLockTimeoutMs',
-  'jsonDbLogLevel',
-  'jsonDbRootFolderId',
-  'authGroupEmail',
-  'authMode',
-] as const satisfies ReadonlyArray<BackendSettingsFieldName>;
-
-const backendSettingsFieldDescriptors = [
-  {
-    name: 'apiKey',
-    label: 'API key',
-    renderInput: () => <Input.Password autoComplete="new-password" />,
-    section: 'Backend',
-    withSchemaValidation: true,
-  },
-  {
-    name: 'backendUrl',
-    label: 'Backend URL',
-    renderInput: () => <Input autoComplete="url" />,
-    section: 'Backend',
-    withSchemaValidation: true,
-  },
-  {
-    name: 'backendAssessorBatchSize',
-    label: 'Backend assessor batch size',
-    renderInput: () => <InputNumber min={1} max={500} precision={0} style={{ width: '100%' }} />,
-    section: 'Advanced',
-    withSchemaValidation: true,
-  },
-  {
-    name: 'slidesFetchBatchSize',
-    label: 'Slides fetch batch size',
-    renderInput: () => <InputNumber min={1} max={100} precision={0} style={{ width: '100%' }} />,
-    section: 'Advanced',
-    withSchemaValidation: true,
-  },
-  {
-    name: 'daysUntilAuthRevoke',
-    label: 'Days until auth revoke',
-    renderInput: () => <InputNumber min={1} max={365} precision={0} style={{ width: '100%' }} />,
-    section: 'Advanced',
-    withSchemaValidation: true,
-  },
-  {
-    name: 'jsonDbMasterIndexKey',
-    label: 'JSON DB master index key',
-    renderInput: () => <Input autoComplete="off" />,
-    section: 'Database',
-    withSchemaValidation: true,
-  },
-  {
-    name: 'jsonDbLockTimeoutMs',
-    label: 'JSON DB lock timeout',
-    renderInput: () => (
-      <InputNumber min={1000} max={600_000} precision={0} style={{ width: '100%' }} />
-    ),
-    section: 'Database',
-    withSchemaValidation: true,
-  },
-  {
-    name: 'jsonDbLogLevel',
-    label: 'JSON DB log level',
-    renderInput: () => <Select options={jsonDatabaseLogLevelOptions} />,
-    section: 'Database',
-    withSchemaValidation: true,
-  },
-  {
-    name: 'jsonDbBackupOnInitialise',
-    label: 'JSON DB backup on initialise',
-    renderInput: () => <Switch />,
-    section: 'Database',
-    valuePropName: 'checked',
-  },
-  {
-    name: 'jsonDbRootFolderId',
-    label: 'JSON DB root folder ID',
-    renderInput: () => <Input autoComplete="off" />,
-    section: 'Database',
-    withSchemaValidation: true,
-  },
-  {
-    name: 'authGroupEmail',
-    label: 'Auth group email',
-    renderInput: () => <Input type="email" autoComplete="email" />,
-    section: 'Backend',
-    withSchemaValidation: true,
-    helperText:
-      'Enter the email address of the Google Group whose members are allowed to access this application.',
-  },
-  // SECURITY: 'none' bypasses the access gate — development/testing only, never production.
-  {
-    name: 'authMode',
-    label: 'Authentication options',
-    renderInput: () => <Select options={authModeOptions} />,
-    section: 'Backend',
-    withSchemaValidation: true,
-    helperText:
-      "Controls how access to this application is verified. 'None' disables the access gate entirely — for development and testing only; do not use in production.",
-  },
-] as const satisfies ReadonlyArray<BackendSettingsFieldDescriptor>;
-
-const backendSettingsSectionOrder = [
-  'Backend',
-  'Advanced',
-  'Database',
-] as const satisfies ReadonlyArray<BackendSettingsFieldSection>;
 
 type SettingsSectionCardProperties = Readonly<{
   title: string;
@@ -188,42 +51,6 @@ function SettingsSectionCard(properties: SettingsSectionCardProperties) {
       {children}
     </Card>
   );
-}
-
-/**
- * Creates a schema-backed field validator for the backend settings form.
- *
- * @param {FormInstance<BackendSettingsForm>} form The Ant Design form instance.
- * @param {boolean} hasApiKey Whether a stored API key already exists.
- * @param {BackendSettingsFieldName} fieldName The field name to validate.
- * @returns {NonNullable<Parameters<typeof Form.Item>[0]['rules']>[number]['validator']} The validator callback.
- */
-function createBackendSettingsFieldValidator(
-  form: FormInstance<BackendSettingsForm>,
-  hasApiKey: boolean,
-  fieldName: BackendSettingsFieldName
-) {
-  return (_rule: unknown, value: unknown) => {
-    const candidateValues = {
-      ...form.getFieldsValue(true),
-      hasApiKey,
-      [fieldName]: value,
-    } as BackendSettingsForm;
-
-    const validationResult = BackendSettingsFormSchema.safeParse(candidateValues);
-    if (validationResult.success) {
-      return Promise.resolve();
-    }
-
-    const issue = validationResult.error.issues.find(
-      (candidateIssue) => candidateIssue.path[0] === fieldName
-    );
-    if (issue !== undefined) {
-      return Promise.reject(new Error(issue.message));
-    }
-
-    return Promise.resolve();
-  };
 }
 
 /**
@@ -332,11 +159,7 @@ function renderBackendSettingsField(
         descriptor.withSchemaValidation
           ? [
               {
-                validator: createBackendSettingsFieldValidator(
-                  form,
-                  hasApiKey,
-                  descriptor.name as BackendSettingsFieldName
-                ),
+                validator: createBackendSettingsFieldValidator(form, hasApiKey, descriptor.name),
               },
             ]
           : undefined
@@ -385,10 +208,6 @@ function renderBackendSettingsPanelStatus(
  * The API key helper text is intentionally limited to replacement or retention guidance because
  * explicit clearing is out of scope for this feature and the backend only accepts a blank field as
  * "keep the stored key".
- *
- * The auth group email is compulsory once set: `handleFinish` rejects a blank submission when a
- * non-blank baseline value is loaded from the hook, surfacing a field error before any save call.
- * The backend independently rejects clearing (defence-in-depth).
  *
  * Submit failures rely on `scrollToFirstError={{ focus: true }}` so browser-visible validation
  * behaviour stays accessible and the first invalid field receives focus without custom scrolling
@@ -442,21 +261,6 @@ export function BackendSettingsPanel() {
             ];
           })
         )
-      );
-      return;
-    }
-
-    const submittedAuthGroupEmail = validationResult.data.authGroupEmail.trim();
-    const baselineAuthGroupEmail = (backendSettingsFormValues?.authGroupEmail ?? '').trim();
-
-    if (submittedAuthGroupEmail === '' && baselineAuthGroupEmail !== '') {
-      form.setFields(
-        mapBackendSettingsFieldErrorsToFormRecords([
-          {
-            fieldName: 'authGroupEmail',
-            message: authGroupEmailClearingErrorMessage,
-          },
-        ])
       );
       return;
     }

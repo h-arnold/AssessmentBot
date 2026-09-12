@@ -95,7 +95,9 @@ test.describe('Classes CRUD harness journey', () => {
     await expect(page.getByText('Permissions required')).toBeVisible();
   });
 
-  test('blocks the application when a warm-up-required dataset fails', async ({ page }) => {
+  test('keeps the application shell available when a warm-up-required dataset fails', async ({
+    page,
+  }) => {
     await mockClassesCrudRuntime(page, {
       getAuthorisationStatus: [{ kind: 'success', data: true }],
       getABClassPartials: [{ kind: 'transportFailure', message: 'Class partials fetch failed.' }],
@@ -105,8 +107,8 @@ test.describe('Classes CRUD harness journey', () => {
     });
 
     await page.goto('/');
-    await expect(page.getByText('An error occurred. Please try again.')).toBeVisible();
-    await expect(page.getByText('Classes feature is unavailable.')).toHaveCount(0);
+    await expect(page.getByRole('menuitem', { name: 'Settings' })).toBeVisible();
+    await expect(page.getByText('An error occurred. Please try again.')).toHaveCount(0);
   });
 
   test('shows blocking classes state when Google Classrooms fetch fails', async ({ page }) => {

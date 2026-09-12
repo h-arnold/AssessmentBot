@@ -6,6 +6,8 @@
  */
 class ApiRateLimitError extends Error {
   /**
+   * Creates an ApiRateLimitError.
+   *
    * @param {string} message - Human-readable message describing the failure
    * @param {Object} [opts] - Optional metadata
    * @param {string} [opts.requestId] - Unique identifier for the triggering request
@@ -22,11 +24,6 @@ class ApiRateLimitError extends Error {
     this.activeCount = activeCount;
     this.limit = limit;
     this.cause = cause;
-
-    // Maintain proper stack trace (V8)
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, ApiRateLimitError);
-    }
   }
 }
 

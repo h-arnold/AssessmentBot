@@ -194,10 +194,12 @@ function restoreGlobal(globalKey, originalValue) {
 function installLockServiceMock(vi) {
   const originalLockService = globalThis.LockService;
   const mockLock = { tryLock: vi.fn(() => true), releaseLock: vi.fn() };
+  const scriptLock = { waitLock: vi.fn(() => {}), releaseLock: vi.fn(() => {}) };
   globalThis.LockService = {
     getUserLock: vi.fn(() => mockLock),
+    getScriptLock: vi.fn(() => scriptLock),
   };
-  return { originalLockService, mockLock };
+  return { originalLockService, mockLock, scriptLock };
 }
 
 function installAbLoggerSpies(vi) {

@@ -4,9 +4,20 @@ import {
   type AppNavigationKey,
   renderNavigationPage,
 } from '../navigation/appNavigation';
+import {
+  ApplicationAccessContext,
+  type ApplicationAccessContextValue,
+} from '../features/auth/ApplicationAccessContext';
 import { pageContent } from './pageContent';
 import { HeatmapsPage } from './HeatmapsPage';
 import { renderWithFrontendProviders } from '../test/renderWithFrontendProviders';
+
+const settingsPageAccessContext: ApplicationAccessContextValue = {
+  role: 'user',
+  reason: 'ok',
+  allowed: true,
+  email: 'user@example.com',
+};
 
 const { getABClassPartialsMock, getCohortsMock, getGoogleClassroomsMock, getYearGroupsMock } = vi.hoisted(
   () => ({
@@ -87,7 +98,11 @@ describe('page components', () => {
   it.each(navigationPageExpectations)(
     'renders the expected heading and summary text for $heading',
     async ({ heading, key, summary }) => {
-      renderWithFrontendProviders(<>{renderNavigationPage(key)}</>);
+      renderWithFrontendProviders(
+        <ApplicationAccessContext.Provider value={settingsPageAccessContext}>
+          {renderNavigationPage(key)}
+        </ApplicationAccessContext.Provider>
+      );
 
       expect(await screen.findByRole('heading', { level: 2, name: heading })).toBeInTheDocument();
       expect(screen.getByText(summary)).toBeInTheDocument();

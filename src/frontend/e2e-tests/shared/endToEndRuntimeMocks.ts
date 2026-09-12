@@ -54,6 +54,9 @@ export type ResponseItem = Readonly<
  */
 export type RuntimeScenario = Readonly<{
   getAuthorisationStatus?: ReadonlyArray<ResponseItem>;
+  getApplicationAccess?: ReadonlyArray<ResponseItem>;
+  getAuthenticationSettings?: ReadonlyArray<ResponseItem>;
+  setAuthenticationSettings?: ReadonlyArray<ResponseItem>;
   getABClassPartials?: ReadonlyArray<ResponseItem>;
   getABClass?: ReadonlyArray<ResponseItem>;
   getCohorts?: ReadonlyArray<ResponseItem>;
@@ -155,6 +158,128 @@ export interface CreateAssignmentsScenarioOptions {
   includeYearGroups?: boolean;
   /** Whether to include standard assignment topics response. */
   includeAssignmentTopics?: boolean;
+}
+
+/**
+ * Options for creating a runtime scenario for the Authentication settings tab.
+ */
+export interface CreateAuthenticationSettingsScenarioOptions {
+  /** Authentication settings responses, including any post-save refreshes. */
+  authenticationSettings?: ReadonlyArray<ResponseItem>;
+  /** Authentication settings save responses. */
+  saveResponses?: ReadonlyArray<ResponseItem>;
+}
+
+/** Startup methods used by the authorisation gate before the application is ready. */
+export const AUTHORISATION_WARMUP_METHODS = [
+  'getABClassPartials',
+  'getAssignmentDefinitionPartials',
+  'getAssignmentTopics',
+  'getCohorts',
+  'getYearGroups',
+] as const;
+
+type AuthorisationWarmupMethod = (typeof AUTHORISATION_WARMUP_METHODS)[number];
+
+/** Options for creating an authorised application-access scenario. */
+export interface CreateAuthorisationScenarioOptions {
+  /** Response returned by the authorisation status check. */
+  authorisationStatus?: ResponseItem;
+  /** Response returned by the application-access check. */
+  applicationAccess?: ResponseItem;
+  /** Factory for each startup warm-up response. */
+  warmupResponseFactory?: (data: unknown) => ResponseItem;
+}
+
+/**
+ * Default `getAuthenticationSettings` response for admin authentication scenarios.
+ *
+ * The dev server runs under React 19 StrictMode, which double-fires effects, so the
+ * response queue deliberately carries two identical entries to satisfy both replays.
+ * Callers that need different pre/post-save responses should override `authenticationSettings`.
+ */
+const defaultAuthenticationSettingsResponse: ResponseItem = {
+  kind: 'success',
+  data: {
+    authMode: 'scriptProperties',
+    authGroupEmail: '',
+    authUsers: [{ email: 'admin@example.com', role: 'admin' }],
+    authRevision: '1',
+  },
+};
+
+/**
+ * Creates a standard admin runtime scenario for Authentication settings journeys.
+ *
+ * @param {CreateAuthenticationSettingsScenarioOptions} options Scenario customisation.
+ * @returns {RuntimeScenario} Configured runtime scenario.
+ */
+export function createAuthenticationSettingsScenario(
+  options: CreateAuthenticationSettingsScenarioOptions = {}
+): RuntimeScenario {
+  const {
+    authenticationSettings = [
+      defaultAuthenticationSettingsResponse,
+      defaultAuthenticationSettingsResponse,
+    ],
+    saveResponses = [{ kind: 'success', data: { success: true, authRevision: '2' } }],
+  } = options;
+
+  const scenario = createAssignmentsScenario({
+    initialPartials: [],
+    includeAuth: true,
+    includeClassPartials: true,
+    includeCohorts: true,
+    includeYearGroups: true,
+    includeAssignmentTopics: true,
+  });
+
+  return {
+    ...scenario,
+    getAuthorisationStatus: [
+      { kind: 'success', data: true },
+      { kind: 'success', data: true },
+    ],
+    getGoogleClassrooms: [
+      { kind: 'success', data: [] },
+      { kind: 'success', data: [] },
+    ],
+    getAuthenticationSettings: authenticationSettings,
+    setAuthenticationSettings: saveResponses,
+  };
+}
+
+/**
+ * Creates a StrictMode-safe authorised scenario, including startup warm-up queues.
+ *
+ * @param {CreateAuthorisationScenarioOptions} options Scenario customisation.
+ * @returns {RuntimeScenario} Authorised scenario with warm-up and access queues.
+ */
+export function createAuthorisationScenario(
+  options: CreateAuthorisationScenarioOptions = {}
+): RuntimeScenario {
+  const {
+    authorisationStatus = { kind: 'success', data: true },
+    applicationAccess = {
+      kind: 'success',
+      data: { allowed: true, role: 'admin', email: 'owner@example.com', reason: 'ok' },
+    },
+    warmupResponseFactory = (data) => ({ kind: 'success', data }),
+  } = options;
+  const assignmentsScenario = createAssignmentsScenario();
+  const warmupResponses = Object.fromEntries(
+    AUTHORISATION_WARMUP_METHODS.map((method: AuthorisationWarmupMethod) => {
+      const response = assignmentsScenario[method]?.[0];
+      const data = response && 'data' in response ? response.data : undefined;
+      return [method, [warmupResponseFactory(data), warmupResponseFactory(data)]];
+    })
+  ) as Pick<RuntimeScenario, AuthorisationWarmupMethod>;
+
+  return {
+    getAuthorisationStatus: [authorisationStatus, authorisationStatus],
+    getApplicationAccess: [applicationAccess, applicationAccess],
+    ...warmupResponses,
+  };
 }
 
 /**
@@ -447,6 +572,9 @@ export async function installRuntimeMock(
   const responseQueues: Record<string, ResponseItem[]> = {};
   const allMethods = [
     'getAuthorisationStatus',
+    'getApplicationAccess',
+    'getAuthenticationSettings',
+    'setAuthenticationSettings',
     'getABClassPartials',
     'getABClass',
     'getCohorts',
@@ -466,6 +594,30 @@ export async function installRuntimeMock(
   for (const method of allMethods) {
     responseQueues[method] = scenario[method] ?? [];
   }
+
+  // AppAuthGate now performs application-access admission after OAuth. Preserve the
+  // existing authorised fixtures by supplying the normal admitted response when a
+  // scenario does not need to exercise access states explicitly.
+  responseQueues.getApplicationAccess = scenario.getApplicationAccess ?? [
+    {
+      kind: 'success',
+      data: {
+        allowed: true,
+        role: 'admin',
+        email: 'owner@example.com',
+        reason: 'ok',
+      },
+    },
+    {
+      kind: 'success',
+      data: {
+        allowed: true,
+        role: 'admin',
+        email: 'owner@example.com',
+        reason: 'ok',
+      },
+    },
+  ];
 
   // Build the call counts object
   const callCountsEntries = allMethods.map((method) => `${method}: 0`).join(', ');

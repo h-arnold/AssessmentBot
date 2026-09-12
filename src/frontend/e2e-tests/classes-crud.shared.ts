@@ -28,6 +28,7 @@ type ClassesCrudApiResponseScenario = Readonly<
 
 export type ClassesCrudRuntimeScenario = Readonly<{
   getAuthorisationStatus: ReadonlyArray<ClassesCrudApiResponseScenario>;
+  getApplicationAccess?: ReadonlyArray<ClassesCrudApiResponseScenario>;
   getABClassPartials: ReadonlyArray<ClassesCrudApiResponseScenario>;
   getCohorts: ReadonlyArray<ClassesCrudApiResponseScenario>;
   getYearGroups: ReadonlyArray<ClassesCrudApiResponseScenario>;
@@ -215,6 +216,14 @@ export function padClassesCrudReadQueues(
   return {
     ...scenario,
     getAuthorisationStatus: strictModeSafeReadQueue(scenario.getAuthorisationStatus ?? []),
+    getApplicationAccess: strictModeSafeReadQueue(
+      scenario.getApplicationAccess ?? [
+        {
+          kind: 'success',
+          data: { allowed: true, role: 'admin', email: 'owner@example.com', reason: 'ok' },
+        },
+      ]
+    ),
     getABClassPartials: strictModeSafeReadQueue(scenario.getABClassPartials ?? []),
     getCohorts: strictModeSafeReadQueue(scenario.getCohorts ?? []),
     getYearGroups: strictModeSafeReadQueue(scenario.getYearGroups ?? []),
@@ -260,7 +269,8 @@ export async function mockClassesCrudRuntime(page: Page, scenario: ClassesCrudRu
       const createGoogleScriptRunApiHandlerMock = ${googleScriptRunApiHandlerFactorySource};
       const mockScenario = ${JSON.stringify(scenario)};
       const callCounts = {
-        getAuthorisationStatus: 0,
+     getAuthorisationStatus: 0,
+        getApplicationAccess: 0,
         getABClassPartials: 0,
         getCohorts: 0,
         getYearGroups: 0,
@@ -278,7 +288,10 @@ export async function mockClassesCrudRuntime(page: Page, scenario: ClassesCrudRu
         deleteYearGroup: 0,
       };
       const responseQueues = {
-        getAuthorisationStatus: mockScenario.getAuthorisationStatus,
+         getAuthorisationStatus: mockScenario.getAuthorisationStatus,
+         getApplicationAccess: mockScenario.getApplicationAccess ?? [
+           { kind: 'success', data: { allowed: true, role: 'admin', email: 'owner@example.com', reason: 'ok' } },
+         ],
         getABClassPartials: mockScenario.getABClassPartials,
         getCohorts: mockScenario.getCohorts,
         getYearGroups: mockScenario.getYearGroups,
@@ -395,7 +408,8 @@ export async function mockClassesCrudRuntime(page: Page, scenario: ClassesCrudRu
         const method = request.method;
 
         if (
-          method !== 'getAuthorisationStatus' &&
+           method !== 'getAuthorisationStatus' &&
+           method !== 'getApplicationAccess' &&
           method !== 'getABClassPartials' &&
            method !== 'getCohorts' &&
            method !== 'getYearGroups' &&

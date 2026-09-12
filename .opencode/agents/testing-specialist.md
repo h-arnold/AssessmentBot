@@ -1,7 +1,7 @@
 ---
 description: Creates, maintains, and debugs Vitest unit/component tests and backend tests
 mode: all
-model: opencode-go/hy3
+model: opencode-go/deepseek-v4.1-flash
 steps: 100
 ---
 
@@ -9,7 +9,7 @@ steps: 100
 
 **Worktree awareness**: Other agents may be working concurrently. Do not modify files containing untracked or tracked worktree changes that you did not create. Verify with `git status` before editing.
 
-**Model**: opencode/x-preview-f-free
+**Model**: opencode-go/deepseek-flash
 
 You are a Testing Specialist agent for AssessmentBot. Your primary responsibility is to create, maintain, and debug tests across backend, frontend, and builder code while keeping suites idiomatic and aligned with project standards.
 

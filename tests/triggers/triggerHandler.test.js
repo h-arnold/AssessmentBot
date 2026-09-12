@@ -8,7 +8,7 @@
  *   triggerHandler(event) validates the event first (missing/malformed event,
  *   unknown triggerUid → ABLogger.error + abort with NO cleanup), then
  *   authorises via AuthService.checkAccess({ bypassCache: true,
- *   requireConfigured: true, method: <context method> }) — denial →
+ *   neverClaim: true, method: <context method> }) — denial →
  *   AuthService.checkAccess owns the denial log (logged exactly once inside
  *   the service), so the handler does NOT duplicate it here and only cleans
  *   up and aborts. On success it dispatches to
@@ -32,6 +32,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { withGlobalMocks } from '../helpers/globalMockManager.js';
+import { expectNeverClaimCheckAccess } from '../utils/authService/authServiceTestHarness.js';
 
 const AuthService = require('../../src/backend/Utils/AuthService.js');
 
@@ -69,6 +70,11 @@ const mockProgressTracker = {
 
 const authGroup = { value: 'teachers@school.edu' };
 const authMode = { value: 'googleGroups' };
+const authUsers = { value: '' };
+const authRevision = { value: '' };
+// Freshness probe for the target resolver: triggers never claim, so this is
+// false for a configured install and irrelevant for the never-claim rows.
+const isFresh = { value: false };
 
 // Module under test — created in the green phase (ACTION_PLAN Section 2).
 const { triggerHandler } = require('../../src/backend/Triggers/triggerHandler.js');
@@ -84,6 +90,9 @@ describe('triggerHandler', () => {
     globalThis.GroupsApp._resetGroups();
     authGroup.value = 'teachers@school.edu';
     authMode.value = 'googleGroups';
+    authUsers.value = '';
+    authRevision.value = '';
+    isFresh.value = false;
     // Default baseline: no stored context for the resolved triggerUid.
     mockTriggerController.getTriggerContext.mockReturnValue(null);
 
@@ -96,10 +105,32 @@ describe('triggerHandler', () => {
       TRIGGER_METHOD_HANDLERS: () => ({
         processSelectedAssignment: mockDispatchHandler,
       }),
+      // Forward-compatible ConfigurationManager surface for the refactored
+      // AuthService resolver: the raw property reads, auth-user accessors and
+      // the freshness probe are exposed so the never-claim rows exercise the
+      // resolver's deny path rather than throwing on a missing method.
       ConfigurationManager: () => ({
         getInstance: vi.fn(() => ({
           getAuthGroupEmail: vi.fn(() => authGroup.value),
           getAuthMode: vi.fn(() => authMode.value),
+          getAuthUsers: vi.fn(() => authUsers.value),
+          getAuthRevision: vi.fn(() => authRevision.value),
+          getProperty: vi.fn((key) => {
+            if (key === 'authGroupEmail') return authGroup.value;
+            if (key === 'authMode') return authMode.value;
+            if (key === 'authUsers') return authUsers.value;
+            if (key === 'authRevision') return authRevision.value;
+            return '';
+          }),
+          getAllConfigurations: vi.fn(() => ({
+            authGroupEmail: authGroup.value,
+            authMode: authMode.value,
+            authUsers: authUsers.value,
+            authRevision: authRevision.value,
+          })),
+          isFreshInstall: vi.fn(() => isFresh.value),
+          writeConfigurationLocked: vi.fn(),
+          setProperty: vi.fn(),
         })),
       }),
       ProgressTracker: () => ({ getInstance: vi.fn(() => mockProgressTracker) }),
@@ -298,7 +329,7 @@ describe('triggerHandler', () => {
       expect(mockTriggerController.deleteTriggerById).toHaveBeenCalledWith('trigger-uid-8');
     });
 
-    it('fails closed when the auth group is unconfigured and requireConfigured is true', () => {
+    it('fails closed under the never-claim trigger context when the auth group is unconfigured', () => {
       authGroup.value = '';
       mockTriggerController.getTriggerContext.mockReturnValue({
         method: 'processSelectedAssignment',
@@ -311,21 +342,17 @@ describe('triggerHandler', () => {
 
       triggerHandler({ triggerUid: 'trigger-uid-11' });
 
-      // AuthService logs the fail-closed denial with an error for an
-      // unconfigured group; the trigger must not dispatch.
+      // No provider can be resolved for an unconfigured install, so the
+      // never-claim trigger context must fail closed: AuthService logs the
+      // denial with an error and the trigger must not dispatch.
       expect(mockABLogger.error).toHaveBeenCalled();
       expect(mockDispatchHandler).not.toHaveBeenCalled();
       expect(mockTriggerController.clearTriggerContext).toHaveBeenCalledWith('trigger-uid-11');
       expect(mockTriggerController.deleteTriggerById).toHaveBeenCalledWith('trigger-uid-11');
     });
 
-    it('dispatches and cleans up when authMode none bypasses the group gate', () => {
+    it('denies a stored none-mode trigger and cleans up without dispatching', () => {
       authMode.value = 'none';
-      // A fired trigger resolves a blank identity, so without the authMode none
-      // bypass the real AuthService fails closed (blank email → deny) and the
-      // trigger never dispatches. The bypass must still permit dispatch and the
-      // usual cleanup, warning loudly that the gate is disabled.
-      globalThis.Session._setActiveUserEmail('');
       mockTriggerController.getTriggerContext.mockReturnValue({
         method: 'processSelectedAssignment',
         params: {
@@ -337,13 +364,15 @@ describe('triggerHandler', () => {
 
       triggerHandler({ triggerUid: 'trigger-uid-none' });
 
-      expect(mockDispatchHandler).toHaveBeenCalledTimes(1);
-      expect(mockABLogger.warn).toHaveBeenCalled();
+      // authMode 'none' no longer exists; a stored 'none' is a broken-config
+      // deny and must never resurrect the old bypass dispatch. The caller is a
+      // group member, so an accidental Google Groups fallback would dispatch.
+      expect(mockDispatchHandler).not.toHaveBeenCalled();
       expect(mockTriggerController.clearTriggerContext).toHaveBeenCalledWith('trigger-uid-none');
       expect(mockTriggerController.deleteTriggerById).toHaveBeenCalledWith('trigger-uid-none');
     });
 
-    it('passes bypassCache and the context method to AuthService.checkAccess', () => {
+    it('passes bypassCache and the never-claim trigger context to AuthService.checkAccess', () => {
       mockTriggerController.getTriggerContext.mockReturnValue({
         method: 'processSelectedAssignment',
         params: {
@@ -358,12 +387,7 @@ describe('triggerHandler', () => {
 
       triggerHandler({ triggerUid: 'trigger-uid-12' });
 
-      expect(checkAccessSpy).toHaveBeenCalledTimes(1);
-      expect(checkAccessSpy).toHaveBeenCalledWith({
-        bypassCache: true,
-        requireConfigured: true,
-        method: 'processSelectedAssignment',
-      });
+      expectNeverClaimCheckAccess(checkAccessSpy, 'processSelectedAssignment');
       expect(mockDispatchHandler).toHaveBeenCalledTimes(1);
     });
 

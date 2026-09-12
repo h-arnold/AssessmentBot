@@ -113,7 +113,7 @@ None — TriggerContext is a pair of flat key-value properties with no embedded 
 
 - The method name read from `trigger:<uid>:method` is resolved during input validation in
   `triggerHandler()`, so it is available for the audit log and the fail-closed auth check
-  (`AuthService.checkAccess({ bypassCache: true, requireConfigured: true })`).
+  (`AuthService.checkAccess({ bypassCache: true, neverClaim: true })`).
 - Malformed input (missing event, unknown triggerUid, unknown method) surfaces via
   fail-loud logging only — GAS discards trigger return values, so no error envelope is
   produced.
@@ -145,7 +145,7 @@ Writer:               src/backend/y_controllers/AssignmentController.js
 Consumer:             src/backend/Triggers/triggerHandler.js
   ├── resolve triggerUid from event
   ├── getTriggerContext(triggerUid)
-  ├── AuthService.checkAccess({ bypassCache: true, requireConfigured: true })
+   ├── AuthService.checkAccess({ bypassCache: true, neverClaim: true })
   ├── TRIGGER_METHOD_HANDLERS[method](params)
   └── finally: clearTriggerContext(triggerUid) + deleteTriggerById(triggerUid)
 
