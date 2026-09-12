@@ -21,7 +21,10 @@ const { withGlobalMocks } = require('./globalMockManager.js');
 function createDriveManagerMocks(vi) {
   const mockDrive = {
     Files: {
-      get: vi.fn(),
+      get: vi.fn(() => ({
+        id: 'folder-id',
+        mimeType: 'application/vnd.google-apps.folder',
+      })),
       update: vi.fn(),
       list: vi.fn(),
       copy: vi.fn(),

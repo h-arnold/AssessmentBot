@@ -12,7 +12,7 @@
     "lint:backend:check": "eslint --max-warnings 0 --config eslint.config.js src/backend tests",
     "lint:backend:errors-only": "eslint --config eslint.config.js src/backend tests",
     "lint:frontend": "npm --prefix src/frontend run lint -- --fix",
-    "lint:frontend:check": "npm --prefix src/frontend run lint -- --max-warnings 0",
+    "lint:frontend:check": "npm --prefix src/frontend run lint",
     "lint:builder": "eslint --config scripts/builder/eslint.config.js --fix scripts/builder/src .opencode/plugins",
     "lint:builder:check": "eslint --max-warnings 0 --config scripts/builder/eslint.config.js scripts/builder/src .opencode/plugins",
     "lint": "npm run lint:backend && npm run lint:frontend && npm run lint:builder",

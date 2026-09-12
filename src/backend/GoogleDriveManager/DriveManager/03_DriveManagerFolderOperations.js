@@ -262,7 +262,9 @@ class DriveManagerFolderOperations {
         err: error,
       });
 
-      const escapedFolderName = String(folderName).replaceAll("'", String.raw`\\'`);
+      const escapedFolderName = String(folderName)
+        .replaceAll('\\', String.raw`\\`)
+        .replaceAll("'", String.raw`\'`);
       const query =
         `'${parentFolderId}' in parents and trashed = false ` +
         `and mimeType = 'application/vnd.google-apps.folder' ` +

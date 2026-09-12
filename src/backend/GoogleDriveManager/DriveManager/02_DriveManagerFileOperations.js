@@ -149,7 +149,9 @@ class DriveManagerFileOperations {
       // Validate the destination folder exists (fail fast).
       this._folderValidator.validateFolderExists(destinationFolderId);
 
-      const escapedName = String(newSheetName).replaceAll("'", String.raw`\\'`);
+      const escapedName = String(newSheetName)
+        .replaceAll('\\', String.raw`\\`)
+        .replaceAll("'", String.raw`\'`);
       const query =
         `'${destinationFolderId}' in parents and trashed = false ` + `and name = '${escapedName}'`;
 

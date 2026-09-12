@@ -401,7 +401,7 @@ g.ABClassAssignmentOps = require('../src/backend/y_controllers/ABClassController
 g.ABClassResponseMapper = require('../src/backend/y_controllers/ABClassController/ABClassResponseMapper.js');
 
 // Load DriveManager sub-classes as globals (mirroring GAS concatenation order so
-// DriveManager.js can reference them by name when require() calls are absent in production).
+// DriveManager/index.js can reference them by name when require() calls are absent in production).
 g.DriveManagerFolderValidator = require('../src/backend/GoogleDriveManager/DriveManager/01_DriveManagerFolderValidator.js');
 g.DriveManagerFileOperations = require('../src/backend/GoogleDriveManager/DriveManager/02_DriveManagerFileOperations.js');
 g.DriveManagerFolderOperations = require('../src/backend/GoogleDriveManager/DriveManager/03_DriveManagerFolderOperations.js');

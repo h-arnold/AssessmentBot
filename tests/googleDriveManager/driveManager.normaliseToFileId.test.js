@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager.js';
+import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager/index.js';
 import { withGlobalMocks } from '../helpers/globalMockManager.js';
 
 // Mock GAS globals

@@ -16,7 +16,13 @@ class DriveManagerFolderValidator {
     Validate.requireParams({ folderId }, 'DriveManagerFolderValidator.validateFolderExists');
 
     try {
-      Drive.Files.get(folderId, { supportsAllDrives: true, fields: 'id' });
+      const folder = Drive.Files.get(folderId, {
+        supportsAllDrives: true,
+        fields: 'id,mimeType',
+      });
+      if (folder?.mimeType !== 'application/vnd.google-apps.folder') {
+        throw new Error(`Drive resource ${folderId} is not a folder.`);
+      }
     } catch (error) {
       const failMessage = `Failed to access folder with ID "${folderId}".`;
       ProgressTracker.getInstance().logError(failMessage, { folderId, err: error });

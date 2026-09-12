@@ -84,6 +84,8 @@ If guidance appears in multiple places, update the canonical doc first, then kee
 
 ### 6. Agentic Workflow for Non-Trivial Changes
 
+Planning is for full features or material product/design changes that need a specification and phased delivery plan. Do not create `SPEC.md` or `ACTION_PLAN.md` for small, well-scoped fixes such as isolated code-review findings; implement those directly after reading the relevant component instructions.
+
 If `SPEC.md`, any required frontend layout spec, or `ACTION_PLAN.md` are missing or materially stale for the requested work, delegate planning to `Planner` first and use the resulting artefacts as the source of truth for the implementation loop below.
 
 Planning artefacts should pass through `Planner Reviewer` after each document draft so gaps or contradictions are corrected before later planning documents inherit them.

@@ -72,18 +72,21 @@ class SpreadsheetTaskArtifact extends BaseTaskArtifact {
     return rows;
   }
   /**
-   * Remove columns whose cells are empty in every remaining row.
+   * Remove trailing columns whose cells are empty in every remaining row.
    *
    * @private
    * @param {Array<Array<any>>} rows - Rows whose columns may be empty.
    */
   _trimEmptyColumns(rows) {
     const colCount = Math.max(...rows.map((row) => row.length));
-    for (let column = colCount - 1; column >= 0; column--) {
-      if (rows.every((row) => row[column] == null || row[column] === '')) {
-        for (const row of rows) row.splice(column, 1);
-      }
+    let trimmedColCount = colCount;
+    while (
+      trimmedColCount > 0 &&
+      rows.every((row) => row[trimmedColCount - 1] == null || row[trimmedColCount - 1] === '')
+    ) {
+      trimmedColCount--;
     }
+    for (const row of rows) row.length = trimmedColCount;
   }
   /**
    * Predicate: is the row empty?

@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager.js';
+import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager/index.js';
 import { createDriveManagerMocks, createIterator } from '../helpers/driveManagerFacadeMocks.js';
 
 const DESTINATION_FOLDER_ID = 'destination-folder-id';
@@ -206,12 +206,15 @@ describe('DriveManager folder operation facade', () => {
 
   describe('_validateFolderExists', () => {
     it('resolves when the folder is accessible', () => {
-      mocks.mockDrive.Files.get.mockReturnValue({ id: DESTINATION_FOLDER_ID });
+      mocks.mockDrive.Files.get.mockReturnValue({
+        id: DESTINATION_FOLDER_ID,
+        mimeType: 'application/vnd.google-apps.folder',
+      });
 
       expect(() => DriveManager._validateFolderExists(DESTINATION_FOLDER_ID)).not.toThrow();
       expect(mocks.mockDrive.Files.get).toHaveBeenCalledWith(DESTINATION_FOLDER_ID, {
         supportsAllDrives: true,
-        fields: 'id',
+        fields: 'id,mimeType',
       });
     });
 

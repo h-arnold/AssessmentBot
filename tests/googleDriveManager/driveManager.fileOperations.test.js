@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager.js';
+import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager/index.js';
 import { createDriveManagerMocks } from '../helpers/driveManagerFacadeMocks.js';
 
 const DESTINATION_FOLDER_ID = 'destination-folder-id';
@@ -49,7 +49,9 @@ describe('DriveManager file operation facade', () => {
 
     it('moves a file into the destination and removes its previous parent', () => {
       mocks.mockDrive.Files.get.mockImplementation((fileId, options) => {
-        if (options?.fields === 'id') return { id: fileId };
+        if (options?.fields === 'id,mimeType') {
+          return { id: fileId, mimeType: 'application/vnd.google-apps.folder' };
+        }
         return { name: 'Report', parents: ['previous-parent'] };
       });
 
@@ -72,7 +74,9 @@ describe('DriveManager file operation facade', () => {
 
     it('appends the optional string to the file name before moving', () => {
       mocks.mockDrive.Files.get.mockImplementation((fileId, options) => {
-        if (options?.fields === 'id') return { id: fileId };
+        if (options?.fields === 'id,mimeType') {
+          return { id: fileId, mimeType: 'application/vnd.google-apps.folder' };
+        }
         return { name: 'Report', parents: [] };
       });
 
@@ -88,7 +92,9 @@ describe('DriveManager file operation facade', () => {
 
     it('does not reassign parents when the file already lives only in the destination', () => {
       mocks.mockDrive.Files.get.mockImplementation((fileId, options) => {
-        if (options?.fields === 'id') return { id: fileId };
+        if (options?.fields === 'id,mimeType') {
+          return { id: fileId, mimeType: 'application/vnd.google-apps.folder' };
+        }
         return { name: 'Report', parents: [DESTINATION_FOLDER_ID] };
       });
 
@@ -100,7 +106,9 @@ describe('DriveManager file operation facade', () => {
 
     it('reports a partial result and logs when a file cannot be moved', () => {
       mocks.mockDrive.Files.get.mockImplementation((fileId, options) => {
-        if (options?.fields === 'id') return { id: fileId };
+        if (options?.fields === 'id,mimeType') {
+          return { id: fileId, mimeType: 'application/vnd.google-apps.folder' };
+        }
         throw new Error('file missing');
       });
 
@@ -145,7 +153,7 @@ describe('DriveManager file operation facade', () => {
     it('resolves the destination from the template parents when not provided', () => {
       mocks.mockDrive.Files.get.mockImplementation((fileId, options) => {
         if (options?.fields === 'parents') return { parents: [DESTINATION_FOLDER_ID] };
-        return { id: fileId };
+        return { id: fileId, mimeType: 'application/vnd.google-apps.folder' };
       });
       mocks.mockDrive.Files.list.mockReturnValue({ files: [] });
       mocks.mockDrive.Files.copy.mockReturnValue({ id: 'copied-id' });
@@ -194,14 +202,28 @@ describe('DriveManager file operation facade', () => {
       const [listArguments] = mocks.mockDrive.Files.list.mock.calls[0];
       expect(listArguments.q).toBe(
         `'${DESTINATION_FOLDER_ID}' in parents and trashed = false ` +
-          String.raw`and name = 'Bob\\'s Sheet'`
+          String.raw`and name = 'Bob\'s Sheet'`
       );
+    });
+
+    it('escapes backslashes before apostrophes in duplicate-name search queries', () => {
+      mocks.mockDrive.Files.list.mockReturnValue({ files: [] });
+      mocks.mockDrive.Files.copy.mockReturnValue({ id: 'copied-id' });
+
+      DriveManager.copyTemplateSheet(
+        TEMPLATE_SHEET_ID,
+        DESTINATION_FOLDER_ID,
+        String.raw`Bob's \Sheet`
+      );
+
+      const [listArguments] = mocks.mockDrive.Files.list.mock.calls[0];
+      expect(listArguments.q).toContain(String.raw`name = 'Bob\'s \\Sheet'`);
     });
 
     it('throws when no destination folder can be determined', () => {
       mocks.mockDrive.Files.get.mockImplementation((fileId, options) => {
         if (options?.fields === 'parents') return { parents: [] };
-        return { id: fileId };
+        return { id: fileId, mimeType: 'application/vnd.google-apps.folder' };
       });
 
       expect(() =>

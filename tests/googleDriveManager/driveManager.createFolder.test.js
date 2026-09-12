@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager.js';
+import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager/index.js';
 import { createDriveManagerMocks, createIterator } from '../helpers/driveManagerFacadeMocks.js';
 
 const PARENT_FOLDER_ID = 'parent-folder-id';
@@ -105,7 +105,20 @@ describe('DriveManager createFolder facade', () => {
     DriveManager.createFolder(PARENT_FOLDER_ID, "Bob's Folder");
 
     const [listArguments] = mocks.mockDrive.Files.list.mock.calls[0];
-    expect(listArguments.q).toContain(String.raw`name = 'Bob\\'s Folder'`);
+    expect(listArguments.q).toContain(String.raw`name = 'Bob\'s Folder'`);
+  });
+
+  it('escapes backslashes before apostrophes in Advanced Drive API queries', () => {
+    mocks.mockDriveApp.getFolderById.mockImplementation(() => {
+      throw new Error('shared drive not supported by DriveApp');
+    });
+    mocks.mockDrive.Files.list.mockReturnValue({ files: [] });
+    mocks.mockDrive.Files.create.mockReturnValue({ id: 'api-created-folder-id' });
+
+    DriveManager.createFolder(PARENT_FOLDER_ID, String.raw`Bob's \Folder`);
+
+    const [listArguments] = mocks.mockDrive.Files.list.mock.calls[0];
+    expect(listArguments.q).toContain(String.raw`name = 'Bob\'s \\Folder'`);
   });
 
   it('logs and propagates Advanced Drive API fallback failures', () => {
@@ -133,5 +146,20 @@ describe('DriveManager createFolder facade', () => {
     expect(() => DriveManager.createFolder(PARENT_FOLDER_ID, FOLDER_NAME)).toThrow(
       `Failed to access folder with ID "${PARENT_FOLDER_ID}".`
     );
+  });
+
+  it('fails fast when the parent ID belongs to a file', () => {
+    mocks.mockDrive.Files.get.mockReturnValue({
+      id: PARENT_FOLDER_ID,
+      mimeType: 'text/plain',
+    });
+
+    expect(() => DriveManager.createFolder(PARENT_FOLDER_ID, FOLDER_NAME)).toThrow(
+      `Failed to access folder with ID "${PARENT_FOLDER_ID}".`
+    );
+    expect(mocks.mockDrive.Files.get).toHaveBeenCalledWith(PARENT_FOLDER_ID, {
+      supportsAllDrives: true,
+      fields: 'id,mimeType',
+    });
   });
 });

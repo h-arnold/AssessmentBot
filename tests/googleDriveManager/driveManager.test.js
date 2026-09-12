@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager.js';
+import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager/index.js';
 import { createDriveManagerMocks } from '../helpers/driveManagerFacadeMocks.js';
 
 describe('DriveManager.getFileModifiedTime', () => {

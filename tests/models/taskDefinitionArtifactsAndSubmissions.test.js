@@ -173,6 +173,22 @@ describe('TaskDefinition, task artifacts and student submissions', () => {
     expect(spreadsheet.content).toEqual([['Header'], ['Value']]);
   });
 
+  it('SpreadsheetTaskArtifact preserves internal empty columns', () => {
+    const spreadsheet = ArtifactFactory.spreadsheet({
+      taskId: 'tInternalColumn',
+      role: 'reference',
+      content: [
+        ['Header', null, 'Final', null],
+        ['Value', '', 'Result', ''],
+      ],
+    });
+
+    expect(spreadsheet.content).toEqual([
+      ['Header', null, 'Final'],
+      ['Value', null, 'Result'],
+    ]);
+  });
+
   it('ImageTaskArtifact setContentFromBlob hashing', () => {
     const img = ArtifactFactory.image({
       taskId: 'tImg',
