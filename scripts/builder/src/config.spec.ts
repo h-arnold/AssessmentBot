@@ -13,11 +13,56 @@ const REPO_ROOT = path.resolve(SPEC_DIR, '..', '..', '..');
 const ROOT_PACKAGE_JSON_PATH = path.join(REPO_ROOT, 'package.json');
 const ROOT_PACKAGE_LOCK_PATH = path.join(REPO_ROOT, 'package-lock.json');
 
+type PackageDependencyGroups = {
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+};
+
+type PackageLockMetadata = PackageDependencyGroups & {
+  packages?: Record<string, PackageDependencyGroups>;
+  dependencies?: Record<string, unknown>;
+};
+
+/**
+ * Return zod's direct dependency version from a package metadata section.
+ *
+ * @param {PackageDependencyGroups} metadata - Package metadata section to inspect.
+ * @returns {string|undefined} Direct zod dependency version, when present.
+ */
+function getDirectZodVersion(metadata?: PackageDependencyGroups): string | undefined {
+  if (!metadata) return undefined;
+  return metadata.dependencies?.zod ?? metadata.devDependencies?.zod;
+}
+
+/**
+ * Return zod's direct dependency value from the root lockfile package entry.
+ *
+ * @param {PackageLockMetadata} packageLock - Parsed package lock metadata.
+ * @returns {unknown} Direct zod dependency value, when present.
+ */
+function getRootLockZodDependency(packageLock: PackageLockMetadata): unknown {
+  const rootPackage = packageLock.packages?.[''];
+  return getDirectZodVersion(rootPackage) ?? packageLock.dependencies?.zod;
+}
+
+/**
+ * Resets a temporary directory for isolated test runs.
+ *
+ * @param {string} targetPath - Absolute directory path to reset.
+ * @returns {Promise<void>} Resolves when the directory is ready.
+ */
 async function resetDir(targetPath: string): Promise<void> {
   await fs.rm(targetPath, { recursive: true, force: true });
   await fs.mkdir(targetPath, { recursive: true });
 }
 
+/**
+ * Writes a builder config fixture to a temporary directory.
+ *
+ * @param {string} dirName - Temporary subdirectory name.
+ * @param {string} content - Raw config file content.
+ * @returns {Promise<string>} Absolute path to the written config file.
+ */
 async function writeConfig(dirName: string, content: string): Promise<string> {
   const targetDir = path.join(TEMP_ROOT, dirName);
   await fs.mkdir(targetDir, { recursive: true });
@@ -26,6 +71,11 @@ async function writeConfig(dirName: string, content: string): Promise<string> {
   return configPath;
 }
 
+/**
+ * Creates a valid builder config fixture.
+ *
+ * @returns {{frontendDir: string; backendDir: string; buildDir: string; jsonDbApp: {pinnedSnapshotDir: string; sourceFiles: string[]; publicExports: string[]}}} Valid config object.
+ */
 function createValidConfig(): {
   frontendDir: string;
   backendDir: string;
@@ -44,8 +94,14 @@ function createValidConfig(): {
   };
 }
 
+/**
+ * Runs a callback and asserts it throws a preflight BuildStageError.
+ *
+ * @param {() => unknown | Promise<unknown>} run - Callback expected to throw.
+ * @returns {Promise<BuildStageError>} The caught BuildStageError.
+ */
 async function assertBuildStageError(
-  run: () => unknown | Promise<unknown>,
+  run: () => unknown | Promise<unknown>
 ): Promise<BuildStageError> {
   let thrownError: BuildStageError | undefined;
 
@@ -87,7 +143,7 @@ describe('loadBuilderConfig', () => {
   it('throws BuildStageError with stage "preflight-clean" when required fields are missing', async () => {
     const configPath = await writeConfig(
       'missing-fields',
-      JSON.stringify({ frontendDir: 'src/frontend', jsonDbApp: {} }),
+      JSON.stringify({ frontendDir: 'src/frontend', jsonDbApp: {} })
     );
 
     await expect(loadBuilderConfig(configPath)).rejects.toMatchObject({
@@ -107,7 +163,7 @@ describe('loadBuilderConfig', () => {
           sourceFiles: 'src/04_core/99_PublicAPI.js',
           publicExports: ['loadDatabase'],
         },
-      }),
+      })
     );
 
     await expect(loadBuilderConfig(configPath)).rejects.toMatchObject({
@@ -128,24 +184,15 @@ describe('loadBuilderConfig', () => {
   });
 
   it('declares a direct zod dependency in package metadata for builder config schema validation', async () => {
-    const packageJson = JSON.parse(await fs.readFile(ROOT_PACKAGE_JSON_PATH, 'utf-8')) as {
-      dependencies?: Record<string, string>;
-      devDependencies?: Record<string, string>;
-    };
-    const packageLock = JSON.parse(await fs.readFile(ROOT_PACKAGE_LOCK_PATH, 'utf-8')) as {
-      packages?: Record<
-        string,
-        { dependencies?: Record<string, string>; devDependencies?: Record<string, string> }
-      >;
-      dependencies?: Record<string, unknown>;
-    };
+    const packageJson = JSON.parse(
+      await fs.readFile(ROOT_PACKAGE_JSON_PATH, 'utf-8')
+    ) as PackageDependencyGroups;
+    const packageLock = JSON.parse(
+      await fs.readFile(ROOT_PACKAGE_LOCK_PATH, 'utf-8')
+    ) as PackageLockMetadata;
 
-    const packageJsonDirectZodVersion =
-      packageJson.dependencies?.zod ?? packageJson.devDependencies?.zod;
-    const packageLockRootDirectZod =
-      packageLock.packages?.['']?.dependencies?.zod ??
-      packageLock.packages?.['']?.devDependencies?.zod ??
-      packageLock.dependencies?.zod;
+    const packageJsonDirectZodVersion = getDirectZodVersion(packageJson);
+    const packageLockRootDirectZod = getRootLockZodDependency(packageLock);
 
     expect(packageJsonDirectZodVersion).toBeDefined();
     expect(packageLockRootDirectZod).toBeDefined();
@@ -192,25 +239,41 @@ describe('resolveBuilderPaths', () => {
   let repoRoot: string;
   let configPath: string;
 
+  /**
+   * Writes a builder config fixture for path resolution tests.
+   *
+   * @param {Record<string, unknown>} config - Config object to serialise.
+   * @returns {Promise<void>} Resolves when the fixture is written.
+   */
   async function writeBuilderConfig(config: Record<string, unknown>): Promise<void> {
     await fs.writeFile(configPath, JSON.stringify(config));
   }
 
+  /**
+   * Asserts path resolution fails for the given config overrides.
+   *
+   * @param {Partial<BuilderConfig>} configOverrides - Config overrides to test.
+   * @returns {Promise<void>} Resolves when the failure assertion completes.
+   */
   async function expectResolveBuilderPathsToFail(
-    configOverrides: Partial<BuilderConfig>,
+    configOverrides: Partial<BuilderConfig>
   ): Promise<void> {
     await writeBuilderConfig({
       ...createValidConfig(),
       ...configOverrides,
     });
 
-    await assertBuildStageError(() =>
-      resolveBuilderPaths({ builderRoot, repoRoot, configPath }),
-    );
+    await assertBuildStageError(() => resolveBuilderPaths({ builderRoot, repoRoot, configPath }));
   }
 
+  /**
+   * Asserts path resolution fails for the given JsonDbApp overrides.
+   *
+   * @param {Partial<JsonDbAppConfig>} jsonDbAppOverrides - JsonDbApp overrides to test.
+   * @returns {Promise<void>} Resolves when the failure assertion completes.
+   */
   async function expectResolveBuilderPathsToFailForJsonDbApp(
-    jsonDbAppOverrides: Partial<JsonDbAppConfig>,
+    jsonDbAppOverrides: Partial<JsonDbAppConfig>
   ): Promise<void> {
     await expectResolveBuilderPathsToFail({
       jsonDbApp: {
@@ -245,7 +308,7 @@ describe('resolveBuilderPaths', () => {
       await expectResolveBuilderPathsToFail({
         [dirKey]: dirValue,
       } as Partial<BuilderConfig>);
-    },
+    }
   );
 
   it.each([
@@ -257,7 +320,7 @@ describe('resolveBuilderPaths', () => {
       await expectResolveBuilderPathsToFail({
         [dirKey]: dirValue,
       } as Partial<BuilderConfig>);
-    },
+    }
   );
 
   it.each([
@@ -269,7 +332,7 @@ describe('resolveBuilderPaths', () => {
       await expectResolveBuilderPathsToFail({
         [dirKey]: dirValue,
       } as Partial<BuilderConfig>);
-    },
+    }
   );
 
   it('rejects empty JsonDbApp source-file arrays', async () => {

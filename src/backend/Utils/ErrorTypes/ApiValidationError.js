@@ -29,10 +29,6 @@ class ApiValidationError extends Error {
     this.details = details;
     this.code = code;
     this.cause = cause;
-
-    // Maintain proper stack trace (V8)
-    if (Error.captureStackTrace) {
-    }
   }
 }
 

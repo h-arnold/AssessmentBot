@@ -117,7 +117,6 @@ class ABClassAssignmentOps {
       const index = abClass.findAssignmentIndex((a) => a.assignmentId === assignment.assignmentId);
 
       if (index >= 0) {
-        // eslint-disable-next-line security/detect-object-injection
         abClass.assignments[index] = partialInstance;
         logger.info('persistAssignmentRun: replaced existing assignment in ABClass', {
           assignmentId: assignment.assignmentId,

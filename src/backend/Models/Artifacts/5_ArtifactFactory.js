@@ -5,60 +5,82 @@ const ArtifactFactory = {
   /**
    * Create an artifact instance based on the provided params.type.
    * Falls back to BaseTaskArtifact for unknown types.
-   * @param {Object} params - constructor parameters including optional `type`.
-   * @returns {BaseTaskArtifact}
+   *
+   * @param {Object} parameters - constructor parameters including optional `type`.
+   * @returns {BaseTaskArtifact} New artifact instance.
    */
-  create(params) {
-    const rawType = (params.type || '').toString();
+  create(parameters) {
+    const rawType = (parameters.type || '').toString();
     const type = rawType.toUpperCase();
     switch (type) {
       case 'TEXT': {
-        return new TextTaskArtifact(params);
+        return new TextTaskArtifact(parameters);
       }
       case 'TABLE': {
-        return new TableTaskArtifact(params);
+        return new TableTaskArtifact(parameters);
       }
       case 'SPREADSHEET': {
-        return new SpreadsheetTaskArtifact(params);
+        return new SpreadsheetTaskArtifact(parameters);
       }
       case 'IMAGE': {
-        return new ImageTaskArtifact(params);
+        return new ImageTaskArtifact(parameters);
       }
       default: {
-        return new BaseTaskArtifact(params);
+        return new BaseTaskArtifact(parameters);
       }
     }
   },
   /**
    * Alias for create when given a JSON-like object.
-   * @param {Object} json
-   * @returns {BaseTaskArtifact}
+   *
+   * @param {Object} json - JSON-like object to create from.
+   * @returns {BaseTaskArtifact} New artifact instance.
    */
   fromJSON(json) {
     return this.create(json);
   },
-  /** Create a text artifact. */
-  text(params) {
-    return this.create({ ...params, type: 'TEXT' });
+  /**
+   * Create a text artifact.
+   *
+   * @param {Object} parameters - Constructor parameters.
+   * @returns {BaseTaskArtifact} New text artifact.
+   */
+  text(parameters) {
+    return this.create({ ...parameters, type: 'TEXT' });
   },
-  /** Create a table artifact. */
-  table(params) {
-    return this.create({ ...params, type: 'TABLE' });
+  /**
+   * Create a table artifact.
+   *
+   * @param {Object} parameters - Constructor parameters.
+   * @returns {BaseTaskArtifact} New table artifact.
+   */
+  table(parameters) {
+    return this.create({ ...parameters, type: 'TABLE' });
   },
-  /** Create a spreadsheet artifact. */
-  spreadsheet(params) {
-    return this.create({ ...params, type: 'SPREADSHEET' });
+  /**
+   * Create a spreadsheet artifact.
+   *
+   * @param {Object} parameters - Constructor parameters.
+   * @returns {BaseTaskArtifact} New spreadsheet artifact.
+   */
+  spreadsheet(parameters) {
+    return this.create({ ...parameters, type: 'SPREADSHEET' });
   },
-  /** Create an image artifact. */
-  image(params) {
-    return this.create({ ...params, type: 'IMAGE' });
+  /**
+   * Create an image artifact.
+   *
+   * @param {Object} parameters - Constructor parameters.
+   * @returns {BaseTaskArtifact} New image artifact.
+   */
+  image(parameters) {
+    return this.create({ ...parameters, type: 'IMAGE' });
   },
 };
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = ArtifactFactory;
 } else {
-  this.ArtifactFactory = ArtifactFactory;
+  globalThis.ArtifactFactory = ArtifactFactory;
 }
 if (typeof module !== 'undefined') {
   // Required for testing in a Node.js environment with Vitest

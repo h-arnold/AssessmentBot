@@ -399,3 +399,11 @@ g.ABClassPersistence = require('../src/backend/y_controllers/ABClassController/A
 g.ABClassRoster = require('../src/backend/y_controllers/ABClassController/ABClassRoster.js');
 g.ABClassAssignmentOps = require('../src/backend/y_controllers/ABClassController/ABClassAssignmentOps.js');
 g.ABClassResponseMapper = require('../src/backend/y_controllers/ABClassController/ABClassResponseMapper.js');
+
+// Load DriveManager sub-classes as globals (mirroring GAS concatenation order so
+// DriveManager/index.js can reference them by name when require() calls are absent in production).
+g.DriveManagerFolderValidator = require('../src/backend/GoogleDriveManager/DriveManager/01_DriveManagerFolderValidator.js');
+g.DriveManagerFileOperations = require('../src/backend/GoogleDriveManager/DriveManager/02_DriveManagerFileOperations.js');
+g.DriveManagerFolderOperations = require('../src/backend/GoogleDriveManager/DriveManager/03_DriveManagerFolderOperations.js');
+g.DriveManagerFileId = require('../src/backend/GoogleDriveManager/DriveManager/04_DriveManagerFileId.js');
+g.DriveManagerModifiedTime = require('../src/backend/GoogleDriveManager/DriveManager/05_DriveManagerModifiedTime.js');

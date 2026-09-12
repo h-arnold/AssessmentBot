@@ -59,6 +59,9 @@ export default defineConfig([
       // relies on sanitising and validating inputs at the relevant boundaries instead.
       'security/detect-object-injection': 'off',
       'no-console': 'error',
+      // Warn on oversized files so they are picked up for refactoring when touched.
+      // Matches the backend 500-line threshold; currently flags several large specs.
+      'max-lines': ['warn', 500],
       'no-restricted-properties': [
         'error',
         {
@@ -67,6 +70,15 @@ export default defineConfig([
           message: 'Use the frontend logger module as the only browser console emission boundary.',
         },
       ],
+    },
+  },
+  {
+    // Playwright CSS-loader shims. `e2e` is the standard Playwright abbreviation,
+    // so the filename finding is a false positive; keep in-file abbreviation
+    // checks and silence the filename check only.
+    files: ['e2e-css-loader.mjs', 'e2e-css-loader-bootstrap.mjs'],
+    rules: {
+      'unicorn/prevent-abbreviations': ['warn', { checkFilenames: false }],
     },
   },
   {

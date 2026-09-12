@@ -13,7 +13,7 @@ const CONFIG_FILENAME = 'builder.config.json';
 /**
  * Resolves the absolute path to the builder module root.
  *
- * @return {string} Absolute builder root directory path.
+ * @returns {string} Absolute builder root directory path.
  */
 function getBuilderRoot(): string {
   const currentFile = fileURLToPath(import.meta.url);
@@ -24,7 +24,7 @@ function getBuilderRoot(): string {
  * Resolves the repository root from the builder root.
  *
  * @param {string} builderRoot - Absolute builder root path.
- * @return {string} Absolute repository root directory path.
+ * @returns {string} Absolute repository root directory path.
  */
 function getRepoRoot(builderRoot: string): string {
   return path.resolve(builderRoot, '..', '..');
@@ -35,7 +35,7 @@ function getRepoRoot(builderRoot: string): string {
  *
  * @param {string} configPath - Path to the configuration file for error context.
  * @param {string} raw - Raw JSON string loaded from disk.
- * @return {BuilderConfig} Validated builder configuration object.
+ * @returns {BuilderConfig} Validated builder configuration object.
  */
 function parseConfig(configPath: string, raw: string): BuilderConfig {
   let parsed: unknown;
@@ -45,7 +45,7 @@ function parseConfig(configPath: string, raw: string): BuilderConfig {
     throw new BuildStageError(
       'preflight-clean',
       `Builder config is not valid JSON: ${configPath}`,
-      err,
+      err
     );
   }
 
@@ -56,7 +56,7 @@ function parseConfig(configPath: string, raw: string): BuilderConfig {
       throw new BuildStageError(
         'preflight-clean',
         `Builder config is invalid: ${configPath}; ${formatBuilderConfigIssues(err)}`,
-        err,
+        err
       );
     }
 
@@ -69,13 +69,13 @@ function parseConfig(configPath: string, raw: string): BuilderConfig {
  *
  * @param {string} repoRoot - Absolute repository root path.
  * @param {string} buildDirInput - Configured build directory path.
- * @return {string} Absolute build directory path inside the repository.
+ * @returns {string} Absolute build directory path inside the repository.
  */
 export function resolveBuildDir(repoRoot: string, buildDirInput: string): string {
   if (!buildDirInput || buildDirInput.trim().length === 0) {
     throw new BuildStageError(
       'preflight-clean',
-      'Builder config buildDir must be a non-empty path.',
+      'Builder config buildDir must be a non-empty path.'
     );
   }
 
@@ -85,7 +85,7 @@ export function resolveBuildDir(repoRoot: string, buildDirInput: string): string
   if (relativePath === '' || relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
     throw new BuildStageError(
       'preflight-clean',
-      `Builder config buildDir must resolve inside repo root: ${buildDirInput}`,
+      `Builder config buildDir must resolve inside repo root: ${buildDirInput}`
     );
   }
 
@@ -98,13 +98,13 @@ export function resolveBuildDir(repoRoot: string, buildDirInput: string): string
  * @param {string} repoRoot - Absolute repository root path.
  * @param {string} dirInput - Configured source directory path.
  * @param {string} label - Config field name for error context.
- * @return {string} Absolute source directory path inside the repository.
+ * @returns {string} Absolute source directory path inside the repository.
  */
 function resolveSourceDir(repoRoot: string, dirInput: string, label: string): string {
   if (!dirInput || dirInput.trim().length === 0) {
     throw new BuildStageError(
       'preflight-clean',
-      `Builder config ${label} must be a non-empty path.`,
+      `Builder config ${label} must be a non-empty path.`
     );
   }
 
@@ -114,7 +114,7 @@ function resolveSourceDir(repoRoot: string, dirInput: string, label: string): st
   if (relativePath === '' || relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
     throw new BuildStageError(
       'preflight-clean',
-      `Builder config ${label} must resolve inside repo root: ${dirInput}`,
+      `Builder config ${label} must resolve inside repo root: ${dirInput}`
     );
   }
 
@@ -125,7 +125,7 @@ function resolveSourceDir(repoRoot: string, dirInput: string, label: string): st
  * Loads and validates the builder configuration file.
  *
  * @param {string} configPath - Absolute path to `builder.config.json`.
- * @return {Promise<BuilderConfig>} Parsed and validated builder configuration.
+ * @returns {Promise<BuilderConfig>} Parsed and validated builder configuration.
  */
 export async function loadBuilderConfig(configPath: string): Promise<BuilderConfig> {
   try {
@@ -138,7 +138,7 @@ export async function loadBuilderConfig(configPath: string): Promise<BuilderConf
     throw new BuildStageError(
       'preflight-clean',
       `Builder config could not be read: ${configPath}`,
-      err,
+      err
     );
   }
 }
@@ -153,10 +153,10 @@ type ResolveBuilderPathsOptions = {
  * Resolves all required absolute paths for the builder pipeline.
  *
  * @param {ResolveBuilderPathsOptions} options - Optional root and config path overrides.
- * @return {Promise<BuilderPaths>} Fully resolved and validated builder paths.
+ * @returns {Promise<BuilderPaths>} Fully resolved and validated builder paths.
  */
 export async function resolveBuilderPaths(
-  options: ResolveBuilderPathsOptions = {},
+  options: ResolveBuilderPathsOptions = {}
 ): Promise<BuilderPaths> {
   const builderRoot = options.builderRoot ?? getBuilderRoot();
   const repoRoot = options.repoRoot ?? getRepoRoot(builderRoot);
@@ -174,7 +174,7 @@ export async function resolveBuilderPaths(
   const jsonDbAppPinnedSnapshotDir = resolveSourceDir(
     repoRoot,
     config.jsonDbApp.pinnedSnapshotDir,
-    'jsonDbApp.pinnedSnapshotDir',
+    'jsonDbApp.pinnedSnapshotDir'
   );
   const jsonDbAppManifestPath = path.join(jsonDbAppPinnedSnapshotDir, 'appsscript.json');
 

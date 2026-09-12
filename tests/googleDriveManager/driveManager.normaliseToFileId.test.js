@@ -9,24 +9,31 @@
  * already valid, or extracted if from a URL pattern.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager.js';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager/index.js';
+import { withGlobalMocks } from '../helpers/globalMockManager.js';
 
 // Mock GAS globals
 let mockProgressTracker;
+let restoreGlobals;
 
 describe('DriveManager.normaliseToFileId', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-
-    // Fresh mock for each test
+    // Fresh mock for each test, installed and restored via the shared helper so
+    // the global ProgressTracker shim from setupGlobals is never left overwritten.
     mockProgressTracker = {
       logError: vi.fn(),
     };
 
-    globalThis.ProgressTracker = {
-      getInstance: vi.fn(() => mockProgressTracker),
-    };
+    const mockContext = withGlobalMocks({
+      ProgressTracker: () => ({ getInstance: () => mockProgressTracker }),
+    });
+    restoreGlobals = mockContext.restore;
+  });
+
+  afterEach(() => {
+    restoreGlobals();
+    vi.restoreAllMocks();
   });
 
   describe('Valid file ID inputs', () => {

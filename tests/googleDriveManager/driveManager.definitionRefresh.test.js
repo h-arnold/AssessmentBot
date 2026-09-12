@@ -1,30 +1,25 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager.js';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager/index.js';
 import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
+import { withGlobalMocks } from '../helpers/globalMockManager.js';
+import { createDriveManagerMocks } from '../helpers/driveManagerFacadeMocks.js';
 
 import DbManager from '../../src/backend/DbManager/DbManager.js';
-
-// Mock dependencies
-globalThis.DriveApp = {
-  getFileById: vi.fn(),
-};
-globalThis.Drive = {
-  Files: {
-    get: vi.fn(),
-  },
-};
-globalThis.Utilities = {
-  sleep: vi.fn(),
-};
 
 vi.mock('../../src/backend/DbManager/DbManager.js');
 
 describe('DriveManager - Definition Refresh Integration', () => {
   let mockCollection;
   let mockDbManager;
+  let mocks;
+  let restoreGlobals;
+  let restoreDbManagerGlobal;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    // Install GAS service mocks per test and restore the originals afterwards.
+    mocks = createDriveManagerMocks(vi);
+    restoreGlobals = mocks.install();
+    restoreDbManagerGlobal = withGlobalMocks({ DbManager: () => DbManager }).restore;
 
     mockCollection = {
       findOne: vi.fn(),
@@ -38,7 +33,12 @@ describe('DriveManager - Definition Refresh Integration', () => {
     };
 
     DbManager.getInstance.mockReturnValue(mockDbManager);
-    globalThis.DbManager = DbManager;
+  });
+
+  afterEach(() => {
+    restoreDbManagerGlobal();
+    restoreGlobals();
+    vi.restoreAllMocks();
   });
 
   describe('getFileModifiedTime', () => {
@@ -47,7 +47,7 @@ describe('DriveManager - Definition Refresh Integration', () => {
       const mockFile = {
         getLastUpdated: vi.fn(() => testDate),
       };
-      globalThis.DriveApp.getFileById.mockReturnValue(mockFile);
+      mocks.mockDriveApp.getFileById.mockReturnValue(mockFile);
 
       const timestamp = DriveManager.getFileModifiedTime('file-123');
 
@@ -56,11 +56,11 @@ describe('DriveManager - Definition Refresh Integration', () => {
     });
 
     it('should work with Advanced Drive API fallback', () => {
-      globalThis.DriveApp.getFileById.mockImplementation(() => {
+      mocks.mockDriveApp.getFileById.mockImplementation(() => {
         throw new Error('DriveApp unavailable');
       });
 
-      globalThis.Drive.Files.get.mockReturnValue({
+      mocks.mockDrive.Files.get.mockReturnValue({
         modifiedTime: '2025-06-15T14:30:00Z',
       });
 
@@ -76,7 +76,7 @@ describe('DriveManager - Definition Refresh Integration', () => {
       };
 
       // Fail twice, then succeed
-      globalThis.DriveApp.getFileById
+      mocks.mockDriveApp.getFileById
         .mockImplementationOnce(() => {
           throw new Error('Temporary failure 1');
         })
@@ -88,10 +88,10 @@ describe('DriveManager - Definition Refresh Integration', () => {
       const result = DriveManager.getFileModifiedTime('retry-file');
 
       expect(result).toBe('2025-01-01T10:00:00.000Z');
-      expect(globalThis.DriveApp.getFileById).toHaveBeenCalledTimes(3);
-      expect(globalThis.Utilities.sleep).toHaveBeenCalledTimes(2);
-      expect(globalThis.Utilities.sleep).toHaveBeenCalledWith(500); // First retry
-      expect(globalThis.Utilities.sleep).toHaveBeenCalledWith(1000); // Second retry (500 * 2^1)
+      expect(mocks.mockDriveApp.getFileById).toHaveBeenCalledTimes(3);
+      expect(mocks.mockUtilities.sleep).toHaveBeenCalledTimes(2);
+      expect(mocks.mockUtilities.sleep).toHaveBeenCalledWith(500); // First retry
+      expect(mocks.mockUtilities.sleep).toHaveBeenCalledWith(1000); // Second retry (500 * 2^1)
     });
   });
 
@@ -116,7 +116,7 @@ describe('DriveManager - Definition Refresh Integration', () => {
       const mockFile = {
         getLastUpdated: vi.fn(() => juneDate),
       };
-      globalThis.DriveApp.getFileById.mockReturnValue(mockFile);
+      mocks.mockDriveApp.getFileById.mockReturnValue(mockFile);
 
       const refModified = DriveManager.getFileModifiedTime('ref-123');
       const tplModified = DriveManager.getFileModifiedTime('tpl-456');
@@ -150,7 +150,7 @@ describe('DriveManager - Definition Refresh Integration', () => {
       const mockFile = {
         getLastUpdated: vi.fn(() => sameDate),
       };
-      globalThis.DriveApp.getFileById.mockReturnValue(mockFile);
+      mocks.mockDriveApp.getFileById.mockReturnValue(mockFile);
 
       const refModified = DriveManager.getFileModifiedTime('ref-123');
       const tplModified = DriveManager.getFileModifiedTime('tpl-456');
@@ -182,10 +182,10 @@ describe('DriveManager - Definition Refresh Integration', () => {
 
   describe('Error handling in refresh flow', () => {
     it('should throw when DriveManager cannot fetch timestamps', () => {
-      globalThis.DriveApp.getFileById.mockImplementation(() => {
+      mocks.mockDriveApp.getFileById.mockImplementation(() => {
         throw new Error('Drive error');
       });
-      globalThis.Drive.Files.get.mockImplementation(() => {
+      mocks.mockDrive.Files.get.mockImplementation(() => {
         throw new Error('API error');
       });
 
@@ -211,17 +211,17 @@ describe('DriveManager - Definition Refresh Integration', () => {
 
   describe('Shared Drive support', () => {
     it('should use supportsAllDrives flag in Advanced Drive API', () => {
-      globalThis.DriveApp.getFileById.mockImplementation(() => {
+      mocks.mockDriveApp.getFileById.mockImplementation(() => {
         throw new Error('Not accessible via DriveApp');
       });
 
-      globalThis.Drive.Files.get.mockReturnValue({
+      mocks.mockDrive.Files.get.mockReturnValue({
         modifiedTime: '2025-06-15T14:30:00Z',
       });
 
       DriveManager.getFileModifiedTime('shared-drive-file');
 
-      expect(globalThis.Drive.Files.get).toHaveBeenCalledWith(
+      expect(mocks.mockDrive.Files.get).toHaveBeenCalledWith(
         'shared-drive-file',
         expect.objectContaining({
           supportsAllDrives: true,
@@ -237,7 +237,7 @@ describe('DriveManager - Definition Refresh Integration', () => {
       const mockFile = {
         getLastUpdated: vi.fn(() => testDate),
       };
-      globalThis.DriveApp.getFileById.mockReturnValue(mockFile);
+      mocks.mockDriveApp.getFileById.mockReturnValue(mockFile);
 
       const result = DriveManager.getFileModifiedTime('file-123');
 
@@ -247,11 +247,11 @@ describe('DriveManager - Definition Refresh Integration', () => {
     });
 
     it('should handle ISO string from Advanced Drive API', () => {
-      globalThis.DriveApp.getFileById.mockImplementation(() => {
+      mocks.mockDriveApp.getFileById.mockImplementation(() => {
         throw new Error('Use API');
       });
 
-      globalThis.Drive.Files.get.mockReturnValue({
+      mocks.mockDrive.Files.get.mockReturnValue({
         modifiedTime: '2025-06-15T14:30:00.123Z',
       });
 
@@ -264,9 +264,9 @@ describe('DriveManager - Definition Refresh Integration', () => {
       const mockFile = {
         getLastUpdated: vi.fn(() => 'not-a-date'),
       };
-      globalThis.DriveApp.getFileById.mockReturnValue(mockFile);
+      mocks.mockDriveApp.getFileById.mockReturnValue(mockFile);
 
-      globalThis.Drive.Files.get.mockReturnValue({
+      mocks.mockDrive.Files.get.mockReturnValue({
         modifiedTime: '2025-06-15T14:30:00Z',
       });
 

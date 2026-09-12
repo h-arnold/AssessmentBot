@@ -77,9 +77,7 @@ const DateUtils = {
   normaliseDateFields(target, fields) {
     if (!target) return target;
     for (const field of fields) {
-      // eslint-disable-next-line security/detect-object-injection -- field names are explicitly provided by the caller
       if (target[field] instanceof Date) {
-        // eslint-disable-next-line security/detect-object-injection
         target[field] = target[field].toISOString();
       }
     }
@@ -106,9 +104,6 @@ const DateUtils = {
     if (value !== null && typeof value === 'object') {
       const result = {};
       for (const [key, value_] of Object.entries(value)) {
-        // Disabling this method should only be used at the apiHandler boundary on data that has already been written and validated.
-        // It exists to stringify dates on deeply nested objects for when I'm too lazy to write a routine to catch them all properly.
-        /*eslint-disable-next-line security/detect-object-injection */
         result[key] = this.deepConvertDates(value_);
       }
       return result;
