@@ -24,11 +24,22 @@ module.exports = {
       {
         name: 'node',
         test: {
+          name: 'node',
           environment: 'node',
           setupFiles: ['tests/setupGlobals.js'],
           globals: true,
           include: ['tests/**/*.test.js'],
           exclude: [...removedDeprecatedLegacyTests, ...permanentlyExcludedDeprecatedTests],
+        },
+      },
+      {
+        name: 'synthetic-analysis',
+        test: {
+          name: 'synthetic-analysis',
+          environment: 'node',
+          setupFiles: ['tests/setupGlobals.js'],
+          globals: true,
+          include: ['tests/synthetic-analysis/**/*.test.ts'],
         },
       },
     ],

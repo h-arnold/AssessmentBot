@@ -1,5 +1,6 @@
 const googleappsscript = require('eslint-plugin-googleappsscript');
 const jsdoc = require('eslint-plugin-jsdoc');
+const tseslintParser = require('@typescript-eslint/parser');
 const unicorn = require('eslint-plugin-unicorn').default;
 const sonarjs = require('eslint-plugin-sonarjs');
 const { unicodeSecurityRules } = require('./config/eslint/unicode-security-rules.cjs');
@@ -190,6 +191,28 @@ module.exports = [
       'prefer-object-has-own': 'warn',
       'no-negated-condition': 'warn',
       'require-unicode-regexp': 'off',
+      'max-lines': ['warn', 500],
+    },
+  },
+  {
+    // Synthetic analysis generation tooling is Node ESM, not GAS runtime source.
+    files: ['scripts/synthetic-test-data/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+    },
+  },
+  {
+    // Synthetic analysis integration specs are TypeScript executed in Node.
+    files: ['tests/synthetic-analysis/**/*.test.ts'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      parser: tseslintParser,
+    },
+    plugins: { security },
+    rules: {
+      ...unicodeSecurityRules,
       'max-lines': ['warn', 500],
     },
   },
