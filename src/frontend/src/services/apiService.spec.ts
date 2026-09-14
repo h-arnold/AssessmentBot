@@ -154,6 +154,45 @@ function createGoogleScriptRunHarness(response: RunnerHarnessResponse): {
   };
 }
 
+const RAW_RESPONSE_PREVIEW_MAX_LENGTH = 120;
+const OVERSIZED_RAW_RESPONSE_PADDING_LENGTH = 200;
+
+/**
+ * Delivers a raw success response to `callApi` without the shared harness factory's
+ * automatic `JSON.stringify` wrapper.
+ *
+ * @remarks
+ * The shared harness factory faithfully mimics `google.script.run`'s automatic JSON
+ * stringification, so `apiService`'s JSON-parser error branch is unreachable through
+ * it. This focused seam is the project-approved exception for parser-edge coverage: it
+ * mirrors the GAS fallback to non-JSON string output (for example, when a prohibited
+ * return type forces `Object.toString()` serialisation). Ordinary transport tests must
+ * keep using `createGoogleScriptRunApiHandlerMock`.
+ *
+ * @param {unknown} rawResponse - The raw success value delivered to `dispatchAttempt`.
+ * @returns {GoogleScriptRunApiHandler} A runner that replays the raw value once.
+ */
+function createRawSuccessResponseRunner(rawResponse: unknown): GoogleScriptRunApiHandler {
+  let capturedSuccessHandler: ((response: unknown) => void) | undefined;
+
+  const rawRunner = {
+    withSuccessHandler(handler: (response: unknown) => void) {
+      capturedSuccessHandler = handler;
+      return rawRunner;
+    },
+    withFailureHandler() {
+      return rawRunner;
+    },
+    apiHandler() {
+      queueMicrotask(() => {
+        capturedSuccessHandler?.(rawResponse);
+      });
+    },
+  };
+
+  return rawRunner as unknown as GoogleScriptRunApiHandler;
+}
+
 describe('apiService.callApi', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -354,35 +393,35 @@ describe('apiService.callApi', () => {
     const callApi = await loadCallApi();
 
     // Simulate GAS returning an HTML error page (non-JSON string) to successHandler.
-    // The standard harness always JSON.stringify()s the successHandler value, which
-    // makes the JSON-parse failure path unreachable through it. A focused custom mock
-    // exercises the edge case where GAS returns e.g. an HTML login page.
-    let capturedSuccessHandler: ((response: unknown) => void) | undefined;
-
-    const customMock = {
-      withSuccessHandler(handler: (response: unknown) => void) {
-        capturedSuccessHandler = handler;
-        return customMock;
-      },
-
-      withFailureHandler() {
-        return customMock;
-      },
-
-      apiHandler() {
-        queueMicrotask(() => {
-          capturedSuccessHandler?.('<html><body>Login Required</body></html>');
-        });
-      },
-    };
-
     setGoogle({
-      script: { run: customMock as unknown as GoogleScriptRunApiHandler },
+      script: { run: createRawSuccessResponseRunner('<html><body>Login Required</body></html>') },
     });
 
     await expect(callApi('getAuthorisationStatus')).rejects.toThrow(
       'Failed to parse API response as JSON.'
     );
+  });
+
+  it('attaches a truncated preview when the non-JSON success response exceeds the preview limit', async () => {
+    const callApi = await loadCallApi();
+    const oversizedRawResponse = `<html>${'x'.repeat(
+      OVERSIZED_RAW_RESPONSE_PADDING_LENGTH
+    )}</html>`;
+
+    setGoogle({
+      script: { run: createRawSuccessResponseRunner(oversizedRawResponse) },
+    });
+
+    const thrownError = await callApi('getAuthorisationStatus').then(
+      () => {
+        throw new Error('Expected callApi to reject for a non-JSON success response.');
+      },
+      (error: unknown) => error as Error & { preview?: string }
+    );
+
+    expect(thrownError.message).toContain('Failed to parse API response as JSON.');
+    expect(thrownError.preview?.endsWith('…')).toBe(true);
+    expect(thrownError.preview?.length).toBeLessThanOrEqual(RAW_RESPONSE_PREVIEW_MAX_LENGTH + 1);
   });
 
   it('preserves requestId and error metadata in thrown transport errors', async () => {

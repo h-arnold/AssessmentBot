@@ -2,7 +2,7 @@
 
 ## Delivery progress
 
-- Current section: Section 3 — Regenerate committed profiles and protect full output.
+- Current section: Section 4 — Compose the real dispatcher and frontend transport boundary.
 - Current phase: Complete — ready to commit and push.
 - Baseline: established on `feat/BulkTestDataGeneration` on 2026-09-12. Existing accepted technical debt: backend lint exits non-zero because of 11 pre-existing `max-lines` warnings; frontend lint exits non-zero; backend coverage remains below the existing 85% thresholds because Google API-dependent code cannot be reliably mocked. The coverage shortfall is identical on pristine `HEAD` and was explicitly accepted by the user on 2026-09-13. All other regression-checker checks passed. No regressions or new failures existed at baseline.
 - Section 2 API decision (user-approved 2026-09-13): define a minimal test-only generator-domain composition API. Completion bands are derived from documented class rosters and submission data, never stored as undocumented persistence fields.
@@ -209,6 +209,7 @@ Implementation:
 - Red-phase tests and the green-phase implementation were reviewed clean.
 - Section checks passed: `npm run lint:synthetic:check`, `npm run test:synthetic`, `npm run test:synthetic:coverage`, and `npm run test:synthetic:stress`.
 - Regression comparison on 2026-09-14 reported zero regressions and zero new failures; accepted existing debt remains unchanged.
+- Committed and pushed on `feat/BulkTestDataGeneration`: `f1af220 feat: add synthetic analysis fixtures`.
 - Committed and pushed on `feat/BulkTestDataGeneration`: `40df333 feat: generate deterministic synthetic analysis graphs`.
 
 ---
@@ -365,6 +366,12 @@ Implementation:
 ### Optional `@remarks` JSDoc follow-through
 
 - Preserve the runner-boundary rationale and callback-isolation requirement in bridge/adapter JSDoc.
+
+### Delivery record
+
+- Red-phase tests and green-phase implementation were reviewed clean.
+- Section checks passed: `npm run test:synthetic`, focused backend dispatcher tests, focused frontend service tests, frontend TypeScript compilation, and scoped lint checks.
+- Regression comparison on 2026-09-14 reported zero regressions and zero new failures; accepted existing debt remains unchanged.
 
 ---
 
