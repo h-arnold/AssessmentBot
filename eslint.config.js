@@ -1,9 +1,15 @@
 const googleappsscript = require('eslint-plugin-googleappsscript');
 const jsdoc = require('eslint-plugin-jsdoc');
+const tseslintParser = require('@typescript-eslint/parser');
 const unicorn = require('eslint-plugin-unicorn').default;
 const sonarjs = require('eslint-plugin-sonarjs');
 const { unicodeSecurityRules } = require('./config/eslint/unicode-security-rules.cjs');
-const { security, securityRecommendedErrorRules } = require('./config/eslint/ts-base-rules.cjs');
+const {
+  security,
+  securityRecommendedErrorRules,
+  nodeToolingRules,
+  tseslint: tseslintPlugin,
+} = require('./config/eslint/ts-base-rules.cjs');
 
 module.exports = [
   // Ignore legacy GAS source folders entirely from linting
@@ -190,6 +196,46 @@ module.exports = [
       'prefer-object-has-own': 'warn',
       'no-negated-condition': 'warn',
       'require-unicode-regexp': 'off',
+      'max-lines': ['warn', 500],
+    },
+  },
+  {
+    // Synthetic analysis generation tooling is Node ESM, not GAS runtime source.
+    // It reuses the canonical Node-tooling rule object shared with the builder.
+    files: ['scripts/synthetic-test-data/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      parser: tseslintParser,
+      parserOptions: {
+        project: './scripts/synthetic-test-data/tsconfig.json',
+        tsconfigRootDir: __dirname,
+      },
+    },
+    plugins: {
+      '@typescript-eslint': tseslintPlugin,
+      jsdoc,
+      security,
+      sonarjs,
+      unicorn,
+    },
+    rules: nodeToolingRules,
+  },
+  {
+    // Synthetic analysis integration specs are TypeScript executed in Node.
+    // The stress specs are the opt-in full-large suite in the same runtime.
+    files: [
+      'tests/synthetic-analysis/**/*.test.ts',
+      'tests/synthetic-analysis-stress/**/*.test.ts',
+    ],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      parser: tseslintParser,
+    },
+    plugins: { security },
+    rules: {
+      ...unicodeSecurityRules,
       'max-lines': ['warn', 500],
     },
   },

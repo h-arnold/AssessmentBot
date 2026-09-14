@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "profile": "large-representative",
+  "seed": 39053,
+  "generatedEntityCounts": {
+    "classes": 4,
+    "students": 24,
+    "assignments": 20,
+    "assignmentDefinitions": 5,
+    "cohorts": 2,
+    "yearGroups": 4,
+    "assignmentTopics": 4
+  },
+  "canonicalFullProfile": {
+    "classCount": 100,
+    "studentsPerClass": 30,
+    "assignmentsPerClass": 100,
+    "yearGroupCount": 24
+  }
+}

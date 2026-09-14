@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 const require = createRequire(import.meta.url);
 const {
   security: securityPlugin,
-  tsBaseRules,
+  nodeToolingRules,
   sonarjs: sonarjsPlugin,
   unicorn: unicornPlugin,
 } = require('../../config/eslint/ts-base-rules.cjs');
@@ -21,12 +21,6 @@ const typescriptPlugins = {
   security: securityPlugin,
   sonarjs: sonarjsPlugin,
   unicorn: unicornPlugin,
-};
-
-const sharedRules = {
-  ...tseslint.configs.recommended.rules,
-  ...tsBaseRules,
-  'security/detect-non-literal-fs-filename': 'off',
 };
 
 export default [
@@ -42,7 +36,7 @@ export default [
       },
     },
     plugins: typescriptPlugins,
-    rules: sharedRules,
+    rules: nodeToolingRules,
   },
   {
     // OpenCode plugins are Node-side TypeScript tooling, so they are linted to the
@@ -59,7 +53,7 @@ export default [
       },
     },
     plugins: typescriptPlugins,
-    rules: sharedRules,
+    rules: nodeToolingRules,
   },
   {
     files: [

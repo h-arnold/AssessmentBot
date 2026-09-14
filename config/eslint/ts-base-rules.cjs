@@ -1,5 +1,6 @@
 const sonarjs = require('eslint-plugin-sonarjs');
 const security = require('eslint-plugin-security');
+const tseslint = require('@typescript-eslint/eslint-plugin');
 const unicornModule = require('eslint-plugin-unicorn');
 const unicorn = unicornModule?.__esModule ? unicornModule.default : unicornModule;
 
@@ -46,10 +47,21 @@ const tsBaseRules = {
   'unicorn/prefer-string-replace-all': 'error',
 };
 
+// Canonical rule set for Node-side tooling (the builder CLI and the synthetic
+// analysis scripts). Both consumers import this exact object so the two cannot
+// drift into divergent rule maps.
+const nodeToolingRules = {
+  ...tseslint.configs.recommended.rules,
+  ...tsBaseRules,
+  'security/detect-non-literal-fs-filename': 'off',
+};
+
 module.exports = {
   security,
   securityRecommendedErrorRules,
   tsBaseRules,
+  nodeToolingRules,
   sonarjs,
+  tseslint,
   unicorn,
 };

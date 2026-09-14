@@ -117,6 +117,21 @@ When tests cover logging/error pathways, keep expectations aligned with that doc
 
 Frontend unit/component tests must meet a minimum coverage threshold of **85%** for lines, functions, statements, and branches. The threshold is enforced in `src/frontend/vite.config.ts` and checked via `npm run test:frontend:coverage`.
 
+## Canonical synthetic fixtures
+
+Use the deterministic synthetic analysis corpus when a test needs realistic analysis-domain data.
+
+**Canonical-fixture directive:**
+
+- All new or changed tests must use an appropriate canonical synthetic fixture when the synthetic fixture system provides data for the scenario.
+- If the required realistic data is not yet supported, the test may use a local realistic fixture only when the owning feature work records a generator-extension plan (which profile, view, or generator stage to add and where).
+- Deliberately invalid or boundary fixtures remain local.
+- Migrate a touched existing test to a canonical fixture opportunistically; do not perform a wholesale migration.
+
+This policy is intentionally broader than the analysis graph and applies automatically as later domains are added.
+
+For frontend service round-trip tests, the Node integration spec composes the script-owned dispatcher bridge with the frontend adapter and supplies `callApi`, the service Zod schemas, and `DataAnalysisService` input. For the corpus topology, profile/view selection, commands, failure behaviour, and the full exception and extension path, see the canonical guide: [Synthetic Test Data](../testing/synthetic-test-data.md).
+
 ## Shared test helpers
 
 Use shared helpers to keep fixtures and mocks consistent and avoid duplicate test setup code.
@@ -138,6 +153,7 @@ Shared frontend test helpers belong under `src/frontend/src/test/**`. Feature-sc
 
 - Data-analysis test fixtures: `src/frontend/src/test/dataAnalysis/fixtures.ts` — moved from `src/frontend/src/services/dataAnalysis/test/fixtures.ts` to the canonical shared-helpers location. Status: **Implemented** (ACTION_PLAN.md Section 8).
 - Data-analysis assertion helpers: `src/frontend/src/test/dataAnalysis/averagingAnalyserAssertions.ts` — shared module exporting `expectMetricResult` and `checkMetricInvariant` (extracted from `averagingAnalyser.spec.ts`). Status: **Implemented** (ACTION_PLAN.md Section 9).
+- Synthetic analysis API round-trip adapter: `src/frontend/src/test/syntheticApiRoundTripAdapter.ts` — exports `createSyntheticApiRoundTripRunner(invokeRequest)`, a thin test-only adapter that composes the script-owned synthetic `apiHandler` bridge with `googleScriptRunHarness`. It preserves the harness's single success JSON serialisation, raw failures, and per-request callback isolation, and it imports no `scripts/` code. Status: **Implemented** (synthetic analysis test-data delivery). See [Synthetic Test Data](../testing/synthetic-test-data.md).
 
 ### Classes Modal Test Helpers
 

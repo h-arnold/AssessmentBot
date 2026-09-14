@@ -48,6 +48,10 @@ Technical documentation for developers contributing to the AssessmentBot codebas
 - [**Frontend Shared Helpers and Abstraction Standards**](./developer/frontend/frontend-shared-helpers-and-abstraction-standards.md) – Shared helpers and abstraction standards
 - [**Frontend Shell Navigation and Motion**](./developer/frontend/frontend-shell-navigation-and-motion.md) – Shell navigation and motion/accessibility standards
 
+### Testing
+
+- [**Synthetic Test Data**](./developer/testing/synthetic-test-data.md) – Canonical architecture guide for the deterministic synthetic analysis corpus, its profiles/views, commands, and canonical-fixture policy
+
 ### Security
 
 - [**Security Approach**](./developer/security/README.md) – Overview of the defence-in-depth security model, threat model, and layer summaries

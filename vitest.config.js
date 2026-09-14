@@ -24,11 +24,37 @@ module.exports = {
       {
         name: 'node',
         test: {
+          name: 'node',
           environment: 'node',
           setupFiles: ['tests/setupGlobals.js'],
           globals: true,
           include: ['tests/**/*.test.js'],
           exclude: [...removedDeprecatedLegacyTests, ...permanentlyExcludedDeprecatedTests],
+        },
+      },
+      {
+        name: 'synthetic-analysis',
+        test: {
+          name: 'synthetic-analysis',
+          environment: 'node',
+          setupFiles: ['tests/setupGlobals.js'],
+          globals: true,
+          include: ['tests/synthetic-analysis/**/*.test.ts'],
+        },
+      },
+      {
+        // Opt-in stress project: generates and validates the full 3,000-student /
+        // 10,000-assignment large graph. It is never selected by the normal
+        // `test:synthetic` or `test:synthetic:coverage` commands. The raised
+        // timeout is an intentional stress budget, not a caller-supplied override.
+        name: 'synthetic-analysis-stress',
+        test: {
+          name: 'synthetic-analysis-stress',
+          environment: 'node',
+          setupFiles: ['tests/setupGlobals.js'],
+          globals: true,
+          include: ['tests/synthetic-analysis-stress/**/*.test.ts'],
+          testTimeout: 30_000,
         },
       },
     ],

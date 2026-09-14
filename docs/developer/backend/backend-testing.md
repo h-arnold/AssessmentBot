@@ -12,6 +12,21 @@ These API functions should be tested as thin wrappers around controller delegati
 
 Backend configuration transport is now covered by the dedicated suite in `tests/api/backendConfigApi.test.js`. Keep broader dispatcher and allowlist coverage in `tests/api/apiHandler/` (directory with multiple dispatcher test files).
 
+## Canonical synthetic fixtures
+
+Use the deterministic synthetic analysis corpus when a test needs realistic analysis-domain data.
+
+**Canonical-fixture directive:**
+
+- All new or changed tests must use an appropriate canonical synthetic fixture when the synthetic fixture system provides data for the scenario.
+- If the required realistic data is not yet supported, the test may use a local realistic fixture only when the owning feature work records a generator-extension plan (which profile, view, or generator stage to add and where).
+- Deliberately invalid or boundary fixtures remain local.
+- Migrate a touched existing test to a canonical fixture opportunistically; do not perform a wholesale migration.
+
+This policy is intentionally broader than the analysis graph and applies automatically as later domains are added.
+
+Backend tests load a committed profile view synchronously and immutably, then supply the generated transport view through the dispatcher seams described below. For the corpus topology, profile/view selection, commands, failure behaviour, and the full exception and extension path, see the canonical guide: [Synthetic Test Data](../testing/synthetic-test-data.md).
+
 ## Backend logging test expectations
 
 When backend logging behaviour or error boundaries change, include explicit logging-focused regression coverage in backend tests.
@@ -141,6 +156,23 @@ Purpose:
   global handler functions
 - keep `getBackendConfig_` / `setBackendConfig_` out of this helper because `z_apiHandler.js` wires
   those through its own guarded Node bridge
+
+### Synthetic analysis corpus and dispatcher bridge
+
+> **Implemented**
+
+Locations: `scripts/synthetic-test-data/` (deterministic corpus, validators, immutable loader, and Node-side dispatcher bridge) and `tests/__mocks__/data/synthetic-analysis/` (committed compact profiles and manifests).
+
+Purpose:
+
+- provide schema-valid, deterministic analysis-domain fixture graphs without adding a test-data dependency to GAS runtime source;
+- supply an explicit generated **transport** view through the existing `apiHandlerTestUtils.js` handler seams, then dispatch through the actual `apiHandler`;
+- compose with the frontend's existing `googleScriptRunHarness` through its thin frontend test adapter, rather than recreating API envelopes or GAS callback behaviour;
+- retain `apiHandlerTestUtils.js` and `mockFactories.js` as composition-only dependencies: synthetic graph, fixture, and bridge code remain in the dedicated synthetic-test-data domain.
+
+Backend tests load a committed profile view with `loadSyntheticAnalysisProfile(profileName, viewName)` from `scripts/synthetic-test-data/loadSyntheticAnalysisProfile.js`, then use `createApiHandlerRoundTripBridge({ vi, profileName })` from `scripts/synthetic-test-data/apiHandlerRoundTripBridge.js` to install the seams and dispatch the real `apiHandler`. The bridge restores every seam after each call so overlapping requests stay isolated.
+
+For the corpus topology, profile and view selection, mutation isolation, and the full command list, see the canonical guide: [Synthetic Test Data](../testing/synthetic-test-data.md).
 
 ### Global Mock Management with `globalMockManager`
 

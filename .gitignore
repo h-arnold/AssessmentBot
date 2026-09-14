@@ -26,7 +26,8 @@ playwright-report/
 .vibe/update_cache.json
 .vibe/vibehistory
 .scratchpad/
-.opencode/scratchpad/
+.opencode/scratchpad/*
+.opencode/scratchpad/synthetic-analysis-full/
 
 # Clasp deploy artefacts (deploy-gas skill pty session capture)
 typescript

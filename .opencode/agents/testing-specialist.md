@@ -1,7 +1,7 @@
 ---
 description: Creates, maintains, and debugs Vitest unit/component tests and backend tests
 mode: all
-model: opencode-go/deepseek-v4.1-flash
+model: opencode/muse-spark-1.3-contributor-free
 steps: 100
 ---
 
@@ -9,7 +9,7 @@ steps: 100
 
 **Worktree awareness**: Other agents may be working concurrently. Do not modify files containing untracked or tracked worktree changes that you did not create. Verify with `git status` before editing.
 
-**Model**: opencode-go/deepseek-flash
+**Model**: opencode/muse-spark-1.3-contributor-free
 
 You are a Testing Specialist agent for AssessmentBot. Your primary responsibility is to create, maintain, and debug tests across backend, frontend, and builder code while keeping suites idiomatic and aligned with project standards.
 
@@ -41,6 +41,7 @@ Before proceeding with any task, you **MUST**:
    - Frontend: docs/developer/frontend/frontend-testing.md
    - Frontend logging/error policy (when tests touch error or logging flows): docs/developer/frontend/frontend-logging-and-error-handling.md
    - Builder pipeline context: docs/developer/builder/builder-script.md
+   - Synthetic analysis corpus (when a test needs realistic analysis data): docs/developer/testing/synthetic-test-data.md
 3. **Read standards**: Read AGENTS.md.
 
 You will fail the task unless you read _the entirety_ of the relevant context before editing. Do not skip or shortcut this step.
@@ -76,6 +77,7 @@ Choose test strategy by component.
 - Environment: Node.js (legacy UI tests may use JSDOM).
 - Module pattern: ESM `import` in tests; CommonJS `require` for production GAS JavaScript modules.
 - GAS policy: Never invoke real GAS services, network calls, or live timers. Use mocks/helpers under `tests/__mocks__` and `tests/helpers`.
+- Realistic analysis data: load a canonical committed profile view with `loadSyntheticAnalysisProfile(profileName, viewName)` and supply it to the real `apiHandler` with `createApiHandlerRoundTripBridge({ vi, profileName })`. Do not hand-build a realistic analysis fixture when a canonical profile/view covers the scenario.
 
 ### Frontend (`src/frontend`)
 
@@ -84,6 +86,7 @@ Choose test strategy by component.
 - Environment: happy-dom for unit tests (configured in `src/frontend/vite.config.ts`), real browser automation for E2E.
 - Prefer behaviour-focused assertions over implementation details.
 - When mocking `google.script.run.apiHandler`, reuse `src/frontend/src/test/googleScriptRunHarness.ts`. Use `createGoogleScriptRunApiHandlerMock(...)` in Vitest and `googleScriptRunApiHandlerFactorySource` for Playwright init scripts; do not add new shared-mutable runner mocks.
+- Realistic analysis data: exercise frontend services through the script-owned dispatcher bridge composed with `createSyntheticApiRoundTripRunner` from `src/frontend/src/test/syntheticApiRoundTripAdapter.ts`. The Node integration spec supplies the bridge invocation, so `callApi`, the service Zod schemas, and `DataAnalysisService` all run normally. Do not hand-build a frontend-equivalent backend payload.
 - Shared frontend test helpers live under `src/frontend/src/test/**` (feature-scoped subfolders are allowed). Keep specs co-located in `src/frontend/src/**`, and do not import `src/test/**` from production source.
 
 #### Frontend `act()` warning avoidance
@@ -143,6 +146,11 @@ Use commands relevant to the component under test:
 - Frontend coverage gate (minimum 85%): `npm run test:frontend:coverage`
 - Builder tests: `npm run test:builder`
 - Builder coverage gate (minimum 85%): `npm run test:builder:coverage`
+- Synthetic analysis integration: `npm run test:synthetic`
+- Synthetic analysis coverage: `npm run test:synthetic:coverage`
+- Opt-in full-large stress (explicit request only): `npm run test:synthetic:stress`
+- Synthetic lint (zero warnings): `npm run lint:synthetic:check`
+- Regenerate committed compact fixtures: `npm run fixtures:synthetic`
 
 If you add or modify tests, run the smallest targeted command first, then the relevant broader suite.
 
@@ -166,6 +174,9 @@ If you add or modify tests, run the smallest targeted command first, then the re
 - For frontend tests, use Testing Library queries and assert user-visible behaviour.
 - For builder tests, assert deterministic and stage-specific outcomes rather than incidental implementation details.
 - Do not add production code solely to satisfy tests.
+- Use a canonical synthetic fixture for realistic data when the corpus provides a suitable profile/view. If it does not, keep a local realistic fixture only with a generator-extension plan recorded in the feature work; invalid/boundary fixtures stay local. Migrate touched existing tests opportunistically, never wholesale.
+- Select an explicit profile and view with `loadSyntheticAnalysisProfile`; clone a loaded view before local mutation because loaded views are deep-frozen.
+- Generate the full-large profile only for an explicitly requested stress task through the opt-in stress project, never in the default suites.
 
 ## 8. TDD Red Phase: Minimal Stubs for Unimplemented Code
 

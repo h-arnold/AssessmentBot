@@ -69,6 +69,7 @@ Look for:
 10. missing or incomplete planned data-shape entries: entries that describe behaviour the spec or action plan relies on but that have not been recorded in the data-shape docs at all
 11. re-inventing the wheel or ignoring existing helpers, components, or services that could be reused or extended
 12. evidence of over-engineering, over-specification, or unnecessary complexity that could be simplified without losing correctness **REMEMBER**: the repo prime directive is to ensure that the code is KISS AND DRY.
+13. missing canonical-fixture assessment where the work adds or changes tests — the plan must select a canonical synthetic profile/view, or record a generator-extension plan for unsupported realistic data, and identify only opportunistic migration of touched existing tests
 
 ## 2. Review Method
 
@@ -109,6 +110,7 @@ Check that the plan:
 - requires planned helper entries in relevant canonical docs to be marked `Not implemented` before implementation starts
 - includes data-shape doc planning for sections that change schemas, persistence, API contracts, or transport shapes, with corresponding `Not implemented` entries in `docs/developer/data-shapes/`
 - requires planned data-shape doc entries to be marked `Not implemented` before implementation starts, and that section ordering lands data-shape doc entry creation before code changes in those sections
+- includes canonical-fixture planning where the plan adds or changes tests: an explicit canonical profile/view choice, or a generator-extension plan for unsupported realistic data, and no requirement for a wholesale fixture migration
 
 ## 3. Impartiality Rules
 
