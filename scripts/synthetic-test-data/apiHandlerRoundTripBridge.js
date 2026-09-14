@@ -22,6 +22,26 @@ import { loadSyntheticAnalysisProfile } from './loadSyntheticAnalysisProfile.js'
  */
 
 /**
+ * Builds the narrow Vitest facade passed to the shared seam helper.
+ *
+ * @remarks
+ * The shared helper restores its own global seams individually, but it also
+ * calls `vi.restoreAllMocks()`, which would restore caller-owned spies created
+ * before the bridge ran. Delegating `fn` to the caller's Vitest API preserves
+ * the helper's mock creation, while the no-op `restoreAllMocks` keeps teardown
+ * from touching caller-owned mocks.
+ *
+ * @param {object} vi The caller's Vitest API.
+ * @returns {{fn: Function, restoreAllMocks: () => void}} The facade.
+ */
+function createBridgeVi(vi) {
+  return {
+    fn: vi.fn.bind(vi),
+    restoreAllMocks: () => {},
+  };
+}
+
+/**
  * Creates a round-trip bridge for a committed synthetic analysis profile.
  *
  * @param {{vi: object, profileName: string}} options Bridge options: the Vitest API used by the shared seam helper and the committed profile name.
@@ -29,6 +49,7 @@ import { loadSyntheticAnalysisProfile } from './loadSyntheticAnalysisProfile.js'
  */
 export function createApiHandlerRoundTripBridge(options) {
   const { vi, profileName } = options;
+  const bridgeVi = createBridgeVi(vi);
   const classesById = new Map(
     Object.entries(loadSyntheticAnalysisProfile(profileName, 'classesById'))
   );
@@ -49,18 +70,18 @@ export function createApiHandlerRoundTripBridge(options) {
 
   return {
     invokeRequest(request, callbacks) {
-      const context = setupApiHandlerTestContext(vi, seamBehaviours);
+      const context = setupApiHandlerTestContext(bridgeVi, seamBehaviours);
 
       let response;
       try {
         response = loadApiHandlerModule().apiHandler(request);
       } catch (error) {
-        teardownApiHandlerTestContext(vi, context);
+        teardownApiHandlerTestContext(bridgeVi, context);
         callbacks.failureHandler?.(error);
         return;
       }
 
-      teardownApiHandlerTestContext(vi, context);
+      teardownApiHandlerTestContext(bridgeVi, context);
       callbacks.successHandler?.(response);
     },
   };

@@ -76,7 +76,7 @@ The generator produces a graph, not unrelated rows. Each profile contains these 
 {
   manifest: {
     schemaVersion: 1,
-    profile: 'small' | 'medium' | 'large',
+    profile: 'small' | 'medium' | 'large-representative' | 'large-full',
     seed: number,
     generatedEntityCounts: Record<string, number>,
   },

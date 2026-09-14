@@ -193,6 +193,26 @@ function assertTransportAssignmentEntry(classId, assignment, transportStudentIds
 }
 
 /**
+ * Asserts a transport class roster holds exactly the persistence roster identifiers.
+ *
+ * @param {string} classId Class identifier used in failure messages.
+ * @param {Set<string>} transportStudentIds Transport roster student IDs.
+ * @param {Map<string, Set<string>>} rosterByClassId Persistence roster student IDs keyed by class ID.
+ */
+function assertTransportRosterMatchesPersistence(classId, transportStudentIds, rosterByClassId) {
+  const persistenceStudentIds = rosterByClassId.get(classId);
+  if (persistenceStudentIds === undefined) {
+    fail(`Class "${classId}" transport roster has no matching persistence class roster.`);
+  }
+  const rosterDiffers =
+    persistenceStudentIds.size !== transportStudentIds.size ||
+    [...transportStudentIds].some((studentId) => !persistenceStudentIds.has(studentId));
+  if (rosterDiffers) {
+    fail(`Class "${classId}" transport roster does not match its persistence class roster.`);
+  }
+}
+
+/**
  * Asserts a classesById entry's classId matches its record key.
  *
  * @param {string} classId The classesById record key.
@@ -231,8 +251,16 @@ function assertTransportClassesResolveReferences(transport, context) {
     assertTransportClassIdentity(classId, classFull);
     assertTransportClassProfileShape(classId, classFull, context);
     const transportStudentIds = collectRosterIds(classId, classFull.students);
+    assertTransportRosterMatchesPersistence(classId, transportStudentIds, context.rosterByClassId);
 
+    const seenAssignmentIds = new Set();
     for (const assignment of classFull.assignments) {
+      if (seenAssignmentIds.has(assignment.assignmentId)) {
+        fail(
+          `Class "${classId}" transport assignments contain duplicate assignmentId "${assignment.assignmentId}".`
+        );
+      }
+      seenAssignmentIds.add(assignment.assignmentId);
       assertTransportAssignmentEntry(classId, assignment, transportStudentIds, context);
     }
   }
@@ -249,6 +277,11 @@ function assertTransportDefinitionsMatchPersistence(transport, definitionByKey) 
   const transportDefinitionKeys = new Set(
     transport.assignmentDefinitionPartials.map((definition) => definition.definitionKey)
   );
+  if (transportDefinitionKeys.size !== transport.assignmentDefinitionPartials.length) {
+    fail(
+      'transport.assignmentDefinitionPartials contains duplicate assignment definition entries.'
+    );
+  }
   if (persistenceDefinitionKeys.size !== transportDefinitionKeys.size) {
     fail(
       `Transport exposes ${transportDefinitionKeys.size} assignment definitions but persistence holds ${persistenceDefinitionKeys.size}.`

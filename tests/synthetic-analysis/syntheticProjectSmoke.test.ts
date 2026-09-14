@@ -6,6 +6,7 @@ import {
 } from '../../src/frontend/src/test/googleScriptRunHarness';
 import { getABClass } from '../../src/frontend/src/services/googleClassrooms/classDetail/classDetailService';
 import { getAssignmentDefinitionPartials } from '../../src/frontend/src/services/assignmentDefinition/assignmentDefinitionPartialsService';
+import { loadSyntheticAnalysisProfile } from '../../scripts/synthetic-test-data/loadSyntheticAnalysisProfile.js';
 
 type GoogleScriptRunGlobal = {
   script: {
@@ -26,7 +27,7 @@ type BrowserGlobalsProbe = {
 
 type ApiRequestProbe = {
   method?: unknown;
-  params?: unknown;
+  params?: { classId?: unknown };
 };
 
 type ApiSuccessEnvelope = {
@@ -35,48 +36,28 @@ type ApiSuccessEnvelope = {
   data: unknown;
 };
 
+const SMALL_PROFILE = 'small';
 const GET_AB_CLASS_METHOD = 'getABClass';
 const GET_ASSIGNMENT_DEFINITION_PARTIALS_METHOD = 'getAssignmentDefinitionPartials';
-const SYNTHETIC_CLASS_ID = 'synthetic-class-1';
 
 /**
- * Minimal schema-valid `ClassFull` transport view for the `getABClass` service.
+ * Committed small-profile transport views. The smoke test uses the canonical
+ * fixture rather than a hand-constructed response so it exercises the same data
+ * the production services and analysis path consume.
  */
-const SYNTHETIC_CLASS_FULL = {
-  classId: SYNTHETIC_CLASS_ID,
-  className: null,
-  cohortKey: null,
-  courseLength: 1,
-  yearGroupKey: null,
-  classOwner: null,
-  teachers: [],
-  students: [],
-  assignments: [],
-  active: null,
-} as const;
+const committedClassesById = loadSyntheticAnalysisProfile(SMALL_PROFILE, 'classesById') as Record<
+  string,
+  unknown
+>;
+const committedDefinitionPartials = loadSyntheticAnalysisProfile(
+  SMALL_PROFILE,
+  'assignmentDefinitionPartials'
+) as unknown[];
 
-/**
- * Minimal schema-valid `AssignmentDefinitionPartials` transport view.
- */
-const SYNTHETIC_DEFINITION_PARTIALS = [
-  {
-    primaryTitle: 'Synthetic primary title',
-    primaryTopic: 'Synthetic primary topic',
-    primaryTopicKey: 'synthetic-topic',
-    yearGroupKey: 'year-7',
-    yearGroupLabel: 'Year 7',
-    alternateTitles: [],
-    alternateTopics: [],
-    documentType: 'SLIDES',
-    referenceDocumentId: null,
-    templateDocumentId: null,
-    assignmentWeighting: null,
-    definitionKey: 'synthetic-definition',
-    tasks: [],
-    createdAt: null,
-    updatedAt: null,
-  },
-] as const;
+const committedClassId = Object.keys(committedClassesById)[0];
+if (committedClassId === undefined) {
+  throw new Error('Expected the committed small profile to contain at least one class');
+}
 
 const globalScope = globalThis as typeof globalThis & {
   google?: GoogleScriptRunGlobal;
@@ -96,19 +77,25 @@ afterEach(() => {
 });
 
 /**
- * Selects the minimal valid transport payload for a captured request method.
+ * Selects the committed transport view for a captured request method.
  *
  * @param {unknown} request Captured `apiHandler` request payload.
- * @returns {unknown} The transport view to place in the success envelope.
+ * @returns {unknown} The committed transport view to place in the success envelope.
  */
 function selectTransportView(request: unknown): unknown {
-  const method = (request as ApiRequestProbe | undefined)?.method;
+  const probe = request as ApiRequestProbe | undefined;
+  const method = probe?.method;
 
   if (method === GET_AB_CLASS_METHOD) {
-    return SYNTHETIC_CLASS_FULL;
+    const requestedClassId = String(probe?.params?.classId);
+    const classFull = committedClassesById[requestedClassId];
+    if (classFull === undefined) {
+      throw new Error(`Unexpected getABClass classId: ${requestedClassId}`);
+    }
+    return classFull;
   }
   if (method === GET_ASSIGNMENT_DEFINITION_PARTIALS_METHOD) {
-    return SYNTHETIC_DEFINITION_PARTIALS;
+    return committedDefinitionPartials;
   }
 
   throw new Error(`Unexpected API method: ${String(method)}`);
@@ -137,17 +124,17 @@ describe('synthetic analysis Node integration project', () => {
 
     globalScope.google = { script: { run: runner } };
 
-    const classResult = await getABClass({ classId: SYNTHETIC_CLASS_ID });
+    const classResult = await getABClass({ classId: committedClassId });
     const definitionPartials = await getAssignmentDefinitionPartials();
 
     expect(classResult).not.toBeNull();
-    expect(classResult?.classId).toBe(SYNTHETIC_CLASS_ID);
-    expect(definitionPartials).toEqual(SYNTHETIC_DEFINITION_PARTIALS);
+    expect(classResult?.classId).toBe(committedClassId);
+    expect(definitionPartials).toEqual(committedDefinitionPartials);
 
     expect(capturedRequests).toHaveLength(2);
     expect(capturedRequests[0]).toMatchObject({
       method: GET_AB_CLASS_METHOD,
-      params: { classId: SYNTHETIC_CLASS_ID },
+      params: { classId: committedClassId },
     });
     expect(capturedRequests[1]).toMatchObject({
       method: GET_ASSIGNMENT_DEFINITION_PARTIALS_METHOD,

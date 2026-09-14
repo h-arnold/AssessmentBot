@@ -22,14 +22,43 @@ export function isRecord(value) {
 }
 
 /**
- * Rejects JavaScript value types that cannot cross JSON transport.
+ * Rejects JavaScript value types that cannot cross JSON transport and reports
+ * the value's `typeof` result for collection handling.
  *
- * @param {string} valueType The `typeof` result for the current value.
+ * @param {unknown} value Current value.
  * @param {string} path Human-readable path used in reported failures.
+ * @returns {string} The `typeof` result for the current value.
  */
-function assertSupportedType(valueType, path) {
+function assertSupportedValue(value, path) {
+  const valueType = typeof value;
   if (valueType === 'function' || valueType === 'symbol' || valueType === 'bigint') {
     fail(`${path} is a ${valueType}; generated data must be JSON-serialisable.`);
+  }
+  if (valueType === 'number' && !Number.isFinite(value)) {
+    fail(`${path} is a non-finite number; generated data must be JSON-serialisable.`);
+  }
+  return valueType;
+}
+
+/**
+ * Recursively walks an array or object value's children.
+ *
+ * @param {unknown} value Current array or object value.
+ * @param {string} path Human-readable path used in reported failures.
+ * @param {string} valueType The `typeof` result for the current value.
+ */
+function assertSerialisableChildren(value, path, valueType) {
+  if (Array.isArray(value)) {
+    value.forEach((entry, index) => assertSerialisable(entry, `${path}[${index}]`));
+    return;
+  }
+
+  if (valueType !== 'object') {
+    return;
+  }
+
+  for (const [key, entry] of Object.entries(value)) {
+    assertSerialisable(entry, `${path}.${key}`);
   }
 }
 
@@ -50,17 +79,6 @@ export function assertSerialisable(value, path) {
     fail(`${path} is a live Date; generated data must use ISO 8601 strings.`);
   }
 
-  const valueType = typeof value;
-  assertSupportedType(valueType, path);
-
-  if (Array.isArray(value)) {
-    value.forEach((entry, index) => assertSerialisable(entry, `${path}[${index}]`));
-    return;
-  }
-
-  if (valueType === 'object') {
-    for (const [key, entry] of Object.entries(value)) {
-      assertSerialisable(entry, `${path}.${key}`);
-    }
-  }
+  const valueType = assertSupportedValue(value, path);
+  assertSerialisableChildren(value, path, valueType);
 }

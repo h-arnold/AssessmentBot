@@ -38,6 +38,22 @@ export function assertPersistenceProfileShape({ classes, assignments, profile })
 }
 
 /**
+ * Asserts one Year Group's class count falls within the even-distribution bounds.
+ *
+ * @param {{key: string}} yearGroup Year Group under test.
+ * @param {number} classCount Classes assigned to the Year Group.
+ * @param {number} minimumClasses Minimum even share.
+ * @param {number} maximumClasses Maximum even share.
+ */
+function assertYearGroupClassCount(yearGroup, classCount, minimumClasses, maximumClasses) {
+  if (classCount < minimumClasses || classCount > maximumClasses) {
+    fail(
+      `Year Group "${yearGroup.key}" holds ${classCount} classes; classes must be distributed ${minimumClasses}-${maximumClasses} per Year Group.`
+    );
+  }
+}
+
+/**
  * Asserts a profile's classes are distributed evenly across its Year Groups:
  * every Year Group is represented and no Year Group holds more than the even
  * share (floor or ceiling of `classCount / yearGroupCount`).
@@ -47,6 +63,12 @@ export function assertPersistenceProfileShape({ classes, assignments, profile })
  * @param {Array<object>} options.yearGroups Reference-data Year Groups.
  */
 export function assertYearGroupDistribution({ classes, yearGroups }) {
+  if (classes.length < yearGroups.length) {
+    fail(
+      `Profile holds ${classes.length} classes across ${yearGroups.length} Year Groups; every Year Group must hold at least one class.`
+    );
+  }
+
   const classCountByYearGroupKey = new Map();
   for (const classDocument of classes) {
     classCountByYearGroupKey.set(
@@ -60,11 +82,7 @@ export function assertYearGroupDistribution({ classes, yearGroups }) {
 
   for (const yearGroup of yearGroups) {
     const classCount = classCountByYearGroupKey.get(yearGroup.key) ?? 0;
-    if (classCount < minimumClasses || classCount > maximumClasses) {
-      fail(
-        `Year Group "${yearGroup.key}" holds ${classCount} classes; classes must be distributed ${minimumClasses}-${maximumClasses} per Year Group.`
-      );
-    }
+    assertYearGroupClassCount(yearGroup, classCount, minimumClasses, maximumClasses);
   }
 }
 

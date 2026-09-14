@@ -336,4 +336,18 @@ describe('synthetic analysis dispatcher round-trip bridge', () => {
 
     expectDispatcherSeamsRestored(snapshot);
   });
+
+  it('does not restore caller-owned Vitest spies when a round trip completes', async () => {
+    const callerOwnedTarget = { readClassName: (): string => 'original-class-name' };
+    const callerOwnedSpy = vi.spyOn(callerOwnedTarget, 'readClassName');
+
+    const bridge = createApiHandlerRoundTripBridge({ vi, profileName: SMALL_PROFILE });
+    installGoogleRunner(createSyntheticApiRoundTripRunner(bridge.invokeRequest));
+
+    await getABClass({ classId: knownClassId });
+
+    expect(callerOwnedTarget.readClassName).toBe(callerOwnedSpy);
+    callerOwnedTarget.readClassName();
+    expect(callerOwnedSpy).toHaveBeenCalledTimes(1);
+  });
 });

@@ -22,6 +22,23 @@ function assertTopicReferencesResolve(referenceData, yearGroupKeys) {
 }
 
 /**
+ * The entity-count names every generated manifest must declare.
+ *
+ * @remarks
+ * These names mirror the keys produced by `computeActualCounts`; a missing key
+ * must fail rather than silently passing the manifest count check.
+ */
+const REQUIRED_ENTITY_COUNT_NAMES = Object.freeze([
+  'classes',
+  'students',
+  'assignments',
+  'assignmentDefinitions',
+  'cohorts',
+  'yearGroups',
+  'assignmentTopics',
+]);
+
+/**
  * Computes the actual generated entity counts.
  *
  * @param {object} persistence Generated persistence graph.
@@ -47,6 +64,19 @@ function computeActualCounts(persistence, referenceData) {
 }
 
 /**
+ * Asserts the manifest declares every required generated entity count.
+ *
+ * @param {object} manifest Generated manifest.
+ */
+function assertRequiredEntityCountsDeclared(manifest) {
+  for (const entityName of REQUIRED_ENTITY_COUNT_NAMES) {
+    if (!(entityName in manifest.generatedEntityCounts)) {
+      fail(`manifest generatedEntityCounts is missing the required entity "${entityName}".`);
+    }
+  }
+}
+
+/**
  * Asserts the manifest counts and the profile class/year group counts match the graph.
  *
  * @param {object} manifest Generated manifest.
@@ -54,6 +84,8 @@ function computeActualCounts(persistence, referenceData) {
  * @param {object} profile Resolved profile definition.
  */
 function assertCountsMatch(manifest, actualCounts, profile) {
+  assertRequiredEntityCountsDeclared(manifest);
+
   for (const [entityName, declaredCount] of Object.entries(manifest.generatedEntityCounts)) {
     const actualCount = actualCounts.get(entityName);
     if (actualCount === undefined) {

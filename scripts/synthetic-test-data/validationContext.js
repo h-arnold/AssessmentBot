@@ -47,24 +47,32 @@ export function buildValidationContext(manifest, referenceData, persistence) {
   const yearGroupKeys = new Set(referenceData.yearGroups.map((yearGroup) => yearGroup.key));
   const cohortKeys = new Set(referenceData.cohorts.map((cohort) => cohort.key));
   const topicKeys = new Set(referenceData.assignmentTopics.map((topic) => topic.key));
-  const definitionByKey = new Map(
-    persistence.assignmentDefinitions.map((definition) => [definition.definitionKey, definition])
-  );
-  const definitionTaskIdsByKey = new Map(
-    persistence.assignmentDefinitions.map((definition) => [
-      definition.definitionKey,
-      collectTaskIds(definition.tasks),
-    ])
-  );
+  const definitionByKey = new Map();
+  const definitionTaskIdsByKey = new Map();
+  for (const definition of persistence.assignmentDefinitions) {
+    if (definitionByKey.has(definition.definitionKey)) {
+      fail(
+        `duplicate assignment definition key "${definition.definitionKey}" in persistence.assignmentDefinitions.`
+      );
+    }
+    definitionByKey.set(definition.definitionKey, definition);
+    definitionTaskIdsByKey.set(definition.definitionKey, collectTaskIds(definition.tasks));
+  }
+
   const rosterByClassId = new Map(
     persistence.classes.map((classDocument) => [
       classDocument.classId,
       new Set(classDocument.students.map((student) => student.id)),
     ])
   );
-  const persistenceAssignmentByAssignmentId = new Map(
-    persistence.assignments.map((assignment) => [assignment.assignmentId, assignment])
-  );
+
+  const persistenceAssignmentByAssignmentId = new Map();
+  for (const assignment of persistence.assignments) {
+    if (persistenceAssignmentByAssignmentId.has(assignment.assignmentId)) {
+      fail(`duplicate assignment id "${assignment.assignmentId}" in persistence.assignments.`);
+    }
+    persistenceAssignmentByAssignmentId.set(assignment.assignmentId, assignment);
+  }
 
   return {
     profile,
