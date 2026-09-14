@@ -16,6 +16,7 @@ type VitestProject = {
     setupFiles?: string | string[];
     include?: string[];
     exclude?: string[];
+    testTimeout?: number;
   };
 };
 
@@ -32,13 +33,24 @@ type EslintConfigEntry = {
     sourceType?: string;
     parser?: unknown;
   };
+  rules?: Record<string, unknown>;
+};
+
+type SharedEslintRulesModule = {
+  nodeToolingRules?: Record<string, unknown>;
 };
 
 const SYNTHETIC_SCRIPT_PATH = 'scripts/synthetic-test-data';
 const SYNTHETIC_TEST_PATH = 'tests/synthetic-analysis';
 const SYNTHETIC_TEST_GLOB = 'tests/synthetic-analysis/**/*.test.ts';
+const SYNTHETIC_STRESS_TEST_GLOB = 'tests/synthetic-analysis-stress/**/*.test.ts';
+const SYNTHETIC_STRESS_PROJECT = 'synthetic-analysis-stress';
 const SETUP_GLOBALS_PATH = 'tests/setupGlobals.js';
 const ROOT_TEST_INCLUDE = 'tests/**/*.test.js';
+const ROOT_ESLINT_CONFIG = 'eslint.config.js';
+const BUILDER_ESLINT_CONFIG = 'scripts/builder/eslint.config.js';
+const BUILDER_SCRIPT_PATH = 'scripts/builder/src';
+const SHARED_RULES_MODULE = 'config/eslint/ts-base-rules.cjs';
 
 const nodeRequire = createRequire(import.meta.url);
 const repositoryRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -48,6 +60,9 @@ const packageManifest = JSON.parse(
 ) as PackageManifest;
 const vitestConfig = nodeRequire(join(repositoryRoot, 'vitest.config.js')) as VitestConfig;
 const eslintConfig = nodeRequire(join(repositoryRoot, 'eslint.config.js')) as EslintConfigEntry[];
+// The builder config already owns the rules applied to every other file under
+// `scripts/`; the synthetic scripts must reuse that same canonical source.
+const builderEslintConfig = loadEslintConfig(BUILDER_ESLINT_CONFIG);
 
 /**
  * Normalises an ESLint/Vitest pattern field into an array.
@@ -214,6 +229,73 @@ function selectedVitestProjects(tokens: string[]): string[] {
   return selected;
 }
 
+/**
+ * Loads an ESLint flat-config module, unwrapping the ESM default export.
+ *
+ * @param configPath The repository-relative ESLint config path.
+ * @returns The flat-config entries exported by the config module.
+ */
+function loadEslintConfig(configPath: string): EslintConfigEntry[] {
+  const loaded = nodeRequire(join(repositoryRoot, configPath));
+  return (Array.isArray(loaded) ? loaded : loaded.default) as EslintConfigEntry[];
+}
+
+/**
+ * Lists the ESLint config paths that govern the synthetic scripts.
+ *
+ * Follows the gating `lint:synthetic:check` command rather than a hard-coded file.
+ *
+ * @returns The repository-relative config paths used for the synthetic script path.
+ */
+function syntheticScriptLintConfigPaths(): string[] {
+  const command = packageManifest.scripts['lint:synthetic:check'] ?? '';
+  const configPaths = splitCommandSteps(command)
+    .filter((step) => step.includes(SYNTHETIC_SCRIPT_PATH))
+    .map((step) => {
+      const tokens = tokenizeCommand(step);
+      const inlineConfig = tokens.find((token) => token.startsWith('--config='));
+      if (inlineConfig !== undefined) {
+        return inlineConfig.slice('--config='.length);
+      }
+
+      const configIndex = tokens.indexOf('--config');
+      return configIndex === -1
+        ? ROOT_ESLINT_CONFIG
+        : (tokens[configIndex + 1] ?? ROOT_ESLINT_CONFIG);
+    });
+
+  return [...new Set(configPaths)];
+}
+
+/**
+ * Selects the flat-config entries that target a repository path.
+ *
+ * @param entries The flat-config entries to filter.
+ * @param targetPath The repository-relative path the entries must cover.
+ * @returns The entries whose `files` patterns target the path.
+ */
+function eslintScopesTargeting(
+  entries: EslintConfigEntry[],
+  targetPath: string
+): EslintConfigEntry[] {
+  return entries.filter((entry) =>
+    toPatternList(entry.files).some(
+      (pattern) => pattern === targetPath || pattern.startsWith(`${targetPath}/`)
+    )
+  );
+}
+
+/**
+ * Resolves the flat-config scopes that lint the synthetic scripts.
+ *
+ * @returns The synthetic-script scopes drawn from the governing configs.
+ */
+function syntheticScriptScopes(): EslintConfigEntry[] {
+  return syntheticScriptLintConfigPaths().flatMap((configPath) =>
+    eslintScopesTargeting(loadEslintConfig(configPath), SYNTHETIC_SCRIPT_PATH)
+  );
+}
+
 describe('synthetic analysis lint command contract', () => {
   it('runs ESLint with --fix across both the synthetic scripts and specs', () => {
     const tokens = tokenizeCommand(packageManifest.scripts['lint:synthetic'] ?? '');
@@ -272,6 +354,21 @@ describe('synthetic analysis test command contract', () => {
     expect(tokens).toContain('--coverage');
     expect(targetsSyntheticDomain(tokens)).toBe(true);
   });
+
+  it('provides an opt-in stress command for the dedicated full-large stress project', () => {
+    const tokens = tokenizeCommand(packageManifest.scripts['test:synthetic:stress'] ?? '');
+
+    expect(invokesVitestRun(tokens)).toBe(true);
+    expect(selectedVitestProjects(tokens)).toEqual([SYNTHETIC_STRESS_PROJECT]);
+  });
+
+  it('keeps the opt-in stress project out of the normal synthetic commands', () => {
+    for (const scriptName of ['test:synthetic', 'test:synthetic:coverage']) {
+      const tokens = tokenizeCommand(packageManifest.scripts[scriptName] ?? '');
+
+      expect(selectedVitestProjects(tokens)).not.toContain(SYNTHETIC_STRESS_PROJECT);
+    }
+  });
 });
 
 describe('synthetic analysis aggregate command wiring', () => {
@@ -320,16 +417,53 @@ describe('synthetic analysis Vitest project boundary', () => {
       )
     ).toBe(false);
   });
+
+  it('defines the opt-in stress project with the full-large spec glob and an explicit budget', () => {
+    const stressProject = (vitestConfig.test?.projects ?? []).find(
+      (project) => project.test?.name === SYNTHETIC_STRESS_PROJECT
+    );
+
+    expect(stressProject).toBeDefined();
+    expect(toPatternList(stressProject?.test?.include)).toEqual([SYNTHETIC_STRESS_TEST_GLOB]);
+    expect(stressProject?.test?.environment).toBe('node');
+    expect(toPatternList(stressProject?.test?.setupFiles)).toContain(SETUP_GLOBALS_PATH);
+    expect(typeof stressProject?.test?.testTimeout).toBe('number');
+    expect(stressProject?.test?.testTimeout).toBeGreaterThan(0);
+  });
 });
 
 describe('synthetic analysis ESLint scope', () => {
-  it('lints the synthetic scripts as a root ESM scope', () => {
-    const scriptScope = eslintConfig.find((entry) =>
-      toPatternList(entry.files).some((pattern) => pattern.startsWith(SYNTHETIC_SCRIPT_PATH))
-    );
+  it('reuses the exported shared Node-tooling rules object in both configs', () => {
+    // `nodeToolingRules` must be exported once from the shared rule base and
+    // referenced by identity in both the builder and synthetic script scopes.
+    // A value-equivalent copy in either config must fail this contract.
+    const sharedRulesModule = nodeRequire(
+      join(repositoryRoot, SHARED_RULES_MODULE)
+    ) as SharedEslintRulesModule;
+    const sharedNodeToolingRules = sharedRulesModule.nodeToolingRules;
+    expect(sharedNodeToolingRules).toBeTypeOf('object');
+    expect(Object.keys(sharedNodeToolingRules ?? {}).length).toBeGreaterThan(0);
 
-    expect(scriptScope).toBeDefined();
-    expect(scriptScope?.languageOptions?.sourceType).toBe('module');
+    const builderScopeUsingSharedRules = eslintScopesTargeting(
+      builderEslintConfig,
+      BUILDER_SCRIPT_PATH
+    ).find((scope) => scope.rules === sharedNodeToolingRules);
+    expect(builderScopeUsingSharedRules).toBeDefined();
+
+    const scriptScopes = syntheticScriptScopes();
+    expect(scriptScopes.length).toBeGreaterThan(0);
+    for (const scope of scriptScopes) {
+      expect(scope.rules).toBe(sharedNodeToolingRules);
+    }
+  });
+
+  it('lints the synthetic scripts as Node ESM modules', () => {
+    const scriptScopes = syntheticScriptScopes();
+
+    expect(scriptScopes.length).toBeGreaterThan(0);
+    for (const scope of scriptScopes) {
+      expect(scope.languageOptions?.sourceType).toBe('module');
+    }
   });
 
   it('lints the synthetic TypeScript specs with a TypeScript-aware parser', () => {
@@ -350,5 +484,14 @@ describe('synthetic analysis ESLint scope', () => {
           pattern.includes(SYNTHETIC_SCRIPT_PATH) || pattern.includes(SYNTHETIC_TEST_PATH)
       )
     ).toBe(false);
+  });
+
+  it('lints the opt-in stress TypeScript specs with a TypeScript-aware parser', () => {
+    const stressScope = eslintConfig.find((entry) =>
+      toPatternList(entry.files).some((pattern) => pattern === SYNTHETIC_STRESS_TEST_GLOB)
+    );
+
+    expect(stressScope).toBeDefined();
+    expect(stressScope?.languageOptions?.parser).toBeDefined();
   });
 });

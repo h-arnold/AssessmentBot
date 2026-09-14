@@ -27,7 +27,7 @@ This feature is **not** intended to:
 3. Generation is deterministic. A profile and integer seed identify a corpus exactly; generated values must never depend on wall-clock time, ambient randomness, or external services.
 4. Small, medium, and large profiles are supported. Reusable committed fixtures live alongside the existing backend mock data under `tests/__mocks__/data/`; generator functionality lives under `scripts/`.
 5. The large profile represents 3,000 students: 100 classes of 30 students, distributed as evenly as possible across Year Groups 7–30, with 100 assignments per class.
-6. Large-profile assignment completion uses four deterministic per-assignment bands: 5% of assignments complete at 20–49%, 10% at 50–79%, 70% at 80–95%, and 15% at 96–100%. A profile seed chooses a percentage within its assigned band; completion count is deterministically rounded to a class roster of 30 students.
+6. Large-profile assignment completion uses four deterministic per-assignment bands: 5% of assignments complete at 20–49%, 10% at 50–79%, 70% at 80–95%, and 15% at 96–100%. A profile seed chooses a percentage within its assigned band; completion count is deterministically rounded to a class roster of 30 students. Completion bands must be derived from the documented class roster and generated submission data, never stored as an undocumented production persistence or transport field.
 7. The committed large **representative projection** is a compact, transport-valid sample plus a manifest that records the canonical large population. It is not represented as, or used as a substitute for, the full 3,000-student stress profile. The full nested persistence corpus is generated deterministically on demand for dedicated stress tests and is not committed.
 8. Frontend-service integration tests must not hand-construct a frontend-only equivalent of a backend payload when a synthetic profile can supply it. In v1 they exercise `classDetailService` (`getABClass`) and `assignmentDefinitionPartialsService` (`getAssignmentDefinitionPartials`) through a shared test-only bridge, then use their validated values as `DataAnalysisService` input.
 9. The bridge must route a frontend service through `callApi`, invoke the real backend dispatcher and return through the existing harness, which JSON-stringifies success values. It must preserve raw failure-handler values and per-call callback isolation.
@@ -146,6 +146,21 @@ tests/__mocks__/data/
     ├── medium compact transport profile + manifest
     └── large representative projection + manifest
 ```
+
+### Generator-domain composition API
+
+The generator exposes a minimal, test-only composition API. Fixtures, the fixture loader, the round-trip bridge, and focused tests obtain deterministic graph data through these entry points. It is not a production persistence, API, or transport contract, and GAS runtime source must not import it.
+
+- **Profile selection** — `PROFILE_NAMES` and `getProfileDefinition(name)` enumerate the supported profiles and resolve a named profile definition, rejecting unknown names loudly.
+- **Reference data** — `generateReferenceData` generates cohorts, Year Groups, and assignment topics for the profile.
+- **Assignment definitions** — `generateAssignmentDefinitions` generates document definitions with keyed tasks and resolvable reference keys.
+- **Classes and assignments** — `generateAssignments` generates class rosters and the per-class assignment graph.
+- **Submissions** — `generateSubmissions` generates roster-bound submissions and submission items for one class assignment.
+- **Transport projection** — `toTransportViews` projects the persistence graph into the four named transport views.
+- **Graph composition** — `generateSyntheticAnalysisGraph(profile, options)` composes the manifest, reference data, persistence graph, and transport views deterministically.
+- **Invariant validation** — `validateSyntheticAnalysisGraph(graph)` validates reference integrity, redaction, serialisability, and profile counts with actionable failures.
+
+The top-level composition returns the corpus model defined above with a fixed profile seed; callers may override the seed to prove determinism and seed-sensitivity. The per-stage generators are composition points for focused tests; they are not a second contract and must not duplicate the shape rules owned by the data-shape documents.
 
 ### Out of scope for this surface
 
