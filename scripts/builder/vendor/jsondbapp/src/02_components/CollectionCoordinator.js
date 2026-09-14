@@ -8,6 +8,10 @@
  */
 /* exported CollectionCoordinator */
 const LEASE_RENEWAL_WINDOW_MS = 250;
+const LOCK_ACQUISITION_TIMEOUT_REASON = 'lock-acquisition-timeout';
+const PREFLIGHT_BUDGET_EXHAUSTED_REASON = 'preflight-budget-exhausted';
+const POST_OPERATION_OVERRUN_REASON = 'post-operation-overrun';
+const LEASE_UNRECOVERABLE_REASON = 'lease-not-recoverable';
 /**
  * Orchestrates coordinated collection operations by applying locking,
  * conflict detection, and metadata synchronisation around core CRUD actions.
@@ -18,10 +22,9 @@ class CollectionCoordinator {
    * @param {Collection} collection - Collection instance to coordinate
    * @param {MasterIndex} masterIndex - MasterIndex for cross-instance coordination
    * @param {Object|DatabaseConfig} config - Coordination settings or DatabaseConfig
-   * @param {JDbLogger} _logger - Logger factory override
-   * @throws {ErrorHandler.ErrorTypes.INVALID_ARGUMENT} When dependencies or config invalid
+   * @throws {InvalidArgumentError} When dependencies or config invalid
    */
-  constructor(collection, masterIndex, config = {}, _logger = JDbLogger) {
+  constructor(collection, masterIndex, config = {}) {
     Validate.object(collection, 'collection');
     Validate.object(masterIndex, 'masterIndex');
     Validate.object(config, 'config');
@@ -45,54 +48,85 @@ class CollectionCoordinator {
    * @param {string} operationName - Name of the CRUD operation
    * @param {Function} callback - Core operation callback
    * @returns {*} Result of the core operation
-   * @throws {ErrorHandler.ErrorTypes.*} On lock, conflict or operation errors
+   * @throws {InvalidArgumentError} When arguments are invalid
+   * @throws {CoordinationTimeoutError} When the collection lock cannot be acquired within the
+   *   coordination window (reason: 'lock-acquisition-timeout', site 0, pre-callback).
+   * @throws {CoordinationTimeoutError} When the coordination budget is exhausted before the
+   *   callback runs (reason: 'preflight-budget-exhausted', site 1, pre-callback).
+   * @throws {CoordinationTimeoutError} When the callback overran the coordination budget and its
+   *   effects were already applied (reason: 'post-operation-overrun', site 2, post-callback).
+   * @throws {CoordinationTimeoutError} When lease renewal failed and a single re-acquisition
+   *   could not recover ownership (reason: 'lease-not-recoverable', site 3, post-callback).
+   * @throws {LockAcquisitionFailureError} When the collection lock cannot be acquired after retries
+   * @throws {ModificationConflictError} When modification tokens mismatch
+   * @throws {MasterIndexError} When master index metadata finalisation fails on the within-budget path
+   * @throws {*} Whatever the core operation callback throws, propagated unchanged
+   * @remarks Emits a DEBUG-gated coordinator.coordinate timing event through the component
+   *   logger. Timers wrap only these two methods; the raw Date.now() reads feeding timeout,
+   *   lease, and retry decisions are deliberately excluded from the timing facility. On a
+   *   violation path the boundary catch still emits the single operation-level failure record,
+   *   but it is supplemented by point-of-occurrence records (renewal-failure, re-acquisition
+   *   outcome, finalisation-failure-swallowed, finalisation-skipped, post-operation-overrun)
+   *   emitted by the unified post-callback algorithm. Within-budget finalisation failures
+   *   continue to propagate unchanged. The completion INFO record fires only on the success
+   *   path; every violation path throws and therefore never emits it.
    */
   coordinate(operationName, callback) {
-    Validate.nonEmptyString(operationName, 'operationName');
-    Validate.type(callback, 'function', 'callback');
+    return this._logger.timeSync('coordinator.coordinate', () => {
+      Validate.nonEmptyString(operationName, 'operationName');
+      Validate.type(callback, 'function', 'callback');
 
-    const opId = IdGenerator.generateUUID();
-    const name = this._collection.getName();
-    let lockAcquired = false;
-    let lockAcquiredAt = null;
-    const startTime = Date.now();
+      const opId = IdGenerator.generateUUID();
+      const name = this._collection.getName();
+      let lockAcquired = false;
+      let lockAcquiredAt = null;
+      let succeeded = false;
+      const startTime = Date.now();
 
-    this._logger.debug(`Starting operation: ${operationName}`, { collection: name, opId });
+      this._logger.debug(`Starting operation: ${operationName}`, { collection: name, opId });
 
-    try {
-      lockAcquiredAt = this._acquireLockWithTimeoutMapping(opId, operationName, name);
-      lockAcquired = true;
-      this._resolveConflictsIfPresent(name);
-      const result = this._executeOperationWithTimeout(
-        callback,
-        operationName,
-        opId,
-        name,
-        startTime
-      );
-      this._renewLeaseForFinalisationIfRequired(lockAcquiredAt, opId, operationName, name);
-      this.updateMasterIndexMetadata();
-      return result;
-    } catch (e) {
-      this._logger.error(`Operation ${operationName} failed`, {
-        collection: name,
-        opId,
-        error: e.message,
-      });
-      throw e;
-    } finally {
-      if (lockAcquired) {
-        this.releaseOperationLock(opId);
+      try {
+        lockAcquiredAt = this._acquireLockWithTimeoutMapping(opId, operationName, name);
+        lockAcquired = true;
+        this._resolveConflictsIfPresent(name);
+        this._enforcePreflightBudget(operationName, opId, name, startTime);
+        const result = callback();
+        const overBudget = Date.now() - startTime > this._config.coordinationTimeoutMs;
+        this._finaliseAfterOperation(
+          operationName,
+          opId,
+          name,
+          lockAcquiredAt,
+          startTime,
+          overBudget
+        );
+        succeeded = true;
+        return result;
+      } catch (e) {
+        this._logger.error(`Operation ${operationName} failed`, {
+          collection: name,
+          opId,
+          error: ErrorHandler.safeErrorMessage(e),
+        });
+        throw e;
+      } finally {
+        if (lockAcquired) {
+          this.releaseOperationLock(opId);
+        }
+        // Failures are already reported by the catch above; claiming completion here would
+        // misrepresent a failed operation as finished.
+        if (succeeded) {
+          this._logger.info(`Operation ${operationName} complete`, { collection: name, opId });
+        }
       }
-      this._logger.info(`Operation ${operationName} complete`, { collection: name, opId });
-    }
+    });
   }
 
   /**
    * Validate modification tokens match before operation
    * @param {string} localToken - Local collection metadata token
    * @param {string|null} remoteToken - Master index metadata token
-   * @throws {ErrorHandler.ErrorTypes.CONFLICT_ERROR} When tokens differ
+   * @throws {ModificationConflictError} When tokens differ
    */
   validateModificationToken(localToken, remoteToken) {
     if (remoteToken !== null && remoteToken !== undefined && localToken !== remoteToken) {
@@ -112,8 +146,10 @@ class CollectionCoordinator {
    * @param {string} operationName - Operation name for error context
    * @param {string} collectionName - Collection name for logging
    * @returns {number} Timestamp recorded after the lock was acquired.
-   * @throws {ErrorHandler.ErrorTypes.COORDINATION_TIMEOUT} When lock acquisition times out
-   * @throws {ErrorHandler.ErrorTypes.*} For other lock acquisition failures
+   * @throws {CoordinationTimeoutError} When lock acquisition times out; the thrown error carries
+   *   the LOCK_ACQUISITION_TIMEOUT_REASON value in its context to distinguish the pre-callback
+   *   site-0 throw from the other coordination timeout sites.
+   * @throws {*} Any other lock acquisition failure, rethrown unchanged
    * @private
    */
   _acquireLockWithTimeoutMapping(opId, operationName, collectionName) {
@@ -124,12 +160,11 @@ class CollectionCoordinator {
         this._logger.error('Lock acquisition timed out', {
           collection: collectionName,
           operationId: opId,
+          opId,
           timeout: this._config.coordinationTimeoutMs,
+          reason: LOCK_ACQUISITION_TIMEOUT_REASON,
         });
-        throw new ErrorHandler.ErrorTypes.COORDINATION_TIMEOUT(
-          operationName,
-          this._config.coordinationTimeoutMs
-        );
+        this._throwCoordinationTimeout(operationName, LOCK_ACQUISITION_TIMEOUT_REASON);
       }
       throw e;
     }
@@ -139,14 +174,18 @@ class CollectionCoordinator {
    * Renew the lock lease when the operation is close to the expiry window.
    * @param {number|null} lockAcquiredAt - Timestamp recorded after lock acquisition.
    * @param {string} opId - Operation identifier.
-   * @param {string} operationName - Operation name for error context.
    * @param {string} collectionName - Collection name for logging.
-   * @throws {ErrorHandler.ErrorTypes.COORDINATION_TIMEOUT} When the lease can no longer be renewed safely.
+   * @returns {boolean} True when renewal was not required or succeeded; false when renewal was
+   *   due and failed (the caller must attempt a single re-acquisition).
    * @private
+   * @remarks No longer throws: the unified post-callback algorithm centralises all
+   *   CoordinationTimeoutError throw decisions in coordinate()/_finaliseAfterOperation. A
+   *   due-but-failed renewal emits a loud ERROR and reports false so ownership resolution can
+   *   attempt exactly one re-acquisition.
    */
-  _renewLeaseForFinalisationIfRequired(lockAcquiredAt, opId, operationName, collectionName) {
+  _renewLeaseForFinalisationIfRequired(lockAcquiredAt, opId, collectionName) {
     if (!this._shouldRenewLease(lockAcquiredAt)) {
-      return;
+      return true;
     }
 
     const renewed = this._masterIndex.renewCollectionLock(
@@ -155,7 +194,7 @@ class CollectionCoordinator {
       this._config.collectionLockLeaseMs
     );
     if (renewed) {
-      return;
+      return true;
     }
 
     this._logger.error('Collection lock lease expired before finalisation could complete', {
@@ -163,9 +202,163 @@ class CollectionCoordinator {
       opId,
       leaseMs: this._config.collectionLockLeaseMs,
     });
+    return false;
+  }
+
+  /**
+   * Attempt exactly one lease re-acquisition for finalisation after a renewal failure.
+   * @param {string} collectionName - Collection name for logging and re-acquisition.
+   * @param {string} opId - Operation identifier for the re-acquisition request.
+   * @returns {boolean} True when the re-acquisition succeeded; false when it returned false or threw.
+   * @private
+   * @remarks No retry loop and no backoff: the unified policy permits a single re-acquisition
+   *   attempt. A thrown error (e.g. CollectionNotFoundError) is treated identically to a false
+   *   result so the caller routes to the lost-unrecoverable path. On success a loud WARN records
+   *   the recovery so operators can correlate with the preceding renewal-failure ERROR.
+   */
+  _attemptSingleReacquisition(collectionName, opId) {
+    try {
+      const acquired = this._masterIndex.acquireCollectionLock(
+        collectionName,
+        opId,
+        this._config.collectionLockLeaseMs
+      );
+      if (acquired) {
+        this._logger.warn('Collection lock re-acquired for finalisation after renewal failure', {
+          collection: collectionName,
+          opId,
+          outcome: 'recovered',
+        });
+      }
+      return acquired;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Resolve whether the coordinator still owns the lease before finalisation.
+   * @param {string} opId - Operation identifier.
+   * @param {string} collectionName - Collection name for logging.
+   * @param {number|null} lockAcquiredAt - Timestamp recorded after lock acquisition.
+   * @returns {string} 'intact' (renewal not required or succeeded), 'restored' (renewal failed but a
+   *   single re-acquisition succeeded), or 'lost-unrecoverable' (re-acquisition returned false or threw).
+   * @private
+   * @remarks Renewal is attempted first (non-throwing boolean). On renewal failure exactly one
+   *   re-acquisition attempt is made; a false return or a thrown error is treated uniformly as
+   *   unrecoverable.
+   */
+  _resolveOwnership(opId, collectionName, lockAcquiredAt) {
+    const renewalOk = this._renewLeaseForFinalisationIfRequired(
+      lockAcquiredAt,
+      opId,
+      collectionName
+    );
+    if (renewalOk) {
+      return 'intact';
+    }
+
+    const reacquired = this._attemptSingleReacquisition(collectionName, opId);
+    if (reacquired) {
+      return 'restored';
+    }
+
+    return 'lost-unrecoverable';
+  }
+
+  /**
+   * Apply the unified post-callback violation algorithm: finalise metadata (or skip it) and
+   * raise the appropriate CoordinationTimeoutError throw site.
+   * @param {string} operationName - Operation name for error context.
+   * @param {string} opId - Operation identifier.
+   * @param {string} collectionName - Collection name for logging.
+   * @param {number|null} lockAcquiredAt - Timestamp recorded after lock acquisition.
+   * @param {number} startTime - Operation start timestamp captured once by coordinate().
+   * @param {boolean} overBudget - True when the callback exceeded the coordination budget.
+   * @returns {void}
+   * @throws {CoordinationTimeoutError} When the lease is unrecoverable (site 3, reason
+   *   'lease-not-recoverable') or when the operation overran the budget (site 2, reason
+   *   'post-operation-overrun').
+   * @private
+   * @remarks Centralises the post-callback half of the unified violation algorithm. On a
+   *   lost-unrecoverable ownership outcome finalisation is skipped and a loud divergence ERROR is
+   *   logged before the primary CoordinationTimeoutError propagates. On an over-budget path a
+   *   finalisation failure is swallowed with a loud ERROR so it cannot mask the primary timeout;
+   *   the boundary catch also records the operation failure, giving two deliberate records for a
+   *   violation-path operation. The elapsedMs read here is for the overrun log only and is not a
+   *   second budget verdict.
+   */
+  _finaliseAfterOperation(
+    operationName,
+    opId,
+    collectionName,
+    lockAcquiredAt,
+    startTime,
+    overBudget
+  ) {
+    const ownershipOutcome = this._resolveOwnership(opId, collectionName, lockAcquiredAt);
+    if (ownershipOutcome === 'lost-unrecoverable') {
+      this._logger.error(
+        'Metadata finalisation skipped; collection and master index may be divergent',
+        {
+          collection: collectionName,
+          opId,
+          operation: operationName,
+        }
+      );
+      this._throwCoordinationTimeout(operationName, LEASE_UNRECOVERABLE_REASON);
+    }
+
+    let finalisationOutcome = 'finalised';
+    try {
+      this.updateMasterIndexMetadata();
+    } catch (finalisationError) {
+      if (overBudget) {
+        this._logger.error(
+          'Metadata finalisation failed on a violation path; the coordination timeout propagates',
+          {
+            collection: collectionName,
+            opId,
+            error: ErrorHandler.safeErrorMessage(finalisationError),
+          }
+        );
+        finalisationOutcome = 'finalisation-failed';
+      } else {
+        throw finalisationError;
+      }
+    }
+
+    if (overBudget) {
+      const elapsedMs = Date.now() - startTime;
+      this._logger.error('Operation exceeded the coordination budget after effects were applied', {
+        collection: collectionName,
+        opId,
+        timeoutMs: this._config.coordinationTimeoutMs,
+        elapsedMs,
+        finalisationOutcome,
+      });
+      this._throwCoordinationTimeout(operationName, POST_OPERATION_OVERRUN_REASON);
+    }
+  }
+
+  /**
+   * Construct and throw a reason-coded CoordinationTimeoutError for one of the unified
+   * coordination throw sites.
+   * @param {string} operationName - Operation name for error context.
+   * @param {string} reason - Reason code carried in the error context (one of the four
+   *   LOCK_ACQUISITION_TIMEOUT_REASON / PREFLIGHT_BUDGET_EXHAUSTED_REASON /
+   *   POST_OPERATION_OVERRUN_REASON / LEASE_UNRECOVERABLE_REASON values).
+   * @returns {void} Never returns; always throws.
+   * @throws {CoordinationTimeoutError} Always, with the caller-supplied reason code.
+   * @private
+   * @remarks Single construction point for all four reason-coded throw sites so the error
+   *   arguments (operation name and the coordination budget) stay consistent across sites.
+   */
+  _throwCoordinationTimeout(operationName, reason) {
     throw new ErrorHandler.ErrorTypes.COORDINATION_TIMEOUT(
       operationName,
-      this._config.coordinationTimeoutMs
+      this._config.coordinationTimeoutMs,
+      reason
     );
   }
 
@@ -197,39 +390,37 @@ class CollectionCoordinator {
   }
 
   /**
-   * Execute operation callback with timeout enforcement.
-   * @param {Function} callback - Operation callback
-   * @param {string} operationName - Operation name for error context
-   * @param {string} opId - Operation identifier for logging
-   * @param {string} collectionName - Collection name for logging
-   * @param {number} startTime - Operation start timestamp
-   * @returns {*} Operation result
-   * @throws {ErrorHandler.ErrorTypes.COORDINATION_TIMEOUT} When operation exceeds timeout
+   * Enforce the coordination budget before the operation callback runs.
+   * @param {string} operationName - Operation name for error context.
+   * @param {string} opId - Operation identifier for logging.
+   * @param {string} collectionName - Collection name for logging.
+   * @param {number} startTime - Operation start timestamp captured once by coordinate().
+   * @returns {void}
+   * @throws {CoordinationTimeoutError} When the budget is already exhausted before the callback.
    * @private
+   * @remarks Single clock source: elapsed time is measured from the startTime captured at the top
+   *   of coordinate() so the pre-flight verdict and the later over-budget verdict share one
+   *   measurement. On violation the callback never runs because this check throws before the
+   *   callback is invoked, so no operation side effects can occur.
    */
-  _executeOperationWithTimeout(callback, operationName, opId, collectionName, startTime) {
-    const result = callback();
-    const elapsed = Date.now() - startTime;
-    if (elapsed > this._config.coordinationTimeoutMs) {
-      this._logger.error('Operation timed out', {
+  _enforcePreflightBudget(operationName, opId, collectionName, startTime) {
+    const elapsedMs = Date.now() - startTime;
+    if (elapsedMs > this._config.coordinationTimeoutMs) {
+      this._logger.error('Coordination budget exhausted before the operation callback', {
         collection: collectionName,
         opId,
-        timeout: this._config.coordinationTimeoutMs,
+        timeoutMs: this._config.coordinationTimeoutMs,
       });
-      throw new ErrorHandler.ErrorTypes.COORDINATION_TIMEOUT(
-        operationName,
-        this._config.coordinationTimeoutMs
-      );
+      this._throwCoordinationTimeout(operationName, PREFLIGHT_BUDGET_EXHAUSTED_REASON);
     }
-    return result;
   }
 
   /**
    * Acquire operation lock with retry/backoff
    * @param {string} operationId - Unique operation identifier
    * @returns {number} Timestamp recorded after the lock was acquired.
-   * @throws {ErrorHandler.ErrorTypes.LOCK_ACQUISITION_FAILURE} When lock cannot be acquired
-   * @throws {Error} For unexpected errors during lock acquisition.
+   * @throws {LockAcquisitionFailureError} When lock cannot be acquired
+   * @throws {*} For unexpected errors during lock acquisition, rethrown unchanged.
    */
   acquireOperationLock(operationId) {
     const name = this._collection.getName();
@@ -282,13 +473,19 @@ class CollectionCoordinator {
   /**
    * Release operation lock
    * @param {string} operationId - Unique operation identifier
+   * @remarks Release failures are deliberately swallowed so they cannot mask the coordinated
+   *   operation's own outcome, but the diagnostic log records the underlying error message.
    */
   releaseOperationLock(operationId) {
     const name = this._collection.getName();
     try {
       this._masterIndex.releaseCollectionLock(name, operationId);
-    } catch {
-      this._logger.error('Lock release failed', { collection: name, operationId });
+    } catch (e) {
+      this._logger.error('Lock release failed', {
+        collection: name,
+        operationId,
+        error: ErrorHandler.safeErrorMessage(e),
+      });
       // swallow release errors to avoid masking operation errors
     }
   }
@@ -307,7 +504,7 @@ class CollectionCoordinator {
 
   /**
    * Resolve a metadata conflict. Only reload is supported, so just reload.
-   * @throws {ErrorHandler.ErrorTypes.CONFLICT_ERROR} When resolution fails
+   * @throws {*} Whatever the underlying collection reload throws (e.g. file access errors)
    */
   resolveConflict() {
     // Only reload is supported, so always reload
@@ -316,28 +513,37 @@ class CollectionCoordinator {
 
   /**
    * Update the master index with latest collection metadata
+   * @returns {void}
+   * @throws {MasterIndexError} When the metadata update fails on the within-budget path
+   * @remarks Emits a DEBUG-gated coordinator.updateMasterIndexMetadata timing event through the
+   *   component logger; the whole metadata update is timed as one unit. On the normal
+   *   within-budget path failures are wrapped in a MasterIndexError WITHOUT logging here —
+   *   failure logging is owned by coordinate's boundary catch, keeping exactly one diagnostic
+   *   record per failure. On an over-budget violation path, however, the unified coordination
+   *   algorithm additionally logs a point-of-occurrence error when this finalisation is
+   *   swallowed, so the boundary catch is no longer the only record in that case.
    */
   updateMasterIndexMetadata() {
-    const name = this._collection.getName();
-    const meta = this._collection._metadata;
-    const updates = {
-      documentCount: meta.documentCount,
-      modificationToken: meta.getModificationToken(),
-    };
-    try {
-      if (this._masterIndex.getCollection(name)) {
-        this._masterIndex.updateCollectionMetadata(name, updates);
-      } else {
-        // Initial registration of new collection
-        this._masterIndex.addCollection(name, meta);
+    return this._logger.timeSync('coordinator.updateMasterIndexMetadata', () => {
+      const name = this._collection.getName();
+      const meta = this._collection._metadata;
+      const updates = {
+        documentCount: meta.documentCount,
+        modificationToken: meta.getModificationToken(),
+      };
+      try {
+        if (this._masterIndex.getCollection(name)) {
+          this._masterIndex.updateCollectionMetadata(name, updates);
+        } else {
+          // Initial registration of new collection
+          this._masterIndex.addCollection(name, meta);
+        }
+      } catch (e) {
+        // Wrap only; on the within-budget path coordinate's catch owns the failure log entry.
+        // On an over-budget path the algorithm logs a point-of-occurrence error around the
+        // swallow and then propagates the primary CoordinationTimeoutError.
+        throw new ErrorHandler.ErrorTypes.MASTER_INDEX_ERROR('updateCollectionMetadata', e.message);
       }
-    } catch (e) {
-      // Log and wrap any failure in a MasterIndexError
-      this._logger.error('Master index metadata update failed', {
-        collection: name,
-        error: e.message,
-      });
-      throw new ErrorHandler.ErrorTypes.MASTER_INDEX_ERROR('updateCollectionMetadata', e.message);
-    }
+    });
   }
 }

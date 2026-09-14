@@ -4,8 +4,6 @@
  * This class provides a high-level interface for file operations,
  * including batch operations, intelligent caching, and optimised
  * Drive API usage patterns. Built on top of FileOperations.
- *
- * NOTE: For now, caching is not implemented but will be at a later stage.
  */
 
 /**
@@ -32,6 +30,10 @@ class FileService {
 
     this._fileOps = fileOps;
     this._logger = logger;
+    // Dedicated component logger used ONLY for timing attribution: FileService receives its
+    // working logger by injection (Database passes its own), so timing through it would
+    // mislabel fileService.* events as 'Database'.
+    this._timingLogger = JDbLogger.createComponentLogger('FileService');
     this._cache = new Map();
     this._maxCacheSize = 50;
     this._cacheEnabled = true;
@@ -49,27 +51,31 @@ class FileService {
    * @throws {FileNotFoundError} When file doesn't exist
    * @throws {PermissionDeniedError} When access is denied
    * @throws {InvalidFileFormatError} When file contains invalid JSON
+   * @remarks Emits a DEBUG-gated fileService.readFile timing event through the dedicated timing
+   *   logger so attribution stays FileService despite the injected logger.
    */
   readFile(fileId) {
-    this._assertFileId(fileId);
+    return this._timingLogger.timeSync('fileService.readFile', () => {
+      this._assertFileId(fileId);
 
-    this._logger.debug('Reading file through FileService', { fileId });
+      this._logger.debug('Reading file through FileService', { fileId });
 
-    // Check cache first if enabled
-    if (this._cacheEnabled && this._cache.has(fileId)) {
-      this._logger.debug('File content retrieved from cache', { fileId });
-      // Return a deep copy to preserve Date objects and avoid reference issues
-      return ObjectUtils.deepClone(this._cache.get(fileId));
-    }
+      // Check cache first if enabled
+      if (this._cacheEnabled && this._cache.has(fileId)) {
+        this._logger.debug('File content retrieved from cache', { fileId });
+        // Return a deep copy to preserve Date objects and avoid reference issues
+        return ObjectUtils.deepClone(this._cache.get(fileId));
+      }
 
-    const content = this._fileOps.readFile(fileId);
+      const content = this._fileOps.readFile(fileId);
 
-    // Add to cache if enabled
-    if (this._cacheEnabled) {
-      this._addToCache(fileId, content);
-    }
+      // Add to cache if enabled
+      if (this._cacheEnabled) {
+        this._addToCache(fileId, content);
+      }
 
-    return content;
+      return content;
+    });
   }
 
   /**
@@ -101,26 +107,30 @@ class FileService {
    * @param {string} folderId - Drive folder ID (optional, defaults to root)
    * @returns {string} Drive file ID of created file
    * @throws {PermissionDeniedError} When folder access is denied
+   * @remarks Emits a DEBUG-gated fileService.createFile timing event through the dedicated timing
+   *   logger so attribution stays FileService despite the injected logger.
    */
   createFile(fileName, data, folderId = null) {
-    this._assertFileName(fileName);
-    this._assertData(data);
+    return this._timingLogger.timeSync('fileService.createFile', () => {
+      this._assertFileName(fileName);
+      this._assertData(data);
 
-    this._logger.debug('Creating file through FileService', { fileName, folderId });
+      this._logger.debug('Creating file through FileService', { fileName, folderId });
 
-    const newFileId = this._fileOps.createFile(fileName, data, folderId);
+      const newFileId = this._fileOps.createFile(fileName, data, folderId);
 
-    // Add to cache if enabled - cache the data as it would be returned by readFile()
-    // This ensures cache consistency between write and read operations
-    if (this._cacheEnabled) {
-      // Simulate the round-trip through serialisation/deserialisation to ensure
-      // cached data matches what readFile() would return
-      const serialised = ObjectUtils.serialise(data);
-      const deserialisedData = ObjectUtils.deserialise(serialised);
-      this._addToCache(newFileId, deserialisedData);
-    }
+      // Add to cache if enabled - cache the data as it would be returned by readFile()
+      // This ensures cache consistency between write and read operations
+      if (this._cacheEnabled) {
+        // Simulate the round-trip through serialisation/deserialisation to ensure
+        // cached data matches what readFile() would return
+        const serialised = ObjectUtils.serialise(data);
+        const deserialisedData = ObjectUtils.deserialise(serialised);
+        this._addToCache(newFileId, deserialisedData);
+      }
 
-    return newFileId;
+      return newFileId;
+    });
   }
 
   /**
@@ -183,77 +193,41 @@ class FileService {
   /**
    * Batch read multiple files for improved efficiency
    * @param {Array<string>} fileIds - Array of Drive file IDs to read
-   * @returns {Array<Object>} Array of file contents (null for failed reads)
+   * @returns {{results: Array<Object|null>, errors: Array<{fileId: string, error: string}>}}
+   *   Index-aligned batch outcome: results[i] holds the contents of fileIds[i] (null for failed
+   *   reads) and errors collects one {fileId, error} entry per failed read.
+   * @throws {InvalidArgumentError} When fileIds is not an array
    */
   batchReadFiles(fileIds) {
-    if (!Array.isArray(fileIds)) {
-      throw new InvalidArgumentError('fileIds must be an array');
-    }
-
-    this._logger.debug('Batch reading files', { fileCount: fileIds.length });
-
-    const results = [];
-    const errors = [];
-
-    for (const fileId of fileIds) {
-      try {
-        const content = this.readFile(fileId);
-        results.push(content);
-      } catch (error) {
-        this._logger.warn('Failed to read file in batch operation', {
-          fileId,
-          error: error.message,
-        });
-        results.push(null);
-        errors.push({ fileId, error: error.message });
-      }
-    }
-
-    this._logger.debug('Batch read completed', {
-      totalFiles: fileIds.length,
-      successCount: results.filter((r) => r !== null).length,
-      errorCount: errors.length,
-    });
-
-    return results;
+    return this._batchWithFallback(
+      fileIds,
+      {
+        start: 'Batch reading files',
+        completion: 'Batch read completed',
+        warn: 'Failed to read file in batch operation',
+      },
+      (fileId) => this.readFile(fileId)
+    );
   }
 
   /**
    * Batch get metadata for multiple files
    * @param {Array<string>} fileIds - Array of Drive file IDs
-   * @returns {Array<Object>} Array of metadata objects (null for failed requests)
+   * @returns {{results: Array<Object|null>, errors: Array<{fileId: string, error: string}>}}
+   *   Index-aligned batch outcome: results[i] holds the metadata of fileIds[i] (null for failed
+   *   requests) and errors collects one {fileId, error} entry per failed request.
+   * @throws {InvalidArgumentError} When fileIds is not an array
    */
   batchGetMetadata(fileIds) {
-    if (!Array.isArray(fileIds)) {
-      throw new InvalidArgumentError('fileIds must be an array');
-    }
-
-    this._logger.debug('Batch getting metadata', { fileCount: fileIds.length });
-
-    const results = [];
-    const errors = [];
-
-    for (const fileId of fileIds) {
-      try {
-        const metadata = this.getFileMetadata(fileId);
-        results.push(metadata);
-      } catch (error) {
-        this._logger.warn('Failed to get metadata in batch operation', {
-          fileId,
-          error: error.message,
-        });
-        results.push(null);
-        errors.push({ fileId, error: error.message });
-      }
-    }
-
-    this._logger.debug('Batch metadata retrieval completed', {
-      totalFiles: fileIds.length,
-      successCount: results.filter((r) => r !== null).length,
-      errorCount: errors.length,
-    });
-
-    return results;
+    return this._batchWithFallback(
+      fileIds,
+      {
+        start: 'Batch getting metadata',
+        completion: 'Batch metadata retrieval completed',
+        warn: 'Failed to get metadata in batch operation',
+      },
+      (fileId) => this.getFileMetadata(fileId)
+    );
   }
 
   /**
@@ -287,6 +261,52 @@ class FileService {
       this.clearCache();
     }
     this._logger.debug('Cache enabled status changed', { enabled });
+  }
+
+  /**
+   * Run a per-file delegate across many file IDs, collecting index-aligned results and errors.
+   *
+   * Centralises the validate → loop → try/catch collect → debug-summary flow shared by
+   * `batchReadFiles` and `batchGetMetadata` so behavioural changes apply in one place.
+   * @private
+   * @param {Array<string>} fileIds - File IDs to process
+   * @param {{start: string, completion: string, warn: string}} logContext - Log message strings
+   *   emitted at the start, on completion, and per failed entry.
+   * @param {Function} operation - Per-file delegate. Receives a fileId and returns the success
+   *   value, or throws. Called once per fileId in array order.
+   * @returns {{results: Array<*|null>, errors: Array<{fileId: string, error: string}>}}
+   *   Index-aligned batch outcome: results[i] holds the delegate return value of fileIds[i]
+   *   (null for failed entries) and errors collects one {fileId, error} entry per failed entry.
+   * @throws {InvalidArgumentError} When fileIds is not an array
+   */
+  _batchWithFallback(fileIds, logContext, operation) {
+    if (!Array.isArray(fileIds)) {
+      throw new InvalidArgumentError('fileIds', fileIds, 'must be an array');
+    }
+
+    this._logger.debug(logContext.start, { fileCount: fileIds.length });
+
+    const results = [];
+    const errors = [];
+
+    for (const fileId of fileIds) {
+      try {
+        results.push(operation(fileId));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this._logger.warn(logContext.warn, { fileId, error: message });
+        results.push(null);
+        errors.push({ fileId, error: message });
+      }
+    }
+
+    this._logger.debug(logContext.completion, {
+      totalFiles: fileIds.length,
+      successCount: results.filter((r) => r !== null).length,
+      errorCount: errors.length,
+    });
+
+    return { results, errors };
   }
 
   /**

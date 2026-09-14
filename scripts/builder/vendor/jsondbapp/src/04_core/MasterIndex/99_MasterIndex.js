@@ -91,49 +91,102 @@ class MasterIndex {
   /**
    * Save master index to ScriptProperties
    * @param {Object} [dataOverride] - Optional data to save instead of internal state
-   * @param {Date} [timestamp] - Optional timestamp override
+   * @param {Date|string|number} [timestamp] - Optional timestamp override; accepts a valid
+   *   Date, an ISO date string, or an epoch-millisecond number, each coerced to a defensive
+   *   copy. Any other value (including null/undefined/invalid) falls back to the current time.
    * @returns {void}
+   * @throws {MasterIndexError} When ScriptProperties persistence fails — either serialisation of
+   *   the staged state via ObjectUtils.serialise or the PropertiesService.setProperty write. The
+   *   in-memory state is first resynchronised with the stored snapshot through
+   *   `_resyncAfterSaveFailure()` (discarding the un-persisted advances whenever a snapshot is
+   *   available) before the `MasterIndexError('save')` is re-thrown.
+   * @remarks Emits a DEBUG-gated masterIndex.save timing event through the component logger;
+   *   save is the single persist point timed for all indirect callers. Ordering is unchanged:
+   *   in-memory state is advanced first, then persisted.
    */
   save(dataOverride, timestamp = this._getCurrentTimestamp()) {
+    return this._logger.timeSync('masterIndex.save', () => {
+      try {
+        const dataToSave = dataOverride || this._data;
+        const effectiveTimestamp = this._normaliseTimestamp(timestamp);
+        dataToSave.lastUpdated = effectiveTimestamp;
+        const dataString = ObjectUtils.serialise(dataToSave);
+        PropertiesService.getScriptProperties().setProperty(
+          this._config.masterIndexKey,
+          dataString
+        );
+      } catch (error) {
+        this._resyncAfterSaveFailure();
+        throw new ErrorHandler.ErrorTypes.MASTER_INDEX_ERROR('save', error.message);
+      }
+    });
+  }
+
+  /**
+   * Reconcile in-memory state with the stored snapshot after a failed save.
+   * @private
+   * @returns {void}
+   * @remarks Three outcomes are possible, and each is recorded with a loud ERROR: (1) a stored
+   *   snapshot is found and assigned to `this._data`, discarding the staged, un-persisted
+   *   advances; (2) no snapshot is available, so the staged in-memory state is retained and the
+   *   absence is logged; (3) the raw reader itself fails, so the staged state is also retained and
+   *   the possible divergence is logged. Shape normalisation is deliberately skipped on this path:
+   *   `_ensureStateShape()` would trigger a self-saving normalisation that re-enters `save()` and
+   *   re-introduces the recursion this design removes — a stored payload needing normalisation is
+   *   re-normalised on the next lock-protected reload instead. Resynchronisation always targets
+   *   `this._data`; a `dataOverride` passed to `save()` is never adopted as master state. In every
+   *   outcome the original `MasterIndexError('save')` thrown by `save()` is re-thrown by the
+   *   caller; a reader failure must never mask it.
+   */
+  _resyncAfterSaveFailure() {
     try {
-      const dataToSave = dataOverride || this._data;
-      const effectiveTimestamp =
-        timestamp instanceof Date && !Number.isNaN(timestamp.getTime())
-          ? new Date(timestamp.getTime())
-          : this._getCurrentTimestamp();
-      dataToSave.lastUpdated = effectiveTimestamp;
-      const dataString = ObjectUtils.serialise(dataToSave);
-      PropertiesService.getScriptProperties().setProperty(this._config.masterIndexKey, dataString);
-    } catch (error) {
-      throw new ErrorHandler.ErrorTypes.MASTER_INDEX_ERROR('save', error.message);
+      const snapshot = this._readStoredSnapshot();
+      if (snapshot === null || snapshot === undefined) {
+        this._logger.error(
+          'Master index save failed; no stored snapshot was available to resynchronise in-memory state from',
+          { masterIndexKey: this._config.masterIndexKey }
+        );
+        return;
+      }
+      this._data = snapshot;
+      this._logger.error(
+        'Master index save failed; in-memory state resynchronised with the stored snapshot',
+        { masterIndexKey: this._config.masterIndexKey }
+      );
+    } catch (readError) {
+      this._logger.error(
+        'Master index save failed; in-memory state may be diverged from the stored snapshot',
+        {
+          masterIndexKey: this._config.masterIndexKey,
+          error: ErrorHandler.safeErrorMessage(readError),
+        }
+      );
     }
   }
 
   /**
    * Load master index from ScriptProperties
-   * @returns {Object|null} Deserialised index data
+   * @returns {Object|null} Deserialised index data, or null when no snapshot exists
+   * @remarks Public entry point over the single shared ScriptProperties loader (see
+   *   _loadFromScriptProperties) used by this facade, the constructor bootstrap, and the
+   *   under-lock reload path.
    */
   load() {
-    try {
-      const dataString = PropertiesService.getScriptProperties().getProperty(
-        this._config.masterIndexKey
-      );
-      const data = dataString ? ObjectUtils.deserialise(dataString) : null;
-      this._data = data;
-      if (this._data) {
-        this._ensureStateShape();
-      }
-      return data;
-    } catch (error) {
-      throw new ErrorHandler.ErrorTypes.MASTER_INDEX_ERROR('load', error.message);
-    }
+    return this._loadFromScriptProperties();
   }
 
   /**
    * Get all collections
    * @returns {Object<string, CollectionMetadata>} Map of CollectionMetadata keyed by collection name
+   * @throws {MasterIndexError} When the index state is unloaded
    */
   getCollections() {
+    if (!this._data?.collections) {
+      throw new ErrorHandler.ErrorTypes.MASTER_INDEX_ERROR(
+        'getCollections',
+        'Master index state is not loaded'
+      );
+    }
     const collections = {};
     const collectionNames = Object.keys(this._data.collections);
     for (const name of collectionNames) {
@@ -250,7 +303,7 @@ class MasterIndex {
    * @returns {boolean} True if collection was found and removed, false otherwise
    */
   removeCollection(name) {
-    if (!this._data || !this._data.collections) {
+    if (!this._data?.collections) {
       this._logger.warn('Internal state corrupted', { name });
       return false;
     }
@@ -277,7 +330,7 @@ class MasterIndex {
    * @param {string} operationId - A unique identifier for the operation acquiring the lock.
    * @param {number} [timeout=this._config.lockTimeout] - The duration for which the lock is valid in milliseconds.
    * @returns {boolean} True if the lock was acquired successfully, false otherwise.
-   * @throws {ErrorHandler.ErrorTypes.COLLECTION_NOT_FOUND} If the collection does not exist.
+   * @throws {CollectionNotFoundError} If the collection does not exist.
    */
   acquireCollectionLock(collectionName, operationId, timeout = this._config.lockTimeout) {
     return this._lockManager.acquireCollectionLock(collectionName, operationId, timeout);
@@ -386,7 +439,7 @@ class MasterIndex {
    * Assert that DatabaseConfig exposes the default providers required by MasterIndex.
    * @param {Object} config - Raw configuration input.
    * @returns {void}
-   * @throws {ErrorHandler.ErrorTypes.CONFIGURATION_ERROR} When DatabaseConfig or a required method is unavailable.
+   * @throws {ConfigurationError} When DatabaseConfig or a required method is unavailable.
    * @private
    */
   _assertRequiredDatabaseConfigDefaults(config) {
@@ -402,7 +455,7 @@ class MasterIndex {
    * Assert that DatabaseConfig exposes a required default provider.
    * @param {string} methodName - DatabaseConfig static method required by MasterIndex.
    * @returns {void}
-   * @throws {ErrorHandler.ErrorTypes.CONFIGURATION_ERROR} When DatabaseConfig or the required method is unavailable.
+   * @throws {ConfigurationError} When DatabaseConfig or the required method is unavailable.
    * @private
    */
   _assertDatabaseConfigDefault(methodName) {
@@ -438,20 +491,52 @@ class MasterIndex {
   }
 
   /**
-   * Load data from ScriptProperties
+   * Read and deserialise the stored ScriptProperties snapshot without touching
+   * in-memory state.
+   *
+   * This is the single raw read-and-deserialise implementation for ScriptProperties
+   * snapshots, composed by `_loadFromScriptProperties` and reused by the save-failure
+   * resynchronisation path. It deliberately never assigns `this._data`, never runs
+   * `_ensureStateShape()`, and never calls `save()` — that third property is what makes
+   * the save↔reload recursion impossible even when the stored payload is a legacy one.
+   * @returns {Object|null} Deserialised index data, or null when the key is absent
+   * @throws {Error} When the underlying read or deserialisation fails (the original
+   *   exception propagates unchanged)
+   * @remarks Absence of the key (null or undefined) is returned as null rather than
+   *   thrown; any other failure from `getProperty` or `ObjectUtils.deserialise` is
+   *   allowed to surface naturally.
+   * @private
+   */
+  _readStoredSnapshot() {
+    const dataString = PropertiesService.getScriptProperties().getProperty(
+      this._config.masterIndexKey
+    );
+    if (!dataString) {
+      return null;
+    }
+    return ObjectUtils.deserialise(dataString);
+  }
+
+  /**
+   * Load data from ScriptProperties into internal state.
+   *
+   * The single ScriptProperties loader implementation, shared by load(), the constructor
+   * bootstrap and _reloadLatestStateUnderLock(): it composes `_readStoredSnapshot()` to
+   * perform the raw read, assigns the result, then shape-checks. There is exactly one
+   * MASTER_INDEX_ERROR wrap point and one failure-log site here so the loading behaviour
+   * of every caller stays identical.
+   * @returns {Object|null} Deserialised index data, or null when no snapshot exists
+   * @throws {MasterIndexError} When reading or deserialising the stored snapshot fails
    * @private
    */
   _loadFromScriptProperties() {
     try {
-      const dataString = PropertiesService.getScriptProperties().getProperty(
-        this._config.masterIndexKey
-      );
-      if (dataString) {
-        this._data = ObjectUtils.deserialise(dataString);
+      const data = this._readStoredSnapshot();
+      this._data = data;
+      if (this._data) {
         this._ensureStateShape();
-      } else {
-        this._data = null;
       }
+      return data;
     } catch (error) {
       this._logger.error('Failed to load master index from ScriptProperties', {
         error: error.message,
@@ -505,17 +590,14 @@ class MasterIndex {
    * Persist collection metadata to internal state.
    * @param {string} name - Collection identifier
    * @param {CollectionMetadata} metadata - Normalised metadata instance
-   * @param {Date} timestamp - Timestamp applied to state change
+   * @param {Date|string|number} timestamp - Timestamp applied to state change
    * @private
    */
   _persistCollectionMetadata(name, metadata, timestamp) {
     Validate.nonEmptyString(name, 'name');
     Validate.required(metadata, 'metadata');
 
-    const effectiveTimestamp =
-      timestamp instanceof Date && !isNaN(timestamp.getTime())
-        ? new Date(timestamp.getTime())
-        : this._getCurrentTimestamp();
+    const effectiveTimestamp = this._normaliseTimestamp(timestamp);
 
     this._data.collections[name] = metadata;
     this._touchIndex(effectiveTimestamp);
@@ -530,7 +612,7 @@ class MasterIndex {
    */
   _getCollectionData(name) {
     Validate.nonEmptyString(name, 'name');
-    if (!this._data || !this._data.collections) {
+    if (!this._data?.collections) {
       return null;
     }
     return this._data.collections[name] || null;
@@ -546,18 +628,51 @@ class MasterIndex {
   }
 
   /**
+   * Normalise arbitrary timestamp input into a valid Date.
+   *
+   * Coerces string and number inputs via the Date constructor, so ISO date strings and
+   * epoch-millisecond values are accepted in addition to Date instances. A valid Date is
+   * returned as a defensive copy so the caller cannot mutate the stored timestamp. Only
+   * Date, string, and number inputs are considered: null, undefined, unsupported values
+   * (such as booleans, arrays, or objects), invalid Dates (getTime() is NaN), and unparseable
+   * values all fall back to the current timestamp. null/undefined are guarded explicitly
+   * because `new Date(null)` is epoch 0 (1970-01-01), a valid date that would otherwise
+   * stamp the index incorrectly.
+   * @param {*} candidate - Candidate timestamp input (Date, string, or number)
+   * @returns {Date} Normalised timestamp
+   * @private
+   */
+  _normaliseTimestamp(candidate) {
+    if (candidate === null || candidate === undefined) {
+      return this._getCurrentTimestamp();
+    }
+
+    if (
+      typeof candidate !== 'string' &&
+      typeof candidate !== 'number' &&
+      !(candidate instanceof Date)
+    ) {
+      return this._getCurrentTimestamp();
+    }
+
+    const parsed = new Date(candidate);
+    if (Number.isNaN(parsed.getTime())) {
+      return this._getCurrentTimestamp();
+    }
+
+    return new Date(parsed);
+  }
+
+  /**
    * Update the master index lastUpdated timestamp.
-   * @param {Date} timestamp - Timestamp to apply
+   * @param {Date|string|number} timestamp - Timestamp to apply
    * @private
    */
   _touchIndex(timestamp) {
     if (!this._data) {
       return;
     }
-    const effectiveTimestamp =
-      timestamp instanceof Date && !isNaN(timestamp.getTime())
-        ? new Date(timestamp.getTime())
-        : this._getCurrentTimestamp();
+    const effectiveTimestamp = this._normaliseTimestamp(timestamp);
     this._data.lastUpdated = effectiveTimestamp;
   }
 
@@ -581,22 +696,8 @@ class MasterIndex {
 
     if (this._data.modificationHistory) {
       delete this._data.modificationHistory;
-      this.save(undefined, this._resolveExistingTimestamp(this._data.lastUpdated));
+      this.save(undefined, this._data.lastUpdated);
     }
-  }
-
-  /**
-   * Resolve a safe timestamp for persistence updates.
-   * @param {*} candidate - Candidate timestamp input
-   * @returns {Date} Resolved timestamp
-   * @private
-   */
-  _resolveExistingTimestamp(candidate) {
-    const resolved = candidate instanceof Date ? candidate : new Date(candidate);
-    if (!isNaN(resolved.getTime())) {
-      return new Date(resolved.getTime());
-    }
-    return this._getCurrentTimestamp();
   }
 }
 
