@@ -12,7 +12,7 @@ import { join } from 'node:path';
 import { validateSyntheticAnalysisGraph } from './validateSyntheticAnalysisGraph.js';
 
 /**
- * Staged writer for committed synthetic analysis profiles.
+ * Staged writer for compact and full synthetic analysis profile outputs.
  *
  * @remarks
  * A profile is validated and written into a staging directory first. The
@@ -21,8 +21,10 @@ import { validateSyntheticAnalysisGraph } from './validateSyntheticAnalysisGraph
  * staging-write failure leaves the existing committed set untouched. The
  * replacement phase keeps each displaced directory as a backup and rolls every
  * applied replacement back if a later replacement fails, so the committed set
- * is never left partially regenerated. The writer only ever writes the compact
- * transport views; the uncommitted full-large corpus is gated by the caller in
+ * is never left partially regenerated. For either a compact profile or the
+ * uncommitted full-large corpus the writer persists only the transport views
+ * and manifest; the in-memory `persistence` graph is never written, and
+ * full-output-root enforcement is left to the caller in
  * `generateSyntheticAnalysisFixtures.js`.
  */
 
@@ -44,7 +46,7 @@ export const PROFILE_VIEW_FILE_NAMES = new Map([
 ]);
 
 /**
- * Serialises one view to its committed on-disk representation.
+ * Serialises one view to its persisted on-disk representation.
  *
  * @param {unknown} view The view to serialise.
  * @returns {string} Pretty-printed JSON with a trailing newline.
@@ -54,7 +56,7 @@ function serialiseView(view) {
 }
 
 /**
- * Builds the file name to serialised content map for a graph's committed views,
+ * Builds the file name to serialised content map for a graph's persisted views,
  * deriving every file name from the exported view mapping so the writer and the
  * synchronous loader cannot drift apart.
  *
@@ -91,8 +93,9 @@ function writeProfileFiles(directory, files) {
 }
 
 /**
- * Validates a generated graph and writes its committed transport views into a
- * fresh staging directory, leaving the destination profile directory untouched.
+ * Validates a generated graph and writes its transport and manifest files into
+ * a fresh staging directory, leaving the destination profile directory
+ * untouched.
  *
  * @param {object} options Staging inputs.
  * @param {object} options.graph The generated logical graph to persist.
@@ -213,7 +216,7 @@ export function commitStagedProfiles(stagedProfiles) {
 }
 
 /**
- * Validates a generated graph and writes its committed transport view files.
+ * Validates a generated graph and writes its transport and manifest files.
  *
  * @param {object} options Write inputs.
  * @param {object} options.graph The generated logical graph to persist.

@@ -89,7 +89,6 @@ const SMALL_PROFILE = 'small';
 const MEDIUM_PROFILE = 'medium';
 
 const UTC_ISO_INSTANT_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/u;
-const MONOTONIC_COUNTER_SUFFIX_PATTERN = /#\d+$/u;
 const EARLIEST_BOUNDED_ACADEMIC_INSTANT_MS = Date.UTC(2000, 0, 1);
 const LATEST_BOUNDED_ACADEMIC_INSTANT_MS = Date.UTC(2100, 0, 1);
 const MAX_BOUNDED_ACADEMIC_TIMELINE_SPAN_MS = Date.UTC(2030, 0, 1) - Date.UTC(2020, 0, 1);
@@ -113,18 +112,16 @@ function parseClassFullViews(graph: GeneratedSyntheticAnalysisGraph): ClassFull[
 }
 
 /**
- * Parses a generated UTC ISO 8601 timestamp, tolerating the documented
- * monotonic `#N` counter suffix used by submission `updatedAt` values.
+ * Parses a generated UTC ISO 8601 timestamp.
  *
  * @param value The generated timestamp string.
  * @returns The parsed epoch milliseconds.
  */
 function parseGeneratedUtcInstant(value: string): number {
-  const core = value.replace(MONOTONIC_COUNTER_SUFFIX_PATTERN, '');
-  if (!UTC_ISO_INSTANT_PATTERN.test(core)) {
+  if (!UTC_ISO_INSTANT_PATTERN.test(value)) {
     throw new Error(`Expected a bounded UTC ISO 8601 timestamp but received "${value}"`);
   }
-  const instant = Date.parse(core);
+  const instant = Date.parse(value);
   if (Number.isNaN(instant)) {
     throw new Error(`Expected "${value}" to parse as a valid UTC instant`);
   }
@@ -418,9 +415,6 @@ describe('synthetic transport timestamp contract', () => {
     expect(() => parseGeneratedUtcInstant('2024-01-01 12:00:00')).toThrow(/bounded UTC/u);
     expect(() => parseGeneratedUtcInstant('2024-01-01T12:00:00+01:00')).toThrow(/bounded UTC/u);
     expect(parseGeneratedUtcInstant('2024-01-01T12:00:00.000Z')).toBe(
-      Date.UTC(2024, 0, 1, 12, 0, 0)
-    );
-    expect(parseGeneratedUtcInstant('2024-01-01T12:00:00.000Z#2')).toBe(
       Date.UTC(2024, 0, 1, 12, 0, 0)
     );
   });

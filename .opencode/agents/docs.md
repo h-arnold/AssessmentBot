@@ -236,6 +236,9 @@ Provide a concise handoff summary including:
 │   │   │   ├── metric-display-precision.md              # Metric score decimal-place convention (0dp individual, 2dp averages)
 │   │   │   └── metric-icon-display.md                   # Metric icon rendering, theme-aware colour, stroke conventions
 │   │   │
+│   │   ├── testing/
+│   │   │   └── synthetic-test-data.md                  # Canonical: synthetic analysis corpus topology, profiles/views, commands, canonical-fixture policy
+│   │   │
 │   │   └── security/                                    # Security approach documentation (defence-in-depth model)
 │   │       ├── README.md                                # Overview: layering model, threat model, layer summaries, links
 │   │       ├── accepted-risks.md                        # Accepted risks, trade-offs, justifications, future direction

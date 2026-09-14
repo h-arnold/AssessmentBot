@@ -28,7 +28,7 @@ This feature is **not** intended to:
 4. Small, medium, and large profiles are supported. Reusable committed fixtures live alongside the existing backend mock data under `tests/__mocks__/data/`; generator functionality lives under `scripts/`.
 5. The large profile represents 3,000 students: 100 classes of 30 students, distributed as evenly as possible across Year Groups 7–30, with 100 assignments per class.
 6. Large-profile assignment completion uses four deterministic per-assignment bands: 5% of assignments complete at 20–49%, 10% at 50–79%, 70% at 80–95%, and 15% at 96–100%. A profile seed chooses a percentage within its assigned band; completion count is deterministically rounded to a class roster of 30 students. Completion bands must be derived from the documented class roster and generated submission data, never stored as an undocumented production persistence or transport field.
-7. The committed large **representative projection** is a compact, transport-valid sample plus a manifest that records the canonical large population. It is not represented as, or used as a substitute for, the full 3,000-student stress profile. The full nested persistence corpus is generated deterministically on demand for dedicated stress tests and is not committed.
+7. The committed large **representative projection** is a compact, transport-valid sample plus a manifest that records the canonical large population. It is not represented as, or used as a substitute for, the full 3,000-student stress profile. The full nested persistence graph is generated deterministically on demand, in memory, for dedicated stress tests and is never committed; the full CLI mode writes only the same five transport/manifest files as the compact profiles.
 8. Frontend-service integration tests must not hand-construct a frontend-only equivalent of a backend payload when a synthetic profile can supply it. In v1 they exercise `classDetailService` (`getABClass`) and `assignmentDefinitionPartialsService` (`getAssignmentDefinitionPartials`) through a shared test-only bridge, then use their validated values as `DataAnalysisService` input.
 9. The bridge must route a frontend service through `callApi`, invoke the real backend dispatcher and return through the existing harness, which JSON-stringifies success values. It must preserve raw failure-handler values and per-call callback isolation.
 10. Synthetic values must be unambiguously fake, must not contain secrets, and must comply with existing identifier-safety and wire-serialisation constraints.
@@ -88,7 +88,8 @@ The generator produces a graph, not unrelated rows. Each profile contains these 
     assignmentsByKey: Record<string, AssignmentFull>,
   },
   persistence: {
-    // Full profile output only; follows documented stored forms, including keyed tasks.
+    // In-memory logical graph for every profile; follows documented stored forms,
+    // including keyed tasks. Never written to disk.
   },
 }
 ```
@@ -183,7 +184,7 @@ The top-level composition returns the corpus model defined above with a fixed pr
 
 - A repository command regenerates all committed compact profiles from their recorded profile and seed.
 - Regeneration must fail before modifying fixture files if a graph or serialisation invariant fails.
-- A separate explicit mode writes the uncommitted large full persistence corpus to an ignored test-output location for stress tests. It must not silently replace committed compact data.
+- A separate explicit mode writes the uncommitted large-full transport views and manifest to an ignored test-output location for stress tests; the nested persistence graph stays in memory. It must not silently replace committed compact data.
 
 #### Test entry
 

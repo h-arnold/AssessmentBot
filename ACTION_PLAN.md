@@ -2,7 +2,7 @@
 
 ## Delivery progress
 
-- Current section: Section 4 — Compose the real dispatcher and frontend transport boundary.
+- Current section: Section 5 — Regression, documentation, and delivery verification.
 - Current phase: Complete — ready to commit and push.
 - Baseline: established on `feat/BulkTestDataGeneration` on 2026-09-12. Existing accepted technical debt: backend lint exits non-zero because of 11 pre-existing `max-lines` warnings; frontend lint exits non-zero; backend coverage remains below the existing 85% thresholds because Google API-dependent code cannot be reliably mocked. The coverage shortfall is identical on pristine `HEAD` and was explicitly accepted by the user on 2026-09-13. All other regression-checker checks passed. No regressions or new failures existed at baseline.
 - Section 2 API decision (user-approved 2026-09-13): define a minimal test-only generator-domain composition API. Completion bands are derived from documented class rosters and submission data, never stored as undocumented persistence fields.
@@ -209,6 +209,7 @@ Implementation:
 - Red-phase tests and the green-phase implementation were reviewed clean.
 - Section checks passed: `npm run lint:synthetic:check`, `npm run test:synthetic`, `npm run test:synthetic:coverage`, and `npm run test:synthetic:stress`.
 - Regression comparison on 2026-09-14 reported zero regressions and zero new failures; accepted existing debt remains unchanged.
+- Committed and pushed on `feat/BulkTestDataGeneration`: `fd06f63 test: add synthetic dispatcher round trip`.
 - Committed and pushed on `feat/BulkTestDataGeneration`: `f1af220 feat: add synthetic analysis fixtures`.
 - Committed and pushed on `feat/BulkTestDataGeneration`: `40df333 feat: generate deterministic synthetic analysis graphs`.
 
@@ -415,7 +416,7 @@ Code Reviewer and Docs:
 ### Required checks
 
 1. Re-run deterministic committed-fixture comparison and full-large invariant validation.
-2. Run `npm run lint:check` and `npm test`.
+2. Run `npm test` and `npm run lint:check`. The lint gate is no new warnings or failures against the accepted baseline recorded in Delivery progress: backend and frontend lint already exit non-zero for pre-existing `max-lines` warnings, so a clean `lint:check` exit is not a Section 5 acceptance condition.
 3. Run `npm run build:production` and `git diff --check`.
 4. Inspect generated full output is ignored and no untracked full corpus is staged.
 5. Verify the architecture guide states deterministic fixture lifecycle, compact/full profile selection, cross-runtime bridge composition, mutation isolation, failure behaviour, CI/stress policy, and safe-removal constraints.
@@ -425,7 +426,7 @@ Code Reviewer and Docs:
 
 ### Acceptance criteria
 
-- All focused and aggregate commands pass.
+- Focused and aggregate commands pass, or continue to report only the accepted pre-existing lint debt recorded in Delivery progress; no command introduces a new warning or failure against that baseline.
 - Committed fixture files are reviewable and the full corpus is absent from tracked changes.
 - `docs/developer/testing/synthetic-test-data.md`, `docs/developer/backend/backend-testing.md`, and `docs/developer/frontend/frontend-testing.md` accurately describe the delivered architecture, commands, policy, and helpers without adding an unsupported production-contract claim.
 - `.opencode/agents/planner.md`, `.opencode/agents/planner-reviewer.md`, `.opencode/agents/testing-specialist.md`, and `.opencode/agents/code-reviewer.md` consistently require canonical-fixture consideration at their respective workflow stages.
@@ -433,6 +434,12 @@ Code Reviewer and Docs:
 ### Optional `@remarks` JSDoc follow-through
 
 - Verify the Section 2–4 rationale comments are present only where they explain non-obvious boundaries.
+
+### Delivery record
+
+- Documentation and agent guidance were reviewed clean after aligning the canonical-fixture enforcement and transport-output terminology.
+- De-sloppification found no blocking slop; the unsupported synthetic timestamp suffix tolerance was removed, reviewed clean, and all synthetic checks remain green.
+- Aggregate test/build checks pass. Aggregate lint continues to report only accepted baseline `max-lines` debt; regression comparisons report zero regressions and zero new failures.
 
 ---
 
