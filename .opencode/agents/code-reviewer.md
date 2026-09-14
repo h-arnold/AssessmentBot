@@ -2,7 +2,7 @@
 description: Reviews code for quality, standards adherence, and defects using project-specific checklists
 mode: all
 steps: 100
-model: openai/gpt-5.6-terra
+model: opencode-go/glm-5.3-flash
 permission:
   edit:
     '*': 'deny'
