@@ -1,0 +1,109 @@
+[
+  {
+    "primaryTitle": "Synthetic Assignment Definition 1",
+    "primaryTopic": "Synthetic Topic 1",
+    "primaryTopicKey": "topic-0",
+    "yearGroupKey": "year-group-7",
+    "yearGroupLabel": "Year 7",
+    "alternateTitles": [],
+    "alternateTopics": [],
+    "documentType": "SLIDES",
+    "referenceDocumentId": "reference-document-0",
+    "templateDocumentId": "template-document-0",
+    "assignmentWeighting": 1,
+    "definitionKey": "definition-0-slides",
+    "tasks": [
+      {
+        "taskId": "task-0-0",
+        "taskWeighting": 1,
+        "taskTitle": "Synthetic Task 1.1"
+      },
+      {
+        "taskId": "task-0-1",
+        "taskWeighting": 1,
+        "taskTitle": "Synthetic Task 1.2"
+      }
+    ],
+    "createdAt": "2024-01-02T09:00:00.000Z",
+    "updatedAt": "2024-01-02T09:02:00.000Z"
+  },
+  {
+    "primaryTitle": "Synthetic Assignment Definition 2",
+    "primaryTopic": "Synthetic Topic 2",
+    "primaryTopicKey": "topic-1",
+    "yearGroupKey": "year-group-8",
+    "yearGroupLabel": "Year 8",
+    "alternateTitles": [],
+    "alternateTopics": [],
+    "documentType": "SHEETS",
+    "referenceDocumentId": "reference-document-1",
+    "templateDocumentId": "template-document-1",
+    "assignmentWeighting": 2,
+    "definitionKey": "definition-1-sheets",
+    "tasks": [
+      {
+        "taskId": "task-1-0",
+        "taskWeighting": 1,
+        "taskTitle": "Synthetic Task 2.1"
+      },
+      {
+        "taskId": "task-1-1",
+        "taskWeighting": 1,
+        "taskTitle": "Synthetic Task 2.2"
+      }
+    ],
+    "createdAt": "2024-01-02T09:10:00.000Z",
+    "updatedAt": "2024-01-02T09:12:00.000Z"
+  },
+  {
+    "primaryTitle": "Synthetic Assignment Definition 3",
+    "primaryTopic": "Synthetic Topic 3",
+    "primaryTopicKey": "topic-2",
+    "yearGroupKey": "year-group-9",
+    "yearGroupLabel": "Year 9",
+    "alternateTitles": [],
+    "alternateTopics": [],
+    "documentType": "SLIDES",
+    "referenceDocumentId": "reference-document-2",
+    "templateDocumentId": "template-document-2",
+    "assignmentWeighting": 3,
+    "definitionKey": "definition-2-slides",
+    "tasks": [
+      {
+        "taskId": "task-2-0",
+        "taskWeighting": 1,
+        "taskTitle": "Synthetic Task 3.1"
+      },
+      {
+        "taskId": "task-2-1",
+        "taskWeighting": 1,
+        "taskTitle": "Synthetic Task 3.2"
+      }
+    ],
+    "createdAt": "2024-01-02T09:20:00.000Z",
+    "updatedAt": "2024-01-02T09:22:00.000Z"
+  },
+  {
+    "primaryTitle": "Synthetic Partial Assignment Definition 1",
+    "primaryTopic": "Synthetic Topic 1",
+    "primaryTopicKey": "topic-0",
+    "yearGroupKey": "year-group-7",
+    "yearGroupLabel": "Year 7",
+    "alternateTitles": [],
+    "alternateTopics": [],
+    "documentType": "SLIDES",
+    "referenceDocumentId": null,
+    "templateDocumentId": null,
+    "assignmentWeighting": null,
+    "definitionKey": "definition-partial-0",
+    "tasks": [
+      {
+        "taskId": "task-partial-0-0",
+        "taskWeighting": 1,
+        "taskTitle": "Synthetic Partial Task 1.1"
+      }
+    ],
+    "createdAt": "2024-01-02T09:00:00.000Z",
+    "updatedAt": "2024-01-02T09:02:00.000Z"
+  }
+]

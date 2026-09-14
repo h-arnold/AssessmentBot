@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "profile": "medium",
+  "seed": 28042,
+  "generatedEntityCounts": {
+    "classes": 4,
+    "students": 48,
+    "assignments": 24,
+    "assignmentDefinitions": 5,
+    "cohorts": 2,
+    "yearGroups": 4,
+    "assignmentTopics": 4
+  }
+}

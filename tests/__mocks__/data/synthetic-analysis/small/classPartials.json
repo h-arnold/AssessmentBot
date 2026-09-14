@@ -1,0 +1,58 @@
+[
+  {
+    "classId": "class-0",
+    "className": null,
+    "cohortKey": "cohort-0",
+    "courseLength": 1,
+    "yearGroupKey": "year-group-7",
+    "classOwner": {
+      "userId": "teacher-0",
+      "email": "teacher-0@example.test",
+      "teacherName": "Mrs. Leola Kassulke"
+    },
+    "teachers": [
+      {
+        "userId": "teacher-0",
+        "email": "teacher-0@example.test",
+        "teacherName": "Mrs. Leola Kassulke"
+      }
+    ],
+    "active": true
+  },
+  {
+    "classId": "class-1",
+    "className": "Synthetic Class 2",
+    "cohortKey": null,
+    "courseLength": 1,
+    "yearGroupKey": "year-group-8",
+    "classOwner": {
+      "userId": "teacher-1",
+      "email": "teacher-1@example.test",
+      "teacherName": "Eldora Schulist"
+    },
+    "teachers": [
+      {
+        "userId": "teacher-1",
+        "email": "teacher-1@example.test",
+        "teacherName": "Eldora Schulist"
+      }
+    ],
+    "active": false
+  },
+  {
+    "classId": "class-2",
+    "className": "Synthetic Class 3",
+    "cohortKey": "cohort-0",
+    "courseLength": 1,
+    "yearGroupKey": "year-group-9",
+    "classOwner": null,
+    "teachers": [
+      {
+        "userId": "teacher-2",
+        "email": "teacher-2@example.test",
+        "teacherName": "Jolie Conn"
+      }
+    ],
+    "active": null
+  }
+]

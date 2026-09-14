@@ -1,0 +1,78 @@
+[
+  {
+    "classId": "class-0",
+    "className": null,
+    "cohortKey": "cohort-0",
+    "courseLength": 1,
+    "yearGroupKey": "year-group-7",
+    "classOwner": {
+      "userId": "teacher-0",
+      "email": "teacher-0@example.test",
+      "teacherName": "Noah Littel Sr."
+    },
+    "teachers": [
+      {
+        "userId": "teacher-0",
+        "email": "teacher-0@example.test",
+        "teacherName": "Noah Littel Sr."
+      }
+    ],
+    "active": true
+  },
+  {
+    "classId": "class-1",
+    "className": "Synthetic Class 2",
+    "cohortKey": null,
+    "courseLength": 1,
+    "yearGroupKey": "year-group-8",
+    "classOwner": {
+      "userId": "teacher-1",
+      "email": "teacher-1@example.test",
+      "teacherName": "Jairo Boyle DVM"
+    },
+    "teachers": [
+      {
+        "userId": "teacher-1",
+        "email": "teacher-1@example.test",
+        "teacherName": "Jairo Boyle DVM"
+      }
+    ],
+    "active": false
+  },
+  {
+    "classId": "class-2",
+    "className": "Synthetic Class 3",
+    "cohortKey": "cohort-0",
+    "courseLength": 1,
+    "yearGroupKey": "year-group-9",
+    "classOwner": null,
+    "teachers": [
+      {
+        "userId": "teacher-2",
+        "email": "teacher-2@example.test",
+        "teacherName": "German Spencer"
+      }
+    ],
+    "active": true
+  },
+  {
+    "classId": "class-3",
+    "className": "Synthetic Class 4",
+    "cohortKey": "cohort-1",
+    "courseLength": 1,
+    "yearGroupKey": "year-group-10",
+    "classOwner": {
+      "userId": "teacher-3",
+      "email": "teacher-3@example.test",
+      "teacherName": "Clovis Rippin"
+    },
+    "teachers": [
+      {
+        "userId": "teacher-3",
+        "email": "teacher-3@example.test",
+        "teacherName": "Clovis Rippin"
+      }
+    ],
+    "active": null
+  }
+]
