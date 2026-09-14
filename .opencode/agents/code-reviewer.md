@@ -2,7 +2,7 @@
 description: Reviews code for quality, standards adherence, and defects using project-specific checklists
 mode: all
 steps: 100
-model: openai/gpt-5.6-terra
+model: opencode-go/glm-5.3-flash
 permission:
   edit:
     '*': 'deny'
@@ -93,7 +93,6 @@ Consult these resources before and during review. Local docs contain project-spe
 
 - [AGENTS.md](../../AGENTS.md)
 - [CONTRIBUTING.md](../../CONTRIBUTING.md)
-- [Synthetic Test Data](../../docs/developer/testing/synthetic-test-data.md) — canonical architecture and canonical-fixture policy for the deterministic synthetic analysis corpus
 
 **Data shapes (all modules — persistence, transport, validation)**:
 
@@ -299,7 +298,6 @@ Apply only the rows relevant to the module(s) under review.
 - [ ] Do the tests test behaviour rather than implementation details? Will they break if the implementation changes but the behaviour remains correct?
 - [ ] Are there appropriate e2e playwright tests for any user-visible interaction or browser integration change?
 - [ ] Do the tests meet all requirements outlined in the testing documenation for the relevant module(s)?
-- [ ] Do new or changed tests use an appropriate canonical synthetic fixture when the fixture system provides one? A local realistic fixture is permitted only when no canonical profile or view covers the scenario **and** the owning feature work records a generator-extension plan naming which profile, view, or generator stage to add and where. Invalid/boundary fixtures remain local, and touched existing tests migrate opportunistically only. See `docs/developer/testing/synthetic-test-data.md`.
 
 ## 7. Reporting Format
 
