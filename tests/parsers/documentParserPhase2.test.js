@@ -176,4 +176,38 @@ describe('Document Parser Interface and Stub Tests', () => {
       );
     }
   );
+
+  test('convertToMarkdownTable preserves null rowCount for malformed array-like input', () => {
+    const parser = new TestDocumentParser([]);
+    // Array-like with truthy container but null length: historic behaviour reports null.
+    const malformed = { length: null, 0: [] };
+
+    expect(parser.convertToMarkdownTable(malformed)).toBe('');
+    expect(mockWarn).toHaveBeenCalledTimes(1);
+    expect(mockWarn).toHaveBeenCalledWith(
+      'The provided data is empty or invalid.',
+      expect.objectContaining({
+        rowCount: null,
+        columnCount: 0,
+        workflow: 'DocumentParser.convertToMarkdownTable',
+      })
+    );
+  });
+
+  test('convertToMarkdownTable preserves null columnCount for malformed first row', () => {
+    const parser = new TestDocumentParser([]);
+    // Zero-length container with a truthy first row whose length is null.
+    const malformed = { length: 0, 0: { length: null } };
+
+    expect(parser.convertToMarkdownTable(malformed)).toBe('');
+    expect(mockWarn).toHaveBeenCalledTimes(1);
+    expect(mockWarn).toHaveBeenCalledWith(
+      'The provided data is empty or invalid.',
+      expect.objectContaining({
+        rowCount: 0,
+        columnCount: null,
+        workflow: 'DocumentParser.convertToMarkdownTable',
+      })
+    );
+  });
 });

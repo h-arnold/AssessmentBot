@@ -7,90 +7,38 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
-import { createMockABLogger } from '../helpers/mockFactories.js';
 import {
-  withGlobalMocks,
-  saveGlobals,
-  restoreGlobals as restoreSavedGlobals,
-} from '../helpers/globalMockManager.js';
+  saveSlidesParserModuleGlobals,
+  restoreSlidesParserModuleGlobals,
+  createSlidesParserMockLogger,
+  installSlidesParserGlobals,
+  loadSlidesParserModules,
+  createShapeElement,
+  createTableElementFromMock,
+  createSlide,
+  buildNormalTableMock,
+  buildSlidesParserHarness,
+} from '../helpers/slidesParserTestHarness.js';
 
 describe('SlidesParser malformed table consumer path', () => {
   let SlidesParser;
   let mockLogger;
   let restoreGlobals;
-  const savedModuleGlobals = saveGlobals(['DocumentParser', 'TaskDefinition']);
+  const savedModuleGlobals = saveSlidesParserModuleGlobals();
   const refDocId = 'ref-doc-1';
   const studentDocId = 'student-doc-1';
 
-  const createShapeElement = (description, text) => ({
-    getDescription: vi.fn(() => description),
-    getPageElementType: vi.fn(() => globalThis.SlidesApp.PageElementType.SHAPE),
-    asShape: vi.fn(() => ({
-      getText: vi.fn(() => ({ asString: vi.fn(() => text) })),
-    })),
-  });
-
-  const createTableElementFromMock = (description, tableMock) => ({
-    getDescription: vi.fn(() => description),
-    getPageElementType: vi.fn(() => globalThis.SlidesApp.PageElementType.TABLE),
-    asTable: vi.fn(() => tableMock),
-  });
-
-  const createSlide = (pageId, elements) => ({
-    getObjectId: vi.fn(() => pageId),
-    getPageElements: vi.fn(() => elements),
-  });
-
-  function buildSlidesParserHarness(slidesByDocId) {
-    globalThis.SlidesApp.openById = vi.fn((id) => {
-      const val = slidesByDocId[id];
-      return { getSlides: typeof val === 'function' ? val : () => val || [] };
-    });
-    return new SlidesParser();
-  }
-
-  function buildNormalTableMock(rows) {
-    return {
-      getNumRows: vi.fn().mockReturnValue(rows.length),
-      getNumColumns: vi.fn().mockReturnValue(rows[0]?.length || 0),
-      getCell: vi.fn((rowIndex, columnIndex) => ({
-        getMergeState: vi.fn(() => globalThis.SlidesApp.CellMergeState.NORMAL),
-        getText: vi.fn(() => ({
-          asString: vi.fn(() => rows[rowIndex]?.[columnIndex] ?? ''),
-        })),
-      })),
-    };
-  }
-
   beforeAll(async () => {
-    const documentParserModule =
-      await import('../../src/backend/DocumentParsers/DocumentParser.js');
-    const taskDefinitionModule = await import('../../src/backend/Models/TaskDefinition.js');
-    globalThis.DocumentParser =
-      documentParserModule.DocumentParser || documentParserModule.default?.DocumentParser;
-    globalThis.TaskDefinition =
-      taskDefinitionModule.TaskDefinition || taskDefinitionModule.default?.TaskDefinition;
-    const slidesParserModule =
-      await import('../../src/backend/DocumentParsers/SlidesParser/index.js');
-    SlidesParser = slidesParserModule.SlidesParser || slidesParserModule.default?.SlidesParser;
-    if (!SlidesParser) throw new Error('Failed to load SlidesParser for tests');
+    SlidesParser = await loadSlidesParserModules();
   });
 
   afterAll(() => {
-    restoreSavedGlobals(savedModuleGlobals);
+    restoreSlidesParserModuleGlobals(savedModuleGlobals);
   });
 
   beforeEach(() => {
-    mockLogger = createMockABLogger(vi);
-    const mockContext = withGlobalMocks({
-      ABLogger: () => ({ getInstance: vi.fn().mockReturnValue(mockLogger) }),
-      SlidesApp: () => ({
-        PageElementType: { SHAPE: 'SHAPE', TABLE: 'TABLE', IMAGE: 'IMAGE' },
-        CellMergeState: { NORMAL: 'NORMAL', HEAD: 'HEAD', MERGED: 'MERGED' },
-        openById: vi.fn(),
-      }),
-    });
-    restoreGlobals = mockContext.restore;
+    mockLogger = createSlidesParserMockLogger(vi);
+    restoreGlobals = installSlidesParserGlobals(vi, mockLogger);
   });
 
   afterEach(() => {
@@ -100,7 +48,7 @@ describe('SlidesParser malformed table consumer path', () => {
 
   it('should throw rather than store a throwing table as a submission artefact', () => {
     const failure = new Error('Student cell RPC failed');
-    const refTable = buildNormalTableMock([['Reference value']]);
+    const refTable = buildNormalTableMock(vi, [['Reference value']]);
     const failingStudentTable = {
       getNumRows: vi.fn().mockReturnValue(1),
       getNumColumns: vi.fn().mockReturnValue(1),
@@ -108,11 +56,13 @@ describe('SlidesParser malformed table consumer path', () => {
         throw failure;
       }),
     };
-    const parser = buildSlidesParserHarness({
-      [refDocId]: [createSlide('ref-page', [createTableElementFromMock('# Task Table', refTable)])],
+    const parser = buildSlidesParserHarness(vi, SlidesParser, {
+      [refDocId]: [
+        createSlide(vi, 'ref-page', [createTableElementFromMock(vi, '# Task Table', refTable)]),
+      ],
       [studentDocId]: [
-        createSlide('student-page', [
-          createTableElementFromMock('# Task Table', failingStudentTable),
+        createSlide(vi, 'student-page', [
+          createTableElementFromMock(vi, '# Task Table', failingStudentTable),
         ]),
       ],
     });
@@ -141,17 +91,19 @@ describe('SlidesParser malformed table consumer path', () => {
   });
 
   it('should throw rather than store a null cell as legitimate blank content', () => {
-    const refTable = buildNormalTableMock([['Reference value']]);
+    const refTable = buildNormalTableMock(vi, [['Reference value']]);
     const nullCellStudentTable = {
       getNumRows: vi.fn().mockReturnValue(1),
       getNumColumns: vi.fn().mockReturnValue(1),
       getCell: vi.fn().mockReturnValue(null),
     };
-    const parser = buildSlidesParserHarness({
-      [refDocId]: [createSlide('ref-page', [createTableElementFromMock('# Task Table', refTable)])],
+    const parser = buildSlidesParserHarness(vi, SlidesParser, {
+      [refDocId]: [
+        createSlide(vi, 'ref-page', [createTableElementFromMock(vi, '# Task Table', refTable)]),
+      ],
       [studentDocId]: [
-        createSlide('student-page', [
-          createTableElementFromMock('# Task Table', nullCellStudentTable),
+        createSlide(vi, 'student-page', [
+          createTableElementFromMock(vi, '# Task Table', nullCellStudentTable),
         ]),
       ],
     });
@@ -189,17 +141,17 @@ describe('SlidesParser malformed table consumer path', () => {
 
     function buildMissingHarness() {
       const refSlides = [
-        createSlide('ref-text-page', [createShapeElement('# Task Text', 'Reference text')]),
-        createSlide('ref-table-page', [
-          createTableElementFromMock('# Task Table', buildNormalTableMock([['Reference']])),
+        createSlide(vi, 'ref-text-page', [createShapeElement(vi, '# Task Text', 'Reference text')]),
+        createSlide(vi, 'ref-table-page', [
+          createTableElementFromMock(vi, '# Task Table', buildNormalTableMock(vi, [['Reference']])),
         ]),
       ];
       const studentSlides = [
-        createSlide('student-unrelated-page', [
-          createShapeElement('Unrelated heading', 'Unrelated text'),
+        createSlide(vi, 'student-unrelated-page', [
+          createShapeElement(vi, 'Unrelated heading', 'Unrelated text'),
         ]),
       ];
-      const parser = buildSlidesParserHarness({
+      const parser = buildSlidesParserHarness(vi, SlidesParser, {
         [missingRefDocId]: refSlides,
         [missingStudentDocId]: studentSlides,
       });

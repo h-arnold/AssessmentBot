@@ -1,9 +1,16 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import {
-  withGlobalMocks,
-  saveGlobals,
-  restoreGlobals as restoreSavedGlobals,
-} from '../helpers/globalMockManager.js';
+  saveSlidesParserModuleGlobals,
+  restoreSlidesParserModuleGlobals,
+  createSlidesParserMockLogger,
+  installSlidesParserGlobals,
+  loadSlidesParserModules,
+  createShapeElement,
+  createTableElement,
+  createTaggedElement,
+  createSlide,
+  buildSlidesParserHarness,
+} from '../helpers/slidesParserTestHarness.js';
 
 // Slides parser matching and document ID coverage.
 describe('SlidesParser matching and document ID propagation', () => {
@@ -14,92 +21,19 @@ describe('SlidesParser matching and document ID propagation', () => {
     let SlidesParser;
     let mockLogger;
     let restoreGlobals;
-    const savedModuleGlobals = saveGlobals(['DocumentParser', 'TaskDefinition']);
-
-    const createShapeElement = (description, text) => ({
-      getDescription: vi.fn(() => description),
-      getPageElementType: vi.fn(() => globalThis.SlidesApp.PageElementType.SHAPE),
-      asShape: vi.fn(() => ({
-        getText: vi.fn(() => ({
-          asString: vi.fn(() => text),
-        })),
-      })),
-    });
-
-    const createTableElement = (description, rows) => ({
-      getDescription: vi.fn(() => description),
-      getPageElementType: vi.fn(() => globalThis.SlidesApp.PageElementType.TABLE),
-      asTable: vi.fn(() => ({
-        getNumRows: vi.fn(() => rows.length),
-        getNumColumns: vi.fn(() => rows[0]?.length || 0),
-        getCell: vi.fn((rowIndex, columnIndex) => ({
-          getMergeState: vi.fn(() => globalThis.SlidesApp.CellMergeState.NORMAL),
-          getText: vi.fn(() => ({
-            asString: vi.fn(() => rows[rowIndex]?.[columnIndex] ?? ''),
-          })),
-        })),
-      })),
-    });
-
-    const createTaggedElement = (description) => ({
-      getDescription: vi.fn(() => description),
-    });
-
-    const createSlide = (pageId, elements) => ({
-      getObjectId: vi.fn(() => pageId),
-      getPageElements: vi.fn(() => elements),
-    });
-
-    function buildSlidesParserHarness(slidesByDocId) {
-      globalThis.SlidesApp.openById = vi.fn((id) => {
-        const val = slidesByDocId[id];
-        return { getSlides: typeof val === 'function' ? val : () => val || [] };
-      });
-      return new SlidesParser();
-    }
+    const savedModuleGlobals = saveSlidesParserModuleGlobals();
 
     beforeAll(async () => {
-      const documentParserModule =
-        await import('../../src/backend/DocumentParsers/DocumentParser.js');
-      const taskDefinitionModule = await import('../../src/backend/Models/TaskDefinition.js');
-
-      globalThis.DocumentParser = documentParserModule.DocumentParser;
-      globalThis.TaskDefinition = taskDefinitionModule.TaskDefinition;
-
-      const slidesParserModule =
-        await import('../../src/backend/DocumentParsers/SlidesParser/index.js');
-      SlidesParser = slidesParserModule.SlidesParser;
+      SlidesParser = await loadSlidesParserModules();
     });
 
     afterAll(() => {
-      restoreSavedGlobals(savedModuleGlobals);
+      restoreSlidesParserModuleGlobals(savedModuleGlobals);
     });
 
     beforeEach(() => {
-      mockLogger = {
-        warn: vi.fn(),
-        error: vi.fn(),
-        debug: vi.fn(),
-      };
-
-      const mockContext = withGlobalMocks({
-        ABLogger: () => ({
-          getInstance: vi.fn().mockReturnValue(mockLogger),
-        }),
-        SlidesApp: () => ({
-          PageElementType: {
-            SHAPE: 'SHAPE',
-            TABLE: 'TABLE',
-            IMAGE: 'IMAGE',
-          },
-          CellMergeState: {
-            NORMAL: 'NORMAL',
-            HEAD: 'HEAD',
-            MERGED: 'MERGED',
-          },
-        }),
-      });
-      restoreGlobals = mockContext.restore;
+      mockLogger = createSlidesParserMockLogger(vi);
+      restoreGlobals = installSlidesParserGlobals(vi, mockLogger);
     });
 
     afterEach(() => {
@@ -107,9 +41,12 @@ describe('SlidesParser matching and document ID propagation', () => {
     });
 
     it('sets documentId for reference and template artifacts', () => {
-      const refSlide = createSlide('page-1', [createShapeElement('# Task 1', 'Ref text')]);
-      const tplSlide = createSlide('page-1', [createShapeElement('# Task 1', 'Tpl text')]);
-      const parser = buildSlidesParserHarness({ [refDocId]: [refSlide], [tplDocId]: [tplSlide] });
+      const refSlide = createSlide(vi, 'page-1', [createShapeElement(vi, '# Task 1', 'Ref text')]);
+      const tplSlide = createSlide(vi, 'page-1', [createShapeElement(vi, '# Task 1', 'Tpl text')]);
+      const parser = buildSlidesParserHarness(vi, SlidesParser, {
+        [refDocId]: [refSlide],
+        [tplDocId]: [tplSlide],
+      });
       const defs = parser.extractTaskDefinitions(refDocId, tplDocId);
       const [def] = defs;
       const refArtifact = def.getPrimaryReference();
@@ -122,9 +59,16 @@ describe('SlidesParser matching and document ID propagation', () => {
     it('merges reference and template slides with the same title into one task definition across different pageIds', () => {
       const referencePageId = 'ref-page-1';
       const templatePageId = 'tpl-page-2';
-      const refSlide = createSlide(referencePageId, [createShapeElement('# Task 1', 'Ref text')]);
-      const tplSlide = createSlide(templatePageId, [createShapeElement('# Task 1', 'Tpl text')]);
-      const parser = buildSlidesParserHarness({ [refDocId]: [refSlide], [tplDocId]: [tplSlide] });
+      const refSlide = createSlide(vi, referencePageId, [
+        createShapeElement(vi, '# Task 1', 'Ref text'),
+      ]);
+      const tplSlide = createSlide(vi, templatePageId, [
+        createShapeElement(vi, '# Task 1', 'Tpl text'),
+      ]);
+      const parser = buildSlidesParserHarness(vi, SlidesParser, {
+        [refDocId]: [refSlide],
+        [tplDocId]: [tplSlide],
+      });
       const defs = parser.extractTaskDefinitions(refDocId, tplDocId);
 
       expect(defs).toHaveLength(1);
@@ -139,10 +83,12 @@ describe('SlidesParser matching and document ID propagation', () => {
     });
 
     it('sets documentId on submission artifacts', () => {
-      const refSlide = createSlide('page-1', [createShapeElement('# Task 1', 'Ref text')]);
-      const tplSlide = createSlide('page-1', [createShapeElement('# Task 1', 'Tpl text')]);
-      const studentSlide = createSlide('page-1', [createShapeElement('# Task 1', 'Student text')]);
-      const parser = buildSlidesParserHarness({
+      const refSlide = createSlide(vi, 'page-1', [createShapeElement(vi, '# Task 1', 'Ref text')]);
+      const tplSlide = createSlide(vi, 'page-1', [createShapeElement(vi, '# Task 1', 'Tpl text')]);
+      const studentSlide = createSlide(vi, 'page-1', [
+        createShapeElement(vi, '# Task 1', 'Student text'),
+      ]);
+      const parser = buildSlidesParserHarness(vi, SlidesParser, {
         [refDocId]: [refSlide],
         [tplDocId]: [tplSlide],
         [studentDocId]: [studentSlide],
@@ -155,13 +101,17 @@ describe('SlidesParser matching and document ID propagation', () => {
     });
 
     it('extracts a student submission by title from a different slide pageId and preserves student identifiers', () => {
-      const refSlide = createSlide('ref-page-1', [createShapeElement('# Task 1', 'Ref text')]);
-      const tplSlide = createSlide('tpl-page-2', [createShapeElement('# Task 1', 'Tpl text')]);
+      const refSlide = createSlide(vi, 'ref-page-1', [
+        createShapeElement(vi, '# Task 1', 'Ref text'),
+      ]);
+      const tplSlide = createSlide(vi, 'tpl-page-2', [
+        createShapeElement(vi, '# Task 1', 'Tpl text'),
+      ]);
       const studentSlides = [
-        createSlide('student-page-other', [createShapeElement('# Task 2', 'Other task')]),
-        createSlide('student-page-99', [createShapeElement('# Task 1', 'Student text')]),
+        createSlide(vi, 'student-page-other', [createShapeElement(vi, '# Task 2', 'Other task')]),
+        createSlide(vi, 'student-page-99', [createShapeElement(vi, '# Task 1', 'Student text')]),
       ];
-      const parser = buildSlidesParserHarness({
+      const parser = buildSlidesParserHarness(vi, SlidesParser, {
         [refDocId]: [refSlide],
         [tplDocId]: [tplSlide],
         [studentDocId]: studentSlides,
@@ -182,13 +132,13 @@ describe('SlidesParser matching and document ID propagation', () => {
     });
 
     it('extracts a table submission when the student description is the bare task title', () => {
-      const refSlide = createSlide('ref-table-page', [
-        createTableElement('# Task Table', [['Reference value']]),
+      const refSlide = createSlide(vi, 'ref-table-page', [
+        createTableElement(vi, '# Task Table', [['Reference value']]),
       ]);
-      const studentSlide = createSlide('student-table-page', [
-        createTableElement('Task Table', [['Student value']]),
+      const studentSlide = createSlide(vi, 'student-table-page', [
+        createTableElement(vi, 'Task Table', [['Student value']]),
       ]);
-      const parser = buildSlidesParserHarness({
+      const parser = buildSlidesParserHarness(vi, SlidesParser, {
         [refDocId]: [refSlide],
         [studentDocId]: [studentSlide],
       });
@@ -211,15 +161,15 @@ describe('SlidesParser matching and document ID propagation', () => {
     });
 
     it('extracts a table submission when the student description is the stable task id', () => {
-      const refSlide = createSlide('ref-table-page', [
-        createTableElement('# Task Table', [['Reference value']]),
+      const refSlide = createSlide(vi, 'ref-table-page', [
+        createTableElement(vi, '# Task Table', [['Reference value']]),
       ]);
       let studentTaskId = null;
-      const parser = buildSlidesParserHarness({
+      const parser = buildSlidesParserHarness(vi, SlidesParser, {
         [refDocId]: [refSlide],
         [studentDocId]: () => [
-          createSlide('student-table-page', [
-            createTableElement(studentTaskId, [['Student value by id']]),
+          createSlide(vi, 'student-table-page', [
+            createTableElement(vi, studentTaskId, [['Student value by id']]),
           ]),
         ],
       });
@@ -242,12 +192,12 @@ describe('SlidesParser matching and document ID propagation', () => {
     });
 
     it('extracts image submissions by task title across the deck and uses the matched student slide pageId in sourceUrl', () => {
-      const refSlide = createSlide('ref-image-page', [createTaggedElement('~ Task 1')]);
+      const refSlide = createSlide(vi, 'ref-image-page', [createTaggedElement(vi, '~ Task 1')]);
       const studentSlides = [
-        createSlide('student-image-other', [createTaggedElement('| Task 2')]),
-        createSlide('student-image-page', [createTaggedElement('| Task 1')]),
+        createSlide(vi, 'student-image-other', [createTaggedElement(vi, '| Task 2')]),
+        createSlide(vi, 'student-image-page', [createTaggedElement(vi, '| Task 1')]),
       ];
-      const parser = buildSlidesParserHarness({
+      const parser = buildSlidesParserHarness(vi, SlidesParser, {
         [refDocId]: [refSlide],
         [studentDocId]: studentSlides,
       });
@@ -282,13 +232,13 @@ describe('SlidesParser matching and document ID propagation', () => {
     });
 
     it('does not extract image submissions when the student description is only the stable task id without an image tag', () => {
-      const refSlide = createSlide('ref-image-page', [createTaggedElement('~ Task 1')]);
+      const refSlide = createSlide(vi, 'ref-image-page', [createTaggedElement(vi, '~ Task 1')]);
       let studentTaskId = null;
-      const parser = buildSlidesParserHarness({
+      const parser = buildSlidesParserHarness(vi, SlidesParser, {
         [refDocId]: [refSlide],
         [studentDocId]: () => [
-          createSlide('student-image-other', [createTaggedElement('Task 2')]),
-          createSlide('student-image-page-by-id', [createTaggedElement(studentTaskId)]),
+          createSlide(vi, 'student-image-other', [createTaggedElement(vi, 'Task 2')]),
+          createSlide(vi, 'student-image-page-by-id', [createTaggedElement(vi, studentTaskId)]),
         ],
       });
       const defs = parser.extractTaskDefinitions(refDocId);

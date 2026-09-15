@@ -229,7 +229,7 @@ class SlidesParserSubmissionMatcher {
           pageId: matchedPageId,
           taskTitle: definition.taskTitle,
         });
-        if (!contentDetails || contentDetails.artifactType !== typeNeeded) continue;
+        if (contentDetails?.artifactType !== typeNeeded) continue;
 
         this.parser.warnOnAmbiguousMatch(candidate, matches, matchedPageId, definition);
         return {

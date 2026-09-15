@@ -1,9 +1,16 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import {
-  withGlobalMocks,
-  saveGlobals,
-  restoreGlobals as restoreSavedGlobals,
-} from '../helpers/globalMockManager.js';
+  saveSlidesParserModuleGlobals,
+  restoreSlidesParserModuleGlobals,
+  createSlidesParserMockLogger,
+  installSlidesParserGlobals,
+  loadSlidesParserModules,
+  createShapeElement,
+  createTaggedElement,
+  createUnsupportedTitleElement,
+  createSlide,
+  buildSlidesParserHarness,
+} from '../helpers/slidesParserTestHarness.js';
 
 // Slides parser definition extraction coverage (Pass A extraction behaviour).
 describe('SlidesParser definition extraction', () => {
@@ -13,82 +20,19 @@ describe('SlidesParser definition extraction', () => {
     let SlidesParser;
     let mockLogger;
     let restoreGlobals;
-    const savedModuleGlobals = saveGlobals(['DocumentParser', 'TaskDefinition']);
-
-    const createShapeElement = (description, text) => ({
-      getDescription: vi.fn(() => description),
-      getPageElementType: vi.fn(() => globalThis.SlidesApp.PageElementType.SHAPE),
-      asShape: vi.fn(() => ({
-        getText: vi.fn(() => ({
-          asString: vi.fn(() => text),
-        })),
-      })),
-    });
-
-    const createTaggedElement = (description) => ({
-      getDescription: vi.fn(() => description),
-    });
-
-    const createUnsupportedTitleElement = (description) => ({
-      getDescription: vi.fn(() => description),
-      getPageElementType: vi.fn(() => globalThis.SlidesApp.PageElementType.IMAGE),
-    });
-
-    const createSlide = (pageId, elements) => ({
-      getObjectId: vi.fn(() => pageId),
-      getPageElements: vi.fn(() => elements),
-    });
-
-    function buildSlidesParserHarness(slidesByDocId) {
-      globalThis.SlidesApp.openById = vi.fn((id) => {
-        const val = slidesByDocId[id];
-        return { getSlides: typeof val === 'function' ? val : () => val || [] };
-      });
-      return new SlidesParser();
-    }
+    const savedModuleGlobals = saveSlidesParserModuleGlobals();
 
     beforeAll(async () => {
-      const documentParserModule =
-        await import('../../src/backend/DocumentParsers/DocumentParser.js');
-      const taskDefinitionModule = await import('../../src/backend/Models/TaskDefinition.js');
-
-      globalThis.DocumentParser = documentParserModule.DocumentParser;
-      globalThis.TaskDefinition = taskDefinitionModule.TaskDefinition;
-
-      const slidesParserModule =
-        await import('../../src/backend/DocumentParsers/SlidesParser/index.js');
-      SlidesParser = slidesParserModule.SlidesParser;
+      SlidesParser = await loadSlidesParserModules();
     });
 
     afterAll(() => {
-      restoreSavedGlobals(savedModuleGlobals);
+      restoreSlidesParserModuleGlobals(savedModuleGlobals);
     });
 
     beforeEach(() => {
-      mockLogger = {
-        warn: vi.fn(),
-        error: vi.fn(),
-        debug: vi.fn(),
-      };
-
-      const mockContext = withGlobalMocks({
-        ABLogger: () => ({
-          getInstance: vi.fn().mockReturnValue(mockLogger),
-        }),
-        SlidesApp: () => ({
-          PageElementType: {
-            SHAPE: 'SHAPE',
-            TABLE: 'TABLE',
-            IMAGE: 'IMAGE',
-          },
-          CellMergeState: {
-            NORMAL: 'NORMAL',
-            HEAD: 'HEAD',
-            MERGED: 'MERGED',
-          },
-        }),
-      });
-      restoreGlobals = mockContext.restore;
+      mockLogger = createSlidesParserMockLogger(vi);
+      restoreGlobals = installSlidesParserGlobals(vi, mockLogger);
     });
 
     afterEach(() => {
@@ -99,10 +43,10 @@ describe('SlidesParser definition extraction', () => {
       const definitionPageId = 'ref-page-1';
       const notesPageId = 'ref-page-2';
       const refSlides = [
-        createSlide(definitionPageId, [createShapeElement('# Task 1', 'Ref text')]),
-        createSlide(notesPageId, [createShapeElement('^ Task 1', 'Notes for Task 1')]),
+        createSlide(vi, definitionPageId, [createShapeElement(vi, '# Task 1', 'Ref text')]),
+        createSlide(vi, notesPageId, [createShapeElement(vi, '^ Task 1', 'Notes for Task 1')]),
       ];
-      const parser = buildSlidesParserHarness({ [refDocId]: refSlides });
+      const parser = buildSlidesParserHarness(vi, SlidesParser, { [refDocId]: refSlides });
       const defs = parser.extractTaskDefinitions(refDocId);
 
       expect(defs).toHaveLength(1);
@@ -112,7 +56,7 @@ describe('SlidesParser definition extraction', () => {
     });
 
     it('treats caret-prefixed and plain descriptions as untagged with empty tag text', () => {
-      const parser = buildSlidesParserHarness({ [refDocId]: [] });
+      const parser = buildSlidesParserHarness(vi, SlidesParser, { [refDocId]: [] });
 
       expect(parser.parseDescriptionTag('^ Task 1')).toMatchObject({ tag: null, tagText: '' });
       expect(parser.parseDescriptionTag('Task 1')).toMatchObject({ tag: null, tagText: '' });
@@ -123,8 +67,8 @@ describe('SlidesParser definition extraction', () => {
       'fails fast with contextual error on empty tag text %s',
       (description) => {
         const pageId = 'page-bad';
-        const slide = createSlide(pageId, [createTaggedElement(description)]);
-        const parser = buildSlidesParserHarness({ [refDocId]: [slide] });
+        const slide = createSlide(vi, pageId, [createTaggedElement(vi, description)]);
+        const parser = buildSlidesParserHarness(vi, SlidesParser, { [refDocId]: [slide] });
 
         const action = () => parser.extractTaskDefinitions(refDocId);
         expect(action).toThrow(
@@ -140,10 +84,10 @@ describe('SlidesParser definition extraction', () => {
 
     it('fails fast on duplicate title tags within the same role', () => {
       const refSlides = [
-        createSlide('page-1', [createShapeElement('# Task 1', 'First')]),
-        createSlide('page-2', [createShapeElement('# Task 1', 'Second')]),
+        createSlide(vi, 'page-1', [createShapeElement(vi, '# Task 1', 'First')]),
+        createSlide(vi, 'page-2', [createShapeElement(vi, '# Task 1', 'Second')]),
       ];
-      const parser = buildSlidesParserHarness({ [refDocId]: refSlides });
+      const parser = buildSlidesParserHarness(vi, SlidesParser, { [refDocId]: refSlides });
 
       expect(() => parser.extractTaskDefinitions(refDocId)).toThrow(/Duplicate title tag "Task 1"/);
       expect(mockLogger.error).toHaveBeenCalledWith(
@@ -156,10 +100,10 @@ describe('SlidesParser definition extraction', () => {
       'attaches image tag %s to the existing title definition in the same role',
       (imageTag) => {
         const refSlides = [
-          createSlide('page-1', [createShapeElement('# Combined task', 'Ref text')]),
-          createSlide('page-2', [createTaggedElement(imageTag)]),
+          createSlide(vi, 'page-1', [createShapeElement(vi, '# Combined task', 'Ref text')]),
+          createSlide(vi, 'page-2', [createTaggedElement(vi, imageTag)]),
         ];
-        const parser = buildSlidesParserHarness({ [refDocId]: refSlides });
+        const parser = buildSlidesParserHarness(vi, SlidesParser, { [refDocId]: refSlides });
 
         const defs = parser.extractTaskDefinitions(refDocId);
 
@@ -176,8 +120,8 @@ describe('SlidesParser definition extraction', () => {
 
     it('warns and keeps the definition when a title tag has no extractable content', () => {
       const pageId = 'page-unsupported';
-      const slide = createSlide(pageId, [createUnsupportedTitleElement('# Task Ghost')]);
-      const parser = buildSlidesParserHarness({ [refDocId]: [slide] });
+      const slide = createSlide(vi, pageId, [createUnsupportedTitleElement(vi, '# Task Ghost')]);
+      const parser = buildSlidesParserHarness(vi, SlidesParser, { [refDocId]: [slide] });
 
       const defs = parser.extractTaskDefinitions(refDocId);
 
@@ -193,10 +137,10 @@ describe('SlidesParser definition extraction', () => {
 
     it('treats tilde and pipe as equivalent image tags during extraction', () => {
       const refSlides = [
-        createSlide('page-tilde', [createTaggedElement('~ Task Tilde')]),
-        createSlide('page-pipe', [createTaggedElement('| Task Pipe')]),
+        createSlide(vi, 'page-tilde', [createTaggedElement(vi, '~ Task Tilde')]),
+        createSlide(vi, 'page-pipe', [createTaggedElement(vi, '| Task Pipe')]),
       ];
-      const parser = buildSlidesParserHarness({ [refDocId]: refSlides });
+      const parser = buildSlidesParserHarness(vi, SlidesParser, { [refDocId]: refSlides });
 
       const defs = parser.extractTaskDefinitions(refDocId);
 
@@ -208,7 +152,7 @@ describe('SlidesParser definition extraction', () => {
     });
 
     it('exposes both image tags through isImageTag and parseDescriptionTag', () => {
-      const parser = buildSlidesParserHarness({ [refDocId]: [] });
+      const parser = buildSlidesParserHarness(vi, SlidesParser, { [refDocId]: [] });
 
       expect(parser.isImageTag('~')).toBe(true);
       expect(parser.isImageTag('|')).toBe(true);
@@ -230,7 +174,7 @@ describe('SlidesParser definition extraction', () => {
     });
 
     it('rejects extraction when the reference document id is missing', () => {
-      const parser = buildSlidesParserHarness({});
+      const parser = buildSlidesParserHarness(vi, SlidesParser, {});
 
       expect(() => parser.extractTaskDefinitions(undefined)).toThrow(
         /referenceDocumentId is required/
@@ -239,7 +183,7 @@ describe('SlidesParser definition extraction', () => {
     });
 
     it('rejects slide image URL generation for missing or blank identifiers', () => {
-      const parser = buildSlidesParserHarness({});
+      const parser = buildSlidesParserHarness(vi, SlidesParser, {});
 
       expect(() => parser.generateSlideImageUrl(undefined, 'page-1')).toThrow(
         /documentId is required/
@@ -254,7 +198,7 @@ describe('SlidesParser definition extraction', () => {
     });
 
     it('generates a slide image URL carrying both identifiers', () => {
-      const parser = buildSlidesParserHarness({});
+      const parser = buildSlidesParserHarness(vi, SlidesParser, {});
 
       expect(parser.generateSlideImageUrl('doc-1', 'page-9')).toBe(
         'https://docs.google.com/presentation/d/doc-1/export/png?id=doc-1&pageid=page-9'
@@ -262,9 +206,16 @@ describe('SlidesParser definition extraction', () => {
     });
 
     it('does not create task definitions from untagged plain titles in reference or template slides', () => {
-      const refSlide = createSlide('ref-plain-page', [createShapeElement('Task 1', 'Ref text')]);
-      const tplSlide = createSlide('tpl-plain-page', [createShapeElement('Task 1', 'Tpl text')]);
-      const parser = buildSlidesParserHarness({ [refDocId]: [refSlide], [tplDocId]: [tplSlide] });
+      const refSlide = createSlide(vi, 'ref-plain-page', [
+        createShapeElement(vi, 'Task 1', 'Ref text'),
+      ]);
+      const tplSlide = createSlide(vi, 'tpl-plain-page', [
+        createShapeElement(vi, 'Task 1', 'Tpl text'),
+      ]);
+      const parser = buildSlidesParserHarness(vi, SlidesParser, {
+        [refDocId]: [refSlide],
+        [tplDocId]: [tplSlide],
+      });
       const defs = parser.extractTaskDefinitions(refDocId, tplDocId);
 
       expect(defs).toHaveLength(0);

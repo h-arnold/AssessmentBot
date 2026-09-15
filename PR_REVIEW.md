@@ -421,3 +421,10 @@ conflict if interleaved.
 - **Result:** No regressions or new failures relative to the baseline; 6 of 8 checks pass, with one backend-lint fix recorded (the SlidesParser max-lines failure was removed). The baseline's frontend lint failure and ten unrelated backend max-lines warnings remain unchanged.
 - **Passing checks:** backend coverage, frontend tests/coverage, frontend E2E, builder lint/tests/compile.
 - **Repository health caveat:** the checker remains overall **FAILING** only because the pre-existing frontend lint failure and unrelated backend max-lines warnings are baseline debt, not introduced by this work.
+
+### Post-PR Sonar remediation
+
+- **Initial Sonar result:** PR #304 reported 8.9% duplicated new code against a ≤3% gate and two JavaScript S6582 code smells.
+- **Resolved code smells:** replaced the two nullable access patterns with optional-chain expressions while preserving the original malformed-input diagnostic values and submission skip semantics.
+- **Resolved duplication:** extracted the repeated Slides parser test factories, module loading, mock installation, and harness setup into `tests/helpers/slidesParserTestHarness.js`, reusing the canonical `createMockABLogger` factory.
+- **Verification:** focused parser tests, full backend tests (2,434 passed), coverage, targeted lint, and diff checks pass. SonarCloud will reanalyse the pushed commit for the final duplication percentage and quality-gate status.

@@ -1,9 +1,15 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import {
-  withGlobalMocks,
-  saveGlobals,
-  restoreGlobals as restoreSavedGlobals,
-} from '../helpers/globalMockManager.js';
+  saveSlidesParserModuleGlobals,
+  restoreSlidesParserModuleGlobals,
+  createSlidesParserMockLogger,
+  installSlidesParserGlobals,
+  loadSlidesParserModules,
+  createShapeElement,
+  createTableElement,
+  createSlide,
+  buildSlidesParserHarness,
+} from '../helpers/slidesParserTestHarness.js';
 
 // Pass B submission-phase coverage: tag-preferred matching, ambiguity warnings,
 // type probing before extraction, lazy page id resolution, and requireParams
@@ -15,88 +21,19 @@ describe('SlidesParser submission matching', () => {
     let SlidesParser;
     let mockLogger;
     let restoreGlobals;
-    const savedModuleGlobals = saveGlobals(['DocumentParser', 'TaskDefinition']);
-
-    const createShapeElement = (description, text) => ({
-      getDescription: vi.fn(() => description),
-      getPageElementType: vi.fn(() => globalThis.SlidesApp.PageElementType.SHAPE),
-      asShape: vi.fn(() => ({
-        getText: vi.fn(() => ({
-          asString: vi.fn(() => text),
-        })),
-      })),
-    });
-
-    const createTableElement = (description, rows) => ({
-      getDescription: vi.fn(() => description),
-      getPageElementType: vi.fn(() => globalThis.SlidesApp.PageElementType.TABLE),
-      asTable: vi.fn(() => ({
-        getNumRows: vi.fn(() => rows.length),
-        getNumColumns: vi.fn(() => rows[0]?.length || 0),
-        getCell: vi.fn((rowIndex, columnIndex) => ({
-          getMergeState: vi.fn(() => globalThis.SlidesApp.CellMergeState.NORMAL),
-          getText: vi.fn(() => ({
-            asString: vi.fn(() => rows[rowIndex]?.[columnIndex] ?? ''),
-          })),
-        })),
-      })),
-    });
-
-    const createSlide = (pageId, elements) => ({
-      getObjectId: vi.fn(() => pageId),
-      getPageElements: vi.fn(() => elements),
-    });
-
-    function buildSlidesParserHarness(slidesByDocId) {
-      globalThis.SlidesApp.openById = vi.fn((id) => {
-        const val = slidesByDocId[id];
-        return { getSlides: typeof val === 'function' ? val : () => val || [] };
-      });
-      return new SlidesParser();
-    }
+    const savedModuleGlobals = saveSlidesParserModuleGlobals();
 
     beforeAll(async () => {
-      const documentParserModule =
-        await import('../../src/backend/DocumentParsers/DocumentParser.js');
-      const taskDefinitionModule = await import('../../src/backend/Models/TaskDefinition.js');
-
-      globalThis.DocumentParser = documentParserModule.DocumentParser;
-      globalThis.TaskDefinition = taskDefinitionModule.TaskDefinition;
-
-      const slidesParserModule =
-        await import('../../src/backend/DocumentParsers/SlidesParser/index.js');
-      SlidesParser = slidesParserModule.SlidesParser;
+      SlidesParser = await loadSlidesParserModules();
     });
 
     afterAll(() => {
-      restoreSavedGlobals(savedModuleGlobals);
+      restoreSlidesParserModuleGlobals(savedModuleGlobals);
     });
 
     beforeEach(() => {
-      mockLogger = {
-        warn: vi.fn(),
-        error: vi.fn(),
-        debug: vi.fn(),
-      };
-
-      const mockContext = withGlobalMocks({
-        ABLogger: () => ({
-          getInstance: vi.fn().mockReturnValue(mockLogger),
-        }),
-        SlidesApp: () => ({
-          PageElementType: {
-            SHAPE: 'SHAPE',
-            TABLE: 'TABLE',
-            IMAGE: 'IMAGE',
-          },
-          CellMergeState: {
-            NORMAL: 'NORMAL',
-            HEAD: 'HEAD',
-            MERGED: 'MERGED',
-          },
-        }),
-      });
-      restoreGlobals = mockContext.restore;
+      mockLogger = createSlidesParserMockLogger(vi);
+      restoreGlobals = installSlidesParserGlobals(vi, mockLogger);
     });
 
     afterEach(() => {
@@ -104,12 +41,16 @@ describe('SlidesParser submission matching', () => {
     });
 
     it('prefers a tag-qualified match over an earlier bare-title element', () => {
-      const refSlide = createSlide('ref-page-1', [createShapeElement('# Task 1', 'Ref text')]);
+      const refSlide = createSlide(vi, 'ref-page-1', [
+        createShapeElement(vi, '# Task 1', 'Ref text'),
+      ]);
       const studentSlides = [
-        createSlide('student-page-decoy', [createShapeElement('Task 1', 'Decoy text')]),
-        createSlide('student-page-tagged', [createShapeElement('# Task 1', 'Tagged answer')]),
+        createSlide(vi, 'student-page-decoy', [createShapeElement(vi, 'Task 1', 'Decoy text')]),
+        createSlide(vi, 'student-page-tagged', [
+          createShapeElement(vi, '# Task 1', 'Tagged answer'),
+        ]),
       ];
-      const parser = buildSlidesParserHarness({
+      const parser = buildSlidesParserHarness(vi, SlidesParser, {
         [refDocId]: [refSlide],
         [studentDocId]: studentSlides,
       });
@@ -130,12 +71,14 @@ describe('SlidesParser submission matching', () => {
     });
 
     it('warns with candidate, page, and bucket size when a candidate bucket holds several entries', () => {
-      const refSlide = createSlide('ref-page-1', [createShapeElement('# Task 1', 'Ref text')]);
+      const refSlide = createSlide(vi, 'ref-page-1', [
+        createShapeElement(vi, '# Task 1', 'Ref text'),
+      ]);
       const studentSlides = [
-        createSlide('student-page-draft', [createShapeElement('# Task 1', 'Draft answer')]),
-        createSlide('student-page-final', [createShapeElement('# Task 1', 'Final answer')]),
+        createSlide(vi, 'student-page-draft', [createShapeElement(vi, '# Task 1', 'Draft answer')]),
+        createSlide(vi, 'student-page-final', [createShapeElement(vi, '# Task 1', 'Final answer')]),
       ];
-      const parser = buildSlidesParserHarness({
+      const parser = buildSlidesParserHarness(vi, SlidesParser, {
         [refDocId]: [refSlide],
         [studentDocId]: studentSlides,
       });
@@ -158,18 +101,18 @@ describe('SlidesParser submission matching', () => {
     });
 
     it('probes element type before content extraction when scanning submission buckets', () => {
-      const refSlide = createSlide('ref-table-page', [
-        createTableElement('# Task Table', [['Reference value']]),
+      const refSlide = createSlide(vi, 'ref-table-page', [
+        createTableElement(vi, '# Task Table', [['Reference value']]),
       ]);
       const studentSlides = [
-        createSlide('student-page-wrong-type', [
-          createShapeElement('# Task Table', 'Wrong-type decoy'),
+        createSlide(vi, 'student-page-wrong-type', [
+          createShapeElement(vi, '# Task Table', 'Wrong-type decoy'),
         ]),
-        createSlide('student-page-table', [
-          createTableElement('# Task Table', [['Student value']]),
+        createSlide(vi, 'student-page-table', [
+          createTableElement(vi, '# Task Table', [['Student value']]),
         ]),
       ];
-      const parser = buildSlidesParserHarness({
+      const parser = buildSlidesParserHarness(vi, SlidesParser, {
         [refDocId]: [refSlide],
         [studentDocId]: studentSlides,
       });
@@ -196,14 +139,16 @@ describe('SlidesParser submission matching', () => {
     });
 
     it('resolves page ids lazily only for slides with matching entries', () => {
-      const refSlide = createSlide('ref-page-1', [createShapeElement('# Task 1', 'Ref text')]);
-      const unmatchedSlide = createSlide('student-page-unrelated', [
-        createShapeElement('Unrelated heading', 'Unrelated text'),
+      const refSlide = createSlide(vi, 'ref-page-1', [
+        createShapeElement(vi, '# Task 1', 'Ref text'),
       ]);
-      const matchedSlide = createSlide('student-page-match', [
-        createShapeElement('# Task 1', 'Student text'),
+      const unmatchedSlide = createSlide(vi, 'student-page-unrelated', [
+        createShapeElement(vi, 'Unrelated heading', 'Unrelated text'),
       ]);
-      const parser = buildSlidesParserHarness({
+      const matchedSlide = createSlide(vi, 'student-page-match', [
+        createShapeElement(vi, '# Task 1', 'Student text'),
+      ]);
+      const parser = buildSlidesParserHarness(vi, SlidesParser, {
         [refDocId]: [refSlide],
         [studentDocId]: [unmatchedSlide, matchedSlide],
       });
@@ -216,7 +161,7 @@ describe('SlidesParser submission matching', () => {
     });
 
     it('rejects submission extraction when document id or task definitions are missing', () => {
-      const parser = buildSlidesParserHarness({});
+      const parser = buildSlidesParserHarness(vi, SlidesParser, {});
 
       expect(() => parser.extractSubmissionArtifacts(undefined, [])).toThrow(
         /documentId is required/

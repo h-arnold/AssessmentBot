@@ -47,8 +47,12 @@ class DocumentParser {
    */
   convertToMarkdownTable(tableData) {
     if (!tableData || tableData.length === 0 || tableData[0].length === 0) {
-      const rowCount = tableData ? tableData.length : 0;
-      const columnCount = tableData && tableData[0] ? tableData[0].length : 0;
+      // Preserve exact historic diagnostics: a truthy tableData with a null length
+      // must still report rowCount null, so only fall back to zero when the
+      // container itself is missing. Optional chaining keeps the Sonar S6582
+      // improvement without coercing valid falsy lengths via nullish coalescing.
+      const rowCount = tableData ? tableData?.length : 0;
+      const columnCount = tableData?.[0] ? tableData?.[0]?.length : 0;
       ABLogger.getInstance().warn('The provided data is empty or invalid.', {
         workflow: 'DocumentParser.convertToMarkdownTable',
         rowCount,
