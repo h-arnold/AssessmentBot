@@ -177,6 +177,48 @@ describe('Document Parser Interface and Stub Tests', () => {
     }
   );
 
+  test.each([['plain text'], [{}], [{ length: 2, 0: ['A'], 1: ['B'] }]])(
+    'convertToMarkdownTable returns empty string and warns for a non-array outer value %s',
+    (tableData) => {
+      const parser = new TestDocumentParser([]);
+
+      expect(parser.convertToMarkdownTable(tableData)).toBe('');
+      expect(mockWarn).toHaveBeenCalledTimes(1);
+      expect(mockWarn).toHaveBeenCalledWith(
+        'The provided data is empty or invalid.',
+        expect.objectContaining({
+          workflow: 'DocumentParser.convertToMarkdownTable',
+        })
+      );
+      expect(Object.keys(mockWarn.mock.calls[0][1]).sort()).toEqual([
+        'columnCount',
+        'rowCount',
+        'workflow',
+      ]);
+    }
+  );
+
+  test.each([[[['A', 'B'], 'not a row']], [['A', 7]], [[['A'], null]]])(
+    'convertToMarkdownTable returns empty string and warns for a non-array row (%s)',
+    (tableData) => {
+      const parser = new TestDocumentParser([]);
+
+      expect(parser.convertToMarkdownTable(tableData)).toBe('');
+      expect(mockWarn).toHaveBeenCalledTimes(1);
+      expect(mockWarn).toHaveBeenCalledWith(
+        'The provided data is empty or invalid.',
+        expect.objectContaining({
+          workflow: 'DocumentParser.convertToMarkdownTable',
+        })
+      );
+      expect(Object.keys(mockWarn.mock.calls[0][1]).sort()).toEqual([
+        'columnCount',
+        'rowCount',
+        'workflow',
+      ]);
+    }
+  );
+
   test('convertToMarkdownTable preserves null rowCount for malformed array-like input', () => {
     const parser = new TestDocumentParser([]);
     // Array-like with truthy container but null length: historic behaviour reports null.
@@ -206,6 +248,27 @@ describe('Document Parser Interface and Stub Tests', () => {
       expect.objectContaining({
         rowCount: 0,
         columnCount: null,
+        workflow: 'DocumentParser.convertToMarkdownTable',
+      })
+    );
+  });
+
+  test('convertToMarkdownTable returns empty string and warns for a null first row without throwing', () => {
+    const parser = new TestDocumentParser([]);
+    // Regression: a single-element table whose only row is null must be rejected
+    // cleanly (no TypeError) while reporting rowCount 1 and columnCount 0.
+    let markdown;
+
+    expect(() => {
+      markdown = parser.convertToMarkdownTable([null]);
+    }).not.toThrow();
+    expect(markdown).toBe('');
+    expect(mockWarn).toHaveBeenCalledTimes(1);
+    expect(mockWarn).toHaveBeenCalledWith(
+      'The provided data is empty or invalid.',
+      expect.objectContaining({
+        rowCount: 1,
+        columnCount: 0,
         workflow: 'DocumentParser.convertToMarkdownTable',
       })
     );

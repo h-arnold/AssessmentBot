@@ -276,6 +276,16 @@ describe('SheetsParser internal behaviour', () => {
       documentId: 'student-doc',
       content: [['=STUDENT', null]],
     });
+    expect(artifacts[0].type).toBe('SPREADSHEET');
+    expect(artifacts[0].metadata).toEqual({ sheetName: 'SheetOne' });
+    expect(Object.keys(artifacts[0]).sort((a, b) => a.localeCompare(b))).toEqual([
+      'content',
+      'documentId',
+      'metadata',
+      'pageId',
+      'taskId',
+      'type',
+    ]);
   });
 
   it('skips student sheets when formula reads fail', () => {

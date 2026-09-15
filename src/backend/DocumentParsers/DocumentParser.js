@@ -42,17 +42,21 @@ class DocumentParser {
 
   /**
    * Converts a table to a Markdown-formatted string.
+   * Malformed input (a non-array container, an empty table, a non-array or
+   * empty first row, or any non-array row) returns an empty string after the
+   * existing warning.
    * @param {Array<Array<string>>} tableData - 2D array containing the table data.
    * @returns {string} The Markdown-formatted table.
    */
   convertToMarkdownTable(tableData) {
-    if (!tableData || tableData.length === 0 || tableData[0].length === 0) {
-      // Preserve exact historic diagnostics: a truthy tableData with a null length
-      // must still report rowCount null, so only fall back to zero when the
-      // container itself is missing. Optional chaining keeps the Sonar S6582
-      // improvement without coercing valid falsy lengths via nullish coalescing.
-      const rowCount = tableData ? tableData?.length : 0;
-      const columnCount = tableData?.[0] ? tableData?.[0]?.length : 0;
+    // Preserve exact historic diagnostics: a truthy tableData with a null length
+    // must still report rowCount null, so only fall back to zero when the
+    // container itself is missing. Optional chaining keeps the Sonar S6582
+    // improvement without coercing valid falsy lengths via nullish coalescing.
+    const rowCount = tableData ? tableData?.length : 0;
+    const columnCount = tableData?.[0] ? tableData?.[0]?.length : 0;
+
+    if (!this._isConvertibleTable(tableData)) {
       ABLogger.getInstance().warn('The provided data is empty or invalid.', {
         workflow: 'DocumentParser.convertToMarkdownTable',
         rowCount,
@@ -86,6 +90,21 @@ class DocumentParser {
     }
 
     return markdownTable;
+  }
+
+  /**
+   * True when the value is a non-empty 2D array: every entry is an array and
+   * the first row has at least one cell.
+   * @private
+   * @param {*} tableData - Candidate table data.
+   * @returns {boolean} True when the value can be converted to Markdown.
+   */
+  _isConvertibleTable(tableData) {
+    if (!Array.isArray(tableData) || tableData.length === 0) return false;
+    for (const tableDatum of tableData) {
+      if (!Array.isArray(tableDatum)) return false;
+    }
+    return tableData[0].length > 0;
   }
 }
 

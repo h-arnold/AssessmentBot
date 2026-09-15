@@ -123,6 +123,31 @@ describe('TaskDefinition, task artifacts and student submissions', () => {
     expect(textOnly.toMarkdown()).toBe('hello | world');
   });
 
+  it('TableTaskArtifact.toMarkdown escapes literal pipes and backslashes in header and data cells', () => {
+    const table = ArtifactFactory.table({
+      taskId: 'tEscape',
+      role: 'reference',
+      content: [
+        ['Head | pipe', 'Head \\ slash'],
+        ['Data | pipe', 'Data \\ slash'],
+      ],
+    });
+    const storedMarkdown = table.toMarkdown();
+
+    expect(storedMarkdown).toBe(
+      '| Head \\| pipe | Head \\\\ slash |\n| --- | --- |\n| Data \\| pipe | Data \\\\ slash |'
+    );
+    // The artifact content is produced through the same toMarkdown() path.
+    expect(table.content).toBe(storedMarkdown);
+    // An explicit rows override escapes header and data cells identically.
+    expect(
+      table.toMarkdown([
+        ['H|1', 'H\\2'],
+        ['D|3', 'D\\4'],
+      ])
+    ).toBe('| H\\|1 | H\\\\2 |\n| --- | --- |\n| D\\|3 | D\\\\4 |');
+  });
+
   it('SpreadsheetTaskArtifact canonicalisation intentionally strips spaces outside quotes and remains idempotent with immediate hash', () => {
     const ss = ArtifactFactory.spreadsheet({
       taskId: 'tSS',

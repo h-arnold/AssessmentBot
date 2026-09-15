@@ -184,6 +184,8 @@ class TableTaskArtifact extends BaseTaskArtifact {
   }
   /**
    * Convert rows (or current content) into a Markdown table string.
+   * Cell values are Markdown-escaped so literal backslashes and pipes cannot
+   * corrupt the table structure.
    *
    * @param {Array<Array<any>>} [rowsOverride] - Optional rows to convert.
    * @returns {string} Markdown table string.
@@ -197,14 +199,27 @@ class TableTaskArtifact extends BaseTaskArtifact {
     const header = source[0] || [];
     if (!Array.isArray(header)) return '';
     const lines = [
-      '| ' + header.map((c) => (c == null ? '' : String(c))).join(' | ') + ' |',
+      '| ' + header.map((c) => this._escapeMarkdownCell(c)).join(' | ') + ' |',
       '| ' + header.map(() => '---').join(' | ') + ' |',
     ];
     for (let index = 1; index < source.length; index++) {
       const row = Array.isArray(source[index]) ? source[index] : [];
-      lines.push('| ' + row.map((c) => (c == null ? '' : String(c))).join(' | ') + ' |');
+      lines.push('| ' + row.map((c) => this._escapeMarkdownCell(c)).join(' | ') + ' |');
     }
     return lines.join('\n');
+  }
+  /**
+   * Escape a cell value for safe inclusion in a Markdown table row.
+   *
+   * @private
+   * @param {*} cell - Cell value to escape.
+   * @returns {string} Escaped cell text (empty string for nullish cells).
+   */
+  _escapeMarkdownCell(cell) {
+    if (cell == null) return '';
+    return String(cell)
+      .replaceAll('\\', '\\\\')
+      .replaceAll('|', String.raw`\|`);
   }
   /**
    * Select the rows to render as Markdown.

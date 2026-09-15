@@ -300,9 +300,12 @@ class SheetsParser extends DocumentParser {
 
   /**
    * Extract student submission artifacts by reading only reference formula locations.
+   * Every payload uses the canonical primitive extraction shape
+   * `{ taskId, pageId, content, metadata, documentId, type }`, with `type` set to
+   * the canonical spreadsheet artifact type.
    * @param {string} studentDocumentId - The ID of the student submission spreadsheet.
    * @param {TaskDefinition[]} taskDefs - Task definitions to extract artifacts for.
-   * @returns {Array} Array of submission artifacts with task ID, page ID, and formula content.
+   * @returns {Array<{taskId: string, pageId: string|null, content: Array, metadata: Object, documentId: string, type: string}>} Array of submission artifacts.
    */
   extractSubmissionArtifacts(studentDocumentId, taskDefs) {
     if (!studentDocumentId) return [];
@@ -345,9 +348,10 @@ class SheetsParser extends DocumentParser {
       artifacts.push({
         taskId: definition.getId(),
         pageId: definition.pageId,
-        documentId: studentDocumentId,
         content: grid,
         metadata: { sheetName: definition.taskTitle },
+        documentId: studentDocumentId,
+        type: 'SPREADSHEET',
       });
     });
     return artifacts;

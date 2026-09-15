@@ -438,6 +438,9 @@ class SlidesParser extends DocumentParser {
   }
 }
 
-if (typeof module !== 'undefined') {
-  module.exports = { SlidesParser };
+if (typeof module !== 'undefined' && module.exports) {
+  // CommonJS facade: the class is the default export (constructible) while the
+  // named `SlidesParser` property keeps named imports and the test harness working.
+  module.exports = SlidesParser;
+  module.exports.SlidesParser = SlidesParser;
 }
