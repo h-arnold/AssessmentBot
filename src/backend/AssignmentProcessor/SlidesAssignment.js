@@ -41,27 +41,45 @@ class SlidesAssignment extends Assignment {
       const imageManager = new ImageManager();
       const entries = imageManager.collectAllImageArtifacts(this);
       if (entries.length === 0) {
-        console.log('No image artifacts to process.');
+        ABLogger.getInstance().info('No image artifacts to process.', {
+          workflow: 'SlidesAssignment.processImages',
+          courseId: this.courseId,
+          assignmentId: this.assignmentId,
+        });
         return;
       }
-      // Use optional chaining to call updateProgress if progressTracker exists
-      this.progressTracker?.updateProgress(
+      this.progressTracker.updateProgress(
         `Found ${entries.length} image artifacts. Fetching...`,
         false
       );
       const blobs = imageManager.fetchImagesAsBlobs(entries);
-      // Optional chaining for concise progress update
-      this.progressTracker?.updateProgress(
+      this.progressTracker.updateProgress(
         `Fetched ${blobs.length} image blobs. Writing content...`,
         false
       );
       imageManager.writeBackBlobs(this, blobs);
-      console.log(`Hydrated ${blobs.length} image artifacts.`);
+      ABLogger.getInstance().info(`Hydrated ${blobs.length} image artifacts.`, {
+        workflow: 'SlidesAssignment.processImages',
+        courseId: this.courseId,
+        assignmentId: this.assignmentId,
+        count: blobs.length,
+      });
     } catch (error) {
-      console.error('SlidesAssignment.processImages failed', error);
-      if (this.progressTracker && typeof this.progressTracker.logError === 'function') {
-        this.progressTracker.logError('Image processing failed: ' + error.message, error);
-      }
+      ABLogger.getInstance().error('SlidesAssignment.processImages failed', {
+        workflow: 'SlidesAssignment.processImages',
+        courseId: this.courseId,
+        assignmentId: this.assignmentId,
+        err: error,
+      });
+      this.progressTracker.logError('Image processing failed.', {
+        devContext: {
+          workflow: 'SlidesAssignment.processImages',
+          courseId: this.courseId,
+          assignmentId: this.assignmentId,
+        },
+        err: error,
+      });
+      throw error;
     }
   }
 
@@ -116,7 +134,12 @@ class SlidesAssignment extends Assignment {
     const total = this.submissions.length;
     this.submissions.forEach((sub, index) => {
       if (!sub.documentId) {
-        console.warn(`No document ID for student: ${sub.studentName}. Skipping.`);
+        ABLogger.getInstance().warn(`No document ID for student: ${sub.studentName}. Skipping.`, {
+          workflow: 'SlidesAssignment.processAllSubmissions',
+          courseId: this.courseId,
+          assignmentId: this.assignmentId,
+          studentName: sub.studentName,
+        });
         return;
       }
       // Update progress with ordinal position (e.g. "Extracting response 3 of 12...")
@@ -125,7 +148,13 @@ class SlidesAssignment extends Assignment {
       artifacts.forEach((a) => {
         const taskDefinition = this.assignmentDefinition.tasks[a.taskId];
         if (!taskDefinition) {
-          console.warn('Submission artifact references unknown taskId ' + a.taskId);
+          ABLogger.getInstance().warn('Submission artifact references unknown taskId ' + a.taskId, {
+            workflow: 'SlidesAssignment.processAllSubmissions',
+            courseId: this.courseId,
+            assignmentId: this.assignmentId,
+            taskId: a.taskId,
+            documentId: a.documentId,
+          });
           return;
         }
         sub.upsertItemFromExtraction(taskDefinition, {
@@ -133,6 +162,9 @@ class SlidesAssignment extends Assignment {
           content: a.content,
           metadata: a.metadata,
           documentId: a.documentId,
+          // Parser placeholders already carry the single missing-content diagnostic,
+          // so the model layer stores them silently without duplicate warnings.
+          missingContentLogged: a.content == null && a.pageId == null,
         });
       });
     });

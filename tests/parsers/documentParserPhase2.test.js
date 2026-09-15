@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeAll } from 'vitest';
+import { describe, test, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { TaskDefinition } from '../../src/backend/Models/TaskDefinition.js';
 
 if (!globalThis.Utils || !globalThis.Utilities) {
@@ -12,6 +12,27 @@ describe('Document Parser Interface and Stub Tests', () => {
   beforeAll(() => {
     ParserExport = require(basePath); // expect { DocumentParser }
     ParserClass = ParserExport.DocumentParser || ParserExport; // fallback
+  });
+
+  let mockWarn;
+  let previousLogger;
+  beforeEach(() => {
+    mockWarn = vi.fn();
+    previousLogger = globalThis.ABLogger;
+    globalThis.ABLogger = {
+      getInstance: () => ({
+        debug: () => {},
+        debugUi: () => {},
+        info: () => {},
+        warn: mockWarn,
+        error: () => {},
+        log: () => {},
+      }),
+    };
+  });
+
+  afterEach(() => {
+    globalThis.ABLogger = previousLogger;
   });
 
   test('Abstract enforcement: instantiating base or calling abstract methods throws', () => {
@@ -50,6 +71,8 @@ describe('Document Parser Interface and Stub Tests', () => {
             ? 'student ' + td.getPrimaryTemplate().content
             : null,
           metadata: { simulated: true },
+          documentId,
+          type: 'TEXT',
         }));
       }
     };
@@ -74,17 +97,25 @@ describe('Document Parser Interface and Stub Tests', () => {
     expect(typeof tpl.content === 'string' || tpl.content === null).toBe(true);
   });
 
-  test('extractSubmissionArtifacts output objects contain only primitive fields and no contentHash', () => {
+  test('extractSubmissionArtifacts output uses the canonical shape with no parser-owned contentHash or role', () => {
     const parser = new TestDocumentParser([{ title: 'A', refContent: 'Ref', tplContent: 'Tpl' }]);
     const defs = parser.extractTaskDefinitions('refDoc', 'tplDoc');
     const subs = parser.extractSubmissionArtifacts('studentDoc', defs);
     subs.forEach((o) => {
       expect(o).not.toHaveProperty('contentHash');
-      expect(Object.keys(o).sort((a, b) => a.localeCompare(b))).toEqual(
-        expect.arrayContaining(['taskId', 'content', 'pageId', 'metadata'])
-      );
+      expect(o).not.toHaveProperty('role');
+      expect(Object.keys(o).sort((a, b) => a.localeCompare(b))).toEqual([
+        'content',
+        'documentId',
+        'metadata',
+        'pageId',
+        'taskId',
+        'type',
+      ]);
       expect(typeof o.taskId).toBe('string');
       expect(o.metadata && typeof o.metadata).toBe('object');
+      expect(o.documentId).toBe('studentDoc');
+      expect(typeof o.type).toBe('string');
       if (o.content != null) expect(typeof o.content).toBe('string');
     });
   });
@@ -106,5 +137,140 @@ describe('Document Parser Interface and Stub Tests', () => {
     ]);
     const defs = parser.extractTaskDefinitions('ref', 'tpl');
     expect(defs.map((d) => d.taskTitle + ':' + d.index)).toEqual(['B:0', 'A:1', 'B:2']);
+  });
+
+  test('convertToMarkdownTable escapes pipes in the header row so columns stay intact', () => {
+    const parser = new TestDocumentParser([]);
+    const markdown = parser.convertToMarkdownTable([
+      ['Task | A', 'Score'],
+      ['one', 'two'],
+    ]);
+
+    expect(markdown).toBe('| Task \\| A | Score |\n| --- | --- |\n| one | two |\n');
+  });
+
+  test('convertToMarkdownTable escapes backslashes in the header row consistently with data rows', () => {
+    const parser = new TestDocumentParser([]);
+    const markdown = parser.convertToMarkdownTable([
+      ['Path \\ here', 'Score'],
+      ['a\\b', 'c|d'],
+    ]);
+
+    expect(markdown).toBe('| Path \\\\ here | Score |\n| --- | --- |\n| a\\\\b | c\\|d |\n');
+  });
+
+  test.each([[null], [[]], [[[]]]])(
+    'convertToMarkdownTable warns with context and returns empty string for invalid input %s',
+    (tableData) => {
+      const parser = new TestDocumentParser([]);
+
+      expect(parser.convertToMarkdownTable(tableData)).toBe('');
+      expect(mockWarn).toHaveBeenCalledTimes(1);
+      expect(mockWarn).toHaveBeenCalledWith(
+        'The provided data is empty or invalid.',
+        expect.objectContaining({
+          rowCount: expect.any(Number),
+          columnCount: expect.any(Number),
+          workflow: 'DocumentParser.convertToMarkdownTable',
+        })
+      );
+    }
+  );
+
+  test.each([['plain text'], [{}], [{ length: 2, 0: ['A'], 1: ['B'] }]])(
+    'convertToMarkdownTable returns empty string and warns for a non-array outer value %s',
+    (tableData) => {
+      const parser = new TestDocumentParser([]);
+
+      expect(parser.convertToMarkdownTable(tableData)).toBe('');
+      expect(mockWarn).toHaveBeenCalledTimes(1);
+      expect(mockWarn).toHaveBeenCalledWith(
+        'The provided data is empty or invalid.',
+        expect.objectContaining({
+          workflow: 'DocumentParser.convertToMarkdownTable',
+        })
+      );
+      expect(Object.keys(mockWarn.mock.calls[0][1]).sort()).toEqual([
+        'columnCount',
+        'rowCount',
+        'workflow',
+      ]);
+    }
+  );
+
+  test.each([[[['A', 'B'], 'not a row']], [['A', 7]], [[['A'], null]]])(
+    'convertToMarkdownTable returns empty string and warns for a non-array row (%s)',
+    (tableData) => {
+      const parser = new TestDocumentParser([]);
+
+      expect(parser.convertToMarkdownTable(tableData)).toBe('');
+      expect(mockWarn).toHaveBeenCalledTimes(1);
+      expect(mockWarn).toHaveBeenCalledWith(
+        'The provided data is empty or invalid.',
+        expect.objectContaining({
+          workflow: 'DocumentParser.convertToMarkdownTable',
+        })
+      );
+      expect(Object.keys(mockWarn.mock.calls[0][1]).sort()).toEqual([
+        'columnCount',
+        'rowCount',
+        'workflow',
+      ]);
+    }
+  );
+
+  test('convertToMarkdownTable preserves null rowCount for malformed array-like input', () => {
+    const parser = new TestDocumentParser([]);
+    // Array-like with truthy container but null length: historic behaviour reports null.
+    const malformed = { length: null, 0: [] };
+
+    expect(parser.convertToMarkdownTable(malformed)).toBe('');
+    expect(mockWarn).toHaveBeenCalledTimes(1);
+    expect(mockWarn).toHaveBeenCalledWith(
+      'The provided data is empty or invalid.',
+      expect.objectContaining({
+        rowCount: null,
+        columnCount: 0,
+        workflow: 'DocumentParser.convertToMarkdownTable',
+      })
+    );
+  });
+
+  test('convertToMarkdownTable preserves null columnCount for malformed first row', () => {
+    const parser = new TestDocumentParser([]);
+    // Zero-length container with a truthy first row whose length is null.
+    const malformed = { length: 0, 0: { length: null } };
+
+    expect(parser.convertToMarkdownTable(malformed)).toBe('');
+    expect(mockWarn).toHaveBeenCalledTimes(1);
+    expect(mockWarn).toHaveBeenCalledWith(
+      'The provided data is empty or invalid.',
+      expect.objectContaining({
+        rowCount: 0,
+        columnCount: null,
+        workflow: 'DocumentParser.convertToMarkdownTable',
+      })
+    );
+  });
+
+  test('convertToMarkdownTable returns empty string and warns for a null first row without throwing', () => {
+    const parser = new TestDocumentParser([]);
+    // Regression: a single-element table whose only row is null must be rejected
+    // cleanly (no TypeError) while reporting rowCount 1 and columnCount 0.
+    let markdown;
+
+    expect(() => {
+      markdown = parser.convertToMarkdownTable([null]);
+    }).not.toThrow();
+    expect(markdown).toBe('');
+    expect(mockWarn).toHaveBeenCalledTimes(1);
+    expect(mockWarn).toHaveBeenCalledWith(
+      'The provided data is empty or invalid.',
+      expect.objectContaining({
+        rowCount: 1,
+        columnCount: 0,
+        workflow: 'DocumentParser.convertToMarkdownTable',
+      })
+    );
   });
 });

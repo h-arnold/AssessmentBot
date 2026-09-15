@@ -407,3 +407,8 @@ g.DriveManagerFileOperations = require('../src/backend/GoogleDriveManager/DriveM
 g.DriveManagerFolderOperations = require('../src/backend/GoogleDriveManager/DriveManager/03_DriveManagerFolderOperations.js');
 g.DriveManagerFileId = require('../src/backend/GoogleDriveManager/DriveManager/04_DriveManagerFileId.js');
 g.DriveManagerModifiedTime = require('../src/backend/GoogleDriveManager/DriveManager/05_DriveManagerModifiedTime.js');
+
+// Load SlidesParser sub-classes as globals (mirroring GAS concatenation order so
+// SlidesParser/index.js can reference them by name when require() calls are absent in production).
+g.SlidesParserTableContent = require('../src/backend/DocumentParsers/SlidesParser/00_SlidesParserTableContent.js');
+g.SlidesParserSubmissionMatcher = require('../src/backend/DocumentParsers/SlidesParser/01_SlidesParserSubmissionMatcher.js');

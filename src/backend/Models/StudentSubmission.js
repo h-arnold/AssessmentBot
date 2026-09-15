@@ -227,6 +227,8 @@ class StudentSubmission {
    * artifacts during parsing and never mutate. Expects primitive extraction payload from parsers/assignments.
    * @param {TaskDefinition} taskDefinition - Task definition providing ids/type hints
    * @param {Object} extraction - Extraction parameters (pageId, content, metadata, documentId)
+   * @param {boolean} [extraction.missingContentLogged] - True when the caller already emitted
+   *   the missing-content diagnostic at the parser boundary, suppressing the duplicate warn here.
    * @returns {StudentSubmissionItem} The created or updated submission item
    */
   upsertItemFromExtraction(taskDefinition, extraction = {}) {
@@ -245,6 +247,9 @@ class StudentSubmission {
     } = extraction;
     const hasMetadata = Object.hasOwn(extraction, 'metadata');
     const metadataPayload = hasMetadata ? extractionMetadata : undefined;
+    // True when the parser boundary already logged the missing-content diagnostic,
+    // so this layer stays silent and the artifact is stored without duplicate detail.
+    const missingContentLogged = extraction.missingContentLogged === true;
 
     if (item) {
       if (content !== undefined) {
@@ -276,7 +281,7 @@ class StudentSubmission {
         metadata: metadataForArtifact,
         uid,
       });
-      if (artifact.content == null && artifact.getType() !== 'IMAGE') {
+      if (artifact.content == null && artifact.getType() !== 'IMAGE' && !missingContentLogged) {
         ABLogger.getInstance().warn(
           `No content found for ${this.studentName} for task '${taskDefinition.taskTitle}'.`
         );

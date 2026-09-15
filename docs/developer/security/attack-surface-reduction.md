@@ -158,10 +158,12 @@ code, message, retriable, details? }`). `_mapErrorToFailureEnvelope` in
   and the policy forbids logging secrets, credentials, tokens or API keys
   (`backend-logging-and-error-handling.md` §8). The masking and redaction above keep
   secrets out of **error envelopes and transport payloads**. One caveat applies to logs:
-  the dispatcher's ungated debug log stringifies incoming request params, which for
-  `setBackendConfig` can include a newly-entered API key — a known, unresolved tension
-  against the never-log-secrets policy, documented honestly in
-  [Layer 4 — data handling](./data-handling.md).
+  the dispatcher debug log stringifies incoming request params, which for
+  `setBackendConfig` can include a newly-entered API key. That call goes through
+  `ABLogger.debug()`, which emits only when `globalThis.DEBUG_UI` is truthy and is silent
+  otherwise, so the exposure requires explicit debug logging rather than occurring on
+  every deployment. It remains a known tension against the never-log-secrets policy,
+  documented honestly in [Layer 4 — data handling](./data-handling.md).
 
 ## Related documentation
 

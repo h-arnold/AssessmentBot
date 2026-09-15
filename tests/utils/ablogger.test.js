@@ -6,9 +6,13 @@ const ABLogger = require('../../src/backend/Utils/ABLogger.js');
 
 describe('ABLogger', () => {
   let logger;
+  let savedDebugUi;
   const originalConsole = { ...console };
 
   beforeEach(() => {
+    // Save the explicit debug control so enabled tests cannot leak state.
+    savedDebugUi = globalThis.DEBUG_UI;
+    delete globalThis.DEBUG_UI;
     // Reset any singleton instance if present
     if (ABLogger?._instance) {
       ABLogger._instance = null;
@@ -26,8 +30,12 @@ describe('ABLogger', () => {
   afterEach(() => {
     // Restore console methods
     Object.assign(console, originalConsole);
-    // Clear DEBUG_UI
-    if (typeof globalThis !== 'undefined') delete globalThis.DEBUG_UI;
+    // Restore the explicit debug control to its pre-test value.
+    if (savedDebugUi === undefined) {
+      delete globalThis.DEBUG_UI;
+    } else {
+      globalThis.DEBUG_UI = savedDebugUi;
+    }
     // Reset singleton
     if (ABLogger?._instance) {
       ABLogger._instance = null;
@@ -35,7 +43,8 @@ describe('ABLogger', () => {
     vi.resetAllMocks();
   });
 
-  it('forwards log/info/warn/error/debug to console', () => {
+  it('forwards log/info/warn/error to console and gates debug on the explicit control', () => {
+    globalThis.DEBUG_UI = true;
     logger.log('one', 2);
     logger.info('i');
     logger.warn('w');
@@ -91,12 +100,20 @@ describe('ABLogger', () => {
   });
 
   describe('debug method', () => {
+    it('stays silent when the explicit debug control is disabled', () => {
+      delete globalThis.DEBUG_UI;
+      logger.debug('suppressed message');
+      expect(console.log).not.toHaveBeenCalled();
+    });
+
     it('prepends [DEBUG] prefix and calls console.log', () => {
+      globalThis.DEBUG_UI = true;
       logger.debug('test message', 42);
       expect(console.log).toHaveBeenCalledWith('[DEBUG]', 'test message', 42);
     });
 
     it('serialises Error arguments via debug', () => {
+      globalThis.DEBUG_UI = true;
       const err = new Error('debug error');
       logger.debug(err);
       expect(console.log).toHaveBeenCalled();

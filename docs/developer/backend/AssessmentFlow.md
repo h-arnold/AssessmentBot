@@ -464,7 +464,7 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
 
 **Class**: `SlidesParser` (extends `DocumentParser`)
 
-- **Location**: `/src/backend/DocumentParsers/SlidesParser.js`
+- **Location**: `/src/backend/DocumentParsers/SlidesParser/index.js`
 - **Method**: `extractTaskDefinitions(referenceId, templateId)`
   - Fetches both presentations via Slides API
   - Iterates through tagged slide elements in the reference and template decks
@@ -557,7 +557,7 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
 
 **Method**: `SlidesParser.extractSubmissionArtifacts(documentId, taskDefs)`
 
-- **Location**: `/src/backend/DocumentParsers/SlidesParser.js`
+- **Location**: `/src/backend/DocumentParsers/SlidesParser/index.js`
 - **Process**:
   1. Fetches presentation via Slides API
   2. Builds an index of tagged student slide elements across the whole deck
