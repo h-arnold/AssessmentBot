@@ -153,12 +153,15 @@ class ABLogger extends BaseSingleton {
   }
   /**
    * Forwards arguments to console.log in debug format after serialising each argument.
+   * High-volume diagnostics gated by the DEBUG_UI debug control per logging policy §7.
    * @param {...any} arguments_ - Arguments to log.
    * @returns {void}
    */
   debug(...arguments_) {
     // Apps Script doesn't support console.debug; use console.log and make the output explicit
-    console.log('[DEBUG]', ...arguments_.map((a) => this.serialiseArg(a)));
+    if (typeof globalThis !== 'undefined' && globalThis.DEBUG_UI) {
+      console.log('[DEBUG]', ...arguments_.map((a) => this.serialiseArg(a)));
+    }
   }
 }
 

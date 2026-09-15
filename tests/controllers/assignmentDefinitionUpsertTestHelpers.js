@@ -18,7 +18,7 @@ import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinit
 import { TaskDefinition } from '../../src/backend/Models/TaskDefinition.js';
 import DbManager from '../../src/backend/DbManager/DbManager.js';
 import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager/index.js';
-import SlidesParser from '../../src/backend/DocumentParsers/SlidesParser.js';
+import SlidesParser from '../../src/backend/DocumentParsers/SlidesParser/index.js';
 import { SheetsParser } from '../../src/backend/DocumentParsers/SheetsParser.js';
 
 /**

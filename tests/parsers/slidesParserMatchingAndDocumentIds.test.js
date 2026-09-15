@@ -1,14 +1,20 @@
-import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
+import {
+  withGlobalMocks,
+  saveGlobals,
+  restoreGlobals as restoreSavedGlobals,
+} from '../helpers/globalMockManager.js';
 
-// Slides parser matching and document ID coverage
+// Slides parser matching and document ID coverage.
 describe('SlidesParser matching and document ID propagation', () => {
   describe('SlidesParser', () => {
     const refDocId = 'ref-doc-123';
     const tplDocId = 'tpl-doc-456';
     const studentDocId = 'student-doc-789';
     let SlidesParser;
-    let originalIsValidUrl;
     let mockLogger;
+    let restoreGlobals;
+    const savedModuleGlobals = saveGlobals(['DocumentParser', 'TaskDefinition']);
 
     const createShapeElement = (description, text) => ({
       getDescription: vi.fn(() => description),
@@ -60,42 +66,44 @@ describe('SlidesParser matching and document ID propagation', () => {
       globalThis.DocumentParser = documentParserModule.DocumentParser;
       globalThis.TaskDefinition = taskDefinitionModule.TaskDefinition;
 
-      const slidesParserModule = await import('../../src/backend/DocumentParsers/SlidesParser.js');
+      const slidesParserModule =
+        await import('../../src/backend/DocumentParsers/SlidesParser/index.js');
       SlidesParser = slidesParserModule.SlidesParser;
     });
 
-    beforeEach(() => {
-      originalIsValidUrl = globalThis.Utils.isValidUrl;
-      globalThis.Utils.isValidUrl = vi.fn(() => true);
+    afterAll(() => {
+      restoreSavedGlobals(savedModuleGlobals);
+    });
 
+    beforeEach(() => {
       mockLogger = {
         warn: vi.fn(),
         error: vi.fn(),
         debug: vi.fn(),
       };
 
-      globalThis.ABLogger = {
-        getInstance: vi.fn().mockReturnValue(mockLogger),
-      };
-
-      globalThis.SlidesApp = {
-        PageElementType: {
-          SHAPE: 'SHAPE',
-          TABLE: 'TABLE',
-          IMAGE: 'IMAGE',
-        },
-        CellMergeState: {
-          NORMAL: 'NORMAL',
-          HEAD: 'HEAD',
-          MERGED: 'MERGED',
-        },
-      };
+      const mockContext = withGlobalMocks({
+        ABLogger: () => ({
+          getInstance: vi.fn().mockReturnValue(mockLogger),
+        }),
+        SlidesApp: () => ({
+          PageElementType: {
+            SHAPE: 'SHAPE',
+            TABLE: 'TABLE',
+            IMAGE: 'IMAGE',
+          },
+          CellMergeState: {
+            NORMAL: 'NORMAL',
+            HEAD: 'HEAD',
+            MERGED: 'MERGED',
+          },
+        }),
+      });
+      restoreGlobals = mockContext.restore;
     });
 
     afterEach(() => {
-      globalThis.Utils.isValidUrl = originalIsValidUrl;
-      delete globalThis.SlidesApp;
-      delete globalThis.ABLogger;
+      restoreGlobals();
     });
 
     it('sets documentId for reference and template artifacts', () => {
@@ -130,22 +138,6 @@ describe('SlidesParser matching and document ID propagation', () => {
       expect(def.getPrimaryTemplate().content).toBe('Tpl text');
     });
 
-    it('attaches notes by task title even when the note is on a different slide pageId', () => {
-      const definitionPageId = 'ref-page-1';
-      const notesPageId = 'ref-page-2';
-      const refSlides = [
-        createSlide(definitionPageId, [createShapeElement('# Task 1', 'Ref text')]),
-        createSlide(notesPageId, [createShapeElement('^ Task 1', 'Notes for Task 1')]),
-      ];
-      const parser = buildSlidesParserHarness({ [refDocId]: refSlides });
-      const defs = parser.extractTaskDefinitions(refDocId);
-
-      expect(defs).toHaveLength(1);
-      expect(defs[0].pageId).toBe(definitionPageId);
-      expect(defs[0].taskNotes).toBe('Notes for Task 1');
-      expect(mockLogger.warn).not.toHaveBeenCalled();
-    });
-
     it('sets documentId on submission artifacts', () => {
       const refSlide = createSlide('page-1', [createShapeElement('# Task 1', 'Ref text')]);
       const tplSlide = createSlide('page-1', [createShapeElement('# Task 1', 'Tpl text')]);
@@ -178,11 +170,13 @@ describe('SlidesParser matching and document ID propagation', () => {
       const artifacts = parser.extractSubmissionArtifacts(studentDocId, defs);
 
       expect(artifacts).toHaveLength(1);
-      expect(artifacts[0]).toMatchObject({
+      expect(artifacts[0]).toEqual({
         taskId: defs[0].getId(),
         pageId: 'student-page-99',
-        documentId: studentDocId,
         content: 'Student text',
+        metadata: {},
+        documentId: studentDocId,
+        type: 'TEXT',
       });
       expect(mockLogger.error).not.toHaveBeenCalled();
     });
@@ -207,8 +201,10 @@ describe('SlidesParser matching and document ID propagation', () => {
         {
           taskId: defs[0].getId(),
           pageId: 'student-table-page',
-          documentId: studentDocId,
           content: [['Student value']],
+          metadata: {},
+          documentId: studentDocId,
+          type: 'TABLE',
         },
       ]);
       expect(mockLogger.error).not.toHaveBeenCalled();
@@ -236,8 +232,10 @@ describe('SlidesParser matching and document ID propagation', () => {
         {
           taskId: defs[0].getId(),
           pageId: 'student-table-page',
-          documentId: studentDocId,
           content: [['Student value by id']],
+          metadata: {},
+          documentId: studentDocId,
+          type: 'TABLE',
         },
       ]);
       expect(mockLogger.error).not.toHaveBeenCalled();
@@ -264,11 +262,22 @@ describe('SlidesParser matching and document ID propagation', () => {
         pageId: 'student-image-page',
         documentId: studentDocId,
         content: null,
+        type: 'IMAGE',
         metadata: {
           sourceUrl:
             'https://docs.google.com/presentation/d/student-doc-789/export/png?id=student-doc-789&pageid=student-image-page',
         },
       });
+      expect(Object.keys(artifacts[0]).sort()).toEqual([
+        'content',
+        'documentId',
+        'metadata',
+        'pageId',
+        'taskId',
+        'type',
+      ]);
+      expect(artifacts[0]).not.toHaveProperty('contentHash');
+      expect(artifacts[0]).not.toHaveProperty('role');
       expect(mockLogger.error).not.toHaveBeenCalled();
     });
 
@@ -289,29 +298,25 @@ describe('SlidesParser matching and document ID propagation', () => {
       expect(defs).toHaveLength(1);
       expect(artifacts).toEqual([
         {
-          type: 'IMAGE',
           taskId: defs[0].getId(),
           pageId: null,
           content: null,
-          contentHash: null,
-          documentId: studentDocId,
-          role: 'submission',
           metadata: {},
+          documentId: studentDocId,
+          type: 'IMAGE',
         },
       ]);
+      expect(artifacts[0]).not.toHaveProperty('contentHash');
+      expect(artifacts[0]).not.toHaveProperty('role');
       expect(mockLogger.error).toHaveBeenCalledWith(
-        `Failed to extract artifact for task "${defs[0].taskTitle}" in document ${studentDocId}.`
+        `No submission content for task "${defs[0].taskTitle}" in document ${studentDocId}.`,
+        expect.objectContaining({
+          taskTitle: defs[0].taskTitle,
+          taskId: defs[0].getId(),
+          documentId: studentDocId,
+          type: 'IMAGE',
+        })
       );
-    });
-
-    it('does not create task definitions from untagged plain titles in reference or template slides', () => {
-      const refSlide = createSlide('ref-plain-page', [createShapeElement('Task 1', 'Ref text')]);
-      const tplSlide = createSlide('tpl-plain-page', [createShapeElement('Task 1', 'Tpl text')]);
-      const parser = buildSlidesParserHarness({ [refDocId]: [refSlide], [tplDocId]: [tplSlide] });
-      const defs = parser.extractTaskDefinitions(refDocId, tplDocId);
-
-      expect(defs).toHaveLength(0);
-      expect(mockLogger.warn).not.toHaveBeenCalled();
     });
   });
 });

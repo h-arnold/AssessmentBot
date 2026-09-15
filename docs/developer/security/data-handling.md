@@ -138,34 +138,39 @@ nested key name `apiKey` is not in the redaction set — so the raw key appears 
 browser console in development. This is a development-only exposure: in production the
 debug call is dropped by `isLevelEnabled()` before it reaches the console.
 
-### Backend — known tension, not yet resolved
+### Backend — gated debug logging, still a known tension
 
-We state this honestly because it is a real gap against the never-log-secrets policy:
+We state this honestly because it remains a real gap against the never-log-secrets policy:
 `ApiDispatcher.handle()` in `src/backend/z_Api/z_apiHandler.js` debug-logs the full
-incoming request via the **ungated** `ABLogger.debug()` method:
+incoming request:
 
 ```javascript
 ABLogger.getInstance().debug('API request received.', {
   requestId,
-  method: request.method,
-  params: JSON.stringify(request.params),
+  method: methodName,
+  ...(PII_LOG_METHODS.includes(methodName) ? {} : { params: JSON.stringify(request.params) }),
 });
 ```
 
-`ABLogger.debug()` (`src/backend/Utils/ABLogger.js`) has no level gate or debug flag — it
-always forwards to `console.log`, so this statement runs on every request in every
-deployment. Because the params are stringified verbatim, a `setBackendConfig` call that
-sets a new API key can place that raw key in the GAS execution logs at debug level. The
-same dispatcher also debug-logs the response envelope (which for config endpoints carries
-only masked or redacted values); the risk is concentrated in the request-params log. This
-is a candidate for future redaction at the transport boundary — it is tracked as a known
-consideration, **not** claimed as fixed.
+`ABLogger.debug()` (`src/backend/Utils/ABLogger.js`) is gated by `globalThis.DEBUG_UI`: it
+emits to `console.log` only when that flag is truthy and is silent otherwise. Nothing in
+production sets the flag, so the statement produces no output on a normal deployment — the
+exposure requires debug logging to be explicitly enabled. When it is enabled and the
+request is not one of the PII-log methods (`getAuthenticationSettings`,
+`setAuthenticationSettings`), the params are stringified verbatim; a `setBackendConfig`
+call that sets a new API key can then place that raw key in the GAS execution logs at debug
+level. The same dispatcher also debug-logs the response envelope (which for config
+endpoints carries only masked or redacted values), so the risk is concentrated in the
+request-params log. This remains a candidate for future redaction at the transport
+boundary — it is tracked as a known consideration, **not** claimed as fixed.
 
 ### Recommended operational practice
 
 - Treat GAS execution logs as **sensitive**: they are observable to anyone with edit or
   view access to the Apps Script project.
 - Restrict access to the Apps Script project to the smallest set of administrators.
+- Leave `globalThis.DEBUG_UI` unset in production so dispatcher request-params debug logs
+  stay silent; enable it deliberately and only for short troubleshooting windows.
 - Do not leave debug logging enabled in production; run with production log levels and
   rely on `warn`/`error` for diagnostics.
 - Avoid performing API-key rotation or initial configuration while verbose log capture is

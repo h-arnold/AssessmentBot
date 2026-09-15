@@ -9,14 +9,15 @@ const TABLE_MAX_COLUMNS = 50;
 /**
  * TableTaskArtifact
  *
- * Represents a table-style task artifact. It normalizes various input shapes
+ * Represents a table-style task artifact. It normalises various input shapes
  * (null, string, or a 2D array of cells) into an internal rows representation
  * and can produce a Markdown table string.
  *
- * Behavior summary:
+ * Behaviour summary:
  * - getType() always returns the literal 'TABLE'.
  * - normalizeContent(content):
- *   - null -> throws after logging via ProgressTracker (fatal input)
+ *   - null -> returns null; missing-content diagnostics are owned by the
+ *     extraction boundary, so this layer stays silent (no duplicate logging)
  *   - string -> trimmed string, _rows cleared
  *   - Array (rows) -> cells normalised via _normCell, shape preserved (empty
  *     rows/columns retained) and padded to the widest row. Hard limit of 50x50
@@ -28,14 +29,14 @@ const TABLE_MAX_COLUMNS = 50;
  *   override) into a Markdown table string with a header separator row. Invalid
  *   or empty input -> returns an empty string.
  *
- * Internal normalization helpers (prefixed with _) are private and mutate the
+ * Internal normalisation helpers (prefixed with _) are private and mutate the
  * provided rows in-place where appropriate:
  * - _normCell(cell): numbers are kept, null/empty strings become empty string,
  *   other values are stringified and trimmed.
  *
  * Notes:
  * - The class expects a BaseTaskArtifact superclass (not shown) that may
- *   provide construction and other shared behavior. The constructor is expected
+ *   provide construction and other shared behaviour. The constructor is expected
  *   to accept an options object that may include a `content` property.
  * - _rows is an internal property (Array<Array<string|number>>) that is
  *   set by normalizeContent when an array of rows is provided and accepted.
@@ -44,7 +45,7 @@ const TABLE_MAX_COLUMNS = 50;
  * @extends BaseTaskArtifact
  *
  * @example
- * // Normalize raw cells into an artifact
+ * // Normalise raw cells into an artifact
  * const raw = [['Name', 'Score'], ['Alice', 10], ['Bob', null]];
  * const art = TableTaskArtifact.fromRawCells(raw, { id: 't1' });
  * // art.normalizeContent(...) will set art._rows and return a Markdown table
@@ -53,8 +54,8 @@ const TABLE_MAX_COLUMNS = 50;
  * @returns {string} The artifact type literal: 'TABLE'.
  *
  * @method normalizeContent
- * @param {null|string|Array<Array<any>>} content - content to normalize
- * @returns {string} Normalized Markdown string.
+ * @param {null|string|Array<Array<any>>} content - content to normalise
+ * @returns {string|null} Normalised Markdown string, or null when content is null.
  *
  * @method getRows
  * @returns {Array<Array<string|number>>} A copy of the internal rows
@@ -63,7 +64,7 @@ const TABLE_MAX_COLUMNS = 50;
  * @method _normCell
  * @private
  * @param {any} cell
- * @returns {string|number} Normalized cell value: numbers preserved,
+ * @returns {string|number} Normalised cell value: numbers preserved,
  *                              trimmed strings, or empty string for empty.
  *
  * @method toMarkdown
@@ -89,19 +90,17 @@ class TableTaskArtifact extends BaseTaskArtifact {
     return 'TABLE';
   }
   /**
-   * Normalize table-like content into internal rows and return a Markdown
+   * Normalise table-like content into internal rows and return a Markdown
    * string representation. Accepts null, string, or 2D array input.
    *
    * @param {null|string|Array<Array<any>>} content - Content to normalise.
-   * @returns {string} Normalised Markdown string.
+   * @returns {string|null} Normalised Markdown string, or null when content is null.
    */
   normalizeContent(content) {
     if (content == null) {
-      // If the content is null, the liklihood is that either there's an issue with tagging consistency between the reference and templates tasks or
-      // the student has deleted the tag or the object or the tag. Either way, this issue needs to be handled further up the stack.
-      ABLogger.getInstance().warn(
-        `Table task content which is null was sent to be normalised. This means that something isn't being caught further up the stack.`
-      );
+      // Missing-content diagnostics are owned by the extraction boundary (the Slides
+      // parser logs once with full task context), so this layer stays silent here and
+      // returns null rather than emitting duplicate per-field detail.
       return null;
     }
     if (Validate.isString(content)) {
@@ -163,7 +162,7 @@ class TableTaskArtifact extends BaseTaskArtifact {
     return this.toMarkdown(paddedRows);
   }
   /**
-   * Return a shallow copy of the normalized rows.
+   * Return a shallow copy of the normalised rows.
    *
    * @returns {Array<Array<string|number>>} Copy of the internal rows.
    */
@@ -172,7 +171,7 @@ class TableTaskArtifact extends BaseTaskArtifact {
     return [];
   }
   /**
-   * Normalize an individual cell value.
+   * Normalise an individual cell value.
    *
    * @private
    * @param {*} cell - Cell value to normalise.

@@ -34,7 +34,7 @@ class DocumentParser {
    * Phase 2 abstract: extract primitive submission artifact records (no hashing) for a student document.
    * @param {string} documentId - The ID of the student submission document.
    * @param {TaskDefinition[]} taskDefinitions - Definitions of tasks to extract.
-   * @returns {Array<{taskId:string,pageId?:string,content:any,metadata?:Object}>} Submission artefacts indexed by task ID.
+   * @returns {Array<{taskId:string,pageId:string|null,content:any,metadata:Object,documentId:string,type:string}>} Submission artefacts indexed by task ID.
    */
   extractSubmissionArtifacts(documentId, taskDefinitions) {
     throw new Error("Method 'extractSubmissionArtifacts' must be implemented by subclass");
@@ -47,14 +47,25 @@ class DocumentParser {
    */
   convertToMarkdownTable(tableData) {
     if (!tableData || tableData.length === 0 || tableData[0].length === 0) {
-      console.log('The provided data is empty or invalid.');
+      const rowCount = tableData ? tableData.length : 0;
+      const columnCount = tableData && tableData[0] ? tableData[0].length : 0;
+      ABLogger.getInstance().warn('The provided data is empty or invalid.', {
+        workflow: 'DocumentParser.convertToMarkdownTable',
+        rowCount,
+        columnCount,
+      });
       return '';
     }
 
     let markdownTable = '';
 
-    // Create header row
-    markdownTable += '| ' + tableData[0].join(' | ') + ' |\n';
+    // Create header row (escaped consistently with data rows so pipes cannot corrupt columns)
+    const escapedHeader = tableData[0].map((cell) =>
+      String(cell)
+        .replaceAll('\\', '\\\\')
+        .replaceAll('|', String.raw`\|`)
+    );
+    markdownTable += '| ' + escapedHeader.join(' | ') + ' |\n';
 
     // Create separator row
     markdownTable += '| ' + tableData[0].map(() => '---').join(' | ') + ' |\n';
