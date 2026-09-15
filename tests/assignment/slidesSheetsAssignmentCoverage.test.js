@@ -4,37 +4,52 @@ import { withGlobalMocks } from '../helpers/globalMockManager.js';
 // Hermetic behaviour coverage for SlidesAssignment and SheetsAssignment
 // runners: construction, image hydration, task population and submission
 // processing without invoking GAS services.
+
+/**
+ * Builds the hermetic assignment test bed shared by both suites: mock logger,
+ * progress tracker, common GAS globals, and the restore handle. The
+ * title-specific Classroom course-work data is supplied by the caller.
+ * @param {Object} options - Test-bed options.
+ * @param {string} options.title - Classroom course-work title for the suite.
+ * @returns {{mockLogger: Object, mockTracker: Object, restoreGlobals: Function}} Test-bed mocks.
+ */
+function installAssignmentTestBed({ title }) {
+  const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+  const mockTracker = {
+    updateProgress: vi.fn(),
+    logError: vi.fn(),
+    logAndThrowError: vi.fn((message) => {
+      throw new Error(message);
+    }),
+  };
+  const mockContext = withGlobalMocks({
+    ABLogger: () => ({ getInstance: () => mockLogger }),
+    ProgressTracker: () => ({ getInstance: () => mockTracker }),
+    Classroom: () => ({
+      Courses: {
+        CourseWork: {
+          get: vi.fn(() => ({ title, creationTime: '2026-01-01T00:00:00.000Z' })),
+        },
+      },
+    }),
+    ImageManager: () => globalThis.ImageManager,
+    SlidesParser: () => globalThis.SlidesParser,
+    SheetsParser: () => globalThis.SheetsParser,
+    SheetsAssessor: () => globalThis.SheetsAssessor,
+    SheetsFeedback: () => globalThis.SheetsFeedback,
+  });
+  return { mockLogger, mockTracker, restoreGlobals: mockContext.restore };
+}
+
 describe('SlidesAssignment behaviour', () => {
   let restoreGlobals;
   let mockLogger;
   let mockTracker;
 
   beforeEach(() => {
-    mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
-    mockTracker = {
-      updateProgress: vi.fn(),
-      logError: vi.fn(),
-      logAndThrowError: vi.fn((message) => {
-        throw new Error(message);
-      }),
-    };
-    const mockContext = withGlobalMocks({
-      ABLogger: () => ({ getInstance: () => mockLogger }),
-      ProgressTracker: () => ({ getInstance: () => mockTracker }),
-      Classroom: () => ({
-        Courses: {
-          CourseWork: {
-            get: vi.fn(() => ({ title: 'Slides Title', creationTime: '2026-01-01T00:00:00.000Z' })),
-          },
-        },
-      }),
-      ImageManager: () => globalThis.ImageManager,
-      SlidesParser: () => globalThis.SlidesParser,
-      SheetsParser: () => globalThis.SheetsParser,
-      SheetsAssessor: () => globalThis.SheetsAssessor,
-      SheetsFeedback: () => globalThis.SheetsFeedback,
-    });
-    restoreGlobals = mockContext.restore;
+    ({ mockLogger, mockTracker, restoreGlobals } = installAssignmentTestBed({
+      title: 'Slides Title',
+    }));
   });
 
   afterEach(() => {
@@ -276,31 +291,9 @@ describe('SheetsAssignment behaviour', () => {
   let mockTracker;
 
   beforeEach(() => {
-    mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
-    mockTracker = {
-      updateProgress: vi.fn(),
-      logError: vi.fn(),
-      logAndThrowError: vi.fn((message) => {
-        throw new Error(message);
-      }),
-    };
-    const mockContext = withGlobalMocks({
-      ABLogger: () => ({ getInstance: () => mockLogger }),
-      ProgressTracker: () => ({ getInstance: () => mockTracker }),
-      Classroom: () => ({
-        Courses: {
-          CourseWork: {
-            get: vi.fn(() => ({ title: 'Sheets Title', creationTime: '2026-01-01T00:00:00.000Z' })),
-          },
-        },
-      }),
-      ImageManager: () => globalThis.ImageManager,
-      SlidesParser: () => globalThis.SlidesParser,
-      SheetsParser: () => globalThis.SheetsParser,
-      SheetsAssessor: () => globalThis.SheetsAssessor,
-      SheetsFeedback: () => globalThis.SheetsFeedback,
-    });
-    restoreGlobals = mockContext.restore;
+    ({ mockLogger, mockTracker, restoreGlobals } = installAssignmentTestBed({
+      title: 'Sheets Title',
+    }));
   });
 
   afterEach(() => {
