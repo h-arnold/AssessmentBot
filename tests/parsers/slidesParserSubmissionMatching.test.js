@@ -1,10 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import {
-  saveSlidesParserModuleGlobals,
-  restoreSlidesParserModuleGlobals,
-  createSlidesParserMockLogger,
-  installSlidesParserGlobals,
-  loadSlidesParserModules,
+  registerSlidesParserSuiteLifecycle,
   createShapeElement,
   createTableElement,
   createSlide,
@@ -18,26 +14,12 @@ describe('SlidesParser submission matching', () => {
   describe('SlidesParser', () => {
     const refDocId = 'ref-doc-123';
     const studentDocId = 'student-doc-789';
-    let SlidesParser;
-    let mockLogger;
-    let restoreGlobals;
-    const savedModuleGlobals = saveSlidesParserModuleGlobals();
-
-    beforeAll(async () => {
-      SlidesParser = await loadSlidesParserModules();
-    });
-
-    afterAll(() => {
-      restoreSlidesParserModuleGlobals(savedModuleGlobals);
-    });
-
-    beforeEach(() => {
-      mockLogger = createSlidesParserMockLogger(vi);
-      restoreGlobals = installSlidesParserGlobals(vi, mockLogger);
-    });
-
-    afterEach(() => {
-      restoreGlobals();
+    const suite = registerSlidesParserSuiteLifecycle({
+      beforeAll,
+      afterAll,
+      beforeEach,
+      afterEach,
+      vi,
     });
 
     it('prefers a tag-qualified match over an earlier bare-title element', () => {
@@ -50,7 +32,7 @@ describe('SlidesParser submission matching', () => {
           createShapeElement(vi, '# Task 1', 'Tagged answer'),
         ]),
       ];
-      const parser = buildSlidesParserHarness(vi, SlidesParser, {
+      const parser = buildSlidesParserHarness(vi, suite.SlidesParser, {
         [refDocId]: [refSlide],
         [studentDocId]: studentSlides,
       });
@@ -67,7 +49,7 @@ describe('SlidesParser submission matching', () => {
           type: 'TEXT',
         },
       ]);
-      expect(mockLogger.error).not.toHaveBeenCalled();
+      expect(suite.mockLogger.error).not.toHaveBeenCalled();
     });
 
     it('warns with candidate, page, and bucket size when a candidate bucket holds several entries', () => {
@@ -78,7 +60,7 @@ describe('SlidesParser submission matching', () => {
         createSlide(vi, 'student-page-draft', [createShapeElement(vi, '# Task 1', 'Draft answer')]),
         createSlide(vi, 'student-page-final', [createShapeElement(vi, '# Task 1', 'Final answer')]),
       ];
-      const parser = buildSlidesParserHarness(vi, SlidesParser, {
+      const parser = buildSlidesParserHarness(vi, suite.SlidesParser, {
         [refDocId]: [refSlide],
         [studentDocId]: studentSlides,
       });
@@ -89,7 +71,7 @@ describe('SlidesParser submission matching', () => {
         pageId: 'student-page-draft',
         content: 'Draft answer',
       });
-      expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect(suite.mockLogger.warn).toHaveBeenCalledWith(
         expect.stringContaining('Multiple submission candidates'),
         expect.objectContaining({
           candidate: 'Task 1',
@@ -112,7 +94,7 @@ describe('SlidesParser submission matching', () => {
           createTableElement(vi, '# Task Table', [['Student value']]),
         ]),
       ];
-      const parser = buildSlidesParserHarness(vi, SlidesParser, {
+      const parser = buildSlidesParserHarness(vi, suite.SlidesParser, {
         [refDocId]: [refSlide],
         [studentDocId]: studentSlides,
       });
@@ -135,7 +117,7 @@ describe('SlidesParser submission matching', () => {
         expect.objectContaining({ getPageElementType: expect.any(Function) }),
         expect.objectContaining({ elementType: 'TABLE' })
       );
-      expect(mockLogger.error).not.toHaveBeenCalled();
+      expect(suite.mockLogger.error).not.toHaveBeenCalled();
     });
 
     it('resolves page ids lazily only for slides with matching entries', () => {
@@ -148,7 +130,7 @@ describe('SlidesParser submission matching', () => {
       const matchedSlide = createSlide(vi, 'student-page-match', [
         createShapeElement(vi, '# Task 1', 'Student text'),
       ]);
-      const parser = buildSlidesParserHarness(vi, SlidesParser, {
+      const parser = buildSlidesParserHarness(vi, suite.SlidesParser, {
         [refDocId]: [refSlide],
         [studentDocId]: [unmatchedSlide, matchedSlide],
       });
@@ -161,7 +143,7 @@ describe('SlidesParser submission matching', () => {
     });
 
     it('rejects submission extraction when document id or task definitions are missing', () => {
-      const parser = buildSlidesParserHarness(vi, SlidesParser, {});
+      const parser = buildSlidesParserHarness(vi, suite.SlidesParser, {});
 
       expect(() => parser.extractSubmissionArtifacts(undefined, [])).toThrow(
         /documentId is required/

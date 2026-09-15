@@ -8,11 +8,7 @@
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import {
-  saveSlidesParserModuleGlobals,
-  restoreSlidesParserModuleGlobals,
-  createSlidesParserMockLogger,
-  installSlidesParserGlobals,
-  loadSlidesParserModules,
+  registerSlidesParserSuiteLifecycle,
   createShapeElement,
   createTableElementFromMock,
   createSlide,
@@ -21,30 +17,16 @@ import {
 } from '../helpers/slidesParserTestHarness.js';
 
 describe('SlidesParser malformed table consumer path', () => {
-  let SlidesParser;
-  let mockLogger;
-  let restoreGlobals;
-  const savedModuleGlobals = saveSlidesParserModuleGlobals();
+  const suite = registerSlidesParserSuiteLifecycle({
+    beforeAll,
+    afterAll,
+    beforeEach,
+    afterEach,
+    vi,
+    restoreMocks: true,
+  });
   const refDocId = 'ref-doc-1';
   const studentDocId = 'student-doc-1';
-
-  beforeAll(async () => {
-    SlidesParser = await loadSlidesParserModules();
-  });
-
-  afterAll(() => {
-    restoreSlidesParserModuleGlobals(savedModuleGlobals);
-  });
-
-  beforeEach(() => {
-    mockLogger = createSlidesParserMockLogger(vi);
-    restoreGlobals = installSlidesParserGlobals(vi, mockLogger);
-  });
-
-  afterEach(() => {
-    restoreGlobals();
-    vi.restoreAllMocks();
-  });
 
   it('should throw rather than store a throwing table as a submission artefact', () => {
     const failure = new Error('Student cell RPC failed');
@@ -56,7 +38,7 @@ describe('SlidesParser malformed table consumer path', () => {
         throw failure;
       }),
     };
-    const parser = buildSlidesParserHarness(vi, SlidesParser, {
+    const parser = buildSlidesParserHarness(vi, suite.SlidesParser, {
       [refDocId]: [
         createSlide(vi, 'ref-page', [createTableElementFromMock(vi, '# Task Table', refTable)]),
       ],
@@ -76,7 +58,7 @@ describe('SlidesParser malformed table consumer path', () => {
     }
     // The malformed read must surface, never collapse into a hashable blank table.
     expect(thrown).toBe(failure);
-    expect(mockLogger.error).toHaveBeenCalledWith(
+    expect(suite.mockLogger.error).toHaveBeenCalledWith(
       'extractTableCells failed',
       expect.objectContaining({ documentId: studentDocId, taskTitle: 'Task Table', error: failure })
     );
@@ -97,7 +79,7 @@ describe('SlidesParser malformed table consumer path', () => {
       getNumColumns: vi.fn().mockReturnValue(1),
       getCell: vi.fn().mockReturnValue(null),
     };
-    const parser = buildSlidesParserHarness(vi, SlidesParser, {
+    const parser = buildSlidesParserHarness(vi, suite.SlidesParser, {
       [refDocId]: [
         createSlide(vi, 'ref-page', [createTableElementFromMock(vi, '# Task Table', refTable)]),
       ],
@@ -116,7 +98,7 @@ describe('SlidesParser malformed table consumer path', () => {
       thrown = error;
     }
     expect(thrown).toBeInstanceOf(TypeError);
-    expect(mockLogger.error).toHaveBeenCalledWith(
+    expect(suite.mockLogger.error).toHaveBeenCalledWith(
       'extractTableCells failed',
       expect.objectContaining({
         documentId: studentDocId,
@@ -125,7 +107,7 @@ describe('SlidesParser malformed table consumer path', () => {
         column: 0,
       })
     );
-    expect(mockLogger.error.mock.calls[0][1].error).toBe(thrown);
+    expect(suite.mockLogger.error.mock.calls[0][1].error).toBe(thrown);
     const submission = new globalThis.StudentSubmission(
       'student-1',
       'assignment-1',
@@ -151,7 +133,7 @@ describe('SlidesParser malformed table consumer path', () => {
           createShapeElement(vi, 'Unrelated heading', 'Unrelated text'),
         ]),
       ];
-      const parser = buildSlidesParserHarness(vi, SlidesParser, {
+      const parser = buildSlidesParserHarness(vi, suite.SlidesParser, {
         [missingRefDocId]: refSlides,
         [missingStudentDocId]: studentSlides,
       });
@@ -174,8 +156,8 @@ describe('SlidesParser malformed table consumer path', () => {
         expect(artefact.content == null && artefact.pageId == null).toBe(true);
       }
       expect(artifacts.map((artefact) => artefact.type).sort()).toEqual(['TABLE', 'TEXT']);
-      expect(mockLogger.error).toHaveBeenCalledTimes(2);
-      expect(mockLogger.error).toHaveBeenCalledWith(
+      expect(suite.mockLogger.error).toHaveBeenCalledTimes(2);
+      expect(suite.mockLogger.error).toHaveBeenCalledWith(
         `No submission content for task "Task Text" in document ${missingStudentDocId}.`,
         expect.objectContaining({
           taskTitle: 'Task Text',
@@ -184,7 +166,7 @@ describe('SlidesParser malformed table consumer path', () => {
           type: 'TEXT',
         })
       );
-      expect(mockLogger.error).toHaveBeenCalledWith(
+      expect(suite.mockLogger.error).toHaveBeenCalledWith(
         `No submission content for task "Task Table" in document ${missingStudentDocId}.`,
         expect.objectContaining({
           taskTitle: 'Task Table',
@@ -199,7 +181,7 @@ describe('SlidesParser malformed table consumer path', () => {
         missingStudentDocId,
         'Student One'
       );
-      const errorCallsBeforeUpsert = mockLogger.error.mock.calls.length;
+      const errorCallsBeforeUpsert = suite.mockLogger.error.mock.calls.length;
       artifacts.forEach((artefact) => {
         const definition = defs.find((def) => def.getId() === artefact.taskId);
         submission.upsertItemFromExtraction(definition, {
@@ -213,8 +195,8 @@ describe('SlidesParser malformed table consumer path', () => {
       });
       // Parser-owned placeholders stay silent downstream: no StudentSubmission warn
       // and no TableTaskArtifact warn.
-      expect(mockLogger.warn).not.toHaveBeenCalled();
-      expect(mockLogger.error.mock.calls.length).toBe(errorCallsBeforeUpsert);
+      expect(suite.mockLogger.warn).not.toHaveBeenCalled();
+      expect(suite.mockLogger.error.mock.calls.length).toBe(errorCallsBeforeUpsert);
       expect(submission.getItem(textDef.getId()).artifact.content).toBeNull();
       expect(submission.getItem(textDef.getId()).artifact.contentHash).toBeNull();
       expect(submission.getItem(tableDef.getId()).artifact.content).toBeNull();
@@ -239,11 +221,11 @@ describe('SlidesParser malformed table consumer path', () => {
         'Student Three'
       );
       tableSubmission.upsertItemFromExtraction(tableDef, { content: null });
-      expect(mockLogger.warn).toHaveBeenCalledTimes(2);
-      expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect(suite.mockLogger.warn).toHaveBeenCalledTimes(2);
+      expect(suite.mockLogger.warn).toHaveBeenCalledWith(
         expect.stringContaining("No content found for Student Two for task 'Task Text'.")
       );
-      expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect(suite.mockLogger.warn).toHaveBeenCalledWith(
         expect.stringContaining("No content found for Student Three for task 'Task Table'.")
       );
     });

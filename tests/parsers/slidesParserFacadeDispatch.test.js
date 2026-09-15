@@ -1,10 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import {
-  saveSlidesParserModuleGlobals,
-  restoreSlidesParserModuleGlobals,
-  createSlidesParserMockLogger,
-  installSlidesParserGlobals,
-  loadSlidesParserModules,
+  registerSlidesParserSuiteLifecycle,
   createShapeElement,
   createTableElement,
   createSlide,
@@ -16,30 +12,16 @@ import {
 describe('SlidesParser facade dispatch', () => {
   const refDocId = 'ref-doc-dispatch';
   const studentDocId = 'student-doc-dispatch';
-  let SlidesParser;
-  let mockLogger;
-  let restoreGlobals;
-  const savedModuleGlobals = saveSlidesParserModuleGlobals();
-
-  beforeAll(async () => {
-    SlidesParser = await loadSlidesParserModules();
-  });
-
-  afterAll(() => {
-    restoreSlidesParserModuleGlobals(savedModuleGlobals);
-  });
-
-  beforeEach(() => {
-    mockLogger = createSlidesParserMockLogger(vi);
-    restoreGlobals = installSlidesParserGlobals(vi, mockLogger);
-  });
-
-  afterEach(() => {
-    restoreGlobals();
+  const suite = registerSlidesParserSuiteLifecycle({
+    beforeAll,
+    afterAll,
+    beforeEach,
+    afterEach,
+    vi,
   });
 
   it('routes definition shape reads through facade spies', () => {
-    const parser = buildSlidesParserHarness(vi, SlidesParser, {
+    const parser = buildSlidesParserHarness(vi, suite.SlidesParser, {
       [refDocId]: [createSlide(vi, 'page-1', [createShapeElement(vi, '# Task 1', 'Ref text')])],
     });
     const shapeSpy = vi.spyOn(parser, 'extractTextFromShape');
@@ -51,7 +33,7 @@ describe('SlidesParser facade dispatch', () => {
   });
 
   it('routes definition table reads through facade spies without recursion', () => {
-    const parser = buildSlidesParserHarness(vi, SlidesParser, {
+    const parser = buildSlidesParserHarness(vi, suite.SlidesParser, {
       [refDocId]: [createSlide(vi, 'page-1', [createTableElement(vi, '# Task Table', [['A']])])],
     });
     const tableSpy = vi.spyOn(parser, 'extractTableCells');
@@ -66,7 +48,7 @@ describe('SlidesParser facade dispatch', () => {
   });
 
   it('honours a subclass override of shape text during definition extraction', () => {
-    class OverrideParser extends SlidesParser {
+    class OverrideParser extends suite.SlidesParser {
       extractTextFromShape() {
         return 'overridden';
       }
@@ -83,7 +65,7 @@ describe('SlidesParser facade dispatch', () => {
   });
 
   it('routes submission matching steps through facade spies', () => {
-    const parser = buildSlidesParserHarness(vi, SlidesParser, {
+    const parser = buildSlidesParserHarness(vi, suite.SlidesParser, {
       [refDocId]: [createSlide(vi, 'ref-page', [createShapeElement(vi, '# Task 1', 'Ref text')])],
       [studentDocId]: [
         createSlide(vi, 'student-page', [createShapeElement(vi, '# Task 1', 'Answer')]),
@@ -109,7 +91,7 @@ describe('SlidesParser facade dispatch', () => {
   });
 
   it('honours a subclass override of the type probe during submission matching', () => {
-    const parser = buildSlidesParserHarness(vi, SlidesParser, {
+    const parser = buildSlidesParserHarness(vi, suite.SlidesParser, {
       [refDocId]: [createSlide(vi, 'ref-page', [createShapeElement(vi, '# Task 1', 'Ref text')])],
       [studentDocId]: [
         createSlide(vi, 'student-page', [createShapeElement(vi, '# Task 1', 'Answer')]),

@@ -1,10 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import {
-  saveSlidesParserModuleGlobals,
-  restoreSlidesParserModuleGlobals,
-  createSlidesParserMockLogger,
-  installSlidesParserGlobals,
-  loadSlidesParserModules,
+  registerSlidesParserSuiteLifecycle,
   createShapeElement,
   createTableElement,
   createTaggedElement,
@@ -18,32 +14,18 @@ describe('SlidesParser matching and document ID propagation', () => {
     const refDocId = 'ref-doc-123';
     const tplDocId = 'tpl-doc-456';
     const studentDocId = 'student-doc-789';
-    let SlidesParser;
-    let mockLogger;
-    let restoreGlobals;
-    const savedModuleGlobals = saveSlidesParserModuleGlobals();
-
-    beforeAll(async () => {
-      SlidesParser = await loadSlidesParserModules();
-    });
-
-    afterAll(() => {
-      restoreSlidesParserModuleGlobals(savedModuleGlobals);
-    });
-
-    beforeEach(() => {
-      mockLogger = createSlidesParserMockLogger(vi);
-      restoreGlobals = installSlidesParserGlobals(vi, mockLogger);
-    });
-
-    afterEach(() => {
-      restoreGlobals();
+    const suite = registerSlidesParserSuiteLifecycle({
+      beforeAll,
+      afterAll,
+      beforeEach,
+      afterEach,
+      vi,
     });
 
     it('sets documentId for reference and template artifacts', () => {
       const refSlide = createSlide(vi, 'page-1', [createShapeElement(vi, '# Task 1', 'Ref text')]);
       const tplSlide = createSlide(vi, 'page-1', [createShapeElement(vi, '# Task 1', 'Tpl text')]);
-      const parser = buildSlidesParserHarness(vi, SlidesParser, {
+      const parser = buildSlidesParserHarness(vi, suite.SlidesParser, {
         [refDocId]: [refSlide],
         [tplDocId]: [tplSlide],
       });
@@ -65,7 +47,7 @@ describe('SlidesParser matching and document ID propagation', () => {
       const tplSlide = createSlide(vi, templatePageId, [
         createShapeElement(vi, '# Task 1', 'Tpl text'),
       ]);
-      const parser = buildSlidesParserHarness(vi, SlidesParser, {
+      const parser = buildSlidesParserHarness(vi, suite.SlidesParser, {
         [refDocId]: [refSlide],
         [tplDocId]: [tplSlide],
       });
@@ -88,7 +70,7 @@ describe('SlidesParser matching and document ID propagation', () => {
       const studentSlide = createSlide(vi, 'page-1', [
         createShapeElement(vi, '# Task 1', 'Student text'),
       ]);
-      const parser = buildSlidesParserHarness(vi, SlidesParser, {
+      const parser = buildSlidesParserHarness(vi, suite.SlidesParser, {
         [refDocId]: [refSlide],
         [tplDocId]: [tplSlide],
         [studentDocId]: [studentSlide],
@@ -111,7 +93,7 @@ describe('SlidesParser matching and document ID propagation', () => {
         createSlide(vi, 'student-page-other', [createShapeElement(vi, '# Task 2', 'Other task')]),
         createSlide(vi, 'student-page-99', [createShapeElement(vi, '# Task 1', 'Student text')]),
       ];
-      const parser = buildSlidesParserHarness(vi, SlidesParser, {
+      const parser = buildSlidesParserHarness(vi, suite.SlidesParser, {
         [refDocId]: [refSlide],
         [tplDocId]: [tplSlide],
         [studentDocId]: studentSlides,
@@ -128,7 +110,7 @@ describe('SlidesParser matching and document ID propagation', () => {
         documentId: studentDocId,
         type: 'TEXT',
       });
-      expect(mockLogger.error).not.toHaveBeenCalled();
+      expect(suite.mockLogger.error).not.toHaveBeenCalled();
     });
 
     it('extracts a table submission when the student description is the bare task title', () => {
@@ -138,7 +120,7 @@ describe('SlidesParser matching and document ID propagation', () => {
       const studentSlide = createSlide(vi, 'student-table-page', [
         createTableElement(vi, 'Task Table', [['Student value']]),
       ]);
-      const parser = buildSlidesParserHarness(vi, SlidesParser, {
+      const parser = buildSlidesParserHarness(vi, suite.SlidesParser, {
         [refDocId]: [refSlide],
         [studentDocId]: [studentSlide],
       });
@@ -157,7 +139,7 @@ describe('SlidesParser matching and document ID propagation', () => {
           type: 'TABLE',
         },
       ]);
-      expect(mockLogger.error).not.toHaveBeenCalled();
+      expect(suite.mockLogger.error).not.toHaveBeenCalled();
     });
 
     it('extracts a table submission when the student description is the stable task id', () => {
@@ -165,7 +147,7 @@ describe('SlidesParser matching and document ID propagation', () => {
         createTableElement(vi, '# Task Table', [['Reference value']]),
       ]);
       let studentTaskId = null;
-      const parser = buildSlidesParserHarness(vi, SlidesParser, {
+      const parser = buildSlidesParserHarness(vi, suite.SlidesParser, {
         [refDocId]: [refSlide],
         [studentDocId]: () => [
           createSlide(vi, 'student-table-page', [
@@ -188,7 +170,7 @@ describe('SlidesParser matching and document ID propagation', () => {
           type: 'TABLE',
         },
       ]);
-      expect(mockLogger.error).not.toHaveBeenCalled();
+      expect(suite.mockLogger.error).not.toHaveBeenCalled();
     });
 
     it('extracts image submissions by task title across the deck and uses the matched student slide pageId in sourceUrl', () => {
@@ -197,7 +179,7 @@ describe('SlidesParser matching and document ID propagation', () => {
         createSlide(vi, 'student-image-other', [createTaggedElement(vi, '| Task 2')]),
         createSlide(vi, 'student-image-page', [createTaggedElement(vi, '| Task 1')]),
       ];
-      const parser = buildSlidesParserHarness(vi, SlidesParser, {
+      const parser = buildSlidesParserHarness(vi, suite.SlidesParser, {
         [refDocId]: [refSlide],
         [studentDocId]: studentSlides,
       });
@@ -228,13 +210,13 @@ describe('SlidesParser matching and document ID propagation', () => {
       ]);
       expect(artifacts[0]).not.toHaveProperty('contentHash');
       expect(artifacts[0]).not.toHaveProperty('role');
-      expect(mockLogger.error).not.toHaveBeenCalled();
+      expect(suite.mockLogger.error).not.toHaveBeenCalled();
     });
 
     it('does not extract image submissions when the student description is only the stable task id without an image tag', () => {
       const refSlide = createSlide(vi, 'ref-image-page', [createTaggedElement(vi, '~ Task 1')]);
       let studentTaskId = null;
-      const parser = buildSlidesParserHarness(vi, SlidesParser, {
+      const parser = buildSlidesParserHarness(vi, suite.SlidesParser, {
         [refDocId]: [refSlide],
         [studentDocId]: () => [
           createSlide(vi, 'student-image-other', [createTaggedElement(vi, 'Task 2')]),
@@ -258,7 +240,7 @@ describe('SlidesParser matching and document ID propagation', () => {
       ]);
       expect(artifacts[0]).not.toHaveProperty('contentHash');
       expect(artifacts[0]).not.toHaveProperty('role');
-      expect(mockLogger.error).toHaveBeenCalledWith(
+      expect(suite.mockLogger.error).toHaveBeenCalledWith(
         `No submission content for task "${defs[0].taskTitle}" in document ${studentDocId}.`,
         expect.objectContaining({
           taskTitle: defs[0].taskTitle,

@@ -8,9 +8,11 @@
  * loading, mock globals, logger creation, element and slide factories, table
  * mocks, and the parser harness builder.
  *
- * Each suite keeps its own isolation (per-file globals save/restore and
- * per-test mock installation) and behaviour; this helper only removes the
- * duplicated construction details.
+ * Suites register the standard lifecycle with
+ * registerSlidesParserSuiteLifecycle, which preserves per-file global
+ * isolation and per-test mock installation. Suite behaviour and assertions
+ * stay in the calling file; this helper only removes the duplicated
+ * construction details.
  */
 
 const { withGlobalMocks, saveGlobals, restoreGlobals } = require('./globalMockManager.js');
@@ -229,6 +231,60 @@ function buildSlidesParserHarness(vi, ParserClass, slidesByDocId) {
   return new ParserClass();
 }
 
+/**
+ * Registers the standard Slides parser suite lifecycle.
+ *
+ * Saves module globals at registration, loads the parser in beforeAll,
+ * installs per-test globals and logger in beforeEach, and restores in
+ * afterEach. Each calling suite keeps its own saved globals and restore
+ * closure, so global isolation is preserved.
+ * @param {Object} hooks - Vitest hooks and mocks object.
+ * @param {Function} hooks.beforeAll - Vitest beforeAll hook.
+ * @param {Function} hooks.afterAll - Vitest afterAll hook.
+ * @param {Function} hooks.beforeEach - Vitest beforeEach hook.
+ * @param {Function} hooks.afterEach - Vitest afterEach hook.
+ * @param {Object} hooks.vi - Vitest vi object for creating mocks.
+ * @param {boolean} [hooks.restoreMocks] - Also call vi.restoreAllMocks in afterEach.
+ * @returns {Object} - Mutable suite state with SlidesParser and mockLogger.
+ */
+function registerSlidesParserSuiteLifecycle({
+  beforeAll,
+  afterAll,
+  beforeEach,
+  afterEach,
+  vi,
+  restoreMocks,
+}) {
+  const state = { SlidesParser: undefined, mockLogger: undefined };
+  let restorePerTestGlobals;
+  const savedModuleGlobals = saveSlidesParserModuleGlobals();
+
+  beforeAll(async () => {
+    state.SlidesParser = await loadSlidesParserModules();
+  });
+
+  afterAll(() => {
+    restoreSlidesParserModuleGlobals(savedModuleGlobals);
+  });
+
+  beforeEach(() => {
+    state.mockLogger = createSlidesParserMockLogger(vi);
+    restorePerTestGlobals = installSlidesParserGlobals(vi, state.mockLogger);
+  });
+
+  afterEach(() => {
+    if (restorePerTestGlobals) {
+      restorePerTestGlobals();
+      restorePerTestGlobals = undefined;
+    }
+    if (restoreMocks) {
+      vi.restoreAllMocks();
+    }
+  });
+
+  return state;
+}
+
 module.exports = {
   SLIDES_PARSER_MODULE_GLOBALS,
   saveSlidesParserModuleGlobals,
@@ -236,6 +292,7 @@ module.exports = {
   createSlidesParserMockLogger,
   installSlidesParserGlobals,
   loadSlidesParserModules,
+  registerSlidesParserSuiteLifecycle,
   createShapeElement,
   createTableElement,
   createTaggedElement,
