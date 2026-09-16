@@ -8,6 +8,8 @@ This documentation provides comprehensive guidance on using, setting up, and und
 
 [**Guide**](./howTos/README.md) – Step-by-step instructions for the day-to-day usage of the Google Slides AI Assessor.
 
+[**Assignment Persistence and Rehydration**](./howTos/rehydration.md) – How to persist and rehydrate assignments with the split persistence model.
+
 ---
 
 ## ⚙️ Setup
@@ -47,10 +49,22 @@ Technical documentation for developers contributing to the AssessmentBot codebas
 - [**Frontend React Query and Prefetch**](./developer/frontend/frontend-react-query-and-prefetch.md) – React Query and prefetch patterns
 - [**Frontend Shared Helpers and Abstraction Standards**](./developer/frontend/frontend-shared-helpers-and-abstraction-standards.md) – Shared helpers and abstraction standards
 - [**Frontend Shell Navigation and Motion**](./developer/frontend/frontend-shell-navigation-and-motion.md) – Shell navigation and motion/accessibility standards
+- [**Frontend Spacing and Padding Standards**](./developer/frontend/frontend-spacing-and-padding-standards.md) – Spacing tokens, 8px grid, component defaults
+- [**Frontend Playwright E2E**](./developer/frontend/frontend-playwright-e2e.md) – Playwright E2E testing patterns, runtime mock infrastructure, StrictMode
+- [**Metric Display Precision**](./developer/frontend/metric-display-precision.md) – Metric score decimal-place convention (0dp individual, 2dp averages)
+- [**Metric Icon Display**](./developer/frontend/metric-icon-display.md) – Metric icon rendering, theme-aware colour, stroke conventions
+- [**Navigation Consistency Status**](./developer/frontend/navigation-consistency-status.md) – Status tracker for the shared `PageTitleCard` + `PageNavCard` navigation pattern
+
+> The `frontend/ant-design-docs-cache/` directory holds a local cache of Ant Design component notes for offline reference. It is not canonical policy.
 
 ### Testing
 
 - [**Synthetic Test Data**](./developer/testing/synthetic-test-data.md) – Canonical architecture guide for the deterministic synthetic analysis corpus, its profiles/views, commands, and canonical-fixture policy
+- [**Known Flaky Tests**](./developer/known-flaky-tests.md) – Catalogue of known flaky tests and their root causes
+
+### Architecture
+
+- [**YearGroupKey ADR**](./architecture/YearGroupKey.md) – Architecture Decision Record: yearGroupKey-only with Controller-Resolution Pattern
 
 ### Security
 
@@ -73,5 +87,11 @@ Technical documentation for developers contributing to the AssessmentBot codebas
 - [**Layout Specification Template**](./developer/LAYOUT_SPEC_TEMPLATE.md) – Template for frontend layout specifications
 - [**Action Plan Template**](./developer/ACTION_PLAN_TEMPLATE.md) – Template for TDD-first delivery plans
 - [**Regression CLI Spec**](./developer/regression-cli-spec.md) – Regression checker CLI specification
+
+---
+
+## 🚀 Release Notes
+
+[**Release Notes Index**](./releaseNotes/RELEASES.md) – Index of all versioned release notes.
 
 ---

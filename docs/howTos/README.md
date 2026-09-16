@@ -121,3 +121,9 @@ You need the _Reference Slides_ and _Slide Template_ IDs to assess the work. To 
 6. Click **Start Assessment**.
 7. Wait patiently. The assessment can take 2 to 10 minutes depending on the document's size and complexity. Image tasks take significantly longer than text or table tasks.
 8. Once complete, you can view the results in the **Assignments** page.
+
+---
+
+## Related guides
+
+- [Assignment Persistence and Rehydration](./rehydration.md) – Persisting assessment runs and rehydrating assignments with the split persistence model.

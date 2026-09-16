@@ -1,3 +1,22 @@
+# 🚀 Release Notes Index
+
+- [v1.0.0](./v1.0.0_release_notes.md) – React GAS Web App replaces the bound Admin Sheet
+- [v0.7.9](./v0.7.9_release_notes.md) – Application-level authentication with role-based access control
+- [v0.7.8](./v0.7.8_release_notes.md) – Bug-fix release before v1.0.0
+- [v0.7.7](./v0.7.7_release_notes.md) – Slide URL validator fix
+- [v0.7.6](./v0.7.6_release_notes.md) – All data stored in JsonDbApp
+- [v0.7.5](./v0.7.5_release_notes.md) – Caching pipeline, initialisation, and serialisation fixes
+- [v0.7.4](./v0.7.4_release_notes.md) – Script authorisation and template manifest fixes
+- [v0.7.3](./v0.7.3_release_notes.md) – Text-type task bugfix and refactors
+- [v0.7.1](./v0.7.1_release_notes.md) – Patch fixes and small improvements
+- [v0.7.0](./v0.7.0_release_notes.md) – Bespoke NodeJS backend replaces Langflow
+- [v0.6.1](./v0.6.1_release_notes.md) – Robust error handling and Langflow integration
+- [v0.6.0](./v0.6.0_release_notes.md) – Visual spreadsheet feedback
+
+Legacy notes for v0.5.0 and earlier are retained inline below.
+
+---
+
 # 🚀 v0.5.0
 
 ## ✨ Enhancements

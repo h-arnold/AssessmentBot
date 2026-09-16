@@ -12,3 +12,7 @@ Here's a really simple example to illustrate the point. Imagine that you've got 
 - A student with dyslexia.
 
 You would (I hope) phrase your feedback differently for each student to get the best from them. It's not practical to feed that additional context to an LLM for any number of students and so each student will get broadly similar feedback.
+
+## Related guides
+
+- [How Assessment Bot Calculates Scores](./data-analysis-scoring.md) – How student work becomes the completeness, accuracy, SPaG, and overall scores you see in the analysis view.
