@@ -246,6 +246,48 @@ describe('buildClassPageViewModel', () => {
   });
 
   // -----------------------------------------------------------------------
+  // Sort — surname (two-token fixtures: surname order differs from forename)
+  // -----------------------------------------------------------------------
+  describe('sort by surname', () => {
+    it('sorts by surname ascending when that column is specified', () => {
+      const smithRow = buildStudentRow({ studentId: 's-1', studentName: 'Alice Smith' });
+      const jonesRow = buildStudentRow({ studentId: 's-2', studentName: 'Bob Jones' });
+
+      const adapterResult = buildAdapterResult({
+        studentAverages: [smithRow, jonesRow],
+      });
+
+      const result = buildClassPageViewModel({
+        adapterResult,
+        filters: { searchTerm: '' },
+        sort: { column: 'surname', direction: 'asc' },
+      });
+
+      // Surname ascending: Jones before Smith (forename order would be reversed)
+      expect(result.studentAverages[0].studentId).toBe('s-2'); // Jones
+      expect(result.studentAverages[1].studentId).toBe('s-1'); // Smith
+    });
+
+    it('sorts by surname descending', () => {
+      const smithRow = buildStudentRow({ studentId: 's-1', studentName: 'Alice Smith' });
+      const jonesRow = buildStudentRow({ studentId: 's-2', studentName: 'Bob Jones' });
+
+      const adapterResult = buildAdapterResult({
+        studentAverages: [jonesRow, smithRow],
+      });
+
+      const result = buildClassPageViewModel({
+        adapterResult,
+        filters: { searchTerm: '' },
+        sort: { column: 'surname', direction: 'desc' },
+      });
+
+      expect(result.studentAverages[0].studentId).toBe('s-1'); // Smith
+      expect(result.studentAverages[1].studentId).toBe('s-2'); // Jones
+    });
+  });
+
+  // -----------------------------------------------------------------------
   // Sort — metric columns (state-aware)
   // -----------------------------------------------------------------------
   describe('sort by metric columns (state-aware)', () => {

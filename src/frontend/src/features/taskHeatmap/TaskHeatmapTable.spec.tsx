@@ -276,6 +276,43 @@ function buildZeroTasksResult(): HeatmapResult {
   };
 }
 
+/**
+ * Build a one-token-student fixture (empty-surname variant).
+ *
+ * @returns {HeatmapResult} A fixture with a single one-token student row.
+ */
+function buildOneTokenHeatmapResult(): HeatmapResult {
+  return buildHeatmapResult({
+    rows: [{ studentId: 's-1', studentName: 'Plato', cells: [buildCell({}), buildCell({})] }],
+  });
+}
+
+/**
+ * Build a heatmap result whose three orderings are pairwise distinct, so each
+ * split-column sorter is uniquely distinguished from the default full-name
+ * order and from the sibling column.
+ *
+ * Rows: Alice Smith (s-1), Alice Brown (s-2), Bob Jones (s-3).
+ * Full-name ascending: Brown s-2, Smith s-1, Jones s-3.
+ * Forename ascending (Alice tie broken by studentId, then Bob): s-1, s-2, s-3.
+ * Surname ascending (Brown, Jones, Smith): s-2, s-3, s-1.
+ *
+ * @returns {HeatmapResult} A heatmap result with sorter-distinguishing rows.
+ */
+function buildDistinctOrderHeatmapResult(): HeatmapResult {
+  return {
+    assignmentId: 'assignment-1',
+    assignmentName: 'Assignment One',
+    className: 'Class A',
+    rows: [
+      { studentId: 's-1', studentName: 'Alice Smith', cells: [buildCell({}), buildCell({})] },
+      { studentId: 's-2', studentName: 'Alice Brown', cells: [buildCell({}), buildCell({})] },
+      { studentId: 's-3', studentName: 'Bob Jones', cells: [buildCell({}), buildCell({})] },
+    ],
+    taskColumns: TASK_COLUMNS,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -818,8 +855,8 @@ describe('TaskHeatmapTable', () => {
     await waitFor(() => {
       const popover = document.querySelector('.ant-popover');
       expect(popover).toBeInTheDocument();
-      // GREEN behaviour: when the lookup has no entry for this student/task,
-      // the popover shows "No reasoning available"
+      // When the lookup has no entry for this student/task, the popover
+      // shows "No reasoning available"
       expect(popover!.textContent).toContain('No reasoning available');
     });
   });
@@ -877,6 +914,98 @@ describe('TaskHeatmapTable', () => {
     expect(sortedRowKeys).not.toEqual(defaultRowKeys);
     // The first row should no longer be s-1 (Student One)
     expect(sortedRowKeys[0]).not.toBe('s-1');
+  });
+
+  // -------------------------------------------------------------------------
+  // 8. Split-cell rendering — two-token names split across the Forename and
+  //    Surname cells, while one-token students show the whole name in the
+  //    forename cell and an empty surname cell without crashing.
+  // -------------------------------------------------------------------------
+
+  it('renders a two-token student forename and surname in the split cells', () => {
+    const { container } = render(
+      <TaskHeatmapTable
+        heatmapResult={buildDistinctOrderHeatmapResult()}
+        cellPreviewLookup={null}
+        isAssignmentLoading={false}
+        showAssignmentError={false}
+      />
+    );
+
+    const row = container.querySelector('tbody tr[data-row-key="s-1"]');
+    expect(row).not.toBeNull();
+    const cells = row!.querySelectorAll('td');
+    // Forename then Surname are the first two body columns.
+    expect(cells[0]?.textContent).toBe('Alice');
+    expect(cells[1]?.textContent).toBe('Smith');
+  });
+
+  it('renders a one-token student forename with an empty surname cell', () => {
+    const { container } = render(
+      <TaskHeatmapTable
+        heatmapResult={buildOneTokenHeatmapResult()}
+        cellPreviewLookup={null}
+        isAssignmentLoading={false}
+        showAssignmentError={false}
+      />
+    );
+
+    const row = container.querySelector('tbody tr[data-row-key="s-1"]');
+    expect(row).not.toBeNull();
+    const cells = row!.querySelectorAll('td');
+    // Forename then Surname are the first two body columns.
+    expect(cells[0]?.textContent).toBe('Plato');
+    expect(cells[1]?.textContent).toBe('');
+  });
+
+  // -------------------------------------------------------------------------
+  // 9. Split-column sorting with pairwise-distinct orderings — each derived
+  //    sorter is uniquely distinguished from the default full-name order and
+  //    from its sibling column.
+  // -------------------------------------------------------------------------
+
+  it('orders rows by forename via the Forename column sorter under distinct orderings', async () => {
+    const { container } = render(
+      <TaskHeatmapTable
+        heatmapResult={buildDistinctOrderHeatmapResult()}
+        cellPreviewLookup={null}
+        isAssignmentLoading={false}
+        showAssignmentError={false}
+      />
+    );
+
+    // Default full-name ascending: Brown s-2, Smith s-1, Jones s-3.
+    expect(getRenderedRowKeys(container)).toEqual(['s-2', 's-1', 's-3']);
+
+    const forenameHeader = screen.getByRole('columnheader', { name: 'Forename' });
+    const sorter = forenameHeader.querySelector('.ant-table-column-sorters');
+    expect(sorter).toBeInTheDocument();
+    await user.click(sorter!);
+
+    // Forename ascending: Alice tie broken by studentId, then Bob.
+    expect(getRenderedRowKeys(container)).toEqual(['s-1', 's-2', 's-3']);
+  });
+
+  it('orders rows by surname via the Surname column sorter under distinct orderings', async () => {
+    const { container } = render(
+      <TaskHeatmapTable
+        heatmapResult={buildDistinctOrderHeatmapResult()}
+        cellPreviewLookup={null}
+        isAssignmentLoading={false}
+        showAssignmentError={false}
+      />
+    );
+
+    // Default full-name ascending: Brown s-2, Smith s-1, Jones s-3.
+    expect(getRenderedRowKeys(container)).toEqual(['s-2', 's-1', 's-3']);
+
+    const surnameHeader = screen.getByRole('columnheader', { name: 'Surname' });
+    const sorter = surnameHeader.querySelector('.ant-table-column-sorters');
+    expect(sorter).toBeInTheDocument();
+    await user.click(sorter!);
+
+    // Surname ascending: Brown, Jones, Smith.
+    expect(getRenderedRowKeys(container)).toEqual(['s-2', 's-3', 's-1']);
   });
 });
 

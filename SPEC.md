@@ -76,7 +76,7 @@ No change to stored or transported shapes. Recommended frontend-only derived sha
 ### Fields, columns, or visible sections
 
 1. Replace the single "Student Name" column with two adjacent columns: "Forename" then "Surname", in both tables.
-2. Column widths: keep the existing `APP_COL_WIDTH_STUDENT_NAME` token for the pair (split sensibly, e.g. entries added to shared tokens; follow spacing/width standards doc).
+2. Column widths: preserve the original 200px student-name pair total using the shared tokens `APP_COL_WIDTH_FORENAME` and `APP_COL_WIDTH_SURNAME` in `src/frontend/src/theme/spacing.ts` (the single `APP_COL_WIDTH_STUDENT_NAME` token is removed; follow the spacing/width standards doc).
 
 ### Sorting rules
 

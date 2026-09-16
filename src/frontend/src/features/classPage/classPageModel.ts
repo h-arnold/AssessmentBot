@@ -58,19 +58,6 @@ function buildMetricComparator(
     );
 }
 
-/**
- * Default sort configuration for the Student Averages table.
- *
- * The `forename` key marks the default header; the ordering for a missing or
- * cleared sort resolves to full-name ascending via the unchanged
- * `compareStudentNames` comparator (see `buildClassPageViewModel`), so the
- * default initial order is unchanged by the column split.
- */
-export const DEFAULT_SORT: {
-  column: 'forename';
-  direction: 'asc';
-} = { column: 'forename', direction: 'asc' };
-
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------

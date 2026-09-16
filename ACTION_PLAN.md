@@ -8,6 +8,8 @@
 - Section 1 complete: generator, canonical compact fixtures, naming test, and synthetic-data documentation delivered. Section 1 regression comparison reported zero regressions and zero new failures; `npm run test:synthetic` passed 220/220 and `npm run lint:synthetic:check` passed with zero warnings.
 - Section 2 complete: shared `splitStudentName` helper and co-located edge-case spec delivered. Section 2 regression comparison reported zero regressions and zero new failures; targeted splitter tests, frontend lint, and frontend TypeScript build passed.
 - Section 3 complete: both tables now use Forename/Surname columns and shared derived comparators; default and clear/reset class-page ordering remains full-name ascending; E2E expectations and helper roster updated. Section 3 regression comparison reported zero regressions and zero new failures; touched unit suites, frontend lint/typecheck, task-heatmap, heatmaps, and navigation screenshots passed.
+- Regression, contract hardening, and documentation complete: data-shapes docs verified unchanged (no transport-shape change). The shared-helper tracker records `splitStudentName` and `compareStudentNamePart` as `Implemented` with both canonical consumers and the standing Forename/Surname requirement; the Task Heatmap canonical entry reflects the two sticky split columns, shared comparators, preserved full-name default order, and current width tokens; `src/frontend/AGENTS.md` signposts the standing requirement; the `SPEC.md` width guidance now uses the shipped tokens and records removal of the former token. No `Not implemented` entry remains for this feature.
+- Cleanup outcome: the temporary split-specific spec files (`classPageModelForenameSurname.spec.ts`, `studentAveragesForenameSurname.spec.tsx`, `taskHeatmapForenameSurname.spec.tsx`) were removed, with their coverage living in the canonical co-located specs (`classPageModel.spec.ts`, `studentAveragesTableColumns.spec.tsx`, `StudentAveragesTableCard.spec.tsx`, `TaskHeatmapTable.spec.tsx`).
 
 ## Read-First Context
 
@@ -182,7 +184,7 @@ Code:
 
 - `src/frontend/src/features/classPage/studentAveragesTableColumns.tsx` — split columns and per-column sorters.
 - `src/frontend/src/features/classPage/StudentAveragesTableCard.tsx` — duplicate `SortColumn` type (the only named one, line ~76) and `normaliseSorter` reset logic must move from the `studentName` key to the new forename/surname sort keys.
-- `src/frontend/src/features/classPage/classPageModel.ts` — inline `column: 'studentName' | MetricColumnKey` type in `buildClassPageViewModel`'s input, `DEFAULT_SORT` (`{ column: 'studentName', direction: 'asc' }`), and the `studentName` sort branch must be reworked onto the new keys with the clear-sort fallback resolving to full-name ascending.
+- `src/frontend/src/features/classPage/classPageModel.ts` — inline `column: 'studentName' | MetricColumnKey` type in `buildClassPageViewModel`'s input and the `studentName` sort branch must be reworked onto the new keys; missing/cleared sort state resolves to full-name ascending. The former `DEFAULT_SORT` export is removed because the model's null/undefined fallback is the single default-ordering path.
 - `src/frontend/src/features/taskHeatmap/taskHeatmapTableColumns.tsx` and `TaskHeatmapTable.tsx` — split columns; sticky-name column layout re-verified at implementation (two top-level columns replacing one `fixed: 'start'` column; low layout risk, no spec change).
 
 Tests:
@@ -228,7 +230,7 @@ Frontend component tests:
 
 1. Student Averages table renders Forename and Surname headers; first row reflects split values.
 2. Surname column sort orders rows by surname deterministically.
-3. `classPageModel.ts`: `DEFAULT_SORT` maps to full-name ascending; forename/surname sort keys normalise and clear-reset correctly.
+3. `classPageModel.ts`: missing/default sort state maps to full-name ascending; explicit forename/surname sort keys and clear-reset normalise correctly.
 4. Task Heatmap table renders split columns; metric-cell aria-labels retain full name.
 5. One-token students render surname cell empty without crashing.
 
@@ -263,16 +265,20 @@ E2E (Playwright):
 
 ## Documentation and rollout notes
 
+Status: **Complete**.
+
 ### Acceptance criteria
 
-- Shared-helpers canonical doc: reconcile the planned splitter entry created in Section 2 from `Not implemented` to implemented (owning path, consumers, final helper name).
+- Shared-helpers canonical doc: the Section 2 planned splitter entry is reconciled to `Implemented` with owning path `src/frontend/src/utils/splitStudentName.ts`, the `splitStudentName` and `compareStudentNamePart` contracts, and both consumers (Student Averages and Task Heatmap column definitions/comparators).
 - `src/frontend/AGENTS.md` signposts the standing requirement: "All tables displaying a student name use Forename and Surname columns derived via the shared split helper."
-- No backend/data-shape docs change (verified).
+- The Task Heatmap canonical entry no longer describes a single sticky Student Name column, the removed `APP_COL_WIDTH_STUDENT_NAME` token, `defaultSortOrder`, or a local comparator.
+- No backend/data-shape docs change (verified; transport shapes unchanged).
 
 ### Checks
 
-1. Docs reflect actual implementation (no `Not implemented` entries left).
+1. Docs reflect actual implementation (no `Not implemented` entries left for this feature).
 2. Mandatory-read evidence for Docs/De-Sloppification handoffs complete.
+3. No production code, tests, fixtures, or E2E files modified by the documentation pass.
 
 ---
 

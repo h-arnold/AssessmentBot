@@ -45,6 +45,7 @@ Root scripts execute frontend tasks via `npm --prefix src/frontend ...`.
 - Keep presentational feature components declarative; delegate data loading/state transitions to hooks.
 - When shared server-state is introduced, define query keys through shared factory helpers rather than ad-hoc array literals so later invalidation and prefetch logic stays consistent.
 - Utility functions, custom hooks, validators, and common components must check `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` before creating new abstractions. Flag code that duplicates logic already in shared helpers as a Critical issue during code review.
+- All tables displaying a student name use Forename and Surname columns derived via the shared split helper (`src/frontend/src/utils/splitStudentName.ts`). Default ordering stays full-name ascending.
 - For React Query baseline, startup warm-up, and prefetch policy guidance, use `docs/developer/frontend/frontend-react-query-and-prefetch.md`.
 
 ### 3.3 Feature Directory Layout

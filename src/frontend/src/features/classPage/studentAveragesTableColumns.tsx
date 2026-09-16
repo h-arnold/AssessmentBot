@@ -12,11 +12,12 @@
  *
  * @remarks
  * The `MetricToneColor` token set covers discrete `notAttempted` (`'default'`)
- * and `error` (`errorColor`) states only. Computed values render on a continuous
- * gradient and are filtered by score range, not by colour band. The `onFilter`
- * `resolveMetricTone` with the default scoring range `{ lower: 0, upper: 5 }`
- * to compute the cell's band, then compares the band colour string to the
- * filter value.
+ * and `error` (`errorColor`) states only. Computed values render on a
+ * continuous gradient (no fixed colour bands). Each metric column exposes a
+ * numeric score-range filter (`filterDropdown` with a range slider, Reset,
+ * and include-N/include-E toggles) whose `onFilter` matches computed scores
+ * inside the encoded range and honours the toggles for `notAttempted` and
+ * `error` states.
  *
  * **No React hooks.** The function is pure and called at render time by
  * `StudentAveragesTableCard` inside a `useMemo`.

@@ -36,7 +36,6 @@ vi.mock('./studentAveragesTableColumns', () => ({
 
 vi.mock('./classPageModel', () => ({
   buildClassPageViewModel: mockBuildViewModel,
-  DEFAULT_SORT: { column: 'forename', direction: 'asc' },
 }));
 
 // ---------------------------------------------------------------------------
