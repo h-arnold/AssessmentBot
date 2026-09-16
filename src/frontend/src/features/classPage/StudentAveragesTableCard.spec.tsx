@@ -36,7 +36,7 @@ vi.mock('./studentAveragesTableColumns', () => ({
 
 vi.mock('./classPageModel', () => ({
   buildClassPageViewModel: mockBuildViewModel,
-  DEFAULT_SORT: { column: 'studentName', direction: 'asc' },
+  DEFAULT_SORT: { column: 'forename', direction: 'asc' },
 }));
 
 // ---------------------------------------------------------------------------
@@ -64,11 +64,11 @@ interface MockColumn {
 // Constants
 // ---------------------------------------------------------------------------
 
-/** The five column keys in order. */
-const COLUMN_KEYS = ['studentName', 'completeness', 'accuracy', 'spag', 'average'] as const;
+/** The six column keys in order. */
+const COLUMN_KEYS = ['forename', 'surname', 'completeness', 'accuracy', 'spag', 'average'] as const;
 
-/** Default sort state (studentName ascending) the model expects. */
-const DEFAULT_SORT = { column: 'studentName', direction: 'asc' } as const;
+/** Default sort state (forename ascending) the model expects. */
+const DEFAULT_SORT = { column: 'forename', direction: 'asc' } as const;
 
 /** Sentinel for accessing the last element of an array. */
 const LAST_CALL_INDEX = -1;
@@ -141,7 +141,8 @@ function buildViewModel(overrides: Partial<ClassPageViewModel> = {}): ClassPageV
 
 /** Map from column key to display title. */
 const COLUMN_TITLE_BY_KEY: Record<string, string> = {
-  studentName: 'Student Name',
+  forename: 'Forename',
+  surname: 'Surname',
   completeness: 'Completeness',
   accuracy: 'Accuracy',
   spag: 'SpAG',
@@ -287,46 +288,59 @@ describe('StudentAveragesTableCard', () => {
   });
 
   // -----------------------------------------------------------------------
-  // Sort mapping — sorts studentName column
+  // Sort mapping — sorts forename column
   // -----------------------------------------------------------------------
   it('maps Table.onChange sorter event to the model sort state', async () => {
     renderCard();
 
-    // Click the "Student Name" column header to trigger sort.
+    // Click the "Forename" column header to trigger sort.
     // Ant Design renders sort triggers inside .ant-table-column-sorters elements.
     const columnHeaders = screen.getAllByRole('columnheader');
-    const studentNameHeader = columnHeaders.find((header) =>
-      header.textContent?.includes('Student Name')
+    const forenameHeader = columnHeaders.find((header) =>
+      header.textContent?.includes('Forename')
     );
-    expect(studentNameHeader).toBeDefined();
+    expect(forenameHeader).toBeDefined();
 
     // Click the sorter area inside the column header
-    const sorter = studentNameHeader!.querySelector('.ant-table-column-sorters');
+    const sorter = forenameHeader!.querySelector('.ant-table-column-sorters');
     expect(sorter).toBeDefined();
 
     await user.click(sorter!);
 
     // After the click, buildClassPageViewModel should have been called with
-    // sort: { column: 'studentName', direction: 'asc' } (ascending on first click)
+    // sort: { column: 'forename', direction: 'asc' } (ascending on first click)
     const lastCallArguments = mockBuildViewModel.mock.calls.at(LAST_CALL_INDEX)?.[0];
     expect(lastCallArguments).toBeDefined();
     expect(lastCallArguments.sort).toMatchObject(DEFAULT_SORT);
   });
 
   // -----------------------------------------------------------------------
-  // Clear sort (third click) resets to default
+  // Initial render passes no explicit sort (model default: full-name ascending)
   // -----------------------------------------------------------------------
-  it('resets to default sort when sorter.order is null (clear-sort on third click)', async () => {
+  it('passes a null sort to the model on initial render', () => {
     renderCard();
 
-    // Find the Student Name column header and its sorter area
-    const columnHeaders = screen.getAllByRole('columnheader');
-    const studentNameHeader = columnHeaders.find((header) =>
-      header.textContent?.includes('Student Name')
-    );
-    expect(studentNameHeader).toBeDefined();
+    // Initial render carries no explicit sort, so the model applies its
+    // default full-name ascending order via `compareStudentNames`.
+    const firstCallArguments = mockBuildViewModel.mock.calls.at(0)?.[0];
+    expect(firstCallArguments).toBeDefined();
+    expect(firstCallArguments.sort).toBeNull();
+  });
 
-    const sorter = studentNameHeader!.querySelector('.ant-table-column-sorters');
+  // -----------------------------------------------------------------------
+  // Clear sort (third click) resets to the cleared sort (model: full-name ascending)
+  // -----------------------------------------------------------------------
+  it('resets to a null sort when sorter.order is null (clear-sort on third click)', async () => {
+    renderCard();
+
+    // Find the Forename column header and its sorter area
+    const columnHeaders = screen.getAllByRole('columnheader');
+    const forenameHeader = columnHeaders.find((header) =>
+      header.textContent?.includes('Forename')
+    );
+    expect(forenameHeader).toBeDefined();
+
+    const sorter = forenameHeader!.querySelector('.ant-table-column-sorters');
     expect(sorter).toBeDefined();
 
     // Click once to sort ascending
@@ -335,15 +349,15 @@ describe('StudentAveragesTableCard', () => {
     // Click twice to sort descending
     await user.click(sorter!);
 
-    // Click three times to clear sort -> should reset to default
+    // Click three times to clear sort -> should reset to the cleared sort
     await user.click(sorter!);
 
     // After the clear-sort third click, buildClassPageViewModel should have
-    // been called with sort: { column: 'studentName', direction: 'asc' }
-    // (default sort when sorter.order is null)
+    // been called with sort: null. The model resolves a null sort to
+    // full-name ascending via the unchanged `compareStudentNames` ordering.
     const lastCallArguments = mockBuildViewModel.mock.calls.at(LAST_CALL_INDEX)?.[0];
     expect(lastCallArguments).toBeDefined();
-    expect(lastCallArguments.sort).toMatchObject(DEFAULT_SORT);
+    expect(lastCallArguments.sort).toBeNull();
   });
 
   // -----------------------------------------------------------------------

@@ -86,6 +86,10 @@ Test helper placement rules remain governed by `docs/developer/frontend/frontend
 - `ImageRenderer` (planned → implemented, status: Implemented): shared presentational component at `src/frontend/src/components/ImageRenderer/ImageRenderer.tsx`. Renders a base64 data URL as a constrained `<img>` (maxWidth 100%, height auto, maxHeight 400, default alt "Student response image"). Introduced for the Task Preview Card; expected to be reused across the project. Implemented in ACTION_PLAN.md Section 2 (and reused by TaskPreviewCard Section 4).
 - `MarkdownRenderer` (planned → implemented, status: Implemented): shared presentational component at `src/frontend/src/components/MarkdownRenderer/MarkdownRenderer.tsx`. Renders markdown text and tables via `react-markdown` + `remark-gfm` (no `rehype-raw`, for XSS safety). Co-located CSS for basic table styling. Introduced for the Task Preview Card; expected to be reused across the project. Implemented in ACTION_PLAN.md Section 3 (react-markdown + remark-gfm, no rehype-raw; co-located MarkdownRenderer.module.css).
 
+### 3.6 Student-name splitting helper (planned)
+
+- `splitStudentName` (planned, status: **Not implemented**): shared deterministic helper at `src/frontend/src/utils/splitStudentName.ts`. It will split the first whitespace-separated token into `forename` and the remaining tokens into `surname`, collapsing whitespace and returning empty strings for an empty name. Consumers are the Student Averages and Task Heatmap table column definitions and their derived-value comparators. This entry is planned for the student-name Forename/Surname feature in `ACTION_PLAN.md` Section 2.
+
 ## 4. Extraction decision rules
 
 ### 4.1 Keep logic local when

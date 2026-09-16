@@ -11,6 +11,7 @@
 import { getStudentMetric } from './classPageAdapter.zod';
 import { compareStudentNames } from '../../services/dataAnalysis/compareStudentNames';
 import { compareMetricsByStateRank } from '../../services/dataAnalysis/metricDisplay/metricComparator';
+import { compareStudentNamePart } from '../../utils/splitStudentName';
 import type { ClassPageAdapterResult, StudentAverageRowModel } from './classPageAdapter.zod';
 import type { MetricColumnKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 
@@ -58,13 +59,17 @@ function buildMetricComparator(
 }
 
 /**
- * Default sort configuration used when no explicit sort is provided.
- * Sorts by student name in ascending order.
+ * Default sort configuration for the Student Averages table.
+ *
+ * The `forename` key marks the default header; the ordering for a missing or
+ * cleared sort resolves to full-name ascending via the unchanged
+ * `compareStudentNames` comparator (see `buildClassPageViewModel`), so the
+ * default initial order is unchanged by the column split.
  */
 export const DEFAULT_SORT: {
-  column: 'studentName';
+  column: 'forename';
   direction: 'asc';
-} = { column: 'studentName', direction: 'asc' };
+} = { column: 'forename', direction: 'asc' };
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -106,22 +111,22 @@ export function compareAssignmentUpdatedAtDesc(
  * @param {{ searchTerm: string }} input.filters - User-controlled filters.
  * @param {string} input.filters.searchTerm - Substring filter on student name (case-insensitive).
  *   Empty string means no filter.
- * @param {({ column: 'studentName' | MetricColumnKey; direction: 'asc' | 'desc' }) | null} [input.sort] - User-controlled sort column and direction.
- *   When `null` or `undefined`, defaults to `studentName` ascending.
+ * @param {({ column: 'forename' | 'surname' | MetricColumnKey; direction: 'asc' | 'desc' }) | null} [input.sort] - User-controlled sort column and direction.
+ *   When `null` or `undefined`, defaults to full-name ascending order via the
+ *   unchanged `compareStudentNames` comparator. An explicit `forename` or
+ *   `surname` sort orders by that derived value (via the shared
+ *   `compareStudentNamePart` comparator) with a `studentId` tie-break.
  * @returns {ClassPageViewModel} The filtered and sorted view model.
  */
 export function buildClassPageViewModel(input: {
   adapterResult: ClassPageAdapterResult;
   filters: { searchTerm: string };
   sort?: {
-    column: 'studentName' | MetricColumnKey;
+    column: 'forename' | 'surname' | MetricColumnKey;
     direction: 'asc' | 'desc';
   } | null;
 }): ClassPageViewModel {
   const { adapterResult, filters, sort } = input;
-
-  // Resolve the effective sort — default to studentName ascending
-  const effectiveSort = sort ?? DEFAULT_SORT;
 
   // Apply search filter (case-insensitive substring on studentName)
   let studentAverages = adapterResult.studentAverages;
@@ -133,16 +138,22 @@ export function buildClassPageViewModel(input: {
     );
   }
 
-  // Apply sort
-  const { column, direction } = effectiveSort;
-  if (column === 'studentName') {
-    studentAverages = studentAverages.toSorted((a, b) => {
-      const cmp = compareStudentNames(a, b);
-      return direction === 'asc' ? cmp : -cmp;
-    });
+  // Apply sort — a missing or cleared sort resolves to full-name ascending
+  // via the unchanged `compareStudentNames` ordering, so the default initial
+  // order is unchanged by the column split.
+  if (sort === null || sort === undefined) {
+    studentAverages = studentAverages.toSorted((a, b) => compareStudentNames(a, b));
   } else {
-    const comparator = buildMetricComparator(column, direction);
-    studentAverages = studentAverages.toSorted(comparator);
+    const { column, direction } = sort;
+    if (column === 'forename' || column === 'surname') {
+      studentAverages = studentAverages.toSorted((a, b) => {
+        const cmp = compareStudentNamePart(column, a, b);
+        return direction === 'asc' ? cmp : -cmp;
+      });
+    } else {
+      const comparator = buildMetricComparator(column, direction);
+      studentAverages = studentAverages.toSorted(comparator);
+    }
   }
 
   return {

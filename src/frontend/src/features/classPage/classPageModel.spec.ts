@@ -117,7 +117,7 @@ describe('buildClassPageViewModel', () => {
       const result = buildClassPageViewModel({
         adapterResult,
         filters: { searchTerm: '' },
-        sort: { column: 'studentName', direction: 'asc' },
+        sort: { column: 'forename', direction: 'asc' },
       });
 
       expect(result.recentAssignments).toEqual(adapterResult.recentAssignments);
@@ -150,7 +150,7 @@ describe('buildClassPageViewModel', () => {
       const result = buildClassPageViewModel({
         adapterResult,
         filters: { searchTerm: 'li' },
-        sort: { column: 'studentName', direction: 'asc' },
+        sort: { column: 'forename', direction: 'asc' },
       });
 
       const expectedFilteredCount = 2;
@@ -173,7 +173,7 @@ describe('buildClassPageViewModel', () => {
       const result = buildClassPageViewModel({
         adapterResult,
         filters: { searchTerm: '' },
-        sort: { column: 'studentName', direction: 'asc' },
+        sort: { column: 'forename', direction: 'asc' },
       });
 
       const expectedCount = 2;
@@ -182,10 +182,10 @@ describe('buildClassPageViewModel', () => {
   });
 
   // -----------------------------------------------------------------------
-  // Sort — studentName
+  // Sort — forename (single-token fixtures: forename equals the full name)
   // -----------------------------------------------------------------------
-  describe('sort by studentName', () => {
-    it('sorts by studentName ascending when that column is specified', () => {
+  describe('sort by forename', () => {
+    it('sorts by forename ascending when that column is specified', () => {
       const charlieRow = buildStudentRow({ studentId: 's-3', studentName: 'Charlie' });
       const aliceRow = buildStudentRow({ studentId: 's-1', studentName: 'Alice' });
       const bobRow = buildStudentRow({ studentId: 's-2', studentName: 'Bob' });
@@ -197,7 +197,7 @@ describe('buildClassPageViewModel', () => {
       const result = buildClassPageViewModel({
         adapterResult,
         filters: { searchTerm: '' },
-        sort: { column: 'studentName', direction: 'asc' },
+        sort: { column: 'forename', direction: 'asc' },
       });
 
       expect(result.studentAverages[0].studentId).toBe('s-1'); // Alice
@@ -205,7 +205,7 @@ describe('buildClassPageViewModel', () => {
       expect(result.studentAverages[2].studentId).toBe('s-3'); // Charlie
     });
 
-    it('sorts by studentName descending', () => {
+    it('sorts by forename descending', () => {
       const aliceRow = buildStudentRow({ studentId: 's-1', studentName: 'Alice' });
       const charlieRow = buildStudentRow({ studentId: 's-3', studentName: 'Charlie' });
       const bobRow = buildStudentRow({ studentId: 's-2', studentName: 'Bob' });
@@ -217,7 +217,7 @@ describe('buildClassPageViewModel', () => {
       const result = buildClassPageViewModel({
         adapterResult,
         filters: { searchTerm: '' },
-        sort: { column: 'studentName', direction: 'desc' },
+        sort: { column: 'forename', direction: 'desc' },
       });
 
       expect(result.studentAverages[0].studentId).toBe('s-3'); // Charlie
@@ -225,7 +225,7 @@ describe('buildClassPageViewModel', () => {
       expect(result.studentAverages[2].studentId).toBe('s-1'); // Alice
     });
 
-    it('sorts by studentName case-insensitively', () => {
+    it('sorts by forename case-insensitively', () => {
       const aliceRow = buildStudentRow({ studentId: 's-1', studentName: 'alice' });
       const bobRow = buildStudentRow({ studentId: 's-2', studentName: 'Bob' });
 
@@ -236,7 +236,7 @@ describe('buildClassPageViewModel', () => {
       const result = buildClassPageViewModel({
         adapterResult,
         filters: { searchTerm: '' },
-        sort: { column: 'studentName', direction: 'asc' },
+        sort: { column: 'forename', direction: 'asc' },
       });
 
       // Case-insensitive: 'alice' should sort before 'Bob'
@@ -420,7 +420,7 @@ describe('buildClassPageViewModel', () => {
       const result = buildClassPageViewModel({
         adapterResult,
         filters: { searchTerm: '' },
-        sort: { column: 'studentName', direction: 'asc' },
+        sort: { column: 'forename', direction: 'asc' },
       });
 
       // Same name "David" — tie-break by studentId ascending
@@ -433,7 +433,7 @@ describe('buildClassPageViewModel', () => {
   // Default sort
   // -----------------------------------------------------------------------
   describe('default sort', () => {
-    it('resets to studentName ascending when sort is null', () => {
+    it('resets to full-name ascending when sort is null', () => {
       const charlieRow = buildStudentRow({ studentId: 's-3', studentName: 'Charlie' });
       const aliceRow = buildStudentRow({ studentId: 's-1', studentName: 'Alice' });
 
@@ -447,17 +447,21 @@ describe('buildClassPageViewModel', () => {
         sort: null,
       });
 
-      // Defaults to studentName ascending: Alice before Charlie
+      // Defaults to full-name ascending: Alice before Charlie
       expect(result.studentAverages[0].studentId).toBe('s-1');
       expect(result.studentAverages[1].studentId).toBe('s-3');
     });
 
-    it('resets to studentName ascending when sort is undefined', () => {
-      const bobRow = buildStudentRow({ studentId: 's-2', studentName: 'Bob' });
-      const aliceRow = buildStudentRow({ studentId: 's-1', studentName: 'Alice' });
+    it('resets to full-name ascending when sort is undefined', () => {
+      // Same-forename pair: full-name ascending puts Brown before Smith,
+      // while a forename-only sort would tie on Alice and fall back to
+      // studentId (s-1 before s-2). Expecting Brown first pins full-name
+      // ordering as distinct from Forename ordering.
+      const aliceSmithRow = buildStudentRow({ studentId: 's-1', studentName: 'Alice Smith' });
+      const aliceBrownRow = buildStudentRow({ studentId: 's-2', studentName: 'Alice Brown' });
 
       const adapterResult = buildAdapterResult({
-        studentAverages: [bobRow, aliceRow],
+        studentAverages: [aliceSmithRow, aliceBrownRow],
       });
 
       const result = buildClassPageViewModel({
@@ -465,9 +469,9 @@ describe('buildClassPageViewModel', () => {
         filters: { searchTerm: '' },
       });
 
-      // Defaults to studentName ascending: Alice before Bob
-      expect(result.studentAverages[0].studentId).toBe('s-1');
-      expect(result.studentAverages[1].studentId).toBe('s-2');
+      // Defaults to full-name ascending: Alice Brown before Alice Smith
+      expect(result.studentAverages[0].studentId).toBe('s-2');
+      expect(result.studentAverages[1].studentId).toBe('s-1');
     });
   });
 

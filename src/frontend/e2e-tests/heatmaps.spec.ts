@@ -54,11 +54,21 @@ test.describe('Heatmaps builder', () => {
 
     const table = page.getByRole('table', { name: TABLE_NAME });
     await expect(table).toBeVisible();
+    await expect(table.getByRole('columnheader', { name: 'Forename' })).toHaveCount(1);
+    await expect(table.getByRole('columnheader', { name: 'Surname' })).toHaveCount(1);
+    const studentTwoRow = table
+      .locator('tbody tr.ant-table-row')
+      .filter({ has: page.locator('[aria-label^="Student Two,"]') });
+    await expect(studentTwoRow.locator('td').nth(0)).toHaveText('Student');
+    await expect(studentTwoRow.locator('td').nth(1)).toHaveText('Two');
     await expect(
       table.getByRole('columnheader', { name: HEATMAP_ASSIGNMENT_DISPLAY_TITLE })
     ).toHaveCount(1);
     await expect(table.getByRole('columnheader', { name: /shared definition/ })).toHaveCount(1);
     await expect(table.getByRole('columnheader', { name: 'Task 1' })).toHaveCount(1);
+    await expect(
+      table.locator('[role="button"][aria-label="Student Two, task_001, Completeness: 5"]')
+    ).toHaveCount(1);
   });
 
   test('gates dependent selectors until a class is selected and exposes the reason', async ({

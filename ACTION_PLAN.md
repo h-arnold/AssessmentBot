@@ -2,10 +2,12 @@
 
 ## Delivery status
 
-- Current section/phase: Section 2 — Red (shared splitter tests)
+- Current section/phase: Regression and documentation
 - Baseline: established on 2026-09-16 for session `feature/student-name-forename-surname-split`.
 - Accepted baseline technical debt: `backend-lint-check` reports ten existing `max-lines` warnings; `frontend-lint-check` exits 2 with its pre-existing baseline failure. No regressions or new failures were reported.
 - Section 1 complete: generator, canonical compact fixtures, naming test, and synthetic-data documentation delivered. Section 1 regression comparison reported zero regressions and zero new failures; `npm run test:synthetic` passed 220/220 and `npm run lint:synthetic:check` passed with zero warnings.
+- Section 2 complete: shared `splitStudentName` helper and co-located edge-case spec delivered. Section 2 regression comparison reported zero regressions and zero new failures; targeted splitter tests, frontend lint, and frontend TypeScript build passed.
+- Section 3 complete: both tables now use Forename/Surname columns and shared derived comparators; default and clear/reset class-page ordering remains full-name ascending; E2E expectations and helper roster updated. Section 3 regression comparison reported zero regressions and zero new failures; touched unit suites, frontend lint/typecheck, task-heatmap, heatmaps, and navigation screenshots passed.
 
 ## Read-First Context
 

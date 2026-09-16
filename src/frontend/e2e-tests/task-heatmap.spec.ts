@@ -50,10 +50,16 @@ test.describe('Task Heatmap E2E journey', () => {
     ).toBeVisible();
     await expect(page.getByRole('heading', { name: HEATMAP_CLASS_NAME })).toBeVisible();
 
-    // Grouped header: Student Name + task_001/002/003 with Completeness/Accuracy/SPaG.
+    // Grouped header: split student name columns + task_001/002/003 with Completeness/Accuracy/SPaG.
     const table = page.getByRole('table', { name: HEATMAP_TABLE_NAME });
     await expect(table).toBeVisible();
-    await expect(table.getByRole('columnheader', { name: 'Student Name' })).toHaveCount(1);
+    await expect(table.getByRole('columnheader', { name: 'Forename' })).toHaveCount(1);
+    await expect(table.getByRole('columnheader', { name: 'Surname' })).toHaveCount(1);
+    const studentTwoRow = table
+      .locator('tbody tr.ant-table-row')
+      .filter({ has: page.locator('[aria-label^="Student Two,"]') });
+    await expect(studentTwoRow.locator('td').nth(0)).toHaveText('Student');
+    await expect(studentTwoRow.locator('td').nth(1)).toHaveText('Two');
     for (const taskTitle of HEATMAP_TASK_TITLES) {
       await expect(table.getByRole('columnheader', { name: taskTitle })).toHaveCount(1);
     }
@@ -110,11 +116,11 @@ test.describe('Task Heatmap E2E journey', () => {
     }
 
     // Student One (N) should disappear; a scored (green-band) student should remain.
-    await expect(table.getByText('Student One')).toHaveCount(0);
-    await expect(table.getByText('Student Two')).toHaveCount(1);
+    await expect(table.locator('tbody tr').filter({ hasText: 'One' })).toHaveCount(0);
+    await expect(table.locator('tbody tr').filter({ hasText: 'Two' })).toHaveCount(1);
   });
 
-  test('student name sort reverses pre-sorted order', async ({ page }) => {
+  test('surname sort reverses pre-sorted order', async ({ page }) => {
     const scenario = createHeatmapScenario();
     await installRuntimeMock(page, scenario);
     await openHeatmapClass(page);
@@ -123,28 +129,29 @@ test.describe('Task Heatmap E2E journey', () => {
     const table = page.getByRole('table', { name: HEATMAP_TABLE_NAME });
     await expect(table).toBeVisible();
 
-    // Capture the first data-row student name before any interaction.
-    const defaultFirstNameCell = table
+    // Capture the first data-row surname before any interaction.
+    const defaultFirstSurnameCell = table
       .locator('tbody tr.ant-table-row')
       .first()
       .locator('td')
-      .first();
-    const defaultFirstNameRaw = await defaultFirstNameCell.textContent();
-    const defaultFirstName = defaultFirstNameRaw?.trim();
-    expect(defaultFirstName).toBeTruthy();
+      .nth(1);
+    const defaultFirstSurnameRaw = await defaultFirstSurnameCell.textContent();
+    const defaultFirstSurname = defaultFirstSurnameRaw?.trim();
+    expect(defaultFirstSurname).toBeTruthy();
 
-    // Click Student Name header to toggle sort direction.
-    await table.getByRole('columnheader', { name: 'Student Name' }).click();
+    // Click Surname twice to reverse the derived surname sort order.
+    await table.getByRole('columnheader', { name: 'Surname' }).click();
+    await table.getByRole('columnheader', { name: 'Surname' }).click();
 
     // Direction-agnostic: after the toggle the order must differ from the default.
-    const afterFirstNameCell = table
+    const afterFirstSurnameCell = table
       .locator('tbody tr.ant-table-row')
       .first()
       .locator('td')
-      .first();
-    const afterFirstNameRaw = await afterFirstNameCell.textContent();
-    const afterFirstName = afterFirstNameRaw?.trim();
-    expect(afterFirstName?.trim()).not.toBe(defaultFirstName?.trim());
+      .nth(1);
+    const afterFirstSurnameRaw = await afterFirstSurnameCell.textContent();
+    const afterFirstSurname = afterFirstSurnameRaw?.trim();
+    expect(afterFirstSurname?.trim()).not.toBe(defaultFirstSurname?.trim());
   });
 
   test('back returns to overview', async ({ page }) => {
@@ -195,7 +202,7 @@ test.describe('Task Heatmap E2E journey', () => {
 
     const table = page.getByRole('table', { name: HEATMAP_TABLE_NAME });
     await expect(table).toBeVisible();
-    await expect(table.getByText('Student One')).toHaveCount(1);
+    await expect(table.locator('tbody tr').filter({ hasText: 'One' })).toHaveCount(1);
     await expect(page.getByText('No submissions yet')).toBeVisible();
   });
 

@@ -340,8 +340,12 @@ describe('TaskHeatmapTable', () => {
       />
     );
 
-    // Assert Student Name top-level column header
-    expect(screen.getByRole('columnheader', { name: /student name/i })).toBeInTheDocument();
+    // Assert Forename/Surname top-level column headers (no single Student Name)
+    expect(screen.getByRole('columnheader', { name: 'Forename' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Surname' })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('columnheader', { name: /student name/i })
+    ).not.toBeInTheDocument();
 
     // Assert task group headers
     expect(screen.getByRole('columnheader', { name: TASK_1_TITLE })).toBeInTheDocument();
@@ -417,10 +421,10 @@ describe('TaskHeatmapTable', () => {
   });
 
   // -------------------------------------------------------------------------
-  // 3. Student Name sort — click the Student Name column sorter and assert
-  //    the row order changes to compareStudentNames order.
+  // 3. Forename/Surname sort — click each split column sorter and assert
+  //    the row order follows that column's derived value.
   // -------------------------------------------------------------------------
-  it('clicking Student Name column sorter reorders rows via compareStudentNames', async () => {
+  it('clicking the Forename column sorter reorders rows by derived forename', async () => {
     const result = buildHeatmapResult();
     const { container } = render(
       <TaskHeatmapTable
@@ -431,7 +435,7 @@ describe('TaskHeatmapTable', () => {
       />
     );
 
-    // Default sort should be ascending by student name.
+    // Default sort is full-name ascending via the pre-sort.
     // Fixture students: Student One, Student Two, Student Three
     // compareStudentNames (locale-aware, case-insensitive):
     //   "Student One" < "Student Three" < "Student Two"
@@ -439,25 +443,49 @@ describe('TaskHeatmapTable', () => {
     const initialRowKeys = getRenderedRowKeys(container);
     expect(initialRowKeys).toEqual(['s-1', 's-3', 's-2']);
 
-    // Click the Student Name column header sorter
-    const studentNameHeader = screen.getByRole('columnheader', {
-      name: /student name/i,
-    });
-    const sorter = studentNameHeader.querySelector('.ant-table-column-sorters');
+    // Click the Forename column header sorter. Every fixture forename is
+    // "Student", so the derived forename ties and the studentId tie-break
+    // applies: s-1, s-2, s-3.
+    const forenameHeader = screen.getByRole('columnheader', { name: 'Forename' });
+    const sorter = forenameHeader.querySelector('.ant-table-column-sorters');
     expect(sorter).toBeInTheDocument();
 
-    // First click: descending (toggle from default 'ascend' to 'descend')
-    await user.click(sorter!);
-
-    // Expected descending order: Student Two, Student Three, Student One
-    const descRowKeys = getRenderedRowKeys(container);
-    expect(descRowKeys).toEqual(['s-2', 's-3', 's-1']);
-
-    // Second click: back to ascending
+    // First click: ascending forename order (studentId tie-break).
     await user.click(sorter!);
 
     const ascRowKeys = getRenderedRowKeys(container);
-    expect(ascRowKeys).toEqual(['s-1', 's-3', 's-2']);
+    expect(ascRowKeys).toEqual(['s-1', 's-2', 's-3']);
+  });
+
+  it('clicking the Surname column sorter reorders rows by derived surname', async () => {
+    const result = buildHeatmapResult();
+    const { container } = render(
+      <TaskHeatmapTable
+        heatmapResult={result}
+        cellPreviewLookup={null}
+        isAssignmentLoading={false}
+        showAssignmentError={false}
+      />
+    );
+
+    // Default sort is full-name ascending: s-1, s-3, s-2 (as above).
+    const initialRowKeys = getRenderedRowKeys(container);
+    expect(initialRowKeys).toEqual(['s-1', 's-3', 's-2']);
+
+    // Click the Surname column header sorter twice: ascending surname order
+    // (One < Three < Two) matches the default, so descend to observe the
+    // derived order: Two, Three, One.
+    const surnameHeader = screen.getByRole('columnheader', { name: 'Surname' });
+    const sorter = surnameHeader.querySelector('.ant-table-column-sorters');
+    expect(sorter).toBeInTheDocument();
+
+    // First click: ascending (matches the default full-name order here).
+    await user.click(sorter!);
+    expect(getRenderedRowKeys(container)).toEqual(['s-1', 's-3', 's-2']);
+
+    // Second click: descending surname order.
+    await user.click(sorter!);
+    expect(getRenderedRowKeys(container)).toEqual(['s-2', 's-3', 's-1']);
   });
 
   // -------------------------------------------------------------------------
@@ -516,10 +544,12 @@ describe('TaskHeatmapTable', () => {
       // Assert "No submissions yet" caption is present above the table
       expect(screen.getByText('No submissions yet')).toBeInTheDocument();
 
-      // Assert every student row still renders
-      expect(screen.getByText('Student One')).toBeInTheDocument();
-      expect(screen.getByText('Student Two')).toBeInTheDocument();
-      expect(screen.getByText('Student Three')).toBeInTheDocument();
+      // Assert every student row still renders (split forename/surname cells).
+      // All three forenames are "Student"; surnames are unique.
+      expect(screen.getAllByText('Student')).toHaveLength(STUDENT_ROW_COUNT);
+      expect(screen.getByText('One')).toBeInTheDocument();
+      expect(screen.getByText('Two')).toBeInTheDocument();
+      expect(screen.getByText('Three')).toBeInTheDocument();
 
       // Assert every task column renders with the expected group headers
       expect(screen.getByRole('columnheader', { name: TASK_1_TITLE })).toBeInTheDocument();
@@ -533,7 +563,7 @@ describe('TaskHeatmapTable', () => {
       );
     });
 
-    it('renders only the Student Name column header when taskColumns is empty', () => {
+    it('renders only the Forename/Surname column headers when taskColumns is empty', () => {
       const result = buildZeroTasksResult();
       render(
         <TaskHeatmapTable
@@ -544,8 +574,12 @@ describe('TaskHeatmapTable', () => {
         />
       );
 
-      // Student Name column should render
-      expect(screen.getByRole('columnheader', { name: /student name/i })).toBeInTheDocument();
+      // Forename/Surname columns should render, with no single Student Name column
+      expect(screen.getByRole('columnheader', { name: 'Forename' })).toBeInTheDocument();
+      expect(screen.getByRole('columnheader', { name: 'Surname' })).toBeInTheDocument();
+      expect(
+        screen.queryByRole('columnheader', { name: /student name/i })
+      ).not.toBeInTheDocument();
 
       // No task group headers
       expect(screen.queryByRole('columnheader', { name: TASK_1_ID })).not.toBeInTheDocument();
