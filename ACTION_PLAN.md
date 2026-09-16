@@ -1,5 +1,12 @@
 # Student Name Forename/Surname Split — Delivery Plan (TDD-First)
 
+## Delivery status
+
+- Current section/phase: Section 2 — Red (shared splitter tests)
+- Baseline: established on 2026-09-16 for session `feature/student-name-forename-surname-split`.
+- Accepted baseline technical debt: `backend-lint-check` reports ten existing `max-lines` warnings; `frontend-lint-check` exits 2 with its pre-existing baseline failure. No regressions or new failures were reported.
+- Section 1 complete: generator, canonical compact fixtures, naming test, and synthetic-data documentation delivered. Section 1 regression comparison reported zero regressions and zero new failures; `npm run test:synthetic` passed 220/220 and `npm run lint:synthetic:check` passed with zero warnings.
+
 ## Read-First Context
 
 1. `@SPEC.md` — product behaviour and scope for this feature.

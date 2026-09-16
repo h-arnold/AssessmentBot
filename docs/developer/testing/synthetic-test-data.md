@@ -94,6 +94,14 @@ Generation never emits a volatile timestamp. Re-running a profile with its recor
 
 `generateSyntheticAnalysisGraph(profileName, { seed })` accepts an optional finite-integer seed override for determinism and seed-sensitivity tests. A non-integer seed fails loudly.
 
+## Person-name invariant
+
+`generateClassRosters.js` strips a single leading honourific token — one of `Mr`, `Mrs`, `Miss`, `Ms`, `Dr`, `Prof` (tolerating a trailing full stop, for example `Mrs.`) — from each Faker-generated student and teacher name. Only the leading token is ever removed; every other token, including Faker suffix tokens such as `DDS` or `MD`, is preserved unchanged.
+
+Committed compact fixtures therefore contain no roster or teacher name beginning with any of those honourifics. Do not hand-craft name fixtures that bypass the generator.
+
+Any generator change affecting names requires regenerating the committed profiles with `npm run fixtures:synthetic`, committing only the fixture files that actually change, and keeping regeneration byte-for-byte reproducible per the committed-fixture comparison spec.
+
 ## Compact versus full lifecycle
 
 - **Compact (committed):** small, medium, and large-representative transport views plus manifests are checked in under `tests/__mocks__/data/synthetic-analysis/`. Regeneration stages and validates every profile before replacing any committed directory, and rolls every applied replacement back if a later one fails.

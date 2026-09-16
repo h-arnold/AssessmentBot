@@ -8,20 +8,20 @@
     "classOwner": {
       "userId": "teacher-0",
       "email": "teacher-0@example.test",
-      "teacherName": "Mrs. Leola Kassulke"
+      "teacherName": "Leola Kassulke"
     },
     "teachers": [
       {
         "userId": "teacher-0",
         "email": "teacher-0@example.test",
-        "teacherName": "Mrs. Leola Kassulke"
+        "teacherName": "Leola Kassulke"
       }
     ],
     "active": true,
     "students": [
       {
         "id": "student-0-0",
-        "name": "Miss Katarina Sauer",
+        "name": "Katarina Sauer",
         "email": "student-0-0@example.test"
       },
       {
@@ -73,7 +73,7 @@
         "submissions": [
           {
             "studentId": "student-0-0",
-            "studentName": "Miss Katarina Sauer",
+            "studentName": "Katarina Sauer",
             "assignmentId": "assignment-0-1",
             "documentId": "submission-document-assignment-0-1-student-0-0",
             "items": {
@@ -429,7 +429,7 @@
         "submissions": [
           {
             "studentId": "student-0-0",
-            "studentName": "Miss Katarina Sauer",
+            "studentName": "Katarina Sauer",
             "assignmentId": "assignment-0-2",
             "documentId": "submission-document-assignment-0-2-student-0-0",
             "items": {
@@ -553,7 +553,7 @@
         "submissions": [
           {
             "studentId": "student-0-0",
-            "studentName": "Miss Katarina Sauer",
+            "studentName": "Katarina Sauer",
             "assignmentId": "assignment-0-3",
             "documentId": "submission-document-assignment-0-3-student-0-0",
             "items": {
@@ -795,12 +795,12 @@
       },
       {
         "id": "student-1-3",
-        "name": "Dr. Kamren Cremin-Donnelly",
+        "name": "Kamren Cremin-Donnelly",
         "email": "student-1-3@example.test"
       },
       {
         "id": "student-1-4",
-        "name": "Dr. Urban Murazik-Kshlerin DDS",
+        "name": "Urban Murazik-Kshlerin DDS",
         "email": "student-1-4@example.test"
       },
       {
@@ -1002,7 +1002,7 @@
           },
           {
             "studentId": "student-1-3",
-            "studentName": "Dr. Kamren Cremin-Donnelly",
+            "studentName": "Kamren Cremin-Donnelly",
             "assignmentId": "assignment-1-1",
             "documentId": "submission-document-assignment-1-1-student-1-3",
             "items": {
@@ -1060,7 +1060,7 @@
           },
           {
             "studentId": "student-1-4",
-            "studentName": "Dr. Urban Murazik-Kshlerin DDS",
+            "studentName": "Urban Murazik-Kshlerin DDS",
             "assignmentId": "assignment-1-1",
             "documentId": "submission-document-assignment-1-1-student-1-4",
             "items": {
@@ -1412,7 +1412,7 @@
           },
           {
             "studentId": "student-1-3",
-            "studentName": "Dr. Kamren Cremin-Donnelly",
+            "studentName": "Kamren Cremin-Donnelly",
             "assignmentId": "assignment-1-3",
             "documentId": "submission-document-assignment-1-3-student-1-3",
             "items": {
@@ -1446,7 +1446,7 @@
           },
           {
             "studentId": "student-1-4",
-            "studentName": "Dr. Urban Murazik-Kshlerin DDS",
+            "studentName": "Urban Murazik-Kshlerin DDS",
             "assignmentId": "assignment-1-3",
             "documentId": "submission-document-assignment-1-3-student-1-4",
             "items": {
@@ -1535,7 +1535,7 @@
     "students": [
       {
         "id": "student-2-0",
-        "name": "Dr. Taylor Kuphal",
+        "name": "Taylor Kuphal",
         "email": "student-2-0@example.test"
       },
       {
@@ -1587,7 +1587,7 @@
         "submissions": [
           {
             "studentId": "student-2-0",
-            "studentName": "Dr. Taylor Kuphal",
+            "studentName": "Taylor Kuphal",
             "assignmentId": "assignment-2-1",
             "documentId": "submission-document-assignment-2-1-student-2-0",
             "items": {
@@ -1943,7 +1943,7 @@
         "submissions": [
           {
             "studentId": "student-2-0",
-            "studentName": "Dr. Taylor Kuphal",
+            "studentName": "Taylor Kuphal",
             "assignmentId": "assignment-2-2",
             "documentId": "submission-document-assignment-2-2-student-2-0",
             "items": {
@@ -2067,7 +2067,7 @@
         "submissions": [
           {
             "studentId": "student-2-0",
-            "studentName": "Dr. Taylor Kuphal",
+            "studentName": "Taylor Kuphal",
             "assignmentId": "assignment-2-3",
             "documentId": "submission-document-assignment-2-3-student-2-0",
             "items": {
