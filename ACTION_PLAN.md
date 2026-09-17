@@ -41,6 +41,18 @@ Before writing or executing this plan:
 
 ## Global constraints and quality gates
 
+### Delivery status and baseline evidence (17 September 2026)
+
+- **Current phase:** baseline gate passed with accepted debt; prerequisite tooling repair reviewed clean, awaiting commit/push. Section 1 red phase has not started.
+- **User authorisation:** existing line-count warnings are accepted technical debt (10 backend and 48 frontend `max-lines` warnings). This does not permit new warnings or waive the section-specific LOC gates.
+- **Commit/push authorisation:** the user explicitly authorised committing and pushing each completed section, superseding the no-commit scope statement in `SPEC.md` for delivery operations.
+- **Baseline:** `.ts-regression-checker/reports/session-fix-301-stale-assignment-definitions/baseline/baseline.txt`; backend/frontend/builder tests, Playwright E2E and builder compilation passed. Backend lint reported the accepted 10 warnings. Direct frontend lint reported 0 errors and the accepted 48 warnings.
+- **Frontend checker investigation:** the diagnostic sub-agent identified broken argument forwarding through the root `lint:frontend:check` npm wrapper. The saved `checks/frontend-lint-check/raw.json` shows npm consuming `--format` / `--output-file`, followed by ESLint exit 2: `No files matching the pattern "json" were found.` This is a tooling failure, not a source lint error. The failed baseline lacks a frontend derived summary and is not a valid comparison floor for frontend lint.
+- **Repair verified:** user-approved trailing `--` added only to `lint:frontend:check` in `package.json`. Exact checker invocation reproduced exit 2 before the fix, then exit 0 with valid JSON, 0 errors and 48 accepted warnings. Independent Code Reviewer returned clean; report `.opencode/scratchpad/review-301-lint-fix.md`.
+- **Valid comparison baseline:** fresh session `fix-301-stale-assignment-definitions-verified`, created at `2026-09-17T20:23:12.483Z`; report `.ts-regression-checker/reports/session-fix-301-stale-assignment-definitions-verified/baseline/baseline.txt`. Seven checks pass; backend lint alone fails on the 10 accepted warnings (0 errors). Zero regressions and zero new failures. Use `npm run regression-checker -- fix-301-stale-assignment-definitions-verified` for all subsequent gates. Original crash baseline and comparison evidence remain untouched; its 48 reported frontend regressions were the already accepted warnings becoming observable after the wrapper fix, not source changes.
+- **Agent configuration:** user explicitly authorised committing the existing `.opencode/agents/playwright.md` model-only change unchanged. No agent-config edits were made by this delivery.
+- **Prerequisite delivery:** commit SHA and push confirmation will be recorded after successful commit/push on `fix/301-stale-assignment-definitions`.
+
 ### Engineering constraints
 
 - Keep API/entry points thin and delegate behaviour to services or controllers.
