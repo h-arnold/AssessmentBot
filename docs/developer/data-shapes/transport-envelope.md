@@ -81,6 +81,20 @@ payload or unknown field) — remain generic non-retriable `INVALID_REQUEST` cod
 The envelope mapper uses `ApiValidationError.code` when present and otherwise falls
 back to the generic `INVALID_REQUEST` mapping.
 
+### Planned error code — `DEFINITION_PARSE_FAILED` (not implemented)
+
+> **Status: Not implemented.** Planned contract from `SPEC.md` (issue #301). The code is
+> not yet mapped in `_mapErrorToFailureEnvelope` and is absent from the frontend error
+> registry (`map-error-to-ui.ts`).
+
+Planned as a stable, non-retriable `ApiValidationError` code for recognised
+document/task parsing failures. It maps to safe user copy: “The assignment documents
+could not be parsed. Check the reference and template documents, then try again.”
+Raw diagnostic details stay in logs, not user copy. An invalid task or a zero-task
+result must not persist a partial definition or start an assessment. Authorisation,
+rate-limit and persistence errors keep their distinct codes rather than being
+classified as parse failures.
+
 `FORBIDDEN` is produced directly by the `ApiDispatcher` auth gate in
 `z_apiHandler.js` — it is not thrown by a dedicated exception type. It covers both
 authenticated callers who are not a group/list member and authenticated non-admins denied by

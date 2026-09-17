@@ -70,6 +70,7 @@ Look for:
 11. re-inventing the wheel or ignoring existing helpers, components, or services that could be reused or extended
 12. evidence of over-engineering, over-specification, or unnecessary complexity that could be simplified without losing correctness **REMEMBER**: the repo prime directive is to ensure that the code is KISS AND DRY.
 13. missing canonical-fixture assessment where the work adds or changes tests — the plan must select a canonical synthetic profile/view, or record a generator-extension plan for unsupported realistic data, and identify only opportunistic migration of touched existing tests
+14. open questions left unresolved at the end of planning, or decisions deferred to the implementation stage — planning must finish with no open questions; every deliberate deferral must be explicitly authorised by the user via the ask-user-a-question tool and recorded, otherwise treat it as **Critical**
 
 ## 2. Review Method
 
@@ -80,7 +81,8 @@ Check that the spec:
 - captures the real affected components and boundaries
 - distinguishes decisions, assumptions, recommendations, and non-goals clearly
 - resolves or explicitly records important contract and ownership questions
-- does not leave core behavioural decisions to `ACTION_PLAN.md`
+- does not leave core behavioural decisions to `ACTION_PLAN.md` or the implementation stage
+- leaves no open questions unresolved; any deliberate deferral is explicitly authorised by the user via the ask-user-a-question tool and recorded, otherwise it is a **Critical** finding
 - stays consistent with existing code, naming, and data-shape constraints
 - does not misuse `SPEC.md` as an implementation-status tracker for planned helpers
 - calls out any data-shape, schema, persistence, or API-contract changes explicitly, and confirms they are recorded as planned-only `Not implemented` entries in the relevant `docs/developer/data-shapes/` file(s)
@@ -95,6 +97,7 @@ Check that the layout spec:
 - defines visible regions, workflow surfaces, and state handling clearly
 - matches the existing frontend shell, navigation, reduced-motion, and accessibility expectations
 - does not introduce hidden nested structure or bespoke interaction patterns without good reason
+- leaves no open questions unresolved; any deliberate layout deferral is explicitly authorised by the user via the ask-user-a-question tool and recorded, otherwise it is a **Critical** finding
 
 ### For `ACTION_PLAN.md`
 
@@ -111,6 +114,7 @@ Check that the plan:
 - includes data-shape doc planning for sections that change schemas, persistence, API contracts, or transport shapes, with corresponding `Not implemented` entries in `docs/developer/data-shapes/`
 - requires planned data-shape doc entries to be marked `Not implemented` before implementation starts, and that section ordering lands data-shape doc entry creation before code changes in those sections
 - includes canonical-fixture planning where the plan adds or changes tests: an explicit canonical profile/view choice, or a generator-extension plan for unsupported realistic data, and no requirement for a wholesale fixture migration
+- contains no open questions and defers no decision to the implementation stage; any deliberate deferral is explicitly authorised by the user via the ask-user-a-question tool and recorded, otherwise it is a **Critical** finding
 
 ## 3. Impartiality Rules
 

@@ -283,6 +283,44 @@ Key contract notes:
 | Mismatched document types   | `INVALID_REQUEST` | Both URLs must resolve to same type                                                    |
 | Duplicate business tuple    | `INVALID_REQUEST` | Controller detects duplicate `(primaryTitle, primaryTopicKey, yearGroupKey)` on create |
 
+#### Not implemented — stale-definition recovery (planned, Issue #301)
+
+> **Status: Not implemented.** Planned contract from `SPEC.md` (issue #301). These
+> fields and semantics do not exist in the current backend validation, controller
+> or frontend Zod schema. `UpsertAssignmentDefinitionRequestSchema` is `.strict()`,
+> so the fields below are currently **rejected** by the transport layer. Documented
+> as planned shape so implementation does not drift.
+
+**Planned `upsertAssignmentDefinition` request extensions:**
+
+| Field                         | Type           | Required | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ----------------------------- | -------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `forceReparse`                | `boolean`      | no       | Optional. `true` is accepted **only with an existing `definitionKey`**; it forces document parsing regardless of timestamps. Omission or `false` retains existing upsert behaviour; a forced create and invalid types are rejected. Transport/control information — never persisted or returned. `forceReparse: true` must be **rejected when combined with `taskWeightings`** to avoid ambiguous patch precedence (explicit forced requests omit weighting patches). |
+| `expectedDefinitionUpdatedAt` | `string` (ISO) | no       | Optional approval-save baseline; the value is the existing response `updatedAt` from the latest load/reparse. Compared against the currently stored `updatedAt` before applying edits; a mismatch returns `DEFINITION_STALE` with no writes. Requests omitting it retain ordinary upsert behaviour for existing non-wizard callers. No new response field — `updatedAt` is already returned.                                                                          |
+
+**Planned reparse, freshness and weighting semantics:**
+
+- Explicit reparse uses the current persisted metadata/document identifiers (or the
+  existing, explicitly confirmed URL-change workflow) and omits `taskWeightings`;
+  omission preserves assignment weighting.
+- Task weighting rules are **unchanged**: unchanged tasks keep their stored weighting;
+  new or changed tasks use the `TaskDefinition` constructor default of `1`; removed
+  tasks disappear; valid zero weightings are preserved.
+- On approval saves the backend rechecks Drive freshness (`referenceLastModified`/
+  `templateLastModified`) **and** the stored `updatedAt` baseline before applying
+  weighting patches or writing. Either failure returns `DEFINITION_STALE` and makes
+  no writes.
+
+**Planned parse-failure semantics:**
+
+- A stable, non-retriable `DEFINITION_PARSE_FAILED` code (see
+  [`transport-envelope.md`](transport-envelope.md#planned-error-code-definition_parse_failed-not-implemented))
+  covers recognised document/task parsing failures.
+- An invalid task or a zero-task result blocks the refresh and persists nothing; the
+  previously stored definition and freshness timestamps are left unchanged.
+- Authorisation, rate-limit and persistence errors retain their distinct codes rather
+  than being classified as parse failures.
+
 ### `deleteAssignmentDefinition` (write)
 
 Removes both the full cache collection and the registry row for the given definition key.

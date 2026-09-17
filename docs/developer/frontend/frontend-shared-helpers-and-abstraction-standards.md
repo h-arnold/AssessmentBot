@@ -954,6 +954,16 @@ The builder surface surfaced two antd v6 behaviours worth recording for future s
 - **Checkbox options via `optionRender`.** antd v6's `Select` `optionRender` callback exposes no `selected` flag (older v5 examples show one). The checked state of each checkbox option must be derived from controlled-value membership (`value` ∈ current selection), not from a `selected` argument. Search narrows options client-side only.
 - **Disabled-reason accessibility.** Dependent selectors disabled until a class is chosen expose their reason both as a sighted hover `Tooltip` and as an sr-only `aria-describedby` node bound to the control, so the reason is discoverable by assistive technology and not conveyed by colour alone. The antd `Tooltip` `cloneElement` wrapper is mediated via an intermediate `<span>` to avoid clobbering the described-by binding.
 
+## 9.23 Stale-definition recovery orchestration helpers (issue #301, planned)
+
+Planned-only entries for stale assignment-definition recovery. Status: `Not implemented` — recorded before implementation starts per SPEC.md handoff gate; the implementing agent moves these to `Implemented` as part of the work.
+
+1. Wizard orchestrator module — dedicated, readable orchestration file under `src/frontend/src/features/assignmentWizard/` owning the wizard process end-to-end: entry modes (create, update, explicit reparse, recovery), the parse → review → save sequence, mutation calls, error mapping, query invalidation, and stage transitions. Extracted from `useAssignmentDefinitionWizard.ts` (1,378 lines) as part of the required decomposition. Rationale: async orchestration belongs in feature hooks/modules, and recovery is an additional orchestrator entry on the same process — a second mode, not a duplicate flow.
+
+2. Assessment orchestration module — feature-local module under `src/frontend/src/features/classes/AssessTaskModal/` owning matching, linking, captured assessment context, and stale-recovery transitions for `AssessTaskModal`, extracted from `AssessTaskModal.tsx` (955 lines). Rationale: moves the state machines and API flows out of the rendering component per §3.2 of `src/frontend/AGENTS.md`.
+
+3. Wizard entry-contract extension — explicit recovery entry intent (existing `definitionKey` + approval-success callback; never `mode="create"`), plus the chrome-free review-content component recorded simultaneously in `docs/developer/frontend/frontend-modal-patterns.md` §3.4.
+
 ## 10. Frontend utils folder convention
 
 The `src/frontend/src/utils/` folder exists for pure formatting / utility functions that are shared across the frontend. This folder is a separate convention from `src/frontend/AGENTS.md` §13, which governs only `services/` subfolder organisation.

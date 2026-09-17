@@ -148,6 +148,7 @@ Default decision:
   - hook: `useAssignmentDefinitionWizard.ts` (feature-local, complexity ≤7)
   - shell: `AssignmentDefinitionWizardModalShell.tsx` (extended to handle all view states)
   - modal: `AssignmentDefinitionWizardModal.tsx` (thin presenter delegating to shell)
+- planned-only `Not implemented` (issue #301 stale-definition recovery): extract a chrome-free **review-content component** from `AssignmentDefinitionWizardModalShell` (body form + footer content separated from the shell's `Modal` chrome; covers both wizard stages via `hasParsedTasks` gating). Accepted consumers: the stale-recovery review surface inside `AssessTaskModal` (stage two only) and the genuine create path converted to in-modal rendering (both stages; SPEC.md decision 9 on the `fix/301-stale-assignment-definitions` branch resolves the former deferral). The existing full-shell create/update wizard keeps its own `Modal` chrome and re-composes from the extracted component. The recovery review surface uses a new recovery entry intent on the wizard entry contract (existing `definitionKey` + approval-success callback; never `mode="create"`). The companion wizard-orchestrator and assessment-orchestration modules are recorded separately in the shared-helper registry (`docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`).
 
 ## 4. Keep-local rules
 
