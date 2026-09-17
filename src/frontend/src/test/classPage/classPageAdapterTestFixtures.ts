@@ -10,7 +10,7 @@
  * @module test/classPage/classPageAdapterTestFixtures
  */
 
-import { createMetricResult } from '../dataAnalysis/fixtures';
+import { createDefinitionPartial, createMetricResult } from '../dataAnalysis/fixtures';
 import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import type {
   AveragingResult,
@@ -71,6 +71,63 @@ export function assignment(overrides: {
     submissions: [],
     assignmentDefinitionKey: overrides.definitionKey,
   } as unknown as AssignmentPartial;
+}
+
+/**
+ * Build a PerTaskRow fixture whose three criteria are all `computed` with
+ * `totalWeight: 1`, given their numeric values.
+ *
+ * @remarks Covers the most common adapter-test shape (all criteria computed
+ * with unit weight); use {@link perTaskRow} directly for mixed-state rows.
+ *
+ * @param {string} definitionKey - The definition key linking to an assignment.
+ * @param {string} taskId - The task identifier.
+ * @param {Object} values - The computed criterion values.
+ * @param {number} values.completeness - The completeness score.
+ * @param {number} values.accuracy - The accuracy score.
+ * @param {number} values.spag - The spelling, punctuation and grammar score.
+ * @returns {PerTaskRow} A fully typed PerTaskRow with unit-weight computed criteria.
+ */
+export function computedPerTaskRow(
+  definitionKey: string,
+  taskId: string,
+  values: { completeness: number; accuracy: number; spag: number }
+): PerTaskRow {
+  const { completeness, accuracy, spag } = values;
+  return perTaskRow({
+    definitionKey,
+    taskId,
+    completeness: createMetricResult('computed', { value: completeness, totalWeight: 1 }),
+    accuracy: createMetricResult('computed', { value: accuracy, totalWeight: 1 }),
+    spag: createMetricResult('computed', { value: spag, totalWeight: 1 }),
+  });
+}
+
+/**
+ * Build the single-assignment `dk1` input shared by metric rollup tests.
+ *
+ * @param {PerTaskRow[]} perTaskRows - Fresh rows supplied by the test, including empty data.
+ * @param {string[]} taskIds - Task identifiers for assignment `a-1`.
+ * @returns {Object} Fresh adapter input with Alice's roster and the matching definition.
+ */
+export function singleAssignmentAdapterInput(
+  perTaskRows: PerTaskRow[],
+  taskIds: string[]
+): {
+  analyserResult: AveragingResult;
+  classFull: ClassFull;
+  assignmentDefinitionPartials: ReturnType<typeof createDefinitionPartial>[];
+} {
+  return {
+    analyserResult: averagingResult({ perTask: perTaskRows }),
+    classFull: classFull({
+      students: [student('s-1', 'Alice')],
+      assignments: [
+        assignment({ assignmentId: 'a-1', updatedAt: DEFAULT_TS, definitionKey: 'dk1', taskIds }),
+      ],
+    }),
+    assignmentDefinitionPartials: [createDefinitionPartial({ definitionKey: 'dk1' })],
+  };
 }
 
 /**

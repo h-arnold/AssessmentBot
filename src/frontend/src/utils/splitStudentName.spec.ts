@@ -1,63 +1,48 @@
 import { describe, expect, it } from 'vitest';
 import { compareStudentNamePart, splitStudentName } from './splitStudentName';
 
+/** Labelled split case: `[name, input, forename, surname]`. */
+type SplitCase = readonly [name: string, input: string, forename: string, surname: string];
+
 describe('splitStudentName', () => {
-  it.each<{ name: string; input: string; forename: string; surname: string }>([
-    {
-      name: 'returns empty forename and surname for an empty string',
-      input: '',
-      forename: '',
-      surname: '',
-    },
-    {
-      name: 'returns empty forename and surname for a whitespace-only string',
-      input: '   ',
-      forename: '',
-      surname: '',
-    },
-    {
-      name: 'returns the whole name as forename with an empty surname for a single token',
-      input: 'Alice',
-      forename: 'Alice',
-      surname: '',
-    },
-    {
-      name: 'splits a two-token name into forename and surname',
-      input: 'Alice Smith',
-      forename: 'Alice',
-      surname: 'Smith',
-    },
-    {
-      name: 'keeps apostrophes inside tokens when splitting',
-      input: "Burnice O'Kon",
-      forename: 'Burnice',
-      surname: "O'Kon",
-    },
-    {
-      name: 'joins the remaining tokens into a multi-token surname',
-      input: 'Alice Mary Smith',
-      forename: 'Alice',
-      surname: 'Mary Smith',
-    },
-    {
-      name: 'collapses multiple internal spaces so the surname uses single spaces',
-      input: 'Alice  Smith   Jones',
-      forename: 'Alice',
-      surname: 'Smith Jones',
-    },
-    {
-      name: 'trims leading and trailing whitespace around the tokens',
-      input: '  Alice   Smith  ',
-      forename: 'Alice',
-      surname: 'Smith',
-    },
-    {
-      name: 'applies the first-token rule to honourific-shaped input without special-casing',
-      input: 'Miss Katarina Sauer',
-      forename: 'Miss',
-      surname: 'Katarina Sauer',
-    },
-  ])('$name', ({ input, forename, surname }) => {
+  const splitCases: readonly SplitCase[] = [
+    ['returns empty forename and surname for an empty string', '', '', ''],
+    ['returns empty forename and surname for a whitespace-only string', '   ', '', ''],
+    [
+      'returns the whole name as forename with an empty surname for a single token',
+      'Alice',
+      'Alice',
+      '',
+    ],
+    ['splits a two-token name into forename and surname', 'Alice Smith', 'Alice', 'Smith'],
+    ['keeps apostrophes inside tokens when splitting', "Burnice O'Kon", 'Burnice', "O'Kon"],
+    [
+      'joins the remaining tokens into a multi-token surname',
+      'Alice Mary Smith',
+      'Alice',
+      'Mary Smith',
+    ],
+    [
+      'collapses multiple internal spaces so the surname uses single spaces',
+      'Alice  Smith   Jones',
+      'Alice',
+      'Smith Jones',
+    ],
+    [
+      'trims leading and trailing whitespace around the tokens',
+      '  Alice   Smith  ',
+      'Alice',
+      'Smith',
+    ],
+    [
+      'applies the first-token rule to honourific-shaped input without special-casing',
+      'Miss Katarina Sauer',
+      'Miss',
+      'Katarina Sauer',
+    ],
+  ];
+
+  it.each(splitCases)('%s', (_name, input, forename, surname) => {
     expect(splitStudentName(input)).toEqual({ forename, surname });
   });
 });

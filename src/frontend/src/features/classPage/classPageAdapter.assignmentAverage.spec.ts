@@ -11,14 +11,11 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { createMetricResult, createDefinitionPartial } from '../../test/dataAnalysis/fixtures';
+import { createMetricResult } from '../../test/dataAnalysis/fixtures';
 import {
-  DEFAULT_TS,
-  assignment,
-  averagingResult,
-  classFull,
+  computedPerTaskRow,
   perTaskRow,
-  student,
+  singleAssignmentAdapterInput,
 } from '../../test/classPage/classPageAdapterTestFixtures';
 import { adaptClassPageToViewModel } from './classPageAdapter';
 import type { PerTaskRow } from '../../services/dataAnalysis/dataAnalysis.zod';
@@ -30,39 +27,13 @@ describe('adaptClassPageToViewModel', () => {
       //   Task t1: completeness=4, accuracy=3, spag=2
       //   Task t2: completeness=5, accuracy=4, spag=3
       const perTaskRows: PerTaskRow[] = [
-        perTaskRow({
-          definitionKey: 'dk1',
-          taskId: 't1',
-          completeness: createMetricResult('computed', { value: 4, totalWeight: 1 }),
-          accuracy: createMetricResult('computed', { value: 3, totalWeight: 1 }),
-          spag: createMetricResult('computed', { value: 2, totalWeight: 1 }),
-        }),
-        perTaskRow({
-          definitionKey: 'dk1',
-          taskId: 't2',
-          completeness: createMetricResult('computed', { value: 5, totalWeight: 1 }),
-          accuracy: createMetricResult('computed', { value: 4, totalWeight: 1 }),
-          spag: createMetricResult('computed', { value: 3, totalWeight: 1 }),
-        }),
+        computedPerTaskRow('dk1', 't1', { completeness: 4, accuracy: 3, spag: 2 }),
+        computedPerTaskRow('dk1', 't2', { completeness: 5, accuracy: 4, spag: 3 }),
       ];
 
-      const result = adaptClassPageToViewModel({
-        analyserResult: averagingResult({
-          perTask: perTaskRows,
-        }),
-        classFull: classFull({
-          students: [student('s-1', 'Alice')],
-          assignments: [
-            assignment({
-              assignmentId: 'a-1',
-              updatedAt: DEFAULT_TS,
-              definitionKey: 'dk1',
-              taskIds: ['t1', 't2'],
-            }),
-          ],
-        }),
-        assignmentDefinitionPartials: [createDefinitionPartial({ definitionKey: 'dk1' })],
-      });
+      const result = adaptClassPageToViewModel(
+        singleAssignmentAdapterInput(perTaskRows, ['t1', 't2'])
+      );
 
       expect(result.recentAssignments).toHaveLength(1);
       const assignmentMetrics = result.recentAssignments[0].metrics;
@@ -99,32 +70,10 @@ describe('adaptClassPageToViewModel', () => {
 
     it('computes per-assignment average as a composite with 40/40/20 weighting', () => {
       const perTaskRows: PerTaskRow[] = [
-        perTaskRow({
-          definitionKey: 'dk1',
-          taskId: 't1',
-          completeness: createMetricResult('computed', { value: 5, totalWeight: 1 }),
-          accuracy: createMetricResult('computed', { value: 3, totalWeight: 1 }),
-          spag: createMetricResult('computed', { value: 2, totalWeight: 1 }),
-        }),
+        computedPerTaskRow('dk1', 't1', { completeness: 5, accuracy: 3, spag: 2 }),
       ];
 
-      const result = adaptClassPageToViewModel({
-        analyserResult: averagingResult({
-          perTask: perTaskRows,
-        }),
-        classFull: classFull({
-          students: [student('s-1', 'Alice')],
-          assignments: [
-            assignment({
-              assignmentId: 'a-1',
-              updatedAt: DEFAULT_TS,
-              definitionKey: 'dk1',
-              taskIds: ['t1'],
-            }),
-          ],
-        }),
-        assignmentDefinitionPartials: [createDefinitionPartial({ definitionKey: 'dk1' })],
-      });
+      const result = adaptClassPageToViewModel(singleAssignmentAdapterInput(perTaskRows, ['t1']));
 
       const average = result.recentAssignments[0].metrics.average;
       // Expected: 0.4 * 5 + 0.4 * 3 + 0.2 * 2 = 2.0 + 1.2 + 0.4 = 3.6
@@ -146,23 +95,7 @@ describe('adaptClassPageToViewModel', () => {
         }),
       ];
 
-      const result = adaptClassPageToViewModel({
-        analyserResult: averagingResult({
-          perTask: perTaskRows,
-        }),
-        classFull: classFull({
-          students: [student('s-1', 'Alice')],
-          assignments: [
-            assignment({
-              assignmentId: 'a-1',
-              updatedAt: DEFAULT_TS,
-              definitionKey: 'dk1',
-              taskIds: ['t1'],
-            }),
-          ],
-        }),
-        assignmentDefinitionPartials: [createDefinitionPartial({ definitionKey: 'dk1' })],
-      });
+      const result = adaptClassPageToViewModel(singleAssignmentAdapterInput(perTaskRows, ['t1']));
 
       const COMPOSITE_NUMERATOR = 2.6;
       const COMPOSITE_DENOMINATOR = 0.6;
@@ -197,23 +130,7 @@ describe('adaptClassPageToViewModel', () => {
         }),
       ];
 
-      const result = adaptClassPageToViewModel({
-        analyserResult: averagingResult({
-          perTask: perTaskRows,
-        }),
-        classFull: classFull({
-          students: [student('s-1', 'Alice')],
-          assignments: [
-            assignment({
-              assignmentId: 'a-1',
-              updatedAt: DEFAULT_TS,
-              definitionKey: 'dk1',
-              taskIds: ['t1'],
-            }),
-          ],
-        }),
-        assignmentDefinitionPartials: [createDefinitionPartial({ definitionKey: 'dk1' })],
-      });
+      const result = adaptClassPageToViewModel(singleAssignmentAdapterInput(perTaskRows, ['t1']));
 
       // All three rows are error → rollupMetric(all error) → error for each criterion
       // then computeAverageMetric(all three error) → error
@@ -231,23 +148,7 @@ describe('adaptClassPageToViewModel', () => {
         }),
       ];
 
-      const result = adaptClassPageToViewModel({
-        analyserResult: averagingResult({
-          perTask: perTaskRows,
-        }),
-        classFull: classFull({
-          students: [student('s-1', 'Alice')],
-          assignments: [
-            assignment({
-              assignmentId: 'a-1',
-              updatedAt: DEFAULT_TS,
-              definitionKey: 'dk1',
-              taskIds: ['t1'],
-            }),
-          ],
-        }),
-        assignmentDefinitionPartials: [createDefinitionPartial({ definitionKey: 'dk1' })],
-      });
+      const result = adaptClassPageToViewModel(singleAssignmentAdapterInput(perTaskRows, ['t1']));
 
       expect(result.recentAssignments[0].metrics.average.state).toBe('notAttempted');
     });
@@ -263,23 +164,7 @@ describe('adaptClassPageToViewModel', () => {
         }),
       ];
 
-      const result = adaptClassPageToViewModel({
-        analyserResult: averagingResult({
-          perTask: perTaskRows,
-        }),
-        classFull: classFull({
-          students: [student('s-1', 'Alice')],
-          assignments: [
-            assignment({
-              assignmentId: 'a-1',
-              updatedAt: DEFAULT_TS,
-              definitionKey: 'dk1',
-              taskIds: ['t1'],
-            }),
-          ],
-        }),
-        assignmentDefinitionPartials: [createDefinitionPartial({ definitionKey: 'dk1' })],
-      });
+      const result = adaptClassPageToViewModel(singleAssignmentAdapterInput(perTaskRows, ['t1']));
 
       const average = result.recentAssignments[0].metrics.average;
       // SPaG is notAttempted → excluded.  Renormalised weights: 0.4/0.8 = 0.5 for each

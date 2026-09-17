@@ -12,13 +12,14 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { createMetricResult, createDefinitionPartial } from '../../test/dataAnalysis/fixtures';
+import { createDefinitionPartial } from '../../test/dataAnalysis/fixtures';
 import {
   DEFAULT_TS,
   assignment,
   averagingResult,
   classFull,
-  perTaskRow,
+  computedPerTaskRow,
+  singleAssignmentAdapterInput,
   student,
 } from '../../test/classPage/classPageAdapterTestFixtures';
 import { adaptClassPageToViewModel } from './classPageAdapter';
@@ -41,46 +42,16 @@ describe('adaptClassPageToViewModel', () => {
     });
 
     it('returns up to 3 assignments sorted by updatedAt descending', () => {
-      const perTaskRowsA: PerTaskRow[] = [
-        perTaskRow({
-          definitionKey: 'dk-a',
-          taskId: 't1',
-          completeness: createMetricResult('computed', { value: 4 }),
-          accuracy: createMetricResult('computed', { value: 3 }),
-          spag: createMetricResult('computed', { value: 2 }),
-        }),
-      ];
-      const perTaskRowsB: PerTaskRow[] = [
-        perTaskRow({
-          definitionKey: 'dk-b',
-          taskId: 't1',
-          completeness: createMetricResult('computed', { value: 5 }),
-          accuracy: createMetricResult('computed', { value: 4 }),
-          spag: createMetricResult('computed', { value: 3 }),
-        }),
-      ];
-      const perTaskRowsC: PerTaskRow[] = [
-        perTaskRow({
-          definitionKey: 'dk-c',
-          taskId: 't1',
-          completeness: createMetricResult('computed', { value: 3 }),
-          accuracy: createMetricResult('computed', { value: 2 }),
-          spag: createMetricResult('computed', { value: 1 }),
-        }),
-      ];
-      const perTaskRowsD: PerTaskRow[] = [
-        perTaskRow({
-          definitionKey: 'dk-d',
-          taskId: 't1',
-          completeness: createMetricResult('computed', { value: 2 }),
-          accuracy: createMetricResult('computed', { value: 2 }),
-          spag: createMetricResult('computed', { value: 2 }),
-        }),
+      const perTaskRows: PerTaskRow[] = [
+        computedPerTaskRow('dk-a', 't1', { completeness: 4, accuracy: 3, spag: 2 }),
+        computedPerTaskRow('dk-b', 't1', { completeness: 5, accuracy: 4, spag: 3 }),
+        computedPerTaskRow('dk-c', 't1', { completeness: 3, accuracy: 2, spag: 1 }),
+        computedPerTaskRow('dk-d', 't1', { completeness: 2, accuracy: 2, spag: 2 }),
       ];
 
       const result = adaptClassPageToViewModel({
         analyserResult: averagingResult({
-          perTask: [...perTaskRowsA, ...perTaskRowsB, ...perTaskRowsC, ...perTaskRowsD],
+          perTask: perTaskRows,
         }),
         classFull: classFull({
           students: [student('s-1', 'Alice')],
@@ -194,20 +165,8 @@ describe('adaptClassPageToViewModel', () => {
     // Two per-task rows exist for 'shared-dk' (one per taskId). Both assignments
     // should receive both per-task rows in their recent assignment card.
     const sharedPerTaskRows: PerTaskRow[] = [
-      perTaskRow({
-        definitionKey: 'shared-dk',
-        taskId: 't1',
-        completeness: createMetricResult('computed', { value: 4, totalWeight: 1 }),
-        accuracy: createMetricResult('computed', { value: 3, totalWeight: 1 }),
-        spag: createMetricResult('computed', { value: 2, totalWeight: 1 }),
-      }),
-      perTaskRow({
-        definitionKey: 'shared-dk',
-        taskId: 't2',
-        completeness: createMetricResult('computed', { value: 5, totalWeight: 1 }),
-        accuracy: createMetricResult('computed', { value: 4, totalWeight: 1 }),
-        spag: createMetricResult('computed', { value: 3, totalWeight: 1 }),
-      }),
+      computedPerTaskRow('shared-dk', 't1', { completeness: 4, accuracy: 3, spag: 2 }),
+      computedPerTaskRow('shared-dk', 't2', { completeness: 5, accuracy: 4, spag: 3 }),
     ];
 
     const result = adaptClassPageToViewModel({
@@ -261,23 +220,7 @@ describe('adaptClassPageToViewModel', () => {
   it('produces all-notAttempted metrics when analyserResult.perTask is empty', () => {
     // A single assignment with definitionKey 'dk1' but no per-task rows.
     // The adapter should fall back to noDataMetric() for each criterion.
-    const result = adaptClassPageToViewModel({
-      analyserResult: averagingResult({
-        perTask: [],
-      }),
-      classFull: classFull({
-        students: [student('s-1', 'Alice')],
-        assignments: [
-          assignment({
-            assignmentId: 'a-1',
-            updatedAt: DEFAULT_TS,
-            definitionKey: 'dk1',
-            taskIds: ['t1'],
-          }),
-        ],
-      }),
-      assignmentDefinitionPartials: [createDefinitionPartial({ definitionKey: 'dk1' })],
-    });
+    const result = adaptClassPageToViewModel(singleAssignmentAdapterInput([], ['t1']));
 
     expect(result.recentAssignments).toHaveLength(1);
     const card = result.recentAssignments[0];
